@@ -288,8 +288,8 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	int i;
 
 	printf("event_callback called\n");
-	printf("sub ID: %lx\n", subscription_id);
-	printf("event_handle %lx\n", event_handle);
+	printf("sub ID: %x\n", subscription_id);
+	printf("event_handle %x\n", event_handle);
 	printf("event data size %d\n", event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;

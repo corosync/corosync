@@ -223,9 +223,9 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	if (!quiet)
 		printf("event_callback called\n");
 	if (!quiet)
-		printf("sub ID: %lx\n", subscription_id);
+		printf("sub ID: %x\n", subscription_id);
 	if (!quiet)
-		printf("event_handle %lx\n", event_handle);
+		printf("event_handle %x\n", event_handle);
 	if (!quiet)
 		printf("event data size %d\n", event_data_size);
 

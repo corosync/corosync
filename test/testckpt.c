@@ -65,7 +65,7 @@ SaNameT checkpointName = { 5, "abra\0" };
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	SA_CKPT_WR_ALL_REPLICAS,
 	100000,
-	5000000000,
+	5000000000LL,
 	5,
 	20000,
 	10
@@ -185,7 +185,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	printf ("Elapsed Time to expiry is %ld.%ld (should be about %d seconds)\n", tv_elapsed.tv_sec, tv_elapsed.tv_usec, SECONDS_TO_EXPIRE);
 
 	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
-		5000000000);
+						      5000000000LL);
 	printf ("RetentionDurationSet is %d\n", error);
 	exit (1);
 
@@ -241,7 +241,7 @@ exit (1);
 	printf ("open after unlink/close result %d (should be 1)\n", error);
 
 	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
-		5000000000);
+						      5000000000LL);
 printf ("Retention duration set error is %d\n", error);
 	printf ("set checkpoint retention duration result %d (should be 1)\n", error);
 

@@ -1082,7 +1082,7 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (my_subscription_id != exp_sub_id) {
-		printf("ERROR: sub ID: e=%lx, a=%lx\n", 
+		printf("ERROR: sub ID: e=%x, a=%x\n", 
 				exp_sub_id, my_subscription_id);
 		goto evt_free;
 	}
