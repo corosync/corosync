@@ -390,4 +390,73 @@ typedef struct {
 	SaCkptCheckpointSynchronizeCallbackT saCkptCheckpointSynchronizeCallback;
 } SaCkptCallbacksT;
 
+
+typedef SaUint32T SaEvtHandleT;
+typedef SaUint32T SaEvtEventHandleT;
+typedef SaUint32T SaEvtChannelHandleT;
+typedef SaUint32T SaEvtSubscriptionIdT;
+
+
+typedef void
+(*SaEvtEventDeliverCallbackT)(
+	SaEvtSubscriptionIdT subscriptionId,
+	const SaEvtEventHandleT eventHandle,
+	const SaSizeT eventDataSize
+);
+
+typedef void 
+(*SaEvtChannelOpenCallbackT)(
+	SaInvocationT invocation,
+	SaEvtChannelHandleT channelHandle,
+	SaErrorT error
+);
+
+typedef struct{
+    const SaEvtChannelOpenCallbackT saEvtChannelOpenCallback;
+    const SaEvtEventDeliverCallbackT saEvtEventDeliverCallback; 
+} SaEvtCallbacksT;
+
+#define SA_EVT_CHANNEL_PUBLISHER  0X1
+#define SA_EVT_CHANNEL_SUBSCRIBER 0X2
+#define SA_EVT_CHANNEL_CREATE     0X4
+typedef SaUint8T SaEvtChannelOpenFlagsT;
+
+typedef struct {
+    SaUint8T *pattern;
+    SaSizeT patternSize;
+} SaEvtEventPatternT;
+
+
+#define SA_EVT_HIGHEST_PRIORITY 0
+#define SA_EVT_LOWEST_PRIORITY  3
+
+#define SA_EVT_DATA_MAX_LEN (64 * 1024)
+#define SA_EVT_LOST_EVENT "SA_EVT_LOST_EVENT_PATTERN"
+
+typedef struct {
+    SaEvtEventPatternT *patterns;
+    SaSizeT patternsNumber;
+} SaEvtEventPatternArrayT;
+
+typedef SaUint8T SaEvtEventPriorityT;
+typedef SaUint64T SaEvtEventIdT;
+
+typedef enum {
+    SA_EVT_PREFIX_FILTER = 1,
+    SA_EVT_SUFFIX_FILTER = 2,
+    SA_EVT_EXACT_FILTER = 3,
+    SA_EVT_PASS_ALL_FILTER = 4
+} SaEvtEventFilterTypeT;
+
+typedef struct {
+    SaEvtEventFilterTypeT filterType;
+    SaEvtEventPatternT filter;
+} SaEvtEventFilterT;
+
+typedef struct {
+    SaEvtEventFilterT *filters;
+    SaSizeT filtersNumber;
+} SaEvtEventFilterArrayT;
+
+
 #endif /* AIS_TYPES_H_DEFINED */
