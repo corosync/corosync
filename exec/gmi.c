@@ -1531,7 +1531,6 @@ void timer_function_token_retransmit_timeout (void *data)
 
 void timer_function_form_token_timeout (void *data)
 {
-exit (1);
 	gmi_log_printf (gmi_log_level_warning, "Token loss in FORM state\n");
 	memb_list_entries = 1;
 
