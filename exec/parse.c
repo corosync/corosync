@@ -431,7 +431,7 @@ int amfReadNetwork (char **error_string,
 			res = inet_aton (&line[strlen("bindnetaddr:")], &bindnet_addr->sin_addr);
 		} else
 		if (strncmp ("mcastport:", line, strlen ("mcastport:")) == 0) {
-			res = mcast_addr->sin_port = atoi (&line[strlen("mcastport:")]);
+			res = mcast_addr->sin_port = htons (atoi (&line[strlen("mcastport:")]));
 		} else {
 			res = 0;
 			break;
