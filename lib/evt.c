@@ -187,7 +187,7 @@ static void evtHandleInstanceDestructor(void *instance)
 	 * Empty out the queue if there are any pending messages
 	 */
 	while ((saQueueIsEmpty(&evti->ei_inq, &empty) == SA_OK) && !empty) {
-		saQueueItemGet(&evti->ei_inq, &msg);
+		saQueueItemGet(&evti->ei_inq, (void *)&msg);
 		saQueueItemRemove(&evti->ei_inq);
 		free(*msg);
 	}
