@@ -31,11 +31,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <sys/select.h>
 #include <netinet/in.h>
 #include "../include/ais_types.h"
 #include "../include/list.h"
-#include "poll.h"
+#include "aispoll.h"
 
 #ifndef PARSE_H_DEFINED
 #define PARSE_H_DEFINED

@@ -129,7 +129,7 @@ exec/gmi.{h|c}
 	using ring topology.  Supports extended virtual synchrony delivery semantics
 	with strong membership guarantees.
 
-	depends on cglpoll.
+	depends on aispoll.
 	depends on queue.
 	depends on sq.
 	depends on list.
@@ -154,8 +154,8 @@ exec/parse.{h|c}
 	Parsing functions for parsing /etc/ais/groups.conf and
 	/etc/ais/network.conf into internally used data structures.
 
-exec/poll.{h|c}
----------------
+exec/aispoll.{h|c}
+------------------
 	poll abstraction with support for nearly unlimited large poll handlers
 	and timer handlers.
 

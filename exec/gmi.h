@@ -34,7 +34,7 @@
 #ifndef GMI_H_DEFINED
 #define GMI_H_DEFINED
 
-#include "poll.h"
+#include "aispoll.h"
 
 #define MESSAGE_SIZE_MAX	256000
 

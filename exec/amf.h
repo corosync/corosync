@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "../include/ais_msg.h"
-#include "poll.h"
+#include "aispoll.h"
 #include "parse.h"
 #include "handlers.h"
 

@@ -43,7 +43,7 @@ LDFLAGS = -g
 
 EXEC_OBJS = main.o clm.o amf.o ckpt.o parse.o print.o mempool.o libgmi.a
 
-GMI_OBJS = poll.o gmi.o tlist.o
+GMI_OBJS = aispoll.o gmi.o tlist.o
 
 all:libgmi.a libgmi.so.1.0 aisexec
 

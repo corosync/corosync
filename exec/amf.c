@@ -31,7 +31,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <sys/poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -51,7 +50,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "gmi.h"
-#include "poll.h"
+#include "aispoll.h"
 #include "mempool.h"
 #include "parse.h"
 #include "main.h"

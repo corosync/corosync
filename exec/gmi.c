@@ -41,7 +41,6 @@
  */
 
 #include <assert.h>
-#include <sys/poll.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -62,8 +61,9 @@
 #include <sched.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/poll.h>
 
-#include "poll.h"
+#include "aispoll.h"
 #include "gmi.h"
 #include "../include/queue.h"
 #include "../include/sq.h"
