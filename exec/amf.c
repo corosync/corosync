@@ -961,6 +961,7 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 	struct list_head *comp_list = 0;
 	struct list_head *unit_list = 0;
 	int serviceUnitInStandby = 0;
+	int activeServiceUnits = 0;
 
 	/*
 	 * Once all components of a service unit are out of service,
@@ -988,6 +989,11 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 	}
 
 	group = unit->saAmfGroup;
+	activeServiceUnits = activeServiceUnitsCount(group);
+	if (activeServiceUnits>=group->saAmfActiveUnitsDesired) {
+		return;
+	}
+
 	if (serviceUnitOutOfService == 1) {
 		log_printf (LOG_LEVEL_DEBUG, "SU has gone out of service.\n");
 		/*
