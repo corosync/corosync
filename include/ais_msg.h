@@ -85,15 +85,16 @@ enum res_lib_evs_types {
 enum req_clm_types {
 	MESSAGE_REQ_CLM_TRACKSTART = 1,
 	MESSAGE_REQ_CLM_TRACKSTOP,
-	MESSAGE_REQ_CLM_NODEGET
+	MESSAGE_REQ_CLM_NODEGET,
+	MESSAGE_REQ_CLM_NODEGETASYNC
 };
 
 enum res_clm_types {
-	
 	MESSAGE_RES_CLM_TRACKCALLBACK = 1,
 	MESSAGE_RES_CLM_TRACKSTART,
 	MESSAGE_RES_CLM_TRACKSTOP,
 	MESSAGE_RES_CLM_NODEGET,
+	MESSAGE_RES_CLM_NODEGETASYNC,
 	MESSAGE_RES_CLM_NODEGETCALLBACK
 };
 
@@ -826,9 +827,19 @@ struct req_clm_nodeget {
 struct res_clm_nodeget {
 	struct res_header header;
 	SaInvocationT invocation;
-	SaClmClusterNodeT *clusterNodeAddress;
 	SaClmClusterNodeT clusterNode;
 	int valid;
+};
+
+struct req_clm_nodegetasync {
+	struct req_header header;
+	SaClmClusterNodeT *clusterNodeAddress;
+	SaInvocationT invocation;
+	SaClmNodeIdT nodeId;
+};
+
+struct res_clm_nodegetasync {
+	struct res_header header;
 };
 
 struct res_clm_nodegetcallback {
