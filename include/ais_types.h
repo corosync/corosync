@@ -40,15 +40,17 @@ typedef enum {
 	SA_TRUE = 1
 } SaBoolT;
 
-typedef char SaInt8T;
-typedef short SaInt16T;
-typedef long SaInt32T;
-typedef long long SaInt64T;
+#include <stdint.h>
 
-typedef unsigned char SaUint8T;
-typedef unsigned short SaUint16T;
-typedef unsigned long SaUint32T;
-typedef unsigned long long SaUint64T;
+typedef int8_t SaInt8T;
+typedef int16_t SaInt16T;
+typedef int32_t SaInt32T;
+typedef int64_t SaInt64T;
+
+typedef uint8_t SaUint8T;
+typedef uint16_t SaUint16T;
+typedef uint32_t SaUint32T;
+typedef uint64_t SaUint64T;
 
 typedef SaInt64T SaTimeT;
 
