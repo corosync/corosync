@@ -28,12 +28,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # Production mode flags
-CFLAGS = -O3 -Wall
-LDFLAGS = 
+#CFLAGS = -O3 -Wall
+#LDFLAGS = 
 
 # Debug mode flags
-#CFLAGS = -g -DDEBUG -Wall
-#LDFLAGS = -g
+CFLAGS = -g -DDEBUG -Wall
+LDFLAGS = -g
 
 # Profile mode flags
 #CFLAGS = -O3 -pg -DDEBUG
@@ -79,12 +79,17 @@ depend:
 # DO NOT DELETE
 
 util.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-util.o: util.h ../include/ais_msg.h ../include/evs.h
+util.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h util.h
 amf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_types.h
-amf.o: ../include/ais_msg.h util.h
+amf.o: ../include/ais_msg.h ../include/evs.h ../include/saClm.h
+amf.o: ../include/ipc_gen.h util.h
 clm.o: ../include/ais_types.h ../include/saClm.h ../include/ais_types.h
-clm.o: ../include/ais_msg.h util.h
+clm.o: ../include/ais_msg.h ../include/evs.h ../include/saClm.h
+clm.o: ../include/ipc_gen.h ../include/ipc_clm.h util.h
 ckpt.o: ../include/list.h ../include/ais_types.h ../include/ais_ckpt.h
-ckpt.o: ../include/ais_types.h ../include/ais_msg.h util.h
-evt.o: ../include/ais_evt.h ../include/ais_types.h ../include/ais_msg.h
-evt.o: util.h
+ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/evs.h
+ckpt.o: ../include/saClm.h ../include/ipc_gen.h util.h
+evt.o: ../include/ipc_evt.h ../include/ais_types.h ../include/saEvt.h
+evt.o: ../include/saClm.h ../include/ipc_gen.h util.h ../include/ais_msg.h
+evt.o: ../include/evs.h ../exec/totempg.h ../exec/aispoll.h
+evt.o: ../exec/totemsrp.h
