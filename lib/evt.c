@@ -171,7 +171,7 @@ struct event_data_instance {
 };
 
 struct message_overlay {
-	struct message_header header;
+	struct req_header header;
 	char data[4096];
 };
 
@@ -360,8 +360,8 @@ saEvtDispatch(
 	int dispatch_avail;
 	struct event_instance *evti;
 	SaEvtCallbacksT callbacks;
-	struct message_header **queue_msg;
-	struct message_header *msg;
+	struct req_header **queue_msg;
+	struct req_header *msg;
 	int empty;
 	int ignore_dispatch = 0;
 	int cont = 1; /* always continue do loop except when set to 0 */
@@ -433,17 +433,17 @@ saEvtDispatch(
 			 */
 			error = saRecvRetry(evti->ei_fd, 
 				&dispatch_data.header,
-				sizeof(struct message_header), 
+				sizeof(struct req_header), 
 				MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > 
-					sizeof(struct message_header)) {
+					sizeof(struct req_header)) {
 				error = saRecvRetry(evti->ei_fd, 
 					&dispatch_data.data,
 					dispatch_data.header.size - 
-					sizeof(struct message_header),
+					sizeof(struct req_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_OK) {
 					goto error_unlock;
@@ -628,7 +628,6 @@ saEvtChannelOpen(
 	/*
 	 * Send the request to the server and wait for a response
 	 */
-	req.ico_head.magic = MESSAGE_MAGIC;
 	req.ico_head.size = sizeof(req);
 	req.ico_head.id = MESSAGE_REQ_EVT_OPEN_CHANNEL;
 	req.ico_c_handle = *channel_handle;
@@ -652,7 +651,7 @@ saEvtChannelOpen(
 		goto chan_open_free;
 	}
 
-	error = res.ico_error;
+	error = res.ico_head.error;
 	if (error != SA_OK) {
 		goto chan_open_free;
 	}
@@ -728,7 +727,6 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	/*
 	 * Send the request to the server and wait for a response
 	 */
-	req.icc_head.magic = MESSAGE_MAGIC;
 	req.icc_head.size = sizeof(req);
 	req.icc_head.id = MESSAGE_REQ_EVT_CLOSE_CHANNEL;
 	req.icc_channel_handle = eci->eci_svr_channel_handle;
@@ -749,7 +747,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 		goto chan_close_put2;
 	}
 
-	error = res.icc_error;
+	error = res.icc_head.error;
 
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
@@ -1336,7 +1334,6 @@ saEvtEventPublish(
 		req->led_user_data_size = 0;
 	}
 
-	req->led_head.magic = MESSAGE_MAGIC;
 	req->led_head.id = MESSAGE_REQ_EVT_PUBLISH;
 	req->led_head.size = sizeof(*req) + pattern_size + event_data_size;
 	req->led_svr_channel_handle = eci->eci_svr_channel_handle;
@@ -1362,7 +1359,7 @@ saEvtEventPublish(
 	}
 
 
-	error = res.iep_error;
+	error = res.iep_head.error;
 	*eventid = res.iep_event_id;
 
 pub_put3:
@@ -1451,7 +1448,6 @@ saEvtEventSubscribe(
 	 */
 	req->ics_filter_count = aisfilt_to_evt_filt(filters, 
 						req->ics_filter_data);
-	req->ics_head.magic = MESSAGE_MAGIC;
 	req->ics_head.id = MESSAGE_REQ_EVT_SUBSCRIBE;
 	req->ics_head.size = sizeof(*req) + sz;
 	req->ics_channel_handle = eci->eci_svr_channel_handle;
@@ -1474,7 +1470,7 @@ saEvtEventSubscribe(
 		goto subscribe_put2;
 	}
 
-	error = res.ics_error;
+	error = res.ics_head.error;
 
 subscribe_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
@@ -1518,7 +1514,6 @@ saEvtEventUnsubscribe(
 		goto unsubscribe_put1;
 	}
 
-	req.icu_head.magic = MESSAGE_MAGIC;
 	req.icu_head.id = MESSAGE_REQ_EVT_UNSUBSCRIBE;
 	req.icu_head.size = sizeof(req);
 
@@ -1540,7 +1535,7 @@ saEvtEventUnsubscribe(
 		goto unsubscribe_put2;
 	}
 
-	error = res.icu_error;
+	error = res.icu_head.error;
 
 unsubscribe_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
@@ -1583,7 +1578,6 @@ saEvtEventRetentionTimeClear(
 		goto ret_time_put1;
 	}
 
-	req.iec_head.magic = MESSAGE_MAGIC;
 	req.iec_head.id = MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME;
 	req.iec_head.size = sizeof(req);
 
@@ -1605,7 +1599,7 @@ saEvtEventRetentionTimeClear(
 		goto ret_time_put2;
 	}
 
-	error = res.iec_error;
+	error = res.iec_head.error;
 
 ret_time_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
