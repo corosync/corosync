@@ -33,22 +33,22 @@
 #LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -Wall
-# -DDEBUG
+CFLAGS = -g -Wall 
+#-DDEBUG
 LDFLAGS = -g
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
-EXEC_OBJS = main.o clm.o amf.o ckpt.o print.o parse.o mempool.o
+EXEC_OBJS = main.o clm.o amf.o ckpt.o parse.o print.o mempool.o libgmi.a
 
 GMI_OBJS = poll.o gmi.o tlist.o
 
 all:libgmi.a libgmi.so.1.0 aisexec
 
 aisexec: $(EXEC_OBJS)
-	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) libgmi.a -o aisexec
+	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) -o aisexec
 
 libgmi.a: $(GMI_OBJS)
 	$(AR) -rc libgmi.a $(GMI_OBJS)
