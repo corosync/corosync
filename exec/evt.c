@@ -49,11 +49,13 @@
 #include "mempool.h"
 #include "parse.h"
 #include "main.h"
-#include "print.h"
 #include "gmi.h"
 #include "hdb.h"
 #include "clm.h"
 #include "evt.h"
+
+#define LOG_SERVICE LOG_SERVICE_EVT
+#include "print.h"
 
 static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, 
 		void *message);

@@ -1246,6 +1246,7 @@ static int netif_determine (struct sockaddr_in *bindnet,
 	free (ifc.ifc_buf);
 	close (id_fd);
 	
+printf ("res is %d\n", res);
 	return (res);
 }
 
@@ -1434,6 +1435,7 @@ static int messages_free (int group_arut)
 	int i;
 	int res;
 	int lesser;
+	int log_release = 0;
 
 // TODO printf ("group arut %d last_group-arut  %d gmi_dut %d barrier %d\n", group_arut, last_group_arut, gmi_dut, gmi_barrier_seq);
 	/*
@@ -1470,9 +1472,13 @@ static int messages_free (int group_arut)
 		}
 		sq_items_release (&queue_rtr_items, i);
 		last_released = i + 1;
+		log_release = 1;
 	}
 
-	gmi_log_printf (gmi_log_level_debug, "releasing messages up to and including %d\n", lesser);
+	if (log_release) {
+		gmi_log_printf (gmi_log_level_debug,
+			"releasing messages up to and including %d\n", lesser);
+	}
 	return (0);
 }
 

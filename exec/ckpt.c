@@ -53,8 +53,10 @@
 #include "util.h"
 #include "parse.h"
 #include "main.h"
-#include "print.h"
 #include "gmi.h"
+
+#define LOG_SERVICE LOG_SERVICE_CKPT
+#include "print.h"
 
 DECLARE_LIST_INIT(checkpointListHead);
 

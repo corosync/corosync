@@ -56,9 +56,11 @@
 #include "gmi.h"
 #include "parse.h"
 #include "main.h"
-#include "print.h"
 #include "mempool.h"
 #include "handlers.h"
+
+#define LOG_SERVICE LOG_SERVICE_EVS
+#include "print.h"
 
 static DECLARE_LIST_INIT (confchg_notify);
 
