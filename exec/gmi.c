@@ -400,7 +400,7 @@ static int message_handler_memb_join (struct sockaddr_in *, struct iovec *, int,
 static int message_handler_memb_form_token (struct sockaddr_in *, struct iovec *, int, int);
 static void memb_conf_id_build (struct memb_conf_id *, struct in_addr);
 static int recv_handler (poll_handle handle, int fd, int revents, void *data);
-static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to, char *name);
+static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to);
 static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	int *fd_mcast,
@@ -726,8 +726,7 @@ printf ("CALCULATED TOTAL is %d\n", calced_total);
 }
 
 static int netif_determine (struct sockaddr_in *bindnet,
-	struct sockaddr_in *bound_to,
-	char *ifname)
+	struct sockaddr_in *bound_to)
 {
 	struct sockaddr_in *sockaddr_in;
 	int id_fd;
@@ -766,8 +765,6 @@ static int netif_determine (struct sockaddr_in *bindnet,
 			(bindnet->sin_addr.s_addr & mask_addr)) {
 
 			bound_to->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
-
-			strcpy (ifname, ifc.ifc_ifcu.ifcu_req[i].ifr_ifrn.ifrn_name);
 			res = i;
 			break; /* for */
 		}
@@ -787,18 +784,16 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct ip_mreq mreq;
 	struct sockaddr_in sockaddr_in;
 	char flag;
-	struct ifreq interface;
 	int res;
 	
 	memset (&mreq, 0, sizeof (struct ip_mreq));
-	memset (&interface, 0, sizeof (struct ifreq));
 
 	/*
 	 * Determine the ip address bound to and the interface name
 	 */
 	res = netif_determine (sockaddr_bindnet,
-		bound_to,
-		interface.ifr_ifrn.ifrn_name);
+		bound_to);
+
 	if (res == -1) {
 		return (-1);
 	}
@@ -817,11 +812,9 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 		return (-1);
 	}
 
-	/*
-	 * Bind the multicast socket to the correct device (eth0, eth1)
-	 */
-	if (setsockopt(*fd_mcast, SOL_SOCKET, SO_BINDTODEVICE,
-		(char *)&interface, sizeof(interface)) < 0) {
+	if (setsockopt (*fd_mcast, SOL_IP, IP_MULTICAST_IF,
+		&bound_to->sin_addr, sizeof (struct in_addr)) < 0) {
+
 		gmi_log_printf (gmi_log_level_warning, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
 	}
 
