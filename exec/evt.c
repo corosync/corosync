@@ -1,6 +1,4 @@
 /*
- *	vi: set autoindent tabstop=4 shiftwidth=4 :
- *
  * Copyright (c) 2004 Mark Haverkamp
  * Copyright (c) 2004 Open Source Development Lab
  *
@@ -47,8 +45,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "../include/ais_types.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_evt.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "util.h"
@@ -60,6 +57,7 @@
 #include "hdb.h"
 #include "clm.h"
 #include "evt.h"
+#include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_EVT
 #include "print.h"
@@ -135,11 +133,15 @@ static struct libais_handler evt_libais_handlers[] = {
 };
 
 	
-static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conversion_required);
-static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, int endian_conversion_required);
-static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_conversion_required);
+static int evt_remote_evt(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required);
+static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required);
+static int evt_remote_chan_op(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required);
 
-static int (*evt_exec_handler_fns[]) (void *m, struct in_addr s, int endian_conversion_required) = {
+static int (*evt_exec_handler_fns[]) (void *m, struct in_addr s, 
+		int endian_conversion_required) = {
 	evt_remote_evt,
 	evt_remote_chan_op,
 	evt_remote_recovery_evt
@@ -431,7 +433,7 @@ static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 
 	filters = malloc(sizeof(SaEvtEventFilterArrayT));
 	if (!filters) {
-		return SA_ERR_NO_MEMORY;
+		return SA_AIS_ERR_NO_MEMORY;
 	}
 
 	filters->filtersNumber = filta->filtersNumber;
@@ -439,7 +441,7 @@ static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 				filta->filtersNumber);
 	if (!filters->filters) {
 			free(filters);
-			return SA_ERR_NO_MEMORY;
+			return SA_AIS_ERR_NO_MEMORY;
 	}
 
 	for (i = 0; i < filters->filtersNumber; i++) {
@@ -452,7 +454,7 @@ static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 				}
 				free(filters->filters);
 				free(filters);
-				return SA_ERR_NO_MEMORY;
+				return SA_AIS_ERR_NO_MEMORY;
 		}
 		filters->filters[i].filter.patternSize = 
 			filt[i].filter.patternSize;
@@ -464,7 +466,7 @@ static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 
 	*evtfilters = filters;
 	
-	return SA_OK;
+	return SA_AIS_OK;
 }
 
 /*
@@ -810,7 +812,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	int res;
 	SaErrorT ret;
 
-	ret = SA_OK;
+	ret = SA_AIS_OK;
 
 	eci = find_channel(cn);
 
@@ -820,7 +822,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	 * and opened.
 	 */
 	if (!eci && !(flgs & SA_EVT_CHANNEL_CREATE)) {
-		ret = SA_ERR_NOT_EXIST;
+		ret = SA_AIS_ERR_NOT_EXIST;
 		goto chan_open_end;
 	}
 
@@ -840,7 +842,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Open mcast result: %d\n",
 				res);
 	if (res != 0) {
-			ret = SA_ERR_SYSTEM;
+			ret = SA_AIS_ERR_LIBRARY;
 	}
 
 chan_open_end:
@@ -858,7 +860,7 @@ static SaErrorT evt_close_channel(SaNameT *cn)
 	int res;
 	SaErrorT ret;
 
-	ret = SA_OK;
+	ret = SA_AIS_OK;
 
 	/*
 	 * create the channel packet to send. Tell the the cluster
@@ -873,7 +875,7 @@ static SaErrorT evt_close_channel(SaNameT *cn)
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
 	if (res != 0) {
-			ret = SA_ERR_SYSTEM;
+			ret = SA_AIS_ERR_LIBRARY;
 	}
 	return ret;
 
@@ -931,7 +933,7 @@ evt_add_node(struct in_addr addr, SaClmClusterNodeT *cn)
 {
 	struct member_node_data **nlp;
 	struct member_node_data *nl;
-	SaErrorT err = SA_ERR_EXIST;
+	SaErrorT err = SA_AIS_ERR_EXIST;
 
 	nlp = lookup_node(addr);
 
@@ -946,12 +948,12 @@ evt_add_node(struct in_addr addr, SaClmClusterNodeT *cn)
 
 	*nlp = malloc(sizeof(struct member_node_data));
 	if (!nlp) {
-			return SA_ERR_NO_MEMORY;
+			return SA_AIS_ERR_NO_MEMORY;
 	}
 	nl = *nlp;
 	if (nl) {
 		memset(nl, 0, sizeof(*nl));
-		err = SA_OK;
+		err = SA_AIS_OK;
 		nl->mn_node_addr = addr;
 		nl->mn_started = 1;
 	}
@@ -969,7 +971,7 @@ evt_remove_node(struct in_addr addr)
 {
 	struct member_node_data **nlp;
 	struct member_node_data *nl;
-	SaErrorT err = SA_ERR_NOT_EXIST;
+	SaErrorT err = SA_AIS_ERR_NOT_EXIST;
 
 	nlp = lookup_node(addr);
 
@@ -987,7 +989,7 @@ evt_remove_node(struct in_addr addr)
 	list_del(&nl->mn_entry);
 	*nlp = nl->mn_next;
 	free(*nlp);
-	err = SA_OK;
+	err = SA_AIS_OK;
 
 an_out:
 	return err;
@@ -1231,7 +1233,7 @@ static int message_handler_req_lib_activatepoll(struct conn_info *conn_info,
 {
 	struct res_lib_activatepoll res;
 
-	res.header.error = SA_OK;
+	res.header.error = SA_AIS_OK;
 	res.header.size = sizeof (struct res_lib_activatepoll);
 	res.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
 	libais_send_response(conn_info, &res, sizeof(res));
@@ -1246,9 +1248,9 @@ static int message_handler_req_lib_activatepoll(struct conn_info *conn_info,
  */
 SaErrorT set_event_id(SaClmNodeIdT node_id)
 {
-	SaErrorT err = SA_OK;
+	SaErrorT err = SA_AIS_OK;
 	if (base_id_top) {
-		err =  SA_ERR_EXIST;
+		err =  SA_AIS_ERR_EXIST;
 	}
 	base_id_top = (SaEvtEventIdT)node_id << 32;
 	return err;
@@ -1258,7 +1260,7 @@ static SaErrorT get_event_id(uint64_t *event_id)
 {
 	*event_id = base_id_top | base_id ;
 	base_id = (base_id + 1) & BASE_ID_MASK;
-	return SA_OK;
+	return SA_AIS_OK;
 }
 
 
@@ -1442,13 +1444,13 @@ evt_already_delivered(struct event_data *evt,
 
 /*
  * Compare a filter to a given pattern.
- * return SA_OK if the pattern matches a filter
+ * return SA_AIS_OK if the pattern matches a filter
  */
 static SaErrorT
 filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 {
 	int ret;
-	ret = SA_ERR_FAILED_OPERATION;
+	ret = SA_AIS_ERR_FAILED_OPERATION;
 
 	switch (ef->filterType) {
 	case SA_EVT_PREFIX_FILTER:
@@ -1457,7 +1459,7 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		}
 		if (strncmp(ef->filter.pattern, ep->pattern,
 					ef->filter.patternSize) == 0) {
-			ret = SA_OK;
+			ret = SA_AIS_OK;
 		}
 		break;
 	case SA_EVT_SUFFIX_FILTER:
@@ -1467,7 +1469,7 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		if (strncmp(ef->filter.pattern, 
 			&ep->pattern[ep->patternSize - ef->filter.patternSize],
 					ef->filter.patternSize) == 0) {
-			ret = SA_OK;
+			ret = SA_AIS_OK;
 		}
 		
 		break;
@@ -1477,11 +1479,11 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		}
 		if (strncmp(ef->filter.pattern, ep->pattern,
 					ef->filter.patternSize) == 0) {
-			ret = SA_OK;
+			ret = SA_AIS_OK;
 		}
 		break;
 	case SA_EVT_PASS_ALL_FILTER:
-		ret = SA_OK;
+		ret = SA_AIS_OK;
 		break;
 	default:
 		break;
@@ -1491,7 +1493,7 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 
 /*
  * compare the event's patterns with the subscription's filter rules.
- * SA_OK is returned if the event matches the filter rules.
+ * SA_AIS_OK is returned if the event matches the filter rules.
  */
 static SaErrorT
 event_match(struct event_data *evt, 
@@ -1500,7 +1502,7 @@ event_match(struct event_data *evt,
 	SaEvtEventFilterT *ef;
 	SaEvtEventPatternT *ep;
 	uint32_t filt_count;
-	SaErrorT ret =  SA_OK;
+	SaErrorT ret =  SA_AIS_OK;
 	int i;
 
 	ep = (SaEvtEventPatternT *)(&evt->ed_event.led_body[0]);
@@ -1510,7 +1512,7 @@ event_match(struct event_data *evt,
 
 	for (i = 0; i < filt_count; i++) {
 		ret = filter_match(ep, ef);
-		if (ret != SA_OK) {
+		if (ret != SA_AIS_OK) {
 			break;
 		}
 		ep++;
@@ -1576,7 +1578,7 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 									l2 != &eco->eco_subscr; l2 = l2->next) {
 					 ecs = list_entry(l2, 
 								struct event_svr_channel_subscr, ecs_entry);
-					 if (event_match(cel->cel_event, ecs) == SA_OK) {
+					 if (event_match(cel->cel_event, ecs) == SA_AIS_OK) {
 						 /*
 						  * Something still matches.  
 						  * We'll assign it to
@@ -1616,7 +1618,7 @@ static void __notify_event(struct conn_info *conn_info)
 	if (esip->esi_nevents != 0) {
 		res.evd_head.size = sizeof(res);
 		res.evd_head.id = MESSAGE_RES_EVT_AVAILABLE;
-		res.evd_head.error = SA_OK;
+		res.evd_head.error = SA_AIS_OK;
 		libais_send_response(conn_info, &res, sizeof(res));
 	}
 
@@ -1756,6 +1758,52 @@ deliver_event(struct event_data *evt,
 }
 
 /*
+ * Take the event data and swap the elements so they match our architectures
+ * word order.
+ */
+static void
+convert_event(struct lib_event_data *evt)
+{
+	SaEvtEventPatternT *eps;
+	int i;
+
+	/*
+	 * The following elements don't require processing:
+	 *
+	 * converted in the main deliver_fn:
+	 * led_head.id, led_head.size.
+	 *
+	 * Supplied localy:
+	 * source_addr, publisher_node_id, receive_time.
+	 *
+	 * Used internaly only:
+	 * led_svr_channel_handle and led_lib_channel_handle.
+	 */
+
+	evt->led_chan_name.length = swab16(evt->led_chan_name.length);
+	evt->led_event_id = swab64(evt->led_event_id);
+	evt->led_sub_id = swab32(evt->led_sub_id);
+	evt->led_publisher_name.length = swab32(evt->led_publisher_name.length);
+	evt->led_retention_time = swab64(evt->led_retention_time);
+	evt->led_publish_time = swab64(evt->led_publish_time);
+	evt->led_user_data_offset = swab32(evt->led_user_data_offset);
+	evt->led_user_data_size = swab32(evt->led_user_data_size);
+	evt->led_patterns_number = swab32(evt->led_patterns_number);
+
+	/*
+	 * Now we need to go through the led_body and swizzle pattern counts.
+	 * We can't do anything about user data since it doesn't have a specified
+	 * format.  The application is on its own here.
+	 */
+	eps = (SaEvtEventPatternT *)evt->led_body;  
+	for (i = 0; i < evt->led_patterns_number; i++) {
+		eps->patternSize = swab32(eps->patternSize);
+		eps++;
+	}
+	
+}
+
+/*
  * Take an event received from the network and fix it up to be usable.
  * - fix up pointers for pattern list.
  * - fill in some channel info
@@ -1880,12 +1928,12 @@ static int evt_initialize(struct conn_info *conn_info, void *msg)
 	
 	res.header.size = sizeof (struct res_lib_init);
 	res.header.id = MESSAGE_RES_INIT;
-	res.header.error = SA_OK;
+	res.header.error = SA_AIS_OK;
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtInitialize request.\n");
 	if (!conn_info->authenticated) {
 		log_printf(LOG_LEVEL_ERROR, "event service: Not authenticated\n");
-		res.header.error = SA_ERR_SECURITY;
+		res.header.error = SA_AIS_ERR_LIBRARY;
 		libais_send_response(conn_info, &res, sizeof(res));
 		return -1;
 	}
@@ -1934,13 +1982,13 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	 */
 	error = evt_open_channel(&req->ico_channel_name, req->ico_open_flag);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto open_return;
 	}
 
 	ocp = malloc(sizeof(struct open_chan_pending));
 	if (!ocp) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto open_return;
 	}
 
@@ -2051,7 +2099,7 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
 					req->icc_channel_handle, &ptr);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_close_done;
 	}
 	eco = ptr;
@@ -2095,7 +2143,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
 	SaEvtEventFilterArrayT *filters;
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
@@ -2114,7 +2162,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 
 	error = evtfilt_to_aisfilt(req, &filters);
 
-	if (error == SA_OK) {
+	if (error == SA_AIS_OK) {
 		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
 				filters->filtersNumber);
 		for (i = 0; i < filters->filtersNumber; i++) {
@@ -2128,7 +2176,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 		}
 	}
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto subr_done;
 	}
 
@@ -2137,7 +2185,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
 						req->ics_channel_handle, &ptr);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto subr_done;
 	}
 	eco = ptr;
@@ -2149,13 +2197,13 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	 */
 	ecs = find_subscr(eco, req->ics_sub_id); 
 	if (ecs) {
-		error = SA_ERR_EXIST;
+		error = SA_AIS_ERR_EXIST;
 		goto subr_put;
 	}
 
 	ecs = (struct event_svr_channel_subscr *)malloc(sizeof(*ecs));
 	if (!ecs) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto subr_put;
 	}
 	ecs->ecs_filters = filters;
@@ -2182,7 +2230,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 			if (evt_already_delivered(evt, eco)) {
 				continue;
 			}
-			if (event_match(evt, ecs) == SA_OK) {
+			if (event_match(evt, ecs) == SA_AIS_OK) {
 				log_printf(LOG_LEVEL_DEBUG,
 					"deliver event ID: 0x%llx\n", 
 						evt->ed_event.led_event_id);
@@ -2216,7 +2264,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	void *ptr;
 
 	req = message;
@@ -2232,7 +2280,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
 						req->icu_channel_handle, &ptr);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto unsubr_done;
 	}
 	eco = ptr;
@@ -2244,7 +2292,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	 */
 	ecs = find_subscr(eco, req->icu_sub_id); 
 	if (!ecs) {
-		error = SA_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_INVALID_PARAM;
 		goto unsubr_put;
 	}
 
@@ -2281,7 +2329,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	SaEvtEventIdT event_id = 0;
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	struct iovec pub_iovec;
 	void *ptr;
 	int result;
@@ -2298,7 +2346,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
 				    req->led_svr_channel_handle, &ptr);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto pub_done;
 	}
 	eco = ptr;
@@ -2323,7 +2371,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	pub_iovec.iov_len = req->led_head.size;
 	result = totempg_mcast (&pub_iovec, 1, TOTEMPG_AGREED);
 	if (result != 0) {
-			error = SA_ERR_SYSTEM;
+			error = SA_AIS_ERR_LIBRARY;
 	}
 
 	saHandleInstancePut(&esip->esi_hdb, req->led_svr_channel_handle);
@@ -2347,7 +2395,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	struct res_evt_event_clear_retentiontime res;
 	struct req_evt_chan_command cpkt;
 	struct iovec rtn_iovec;
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int ret;
 
 	req = message;
@@ -2368,7 +2416,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	rtn_iovec.iov_len = cpkt.chc_head.size;
 	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
 	if (ret != 0) {
-			error = SA_ERR_SYSTEM;
+			error = SA_AIS_ERR_LIBRARY;
 	}
 
 	res.iec_head.size = sizeof(res);
@@ -2410,7 +2458,7 @@ static int lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 			edp->ed_event.led_lib_channel_handle = cel->cel_chan_handle;
 			edp->ed_event.led_sub_id = cel->cel_sub_id;
 			edp->ed_event.led_head.id = MESSAGE_RES_EVT_EVENT_DATA;
-			edp->ed_event.led_head.error = SA_OK;
+			edp->ed_event.led_head.error = SA_AIS_OK;
 			free(cel);
 			libais_send_response(conn_info, &edp->ed_event, 
 											edp->ed_event.led_head.size);
@@ -2421,7 +2469,7 @@ static int lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 
 	res.led_head.size = sizeof(res.led_head);
 	res.led_head.id = MESSAGE_RES_EVT_EVENT_DATA;
-	res.led_head.error = SA_ERR_NOT_EXIST;
+	res.led_head.error = SA_AIS_ERR_NOT_EXIST;
 	libais_send_response(conn_info, &res, res.led_head.size);
 
 	/*
@@ -2671,7 +2719,7 @@ static int evt_exec_init(void)
 	list_init(&dropped_event->ed_retained);
 	dropped_event->ed_event.led_head.size = 
 			sizeof(*dropped_event) + sizeof(dropped_pattern);
-	dropped_event->ed_event.led_head.error = SA_OK;
+	dropped_event->ed_event.led_head.error = SA_AIS_OK;
 	dropped_event->ed_event.led_priority = SA_EVT_HIGHEST_PRIORITY;
 	dropped_event->ed_event.led_chan_name = lost_chan;
 	dropped_event->ed_event.led_publisher_name = dropped_publisher;
@@ -2685,7 +2733,8 @@ static int evt_exec_init(void)
 /*
  * Receive the network event message and distribute it to local subscribers
  */
-static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conversion_required)
+static int evt_remote_evt(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required)
 {
 	/*
 	 * - retain events that have a retention time
@@ -2721,6 +2770,11 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conv
 	}
 	log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
 					cn->nodeId, cn->nodeName.value);
+
+	if (endian_conversion_required) {
+		convert_event(evtpkt);
+	}
+
 	evtpkt->led_publisher_node_id = cn->nodeId;
 	evtpkt->led_in_addr = source_addr;
 	evtpkt->led_receive_time = clust_time_now();
@@ -2774,7 +2828,7 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conv
 			 * match filters.
 			 * Only deliver one event per open channel
 			 */
-			if (event_match(evt, ecs) == SA_OK) {
+			if (event_match(evt, ecs) == SA_AIS_OK) {
 				deliver_event(evt, eco, ecs);
 				break;
 			}
@@ -2802,7 +2856,8 @@ inline SaTimeT calc_retention_time(SaTimeT retention,
 /*
  * Receive a recovery network event message and save it in the retained list
  */
-static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, int endian_conversion_required)
+static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required)
 {
 	/*
 	 * - retain events that have a retention time
@@ -2824,6 +2879,10 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, int en
 		log_printf(LOG_LEVEL_NOTICE, 
 				"Received recovery data, not in recovery mode\n");
 		return 0;
+	}
+
+	if (endian_conversion_required) {
+		convert_event(evtpkt);
 	}
 
 	log_printf(LOG_LEVEL_DEBUG, 
@@ -2908,7 +2967,7 @@ static void chan_open_timeout(void *data)
 	
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
-	res.ico_head.error = SA_ERR_TIMEOUT;
+	res.ico_head.error = SA_AIS_ERR_TIMEOUT;
 	libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
 	list_del(&ocp->ocp_entry);
 	free(ocp);
@@ -2945,11 +3004,11 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 * with this channel open instance.
 	 */
 	error = saHandleCreate(&esip->esi_hdb, sizeof(*eco), &handle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto open_return;
 	}
 	error = saHandleInstanceGet(&esip->esi_hdb, handle, &ptr);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto open_return;
 	}
 	eco = ptr;
@@ -2989,13 +3048,72 @@ open_return:
 	}
 }
 
+/*
+ * Take the channel command data and swap the elements so they match 
+ * our architectures word order.
+ */
+static void
+convert_chan_packet(struct req_evt_chan_command *cpkt)
+{
+	/*
+	 * converted in the main deliver_fn:
+	 * led_head.id, led_head.size.
+	 *
+	 */
+
+	cpkt->chc_op = swab32(cpkt->chc_op);
+
+	/*
+	 * Which elements of the packet that are converted depend
+	 * on the operation.
+	 */
+	switch (cpkt->chc_op) {
+	
+	case EVT_OPEN_CHAN_OP:
+	case EVT_CLOSE_CHAN_OP:
+		cpkt->u.chc_chan.length = swab16(cpkt->u.chc_chan.length);
+		break;
+
+	case EVT_CLEAR_RET_OP:
+		cpkt->u.chc_event_id = swab64(cpkt->u.chc_event_id);
+		break;
+
+	case EVT_SET_ID_OP:
+		cpkt->u.chc_set_id.chc_addr.s_addr = 
+			swab32(cpkt->u.chc_set_id.chc_addr.s_addr);
+		cpkt->u.chc_set_id.chc_last_id = swab64(cpkt->u.chc_set_id.chc_last_id);
+		break;
+
+	case EVT_OPEN_COUNT:
+		cpkt->u.chc_set_opens.chc_chan_name.length = 
+			swab16(cpkt->u.chc_set_opens.chc_chan_name.length);
+		cpkt->u.chc_set_opens.chc_open_count = 
+			swab32(cpkt->u.chc_set_opens.chc_open_count);
+		break;
+
+	/* 
+	 * No data assocaited with these ops.
+	 */
+	case EVT_CONF_DONE:
+	case EVT_OPEN_COUNT_DONE:
+		break;
+
+	/*
+	 * Make sure that this function is updated when new ops are added.
+	 */
+	default:
+		assert(0);
+	}
+}
+
 
 /*
  * Receive and process remote event operations.
  * Used to communicate channel opens/closes, clear retention time,
  * config change updates...
  */
-static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_conversion_required)
+static int evt_remote_chan_op(void *msg, struct in_addr source_addr, 
+		int endian_conversion_required)
 {
 	struct req_evt_chan_command *cpkt = msg;
 	struct in_addr local_node = {SA_CLM_LOCAL_NODE_ID};
@@ -3003,6 +3121,9 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_
 	struct member_node_data *mn;
 	struct event_svr_channel_instance *eci;
 
+	if (endian_conversion_required) {
+		convert_chan_packet(cpkt);
+	}
 
 	log_printf(REMOTE_OP_DEBUG, "Remote channel operation request\n");
 	my_node = clm_get_by_nodeid(local_node);
@@ -3229,3 +3350,6 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_
 
 	return 0;
 }
+/*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ */
