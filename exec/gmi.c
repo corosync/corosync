@@ -357,7 +357,12 @@ static int message_handler_memb_join (struct sockaddr_in *, struct iovec *, int,
 static int message_handler_memb_form_token (struct sockaddr_in *, struct iovec *, int, int);
 static void memb_conf_id_build (struct memb_conf_id *, struct in_addr);
 static int recv_handler (poll_handle handle, int fd, int revents, void *data);
-static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to);
+static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to, char *name);
+static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
+	struct sockaddr_in *sockaddr_bindnet,
+	int *fd_mcast,
+	int *fd_uni,
+	struct sockaddr_in *bound_to);
 static int memb_state_gather_enter (void);
 static void pending_queues_deliver (void);
 static int orf_token_mcast (struct orf_token *orf_token,
@@ -384,14 +389,10 @@ int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	poll_handle *poll_handle,
-	struct sockaddr_in *bound_to)
+	struct sockaddr_in *sockaddr_boundto)
 {
-	int res;
-	struct ip_mreq mreq;
-	struct sockaddr_in sockaddr_in;
-	char flag;
 	int i;
-	int found;
+int res;
 
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
 
@@ -400,84 +401,24 @@ int gmi_init (
 			sizeof (struct gmi_pend_trans_item));
 	}
 	sq_init (&queue_rtr_items, QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct gmi_rtr_item), 0);
-	found = local_netif_determine (sockaddr_bindnet, bound_to);
-	if (found == -1) {
-		printf ("Could not determine local network interface\n");
-		return (-1);
-	}
-	memcpy (&memb_list[0], &memb_local_sockaddr_in, sizeof (struct sockaddr_in));
-	memb_conf_id_build (&memb_conf_id, memb_local_sockaddr_in.sin_addr);
+
+	/*
+	 * Create and bind the multicast and unicast sockets
+	 */
+	res = gmi_build_sockets (sockaddr_mcast,
+		sockaddr_bindnet,
+		&gmi_fd_mcast,
+		&gmi_fd_token,
+		sockaddr_boundto);
+
+	/*
+	 * This stuff depends on gmi_build_sockets
+	 */
+	memcpy (&memb_list[0], sockaddr_boundto, sizeof (struct sockaddr_in));
+	memb_conf_id_build (&memb_conf_id, sockaddr_boundto->sin_addr);
 	memcpy (&memb_form_token_conf_id, &memb_conf_id, sizeof (struct memb_conf_id));
 
-	/*
-	 * Set local sock addr for new socket
-	 */
-	sockaddr_in.sin_family = AF_INET;
-	sockaddr_in.sin_addr.s_addr = sockaddr_in_mcast.sin_addr.s_addr;
-	sockaddr_in.sin_port = sockaddr_in_mcast.sin_port;
-
-	/*
-	 * Join group membership on socket
-	 */
-	mreq.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
-	mreq.imr_interface.s_addr = bound_to->sin_addr.s_addr;
-
-	gmi_fd_mcast = socket (AF_INET, SOCK_DGRAM, 0);
-	if (gmi_fd_mcast == -1) {
-		perror ("socket");
-		return (-1);
-	}
-
-	gmi_fd_token = socket (AF_INET, SOCK_DGRAM, 0);
-	if (gmi_fd_token == -1) {
-		perror ("socket2");
-		return (-1);
-	}
-
-	/*
-	 * Bind to multicast socket used for multicast send/receives
-	 */
-	res = bind (gmi_fd_mcast, (struct sockaddr *)&sockaddr_in,
-		sizeof (struct sockaddr_in));
-	if (res == -1) {
-		perror ("bind failed");
-		return (-1);
-	}
-
-	/*
-	 * Bind to unicast socket used for token send/receives
-	 */
-	sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	res = bind (gmi_fd_token, (struct sockaddr *)&sockaddr_in,
-		sizeof (struct sockaddr_in));
-	if (res == -1) {
-		perror ("bind2 failed");
-		return (-1);
-	}
-
-#ifdef CONFIG_USE_BROADCAST
-/* This config option doesn't work */
-{
-	int on = 1;
-	setsockopt (gmi_fd_mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
-}
-#else
-	res = setsockopt (gmi_fd_mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-		&mreq, sizeof (mreq));
-	if (res == -1) {
-		perror ("join multicast group failed");
-		return (-1);
-	}
-
-#endif
-	flag = 0;
-	res = setsockopt (gmi_fd_mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
-		&flag, sizeof (flag));
-	if (res == -1) {
-		perror ("turn off loopback");
-		return (-1);
-	}
-
+printf ("mcast is %d token is %d\n", gmi_fd_mcast, gmi_fd_token);
 	gmi_poll_handle = poll_handle;
 
 	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler);
@@ -712,7 +653,9 @@ printf ("CALCULATED TOTAL is %d\n", calced_total);
 	return (0);
 }
 
-static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to)
+static int netif_determine (struct sockaddr_in *bindnet,
+	struct sockaddr_in *bound_to,
+	char *ifname)
 {
 	struct sockaddr_in *sockaddr_in;
 	int id_fd;
@@ -750,10 +693,9 @@ static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_i
 			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
 			(bindnet->sin_addr.s_addr & mask_addr)) {
 
-			memb_local_sockaddr_in.sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
-			memb_local_sockaddr_in.sin_family = AF_INET;
-			memb_local_sockaddr_in.sin_port = sockaddr_in_mcast.sin_port;
-			memcpy (bound_to, &memb_local_sockaddr_in, sizeof (struct sockaddr_in));
+			bound_to->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
+
+			strcpy (ifname, ifc.ifc_ifcu.ifcu_req[i].ifr_ifrn.ifrn_name);
 			res = i;
 			break; /* for */
 		}
@@ -764,6 +706,119 @@ static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_i
 	return (res);
 }
 
+static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
+	struct sockaddr_in *sockaddr_bindnet,
+	int *fd_mcast,
+	int *fd_uni,
+	struct sockaddr_in *bound_to)
+{
+	struct ip_mreq mreq;
+	struct sockaddr_in sockaddr_in;
+	char flag;
+	struct ifreq interface;
+	int res;
+	
+	/*
+	 * Determine the ip address bound to and the interface name
+	 */
+	res = netif_determine (sockaddr_bindnet,
+		bound_to,
+		interface.ifr_ifrn.ifrn_name);
+	if (res == -1) {
+		return (-1);
+	}
+
+	/* TODO this should be somewhere else */
+	memb_local_sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
+	memb_local_sockaddr_in.sin_family = AF_INET;
+	memb_local_sockaddr_in.sin_port = sockaddr_mcast->sin_port;
+
+	/*
+	 * Create multicast socket
+	 */
+	*fd_mcast = socket (AF_INET, SOCK_DGRAM, 0);
+	if (*fd_mcast == -1) {
+		perror ("socket");
+		return (-1);
+	}
+
+	/*
+	 * Bind the multicast socket to the correct device (eth0, eth1)
+	 */
+	if (setsockopt(*fd_mcast, SOL_SOCKET, SO_BINDTODEVICE,
+		(char *)&interface, sizeof(interface)) < 0) {
+		log_printf (LOG_LEVEL_WARNING, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
+	}
+
+	/*
+	 * Bind to multicast socket used for multicast send/receives
+	 */
+	sockaddr_in.sin_family = AF_INET;
+	sockaddr_in.sin_addr.s_addr = sockaddr_mcast->sin_addr.s_addr;
+	sockaddr_in.sin_port = sockaddr_mcast->sin_port;
+	res = bind (*fd_mcast, (struct sockaddr *)&sockaddr_in,
+		sizeof (struct sockaddr_in));
+	if (res == -1) {
+		perror ("bind failed");
+		return (-1);
+	}
+
+	/*
+	 * Setup unicast socket
+	 */
+	*fd_uni = socket (AF_INET, SOCK_DGRAM, 0);
+	if (*fd_uni == -1) {
+		perror ("socket2");
+		return (-1);
+	}
+
+	/*
+	 * Bind to unicast socket used for token send/receives
+	 * This has the side effect of binding to the correct interface
+	 */
+	sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
+	res = bind (*fd_uni, (struct sockaddr *)&sockaddr_in,
+		sizeof (struct sockaddr_in));
+	if (res == -1) {
+		perror ("bind2 failed");
+		return (-1);
+	}
+
+#ifdef CONFIG_USE_BROADCAST
+/* This config option doesn't work */
+{
+	int on = 1;
+	setsockopt (*fd_mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
+}
+#else
+	/*
+	 * Join group membership on socket
+	 */
+	mreq.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
+	mreq.imr_interface.s_addr = bound_to->sin_addr.s_addr;
+
+	res = setsockopt (*fd_mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+		&mreq, sizeof (mreq));
+	if (res == -1) {
+		perror ("join multicast group failed");
+		return (-1);
+	}
+
+#endif
+	/*
+	 * Turn off multicast loopback since we know what messages we have sent
+	 */
+	flag = 0;
+	res = setsockopt (*fd_mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
+		&flag, sizeof (flag));
+	if (res == -1) {
+		perror ("turn off loopback");
+		return (-1);
+	}
+
+	return (0);
+}
+	
 /*
  * Misc Management
  */
