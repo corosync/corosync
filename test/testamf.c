@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "ais_types.h"
 #include "ais_amf.h"
@@ -65,19 +66,25 @@ void setSanameT (SaNameT *name, char *str) {
 	memcpy (name->value, str, name->length);
 }
 
-int healthcheck_count = 0;
+static int health_flag = -1;
+static unsigned int healthcheck_count = 0;
+static unsigned int healthcheck_no = 0;
 void HealthcheckCallback (SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfHealthcheckT checkType)
 {
+	SaErrorT res;
 
-//	if (healthcheck_count++ % 20 == 19) {
-		printf ("20 HealthcheckCallback have occured for component: ");
+	healthcheck_no ++;
+	if (health_flag == -1 || healthcheck_no%healthcheck_count == 0) {
+		printf ("%u HealthcheckCallback have occured for component: ",healthcheck_no);
 		printSaNameT ((SaNameT *)compName);
 		printf ("\n");
-//	}
-	saAmfResponse (invocation, SA_OK);
-
+	}
+	res = saAmfResponse (invocation, SA_OK);
+	if (res != SA_OK) {
+		printf ("response res is %d\n", res);
+	}
 }
 
 void ReadinessStateSetCallback (SaInvocationT invocation,
@@ -234,7 +241,7 @@ SaAmfCallbacksT amfCallbacks = {
 
 SaVersionT version = { 'A', 1, 1 };
 
-int main (void) {
+int main (int argc, char **argv) {
 	SaAmfHandleT handle;
 	SaAmfHandleT handleproxy;
 	int result;
@@ -246,6 +253,26 @@ int main (void) {
 	SaAmfReadinessStateT readinessState;
 	SaAmfComponentCapabilityModelT componentCapabilityModel;
 	SaAmfProtectionGroupNotificationT protectionGroupNotificationBuffer[64];
+	extern char *optarg;
+	extern int optind;
+	int c;
+
+	for (;;) {
+		c = getopt(argc,argv,"h:");
+		if (c==-1) {
+			break;
+		}
+		switch (c) {
+		case 0 :
+			break;
+		case 'h':
+			health_flag = 0;
+			sscanf (optarg,"%ud" ,&healthcheck_count);
+			break;
+		default :
+			break;
+		}
+	}
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_OK) {
@@ -267,7 +294,6 @@ int main (void) {
 	setSanameT (&compName, "raidupdate1");
 	setSanameT (&proxyCompName, "raidhotswap1");
 	setSanameT (&csiName, "raidupdate");
-
 
 	result = saAmfComponentRegister (&handleproxy, &proxyCompName, NULL);
 	printf ("register result is %d (should be 1)\n", result);
