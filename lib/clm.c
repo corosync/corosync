@@ -157,6 +157,7 @@ saClmDispatch (
 	SaClmCallbacksT callbacks;
 	unsigned int gen_first;
 	unsigned int gen_second;
+	struct message_overlay dispatch_data;
 
 	/*
 	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
@@ -232,11 +233,13 @@ saClmDispatch (
 			}
 		}
 		/*
-		 * Make copy of callbacks, unlock instance, and call callback
+		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that amfFinalize has been called.
 		*/
 		memcpy (&callbacks, &clmInstance->callbacks, sizeof (SaClmCallbacksT));
+		memcpy (&dispatch_data, &clmInstance->message, sizeof (struct message_overlay));
+
 
 		pthread_mutex_unlock (&clmInstance->mutex);
 
@@ -246,7 +249,7 @@ saClmDispatch (
 		switch (clmInstance->message.header.id) {
 
 		case MESSAGE_RES_CLM_TRACKCALLBACK:
-			res_clm_trackcallback = (struct res_clm_trackcallback *)&clmInstance->message;
+			res_clm_trackcallback = (struct res_clm_trackcallback *)&dispatch_data;
 
 			memcpy (res_clm_trackcallback->notificationBufferAddress,
 				&res_clm_trackcallback->notificationBuffer,
@@ -259,7 +262,7 @@ saClmDispatch (
 			break;
 
 		case MESSAGE_RES_CLM_NODEGETCALLBACK:
-			res_clm_nodegetcallback = (struct res_clm_nodegetcallback *)&clmInstance->message;
+			res_clm_nodegetcallback = (struct res_clm_nodegetcallback *)&dispatch_data;
 
 			memcpy (res_clm_nodegetcallback->clusterNodeAddress,
 				&res_clm_nodegetcallback->clusterNode, sizeof (SaClmClusterNodeT));
