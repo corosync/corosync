@@ -12,19 +12,19 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include "ais_types.h"
-#include "ais_evt.h"
+#include "saEvt.h"
 
 #define  TEST_EVENT_ORDER 1
 #define  EVT_FREQ 1000
 uint32_t evt_count = 0;
 
-extern int get_sa_error(SaErrorT, char *, int);
+extern int get_sa_error(SaAisErrorT, char *, int);
 char result_buf[256];
 int result_buf_len = sizeof(result_buf);
 
 int quiet = 0;
 
-SaVersionT version = { 'A', 0x01, 0x01 };
+SaVersionT version = { 'B', 0x01, 0x01 };
 
 void event_callback( SaEvtSubscriptionIdT subscriptionId,
 		const SaEvtEventHandleT eventHandle,
@@ -108,14 +108,14 @@ test_subscription()
 	printf("Test subscription:\n");
 
 	result = saEvtInitialize (&handle, &callbacks, &version);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Event Initialize result: %s\n", result_buf);
 		return;
 	}
 	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel open result: %s\n", result_buf);
 		goto init_fin;
@@ -129,7 +129,7 @@ test_subscription()
 			&subscribe_filters[i],
 			subscription_id[i]);
 
-		if (result != SA_OK) {
+		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("event subscribe result: %s\n", result_buf);
 			goto chan_fin;
@@ -140,7 +140,7 @@ test_subscription()
 	 * See if we got the event
 	 */
 	result = saEvtSelectionObjectGet(handle, &fd);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("saEvtSelectionObject get %s\n", result_buf);
 		goto sub_fin;
@@ -164,7 +164,7 @@ test_subscription()
 			return;
 		}
 		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
-		if (result != SA_OK) {
+		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("saEvtDispatch %s\n", result_buf);
 			goto sub_fin;
@@ -176,17 +176,17 @@ test_subscription()
 sub_fin:
 #if 0
 	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
-	if (result != SA_OK) 
+	if (result != SA_AIS_OK) 
 		printf("Channel unsubscribe result: %d\n", result);
 #endif
 chan_fin:
 	result = saEvtChannelClose(channel_handle);
-	if (result != SA_OK) 
+	if (result != SA_AIS_OK) 
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Channel close result: %s\n", result_buf);
 init_fin:
 	result = saEvtFinalize(handle);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Finalize result: %s\n", result_buf);
 	}
@@ -203,12 +203,22 @@ char *ais_time_str(SaTimeT time)
 	return time_buf;
 }
 
+#define dprintf(format, ...) 			\
+	{					\
+	if (did_dot) {				\
+		printf("\n");			\
+	}					\
+	printf(format, ## __VA_ARGS__);		\
+	did_dot = 0;				\
+	}
+
 void 
 event_callback( SaEvtSubscriptionIdT subscription_id,
 		const SaEvtEventHandleT event_handle,
 		const SaSizeT event_data_size)
 {
-	SaErrorT result;
+	static int did_dot = 0;
+	SaAisErrorT result;
 	SaUint8T priority;
 	SaTimeT retention_time;
 	SaNameT publisher_name = {0, {0}};
@@ -221,13 +231,13 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 #endif
 
 	if (!quiet)
-		printf("event_callback called\n");
+		dprintf("event_callback called\n");
 	if (!quiet)
-		printf("sub ID: %x\n", subscription_id);
+		dprintf("sub ID: %x\n", subscription_id);
 	if (!quiet)
-		printf("event_handle %x\n", event_handle);
+		dprintf("event_handle %llx\n", event_handle);
 	if (!quiet)
-		printf("event data size %d\n", event_data_size);
+		dprintf("event data size %d\n", event_data_size);
 
 	evt_pat_get_array.patterns[0].patternSize = PAT_SIZE;
 	evt_pat_get_array.patterns[1].patternSize = PAT_SIZE;
@@ -242,35 +252,38 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 			&publish_time,		/* publish time */
 			&event_id		/* event_id */
 			);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
-		printf("event get attr result(2): %s\n", result_buf);
+		dprintf("event get attr result(2): %s\n", result_buf);
 		goto evt_free;
 	}
 	if (!quiet) {
-		printf("pattern array count: %d\n", 
+		dprintf("pattern array count: %d\n", 
 				evt_pat_get_array.patternsNumber);
 		for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
-			printf( "pattern %d =\"%s\"\n", i,
+			dprintf( "pattern %d =\"%s\"\n", i,
 				  evt_pat_get_array.patterns[i].pattern);
 		}
 
-		printf("priority: 0x%x\n", priority);
-		printf("retention: 0x%llx\n", retention_time);
-		printf("publisher name content: \"%s\"\n", 
+		dprintf("priority: 0x%x\n", priority);
+		dprintf("retention: 0x%llx\n", retention_time);
+		dprintf("publisher name content: \"%s\"\n", 
 				publisher_name.value); 
 	}
 	if (evt_pat_get_array.patternsNumber > 0) {
 		if (strcmp(evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) == 0) {
-			printf("*** Events have been dropped at %s",
+			dprintf("*** Events have been dropped at %s",
 				ais_time_str(publish_time));
 		}
 	}
 	if (quiet < 2) {
-		printf("event id: 0x%016llx\n", event_id);
+		dprintf("event id: 0x%016llx\n", event_id);
 	}
 	if (quiet == 2) {
-		if ((++evt_count % EVT_FREQ) == 0) fprintf(stderr, ".");
+		if ((++evt_count % EVT_FREQ) == 0) {
+			fprintf(stderr, ".");
+			did_dot = 1;
+		}
 	}
 
 #ifdef TEST_EVENT_ORDER
@@ -282,7 +295,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 			if ((last_event_id[idx] >> 32) == (event_id >> 32)) {
 				last_event_id[idx]++;
 				if (last_event_id[idx] != event_id) {
-					printf("*** expected %016llx got %016llx event_id\n",
+					dprintf("*** expected %016llx got %016llx event_id\n",
 					last_event_id[idx],
 					event_id);
 				last_event_id[idx] = event_id;
@@ -292,13 +305,13 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		}
 	}
 	if (idx == MAX_NODES) {
-			printf("*** Too many nodes in cluster\n");
+			dprintf("*** Too many nodes in cluster\n");
 			exit(1);
 	}
 #endif
 
 	if (event_data_size != user_data_size) {
-		printf("unexpected data size: e=%d, a=%d\n",
+		dprintf("unexpected data size: e=%d, a=%d\n",
 				user_data_size, event_data_size);
 		goto evt_free;
 	} 
@@ -306,23 +319,23 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	received_size = user_data_size;
 	result = saEvtEventDataGet(event_handle, event_data,
 			&received_size);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
-		printf("event get data result: %s\n", result_buf);
+		dprintf("event get data result: %s\n", result_buf);
 		goto evt_free;
 	}
 	if (received_size != event_data_size) {
-		printf("event data mismatch e=%d, a=%d\n",
+		dprintf("event data mismatch e=%d, a=%d\n",
 				event_data_size, 
 				received_size);
 		goto evt_free;
 	}
 	if (memcmp(user_data, event_data, user_data_size) != 0 ) {
-		printf("event data doesn't match specified file data\n");
+		dprintf("event data doesn't match specified file data\n");
 		goto evt_free;
 	}
 	if (!quiet) {
-		printf("Received %d bytes of data OK\n", 
+		dprintf("Received %d bytes of data OK\n", 
 				user_data_size);
 	}
 
@@ -330,7 +343,7 @@ evt_free:
 	result = saEvtEventFree(event_handle);
 	if (!quiet) {
 		get_sa_error(result, result_buf, result_buf_len);
-		printf("event free result: %s\n", result_buf);
+		dprintf("event free result: %s\n", result_buf);
 	}
 }
 
