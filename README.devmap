@@ -451,10 +451,10 @@ The handle database is defined in a library as follows:
 static void clmHandleInstanceDestructor (void *);
 
 static struct saHandleDatabase clmHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: clmHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						=  PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= clmHandleInstanceDestructor
 };
 
 There are several APIs to access the handle database:
@@ -663,7 +663,7 @@ executive.
 
 responses should be of:
 
-struct res_clm_trakcstart
+struct res_clm_trackstart
 
 ------------
  some notes
@@ -745,14 +745,14 @@ static int (*clm_aisexec_handler_fns[]) (void *) = {
 };
 	
 struct service_handler clm_service_handler = {
-	libais_handler_fns:		clm_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (clm_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		clm_aisexec_handler_fns ,
-	aisexec_handler_fns_count:	sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:			clmConfChg,
-	libais_init_fn:			message_handler_req_clm_init,
-	libais_exit_fn:			clm_exit_fn,
-	aisexec_init_fn:		clmExecutiveInitialize
+	.libais_handler_fns				= clm_libais_handler_fns,
+	.libais_handler_fns_count		= sizeof (clm_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns			= clm_aisexec_handler_fns ,
+	.aisexec_handler_fns_count		= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn						= clmConfChg,
+	.libais_init_fn					= message_handler_req_clm_init,
+	.libais_exit_fn					= clm_exit_fn,
+	.aisexec_init_fn				= clmExecutiveInitialize
 };
 
 if a library sends a message with id 0, message_handler_req_lib_activatepoll
