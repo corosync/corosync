@@ -633,26 +633,37 @@ saCkptCheckpointRetentionDurationSet (
 	SaErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointretentiondurationset req_lib_ckpt_checkpointretentiondurationset;
+	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
 
 	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_OK) {
-		goto error_exit;
+		goto error_exit_noput;
 	}
 
 	req_lib_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_lib_ckpt_checkpointretentiondurationset);
 	req_lib_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET;
 
+	req_lib_ckpt_checkpointretentiondurationset.retentionDuration = retentionDuration;
+
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointretentiondurationset, sizeof (struct req_lib_ckpt_checkpointretentiondurationset), MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_checkpointretentiondurationset,
+		sizeof (struct res_lib_ckpt_checkpointretentiondurationset),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
-
 error_exit:
-	return (error);
+	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+error_exit_noput:
+	return (error == SA_OK ? res_lib_ckpt_checkpointretentiondurationset.header.error : error);
 }
 
 SaErrorT
@@ -869,7 +880,7 @@ saCkptSectionExpirationTimeSet (
 	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_OK) {
-		goto error_exit;
+		goto error_exit_noput;
 	}
 
 	req_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_lib_ckpt_sectionexpirationtimeset) + sectionId->idLen; 
@@ -905,6 +916,7 @@ saCkptSectionExpirationTimeSet (
 
 error_exit:
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+error_exit_noput:
 	return (error == SA_OK ? res_lib_ckpt_sectionexpirationtimeset.header.error : error);
 }
 
