@@ -288,7 +288,7 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 		for (j = 0; j < clusterNodeEntries;) {
 			if (nodes[i] == clusterNodes[j].nodeId) {
 				clusterNodeEntries -= 1;
-				memcpy (&clusterNodes[j], &clusterNodes[j + 1],
+				memmove (&clusterNodes[j], &clusterNodes[j + 1],
 					(clusterNodeEntries - j) * sizeof (SaClmClusterNodeT));
 			} else {
 				/*
