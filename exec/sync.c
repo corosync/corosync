@@ -72,7 +72,7 @@ static void (*sync_synchronization_completed) (void);
 
 static int sync_recovery_index = 0;
 
-static void *sync_callback_token_handle;
+static void *sync_callback_token_handle = 0;
 
 static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
 
@@ -117,6 +117,7 @@ static void sync_barrier_start (struct memb_ring_id *ring_id)
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
 	sync_callbacks[sync_recovery_index].sync_init ();
+	totemsrp_callback_token_destroy (&sync_callback_token_handle);
 	totemsrp_callback_token_create (&sync_callback_token_handle,
 		TOTEMPG_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
@@ -128,6 +129,7 @@ static int sync_service_process (enum totempg_callback_token_type type, void *da
 {
 	int res;
 	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
+
 	/*
 	 * If process returns 0, then its time to activate
 	 * and start the next service's synchronization
@@ -141,7 +143,7 @@ static int sync_service_process (enum totempg_callback_token_type type, void *da
 	 */
 	sync_callbacks[sync_recovery_index].sync_activate ();
 	sync_recovery_index += 1;
-	totemsrp_callback_token_destroy (sync_callback_token_handle);
+	totemsrp_callback_token_destroy (&sync_callback_token_handle);
 	if (sync_recovery_index > sync_callback_count) {
 	} else {
 		sync_barrier_start (ring_id);
@@ -173,6 +175,8 @@ void sync_confchg_fn (
 		return;
 	}
 
+	totemsrp_callback_token_destroy (&sync_callback_token_handle);
+
 	sync_ring_id = ring_id;
 
 	sync_recovery_index = 0;
@@ -187,6 +191,8 @@ void sync_confchg_fn (
 	sync_barrier_start (ring_id);
 }
 
+static struct memb_ring_id deliver_ring_id;
+
 int sync_deliver_fn (void *msg, struct in_addr source_addr,
 	int endian_conversion_needed)
 {
@@ -196,6 +202,9 @@ int sync_deliver_fn (void *msg, struct in_addr source_addr,
 	int i;
 
 	int barrier_completed = 1;
+
+	memcpy (&deliver_ring_id, &req_exec_sync_barrier_start->ring_id,
+		sizeof (struct memb_ring_id));
 
 	/*
 	 * Is this barrier from this configuration, if not, ignore it
@@ -235,7 +244,7 @@ int sync_deliver_fn (void *msg, struct in_addr source_addr,
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
 		if (sync_recovery_index < sync_callback_count) {
-			sync_service_init (&req_exec_sync_barrier_start->ring_id);
+			sync_service_init (&deliver_ring_id);
 		}
 	}
 	return (0);
