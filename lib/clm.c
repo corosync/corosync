@@ -223,7 +223,7 @@ saClmDispatch (
 
 		error = saPollRetry (&ufds, 1, timeout);
 		if (error != SA_OK) {
-			goto error_nounlock;
+			goto error_put;
 		}
 
 		pthread_mutex_lock (&clmInstance->mutex);
@@ -233,7 +233,6 @@ saClmDispatch (
 		 */
 		if (clmInstance->finalize == 1) {
 			error = SA_OK;
-			pthread_mutex_unlock (&clmInstance->mutex);
 			goto error_unlock;
 		}
 
@@ -337,7 +336,7 @@ saClmDispatch (
 
 		default:
 			error = SA_ERR_LIBRARY;
-			goto error_nounlock;
+			goto error_put;
 			break;
 		}
 
@@ -356,6 +355,8 @@ saClmDispatch (
 	} while (cont);
 
 error_unlock:
+	pthread_mutex_unlock (&clmInstance->mutex);
+error_put:
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 error_nounlock:
 	return (error);
