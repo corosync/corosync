@@ -259,7 +259,7 @@ int main (void) {
 		exit (1);
 	}
 
-	setSanameT (&compName, "raidupdate1");
+	setSanameT (&compName, "comp_b_in_su_y");
 
 	result = saAmfComponentRegister (&handle, &compName, NULL);
 	printf ("register result is %d (should be 1)\n", result);
@@ -269,12 +269,18 @@ int main (void) {
 	sleep (5);
 
 printf ("Finalizing handle\n");
+
+	saAmfComponentUnregister (&handle, &compName, NULL);
+
 	saAmfFinalize (&handle);
+
+printf ("Handle Finalized\n");
 	sleep (1); /* this sleep isn't really necessary */
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	result = saAmfComponentRegister (&handle, &compName, NULL);
 	pthread_create (&dispatch_thread, NULL, th_dispatch, &handle);
 	sleep (10);
+//	saAmfFinalize (&handle);
 
 	exit (0);
 }
