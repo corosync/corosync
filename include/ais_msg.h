@@ -71,7 +71,10 @@ enum req_clm_types {
 };
 
 enum res_clm_types {
+	
 	MESSAGE_RES_CLM_TRACKCALLBACK = 1,
+	MESSAGE_RES_CLM_TRACKSTART,
+	MESSAGE_RES_CLM_TRACKSTOP,
 	MESSAGE_RES_CLM_NODEGET,
 	MESSAGE_RES_CLM_NODEGETCALLBACK
 };
@@ -90,7 +93,7 @@ enum req_amf_types {
 	MESSAGE_REQ_AMF_COMPONENTCAPABILITYMODELGET
 };
 
-enum res_amf_types {
+enum res_lib_amf_types {
 	MESSAGE_RES_AMF_COMPONENTREGISTER = 1,
 	MESSAGE_RES_AMF_COMPONENTUNREGISTER,
 	MESSAGE_RES_AMF_READINESSSTATEGET,
@@ -105,7 +108,9 @@ enum res_amf_types {
 	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP,
 	MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET,
 	MESSAGE_RES_AMF_ERRORREPORT,
-	MESSAGE_RES_AMF_ERRORCANCELALL
+	MESSAGE_RES_AMF_ERRORCANCELALL,
+	MESSAGE_RES_AMF_STOPPINGCOMPLETE,
+	MESSAGE_RES_AMF_RESPONSE
 };
 
 enum req_lib_ckpt_checkpoint_types {
@@ -137,6 +142,7 @@ enum res_lib_ckpt_types {
 
 enum res_lib_ckpt_checkpoint_types {
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN = 1,
+	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC,
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK,
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET,
 	MESSAGE_RES_CKPT_CHECKPOINT_ACTIVECHECKPOINTSET,
@@ -147,7 +153,8 @@ enum res_lib_ckpt_checkpoint_types {
 	MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE,
 	MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE,
 	MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD,
-	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE
+	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE,
+	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC
 };
 
 enum res_lib_ckpt_sectioniterator_types {
@@ -195,11 +202,15 @@ enum res_evt_types {
 	MESSAGE_RES_EVT_EVENT_DATA
 };
 
-#define MESSAGE_MAGIC 0x5a6b7c8d
-struct message_header {
-	int magic;
+struct req_header {
 	int size;
 	int id;
+};
+
+struct res_header {
+	int size;
+	int id;
+	SaErrorT error;
 };
 
 struct message_source {
@@ -208,140 +219,139 @@ struct message_source {
 };
 
 struct req_execauth_xmit_authkey {
-	struct message_header header;
+	struct req_header header;
 	int authModule;
 	unsigned char random[16];
 };
 
 struct res_execauth_xmit_signature {
-	struct message_header header;
+	struct req_header header;
 	unsigned char signature[64];
 	unsigned int signature_length;
 };
 
 struct req_execauth_connection_authorized {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct req_clm_trackstart {
-	struct message_header header;
+	struct req_header header;
 	SaUint8T trackFlags;
 	SaClmClusterNotificationT *notificationBufferAddress;
 	SaUint32T numberOfItems;
 };
 
+struct res_clm_trackstart {
+	struct res_header header;
+};
+
 struct req_lib_init {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_init {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_amf_componentregister {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 	SaNameT proxyCompName;
 };
 
 struct req_exec_amf_componentregister {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_amf_componentregister req_lib_amf_componentregister;
 };
 
 struct res_lib_amf_componentregister {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_amf_componentunregister {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 	SaNameT proxyCompName;
 };
 
 struct req_exec_amf_componentunregister {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_amf_componentunregister req_lib_amf_componentunregister;
 };
 
 struct res_lib_amf_componentunregister {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_amf_readinessstateget {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 };
 
-struct res_amf_readinessstateget {
-	struct message_header header;
+struct res_lib_amf_readinessstateget {
+	struct res_header header;
 	SaAmfReadinessStateT readinessState;
-	SaErrorT error;
 };
 
-struct res_amf_healthcheckcallback {
-	struct message_header header;
+struct res_lib_amf_healthcheckcallback {
+	struct res_header header;
 	int instance;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfHealthcheckT checkType;
 };
 
-struct res_amf_readinessstatesetcallback {
-	struct message_header header;
+struct res_lib_amf_readinessstatesetcallback {
+	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfReadinessStateT readinessState;
 };
 
 struct req_exec_amf_readinessstateset {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 	SaAmfReadinessStateT readinessState;
 };
 
 struct req_exec_amf_hastateset {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 	SaAmfHAStateT haState;
 };
 
 struct req_exec_ckpt_checkpointclose {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 };
 
 struct req_exec_ckpt_checkpointretentiondurationset {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 	SaTimeT retentionDuration;
 };
 
-struct res_amf_componentterminatecallback {
-	struct message_header header;
+struct res_lib_amf_componentterminatecallback {
+	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
 };
 
 struct req_amf_hastateget {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 	SaNameT csiName;
 };
 
-struct res_amf_hastateget {
-	struct message_header header;
+struct res_lib_amf_hastateget {
+	struct res_header header;
 	SaAmfHAStateT haState;
-	SaErrorT error;
 };
 
-struct res_amf_csisetcallback {
-	struct message_header header;
+struct res_lib_amf_csisetcallback {
+	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaNameT csiName;
@@ -351,8 +361,8 @@ struct res_amf_csisetcallback {
 	SaAmfCSITransitionDescriptorT transitionDescriptor;
 };
 
-struct res_amf_csiremovecallback {
-	struct message_header header;
+struct res_lib_amf_csiremovecallback {
+	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaNameT csiName;
@@ -360,31 +370,29 @@ struct res_amf_csiremovecallback {
 };
 
 struct req_amf_protectiongrouptrackstart {
-	struct message_header header;
+	struct req_header header;
 	SaNameT csiName;
 	SaUint8T trackFlags;
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
 	SaUint32T numberOfItems;
 };
 
-struct res_amf_protectiongrouptrackstart {
-	struct message_header header;
-	SaErrorT error;
+struct res_lib_amf_protectiongrouptrackstart {
+	struct res_header header;
 };
 	
 
 struct req_amf_protectiongrouptrackstop {
-	struct message_header header;
+	struct req_header header;
 	SaNameT csiName;
 };
 
-struct res_amf_protectiongrouptrackstop {
-	struct message_header header;
-	SaErrorT error;
+struct res_lib_amf_protectiongrouptrackstop {
+	struct res_header header;
 };
 
-struct res_amf_protectiongrouptrackcallback {
-	struct message_header header;
+struct res_lib_amf_protectiongrouptrackcallback {
+	struct res_header header;
 	SaNameT csiName;
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
 	SaUint32T numberOfItems;
@@ -394,7 +402,7 @@ struct res_amf_protectiongrouptrackcallback {
 };
 
 struct req_lib_amf_errorreport {
-	struct message_header header;
+	struct req_header header;
 	SaNameT reportingComponent;
 	SaNameT erroneousComponent;
 	SaTimeT errorDetectionTime;
@@ -403,84 +411,88 @@ struct req_lib_amf_errorreport {
 };
 
 struct req_exec_amf_errorreport {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_amf_errorreport req_lib_amf_errorreport;
 };
 
 struct res_lib_amf_errorreport {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_amf_errorcancelall {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 };
 
 struct req_exec_amf_errorcancelall {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_amf_errorcancelall req_lib_amf_errorcancelall;
 };
 	
 struct res_lib_amf_errorcancelall {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_amf_response {
-	struct message_header header;
+	struct req_header header;
 	SaInvocationT invocation;
 	SaErrorT error;
+};
+
+struct res_lib_amf_response {
+	struct res_header header;
 };
 
 struct req_amf_stoppingcomplete {
-	struct message_header header;
+	struct req_header header;
 	SaInvocationT invocation;
 	SaErrorT error;
 };
 
+struct res_lib_amf_stoppingcomplete {
+	struct req_header header;
+};
+
 struct req_amf_componentcapabilitymodelget {
-	struct message_header header;
+	struct req_header header;
 	SaNameT compName;
 };
 
-struct res_amf_componentcapabilitymodelget {
-	struct message_header header;
+struct res_lib_amf_componentcapabilitymodelget {
+	struct res_header header;
 	SaAmfComponentCapabilityModelT componentCapabilityModel;
-	SaErrorT error;
 };
 
 struct req_lib_activatepoll {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_activatepoll {
-	struct message_header header;
+	struct res_header header;
 };
 
 struct req_lib_ckpt_checkpointopen {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 };
 
 struct res_lib_ckpt_checkpointopen {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_exec_ckpt_checkpointopen {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
 };
 
 
 struct req_lib_ckpt_checkpointopenasync {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
@@ -488,214 +500,213 @@ struct req_lib_ckpt_checkpointopenasync {
 };
 
 struct res_lib_ckpt_checkpointopenasync {
-	struct message_header header;
+	struct res_header header;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaInvocationT invocation;
-	SaErrorT error;
 };
 
 struct req_lib_ckpt_checkpointclose {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_ckpt_checkpointclose {
-	struct message_header header;
+	struct res_header header;
 	SaNameT checkpointName;
 };
 
 struct req_lib_ckpt_checkpointunlink {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 };
 
 struct res_lib_ckpt_checkpointunlink {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_exec_ckpt_checkpointunlink {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
 };
 
 struct req_lib_ckpt_checkpointretentiondurationset {
-	struct message_header header;
+	struct req_header header;
 	SaTimeT retentionDuration;
+};
+struct res_lib_ckpt_checkpointretentiondurationset {
+	struct res_header header;
 };
 
 struct req_lib_ckpt_activecheckpointset {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_ckpt_activecheckpointset {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_ckpt_checkpointstatusget {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_ckpt_checkpointstatusget {
-	struct message_header header;
+	struct res_header header;
 	SaCkptCheckpointStatusT checkpointStatus;
 };
 
 struct req_lib_ckpt_sectioncreate {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 	SaTimeT expirationTime;
 	SaUint32T initialDataSize;
 };
 
 struct res_lib_ckpt_sectioncreate {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_exec_ckpt_sectioncreate {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate; /* this must be last */
 };
 
 struct req_lib_ckpt_sectiondelete {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 };
 
 struct res_lib_ckpt_sectiondelete {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 struct req_exec_ckpt_sectiondelete {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete; /* this must be last */
 };
 
 struct req_lib_ckpt_sectionexpirationtimeset {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 	SaTimeT expirationTime;
 };
 
 struct res_lib_ckpt_sectionexpirationtimeset {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_exec_ckpt_sectionexpirationtimeset {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectionexpirationtimeset req_lib_ckpt_sectionexpirationtimeset;
 };
 
 struct req_lib_ckpt_sectioniteratorinitialize {
-	struct message_header header;
+	struct req_header header;
 	SaNameT checkpointName;
 	SaCkptSectionsChosenT sectionsChosen;
 	SaTimeT expirationTime;
 };
 
 struct res_lib_ckpt_sectioniteratorinitialize {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_ckpt_sectioniteratornext {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_ckpt_sectioniteratornext {
-	struct message_header header;
+	struct res_header header;
 	SaCkptSectionDescriptorT sectionDescriptor;
-	SaErrorT error;
 };
 
 struct req_lib_ckpt_sectionwrite {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 	SaOffsetT dataOffset;
 	SaOffsetT dataSize;
 };
 
 struct res_lib_ckpt_sectionwrite {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_exec_ckpt_sectionwrite {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectionwrite req_lib_ckpt_sectionwrite;
 };
 
 struct req_lib_ckpt_sectionoverwrite {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 	SaUint32T dataSize;
 };
 
 struct res_lib_ckpt_sectionoverwrite {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 	
 struct req_exec_ckpt_sectionoverwrite {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
 };
 
 struct req_lib_ckpt_sectionread {
-	struct message_header header;
+	struct req_header header;
 	SaUint32T idLen;
 	SaOffsetT dataOffset;
 	SaOffsetT dataSize;
 };
 
 struct res_lib_ckpt_sectionread {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 	SaSizeT dataRead;
 };
 
 struct req_exec_ckpt_sectionread {
-	struct message_header header;
+	struct req_header header;
 	struct message_source source;
 	SaNameT checkpointName;
 	struct req_lib_ckpt_sectionread req_lib_ckpt_sectionread;
 };
 
 struct req_lib_ckpt_checkpointsynchronize {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_lib_ckpt_checkpointsynchronize {
-	struct message_header header;
-	SaErrorT error;
+	struct res_header header;
 };
 
 struct req_lib_ckpt_checkpointsynchronizeasync {
-	struct message_header header;
+	struct req_header header;
 	SaInvocationT invocation;
 };
 
+struct res_lib_ckpt_checkpointsynchronizeasync {
+	struct res_header header;
+};
+
 struct req_clm_trackstop {
-	struct message_header header;
+	struct req_header header;
 	SaSizeT dataRead;
 	SaErrorT error;
 };
-	
+
+struct res_clm_trackstop {
+	struct res_header header;
+};
+
 struct res_clm_trackcallback {
-	struct message_header header;
+	struct res_header header;
 	SaUint64T viewNumber;
 	SaUint32T numberOfItems;
 	SaUint32T numberOfMembers;
@@ -704,14 +715,14 @@ struct res_clm_trackcallback {
 };
 
 struct req_clm_nodeget {
-	struct message_header header;
+	struct req_header header;
 	SaClmClusterNodeT *clusterNodeAddress;
 	SaInvocationT invocation;
 	SaClmNodeIdT nodeId;
 };
 
 struct res_clm_nodeget {
-	struct message_header header;
+	struct res_header header;
 	SaInvocationT invocation;
 	SaClmClusterNodeT *clusterNodeAddress;
 	SaClmClusterNodeT clusterNode;
@@ -719,7 +730,7 @@ struct res_clm_nodeget {
 };
 
 struct res_clm_nodegetcallback {
-	struct message_header header;
+	struct res_header header;
 	SaInvocationT invocation;
 	SaClmClusterNodeT *clusterNodeAddress;
 	SaClmClusterNodeT clusterNode;
@@ -727,15 +738,15 @@ struct res_clm_nodegetcallback {
 };
 
 struct req_exec_clm_heartbeat {
-	struct message_header header;
+	struct req_header header;
 };
 
 struct res_exec_clm_heartbeat {
-	struct message_header header;
+	struct res_header header;
 };
 
 struct req_exec_clm_nodejoin {
-	struct message_header header;
+	struct req_header header;
 	SaClmClusterNodeT clusterNode;
 };
 
@@ -753,7 +764,7 @@ struct req_exec_clm_nodejoin {
  */
 struct req_evt_channel_open {
 
-	struct message_header	ico_head;
+	struct req_header	ico_head;
 	SaUint8T				ico_open_flag;
 	SaNameT					ico_channel_name;
 	SaEvtChannelHandleT		ico_c_handle;	/* client chan handle */
@@ -772,8 +783,7 @@ struct req_evt_channel_open {
  */
 struct res_evt_channel_open {
 
-	struct message_header	ico_head;
-	SaErrorT				ico_error;
+	struct res_header	ico_head;
 	uint32_t				ico_channel_handle;/* svr chan handle */
 
 };
@@ -784,7 +794,7 @@ struct res_evt_channel_open {
  * TODO: Define this
  */
 struct res_evt_open_chan_async {
-	struct message_header	ico_head;
+	struct res_header	ico_head;
 };
 
 
@@ -797,7 +807,7 @@ struct res_evt_open_chan_async {
  */
 struct req_evt_channel_close {
 
-	struct message_header	icc_head;
+	struct req_header	icc_head;
 	uint32_t				icc_channel_handle;
 };
 
@@ -809,8 +819,7 @@ struct req_evt_channel_close {
  *
  */
 struct res_evt_channel_close {
-	struct message_header	icc_head;
-	SaErrorT				icc_error;
+	struct res_header	icc_head;
 };
 
 /* 
@@ -826,7 +835,7 @@ struct res_evt_channel_close {
  */
 struct req_evt_channel_subscribe {
 
-	struct message_header	ics_head;
+	struct req_header	ics_head;
 	uint32_t				ics_channel_handle;
 	SaEvtSubscriptionIdT	ics_sub_id;
 	uint32_t				ics_filter_size;
@@ -843,8 +852,7 @@ struct req_evt_channel_subscribe {
  *
  */
 struct res_evt_channel_subscribe {
-	struct message_header	ics_head;
-	SaErrorT				ics_error;
+	struct res_header	ics_head;
 };
 
 /*
@@ -857,7 +865,7 @@ struct res_evt_channel_subscribe {
  */
 struct req_evt_channel_unsubscribe {
 
-	struct message_header	icu_head;
+	struct req_header	icu_head;
 	uint32_t				icu_channel_handle;
 	SaEvtSubscriptionIdT	icu_sub_id;
 };
@@ -871,8 +879,7 @@ struct req_evt_channel_unsubscribe {
  *
  */
 struct res_evt_channel_unsubscribe {
-	struct message_header	icu_head;
-	SaErrorT				icu_error;
+	struct res_header		icu_head;
 
 };
 
@@ -897,7 +904,7 @@ struct res_evt_channel_unsubscribe {
  * led_body:				Pattern and user data
  */
 struct lib_event_data {
-	struct message_header	led_head;
+	struct req_header		led_head;
 	uint32_t				led_svr_channel_handle;
 	uint32_t				led_lib_channel_handle;
 	SaEvtEventIdT			led_event_id;
@@ -924,8 +931,7 @@ struct lib_event_data {
  */
 struct res_evt_event_publish {
 
-	struct message_header	iep_head;
-	SaErrorT				iep_error;
+	struct res_header		iep_head;
 	SaEvtEventIdT			iep_event_id;
 };
 
@@ -941,7 +947,7 @@ struct res_evt_event_publish {
  */
 struct req_evt_event_clear_retentiontime {
 
-	struct message_header	iec_head;
+	struct req_header		iec_head;
 	uint64_t				iec_event_id;
 	uint32_t				iec_channel_handle;
 
@@ -955,8 +961,7 @@ struct req_evt_event_clear_retentiontime {
  *
  */
 struct res_evt_event_clear_retentiontime {
-	struct message_header	iec_head;
-	SaErrorT				iec_error;
+	struct res_header	iec_head;
 };
 
 
