@@ -35,7 +35,7 @@
 #define EVT_H
 #include "hdb.h"
 #include "../include/list.h"
-#include "../include/ais_types.h"
+#include "../include/saEvt.h"
 
 extern struct service_handler evt_service_handler;
 
@@ -68,3 +68,6 @@ struct libevt_ci {
 };
 
 #endif
+/*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ */
