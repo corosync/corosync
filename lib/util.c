@@ -45,6 +45,7 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <assert.h>
 
 #include "../include/ais_types.h"
 #include "../include/ais_msg.h"
@@ -201,19 +202,19 @@ error_exit:
 
 SaErrorT
 saActivatePoll (int s) {
-	struct req_amf_activatepoll req_amf_activatepoll;
+	struct req_lib_activatepoll req_lib_activatepoll;
 	SaErrorT error;
 
 	/*
 	 * Send activate poll to tell nodeexec to activate poll
 	 * on this file descriptor
 	 */
-	req_amf_activatepoll.header.magic = MESSAGE_MAGIC;
-	req_amf_activatepoll.header.size = sizeof (req_amf_activatepoll);
-	req_amf_activatepoll.header.id = MESSAGE_REQ_AMF_ACTIVATEPOLL;
+	req_lib_activatepoll.header.magic = MESSAGE_MAGIC;
+	req_lib_activatepoll.header.size = sizeof (req_lib_activatepoll);
+	req_lib_activatepoll.header.id = MESSAGE_REQ_LIB_ACTIVATEPOLL;
 
-	error = saSendRetry (s, &req_amf_activatepoll,
-		sizeof (struct req_amf_activatepoll), MSG_NOSIGNAL);
+	error = saSendRetry (s, &req_lib_activatepoll,
+		sizeof (struct req_lib_activatepoll), MSG_NOSIGNAL);
 	return (error);
 }
 
@@ -325,24 +326,10 @@ retry_poll:
 	return (error);
 }
 
-SaErrorT
-saHandleVerify (
-	struct saHandleDatabase *handleDatabase,
-	unsigned int handle)
-{
-	if (handle > handleDatabase->handleCount) {
-		return (SA_ERR_BAD_HANDLE);
-	}
-	if (handleDatabase->handles[handle].valid == 0) {
-		return (SA_ERR_BAD_HANDLE);
-	}
-	return (SA_OK);
-}
 
 SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
-	void **instanceOut,
 	int instanceSize,
 	int *handleOut)
 {
@@ -354,11 +341,12 @@ saHandleCreate (
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	for (handle = 0; handle < handleDatabase->handleCount; handle++) {
-		if (handleDatabase->handles[handle].valid == 0) {
+		if (handleDatabase->handles[handle].state == SA_HANDLE_STATE_EMPTY) {
 			found = 1;
 			break;
 		}
 	}
+
 	if (found == 0) {
 		handleDatabase->handleCount += 1;
 		newHandles = (struct saHandle *)realloc (handleDatabase->handles,
@@ -369,89 +357,89 @@ saHandleCreate (
 		}
 		handleDatabase->handles = newHandles;
 	}
+
 	instance = malloc (instanceSize);
 	if (instance == 0) {
 		return (SA_ERR_NO_MEMORY);
 	}
 	memset (instance, 0, instanceSize);
 
-	handleDatabase->handles[handle].valid = 1;
+	handleDatabase->handles[handle].state = SA_HANDLE_STATE_ACTIVE;
+
 	handleDatabase->handles[handle].instance = instance;
-	handleDatabase->handles[handle].generation = handleDatabase->generation++;
+
+	handleDatabase->handles[handle].refCount = 1;
 
 	*handleOut = handle;
-	*instanceOut = instance;
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
+
 	return (SA_OK);
 }
 
+
 SaErrorT
-saHandleRemove (
+saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	unsigned int handle)
 {
-	free (handleDatabase->handles[handle].instance);
-	memset (&handleDatabase->handles[handle], 0, sizeof (struct saHandle));
+	pthread_mutex_lock (&handleDatabase->mutex);
+	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
+	pthread_mutex_unlock (&handleDatabase->mutex);
+	saHandleInstancePut (handleDatabase, handle);
 
 	return (SA_OK);
 }
 
+
 SaErrorT
-saHandleConvert (
+saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	unsigned int handle,
-	void **instance,
-	int offsetToMutex,
-	unsigned int *generationOut)
+	void **instance)
 { 
-	SaErrorT error;
-	int unlockDatabase;
-	int locking;
+	pthread_mutex_lock (&handleDatabase->mutex);
 
-	unlockDatabase = (0 == (offsetToMutex & HANDLECONVERT_DONTUNLOCKDB));
-	locking = (0 == (offsetToMutex & HANDLECONVERT_NOLOCKING));
-	offsetToMutex &= 0x00ffffff; /* remove 8 bits of flags */
-
-	if (locking) {
-		pthread_mutex_lock (&handleDatabase->mutex);
+	if (handle > handleDatabase->handleCount) {
+		return (SA_ERR_BAD_HANDLE);
 	}
-
-	error = saHandleVerify (handleDatabase, handle);
-	if (error != SA_OK) {
-		if (locking) {
-			pthread_mutex_unlock (&handleDatabase->mutex);
-		}
-		return (error);
+	if (handleDatabase->handles[handle].state != SA_HANDLE_STATE_ACTIVE) {
+		return (SA_ERR_BAD_HANDLE);
 	}
 
 	*instance = handleDatabase->handles[handle].instance;
-	if (generationOut) {
-		*generationOut = handleDatabase->handles[handle].generation;
-	}
 
-	/*
-	 * This function exits holding the mutex in the instance instance
-	 * pointed to by offsetToMutex (if NOLOCKING isn't set)
-	 */
-	if (locking) {
-		pthread_mutex_lock ((pthread_mutex_t *)(*instance + offsetToMutex));
-		if (unlockDatabase) {
-			pthread_mutex_unlock (&handleDatabase->mutex);
-		}
-	}
+	handleDatabase->handles[handle].refCount += 1;
 
-	return (SA_OK);
-}
-
-SaErrorT
-saHandleUnlockDatabase (
-	struct saHandleDatabase *handleDatabase)
-{
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
 	return (SA_OK);
 }
+
+
+SaErrorT
+saHandleInstancePut (
+	struct saHandleDatabase *handleDatabase,
+	unsigned int handle)
+{
+	pthread_mutex_lock (&handleDatabase->mutex);
+	void *instance;
+
+	handleDatabase->handles[handle].refCount -= 1;
+	assert (handleDatabase->handles[handle].refCount >= 0);
+
+	if (handleDatabase->handles[handle].refCount == 0) {
+		instance = (handleDatabase->handles[handle].instance);
+		handleDatabase->handleInstanceDestructor (instance);
+		free (instance);
+		memset (&handleDatabase->handles[handle], 0, sizeof (struct saHandle));
+	}
+
+	pthread_mutex_unlock (&handleDatabase->mutex);
+
+	return (SA_OK);
+}
+
 
 SaErrorT
 saVersionVerify (

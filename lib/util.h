@@ -40,18 +40,25 @@
 #include <sys/poll.h>
 #include "../include/ais_msg.h"
 
+enum SA_HANDLE_STATE {
+	SA_HANDLE_STATE_EMPTY,
+	SA_HANDLE_STATE_PENDINGREMOVAL,
+	SA_HANDLE_STATE_ACTIVE
+};
+
 struct saHandle {
-	int valid;
+	int state;
 	void *instance;
-	unsigned int generation;
+	int refCount;
 };
 
 struct saHandleDatabase {
 	unsigned int handleCount;
 	struct saHandle *handles;
-	unsigned int generation;
 	pthread_mutex_t mutex;
+	void (*handleInstanceDestructor) (void *);
 };
+
 
 struct saVersionDatabase {
 	int versionCount;
@@ -117,34 +124,26 @@ saPollRetry (
 	int timeout);
 
 SaErrorT
-saHandleVerify (
-	struct saHandleDatabase *handleDatabase,
-	unsigned int handle); 
-
-SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
-	void **instance,
 	int instanceSize,
 	int *handleOut);
 
 SaErrorT
-saHandleRemove (
+saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	unsigned int handle);
 
 SaErrorT
-saHandleConvert (
+saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	unsigned int handle,
-	void **instance,
-	int offsetToMutex,
-	unsigned int *generationOut);
-
+	void **instance);
 
 SaErrorT
-saHandleUnlockDatabase (
-	struct saHandleDatabase *handleDatabase);
+saHandleInstancePut (
+	struct saHandleDatabase *handleDatabase,
+	unsigned int handle);
 
 SaErrorT
 saVersionVerify (
@@ -179,8 +178,5 @@ SaErrorT
 saQueueItemRemove (struct queue *queue);
 
 #define offset_of(type,member) (int)(&(((type *)0)->member))
-
-#define HANDLECONVERT_NOLOCKING		0x80000000
-#define HANDLECONVERT_DONTUNLOCKDB	0x40000000
 
 #endif /* AIS_UTIL_H_DEFINED */

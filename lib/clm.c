@@ -57,16 +57,17 @@ struct message_overlay {
 struct clmInstance {
 	int fd;
 	SaClmCallbacksT callbacks;
-	struct message_overlay message;
+	int finalize;
 	pthread_mutex_t mutex;
 };
-#define CLMINSTANCE_MUTEX_OFFSET offset_of(struct clmInstance, mutex)
+
+static void clmHandleInstanceDestructor (void *);
 
 static struct saHandleDatabase clmHandleDatabase = {
 	handleCount: 0,
 	handles: 0,
-	generation: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER
+	mutex: PTHREAD_MUTEX_INITIALIZER,
+	handleInstanceDestructor: clmHandleInstanceDestructor
 };
 
 /*
@@ -82,6 +83,16 @@ static struct saVersionDatabase clmVersionDatabase = {
 	clmVersionsSupported
 };
 
+void clmHandleInstanceDestructor (void *instance)
+{
+	struct clmInstance *clmInstance = (struct clmInstance *)instance;
+
+	if (clmInstance->fd != -1) {
+		shutdown (clmInstance->fd, 0);
+		close (clmInstance->fd);
+	}
+}
+
 
 SaErrorT
 saClmInitialize (
@@ -94,29 +105,41 @@ saClmInitialize (
 
 	error = saVersionVerify (&clmVersionDatabase, version);
 	if (error != SA_OK) {
-		goto error_nofree;
+		goto error_no_destroy;
 	}
 
-	error = saHandleCreate (&clmHandleDatabase, (void *)&clmInstance,
-		sizeof (struct clmInstance), clmHandle);
+	error = saHandleCreate (&clmHandleDatabase, sizeof (struct clmInstance),
+		clmHandle);
 	if (error != SA_OK) {
-		goto error_nofree;
+		goto error_no_destroy;
 	}
+
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle,
+		(void *)&clmInstance);
+	if (error != SA_OK) {
+		goto error_destroy;
+	}
+
+	clmInstance->fd = -1;
 	
 	error = saServiceConnect (&clmInstance->fd, MESSAGE_REQ_CLM_INIT);
 	if (error != SA_OK) {
-		goto error_free;
+		goto error_put_destroy;
 	}
 
 	memcpy (&clmInstance->callbacks, clmCallbacks, sizeof (SaClmCallbacksT));
 
 	pthread_mutex_init (&clmInstance->mutex, NULL);
 
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+
 	return (SA_OK);
 
-error_free:
-	saHandleRemove (&clmHandleDatabase, *clmHandle);
-error_nofree:
+error_put_destroy:
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+error_destroy:
+	saHandleDestroy (&clmHandleDatabase, *clmHandle);
+error_no_destroy:
 	return (error);
 }
 
@@ -128,14 +151,14 @@ saClmSelectionObjectGet (
 	struct clmInstance *clmInstance;
 	SaErrorT error;
 
-	error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, 0);
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	*selectionObject = clmInstance->fd;
 
-	pthread_mutex_unlock (&clmInstance->mutex);
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 	return (SA_OK);
 }
 
@@ -150,14 +173,16 @@ saClmDispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	int poll_fd;
-	int handle_verified = 0;
 	struct clmInstance *clmInstance;
 	struct res_clm_trackcallback *res_clm_trackcallback;
 	struct res_clm_nodegetcallback *res_clm_nodegetcallback;
 	SaClmCallbacksT callbacks;
-	unsigned int gen_first;
-	unsigned int gen_second;
 	struct message_overlay dispatch_data;
+
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
 
 	/*
 	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
@@ -168,20 +193,7 @@ saClmDispatch (
 	}
 
 	do {
-		error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, &gen_first);
-		if (error != SA_OK) {
-			return (handle_verified ? SA_OK : error);
-		}
-		handle_verified = 1;
-
 		poll_fd = clmInstance->fd;
-
-		/*
-		 * Unlock mutex for potentially long wait in select.  If fd
-		 * is closed by clmFinalize in select, select will return
-		 */
-
-		pthread_mutex_unlock (&clmInstance->mutex);
 
 		ufds.fd = poll_fd;
 		ufds.events = POLLIN;
@@ -192,32 +204,32 @@ saClmDispatch (
 			goto error_nounlock;
 		}
 
-		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
-			break; /* exit do while cont is 1 loop */
-		}
-		if (dispatch_avail == 0) {
-			continue; /* retry select */
-		}
-		/*
-		 * Re-verify amfHandle
-		 */
-		error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, &gen_second);
-		if (error != SA_OK) {
-			return (handle_verified ? SA_OK : error);
-		}
+		pthread_mutex_lock (&clmInstance->mutex);
 
 		/*
-		 * Handle has been removed and then reallocated
+		 * Handle has been finalized in another thread
 		 */
-		if (gen_first != gen_second) {
-			return SA_OK;
+		if (clmInstance->finalize == 1) {
+			error = SA_OK;
+			pthread_mutex_unlock (&clmInstance->mutex);
+			goto error_unlock;
+		}
+
+		dispatch_avail = ufds.revents & POLLIN;
+		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
+			pthread_mutex_unlock (&clmInstance->mutex);
+			break; /* exit do while cont is 1 loop */
+		} else
+		if (dispatch_avail == 0) {
+			pthread_mutex_unlock (&clmInstance->mutex);
+			continue; /* next poll */
 		}
 
 		/*
 		 * Read header
 		 */
-		error = saRecvRetry (clmInstance->fd, &clmInstance->message.header, sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+		error = saRecvRetry (clmInstance->fd, &dispatch_data.header,
+			sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
 		if (error != SA_OK) {
 			goto error_unlock;
 		}
@@ -225,9 +237,9 @@ saClmDispatch (
 		/*
 		 * Read data payload
 		 */
-		if (clmInstance->message.header.size > sizeof (struct message_header)) {
-			error = saRecvRetry (clmInstance->fd, &clmInstance->message.data,
-				clmInstance->message.header.size - sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+		if (dispatch_data.header.size > sizeof (struct message_header)) {
+			error = saRecvRetry (clmInstance->fd, &dispatch_data.data,
+				dispatch_data.header.size - sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
@@ -235,18 +247,15 @@ saClmDispatch (
 		/*
 		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
-		 * operate at the same time that amfFinalize has been called.
+		 * operate at the same time that clmFinalize has been called.
 		*/
 		memcpy (&callbacks, &clmInstance->callbacks, sizeof (SaClmCallbacksT));
-		memcpy (&dispatch_data, &clmInstance->message, sizeof (struct message_overlay));
-
 
 		pthread_mutex_unlock (&clmInstance->mutex);
-
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (clmInstance->message.header.id) {
+		switch (dispatch_data.header.id) {
 
 		case MESSAGE_RES_CLM_TRACKCALLBACK:
 			res_clm_trackcallback = (struct res_clm_trackcallback *)&dispatch_data;
@@ -277,6 +286,7 @@ saClmDispatch (
 			goto error_nounlock;
 			break;
 		}
+
 		/*
 		 * Determine if more messages should be processed
 		 * */
@@ -291,10 +301,8 @@ saClmDispatch (
 		}
 	} while (cont);
 
-	return (error);
-
 error_unlock:
-	pthread_mutex_unlock (&clmInstance->mutex);
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 error_nounlock:
 	return (error);
 }
@@ -306,20 +314,31 @@ saClmFinalize (
 	struct clmInstance *clmInstance;
 	SaErrorT error;
 
-	error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET | HANDLECONVERT_DONTUNLOCKDB, 0);
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
-	shutdown (clmInstance->fd, 0);
-	close (clmInstance->fd);
-	free (clmInstance);
+       pthread_mutex_lock (&clmInstance->mutex);
 
-	error = saHandleRemove (&clmHandleDatabase, *clmHandle);
+	/*
+	 * Another thread has already started finalizing
+	 */
+	if (clmInstance->finalize) {
+		pthread_mutex_unlock (&clmInstance->mutex);
+		saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+		return (SA_ERR_BAD_HANDLE);
+	}
+
+	clmInstance->finalize = 1;
+
+	saActivatePoll (clmInstance->fd);
 
 	pthread_mutex_unlock (&clmInstance->mutex);
 
-	saHandleUnlockDatabase (&clmHandleDatabase);
+	saHandleDestroy (&clmHandleDatabase, *clmHandle);
+
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 
 	return (error);
 }
@@ -342,14 +361,18 @@ saClmClusterTrackStart (
 	req_trackstart.notificationBufferAddress = notificationBuffer;
 	req_trackstart.numberOfItems = numberOfItems;
 
-	error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, 0);
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
+	pthread_mutex_lock (&clmInstance->mutex);
+
 	error = saSendRetry (clmInstance->fd, &req_trackstart, sizeof (struct req_clm_trackstart), MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&clmInstance->mutex);
+
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 
 	return (error);
 }
@@ -366,14 +389,18 @@ saClmClusterTrackStop (
 	req_trackstop.header.size = sizeof (struct req_clm_trackstop);
 	req_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
 
-	error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, 0);
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
+	pthread_mutex_lock (&clmInstance->mutex);
+
 	error = saSendRetry (clmInstance->fd, &req_trackstop, sizeof (struct req_clm_trackstop), MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&clmInstance->mutex);
+
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 
 	return (error);
 }
@@ -466,14 +493,19 @@ saClmClusterNodeGetAsync (
 	memcpy (&req_clm_nodeget.nodeId, &nodeId, sizeof (SaClmNodeIdT));
 	req_clm_nodeget.clusterNodeAddress = clusterNode;
 
-	error = saHandleConvert (&clmHandleDatabase, *clmHandle, (void *)&clmInstance, CLMINSTANCE_MUTEX_OFFSET, 0);
+	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
-	error = saSendRetry (clmInstance->fd, &req_clm_nodeget, sizeof (struct req_clm_nodeget), MSG_NOSIGNAL);
+	pthread_mutex_lock (&clmInstance->mutex);
+
+	error = saSendRetry (clmInstance->fd, &req_clm_nodeget,
+		sizeof (struct req_clm_nodeget), MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&clmInstance->mutex);
+
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 
 	return (error);
 }
