@@ -54,13 +54,28 @@ poll_handle *gmi_poll_handle;
  * Group messaging interface
  * depends on poll abstraction, POSIX, IPV4 or IPV6
  */
+/*
+ * Initialize the logger
+ */
+void gmi_log_printf_init (
+	void (*log_printf) (int , char *, ...),
+	int log_level_error,
+	int log_level_warning,
+	int log_level_notice,
+	int log_level_debug);
+
+/*
+ * Initialize the group messaging interface
+ */
 int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	poll_handle *poll_handle,
 	struct sockaddr_in *bound_to);
 
-
+/*
+ * Join a multicast group
+ */
 int gmi_join (
 	struct gmi_groupname *groupname, 
 	void (*deliver_fn) (
@@ -73,9 +88,15 @@ int gmi_join (
 		struct sockaddr_in *joined_list, int joined_list_entries),
 	gmi_join_handle *handle_out);
 
+/*
+ * Leave a multicast group
+ */
 int gmi_leave (
 	gmi_join_handle handle_join);
 
+/*
+ * Multicast a message
+ */
 int gmi_mcast (
 	struct gmi_groupname *groupname,
 	struct iovec *iovec,
