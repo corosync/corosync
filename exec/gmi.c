@@ -2072,6 +2072,13 @@ static void memb_timer_function_state_commit_timeout (void *data)
 				memb_list_entries_confchg = 1;
 				memb_list[0].sin_addr.s_addr = memb_local_sockaddr_in.sin_addr.s_addr; 
 			}
+
+			queues_queue_frag_memb_new ();
+
+			poll_timer_delete (*gmi_poll_handle, timer_single_member);
+			timer_single_member = 0;
+			poll_timer_add (*gmi_poll_handle, 0, 0,
+				timer_function_single_member, &timer_single_member);
 		} else {
 			gmi_log_printf (gmi_log_level_notice, "No members sent join, keeping old ring and transitioning to operational.\n");
 		}
