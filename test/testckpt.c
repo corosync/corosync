@@ -177,24 +177,23 @@ int main (void) {
 	printf ("%s: initial open of checkpoint\n",
 		get_test_output (error, SA_AIS_OK));
 
+	
+	error = saCkptSectionCreate (checkpointHandle,
+        &sectionCreationAttributes1,
+        "Initial Data #0",
+        strlen ("Initial Data #0") + 1);
+
+    printf ("%s: checkpoint section create\n",
+        get_test_output (error, SA_AIS_OK));
+
 	gettimeofday (&tv_start, 0);
 	sectionCreationAttributes1.expirationTime = ((unsigned long long)(tv_start.tv_sec + SECONDS_TO_EXPIRE)) * ((unsigned long long)1000000000) + ((unsigned long long)(tv_start.tv_usec) * ((unsigned long long)1000));
 
-	error = saCkptSectionCreate (checkpointHandle,
-		&sectionCreationAttributes1,
-		"Initial Data #0",
-		strlen ("Initial Data #0") + 1);
-
-	printf ("%s: checkpoint section create\n",
+	error = saCkptSectionExpirationTimeSet (checkpointHandle,
+		&sectionId1,
+		sectionCreationAttributes1.expirationTime);
+	printf ("%s: checkpoint section expiration set\n",
 		get_test_output (error, SA_AIS_OK));
-
-	if (error != SA_OK) {
-		error = saCkptSectionExpirationTimeSet (checkpointHandle,
-			&sectionId1,
-			sectionCreationAttributes1.expirationTime);
-		printf ("%s: checkpoint section expiration set\n",
-			get_test_output (error, SA_AIS_OK));
-	}
 
 printf ("Please wait, testing expiry of checkpoint sections.\n");
 	do {
