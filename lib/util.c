@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -156,12 +155,13 @@ retry_recv:
 	if (result == -1 || result != len) {
 		error = SA_ERR_SYSTEM;
 	}
+	assert (result == len);
 	return (error);
 }
 
-struct message_overlay {
+struct res_overlay {
 	struct res_header header;
-	char payload[4096];
+	char payload[0];
 };
 
 SaErrorT
@@ -171,46 +171,68 @@ saRecvQueue (
 	struct queue *queue,
 	int findMessageId)
 {
-	struct message_overlay message;
+	struct res_overlay *overlay;
 	void *inq_msg;
 	int match;
 	SaErrorT error;
 
 	do {
-		error = saRecvRetry (s, &message.header, sizeof (struct res_header),
+		overlay = (struct res_overlay *)msg;
+		error = saRecvRetry (s, overlay, sizeof (struct res_header),
 			MSG_WAITALL | MSG_NOSIGNAL);
 		if (error != SA_OK) {
 			goto error_exit;
 		}
-		if (message.header.size > sizeof (struct res_header)) {
-			error = saRecvRetry (s, &message.payload,
-				message.header.size - sizeof (struct res_header),
-				MSG_WAITALL | MSG_NOSIGNAL);
-			if (error != SA_OK) {
-				goto error_exit;
-			}
-		}
-		match = (message.header.id == findMessageId);
+		assert (overlay->header.size != 0);
 
+		match = (overlay->header.id == findMessageId);
+
+		/*
+		 * Item doesn't match, queue it
+		 */
 		if (match == 0 && queue) {
-			inq_msg = (void *)malloc (message.header.size);
+			inq_msg = (void *)malloc (overlay->header.size);
 			if (inq_msg == 0) {
 				error = SA_ERR_NO_MEMORY;
 				goto error_exit;
 			}
-			memcpy (inq_msg, &message, message.header.size);
-			error = saQueueItemAdd (queue, &inq_msg);
-			if (error != SA_OK) {
-				free (inq_msg);
-				goto error_exit;
+			memcpy (inq_msg, overlay, sizeof (struct res_header));
+			overlay = (struct res_overlay *)inq_msg;
+			if (overlay->header.size > sizeof (struct res_header)) {
+				error = saRecvRetry (s, &overlay->payload,
+					overlay->header.size - sizeof (struct res_header),
+					MSG_WAITALL | MSG_NOSIGNAL);
+				if (error != SA_OK) {
+					goto error_exit;
+				}
 			}
 
-			error = saActivatePoll (s);
-			if (error != SA_OK) {
-				goto error_exit;
+			if (overlay->header.id != MESSAGE_RES_LIB_ACTIVATEPOLL) {
+				error = saQueueItemAdd (queue, &inq_msg);
+				if (error != SA_OK) {
+					free (inq_msg);
+					goto error_exit;
+				}
+
+				error = saActivatePoll (s);
+				if (error != SA_OK) {
+					goto error_exit;
+				}
 			}
 		} else {
-			memcpy (msg, &message, message.header.size);
+		/*
+		 *  its a match, so deliver it
+		 */
+			overlay = (struct res_overlay *)msg;
+			if (overlay->header.size > sizeof (struct res_header)) {
+				error = saRecvRetry (s, &overlay->payload,
+					overlay->header.size - sizeof (struct res_header),
+					MSG_WAITALL | MSG_NOSIGNAL);
+				if (error != SA_OK) {
+					goto error_exit;
+				}
+			}
+			break;
 		}
 	} while (match == 0);
 
