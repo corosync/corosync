@@ -282,7 +282,6 @@ int poll_timer_add (
 	poll_timer_handle *timer_handle_out)
 {
 	struct poll_instance *poll_instance;
-	poll_timer_handle timer_handle;
 	int res = -1;
 	SaErrorT error;
 
@@ -292,11 +291,10 @@ int poll_timer_add (
 		goto error_exit;
 	}
 
-	timer_handle = (poll_timer_handle)timerlist_add_future (&poll_instance->timerlist,
-		timer_fn, data, msec_in_future);
+	timerlist_add_future (&poll_instance->timerlist,
+		timer_fn, data, msec_in_future, timer_handle_out);
 
-	if (timer_handle != 0) {
-		*timer_handle_out = timer_handle;
+	if (timer_handle_out != 0) {
 		res = 0;
 	}
 
