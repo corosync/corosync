@@ -224,7 +224,6 @@ saClmDispatch (
 		 */
 		if (clmInstance->finalize == 1) {
 			error = SA_OK;
-			pthread_mutex_unlock (&clmInstance->mutex);
 			goto error_unlock;
 		}
 
@@ -325,8 +324,9 @@ saClmDispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	pthread_mutex_unlock (&clmInstance->mutex);
 error_nounlock:
+	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 	return (error);
 }
 

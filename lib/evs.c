@@ -373,8 +373,9 @@ evs_error_t evs_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	pthread_mutex_unlock (&evs_inst->mutex);
 error_nounlock:
+	saHandleInstancePut (&evs_handle_t_db, *handle);
 	return (error);
 }
 
