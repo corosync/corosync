@@ -33,7 +33,7 @@
  */
 #include "../include/ais_types.h"
 #include "../include/ais_msg.h"
-#include "poll.h"
+#include "aispoll.h"
 #include "parse.h"
 
 #ifndef CKPT_H_DEFINED
@@ -52,6 +52,7 @@ struct saCkptCheckpoint {
 	struct list_head checkpointSectionsListHead;
 	int referenceCount;
 	int unlinked;
+	poll_timer_handle retention_timer;
 };
 
 struct saCkptSectionIteratorEntry {
