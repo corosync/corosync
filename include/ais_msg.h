@@ -36,6 +36,7 @@
 
 #include <netinet/in.h>
 #include "ais_types.h"
+#include "evs.h"
 
 enum req_amf_response_interfaces {
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK = 1,
@@ -49,6 +50,7 @@ enum req_amf_response_interfaces {
 };
 
 enum req_init_types {
+	MESSAGE_REQ_EVS_INIT,
 	MESSAGE_REQ_CLM_INIT,
 	MESSAGE_REQ_AMF_INIT,
 	MESSAGE_REQ_CKPT_INIT,
@@ -62,7 +64,23 @@ enum res_init_types {
 };
 
 #define	MESSAGE_REQ_LIB_ACTIVATEPOLL 0
-#define	MESSAGE_RES_LIB_ACTIVATEPOLL 0
+#define	MESSAGE_RES_LIB_ACTIVATEPOLL 50
+
+enum req_lib_evs_types {
+	MESSAGE_REQ_EVS_JOIN = 1,
+	MESSAGE_REQ_EVS_LEAVE,
+	MESSAGE_REQ_EVS_MCAST_JOINED,
+	MESSAGE_REQ_EVS_MCAST_GROUPS
+};
+
+enum res_lib_evs_types {
+	MESSAGE_RES_EVS_DELIVER_CALLBACK = 1,
+	MESSAGE_RES_EVS_CONFCHG_CALLBACK,
+	MESSAGE_RES_EVS_JOIN,
+	MESSAGE_RES_EVS_LEAVE,
+	MESSAGE_RES_EVS_MCAST_JOINED,
+	MESSAGE_RES_EVS_MCAST_GROUPS
+};
 
 enum req_clm_types {
 	MESSAGE_REQ_CLM_TRACKSTART = 1,
@@ -163,6 +181,7 @@ enum res_lib_ckpt_sectioniterator_types {
 };
 
 enum nodeexec_message_types {
+	MESSAGE_REQ_EXEC_EVS_MCAST,
 	MESSAGE_REQ_EXEC_CLM_NODEJOIN,
 	MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER,
 	MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER,
@@ -239,6 +258,77 @@ struct req_clm_trackstart {
 	SaUint8T trackFlags;
 	SaClmClusterNotificationT *notificationBufferAddress;
 	SaUint32T numberOfItems;
+};
+
+struct res_evs_deliver_callback {
+	struct res_header header;
+	struct in_addr source_addr;
+	int msglen;
+	char msg[0];
+};
+
+struct res_evs_confchg_callback {
+	struct res_header header;
+	int member_list_entries;
+	int left_list_entries;
+	int joined_list_entries;
+	struct in_addr member_list[16];
+	struct in_addr left_list[16];
+	struct in_addr joined_list[16];
+};
+
+struct req_lib_evs_join {
+	struct res_header header;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_join {
+	struct res_header header;
+};
+
+struct req_lib_evs_leave {
+	struct res_header header;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_leave {
+	struct res_header header;
+};
+
+struct req_lib_evs_mcast_joined {
+	struct res_header header;
+	evs_priority_t priority;
+	evs_guarantee_t guarantee;
+	int msg_len;
+	char msg[0];
+};
+
+struct res_lib_evs_mcast_joined {
+	struct res_header header;
+};
+
+struct req_lib_evs_mcast_groups {
+	struct res_header header;
+	evs_priority_t priority;
+	evs_guarantee_t guarantee;
+	int msg_len;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_mcast_groups {
+	struct res_header header;
+};
+
+
+struct req_exec_evs_mcast {
+	struct req_header header;
+	int group_entries;
+	int msg_len;
+	struct evs_group groups[0];
+	/* data goes here */
 };
 
 struct res_clm_trackstart {
