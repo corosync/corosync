@@ -133,8 +133,17 @@ void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
 {
 	struct timer *timer = (struct timer *)timer_handle;
 
-	*(unsigned int *)timer->handle_addr = 0;
+	*((unsigned int *)timer->handle_addr) = 0;
+	/*
+	 * If the next timer after the currently expiring timer because
+	 * timerlist_del is called from a timer handler, get to the enxt
+	 * timer
+	 */
+	if (timerlist->timer_iter == &timer->list) {
+		timerlist->timer_iter = timerlist->timer_iter->next;
+	}
 	list_del (&timer->list);
+	list_init (&timer->list);
 	timers_inuse--;
 	free (timer);
 }
@@ -142,8 +151,9 @@ static void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle ti
 {
 	struct timer *timer = (struct timer *)timer_handle;
 
-	*(unsigned int *)timer->handle_addr = 0;
+	*((unsigned int *)timer->handle_addr) = 0;
 	list_del (&timer->list);
+	list_init (&timer->list);
 	timers_inuse--;
 }
 
@@ -234,24 +244,23 @@ unsigned int timerlist_timeout_msec (struct timerlist *timerlist)
 
 void timerlist_expire (struct timerlist *timerlist)
 {
-	struct list_head *timer_list;
 	struct timer *timer_from_list;
 	struct timeval current_time;
 
 	gettimeofday (&current_time, 0);
 	timeval_adjust_to_msec (&current_time);
 
-	for (timer_list = timerlist->timer_head.next;
-		timer_list != &timerlist->timer_head;) {
+	for (timerlist->timer_iter = timerlist->timer_head.next;
+		timerlist->timer_iter != &timerlist->timer_head;) {
 
-		timer_from_list = list_entry (timer_list,
+		timer_from_list = list_entry (timerlist->timer_iter,
 			struct timer, list);
 
 		if ((timer_from_list->tv.tv_sec < current_time.tv_sec) ||
 			((timer_from_list->tv.tv_sec == current_time.tv_sec) &&
 			(timer_from_list->tv.tv_usec <= current_time.tv_usec))) {
 //printf ("Executing timer %d %d\n", timer_from_list->tv.tv_sec, timer_from_list->tv.tv_usec);
-			timer_list = timer_list->next;
+			timerlist->timer_iter = timerlist->timer_iter->next;
 
 			timerlist_pre_dispatch (timerlist, timer_from_list);
 
@@ -262,4 +271,5 @@ void timerlist_expire (struct timerlist *timerlist)
 			break; /* for timer iteration */
 		}
 	}
+	timerlist->timer_iter = 0;
 }
