@@ -103,17 +103,21 @@ struct version_test versions[] = {
 
 int version_size = sizeof(versions) / sizeof(struct version_test);
 
-void event_callback( SaEvtSubscriptionIdT subscriptionId,
+void open_callback(SaInvocationT invocation,
+		SaEvtChannelHandleT channelHandle,
+		SaAisErrorT error);
+void event_callback(SaEvtSubscriptionIdT subscriptionId,
 		const SaEvtEventHandleT eventHandle,
 		const SaSizeT eventDataSize);
 
 SaEvtCallbacksT callbacks = {
-	0,
+	open_callback,
 	event_callback
 };
 
 char channel[256] = "TESTEVT_CHANNEL";
 SaEvtSubscriptionIdT subscription_id = 0xabcdef;
+SaInvocationT	     open_invocation = 0xaa55cc33;
 unsigned long long test_ret_time = 30000000000ULL; /* 30 seconds */
 
 
@@ -175,6 +179,35 @@ SaEvtEventFilterArrayT subscribe_filters = {
 };
 
 /*
+ * Process the open callback
+ */
+void open_callback(SaInvocationT invocation,
+		SaEvtChannelHandleT channel_handle,
+		SaAisErrorT error)
+{
+	SaAisErrorT result;
+
+	printf("       Received open channel callback\n");
+	if (error != SA_AIS_OK) {
+		get_sa_error(error, result_buf, result_buf_len);
+		printf("ERROR: async channel open result: %s\n", result_buf);
+		return;
+	}
+	if (invocation != open_invocation) {
+		printf("ERROR: Unexpected invocation value: e 0x%x, a 0x%x\n",
+				open_invocation, invocation);
+	}
+
+	printf("       Close async channel:\n");
+	result = saEvtChannelClose(channel_handle);
+	
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel close result: %s\n", result_buf);
+		return;
+	}
+}
+/*
  * Test channel operations.
  * 1. Open a channel.
  * 2. Close a channel.
@@ -184,6 +217,7 @@ SaEvtEventFilterArrayT subscribe_filters = {
  * 6. Multiple subscriptions.
  * 7. Duplicate subscription ID.
  * 8. unsubscribe non-exsistent subscription ID.
+ * 9. Open a channel async.
  * 
  */
 void
@@ -194,6 +228,11 @@ test_channel()
 	SaEvtChannelOpenFlagsT flags;
 	SaNameT channel_name;
 	int result;
+
+	struct pollfd pfd;
+	int nfd;
+	int fd;
+	int timeout = 5000;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER |
 		SA_EVT_CHANNEL_SUBSCRIBER |
@@ -477,6 +516,75 @@ test_channel()
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Finalize result: %s\n", result_buf);
 	}
+
+	/*
+	 * Test opening a channel async.
+	 */
+	printf("       Channel open async:\n");
+	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: Event Initialize result: %s\n", result_buf);
+		return;
+	}
+
+	result = saEvtChannelOpenAsync(handle, open_invocation, 
+			&channel_name, flags);
+
+
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open async result: %s\n", result_buf);
+		result = saEvtFinalize(handle);
+		if (result != SA_AIS_OK) {
+			get_sa_error(result, result_buf, result_buf_len);
+			printf("ERROR: Event Finalize result: %s\n", result_buf);
+		}
+		return;
+	}
+	/*
+	 * See if we got the open callback
+	 */
+	result = saEvtSelectionObjectGet(handle, &fd);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
+		/* error */
+		return;
+	}
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	nfd = poll(&pfd, 1, timeout);
+	if (nfd <= 0) {
+		printf("ERROR: poll fds %d\n", nfd);
+		if (nfd < 0) {
+			perror("ERROR: poll error");
+		}
+		/* Error */
+		return;
+	}
+
+	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: saEvtDispatch %s\n", result_buf);
+		/* error */
+		return;
+	}
+
+
+
+	result = saEvtFinalize(handle);
+
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: Event Finalize result: %s\n", result_buf);
+		return;
+	}
+
+
+
 	printf("Done\n");
 
 }
@@ -678,6 +786,7 @@ test_event()
 
 	
 	int result;
+
 	int i;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER | 
