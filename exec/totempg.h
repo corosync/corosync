@@ -98,7 +98,8 @@ int totempg_initialize (
 		struct in_addr *left_list, void *left_list_private,
 			int left_list_entries,
 		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries));
+			int joined_list_entries,
+		struct memb_ring_id *ring_id));
 
 /*
  * Multicast a message

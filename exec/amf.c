@@ -244,7 +244,8 @@ static int amf_confchg_fn (
     struct in_addr *left_list, void *left_list_private,
 		int left_list_entries,
     struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries);
+		int joined_list_entries,
+	struct memb_ring_id *ring_id);
 
 /***
 static void amf_dump (void);
@@ -1903,7 +1904,8 @@ static int amf_confchg_fn (
     struct in_addr *left_list, void *left_list_private,
 		int left_list_entries,
     struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries)
+		int joined_list_entries,
+	struct memb_ring_id *ring_id)
 {
 	int i;
 

@@ -102,7 +102,6 @@ int totemsrp_brake;
 #define TIMEOUT_STATE_GATHER_CONSENSUS	200
 #define TIMEOUT_TOKEN					1000
 #define TIMEOUT_TOKEN_RETRANSMIT		200
-#define MAX_MEMBERS						16
 #define PACKET_SIZE_MAX					2000
 #define FAIL_TO_RECV_CONST				250
 #define SEQNO_UNCHANGED_CONST			20
@@ -156,21 +155,21 @@ struct consensus_list_item {
 	int set;
 };
 
-static struct consensus_list_item consensus_list[MAX_MEMBERS];
+static struct consensus_list_item consensus_list[PROCESSOR_COUNT_MAX];
 
 static int consensus_list_entries;
 
-static struct in_addr my_proc_list[MAX_MEMBERS];
+static struct in_addr my_proc_list[PROCESSOR_COUNT_MAX];
 
-static struct in_addr my_failed_list[MAX_MEMBERS];
+static struct in_addr my_failed_list[PROCESSOR_COUNT_MAX];
 
-static struct in_addr my_new_memb_list[MAX_MEMBERS];
+static struct in_addr my_new_memb_list[PROCESSOR_COUNT_MAX];
 
-static struct in_addr my_trans_memb_list[MAX_MEMBERS];
+static struct in_addr my_trans_memb_list[PROCESSOR_COUNT_MAX];
 
-static struct in_addr my_memb_list[MAX_MEMBERS];
+static struct in_addr my_memb_list[PROCESSOR_COUNT_MAX];
 
-static struct in_addr my_deliver_memb_list[MAX_MEMBERS];
+static struct in_addr my_deliver_memb_list[PROCESSOR_COUNT_MAX];
 
 static int my_proc_list_entries = 0;
 
@@ -301,11 +300,6 @@ struct message_header {
 	unsigned short endian_detector;
 } __attribute__((packed));
 
-struct memb_ring_id {
-	struct in_addr rep;
-	unsigned long long seq;
-} __attribute__((packed));
-
 struct mcast {
 	struct message_header header;
 	int seq;
@@ -344,9 +338,9 @@ struct orf_token {
 
 struct memb_join {
 	struct message_header header;
-	struct in_addr proc_list[MAX_MEMBERS];
+	struct in_addr proc_list[PROCESSOR_COUNT_MAX];
 	int proc_list_entries;
-	struct in_addr failed_list[MAX_MEMBERS];
+	struct in_addr failed_list[PROCESSOR_COUNT_MAX];
 	int failed_list_entries;
 	unsigned long long ring_seq;
 } __attribute__((packed));
@@ -365,8 +359,8 @@ struct memb_commit_token {
 	unsigned int retrans_flg;
 	int memb_index;
 	int addr_entries;
-	struct in_addr addr[MAX_MEMBERS];
-	struct memb_commit_token_memb_entry memb_list[MAX_MEMBERS];
+	struct in_addr addr[PROCESSOR_COUNT_MAX];
+	struct memb_commit_token_memb_entry memb_list[PROCESSOR_COUNT_MAX];
 }__attribute__((packed));
 
 struct message_item {
@@ -429,7 +423,8 @@ void (*totemsrp_confchg_fn) (
 	struct in_addr *left_list, void *left_list_private,
 		int left_list_entries,
 	struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries) = 0;
+		int joined_list_entries,
+	struct memb_ring_id *ring_id) = 0;
 
 /*
  * forward decls
@@ -542,7 +537,8 @@ int totemsrp_initialize (
 		struct in_addr *left_list, void *left_list_private,
 			int left_list_entries,
 		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries))
+			int joined_list_entries,
+		struct memb_ring_id *ring_id))
 {
 
 	int res;
@@ -696,7 +692,7 @@ static int memb_consensus_isset (struct in_addr *addr)
  */
 static int memb_consensus_agreed (void)
 {
-	struct in_addr token_memb[MAX_MEMBERS];
+	struct in_addr token_memb[PROCESSOR_COUNT_MAX];
 	int token_memb_entries = 0;
 	int agreed = 1;
 	int i;
@@ -880,7 +876,7 @@ void cancel_token_retransmit_timeout (void) {
 
 static void memb_state_consensus_timeout_expired (void)
 {
-	struct in_addr no_consensus_list[MAX_MEMBERS];
+	struct in_addr no_consensus_list[PROCESSOR_COUNT_MAX];
 	int no_consensus_list_entries;
 
 	if (memb_consensus_agreed ()) {
@@ -1015,9 +1011,9 @@ printf ("item not present in recovery sort queue\n");
  */
 static void memb_state_operational_enter (void)
 {
-	struct in_addr joined_list[MAX_MEMBERS];
+	struct in_addr joined_list[PROCESSOR_COUNT_MAX];
 	int joined_list_entries = 0;
-	struct in_addr left_list[MAX_MEMBERS];
+	struct in_addr left_list[PROCESSOR_COUNT_MAX];
 	int left_list_entries = 0;
 
 	deliver_messages_from_recovery_to_regular ();
@@ -1043,7 +1039,7 @@ static void memb_state_operational_enter (void)
 	totemsrp_confchg_fn (TOTEMSRP_CONFIGURATION_TRANSITIONAL,
 		my_trans_memb_list, 0, my_trans_memb_entries,
 		left_list, 0, left_list_entries,
-		0, 0, 0);
+		0, 0, 0, &my_ring_id);
 		
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of my_deliver_memb
@@ -1055,7 +1051,7 @@ static void memb_state_operational_enter (void)
 	totemsrp_confchg_fn (TOTEMSRP_CONFIGURATION_REGULAR,
 		my_new_memb_list, 0, my_new_memb_entries,
 		0, 0, 0,
-		joined_list, 0, joined_list_entries);
+		joined_list, 0, joined_list_entries, &my_ring_id);
 
 	/*
 	 * Install new membership
@@ -2302,7 +2298,7 @@ static int memb_state_commit_token_send (struct memb_commit_token *memb_commit_t
 
 int memb_lowest_in_config (void)
 {
-	struct in_addr token_memb[MAX_MEMBERS];
+	struct in_addr token_memb[PROCESSOR_COUNT_MAX];
 	int token_memb_entries = 0;
 	struct in_addr lowest_addr;
 	int i;
@@ -2326,7 +2322,7 @@ int memb_lowest_in_config (void)
 
 static void memb_state_commit_token_create (struct memb_commit_token *commit_token)
 {
-	struct in_addr token_memb[MAX_MEMBERS];
+	struct in_addr token_memb[PROCESSOR_COUNT_MAX];
 	int token_memb_entries = 0;
 
 	totemsrp_log_printf (totemsrp_log_level_notice,
@@ -2349,7 +2345,7 @@ static void memb_state_commit_token_create (struct memb_commit_token *commit_tok
 	memcpy (commit_token->addr, token_memb,
 		token_memb_entries * sizeof (struct in_addr));
 	memset (commit_token->memb_list, 0,
-		sizeof (struct memb_commit_token_memb_entry) * MAX_MEMBERS);
+		sizeof (struct memb_commit_token_memb_entry) * PROCESSOR_COUNT_MAX);
 	commit_token->memb_index = token_memb_entries - 1;
 	commit_token->addr_entries = token_memb_entries;
 }
@@ -3223,7 +3219,7 @@ static int message_handler_memb_commit_token (
 {
 	struct memb_commit_token memb_commit_token_convert;
 	struct memb_commit_token *memb_commit_token;
-	struct in_addr sub[MAX_MEMBERS];
+	struct in_addr sub[PROCESSOR_COUNT_MAX];
 	int sub_entries;
 
 	

@@ -37,11 +37,17 @@
 #include "aispoll.h"
 
 #define TOTEMSRP_PACKET_SIZE_MAX	1408
+#define PROCESSOR_COUNT_MAX			16
 
 enum totemsrp_configuration_type {
 	TOTEMSRP_CONFIGURATION_REGULAR,
 	TOTEMSRP_CONFIGURATION_TRANSITIONAL	
 };
+
+struct memb_ring_id {
+	struct in_addr rep;
+	unsigned long long seq;
+} __attribute__((packed));
 
 /*
  * This represents an interface that TOTEMSRP binds to
@@ -93,7 +99,8 @@ int totemsrp_initialize (
 		struct in_addr *left_list, void *left_list_private,
 			int left_list_entries,
 		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries));
+			int joined_list_entries,
+		struct memb_ring_id *ring_id));
 
 /*
  * Multicast a message

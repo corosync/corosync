@@ -35,9 +35,15 @@
 #include "../include/saCkpt.h"
 #include "aispoll.h"
 #include "parse.h"
+#include "totemsrp.h"
 
 #ifndef CKPT_H_DEFINED
 #define CKPT_H_DEFINED
+
+struct ckpt_refcnt {
+	int count;
+	struct in_addr addr;
+};
 
 struct saCkptCheckpointSection {
 	struct list_head list;
@@ -55,6 +61,7 @@ struct saCkptCheckpoint {
 	int unlinked;
 	poll_timer_handle retention_timer;
 	int expired;
+	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];	
 };
 
 struct saCkptSectionIteratorEntry {

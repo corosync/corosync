@@ -140,7 +140,8 @@ static int ckpt_confchg_fn (
 	struct in_addr *left_list, void *left_list_private,
 		int left_list_entries,
 	struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries) {
+		int joined_list_entries,
+	struct memb_ring_id *ring_id) {
 
 #ifdef TODO
 	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
@@ -272,6 +273,8 @@ struct service_handler ckpt_service_handler = {
 	.exec_dump_fn				= 0
 };
 
+static struct memb_ring_id saved_ring_id;
+
 static struct saCkptCheckpoint *ckpt_checkpoint_find_global (SaNameT *name)
 {
 	struct list_head *checkpointList;
@@ -401,9 +404,11 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 
 static int ckpt_exec_init_fn (void)
 {
+	// Initialize the saved ring ID.
+	saved_ring_id.seq = 0;
+	saved_ring_id.rep.s_addr = this_ip.sin_addr.s_addr;	
 #ifdef TODO
 	int res;
-
 	res = totempg_recovery_plug_create (&ckpt_checkpoint_recovery_plug_handle);
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR,

@@ -60,6 +60,7 @@
 #include "../include/queue.h"
 #include "poll.h"
 #include "totempg.h"
+#include "totemsrp.h"
 #include "mempool.h"
 #include "parse.h"
 #include "main.h"
@@ -707,7 +708,8 @@ static void confchg_fn (
 	struct in_addr *left_list, void *left_list_private,
 		int left_list_entries,
 	struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries)
+		int joined_list_entries,
+	struct memb_ring_id *ring_id)
 {
 	int i;
 
@@ -719,7 +721,7 @@ static void confchg_fn (
 			ais_service_handlers[i]->confchg_fn (configuration_type,
 				member_list, member_list_private, member_list_entries,
 				left_list, left_list_private, left_list_entries,
-				joined_list, joined_list_private, joined_list_entries);
+				joined_list, joined_list_private, joined_list_entries, ring_id);
 		}
 	}
 }

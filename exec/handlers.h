@@ -37,6 +37,7 @@
 #include <netinet/in.h>
 #include "main.h"
 #include "totempg.h"
+#include "totemsrp.h"
 
 struct libais_handler {
 	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
@@ -56,7 +57,8 @@ struct service_handler {
 		struct in_addr *left_list, void *left_list_private,
 			int left_list_entries,
 		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries);
+			int joined_list_entries,
+		struct memb_ring_id *ring_id);
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
 	int (*libais_exit_fn) (struct conn_info *conn_info);
 	int (*exec_init_fn) (void);
