@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -143,12 +144,17 @@ static void sendProtectionGroupNotification (
 static int activeServiceUnitsCount (
 	struct saAmfGroup *saAmfGroup);
 
-#ifdef COMPILE_OUT
-static void enumerateComponents (
+static void component_unregister (
+	struct saAmfComponent *component);
+
+static void component_register (
+	struct saAmfComponent *component);
+
+static void enumerate_components (
 	void (*function)(struct saAmfComponent *, void *data),
 	void *data);
 
-
+#ifdef COMPILE_OUT
 static void CSIRemove (
 	struct conn_info *conn_info);
 
@@ -219,6 +225,17 @@ static void response_handler_csisetcallback (
 	struct conn_info *conn_info,
 	struct req_amf_response *req_amf_response);
 
+static void amf_confchg_nleave (
+	struct saAmfComponent *component,
+	void *data);
+
+static void amf_confchg_njoin (
+	struct saAmfComponent *component,
+	void *data);
+
+static void amf_confchg_nsync (
+	struct saAmfComponent *component,
+	void *data);
 
 static int amf_confchg_fn (
 	enum gmi_configuration_type configuration_type,
@@ -461,7 +478,7 @@ printf ("b\n");
 	return (0);
 }
 
-void componentUnregister (
+static void component_unregister (
 	struct saAmfComponent *component)
 {
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
@@ -473,7 +490,7 @@ void componentUnregister (
 	if (component == 0 || component->local != 1) {
 		return;
 	}
-	log_printf (LOG_LEVEL_DEBUG, "componentUnregister: unregistering component %s\n",
+	log_printf (LOG_LEVEL_DEBUG, "component_unregister: unregistering component %s\n",
 		getSaNameT (&component->name));
 	component->probableCause = SA_AMF_NOT_RESPONDING;
 
@@ -495,10 +512,44 @@ void componentUnregister (
 	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 }
 
-#ifdef COMPILE_OUT
+static void component_register (
+	struct saAmfComponent *component)
+{
+	struct req_exec_amf_componentregister req_exec_amf_componentregister;
+	struct iovec iovecs[2];
+
+	/*
+	 * This only works on local components
+	 */
+	if (component == 0 || component->local != 1) {
+		return;
+	}
+	log_printf (LOG_LEVEL_DEBUG, "component_register: registering component %s\n",
+		getSaNameT (&component->name));
+	component->probableCause = SA_AMF_NOT_RESPONDING;
+
+	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
+	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
+
+	req_exec_amf_componentregister.source.conn_info = 0;
+	req_exec_amf_componentregister.source.in_addr.s_addr = 0;
+
+	memset (&req_exec_amf_componentregister.req_lib_amf_componentregister,
+		0, sizeof (struct req_lib_amf_componentregister));
+	memcpy (&req_exec_amf_componentregister.req_lib_amf_componentregister.compName,
+		&component->name,
+		sizeof (SaNameT));
+
+	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
+	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
+
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_RECOVERY) == 0);
+}
+
+/***
 This should be used for a partition I think
-// This should be used for partition changes
-void enumerateComponents (
+**/
+void enumerate_components (
 	void (*function)(struct saAmfComponent *, void *data),
 	void *data)
 {
@@ -546,7 +597,6 @@ void enumerateComponents (
 		}
 	}
 }
-#endif
 
 int activeServiceUnitsCount (struct saAmfGroup *saAmfGroup) {
 	struct saAmfUnit *saAmfUnit;
@@ -576,7 +626,7 @@ int activeServiceUnitsCount (struct saAmfGroup *saAmfGroup) {
 			saAmfComponent = list_entry (saAmfComponentList,
 				struct saAmfComponent, saAmfComponentList);
 
-			if (saAmfComponent->currentHAState != SA_AMF_ACTIVE) {
+			if (saAmfComponent->newHAState != SA_AMF_ACTIVE) {
 				thisServiceUnitActive = 0;
 			}
 		}
@@ -1641,6 +1691,44 @@ static int amf_exec_init_fn (void)
 	return (0);
 }
 
+void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
+{
+	struct in_addr *source_addr;
+	source_addr = (struct in_addr *)data;
+
+	if (component->source_addr.s_addr != source_addr->s_addr) {
+		return;
+	}
+		
+	component->local = 1;
+	component_unregister (component);
+
+	return;
+}
+
+void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
+{
+
+	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+		return;
+	}
+
+	component_register (component);
+	return;
+}
+
+void amf_confchg_nsync (struct saAmfComponent *component, void *data)
+{
+	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+		return;
+	}
+
+	/* dsm change must be needed */
+	readinessStateSetCluster (component, component->currentReadinessState);
+	haStateSetCluster (component, component->currentHAState);
+
+	return;
+}
 
 static int amf_confchg_fn (
 	enum gmi_configuration_type configuration_type,
@@ -1648,9 +1736,32 @@ static int amf_confchg_fn (
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries)
 {
+	int i;
+
 	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
 		gmi_recovery_plug_unplug (amf_recovery_plug_handle);
 	}
+
+	/*
+	 * If node join, component register
+	 */
+	if ( joined_list_entries > 0 ) {
+		enumerate_components (amf_confchg_njoin, NULL);
+		enumerate_components (amf_confchg_nsync, NULL);
+	}
+
+	/*
+	 * Note: select ONLY the first processor to execute the nleave enumeration
+	 * If node leave, component unregister
+	 */
+	if (member_list->sin_addr.s_addr != this_ip.sin_addr.s_addr) {
+		return (0);
+	}
+
+	for (i = 0; i<left_list_entries ; i++) {
+		enumerate_components (amf_confchg_nleave, (void *)&(left_list[i].sin_addr));
+	}
+
 	return (0);
 }
 
@@ -1660,7 +1771,7 @@ int amf_exit_fn (struct conn_info *conn_info)
 	 * Unregister all components registered to this file descriptor
 	 */
 	if (conn_info->service == SOCKET_SERVICE_AMF) {
-		componentUnregister (conn_info->component);
+		component_unregister (conn_info->component);
 
 		if (conn_info->component && conn_info->component->timer_healthcheck) {
 			poll_timer_delete (aisexec_poll_handle,
@@ -1731,6 +1842,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 		component->local = 0;
 		component->registered = 1;
 		component->conn_info = req_exec_amf_componentregister->source.conn_info;
+		component->source_addr = source_addr;
 		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->currentHAState = SA_AMF_QUIESCED;
@@ -1785,7 +1897,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	struct saAmfComponent *amfProxyComponent;
 	SaErrorT error;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive: ComponentUnregister for %s\n",
+	log_printf (LOG_LEVEL_DEBUG, "Executive: Component_unregister for %s\n",
 		getSaNameT (&req_exec_amf_componentunregister->req_lib_amf_componentunregister.compName));
 
 	component = findComponent (&req_exec_amf_componentunregister->req_lib_amf_componentunregister.compName);
@@ -1947,6 +2059,7 @@ static int message_handler_req_exec_amf_readinessstateset (void *message, struct
 			req_exec_amf_readinessstateset->readinessState);
 
 		component->currentReadinessState = req_exec_amf_readinessstateset->readinessState;
+		component->newReadinessState = component->currentReadinessState;
 		dsm (component);
 	}
 	
@@ -1970,6 +2083,7 @@ static int message_handler_req_exec_amf_hastateset (void *message, struct in_add
 			getSaNameT (&component->name),
 			req_exec_amf_hastateset->haState);
 		component->currentHAState = req_exec_amf_hastateset->haState;
+		component->newHAState = component->currentHAState;
 		dsm (component);
 	}
 	
