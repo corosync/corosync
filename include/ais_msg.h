@@ -201,7 +201,8 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD,
 	MESSAGE_REQ_EXEC_EVT_EVENTDATA,
-	MESSAGE_REQ_EXEC_EVT_CHANCMD
+	MESSAGE_REQ_EXEC_EVT_CHANCMD,
+	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA
 };
 
 enum req_evt_types {
@@ -998,12 +999,15 @@ struct res_evt_event_data {
  * MESSAGE_REQ_EVT_PUBLISH			(1)
  * MESSAGE_RES_EVT_EVENT_DATA		(2)
  * MESSAGE_REQ_EXEC_EVT_EVENTDATA	(3)
+ * MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA	(4)
  *
  * led_head:				Request/Results head
+ * led_in_addr:				address of node (4 only)
+ * led_receive_time:		Time that the message was received (4 only)
  * led_svr_channel_handle:	Server channel handle (1 only)
  * led_lib_channel_handle:	Lib channel handle (2 only)
- * led_chan_name:			Channel name (3 only)
- * led_event_id:			Event ID (2 and 3 only)
+ * led_chan_name:			Channel name (3 and 4 only)
+ * led_event_id:			Event ID (2, 3 and 4 only)
  * led_sub_id:				Subscription ID (2 only)
  * led_publisher_node_id:	Node ID of event publisher
  * led_publisher_name:		Node name of event publisher
@@ -1017,6 +1021,8 @@ struct res_evt_event_data {
  */
 struct lib_event_data {
 	struct res_header		led_head;
+	struct in_addr			led_in_addr;
+	SaTimeT					led_receive_time;
 	uint32_t				led_svr_channel_handle;
 	uint32_t				led_lib_channel_handle;
 	SaNameT					led_chan_name;
@@ -1045,7 +1051,7 @@ struct lib_event_data {
 struct res_evt_event_publish {
 
 	struct res_header	iep_head;
-	SaEvtEventIdT			iep_event_id;
+	SaEvtEventIdT		iep_event_id;
 };
 
 /*
@@ -1061,8 +1067,8 @@ struct res_evt_event_publish {
 struct req_evt_event_clear_retentiontime {
 
 	struct req_header	iec_head;
-	uint64_t				iec_event_id;
-	uint32_t				iec_channel_handle;
+	SaEvtEventIdT		iec_event_id;
+	uint32_t			iec_channel_handle;
 
 };
 
@@ -1086,12 +1092,27 @@ struct res_evt_event_clear_retentiontime {
  * chc_op:		Channel operation (open, close, clear retentiontime)
  */
 
+enum evt_chan_ops {
+	EVT_OPEN_CHAN_OP,
+	EVT_CLOSE_CHAN_OP,
+	EVT_CLEAR_RET_OP,
+	EVT_SET_ID_OP,
+	EVT_CONF_CHANGE,
+	EVT_CONF_DONE,
+};
+	
+struct evt_set_id {
+	struct in_addr	chc_addr;
+	SaEvtEventIdT	chc_last_id;
+};
+
 struct req_evt_chan_command {
 	struct req_header 	chc_head;
 	int 				chc_op;
 	union {
-		SaNameT			chc_chan;
-		SaEvtEventIdT	chc_event_id;
+		SaNameT				chc_chan;
+		SaEvtEventIdT		chc_event_id;
+		struct evt_set_id	chc_set_id;
 	} u;
 };
 #endif /* AIS_MSG_H_DEFINED */
