@@ -1,3 +1,19 @@
+***
+All cryptographic software in this package is subject to the following legal
+notice:
+This package includes publicly available encryption source code which,
+together with object code resulting from the compiling of publicly
+available source code, may be exported from the United States under License
+Exception TSU prsuant to 15 C.F.R Section 740.13(e).
+***
+-----------------------------------------------------------------------------
+The following license applies to every file in this package except for 
+the files exec/crypto.c and exec/crypto.h.  The license for these files is
+described later in this document.  Some files are contributed by other authors
+and hence not copyright MontaVista Software.  In this case, the license is
+still as follows:
+-----------------------------------------------------------------------------
+
 Copyright (c) 2002-2004 MontaVista Software, Inc.
 
 All rights reserved.
@@ -27,3 +43,19 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
+-----------------------------------------------------------------------------
+The openais project uses software from the LibTomCrypt project
+www.libtomcrypt.org.  This software is contained the files exec/crypto.c and
+exec/crypto.h.  The following license applies to the files exec/crypto.c and
+exec/crytpo.h:
+-----------------------------------------------------------------------------
+LibTomCrypt is public domain.  As should all quality software be.
+
+All of the software was either written by or donated to Tom St Denis for the
+purposes of this project.  The only exception is the SAFER.C source which has
+no known license status (assumed copyrighted) which is why SAFER,C is shipped
+as disabled.
+
+Tom St Denis
+
+
