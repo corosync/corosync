@@ -3281,7 +3281,7 @@ static void assembly_deliver (struct queue_frag *queue_frag)
 	struct assembly_queue_item *assembly_queue_item;
 	struct pend_queue_item pend_queue_item;
 	int res = 0;
-	struct iovec iovec_delv[256];
+	struct iovec iovec_delv[QUEUE_PEND_SIZE_MAX * MAXIOVS];
 	int iov_len_delv = 0;
 	struct mcast *mcast = 0;
 	int pend_queue_msg_item_count;
