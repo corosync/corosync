@@ -30,12 +30,14 @@
 
 # Production mode flags
 #CFLAGS = -c -O3 -Wall -I../include
+#CFLAGS = -c -O3 -Wall -I../include
 #LDFLAGS = -L../lib
 #LIBRARIES= ../lib/libais.a ../lib/libevs.a
 #LIBS = $(LIBRARIES) -lpthread
 
 # Debug mode flags
 CFLAGS = -c -g -Wall -DDEBUG -I../include
+CPPFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
 LIBRARIES= ../lib/libais.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
@@ -121,6 +123,9 @@ publish: publish.o sa_error.o $(LIBRARIES)
 evtbench: evtbench.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o evtbench evtbench.o sa_error.o $(LIBS)
 
+test: test.o $(LIBRARIES)
+	g++ $(LDFLAGS) -o test test.o $(LIBS)
+
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
@@ -147,7 +152,7 @@ testamfth.o: ../include/evs.h
 testckpt.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptstress.o: ../include/ais_types.h ../include/ais_ckpt.h
 testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
-testparse.o: ../exec/aispoll.h ../exec/gmi.h ../exec/print.h
+testparse.o: ../exec/aispoll.h ../exec/totemsrp.h ../exec/print.h
 ckptbench.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/ais_ckpt.h
 testevt.o: ../include/ais_types.h ../include/ais_evt.h
