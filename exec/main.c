@@ -65,6 +65,7 @@
 #include "parse.h"
 #include "main.h"
 #include "handlers.h"
+#include "sync.h"
 #include "evs.h"
 #include "clm.h"
 #include "amf.h"
@@ -90,6 +91,8 @@ struct service_handler *ais_service_handlers[] = {
     &ckpt_service_handler,
     &evt_service_handler
 };
+struct sync_callbacks sync_callbacks[5];
+int sync_callback_count;
 
 #define AIS_SERVICE_HANDLERS_COUNT 5
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
@@ -648,7 +651,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct in_addr source_addr, int endian_conversion_required);
-static int aisexec_handler_fns_count = 0;
+static int aisexec_handler_fns_count = 1;
 
 /*
  * Builds the handler table as an optimization
@@ -657,6 +660,11 @@ static void aisexec_handler_fns_build (void)
 {
 	int i, j;
 
+	/*
+	 * Install sync handler function
+	 */
+	aisexec_handler_fns[0] = sync_deliver_fn;
+
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
 		for (j = 0; j < ais_service_handlers[i]->aisexec_handler_fns_count; j++) {
 			aisexec_handler_fns[aisexec_handler_fns_count++] = 
@@ -664,6 +672,30 @@ static void aisexec_handler_fns_build (void)
 		}
 	}
 	log_printf (LOG_LEVEL_DEBUG, "built %d handler functions\n", aisexec_handler_fns_count);
+}
+
+void sync_completed (void)
+{
+}
+
+void aisexec_sync_fns_build (void)
+{
+	int i;
+
+	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
+		if (ais_service_handlers[i]->sync_init) {
+			sync_callbacks[sync_callback_count].sync_init =
+				ais_service_handlers[i]->sync_init;
+			sync_callbacks[sync_callback_count].sync_process =
+				ais_service_handlers[i]->sync_process;
+			sync_callbacks[sync_callback_count].sync_activate =
+				ais_service_handlers[i]->sync_activate;
+			sync_callbacks[sync_callback_count].sync_abort =
+				ais_service_handlers[i]->sync_abort;
+			sync_callback_count++;
+		}
+	}
+	sync_register (sync_callbacks, sync_callback_count, sync_completed);
 }
 
 char delivery_data[MESSAGE_SIZE_MAX];
@@ -698,7 +730,9 @@ static void deliver_fn (
 		header->id = swab32 (header->id);
 		header->size = swab32 (header->size);
 	}
-	res = aisexec_handler_fns[header->id](header, source_addr, endian_conversion_required);
+
+	res = aisexec_handler_fns[header->id](header, source_addr,
+		endian_conversion_required);
 }
 
 static void confchg_fn (
@@ -712,6 +746,14 @@ static void confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	int i;
+
+	/*
+	 * Execute configuration change for synchronization service
+	 */
+	sync_confchg_fn (configuration_type,
+		member_list, member_list_private, member_list_entries,
+		left_list, left_list_private, left_list_entries,
+		joined_list, joined_list_private, joined_list_entries, ring_id);
 
 	/*
 	 * Call configuration change for all services
@@ -969,6 +1011,8 @@ int main (int argc, char **argv)
 	aisexec_priv_drop ();
 
 	aisexec_handler_fns_build ();
+
+	aisexec_sync_fns_build ();
 
 	aisexec_mempool_init ();
 

@@ -29,13 +29,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = 
+#CFLAGS = -O3 -Wall -fomit-frame-pointer
+#LDFLAGS = 
 
 # Debug mode flags
-#CFLAGS = -g -Wall
+CFLAGS = -g -Wall
 ##-DDEBUG
-#LDFLAGS = -g
+LDFLAGS = -g
 
 # Profile mode flags
 #CFLAGS = -O2 -pg
@@ -49,9 +49,9 @@ TOTEM_SRC = aispoll.c totemsrp.c totempg.c tlist.c hdb.c crypto.c
 TOTEM_OBJS = aispoll.o totemsrp.o totempg.o tlist.o hdb.o crypto.o
 
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
-		util.c
+		util.c sync.c
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
-		util.o
+		util.o sync.o
 EXEC_LIBS = libtotem.a
 
 OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)

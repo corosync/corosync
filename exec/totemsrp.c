@@ -1501,7 +1501,6 @@ int totemsrp_mcast (
 
 	
 	if (queue_is_full (&new_message_queue)) {
-		assert (0);
 		return (-1);
 	}
 	for (j = 0, i = 0; i < iov_len; i++) {
@@ -2493,6 +2492,14 @@ int totemsrp_callback_token_create (void **handle_out,
 	}
 	
 	return (0);
+}
+
+void totemsrp_callback_token_destroy (void *handle)
+{
+	struct token_callback_instance *h = (struct token_callback_instance *)handle;
+	
+	list_del (&h->list);
+	free (h);
 }
 
 void totemsrp_callback_token_type (void *handle)

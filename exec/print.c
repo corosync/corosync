@@ -66,7 +66,8 @@ static char *log_services[] = {
 	"[AMF  ]",
 	"[CKPT ]",
 	"[EVT  ]",
-	"[EVS  ]"
+	"[EVS  ]",
+	"[SYNC ]"
 };
 
 #define LOG_MODE_DEBUG      1

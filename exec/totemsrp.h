@@ -127,7 +127,7 @@ int totemsrp_callback_token_create (
 	int (*callback_fn) (enum totemsrp_callback_token_type type, void *),
 	void *data);
 
-void totemsrp_callback_token__destroy (
+void totemsrp_callback_token_destroy (
 	void *handle);
 
 #endif /* TOTEMSRP_H_DEFINED */
