@@ -14,7 +14,7 @@
  * - Redistributions in binary form must reproduce the above copyright notice,
  *   this list of conditions and the following disclaimer in the documentation
  *   and/or other materials provided with the distribution.
- * - Neither the name of the MontaVista Software, Inc. nor the names of its
+ * - Neither the name of the Open Source Developent Lab nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -39,11 +39,32 @@
 
 extern struct service_handler evt_service_handler;
 
+/*
+ * event instance structure. Contains information about the
+ * active connection to the API library.
+ *
+ * esi_version:				Version that the library is running.
+ * esi_open_chans:			list of open channels associated with this
+ * 							instance.  Used to clean up any data left
+ * 							allocated when the finalize is done.
+ * 							(event_svr_channel_open.eco_instance_entry)
+ * esi_events:				list of pending events to be delivered on this 
+ *  						instance (struct chan_event_list.cel_entry)
+ * esi_queue_blocked:		non-zero if the delivery queue got too full
+ * 							and we're blocking new messages until we
+ * 							drain some of the queued messages.
+ * esi_nevents:				Number of events in events lists to be sent.
+ * esi_hdb:					Handle data base for open channels on this
+ * 							instance.  Used for a quick lookup of
+ * 							open channel data from a lib api message.
+ */
 struct libevt_ci {
 	SaVersionT				esi_version;
-	uint32_t				esi_notify;
 	struct list_head		esi_open_chans;
-	struct list_head		esi_events;
+	struct list_head		esi_events[SA_EVT_LOWEST_PRIORITY+1];
+	int						esi_nevents;
+	int						esi_queue_blocked;
 	struct saHandleDatabase	esi_hdb;
 };
+
 #endif
