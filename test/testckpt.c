@@ -169,6 +169,7 @@ printf ("create1 error is %d\n", error);
 		strlen ("Initial Data #0") + 1);
 printf ("create2 error is %d\n", error);
 	printf ("saCkptSectionCreate result %d (should be 1)\n", error);
+#ifdef cmpout
 for (ckptinv = 0; ckptinv < 500000; ckptinv++) {
 printf ("Writing checkpoint loop %d\n", ckptinv);
 	/*
@@ -184,6 +185,7 @@ if (error != SA_OK) {
 }
 }
 exit (1);
+#endif
 
 	error = saCkptCheckpointUnlink (&checkpointName);
 	printf ("unlink result %d (should be 1)\n", error);
@@ -287,6 +289,7 @@ exit (1);
 	printf (" buffer #2: '%s'\n", readBuffer2);
 
 //sleep (20);
+#ifdef COMPILE_OUT
 for (ckptinv = 0; ckptinv < 2000; ckptinv++) {
 	/*
 	 * Test checkpoint write
@@ -302,6 +305,7 @@ exit (1);
 }
 }
 exit (1);
+#endif
 	error = saCkptCheckpointRead (&checkpointHandle,
 		ReadVectorElements,
 		2,
