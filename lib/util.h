@@ -167,4 +167,7 @@ saQueueItemRemove (struct queue *queue);
 
 #define offset_of(type,member) (int)(&(((type *)0)->member))
 
+SaTimeT
+clustTimeNow(void);
+
 #endif /* AIS_UTIL_H_DEFINED */

@@ -42,6 +42,7 @@
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -564,3 +565,22 @@ saQueueItemRemove (struct queue *queue)
 	queue->used--;
 	return (SA_OK);
 }
+
+/*
+ * Get the time of day and convert to nanoseconds
+ */
+SaTimeT clustTimeNow(void)
+{
+	struct timeval tv;
+	SaTimeT time_now;
+
+	if (gettimeofday(&tv, 0)) {
+		return 0ULL;
+	}
+
+	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
+	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+
+	return time_now;
+}
+
