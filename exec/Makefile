@@ -33,12 +33,12 @@ CFLAGS = -O3 -Wall -fomit-frame-pointer
 LDFLAGS = 
 
 # Debug mode flags
-#CFLAGS = -g -Wall
+#CFLAGS = -g -O2 -Wall
 #-DDEBUG
 #LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O3 -pg
+#CFLAGS = -O2 -pg
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs
@@ -52,6 +52,8 @@ EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
 		util.c
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
 		util.o libgmi.a
+
+OBJS = $(GMI_OBJS) $(EXEC_OBJS)
 
 all:libgmi.a libgmi.so.1.0 aisexec keygen
 
@@ -71,7 +73,7 @@ keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen
 
 clean:
-	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1
