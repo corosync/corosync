@@ -137,9 +137,14 @@ struct sq queue_rtr_items;
 struct sockaddr_in sockaddr_in_mcast;
 
 /*
- * Multicast file descriptor
+ * File descriptor used when multicasting or receiving multicasts
  */
-int gmi_fd;
+int gmi_fd_mcast;
+
+/*
+ * File descriptor used when unicasting the token or receiving unicast tokens
+ */
+int gmi_fd_token;
 
 /*
  * Received up to and including
@@ -382,11 +387,11 @@ int gmi_init (
 	struct sockaddr_in *bound_to)
 {
 	int res;
-	struct ip_mreqn mreqn;
+	struct ip_mreq mreq;
 	struct sockaddr_in sockaddr_in;
 	char flag;
 	int i;
-	int index;
+	int found;
 
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
 
@@ -395,8 +400,9 @@ int gmi_init (
 			sizeof (struct gmi_pend_trans_item));
 	}
 	sq_init (&queue_rtr_items, QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct gmi_rtr_item), 0);
-	index = local_netif_determine (sockaddr_bindnet, bound_to);
-	if (index == -1) {
+	found = local_netif_determine (sockaddr_bindnet, bound_to);
+	if (found == -1) {
+		printf ("Could not determine local network interface\n");
 		return (-1);
 	}
 	memcpy (&memb_list[0], &memb_local_sockaddr_in, sizeof (struct sockaddr_in));
@@ -407,40 +413,65 @@ int gmi_init (
 	 * Set local sock addr for new socket
 	 */
 	sockaddr_in.sin_family = AF_INET;
-	sockaddr_in.sin_addr.s_addr = htonl (INADDR_ANY);
+	sockaddr_in.sin_addr.s_addr = sockaddr_in_mcast.sin_addr.s_addr;
 	sockaddr_in.sin_port = sockaddr_in_mcast.sin_port;
 
 	/*
 	 * Join group membership on socket
 	 */
-	mreqn.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
-	mreqn.imr_ifindex = index + 1;
+	mreq.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
+	mreq.imr_interface.s_addr = bound_to->sin_addr.s_addr;
 
-	gmi_fd = socket (AF_INET, SOCK_DGRAM, 0);
-	if (gmi_fd == -1) {
+	gmi_fd_mcast = socket (AF_INET, SOCK_DGRAM, 0);
+	if (gmi_fd_mcast == -1) {
 		perror ("socket");
 		return (-1);
 	}
 
-	res = bind (gmi_fd, (struct sockaddr *)&sockaddr_in,
+	gmi_fd_token = socket (AF_INET, SOCK_DGRAM, 0);
+	if (gmi_fd_token == -1) {
+		perror ("socket2");
+		return (-1);
+	}
+
+	/*
+	 * Bind to multicast socket used for multicast send/receives
+	 */
+	res = bind (gmi_fd_mcast, (struct sockaddr *)&sockaddr_in,
 		sizeof (struct sockaddr_in));
 	if (res == -1) {
 		perror ("bind failed");
 		return (-1);
 	}
-#ifdef BROADCAST_CODE_TAKEN_OUT
-this code is the broadcast socket option vs multicast socket option
-	setsockopt (gmi_fd, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
-#endif
-	res = setsockopt (gmi_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-		&mreqn, sizeof (mreqn));
+
+	/*
+	 * Bind to unicast socket used for token send/receives
+	 */
+	sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
+	res = bind (gmi_fd_token, (struct sockaddr *)&sockaddr_in,
+		sizeof (struct sockaddr_in));
+	if (res == -1) {
+		perror ("bind2 failed");
+		return (-1);
+	}
+
+#ifdef CONFIG_USE_BROADCAST
+/* This config option doesn't work */
+{
+	int on = 1;
+	setsockopt (gmi_fd_mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
+}
+#else
+	res = setsockopt (gmi_fd_mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+		&mreq, sizeof (mreq));
 	if (res == -1) {
 		perror ("join multicast group failed");
 		return (-1);
 	}
 
+#endif
 	flag = 0;
-	res = setsockopt (gmi_fd, IPPROTO_IP, IP_MULTICAST_LOOP,
+	res = setsockopt (gmi_fd_mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
 		&flag, sizeof (flag));
 	if (res == -1) {
 		perror ("turn off loopback");
@@ -449,7 +480,9 @@ this code is the broadcast socket option vs multicast socket option
 
 	gmi_poll_handle = poll_handle;
 
-	poll_dispatch_add (*gmi_poll_handle, gmi_fd, POLLIN, 0, recv_handler);
+	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler);
+
+	poll_dispatch_add (*gmi_poll_handle, gmi_fd_token, POLLIN, 0, recv_handler);
 
 	memb_state_gather_enter ();
 
@@ -687,14 +720,15 @@ static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_i
 	int numreqs = 0;
 	int res;
 	int i;
+	in_addr_t mask_addr;
 
 	/*
 	 * Generate list of local interfaces in ifc.ifc_req structure
 	 */
-	id_fd = socket (AF_INET, SOCK_DGRAM, 0);
+	id_fd = socket (AF_INET, SOCK_STREAM, 0);
 	ifc.ifc_buf = 0;
 	do {
-		numreqs += 8;
+		numreqs += 32;
 		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
 		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
 		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
@@ -703,15 +737,19 @@ static int local_netif_determine (struct sockaddr_in *bindnet, struct sockaddr_i
 			return -1;
 		}
 	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
-
 	res = -1;
 
 	/*
-	 * Find interface to bind to
+	 * Find interface address to bind to
 	 */
 	for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++) {
-	sockaddr_in = (struct sockaddr_in *)&ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_addr;
-		if ((sockaddr_in->sin_addr.s_addr & 0x00ffffff) == (bindnet->sin_addr.s_addr & 0x00ffffff)) {
+		sockaddr_in = (struct sockaddr_in *)&ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_addr;
+		mask_addr = inet_addr ("255.255.255.0");
+
+		if ((sockaddr_in->sin_family == AF_INET) &&
+			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
+			(bindnet->sin_addr.s_addr & mask_addr)) {
+
 			memb_local_sockaddr_in.sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
 			memb_local_sockaddr_in.sin_family = AF_INET;
 			memb_local_sockaddr_in.sin_port = sockaddr_in_mcast.sin_port;
@@ -772,7 +810,7 @@ int orf_token_remcast (int seqid) {
 	/*
 	 * Multicast message
 	 */
-	res = sendmsg (gmi_fd, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (res == -1) {
 printf ("error during remulticast %d %d %d\n", seqid, errno, gmi_rtr_item->iov_len);
 		return (-1);
@@ -967,7 +1005,7 @@ static int orf_token_mcast (
 		/*
 		 * Multicast message
 		 */
-		res = sendmsg (gmi_fd, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+		res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
 		/*
 		 * An error here is recovered by the multicast algorithm
 	 	 */
@@ -1446,7 +1484,7 @@ static int orf_token_send (
 //	return (1);
 //}
 
-	res = sendmsg (gmi_fd, &msg_orf_token, MSG_NOSIGNAL);
+	res = sendmsg (gmi_fd_token, &msg_orf_token, MSG_NOSIGNAL);
 	assert (res != -1);
 	
 	/*
@@ -1526,7 +1564,7 @@ static int memb_join_send (void)
 	msghdr_join.msg_controllen = 0;
 	msghdr_join.msg_flags = 0;
 
-	res = sendmsg (gmi_fd, &msghdr_join, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_fd_mcast, &msghdr_join, MSG_NOSIGNAL | MSG_DONTWAIT);
 
 	return (res);
 }
@@ -1915,7 +1953,7 @@ static int memb_form_token_send (
 	msg_form_token.msg_controllen = 0;
 	msg_form_token.msg_flags = 0;
 	
-	res = sendmsg (gmi_fd, &msg_form_token, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_fd_token, &msg_form_token, MSG_NOSIGNAL | MSG_DONTWAIT);
 
 	/*
 	 * res not used here, because orf token errors are handled by algorithm
@@ -2167,7 +2205,7 @@ static int memb_state_gather_enter (void) {
 		msghdr_attempt_join.msg_controllen = 0;
 		msghdr_attempt_join.msg_flags = 0;
 
-		res = sendmsg (gmi_fd, &msghdr_attempt_join, MSG_NOSIGNAL | MSG_DONTWAIT);
+		res = sendmsg (gmi_fd_mcast, &msghdr_attempt_join, MSG_NOSIGNAL | MSG_DONTWAIT);
 		/*
 		 * res not checked here, there is nothing that can be done
 		 * instead rely on the algorithm to recover from faults
@@ -2852,7 +2890,7 @@ int recv_handler (poll_handle handle, int fd, int revents, void *data)
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
 
-	bytes_received = recvmsg (gmi_fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (bytes_received == -1) {
 		return (0);
 	} else {
