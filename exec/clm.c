@@ -71,6 +71,8 @@ int clusterNodeEntries = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
+static gmi_recovery_plug_handle clm_recovery_plug_handle;
+
 SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 {
 	SaClmClusterNodeT *ret = NULL;
@@ -91,9 +93,10 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int clmExecutiveInitialize (void);
+static int clm_exec_init_fn (void);
 
-static int clmConfChg (
+static int clm_confchg_fn (
+	enum gmi_configuration_type configuration_type,
     struct sockaddr_in *member_list, int member_list_entries,
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries);
@@ -154,15 +157,23 @@ struct service_handler clm_service_handler = {
 	.libais_handlers_count		= sizeof (clm_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= clm_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= clmConfChg,
+	.confchg_fn					= clm_confchg_fn,
 	.libais_init_fn				= message_handler_req_clm_init,
 	.libais_exit_fn				= clm_exit_fn,
-	.aisexec_init_fn			= clmExecutiveInitialize
+	.exec_init_fn				= clm_exec_init_fn
 };
 
-static int clmExecutiveInitialize (void)
+static int clm_exec_init_fn (void)
 {
-	
+	int res;
+
+    res = gmi_recovery_plug_create (&clm_recovery_plug_handle);
+	if (res != 0) {
+       log_printf(LOG_LEVEL_ERROR,
+            "Could not create recovery plug for clm service.\n");
+		return (-1);
+	}
+
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 
 	/*
@@ -357,12 +368,13 @@ static int clmNodeJoinSend (void)
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
-	result = gmi_mcast (&aisexec_groupname, &req_exec_clm_iovec, 1, GMI_PRIO_HIGH);
+	result = gmi_mcast (&aisexec_groupname, &req_exec_clm_iovec, 1, GMI_PRIO_RECOVERY);
 
 	return (result);
 }
 
-static int clmConfChg (
+static int clm_confchg_fn (
+	enum gmi_configuration_type configuration_type,
     struct sockaddr_in *member_list, int member_list_entries,
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries) {
@@ -396,6 +408,10 @@ static int clmConfChg (
 	}
 
 	libraryNotificationLeave (nodes, i);
+
+	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
+		gmi_recovery_plug_unplug (clm_recovery_plug_handle);
+	}
 
 	return (0);
 }
