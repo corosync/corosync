@@ -39,6 +39,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "ais_types.h"
 #include "ais_amf.h"
@@ -241,6 +242,10 @@ SaAmfCallbacksT amfCallbacks = {
 
 SaVersionT version = { 'A', 1, 1 };
 
+void sigintr_handler (int signum) {
+        exit (0);
+}
+
 int main (int argc, char **argv) {
 	SaAmfHandleT handle;
 	SaAmfHandleT handleproxy;
@@ -250,12 +255,17 @@ int main (int argc, char **argv) {
 	SaNameT compName;
 	SaNameT proxyCompName;
 	SaNameT csiName;
+	SaNameT compname_get_name;
 	SaAmfReadinessStateT readinessState;
+	SaAmfHAStateT HAState;
 	SaAmfComponentCapabilityModelT componentCapabilityModel;
 	SaAmfProtectionGroupNotificationT protectionGroupNotificationBuffer[64];
+	SaAmfPendingOperationFlagsT pending_operation;
 	extern char *optarg;
 	extern int optind;
 	int c;
+
+        signal (SIGINT, sigintr_handler);
 
 	for (;;) {
 		c = getopt(argc,argv,"h:");
@@ -293,6 +303,16 @@ int main (int argc, char **argv) {
 
 	setSanameT (&compName, "comp_a_in_su_x");
 	setSanameT (&csiName, "pgA");
+
+	result = saAmfCompNameGet (&handle, &compname_get_name);
+	printf ("saAmfCompNameGet with result %d (should be 1) is:", result);
+	printSaNameT (&compname_get_name);
+	printf ("\n");
+
+	result = saAmfPendingOperationGet (&compName, &pending_operation);
+	printf ("saAmfPendingOperationGet with value %d result %d (should be 1) is:",
+		pending_operation, result);
+
 	result = saAmfComponentCapabilityModelGet (&compName, &componentCapabilityModel);
 	printf ("component capability model get is %d (should be 1)\n", result);
 
@@ -301,7 +321,15 @@ int main (int argc, char **argv) {
 
 	result = saAmfProtectionGroupTrackStop (&handle, &csiName);
 	printf ("track stop result is %d (should be 1)\n", result);
+
 	result = saAmfReadinessStateGet (&compName, &readinessState);
+	printf ("saAmfReadinessStateGet (%d) result %d (should be 1)\n",
+		readinessState, result);
+
+	result = saAmfHAStateGet (&compName, &csiName, &HAState);
+	printf ("saAmfHAStateGet (%d) result %d (should be 1)\n",
+		HAState, result);
+
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);
 		saAmfDispatch (&handle, SA_DISPATCH_ALL);
