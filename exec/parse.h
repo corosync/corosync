@@ -55,6 +55,27 @@ enum amfOperationalAdministrativeState {
 	AMF_ENABLED_STOPPING = 3
 };
 
+struct openais_config {
+	/*
+	 * network
+	 */
+    struct gmi_interface *interfaces;
+    int interface_count;
+	struct sockaddr_in mcast_addr;
+
+	/*
+	 * logging
+	 */
+	int logmode;
+	char *logfile;
+
+	/*
+	 * key
+	 */
+	unsigned char *key;
+	int keylen;
+};
+
 struct saAmfUnit {
 	SaNameT name;
 	struct list_head saAmfComponentHead;
@@ -154,11 +175,10 @@ extern struct list_head saAmfGroupHead;
 
 extern struct saAmfComponent *findComponent (SaNameT *name);
 
-extern int amfReadGroups (char **error_string);
+extern int openais_amf_config_read (char **error_string);
 
-extern int readNetwork (char **error_string,
-        struct sockaddr_in *mcast_addr,
-        struct gmi_interface *interfaces,
-        int interface_count);
-
+extern int openais_main_config_read (char **error_string,
+	struct openais_config *openais_config,
+	int interface_max);
+	
 #endif /* PARSE_H_DEFINED */

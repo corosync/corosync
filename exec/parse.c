@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <assert.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -44,17 +45,24 @@
 #include "util.h"
 #include "parse.h"
 #include "mempool.h"
+#include "print.h"
 
 DECLARE_LIST_INIT (saAmfGroupHead);
 
 typedef enum {
-	HEAD,
-	GROUP,
-	UNIT,
-	PROTECTION,
-	COMPONENT
-} SaParsingT;
+	AMF_HEAD,
+	AMF_GROUP,
+	AMF_UNIT,
+	AMF_PROTECTION,
+	AMF_COMPONENT
+} amf_parse_t;
 
+typedef enum {
+	MAIN_HEAD,
+	MAIN_NETWORK,
+	MAIN_LOGGING,
+	MAIN_KEY
+} main_parse_t;
 
 void setSaNameT (SaNameT *name, char *str) {
 	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
@@ -128,6 +136,7 @@ struct saAmfComponent *findComponent (SaNameT *name)
 		return (0);
 	}
 }
+
 char *
 strstr_rs (const char *haystack, const char *needle)
 {
@@ -157,13 +166,13 @@ strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
-static char error_string_response[256];
+static char error_string_response[512];
 
-int amfReadGroups (char **error_string)
+extern int openais_amf_config_read (char **error_string)
 {
 	char line[255];
 	FILE *fp;
-	SaParsingT current_parse = HEAD;
+	amf_parse_t current_parse = AMF_HEAD;
 	int line_number = 0;
 	char *loc;
 	int i;
@@ -181,7 +190,7 @@ int amfReadGroups (char **error_string)
 	fp = fopen ("/etc/ais/groups.conf", "r");
 	if (fp == 0) {
 		sprintf (error_string_response,
-			"ERROR: Can't read /etc/ais/groups.conf file (%s).\n", strerror (errno));
+			"Can't read /etc/ais/groups.conf file (%s).\n", strerror (errno));
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -207,7 +216,7 @@ int amfReadGroups (char **error_string)
 		}
 			
 		switch (current_parse) {
-		case HEAD:
+		case AMF_HEAD:
 			if (strstr_rs (line, "group{")) {
 				saAmfGroup = (struct saAmfGroup *)mempool_malloc (sizeof (struct saAmfGroup));
 				memset (saAmfGroup, 0, sizeof (struct saAmfGroup));
@@ -215,7 +224,7 @@ int amfReadGroups (char **error_string)
 				list_init (&saAmfGroup->saAmfUnitHead);
 				list_init (&saAmfGroup->saAmfProtectionGroupHead);
 				list_add (&saAmfGroup->saAmfGroupList, &saAmfGroupHead);
-				current_parse = GROUP;
+				current_parse = AMF_GROUP;
 			} else
 			if (strcmp (line, "") == 0) {
 			} else {
@@ -223,7 +232,7 @@ int amfReadGroups (char **error_string)
 			}
 			break;
 
-		case GROUP:
+		case AMF_GROUP:
 			if ((loc = strstr_rs (line, "name=")) != 0) {
 				setSaNameT (&saAmfGroup->name, loc);
 			} else
@@ -261,7 +270,7 @@ int amfReadGroups (char **error_string)
 
 				list_init (&saAmfUnit->saAmfComponentHead);
 				list_add (&saAmfUnit->saAmfUnitList, &saAmfGroup->saAmfUnitHead);
-				current_parse = UNIT;
+				current_parse = AMF_UNIT;
 			} else
 			if (strstr_rs (line, "protection{")) {
 				saAmfProtectionGroup = (struct saAmfProtectionGroup *)mempool_malloc (sizeof (struct saAmfProtectionGroup));
@@ -270,16 +279,16 @@ int amfReadGroups (char **error_string)
 				list_init (&saAmfProtectionGroup->saAmfProtectionGroupList);
 				list_add (&saAmfProtectionGroup->saAmfProtectionGroupList, &saAmfGroup->saAmfProtectionGroupHead);
 
-				current_parse = PROTECTION;
+				current_parse = AMF_PROTECTION;
 			} else
 			if (strstr_rs (line, "}")) {
-				current_parse = HEAD;
+				current_parse = AMF_HEAD;
 			} else {
 				goto parse_error;
 			}
 			break;
 
-		case UNIT:
+		case AMF_UNIT:
 			if ((loc = strstr_rs (line, "name=")) != 0) {
 				setSaNameT (&saAmfUnit->name, loc);
 			} else
@@ -296,16 +305,16 @@ int amfReadGroups (char **error_string)
 				list_init (&saAmfComponent->saAmfProtectionGroupList);
 				list_add (&saAmfComponent->saAmfComponentList, &saAmfUnit->saAmfComponentHead);
 
-				current_parse = COMPONENT;
+				current_parse = AMF_COMPONENT;
 			} else
 			if (strstr_rs (line, "}")) {
-				current_parse = GROUP;
+				current_parse = AMF_GROUP;
 			} else {
 				goto parse_error;
 			}
 			break;
 
-		case COMPONENT:
+		case AMF_COMPONENT:
 			if ((loc = strstr_rs (line, "name=")) != 0) {
 				setSaNameT (&saAmfComponent->name, loc);
 			} else
@@ -335,13 +344,13 @@ int amfReadGroups (char **error_string)
 				}
 			} else
 			if (strstr_rs (line, "}")) {
-				current_parse = UNIT;
+				current_parse = AMF_UNIT;
 			} else {
 				goto parse_error;
 			}
 			break;
 
-		case PROTECTION:
+		case AMF_PROTECTION:
 			if ((loc = strstr_rs (line, "name=")) != 0) {
 				setSaNameT (&saAmfProtectionGroup->name, loc);
 			} else
@@ -373,7 +382,7 @@ int amfReadGroups (char **error_string)
 				}
 			} else
 			if (strstr_rs (line, "}")) {
-				current_parse = GROUP;
+				current_parse = AMF_GROUP;
 			} else {
 				goto parse_error;
 			}
@@ -391,68 +400,206 @@ int amfReadGroups (char **error_string)
 
 parse_error:
 	sprintf (error_string_response,
-		"ERROR: parse error at /etc/groups.conf:%d.\n", line_number);
+		"parse error at /etc/groups.conf:%d.\n", line_number);
 	*error_string = error_string_response;
 	fclose (fp);
 	return (-1);
 }
 
-int readNetwork (char **error_string,
-	struct sockaddr_in *mcast_addr,
-	struct gmi_interface *interfaces,
-	int interface_count)
+extern int openais_main_config_read (char **error_string,
+    struct openais_config *openais_config,
+	int interface_max)
 {
-	char line[255];
 	FILE *fp;
-	int res = 0;
 	int line_number = 0;
-	int interface_no = 0;
+	main_parse_t parse = MAIN_HEAD;
+	int network_parsed = 0;
+	int logging_parsed = 0;
+	int key_parsed = 0;
+	char *loc;
+	int i;
+	int parse_done = 0;
+	char line[512];
+	char error_str[512];
+	char *error_reason = error_str;
 
-	memset (mcast_addr, 0, sizeof (struct sockaddr_in));
-	memset (interfaces, 0, sizeof (struct gmi_interface) * interface_count);
+	memset (openais_config, 0, sizeof (struct openais_config));
+	openais_config->interfaces = malloc (sizeof (struct gmi_interface) * interface_max);
+	if (openais_config->interfaces == 0) {
+		parse_done = 1;
+		
+		error_reason = "Out of memory trying to allocate ethernet interface storage area";
+		goto parse_error;
+	}
 
-	mcast_addr->sin_family = AF_INET;
-	fp = fopen ("/etc/ais/network.conf", "r");
+	memset (openais_config->interfaces, 0,
+		sizeof (struct gmi_interface) * interface_max);
+
+	openais_config->mcast_addr.sin_family = AF_INET;
+	fp = fopen ("/etc/ais/openais.conf", "r");
 	if (fp == 0) {
-		sprintf (error_string_response,	
-			"ERROR: Can't read /etc/ais/network.conf file (%s).\n", strerror (errno));
-		*error_string = error_string_response;
-		return (-1);
+		parse_done = 1;
+		sprintf (error_reason, "Can't read file reason = %s", strerror (errno));
+		goto parse_error;
 	}
 
 	while (fgets (line, 255, fp)) {
 		line_number += 1;
-		if (strncmp ("mcastaddr:", line, strlen ("mcastaddr:")) == 0) {
-			res = inet_aton (&line[strlen("mcastaddr:")], &mcast_addr->sin_addr);
-		} else
-		if (strncmp ("mcastport:", line, strlen ("mcastport:")) == 0) {
-			res = mcast_addr->sin_port = htons (atoi (&line[strlen("mcastport:")]));
-		} else
-		if (strncmp ("bindnetaddr:", line, strlen ("bindnetaddr:")) == 0) {
-			if (interface_count == interface_no) {
-				sprintf (error_string_response,
-					"ERROR: %d is too many interfaces in /etc/ais/network.conf %d.\n", interface_no, line_number);
-				*error_string = error_string_response;
-				res = -1;
+		line[strlen(line) - 1] = '\0';
+		/*
+		 * Clear out white space and tabs
+		 */
+		for (i = strlen (line) - 1; i > -1; i--) {
+			if (line[i] == '\t' || line[i] == ' ') {
+				line[i] = '\0';
+			} else {
 				break;
 			}
-			res = inet_aton (&line[strlen("bindnetaddr:")], &interfaces[interface_no].bindnet.sin_addr);
-			interface_no += 1;
-		} else {
-			res = 0;
-			break;
 		}
-		if (res == 0) {
-			sprintf (error_string_response,	
-				"ERROR: parse error at /etc/ais/network.conf:%d.\n", line_number);
-			*error_string = error_string_response;
-			res = -1;
-			break;
+		/*
+		 * Clear out comments and empty lines
+		 */
+		if (line[0] == '#' || line[0] == '\0') {
+			continue;
 		}
-		res = 0;
+			
+		line_number += 1;
+
+		switch (parse) {
+		case MAIN_HEAD:
+			if (network_parsed == 0 && strstr_rs (line, "network{")) {
+				network_parsed = 1;
+				parse = MAIN_NETWORK;
+			} else
+			if (logging_parsed == 0 && strstr_rs (line, "logging{")) {
+				logging_parsed = 1;
+				parse = MAIN_LOGGING;
+			} else
+			if (key_parsed == 0 && strstr_rs (line, "key{")) {
+				key_parsed = 1;
+				parse = MAIN_KEY;
+			} else {
+				goto parse_error;
+			}
+			break;
+
+		case MAIN_NETWORK:
+			if ((loc = strstr_rs (line, "mcastaddr:"))) {
+				inet_aton (loc, &openais_config->mcast_addr.sin_addr);
+			} else
+			if ((loc = strstr_rs (line, "mcastport:"))) {
+				openais_config->mcast_addr.sin_port = htons (atoi (loc));
+			} else
+			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
+				if (interface_max == openais_config->interface_count) {
+					sprintf (error_reason,
+						"%d is too many interfaces in /etc/ais/network.conf",
+					openais_config->interface_count);
+					goto parse_error;
+				}
+				inet_aton (loc,
+					&openais_config->interfaces[openais_config->interface_count].bindnet.sin_addr);
+				openais_config->interface_count += 1;
+			} else
+			if ((loc = strstr_rs (line, "}"))) {
+				parse = MAIN_HEAD;
+			} else {
+				goto parse_error;
+			}
+			break;
+
+		case MAIN_LOGGING:
+			if ((loc = strstr_rs (line, "logoutput:"))) {
+				if (strcmp (loc, "file") == 0) {
+					openais_config->logmode |= LOG_MODE_FILE;
+				} else
+				if (strcmp (loc, "syslog") == 0) {
+					openais_config->logmode |= LOG_MODE_SYSLOG;
+				} else
+				if (strcmp (loc, "stderr") == 0) {
+					openais_config->logmode |= LOG_MODE_STDERR;
+				} else {
+					goto parse_error;
+				}
+			} else
+			if ((loc = strstr_rs (line, "debug:"))) {
+				if (strcmp (loc, "on") == 0) {
+					openais_config->logmode |= LOG_MODE_DEBUG;
+				} else
+				if (strcmp (loc, "off") == 0) {
+					openais_config->logmode &= ~LOG_MODE_DEBUG;
+				} else {
+					goto parse_error;
+				}
+			} else
+			if ((loc = strstr_rs (line, "timestamp:"))) {
+				if (strcmp (loc, "on") == 0) {
+					openais_config->logmode |= LOG_MODE_TIMESTAMP;
+				} else
+				if (strcmp (loc, "off") == 0) {
+					openais_config->logmode &= ~LOG_MODE_TIMESTAMP;
+				} else {
+					goto parse_error;
+				}
+			} else 
+			if ((loc = strstr_rs (line, "logfile:"))) {
+				openais_config->logfile = strdup (loc);
+			} else
+			if ((loc = strstr_rs (line, "}"))) {
+				parse = MAIN_HEAD;
+			} else {
+				goto parse_error;
+			}
+			break;
+
+		default:
+			assert (0 == 1); /* SHOULDN'T HAPPEN */
+			break;	
+		}
 	}
 
+	/*
+	 * Some error checking of parsed data to make sure its valid
+	 */
+	parse_done = 1;
+	if (openais_config->mcast_addr.sin_addr.s_addr == 0) {
+		error_reason = "No multicast address specified";
+		goto parse_error;
+	}
 
+	if (openais_config->mcast_addr.sin_port == 0) {
+		error_reason = "No multicast port specified";
+		goto parse_error;
+	}
+
+	if (openais_config->interface_count == 0) {
+		error_reason = "No bindnet specified";
+		goto parse_error;
+	}
+
+	if ((openais_config->logmode & LOG_MODE_FILE) && openais_config->logfile == 0) {
+		error_reason = "logmode set to 'file' but no logfile specified";
+		goto parse_error;
+	}
+
+	if (parse == MAIN_HEAD) {
+		fclose (fp);
+		return (0);
+	} else {
+		error_reason = "Missing closing brace";
+		goto parse_error;
+	}
+
+parse_error:
+	if (parse_done) {
+		sprintf (error_string_response,
+			"parse error in /etc/ais/openais.conf: %s.\n", error_reason);
+	} else {
+		sprintf (error_string_response,
+			"parse error in /etc/ais/openais.conf: %s (line %d).\n",
+			error_reason, line_number);
+	}
+	*error_string = error_string_response;
 	fclose (fp);
-	return (res);
+	return (-1);
 }
