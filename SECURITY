@@ -1,10 +1,12 @@
-----------------------------
- Security Design of openais
-----------------------------
-
-The openais project uses code from the libtomcrypt package (www.libtomcrypt.org)
-for most of the algorithms described in this document.  The libtomcrypt code has
-a public domain license.
+***
+All cryptographic software in this package is subject to the following legal
+notice:
+This package includes publicly available encryption source code which,
+together with object code resulting from the compiling of publicly
+available source code, may be exported from the United States under License
+Exception TSU prsuant to 15 C.F.R Section 740.13(e).
+***
+Security Design of openais
 
 The openais project intends to mitigate the following threats:
 
@@ -44,98 +46,81 @@ Group messaging uses UDP/IP to communicate with other openais executives using
 messages.  It is possible without authentication of every packet that an
 attacker could forge messages.  These forged messages could fault the openais
 executive distributed state machines.  It would also be possible to corrupt 
-end applications by forging updates 
+end applications by forging changes.
 
 Since messages are sent using UDP/IP it would be possible to snoop those
 messages and rebuild sensitive data.
 
 To solve these problems, the group messaging interface uses two new interfaces
 interal to it's implementation:
-1. ctr_encrypt_and_sign - encrypts and signs a message securely
-2. ctr_authenticate_and_decrypt - authenticates and decrypts a message securely
+1. encrypt_and_sign - encrypts and signs a message securely
+2. authenticate_and_decrypt - authenticates and decrypts a message securely
 
 When the executive wants to send a message over the network, it uses
-ctr_encrypt_and_sign to prepare the message to be sent.  When the executive
+encrypt_and_sign to prepare the message to be sent.  When the executive
 wants to receive a message from the network, it uses
-ctr_authenticate_and_decrypt to verify the message is valid and decrypt it.
+authenticate_and_decrypt to verify the message is valid and decrypt it.
 
 These two functions utilize the following algorithms:
-yarrow - secure pseudo random number generator
-pkcs #5 alg #2 - Converts a random and secret key into a larger key
-md4 - hash algorithm secure for using with yarrow and pkcs
 sha1 - hash algorithm secure for using with hmac 
-hmac - produces a 20 byte sha1 digest from any length input and a 16 byte key
-blowfish - cipher algorithm - encrypts one block of data
-ctr - Counter mode of ciphering - encrypts variable length data blocks
+hmac - produces a 16 byte digest from any length input
+sober - pseudo random number generator and stream cipher
 
 The hmac algorithm requires a 16 byte key.
-The blowfish algorithm requires a 16 byte key.
-The ctr algorithm requires a 16 byte nonce.
+The sober algorithm requires a 16 byte private key.
+The sober algorithm requires a 16 byte public initial vector.
 
 The private key is read from disk and stored in memory for use with the
-pkcs #5 alg #2 operation.
+sober algorithm to generate the three required keys.
 
 Every message starts with a
-struct digest {
+struct security {
 	unsigned char digest[20]; A one way hash digest
-};
-
-struct salt {
 	unsigned char salt[16]; A securely generated random number 
-};
-
-struct sec_hdr {
-	struct digest;
-	struct salt;
 }
 
-The sec_hdr.digest is never hashed or encrypted by the algorithms described.
-The sec_hdr.salt is never encrypted, but is hashed by the algoriths described.
-
-When a message is sent (ctr_encrypt_and_sign):
-----------------------------------------------
-1. yarrow is used to create a 16 byte random number (salt) using the md4
+When a message is sent (encrypt_and_sign):
+------------------------------------------
+1. sober is used to create a 16 byte random number (salt) using the md4
    algorithm
-2. pkcs #5 alg #2 is used with the salt and private key to create a 48 byte
-   key.  This 48 byte key is split into 3 16 byte keys.  The keys are the
-   hmac key, the blowfish key, and the ctr nonce key.  pkcs uses the md4
-   algorithm.
-3. The ctr nonce and blowfish key from step #2 are used to setup the ctr cipher
-   for use with blowfish.
-4. The data of the packet, except for the sec_hdr, is encrypted using
-   the ctr cipher that was initialized in step #3.
-5. The salt is stored in the sec_hdr header of the outgoing message.
+2. sober is keyed with the private key and the initial vector is set to the
+   salt.  Then a 48 byte key is read from the sober algorithm.  This 48 byte
+   key is split into 3 16 byte keys.  The keys are the hmac key, the sober key
+   and the sober initial vector.
+3. A sober instance is keyed with the sober key and sober initial vector
+   from step #2.
+4. The data of the packet, except for the security header, is encrypted using
+   the sober cipher that was initialized in step #3.
+5. The salt is stored in the security header of the outgoing message.
 6. The hmac is initialized with the hmac key generated in step #2.
-7. The message, except for the sec_hdr.digest, is hmaced to produce a digest
+7. The message, except for the security header, is hmaced to produce a digest
    using the sha1 algorithm.
 8. The digest is stored in the outgoing message.
 9. The message is transmitted. 
 
 
-When a message is received (ctr_decrypt_and_authenticate):
----------------------------------------------------------
-1. yarrow is used to create a 16 byte random number (salt) using the md4
-   algorithm
-2. pkcs #5 alg #2 is used with the salt and private key to create a 48 byte
-   key.  This 48 byte key is split into 3 16 byte keys.  The keys are the
-   hmac key, the blowfish key, and the ctr nonce key.  pkcs uses the md4
-   algorithm.
-3. The ctr nonce and blowfish key from step #2 are used to setup the ctr cipher
-   for use with blowfish.
-4. The hmac is setup using the hmac key generated in step #2 using sha1.
-5. The message is authenticated, except for the sec_hdr.digest.
+When a message is received (decrypt_and_authenticate):
+------------------------------------------------------
+1. sober is keyed with the private key and the initial vector is set to the
+   salt in the received message.  Then a 48 byte key is read from the sober
+   algorithm.  This 48 byte key is split into 3 16 byte keys.  The keys are the
+   hmac key, the sober key and the sober initial vector.
+2. The sober key and sober initial vector from step #1 are used to key a
+   new sober instance.
+3. The hmac is setup using the hmac key generated in step #1 using sha1.
+5. The message is authenticated, except for the security header.
 6. If the message was not authenticated, the caller is told of the result.
    The caller ignores the message.
-7. The message is decrypted, except for the sec_hdr, using the ctr
-   initialized in step #3.
+7. The message is decrypted, except for the security header, using the sober
+   algorithm in step #2.
 8. The message is processed.
 
 This does consume some resources.  It ensures the private key is never shared
-openly.  All messages are authenticated and encrypted.   An exposure of 
-one of the nonce key, blowfish key, or hmac key can only be used to
-attack the key relating to the algorithm.  Finally every key used is
-randomly unique (within the 2^128 search space of the input to pkcs) to ensure
-that keys are never reused, nonce's are never reused, and hmac's are never
-reused in combination with each other.
+openly, that messages are authenticated, that messages are encrypted, and that
+any key exposure of the sober encryption key, sober initial vector, or hmac
+key can only be used to attack one of the algorithms.  Finally every key used
+is randomly unique (within the 2^128 search space of the input to sober) to
+ensure that keys are never reused, nonce's are never reused, and hmac's are
+never reused.
 
 Comments welcome mailto:openais@lists.osdl.org
