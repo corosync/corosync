@@ -1223,7 +1223,7 @@ saEvtEventDataGet(
 	void *event_data, 
 	SaSizeT *event_data_size)
 {
-	SaErrorT error = SA_OK;;
+	SaErrorT error = SA_OK;
 	struct event_data_instance *edi;
 	SaSizeT xfsize;
 
