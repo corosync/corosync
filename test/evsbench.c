@@ -35,6 +35,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
@@ -49,6 +51,9 @@
 
 #include "ais_types.h"
 #include "evs.h"
+
+static int alarm_notice = 0;
+
 
 void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
 {
@@ -96,26 +101,31 @@ struct iovec iov = {
 	.iov_len = sizeof (buffer)
 };
 
-void ckpt_benchmark (evs_handle_t handle,
-	int write_count, int write_size)
+void evs_benchmark (evs_handle_t handle,
+	int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	evs_error_t result;
-	int i = 0;
+	int write_count = 0;
 
+	/*
+	 * Run benchmark for 10 seconds
+	 */
+	alarm (10);
 	gettimeofday (&tv1, NULL);
 
 	iov.iov_len = write_size;
-	for (i = 0; i < write_count; i++) {
-		sprintf (buffer, "This is message %d\n", i);
+	do {
+		sprintf (buffer, "This is message %d\n", write_count);
 try_again:
 		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, EVS_PRIO_LOW, &iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again;
+		} else {
+			write_count += 1;
 		}
-	
 		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
-	}
+	} while (alarm_notice == 0);
 	gettimeofday (&tv2, NULL);
 	timersub (&tv2, &tv1, &tv_elapsed);
 
@@ -127,15 +137,23 @@ try_again:
 		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 	printf ("%7.3f MB/s.\n", 
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+
+	alarm_notice = 0;
+}
+
+void sigalrm_handler (int num)
+{
+	alarm_notice = 1;
 }
 
 int main (void) {
 	int size;
-	int count;
 	int i;
 	evs_error_t result;
 	evs_handle_t handle;
 	
+	signal (SIGALRM, sigalrm_handler);
+
 	result = evs_initialize (&handle, &callbacks);
 	printf ("Init result %d\n", result);
 	result = evs_join (&handle, groups, 3);
@@ -143,17 +161,15 @@ int main (void) {
 	result = evs_leave (&handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 
-	count = 100000;
-	size = 1300;
+	size = 1;
 
-	for (i = 0; i < 35; i++) { /* number of repetitions */
-		ckpt_benchmark (handle, count, size);
+	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
+		evs_benchmark (handle, size);
 		/*
 		 * Adjust count to 95% of previous count
 		 * Adjust bytes to write per checkpoint up by 1500
 		 */
-		count = (((float)count) * 0.80);
-		size += 100;
+		size += 1000;
 	}
 	return (0);
 }

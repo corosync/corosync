@@ -35,6 +35,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
@@ -43,11 +45,15 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "ais_types.h"
 #include "ais_ckpt.h"
 
-int ckptinv;
+int alarm_notice;
+
 void printSaNameT (SaNameT *name)
 {
 	int i;
@@ -146,16 +152,19 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 };
 
 void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
-	int write_count, int write_size)
+	int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	SaUint32T erroroneousVectorIndex = 0;
 	SaErrorT error;
+	int write_count = 0;
 
+	alarm_notice = 0;
+	alarm (10);
 	WriteVectorElements[0].dataSize = write_size;
 
 	gettimeofday (&tv1, NULL);
-	for (ckptinv = 0; ckptinv < write_count; ckptinv++) {
+	do {
 		/*
 		 * Test checkpoint write
 		 */
@@ -167,7 +176,8 @@ void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
 		}
-	}
+		write_count += 1;
+	} while (alarm_notice == 0);
 	gettimeofday (&tv2, NULL);
 	timersub (&tv2, &tv1, &tv_elapsed);
 
@@ -181,13 +191,19 @@ void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
+void sigalrm_handler (int num)
+{
+	alarm_notice = 1;
+}
+
 int main (void) {
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaErrorT error;
 	int size;
-	int count;
 	int i;
 	
+	signal (SIGALRM, sigalrm_handler);
+
 	error = saCkptCheckpointOpen (&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
@@ -202,17 +218,11 @@ int main (void) {
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 
-	count = 1000;
-	size = 25000;
+	size = 1;
 
-	for (i = 0; i < 35; i++) { /* number of repetitions */
-		ckpt_benchmark (checkpointHandle, count, size);
-		/*
-		 * Adjust count to 95% of previous count
-		 * Adjust bytes to write per checkpoint up by 1500
-		 */
-		count = (((float)count) * 0.95);
-		size += 1500;
+	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
+		ckpt_benchmark (checkpointHandle, size);
+		size += 1000;
 	}
 	return (0);
 }
