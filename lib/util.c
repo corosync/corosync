@@ -439,7 +439,7 @@ saHandleInstanceGet (
 { 
 	pthread_mutex_lock (&handleDatabase->mutex);
 
-	if (handle > handleDatabase->handleCount) {
+	if (handle >= handleDatabase->handleCount) {
 		return (SA_ERR_BAD_HANDLE);
 	}
 	if (handleDatabase->handles[handle].state != SA_HANDLE_STATE_ACTIVE) {
