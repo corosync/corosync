@@ -1137,6 +1137,7 @@ saEvtEventAllocate(
 	edi->edi_channel_handle = channelHandle;
 	edi->edi_pub_node = evti->ei_node_id;
 	edi->edi_priority = SA_EVT_LOWEST_PRIORITY;
+	edi->edi_event_id = SA_EVT_EVENTID_NONE;
 	saHandleInstancePut (&event_handle_db, *eventHandle);
 
 alloc_put2:
