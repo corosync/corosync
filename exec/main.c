@@ -92,7 +92,20 @@ struct service_handler *ais_service_handlers[] = {
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);
 
-static inline void ais_done (int err)
+enum e_ais_done {
+	AIS_DONE_EXIT = -1,
+	AIS_DONE_UID_DETERMINE = -2,
+	AIS_DONE_GID_DETERMINE = -3,
+	AIS_DONE_MEMPOOL_INIT = -4,
+	AIS_DONE_FORK = -5,
+	AIS_DONE_LIBAIS_SOCKET = -6,
+	AIS_DONE_LIBAIS_BIND = -7,
+	AIS_DONE_READKEY = -8,
+	AIS_DONE_READNETWORK = -9,
+	AIS_DONE_READGROUPS = -10,
+};
+
+static inline void ais_done (enum e_ais_done err)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
 	exit (1);
@@ -121,7 +134,7 @@ static inline struct conn_info *conn_info_create (int fd) {
 		return (0);
 	}
 	
-	conn_info->active = 1;
+	conn_info->state = CONN_STATE_ACTIVE;
 	conn_info->fd = fd;
 	conn_info->service = SOCKET_SERVICE_INIT;
 	return (conn_info);
@@ -133,9 +146,20 @@ struct sockaddr_in this_ip;
 
 char *socketname = "libais.socket";
 
+static int libais_connection_active (struct conn_info *conn_info)
+{
+	return (conn_info->state == CONN_STATE_ACTIVE);
+}
+
+static void libais_disconnect_delayed (struct conn_info *conn_info)
+{
+	conn_info->state = CONN_STATE_DISCONNECTING_DELAYED;
+}
+
 static int libais_disconnect (struct conn_info *conn_info)
 {
 	int res = 0;
+	struct outq_item *outq_item;
 
 	if (ais_service_handlers[conn_info->service - 1]->libais_exit_fn) {
 		res = ais_service_handlers[conn_info->service - 1]->libais_exit_fn (conn_info);
@@ -145,11 +169,21 @@ static int libais_disconnect (struct conn_info *conn_info)
 	 * Close the library connection and free its
 	 * data if it hasn't already been freed
 	 */
-	if (conn_info->inb) {
+	if (conn_info->state != CONN_STATE_DISCONNECTING) {
+		conn_info->state = CONN_STATE_DISCONNECTING;
+
 		close (conn_info->fd);
+		/*
+		 * Free the outq queued items
+		 */
+		while (!queue_is_empty (&conn_info->outq)) {
+			outq_item = queue_item_get (&conn_info->outq);
+			mempool_free (outq_item->msg);
+			queue_item_remove (&conn_info->outq);
+		}
+
 		queue_free (&conn_info->outq);
 		free (conn_info->inb);
-		conn_info->inb = 0;
 	}
 
 	/*
@@ -171,13 +205,16 @@ extern int libais_send_response (struct conn_info *conn_info,
 {
 	struct queue *outq;
 	char *cmsg;
-	int res;
+	int res = 0;
 	int queue_empty;
 	struct outq_item *queue_item;
 	struct outq_item queue_item_out;
 	struct msghdr msg_send;
 	struct iovec iov_send;
 
+	if (!libais_connection_active (conn_info)) {
+		return (-1);
+	}
 	outq = &conn_info->outq;
 
 	msg_send.msg_iov = &iov_send;
@@ -189,8 +226,13 @@ extern int libais_send_response (struct conn_info *conn_info,
 	msg_send.msg_flags = 0;
 
 	if (queue_is_full (outq)) {
-		log_printf (LOG_LEVEL_ERROR, "queue is full.\n");
-		ais_done (1);
+		/*
+		 * Start a disconnect if we have not already started one
+		 * and report that the outgoing queue is full
+		 */
+		log_printf (LOG_LEVEL_ERROR, "Library queue is full, disconnecting library connection.\n");
+		libais_disconnect_delayed (conn_info);
+		return (-1);
 	}
 	while (!queue_is_empty (outq)) {
 		queue_item = queue_item_get (outq);
@@ -203,7 +245,7 @@ retry_sendmsg:
 			goto retry_sendmsg;
 		}
 		if (res == -1 && errno == EAGAIN) {
-			break; /* outgoing kernel queue full, ais_done while not empty */
+			break; /* outgoing kernel queue full */
 		}
 		if (res == -1) {
 			return (-1); /* message couldn't be sent */
@@ -217,7 +259,6 @@ retry_sendmsg:
 		mempool_free (queue_item->msg);
 	} /* while queue not empty */
 
-	res = 0;
 	queue_empty = queue_is_empty (outq);
 	/*
 	 * Send requested message
@@ -241,7 +282,9 @@ retry_sendmsg_two:
 	if (res == -1)  {
 		cmsg = mempool_malloc (mlen);
 		if (cmsg == 0) {
-			ais_done (1);
+			log_printf (LOG_LEVEL_ERROR, "Library queue couldn't allocate a message, disconnecting library connection.\n");
+			libais_disconnect_delayed (conn_info);
+			return (-1);
 		}
 		queue_item_out.msg = cmsg;
 		queue_item_out.mlen = mlen;
@@ -328,6 +371,14 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	msg_recv.msg_namelen = 0;
 	msg_recv.msg_flags = 0;
 
+	/*
+	 * Handle delayed disconnections
+	 */
+	if (conn_info->state != CONN_STATE_ACTIVE) {
+		res = libais_disconnect (conn_info);
+		return (res);
+	}
+
 	if (conn_info->authenticated) {
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
@@ -348,10 +399,12 @@ retry_recv:
 		goto retry_recv;
 	} else
 	if (res == -1) {
-		goto error_exit;
+printf ("res-1 errno = %d\n", errno);
+		goto error_disconnect;
 	} else
 	if (res == 0) {
-		goto error_exit;
+printf ("Res0 errno = %d\n", errno);
+		goto error_disconnect;
 		return (-1);
 	}
 
@@ -403,7 +456,7 @@ retry_recv:
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
 				header->id, ais_service_handlers[service - 1]->libais_handlers_count);
 				res = -1;
-				goto error_exit;
+				goto error_disconnect;
 			}
 
 			/*
@@ -449,7 +502,7 @@ retry_recv:
 	
 	return (res);
 
-error_exit:
+error_disconnect:
 	res = libais_disconnect (conn_info);
 	return (res);
 }
@@ -474,7 +527,7 @@ void sigintr_handler (int signum)
 #endif
 
 	print_stats ();
-	ais_done (0);
+	ais_done (AIS_DONE_EXIT);
 }
 
 static struct sched_param sched_param = { 
@@ -560,7 +613,7 @@ static void aisexec_uid_determine (void)
 	passwd = getpwnam("ais");
 	if (passwd == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' user is not found in /etc/passwd, please read the documentation.\n");
-		ais_done (-1);
+		ais_done (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
 }
@@ -571,7 +624,7 @@ static void aisexec_gid_determine (void)
 	group = getgrnam ("ais");
 	if (group == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' group is not found in /etc/group, please read the documentation.\n");
-		ais_done (-1);
+		ais_done (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
 }
@@ -589,7 +642,7 @@ static void aisexec_mempool_init (void)
 	res = mempool_init (pool_sizes);
 	if (res == ENOMEM) {
 		log_printf (LOG_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
-		ais_done (1);
+		ais_done (AIS_DONE_MEMPOOL_INIT);
 	}
 }
 
@@ -602,7 +655,7 @@ static void aisexec_tty_detach (void)
 	 */
 	switch (fork ()) {
 		case -1:
-			ais_done (1);
+			ais_done (AIS_DONE_FORK);
 			break;
 		case 0:
 			/*
@@ -642,7 +695,7 @@ static void aisexec_libais_bind (int *server_fd)
 	libais_server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (libais_server_fd == -1) {
 		log_printf (LOG_LEVEL_ERROR ,"Cannot create libais client connections socket.\n");
-		ais_done (1);
+		ais_done (AIS_DONE_LIBAIS_SOCKET);
 	};
 
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
@@ -652,7 +705,7 @@ static void aisexec_libais_bind (int *server_fd)
 	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, sizeof (struct sockaddr_un));
 	if (res) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not bind AF_UNIX: %s.\n", strerror (errno));
-		ais_done (1);
+		ais_done (AIS_DONE_LIBAIS_BIND);
 	}
 	listen (libais_server_fd, SERVER_BACKLOG);
 
@@ -688,16 +741,16 @@ void aisexec_keyread (unsigned char *key)
 	fd = open ("/etc/ais/authkey", O_RDONLY);
 	if (fd == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not open /etc/ais/authkey: %s\n", strerror (errno));
-		ais_done (1);
+		ais_done (AIS_DONE_READKEY);
 	}
 	res = read (fd, key, 128);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not read /etc/ais/authkey: %s\n", strerror (errno));
-		ais_done (1);
+		ais_done (AIS_DONE_READKEY);
 	}
 	if (res != 128) {
 		log_printf (LOG_LEVEL_ERROR, "Could only read %d bits of 1024 bits from /etc/ais/authkey.\n", res * 8);
-		ais_done (1);
+		ais_done (AIS_DONE_READKEY);
 	}
 
 	close (fd);
@@ -736,7 +789,7 @@ int main (int argc, char **argv)
 	res = amfReadNetwork (&error_string, &sockaddr_in_mcast, &sockaddr_in_bindnet);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (1);
+		ais_done (AIS_DONE_READNETWORK);
 	}
 
 	/*
@@ -775,7 +828,7 @@ int main (int argc, char **argv)
 	res = amfReadGroups(&error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (1);
+		ais_done (AIS_DONE_READGROUPS);
 	}
 	
 	aisexec_tty_detach ();
