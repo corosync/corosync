@@ -37,7 +37,7 @@
  *	http://www.cs.jhu.edu/~yairamir/phd.ps) (ch4,5). 
  *
  * Some changes have been made to the design to support things like fragmentation,
- * multiple I/O queues.
+ * multiple I/O queues, encryption, and authentication.
  *
  * Fragmentation Assembly Algorithm:
  * Messages are read from the rtr list and stored in assembly queues
@@ -83,6 +83,10 @@
 #include "../include/queue.h"
 #include "../include/sq.h"
 
+#include "crypto.h"
+#define AUTHENTICATION 1 /* use authentication */
+#define ENCRYPTION 1	 /* use encryption */
+
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_PEND_SIZE_MAX			50
 #define QUEUE_ASSEMBLY_SIZE_MAX		((MESSAGE_SIZE_MAX / 1472) + 1)
@@ -98,6 +102,15 @@
 #define MAX_MEMBERS					16
 #define HOLE_LIST_MAX				MISSING_MCAST_WINDOW
 #define PRIORITY_MAX				3
+
+/*
+ * Authentication of messages
+ */
+hmac_state gmi_hmac_state;
+prng_state gmi_prng_state;
+
+unsigned char gmi_private_key[1024];
+unsigned int gmi_private_key_len;
 
 int stats_sent = 0;
 int stats_recv = 0;
@@ -231,12 +244,20 @@ int (*gmi_recv) (char *group, struct iovec *iovec, int iov_len);
  * Function and data used to log messages
  */
 static void (*gmi_log_printf) (int level, char *format, ...);
+int gmi_log_level_security;
 int gmi_log_level_error;
 int gmi_log_level_warning;
 int gmi_log_level_notice;
 int gmi_log_level_debug;
 
+#define HMAC_HASH_SIZE 20
+struct security_header {
+	unsigned char hash_digest[HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
+	unsigned char salt[16]; /* random number */
+};
+
 struct message_header {
+	struct security_header security_header;
 	int type;
 	int seqid;
 };
@@ -365,11 +386,18 @@ static struct memb_join memb_join;
 
 static struct memb_form_token memb_form_token;
 
-static char iov_buffer[MESSAGE_SIZE_MAX];
+static char iov_buffer[1500];
 
 static struct iovec gmi_iov_recv = {
 	.iov_base	= iov_buffer,
 	.iov_len	= sizeof (iov_buffer)
+};
+
+static char iov_encrypted_buffer[1500];
+
+static struct iovec iov_encrypted = {
+	.iov_base	= iov_encrypted_buffer,
+	.iov_len	= sizeof (iov_encrypted_buffer)
 };
 
 struct message_handlers {
@@ -414,6 +442,8 @@ static void queues_queue_frag_memb_new ();
 static void calculate_group_arut (struct orf_token *orf_token);
 static int messages_free (int group_arut);
 static int orf_token_send (struct orf_token *orf_token, int reset_timer);
+static void encrypt_and_sign (struct iovec *iovec, int iov_len);
+static int authenticate_and_decrypt (struct iovec *iov);
 
 struct message_handlers gmi_message_handlers = {
 	5,
@@ -428,17 +458,32 @@ struct message_handlers gmi_message_handlers = {
 
 void gmi_log_printf_init (
 	void (*log_printf) (int , char *, ...),
+	int log_level_security,
 	int log_level_error,
 	int log_level_warning,
 	int log_level_notice,
 	int log_level_debug)
 {
+	gmi_log_level_security = log_level_security;
 	gmi_log_level_error = log_level_error;
 	gmi_log_level_warning = log_level_warning;
 	gmi_log_level_notice = log_level_notice;
 	gmi_log_level_debug = log_level_debug;
 	gmi_log_printf = log_printf;
 }
+
+#ifdef PRINTDIGESTS
+void print_digest (char *where, unsigned char *digest)
+{
+	int i;
+
+	printf ("DIGEST %s:\n", where);
+	for (i = 0; i < 16; i++) {
+		printf ("%x ", digest[i]);
+	}
+	printf ("\n");
+}
+#endif
 
 /*
  * Exported interfaces
@@ -447,11 +492,25 @@ int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	poll_handle *poll_handle,
-	struct sockaddr_in *sockaddr_boundto)
+	struct sockaddr_in *sockaddr_boundto,
+	unsigned char *private_key,
+	int private_key_len)
 {
 	int i;
-int res;
+	int res;
 
+	/*
+	 * Initialize random number generator for later use to generate salt
+	 */
+	memcpy (gmi_private_key, private_key, private_key_len);
+
+	gmi_private_key_len = private_key_len;
+
+	rng_make_prng (128, PRNG_SOBER, &gmi_prng_state, NULL);
+
+	/*
+	 * Initialize local variables for gmi
+	 */
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
 	memset (&memb_next, 0, sizeof (struct sockaddr_in));
 	memset (iov_buffer, 0, MESSAGE_SIZE_MAX);
@@ -477,10 +536,11 @@ int res;
 	 * This stuff depends on gmi_build_sockets
 	 */
 	memcpy (&memb_list[0], sockaddr_boundto, sizeof (struct sockaddr_in));
+
 	memb_conf_id_build (&memb_conf_id, sockaddr_boundto->sin_addr);
+
 	memcpy (&memb_form_token_conf_id, &memb_conf_id, sizeof (struct memb_conf_id));
 
-printf ("mcast is %d token is %d\n", gmi_fd_mcast, gmi_fd_token);
 	gmi_poll_handle = poll_handle;
 
 	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler);
@@ -565,8 +625,10 @@ static int gmi_pend_trans_item_store (
 
 		memcpy (gmi_pend_trans_item.iovec[i].iov_base, iovec[i].iov_base,
 			iovec[i].iov_len);
+
 		gmi_pend_trans_item.iovec[i].iov_len = iovec[i].iov_len;
 	}
+
 	gmi_pend_trans_item.iov_len = iov_len;
 
 	gmi_log_printf (gmi_log_level_debug, "mcasted message added to pending queue\n");
@@ -579,6 +641,174 @@ error_iovec:
 	}
 	return (-1);
 error_mcast:
+	return (0);
+}
+
+static void encrypt_and_sign (struct iovec *iovec, int iov_len)
+{
+	char *addr = iov_encrypted.iov_base + sizeof (struct security_header);
+	int i;
+	iov_encrypted.iov_len = 0;
+	char keys[48];
+	struct security_header *header = iov_encrypted.iov_base;
+	prng_state keygen_prng_state;
+	prng_state stream_prng_state;
+	char *hmac_key = &keys[32];
+	char *cipher_key = &keys[16];
+	char *initial_vector = &keys[0];
+	unsigned long len;
+
+	memset (keys, 0, sizeof (keys));
+	memset (header->salt, 0, sizeof (header->salt));
+
+#if (defined(ENCRYPTION) || defined(AUTHENITCATION))
+	/*
+	 * Generate MAC, CIPHER, IV keys from private key
+	 */
+	sober128_read (header->salt, sizeof (header->salt), &gmi_prng_state);
+	sober128_start (&keygen_prng_state);
+	sober128_add_entropy (gmi_private_key, gmi_private_key_len, &keygen_prng_state);	
+	sober128_add_entropy (header->salt, sizeof (header->salt), &keygen_prng_state);
+
+	sober128_read (keys, sizeof (keys), &keygen_prng_state);
+#endif
+
+#ifdef ENCRYPTION
+	/*
+	 * Setup stream cipher
+	 */
+	sober128_start (&stream_prng_state);
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+#endif
+
+#ifdef PRINTDIGESTS
+printf ("New encryption\n");
+print_digest ("salt", header->salt);
+print_digest ("initial_vector", initial_vector);
+print_digest ("cipher_key", cipher_key);
+print_digest ("hmac_key", hmac_key);
+#endif
+
+	/*
+	 * Copy header of message, then remainder of message, then encrypt it
+	 */
+	memcpy (addr, iovec[0].iov_base + sizeof (struct security_header),
+		iovec[0].iov_len - sizeof (struct security_header));
+	addr += iovec[0].iov_len - sizeof (struct security_header);
+	iov_encrypted.iov_len += iovec[0].iov_len;
+
+	for (i = 1; i < iov_len; i++) {
+		memcpy (addr, iovec[i].iov_base, iovec[i].iov_len);
+		addr += iovec[i].iov_len;
+		iov_encrypted.iov_len += iovec[i].iov_len;
+	}
+
+	/*
+ 	 * Encrypt message by XORing stream cipher data
+	 */
+#ifdef ENCRYPTION
+	sober128_read (iov_encrypted.iov_base + sizeof (struct security_header),
+		iov_encrypted.iov_len - sizeof (struct security_header),
+		&stream_prng_state);
+#endif
+
+#ifdef AUTHENTICATION
+	memset (&gmi_hmac_state, 0, sizeof (hmac_state));
+
+	/*
+	 * Sign the contents of the message with the hmac key and store signature in message
+	 */
+	hmac_init (&gmi_hmac_state, DIGEST_SHA1, hmac_key, 16);
+
+	hmac_process (&gmi_hmac_state, 
+		iov_encrypted.iov_base + HMAC_HASH_SIZE,
+		iov_encrypted.iov_len - HMAC_HASH_SIZE);
+
+	len = hash_descriptor[DIGEST_SHA1]->hashsize;
+
+	hmac_done (&gmi_hmac_state, header->hash_digest, &len);
+#endif
+}
+
+/*
+ * Only designed to work with a message with one iov
+ */
+static int authenticate_and_decrypt (struct iovec *iov)
+{
+	iov_encrypted.iov_len = 0;
+	char keys[48];
+	struct security_header *header = iov[0].iov_base;
+	prng_state keygen_prng_state;
+	prng_state stream_prng_state;
+	char *hmac_key = &keys[32];
+	char *cipher_key = &keys[16];
+	char *initial_vector = &keys[0];
+	char digest_comparison[HMAC_HASH_SIZE];
+	unsigned long len;
+
+#if (defined(ENCRYPTION) || defined(AUTHENITCATION))
+	/*
+	 * Generate MAC, CIPHER, IV keys from private key
+	 */
+	memset (keys, 0, sizeof (keys));
+	sober128_start (&keygen_prng_state);
+	sober128_add_entropy (gmi_private_key, gmi_private_key_len, &keygen_prng_state);	
+	sober128_add_entropy (header->salt, sizeof (header->salt), &keygen_prng_state);
+
+	sober128_read (keys, sizeof (keys), &keygen_prng_state);
+#endif
+
+#ifdef ENCRYPTION
+	/*
+	 * Setup stream cipher
+	 */
+	sober128_start (&stream_prng_state);
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+#endif
+
+#ifdef PRINTDIGESTS
+printf ("New decryption\n");
+print_digest ("salt", header->salt);
+print_digest ("initial_vector", initial_vector);
+print_digest ("cipher_key", cipher_key);
+print_digest ("hmac_key", hmac_key);
+#endif
+
+#ifdef AUTHENTICATION
+	/*
+	 * Authenticate contents of message
+	 */
+	hmac_init (&gmi_hmac_state, DIGEST_SHA1, hmac_key, 16);
+
+	hmac_process (&gmi_hmac_state, 
+		iov->iov_base + HMAC_HASH_SIZE,
+		iov->iov_len - HMAC_HASH_SIZE);
+
+	len = hash_descriptor[DIGEST_SHA1]->hashsize;
+	assert (HMAC_HASH_SIZE >= len);
+	hmac_done (&gmi_hmac_state, digest_comparison, &len);
+
+#ifdef PRINTDIGESTS
+print_digest ("sent digest", header->hash_digest);
+print_digest ("calculated digest", digest_comparison);
+#endif
+	if (memcmp (digest_comparison, header->hash_digest, len) != 0) {
+		gmi_log_printf (gmi_log_level_security, "Received message has invalid digest... ignoring.\n");
+		return (-1);
+	}
+#endif /* AUTHENTICATION */
+	
+	/*
+	 * Decrypt the contents of the message with the cipher key
+	 */
+#ifdef ENCRYPTION
+	sober128_read (iov->iov_base + sizeof (struct security_header),
+		iov->iov_len - sizeof (struct security_header),
+		&stream_prng_state);
+#endif
+
 	return (0);
 }
 
@@ -921,13 +1151,15 @@ printf ("remulticasting %d\n", seqid);
 	}
 	mcast = (struct mcast *)gmi_rtr_item->iovec[0].iov_base;
 
+	encrypt_and_sign (gmi_rtr_item->iovec, gmi_rtr_item->iov_len);
+
 	/*
 	 * Build multicast message
 	 */
 	msg_mcast.msg_name = (caddr_t)&sockaddr_in_mcast;
 	msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
-	msg_mcast.msg_iov = gmi_rtr_item->iovec;
-	msg_mcast.msg_iovlen = gmi_rtr_item->iov_len;
+	msg_mcast.msg_iov = &iov_encrypted;
+	msg_mcast.msg_iovlen = 1;
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
@@ -1118,13 +1350,17 @@ static int orf_token_mcast (
 		queue_item_remove (queue_pend_trans);
 
 		/*
+		 * Encrypt and digest the message
+		 */
+		encrypt_and_sign (gmi_rtr_item.iovec, gmi_rtr_item.iov_len);
+
+		/*
 		 * Build multicast message
 		 */
-
 		msg_mcast.msg_name = &sockaddr_in_mcast;
 		msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
-		msg_mcast.msg_iov = gmi_rtr_item.iovec;
-		msg_mcast.msg_iovlen = gmi_rtr_item.iov_len;
+		msg_mcast.msg_iov = &iov_encrypted;
+		msg_mcast.msg_iovlen = 1;
 		msg_mcast.msg_control = 0;
 		msg_mcast.msg_controllen = 0;
 		msg_mcast.msg_flags = 0;
@@ -1133,6 +1369,7 @@ static int orf_token_mcast (
 		 * Multicast message
 		 */
 		res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+		iov_encrypted.iov_len = 1500;
 
 		/*
 		 * An error here is recovered by the multicast algorithm
@@ -1635,9 +1872,11 @@ static int orf_token_send (
 	iovec_orf_token.iov_base = (char *)orf_token;
 	iovec_orf_token.iov_len = sizeof (struct orf_token);
 
+	encrypt_and_sign (&iovec_orf_token, 1);
+
 	msg_orf_token.msg_name = (caddr_t)&memb_next;
 	msg_orf_token.msg_namelen = sizeof (struct sockaddr_in);
-	msg_orf_token.msg_iov = &iovec_orf_token;
+	msg_orf_token.msg_iov = &iov_encrypted;
 	msg_orf_token.msg_iovlen = 1;
 	msg_orf_token.msg_control = 0;
 	msg_orf_token.msg_controllen = 0;
@@ -1723,9 +1962,11 @@ static int memb_join_send (void)
 	iovec_join.iov_base = (char *)&memb_join;
 	iovec_join.iov_len = sizeof (struct memb_join);
 
+	encrypt_and_sign (&iovec_join, 1);
+
 	msghdr_join.msg_name = (caddr_t)&sockaddr_in_mcast;
 	msghdr_join.msg_namelen = sizeof (struct sockaddr_in);
-	msghdr_join.msg_iov = &iovec_join;
+	msghdr_join.msg_iov = &iov_encrypted;
 	msghdr_join.msg_iovlen = 1;
 	msghdr_join.msg_control = 0;
 	msghdr_join.msg_controllen = 0;
@@ -2112,9 +2353,11 @@ static int memb_form_token_send (
 	iovec_form_token.iov_base = (char *)form_token;
 	iovec_form_token.iov_len = sizeof (struct memb_form_token);
 
+	encrypt_and_sign (&iovec_form_token, 1);
+
 	msg_form_token.msg_name = (caddr_t)&memb_next;
 	msg_form_token.msg_namelen = sizeof (struct sockaddr_in);
-	msg_form_token.msg_iov = &iovec_form_token;
+	msg_form_token.msg_iov = &iov_encrypted;
 	msg_form_token.msg_iovlen = 1;
 	msg_form_token.msg_control = 0;
 	msg_form_token.msg_controllen = 0;
@@ -2212,15 +2455,6 @@ void print_stats (void)
 	gmi_log_printf (gmi_log_level_notice, "Re-Mcasts %d\n", stats_remcasts);
 	gmi_log_printf (gmi_log_level_notice, "Tokens process %d\n", stats_orf_token);
 }
-
-/*
- * Authenticates message using nonce, mac, and message body
- */
-static int gmi_msg_auth (struct iovec *iovec, int iov_len)
-{
-	return (0);
-}
-
 
 int last_lowered = 1;
 
@@ -2412,9 +2646,11 @@ static int memb_state_gather_enter (void) {
 		iovec_attempt_join.iov_base = &memb_attempt_join;
 		iovec_attempt_join.iov_len = sizeof (struct memb_attempt_join);
 
+		encrypt_and_sign (&iovec_attempt_join, 1);
+
 		msghdr_attempt_join.msg_name = &sockaddr_in_mcast;
 		msghdr_attempt_join.msg_namelen = sizeof (struct sockaddr_in);
-		msghdr_attempt_join.msg_iov = &iovec_attempt_join;
+		msghdr_attempt_join.msg_iov = &iov_encrypted;
 		msghdr_attempt_join.msg_iovlen = 1;
 		msghdr_attempt_join.msg_control = 0;
 		msghdr_attempt_join.msg_controllen = 0;
@@ -2768,6 +3004,7 @@ static int message_handler_mcast (
 
 		return (0);
 	}
+
 	poll_timer_delete (*gmi_poll_handle, timer_orf_token_retransmit_timeout);
 	timer_orf_token_retransmit_timeout = 0;
 
@@ -3117,12 +3354,20 @@ int recv_handler (poll_handle handle, int fd, int revents, void *data)
 	} else {
 		stats_recv += bytes_received;
 	}
+	if (bytes_received < sizeof (struct message_header)) {
+		gmi_log_printf (gmi_log_level_security, "Received message is too short...  ignoring.\n");
+		return (0);
+	}
+
+	message_header = (struct message_header *)msg_recv.msg_iov[0].iov_base;
 
 	/*
-	 * Authenticate datagram
+	 * Authenticate and if authenticated, decrypt datagram
 	 */
-	res = gmi_msg_auth (msg_recv.msg_iov, msg_recv.msg_iovlen);
+	gmi_iov_recv.iov_len = bytes_received;
+	res = authenticate_and_decrypt (&gmi_iov_recv);
 	if (res == -1) {
+		gmi_iov_recv.iov_len = 1500;
 		return 0;
 	}
 
@@ -3140,5 +3385,6 @@ int recv_handler (poll_handle handle, int fd, int revents, void *data)
 		msg_recv.msg_iovlen,
 		bytes_received);
 
+	gmi_iov_recv.iov_len = 1500;
 	return (0);
 }
