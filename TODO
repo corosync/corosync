@@ -1,0 +1,67 @@
+Application Interface Specification TODO list
+
+Generic Items
+-------------
+* EVT, DLOCK, MSG APIs functionality need to be developed.
+* Error checking on parameters could use improvement.
+* Allow AIS Executive to configure cluster name.
+* Compliance testing of return values would be helpful.
+* Support B.01.01 version of spec (currently support A.01.01 version).
+* Consider implementing SOCK_SEQPACKET for the AF_UNIX family of sockets on
+  Linux.  This would save an extra system call every time an operation must
+  be done from the API.
+* There are lots of TODO's in the code that need attention.
+
+Group Messaging Interface
+-------------------------
+* Very important: single node may not work too well.  Debug this
+  mode of operation.
+* Very important: implement full EVS semantics when holes occur in
+  delivery messages after a configuration change but before the new
+  configuration is delivered.
+* Very important: block new messages from being multicast until recovery
+  of each service has completed after a configuration change.  This could be 
+  done with a "plug" in the token which "stops" any GMI_PRIO_MED or GMI_PRIO_LOW
+  messages from being multicast until all members of the configuration have 
+  unplugged the token.  Then queued messages in MED or LOW priority can be
+  sent, ensuring correct partition operation.
+* Implement error creation config file to test GMI since all my lossy
+  hardware has been fixed.
+* Add secrecy/authentication to group messaging interface.
+* Add support for multiple rings with gateway ring to ring for added scalability
+  in LANs.
+* Add support for multiple rings with gateway tuned to long haul networks for
+  added scalability in WANs.  Look at spread.org as a design.
+* Add support for low delivery-time delay FIFO messages.
+* Add support for SAFE ordering.
+* Add support for encryption/authentication using Helix.  nonce will start
+  at zero and increment for every message sent or rotation on the ring.  Group
+  key produced using group key generation protocol.
+  
+Cluster Membership
+------------------
+* Make timeout on SaClmClusterNodeGet work.  Currently the timeout is 5
+  seconds, but the spec requires the timeout to be specified in the API call.
+
+Availability Management Framework
+---------------------------------
+* Very Important: Implement configuration change support.  This includes partitions.
+* Currently the executive can record and manage only one component service
+  instance per component.  As a result, one component cannot act as standby/active
+  for two other components in the system (AIS Spec page 74 Figure 16. Example of
+  n+1 redundancy model).
+  - Fix to follow spec.
+* If a user of the AMF library doesn't respond with saAmfResponse, the state
+  of the application will never change.  Fix by adding timeouts to readiness state
+  and ha state changes to force saAmfResponse state changes triggered.
+* Create array namespace for each invocation id per connection to avoid
+  cross file descriptor contamination.
+* Implement resource proxy functions. (currently dummy functions)
+* Implement pending operations. (currently dummy functions)
+* Implement NWAY and NWAYACTIVE redundancy models.
+
+Checkpointing
+-------------
+* Very Important: Implement configuration change support.  This includes partitions.
+* Implement thread support for checkpointing library.
+* Implement expiration times on checkpoints.

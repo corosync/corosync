@@ -1,0 +1,185 @@
+/*
+ * Copyright (c) 2003-2004 MontaVista Software, Inc.
+ *
+ * All rights reserved.
+ *
+ * Author: Steven Dake (sdake@mvista.com)
+ *
+ * This software licensed under BSD license, the text of which follows:
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - Neither the name of the MontaVista Software, Inc. nor the names of its
+ *   contributors may be used to endorse or promote products derived from this
+ *   software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+#ifndef SORTQUEUE_H_DEFINED
+#define SORTQUEUE_H_DEFINED
+
+#include "errno.h"
+
+struct sq {
+	int head;
+	int size;
+	void *items;
+	unsigned char *items_inuse;
+	int size_per_item;
+	int head_seqid;
+	int item_count;
+};
+
+static inline int sq_init (
+	struct sq *sq,
+	int item_count,
+	int size_per_item,
+	int head_seqid)
+{
+	sq->head = 0;
+	sq->size = item_count;
+	sq->size_per_item = size_per_item;
+	sq->head_seqid = head_seqid;
+	sq->item_count = item_count;
+
+	sq->items = (void *)malloc (item_count * size_per_item);
+	if (sq->items == 0) {
+		return (-ENOMEM);
+	}
+	memset (sq->items, 0, item_count * size_per_item);
+
+	sq->items_inuse = (void *)malloc (item_count * sizeof (char));
+	memset (sq->items_inuse, 0, item_count * sizeof (char));
+	return (0);
+}
+
+static inline void sq_reinit (struct sq *sq, int head_seqid)
+{
+	sq->head = 0;
+	sq->head_seqid = head_seqid;
+
+	memset (sq->items, 0, sq->item_count * sq->size_per_item);
+	memset (sq->items_inuse, 0, sq->item_count * sizeof (char));
+}
+
+static inline void sq_free (struct sq *sq) {
+	free (sq->items);
+	free (sq->items_inuse);
+}
+
+static inline int sq_item_add (
+	struct sq *sq,
+	void *item,
+	int seqid)
+{
+	char *sq_item;
+	int sq_position;
+
+	if (seqid - sq->head_seqid >= sq->size) {
+		return E2BIG;
+	}
+	sq_position = (sq->head + seqid - sq->head_seqid) % sq->size;
+//printf ("item add %d %d %d\n", sq_position, seqid, sq->head_seqid);
+	sq_item = sq->items;
+	sq_item += sq_position * sq->size_per_item;
+	memcpy (sq_item, item, sq->size_per_item);
+	sq->items_inuse[sq_position] = 1;
+
+	return (0);
+}
+
+static inline int sq_item_inuse (
+	struct sq *sq,
+	int seq_id) {
+
+	int sq_position;
+
+	sq_position = (sq->head - sq->head_seqid + seq_id) % sq->size;
+//printf ("in use %d\n", sq_position);
+	return (sq->items_inuse[sq_position]);
+}
+
+static inline int sq_size_get (
+	struct sq *sq)
+{
+	return sq->size;
+}
+
+static inline int sq_item_get (
+	struct sq *sq,
+	int seq_id,
+	void **sq_item_out)
+{
+	char *sq_item;
+	int sq_position;
+
+if (seq_id == -1) {
+	return (ENOENT);
+}
+	assert (seq_id < (sq->head_seqid + sq->size));
+	sq_position = (sq->head - sq->head_seqid + seq_id) % sq->size;
+//printf ("ITEMGET %d %d %d %d\n", sq_position, sq->head, sq->head_seqid, seq_id);
+assert (sq_position >= 0);
+//printf ("itme get in use %d\n", sq_position);
+	if (sq->items_inuse[sq_position] == 0) {
+//printf ("ENOENT\n");
+		return (ENOENT);
+	}
+	sq_item = sq->items;
+	sq_item += sq_position * sq->size_per_item;
+	*sq_item_out = sq_item;
+	return (0);
+}
+
+static inline void sq_items_release (struct sq *sq, int seqid)
+{
+	int oldhead;
+	char *sq_item;
+
+	if (seqid < sq->head_seqid) {
+//printf ("%d %d\n", seqid, sq->head_seqid);
+		return;
+	}
+//printf ("releasing %d\n", seqid);
+
+	oldhead = sq->head;
+
+//printf ("before sq->head %d\n", sq->head);
+	sq->head = (sq->head + seqid - sq->head_seqid + 1) % sq->size;
+//printf ("after sq->head %d\n", sq->head);
+	if ((oldhead + seqid - sq->head_seqid + 1) > sq->size) {
+//printf ("memset 1\n");
+//printf ("%d %d %d %d\n", seqid, sq->head_seqid, sq->head, sq->size);
+		memset (&sq->items_inuse[oldhead], 0, sq->size - oldhead);
+		memset (sq->items_inuse, 0, sq->head * sizeof (char));
+//printf ("SIZEOF %d %d\n", sq->head, sq->head * sizeof (char));
+//		memset (sq->items, 0, (sq->head) * (sq->size_per_item));
+	} else {
+assert (seqid - sq->head_seqid + 1);
+//printf ("memset 2\n");
+//printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
+		memset (&sq->items_inuse[oldhead - 1], 0, (seqid - sq->head_seqid + 2) * sizeof (char));
+	sq_item = sq->items;
+	sq_item += oldhead * sq->size_per_item;
+//		memset (sq_item[oldhead], 0, (seqid - sq->head_seqid + 1) * (sq->size_per_item));
+	}
+	sq->head_seqid = seqid + 1;
+}
+
+#endif /* SORTQUEUE_H_DEFINED */

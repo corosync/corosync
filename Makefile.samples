@@ -1,0 +1,63 @@
+# Copyright (c) 2002-2004 MontaVista Software, Inc.
+# 
+# All rights reserved.
+# 
+# This software licensed under BSD license, the text of which follows:
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# - Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimer.
+# - Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# - Neither the name of the MontaVista Software, Inc. nor the names of its
+#   contributors may be used to endorse or promote products derived from this
+#   software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+CFLAGS = -c -O2 -I/usr/include/ais
+LDFLAGS = 
+
+all:clean testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6
+
+cleanup:
+	rm -f testclm testamf
+
+testclm: testclm.o
+	$(CC) $(LDFLAGS) -o testclm testclm.o -lais
+
+testamf: testamf.o 
+	$(CC) $(LDFLAGS) -o testamf testamf.o -lais
+
+testamf1: testamf1.o libais.a
+	$(CC) $(LDFLAGS) -o testamf1 testamf1.o libais.a
+
+testamf2: testamf2.o libais.a
+	$(CC) $(LDFLAGS) -o testamf2 testamf2.o libais.a
+
+testamf3: testamf3.o libais.a
+	$(CC) $(LDFLAGS) -o testamf3 testamf3.o libais.a
+
+testamf4: testamf4.o libais.a
+	$(CC) $(LDFLAGS) -o testamf4 testamf4.o libais.a
+
+testamf5: testamf5.o libais.a
+	$(CC) $(LDFLAGS) -o testamf5 testamf5.o libais.a
+
+testamf6: testamf6.o libais.a
+	$(CC) $(LDFLAGS) -o testamf6 testamf6.o libais.a
+
+clean:
+	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6

@@ -1,0 +1,169 @@
+Copyright (c) 2002-2004 MontaVista Software, Inc.
+
+All rights reserved.
+
+This software licensed under BSD license, the text of which follows:
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+- Neither the name of the MontaVista Software, Inc. nor the names of its
+  contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------------
+Files, purpose, and dependencies.
+-------------------------------------------------------------------------------
+
+*----------------*
+*- AIS INCLUDES -*
+*----------------*
+
+include/ais_amf.h
+-----------------
+	Definitions for AMF interface.
+
+include/ais_ckpt.h
+------------------
+	Definitions for CKPT interface.
+
+include/ais_clm.h
+-----------------
+	Definitions for CLM interface.
+
+include/ais_msg.h
+-----------------
+	All the stuff that is used to specify how lib and executive communicate
+	including message identifiers, message request data, and mesage response
+	data.
+
+include/ais_types.h
+-------------------
+	Base type definitions for AIS interface.
+
+include/list.h
+-------------
+	Doubly linked list inline implementation.
+
+include/queue.h
+---------------
+	FIFO queue inline implementation.
+
+	depends on list.
+
+include/sq.h
+------------
+	Sort queue where items are sorted according to a sequence number.  Avoids
+	Sort, hence, install of a new element takes is O(1).  Inline implementation.
+
+	depends on list.
+
+*---------------*
+* AIS LIBRARIES *
+*---------------*
+lib/amf.c
+---------
+	AMF user library linked into user application.
+
+lib/ckpt.c
+----------
+	CKPT user library linked into user application.
+
+lib/clm.c
+---------
+	CLM user library linked into user application.
+
+lib/util.c
+----------
+	Utility functions used by all libraries.
+
+*-----------------*
+*- AIS EXECUTIVE -*
+*-----------------*
+
+exec/amf.{h|c}
+-------------
+	Server side implementation of Availability Management Framework (AMF API).
+
+exec/ckpt.{h|c}
+	Server side implementation of Checkpointing (CKPT API).
+
+exec/clm.{h|c}
+	Server side implementation of Cluster Membership (CLM API).
+
+
+exec/gmi.{h|c}
+--------------
+	group messaging interface supporting reliable totally ordered group multicast
+	using ring topology.  Supports extended virtual synchrony delivery semantics
+	with strong membership guarantees.
+
+	depends on cglpoll.
+	depends on queue.
+	depends on sq.
+	depends on list.
+
+exec/handlers.h
+---------------
+	Functional specification of a service that connects into AIS executive.
+	If all functions are implemented, new services can easily be added.
+
+exec/main.{h|c}
+--------------
+	Main dispatch functionality and global data types used to connect AIS
+	services into one component.
+
+exec/mempool.{h|c}
+------------------
+	Memory pool implementation that supports preallocated memory blocks to
+	avoid OOM errors.
+
+exec/parse.{h|c}
+----------------
+	Parsing functions for parsing /etc/ais/groups.conf and
+	/etc/ais/network.conf into internally used data structures.
+
+exec/poll.{h|c}
+---------------
+	poll abstraction with support for nearly unlimited large poll handlers
+	and timer handlers.
+
+	depends on tlist.
+
+exec/print.{h|c}
+----------------
+	Logging implementation meant to replace syslog.  syslog has nasty side
+	effect of causing a signal every time a message is logged.
+
+exec/tlist.{h|c}
+-----------------
+	Timer list interface for supporting timer addition, removal, expiry, and 
+	determination of timeout period left for next timer to expire.
+
+	depends on list.
+
+exec/log/print.{h|c}
+--------------------
+	Prototype implementation of logging to syslog without using syslog C
+	library call.
+
+loc
+---
+Counts the lines of code in the AIS implementation.

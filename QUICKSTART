@@ -1,0 +1,107 @@
+Application Interface Specification Quckstart Guide
+---------------------------------------------------
+This AIS package is broken into four parts.  The exec directory contains
+all of the code responsible for serving the APIs.  The api directory contains
+APIs the user can link to.  The test directory contains some simple test
+programs which exercise the APIs.  The directory conf contains example
+configuration files which can be copied directly onto the target system.
+
+The API implements the Cluster Membership (CLM), Availabilty Management
+Framework (AMF) and the Checkpointing (CKPT) APIs.
+
+Configuring the AIS Executive:
+-----------------------------
+The AIS Executive will automatically determine cluster membership by
+communicating on a specified multicast address and port.
+
+The directory conf contains the file network.conf
+
+bindnetaddr:192.168.1.0
+mcastaddr:226.94.1.1
+mcastport:6000
+
+bindnetaddr specifies the address which the AIS Executive should bind to.
+This address should always end in zero.  If the local interface taffic
+traffic should routed over is 192.168.5.92, set bindnetaddr to 192.168.1.0.
+
+mcastaddr is a multicast address.  The default should work but you may have
+a different network configuration.  Avoid 225.X.X.X because this is a "config"
+multicast address which every multicast capable host joins on system start.
+
+mcastport specifies the UDP port number.  It is possible to use the same
+multicast address on a network with the AIS services configured for multiple
+UDP ports.
+
+The directory conf contains the file groups.conf which specifies the failover
+groups, service units, components, and policies to be used by the AMF.  The
+configuration file matches the testamf1-6 programs in the test directory and
+can be copied directly.
+
+These two files should be placed in the /etc/ais directory.
+
+Building AIS
+------------
+AIS requires GCC, LD, and a Linux 2.4 kernel.  AIS has been tested on
+Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9.
+
+Compile AIS by running make in the root directory.  Make can also be run
+in the individual directories.  Nothing is installed by make.  If install
+is desired, the files must be copied manually.
+
+Setup network
+-------------
+Some networks do not automatically configure the default route.  Ensure
+the default route is configured or AIS wont be able to communicate with
+other nodes.
+
+[sdake@slickdeal checkpointd]$ /sbin/route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+10.0.0.6        *               255.255.255.255 UH    0      0        0 tun0
+127.0.0.0       *               255.0.0.0       U     0      0        0 lo
+default         192.168.1.1     0.0.0.0         UG    0      0        0 eth0
+
+the word default above specifies the default route.  If the default route
+is missing, specify one by
+
+unix# /sbin/route add default gw 192.168.1.1
+
+where 192.168.1.1 is the gateway.  It is possible to specify an invalid 
+route which will also make AIS work properly.
+
+Run AIS Executive
+-----------------
+Get 2 or more nodes and run the AIS executive on each node.  A list of
+node IPs should be displayed on stdout when the nodes join a configuration.
+Run the aisexec program (after the default route is setup and the config
+files are in place).
+
+Try out the CLM functionality
+-----------------------------
+Run test/testclm on one node.  Then kill and add nodes.  This will cause
+callbacks to be called in the testclm application which will print out
+the node state changes.
+
+Try out the AIS AMF functionality
+---------------------------------
+After aisexec is running
+
+Run testamf1 on one node, testamf3 testamf4 on another node.
+One will become active one standby.  testamf2 is special in that it shows
+reporting and canceling an error.  Run testamf2 on the node testamf1
+was run from.  The ha states and readiness states will be shown.
+
+Try out the AIS CKPT functionality
+----------------------------------
+run ckptstress.  This will write checkpoint data as quickly as possible to
+the cluster.
+
+Write your own applications
+---------------------------
+Without real applications, finding the hard bugs will be difficult.  Please
+port or write apps and let us know of the progress!
+
+Contribute!
+-----------
+Code, examples, documentation, bug reports, testing are all appreciated.
+Read the TODO or the ask on the mailing lists for ways to contribute.
