@@ -58,7 +58,8 @@ TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 
 all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
 	testamf6 testamfth testckpt ckptstress testparse ckptbench \
-	ckptbenchth testevt testevs evsbench subscription publish evtbench
+	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
+	evsbench subscription publish evtbench
 
 testparse: testparse.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o ../exec/util.o
@@ -125,6 +126,12 @@ evtbench: evtbench.o sa_error.o $(LIBRARIES)
 
 test: test.o $(LIBRARIES)
 	g++ $(LDFLAGS) -o test test.o $(LIBS)
+
+ckpt-rd: ckpt-rd.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o ckpt-rd ckpt-rd.o sa_error.o $(LIBS)
+
+ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o ckpt-wr ckpt-wr.o sa_error.o $(LIBS)
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
