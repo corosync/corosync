@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <assert.h>
+#include <pwd.h>
 #include <grp.h>
 #include <sys/poll.h>
 #include <sys/mman.h>
@@ -71,7 +72,8 @@
 
 int connection_entries = 0;
 struct connection *connections = 0;
-int gid_valid = 20;
+int ais_uid = 0;
+int gid_valid = 0;
 
 struct gmi_groupname aisexec_groupname = { "0123" };
 
@@ -530,14 +532,33 @@ static void confchg_fn (
 	}
 }
 
-static void aisexec_group_determine (void) {
+static void aisexec_uid_determine (void)
+{
+	struct passwd *passwd;
+
+	passwd = getpwnam("ais");
+	if (passwd == 0) {
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' user is not found in /etc/passwd, please read the documentation.\n");
+		ais_done (-1);
+	}
+	ais_uid = passwd->pw_uid;
+}
+
+static void aisexec_gid_determine (void)
+{
 	struct group *group;
 	group = getgrnam ("ais");
 	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "The 'ais' group is not found in /etc/group, please read the documentation.\n");
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' group is not found in /etc/group, please read the documentation.\n");
 		ais_done (-1);
 	}
 	gid_valid = group->gr_gid;
+}
+
+static void aisexec_priv_drop (void)
+{
+	setuid (ais_uid);
+	setegid (ais_uid);
 }
 
 static void aisexec_mempool_init (void)
@@ -623,7 +644,7 @@ static void aisexec_setscheduler (void)
 
 	res = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "WARNING: Could not set SCHED_RR at priority 99: %s\n", strerror (errno));
+		log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority 99: %s\n", strerror (errno));
 	}
 }
 
@@ -633,7 +654,7 @@ static void aisexec_mlockall (void)
 
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "WARNING: Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
+		log_printf (LOG_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
 	};
 }
 
@@ -648,25 +669,53 @@ int main (int argc, char **argv)
 
 	char *error_string;
 
-	aisexec_group_determine ();
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc.\n");
 
-	aisexec_handler_fns_build ();
+	aisexec_uid_determine ();
+
+	aisexec_gid_determine ();
 
 	aisexec_poll_handle = poll_create ();
 
+	/*
+	 * if gmi_init doesn't have root priveleges, it cannot
+	 * bind to a specific interface.  This only matters if
+	 * there is more then one interface in a system, so
+	 * in this case, only a warning is printed
+	 */
+	/*
+	 * Initialize group messaging interface with multicast address
+	 */
 	res = amfReadNetwork (&error_string, &sockaddr_in_mcast, &sockaddr_in_bindnet);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		ais_done (1);
 	}
-	
 
 	/*
-	 * Initialize group messaging interface with multicast address
+	 * Set round robin realtime scheduling with priority 99
+	 * Lock all memory to avoid page faults which may interrupt
+	 * application healthchecking
 	 */
+	aisexec_setscheduler ();
+
+	aisexec_mlockall ();
+
 	gmi_init (&sockaddr_in_mcast, &sockaddr_in_bindnet,
 		&aisexec_poll_handle, &this_ip);
 	
+	/*
+	 * Drop root privleges to user 'ais'
+	 * TODO: Don't really need full root capabilities;
+	 *       needed capabilities are:
+	 * CAP_NET_RAW (bindtodevice)
+	 * CAP_SYS_NICE (setscheduler)
+	 * CAP_IPC_LOCK (mlockall)
+	 */
+	aisexec_priv_drop ();
+
+	aisexec_handler_fns_build ();
+
 	aisexec_mempool_init ();
 
 	res = amfReadGroups(&error_string);
@@ -677,7 +726,6 @@ int main (int argc, char **argv)
 	
 	aisexec_tty_detach ();
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc.\n");
 	signal (SIGINT, sigintr_handler);
 
 	aisexec_service_handlers_init ();
@@ -691,15 +739,6 @@ int main (int argc, char **argv)
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to receive connections.\n");
-
-	/*
-	 * Set round robin realtime scheduling with priority 99
-	 * Lock all memory to avoid page faults which may interrupt
-	 * application healthchecking
-	 */
-	aisexec_setscheduler ();
-
-	aisexec_mlockall ();
 
 	/*
 	 * Setup libais connection dispatch routine
