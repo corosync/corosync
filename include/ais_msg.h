@@ -231,7 +231,7 @@ enum res_evt_types {
 struct req_header {
 	int size;
 	int id;
-};
+} __attribute__((packed));
 
 struct res_header {
 	int size;
@@ -242,23 +242,7 @@ struct res_header {
 struct message_source {
 	struct conn_info *conn_info;
 	struct in_addr in_addr;
-};
-
-struct req_execauth_xmit_authkey {
-	struct req_header header;
-	int authModule;
-	unsigned char random[16];
-};
-
-struct res_execauth_xmit_signature {
-	struct req_header header;
-	unsigned char signature[64];
-	unsigned int signature_length;
-};
-
-struct req_execauth_connection_authorized {
-	struct req_header header;
-};
+} __attribute__((packed));
 
 struct req_clm_trackstart {
 	struct req_header header;
@@ -354,7 +338,7 @@ struct req_lib_amf_componentregister {
 	struct req_header header;
 	SaNameT compName;
 	SaNameT proxyCompName;
-};
+} __attribute__((packed));
 
 struct req_exec_amf_componentregister {
 	struct req_header header;
@@ -364,7 +348,7 @@ struct req_exec_amf_componentregister {
 	SaAmfReadinessStateT newReadinessState;
 	SaAmfHAStateT currentHAState;
 	SaAmfHAStateT newHAState;
-};
+} __attribute__((packed));
 
 struct res_lib_amf_componentregister {
 	struct res_header header;
@@ -1051,6 +1035,7 @@ struct lib_event_data {
 	uint32_t				led_user_data_offset;
 	uint32_t				led_user_data_size;
 	uint32_t				led_patterns_number;
+	int msg_id;
 	uint8_t					led_body[0];
 
 };
