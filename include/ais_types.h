@@ -52,6 +52,8 @@ typedef unsigned long long SaUint64T;
 
 typedef SaInt64T SaTimeT;
 
+#define SA_TIME_END ((SaTimeT)0x7fffffffffffffffull)
+
 #define SA_MAX_NAME_LENGTH 256
 typedef struct {
 		SaUint16T length;
