@@ -70,8 +70,6 @@
 
 #define SERVER_BACKLOG 5
 
-int connection_entries = 0;
-struct connection *connections = 0;
 int ais_uid = 0;
 int gid_valid = 0;
 
@@ -99,71 +97,62 @@ static inline void ais_done (int err)
 	exit (1);
 }
 
-static inline int init_connection_entry (int fd)
-{
+static inline struct conn_info *conn_info_create (int fd) {
+	struct conn_info *conn_info;
 	int res;
 
-	memset (&connections[fd], 0, sizeof (struct connection));
-	connections[fd].active = 1;
-	res = queue_init (&connections[fd].outq, SIZEQUEUE, sizeof (struct outq_item));
+	conn_info = malloc (sizeof (struct conn_info));
+	if (conn_info == 0) {
+		return (0);
+	}
+
+	memset (conn_info, 0, sizeof (struct conn_info));
+	res = queue_init (&conn_info->outq, SIZEQUEUE,
+		sizeof (struct outq_item));
 	if (res != 0) {
-		goto error_exit;
+		free (conn_info);
+		return (0);
 	}
-	connections[fd].inb = malloc (sizeof (char) * SIZEINB);
-	if (connections[fd].inb == 0) {
-		queue_free (&connections[fd].outq);
-		goto error_exit;
+	conn_info->inb = malloc (sizeof (char) * SIZEINB);
+	if (conn_info->inb == 0) {
+		queue_free (&conn_info->outq);
+		free (conn_info);
+		return (0);
 	}
-	return (0);
 	
-error_exit:
-	return (-1);
+	conn_info->active = 1;
+	conn_info->fd = fd;
+	conn_info->service = SOCKET_SERVICE_INIT;
+	return (conn_info);
 }
 
-/*
- * Grows the connections table to fd + 1 in size clearing new entries
- */
-static inline int grow_connections_table (int fd)
-{
-	struct connection *conn_temp;
-
-	if (fd + 1 > connection_entries) {
-		conn_temp = mempool_realloc (connections, (fd + 1) * sizeof (struct connection));
-		if (conn_temp == 0) {
-			return (-1);
-		}
-		connections = conn_temp;
-		memset (&connections[connection_entries], 0,
-			(fd - connection_entries + 1) * sizeof (struct connection));
-		connection_entries = fd + 1;
-	}
-	return (0);
-}
 
 struct sockaddr_in this_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 char *socketname = "libais.socket";
 
-static void libais_disconnect (int fd)
+static void libais_disconnect (struct conn_info *conn_info)
 {
-	int i;
+	int fd;
+
+	if (ais_service_handlers[conn_info->service - 1]->libais_exit_fn) {
+		ais_service_handlers[conn_info->service - 1]->libais_exit_fn (conn_info);
+	} else {
+		printf ("exit function not defined\n");
+	}
+
+	fd = conn_info->fd;
 
 	close (fd);
-	connections[fd].active = 0;
-	queue_free (&connections[fd].outq);
-	free (connections[fd].inb);
-
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->libais_exit_fn) {
-			ais_service_handlers[i]->libais_exit_fn (fd);
-		}
-	}
+	queue_free (&conn_info->outq);
+	free (conn_info->inb);
 
 	poll_dispatch_delete (aisexec_poll_handle, fd);
 }
 
-extern int libais_send_response (int s, void *msg, int mlen)
+extern int libais_send_response (struct conn_info *conn_info,
+	void *msg, int mlen)
 {
 	struct queue *outq;
 	char *cmsg;
@@ -174,7 +163,7 @@ extern int libais_send_response (int s, void *msg, int mlen)
 	struct msghdr msg_send;
 	struct iovec iov_send;
 
-	outq = &connections[s].outq;
+	outq = &conn_info->outq;
 
 	msg_send.msg_iov = &iov_send;
 	msg_send.msg_name = 0;
@@ -190,11 +179,11 @@ extern int libais_send_response (int s, void *msg, int mlen)
 	}
 	while (!queue_is_empty (outq)) {
 		queue_item = queue_item_get (outq);
-		iov_send.iov_base = (void *)connections[s].byte_start;
+		iov_send.iov_base = (void *)conn_info->byte_start;
 		iov_send.iov_len = queue_item->mlen;
 
 retry_sendmsg:
-		res = sendmsg (s, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
+		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg;
 		}
@@ -209,7 +198,7 @@ retry_sendmsg:
 		 * Message sent, try sending another message
 		 */
 		queue_item_remove (outq);
-		connections[s].byte_start = 0;
+		conn_info->byte_start = 0;
 		mempool_free (queue_item->msg);
 	} /* while queue not empty */
 
@@ -222,7 +211,7 @@ retry_sendmsg:
 		iov_send.iov_base = msg;
 		iov_send.iov_len = mlen;
 retry_sendmsg_two:
-		res = sendmsg (s, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
+		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg_two;
 		}
@@ -254,10 +243,10 @@ static int poll_handler_libais_accept (
 	void *data)
 {
 	int addrlen;
+	struct conn_info *conn_info;
 	struct sockaddr_un un_addr;
 	int new_fd;
 	int on = 1;
-	int res;
 
 	addrlen = sizeof (struct sockaddr_un);
 
@@ -282,32 +271,25 @@ retry_accept:
 	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
 
 	log_printf (LOG_LEVEL_DEBUG, "connection received from libais client %d.\n", new_fd);
-	/*
-	 * Generate new connections array
-	 */
-	res = grow_connections_table (new_fd);
-	if (res == -1) {
-		close (new_fd);
-		return (0); /* This is an error, but -1 would indicate disconnect from poll */
 
-	}
-
-	res = init_connection_entry (new_fd);
-	if (res == -1) {
+	conn_info = conn_info_create (new_fd);
+	if (conn_info == 0) {
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll */
 	}
-	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN, 0,
+
+	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN, conn_info,
 		poll_handler_libais_deliver);
 
-	connections[new_fd].service = SOCKET_SERVICE_INIT;
-	memcpy (&connections[new_fd].ais_ci.un_addr, &un_addr, sizeof (struct sockaddr_un));
+// TODO is this needed, or shouldn't it be in conn_info_create ?
+	memcpy (&conn_info->ais_ci.un_addr, &un_addr, sizeof (struct sockaddr_un));
 	return (0);
 }
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data)
 {
 	int res;
+	struct conn_info *conn_info = (struct conn_info *)data;
 	struct message_header *header;
 	int service;
 	struct msghdr msg_recv;
@@ -323,7 +305,7 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	msg_recv.msg_namelen = 0;
 	msg_recv.msg_flags = 0;
 
-	if (connections[fd].authenticated) {
+	if (conn_info->authenticated) {
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
 	} else {
@@ -331,10 +313,10 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
 	}
 
-	iov_recv.iov_base = &connections[fd].inb[connections[fd].inb_start];
-	iov_recv.iov_len = (SIZEINB) - connections[fd].inb_start;
+	iov_recv.iov_base = &conn_info->inb[conn_info->inb_start];
+	iov_recv.iov_len = (SIZEINB) - conn_info->inb_start;
 	assert (iov_recv.iov_len != 0);
-//printf ("inb start inb inuse %d %d\n", connections[fd].inb_start, connections[fd].inb_inuse);
+//printf ("inb start inb inuse %d %d\n", conn_info->inb_start, conn_info->inb_inuse);
 
 retry_recv:
 	res = recvmsg (fd, &msg_recv, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -353,16 +335,16 @@ retry_recv:
 	/*
 	 * Authenticate if this connection has not been authenticated
 	 */
-	if (connections[fd].authenticated == 0) {
+	if (conn_info->authenticated == 0) {
 		cmsg = CMSG_FIRSTHDR (&msg_recv);
 		cred = (struct ucred *)CMSG_DATA (cmsg);
 		if (cred) {
 			if (cred->uid == 0 || cred->gid == gid_valid) {
 				setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
-				connections[fd].authenticated = 1;
+				conn_info->authenticated = 1;
 			}
 		}
-		if (connections[fd].authenticated == 0) {
+		if (conn_info->authenticated == 0) {
 			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", cred->gid, gid_valid);
 		}
 	}
@@ -370,11 +352,11 @@ retry_recv:
 	 * Dispatch all messages received in recvmsg that can be dispatched
 	 * sizeof (struct message_header) needed at minimum to do any processing
 	 */
-	connections[fd].inb_inuse += res;
-	connections[fd].inb_start += res;
+	conn_info->inb_inuse += res;
+	conn_info->inb_start += res;
 
-	while (connections[fd].inb_inuse >= sizeof (struct message_header) && res != -1) {
-		header = (struct message_header *)&connections[fd].inb[connections[fd].inb_start - connections[fd].inb_inuse];
+	while (conn_info->inb_inuse >= sizeof (struct message_header) && res != -1) {
+		header = (struct message_header *)&conn_info->inb[conn_info->inb_start - conn_info->inb_inuse];
 
 		if (header->magic != MESSAGE_MAGIC) {
 			log_printf (LOG_LEVEL_SECURITY, "Invalid magic is %x should be %x\n", header->magic, MESSAGE_MAGIC);
@@ -382,10 +364,10 @@ retry_recv:
 			goto error_exit;
 		}
 
-		if (header->size > connections[fd].inb_inuse) {
+		if (header->size > conn_info->inb_inuse) {
 			break;
 		}
-		service = connections[fd].service;
+		service = conn_info->service;
 
 		/*
 		 * If this service is in init phase, initialize service
@@ -395,7 +377,7 @@ retry_recv:
 			/*
 			 * Initializing service
 			 */
-			res = ais_service_handlers[header->id]->libais_init_fn (fd, header);
+			res = ais_service_handlers[header->id]->libais_init_fn (conn_info, header);
 		} else  {
 			/*
 			 * Not an init service, but a standard service
@@ -407,31 +389,29 @@ retry_recv:
 				goto error_exit;
 			}
 	
-			res = ais_service_handlers[service - 1]->libais_handler_fns[header->id](fd, header);
+			res = ais_service_handlers[service - 1]->libais_handler_fns[header->id](conn_info, header);
 		}
-		connections[fd].inb_inuse -= header->size;
+		conn_info->inb_inuse -= header->size;
 	} /* while */
 
-	if (connections[fd].inb_inuse == 0) {
-		connections[fd].inb_start = 0;
+	if (conn_info->inb_inuse == 0) {
+		conn_info->inb_start = 0;
 	} else 
 // BUG	if (connections[fd].inb_start + connections[fd].inb_inuse >= SIZEINB) {
-	if (connections[fd].inb_start >= SIZEINB) {
+	if (conn_info->inb_start >= SIZEINB) {
 		/*
 		 * If in buffer is full, move it back to start
 		 */
-		memmove (connections[fd].inb,
-			&connections[fd].inb[connections[fd].inb_start -
-				connections[fd].inb_inuse],
-			sizeof (char) * connections[fd].inb_inuse);
-		connections[fd].inb_start = connections[fd].inb_inuse;
+		memmove (conn_info->inb,
+			&conn_info->inb[conn_info->inb_start - conn_info->inb_inuse],
+			sizeof (char) * conn_info->inb_inuse);
+		conn_info->inb_start = conn_info->inb_inuse;
 	}
-
 	
 	return (res);
 
 error_exit:
-	libais_disconnect (fd);
+	libais_disconnect (conn_info);
 	return (-1); /* remove entry from poll list */
 }
 
@@ -643,6 +623,7 @@ static void aisexec_setscheduler (void)
 {
 	int res;
 
+return;
 	res = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority 99: %s\n", strerror (errno));
@@ -734,12 +715,6 @@ int main (int argc, char **argv)
 	aisexec_service_handlers_init ();
 
 	aisexec_libais_bind (&libais_server_fd);
-
-	res = grow_connections_table (libais_server_fd);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not allocate memory for listening socket.\n");
-		ais_done (1);
-	}
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to receive connections.\n");
 
