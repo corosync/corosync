@@ -50,7 +50,9 @@
 #include <arpa/inet.h>
 
 #include "../include/ais_types.h"
+#include "../include/saClm.h"
 #include "../include/ais_msg.h"
+#include "../include/ipc_clm.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "aispoll.h"
@@ -115,7 +117,7 @@ static int message_handler_req_clm_init (struct conn_info *conn_info,
 static int message_handler_req_lib_activatepoll (struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_clm_trackstart (struct conn_info *conn_info,
+static int message_handler_req_clm_clustertrack (struct conn_info *conn_info,
 	void *message);
 
 static int message_handler_req_clm_trackstop (struct conn_info *conn_info,
@@ -137,8 +139,8 @@ struct libais_handler clm_libais_handlers[] =
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
 	},
 	{ /* 1 */
-		.libais_handler_fn			= message_handler_req_clm_trackstart,
-		.response_size				= sizeof (struct res_clm_trackstart),
+		.libais_handler_fn			= message_handler_req_clm_clustertrack,
+		.response_size				= sizeof (struct res_clm_clustertrack),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
 	},
 	{ /* 2 */
@@ -193,12 +195,11 @@ static int clm_exec_init_fn (void)
 	 * Build local cluster node data structure
 	 */
 	thisClusterNode.nodeId = this_ip.sin_addr.s_addr;
-	memcpy (&thisClusterNode.nodeAddress.value, &this_ip.sin_addr, sizeof (struct in_addr));
+	memcpy (&thisClusterNode.nodeAddress.value, &this_ip.sin_addr,
+		sizeof (struct in_addr));
 	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
 	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip.sin_addr));
 	thisClusterNode.nodeName.length = strlen (thisClusterNode.nodeName.value);
-	strcpy (thisClusterNode.clusterName.value, "mvlcge");
-	thisClusterNode.clusterName.length = strlen ("mvlcge");
 	thisClusterNode.member = 1;
 	{
 		struct sysinfo s_info;
@@ -247,7 +248,7 @@ static void libraryNotificationCurrentState (struct conn_info *conn_info)
 	 * Build notification list
 	 */
 	for (i = 0; i < clusterNodeEntries; i++) {
-		clusterNotification[i].clusterChanges = SA_CLM_NODE_NO_CHANGE;
+		clusterNotification[i].clusterChange = SA_CLM_NODE_NO_CHANGE;
 
 		memcpy (&clusterNotification[i].clusterNode, &clusterNodes[i],
 			sizeof (SaClmClusterNodeT));
@@ -263,8 +264,6 @@ static void libraryNotificationCurrentState (struct conn_info *conn_info)
 	res_clm_trackcallback.viewNumber = 0;
 	res_clm_trackcallback.numberOfItems = i;
 	res_clm_trackcallback.numberOfMembers = i;
-	res_clm_trackcallback.notificationBufferAddress = 
-		conn_info->ais_ci.u.libclm_ci.notificationBufferAddress;
 	libais_send_response (conn_info, &res_clm_trackcallback, sizeof (struct res_clm_trackcallback));
 	libais_send_response (conn_info, clusterNotification, sizeof (SaClmClusterNotificationT) * i);
 }
@@ -294,8 +293,6 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 			res_clm_trackcallback.viewNumber = 0;
 			res_clm_trackcallback.numberOfItems = notify_entries;
 			res_clm_trackcallback.numberOfMembers = notify_entries;
-			res_clm_trackcallback.notificationBufferAddress = 
-				conn_info->ais_ci.u.libclm_ci.notificationBufferAddress;
 			libais_send_response (conn_info, &res_clm_trackcallback,
 				sizeof (struct res_clm_trackcallback));
 			libais_send_response (conn_info, cluster_notification_entries,
@@ -313,7 +310,7 @@ static void libraryNotificationJoin (SaClmNodeIdT node)
 	/*
 	 * Generate notification element
 	 */
-	clusterNotification.clusterChanges = SA_CLM_NODE_JOINED;
+	clusterNotification.clusterChange = SA_CLM_NODE_JOINED;
 	clusterNotification.clusterNode.member = 1;
 	for (i = 0; i < clusterNodeEntries; i++) {
 		if (node == clusterNodes[i].nodeId) {
@@ -340,7 +337,7 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 				memcpy (&clusterNotification[notifyEntries].clusterNode, 
 					&clusterNodes[i],
 					sizeof (SaClmClusterNodeT));
-				clusterNotification[notifyEntries].clusterChanges = SA_CLM_NODE_LEFT;
+				clusterNotification[notifyEntries].clusterChange = SA_CLM_NODE_LEFT;
 				clusterNotification[notifyEntries].clusterNode.member = 0;
 				notifyEntries += 1;
 				break;
@@ -530,13 +527,12 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 	return (0);
 }
 
-int message_handler_req_clm_trackstart (struct conn_info *conn_info, void *message)
+int message_handler_req_clm_clustertrack (struct conn_info *conn_info, void *message)
 {
-	struct req_clm_trackstart *req_clm_trackstart = (struct req_clm_trackstart *)message;
+	struct req_clm_clustertrack *req_clm_clustertrack = (struct req_clm_clustertrack *)message;
 
 
-	conn_info->ais_ci.u.libclm_ci.trackFlags = req_clm_trackstart->trackFlags;
-	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = req_clm_trackstart->notificationBufferAddress;
+	conn_info->ais_ci.u.libclm_ci.trackFlags = req_clm_clustertrack->trackFlags;
 
 	list_add (&conn_info->conn_list, &library_notification_send_listhead);
 
@@ -545,10 +541,10 @@ int message_handler_req_clm_trackstart (struct conn_info *conn_info, void *messa
 	return (0);
 }
 
+
 static int message_handler_req_clm_trackstop (struct conn_info *conn_info, void *message)
 {
 	conn_info->ais_ci.u.libclm_ci.trackFlags = 0;
-	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = 0;
 
 	list_del (&conn_info->conn_list);
 
@@ -597,20 +593,20 @@ static int message_handler_req_clm_nodegetasync (struct conn_info *conn_info, vo
 	struct res_clm_nodegetasync res_clm_nodegetasync;
 	struct res_clm_nodegetcallback res_clm_nodegetcallback;
 	SaClmClusterNodeT *clusterNode = 0;
-	int valid = 0;
+	int error = SA_AIS_ERR_INVALID_PARAM;
 	int i;
 
 	log_printf (LOG_LEVEL_DEBUG, "nodeget: trying to find node %x\n", (int)req_clm_nodegetasync->nodeId);
 
 	if (req_clm_nodegetasync->nodeId == SA_CLM_LOCAL_NODE_ID) {
 		clusterNode = &clusterNodes[0];
-		valid = 1;
+		error = SA_AIS_OK;
 	} else 
 	for (i = 0; i < clusterNodeEntries; i++) {
 		if (clusterNodes[i].nodeId == req_clm_nodegetasync->nodeId) {
 			log_printf (LOG_LEVEL_DEBUG, "found host that matches one desired in nodeget.\n");
 			clusterNode = &clusterNodes[i];
-			valid = 1;
+			error = SA_AIS_OK;
 			break;
 		}
 	}
@@ -629,11 +625,9 @@ static int message_handler_req_clm_nodegetasync (struct conn_info *conn_info, vo
 	 */
 	res_clm_nodegetcallback.header.size = sizeof (struct res_clm_nodegetcallback);
 	res_clm_nodegetcallback.header.id = MESSAGE_RES_CLM_NODEGETCALLBACK;
-	res_clm_nodegetcallback.header.error = SA_OK;
+	res_clm_nodegetcallback.header.error = error;
 	res_clm_nodegetcallback.invocation = req_clm_nodegetasync->invocation;
-	res_clm_nodegetcallback.clusterNodeAddress = req_clm_nodegetasync->clusterNodeAddress;
-	res_clm_nodegetcallback.valid = valid;
-	if (valid) {
+	if (error == SA_AIS_OK) {
 		memcpy (&res_clm_nodegetcallback.clusterNode, clusterNode,
 			sizeof (SaClmClusterNodeT));
 	}

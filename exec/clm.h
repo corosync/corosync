@@ -33,6 +33,7 @@
  */
 
 #include "../include/ais_types.h"
+#include "../include/saClm.h"
 
 #ifndef CLM_H_DEFINED
 #define CLM_H_DEFINED
@@ -41,7 +42,6 @@
 
 struct libclm_ci {
 	SaUint8T trackFlags;
-	SaClmClusterNotificationT *notificationBufferAddress;
 };
 
 extern SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id);
