@@ -53,7 +53,8 @@ enum req_init_types {
 	MESSAGE_REQ_AMF_INIT,
 	MESSAGE_REQ_CKPT_INIT,
 	MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT
+	MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
+	MESSAGE_REQ_EVT_INIT
 };
 
 enum res_init_types {
@@ -172,6 +173,26 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD
+};
+
+enum req_evt_types {
+	MESSAGE_REQ_EVT_OPEN_CHANNEL = 1,
+	MESSAGE_REQ_EVT_CLOSE_CHANNEL,
+	MESSAGE_REQ_EVT_SUBSCRIBE,
+	MESSAGE_REQ_EVT_UNSUBSCRIBE,
+	MESSAGE_REQ_EVT_PUBLISH,
+	MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME
+};
+
+enum res_evt_types {
+	MESSAGE_RES_EVT_OPEN_CHANNEL = 1,
+	MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	MESSAGE_RES_EVT_SUBSCRIBE,
+	MESSAGE_RES_EVT_UNSUBSCRIBE,
+	MESSAGE_RES_EVT_PUBLISH,
+	MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
+	MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK,
+	MESSAGE_RES_EVT_EVENT_DATA
 };
 
 #define MESSAGE_MAGIC 0x5a6b7c8d
@@ -717,5 +738,226 @@ struct req_exec_clm_nodejoin {
 	struct message_header header;
 	SaClmClusterNodeT clusterNode;
 };
+
+
+/* 
+ * MESSAGE_REQ_EVT_OPEN_CHANNEL
+ *
+ * ico_head				Request head
+ * ico_open_flag:		Channel open flags
+ * ico_channel_name:	Name of channel to open
+ * ico_c_handle:		Local lib channel handle (used in returned event data)
+ * ico_timeout:			Used only by open
+ * ico_invocation:		Used only by async open
+ *
+ */
+struct req_evt_channel_open {
+
+	struct message_header	ico_head;
+	SaUint8T				ico_open_flag;
+	SaNameT					ico_channel_name;
+	SaEvtChannelHandleT		ico_c_handle;	/* client chan handle */
+	SaTimeT					ico_timeout;    /* open only */
+	SaInvocationT			ico_invocation; /* open async only */
+};
+
+/*
+ * MESSAGE_RES_EVT_OPEN_CHANNEL
+ * 
+ *
+ * ico_head:			Results head
+ * ico_error:			Request results
+ * ico_channel_handle:	Server side channel handle (used in channel ops)
+ *
+ */
+struct res_evt_channel_open {
+
+	struct message_header	ico_head;
+	SaErrorT				ico_error;
+	uint32_t				ico_channel_handle;/* svr chan handle */
+
+};
+
+/*
+ * MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK
+ *
+ * TODO: Define this
+ */
+struct res_evt_open_chan_async {
+	struct message_header	ico_head;
+};
+
+
+/*
+ * MESSAGE_REQ_EVT_CLOSE_CHANNEL
+ *
+ * icc_head:			Request head
+ * icc_channel_handle:	Server handle of channel to close
+ *
+ */
+struct req_evt_channel_close {
+
+	struct message_header	icc_head;
+	uint32_t				icc_channel_handle;
+};
+
+/*
+ * MESSAGE_RES_EVT_CLOSE_CHANNEL
+ *
+ * icc_head:		Results head
+ * icc_error:		Request result
+ *
+ */
+struct res_evt_channel_close {
+	struct message_header	icc_head;
+	SaErrorT				icc_error;
+};
+
+/* 
+ * MESSAGE_REQ_EVT_SUBSCRIBE
+ *
+ * ics_head:			Request head
+ * ics_channel_handle:	Server handle of channel
+ * ics_sub_id:			Subscription ID
+ * ics_filter_size:		Size of supplied filter data
+ * ics_filter_count:	Number of filters supplied
+ * ics_filter_data:		Filter data
+ *
+ */
+struct req_evt_channel_subscribe {
+
+	struct message_header	ics_head;
+	uint32_t				ics_channel_handle;
+	SaEvtSubscriptionIdT	ics_sub_id;
+	uint32_t				ics_filter_size;
+	uint32_t				ics_filter_count;
+	uint8_t					ics_filter_data[0];
+
+};
+
+/*
+ * MESSAGE_RES_EVT_SUBSCRIBE
+ *
+ * ics_head:		Result head
+ * ics_error:		Request results
+ *
+ */
+struct res_evt_channel_subscribe {
+	struct message_header	ics_head;
+	SaErrorT				ics_error;
+};
+
+/*
+ * MESSAGE_REQ_EVT_UNSUBSCRIBE
+ *
+ * icu_head:			Request head
+ * icu_channel_handle:	Server handle of channel
+ * icu_sub_id:			Subscription ID
+ *
+ */
+struct req_evt_channel_unsubscribe {
+
+	struct message_header	icu_head;
+	uint32_t				icu_channel_handle;
+	SaEvtSubscriptionIdT	icu_sub_id;
+};
+
+
+/*
+ * MESSAGE_RES_EVT_UNSUBSCRIBE
+ *
+ * icu_head:		Results head
+ * icu_error:		request result
+ *
+ */
+struct res_evt_channel_unsubscribe {
+	struct message_header	icu_head;
+	SaErrorT				icu_error;
+
+};
+
+
+/*
+ * MESSAGE_REQ_EVT_PUBLISH
+ * MESSAGE_RES_EVT_EVENT_DATA
+ *
+ * led_head:				Request/Results head
+ * led_svr_channel_handle:	Server channel handle (Publish only)
+ * led_lib_channel_handle:	Lib channel handle (Event Data only)
+ * led_event_id:			Event ID (Event Data only)
+ * led_sub_id:				Subscription ID (Event Data only)
+ * led_publisher_node_id:	Node ID of event publisher
+ * led_publisher_name:		Node name of event publisher
+ * led_retention_time:		Event retention time
+ * led_publish_time:		Publication time of the event
+ * led_priority:			Event priority
+ * led_user_data_offset:	Offset to user data
+ * led_user_data_size:		Size of user data
+ * led_patterns_number:		Number of patterns in the event
+ * led_body:				Pattern and user data
+ */
+struct lib_event_data {
+	struct message_header	led_head;
+	uint32_t				led_svr_channel_handle;
+	uint32_t				led_lib_channel_handle;
+	SaEvtEventIdT			led_event_id;
+	SaEvtSubscriptionIdT	led_sub_id;
+	SaClmNodeIdT			led_publisher_node_id;
+	SaNameT					led_publisher_name;
+	SaTimeT					led_retention_time;
+	SaTimeT					led_publish_time;
+	SaEvtEventPriorityT		led_priority;
+	uint32_t				led_user_data_offset;
+	uint32_t				led_user_data_size;
+	uint32_t				led_patterns_number;
+	uint8_t					led_body[0];
+
+};
+
+/*
+ * MESSAGE_RES_EVT_PUBLISH
+ *
+ * iep_head:		Result head
+ * iep_error:		Request results
+ * iep_event_id:	Event ID of published message
+ *
+ */
+struct res_evt_event_publish {
+
+	struct message_header	iep_head;
+	SaErrorT				iep_error;
+	SaEvtEventIdT			iep_event_id;
+};
+
+/*
+ * MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME
+ *
+ * Request message:
+ *
+ * iec_head:			Request head
+ * iec_event_id:		ID of event to clear
+ * iec_channel_handle:	Server handle of associate channel
+ *
+ */
+struct req_evt_event_clear_retentiontime {
+
+	struct message_header	iec_head;
+	uint64_t				iec_event_id;
+	uint32_t				iec_channel_handle;
+
+};
+
+/*
+ * MESSAGE_RES_EVT_CLEAR_RETENTIONTIME
+ *
+ * iec_head:		Results head
+ * iec_error:		Request result
+ *
+ */
+struct res_evt_event_clear_retentiontime {
+	struct message_header	iec_head;
+	SaErrorT				iec_error;
+};
+
 
 #endif /* AIS_MSG_H_DEFINED */
