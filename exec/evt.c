@@ -2043,6 +2043,7 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	struct event_svr_channel_open	*eco;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	SaErrorT error;
+	void *ptr;
 
 	req = message;
 
@@ -2054,11 +2055,11 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	 * look up the channel handle
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
-					req->icc_channel_handle, (void**)&eco);
-
+					req->icc_channel_handle, &ptr);
 	if (error != SA_OK) {
 		goto chan_close_done;
 	}
+	eco = ptr;
 
 	common_chan_close(eco, esip);
 	saHandleDestroy(&esip->esi_hdb, req->icc_channel_handle);
@@ -2106,6 +2107,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct event_data *evt;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	struct list_head *l;
+	void *ptr;
 	int i;
 
 	req = message;
@@ -2139,11 +2141,12 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	 * look up the channel handle
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
-						req->ics_channel_handle, (void**)&eco);
+						req->ics_channel_handle, &ptr);
 	if (error != SA_OK) {
 		goto subr_done;
 	}
-	
+	eco = ptr;
+
 	eci = eco->eco_channel;
 
 	/*
@@ -2219,6 +2222,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	struct event_svr_channel_subscr *ecs;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	SaErrorT error = SA_OK;
+	void *ptr;
 
 	req = message;
 
@@ -2232,11 +2236,12 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	 * data.
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
-						req->icu_channel_handle, (void**)&eco);
+						req->icu_channel_handle, &ptr);
 	if (error != SA_OK) {
 		goto unsubr_done;
 	}
-	
+	eco = ptr;
+
 	eci = eco->eco_channel;
 
 	/*
@@ -2283,6 +2288,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	SaEvtEventIdT event_id = 0;
 	SaErrorT error = SA_OK;
 	struct iovec pub_iovec;
+	void *ptr;
 	int result;
 
 
@@ -2296,10 +2302,11 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 * look up and validate open channel info
 	 */
 	error = saHandleInstanceGet(&esip->esi_hdb, 
-						req->led_svr_channel_handle, (void**)&eco);
+				    req->led_svr_channel_handle, &ptr);
 	if (error != SA_OK) {
 		goto pub_done;
 	}
+	eco = ptr;
 
 	eci = eco->eco_channel;
 
@@ -2914,13 +2921,14 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	SaErrorT error;
 	struct libevt_ci *esip = &ocp->ocp_conn_info->ais_ci.u.libevt_ci;
 	int ret = 0;
+	void *ptr;
 
 	if (!ocp->ocp_async && ocp->ocp_timer_handle) {
 		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
 		if (ret != 0 ) {
 			log_printf(LOG_LEVEL_WARNING, 
 				"Error clearing timeout for open channel of %s\n",
-							ocp->ocp_chan_name);
+				   getSaNameT(&ocp->ocp_chan_name));
 		}
 	}
 
@@ -2932,10 +2940,11 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	if (error != SA_OK) {
 		goto open_return;
 	}
-	error = saHandleInstanceGet(&esip->esi_hdb, handle, (void**)&eco);
+	error = saHandleInstanceGet(&esip->esi_hdb, handle, &ptr);
 	if (error != SA_OK) {
 		goto open_return;
 	}
+	eco = ptr;
 
 	/*
 	 * Initailize and link into the global channel structure.
@@ -3024,7 +3033,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		}
 		if (!eci) {
 			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
-							&cpkt->u.chc_chan.value);
+				   getSaNameT(&cpkt->u.chc_chan));
 			break;
 		}
 
@@ -3136,7 +3145,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		}
 		if (!eci) {
 			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
-							&cpkt->u.chc_set_opens.chc_chan_name.value);
+				   getSaNameT(&cpkt->u.chc_set_opens.chc_chan_name));
 			break;
 		}
 		if (set_open_count(eci, mn->mn_node_info.nodeId, 
