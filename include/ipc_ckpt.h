@@ -37,6 +37,8 @@
 #include "../include/ipc_gen.h"
 #include "../include/ais_types.h"
 #include "../include/saCkpt.h"
+#include "../exec/totemsrp.h"
+#include "../exec/ckpt.h"
 
 enum req_lib_ckpt_checkpoint_types {
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN = 1,
@@ -325,5 +327,26 @@ struct req_lib_ckpt_checkpointsynchronizeasync {
 struct res_lib_ckpt_checkpointsynchronizeasync {
 	struct res_header header;
 };
+
+struct req_exec_ckpt_synchronize_state {
+	struct req_header header;
+	struct memb_ring_id previous_ring_id;
+	SaNameT checkpointName;
+	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
+	SaCkptSectionDescriptorT sectionDescriptor;	
+	struct in_addr source_addr;
+	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
+};
+
+struct req_exec_ckpt_synchronize_section {
+	struct req_header header;
+	struct memb_ring_id previous_ring_id;
+	SaNameT checkpointName;
+	SaCkptSectionIdT sectionId;	
+	SaUint32T dataOffSet;
+	SaUint32T dataSize;	
+};
+
+
 
 #endif /* IPC_CKPT_H_DEFINED */
