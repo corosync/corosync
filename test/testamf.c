@@ -304,6 +304,9 @@ int main (int argc, char **argv) {
 	setSanameT (&compName, "comp_a_in_su_x");
 	setSanameT (&csiName, "pgA");
 
+    result = saAmfComponentRegister (&handle, &compName, NULL);
+	printf ("saAmfComponentRegister with result %d (should be 1) is:", result);
+
 	result = saAmfCompNameGet (&handle, &compname_get_name);
 	printf ("saAmfCompNameGet with result %d (should be 1) is:", result);
 	printSaNameT (&compname_get_name);
@@ -331,7 +334,11 @@ int main (int argc, char **argv) {
 		HAState, result);
 
 	do {
+        FD_SET (STDIN_FILENO, &read_fds);
 		select (select_fd + 1, &read_fds, 0, 0, 0);
+        if (FD_ISSET (STDIN_FILENO, &read_fds)) {
+            break;
+        }
 		saAmfDispatch (&handle, SA_DISPATCH_ALL);
 	} while (result);
 
