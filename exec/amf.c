@@ -149,8 +149,9 @@ static int activeServiceUnitsCount (
 static void component_unregister (
 	struct saAmfComponent *component);
 
-static void component_register (
-	struct saAmfComponent *component);
+static void component_registerpriority (
+	struct saAmfComponent *component,
+	int priority);
 
 static void enumerate_components (
 	void (*function)(struct saAmfComponent *, void *data),
@@ -235,10 +236,6 @@ static void amf_confchg_njoin (
 	struct saAmfComponent *component,
 	void *data);
 
-static void amf_confchg_nsync (
-	struct saAmfComponent *component,
-	void *data);
-
 static int amf_confchg_fn (
 	enum gmi_configuration_type configuration_type,
     struct sockaddr_in *member_list, int member_list_entries,
@@ -252,6 +249,8 @@ static void amf_dump (void);
 static int amf_exit_fn (struct conn_info *conn_info);
 
 static int amf_exec_init_fn (void);
+
+static void amf_synchronize (void *message, struct in_addr source_addr);
 
 static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr);
 
@@ -485,8 +484,9 @@ printf ("b\n");
 	return (0);
 }
 
-static void component_unregister (
-	struct saAmfComponent *component)
+static void component_unregisterpriority (
+	struct saAmfComponent *component,
+	int priority)
 {
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
 	struct iovec iovecs[2];
@@ -516,11 +516,19 @@ static void component_unregister (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, priority) == 0);
 }
 
-static void component_register (
+static void component_unregister (
 	struct saAmfComponent *component)
+{
+	component_unregisterpriority (component, GMI_PRIO_MED);
+	return;
+}
+
+static void component_registerpriority (
+	struct saAmfComponent *component,
+	int priority)
 {
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovecs[2];
@@ -533,13 +541,16 @@ static void component_register (
 	}
 	log_printf (LOG_LEVEL_DEBUG, "component_register: registering component %s\n",
 		getSaNameT (&component->name));
-	component->probableCause = SA_AMF_NOT_RESPONDING;
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
 
 	req_exec_amf_componentregister.source.conn_info = 0;
 	req_exec_amf_componentregister.source.in_addr.s_addr = 0;
+	req_exec_amf_componentregister.currentReadinessState = component->currentReadinessState;
+	req_exec_amf_componentregister.newReadinessState = component->newReadinessState;
+	req_exec_amf_componentregister.currentHAState = component->currentHAState;
+	req_exec_amf_componentregister.newHAState = component->newHAState;
 
 	memset (&req_exec_amf_componentregister.req_lib_amf_componentregister,
 		0, sizeof (struct req_lib_amf_componentregister));
@@ -550,7 +561,7 @@ static void component_register (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
-	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_RECOVERY) == 0);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, priority) == 0);
 }
 
 /***
@@ -754,7 +765,7 @@ void haStateSetClusterInit (
 }
 #endif
 
-void haStateSetCluster (
+static void haStateSetCluster (
 	struct saAmfComponent *component,
 	SaAmfHAStateT haState)
 {
@@ -844,7 +855,7 @@ void readinessStateSetClusterInit (
 }
 #endif
 
-void readinessStateSetCluster (
+static void readinessStateSetCluster (
 	struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
@@ -914,23 +925,12 @@ static void dsmDisabledUnlockedRegisteredOrErrorCancel (
 	}
 }
 
-static void dsmDisabledUnlockedFailed (
+static void dsmDisabledUnlockedFailedComponent (
 	struct saAmfComponent *component)
 {
-	struct saAmfUnit *unit;
-	struct list_head *list;
-
-	unit = component->saAmfUnit;
-
-	for (list = unit->saAmfComponentHead.next;
-		list != &unit->saAmfComponentHead;
-		list = list->next) {
-
-		component = list_entry (list, struct saAmfComponent, saAmfComponentList);
-
-		log_printf (LOG_LEVEL_DEBUG, "dsmDisabledUnlockedFailed: for %s.\n",
+	log_printf (LOG_LEVEL_DEBUG, "dsmDisabledUnlockedFailedComponent: for %s.\n",
 			getSaNameT (&component->name));
-		switch (component->enabledUnlockedState) {
+	switch (component->enabledUnlockedState) {
     	case AMF_ENABLED_UNLOCKED_IN_SERVICE_REQUESTED:
     	case AMF_ENABLED_UNLOCKED_IN_SERVICE_COMPLETED:
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED;
@@ -956,11 +956,28 @@ static void dsmDisabledUnlockedFailed (
 			component->timer_healthcheck = 0;
 			break;
 
-		default:
-			log_printf (LOG_LEVEL_DEBUG, "invalid case 5 %d\n", component->enabledUnlockedState);
-			break;
-		}
+	default:
+		log_printf (LOG_LEVEL_DEBUG, "invalid case 5 %d\n", component->enabledUnlockedState);
+		break;
 	}
+}
+
+static void dsmDisabledUnlockedFailed (
+	struct saAmfComponent *component)
+{
+	struct saAmfUnit *unit;
+	struct list_head *list;
+
+	unit = component->saAmfUnit;
+
+	for (list = unit->saAmfComponentHead.next;
+		list != &unit->saAmfComponentHead;
+		list = list->next) {
+
+		component = list_entry (list, struct saAmfComponent, saAmfComponentList);
+		dsmDisabledUnlockedFailedComponent (component);
+	}
+	return;
 }
 
 static void dsmDisabledUnlockedQuiescedRequested (
@@ -1199,7 +1216,7 @@ static void dsmEnabledUnlockedInServiceCompleted (
 	}
 }
 	
-void dsmEnabledUnlockedActiveRequested (
+static void dsmEnabledUnlockedActiveRequested (
 	struct saAmfComponent *component)
 {
 	if (component->local == 1) {
@@ -1214,7 +1231,7 @@ void dsmEnabledUnlockedActiveRequested (
 	component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_ACTIVE_COMPLETED;
 }
 
-void dsmEnabledUnlockedStandbyRequested (
+static void dsmEnabledUnlockedStandbyRequested (
 	struct saAmfComponent *component)
 {
 	if (component->local == 1) {
@@ -1231,7 +1248,7 @@ void dsmEnabledUnlockedStandbyRequested (
 	component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED;
 }
 
-void dsmEnabledUnlockedTransitionDisabledUnlocked (
+static void dsmEnabledUnlockedTransitionDisabledUnlocked (
 	struct saAmfComponent *component)
 {
 	struct saAmfUnit *unit;
@@ -1247,11 +1264,106 @@ void dsmEnabledUnlockedTransitionDisabledUnlocked (
 		log_printf (LOG_LEVEL_DEBUG,  "Requesting component %s transition to disabled.\n",
 			getSaNameT (&component->name));
 
-		component->saAmfUnit->operationalAdministrativeState = AMF_DISABLED_UNLOCKED;
 		component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_FAILED;
 	}
+
+	component->saAmfUnit->operationalAdministrativeState = AMF_DISABLED_UNLOCKED;
 	dsm (component);
 }
+
+static void dsmSynchronizeStaus (
+	struct saAmfComponent *component)
+{
+	enum amfOperationalAdministrativeState unit_status = AMF_DISABLED_UNLOCKED;
+	struct saAmfUnit *unit;
+	struct saAmfGroup *group;
+	struct list_head *list;
+	int activeServiceUnits;
+
+	if (component->currentReadinessState == component->newReadinessState) {
+
+		if (component->currentReadinessState == SA_AMF_OUT_OF_SERVICE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+
+		} else if (component->currentReadinessState == SA_AMF_IN_SERVICE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_IN_SERVICE_COMPLETED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+
+		} else if  (component->currentReadinessState == SA_AMF_QUIESCED) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_QUIESCED_COMPLETED;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+		}
+
+	} else {
+		if (component->newReadinessState == SA_AMF_OUT_OF_SERVICE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+
+		} else if (component->newReadinessState == SA_AMF_IN_SERVICE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_IN_SERVICE_REQUESTED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+		} else {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_QUIESCED_REQUESTED;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+		}
+	}
+
+	if (component->currentHAState == component->newHAState) {
+
+		if (component->currentHAState == SA_AMF_ACTIVE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_ACTIVE_COMPLETED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+
+		} else if (component->currentHAState == SA_AMF_STANDBY) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+
+		} else {
+			/* depend on readiness status */
+		}
+
+	} else {
+		if (component->newHAState == SA_AMF_ACTIVE) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_ACTIVE_REQUESTED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+
+		} else if (component->newHAState == SA_AMF_STANDBY) {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_STANDBY_REQUESTED;
+			unit_status = AMF_ENABLED_UNLOCKED;
+
+		} else {
+			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_QUIESCED_REQUESTED;
+			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+		}
+	}
+
+	/* Syncronize Operational AdministrativeState */
+	component->saAmfUnit->operationalAdministrativeState = unit_status;
+
+	unit = component->saAmfUnit;
+	group = unit->saAmfGroup;
+
+	for (list = unit->saAmfComponentHead.next; list != &unit->saAmfComponentHead; list = list->next) {
+		activeServiceUnits = activeServiceUnitsCount(group);
+		if (activeServiceUnits <= group->saAmfActiveUnitsDesired) {
+			break;
+		}
+		if (component->currentHAState != SA_AMF_ACTIVE) {
+			continue;
+		}
+		haStateSetApi (component, SA_AMF_STANDBY);
+	}
+
+	return;
+}
+
 	
 static void dsmEnabledUnlocked (
 	struct saAmfComponent *component)
@@ -1273,7 +1385,7 @@ static void dsmEnabledUnlocked (
 			/* noop - operational state */
 			break;
 		case AMF_ENABLED_UNLOCKED_STANDBY_REQUESTED:
-			dsmEnabledUnlockedActiveRequested (component);
+			dsmEnabledUnlockedStandbyRequested (component);
 			break;
 		case AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED:
 			/* noop - operational state */
@@ -1698,42 +1810,70 @@ static int amf_exec_init_fn (void)
 	return (0);
 }
 
+void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
+{
+	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+		return;
+	}
+
+	component_registerpriority (component, GMI_PRIO_RECOVERY);
+	return;
+}
+
 void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 {
 	struct in_addr *source_addr;
 	source_addr = (struct in_addr *)data;
+	struct saAmfUnit *unit;
+	struct list_head *list;
+	struct saAmfComponent *leave_component = NULL;
+	enum amfDisabledUnlockedState disablestate = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_COMPLETED;
 
 	if (component->source_addr.s_addr != source_addr->s_addr) {
 		return;
 	}
-		
-	component->local = 1;
-	component_unregister (component);
 
-	return;
-}
-
-void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
-{
-
-	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+	if (!component->registered) {
 		return;
 	}
 
-	component_register (component);
-	return;
-}
+	log_printf (LOG_LEVEL_DEBUG, "amf_confchg_nleave(%s)\n", getSaNameT (&(component->name)));
 
-void amf_confchg_nsync (struct saAmfComponent *component, void *data)
-{
-	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+        /* Component status Initialize */
+	unit = component->saAmfUnit;
+	
+	for (list = unit->saAmfComponentHead.next; list != &unit->saAmfComponentHead; list = list->next) {
+
+		component = list_entry (list,
+			struct saAmfComponent, saAmfComponentList);
+
+		if (component->source_addr.s_addr != source_addr->s_addr) {
+			disablestate = AMF_DISABLED_UNLOCKED_FAILED;
+			continue;
+	  	}
+
+		component->registered = 0;
+		component->local = 0;
+		component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+		component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_INITIAL;
+		component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
+		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
+		component->newHAState = SA_AMF_QUIESCED;
+		component->currentHAState = SA_AMF_QUIESCED;
+		component->source_addr.s_addr = 0;
+		leave_component = component;
+	}
+
+	if (leave_component == NULL) {
 		return;
 	}
 
-	/* dsm change must be needed */
-	readinessStateSetCluster (component, component->currentReadinessState);
-	haStateSetCluster (component, component->currentHAState);
+	leave_component->saAmfUnit->operationalAdministrativeState = AMF_DISABLED_UNLOCKED;
+	leave_component->disabledUnlockedState = disablestate;
 
+	dsm (leave_component);
+	leave_component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
+	
 	return;
 }
 
@@ -1754,17 +1894,11 @@ static int amf_confchg_fn (
 	 */
 	if ( joined_list_entries > 0 ) {
 		enumerate_components (amf_confchg_njoin, NULL);
-		enumerate_components (amf_confchg_nsync, NULL);
 	}
 
 	/*
-	 * Note: select ONLY the first processor to execute the nleave enumeration
 	 * If node leave, component unregister
 	 */
-	if (member_list->sin_addr.s_addr != this_ip.sin_addr.s_addr) {
-		return (0);
-	}
-
 	for (i = 0; i<left_list_entries ; i++) {
 		enumerate_components (amf_confchg_nleave, (void *)&(left_list[i].sin_addr));
 	}
@@ -1796,7 +1930,6 @@ int amf_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-
 static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_componentregister *req_exec_amf_componentregister = (struct req_exec_amf_componentregister *)message;
@@ -1814,6 +1947,14 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	error = SA_OK;
 	component = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName);
 	amfProxyComponent = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName);
+
+	/*
+	 * If a node is joining menber ship ,Component States Synchronize
+	 */
+	if (req_exec_amf_componentregister->source.in_addr.s_addr == 0) {
+		amf_synchronize (message, source_addr);
+		return (0);
+	}
 
 	/*
 	 * If component not in configuration files, return error
@@ -1884,7 +2025,6 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 			&res_lib_amf_componentregister,
 			sizeof (struct res_lib_amf_componentregister));
 	}
-
 	
 	/*
 	 * If no error on registration, determine if we should enter new state
@@ -1894,6 +2034,62 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	}
 
 	return (0);
+}
+
+static void amf_synchronize (void *message, struct in_addr source_addr)
+{
+	struct req_exec_amf_componentregister *req_exec_amf_componentregister = (struct req_exec_amf_componentregister *)message;
+	struct saAmfComponent *component;
+	struct saAmfComponent *amfProxyComponent;
+
+	log_printf (LOG_LEVEL_DEBUG, "amf_synchronize%s\n",
+		getSaNameT (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName));
+
+	/* Find Component */
+	component = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName);
+	amfProxyComponent = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName);
+
+	/* If this node is Component onwer */
+	if (component->source_addr.s_addr == this_ip.sin_addr.s_addr) {
+
+		/* No Operation */
+		return;
+	}
+
+	/* If this isn't Synchronizing target Node */
+	if (!(component->local == 0 &&  component->registered == 0)){ 
+
+		/* No Operation */
+		return;
+	}
+
+	/* Synchronize Status */
+	component->local = 0;
+	component->registered = 1;
+	component->conn_info = req_exec_amf_componentregister->source.conn_info;
+	component->source_addr = source_addr;
+	component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
+	component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
+	component->currentHAState = SA_AMF_QUIESCED;
+	component->newHAState = SA_AMF_QUIESCED;
+	component->probableCause = 0;
+	component->enabledUnlockedState = 0;
+	component->disabledUnlockedState = 0;
+	component->currentReadinessState = req_exec_amf_componentregister->currentReadinessState;
+	component->newReadinessState = req_exec_amf_componentregister->newReadinessState;
+	component->currentHAState = req_exec_amf_componentregister->currentHAState;
+	component->newHAState = req_exec_amf_componentregister->newHAState;
+
+	if (req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName.length > 0) {
+		component->saAmfProxyComponent = amfProxyComponent;
+	}
+
+	/*
+	 *  Determine if we should enter new state
+	 */
+	dsmSynchronizeStaus (component);
+
+	return;
 }
 
 static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr)
@@ -2061,7 +2257,7 @@ static int message_handler_req_exec_amf_readinessstateset (void *message, struct
 
 	component = findComponent (&req_exec_amf_readinessstateset->compName);
 	if (component) {
-		log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current readiness state to %d\n",
+	  	log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current readiness state to %d\n",
 			getSaNameT (&component->name),
 			req_exec_amf_readinessstateset->readinessState);
 
@@ -2086,8 +2282,8 @@ static int message_handler_req_exec_amf_hastateset (void *message, struct in_add
 
 	component = findComponent (&req_exec_amf_hastateset->compName);
 	if (component) {
-		log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current HA state to %d\n",
-			getSaNameT (&component->name),
+	  	log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current HA state to %d\n",
+	  			getSaNameT (&component->name),
 			req_exec_amf_hastateset->haState);
 		component->currentHAState = req_exec_amf_hastateset->haState;
 		component->newHAState = component->currentHAState;
@@ -2331,7 +2527,6 @@ static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *c
 	return (0);
 }
 
-
 static int message_handler_req_amf_errorreport (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_amf_errorreport *req_lib_amf_errorreport = (struct req_lib_amf_errorreport *)message;
@@ -2565,29 +2760,30 @@ static char *amf_hastate_ntoa (SaAmfHAStateT state)
 
 static void amf_dump_comp (struct saAmfComponent *component ,void *data)
 {
-	char name[64];
+	char	name[64];
+	int	level = LOG_LEVEL_NOTICE;
 	data = NULL;
 
-	log_printf (LOG_LEVEL_DEBUG, "----------------\n" );
-	log_printf (LOG_LEVEL_DEBUG, "registered            = %d\n" ,component->registered);
-	log_printf (LOG_LEVEL_DEBUG, "local                 = %d\n" ,component->local );
-	log_printf (LOG_LEVEL_DEBUG, "source_addr           = %s\n" ,inet_ntoa (component->source_addr));
+	log_printf (level, "----------------\n" );
+	log_printf (level, "registered            = %d\n" ,component->registered);
+	log_printf (level, "local                 = %d\n" ,component->local );
+	log_printf (level, "source_addr           = %s\n" ,inet_ntoa (component->source_addr));
 	memset (name, 0 , sizeof(name));
 	memcpy (name, component->name.value, component->name.length);
-	log_printf (LOG_LEVEL_DEBUG, "name                  = %s\n" ,name );
-	log_printf (LOG_LEVEL_DEBUG, "currentReadinessState = %s\n" ,amf_readinessstate_ntoa (component->currentReadinessState));
-	log_printf (LOG_LEVEL_DEBUG, "newReadinessState     = %s\n" ,amf_readinessstate_ntoa (component->newReadinessState));
-	log_printf (LOG_LEVEL_DEBUG, "currentHAState        = %s\n" ,amf_hastate_ntoa (component->currentHAState));
-	log_printf (LOG_LEVEL_DEBUG, "newHAState            = %s\n" ,amf_hastate_ntoa (component->newHAState));
-	log_printf (LOG_LEVEL_DEBUG, "enabledUnlockedState  = %s\n" ,amf_enabledunlockedstate_ntoa (component->enabledUnlockedState));
-	log_printf (LOG_LEVEL_DEBUG, "disabledUnlockedState = %s\n" ,amf_disabledunlockedstate_ntoa (component->disabledUnlockedState));
-	log_printf (LOG_LEVEL_DEBUG, "probableCause         = %d\n" ,component->probableCause );
+	log_printf (level, "name                  = %s\n" ,name );
+	log_printf (level, "currentReadinessState = %s\n" ,amf_readinessstate_ntoa (component->currentReadinessState));
+	log_printf (level, "newReadinessState     = %s\n" ,amf_readinessstate_ntoa (component->newReadinessState));
+	log_printf (level, "currentHAState        = %s\n" ,amf_hastate_ntoa (component->currentHAState));
+	log_printf (level, "newHAState            = %s\n" ,amf_hastate_ntoa (component->newHAState));
+	log_printf (level, "enabledUnlockedState  = %s\n" ,amf_enabledunlockedstate_ntoa (component->enabledUnlockedState));
+	log_printf (level, "disabledUnlockedState = %s\n" ,amf_disabledunlockedstate_ntoa (component->disabledUnlockedState));
+	log_printf (level, "probableCause         = %d\n" ,component->probableCause );
 }
 
 void amf_dump ( )
 {
 	enumerate_components (amf_dump_comp, NULL);
-	fflush (stdout);
+	fflush (stderr);
 
 	return;
 }
