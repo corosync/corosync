@@ -43,13 +43,19 @@
 #include "../include/ais_types.h"
 #include "tlist.h"
 
-typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);
+typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio);
+
+struct poll_entry {
+	unsigned int prio;
+	struct pollfd ufd;
+	dispatch_fn_t dispatch_fn;
+	void *data;
+};
 
 struct poll_instance {
+	struct poll_entry *poll_entries;
 	struct pollfd *ufds;
-	int nfds;
-	dispatch_fn_t *dispatch_fns;
-	void **data;
+	int poll_entry_count;
 	struct timerlist timerlist;
 };
 
@@ -79,10 +85,9 @@ poll_handle poll_create (void)
 		goto error_destroy;
 	}
 	
+	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
-	poll_instance->nfds = 0;
-	poll_instance->dispatch_fns = 0;
-	poll_instance->data = 0;
+	poll_instance->poll_entry_count = 0;
 	timerlist_init (&poll_instance->timerlist);
 
 	return (handle);
@@ -105,14 +110,11 @@ int poll_destroy (poll_handle handle)
 		goto error_exit;
 	}
 
+	if (poll_instance->poll_entries) {
+		free (poll_instance->poll_entries);
+	}
 	if (poll_instance->ufds) {
 		free (poll_instance->ufds);
-	}
-	if (poll_instance->dispatch_fns) {
-		free (poll_instance->dispatch_fns);
-	}
-	if (poll_instance->data) {
-		free (poll_instance->data);
 	}
 	timerlist_free (&poll_instance->timerlist);
 
@@ -131,12 +133,12 @@ int poll_dispatch_add (
 	int fd,
 	int events,
 	void *data,
-	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data))
+	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio),
+	unsigned int prio)
 {
 	struct poll_instance *poll_instance;
+	struct poll_entry *poll_entries;
 	struct pollfd *ufds;
-	dispatch_fn_t *dispatch_fns;
-	void **data_list;
 	int found = 0;
 	int install_pos;
 	SaErrorT error;
@@ -147,8 +149,8 @@ int poll_dispatch_add (
 		goto error_exit;
 	}
 
-	for (found = 0, install_pos = 0; install_pos < poll_instance->nfds; install_pos++) {
-		if (poll_instance->ufds[install_pos].fd == -1) {
+	for (found = 0, install_pos = 0; install_pos < poll_instance->poll_entry_count; install_pos++) {
+		if (poll_instance->poll_entries[install_pos].ufd.fd == -1) {
 			found = 1;
 			break;
 		}
@@ -158,48 +160,37 @@ int poll_dispatch_add (
 		/*
 		 * Grow pollfd list
 		 */
+		poll_entries = (struct poll_entry *)realloc (poll_instance->poll_entries,
+			(poll_instance->poll_entry_count + 1) *
+			sizeof (struct poll_entry));
+		if (poll_entries == 0) {
+			errno = ENOMEM;
+			goto error_exit;
+		}
+		poll_instance->poll_entries = poll_entries;
+	
 		ufds = (struct pollfd *)realloc (poll_instance->ufds,
-			(poll_instance->nfds + 1) * sizeof (struct pollfd));
+			(poll_instance->poll_entry_count + 1) *
+			sizeof (struct pollfd));
 		if (ufds == 0) {
 			errno = ENOMEM;
 			goto error_exit;
 		}
 		poll_instance->ufds = ufds;
-	
-		/*
-		 * Grow dispatch functions list
-		 */
-			dispatch_fns = (dispatch_fn_t *)realloc (poll_instance->dispatch_fns,
-			(poll_instance->nfds + 1) * sizeof (dispatch_fn_t));
-		if (dispatch_fns == 0) {
-			errno = ENOMEM;
-			goto error_exit;
-		}
-		poll_instance->dispatch_fns = dispatch_fns;
-	
-		/*
-		 * Grow data list
-		 */
-		data_list = (void **)realloc (poll_instance->data,
-			(poll_instance->nfds + 1) * sizeof (void *));
-		if (data_list == 0) {
-			errno = ENOMEM;
-			goto error_exit;
-		}
-		poll_instance->data = data_list;
-	
-		poll_instance->nfds += 1;
-		install_pos = poll_instance->nfds - 1;
+
+		poll_instance->poll_entry_count += 1;
+		install_pos = poll_instance->poll_entry_count - 1;
 	}
 	
 	/*
 	 * Install new dispatch handler
 	 */
-	poll_instance->ufds[install_pos].fd = fd;
-	poll_instance->ufds[install_pos].events = events;
-	poll_instance->ufds[install_pos].revents = 0;
-	poll_instance->dispatch_fns[install_pos] = dispatch_fn;
-	poll_instance->data[install_pos] = data;
+	poll_instance->poll_entries[install_pos].prio = prio;
+	poll_instance->poll_entries[install_pos].ufd.fd = fd;
+	poll_instance->poll_entries[install_pos].ufd.events = events;
+	poll_instance->poll_entries[install_pos].ufd.revents = 0;
+	poll_instance->poll_entries[install_pos].dispatch_fn = dispatch_fn;
+	poll_instance->poll_entries[install_pos].data = data;
 
 	saHandleInstancePut (&poll_instance_database, handle);
 
@@ -213,7 +204,8 @@ int poll_dispatch_modify (
 	poll_handle handle,
 	int fd,
 	int events,
-	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data))
+	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio),
+	unsigned int prio)
 {
 	struct poll_instance *poll_instance;
 	int i;
@@ -228,10 +220,11 @@ int poll_dispatch_modify (
 	/*
 	 * Find file descriptor to modify events and dispatch function
 	 */
-	for (i = 0; i < poll_instance->nfds; i++) {
-		if (poll_instance->ufds[i].fd == fd) {
-			poll_instance->ufds[i].events = events;
-			poll_instance->dispatch_fns[i] = dispatch_fn;
+	for (i = 0; i < poll_instance->poll_entry_count; i++) {
+		if (poll_instance->poll_entries[i].ufd.fd == fd) {
+			poll_instance->poll_entries[i].ufd.events = events;
+			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
+			poll_instance->poll_entries[i].prio = prio;
 			return (0);
 		}
 	}
@@ -262,15 +255,15 @@ int poll_dispatch_delete (
 	/*
 	 * Find dispatch fd to delete
 	 */
-	for (i = 0; i < poll_instance->nfds; i++) {
-		if (poll_instance->ufds[i].fd == fd) {
+	for (i = 0; i < poll_instance->poll_entry_count; i++) {
+		if (poll_instance->poll_entries[i].ufd.fd == fd) {
 			found = 1;
 			break;
 		}
 	}
 
 	if (found) {
-		poll_instance->ufds[i].fd = -1;
+		poll_instance->poll_entries[i].ufd.fd = -1;
 		saHandleInstancePut (&poll_instance_database, handle);
 		return (0);
 	}
@@ -338,6 +331,14 @@ error_exit:
 	return (-1);
 }
 
+
+int poll_entry_compare (const void *a, const void *b) {
+	struct poll_entry *poll_entry_a = (struct poll_entry *)a;
+	struct poll_entry *poll_entry_b = (struct poll_entry *)b;
+
+	return (poll_entry_a->prio < poll_entry_b->prio);
+}
+
 int poll_run (
 	poll_handle handle)
 {
@@ -346,6 +347,7 @@ int poll_run (
 	int timeout = -1;
 	int res;
 	SaErrorT error;
+	int poll_entry_count;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
@@ -354,10 +356,22 @@ int poll_run (
 	}
 
 	for (;;) {
+		/*
+		 * Sort the poll entries list highest priority to lowest priority
+		 * Then build ufds structure for use with poll system call
+		 */
+		qsort (poll_instance->poll_entries, poll_instance->poll_entry_count,
+			sizeof (struct poll_entry), poll_entry_compare);
+		for (i = 0; i < poll_instance->poll_entry_count; i++) {
+			memcpy (&poll_instance->ufds[i],
+				&poll_instance->poll_entries[i].ufd,
+				sizeof (struct pollfd));
+		}
 		timeout = timerlist_timeout_msec (&poll_instance->timerlist);
 
 retry_poll:
-		res = poll (poll_instance->ufds, poll_instance->nfds, timeout);
+		res = poll (poll_instance->ufds,
+			poll_instance->poll_entry_count, timeout);
 		if (errno == EINTR && res == -1) {
 			goto retry_poll;
 		} else
@@ -365,19 +379,22 @@ retry_poll:
 			goto error_exit;
 		}
 
-
-		for (i = 0; i < poll_instance->nfds; i++) {
+		poll_entry_count = poll_instance->poll_entry_count;
+		for (i = 0; i < poll_entry_count; i++) {
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
 
-				res = poll_instance->dispatch_fns[i] (handle, poll_instance->ufds[i].fd, 
-					poll_instance->ufds[i].revents, poll_instance->data[i]);
+				res = poll_instance->poll_entries[i].dispatch_fn (handle,
+					poll_instance->ufds[i].fd, 
+					poll_instance->ufds[i].revents,
+					poll_instance->poll_entries[i].data,
+					&poll_instance->poll_entries[i].prio);
 
 				/*
 				 * Remove dispatch functions that return -1
 				 */
 				if (res == -1) {
-					poll_instance->ufds[i].fd = -1; /* empty entry */
+					poll_instance->poll_entries[i].ufd.fd = -1; /* empty entry */
 				}
 			}
 		}
