@@ -34,16 +34,15 @@
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>
-#include <sys/poll.h>
-#include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/poll.h>
+#include <sys/uio.h>
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/sysinfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <linux/if.h>
-#include <linux/sockios.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -242,7 +241,7 @@ static int poll_handler_libais_accept (
 	int revent,
 	void *data)
 {
-	int addrlen;
+	socklen_t addrlen;
 	struct conn_info *conn_info;
 	struct sockaddr_un un_addr;
 	int new_fd;
@@ -490,7 +489,7 @@ static void deliver_fn (
 		}
 		header = (struct message_header *)delivery_data;
 	} else {
-		header = iovec[0].iov_base;
+		header = (struct message_header *)iovec[0].iov_base;
 	}
 	res = aisexec_handler_fns[header->id](header);
 }

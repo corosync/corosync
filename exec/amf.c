@@ -32,12 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <netinet/in.h>
-#include <linux/if.h>
-#include <linux/sockios.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -113,13 +111,13 @@ enum amfDisabledLockedState {
 	AMF_DISABLED_LOCKED_QUIESCED_REQUESTED,
 	AMF_DISABLED_LOCKED_QUIESCED_COMPLETED,
 	AMF_DISABLED_LOCKED_OUT_OF_SERVICE_REQUESTED
-	AMF_DISABLED_LOCKED_OUT_OF_SERVICE_COMPLETED,
+	AMF_DISABLED_LOCKED_OUT_OF_SERVICE_COMPLETED
 };
 
 enum amfEnabledStoppingState {
 	AMF_ENABLED_STOPPING_INITIAL,
 	AMF_ENABLED_STOPPING_STOPPING_REQUESTED,
-	AMF_ENABLED_STOPPING_STOPPING_COMPLETED,
+	AMF_ENABLED_STOPPING_STOPPING_COMPLETED
 };
 
 /*
@@ -291,14 +289,14 @@ int (*amf_aisexec_handler_fns[]) (void *) = {
  * Exports the interface for the service
  */
 struct service_handler amf_service_handler = {
-	libais_handler_fns:			amf_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (amf_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		amf_aisexec_handler_fns,
-	aisexec_handler_fns_count:	sizeof (amf_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:					0,
-	libais_init_fn:				message_handler_req_amf_init,
-	libais_exit_fn:				amf_exit_fn,
-	aisexec_init_fn:			amfExecutiveInitialize
+	.libais_handler_fns			=	amf_libais_handler_fns,
+	.libais_handler_fns_count	= sizeof (amf_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns		= amf_aisexec_handler_fns,
+	.aisexec_handler_fns_count	= sizeof (amf_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn					= 0,
+	.libais_init_fn				= message_handler_req_amf_init,
+	.libais_exit_fn				= amf_exit_fn,
+	.aisexec_init_fn			= amfExecutiveInitialize
 };
 
 static void grow_amf_track_table (struct conn_info *conn_info, int growby)
@@ -407,7 +405,7 @@ void componentUnregister (
 		&component->name,
 		sizeof (SaNameT));
 
-	iovecs[0].iov_base = &req_exec_amf_componentunregister;
+	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
 	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -631,7 +629,7 @@ void haStateSetCluster (
 	log_printf (LOG_LEVEL_DEBUG, "Sending ha state to cluster for component %s\n", getSaNameT (&component->name));
 	log_printf (LOG_LEVEL_DEBUG, "ha state is %d\n", haState);
 
-	iovecs[0].iov_base = &req_exec_amf_hastateset;
+	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_hastateset);
 
 	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -724,7 +722,7 @@ void readinessStateSetCluster (
 		getSaNameT (&component->name));
 	log_printf (LOG_LEVEL_DEBUG, "readiness state is %d\n", readinessState);
 
-	iovecs[0].iov_base = &req_exec_amf_readinessstateset;
+	iovecs[0].iov_base = (char *)&req_exec_amf_readinessstateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_readinessstateset);
 
 	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1243,7 +1241,7 @@ void errorReport (
 		sizeof (SaNameT));
 	req_exec_amf_errorreport.req_lib_amf_errorreport.errorDescriptor.probableCause = probableCause;
 
-	iovecs[0].iov_base = &req_exec_amf_errorreport;
+	iovecs[0].iov_base = (char *)&req_exec_amf_errorreport;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport);
 
 	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1926,7 +1924,7 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 		req_lib_amf_componentregister,
 		sizeof (struct req_lib_amf_componentregister));
 
-	iovecs[0].iov_base = &req_exec_amf_componentregister;
+	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1956,7 +1954,7 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	if (component && component->registered && component->local) {
 		component->probableCause = SA_AMF_NOT_RESPONDING;
 	}
-	iovecs[0].iov_base = &req_exec_amf_componentunregister;
+	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -2133,11 +2131,11 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 		req_lib_amf_errorreport,
 		sizeof (struct req_lib_amf_errorreport));
 
-	iovecs[0].iov_base = &req_exec_amf_errorreport;
+	iovecs[0].iov_base = (char *)&req_exec_amf_errorreport;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport);
 //	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport) - sizeof (req_lib_amf_errorreport);
 
-//	iovecs[1].iov_base = &req_lib_amf_errorreport;
+//	iovecs[1].iov_base = (char *)&req_lib_amf_errorreport;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorreport);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -2163,11 +2161,11 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 		req_lib_amf_errorcancelall,
 		sizeof (struct req_lib_amf_errorcancelall));
 
-	iovecs[0].iov_base = &req_exec_amf_errorcancelall;
+	iovecs[0].iov_base = (char *)&req_exec_amf_errorcancelall;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorcancelall);
 //	iovecs[0].iov_len = sizeof (req_exec_amf_errorcancelall) - sizeof (req_lib_amf_errorcancelall);
 
-//	iovecs[1].iov_base = &req_lib_amf_errorcancelall;
+//	iovecs[1].iov_base = (char *)&req_lib_amf_errorcancelall;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorcancelall);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);

@@ -32,12 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <netinet/in.h>
-#include <linux/if.h>
-#include <linux/sockios.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -144,14 +142,14 @@ int (*ckpt_aisexec_handler_fns[]) (void *) = {
  * exported service
  */
 struct service_handler ckpt_service_handler = {
-	libais_handler_fns:			ckpt_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (ckpt_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		ckpt_aisexec_handler_fns ,
-	aisexec_handler_fns_count:	sizeof (ckpt_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:					0, /* ckpt service handler is not distributed */
-	libais_init_fn:				message_handler_req_lib_ckpt_init,
-	libais_exit_fn:				0,
-	aisexec_init_fn:			0
+	.libais_handler_fns			= ckpt_libais_handler_fns,
+	.libais_handler_fns_count	= sizeof (ckpt_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns		= ckpt_aisexec_handler_fns ,
+	.aisexec_handler_fns_count	= sizeof (ckpt_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn					= 0, /* ckpt service handler is not distributed */
+	.libais_init_fn				= message_handler_req_lib_ckpt_init,
+	.libais_exit_fn				= 0,
+	.aisexec_init_fn			= 0
 };
 
 static int (*ckpt_checkpoint_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
@@ -186,14 +184,14 @@ static int (*ckpt_checkpoint_aisexec_handler_fns[]) (void *msg) = {
 };
 
 struct service_handler ckpt_checkpoint_service_handler = {
-	libais_handler_fns:			ckpt_checkpoint_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (ckpt_checkpoint_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		ckpt_checkpoint_aisexec_handler_fns ,
-	aisexec_handler_fns_count:	sizeof (ckpt_checkpoint_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:					ckptConfChg,
-	libais_init_fn:				message_handler_req_lib_ckpt_checkpoint_init,
-	libais_exit_fn:				ckptCheckpointApiFinalize,
-	aisexec_init_fn:			0
+	.libais_handler_fns			= ckpt_checkpoint_libais_handler_fns,
+	.libais_handler_fns_count	= sizeof (ckpt_checkpoint_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns		= ckpt_checkpoint_aisexec_handler_fns ,
+	.aisexec_handler_fns_count	= sizeof (ckpt_checkpoint_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn					= ckptConfChg,
+	.libais_init_fn				= message_handler_req_lib_ckpt_checkpoint_init,
+	.libais_exit_fn				= ckptCheckpointApiFinalize,
+	.aisexec_init_fn			= 0
 };
 
 static int (*ckpt_sectioniterator_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
@@ -206,14 +204,14 @@ static int (*ckpt_sectioniterator_aisexec_handler_fns[]) (void *msg) = {
 };
 
 struct service_handler ckpt_sectioniterator_service_handler = {
-	libais_handler_fns:			ckpt_sectioniterator_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (ckpt_sectioniterator_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		ckpt_sectioniterator_aisexec_handler_fns ,
-	aisexec_handler_fns_count:	sizeof (ckpt_sectioniterator_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:					0, /* Section Iterators are not distributed */
-	libais_init_fn:				message_handler_req_lib_ckpt_sectioniterator_init,
-	libais_exit_fn:				ckptSectionIteratorApiFinalize,
-	aisexec_init_fn:			0
+	.libais_handler_fns			= ckpt_sectioniterator_libais_handler_fns,
+	.libais_handler_fns_count	= sizeof (ckpt_sectioniterator_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns		= ckpt_sectioniterator_aisexec_handler_fns ,
+	.aisexec_handler_fns_count	= sizeof (ckpt_sectioniterator_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn					= 0, /* Section Iterators are not distributed */
+	.libais_init_fn				= message_handler_req_lib_ckpt_sectioniterator_init,
+	.libais_exit_fn				= ckptSectionIteratorApiFinalize,
+	.aisexec_init_fn			= 0
 };
 
 static struct saCkptCheckpoint *findCheckpoint (SaNameT *name)
@@ -279,7 +277,7 @@ void sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 		&checkpoint->name,
 		sizeof (SaNameT));
 
-	iovecs[0].iov_base = &req_exec_ckpt_checkpointclose;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -729,7 +727,6 @@ error_exit:
 	return (0);
 }
 
-int exec_section_write = 0;
 static int message_handler_req_exec_ckpt_sectionwrite (void *message) {
 	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)message;
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)&req_exec_ckpt_sectionwrite->req_lib_ckpt_sectionwrite;
@@ -740,7 +737,7 @@ static int message_handler_req_exec_ckpt_sectionwrite (void *message) {
 	void *sectionData;
 	SaErrorT error = SA_OK;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive request to section write. %d\n", exec_section_write++);
+	log_printf (LOG_LEVEL_DEBUG, "Executive request to section write.\n");
 	ckptCheckpoint = findCheckpoint (&req_exec_ckpt_sectionwrite->checkpointName);
 	if (ckptCheckpoint == 0) {
 printf ("can't find checkpoint\n"); // TODO
@@ -1067,7 +1064,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 		req_lib_ckpt_checkpointopen,
 		sizeof (struct req_lib_ckpt_checkpointopen));
 
-	iovecs[0].iov_base = &req_exec_ckpt_checkpointopen;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1100,7 +1097,7 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 		req_lib_ckpt_checkpointunlink,
 		sizeof (struct req_lib_ckpt_checkpointunlink));
 
-	iovecs[0].iov_base = &req_exec_ckpt_checkpointunlink;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
 	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1123,7 +1120,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 		sizeof (SaNameT));
 	req_exec_ckpt_checkpointretentiondurationset.retentionDuration = req_lib_ckpt_checkpointretentiondurationset->retentionDuration;
 
-	iovecs[0].iov_base = &req_exec_ckpt_checkpointretentiondurationset;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
 	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
@@ -1223,7 +1220,7 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 	req_exec_ckpt_sectioncreate.source.conn_info = conn_info;
 	req_exec_ckpt_sectioncreate.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectioncreate;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectioncreate;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectioncreate);
 	/*
 	 * Send section name and initial data in message
@@ -1236,10 +1233,10 @@ printf ("LIBRARY SECTIONCREATE string is %s len is %d\n", (unsigned char *)iovec
 	iovecs[1].iov_len);
 printf ("|\n");
 { int i;
-	char *suck = iovecs[1].iov_base;
+	char *abc = iovecs[1].iov_base;
 for (i = 0; i < 14;i++) {
 
-	printf ("%c ", suck[i]);
+	printf ("%c ", abc[i]);
 }
 }
 printf ("|\n");
@@ -1277,7 +1274,7 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	req_exec_ckpt_sectiondelete.source.conn_info = conn_info;
 	req_exec_ckpt_sectiondelete.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectiondelete;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectiondelete;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectiondelete);
 
 	/*
@@ -1318,7 +1315,7 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	req_exec_ckpt_sectionexpirationtimeset.source.conn_info = conn_info;
 	req_exec_ckpt_sectionexpirationtimeset.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectionexpirationtimeset;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionexpirationtimeset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionexpirationtimeset);
 
 	/*
@@ -1379,7 +1376,7 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	req_exec_ckpt_sectionwrite.source.conn_info = conn_info;
 	req_exec_ckpt_sectionwrite.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectionwrite;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionwrite;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionwrite);
 	/*
 	 * Send section name and data to write in message
@@ -1437,7 +1434,7 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	req_exec_ckpt_sectionoverwrite.source.conn_info = conn_info;
 	req_exec_ckpt_sectionoverwrite.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectionoverwrite;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionoverwrite;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionoverwrite);
 	/*
 	 * Send section name and data to overwrite in message
@@ -1494,7 +1491,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	req_exec_ckpt_sectionread.source.conn_info = conn_info;
 	req_exec_ckpt_sectionread.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 
-	iovecs[0].iov_base = &req_exec_ckpt_sectionread;
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionread;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionread);
 	/*
 	 * Send section name and data to overwrite in message

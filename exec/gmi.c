@@ -334,8 +334,8 @@ static struct memb_form_token memb_form_token;
 static char iov_buffer[MESSAGE_SIZE_MAX];
 
 static struct iovec gmi_iov_recv = {
-	iov_base:	iov_buffer,
-	iov_len:	sizeof (iov_buffer)
+	.iov_base	= iov_buffer,
+	.iov_len	= sizeof (iov_buffer)
 };
 
 struct message_handlers {
@@ -879,7 +879,9 @@ int orf_token_remcast (int seqid) {
 	int res;
 	struct mcast *mcast;
 
-//printf ("remulticasting %d\n", seqid);
+#ifdef DEBUG
+printf ("remulticasting %d\n", seqid);
+#endif
 	/*
 	 * Get RTR item at seqid, if not available, return
 	 */
@@ -887,12 +889,12 @@ int orf_token_remcast (int seqid) {
 	if (res != 0) {
 		return -1;
 	}
-	mcast = gmi_rtr_item->iovec[0].iov_base;
+	mcast = (struct mcast *)gmi_rtr_item->iovec[0].iov_base;
 
 	/*
 	 * Build multicast message
 	 */
-	msg_mcast.msg_name = &sockaddr_in_mcast;
+	msg_mcast.msg_name = (caddr_t)&sockaddr_in_mcast;
 	msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
 	msg_mcast.msg_iov = gmi_rtr_item->iovec;
 	msg_mcast.msg_iovlen = gmi_rtr_item->iov_len;
@@ -1564,10 +1566,10 @@ static int orf_token_send (
 	poll_timer_add (*gmi_poll_handle, TIMEOUT_TOKEN, 0,
 		orf_timer_function_token_timeout, &timer_orf_token_timeout);
 
-	iovec_orf_token.iov_base = orf_token;
+	iovec_orf_token.iov_base = (char *)orf_token;
 	iovec_orf_token.iov_len = sizeof (struct orf_token);
 
-	msg_orf_token.msg_name = &memb_next;
+	msg_orf_token.msg_name = (caddr_t)&memb_next;
 	msg_orf_token.msg_namelen = sizeof (struct sockaddr_in);
 	msg_orf_token.msg_iov = &iovec_orf_token;
 	msg_orf_token.msg_iovlen = 1;
@@ -1650,10 +1652,10 @@ static int memb_join_send (void)
 		sizeof (struct in_addr) * memb_failed_list_entries);
 	memb_join.failed_rep_list_entries = memb_failed_list_entries;
 
-	iovec_join.iov_base = &memb_join;
+	iovec_join.iov_base = (char *)&memb_join;
 	iovec_join.iov_len = sizeof (struct memb_join);
 
-	msghdr_join.msg_name = &sockaddr_in_mcast;
+	msghdr_join.msg_name = (caddr_t)&sockaddr_in_mcast;
 	msghdr_join.msg_namelen = sizeof (struct sockaddr_in);
 	msghdr_join.msg_iov = &iovec_join;
 	msghdr_join.msg_iovlen = 1;
@@ -2039,10 +2041,10 @@ static int memb_form_token_send (
 	/*
 	 * Build message for sendmsg
 	 */
-	iovec_form_token.iov_base = form_token;
+	iovec_form_token.iov_base = (char *)form_token;
 	iovec_form_token.iov_len = sizeof (struct memb_form_token);
 
-	msg_form_token.msg_name = &memb_next;
+	msg_form_token.msg_name = (caddr_t)&memb_next;
 	msg_form_token.msg_namelen = sizeof (struct sockaddr_in);
 	msg_form_token.msg_iov = &iovec_form_token;
 	msg_form_token.msg_iovlen = 1;

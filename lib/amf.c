@@ -74,10 +74,10 @@ static void amfHandleInstanceDestructor (void *);
  * All instances in one database
  */
 static struct saHandleDatabase amfHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: amfHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= amfHandleInstanceDestructor
 };
 
 /*

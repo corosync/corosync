@@ -37,8 +37,7 @@
 #include <sys/sysinfo.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
-#include <linux/if.h>
-#include <linux/sockios.h>
+#include <sys/uio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -46,8 +45,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
-
-
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -115,14 +112,14 @@ static int (*clm_aisexec_handler_fns[]) (void *) = {
 };
 	
 struct service_handler clm_service_handler = {
-	libais_handler_fns:			clm_libais_handler_fns,
-	libais_handler_fns_count:	sizeof (clm_libais_handler_fns) / sizeof (int (*)),
-	aisexec_handler_fns:		clm_aisexec_handler_fns ,
-	aisexec_handler_fns_count:	sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
-	confchg_fn:					clmConfChg,
-	libais_init_fn:				message_handler_req_clm_init,
-	libais_exit_fn:				clm_exit_fn,
-	aisexec_init_fn:			clmExecutiveInitialize
+	.libais_handler_fns			= clm_libais_handler_fns,
+	.libais_handler_fns_count	= sizeof (clm_libais_handler_fns) / sizeof (int (*)),
+	.aisexec_handler_fns		= clm_aisexec_handler_fns ,
+	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
+	.confchg_fn					= clmConfChg,
+	.libais_init_fn				= message_handler_req_clm_init,
+	.libais_exit_fn				= clm_exit_fn,
+	.aisexec_init_fn			= clmExecutiveInitialize
 };
 
 static int clmExecutiveInitialize (void)
@@ -320,7 +317,7 @@ static int clmNodeJoinSend (void)
 	memcpy (&req_exec_clm_nodejoin.clusterNode, &thisClusterNode,
 		sizeof (SaClmClusterNodeT));
 	
-	req_exec_clm_iovec.iov_base = &req_exec_clm_nodejoin;
+	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
 	result = gmi_mcast (&aisexec_groupname, &req_exec_clm_iovec, 1, GMI_PRIO_HIGH);

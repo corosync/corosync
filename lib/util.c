@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
@@ -422,8 +423,9 @@ saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	unsigned int handle)
 {
-	pthread_mutex_lock (&handleDatabase->mutex);
 	void *instance;
+
+	pthread_mutex_lock (&handleDatabase->mutex);
 
 	handleDatabase->handles[handle].refCount -= 1;
 	assert (handleDatabase->handles[handle].refCount >= 0);

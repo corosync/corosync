@@ -50,7 +50,7 @@ static void inline list_init (struct list_head *head)
 {
 	head->next = head;
 	head->prev = head;
-};
+}
 
 static void inline list_add (struct list_head *new, struct list_head *head)
 {

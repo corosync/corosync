@@ -186,11 +186,6 @@ struct message_source {
 	struct in_addr in_addr;
 };
 
-struct message_temp {
-	struct message_header header;
-	char message_data[0];
-};
-
 struct req_execauth_xmit_authkey {
 	struct message_header header;
 	int authModule;

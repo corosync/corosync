@@ -33,7 +33,7 @@
 #LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -Wall 
+CFLAGS = -g -Wall
 #-DDEBUG
 LDFLAGS = -g
 

@@ -64,10 +64,10 @@ struct clmInstance {
 static void clmHandleInstanceDestructor (void *);
 
 static struct saHandleDatabase clmHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: clmHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= clmHandleInstanceDestructor
 };
 
 /*

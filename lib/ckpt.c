@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
@@ -87,30 +88,30 @@ void ckptSectionIteratorHandleInstanceDestructor (void *instance);
  * All CKPT instances in this database
  */
 static struct saHandleDatabase ckptHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: ckptHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= ckptHandleInstanceDestructor
 };
 
 /*
  *  All Checkpoint instances in this database
  */
 static struct saHandleDatabase checkpointHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: checkpointHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= checkpointHandleInstanceDestructor
 };
 
 /*
  * All section iterators in this database
  */
 static struct saHandleDatabase ckptSectionIteratorHandleDatabase = {
-	handleCount: 0,
-	handles: 0,
-	mutex: PTHREAD_MUTEX_INITIALIZER,
-	handleInstanceDestructor: ckptSectionIteratorHandleInstanceDestructor
+	.handleCount				= 0,
+	.handles					= 0,
+	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= ckptSectionIteratorHandleInstanceDestructor
 };
 
 /*
@@ -388,7 +389,7 @@ saCkptDispatch (
 
 #endif
 		default:
-			// TODO
+			/* TODO */
 			break;
 		}
 		/*
@@ -1156,8 +1157,8 @@ saCkptCheckpointWrite (
 		req_lib_ckpt_sectionwrite.idLen = ioVector[i].sectionId.idLen;
 
 		iov_len = 0;
-// TODO check for zero length stuff
-		iov[0].iov_base = &req_lib_ckpt_sectionwrite;
+/* TODO check for zero length stuff */
+		iov[0].iov_base = (char *)&req_lib_ckpt_sectionwrite;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionwrite);
 		iov[1].iov_base = ioVector[i].sectionId.id;
 		iov[1].iov_len = ioVector[i].sectionId.idLen;
@@ -1289,7 +1290,7 @@ saCkptCheckpointRead (
 		req_lib_ckpt_sectionread.dataOffset = ioVector[i].dataOffset;
 		req_lib_ckpt_sectionread.dataSize = ioVector[i].dataSize;
 
-		iov[0].iov_base = &req_lib_ckpt_sectionread;
+		iov[0].iov_base = (char *)&req_lib_ckpt_sectionread;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionread);
 		iov[1].iov_base = ioVector[i].sectionId.id;
 		iov[1].iov_len = ioVector[i].sectionId.idLen;
@@ -1386,6 +1387,11 @@ saCkptCheckpointSynchronizeAsync (
 	SaInvocationT invocation,
 	const SaCkptCheckpointHandleT *checkpointHandle)
 {
+
+	return (SA_OK);
+
+/* TODO not implemented in executive
+
 	struct ckptInstance *ckptInstance;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	SaErrorT error;
@@ -1400,7 +1406,7 @@ saCkptCheckpointSynchronizeAsync (
 
 	req_lib_ckpt_checkpointsynchronizeasync.header.magic = MESSAGE_MAGIC;
 	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync);
-	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
+	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
 	req_lib_ckpt_checkpointsynchronizeasync.invocation = invocation;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
@@ -1417,4 +1423,5 @@ saCkptCheckpointSynchronizeAsync (
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
 
 	return (error);
+*/
 }

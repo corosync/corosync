@@ -172,10 +172,10 @@ int handle_convert (
  * All instances in one database
  */
 static struct handle_database poll_instance_database = {
-        handle_count: 0,
-        handles: 0,
-        generation: 0,
-        mutex: PTHREAD_MUTEX_INITIALIZER
+        .handle_count	= 0,
+        .handles		= 0,
+        .generation		= 0,
+        .mutex			= PTHREAD_MUTEX_INITIALIZER
 };
 
 poll_handle poll_create (void)

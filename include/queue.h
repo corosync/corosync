@@ -34,6 +34,7 @@
 #ifndef QUEUE_H_DEFINED
 #define QUEUE_H_DEFINED
 
+#include <string.h>
 #include "assert.h"
 
 struct queue {

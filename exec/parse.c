@@ -56,8 +56,8 @@ typedef enum {
 
 
 void setSaNameT (SaNameT *name, char *str) {
-	strncpy (name->value, str, SA_MAX_NAME_LENGTH);
-	if (strlen (name->value) > SA_MAX_NAME_LENGTH) {
+	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
+	if (strlen ((char *)name->value) > SA_MAX_NAME_LENGTH) {
 		name->length = SA_MAX_NAME_LENGTH;
 	} else {
 		name->length = strlen (str);
@@ -66,7 +66,8 @@ void setSaNameT (SaNameT *name, char *str) {
 
 int SaNameTisEqual (SaNameT *str1, char *str2) {
 	if (str1->length == strlen (str2)) {
-		return ((strncmp (str1->value, str2, str1->length)) == 0);
+		return ((strncmp ((char *)str1->value, (char *)str2,
+			str1->length)) == 0);
 	} else {
 		return 0;
 	}
@@ -74,7 +75,8 @@ int SaNameTisEqual (SaNameT *str1, char *str2) {
 
 int SaNameTisNameT (SaNameT *name1, SaNameT *name2) {
 	if (name1->length == name2->length) {
-		return ((strncmp (name1->value, name2->value, name1->length)) == 0);
+		return ((strncmp ((char *)name1->value, (char *)name2->value,
+			name1->length)) == 0);
 	} else {
 		return 0;
 	}
