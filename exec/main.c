@@ -701,6 +701,8 @@ int main (int argc, char **argv)
 
 	aisexec_mlockall ();
 
+	gmi_log_printf_init (internal_log_printf_checkdebug,
+		LOG_LEVEL_ERROR, LOG_LEVEL_WARNING, LOG_LEVEL_NOTICE, LOG_LEVEL_DEBUG);
 	gmi_init (&sockaddr_in_mcast, &sockaddr_in_bindnet,
 		&aisexec_poll_handle, &this_ip);
 	
