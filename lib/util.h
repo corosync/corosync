@@ -40,18 +40,6 @@
 #include <sys/poll.h>
 #include "../include/ais_msg.h"
 
-enum SA_HANDLE_STATE {
-	SA_HANDLE_STATE_EMPTY,
-	SA_HANDLE_STATE_PENDINGREMOVAL,
-	SA_HANDLE_STATE_ACTIVE
-};
-
-struct saHandle {
-	int state;
-	void *instance;
-	int refCount;
-};
-
 struct saHandleDatabase {
 	unsigned int handleCount;
 	struct saHandle *handles;
@@ -127,7 +115,7 @@ SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	int *handleOut);
+	unsigned int *handleOut);
 
 SaErrorT
 saHandleDestroy (
