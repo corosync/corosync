@@ -133,6 +133,7 @@ void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
 	timers_inuse--;
 }
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 int timer_expire_get_tv (struct timerlist *timerlist, struct timeval *tv)
 {
 	struct timeval current_time;
@@ -176,6 +177,7 @@ int timer_expire_get_tv (struct timerlist *timerlist, struct timeval *tv)
 	timeval_adjust_to_msec (tv);
 	return (0);
 }
+#endif /* CODE_COVERAGE_COMPILE_OUT */
 
 int timerlist_timeout_msec (struct timerlist *timerlist)
 {
