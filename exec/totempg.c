@@ -306,7 +306,7 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
 		iov_delv.iov_len = assembly->index + msg_lens[0];
 		for  (i = 0; i < mcast->msg_count - 1; i++) {
 			assembly->index += msg_lens[i];
-printf ("app deliver\n");
+//printf ("app deliver\n");
 			app_deliver_fn (source_addr, &iov_delv, 1,
 				endian_conversion_required);
 			iov_delv.iov_base = &assembly->data[assembly->index];
