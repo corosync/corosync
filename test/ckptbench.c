@@ -202,8 +202,8 @@ int main (void) {
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 
-	count = 50000;
-	size = 1000;
+	count = 1000;
+	size = 25000;
 
 	for (i = 0; i < 35; i++) { /* number of repetitions */
 		ckpt_benchmark (checkpointHandle, count, size);
