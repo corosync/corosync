@@ -83,7 +83,7 @@ static int clmConfChg (
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries);
 
-static int message_handler_req_exec_clm_nodejoin (int fd, void *message);
+static int message_handler_req_exec_clm_nodejoin (void *message);
 
 static int message_handler_req_clm_init (int fd, void *message);
 
@@ -102,7 +102,7 @@ static int (*clm_libais_handler_fns[]) (int fd, void *) = {
 	message_handler_req_clm_nodeget
 };
 
-static int (*clm_aisexec_handler_fns[]) (int fd, void *) = {
+static int (*clm_aisexec_handler_fns[]) (void *) = {
 	message_handler_req_exec_clm_nodejoin
 };
 	
@@ -358,7 +358,7 @@ static int clmConfChg (
 	return (0);
 }
 
-static int message_handler_req_exec_clm_nodejoin (int fd, void *message)
+static int message_handler_req_exec_clm_nodejoin (void *message)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 	int found;

@@ -297,7 +297,8 @@ retry_accept:
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll */
 	}
-	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN, 0, poll_handler_libais_deliver);
+	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN, 0,
+		poll_handler_libais_deliver);
 
 	connections[new_fd].service = SOCKET_SERVICE_INIT;
 	memcpy (&connections[new_fd].ais_ci.un_addr, &un_addr, sizeof (struct sockaddr_un));
@@ -465,7 +466,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (int fd, void *);
+static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg);
 static int aisexec_handler_fns_count = 0;
 
 /*
@@ -511,7 +512,7 @@ static void deliver_fn (
 	} else {
 		header = iovec[0].iov_base;
 	}
-	res = aisexec_handler_fns[header->id](0, header);
+	res = aisexec_handler_fns[header->id](header);
 }
 
 static void confchg_fn (
