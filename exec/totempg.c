@@ -92,6 +92,8 @@
 
 #include "swab.h"
 
+#define min(a,b) ((a) < (b)) ? a : b
+
 struct totempg_mcast_header {
 	short version;
 	short type;
@@ -425,6 +427,7 @@ int totempg_initialize (
 	return (res);
 }
 
+
 /*
  * Multicast a message
  */
@@ -452,8 +455,12 @@ int totempg_mcast (
 
 		/*
 		 * If it all fits with room left over, copy it in.
+		 * We need to leave at least sizeof(short) + 1 bytes in the
+		 * fragment_buffer on exit so that max_packet_size + fragment_size
+		 * doesn't exceed the size of the fragment_buffer on the next call.
 		 */
-		if ((copy_len + fragment_size) < max_packet_size) {
+		if ((copy_len + fragment_size) < 
+						(max_packet_size - sizeof (unsigned short))) {
 			memcpy (&fragmentation_data[fragment_size],
 				iovec[i].iov_base + copy_base, copy_len);
 			fragment_size += copy_len;
@@ -467,7 +474,7 @@ int totempg_mcast (
 		 * If it just fits or is too big, then send out what fits.
 		 */
 		} else {
-			copy_len = max_packet_size - fragment_size;
+			copy_len = min(copy_len, max_packet_size - fragment_size);
 			memcpy (&fragmentation_data[fragment_size],
 				iovec[i].iov_base + copy_base, copy_len);
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
@@ -542,3 +549,6 @@ int totempg_send_ok (
 
 	return (avail > 200);
 }
+/*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ */
