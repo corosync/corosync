@@ -66,21 +66,26 @@ void setSanameT (SaNameT *name, char *str) {
 	memcpy (name->value, str, name->length);
 }
 
-int healthcheck_count = 0;
+
+static int health_flag = -1;
+static unsigned int healthcheck_count = 0;
+static unsigned int healthcheck_no = 0;
 void HealthcheckCallback (SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfHealthcheckT checkType)
 {
 	SaErrorT res;
 
-//	if (healthcheck_count++ % 20 == 19) {
-		printf ("20 HealthcheckCallback have occured for component: ");
+	healthcheck_no ++;
+	if (health_flag == -1 || healthcheck_no%healthcheck_count == 0) {
+		printf ("%u HealthcheckCallback have occured for component: ",healthcheck_no);
 		printSaNameT ((SaNameT *)compName);
 		printf ("\n");
-//	}
+	}
 	res = saAmfResponse (invocation, SA_OK);
-	printf ("response res is %d\n", res);
-
+	if (res != SA_OK) {
+		printf ("response res is %d\n", res);
+	}
 }
 
 void ReadinessStateSetCallback (SaInvocationT invocation,
@@ -240,26 +245,53 @@ void sigintr_handler (int signum) {
         exit (0);
 }
 
-int main (void) {
+int main (int argc, char **argv) {
 	SaAmfHandleT handle;
 	int result;
 	int select_fd;
 	fd_set read_fds;
 	SaNameT compName;
+	extern char *optarg;
+	extern int optind;
+	int c;
 
+	memset (&compName, 0, sizeof (SaNameT));
 	signal (SIGINT, sigintr_handler);
+
+	for (;;) {
+		c = getopt(argc,argv,"h:n:");
+		if (c==-1) {
+			break;
+		}
+		switch (c) {
+		case 0 :
+			break;
+		case 'h':
+			health_flag = 0;
+			sscanf (optarg,"%ud" ,&healthcheck_count);
+			break;
+		case 'n':
+			setSanameT (&compName, optarg);
+			break;
+		default :
+			break;
+		}
+	}
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_OK) {
 		printf ("initialize result is %d\n", result);
 		exit (1);
 	}
+	printf ("initialize result is %d\n", result);
 
 	FD_ZERO (&read_fds);
 	saAmfSelectionObjectGet (&handle, &select_fd);
 	FD_SET (select_fd, &read_fds);
 
-	setSanameT (&compName, "comp_b_in_su_z");
+	if (compName.length <= 0){
+		setSanameT (&compName, "comp_b_in_su_z");		
+	}
 
 	result = saAmfComponentRegister (&handle, &compName, NULL);
 	printf ("register result is %d (should be 1)\n", result);
