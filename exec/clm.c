@@ -401,7 +401,7 @@ static int clm_confchg_fn (
 	 * Send node information to other nodes
 	 */
 	if (joined_list_entries) {
-		clmNodeJoinSend ();
+		assert (clmNodeJoinSend () == 0);
 	}
 	for (i = 0; i < left_list_entries; i++) {
 		nodes[i] = left_list[i].sin_addr.s_addr;
