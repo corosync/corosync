@@ -2579,9 +2579,11 @@ printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 	my_token_held = 1;
 	my_do_delivery = 0;
 
+#ifdef DROP_RANDOM
 if (random () % 100 < 10) {
 	return (0);
 }
+#endif
 	/*
 	 * Hold onto token when there is no activity on ring and
 	 * this processor is the ring rep
@@ -2887,9 +2889,11 @@ static int message_handler_mcast (
 	}
 
 	assert (bytes_received < PACKET_SIZE_MAX);
+#ifdef DROP_RANDOM
 if (random()%100 < 20) {
 	return (0);
 }
+#endif
 	cancel_token_retransmit_timeout (); // REVIEWED
 
 	/*
