@@ -642,6 +642,31 @@ static void aisexec_mlockall (void)
 	};
 }
 
+void aisexec_keyread (unsigned char *key)
+{
+	int fd;
+	int res;
+
+	fd = open ("/etc/ais/authkey", O_RDONLY);
+	if (fd == -1) {
+		log_printf (LOG_LEVEL_ERROR, "Could not open /etc/ais/authkey: %s\n", strerror (errno));
+		ais_done (1);
+	}
+	res = read (fd, key, 128);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "Could not read /etc/ais/authkey: %s\n", strerror (errno));
+		ais_done (1);
+	}
+	if (res != 128) {
+		log_printf (LOG_LEVEL_ERROR, "Could only read %d bits of 1024 bits from /etc/ais/authkey.\n", res * 8);
+		ais_done (1);
+	}
+
+	close (fd);
+}
+
+
+
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
@@ -649,7 +674,7 @@ int main (int argc, char **argv)
 	struct sockaddr_in sockaddr_in_mcast;
 	struct sockaddr_in sockaddr_in_bindnet;
 	gmi_join_handle handle;
-
+	unsigned char private_key[128];
 
 	char *error_string;
 
@@ -685,10 +710,15 @@ int main (int argc, char **argv)
 
 	aisexec_mlockall ();
 
+	aisexec_keyread (private_key);
+
 	gmi_log_printf_init (internal_log_printf_checkdebug,
-		LOG_LEVEL_ERROR, LOG_LEVEL_WARNING, LOG_LEVEL_NOTICE, LOG_LEVEL_DEBUG);
+		LOG_LEVEL_SECURITY, LOG_LEVEL_ERROR, LOG_LEVEL_WARNING,
+		LOG_LEVEL_NOTICE, LOG_LEVEL_DEBUG);
 	gmi_init (&sockaddr_in_mcast, &sockaddr_in_bindnet,
-		&aisexec_poll_handle, &this_ip);
+		&aisexec_poll_handle, &this_ip,
+		private_key,
+		sizeof (private_key));
 	
 	/*
 	 * Drop root privleges to user 'ais'
