@@ -88,7 +88,7 @@
 #define ENCRYPTION 1	 /* use encryption */
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
-#define QUEUE_PEND_SIZE_MAX			51
+#define QUEUE_PEND_SIZE_MAX			100 /* TODO identify what this value should be, number of pending assembled messages per processor */
 #define QUEUE_ASSEMBLY_SIZE_MAX		((MESSAGE_SIZE_MAX / 1472) + 1)
 #define QUEUE_RTR_ITEMS_SIZE_MAX	256
 #define QUEUE_PEND_TRANS_SIZE_MAX	((MESSAGE_SIZE_MAX / 1472) + 1)
@@ -2970,6 +2970,7 @@ static void assembly_deliver (struct queue_frag *queue_frag)
 		pend_queue_item.pend_queue_msg_items[pend_queue_msg_item_count].iovec_entries = i;
 		pend_queue_item.pend_queue_msg_items[pend_queue_msg_item_count].reftwo = assembly_queue_item->reftwo;
 		pend_queue_msg_item_count++;
+		assert (pend_queue_msg_item_count < QUEUE_PEND_SIZE_MAX);
 		
 		/*
 		 * Assemble io vector
