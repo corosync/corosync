@@ -48,7 +48,7 @@
 /*
  * Size of the queue (entries) for I/O's to the API over socket IPC.
  */
-#define SIZEQUEUE 8192
+#define SIZEQUEUE 128
 
 enum socket_service_type {
 	SOCKET_SERVICE_INIT,
@@ -89,9 +89,15 @@ struct outq_item {
 
 #define SIZEINB MESSAGE_SIZE_MAX
 
+enum conn_state {
+	CONN_STATE_ACTIVE,
+	CONN_STATE_DISCONNECTING,
+	CONN_STATE_DISCONNECTING_DELAYED
+};
+
 struct conn_info {
 	int fd;				/* File descriptor for this connection */
-	int active;			/* Does this file descriptor have an active connection */
+	enum conn_state state;			/* State of this connection */
 	char *inb;			/* Input buffer for non-blocking reads */
 	int inb_nextheader;	/* Next message header starts here */
 	int inb_start;		/* Start location of input buffer */
