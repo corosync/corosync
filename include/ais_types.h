@@ -72,8 +72,6 @@ typedef struct {
 #define SA_TRACK_CHANGES 0x02
 #define SA_TRACK_CHANGES_ONLY 0x04
 
-#define SA_CLM_LOCAL_NODE_ID 0x00
-
 typedef enum {
 	SA_DISPATCH_ONE = 1,
 	SA_DISPATCH_ALL = 2,
@@ -112,42 +110,44 @@ typedef enum {
 	SA_ERR_SECURITY = 29
 } SaErrorT;
 
-typedef SaUint32T SaClmNodeIdT;
-
-typedef int SaClmHandleT;
-typedef int SaSelectionObjectT;
-typedef int SaInvocationT;
-
-#define SA_CLM_MAX_ADDRESS_LENGTH 64
-typedef struct {
-	SaUint8T length;
-	unsigned char value[SA_CLM_MAX_ADDRESS_LENGTH];
-} SaClmNodeAddressT;
-
-typedef struct {
-	SaClmNodeIdT nodeId;
-	SaClmNodeAddressT nodeAddress;
-	SaNameT nodeName;
-	SaNameT clusterName;
-	SaBoolT member;
-	SaTimeT bootTimestamp;
-} SaClmClusterNodeT;
-
 typedef enum {
-	SA_CLM_NODE_NO_CHANGE = 1,
-	SA_CLM_NODE_JOINED = 2,
-	SA_CLM_NODE_LEFT = 3
-} SaClmClusterChangesT;
+	SA_AIS_OK = 1,
+	SA_AIS_ERR_LIBRARY = 2,
+	SA_AIS_ERR_VERSION = 3,
+	SA_AIS_ERR_INIT = 4,
+	SA_AIS_ERR_TIMEOUT = 5,
+	SA_AIS_ERR_TRY_AGAIN = 6,
+	SA_AIS_ERR_INVALID_PARAM = 7,
+	SA_AIS_ERR_NO_MEMORY = 8,
+	SA_AIS_ERR_BAD_HANDLE = 9,
+	SA_AIS_ERR_BUSY = 10,
+	SA_AIS_ERR_ACCESS = 11,
+	SA_AIS_ERR_NOT_EXIST = 12,
+	SA_AIS_ERR_NAME_TOO_LONG = 13,
+	SA_AIS_ERR_EXIST = 14,
+	SA_AIS_ERR_NO_SPACE = 15,
+	SA_AIS_ERR_INTERRUPT = 16,
+	SA_AIS_ERR_NAME_NOT_FOUND = 17,
+	SA_AIS_ERR_NO_RESOURCES = 18,
+	SA_AIS_ERR_NOT_SUPPORTED = 19,
+	SA_AIS_ERR_BAD_OPERATION = 20,
+	SA_AIS_ERR_FAILED_OPERATION = 21,
+	SA_AIS_ERR_MESSAGE_ERROR = 22,
+	SA_AIS_ERR_QUEUE_FULL = 23,
+	SA_AIS_ERR_QUEUE_NOT_AVAILABLE = 24,
+	SA_AIS_ERR_BAD_CHECKPOINT = 25,
+	SA_AIS_ERR_BAD_FLAGS = 26,
+	SA_AIS_ERR_NO_SECTIONS = 27
+} SaAisErrorT;
 
-typedef struct {
-	SaClmClusterNodeT clusterNode;
-	SaClmClusterChangesT clusterChanges;
-} SaClmClusterNotificationT;
+typedef int SaSelectionObjectT;
+
+typedef int SaInvocationT;
 
 /*
  * AMF Definitions
  */
-typedef int SaAmfHandleT;
+typedef SaUint64T SaAmfHandleT;
 
 typedef enum {
 	SA_AMF_HEARTBEAT = 1,
@@ -304,11 +304,11 @@ typedef struct {
 	SaAmfErrorBufferT *additionalInformation;
 } SaAmfAdditionalDataT;
 
-typedef int SaCkptHandleT;
+typedef SaUint64T SaCkptHandleT;
 
-typedef int SaCkptCheckpointHandleT;
+typedef SaUint64T SaCkptCheckpointHandleT;
 
-typedef int SaCkptSectionIteratorT;
+typedef SaUint64T SaCkptSectionIteratorT;
 
 #define SA_CKPT_WR_ALL_REPLICAS 0x1
 #define SA_CKPT_WR_ACTIVE_REPLICA 0x2
