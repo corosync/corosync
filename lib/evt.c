@@ -778,6 +778,7 @@ saEvtChannelOpen(
 
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
 	if (error != SA_OK) {
+		pthread_mutex_unlock (&evti->ei_mutex);
 		goto chan_open_free;
 	}
 	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
