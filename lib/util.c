@@ -370,7 +370,7 @@ SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	unsigned int *handleOut)
+	SaUint64T *handleOut)
 {
 	int handle;
 	void *newHandles;
@@ -420,7 +420,7 @@ saHandleCreate (
 SaErrorT
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
-	unsigned int handle)
+	SaUint64T handle)
 {
 	pthread_mutex_lock (&handleDatabase->mutex);
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
@@ -457,7 +457,7 @@ saHandleInstanceGet (
 error_exit:
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	return (SA_OK);
+	return (error);
 }
 
 

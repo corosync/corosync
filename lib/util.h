@@ -115,23 +115,23 @@ SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	unsigned int *handleOut);
+	SaUint64T *handleOut);
 
 SaErrorT
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
-	unsigned int handle);
+	SaUint64T handle);
 
 SaErrorT
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
-	unsigned int handle,
+	SaUint64T handle,
 	void **instance);
 
 SaErrorT
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
-	unsigned int handle);
+	SaUint64T handle);
 
 SaErrorT
 saVersionVerify (
