@@ -1692,7 +1692,7 @@ static void memb_timer_function_state_commit_timeout (void *data)
 		 * memb_list_entries only set to 0 when token times out, in which case
 		 * send a configuration change because no messages can be recovered in EVS
 		 */
-		if (memb_list_entries == 0) {
+		if (memb_list_entries == 1) {
 			gmi_log_printf (gmi_log_level_notice, "I am the only member.\n");
 			if (gmi_confchg_fn) {
 				/*
