@@ -427,7 +427,7 @@ static int message_handler_memb_attempt_join (struct sockaddr_in *, struct iovec
 static int message_handler_memb_join (struct sockaddr_in *, struct iovec *, int, int);
 static int message_handler_memb_form_token (struct sockaddr_in *, struct iovec *, int, int);
 static void memb_conf_id_build (struct memb_conf_id *, struct in_addr);
-static int recv_handler (poll_handle handle, int fd, int revents, void *data);
+static int recv_handler (poll_handle handle, int fd, int revents, void *data, unsigned int *prio);
 static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to);
 static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
@@ -543,9 +543,9 @@ int gmi_init (
 
 	gmi_poll_handle = poll_handle;
 
-	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler);
+	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler, UINT_MAX);
 
-	poll_dispatch_add (*gmi_poll_handle, gmi_fd_token, POLLIN, 0, recv_handler);
+	poll_dispatch_add (*gmi_poll_handle, gmi_fd_token, POLLIN, 0, recv_handler, UINT_MAX);
 
 	memb_state_gather_enter ();
 
@@ -3333,13 +3333,15 @@ printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 	return (res);
 }
 
-int recv_handler (poll_handle handle, int fd, int revents, void *data)
+int recv_handler (poll_handle handle, int fd, int revents, void *data, unsigned int *prio)
 {
 	struct msghdr msg_recv;
 	struct message_header *message_header;
 	struct sockaddr_in system_from;
 	int res = 0;
 	int bytes_received;
+
+	*prio = UINT_MAX;
 
 	/*
 	 * Receive datagram
