@@ -59,6 +59,7 @@ poll_handle *gmi_poll_handle;
  */
 void gmi_log_printf_init (
 	void (*log_printf) (int , char *, ...),
+	int log_level_security,
 	int log_level_error,
 	int log_level_warning,
 	int log_level_notice,
@@ -71,7 +72,10 @@ int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	poll_handle *poll_handle,
-	struct sockaddr_in *bound_to);
+	struct sockaddr_in *bound_to,
+	unsigned char *private_key,
+	int private_key_len);
+
 
 /*
  * Join a multicast group
