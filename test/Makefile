@@ -126,7 +126,6 @@ clean:
 	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
 	ckptbench ckptbenchth testevt testevs \
 	evsbench subscription publish evtbench
-
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
