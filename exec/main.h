@@ -32,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define TRUE 1
+#define FALSE 0
 #include <sys/un.h>
 #include "../include/ais_types.h"
 #include "poll.h"
