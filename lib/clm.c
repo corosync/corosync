@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2002-2003 MontaVista Software, Inc.
  *
@@ -37,6 +36,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -45,13 +45,15 @@
 #include <sys/un.h>
 
 #include "../include/ais_types.h"
-#include "../include/ais_clm.h"
+#include "../include/saClm.h"
 #include "../include/ais_msg.h"
+#include "../include/ipc_clm.h"
+
 #include "util.h"
 
 struct res_overlay {
 	struct res_header header;
-	char data[4096];
+	char data[128000];
 };
 
 struct clmInstance {
@@ -59,6 +61,7 @@ struct clmInstance {
 	struct queue inq;
 	SaClmCallbacksT callbacks;
 	int finalize;
+	SaClmClusterNotificationBufferT notificationBuffer;
 	pthread_mutex_t mutex;
 };
 
@@ -75,8 +78,8 @@ static struct saHandleDatabase clmHandleDatabase = {
  * Versions supported
  */
 static SaVersionT clmVersionsSupported[] = {
-	{ 'A', 1, 1 },
-	{ 'a', 1, 1 }
+	{ 'B', 1, 1 },
+	{ 'b', 1, 1 }
 };
 
 static struct saVersionDatabase clmVersionDatabase = {
@@ -95,14 +98,14 @@ void clmHandleInstanceDestructor (void *instance)
 }
 
 
-SaErrorT
+SaAisErrorT
 saClmInitialize (
 	SaClmHandleT *clmHandle,
 	const SaClmCallbacksT *clmCallbacks,
-	const SaVersionT *version)
+	SaVersionT *version)
 {
 	struct clmInstance *clmInstance;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_OK;
 
 	error = saVersionVerify (&clmVersionDatabase, version);
 	if (error != SA_OK) {
@@ -141,6 +144,8 @@ saClmInitialize (
 
 	pthread_mutex_init (&clmInstance->mutex, NULL);
 
+	clmInstance->notificationBuffer.notification = 0;
+
 	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
 
 	return (SA_OK);
@@ -153,33 +158,34 @@ error_no_destroy:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saClmSelectionObjectGet (
-	const SaClmHandleT *clmHandle,
+	SaClmHandleT clmHandle,
 	SaSelectionObjectT *selectionObject)
 {
 	struct clmInstance *clmInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	*selectionObject = clmInstance->fd;
 
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 	return (SA_OK);
 }
 
-SaErrorT
+SaAisErrorT
 saClmDispatch (
-	const SaClmHandleT *clmHandle,
+	SaClmHandleT clmHandle,
 	SaDispatchFlagsT dispatchFlags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaErrorT error;
+	SaAisErrorT error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	int poll_fd;
@@ -191,8 +197,11 @@ saClmDispatch (
 	int empty;
 	struct res_header **queue_msg;
 	struct res_header *msg;
+	SaClmClusterNotificationBufferT notificationBuffer;
+	int copy_items;
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -272,6 +281,9 @@ saClmDispatch (
 		 * operate at the same time that clmFinalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &clmInstance->callbacks, sizeof (SaClmCallbacksT));
+		memcpy (&notificationBuffer, &clmInstance->notificationBuffer,
+			sizeof (SaClmClusterNotificationBufferT));
+
 		pthread_mutex_unlock (&clmInstance->mutex);
 
 		/*
@@ -281,27 +293,46 @@ saClmDispatch (
 
 		case MESSAGE_RES_CLM_TRACKCALLBACK:
 			res_clm_trackcallback = (struct res_clm_trackcallback *)&dispatch_data;
+			error = SA_AIS_OK;
 
-			memcpy (res_clm_trackcallback->notificationBufferAddress,
-				&res_clm_trackcallback->notificationBuffer,
-				res_clm_trackcallback->numberOfItems * sizeof (SaClmClusterNotificationT));
+			/*
+			 * If buffer is not specified, allocate one
+			 */
+			if (notificationBuffer.notification == 0) {
+				notificationBuffer.notification = malloc (
+					res_clm_trackcallback->numberOfItems *
+					sizeof (SaClmClusterNotificationT));
+				if (notificationBuffer.notification) {
+					notificationBuffer.numberOfItems =
+						res_clm_trackcallback->numberOfItems;
+				} else {
+					error = SA_AIS_ERR_NO_MEMORY;
+				}
+			}
+
+			copy_items = res_clm_trackcallback->numberOfItems;
+			if (copy_items > notificationBuffer.numberOfItems) {
+				copy_items = notificationBuffer.numberOfItems;
+				error = SA_AIS_ERR_NO_SPACE;
+			}
+
+			memcpy (notificationBuffer.notification, 
+				&res_clm_trackcallback->notification,
+				copy_items *
+					sizeof (SaClmClusterNotificationT));
 
 			callbacks.saClmClusterTrackCallback (
-				res_clm_trackcallback->notificationBufferAddress,
-				res_clm_trackcallback->numberOfItems, res_clm_trackcallback->numberOfMembers,
-				res_clm_trackcallback->viewNumber, SA_OK);
+				(const SaClmClusterNotificationBufferT *)&notificationBuffer,
+				res_clm_trackcallback->numberOfMembers, error);
 			break;
 
 		case MESSAGE_RES_CLM_NODEGETCALLBACK:
 			res_clm_nodegetcallback = (struct res_clm_nodegetcallback *)&dispatch_data;
 
-			memcpy (res_clm_nodegetcallback->clusterNodeAddress,
-				&res_clm_nodegetcallback->clusterNode,
-				sizeof (SaClmClusterNodeT));
-
 			callbacks.saClmClusterNodeGetCallback (
 				res_clm_nodegetcallback->invocation,
-				&res_clm_nodegetcallback->clusterNode, SA_OK);
+				&res_clm_nodegetcallback->clusterNode,
+				res_clm_nodegetcallback->header.error);
 			break;
 
 		default:
@@ -325,19 +356,20 @@ saClmDispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 error_nounlock:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saClmFinalize (
-	SaClmHandleT *clmHandle)
+	SaClmHandleT clmHandle)
 {
 	struct clmInstance *clmInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -349,7 +381,7 @@ saClmFinalize (
 	 */
 	if (clmInstance->finalize) {
 		pthread_mutex_unlock (&clmInstance->mutex);
-		saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+		saHandleInstancePut (&clmHandleDatabase, clmHandle);
 		return (SA_ERR_BAD_HANDLE);
 	}
 
@@ -359,93 +391,123 @@ saClmFinalize (
 
 	pthread_mutex_unlock (&clmInstance->mutex);
 
-	saHandleDestroy (&clmHandleDatabase, *clmHandle);
+	saHandleDestroy (&clmHandleDatabase, clmHandle);
 
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
 	return (error);
 }
 
-SaErrorT
-saClmClusterTrackStart (
-	const SaClmHandleT *clmHandle,
+SaAisErrorT
+saClmClusterTrack (
+	SaClmHandleT clmHandle,
 	SaUint8T trackFlags,
-	SaClmClusterNotificationT *notificationBuffer,
-	SaUint32T numberOfItems)
+	SaClmClusterNotificationBufferT *notificationBuffer)
 {
-	struct req_clm_trackstart req_trackstart;
+	struct req_clm_clustertrack req_clustertrack;
 	struct clmInstance *clmInstance;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_OK;
 
-	req_trackstart.header.size = sizeof (struct req_clm_trackstart);
-	req_trackstart.header.id = MESSAGE_REQ_CLM_TRACKSTART;
-	req_trackstart.trackFlags = trackFlags;
-	req_trackstart.notificationBufferAddress = notificationBuffer;
-	req_trackstart.numberOfItems = numberOfItems;
+	/*
+	 * Parameter checking
+	 */
+	if (notificationBuffer == 0) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	if (notificationBuffer->notification &&
+		notificationBuffer->numberOfItems == 0) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+	if ((trackFlags & SA_TRACK_CHANGES) && (trackFlags & SA_TRACK_CHANGES_ONLY)) {
+		return (SA_AIS_ERR_BAD_FLAGS);
+	}
+		
+	/*
+	 * Request service
+	 */
+	req_clustertrack.header.size = sizeof (struct req_clm_clustertrack);
+	req_clustertrack.header.id = MESSAGE_REQ_CLM_TRACKSTART;
+	req_clustertrack.trackFlags = trackFlags;
+
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	pthread_mutex_lock (&clmInstance->mutex);
 
-	error = saSendRetry (clmInstance->fd, &req_trackstart, sizeof (struct req_clm_trackstart), MSG_NOSIGNAL);
+	if (clmInstance->callbacks.saClmClusterTrackCallback == 0) {
+		error = SA_AIS_ERR_INIT;
+		goto error_exit;
+	}
 
+	error = saSendRetry (clmInstance->fd, &req_clustertrack,
+		sizeof (struct req_clm_clustertrack), MSG_NOSIGNAL);
+
+	memcpy (&clmInstance->notificationBuffer, notificationBuffer,
+		sizeof (SaClmClusterNotificationBufferT));
+
+error_exit:
 	pthread_mutex_unlock (&clmInstance->mutex);
 
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saClmClusterTrackStop (
-	const SaClmHandleT *clmHandle)
+	SaClmHandleT clmHandle)
 {
 	struct clmInstance *clmInstance;
 	struct req_clm_trackstop req_trackstop;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_OK;
 
 	req_trackstop.header.size = sizeof (struct req_clm_trackstop);
 	req_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	pthread_mutex_lock (&clmInstance->mutex);
 
-	error = saSendRetry (clmInstance->fd, &req_trackstop, sizeof (struct req_clm_trackstop), MSG_NOSIGNAL);
+	error = saSendRetry (clmInstance->fd, &req_trackstop,
+		sizeof (struct req_clm_trackstop), MSG_NOSIGNAL);
+
+	clmInstance->notificationBuffer.notification = 0;
 
 	pthread_mutex_unlock (&clmInstance->mutex);
 
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saClmClusterNodeGet (
+	SaClmHandleT clmHandle,
 	SaClmNodeIdT nodeId,
 	SaTimeT timeout,
 	SaClmClusterNodeT *clusterNode)
 {
-	int fd;
+	struct clmInstance *clmInstance;
 	struct req_clm_nodeget req_clm_nodeget;
 	struct res_clm_nodeget res_clm_nodeget;
-	SaErrorT error = SA_OK;
-	struct timeval select_timeout;
-	fd_set read_fds;
+	SaAisErrorT error = SA_OK;
 
-	select_timeout.tv_usec = 0;
-	select_timeout.tv_sec = 5;
-
-	error = saServiceConnect (&fd, MESSAGE_REQ_CLM_INIT);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
-		goto error_noclose;
+		return (error);
 	}
+
+	pthread_mutex_lock (&clmInstance->mutex);
 
 	/*
 	 * Send request message
@@ -453,66 +515,51 @@ saClmClusterNodeGet (
 	req_clm_nodeget.header.size = sizeof (struct req_clm_nodeget);
 	req_clm_nodeget.header.id = MESSAGE_REQ_CLM_NODEGET;
 	req_clm_nodeget.nodeId = nodeId;
-	error = saSendRetry (fd, &req_clm_nodeget, sizeof (struct req_clm_nodeget), MSG_NOSIGNAL);
+	error = saSendRetry (clmInstance->fd, &req_clm_nodeget,
+		sizeof (struct req_clm_nodeget), MSG_NOSIGNAL);
 	if (error != SA_OK) {
-		goto error_close;
+		goto error_exit;
 	}
 
-	FD_ZERO (&read_fds);
-	FD_SET (fd, &read_fds);
-	/*
-	 * Wait for timeout interval
-	 */
-	error = saSelectRetry (fd + 1, &read_fds, 0, 0, &select_timeout);
-	if (error != SA_OK) {
-		goto error_close;
-	}
-
-	/*
-	 * Was there a timeout in receiving the information?
-	 */
-	if (FD_ISSET (fd, &read_fds) == 0) {
-		error = SA_ERR_TIMEOUT;
-		goto error_close;
-	}
-
-	error = saRecvRetry (fd, &res_clm_nodeget, sizeof (struct res_clm_nodeget),
+	error = saRecvRetry (clmInstance->fd, &res_clm_nodeget,
+		sizeof (struct res_clm_nodeget),
 		MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
-		goto error_close;
+		goto error_exit;
 	}
 
 	error = res_clm_nodeget.header.error;
 
-	memcpy (clusterNode, &res_clm_nodeget.clusterNode, sizeof (SaClmClusterNodeT));
+	memcpy (clusterNode, &res_clm_nodeget.clusterNode,
+		sizeof (SaClmClusterNodeT));
 
-error_noclose:
-	return (error);
+error_exit:
+	pthread_mutex_unlock (&clmInstance->mutex);
 
-error_close:
-	close (fd);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
+
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saClmClusterNodeGetAsync (
-	const SaClmHandleT *clmHandle,
+	SaClmHandleT clmHandle,
 	SaInvocationT invocation,
-	SaClmNodeIdT nodeId,
-	SaClmClusterNodeT *clusterNode)
+	SaClmNodeIdT nodeId)
 {
 	struct clmInstance *clmInstance;
 	struct req_clm_nodegetasync req_clm_nodegetasync;
 	struct res_clm_nodegetasync res_clm_nodegetasync;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_OK;
 
 	req_clm_nodegetasync.header.size = sizeof (struct req_clm_nodeget);
 	req_clm_nodegetasync.header.id = MESSAGE_REQ_CLM_NODEGETASYNC;
-	memcpy (&req_clm_nodegetasync.invocation, &invocation, sizeof (SaInvocationT));
+	memcpy (&req_clm_nodegetasync.invocation, &invocation,
+		sizeof (SaInvocationT));
 	memcpy (&req_clm_nodegetasync.nodeId, &nodeId, sizeof (SaClmNodeIdT));
-	req_clm_nodegetasync.clusterNodeAddress = clusterNode;
 
-	error = saHandleInstanceGet (&clmHandleDatabase, *clmHandle, (void *)&clmInstance);
+	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
+		(void *)&clmInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -533,7 +580,7 @@ saClmClusterNodeGetAsync (
 	error = res_clm_nodegetasync.header.error;
 
 error_exit:
-	saHandleInstancePut (&clmHandleDatabase, *clmHandle);
+	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
 	return (error);
 }
