@@ -42,6 +42,7 @@
 
 enum req_evt_types {
 	MESSAGE_REQ_EVT_OPEN_CHANNEL = 1,
+	MESSAGE_REQ_EVT_OPEN_CHANNEL_ASYNC,
 	MESSAGE_REQ_EVT_CLOSE_CHANNEL,
 	MESSAGE_REQ_EVT_SUBSCRIBE,
 	MESSAGE_REQ_EVT_UNSUBSCRIBE,
@@ -64,6 +65,7 @@ enum res_evt_types {
 
 /* 
  * MESSAGE_REQ_EVT_OPEN_CHANNEL
+ * MESSAGE_REQ_EVT_OPEN_CHANNEL_ASYNC
  *
  * ico_head				Request head
  * ico_open_flag:		Channel open flags
@@ -78,13 +80,18 @@ struct req_evt_channel_open {
 	struct req_header		ico_head;
 	SaUint8T				ico_open_flag;
 	SaNameT					ico_channel_name;
-	SaEvtChannelHandleT		ico_c_handle;	/* client chan handle */
-	SaTimeT					ico_timeout;    /* open only */
-	SaInvocationT			ico_invocation; /* open async only */
+	SaEvtChannelHandleT		ico_c_handle;
+	SaTimeT					ico_timeout;
+	SaInvocationT			ico_invocation;
 };
 
 /*
  * MESSAGE_RES_EVT_OPEN_CHANNEL
+ *
+ * Used by both the blocing and non-blocking
+ * versions.  Only the error code in the header is used by the async
+ * open.  The channel handle will be returnd via the channel open
+ * callback.
  * 
  *
  * ico_head:			Results head
@@ -102,10 +109,20 @@ struct res_evt_channel_open {
 /*
  * MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK
  *
- * TODO: Define this
+ * ica_head:			Results head.
+ * ica_c_handle:		Lib size channel handle.  So we can look
+ * 						up the new open channel info from the callback.
+ * ica_channel_handle:	Server side handle.
+ * ica_invocation:		Supplied by the user in the open call.  Passed to
+ * 						the callback so the user can assocate the callback
+ * 						to the particular open.
  */
 struct res_evt_open_chan_async {
-	struct res_header	ico_head;
+	struct res_header	ica_head;
+	SaEvtChannelHandleT	ica_c_handle;
+	uint32_t			ica_channel_handle;
+	SaInvocationT		ica_invocation;
+
 };
 
 

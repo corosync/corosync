@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2004 Mark Haverkamp
- * Copyright (c) 2004 Open Source Development Lab
+ * Copyright (c) 2004-2005 Mark Haverkamp
+ * Copyright (c) 2004-2005 Open Source Development Lab
  *
  * All rights reserved.
  *
@@ -617,10 +617,32 @@ saEvtDispatch(
 			break;
 
 		case MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK:
-			/* 
-			 * TODO: do something here
+		{
+			struct res_evt_open_chan_async *resa = 
+				(struct res_evt_open_chan_async *)dispatch_data;
+			struct event_channel_instance *eci;
+
+			/*
+			 * Check for errors.  If there are none, then
+			 * look up the local channel via the handle that we
+			 * got from the callback request.  All we need to do 
+			 * is place in the handle from the server side and then 
+			 * we can call the callback.
 			 */
-			printf("Dispatch: Open callback\n");
+			error = resa->ica_head.error;
+			if (error == SA_AIS_OK) {
+				error = saHandleInstanceGet(&channel_handle_db, 
+						resa->ica_c_handle, (void*)&eci);
+				if (error == SA_AIS_OK) {
+					eci->eci_svr_channel_handle = resa->ica_channel_handle;
+					saHandleInstancePut (&channel_handle_db, 
+							resa->ica_c_handle);
+				}
+			}
+			callbacks.saEvtChannelOpenCallback(resa->ica_invocation,
+					resa->ica_c_handle, error);
+
+		}
 			break;
 
 		default:
@@ -903,16 +925,102 @@ chan_close_done:
 	return error;
 }
 
+/*
+ * The saEvtChannelOpenAsync() function creates a new event channel or open an 
+ * existing channel. The saEvtChannelOpenAsync() function is a non-blocking 
+ * operation. A new event channel handle is returned in the channel open
+ * callback function (SaEvtChannelOpenCallbackT).
+ */
 SaAisErrorT
 saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
                        SaInvocationT invocation,
                        const SaNameT *channel_name,
                        SaEvtChannelOpenFlagsT channel_open_flags)
 {
-	/* 
-	 * TODO: Fill in code
+	struct event_instance *evti;
+	struct req_evt_channel_open req;
+	struct res_evt_channel_open res;
+	struct event_channel_instance *eci;
+	SaEvtChannelHandleT channel_handle;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
+			(void*)&evti);
+	
+	if (error != SA_AIS_OK) {
+		goto chan_open_done;
+	}
+
+	/*
+	 * create a handle for this open channel
 	 */
-	return SA_AIS_ERR_LIBRARY;
+	error = saHandleCreate(&channel_handle_db, sizeof(*eci), 
+			&channel_handle);
+	if (error != SA_AIS_OK) {
+		goto chan_open_put;
+	}
+
+	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+					(void*)&eci);
+	if (error != SA_AIS_OK) {
+		saHandleDestroy(&channel_handle_db, channel_handle);
+		goto chan_open_put;
+	}
+
+
+	/*
+	 * Send the request to the server.  The response isn't the open channel,
+	 * just an ack.  The open channel will be returned when the channel open
+	 * callback is called.
+	 */
+	req.ico_head.size = sizeof(req);
+	req.ico_head.id = MESSAGE_REQ_EVT_OPEN_CHANNEL_ASYNC;
+	req.ico_c_handle = channel_handle;
+	req.ico_timeout = 0;
+	req.ico_invocation = invocation;
+	req.ico_open_flag = channel_open_flags;
+	req.ico_channel_name = *channel_name;
+
+
+	pthread_mutex_lock(&evti->ei_mutex);
+
+	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		pthread_mutex_unlock (&evti->ei_mutex);
+		goto chan_open_free;
+	}
+	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
+					MESSAGE_RES_EVT_OPEN_CHANNEL);
+
+	pthread_mutex_unlock (&evti->ei_mutex);
+
+	if (error != SA_AIS_OK) {
+		goto chan_open_free;
+	}
+
+	error = res.ico_head.error;
+	if (error != SA_AIS_OK) {
+		goto chan_open_free;
+	}
+
+	eci->eci_svr_channel_handle = 0; /* filled in by callback */
+	eci->eci_channel_name = *channel_name;
+	eci->eci_open_flags = channel_open_flags;
+	eci->eci_instance_handle = evt_handle;
+	eci->eci_closing = 0;
+	pthread_mutex_init(&eci->eci_mutex, NULL);
+	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut (&channel_handle_db, channel_handle);
+
+	return SA_AIS_OK;
+
+chan_open_free:
+	saHandleDestroy(&channel_handle_db, channel_handle);
+	saHandleInstancePut (&channel_handle_db, channel_handle);
+chan_open_put:
+	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
+chan_open_done:
+	return error;
 }
 
 SaAisErrorT

@@ -65,6 +65,8 @@
 static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, 
 		void *message);
 static int lib_evt_open_channel(struct conn_info *conn_info, void *message);
+static int lib_evt_open_channel_async(struct conn_info *conn_info, 
+		void *message);
 static int lib_evt_close_channel(struct conn_info *conn_info, void *message);
 static int lib_evt_event_subscribe(struct conn_info *conn_info, 
 		void *message);
@@ -101,6 +103,11 @@ static struct libais_handler evt_libais_handlers[] = {
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
 	},
 	{
+	.libais_handler_fn = 	lib_evt_open_channel_async,
+	.response_size = 		sizeof(struct res_evt_channel_open),
+	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	},
+	{
 	.libais_handler_fn = 	lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
@@ -123,7 +130,7 @@ static struct libais_handler evt_libais_handlers[] = {
 	{
 	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
 	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
-	.response_id = 			MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME,
+	.response_id = 			MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_data_get,
@@ -1997,10 +2004,14 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	ocp->ocp_chan_name = req->ico_channel_name;
 	ocp->ocp_open_flag = req->ico_open_flag;
 	ocp->ocp_conn_info = conn_info;
+	ocp->ocp_c_handle = req->ico_c_handle;
 	ocp->ocp_timer_handle = 0;
 	list_init(&ocp->ocp_entry);
 	list_add_tail(&ocp->ocp_entry, &open_pending);
 	if (req->ico_timeout != 0) {
+		/*
+		 * Time in nanoseconds - convert to miliseconds
+		 */
 		msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
 		ret = poll_timer_add(aisexec_poll_handle,
 				msec_in_future,
@@ -2015,6 +2026,83 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	}
 	return 0;
 
+
+open_return:
+	res.ico_head.size = sizeof(res);
+	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
+	res.ico_head.error = error;
+	libais_send_response (conn_info, &res, sizeof(res));
+
+	return 0;
+}
+
+/*
+ * Handler for saEvtChannelOpen
+ */
+static int lib_evt_open_channel_async(struct conn_info *conn_info, 
+		void *message)
+{
+	SaErrorT error;
+	struct req_evt_channel_open *req;
+	struct res_evt_channel_open res;
+	struct open_chan_pending *ocp;
+	int msec_in_future;
+	int ret;
+
+	req = message;
+
+
+	log_printf(CHAN_OPEN_DEBUG, 
+			"saEvtChannelOpenAsync (Async Open channel request)\n");
+	log_printf(CHAN_OPEN_DEBUG, 
+			"handle 0x%x, to 0x%x\n",
+			req->ico_c_handle,
+			req->ico_invocation);
+	log_printf(CHAN_OPEN_DEBUG, "flags %x, channel name(%d)  %s\n",
+			req->ico_open_flag,
+			req->ico_channel_name.length,
+			req->ico_channel_name.value);
+	/*
+	 * Open the channel.
+	 *
+	 */
+	error = evt_open_channel(&req->ico_channel_name, req->ico_open_flag);
+
+	if (error != SA_AIS_OK) {
+		goto open_return;
+	}
+
+	ocp = malloc(sizeof(struct open_chan_pending));
+	if (!ocp) {
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto open_return;
+	}
+
+	ocp->ocp_async = 1;
+	ocp->ocp_invocation = req->ico_invocation;
+	ocp->ocp_c_handle = req->ico_c_handle;
+	ocp->ocp_chan_name = req->ico_channel_name;
+	ocp->ocp_open_flag = req->ico_open_flag;
+	ocp->ocp_conn_info = conn_info;
+	ocp->ocp_timer_handle = 0;
+	list_init(&ocp->ocp_entry);
+	list_add_tail(&ocp->ocp_entry, &open_pending);
+	if (req->ico_timeout != 0) {
+		/*
+		 * Time in nanoseconds - convert to miliseconds
+		 */
+		msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
+		ret = poll_timer_add(aisexec_poll_handle,
+				msec_in_future,
+				ocp,
+				chan_open_timeout,
+				&ocp->ocp_timer_handle);
+		if (ret != 0) {
+			log_printf(LOG_LEVEL_WARNING, 
+					"Error setting timeout for open channel %s\n",
+					req->ico_channel_name.value);
+		}
+	}
 
 open_return:
 	res.ico_head.size = sizeof(res);
@@ -2420,7 +2508,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	}
 
 	res.iec_head.size = sizeof(res);
-	res.iec_head.id = MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME;
+	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
 	res.iec_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
 
@@ -2981,7 +3069,6 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 		struct event_svr_channel_instance *eci)
 {
 	uint32_t handle;
-	struct res_evt_channel_open res;
 	struct event_svr_channel_open *eco;
 	SaErrorT error;
 	struct libevt_ci *esip = &ocp->ocp_conn_info->ais_ci.u.libevt_ci;
@@ -2990,7 +3077,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n", 
 											getSaNameT(&ocp->ocp_chan_name));
-	if (!ocp->ocp_async && ocp->ocp_timer_handle) {
+	if (ocp->ocp_timer_handle) {
 		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
 		if (ret != 0 ) {
 			log_printf(LOG_LEVEL_WARNING, 
@@ -3032,15 +3119,28 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 * open instance for later subscriptions, etc.
 	 */
 	saHandleInstancePut(&esip->esi_hdb, handle);
+
 open_return:
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n", 
 											getSaNameT(&ocp->ocp_chan_name),
 											error);
-	res.ico_head.size = sizeof(res);
-	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
-	res.ico_head.error = error;
-	res.ico_channel_handle = handle;
-	libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
+	if (ocp->ocp_async) {
+		struct res_evt_open_chan_async resa;
+		resa.ica_head.size = sizeof(resa);
+		resa.ica_head.id = MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK;
+		resa.ica_head.error = error;
+		resa.ica_channel_handle = handle;
+		resa.ica_c_handle = ocp->ocp_c_handle;
+		resa.ica_invocation = ocp->ocp_invocation;
+		libais_send_response (ocp->ocp_conn_info, &resa, sizeof(resa));
+	} else {
+		struct res_evt_channel_open res;
+		res.ico_head.size = sizeof(res);
+		res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
+		res.ico_head.error = error;
+		res.ico_channel_handle = handle;
+		libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
+	}
 
 	if (ret == 0) {
 		list_del(&ocp->ocp_entry);
