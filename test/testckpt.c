@@ -304,6 +304,13 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	printf ("%s: replacing deleted checkpoint section\n",
 		get_test_output (error, SA_AIS_OK));
 
+	error = saCkptSectionCreate (checkpointHandle,
+									&sectionCreationAttributes2,
+									"Initial Data #2",
+									strlen ("Initial Data #2") + 1);
+	printf ("%s: creating section 2 \n",
+		get_test_output (error, SA_AIS_OK));
+
 	error = saCkptSectionExpirationTimeSet (checkpointHandle,
 		&sectionId2,
 		SA_TIME_END);
@@ -322,12 +329,6 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	 */
 	memset (readBuffer1, 0, sizeof (readBuffer1));
 	memset (readBuffer2, 0, sizeof (readBuffer2));
-	error = saCkptSectionCreate (checkpointHandle,
-		&sectionCreationAttributes2,
-		"Initial Data #2",
-		strlen ("Initial Data #2") + 1);
-	printf ("%s: creating checkpoint for read test\n",
-		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointRead (checkpointHandle,
 		ReadVectorElements,
