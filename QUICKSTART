@@ -113,8 +113,12 @@ su to ais user
 Run test/testclm on one node.  Then kill and add nodes.  This will cause
 callbacks to be called in the testclm application which will print out
 the node state changes.  The testclm program will not print any output
-until nodes are added to or deleted from the configuration by starting
-and stopping aisexec on other nodes.
+after it is started and has printed the current configuration until nodes
+are added to or deleted from the configuration by starting and stopping
+aisexec on other nodes.
+
+Killing aisexec on the node the testclm is connected will cause the 
+API to return error codes indicating the system has failed.
 
 Try out the AIS AMF functionality
 ---------------------------------
@@ -122,17 +126,46 @@ After aisexec is running
 
 su to ais user
 
-Run testamf1 on one node, testamf3 testamf4 on another node.
-One will become active one standby.  testamf2 is special in that it shows
-reporting and canceling an error.  Run testamf2 on the node testamf1
-was run from.  The ha states and readiness states will be shown.
+The test/testamf{1-6} implement three seperate service units (SU).  SU #1
+consists of testamf1, testamf2.  SU #2 consists of testamf3, testamf4.
+SU #3 consists of testamf5, testamf6.  The active and backup directives 
+in groups.conf define how many SU's become active and how many
+become standby in the service group (SG).
+
+To test the AIS AMF, run testamf3 and testamf4 on one node.  Both
+components become in service and active.  Then run testamf1.  Nothing
+appears to happen, because testamf1 is not placed in service (and made
+standby) until testamf2 is registered.  Running testamf2 will show 
+a variety of state changes.  testamf1 will match these state changes.
+testamf2 is special because is reports an error, and later cancels
+the error, causing the entire SU to go out of service, then back in
+service.  This behavior is expected by the AIS specification and the
+code in testamf2.c can be read for a clearer understanding of what
+is happening.
+
+Pressing ctrl-z to background the task (which causes the heartbeat to
+timeout) on a component will cause the remaining component to go
+out of service.  If ctrl-z is pressed on the active SU, the standby
+SU will become active.  CTRL-C on these tests behaves the same way.
+A crash behaves the same way.
 
 Try out the AIS CKPT functionality
 ----------------------------------
 su to ais user
 
-run ckptstress.  This will write checkpoint data as quickly as possible to
-the cluster.
+run testckpt.  This will execute various checkpoint API operations.
+
+run ckptbench.  This will execute non-threaded write benchmarks.
+
+run ckptbenchth.  This will execute threaded write benchmarks.
+
+The benchmark configuration (how many threads to run, how many writes
+per benchmark run, and data write size are specified in the ckptbench.c
+and ckptbenchth.c programs.
+
+Two node clusters should approach 10 MB/sec on 100 mbit networks for 
+larger checkpoint sizes.  If you are not seeing these results, please
+report to the mailing list.
 
 Write your own applications
 ---------------------------
