@@ -3367,7 +3367,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 			log_printf(LOG_LEVEL_WARNING, 
 				"Evt remote channel op: Node data for addr %s is NULL\n",
 					inet_ntoa(source_addr));
-			assert(0);
+			return 0;
 		} else {
 			evt_add_node(source_addr, cn);
 			mn = evt_find_node(source_addr);
