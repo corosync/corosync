@@ -92,6 +92,10 @@ include/sq.h
 *---------------*
 * AIS LIBRARIES *
 *---------------*
+lib/clm.c
+---------
+	CLM user library linked into user application.
+
 lib/amf.c
 ---------
 	AMF user library linked into user application.
@@ -100,9 +104,9 @@ lib/ckpt.c
 ----------
 	CKPT user library linked into user application.
 
-lib/clm.c
----------
-	CLM user library linked into user application.
+lib/evt.c
+----------
+	EVT user library linked into user application.
 
 lib/util.c
 ----------
@@ -122,6 +126,8 @@ exec/ckpt.{h|c}
 exec/clm.{h|c}
 	Server side implementation of Cluster Membership (CLM API).
 
+exec/amf.{h|c}
+	Server side implementation of Event Service (EVT API).
 
 exec/gmi.{h|c}
 --------------
@@ -193,25 +199,25 @@ protocol to provide cluster communication between multiple processors (nodes).
 Once the group makes a decision, a response is sent to the library, which then
 responds to the user API.
 
-               ----------------------------------------
-               |AIS CLM, AMF, CKPT library (openais.a)|
-               ----------------------------------------
-               |      Interprocess Communication      |
-               ----------------------------------------
-               |           openais Executive          |
-               |                                      |
-               |     --------- --------- ---------    |
-               |     |  AMF  | |  CLM  | | CKPT  |    |
-               |     |Service| |Service| |Service|    |
-               |     --------- --------- ---------    |
-               |                                      |
-               |       ----------- -----------        |
-               |       |  Group  | |  Poll   |        |
-               |       |Messaging| |Interface|        |
-               |       |Interface| -----------        |
-               |       -----------                    |
-               |                                      |
-               ----------------------------------------
+           --------------------------------------------------
+           |   AIS CLM, AMF, CKPT, EVT library (openais.a)  |
+           --------------------------------------------------
+           |             Interprocess Communication         |
+           --------------------------------------------------
+           |                 openais Executive              |
+           |                                                |
+           |     --------- --------- --------- ---------    |
+           |     |  AMF  | |  CLM  | | CKPT  | |  EVT  |    |
+           |     |Service| |Service| |Service| |Service|    |
+           |     --------- --------- --------- ---------    |
+           |                                                |
+           |             ----------- -----------            |
+           |             |  Group  | |  Poll   |            |
+           |             |Messaging| |Interface|            |
+           |             |Interface| -----------            |
+           |             -----------                        |
+           |                                                |
+           -------------------------------------------------
 
                     Figure 1: openais Architecture
 
@@ -634,13 +640,23 @@ enum res_clm_types {
 index 0 of the message is special and is used for the activate poll message in
 every API.  That is why req_clm_types and res_clm_types starts at 1.
 
-This is the message header that should start every message:
+This is a request message header which should start every request message:
 
-struct message_header {
-	int magic;
+struct req_header {
 	int size;
 	int id;
 };
+
+There is also a response message header which should start every response message:
+
+struct res_header {
+	int size;
+	int id;
+	SaErrorT error;
+};
+
+the error parameter is used to pass errors from the executive to the library,
+including SA_ERR_TRY_AGAIN for flow control, which is described later.
 
 This is described later:
 
@@ -795,9 +811,22 @@ to dispatch the correct messages to the correct receipients.
 A service is added by defining a structure defined in exec/handlers.h.  The
 structure is a little daunting:
 
+struct libais_handler {
+	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
+	int response_size;
+	int response_id;
+	int gmi_prio;
+};
+
+The response_size, response_id, and gmi_prio for a library handler are used for flow
+control.  A response message will be sent to the library of the size response_size,
+with the header id of response_id if the gmi priority queue gmi_prio is full.  This is
+used for flow control so that the executive isn't responsible for queueing alot
+of messages.
+
 struct service_handler {
-	int (**libais_handler_fns) (struct conn_info *conn_info, void *msg);
-	int libais_handler_fns_count;
+	struct libais_handler *libais_handlers;
+	int libais_handlers_count;
 	int (**aisexec_handler_fns) (void *msg);
 	int aisexec_handler_fns_count;
 	int (*confchg_fn) (
@@ -809,10 +838,10 @@ struct service_handler {
 	int (*aisexec_init_fn) (void);
 };
 
-libais_handler_fns are a list of functions that are dispatched by
-the executive when the library requests a service.
+libais_handlers are the handler functions for the library and also describe the flow
+control information required.
 
-libais_handler_fns_count is the number of functions in the handler list.
+libais_handlers_count is the number of entries in libais_handlers.
 
 aisexec_handler_fns are a list of functions that are dispatched by the
 group messaging interface when a message is delivered by the group messaging
@@ -838,20 +867,43 @@ data.
 A typical declaration of a full service is done in a file exec/service.c.  
 Looking at exec/clm.c:
 
-static int (*clm_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
-	message_handler_req_lib_activatepoll,
-	message_handler_req_clm_trackstart,
-	message_handler_req_clm_trackstop,
-	message_handler_req_clm_nodeget
+struct libais_handler clm_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn          = message_handler_req_lib_activatepoll,
+		.response_size              = sizeof (struct res_lib_activatepoll),
+		.response_id                = MESSAGE_RES_LIB_ACTIVATEPOLL,
+		.gmi_prio                   = GMI_PRIO_RECOVERY
+	},
+	{ /* 1 */
+		.libais_handler_fn          = message_handler_req_clm_trackstart,
+		.response_size              = sizeof (struct res_clm_trackstart),
+		.response_id                = MESSAGE_RES_CLM_TRACKSTART,
+		.gmi_prio                   = GMI_PRIO_RECOVERY
+	},
+	{ /* 2 */
+		.libais_handler_fn          = message_handler_req_clm_trackstop,
+		.response_size              = sizeof (struct res_clm_trackstop),
+		.response_id                = MESSAGE_RES_CLM_TRACKSTOP,
+		.gmi_prio                   = GMI_PRIO_RECOVERY
+	},
+	{ /* 3 */
+		.libais_handler_fn          = message_handler_req_clm_nodeget,
+		.response_size              = sizeof (struct res_clm_nodeget),
+		.response_id                = MESSAGE_RES_CLM_NODEGET,
+		.gmi_prio                   = GMI_PRIO_RECOVERY
+	}
 };
+
+},
 
 static int (*clm_aisexec_handler_fns[]) (void *) = {
 	message_handler_req_exec_clm_nodejoin
 };
 	
 struct service_handler clm_service_handler = {
-	.libais_handler_fns				= clm_libais_handler_fns,
-	.libais_handler_fns_count		= sizeof (clm_libais_handler_fns) / sizeof (int (*)),
+	.libais_handler_fns				= clm_libais_handlers,
+	.libais_handler_fns_count		= sizeof (clm_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns			= clm_aisexec_handler_fns ,
 	.aisexec_handler_fns_count		= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn						= clmConfChg,
@@ -860,9 +912,9 @@ struct service_handler clm_service_handler = {
 	.aisexec_init_fn				= clmExecutiveInitialize
 };
 
-if a library sends a message with id 0, message_handler_req_lib_activatepoll
+If a library sends a message with id 0, message_handler_req_lib_activatepoll
 is called by the executive.  If a message id of 1 is sent,
-message_handler_req_clm_trackstart is called.  
+message_handler_req_clm_trackstart is called.
 
 When a message is sent via the group messaging interface with the id of 0,
 message_handler_req_exec_clm_nodejoin is called.
@@ -877,6 +929,32 @@ On startup, clmExecutiveInitialize is called.
 This service handler is exported via exec/clm.h as follows:
 
 extern struct service_handler clm_service_handler;
+
+--------------
+ flow control
+--------------
+The group messaging interface includes flow control so that it doesn't send
+too many messages when the network is completely full.  But the library can
+still send messages to the executive much faster then the executive can send
+them over gmi.  So the library relies on the group messaging flow control to
+control flow of messages sent from the library.  If the gmi queues are full,
+no more messages may be sent, so the executive in main.c automatically detects
+this scenario and returns an SA_ERR_TRY_AGAIN error.
+
+The reason gmi_prio is defined to GMI_PRIO_RECOVERY is because none of the above
+messages use flow control.  For now, use this priority if no flow control is
+needed (because no messages are sent via the group messaging interface).  Without
+flow control, the executive will assert when it runs out of storage space.  Make
+sure the gmi_prio matches the priority of the message sent in the libais handler
+function.
+
+When a library gets SA_ERR_TRY_AGAIN, the library may either retry, or return this
+error to the user if the error is allowed by the API definitions.  The gmi_prio is
+critical to this determination, because it may be possible to queue on other 
+priority queues, but not the particular priority queue the user wants to queue upon.
+The other information is critical to ensuring that the library reads the correct
+message and size of message.  Make sure the libais_handler matches the messages
+you are using in the handler function.
 
 ----------------------
  service handler list
@@ -981,6 +1059,9 @@ executive message.  This member describes the connection to send the response.
 msg is the message to send
 mlen is the length of the message to send
 
+Keep in mind that struct res_message should be at the beginning of the response
+message so that it follows the style used in the rest of openais.
+
 --------------------------------------------
  deferring response to an executive message
 --------------------------------------------
@@ -1019,9 +1100,10 @@ passed into the function handler.
 To send a message to every processor and the local processor for self
 delivery according to virtual synchrony semantics use:
 
-#define GMI_PRIO_HIGH		0
-#define GMI_PRIO_MED		1
-#define GMI_PRIO_LOW		2
+#define GMI_PRIO_RECOVERY	0
+#define GMI_PRIO_HIGH		1
+#define GMI_PRIO_MED		2
+#define GMI_PRIO_LOW		3
 
 int gmi_mcast (
 	struct gmi_groupname *groupname,
@@ -1037,7 +1119,6 @@ An example usage of this function is:
 	struct iovec req_exec_clm_iovec;
 	int result;
 
-	req_exec_clm_nodejoin.header.magic = MESSAGE_MAGIC;
 	req_exec_clm_nodejoin.header.size =
 		sizeof (struct req_exec_clm_nodejoin);
 	req_exec_clm_nodejoin.header.id = MESSAGE_REQ_EXEC_CLM_NODEJOIN;
@@ -1124,6 +1205,18 @@ changing what looks obvious.
 This function is called every time a service connection is disconnected by
 the executive.  Free memory, change structures, or whatever work needs to
 be done to clean up.
+
+If the exit_fn couldn't complete because it is waiting for some event, it may
+return -1, which will allow the executive to make some forward progress.  Then
+exit_fn will be called again.  Return 0 when the exit was completed.  THis is
+most useful when the group messaging protocol should be used to queue a message,
+but the queue is full.  In this case, waiting a few more seconds may open up the
+queue, so return -1, and then the executive will try again to call exit_fn.  Do
+NOT return -1 forever or the ais executive will spin.
+
+If -1 is returned, ENSURE that the state of the library hasn't changed so much that
+exit_fn cannot be called again.  If exit_fn returns -1, it WILL be called again
+so expect it in the code.
 
 ----------------
  the confchg_fn
