@@ -1,9 +1,11 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
+ * Copyright (c) 2005 OSDL.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@mvista.com)
+ *         Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -143,7 +145,7 @@ struct assembly {
 struct assembly *assembly_list[16]; // MAX PROCESSORS TODO
 int assembly_list_entries = 0;
 
-static unsigned char fragmentation_data[MESSAGE_SIZE_MAX];
+static unsigned char fragmentation_data[TOTEMPG_PACKET_SIZE];
 
 int fragment_size = 0;
 
@@ -435,113 +437,99 @@ int totempg_mcast (
 	struct totempg_mcast mcast;
 	struct iovec iovecs[3];
 	int i;
-	int j;
-	int copy_len;
-	int fragment_index = 0;
-	int fragment_size_assem = 0;
 	int max_packet_size = 0;
-	int remaining_size = 0;
-	int goober;
-	int f_i;
-
-	mcast.msg_count = 0;
-
-	copy_len = 0;
-	for (i = 0; i < iov_len; i++) {
-		memcpy (&fragmentation_data[fragment_size],
-			iovec[i].iov_base, iovec[i].iov_len);
-		fragment_size += iovec[i].iov_len;
-		copy_len += iovec[i].iov_len;
-	}
+	int copy_len = 0; 
+	int copy_base = 0;
 
 	max_packet_size = TOTEMPG_PACKET_SIZE -
 		(sizeof (unsigned short) * (mcast_packed_msg_count + 1));
 
-	if (fragment_size >= max_packet_size) {
-		/*
-		 * Determine size of packed data so far
-		 */
-		for (j = 0; j < mcast_packed_msg_count; j++) {
-			fragment_size_assem += mcast_packed_msg_lens[j];
-		}
+	mcast_packed_msg_lens[mcast_packed_msg_count] = 0;
+
+	for (i = 0; i < iov_len; ) {
+		mcast.fragmented = 0;
+		copy_len = iovec[i].iov_len - copy_base;
 
 		/*
-		 * If there was previously packed data, remainder of packet
-		 * should be consumed 
+		 * If it all fits with room left over, copy it in.
 		 */
-		if (max_packet_size - fragment_size_assem) {
-			mcast_packed_msg_lens[mcast_packed_msg_count] = max_packet_size - fragment_size_assem;
-			mcast_packed_msg_count++;
+		if ((copy_len + fragment_size) < max_packet_size) {
+			memcpy (&fragmentation_data[fragment_size],
+				iovec[i].iov_base + copy_base, copy_len);
+			fragment_size += copy_len;
+			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
+			copy_len = 0;
+			copy_base = 0;
+			i++;
+			continue;
+
+		/*
+		 * If it just fits or is too big, then send out what fits.
+		 */
 		} else {
-			max_packet_size = TOTEMPG_PACKET_SIZE -
-				(sizeof (unsigned short) * mcast_packed_msg_count);
-		}
-		mcast.fragmented = 1;
+			copy_len = max_packet_size - fragment_size;
+			memcpy (&fragmentation_data[fragment_size],
+				iovec[i].iov_base + copy_base, copy_len);
+			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 
-		/*
-		 * Multicast any full fragments
-		 */
-		fragment_index = max_packet_size;
-
-		f_i = 0;
-		while (fragment_index <= fragment_size) {
-			mcast.msg_count = mcast_packed_msg_count;
-
-			if (fragment_index == fragment_size) {
-				mcast.fragmented = 0;
+			/*
+			 * if we're not on the last iovec or the iovec is too large to
+			 * fit, then indicate a fragment.
+			 */
+			if ((i < (iov_len - 1)) || 
+					((copy_base + copy_len) < iovec[i].iov_len)) {
+				mcast.fragmented = 1;
 			}
 
+			/*
+			 * assemble the message and send it
+			 */
+			mcast.msg_count = ++mcast_packed_msg_count;
 			iovecs[0].iov_base = &mcast;
-			iovecs[0].iov_len = sizeof (struct totempg_mcast);
+			iovecs[0].iov_len = sizeof(struct totempg_mcast);
 			iovecs[1].iov_base = mcast_packed_msg_lens;
-			iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
-			iovecs[2].iov_base = &fragmentation_data[f_i];
+			iovecs[1].iov_len = mcast_packed_msg_count * 
+												sizeof(unsigned short);
+			iovecs[2].iov_base = fragmentation_data;
 			iovecs[2].iov_len = max_packet_size;
-
-			f_i += max_packet_size;
-/*
- * Ensure maximum message size is being queued
- */
-for (goober = 0, j = 0; j < 3; j++) {
-	goober += iovecs[j].iov_len;
-}
-//assert (goober == 1408);
-
-for (i = 0; i < mcast_packed_msg_count; i++) {
-}
 			res = totemsrp_mcast (iovecs, 3, guarantee);
 
-			remaining_size = fragment_size - f_i;
-			fragment_index += max_packet_size;
-			mcast_packed_msg_count = 1;
-			max_packet_size = TOTEMPG_PACKET_SIZE -
-				(sizeof (unsigned short) * 1);
-			mcast_packed_msg_lens[0] = max_packet_size;
-		}
-		/*
-		 * Copy remaining fragmented data
-		 */
-		assert (remaining_size >= 0);
-		if (remaining_size > 0) {
-			memmove (&fragmentation_data[0],
-				&fragmentation_data[fragment_size - remaining_size],
-				remaining_size);
-
-			mcast_packed_msg_lens[0] = remaining_size;
-			mcast_packed_msg_count = 1;
-			fragment_size = remaining_size;
-		} else {
+			/*
+			 * Recalculate counts and indexes for the next.
+			 */
+			mcast_packed_msg_lens[0] = 0;
 			mcast_packed_msg_count = 0;
 			fragment_size = 0;
+			max_packet_size = TOTEMPG_PACKET_SIZE - (sizeof(unsigned short));
+
+			/*
+			 * If the iovec all fit, go to the next iovec
+			 */
+			if ((copy_base + copy_len) == iovec[i].iov_len) {
+				copy_len = 0;
+				copy_base = 0;
+				i++;
+			
+			/*
+			 * Continue with the rest of the current iovec.
+			 */
+			} else {
+				copy_base += copy_len;
+			}
 		}
-	} else {
-		mcast_packed_msg_lens[mcast_packed_msg_count] = copy_len;
-		mcast_packed_msg_count++;
+	}
+
+	/*
+	 * Bump only if we added message data.  This may be zero if
+	 * the last buffer just fit into the fragmentation_data buffer
+	 * and we were at the last iovec.
+	 */
+	if (mcast_packed_msg_lens[mcast_packed_msg_count]) {
+			mcast_packed_msg_count++;
 	}
 
 	return (res);
 }
-
 
 /*
  * Determine if a message of msg_size could be queued
