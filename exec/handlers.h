@@ -50,10 +50,4 @@ struct service_handler {
 	int (*aisexec_init_fn) (void);
 };
 
-#ifdef COMPILE_OUT
-extern struct libais_message_handlers libais_message_handlers[];
-
-extern struct aisexec_message_handlers aisexec_message_handlers;
-#endif
-
 #endif /* HANDLERS_H_DEFINED */
