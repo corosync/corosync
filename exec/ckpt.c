@@ -372,6 +372,34 @@ static struct saCkptCheckpointSection *findCheckpointSection (
 	return 0;
 }
 
+void checkpoint_release (struct saCkptCheckpoint *checkpoint)
+{
+	struct list_head *list;
+	struct saCkptCheckpointSection *section;
+	int *buf = (struct saCkptCheckpoint *)checkpoint;
+
+	poll_timer_delete (*gmi_poll_handle, checkpoint->retention_timer);
+	assert (*buf != 0xdeadbeef);
+
+	/*
+	 * Release all checkpoint sections for this checkpoint
+	 */
+	for (list = checkpoint->checkpointSectionsListHead.next;
+		list != &checkpoint->checkpointSectionsListHead;) {
+
+		section = list_entry (list,
+			struct saCkptCheckpointSection, list);
+	
+		free (section->sectionDescriptor.sectionId.id);
+		free (section->sectionData);
+		list = list->next;
+		free (section);
+	}
+	list_del (&checkpoint->list);
+	*buf = 0xdeadbeef;
+	free (checkpoint);
+}
+
 int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	struct req_exec_ckpt_checkpointclose req_exec_ckpt_checkpointclose;
 	struct iovec iovecs[2];
@@ -494,6 +522,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 		list_init (&ckptCheckpoint->checkpointSectionsListHead);
 		list_add (&ckptCheckpoint->list, &checkpointListHead);
 		ckptCheckpoint->referenceCount = 0;
+		ckptCheckpoint->retention_timer = 0;
 
 		/*
 		 * Add in default checkpoint section
@@ -529,6 +558,12 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	ckptCheckpoint->referenceCount += 1;
 
 	/*
+	 * Reset retention duration since this checkpoint was just opened
+	 */
+	poll_timer_delete (*gmi_poll_handle, ckptCheckpoint->retention_timer);
+	ckptCheckpoint->retention_timer = 0;
+
+	/*
 	 * Send error result to CKPT library
 	 */
 error_exit:
@@ -548,6 +583,30 @@ error_exit:
 
 //	return (error == SA_OK ? 0 : -1);
 	return (0);
+}
+
+void timer_function_retention (void *data)
+{
+	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
+	struct iovec iovecs[2];
+	int result;
+
+	req_exec_ckpt_checkpointunlink.header.size =
+		sizeof (struct req_exec_ckpt_checkpointunlink);
+	req_exec_ckpt_checkpointunlink.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK;
+
+	req_exec_ckpt_checkpointunlink.source.conn_info = 0;
+	req_exec_ckpt_checkpointunlink.source.in_addr.s_addr = 0;
+
+	printf ("Retention timer expired\n");
+	memcpy (&req_exec_ckpt_checkpointunlink.req_lib_ckpt_checkpointunlink.checkpointName,
+	data,
+	sizeof (SaNameT));
+
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
+
+	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
 }
 
 extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr)
@@ -571,12 +630,14 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	 */
 	if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
 		log_printf (LOG_LEVEL_DEBUG, "Unlinking checkpoint.\n");
-		list_del (&checkpoint->list);
-		free (checkpoint);
+		checkpoint_release (checkpoint);
 	} else
 	if (checkpoint->referenceCount == 0) {
-		// TODO Start retention duration timer if reference count is 0
-		// and checkpoint has not been unlinked
+       poll_timer_add (*gmi_poll_handle,
+			checkpoint->checkpointCreationAttributes.retentionDuration / 100000,
+			&checkpoint->name,
+            timer_function_retention,
+			&checkpoint->retention_timer);
 	}
 	
 	return (0);
@@ -594,7 +655,6 @@ static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct
 	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to unlink checkpoint %p\n", req_exec_ckpt_checkpointunlink);
 	ckptCheckpoint = findCheckpoint (&req_lib_ckpt_checkpointunlink->checkpointName);
 	if (ckptCheckpoint == 0) {
-printf ("invalid checkpoint name\n");
 		error = SA_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -607,8 +667,11 @@ printf ("invalid checkpoint name\n");
 	 * Immediately delete entry if reference count is zero
 	 */
 	if (ckptCheckpoint->referenceCount == 0) {
-		list_del (&ckptCheckpoint->list);
-		free (ckptCheckpoint);
+		/*
+		 * Remove retention timer since this checkpoint was unlinked and is no
+		 * longer referenced
+		 */
+		checkpoint_release (ckptCheckpoint);
 	}
 
 error_exit:
@@ -861,7 +924,6 @@ static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to section write.\n");
 	ckptCheckpoint = findCheckpoint (&req_exec_ckpt_sectionwrite->checkpointName);
 	if (ckptCheckpoint == 0) {
-printf ("can't find checkpoint\n"); // TODO
 		error = SA_ERR_NOT_EXIST;
 		goto error_exit;
 	}
