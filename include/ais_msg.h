@@ -1108,13 +1108,19 @@ enum evt_chan_ops {
 	EVT_CLOSE_CHAN_OP,
 	EVT_CLEAR_RET_OP,
 	EVT_SET_ID_OP,
-	EVT_CONF_CHANGE,
 	EVT_CONF_DONE,
+	EVT_OPEN_COUNT,
+	EVT_OPEN_COUNT_DONE
 };
 	
 struct evt_set_id {
 	struct in_addr	chc_addr;
 	SaEvtEventIdT	chc_last_id;
+};
+
+struct evt_set_opens {
+	SaNameT		chc_chan_name;
+	uint32_t	chc_open_count;
 };
 
 struct req_evt_chan_command {
@@ -1124,6 +1130,7 @@ struct req_evt_chan_command {
 		SaNameT				chc_chan;
 		SaEvtEventIdT		chc_event_id;
 		struct evt_set_id	chc_set_id;
+		struct evt_set_opens chc_set_opens;
 	} u;
 };
 #endif /* AIS_MSG_H_DEFINED */
