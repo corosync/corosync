@@ -43,7 +43,14 @@
 #define GMI_PRIO_MED		2
 #define GMI_PRIO_LOW		3
 
+enum gmi_configuration_type {
+	GMI_CONFIGURATION_REGULAR,
+	GMI_CONFIGURATION_TRANSITIONAL	
+};
+
 typedef int gmi_join_handle;
+
+typedef int gmi_recovery_plug_handle;
 
 struct gmi_groupname {
 	char groupname[16];
@@ -57,7 +64,7 @@ struct gmi_interface {
 	struct sockaddr_in boundto;
 };
 
-poll_handle *gmi_poll_handle;
+extern poll_handle *gmi_poll_handle;
 
 /*
  * Group messaging interface
@@ -97,6 +104,7 @@ int gmi_join (
 		struct iovec *iovec,
 		int iov_len),
 	void (*confchg_fn) (
+		enum gmi_configuration_type configuration_type,
 		struct sockaddr_in *member_list, int member_list_entries,
 		struct sockaddr_in *left_list, int left_list_entries,
 		struct sockaddr_in *joined_list, int joined_list_entries),
@@ -123,5 +131,14 @@ int gmi_mcast (
 int gmi_send_ok (
 	int priority,
 	int msg_size);
+
+int gmi_recovery_plug_create (
+	gmi_recovery_plug_handle *handle_recovery);
+
+int gmi_recovery_plug_destroy (
+	gmi_recovery_plug_handle handle_recovery);
+	
+int gmi_recovery_plug_unplug (
+	gmi_recovery_plug_handle handle_recovery);
 
 #endif /* GMI_H_DEFINED */

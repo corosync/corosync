@@ -36,6 +36,7 @@
 
 #include <netinet/in.h>
 #include "main.h"
+#include "gmi.h"
 
 struct libais_handler {
 	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
@@ -50,12 +51,13 @@ struct service_handler {
 	int (**aisexec_handler_fns) (void *msg, struct in_addr source_addr);
 	int aisexec_handler_fns_count;
 	int (*confchg_fn) (
+		enum gmi_configuration_type configuration_type,
 		struct sockaddr_in *member_list, int member_list_entries,
 		struct sockaddr_in *left_list, int left_list_entries,
 		struct sockaddr_in *joined_list, int joined_list_entries);
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
 	int (*libais_exit_fn) (struct conn_info *conn_info);
-	int (*aisexec_init_fn) (void);
+	int (*exec_init_fn) (void);
 };
 
 #endif /* HANDLERS_H_DEFINED */
