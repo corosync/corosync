@@ -78,9 +78,9 @@ extern struct sockaddr_in this_ip;
 #define MAXIOVS						8
 #define RTR_TOKEN_SIZE_MAX			32
 #define MISSING_MCAST_WINDOW		64
-#define TIMEOUT_STATE_GATHER		300
+#define TIMEOUT_STATE_GATHER		100
 #define TIMEOUT_TOKEN				300
-#define TIMEOUT_STATE_COMMIT		300
+#define TIMEOUT_STATE_COMMIT		100
 #define MAX_MEMBERS					16
 #define HOLE_LIST_MAX				MISSING_MCAST_WINDOW
 #define PRIORITY_MAX				3
@@ -1330,7 +1330,7 @@ printf ("EVS STATE group arut %d gmi arut %d highest %d barrier %d starting grou
 }
 
 int gwin = 90;
-int pwin = 40;
+int pwin = 45;
 
 
 static int orf_fcc_allowed (struct orf_token *token)
@@ -1919,6 +1919,7 @@ int memb_form_token_send_initial (void)
 {
 	struct memb_form_token form_token;
 	int res;
+	int i;
 
 	memset (&form_token, 0x00, sizeof (struct memb_form_token));
 	memb_state = MEMB_STATE_FORM;
@@ -1951,6 +1952,14 @@ int memb_form_token_send_initial (void)
 
 	if (memb_list_entries <= 1) {
 		memb_next.sin_addr.s_addr = memb_gather_set[1].s_addr;
+	} else {
+		for (i = 0; i < memb_list_entries; i++) {
+			if (memb_list[i].sin_addr.s_addr == memb_local_sockaddr_in.sin_addr.s_addr) {
+				memb_next.sin_addr.s_addr =
+					memb_list[i + 1].sin_addr.s_addr;
+				break;
+			}
+		}
 	}
 
 // TODO assertion here about the 1 value
@@ -2688,7 +2697,6 @@ static int message_handler_memb_form_token (
 	int i;
 	int local = 0;
 	int res = 0;
-	int swallow_form = 0;
 
 printf ("Got membership form token\n");
 	memcpy (&memb_form_token, iovec->iov_base, sizeof (struct memb_form_token));
@@ -2721,6 +2729,37 @@ printf ("Got membership form token\n");
 		 */
 		poll_timer_delete (*gmi_poll_handle, timer_orf_token_timeout);
 		timer_orf_token_timeout = 0;
+		/*
+		 * Find next member
+		 */
+		for (i = 0; i < memb_list_entries; i++) {
+			if (memb_list[i].sin_addr.s_addr == memb_local_sockaddr_in.sin_addr.s_addr) {
+				local = 1;
+				break;
+			}
+		}
+	
+		if (memb_list_entries == 0) { /* 0 or 1 members and we are local */
+			local = 1;
+		}
+	
+		if (local && (i + 1 < memb_list_entries)) {
+			memb_next.sin_addr.s_addr = memb_list[i + 1].sin_addr.s_addr;
+		} else {
+			/*
+			 * Find next representative
+		 	 */
+			for (i = 0; i < memb_form_token.rep_list_entries; i++) {
+				if (memb_conf_id.rep.s_addr ==
+					memb_form_token.rep_list[i].s_addr) {
+					break;
+				}
+			}
+			memb_next.sin_addr.s_addr =
+				memb_form_token.rep_list[(i + 1) % memb_form_token.rep_list_entries].s_addr;
+		}
+		memb_next.sin_family = AF_INET;
+		memb_next.sin_port = sockaddr_in_mcast.sin_port;
 		break;
 
 	case MEMB_STATE_FORM:
@@ -2756,6 +2795,7 @@ printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 				memb_next.sin_family = AF_INET;
 				memb_next.sin_port = sockaddr_in_mcast.sin_port;
 			}
+//ABRA
 		}
 		break;
 
@@ -2763,7 +2803,6 @@ printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 		log_printf (LOG_LEVEL_DEBUG, "Swallowing FORM token in EVS state.\n");
 		printf ("FORM CONF ENTRIES %d\n", memb_form_token.conf_desc_list_entries);
 		orf_token_send_initial();
-		swallow_form = 1;
 		return (0);
 
 	default:
@@ -2772,40 +2811,7 @@ printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 		return (0);
 	}
 
-	/*
-	 * Find next member
-	 */
-	for (i = 0; i < memb_list_entries; i++) {
-		if (memb_list[i].sin_addr.s_addr == memb_local_sockaddr_in.sin_addr.s_addr) {
-			local = 1;
-			break;
-		}
-	}
-
-	if (memb_list_entries == 0) { /* 0 or 1 members and we are local */
-		local = 1;
-	}
-
-	if (local && (i + 1 < memb_list_entries)) {
-		memb_next.sin_addr.s_addr = memb_list[i + 1].sin_addr.s_addr;
-	} else {
-		/*
-		 * Find next representative
-	 	 */
-		for (i = 0; i < memb_form_token.rep_list_entries; i++) {
-			if (memb_conf_id.rep.s_addr ==
-				memb_form_token.rep_list[i].s_addr) {
-				break;
-			}
-		}
-		memb_next.sin_addr.s_addr =
-			memb_form_token.rep_list[(i + 1) % memb_form_token.rep_list_entries].s_addr;
-	}
-	memb_next.sin_family = AF_INET;
-	memb_next.sin_port = sockaddr_in_mcast.sin_port;
-	if (swallow_form == 0) {
-		res = memb_form_token_send (&memb_form_token);
-	}
+	res = memb_form_token_send (&memb_form_token);
 	return (res);
 }
 
