@@ -206,6 +206,7 @@ saAmfDispatch (
 	int poll_fd;
 	unsigned int gen_first;
 	unsigned int gen_second;
+	struct message_overlay dispatch_data;
 
 	/*
 	 * Timeout instantly for SA_DISPATCH_ALL
@@ -294,11 +295,12 @@ saAmfDispatch (
 			}
 		}
 		/*
-		 * Make copy of callbacks, unlock instance, and call callback
+		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
-		 * operate at the same time that amfFinalize has been called.
+		 * operate at the same time that amfFinalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &amfInstance->callbacks, sizeof (SaAmfCallbacksT));
+		memcpy (&dispatch_data, &amfInstance->message, sizeof (struct message_overlay));
 
 		pthread_mutex_unlock (&amfInstance->mutex);
 
@@ -319,8 +321,7 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_HEALTHCHECKCALLBACK:
-			res_amf_healthcheckcallback = (struct res_amf_healthcheckcallback *)&amfInstance->message;
-			pthread_mutex_unlock (&amfInstance->mutex);
+			res_amf_healthcheckcallback = (struct res_amf_healthcheckcallback *)&dispatch_data;
 
 			callbacks.saAmfHealthcheckCallback (
 				res_amf_healthcheckcallback->invocation,
@@ -329,7 +330,7 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_READINESSSTATESETCALLBACK:
-			res_amf_readinessstatesetcallback = (struct res_amf_readinessstatesetcallback *)&amfInstance->message;
+			res_amf_readinessstatesetcallback = (struct res_amf_readinessstatesetcallback *)&dispatch_data;
 			callbacks.saAmfReadinessStateSetCallback (
 				res_amf_readinessstatesetcallback->invocation,
 				&res_amf_readinessstatesetcallback->compName,
@@ -337,7 +338,7 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_CSISETCALLBACK:
-			res_amf_csisetcallback = (struct res_amf_csisetcallback *)&amfInstance->message;
+			res_amf_csisetcallback = (struct res_amf_csisetcallback *)&dispatch_data;
 			callbacks.saAmfCSISetCallback (
 				res_amf_csisetcallback->invocation,
 				&res_amf_csisetcallback->compName,
@@ -349,7 +350,7 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_CSIREMOVECALLBACK:
-			res_amf_csiremovecallback = (struct res_amf_csiremovecallback *)&amfInstance->message;
+			res_amf_csiremovecallback = (struct res_amf_csiremovecallback *)&dispatch_data;
 			callbacks.saAmfCSIRemoveCallback (
 				res_amf_csiremovecallback->invocation,
 				&res_amf_csiremovecallback->compName,
@@ -358,7 +359,7 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK:
-			res_amf_protectiongrouptrackcallback = (struct res_amf_protectiongrouptrackcallback *)&amfInstance->message;
+			res_amf_protectiongrouptrackcallback = (struct res_amf_protectiongrouptrackcallback *)&dispatch_data;
 			memcpy (res_amf_protectiongrouptrackcallback->notificationBufferAddress,
 				res_amf_protectiongrouptrackcallback->notificationBuffer,
 				res_amf_protectiongrouptrackcallback->numberOfItems * sizeof (SaAmfProtectionGroupNotificationT));
