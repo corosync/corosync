@@ -44,7 +44,7 @@ struct libclm_ci {
 	SaClmClusterNotificationT *notificationBufferAddress;
 };
 
-extern SaClmClusterNodeT thisClusterNode;
+extern SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id);
 
 extern struct service_handler clm_service_handler;
 
