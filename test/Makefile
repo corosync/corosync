@@ -36,7 +36,7 @@
 # Debug mode flags
 CFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
-LIBS = ../lib/libais.a -lpthread
+LIBS = ../lib/libais.a ../lib/libevs.a -lpthread
 
 # Profile mode flags
 #CFLAGS = -c -O3 -pg -DDEBUG -I../include
@@ -47,9 +47,9 @@ EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testamf4.c testamf5.c testamf6.c testamfth.c  \
 		testckpt.c ckptstress.c testparse.c ckptbench.c  \
-		ckptbenchth.c testevt.c
+		ckptbenchth.c testevt.c testevs.c evsbench.c
 
-all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth testevt
+all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth testevt testevs evsbench
 
 testparse: testparse.o
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o
@@ -84,6 +84,12 @@ testamfth: testamfth.o
 testevt: testevt.o
 	$(CC) $(LDFLAGS) -o testevt testevt.o $(LIBS)
 
+testevs: testevs.o
+	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
+
+evsbench: evsbench.o
+	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
+
 testclm: testclm.o
 	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
 
@@ -100,7 +106,7 @@ ckptstress: ckptstress.o
 	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
 
 clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth testevt
+	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth testevt testevs
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
