@@ -184,7 +184,7 @@ evs_error_t evs_dispatch (
 	struct message_overlay *dispatch_data;
 	int empty;
 	struct res_header **queue_msg;
-	struct res_header *msg;
+	struct res_header *msg = NULL;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
