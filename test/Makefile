@@ -39,7 +39,7 @@
 CFLAGS = -c -g -Wall -DDEBUG -I../include
 CPPFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
-LIBRARIES= ../lib/libais.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
 
 # Profile mode flags
