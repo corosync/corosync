@@ -42,13 +42,13 @@ int main (void)
 	char *error;
 	int result;
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 	result = amfReadGroups (&error);
 	if (result == -1) {
 		printf ("Parse Error: %s\n", error);
 		exit (-1);
 	}
 	
-#ifdef CODE_COVERAGE_COMPILE_OUT
         saAmfPrintGroups ();
 #endif
 	return (0);
