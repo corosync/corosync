@@ -118,7 +118,7 @@ void evs_benchmark (evs_handle_t handle,
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
 try_again:
-		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, EVS_PRIO_LOW, &iov, 1);
+		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, &iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again;
 		} else {

@@ -122,7 +122,7 @@ int main (void)
 			i, i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i);
 #endif
 try_again_one:
-		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, EVS_PRIO_LOW,
+		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED,
 			&iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again_one;
@@ -140,7 +140,7 @@ try_again_one:
 	for (i = 0; i < 500; i++) {
 		sprintf (buffer, "evs_mcast_groups: This is message %d", i);
 try_again_two:
-		result = evs_mcast_groups (&handle, EVS_TYPE_AGREED, EVS_PRIO_LOW,
+		result = evs_mcast_groups (&handle, EVS_TYPE_AGREED,
 			 &groups[1], 1, &iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again_two;
