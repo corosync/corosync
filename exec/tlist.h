@@ -51,12 +51,13 @@ void timerlist_free (struct timerlist *timerlist);
 timer_handle timerlist_add_future (struct timerlist *timerlist,
 	void (*timer_fn) (void *data),
 	void *data,
-	int msec_in_future);
+	unsigned int msec_in_future,
+    timer_handle *handle);
 
 void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle);
 
 void timerlist_expire (struct timerlist *timerlist);
 
-int timerlist_timeout_msec (struct timerlist *timerlist);
+unsigned int timerlist_timeout_msec (struct timerlist *timerlist);
 
 #endif /* TLIST_H_DEFINED */
