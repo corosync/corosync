@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -185,7 +186,9 @@ int amfReadGroups (char **error_string)
 
 	fp = fopen ("/etc/ais/groups.conf", "r");
 	if (fp == 0) {
-		*error_string = "ERROR: Could not open /etc/groups.conf file.\n";
+		sprintf (error_string_response,
+			"ERROR: Can't read /etc/ais/groups.conf file (%s).\n", strerror (errno));
+		*error_string = error_string_response;
 		return (-1);
 	}
 
@@ -394,8 +397,7 @@ int amfReadGroups (char **error_string)
 
 parse_error:
 	sprintf (error_string_response,
-		"ERROR: parse error at /etc/groups.conf:%d\n", line_number);
-	
+		"ERROR: parse error at /etc/groups.conf:%d.\n", line_number);
 	*error_string = error_string_response;
 	fclose (fp);
 	return (-1);
@@ -413,6 +415,12 @@ int amfReadNetwork (char **error_string,
 
 	mcast_addr->sin_family = AF_INET;
 	fp = fopen ("/etc/ais/network.conf", "r");
+	if (fp == 0) {
+		sprintf (error_string_response,	
+			"ERROR: Can't read /etc/ais/network.conf file (%s).\n", strerror (errno));
+		*error_string = error_string_response;
+		return (-1);
+	}
 
 	while (fgets (line, 255, fp)) {
 		line_number += 1;
@@ -430,7 +438,7 @@ int amfReadNetwork (char **error_string,
 		}
 		if (res == 0) {
 			sprintf (error_string_response,	
-				"ERROR: parse error at /etc/ais/network.conf:%d\n", line_number);
+				"ERROR: parse error at /etc/ais/network.conf:%d.\n", line_number);
 			*error_string = error_string_response;
 			res = -1;
 			break;
