@@ -419,6 +419,8 @@ static int message_handler_req_clm_init (struct conn_info *conn_info, void *mess
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
+	list_init (&conn_info->conn_list);
+
 	if (conn_info->authenticated) {
 		return (0);
 	}
@@ -447,6 +449,8 @@ int message_handler_req_clm_trackstart (struct conn_info *conn_info, void *messa
 	conn_info->ais_ci.u.libclm_ci.trackFlags = req_clm_trackstart->trackFlags;
 	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = req_clm_trackstart->notificationBufferAddress;
 
+	list_add (&conn_info->conn_list, &library_notification_send_listhead);
+
 	libraryNotificationCurrentState (conn_info);
 
 	return (0);
@@ -456,6 +460,8 @@ static int message_handler_req_clm_trackstop (struct conn_info *conn_info, void 
 {
 	conn_info->ais_ci.u.libclm_ci.trackFlags = 0;
 	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = 0;
+
+	list_del (&conn_info->conn_list);
 
 	return (0);
 }
