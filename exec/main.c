@@ -90,7 +90,7 @@ struct service_handler *ais_service_handlers[] = {
 #define AIS_SERVICE_HANDLERS_COUNT 6
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
 
-static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data);
+static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);
 
 static inline void ais_done (int err)
 {
@@ -241,7 +241,8 @@ static int poll_handler_libais_accept (
 	poll_handle handle,
 	int fd,
 	int revent,
-	void *data)
+	void *data,
+	unsigned int *prio)
 {
 	socklen_t addrlen;
 	struct conn_info *conn_info;
@@ -280,14 +281,14 @@ retry_accept:
 	}
 
 	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN, conn_info,
-		poll_handler_libais_deliver);
+		poll_handler_libais_deliver, 0);
 
 // TODO is this needed, or shouldn't it be in conn_info_create ?
 	memcpy (&conn_info->ais_ci.un_addr, &un_addr, sizeof (struct sockaddr_un));
 	return (0);
 }
 
-static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data)
+static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio)
 {
 	int res;
 	struct conn_info *conn_info = (struct conn_info *)data;
@@ -754,7 +755,7 @@ int main (int argc, char **argv)
 	 * Setup libais connection dispatch routine
 	 */
 	poll_dispatch_add (aisexec_poll_handle, libais_server_fd,
-		POLLIN, 0, poll_handler_libais_accept);
+		POLLIN, 0, poll_handler_libais_accept, 0);
 
 	/*
 	 * Join multicast group and setup delivery
