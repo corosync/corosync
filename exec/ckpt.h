@@ -43,6 +43,7 @@ struct saCkptCheckpointSection {
 	struct list_head list;
 	SaCkptSectionDescriptorT sectionDescriptor;
 	void *sectionData;
+	poll_timer_handle expiration_timer;
 };
 
 struct saCkptCheckpoint {
@@ -53,6 +54,7 @@ struct saCkptCheckpoint {
 	int referenceCount;
 	int unlinked;
 	poll_timer_handle retention_timer;
+	int expired;
 };
 
 struct saCkptSectionIteratorEntry {
