@@ -151,21 +151,17 @@ static void grow_amf_track_table (
 	struct conn_info *conn_info,
 	int growby);
 
-static void sendProtectionGroupNotification (
-	struct conn_info *conn_info,
-	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
-	struct saAmfProtectionGroup *amfProtectionGroup,
-	struct saAmfComponent *changedComponent,
-	SaAmfProtectionGroupChangesT changeToComponent,
-	SaUint8T trackFlags);
-
 static int activeServiceUnitsCount (
 	struct saAmfGroup *saAmfGroup);
 
 static void component_unregister (
 	struct saAmfComponent *component);
 
-static void component_registerpriority (
+static void component_register_priority (
+	struct saAmfComponent *component,
+	int priority);
+
+static void component_unregister_priority (
 	struct saAmfComponent *component,
 	int priority);
 
@@ -182,11 +178,15 @@ static void haStateSetClusterInit (
 	struct saAmfComponent *saAmfComponent);
 #endif
 
-static void haStateSetCluster (
+static void ha_state_api_set (
 	struct saAmfComponent *saAmfComponent,
 	SaAmfHAStateT haState);
 
-static void readinessStateSetApi (
+static void ha_state_group_set (
+	struct saAmfComponent *saAmfComponent,
+	SaAmfHAStateT haState);
+
+static void readiness_state_api_set (
 	struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState);
 
@@ -196,7 +196,7 @@ static void readinessStateSetClusterInit (
 	struct saAmfComponent *saAmfComponent);
 #endif
 
-static void readinessStateSetCluster (
+static void readiness_state_group_set (
 	struct saAmfComponent *saAmfComponent,
 	SaAmfReadinessStateT readinessState);
 
@@ -217,18 +217,18 @@ static void componentTerminate (
 static void timer_function_libamf_healthcheck (
 	void *data);
 
-static struct saAmfProtectionGroup *findProtectionGroup (
+static struct saAmfProtectionGroup *protectiongroup_find (
 	SaNameT *csiName);
 
-static struct saAmfComponent *findComponentInProtectionGroup (
+static struct saAmfComponent *component_in_protectiongroup_find (
 	SaNameT *csiName,
 	SaNameT *compName);
 
-static void sendProtectionGroupNotifications (
+static void protectiongroup_notifications_send (
 	struct saAmfComponent *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent);
 
-static void sendProtectionGroupNotification (
+static void protectiongroup_notification_send (
 	struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
 	struct saAmfProtectionGroup *amfProtectionGroup,
@@ -504,7 +504,7 @@ printf ("b\n");
 	return (0);
 }
 
-static void component_unregisterpriority (
+static void component_unregister_priority (
 	struct saAmfComponent *component,
 	int priority)
 {
@@ -542,11 +542,11 @@ static void component_unregisterpriority (
 static void component_unregister (
 	struct saAmfComponent *component)
 {
-	component_unregisterpriority (component, GMI_PRIO_MED);
+	component_unregister_priority (component, GMI_PRIO_MED);
 	return;
 }
 
-static void component_registerpriority (
+static void component_register_priority (
 	struct saAmfComponent *component,
 	int priority)
 {
@@ -714,7 +714,7 @@ void CSIRemove (struct conn_info *conn_info)
 }
 #endif
 
-void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
+void ha_state_api_set (struct saAmfComponent *component, SaAmfHAStateT haState)
 {
 	struct res_lib_amf_csisetcallback res_lib_amf_csisetcallback;
 
@@ -785,7 +785,7 @@ void haStateSetClusterInit (
 }
 #endif
 
-static void haStateSetCluster (
+static void ha_state_group_set (
 	struct saAmfComponent *component,
 	SaAmfHAStateT haState)
 {
@@ -813,7 +813,7 @@ static void haStateSetCluster (
 	amf_mcast (iovecs, 1, priority);
 }
 
-void readinessStateSetApi (struct saAmfComponent *component,
+void readiness_state_api_set (struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
 	struct res_lib_amf_readinessstatesetcallback res_lib_amf_readinessstatesetcallback;
@@ -881,7 +881,7 @@ void readinessStateSetClusterInit (
 }
 #endif
 
-static void readinessStateSetCluster (
+static void readiness_state_group_set (
 	struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
@@ -967,9 +967,9 @@ static void dsmDisabledUnlockedFailedComponent (
     	case AMF_ENABLED_UNLOCKED_IN_SERVICE_COMPLETED:
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED;
 			if (component->probableCause == SA_AMF_NOT_RESPONDING) {
-				readinessStateSetCluster (component, SA_AMF_OUT_OF_SERVICE);
+				readiness_state_group_set (component, SA_AMF_OUT_OF_SERVICE);
 			} else {
-				readinessStateSetApi (component, SA_AMF_OUT_OF_SERVICE);
+				readiness_state_api_set (component, SA_AMF_OUT_OF_SERVICE);
 			}
 			break;
 
@@ -979,9 +979,9 @@ static void dsmDisabledUnlockedFailedComponent (
     	case AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED:
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_QUIESCED_REQUESTED;
 			if (component->probableCause == SA_AMF_NOT_RESPONDING) {
-				haStateSetCluster (component, SA_AMF_QUIESCED);
+				ha_state_group_set (component, SA_AMF_QUIESCED);
 			} else {
-				haStateSetApi (component, SA_AMF_QUIESCED);
+				ha_state_api_set (component, SA_AMF_QUIESCED);
 			}
 			poll_timer_delete (aisexec_poll_handle,
 				component->timer_healthcheck);
@@ -1051,7 +1051,7 @@ static void dsmDisabledUnlockedQuiescedCompleted (
 
 			log_printf (LOG_LEVEL_DEBUG, "dsm: Sending readiness state set to OUTOFSERVICE for comp %s.\n",
 				getSaNameT (&component->name));
-			readinessStateSetApi (component, SA_AMF_OUT_OF_SERVICE);
+			readiness_state_api_set (component, SA_AMF_OUT_OF_SERVICE);
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED;
 		}
 	}
@@ -1153,7 +1153,7 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 				component = list_entry (list,
 				struct saAmfComponent, saAmfComponentList);
 	
-				haStateSetApi (component, SA_AMF_ACTIVE);
+				ha_state_api_set (component, SA_AMF_ACTIVE);
 			}
 		} else {
 			log_printf (LOG_LEVEL_DEBUG, "Can't activate standby service unit because no standby is available.\n");
@@ -1174,7 +1174,7 @@ static void dsmEnabledUnlockedInitial (
 
 		component = list_entry (list, struct saAmfComponent, saAmfComponentList);
 
-		readinessStateSetApi (component, SA_AMF_IN_SERVICE);
+		readiness_state_api_set (component, SA_AMF_IN_SERVICE);
 		log_printf (LOG_LEVEL_DEBUG, "dsm: telling component %s to enter SA_AMF_IN_SERVICE.\n",
 			getSaNameT (&component->name));
 		component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_IN_SERVICE_REQUESTED;
@@ -1244,7 +1244,7 @@ static void dsmEnabledUnlockedInServiceCompleted (
 			log_printf (LOG_LEVEL_DEBUG, "Setting ha state of component %s to SA_AMF_STANDBY\n", getSaNameT (&component->name));
 			component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_STANDBY_REQUESTED;
 		}
-		haStateSetApi (component, newHaState);
+		ha_state_api_set (component, newHaState);
 	}
 }
 	
@@ -1390,7 +1390,7 @@ static void dsmSynchronizeStaus (
 		if (component->currentHAState != SA_AMF_ACTIVE) {
 			continue;
 		}
-		haStateSetApi (component, SA_AMF_STANDBY);
+		ha_state_api_set (component, SA_AMF_STANDBY);
 	}
 
 	return;
@@ -1512,7 +1512,7 @@ void componentTerminate (struct conn_info *conn_info)
 }
 #endif /* Not currently implemented */
 
-void errorReport (
+void error_report (
 	struct saAmfComponent *component,
 	SaAmfProbableCauseT probableCause)
 {
@@ -1555,7 +1555,7 @@ void timer_function_libamf_healthcheck (void *data) {
 		/*
 		 * Report the error to the rest of the cluster using the normal state machine
 		 */
-		errorReport (conn_info->component, SA_AMF_NOT_RESPONDING);
+		error_report (conn_info->component, SA_AMF_NOT_RESPONDING);
 
 		conn_info->component->healthcheck_outstanding = 2;
 	} else
@@ -1590,7 +1590,7 @@ void timer_function_libamf_healthcheck (void *data) {
 	}
 }
 
-struct saAmfProtectionGroup *findProtectionGroup (
+struct saAmfProtectionGroup *protectiongroup_find (
 	SaNameT *csiName)
 {
 	struct list_head *AmfGroupList;
@@ -1627,7 +1627,7 @@ struct saAmfProtectionGroup *findProtectionGroup (
 	return (0);
 }
 
-struct saAmfComponent *findComponentInProtectionGroup (
+struct saAmfComponent *component_in_protectiongroup_find (
 	SaNameT *csiName,
 	SaNameT *compName)
 {
@@ -1691,7 +1691,7 @@ DECLARE_LIST_INIT (library_notification_send_listhead);
 
 static gmi_recovery_plug_handle amf_recovery_plug_handle;
 
-void sendProtectionGroupNotifications (
+static void protectiongroup_notifications_send (
 	struct saAmfComponent *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent)
 {
@@ -1699,7 +1699,7 @@ void sendProtectionGroupNotifications (
 	struct conn_info *conn_info;
 	struct list_head *list;
 
-	log_printf (LOG_LEVEL_DEBUG, "sendProtectionGroupNotifications: sending PGs to API.\n");
+	log_printf (LOG_LEVEL_DEBUG, "protectiongroup_notifications_send: sending PGs to API.\n");
 
 	/*
 	 * Iterate all tracked connections
@@ -1712,7 +1712,7 @@ void sendProtectionGroupNotifications (
 		for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
 			if (conn_info->ais_ci.u.libamf_ci.tracks[i].active) {
 
-				sendProtectionGroupNotification (conn_info,
+				protectiongroup_notification_send (conn_info,
 					conn_info->ais_ci.u.libamf_ci.tracks[i].notificationBufferAddress, 
 					changedComponent->saAmfProtectionGroup,
 					changedComponent,
@@ -1724,7 +1724,7 @@ void sendProtectionGroupNotifications (
 }
 
 
-void sendProtectionGroupNotification (struct conn_info *conn_info,
+static void protectiongroup_notification_send (struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
 	struct saAmfProtectionGroup *amfProtectionGroup,
 	struct saAmfComponent *changedComponent,
@@ -1809,8 +1809,7 @@ static void response_handler_readinessstatesetcallback (struct conn_info *conn_i
 	if (req_amf_response->error == SA_OK && conn_info->component) {
 	log_printf (LOG_LEVEL_DEBUG, "CALLBACK sending readiness state to %s\n", 
 		getSaNameT (&conn_info->component->name));
-		readinessStateSetCluster (conn_info->component,
-			conn_info->component->newReadinessState);
+		readiness_state_group_set (conn_info->component, conn_info->component->newReadinessState);
 	}
 }
 
@@ -1823,8 +1822,7 @@ static void response_handler_csisetcallback (struct conn_info *conn_info,
 {
 
 	if (req_amf_response->error == SA_OK && conn_info->component) {
-		haStateSetCluster (conn_info->component,
-			conn_info->component->newHAState);
+		ha_state_group_set (conn_info->component, conn_info->component->newHAState);
 	}
 }
 
@@ -1848,7 +1846,7 @@ void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 		return;
 	}
 
-	component_registerpriority (component, GMI_PRIO_RECOVERY);
+	component_register_priority (component, GMI_PRIO_RECOVERY);
 	return;
 }
 
@@ -2445,7 +2443,7 @@ static int message_handler_req_amf_hastateget (struct conn_info *conn_info, void
 	res_lib_amf_hastateget.header.size = sizeof (struct res_lib_amf_hastateget);
 	res_lib_amf_hastateget.header.error = SA_ERR_NOT_EXIST;
 
-	component = findComponentInProtectionGroup (&req_amf_hastateget->csiName, &req_amf_hastateget->compName);
+	component = component_in_protectiongroup_find (&req_amf_hastateget->csiName, &req_amf_hastateget->compName);
 
 	if (component) {
 		memcpy (&res_lib_amf_hastateget.haState, 
@@ -2464,7 +2462,7 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 	int i;
 	struct saAmfProtectionGroup *amfProtectionGroup;
 
-	amfProtectionGroup = findProtectionGroup (&req_amf_protectiongrouptrackstart->csiName);
+	amfProtectionGroup = protectiongroup_find (&req_amf_protectiongrouptrackstart->csiName);
 
 	if (amfProtectionGroup) {
 		log_printf (LOG_LEVEL_DEBUG, "protectiongrouptrackstart: Got valid track start on CSI: %s.\n", getSaNameT (&req_amf_protectiongrouptrackstart->csiName));
@@ -2510,7 +2508,7 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 	if (amfProtectionGroup &&
 		req_amf_protectiongrouptrackstart->trackFlags & SA_TRACK_CURRENT) {
 
-		sendProtectionGroupNotification (conn_info,
+		protectiongroup_notification_send (conn_info,
 			track->notificationBufferAddress,
 			amfProtectionGroup,
 			0, 
@@ -2630,10 +2628,9 @@ static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info
 
 	inv_conn_info->component->currentReadinessState = inv_conn_info->component->newReadinessState;
 
-	readinessStateSetCluster (inv_conn_info->component, SA_AMF_STOPPING);
+	readiness_state_group_set (inv_conn_info->component, SA_AMF_STOPPING);
 
-	sendProtectionGroupNotifications (inv_conn_info->component,
-		SA_AMF_PROTECTION_GROUP_STATE_CHANGE);
+	protectiongroup_notifications_send (inv_conn_info->component,SA_AMF_PROTECTION_GROUP_STATE_CHANGE);
 
 	return (0);
 }
@@ -2808,7 +2805,7 @@ static char disabled_unlocked_state_text[6][64] = {
 	"AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_COMPLETED"
 };
 
-static char *amf_disabledunlockedstate_ntoa (int state)
+static char *disabledunlockedstate_ntoa (int state)
 {
 	static char str[64];
 
@@ -2831,7 +2828,7 @@ static char enabled_unlocked_state_text[7][64] = {
 	"AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED"
 };
 
-static char *amf_enabledunlockedstate_ntoa (int state)
+static char *enabledunlockedstate_ntoa (int state)
 {
 	static char str[64];
 	if (state >= 0 && state < 7) {
@@ -2849,7 +2846,7 @@ static char readiness_state_text[4][32] = {
 	"SA_AMF_QUIESCED",
 };
 
-static char *amf_readinessstate_ntoa (int state)
+static char *readinessstate_ntoa (int state)
 {
 	static char str[32];
 
@@ -2868,7 +2865,7 @@ static char ha_state_text[4][32] = {
 	"SA_AMF_QUIESCED",
 };
 
-static char *amf_hastate_ntoa (SaAmfHAStateT state)
+static char *hastate_ntoa (SaAmfHAStateT state)
 {
 
 	static char str[32];
@@ -2894,12 +2891,12 @@ static void amf_dump_comp (struct saAmfComponent *component ,void *data)
 	memset (name, 0 , sizeof(name));
 	memcpy (name, component->name.value, component->name.length);
 	log_printf (level, "name                  = %s\n" ,name );
-	log_printf (level, "currentReadinessState = %s\n" ,amf_readinessstate_ntoa (component->currentReadinessState));
-	log_printf (level, "newReadinessState     = %s\n" ,amf_readinessstate_ntoa (component->newReadinessState));
-	log_printf (level, "currentHAState        = %s\n" ,amf_hastate_ntoa (component->currentHAState));
-	log_printf (level, "newHAState            = %s\n" ,amf_hastate_ntoa (component->newHAState));
-	log_printf (level, "enabledUnlockedState  = %s\n" ,amf_enabledunlockedstate_ntoa (component->enabledUnlockedState));
-	log_printf (level, "disabledUnlockedState = %s\n" ,amf_disabledunlockedstate_ntoa (component->disabledUnlockedState));
+	log_printf (level, "currentReadinessState = %s\n" ,readinessstate_ntoa (component->currentReadinessState));
+	log_printf (level, "newReadinessState     = %s\n" ,readinessstate_ntoa (component->newReadinessState));
+	log_printf (level, "currentHAState        = %s\n" ,hastate_ntoa (component->currentHAState));
+	log_printf (level, "newHAState            = %s\n" ,hastate_ntoa (component->newHAState));
+	log_printf (level, "enabledUnlockedState  = %s\n" ,enabledunlockedstate_ntoa (component->enabledUnlockedState));
+	log_printf (level, "disabledUnlockedState = %s\n" ,disabledunlockedstate_ntoa (component->disabledUnlockedState));
 	log_printf (level, "probableCause         = %d\n" ,component->probableCause );
 }
 
