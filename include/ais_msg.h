@@ -198,7 +198,9 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD
+	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD,
+	MESSAGE_REQ_EXEC_EVT_EVENTDATA,
+	MESSAGE_REQ_EXEC_EVT_CHANCMD
 };
 
 enum req_evt_types {
@@ -207,7 +209,8 @@ enum req_evt_types {
 	MESSAGE_REQ_EVT_SUBSCRIBE,
 	MESSAGE_REQ_EVT_UNSUBSCRIBE,
 	MESSAGE_REQ_EVT_PUBLISH,
-	MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME
+	MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME,
+	MESSAGE_REQ_EVT_EVENT_DATA
 };
 
 enum res_evt_types {
@@ -218,7 +221,8 @@ enum res_evt_types {
 	MESSAGE_RES_EVT_PUBLISH,
 	MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
 	MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK,
-	MESSAGE_RES_EVT_EVENT_DATA
+	MESSAGE_RES_EVT_EVENT_DATA,
+	MESSAGE_RES_EVT_AVAILABLE
 };
 
 struct req_header {
@@ -923,7 +927,7 @@ struct res_evt_channel_close {
  * ics_filter_data:		Filter data
  *
  */
-struct req_evt_channel_subscribe {
+struct req_evt_event_subscribe {
 
 	struct req_header	ics_head;
 	uint32_t				ics_channel_handle;
@@ -941,7 +945,7 @@ struct req_evt_channel_subscribe {
  * ics_error:		Request results
  *
  */
-struct res_evt_channel_subscribe {
+struct res_evt_event_subscribe {
 	struct res_header	ics_head;
 };
 
@@ -953,7 +957,7 @@ struct res_evt_channel_subscribe {
  * icu_sub_id:			Subscription ID
  *
  */
-struct req_evt_channel_unsubscribe {
+struct req_evt_event_unsubscribe {
 
 	struct req_header	icu_head;
 	uint32_t				icu_channel_handle;
@@ -968,21 +972,32 @@ struct req_evt_channel_unsubscribe {
  * icu_error:		request result
  *
  */
-struct res_evt_channel_unsubscribe {
-	struct res_header		icu_head;
+struct res_evt_event_unsubscribe {
+	struct res_header	icu_head;
 
 };
 
+/*
+ * MESSAGE_REQ_EVT_EVENT_DATA
+ * MESSAGE_RES_EVT_AVAILABLE
+ *
+ * evd_head:		Request Head
+ */
+struct res_evt_event_data {
+		struct res_header	evd_head;
+};
 
 /*
- * MESSAGE_REQ_EVT_PUBLISH
- * MESSAGE_RES_EVT_EVENT_DATA
+ * MESSAGE_REQ_EVT_PUBLISH			(1)
+ * MESSAGE_RES_EVT_EVENT_DATA		(2)
+ * MESSAGE_REQ_EXEC_EVT_EVENTDATA	(3)
  *
  * led_head:				Request/Results head
- * led_svr_channel_handle:	Server channel handle (Publish only)
- * led_lib_channel_handle:	Lib channel handle (Event Data only)
- * led_event_id:			Event ID (Event Data only)
- * led_sub_id:				Subscription ID (Event Data only)
+ * led_svr_channel_handle:	Server channel handle (1 only)
+ * led_lib_channel_handle:	Lib channel handle (2 only)
+ * led_chan_name:			Channel name (3 only)
+ * led_event_id:			Event ID (2 and 3 only)
+ * led_sub_id:				Subscription ID (2 only)
  * led_publisher_node_id:	Node ID of event publisher
  * led_publisher_name:		Node name of event publisher
  * led_retention_time:		Event retention time
@@ -994,9 +1009,10 @@ struct res_evt_channel_unsubscribe {
  * led_body:				Pattern and user data
  */
 struct lib_event_data {
-	struct req_header		led_head;
+	struct res_header		led_head;
 	uint32_t				led_svr_channel_handle;
 	uint32_t				led_lib_channel_handle;
+	SaNameT					led_chan_name;
 	SaEvtEventIdT			led_event_id;
 	SaEvtSubscriptionIdT	led_sub_id;
 	SaClmNodeIdT			led_publisher_node_id;
@@ -1021,7 +1037,7 @@ struct lib_event_data {
  */
 struct res_evt_event_publish {
 
-	struct res_header		iep_head;
+	struct res_header	iep_head;
 	SaEvtEventIdT			iep_event_id;
 };
 
@@ -1037,7 +1053,7 @@ struct res_evt_event_publish {
  */
 struct req_evt_event_clear_retentiontime {
 
-	struct req_header		iec_head;
+	struct req_header	iec_head;
 	uint64_t				iec_event_id;
 	uint32_t				iec_channel_handle;
 
@@ -1055,4 +1071,20 @@ struct res_evt_event_clear_retentiontime {
 };
 
 
+/*
+ * MESSAGE_REQ_EXEC_EVT_CHANCMD
+ *
+ * chc_header:	Request head
+ * chc_chan:	Channel Name
+ * chc_op:		Channel operation (open, close, clear retentiontime)
+ */
+
+struct req_evt_chan_command {
+	struct req_header 	chc_head;
+	int 				chc_op;
+	union {
+		SaNameT			chc_chan;
+		SaEvtEventIdT	chc_event_id;
+	} u;
+};
 #endif /* AIS_MSG_H_DEFINED */
