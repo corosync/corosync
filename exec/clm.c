@@ -76,6 +76,9 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 	SaClmClusterNodeT *ret = NULL;
 	int i;
 
+	if (node_id.s_addr == SA_CLM_LOCAL_NODE_ID) {
+		return (&clusterNodes[0]);
+	}
 	for (i = 0; i < clusterNodeEntries; i++) {
 		if (clusterNodes[i].nodeId == node_id.s_addr) {
 			ret = &clusterNodes[i];
