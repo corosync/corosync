@@ -41,9 +41,11 @@ LDFLAGS = -g
 
 CFLAGS += -fPIC
 
-all:libais.a libais.so.1.0
+all:libais.a libais.so.1.0 libevs.a libevs.so.1.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
+
+LIBEVS_SRC = util.c evs.c
 
 libais.a: util.o amf.o clm.o ckpt.o evt.o
 	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
@@ -55,8 +57,17 @@ libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o
 	ln -s libais.so.1.0 libais.so.1
 	ln -s libais.so.1.0 libais.so
 	
+libevs.a: util.o amf.o evs.o
+	$(AR) -rc libevs.a util.o evs.o
+
+libevs.so.1.0: util.o evs.o
+	$(CC) -shared -Wl,-soname,libevs.so.1 util.o evs.o -o $@
+	rm -f libevs.so.1 libevs.so
+	ln -s libevs.so.1.0 libevs.so.1
+	ln -s libevs.so.1.0 libevs.so
+
 clean:
-	rm -f *.o libais.so* libais.a
+	rm -f *.o libais.so* libais.a libevs.so* libevs.a
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
