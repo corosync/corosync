@@ -2489,6 +2489,12 @@ static int evt_conf_change(
 	int res;
 
 
+	/*  
+	 *  TODO required for open count accounting 
+	 *  until the recovery code is re-enabled.
+	 */
+	total_members = member_list_entries;
+
 	/*
 	 * Set the base event id
 	 */
