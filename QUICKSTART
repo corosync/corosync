@@ -11,16 +11,19 @@ Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 ***
 
 This openais package is broken into four parts.  The exec directory contains
-all of the code responsible for serving the APIs.  The api directory contains
+all of the code responsible for serving the APIs.  The lib directory contains
 APIs the user can link to.  The test directory contains some simple test
 programs which exercise the APIs.  The directory conf contains example
 configuration files which can be copied directly onto the target system.
 
-The API implements the Cluster Membership (CLM), Availabilty Management
-Framework (AMF) and the Checkpointing (CKPT) APIs.
+The API implements SA Forum APIs for Cluster Membership (CLM), Availabilty
+Management Framework (AMF), Checkpointing (CKPT), and Eventing (EVT).
+
+The API also contains an extended virtual synchrony API which can be used
+in distributed applications.
 
 Configuring the openais executive:
-------------------------------
+---------------------------------
 The openais executive will automatically determine cluster membership by
 communicating on a specified multicast address and port.
 
@@ -77,7 +80,7 @@ These two files should be placed in the /etc/ais directory.
 
 Building openais
 ----------------
-openais requires GCC, LD, and a Linux 2.4 kernel.  openais has been tested on
+openais requires GCC, LD, and a Linux 2.4/2.6 kernel.  openais has been tested on
 Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9, and Fedora
 Core 2.
 
@@ -85,7 +88,7 @@ Compile openais by running make in the root directory.  Make can also be run
 in the individual directories.  Nothing is installed by make.  If install
 is desired, the files must be copied manually.
 
-Confiugre Host
+Configure Host
 --------------
 For security reasons, the openais only allows a process that had the EGID/GID
 of "ais" to connect to it.  To make development easier, it is recommended to
@@ -100,27 +103,6 @@ Changing password for user ais.
 New password:
 Retype new password:
 passwd: all authentication tokens updated successfully.
-
-Configure Network
------------------
-Some networks do not automatically configure the default route.  Ensure
-the default route is configured or openais wont be able to communicate with
-other nodes.
-
-[sdake@slickdeal sdake]$ /sbin/route
-Kernel IP routing table
-Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
-10.0.0.6        *               255.255.255.255 UH    0      0        0 tun0
-127.0.0.0       *               255.0.0.0       U     0      0        0 lo
-default         192.168.1.1     0.0.0.0         UG    0      0        0 eth0
-
-the word default above specifies the default route.  If the default route
-is missing, specify one by
-
-unix# /sbin/route add default gw 192.168.1.1
-
-where 192.168.1.1 is the gateway.  It is possible to specify an invalid 
-route which will also make openais work properly.
 
 Generate a private key
 ----------------------
@@ -154,6 +136,21 @@ Get one or more nodes and run the openais executive on each node.  A list of
 node IPs should be logged when the nodes join a configuration.  Run the
 aisexec program after following the previous directions.
 
+A final note on permissions:
+It is not absolutely required that openais executive runs as root.  If
+it runs as root, it schedules at the highest round robin realtime
+priority and locks all pages into ram in case a swap would cause a delay
+in the real-time nature of the protocol.  The warning about not being
+able to lock pages is simply a warning and can be ignored if you choose
+to run as a non root user.
+
+The ais user/group is required because applications are authenticated
+against the ais user and group.  If an application(/library) is not root
+or ais, then the application cannot connect to the ais executive.
+
+please read SECURITY to understand the threat model assumed by openais
+and the techniques openais use to overcome these threats.
+
 Before running any of the test programs
 ---------------------------------------
 The openais executive will ensure security by only allowing the ais group (or
@@ -167,7 +164,7 @@ Password:
 uid=501(ais) gid=502(ais) groups=502(ais)
 
 Try out the openais CLM functionality
----------------------------------
+-------------------------------------
 After aisexec is running
 
 su to ais user
@@ -183,7 +180,7 @@ Killing aisexec on the node the testclm is connected will cause the
 API to return error codes indicating the system has failed.
 
 Try out the openais AMF functionality
----------------------------------
+-------------------------------------
 After aisexec is running
 
 su to ais user
@@ -229,6 +226,18 @@ Two node clusters should approach 8.5 MB/sec on 100 mbit networks for
 larger checkpoint sizes with encryption and authentication.  If you are not
 seeing these results, please report to the mailing list.
 
+Try out the openais EVT functionality
+-------------------------------------
+su to ais user
+
+run testevt.  This will execute various eventing API operations.
+
+Try out the openais EVS functionality
+-------------------------------------
+su to ais user
+run testevs.  This will generate multicast messages and self deliver them
+
+run evsbench.  This will display the benchmark performance of the evs service.
 Write your own applications
 ---------------------------
 Without real applications, finding the hard bugs will be difficult.  Please
