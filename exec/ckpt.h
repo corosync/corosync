@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "../include/ais_types.h"
-#include "../include/ais_msg.h"
+#include "../include/saCkpt.h"
 #include "aispoll.h"
 #include "parse.h"
 
@@ -70,15 +70,10 @@ struct saCkptSectionIterator {
 };
 
 struct libckpt_ci {
-	struct saCkptCheckpoint *checkpoint;
-	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
+	struct list_head checkpoint_list;
 	struct saCkptSectionIterator sectionIterator;
 };
 
 extern struct service_handler ckpt_service_handler;
-
-extern struct service_handler ckpt_checkpoint_service_handler;
-
-extern struct service_handler ckpt_sectioniterator_service_handler;
 
 #endif /* CKPT_H_DEFINED */

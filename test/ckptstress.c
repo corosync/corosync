@@ -43,7 +43,7 @@
 #include <sys/un.h>
 
 #include "ais_types.h"
-#include "ais_ckpt.h"
+#include "saCkpt.h"
 
 int ckptinv;
 void printSaNameT (SaNameT *name)
@@ -55,7 +55,12 @@ void printSaNameT (SaNameT *name)
 	}
 }
 
-SaVersionT version = { 'A', 1, 1 };
+SaVersionT version = { 'B', 1, 1 };
+
+SaCkptCallbacksT callbacks = {
+    0,
+    0
+};
 
 SaNameT checkpointName = { 5, "abra\0" };
 
@@ -69,13 +74,13 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 };
 
 SaCkptSectionIdT sectionId1 = {
-	"section ID #1",
-	14
+	14,
+	"section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
-	"section ID #2",
-	14
+	14,
+	"section ID #2"
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
@@ -94,8 +99,8 @@ char readBuffer2[1025];
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		readBuffer1,
 		sizeof (readBuffer1),
@@ -104,8 +109,8 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	},
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		readBuffer2,
 		sizeof (readBuffer2),
@@ -119,8 +124,8 @@ char data[DATASIZE];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("written data #1, this should extend past end of old section data") + 1, */
@@ -130,8 +135,8 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 #ifdef COMPILE_OUT
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		data, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */
@@ -144,18 +149,22 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 void *th_dispatch (void *arg)
 {
 	int th = (int)arg;
+	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT handle;
 	SaErrorT error;
 	int i;
 	SaUint32T erroroneousVectorIndex = 0;
 
-	error = saCkptCheckpointOpen (&checkpointName,
+    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
+	error = saCkptCheckpointOpen (ckptHandle,
+		&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&handle);
 	for (i = 0; i < 1000; i++) {
-		error = saCkptCheckpointWrite (&handle,
+		error = saCkptCheckpointWrite (handle,
 			WriteVectorElements,
 			1,/* placing two here with only one vector element causes an assertion failure !! */
 			&erroroneousVectorIndex);
@@ -164,29 +173,36 @@ void *th_dispatch (void *arg)
 			printf ("Thread %d: Error from write.\n", th);
 		}
 	}
+
+    error = saCkptFinalize (ckptHandle);
+
 	return (0);
 }
 
 int main (void) {
+	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaErrorT error;
 	int i;
 	pthread_t dispatch_thread;
 
-	error = saCkptCheckpointOpen (&checkpointName,
+    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
+	error = saCkptCheckpointOpen (ckptHandle,
+		&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle);
 	printf ("first open result %d (should be 1)\n", error);
 
-	error = saCkptSectionCreate (&checkpointHandle,
+	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes1,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 printf ("create2 error is %d\n", error);
 
-	error = saCkptSectionCreate (&checkpointHandle,
+	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes2,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
@@ -196,5 +212,8 @@ printf ("create2 error is %d\n", error);
 		pthread_create (&dispatch_thread, NULL, th_dispatch, (void *)i);
 	}
 	pthread_join (dispatch_thread, NULL);
+
+    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
 	return (0);
 }

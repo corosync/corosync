@@ -39,8 +39,6 @@ enum req_init_types {
 	MESSAGE_REQ_CLM_INIT,
 	MESSAGE_REQ_AMF_INIT,
 	MESSAGE_REQ_CKPT_INIT,
-	MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
 	MESSAGE_REQ_EVT_INIT
 };
 
@@ -87,5 +85,9 @@ struct res_header {
 	SaErrorT error;
 };
 
+struct message_source {
+    struct conn_info *conn_info;
+    struct in_addr in_addr;
+} __attribute__((packed));
 
 #endif /* IPC_GEN_H_DEFINED */

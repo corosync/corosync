@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include "ais_types.h"
 
@@ -43,4 +45,21 @@ int get_sa_error(SaErrorT error, char *str, int len)
 	}
 	strncpy(str, sa_error_list[error], len);
 	return 0;
+}
+
+char *get_sa_error_b (SaAisErrorT error) {
+	return (sa_error_list[error]);
+}
+
+char *get_test_output (SaAisErrorT result, SaAisErrorT expected) {
+        static *test_result[256];
+
+        if (result == expected) {
+                return ("PASSED");
+        } else {
+                sprintf (test_result,
+                        "FAILED expected %s got %s",
+			get_sa_error_b(expected), get_sa_error_b(result));
+                return (test_result);
+        }
 }

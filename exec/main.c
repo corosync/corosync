@@ -87,12 +87,10 @@ struct service_handler *ais_service_handlers[] = {
     &clm_service_handler,
     &amf_service_handler,
     &ckpt_service_handler,
-    &ckpt_checkpoint_service_handler,
-    &ckpt_sectioniterator_service_handler,
     &evt_service_handler
 };
 
-#define AIS_SERVICE_HANDLERS_COUNT 7
+#define AIS_SERVICE_HANDLERS_COUNT 5
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);

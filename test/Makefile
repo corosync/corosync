@@ -102,8 +102,8 @@ evsbench: evsbench.o $(LIBS)
 testclm: testclm.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
 
-testckpt: testckpt.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testckpt testckpt.o $(LIBS)
+testckpt: testckpt.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testckpt testckpt.o sa_error.o $(LIBS)
 
 ckptbench: ckptbench.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptbench ckptbench.o $(LIBS)
@@ -149,13 +149,13 @@ testamf5.o: ../include/ais_types.h ../include/ais_amf.h
 testamf6.o: ../include/ais_types.h ../include/ais_amf.h
 testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
 testamfth.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
-testckpt.o: ../include/ais_types.h ../include/ais_ckpt.h
-ckptstress.o: ../include/ais_types.h ../include/ais_ckpt.h
+testckpt.o: ../include/ais_types.h ../include/saCkpt.h
+ckptstress.o: ../include/ais_types.h ../include/saCkpt.h
 testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
 testparse.o: ../exec/aispoll.h ../exec/totempg.h ../exec/totemsrp.h
 testparse.o: ../exec/print.h ../include/saClm.h ../include/ais_types.h
-ckptbench.o: ../include/ais_types.h ../include/ais_ckpt.h
-ckptbenchth.o: ../include/ais_types.h ../include/ais_ckpt.h
+ckptbench.o: ../include/ais_types.h ../include/saCkpt.h
+ckptbenchth.o: ../include/ais_types.h ../include/saCkpt.h
 testevt.o: ../include/ais_types.h ../include/saEvt.h
 testevs.o: ../include/evs.h
 evsbench.o: ../include/ais_types.h ../include/evs.h

@@ -46,7 +46,7 @@
 #include <pthread.h>
 
 #include "ais_types.h"
-#include "ais_ckpt.h"
+#include "saCkpt.h"
 
 void printSaNameT (SaNameT *name)
 {
@@ -57,7 +57,12 @@ void printSaNameT (SaNameT *name)
 	}
 }
 
-SaVersionT version = { 'A', 1, 1 };
+SaVersionT version = { 'B', 1, 1 };
+
+SaCkptCallbacksT callbacks = {
+    0,
+    0
+};
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	SA_CKPT_WR_ALL_REPLICAS,
@@ -69,13 +74,13 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 };
 
 SaCkptSectionIdT sectionId1 = {
-	"section ID #1",
-	14
+	14,
+	"section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
-	"section ID #2",
-	14
+	14,
+	"section ID #2"
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
@@ -94,8 +99,8 @@ char readBuffer2[1025];
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		readBuffer1,
 		sizeof (readBuffer1),
@@ -104,8 +109,8 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	},
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		readBuffer2,
 		sizeof (readBuffer2),
@@ -121,8 +126,8 @@ char data[500000];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
@@ -132,8 +137,8 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 #ifdef COMPILE_OUT
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		data, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */
@@ -146,6 +151,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 int runs = 0;
 
 struct threaddata {
+	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
 	int write_count;
 	int write_size;
@@ -156,6 +162,7 @@ void *benchmark_thread (void *arg)
 {
 	
 	SaCkptCheckpointHandleT checkpointHandle;
+	SaCkptHandleT ckptHandle;
 	int write_count;
 	int write_size;
 	SaErrorT error;
@@ -164,6 +171,7 @@ void *benchmark_thread (void *arg)
 	int ckptinv;
 
 	checkpointHandle = td->checkpointHandle;
+	ckptHandle = td->ckptHandle;
 	write_count = td->write_count;
 	write_size = td->write_size;
 
@@ -174,7 +182,7 @@ void *benchmark_thread (void *arg)
 		 * Test checkpoint write
 		 */
 		do {
-		error = saCkptCheckpointWrite (&checkpointHandle,
+		error = saCkptCheckpointWrite (checkpointHandle,
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
@@ -193,8 +201,8 @@ printf ("done writing for thread %d\n", td->thread);
 }
 
 
-void threaded_bench (SaCkptCheckpointHandleT *checkpointHandles, int threads, int write_count,
-	int write_size)
+void threaded_bench (SaCkptHandleT *ckptHandles, SaCkptCheckpointHandleT *checkpointHandles,
+	int threads, int write_count, int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	struct threaddata td[100];
@@ -206,6 +214,7 @@ void threaded_bench (SaCkptCheckpointHandleT *checkpointHandles, int threads, in
 	gettimeofday (&tv1, NULL);
 
 	for (i = 0; i < threads; i++) {
+		td[i].ckptHandle = ckptHandles[i];
 		td[i].checkpointHandle = checkpointHandles[i];
 		td[i].write_count = write_count;
 		td[i].write_size = write_size;
@@ -235,6 +244,7 @@ SaNameT checkpointName = { 12, "abra\0" };
 
 #define CHECKPOINT_THREADS 50
 int main (void) {
+	SaCkptHandleT ckptHandles[500];
 	SaCkptCheckpointHandleT checkpointHandles[500];
 	SaErrorT error;
 	int size;
@@ -246,16 +256,19 @@ int main (void) {
 	 */
 	for (i  = 0; i < CHECKPOINT_THREADS; i++) {
 		sprintf (checkpointName.value, "checkpoint%d \n", i);
-		error = saCkptCheckpointOpen (&checkpointName,
+		error = saCkptInitialize (&ckptHandles[i], &callbacks, &version);
+
+		error = saCkptCheckpointOpen (ckptHandles[i],
+			&checkpointName,
 			&checkpointCreationAttributes,
 			SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 			0,
 			&checkpointHandles[i]);
-		error = saCkptSectionCreate (&checkpointHandles[i],
+		error = saCkptSectionCreate (checkpointHandles[i],
 			&sectionCreationAttributes1,
 			"Initial Data #0",
 			strlen ("Initial Data #0") + 1);
-		error = saCkptSectionCreate (&checkpointHandles[i],
+		error = saCkptSectionCreate (checkpointHandles[i],
 			&sectionCreationAttributes2,
 			"Initial Data #0",
 			strlen ("Initial Data #0") + 1);
@@ -266,7 +279,7 @@ int main (void) {
 		size = 100000; /* initial size */
 		printf ("THREADS %d\n", i);
 		for (j = 0; j < 5; j++) { /* number of runs with i threads */
-			threaded_bench (checkpointHandles, i, count, size);
+			threaded_bench (ckptHandles, checkpointHandles, i, count, size);
 			/*
 			 * Adjust count to 95% of previous count
 			 * adjust size upwards by 1500

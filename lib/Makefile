@@ -86,7 +86,7 @@ amf.o: ../include/ipc_gen.h util.h
 clm.o: ../include/ais_types.h ../include/saClm.h ../include/ais_types.h
 clm.o: ../include/ais_msg.h ../include/evs.h ../include/saClm.h
 clm.o: ../include/ipc_gen.h ../include/ipc_clm.h util.h
-ckpt.o: ../include/list.h ../include/ais_types.h ../include/ais_ckpt.h
+ckpt.o: ../include/list.h ../include/ais_types.h ../include/saCkpt.h
 ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/evs.h
 ckpt.o: ../include/saClm.h ../include/ipc_gen.h util.h
 evt.o: ../include/ipc_evt.h ../include/ais_types.h ../include/saEvt.h

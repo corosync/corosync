@@ -50,7 +50,7 @@
 #include <arpa/inet.h>
 
 #include "ais_types.h"
-#include "ais_ckpt.h"
+#include "saCkpt.h"
 
 int alarm_notice;
 
@@ -63,7 +63,12 @@ void printSaNameT (SaNameT *name)
 	}
 }
 
-SaVersionT version = { 'A', 1, 1 };
+SaVersionT version = { 'B', 1, 1 };
+
+SaCkptCallbacksT callbacks = {
+    0,
+    0
+};
 
 SaNameT checkpointName = { 5, "abra\0" };
 
@@ -77,13 +82,13 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 };
 
 SaCkptSectionIdT sectionId1 = {
-	"section ID #1",
-	14
+	14,
+	"section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
-	"section ID #2",
-	14
+	14,
+	"section ID #2"
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
@@ -102,8 +107,8 @@ char readBuffer2[1025];
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		readBuffer1,
 		sizeof (readBuffer1),
@@ -112,8 +117,8 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	},
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		readBuffer2,
 		sizeof (readBuffer2),
@@ -129,8 +134,8 @@ char data[500000];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
-			"section ID #1",
-			14
+			14,
+			"section ID #1"
 		},
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
@@ -140,8 +145,8 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 #ifdef COMPILE_OUT
 	{
 		{
-			"section ID #2",
-			14
+			14,
+			"section ID #2"
 		},
 		data, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */
@@ -168,7 +173,7 @@ void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
 		/*
 		 * Test checkpoint write
 		 */
-		error = saCkptCheckpointWrite (&checkpointHandle,
+		error = saCkptCheckpointWrite (checkpointHandle,
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
@@ -197,6 +202,7 @@ void sigalrm_handler (int num)
 }
 
 int main (void) {
+	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaErrorT error;
 	int size;
@@ -204,16 +210,19 @@ int main (void) {
 	
 	signal (SIGALRM, sigalrm_handler);
 
-	error = saCkptCheckpointOpen (&checkpointName,
+    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
+	error = saCkptCheckpointOpen (ckptHandle,
+		&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle);
-	error = saCkptSectionCreate (&checkpointHandle,
+	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes1,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
-	error = saCkptSectionCreate (&checkpointHandle,
+	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes2,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
@@ -224,5 +233,7 @@ int main (void) {
 		ckpt_benchmark (checkpointHandle, size);
 		size += 1000;
 	}
+
+    error = saCkptFinalize (ckptHandle);
 	return (0);
 }

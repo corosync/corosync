@@ -44,11 +44,12 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/list.h"
-#include "../include/ais_types.h"
-#include "../include/ais_ckpt.h"
-#include "../include/ais_msg.h"
 #include "util.h"
+
+#include "../include/list.h"
+#include "../include/saCkpt.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_ckpt.h"
 
 struct message_overlay {
 	struct req_header header;
@@ -68,13 +69,16 @@ struct ckptInstance {
 
 struct ckptCheckpointInstance {
 	int fd;
+	SaCkptHandleT ckptHandle;
+	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 	SaNameT checkpointName;
 	SaUint32T maxSectionIdSize;
 	pthread_mutex_t mutex;
 };
 
-struct ckptSectionIteratorInstance {
+struct ckptSectionIterationInstance {
 	int fd;
+	SaCkptCheckpointHandleT checkpointHandle;
 	struct list_head sectionIdListHead;
 	SaUint32T maxSectionIdSize;
 	pthread_mutex_t mutex;
@@ -82,7 +86,7 @@ struct ckptSectionIteratorInstance {
 
 void ckptHandleInstanceDestructor (void *instance);
 void checkpointHandleInstanceDestructor (void *instance);
-void ckptSectionIteratorHandleInstanceDestructor (void *instance);
+void ckptSectionIterationHandleInstanceDestructor (void *instance);
 
 /*
  * All CKPT instances in this database
@@ -107,19 +111,19 @@ static struct saHandleDatabase checkpointHandleDatabase = {
 /*
  * All section iterators in this database
  */
-static struct saHandleDatabase ckptSectionIteratorHandleDatabase = {
+static struct saHandleDatabase ckptSectionIterationHandleDatabase = {
 	.handleCount				= 0,
 	.handles					= 0,
 	.mutex						= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= ckptSectionIteratorHandleInstanceDestructor
+	.handleInstanceDestructor	= ckptSectionIterationHandleInstanceDestructor
 };
 
 /*
  * Versions supported
  */
 static SaVersionT ckptVersionsSupported[] = {
-	{ 'A', 1, 1 },
-	{ 'a', 1, 1 }
+	{ 'B', 1, 1 },
+	{ 'b', 1, 1 }
 };
 
 static struct saVersionDatabase ckptVersionDatabase = {
@@ -146,49 +150,43 @@ struct ckptInstance *ckptInstance = (struct ckptInstance *)instance;
 
 void checkpointHandleInstanceDestructor (void *instance)
 {
-	struct ckptCheckpointInstance *ckptCheckpointInstance = (struct ckptCheckpointInstance *)instance;
-
-	if (ckptCheckpointInstance->fd != -1) {
-		shutdown (ckptCheckpointInstance->fd, 0);
-
-		close (ckptCheckpointInstance->fd);
-	}
+	return;
 }
 
-void ckptSectionIteratorHandleInstanceDestructor (void *instance)
+void ckptSectionIterationHandleInstanceDestructor (void *instance)
 {
-	struct ckptSectionIteratorInstance *ckptSectionIteratorInstance = (struct ckptSectionIteratorInstance *)instance;
+	struct ckptSectionIterationInstance *ckptSectionIterationInstance = (struct ckptSectionIterationInstance *)instance;
 
-	if (ckptSectionIteratorInstance->fd != -1) {
-		shutdown (ckptSectionIteratorInstance->fd, 0);
+	if (ckptSectionIterationInstance->fd != -1) {
+		shutdown (ckptSectionIterationInstance->fd, 0);
 
-		close (ckptSectionIteratorInstance->fd);
+		close (ckptSectionIterationInstance->fd);
 	}
 }
 
-SaErrorT
+SaAisErrorT
 saCkptInitialize (
 	SaCkptHandleT *ckptHandle,
 	const SaCkptCallbacksT *callbacks,
-	const SaVersionT *version)
+	SaVersionT *version)
 {
 	struct ckptInstance *ckptInstance;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	error = saVersionVerify (&ckptVersionDatabase, version);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleCreate (&ckptHandleDatabase, sizeof (struct ckptInstance),
 		ckptHandle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, *ckptHandle,
 		(void *)&ckptInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
 
@@ -199,12 +197,12 @@ saCkptInitialize (
 	 * sync response
 	 */
 	error = saQueueInit (&ckptInstance->inq, 512, sizeof (void *));
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
-	error = saServiceConnect (&ckptInstance->fd, MESSAGE_REQ_CKPT_CHECKPOINT_INIT);
-	if (error != SA_OK) {
+	error = saServiceConnect (&ckptInstance->fd, MESSAGE_REQ_CKPT_INIT);
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -214,7 +212,7 @@ saCkptInitialize (
 
 	saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
@@ -224,34 +222,34 @@ error_no_destroy:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptSelectionObjectGet (
-	const SaCkptHandleT *ckptHandle,
+	const SaCkptHandleT ckptHandle,
 	SaSelectionObjectT *selectionObject)
 {
 	struct ckptInstance *ckptInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, *ckptHandle, (void *)&ckptInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
 	*selectionObject = ckptInstance->fd;
 
-	saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 #ifdef COMPILE_OUT
-SaErrorT
+SaAisErrorT
 saCkptDispatch (
-	const SaCkptHandleT *ckptHandle,
+	const SaCkptHandleT ckptHandle,
 	SaDispatchFlagsT dispatchFlags)
 {
 	fd_set read_fds;
-	SaErrorT error;
+	SaAisErrorT error;
 	int dispatch_avail;
 	struct timeval *timeout = 0;
 	struct ckptInstance *ckptInstance;
@@ -261,8 +259,8 @@ saCkptDispatch (
 	int ignore_dispatch = 0;
 	int cont = 1; /* always continue do loop except when set to 0 */
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, *ckptHandle, (void *)&ckptInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -281,7 +279,7 @@ saCkptDispatch (
 		FD_SET (ckptInstance->fd, &read_fds);
 
 		error = saSelectRetry (ckptInstance->fd + 1, &read_fds, 0, 0, timeout);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 
@@ -308,14 +306,14 @@ saCkptDispatch (
 			 * Queue empty, read response from socket
 			 */
 			error = saRecvRetry (ckptInstance->fd, &ckptInstance->message.header, sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				goto error_exit;
 			}
 			if (ckptInstance->message.header.size > sizeof (struct req_header)) {
 				error = saRecvRetry (ckptInstance->fd, &ckptInstance->message.data,
 					ckptInstance->message.header.size - sizeof (struct req_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
-				if (error != SA_OK) {
+				if (error != SA_AIS_OK) {
 					goto error_exit;
 				}
 			}
@@ -419,16 +417,16 @@ error_exit:
 }
 #endif
 
-SaErrorT
+SaAisErrorT
 saCkptFinalize (
-	const SaCkptHandleT *ckptHandle)
+	const SaCkptHandleT ckptHandle)
 {
 	struct ckptInstance *ckptInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, *ckptHandle,
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
 		(void *)&ckptInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -439,8 +437,8 @@ saCkptFinalize (
 	 */
 	if (ckptInstance->finalize) {
 		pthread_mutex_unlock (&ckptInstance->mutex);
-		saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
-		return (SA_ERR_BAD_HANDLE);
+		saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+		return (SA_AIS_ERR_BAD_HANDLE);
 	}
 
 	ckptInstance->finalize = 1;
@@ -449,47 +447,53 @@ saCkptFinalize (
 
 	pthread_mutex_unlock (&ckptInstance->mutex);
 
-	saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
-    saHandleDestroy (&ckptHandleDatabase, *ckptHandle);
+    saHandleDestroy (&ckptHandleDatabase, ckptHandle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointOpen (
+	SaCkptHandleT ckptHandle,
 	const SaNameT *checkpointName,
 	const SaCkptCheckpointCreationAttributesT *checkpointCreationAttributes,
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags,
 	SaTimeT timeout,
 	SaCkptCheckpointHandleT *checkpointHandle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
+	struct ckptInstance *ckptInstance;
 	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopen res_lib_ckpt_checkpointopen;
 
 	error = saHandleCreate (&checkpointHandleDatabase,
 		sizeof (struct ckptCheckpointInstance), checkpointHandle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
 
-	ckptCheckpointInstance->fd = -1;
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
+		(void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
+		goto error_put_destroy;
+	}
+
+	ckptCheckpointInstance->fd = ckptInstance->fd;
 
 	ckptCheckpointInstance->maxSectionIdSize =
 		checkpointCreationAttributes->maxSectionIdSize;
 
-	error = saServiceConnect (&ckptCheckpointInstance->fd, MESSAGE_REQ_CKPT_CHECKPOINT_INIT);
-	if (error != SA_OK) {
-		goto error_put_destroy;
-	}
+	ckptCheckpointInstance->ckptHandle = ckptHandle;
+	ckptCheckpointInstance->checkpointOpenFlags = checkpointOpenFlags;
 
 	req_lib_ckpt_checkpointopen.header.size = sizeof (struct req_lib_ckpt_checkpointopen);
 	req_lib_ckpt_checkpointopen.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN;
@@ -502,19 +506,19 @@ saCkptCheckpointOpen (
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointopen,
 		sizeof (struct req_lib_ckpt_checkpointopen), MSG_NOSIGNAL);
-	if (error != SA_OK) {
-		goto error_put_destroy;
+	if (error != SA_AIS_OK) {
+		goto error_put_ckpt_destroy;
 	}
 
 	error = saRecvRetry (ckptCheckpointInstance->fd, &res_lib_ckpt_checkpointopen,
 		sizeof (struct res_lib_ckpt_checkpointopen), MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
-		goto error_put_destroy;
+	if (error != SA_AIS_OK) {
+		goto error_put_ckpt_destroy;
 	}
 	
-	if (res_lib_ckpt_checkpointopen.header.error != SA_OK) {
+	if (res_lib_ckpt_checkpointopen.header.error != SA_AIS_OK) {
 		error = res_lib_ckpt_checkpointopen.header.error;
-		goto error_put_destroy;
+		goto error_put_ckpt_destroy;
 	}
 
 	pthread_mutex_init (&ckptCheckpointInstance->mutex, NULL);
@@ -523,28 +527,32 @@ saCkptCheckpointOpen (
 
 	return (error);
 
+error_put_ckpt_destroy:
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+
 error_put_destroy:
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+
 error_destroy:
 	saHandleDestroy (&checkpointHandleDatabase, *checkpointHandle);
 error_no_destroy:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointOpenAsync (
-	const SaCkptHandleT *ckptHandle,
+	const SaCkptHandleT ckptHandle,
 	SaInvocationT invocation,	
 	const SaNameT *checkpointName,
 	const SaCkptCheckpointCreationAttributesT *checkpointCreationAttributes,
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags)
 {
 	struct ckptInstance *ckptInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 	struct req_lib_ckpt_checkpointopenasync req_lib_ckpt_checkpointopenasync;
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, *ckptHandle, (void *)&ckptInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -565,43 +573,64 @@ saCkptCheckpointOpenAsync (
 
 	pthread_mutex_unlock (&ckptInstance->mutex);
 
-	saHandleInstancePut (&ckptHandleDatabase, *ckptHandle);
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointClose (
-	const SaCkptCheckpointHandleT *checkpointHandle)
+	SaCkptCheckpointHandleT checkpointHandle)
 {
-	SaErrorT error;
+	struct req_lib_ckpt_checkpointclose req_lib_ckpt_checkpointclose;
+	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
-    saHandleDestroy (&checkpointHandleDatabase, *checkpointHandle);
+	req_lib_ckpt_checkpointclose.header.size = sizeof (struct req_lib_ckpt_checkpointclose);
+	req_lib_ckpt_checkpointclose.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTCLOSE;
+	memcpy (&req_lib_ckpt_checkpointclose.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointclose,
+		sizeof (struct req_lib_ckpt_checkpointclose), MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		goto exit_put;
+	}
+
+	error = saRecvRetry (ckptCheckpointInstance->fd, &res_lib_ckpt_checkpointclose,
+		sizeof (struct res_lib_ckpt_checkpointclose), MSG_WAITALL | MSG_NOSIGNAL);
+
+
+	saHandleInstancePut (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle);
+
+    saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
+
+exit_put:
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
 error_exit:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointUnlink (
+	SaCkptHandleT ckptHandle,
 	const SaNameT *checkpointName)
 {
-	SaErrorT error;
+	SaAisErrorT error;
+	struct ckptInstance *ckptInstance;
 	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
 	struct res_lib_ckpt_checkpointunlink res_lib_ckpt_checkpointunlink;
-	int fd;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_CKPT_CHECKPOINT_INIT);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
 		goto exit_noclose;
 	}
 
@@ -610,34 +639,37 @@ saCkptCheckpointUnlink (
 	memcpy (&req_lib_ckpt_checkpointunlink.checkpointName, checkpointName, sizeof (SaNameT));
 
 
-	error = saSendRetry (fd, &req_lib_ckpt_checkpointunlink, sizeof (struct req_lib_ckpt_checkpointunlink), MSG_NOSIGNAL);
-	if (error != SA_OK) {
-		goto exit_close;
+	error = saSendRetry (ckptInstance->fd, &req_lib_ckpt_checkpointunlink,
+		sizeof (struct req_lib_ckpt_checkpointunlink), MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		goto exit_put;
 	}
 
-	error = saRecvRetry (fd, &res_lib_ckpt_checkpointunlink,
+	error = saRecvRetry (ckptInstance->fd, &res_lib_ckpt_checkpointunlink,
 		sizeof (struct res_lib_ckpt_checkpointunlink), MSG_WAITALL | MSG_NOSIGNAL);
 
-exit_close:
-	close (fd);
-	return (error == SA_OK ? res_lib_ckpt_checkpointunlink.header.error : error);
+exit_put:
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+	
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointunlink.header.error : error);
+
 exit_noclose:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointRetentionDurationSet (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	SaTimeT retentionDuration)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointretentiondurationset req_lib_ckpt_checkpointretentiondurationset;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit_noput;
 	}
 
@@ -645,11 +677,13 @@ saCkptCheckpointRetentionDurationSet (
 	req_lib_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET;
 
 	req_lib_ckpt_checkpointretentiondurationset.retentionDuration = retentionDuration;
+	memcpy (&req_lib_ckpt_checkpointretentiondurationset.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointretentiondurationset, sizeof (struct req_lib_ckpt_checkpointretentiondurationset), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -661,74 +695,77 @@ saCkptCheckpointRetentionDurationSet (
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
 error_exit:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 error_exit_noput:
-	return (error == SA_OK ? res_lib_ckpt_checkpointretentiondurationset.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointretentiondurationset.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptActiveCheckpointSet (
-	const SaCkptCheckpointHandleT *checkpointHandle)
+	SaCkptCheckpointHandleT checkpointHandle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
-	struct req_lib_ckpt_activecheckpointset req_lib_ckpt_activecheckpointset;
-	struct res_lib_ckpt_activecheckpointset res_lib_ckpt_activecheckpointset;
+	struct req_lib_ckpt_activereplicaset req_lib_ckpt_activereplicaset;
+	struct res_lib_ckpt_activereplicaset res_lib_ckpt_activereplicaset;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		 (void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
-	req_lib_ckpt_activecheckpointset.header.size = sizeof (struct req_lib_ckpt_activecheckpointset);
-	req_lib_ckpt_activecheckpointset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_ACTIVECHECKPOINTSET;
+	req_lib_ckpt_activereplicaset.header.size = sizeof (struct req_lib_ckpt_activereplicaset);
+	req_lib_ckpt_activereplicaset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_ACTIVEREPLICASET;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
-	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_activecheckpointset,
-		sizeof (struct req_lib_ckpt_activecheckpointset), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_activereplicaset,
+		sizeof (struct req_lib_ckpt_activereplicaset), MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	error = saRecvRetry (ckptCheckpointInstance->fd,
-		&res_lib_ckpt_activecheckpointset,
-		sizeof (struct res_lib_ckpt_activecheckpointset),
+		&res_lib_ckpt_activereplicaset,
+		sizeof (struct res_lib_ckpt_activereplicaset),
 		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
 error_exit:
-	return (error == SA_OK ? res_lib_ckpt_activecheckpointset.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_activereplicaset.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointStatusGet (
-	const SaCkptCheckpointHandleT *checkpointHandle,
-	SaCkptCheckpointStatusT *checkpointStatus)
+	SaCkptCheckpointHandleT checkpointHandle,
+	SaCkptCheckpointDescriptorT *checkpointStatus)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointstatusget req_lib_ckpt_checkpointstatusget;
 	struct res_lib_ckpt_checkpointstatusget res_lib_ckpt_checkpointstatusget;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
 	req_lib_ckpt_checkpointstatusget.header.size = sizeof (struct req_lib_ckpt_checkpointstatusget);
 	req_lib_ckpt_checkpointstatusget.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET;
 
+	memcpy (&req_lib_ckpt_checkpointstatusget.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointstatusget,
 		sizeof (struct req_lib_ckpt_checkpointstatusget), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -736,39 +773,43 @@ saCkptCheckpointStatusGet (
 		&res_lib_ckpt_checkpointstatusget,
 		sizeof (struct res_lib_ckpt_checkpointstatusget),
 		MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
 	memcpy (checkpointStatus,
-		&res_lib_ckpt_checkpointstatusget.checkpointStatus,
-		sizeof (SaCkptCheckpointStatusT));
+		&res_lib_ckpt_checkpointstatusget.checkpointDescriptor,
+		sizeof (SaCkptCheckpointDescriptorT));
 
 error_exit:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptSectionCreate (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	SaCkptSectionCreationAttributesT *sectionCreationAttributes,
 	const void *initialData,
 	SaUint32T initialDataSize)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate;
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
 
 	req_lib_ckpt_sectioncreate.header.size =
 		sizeof (struct req_lib_ckpt_sectioncreate) +
@@ -780,12 +821,14 @@ saCkptSectionCreate (
 	req_lib_ckpt_sectioncreate.expirationTime = sectionCreationAttributes->expirationTime;
 	req_lib_ckpt_sectioncreate.initialDataSize = initialDataSize;
 
+	memcpy (&req_lib_ckpt_sectioncreate.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_sectioncreate,
 		sizeof (struct req_lib_ckpt_sectioncreate), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -794,13 +837,13 @@ saCkptSectionCreate (
 	 */
 	error = saSendRetry (ckptCheckpointInstance->fd, sectionCreationAttributes->sectionId->id,
 		sectionCreationAttributes->sectionId->idLen, MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	error = saSendRetry (ckptCheckpointInstance->fd, initialData,
 		initialDataSize, MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -812,25 +855,25 @@ saCkptSectionCreate (
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
 error_exit:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error == SA_OK ? res_lib_ckpt_sectioncreate.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectioncreate.header.error : error);
 }
 
 
-SaErrorT
+SaAisErrorT
 saCkptSectionDelete (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	const SaCkptSectionIdT *sectionId)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete;
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -840,9 +883,12 @@ saCkptSectionDelete (
 	req_lib_ckpt_sectiondelete.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONDELETE;
 	req_lib_ckpt_sectiondelete.idLen = sectionId->idLen;
 
+	memcpy (&req_lib_ckpt_sectiondelete.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_sectiondelete,
 		sizeof (struct req_lib_ckpt_sectiondelete), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -851,7 +897,7 @@ saCkptSectionDelete (
 	 */
 	error = saSendRetry (ckptCheckpointInstance->fd, sectionId->id,
 		sectionId->idLen, MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	error = saRecvRetry (ckptCheckpointInstance->fd,
@@ -862,24 +908,24 @@ saCkptSectionDelete (
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
 error_exit:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
-	return (error == SA_OK ? res_lib_ckpt_sectiondelete.header.error : error);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectiondelete.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptSectionExpirationTimeSet (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	const SaCkptSectionIdT *sectionId,
 	SaTimeT expirationTime)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectionexpirationtimeset req_lib_ckpt_sectionexpirationtimeset;
 	struct res_lib_ckpt_sectionexpirationtimeset res_lib_ckpt_sectionexpirationtimeset;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit_noput;
 	}
 
@@ -888,11 +934,14 @@ saCkptSectionExpirationTimeSet (
 	req_lib_ckpt_sectionexpirationtimeset.idLen = sectionId->idLen;
 	req_lib_ckpt_sectionexpirationtimeset.expirationTime = expirationTime;
 
+	memcpy (&req_lib_ckpt_sectionexpirationtimeset.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_sectionexpirationtimeset,
 		sizeof (struct req_lib_ckpt_sectionexpirationtimeset), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -902,7 +951,7 @@ saCkptSectionExpirationTimeSet (
 	if (sectionId->idLen) {
 		error = saSendRetry (ckptCheckpointInstance->fd, sectionId->id,
 			sectionId->idLen, MSG_NOSIGNAL);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 	}
@@ -915,58 +964,59 @@ saCkptSectionExpirationTimeSet (
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
 error_exit:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 error_exit_noput:
-	return (error == SA_OK ? res_lib_ckpt_sectionexpirationtimeset.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectionexpirationtimeset.header.error : error);
 }
 
-SaErrorT
-saCkptSectionIteratorInitialize (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+SaAisErrorT
+saCkptSectionIterationInitialize (
+	SaCkptCheckpointHandleT checkpointHandle,
 	SaCkptSectionsChosenT sectionsChosen,
 	SaTimeT expirationTime,
-	SaCkptSectionIteratorT *sectionIterator)
+	SaCkptSectionIterationHandleT *sectionIterationHandle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
-	struct ckptSectionIteratorInstance *ckptSectionIteratorInstance;
+	struct ckptSectionIterationInstance *ckptSectionIterationInstance;
 	struct req_lib_ckpt_sectioniteratorinitialize req_lib_ckpt_sectioniteratorinitialize;
 	struct res_lib_ckpt_sectioniteratorinitialize res_lib_ckpt_sectioniteratorinitialize;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleCreate (&ckptSectionIteratorHandleDatabase,
-		sizeof (struct ckptSectionIteratorInstance), sectionIterator);
-	if (error != SA_OK) {
+	error = saHandleCreate (&ckptSectionIterationHandleDatabase,
+		sizeof (struct ckptSectionIterationInstance), sectionIterationHandle);
+	if (error != SA_AIS_OK) {
 		goto error_put_checkpoint_db;
 	}
 
-	error = saHandleInstanceGet (&ckptSectionIteratorHandleDatabase,
-		*sectionIterator,
-		(void *)&ckptSectionIteratorInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptSectionIterationHandleDatabase,
+		*sectionIterationHandle, (void *)&ckptSectionIterationInstance);
+	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
 
-	ckptSectionIteratorInstance->fd = -1;
+	ckptSectionIterationInstance->fd = ckptCheckpointInstance->fd;
 
-	pthread_mutex_init (&ckptSectionIteratorInstance->mutex, NULL);
+	ckptSectionIterationInstance->checkpointHandle = checkpointHandle;
+
+	pthread_mutex_init (&ckptSectionIterationInstance->mutex, NULL);
 
 	/*
 	 * Setup section id list for iterator next
 	 */
-	list_init (&ckptSectionIteratorInstance->sectionIdListHead);
+	list_init (&ckptSectionIterationInstance->sectionIdListHead);
 
-	ckptSectionIteratorInstance->maxSectionIdSize =
+	ckptSectionIterationInstance->maxSectionIdSize =
 		ckptCheckpointInstance->maxSectionIdSize;
 
-	error = saServiceConnect (&ckptSectionIteratorInstance->fd,	
-		MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT);
-	if (error != SA_OK) {
+	error = saServiceConnect (&ckptSectionIterationInstance->fd,	
+		MESSAGE_REQ_CKPT_INIT);
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -977,36 +1027,34 @@ saCkptSectionIteratorInitialize (
 	memcpy (&req_lib_ckpt_sectioniteratorinitialize.checkpointName,
 		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
-	pthread_mutex_lock (&ckptSectionIteratorInstance->mutex);
+	pthread_mutex_lock (&ckptSectionIterationInstance->mutex);
 
-	error = saSendRetry (ckptSectionIteratorInstance->fd,
+	error = saSendRetry (ckptSectionIterationInstance->fd,
 		&req_lib_ckpt_sectioniteratorinitialize,
 		sizeof (struct req_lib_ckpt_sectioniteratorinitialize),
 		MSG_NOSIGNAL);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
-	error = saRecvRetry (ckptSectionIteratorInstance->fd,
+	error = saRecvRetry (ckptSectionIterationInstance->fd,
 		&res_lib_ckpt_sectioniteratorinitialize,
 		sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
 		MSG_WAITALL | MSG_NOSIGNAL);
 
-	pthread_mutex_unlock (&ckptSectionIteratorInstance->mutex);
+	pthread_mutex_unlock (&ckptSectionIterationInstance->mutex);
 
-	saHandleInstancePut (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
-
-	return (error == SA_OK ? res_lib_ckpt_sectioniteratorinitialize.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniteratorinitialize.header.error : error);
 
 error_put_destroy:
-	saHandleInstancePut (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
 error_destroy:
-	saHandleDestroy (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleDestroy (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
 error_put_checkpoint_db:
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 error_no_destroy:
 	return (error);
 }
@@ -1016,48 +1064,48 @@ struct iteratorSectionIdListEntry {
 	char data[0];
 };
 
-SaErrorT
-saCkptSectionIteratorNext (
-	SaCkptSectionIteratorT *sectionIterator,
+SaAisErrorT
+saCkptSectionIterationNext (
+	SaCkptSectionIterationHandleT sectionIterationHandle,
 	SaCkptSectionDescriptorT *sectionDescriptor)
 {
-	SaErrorT error;
-	struct ckptSectionIteratorInstance *ckptSectionIteratorInstance;
+	SaAisErrorT error;
+	struct ckptSectionIterationInstance *ckptSectionIterationInstance;
 	struct req_lib_ckpt_sectioniteratornext req_lib_ckpt_sectioniteratornext;
 	struct res_lib_ckpt_sectioniteratornext res_lib_ckpt_sectioniteratornext;
 	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
 
-	error = saHandleInstanceGet (&ckptSectionIteratorHandleDatabase,
-		*sectionIterator, (void *)&ckptSectionIteratorInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptSectionIterationHandleDatabase,
+		sectionIterationHandle, (void *)&ckptSectionIterationInstance);
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	/*
 	 * Allocate section id storage area
 	 */
 	iteratorSectionIdListEntry = malloc (sizeof (struct list_head) +
-		ckptSectionIteratorInstance->maxSectionIdSize);
+		ckptSectionIterationInstance->maxSectionIdSize);
 	if (iteratorSectionIdListEntry == 0) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_put_nounlock;
 	}
 
 	req_lib_ckpt_sectioniteratornext.header.size = sizeof (struct req_lib_ckpt_sectioniteratornext); 
 	req_lib_ckpt_sectioniteratornext.header.id = MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT;
 
-	pthread_mutex_lock (&ckptSectionIteratorInstance->mutex);
+	pthread_mutex_lock (&ckptSectionIterationInstance->mutex);
 
-	error = saSendRetry (ckptSectionIteratorInstance->fd,
+	error = saSendRetry (ckptSectionIterationInstance->fd,
 		&req_lib_ckpt_sectioniteratornext,
 		sizeof (struct req_lib_ckpt_sectioniteratornext), MSG_NOSIGNAL);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_put;
 	}
 
-	error = saRecvRetry (ckptSectionIteratorInstance->fd, &res_lib_ckpt_sectioniteratornext,
+	error = saRecvRetry (ckptSectionIterationInstance->fd, &res_lib_ckpt_sectioniteratornext,
 		sizeof (struct res_lib_ckpt_sectioniteratornext), MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_put;
 	}
 
@@ -1068,7 +1116,7 @@ saCkptSectionIteratorNext (
 	sectionDescriptor->sectionId.id = &iteratorSectionIdListEntry->data[0];
 	
 	if ((res_lib_ckpt_sectioniteratornext.header.size - sizeof (struct res_lib_ckpt_sectioniteratornext)) > 0) {
-		error = saRecvRetry (ckptSectionIteratorInstance->fd,
+		error = saRecvRetry (ckptSectionIterationInstance->fd,
 			sectionDescriptor->sectionId.id,
 			res_lib_ckpt_sectioniteratornext.header.size -
 				sizeof (struct res_lib_ckpt_sectioniteratornext),
@@ -1078,32 +1126,32 @@ saCkptSectionIteratorNext (
 	/*
 	 * Add to persistent memory list for this sectioniterator
 	 */
-	if (error == SA_OK && res_lib_ckpt_sectioniteratornext.header.error == SA_OK) {
+	if (error == SA_AIS_OK && res_lib_ckpt_sectioniteratornext.header.error == SA_AIS_OK) {
 		list_init (&iteratorSectionIdListEntry->list);
-		list_add (&iteratorSectionIdListEntry->list, &ckptSectionIteratorInstance->sectionIdListHead);
+		list_add (&iteratorSectionIdListEntry->list, &ckptSectionIterationInstance->sectionIdListHead);
 	}
 
 error_put:
-	pthread_mutex_unlock (&ckptSectionIteratorInstance->mutex);
+	pthread_mutex_unlock (&ckptSectionIterationInstance->mutex);
 error_put_nounlock:
-	saHandleInstancePut (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
 error_exit:
-	return (error == SA_OK ? res_lib_ckpt_sectioniteratornext.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniteratornext.header.error : error);
 }
 	
-SaErrorT
-saCkptSectionIteratorFinalize (
-	SaCkptSectionIteratorT *sectionIterator)
+SaAisErrorT
+saCkptSectionIterationFinalize (
+	SaCkptSectionIterationHandleT sectionIterationHandle)
 {
-	SaErrorT error;
-	struct ckptSectionIteratorInstance *ckptSectionIteratorInstance;
+	SaAisErrorT error;
+	struct ckptSectionIterationInstance *ckptSectionIterationInstance;
 	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
-	struct list_head *sectionIdIteratorList;
-	struct list_head *sectionIdIteratorListNext;
+	struct list_head *sectionIdIterationList;
+	struct list_head *sectionIdIterationListNext;
 
-	error = saHandleInstanceGet (&ckptSectionIteratorHandleDatabase,
-		*sectionIterator, (void *)&ckptSectionIteratorInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&ckptSectionIterationHandleDatabase,
+		sectionIterationHandle, (void *)&ckptSectionIterationInstance);
+	if (error != SA_AIS_OK) {
 		goto error_noput;
 	}
 
@@ -1111,34 +1159,37 @@ saCkptSectionIteratorFinalize (
 	 * iterate list of section ids for this iterator to free the allocated memory
 	 * be careful to cache next pointer because free removes memory from use
 	 */
-	for (sectionIdIteratorList = ckptSectionIteratorInstance->sectionIdListHead.next,
-		sectionIdIteratorListNext = sectionIdIteratorList->next;
-		sectionIdIteratorList != &ckptSectionIteratorInstance->sectionIdListHead;
-		sectionIdIteratorList = sectionIdIteratorListNext,
-		sectionIdIteratorListNext = sectionIdIteratorList->next) {
+	for (sectionIdIterationList = ckptSectionIterationInstance->sectionIdListHead.next,
+		sectionIdIterationListNext = sectionIdIterationList->next;
+		sectionIdIterationList != &ckptSectionIterationInstance->sectionIdListHead;
+		sectionIdIterationList = sectionIdIterationListNext,
+		sectionIdIterationListNext = sectionIdIterationList->next) {
 
-		iteratorSectionIdListEntry = list_entry (sectionIdIteratorList,
+		iteratorSectionIdListEntry = list_entry (sectionIdIterationList,
 			struct iteratorSectionIdListEntry, list);
 
 		free (iteratorSectionIdListEntry);
 	}
 
-	saHandleInstancePut (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleInstancePut (&checkpointHandleDatabase,
+		ckptSectionIterationInstance->checkpointHandle);
 
-    saHandleDestroy (&ckptSectionIteratorHandleDatabase, *sectionIterator);
+	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
+
+    saHandleDestroy (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
 
 error_noput:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointWrite (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	const SaCkptIOVectorElementT *ioVector,
 	SaUint32T numberOfElements,
 	SaUint32T *erroneousVectorIndex)
 {
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectionwrite req_lib_ckpt_sectionwrite;
 	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
@@ -1146,12 +1197,16 @@ saCkptCheckpointWrite (
 	struct iovec iov[3];
 	int iov_len = 0;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
+	}
 	req_lib_ckpt_sectionwrite.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONWRITE;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
@@ -1163,6 +1218,9 @@ saCkptCheckpointWrite (
 		req_lib_ckpt_sectionwrite.dataOffset = ioVector[i].dataOffset;
 		req_lib_ckpt_sectionwrite.dataSize = ioVector[i].dataSize;
 		req_lib_ckpt_sectionwrite.idLen = ioVector[i].sectionId.idLen;
+
+		memcpy (&req_lib_ckpt_sectionwrite.checkpointName,
+			&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 		iov_len = 0;
 /* TODO check for zero length stuff */
@@ -1176,7 +1234,7 @@ saCkptCheckpointWrite (
 		error = saSendMsgRetry (ckptCheckpointInstance->fd,
 			iov,
 			3);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 
@@ -1185,18 +1243,18 @@ saCkptCheckpointWrite (
 		 */
 		error = saRecvRetry (ckptCheckpointInstance->fd, &res_lib_ckpt_sectionwrite,
 			sizeof (struct res_lib_ckpt_sectionwrite), MSG_WAITALL | MSG_NOSIGNAL);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 
-		if (res_lib_ckpt_sectionwrite.header.error == SA_ERR_TRY_AGAIN) {
-			error = SA_ERR_TRY_AGAIN;
+		if (res_lib_ckpt_sectionwrite.header.error == SA_AIS_ERR_TRY_AGAIN) {
+			error = SA_AIS_ERR_TRY_AGAIN;
 			goto error_exit;
 		}
 		/*
 		 * If error, report back erroneous index
 		 */
-		if (res_lib_ckpt_sectionwrite.header.error != SA_OK) {
+		if (res_lib_ckpt_sectionwrite.header.error != SA_AIS_OK) {
 			if (erroneousVectorIndex) {
 				*erroneousVectorIndex = i;
 			}
@@ -1205,54 +1263,60 @@ saCkptCheckpointWrite (
 	}
 
 error_exit:
-
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+error_put:
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error == SA_OK ? res_lib_ckpt_sectionwrite.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectionwrite.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptSectionOverwrite (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	const SaCkptSectionIdT *sectionId,
-	SaUint8T *dataBuffer,
+	const void *dataBuffer,
 	SaSizeT dataSize)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		return (SA_AIS_ERR_ACCESS);
 	}
 
 	req_lib_ckpt_sectionoverwrite.header.size = sizeof (struct req_lib_ckpt_sectionoverwrite) + sectionId->idLen + dataSize; 
 	req_lib_ckpt_sectionoverwrite.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONOVERWRITE;
 	req_lib_ckpt_sectionoverwrite.idLen = sectionId->idLen;
 	req_lib_ckpt_sectionoverwrite.dataSize = dataSize;
+	memcpy (&req_lib_ckpt_sectionoverwrite.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 	
 	pthread_mutex_lock (&ckptCheckpointInstance->mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_sectionoverwrite,
 		sizeof (struct req_lib_ckpt_sectionoverwrite), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	if (sectionId->idLen) {
 		error = saSendRetry (ckptCheckpointInstance->fd, sectionId->id,
 			sectionId->idLen, MSG_NOSIGNAL);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 	}
 	error = saSendRetry (ckptCheckpointInstance->fd, dataBuffer, dataSize, MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -1264,19 +1328,19 @@ saCkptSectionOverwrite (
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error == SA_OK ? res_lib_ckpt_sectionoverwrite.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectionoverwrite.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointRead (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	SaCkptIOVectorElementT *ioVector,
 	SaUint32T numberOfElements,
 	SaUint32T *erroneousVectorIndex)
 {
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_sectionread req_lib_ckpt_sectionread;
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
@@ -1284,10 +1348,14 @@ saCkptCheckpointRead (
 	int i;
 	struct iovec iov[3];
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_READ) == 0) {
+		return (SA_AIS_ERR_ACCESS);
 	}
 
 	req_lib_ckpt_sectionread.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONREAD;
@@ -1301,6 +1369,9 @@ saCkptCheckpointRead (
 		req_lib_ckpt_sectionread.idLen = ioVector[i].sectionId.idLen;
 		req_lib_ckpt_sectionread.dataOffset = ioVector[i].dataOffset;
 		req_lib_ckpt_sectionread.dataSize = ioVector[i].dataSize;
+
+		memcpy (&req_lib_ckpt_sectionread.checkpointName,
+			&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 		iov[0].iov_base = (char *)&req_lib_ckpt_sectionread;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionread);
@@ -1316,7 +1387,7 @@ saCkptCheckpointRead (
 		 */
 		error = saRecvRetry (ckptCheckpointInstance->fd, &res_lib_ckpt_sectionread,
 			sizeof (struct res_lib_ckpt_sectionread), MSG_WAITALL | MSG_NOSIGNAL);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 				goto error_exit;
 		}
 		
@@ -1328,11 +1399,11 @@ saCkptCheckpointRead (
 		if (dataLength > 0) {
 			error = saRecvRetry (ckptCheckpointInstance->fd, ioVector[i].dataBuffer,
 				dataLength, MSG_WAITALL | MSG_NOSIGNAL);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 					goto error_exit;
 			}
 		}
-		if (res_lib_ckpt_sectionread.header.error != SA_OK) {
+		if (res_lib_ckpt_sectionread.header.error != SA_AIS_OK) {
 			if (erroneousVectorIndex) {
 				*erroneousVectorIndex = i;
 			}
@@ -1348,24 +1419,24 @@ saCkptCheckpointRead (
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error == SA_OK ? res_lib_ckpt_sectionread.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectionread.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointSynchronize (
-	const SaCkptCheckpointHandleT *checkpointHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
 	SaTimeT timeout)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointsynchronize req_lib_ckpt_checkpointsynchronize;
 	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -1377,7 +1448,7 @@ saCkptCheckpointSynchronize (
 	error = saSendRetry (ckptCheckpointInstance->fd, &req_lib_ckpt_checkpointsynchronize,
 		sizeof (struct req_lib_ckpt_checkpointsynchronize), MSG_NOSIGNAL);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -1389,30 +1460,30 @@ saCkptCheckpointSynchronize (
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error == SA_OK ? res_lib_ckpt_checkpointsynchronize.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointsynchronize.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saCkptCheckpointSynchronizeAsync (
-	const SaCkptHandleT *ckptHandle,
-	SaInvocationT invocation,
-	const SaCkptCheckpointHandleT *checkpointHandle)
+	SaCkptHandleT ckptHandle,
+	SaCkptCheckpointHandleT checkpointHandle,
+	SaInvocationT invocation)
 {
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 
 /* TODO not implemented in executive
 
 	struct ckptInstance *ckptInstance;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 	struct req_lib_ckpt_checkpointsynchronizeasync req_lib_ckpt_checkpointsynchronizeasync;
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
+	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 
 		return (error);
 	}
