@@ -360,6 +360,10 @@ struct req_exec_amf_componentregister {
 	struct req_header header;
 	struct message_source source;
 	struct req_lib_amf_componentregister req_lib_amf_componentregister;
+	SaAmfReadinessStateT currentReadinessState;
+	SaAmfReadinessStateT newReadinessState;
+	SaAmfHAStateT currentHAState;
+	SaAmfHAStateT newHAState;
 };
 
 struct res_lib_amf_componentregister {
