@@ -270,10 +270,15 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		dprintf("publisher name content: \"%s\"\n", 
 				publisher_name.value); 
 	}
-	if (evt_pat_get_array.patternsNumber > 0) {
-		if (strcmp(evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) == 0) {
-			dprintf("*** Events have been dropped at %s",
-				ais_time_str(publish_time));
+
+	if (event_id == SA_EVT_EVENTID_LOST) {
+		dprintf("*** Events have been dropped at %s",
+			ais_time_str(publish_time));
+
+		if ((evt_pat_get_array.patternsNumber == 0)|| 
+			(strcmp(evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) != 0)) {
+			dprintf("*** Received SA_EVT_EVENTID_LOST but pattern is wrong: %s\n",
+				evt_pat_get_array.patterns[0].pattern);
 		}
 	}
 	if (quiet < 2) {
@@ -284,6 +289,10 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 			fprintf(stderr, ".");
 			did_dot = 1;
 		}
+	}
+
+	if (event_id == SA_EVT_EVENTID_LOST) {
+		return;
 	}
 
 #ifdef TEST_EVENT_ORDER
