@@ -41,6 +41,10 @@ LDFLAGS =
 #CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
+# Code Coverage with lcov flgs
+#CFLAGS = -ftest-coverage -fprofile-arcs
+#LDFLAGS = -g
+
 GMI_SRC = aispoll.c gmi.c tlist.c hdb.c crypto.c
 GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o crypto.o
 
@@ -65,7 +69,7 @@ keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen
 
 clean:
-	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen
+	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1

@@ -28,16 +28,21 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # Production mode flags
-#CFLAGS = -O3 -Wall
-#LDFLAGS = 
+CFLAGS = -O3 -Wall
+LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -fPIC -DDEBUG -Wall
-LDFLAGS = -g
+#CFLAGS = -g -DDEBUG -Wall
+#LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O3 -pg -fPIC -DDEBUG
+#CFLAGS = -O3 -pg -DDEBUG
 #LDFLAGS = -pg
+
+# Code Coverage with lcov flgs
+#CFLAGS = -ftest-coverage -fprofile-arcs
+#LDFLAGS = -g
+
 
 CFLAGS += -fPIC
 
@@ -67,7 +72,7 @@ libevs.so.1.0: util.o evs.o
 	ln -s libevs.so.1.0 libevs.so
 
 clean:
-	rm -f *.o libais.so* libais.a libevs.so* libevs.a
+	rm -f *.o libais.so* libais.a libevs.so* libevs.a *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
