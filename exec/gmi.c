@@ -1531,6 +1531,7 @@ void timer_function_token_retransmit_timeout (void *data)
 
 void timer_function_form_token_timeout (void *data)
 {
+exit (1);
 	gmi_log_printf (gmi_log_level_warning, "Token loss in FORM state\n");
 	memb_list_entries = 1;
 
@@ -2733,29 +2734,15 @@ static int message_handler_memb_attempt_join (
 	int iov_len,
 	int bytes_received)
 {
-	int token_lost;
 	int found;
 	int i;
 
 	gmi_log_printf (gmi_log_level_notice, "Got attempt join from %s\n", inet_ntoa (system_from->sin_addr));
 
-	for (token_lost = 0, i = 0; i < memb_list_entries; i++) {
-		if (memb_list[i].sin_addr.s_addr == system_from->sin_addr.s_addr &&
-			memb_conf_id.rep.s_addr != system_from->sin_addr.s_addr) {
-			gmi_log_printf (gmi_log_level_debug, "ATTEMPT JOIN, token lost, taking attempt join msg.\n");
-			poll_timer_delete (*gmi_poll_handle, timer_orf_token_timeout);
-			timer_orf_token_timeout = 0;
-			memb_conf_id.rep.s_addr = memb_local_sockaddr_in.sin_addr.s_addr;
-			token_lost = 1;
-			break;
-		}
-	}
-	
 	/*
 	 * Not representative
 	 */
-	if (token_lost == 0 &&
-		memb_conf_id.rep.s_addr != memb_local_sockaddr_in.sin_addr.s_addr) {
+	if (memb_conf_id.rep.s_addr != memb_local_sockaddr_in.sin_addr.s_addr) {
 
 		gmi_log_printf (gmi_log_level_notice, "not the rep for this ring, not handling attempt join.\n");
 		return (0);
@@ -2992,18 +2979,6 @@ printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 printf ("setting barrier seq to %d\n", gmi_barrier_seq);
 		gmi_original_arut = gmi_arut;
 
-		/*
-		 * Determine next ORF target
-		 */
-		for (i = 0; i < memb_form_token.member_list_entries; i++) {
-			if (memb_local_sockaddr_in.sin_addr.s_addr == memb_form_token.member_list[i].s_addr) {
-				memb_next.sin_addr.s_addr =
-					memb_form_token.member_list[(i + 1) % memb_form_token.member_list_entries].s_addr;
-				memb_next.sin_family = AF_INET;
-				memb_next.sin_port = sockaddr_in_mcast.sin_port;
-			}
-//ABRA
-		}
 		break;
 
 	case MEMB_STATE_EVS:
