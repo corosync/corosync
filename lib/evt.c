@@ -531,6 +531,7 @@ saEvtDispatch(
 			error = saRecvRetry(evti->ei_fd, &dispatch_data->header,
 				sizeof(struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
+				pthread_mutex_unlock(&evti->ei_mutex);
 				goto error_unlock;
 			}
 			if (dispatch_data->header.size > sizeof(struct res_header)) {
@@ -538,6 +539,7 @@ saEvtDispatch(
 					dispatch_data->header.size - sizeof(struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_OK) {
+					pthread_mutex_unlock(&evti->ei_mutex);
 					goto error_unlock;
 				}
 			}
