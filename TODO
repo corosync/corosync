@@ -14,8 +14,6 @@ Generic Items
 
 Group Messaging Interface
 -------------------------
-* Very important: single node may not work too well.  Debug this
-  mode of operation.
 * Very important: implement full EVS semantics when holes occur in
   delivery messages after a configuration change but before the new
   configuration is delivered.
@@ -54,8 +52,6 @@ Availability Management Framework
 * If a user of the AMF library doesn't respond with saAmfResponse, the state
   of the application will never change.  Fix by adding timeouts to readiness state
   and ha state changes to force saAmfResponse state changes triggered.
-* Create array namespace for each invocation id per connection to avoid
-  cross file descriptor contamination.
 * Implement resource proxy functions. (currently dummy functions)
 * Implement pending operations. (currently dummy functions)
 * Implement NWAY and NWAYACTIVE redundancy models.
@@ -63,5 +59,4 @@ Availability Management Framework
 Checkpointing
 -------------
 * Very Important: Implement configuration change support.  This includes partitions.
-* Implement thread support for checkpointing library.
 * Implement expiration times on checkpoints.
