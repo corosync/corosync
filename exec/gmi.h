@@ -49,6 +49,14 @@ struct gmi_groupname {
 	char groupname[16];
 };
 
+/*
+ * This represents an interface that GMI binds to
+ */
+struct gmi_interface {
+	struct sockaddr_in bindnet;
+	struct sockaddr_in boundto;
+};
+
 poll_handle *gmi_poll_handle;
 
 /*
@@ -71,9 +79,9 @@ void gmi_log_printf_init (
  */
 int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct gmi_interface *interfaces,
+	int interface_count,
 	poll_handle *poll_handle,
-	struct sockaddr_in *bound_to,
 	unsigned char *private_key,
 	int private_key_len);
 

@@ -763,9 +763,9 @@ int main (int argc, char **argv)
 	int libais_server_fd;
 	int res;
 	struct sockaddr_in sockaddr_in_mcast;
-	struct sockaddr_in sockaddr_in_bindnet;
 	gmi_join_handle handle;
 	unsigned char private_key[128];
+	struct gmi_interface gmi_interfaces[2];
 
 	char *error_string;
 
@@ -786,7 +786,7 @@ int main (int argc, char **argv)
 	/*
 	 * Initialize group messaging interface with multicast address
 	 */
-	res = amfReadNetwork (&error_string, &sockaddr_in_mcast, &sockaddr_in_bindnet);
+	res = readNetwork (&error_string, &sockaddr_in_mcast, gmi_interfaces, 1);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		ais_done (AIS_DONE_READNETWORK);
@@ -806,11 +806,13 @@ int main (int argc, char **argv)
 	gmi_log_printf_init (internal_log_printf_checkdebug,
 		LOG_LEVEL_SECURITY, LOG_LEVEL_ERROR, LOG_LEVEL_WARNING,
 		LOG_LEVEL_NOTICE, LOG_LEVEL_DEBUG);
-	gmi_init (&sockaddr_in_mcast, &sockaddr_in_bindnet,
-		&aisexec_poll_handle, &this_ip,
+	gmi_init (&sockaddr_in_mcast, gmi_interfaces, 1,
+		&aisexec_poll_handle,
 		private_key,
 		sizeof (private_key));
 	
+	memcpy (&this_ip, &gmi_interfaces->boundto, sizeof (struct sockaddr_in));
+
 	/*
 	 * Drop root privleges to user 'ais'
 	 * TODO: Don't really need full root capabilities;
