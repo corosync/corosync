@@ -41,6 +41,7 @@
 
 #include "../include/ais_types.h"
 #include "../include/list.h"
+#include "util.h"
 #include "parse.h"
 #include "mempool.h"
 
@@ -68,15 +69,6 @@ int SaNameTisEqual (SaNameT *str1, char *str2) {
 	if (str1->length == strlen (str2)) {
 		return ((strncmp ((char *)str1->value, (char *)str2,
 			str1->length)) == 0);
-	} else {
-		return 0;
-	}
-}
-
-int SaNameTisNameT (SaNameT *name1, SaNameT *name2) {
-	if (name1->length == name2->length) {
-		return ((strncmp ((char *)name1->value, (char *)name2->value,
-			name1->length)) == 0);
 	} else {
 		return 0;
 	}
@@ -123,7 +115,7 @@ struct saAmfComponent *findComponent (SaNameT *name)
 				AmfComponent = list_entry (AmfComponentList,
 					struct saAmfComponent, saAmfComponentList);
 
-				if (SaNameTisNameT (name, &AmfComponent->name)) {
+				if (name_match (name, &AmfComponent->name)) {
 					found = 1;
 				}
 			}

@@ -153,8 +153,6 @@ extern struct list_head saAmfGroupHead;
 
 extern struct saAmfComponent *findComponent (SaNameT *name);
 
-extern int SaNameTisNameT (SaNameT *name1, SaNameT *name2);
-
 extern int amfReadGroups (char **error_string);
 
 extern int readNetwork (char **error_string,
