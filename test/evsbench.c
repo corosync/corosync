@@ -118,13 +118,13 @@ void evs_benchmark (evs_handle_t handle,
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
 try_again:
-		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, &iov, 1);
+		result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again;
 		} else {
 			write_count += 1;
 		}
-		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	} while (alarm_notice == 0);
 	gettimeofday (&tv2, NULL);
 	timersub (&tv2, &tv1, &tv_elapsed);
@@ -156,9 +156,9 @@ int main (void) {
 
 	result = evs_initialize (&handle, &callbacks);
 	printf ("Init result %d\n", result);
-	result = evs_join (&handle, groups, 3);
+	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (&handle, &groups[0], 1);
+	result = evs_leave (handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 
 	size = 1;

@@ -148,12 +148,12 @@ error_no_destroy:
 }
 
 evs_error_t evs_finalize (
-	evs_handle_t *handle)
+	evs_handle_t handle)
 {
 	struct evs_inst *evs_inst;
 	SaErrorT error;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -162,7 +162,7 @@ evs_error_t evs_finalize (
 	 */
 	if (evs_inst->finalize) {
 		pthread_mutex_unlock (&evs_inst->mutex);
-		saHandleInstancePut (&evs_handle_t_db, *handle);
+		saHandleInstancePut (&evs_handle_t_db, handle);
 		return (EVS_ERR_BAD_HANDLE);
 	}
 
@@ -172,28 +172,28 @@ evs_error_t evs_finalize (
 
 	pthread_mutex_unlock (&evs_inst->mutex);
 
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
-	saHandleDestroy (&evs_handle_t_db, *handle);
+	saHandleDestroy (&evs_handle_t_db, handle);
 
 	return (EVS_OK);
 }
 
 evs_error_t evs_fd_get (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	int *fd)
 {
 	SaErrorT error;
 	struct evs_inst *evs_inst;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	*fd = evs_inst->fd; 
 
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (SA_OK);
 }
@@ -204,7 +204,7 @@ struct message_overlay {
 };
 
 evs_error_t evs_dispatch (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_dispatch_t dispatch_types)
 {
 	struct pollfd ufds;
@@ -223,7 +223,7 @@ evs_error_t evs_dispatch (
 	struct res_header *msg = NULL;
 	int ignore_dispatch = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -373,13 +373,13 @@ evs_error_t evs_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 error_nounlock:
 	return (error);
 }
 
 evs_error_t evs_join (
-    evs_handle_t *handle,
+    evs_handle_t handle,
     struct evs_group *groups,
 	int group_entries)
 {
@@ -389,7 +389,7 @@ evs_error_t evs_join (
 	struct req_lib_evs_join req_lib_evs_join;
 	struct res_lib_evs_join res_lib_evs_join;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -417,13 +417,13 @@ evs_error_t evs_join (
 	error = res_lib_evs_join.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
 
 evs_error_t evs_leave (
-    evs_handle_t *handle,
+    evs_handle_t handle,
     struct evs_group *groups,
 	int group_entries)
 {
@@ -433,7 +433,7 @@ evs_error_t evs_leave (
 	struct req_lib_evs_leave req_lib_evs_leave;
 	struct res_lib_evs_leave res_lib_evs_leave;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -461,13 +461,13 @@ evs_error_t evs_leave (
 	error = res_lib_evs_leave.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
 
 evs_error_t evs_mcast_joined (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct iovec *iovec,
 	int iov_len)
@@ -480,7 +480,7 @@ evs_error_t evs_mcast_joined (
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
 	int msg_len = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -514,13 +514,13 @@ evs_error_t evs_mcast_joined (
 	error = res_lib_evs_mcast_joined.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
 
 evs_error_t evs_mcast_groups (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct evs_group *groups,
 	int group_entries,
@@ -535,7 +535,7 @@ evs_error_t evs_mcast_groups (
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	int msg_len = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -569,7 +569,7 @@ evs_error_t evs_mcast_groups (
 	error = res_lib_evs_mcast_groups.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }

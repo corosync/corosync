@@ -105,9 +105,9 @@ int main (void)
 		exit (0);
 	}
 	printf ("Init result %d\n", result);
-	result = evs_join (&handle, groups, 3);
+	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (&handle, &groups[0], 1);
+	result = evs_leave (handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 	delivery_string = "evs_mcast_joined";
 
@@ -123,16 +123,16 @@ int main (void)
 			i, i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i);
 #endif
 try_again_one:
-		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED,
+		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			&iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	}
 
 	do {
-		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	} while (deliveries < 20);
 	/*
 	 * Demonstrate evs_mcast_joined
@@ -141,24 +141,24 @@ try_again_one:
 	for (i = 0; i < 500; i++) {
 		sprintf (buffer, "evs_mcast_groups: This is message %d", i);
 try_again_two:
-		result = evs_mcast_groups (&handle, EVS_TYPE_AGREED,
+		result = evs_mcast_groups (handle, EVS_TYPE_AGREED,
 			 &groups[1], 1, &iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
 			goto try_again_two;
 		}
 	
-		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	}
 	/*
 	 * Flush any pending callbacks
 	 */
 	do {
-		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	} while (deliveries < 900);
 
-	evs_fd_get (&handle, &fd);
+	evs_fd_get (handle, &fd);
 	
-	evs_finalize (&handle);
+	evs_finalize (handle);
 
 	return (0);
 }

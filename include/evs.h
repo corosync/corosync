@@ -97,21 +97,21 @@ evs_error_t evs_initialize (
  * Close the evs handle
  */
 evs_error_t evs_finalize (
-	evs_handle_t *handle);
+	evs_handle_t handle);
 
 /*
  * Get a file descriptor on which to poll.  evs_handle_t is NOT a
  * file descriptor and may not be used directly.
  */
 evs_error_t evs_fd_get (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	int *fd);
 
 /*
  * Dispatch messages and configuration changes
  */
 evs_error_t evs_dispatch (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_dispatch_t dispatch_types);
 
 /*
@@ -121,7 +121,7 @@ evs_error_t evs_dispatch (
  * to a group that has been previously joined will be delivered in evs_dispatch
  */
 evs_error_t evs_join (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	struct evs_group *groups,
 	int group_cnt);
 
@@ -129,7 +129,7 @@ evs_error_t evs_join (
  * Leave one or more groups
  */
 evs_error_t evs_leave (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	struct evs_group *groups,
 	int group_cnt);
 
@@ -139,7 +139,7 @@ evs_error_t evs_leave (
  * the evs_join interface for handle.
  */
 evs_error_t evs_mcast_joined (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct iovec *iovec,
 	int iov_len);
@@ -150,7 +150,7 @@ evs_error_t evs_mcast_joined (
  * that have been joined (unless they are in the groups parameter).
  */
 evs_error_t evs_mcast_groups (
-	evs_handle_t *handle,
+	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct evs_group *groups,
 	int group_cnt,
