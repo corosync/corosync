@@ -1156,11 +1156,6 @@ saEvtEventAttributesGet(
 	pthread_mutex_lock(&edi->edi_mutex);
 
 	/*
-	 * TODO: Check to make sure that the corresponding channel handle
-	 * TODO:	is still valid (i.e. open)
-	 */
-	
-	/*
 	 * Go through the args and send back information if the pointer
 	 * isn't NULL
 	 */
@@ -1242,11 +1237,6 @@ saEvtEventDataGet(
 		goto data_get_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
-
-	/*
-	 * TODO: Check to make sure that the corresponding channel handle
-	 * TODO:	is still valid (i.e. open)
-	 */
 
 	if (edi->edi_event_data && edi->edi_event_data_size) {
 		xfsize = min(*event_data_size, edi->edi_event_data_size);
@@ -1586,12 +1576,6 @@ saEvtEventSubscribe(
 	 * calculate size needed to store the filters
 	 */
 	sz = filt_size(filters);
-
-	/*
-	 * TODO: Check to make sure that no filter string exceeds
-	 * TODO:	the maximum allowed by the specification
-	 */
-
 
 	req = malloc(sizeof(*req) + sz);
 	
