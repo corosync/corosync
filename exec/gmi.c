@@ -76,7 +76,7 @@
 #define RTR_TOKEN_SIZE_MAX			32
 #define MISSING_MCAST_WINDOW		64
 #define TIMEOUT_STATE_GATHER		100
-#define TIMEOUT_TOKEN				300
+#define TIMEOUT_TOKEN				100
 #define TIMEOUT_TOKEN_RETRANSMIT	100
 #define TIMEOUT_STATE_COMMIT		100
 #define MAX_MEMBERS					16
@@ -2733,15 +2733,30 @@ static int message_handler_memb_attempt_join (
 	int iov_len,
 	int bytes_received)
 {
+	int token_lost;
 	int found;
 	int i;
 
 	gmi_log_printf (gmi_log_level_notice, "Got attempt join from %s\n", inet_ntoa (system_from->sin_addr));
 
+	for (token_lost = 0, i = 0; i < memb_list_entries; i++) {
+		if (memb_list[i].sin_addr.s_addr == system_from->sin_addr.s_addr &&
+			memb_conf_id.rep.s_addr != system_from->sin_addr.s_addr) {
+			gmi_log_printf (gmi_log_level_notice, "ATTEMPT JOIN, token lost, taking attempt join msg.\n");
+			poll_timer_delete (*gmi_poll_handle, timer_orf_token_timeout);
+			timer_orf_token_timeout = 0;
+			memb_conf_id.rep.s_addr = memb_local_sockaddr_in.sin_addr.s_addr;
+			memb_list_entries = 1;
+			token_lost = 1;
+			break;
+		}
+	}
+	
 	/*
 	 * Not representative
 	 */
-	if (memb_conf_id.rep.s_addr != memb_local_sockaddr_in.sin_addr.s_addr) {
+	if (token_lost == 0 &&
+		memb_conf_id.rep.s_addr != memb_local_sockaddr_in.sin_addr.s_addr) {
 
 		gmi_log_printf (gmi_log_level_notice, "not the rep for this ring, not handling attempt join.\n");
 		return (0);
