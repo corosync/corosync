@@ -171,12 +171,6 @@ static DECLARE_LIST_INIT(ci_head);
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-#define ipaddr(a) \
-	((a) & 0xff), \
-	(((a) >> 8) & 0xff), \
-	(((a) >> 16) & 0xff),  \
-	(((a) >> 24) & 0xff)
-
 /*
  * Throttle event delivery to applications to keep
  * the exec from using too much memory if the app is 
@@ -799,7 +793,7 @@ free_event_data(struct event_data *edp)
 }
 
 /*
- * Check for expired events. Then re-arm the timer.
+ * Timer handler to delete expired events.
  *
  */
 static void
@@ -2108,7 +2102,7 @@ static int evt_exec_init(void)
 	dropped_event = malloc(dropped_event_size);
 	if (dropped_event == 0) {
 		log_printf(LOG_LEVEL_ERROR, 
-						"Memory Allocation Failure, event service not started\n");
+					"Memory Allocation Failure, event service not started\n");
 		errno = ENOMEM;
 		return -1;
 	}
