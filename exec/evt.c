@@ -31,7 +31,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#define DEBUG
+#define DUMP_CHAN_INFO
+#define RECOVERY_DEBUG LOG_LEVEL_DEBUG
+#define CHAN_DEL_DEBUG LOG_LEVEL_DEBUG
+
 #include <sys/types.h>
 #include <malloc.h>
 #include <errno.h>
@@ -382,7 +385,8 @@ DECLARE_LIST_INIT(mnd);
 /*
  * Global varaibles used by the event service
  *
- * base_id:			Next event ID to assign
+ * base_id_top:		upper bits of next event ID to assign
+ * base_id:			Lower bits of Next event ID to assign
  * my_node_id:		My cluster node id
  * in_cfg_change:	Config change occurred.  Figure out who sends retained evts.
  * 					cleared when retained events have been delivered.
@@ -395,7 +399,9 @@ DECLARE_LIST_INIT(mnd);
  * next_chan:		pointer to next channel to send during recovery.
  *
  */
+#define BASE_ID_MASK 0xffffffffLL
 static SaEvtEventIdT base_id = 0;
+static SaEvtEventIdT base_id_top = 0;
 static SaClmNodeIdT  my_node_id = 0;
 static int			 in_cfg_change = 0;
 static int			 total_members = 0;
@@ -535,7 +541,8 @@ static int check_open_size(struct event_svr_channel_instance *eci)
 		eci->esc_node_opens = realloc(eci->esc_node_opens, 
 							sizeof(struct open_count) * total_members);
 		if (!eci->esc_node_opens) {
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) Error realloc of node list\n");
+			log_printf(LOG_LEVEL_WARNING, 
+					"Memory error realloc of node list\n");
 			return -1;
 		}
 		memset(&eci->esc_node_opens[eci->esc_oc_size], 0, 
@@ -565,7 +572,7 @@ static struct open_count* find_open_count(
 		}
 	}
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) find_open_count: node id 0x%x not found\n",
+			"find_open_count: node id 0x%x not found\n",
 			node_id);
 	return 0;
 }
@@ -574,7 +581,7 @@ static void dump_chan_opens(struct event_svr_channel_instance *eci)
 {
 	int i;
 	log_printf(LOG_LEVEL_NOTICE,
-			"(EVT) Channel %s, total %d, local %d\n",
+			"Channel %s, total %d, local %d\n",
 			eci->esc_channel_name.value,
 			eci->esc_total_opens,
 			eci->esc_local_opens);
@@ -582,11 +589,28 @@ static void dump_chan_opens(struct event_svr_channel_instance *eci)
 		if (eci->esc_node_opens[i].oc_node_id == 0) {
 			break;
 		}
-		log_printf(LOG_LEVEL_NOTICE, "(EVT) Node 0x%x, count %d\n",
+		log_printf(LOG_LEVEL_NOTICE, "Node 0x%x, count %d\n",
 			eci->esc_node_opens[i].oc_node_id, 
 			eci->esc_node_opens[i].oc_open_count);
 		}
 }
+
+#ifdef DUMP_CHAN_INFO
+/*
+ * Scan the list of channels and dump the open count info.
+ */
+static void dump_all_chans()
+{
+	struct list_head *l;
+	struct event_svr_channel_instance *eci;
+
+	for (l = esc_head.next; l != &esc_head; l = l->next) {
+		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
+		dump_chan_opens(eci);
+
+	}
+}
+#endif
 
 /*
  * Replace the current open count for a node with the specified value.
@@ -604,15 +628,20 @@ static int set_open_count(struct event_svr_channel_instance *eci,
 	oc = find_open_count(eci, node_id);
 	if (oc) {
 		if (oc->oc_open_count) {
+			/*
+			 * If the open count wasn't zero, then we already
+			 * knew about this node.  It should never be different than
+			 * what we already had for an open count.
+			 */
 			if (oc->oc_open_count != open_count) {
 				log_printf(LOG_LEVEL_ERROR, 
-						"(EVT) Channel open count error\n");
+						"Channel open count error\n");
 				dump_chan_opens(eci);
 			}
 			return 0;
 		} 
 		log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Set count: Chan %s for node 0x%x, was %d, now %d\n",
+			"Set count: Chan %s for node 0x%x, was %d, now %d\n",
 			eci->esc_channel_name.value,
 			node_id, eci->esc_node_opens[i].oc_open_count, open_count);
 		eci->esc_total_opens += open_count;
@@ -671,7 +700,7 @@ static int dec_open_count(struct event_svr_channel_instance *eci,
 		eci->esc_total_opens--;
 		oc->oc_open_count--;
 		if ((eci->esc_total_opens < 0) || (oc->oc_open_count < 0)) {
-			log_printf(LOG_LEVEL_ERROR, "(EVT) Channel open decrement error\n");
+			log_printf(LOG_LEVEL_ERROR, "Channel open decrement error\n");
 			dump_chan_opens(eci);
 		}
 		return 0;
@@ -686,24 +715,30 @@ static int dec_open_count(struct event_svr_channel_instance *eci,
 static void delete_channel(struct event_svr_channel_instance *eci)
 {
 
-	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Called Delete channel %s t %d, l %d, r %d\n",
+	log_printf(CHAN_DEL_DEBUG, 
+			"Called Delete channel %s t %d, l %d, r %d\n",
 			eci->esc_channel_name.value,
 			eci->esc_total_opens, eci->esc_local_opens,
 			eci->esc_retained_count);
+	/*
+	 * If no one has the channel open anywhere and there are no unexpired
+	 * retained events for this channel, then it is OK to delete the
+	 * data structure.
+	 */
 	if ((eci->esc_retained_count == 0)  && (eci->esc_total_opens == 0)) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Delete channel %s\n",
+		log_printf(CHAN_DEL_DEBUG, "Delete channel %s\n",
 			eci->esc_channel_name.value);
 
 		if (!list_empty(&eci->esc_open_chans)) {
 				log_printf(LOG_LEVEL_NOTICE, 
-					"(EVT) Last channel close request for %s (still open)\n",
+					"Last channel close request for %s (still open)\n",
 					eci->esc_channel_name.value);
+				dump_chan_opens(eci);
 				return;
 		}
 		
 		/*
-		 * adjust if we're sending open counts on a config change
+		 * adjust if we're sending open counts on a config change.
 		 */
 		if (in_cfg_change && (&eci->esc_entry == next_chan)) {
 			next_chan = eci->esc_entry.next;
@@ -735,7 +770,7 @@ static int remove_open_count(
 			break;
 		}
 
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) roc: %x/%x, t %d, oc %d\n",
+		log_printf(RECOVERY_DEBUG, "roc: %x/%x, t %d, oc %d\n",
 			node_id, eci->esc_node_opens[i].oc_node_id,
 			eci->esc_total_opens, eci->esc_node_opens[i].oc_open_count);
 		
@@ -881,7 +916,7 @@ evt_find_node(struct in_addr addr)
 	nlp = lookup_node(addr);
 
 	if (!nlp) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) find_node: Got NULL nlp?\n");
+		log_printf(LOG_LEVEL_DEBUG, "find_node: Got NULL nlp?\n");
 		return 0;
 	}
 
@@ -898,7 +933,7 @@ evt_add_node(struct in_addr addr, SaClmClusterNodeT *cn)
 	nlp = lookup_node(addr);
 
 	if (!nlp) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) add_node: Got NULL nlp?\n");
+		log_printf(LOG_LEVEL_DEBUG, "add_node: Got NULL nlp?\n");
 		goto an_out;
 	}
 
@@ -936,7 +971,7 @@ evt_remove_node(struct in_addr addr)
 	nlp = lookup_node(addr);
 
 	if (!nlp) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) remove_node: Got NULL nlp?\n");
+		log_printf(LOG_LEVEL_DEBUG, "remove_node: Got NULL nlp?\n");
 		goto an_out;
 	}
 
@@ -1004,7 +1039,7 @@ static int send_next_retained(void *data)
 		 */
 		for (;next_retained != &retained_list; 
 								next_retained = next_retained->next) {
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) Sending next retained event\n");
+			log_printf(LOG_LEVEL_DEBUG, "Sending next retained event\n");
 			evt = list_entry(next_retained, struct event_data, ed_retained);
 			evt->ed_event.led_head.id = MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA;
 			chn_iovec.iov_base = &evt->ed_event;
@@ -1019,7 +1054,7 @@ static int send_next_retained(void *data)
 				return -1;
 			}
 		}
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) DONE Sending retained events\n");
+		log_printf(RECOVERY_DEBUG, "DONE Sending retained events\n");
 		memset(&cpkt, 0, sizeof(cpkt));
 		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
 		cpkt.chc_head.size = sizeof(cpkt);
@@ -1050,19 +1085,19 @@ static void send_retained()
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) No messages to send\n");
+		log_printf(RECOVERY_DEBUG, "No messages to send\n");
 		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
 											GMI_PRIO_RECOVERY);
 	} else {
-		log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT) Start sending retained messages\n");
+		log_printf(RECOVERY_DEBUG, 
+					"Start sending retained messages\n");
 		recovery_node = 1;
 		next_retained = retained_list.next;
 		res = gmi_token_callback_create(&tok_call_handle, send_next_retained,
 				NULL);
 	}
 	if (res != 0) {
-		log_printf(LOG_LEVEL_ERROR, "(EVT) ERROR sending evt recovery data\n");
+		log_printf(LOG_LEVEL_ERROR, "ERROR sending evt recovery data\n");
 	}
 }
 
@@ -1085,7 +1120,7 @@ static int send_next_open_count(void *data)
 		memset(&cpkt, 0, sizeof(cpkt));
 		for (;next_chan != &esc_head; 
 								next_chan = next_chan->next) {
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) Sending next open count\n");
+			log_printf(RECOVERY_DEBUG, "Sending next open count\n");
 			eci = list_entry(next_chan, struct event_svr_channel_instance, 
 					esc_entry);
 			cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
@@ -1105,7 +1140,7 @@ static int send_next_open_count(void *data)
 				return -1;
 			}
 		}
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) DONE Sending open counts\n");
+		log_printf(RECOVERY_DEBUG, "DONE Sending open counts\n");
 		memset(&cpkt, 0, sizeof(cpkt));
 		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
 		cpkt.chc_head.size = sizeof(cpkt);
@@ -1136,18 +1171,18 @@ static void send_open_count()
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) No channels to send\n");
+		log_printf(RECOVERY_DEBUG, "No channels to send\n");
 		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
 											GMI_PRIO_RECOVERY);
 	} else {
-		log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT) Start sending open channel count\n");
+		log_printf(RECOVERY_DEBUG, 
+					"Start sending open channel count\n");
 		next_chan = esc_head.next;
 		res = gmi_token_callback_create(&tok_call_handle, send_next_open_count,
 				NULL);
 	}
 	if (res != 0) {
-		log_printf(LOG_LEVEL_ERROR, "(EVT) ERROR sending evt recovery data\n");
+		log_printf(LOG_LEVEL_ERROR, "ERROR sending evt recovery data\n");
 	}
 }
 
@@ -1167,12 +1202,12 @@ static int check_last_event(struct lib_event_data *evtpkt,
 	nd = evt_find_node(addr);
 	if (!nd) {
 		log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) Node ID 0x%x not found for event %llx\n",
+				"Node ID 0x%x not found for event %llx\n",
 				evtpkt->led_publisher_node_id, evtpkt->led_event_id);
 		cn = clm_get_by_nodeid(addr);
 		if (!cn) {
 			log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT) Cluster Node 0x%x not found for event %llx\n",
+					"Cluster Node 0x%x not found for event %llx\n",
 				evtpkt->led_publisher_node_id, evtpkt->led_event_id);
 		} else {
 			evt_add_node(addr, cn);
@@ -1215,16 +1250,17 @@ static int message_handler_req_lib_activatepoll(struct conn_info *conn_info,
 SaErrorT set_event_id(SaClmNodeIdT node_id)
 {
 	SaErrorT err = SA_OK;
-	if (base_id) {
+	if (base_id_top) {
 		err =  SA_ERR_EXIST;
 	}
-	base_id = (SaEvtEventIdT)node_id << 32;
+	base_id_top = (SaEvtEventIdT)node_id << 32;
 	return err;
 }
 
 static SaErrorT get_event_id(uint64_t *event_id)
 {
-	*event_id = base_id++;
+	*event_id = base_id_top | base_id ;
+	base_id = (base_id + 1) & BASE_ID_MASK;
 	return SA_OK;
 }
 
@@ -1239,7 +1275,7 @@ free_event_data(struct event_data *edp)
 	if (--edp->ed_ref_count) {
 		return;
 	}
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Freeing event ID: 0x%llx\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Freeing event ID: 0x%llx\n", 
 			edp->ed_event.led_event_id);
 	if (edp->ed_delivered) {
 		free(edp->ed_delivered);
@@ -1256,7 +1292,7 @@ static void
 event_retention_timeout(void *data)
 {
 	struct event_data *edp = data;
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Event ID %llx expired\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Event ID %llx expired\n", 
 					edp->ed_event.led_event_id);
 	/*
 	 * adjust next_retained if we're in recovery and 
@@ -1292,7 +1328,7 @@ clear_retention_time(SaEvtEventIdT event_id)
 	struct list_head *l, *nxt;
 	int ret;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Search for Event ID %llx\n", event_id);
+	log_printf(LOG_LEVEL_DEBUG, "Search for Event ID %llx\n", event_id);
 	for(l = retained_list.next; l != &retained_list; l = nxt) {
 		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
@@ -1301,11 +1337,11 @@ clear_retention_time(SaEvtEventIdT event_id)
 		}
 
 		log_printf(LOG_LEVEL_DEBUG, 
-							"(EVT) Clear retention time for Event ID %llx\n", 
+							"Clear retention time for Event ID %llx\n", 
 				edp->ed_event.led_event_id);
 		ret = poll_timer_delete(aisexec_poll_handle, edp->ed_timer_handle);
 		if (ret != 0 ) {
-			log_printf(LOG_LEVEL_ERROR, "(EVT) Error expiring event ID %llx\n",
+			log_printf(LOG_LEVEL_ERROR, "Error expiring event ID %llx\n",
 							edp->ed_event.led_event_id);
 			return;
 		}
@@ -1368,7 +1404,7 @@ evt_delivered(struct event_data *evt, struct event_svr_channel_open *eco)
 		return;
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) delivered ID %llx to eco %p\n", 
+	log_printf(LOG_LEVEL_DEBUG, "delivered ID %llx to eco %p\n", 
 			evt->ed_event.led_event_id, eco);
 	if (evt->ed_delivered_count == evt->ed_delivered_next) {
 		evt->ed_delivered = realloc(evt->ed_delivered,
@@ -1395,10 +1431,10 @@ evt_already_delivered(struct event_data *evt,
 		return 0;
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Deliver count: %d deliver_next %d\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Deliver count: %d deliver_next %d\n", 
 		evt->ed_delivered_count, evt->ed_delivered_next);
 	for (i = 0; i < evt->ed_delivered_next; i++) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Checking ID %llx delivered %p eco %p\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Checking ID %llx delivered %p eco %p\n", 
 			evt->ed_event.led_event_id, evt->ed_delivered[i], eco);
 		if (evt->ed_delivered[i] == eco) {
 			return 1;
@@ -1579,7 +1615,7 @@ static void __notify_event(struct conn_info *conn_info)
 	struct res_evt_event_data res;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) DELIVER: notify\n");
+	log_printf(LOG_LEVEL_DEBUG, "DELIVER: notify\n");
 	if (esip->esi_nevents != 0) {
 		res.evd_head.size = sizeof(res);
 		res.evd_head.id = MESSAGE_RES_EVT_AVAILABLE;
@@ -1634,13 +1670,13 @@ deliver_event(struct event_data *evt,
 	if (esip->esi_queue_blocked) {
 		if (esip->esi_nevents < MIN_EVT_QUEUE_RESUME) {
 			esip->esi_queue_blocked = 0;
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) unblock\n");
+			log_printf(LOG_LEVEL_DEBUG, "unblock\n");
 		}
 	}
 
 	if (!esip->esi_queue_blocked && 
 							(esip->esi_nevents >= MAX_EVT_DELIVERY_QUEUE)) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) block\n");
+		log_printf(LOG_LEVEL_DEBUG, "block\n");
 		esip->esi_queue_blocked = 1;
 		do_deliver_warning = 1;
 	}
@@ -1655,7 +1691,7 @@ deliver_event(struct event_data *evt,
 				 */
 				cel = list_entry(esip->esi_events[i].prev, 
 											struct chan_event_list, cel_entry);
-				log_printf(LOG_LEVEL_DEBUG, "(EVT) Drop 0x%0llx\n",
+				log_printf(LOG_LEVEL_DEBUG, "Drop 0x%0llx\n",
 					cel->cel_event->ed_event.led_event_id);
 				list_del(&cel->cel_entry);
 				free_event_data(cel->cel_event);
@@ -1676,7 +1712,7 @@ deliver_event(struct event_data *evt,
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"(EVT) Memory allocation error, can't deliver event\n");
+						"Memory allocation error, can't deliver event\n");
 			return;
 		}
 		evt->ed_ref_count++;
@@ -1698,10 +1734,10 @@ deliver_event(struct event_data *evt,
 		ed = malloc(dropped_event_size);
 		if (!ed) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"(EVT) Memory allocation error, can't deliver event\n");
+						"Memory allocation error, can't deliver event\n");
 			return;
 		}
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Warn 0x%0llx\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Warn 0x%0llx\n", 
 								evt->ed_event.led_event_id);
 		memcpy(ed, dropped_event, dropped_event_size);
 		ed->ed_event.led_publish_time = clust_time_now();
@@ -1710,7 +1746,7 @@ deliver_event(struct event_data *evt,
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"(EVT) Memory allocation error, can't deliver event\n");
+						"Memory allocation error, can't deliver event\n");
 			return;
 		}
 		ep->cel_chan_handle = eco->eco_lib_handle;
@@ -1787,10 +1823,10 @@ static void retain_event(struct event_data *evt)
 					&evt->ed_timer_handle);
 	if (ret != 0) {
 		log_printf(LOG_LEVEL_ERROR, 
-				"(EVT) retention of event id 0x%llx failed\n",
+				"retention of event id 0x%llx failed\n",
 				evt->ed_event.led_event_id);
 	} else {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Retain event ID 0x%llx\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Retain event ID 0x%llx\n", 
 					evt->ed_event.led_event_id);
 	}
 }
@@ -1849,9 +1885,9 @@ static int evt_initialize(struct conn_info *conn_info, void *msg)
 	res.header.id = MESSAGE_RES_INIT;
 	res.header.error = SA_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) saEvtInitialize request.\n");
+	log_printf(LOG_LEVEL_DEBUG, "saEvtInitialize request.\n");
 	if (!conn_info->authenticated) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) event service: Not authenticated\n");
+		log_printf(LOG_LEVEL_ERROR, "event service: Not authenticated\n");
 		res.header.error = SA_ERR_SECURITY;
 		libais_send_response(conn_info, &res, sizeof(res));
 		return -1;
@@ -1887,12 +1923,12 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) saEvtChannelOpen (Open channel request)\n");
+			"saEvtChannelOpen (Open channel request)\n");
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) handle 0x%x, to 0x%llx\n",
+			"handle 0x%x, to 0x%llx\n",
 			req->ico_c_handle,
 			req->ico_timeout);
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) flags %x, channel name(%d)  %s\n",
+	log_printf(LOG_LEVEL_DEBUG, "flags %x, channel name(%d)  %s\n",
 			req->ico_open_flag,
 			req->ico_channel_name.length,
 			req->ico_channel_name.value);
@@ -1929,7 +1965,7 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 				&ocp->ocp_timer_handle);
 		if (ret != 0) {
 			log_printf(LOG_LEVEL_WARNING, 
-					"(EVT) Error setting timeout for open channel %s\n",
+					"Error setting timeout for open channel %s\n",
 					req->ico_channel_name.value);
 		}
 	}
@@ -1958,7 +1994,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 	struct event_svr_channel_subscr *ecs;
 	struct list_head *l, *nxt;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Close channel %s flags 0x%02x\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Close channel %s flags 0x%02x\n", 
 			eco->eco_channel->esc_channel_name.value,
 			eco->eco_flags);
 
@@ -1978,7 +2014,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 	for (l = eco->eco_subscr.next; l != &eco->eco_subscr; l = nxt) {
 		nxt = l->next;
 		ecs = list_entry(l, struct event_svr_channel_subscr, ecs_entry);
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Unsubscribe ID: %x\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Unsubscribe ID: %x\n", 
 				ecs->ecs_sub_id);
 		list_del(&ecs->ecs_entry);
 		free(ecs);
@@ -2011,8 +2047,8 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) saEvtChannelClose (Close channel request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) handle 0x%x\n", req->icc_channel_handle);
+			"saEvtChannelClose (Close channel request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "handle 0x%x\n", req->icc_channel_handle);
 
 	/*
 	 * look up the channel handle
@@ -2075,17 +2111,17 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) saEvtEventSubscribe (Subscribe request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) subscription Id: 0x%x\n", 
+			"saEvtEventSubscribe (Subscribe request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", 
 			req->ics_sub_id);
 
 	error = evtfilt_to_aisfilt(req, &filters);
 
 	if (error == SA_OK) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Subscribe filters count %d\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
 				filters->filtersNumber);
 		for (i = 0; i < filters->filtersNumber; i++) {
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) type %s(%d) sz %d, <%s>\n", 
+			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n", 
 					filter_types[filters->filters[i].filterType],
 					filters->filters[i].filterType,
 					filters->filters[i].filter.patternSize,
@@ -2142,7 +2178,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	for (l = retained_list.next; l != &retained_list; l = l->next) {
 		evt = list_entry(l, struct event_data, ed_retained);
 		log_printf(LOG_LEVEL_DEBUG,
-			"(EVT) Checking event ID %llx chanp %p -- sub chanp %p\n",
+			"Checking event ID %llx chanp %p -- sub chanp %p\n",
 			evt->ed_event.led_event_id, evt->ed_my_chan, eci);
 		if (evt->ed_my_chan == eci) {
 			if (evt_already_delivered(evt, eco)) {
@@ -2150,7 +2186,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 			}
 			if (event_match(evt, ecs) == SA_OK) {
 				log_printf(LOG_LEVEL_DEBUG,
-					"(EVT) deliver event ID: 0x%llx\n", 
+					"deliver event ID: 0x%llx\n", 
 						evt->ed_event.led_event_id);
 				deliver_event(evt, eco, ecs);
 			}
@@ -2187,8 +2223,8 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT) saEvtEventUnsubscribe (Unsubscribe request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) subscription Id: 0x%x\n", 
+					"saEvtEventUnsubscribe (Unsubscribe request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", 
 			req->icu_sub_id);
 
 	/*
@@ -2215,7 +2251,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	list_del(&ecs->ecs_entry);
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) unsubscribe from channel %s subscription ID 0x%x "
+			"unsubscribe from channel %s subscription ID 0x%x "
 			"with %d filters\n", 
 			eci->esc_channel_name.value,
 			ecs->ecs_sub_id, ecs->ecs_filters->filtersNumber);
@@ -2253,7 +2289,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) saEvtEventPublish (Publish event request)\n");
+			"saEvtEventPublish (Publish event request)\n");
 
 
 	/*
@@ -2315,9 +2351,9 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, 
-		"(EVT) saEvtEventRetentionTimeClear (Clear event retentiontime request)\n");
+		"saEvtEventRetentionTimeClear (Clear event retentiontime request)\n");
 	log_printf(LOG_LEVEL_DEBUG, 
-		"(EVT) event ID 0x%llx, chan handle 0x%x\n",
+		"event ID 0x%llx, chan handle 0x%x\n",
 			req->iec_event_id,
 			req->iec_channel_handle);
 
@@ -2366,7 +2402,7 @@ static int lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 			if (esip->esi_queue_blocked && 
 					(esip->esi_nevents < MIN_EVT_QUEUE_RESUME)) {
 				esip->esi_queue_blocked = 0;
-				log_printf(LOG_LEVEL_DEBUG, "(EVT) unblock\n");
+				log_printf(LOG_LEVEL_DEBUG, "unblock\n");
 			}
 			edp = cel->cel_event;
 			edp->ed_event.led_lib_channel_handle = cel->cel_chan_handle;
@@ -2413,6 +2449,7 @@ static void remove_chan_open_info(SaClmNodeIdT node_id)
 	}
 }
 
+
 /*
  * Called when there is a configuration change in the cluster.
  * This function looks at any joiners and leavers and updates the evt
@@ -2436,9 +2473,9 @@ static int evt_conf_change(
 	int res;
 
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Evt conf change %d\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Evt conf change %d\n", 
 			configuration_type);
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) m %d, j %d, l %d\n", 
+	log_printf(LOG_LEVEL_DEBUG, "m %d, j %d, l %d\n", 
 					member_list_entries,
 					joined_list_entries,
 					left_list_entries);
@@ -2474,8 +2511,8 @@ static int evt_conf_change(
 		md = evt_find_node(add_list->sin_addr);
 		if (md != NULL) {
 			if (!md->mn_started) {
-				log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT)Send set evt ID %llx to %s\n",
+				log_printf(RECOVERY_DEBUG, 
+					"end set evt ID %llx to %s\n",
 					md->mn_last_evt_id, inet_ntoa(add_list->sin_addr));
 				md->mn_started = 1;
 				memset(&cpkt, 0, sizeof(cpkt));
@@ -2483,14 +2520,15 @@ static int evt_conf_change(
 				cpkt.chc_head.size = sizeof(cpkt);
 				cpkt.chc_op = EVT_SET_ID_OP;
 				cpkt.u.chc_set_id.chc_addr = add_list->sin_addr;
-				cpkt.u.chc_set_id.chc_last_id = md->mn_last_evt_id;
+				cpkt.u.chc_set_id.chc_last_id = 
+										md->mn_last_evt_id & BASE_ID_MASK;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
 				res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
 														GMI_PRIO_RECOVERY);
 				if (res != 0) {
 					log_printf(LOG_LEVEL_WARNING, 
-						"(EVT) Unable to send event id to %s\n", 
+						"Unable to send event id to %s\n", 
 						inet_ntoa(add_list->sin_addr));
 				}
 			}
@@ -2502,13 +2540,13 @@ static int evt_conf_change(
 		md = evt_find_node(left_list->sin_addr);
 		if (md == 0) {
 			log_printf(LOG_LEVEL_WARNING, 
-					"(EVT) Can't find cluster node at %s\n",
+					"Can't find cluster node at %s\n",
 							inet_ntoa(left_list->sin_addr));
 		/*
 		 * Mark this one as down.
 		 */
 		} else {
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) cluster node at %s down\n",
+			log_printf(RECOVERY_DEBUG, "cluster node at %s down\n",
 							inet_ntoa(left_list->sin_addr));
 			md->mn_started = 0;
 			remove_chan_open_info(md->mn_node_info.nodeId);
@@ -2520,8 +2558,8 @@ static int evt_conf_change(
 	 * Set the base event id
 	 */
 	cn = clm_get_by_nodeid(my_node);
-	if (!base_id) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) My node ID 0x%x\n", cn->nodeId);
+	if (!base_id_top) {
+		log_printf(RECOVERY_DEBUG, "My node ID 0x%x\n", cn->nodeId);
 		my_node_id = cn->nodeId;
 		set_event_id(my_node_id);
 	}
@@ -2534,7 +2572,7 @@ static int evt_conf_change(
 	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
 		if (in_cfg_change) {
 			log_printf(LOG_LEVEL_NOTICE, 
-				"(EVT) Already in config change, Starting over, m %d, c %d\n",
+				"Already in config change, Starting over, m %d, c %d\n",
 					total_members, checked_in);
 		}
 
@@ -2564,8 +2602,8 @@ static int evt_finalize(struct conn_info *conn_info)
 	struct event_svr_channel_open	*eco;
 	struct list_head *l, *nxt;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) saEvtFinalize (Event exit request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) saEvtFinalize %d evts on list\n",
+	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize (Event exit request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize %d evts on list\n",
 			esip->esi_nevents);
 	
 	/*
@@ -2593,12 +2631,12 @@ static int evt_finalize(struct conn_info *conn_info)
 static int evt_exec_init(void)
 {
 	int res;
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Evt exec init request\n");
+	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
 	res = gmi_recovery_plug_create (&evt_recovery_plug_handle);
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR,
-			"(EVT) Could not create recovery plug for event service.\n");
+			"Could not create recovery plug for event service.\n");
 		return (-1);
 	}
 
@@ -2610,7 +2648,7 @@ static int evt_exec_init(void)
 	dropped_event = malloc(dropped_event_size);
 	if (dropped_event == 0) {
 		log_printf(LOG_LEVEL_ERROR, 
-				"(EVT) Memory Allocation Failure, event service not started\n");
+				"Memory Allocation Failure, event service not started\n");
 		res = gmi_recovery_plug_destroy (evt_recovery_plug_handle);
 		errno = ENOMEM;
 		return -1;
@@ -2651,7 +2689,7 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr)
 	struct list_head *l, *l1;
 	SaClmClusterNodeT *cn;
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Remote event data received from %s\n",
+	log_printf(LOG_LEVEL_DEBUG, "Remote event data received from %s\n",
 					inet_ntoa(source_addr));
 
 	/*
@@ -2663,12 +2701,12 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr)
 			/*
 			 * Not sure how this can happen...
 			 */
-			log_printf(LOG_LEVEL_DEBUG, "(EVT) No cluster node for %s\n",
+			log_printf(LOG_LEVEL_NOTICE, "No cluster node data for %s\n",
 							inet_ntoa(source_addr));
 			errno = ENXIO;
 			return -1;
 	}
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Cluster node ID 0x%x name %s\n",
+	log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
 					cn->nodeId, cn->nodeName.value);
 	evtpkt->led_publisher_node_id = cn->nodeId;
 	evtpkt->led_in_addr = source_addr;
@@ -2680,7 +2718,7 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr)
 	 * We shouldn't see an event for a channel that we don't know about.
 	 */
 	if (!eci) {
-		log_printf(LOG_LEVEL_WARNING, "(EVT) Channel %s doesn't exist\n",
+		log_printf(LOG_LEVEL_WARNING, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
 		return 0;
 	}
@@ -2692,7 +2730,7 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr)
 	evt = make_local_event(evtpkt, eci);
 	if (!evt) {
 		log_printf(LOG_LEVEL_WARNING, 
-						"(EVT) Memory allocation error, can't deliver event\n");
+						"Memory allocation error, can't deliver event\n");
 		errno = ENOMEM;
 		return -1;
 	}
@@ -2766,22 +2804,22 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 	now = clust_time_now();
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Remote recovery event data received from %s\n",
+			"Remote recovery event data received from %s\n",
 					inet_ntoa(source_addr));
 
 	if (!in_cfg_change) {
 		log_printf(LOG_LEVEL_NOTICE, 
-				"(EVT) Received recovery data, not in recovery mode\n");
+				"Received recovery data, not in recovery mode\n");
 		return 0;
 	}
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Processing recovery of retained events\n");
+			"Processing recovery of retained events\n");
 	if (recovery_node) {
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) This node is the recovery node\n");
+		log_printf(LOG_LEVEL_DEBUG, "This node is the recovery node\n");
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) (1)EVT ID: %llx, Time: %llx\n",
+	log_printf(LOG_LEVEL_DEBUG, "(1)EVT ID: %llx, Time: %llx\n",
 			evtpkt->led_event_id, evtpkt->led_retention_time);
 	/*
 	 * Calculate remaining retention time
@@ -2792,7 +2830,7 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 				now);
 
 	log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) (2)EVT ID: %llx, ret: %llx, rec: %llx, now: %llx\n",
+			"(2)EVT ID: %llx, ret: %llx, rec: %llx, now: %llx\n",
 			evtpkt->led_event_id, 
 			evtpkt->led_retention_time, evtpkt->led_receive_time, now);
 
@@ -2811,12 +2849,12 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 				/*
 				 * Not sure how this can happen
 				 */
-				log_printf(LOG_LEVEL_DEBUG, "(EVT) No node for %s\n",
+				log_printf(LOG_LEVEL_NOTICE, "No node for %s\n",
 								inet_ntoa(evtpkt->led_in_addr));
 				errno = ENXIO;
 				return -1;
 		}
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Cluster node ID 0x%x name %s\n",
+		log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
 						md->mn_node_info.nodeId, 
 						md->mn_node_info.nodeName.value);
 
@@ -2826,7 +2864,7 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 		 * We shouldn't see an event for a channel that we don't know about.
 		 */
 		if (!eci) {
-			log_printf(LOG_LEVEL_WARNING, "(EVT) Channel %s doesn't exist\n",
+			log_printf(LOG_LEVEL_WARNING, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
 			return 0;
 		}
@@ -2834,7 +2872,7 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 		evt = make_local_event(evtpkt, eci);
 		if (!evt) {
 			log_printf(LOG_LEVEL_WARNING, 
-				"(EVT) Memory allocation error, can't deliver event\n");
+				"Memory allocation error, can't deliver event\n");
 			errno = ENOMEM;
 			return -1;
 		}
@@ -2881,7 +2919,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
 		if (ret != 0 ) {
 			log_printf(LOG_LEVEL_WARNING, 
-				"(EVT) Error clearing timeout for open channel of %s\n",
+				"Error clearing timeout for open channel of %s\n",
 							ocp->ocp_chan_name);
 		}
 	}
@@ -2946,7 +2984,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	struct event_svr_channel_instance *eci;
 
 
-	log_printf(LOG_LEVEL_DEBUG, "(EVT) Remote channel operation request\n");
+	log_printf(LOG_LEVEL_DEBUG, "Remote channel operation request\n");
 	my_node = clm_get_by_nodeid(local_node);
 
 	mn = evt_find_node(source_addr);
@@ -2954,7 +2992,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		cn = clm_get_by_nodeid(source_addr);
 		if (cn == NULL) {
 			log_printf(LOG_LEVEL_WARNING, 
-				"(EVT) Evt remote channel op: Node data for addr %s is NULL\n",
+				"Evt remote channel op: Node data for addr %s is NULL\n",
 					inet_ntoa(source_addr));
 		} else {
 			evt_add_node(source_addr, cn);
@@ -2977,7 +3015,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		struct open_chan_pending *ocp;
 		struct list_head *l, *nxt;
 
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Opening channel %s for node 0x%x\n",
+		log_printf(LOG_LEVEL_DEBUG, "Opening channel %s for node 0x%x\n",
 						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
 		eci = find_channel(&cpkt->u.chc_chan);
 
@@ -2985,7 +3023,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 			eci = create_channel(&cpkt->u.chc_chan);
 		}
 		if (!eci) {
-			log_printf(LOG_LEVEL_WARNING, "(EVT) Could not create channel %s\n",
+			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
 							&cpkt->u.chc_chan.value);
 			break;
 		}
@@ -3006,7 +3044,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 			}
 		}
 		log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) Open channel %s t %d, l %d, r %d\n",
+				"Open channel %s t %d, l %d, r %d\n",
 				eci->esc_channel_name.value,
 				eci->esc_total_opens, eci->esc_local_opens,
 				eci->esc_retained_count);
@@ -3018,12 +3056,12 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	 * free up channel associated data when all instances are closed.
 	 */
 	case EVT_CLOSE_CHAN_OP:
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Closing channel %s for node 0x%x\n",
+		log_printf(LOG_LEVEL_DEBUG, "Closing channel %s for node 0x%x\n",
 						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
 		eci = find_channel(&cpkt->u.chc_chan);
 		if (!eci) {
 			log_printf(LOG_LEVEL_NOTICE, 
-					"(EVT) Channel close request for %s not found\n",
+					"Channel close request for %s not found\n",
 				cpkt->u.chc_chan.value);	
 			break;
 		}
@@ -3033,7 +3071,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		 */
 		dec_open_count(eci, mn->mn_node_info.nodeId);
 		log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) Close channel %s t %d, l %d, r %d\n",
+				"Close channel %s t %d, l %d, r %d\n",
 				eci->esc_channel_name.value,
 				eci->esc_total_opens, eci->esc_local_opens,
 				eci->esc_retained_count);
@@ -3044,7 +3082,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	 * saEvtClearRetentiotime handler.
 	 */
 	case EVT_CLEAR_RET_OP:
-		log_printf(LOG_LEVEL_DEBUG, "(EVT) Clear retention time request %llx\n",
+		log_printf(LOG_LEVEL_DEBUG, "Clear retention time request %llx\n",
 				cpkt->u.chc_event_id);	
 		clear_retention_time(cpkt->u.chc_event_id);
 		break;
@@ -3057,8 +3095,8 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	case EVT_SET_ID_OP: {
 		struct in_addr my_addr;
 		my_addr.s_addr = my_node->nodeId;
-		log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Received Set event ID OP from %x to %llx for %x my addr %x base %llx\n",
+		log_printf(RECOVERY_DEBUG, 
+			"Received Set event ID OP from %x to %llx for %x my addr %x base %llx\n",
 					inet_ntoa(source_addr), 
 					cpkt->u.chc_set_id.chc_last_id,
 					cpkt->u.chc_set_id.chc_addr.s_addr,
@@ -3066,8 +3104,8 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 					base_id);	
 		if (cpkt->u.chc_set_id.chc_addr.s_addr == my_addr.s_addr) {
 			if (cpkt->u.chc_set_id.chc_last_id > base_id) {
-				log_printf(LOG_LEVEL_DEBUG, 
-					"(EVT) Set event ID from %s to %llx\n",
+				log_printf(RECOVERY_DEBUG, 
+					"Set event ID from %s to %llx\n",
 					inet_ntoa(source_addr), cpkt->u.chc_set_id.chc_last_id);	
 				base_id = cpkt->u.chc_set_id.chc_last_id + 1;
 			}
@@ -3083,11 +3121,11 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	case EVT_OPEN_COUNT:
 		if (!in_cfg_change) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"(EVT) Evt open count msg from %s, but not in membership change\n",
+				"Evt open count msg from %s, but not in membership change\n",
 				inet_ntoa(source_addr));
 		}
-		log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) Open channel count %s is %d for node 0x%x\n",
+		log_printf(RECOVERY_DEBUG, 
+				"Open channel count %s is %d for node 0x%x\n",
 				cpkt->u.chc_set_opens.chc_chan_name.value, 
 				cpkt->u.chc_set_opens.chc_open_count,
 				mn->mn_node_info.nodeId);
@@ -3097,14 +3135,14 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 			eci = create_channel(&cpkt->u.chc_set_opens.chc_chan_name);
 		}
 		if (!eci) {
-			log_printf(LOG_LEVEL_WARNING, "(EVT) Could not create channel %s\n",
+			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
 							&cpkt->u.chc_set_opens.chc_chan_name.value);
 			break;
 		}
 		if (set_open_count(eci, mn->mn_node_info.nodeId, 
 									cpkt->u.chc_set_opens.chc_open_count)) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"(EVT) Error setting Open channel count %s for node 0x%x\n",
+				"Error setting Open channel count %s for node 0x%x\n",
 				cpkt->u.chc_set_opens.chc_chan_name.value, 
 				mn->mn_node_info.nodeId);
 		}
@@ -3117,15 +3155,15 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	case EVT_OPEN_COUNT_DONE: {
 		if (!in_cfg_change) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"(EVT) Evt config msg from %s, but not in membership change\n",
+				"Evt config msg from %s, but not in membership change\n",
 				inet_ntoa(source_addr));
 		}
-		log_printf(LOG_LEVEL_DEBUG, 
-			"(EVT) Receive EVT_CONF_CHANGE_DONE from %s members %d checked in %d\n",
+		log_printf(RECOVERY_DEBUG, 
+			"Receive EVT_CONF_CHANGE_DONE from %s members %d checked in %d\n",
 				inet_ntoa(source_addr), total_members, checked_in+1);
 		if (!mn) {
-			log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) NO NODE DATA AVAILABLE FOR %s\n",
+			log_printf(RECOVERY_DEBUG, 
+				"NO NODE DATA AVAILABLE FOR %s\n",
 					inet_ntoa(source_addr));
 		}
 
@@ -3136,7 +3174,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 			 */
 			mn = oldest_node();
 			if (mn->mn_node_info.nodeId == my_node_id) {
-				log_printf(LOG_LEVEL_DEBUG, "(EVT) I am oldest\n");
+				log_printf(RECOVERY_DEBUG, "I am oldest\n");
 				send_retained();
 			}
 			
@@ -3148,16 +3186,19 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	 * OK, We're done with recovery, continue operations.
 	 */
 	case EVT_CONF_DONE: {
-		log_printf(LOG_LEVEL_DEBUG, 
-				"(EVT) Receive EVT_CONF_DONE from %s\n", 
+		log_printf(RECOVERY_DEBUG, 
+				"Receive EVT_CONF_DONE from %s\n", 
 				inet_ntoa(source_addr));
 		in_cfg_change = 0;
 		gmi_recovery_plug_unplug (evt_recovery_plug_handle);
+#ifdef DUMP_CHAN_INFO
+		dump_all_chans();
+#endif
 		break;
 	}
 
 	default:
-		log_printf(LOG_LEVEL_NOTICE, "(EVT) Invalid channel operation %d\n",
+		log_printf(LOG_LEVEL_NOTICE, "Invalid channel operation %d\n",
 						cpkt->chc_op);
 		break;
 	}
