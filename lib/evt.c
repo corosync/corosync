@@ -178,10 +178,6 @@ struct event_data_instance {
 };
 
 
-#define PUB_SLEEP_NSEC 0L;
-#define PUB_SLEEP_SEC 1
-#define PUB_SLEEP_TRYS 20
-
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
 /*
@@ -1547,7 +1543,6 @@ saEvtEventPublish(
 	size_t pattern_size;
 	struct event_pattern *patterns;
 	void   *data_start;
-	int pub_sleep_trys = PUB_SLEEP_TRYS;
 
 	if (eventDataSize > SA_EVT_DATA_MAX_LEN) {
 		error = SA_AIS_ERR_INVALID_PARAM;
@@ -1628,50 +1623,25 @@ saEvtEventPublish(
 	req->led_priority = edi->edi_priority;
 	req->led_publisher_name = edi->edi_pub_name;
 
-	while (--pub_sleep_trys) {
-		pthread_mutex_lock(&evti->ei_mutex);
-		error = saSendRetry(evti->ei_fd, req, req->led_head.size, MSG_NOSIGNAL);
-		if (error != SA_AIS_OK) {
-			pthread_mutex_unlock (&evti->ei_mutex);
-			goto pub_put3_free;
-		}
-		error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_PUBLISH);
-	
-		pthread_mutex_unlock (&evti->ei_mutex);
-
-		if (error != SA_AIS_OK) {
-			goto pub_put3_free;
-		}
-
-		error = res.iep_head.error;
-
-		if (error == SA_AIS_ERR_TRY_AGAIN) {
-			struct timespec ts;
-			struct timespec rem;
-			ts.tv_sec = PUB_SLEEP_SEC;
-			ts.tv_nsec = PUB_SLEEP_NSEC;
-pub_sleep:
-			if (nanosleep(&ts, &rem) < 0) {
-				if (errno == EINTR) {
-					ts = rem;
-					goto pub_sleep;
-				}
-				error = SA_AIS_ERR_TIMEOUT;
-				goto pub_put3_free;
-			}
-			continue;
-		}
-
-		*eventId = res.iep_event_id;
-		break;
-	}
-	if (error == SA_AIS_ERR_TRY_AGAIN) {
-		error = SA_AIS_ERR_TIMEOUT;
-	}
-
-pub_put3_free:
+	pthread_mutex_lock(&evti->ei_mutex);
+	error = saSendRetry(evti->ei_fd, req, req->led_head.size, MSG_NOSIGNAL);
 	free(req);
+	if (error != SA_AIS_OK) {
+		pthread_mutex_unlock (&evti->ei_mutex);
+		goto pub_put3;
+	}
+
+	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
+					MESSAGE_RES_EVT_PUBLISH);
+	pthread_mutex_unlock (&evti->ei_mutex);
+	if (error != SA_AIS_OK) {
+		goto pub_put3;
+	}
+	error = res.iep_head.error;
+	if (error == SA_AIS_OK) {
+		*eventId = res.iep_event_id;
+	}
+
 pub_put3:
 	saHandleInstancePut (&evt_instance_handle_db, eci->eci_instance_handle);
 pub_put2:

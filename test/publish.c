@@ -16,6 +16,8 @@
 
 // #define EVENT_SUBSCRIBE
 
+#define PUB_RETRIES 100
+
 extern int get_sa_error(SaAisErrorT, char *, int);
 char result_buf[256];
 int result_buf_len = sizeof(result_buf);
@@ -124,6 +126,8 @@ test_pub()
 	uint64_t test_retention;
 	int fd;
 	int i;
+	int j;
+	int did_dot;
 
 	SaEvtEventIdT event_id;
 #ifdef EVENT_SUBSCRIBE
@@ -197,15 +201,29 @@ test_pub()
 	}
 
 	for (i = 0; i < pub_count; i++) {
-	result = saEvtEventPublish(event_handle, user_data, 
+		did_dot = 0;
+		for (j = 0; j < PUB_RETRIES; j++) {
+			result = saEvtEventPublish(event_handle, user_data, 
 						user_data_size, &event_id);
-	if (result != SA_AIS_OK) {
-		get_sa_error(result, result_buf, result_buf_len);
-		printf("event Publish result(2): %s\n", result_buf);
-		exit(result);
-	}
+			if (result == SA_AIS_ERR_TRY_AGAIN) {
+				sleep(1);
+				fprintf(stderr, ".");
+				did_dot = 1;
+				continue;
+			}
+			if (result != SA_AIS_OK) {
+				get_sa_error(result, result_buf, result_buf_len);
+				printf("event Publish result(2): %s\n", result_buf);
+				exit(result);
+			}
+			if (did_dot) {
+				printf("\n");
+			}
+			break;
+		}
 
-	printf("Published event ID: 0x%llx\n", (unsigned long long)event_id);
+		printf("Published event ID: 0x%llx\n", 
+				(unsigned long long)event_id);
 	}
 
 	/*
@@ -287,7 +305,8 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 
 	printf("event_callback called\n");
 	printf("sub ID: %x\n", subscription_id);
-	printf("event_handle %llx\n", (unsigned long long)event_handle);
+	printf("event_handle %llx\n", 
+			(unsigned long long)event_handle);
 	printf("event data size %d\n", event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;
@@ -311,9 +330,11 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	}
 
 	printf("priority: 0x%x\n", priority);
-	printf("retention: 0x%llx\n", (unsigned long long)retention_time);
+	printf("retention: 0x%llx\n", 
+			(unsigned long long)retention_time);
 	printf("publisher name content: \"%s\"\n", publisher_name.value); 
-	printf("event id: 0x%llx\n", (unsigned long long)event_id);
+	printf("event id: 0x%llx\n", 
+			(unsigned long long)event_id);
 evt_free:
 	result = saEvtEventFree(event_handle);
 	get_sa_error(result, result_buf, result_buf_len);
