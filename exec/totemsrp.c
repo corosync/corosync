@@ -3064,7 +3064,6 @@ static int message_handler_memb_merge_detect (
 	int endian_conversion_needed)
 {
 
-printf ("merge detect\n");
 	/*
 	 * Return if we are already aware of this configuration
 	 */
