@@ -4,8 +4,7 @@ unsigned long long token_ring_id_seq = 0;
 int log_digest = 0;
 int last_released = 0;
 int set_aru = -1;
-int totemsrp_brake;
-		
+int totemsrp_brake;	
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
  *
@@ -105,6 +104,7 @@ int totemsrp_brake;
 #define PACKET_SIZE_MAX					2000
 #define FAIL_TO_RECV_CONST				250
 #define SEQNO_UNCHANGED_CONST			20
+#define TIMEOUT_DOWNCHECK           	1000
 
 /*
  * we compare incoming messages to determine if their endian is
@@ -113,8 +113,6 @@ int totemsrp_brake;
  * do not change
  */
 #define ENDIAN_LOCAL					 0xff22
-
-
 
 /*
  * Authentication of messages
@@ -271,6 +269,8 @@ poll_timer_handle memb_timer_state_gather_join_timeout = 0;
 poll_timer_handle memb_timer_state_gather_consensus_timeout = 0;
 
 poll_timer_handle memb_timer_state_commit_timeout = 0;
+
+poll_timer_handle timer_netif_check_timeout = 0;
 
 /*
  * Function called when new message received
@@ -431,6 +431,9 @@ void (*totemsrp_confchg_fn) (
 		int joined_list_entries,
 	struct memb_ring_id *ring_id) = 0;
 
+static struct totem_interface *totemsrp_interfaces;
+static int totemsrp_interface_count;
+
 /*
  * forward decls
  */
@@ -446,11 +449,32 @@ static int message_handler_memb_commit_token (struct sockaddr_in *, struct iovec
 
 static void memb_ring_id_create_or_load (struct memb_ring_id *);
 static int recv_handler (poll_handle handle, int fd, int revents, void *data, unsigned int *prio);
-static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to);
+static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to,int *interface_up);
+static int loopback_determine (struct sockaddr_in *bound_to);
+static void netif_down_check (void);
+
+#define NETIF_STATE_REPORT_UP		1	
+#define NETIF_STATE_REPORT_DOWN		2
+
+#define BIND_STATE_UNBOUND	0
+#define BIND_STATE_REGULAR	1
+#define BIND_STATE_LOOPBACK	2
+
+int netif_state_report = NETIF_STATE_REPORT_UP | NETIF_STATE_REPORT_DOWN;
+
+int netif_bind_state = BIND_STATE_UNBOUND;
+
 static int totemsrp_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	struct totemsrp_socket *sockets,
+	struct sockaddr_in *bound_to,
+	int *interface_up);
+
+static int totemsrp_build_sockets_loopback (struct sockaddr_in *sockaddr_mcast,
+	struct sockaddr_in *sockaddr_bindnet,
+	struct totemsrp_socket *sockets,
 	struct sockaddr_in *bound_to);
+
 static void memb_state_gather_enter (void);
 static void messages_deliver_to_app (int skip, int *start_point, int end_point);
 static int orf_token_mcast (struct orf_token *oken,
@@ -550,9 +574,6 @@ int totemsrp_initialize (
 		struct memb_ring_id *ring_id))
 {
 
-	int res;
-	int interface_no;
-
 	/*
 	 * Initialize random number generator for later use to generate salt
 	 */
@@ -581,40 +602,11 @@ int totemsrp_initialize (
 	sq_init (&recovery_sort_queue,
 		QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct sort_queue_item), 0);
 
-	/*
-	 * Build sockets for every interface
-	 */
-	for (interface_no = 0; interface_no < interface_count; interface_no++) {
-		/*
-		 * Create and bind the multicast and unicast sockets
-		 */
-		res = totemsrp_build_sockets (sockaddr_mcast,
-			&interfaces[interface_no].bindnet,
-			&totemsrp_sockets[interface_no],
-			&interfaces[interface_no].boundto);
+	totemsrp_interfaces = interfaces;
+	totemsrp_interface_count = interface_count;
+	totemsrp_poll_handle = poll_handle;
 
-		if (res == -1) {
-			return (res);
-		}
-		totemsrp_poll_handle = poll_handle;
-
-		poll_dispatch_add (*totemsrp_poll_handle, totemsrp_sockets[interface_no].mcast,
-			POLLIN, 0, recv_handler, UINT_MAX);
-
-		poll_dispatch_add (*totemsrp_poll_handle, totemsrp_sockets[interface_no].token,
-			POLLIN, 0, recv_handler, UINT_MAX);
-	}
-
-	memcpy (&my_id, &interfaces->boundto, sizeof (struct sockaddr_in));
-
-	/*
-	 * This stuff depends on totemsrp_build_sockets
-	 */
-	my_memb_list[0].s_addr = interfaces->boundto.sin_addr.s_addr;
-
-	memb_ring_id_create_or_load (&my_ring_id);
-	totemsrp_log_printf (totemsrp_log_level_notice, "Created or loaded sequence id %lld.%s for this ring.\n",
-		my_ring_id.seq, inet_ntoa (my_ring_id.rep));
+	netif_down_check();
 
 	memb_state_gather_enter ();
 
@@ -919,6 +911,7 @@ static void timer_function_orf_token_timeout (void *data)
 		"The token was lost in state %d from timer %x\n", memb_state, data);
 	switch (memb_state) {
 		case MEMB_STATE_OPERATIONAL:
+			netif_down_check();	
 			memb_state_gather_enter ();
 			break;
 
@@ -1584,7 +1577,8 @@ int totemsrp_avail (void)
 }
 
 static int netif_determine (struct sockaddr_in *bindnet,
-	struct sockaddr_in *bound_to)
+	struct sockaddr_in *bound_to,
+	int *interface_up)
 {
 	struct sockaddr_in *sockaddr_in;
 	int id_fd;
@@ -1593,6 +1587,8 @@ static int netif_determine (struct sockaddr_in *bindnet,
 	int res;
 	int i;
 	in_addr_t mask_addr;
+
+	*interface_up = 0;
 
 	/*
 	 * Generate list of local interfaces in ifc.ifc_req structure
@@ -1624,6 +1620,12 @@ static int netif_determine (struct sockaddr_in *bindnet,
 
 			bound_to->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
 			res = i;
+
+			if (ioctl(id_fd, SIOCGIFFLAGS, &ifc.ifc_ifcu.ifcu_req[i]) < 0) {
+				printf ("couldn't do ioctl\n");
+			}
+
+			*interface_up = ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_flags & IFF_UP;
 			break; /* for */
 		}
 	}
@@ -1633,10 +1635,210 @@ static int netif_determine (struct sockaddr_in *bindnet,
 	return (res);
 }
 
+static int loopback_determine (struct sockaddr_in *bound_to)
+{
+
+	bound_to->sin_addr.s_addr = LOCALHOST_IP;
+	if (&bound_to->sin_addr.s_addr == 0) {
+		return -1;
+	}
+	return 1;
+}
+
+
+int firstrun = 0;
+/*
+ * If the interface is up, the sockets for gmi are built.  If the interface is down
+ * this function is requeued in the timer list to retry building the sockets later.
+ */
+static void timer_function_netif_check_timeout ()
+{
+	int res;
+	int interface_no;
+	int interface_up;
+
+	/*
+	* Build sockets for every interface
+	*/
+	for (interface_no = 0; interface_no < totemsrp_interface_count; interface_no++) {
+
+		netif_determine(&totemsrp_interfaces[interface_no].bindnet,
+			&totemsrp_interfaces[interface_no].boundto,
+			&interface_up);
+
+		if (((netif_bind_state & BIND_STATE_LOOPBACK) && (!interface_up))
+				|| ((netif_bind_state & BIND_STATE_REGULAR) && (interface_up)))	{
+			break;
+		}
+
+		totemsrp_log_printf(totemsrp_log_level_debug,"network interface UP  %s\n",
+			inet_ntoa (totemsrp_interfaces[interface_no].boundto.sin_addr));
+	
+		if (totemsrp_sockets[interface_no].mcast > 0) {
+			close (totemsrp_sockets[interface_no].mcast);
+		 	poll_dispatch_delete (*totemsrp_poll_handle,
+			totemsrp_sockets[interface_no].mcast);
+		}
+		if (totemsrp_sockets[interface_no].token > 0) {
+			close (totemsrp_sockets[interface_no].token);
+			poll_dispatch_delete (*totemsrp_poll_handle,
+			totemsrp_sockets[interface_no].token);
+		}
+
+		if (!interface_up) {
+			totemsrp_log_printf (totemsrp_log_level_notice,"Interface is down binding to LOOPBACK addr.\n");
+			netif_bind_state = BIND_STATE_LOOPBACK;
+			res = totemsrp_build_sockets_loopback(&sockaddr_in_mcast,
+				&totemsrp_interfaces[interface_no].bindnet,
+				&totemsrp_sockets[interface_no],
+				&totemsrp_interfaces[interface_no].boundto);
+			totemsrp_log_printf (totemsrp_log_level_notice,"network interface LOCAL %s\n",
+				inet_ntoa (totemsrp_interfaces[interface_no].boundto.sin_addr));
+
+			poll_dispatch_add (*totemsrp_poll_handle, totemsrp_sockets[interface_no].token,
+					POLLIN, 0, recv_handler, UINT_MAX);
+
+			continue;
+		}
+
+		netif_bind_state = BIND_STATE_REGULAR;
+		memcpy(&sockaddr_in_mcast,&config_mcast_addr, sizeof (struct sockaddr_in));
+
+		/*
+		* Create and bind the multicast and unicast sockets
+		*/
+		res = totemsrp_build_sockets (&sockaddr_in_mcast,
+			&totemsrp_interfaces[interface_no].bindnet,
+			&totemsrp_sockets[interface_no],
+			&totemsrp_interfaces[interface_no].boundto,
+			&interface_up);
+
+		poll_dispatch_add (*totemsrp_poll_handle, totemsrp_sockets[interface_no].mcast,
+			POLLIN, 0, recv_handler, UINT_MAX);
+
+		poll_dispatch_add (*totemsrp_poll_handle, totemsrp_sockets[interface_no].token,
+			POLLIN, 0, recv_handler, UINT_MAX);
+	}
+
+	memcpy (&my_id, &totemsrp_interfaces->boundto, sizeof (struct sockaddr_in));	
+	/*
+	* This stuff depends on totemsrp_build_sockets
+	*/
+	if (firstrun == 0) {
+		firstrun += 1;
+		memcpy (&my_memb_list[0], &totemsrp_interfaces->boundto,
+			sizeof (struct sockaddr_in));
+		memb_ring_id_create_or_load (&my_ring_id);
+		totemsrp_log_printf (totemsrp_log_level_notice, "Created or loaded sequence id %lld.%s for this ring.\n",
+		my_ring_id.seq, inet_ntoa (my_ring_id.rep));
+	}
+
+	if (interface_up) {
+		if (netif_state_report & NETIF_STATE_REPORT_UP) {
+			totemsrp_log_printf (totemsrp_log_level_notice,
+				" The network interface is now up.\n");		
+			netif_state_report = NETIF_STATE_REPORT_DOWN;
+			memb_state_gather_enter ();
+		}
+		/*
+		 * If this is a single processor, detect downs which may not 
+		 * be detected by token loss when the interface is downed
+		 */
+		if (my_memb_entries <= 1) {
+			poll_timer_add (*totemsrp_poll_handle, TIMEOUT_DOWNCHECK, (void *)1,
+				timer_function_netif_check_timeout,
+				&timer_netif_check_timeout);
+		}
+	} else {		
+		if (netif_state_report & NETIF_STATE_REPORT_DOWN) {
+			totemsrp_log_printf (totemsrp_log_level_notice,
+				"The network interface is down.\n");
+			memb_state_gather_enter ();
+		}
+		netif_state_report = NETIF_STATE_REPORT_UP;
+
+		/*
+		* Add a timer to retry building interfaces and request memb_gather_enter
+		*/
+		cancel_token_retransmit_timeout ();
+		cancel_token_timeout ();
+		poll_timer_add (*totemsrp_poll_handle, TIMEOUT_DOWNCHECK, (void *)1,
+			timer_function_netif_check_timeout,
+			&timer_netif_check_timeout);
+	}
+}
+
+
+/*
+ * Check if an interface is down and reconfigure
+ * totemsrp waiting for it to come back up
+ */
+static void netif_down_check (void)
+{
+	timer_function_netif_check_timeout ();
+}
+
+static int totemsrp_build_sockets_loopback (struct sockaddr_in *sockaddr_mcast,
+    struct sockaddr_in *sockaddr_bindnet,
+    struct totemsrp_socket *sockets,
+    struct sockaddr_in *bound_to)
+{
+	struct ip_mreq mreq;
+	struct sockaddr_in sockaddr_in;
+	int res;
+
+	memset (&mreq, 0, sizeof (struct ip_mreq));
+
+	/*
+	 * Determine the ip address bound to and the interface name
+	 */
+	res = loopback_determine (bound_to);
+
+	if (res == -1) {
+		return (-1);
+	}
+
+	/* TODO this should be somewhere else */
+	memb_local_sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
+	memb_local_sockaddr_in.sin_family = AF_INET;
+	memb_local_sockaddr_in.sin_port = sockaddr_mcast->sin_port;
+
+	sockaddr_in.sin_family = AF_INET;
+	sockaddr_in.sin_port = sockaddr_mcast->sin_port;
+
+	 /*
+	 * Setup unicast socket
+	 */
+	sockets->token = socket (AF_INET, SOCK_DGRAM, 0);
+	if (sockets->token == -1) {
+		perror ("socket2");
+		return (-1);
+	}
+
+	/*
+	 * Bind to unicast socket used for token send/receives	
+	 * This has the side effect of binding to the correct interface
+	 */
+	sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
+	res = bind (sockets->token, (struct sockaddr *)&sockaddr_in,
+			sizeof (struct sockaddr_in));
+	if (res == -1) {
+		perror ("bind2 failed");
+		return (-1);
+	}
+
+	memcpy(&sockaddr_in_mcast, &sockaddr_in, sizeof(struct sockaddr_in));
+	sockets->mcast = sockets->token;
+
+	return (0);
+}
+
+
 static int totemsrp_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
 	struct totemsrp_socket *sockets,
-	struct sockaddr_in *bound_to)
+	struct sockaddr_in *bound_to,
+	int *interface_up)
 {
 	struct ip_mreq mreq;
 	struct sockaddr_in sockaddr_in;
@@ -1649,7 +1851,8 @@ static int totemsrp_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	 * Determine the ip address bound to and the interface name
 	 */
 	res = netif_determine (sockaddr_bindnet,
-		bound_to);
+		bound_to,
+		interface_up);
 
 	if (res == -1) {
 		return (-1);
@@ -1804,6 +2007,7 @@ int orf_token_remcast (int seq) {
 	 * Multicast message
 	 */
 	res = sendmsg (totemsrp_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+	
 	if (res == -1) {
 		return (-1);
 	}
@@ -2123,8 +2327,6 @@ void token_retransmit (void) {
 	msg_orf_token.msg_flags = 0;
 	
 	res = sendmsg (totemsrp_sockets[0].token, &msg_orf_token, MSG_NOSIGNAL);
-	assert (res != -1);
-	assert (res == orf_token_retransmit_size);
 }
 
 /*
@@ -2212,8 +2414,6 @@ printf ("\n");
 			inet_ntoa (next_memb.sin_addr), 
 			strerror (errno), totemsrp_sockets[0].token);
 	}
-	assert (res != -1);
-	assert (res == iov_encrypted.iov_len);
 	
 	/*
 	 * res not used here errors are handled by algorithm
@@ -2302,7 +2502,6 @@ static int memb_state_commit_token_send (struct memb_commit_token *memb_commit_t
 	msghdr.msg_flags = 0;
 
 	res = sendmsg (totemsrp_sockets[0].token, &msghdr, MSG_NOSIGNAL | MSG_DONTWAIT);
-	assert (res != -1);
 	return (res);
 }
 
@@ -2395,7 +2594,6 @@ int memb_join_message_send (void)
 	msghdr.msg_flags = 0;
 
 	res = sendmsg (totemsrp_sockets[0].mcast, &msghdr, MSG_NOSIGNAL | MSG_DONTWAIT);
-
 	return (res);
 }
 
@@ -3075,7 +3273,6 @@ static int message_handler_memb_merge_detect (
 		return (0);
 	}
 
-	printf ("Merging configuration with rep %s\n", inet_ntoa (system_from->sin_addr));
 	/*
 	 * Execute merge operation
 	 */
