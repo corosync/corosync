@@ -140,7 +140,7 @@ depend:
 
 testclm.o: ../include/ais_types.h ../include/saClm.h
 testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
-testamf.o: ../include/evs.h
+testamf.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
 testamf1.o: ../include/ais_types.h ../include/ais_amf.h
 testamf2.o: ../include/ais_types.h ../include/ais_amf.h
 testamf3.o: ../include/ais_types.h ../include/ais_amf.h
@@ -148,17 +148,18 @@ testamf4.o: ../include/ais_types.h ../include/ais_amf.h
 testamf5.o: ../include/ais_types.h ../include/ais_amf.h
 testamf6.o: ../include/ais_types.h ../include/ais_amf.h
 testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
-testamfth.o: ../include/evs.h
+testamfth.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
 testckpt.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptstress.o: ../include/ais_types.h ../include/ais_ckpt.h
 testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
-testparse.o: ../exec/aispoll.h ../exec/totemsrp.h ../exec/print.h
+testparse.o: ../exec/aispoll.h ../exec/totempg.h ../exec/totemsrp.h
+testparse.o: ../exec/print.h ../include/saClm.h ../include/ais_types.h
 ckptbench.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/ais_ckpt.h
-testevt.o: ../include/ais_types.h ../include/ais_evt.h
+testevt.o: ../include/ais_types.h ../include/saEvt.h
 testevs.o: ../include/evs.h
 evsbench.o: ../include/ais_types.h ../include/evs.h
-subscription.o: ../include/ais_types.h ../include/ais_evt.h
-publish.o: ../include/ais_types.h ../include/ais_evt.h
-evtbench.o: ../include/ais_types.h ../include/ais_evt.h
+subscription.o: ../include/ais_types.h ../include/saEvt.h
+publish.o: ../include/ais_types.h ../include/saEvt.h
+evtbench.o: ../include/ais_types.h ../include/saEvt.h
 sa_error.o: ../include/ais_types.h
