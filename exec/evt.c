@@ -3524,7 +3524,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 					my_addr.s_addr,
 					base_id);	
 		if (cpkt->u.chc_set_id.chc_addr.s_addr == my_addr.s_addr) {
-			if (cpkt->u.chc_set_id.chc_last_id > base_id) {
+			if (cpkt->u.chc_set_id.chc_last_id >= base_id) {
 				log_printf(RECOVERY_DEBUG, 
 					"Set event ID from %s to %llx\n",
 					inet_ntoa(source_addr), cpkt->u.chc_set_id.chc_last_id);	
