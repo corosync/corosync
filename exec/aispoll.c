@@ -39,6 +39,8 @@
 
 #include "aispoll.h"
 #include "../include/list.h"
+#include "hdb.h"
+#include "../include/ais_types.h"
 #include "tlist.h"
 
 typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);
@@ -49,166 +51,57 @@ struct poll_instance {
 	dispatch_fn_t *dispatch_fns;
 	void **data;
 	struct timerlist timerlist;
-	pthread_mutex_t mutex;
 };
-#define POLLINSTANCE_MUTEX_OFFSET offset_of(struct poll_instance, mutex)
-
-struct handle {
-        int valid;
-        void *instance;
-        unsigned int generation;
-};
-
-struct handle_database {
-        unsigned int handle_count;
-        struct handle *handles;
-        unsigned int generation;
-        pthread_mutex_t mutex;
-};
-
-#define offset_of(type,member) (int)(&(((type *)0)->member))
-
-#define HANDLECONVERT_NOLOCKING         0x80000000
-#define HANDLECONVERT_DONTUNLOCKDB      0x40000000
-
-int handle_create (
-		struct handle_database *handle_database,
-		void **instance_out,
-		int instance_size,
-		int *handle_out)
-{
-		int handle;
-		void *new_handles;
-		int found = 0;
-		void *instance;
-
-		pthread_mutex_lock (&handle_database->mutex);
-
-		for (handle = 0; handle < handle_database->handle_count; handle++) {
-			if (handle_database->handles[handle].valid == 0) {
-				found = 1;
-				break;
-			}
-		}
-		if (found == 0) {
-			handle_database->handle_count += 1;
-			new_handles = (struct handle *)realloc (handle_database->handles,
-			sizeof (struct handle) * handle_database->handle_count);
-			if (new_handles == 0) {
-				pthread_mutex_unlock (&handle_database->mutex);
-				errno = ENOMEM;
-				return (-1);
-			}
-			handle_database->handles = new_handles;
-		}
-		instance = (void *)malloc (instance_size);
-		if (instance == 0) {
-			errno = ENOMEM;
-			return (-1);
-		}
-		memset (instance, 0, instance_size);
-
-		handle_database->handles[handle].valid = 1;
-		handle_database->handles[handle].instance = instance;
-		handle_database->handles[handle].generation = handle_database->generation++;
-
-		*handle_out = handle;
-		*instance_out = instance;
-
-		pthread_mutex_unlock (&handle_database->mutex);
-		return (0);
-}
-
-int handle_convert (
-	struct handle_database *handle_database,
-	unsigned int handle,
-	void **instance,
-	int offset_to_mutex,
-	unsigned int *generation_out)
-{
-	int unlock_db;
-	int locking;
-
-	unlock_db = (0 == (offset_to_mutex & HANDLECONVERT_DONTUNLOCKDB));
-	locking = (0 == (offset_to_mutex & HANDLECONVERT_NOLOCKING));
-	offset_to_mutex &= 0x00fffff; /* remove 8 bits of flags */
-
-	if (locking) {
-		pthread_mutex_lock (&handle_database->mutex);
-	}
-
-/* Add this later
-	res = saHandleVerify (handle_database, handle);
-	if (res == -1) {
-		if (locking) {
-			pthread_mutex_unlock (&handle_database->mutex);
-		}
-		errno = ENOENT;
-		return (-1);
-	}
-*/
-
-	*instance = handle_database->handles[handle].instance;
-	if (generation_out) {
-		*generation_out = handle_database->handles[handle].generation;
-	}
-
-	/*
-	 * This function exits holding the mutex in the instance instance
-	 * pointed to by offset_to_mutex (if NOLOCKING isn't set)
-	 */
-	if (locking) {
-		pthread_mutex_lock ((pthread_mutex_t *)(*instance + offset_to_mutex));
-		if (unlock_db) {
-			pthread_mutex_unlock (&handle_database->mutex);
-		}
-	}
-
-	return (0);
-}
-
 
 /*
  * All instances in one database
  */
-static struct handle_database poll_instance_database = {
-        .handle_count	= 0,
-        .handles		= 0,
-        .generation		= 0,
-        .mutex			= PTHREAD_MUTEX_INITIALIZER
+static struct saHandleDatabase poll_instance_database = {
+        .handleCount				= 0,
+        .handles					= 0,
+		.handleInstanceDestructor	= 0
 };
 
 poll_handle poll_create (void)
 {
-	poll_handle poll_handle;
+	poll_handle handle;
 	struct poll_instance *poll_instance;
-	int res;
+	SaErrorT error;
 
-	res = handle_create (&poll_instance_database, (void *)&poll_instance,
-		sizeof (struct poll_instance), &poll_handle);
-	if (res == -1) {
+	error = saHandleCreate (&poll_instance_database,
+		sizeof (struct poll_instance), &handle);
+	if (error != SA_OK) {
 		goto error_exit;
 	}
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		goto error_destroy;
+	}
+	
 	poll_instance->ufds = 0;
 	poll_instance->nfds = 0;
 	poll_instance->dispatch_fns = 0;
 	poll_instance->data = 0;
 	timerlist_init (&poll_instance->timerlist);
 
-	return (poll_handle);
+	return (handle);
 
+error_destroy:
+	saHandleDestroy (&poll_instance_database, handle);
+	
 error_exit:
 	return (-1);
 }
 
-int poll_destroy (poll_handle poll_handle)
+int poll_destroy (poll_handle handle)
 {
 	struct poll_instance *poll_instance;
-	int res;
+	SaErrorT error;
 
-	res = handle_convert (&poll_instance_database, poll_handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
 		goto error_exit;
 	}
 
@@ -222,7 +115,10 @@ int poll_destroy (poll_handle poll_handle)
 		free (poll_instance->data);
 	}
 	timerlist_free (&poll_instance->timerlist);
-// TODO destroy poll
+
+	saHandleDestroy (&poll_instance_database, handle);
+
+	saHandleInstancePut (&poll_instance_database, handle);
 
 	return (0);
 
@@ -241,14 +137,13 @@ int poll_dispatch_add (
 	struct pollfd *ufds;
 	dispatch_fn_t *dispatch_fns;
 	void **data_list;
-	int res;
 	int found = 0;
 	int install_pos;
+	SaErrorT error;
 
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-
-	if (res == -1) {
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
 		goto error_exit;
 	}
 
@@ -306,6 +201,8 @@ int poll_dispatch_add (
 	poll_instance->dispatch_fns[install_pos] = dispatch_fn;
 	poll_instance->data[install_pos] = data;
 
+	saHandleInstancePut (&poll_instance_database, handle);
+
 	return (0);
 
 error_exit:
@@ -320,12 +217,12 @@ int poll_dispatch_modify (
 {
 	struct poll_instance *poll_instance;
 	int i;
-	int res;
+	SaErrorT error;
 
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
-		return (-1);
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		goto error_exit;
 	}
 
 	/*
@@ -340,6 +237,10 @@ int poll_dispatch_modify (
 	}
 
 	errno = EBADF;
+
+	saHandleInstancePut (&poll_instance_database, handle);
+
+error_exit:
 	return (-1);
 }
 
@@ -349,12 +250,12 @@ int poll_dispatch_delete (
 {
 	struct poll_instance *poll_instance;
 	int i;
-	int res;
+	SaErrorT error;
 	int found = 0;
 
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
 		goto error_exit;
 	}
 
@@ -370,8 +271,11 @@ int poll_dispatch_delete (
 
 	if (found) {
 		poll_instance->ufds[i].fd = -1;
+		saHandleInstancePut (&poll_instance_database, handle);
 		return (0);
 	}
+
+	saHandleInstancePut (&poll_instance_database, handle);
 
 error_exit:
 	errno = EBADF;
@@ -386,12 +290,13 @@ int poll_timer_add (
 {
 	struct poll_instance *poll_instance;
 	poll_timer_handle timer_handle;
-	int res;
+	int res = -1;
+	SaErrorT error;
 
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
-		return (-1);
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		goto error_exit;
 	}
 
 	timer_handle = (poll_timer_handle)timerlist_add_future (&poll_instance->timerlist,
@@ -399,9 +304,12 @@ int poll_timer_add (
 
 	if (timer_handle != 0) {
 		*timer_handle_out = timer_handle;
-		return (0);
+		res = 0;
 	}
-	return (-1);
+
+	saHandleInstancePut (&poll_instance_database, handle);
+error_exit:
+	return (res);
 }
 
 int poll_timer_delete (
@@ -409,19 +317,25 @@ int poll_timer_delete (
 	poll_timer_handle timer_handle)
 {
 	struct poll_instance *poll_instance;
-	int res;
+	SaErrorT error;
 
 	if (timer_handle == 0) {
 		return (0);
 	}
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
-		return (-1);
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		goto error_exit;
 	}
 
 	timerlist_del (&poll_instance->timerlist, (void *)timer_handle);
+
+	saHandleInstancePut (&poll_instance_database, handle);
+
 	return (0);
+
+error_exit:
+	return (-1);
 }
 
 int poll_run (
@@ -431,10 +345,11 @@ int poll_run (
 	int i;
 	int timeout = -1;
 	int res;
+	SaErrorT error;
 
-	res = handle_convert (&poll_instance_database, handle,
-		(void *)&poll_instance, POLLINSTANCE_MUTEX_OFFSET, 0);
-	if (res == -1) {
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
 		goto error_exit;
 	}
 
@@ -469,6 +384,7 @@ retry_poll:
 		timerlist_expire (&poll_instance->timerlist);
 	} /* for (;;) */
 
+	saHandleInstancePut (&poll_instance_database, handle);
 error_exit:
 	return (-1);
 }
