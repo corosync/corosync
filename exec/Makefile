@@ -41,15 +41,26 @@ LDFLAGS = -g
 #CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
-OBJS = main.o parse.o tlist.o mempool.o poll.o gmi.o clm.o amf.o ckpt.o print.o
+EXEC_OBJS = main.o clm.o amf.o ckpt.o print.o parse.o mempool.o
 
-all:aisexec
+GMI_OBJS = poll.o gmi.o tlist.o
 
-aisexec: $(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) $(LIBS) -o aisexec
+all:libgmi.a libgmi.so.1.0 aisexec
+
+aisexec: $(EXEC_OBJS)
+	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) libgmi.a -o aisexec
+
+libgmi.a: $(GMI_OBJS)
+	$(AR) -rc libgmi.a $(GMI_OBJS)
+
+libgmi.so.1.0: $(GMI_OBJS)
+	$(CC) -shared -Wl,-soname,libgmi.so.1 $(GMI_OBJS) -o $@
+	rm -f libgmi.so.1 libgmi.so
+	ln -s libgmi.so.1.0 libgmi.so.1
+	ln -s libgmi.so.1.0 libgmi.so
 
 clean:
-	rm -f *.o aisexec gmon.out
+	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
