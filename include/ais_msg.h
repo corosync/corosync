@@ -193,6 +193,7 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE,
 	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK,
 	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET,
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE,
 	MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET,
@@ -423,8 +424,14 @@ struct req_exec_ckpt_checkpointclose {
 
 struct req_exec_ckpt_checkpointretentiondurationset {
 	struct req_header header;
+	struct message_source source;
 	SaNameT checkpointName;
 	SaTimeT retentionDuration;
+};
+
+struct req_exec_ckpt_checkpointretentiondurationexpire {
+	struct req_header header;
+	SaNameT checkpointName;
 };
 
 struct res_lib_amf_componentterminatecallback {
