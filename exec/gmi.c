@@ -1657,6 +1657,7 @@ printf ("EVS STATE group arut %d gmi arut %d highest %d barrier %d starting grou
 		qsort (memb_form_token.member_list, memb_form_token.member_list_entries,
 			sizeof (struct in_addr), in_addr_compare);
 
+printf ("CONFCHG ENTRIES %d\n", memb_list_entries_confchg);
 
 		/*
 		 * Determine transitional configuration
@@ -2042,6 +2043,9 @@ static void memb_timer_function_state_commit_timeout (void *data)
 				gmi_confchg_fn (&memb_local_sockaddr_in, 1,
 					left_list, left_list_entries,
 					0, 0);
+
+				memb_list_entries_confchg = 1;
+				memb_list[0].sin_addr.s_addr = memb_local_sockaddr_in.sin_addr.s_addr; 
 			}
 		} else {
 			gmi_log_printf (gmi_log_level_notice, "No members sent join, keeping old ring and transitioning to operational.\n");
