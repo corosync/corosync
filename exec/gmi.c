@@ -1248,7 +1248,6 @@ static int netif_determine (struct sockaddr_in *bindnet,
 	free (ifc.ifc_buf);
 	close (id_fd);
 	
-printf ("res is %d\n", res);
 	return (res);
 }
 
