@@ -134,7 +134,8 @@ struct service_handler evs_service_handler = {
 	.confchg_fn					= evs_confchg_fn,
 	.libais_init_fn				= message_handler_req_evs_init,
 	.libais_exit_fn				= evs_exit_fn,
-	.exec_init_fn				= evs_executive_initialize
+	.exec_init_fn				= evs_executive_initialize,
+	.exec_dump_fn				= 0
 };
 
 static int evs_executive_initialize (void)

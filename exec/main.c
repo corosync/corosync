@@ -145,7 +145,13 @@ static inline struct conn_info *conn_info_create (int fd) {
 
 static void sigusr2_handler (int num)
 {
-	amf_dump ();
+	int i;
+
+	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
+		if (ais_service_handlers[i]->exec_dump_fn) {
+			ais_service_handlers[i]->exec_dump_fn ();
+		 }
+	}
 
 	signal (SIGUSR2 ,sigusr2_handler);
 	return;
@@ -781,6 +787,9 @@ static void aisexec_service_handlers_init (void)
 	 */
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
 		if (ais_service_handlers[i]->exec_init_fn) {
+			if (!ais_service_handlers[i]->exec_init_fn) {
+				continue;
+			}
 			ais_service_handlers[i]->exec_init_fn ();
 		}
 	}

@@ -243,6 +243,10 @@ static int amf_confchg_fn (
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries);
 
+/***
+static void amf_dump (void);
+***/
+
 static int amf_exit_fn (struct conn_info *conn_info);
 
 static int amf_exec_init_fn (void);
@@ -398,7 +402,8 @@ struct service_handler amf_service_handler = {
 	.confchg_fn					= amf_confchg_fn,
 	.libais_init_fn				= message_handler_req_amf_init,
 	.libais_exit_fn				= amf_exit_fn,
-	.exec_init_fn				= amf_exec_init_fn
+	.exec_init_fn				= amf_exec_init_fn,
+	.exec_dump_fn				= amf_dump
 };
 
 static void grow_amf_track_table (struct conn_info *conn_info, int growby)
@@ -2578,7 +2583,6 @@ static void amf_dump_comp (struct saAmfComponent *component ,void *data)
 
 void amf_dump ( )
 {
-
 	enumerate_components (amf_dump_comp, NULL);
 	fflush (stdout);
 

@@ -58,6 +58,7 @@ struct service_handler {
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
 	int (*libais_exit_fn) (struct conn_info *conn_info);
 	int (*exec_init_fn) (void);
+	void (*exec_dump_fn) (void);
 };
 
 #endif /* HANDLERS_H_DEFINED */

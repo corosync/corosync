@@ -169,7 +169,8 @@ struct service_handler clm_service_handler = {
 	.confchg_fn					= clm_confchg_fn,
 	.libais_init_fn				= message_handler_req_clm_init,
 	.libais_exit_fn				= clm_exit_fn,
-	.exec_init_fn				= clm_exec_init_fn
+	.exec_init_fn				= clm_exec_init_fn,
+	.exec_dump_fn				= 0
 };
 
 static int clm_exec_init_fn (void)

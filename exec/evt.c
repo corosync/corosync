@@ -152,7 +152,8 @@ struct service_handler evt_service_handler = {
 	.confchg_fn					= evt_conf_change,
 	.libais_init_fn				= evt_initialize,
 	.libais_exit_fn				= evt_finalize,
-	.exec_init_fn				= evt_exec_init
+	.exec_init_fn				= evt_exec_init,
+	.exec_dump_fn				= 0
 };
 
 static gmi_recovery_plug_handle evt_recovery_plug_handle;

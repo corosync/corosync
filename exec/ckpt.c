@@ -169,7 +169,8 @@ struct service_handler ckpt_service_handler = {
 	.confchg_fn					= 0, /* ckpt service handler is not distributed */
 	.libais_init_fn				= message_handler_req_lib_ckpt_init,
 	.libais_exit_fn				= 0,
-	.exec_init_fn				= 0
+	.exec_init_fn				= 0,
+	.exec_dump_fn				= 0
 };
 
 struct libais_handler ckpt_checkpoint_libais_handlers[] =
@@ -289,7 +290,8 @@ struct service_handler ckpt_checkpoint_service_handler = {
 	.confchg_fn					= ckpt_checkpoint_confchg_fn,
 	.libais_init_fn				= message_handler_req_lib_ckpt_checkpoint_init,
 	.libais_exit_fn				= ckpt_checkpoint_exit_fn,
-	.exec_init_fn				= ckpt_checkpoint_exec_init_fn
+	.exec_init_fn				= ckpt_checkpoint_exec_init_fn,
+	.exec_dump_fn				= 0
 };
 
 struct libais_handler ckpt_sectioniterator_libais_handlers[] =
@@ -325,7 +327,8 @@ struct service_handler ckpt_sectioniterator_service_handler = {
 	.confchg_fn					= 0, /* Section Iterators are not distributed */
 	.libais_init_fn				= message_handler_req_lib_ckpt_sectioniterator_init,
 	.libais_exit_fn				= ckptSectionIteratorApiFinalize,
-	.exec_init_fn				= 0
+	.exec_init_fn				= 0,
+	.exec_dump_fn				= 0
 };
 
 static struct saCkptCheckpoint *findCheckpoint (SaNameT *name)
