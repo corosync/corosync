@@ -92,10 +92,10 @@ testevt: testevt.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testevt testevt.o sa_error.o $(LIBS)
 
 testevs: testevs.o $(LIBS)
-	$(CC) $(LDFLAGS) -o testevs testevs.o sa_error.o $(LIBS)
+	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
 
 evsbench: evsbench.o $(LIBS)
-	$(CC) $(LDFLAGS) -o evsbench evsbench.o sa_error.o $(LIBS)
+	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
 
 testclm: testclm.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
