@@ -31,82 +31,101 @@
 # Production mode flags
 #CFLAGS = -c -O3 -Wall -I../include
 #LDFLAGS = -L../lib
-#LIBS = ../lib/libais.a -lpthread
+#LIBRARIES= ../lib/libais.a ../lib/libevs.a
+#LIBS = $(LIBRARIES) -lpthread
 
 # Debug mode flags
 CFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
-LIBS = ../lib/libais.a ../lib/libevs.a -lpthread
+LIBRARIES= ../lib/libais.a ../lib/libevs.a
+LIBS = $(LIBRARIES) -lpthread
 
 # Profile mode flags
 #CFLAGS = -c -O3 -pg -DDEBUG -I../include
 #LDFLAGS = -pg -L../lib
-#LIBS = ../lib/libais.a
+#LIBRARIES= ../lib/libais.a ../lib/libevs.a
+#LIBS = $(LIBRARIES)
 
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testamf4.c testamf5.c testamf6.c testamfth.c  \
 		testckpt.c ckptstress.c testparse.c ckptbench.c  \
-		ckptbenchth.c testevt.c testevs.c evsbench.c
+		ckptbenchth.c testevt.c testevs.c evsbench.c \
+		subscription.c publish.c evtbench.c \
+		sa_error.c
 
-all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth testevt testevs evsbench
+all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
+	testamf6 testamfth testckpt ckptstress testparse ckptbench \
+	ckptbenchth testevt testevs evsbench subscription publish evtbench
 
-testparse: testparse.o
+testparse: testparse.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o
 
-testtimer: testtimer.o
+testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
 
-testamf: testamf.o
+testamf: testamf.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf testamf.o $(LIBS)
 
-testamf1: testamf1.o
+testamf1: testamf1.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf1 testamf1.o $(LIBS)
 
-testamf2: testamf2.o
+testamf2: testamf2.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf2 testamf2.o $(LIBS)
 
-testamf3: testamf3.o
+testamf3: testamf3.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf3 testamf3.o $(LIBS)
 
-testamf4: testamf4.o
+testamf4: testamf4.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf4 testamf4.o $(LIBS)
 
-testamf5: testamf5.o
+testamf5: testamf5.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf5 testamf5.o $(LIBS)
 
-testamf6: testamf6.o
+testamf6: testamf6.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf6 testamf6.o $(LIBS)
 
-testamfth: testamfth.o
+testamfth: testamfth.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamfth testamfth.o $(LIBS)
 
-testevt: testevt.o
-	$(CC) $(LDFLAGS) -o testevt testevt.o $(LIBS)
+testevt: testevt.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testevt testevt.o sa_error.o $(LIBS)
 
-testevs: testevs.o
-	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
+testevs: testevs.o $(LIBS)
+	$(CC) $(LDFLAGS) -o testevs testevs.o sa_error.o $(LIBS)
 
-evsbench: evsbench.o
-	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
+evsbench: evsbench.o $(LIBS)
+	$(CC) $(LDFLAGS) -o evsbench evsbench.o sa_error.o $(LIBS)
 
-testclm: testclm.o
+testclm: testclm.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
 
-testckpt: testckpt.o
+testckpt: testckpt.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testckpt testckpt.o $(LIBS)
 
-ckptbench: ckptbench.o
+ckptbench: ckptbench.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptbench ckptbench.o $(LIBS)
 
-ckptbenchth: ckptbenchth.o
+ckptbenchth: ckptbenchth.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptbenchth ckptbenchth.o $(LIBS)
 
-ckptstress: ckptstress.o
+ckptstress: ckptstress.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
 
+subscription: subscription.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o subscription subscription.o sa_error.o $(LIBS)
+
+publish: publish.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o publish publish.o sa_error.o $(LIBS)
+
+evtbench: evtbench.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o evtbench evtbench.o sa_error.o $(LIBS)
+
 clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth testevt testevs
+	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
+	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
+	ckptbench ckptbenchth testevt testevs \
+	evsbench subscription publish evtbench
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
@@ -117,6 +136,7 @@ depend:
 
 testclm.o: ../include/ais_types.h ../include/ais_clm.h
 testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testamf.o: ../include/evs.h
 testamf1.o: ../include/ais_types.h ../include/ais_amf.h
 testamf2.o: ../include/ais_types.h ../include/ais_amf.h
 testamf3.o: ../include/ais_types.h ../include/ais_amf.h
@@ -124,10 +144,17 @@ testamf4.o: ../include/ais_types.h ../include/ais_amf.h
 testamf5.o: ../include/ais_types.h ../include/ais_amf.h
 testamf6.o: ../include/ais_types.h ../include/ais_amf.h
 testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testamfth.o: ../include/evs.h
 testckpt.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptstress.o: ../include/ais_types.h ../include/ais_ckpt.h
 testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
-testparse.o: ../exec/aispoll.h ../exec/print.h
+testparse.o: ../exec/aispoll.h ../exec/gmi.h ../exec/print.h
 ckptbench.o: ../include/ais_types.h ../include/ais_ckpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/ais_ckpt.h
 testevt.o: ../include/ais_types.h ../include/ais_evt.h
+testevs.o: ../include/evs.h
+evsbench.o: ../include/ais_types.h ../include/evs.h
+subscription.o: ../include/ais_types.h ../include/ais_evt.h
+publish.o: ../include/ais_types.h ../include/ais_evt.h
+evtbench.o: ../include/ais_types.h ../include/ais_evt.h
+sa_error.o: ../include/ais_types.h
