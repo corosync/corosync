@@ -1007,6 +1007,12 @@ if (req_exec_amf_componentregister->source.in_addr.s_addr ==
 
 Not pretty, but it works :)
 
+Update: the source address of a message is now passed into the exec handler message
+which can be used instead of recording the source in the source.in_addr field.
+
+Eventually the source.in_addr will be removed so consider using the source_addr
+passed into the function handler.
+
 ----------------------------
  sending messages using gmi
 ----------------------------
@@ -1083,11 +1089,13 @@ away.
 -------------------
 Every executive handler has the prototype:
 
-static int message_handler_req_exec_clm_nodejoin (void *message);
+static int message_handler_req_exec_clm_nodejoin (void *message,
+	struct in_addr *source_addr);
 
 The start of the handler function should look something like this:
 
-static int message_handler_req_exec_clm_nodejoin (void *message);
+static int message_handler_req_exec_clm_nodejoin (void *message,
+	struct in_addr *source_addr)
 {
         struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 
@@ -1098,6 +1106,9 @@ The conn_info structure is not available.  If it is needed, it can be stored
 in the message sent by the library message handler in a source structure.
 
 The message field contains the message sent by the library handler
+
+The source_addr field contains the source ip address of the processor that
+multicasted the message.
 
 --------------------
  the libais_init_fn
