@@ -492,6 +492,7 @@ void totemsrp_log_printf_init (
 	totemsrp_log_printf = log_printf;
 }
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 void print_digest (char *where, unsigned char *digest)
 {
 	int i;
@@ -515,6 +516,7 @@ void print_msg (unsigned char *msg, int size)
 	}
 	printf ("MSG CONTENTS DONE\n");
 }
+#endif
 
 /*
  * Exported interfaces
@@ -837,6 +839,7 @@ void memb_set_and (struct in_addr *set1, int set1_entries,
 	return;
 }
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 void memb_set_print (char *string,
 	struct in_addr *list, int list_entries)
 {
@@ -847,6 +850,7 @@ void memb_set_print (char *string,
 		printf ("addr %s\n", inet_ntoa (list[i]));
 	}
 }
+#endif
 
 static void timer_function_orf_token_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
@@ -1331,6 +1335,7 @@ static void encrypt_and_sign (struct iovec *iovec, int iov_len)
 	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
 #endif
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 if (log_digest) {
 printf ("new encryption\n");
 print_digest ("salt", header->salt);
@@ -1338,6 +1343,7 @@ print_digest ("initial_vector", initial_vector);
 print_digest ("cipher_key", cipher_key);
 print_digest ("hmac_key", hmac_key);
 }
+#endif
 
 	/*
 	 * Copy header of message, then remainder of message, then encrypt it
@@ -1431,6 +1437,7 @@ static int authenticate_and_decrypt (struct iovec *iov)
 	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
 #endif
 
+#ifdef CODE_COVERAGE_COMPILE_OUT
 if (log_digest) {
 printf ("New decryption\n");
 print_digest ("salt", header->salt);
@@ -1438,6 +1445,7 @@ print_digest ("initial_vector", initial_vector);
 print_digest ("cipher_key", cipher_key);
 print_digest ("hmac_key", hmac_key);
 }
+#endif
 
 #ifdef AUTHENTICATION
 	/*
@@ -1458,6 +1466,7 @@ print_digest ("received digest", header->hash_digest);
 print_digest ("calculated digest", digest_comparison);
 #endif
 	if (memcmp (digest_comparison, header->hash_digest, len) != 0) {
+#ifdef CODE_COVERAGE_COMPILE_OUT
 print_digest ("initial_vector", initial_vector);
 print_digest ("cipher_key", cipher_key);
 print_digest ("hmac_key", hmac_key);
@@ -1465,9 +1474,9 @@ print_digest ("salt", header->salt);
 print_digest ("sent digest", header->hash_digest);
 print_digest ("calculated digest", digest_comparison);
 printf ("received message size %d\n", iov->iov_len);
+#endif
 		totemsrp_log_printf (totemsrp_log_level_security, "Received message has invalid digest... ignoring.\n");
 		res = -1;
-exit (1); // TODO this shouldn't be an exit but I want to catch invalid digests
 		return (-1);
 	}
 #endif /* AUTHENTICATION */
@@ -1790,7 +1799,6 @@ int orf_token_remcast (int seq) {
 	 */
 	res = sendmsg (totemsrp_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (res == -1) {
-printf ("error during remulticast %d %d %d\n", seq, errno, sort_queue_item->iov_len);
 		return (-1);
 	}
 	stats_sent += res;
@@ -2025,7 +2033,6 @@ printf ("\n");
 		 */
  		if (memcmp (&rtr_list[i].ring_id, &my_ring_id,
 			sizeof (struct memb_ring_id)) != 0) {
-printf ("retransmit for a different config %d\n", rtr_list[i].seq);
 
 			i += 1;
 			continue;
