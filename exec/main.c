@@ -739,6 +739,8 @@ static void deliver_fn (
 		header->size = swab32 (header->size);
 	}
 
+	assert(iovec->iov_len == header->size);
+
 	res = aisexec_handler_fns[header->id](header, source_addr,
 		endian_conversion_required);
 }
