@@ -35,6 +35,7 @@
 #define RECOVERY_DEBUG LOG_LEVEL_DEBUG
 #define CHAN_DEL_DEBUG LOG_LEVEL_DEBUG
 #define CHAN_OPEN_DEBUG LOG_LEVEL_DEBUG
+#define CHAN_UNLINK_DEBUG LOG_LEVEL_DEBUG
 #define REMOTE_OP_DEBUG LOG_LEVEL_DEBUG
 
 #include <sys/types.h>
@@ -68,6 +69,7 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message);
 static int lib_evt_open_channel_async(struct conn_info *conn_info, 
 		void *message);
 static int lib_evt_close_channel(struct conn_info *conn_info, void *message);
+static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message);
 static int lib_evt_event_subscribe(struct conn_info *conn_info, 
 		void *message);
 static int lib_evt_event_unsubscribe(struct conn_info *conn_info, 
@@ -111,6 +113,11 @@ static struct libais_handler evt_libais_handlers[] = {
 	.libais_handler_fn = 	lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	},
+	{
+	.libais_handler_fn = 	lib_evt_unlink_channel,
+	.response_size = 		sizeof(struct res_evt_channel_unlink),
+	.response_id = 			MESSAGE_RES_EVT_UNLINK_CHANNEL,
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_subscribe,
@@ -168,7 +175,7 @@ struct service_handler evt_service_handler = {
 	.exec_dump_fn				= 0
 };
 
-// TODOstatic totempg_recovery_plug_handle evt_recovery_plug_handle;
+// TODO static totempg_recovery_plug_handle evt_recovery_plug_handle;
 
 /* 
  * list of all retained events 
@@ -182,11 +189,48 @@ static DECLARE_LIST_INIT(retained_list);
  */
 static DECLARE_LIST_INIT(esc_head);
 
+/*
+ * list of all unlinked event channel information
+ * 		struct event_svr_channel_instance
+ */
+static DECLARE_LIST_INIT(esc_unlinked_head);
+
 /* 
  * list of all active event conn_info structs.
  * 		struct conn_info
  */
 static DECLARE_LIST_INIT(ci_head);
+
+
+/*
+ * Global varaibles used by the event service
+ *
+ * base_id_top:		upper bits of next event ID to assign
+ * base_id:			Lower bits of Next event ID to assign
+ * my_node_id:		My cluster node id
+ * in_cfg_change:	Config change occurred.  Figure out who sends retained evts.
+ * 					cleared when retained events have been delivered.
+ * total_members:	how many members in this cluster
+ * checked_in:		keep track during config change.
+ * any_joined:		did any nodes join on this change?
+ * recovery_node:	True if we're the recovery node.
+ * tok_call_handle:	totempg token callback handle for recovery.
+ * next_retained:	pointer to next retained message to send during recovery.
+ * next_chan:		pointer to next channel to send during recovery.
+ *
+ */
+#define BASE_ID_MASK 0xffffffffLL
+static SaEvtEventIdT base_id = 0;
+static SaEvtEventIdT base_id_top = 0;
+static SaClmNodeIdT  my_node_id = 0;
+static int			 in_cfg_change = 0;
+static int			 total_members = 0;
+static int 			 checked_in = 0;
+static int			 any_joined = 0;
+static int			 recovery_node = 0;
+static void 		 *tok_call_handle = 0;
+static struct list_head *next_retained = 0;
+static struct list_head *next_chan = 0;
 
 /*
  * Structure to track pending channel open requests.
@@ -208,12 +252,42 @@ struct open_chan_pending {
 	uint32_t			ocp_c_handle;
 	struct list_head	ocp_entry;
 };
-	
+
 /*
  * list of pending channel opens
  */
 static DECLARE_LIST_INIT(open_pending);
 static void chan_open_timeout(void *data);
+
+/*
+ * Structure to track pending channel unlink requests.
+ * ucp_unlink_id:		unlink ID of unlinked channel.
+ * ucp_conn_info:		conn_info for returning to the library.
+ * ucp_entry:			list entry for pending unlink list.
+ */
+struct unlink_chan_pending {
+	uint64_t	 		ucp_unlink_id;
+	struct conn_info	*ucp_conn_info;
+ 	struct list_head 	ucp_entry;
+};
+
+/*
+ * list of pending unlink requests
+ */
+static DECLARE_LIST_INIT(unlink_pending);
+
+/*
+ * Next unlink ID
+ */
+static uint64_t	base_unlink_id = 0;
+inline uint64_t
+next_chan_unlink_id()
+{
+	uint64_t uid = my_node_id;
+	uid = (uid << 32ULL) | base_unlink_id;
+	base_unlink_id = (base_unlink_id + 1ULL) & BASE_ID_MASK;
+	return uid;
+}
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
@@ -274,6 +348,10 @@ struct open_count {
  * esc_open_chans:		list of opens of this channel.
  * 						(event_svr_channel_open.eco_entry)
  * esc_entry:			links to other channels. (used by esc_head)
+ * esc_unlink_id:		If non-zero, then the channel has been marked
+ * 						for unlink.  This unlink ID is used to
+ * 						mark events still associated with current openings
+ * 						so they get delivered to the proper recipients.
  */
 struct event_svr_channel_instance {
 	SaNameT				esc_channel_name;
@@ -284,6 +362,7 @@ struct event_svr_channel_instance {
 	uint32_t			esc_retained_count;
 	struct list_head 	esc_open_chans;
 	struct list_head 	esc_entry;
+	uint64_t			esc_unlink_id;
 };
 
 /*
@@ -390,37 +469,6 @@ struct member_node_data {
 	struct list_head	mn_entry;
 };
 DECLARE_LIST_INIT(mnd);
-
-/*
- * Global varaibles used by the event service
- *
- * base_id_top:		upper bits of next event ID to assign
- * base_id:			Lower bits of Next event ID to assign
- * my_node_id:		My cluster node id
- * in_cfg_change:	Config change occurred.  Figure out who sends retained evts.
- * 					cleared when retained events have been delivered.
- * total_members:	how many members in this cluster
- * checked_in:		keep track during config change.
- * any_joined:		did any nodes join on this change?
- * recovery_node:	True if we're the recovery node.
- * tok_call_handle:	totempg token callback handle for recovery.
- * next_retained:	pointer to next retained message to send during recovery.
- * next_chan:		pointer to next channel to send during recovery.
- *
- */
-#define BASE_ID_MASK 0xffffffffLL
-static SaEvtEventIdT base_id = 0;
-static SaEvtEventIdT base_id_top = 0;
-static SaClmNodeIdT  my_node_id = 0;
-static int			 in_cfg_change = 0;
-static int			 total_members = 0;
-static int 			 checked_in = 0;
-static int			 any_joined = 0;
-static int			 recovery_node = 0;
-static void 		 *tok_call_handle = 0;
-static struct list_head *next_retained = 0;
-static struct list_head *next_chan = 0;
-
 /*
  * Take the filters we received from the application via the library and 
  * make them into a real SaEvtEventFilterArrayT
@@ -495,18 +543,52 @@ static void free_filters(SaEvtEventFilterArrayT *fp)
  * Look up a channel in the global channel list
  */
 static struct event_svr_channel_instance *
-find_channel(SaNameT *chan_name)
+find_channel(SaNameT *chan_name, uint64_t unlink_id)
 {
-	struct list_head *l;
+	struct list_head *l, *head;
 	struct event_svr_channel_instance *eci;
 
-	for (l = esc_head.next; l != &esc_head; l = l->next) {
+	/*
+	 * choose which list to look through
+	 */
+	if (unlink_id == EVT_CHAN_ACTIVE) {
+		head = &esc_head;
+	} else {
+		head = &esc_unlinked_head;
+	}
+
+	for (l = head->next; l != head; l = l->next) {
 
 		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
 		if (!name_match(chan_name, &eci->esc_channel_name)) {
 			continue;
+		} else if (unlink_id != eci->esc_unlink_id) {
+			continue;
 		}
 		return eci;
+	}
+	return 0;
+}
+
+/*
+ * Find the last unlinked version of a channel.
+ */
+static struct event_svr_channel_instance *
+find_last_unlinked_channel(SaNameT *chan_name)
+{
+	struct list_head *l;
+	struct event_svr_channel_instance *eci;
+
+	/*
+	 * unlinked channels are added to the head of the list
+	 * so the first one we see is the last one added.
+	 */
+	for (l = esc_unlinked_head.next; l != &esc_unlinked_head; l = l->next) {
+
+		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
+		if (!name_match(chan_name, &eci->esc_channel_name)) {
+			continue;
+		} 
 	}
 	return 0;
 }
@@ -731,12 +813,15 @@ static void delete_channel(struct event_svr_channel_instance *eci)
 			eci->esc_retained_count);
 	/*
 	 * If no one has the channel open anywhere and there are no unexpired
-	 * retained events for this channel, then it is OK to delete the
-	 * data structure.
+	 * retained events for this channel, and it has been marked for deletion
+	 * by an unlink, then it is OK to delete the data structure.
 	 */
-	if ((eci->esc_retained_count == 0)  && (eci->esc_total_opens == 0)) {
+	if ((eci->esc_retained_count == 0)  && (eci->esc_total_opens == 0) &&
+			(eci->esc_unlink_id != EVT_CHAN_ACTIVE)) {
 		log_printf(CHAN_DEL_DEBUG, "Delete channel %s\n",
 			eci->esc_channel_name.value);
+		log_printf(CHAN_UNLINK_DEBUG, "Delete channel %s, unlink_id %0llx\n",
+			eci->esc_channel_name.value, eci->esc_unlink_id);
 
 		if (!list_empty(&eci->esc_open_chans)) {
 				log_printf(LOG_LEVEL_NOTICE, 
@@ -759,6 +844,47 @@ static void delete_channel(struct event_svr_channel_instance *eci)
 		}
 		free(eci);
 	}
+}
+
+/*
+ * Mark a channel for deletion.
+ */
+static void unlink_channel(struct event_svr_channel_instance *eci, 
+		uint64_t unlink_id)
+{
+	struct event_data *edp;
+	struct list_head *l;
+
+	log_printf(CHAN_UNLINK_DEBUG, "Unlink request: %s, id 0x%llx\n",
+			eci->esc_channel_name.value, unlink_id);
+	/*
+	 * The unlink ID is used to note that the channel has been marked 
+	 * for deletion and is a way to distinguish between multiple 
+	 * channels of the same name each marked for deletion.
+	 */
+	eci->esc_unlink_id = unlink_id;
+
+	/*
+	 * Move the unlinked channel to the unlinked list.  This way 
+	 * we don't have to worry about filtering it out when we need to
+	 * distribute retained events at recovery time.
+	 */
+	list_del(&eci->esc_entry);
+	list_add(&eci->esc_entry, &esc_unlinked_head);
+
+	/*
+	 * Scan the retained event list and tag any associated with this channel
+	 * with the unlink ID so that they get routed properly.
+	 */
+	for (l = retained_list.next; l != &retained_list; l = l->next) {
+		edp = list_entry(l, struct event_data, ed_retained);
+		if ((edp->ed_my_chan == eci) && 
+				(edp->ed_event.led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
+			edp->ed_event.led_chan_unlink_id = unlink_id;
+		}
+	}
+
+	delete_channel(eci);
 }
 
 /*
@@ -821,7 +947,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 
 	ret = SA_AIS_OK;
 
-	eci = find_channel(cn);
+	eci = find_channel(cn, EVT_CHAN_ACTIVE);
 
 	/*
 	 * If the create flag set, and it doesn't exist, we can make the channel.  
@@ -860,7 +986,7 @@ chan_open_end:
 /*
  * Send a request to close a channel with the rest of the cluster.
  */
-static SaErrorT evt_close_channel(SaNameT *cn)
+static SaErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 {
 	struct req_evt_chan_command cpkt;
 	struct iovec chn_iovec;
@@ -877,7 +1003,8 @@ static SaErrorT evt_close_channel(SaNameT *cn)
 	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLOSE_CHAN_OP;
-	cpkt.u.chc_chan = *cn;
+	cpkt.u.chcu.chcu_name = *cn;
+	cpkt.u.chcu.chcu_unlink_id = unlink_id;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
@@ -1312,7 +1439,7 @@ event_retention_timeout(void *data)
 	list_del(&edp->ed_retained);
 	list_init(&edp->ed_retained);
 	/*
-	 * Check to see it the channel isn't in use anymore.
+	 * Check to see if the channel isn't in use anymore.
 	 */
 	edp->ed_my_chan->esc_retained_count--;
 	if (edp->ed_my_chan->esc_retained_count == 0) {
@@ -1335,7 +1462,7 @@ clear_retention_time(SaEvtEventIdT event_id)
 	int ret;
 
 	log_printf(LOG_LEVEL_DEBUG, "Search for Event ID %llx\n", event_id);
-	for(l = retained_list.next; l != &retained_list; l = nxt) {
+	for (l = retained_list.next; l != &retained_list; l = nxt) {
 		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
 		if (edp->ed_event.led_event_id != event_id) {
@@ -1788,6 +1915,7 @@ convert_event(struct lib_event_data *evt)
 	 */
 
 	evt->led_chan_name.length = swab16(evt->led_chan_name.length);
+	evt->led_chan_unlink_id = swab64(evt->led_chan_unlink_id);
 	evt->led_event_id = swab64(evt->led_event_id);
 	evt->led_sub_id = swab32(evt->led_sub_id);
 	evt->led_publisher_name.length = swab32(evt->led_publisher_name.length);
@@ -2130,7 +2258,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 			eco->eco_flags);
 
 	/*
-	 * Unlink the channel open structure.
+	 * Disconnect the channel open structure.
 	 *
 	 * Check for subscriptions and deal with them.  In this case
 	 * if there are any, we just implicitly unsubscribe.
@@ -2161,7 +2289,8 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 	 * of who they have been delivered to.
 	 */
 	remove_delivered_channel(eco);
-	return evt_close_channel(&eco->eco_channel->esc_channel_name);
+	return evt_close_channel(&eco->eco_channel->esc_channel_name,
+			eco->eco_channel->esc_unlink_id);
 }
 
 /*
@@ -2202,6 +2331,72 @@ chan_close_done:
 	res.icc_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
 
+	return 0;
+}
+
+/*
+ * Handler for saEvtChannelUnlink
+ */
+static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
+{
+	struct req_evt_channel_unlink *req;
+	struct res_evt_channel_unlink res;
+	struct iovec chn_iovec;
+	struct unlink_chan_pending *ucp;
+	struct req_evt_chan_command cpkt;
+	SaAisErrorT error = SA_AIS_ERR_LIBRARY;
+
+	req = message;
+
+	log_printf(CHAN_UNLINK_DEBUG, 
+			"saEvtChannelUnlink (Unlink channel request)\n");
+	log_printf(CHAN_UNLINK_DEBUG, "Channel Name %s\n", 
+			req->iuc_channel_name.value);
+
+	if (!find_channel(&req->iuc_channel_name, EVT_CHAN_ACTIVE)) {
+		log_printf(CHAN_UNLINK_DEBUG, "Channel Name doesn't exist\n");
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto evt_unlink_err;
+	}
+
+	/*
+	 * Set up the data structure so that the channel op
+	 * mcast handler can complete the unlink comamnd back to the 
+	 * requestor.
+	 */
+	ucp = malloc(sizeof(*ucp));
+	if (!ucp) {
+		log_printf(LOG_LEVEL_ERROR,
+				"saEvtChannelUnlink: Memory allocation failure\n");
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto evt_unlink_err;
+	}
+
+	ucp->ucp_unlink_id = next_chan_unlink_id();
+	ucp->ucp_conn_info = conn_info;
+	list_add_tail(&ucp->ucp_entry, &unlink_pending);
+
+	/*
+	 * Put together a mcast packet to notify everyone
+	 * of the channel unlink.
+	 */
+	memset(&cpkt, 0, sizeof(cpkt));
+	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.size = sizeof(cpkt);
+	cpkt.chc_op = EVT_UNLINK_CHAN_OP;
+	cpkt.u.chcu.chcu_name = req->iuc_channel_name;
+	cpkt.u.chcu.chcu_unlink_id = ucp->ucp_unlink_id;
+	chn_iovec.iov_base = &cpkt;
+	chn_iovec.iov_len = cpkt.chc_head.size;
+	if (totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED) == 0) {
+		return 0;
+	}
+
+evt_unlink_err:
+	res.iuc_head.size = sizeof(res);
+	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
+	res.iuc_head.error = error;
+	libais_send_response (conn_info, &res, sizeof(res));
 	return 0;
 }
 
@@ -2449,6 +2644,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	req->led_head.id = MESSAGE_REQ_EXEC_EVT_EVENTDATA;
 	req->led_chan_name = eci->esc_channel_name;
 	req->led_event_id = event_id;
+	req->led_chan_unlink_id = eci->esc_unlink_id;
 
 	/*
 	 * Distribute the event.
@@ -2867,13 +3063,30 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr,
 	evtpkt->led_in_addr = source_addr;
 	evtpkt->led_receive_time = clust_time_now();
 
-	eci = find_channel(&evtpkt->led_chan_name);
+	log_printf(CHAN_UNLINK_DEBUG, 
+				"evt_remote_evt(0): chan %s, id 0x%llx\n",
+					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+	eci = find_channel(&evtpkt->led_chan_name, evtpkt->led_chan_unlink_id);
+	/*
+	 * We may have had some events that were already queued when an
+	 * unlink happened, if we don't find the channel in the active list
+	 * look for the last unlinked channel of the same name.  If this channel
+	 * is re-opened the messages will still be routed correctly because new
+	 * active channel messages will be ordered behind the open.
+	 */
+	if (!eci && (evtpkt->led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
+		log_printf(CHAN_UNLINK_DEBUG, 
+				"evt_remote_evt(1): chan %s, id 0x%llx\n",
+					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+		eci = find_last_unlinked_channel(&evtpkt->led_chan_name);
+	}
 
 	/*
-	 * We shouldn't see an event for a channel that we don't know about.
+	 * We shouldn't normally see an event for a channel that we 
+	 * don't know about.
 	 */
 	if (!eci) {
-		log_printf(LOG_LEVEL_WARNING, "Channel %s doesn't exist\n",
+		log_printf(LOG_LEVEL_DEBUG, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
 		return 0;
 	}
@@ -3018,13 +3231,17 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr,
 						md->mn_node_info.nodeId, 
 						md->mn_node_info.nodeName.value);
 
-		eci = find_channel(&evtpkt->led_chan_name);
+		log_printf(CHAN_UNLINK_DEBUG, 
+				"evt_recovery_event: chan %s, id 0x%llx\n",
+					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+		eci = find_channel(&evtpkt->led_chan_name, evtpkt->led_chan_unlink_id);
 
 		/*
-		 * We shouldn't see an event for a channel that we don't know about.
+		 * We shouldn't normally see an event for a channel that we don't 
+		 * know about.
 		 */
 		if (!eci) {
-			log_printf(LOG_LEVEL_WARNING, "Channel %s doesn't exist\n",
+			log_printf(LOG_LEVEL_DEBUG, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
 			return 0;
 		}
@@ -3149,6 +3366,26 @@ open_return:
 }
 
 /*
+ * Called by the channel unlink exec handler to
+ * respond to the application.
+ */
+static void evt_chan_unlink_finish(struct unlink_chan_pending *ucp)
+{
+	struct res_evt_channel_unlink res;
+
+	log_printf(CHAN_UNLINK_DEBUG, "Unlink channel finish ID 0x%llx\n", 
+											ucp->ucp_unlink_id);
+
+	res.iuc_head.size = sizeof(res);
+	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
+	res.iuc_head.error = SA_AIS_OK;
+	libais_send_response (ucp->ucp_conn_info, &res, sizeof(res));
+
+	list_del(&ucp->ucp_entry);
+	free(ucp);
+}
+
+/*
  * Take the channel command data and swap the elements so they match 
  * our architectures word order.
  */
@@ -3170,8 +3407,13 @@ convert_chan_packet(struct req_evt_chan_command *cpkt)
 	switch (cpkt->chc_op) {
 	
 	case EVT_OPEN_CHAN_OP:
-	case EVT_CLOSE_CHAN_OP:
 		cpkt->u.chc_chan.length = swab16(cpkt->u.chc_chan.length);
+		break;
+
+	case EVT_UNLINK_CHAN_OP:
+	case EVT_CLOSE_CHAN_OP:
+		cpkt->u.chcu.chcu_name.length = swab16(cpkt->u.chcu.chcu_name.length);
+		cpkt->u.chcu.chcu_unlink_id = swab64(cpkt->u.chcu.chcu_unlink_id);
 		break;
 
 	case EVT_CLEAR_RET_OP:
@@ -3259,7 +3501,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 
 		log_printf(CHAN_OPEN_DEBUG, "Opening channel %s for node 0x%x\n",
 						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
-		eci = find_channel(&cpkt->u.chc_chan);
+		eci = find_channel(&cpkt->u.chc_chan, EVT_CHAN_ACTIVE);
 
 		if (!eci) {
 			eci = create_channel(&cpkt->u.chc_chan);
@@ -3302,12 +3544,12 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 	 */
 	case EVT_CLOSE_CHAN_OP:
 		log_printf(LOG_LEVEL_DEBUG, "Closing channel %s for node 0x%x\n",
-						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
-		eci = find_channel(&cpkt->u.chc_chan);
+						cpkt->u.chcu.chcu_name.value, mn->mn_node_info.nodeId);
+		eci = find_channel(&cpkt->u.chcu.chcu_name, cpkt->u.chcu.chcu_unlink_id);
 		if (!eci) {
 			log_printf(LOG_LEVEL_NOTICE, 
 					"Channel close request for %s not found\n",
-				cpkt->u.chc_chan.value);	
+				cpkt->u.chcu.chcu_name.value);	
 			break;
 		}
 
@@ -3322,6 +3564,62 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 				eci->esc_retained_count);
 		delete_channel(eci);
 		break;
+
+	/*
+	 * Handle a request for channel unlink saEvtChannelUnlink().  
+	 * We'll look up the channel and mark it as unlinked.  Respond to 
+	 * local library unlink commands.
+	 */
+	case EVT_UNLINK_CHAN_OP: {
+		struct unlink_chan_pending *ucp;
+		struct list_head *l, *nxt;
+
+		log_printf(CHAN_UNLINK_DEBUG, 
+				"Unlink request channel %s unlink ID 0x%llx from node 0x%x\n",
+				cpkt->u.chcu.chcu_name.value,
+				cpkt->u.chcu.chcu_unlink_id,
+				mn->mn_node_info.nodeId);
+
+
+		/*
+		 * look up the channel name and get its assoicated data.
+		 */
+		eci = find_channel(&cpkt->u.chcu.chcu_name, 
+				EVT_CHAN_ACTIVE);
+		if (!eci) {
+			log_printf(LOG_LEVEL_NOTICE, 
+					"Channel unlink request for %s not found\n",
+				cpkt->u.chcu.chcu_name);
+			break;
+		}
+
+		/*
+		 * Mark channel as unlinked.
+		 */
+		unlink_channel(eci, cpkt->u.chcu.chcu_unlink_id);
+
+		/*
+		 * respond only to local library requests.
+		 */
+		if (mn->mn_node_info.nodeId == my_node->nodeId) {
+			/*
+			 * Complete one of our pending unlink requests
+			 */
+			for (l = unlink_pending.next; l != &unlink_pending; l = nxt) {
+				nxt = l->next;
+				ucp = list_entry(l, struct unlink_chan_pending, ucp_entry);
+				log_printf(CHAN_UNLINK_DEBUG, 
+				"Compare channel id 0x%llx 0x%llx\n", 
+					ucp->ucp_unlink_id, eci->esc_unlink_id);
+				if (ucp->ucp_unlink_id == eci->esc_unlink_id) {
+					evt_chan_unlink_finish(ucp);
+					break;
+				}
+			}
+		}
+		break;
+ 	}
+
 
 	/*
 	 * saEvtClearRetentiotime handler.
@@ -3375,7 +3673,8 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 				cpkt->u.chc_set_opens.chc_open_count,
 				mn->mn_node_info.nodeId);
 
-		eci = find_channel(&cpkt->u.chc_set_opens.chc_chan_name);
+		eci = find_channel(&cpkt->u.chc_set_opens.chc_chan_name, 
+					EVT_CHAN_ACTIVE);
 		if (!eci) {
 			eci = create_channel(&cpkt->u.chc_set_opens.chc_chan_name);
 		}

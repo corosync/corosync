@@ -253,7 +253,7 @@ static void eventHandleInstanceDestructor(void *instance)
 
 SaAisErrorT 
 saEvtInitialize(
-	SaEvtHandleT *evt_handle,
+	SaEvtHandleT *evtHandle,
 	const SaEvtCallbacksT *callbacks,
 	SaVersionT *version)
 {
@@ -273,11 +273,11 @@ saEvtInitialize(
 	 * assign instance data to unique handle
 	 */
 	error = saHandleCreate(&evt_instance_handle_db, sizeof(*evti), 
-			(void*)evt_handle);
+			(void*)evtHandle);
 	if (error != SA_AIS_OK) {
 		goto error_nofree;
 	}
-	error = saHandleInstanceGet(&evt_instance_handle_db, *evt_handle,
+	error = saHandleInstanceGet(&evt_instance_handle_db, *evtHandle,
 			(void*)&evti);
 	if (error != SA_AIS_OK) {
 		goto error_handle_free;
@@ -317,21 +317,21 @@ saEvtInitialize(
 	}
 
 	pthread_mutex_init(&evti->ei_mutex, NULL);
-	saHandleInstancePut(&evt_instance_handle_db, *evt_handle);
+	saHandleInstancePut(&evt_instance_handle_db, *evtHandle);
 
 	return SA_AIS_OK;
 
 error_handle_put:
-	saHandleInstancePut(&evt_instance_handle_db, *evt_handle);
+	saHandleInstancePut(&evt_instance_handle_db, *evtHandle);
 error_handle_free:
-	(void)saHandleDestroy(&evt_instance_handle_db, *evt_handle);
+	(void)saHandleDestroy(&evt_instance_handle_db, *evtHandle);
 error_nofree:
 	return error;
 }
 
 /*
  * The saEvtSelectionObjectGet() function returns the operating system 
- * handle selection_object, associated with the handle evt_handle, allowing 
+ * handle selectionObject, associated with the handle evtHandle, allowing 
  * the invoking process to ascertain when callbacks are pending. This 
  * function allows a process to avoid repeated invoking saEvtDispatch() to 
  * see if there is a new event, thus, needlessly consuming CPU time. In a 
@@ -340,22 +340,22 @@ error_nofree:
  */
 SaAisErrorT
 saEvtSelectionObjectGet(
-	SaEvtHandleT evt_handle,
-	SaSelectionObjectT *selection_object)
+	SaEvtHandleT evtHandle,
+	SaSelectionObjectT *selectionObject)
 {
 	struct event_instance *evti;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle, 
 			(void *)&evti);
 
 	if (error != SA_AIS_OK) {
 		return error;
 	}
 
-	*selection_object = evti->ei_fd;
+	*selectionObject = evti->ei_fd;
 
-	saHandleInstancePut(&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 
 	return SA_AIS_OK;
 }
@@ -435,12 +435,12 @@ make_evt_done:
 
 /*
  * The saEvtDispatch() function invokes, in the context of the calling 
- * thread, one or all of the pending callbacks for the handle evt_handle.
+ * thread, one or all of the pending callbacks for the handle evtHandle.
  */
 SaAisErrorT
 saEvtDispatch(
-	SaEvtHandleT evt_handle,
-	SaDispatchFlagsT dispatch_flags)
+	SaEvtHandleT evtHandle,
+	SaDispatchFlagsT dispatchFlags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
@@ -459,7 +459,7 @@ saEvtDispatch(
 	struct lib_event_data *evt;
 	struct res_evt_event_data res;
 
-	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 		(void *)&evti);
 	if (error != SA_AIS_OK) {
 		return error;
@@ -468,7 +468,7 @@ saEvtDispatch(
 	/*
 	 * Timeout instantly for SA_DISPATCH_ALL
 	 */
-	if (dispatch_flags == SA_DISPATCH_ALL) {
+	if (dispatchFlags == SA_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -504,7 +504,7 @@ saEvtDispatch(
 		}
 
 		dispatch_avail = (ufds.revents & POLLIN) | (empty == 0);
-		if (dispatch_avail == 0 && dispatch_flags == SA_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
 			pthread_mutex_unlock(&evti->ei_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -560,7 +560,7 @@ saEvtDispatch(
 		case MESSAGE_RES_LIB_ACTIVATEPOLL:
 			/*
 			 * This is a do nothing message which the node 
-			 * executive sends to activate the file evt_handle 
+			 * executive sends to activate the file evtHandle 
 			 * in poll when the library has queued a message into 
 			 * evti->ei_inq. The dispatch is ignored for the 
 			 * following two cases:
@@ -665,7 +665,7 @@ saEvtDispatch(
 		/*
 		 * Determine if more messages should be processed
 		 */
-		switch (dispatch_flags) {
+		switch (dispatchFlags) {
 		case SA_DISPATCH_ONE:
 			if (ignore_dispatch) {
 				ignore_dispatch = 0;
@@ -684,14 +684,14 @@ saEvtDispatch(
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut(&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 error_nounlock:
 	return error;
 }
 
 /*
  * The saEvtFinalize() function closes the association, represented by the 
- * evt_handle parameter, between the process and the Event Service. It may 
+ * evtHandle parameter, between the process and the Event Service. It may 
  * free up resources. 
  * This function cannot be invoked before the process has invoked the 
  * corresponding saEvtInitialize() function for the Event Service. After 
@@ -700,12 +700,12 @@ error_nounlock:
  * reinitialized using the saEvtInitialize() function.
  */
 SaAisErrorT
-saEvtFinalize(SaEvtHandleT evt_handle)
+saEvtFinalize(SaEvtHandleT evtHandle)
 {
 	struct event_instance *evti;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle, 
 			(void *)&evti);
 	if (error != SA_AIS_OK) {
 		return error;
@@ -718,7 +718,7 @@ saEvtFinalize(SaEvtHandleT evt_handle)
 	 */
 	if (evti->ei_finalize) {
 		pthread_mutex_unlock(&evti->ei_mutex);
-		saHandleInstancePut(&evt_instance_handle_db, evt_handle);
+		saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 		return SA_AIS_ERR_BAD_HANDLE;
 	}
 
@@ -728,8 +728,8 @@ saEvtFinalize(SaEvtHandleT evt_handle)
 
 	pthread_mutex_unlock(&evti->ei_mutex);
 
-	saHandleDestroy(&evt_instance_handle_db, evt_handle);
-	saHandleInstancePut(&evt_instance_handle_db, evt_handle);
+	saHandleDestroy(&evt_instance_handle_db, evtHandle);
+	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 
 	return error;
 }
@@ -748,11 +748,11 @@ saEvtFinalize(SaEvtHandleT evt_handle)
  */
 SaAisErrorT 
 saEvtChannelOpen(
-	SaEvtHandleT evt_handle, 
-	const SaNameT *channel_name, 
-	SaEvtChannelOpenFlagsT channel_open_flags, 
+	SaEvtHandleT evtHandle, 
+	const SaNameT *channelName, 
+	SaEvtChannelOpenFlagsT channelOpenFlags, 
 	SaTimeT timeout,
-	SaEvtChannelHandleT *channel_handle)
+	SaEvtChannelHandleT *channelHandle)
 {
 	struct event_instance *evti;
 	struct req_evt_channel_open req;
@@ -760,7 +760,7 @@ saEvtChannelOpen(
 	struct event_channel_instance *eci;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
 	if (error != SA_AIS_OK) {
@@ -771,15 +771,15 @@ saEvtChannelOpen(
 	 * create a handle for this open channel
 	 */
 	error = saHandleCreate(&channel_handle_db, sizeof(*eci), 
-			(void*)channel_handle);
+			(void*)channelHandle);
 	if (error != SA_AIS_OK) {
 		goto chan_open_put;
 	}
 
-	error = saHandleInstanceGet(&channel_handle_db, *channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, *channelHandle,
 					(void*)&eci);
 	if (error != SA_AIS_OK) {
-		saHandleDestroy(&channel_handle_db, *channel_handle);
+		saHandleDestroy(&channel_handle_db, *channelHandle);
 		goto chan_open_put;
 	}
 
@@ -789,10 +789,10 @@ saEvtChannelOpen(
 	 */
 	req.ico_head.size = sizeof(req);
 	req.ico_head.id = MESSAGE_REQ_EVT_OPEN_CHANNEL;
-	req.ico_c_handle = *channel_handle;
+	req.ico_c_handle = *channelHandle;
 	req.ico_timeout = timeout;
-	req.ico_open_flag = channel_open_flags;
-	req.ico_channel_name = *channel_name;
+	req.ico_open_flag = channelOpenFlags;
+	req.ico_channel_name = *channelName;
 
 
 	pthread_mutex_lock(&evti->ei_mutex);
@@ -817,35 +817,32 @@ saEvtChannelOpen(
 	}
 
 	eci->eci_svr_channel_handle = res.ico_channel_handle;
-	eci->eci_channel_name = *channel_name;
-	eci->eci_open_flags = channel_open_flags;
-	eci->eci_instance_handle = evt_handle;
+	eci->eci_channel_name = *channelName;
+	eci->eci_open_flags = channelOpenFlags;
+	eci->eci_instance_handle = evtHandle;
 	eci->eci_closing = 0;
 	pthread_mutex_init(&eci->eci_mutex, NULL);
-	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
-	saHandleInstancePut (&channel_handle_db, *channel_handle);
+	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
+	saHandleInstancePut (&channel_handle_db, *channelHandle);
 
 	return SA_AIS_OK;
 
 chan_open_free:
-	saHandleDestroy(&channel_handle_db, *channel_handle);
-	saHandleInstancePut (&channel_handle_db, *channel_handle);
+	saHandleDestroy(&channel_handle_db, *channelHandle);
+	saHandleInstancePut (&channel_handle_db, *channelHandle);
 chan_open_put:
-	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
 chan_open_done:
 	return error;
 }
 
 /*
  * The saEvtChannelClose() function closes an event channel and frees 
- * resources allo-cated for that event channel in the invoking process. If 
- * the event channel is not refer-enced by any process and does not hold 
- * any events with non-zero retention time, the Event Service automatically 
- * deletes the event channel from the cluster namespace.
+ * resources allocated for that event channel in the invoking process. 
  */
 
 SaAisErrorT 
-saEvtChannelClose(SaEvtChannelHandleT channel_handle)
+saEvtChannelClose(SaEvtChannelHandleT channelHandle)
 {
 	SaAisErrorT error;
 	struct event_instance *evti;
@@ -853,7 +850,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	struct req_evt_channel_close req;
 	struct res_evt_channel_close res;
 
-	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
 		goto chan_close_done;
@@ -874,7 +871,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	pthread_mutex_lock(&eci->eci_mutex);
 	if (eci->eci_closing) {
 		pthread_mutex_unlock(&eci->eci_mutex);
-		saHandleInstancePut(&channel_handle_db, channel_handle);
+		saHandleInstancePut(&channel_handle_db, channelHandle);
 		return SA_AIS_ERR_BAD_HANDLE;
 	}
 	eci->eci_closing = 1;
@@ -911,8 +908,8 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
-	saHandleDestroy(&channel_handle_db, channel_handle);
-	saHandleInstancePut(&channel_handle_db, channel_handle);
+	saHandleDestroy(&channel_handle_db, channelHandle);
+	saHandleInstancePut(&channel_handle_db, channelHandle);
 
 	return error;
 
@@ -920,7 +917,7 @@ chan_close_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
 chan_close_put1:
-	saHandleInstancePut(&channel_handle_db, channel_handle);
+	saHandleInstancePut(&channel_handle_db, channelHandle);
 chan_close_done:
 	return error;
 }
@@ -932,10 +929,10 @@ chan_close_done:
  * callback function (SaEvtChannelOpenCallbackT).
  */
 SaAisErrorT
-saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
+saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
                        SaInvocationT invocation,
-                       const SaNameT *channel_name,
-                       SaEvtChannelOpenFlagsT channel_open_flags)
+                       const SaNameT *channelName,
+                       SaEvtChannelOpenFlagsT channelOpenFlags)
 {
 	struct event_instance *evti;
 	struct req_evt_channel_open req;
@@ -944,7 +941,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
 	SaEvtChannelHandleT channel_handle;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
 	if (error != SA_AIS_OK) {
@@ -978,8 +975,8 @@ saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
 	req.ico_c_handle = channel_handle;
 	req.ico_timeout = 0;
 	req.ico_invocation = invocation;
-	req.ico_open_flag = channel_open_flags;
-	req.ico_channel_name = *channel_name;
+	req.ico_open_flag = channelOpenFlags;
+	req.ico_channel_name = *channelName;
 
 
 	pthread_mutex_lock(&evti->ei_mutex);
@@ -1004,12 +1001,12 @@ saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
 	}
 
 	eci->eci_svr_channel_handle = 0; /* filled in by callback */
-	eci->eci_channel_name = *channel_name;
-	eci->eci_open_flags = channel_open_flags;
-	eci->eci_instance_handle = evt_handle;
+	eci->eci_channel_name = *channelName;
+	eci->eci_open_flags = channelOpenFlags;
+	eci->eci_instance_handle = evtHandle;
 	eci->eci_closing = 0;
 	pthread_mutex_init(&eci->eci_mutex, NULL);
-	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
 	saHandleInstancePut (&channel_handle_db, channel_handle);
 
 	return SA_AIS_OK;
@@ -1018,20 +1015,75 @@ chan_open_free:
 	saHandleDestroy(&channel_handle_db, channel_handle);
 	saHandleInstancePut (&channel_handle_db, channel_handle);
 chan_open_put:
-	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
+	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
 chan_open_done:
 	return error;
 }
-
+/*
+ *  The SaEvtChannelUnlink function deletes an existing event channel 
+ *  from the cluster. 
+ *
+ *	After completion of the invocation: 
+ *		- An open of the channel name without a create will fail.
+ *		- The channel remains available to any already opened instances.
+ *		- If an open/create is performed on this channel name a new instance
+ *		  is created.
+ *		- The ulinked channel's resources will be deleted when the last open
+ *		  instance is closed.
+ *		   
+ *		Note that an event channel is only deleted from the cluster 
+ *		namespace when saEvtChannelUnlink() is invoked on it. The deletion 
+ *		of an event channel frees all resources allocated by the Event 
+ *		Service for it, such as published events with non-zero retention 
+ *		time.
+ */
 SaAisErrorT
-SaEvtChannelUnlink(
+saEvtChannelUnlink(
 	SaEvtHandleT evtHandle,
 	const SaNameT *channelName)
 {
-	/* 
-	 * TODO: Fill in code
+	struct event_instance *evti;
+	struct req_evt_channel_unlink req;
+	struct res_evt_channel_unlink res;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
+			(void*)&evti);
+	
+	if (error != SA_AIS_OK) {
+		goto chan_unlink_done;
+	}
+
+	/*
+	 * Send the request to the server and wait for a response
 	 */
-	return SA_AIS_ERR_LIBRARY;
+	req.iuc_head.size = sizeof(req);
+	req.iuc_head.id = MESSAGE_REQ_EVT_UNLINK_CHANNEL;
+	req.iuc_channel_name = *channelName;
+
+
+	pthread_mutex_lock(&evti->ei_mutex);
+
+	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		pthread_mutex_unlock (&evti->ei_mutex);
+		goto chan_unlink_put;
+	}
+	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
+					MESSAGE_RES_EVT_UNLINK_CHANNEL);
+
+	pthread_mutex_unlock (&evti->ei_mutex);
+
+	if (error != SA_AIS_OK) {
+		goto chan_unlink_put;
+	}
+
+	error = res.iuc_head.error;
+
+chan_unlink_put:
+	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
+chan_unlink_done:
+	return error;
 }
 
 /* 
@@ -1047,15 +1099,15 @@ SaEvtChannelUnlink(
  */
 SaAisErrorT 
 saEvtEventAllocate(
-	const SaEvtChannelHandleT channel_handle, 
-	SaEvtEventHandleT *event_handle)
+	const SaEvtChannelHandleT channelHandle, 
+	SaEvtEventHandleT *eventHandle)
 {
 	SaAisErrorT error;
 	struct event_data_instance *edi;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 
-	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
 		goto alloc_done;
@@ -1068,11 +1120,11 @@ saEvtEventAllocate(
 	}
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
-			(void*)event_handle);
+			(void*)eventHandle);
 	if (error != SA_AIS_OK) {
 		goto alloc_put2;
 	}
-	error = saHandleInstanceGet(&event_handle_db, *event_handle,
+	error = saHandleInstanceGet(&event_handle_db, *eventHandle,
 					(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto alloc_put2;
@@ -1082,10 +1134,10 @@ saEvtEventAllocate(
 
 	pthread_mutex_init(&edi->edi_mutex, NULL);
 	edi->edi_freeing = 0;
-	edi->edi_channel_handle = channel_handle;
+	edi->edi_channel_handle = channelHandle;
 	edi->edi_pub_node = evti->ei_node_id;
 	edi->edi_priority = SA_EVT_LOWEST_PRIORITY;
-	saHandleInstancePut (&event_handle_db, *event_handle);
+	saHandleInstancePut (&event_handle_db, *eventHandle);
 
 alloc_put2:
 	saHandleInstancePut (&evt_instance_handle_db, eci->eci_instance_handle);
@@ -1102,12 +1154,12 @@ alloc_done:
  * by saEvtEventAllocate() and by saEvtEventDeliverCallback().
  */
 SaAisErrorT 
-saEvtEventFree(SaEvtEventHandleT event_handle)
+saEvtEventFree(SaEvtEventHandleT eventHandle)
 {
 	SaAisErrorT error;
 	struct event_data_instance *edi;
 
-	error = saHandleInstanceGet(&event_handle_db, event_handle,
+	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto evt_free_done;
@@ -1119,14 +1171,14 @@ saEvtEventFree(SaEvtEventHandleT event_handle)
 	pthread_mutex_lock(&edi->edi_mutex);
 	if (edi->edi_freeing) {
 		pthread_mutex_unlock(&edi->edi_mutex);
-		saHandleInstancePut(&event_handle_db, event_handle);
+		saHandleInstancePut(&event_handle_db, eventHandle);
 		return SA_AIS_ERR_BAD_HANDLE;
 	}
 	edi->edi_freeing = 1;
 
 	pthread_mutex_unlock(&edi->edi_mutex);
-	saHandleDestroy(&event_handle_db, event_handle);
-	saHandleInstancePut(&event_handle_db, event_handle);
+	saHandleDestroy(&event_handle_db, eventHandle);
+	saHandleInstancePut(&event_handle_db, eventHandle);
 
 evt_free_done:
 	return error;
@@ -1134,18 +1186,18 @@ evt_free_done:
 
 /*
  * This function may be used to assign writeable event attributes. It takes 
- * as arguments an event handle event_handle and the attribute to be set in 
+ * as arguments an event handle eventHandle and the attribute to be set in 
  * the event structure of the event with that handle. Note: The only 
- * attributes that a process can set are the pattern_array, priority, 
- * retention_time and publisher_name attributes.
+ * attributes that a process can set are the patternArray, priority, 
+ * retentionTime and publisherName attributes.
  */
 SaAisErrorT 
 saEvtEventAttributesSet(
-	const SaEvtEventHandleT event_handle, 
-	const SaEvtEventPatternArrayT *pattern_array, 
+	const SaEvtEventHandleT eventHandle, 
+	const SaEvtEventPatternArrayT *patternArray, 
 	SaEvtEventPriorityT priority, 
-	SaTimeT retention_time, 
-	const SaNameT *publisher_name)
+	SaTimeT retentionTime, 
+	const SaNameT *publisherName)
 {
 	SaEvtEventPatternT *oldpatterns;
 	SaSizeT		    oldnumber;
@@ -1153,7 +1205,7 @@ saEvtEventAttributesSet(
 	struct event_data_instance *edi;
 	int i;
 
-	error = saHandleInstanceGet(&event_handle_db, event_handle,
+	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto attr_set_done;
@@ -1161,36 +1213,36 @@ saEvtEventAttributesSet(
 	pthread_mutex_lock(&edi->edi_mutex);
 
 	edi->edi_priority = priority;
-	edi->edi_retention_time = retention_time;
+	edi->edi_retention_time = retentionTime;
 
 	/*
-	 * publisher_name or pattern_array not allowed to be NULL
+	 * publisherName or patternArray not allowed to be NULL
 	 */
-	if (!publisher_name || !pattern_array) {
+	if (!publisherName || !patternArray) {
 			error = SA_AIS_ERR_INVALID_PARAM;
 			goto attr_set_unlock;
 	}
 
-	edi->edi_pub_name = *publisher_name;
+	edi->edi_pub_name = *publisherName;
 
 	oldpatterns = edi->edi_patterns.patterns;
 	oldnumber = edi->edi_patterns.patternsNumber;
 	edi->edi_patterns.patterns = 0;
 	edi->edi_patterns.patterns = malloc(sizeof(SaEvtEventPatternT) * 
-					pattern_array->patternsNumber);
+					patternArray->patternsNumber);
 	if (!edi->edi_patterns.patterns) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto attr_set_done_reset;
 	}
-	edi->edi_patterns.patternsNumber = pattern_array->patternsNumber;
+	edi->edi_patterns.patternsNumber = patternArray->patternsNumber;
 
 	/*
 	 * copy the patterns from the caller. allocating memory for
 	 * of all the strings.
 	 */
-	for (i = 0; i < pattern_array->patternsNumber; i++) {
+	for (i = 0; i < patternArray->patternsNumber; i++) {
 		edi->edi_patterns.patterns[i].pattern = 
-			malloc(pattern_array->patterns[i].patternSize);
+			malloc(patternArray->patterns[i].patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			int j;
 			for (j = 0; j < i; j++) {
@@ -1201,10 +1253,10 @@ saEvtEventAttributesSet(
 			goto attr_set_done_reset;
 		}
 		memcpy(edi->edi_patterns.patterns[i].pattern,
-			pattern_array->patterns[i].pattern,
-				pattern_array->patterns[i].patternSize);
+			patternArray->patterns[i].pattern,
+				patternArray->patterns[i].patternSize);
 		edi->edi_patterns.patterns[i].patternSize = 
-			pattern_array->patterns[i].patternSize;
+			patternArray->patterns[i].patternSize;
 	}
 
 	/*
@@ -1225,7 +1277,7 @@ attr_set_done_reset:
 	edi->edi_patterns.patternsNumber = oldnumber;
 attr_set_unlock:
 	pthread_mutex_unlock(&edi->edi_mutex);
-	saHandleInstancePut(&event_handle_db, event_handle);
+	saHandleInstancePut(&event_handle_db, eventHandle);
 attr_set_done:
 	return error;
 }
@@ -1241,24 +1293,24 @@ attr_set_done:
  * parameters, if the invoking process provides a NULL reference, the 
  * Availability Management Framework does not return the out value. 
  * Similarly, it is the responsibility of the invoking process to allocate 
- * memory for the pattern_array.
+ * memory for the patternArray.
  */
 SaAisErrorT 
 saEvtEventAttributesGet(
-	SaEvtEventHandleT event_handle, 
-	SaEvtEventPatternArrayT *pattern_array, 
+	SaEvtEventHandleT eventHandle, 
+	SaEvtEventPatternArrayT *patternArray, 
 	SaEvtEventPriorityT *priority, 
-	SaTimeT *retention_time, 
-	SaNameT *publisher_name, 
-	SaTimeT *publish_time, 
-	SaEvtEventIdT *event_id)
+	SaTimeT *retentionTime, 
+	SaNameT *publisherName, 
+	SaTimeT *publishTime, 
+	SaEvtEventIdT *eventId)
 {
 	SaAisErrorT error;
 	struct event_data_instance *edi;
 	SaSizeT npats;
 	int i;
 
-	error = saHandleInstanceGet(&event_handle_db, event_handle,
+	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto attr_get_done;
@@ -1269,31 +1321,31 @@ saEvtEventAttributesGet(
 	 * Go through the args and send back information if the pointer
 	 * isn't NULL
 	 */
-	if (event_id) {
-		*event_id = edi->edi_event_id;
+	if (eventId) {
+		*eventId = edi->edi_event_id;
 	}
 
-	if (publish_time) {
-		*publish_time = edi->edi_pub_time;
+	if (publishTime) {
+		*publishTime = edi->edi_pub_time;
 	}
 
-	if (publisher_name) {
-		*publisher_name = edi->edi_pub_name;
+	if (publisherName) {
+		*publisherName = edi->edi_pub_name;
 	}
 
-	if (retention_time) {
-		*retention_time = edi->edi_retention_time;
+	if (retentionTime) {
+		*retentionTime = edi->edi_retention_time;
 	}
 
 	if (priority) {
 		*priority = edi->edi_priority;
 	}
 
-	if (!pattern_array) {
+	if (!patternArray) {
 		goto attr_get_unlock;
 	}
 
-	npats = min(pattern_array->patternsNumber, 
+	npats = min(patternArray->patternsNumber, 
 				edi->edi_patterns.patternsNumber);
 	/*
 	 * We set the returned number of patterns to the actual
@@ -1304,20 +1356,20 @@ saEvtEventAttributesGet(
 	 *
 	 * The same thing happens when copying the pattern strings.
 	 */
-	pattern_array->patternsNumber = edi->edi_patterns.patternsNumber;
+	patternArray->patternsNumber = edi->edi_patterns.patternsNumber;
 
 	for (i = 0; i < npats; i++) {
-		memcpy(pattern_array->patterns[i].pattern,
+		memcpy(patternArray->patterns[i].pattern,
 			edi->edi_patterns.patterns[i].pattern,
-			min(pattern_array->patterns[i].patternSize,
+			min(patternArray->patterns[i].patternSize,
 				edi->edi_patterns.patterns[i].patternSize));
-		pattern_array->patterns[i].patternSize = 
+		patternArray->patterns[i].patternSize = 
 			edi->edi_patterns.patterns[i].patternSize;
 	}
 
 attr_get_unlock:
 	pthread_mutex_unlock(&edi->edi_mutex);
-	saHandleInstancePut(&event_handle_db, event_handle);
+	saHandleInstancePut(&event_handle_db, eventHandle);
 attr_get_done:
 	return error;
 }
@@ -1329,19 +1381,19 @@ attr_get_done:
  */
 SaAisErrorT 
 saEvtEventDataGet(
-	const SaEvtEventHandleT event_handle, 
-	void *event_data, 
-	SaSizeT *event_data_size)
+	const SaEvtEventHandleT eventHandle, 
+	void *eventData, 
+	SaSizeT *eventDataSize)
 {
 	SaAisErrorT error = SA_AIS_OK;
 	struct event_data_instance *edi;
 	SaSizeT xfsize;
 
-	if (!event_data || !event_data_size) {
+	if (!eventData || !eventDataSize) {
 		goto data_get_done;
 	}
 
-	error = saHandleInstanceGet(&event_handle_db, event_handle,
+	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto data_get_done;
@@ -1349,15 +1401,15 @@ saEvtEventDataGet(
 	pthread_mutex_lock(&edi->edi_mutex);
 
 	if (edi->edi_event_data && edi->edi_event_data_size) {
-		xfsize = min(*event_data_size, edi->edi_event_data_size);
-		*event_data_size = edi->edi_event_data_size;
-		memcpy(event_data, edi->edi_event_data, xfsize);
+		xfsize = min(*eventDataSize, edi->edi_event_data_size);
+		*eventDataSize = edi->edi_event_data_size;
+		memcpy(eventData, edi->edi_event_data, xfsize);
 	} else {
-		*event_data_size = 0;
+		*eventDataSize = 0;
 	}
 
 	pthread_mutex_unlock(&edi->edi_mutex);
-	saHandleInstancePut(&event_handle_db, event_handle);
+	saHandleInstancePut(&event_handle_db, eventHandle);
 data_get_done:
 	return error;
 }
@@ -1453,8 +1505,8 @@ static uint32_t aisfilt_to_evt_filt(const SaEvtEventFilterArrayT *filters,
 }
 
 /*
- * The saEvtEventPublish() function publishes an event on the channel 
- * designated by channel_handle. The event to be published consists of a 
+ * The saEvtEventPublish() function publishes an event on the associated 
+ * channel. The event to be published consists of a 
  * standard set of attributes (the event header) and an optional data part. 
  * Before an event can be published, the publisher process must invoke the 
  * saEvtEventPatternArraySet() function to set the event patterns. The event 
@@ -1480,10 +1532,10 @@ static uint32_t aisfilt_to_evt_filt(const SaEvtEventFilterArrayT *filters,
  */
 SaAisErrorT 
 saEvtEventPublish(
-	const SaEvtEventHandleT event_handle, 
-	const void *event_data, 
-	SaSizeT event_data_size,
-	SaEvtEventIdT *eventid)
+	const SaEvtEventHandleT eventHandle, 
+	const void *eventData, 
+	SaSizeT eventDataSize,
+	SaEvtEventIdT *eventId)
 {
 	SaAisErrorT error;
 	struct event_data_instance *edi;
@@ -1496,12 +1548,12 @@ saEvtEventPublish(
 	void   *data_start;
 	int pub_sleep_trys = PUB_SLEEP_TRYS;
 
-	if (event_data_size > SA_EVT_DATA_MAX_LEN) {
+	if (eventDataSize > SA_EVT_DATA_MAX_LEN) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto pub_done;
 	}
 
-	error = saHandleInstanceGet(&event_handle_db, event_handle,
+	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
 		goto pub_done;
@@ -1542,7 +1594,7 @@ saEvtEventPublish(
 	 */
 	pattern_size = patt_size(&edi->edi_patterns);
 
-	req = malloc(sizeof(*req) + event_data_size + pattern_size);
+	req = malloc(sizeof(*req) + eventDataSize + pattern_size);
 
 	patterns = (struct event_pattern *)req->led_body;
 	data_start = (void *)req->led_body + pattern_size;
@@ -1560,15 +1612,15 @@ saEvtEventPublish(
 	req->led_patterns_number = edi->edi_patterns.patternsNumber;
 
 	req->led_user_data_offset = pattern_size;
-	if (event_data && event_data_size) {
-		memcpy(data_start, event_data, event_data_size);
-		req->led_user_data_size = event_data_size;
+	if (eventData && eventDataSize) {
+		memcpy(data_start, eventData, eventDataSize);
+		req->led_user_data_size = eventDataSize;
 	} else {
 		req->led_user_data_size = 0;
 	}
 
 	req->led_head.id = MESSAGE_REQ_EVT_PUBLISH;
-	req->led_head.size = sizeof(*req) + pattern_size + event_data_size;
+	req->led_head.size = sizeof(*req) + pattern_size + eventDataSize;
 	req->led_svr_channel_handle = eci->eci_svr_channel_handle;
 	req->led_retention_time = edi->edi_retention_time;
 	req->led_publish_time = clustTimeNow();
@@ -1610,7 +1662,7 @@ pub_sleep:
 			continue;
 		}
 
-		*eventid = res.iep_event_id;
+		*eventId = res.iep_event_id;
 		break;
 	}
 	if (error == SA_AIS_ERR_TRY_AGAIN) {
@@ -1625,7 +1677,7 @@ pub_put2:
 	saHandleInstancePut (&channel_handle_db, edi->edi_channel_handle);
 pub_put1:
 	pthread_mutex_unlock(&edi->edi_mutex);
-	saHandleInstancePut(&event_handle_db, event_handle);
+	saHandleInstancePut(&event_handle_db, eventHandle);
 pub_done:
 	return error;
 }
@@ -1634,7 +1686,7 @@ pub_done:
  * The saEvtEventSubscribe() function enables a process to subscribe for 
  * events on an event channel by registering one or more filters on that 
  * event channel. The process must have opened the event channel, designated 
- * by channel_handle, with the SA_EVT_CHANNEL_SUBSCRIBER flag set for an 
+ * by channelHandle, with the SA_EVT_CHANNEL_SUBSCRIBER flag set for an 
  * invocation of this function to be successful. 
  * The memory associated with the filters is not deallocated by the 
  * saEvtEventSubscribe() function. It is the responsibility of the invoking 
@@ -1648,9 +1700,9 @@ pub_done:
  */
 SaAisErrorT 
 saEvtEventSubscribe(
-	const SaEvtChannelHandleT channel_handle, 
+	const SaEvtChannelHandleT channelHandle, 
 	const SaEvtEventFilterArrayT *filters, 
-	SaEvtSubscriptionIdT subscription_id)
+	SaEvtSubscriptionIdT subscriptionId)
 {
 	SaAisErrorT error;
 	struct event_instance *evti;
@@ -1659,7 +1711,7 @@ saEvtEventSubscribe(
 	struct res_evt_event_subscribe res;
 	int	sz;
 
-	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
 		goto subscribe_done;
@@ -1702,7 +1754,7 @@ saEvtEventSubscribe(
 	req->ics_head.id = MESSAGE_REQ_EVT_SUBSCRIBE;
 	req->ics_head.size = sizeof(*req) + sz;
 	req->ics_channel_handle = eci->eci_svr_channel_handle;
-	req->ics_sub_id = subscription_id;
+	req->ics_sub_id = subscriptionId;
 	req->ics_filter_size = sz;
 
 	pthread_mutex_lock(&evti->ei_mutex);
@@ -1727,7 +1779,7 @@ subscribe_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
 subscribe_put1:
-	saHandleInstancePut(&channel_handle_db, channel_handle);
+	saHandleInstancePut(&channel_handle_db, channelHandle);
 subscribe_done:
 	return error;
 }
@@ -1744,8 +1796,8 @@ subscribe_done:
  */
 SaAisErrorT 
 saEvtEventUnsubscribe(
-	const SaEvtChannelHandleT channel_handle, 
-	SaEvtSubscriptionIdT subscription_id)
+	const SaEvtChannelHandleT channelHandle, 
+	SaEvtSubscriptionIdT subscriptionId)
 {
 	SaAisErrorT error;
 	struct event_instance *evti;
@@ -1753,7 +1805,7 @@ saEvtEventUnsubscribe(
 	struct req_evt_event_unsubscribe req;
 	struct res_evt_event_unsubscribe res;
 
-	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
 		goto unsubscribe_done;
@@ -1769,7 +1821,7 @@ saEvtEventUnsubscribe(
 	req.icu_head.size = sizeof(req);
 
 	req.icu_channel_handle = eci->eci_svr_channel_handle;
-	req.icu_sub_id = subscription_id;
+	req.icu_sub_id = subscriptionId;
 
 	pthread_mutex_lock(&evti->ei_mutex);
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
@@ -1792,7 +1844,7 @@ unsubscribe_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
 unsubscribe_put1:
-	saHandleInstancePut(&channel_handle_db, channel_handle);
+	saHandleInstancePut(&channel_handle_db, channelHandle);
 unsubscribe_done:
 	return error;
 }
@@ -1808,8 +1860,8 @@ unsubscribe_done:
  */
 SaAisErrorT 
 saEvtEventRetentionTimeClear(
-	const SaEvtChannelHandleT channel_handle, 
-	const SaEvtEventIdT event_id)
+	const SaEvtChannelHandleT channelHandle, 
+	const SaEvtEventIdT eventId)
 {
 	SaAisErrorT error;
 	struct event_instance *evti;
@@ -1817,7 +1869,7 @@ saEvtEventRetentionTimeClear(
 	struct req_evt_event_clear_retentiontime req;
 	struct res_evt_event_clear_retentiontime res;
 
-	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
+	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
 		goto ret_time_done;
@@ -1833,7 +1885,7 @@ saEvtEventRetentionTimeClear(
 	req.iec_head.size = sizeof(req);
 
 	req.iec_channel_handle = eci->eci_svr_channel_handle;
-	req.iec_event_id = event_id;
+	req.iec_event_id = eventId;
 
 	pthread_mutex_lock(&evti->ei_mutex);
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
@@ -1856,7 +1908,7 @@ ret_time_put2:
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
 ret_time_put1:
-	saHandleInstancePut(&channel_handle_db, channel_handle);
+	saHandleInstancePut(&channel_handle_db, channelHandle);
 ret_time_done:
 	return error;
 }

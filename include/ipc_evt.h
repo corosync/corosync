@@ -44,6 +44,7 @@ enum req_evt_types {
 	MESSAGE_REQ_EVT_OPEN_CHANNEL = 1,
 	MESSAGE_REQ_EVT_OPEN_CHANNEL_ASYNC,
 	MESSAGE_REQ_EVT_CLOSE_CHANNEL,
+	MESSAGE_REQ_EVT_UNLINK_CHANNEL,
 	MESSAGE_REQ_EVT_SUBSCRIBE,
 	MESSAGE_REQ_EVT_UNSUBSCRIBE,
 	MESSAGE_REQ_EVT_PUBLISH,
@@ -54,6 +55,7 @@ enum req_evt_types {
 enum res_evt_types {
 	MESSAGE_RES_EVT_OPEN_CHANNEL = 1,
 	MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	MESSAGE_RES_EVT_UNLINK_CHANNEL,
 	MESSAGE_RES_EVT_SUBSCRIBE,
 	MESSAGE_RES_EVT_UNSUBSCRIBE,
 	MESSAGE_RES_EVT_PUBLISH,
@@ -143,11 +145,33 @@ struct req_evt_channel_close {
  * MESSAGE_RES_EVT_CLOSE_CHANNEL
  *
  * icc_head:		Results head
- * icc_error:		Request result
  *
  */
 struct res_evt_channel_close {
 	struct res_header	icc_head;
+};
+
+/*
+ * MESSAGE_REQ_EVT_UNLINK_CHANNEL
+ *
+ * iuc_head:			Request head
+ * iuc_channel_name:	Name of channel to unlink
+ *
+ */
+struct req_evt_channel_unlink {
+
+	struct req_header		iuc_head;
+	SaNameT					iuc_channel_name;
+};
+
+/*
+ * MESSAGE_RES_EVT_UNLINK_CHANNEL
+ *
+ * iuc_head:		Results head
+ *
+ */
+struct res_evt_channel_unlink {
+	struct res_header	iuc_head;
 };
 
 /* 
@@ -233,6 +257,7 @@ struct res_evt_event_data {
  * led_svr_channel_handle:	Server channel handle (1 only)
  * led_lib_channel_handle:	Lib channel handle (2 only)
  * led_chan_name:			Channel name (3 and 4 only)
+ * led_chan_unlink_id:		directs delivery to unlinked channels.
  * led_event_id:			Event ID (2, 3 and 4 only)
  * led_sub_id:				Subscription ID (2 only)
  * led_publisher_node_id:	Node ID of event publisher
@@ -252,6 +277,7 @@ struct lib_event_data {
 	uint32_t				led_svr_channel_handle;
 	SaEvtChannelHandleT		led_lib_channel_handle;
 	SaNameT					led_chan_name;
+	uint64_t				led_chan_unlink_id;
 	SaEvtEventIdT			led_event_id;
 	SaEvtSubscriptionIdT	led_sub_id;
 	SaClmNodeIdT			led_publisher_node_id;
@@ -312,14 +338,13 @@ struct res_evt_event_clear_retentiontime {
 /*
  * MESSAGE_REQ_EXEC_EVT_CHANCMD
  *
- * chc_header:	Request head
- * chc_chan:	Channel Name
- * chc_op:		Channel operation (open, close, clear retentiontime)
+ * Used for various event related operations.
+ *
  */
-
 enum evt_chan_ops {
 	EVT_OPEN_CHAN_OP,		/* chc_chan */
-	EVT_CLOSE_CHAN_OP,  	/* chc_chan */
+	EVT_CLOSE_CHAN_OP,  	/* chc_close_unlink_chan */
+	EVT_UNLINK_CHAN_OP,  	/* chc_close_unlink_chan */
 	EVT_CLEAR_RET_OP,		/* chc_event_id */
 	EVT_SET_ID_OP,			/* chc_set_id */
 	EVT_CONF_DONE,			/* no data used */
@@ -327,24 +352,51 @@ enum evt_chan_ops {
 	EVT_OPEN_COUNT_DONE		/* no data used */
 };
 	
+/*
+ * Used during recovery to set the next issued event ID
+ * based on the highest ID seen by any of the members
+ */
 struct evt_set_id {
 	struct in_addr	chc_addr;
 	SaEvtEventIdT	chc_last_id;
 };
 
+/*
+ * For set open count used during recovery to syncronize all nodes
+ *
+ * 	chc_chan_name:		Channel name.
+ * 	chc_open_count:		number of local opens of this channel.
+ */
 struct evt_set_opens {
 	SaNameT		chc_chan_name;
 	uint32_t	chc_open_count;
 };
 
+/*
+ * Used to communicate channel to close or unlink.
+ */
+#define EVT_CHAN_ACTIVE 0
+struct evt_close_unlink_chan {
+	SaNameT		chcu_name;
+	uint64_t	chcu_unlink_id;
+};
+
+/*
+ * Sent via MESSAGE_REQ_EXEC_EVT_CHANCMD
+ *
+ * chc_head:	Request head
+ * chc_op:		Channel operation (open, close, clear retentiontime)
+ * u:			union of operation options.
+ */
 struct req_evt_chan_command {
 	struct req_header 	chc_head;
 	int 				chc_op;
 	union {
-		SaNameT				chc_chan;
-		SaEvtEventIdT		chc_event_id;
-		struct evt_set_id	chc_set_id;
-		struct evt_set_opens chc_set_opens;
+		SaNameT					chc_chan;
+		SaEvtEventIdT			chc_event_id;
+		struct evt_set_id		chc_set_id;
+		struct evt_set_opens 	chc_set_opens;
+		struct evt_close_unlink_chan	chcu;
 	} u;
 };
 

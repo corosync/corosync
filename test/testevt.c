@@ -51,6 +51,9 @@
  *
  *	test_retention();
  *		Test event retention times.
+ *
+ *	test_unlink_channel();
+ *		Test event channel unlink.
  */
 
 #include <stdio.h>
@@ -116,6 +119,7 @@ SaEvtCallbacksT callbacks = {
 };
 
 char channel[256] = "TESTEVT_CHANNEL";
+char unlink_channel[256] = "TESTEVT_UNLINK_CHANNEL";
 SaEvtSubscriptionIdT subscription_id = 0xabcdef;
 SaInvocationT	     open_invocation = 0xaa55cc33;
 unsigned long long test_ret_time = 30000000000ULL; /* 30 seconds */
@@ -2378,6 +2382,408 @@ evt_fin:
 	printf("Done\n");
 
 }
+
+void 
+unlink_chan_callback(SaEvtSubscriptionIdT my_subscription_id,
+		const SaEvtEventHandleT event_handle,
+		const SaSizeT my_event_data_size)
+{
+	SaAisErrorT result;
+	SaUint8T my_priority;
+	SaTimeT my_retention_time;
+	SaNameT my_publisher_name = {0, {0}};
+	SaTimeT my_publish_time;
+	SaEvtEventIdT my_event_id;
+	SaEvtSubscriptionIdT exp_sub_id;
+
+	printf("            unlink_chan_callback called(%d)\n", ++call_count);
+
+	evt_pat_get_array.patternsNumber = 4;
+	result = saEvtEventAttributesGet(event_handle,
+			&evt_pat_get_array,	/* patterns */
+			&my_priority,		/* priority */
+			&my_retention_time,	/* retention time */
+			&my_publisher_name,	/* publisher name */
+			&my_publish_time,	/* publish time */
+			&my_event_id		/* event_id */
+			);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event get attr result: %s\n", result_buf);
+		goto evt_free;
+	}
+
+	if (my_event_id == event_id1) {
+		exp_sub_id = sub1;
+	} else if (my_event_id == event_id2) {
+		exp_sub_id = sub2;
+	} else {
+		printf("ERROR: Received event %llx but not sent\n", my_event_id);
+		goto evt_free;
+	}
+
+	if (my_subscription_id != exp_sub_id) {
+		printf("ERROR: sub ID: e=%x, a=%x\n", 
+				exp_sub_id, my_subscription_id);
+		goto evt_free;
+	}
+
+evt_free:
+	result = saEvtEventFree(event_handle);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event free result: %s\n", result_buf);
+	}
+}
+
+/*
+ * Test channel unlink operations.
+ * 1. Unlink channel.
+ * 2. Open/create a channel, close channel, open channel.
+ * 3. unlink channel, Open channel.
+ * 4. Open/create, unlink channel, close channel, open channel.
+ * 5. Open/create a channel, unlink channel, open/create channel, send
+ *    event on each.
+ * 6. unlink all, close all.
+ */
+SaEvtCallbacksT unlink_callbacks = {
+	open_callback,
+	unlink_chan_callback
+};
+void
+test_unlink_channel()
+{
+	SaEvtHandleT handle;
+	SaEvtChannelHandleT channel_handle1;
+	SaEvtChannelHandleT channel_handle2;
+	SaEvtEventHandleT	event_handle1;
+	SaEvtEventHandleT	event_handle2;
+	SaEvtChannelOpenFlagsT flags1, flags2;
+	SaNameT channel_name;
+	int result;
+
+	struct pollfd pfd;
+	int nfd;
+	int fd;
+	int timeout = 5000;
+	 
+	flags1 = SA_EVT_CHANNEL_PUBLISHER |
+		SA_EVT_CHANNEL_SUBSCRIBER |
+		SA_EVT_CHANNEL_CREATE;
+
+	flags2 = SA_EVT_CHANNEL_PUBLISHER |
+		SA_EVT_CHANNEL_SUBSCRIBER;
+
+
+	printf("Test Channel Unlink operations:\n");
+
+	result = saEvtInitialize (&handle, &unlink_callbacks, versions[0].version);
+
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: Event Initialize result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+	 * 1. Unlink channel.
+	 *
+	 * Unlink previously opened channel should return OK.
+	 * Unlink of non-existent channel should return error.
+	 */
+	printf("       1 Channel unlink:\n");
+
+	strcpy(channel_name.value, channel);
+	channel_name.length = strlen(channel);
+	result = saEvtChannelUnlink(handle, &channel_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel unlink(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	strcpy(channel_name.value, unlink_channel);
+	channel_name.length = strlen(unlink_channel);
+	result = saEvtChannelUnlink(handle, &channel_name);
+	if (result != SA_AIS_ERR_NOT_EXIST) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel unlink(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+ 	 * 2. Open/create a channel, close channel, open channel.
+	 *
+	 * Open/create the channel.
+	 * Close the channel.
+	 * Open without create.  This should succeed in the B spec.
+	 */
+	printf("       2 Channel open/close/open:\n");
+
+	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+				&channel_handle1);
+
+
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelClose(channel_handle1);
+	
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel close(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+				&channel_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+ 	 * 3. unlink channel, Open channel, close channel
+	 *
+	 * Unlink the channel.  Should mark for deletion but not
+	 *		delete it since it is already open.
+	 * Open the channel without create. This should fail since
+	 *		the channel is marked for deletion and a new version 
+	 *		hasn't been created.
+	 * Close channel.
+	 */
+	printf("       3 Channel unlink/open/close:\n");
+
+	result = saEvtChannelUnlink(handle, &channel_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel unlink result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+				&channel_handle2);
+	if (result != SA_AIS_ERR_NOT_EXIST) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+	result = saEvtChannelClose(channel_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel close(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+	 *
+ 	 * 4. Open/create, unlink channel, close channel, open channel.
+	 *
+	 * Open/create the channel.
+	 * unlink the channel.
+	 * close the channel.  This should delete the channel instance since
+	 *		it was marked for deletion.
+	 * open the channel without create.  This should fail since the
+	 *		channel doesn't exist anymore.
+	 */
+	printf("       4 Channel open/unlink/close/open:\n");
+	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+				&channel_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelUnlink(handle, &channel_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel unlink result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelClose(channel_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel close(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+				&channel_handle1);
+	if (result != SA_AIS_ERR_NOT_EXIST) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+	 * 5. Open/create a channel, unlink channel, open/create channel, send 
+	 * 		event on each.
+	 *
+	 * Open/create.
+	 * unlink.  Mark for deletion.
+	 * open/create. Create new channel of same name.
+	 * send event on each open channel.  The events should be received on
+	 * separate channels.
+	 */
+	printf("       5 Channel open/unlink/open/send:\n");
+
+	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+				&channel_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelUnlink(handle, &channel_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel unlink result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+				&channel_handle2);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel open result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtEventSubscribe(channel_handle1,
+			&subscribe_filters,
+			sub1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel subscribe(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtEventSubscribe(channel_handle2,
+			&subscribe_filters,
+			sub2);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: channel subscribe(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	retention_time = 0ULL;
+	result = saEvtEventAllocate(channel_handle1, &event_handle1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event allocate(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+	result = saEvtEventAttributesSet(event_handle1,
+			&evt_pat_set_array,
+			TEST_PRIORITY,
+			retention_time,
+			&test_pub_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event set(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtEventAllocate(channel_handle2, &event_handle2);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event allocate(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+	result = saEvtEventAttributesSet(event_handle2,
+			&evt_pat_set_array,
+			TEST_PRIORITY,
+			retention_time,
+			&test_pub_name);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event set(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	result = saEvtEventPublish(event_handle1, 0,  0, &event_id1);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event publish(1) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+	result = saEvtEventPublish(event_handle2, 0,  0, &event_id2);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event publish(2) result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+
+	result = saEvtSelectionObjectGet(handle, &fd);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: select object get result: %s\n", result_buf);
+		goto unlink_exit;
+	}
+
+	/*
+	 * We should see a total of two events processed, not four
+	 * as if both events were recevied on both channels.
+	 */
+	call_count = 0;
+	do {
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		nfd = poll(&pfd, 1, timeout);
+		if (nfd <= 0) {
+			if (nfd < 0) {
+				perror("ERROR: poll error");
+				goto unlink_exit;
+			}
+		} else {
+
+			result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+			if (result != SA_AIS_OK) {
+				get_sa_error(result, result_buf, result_buf_len);
+				printf("ERROR: saEvtDispatch %s\n", result_buf);
+				goto unlink_exit;
+			}
+		}
+	} while (nfd > 0);
+
+	if (call_count != 2) {
+		printf("ERROR: processed %d events\n", call_count);
+		goto unlink_exit;
+	}
+		
+
+	/*
+	 * 6. unlink all, close all.
+	 *
+	 * close all open channels.
+	 * unlink the channel.
+	 * open without create the channel.  Verify that the channel no 
+	 * 		longer exists.
+	 */
+	printf("       6 Channel unlink all/close all/open:\n");
+
+unlink_exit:
+	saEvtChannelClose(channel_handle1);
+	saEvtChannelClose(channel_handle2);
+	saEvtChannelUnlink(handle, &channel_name);
+	result = saEvtFinalize(handle);
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: Event Finalize result: %s\n", result_buf);
+	}
+
+	printf("Done\n");
+
+}
 int main (void)
 {
 	test_initialize ();
@@ -2387,6 +2793,7 @@ int main (void)
 	test_multi_channel2();
 	test_multi_channel3();
 	test_retention();
+	test_unlink_channel();
 
 	return (0);
 }
