@@ -171,6 +171,11 @@ int main (void) {
 		&sectionCreationAttributes1,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
+	if (error != SA_OK) {
+		error = saCkptSectionExpirationTimeSet (&checkpointHandle,
+			&sectionId1,
+			sectionCreationAttributes1.expirationTime);
+	}
 
 printf ("create1 error is %d\n", error);
 printf ("Please wait, testing expiry of checkpoint sections.\n");
@@ -187,7 +192,6 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
 						      5000000000LL);
 	printf ("RetentionDurationSet is %d\n", error);
-	exit (1);
 
 	error = saCkptSectionCreate (&checkpointHandle,
 		&sectionCreationAttributes2,
