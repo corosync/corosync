@@ -182,7 +182,7 @@ saRecvQueue (
 		if (error != SA_OK) {
 			goto error_exit;
 		}
-		if (message.header.size > sizeof (struct req_header)) {
+		if (message.header.size > sizeof (struct res_header)) {
 			error = saRecvRetry (s, &message.payload,
 				message.header.size - sizeof (struct res_header),
 				MSG_WAITALL | MSG_NOSIGNAL);
