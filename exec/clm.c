@@ -114,11 +114,32 @@ static int message_handler_req_clm_nodeget (struct conn_info *conn_info,
 
 static int clm_exit_fn (struct conn_info *conn_info);
 
-static int (*clm_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
-	message_handler_req_lib_activatepoll,
-	message_handler_req_clm_trackstart,
-	message_handler_req_clm_trackstop,
-	message_handler_req_clm_nodeget
+struct libais_handler clm_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn			= message_handler_req_lib_activatepoll,
+		.response_size				= sizeof (struct res_lib_activatepoll),
+		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	},
+	{ /* 1 */
+		.libais_handler_fn			= message_handler_req_clm_trackstart,
+		.response_size				= sizeof (struct res_clm_trackstart),
+		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	},
+	{ /* 2 */
+		.libais_handler_fn			= message_handler_req_clm_trackstop,
+		.response_size				= sizeof (struct res_clm_trackstop),
+		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	},
+	{ /* 3 */
+		.libais_handler_fn			= message_handler_req_clm_nodeget,
+		.response_size				= sizeof (struct res_clm_nodeget),
+		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	}
 };
 
 static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
@@ -126,8 +147,8 @@ static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
 };
 	
 struct service_handler clm_service_handler = {
-	.libais_handler_fns			= clm_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof (clm_libais_handler_fns) / sizeof (int (*)),
+	.libais_handlers			= clm_libais_handlers,
+	.libais_handlers_count		= sizeof (clm_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= clm_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= clmConfChg,
@@ -208,10 +229,10 @@ static void libraryNotificationCurrentState (struct conn_info *conn_info)
 	/*
 	 * Send track response
 	 */
-	res_clm_trackcallback.header.magic = MESSAGE_MAGIC;
 	res_clm_trackcallback.header.size = sizeof (struct res_clm_trackcallback) +
 		sizeof (SaClmClusterNotificationT) * i;
 	res_clm_trackcallback.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
+	res_clm_trackcallback.header.error = SA_OK;
 	res_clm_trackcallback.viewNumber = 0;
 	res_clm_trackcallback.numberOfItems = i;
 	res_clm_trackcallback.numberOfMembers = i;
@@ -239,10 +260,10 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 		 * Send notifications to all CLM listeners
 		 */
 		if (notify_entries) {
-			res_clm_trackcallback.header.magic = MESSAGE_MAGIC;
 			res_clm_trackcallback.header.size = sizeof (struct res_clm_trackcallback) +
 				(notify_entries * sizeof (SaClmClusterNotificationT));
 			res_clm_trackcallback.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
+			res_clm_trackcallback.header.error = SA_OK;
 			res_clm_trackcallback.viewNumber = 0;
 			res_clm_trackcallback.numberOfItems = notify_entries;
 			res_clm_trackcallback.numberOfMembers = notify_entries;
@@ -324,7 +345,6 @@ static int clmNodeJoinSend (void)
 	struct req_exec_clm_nodejoin req_exec_clm_nodejoin;
 	struct iovec req_exec_clm_iovec;
 	int result;
-	req_exec_clm_nodejoin.header.magic = MESSAGE_MAGIC;
 	req_exec_clm_nodejoin.header.size = sizeof (struct req_exec_clm_nodejoin);
 	req_exec_clm_nodejoin.header.id = MESSAGE_REQ_EXEC_CLM_NODEJOIN;
 // TODO dont use memcpy, use iovecs !!
@@ -422,10 +442,9 @@ static int message_handler_req_clm_init (struct conn_info *conn_info, void *mess
 		error = SA_OK;
 	}
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
 	res_lib_init.header.size = sizeof (struct res_lib_init);
 	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+	res_lib_init.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
@@ -442,9 +461,9 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
-	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
+	res_lib_activatepoll.header.error = SA_OK;
 	libais_send_response (conn_info, &res_lib_activatepoll,
 		sizeof (struct res_lib_activatepoll));
 
@@ -499,9 +518,9 @@ static int message_handler_req_clm_nodeget (struct conn_info *conn_info, void *m
 		}
 	}
 
-	res_clm_nodeget.header.magic = MESSAGE_MAGIC;
 	res_clm_nodeget.header.size = sizeof (struct res_clm_nodeget);
 	res_clm_nodeget.header.id = MESSAGE_RES_CLM_NODEGET;
+	res_clm_nodeget.header.error = SA_OK;
 	res_clm_nodeget.invocation = req_clm_nodeget->invocation;
 	res_clm_nodeget.clusterNodeAddress = req_clm_nodeget->clusterNodeAddress;
 	res_clm_nodeget.valid = valid;
