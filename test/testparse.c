@@ -48,6 +48,10 @@ int main (void)
 		exit (-1);
 	}
 	
+#ifdef CODE_COVERAGE_COMPILE_OUT
+        saAmfPrintGroups ();
+#endif
+
 	saAmfPrintGroups ();
 
 	return (0);
