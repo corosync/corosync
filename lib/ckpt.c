@@ -701,7 +701,7 @@ error_exit_noput:
 }
 
 SaAisErrorT
-saCkptActiveCheckpointSet (
+saCkptActiveReplicaSet (
 	SaCkptCheckpointHandleT checkpointHandle)
 {
 	SaAisErrorT error;
