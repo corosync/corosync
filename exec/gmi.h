@@ -141,4 +141,12 @@ int gmi_recovery_plug_destroy (
 int gmi_recovery_plug_unplug (
 	gmi_recovery_plug_handle handle_recovery);
 
+int gmi_token_callback_create (
+	void **handle_out,
+	int (*callback_fn) (void *),
+	void *data);
+
+void gmi_token_callback_destroy (
+	void *handle);
+
 #endif /* GMI_H_DEFINED */
