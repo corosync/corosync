@@ -331,7 +331,7 @@ static struct memb_join memb_join;
 
 static struct memb_form_token memb_form_token;
 
-char iov_buffer[MESSAGE_SIZE_MAX];
+static char iov_buffer[MESSAGE_SIZE_MAX];
 
 static struct iovec gmi_iov_recv = {
 	iov_base:	iov_buffer,
@@ -417,6 +417,8 @@ int gmi_init (
 int res;
 
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
+	memset (&memb_next, 0, sizeof (struct sockaddr_in));
+	memset (iov_buffer, 0, MESSAGE_SIZE_MAX);
 
 	for (i = 0; i < PRIORITY_MAX; i++) {
 		queue_init (&queues_pend_trans[i], QUEUE_PEND_TRANS_SIZE_MAX,
@@ -489,6 +491,9 @@ static int gmi_pend_trans_item_store (
 {
 	int i, j;
 	struct gmi_pend_trans_item gmi_pend_trans_item;
+
+	memset (&gmi_pend_trans_item, 0, sizeof (struct gmi_pend_trans_item));
+
 	/*
 	 * Store pending item
 	 */
@@ -512,9 +517,13 @@ static int gmi_pend_trans_item_store (
 
 	for (i = 0; i < iov_len; i++) {
 		gmi_pend_trans_item.iovec[i].iov_base = malloc (iovec[i].iov_len);
+
 		if (gmi_pend_trans_item.iovec[i].iov_base == 0) {
 			goto error_iovec;
 		}
+
+		memset (gmi_pend_trans_item.iovec[i].iov_base, 0, iovec[i].iov_len);
+
 		memcpy (gmi_pend_trans_item.iovec[i].iov_base, iovec[i].iov_base,
 			iovec[i].iov_len);
 		gmi_pend_trans_item.iovec[i].iov_len = iovec[i].iov_len;
@@ -604,6 +613,8 @@ int gmi_mcast (
 
 	gmi_log_printf (gmi_log_level_debug, "MCASTING MESSAGE\n");
 
+	memset (pending_iovecs, 0, sizeof (struct iovec) * MAXIOVS);
+
 	/*
 	 * Determine size of total message
 	 */
@@ -642,7 +653,7 @@ int gmi_mcast (
 		}
 		pending_iovec_entries += 1;
 		if (packet_size >= FRAGMENT_SIZE || packet_size == total_size) {
-#ifdef DEBUG
+#ifdef DEBUGa
 for (i = 0; i < pending_iovec_entries; i++) {
 	assert (pending_iovecs[i].iov_len < MESSAGE_SIZE_MAX);
 	assert (pending_iovecs[i].iov_len >= 0);
@@ -740,6 +751,9 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct ifreq interface;
 	int res;
 	
+	memset (&mreq, 0, sizeof (struct ip_mreq));
+	memset (&interface, 0, sizeof (struct ifreq));
+
 	/*
 	 * Determine the ip address bound to and the interface name
 	 */
@@ -1033,6 +1047,7 @@ static int orf_token_mcast (
 		/*
 		 * Build IO vector
 		 */
+		memset (&gmi_rtr_item, 0, sizeof (struct gmi_rtr_item));
 		gmi_rtr_item.iovec[0].iov_base = gmi_pend_trans_item->mcast;
 		gmi_rtr_item.iovec[0].iov_len = sizeof (struct mcast);
 
@@ -1071,6 +1086,7 @@ static int orf_token_mcast (
 		/*
 		 * Build multicast message
 		 */
+
 		msg_mcast.msg_name = &sockaddr_in_mcast;
 		msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
 		msg_mcast.msg_iov = gmi_rtr_item.iovec;
@@ -1083,6 +1099,7 @@ static int orf_token_mcast (
 		 * Multicast message
 		 */
 		res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+
 		/*
 		 * An error here is recovered by the multicast algorithm
 	 	 */
@@ -1307,6 +1324,7 @@ static int orf_token_evs (
 	if (memb_state != MEMB_STATE_EVS) {
 		return (0);
 	}
+	memset (trans_memb_list, 0, sizeof (struct sockaddr_in) * MAX_MEMBERS);
 
 	/*
 	 * Delete form token timer since the token has been swallowed
