@@ -443,6 +443,7 @@ static int message_handler_req_exec_mcast (void *message, struct in_addr source_
 		}
 
 		if (found) {
+			res_evs_deliver_callback.source_addr.s_addr = source_addr.s_addr;
 			libais_send_response (conn_info, &res_evs_deliver_callback,
 				sizeof (struct res_evs_deliver_callback));
 			libais_send_response (conn_info, msg_addr,
