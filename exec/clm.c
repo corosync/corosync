@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -314,6 +314,7 @@ static void libraryNotificationJoin (SaClmNodeIdT node)
 	 * Generate notification element
 	 */
 	clusterNotification.clusterChanges = SA_CLM_NODE_JOINED;
+	clusterNotification.clusterNode.member = 1;
 	for (i = 0; i < clusterNodeEntries; i++) {
 		if (node == clusterNodes[i].nodeId) {
 			memcpy (&clusterNotification.clusterNode, &clusterNodes[i],
@@ -340,6 +341,7 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 					&clusterNodes[i],
 					sizeof (SaClmClusterNodeT));
 				clusterNotification[notifyEntries].clusterChanges = SA_CLM_NODE_LEFT;
+				clusterNotification[notifyEntries].clusterNode.member = 0;
 				notifyEntries += 1;
 				break;
 			}
@@ -372,6 +374,7 @@ static int clmNodeJoinSend (void)
 	struct req_exec_clm_nodejoin req_exec_clm_nodejoin;
 	struct iovec req_exec_clm_iovec;
 	int result;
+
 	req_exec_clm_nodejoin.header.size = sizeof (struct req_exec_clm_nodejoin);
 	req_exec_clm_nodejoin.header.id = MESSAGE_REQ_EXEC_CLM_NODEJOIN;
 // TODO dont use memcpy, use iovecs !!
