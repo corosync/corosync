@@ -76,7 +76,7 @@ int clusterNodeEntries = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
-//TODOstatic totempg_recovery_plug_handle clm_recovery_plug_handle;
+static int should_send_nodejoin = 0;
 
 SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 {
@@ -109,6 +109,14 @@ static int clm_confchg_fn (
     struct in_addr *joined_list, void *joined_list_private,
 		int joined_list_entries,
 	struct memb_ring_id *ring_id);
+
+static void clm_sync_init (void);
+
+static int clm_sync_process (void);
+
+static void clm_sync_activate (void);
+
+static void clm_sync_abort (void);
 
 static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr, int endian_conversion_required);
 
@@ -174,22 +182,15 @@ struct service_handler clm_service_handler = {
 	.libais_init_fn				= message_handler_req_clm_init,
 	.libais_exit_fn				= clm_exit_fn,
 	.exec_init_fn				= clm_exec_init_fn,
-	.exec_dump_fn				= 0
+	.exec_dump_fn				= 0,
+	.sync_init					= clm_sync_init,
+	.sync_process				= clm_sync_process,
+	.sync_activate				= clm_sync_activate,
+	.sync_abort					= clm_sync_abort,
 };
 
 static int clm_exec_init_fn (void)
 {
-
-/* TODO
-	int res;
-    res = totempg_recovery_plug_create (&clm_recovery_plug_handle);
-	if (res != 0) {
-       log_printf(LOG_LEVEL_ERROR,
-            "Could not create recovery plug for clm service.\n");
-		return (-1);
-	}
-*/
-
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 
 	/*
@@ -367,7 +368,7 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 	}
 }
 
-static int clmNodeJoinSend (void)
+static int clm_nodejoin_send (void)
 {
 	struct req_exec_clm_nodejoin req_exec_clm_nodejoin;
 	struct iovec req_exec_clm_iovec;
@@ -416,26 +417,59 @@ static int clm_confchg_fn (
 		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (joined_list[i]));
 	}
 
-	/*
-	 * Send node information to other nodes
-	 */
-	if (joined_list_entries) {
-		assert (clmNodeJoinSend () == 0);
+	if (joined_list_entries > 0) {
+		should_send_nodejoin = 1;
 	}
+
 	for (i = 0; i < left_list_entries; i++) {
 		nodes[i] = left_list[i].s_addr;
 	}
 
 	libraryNotificationLeave (nodes, i);
 
-/* TODO
-	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
-		totempg_recovery_plug_unplug (clm_recovery_plug_handle);
-	}
-*/
-
 	return (0);
 }
+
+/*
+ * This is a noop for this service
+ */
+static void clm_sync_init (void)
+{
+	return;
+}
+
+/*
+ * If a processor joined in the configuration change and clm_sync_activate hasn't
+ * yet been called, issue a node join to share CLM specific data about the processor
+ */
+static int clm_sync_process (void)
+{
+	/*
+	 * Send node information to other nodes
+	 */
+	if (should_send_nodejoin) {
+		return (clm_nodejoin_send ());
+	}
+	return (0);
+}
+
+/*
+ * This is a noop for this service
+ */
+static void clm_sync_activate (void)
+{
+	should_send_nodejoin = 0;
+	return;
+}
+
+/*
+ * This is a noop for this service
+ */
+static void clm_sync_abort (void)
+{
+	return;
+}
+
 
 static void exec_clm_nodejoin_endian_conversion (struct req_exec_clm_nodejoin *in,
 	struct req_exec_clm_nodejoin *out)
