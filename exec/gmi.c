@@ -549,27 +549,42 @@ error_mcast:
 
 static void timer_function_single_member (void *data);
 
+/*
+ * With only a single member, multicast messages as if an orf token was
+ * delivered.  This is done as part of the main event loop by specifying
+ * a timer with an immediate expiration.  This is a little suboptimal
+ * since poll starts afresh.  If more messages are waiting to be
+ * self-delivered, queue the timer function again until there are no
+ * more waiting messages.
+ */
 static void single_member_deliver (void)
 {
+	poll_timer_delete (*gmi_poll_handle, timer_single_member);
+	timer_single_member = 0;
+	poll_timer_add (*gmi_poll_handle, 0, 0,
+		timer_function_single_member, &timer_single_member);
+}
+
+static void timer_function_single_member (void *data)
+{
 	struct orf_token orf_token;
+	int more_messages;
 
 	memset (&orf_token, 0, sizeof (struct orf_token));
 	orf_token.header.seqid = gmi_arut;
 	orf_token.header.type = MESSAGE_TYPE_ORF_TOKEN;
 	orf_token.group_arut = gmi_arut;
 	orf_token.rtr_list_entries = 0;
-	orf_token_mcast (&orf_token, 99, &memb_local_sockaddr_in);
+	more_messages = orf_token_mcast (&orf_token, 99, &memb_local_sockaddr_in);
 	calculate_group_arut (&orf_token);
 	messages_free (gmi_arut);
-	poll_timer_delete (*gmi_poll_handle, timer_single_member);
-	timer_form_token_timeout = 0;
-	poll_timer_add (*gmi_poll_handle, 1, 0,
-		timer_function_single_member, &timer_single_member);
-}
 
-static void timer_function_single_member (void *data)
-{
-	single_member_deliver ();
+	/*
+	 * Queue delivery again if more messages are available
+	 */
+	if (more_messages) {
+		single_member_deliver ();
+	}
 }
 
 int gmi_mcast (
@@ -985,7 +1000,10 @@ static int orf_token_mcast (
 #endif
 	}
 		
-	return (res);
+	/*
+	 * Return 1 if more messages are available for single node clusters
+	 */
+	return (fcc_mcast_current == fcc_mcasts_allowed);
 }
 
 /*
