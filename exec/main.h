@@ -37,6 +37,7 @@
 #include <sys/un.h>
 #include "../include/ais_types.h"
 #include "poll.h"
+#include "evs.h"
 #include "clm.h"
 #include "amf.h"
 #include "ckpt.h"
@@ -48,10 +49,12 @@
 /*
  * Size of the queue (entries) for I/O's to the API over socket IPC.
  */
-#define SIZEQUEUE 128
+
+#define SIZEQUEUE 256
 
 enum socket_service_type {
 	SOCKET_SERVICE_INIT,
+	SOCKET_SERVICE_EVS,
 	SOCKET_SERVICE_CLM,
 	SOCKET_SERVICE_AMF,
 	SOCKET_SERVICE_CKPT,
@@ -75,6 +78,7 @@ struct ais_ci {
 	struct sockaddr_un un_addr;	/* address of AF_UNIX socket, MUST BE FIRST IN STRUCTURE */
 	union {
 		struct aisexec_ci aisexec_ci;
+		struct libevs_ci libevs_ci;
 		struct libclm_ci libclm_ci;
 		struct libamf_ci libamf_ci;
 		struct libckpt_ci libckpt_ci;
