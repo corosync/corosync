@@ -608,8 +608,14 @@ saEvtDispatch(
 			if (error != SA_AIS_OK) {
 					break;
 			}
-			callbacks.saEvtEventDeliverCallback(evt->led_sub_id, event_handle,
-							evt->led_user_data_size);
+
+			/*
+			 * Only call if there was a function registered
+			 */
+			if (callbacks.saEvtEventDeliverCallback) {
+				callbacks.saEvtEventDeliverCallback(evt->led_sub_id, 
+						event_handle, evt->led_user_data_size);
+			}
 			break;
 
 		case MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK:
@@ -635,8 +641,14 @@ saEvtDispatch(
 							resa->ica_c_handle);
 				}
 			}
-			callbacks.saEvtChannelOpenCallback(resa->ica_invocation,
+
+			/*
+			 * Only call if there was a function registered
+			 */
+			if (callbacks.saEvtChannelOpenCallback) {
+				callbacks.saEvtChannelOpenCallback(resa->ica_invocation,
 					resa->ica_c_handle, error);
+			}
 
 		}
 			break;
