@@ -35,6 +35,7 @@
 #include "../include/ais_types.h"
 #include "../include/list.h"
 #include "aispoll.h"
+#include "gmi.h"
 
 #ifndef PARSE_H_DEFINED
 #define PARSE_H_DEFINED
@@ -156,6 +157,9 @@ extern int SaNameTisNameT (SaNameT *name1, SaNameT *name2);
 
 extern int amfReadGroups (char **error_string);
 
-extern int amfReadNetwork (char **error_string, struct sockaddr_in *mcast_addr, struct sockaddr_in *bindnet_addr);
+extern int readNetwork (char **error_string,
+        struct sockaddr_in *mcast_addr,
+        struct gmi_interface *interfaces,
+        int interface_count);
 
 #endif /* PARSE_H_DEFINED */
