@@ -238,7 +238,7 @@ static void amf_confchg_njoin (
 	void *data);
 
 static int amf_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,
@@ -1898,7 +1898,7 @@ void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 }
 
 static int amf_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,

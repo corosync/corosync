@@ -176,7 +176,7 @@ static int recovery_abort = 0;
 static struct memb_ring_id saved_ring_id;
 
 static int ckpt_confchg_fn(
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private,
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -758,7 +758,7 @@ static void ckpt_recovery_process_members_exit(struct in_addr *left_list, int le
 }
 
 static int ckpt_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
 	struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
 	struct in_addr *left_list, void *left_list_private,
@@ -768,7 +768,7 @@ static int ckpt_confchg_fn (
 	struct memb_ring_id *ring_id) 
 {
 
-	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 #ifdef TODO	
 		totempg_recovery_plug_unplug (ckpt_checkpoint_recovery_plug_handle);	
 #endif
@@ -777,7 +777,7 @@ static int ckpt_confchg_fn (
 		}
 	}	
 
-	else if (configuration_type == TOTEMPG_CONFIGURATION_TRANSITIONAL) {
+	else if (configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
 		ckpt_recovery_process_members_exit(left_list, left_list_entries);
 		recovery_state = SYNCHRONY_STATE_STARTED;
 		recovery_abort = 0;

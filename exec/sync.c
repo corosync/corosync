@@ -84,7 +84,7 @@ static void sync_barrier_start (struct memb_ring_id *ring_id);
 
 static void sync_service_init (struct memb_ring_id *ring_id);
 
-static int sync_service_process (enum totempg_callback_token_type type, void *data);
+static int sync_service_process (enum totem_callback_token_type type, void *data);
 
 struct req_exec_sync_barrier_start {
 	struct req_header header;
@@ -119,13 +119,13 @@ static void sync_service_init (struct memb_ring_id *ring_id)
 	sync_callbacks[sync_recovery_index].sync_init ();
 	totemsrp_callback_token_destroy (&sync_callback_token_handle);
 	totemsrp_callback_token_create (&sync_callback_token_handle,
-		TOTEMPG_CALLBACK_TOKEN_SENT,
+		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
 		sync_service_process,
 		(void *)ring_id);
 }
 
-static int sync_service_process (enum totempg_callback_token_type type, void *data)
+static int sync_service_process (enum totem_callback_token_type type, void *data)
 {
 	int res;
 	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
@@ -160,7 +160,7 @@ void sync_register (struct sync_callbacks *callbacks, int callback_count,
 }
 
 void sync_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
 	struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
 	struct in_addr *left_list, void *left_list_private,
@@ -171,7 +171,7 @@ void sync_confchg_fn (
 {
 	int i;
 
-	if (configuration_type != TOTEMPG_CONFIGURATION_REGULAR) {
+	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
 		return;
 	}
 

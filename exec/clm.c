@@ -101,7 +101,7 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 static int clm_exec_init_fn (void);
 
 static int clm_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,
@@ -389,7 +389,7 @@ static int clm_nodejoin_send (void)
 }
 
 static int clm_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,

@@ -143,7 +143,7 @@ static void (*app_deliver_fn) (
 		int endian_conversion_required) = 0;
 
 static void (*app_confchg_fn) (
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private, 
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -190,7 +190,7 @@ static struct assembly *find_assembly (struct in_addr addr)
 }
 
 static void totempg_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
 	struct in_addr *member_list, void *member_list_private, 
 		int member_list_entries,
 	struct in_addr *left_list, void *left_list_private,
@@ -400,7 +400,7 @@ void totempg_log_printf_init (
 
 void *callback_token_received_handle;
 
-int callback_token_received_fn (enum totemsrp_callback_token_type type,
+int callback_token_received_fn (enum totem_callback_token_type type,
 	void *data)
 {
 	struct totempg_mcast mcast;
@@ -440,7 +440,7 @@ int callback_token_received_fn (enum totemsrp_callback_token_type type,
  */
 int totempg_initialize (
 	struct sockaddr_in *sockaddr_mcast,
-	struct totempg_interface *interfaces,
+	struct totem_interface *interfaces,
 	int interface_count,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
@@ -453,7 +453,7 @@ int totempg_initialize (
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private, 
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -467,7 +467,8 @@ int totempg_initialize (
 	app_deliver_fn = deliver_fn;
 	app_confchg_fn = confchg_fn;
 
-	res = totemsrp_initialize (sockaddr_mcast, (struct totemsrp_interface *)interfaces,
+	res = totemsrp_initialize (sockaddr_mcast,
+		interfaces,
 		interface_count,
 		poll_handle,
 		private_key, private_key_len,
@@ -475,7 +476,7 @@ int totempg_initialize (
 		totempg_deliver_fn, totempg_confchg_fn);
  
 	totemsrp_callback_token_create (&callback_token_received_handle, 
-		TOTEMSRP_CALLBACK_TOKEN_RECEIVED,
+		TOTEM_CALLBACK_TOKEN_RECEIVED,
 		0,
 		callback_token_received_fn,
 		0);

@@ -81,7 +81,7 @@ static int lib_evt_event_data_get(struct conn_info *conn_info,
 		void *message);
 
 static int evt_conf_change(
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private,
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -2695,7 +2695,7 @@ static void remove_chan_open_info(SaClmNodeIdT node_id)
  * received for each node for the detection of duplicate events.
  */
 static int evt_conf_change(
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private,
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -2726,7 +2726,7 @@ static int evt_conf_change(
 	 * we only care about the final membership from the regular
 	 * configuration.
 	 */
-	if (configuration_type == TOTEMPG_CONFIGURATION_TRANSITIONAL) {
+	if (configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
 
 		left_member_count = left_list_entries;
 
@@ -2747,7 +2747,7 @@ static int evt_conf_change(
 		}
 	}
 
-	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 
 		joined_member_count = joined_list_entries;
 		total_member_count = member_list_entries;

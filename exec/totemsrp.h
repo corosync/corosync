@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2004 MontaVista Software, Inc.
+ * Copyright (c) 2003-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -34,30 +34,10 @@
 #ifndef TOTEMSRP_H_DEFINED
 #define TOTEMSRP_H_DEFINED
 
+#include "totem.h"
 #include "aispoll.h"
 
 #define TOTEMSRP_PACKET_SIZE_MAX	1408
-#define PROCESSOR_COUNT_MAX			16
-
-enum totemsrp_configuration_type {
-	TOTEMSRP_CONFIGURATION_REGULAR,
-	TOTEMSRP_CONFIGURATION_TRANSITIONAL	
-};
-
-struct memb_ring_id {
-	struct in_addr rep;
-	unsigned long long seq;
-} __attribute__((packed));
-
-/*
- * This represents an interface that TOTEMSRP binds to
- */
-struct totemsrp_interface {
-	struct sockaddr_in bindnet;
-	struct sockaddr_in boundto;
-};
-
-extern poll_handle *totemsrp_poll_handle;
 
 /*
  * Totem Single Ring Protocol
@@ -79,7 +59,7 @@ void totemsrp_log_printf_init (
  */
 int totemsrp_initialize (
 	struct sockaddr_in *sockaddr_mcast,
-	struct totemsrp_interface *interfaces,
+	struct totem_interface *interfaces,
 	int interface_count,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
@@ -93,7 +73,7 @@ int totemsrp_initialize (
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
-		enum totemsrp_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private, 
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -115,16 +95,11 @@ int totemsrp_mcast (
  */
 int totemsrp_avail (void);
 
-enum totemsrp_callback_token_type {
-	TOTEMSRP_CALLBACK_TOKEN_RECEIVED = 1,
-	TOTEMSRP_CALLBACK_TOKEN_SENT = 2
-};
-
 int totemsrp_callback_token_create (
 	void **handle_out,
-	enum totemsrp_callback_token_type type,
+	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totemsrp_callback_token_type type, void *),
+	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data);
 
 void totemsrp_callback_token_destroy (

@@ -59,7 +59,7 @@ struct openais_config {
 	/*
 	 * network
 	 */
-    struct totempg_interface *interfaces;
+    struct totem_interface *interfaces;
     int interface_count;
 	struct sockaddr_in mcast_addr;
 

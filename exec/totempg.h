@@ -44,21 +44,6 @@
 #define TOTEMPG_AGREED			0
 #define TOTEMPG_SAFE			1
 
-enum totempg_configuration_type {
-	TOTEMPG_CONFIGURATION_REGULAR,
-	TOTEMPG_CONFIGURATION_TRANSITIONAL	
-};
-
-/*
- * This represents an interface that TOTEMPG binds to
- */
-struct totempg_interface {
-	struct sockaddr_in bindnet;
-	struct sockaddr_in boundto;
-};
-
-extern poll_handle *totempg_poll_handle;
-
 /*
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
@@ -79,7 +64,7 @@ void totempg_log_printf_init (
  */
 int totempg_initialize (
 	struct sockaddr_in *sockaddr_mcast,
-	struct totempg_interface *interfaces,
+	struct totem_interface *interfaces,
 	int interface_count,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
@@ -92,7 +77,7 @@ int totempg_initialize (
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private, 
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -115,17 +100,12 @@ int totempg_mcast (
 int totempg_send_ok (
 	int msg_size);
 
-enum totempg_callback_token_type {
-        TOTEMPG_CALLBACK_TOKEN_RECEIVED = 1,
-        TOTEMPG_CALLBACK_TOKEN_SENT = 2
-};
-	
 void totempg_token_callback_destroy (void *handle);
 
 int totempg_token_callback_create (void **handle_out,
-	enum totempg_callback_token_type type,
+	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totempg_callback_token_type type, void *),
+	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data);
 
 #endif /* TOTEMPG_H_DEFINED */

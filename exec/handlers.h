@@ -51,7 +51,7 @@ struct service_handler {
 	int (**aisexec_handler_fns) (void *msg, struct in_addr source_addr, int endian_conversion_needed);
 	int aisexec_handler_fns_count;
 	int (*confchg_fn) (
-		enum totempg_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private,
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,

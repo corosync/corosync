@@ -211,8 +211,8 @@ static unsigned int my_old_high_seq_delivered = 0;
 
 struct token_callback_instance {
 	struct list_head list;
-	int (*callback_fn) (enum totemsrp_callback_token_type type, void *);
-	enum totemsrp_callback_token_type callback_type;
+	int (*callback_fn) (enum totem_callback_token_type type, void *);
+	enum totem_callback_token_type callback_type;
 	int delete;
 	void *data;
 };
@@ -417,7 +417,7 @@ void (*totemsrp_deliver_fn) (
 	int endian_conversion_required) = 0;
 
 void (*totemsrp_confchg_fn) (
-	enum totemsrp_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
 	struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
 	struct in_addr *left_list, void *left_list_private,
@@ -518,7 +518,7 @@ void print_msg (unsigned char *msg, int size)
  */
 int totemsrp_initialize (
 	struct sockaddr_in *sockaddr_mcast,
-	struct totemsrp_interface *interfaces,
+	struct totem_interface *interfaces,
 	int interface_count,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
@@ -531,7 +531,7 @@ int totemsrp_initialize (
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
-		enum totemsrp_configuration_type configuration_type,
+		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, void *member_list_private,
 			int member_list_entries,
 		struct in_addr *left_list, void *left_list_private,
@@ -1036,7 +1036,7 @@ static void memb_state_operational_enter (void)
 	/*
 	 * Deliver transitional configuration to application
 	 */
-	totemsrp_confchg_fn (TOTEMSRP_CONFIGURATION_TRANSITIONAL,
+	totemsrp_confchg_fn (TOTEM_CONFIGURATION_TRANSITIONAL,
 		my_trans_memb_list, 0, my_trans_memb_entries,
 		left_list, 0, left_list_entries,
 		0, 0, 0, &my_ring_id);
@@ -1048,7 +1048,7 @@ static void memb_state_operational_enter (void)
 	/*
 	 * Deliver regular configuration to application
 	 */
-	totemsrp_confchg_fn (TOTEMSRP_CONFIGURATION_REGULAR,
+	totemsrp_confchg_fn (TOTEM_CONFIGURATION_REGULAR,
 		my_new_memb_list, 0, my_new_memb_entries,
 		0, 0, 0,
 		joined_list, 0, joined_list_entries, &my_ring_id);
@@ -2466,9 +2466,9 @@ void print_stats (void)
 }
 
 int totemsrp_callback_token_create (void **handle_out,
-	enum totemsrp_callback_token_type type,
+	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totemsrp_callback_token_type type, void *),
+	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data)
 {
 	struct token_callback_instance *handle;
@@ -2483,10 +2483,10 @@ int totemsrp_callback_token_create (void **handle_out,
 	handle->callback_type = type;
 	handle->delete = delete;
 	switch (type) {
-	case TOTEMSRP_CALLBACK_TOKEN_RECEIVED:
+	case TOTEM_CALLBACK_TOKEN_RECEIVED:
 		list_add (&handle->list, &token_callback_received_listhead);
 		break;
-	case TOTEMSRP_CALLBACK_TOKEN_SENT:
+	case TOTEM_CALLBACK_TOKEN_SENT:
 		list_add (&handle->list, &token_callback_sent_listhead);
 		break;
 	}
@@ -2506,7 +2506,7 @@ void totemsrp_callback_token_destroy (void **handle_out)
 	}
 }
 
-void totemsrp_callback_token_type (void *handle)
+void totem_callback_token_type (void *handle)
 {
 	struct token_callback_instance *token_callback_instance = (struct token_callback_instance *)handle;
 
@@ -2514,7 +2514,7 @@ void totemsrp_callback_token_type (void *handle)
 	free (token_callback_instance);
 }
 
-void token_callbacks_execute (enum totemsrp_callback_token_type type)
+void token_callbacks_execute (enum totem_callback_token_type type)
 {
 	struct list_head *list;
 	struct list_head *list_next;
@@ -2523,10 +2523,10 @@ void token_callbacks_execute (enum totemsrp_callback_token_type type)
 	int res;
 
 	switch (type) {
-	case TOTEMSRP_CALLBACK_TOKEN_RECEIVED:
+	case TOTEM_CALLBACK_TOKEN_RECEIVED:
 		callback_listhead = &token_callback_received_listhead;
 		break;
-	case TOTEMSRP_CALLBACK_TOKEN_SENT:
+	case TOTEM_CALLBACK_TOKEN_SENT:
 		callback_listhead = &token_callback_sent_listhead;
 		break;
 	default:
@@ -2659,7 +2659,7 @@ if (random () % 100 < 10) {
 	} while (nfds == 1);
 
 
-	token_callbacks_execute (TOTEMSRP_CALLBACK_TOKEN_RECEIVED);
+	token_callbacks_execute (TOTEM_CALLBACK_TOKEN_RECEIVED);
 
 	switch (memb_state) {
 	case MEMB_STATE_COMMIT:
@@ -2820,7 +2820,7 @@ printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 				reset_token_retransmit_timeout (); // REVIEWED
 			}
 
-			token_callbacks_execute (TOTEMSRP_CALLBACK_TOKEN_SENT);
+			token_callbacks_execute (TOTEM_CALLBACK_TOKEN_SENT);
 		}
 		break;
 	}

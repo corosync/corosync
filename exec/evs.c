@@ -70,7 +70,7 @@ static DECLARE_LIST_INIT (confchg_notify);
 static int evs_executive_initialize (void);
 
 static int evs_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,
@@ -151,7 +151,7 @@ static int evs_exit_fn (struct conn_info *conn_info)
 }
 
 static int evs_confchg_fn (
-	enum totempg_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, void *member_list_private,
 		int member_list_entries,
     struct in_addr *left_list, void *left_list_private,
