@@ -50,6 +50,7 @@
 #include "../include/queue.h"
 #include "aispoll.h"
 #include "mempool.h"
+#include "util.h"
 #include "parse.h"
 #include "main.h"
 #include "print.h"
@@ -339,7 +340,7 @@ static struct saCkptCheckpoint *findCheckpoint (SaNameT *name)
         checkpoint = list_entry (checkpointList,
             struct saCkptCheckpoint, list);
 
-		if (SaNameTisNameT (name, &checkpoint->name)) {
+		if (name_match (name, &checkpoint->name)) {
 			return (checkpoint);
 		}
 	}

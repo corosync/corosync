@@ -50,6 +50,7 @@
 #include "gmi.h"
 #include "aispoll.h"
 #include "mempool.h"
+#include "util.h"
 #include "parse.h"
 #include "main.h"
 #include "print.h"
@@ -1417,7 +1418,7 @@ struct saAmfProtectionGroup *findProtectionGroup (
 			AmfProtectionGroup = list_entry (AmfProtectionGroupList,
 				struct saAmfProtectionGroup, saAmfProtectionGroupList);
 
-			if (SaNameTisNameT (csiName, &AmfProtectionGroup->name)) {
+			if (name_match (csiName, &AmfProtectionGroup->name)) {
 				return (AmfProtectionGroup);
 			}
 		}
@@ -1459,7 +1460,7 @@ struct saAmfComponent *findComponentInProtectionGroup (
 			AmfProtectionGroup = list_entry (AmfProtectionGroupList,
 				struct saAmfProtectionGroup, saAmfProtectionGroupList);
 
-			if (SaNameTisNameT (csiName, &AmfProtectionGroup->name)) {
+			if (name_match (csiName, &AmfProtectionGroup->name)) {
 				/*
 				 * Search all components
 				 */
@@ -1470,7 +1471,7 @@ struct saAmfComponent *findComponentInProtectionGroup (
 					AmfComponent = list_entry (AmfComponentList,
 						struct saAmfComponent, saAmfProtectionGroupList);
 
-					if (SaNameTisNameT (compName, &AmfComponent->name)) {
+					if (name_match (compName, &AmfComponent->name)) {
 						found = 1;
 					}
 				}
@@ -2180,7 +2181,7 @@ static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *c
 	int i;
 
 	for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
-		if (SaNameTisNameT (&req_amf_protectiongrouptrackstop->csiName,
+		if (name_match (&req_amf_protectiongrouptrackstop->csiName,
 			&conn_info->ais_ci.u.libamf_ci.tracks[i].csiName)) {
 
 			track = &conn_info->ais_ci.u.libamf_ci.tracks[i];
