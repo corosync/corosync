@@ -268,6 +268,7 @@ saAmfDispatch (
 			msg = *queue_msg;
 			memcpy (&dispatch_data, msg, msg->size);
 			saQueueItemRemove (&amfInstance->inq);
+			free (msg);
 		} else {
 			/*
 			 * Queue empty, read response from socket
@@ -440,8 +441,7 @@ saAmfComponentRegister (
 	struct amfInstance *amfInstance;
 	SaErrorT error;
 	struct req_lib_amf_componentregister req_lib_amf_componentregister;
-	struct res_lib_amf_componentregister *res_lib_amf_componentregister;
-	struct message_overlay message;
+	struct res_lib_amf_componentregister res_lib_amf_componentregister;
 
 	req_lib_amf_componentregister.header.magic = MESSAGE_MAGIC;
 	req_lib_amf_componentregister.header.size = sizeof (struct req_lib_amf_componentregister);
@@ -471,19 +471,18 @@ saAmfComponentRegister (
 	 * This must be done to avoid dropping async messages
 	 * during this sync message retrieval
 	 */
-	error = saRecvQueue (amfInstance->fd, &message,
+	error = saRecvQueue (amfInstance->fd, &res_lib_amf_componentregister,
 		&amfInstance->inq, MESSAGE_RES_AMF_COMPONENTREGISTER);
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
 
-	res_lib_amf_componentregister = (struct res_lib_amf_componentregister *)&message;
-	if (res_lib_amf_componentregister->error == SA_OK) {
+	if (res_lib_amf_componentregister.error == SA_OK) {
 		amfInstance->compRegistered = 1;
 		memcpy (&amfInstance->compName, compName, sizeof (SaNameT));
 	}
 
-	error = res_lib_amf_componentregister->error;
+	error = res_lib_amf_componentregister.error;
 
 error_unlock:
 	pthread_mutex_unlock (&amfInstance->mutex);
@@ -498,9 +497,8 @@ saAmfComponentUnregister (
 	const SaNameT *proxyCompName)
 {
 	struct req_lib_amf_componentunregister req_lib_amf_componentunregister;
-	struct res_lib_amf_componentunregister *res_lib_amf_componentunregister;
+	struct res_lib_amf_componentunregister res_lib_amf_componentunregister;
 	struct amfInstance *amfInstance;
-	struct message_overlay message;
 	SaErrorT error;
 
 	req_lib_amf_componentunregister.header.magic = MESSAGE_MAGIC;
@@ -532,17 +530,16 @@ saAmfComponentUnregister (
 	 * This must be done to avoid dropping async messages
 	 * during this sync message retrieval
 	 */
-	error = saRecvQueue (amfInstance->fd, &message,
+	error = saRecvQueue (amfInstance->fd, &res_lib_amf_componentunregister,
 		&amfInstance->inq, MESSAGE_RES_AMF_COMPONENTUNREGISTER);
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
 
-	res_lib_amf_componentunregister = (struct res_lib_amf_componentunregister *)&message;
-	if (res_lib_amf_componentunregister->error == SA_OK) {
+	if (res_lib_amf_componentunregister.error == SA_OK) {
 		amfInstance->compRegistered = 0;
 	}
-	error = res_lib_amf_componentunregister->error;
+	error = res_lib_amf_componentunregister.error;
 
 error_unlock:
 	pthread_mutex_unlock (&amfInstance->mutex);
@@ -586,8 +583,7 @@ saAmfReadinessStateGet (
 	int fd;
 	SaErrorT error;
 	struct req_amf_readinessstateget req_amf_readinessstateget;
-	struct res_amf_readinessstateget *res_amf_readinessstateget;
-	struct message_overlay message;
+	struct res_amf_readinessstateget res_amf_readinessstateget;
 
 	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
 	if (error != SA_OK) {
@@ -604,12 +600,12 @@ saAmfReadinessStateGet (
 		goto exit_close;
 	}
 
-	error = saRecvQueue (fd, &message, 0, MESSAGE_RES_AMF_READINESSSTATEGET);
-	res_amf_readinessstateget = (struct res_amf_readinessstateget *)&message;
+	error = saRecvRetry (fd, &res_amf_readinessstateget,
+		sizeof (struct res_amf_readinessstateget), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error == SA_OK) {
-		memcpy (readinessState, &res_amf_readinessstateget->readinessState, 
+		memcpy (readinessState, &res_amf_readinessstateget.readinessState, 
 			sizeof (SaAmfReadinessStateT));
-		error = res_amf_readinessstateget->error;
+		error = res_amf_readinessstateget.error;
 	}
 		
 exit_close:
@@ -652,10 +648,9 @@ saAmfHAStateGet (
 	SaAmfHAStateT *haState) {
 
 	struct req_amf_hastateget req_amf_hastateget;
-	struct res_amf_hastateget *res_amf_hastateget;
+	struct res_amf_hastateget res_amf_hastateget;
 	int fd;
 	SaErrorT error;
-	struct message_overlay message;
 
 	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
 	if (error != SA_OK) {
@@ -673,17 +668,13 @@ saAmfHAStateGet (
 		goto exit_close;
 	}
 
-	error = saRecvQueue (fd, &message, 0, MESSAGE_RES_AMF_HASTATEGET);
-	res_amf_hastateget = (struct res_amf_hastateget *)&message;
-	if (error != SA_OK) {
-		goto exit_close;
+	error = saRecvRetry (fd, &res_amf_hastateget,
+		sizeof (struct res_amf_hastateget), MSG_WAITALL | MSG_NOSIGNAL);
+	if (error == SA_OK) {
+		memcpy (haState, &res_amf_hastateget.haState, sizeof (SaAmfHAStateT));
+		error = res_amf_hastateget.error;
 	}
 	
-	error = res_amf_hastateget->error;
-	if (error == SA_OK) {
-		memcpy (haState, &res_amf_hastateget->haState, sizeof (SaAmfHAStateT));
-	}
-
 exit_close:
 	close (fd);
 exit_noclose:
@@ -700,8 +691,7 @@ saAmfProtectionGroupTrackStart (
 
 	struct amfInstance *amfInstance;
 	struct req_amf_protectiongrouptrackstart req_amf_protectiongrouptrackstart;
-	struct res_amf_protectiongrouptrackstart *res_amf_protectiongrouptrackstart;
-	struct message_overlay message;
+	struct res_amf_protectiongrouptrackstart res_amf_protectiongrouptrackstart;
 	SaErrorT error;
 
 	req_amf_protectiongrouptrackstart.header.magic = MESSAGE_MAGIC;
@@ -725,12 +715,10 @@ saAmfProtectionGroupTrackStart (
 		goto error_unlock;
 	}
 
-	error = saRecvQueue (amfInstance->fd, &message,
+	error = saRecvQueue (amfInstance->fd, &res_amf_protectiongrouptrackstart,
 		&amfInstance->inq, MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART);
 
-	res_amf_protectiongrouptrackstart = (struct res_amf_protectiongrouptrackstart *)&message;
-
-	error = res_amf_protectiongrouptrackstart->error;
+	error = res_amf_protectiongrouptrackstart.error;
 
 error_unlock:
 	pthread_mutex_unlock (&amfInstance->mutex);
@@ -745,8 +733,7 @@ saAmfProtectionGroupTrackStop (
 
 	struct amfInstance *amfInstance;
 	struct req_amf_protectiongrouptrackstop req_amf_protectiongrouptrackstop;
-	struct res_amf_protectiongrouptrackstop *res_amf_protectiongrouptrackstop;
-	struct message_overlay message;
+	struct res_amf_protectiongrouptrackstop res_amf_protectiongrouptrackstop;
 	SaErrorT error;
 
 	req_amf_protectiongrouptrackstop.header.magic = MESSAGE_MAGIC;
@@ -767,12 +754,10 @@ saAmfProtectionGroupTrackStop (
 		goto error_unlock;
 	}
 
-	error = saRecvQueue (amfInstance->fd, &message,
+	error = saRecvQueue (amfInstance->fd, &res_amf_protectiongrouptrackstop,
 		&amfInstance->inq, MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP);
 
-	res_amf_protectiongrouptrackstop = (struct res_amf_protectiongrouptrackstop *)&message;
-
-	error = res_amf_protectiongrouptrackstop->error;
+	error = res_amf_protectiongrouptrackstop.error;
 
 error_unlock:
 	pthread_mutex_unlock (&amfInstance->mutex);
@@ -789,8 +774,7 @@ saAmfErrorReport (
 	const SaAmfAdditionalDataT *additionalData) {
 
 	struct req_lib_amf_errorreport req_lib_amf_errorreport;
-	struct res_lib_amf_errorreport *res_lib_amf_errorreport;
-	struct message_overlay message;
+	struct res_lib_amf_errorreport res_lib_amf_errorreport;
 	int fd;
 	SaErrorT error;
 
@@ -817,13 +801,13 @@ saAmfErrorReport (
 	/*
 	 * Get response from executive and respond to user application
 	 */
-	error = saRecvQueue (fd, &message, 0, MESSAGE_RES_AMF_ERRORREPORT);
+	error = saRecvRetry (fd, &res_lib_amf_errorreport,
+		sizeof (struct res_lib_amf_errorreport), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto exit_close;
 	}
 
-	res_lib_amf_errorreport = (struct res_lib_amf_errorreport *)&message;
-	error = res_lib_amf_errorreport->error;
+	error = res_lib_amf_errorreport.error;
 
 exit_close:
 	close (fd);
@@ -836,8 +820,7 @@ saAmfErrorCancelAll (
 	const SaNameT *compName) {
 
 	struct req_lib_amf_errorcancelall req_lib_amf_errorcancelall;
-	struct res_lib_amf_errorcancelall *res_lib_amf_errorcancelall;
-	struct message_overlay message;
+	struct res_lib_amf_errorcancelall res_lib_amf_errorcancelall;
 	int fd;
 	SaErrorT error;
 
@@ -856,13 +839,13 @@ saAmfErrorCancelAll (
 	/*
 	 * Get response from executive and respond to user application
 	 */
-	error = saRecvQueue (fd, &message, 0, MESSAGE_RES_AMF_ERRORCANCELALL);
+	error = saRecvRetry (fd, &res_lib_amf_errorcancelall,
+		sizeof (struct res_lib_amf_errorcancelall), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto exit_close;
 	}
 
-	res_lib_amf_errorcancelall = (struct res_lib_amf_errorcancelall *)&message;
-	error = res_lib_amf_errorcancelall->error;
+	error = res_lib_amf_errorcancelall.error;
 
 exit_close:
 	close (fd);
@@ -879,8 +862,7 @@ saAmfComponentCapabilityModelGet (
 	int fd;
 	SaErrorT error;
 	struct req_amf_componentcapabilitymodelget req_amf_componentcapabilitymodelget;
-	struct res_amf_componentcapabilitymodelget *res_amf_componentcapabilitymodelget;
-	struct message_overlay message;
+	struct res_amf_componentcapabilitymodelget res_amf_componentcapabilitymodelget;
 
 	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
 	if (error != SA_OK) {
@@ -897,13 +879,13 @@ saAmfComponentCapabilityModelGet (
 		goto exit_close;
 	}
 
-	error = saRecvQueue (fd, &message, 0, MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET);
-	res_amf_componentcapabilitymodelget = (struct res_amf_componentcapabilitymodelget *)&message;
+	error = saRecvRetry (fd, &res_amf_componentcapabilitymodelget,
+		sizeof (struct res_amf_componentcapabilitymodelget), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error == SA_OK) {
 		memcpy (componentCapabilityModel,
-			&res_amf_componentcapabilitymodelget->componentCapabilityModel, 
+			&res_amf_componentcapabilitymodelget.componentCapabilityModel, 
 			sizeof (SaAmfComponentCapabilityModelT));
-		error = res_amf_componentcapabilitymodelget->error;
+		error = res_amf_componentcapabilitymodelget.error;
 	}
 		
 exit_close:
