@@ -41,6 +41,7 @@
 
 char *delivery_string;
 
+int deliveries = 0;
 void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
 {
 	char *buf = msg;
@@ -48,6 +49,7 @@ void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
 //	buf += 100000;
 //	printf ("Delivery callback\n");
 	printf ("API '%s' msg '%s'\n", delivery_string, buf);
+	deliveries++;
 }
 
 void evs_confchg_fn (
@@ -84,7 +86,7 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[1000];
+char buffer[100];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
@@ -113,6 +115,12 @@ int main (void)
 	 */
 	for (i = 0; i < 500; i++) {
 		sprintf (buffer, "evs_mcast_joined: This is message %d", i);
+#ifdef COMPILE_OUT
+		sprintf (buffer,
+		"%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
+			i, i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,
+			i, i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i,  i);
+#endif
 try_again_one:
 		result = evs_mcast_joined (&handle, EVS_TYPE_AGREED, EVS_PRIO_LOW,
 			&iov, 1);
@@ -122,8 +130,9 @@ try_again_one:
 		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
 	}
 
-//	result = evs_leave (&handle, &groups[1], 2); This causes an assertion
-
+	do {
+		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+	} while (deliveries < 20);
 	/*
 	 * Demonstrate evs_mcast_joined
 	 */
@@ -139,5 +148,11 @@ try_again_two:
 	
 		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
 	}
+	/*
+	 * Flush any pending callbacks
+	 */
+	do {
+		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
+	} while (deliveries < 900);
 	return (0);
 }
