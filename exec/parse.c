@@ -405,17 +405,19 @@ parse_error:
 	return (-1);
 }
 
-int amfReadNetwork (char **error_string,
+int readNetwork (char **error_string,
 	struct sockaddr_in *mcast_addr,
-	struct sockaddr_in *bindnet_addr)
+	struct gmi_interface *interfaces,
+	int interface_count)
 {
 	char line[255];
 	FILE *fp;
 	int res = 0;
 	int line_number = 0;
+	int interface_no = 0;
 
 	memset (mcast_addr, 0, sizeof (struct sockaddr_in));
-	memset (bindnet_addr, 0, sizeof (struct sockaddr_in));
+	memset (interfaces, 0, sizeof (struct gmi_interface) * interface_count);
 
 	mcast_addr->sin_family = AF_INET;
 	fp = fopen ("/etc/ais/network.conf", "r");
@@ -431,11 +433,19 @@ int amfReadNetwork (char **error_string,
 		if (strncmp ("mcastaddr:", line, strlen ("mcastaddr:")) == 0) {
 			res = inet_aton (&line[strlen("mcastaddr:")], &mcast_addr->sin_addr);
 		} else
-		if (strncmp ("bindnetaddr:", line, strlen ("bindnetaddr:")) == 0) {
-			res = inet_aton (&line[strlen("bindnetaddr:")], &bindnet_addr->sin_addr);
-		} else
 		if (strncmp ("mcastport:", line, strlen ("mcastport:")) == 0) {
 			res = mcast_addr->sin_port = htons (atoi (&line[strlen("mcastport:")]));
+		} else
+		if (strncmp ("bindnetaddr:", line, strlen ("bindnetaddr:")) == 0) {
+			if (interface_count == interface_no) {
+				sprintf (error_string_response,
+					"ERROR: %d is too many interfaces in /etc/ais/network.conf %d.\n", interface_no, line_number);
+				*error_string = error_string_response;
+				res = -1;
+				break;
+			}
+			res = inet_aton (&line[strlen("bindnetaddr:")], &interfaces[interface_no].bindnet.sin_addr);
+			interface_no += 1;
 		} else {
 			res = 0;
 			break;
