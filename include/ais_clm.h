@@ -35,6 +35,9 @@
 
 #include "ais_types.h"
 
+#ifndef AIS_CLM_H_DEFINED
+#define AIS_CLM_H_DEFINED
+
 typedef void (*SaClmClusterNodeGetCallbackT)(
 	SaInvocationT invocation,
 	SaClmClusterNodeT *clusterNode,
@@ -51,6 +54,10 @@ typedef struct {
 	SaClmClusterNodeGetCallbackT saClmClusterNodeGetCallback;
 	SaClmClusterTrackCallbackT saClmClusterTrackCallback;
 } SaClmCallbacksT;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 SaErrorT
 saClmInitialize (
@@ -96,5 +103,11 @@ saClmClusterNodeGetAsync (
 	SaInvocationT invocation,
 	SaClmNodeIdT nodeId,
 	SaClmClusterNodeT *clusterNode);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* AIS_CLM_H_DEFINED */
 
 
