@@ -138,7 +138,7 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(TEST_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
-testclm.o: ../include/ais_types.h ../include/ais_clm.h
+testclm.o: ../include/ais_types.h ../include/saClm.h
 testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
 testamf.o: ../include/evs.h
 testamf1.o: ../include/ais_types.h ../include/ais_amf.h
