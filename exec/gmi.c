@@ -2545,11 +2545,13 @@ static int user_deliver ()
 			gmi_log_printf (gmi_log_level_debug, "Last packet, delivering iovec %d entries seq %d\n",
 				iov_len_delv, i);
 
-			gmi_deliver_fn (
-				&mcast->groupname,
-				pend_delv->ip,
-				iovec_delv,
-				iov_len_delv);
+			if (gmi_deliver_fn) {
+				gmi_deliver_fn (
+					&mcast->groupname,
+					pend_delv->ip,
+					iovec_delv,
+					iov_len_delv);
+			}
 
 			/*
 			 * On the first message delivery:
