@@ -64,7 +64,7 @@ DECLARE_LIST_INIT(checkpointIteratorListHead);
 static int ckptCheckpointApiFinalize (struct conn_info *conn_info);
 static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info);
 
-static int message_handler_req_lib_activatepoll (int fd, void *message);
+static int message_handler_req_lib_activatepoll (struct conn_info *, void *message);
 
 static int message_handler_req_exec_ckpt_checkpointopen (void *message);
 
@@ -316,14 +316,14 @@ static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info) {
 	return (0);
 }
 
-static int message_handler_req_lib_activatepoll (int fd, void *message)
+static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
 	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
-	libais_send_response (fd, &res_lib_activatepoll,
+	libais_send_response (conn_info, &res_lib_activatepoll,
 		sizeof (struct res_lib_activatepoll));
 
 	return (0);

@@ -238,33 +238,33 @@ static int message_handler_req_exec_amf_readinessstateset (void *message);
 
 static int message_handler_req_exec_amf_hastateset (void *message);
 
-static int message_handler_req_amf_init (int conn_info, void *message);
+static int message_handler_req_amf_init (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_activatepoll (int conn_info, void *message);
+static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_componentregister (int conn_info, void *message);
+static int message_handler_req_amf_componentregister (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_componentunregister (int conn_info, void *message);
+static int message_handler_req_amf_componentunregister (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_readinessstateget (int conn_info, void *message);
+static int message_handler_req_amf_readinessstateget (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_hastateget (int conn_info, void *message);
+static int message_handler_req_amf_hastateget (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_protectiongrouptrackstart (int conn_info, void *message);
+static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_protectiongrouptrackstop (int conn_info, void *message);
+static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_errorreport (int conn_info, void *message);
+static int message_handler_req_amf_errorreport (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_errorcancelall (int conn_info, void *message);
+static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_stoppingcomplete (int conn_info, void *message);
+static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_response (int conn_info, void *message);
+static int message_handler_req_amf_response (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_amf_componentcapabilitymodelget (int conn_info, void *message);
+static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info *conn_info, void *message);
 
-int (*amf_libais_handler_fns[]) (int conn_info, void *) = {
+int (*amf_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_lib_activatepoll,
 	message_handler_req_amf_componentregister,
 	message_handler_req_amf_componentunregister,
@@ -1896,7 +1896,7 @@ static int message_handler_req_amf_init (struct conn_info *conn_info, void *mess
 	return (-1);
 }
 
-static int message_handler_req_lib_activatepoll (int conn_info, void *message)
+static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
@@ -1908,7 +1908,7 @@ static int message_handler_req_lib_activatepoll (int conn_info, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_componentregister (int conn_info, void *message)
+static int message_handler_req_amf_componentregister (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_componentregister *req_lib_amf_componentregister = (struct req_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
