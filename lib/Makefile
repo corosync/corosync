@@ -46,11 +46,49 @@ LDFLAGS = -g
 
 CFLAGS += -fPIC
 
-all:libais.a libais.so.1.0 libevs.a libevs.so.1.0
+all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
+	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libais.a libais.so.1.0 libevs.a \
+	libevs.so.1.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
 
 LIBEVS_SRC = util.c evs.c
+
+libSaClm.a: util.o clm.o
+	$(AR) -rc libSaClm.a util.o clm.o
+
+libSaClm.so.1.0: util.o clm.o
+	$(CC) -shared -Wl,-soname,libSaClm.so.1 util.o clm.o -o $@
+	rm -f libSaClm.so.1 libSaClm.so
+	ln -s libSaClm.so.1.0 libSaClm.so.1
+	ln -s libSaClm.so.1.0 libSaClm.so
+
+libSaAmf.a: util.o amf.o
+	$(AR) -rc libSaAmf.a util.o amf.o
+
+libSaAmf.so.1.0: util.o amf.o
+	$(CC) -shared -Wl,-soname,libSaAmf.so.1 util.o amf.o -o $@
+	rm -f libSaAmf.so.1 libSaAmf.so
+	ln -s libSaAmf.so.1.0 libSaAmf.so.1
+	ln -s libSaAmf.so.1.0 libSaAmf.so
+
+libSaCkpt.a: util.o ckpt.o
+	$(AR) -rc libSaCkpt.a util.o ckpt.o
+
+libSaCkpt.so.1.0: util.o ckpt.o
+	$(CC) -shared -Wl,-soname,libSaCkpt.so.1 util.o ckpt.o -o $@
+	rm -f libSaCkpt.so.1 libSaCkpt.so
+	ln -s libSaCkpt.so.1.0 libSaCkpt.so.1
+	ln -s libSaCkpt.so.1.0 libSaCkpt.so
+
+libSaEvt.a: util.o evt.o
+	$(AR) -rc libSaEvt.a util.o evt.o
+
+libSaEvt.so.1.0: util.o ckpt.o
+	$(CC) -shared -Wl,-soname,libSaEvt.so.1 util.o evt.o -o $@
+	rm -f libSaEvt.so.1 libSaEvt.so
+	ln -s libSaEvt.so.1.0 libSaEvt.so.1
+	ln -s libSaEvt.so.1.0 libSaEvt.so
 
 libais.a: util.o amf.o clm.o ckpt.o evt.o
 	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
@@ -72,7 +110,9 @@ libevs.so.1.0: util.o evs.o
 	ln -s libevs.so.1.0 libevs.so
 
 clean:
-	rm -f *.o libais.so* libais.a libevs.so* libevs.a *.da *.bb *.bbg
+	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
+		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libevs.so* libevs.a \
+		*.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
