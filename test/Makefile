@@ -31,7 +31,7 @@
 # Production mode flags
 #CFLAGS = -c -O3 -Wall -I../include
 #LDFLAGS = -L../lib
-LIBS = ../lib/libais.a -lpthread
+#LIBS = ../lib/libais.a -lpthread
 
 # Debug mode flags
 CFLAGS = -c -g -Wall -DDEBUG -I../include
@@ -44,7 +44,7 @@ LIBS = ../lib/libais.a -lpthread
 #LIBS = ../lib/libais.a
 
 EXTRA_CFLAGS = -I../include
-all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse
+all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth
 
 testparse: testparse.o
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o
@@ -81,6 +81,12 @@ testclm: testclm.o
 
 testckpt: testckpt.o
 	$(CC) $(LDFLAGS) -o testckpt testckpt.o $(LIBS)
+
+ckptbench: ckptbench.o
+	$(CC) $(LDFLAGS) -o ckptbench ckptbench.o $(LIBS)
+
+ckptbenchth: ckptbenchth.o
+	$(CC) $(LDFLAGS) -o ckptbenchth ckptbenchth.o $(LIBS)
 
 ckptstress: ckptstress.o
 	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
