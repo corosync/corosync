@@ -67,6 +67,8 @@
 #include "amf.h"
 #include "ckpt.h"
 #include "evt.h"
+
+#define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
 
 #define SERVER_BACKLOG 5
@@ -103,8 +105,9 @@ enum e_ais_done {
 	AIS_DONE_LIBAIS_SOCKET = -6,
 	AIS_DONE_LIBAIS_BIND = -7,
 	AIS_DONE_READKEY = -8,
-	AIS_DONE_READNETWORK = -9,
-	AIS_DONE_READGROUPS = -10,
+	AIS_DONE_MAINCONFIGREAD = -9,
+	AIS_DONE_LOGSETUP = -10,
+	AIS_DONE_AMFCONFIGREAD = -11,
 };
 
 static inline void ais_done (enum e_ais_done err)
@@ -874,14 +877,11 @@ int main (int argc, char **argv)
 {
 	int libais_server_fd;
 	int res;
-	struct sockaddr_in sockaddr_in_mcast;
 	gmi_join_handle handle;
 	unsigned char private_key[128];
-	struct gmi_interface gmi_interfaces[2];
 
 	char *error_string;
-
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc.\n");
+	struct openais_config openais_config;
 
 	aisexec_uid_determine ();
 
@@ -900,11 +900,21 @@ int main (int argc, char **argv)
 	/*
 	 * Initialize group messaging interface with multicast address
 	 */
-	res = readNetwork (&error_string, &sockaddr_in_mcast, gmi_interfaces, 1);
+	res = openais_main_config_read (&error_string, &openais_config, 1);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
+
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		ais_done (AIS_DONE_MAINCONFIGREAD);
+	}
+
+	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_READNETWORK);
+		ais_done (AIS_DONE_LOGSETUP);
 	}
+
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc. and contributors.\n");
 
 	/*
 	 * Set round robin realtime scheduling with priority 99
@@ -917,15 +927,19 @@ int main (int argc, char **argv)
 
 	aisexec_keyread (private_key);
 
-	gmi_log_printf_init (internal_log_printf_checkdebug,
-		LOG_LEVEL_SECURITY, LOG_LEVEL_ERROR, LOG_LEVEL_WARNING,
-		LOG_LEVEL_NOTICE, LOG_LEVEL_DEBUG);
-	gmi_init (&sockaddr_in_mcast, gmi_interfaces, 1,
+	gmi_log_printf_init (internal_log_printf,
+		mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI),
+		mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI),
+		mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI),
+		mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI),
+		mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI));
+	gmi_init (&openais_config.mcast_addr, openais_config.interfaces, 1,
 		&aisexec_poll_handle,
 		private_key,
 		sizeof (private_key));
 	
-	memcpy (&this_ip, &gmi_interfaces->boundto, sizeof (struct sockaddr_in));
+	memcpy (&this_ip, &openais_config.interfaces[0].boundto,
+		sizeof (struct sockaddr_in));
 
 	/*
 	 * Drop root privleges to user 'ais'
@@ -941,10 +955,10 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	res = amfReadGroups(&error_string);
+	res = openais_amf_config_read (&error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_READGROUPS);
+		ais_done (AIS_DONE_AMFCONFIGREAD);
 	}
 	
 	aisexec_tty_detach ();
