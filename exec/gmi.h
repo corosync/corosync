@@ -38,9 +38,10 @@
 
 #define MESSAGE_SIZE_MAX	256000
 
-#define GMI_PRIO_HIGH		0
-#define GMI_PRIO_MED		1
-#define GMI_PRIO_LOW		2
+#define GMI_PRIO_RECOVERY	0
+#define GMI_PRIO_HIGH		1
+#define GMI_PRIO_MED		2
+#define GMI_PRIO_LOW		3
 
 typedef int gmi_join_handle;
 
@@ -107,5 +108,12 @@ int gmi_mcast (
 	struct iovec *iovec,
 	int iov_len,
 	int priority);
+
+/*
+ * Determine if a message of msg_size could be queued
+ */
+int gmi_send_ok (
+	int priority,
+	int msg_size);
 
 #endif /* GMI_H_DEFINED */
