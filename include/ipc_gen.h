@@ -76,4 +76,16 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA
 };
 
+struct req_header {
+	int size;
+	int id;
+} __attribute__((packed));
+
+struct res_header {
+	int size;
+	int id;
+	SaErrorT error;
+};
+
+
 #endif /* IPC_GEN_H_DEFINED */
