@@ -50,7 +50,7 @@
 #include "util.h"
 
 struct message_overlay {
-	struct message_header header;
+	struct req_header header;
 	char data[4096];
 };
 
@@ -229,7 +229,7 @@ saClmDispatch (
 		 * Read header
 		 */
 		error = saRecvRetry (clmInstance->fd, &dispatch_data.header,
-			sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+			sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
 		if (error != SA_OK) {
 			goto error_unlock;
 		}
@@ -237,9 +237,9 @@ saClmDispatch (
 		/*
 		 * Read data payload
 		 */
-		if (dispatch_data.header.size > sizeof (struct message_header)) {
+		if (dispatch_data.header.size > sizeof (struct req_header)) {
 			error = saRecvRetry (clmInstance->fd, &dispatch_data.data,
-				dispatch_data.header.size - sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+				dispatch_data.header.size - sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
@@ -354,7 +354,6 @@ saClmClusterTrackStart (
 	struct clmInstance *clmInstance;
 	SaErrorT error = SA_OK;
 
-	req_trackstart.header.magic = MESSAGE_MAGIC;
 	req_trackstart.header.size = sizeof (struct req_clm_trackstart);
 	req_trackstart.header.id = MESSAGE_REQ_CLM_TRACKSTART;
 	req_trackstart.trackFlags = trackFlags;
@@ -385,7 +384,6 @@ saClmClusterTrackStop (
 	struct req_clm_trackstop req_trackstop;
 	SaErrorT error = SA_OK;
 
-	req_trackstop.header.magic = MESSAGE_MAGIC;
 	req_trackstop.header.size = sizeof (struct req_clm_trackstop);
 	req_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
 
@@ -430,7 +428,6 @@ saClmClusterNodeGet (
 	/*
 	 * Send request message
 	 */
-	req_clm_nodeget.header.magic = MESSAGE_MAGIC;
 	req_clm_nodeget.header.size = sizeof (struct req_clm_nodeget);
 	req_clm_nodeget.header.id = MESSAGE_REQ_CLM_NODEGET;
 	req_clm_nodeget.nodeId = nodeId;
@@ -457,12 +454,12 @@ saClmClusterNodeGet (
 		goto error_close;
 	}
 
-	error = saRecvRetry (fd, &message.header, sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry (fd, &message.header, sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto error_close;
 	}
 
-	error = saRecvRetry (fd, &message.data, message.header.size - sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry (fd, &message.data, message.header.size - sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto error_close;
 	}
@@ -486,7 +483,6 @@ saClmClusterNodeGetAsync (
 	struct req_clm_nodeget req_clm_nodeget;
 	SaErrorT error = SA_OK;
 
-	req_clm_nodeget.header.magic = MESSAGE_MAGIC;
 	req_clm_nodeget.header.size = sizeof (struct req_clm_nodeget);
 	req_clm_nodeget.header.id = MESSAGE_REQ_CLM_NODEGET;
 	memcpy (&req_clm_nodeget.invocation, &invocation, sizeof (SaInvocationT));
