@@ -182,7 +182,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	} while (error != SA_ERR_NOT_EXIST);
 	gettimeofday (&tv_end, NULL);
 	timersub (&tv_end, &tv_start, &tv_elapsed);
-	printf ("Elapsed Time to expiry is %d.%d (should be about %d seconds)\n", tv_elapsed.tv_sec, tv_elapsed.tv_usec, SECONDS_TO_EXPIRE);
+	printf ("Elapsed Time to expiry is %ld.%ld (should be about %d seconds)\n", tv_elapsed.tv_sec, tv_elapsed.tv_usec, SECONDS_TO_EXPIRE);
 
 	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
 		5000000000);
