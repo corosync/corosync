@@ -173,10 +173,14 @@ void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
 		/*
 		 * Test checkpoint write
 		 */
+retry:
 		error = saCkptCheckpointWrite (checkpointHandle,
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
+		if (error == SA_AIS_ERR_TRY_AGAIN) {
+			goto retry;
+		}
 		if (error != SA_OK) {
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
