@@ -59,7 +59,7 @@ all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
 	ckptbenchth testevt testevs evsbench subscription publish evtbench
 
 testparse: testparse.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o
+	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o ../exec/util.o
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
