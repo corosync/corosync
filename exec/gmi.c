@@ -353,6 +353,7 @@ poll_handle *gmi_poll_handle;
 
 void (*gmi_deliver_fn) (
 	struct gmi_groupname *groupname,
+	struct in_addr source_addr,
 	struct iovec *iovec,
 	int iov_len) = 0;
 
@@ -471,6 +472,7 @@ int gmi_join (
 	struct gmi_groupname *groupname,
 	void (*deliver_fn) (
 		struct gmi_groupname *groupname,
+		struct in_addr source_addr,
 		struct iovec *iovec,
 		int iov_len),
 	void (*confchg_fn) (
@@ -2517,6 +2519,7 @@ static int user_deliver ()
 
 			gmi_deliver_fn (
 				&mcast->groupname,
+				pend_delv->ip,
 				iovec_delv,
 				iov_len_delv);
 
