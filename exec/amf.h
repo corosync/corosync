@@ -49,6 +49,7 @@ struct libamf_ci_trackentry {
 struct libamf_ci {
 	struct libamf_ci_trackentry *tracks;
 	int trackEntries;
+	int trackActive;
 };
 
 extern struct service_handler amf_service_handler;
