@@ -94,7 +94,7 @@ struct iovec iov = {
 
 int main (void)
 {
-	unsigned int handle;
+	evs_handle_t handle;
 	evs_error_t result;
 	int i = 0;
 

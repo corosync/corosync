@@ -43,7 +43,7 @@
 #include <sys/un.h>
 
 #include "ais_types.h"
-#include "ais_clm.h"
+#include "saClm.h"
 
 void printSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
@@ -75,10 +75,6 @@ void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode) 
 	printSaNameT (&clusterNode->nodeName);
 	printf ("\n");
 
-	printf ("\tCluster name is ");
-	printSaNameT (&clusterNode->clusterName);
-	printf ("\n");
-
 	printf ("\tMember is %d\n", clusterNode->member);
 
 	printf ("\tTimestamp is %llx nanoseconds\n", clusterNode->bootTimestamp);
@@ -86,54 +82,55 @@ void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode) 
 
 void NodeGetCallback (
 	SaInvocationT invocation,
-	SaClmClusterNodeT *clusterNode,
-	SaErrorT error) 
+	const SaClmClusterNodeT *clusterNode,
+	SaAisErrorT error) 
 {
 	char buf[128];
 
-//	if (invocation == 0x60) {
-	sprintf (buf, "NodeGetCallback different machine invocation %x", invocation);
-//	} else {
-	sprintf (buf, "NodeGetCallback local machine %x", invocation);
-//	}
-
-
-	printSaClmClusterNodeT (buf, clusterNode);
+	if (error != SA_AIS_OK) {
+		printf ("Node for invocation %d not found (%d)\n", invocation, error);
+	} else {
+		sprintf (buf, "NODEGETCALLBACK %d\n", invocation);
+		printSaClmClusterNodeT (buf, (SaClmClusterNodeT *)clusterNode);
+	}
 }
 
 void TrackCallback (
-	SaClmClusterNotificationT *notificationBuffer,
-	SaUint32T numberOfItems,
+	const SaClmClusterNotificationBufferT *notificationBuffer,
 	SaUint32T numberOfMembers,
-	SaUint64T viewNumber,
-	SaErrorT error)
+	SaAisErrorT error)
 {
 	int i;
 
+printf ("Track callback\n");
 	printf ("Calling track callback %p\n", notificationBuffer);
-	for (i = 0; i < numberOfItems; i++) {
-	switch (notificationBuffer[i].clusterChanges) {
-	case SA_CLM_NODE_NO_CHANGE:
-		printf ("NODE STATE NO CHANGE.\n");
-		break;
-	case SA_CLM_NODE_JOINED:
-		printf ("NODE STATE JOINED.\n");
-		break;
-	case SA_CLM_NODE_LEFT:
-		printf ("NODE STATE LEFT.\n");
-		break;
-	}
-		printSaClmClusterNodeT ("TRACKING", &notificationBuffer[i].clusterNode);
+	for (i = 0; i < numberOfMembers; i++) {
+		switch (notificationBuffer->notification[i].clusterChange) {
+		case SA_CLM_NODE_NO_CHANGE:
+			printf ("NODE STATE NO CHANGE.\n");
+			break;
+		case SA_CLM_NODE_JOINED:
+			printf ("NODE STATE JOINED.\n");
+			break;
+		case SA_CLM_NODE_LEFT:
+			printf ("NODE STATE LEFT.\n");
+			break;
+		case SA_CLM_NODE_RECONFIGURED:
+			printf ("NODE STATE RECONFIGURED.\n");
+			break;
+		}
+		printSaClmClusterNodeT ("TRACKING",
+			&notificationBuffer->notification[i].clusterNode);
 	}
 	printf ("Done calling trackCallback\n");
 }
 
 SaClmCallbacksT callbacks = {
-	NodeGetCallback,
-	TrackCallback
+	.saClmClusterNodeGetCallback	= NodeGetCallback,
+	.saClmClusterTrackCallback		= TrackCallback
 };
 
-SaVersionT version = { 'A', 1, 1 };
+SaVersionT version = { 'B', 1, 1 };
 
 void sigintr_handler (int signum) {
 	exit (0);
@@ -144,8 +141,12 @@ int main (void) {
 	fd_set read_fds;
 	int select_fd;
 	int result;
-	SaClmClusterNotificationT clusterNotificationBuffer[64];
+	SaClmClusterNotificationT clusterNotification[64];
+	SaClmClusterNotificationBufferT clusterNotificationBuffer;
 	SaClmClusterNodeT clusterNode;
+
+	clusterNotificationBuffer.notification = clusterNotification;
+	clusterNotificationBuffer.numberOfItems = 64;
 
 	signal (SIGINT, sigintr_handler);
 
@@ -155,27 +156,32 @@ int main (void) {
 		exit (1);
 	}
 
-	result = saClmClusterNodeGet (SA_CLM_LOCAL_NODE_ID, 0, &clusterNode);
+	result = saClmClusterNodeGet (handle, SA_CLM_LOCAL_NODE_ID, 0, &clusterNode);
 
 	printf ("Result of saClmClusterNodeGet %d\n", result);
 
 	printSaClmClusterNodeT ("saClmClusterNodeGet SA_CLM_LOCAL_NODE_ID result %d", &clusterNode);
 
-	result = saClmClusterNodeGetAsync (&handle, 0x55, SA_CLM_LOCAL_NODE_ID, &clusterNode);
+	result = saClmClusterNodeGetAsync (handle, 55, SA_CLM_LOCAL_NODE_ID);
 	printf ("result is %d\n", result);
 
-	result = saClmClusterNodeGetAsync (&handle, 0x60, 0x6201a8c0, &clusterNode);
+	result = saClmClusterNodeGetAsync (handle, 60, 0x6201a8c0);
 	printf ("result is %d\n", result);
 
-	result = saClmClusterNodeGetAsync (&handle, 0x59, SA_CLM_LOCAL_NODE_ID, &clusterNode);
+	result = saClmClusterNodeGetAsync (handle, 61, 0x6a01a8f0);
 	printf ("result is %d\n", result);
 
-	result = saClmClusterNodeGetAsync (&handle, 0x57, SA_CLM_LOCAL_NODE_ID, &clusterNode);
+	result = saClmClusterNodeGetAsync (handle, 59, SA_CLM_LOCAL_NODE_ID);
 	printf ("result is %d\n", result);
 
-	saClmClusterTrackStart (&handle, SA_TRACK_CURRENT | SA_TRACK_CHANGES_ONLY, clusterNotificationBuffer, 64);
+	result = saClmClusterNodeGetAsync (handle, 57, SA_CLM_LOCAL_NODE_ID);
+	printf ("result is %d\n", result);
 
-	saClmSelectionObjectGet (&handle, &select_fd);
+	result = saClmClusterTrack (handle, SA_TRACK_CURRENT | SA_TRACK_CHANGES,
+		&clusterNotificationBuffer);
+	printf ("track result is %d\n", result);
+
+	saClmSelectionObjectGet (handle, &select_fd);
 
 printf ("select fd is %d\n", select_fd);
 	FD_ZERO (&read_fds);
@@ -191,13 +197,13 @@ printf ("press the enter key to exit with track stop and finalize.\n");
 			break;
 		}
 printf ("done with select\n");
-		saClmDispatch (&handle, SA_DISPATCH_ALL);
+		saClmDispatch (handle, SA_DISPATCH_ALL);
 	} while (result);
 
-	result = saClmClusterTrackStop (&handle);
+	result = saClmClusterTrackStop (handle);
 	printf ("TrackStop result is %d (should be 1)\n", result);
 
-	result = saClmFinalize (&handle);
+	result = saClmFinalize (handle);
 	printf ("Finalize  result is %d (should be 1)\n", result);
 	return (0);
 }

@@ -45,14 +45,6 @@
 #include "ais_amf.h"
 #include "ais_msg.h"
 
-void printSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
-	int i;
-
-	for (i = 0; i < nodeAddress->length; i++) {
-		printf ("%d.", nodeAddress->value[i]);
-	}
-}
-
 void printSaNameT (SaNameT *name)
 {
 	int i;
