@@ -110,6 +110,7 @@ enum e_ais_done {
 static inline void ais_done (enum e_ais_done err)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
+	poll_destroy (aisexec_poll_handle);
 	exit (1);
 }
 
