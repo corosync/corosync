@@ -180,15 +180,15 @@ struct sq queue_rtr_items;
  */
 struct sockaddr_in sockaddr_in_mcast;
 
-/*
- * File descriptor used when multicasting or receiving multicasts
- */
-int gmi_fd_mcast;
+struct gmi_socket {
+	int mcast;
+	int token;
+};
 
 /*
- * File descriptor used when unicasting the token or receiving unicast tokens
+ * File descriptors in use by GMI
  */
-int gmi_fd_token;
+struct gmi_socket gmi_sockets[2];
 
 /*
  * Received up to and including
@@ -314,7 +314,6 @@ struct memb_form_token {
 	int rep_list_entries;
 };
 	
-
 struct memb_attempt_join {
 	struct message_header header;
 };
@@ -431,8 +430,7 @@ static int recv_handler (poll_handle handle, int fd, int revents, void *data, un
 static int netif_determine (struct sockaddr_in *bindnet, struct sockaddr_in *bound_to);
 static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
-	int *fd_mcast,
-	int *fd_uni,
+	struct gmi_socket *sockets,
 	struct sockaddr_in *bound_to);
 static int memb_state_gather_enter (void);
 static void pending_queues_deliver (void);
@@ -490,14 +488,15 @@ void print_digest (char *where, unsigned char *digest)
  */
 int gmi_init (
 	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct gmi_interface *interfaces,
+	int interface_count,
 	poll_handle *poll_handle,
-	struct sockaddr_in *sockaddr_boundto,
 	unsigned char *private_key,
 	int private_key_len)
 {
 	int i;
 	int res;
+	int interface_no;
 
 	/*
 	 * Initialize random number generator for later use to generate salt
@@ -522,30 +521,39 @@ int gmi_init (
 	sq_init (&queue_rtr_items, QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct gmi_rtr_item), 0);
 
 	/*
-	 * Create and bind the multicast and unicast sockets
+	 * Build sockets for every interface
 	 */
-	res = gmi_build_sockets (sockaddr_mcast,
-		sockaddr_bindnet,
-		&gmi_fd_mcast,
-		&gmi_fd_token,
-		sockaddr_boundto);
+	for (interface_no = 0; interface_no < interface_count; interface_no++) {
+		/*
+		 * Create and bind the multicast and unicast sockets
+		 */
+		res = gmi_build_sockets (sockaddr_mcast,
+			&interfaces[interface_no].bindnet,
+			&gmi_sockets[interface_no],
+			&interfaces[interface_no].boundto);
 
-	memcpy (&gmi_bound_to, sockaddr_boundto, sizeof (struct sockaddr_in));
+		if (res == -1) {
+			return (res);
+		}
+		gmi_poll_handle = poll_handle;
+
+		poll_dispatch_add (*gmi_poll_handle, gmi_sockets[interface_no].mcast,
+			POLLIN, 0, recv_handler, UINT_MAX);
+
+		poll_dispatch_add (*gmi_poll_handle, gmi_sockets[interface_no].token,
+			POLLIN, 0, recv_handler, UINT_MAX);
+	}
+
+	memcpy (&gmi_bound_to, &interfaces->boundto, sizeof (struct sockaddr_in));
 
 	/*
 	 * This stuff depends on gmi_build_sockets
 	 */
-	memcpy (&memb_list[0], sockaddr_boundto, sizeof (struct sockaddr_in));
+	memcpy (&memb_list[0], &interfaces->boundto, sizeof (struct sockaddr_in));
 
-	memb_conf_id_build (&memb_conf_id, sockaddr_boundto->sin_addr);
+	memb_conf_id_build (&memb_conf_id, interfaces->boundto.sin_addr);
 
 	memcpy (&memb_form_token_conf_id, &memb_conf_id, sizeof (struct memb_conf_id));
-
-	gmi_poll_handle = poll_handle;
-
-	poll_dispatch_add (*gmi_poll_handle, gmi_fd_mcast, POLLIN, 0, recv_handler, UINT_MAX);
-
-	poll_dispatch_add (*gmi_poll_handle, gmi_fd_token, POLLIN, 0, recv_handler, UINT_MAX);
 
 	memb_state_gather_enter ();
 
@@ -1024,8 +1032,7 @@ static int netif_determine (struct sockaddr_in *bindnet,
 
 static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *sockaddr_bindnet,
-	int *fd_mcast,
-	int *fd_uni,
+	struct gmi_socket *sockets,
 	struct sockaddr_in *bound_to)
 {
 	struct ip_mreq mreq;
@@ -1053,13 +1060,13 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	/*
 	 * Create multicast socket
 	 */
-	*fd_mcast = socket (AF_INET, SOCK_DGRAM, 0);
-	if (*fd_mcast == -1) {
+	sockets->mcast = socket (AF_INET, SOCK_DGRAM, 0);
+	if (sockets->mcast == -1) {
 		perror ("socket");
 		return (-1);
 	}
 
-	if (setsockopt (*fd_mcast, SOL_IP, IP_MULTICAST_IF,
+	if (setsockopt (sockets->mcast, SOL_IP, IP_MULTICAST_IF,
 		&bound_to->sin_addr, sizeof (struct in_addr)) < 0) {
 
 		gmi_log_printf (gmi_log_level_warning, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
@@ -1071,7 +1078,7 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	sockaddr_in.sin_family = AF_INET;
 	sockaddr_in.sin_addr.s_addr = sockaddr_mcast->sin_addr.s_addr;
 	sockaddr_in.sin_port = sockaddr_mcast->sin_port;
-	res = bind (*fd_mcast, (struct sockaddr *)&sockaddr_in,
+	res = bind (sockets->mcast, (struct sockaddr *)&sockaddr_in,
 		sizeof (struct sockaddr_in));
 	if (res == -1) {
 		perror ("bind failed");
@@ -1081,8 +1088,8 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	/*
 	 * Setup unicast socket
 	 */
-	*fd_uni = socket (AF_INET, SOCK_DGRAM, 0);
-	if (*fd_uni == -1) {
+	sockets->token = socket (AF_INET, SOCK_DGRAM, 0);
+	if (sockets->token == -1) {
 		perror ("socket2");
 		return (-1);
 	}
@@ -1092,7 +1099,7 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	 * This has the side effect of binding to the correct interface
 	 */
 	sockaddr_in.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	res = bind (*fd_uni, (struct sockaddr *)&sockaddr_in,
+	res = bind (sockets->token, (struct sockaddr *)&sockaddr_in,
 		sizeof (struct sockaddr_in));
 	if (res == -1) {
 		perror ("bind2 failed");
@@ -1103,7 +1110,7 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 /* This config option doesn't work */
 {
 	int on = 1;
-	setsockopt (*fd_mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
+	setsockopt (sockets->mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
 }
 #else
 	/*
@@ -1112,7 +1119,7 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	mreq.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
 	mreq.imr_interface.s_addr = bound_to->sin_addr.s_addr;
 
-	res = setsockopt (*fd_mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+	res = setsockopt (sockets->mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 		&mreq, sizeof (mreq));
 	if (res == -1) {
 		perror ("join multicast group failed");
@@ -1124,7 +1131,7 @@ static int gmi_build_sockets (struct sockaddr_in *sockaddr_mcast,
 	 * Turn off multicast loopback since we know what messages we have sent
 	 */
 	flag = 0;
-	res = setsockopt (*fd_mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
+	res = setsockopt (sockets->mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
 		&flag, sizeof (flag));
 	if (res == -1) {
 		perror ("turn off loopback");
@@ -1184,7 +1191,7 @@ printf ("remulticasting %d\n", seqid);
 	/*
 	 * Multicast message
 	 */
-	res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (res == -1) {
 printf ("error during remulticast %d %d %d\n", seqid, errno, gmi_rtr_item->iov_len);
 		return (-1);
@@ -1385,7 +1392,7 @@ static int orf_token_mcast (
 		/*
 		 * Multicast message
 		 */
-		res = sendmsg (gmi_fd_mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+		res = sendmsg (gmi_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
 		iov_encrypted.iov_len = 1500;
 
 		/*
@@ -1906,7 +1913,7 @@ static int orf_token_send (
 //	return (1);
 //}
 
-	res = sendmsg (gmi_fd_token, &msg_orf_token, MSG_NOSIGNAL);
+	res = sendmsg (gmi_sockets[0].token, &msg_orf_token, MSG_NOSIGNAL);
 	assert (res != -1);
 	
 	/*
@@ -1990,7 +1997,7 @@ static int memb_join_send (void)
 	msghdr_join.msg_controllen = 0;
 	msghdr_join.msg_flags = 0;
 
-	res = sendmsg (gmi_fd_mcast, &msghdr_join, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_sockets[0].mcast, &msghdr_join, MSG_NOSIGNAL | MSG_DONTWAIT);
 
 	return (res);
 }
@@ -2384,7 +2391,7 @@ static int memb_form_token_send (
 	msg_form_token.msg_controllen = 0;
 	msg_form_token.msg_flags = 0;
 	
-	res = sendmsg (gmi_fd_token, &msg_form_token, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (gmi_sockets[0].token, &msg_form_token, MSG_NOSIGNAL | MSG_DONTWAIT);
 
 	/*
 	 * res not used here, because orf token errors are handled by algorithm
@@ -2677,7 +2684,7 @@ static int memb_state_gather_enter (void) {
 		msghdr_attempt_join.msg_controllen = 0;
 		msghdr_attempt_join.msg_flags = 0;
 
-		res = sendmsg (gmi_fd_mcast, &msghdr_attempt_join, MSG_NOSIGNAL | MSG_DONTWAIT);
+		res = sendmsg (gmi_sockets[0].mcast, &msghdr_attempt_join, MSG_NOSIGNAL | MSG_DONTWAIT);
 		/*
 		 * res not checked here, there is nothing that can be done
 		 * instead rely on the algorithm to recover from faults
