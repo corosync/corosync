@@ -3196,10 +3196,21 @@ static int memb_state_gather_enter (void) {
 		 */
 	}
 
+	/*
+	 * Restart the gather timeout
+	` */
 	poll_timer_delete (*gmi_poll_handle, timer_memb_state_gather_timeout);
 
 	poll_timer_add (*gmi_poll_handle, TIMEOUT_STATE_GATHER, 0,
 		memb_timer_function_state_gather, &timer_memb_state_gather_timeout);
+
+	/*
+	 * If we already started a commit, stop it since we are
+	 * going back into the gather state
+	 */
+	poll_timer_delete (*gmi_poll_handle, timer_memb_state_commit_timeout);
+
+	timer_memb_state_commit_timeout = 0;
 
 	return (res);
 }
@@ -3661,9 +3672,11 @@ static int message_handler_memb_attempt_join (
 			}
 			break;
 
-		default:
-			// TODO what about other states
-			gmi_log_printf (gmi_log_level_error, "memb_attempt_join: EVS or FORM state attempt join occured %d\n", memb_state);
+		case MEMB_STATE_FORM:
+		case MEMB_STATE_EVS:
+			gmi_log_printf (gmi_log_level_error,
+				"memb_attempt_join: FORM, EVS %d\n", memb_state);
+			break;
 	}
 
 	return (0);
