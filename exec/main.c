@@ -682,6 +682,7 @@ static void deliver_fn (
 }
 
 static void confchg_fn (
+	enum gmi_configuration_type configuration_type,
 	struct sockaddr_in *member_list, int member_list_entries,
 	struct sockaddr_in *left_list, int left_list_entries,
 	struct sockaddr_in *joined_list, int joined_list_entries)
@@ -693,8 +694,10 @@ static void confchg_fn (
 	 */
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
 		if (ais_service_handlers[i]->confchg_fn) {
-			ais_service_handlers[i]->confchg_fn (member_list, member_list_entries,
-				left_list, left_list_entries, joined_list, joined_list_entries);
+			ais_service_handlers[i]->confchg_fn (configuration_type,
+				member_list, member_list_entries,
+				left_list, left_list_entries,
+				joined_list, joined_list_entries);
 		}
 	}
 }
@@ -770,8 +773,8 @@ static void aisexec_service_handlers_init (void)
 	 * Initialize all services
 	 */
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->aisexec_init_fn) {
-			ais_service_handlers[i]->aisexec_init_fn ();
+		if (ais_service_handlers[i]->exec_init_fn) {
+			ais_service_handlers[i]->exec_init_fn ();
 		}
 	}
 }
