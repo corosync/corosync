@@ -8,6 +8,7 @@
  *
  * Tom St Denis, tomstdenis@iahu.ca, http://libtomcrypt.org
  */
+#include <assert.h>
 #include <string.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -638,9 +639,6 @@ const struct _prng_descriptor sober128_desc =
     &sober128_add_entropy,
     &sober128_ready,
     &sober128_read,
-    &sober128_done,
-    &sober128_export,
-    &sober128_import,
 };
 
 const struct _prng_descriptor *prng_descriptor[] = {
@@ -816,9 +814,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
     if (c->flag == 1) {
        /* this is the first call to the add_entropy so this input is the key */
        /* len must be multiple of 4 bytes */
-       if ((len & 3) != 0) {
-          return CRYPT_INVALID_KEYSIZE;
-       }
+       assert ((len & 3) == 0);
     
        for (i = 0; i < len; i += 4) {
            k = BYTE2WORD((unsigned char *)&buf[i]);
@@ -843,9 +839,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        s128_reloadstate(c);
 
        /* len must be multiple of 4 bytes */
-       if ((len & 3) != 0) {
-          return CRYPT_INVALID_KEYSIZE;
-       }
+       assert ((len & 3) == 0);
     
        for (i = 0; i < len; i += 4) {
            k = BYTE2WORD((unsigned char *)&buf[i]);
@@ -939,42 +933,6 @@ unsigned long sober128_read(unsigned char *buf, unsigned long nbytes, prng_state
     }
 
     return tlen;
-}
-
-int sober128_done(prng_state *prng)
-{
-   return CRYPT_OK;
-}
-
-int sober128_export(unsigned char *out, unsigned long *outlen, prng_state *prng)
-{
-   if (*outlen < 64) {
-      return CRYPT_BUFFER_OVERFLOW;
-   }
-
-   if (sober128_read(out, 64, prng) != 64) {
-      return CRYPT_ERROR_READPRNG;
-   }
-   *outlen = 64;
-
-   return CRYPT_OK;
-}
- 
-int sober128_import(const unsigned char *in, unsigned long inlen, prng_state *prng)
-{
-   int err;
-
-   if (inlen != 64) {
-      return CRYPT_INVALID_ARG;
-   }
-   
-   if ((err = sober128_start(prng)) != CRYPT_OK) {
-      return err;
-   }
-   if ((err = sober128_add_entropy(in, 64, prng)) != CRYPT_OK) {
-      return err;
-   }
-   return sober128_ready(prng);
 }
 
 /* SHA1 code by Tom St Denis */
@@ -1094,9 +1052,10 @@ int sha1_done(hash_state * md, unsigned char *hash)
 {
     int i;
 
-    if (md->sha1.curlen >= sizeof(md->sha1.buf)) {
-       return CRYPT_INVALID_ARG;
-    }
+	/*
+	 * Assert there isn't an invalid argument
+	 */
+	assert (md->sha1.curlen < sizeof (md->sha1.buf)); 
 
     /* increase the length of the message */
     md->sha1.length += md->sha1.curlen * 8;
@@ -1155,32 +1114,19 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
 {
     unsigned char buf[128];
     unsigned long hashsize;
-    unsigned long i, z;
+    unsigned long i;
     int err;
 
     hmac->hash = hash;
     hashsize   = hash_descriptor[hash]->hashsize;
 
     /* valid key length? */
-    if (keylen == 0) {
-        return CRYPT_INVALID_KEYSIZE;
-    }
+	assert (keylen > 0);
+	assert (keylen <= hash_descriptor[hash]->blocksize);
 
-    // (1) make sure we have a large enough key
-    if(keylen > hash_descriptor[hash]->blocksize) {
-        z = (unsigned long)sizeof(hmac->key);
-        if ((err = hash_memory(hash, key, keylen, hmac->key, &z)) != CRYPT_OK) {
-           goto __ERR;
-        }
-        if(hashsize < hash_descriptor[hash]->blocksize) {
-            memset ((hmac->key) + hashsize, 0, (size_t)(hash_descriptor[hash]->blocksize - hashsize));
-        }
-        keylen = hashsize;
-    } else {
-        memcpy(hmac->key, key, (size_t)keylen);
-        if(keylen < hash_descriptor[hash]->blocksize) {
-            memset((hmac->key) + keylen, 0, (size_t)(hash_descriptor[hash]->blocksize - keylen));
-        }
+    memcpy(hmac->key, key, (size_t)keylen);
+    if(keylen < hash_descriptor[hash]->blocksize) {
+        memset((hmac->key) + keylen, 0, (size_t)(hash_descriptor[hash]->blocksize - keylen));
     }
 
     // Create the initial vector for step (3)
@@ -1191,8 +1137,7 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     // Pre-pend that to the hash data
     hash_descriptor[hash]->init(&hmac->md);
     err = hash_descriptor[hash]->process(&hmac->md, buf, hash_descriptor[hash]->blocksize);
-__ERR:
- 
+
    return err;    
 }
 
@@ -1267,58 +1212,10 @@ __ERR:
     return err;
 }
 
-/* Submited by Dobes Vandermeer  (dobes@smartt.com) */
-
-int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
-                const unsigned char *data, unsigned long len, 
-                unsigned char *dst, unsigned long *dstlen)
-{
-    hmac_state hmac;
-    int err;
-
-    /* allocate ram for hmac state */
-
-    if ((err = hmac_init(&hmac, hash, key, keylen)) != CRYPT_OK) {
-       goto __ERR;
-    }
-
-    if ((err = hmac_process(&hmac, data, len)) != CRYPT_OK) {
-       goto __ERR;
-    }
-
-    if ((err = hmac_done(&hmac, dst, dstlen)) != CRYPT_OK) {
-       goto __ERR;
-    }
-
-   err = CRYPT_OK;
-__ERR:
-
-   return err;   
-}
-
 const struct _hash_descriptor *hash_descriptor[] =
 {
 	&sha1_desc
 };
-
-int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst, unsigned long *outlen)
-{
-    hash_state md;
-    int err;
-
-    if (*outlen < hash_descriptor[hash]->hashsize) {
-       return CRYPT_BUFFER_OVERFLOW;
-    }
-
-    hash_descriptor[hash]->init(&md);
-    if ((err = hash_descriptor[hash]->process(&md, data, len)) != CRYPT_OK) {
-       goto __ERR;
-    }
-    err = hash_descriptor[hash]->done(&md, dst);
-    *outlen = hash_descriptor[hash]->hashsize;
-__ERR:
-    return err;
-}
 
 /* portable way to get secure random bits to feed a PRNG */
 /* on *NIX read /dev/random */
