@@ -445,7 +445,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg);
+static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct in_addr source_addr);
 static int aisexec_handler_fns_count = 0;
 
 /*
@@ -492,7 +492,7 @@ static void deliver_fn (
 	} else {
 		header = (struct message_header *)iovec[0].iov_base;
 	}
-	res = aisexec_handler_fns[header->id](header);
+	res = aisexec_handler_fns[header->id](header, source_addr);
 }
 
 static void confchg_fn (

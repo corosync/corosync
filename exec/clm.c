@@ -81,7 +81,7 @@ static int clmConfChg (
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries);
 
-static int message_handler_req_exec_clm_nodejoin (void *message);
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr);
 
 static int message_handler_req_clm_init (struct conn_info *conn_info,
 	void *message);
@@ -107,14 +107,14 @@ static int (*clm_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_clm_nodeget
 };
 
-static int (*clm_aisexec_handler_fns[]) (void *) = {
+static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
 	message_handler_req_exec_clm_nodejoin
 };
 	
 struct service_handler clm_service_handler = {
 	.libais_handler_fns			= clm_libais_handler_fns,
 	.libais_handler_fns_count	= sizeof (clm_libais_handler_fns) / sizeof (int (*)),
-	.aisexec_handler_fns		= clm_aisexec_handler_fns ,
+	.aisexec_handler_fns		= clm_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= clmConfChg,
 	.libais_init_fn				= message_handler_req_clm_init,
@@ -363,7 +363,7 @@ static int clmConfChg (
 	return (0);
 }
 
-static int message_handler_req_exec_clm_nodejoin (void *message)
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 	int found;

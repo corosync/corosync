@@ -223,17 +223,17 @@ static int amf_exit_fn (struct conn_info *conn_info);
 
 static int amfExecutiveInitialize (void);
 
-static int message_handler_req_exec_amf_componentregister (void *message);
+static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr);
 
-static int message_handler_req_exec_amf_componentunregister (void *message);
+static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr);
 
-static int message_handler_req_exec_amf_errorreport (void *message);
+static int message_handler_req_exec_amf_errorreport (void *message, struct in_addr source_addr);
 
-static int message_handler_req_exec_amf_errorcancelall (void *message);
+static int message_handler_req_exec_amf_errorcancelall (void *message, struct in_addr source_addr);
 
-static int message_handler_req_exec_amf_readinessstateset (void *message);
+static int message_handler_req_exec_amf_readinessstateset (void *message, struct in_addr source_addr);
 
-static int message_handler_req_exec_amf_hastateset (void *message);
+static int message_handler_req_exec_amf_hastateset (void *message, struct in_addr source_addr);
 
 static int message_handler_req_amf_init (struct conn_info *conn_info, void *message);
 
@@ -276,7 +276,7 @@ int (*amf_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_amf_componentcapabilitymodelget
 };
 
-int (*amf_aisexec_handler_fns[]) (void *) = {
+int (*amf_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
 	message_handler_req_exec_amf_componentregister,
 	message_handler_req_exec_amf_componentunregister,
 	message_handler_req_exec_amf_errorreport,
@@ -1568,7 +1568,7 @@ int amf_exit_fn (struct conn_info *conn_info)
 }
 
 
-static int message_handler_req_exec_amf_componentregister (void *message)
+static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_componentregister *req_exec_amf_componentregister = (struct req_exec_amf_componentregister *)message;
 	struct res_lib_amf_componentregister res_lib_amf_componentregister;
@@ -1666,7 +1666,7 @@ static int message_handler_req_exec_amf_componentregister (void *message)
 	return (0);
 }
 
-static int message_handler_req_exec_amf_componentunregister (void *message)
+static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_componentunregister *req_exec_amf_componentunregister = (struct req_exec_amf_componentunregister *)message;
 	struct res_lib_amf_componentunregister res_lib_amf_componentunregister;
@@ -1735,7 +1735,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message)
 	return (0);
 }
 
-static int message_handler_req_exec_amf_errorreport (void *message)
+static int message_handler_req_exec_amf_errorreport (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_errorreport *req_exec_amf_errorreport = (struct req_exec_amf_errorreport *)message;
 	struct res_lib_amf_errorreport res_lib_amf_errorreport;
@@ -1777,7 +1777,7 @@ static int message_handler_req_exec_amf_errorreport (void *message)
 	return (0);
 }
 
-static int message_handler_req_exec_amf_errorcancelall (void *message)
+static int message_handler_req_exec_amf_errorcancelall (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_errorcancelall *req_exec_amf_errorcancelall = (struct req_exec_amf_errorcancelall *)message;
 	struct res_lib_amf_errorcancelall res_lib_amf_errorcancelall;
@@ -1827,7 +1827,7 @@ static int message_handler_req_exec_amf_errorcancelall (void *message)
  * node.  That cluster node API has verified the readiness state, so its time to let
  * the rest of the cluster nodes know about the readiness state change.
  */
-static int message_handler_req_exec_amf_readinessstateset (void *message)
+static int message_handler_req_exec_amf_readinessstateset (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_readinessstateset *req_exec_amf_readinessstateset = (struct req_exec_amf_readinessstateset *)message;
 	struct saAmfComponent *component;
@@ -1851,7 +1851,7 @@ static int message_handler_req_exec_amf_readinessstateset (void *message)
  * node.  That cluster node API has verified the ha state, so its time to let
  * the rest of the cluster nodes know about the HA state change.
  */
-static int message_handler_req_exec_amf_hastateset (void *message)
+static int message_handler_req_exec_amf_hastateset (void *message, struct in_addr source_addr)
 {
 	struct req_exec_amf_hastateset *req_exec_amf_hastateset = (struct req_exec_amf_hastateset *)message;
 	struct saAmfComponent *component;

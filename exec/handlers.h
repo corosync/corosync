@@ -40,7 +40,7 @@
 struct service_handler {
 	int (**libais_handler_fns) (struct conn_info *conn_info, void *msg);
 	int libais_handler_fns_count;
-	int (**aisexec_handler_fns) (void *msg);
+	int (**aisexec_handler_fns) (void *msg, struct in_addr source_addr);
 	int aisexec_handler_fns_count;
 	int (*confchg_fn) (
 		struct sockaddr_in *member_list, int member_list_entries,
