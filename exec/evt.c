@@ -96,49 +96,41 @@ static struct libais_handler evt_libais_handlers[] = {
 	.libais_handler_fn = 	message_handler_req_lib_activatepoll,
 	.response_size = 		sizeof(struct res_lib_activatepoll),
 	.response_id = 			MESSAGE_RES_LIB_ACTIVATEPOLL,
-	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
-	.totempg_prio = 			TOTEMPG_PRIO_MED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
-	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_subscribe,
 	.response_size = 		sizeof(struct res_evt_event_subscribe),
 	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
-	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_unsubscribe,
 	.response_size = 		sizeof(struct res_evt_event_unsubscribe),
 	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
-	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_publish,
 	.response_size = 		sizeof(struct res_evt_event_publish),
 	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
-	.totempg_prio = 			TOTEMPG_PRIO_LOW
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
 	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
 	.response_id = 			MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME,
-	.totempg_prio = 			TOTEMPG_PRIO_MED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_data_get,
 	.response_size = 		sizeof(struct lib_event_data),
 	.response_id = 			MESSAGE_RES_EVT_EVENT_DATA,
-	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 };
 
@@ -844,7 +836,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
-	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
+	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Open mcast result: %d\n",
 				res);
 	if (res != 0) {
@@ -879,7 +871,7 @@ static SaErrorT evt_close_channel(SaNameT *cn)
 	cpkt.u.chc_chan = *cn;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
+	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
 	if (res != 0) {
 			ret = SA_ERR_SYSTEM;
 	}
@@ -1055,7 +1047,7 @@ static int send_next_retained(void *data)
 			evt->ed_event.led_head.id = MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA;
 			chn_iovec.iov_base = &evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
-			res = totempg_mcast(&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
+			res = totempg_mcast(&chn_iovec, 1, TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -1071,7 +1063,7 @@ static int send_next_retained(void *data)
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
 	}
 	tok_call_handle = 0;
 	return 0;
@@ -1095,7 +1087,7 @@ static void send_retained()
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		log_printf(RECOVERY_DEBUG, "No messages to send\n");
-		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
 	} else {
 		log_printf(RECOVERY_DEBUG, 
 					"Start sending retained messages\n");
@@ -1138,8 +1130,7 @@ static int send_next_open_count(void *data)
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
 			chn_iovec.iov_base = &cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
-			res = totempg_mcast(&chn_iovec, 1,TOTEMPG_AGREED,  
-				TOTEMPG_PRIO_RECOVERY);
+			res = totempg_mcast(&chn_iovec, 1,TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -1155,8 +1146,7 @@ static int send_next_open_count(void *data)
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
-												TOTEMPG_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED);
 	}
 	tok_call_handle = 0;
 	return 0;
@@ -1180,8 +1170,7 @@ static void send_open_count()
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		log_printf(RECOVERY_DEBUG, "No channels to send\n");
-		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
-											TOTEMPG_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED);
 	} else {
 		log_printf(RECOVERY_DEBUG, 
 					"Start sending open channel count\n");
@@ -2332,7 +2321,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 */
 	pub_iovec.iov_base = req;
 	pub_iovec.iov_len = req->led_head.size;
-	result = totempg_mcast (&pub_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW);
+	result = totempg_mcast (&pub_iovec, 1, TOTEMPG_AGREED);
 	if (result != 0) {
 			error = SA_ERR_SYSTEM;
 	}
@@ -2377,7 +2366,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	cpkt.u.chc_event_id = req->iec_event_id;
 	rtn_iovec.iov_base = &cpkt;
 	rtn_iovec.iov_len = cpkt.chc_head.size;
-	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
+	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
 	if (ret != 0) {
 			error = SA_ERR_SYSTEM;
 	}
@@ -2557,8 +2546,7 @@ static int evt_conf_change(
 										md->mn_last_evt_id & BASE_ID_MASK;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
-				res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
-														TOTEMPG_PRIO_RECOVERY);
+				res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED);
 				if (res != 0) {
 					log_printf(LOG_LEVEL_WARNING, 
 						"Unable to send event id to %s\n", 

@@ -429,8 +429,7 @@ int totempg_initialize (
 int totempg_mcast (
 	struct iovec *iovec,
 	int iov_len,
-	int guarantee,
-	int priority)
+	int guarantee)
 {
 	int res = 0;
 	struct totempg_mcast mcast;
@@ -548,7 +547,6 @@ for (i = 0; i < mcast_packed_msg_count; i++) {
  * Determine if a message of msg_size could be queued
  */
 int totempg_send_ok (
-	int priority,
 	int msg_size)
 {
 	int avail = 0;

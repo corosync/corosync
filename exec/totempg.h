@@ -41,11 +41,6 @@
 
 #define MESSAGE_SIZE_MAX		256000
 
-#define TOTEMPG_PRIO_RECOVERY	0
-#define TOTEMPG_PRIO_HIGH		1
-#define TOTEMPG_PRIO_MED		2
-#define TOTEMPG_PRIO_LOW		3
-
 #define TOTEMPG_AGREED			0
 #define TOTEMPG_SAFE			1
 
@@ -111,14 +106,12 @@ int totempg_initialize (
 int totempg_mcast (
 	struct iovec *iovec,
 	int iov_len,
-	int guarantee,
-	int priority);
+	int guarantee);
 
 /*
  * Determine if a message of msg_size could be queued
  */
 int totempg_send_ok (
-	int priority,
 	int msg_size);
 
 enum totempg_callback_token_type {

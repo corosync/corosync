@@ -75,16 +75,6 @@ struct invocation *invocation_entries = 0;
 
 int invocation_entries_size = 0;
 
-static DECLARE_LIST_INIT (mcast_list);
-
-struct mcast_data {
-	struct list_head	mlist;
-	char 			mcast[MCAST_DATA_NUM][MCAST_DATA_LEN];
-	struct iovec 		iovec[MCAST_DATA_NUM];
-	int			iovec_num;
-	int			priority;
-};
-
 //TODO static void *tok_call_handle = NULL;
 
 static int recovery = 0;
@@ -159,14 +149,6 @@ static int activeServiceUnitsCount (
 
 static void component_unregister (
 	struct saAmfComponent *component);
-
-static void component_register_priority (
-	struct saAmfComponent *component,
-	int priority);
-
-static void component_unregister_priority (
-	struct saAmfComponent *component,
-	int priority);
 
 static void enumerate_components (
 	void (*function)(struct saAmfComponent *, void *data),
@@ -274,10 +256,6 @@ static int amf_exec_init_fn (void);
 
 static void amf_synchronize (void *message, struct in_addr source_addr);
 
-static void amf_mcast (struct iovec *iovec, int iov_len, int priority);
-
-static int amf_mcast_retain ();
-
 static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr, int endian_conversion_required);
 
 static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr, int endian_conversion_required);
@@ -339,73 +317,61 @@ struct libais_handler amf_libais_handlers[] =
 		.libais_handler_fn	= message_handler_req_lib_activatepoll,
 		.response_size		= sizeof (struct res_lib_activatepoll),
 		.response_id		= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn	= message_handler_req_amf_componentregister,
 		.response_size		= sizeof (struct res_lib_amf_componentregister),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTREGISTER,
-		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 2 */
 		.libais_handler_fn	= message_handler_req_amf_componentunregister,
 		.response_size		= sizeof (struct res_lib_amf_componentunregister),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTUNREGISTER,
-		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 3 */
 		.libais_handler_fn	= message_handler_req_amf_readinessstateget,
 		.response_size		= sizeof (struct res_lib_amf_readinessstateget),
 		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 4 */
 		.libais_handler_fn	= message_handler_req_amf_hastateget,
 		.response_size		= sizeof (struct res_lib_amf_hastateget),
 		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 5 */
 		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstart,
 		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstart),
 		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART,
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 6 */
 		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstop,
 		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstop),
 		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP,
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 7 */
 		.libais_handler_fn	= message_handler_req_amf_errorreport,
 		.response_size		= sizeof (struct res_lib_amf_errorreport),
 		.response_id		= MESSAGE_RES_AMF_ERRORREPORT,
-		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 8 */
 		.libais_handler_fn	= message_handler_req_amf_errorcancelall,
 		.response_size		= sizeof (struct res_lib_amf_errorcancelall),
 		.response_id		= MESSAGE_RES_AMF_ERRORCANCELALL,
-		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 9 */
 		.libais_handler_fn	= message_handler_req_amf_stoppingcomplete,
 		.response_size		= sizeof (struct res_lib_amf_stoppingcomplete),
 		.response_id		= MESSAGE_RES_AMF_STOPPINGCOMPLETE, // TODO 
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 10 */
 		.libais_handler_fn	= message_handler_req_amf_response,
 		.response_size		= sizeof (struct res_lib_amf_response),
 		.response_id		= MESSAGE_RES_AMF_RESPONSE, // TODO
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 11 */
 		.libais_handler_fn	= message_handler_req_amf_componentcapabilitymodelget,
 		.response_size		= sizeof (struct res_lib_amf_componentcapabilitymodelget),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET,
-		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	}
 };
 
@@ -508,9 +474,8 @@ int req_amf_invocation_get_and_destroy (int invocation, int *interface,
 	return (0);
 }
 
-static void component_unregister_priority (
-	struct saAmfComponent *component,
-	int priority)
+static void component_unregister (
+	struct saAmfComponent *component)
 {
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
 	struct iovec iovecs[2];
@@ -540,19 +505,11 @@ static void component_unregister_priority (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, priority) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
-static void component_unregister (
+static void component_register (
 	struct saAmfComponent *component)
-{
-	component_unregister_priority (component, TOTEMPG_PRIO_MED);
-	return;
-}
-
-static void component_register_priority (
-	struct saAmfComponent *component,
-	int priority)
 {
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovecs[2];
@@ -584,8 +541,6 @@ static void component_register_priority (
 
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
-
-	amf_mcast (iovecs, 1, priority);
 }
 
 /***
@@ -767,36 +722,12 @@ void ha_state_api_set (struct saAmfComponent *component, SaAmfHAStateT haState)
 		sizeof (struct res_lib_amf_csisetcallback));
 }
 
-#ifdef COMPILE_OUT
-
-void haStateSetClusterInit (
-	struct conn_info *conn_info,
-	struct saAmfComponent *saAmfComponent)
-{
-	struct req_exec_amf_hastatesetcluster req_exec_amf_hastatesetcluster;
-
-	return;
-	req_exec_amf_hastatesetcluster.header.id = MESSAGE_REQ_EXEC_AMF_HASTATESET;
-	req_exec_amf_hastatesetcluster.header.size = sizeof (struct req_exec_amf_hastatesetcluster);
-	memcpy (&req_exec_amf_hastatesetcluster.compName,
-		&saAmfComponent->name, sizeof (SaNameT));
-	req_exec_amf_hastatesetcluster.haState = saAmfComponent->currentHAState;
-
-	log_printf (LOG_LEVEL_DEBUG, "Sending init ha state message to cluster node to set ha state of component %s\n", getSaNameT (&saAmfComponent->name));
-	log_printf (LOG_LEVEL_DEBUG, "ha state is %d\n", saAmfComponent->currentHAState);
-
-	libais_send_response (conn_info, &req_exec_amf_hastatesetcluster,
-		sizeof (struct req_exec_amf_hastatesetcluster));
-}
-#endif
-
 static void ha_state_group_set (
 	struct saAmfComponent *component,
 	SaAmfHAStateT haState)
 {
 	struct req_exec_amf_hastateset req_exec_amf_hastateset;
 	struct iovec iovecs[2];
-	int priority;
 
 	req_exec_amf_hastateset.header.id = MESSAGE_REQ_EXEC_AMF_HASTATESET;
 	req_exec_amf_hastateset.header.size = sizeof (struct req_exec_amf_hastateset);
@@ -809,13 +740,7 @@ static void ha_state_group_set (
 	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_hastateset);
 
-	if (recovery == 1) {
-		priority = TOTEMPG_PRIO_RECOVERY;
-	} else {
-		priority = TOTEMPG_PRIO_HIGH;
-	}
-
-	amf_mcast (iovecs, 1, priority);
+	totempg_mcast (iovecs, 1, TOTEMPG_AGREED);
 }
 
 void readiness_state_api_set (struct saAmfComponent *component,
@@ -864,36 +789,12 @@ void readiness_state_api_set (struct saAmfComponent *component,
 		sizeof (struct res_lib_amf_readinessstatesetcallback));
 }
 
-#ifdef COMPILE_OUT
-void readinessStateSetClusterInit (
-	struct conn_info *conn_info,
-	struct saAmfComponent *saAmfComponent)
-{
-
-	struct req_exec_amf_readinessstatesetcluster req_exec_amf_readinessstatesetcluster;
-
-	return;
-	req_exec_amf_readinessstatesetcluster.header.id = MESSAGE_REQ_EXEC_AMF_READINESSSTATESET;
-	req_exec_amf_readinessstatesetcluster.header.size = sizeof (struct req_exec_amf_readinessstateset);
-	memcpy (&req_exec_amf_readinessstatesetcluster.compName,
-		&saAmfComponent->name, sizeof (SaNameT));
-	req_exec_amf_readinessstatesetcluster.readinessState = saAmfComponent->currentReadinessState;
-
-	log_printf (LOG_LEVEL_DEBUG, "Sending init message to one cluster node to set readiness state of component %s\n", getSaNameT (&saAmfComponent->name));
-	log_printf (LOG_LEVEL_DEBUG, "readiness state is %d\n", saAmfComponent->currentReadinessState);
-
-	libais_send_response (conn_info, &req_exec_amf_readinessstatesetcluster,
-		sizeof (struct req_exec_amf_readinessstatesetcluster));
-}
-#endif
-
 static void readiness_state_group_set (
 	struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
 	struct req_exec_amf_readinessstateset req_exec_amf_readinessstateset;
 	struct iovec iovecs[2];
-	int priority;
 
 	req_exec_amf_readinessstateset.header.id = MESSAGE_REQ_EXEC_AMF_READINESSSTATESET;
 	req_exec_amf_readinessstateset.header.size = sizeof (struct req_exec_amf_readinessstateset);
@@ -907,27 +808,8 @@ static void readiness_state_group_set (
 	iovecs[0].iov_base = (char *)&req_exec_amf_readinessstateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_readinessstateset);
 
-	if (recovery == 1) {
-		priority = TOTEMPG_PRIO_RECOVERY;
-	} else {
-		priority = TOTEMPG_PRIO_HIGH;
-	}
-
-	amf_mcast (iovecs, 1, priority);
+	totempg_mcast (iovecs, 1, TOTEMPG_AGREED);
 }
-
-#ifdef CMOPILE_OUT
-void enumerateComponentsClusterInit (
-	struct saAmfComponent *component,
-	void *data)
-{
-	struct conn_info *conn_info = (int)data;
-
-	return;
-	readinessStateSetClusterInit (fd, component);
-	haStateSetClusterInit (fd, component);
-}
-#endif
 
 static void dsmDisabledUnlockedRegisteredOrErrorCancel (
 	struct saAmfComponent *component)
@@ -1545,7 +1427,7 @@ void error_report (
 	iovecs[0].iov_base = (char *)&req_exec_amf_errorreport;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
 int healthcheck_instance = 0;
@@ -1954,7 +1836,7 @@ void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 		return;
 	}
 
-	component_register_priority (component, TOTEMPG_PRIO_RECOVERY);
+	component_register (component);
 	return;
 }
 
@@ -2518,7 +2400,7 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 	return (0);
 }
 
@@ -2547,7 +2429,7 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 	return (0);
 }
 
@@ -2728,7 +2610,7 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorreport;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorreport);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2758,7 +2640,7 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorcancelall;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorcancelall);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2856,97 +2738,6 @@ static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info
 	res_lib_amf_componentcapabilitymodelget.header.error = error;
 	libais_send_response (conn_info, &res_lib_amf_componentcapabilitymodelget,
 		sizeof (struct res_lib_amf_componentcapabilitymodelget));
-
-	return (0);
-}
-
-#ifdef COMPILE_OUT
-int totempg_mcast2 (
-	struct totempg_groupname *groupname,
-	struct iovec *iovec,
-	int iov_len,
-	int priority)
-{
-	static int i = 0;
-
-	if (i%2==0) {
-		return (-1);
-	}
-
-	amf_mcast_retain ();
-	totempg_mcast (groupname, iovec, iov_len, TOTEMPG_AGREED, priority);
-}
-#endif
-
-static void amf_mcast (struct iovec *iovec, int iovec_num, int priority)
-{
-	int i;
-	int ret;
-	struct mcast_data *mcast;
-
-	if (mcast_list.next == &mcast_list) {
-		ret = totempg_mcast (iovec, iovec_num, TOTEMPG_AGREED, priority);
-		if (ret == 0) {
-			return;
-		}
-// TODO		assert (totempg_token_callback_create (&tok_call_handle, amf_mcast_retain, NULL) == 0);
-	}
-
-	mcast = (struct mcast_data *) malloc (sizeof(*mcast));
-	assert (mcast != NULL);
-	if (mcast == NULL) {
-		log_printf (LOG_LEVEL_ERROR, "Allocation Error in AMF_MCAST\n");
-		return;
-	}
-
-	mcast->iovec[0].iov_base = (void *)(mcast->mcast[0]);
-	mcast->iovec[1].iov_base = (void *)(mcast->mcast[1]);
-
-	assert (iovec_num <= MCAST_DATA_NUM);
-	for (i=0; i<iovec_num; i++) {
-
-		mcast[i].iovec[i].iov_len = iovec[i].iov_len;
-		assert (iovec[i].iov_len <= MCAST_DATA_LEN);
-		log_printf (LOG_LEVEL_ERROR, "Length over in AMF_MCAST\n");
-		memcpy (mcast[i].iovec[i].iov_base, iovec[i].iov_base, iovec[i].iov_len);
-	}
-
-        mcast->iovec_num = iovec_num;
-        mcast->priority = priority;
-        list_add_tail (&mcast->mlist, &mcast_list);
-
-	return;
-}
-
-static int amf_mcast_retain ()
-{
-	struct list_head *list;
-	struct list_head *list_next;
-	struct mcast_data *mdata;
-	int priority;
-	int ret;
-
-	for (priority = TOTEMPG_PRIO_RECOVERY; priority < TOTEMPG_PRIO_LOW; priority++) {
-	for (list=mcast_list.next; list != &mcast_list; list=list_next) {
-
-		mdata = list_entry (list, struct mcast_data, mlist);
-		list_next = list->next;
-		if (mdata->priority != priority) {
-			continue;
-		}
-
-		list_del (list);
-
-		ret = totempg_mcast (mdata->iovec, mdata->iovec_num, TOTEMPG_AGREED, mdata->priority);
-		if (ret == -1) {
-			list_add (list ,&mcast_list);
-// TODO		assert (totempg_token_callback_create (&tok_call_handle, amf_mcast_retain, NULL) == 0);
-			break;
-		}
-
-		free (mdata);
-	}
-	}
 
 	return (0);
 }

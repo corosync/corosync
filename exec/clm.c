@@ -135,31 +135,26 @@ struct libais_handler clm_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_clm_trackstart,
 		.response_size				= sizeof (struct res_clm_trackstart),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_clm_trackstop,
 		.response_size				= sizeof (struct res_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	}
 };
 
@@ -386,7 +381,7 @@ static int clmNodeJoinSend (void)
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
-	result = totempg_mcast (&req_exec_clm_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
+	result = totempg_mcast (&req_exec_clm_iovec, 1, TOTEMPG_AGREED);
 
 	return (result);
 }

@@ -99,31 +99,26 @@ struct libais_handler evs_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_evs_join,
 		.response_size				= sizeof (struct res_lib_evs_join),
 		.response_id				= MESSAGE_RES_EVS_JOIN,
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_evs_leave,
 		.response_size				= sizeof (struct res_lib_evs_leave),
 		.response_id				= MESSAGE_RES_EVS_LEAVE,
-		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_joined,
 		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
 		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
-		.totempg_prio				= TOTEMPG_PRIO_LOW
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_groups,
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
-		.totempg_prio				= TOTEMPG_PRIO_LOW
 	}
 };
 
@@ -363,11 +358,10 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_base = &req_lib_evs_mcast_joined->msg;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_joined->msg_len;
 // TODO this doesn't seem to work for some reason	
-	send_ok = totempg_send_ok (req_lib_evs_mcast_joined->priority,
-		5000 + req_lib_evs_mcast_joined->msg_len); 
+	send_ok = totempg_send_ok (req_lib_evs_mcast_joined->msg_len); 
 
-		res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED,
-			req_lib_evs_mcast_joined->priority);
+	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
+		// TODO
 	if (res == 0) {
 		error = EVS_OK;
 	} else {
@@ -413,10 +407,8 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;
 	
 // TODO this is wacky
-	send_ok = totempg_send_ok (req_lib_evs_mcast_groups->priority,
-		 5000 + req_lib_evs_mcast_groups->msg_len);
-	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED,
-		req_lib_evs_mcast_groups->priority);
+	send_ok = totempg_send_ok (req_lib_evs_mcast_groups->msg_len);
+	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
 	if (res == 0) {
 		error = EVS_OK;
 	}

@@ -42,7 +42,6 @@ struct libais_handler {
 	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
 	int response_size;
 	int response_id;
-	int totempg_prio;
 };
 
 struct service_handler {

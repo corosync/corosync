@@ -574,7 +574,7 @@ retry_recv:
 			 * deliver it, otherwise tell the library we are too busy
 			 */
 	
-			send_ok = totempg_send_ok (ais_service_handlers[service - 1]->libais_handlers[header->id].totempg_prio, 1000 + header->size);
+			send_ok = totempg_send_ok (1000 + header->size);
 			if (send_ok) {
 		//		*prio = 0;
 				res = ais_service_handlers[service - 1]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
