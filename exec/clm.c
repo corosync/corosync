@@ -87,6 +87,8 @@ static int message_handler_req_exec_clm_nodejoin (int fd, void *message);
 
 static int message_handler_req_clm_init (int fd, void *message);
 
+static int message_handler_req_lib_activatepoll (int fd, void *message);
+
 static int message_handler_req_clm_trackstart (int fd, void *message);
 
 static int message_handler_req_clm_trackstop (int fd, void *message);
@@ -94,6 +96,7 @@ static int message_handler_req_clm_trackstop (int fd, void *message);
 static int message_handler_req_clm_nodeget (int fd, void *message);
 
 static int (*clm_libais_handler_fns[]) (int fd, void *) = {
+	message_handler_req_lib_activatepoll,
 	message_handler_req_clm_trackstart,
 	message_handler_req_clm_trackstop,
 	message_handler_req_clm_nodeget
@@ -391,26 +394,41 @@ static int message_handler_req_exec_clm_nodejoin (int fd, void *message)
 
 static int message_handler_req_clm_init (int fd, void *message)
 {
-	SaErrorT error = SA_ERR_SECURITY;
+	SaErrorT error;
 	struct res_lib_init res_lib_init;
 
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
-	if (connections[fd].authenticated) {
-		connections[fd].service = SOCKET_SERVICE_CLM;
-		error = SA_OK;
-	}
+        if (connections[fd].authenticated) {
+                connections[fd].service = SOCKET_SERVICE_CLM;
+                error = SA_OK;
+        }
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
-	res_lib_init.header.size = sizeof (struct res_lib_init);
-	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+        res_lib_init.header.magic = MESSAGE_MAGIC;
+        res_lib_init.header.size = sizeof (struct res_lib_init);
+        res_lib_init.header.id = MESSAGE_RES_INIT;
+        res_lib_init.error = error;
 
-	libais_send_response (fd, &res_lib_init, sizeof (res_lib_init));
+        libais_send_response (fd, &res_lib_init, sizeof (res_lib_init));
 
-	if (connections[fd].authenticated) {
-		return (0);
-	}
-	return (-1);
+        if (connections[fd].authenticated) {
+                return (0);
+        }
+
+
+	return (0);
+}
+
+static int message_handler_req_lib_activatepoll (int fd, void *message)
+{
+	struct res_lib_activatepoll res_lib_activatepoll;
+
+	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
+	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
+	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
+	libais_send_response (fd, &res_lib_activatepoll,
+		sizeof (struct res_lib_activatepoll));
+
+	return (0);
 }
 
 int message_handler_req_clm_trackstart (int fd, void *message)
