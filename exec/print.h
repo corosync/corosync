@@ -36,25 +36,39 @@
 
 #include "../include/ais_types.h"
 
+#define LOG_MODE_DEBUG		1
+#define LOG_MODE_TIMESTAMP	2
+#define LOG_MODE_FILE		4
+#define LOG_MODE_SYSLOG		8
+#define LOG_MODE_STDERR		16
 
+/*
+ * If you change these, be sure to change log_levels in print.c
+ */
 #define LOG_LEVEL_SECURITY	1
 #define LOG_LEVEL_ERROR		2
 #define LOG_LEVEL_WARNING	3
 #define LOG_LEVEL_NOTICE	4
 #define LOG_LEVEL_DEBUG		5
 
-extern void internal_log_printf (int level, char *string, ...);
-
-extern void internal_log_printf_checkdebug (int level, char *string, ...);
-
 /*
- * The optimizer will remove DEBUG logging messages in production builds
+ * If you change these, be sure to change log_services in print.c
  */
-#ifdef DEBUG
-#define log_printf(level,format,args...) { internal_log_printf (level,format,##args); }
-#else
-#define log_printf(level,format,args...) { if (level != LOG_LEVEL_DEBUG) internal_log_printf (level,format,##args); }
-#endif
+#define LOG_SERVICE_MAIN	1
+#define LOG_SERVICE_GMI		2
+#define LOG_SERVICE_CLM		3
+#define LOG_SERVICE_AMF		4
+#define LOG_SERVICE_CKPT	5
+#define LOG_SERVICE_EVT		6
+#define LOG_SERVICE_EVS		7
+
+extern void internal_log_printf (int logclass, char *format, ...);
+
+#define mklog(level,service) ((level << 16) | (service))
+
+#define log_printf(level,format,args...) { internal_log_printf (mklog(level,LOG_SERVICE),format,##args); }
+
+int log_setup (char **error_string, int log_mode, char *log_file);
 
 extern char *getSaNameT (SaNameT *name);
 
