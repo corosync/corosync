@@ -49,6 +49,8 @@
 
 DECLARE_LIST_INIT (saAmfGroupHead);
 
+static char error_string_response[512];
+
 typedef enum {
 	AMF_HEAD,
 	AMF_GROUP,
@@ -166,8 +168,6 @@ strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
-static char error_string_response[512];
-
 extern int openais_amf_config_read (char **error_string)
 {
 	char line[255];
@@ -190,7 +190,7 @@ extern int openais_amf_config_read (char **error_string)
 	fp = fopen ("/etc/ais/groups.conf", "r");
 	if (fp == 0) {
 		sprintf (error_string_response,
-			"Can't read /etc/ais/groups.conf file (%s).\n", strerror (errno));
+			"Can't read /etc/ais/groups.conf file reason = (%s).\n", strerror (errno));
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -420,8 +420,7 @@ extern int openais_main_config_read (char **error_string,
 	int i;
 	int parse_done = 0;
 	char line[512];
-	char error_str[512];
-	char *error_reason = error_str;
+	char *error_reason = error_string_response;
 
 	memset (openais_config, 0, sizeof (struct openais_config));
 	openais_config->interfaces = malloc (sizeof (struct gmi_interface) * interface_max);
@@ -438,7 +437,7 @@ extern int openais_main_config_read (char **error_string,
 	fp = fopen ("/etc/ais/openais.conf", "r");
 	if (fp == 0) {
 		parse_done = 1;
-		sprintf (error_reason, "Can't read file reason = %s", strerror (errno));
+		sprintf (error_reason, "Can't read file reason = (%s)\n", strerror (errno));
 		*error_string = error_reason;
 		return -1;
 	}
