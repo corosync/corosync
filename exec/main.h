@@ -38,6 +38,7 @@
 #include "clm.h"
 #include "amf.h"
 #include "ckpt.h"
+#include "evt.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED
@@ -53,7 +54,8 @@ enum socket_service_type {
 	SOCKET_SERVICE_AMF,
 	SOCKET_SERVICE_CKPT,
 	SOCKET_SERVICE_CKPT_CHECKPOINT,
-	SOCKET_SERVICE_CKPT_SECTIONITERATOR
+	SOCKET_SERVICE_CKPT_SECTIONITERATOR,
+	SOCKET_SERVICE_EVT
 };
 
 struct aisexec_ci {
@@ -74,6 +76,7 @@ struct ais_ci {
 		struct libclm_ci libclm_ci;
 		struct libamf_ci libamf_ci;
 		struct libckpt_ci libckpt_ci;
+		struct libevt_ci libevt_ci;
 	} u;
 };
 
