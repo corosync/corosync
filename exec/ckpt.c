@@ -58,7 +58,7 @@ DECLARE_LIST_INIT(checkpointListHead);
 
 DECLARE_LIST_INIT(checkpointIteratorListHead);
 
-static int ckptCheckpointApiFinalize (struct conn_info *conn_info);
+static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info);
 static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info);
 
 static int message_handler_req_lib_activatepoll (struct conn_info *, void *message);
@@ -115,7 +115,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 
 static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointsyncronizeasync (struct conn_info *conn_info, void *message);
+static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message);
 
 static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_info *conn_info, void *message);
 static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
@@ -128,8 +128,14 @@ static int ckptConfChg (
 	return (0);
 }
 
-int (*ckpt_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
-	message_handler_req_lib_activatepoll
+struct libais_handler ckpt_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn			= message_handler_req_lib_activatepoll,
+		.response_size				= sizeof (struct res_lib_activatepoll),
+		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL,
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	}
 };
 
 /*
@@ -142,8 +148,8 @@ int (*ckpt_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
  * exported service
  */
 struct service_handler ckpt_service_handler = {
-	.libais_handler_fns			= ckpt_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof (ckpt_libais_handler_fns) / sizeof (int (*)),
+	.libais_handlers			= ckpt_libais_handlers,
+	.libais_handlers_count		= sizeof (ckpt_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= ckpt_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (ckpt_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= 0, /* ckpt service handler is not distributed */
@@ -152,24 +158,101 @@ struct service_handler ckpt_service_handler = {
 	.aisexec_init_fn			= 0
 };
 
-static int (*ckpt_checkpoint_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
-	message_handler_req_lib_activatepoll,
-	message_handler_req_lib_ckpt_checkpointopen,
-	message_handler_req_lib_ckpt_checkpointopenasync,
-	message_handler_req_lib_ckpt_checkpointunlink,
-	message_handler_req_lib_ckpt_checkpointretentiondurationset,
-	message_handler_req_lib_ckpt_activecheckpointset,
-	message_handler_req_lib_ckpt_checkpointstatusget,
-	message_handler_req_lib_ckpt_sectioncreate,
-	message_handler_req_lib_ckpt_sectiondelete,
-	message_handler_req_lib_ckpt_sectionexpirationtimeset,
-	message_handler_req_lib_ckpt_sectionwrite,
-	message_handler_req_lib_ckpt_sectionoverwrite,
-	message_handler_req_lib_ckpt_sectionread,
-	message_handler_req_lib_ckpt_checkpointsynchronize,
-	message_handler_req_lib_ckpt_checkpointsyncronizeasync
+struct libais_handler ckpt_checkpoint_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn	= message_handler_req_lib_activatepoll,
+		.response_size		= sizeof (struct res_lib_activatepoll),
+		.response_id		= MESSAGE_RES_LIB_ACTIVATEPOLL,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 1 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopen,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointopen),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 2 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopenasync,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointopenasync),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 3 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointunlink,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointunlink),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 4 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointretentiondurationset,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointretentiondurationset),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET,
+		.gmi_prio			= GMI_PRIO_LOW
+	},
+	{ /* 5 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_activecheckpointset,
+		.response_size		= sizeof (struct res_lib_ckpt_activecheckpointset),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_ACTIVECHECKPOINTSET,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 6 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointstatusget,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointstatusget),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 7 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioncreate,
+		.response_size		= sizeof (struct res_lib_ckpt_sectioncreate),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 8 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectiondelete,
+		.response_size		= sizeof (struct res_lib_ckpt_sectiondelete),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 9 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionexpirationtimeset,
+		.response_size		= sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET,
+		.gmi_prio			= GMI_PRIO_LOW
+	},
+	{ /* 10 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionwrite,
+		.response_size		= sizeof (struct res_lib_ckpt_sectionwrite),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE,
+		.gmi_prio			= GMI_PRIO_LOW
+	},
+	{ /* 11 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionoverwrite,
+		.response_size		= sizeof (struct res_lib_ckpt_sectionoverwrite),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE,
+		.gmi_prio			= GMI_PRIO_LOW
+	},
+	{ /* 12 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionread,
+		.response_size		= sizeof (struct res_lib_ckpt_sectionread),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD,
+		.gmi_prio			= GMI_PRIO_LOW
+	},
+	{ /* 13 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronize,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronize),
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 14 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronizeasync,
+		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronizeasync), // TODO RESPONSE
+		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC,
+		.gmi_prio			= GMI_PRIO_MED
+	},
 };
- 
+
+
 static int (*ckpt_checkpoint_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr) = {
 	message_handler_req_exec_ckpt_checkpointopen,
 	message_handler_req_exec_ckpt_checkpointclose,
@@ -184,28 +267,44 @@ static int (*ckpt_checkpoint_aisexec_handler_fns[]) (void *msg, struct in_addr s
 };
 
 struct service_handler ckpt_checkpoint_service_handler = {
-	.libais_handler_fns			= ckpt_checkpoint_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof (ckpt_checkpoint_libais_handler_fns) / sizeof (int (*)),
+	.libais_handlers			= ckpt_checkpoint_libais_handlers,
+	.libais_handlers_count		= sizeof (ckpt_checkpoint_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= ckpt_checkpoint_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (ckpt_checkpoint_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= ckptConfChg,
 	.libais_init_fn				= message_handler_req_lib_ckpt_checkpoint_init,
-	.libais_exit_fn				= ckptCheckpointApiFinalize,
+	.libais_exit_fn				= ckpt_checkpoint_exit_fn,
 	.aisexec_init_fn			= 0
 };
 
-static int (*ckpt_sectioniterator_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
-	message_handler_req_lib_activatepoll,
-    message_handler_req_lib_ckpt_sectioniteratorinitialize,
-    message_handler_req_lib_ckpt_sectioniteratornext
+struct libais_handler ckpt_sectioniterator_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn			= message_handler_req_lib_activatepoll,
+		.response_size				= sizeof (struct res_lib_activatepoll),
+		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL,
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	},
+	{ /* 1 */
+		.libais_handler_fn			= message_handler_req_lib_ckpt_sectioniteratorinitialize,
+		.response_size				= sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
+		.response_id				= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE,
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	},
+	{ /* 2 */
+		.libais_handler_fn			= message_handler_req_lib_ckpt_sectioniteratornext,
+		.response_size				= sizeof (struct res_lib_ckpt_sectioniteratornext),
+		.response_id				= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT,
+		.gmi_prio					= GMI_PRIO_RECOVERY
+	}
 };
 
 static int (*ckpt_sectioniterator_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr) = {
 };
 
 struct service_handler ckpt_sectioniterator_service_handler = {
-	.libais_handler_fns			= ckpt_sectioniterator_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof (ckpt_sectioniterator_libais_handler_fns) / sizeof (int (*)),
+	.libais_handlers			= ckpt_sectioniterator_libais_handlers,
+	.libais_handlers_count		= sizeof (ckpt_sectioniterator_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= ckpt_sectioniterator_aisexec_handler_fns ,
 	.aisexec_handler_fns_count	= sizeof (ckpt_sectioniterator_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= 0, /* Section Iterators are not distributed */
@@ -263,12 +362,10 @@ static struct saCkptCheckpointSection *findCheckpointSection (
 	return 0;
 }
 
-void sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
+int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	struct req_exec_ckpt_checkpointclose req_exec_ckpt_checkpointclose;
 	struct iovec iovecs[2];
-	int result;
 
-	req_exec_ckpt_checkpointclose.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_checkpointclose.header.size =
 		sizeof (struct req_exec_ckpt_checkpointclose);
 	req_exec_ckpt_checkpointclose.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE;
@@ -280,22 +377,29 @@ void sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	if (gmi_send_ok (GMI_PRIO_HIGH, sizeof (struct req_exec_ckpt_checkpointclose))) {
+		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
+		return (0);
+	}
+
+	return (-1);
 }
 
-static int ckptCheckpointApiFinalize (struct conn_info *conn_info)
+static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info)
 {
+	int res;
+
 	/*
 	 * close checkpoint opened from this fd
 	 */
 	if (conn_info->service == SOCKET_SERVICE_CKPT_CHECKPOINT &&
 		conn_info->ais_ci.u.libckpt_ci.checkpoint) {
-		log_printf (LOG_LEVEL_DEBUG, "APIFinalize fd is %d %s\n", conn_info,
+		log_printf (LOG_LEVEL_DEBUG, "Trying to finalize %d %s\n", conn_info,
 			getSaNameT (&conn_info->ais_ci.u.libckpt_ci.checkpoint->name));
 
-		sendCkptCheckpointClose (conn_info->ais_ci.u.libckpt_ci.checkpoint);
+		res = sendCkptCheckpointClose (conn_info->ais_ci.u.libckpt_ci.checkpoint);
 	}
-	return (0);
+	return (res);
 }
 
 static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info) {
@@ -317,9 +421,9 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
-	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
+	res_lib_activatepoll.header.error = SA_OK;
 	libais_send_response (conn_info, &res_lib_activatepoll,
 		sizeof (struct res_lib_activatepoll));
 
@@ -412,10 +516,9 @@ error_exit:
 	if (req_exec_ckpt_checkpointopen->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint = ckptCheckpoint;
 		req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpointOpenFlags = req_lib_ckpt_checkpointopen->checkpointOpenFlags;
-		res_lib_ckpt_checkpointopen.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_checkpointopen.header.size = sizeof (struct res_lib_ckpt_checkpointopen);
 		res_lib_ckpt_checkpointopen.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN;
-		res_lib_ckpt_checkpointopen.error = error;
+		res_lib_ckpt_checkpointopen.header.error = error;
 
 		libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info, &res_lib_ckpt_checkpointopen,
 			sizeof (struct res_lib_ckpt_checkpointopen));
@@ -491,10 +594,9 @@ error_exit:
 	 * If this node was the source of the message, respond to this node
 	 */
 	if (req_exec_ckpt_checkpointunlink->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_checkpointunlink.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_checkpointunlink.header.size = sizeof (struct res_lib_ckpt_checkpointunlink);
 		res_lib_ckpt_checkpointunlink.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK;
-		res_lib_ckpt_checkpointunlink.error = error;
+		res_lib_ckpt_checkpointunlink.header.error = error;
 		libais_send_response (req_exec_ckpt_checkpointunlink->source.conn_info, &res_lib_ckpt_checkpointunlink,
 			sizeof (struct res_lib_ckpt_checkpointunlink));
 	}
@@ -604,10 +706,9 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 
 error_exit:
 	if (req_exec_ckpt_sectioncreate->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectioncreate.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectioncreate.header.size = sizeof (struct res_lib_ckpt_sectioncreate);
 		res_lib_ckpt_sectioncreate.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE;
-		res_lib_ckpt_sectioncreate.error = error;
+		res_lib_ckpt_sectioncreate.header.error = error;
 
 		libais_send_response (req_exec_ckpt_sectioncreate->source.conn_info,
 			&res_lib_ckpt_sectioncreate,
@@ -663,10 +764,9 @@ printf ("section not found\n");
 	 */
 error_exit:
 	if (req_exec_ckpt_sectiondelete->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectiondelete.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectiondelete.header.size = sizeof (struct res_lib_ckpt_sectiondelete);
 		res_lib_ckpt_sectiondelete.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE;
-		res_lib_ckpt_sectiondelete.error = error;
+		res_lib_ckpt_sectiondelete.header.error = error;
 
 		libais_send_response (req_exec_ckpt_sectiondelete->source.conn_info,
 			&res_lib_ckpt_sectiondelete,
@@ -715,10 +815,9 @@ static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message
 
 error_exit:
 	if (req_exec_ckpt_sectionexpirationtimeset->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectionexpirationtimeset.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct res_lib_ckpt_sectionexpirationtimeset);
 		res_lib_ckpt_sectionexpirationtimeset.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
-		res_lib_ckpt_sectionexpirationtimeset.error = error;
+		res_lib_ckpt_sectionexpirationtimeset.header.error = error;
 
 		libais_send_response (req_exec_ckpt_sectionexpirationtimeset->source.conn_info,
 			&res_lib_ckpt_sectionexpirationtimeset,
@@ -796,10 +895,9 @@ printf ("reallocating data\n");
 	 */
 error_exit:
 	if (req_exec_ckpt_sectionwrite->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectionwrite.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
 		res_lib_ckpt_sectionwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
-		res_lib_ckpt_sectionwrite.error = error;
+		res_lib_ckpt_sectionwrite.header.error = error;
 
 		libais_send_response (req_exec_ckpt_sectionwrite->source.conn_info,
 			&res_lib_ckpt_sectionwrite,
@@ -870,10 +968,9 @@ static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct
 	 */
 error_exit:
 	if (req_exec_ckpt_sectionoverwrite->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectionoverwrite.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionoverwrite.header.size = sizeof (struct res_lib_ckpt_sectionoverwrite);
 		res_lib_ckpt_sectionoverwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
-		res_lib_ckpt_sectionoverwrite.error = error;
+		res_lib_ckpt_sectionoverwrite.header.error = error;
 
 		libais_send_response (req_exec_ckpt_sectionoverwrite->source.conn_info,
 			&res_lib_ckpt_sectionoverwrite,
@@ -938,10 +1035,9 @@ static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_a
 	 */
 error_exit:
 	if (req_exec_ckpt_sectionread->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
-		res_lib_ckpt_sectionread.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread) + sectionSize;
 		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
-		res_lib_ckpt_sectionread.error = error;
+		res_lib_ckpt_sectionread.header.error = error;
 	
 		libais_send_response (req_exec_ckpt_sectionread->source.conn_info,
 			&res_lib_ckpt_sectionread,
@@ -973,10 +1069,9 @@ static int message_handler_req_lib_ckpt_init (struct conn_info *conn_info, void 
 		error = SA_OK;
 	}
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
 	res_lib_init.header.size = sizeof (struct res_lib_init);
 	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+	res_lib_init.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
@@ -1000,10 +1095,9 @@ static int message_handler_req_lib_ckpt_checkpoint_init (struct conn_info *conn_
 		error = SA_OK;
 	}
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
 	res_lib_init.header.size = sizeof (struct res_lib_init);
 	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+	res_lib_init.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
@@ -1031,10 +1125,9 @@ static int message_handler_req_lib_ckpt_sectioniterator_init (struct conn_info *
 		error = SA_OK;
 	}
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
 	res_lib_init.header.size = sizeof (struct res_lib_init);
 	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+	res_lib_init.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
@@ -1052,7 +1145,6 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	int result;
 
 	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint.\n");
-	req_exec_ckpt_checkpointopen.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_checkpointopen.header.size =
 		sizeof (struct req_exec_ckpt_checkpointopen);
 	req_exec_ckpt_checkpointopen.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN;
@@ -1085,7 +1177,6 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	struct iovec iovecs[2];
 	int result;
 
-	req_exec_ckpt_checkpointunlink.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_checkpointunlink.header.size =
 		sizeof (struct req_exec_ckpt_checkpointunlink);
 	req_exec_ckpt_checkpointunlink.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK;
@@ -1112,7 +1203,6 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_DEBUG, "DURATION SET FROM API fd %d\n", conn_info);
-	req_exec_ckpt_checkpointretentiondurationset.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET;
 	req_exec_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_exec_ckpt_checkpointretentiondurationset);
 	memcpy (&req_exec_ckpt_checkpointretentiondurationset.checkpointName,
@@ -1123,7 +1213,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
 
 	return (0);
 }
@@ -1164,9 +1254,9 @@ static int message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *c
 	/*
 	 * Build checkpoint status get response
 	 */
-	res_lib_ckpt_checkpointstatusget.header.magic = MESSAGE_MAGIC;
 	res_lib_ckpt_checkpointstatusget.header.size = sizeof (struct res_lib_ckpt_checkpointstatusget);
 	res_lib_ckpt_checkpointstatusget.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET;
+	res_lib_ckpt_checkpointstatusget.header.error = SA_OK;
 
 	memcpy (&res_lib_ckpt_checkpointstatusget.checkpointStatus.checkpointCreationAttributes,
 		&checkpoint->checkpointCreationAttributes,
@@ -1192,10 +1282,9 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
 	if ((conn_info->ais_ci.u.libckpt_ci.checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
-		res_lib_ckpt_sectioncreate.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectioncreate.header.size = sizeof (struct res_lib_ckpt_sectioncreate);
 		res_lib_ckpt_sectioncreate.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE;
-		res_lib_ckpt_sectioncreate.error = SA_ERR_ACCESS;
+		res_lib_ckpt_sectioncreate.header.error = SA_ERR_ACCESS;
 
 		libais_send_response (conn_info, &res_lib_ckpt_sectioncreate,
 			sizeof (struct res_lib_ckpt_sectioncreate));
@@ -1205,7 +1294,6 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 	/*
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
-	req_exec_ckpt_sectioncreate.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectioncreate.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE;
 	req_exec_ckpt_sectioncreate.header.size = sizeof (struct req_exec_ckpt_sectioncreate);
 
@@ -1259,7 +1347,6 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 
 	log_printf (LOG_LEVEL_DEBUG, "section delete from API fd %d\n", conn_info);
 
-	req_exec_ckpt_sectiondelete.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectiondelete.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE;
 	req_exec_ckpt_sectiondelete.header.size = sizeof (struct req_exec_ckpt_sectiondelete);
 
@@ -1300,7 +1387,6 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_DEBUG, "section expiration time set fd=%d\n", conn_info);
-	req_exec_ckpt_sectionexpirationtimeset.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectionexpirationtimeset.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET;
 	req_exec_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_exec_ckpt_sectionexpirationtimeset);
 
@@ -1326,9 +1412,9 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %s\n", iovecs[1].iov_base);
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
 	}
 
 	return (0);
@@ -1348,10 +1434,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
 	if ((conn_info->ais_ci.u.libckpt_ci.checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
-		res_lib_ckpt_sectionwrite.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
 		res_lib_ckpt_sectionwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
-		res_lib_ckpt_sectionwrite.error = SA_ERR_ACCESS;
+		res_lib_ckpt_sectionwrite.header.error = SA_ERR_ACCESS;
 
 		libais_send_response (conn_info, &res_lib_ckpt_sectionwrite,
 			sizeof (struct res_lib_ckpt_sectionwrite));
@@ -1361,7 +1446,6 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	/*
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
-	req_exec_ckpt_sectionwrite.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectionwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE;
 	req_exec_ckpt_sectionwrite.header.size = sizeof (struct req_exec_ckpt_sectionwrite);
 
@@ -1386,9 +1470,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 
 //printf ("LIB writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
 	}
 
 	return (0);
@@ -1406,10 +1490,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
 	if ((conn_info->ais_ci.u.libckpt_ci.checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
-		res_lib_ckpt_sectionoverwrite.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionoverwrite.header.size = sizeof (struct res_lib_ckpt_sectionoverwrite);
 		res_lib_ckpt_sectionoverwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
-		res_lib_ckpt_sectionoverwrite.error = SA_ERR_ACCESS;
+		res_lib_ckpt_sectionoverwrite.header.error = SA_ERR_ACCESS;
 
 		libais_send_response (conn_info, &res_lib_ckpt_sectionoverwrite,
 			sizeof (struct res_lib_ckpt_sectionoverwrite));
@@ -1419,7 +1502,6 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	/*
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
-	req_exec_ckpt_sectionoverwrite.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectionoverwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE;
 	req_exec_ckpt_sectionoverwrite.header.size = sizeof (struct req_exec_ckpt_sectionoverwrite);
 
@@ -1443,9 +1525,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size - sizeof (struct req_lib_ckpt_sectionoverwrite);
 
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
 	}
 
 	return (0);
@@ -1463,10 +1545,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
 	if ((conn_info->ais_ci.u.libckpt_ci.checkpointOpenFlags & SA_CKPT_CHECKPOINT_READ) == 0) {
-		res_lib_ckpt_sectionread.header.magic = MESSAGE_MAGIC;
 		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread);
 		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
-		res_lib_ckpt_sectionread.error = SA_ERR_ACCESS;
+		res_lib_ckpt_sectionread.header.error = SA_ERR_ACCESS;
 
 		libais_send_response (conn_info, &res_lib_ckpt_sectionread,
 			sizeof (struct res_lib_ckpt_sectionread));
@@ -1476,7 +1557,6 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	/*
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
-	req_exec_ckpt_sectionread.header.magic = MESSAGE_MAGIC;
 	req_exec_ckpt_sectionread.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONREAD;
 	req_exec_ckpt_sectionread.header.size = sizeof (struct req_exec_ckpt_sectionread);
 
@@ -1500,9 +1580,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size - sizeof (struct req_lib_ckpt_sectionread);
 
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
 	}
 
 	return (0);
@@ -1513,7 +1593,7 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointsyncronizeasync (struct conn_info *conn_info, void *message)
+static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message)
 {
 	return (0);
 }
@@ -1575,10 +1655,9 @@ static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_i
 	ckptSectionIterator->iteratorCount = iteratorEntries;
 
 error_exit:
-	res_lib_ckpt_sectioniteratorinitialize.header.magic = MESSAGE_MAGIC;
 	res_lib_ckpt_sectioniteratorinitialize.header.size = sizeof (struct res_lib_ckpt_sectioniteratorinitialize);
 	res_lib_ckpt_sectioniteratorinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
-	res_lib_ckpt_sectioniteratorinitialize.error = error;
+	res_lib_ckpt_sectioniteratorinitialize.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_ckpt_sectioniteratorinitialize,
 		sizeof (struct res_lib_ckpt_sectioniteratorinitialize));
@@ -1639,10 +1718,9 @@ static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *c
 	ckptSectionIterator->iteratorPos += 1;
 
 error_exit:
-	res_lib_ckpt_sectioniteratornext.header.magic = MESSAGE_MAGIC;
 	res_lib_ckpt_sectioniteratornext.header.size = sizeof (struct res_lib_ckpt_sectioniteratornext) + sectionIdSize;
 	res_lib_ckpt_sectioniteratornext.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT;
-	res_lib_ckpt_sectioniteratornext.error = error;
+	res_lib_ckpt_sectioniteratornext.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_ckpt_sectioniteratornext,
 		sizeof (struct res_lib_ckpt_sectioniteratornext));
