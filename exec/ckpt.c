@@ -58,7 +58,12 @@ DECLARE_LIST_INIT(checkpointListHead);
 
 DECLARE_LIST_INIT(checkpointIteratorListHead);
 
+static gmi_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle;
+
+static int ckpt_checkpoint_exec_init_fn (void);
+
 static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info);
+
 static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info);
 
 static int message_handler_req_lib_activatepoll (struct conn_info *, void *message);
@@ -120,10 +125,15 @@ static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_
 static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_info *conn_info, void *message);
 static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
 
-static int ckptConfChg (
+static int ckpt_checkpoint_confchg_fn (
+	enum gmi_configuration_type configuration_type,
 	struct sockaddr_in *member_list, int member_list_entries,
 	struct sockaddr_in *left_list, int left_list_entries,
 	struct sockaddr_in *joined_list, int joined_list_entries) {
+
+	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
+		gmi_recovery_plug_unplug (ckpt_checkpoint_recovery_plug_handle);
+	}
 
 	return (0);
 }
@@ -155,7 +165,7 @@ struct service_handler ckpt_service_handler = {
 	.confchg_fn					= 0, /* ckpt service handler is not distributed */
 	.libais_init_fn				= message_handler_req_lib_ckpt_init,
 	.libais_exit_fn				= 0,
-	.aisexec_init_fn			= 0
+	.exec_init_fn				= 0
 };
 
 struct libais_handler ckpt_checkpoint_libais_handlers[] =
@@ -271,10 +281,10 @@ struct service_handler ckpt_checkpoint_service_handler = {
 	.libais_handlers_count		= sizeof (ckpt_checkpoint_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= ckpt_checkpoint_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (ckpt_checkpoint_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= ckptConfChg,
+	.confchg_fn					= ckpt_checkpoint_confchg_fn,
 	.libais_init_fn				= message_handler_req_lib_ckpt_checkpoint_init,
 	.libais_exit_fn				= ckpt_checkpoint_exit_fn,
-	.aisexec_init_fn			= 0
+	.exec_init_fn				= ckpt_checkpoint_exec_init_fn
 };
 
 struct libais_handler ckpt_sectioniterator_libais_handlers[] =
@@ -310,7 +320,7 @@ struct service_handler ckpt_sectioniterator_service_handler = {
 	.confchg_fn					= 0, /* Section Iterators are not distributed */
 	.libais_init_fn				= message_handler_req_lib_ckpt_sectioniterator_init,
 	.libais_exit_fn				= ckptSectionIteratorApiFinalize,
-	.aisexec_init_fn			= 0
+	.exec_init_fn				= 0
 };
 
 static struct saCkptCheckpoint *findCheckpoint (SaNameT *name)
@@ -385,9 +395,21 @@ int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	return (-1);
 }
 
-static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info)
+static int ckpt_checkpoint_exec_init_fn (void)
 {
 	int res;
+
+	res = gmi_recovery_plug_create (&ckpt_checkpoint_recovery_plug_handle);
+	if (res != 0) {
+		log_printf(LOG_LEVEL_ERROR,
+		"Could not create recovery plug for clm service.\n");
+		return (-1);
+	}
+	return (0);
+}
+
+static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info)
+{
 
 	/*
 	 * close checkpoint opened from this fd
@@ -397,9 +419,9 @@ static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info)
 		log_printf (LOG_LEVEL_DEBUG, "Trying to finalize %d %s\n", conn_info,
 			getSaNameT (&conn_info->ais_ci.u.libckpt_ci.checkpoint->name));
 
-		res = sendCkptCheckpointClose (conn_info->ais_ci.u.libckpt_ci.checkpoint);
+		sendCkptCheckpointClose (conn_info->ais_ci.u.libckpt_ci.checkpoint);
 	}
-	return (res);
+	return (0);
 }
 
 static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info) {
