@@ -434,11 +434,10 @@ saHandleDestroy (
 SaErrorT
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T int handle,
+	SaUint64T handle,
 	void **instance)
 { 
 	SaErrorT error = SA_OK;
-
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (handle >= (SaUint64T)handleDatabase->handleCount) {
@@ -464,7 +463,7 @@ error_exit:
 SaErrorT
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
-	unsigned int handle)
+	SaUint64T handle)
 {
 	void *instance;
 
