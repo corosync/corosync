@@ -437,19 +437,24 @@ saHandleInstanceGet (
 	unsigned int handle,
 	void **instance)
 { 
+	SaErrorT error = SA_OK;
+
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (handle >= handleDatabase->handleCount) {
-		return (SA_ERR_BAD_HANDLE);
+		error = SA_ERR_BAD_HANDLE;
+		goto error_exit;
 	}
 	if (handleDatabase->handles[handle].state != SA_HANDLE_STATE_ACTIVE) {
-		return (SA_ERR_BAD_HANDLE);
+		error = SA_ERR_BAD_HANDLE;
+		goto error_exit;
 	}
 
 	*instance = handleDatabase->handles[handle].instance;
 
 	handleDatabase->handles[handle].refCount += 1;
 
+error_exit:
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
 	return (SA_OK);
