@@ -233,7 +233,7 @@ void threaded_bench (SaCkptCheckpointHandleT *checkpointHandles, int threads, in
 
 SaNameT checkpointName = { 12, "abra\0" };
 
-#define CHECKPOINT_THREADS 500
+#define CHECKPOINT_THREADS 50
 int main (void) {
 	SaCkptCheckpointHandleT checkpointHandles[500];
 	SaErrorT error;
