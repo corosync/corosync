@@ -665,6 +665,111 @@ responses should be of:
 
 struct res_clm_trackstart
 
+----------------------------------------------------------------------
+Using one file descriptor for async and sync requests at the same time
+----------------------------------------------------------------------
+
+A library may include async events but must also be able to handle
+sync request/responses on the same fd.  This is achieved via the
+saRecvQueue() api call.
+
+1. First have a look at exec/amf.c::saAmfInitialize.
+
+This function creates a queue to store responses that are not to be
+handled by the syncronous function, but instead meant to be handled by
+the dispatch (async) function.
+
+    /*
+     * An inq is needed to store async messages while waiting for a
+     * sync response
+     */
+    error = saQueueInit (&amfInstance->inq, 512, sizeof (void *));
+    if (error != SA_OK) {
+        goto error_put_destroy;
+    }
+
+2. Next have a look at exec/amf.c::saAmfProtectionGroupTrackStart.
+
+This function must ensure that it gets a particular response, even when
+it may receive a request for a dispatch (async call).  To solve this,
+the function queues the message on amfInstance->inq.  It will only
+return a message in &req_amf_protectiongrouptrackstart once a message
+with MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART defined in header->id of
+the response is received.
+
+    error = saSendRetry (amfInstance->fd,
+&req_amf_protectiongrouptrackstart,
+        sizeof (struct req_amf_protectiongrouptrackstart),
+MSG_NOSIGNAL);
+    if (error != SA_OK) {
+        goto error_unlock;
+    }
+
+^^^^^^ This code sends the request
+
+    error = saRecvQueue (amfInstance->fd, &message,
+        &amfInstance->inq, MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART);
+
+^^^^^^^^ This is the API which waits for a particular
+response.  It will wait until a message with the header
+MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART is received.  Any other
+message it queues for the dispatch function to read the inq.
+
+3. Finally have a look at the exec/amf/saAmfDispatch function.
+
+        saQueueIsEmpty(&amfInstance->inq, &empty);
+        if (empty == 0) {
+            /*
+             * Queue is not empty, read data from queue
+             */
+            saQueueItemGet (&amfInstance->inq, (void *)&queue_msg);
+            msg = *queue_msg;
+            memcpy (&dispatch_data, msg, msg->size);
+            saQueueItemRemove (&amfInstance->inq);
+        } else {
+           /*
+             * Queue empty, read response from socket
+             */
+            error = saRecvRetry (amfInstance->fd, &dispatch_data.header,
+                sizeof (struct message_header), MSG_WAITALL |
+MSG_NOSIGNAL);
+            if (error != SA_OK) {
+                goto error_unlock;
+            }
+            if (dispatch_data.header.size > sizeof (struct
+message_header)) {
+                error = saRecvRetry (amfInstance->fd,
+&dispatch_data.data,
+                    dispatch_data.header.size - sizeof (struct
+message_header),
+                    MSG_WAITALL | MSG_NOSIGNAL);
+                if (error != SA_OK) {
+                    goto error_unlock;
+                }
+            }
+        }
+
+This code basically checks if the queue is empty, then reads from the
+queue if there is a request, otherwise it reads from the socket.
+
+You might ask why doesn't the poll (not shown) block if there are
+messages in the queue but none in the socket.  It doesn't block because
+every time a saRecvQueue queues a message, it sends a request to the
+executive (activate poll) which then sends a dummy message back to the
+library (activate poll) which keeps poll from blocking.  The dummy
+message is ignored by the dispatch function.  
+
+Not a great approach (the activate poll stuff).  I have an idea to fix
+it though.  Before a poll is ever done, the inq could be checked to see
+if it is empty.  If there are messages on the inq, the dispatch function
+would not call poll, but instead indicate to the dispatch function to
+dispatch messages.
+
+Fortunately most of this activate poll mess is hidden from the library
+developer in saRecvQueue (this does the activate poll stuff).  The
+develoepr simply has to be aware that the activate poll message is
+coming and ignore it appropriately.
+
 ------------
  some notes
 ------------
