@@ -1382,6 +1382,7 @@ int orf_token_remcast (int seqid) {
 	struct gmi_rtr_item *gmi_rtr_item;
 	int res;
 	struct mcast *mcast;
+	void *ptr;
 
 #ifdef DEBUG
 printf ("remulticasting %d\n", seqid);
@@ -1389,10 +1390,12 @@ printf ("remulticasting %d\n", seqid);
 	/*
 	 * Get RTR item at seqid, if not available, return
 	 */
-	res = sq_item_get (&queue_rtr_items, seqid, (void **)&gmi_rtr_item);
+	res = sq_item_get (&queue_rtr_items, seqid, &ptr);
 	if (res != 0) {
 		return -1;
 	}
+	gmi_rtr_item = ptr;
+
 	mcast = (struct mcast *)gmi_rtr_item->iovec[0].iov_base;
 
 	encrypt_and_sign (gmi_rtr_item->iovec, gmi_rtr_item->iov_len);
@@ -1464,8 +1467,10 @@ static int messages_free (int group_arut)
 	 * Release retransmit list items if group arut indicates they are transmitted
 	 */
 	for (i = last_released; i <= lesser; i++) {
-		res = sq_item_get (&queue_rtr_items, i, (void **)&gmi_rtr_item_p);
+		void *ptr;
+		res = sq_item_get (&queue_rtr_items, i, &ptr);
 		if (res == 0) {
+			gmi_rtr_item_p = ptr;
 			release_reftwo_iovec (gmi_rtr_item_p->reftwo,
 				gmi_rtr_item_p->iovec,
 				gmi_rtr_item_p->iov_len);
@@ -3469,13 +3474,17 @@ static void pending_queues_deliver (void)
 	 * Deliver messages in order from rtr queue to pending delivery queue
 	 */
 	for (i = gmi_arut + 1; i <= gmi_highest_seq; i++) {
-		res = sq_item_get (&queue_rtr_items, i, (void **)&gmi_rtr_item_p);
+		void *ptr;
+
+		res = sq_item_get (&queue_rtr_items, i, &ptr);
 		/*
 		 * If hole, stop assembly
 		 */
 		if (res != 0) {
 			break;
 		}
+		gmi_rtr_item_p = ptr;
+
 		assert (gmi_rtr_item_p->iovec[0].iov_len < MESSAGE_SIZE_MAX);
 		mcast = gmi_rtr_item_p->iovec[0].iov_base;
 		if (mcast == (struct mcast *)0xdeadbeef) {
