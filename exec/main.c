@@ -143,6 +143,13 @@ static inline struct conn_info *conn_info_create (int fd) {
 	return (conn_info);
 }
 
+static void sigusr2_handler (int num)
+{
+	amf_dump ();
+
+	signal (SIGUSR2 ,sigusr2_handler);
+	return;
+}
 
 struct sockaddr_in this_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
@@ -872,6 +879,8 @@ int main (int argc, char **argv)
 	aisexec_gid_determine ();
 
 	aisexec_poll_handle = poll_create ();
+
+	signal (SIGUSR2, sigusr2_handler);
 
 	/*
 	 * if gmi_init doesn't have root priveleges, it cannot

@@ -2474,3 +2474,114 @@ static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info
 	return (0);
 }
 
+static char disabled_unlocked_state_text[6][64] = {
+	"AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL",
+	"AMF_DISABLED_UNLOCKED_FAILED",
+	"AMF_DISABLED_UNLOCKED_QUIESCED_REQUESTED",
+	"AMF_DISABLED_UNLOCKED_QUIESCED_COMPLETED",
+	"AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED",
+	"AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_COMPLETED"
+};
+
+static char *amf_disabledunlockedstate_ntoa (int state)
+{
+	static char str[64];
+
+	if (state >= 0 && state < 6) {
+		sprintf (str, "%s(%d)", disabled_unlocked_state_text[state], state);
+	}else{
+		sprintf (str, "Unknown(%d)", state);
+	}
+
+	return (str);
+}
+
+static char enabled_unlocked_state_text[7][64] = {
+	"AMF_ENABLED_UNLOCKED_INITIAL",
+	"AMF_ENABLED_UNLOCKED_IN_SERVICE_REQUESTED",
+	"AMF_ENABLED_UNLOCKED_IN_SERVICE_COMPLETED",
+	"AMF_ENABLED_UNLOCKED_ACTIVE_REQUESTED",
+	"AMF_ENABLED_UNLOCKED_ACTIVE_COMPLETED",
+	"AMF_ENABLED_UNLOCKED_STANDBY_REQUESTED",
+	"AMF_ENABLED_UNLOCKED_STANDBY_COMPLETED"
+};
+
+static char *amf_enabledunlockedstate_ntoa (int state)
+{
+	static char str[64];
+	if (state >= 0 && state < 7) {
+		sprintf (str, "%s(%d)", enabled_unlocked_state_text[state], state);
+	}else{
+		sprintf (str, "Unknown(%d)", state);
+	}
+	return (str);
+}
+
+static char readiness_state_text[4][32] = {
+	"Unknown",
+	"SA_AMF_OUT_OF_SERVICE",
+	"SA_AMF_IN_SERVICE",
+	"SA_AMF_QUIESCED",
+};
+
+static char *amf_readinessstate_ntoa (int state)
+{
+	static char str[32];
+
+	if (state > 0 && state < 4) {
+		sprintf (str, "%s(%d)", readiness_state_text[state], state);
+	}else{
+		sprintf (str, "Unknown(%d)", state);
+	}
+	return (str);
+}
+
+static char ha_state_text[4][32] = {
+	"Unknown",
+	"SA_AMF_ACTIVE",
+	"SA_AMF_STANDBY",
+	"SA_AMF_QUIESCED",
+};
+
+static char *amf_hastate_ntoa (SaAmfHAStateT state)
+{
+
+	static char str[32];
+
+	if (state > 0 && state < 4) {
+		sprintf (str, "%s(%d)", ha_state_text[state], state);
+	}else{
+		sprintf (str, "Unknown(%d)", state);
+	}
+	return (str);
+}
+
+static void amf_dump_comp (struct saAmfComponent *component ,void *data)
+{
+	char name[64];
+	data = NULL;
+
+	log_printf (LOG_LEVEL_DEBUG, "----------------\n" );
+	log_printf (LOG_LEVEL_DEBUG, "registered            = %d\n" ,component->registered);
+	log_printf (LOG_LEVEL_DEBUG, "local                 = %d\n" ,component->local );
+	log_printf (LOG_LEVEL_DEBUG, "source_addr           = %s\n" ,inet_ntoa (component->source_addr));
+	memset (name, 0 , sizeof(name));
+	memcpy (name, component->name.value, component->name.length);
+	log_printf (LOG_LEVEL_DEBUG, "name                  = %s\n" ,name );
+	log_printf (LOG_LEVEL_DEBUG, "currentReadinessState = %s\n" ,amf_readinessstate_ntoa (component->currentReadinessState));
+	log_printf (LOG_LEVEL_DEBUG, "newReadinessState     = %s\n" ,amf_readinessstate_ntoa (component->newReadinessState));
+	log_printf (LOG_LEVEL_DEBUG, "currentHAState        = %s\n" ,amf_hastate_ntoa (component->currentHAState));
+	log_printf (LOG_LEVEL_DEBUG, "newHAState            = %s\n" ,amf_hastate_ntoa (component->newHAState));
+	log_printf (LOG_LEVEL_DEBUG, "enabledUnlockedState  = %s\n" ,amf_enabledunlockedstate_ntoa (component->enabledUnlockedState));
+	log_printf (LOG_LEVEL_DEBUG, "disabledUnlockedState = %s\n" ,amf_disabledunlockedstate_ntoa (component->disabledUnlockedState));
+	log_printf (LOG_LEVEL_DEBUG, "probableCause         = %d\n" ,component->probableCause );
+}
+
+void amf_dump ( )
+{
+
+	enumerate_components (amf_dump_comp, NULL);
+	fflush (stdout);
+
+	return;
+}

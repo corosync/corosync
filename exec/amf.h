@@ -52,6 +52,7 @@ struct libamf_ci {
 	int trackActive;
 };
 
+void amf_dump ();
 extern struct service_handler amf_service_handler;
 
 #endif /* AMF_H_DEFINED */
