@@ -52,6 +52,18 @@
 #include "../include/ais_msg.h"
 #include "util.h"
 
+enum SA_HANDLE_STATE {
+	SA_HANDLE_STATE_EMPTY,
+	SA_HANDLE_STATE_PENDINGREMOVAL,
+	SA_HANDLE_STATE_ACTIVE
+};
+
+struct saHandle {
+	int state;
+	void *instance;
+	int refCount;
+};
+
 SaErrorT
 saServiceConnect (
 	int *fdOut,
@@ -332,7 +344,7 @@ SaErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	int *handleOut)
+	unsigned int *handleOut)
 {
 	int handle;
 	void *newHandles;
