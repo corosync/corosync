@@ -199,11 +199,11 @@ static int clm_exec_init_fn (void)
 	/*
 	 * Build local cluster node data structure
 	 */
-	thisClusterNode.nodeId = this_ip.sin_addr.s_addr;
-	memcpy (&thisClusterNode.nodeAddress.value, &this_ip.sin_addr,
+	thisClusterNode.nodeId = this_ip->sin_addr.s_addr;
+	memcpy (&thisClusterNode.nodeAddress.value, &this_ip->sin_addr,
 		sizeof (struct in_addr));
 	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
-	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip.sin_addr));
+	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
 	thisClusterNode.nodeName.length = strlen (thisClusterNode.nodeName.value);
 	thisClusterNode.member = 1;
 	{
@@ -425,6 +425,16 @@ static int clm_confchg_fn (
 	}
 
 	libraryNotificationLeave (nodes, i);
+	/*
+	 * Load the thisClusterNode data structure in case we are
+	 * transitioning to network interface up or down
+	 */
+	thisClusterNode.nodeId = this_ip->sin_addr.s_addr;
+	memcpy (&thisClusterNode.nodeAddress.value, &this_ip->sin_addr,
+		sizeof (struct in_addr));
+	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
+	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
+	thisClusterNode.nodeName.length = strlen (thisClusterNode.nodeName.value);
 
 	return (0);
 }

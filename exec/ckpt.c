@@ -516,7 +516,7 @@ static int ckpt_recovery_process (void)
 					memcpy(&request_exec_sync_state.sectionDescriptor,
 							&ckptCheckpointSection->sectionDescriptor,
 							sizeof(SaCkptSectionDescriptorT));						
-					memcpy(&request_exec_sync_state.source_addr, &this_ip.sin_addr, sizeof(struct in_addr));
+					memcpy(&request_exec_sync_state.source_addr, &this_ip->sin_addr, sizeof(struct in_addr));
 				 			
 					memcpy(request_exec_sync_state.ckpt_refcount,
 							checkpoint->ckpt_refcount,
@@ -938,7 +938,7 @@ static int ckpt_exec_init_fn (void)
 	 *  Initialize the saved ring ID.
 	 */
 	saved_ring_id.seq = 0;
-	saved_ring_id.rep.s_addr = this_ip.sin_addr.s_addr;		
+	saved_ring_id.rep.s_addr = this_ip->sin_addr.s_addr;		
 	
 #ifdef TODO
 	int res;
@@ -1112,7 +1112,7 @@ error_exit:
 	/*
 	 * If this node was the source of the message, respond to this node
 	 */
-	if (req_exec_ckpt_checkpointopen->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_checkpointopen->source)) {
 		res_lib_ckpt_checkpointopen.header.size = sizeof (struct res_lib_ckpt_checkpointopen);
 		res_lib_ckpt_checkpointopen.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN;
 		res_lib_ckpt_checkpointopen.header.error = error;
@@ -1393,7 +1393,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	}
 	
 error_exit:
-	if (req_exec_ckpt_checkpointclose->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_checkpointclose->source)) {
 		ckpt_checkpoint_remove_cleanup (req_exec_ckpt_checkpointclose->source.conn_info,
 			checkpoint);
 
@@ -1441,7 +1441,7 @@ error_exit:
 	/*
 	 * If this node was the source of the message, respond to this node
 	 */
-	if (req_exec_ckpt_checkpointunlink->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_checkpointunlink->source)) {
 		res_lib_ckpt_checkpointunlink.header.size = sizeof (struct res_lib_ckpt_checkpointunlink);
 		res_lib_ckpt_checkpointunlink.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK;
 		res_lib_ckpt_checkpointunlink.header.error = error;
@@ -1477,7 +1477,7 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 	/*
 	 * Respond to library if this processor sent the duration set request
 	 */
-	if (req_exec_ckpt_checkpointretentiondurationset->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_checkpointretentiondurationset->source)) {
 		res_lib_ckpt_checkpointretentiondurationset.header.size = sizeof (struct res_lib_ckpt_checkpointretentiondurationset);
 		res_lib_ckpt_checkpointretentiondurationset.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET;
 		res_lib_ckpt_checkpointretentiondurationset.header.error = SA_AIS_OK;
@@ -1711,7 +1711,7 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 		&ckptCheckpoint->checkpointSectionsListHead);
 
 error_exit:
-	if (req_exec_ckpt_sectioncreate->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectioncreate->source)) {
 		res_lib_ckpt_sectioncreate.header.size = sizeof (struct res_lib_ckpt_sectioncreate);
 		res_lib_ckpt_sectioncreate.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE;
 		res_lib_ckpt_sectioncreate.header.error = error;
@@ -1765,7 +1765,7 @@ static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in
 	 * return result to CKPT library
 	 */
 error_exit:
-	if (req_exec_ckpt_sectiondelete->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectiondelete->source)) {
 		res_lib_ckpt_sectiondelete.header.size = sizeof (struct res_lib_ckpt_sectiondelete);
 		res_lib_ckpt_sectiondelete.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE;
 		res_lib_ckpt_sectiondelete.header.error = error;
@@ -1827,7 +1827,7 @@ static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message
 	}
 
 error_exit:
-	if (req_exec_ckpt_sectionexpirationtimeset->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectionexpirationtimeset->source)) {
 		res_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct res_lib_ckpt_sectionexpirationtimeset);
 		res_lib_ckpt_sectionexpirationtimeset.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
 		res_lib_ckpt_sectionexpirationtimeset.header.error = error;
@@ -1961,7 +1961,7 @@ printf ("CANT FIND SECTION '%s'\n",
 	 * Write write response to CKPT library
 	 */
 error_exit:
-	if (req_exec_ckpt_sectionwrite->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectionwrite->source)) {
 		res_lib_ckpt_sectionwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
 		res_lib_ckpt_sectionwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
 		res_lib_ckpt_sectionwrite.header.error = error;
@@ -2034,7 +2034,7 @@ static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct
 	 * return result to CKPT library
 	 */
 error_exit:
-	if (req_exec_ckpt_sectionoverwrite->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectionoverwrite->source)) {
 		res_lib_ckpt_sectionoverwrite.header.size = sizeof (struct res_lib_ckpt_sectionoverwrite);
 		res_lib_ckpt_sectionoverwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
 		res_lib_ckpt_sectionoverwrite.header.error = error;
@@ -2101,7 +2101,7 @@ static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_a
 	 * Write read response to CKPT library
 	 */
 error_exit:
-	if (req_exec_ckpt_sectionread->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_ckpt_sectionread->source)) {
 		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread) + sectionSize;
 		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
 		res_lib_ckpt_sectionread.header.error = error;
@@ -2166,8 +2166,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 		sizeof (struct req_exec_ckpt_checkpointopen);
 	req_exec_ckpt_checkpointopen.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN;
 
-	req_exec_ckpt_checkpointopen.source.conn_info = conn_info;
-	req_exec_ckpt_checkpointopen.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_checkpointopen.source, conn_info);
 
 	memcpy (&req_exec_ckpt_checkpointopen.req_lib_ckpt_checkpointopen,
 		req_lib_ckpt_checkpointopen,
@@ -2202,8 +2201,7 @@ static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_
 		sizeof (struct req_exec_ckpt_checkpointclose);
 	req_exec_ckpt_checkpointclose.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE;
 
-	req_exec_ckpt_checkpointclose.source.conn_info = conn_info;
-	req_exec_ckpt_checkpointclose.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_checkpointclose.source, conn_info);
 
 	memcpy (&req_exec_ckpt_checkpointclose.checkpointName,
 		&checkpoint->name, sizeof (SaNameT));
@@ -2228,8 +2226,7 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 		sizeof (struct req_exec_ckpt_checkpointunlink);
 	req_exec_ckpt_checkpointunlink.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK;
 
-	req_exec_ckpt_checkpointunlink.source.conn_info = conn_info;
-	req_exec_ckpt_checkpointunlink.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_checkpointunlink.source, conn_info);
 
 	memcpy (&req_exec_ckpt_checkpointunlink.req_lib_ckpt_checkpointunlink,
 		req_lib_ckpt_checkpointunlink,
@@ -2253,8 +2250,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	req_exec_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET;
 	req_exec_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_exec_ckpt_checkpointretentiondurationset);
 
-	req_exec_ckpt_checkpointretentiondurationset.source.conn_info = conn_info;
-	req_exec_ckpt_checkpointretentiondurationset.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_checkpointretentiondurationset.source, conn_info);
 
 	memcpy (&req_exec_ckpt_checkpointretentiondurationset.checkpointName,
 		&req_lib_ckpt_checkpointretentiondurationset->checkpointName,
@@ -2345,8 +2341,7 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 		&req_lib_ckpt_sectioncreate->checkpointName,
 		sizeof (SaNameT));
 
-	req_exec_ckpt_sectioncreate.source.conn_info = conn_info;
-	req_exec_ckpt_sectioncreate.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectioncreate.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectioncreate;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectioncreate);
@@ -2398,8 +2393,7 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 		req_lib_ckpt_sectiondelete,
 		sizeof (struct req_lib_ckpt_sectiondelete));
 
-	req_exec_ckpt_sectiondelete.source.conn_info = conn_info;
-	req_exec_ckpt_sectiondelete.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectiondelete.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectiondelete;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectiondelete);
@@ -2437,8 +2431,7 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 		req_lib_ckpt_sectionexpirationtimeset,
 		sizeof (struct req_lib_ckpt_sectionexpirationtimeset));
 
-	req_exec_ckpt_sectionexpirationtimeset.source.conn_info = conn_info;
-	req_exec_ckpt_sectionexpirationtimeset.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectionexpirationtimeset.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionexpirationtimeset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionexpirationtimeset);
@@ -2484,8 +2477,7 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 		&req_lib_ckpt_sectionwrite->checkpointName,
 		sizeof (SaNameT));
 
-	req_exec_ckpt_sectionwrite.source.conn_info = conn_info;
-	req_exec_ckpt_sectionwrite.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectionwrite.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionwrite;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionwrite);
@@ -2531,8 +2523,7 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 		&req_lib_ckpt_sectionoverwrite->checkpointName,
 		sizeof (SaNameT));
 
-	req_exec_ckpt_sectionoverwrite.source.conn_info = conn_info;
-	req_exec_ckpt_sectionoverwrite.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectionoverwrite.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionoverwrite;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionoverwrite);
@@ -2575,8 +2566,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		&req_lib_ckpt_sectionread->checkpointName,
 		sizeof (SaNameT));
 
-	req_exec_ckpt_sectionread.source.conn_info = conn_info;
-	req_exec_ckpt_sectionread.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_ckpt_sectionread.source, conn_info);
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionread;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionread);

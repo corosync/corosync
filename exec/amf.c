@@ -1852,7 +1852,7 @@ static int amf_exec_init_fn (void)
 
 void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 {
-	if (component->source_addr.s_addr != this_ip.sin_addr.s_addr) {
+	if (component->source_addr.s_addr != this_ip->sin_addr.s_addr) {
 		return;
 	}
 
@@ -2059,7 +2059,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	 * If this node originated the request to the cluster, respond back
 	 * to the AMF library
 	 */
-	if (req_exec_amf_componentregister->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local(&req_exec_amf_componentregister->source)) {
 		if (error == SA_OK) {
 			component->local = 1;
 			req_exec_amf_componentregister->source.conn_info->component = component;
@@ -2100,14 +2100,14 @@ static void amf_synchronize (void *message, struct in_addr source_addr)
 	component = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName);
 	amfProxyComponent = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName);
 
-	/* If this node is Component onwer */
-	if (component->source_addr.s_addr == this_ip.sin_addr.s_addr) {
+	/* If this processor is component owner */
+	if (component->source_addr.s_addr == this_ip->sin_addr.s_addr) {
 
 		/* No Operation */
 		return;
 	}
 
-	/* If this isn't Synchronizing target Node */
+	/* If this isn't synchronizing target processor */
 	if (!(component->local == 0 &&  component->registered == 0)){ 
 
 		/* No Operation */
@@ -2196,7 +2196,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	 * If this node originated the request to the cluster, respond back
 	 * to the AMF library
 	 */
-	if (req_exec_amf_componentunregister->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local (&req_exec_amf_componentunregister->source)) {
 		log_printf (LOG_LEVEL_DEBUG, "sending component unregister response to fd %d\n",
 			req_exec_amf_componentunregister->source.conn_info->fd);
 
@@ -2237,7 +2237,7 @@ static int message_handler_req_exec_amf_errorreport (void *message, struct in_ad
 	 * If this node originated the request to the cluster, respond back
 	 * to the AMF library
 	 */
-	if (req_exec_amf_errorreport->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local (&req_exec_amf_errorreport->source)) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
 			req_exec_amf_errorreport->source.conn_info->fd);
 
@@ -2280,7 +2280,7 @@ static int message_handler_req_exec_amf_errorcancelall (void *message, struct in
 	 * If this node originated the request to the cluster, respond back
 	 * to the AMF library
 	 */
-	if (req_exec_amf_errorcancelall->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
+	if (message_source_is_local (&req_exec_amf_errorcancelall->source)) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
 			req_exec_amf_errorcancelall->source.conn_info->fd);
 
@@ -2414,8 +2414,8 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
 
-	req_exec_amf_componentregister.source.conn_info = conn_info;
-	req_exec_amf_componentregister.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_amf_componentregister.source, conn_info);
+
 	memcpy (&req_exec_amf_componentregister.req_lib_amf_componentregister,
 		req_lib_amf_componentregister,
 		sizeof (struct req_lib_amf_componentregister));
@@ -2439,8 +2439,8 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
-	req_exec_amf_componentunregister.source.conn_info = conn_info;
-	req_exec_amf_componentunregister.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_amf_componentunregister.source, conn_info);
+
 	memcpy (&req_exec_amf_componentunregister.req_lib_amf_componentunregister,
 		req_lib_amf_componentunregister,
 		sizeof (struct req_lib_amf_componentunregister));
@@ -2620,8 +2620,8 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
-	req_exec_amf_errorreport.source.conn_info = conn_info;
-	req_exec_amf_errorreport.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_amf_errorreport.source, conn_info);
+
 	memcpy (&req_exec_amf_errorreport.req_lib_amf_errorreport,
 		req_lib_amf_errorreport,
 		sizeof (struct req_lib_amf_errorreport));
@@ -2650,8 +2650,8 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 	req_exec_amf_errorcancelall.header.size = sizeof (struct req_exec_amf_errorcancelall);
 	req_exec_amf_errorcancelall.header.id = MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL;
 
-	req_exec_amf_errorcancelall.source.conn_info = conn_info;
-	req_exec_amf_errorcancelall.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
+	message_source_set (&req_exec_amf_errorcancelall.source, conn_info);
+
 	memcpy (&req_exec_amf_errorcancelall.req_lib_amf_errorcancelall,
 		req_lib_amf_errorcancelall,
 		sizeof (struct req_lib_amf_errorcancelall));
