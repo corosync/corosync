@@ -113,12 +113,16 @@ struct conn_info {
 	struct ais_ci ais_ci;	/* libais connection information */
 };
 
-extern struct sockaddr_in this_ip;
+extern struct sockaddr_in *this_ip;
 
 poll_handle aisexec_poll_handle;
 
 extern struct gmi_groupname aisexec_groupname;
 
 extern int libais_send_response (struct conn_info *conn_info, void *msg, int mlen);
+
+extern int message_source_is_local(struct message_source *source);
+
+extern void message_source_set(struct message_source *source, struct conn_info *conn_info);
 
 #endif /* AIS_EXEC_H_DEFINED */

@@ -163,7 +163,9 @@ static void sigusr2_handler (int num)
 	return;
 }
 
-struct sockaddr_in this_ip;
+struct sockaddr_in *this_ip;
+struct sockaddr_in this_non_loopback_ip;
+struct sockaddr_in config_mcast_addr;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 char *socketname = "libais.socket";
@@ -753,6 +755,10 @@ static void confchg_fn (
 {
 	int i;
 
+	if (this_ip->sin_addr.s_addr != LOCALHOST_IP) {
+		memcpy(&this_non_loopback_ip, this_ip, sizeof(struct sockaddr_in));
+	}
+
 	/*
 	 * Execute configuration change for synchronization service
 	 */
@@ -933,6 +939,21 @@ void aisexec_keyread (unsigned char *key)
 	close (fd);
 }
 
+int message_source_is_local(struct message_source *source)
+{
+	int ret = 0;
+	if ((source->in_addr.s_addr == LOCALHOST_IP)
+		||(source->in_addr.s_addr == this_non_loopback_ip.sin_addr.s_addr)) {
+		ret = 1;
+	}
+	return ret;	
+}
+
+void message_source_set (struct message_source *source, struct conn_info *conn_info)
+{
+	source->in_addr.s_addr = this_ip->sin_addr.s_addr;
+	source->conn_info = conn_info;
+}
 
 
 int main (int argc, char **argv)
@@ -943,6 +964,8 @@ int main (int argc, char **argv)
 
 	char *error_string;
 	struct openais_config openais_config;
+
+	memset(&this_non_loopback_ip, 0, sizeof(struct sockaddr_in));
 
 	aisexec_uid_determine ();
 
@@ -968,6 +991,8 @@ int main (int argc, char **argv)
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		ais_done (AIS_DONE_MAINCONFIGREAD);
 	}
+
+	memcpy (&config_mcast_addr, &openais_config.mcast_addr, sizeof (struct sockaddr_in));
 
 	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
@@ -1003,8 +1028,7 @@ int main (int argc, char **argv)
 		0,
 		deliver_fn, confchg_fn);
 	
-	memcpy (&this_ip, &openais_config.interfaces[0].boundto,
-		sizeof (struct sockaddr_in));
+	this_ip = &openais_config.interfaces[0].boundto;
 
 	/*
 	 * Drop root privleges to user 'ais'
