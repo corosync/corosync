@@ -953,7 +953,12 @@ static void dsmDisabledUnlockedQuiescedCompleted (
 
 			log_printf (LOG_LEVEL_DEBUG, "dsm: Sending readiness state set to OUTOFSERVICE for comp %s.\n",
 				getSaNameT (&component->name));
-			readiness_state_api_set (component, SA_AMF_OUT_OF_SERVICE);
+
+			if ( component->probableCause == SA_AMF_NOT_RESPONDING ) {
+				readiness_state_group_set (component, SA_AMF_OUT_OF_SERVICE);
+			} else {
+				readiness_state_api_set (component, SA_AMF_OUT_OF_SERVICE);
+			}
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_REQUESTED;
 		}
 	}
