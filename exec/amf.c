@@ -219,9 +219,15 @@ static void response_handler_csisetcallback (
 	struct req_amf_response *req_amf_response);
 
 
+static int amf_confchg_fn (
+	enum gmi_configuration_type configuration_type,
+    struct sockaddr_in *member_list, int member_list_entries,
+    struct sockaddr_in *left_list, int left_list_entries,
+    struct sockaddr_in *joined_list, int joined_list_entries);
+
 static int amf_exit_fn (struct conn_info *conn_info);
 
-static int amfExecutiveInitialize (void);
+static int amf_exec_init_fn (void);
 
 static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr);
 
@@ -371,10 +377,10 @@ struct service_handler amf_service_handler = {
 	.libais_handlers_count		= sizeof (amf_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= amf_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (amf_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= 0,
+	.confchg_fn					= amf_confchg_fn,
 	.libais_init_fn				= message_handler_req_amf_init,
 	.libais_exit_fn				= amf_exit_fn,
-	.aisexec_init_fn			= amfExecutiveInitialize
+	.exec_init_fn				= amf_exec_init_fn
 };
 
 static void grow_amf_track_table (struct conn_info *conn_info, int growby)
@@ -1481,6 +1487,8 @@ struct saAmfComponent *findComponentInProtectionGroup (
 
 DECLARE_LIST_INIT (library_notification_send_listhead);
 
+static gmi_recovery_plug_handle amf_recovery_plug_handle;
+
 void sendProtectionGroupNotifications (
 	struct saAmfComponent *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent)
@@ -1618,8 +1626,30 @@ static void response_handler_csisetcallback (struct conn_info *conn_info,
 	}
 }
 
-int amfExecutiveInitialize (void)
+static int amf_exec_init_fn (void)
 {
+	int res;
+
+	res = gmi_recovery_plug_create (&amf_recovery_plug_handle);
+	if (res != 0) {
+		log_printf(LOG_LEVEL_ERROR,
+		"Could not create recovery plug for amf service.\n");
+
+		return (-1);
+	}
+	return (0);
+}
+
+
+static int amf_confchg_fn (
+	enum gmi_configuration_type configuration_type,
+    struct sockaddr_in *member_list, int member_list_entries,
+    struct sockaddr_in *left_list, int left_list_entries,
+    struct sockaddr_in *joined_list, int joined_list_entries)
+{
+	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
+		gmi_recovery_plug_unplug (amf_recovery_plug_handle);
+	}
 	return (0);
 }
 
