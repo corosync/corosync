@@ -91,11 +91,11 @@ void NodeGetCallback (
 {
 	char buf[128];
 
-	if (invocation == 0x60) {
+//	if (invocation == 0x60) {
 	sprintf (buf, "NodeGetCallback different machine invocation %x", invocation);
-	} else {
+//	} else {
 	sprintf (buf, "NodeGetCallback local machine %x", invocation);
-	}
+//	}
 
 
 	printSaClmClusterNodeT (buf, clusterNode);
@@ -145,6 +145,7 @@ int main (void) {
 	int select_fd;
 	int result;
 	SaClmClusterNotificationT clusterNotificationBuffer[64];
+	SaClmClusterNodeT clusterNode;
 
 	signal (SIGINT, sigintr_handler);
 
@@ -154,46 +155,49 @@ int main (void) {
 		exit (1);
 	}
 
-//	result = saClmClusterNodeGet (0x6201a8c0, 0, &clusterNode);
-//	printSaClmClusterNodeT ("saClmClusterNodeGet ip 192.168.1.98", &clusterNode);
-#ifdef COMPILE_OUT
 	result = saClmClusterNodeGet (SA_CLM_LOCAL_NODE_ID, 0, &clusterNode);
 
-	printSaClmClusterNodeT ("saClmClusterNodeGet SA_CLM_LOCAL_NODE_ID", &clusterNode);
+	printf ("Result of saClmClusterNodeGet %d\n", result);
+
+	printSaClmClusterNodeT ("saClmClusterNodeGet SA_CLM_LOCAL_NODE_ID result %d", &clusterNode);
 
 	result = saClmClusterNodeGetAsync (&handle, 0x55, SA_CLM_LOCAL_NODE_ID, &clusterNode);
 	printf ("result is %d\n", result);
 
 	result = saClmClusterNodeGetAsync (&handle, 0x60, 0x6201a8c0, &clusterNode);
 	printf ("result is %d\n", result);
+
 	result = saClmClusterNodeGetAsync (&handle, 0x59, SA_CLM_LOCAL_NODE_ID, &clusterNode);
 	printf ("result is %d\n", result);
 
 	result = saClmClusterNodeGetAsync (&handle, 0x57, SA_CLM_LOCAL_NODE_ID, &clusterNode);
 	printf ("result is %d\n", result);
 
-#endif
-
-printf ("notify buffer is %p\n", clusterNotificationBuffer);
 	saClmClusterTrackStart (&handle, SA_TRACK_CURRENT | SA_TRACK_CHANGES_ONLY, clusterNotificationBuffer, 64);
 
 	saClmSelectionObjectGet (&handle, &select_fd);
 
 printf ("select fd is %d\n", select_fd);
 	FD_ZERO (&read_fds);
-	FD_SET (select_fd, &read_fds);
+printf ("press the enter key to exit with track stop and finalize.\n");
 	do {
-printf ("starting select\n");
+		FD_SET (select_fd, &read_fds);
+		FD_SET (STDIN_FILENO, &read_fds);
 		result = select (select_fd + 1, &read_fds, 0, 0, 0);
 		if (result == -1) {
 			perror ("select\n");
+		}
+		if (FD_ISSET (STDIN_FILENO, &read_fds)) {
+			break;
 		}
 printf ("done with select\n");
 		saClmDispatch (&handle, SA_DISPATCH_ALL);
 	} while (result);
 
-	saClmClusterTrackStop (&handle);
-	saClmFinalize (&handle);
+	result = saClmClusterTrackStop (&handle);
+	printf ("TrackStop result is %d (should be 1)\n", result);
 
+	result = saClmFinalize (&handle);
+	printf ("Finalize  result is %d (should be 1)\n", result);
 	return (0);
 }
