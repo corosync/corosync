@@ -102,6 +102,7 @@
 #define MAX_MEMBERS					16
 #define HOLE_LIST_MAX				MISSING_MCAST_WINDOW
 #define PRIORITY_MAX				4
+#define PACKET_SIZE_MAX				1500
 
 /*
  * Authentication of messages
@@ -385,14 +386,14 @@ static struct memb_join memb_join;
 
 static struct memb_form_token memb_form_token;
 
-static char iov_buffer[1500];
+static char iov_buffer[PACKET_SIZE_MAX];
 
 static struct iovec gmi_iov_recv = {
 	.iov_base	= iov_buffer,
 	.iov_len	= sizeof (iov_buffer)
 };
 
-static char iov_encrypted_buffer[1500];
+static char iov_encrypted_buffer[PACKET_SIZE_MAX];
 
 static struct iovec iov_encrypted = {
 	.iov_base	= iov_encrypted_buffer,
@@ -513,7 +514,7 @@ int gmi_init (
 	 */
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
 	memset (&memb_next, 0, sizeof (struct sockaddr_in));
-	memset (iov_buffer, 0, MESSAGE_SIZE_MAX);
+	memset (iov_buffer, 0, PACKET_SIZE_MAX);
 
 	for (i = 0; i < PRIORITY_MAX; i++) {
 		queue_init (&queues_pend_trans[i], QUEUE_PEND_TRANS_SIZE_MAX,
@@ -828,7 +829,7 @@ print_digest ("calculated digest", digest_comparison);
  * forward progress.  So the packets must be fragmented by the algorithm
  * and reassembled at the receiver.
  */
-#define FRAGMENT_SIZE (1500 - sizeof (struct mcast) - 20 - 8)
+#define FRAGMENT_SIZE (PACKET_SIZE_MAX - sizeof (struct mcast) - 20 - 8)
 
 static void timer_function_single_member (void *data);
 
@@ -1394,7 +1395,7 @@ static int orf_token_mcast (
 		 * Multicast message
 		 */
 		res = sendmsg (gmi_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
-		iov_encrypted.iov_len = 1500;
+		iov_encrypted.iov_len = PACKET_SIZE_MAX;
 
 		/*
 		 * An error here is recovered by the multicast algorithm
@@ -2546,7 +2547,7 @@ static int message_handler_orf_token (
 		ufd.events = POLLIN;
 		nfds = poll (&ufd, 1, 0);
 		if (nfds == 1 && ufd.revents & POLLIN) {
-			gmi_iov_recv.iov_len = 1500;
+			gmi_iov_recv.iov_len = PACKET_SIZE_MAX;
 			recv_handler (0, gmi_sockets[0].mcast, ufd.revents, 0,
 				&prio);
 		}
@@ -3425,7 +3426,7 @@ static int recv_handler (poll_handle handle, int fd, int revents, void *data, un
 	gmi_iov_recv.iov_len = bytes_received;
 	res = authenticate_and_decrypt (&gmi_iov_recv);
 	if (res == -1) {
-		gmi_iov_recv.iov_len = 1500;
+		gmi_iov_recv.iov_len = PACKET_SIZE_MAX;
 		return 0;
 	}
 
@@ -3443,6 +3444,6 @@ static int recv_handler (poll_handle handle, int fd, int revents, void *data, un
 		msg_recv.msg_iovlen,
 		bytes_received);
 
-	gmi_iov_recv.iov_len = 1500;
+	gmi_iov_recv.iov_len = PACKET_SIZE_MAX;
 	return (0);
 }
