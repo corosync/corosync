@@ -50,8 +50,8 @@
 #include "../include/ais_msg.h"
 #include "util.h"
 
-struct message_overlay {
-	struct req_header header;
+struct res_overlay {
+	struct res_header header;
 	char data[4096];
 };
 
@@ -209,7 +209,7 @@ saAmfDispatch (
 	int ignore_dispatch = 0;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int poll_fd;
-	struct message_overlay dispatch_data;
+	struct res_overlay dispatch_data;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle,
 		(void *)&amfInstance);
@@ -275,13 +275,13 @@ saAmfDispatch (
 			 * Queue empty, read response from socket
 			 */
 			error = saRecvRetry (amfInstance->fd, &dispatch_data.header,
-				sizeof (struct req_header), MSG_WAITALL | MSG_NOSIGNAL);
+				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data.header.size > sizeof (struct req_header)) {
+			if (dispatch_data.header.size > sizeof (struct res_header)) {
 				error = saRecvRetry (amfInstance->fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct req_header),
+					dispatch_data.header.size - sizeof (struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_OK) {
 					goto error_unlock;
