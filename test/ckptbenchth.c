@@ -149,6 +149,7 @@ struct threaddata {
 	SaCkptCheckpointHandleT checkpointHandle;
 	int write_count;
 	int write_size;
+	int thread;
 };
 
 void *benchmark_thread (void *arg) 
@@ -172,10 +173,17 @@ void *benchmark_thread (void *arg)
 		/*
 		 * Test checkpoint write
 		 */
+		do {
 		error = saCkptCheckpointWrite (&checkpointHandle,
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
+		
+//			if (error == SA_ERR_TRY_AGAIN) {
+//				usleep (rand() % 500);
+//			}
+		} while (error == SA_ERR_TRY_AGAIN);
+printf ("done writing for thread %d\n", td->thread);
 		if (error != SA_OK) {
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
@@ -201,6 +209,7 @@ void threaded_bench (SaCkptCheckpointHandleT *checkpointHandles, int threads, in
 		td[i].checkpointHandle = checkpointHandles[i];
 		td[i].write_count = write_count;
 		td[i].write_size = write_size;
+		td[i].thread = i;
 
 		res = pthread_create (&threadt[i], NULL, benchmark_thread, (void *)&td[i]);
 	}
@@ -224,17 +233,18 @@ void threaded_bench (SaCkptCheckpointHandleT *checkpointHandles, int threads, in
 
 SaNameT checkpointName = { 12, "abra\0" };
 
+#define CHECKPOINT_THREADS 500
 int main (void) {
-	SaCkptCheckpointHandleT checkpointHandles[50];
+	SaCkptCheckpointHandleT checkpointHandles[500];
 	SaErrorT error;
 	int size;
 	int count;
 	int i, j;
 	
 	/*
-	 * Create 50 checkpoints
+	 * Create CHECPOINT_THREADS checkpoints
 	 */
-	for (i  = 0; i < 50; i++) {
+	for (i  = 0; i < CHECKPOINT_THREADS; i++) {
 		sprintf (checkpointName.value, "checkpoint%d \n", i);
 		error = saCkptCheckpointOpen (&checkpointName,
 			&checkpointCreationAttributes,
@@ -251,9 +261,9 @@ int main (void) {
 			strlen ("Initial Data #0") + 1);
 	}
 
-	for (i = 1; i < 50; i++) {	/* i threads */
+	for (i = CHECKPOINT_THREADS-50; i < CHECKPOINT_THREADS; i++) {	/* i threads */
 		count = 3000; /* initial count */
-		size = 1000; /* initial size */
+		size = 100000; /* initial size */
 		printf ("THREADS %d\n", i);
 		for (j = 0; j < 5; j++) { /* number of runs with i threads */
 			threaded_bench (checkpointHandles, i, count, size);
