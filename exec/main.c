@@ -65,6 +65,7 @@
 #include "clm.h"
 #include "amf.h"
 #include "ckpt.h"
+#include "evt.h"
 #include "print.h"
 
 #define SERVER_BACKLOG 5
@@ -82,10 +83,11 @@ struct service_handler *ais_service_handlers[] = {
     &amf_service_handler,
     &ckpt_service_handler,
     &ckpt_checkpoint_service_handler,
-    &ckpt_sectioniterator_service_handler
+    &ckpt_sectioniterator_service_handler,
+    &evt_service_handler
 };
 
-#define AIS_SERVICE_HANDLERS_COUNT 5
+#define AIS_SERVICE_HANDLERS_COUNT 6
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data);
