@@ -51,8 +51,5 @@ int main (void)
 #ifdef CODE_COVERAGE_COMPILE_OUT
         saAmfPrintGroups ();
 #endif
-
-	saAmfPrintGroups ();
-
 	return (0);
 }
