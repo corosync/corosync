@@ -100,26 +100,31 @@ struct libais_handler evs_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_evs_join,
 		.response_size				= sizeof (struct res_lib_evs_join),
 		.response_id				= MESSAGE_RES_EVS_JOIN,
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_evs_leave,
 		.response_size				= sizeof (struct res_lib_evs_leave),
 		.response_id				= MESSAGE_RES_EVS_LEAVE,
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_joined,
 		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
 		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
+		.flow_control				= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_groups,
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
+		.flow_control				= FLOW_CONTROL_REQUIRED
 	}
 };
 

@@ -62,4 +62,6 @@ void sync_confchg_fn (
 int sync_deliver_fn (void *msg, struct in_addr source_addr,
 	int endian_conversion_needed);
 
+int sync_in_process (void);
+
 #endif /* SYNC_H_DEFINED */

@@ -76,8 +76,6 @@ int clusterNodeEntries = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
-static int should_send_nodejoin = 0;
-
 SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 {
 	SaClmClusterNodeT *ret = NULL;
@@ -146,26 +144,31 @@ struct libais_handler clm_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_clm_clustertrack,
 		.response_size				= sizeof (struct res_clm_clustertrack),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_clm_trackstop,
 		.response_size				= sizeof (struct res_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -417,10 +420,6 @@ static int clm_confchg_fn (
 		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (joined_list[i]));
 	}
 
-	if (joined_list_entries > 0) {
-		should_send_nodejoin = 1;
-	}
-
 	for (i = 0; i < left_list_entries; i++) {
 		nodes[i] = left_list[i].s_addr;
 	}
@@ -447,9 +446,7 @@ static int clm_sync_process (void)
 	/*
 	 * Send node information to other nodes
 	 */
-	if (should_send_nodejoin) {
-		return (clm_nodejoin_send ());
-	}
+	return (clm_nodejoin_send ());
 	return (0);
 }
 
@@ -458,7 +455,6 @@ static int clm_sync_process (void)
  */
 static void clm_sync_activate (void)
 {
-	should_send_nodejoin = 0;
 	return;
 }
 

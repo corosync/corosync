@@ -108,51 +108,61 @@ static struct libais_handler evt_libais_handlers[] = {
 	.libais_handler_fn = 	message_handler_req_lib_activatepoll,
 	.response_size = 		sizeof(struct res_lib_activatepoll),
 	.response_id = 			MESSAGE_RES_LIB_ACTIVATEPOLL,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_open_channel_async,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_unlink_channel,
 	.response_size = 		sizeof(struct res_evt_channel_unlink),
 	.response_id = 			MESSAGE_RES_EVT_UNLINK_CHANNEL,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_subscribe,
 	.response_size = 		sizeof(struct res_evt_event_subscribe),
 	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
+	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_unsubscribe,
 	.response_size = 		sizeof(struct res_evt_event_unsubscribe),
 	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
+	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_publish,
 	.response_size = 		sizeof(struct res_evt_event_publish),
 	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
 	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
 	.response_id = 			MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
+	.flow_control =			FLOW_CONTROL_REQUIRED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_data_get,
 	.response_size = 		sizeof(struct lib_event_data),
 	.response_id = 			MESSAGE_RES_EVT_EVENT_DATA,
+	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 

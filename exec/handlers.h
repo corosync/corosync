@@ -39,10 +39,16 @@
 #include "totempg.h"
 #include "totemsrp.h"
 
+enum flow_control {
+	FLOW_CONTROL_REQUIRED = 1,
+	FLOW_CONTROL_NOT_REQUIRED = 2
+};
+
 struct libais_handler {
 	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
 	int response_size;
 	int response_id;
+	enum flow_control flow_control;
 };
 
 struct service_handler {

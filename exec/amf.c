@@ -318,61 +318,73 @@ struct libais_handler amf_libais_handlers[] =
 		.libais_handler_fn	= message_handler_req_lib_activatepoll,
 		.response_size		= sizeof (struct res_lib_activatepoll),
 		.response_id		= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
+		.flow_control		= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.libais_handler_fn	= message_handler_req_amf_componentregister,
 		.response_size		= sizeof (struct res_lib_amf_componentregister),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTREGISTER,
+		.flow_control		= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.libais_handler_fn	= message_handler_req_amf_componentunregister,
 		.response_size		= sizeof (struct res_lib_amf_componentunregister),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTUNREGISTER,
+		.flow_control		= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.libais_handler_fn	= message_handler_req_amf_readinessstateget,
 		.response_size		= sizeof (struct res_lib_amf_readinessstateget),
 		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.libais_handler_fn	= message_handler_req_amf_hastateget,
 		.response_size		= sizeof (struct res_lib_amf_hastateget),
 		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstart,
 		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstart),
 		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstop,
 		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstop),
 		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.libais_handler_fn	= message_handler_req_amf_errorreport,
 		.response_size		= sizeof (struct res_lib_amf_errorreport),
 		.response_id		= MESSAGE_RES_AMF_ERRORREPORT,
+		.flow_control		= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 8 */
 		.libais_handler_fn	= message_handler_req_amf_errorcancelall,
 		.response_size		= sizeof (struct res_lib_amf_errorcancelall),
 		.response_id		= MESSAGE_RES_AMF_ERRORCANCELALL,
+		.flow_control		= FLOW_CONTROL_REQUIRED
 	},
 	{ /* 9 */
 		.libais_handler_fn	= message_handler_req_amf_stoppingcomplete,
 		.response_size		= sizeof (struct res_lib_amf_stoppingcomplete),
 		.response_id		= MESSAGE_RES_AMF_STOPPINGCOMPLETE, // TODO 
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.libais_handler_fn	= message_handler_req_amf_response,
 		.response_size		= sizeof (struct res_lib_amf_response),
 		.response_id		= MESSAGE_RES_AMF_RESPONSE, // TODO
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.libais_handler_fn	= message_handler_req_amf_componentcapabilitymodelget,
 		.response_size		= sizeof (struct res_lib_amf_componentcapabilitymodelget),
 		.response_id		= MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 

@@ -68,6 +68,8 @@ static struct sync_callbacks *sync_callbacks;
 
 static int sync_callback_count;
 
+static int sync_processing = 0;
+
 static void (*sync_synchronization_completed) (void);
 
 static int sync_recovery_index = 0;
@@ -145,6 +147,7 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	sync_recovery_index += 1;
 	totemsrp_callback_token_destroy (&sync_callback_token_handle);
 	if (sync_recovery_index > sync_callback_count) {
+		sync_processing = 0;
 	} else {
 		sync_barrier_start (ring_id);
 	}
@@ -174,6 +177,8 @@ void sync_confchg_fn (
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
 		return;
 	}
+
+	sync_processing = 1;
 
 	totemsrp_callback_token_destroy (&sync_callback_token_handle);
 
@@ -245,7 +250,15 @@ int sync_deliver_fn (void *msg, struct in_addr source_addr,
 			sizeof (barrier_data_confchg));
 		if (sync_recovery_index < sync_callback_count) {
 			sync_service_init (&deliver_ring_id);
+		} else {
+			sync_processing = 0;
 		}
 	}
 	return (0);
 }
+
+int sync_in_process (void)
+{
+	return (sync_processing);
+}
+

@@ -572,11 +572,17 @@ retry_recv:
 			}
 
 			/*
-			 * Determine if a message can be queued with totempg and if so
-			 * deliver it, otherwise tell the library we are too busy
+			 * If flow control is required of the library handle, determine that
+			 * openais is not in synchronization and that totempg has room available
+			 * to queue a message, otherwise tell the library we are busy and to
+			 * try again later
 			 */
-	
-			send_ok = totempg_send_ok (1000 + header->size);
+			send_ok =
+				(ais_service_handlers[service - 1]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service_handlers[service - 1]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
+				(totempg_send_ok (1000 + header->size)) &&
+				(sync_in_process() == 0));
+
 			if (send_ok) {
 		//		*prio = 0;
 				res = ais_service_handlers[service - 1]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
