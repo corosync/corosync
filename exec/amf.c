@@ -1871,7 +1871,6 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 		res_lib_amf_componentregister.header.size = sizeof (struct res_lib_amf_componentregister);
 		res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
 		res_lib_amf_componentregister.header.error = error;
-printf ("setting error to %d\n", error);
 
 		libais_send_response (req_exec_amf_componentregister->source.conn_info,
 			&res_lib_amf_componentregister,
