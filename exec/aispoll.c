@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "poll.h"
+#include "aispoll.h"
 #include "../include/list.h"
 #include "tlist.h"
 
