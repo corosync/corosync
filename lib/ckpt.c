@@ -302,6 +302,7 @@ saCkptDispatch (
 			msg = *queue_msg;
 			memcpy (&ckptInstance->message, msg, msg->size);
 			saQueueItemRemove (&ckptInstance->inq);
+			free (msg);
 		} else {
 			/*
 			 * Queue empty, read response from socket
@@ -617,8 +618,8 @@ saCkptCheckpointUnlink (
 		goto exit_close;
 	}
 
-	error = saRecvQueue (fd, &res_lib_ckpt_checkpointunlink,
-		0, MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK);
+	error = saRecvRetry (fd, &res_lib_ckpt_checkpointunlink,
+		sizeof (struct res_lib_ckpt_checkpointunlink), MSG_WAITALL | MSG_NOSIGNAL);
 
 exit_close:
 	close (fd);
@@ -685,9 +686,10 @@ saCkptActiveCheckpointSet (
 		goto error_exit;
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd,
-		&res_lib_ckpt_activecheckpointset, 0,
-		MESSAGE_RES_CKPT_CHECKPOINT_ACTIVECHECKPOINTSET);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_activecheckpointset,
+		sizeof (struct res_lib_ckpt_activecheckpointset),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
@@ -725,8 +727,10 @@ saCkptCheckpointStatusGet (
 		goto error_exit;
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd, &res_lib_ckpt_checkpointstatusget,
-		0, MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_checkpointstatusget,
+		sizeof (struct res_lib_ckpt_checkpointstatusget),
+		MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -796,9 +800,10 @@ saCkptSectionCreate (
 		goto error_exit;
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd,
-		&res_lib_ckpt_sectioncreate, 0,
-		MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_sectioncreate,
+		sizeof (struct res_lib_ckpt_sectioncreate),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
@@ -846,9 +851,10 @@ saCkptSectionDelete (
 	if (error != SA_OK) {
 		goto error_exit;
 	}
-	error = saRecvQueue (ckptCheckpointInstance->fd,
-		&res_lib_ckpt_sectiondelete, 0,
-		MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_sectiondelete,
+		sizeof (struct res_lib_ckpt_sectiondelete),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
@@ -899,9 +905,10 @@ saCkptSectionExpirationTimeSet (
 		}
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd,
+	error = saRecvRetry (ckptCheckpointInstance->fd,
 		&res_lib_ckpt_sectionexpirationtimeset,
-		0, MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET);
+		sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
 
@@ -979,9 +986,10 @@ saCkptSectionIteratorInitialize (
 		goto error_put_destroy;
 	}
 
-	error = saRecvQueue (ckptSectionIteratorInstance->fd,
-		&res_lib_ckpt_sectioniteratorinitialize, 0,
-		MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE);
+	error = saRecvRetry (ckptSectionIteratorInstance->fd,
+		&res_lib_ckpt_sectioniteratorinitialize,
+		sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptSectionIteratorInstance->mutex);
 
@@ -1245,8 +1253,10 @@ saCkptSectionOverwrite (
 		goto error_exit;
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd,
-		&res_lib_ckpt_sectionoverwrite, 0, MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_sectionoverwrite,
+		sizeof (struct res_lib_ckpt_sectionoverwrite),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
@@ -1370,8 +1380,10 @@ saCkptCheckpointSynchronize (
 		goto error_exit;
 	}
 
-	error = saRecvQueue (ckptCheckpointInstance->fd, &res_lib_ckpt_checkpointsynchronize,
-		0, MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE);
+	error = saRecvRetry (ckptCheckpointInstance->fd,
+		&res_lib_ckpt_checkpointsynchronize,
+		sizeof (struct res_lib_ckpt_checkpointsynchronize),
+		MSG_WAITALL | MSG_NOSIGNAL);
 
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->mutex);
