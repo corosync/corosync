@@ -110,10 +110,6 @@ struct _prng_descriptor {
     int (*add_entropy)(const unsigned char *, unsigned long, prng_state *);
     int (*ready)(prng_state *);
     unsigned long (*read)(unsigned char *, unsigned long, prng_state *);
-    int (*done)(prng_state *);
-    int (*export)(unsigned char *, unsigned long *, prng_state *);
-    int (*import)(const unsigned char *, unsigned long, prng_state *);
-    int (*test)(void);
 };
 
 extern const struct _prng_descriptor *prng_descriptor[];
