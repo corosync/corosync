@@ -35,9 +35,10 @@
 #define HANDLERS_H_DEFINED
 
 #include <netinet/in.h>
+#include "main.h"
 
 struct service_handler {
-	int (**libais_handler_fns) (int fd, void *msg);
+	int (**libais_handler_fns) (struct conn_info *conn_info, void *msg);
 	int libais_handler_fns_count;
 	int (**aisexec_handler_fns) (void *msg);
 	int aisexec_handler_fns_count;
@@ -45,8 +46,8 @@ struct service_handler {
 		struct sockaddr_in *member_list, int member_list_entries,
 		struct sockaddr_in *left_list, int left_list_entries,
 		struct sockaddr_in *joined_list, int joined_list_entries);
-	int (*libais_init_fn) (int fd, void *);
-	int (*libais_exit_fn) (int fd);
+	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
+	int (*libais_exit_fn) (struct conn_info *conn_info);
 	int (*aisexec_init_fn) (void);
 };
 

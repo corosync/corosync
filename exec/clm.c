@@ -73,6 +73,8 @@ SaClmClusterNodeT clusterNodes[NODE_MAX];
 
 int clusterNodeEntries = 0;
 
+static DECLARE_LIST_INIT (library_notification_send_listhead);
+
 /*
  * Service Interfaces required by service_message_handler struct
  */
@@ -85,17 +87,24 @@ static int clmConfChg (
 
 static int message_handler_req_exec_clm_nodejoin (void *message);
 
-static int message_handler_req_clm_init (int fd, void *message);
+static int message_handler_req_clm_init (struct conn_info *conn_info,
+	void *message);
 
-static int message_handler_req_lib_activatepoll (int fd, void *message);
+static int message_handler_req_lib_activatepoll (struct conn_info *conn_info,
+	void *message);
 
-static int message_handler_req_clm_trackstart (int fd, void *message);
+static int message_handler_req_clm_trackstart (struct conn_info *conn_info,
+	void *message);
 
-static int message_handler_req_clm_trackstop (int fd, void *message);
+static int message_handler_req_clm_trackstop (struct conn_info *conn_info,
+	void *message);
 
-static int message_handler_req_clm_nodeget (int fd, void *message);
+static int message_handler_req_clm_nodeget (struct conn_info *conn_info,
+	void *message);
 
-static int (*clm_libais_handler_fns[]) (int fd, void *) = {
+static int clm_exit_fn (struct conn_info *conn_info);
+
+static int (*clm_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_lib_activatepoll,
 	message_handler_req_clm_trackstart,
 	message_handler_req_clm_trackstop,
@@ -113,7 +122,7 @@ struct service_handler clm_service_handler = {
 	aisexec_handler_fns_count:	sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
 	confchg_fn:					clmConfChg,
 	libais_init_fn:				message_handler_req_clm_init,
-	libais_exit_fn:				0,
+	libais_exit_fn:				clm_exit_fn,
 	aisexec_init_fn:			clmExecutiveInitialize
 };
 
@@ -152,19 +161,29 @@ static int clmExecutiveInitialize (void)
 	return (0);
 }
 
-static void libraryNotificationCurrentState (int fd)
+static int clm_exit_fn (struct conn_info *conn_info)
+{
+	/*
+	 * Delete track entry if there is one
+	 */
+	list_del (&conn_info->conn_list);
+
+	return (0);
+}
+
+static void libraryNotificationCurrentState (struct conn_info *conn_info)
 {
 	struct res_clm_trackcallback res_clm_trackcallback;
 	SaClmClusterNotificationT clusterNotification[NODE_MAX];
 	int i;
 
-	if ((connections[fd].ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CURRENT) == 0) {
+	if ((conn_info->ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CURRENT) == 0) {
 		return;
 	}
 	/*
 	 * Turn off track current
 	 */
-	connections[fd].ais_ci.u.libclm_ci.trackFlags &= ~SA_TRACK_CURRENT;
+	conn_info->ais_ci.u.libclm_ci.trackFlags &= ~SA_TRACK_CURRENT;
 
 	/*
 	 * Build notification list
@@ -187,16 +206,50 @@ static void libraryNotificationCurrentState (int fd)
 	res_clm_trackcallback.numberOfItems = i;
 	res_clm_trackcallback.numberOfMembers = i;
 	res_clm_trackcallback.notificationBufferAddress = 
-		connections[fd].ais_ci.u.libclm_ci.notificationBufferAddress;
-	libais_send_response (fd, &res_clm_trackcallback, sizeof (struct res_clm_trackcallback));
-	libais_send_response (fd, clusterNotification, sizeof (SaClmClusterNotificationT) * i);
+		conn_info->ais_ci.u.libclm_ci.notificationBufferAddress;
+	libais_send_response (conn_info, &res_clm_trackcallback, sizeof (struct res_clm_trackcallback));
+	libais_send_response (conn_info, clusterNotification, sizeof (SaClmClusterNotificationT) * i);
 }
+
+
+void library_notification_send (SaClmClusterNotificationT *cluster_notification_entries,
+	int notify_entries)
+{
+	struct res_clm_trackcallback res_clm_trackcallback;
+	struct conn_info *conn_info;
+	struct list_head *list;
+
+    for (list = library_notification_send_listhead.next;
+        list != &library_notification_send_listhead;
+        list = list->next) {
+
+        conn_info = list_entry (list, struct conn_info, conn_list);
+
+		/*
+		 * Send notifications to all CLM listeners
+		 */
+		if (notify_entries) {
+			res_clm_trackcallback.header.magic = MESSAGE_MAGIC;
+			res_clm_trackcallback.header.size = sizeof (struct res_clm_trackcallback) +
+				(notify_entries * sizeof (SaClmClusterNotificationT));
+			res_clm_trackcallback.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
+			res_clm_trackcallback.viewNumber = 0;
+			res_clm_trackcallback.numberOfItems = notify_entries;
+			res_clm_trackcallback.numberOfMembers = notify_entries;
+			res_clm_trackcallback.notificationBufferAddress = 
+				conn_info->ais_ci.u.libclm_ci.notificationBufferAddress;
+			libais_send_response (conn_info, &res_clm_trackcallback,
+				sizeof (struct res_clm_trackcallback));
+			libais_send_response (conn_info, cluster_notification_entries,
+				sizeof (SaClmClusterNotificationT) * notify_entries);
+        }
+    }
+}
+
 
 static void libraryNotificationJoin (SaClmNodeIdT node)
 {
-	struct res_clm_trackcallback res_clm_trackcallback;
 	SaClmClusterNotificationT clusterNotification;
-	int fd;
 	int i;
 
 	/*
@@ -210,34 +263,12 @@ static void libraryNotificationJoin (SaClmNodeIdT node)
 		}
 	}
 
-	/*
-	 * Send notifications to all listeners
-	 */
-	for (fd = 0; fd < connection_entries; fd++) {
-		if (connections[fd].service == SOCKET_SERVICE_CLM &&
-			connections[fd].active &&
-			connections[fd].ais_ci.u.libclm_ci.trackFlags) {
-
-			res_clm_trackcallback.header.magic = MESSAGE_MAGIC;
-			res_clm_trackcallback.header.size = sizeof (struct res_clm_trackcallback) +
-				sizeof (SaClmClusterNotificationT);
-			res_clm_trackcallback.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
-			res_clm_trackcallback.viewNumber = 0;
-			res_clm_trackcallback.numberOfItems = 1;
-			res_clm_trackcallback.numberOfMembers = 1;
-			res_clm_trackcallback.notificationBufferAddress = 
-				connections[fd].ais_ci.u.libclm_ci.notificationBufferAddress;
-			libais_send_response (fd, &res_clm_trackcallback, sizeof (struct res_clm_trackcallback));
-			libais_send_response (fd, &clusterNotification, sizeof (SaClmClusterNotificationT));
-		}
-	}
+	library_notification_send (&clusterNotification, 1);
 }
 
 static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 {
-	struct res_clm_trackcallback res_clm_trackcallback;
 	SaClmClusterNotificationT clusterNotification[NODE_MAX];
-	int fd;
 	int i, j;
 	int notifyEntries;
 
@@ -257,29 +288,7 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 		}
 	}
 
-	/*
-	 * Send notifications to all listeners
-	 */
-	for (fd = 0; fd < connection_entries; fd++) {
-		if (connections[fd].service == SOCKET_SERVICE_CLM &&
-			connections[fd].active &&
-			connections[fd].ais_ci.u.libclm_ci.trackFlags) {
-
-			if (notifyEntries) {
-				res_clm_trackcallback.header.magic = MESSAGE_MAGIC;
-				res_clm_trackcallback.header.size = sizeof (struct res_clm_trackcallback) +
-					(notifyEntries * sizeof (SaClmClusterNotificationT));
-				res_clm_trackcallback.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
-				res_clm_trackcallback.viewNumber = 0;
-				res_clm_trackcallback.numberOfItems = notifyEntries;
-				res_clm_trackcallback.numberOfMembers = notifyEntries;
-				res_clm_trackcallback.notificationBufferAddress = 
-					connections[fd].ais_ci.u.libclm_ci.notificationBufferAddress;
-				libais_send_response (fd, &res_clm_trackcallback, sizeof (struct res_clm_trackcallback));
-				libais_send_response (fd, clusterNotification, sizeof (SaClmClusterNotificationT) * notifyEntries);
-			}
-		}
-	}
+	library_notification_send (clusterNotification, notifyEntries);
 
 	/*
 	 * Remove entries from clusterNodes array
@@ -392,67 +401,66 @@ static int message_handler_req_exec_clm_nodejoin (void *message)
 	return (0);
 }
 
-static int message_handler_req_clm_init (int fd, void *message)
+static int message_handler_req_clm_init (struct conn_info *conn_info, void *message)
 {
-	SaErrorT error;
+	SaErrorT error = SA_ERR_SECURITY;
 	struct res_lib_init res_lib_init;
 
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
-        if (connections[fd].authenticated) {
-                connections[fd].service = SOCKET_SERVICE_CLM;
-                error = SA_OK;
-        }
+	if (conn_info->authenticated) {
+		conn_info->service = SOCKET_SERVICE_CLM;
+		error = SA_OK;
+	}
 
-        res_lib_init.header.magic = MESSAGE_MAGIC;
-        res_lib_init.header.size = sizeof (struct res_lib_init);
-        res_lib_init.header.id = MESSAGE_RES_INIT;
-        res_lib_init.error = error;
+	res_lib_init.header.magic = MESSAGE_MAGIC;
+	res_lib_init.header.size = sizeof (struct res_lib_init);
+	res_lib_init.header.id = MESSAGE_RES_INIT;
+	res_lib_init.error = error;
 
-        libais_send_response (fd, &res_lib_init, sizeof (res_lib_init));
+	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
-        if (connections[fd].authenticated) {
-                return (0);
-        }
+	if (conn_info->authenticated) {
+		return (0);
+	}
 
-
-	return (0);
+	return (-1);
 }
 
-static int message_handler_req_lib_activatepoll (int fd, void *message)
+static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
 	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
-	libais_send_response (fd, &res_lib_activatepoll,
+	libais_send_response (conn_info, &res_lib_activatepoll,
 		sizeof (struct res_lib_activatepoll));
 
 	return (0);
 }
 
-int message_handler_req_clm_trackstart (int fd, void *message)
+int message_handler_req_clm_trackstart (struct conn_info *conn_info, void *message)
 {
 	struct req_clm_trackstart *req_clm_trackstart = (struct req_clm_trackstart *)message;
 
 
-	connections[fd].ais_ci.u.libclm_ci.trackFlags = req_clm_trackstart->trackFlags;
-	connections[fd].ais_ci.u.libclm_ci.notificationBufferAddress = req_clm_trackstart->notificationBufferAddress;
+	conn_info->ais_ci.u.libclm_ci.trackFlags = req_clm_trackstart->trackFlags;
+	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = req_clm_trackstart->notificationBufferAddress;
 
-	libraryNotificationCurrentState (fd);
+	libraryNotificationCurrentState (conn_info);
 
 	return (0);
 }
 
-static int message_handler_req_clm_trackstop (int fd, void *message)
+static int message_handler_req_clm_trackstop (struct conn_info *conn_info, void *message)
 {
-	connections[fd].ais_ci.u.libclm_ci.trackFlags = 0;
-	connections[fd].ais_ci.u.libclm_ci.notificationBufferAddress = 0;
+	conn_info->ais_ci.u.libclm_ci.trackFlags = 0;
+	conn_info->ais_ci.u.libclm_ci.notificationBufferAddress = 0;
 
 	return (0);
 }
 
-static int message_handler_req_clm_nodeget (int fd, void *message)
+static int message_handler_req_clm_nodeget (struct conn_info *conn_info, void *message)
 {
 	struct req_clm_nodeget *req_clm_nodeget = (struct req_clm_nodeget *)message;
 	struct res_clm_nodeget res_clm_nodeget;
@@ -484,7 +492,7 @@ static int message_handler_req_clm_nodeget (int fd, void *message)
 	if (valid) {
 		memcpy (&res_clm_nodeget.clusterNode, clusterNode, sizeof (SaClmClusterNodeT));
 	}
-	libais_send_response (fd, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
+	libais_send_response (conn_info, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
 
 	return (0);
 }

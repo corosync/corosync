@@ -58,6 +58,16 @@
 #include "print.h"
 #include "handlers.h"
 
+struct invocation {
+	struct conn_info *conn_info;
+	int interface;
+	int active;
+};
+
+struct invocation *invocation_entries = 0;
+
+int invocation_entries_size = 0;
+
 #ifdef INPARSEDOTH
 enum amfOperationalState {
 	AMF_OPER_DISABLED,
@@ -121,11 +131,11 @@ static void componentOutOfServiceSetNoApi (
 
 #endif
 static void grow_amf_track_table (
-	int fd,
+	struct conn_info *conn_info,
 	int growby);
 
 static void sendProtectionGroupNotification (
-	int fd,
+	struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
 	struct saAmfProtectionGroup *amfProtectionGroup,
 	struct saAmfComponent *changedComponent,
@@ -142,10 +152,10 @@ static void enumerateComponents (
 
 
 static void CSIRemove (
-	int fd);
+	struct conn_info *conn_info);
 
 static void haStateSetClusterInit (
-	int fd,
+	struct conn_info *conn_info,
 	struct saAmfComponent *saAmfComponent);
 #endif
 
@@ -159,7 +169,7 @@ static void readinessStateSetApi (
 
 #ifdef COMPILE_OUT
 static void readinessStateSetClusterInit (
-	int fd,
+	struct conn_info *conn_info,
 	struct saAmfComponent *saAmfComponent);
 #endif
 
@@ -178,7 +188,7 @@ static void dsm (
 
 #if 0 /* NOT IMPLEMENTED */
 static void componentTerminate (
-	int fd);
+	struct conn_info *conn_info);
 #endif
 
 static void timer_function_libamf_healthcheck (
@@ -196,7 +206,7 @@ static void sendProtectionGroupNotifications (
 	SaAmfProtectionGroupChangesT changeToComponent);
 
 static void sendProtectionGroupNotification (
-	int fd,
+	struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
 	struct saAmfProtectionGroup *amfProtectionGroup,
 	struct saAmfComponent *changedComponent,
@@ -204,15 +214,15 @@ static void sendProtectionGroupNotification (
 	SaUint8T trackFlags);
 
 static void response_handler_readinessstatesetcallback (
-	int connection,
-        struct req_amf_response *req_amf_response);
+	struct conn_info *conn_info,
+	struct req_amf_response *req_amf_response);
 
 static void response_handler_csisetcallback (
-	int connection,
-        struct req_amf_response *req_amf_response);
+	struct conn_info *conn_info,
+	struct req_amf_response *req_amf_response);
 
 
-static int amfApiFinalize (int fd);
+static int amf_exit_fn (struct conn_info *conn_info);
 
 static int amfExecutiveInitialize (void);
 
@@ -228,33 +238,33 @@ static int message_handler_req_exec_amf_readinessstateset (void *message);
 
 static int message_handler_req_exec_amf_hastateset (void *message);
 
-static int message_handler_req_amf_init (int fd, void *message);
+static int message_handler_req_amf_init (int conn_info, void *message);
 
-static int message_handler_req_lib_activatepoll (int fd, void *message);
+static int message_handler_req_lib_activatepoll (int conn_info, void *message);
 
-static int message_handler_req_amf_componentregister (int fd, void *message);
+static int message_handler_req_amf_componentregister (int conn_info, void *message);
 
-static int message_handler_req_amf_componentunregister (int fd, void *message);
+static int message_handler_req_amf_componentunregister (int conn_info, void *message);
 
-static int message_handler_req_amf_readinessstateget (int fd, void *message);
+static int message_handler_req_amf_readinessstateget (int conn_info, void *message);
 
-static int message_handler_req_amf_hastateget (int fd, void *message);
+static int message_handler_req_amf_hastateget (int conn_info, void *message);
 
-static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *message);
+static int message_handler_req_amf_protectiongrouptrackstart (int conn_info, void *message);
 
-static int message_handler_req_amf_protectiongrouptrackstop (int fd, void *message);
+static int message_handler_req_amf_protectiongrouptrackstop (int conn_info, void *message);
 
-static int message_handler_req_amf_errorreport (int fd, void *message);
+static int message_handler_req_amf_errorreport (int conn_info, void *message);
 
-static int message_handler_req_amf_errorcancelall (int fd, void *message);
+static int message_handler_req_amf_errorcancelall (int conn_info, void *message);
 
-static int message_handler_req_amf_stoppingcomplete (int fd, void *message);
+static int message_handler_req_amf_stoppingcomplete (int conn_info, void *message);
 
-static int message_handler_req_amf_response (int fd, void *message);
+static int message_handler_req_amf_response (int conn_info, void *message);
 
-static int message_handler_req_amf_componentcapabilitymodelget (int fd, void *message);
+static int message_handler_req_amf_componentcapabilitymodelget (int conn_info, void *message);
 
-int (*amf_libais_handler_fns[]) (int fd, void *) = {
+int (*amf_libais_handler_fns[]) (int conn_info, void *) = {
 	message_handler_req_lib_activatepoll,
 	message_handler_req_amf_componentregister,
 	message_handler_req_amf_componentunregister,
@@ -288,21 +298,21 @@ struct service_handler amf_service_handler = {
 	aisexec_handler_fns_count:	sizeof (amf_aisexec_handler_fns) / sizeof (int (*)),
 	confchg_fn:					0,
 	libais_init_fn:				message_handler_req_amf_init,
-	libais_exit_fn:				amfApiFinalize,
+	libais_exit_fn:				amf_exit_fn,
 	aisexec_init_fn:			amfExecutiveInitialize
 };
 
-static void grow_amf_track_table (int fd, int growby)
+static void grow_amf_track_table (struct conn_info *conn_info, int growby)
 {
 	struct libamf_ci_trackentry *tracks;
 	int newsize;
-	int currsize = connections[fd].ais_ci.u.libamf_ci.trackEntries;
+	int currsize = conn_info->ais_ci.u.libamf_ci.trackEntries;
 
 	
 	newsize = growby + currsize;
 
 	if (newsize > currsize) {
-		tracks = (struct libamf_ci_trackentry *)mempool_realloc (connections[fd].ais_ci.u.libamf_ci.tracks,
+		tracks = (struct libamf_ci_trackentry *)mempool_realloc (conn_info->ais_ci.u.libamf_ci.tracks,
 			(newsize) * sizeof (struct libamf_ci_trackentry));
 		if (tracks == 0) {
 #ifdef DEBUG
@@ -312,9 +322,61 @@ static void grow_amf_track_table (int fd, int growby)
 			exit (1);
 		}
 		memset (&tracks[currsize], 0, growby * sizeof (struct libamf_ci_trackentry));
-		connections[fd].ais_ci.u.libamf_ci.trackEntries = newsize;
-		connections[fd].ais_ci.u.libamf_ci.tracks = tracks;
+		conn_info->ais_ci.u.libamf_ci.trackEntries = newsize;
+		conn_info->ais_ci.u.libamf_ci.tracks = tracks;
 	}
+}
+
+int req_amf_invocation_create (int interface, 
+	struct conn_info *conn_info)
+{
+	struct invocation *invocation_addr = 0;
+	struct invocation *invocation_temp;
+	int i;
+	int loc;
+
+	for (i = 0; i < invocation_entries_size; i++) {
+		if (invocation_entries[i].active == 0) {
+			invocation_addr = &invocation_entries[i];
+			loc = i;
+			break;
+		}
+	}
+	if (invocation_addr == 0) {
+		invocation_temp = (struct invocation *)realloc (invocation_entries,
+			(invocation_entries_size + 1) * sizeof (struct invocation));
+		if (invocation_temp == 0) {
+			return (-1);
+		}
+		invocation_entries = invocation_temp;
+		invocation_addr = &invocation_entries[invocation_entries_size];
+		loc = invocation_entries_size;
+		invocation_entries_size += 1;
+	}
+	invocation_addr->interface = interface;
+	invocation_addr->conn_info = conn_info;
+	invocation_addr->active = 1;
+
+	return (loc);
+}
+
+int req_amf_invocation_get_and_destroy (int invocation, int *interface,
+	struct conn_info **conn_info)
+{
+	if (invocation > invocation_entries_size) {
+printf ("a\n");
+		return (-1);
+	}
+	if (invocation_entries[invocation].active == 0) {
+printf ("b\n");
+		return (-1);
+	}
+
+	*interface = invocation_entries[invocation].interface;
+	*conn_info = invocation_entries[invocation].conn_info;
+	memset (&invocation_entries[invocation], 0, sizeof (struct invocation));
+	
+	return (0);
 }
 
 void componentUnregister (
@@ -337,7 +399,7 @@ void componentUnregister (
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
-	req_exec_amf_componentunregister.source.fd = 0;
+	req_exec_amf_componentunregister.source.conn_info = 0;
 	req_exec_amf_componentunregister.source.in_addr.s_addr = 0;
 
 	memset (&req_exec_amf_componentunregister.req_lib_amf_componentunregister,
@@ -451,12 +513,12 @@ int activeServiceUnitsCount (struct saAmfGroup *saAmfGroup) {
 #ifdef CONFIG_TODO
 This should be sent after a service unit is made out of service
 
-void CSIRemove (int fd)
+void CSIRemove (struct conn_info *conn_info)
 {
 	struct res_amf_csiremovecallback res_amf_csiremovecallback;
 		
-	if (connections[fd].active == 0 ||
-		connections[fd].service != SOCKET_SERVICE_AMF) {
+	if (conn_info->active == 0 ||
+		conn_info->service != SOCKET_SERVICE_AMF) {
 
 		return;
 	}
@@ -469,15 +531,15 @@ void CSIRemove (int fd)
 	res_amf_csiremovecallback.invocation =
 		req_amf_response_set (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFCSIREMOVECALLBACK,
-		fd);
+		conn_info->fd);
 
 	memcpy (&res_amf_csiremovecallback.compName,
-		&connections[fd].component->name, sizeof (SaNameT));
+		&conn_info->component->name, sizeof (SaNameT));
 	memcpy (&res_amf_csiremovecallback.csiName,
-		&connections[fd].component->saAmfProtectionGroup->name, sizeof (SaNameT));
+		&conn_info->component->saAmfProtectionGroup->name, sizeof (SaNameT));
 
 	res_amf_csiremovecallback.csiFlags = SA_AMF_CSI_ALL_INSTANCES;
-	libais_send_response (fd, &res_amf_csiremovecallback,
+	libais_send_response (conn_info, &res_amf_csiremovecallback,
 		sizeof (struct res_amf_csiremovecallback));
 }
 #endif
@@ -497,8 +559,8 @@ void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 	/*
 	 * this should be an assertion
 	 */
-	if (connections[component->fd].active == 0 ||
-		connections[component->fd].service != SOCKET_SERVICE_AMF) {
+	if (component->conn_info->active == 0 ||
+		component->conn_info->service != SOCKET_SERVICE_AMF) {
 		return;
 	}
 
@@ -506,9 +568,12 @@ void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 	res_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
 	res_amf_csisetcallback.header.size = sizeof (struct res_amf_csisetcallback);
 	res_amf_csisetcallback.invocation =
-		req_amf_response_set (
+		req_amf_invocation_create (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFCSISETCALLBACK,
-		component->fd);
+		component->conn_info);
+	if (res_amf_csisetcallback.invocation == -1) {
+		printf ("TODO set callback\n");
+	}
 	memcpy (&res_amf_csisetcallback.compName,
 		&component->name, sizeof (SaNameT));
 	memcpy (&res_amf_csisetcallback.csiName,
@@ -522,14 +587,14 @@ void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 
 	component->newHAState = haState;
 
-	libais_send_response (component->fd, &res_amf_csisetcallback,
+	libais_send_response (component->conn_info, &res_amf_csisetcallback,
 		sizeof (struct res_amf_csisetcallback));
 }
 
 #ifdef COMPILE_OUT
 
 void haStateSetClusterInit (
-	int fd,
+	struct conn_info *conn_info,
 	struct saAmfComponent *saAmfComponent)
 {
 	struct req_exec_amf_hastatesetcluster req_exec_amf_hastatesetcluster;
@@ -545,7 +610,7 @@ void haStateSetClusterInit (
 	log_printf (LOG_LEVEL_DEBUG, "Sending init ha state message to cluster node to set ha state of component %s\n", getSaNameT (&saAmfComponent->name));
 	log_printf (LOG_LEVEL_DEBUG, "ha state is %d\n", saAmfComponent->currentHAState);
 
-	libais_send_response (fd, &req_exec_amf_hastatesetcluster,
+	libais_send_response (conn_info, &req_exec_amf_hastatesetcluster,
 		sizeof (struct req_exec_amf_hastatesetcluster));
 }
 #endif
@@ -591,8 +656,8 @@ void readinessStateSetApi (struct saAmfComponent *component,
 	/*
 	 * this should be an assertion
 	 */
-	if (connections[component->fd].active == 0 ||
-		connections[component->fd].service != SOCKET_SERVICE_AMF) {
+	if (component->conn_info->active == 0 ||
+		component->conn_info->service != SOCKET_SERVICE_AMF) {
 
 		return;
 	}
@@ -601,23 +666,26 @@ void readinessStateSetApi (struct saAmfComponent *component,
 	res_amf_readinessstatesetcallback.header.id = MESSAGE_RES_AMF_READINESSSTATESETCALLBACK;
 	res_amf_readinessstatesetcallback.header.size = sizeof (struct res_amf_readinessstatesetcallback);
 	res_amf_readinessstatesetcallback.invocation =
-		req_amf_response_set (
+		req_amf_invocation_create (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFREADINESSSTATESETCALLBACK,
-		component->fd);
+		component->conn_info);
+	if (res_amf_readinessstatesetcallback.invocation == -1) {
+		printf ("TODO readiness set callback\n");
+	}
 	memcpy (&res_amf_readinessstatesetcallback.compName,
-		&connections[component->fd].component->name, sizeof (SaNameT));
+		&component->name, sizeof (SaNameT));
 	res_amf_readinessstatesetcallback.readinessState = readinessState;
-	connections[component->fd].component->newReadinessState = readinessState;
+	component->newReadinessState = readinessState;
 
-	log_printf (LOG_LEVEL_DEBUG, "Setting component->fd %d to readiness state %d\n", component->fd, readinessState);
+	log_printf (LOG_LEVEL_DEBUG, "Setting conn_info %x to readiness state %d\n", component->conn_info, readinessState);
 
-	libais_send_response (component->fd, &res_amf_readinessstatesetcallback,
+	libais_send_response (component->conn_info, &res_amf_readinessstatesetcallback,
 		sizeof (struct res_amf_readinessstatesetcallback));
 }
 
 #ifdef COMPILE_OUT
 void readinessStateSetClusterInit (
-	int fd,
+	struct conn_info *conn_info,
 	struct saAmfComponent *saAmfComponent)
 {
 
@@ -634,7 +702,7 @@ void readinessStateSetClusterInit (
 	log_printf (LOG_LEVEL_DEBUG, "Sending init message to one cluster node to set readiness state of component %s\n", getSaNameT (&saAmfComponent->name));
 	log_printf (LOG_LEVEL_DEBUG, "readiness state is %d\n", saAmfComponent->currentReadinessState);
 
-	libais_send_response (fd, &req_exec_amf_readinessstatesetcluster,
+	libais_send_response (conn_info, &req_exec_amf_readinessstatesetcluster,
 		sizeof (struct req_exec_amf_readinessstatesetcluster));
 }
 #endif
@@ -668,7 +736,7 @@ void enumerateComponentsClusterInit (
 	struct saAmfComponent *component,
 	void *data)
 {
-	int fd = (int)data;
+	struct conn_info *conn_info = (int)data;
 
 	return;
 	readinessStateSetClusterInit (fd, component);
@@ -996,7 +1064,7 @@ void dsmEnabledUnlockedActiveRequested (
 		log_printf (LOG_LEVEL_DEBUG, "Adding healthcheck timer\n");
 		poll_timer_add (aisexec_poll_handle,
 			component->healthcheckInterval,
-			(void *)component->fd,
+			(void *)component->conn_info,
 			timer_function_libamf_healthcheck,
 			&component->timer_healthcheck);
 	}
@@ -1013,7 +1081,7 @@ void dsmEnabledUnlockedStandbyRequested (
 
 		poll_timer_add (aisexec_poll_handle,
 			component->healthcheckInterval,
-			(void *)component->fd,
+			(void *)component->conn_info,
 			timer_function_libamf_healthcheck,
 			&component->timer_healthcheck);
 	}
@@ -1137,7 +1205,7 @@ static void dsm (
  * This is currently unused, but executes the componentterminatecallback
  * callback in the AMF api.
  */
-void componentTerminate (int fd)
+void componentTerminate (struct conn_info *conn_info)
 {
 	struct res_amf_componentterminatecallback res_amf_componentterminatecallback;
 
@@ -1169,7 +1237,7 @@ void errorReport (
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
-	req_exec_amf_errorreport.source.fd = 0;
+	req_exec_amf_errorreport.source.conn_info = 0;
 	req_exec_amf_errorreport.source.in_addr.s_addr = 0;
 	memcpy (&req_exec_amf_errorreport.req_lib_amf_errorreport.erroneousComponent,
 		&component->name,
@@ -1183,53 +1251,57 @@ void errorReport (
 }
 
 int healthcheck_instance = 0;
+
 void timer_function_libamf_healthcheck (void *data) {
 	struct res_amf_healthcheckcallback res_amf_healthcheckcallback;
-	int connection = (int)data;
+	struct conn_info *conn_info = (struct conn_info *)data;
 
 	res_amf_healthcheckcallback.header.magic = MESSAGE_MAGIC;
 	res_amf_healthcheckcallback.header.id = MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
 	res_amf_healthcheckcallback.header.size = sizeof (struct res_amf_healthcheckcallback);
 
 	log_printf (LOG_LEVEL_DEBUG, "checking healthcheck on component %s\n",
-		getSaNameT (&connections[connection].component->name));
-	if (connections[connection].component->healthcheck_outstanding == 1) {
+		getSaNameT (&conn_info->component->name));
+	if (conn_info->component->healthcheck_outstanding == 1) {
 
 		log_printf (LOG_LEVEL_DEBUG, "Healthcheck timed out on component %s\n",
-			getSaNameT (&connections[connection].component->name));
+			getSaNameT (&conn_info->component->name));
 
 		/*
 		 * Report the error to the rest of the cluster using the normal state machine
 		 */
-		errorReport (connections[connection].component, SA_AMF_NOT_RESPONDING);
+		errorReport (conn_info->component, SA_AMF_NOT_RESPONDING);
 
-		connections[connection].component->healthcheck_outstanding = 2;
+		conn_info->component->healthcheck_outstanding = 2;
 	} else
-	if (connections[connection].component->healthcheck_outstanding == 0) {
-		connections[connection].component->healthcheck_outstanding = 1;
+	if (conn_info->component->healthcheck_outstanding == 0) {
+		conn_info->component->healthcheck_outstanding = 1;
 		/*
 		 * Send healthcheck message
 		 */
 		res_amf_healthcheckcallback.invocation =
-			req_amf_response_set (
+			req_amf_invocation_create (
 			MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK,
-			connection);
+			conn_info);
+	if (res_amf_healthcheckcallback.invocation == -1) {
+		printf ("TODO healthcheck set callback\n");
+	}
 		memcpy (&res_amf_healthcheckcallback.compName,
-			&connections[connection].component->name,
+			&conn_info->component->name,
 			sizeof (SaNameT));
 		res_amf_healthcheckcallback.checkType = SA_AMF_HEARTBEAT;
 
 	log_printf (LOG_LEVEL_DEBUG, "Sending instance %d\n", healthcheck_instance);
 	res_amf_healthcheckcallback.instance = healthcheck_instance++;
-		libais_send_response (connection,
+		libais_send_response (conn_info,
 			&res_amf_healthcheckcallback,
 			sizeof (struct res_amf_healthcheckcallback));
 
 		poll_timer_add (aisexec_poll_handle,
-			connections[connection].component->healthcheckInterval,
-			(void *)connection,
+			conn_info->component->healthcheckInterval,
+			(void *)conn_info,
 			timer_function_libamf_healthcheck,
-			&connections[connection].component->timer_healthcheck);
+			&conn_info->component->timer_healthcheck);
 	}
 }
 
@@ -1330,36 +1402,42 @@ struct saAmfComponent *findComponentInProtectionGroup (
 	}
 }
 
+DECLARE_LIST_INIT (library_notification_send_listhead);
+
 void sendProtectionGroupNotifications (
 	struct saAmfComponent *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent)
 {
-	int fd;
 	int i;
+	struct conn_info *conn_info;
+	struct list_head *list;
 
 	log_printf (LOG_LEVEL_DEBUG, "sendProtectionGroupNotifications: sending PGs to API.\n");
 
-	for (fd = 0; fd < connection_entries; fd++) {
-		if (connections[fd].active &&
-			connections[fd].service == SOCKET_SERVICE_AMF) {
+	/*
+	 * Iterate all tracked connections
+	 */
+	for (list = library_notification_send_listhead.next;
+		list != &library_notification_send_listhead;
+		list = list->next) {
 
-			for (i = 0; i < connections[fd].ais_ci.u.libamf_ci.trackEntries; i++) {
-				if (connections[fd].ais_ci.u.libamf_ci.tracks[i].active) {
+		conn_info = list_entry (list, struct conn_info, conn_list);
+		for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
+			if (conn_info->ais_ci.u.libamf_ci.tracks[i].active) {
 
-					sendProtectionGroupNotification (fd,
-						connections[fd].ais_ci.u.libamf_ci.tracks[i].notificationBufferAddress, 
-						changedComponent->saAmfProtectionGroup,
-						changedComponent,
-						changeToComponent,
-						connections[fd].ais_ci.u.libamf_ci.tracks[i].trackFlags);
-				} /* if active */
-			} /* for all track entries */
-		} /* if connection active and service is AMF */
+				sendProtectionGroupNotification (conn_info,
+					conn_info->ais_ci.u.libamf_ci.tracks[i].notificationBufferAddress, 
+					changedComponent->saAmfProtectionGroup,
+					changedComponent,
+					changeToComponent,
+					conn_info->ais_ci.u.libamf_ci.tracks[i].trackFlags);
+			} /* if track flags active */
+		} /* for all track entries */
 	} /* for all connection entries */
-
 }
 
-void sendProtectionGroupNotification (int fd,
+
+void sendProtectionGroupNotification (struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
 	struct saAmfProtectionGroup *amfProtectionGroup,
 	struct saAmfComponent *changedComponent,
@@ -1424,10 +1502,10 @@ void sendProtectionGroupNotification (int fd,
 			&amfProtectionGroup->name, sizeof (SaNameT));
 
 		res_amf_protectiongrouptrackcallback.notificationBufferAddress = notificationBufferAddress;
-		libais_send_response (fd, &res_amf_protectiongrouptrackcallback,
+		libais_send_response (conn_info, &res_amf_protectiongrouptrackcallback,
 			sizeof (struct res_amf_protectiongrouptrackcallback));
 
-		libais_send_response (fd, protectionGroupNotification,
+		libais_send_response (conn_info, protectionGroupNotification,
 			sizeof (SaAmfProtectionGroupNotificationT) * notifyEntries);
 
 		mempool_free (protectionGroupNotification);
@@ -1437,15 +1515,15 @@ void sendProtectionGroupNotification (int fd,
 /*
  * The response handler for readiness state set callback
  */
-static void response_handler_readinessstatesetcallback (int connection,
+static void response_handler_readinessstatesetcallback (struct conn_info *conn_info,
 	struct req_amf_response *req_amf_response)
 {
 
-	if (req_amf_response->error == SA_OK && connections[connection].component) {
+	if (req_amf_response->error == SA_OK && conn_info->component) {
 	log_printf (LOG_LEVEL_DEBUG, "CALLBACK sending readiness state to %s\n", 
-		getSaNameT (&connections[connection].component->name));
-		readinessStateSetCluster (connections[connection].component,
-			connections[connection].component->newReadinessState);
+		getSaNameT (&conn_info->component->name));
+		readinessStateSetCluster (conn_info->component,
+			conn_info->component->newReadinessState);
 	}
 }
 
@@ -1453,13 +1531,13 @@ static void response_handler_readinessstatesetcallback (int connection,
  *	iterate service unit components
  *		telling all components not already QUIESCING to enter SA_AMF_QUIESCED state
  */
-static void response_handler_csisetcallback (int connection,
+static void response_handler_csisetcallback (struct conn_info *conn_info,
 	struct req_amf_response *req_amf_response)
 {
 
-	if (req_amf_response->error == SA_OK && connections[connection].component) {
-		haStateSetCluster (connections[connection].component,
-			connections[connection].component->newHAState);
+	if (req_amf_response->error == SA_OK && conn_info->component) {
+		haStateSetCluster (conn_info->component,
+			conn_info->component->newHAState);
 	}
 }
 
@@ -1468,24 +1546,24 @@ int amfExecutiveInitialize (void)
 	return (0);
 }
 
-int amfApiFinalize (int fd)
+int amf_exit_fn (struct conn_info *conn_info)
 {
 	/*
 	 * Unregister all components registered to this file descriptor
 	 */
-	if (connections[fd].service == SOCKET_SERVICE_AMF) {
-		componentUnregister (connections[fd].component);
+	if (conn_info->service == SOCKET_SERVICE_AMF) {
+		componentUnregister (conn_info->component);
 
-	if (connections[fd].component && connections[fd].component->timer_healthcheck) {
-		poll_timer_delete (aisexec_poll_handle,
-			connections[fd].component->timer_healthcheck);
+		if (conn_info->component && conn_info->component->timer_healthcheck) {
+			poll_timer_delete (aisexec_poll_handle,
+				conn_info->component->timer_healthcheck);
 
-		connections[fd].component->timer_healthcheck = 0;
-	}
+			conn_info->component->timer_healthcheck = 0;
+		}
 
-		if (connections[fd].ais_ci.u.libamf_ci.tracks) {
-			mempool_free (connections[fd].ais_ci.u.libamf_ci.tracks);
-			connections[fd].ais_ci.u.libamf_ci.tracks = 0;
+		if (conn_info->ais_ci.u.libamf_ci.tracks) {
+			mempool_free (conn_info->ais_ci.u.libamf_ci.tracks);
+			conn_info->ais_ci.u.libamf_ci.tracks = 0;
 		}
 	}
 
@@ -1544,7 +1622,7 @@ static int message_handler_req_exec_amf_componentregister (void *message)
 	if (error == SA_OK) {
 		component->local = 0;
 		component->registered = 1;
-		component->fd = req_exec_amf_componentregister->source.fd;
+		component->conn_info = req_exec_amf_componentregister->source.conn_info;
 		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->currentHAState = SA_AMF_QUIESCED;
@@ -1565,17 +1643,18 @@ static int message_handler_req_exec_amf_componentregister (void *message)
 	if (req_exec_amf_componentregister->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		if (error == SA_OK) {
 			component->local = 1;
-			connections[req_exec_amf_componentregister->source.fd].component = component;
+			req_exec_amf_componentregister->source.conn_info->component = component;
 		}
 
-		log_printf (LOG_LEVEL_DEBUG, "sending component register response to fd %d\n", req_exec_amf_componentregister->source.fd);
+		log_printf (LOG_LEVEL_DEBUG, "sending component register response to fd %d\n", req_exec_amf_componentregister->source.conn_info);
 
 		res_lib_amf_componentregister.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_componentregister.header.size = sizeof (struct res_lib_amf_componentregister);
 		res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
 		res_lib_amf_componentregister.error = error;
 
-		libais_send_response (req_exec_amf_componentregister->source.fd, &res_lib_amf_componentregister,
+		libais_send_response (req_exec_amf_componentregister->source.conn_info,
+			&res_lib_amf_componentregister,
 			sizeof (struct res_lib_amf_componentregister));
 	}
 
@@ -1645,14 +1724,14 @@ static int message_handler_req_exec_amf_componentunregister (void *message)
 	 */
 	if (req_exec_amf_componentunregister->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending component unregister response to fd %d\n",
-			req_exec_amf_componentunregister->source.fd);
+			req_exec_amf_componentunregister->source.conn_info);
 
 		res_lib_amf_componentunregister.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_componentunregister.header.size = sizeof (struct res_lib_amf_componentunregister);
 		res_lib_amf_componentunregister.header.id = MESSAGE_RES_AMF_COMPONENTUNREGISTER;
 		res_lib_amf_componentunregister.error = error;
 
-		libais_send_response (req_exec_amf_componentunregister->source.fd,
+		libais_send_response (req_exec_amf_componentunregister->source.conn_info,
 			&res_lib_amf_componentunregister, sizeof (struct res_lib_amf_componentunregister));
 	}
 
@@ -1687,14 +1766,14 @@ static int message_handler_req_exec_amf_errorreport (void *message)
 	 */
 	if (req_exec_amf_errorreport->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
-			req_exec_amf_errorreport->source.fd);
+			req_exec_amf_errorreport->source.conn_info);
 
 		res_lib_amf_errorreport.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_errorreport.header.size = sizeof (struct res_lib_amf_errorreport);
 		res_lib_amf_errorreport.header.id = MESSAGE_RES_AMF_ERRORREPORT;
 		res_lib_amf_errorreport.error = error;
 
-		libais_send_response (req_exec_amf_errorreport->source.fd,
+		libais_send_response (req_exec_amf_errorreport->source.conn_info,
 			&res_lib_amf_errorreport, sizeof (struct res_lib_amf_errorreport));
 	}
 
@@ -1731,14 +1810,14 @@ static int message_handler_req_exec_amf_errorcancelall (void *message)
 	 */
 	if (req_exec_amf_errorcancelall->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
-			req_exec_amf_errorcancelall->source.fd);
+			req_exec_amf_errorcancelall->source.conn_info);
 
 		res_lib_amf_errorcancelall.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_errorcancelall.header.size = sizeof (struct res_lib_amf_errorcancelall);
 		res_lib_amf_errorcancelall.header.id = MESSAGE_RES_AMF_ERRORCANCELALL;
 		res_lib_amf_errorcancelall.error = error;
 
-		libais_send_response (req_exec_amf_errorcancelall->source.fd,
+		libais_send_response (req_exec_amf_errorcancelall->source.conn_info,
 			&res_lib_amf_errorcancelall, sizeof (struct res_lib_amf_errorcancelall));
 	}
 
@@ -1792,15 +1871,15 @@ static int message_handler_req_exec_amf_hastateset (void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_init (int fd, void *message)
+static int message_handler_req_amf_init (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_init res_lib_init;
 	SaErrorT error = SA_ERR_SECURITY;
 
 	log_printf (LOG_LEVEL_DEBUG, "Got AMF request to initalize availability management framework service.\n");
 
-	if (connections[fd].authenticated) {
-		connections[fd].service = SOCKET_SERVICE_AMF;
+	if (conn_info->authenticated) {
+		conn_info->service = SOCKET_SERVICE_AMF;
 		error = SA_OK;
 	}
 
@@ -1809,27 +1888,27 @@ static int message_handler_req_amf_init (int fd, void *message)
 	res_lib_init.header.id = MESSAGE_RES_INIT;
 	res_lib_init.error = error;
 
-	libais_send_response (fd, &res_lib_init, sizeof (res_lib_init));
+	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
-	if (connections[fd].authenticated) {
+	if (conn_info->authenticated) {
 		return (0);
 	}
 	return (-1);
 }
 
-static int message_handler_req_lib_activatepoll (int fd, void *message)
+static int message_handler_req_lib_activatepoll (int conn_info, void *message)
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
 	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
-	libais_send_response (fd, &res_lib_activatepoll, sizeof (struct res_lib_activatepoll));
+	libais_send_response (conn_info, &res_lib_activatepoll, sizeof (struct res_lib_activatepoll));
 
 	return (0);
 }
 
-static int message_handler_req_amf_componentregister (int fd, void *message)
+static int message_handler_req_amf_componentregister (int conn_info, void *message)
 {
 	struct req_amf_componentregister *req_lib_amf_componentregister = (struct req_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
@@ -1840,7 +1919,7 @@ static int message_handler_req_amf_componentregister (int fd, void *message)
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
 
-	req_exec_amf_componentregister.source.fd = fd;
+	req_exec_amf_componentregister.source.conn_info = conn_info;
 	req_exec_amf_componentregister.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 	memcpy (&req_exec_amf_componentregister.req_lib_amf_componentregister,
 		req_lib_amf_componentregister,
@@ -1854,7 +1933,7 @@ static int message_handler_req_amf_componentregister (int fd, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_componentunregister (int fd, void *message)
+static int message_handler_req_amf_componentunregister (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_amf_componentunregister *req_lib_amf_componentunregister = (struct req_lib_amf_componentunregister *)message;
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
@@ -1866,7 +1945,7 @@ static int message_handler_req_amf_componentunregister (int fd, void *message)
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
-	req_exec_amf_componentunregister.source.fd = fd;
+	req_exec_amf_componentunregister.source.conn_info = conn_info;
 	req_exec_amf_componentunregister.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 	memcpy (&req_exec_amf_componentunregister.req_lib_amf_componentunregister,
 		req_lib_amf_componentunregister,
@@ -1884,7 +1963,7 @@ static int message_handler_req_amf_componentunregister (int fd, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_readinessstateget (int fd, void *message)
+static int message_handler_req_amf_readinessstateget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_readinessstateget *req_amf_readinessstateget = (struct req_amf_readinessstateget *)message;
 	struct res_amf_readinessstateget res_amf_readinessstateget;
@@ -1903,11 +1982,11 @@ static int message_handler_req_amf_readinessstateget (int fd, void *message)
 			&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
 		res_amf_readinessstateget.error = SA_OK;
 	}
-	libais_send_response (fd, &res_amf_readinessstateget, sizeof (struct res_amf_readinessstateget));
+	libais_send_response (conn_info, &res_amf_readinessstateget, sizeof (struct res_amf_readinessstateget));
 	return (0);
 }
 
-static int message_handler_req_amf_hastateget (int fd, void *message)
+static int message_handler_req_amf_hastateget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_hastateget *req_amf_hastateget = (struct req_amf_hastateget *)message;
 	struct res_amf_hastateget res_amf_hastateget;
@@ -1925,11 +2004,11 @@ static int message_handler_req_amf_hastateget (int fd, void *message)
 			&component->currentHAState, sizeof (SaAmfHAStateT));
 		res_amf_hastateget.error = SA_OK;
 	}
-	libais_send_response (fd, &res_amf_hastateget, sizeof (struct res_amf_hastateget));
+	libais_send_response (conn_info, &res_amf_hastateget, sizeof (struct res_amf_hastateget));
 	return (0);
 }
 
-static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *message)
+static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_protectiongrouptrackstart *req_amf_protectiongrouptrackstart = (struct req_amf_protectiongrouptrackstart *)message;
 	struct res_amf_protectiongrouptrackstart res_amf_protectiongrouptrackstart;
@@ -1941,15 +2020,16 @@ static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *mess
 
 	if (amfProtectionGroup) {
 		log_printf (LOG_LEVEL_DEBUG, "protectiongrouptrackstart: Got valid track start on CSI: %s.\n", getSaNameT (&req_amf_protectiongrouptrackstart->csiName));
-		for (i = 0; i < connections[fd].ais_ci.u.libamf_ci.trackEntries; i++) {
-			if (connections[fd].ais_ci.u.libamf_ci.tracks[i].active == 0) {
-				track = &connections[fd].ais_ci.u.libamf_ci.tracks[i];
+		for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
+			if (conn_info->ais_ci.u.libamf_ci.tracks[i].active == 0) {
+				track = &conn_info->ais_ci.u.libamf_ci.tracks[i];
 				break;
 			}
 		}
+
 		if (track == 0) {
-			grow_amf_track_table (fd, 1);
-			track = &connections[fd].ais_ci.u.libamf_ci.tracks[i];
+			grow_amf_track_table (conn_info, 1);
+			track = &conn_info->ais_ci.u.libamf_ci.tracks[i];
 		}
 
 		track->active = 1;
@@ -1957,6 +2037,10 @@ static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *mess
 		track->notificationBufferAddress = req_amf_protectiongrouptrackstart->notificationBufferAddress;
 		memcpy (&track->csiName,
 			&req_amf_protectiongrouptrackstart->csiName, sizeof (SaNameT));
+
+		conn_info->ais_ci.u.libamf_ci.trackActive += 1;
+
+		list_add (&conn_info->conn_list, &library_notification_send_listhead);
 	
 		/*
 		 * If SA_TRACK_CURRENT is specified, write out all current connections
@@ -1973,13 +2057,13 @@ static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *mess
 	if (amfProtectionGroup) {
 		res_amf_protectiongrouptrackstart.error = SA_OK;
 	}
-	libais_send_response (fd, &res_amf_protectiongrouptrackstart,
+	libais_send_response (conn_info, &res_amf_protectiongrouptrackstart,
 		sizeof (struct res_amf_protectiongrouptrackstart));
 
 	if (amfProtectionGroup &&
 		req_amf_protectiongrouptrackstart->trackFlags & SA_TRACK_CURRENT) {
 
-		sendProtectionGroupNotification (fd,
+		sendProtectionGroupNotification (conn_info,
 			track->notificationBufferAddress,
 			amfProtectionGroup,
 			0, 
@@ -1991,24 +2075,28 @@ static int message_handler_req_amf_protectiongrouptrackstart (int fd, void *mess
 	return (0);
 }
 
-static int message_handler_req_amf_protectiongrouptrackstop (int fd, void *message)
+static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_protectiongrouptrackstop *req_amf_protectiongrouptrackstop = (struct req_amf_protectiongrouptrackstop *)message;
 	struct res_amf_protectiongrouptrackstop res_amf_protectiongrouptrackstop;
 	struct libamf_ci_trackentry *track = 0;
 	int i;
 
-	for (i = 0; i < connections[fd].ais_ci.u.libamf_ci.trackEntries; i++) {
+	for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
 		if (SaNameTisNameT (&req_amf_protectiongrouptrackstop->csiName,
-			&connections[fd].ais_ci.u.libamf_ci.tracks[i].csiName)) {
+			&conn_info->ais_ci.u.libamf_ci.tracks[i].csiName)) {
 
-			track = &connections[fd].ais_ci.u.libamf_ci.tracks[i];
+			track = &conn_info->ais_ci.u.libamf_ci.tracks[i];
 		}
 	}
 
 	if (track) {
 		log_printf (LOG_LEVEL_DEBUG, "protectiongrouptrackstop: Trackstop on CSI: %s\n", getSaNameT (&req_amf_protectiongrouptrackstop->csiName));
 		memset (track, 0, sizeof (struct libamf_ci_trackentry));
+		conn_info->ais_ci.u.libamf_ci.trackActive -= 1;
+		if (conn_info->ais_ci.u.libamf_ci.trackActive == 0) {
+			list_del (&conn_info->conn_list);
+		}
 	}
 
 	res_amf_protectiongrouptrackstop.header.magic = MESSAGE_MAGIC;
@@ -2019,13 +2107,14 @@ static int message_handler_req_amf_protectiongrouptrackstop (int fd, void *messa
 	if (track) {
 		res_amf_protectiongrouptrackstop.error = SA_OK;
 	}
-	libais_send_response (fd, &res_amf_protectiongrouptrackstop,
+	libais_send_response (conn_info, &res_amf_protectiongrouptrackstop,
 		sizeof (struct res_amf_protectiongrouptrackstop));
 
 	return (0);
 }
 
-static int message_handler_req_amf_errorreport (int fd, void *message)
+
+static int message_handler_req_amf_errorreport (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_amf_errorreport *req_lib_amf_errorreport = (struct req_lib_amf_errorreport *)message;
 	struct req_exec_amf_errorreport req_exec_amf_errorreport;
@@ -2037,7 +2126,7 @@ static int message_handler_req_amf_errorreport (int fd, void *message)
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
-	req_exec_amf_errorreport.source.fd = fd;
+	req_exec_amf_errorreport.source.conn_info = conn_info;
 	req_exec_amf_errorreport.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 	memcpy (&req_exec_amf_errorreport.req_lib_amf_errorreport,
 		req_lib_amf_errorreport,
@@ -2055,7 +2144,7 @@ static int message_handler_req_amf_errorreport (int fd, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_errorcancelall (int fd, void *message)
+static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_amf_errorcancelall *req_lib_amf_errorcancelall = (struct req_lib_amf_errorcancelall *)message;
 	struct req_exec_amf_errorcancelall req_exec_amf_errorcancelall;
@@ -2067,7 +2156,7 @@ static int message_handler_req_amf_errorcancelall (int fd, void *message)
 	req_exec_amf_errorcancelall.header.size = sizeof (struct req_exec_amf_errorcancelall);
 	req_exec_amf_errorcancelall.header.id = MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL;
 
-	req_exec_amf_errorcancelall.source.fd = fd;
+	req_exec_amf_errorcancelall.source.conn_info = conn_info;
 	req_exec_amf_errorcancelall.source.in_addr.s_addr = this_ip.sin_addr.s_addr;
 	memcpy (&req_exec_amf_errorcancelall.req_lib_amf_errorcancelall,
 		req_lib_amf_errorcancelall,
@@ -2085,56 +2174,60 @@ static int message_handler_req_amf_errorcancelall (int fd, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_stoppingcomplete (int fd, void *message)
+static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info_notused,
+	void *message)
 {
 	struct req_amf_stoppingcomplete *req_amf_stoppingcomplete = (struct req_amf_stoppingcomplete *)message;
 
-	int connection;
+	struct conn_info *inv_conn_info;
+	int interface;
 
 	log_printf (LOG_LEVEL_DEBUG, "handling stopping complete\n");
-	connection = req_amf_response_get_connection (req_amf_stoppingcomplete->invocation);
-	connections[connection].component->currentReadinessState = connections[connection].component->newReadinessState;
 
-	readinessStateSetCluster (connections[connection].component, SA_AMF_STOPPING);
+	req_amf_invocation_get_and_destroy (req_amf_stoppingcomplete->invocation,
+		&interface, &inv_conn_info);
 
-	sendProtectionGroupNotifications (connections[connection].component,
+	inv_conn_info->component->currentReadinessState = inv_conn_info->component->newReadinessState;
+
+	readinessStateSetCluster (inv_conn_info->component, SA_AMF_STOPPING);
+
+	sendProtectionGroupNotifications (inv_conn_info->component,
 		SA_AMF_PROTECTION_GROUP_STATE_CHANGE);
-
-// This is part of dsm now
-//	readinessStateSetApi (connections[connection].component, SA_AMF_OUT_OF_SERVICE);
 
 	return (0);
 }
 
-void response_handler_healthcheckcallback (int connection,
+void response_handler_healthcheckcallback (struct conn_info *conn_info,
 	struct req_amf_response *req_amf_response) {
 
 	if (req_amf_response->error == SA_OK) {
 		log_printf (LOG_LEVEL_DEBUG, "setting healthcheck ok\n");
-		connections[connection].component->healthcheck_outstanding = 0;
+		conn_info->component->healthcheck_outstanding = 0;
 	}
 }
 
-static int message_handler_req_amf_response (int fd, void *message)
+static int message_handler_req_amf_response (struct conn_info *conn_info_nouse, void *message)
 {
 	struct req_amf_response *req_amf_response = (struct req_amf_response *)message;
-	int connection;
+	struct conn_info *conn_info;
 	int interface;
+	int res;
 
-	connection = req_amf_response_get_connection (req_amf_response->invocation);
-	interface = req_amf_response_get_interface (req_amf_response->invocation);
-	log_printf (LOG_LEVEL_DEBUG, "handling response connection %d interface %x\n", connection, interface);
+	res = req_amf_invocation_get_and_destroy (req_amf_response->invocation,
+		&interface, &conn_info);
+
+	log_printf (LOG_LEVEL_DEBUG, "handling response connection %x interface %x\n", conn_info, interface);
 	switch (interface) {
 	case MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK:
-		response_handler_healthcheckcallback (connection, req_amf_response);
+		response_handler_healthcheckcallback (conn_info, req_amf_response);
 		break;
 
 	case MESSAGE_REQ_AMF_RESPONSE_SAAMFREADINESSSTATESETCALLBACK:
-		response_handler_readinessstatesetcallback (connection, req_amf_response);
+		response_handler_readinessstatesetcallback (conn_info, req_amf_response);
 		break;
 
 	case MESSAGE_REQ_AMF_RESPONSE_SAAMFCSISETCALLBACK:
-		response_handler_csisetcallback (connection, req_amf_response);
+		response_handler_csisetcallback (conn_info, req_amf_response);
 		break;
 
 	case MESSAGE_REQ_AMF_RESPONSE_SAAMFCSIREMOVECALLBACK:
@@ -2149,7 +2242,7 @@ static int message_handler_req_amf_response (int fd, void *message)
 	return (0);
 }
 
-static int message_handler_req_amf_componentcapabilitymodelget (int fd, void *message)
+static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_componentcapabilitymodelget *req_amf_componentcapabilitymodelget = (struct req_amf_componentcapabilitymodelget *)message;
 	struct res_amf_componentcapabilitymodelget res_amf_componentcapabilitymodelget;
@@ -2169,7 +2262,8 @@ static int message_handler_req_amf_componentcapabilitymodelget (int fd, void *me
 	res_amf_componentcapabilitymodelget.header.size = sizeof (struct res_amf_componentcapabilitymodelget);
 	res_amf_componentcapabilitymodelget.header.id = MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET;
 	res_amf_componentcapabilitymodelget.error = error;
-	libais_send_response (fd, &res_amf_componentcapabilitymodelget, sizeof (struct res_amf_componentcapabilitymodelget));
+	libais_send_response (conn_info, &res_amf_componentcapabilitymodelget,
+		sizeof (struct res_amf_componentcapabilitymodelget));
 
 	return (0);
 }
