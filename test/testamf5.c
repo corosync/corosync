@@ -289,7 +289,7 @@ int main (int argc, char **argv) {
 	FD_SET (select_fd, &read_fds);
 
 	if (compName.length <= 0){
-		setSanameT (&compName, "comp_b_in_su_x");
+		setSanameT (&compName, "comp_a_in_su_z");
 	}
 
 	result = saAmfComponentRegister (&handle, &compName, NULL);
