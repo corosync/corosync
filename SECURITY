@@ -1,0 +1,141 @@
+----------------------------
+ Security Design of openais
+----------------------------
+
+The openais project uses code from the libtomcrypt package (www.libtomcrypt.org)
+for most of the algorithms described in this document.  The libtomcrypt code has
+a public domain license.
+
+The openais project intends to mitigate the following threats:
+
+1. forged group messaging messages which are intended to fault the openais
+   executive
+2. forged group messaging messages which are intended to fault applications
+   using openais apis
+3. monitoring of network data to capture sensitive information
+
+The openais project does not intend to mitigate the following threats:
+
+1. physical access to the hardware which could expose the private key
+2. privledged access to the operating system which could expose the private key
+   or be used to inject errors into the ais executive.
+3. library user creates requests which are intended to fault the openais
+   executive
+
+The openais project mitigates the threats using two mechanisms:
+
+1. Authentication
+2. Secrecy
+
+Library Interface
+-----------------
+The openais executive authenticates every library user.  The library is only
+allowed to access services if it's GID is ais or 0.  Unauthorized library
+users are rejected.
+
+The ais group is a trusted group.  If the administrator doesn't trust the
+application, it should not be added to the group!  Any member of the ais group
+could potentially send a malformed request to the executive and cause it to
+fault.
+
+Group Messaging Interface
+-------------------------
+Group messaging uses UDP/IP to communicate with other openais executives using
+messages.  It is possible without authentication of every packet that an
+attacker could forge messages.  These forged messages could fault the openais
+executive distributed state machines.  It would also be possible to corrupt 
+end applications by forging updates 
+
+Since messages are sent using UDP/IP it would be possible to snoop those
+messages and rebuild sensitive data.
+
+To solve these problems, the group messaging interface uses two new interfaces
+interal to it's implementation:
+1. ctr_encrypt_and_sign - encrypts and signs a message securely
+2. ctr_authenticate_and_decrypt - authenticates and decrypts a message securely
+
+When the executive wants to send a message over the network, it uses
+ctr_encrypt_and_sign to prepare the message to be sent.  When the executive
+wants to receive a message from the network, it uses
+ctr_authenticate_and_decrypt to verify the message is valid and decrypt it.
+
+These two functions utilize the following algorithms:
+yarrow - secure pseudo random number generator
+pkcs #5 alg #2 - Converts a random and secret key into a larger key
+md4 - hash algorithm secure for using with yarrow and pkcs
+sha1 - hash algorithm secure for using with hmac 
+hmac - produces a 20 byte sha1 digest from any length input and a 16 byte key
+blowfish - cipher algorithm - encrypts one block of data
+ctr - Counter mode of ciphering - encrypts variable length data blocks
+
+The hmac algorithm requires a 16 byte key.
+The blowfish algorithm requires a 16 byte key.
+The ctr algorithm requires a 16 byte nonce.
+
+The private key is read from disk and stored in memory for use with the
+pkcs #5 alg #2 operation.
+
+Every message starts with a
+struct digest {
+	unsigned char digest[20]; A one way hash digest
+};
+
+struct salt {
+	unsigned char salt[16]; A securely generated random number 
+};
+
+struct sec_hdr {
+	struct digest;
+	struct salt;
+}
+
+The sec_hdr.digest is never hashed or encrypted by the algorithms described.
+The sec_hdr.salt is never encrypted, but is hashed by the algoriths described.
+
+When a message is sent (ctr_encrypt_and_sign):
+----------------------------------------------
+1. yarrow is used to create a 16 byte random number (salt) using the md4
+   algorithm
+2. pkcs #5 alg #2 is used with the salt and private key to create a 48 byte
+   key.  This 48 byte key is split into 3 16 byte keys.  The keys are the
+   hmac key, the blowfish key, and the ctr nonce key.  pkcs uses the md4
+   algorithm.
+3. The ctr nonce and blowfish key from step #2 are used to setup the ctr cipher
+   for use with blowfish.
+4. The data of the packet, except for the sec_hdr, is encrypted using
+   the ctr cipher that was initialized in step #3.
+5. The salt is stored in the sec_hdr header of the outgoing message.
+6. The hmac is initialized with the hmac key generated in step #2.
+7. The message, except for the sec_hdr.digest, is hmaced to produce a digest
+   using the sha1 algorithm.
+8. The digest is stored in the outgoing message.
+9. The message is transmitted. 
+
+
+When a message is received (ctr_decrypt_and_authenticate):
+---------------------------------------------------------
+1. yarrow is used to create a 16 byte random number (salt) using the md4
+   algorithm
+2. pkcs #5 alg #2 is used with the salt and private key to create a 48 byte
+   key.  This 48 byte key is split into 3 16 byte keys.  The keys are the
+   hmac key, the blowfish key, and the ctr nonce key.  pkcs uses the md4
+   algorithm.
+3. The ctr nonce and blowfish key from step #2 are used to setup the ctr cipher
+   for use with blowfish.
+4. The hmac is setup using the hmac key generated in step #2 using sha1.
+5. The message is authenticated, except for the sec_hdr.digest.
+6. If the message was not authenticated, the caller is told of the result.
+   The caller ignores the message.
+7. The message is decrypted, except for the sec_hdr, using the ctr
+   initialized in step #3.
+8. The message is processed.
+
+This does consume some resources.  It ensures the private key is never shared
+openly.  All messages are authenticated and encrypted.   An exposure of 
+one of the nonce key, blowfish key, or hmac key can only be used to
+attack the key relating to the algorithm.  Finally every key used is
+randomly unique (within the 2^128 search space of the input to pkcs) to ensure
+that keys are never reused, nonce's are never reused, and hmac's are never
+reused in combination with each other.
+
+Comments welcome mailto:openais@lists.osdl.org
