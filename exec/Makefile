@@ -29,13 +29,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-#CFLAGS = -O3 -Wall
-#LDFLAGS = 
+CFLAGS = -O3 -Wall -fomit-frame-pointer
+LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -Wall
+#CFLAGS = -g -Wall
 #-DDEBUG
-LDFLAGS = -g
+#LDFLAGS = -g
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -46,9 +46,9 @@ GMI_OBJS = aispoll.c gmi.c tlist.c hdb.c
 
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o parse.o print.o mempool.o libgmi.a
 
-GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o
+GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o crypto.o
 
-all:libgmi.a libgmi.so.1.0 aisexec
+all:libgmi.a libgmi.so.1.0 aisexec keygen
 
 aisexec: $(EXEC_OBJS)
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) -o aisexec
@@ -62,8 +62,11 @@ libgmi.so.1.0: $(GMI_OBJS)
 	ln -s libgmi.so.1.0 libgmi.so.1
 	ln -s libgmi.so.1.0 libgmi.so
 
+keygen: keygen.o
+	$(CC) $(LDFLAGS) keygen.o -o keygen
+
 clean:
-	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out
+	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1
@@ -90,3 +93,4 @@ evt.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h gmi.h
 parse.o: ../include/ais_types.h ../include/list.h parse.h aispoll.h mempool.h
 print.o: print.h ../include/ais_types.h parse.h ../include/list.h aispoll.h
 mempool.o: ../include/list.h mempool.h
+crypto.o: crypto.h
