@@ -48,8 +48,10 @@ LDFLAGS =
 GMI_SRC = aispoll.c gmi.c tlist.c hdb.c crypto.c
 GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o crypto.o
 
-EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c
-EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o libgmi.a
+EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
+		util.c
+EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
+		util.o libgmi.a
 
 all:libgmi.a libgmi.so.1.0 aisexec keygen
 
@@ -79,21 +81,34 @@ depend:
 # DO NOT DELETE
 
 main.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-main.o: ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
+main.o: evs.h ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
 main.o: parse.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
 clm.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-clm.o: ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h main.h
-clm.o: clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
+clm.o: evs.h ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h
+clm.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
 amf.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-amf.o: ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h parse.h
-amf.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
+amf.o: evs.h ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
+amf.o: util.h parse.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h
+amf.o: print.h
 ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-ckpt.o: ../include/list.h ../include/queue.h aispoll.h mempool.h parse.h
-ckpt.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h gmi.h
+ckpt.o: evs.h ../include/list.h ../include/queue.h aispoll.h mempool.h util.h
+ckpt.o: parse.h gmi.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h
+ckpt.o: print.h
 evt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-evt.o: ../include/list.h ../include/queue.h aispoll.h mempool.h parse.h
-evt.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h gmi.h
-parse.o: ../include/ais_types.h ../include/list.h parse.h aispoll.h mempool.h
+evt.o: evs.h ../include/list.h ../include/queue.h util.h aispoll.h mempool.h
+evt.o: parse.h gmi.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
+evs.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+evs.o: evs.h ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h
+evs.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
+parse.o: ../include/ais_types.h ../include/list.h util.h parse.h aispoll.h
+parse.o: gmi.h mempool.h
 print.o: print.h ../include/ais_types.h parse.h ../include/list.h aispoll.h
+print.o: gmi.h
 mempool.o: ../include/list.h mempool.h
+util.o: ../include/ais_types.h ../include/list.h util.h
+aispoll.o: aispoll.h ../include/list.h hdb.h ../include/ais_types.h tlist.h
+gmi.o: aispoll.h gmi.h ../include/queue.h ../include/sq.h ../include/list.h
+gmi.o: hdb.h ../include/ais_types.h crypto.h
+tlist.o: ../include/list.h tlist.h
+hdb.o: hdb.h ../include/ais_types.h
 crypto.o: crypto.h
