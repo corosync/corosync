@@ -1852,8 +1852,7 @@ void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 
 void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 {
-	struct in_addr *source_addr;
-	source_addr = (struct in_addr *)data;
+	struct in_addr *source_addr = (struct in_addr *)data;
 	struct saAmfUnit *unit;
 	struct list_head *list;
 	struct saAmfComponent *leave_component = NULL;

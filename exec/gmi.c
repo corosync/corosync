@@ -760,7 +760,6 @@ static void encrypt_and_sign (struct iovec *iovec, int iov_len)
 {
 	char *addr = iov_encrypted.iov_base + sizeof (struct security_header);
 	int i;
-	iov_encrypted.iov_len = 0;
 	char keys[48];
 	struct security_header *header = iov_encrypted.iov_base;
 	prng_state keygen_prng_state;
@@ -769,6 +768,8 @@ static void encrypt_and_sign (struct iovec *iovec, int iov_len)
 	char *cipher_key = &keys[16];
 	char *initial_vector = &keys[0];
 	unsigned long len;
+
+	iov_encrypted.iov_len = 0;
 
 	memset (keys, 0, sizeof (keys));
 	memset (header->salt, 0, sizeof (header->salt));
@@ -848,7 +849,6 @@ print_digest ("hmac_key", hmac_key);
  */
 static int authenticate_and_decrypt (struct iovec *iov)
 {
-	iov_encrypted.iov_len = 0;
 	char keys[48];
 	struct security_header *header = iov[0].iov_base;
 	prng_state keygen_prng_state;
@@ -858,6 +858,8 @@ static int authenticate_and_decrypt (struct iovec *iov)
 	char *initial_vector = &keys[0];
 	char digest_comparison[HMAC_HASH_SIZE];
 	unsigned long len;
+
+	iov_encrypted.iov_len = 0;
 
 #if (defined(ENCRYPTION) || defined(AUTHENITCATION))
 	/*
