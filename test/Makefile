@@ -92,7 +92,7 @@ ckptstress: ckptstress.o
 	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
 
 clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer
+	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
