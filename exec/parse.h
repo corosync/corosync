@@ -128,7 +128,7 @@ enum amfEnabledStoppingState {
 struct saAmfComponent {
 	int registered;
 	int local;
-	int fd;
+	struct conn_info *conn_info;
 	SaNameT name;
 	SaAmfReadinessStateT currentReadinessState;
 	SaAmfReadinessStateT newReadinessState;
