@@ -230,7 +230,7 @@ static int message_handler_req_exec_amf_hastateset (int fd, void *message);
 
 static int message_handler_req_amf_init (int fd, void *message);
 
-static int message_handler_req_amf_activatepoll (int fd, void *message);
+static int message_handler_req_lib_activatepoll (int fd, void *message);
 
 static int message_handler_req_amf_componentregister (int fd, void *message);
 
@@ -255,7 +255,7 @@ static int message_handler_req_amf_response (int fd, void *message);
 static int message_handler_req_amf_componentcapabilitymodelget (int fd, void *message);
 
 int (*amf_libais_handler_fns[]) (int fd, void *) = {
-	message_handler_req_amf_activatepoll,
+	message_handler_req_lib_activatepoll,
 	message_handler_req_amf_componentregister,
 	message_handler_req_amf_componentunregister,
 	message_handler_req_amf_readinessstateget,
@@ -1817,14 +1817,14 @@ static int message_handler_req_amf_init (int fd, void *message)
 	return (-1);
 }
 
-static int message_handler_req_amf_activatepoll (int fd, void *message)
+static int message_handler_req_lib_activatepoll (int fd, void *message)
 {
-	struct res_amf_activatepoll res_amf_activatepoll;
+	struct res_lib_activatepoll res_lib_activatepoll;
 
-	res_amf_activatepoll.header.magic = MESSAGE_MAGIC;
-	res_amf_activatepoll.header.size = sizeof (struct res_amf_activatepoll);
-	res_amf_activatepoll.header.id = MESSAGE_RES_AMF_ACTIVATEPOLL;
-	libais_send_response (fd, &res_amf_activatepoll, sizeof (struct res_amf_activatepoll));
+	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
+	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
+	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
+	libais_send_response (fd, &res_lib_activatepoll, sizeof (struct res_lib_activatepoll));
 
 	return (0);
 }

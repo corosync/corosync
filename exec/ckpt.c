@@ -64,6 +64,8 @@ DECLARE_LIST_INIT(checkpointIteratorListHead);
 static int ckptCheckpointApiFinalize (int fd);
 static int ckptSectionIteratorApiFinalize (int fd);
 
+static int message_handler_req_lib_activatepoll (int fd, void *message);
+
 static int message_handler_req_exec_ckpt_checkpointopen (int fd, void *message);
 
 static int message_handler_req_exec_ckpt_checkpointclose (int fd, void *message);
@@ -130,10 +132,11 @@ static int ckptConfChg (
 }
 
 int (*ckpt_libais_handler_fns[]) (int fd, void *) = {
+	message_handler_req_lib_activatepoll
 };
 
 /*
- * TODO multinode not yet implemented
+ * TODO
  */
 int (*ckpt_aisexec_handler_fns[]) (int fd, void *) = {
 };
@@ -153,6 +156,7 @@ struct service_handler ckpt_service_handler = {
 };
 
 static int (*ckpt_checkpoint_libais_handler_fns[]) (int fd, void *) = {
+	message_handler_req_lib_activatepoll,
 	message_handler_req_lib_ckpt_checkpointopen,
 	message_handler_req_lib_ckpt_checkpointopenasync,
 	message_handler_req_lib_ckpt_checkpointunlink,
@@ -194,6 +198,7 @@ struct service_handler ckpt_checkpoint_service_handler = {
 };
 
 static int (*ckpt_sectioniterator_libais_handler_fns[]) (int fd, void *) = {
+	message_handler_req_lib_activatepoll,
     message_handler_req_lib_ckpt_sectioniteratorinitialize,
     message_handler_req_lib_ckpt_sectioniteratornext
 };
@@ -306,6 +311,19 @@ static int ckptSectionIteratorApiFinalize (int fd) {
 		}
 		list_del (&connections[fd].ais_ci.u.libckpt_ci.sectionIterator.list);
 	}
+
+	return (0);
+}
+
+static int message_handler_req_lib_activatepoll (int fd, void *message)
+{
+	struct res_lib_activatepoll res_lib_activatepoll;
+
+	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
+	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
+	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
+	libais_send_response (fd, &res_lib_activatepoll,
+		sizeof (struct res_lib_activatepoll));
 
 	return (0);
 }
