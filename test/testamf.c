@@ -291,50 +291,23 @@ int main (int argc, char **argv) {
 	saAmfSelectionObjectGet (&handleproxy, &select_fd);
 	FD_SET (select_fd, &read_fds);
 
-	setSanameT (&compName, "raidupdate1");
-	setSanameT (&proxyCompName, "raidhotswap1");
-	setSanameT (&csiName, "raidupdate");
-
-	result = saAmfComponentRegister (&handleproxy, &proxyCompName, NULL);
-	printf ("register result is %d (should be 1)\n", result);
-	result = saAmfComponentRegister (&handle, &compName, &proxyCompName);
-	printf ("register result is %d (should be 1)\n", result);
+	setSanameT (&compName, "comp_a_in_su_x");
+	setSanameT (&csiName, "pgA");
 	result = saAmfComponentCapabilityModelGet (&compName, &componentCapabilityModel);
 	printf ("component capability model get is %d (should be 1)\n", result);
-	result = saAmfProtectionGroupTrackStart (&handle, &csiName, SA_TRACK_CURRENT | SA_TRACK_CHANGES_ONLY, protectionGroupNotificationBuffer, 64);
+
+	result = saAmfProtectionGroupTrackStart (&handle, &csiName, SA_TRACK_CURRENT | SA_TRACK_CHANGES, protectionGroupNotificationBuffer, 64);
 	printf ("track start result is %d (should be 1)\n", result);
-#ifdef COMPILEOUT
+
 	result = saAmfProtectionGroupTrackStop (&handle, &csiName);
 	printf ("track stop result is %d (should be 1)\n", result);
-	result = saAmfComponentUnregister (&handle, &compName, &compName);
-	printf ("unregister result is %d (should be 21)\n", result);
-	result = saAmfComponentRegister (&handle, &compName, &proxyCompName);
-	printf ("register result is %d (should be 14)\n", result);
-	result = saAmfComponentUnregister (&handle, &compName, &proxyCompName);
-	printf ("unregister result is %d (should be 1)\n", result);
-	result = saAmfComponentRegister (&handle, &compName, NULL);
-	printf ("register result is %d (should be 1)\n", result);
-	result = saAmfComponentUnregister (&handle, &compName, NULL);
-	printf ("unregister result is %d (should be 1)\n", result);
-	result = saAmfCompNameGet (&handle, &newCompName);
-	printf ("compNameGet result is %d (should be 12)\n", result);
-	result = saAmfComponentRegister (&handle, &compName, NULL);
-	printf ("register result is %d (should be 1)\n", result);
-	result = saAmfCompNameGet (&handle, &newCompName);
-	printf ("compNameGet result is %d (should be 1)\n", result);
 	result = saAmfReadinessStateGet (&compName, &readinessState);
-	printf ("readinessStateGet result is %d (should be 1) state %d (should be 1)\n", result, readinessState);
-	proxyCompName.value[0] = 'a';
-#endif
-	result = saAmfReadinessStateGet (&proxyCompName, &readinessState);
-	printf ("readinessStateGet result is %d (should be 12)\n", result);
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);
 		saAmfDispatch (&handle, SA_DISPATCH_ALL);
-//		printf ("dispatching handleproxy\n");
-		saAmfDispatch (&handleproxy, SA_DISPATCH_ALL);
 	} while (result);
 
+	result = saAmfProtectionGroupTrackStop (&handle, &csiName);
 	saAmfFinalize (&handle);
 
 	return (0);
