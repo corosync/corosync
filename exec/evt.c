@@ -1874,6 +1874,7 @@ deliver_event(struct event_data *evt,
 								evt->ed_event.led_event_id);
 		memcpy(ed, dropped_event, dropped_event_size);
 		ed->ed_event.led_publish_time = clust_time_now();
+		ed->ed_event.led_event_id = SA_EVT_EVENTID_LOST;
 		list_init(&ed->ed_retained);
 
 		ep = malloc(sizeof(*ep));
