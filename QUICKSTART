@@ -1,5 +1,15 @@
 Application Interface Specification Quckstart Guide
 ---------------------------------------------------
+
+***
+All cryptographic software in this package is subject to the following legal
+notice:
+This package includes publicly available encryption source code which,
+together with object code resulting from the compiling of publicly
+available source code, may be exported from the United States under License
+Exception TSU prsuant to 15 C.F.R Section 740.13(e).
+***
+
 This AIS package is broken into four parts.  The exec directory contains
 all of the code responsible for serving the APIs.  The api directory contains
 APIs the user can link to.  The test directory contains some simple test
@@ -42,7 +52,8 @@ These two files should be placed in the /etc/ais directory.
 Building AIS
 ------------
 AIS requires GCC, LD, and a Linux 2.4 kernel.  AIS has been tested on
-Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9.
+Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9, and Fedora
+Core 2.
 
 Compile AIS by running make in the root directory.  Make can also be run
 in the individual directories.  Nothing is installed by make.  If install
@@ -85,12 +96,37 @@ unix# /sbin/route add default gw 192.168.1.1
 where 192.168.1.1 is the gateway.  It is possible to specify an invalid 
 route which will also make AIS work properly.
 
+Generate a private key
+----------------------
+AIS uses cryptographic techniques to ensure authenticity and privacy of
+messages.  In order for AIS to work, a private key must be generated and
+shared to all processors.
+
+First generate the key on one of the nodes:
+
+unix# exec/keygen
+OpenAIS Authentication key generator.
+Gathering 1024 bits for key from /dev/random.
+Writing openais key to /etc/ais/authkey.
+
+
+After this is complete, a private key will be in the directory /etc/ais/authkey.
+This private key must be copied to every processor that will be a member of
+the cluster.  If the private key isn't the same for every node, those nodes
+with nonmatching private keys will not be able to join the same configuration.
+
+Copy the key to some transportable storage or use ssh to transmit the key
+from node to node.  Then install the key with the command:
+
+unix# install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
+
+If the message invalid digest appears, the keys are not the same on each node.
+
 Run AIS Executive
 -----------------
 Get one or more nodes and run the AIS executive on each node.  A list of
-node IPs should be displayed on stdout when the nodes join a configuration.
-Run the aisexec program after following the previous directions.
-(after the default route is setup and the config
+node IPs should be displayed when the nodes join a configuration.  Run the
+aisexec program after following the previous directions.
 
 Before running any of the test programs
 ---------------------------------------
@@ -163,9 +199,9 @@ The benchmark configuration (how many threads to run, how many writes
 per benchmark run, and data write size are specified in the ckptbench.c
 and ckptbenchth.c programs.
 
-Two node clusters should approach 10 MB/sec on 100 mbit networks for 
-larger checkpoint sizes.  If you are not seeing these results, please
-report to the mailing list.
+Two node clusters should approach 8.5 MB/sec on 100 mbit networks for 
+larger checkpoint sizes with encryption and authentication.  If you are not
+seeing these results, please report to the mailing list.
 
 Write your own applications
 ---------------------------
