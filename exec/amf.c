@@ -54,8 +54,10 @@
 #include "util.h"
 #include "parse.h"
 #include "main.h"
-#include "print.h"
 #include "handlers.h"
+
+#define LOG_SERVICE LOG_SERVICE_AMF
+#include "print.h"
 
 struct invocation {
 	struct conn_info *conn_info;
