@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
 
 #include "../include/ais_types.h"
 #include "../include/ais_msg.h"
@@ -58,6 +59,8 @@
 
 #define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
+#define LOG_LEVEL_FROM_LIB LOG_LEVEL_DEBUG
+#define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
 
 #define MCAST_DATA_NUM 2
 #define MCAST_DATA_LEN 256+256+128
@@ -489,11 +492,9 @@ int req_amf_invocation_get_and_destroy (int invocation, int *interface,
 	struct conn_info **conn_info)
 {
 	if (invocation > invocation_entries_size) {
-printf ("a\n");
 		return (-1);
 	}
 	if (invocation_entries[invocation].active == 0) {
-printf ("b\n");
 		return (-1);
 	}
 
@@ -717,6 +718,7 @@ void CSIRemove (struct conn_info *conn_info)
 void ha_state_api_set (struct saAmfComponent *component, SaAmfHAStateT haState)
 {
 	struct res_lib_amf_csisetcallback res_lib_amf_csisetcallback;
+	memset (&res_lib_amf_csisetcallback,0,sizeof(res_lib_amf_csisetcallback));
 
 	log_printf (LOG_LEVEL_DEBUG, "sending ha state to API\n");
 
@@ -817,6 +819,7 @@ void readiness_state_api_set (struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
 	struct res_lib_amf_readinessstatesetcallback res_lib_amf_readinessstatesetcallback;
+	memset (&res_lib_amf_readinessstatesetcallback,0,sizeof(res_lib_amf_readinessstatesetcallback));
 
 	/*
 	 * If component is local, don't request service from API
@@ -1081,6 +1084,7 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 	 * activate another service unit in standby
 	 */
 	log_printf (LOG_LEVEL_DEBUG, "dsmDisabledUnlockedOutOfServiceCompleted: component out of service %s\n", getSaNameT (&component->name));
+
 	/*
 	 * Determine if all components have responded to going out of service
 	 */
@@ -1099,6 +1103,11 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 				break;
 			}
 		}
+
+		if ( component->registered == 0 ) {
+			protectiongroup_notifications_send (component, SA_AMF_PROTECTION_GROUP_REMOVED);
+		}
+
 	}
 
 	group = unit->saAmfGroup;
@@ -1180,6 +1189,7 @@ static void dsmEnabledUnlockedInitial (
 		component->enabledUnlockedState = AMF_ENABLED_UNLOCKED_IN_SERVICE_REQUESTED;
 	}
 }
+
 static void dsmEnabledUnlockedInServiceRequested (
 	struct saAmfComponent *component)
 {
@@ -1539,6 +1549,7 @@ int healthcheck_instance = 0;
 
 void timer_function_libamf_healthcheck (void *data) {
 	struct res_lib_amf_healthcheckcallback res_lib_amf_healthcheckcallback;
+	memset (&res_lib_amf_healthcheckcallback,0,sizeof(res_lib_amf_healthcheckcallback));
 	struct conn_info *conn_info = (struct conn_info *)data;
 
 	res_lib_amf_healthcheckcallback.header.id = MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
@@ -1712,17 +1723,134 @@ static void protectiongroup_notifications_send (
 		for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
 			if (conn_info->ais_ci.u.libamf_ci.tracks[i].active) {
 
+				if (conn_info->ais_ci.u.libamf_ci.tracks[i].csiName.length
+				    != changedComponent->saAmfProtectionGroup->name.length) {
+					continue;
+				}
+				if (memcmp (conn_info->ais_ci.u.libamf_ci.tracks[i].csiName.value,
+					changedComponent->saAmfProtectionGroup->name.value,
+					conn_info->ais_ci.u.libamf_ci.tracks[i].csiName.length)) {
+					continue;
+				}
+
 				protectiongroup_notification_send (conn_info,
 					conn_info->ais_ci.u.libamf_ci.tracks[i].notificationBufferAddress, 
 					changedComponent->saAmfProtectionGroup,
 					changedComponent,
 					changeToComponent,
 					conn_info->ais_ci.u.libamf_ci.tracks[i].trackFlags);
+
 			} /* if track flags active */
 		} /* for all track entries */
 	} /* for all connection entries */
 }
 
+static int make_protectiongroup_notification_allcomponent (
+	struct saAmfComponent *changedComponent,
+	SaAmfProtectionGroupChangesT changeToComponent,
+	SaAmfProtectionGroupNotificationT **notification )
+{
+	SaAmfProtectionGroupNotificationT *protectionGroupNotification = 0;
+	int notifyEntries = 0;
+	struct saAmfComponent *component;
+	struct list_head *AmfGroupList;
+	struct list_head *AmfUnitList;
+	struct list_head *AmfComponentList;
+	struct saAmfGroup *saAmfGroup;
+	struct saAmfUnit *AmfUnit;
+
+	for (AmfGroupList = saAmfGroupHead.next; AmfGroupList != &saAmfGroupHead; AmfGroupList = AmfGroupList->next) {
+
+		saAmfGroup = list_entry (AmfGroupList, struct saAmfGroup, saAmfGroupList);
+		/*
+		 * Search all units
+		 */
+		for (AmfUnitList = saAmfGroup->saAmfUnitHead.next;
+			AmfUnitList != &saAmfGroup->saAmfUnitHead;
+			AmfUnitList = AmfUnitList->next) {
+
+			AmfUnit = list_entry (AmfUnitList, struct saAmfUnit, saAmfUnitList);
+
+			/*
+			 * Search all components
+			 */
+			for (AmfComponentList = AmfUnit->saAmfComponentHead.next;
+				AmfComponentList != &AmfUnit->saAmfComponentHead;
+				AmfComponentList = AmfComponentList->next) {
+
+				component = list_entry (AmfComponentList, struct saAmfComponent, saAmfComponentList);
+
+				protectionGroupNotification =
+					 (SaAmfProtectionGroupNotificationT *)mempool_realloc (protectionGroupNotification,
+						sizeof (SaAmfProtectionGroupNotificationT) * (notifyEntries + 1));
+				memset (&protectionGroupNotification[notifyEntries],
+						0,sizeof (SaAmfProtectionGroupNotificationT));
+				memcpy (&protectionGroupNotification[notifyEntries].member.compName, 
+						&component->name, sizeof (SaNameT));
+				memcpy (&protectionGroupNotification[notifyEntries].member.readinessState, 
+						&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
+				memcpy (&protectionGroupNotification[notifyEntries].member.haState, 
+						&component->currentHAState, sizeof (SaAmfHAStateT));
+				if (component == changedComponent) {
+					protectionGroupNotification[notifyEntries].change = changeToComponent;
+				} else {
+					protectionGroupNotification[notifyEntries].change 
+							= SA_AMF_PROTECTION_GROUP_NO_CHANGE;
+				}
+				notifyEntries += 1;
+			}
+		}
+	}
+
+	if (notifyEntries) {
+		*notification = protectionGroupNotification;
+	}
+	return (notifyEntries);
+}
+
+static int make_protectiongroup_notification (
+	struct saAmfProtectionGroup *amfProtectionGroup,
+	struct saAmfComponent *changedComponent,
+	SaAmfProtectionGroupChangesT changeToComponent,
+	SaAmfProtectionGroupNotificationT **notification )
+{
+	struct res_lib_amf_protectiongrouptrackcallback res_lib_amf_protectiongrouptrackcallback;
+	int notifyEntries = 0;
+	struct saAmfComponent *component;
+	struct list_head *componentList;
+	SaAmfProtectionGroupNotificationT *protectionGroupNotification = 0;
+
+	memset (&res_lib_amf_protectiongrouptrackcallback,0,sizeof(res_lib_amf_protectiongrouptrackcallback));
+	for (componentList = amfProtectionGroup->saAmfMembersHead.next;
+		componentList != &amfProtectionGroup->saAmfMembersHead;
+		componentList = componentList->next) {
+
+		component = list_entry (componentList, struct saAmfComponent, saAmfProtectionGroupList);
+
+		protectionGroupNotification =
+			 (SaAmfProtectionGroupNotificationT *)mempool_realloc (protectionGroupNotification,
+					sizeof (SaAmfProtectionGroupNotificationT) * (notifyEntries + 1));
+		memset (&protectionGroupNotification[notifyEntries],0,sizeof (SaAmfProtectionGroupNotificationT));
+		memcpy (&protectionGroupNotification[notifyEntries].member.compName, 
+				&component->name, sizeof (SaNameT));
+		memcpy (&protectionGroupNotification[notifyEntries].member.readinessState, 
+				&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
+		memcpy (&protectionGroupNotification[notifyEntries].member.haState, 
+				&component->currentHAState, sizeof (SaAmfHAStateT));
+		if (component == changedComponent) {
+			protectionGroupNotification[notifyEntries].change = changeToComponent;
+		} else {
+			protectionGroupNotification[notifyEntries].change = SA_AMF_PROTECTION_GROUP_NO_CHANGE;
+		}
+		notifyEntries += 1;
+	} /* for */
+
+	if (notifyEntries) {
+		*notification = protectionGroupNotification;
+	}
+
+	return (notifyEntries);
+}
 
 static void protectiongroup_notification_send (struct conn_info *conn_info,
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress,
@@ -1733,46 +1861,22 @@ static void protectiongroup_notification_send (struct conn_info *conn_info,
 {
 	struct res_lib_amf_protectiongrouptrackcallback res_lib_amf_protectiongrouptrackcallback;
 	SaAmfProtectionGroupNotificationT *protectionGroupNotification = 0;
-	int notifyEntries = 0;
-	struct saAmfComponent *component;
-	struct list_head *componentList;
+	int notifyEntries;
 
 	/*
 	 * Step through all components and generate protection group list for csi
 	 */
+	memset (&res_lib_amf_protectiongrouptrackcallback, 0, sizeof(res_lib_amf_protectiongrouptrackcallback));
+	if ( trackFlags == SA_TRACK_CHANGES ) {
+		notifyEntries = make_protectiongroup_notification_allcomponent (changedComponent, 
+				changeToComponent, &protectionGroupNotification);
 
-	for (componentList = amfProtectionGroup->saAmfMembersHead.next;
-		componentList != &amfProtectionGroup->saAmfMembersHead;
-		componentList = componentList->next) {
-
-		component = list_entry (componentList,
-			struct saAmfComponent, saAmfProtectionGroupList);
-
-		/*
-		 * Generate new track entry for following cases:
-		 * 1. If this component is the changed component and
-		 *    SA_TRACK_CHANGES_ONLY is set
-		 * 2. If track flags indicate SA_TRACK_CURRENT or SA_TRACK_CHANGES
-		 */
-		if (component == changedComponent ||
-			(trackFlags & (SA_TRACK_CURRENT | SA_TRACK_CHANGES))) {
-
-			protectionGroupNotification = (SaAmfProtectionGroupNotificationT *)mempool_realloc (protectionGroupNotification,
-				sizeof (SaAmfProtectionGroupNotificationT) * (notifyEntries + 1));
-			memcpy (&protectionGroupNotification[notifyEntries].member.compName, 
-				&component->name, sizeof (SaNameT));
-			memcpy (&protectionGroupNotification[notifyEntries].member.readinessState, 
-				&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
-			memcpy (&protectionGroupNotification[notifyEntries].member.haState, 
-				&component->currentHAState, sizeof (SaAmfHAStateT));
-			if (component == changedComponent) {
-				protectionGroupNotification[notifyEntries].change = changeToComponent;
-			} else {
-				protectionGroupNotification[notifyEntries].change = SA_AMF_PROTECTION_GROUP_NO_CHANGE;
-			}
-			notifyEntries += 1;
-		}
-	} /* for */
+	}else if (trackFlags == SA_TRACK_CHANGES_ONLY) {
+		notifyEntries = make_protectiongroup_notification (amfProtectionGroup,
+				changedComponent, changeToComponent, &protectionGroupNotification );
+	}else{
+		notifyEntries = 0;
+	}
 
 	/*
 	 * Send track callback
@@ -1943,6 +2047,7 @@ int amf_exit_fn (struct conn_info *conn_info)
 	 * Unregister all components registered to this file descriptor
 	 */
 	if (conn_info->service == SOCKET_SERVICE_AMF) {
+
 		component_unregister (conn_info->component);
 
 		if (conn_info->component && conn_info->component->timer_healthcheck) {
@@ -1955,6 +2060,7 @@ int amf_exit_fn (struct conn_info *conn_info)
 		if (conn_info->ais_ci.u.libamf_ci.tracks) {
 			mempool_free (conn_info->ais_ci.u.libamf_ci.tracks);
 			conn_info->ais_ci.u.libamf_ci.tracks = 0;
+			list_del (&conn_info->conn_list);
 		}
 	}
 
@@ -1969,7 +2075,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	struct saAmfComponent *amfProxyComponent;
 	SaErrorT error;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive: ComponentRegister for component %s\n",
+	log_printf (LOG_LEVEL_FROM_GMI, "Executive: ComponentRegister for component %s\n",
 		getSaNameT (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName));
 
 	/*
@@ -2024,8 +2130,8 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 		component->source_addr = source_addr;
 		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
-		component->currentHAState = SA_AMF_QUIESCED;
-		component->newHAState = SA_AMF_QUIESCED;
+		component->currentHAState = 0;
+		component->newHAState = 0;
 		component->probableCause = 0;
 		component->enabledUnlockedState = 0;
 		component->disabledUnlockedState = 0;
@@ -2131,7 +2237,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	struct saAmfComponent *amfProxyComponent;
 	SaErrorT error;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive: Component_unregister for %s\n",
+	log_printf (LOG_LEVEL_FROM_GMI, "Executive: Component_unregister for %s\n",
 		getSaNameT (&req_exec_amf_componentunregister->req_lib_amf_componentunregister.compName));
 
 	component = findComponent (&req_exec_amf_componentunregister->req_lib_amf_componentunregister.compName);
@@ -2198,7 +2304,7 @@ static int message_handler_req_exec_amf_errorreport (void *message, struct in_ad
 	struct saAmfComponent *component;
 	SaErrorT error = SA_ERR_BAD_OPERATION;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive: ErrorReport for %s\n", 
+	log_printf (LOG_LEVEL_FROM_GMI, "Executive: ErrorReport for %s\n", 
 		getSaNameT (&req_exec_amf_errorreport->req_lib_amf_errorreport.erroneousComponent));
 
 	component = findComponent (&req_exec_amf_errorreport->req_lib_amf_errorreport.erroneousComponent);
@@ -2239,7 +2345,7 @@ static int message_handler_req_exec_amf_errorcancelall (void *message, struct in
 	struct saAmfComponent *component;
 	SaErrorT error = SA_ERR_BAD_OPERATION;
 
-	log_printf (LOG_LEVEL_DEBUG, "Executive: ErrorCancelAll for %s\n", 
+	log_printf (LOG_LEVEL_FROM_GMI, "Executive: ErrorCancelAll for %s\n",
 		getSaNameT (&req_exec_amf_errorcancelall->req_lib_amf_errorcancelall.compName));
 
 	component = findComponent (&req_exec_amf_errorcancelall->req_lib_amf_errorcancelall.compName);
@@ -2288,9 +2394,9 @@ static int message_handler_req_exec_amf_readinessstateset (void *message, struct
 
 	component = findComponent (&req_exec_amf_readinessstateset->compName);
 	if (component) {
-	  	log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current readiness state to %d\n",
-			getSaNameT (&component->name),
-			req_exec_amf_readinessstateset->readinessState);
+	  	log_printf (LOG_LEVEL_FROM_GMI, 
+			"Executive: message_handler_req_exec_amf_readinessstateset (%s, RD:%d)\n",
+				getSaNameT (&component->name), req_exec_amf_readinessstateset->readinessState);
 
 		component->currentReadinessState = req_exec_amf_readinessstateset->readinessState;
 		component->newReadinessState = component->currentReadinessState;
@@ -2310,15 +2416,34 @@ static int message_handler_req_exec_amf_hastateset (void *message, struct in_add
 {
 	struct req_exec_amf_hastateset *req_exec_amf_hastateset = (struct req_exec_amf_hastateset *)message;
 	struct saAmfComponent *component;
+	SaAmfProtectionGroupChangesT changeToComponent = SA_AMF_PROTECTION_GROUP_STATE_CHANGE;
 
 	component = findComponent (&req_exec_amf_hastateset->compName);
-	if (component) {
-	  	log_printf (LOG_LEVEL_DEBUG, "found component %s, setting current HA state to %d\n",
-	  			getSaNameT (&component->name),
-			req_exec_amf_hastateset->haState);
-		component->currentHAState = req_exec_amf_hastateset->haState;
-		component->newHAState = component->currentHAState;
-		dsm (component);
+	if (!component) {
+		return (0);
+	}
+
+  	log_printf (LOG_LEVEL_FROM_GMI, 
+		"Executive: message_handler_req_exec_amf_hastateset (%s, HA:%d)\n",
+				getSaNameT (&component->name), req_exec_amf_hastateset->haState);
+
+	if ( component->currentHAState == 0 ) {
+		if ( req_exec_amf_hastateset->haState == SA_AMF_ACTIVE 
+		  || req_exec_amf_hastateset->haState == SA_AMF_STANDBY ) {
+			changeToComponent = SA_AMF_PROTECTION_GROUP_ADDED;
+		}
+	} else {
+		if (component->currentHAState == req_exec_amf_hastateset->haState) {
+			changeToComponent = SA_AMF_PROTECTION_GROUP_NO_CHANGE;
+		}
+	}
+
+	component->currentHAState = req_exec_amf_hastateset->haState;
+	component->newHAState = component->currentHAState;
+	dsm (component);
+
+	if( changeToComponent != SA_AMF_PROTECTION_GROUP_NO_CHANGE ) {
+		protectiongroup_notifications_send (component, changeToComponent);
 	}
 	
 	return (0);
@@ -2354,6 +2479,9 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_lib_activatepoll()\n");
+
+	memset (&res_lib_activatepoll,0,sizeof(res_lib_activatepoll));
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
 	libais_send_response (conn_info, &res_lib_activatepoll, sizeof (struct res_lib_activatepoll));
@@ -2366,6 +2494,8 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	struct req_amf_componentregister *req_lib_amf_componentregister = (struct req_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovecs[2];
+
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_componentregister()\n");
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
@@ -2389,6 +2519,8 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
 	struct iovec iovecs[2];
 	struct saAmfComponent *component;
+
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_componentunregister()\n");
 
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
@@ -2416,7 +2548,8 @@ static int message_handler_req_amf_readinessstateget (struct conn_info *conn_inf
 	struct res_lib_amf_readinessstateget res_lib_amf_readinessstateget;
 	struct saAmfComponent *component;
 
-	log_printf (LOG_LEVEL_DEBUG, "got request to return readiness state\n");
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_readinessstateget()\n");
+
 	res_lib_amf_readinessstateget.header.id = MESSAGE_RES_AMF_READINESSSTATEGET;
 	res_lib_amf_readinessstateget.header.size = sizeof (struct res_lib_amf_readinessstateget);
 	res_lib_amf_readinessstateget.header.error = SA_ERR_NOT_EXIST;
@@ -2437,6 +2570,8 @@ static int message_handler_req_amf_hastateget (struct conn_info *conn_info, void
 	struct req_amf_hastateget *req_amf_hastateget = (struct req_amf_hastateget *)message;
 	struct res_lib_amf_hastateget res_lib_amf_hastateget;
 	struct saAmfComponent *component;
+
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_hastateget()\n");
 
 	res_lib_amf_hastateget.header.id = MESSAGE_RES_AMF_HASTATEGET;
 	res_lib_amf_hastateget.header.size = sizeof (struct res_lib_amf_hastateget);
@@ -2461,8 +2596,9 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 	int i;
 	struct saAmfProtectionGroup *amfProtectionGroup;
 
-	amfProtectionGroup = protectiongroup_find (&req_amf_protectiongrouptrackstart->csiName);
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_protectiongrouptrackstart()\n");
 
+	amfProtectionGroup = protectiongroup_find (&req_amf_protectiongrouptrackstart->csiName);
 	if (amfProtectionGroup) {
 		log_printf (LOG_LEVEL_DEBUG, "protectiongrouptrackstart: Got valid track start on CSI: %s.\n", getSaNameT (&req_amf_protectiongrouptrackstart->csiName));
 		for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
@@ -2508,11 +2644,11 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 		req_amf_protectiongrouptrackstart->trackFlags & SA_TRACK_CURRENT) {
 
 		protectiongroup_notification_send (conn_info,
-			track->notificationBufferAddress,
+			track->notificationBufferAddress, 
 			amfProtectionGroup,
-			0, 
 			0,
-			track->trackFlags);
+			0,
+			SA_TRACK_CHANGES_ONLY);
 
 		track->trackFlags &= ~SA_TRACK_CURRENT;
 	}
@@ -2525,6 +2661,8 @@ static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *c
 	struct res_lib_amf_protectiongrouptrackstop res_lib_amf_protectiongrouptrackstop;
 	struct libamf_ci_trackentry *track = 0;
 	int i;
+
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_protectiongrouptrackstop()\n");
 
 	for (i = 0; i < conn_info->ais_ci.u.libamf_ci.trackEntries; i++) {
 		if (name_match (&req_amf_protectiongrouptrackstop->csiName,
@@ -2563,6 +2701,8 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 
 	struct iovec iovecs[2];
 
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_errorreport()\n");
+
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
@@ -2590,6 +2730,8 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 	struct req_exec_amf_errorcancelall req_exec_amf_errorcancelall;
 
 	struct iovec iovecs[2];
+
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_errorcancelall()\n");
 
 	req_exec_amf_errorcancelall.header.size = sizeof (struct req_exec_amf_errorcancelall);
 	req_exec_amf_errorcancelall.header.id = MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL;
@@ -2620,7 +2762,7 @@ static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info
 	struct conn_info *inv_conn_info;
 	int interface;
 
-	log_printf (LOG_LEVEL_DEBUG, "handling stopping complete\n");
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_stoppingcomplete()\n");
 
 	req_amf_invocation_get_and_destroy (req_amf_stoppingcomplete->invocation,
 		&interface, &inv_conn_info);
@@ -2649,6 +2791,8 @@ static int message_handler_req_amf_response (struct conn_info *conn_info_nouse, 
 	struct conn_info *conn_info;
 	int interface;
 	int res;
+
+	log_printf (LOG_LEVEL_DEBUG, "Handle : message_handler_req_amf_response()\n");
 
 	res = req_amf_invocation_get_and_destroy (req_amf_response->invocation,
 		&interface, &conn_info);
@@ -2686,6 +2830,9 @@ static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info
 	struct saAmfComponent *component;
 	SaErrorT error = SA_OK;
 
+	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_componentcapabilitymodelget()\n");
+
+	memset( &res_lib_amf_componentcapabilitymodelget,0,sizeof(res_lib_amf_componentcapabilitymodelget));
 	log_printf (LOG_LEVEL_DEBUG, "componentcapabilitymodelget: Retrieve name %s.\n", getSaNameT (&req_amf_componentcapabilitymodelget->compName));
 	component = findComponent (&req_amf_componentcapabilitymodelget->compName);
 	if (component && component->registered) {
