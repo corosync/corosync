@@ -71,6 +71,20 @@ int clusterNodeEntries = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
+SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
+{
+	SaClmClusterNodeT *ret = NULL;
+	int i;
+
+	for (i = 0; i < clusterNodeEntries; i++) {
+		if (clusterNodes[i].nodeId == node_id.s_addr) {
+			ret = &clusterNodes[i];
+			break;
+		}
+	}
+	return (ret);
+}
+
 /*
  * Service Interfaces required by service_message_handler struct
  */
