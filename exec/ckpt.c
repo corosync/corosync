@@ -1254,8 +1254,8 @@ static int message_handler_req_exec_ckpt_synchronize_state (void *message, struc
 										&req_exec_ckpt_sync_state->checkpointCreationAttributes,
 										req_exec_ckpt_sync_state->ckpt_refcount);
 	if (retcode != SA_AIS_OK) {
-		log_printf(LOG_LEVEL_ERROR, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
-		log_printf(LOG_LEVEL_ERROR, "CKPT: recovery_checkpoint_open returned %d\n",retcode);		
+		log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
+		log_printf(LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open returned %d\n",retcode);		
 	}
 	
 	retcode = recovery_section_create (&req_exec_ckpt_sync_state->sectionDescriptor,
@@ -1263,8 +1263,8 @@ static int message_handler_req_exec_ckpt_synchronize_state (void *message, struc
 										(char*)req_exec_ckpt_sync_state
 										+ sizeof (struct req_exec_ckpt_synchronize_state));
 	if (retcode != SA_AIS_OK) {
-		log_printf(LOG_LEVEL_ERROR, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
-		log_printf(LOG_LEVEL_ERROR, "CKPT: recovery_section_create returned %d\n",retcode);		
+		log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
+		log_printf(LOG_LEVEL_DEBUG, "CKPT: recovery_section_create returned %d\n",retcode);		
 	}	
 	
 	return (0);
