@@ -162,7 +162,7 @@ retry_recv:
 
 struct message_overlay {
 	struct message_header header;
-	char instance[4096];
+	char payload[4096];
 };
 
 SaErrorT
@@ -172,31 +172,34 @@ saRecvQueue (
 	struct queue *queue,
 	int findMessageId)
 {
-	struct message_overlay *message_overlay = (struct message_overlay *)msg;
+	struct message_overlay message;
 	void *inq_msg;
 	int match;
 	SaErrorT error;
 
 	do {
-		error = saRecvRetry (s, &message_overlay->header, sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+		error = saRecvRetry (s, &message.header, sizeof (struct message_header),
+			MSG_WAITALL | MSG_NOSIGNAL);
 		if (error != SA_OK) {
 			goto error_exit;
 		}
-		if (message_overlay->header.size > sizeof (struct message_header)) {
-			error = saRecvRetry (s, &message_overlay->instance, message_overlay->header.size - sizeof (struct message_header), MSG_WAITALL | MSG_NOSIGNAL);
+		if (message.header.size > sizeof (struct message_header)) {
+			error = saRecvRetry (s, &message.payload,
+				message.header.size - sizeof (struct message_header),
+				MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_exit;
 			}
 		}
-		match = (message_overlay->header.id == findMessageId);
+		match = (message.header.id == findMessageId);
 
 		if (match == 0 && queue) {
-			inq_msg = (void *)malloc (message_overlay->header.size);
+			inq_msg = (void *)malloc (message.header.size);
 			if (inq_msg == 0) {
 				error = SA_ERR_NO_MEMORY;
 				goto error_exit;
 			}
-			memcpy (inq_msg, msg, message_overlay->header.size);
+			memcpy (inq_msg, &message, message.header.size);
 			error = saQueueItemAdd (queue, &inq_msg);
 			if (error != SA_OK) {
 				free (inq_msg);
@@ -207,6 +210,8 @@ saRecvQueue (
 			if (error != SA_OK) {
 				goto error_exit;
 			}
+		} else {
+			memcpy (msg, &message, message.header.size);
 		}
 	} while (match == 0);
 
