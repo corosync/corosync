@@ -61,9 +61,7 @@
 #include "print.h"
 #define LOG_LEVEL_FROM_LIB LOG_LEVEL_DEBUG
 #define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
-
-#define MCAST_DATA_NUM 2
-#define MCAST_DATA_LEN 256+256+128
+#define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG
 
 struct invocation {
 	struct conn_info *conn_info;
@@ -499,8 +497,9 @@ static void component_unregister (
 	if (component == 0 || component->local != 1) {
 		return;
 	}
-	log_printf (LOG_LEVEL_DEBUG, "component_unregister: unregistering component %s\n",
+	log_printf (LOG_LEVEL_ENTER_FUNC, "component_unregister: unregistering component %s\n",
 		getSaNameT (&component->name));
+
 	component->probableCause = SA_AMF_NOT_RESPONDING;
 
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
@@ -533,7 +532,7 @@ static void component_register (
 	if (component == 0 || component->local != 1) {
 		return;
 	}
-	log_printf (LOG_LEVEL_DEBUG, "component_register: registering component %s\n",
+	log_printf (LOG_LEVEL_ENTER_FUNC, "component_register: registering component %s\n",
 		getSaNameT (&component->name));
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
@@ -554,6 +553,8 @@ static void component_register (
 
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
+
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
 /***
@@ -691,7 +692,7 @@ void ha_state_api_set (struct saAmfComponent *component, SaAmfHAStateT haState)
 	struct res_lib_amf_csisetcallback res_lib_amf_csisetcallback;
 	memset (&res_lib_amf_csisetcallback,0,sizeof(res_lib_amf_csisetcallback));
 
-	log_printf (LOG_LEVEL_DEBUG, "sending ha state to API\n");
+	log_printf (LOG_LEVEL_ENTER_FUNC, "sending ha state to API\n");
 
 	if (component->local != 1) {
 		return;
@@ -747,7 +748,7 @@ static void ha_state_group_set (
 	memcpy (&req_exec_amf_hastateset.compName, &component->name, sizeof (SaNameT));
 	req_exec_amf_hastateset.haState = haState;
 
-	log_printf (LOG_LEVEL_DEBUG, "Sending ha state to cluster for component %s\n", getSaNameT (&component->name));
+	log_printf (LOG_LEVEL_ENTER_FUNC, "Sending ha state to cluster for component %s\n", getSaNameT (&component->name));
 	log_printf (LOG_LEVEL_DEBUG, "ha state is %d\n", haState);
 
 	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
@@ -814,7 +815,7 @@ static void readiness_state_group_set (
 	memcpy (&req_exec_amf_readinessstateset.compName, &component->name, sizeof (SaNameT));
 	req_exec_amf_readinessstateset.readinessState = readinessState;
 
-	log_printf (LOG_LEVEL_DEBUG, "Sending message to all cluster nodes to set readiness state of component %s\n",
+	log_printf (LOG_LEVEL_ENTER_FUNC, "Sending message to all cluster nodes to set readiness state of component %s\n",
 		getSaNameT (&component->name));
 	log_printf (LOG_LEVEL_DEBUG, "readiness state is %d\n", readinessState);
 
@@ -1608,7 +1609,7 @@ static void protectiongroup_notifications_send (
 	struct conn_info *conn_info;
 	struct list_head *list;
 
-	log_printf (LOG_LEVEL_DEBUG, "protectiongroup_notifications_send: sending PGs to API.\n");
+	log_printf (LOG_LEVEL_ENTER_FUNC, "protectiongroup_notifications_send: sending PGs to API.\n");
 
 	/*
 	 * Iterate all tracked connections
@@ -1809,7 +1810,8 @@ static void response_handler_readinessstatesetcallback (struct conn_info *conn_i
 {
 
 	if (req_amf_response->error == SA_OK && conn_info->component) {
-	log_printf (LOG_LEVEL_DEBUG, "CALLBACK sending readiness state to %s\n", 
+
+	log_printf (LOG_LEVEL_ENTER_FUNC, "CALLBACK sending readiness state to %s\n", 
 		getSaNameT (&conn_info->component->name));
 		readiness_state_group_set (conn_info->component, conn_info->component->newReadinessState);
 	}
@@ -1869,7 +1871,7 @@ void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 		return;
 	}
 
-	log_printf (LOG_LEVEL_DEBUG, "amf_confchg_nleave(%s)\n", getSaNameT (&(component->name)));
+	log_printf (LOG_LEVEL_ENTER_FUNC, "amf_confchg_nleave(%s)\n", getSaNameT (&(component->name)));
 
         /* Component status Initialize */
 	unit = component->saAmfUnit;
@@ -1920,6 +1922,8 @@ static int amf_confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	int i;
+
+	log_printf (LOG_LEVEL_FROM_GMI, "Executive: amf_confchg_fn : type = %d,mnum = %d,jnum = %d,lnum = %d\n", configuration_type,member_list_entries,joined_list_entries,left_list_entries);
 
 	recovery = 1;
 	/*
@@ -2084,7 +2088,7 @@ static void amf_synchronize (void *message, struct in_addr source_addr)
 	struct saAmfComponent *component;
 	struct saAmfComponent *amfProxyComponent;
 
-	log_printf (LOG_LEVEL_DEBUG, "amf_synchronize%s\n",
+	log_printf (LOG_LEVEL_ENTER_FUNC, "amf_synchronize%s\n",
 		getSaNameT (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName));
 
 	/* Find Component */
