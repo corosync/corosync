@@ -56,6 +56,27 @@ internal_log_printf (int level, char *string, ...)
 	va_end(ap);
 }
 
+void
+internal_log_printf_checkdebug (int level, char *string, ...)
+{
+	va_list ap;
+	char newstring[1024];
+
+	va_start(ap, string);
+	
+#ifdef DEBUG
+	sprintf (newstring, "L(%x): %s", level, string);
+	vfprintf(stderr, newstring, ap);
+#else
+	if (level != LOG_LEVEL_DEBUG) {
+		sprintf (newstring, "L(%x): %s", level, string);
+		vfprintf(stderr, newstring, ap);
+	}
+#endif
+
+	va_end(ap);
+}
+
 extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
 	static char node_address[300];

@@ -45,6 +45,8 @@
 
 extern void internal_log_printf (int level, char *string, ...);
 
+extern void internal_log_printf_checkdebug (int level, char *string, ...);
+
 /*
  * The optimizer will remove DEBUG logging messages in production builds
  */
