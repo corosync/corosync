@@ -149,6 +149,7 @@ saAmfInitialize (
 	error = saServiceConnect (&amfInstance->fd, MESSAGE_REQ_AMF_INIT);
 	if (error != SA_OK) {
 		goto error_put_destroy;
+// this is wrong
 	}
 
 	memcpy (&amfInstance->callbacks, amfCallbacks, sizeof (SaAmfCallbacksT));
