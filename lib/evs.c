@@ -37,6 +37,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -55,12 +56,49 @@ struct evs_inst {
 	pthread_mutex_t mutex;
 };
 
+static void evs_instance_destructor (void *instance);
+
 static struct saHandleDatabase evs_handle_t_db = {
 	.handleCount				= 0,
 	.handles					= 0,
 	.mutex						= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= 0
+	.handleInstanceDestructor	= evs_instance_destructor
 };
+
+/*
+ * Clean up function for an evt instance (saEvtInitialize) handle
+ */
+static void evs_instance_destructor (void *instance)
+{
+    struct evs_inst *evs_inst = instance;
+    void **msg;
+    int empty;
+
+    /*
+     * Empty out the queue if there are any pending messages
+     */
+    while ((saQueueIsEmpty(&evs_inst->inq, &empty) == SA_OK) && !empty) {
+        saQueueItemGet(&evs_inst->inq, (void *)&msg);
+        saQueueItemRemove(&evs_inst->inq);
+        free(*msg);
+    }
+
+    /*
+     * clean up the queue itself
+     */
+    if (evs_inst->inq.items) {
+            free(evs_inst->inq.items);
+    }
+
+    /*
+     * Disconnect from the server
+     */
+    if (evs_inst->fd != -1) {
+        shutdown(evs_inst->fd, 0);
+        close(evs_inst->fd);
+    }
+}
+
 
 evs_error_t evs_initialize (
 	evs_handle_t *handle,
@@ -90,7 +128,7 @@ evs_error_t evs_initialize (
 
 	error = saServiceConnect (&evs_inst->fd, MESSAGE_REQ_EVS_INIT);
 	if (error != SA_OK) {
-		goto error_put_destroy_free;
+		goto error_put_destroy;
 	}
 	
 	memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
@@ -101,8 +139,6 @@ evs_error_t evs_initialize (
 
 	return (SA_OK);
 
-error_put_destroy_free:
-	free (evs_inst->inq.items);
 error_put_destroy:
 	saHandleInstancePut (&evs_handle_t_db, *handle);
 error_destroy:
