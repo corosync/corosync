@@ -88,20 +88,20 @@
 #define ENCRYPTION 1	 /* use encryption */
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
-#define QUEUE_PEND_SIZE_MAX			50
+#define QUEUE_PEND_SIZE_MAX			51
 #define QUEUE_ASSEMBLY_SIZE_MAX		((MESSAGE_SIZE_MAX / 1472) + 1)
 #define QUEUE_RTR_ITEMS_SIZE_MAX	8192
-#define QUEUE_PEND_TRANS_SIZE_MAX	((MESSAGE_SIZE_MAX / 1472) + 1) * 500
+#define QUEUE_PEND_TRANS_SIZE_MAX	((MESSAGE_SIZE_MAX / 1472) + 1)
 #define MAXIOVS						8
 #define RTR_TOKEN_SIZE_MAX			32
 #define MISSING_MCAST_WINDOW		64
 #define TIMEOUT_STATE_GATHER		100
-#define TIMEOUT_TOKEN				200
-#define TIMEOUT_TOKEN_RETRANSMIT	100	
+#define TIMEOUT_TOKEN				1500
+#define TIMEOUT_TOKEN_RETRANSMIT	750	
 #define TIMEOUT_STATE_COMMIT		100
 #define MAX_MEMBERS					16
 #define HOLE_LIST_MAX				MISSING_MCAST_WINDOW
-#define PRIORITY_MAX				3
+#define PRIORITY_MAX				4
 
 /*
  * Authentication of messages
@@ -953,6 +953,23 @@ printf ("CALCULATED TOTAL is %d\n", calced_total);
 	}
 
 	return (0);
+}
+
+/*
+ * Determine if there is room to queue a message for transmission
+ */
+int gmi_send_ok (
+	int priority,
+	int msg_size)
+{
+	int avail;
+
+	queue_avail (&queues_pend_trans[priority], &avail);
+	if (avail <= (msg_size / FRAGMENT_SIZE)) {
+		return (0);
+	}
+	
+	return (1);
 }
 
 static int netif_determine (struct sockaddr_in *bindnet,
