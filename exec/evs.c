@@ -244,9 +244,11 @@ static int message_handler_req_evs_join (struct conn_info *conn_info, void *mess
 	}
 
 #ifdef DEBUG
+{ int i;
 	for (i = 0; i < req_lib_evs_join->group_entries; i++) {
 		printf ("Joining group %s\n", req_lib_evs_join->groups[i].key);
 	}
+}
 #endif
 	addr = realloc (conn_info->ais_ci.u.libevs_ci.groups,
 		sizeof (struct evs_group) * 
