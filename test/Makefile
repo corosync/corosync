@@ -44,7 +44,12 @@ LIBS = ../lib/libais.a -lpthread
 #LIBS = ../lib/libais.a
 
 EXTRA_CFLAGS = -I../include
-all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth
+TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
+		testamf4.c testamf5.c testamf6.c testamfth.c  \
+		testckpt.c ckptstress.c testparse.c ckptbench.c  \
+		ckptbenchth.c testevt.c
+
+all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse ckptbench ckptbenchth testevt
 
 testparse: testparse.o
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o
@@ -76,6 +81,9 @@ testamf6: testamf6.o
 testamfth: testamfth.o
 	$(CC) $(LDFLAGS) -o testamfth testamfth.o $(LIBS)
 
+testevt: testevt.o
+	$(CC) $(LDFLAGS) -o testevt testevt.o $(LIBS)
+
 testclm: testclm.o
 	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
 
@@ -92,7 +100,28 @@ ckptstress: ckptstress.o
 	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
 
 clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth
+	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer ckptbench ckptbenchth testevt
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+
+depend:
+	makedepend -Y -- $(CFLAGS) $(TEST_SRC) > /dev/null 2>&1
+# DO NOT DELETE
+
+testclm.o: ../include/ais_types.h ../include/ais_clm.h
+testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testamf1.o: ../include/ais_types.h ../include/ais_amf.h
+testamf2.o: ../include/ais_types.h ../include/ais_amf.h
+testamf3.o: ../include/ais_types.h ../include/ais_amf.h
+testamf4.o: ../include/ais_types.h ../include/ais_amf.h
+testamf5.o: ../include/ais_types.h ../include/ais_amf.h
+testamf6.o: ../include/ais_types.h ../include/ais_amf.h
+testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testckpt.o: ../include/ais_types.h ../include/ais_ckpt.h
+ckptstress.o: ../include/ais_types.h ../include/ais_ckpt.h
+testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
+testparse.o: ../exec/aispoll.h ../exec/print.h
+ckptbench.o: ../include/ais_types.h ../include/ais_ckpt.h
+ckptbenchth.o: ../include/ais_types.h ../include/ais_ckpt.h
+testevt.o: ../include/ais_types.h ../include/ais_evt.h
