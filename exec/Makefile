@@ -73,7 +73,7 @@ keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen
 
 clean:
-	rm -f aisexec $(OBJS) libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen keygen.o *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1
