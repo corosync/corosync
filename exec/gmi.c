@@ -157,6 +157,12 @@ struct reftwo {
 	int refcount;
 };
 
+struct token_callback_instance {
+	struct list_head list;
+	int (*callback_fn) (void *);
+	void *data;
+};
+
 /*
  * In-order pending delivery queue
  */
@@ -235,6 +241,7 @@ static struct saHandleDatabase plug_instance_database = {
 };
 
 DECLARE_LIST_INIT (plug_listhead);
+DECLARE_LIST_INIT (token_callback_listhead);
 
 /*
  * Delivered up to and including
@@ -2905,6 +2912,56 @@ static void calculate_group_arut (struct orf_token *orf_token)
 	last_group_arut = orf_token->group_arut;
 }
 
+int gmi_token_callback_create (void **handle_out, int (*callback_fn) (void *), void *data)
+{
+	struct token_callback_instance *handle;
+	handle = (struct token_callback_instance *)malloc (sizeof (struct token_callback_instance));
+	if (handle == 0) {
+		return (-1);
+	}
+	*handle_out = (void *)handle;
+	list_init (&handle->list);
+	handle->callback_fn = callback_fn;
+	handle->data = data;
+	list_add (&handle->list, &token_callback_listhead);
+	return (0);
+}
+
+void gmi_token_callback_destroy (void *handle)
+{
+	struct token_callback_instance *token_callback_instance = (struct token_callback_instance *)handle;
+
+	list_del (&token_callback_instance->list);
+	free (token_callback_instance);
+}
+
+void token_callbacks_execute (void)
+{
+	struct list_head *list;
+	struct list_head *list_next;
+	struct token_callback_instance *token_callback_instance;
+	int res;
+
+	for (list = token_callback_listhead.next; list != &token_callback_listhead;
+		list = list_next) {
+
+		token_callback_instance = list_entry (list, struct token_callback_instance, list);
+		list_next = list->next;
+		list_del (list);
+
+		res = token_callback_instance->callback_fn (token_callback_instance->data);
+
+		/*
+		 * This callback failed to execute, try it again on the next token
+		 */
+		if (res == -1) {
+			list_add (list, &token_callback_listhead);
+			break;
+		}
+		free (token_callback_instance);
+	}
+}
+
 /*
  * Message Handlers
  */
@@ -3073,6 +3130,8 @@ printf ("already received token %d %d\n", orf_token->token_seqid, gmi_token_seqi
 	 * Transmit orf_token to next member
 	 */
 	orf_token_send (orf_token, rtr_list, plug_bitmap, 1);
+
+	token_callbacks_execute ();
 
 	return (0);
 }
