@@ -68,8 +68,6 @@
 #include "../include/queue.h"
 #include "../include/sq.h"
 
-extern struct sockaddr_in this_ip;
-
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_PEND_DELV_SIZE_MAX	((MESSAGE_SIZE_MAX / 1472) + 1) * 2
 #define QUEUE_RTR_ITEMS_SIZE_MAX	512
@@ -296,6 +294,8 @@ enum memb_state {
 
 static enum memb_state memb_state = MEMB_STATE_GATHER;
 
+static struct sockaddr_in gmi_bound_to;
+
 static struct sockaddr_in memb_list[MAX_MEMBERS];
 static int memb_list_entries = 1;
 static int memb_list_entries_confchg = 1;
@@ -435,6 +435,8 @@ int res;
 		&gmi_fd_token,
 		sockaddr_boundto);
 
+	memcpy (&gmi_bound_to, sockaddr_boundto, sizeof (struct sockaddr_in));
+
 	/*
 	 * This stuff depends on gmi_build_sockets
 	 */
@@ -510,7 +512,7 @@ static int gmi_pend_trans_item_store (
 	gmi_pend_trans_item.mcast->packet_number = packet_number;
 	gmi_pend_trans_item.mcast->packet_count = packet_count;
 	gmi_pend_trans_item.mcast->packet_seq = local_host_seq_count++;
-	gmi_pend_trans_item.mcast->source.s_addr = this_ip.sin_addr.s_addr;
+	gmi_pend_trans_item.mcast->source.s_addr = gmi_bound_to.sin_addr.s_addr;
 
 	memcpy (&gmi_pend_trans_item.mcast->groupname, groupname,
 		sizeof (struct gmi_groupname));
@@ -1599,7 +1601,7 @@ int orf_token_send_initial (void)
 	orf_token.header.seqid = 0;
 	orf_token.header.type = MESSAGE_TYPE_ORF_TOKEN;
 	orf_token.group_arut = gmi_highest_seq;
-	orf_token.addr_arut.s_addr = this_ip.sin_addr.s_addr;
+	orf_token.addr_arut.s_addr = gmi_bound_to.sin_addr.s_addr;
 	orf_token.fcc = 0;
 
 	orf_token.rtr_list_entries = 0;
@@ -2155,13 +2157,13 @@ static void calculate_group_arut (struct orf_token *orf_token)
 	 * because everyone has these messages
 	 */
 	messages_free (orf_token->group_arut);
-	if (orf_token->addr_arut.s_addr == this_ip.sin_addr.s_addr) {
+	if (orf_token->addr_arut.s_addr == gmi_bound_to.sin_addr.s_addr) {
 		orf_token->group_arut = gmi_arut;
 	}
 
 	if (gmi_arut < orf_token->group_arut) {
 		orf_token->group_arut = gmi_arut;
-		orf_token->addr_arut.s_addr = this_ip.sin_addr.s_addr;
+		orf_token->addr_arut.s_addr = gmi_bound_to.sin_addr.s_addr;
 	}
 	last_group_arut = orf_token->group_arut;
 }
