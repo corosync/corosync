@@ -97,6 +97,7 @@ int main (void)
 	evs_handle_t handle;
 	evs_error_t result;
 	int i = 0;
+	int fd;
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != EVS_OK) {
@@ -154,5 +155,10 @@ try_again_two:
 	do {
 		result = evs_dispatch (&handle, EVS_DISPATCH_ALL);
 	} while (deliveries < 900);
+
+	evs_fd_get (&handle, &fd);
+	
+	evs_finalize (&handle);
+
 	return (0);
 }

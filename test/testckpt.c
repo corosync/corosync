@@ -164,6 +164,7 @@ int main (void) {
 	struct timeval tv_start;
 	struct timeval tv_end;
 	struct timeval tv_elapsed;
+	int sel_fd;
 	
     error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 	
@@ -218,24 +219,6 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 
 	printf ("%s: Section creation\n",
 		get_test_output (error, SA_AIS_OK));
-	printf ("saCkptSectionCreate result %d (should be 1)\n", error);
-#ifdef cmpout
-for (ckptinv = 0; ckptinv < 500000; ckptinv++) {
-printf ("Writing checkpoint loop %d\n", ckptinv);
-	/*
-	 * Test checkpoint write
-	 */
-	error = saCkptCheckpointWrite (checkpointHandle,
-		WriteVectorElements,
-		1,
-		&erroroneousVectorIndex);
-if (error != SA_OK) {
-	printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
-	exit (1);
-}
-}
-exit (1);
-#endif
 
 	error = saCkptCheckpointUnlink (ckptHandle, &checkpointName);
 	printf ("%s: Unlinking checkpoint\n", 
@@ -356,23 +339,22 @@ exit (1);
 	printf (" buffer #1: '%s'\n", readBuffer1);
 	printf (" buffer #2: '%s'\n", readBuffer2);
 
-#ifdef COMPILE_OUT
-for (ckptinv = 0; ckptinv < 2000; ckptinv++) {
+	for (ckptinv = 0; ckptinv < 10; ckptinv++) {
 	/*
 	 * Test checkpoint write
 	 */
-	error = saCkptCheckpointWrite (checkpointHandle,
-		WriteVectorElements,
-		2,
-		&erroroneousVectorIndex);
-if (error != SA_OK) {
-printf ("Writing checkpoint loop %d\n", ckptinv);
-	printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
-exit (1);
-}
-}
-exit (1);
-#endif
+		error = saCkptCheckpointWrite (checkpointHandle,
+			WriteVectorElements,
+			2,
+			&erroroneousVectorIndex);
+		if (error != SA_OK) {
+			printf ("Writing checkpoint loop %d\n", ckptinv);
+				printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
+		}
+	}
+	printf ("%s: Testing checkpoint writes\n",
+		get_test_output (error, SA_AIS_OK));
+
 	error = saCkptCheckpointRead (checkpointHandle,
 		ReadVectorElements,
 		2,
@@ -420,5 +402,14 @@ exit (1);
 	error = saCkptSectionIterationFinalize (sectionIterator);
 	printf ("%s: Finalize iteration\n",
 		get_test_output (error, SA_AIS_OK));
+
+	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
+	printf ("%s: Retrieve selection object %d\n",
+		get_test_output (error, SA_AIS_OK), sel_fd);
+
+	error = saCkptFinalize (ckptHandle);
+	printf ("%s: Finalize checkpoint\n",
+		get_test_output (error, SA_AIS_OK));
+
 	return (0);
 }
