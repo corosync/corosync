@@ -77,7 +77,6 @@ internal_log_printf_checkdebug (int level, char *string, ...)
 	va_end(ap);
 }
 
-#ifdef DEBUG
 char *getSaNameT (SaNameT *name)
 {
 	static char ret_name[300];
@@ -92,6 +91,7 @@ char *getSaNameT (SaNameT *name)
 	return (ret_name);
 }
 
+#ifdef DEBUG
 extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
 	static char node_address[300];
