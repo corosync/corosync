@@ -77,6 +77,21 @@ internal_log_printf_checkdebug (int level, char *string, ...)
 	va_end(ap);
 }
 
+#ifdef DEBUG
+char *getSaNameT (SaNameT *name)
+{
+	static char ret_name[300];
+
+	memset (ret_name, 0, sizeof (ret_name));
+	if (name->length > 299) {
+		memcpy (ret_name, name->value, 299);
+	} else {
+
+		memcpy (ret_name, name->value, name->length);
+	}
+	return (ret_name);
+}
+
 extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
 	static char node_address[300];
@@ -103,21 +118,10 @@ void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode) 
 
 	log_printf (LOG_LEVEL_NOTICE, "\tTimestamp is %llx nanoseconds\n", clusterNode->bootTimestamp);
 }
+#endif /* DEBUG */
 
-char *getSaNameT (SaNameT *name)
-{
-	static char ret_name[300];
 
-	memset (ret_name, 0, sizeof (ret_name));
-	if (name->length > 299) {
-		memcpy (ret_name, name->value, 299);
-	} else {
-
-		memcpy (ret_name, name->value, name->length);
-	}
-	return (ret_name);
-}
-
+#ifdef CODE_COVERAGE_COMPILE_OUT
 void saAmfPrintGroups (void)
 {
 	struct list_head *AmfGroupList;
@@ -190,3 +194,5 @@ void saAmfPrintGroups (void)
 		log_printf (LOG_LEVEL_DEBUG, "}\n");
 	}
 }
+#endif /* CODE_COVERAGE_COMPILE_OUT */
+
