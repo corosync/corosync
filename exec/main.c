@@ -59,7 +59,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "poll.h"
-#include "gmi.h"
+#include "totempg.h"
 #include "mempool.h"
 #include "parse.h"
 #include "main.h"
@@ -69,6 +69,7 @@
 #include "amf.h"
 #include "ckpt.h"
 #include "evt.h"
+#include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
@@ -77,8 +78,6 @@
 
 int ais_uid = 0;
 int gid_valid = 0;
-
-struct gmi_groupname aisexec_groupname = { "0123" };
 
 /*
  * All service handlers in the AIS
@@ -571,16 +570,16 @@ retry_recv:
 			}
 
 			/*
-			 * Determine if a message can be queued with gmi and if so
+			 * Determine if a message can be queued with totempg and if so
 			 * deliver it, otherwise tell the library we are too busy
 			 */
 	
-			send_ok = gmi_send_ok (ais_service_handlers[service - 1]->libais_handlers[header->id].gmi_prio, 1000 + header->size);
+			send_ok = totempg_send_ok (ais_service_handlers[service - 1]->libais_handlers[header->id].totempg_prio, 1000 + header->size);
 			if (send_ok) {
-				*prio = 0;
+		//		*prio = 0;
 				res = ais_service_handlers[service - 1]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
 			} else {
-				*prio = (*prio) + 1;
+		//		*prio = (*prio) + 1;
 
 				/*
 				 * Overload, tell library to retry
@@ -649,7 +648,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct in_addr source_addr);
+static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct in_addr source_addr, int endian_conversion_required);
 static int aisexec_handler_fns_count = 0;
 
 /*
@@ -671,10 +670,10 @@ static void aisexec_handler_fns_build (void)
 char delivery_data[MESSAGE_SIZE_MAX];
 
 static void deliver_fn (
-	struct gmi_groupname *groupname,
 	struct in_addr source_addr,
 	struct iovec *iovec,
-	int iov_len)
+	int iov_len,
+	int endian_conversion_required)
 {
 	struct req_header *header;
 	int res;
@@ -696,26 +695,33 @@ static void deliver_fn (
 	} else {
 		header = (struct req_header *)iovec[0].iov_base;
 	}
-	res = aisexec_handler_fns[header->id](header, source_addr);
+	if (endian_conversion_required) {
+		header->id = swab32 (header->id);
+		header->size = swab32 (header->size);
+	}
+	res = aisexec_handler_fns[header->id](header, source_addr, endian_conversion_required);
 }
 
 static void confchg_fn (
-	enum gmi_configuration_type configuration_type,
-	struct sockaddr_in *member_list, int member_list_entries,
-	struct sockaddr_in *left_list, int left_list_entries,
-	struct sockaddr_in *joined_list, int joined_list_entries)
+	enum totempg_configuration_type configuration_type,
+	struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+	struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+	struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries)
 {
 	int i;
 
 	/*
-	 * Call configure change for all APIs
+	 * Call configuration change for all services
 	 */
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
 		if (ais_service_handlers[i]->confchg_fn) {
 			ais_service_handlers[i]->confchg_fn (configuration_type,
-				member_list, member_list_entries,
-				left_list, left_list_entries,
-				joined_list, joined_list_entries);
+				member_list, member_list_private, member_list_entries,
+				left_list, left_list_private, left_list_entries,
+				joined_list, joined_list_private, joined_list_entries);
 		}
 	}
 }
@@ -745,6 +751,7 @@ static void aisexec_gid_determine (void)
 
 static void aisexec_priv_drop (void)
 {
+return;
 	setuid (ais_uid);
 	setegid (ais_uid);
 }
@@ -884,7 +891,6 @@ int main (int argc, char **argv)
 {
 	int libais_server_fd;
 	int res;
-	gmi_join_handle handle;
 	unsigned char private_key[128];
 
 	char *error_string;
@@ -899,7 +905,7 @@ int main (int argc, char **argv)
 	signal (SIGUSR2, sigusr2_handler);
 
 	/*
-	 * if gmi_init doesn't have root priveleges, it cannot
+	 * if totempg_initialize doesn't have root priveleges, it cannot
 	 * bind to a specific interface.  This only matters if
 	 * there is more then one interface in a system, so
 	 * in this case, only a warning is printed
@@ -934,16 +940,20 @@ int main (int argc, char **argv)
 
 	aisexec_keyread (private_key);
 
-	gmi_log_printf_init (internal_log_printf,
+	totempg_log_printf_init (internal_log_printf,
 		mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI),
 		mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI),
 		mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI),
 		mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI),
 		mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI));
-	gmi_init (&openais_config.mcast_addr, openais_config.interfaces, 1,
+
+	totempg_initialize (&openais_config.mcast_addr, openais_config.interfaces, 1,
 		&aisexec_poll_handle,
 		private_key,
-		sizeof (private_key));
+		sizeof (private_key),
+		0,
+		0,
+		deliver_fn, confchg_fn);
 	
 	memcpy (&this_ip, &openais_config.interfaces[0].boundto,
 		sizeof (struct sockaddr_in));
@@ -988,7 +998,6 @@ int main (int argc, char **argv)
 	 * Join multicast group and setup delivery
 	 *  and configuration change functions
 	 */
-	gmi_join (0, deliver_fn, confchg_fn, &handle);
 
 	/*
 	 * Start main processing loop
