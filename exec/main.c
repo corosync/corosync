@@ -41,6 +41,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/sysinfo.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -841,6 +843,11 @@ return;
 static void aisexec_mlockall (void)
 {
 	int res;
+	struct rlimit rlimit;
+
+	rlimit.rlim_cur = RLIM_INFINITY;
+	rlimit.rlim_max = RLIM_INFINITY;
+	setrlimit (RLIMIT_MEMLOCK, &rlimit);
 
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
