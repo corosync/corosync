@@ -68,6 +68,7 @@ static DECLARE_LIST_INIT (confchg_notify);
 static int evs_executive_initialize (void);
 
 static int evs_confchg_fn (
+	enum gmi_configuration_type configuration_type,
     struct sockaddr_in *member_list, int member_list_entries,
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries);
@@ -133,7 +134,7 @@ struct service_handler evs_service_handler = {
 	.confchg_fn					= evs_confchg_fn,
 	.libais_init_fn				= message_handler_req_evs_init,
 	.libais_exit_fn				= evs_exit_fn,
-	.aisexec_init_fn			= evs_executive_initialize
+	.exec_init_fn				= evs_executive_initialize
 };
 
 static int evs_executive_initialize (void)
@@ -148,6 +149,7 @@ static int evs_exit_fn (struct conn_info *conn_info)
 }
 
 static int evs_confchg_fn (
+	enum gmi_configuration_type configuration_type,
     struct sockaddr_in *member_list, int member_list_entries,
     struct sockaddr_in *left_list, int left_list_entries,
     struct sockaddr_in *joined_list, int joined_list_entries) {
