@@ -166,6 +166,7 @@ static inline void sq_items_release (struct sq *sq, int seqid)
 	if ((oldhead + seqid - sq->head_seqid + 1) > sq->size) {
 //printf ("memset 1\n");
 //printf ("%d %d %d %d\n", seqid, sq->head_seqid, sq->head, sq->size);
+assert ((sq->size - oldhead) > 0);
 		memset (&sq->items_inuse[oldhead], 0, sq->size - oldhead);
 		memset (sq->items_inuse, 0, sq->head * sizeof (char));
 //printf ("SIZEOF %d %d\n", sq->head, sq->head * sizeof (char));
@@ -174,7 +175,7 @@ static inline void sq_items_release (struct sq *sq, int seqid)
 assert (seqid - sq->head_seqid + 1);
 //printf ("memset 2\n");
 //printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
-		memset (&sq->items_inuse[oldhead - 1], 0, (seqid - sq->head_seqid + 2) * sizeof (char));
+		memset (&sq->items_inuse[oldhead], 0, (seqid - sq->head_seqid + 2) * sizeof (char));
 	sq_item = sq->items;
 	sq_item += oldhead * sq->size_per_item;
 //		memset (sq_item[oldhead], 0, (seqid - sq->head_seqid + 1) * (sq->size_per_item));
