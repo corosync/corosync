@@ -10,7 +10,7 @@ available source code, may be exported from the United States under License
 Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 ***
 
-This AIS package is broken into four parts.  The exec directory contains
+This openais package is broken into four parts.  The exec directory contains
 all of the code responsible for serving the APIs.  The api directory contains
 APIs the user can link to.  The test directory contains some simple test
 programs which exercise the APIs.  The directory conf contains example
@@ -19,28 +19,54 @@ configuration files which can be copied directly onto the target system.
 The API implements the Cluster Membership (CLM), Availabilty Management
 Framework (AMF) and the Checkpointing (CKPT) APIs.
 
-Configuring the AIS Executive:
+Configuring the openais executive:
 ------------------------------
-The AIS Executive will automatically determine cluster membership by
+The openais executive will automatically determine cluster membership by
 communicating on a specified multicast address and port.
 
-The directory conf contains the file network.conf
+The directory conf contains the file openais.conf
 
-bindnetaddr:192.168.1.0
-mcastaddr:226.94.1.1
-mcastport:6000
+network {
+	bindnetaddr: 192.168.1.0
+	mcastaddr: 226.94.1.1
+	mcastport: 5405
+}
 
-bindnetaddr specifies the address which the AIS Executive should bind to.
+logging {
+	logoutput: file
+	logoutput: stderr
+	logoutput: syslog
+	logfile: /tmp/ais
+	debug: on
+	timestamp: on
+}
+
+The network section contains three values.  All three values must be set
+or the openais executive wll exit with an error.
+
+bindnetaddr specifies the address which the openais Executive should bind to.
 This address should always end in zero.  If the local interface taffic
-should routed over is 192.168.5.92, set bindnetaddr to 192.168.1.0.
+should routed over is 192.168.5.92, set bindnetaddr to 192.168.5.0.
 
 mcastaddr is a multicast address.  The default should work but you may have
 a different network configuration.  Avoid 224.x.x.x because this is a "config"
 multicast address.
 
 mcastport specifies the UDP port number.  It is possible to use the same
-multicast address on a network with the AIS services configured for different
+multicast address on a network with the openais services configured for different
 UDP ports.
+
+The logging section contains values.  These values do not have to be set in which
+case the system defaults to logging to syslog and stderr with timestamping and debug.
+
+It is possible to select 3 destinations for logs: files, stderr, and syslog.  One or
+more may be selected at the same time.  If file is selected as a destination, the file
+name must be specified via the logfile option or the openais executive will exit.
+
+The debug option prints out internal debugging information during runtime which may
+be helpful for developers.
+
+The timestamp option prints the date and time on each log message.
 
 The directory conf contains the file groups.conf which specifies the failover
 groups, service units, components, and policies to be used by the AMF.  The
@@ -49,19 +75,19 @@ can be copied directly.
 
 These two files should be placed in the /etc/ais directory.
 
-Building AIS
-------------
-AIS requires GCC, LD, and a Linux 2.4 kernel.  AIS has been tested on
+Building openais
+----------------
+openais requires GCC, LD, and a Linux 2.4 kernel.  openais has been tested on
 Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9, and Fedora
 Core 2.
 
-Compile AIS by running make in the root directory.  Make can also be run
+Compile openais by running make in the root directory.  Make can also be run
 in the individual directories.  Nothing is installed by make.  If install
 is desired, the files must be copied manually.
 
 Confiugre Host
 --------------
-For security reasons, the AIS only allows a process that had the EGID/GID
+For security reasons, the openais only allows a process that had the EGID/GID
 of "ais" to connect to it.  To make development easier, it is recommended to
 create an "ais" user with the "ais" group.
 
@@ -78,7 +104,7 @@ passwd: all authentication tokens updated successfully.
 Configure Network
 -----------------
 Some networks do not automatically configure the default route.  Ensure
-the default route is configured or AIS wont be able to communicate with
+the default route is configured or openais wont be able to communicate with
 other nodes.
 
 [sdake@slickdeal sdake]$ /sbin/route
@@ -94,18 +120,18 @@ is missing, specify one by
 unix# /sbin/route add default gw 192.168.1.1
 
 where 192.168.1.1 is the gateway.  It is possible to specify an invalid 
-route which will also make AIS work properly.
+route which will also make openais work properly.
 
 Generate a private key
 ----------------------
-AIS uses cryptographic techniques to ensure authenticity and privacy of
-messages.  In order for AIS to work, a private key must be generated and
+openais uses cryptographic techniques to ensure authenticity and privacy of
+messages.  In order for openais to work, a private key must be generated and
 shared to all processors.
 
 First generate the key on one of the nodes:
 
 unix# exec/keygen
-OpenAIS Authentication key generator.
+Openopenais Authentication key generator.
 Gathering 1024 bits for key from /dev/random.
 Writing openais key to /etc/ais/authkey.
 
@@ -122,15 +148,15 @@ unix# install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/a
 
 If the message invalid digest appears, the keys are not the same on each node.
 
-Run AIS Executive
------------------
-Get one or more nodes and run the AIS executive on each node.  A list of
-node IPs should be displayed when the nodes join a configuration.  Run the
+Run the openais executive
+-------------------------
+Get one or more nodes and run the openais executive on each node.  A list of
+node IPs should be logged when the nodes join a configuration.  Run the
 aisexec program after following the previous directions.
 
 Before running any of the test programs
 ---------------------------------------
-The AIS Executive will ensure security by only allowing the ais group (or
+The openais executive will ensure security by only allowing the ais group (or
 uid root) to connect to the service.  Switch to the ais group before
 running any applications linked to the saf api, or the applications will
 not be authenticated and won't be able to access services.
@@ -140,7 +166,7 @@ Password:
 [ais@slickdeal sdake]$ id
 uid=501(ais) gid=502(ais) groups=502(ais)
 
-Try out the AIS CLM functionality
+Try out the openais CLM functionality
 ---------------------------------
 After aisexec is running
 
@@ -156,7 +182,7 @@ aisexec on other nodes.
 Killing aisexec on the node the testclm is connected will cause the 
 API to return error codes indicating the system has failed.
 
-Try out the AIS AMF functionality
+Try out the openais AMF functionality
 ---------------------------------
 After aisexec is running
 
@@ -168,14 +194,14 @@ SU #3 consists of testamf5, testamf6.  The active and backup directives
 in groups.conf define how many SU's become active and how many
 become standby in the service group (SG).
 
-To test the AIS AMF, run testamf3 and testamf4 on one node.  Both
+To test the openais AMF, run testamf3 and testamf4 on one node.  Both
 components become in service and active.  Then run testamf1.  Nothing
 appears to happen, because testamf1 is not placed in service (and made
 standby) until testamf2 is registered.  Running testamf2 will show 
 a variety of state changes.  testamf1 will match these state changes.
 testamf2 is special because is reports an error, and later cancels
 the error, causing the entire SU to go out of service, then back in
-service.  This behavior is expected by the AIS specification and the
+service.  This behavior is expected by the openais specification and the
 code in testamf2.c can be read for a clearer understanding of what
 is happening.
 
@@ -185,8 +211,8 @@ out of service.  If ctrl-z is pressed on the active SU, the standby
 SU will become active.  CTRL-C on these tests behaves the same way.
 A crash behaves the same way.
 
-Try out the AIS CKPT functionality
-----------------------------------
+Try out the openais CKPT functionality
+--------------------------------------
 su to ais user
 
 run testckpt.  This will execute various checkpoint API operations.
