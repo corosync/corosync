@@ -42,6 +42,7 @@ typedef void * timer_handle;
 
 struct timerlist {
 	struct list_head timer_head;
+	struct list_head *timer_iter;
 };
 
 void timerlist_init (struct timerlist *timerlist);
