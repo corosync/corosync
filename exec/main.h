@@ -50,7 +50,7 @@
  * Size of the queue (entries) for I/O's to the API over socket IPC.
  */
 
-#define SIZEQUEUE 256
+#define SIZEQUEUE 8192
 
 enum socket_service_type {
 	SOCKET_SERVICE_INIT,

@@ -29,88 +29,89 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
+CFLAGS = -O3 -Wall -fomit-frame-pointer -fPIC
 LDFLAGS = 
 
 # Debug mode flags
-#CFLAGS = -g -O2 -Wall
-#-DDEBUG
-#LDFLAGS = -g
+#CFLAGS = -g -Wall -fPIC
+##-DDEBUG
+#LDFLAGS = -g -fPIC
 
 # Profile mode flags
-#CFLAGS = -O2 -pg
+#CFLAGS = -O2 -pg -fPIC
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-GMI_SRC = aispoll.c gmi.c tlist.c hdb.c crypto.c
-GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o crypto.o
+TOTEM_SRC = aispoll.c totemsrp.c totempg.c tlist.c hdb.c crypto.c
+TOTEM_OBJS = aispoll.o totemsrp.o totempg.o tlist.o hdb.o crypto.o
 
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
 		util.c
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
-		util.o libgmi.a
+		util.o libtotem.a
 
-OBJS = $(GMI_OBJS) $(EXEC_OBJS)
+OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
 
-all:libgmi.a libgmi.so.1.0 aisexec keygen
+all:libtotem.a libtotem.so.1.0 aisexec keygen
 
 aisexec: $(EXEC_OBJS)
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) -o aisexec
 
-libgmi.a: $(GMI_OBJS)
-	$(AR) -rc libgmi.a $(GMI_OBJS)
+libtotem.a: $(TOTEM_OBJS)
+	$(AR) -rc libtotem.a $(TOTEM_OBJS)
 
-libgmi.so.1.0: $(GMI_OBJS)
-	$(CC) -shared -Wl,-soname,libgmi.so.1 $(GMI_OBJS) -o $@
-	rm -f libgmi.so.1 libgmi.so
-	ln -s libgmi.so.1.0 libgmi.so.1
-	ln -s libgmi.so.1.0 libgmi.so
+libtotem.so.1.0: $(TOTEM_OBJS)
+	$(CC) -shared -Wl,-soname,libtotem.so.1 $(TOTEM_OBJS) -o $@
+	rm -f libtotem.so.1 libtotem.so
+	ln -s libtotem.so.1.0 libtotem.so.1
+	ln -s libtotem.so.1.0 libtotem.so
 
 keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen
 
 clean:
-	rm -f aisexec $(OBJS) libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out keygen keygen.o *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) libtotem.so.1.0 libtotem.so.1 libtotem.so libtotem.a gmon.out keygen keygen.o *.da *.bb *.bbg
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 # DO NOT DELETE
 
 main.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-main.o: evs.h ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
+main.o: evs.h ../include/list.h ../include/queue.h totemsrp.h aispoll.h mempool.h
 main.o: parse.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
 clm.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-clm.o: evs.h ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h
+clm.o: evs.h ../include/list.h ../include/queue.h aispoll.h totemsrp.h parse.h
 clm.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
 amf.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-amf.o: evs.h ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
+amf.o: evs.h ../include/list.h ../include/queue.h totemsrp.h aispoll.h mempool.h
 amf.o: util.h parse.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h
 amf.o: print.h
 ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
 ckpt.o: evs.h ../include/list.h ../include/queue.h aispoll.h mempool.h util.h
-ckpt.o: parse.h gmi.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h
+ckpt.o: parse.h totemsrp.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h
 ckpt.o: print.h
 evt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
 evt.o: evs.h ../include/list.h ../include/queue.h util.h aispoll.h mempool.h
-evt.o: parse.h gmi.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
+evt.o: parse.h totemsrp.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
 evs.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
-evs.o: evs.h ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h
+evs.o: evs.h ../include/list.h ../include/queue.h aispoll.h totemsrp.h parse.h
 evs.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
 parse.o: ../include/ais_types.h ../include/list.h util.h parse.h aispoll.h
-parse.o: gmi.h mempool.h
+parse.o: totemsrp.h mempool.h
 print.o: print.h ../include/ais_types.h parse.h ../include/list.h aispoll.h
-print.o: gmi.h
+print.o: totemsrp.h
 mempool.o: ../include/list.h mempool.h
 util.o: ../include/ais_types.h ../include/list.h util.h
 aispoll.o: aispoll.h ../include/list.h hdb.h ../include/ais_types.h tlist.h
-gmi.o: aispoll.h gmi.h ../include/queue.h ../include/sq.h ../include/list.h
-gmi.o: hdb.h ../include/ais_types.h crypto.h
+totemsrp.o: aispoll.h totemsrp.h ../include/queue.h ../include/sq.h ../include/list.h
+totemsrp.o: hdb.h ../include/ais_types.h crypto.h
+totempg.o: totempg.h totemsrp.h 
 tlist.o: ../include/list.h tlist.h
 hdb.o: hdb.h ../include/ais_types.h
 crypto.o: crypto.h

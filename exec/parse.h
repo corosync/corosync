@@ -35,7 +35,7 @@
 #include "../include/ais_types.h"
 #include "../include/list.h"
 #include "aispoll.h"
-#include "gmi.h"
+#include "totempg.h"
 
 #ifndef PARSE_H_DEFINED
 #define PARSE_H_DEFINED
@@ -59,7 +59,7 @@ struct openais_config {
 	/*
 	 * network
 	 */
-    struct gmi_interface *interfaces;
+    struct totempg_interface *interfaces;
     int interface_count;
 	struct sockaddr_in mcast_addr;
 

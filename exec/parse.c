@@ -423,7 +423,7 @@ extern int openais_main_config_read (char **error_string,
 	char *error_reason = error_string_response;
 
 	memset (openais_config, 0, sizeof (struct openais_config));
-	openais_config->interfaces = malloc (sizeof (struct gmi_interface) * interface_max);
+	openais_config->interfaces = malloc (sizeof (struct totempg_interface) * interface_max);
 	if (openais_config->interfaces == 0) {
 		parse_done = 1;
 		*error_string = "Out of memory trying to allocate ethernet interface storage area";
@@ -431,7 +431,7 @@ extern int openais_main_config_read (char **error_string,
 	}
 
 	memset (openais_config->interfaces, 0,
-		sizeof (struct gmi_interface) * interface_max);
+		sizeof (struct totempg_interface) * interface_max);
 
 	openais_config->mcast_addr.sin_family = AF_INET;
 	fp = fopen ("/etc/ais/openais.conf", "r");
