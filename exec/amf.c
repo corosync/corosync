@@ -491,7 +491,7 @@ void componentUnregister (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 }
 
 #ifdef COMPILE_OUT
@@ -715,7 +715,7 @@ void haStateSetCluster (
 	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_hastateset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH) == 0);
 }
 
 void readinessStateSetApi (struct saAmfComponent *component,
@@ -806,7 +806,7 @@ void readinessStateSetCluster (
 	iovecs[0].iov_base = (char *)&req_exec_amf_readinessstateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_readinessstateset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH) == 0);
 }
 
 #ifdef CMOPILE_OUT
@@ -1330,7 +1330,7 @@ void errorReport (
 	iovecs[0].iov_base = (char *)&req_exec_amf_errorreport;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 }
 
 int healthcheck_instance = 0;
@@ -2017,7 +2017,6 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	struct req_amf_componentregister *req_lib_amf_componentregister = (struct req_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovecs[2];
-	int result;
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
@@ -2031,7 +2030,7 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -2041,7 +2040,6 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	struct req_lib_amf_componentunregister *req_lib_amf_componentunregister = (struct req_lib_amf_componentunregister *)message;
 	struct req_exec_amf_componentunregister req_exec_amf_componentunregister;
 	struct iovec iovecs[2];
-	int result;
 	struct saAmfComponent *component;
 
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
@@ -2060,7 +2058,7 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -2218,7 +2216,6 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 	struct req_exec_amf_errorreport req_exec_amf_errorreport;
 
 	struct iovec iovecs[2];
-	int result;
 
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
@@ -2236,7 +2233,7 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorreport;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorreport);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -2247,7 +2244,6 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 	struct req_exec_amf_errorcancelall req_exec_amf_errorcancelall;
 
 	struct iovec iovecs[2];
-	int result;
 
 	req_exec_amf_errorcancelall.header.size = sizeof (struct req_exec_amf_errorcancelall);
 	req_exec_amf_errorcancelall.header.id = MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL;
@@ -2265,7 +2261,7 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorcancelall;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorcancelall);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }

@@ -351,8 +351,8 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_base = &req_lib_evs_mcast_joined->msg;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_joined->msg_len;
 	
-	gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
-		req_lib_evs_mcast_joined->priority);
+	assert (gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
+		req_lib_evs_mcast_joined->priority) == 0);
 
 	res_lib_evs_mcast_joined.header.size = sizeof (struct res_lib_evs_mcast_joined);
 	res_lib_evs_mcast_joined.header.id = MESSAGE_RES_EVS_MCAST_JOINED;
@@ -389,8 +389,8 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_base = msg_addr;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;
 	
-	gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
-		req_lib_evs_mcast_groups->priority);
+	assert (gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
+		req_lib_evs_mcast_groups->priority) == 0);
 
 	res_lib_evs_mcast_groups.header.size = sizeof (struct res_lib_evs_mcast_groups);
 	res_lib_evs_mcast_groups.header.id = MESSAGE_RES_EVS_MCAST_GROUPS;

@@ -427,7 +427,7 @@ int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
 	if (gmi_send_ok (GMI_PRIO_HIGH, sizeof (struct req_exec_ckpt_checkpointclose))) {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH) == 0);
 		return (0);
 	}
 
@@ -624,7 +624,6 @@ void timer_function_retention (void *data)
 {
 	struct saCkptCheckpoint *checkpoint = (struct saCkptCheckpoint *)data;
 	struct req_exec_ckpt_checkpointretentiondurationexpire req_exec_ckpt_checkpointretentiondurationexpire;
-	int result;
 	struct iovec iovec;
 
 	checkpoint->retention_timer = 0;
@@ -639,7 +638,7 @@ void timer_function_retention (void *data)
 	iovec.iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationexpire;
 	iovec.iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationexpire);
 
-	result = gmi_mcast (&aisexec_groupname, &iovec, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, &iovec, 1, GMI_PRIO_MED) == 0);
 }
 
 extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr)
@@ -785,7 +784,7 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void
 		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 	}
 	return (0);
 }
@@ -1328,7 +1327,6 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)message;
 	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
 	struct iovec iovecs[2];
-	int result;
 
 	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint.\n");
 	req_exec_ckpt_checkpointopen.header.size =
@@ -1345,7 +1343,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -1361,7 +1359,6 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	struct req_lib_ckpt_checkpointunlink *req_lib_ckpt_checkpointunlink = (struct req_lib_ckpt_checkpointunlink *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
 	struct iovec iovecs[2];
-	int result;
 
 	req_exec_ckpt_checkpointunlink.header.size =
 		sizeof (struct req_exec_ckpt_checkpointunlink);
@@ -1377,7 +1374,7 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-	result = gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -1403,7 +1400,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
+	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
 
 	return (0);
 }
@@ -1521,9 +1518,9 @@ printf ("|\n");
 #endif
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %s\n", iovecs[1].iov_base);
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 	}
 
 	return (0);
@@ -1561,9 +1558,9 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	iovecs[1].iov_len = req_lib_ckpt_sectiondelete->header.size - sizeof (struct req_lib_ckpt_sectiondelete);
 
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
 	}
 
 	return (0);
@@ -1601,9 +1598,9 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %s\n", iovecs[1].iov_base);
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1659,9 +1656,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 
 //printf ("LIB writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1714,9 +1711,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size - sizeof (struct req_lib_ckpt_sectionoverwrite);
 
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1769,9 +1766,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size - sizeof (struct req_lib_ckpt_sectionread);
 
 	if (iovecs[1].iov_len > 0) {
-		gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
 	} else {
-		gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW);
+		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
 	}
 
 	return (0);
