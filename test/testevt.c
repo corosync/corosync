@@ -1974,7 +1974,9 @@ test_retention()
 	int timeout = (EXPIRE_TIME + 5);
 	SaErrorT result;
 	 
-	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER;
+	flags = SA_EVT_CHANNEL_PUBLISHER |
+		SA_EVT_CHANNEL_SUBSCRIBER |
+		SA_EVT_CHANNEL_CREATE;
 	strcpy(channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
