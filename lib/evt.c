@@ -180,11 +180,28 @@ struct message_overlay {
 static void evtHandleInstanceDestructor(void *instance)
 {
 	struct event_instance *evti = instance;
+	void **msg;
+	int empty;
 
+	/*
+	 * Empty out the queue if there are any pending messages
+	 */
+	while ((saQueueIsEmpty(&evti->ei_inq, &empty) == SA_OK) && !empty) {
+		saQueueItemGet(&evti->ei_inq, &msg);
+		saQueueItemRemove(&evti->ei_inq);
+		free(*msg);
+	}
+
+	/*
+	 * clean up the queue itself
+	 */
 	if (evti->ei_inq.items) {
 			free(evti->ei_inq.items);
 	}
 
+	/*
+	 * Disconnect from the server
+	 */
 	if (evti->ei_fd != -1) {
 		shutdown(evti->ei_fd, 0);
 		close(evti->ei_fd);
@@ -409,6 +426,7 @@ saEvtDispatch(
 			msg = *queue_msg;
 			memcpy(&dispatch_data, msg, msg->size);
 			saQueueItemRemove(&evti->ei_inq);
+			free(msg);
 		} else {
 			/*
 			 * Queue empty, read response from socket
