@@ -634,7 +634,7 @@ void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 	/*
 	 * this should be an assertion
 	 */
-	if (component->conn_info->active == 0 ||
+	if (component->conn_info->state != CONN_STATE_ACTIVE ||
 		component->conn_info->service != SOCKET_SERVICE_AMF) {
 		return;
 	}
@@ -730,7 +730,7 @@ void readinessStateSetApi (struct saAmfComponent *component,
 	/*
 	 * this should be an assertion
 	 */
-	if (component->conn_info->active == 0 ||
+	if (component->conn_info->state != CONN_STATE_ACTIVE ||
 		component->conn_info->service != SOCKET_SERVICE_AMF) {
 
 		return;
