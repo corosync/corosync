@@ -261,6 +261,7 @@ static int message_handler_req_amf_response (struct conn_info *conn_info, void *
 
 static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info *conn_info, void *message);
 
+/*
 int (*amf_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_lib_activatepoll,
 	message_handler_req_amf_componentregister,
@@ -274,6 +275,83 @@ int (*amf_libais_handler_fns[]) (struct conn_info *conn_info, void *) = {
 	message_handler_req_amf_stoppingcomplete,
 	message_handler_req_amf_response,
 	message_handler_req_amf_componentcapabilitymodelget
+};
+*/
+
+struct libais_handler amf_libais_handlers[] =
+{
+	{ /* 0 */
+		.libais_handler_fn	= message_handler_req_lib_activatepoll,
+		.response_size		= sizeof (struct res_lib_activatepoll),
+		.response_id		= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 1 */
+		.libais_handler_fn	= message_handler_req_amf_componentregister,
+		.response_size		= sizeof (struct res_lib_amf_componentregister),
+		.response_id		= MESSAGE_RES_AMF_COMPONENTREGISTER,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 2 */
+		.libais_handler_fn	= message_handler_req_amf_componentunregister,
+		.response_size		= sizeof (struct res_lib_amf_componentunregister),
+		.response_id		= MESSAGE_RES_AMF_COMPONENTUNREGISTER,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 3 */
+		.libais_handler_fn	= message_handler_req_amf_readinessstateget,
+		.response_size		= sizeof (struct res_lib_amf_readinessstateget),
+		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 4 */
+		.libais_handler_fn	= message_handler_req_amf_hastateget,
+		.response_size		= sizeof (struct res_lib_amf_hastateget),
+		.response_id		= MESSAGE_RES_AMF_READINESSSTATEGET,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 5 */
+		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstart,
+		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstart),
+		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 6 */
+		.libais_handler_fn	= message_handler_req_amf_protectiongrouptrackstop,
+		.response_size		= sizeof (struct res_lib_amf_protectiongrouptrackstop),
+		.response_id		= MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 7 */
+		.libais_handler_fn	= message_handler_req_amf_errorreport,
+		.response_size		= sizeof (struct res_lib_amf_errorreport),
+		.response_id		= MESSAGE_RES_AMF_ERRORREPORT,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 8 */
+		.libais_handler_fn	= message_handler_req_amf_errorcancelall,
+		.response_size		= sizeof (struct res_lib_amf_errorcancelall),
+		.response_id		= MESSAGE_RES_AMF_ERRORCANCELALL,
+		.gmi_prio			= GMI_PRIO_MED
+	},
+	{ /* 9 */
+		.libais_handler_fn	= message_handler_req_amf_stoppingcomplete,
+		.response_size		= sizeof (struct res_lib_amf_stoppingcomplete),
+		.response_id		= MESSAGE_RES_AMF_STOPPINGCOMPLETE, // TODO 
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 10 */
+		.libais_handler_fn	= message_handler_req_amf_response,
+		.response_size		= sizeof (struct res_lib_amf_response),
+		.response_id		= MESSAGE_RES_AMF_RESPONSE, // TODO
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	},
+	{ /* 11 */
+		.libais_handler_fn	= message_handler_req_amf_componentcapabilitymodelget,
+		.response_size		= sizeof (struct res_lib_amf_componentcapabilitymodelget),
+		.response_id		= MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET,
+		.gmi_prio			= GMI_PRIO_RECOVERY
+	}
 };
 
 int (*amf_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
@@ -289,8 +367,8 @@ int (*amf_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
  * Exports the interface for the service
  */
 struct service_handler amf_service_handler = {
-	.libais_handler_fns			=	amf_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof (amf_libais_handler_fns) / sizeof (int (*)),
+	.libais_handlers			=	amf_libais_handlers,
+	.libais_handlers_count		= sizeof (amf_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= amf_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (amf_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= 0,
@@ -330,7 +408,7 @@ int req_amf_invocation_create (int interface,
 	struct invocation *invocation_addr = 0;
 	struct invocation *invocation_temp;
 	int i;
-	int loc;
+	int loc = 0;
 
 	for (i = 0; i < invocation_entries_size; i++) {
 		if (invocation_entries[i].active == 0) {
@@ -392,7 +470,6 @@ void componentUnregister (
 		getSaNameT (&component->name));
 	component->probableCause = SA_AMF_NOT_RESPONDING;
 
-	req_exec_amf_componentunregister.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
@@ -512,7 +589,7 @@ This should be sent after a service unit is made out of service
 
 void CSIRemove (struct conn_info *conn_info)
 {
-	struct res_amf_csiremovecallback res_amf_csiremovecallback;
+	struct res_lib_amf_csiremovecallback res_lib_amf_csiremovecallback;
 		
 	if (conn_info->active == 0 ||
 		conn_info->service != SOCKET_SERVICE_AMF) {
@@ -522,28 +599,29 @@ void CSIRemove (struct conn_info *conn_info)
 
 	log_printf (LOG_NOTICE_DEBUG, "executing CSI remove callback into API\n");
 
-	res_amf_csiremovecallback.header.magic = MESSAGE_MAGIC;
-	res_amf_csiremovecallback.header.id = MESSAGE_RES_AMF_CSIREMOVECALLBACK;
-	res_amf_csiremovecallback.header.size = sizeof (struct res_amf_csiremovecallback);
-	res_amf_csiremovecallback.invocation =
+	res_lib_amf_csiremovecallback.header.id = MESSAGE_RES_AMF_CSIREMOVECALLBACK;
+	res_lib_amf_csiremovecallback.header.size = sizeof (struct res_lib_amf_csiremovecallback);
+	res_lib_amf_csiremovecallback.header.error = SA_OK;
+
+	res_lib_amf_csiremovecallback.invocation =
 		req_amf_response_set (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFCSIREMOVECALLBACK,
 		conn_info->fd);
 
-	memcpy (&res_amf_csiremovecallback.compName,
+	memcpy (&res_lib_amf_csiremovecallback.compName,
 		&conn_info->component->name, sizeof (SaNameT));
-	memcpy (&res_amf_csiremovecallback.csiName,
+	memcpy (&res_lib_amf_csiremovecallback.csiName,
 		&conn_info->component->saAmfProtectionGroup->name, sizeof (SaNameT));
 
-	res_amf_csiremovecallback.csiFlags = SA_AMF_CSI_ALL_INSTANCES;
-	libais_send_response (conn_info, &res_amf_csiremovecallback,
-		sizeof (struct res_amf_csiremovecallback));
+	res_lib_amf_csiremovecallback.csiFlags = SA_AMF_CSI_ALL_INSTANCES;
+	libais_send_response (conn_info, &res_lib_amf_csiremovecallback,
+		sizeof (struct res_lib_amf_csiremovecallback));
 }
 #endif
 
 void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 {
-	struct res_amf_csisetcallback res_amf_csisetcallback;
+	struct res_lib_amf_csisetcallback res_lib_amf_csisetcallback;
 
 	log_printf (LOG_LEVEL_DEBUG, "sending ha state to API\n");
 
@@ -561,31 +639,32 @@ void haStateSetApi (struct saAmfComponent *component, SaAmfHAStateT haState)
 		return;
 	}
 
-	res_amf_csisetcallback.header.magic = MESSAGE_MAGIC;
-	res_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
-	res_amf_csisetcallback.header.size = sizeof (struct res_amf_csisetcallback);
-	res_amf_csisetcallback.invocation =
+	res_lib_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
+	res_lib_amf_csisetcallback.header.size = sizeof (struct res_lib_amf_csisetcallback);
+	res_lib_amf_csisetcallback.header.error = SA_OK;
+
+	res_lib_amf_csisetcallback.invocation =
 		req_amf_invocation_create (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFCSISETCALLBACK,
 		component->conn_info);
-	if (res_amf_csisetcallback.invocation == -1) {
+	if (res_lib_amf_csisetcallback.invocation == -1) {
 		printf ("TODO set callback\n");
 	}
-	memcpy (&res_amf_csisetcallback.compName,
+	memcpy (&res_lib_amf_csisetcallback.compName,
 		&component->name, sizeof (SaNameT));
-	memcpy (&res_amf_csisetcallback.csiName,
+	memcpy (&res_lib_amf_csisetcallback.csiName,
 		&component->saAmfProtectionGroup->name, sizeof (SaNameT));
-	res_amf_csisetcallback.csiFlags = SA_AMF_CSI_ALL_INSTANCES;
-	res_amf_csisetcallback.haState = haState;
+	res_lib_amf_csisetcallback.csiFlags = SA_AMF_CSI_ALL_INSTANCES;
+	res_lib_amf_csisetcallback.haState = haState;
 	// TODO set activeCompName to correct component name
-	memcpy (&res_amf_csisetcallback.activeCompName,
+	memcpy (&res_lib_amf_csisetcallback.activeCompName,
 		&component->name, sizeof (SaNameT));
-	res_amf_csisetcallback.transitionDescriptor = SA_AMF_CSI_NEW_ASSIGN;
+	res_lib_amf_csisetcallback.transitionDescriptor = SA_AMF_CSI_NEW_ASSIGN;
 
 	component->newHAState = haState;
 
-	libais_send_response (component->conn_info, &res_amf_csisetcallback,
-		sizeof (struct res_amf_csisetcallback));
+	libais_send_response (component->conn_info, &res_lib_amf_csisetcallback,
+		sizeof (struct res_lib_amf_csisetcallback));
 }
 
 #ifdef COMPILE_OUT
@@ -597,7 +676,6 @@ void haStateSetClusterInit (
 	struct req_exec_amf_hastatesetcluster req_exec_amf_hastatesetcluster;
 
 	return;
-	req_exec_amf_hastatesetcluster.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_hastatesetcluster.header.id = MESSAGE_REQ_EXEC_AMF_HASTATESET;
 	req_exec_amf_hastatesetcluster.header.size = sizeof (struct req_exec_amf_hastatesetcluster);
 	memcpy (&req_exec_amf_hastatesetcluster.compName,
@@ -620,7 +698,6 @@ void haStateSetCluster (
 	struct req_exec_amf_hastateset req_exec_amf_hastateset;
 	struct iovec iovecs[2];
 
-	req_exec_amf_hastateset.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_hastateset.header.id = MESSAGE_REQ_EXEC_AMF_HASTATESET;
 	req_exec_amf_hastateset.header.size = sizeof (struct req_exec_amf_hastateset);
 	memcpy (&req_exec_amf_hastateset.compName, &component->name, sizeof (SaNameT));
@@ -632,13 +709,13 @@ void haStateSetCluster (
 	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_hastateset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
 }
 
 void readinessStateSetApi (struct saAmfComponent *component,
 	SaAmfReadinessStateT readinessState)
 {
-	struct res_amf_readinessstatesetcallback res_amf_readinessstatesetcallback;
+	struct res_lib_amf_readinessstatesetcallback res_lib_amf_readinessstatesetcallback;
 
 	/*
 	 * If component is local, don't request service from API
@@ -659,25 +736,25 @@ void readinessStateSetApi (struct saAmfComponent *component,
 		return;
 	}
 
-	res_amf_readinessstatesetcallback.header.magic = MESSAGE_MAGIC;
-	res_amf_readinessstatesetcallback.header.id = MESSAGE_RES_AMF_READINESSSTATESETCALLBACK;
-	res_amf_readinessstatesetcallback.header.size = sizeof (struct res_amf_readinessstatesetcallback);
-	res_amf_readinessstatesetcallback.invocation =
+	res_lib_amf_readinessstatesetcallback.header.id = MESSAGE_RES_AMF_READINESSSTATESETCALLBACK;
+	res_lib_amf_readinessstatesetcallback.header.size = sizeof (struct res_lib_amf_readinessstatesetcallback);
+	res_lib_amf_readinessstatesetcallback.header.error = SA_OK;
+	res_lib_amf_readinessstatesetcallback.invocation =
 		req_amf_invocation_create (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFREADINESSSTATESETCALLBACK,
 		component->conn_info);
-	if (res_amf_readinessstatesetcallback.invocation == -1) {
+	if (res_lib_amf_readinessstatesetcallback.invocation == -1) {
 		printf ("TODO readiness set callback\n");
 	}
-	memcpy (&res_amf_readinessstatesetcallback.compName,
+	memcpy (&res_lib_amf_readinessstatesetcallback.compName,
 		&component->name, sizeof (SaNameT));
-	res_amf_readinessstatesetcallback.readinessState = readinessState;
+	res_lib_amf_readinessstatesetcallback.readinessState = readinessState;
 	component->newReadinessState = readinessState;
 
 	log_printf (LOG_LEVEL_DEBUG, "Setting conn_info %x to readiness state %d\n", component->conn_info, readinessState);
 
-	libais_send_response (component->conn_info, &res_amf_readinessstatesetcallback,
-		sizeof (struct res_amf_readinessstatesetcallback));
+	libais_send_response (component->conn_info, &res_lib_amf_readinessstatesetcallback,
+		sizeof (struct res_lib_amf_readinessstatesetcallback));
 }
 
 #ifdef COMPILE_OUT
@@ -689,7 +766,6 @@ void readinessStateSetClusterInit (
 	struct req_exec_amf_readinessstatesetcluster req_exec_amf_readinessstatesetcluster;
 
 	return;
-	req_exec_amf_readinessstatesetcluster.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_readinessstatesetcluster.header.id = MESSAGE_REQ_EXEC_AMF_READINESSSTATESET;
 	req_exec_amf_readinessstatesetcluster.header.size = sizeof (struct req_exec_amf_readinessstateset);
 	memcpy (&req_exec_amf_readinessstatesetcluster.compName,
@@ -712,7 +788,6 @@ void readinessStateSetCluster (
 	struct req_exec_amf_readinessstateset req_exec_amf_readinessstateset;
 	struct iovec iovecs[2];
 
-	req_exec_amf_readinessstateset.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_readinessstateset.header.id = MESSAGE_REQ_EXEC_AMF_READINESSSTATESET;
 	req_exec_amf_readinessstateset.header.size = sizeof (struct req_exec_amf_readinessstateset);
 	memcpy (&req_exec_amf_readinessstateset.compName, &component->name, sizeof (SaNameT));
@@ -725,7 +800,7 @@ void readinessStateSetCluster (
 	iovecs[0].iov_base = (char *)&req_exec_amf_readinessstateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_readinessstateset);
 
-	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED);
+	gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH);
 }
 
 #ifdef CMOPILE_OUT
@@ -1204,22 +1279,22 @@ static void dsm (
  */
 void componentTerminate (struct conn_info *conn_info)
 {
-	struct res_amf_componentterminatecallback res_amf_componentterminatecallback;
+	struct res_lib_amf_componentterminatecallback res_lib_amf_componentterminatecallback;
 
-	res_amf_componentterminatecallback.header.magic = MESSAGE_MAGIC;
-	res_amf_componentterminatecallback.header.id = MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK;
-	res_amf_componentterminatecallback.header.size = sizeof (struct res_amf_componentterminatecallback);
-	res_amf_componentterminatecallback.invocation =
+	res_lib_amf_componentterminatecallback.header.id = MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK;
+	res_lib_amf_componentterminatecallback.header.size = sizeof (struct res_lib_amf_componentterminatecallback);
+	res_lib_amf_componentterminatecallback.header.error = SA_OK;
+	res_lib_amf_componentterminatecallback.invocation =
 		req_amf_response_set (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFCOMPONENTTERMINATECALLBACK,
 		fd);
-	memcpy (&res_amf_componentterminatecallback.compName,
+	memcpy (&res_lib_amf_componentterminatecallback.compName,
 		&connections[fd].component->name, sizeof (SaNameT));
 	connections[fd].component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
 
 	log_printf (LOG_LEVEL_DEBUG, "terminating component on fd %d\n", fd);
-	libais_send_response (fd, &res_amf_componentterminatecallback,
-		sizeof (struct res_amf_componentterminatecallback));
+	libais_send_response (fd, &res_lib_amf_componentterminatecallback,
+		sizeof (struct res_lib_amf_componentterminatecallback));
 }
 #endif /* Not currently implemented */
 
@@ -1230,7 +1305,6 @@ void errorReport (
 	struct req_exec_amf_errorreport req_exec_amf_errorreport;
 	struct iovec iovecs[2];
 
-	req_exec_amf_errorreport.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
@@ -1250,12 +1324,12 @@ void errorReport (
 int healthcheck_instance = 0;
 
 void timer_function_libamf_healthcheck (void *data) {
-	struct res_amf_healthcheckcallback res_amf_healthcheckcallback;
+	struct res_lib_amf_healthcheckcallback res_lib_amf_healthcheckcallback;
 	struct conn_info *conn_info = (struct conn_info *)data;
 
-	res_amf_healthcheckcallback.header.magic = MESSAGE_MAGIC;
-	res_amf_healthcheckcallback.header.id = MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
-	res_amf_healthcheckcallback.header.size = sizeof (struct res_amf_healthcheckcallback);
+	res_lib_amf_healthcheckcallback.header.id = MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
+	res_lib_amf_healthcheckcallback.header.size = sizeof (struct res_lib_amf_healthcheckcallback);
+	res_lib_amf_healthcheckcallback.header.error = SA_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "checking healthcheck on component %s\n",
 		getSaNameT (&conn_info->component->name));
@@ -1276,23 +1350,23 @@ void timer_function_libamf_healthcheck (void *data) {
 		/*
 		 * Send healthcheck message
 		 */
-		res_amf_healthcheckcallback.invocation =
+		res_lib_amf_healthcheckcallback.invocation =
 			req_amf_invocation_create (
 			MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK,
 			conn_info);
-	if (res_amf_healthcheckcallback.invocation == -1) {
+	if (res_lib_amf_healthcheckcallback.invocation == -1) {
 		printf ("TODO healthcheck set callback\n");
 	}
-		memcpy (&res_amf_healthcheckcallback.compName,
+		memcpy (&res_lib_amf_healthcheckcallback.compName,
 			&conn_info->component->name,
 			sizeof (SaNameT));
-		res_amf_healthcheckcallback.checkType = SA_AMF_HEARTBEAT;
+		res_lib_amf_healthcheckcallback.checkType = SA_AMF_HEARTBEAT;
 
 	log_printf (LOG_LEVEL_DEBUG, "Sending instance %d\n", healthcheck_instance);
-	res_amf_healthcheckcallback.instance = healthcheck_instance++;
+	res_lib_amf_healthcheckcallback.instance = healthcheck_instance++;
 		libais_send_response (conn_info,
-			&res_amf_healthcheckcallback,
-			sizeof (struct res_amf_healthcheckcallback));
+			&res_lib_amf_healthcheckcallback,
+			sizeof (struct res_lib_amf_healthcheckcallback));
 
 		poll_timer_add (aisexec_poll_handle,
 			conn_info->component->healthcheckInterval,
@@ -1441,7 +1515,7 @@ void sendProtectionGroupNotification (struct conn_info *conn_info,
 	SaAmfProtectionGroupChangesT changeToComponent,
 	SaUint8T trackFlags)
 {
-	struct res_amf_protectiongrouptrackcallback res_amf_protectiongrouptrackcallback;
+	struct res_lib_amf_protectiongrouptrackcallback res_lib_amf_protectiongrouptrackcallback;
 	SaAmfProtectionGroupNotificationT *protectionGroupNotification = 0;
 	int notifyEntries = 0;
 	struct saAmfComponent *component;
@@ -1488,19 +1562,19 @@ void sendProtectionGroupNotification (struct conn_info *conn_info,
 	 * Send track callback
 	 */
 	if (notifyEntries) {
-		res_amf_protectiongrouptrackcallback.header.magic = MESSAGE_MAGIC;
-		res_amf_protectiongrouptrackcallback.header.size =
-			sizeof (struct res_amf_protectiongrouptrackcallback) +
+		res_lib_amf_protectiongrouptrackcallback.header.size =
+			sizeof (struct res_lib_amf_protectiongrouptrackcallback) +
 			(notifyEntries * sizeof (SaAmfProtectionGroupNotificationT));
-		res_amf_protectiongrouptrackcallback.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK;
-		res_amf_protectiongrouptrackcallback.numberOfItems = notifyEntries;
-		res_amf_protectiongrouptrackcallback.numberOfMembers = notifyEntries;
-		memcpy (&res_amf_protectiongrouptrackcallback.csiName,
+		res_lib_amf_protectiongrouptrackcallback.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK;
+		res_lib_amf_protectiongrouptrackcallback.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackcallback.numberOfItems = notifyEntries;
+		res_lib_amf_protectiongrouptrackcallback.numberOfMembers = notifyEntries;
+		memcpy (&res_lib_amf_protectiongrouptrackcallback.csiName,
 			&amfProtectionGroup->name, sizeof (SaNameT));
 
-		res_amf_protectiongrouptrackcallback.notificationBufferAddress = notificationBufferAddress;
-		libais_send_response (conn_info, &res_amf_protectiongrouptrackcallback,
-			sizeof (struct res_amf_protectiongrouptrackcallback));
+		res_lib_amf_protectiongrouptrackcallback.notificationBufferAddress = notificationBufferAddress;
+		libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackcallback,
+			sizeof (struct res_lib_amf_protectiongrouptrackcallback));
 
 		libais_send_response (conn_info, protectionGroupNotification,
 			sizeof (SaAmfProtectionGroupNotificationT) * notifyEntries);
@@ -1645,10 +1719,10 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 
 		log_printf (LOG_LEVEL_DEBUG, "sending component register response to fd %d\n", req_exec_amf_componentregister->source.conn_info);
 
-		res_lib_amf_componentregister.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_componentregister.header.size = sizeof (struct res_lib_amf_componentregister);
 		res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
-		res_lib_amf_componentregister.error = error;
+		res_lib_amf_componentregister.header.error = error;
+printf ("setting error to %d\n", error);
 
 		libais_send_response (req_exec_amf_componentregister->source.conn_info,
 			&res_lib_amf_componentregister,
@@ -1723,10 +1797,9 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 		log_printf (LOG_LEVEL_DEBUG, "sending component unregister response to fd %d\n",
 			req_exec_amf_componentunregister->source.conn_info);
 
-		res_lib_amf_componentunregister.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_componentunregister.header.size = sizeof (struct res_lib_amf_componentunregister);
 		res_lib_amf_componentunregister.header.id = MESSAGE_RES_AMF_COMPONENTUNREGISTER;
-		res_lib_amf_componentunregister.error = error;
+		res_lib_amf_componentunregister.header.error = error;
 
 		libais_send_response (req_exec_amf_componentunregister->source.conn_info,
 			&res_lib_amf_componentunregister, sizeof (struct res_lib_amf_componentunregister));
@@ -1765,10 +1838,9 @@ static int message_handler_req_exec_amf_errorreport (void *message, struct in_ad
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
 			req_exec_amf_errorreport->source.conn_info);
 
-		res_lib_amf_errorreport.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_errorreport.header.size = sizeof (struct res_lib_amf_errorreport);
 		res_lib_amf_errorreport.header.id = MESSAGE_RES_AMF_ERRORREPORT;
-		res_lib_amf_errorreport.error = error;
+		res_lib_amf_errorreport.header.error = error;
 
 		libais_send_response (req_exec_amf_errorreport->source.conn_info,
 			&res_lib_amf_errorreport, sizeof (struct res_lib_amf_errorreport));
@@ -1809,10 +1881,9 @@ static int message_handler_req_exec_amf_errorcancelall (void *message, struct in
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
 			req_exec_amf_errorcancelall->source.conn_info);
 
-		res_lib_amf_errorcancelall.header.magic = MESSAGE_MAGIC;
 		res_lib_amf_errorcancelall.header.size = sizeof (struct res_lib_amf_errorcancelall);
 		res_lib_amf_errorcancelall.header.id = MESSAGE_RES_AMF_ERRORCANCELALL;
-		res_lib_amf_errorcancelall.error = error;
+		res_lib_amf_errorcancelall.header.error = error;
 
 		libais_send_response (req_exec_amf_errorcancelall->source.conn_info,
 			&res_lib_amf_errorcancelall, sizeof (struct res_lib_amf_errorcancelall));
@@ -1880,10 +1951,9 @@ static int message_handler_req_amf_init (struct conn_info *conn_info, void *mess
 		error = SA_OK;
 	}
 
-	res_lib_init.header.magic = MESSAGE_MAGIC;
 	res_lib_init.header.size = sizeof (struct res_lib_init);
 	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.error = error;
+	res_lib_init.header.error = error;
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
@@ -1899,7 +1969,6 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 {
 	struct res_lib_activatepoll res_lib_activatepoll;
 
-	res_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
 	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
 	libais_send_response (conn_info, &res_lib_activatepoll, sizeof (struct res_lib_activatepoll));
@@ -1914,7 +1983,6 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	struct iovec iovecs[2];
 	int result;
 
-	req_exec_amf_componentregister.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
 
@@ -1940,7 +2008,6 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	int result;
 	struct saAmfComponent *component;
 
-	req_exec_amf_componentunregister.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
@@ -1965,52 +2032,50 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 static int message_handler_req_amf_readinessstateget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_readinessstateget *req_amf_readinessstateget = (struct req_amf_readinessstateget *)message;
-	struct res_amf_readinessstateget res_amf_readinessstateget;
+	struct res_lib_amf_readinessstateget res_lib_amf_readinessstateget;
 	struct saAmfComponent *component;
 
 	log_printf (LOG_LEVEL_DEBUG, "got request to return readiness state\n");
-	res_amf_readinessstateget.header.magic = MESSAGE_MAGIC;
-	res_amf_readinessstateget.header.id = MESSAGE_RES_AMF_READINESSSTATEGET;
-	res_amf_readinessstateget.header.size = sizeof (struct res_amf_readinessstateget);
-	res_amf_readinessstateget.error = SA_ERR_NOT_EXIST;
+	res_lib_amf_readinessstateget.header.id = MESSAGE_RES_AMF_READINESSSTATEGET;
+	res_lib_amf_readinessstateget.header.size = sizeof (struct res_lib_amf_readinessstateget);
+	res_lib_amf_readinessstateget.header.error = SA_ERR_NOT_EXIST;
 
 	component = findComponent (&req_amf_readinessstateget->compName);
 	log_printf (LOG_LEVEL_DEBUG, "readinessstateget: found component %p\n", component);
 	if (component) {
-		memcpy (&res_amf_readinessstateget.readinessState, 
+		memcpy (&res_lib_amf_readinessstateget.readinessState, 
 			&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
-		res_amf_readinessstateget.error = SA_OK;
+		res_lib_amf_readinessstateget.header.error = SA_OK;
 	}
-	libais_send_response (conn_info, &res_amf_readinessstateget, sizeof (struct res_amf_readinessstateget));
+	libais_send_response (conn_info, &res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
 	return (0);
 }
 
 static int message_handler_req_amf_hastateget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_hastateget *req_amf_hastateget = (struct req_amf_hastateget *)message;
-	struct res_amf_hastateget res_amf_hastateget;
+	struct res_lib_amf_hastateget res_lib_amf_hastateget;
 	struct saAmfComponent *component;
 
-	res_amf_hastateget.header.magic = MESSAGE_MAGIC;
-	res_amf_hastateget.header.id = MESSAGE_RES_AMF_HASTATEGET;
-	res_amf_hastateget.header.size = sizeof (struct res_amf_hastateget);
-	res_amf_hastateget.error = SA_ERR_NOT_EXIST;
+	res_lib_amf_hastateget.header.id = MESSAGE_RES_AMF_HASTATEGET;
+	res_lib_amf_hastateget.header.size = sizeof (struct res_lib_amf_hastateget);
+	res_lib_amf_hastateget.header.error = SA_ERR_NOT_EXIST;
 
 	component = findComponentInProtectionGroup (&req_amf_hastateget->csiName, &req_amf_hastateget->compName);
 
 	if (component) {
-		memcpy (&res_amf_hastateget.haState, 
+		memcpy (&res_lib_amf_hastateget.haState, 
 			&component->currentHAState, sizeof (SaAmfHAStateT));
-		res_amf_hastateget.error = SA_OK;
+		res_lib_amf_hastateget.header.error = SA_OK;
 	}
-	libais_send_response (conn_info, &res_amf_hastateget, sizeof (struct res_amf_hastateget));
+	libais_send_response (conn_info, &res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
 	return (0);
 }
 
 static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_protectiongrouptrackstart *req_amf_protectiongrouptrackstart = (struct req_amf_protectiongrouptrackstart *)message;
-	struct res_amf_protectiongrouptrackstart res_amf_protectiongrouptrackstart;
+	struct res_lib_amf_protectiongrouptrackstart res_lib_amf_protectiongrouptrackstart;
 	struct libamf_ci_trackentry *track = 0;
 	int i;
 	struct saAmfProtectionGroup *amfProtectionGroup;
@@ -2048,16 +2113,15 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 		log_printf (LOG_LEVEL_DEBUG, "invalid track start, csi not registered with system.\n");
 	}
 
-	res_amf_protectiongrouptrackstart.header.magic = MESSAGE_MAGIC;
-	res_amf_protectiongrouptrackstart.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART;
-	res_amf_protectiongrouptrackstart.header.size = sizeof (struct res_amf_protectiongrouptrackstart);
-	res_amf_protectiongrouptrackstart.error = SA_ERR_NOT_EXIST;
+	res_lib_amf_protectiongrouptrackstart.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART;
+	res_lib_amf_protectiongrouptrackstart.header.size = sizeof (struct res_lib_amf_protectiongrouptrackstart);
+	res_lib_amf_protectiongrouptrackstart.header.error = SA_ERR_NOT_EXIST;
 
 	if (amfProtectionGroup) {
-		res_amf_protectiongrouptrackstart.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstart.header.error = SA_OK;
 	}
-	libais_send_response (conn_info, &res_amf_protectiongrouptrackstart,
-		sizeof (struct res_amf_protectiongrouptrackstart));
+	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
+		sizeof (struct res_lib_amf_protectiongrouptrackstart));
 
 	if (amfProtectionGroup &&
 		req_amf_protectiongrouptrackstart->trackFlags & SA_TRACK_CURRENT) {
@@ -2077,7 +2141,7 @@ static int message_handler_req_amf_protectiongrouptrackstart (struct conn_info *
 static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_protectiongrouptrackstop *req_amf_protectiongrouptrackstop = (struct req_amf_protectiongrouptrackstop *)message;
-	struct res_amf_protectiongrouptrackstop res_amf_protectiongrouptrackstop;
+	struct res_lib_amf_protectiongrouptrackstop res_lib_amf_protectiongrouptrackstop;
 	struct libamf_ci_trackentry *track = 0;
 	int i;
 
@@ -2098,16 +2162,15 @@ static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *c
 		}
 	}
 
-	res_amf_protectiongrouptrackstop.header.magic = MESSAGE_MAGIC;
-	res_amf_protectiongrouptrackstop.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP;
-	res_amf_protectiongrouptrackstop.header.size = sizeof (struct res_amf_protectiongrouptrackstop);
-	res_amf_protectiongrouptrackstop.error = SA_ERR_NOT_EXIST;
+	res_lib_amf_protectiongrouptrackstop.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP;
+	res_lib_amf_protectiongrouptrackstop.header.size = sizeof (struct res_lib_amf_protectiongrouptrackstop);
+	res_lib_amf_protectiongrouptrackstop.header.error = SA_ERR_NOT_EXIST;
 
 	if (track) {
-		res_amf_protectiongrouptrackstop.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstop.header.error = SA_OK;
 	}
-	libais_send_response (conn_info, &res_amf_protectiongrouptrackstop,
-		sizeof (struct res_amf_protectiongrouptrackstop));
+	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
+		sizeof (struct res_lib_amf_protectiongrouptrackstop));
 
 	return (0);
 }
@@ -2121,7 +2184,6 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 	struct iovec iovecs[2];
 	int result;
 
-	req_exec_amf_errorreport.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_errorreport.header.size = sizeof (struct req_exec_amf_errorreport);
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
@@ -2151,7 +2213,6 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 	struct iovec iovecs[2];
 	int result;
 
-	req_exec_amf_errorcancelall.header.magic = MESSAGE_MAGIC;
 	req_exec_amf_errorcancelall.header.size = sizeof (struct req_exec_amf_errorcancelall);
 	req_exec_amf_errorcancelall.header.id = MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL;
 
@@ -2244,25 +2305,24 @@ static int message_handler_req_amf_response (struct conn_info *conn_info_nouse, 
 static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info *conn_info, void *message)
 {
 	struct req_amf_componentcapabilitymodelget *req_amf_componentcapabilitymodelget = (struct req_amf_componentcapabilitymodelget *)message;
-	struct res_amf_componentcapabilitymodelget res_amf_componentcapabilitymodelget;
+	struct res_lib_amf_componentcapabilitymodelget res_lib_amf_componentcapabilitymodelget;
 	struct saAmfComponent *component;
 	SaErrorT error = SA_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "componentcapabilitymodelget: Retrieve name %s.\n", getSaNameT (&req_amf_componentcapabilitymodelget->compName));
 	component = findComponent (&req_amf_componentcapabilitymodelget->compName);
 	if (component && component->registered) {
-		memcpy (&res_amf_componentcapabilitymodelget.componentCapabilityModel,
+		memcpy (&res_lib_amf_componentcapabilitymodelget.componentCapabilityModel,
 			&component->componentCapabilityModel, sizeof (SaAmfComponentCapabilityModelT));
 	} else {
 		error = SA_ERR_NOT_EXIST;
 	}
 
-	res_amf_componentcapabilitymodelget.header.magic = MESSAGE_MAGIC;
-	res_amf_componentcapabilitymodelget.header.size = sizeof (struct res_amf_componentcapabilitymodelget);
-	res_amf_componentcapabilitymodelget.header.id = MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET;
-	res_amf_componentcapabilitymodelget.error = error;
-	libais_send_response (conn_info, &res_amf_componentcapabilitymodelget,
-		sizeof (struct res_amf_componentcapabilitymodelget));
+	res_lib_amf_componentcapabilitymodelget.header.size = sizeof (struct res_lib_amf_componentcapabilitymodelget);
+	res_lib_amf_componentcapabilitymodelget.header.id = MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET;
+	res_lib_amf_componentcapabilitymodelget.header.error = error;
+	libais_send_response (conn_info, &res_lib_amf_componentcapabilitymodelget,
+		sizeof (struct res_lib_amf_componentcapabilitymodelget));
 
 	return (0);
 }
