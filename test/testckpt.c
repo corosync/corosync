@@ -1,3 +1,4 @@
+#define _BSD_SOURCE
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
@@ -40,9 +41,12 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
+#include <sys/time.h>
 
 #include "ais_types.h"
 #include "ais_ckpt.h"
+
+#define SECONDS_TO_EXPIRE 4
 
 int ckptinv;
 void printSaNameT (SaNameT *name)
@@ -61,7 +65,7 @@ SaNameT checkpointName = { 5, "abra\0" };
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	SA_CKPT_WR_ALL_REPLICAS,
 	100000,
-	0,
+	5000000000,
 	5,
 	20000,
 	10
@@ -78,12 +82,12 @@ SaCkptSectionIdT sectionId2 = {
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
-	0xFFFFFFFF
+	SA_TIME_END
 };
 
 SaCkptSectionCreationAttributesT sectionCreationAttributes2 = {
 	&sectionId2,
-	0xFFFFFFFF
+	SA_TIME_END
 };
 
 char readBuffer1[1025];
@@ -149,6 +153,9 @@ int main (void) {
 	SaCkptSectionDescriptorT sectionDescriptor;
 	SaUint32T erroroneousVectorIndex = 0;
 	SaErrorT error;
+	struct timeval tv_start;
+	struct timeval tv_end;
+	struct timeval tv_elapsed;
 	
 	error = saCkptCheckpointOpen (&checkpointName,
 		&checkpointCreationAttributes,
@@ -157,12 +164,31 @@ int main (void) {
 		&checkpointHandle);
 	printf ("first open result %d (should be 1)\n", error);
 
-// start of stuff
+	gettimeofday (&tv_start, 0);
+	sectionCreationAttributes1.expirationTime = ((unsigned long long)(tv_start.tv_sec + SECONDS_TO_EXPIRE)) * ((unsigned long long)1000000000) + ((unsigned long long)(tv_start.tv_usec) * ((unsigned long long)1000));
+
 	error = saCkptSectionCreate (&checkpointHandle,
 		&sectionCreationAttributes1,
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
+
 printf ("create1 error is %d\n", error);
+printf ("Please wait, testing expiry of checkpoint sections.\n");
+	do {
+	error = saCkptCheckpointRead (&checkpointHandle,
+		ReadVectorElements,
+		1,
+		&erroroneousVectorIndex);
+	} while (error != SA_ERR_NOT_EXIST);
+	gettimeofday (&tv_end, NULL);
+	timersub (&tv_end, &tv_start, &tv_elapsed);
+	printf ("Elapsed Time to expiry is %d.%d (should be about %d seconds)\n", tv_elapsed.tv_sec, tv_elapsed.tv_usec, SECONDS_TO_EXPIRE);
+
+	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
+		5000000000);
+	printf ("RetentionDurationSet is %d\n", error);
+	exit (1);
+
 	error = saCkptSectionCreate (&checkpointHandle,
 		&sectionCreationAttributes2,
 		"Initial Data #0",
@@ -215,7 +241,8 @@ exit (1);
 	printf ("open after unlink/close result %d (should be 1)\n", error);
 
 	error = saCkptCheckpointRetentionDurationSet (&checkpointHandle,
-		10000);
+		5000000000);
+printf ("Retention duration set error is %d\n", error);
 	printf ("set checkpoint retention duration result %d (should be 1)\n", error);
 
 	error = saCkptCheckpointStatusGet (&checkpointHandle,
@@ -257,8 +284,8 @@ exit (1);
 #endif
 
 	error = saCkptSectionExpirationTimeSet (&checkpointHandle,
-		&sectionId1,
-		0xFFAAAAAA);
+		&sectionId2,
+		SA_TIME_END);
 	printf ("saCkptSectionExpirationTimeSet result %d (should be 1)\n", error);
 		
 
