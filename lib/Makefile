@@ -43,14 +43,32 @@ CFLAGS += -fPIC
 
 all:libais.a libais.so.1.0
 
-libais.a: util.o amf.o clm.o ckpt.o
-	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o
+LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
 
-libais.so.1.0: util.o amf.o clm.o ckpt.o
-	$(CC) -shared -Wl,-soname,libais.so.1 util.o amf.o clm.o ckpt.o -o $@
+libais.a: util.o amf.o clm.o ckpt.o evt.o
+	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
+
+libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o
+	$(CC) -shared -Wl,-soname,libais.so.1 util.o amf.o clm.o ckpt.o \
+								evt.o -o $@
 	rm -f libais.so.1 libais.so
 	ln -s libais.so.1.0 libais.so.1
 	ln -s libais.so.1.0 libais.so
 	
 clean:
 	rm -f *.o libais.so* libais.a
+
+depend:
+	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
+# DO NOT DELETE
+
+util.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+util.o: util.h
+amf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_types.h
+amf.o: ../include/ais_msg.h util.h
+clm.o: ../include/ais_types.h ../include/ais_clm.h ../include/ais_types.h
+clm.o: ../include/ais_msg.h util.h
+ckpt.o: ../include/list.h ../include/ais_types.h ../include/ais_ckpt.h
+ckpt.o: ../include/ais_types.h ../include/ais_msg.h util.h
+evt.o: ../include/ais_evt.h ../include/ais_types.h ../include/ais_msg.h
+evt.o: util.h
