@@ -80,6 +80,7 @@ int gmi_join (
 	struct gmi_groupname *groupname, 
 	void (*deliver_fn) (
 		struct gmi_groupname *groupname,
+		struct in_addr source_addr,
 		struct iovec *iovec,
 		int iov_len),
 	void (*confchg_fn) (

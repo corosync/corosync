@@ -468,6 +468,7 @@ char delivery_data[MESSAGE_SIZE_MAX];
 
 static void deliver_fn (
 	struct gmi_groupname *groupname,
+	struct in_addr source_addr,
 	struct iovec *iovec,
 	int iov_len)
 {
