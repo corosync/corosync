@@ -427,9 +427,8 @@ extern int openais_main_config_read (char **error_string,
 	openais_config->interfaces = malloc (sizeof (struct gmi_interface) * interface_max);
 	if (openais_config->interfaces == 0) {
 		parse_done = 1;
-		
-		error_reason = "Out of memory trying to allocate ethernet interface storage area";
-		goto parse_error;
+		*error_string = "Out of memory trying to allocate ethernet interface storage area";
+		return -1;
 	}
 
 	memset (openais_config->interfaces, 0,
@@ -440,7 +439,8 @@ extern int openais_main_config_read (char **error_string,
 	if (fp == 0) {
 		parse_done = 1;
 		sprintf (error_reason, "Can't read file reason = %s", strerror (errno));
-		goto parse_error;
+		*error_string = error_reason;
+		return -1;
 	}
 
 	while (fgets (line, 255, fp)) {
