@@ -957,6 +957,15 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	}
 
 	/*
+	 * Make sure that an open channel callback has been 
+	 * registered before  allowing the open to continue.
+	 */
+	if (!evti->ei_callback.saEvtChannelOpenCallback) {
+		error = SA_AIS_ERR_INIT;
+		goto chan_open_put;
+	}
+
+	/*
 	 * create a handle for this open channel
 	 */
 	error = saHandleCreate(&channel_handle_db, sizeof(*eci), 
@@ -1707,6 +1716,15 @@ saEvtEventSubscribe(
 			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_AIS_OK) {
 		goto subscribe_put1;
+	}
+
+	/*
+	 * Make sure that a deliver callback has been 
+	 * registered before  allowing the subscribe to continue.
+	 */
+	if (!evti->ei_callback.saEvtEventDeliverCallback) {
+		error = SA_AIS_ERR_INIT;
+		goto subscribe_put2;
 	}
 
 	/*
