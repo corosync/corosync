@@ -58,7 +58,7 @@ OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
 
 all:libtotem.a libtotem.so.1.0 aisexec keygen
 
-aisexec: $(EXEC_OBJS)
+aisexec: $(EXEC_OBJS) libtotem.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
 libtotem.a: $(TOTEM_OBJS)
