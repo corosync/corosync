@@ -54,7 +54,7 @@ Some networks do not automatically configure the default route.  Ensure
 the default route is configured or AIS wont be able to communicate with
 other nodes.
 
-[sdake@slickdeal checkpointd]$ /sbin/route
+[sdake@slickdeal sdake]$ /sbin/route
 Kernel IP routing table
 Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 10.0.0.6        *               255.255.255.255 UH    0      0        0 tun0
