@@ -815,7 +815,7 @@ void readinessStateSetApi (struct saAmfComponent *component,
 	res_lib_amf_readinessstatesetcallback.readinessState = readinessState;
 	component->newReadinessState = readinessState;
 
-	log_printf (LOG_LEVEL_DEBUG, "Setting conn_info %x to readiness state %d\n", component->conn_info, readinessState);
+	log_printf (LOG_LEVEL_DEBUG, "Setting conn_info %p to readiness state %d\n", component->conn_info, readinessState);
 
 	libais_send_response (component->conn_info, &res_lib_amf_readinessstatesetcallback,
 		sizeof (struct res_lib_amf_readinessstatesetcallback));
@@ -900,7 +900,7 @@ static void dsmDisabledUnlockedRegisteredOrErrorCancel (
 
 		if (component->registered == 0 ||
 			component->probableCause) {
-			log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not registered or failed.\n", getSaNameT (&component->name));
+			log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not registered or failed.\n");
 			serviceUnitEnabled = 0;
 			break;
 		}
@@ -986,7 +986,7 @@ static void dsmDisabledUnlockedQuiescedCompleted (
 
 		if (component->probableCause != SA_AMF_NOT_RESPONDING && component->registered) {
 			if (component->currentHAState != SA_AMF_QUIESCED) {
-				log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not quiesced.\n", getSaNameT (&component->name));
+				log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not quiesced.\n");
 				serviceUnitQuiesced = 0;
 				break;
 			}
@@ -1045,7 +1045,7 @@ static void dsmDisabledUnlockedOutOfServiceCompleted (
 
 		if (component->probableCause != SA_AMF_NOT_RESPONDING && component->registered) {
 			if (component->currentReadinessState != SA_AMF_OUT_OF_SERVICE) {
-				log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not quiesced.\n", getSaNameT (&component->name));
+				log_printf (LOG_LEVEL_DEBUG, "dsm: Can't transition states, found component not quiesced.\n");
 				serviceUnitOutOfService = 0;
 				break;
 			}
@@ -1179,7 +1179,7 @@ static void dsmEnabledUnlockedInServiceCompleted (
 		component = list_entry (list,
 			struct saAmfComponent, saAmfComponentList);
 
-		log_printf (LOG_LEVEL_DEBUG, "Requesting component go active.\n", getSaNameT (&component->name));
+		log_printf (LOG_LEVEL_DEBUG, "Requesting component go active.\n");
 
 		/*
 		 * Count number of active service units
@@ -1873,7 +1873,8 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 			req_exec_amf_componentregister->source.conn_info->component = component;
 		}
 
-		log_printf (LOG_LEVEL_DEBUG, "sending component register response to fd %d\n", req_exec_amf_componentregister->source.conn_info);
+		log_printf (LOG_LEVEL_DEBUG, "sending component register response to fd %d\n",
+			    req_exec_amf_componentregister->source.conn_info->fd);
 
 		res_lib_amf_componentregister.header.size = sizeof (struct res_lib_amf_componentregister);
 		res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
@@ -1950,7 +1951,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	 */
 	if (req_exec_amf_componentunregister->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending component unregister response to fd %d\n",
-			req_exec_amf_componentunregister->source.conn_info);
+			req_exec_amf_componentunregister->source.conn_info->fd);
 
 		res_lib_amf_componentunregister.header.size = sizeof (struct res_lib_amf_componentunregister);
 		res_lib_amf_componentunregister.header.id = MESSAGE_RES_AMF_COMPONENTUNREGISTER;
@@ -1991,7 +1992,7 @@ static int message_handler_req_exec_amf_errorreport (void *message, struct in_ad
 	 */
 	if (req_exec_amf_errorreport->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
-			req_exec_amf_errorreport->source.conn_info);
+			req_exec_amf_errorreport->source.conn_info->fd);
 
 		res_lib_amf_errorreport.header.size = sizeof (struct res_lib_amf_errorreport);
 		res_lib_amf_errorreport.header.id = MESSAGE_RES_AMF_ERRORREPORT;
@@ -2034,7 +2035,7 @@ static int message_handler_req_exec_amf_errorcancelall (void *message, struct in
 	 */
 	if (req_exec_amf_errorcancelall->source.in_addr.s_addr == this_ip.sin_addr.s_addr) {
 		log_printf (LOG_LEVEL_DEBUG, "sending error report response to fd %d\n",
-			req_exec_amf_errorcancelall->source.conn_info);
+			req_exec_amf_errorcancelall->source.conn_info->fd);
 
 		res_lib_amf_errorcancelall.header.size = sizeof (struct res_lib_amf_errorcancelall);
 		res_lib_amf_errorcancelall.header.id = MESSAGE_RES_AMF_ERRORCANCELALL;
@@ -2429,7 +2430,7 @@ static int message_handler_req_amf_response (struct conn_info *conn_info_nouse, 
 	res = req_amf_invocation_get_and_destroy (req_amf_response->invocation,
 		&interface, &conn_info);
 
-	log_printf (LOG_LEVEL_DEBUG, "handling response connection %x interface %x\n", conn_info, interface);
+	log_printf (LOG_LEVEL_DEBUG, "handling response connection %p interface %x\n", conn_info, interface);
 	switch (interface) {
 	case MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK:
 		response_handler_healthcheckcallback (conn_info, req_amf_response);

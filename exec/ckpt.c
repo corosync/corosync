@@ -368,9 +368,9 @@ static struct saCkptCheckpointSection *findCheckpointSection (
 		ckptCheckpointSection = list_entry (checkpointSectionList,
 			struct saCkptCheckpointSection, list);
 	
-		log_printf (LOG_LEVEL_DEBUG, "Checking section id %s %d\n", 
-			ckptCheckpointSection->sectionDescriptor.sectionId.id,
-			ckptCheckpointSection->sectionDescriptor.sectionId.idLen);
+		log_printf (LOG_LEVEL_DEBUG, "Checking section id %*s\n", 
+			    (int)ckptCheckpointSection->sectionDescriptor.sectionId.idLen,
+			    ckptCheckpointSection->sectionDescriptor.sectionId.id);
 
 		if (ckptCheckpointSection->sectionDescriptor.sectionId.idLen == idLen &&
 			(memcmp (ckptCheckpointSection->sectionDescriptor.sectionId.id, 
@@ -461,7 +461,7 @@ static int ckpt_checkpoint_exit_fn (struct conn_info *conn_info)
 	 */
 	if (conn_info->service == SOCKET_SERVICE_CKPT_CHECKPOINT &&
 		conn_info->ais_ci.u.libckpt_ci.checkpoint) {
-		log_printf (LOG_LEVEL_DEBUG, "Trying to finalize %d %s\n", conn_info,
+		log_printf (LOG_LEVEL_DEBUG, "Trying to finalize %p %s\n", conn_info,
 			getSaNameT (&conn_info->ais_ci.u.libckpt_ci.checkpoint->name));
 
 		sendCkptCheckpointClose (conn_info->ais_ci.u.libckpt_ci.checkpoint);
@@ -1391,7 +1391,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	struct req_exec_ckpt_checkpointretentiondurationset req_exec_ckpt_checkpointretentiondurationset;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "DURATION SET FROM API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "DURATION SET FROM API fd %d\n", conn_info->fd);
 	req_exec_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET;
 	req_exec_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_exec_ckpt_checkpointretentiondurationset);
 
@@ -1470,7 +1470,7 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "Section create from API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "Section create from API fd %d\n", conn_info->fd);
 	/*
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
@@ -1523,7 +1523,7 @@ for (i = 0; i < 14;i++) {
 printf ("|\n");
 #endif
 	if (iovecs[1].iov_len > 0) {
-		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %s\n", iovecs[1].iov_base);
+		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
 		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED) == 0);
 	} else {
 		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
@@ -1538,7 +1538,7 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	struct req_exec_ckpt_sectiondelete req_exec_ckpt_sectiondelete;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "section delete from API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "section delete from API fd %d\n", conn_info->fd);
 
 	req_exec_ckpt_sectiondelete.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE;
 	req_exec_ckpt_sectiondelete.header.size = sizeof (struct req_exec_ckpt_sectiondelete);
@@ -1578,7 +1578,7 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	struct req_exec_ckpt_sectionexpirationtimeset req_exec_ckpt_sectionexpirationtimeset;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "section expiration time set fd=%d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "section expiration time set fd=%d\n", conn_info->fd);
 	req_exec_ckpt_sectionexpirationtimeset.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET;
 	req_exec_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_exec_ckpt_sectionexpirationtimeset);
 
@@ -1603,7 +1603,7 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	iovecs[1].iov_len = req_lib_ckpt_sectionexpirationtimeset->header.size - sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
 
 	if (iovecs[1].iov_len > 0) {
-		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %s\n", iovecs[1].iov_base);
+		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
 		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
 	} else {
 		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
@@ -1620,7 +1620,7 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "Section write from API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "Section write from API fd %d\n", conn_info->fd);
 // UNDO printf ("section write %d\n", write_inv++);
 	/*
 	 * Determine if checkpoint is opened in write mode If not, send error to api
@@ -1677,7 +1677,7 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info->fd);
 	/*
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
@@ -1732,7 +1732,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
 	struct iovec iovecs[2];
 
-	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info);
+	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info->fd);
 	/*
 	 * Determine if checkpoint is opened in write mode If not, send error to api
 	 */
