@@ -391,10 +391,26 @@ static int message_handler_req_exec_clm_nodejoin (int fd, void *message)
 
 static int message_handler_req_clm_init (int fd, void *message)
 {
-	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
-	connections[fd].service = SOCKET_SERVICE_CLM;
+	SaErrorT error = SA_ERR_SECURITY;
+	struct res_lib_init res_lib_init;
 
-	return (0);
+	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
+	if (connections[fd].authenticated) {
+		connections[fd].service = SOCKET_SERVICE_CLM;
+		error = SA_OK;
+	}
+
+	res_lib_init.header.magic = MESSAGE_MAGIC;
+	res_lib_init.header.size = sizeof (struct res_lib_init);
+	res_lib_init.header.id = MESSAGE_RES_INIT;
+	res_lib_init.error = error;
+
+	libais_send_response (fd, &res_lib_init, sizeof (res_lib_init));
+
+	if (connections[fd].authenticated) {
+		return (0);
+	}
+	return (-1);
 }
 
 int message_handler_req_clm_trackstart (int fd, void *message)
