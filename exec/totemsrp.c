@@ -1,4 +1,3 @@
-#define RANDOM_DROP 1
 int my_token_held = 0;
 int my_do_delivery = 0;
 unsigned long long token_ring_id_seq = 0;
