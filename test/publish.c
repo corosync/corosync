@@ -155,8 +155,10 @@ test_pub()
 		printf("Event Initialize result: %s\n", result_buf);
 		exit(result);
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel open result: %s\n", result_buf);
@@ -271,14 +273,18 @@ test_pub()
 		exit(result);
 	}
 
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel close result: %s\n", result_buf);
 		exit(result);
 	}
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
