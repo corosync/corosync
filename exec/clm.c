@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -53,7 +54,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "aispoll.h"
-#include "gmi.h"
+#include "totempg.h"
 #include "parse.h"
 #include "main.h"
 #include "mempool.h"
@@ -73,7 +74,7 @@ int clusterNodeEntries = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
-static gmi_recovery_plug_handle clm_recovery_plug_handle;
+//TODOstatic totempg_recovery_plug_handle clm_recovery_plug_handle;
 
 SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 {
@@ -98,12 +99,15 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 static int clm_exec_init_fn (void);
 
 static int clm_confchg_fn (
-	enum gmi_configuration_type configuration_type,
-    struct sockaddr_in *member_list, int member_list_entries,
-    struct sockaddr_in *left_list, int left_list_entries,
-    struct sockaddr_in *joined_list, int joined_list_entries);
+	enum totempg_configuration_type configuration_type,
+    struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+    struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+    struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries);
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr, int endian_conversion_required);
 
 static int message_handler_req_clm_init (struct conn_info *conn_info,
 	void *message);
@@ -131,35 +135,35 @@ struct libais_handler clm_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_clm_trackstart,
 		.response_size				= sizeof (struct res_clm_trackstart),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_clm_trackstop,
 		.response_size				= sizeof (struct res_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	}
 };
 
-static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
+static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_clm_nodejoin
 };
 	
@@ -177,14 +181,16 @@ struct service_handler clm_service_handler = {
 
 static int clm_exec_init_fn (void)
 {
-	int res;
 
-    res = gmi_recovery_plug_create (&clm_recovery_plug_handle);
+/* TODO
+	int res;
+    res = totempg_recovery_plug_create (&clm_recovery_plug_handle);
 	if (res != 0) {
        log_printf(LOG_LEVEL_ERROR,
             "Could not create recovery plug for clm service.\n");
 		return (-1);
 	}
+*/
 
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 
@@ -380,16 +386,20 @@ static int clmNodeJoinSend (void)
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
-	result = gmi_mcast (&aisexec_groupname, &req_exec_clm_iovec, 1, GMI_PRIO_RECOVERY);
+	result = totempg_mcast (&req_exec_clm_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
 
 	return (result);
 }
 
 static int clm_confchg_fn (
-	enum gmi_configuration_type configuration_type,
-    struct sockaddr_in *member_list, int member_list_entries,
-    struct sockaddr_in *left_list, int left_list_entries,
-    struct sockaddr_in *joined_list, int joined_list_entries) {
+	enum totempg_configuration_type configuration_type,
+    struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+    struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+    struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries)
+{
 
 	int i;
 	SaClmNodeIdT nodes[NODE_MAX];
@@ -397,16 +407,16 @@ static int clm_confchg_fn (
 	log_printf (LOG_LEVEL_NOTICE, "CLM CONFIGURATION CHANGE\n");
 	log_printf (LOG_LEVEL_NOTICE, "New Configuration:\n");
 	for (i = 0; i < member_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (member_list[i].sin_addr));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (member_list[i]));
 	}
 	log_printf (LOG_LEVEL_NOTICE, "Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (left_list[i].sin_addr));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (left_list[i]));
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (joined_list[i].sin_addr));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (joined_list[i]));
 	}
 
 	/*
@@ -416,24 +426,45 @@ static int clm_confchg_fn (
 		assert (clmNodeJoinSend () == 0);
 	}
 	for (i = 0; i < left_list_entries; i++) {
-		nodes[i] = left_list[i].sin_addr.s_addr;
+		nodes[i] = left_list[i].s_addr;
 	}
 
 	libraryNotificationLeave (nodes, i);
 
-	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
-		gmi_recovery_plug_unplug (clm_recovery_plug_handle);
+/* TODO
+	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
+		totempg_recovery_plug_unplug (clm_recovery_plug_handle);
 	}
+*/
 
 	return (0);
 }
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr)
+static void exec_clm_nodejoin_endian_conversion (struct req_exec_clm_nodejoin *in,
+	struct req_exec_clm_nodejoin *out)
+{
+	// TODO this isn't complete yet
+	// TODO SaNameT needs to be packed and aligned
+	memmove (&out->clusterNode.nodeName.value[0],
+		&in->clusterNode.nodeName.value[2],
+		SA_MAX_NAME_LENGTH);
+}
+
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
+	struct req_exec_clm_nodejoin req_exec_clm_nodejoin_storage;
 	int found;
 	int i;
 
+	if (endian_conversion_required) {
+		exec_clm_nodejoin_endian_conversion (message, &req_exec_clm_nodejoin_storage);
+		req_exec_clm_nodejoin = &req_exec_clm_nodejoin_storage;
+	} else {
+		req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
+	}
+
+		
 	log_printf (LOG_LEVEL_NOTICE, "got nodejoin message %s\n", req_exec_clm_nodejoin->clusterNode.nodeName.value);
 	
 	/*

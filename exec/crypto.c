@@ -13,6 +13,11 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/poll.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "crypto.h"
 
@@ -21,8 +26,22 @@
 typedef unsigned long ulong32;
 typedef unsigned long long ulong64;
 
+/*
+ * Tested on arm2401, i386, x86_64 
+ */
+#if defined(__arm__) 
+#define ENDIAN_BIG
 #define ENDIAN_32BITWORD
+#endif
+#if defined(__i386__) 
 #define ENDIAN_LITTLE
+#define ENDIAN_32BITWORD
+#endif
+#if defined(__x86_64__)
+#define ENDIAN_LITTLE
+#define ENDIAN_64BITWORD
+#endif
+
 /* ---- HELPER MACROS ---- */
 #ifdef ENDIAN_NEUTRAL
 
@@ -276,9 +295,6 @@ int func_name (hash_state * md, const unsigned char *buf, unsigned long len)    
 /*
  * The mycrypt_macros.h file
  */
-
-#define ENDIAN_32BITWORD
-#define ENDIAN_LITTLE
 
 /* ---- HELPER MACROS ---- */
 #ifdef ENDIAN_NEUTRAL
@@ -1222,31 +1238,16 @@ const struct _hash_descriptor *hash_descriptor[] =
 static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
                              void (*callback)(void))
 {
-#ifdef NO_FILE
-    return 0;
-#else
-    FILE *f;
-    unsigned long x;
-#ifdef TRY_URANDOM_FIRST
-    f = fopen("/dev/urandom", "rb");
-    if (f == NULL)
-#endif /* TRY_URANDOM_FIRST */
-       f = fopen("/dev/random", "rb");
+	int fd;
+	int rb;
 
-    if (f == NULL) {
-       return 0;
-    }
-    
-    /* disable buffering */
-    if (setvbuf(f, NULL, _IONBF, 0) != 0) {
-       fclose(f);
-       return 0;
-    }   
- 
-    x = (unsigned long)fread(buf, 1, (size_t)len, f);
-    fclose(f);
-    return x;
-#endif /* NO_FILE */
+	fd = open ("/dev/urandom", O_RDONLY);
+	
+	rb = read (fd, buf, len);
+
+	close (fd);
+
+	return (rb);
 }
 
 /* on ANSI C platforms with 100 < CLOCKS_PER_SEC < 10000 */

@@ -36,6 +36,7 @@
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "aispoll.h"
 #include "../include/list.h"

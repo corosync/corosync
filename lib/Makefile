@@ -86,5 +86,5 @@ clm.o: ../include/ais_types.h ../include/ais_clm.h ../include/ais_types.h
 clm.o: ../include/ais_msg.h util.h
 ckpt.o: ../include/list.h ../include/ais_types.h ../include/ais_ckpt.h
 ckpt.o: ../include/ais_types.h ../include/ais_msg.h util.h
-evt.o: ../include/ais_evt.h ../include/ais_types.h ../include/ais_msg.h ../exec/gmi.h ../exec/aispoll.h
+evt.o: ../include/ais_evt.h ../include/ais_types.h ../include/ais_msg.h
 evt.o: util.h

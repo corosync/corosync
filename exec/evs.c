@@ -53,7 +53,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "aispoll.h"
-#include "gmi.h"
+#include "totempg.h"
 #include "parse.h"
 #include "main.h"
 #include "mempool.h"
@@ -70,12 +70,15 @@ static DECLARE_LIST_INIT (confchg_notify);
 static int evs_executive_initialize (void);
 
 static int evs_confchg_fn (
-	enum gmi_configuration_type configuration_type,
-    struct sockaddr_in *member_list, int member_list_entries,
-    struct sockaddr_in *left_list, int left_list_entries,
-    struct sockaddr_in *joined_list, int joined_list_entries);
+	enum totempg_configuration_type configuration_type,
+    struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+    struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+    struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries);
 
-static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr, int endian_conversion_required);
 
 static int message_handler_req_evs_init (struct conn_info *conn_info,
 	void *message);
@@ -96,35 +99,35 @@ struct libais_handler evs_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_evs_join,
 		.response_size				= sizeof (struct res_lib_evs_join),
 		.response_id				= MESSAGE_RES_EVS_JOIN,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_evs_leave,
 		.response_size				= sizeof (struct res_lib_evs_leave),
 		.response_id				= MESSAGE_RES_EVS_LEAVE,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_joined,
 		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
 		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
-		.gmi_prio					= GMI_PRIO_LOW
+		.totempg_prio				= TOTEMPG_PRIO_LOW
 	},
 	{ /* 4 */
 		.libais_handler_fn			= message_handler_req_evs_mcast_groups,
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
-		.gmi_prio					= GMI_PRIO_LOW
+		.totempg_prio				= TOTEMPG_PRIO_LOW
 	}
 };
 
-static int (*evs_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
+static int (*evs_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_mcast
 };
 	
@@ -152,10 +155,14 @@ static int evs_exit_fn (struct conn_info *conn_info)
 }
 
 static int evs_confchg_fn (
-	enum gmi_configuration_type configuration_type,
-    struct sockaddr_in *member_list, int member_list_entries,
-    struct sockaddr_in *left_list, int left_list_entries,
-    struct sockaddr_in *joined_list, int joined_list_entries) {
+	enum totempg_configuration_type configuration_type,
+    struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+    struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+    struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries)
+{
 
 	int i;
 	struct list_head *list;
@@ -170,15 +177,15 @@ static int evs_confchg_fn (
 	res_evs_confchg_callback.header.error = SA_OK;
 
 	for (i = 0; i < member_list_entries; i++) {
-		res_evs_confchg_callback.member_list[i].s_addr = member_list[i].sin_addr.s_addr;
+		res_evs_confchg_callback.member_list[i].s_addr = member_list[i].s_addr;
 	}
 	res_evs_confchg_callback.member_list_entries = member_list_entries;
 	for (i = 0; i < left_list_entries; i++) {
-		res_evs_confchg_callback.left_list[i].s_addr = left_list[i].sin_addr.s_addr;
+		res_evs_confchg_callback.left_list[i].s_addr = left_list[i].s_addr;
 	}
 	res_evs_confchg_callback.left_list_entries = left_list_entries;
 	for (i = 0; i < joined_list_entries; i++) {
-		res_evs_confchg_callback.joined_list[i].s_addr = joined_list[i].sin_addr.s_addr;
+		res_evs_confchg_callback.joined_list[i].s_addr = joined_list[i].s_addr;
 	}
 	res_evs_confchg_callback.joined_list_entries = joined_list_entries;
 
@@ -336,11 +343,13 @@ static int message_handler_req_evs_leave (struct conn_info *conn_info, void *mes
 
 static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message)
 {
-	evs_error_t error = EVS_OK;
+	evs_error_t error = EVS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_joined *req_lib_evs_mcast_joined = (struct req_lib_evs_mcast_joined *)message;
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
 	struct iovec req_exec_evs_mcast_iovec[3];
 	struct req_exec_evs_mcast req_exec_evs_mcast;
+	int send_ok = 0;
+	int res;
 
 	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast);
 	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
@@ -353,9 +362,18 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[1].iov_len = conn_info->ais_ci.u.libevs_ci.group_entries * sizeof (struct evs_group);
 	req_exec_evs_mcast_iovec[2].iov_base = &req_lib_evs_mcast_joined->msg;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_joined->msg_len;
-	
-	assert (gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
-		req_lib_evs_mcast_joined->priority) == 0);
+// TODO this doesn't seem to work for some reason	
+	send_ok = totempg_send_ok (req_lib_evs_mcast_joined->priority,
+		5000 + req_lib_evs_mcast_joined->msg_len); 
+
+		res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED,
+			req_lib_evs_mcast_joined->priority);
+	if (res == 0) {
+		error = EVS_OK;
+	} else {
+		printf ("res is wrong\n");
+	}
+error = EVS_OK;
 
 	res_lib_evs_mcast_joined.header.size = sizeof (struct res_lib_evs_mcast_joined);
 	res_lib_evs_mcast_joined.header.id = MESSAGE_RES_EVS_MCAST_JOINED;
@@ -369,12 +387,14 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 
 static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message)
 {
-	evs_error_t error = EVS_OK;
+	evs_error_t error = EVS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_groups *req_lib_evs_mcast_groups = (struct req_lib_evs_mcast_groups *)message;
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	struct iovec req_exec_evs_mcast_iovec[3];
 	struct req_exec_evs_mcast req_exec_evs_mcast;
 	char *msg_addr;
+	int send_ok = 0;
+	int res;
 
 	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast);
 	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
@@ -392,8 +412,14 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_base = msg_addr;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;
 	
-	assert (gmi_mcast (&aisexec_groupname, req_exec_evs_mcast_iovec, 3,
-		req_lib_evs_mcast_groups->priority) == 0);
+// TODO this is wacky
+	send_ok = totempg_send_ok (req_lib_evs_mcast_groups->priority,
+		 5000 + req_lib_evs_mcast_groups->msg_len);
+	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED,
+		req_lib_evs_mcast_groups->priority);
+	if (res == 0) {
+		error = EVS_OK;
+	}
 
 	res_lib_evs_mcast_groups.header.size = sizeof (struct res_lib_evs_mcast_groups);
 	res_lib_evs_mcast_groups.header.id = MESSAGE_RES_EVS_MCAST_GROUPS;
@@ -404,7 +430,7 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 
 	return (0);
 }
-static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr)
+static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)message;
 	struct res_evs_deliver_callback res_evs_deliver_callback;
@@ -450,6 +476,7 @@ static int message_handler_req_exec_mcast (void *message, struct in_addr source_
 				req_exec_evs_mcast->msg_len);
 		}
 	}
+//TODO printf ("Got evs message %s\n", msg_addr);
 
 	return (0);
 }

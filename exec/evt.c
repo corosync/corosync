@@ -1,4 +1,6 @@
 /*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ *
  * Copyright (c) 2004 Mark Haverkamp
  * Copyright (c) 2004 Open Source Development Lab
  *
@@ -34,6 +36,8 @@
 #define DUMP_CHAN_INFO
 #define RECOVERY_DEBUG LOG_LEVEL_DEBUG
 #define CHAN_DEL_DEBUG LOG_LEVEL_DEBUG
+#define CHAN_OPEN_DEBUG LOG_LEVEL_DEBUG
+#define REMOTE_OP_DEBUG LOG_LEVEL_DEBUG
 
 #include <sys/types.h>
 #include <malloc.h>
@@ -52,7 +56,7 @@
 #include "mempool.h"
 #include "parse.h"
 #include "main.h"
-#include "gmi.h"
+#include "totempg.h"
 #include "hdb.h"
 #include "clm.h"
 #include "evt.h"
@@ -73,11 +77,15 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 		void *message);
 static int lib_evt_event_data_get(struct conn_info *conn_info, 
 		void *message);
+
 static int evt_conf_change(
-		enum gmi_configuration_type configuration_type,
-		struct sockaddr_in *member_list, int member_list_entries,
-		struct sockaddr_in *left_list, int left_list_entries,
-		struct sockaddr_in *joined_list, int joined_list_entries);
+		enum totempg_configuration_type configuration_type,
+		struct in_addr *member_list, void *member_list_private,
+			int member_list_entries,
+		struct in_addr *left_list, void *left_list_private,
+			int left_list_entries,
+		struct in_addr *joined_list, void *joined_list_private,
+			int joined_list_entries);
 
 static int evt_initialize(struct conn_info *conn_info, void *msg);
 static int evt_finalize(struct conn_info *conn_info);
@@ -88,58 +96,58 @@ static struct libais_handler evt_libais_handlers[] = {
 	.libais_handler_fn = 	message_handler_req_lib_activatepoll,
 	.response_size = 		sizeof(struct res_lib_activatepoll),
 	.response_id = 			MESSAGE_RES_LIB_ACTIVATEPOLL,
-	.gmi_prio = 			GMI_PRIO_RECOVERY
+	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
-	.gmi_prio = 			GMI_PRIO_MED
+	.totempg_prio = 			TOTEMPG_PRIO_MED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
-	.gmi_prio = 			GMI_PRIO_RECOVERY
+	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_subscribe,
 	.response_size = 		sizeof(struct res_evt_event_subscribe),
 	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
-	.gmi_prio = 			GMI_PRIO_RECOVERY
+	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_unsubscribe,
 	.response_size = 		sizeof(struct res_evt_event_unsubscribe),
 	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
-	.gmi_prio = 			GMI_PRIO_RECOVERY
+	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_publish,
 	.response_size = 		sizeof(struct res_evt_event_publish),
 	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
-	.gmi_prio = 			GMI_PRIO_LOW
+	.totempg_prio = 			TOTEMPG_PRIO_LOW
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
 	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
 	.response_id = 			MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME,
-	.gmi_prio = 			GMI_PRIO_MED
+	.totempg_prio = 			TOTEMPG_PRIO_MED
 	},
 	{
 	.libais_handler_fn = 	lib_evt_event_data_get,
 	.response_size = 		sizeof(struct lib_event_data),
 	.response_id = 			MESSAGE_RES_EVT_EVENT_DATA,
-	.gmi_prio = 			GMI_PRIO_RECOVERY
+	.totempg_prio = 			TOTEMPG_PRIO_RECOVERY
 	},
 };
 
 	
-static int evt_remote_evt(void *msg, struct in_addr source_addr);
-static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr);
-static int evt_remote_chan_op(void *msg, struct in_addr source_addr);
+static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conversion_required);
+static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, int endian_conversion_required);
+static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_conversion_required);
 
-static int (*evt_exec_handler_fns[]) (void *m, struct in_addr s) = {
+static int (*evt_exec_handler_fns[]) (void *m, struct in_addr s, int endian_conversion_required) = {
 	evt_remote_evt,
 	evt_remote_chan_op,
 	evt_remote_recovery_evt
@@ -159,7 +167,7 @@ struct service_handler evt_service_handler = {
 	.exec_dump_fn				= 0
 };
 
-static gmi_recovery_plug_handle evt_recovery_plug_handle;
+// TODOstatic totempg_recovery_plug_handle evt_recovery_plug_handle;
 
 /* 
  * list of all retained events 
@@ -394,7 +402,7 @@ DECLARE_LIST_INIT(mnd);
  * checked_in:		keep track during config change.
  * any_joined:		did any nodes join on this change?
  * recovery_node:	True if we're the recovery node.
- * tok_call_handle:	gmi token callback handle for recovery.
+ * tok_call_handle:	totempg token callback handle for recovery.
  * next_retained:	pointer to next retained message to send during recovery.
  * next_chan:		pointer to next channel to send during recovery.
  *
@@ -835,7 +843,10 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	cpkt.u.chc_chan = *cn;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, GMI_PRIO_MED);
+	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
+	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
+	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Open mcast result: %d\n",
+				res);
 	if (res != 0) {
 			ret = SA_ERR_SYSTEM;
 	}
@@ -868,7 +879,7 @@ static SaErrorT evt_close_channel(SaNameT *cn)
 	cpkt.u.chc_chan = *cn;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, GMI_PRIO_MED);
+	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
 	if (res != 0) {
 			ret = SA_ERR_SYSTEM;
 	}
@@ -1044,8 +1055,7 @@ static int send_next_retained(void *data)
 			evt->ed_event.led_head.id = MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA;
 			chn_iovec.iov_base = &evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
-			res = gmi_mcast(&aisexec_groupname, &chn_iovec, 1, 
-				GMI_PRIO_RECOVERY);
+			res = totempg_mcast(&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
 
 			if (res != 0) {
 			/*
@@ -1061,8 +1071,7 @@ static int send_next_retained(void *data)
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
-												GMI_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
 	}
 	tok_call_handle = 0;
 	return 0;
@@ -1076,7 +1085,7 @@ static void send_retained()
 {
 	struct req_evt_chan_command cpkt;
 	struct iovec chn_iovec;
-	int res;
+	int res = 0;
 
 	if (list_empty(&retained_list) || !any_joined) {
 		memset(&cpkt, 0, sizeof(cpkt));
@@ -1086,15 +1095,14 @@ static void send_retained()
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		log_printf(RECOVERY_DEBUG, "No messages to send\n");
-		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
-											GMI_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_RECOVERY);
 	} else {
 		log_printf(RECOVERY_DEBUG, 
 					"Start sending retained messages\n");
 		recovery_node = 1;
 		next_retained = retained_list.next;
-		res = gmi_token_callback_create(&tok_call_handle, send_next_retained,
-				NULL);
+// TODO		res = totempg_token_callback_create(&tok_call_handle, send_next_retained,
+//				NULL);
 	}
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR, "ERROR sending evt recovery data\n");
@@ -1130,8 +1138,8 @@ static int send_next_open_count(void *data)
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
 			chn_iovec.iov_base = &cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
-			res = gmi_mcast(&aisexec_groupname, &chn_iovec, 1, 
-				GMI_PRIO_RECOVERY);
+			res = totempg_mcast(&chn_iovec, 1,TOTEMPG_AGREED,  
+				TOTEMPG_PRIO_RECOVERY);
 
 			if (res != 0) {
 			/*
@@ -1147,8 +1155,8 @@ static int send_next_open_count(void *data)
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
-												GMI_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
+												TOTEMPG_PRIO_RECOVERY);
 	}
 	tok_call_handle = 0;
 	return 0;
@@ -1172,14 +1180,14 @@ static void send_open_count()
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		log_printf(RECOVERY_DEBUG, "No channels to send\n");
-		res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
-											GMI_PRIO_RECOVERY);
+		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
+											TOTEMPG_PRIO_RECOVERY);
 	} else {
 		log_printf(RECOVERY_DEBUG, 
 					"Start sending open channel count\n");
 		next_chan = esc_head.next;
-		res = gmi_token_callback_create(&tok_call_handle, send_next_open_count,
-				NULL);
+// TODO		res = totempg_token_callback_create(&tok_call_handle, send_next_open_count,
+//				NULL);
 	}
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR, "ERROR sending evt recovery data\n");
@@ -1712,7 +1720,7 @@ deliver_event(struct event_data *evt,
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"Memory allocation error, can't deliver event\n");
+						"3Memory allocation error, can't deliver event\n");
 			return;
 		}
 		evt->ed_ref_count++;
@@ -1734,7 +1742,7 @@ deliver_event(struct event_data *evt,
 		ed = malloc(dropped_event_size);
 		if (!ed) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"Memory allocation error, can't deliver event\n");
+						"4Memory allocation error, can't deliver event\n");
 			return;
 		}
 		log_printf(LOG_LEVEL_DEBUG, "Warn 0x%0llx\n", 
@@ -1746,7 +1754,7 @@ deliver_event(struct event_data *evt,
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
 			log_printf(LOG_LEVEL_WARNING, 
-						"Memory allocation error, can't deliver event\n");
+						"5Memory allocation error, can't deliver event\n");
 			return;
 		}
 		ep->cel_chan_handle = eco->eco_lib_handle;
@@ -1911,7 +1919,6 @@ static int evt_initialize(struct conn_info *conn_info, void *msg)
  */
 static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 {
-	uint32_t handle;
 	SaErrorT error;
 	struct req_evt_channel_open *req;
 	struct res_evt_channel_open res;
@@ -1922,13 +1929,13 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	req = message;
 
 
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(CHAN_OPEN_DEBUG, 
 			"saEvtChannelOpen (Open channel request)\n");
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(CHAN_OPEN_DEBUG, 
 			"handle 0x%x, to 0x%llx\n",
 			req->ico_c_handle,
 			req->ico_timeout);
-	log_printf(LOG_LEVEL_DEBUG, "flags %x, channel name(%d)  %s\n",
+	log_printf(CHAN_OPEN_DEBUG, "flags %x, channel name(%d)  %s\n",
 			req->ico_open_flag,
 			req->ico_channel_name.length,
 			req->ico_channel_name.value);
@@ -1976,7 +1983,6 @@ open_return:
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
-	res.ico_channel_handle = handle;
 	libais_send_response (conn_info, &res, sizeof(res));
 
 	return 0;
@@ -2326,7 +2332,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 */
 	pub_iovec.iov_base = req;
 	pub_iovec.iov_len = req->led_head.size;
-	result = gmi_mcast (&aisexec_groupname, &pub_iovec, 1, GMI_PRIO_LOW);
+	result = totempg_mcast (&pub_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW);
 	if (result != 0) {
 			error = SA_ERR_SYSTEM;
 	}
@@ -2371,7 +2377,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	cpkt.u.chc_event_id = req->iec_event_id;
 	rtn_iovec.iov_base = &cpkt;
 	rtn_iovec.iov_len = cpkt.chc_head.size;
-	ret = gmi_mcast (&aisexec_groupname, &rtn_iovec, 1, GMI_PRIO_MED);
+	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED);
 	if (ret != 0) {
 			error = SA_ERR_SYSTEM;
 	}
@@ -2464,10 +2470,13 @@ static void remove_chan_open_info(SaClmNodeIdT node_id)
  * received for each node for the detection of duplicate events.
  */
 static int evt_conf_change(
-		enum gmi_configuration_type configuration_type,
-		struct sockaddr_in *member_list, int member_list_entries,
-		struct sockaddr_in *left_list, int left_list_entries,
-		struct sockaddr_in *joined_list, int joined_list_entries)
+		enum totempg_configuration_type configuration_type,
+		struct in_addr *member_list, void *member_list_private,
+			int member_list_entries,
+		struct in_addr *left_list, void *left_list_private,
+			int left_list_entries,
+		struct in_addr *joined_list, void *joined_list_private,
+			int joined_list_entries)
 {
 	struct in_addr my_node = {SA_CLM_LOCAL_NODE_ID};
 	SaClmClusterNodeT *cn;
@@ -2480,6 +2489,17 @@ static int evt_conf_change(
 	int res;
 
 
+	/*
+	 * Set the base event id
+	 */
+	cn = clm_get_by_nodeid(my_node);
+	if (!base_id_top) {
+		log_printf(RECOVERY_DEBUG, "My node ID 0x%x\n", cn->nodeId);
+		my_node_id = cn->nodeId;
+		set_event_id(my_node_id);
+	}
+
+	return (0); // TODO 
 	log_printf(LOG_LEVEL_DEBUG, "Evt conf change %d\n", 
 			configuration_type);
 	log_printf(LOG_LEVEL_DEBUG, "m %d, j %d, l %d\n", 
@@ -2490,7 +2510,7 @@ static int evt_conf_change(
 	 * Stop any recovery callbacks in progress.
 	 */
 	if (tok_call_handle) {
-		gmi_token_callback_destroy(tok_call_handle);
+// TODO		totempg_token_callback_destroy(tok_call_handle);
 		tok_call_handle = 0;
 	}
 
@@ -2501,12 +2521,12 @@ static int evt_conf_change(
 	 * list.  Always use the left list for removing nodes.
 	 */
 	if (first) {
-			add_list = member_list;
-			add_count = member_list_entries;
+//j			add_list = member_list;
+//			add_count = member_list_entries;
 			first = 0;
 	} else {
-			add_list = joined_list;
-			add_count = joined_list_entries;
+//			add_list = joined_list;
+//			add_count = joined_list_entries;
 	}
 
 	while (add_count--) {
@@ -2531,8 +2551,8 @@ static int evt_conf_change(
 										md->mn_last_evt_id & BASE_ID_MASK;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
-				res = gmi_mcast (&aisexec_groupname, &chn_iovec, 1, 
-														GMI_PRIO_RECOVERY);
+				res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED,  
+														TOTEMPG_PRIO_RECOVERY);
 				if (res != 0) {
 					log_printf(LOG_LEVEL_WARNING, 
 						"Unable to send event id to %s\n", 
@@ -2544,31 +2564,21 @@ static int evt_conf_change(
 	}
 
 	while (left_list_entries--) {
-		md = evt_find_node(left_list->sin_addr);
+// TODO		md = evt_find_node(left_list);
 		if (md == 0) {
 			log_printf(LOG_LEVEL_WARNING, 
 					"Can't find cluster node at %s\n",
-							inet_ntoa(left_list->sin_addr));
+							inet_ntoa(left_list[0]));
 		/*
 		 * Mark this one as down.
 		 */
 		} else {
 			log_printf(RECOVERY_DEBUG, "cluster node at %s down\n",
-							inet_ntoa(left_list->sin_addr));
+							inet_ntoa(left_list[0]));
 			md->mn_started = 0;
 			remove_chan_open_info(md->mn_node_info.nodeId);
 		}
 		left_list++;
-	}
-
-	/*
-	 * Set the base event id
-	 */
-	cn = clm_get_by_nodeid(my_node);
-	if (!base_id_top) {
-		log_printf(RECOVERY_DEBUG, "My node ID 0x%x\n", cn->nodeId);
-		my_node_id = cn->nodeId;
-		set_event_id(my_node_id);
 	}
 
 
@@ -2576,7 +2586,7 @@ static int evt_conf_change(
 	 * Notify that a config change happened.  The exec handler will
 	 * then determine what to do.
 	 */
-	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
+	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
 		if (in_cfg_change) {
 			log_printf(LOG_LEVEL_NOTICE, 
 				"Already in config change, Starting over, m %d, c %d\n",
@@ -2637,15 +2647,17 @@ static int evt_finalize(struct conn_info *conn_info)
  */
 static int evt_exec_init(void)
 {
-	int res;
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
-	res = gmi_recovery_plug_create (&evt_recovery_plug_handle);
+#ifdef TODO
+	int res;
+	res = totempg_recovery_plug_create (&evt_recovery_plug_handle);
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR,
 			"Could not create recovery plug for event service.\n");
 		return (-1);
 	}
+#endif
 
 	/*
 	 * Create an event to be sent when we have to drop messages
@@ -2656,7 +2668,7 @@ static int evt_exec_init(void)
 	if (dropped_event == 0) {
 		log_printf(LOG_LEVEL_ERROR, 
 				"Memory Allocation Failure, event service not started\n");
-		res = gmi_recovery_plug_destroy (evt_recovery_plug_handle);
+// TODO		res = totempg_recovery_plug_destroy (evt_recovery_plug_handle);
 		errno = ENOMEM;
 		return -1;
 	}
@@ -2679,7 +2691,7 @@ static int evt_exec_init(void)
 /*
  * Receive the network event message and distribute it to local subscribers
  */
-static int evt_remote_evt(void *msg, struct in_addr source_addr)
+static int evt_remote_evt(void *msg, struct in_addr source_addr, int endian_conversion_required)
 {
 	/*
 	 * - retain events that have a retention time
@@ -2737,7 +2749,7 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr)
 	evt = make_local_event(evtpkt, eci);
 	if (!evt) {
 		log_printf(LOG_LEVEL_WARNING, 
-						"Memory allocation error, can't deliver event\n");
+						"1Memory allocation error, can't deliver event\n");
 		errno = ENOMEM;
 		return -1;
 	}
@@ -2796,7 +2808,7 @@ inline SaTimeT calc_retention_time(SaTimeT retention,
 /*
  * Receive a recovery network event message and save it in the retained list
  */
-static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
+static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr, int endian_conversion_required)
 {
 	/*
 	 * - retain events that have a retention time
@@ -2879,7 +2891,7 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr)
 		evt = make_local_event(evtpkt, eci);
 		if (!evt) {
 			log_printf(LOG_LEVEL_WARNING, 
-				"Memory allocation error, can't deliver event\n");
+				"2Memory allocation error, can't deliver event\n");
 			errno = ENOMEM;
 			return -1;
 		}
@@ -2923,6 +2935,8 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	int ret = 0;
 	void *ptr;
 
+	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n", 
+											getSaNameT(&ocp->ocp_chan_name));
 	if (!ocp->ocp_async && ocp->ocp_timer_handle) {
 		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
 		if (ret != 0 ) {
@@ -2966,6 +2980,9 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 */
 	saHandleInstancePut(&esip->esi_hdb, handle);
 open_return:
+	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n", 
+											getSaNameT(&ocp->ocp_chan_name),
+											error);
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
@@ -2984,7 +3001,7 @@ open_return:
  * Used to communicate channel opens/closes, clear retention time,
  * config change updates...
  */
-static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
+static int evt_remote_chan_op(void *msg, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_evt_chan_command *cpkt = msg;
 	struct in_addr local_node = {SA_CLM_LOCAL_NODE_ID};
@@ -2993,8 +3010,9 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 	struct event_svr_channel_instance *eci;
 
 
-	log_printf(LOG_LEVEL_DEBUG, "Remote channel operation request\n");
+	log_printf(REMOTE_OP_DEBUG, "Remote channel operation request\n");
 	my_node = clm_get_by_nodeid(local_node);
+	log_printf(REMOTE_OP_DEBUG, "my node ID: 0x%x\n", my_node->nodeId);
 
 	mn = evt_find_node(source_addr);
 	if (mn == NULL) {
@@ -3024,7 +3042,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 		struct open_chan_pending *ocp;
 		struct list_head *l, *nxt;
 
-		log_printf(LOG_LEVEL_DEBUG, "Opening channel %s for node 0x%x\n",
+		log_printf(CHAN_OPEN_DEBUG, "Opening channel %s for node 0x%x\n",
 						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
 		eci = find_channel(&cpkt->u.chc_chan);
 
@@ -3046,15 +3064,18 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 			for (l = open_pending.next; l != &open_pending; l = nxt) {
 				nxt = l->next;
 				ocp = list_entry(l, struct open_chan_pending, ocp_entry);
+				log_printf(CHAN_OPEN_DEBUG, 
+				"Compare channel %s %s\n", ocp->ocp_chan_name.value,
+						eci->esc_channel_name.value);
 				if (name_match(&ocp->ocp_chan_name, &eci->esc_channel_name)) {
 					evt_chan_open_finish(ocp, eci);
 					break;
 				}
 			}
 		}
-		log_printf(LOG_LEVEL_DEBUG, 
+		log_printf(CHAN_OPEN_DEBUG, 
 				"Open channel %s t %d, l %d, r %d\n",
-				eci->esc_channel_name.value,
+				getSaNameT(&eci->esc_channel_name),
 				eci->esc_total_opens, eci->esc_local_opens,
 				eci->esc_retained_count);
 		break;
@@ -3199,7 +3220,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr)
 				"Receive EVT_CONF_DONE from %s\n", 
 				inet_ntoa(source_addr));
 		in_cfg_change = 0;
-		gmi_recovery_plug_unplug (evt_recovery_plug_handle);
+// TODO		totempg_recovery_plug_unplug (evt_recovery_plug_handle);
 #ifdef DUMP_CHAN_INFO
 		dump_all_chans();
 #endif

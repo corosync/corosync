@@ -96,7 +96,7 @@ static inline int sq_item_add (
 	}
 	sq_position = (sq->head + seqid - sq->head_seqid) % sq->size;
 
-//printf ("item add %d %d %d\n", sq_position, seqid, sq->head_seqid);
+//printf ("item add position %d seqid %d head seqid %d\n", sq_position, seqid, sq->head_seqid);
 	sq_item = sq->items;
 	sq_item += sq_position * sq->size_per_item;
 	assert(sq->items_inuse[sq_position] == 0);
@@ -117,11 +117,13 @@ static inline int sq_item_inuse (
 	 * be here in the first place.
 	 * To keep old messages from being inserted.
 	 */
+#ifdef COMPILE_OUT
 	if (seq_id < sq->head_seqid) {
 		fprintf(stderr, "sq_item_inuse: seqid %d, head %d\n", 
 						seq_id, sq->head_seqid);
 		return 1;
 	}
+#endif
 	sq_position = (sq->head - sq->head_seqid + seq_id) % sq->size;
 //printf ("in use %d\n", sq_position);
 	return (sq->items_inuse[sq_position]);
@@ -150,7 +152,7 @@ if (seq_id == -1) {
 assert (sq_position >= 0);
 //printf ("itme get in use %d\n", sq_position);
 	if (sq->items_inuse[sq_position] == 0) {
-//printf ("ENOENT\n");
+//printf ("not in use %d\n", sq_position);
 		return (ENOENT);
 	}
 	sq_item = sq->items;
@@ -171,12 +173,12 @@ static inline void sq_items_release (struct sq *sq, int seqid)
 
 	sq->head = (sq->head + seqid - sq->head_seqid + 1) % sq->size;
 	if ((oldhead + seqid - sq->head_seqid + 1) > sq->size) {
-		//printf ("releasing %d for %d\n", oldhead, sq->size - oldhead);
-		//printf ("releasing %d for %d\n", 0, sq->head);
+//		printf ("releasing %d for %d\n", oldhead, sq->size - oldhead);
+//		printf ("releasing %d for %d\n", 0, sq->head);
 		memset (&sq->items_inuse[oldhead], 0, sq->size - oldhead);
 		memset (sq->items_inuse, 0, sq->head * sizeof (char));
 	} else {
-		//printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
+//		printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
 		memset (&sq->items_inuse[oldhead], 0,
 			(seqid - sq->head_seqid + 1) * sizeof (char));
 	}

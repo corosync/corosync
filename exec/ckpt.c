@@ -53,7 +53,7 @@
 #include "util.h"
 #include "parse.h"
 #include "main.h"
-#include "gmi.h"
+#include "totempg.h"
 
 #define LOG_SERVICE LOG_SERVICE_CKPT
 #include "print.h"
@@ -62,7 +62,7 @@ DECLARE_LIST_INIT(checkpointListHead);
 
 DECLARE_LIST_INIT(checkpointIteratorListHead);
 
-static gmi_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle;
+//TODO static totempg_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle;
 
 static int ckpt_checkpoint_exec_init_fn (void);
 
@@ -72,27 +72,27 @@ static int ckptSectionIteratorApiFinalize (struct conn_info *conn_info);
 
 static int message_handler_req_lib_activatepoll (struct conn_info *, void *message);
 
-static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct in_addr source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_addr source_addr);
+static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_addr source_addr, int endian_conversion_required);
 
 static int message_handler_req_lib_ckpt_init (struct conn_info *conn_info, void *message);
 
@@ -132,14 +132,19 @@ static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_i
 static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
 
 static int ckpt_checkpoint_confchg_fn (
-	enum gmi_configuration_type configuration_type,
-	struct sockaddr_in *member_list, int member_list_entries,
-	struct sockaddr_in *left_list, int left_list_entries,
-	struct sockaddr_in *joined_list, int joined_list_entries) {
+	enum totempg_configuration_type configuration_type,
+	struct in_addr *member_list, void *member_list_private,
+		int member_list_entries,
+	struct in_addr *left_list, void *left_list_private,
+		int left_list_entries,
+	struct in_addr *joined_list, void *joined_list_private,
+		int joined_list_entries) {
 
-	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
-		gmi_recovery_plug_unplug (ckpt_checkpoint_recovery_plug_handle);
+#ifdef TODO
+	if (configuration_type == TOTEMPG_CONFIGURATION_REGULAR) {
+		totempg_recovery_plug_unplug (ckpt_checkpoint_recovery_plug_handle);
 	}
+#endif
 
 	return (0);
 }
@@ -150,14 +155,14 @@ struct libais_handler ckpt_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio					= TOTEMPG_PRIO_RECOVERY
 	}
 };
 
 /*
  * TODO
  */
-int (*ckpt_aisexec_handler_fns[]) (void *, struct in_addr source_addr) = {
+int (*ckpt_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
 };
 
 /*
@@ -181,96 +186,96 @@ struct libais_handler ckpt_checkpoint_libais_handlers[] =
 		.libais_handler_fn	= message_handler_req_lib_activatepoll,
 		.response_size		= sizeof (struct res_lib_activatepoll),
 		.response_id		= MESSAGE_RES_LIB_ACTIVATEPOLL,
-		.gmi_prio			= GMI_PRIO_RECOVERY
+		.totempg_prio		= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopen,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointopen),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 2 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopenasync,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointopenasync),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 3 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointunlink,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointunlink),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 4 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointretentiondurationset,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointretentiondurationset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET,
-		.gmi_prio			= GMI_PRIO_LOW
+		.totempg_prio		= TOTEMPG_PRIO_LOW
 	},
 	{ /* 5 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_activecheckpointset,
 		.response_size		= sizeof (struct res_lib_ckpt_activecheckpointset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_ACTIVECHECKPOINTSET,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 6 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointstatusget,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointstatusget),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 7 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioncreate,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioncreate),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 8 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectiondelete,
 		.response_size		= sizeof (struct res_lib_ckpt_sectiondelete),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 9 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionexpirationtimeset,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET,
-		.gmi_prio			= GMI_PRIO_LOW
+		.totempg_prio		= TOTEMPG_PRIO_LOW
 	},
 	{ /* 10 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE,
-		.gmi_prio			= GMI_PRIO_LOW
+		.totempg_prio		= TOTEMPG_PRIO_LOW
 	},
 	{ /* 11 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionoverwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionoverwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE,
-		.gmi_prio			= GMI_PRIO_LOW
+		.totempg_prio		= TOTEMPG_PRIO_LOW
 	},
 	{ /* 12 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionread,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionread),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD,
-		.gmi_prio			= GMI_PRIO_LOW
+		.totempg_prio		= TOTEMPG_PRIO_LOW
 	},
 	{ /* 13 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronize,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronize),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 	{ /* 14 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronizeasync,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronizeasync), // TODO RESPONSE
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC,
-		.gmi_prio			= GMI_PRIO_MED
+		.totempg_prio		= TOTEMPG_PRIO_MED
 	},
 };
 
 
-static int (*ckpt_checkpoint_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr) = {
+static int (*ckpt_checkpoint_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_ckpt_checkpointopen,
 	message_handler_req_exec_ckpt_checkpointclose,
 	message_handler_req_exec_ckpt_checkpointunlink,
@@ -302,23 +307,23 @@ struct libais_handler ckpt_sectioniterator_libais_handlers[] =
 		.libais_handler_fn			= message_handler_req_lib_activatepoll,
 		.response_size				= sizeof (struct res_lib_activatepoll),
 		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_lib_ckpt_sectioniteratorinitialize,
 		.response_size				= sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
 		.response_id				= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	},
 	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_lib_ckpt_sectioniteratornext,
 		.response_size				= sizeof (struct res_lib_ckpt_sectioniteratornext),
 		.response_id				= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT,
-		.gmi_prio					= GMI_PRIO_RECOVERY
+		.totempg_prio				= TOTEMPG_PRIO_RECOVERY
 	}
 };
 
-static int (*ckpt_sectioniterator_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr) = {
+static int (*ckpt_sectioniterator_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr, int endian_conversion_required) = {
 };
 
 struct service_handler ckpt_sectioniterator_service_handler = {
@@ -387,7 +392,7 @@ void checkpoint_section_release (struct saCkptCheckpointSection *section)
 	list_del (&section->list);
 	free (section->sectionDescriptor.sectionId.id); 
 	free (section->sectionData);
-	poll_timer_delete (*gmi_poll_handle, section->expiration_timer);
+	poll_timer_delete (aisexec_poll_handle, section->expiration_timer);
 	free (section);
 }
 
@@ -396,7 +401,7 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 	struct list_head *list;
 	struct saCkptCheckpointSection *section;
 
-	poll_timer_delete (*gmi_poll_handle, checkpoint->retention_timer);
+	poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
 
 	/*
 	 * Release all checkpoint sections for this checkpoint
@@ -432,8 +437,8 @@ int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-	if (gmi_send_ok (GMI_PRIO_HIGH, sizeof (struct req_exec_ckpt_checkpointclose))) {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_HIGH) == 0);
+	if (totempg_send_ok (TOTEMPG_PRIO_HIGH, sizeof (struct req_exec_ckpt_checkpointclose))) {
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_HIGH) == 0);
 		return (0);
 	}
 
@@ -442,14 +447,16 @@ int sendCkptCheckpointClose (struct saCkptCheckpoint *checkpoint) {
 
 static int ckpt_checkpoint_exec_init_fn (void)
 {
+#ifdef TODO
 	int res;
 
-	res = gmi_recovery_plug_create (&ckpt_checkpoint_recovery_plug_handle);
+	res = totempg_recovery_plug_create (&ckpt_checkpoint_recovery_plug_handle);
 	if (res != 0) {
 		log_printf(LOG_LEVEL_ERROR,
 		"Could not create recovery plug for clm service.\n");
 		return (-1);
 	}
+#endif 
 	return (0);
 }
 
@@ -497,7 +504,7 @@ static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, vo
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct in_addr source_addr)
+static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)message;
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)&req_exec_ckpt_checkpointopen->req_lib_ckpt_checkpointopen;
@@ -578,7 +585,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	/*
 	 * Reset retention duration since this checkpoint was just opened
 	 */
-	poll_timer_delete (*gmi_poll_handle, ckptCheckpoint->retention_timer);
+	poll_timer_delete (aisexec_poll_handle, ckptCheckpoint->retention_timer);
 	ckptCheckpoint->retention_timer = 0;
 
 	/*
@@ -644,10 +651,10 @@ void timer_function_retention (void *data)
 	iovec.iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationexpire;
 	iovec.iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationexpire);
 
-	assert (gmi_mcast (&aisexec_groupname, &iovec, 1, GMI_PRIO_MED) == 0);
+	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 }
 
-extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr)
+extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_ckpt_checkpointclose *req_exec_ckpt_checkpointclose = (struct req_exec_ckpt_checkpointclose *)message;
 	struct saCkptCheckpoint *checkpoint = 0;
@@ -671,7 +678,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 		checkpoint_release (checkpoint);
 	} else
 	if (checkpoint->referenceCount == 0) {
-		poll_timer_add (*gmi_poll_handle,
+		poll_timer_add (aisexec_poll_handle,
 			checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 			checkpoint,
 			timer_function_retention,
@@ -681,7 +688,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct in_addr source_addr)
+static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_ckpt_checkpointunlink *req_exec_ckpt_checkpointunlink = (struct req_exec_ckpt_checkpointunlink *)message;
 
@@ -726,7 +733,7 @@ error_exit:
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct in_addr source_addr)
+static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)message;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
@@ -739,9 +746,9 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 		checkpoint->checkpointCreationAttributes.retentionDuration = req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
 
 		if (checkpoint->expired == 0 && checkpoint->referenceCount == 0) {
-			poll_timer_delete (*gmi_poll_handle, checkpoint->retention_timer);
+			poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
 
-			poll_timer_add (*gmi_poll_handle,
+			poll_timer_add (aisexec_poll_handle,
 				checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 				checkpoint,
 				timer_function_retention,
@@ -764,7 +771,7 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct in_addr source_addr)
+static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_ckpt_checkpointretentiondurationexpire *req_exec_ckpt_checkpointretentiondurationexpire = (struct req_exec_ckpt_checkpointretentiondurationexpire *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
@@ -790,12 +797,12 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void
 		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 	}
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectioncreate *req_exec_ckpt_sectioncreate = (struct req_exec_ckpt_sectioncreate *)message;
 	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)&req_exec_ckpt_sectioncreate->req_lib_ckpt_sectioncreate;
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
@@ -876,7 +883,7 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 	ckptCheckpointSection->expiration_timer = 0;
 
 	if (req_lib_ckpt_sectioncreate->expirationTime != SA_TIME_END) {
-		poll_timer_add (*gmi_poll_handle,
+		poll_timer_add (aisexec_poll_handle,
 			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
 			ckptCheckpointSection,
 			timer_function_section_expire,
@@ -902,7 +909,7 @@ error_exit:
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectiondelete *req_exec_ckpt_sectiondelete = (struct req_exec_ckpt_sectiondelete *)message;
 	struct req_lib_ckpt_sectiondelete *req_lib_ckpt_sectiondelete = (struct req_lib_ckpt_sectiondelete *)&req_exec_ckpt_sectiondelete->req_lib_ckpt_sectiondelete;
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
@@ -957,7 +964,7 @@ error_exit:
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectionexpirationtimeset *req_exec_ckpt_sectionexpirationtimeset = (struct req_exec_ckpt_sectionexpirationtimeset *)message;
 	struct req_lib_ckpt_sectionexpirationtimeset *req_lib_ckpt_sectionexpirationtimeset = (struct req_lib_ckpt_sectionexpirationtimeset *)&req_exec_ckpt_sectionexpirationtimeset->req_lib_ckpt_sectionexpirationtimeset;
 	struct res_lib_ckpt_sectionexpirationtimeset res_lib_ckpt_sectionexpirationtimeset;
@@ -995,11 +1002,11 @@ static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message
 
 	ckptCheckpointSection->sectionDescriptor.expirationTime = req_lib_ckpt_sectionexpirationtimeset->expirationTime;
 
-	poll_timer_delete (*gmi_poll_handle, ckptCheckpointSection->expiration_timer);
+	poll_timer_delete (aisexec_poll_handle, ckptCheckpointSection->expiration_timer);
 	ckptCheckpointSection->expiration_timer = 0;
 
 	if (req_lib_ckpt_sectionexpirationtimeset->expirationTime != SA_TIME_END) {
-		poll_timer_add (*gmi_poll_handle,
+		poll_timer_add (aisexec_poll_handle,
 			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
 			ckptCheckpointSection,
 			timer_function_section_expire,
@@ -1019,7 +1026,7 @@ error_exit:
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)message;
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)&req_exec_ckpt_sectionwrite->req_lib_ckpt_sectionwrite;
 	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
@@ -1098,7 +1105,7 @@ error_exit:
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectionoverwrite *req_exec_ckpt_sectionoverwrite = (struct req_exec_ckpt_sectionoverwrite *)message;
 	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)&req_exec_ckpt_sectionoverwrite->req_lib_ckpt_sectionoverwrite;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
@@ -1169,7 +1176,7 @@ error_exit:
 	}
 	return (0);
 }
-static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_addr source_addr) {
+static int message_handler_req_exec_ckpt_sectionread (void *message, struct in_addr source_addr, int endian_conversion_required) {
 	struct req_exec_ckpt_sectionread *req_exec_ckpt_sectionread = (struct req_exec_ckpt_sectionread *)message;
 	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)&req_exec_ckpt_sectionread->req_lib_ckpt_sectionread;
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
@@ -1349,7 +1356,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
-	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -1380,7 +1387,7 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 
 	return (0);
 }
@@ -1406,7 +1413,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
-	assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 
 	return (0);
 }
@@ -1524,9 +1531,9 @@ printf ("|\n");
 #endif
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 	}
 
 	return (0);
@@ -1564,9 +1571,9 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	iovecs[1].iov_len = req_lib_ckpt_sectiondelete->header.size - sizeof (struct req_lib_ckpt_sectiondelete);
 
 	if (iovecs[1].iov_len > 0) {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_MED) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_MED) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_MED) == 0);
 	}
 
 	return (0);
@@ -1604,9 +1611,9 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1662,9 +1669,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 
 //printf ("LIB writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
 	if (iovecs[1].iov_len > 0) {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1717,9 +1724,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size - sizeof (struct req_lib_ckpt_sectionoverwrite);
 
 	if (iovecs[1].iov_len > 0) {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	}
 
 	return (0);
@@ -1772,9 +1779,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size - sizeof (struct req_lib_ckpt_sectionread);
 
 	if (iovecs[1].iov_len > 0) {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 2, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	} else {
-		assert (gmi_mcast (&aisexec_groupname, iovecs, 1, GMI_PRIO_LOW) == 0);
+		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED, TOTEMPG_PRIO_LOW) == 0);
 	}
 
 	return (0);

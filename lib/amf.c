@@ -246,6 +246,7 @@ saAmfDispatch (
 		 */
 		if (amfInstance->finalize == 1) {
 			error = SA_OK;
+			pthread_mutex_unlock (&amfInstance->mutex);
 			goto error_unlock;
 		}
 
@@ -391,9 +392,8 @@ saAmfDispatch (
 	} while (cont);
 
 error_unlock:
-	pthread_mutex_unlock (&amfInstance->mutex);
-error_nounlock:
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+error_nounlock:
 	return (error);
 }
 

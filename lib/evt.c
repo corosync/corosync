@@ -41,8 +41,8 @@
 #include <sys/socket.h>
 #include "../include/ais_evt.h"
 #include "../include/ais_msg.h"
-#include "../exec/gmi.h"
 #include "util.h"
+#include "../exec/totempg.h"
 
 static void evtHandleInstanceDestructor(void *instance);
 static void chanHandleInstanceDestructor(void *instance);
