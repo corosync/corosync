@@ -150,35 +150,23 @@ assert (sq_position >= 0);
 static inline void sq_items_release (struct sq *sq, int seqid)
 {
 	int oldhead;
-	char *sq_item;
 
 	if (seqid < sq->head_seqid) {
-//printf ("%d %d\n", seqid, sq->head_seqid);
 		return;
 	}
-//printf ("releasing %d\n", seqid);
 
 	oldhead = sq->head;
 
-//printf ("before sq->head %d\n", sq->head);
 	sq->head = (sq->head + seqid - sq->head_seqid + 1) % sq->size;
-//printf ("after sq->head %d\n", sq->head);
 	if ((oldhead + seqid - sq->head_seqid + 1) > sq->size) {
-//printf ("memset 1\n");
-//printf ("%d %d %d %d\n", seqid, sq->head_seqid, sq->head, sq->size);
-assert ((sq->size - oldhead) > 0);
+		//printf ("releasing %d for %d\n", oldhead, sq->size - oldhead);
+		//printf ("releasing %d for %d\n", 0, sq->head);
 		memset (&sq->items_inuse[oldhead], 0, sq->size - oldhead);
 		memset (sq->items_inuse, 0, sq->head * sizeof (char));
-//printf ("SIZEOF %d %d\n", sq->head, sq->head * sizeof (char));
-//		memset (sq->items, 0, (sq->head) * (sq->size_per_item));
 	} else {
-assert (seqid - sq->head_seqid + 1);
-//printf ("memset 2\n");
-//printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
-		memset (&sq->items_inuse[oldhead], 0, (seqid - sq->head_seqid + 2) * sizeof (char));
-	sq_item = sq->items;
-	sq_item += oldhead * sq->size_per_item;
-//		memset (sq_item[oldhead], 0, (seqid - sq->head_seqid + 1) * (sq->size_per_item));
+		//printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
+		memset (&sq->items_inuse[oldhead], 0,
+			(seqid - sq->head_seqid + 1) * sizeof (char));
 	}
 	sq->head_seqid = seqid + 1;
 }
