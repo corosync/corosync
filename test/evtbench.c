@@ -217,7 +217,7 @@ test_pub()
 		tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 
 exit (1);
-	printf("Published event ID: 0x%llx\n", event_id);
+	printf("Published event ID: %llx\n", (unsigned long long)event_id);
 
 	/*
 	 * See if we got the event
@@ -289,7 +289,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 
 	printf("event_callback called\n");
 	printf("sub ID: %x\n", subscription_id);
-	printf("event_handle %llx\n", event_handle);
+	printf("event_handle %llx\n", (unsigned long long)event_handle);
 	printf("event data size %d\n", event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;
@@ -312,9 +312,9 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	}
 
 	printf("priority: 0x%x\n", priority);
-	printf("retention: 0x%llx\n", retention_time);
+	printf("retention: %llx\n", (unsigned long long)retention_time);
 	printf("publisher name content: \"%s\"\n", publisher_name.value); 
-	printf("event id: 0x%llx\n", event_id);
+	printf("event id: %llx\n", (unsigned long long)event_id);
 evt_free:
 	result = saEvtEventFree(event_handle);
 	printf("event free result: %d\n", result);

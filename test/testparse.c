@@ -39,10 +39,10 @@
 
 int main (void)
 {
-	char *error;
-	int result;
-
 #ifdef CODE_COVERAGE_COMPILE_OUT
+	int result;
+	int error;
+
 	result = amfReadGroups (&error);
 	if (result == -1) {
 		printf ("Parse Error: %s\n", error);

@@ -46,6 +46,11 @@
 #include "saCkpt.h"
 
 int ckptinv;
+
+struct thread_data {
+	int thread_no;
+};
+
 void printSaNameT (SaNameT *name)
 {
 	int i;
@@ -148,14 +153,14 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 
 void *th_dispatch (void *arg)
 {
-	int th = (int)arg;
+	struct thread_data *td = (struct thread_data *)arg;
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT handle;
 	SaErrorT error;
 	int i;
 	SaUint32T erroroneousVectorIndex = 0;
 
-    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
@@ -166,11 +171,12 @@ void *th_dispatch (void *arg)
 	for (i = 0; i < 1000; i++) {
 		error = saCkptCheckpointWrite (handle,
 			WriteVectorElements,
-			1,/* placing two here with only one vector element causes an assertion failure !! */
+			1,
 			&erroroneousVectorIndex);
-		printf ("Thread %d: Attempt %d: error %d\n", th, i, error);
+		printf ("Thread %d: Attempt %d: error %d\n",
+			td->thread_no, i, error);
 		if (error != SA_OK) {
-			printf ("Thread %d: Error from write.\n", th);
+			printf ("Thread %d: Error from write.\n", td->thread_no);
 		}
 	}
 
@@ -186,7 +192,7 @@ int main (void) {
 	int i;
 	pthread_t dispatch_thread;
 
-    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
@@ -209,7 +215,11 @@ printf ("create2 error is %d\n", error);
 printf ("create2 error is %d\n", error);
 
 	for (i = 0; i < 40; i++) {
-		pthread_create (&dispatch_thread, NULL, th_dispatch, (void *)i);
+		struct thread_data *td;
+
+		td = malloc (sizeof (struct thread_data));
+		td->thread_no = i;
+		pthread_create (&dispatch_thread, NULL, th_dispatch, td);
 	}
 	pthread_join (dispatch_thread, NULL);
 

@@ -391,10 +391,10 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		if (error == SA_OK) {
 			printf ("Section '%s' expires %llx size %d state %x update %llx\n",
 				sectionDescriptor.sectionId.id,
-				sectionDescriptor.expirationTime,
+				(unsigned long long)sectionDescriptor.expirationTime,
 				sectionDescriptor.sectionSize,
 				sectionDescriptor.sectionState,
-				sectionDescriptor.lastUpdate);
+				(unsigned long long)sectionDescriptor.lastUpdate);
 		}
 	} while (error == SA_OK);
 	printf ("The last iteration should fail\n");

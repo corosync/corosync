@@ -1,4 +1,4 @@
-# Copyright (c) 2002-2004 MontaVista Software, Inc.
+# Copyright (c) 2002-2005 MontaVista Software, Inc.
 # 
 # All rights reserved.
 # 
@@ -62,7 +62,7 @@ libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o
 	ln -s libais.so.1.0 libais.so.1
 	ln -s libais.so.1.0 libais.so
 	
-libevs.a: util.o amf.o evs.o
+libevs.a: util.o evs.o
 	$(AR) -rc libevs.a util.o evs.o
 
 libevs.so.1.0: util.o evs.o

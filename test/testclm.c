@@ -77,7 +77,7 @@ void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode) 
 
 	printf ("\tMember is %d\n", clusterNode->member);
 
-	printf ("\tTimestamp is %llx nanoseconds\n", clusterNode->bootTimestamp);
+	printf ("\tTimestamp is %llx nanoseconds\n", (unsigned long long)clusterNode->bootTimestamp);
 }
 
 void NodeGetCallback (

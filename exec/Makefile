@@ -1,4 +1,4 @@
-# Copyright (c) 2002-2004 MontaVista Software, Inc.
+# Copyright (c) 2002-2005 MontaVista Software, Inc.
 # 
 # All rights reserved.
 # 
@@ -29,16 +29,16 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer -fPIC
+CFLAGS = -O3 -Wall -fomit-frame-pointer
 LDFLAGS = 
 
 # Debug mode flags
-#CFLAGS = -g -Wall -fPIC
+#CFLAGS = -g -Wall
 ##-DDEBUG
-#LDFLAGS = -g -fPIC
+#LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O2 -pg -fPIC
+#CFLAGS = -O2 -pg
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs
@@ -51,14 +51,15 @@ TOTEM_OBJS = aispoll.o totemsrp.o totempg.o tlist.o hdb.o crypto.o
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
 		util.c
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
-		util.o libtotem.a
+		util.o
+EXEC_LIBS = libtotem.a
 
 OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
 
 all:libtotem.a libtotem.so.1.0 aisexec keygen
 
 aisexec: $(EXEC_OBJS)
-	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(LIBS) -o aisexec
+	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
 libtotem.a: $(TOTEM_OBJS)
 	$(AR) -rc libtotem.a $(TOTEM_OBJS)
@@ -78,8 +79,25 @@ clean:
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+# -fPIC rules required for lib totem
+aispoll.o: aispoll.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+totemsrp.o: totemsrp.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+totempg.o: totempg.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+tlist.o: tlist.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+hdb.o: hdb.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+crypto.o: crypto.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
 # DO NOT DELETE
 
 main.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h

@@ -358,7 +358,6 @@ error_unlock:
 	pthread_mutex_unlock (&clmInstance->mutex);
 error_put:
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
-error_nounlock:
 	return (error);
 }
 

@@ -253,7 +253,6 @@ int main (int argc, char **argv) {
 	int select_fd;
 	fd_set read_fds;
 	SaNameT compName;
-	SaNameT proxyCompName;
 	SaNameT csiName;
 	SaNameT compname_get_name;
 	SaAmfReadinessStateT readinessState;

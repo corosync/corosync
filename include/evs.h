@@ -36,7 +36,7 @@
 
 #include <netinet/in.h>
 
-typedef unsigned long long evs_handle_t;
+typedef uint64_t evs_handle_t;
 
 typedef enum {
 	EVS_DISPATCH_ONE,

@@ -689,7 +689,7 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 
 	if (my_event_id != event_id) {
 		printf("ERROR: Call back event ID error: e=%llx, a=%llx\n",
-				event_id, my_event_id);
+			(unsigned long long)event_id, (unsigned long long)my_event_id);
 	}
 
 	if (evt_pat_get_array.patternsNumber != 4) {
@@ -726,7 +726,8 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	}
 	if (retention_time != my_retention_time) {
 		printf("ERROR: retention: e=0x%llx a=0x%llx\n", 
-				retention_time, my_retention_time);
+			(unsigned long long)retention_time,
+			(unsigned long long)my_retention_time);
 	}
 	if (publisher_name.length != my_publisher_name.length) {
 		printf("ERROR: publisher name length: e=%d, a=%d\n", 
@@ -867,13 +868,15 @@ test_event()
 		printf("ERROR: priority not lowest: 0x%x\n", priority);
 	}
 	if (retention_time != 0) {
-		printf("ERROR: retention time not zero: %0llx\n", retention_time);
+		printf("ERROR: retention time not zero: %0llx\n",
+			(unsigned long long)retention_time);
 	}
 	if (publisher_name.length != 0) {
 		printf("ERROR: publisher name not null: %s\n", publisher_name.value);
 	}
 	if (event_id != 0) {
-		printf("ERROR: event id not zero: 0x%llx\n", event_id);
+		printf("ERROR: event id not zero: 0x%llx\n",
+			(unsigned long long)event_id);
 	}
 
 
@@ -940,7 +943,8 @@ test_event()
 	}
 	if (retention_time != test_ret_time) {
 		printf("ERROR: retention: e=0x%llx a=0x%llx\n", 
-				test_ret_time, retention_time);
+			(unsigned long long)test_ret_time,
+			(unsigned long long)retention_time);
 	}
 	if (publisher_name.length != test_pub_name.length) {
 		printf("ERROR: publisher name length: e=%d, a=%d\n", 
@@ -956,7 +960,8 @@ test_event()
 	}
 
 	if (event_id != 0) {
-		printf("ERROR: event id not zero: 0x%llx\n", event_id);
+		printf("ERROR: event id not zero: 0x%llx\n",
+			(unsigned long long)event_id);
 	}
 
 	/*
@@ -1190,7 +1195,8 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 		printf("ERROR: Received event 3 but not subscribed\n");
 		goto evt_free;
 	} else {
-		printf("ERROR: Received event %llx but not sent\n", my_event_id);
+		printf("ERROR: Received event %llx but not sent\n",
+			(unsigned long long)my_event_id);
 		goto evt_free;
 	}
 
@@ -1764,8 +1770,11 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if ((my_event_id != event_id1) && (my_event_id != event_id2)) {
-		printf("ERROR: Received wrong event ID %llx\n", my_event_id);
-		printf("       id1 %llx, id2 %llx\n", event_id1, event_id2);
+		printf("ERROR: Received wrong event ID %llx\n",
+			(unsigned long long)my_event_id);
+		printf("       id1 %llx, id2 %llx\n",
+			(unsigned long long)event_id1,
+			(unsigned long long)event_id2);
 		goto evt_free;
 	}
 
@@ -2193,7 +2202,8 @@ test_retention()
 	}
 	if (retained_id != event_id) {
 		printf("ERROR: received the wrong event: e=%llx, a=%llx\n",
-			event_id, retained_id);
+			(unsigned long long)event_id,
+			(unsigned long long)retained_id);
 		goto evt_free;
 	}
 
@@ -2316,7 +2326,8 @@ test_retention()
 	}
 	if (retained_id != event_id) {
 		printf("ERROR: received the wrong event: e=%llx, a=%llx\n",
-			event_id, retained_id);
+			(unsigned long long)event_id,
+			(unsigned long long)retained_id);
 		goto evt_free;
 	}
 
@@ -2418,7 +2429,8 @@ unlink_chan_callback(SaEvtSubscriptionIdT my_subscription_id,
 	} else if (my_event_id == event_id2) {
 		exp_sub_id = sub2;
 	} else {
-		printf("ERROR: Received event %llx but not sent\n", my_event_id);
+		printf("ERROR: Received event %llx but not sent\n",
+			(unsigned long long)my_event_id);
 		goto evt_free;
 	}
 

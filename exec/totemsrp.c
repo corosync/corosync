@@ -2846,9 +2846,6 @@ static void messages_deliver_to_app (int skip, int *start_point, int end_point)
 		sort_queue_item_p = ptr;
 
 		mcast = sort_queue_item_p->iovec[0].iov_base;
-		if (mcast == (struct mcast *)0xdeadbeef) {
-			printf ("seq %d\n", sort_queue_item_p->iovec[0].iov_len);
-		}
 		assert (mcast != (struct mcast *)0xdeadbeef);
 
 		/*

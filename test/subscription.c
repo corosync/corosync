@@ -235,7 +235,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	if (!quiet)
 		dprintf("sub ID: %x\n", subscription_id);
 	if (!quiet)
-		dprintf("event_handle %llx\n", event_handle);
+		dprintf("event_handle %llx\n", (unsigned long long)event_handle);
 	if (!quiet)
 		dprintf("event data size %d\n", event_data_size);
 
@@ -266,7 +266,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		}
 
 		dprintf("priority: 0x%x\n", priority);
-		dprintf("retention: 0x%llx\n", retention_time);
+		dprintf("retention: 0x%llx\n", (unsigned long long)retention_time);
 		dprintf("publisher name content: \"%s\"\n", 
 				publisher_name.value); 
 	}
@@ -282,7 +282,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		}
 	}
 	if (quiet < 2) {
-		dprintf("event id: 0x%016llx\n", event_id);
+		dprintf("event id: 0x%016llx\n", (unsigned long long)event_id);
 	}
 	if (quiet == 2) {
 		if ((++evt_count % EVT_FREQ) == 0) {
@@ -305,8 +305,8 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 				last_event_id[idx]++;
 				if (last_event_id[idx] != event_id) {
 					dprintf("*** expected %016llx got %016llx event_id\n",
-					last_event_id[idx],
-					event_id);
+					(unsigned long long)last_event_id[idx],
+					(unsigned long long)event_id);
 				last_event_id[idx] = event_id;
 				}
 				break;

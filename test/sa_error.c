@@ -48,11 +48,11 @@ int get_sa_error(SaErrorT error, char *str, int len)
 }
 
 char *get_sa_error_b (SaAisErrorT error) {
-	return (sa_error_list[error]);
+	return ((char *)sa_error_list[error]);
 }
 
 char *get_test_output (SaAisErrorT result, SaAisErrorT expected) {
-        static *test_result[256];
+static char test_result[256];
 
         if (result == expected) {
                 return ("PASSED");
