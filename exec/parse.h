@@ -130,6 +130,7 @@ struct saAmfComponent {
 	int registered;
 	int local;
 	struct conn_info *conn_info;
+	struct in_addr source_addr;
 	SaNameT name;
 	SaAmfReadinessStateT currentReadinessState;
 	SaAmfReadinessStateT newReadinessState;
