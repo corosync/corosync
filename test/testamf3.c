@@ -262,5 +262,6 @@ int main (void) {
 
 	saAmfFinalize (&handle);
 
+	printf ("Done \n");
 	exit (0);
 }
