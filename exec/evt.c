@@ -66,16 +66,52 @@ static int evt_init(struct conn_info *conn_info, void *msg);
 static int evt_exit(struct conn_info *conn_info);
 static int evt_exec_init(void);
 
-static int (*evt_libais_handler_fns[]) (struct conn_info *ci, void *m) = {
-	message_handler_req_lib_activatepoll,
-	lib_evt_open_channel,
-	lib_evt_close_channel,
-	lib_evt_channel_subscribe,
-	lib_evt_channel_unsubscribe,
-	lib_evt_event_publish,
-	lib_evt_event_clear_retentiontime
+static struct libais_handler evt_libais_handlers[] = {
+	{
+	.libais_handler_fn = 	message_handler_req_lib_activatepoll,
+	.response_size = 		sizeof(struct res_lib_activatepoll),
+	.response_id = 			MESSAGE_RES_LIB_ACTIVATEPOLL,
+	.gmi_prio = 			GMI_PRIO_RECOVERY
+	},
+	{
+	.libais_handler_fn = 	lib_evt_open_channel,
+	.response_size = 		sizeof(struct res_evt_channel_open),
+	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	.gmi_prio = 			GMI_PRIO_MED
+	},
+	{
+	.libais_handler_fn = 	lib_evt_close_channel,
+	.response_size = 		sizeof(struct res_evt_channel_close),
+	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	.gmi_prio = 			GMI_PRIO_RECOVERY
+	},
+	{
+	.libais_handler_fn = 	lib_evt_channel_subscribe,
+	.response_size = 		sizeof(struct res_evt_channel_subscribe),
+	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
+	.gmi_prio = 			GMI_PRIO_RECOVERY
+	},
+	{
+	.libais_handler_fn = 	lib_evt_channel_unsubscribe,
+	.response_size = 		sizeof(struct res_evt_channel_unsubscribe),
+	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
+	.gmi_prio = 			GMI_PRIO_RECOVERY
+	},
+	{
+	.libais_handler_fn = 	lib_evt_event_publish,
+	.response_size = 		sizeof(struct res_evt_event_publish),
+	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
+	.gmi_prio = 			GMI_PRIO_LOW
+	},
+	{
+	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
+	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
+	.response_id = 			MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME,
+	.gmi_prio = 			GMI_PRIO_RECOVERY
+	},
 };
 
+	
 static int evt_remote_evt(void *msg, struct in_addr source_addr);
 static int evt_remote_chan_op(void *msg, struct in_addr source_addr);
 
@@ -85,9 +121,9 @@ static int (*evt_exec_handler_fns[]) (void *m, struct in_addr s) = {
 };
 
 struct service_handler evt_service_handler = {
-	.libais_handler_fns			= evt_libais_handler_fns,
-	.libais_handler_fns_count	= sizeof(evt_libais_handler_fns) /
-									sizeof(int (*)),
+	.libais_handlers			= evt_libais_handlers,
+	.libais_handlers_count		= sizeof(evt_libais_handlers) /
+									sizeof(struct libais_handler),
 	.aisexec_handler_fns		= evt_exec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof(evt_exec_handler_fns) /
 									sizeof(int (*)),
@@ -146,7 +182,7 @@ static int message_handler_req_lib_activatepoll(struct conn_info *conn_info,
 {
 	struct res_lib_activatepoll res;
 
-	res.header.magic = MESSAGE_MAGIC;
+	res.header.error = SA_OK;
 	res.header.size = sizeof (struct res_lib_activatepoll);
 	res.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
 	libais_send_response(conn_info, &res, sizeof(res));
@@ -159,17 +195,16 @@ static int evt_init(struct conn_info *conn_info, void *msg)
 	struct res_lib_init res;
 
 	
-	res.header.magic = MESSAGE_MAGIC;
 	res.header.size = sizeof (struct res_lib_init);
 	res.header.id = MESSAGE_RES_INIT;
-	res.error = SA_OK;
+	res.header.error = SA_OK;
 
 	log_printf(LOG_LEVEL_DEBUG, 
 			"Got request to initalize cluster event service.\n");
 	if (!conn_info->authenticated) {
 		log_printf(LOG_LEVEL_DEBUG, 
 				"event service: Not authenticated\n");
-		res.error = SA_ERR_SECURITY;
+		res.header.error = SA_ERR_SECURITY;
 		libais_send_response(conn_info, &res, sizeof(res));
 		return -1;
 	}
@@ -191,8 +226,7 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 
 	log_printf(LOG_LEVEL_DEBUG, "Open channel request\n");
 	log_printf(LOG_LEVEL_DEBUG, 
-			"magic %x, size %d, id %d, handle 0x%x, to 0x%llx\n",
-			req->ico_head.magic,
+			"size %d, id %d, handle 0x%x, to 0x%llx\n",
 			req->ico_head.size,
 			req->ico_head.id,
 			req->ico_c_handle,
@@ -206,18 +240,10 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	 * TODO: Add open code here
 	 */
 
-	res.ico_head.magic = MESSAGE_MAGIC;
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
-	res.ico_error = SA_OK;
+	res.ico_head.error = SA_OK;
 	res.ico_channel_handle = req->ico_c_handle; /* TODO: fix this */
-	log_printf(LOG_LEVEL_DEBUG, 
-			"magic %x, size %d, id %d, error 0x%x, handle 0x%x\n",
-			res.ico_head.magic,
-			res.ico_head.size,
-			res.ico_head.id,
-			res.ico_error,
-			res.ico_channel_handle);
 	libais_send_response (conn_info, &res, sizeof(res));
 
 	return 0;
@@ -231,8 +257,7 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, "Close channel request\n");
-	log_printf(LOG_LEVEL_DEBUG, "magic %x, size %d, id %d, handle 0x%x\n",
-			req->icc_head.magic,
+	log_printf(LOG_LEVEL_DEBUG, "size %d, id %d, handle 0x%x\n",
 			req->icc_head.size,
 			req->icc_head.id,
 			req->icc_channel_handle);
@@ -241,10 +266,9 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	 * TODO: Add close code here
 	 */
 
-	res.icc_head.magic = MESSAGE_MAGIC;
 	res.icc_head.size = sizeof(res);
 	res.icc_head.id = MESSAGE_RES_EVT_CLOSE_CHANNEL;
-	res.icc_error = SA_OK;
+	res.icc_head.error = SA_OK;
 	libais_send_response (conn_info, &res, sizeof(res));
 
 	return 0;
@@ -261,8 +285,7 @@ static int lib_evt_channel_subscribe(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, "Subscribe channel request\n");
-	log_printf(LOG_LEVEL_DEBUG, "magic %x, size %d, id %d\n",
-			req->ics_head.magic,
+	log_printf(LOG_LEVEL_DEBUG, "size %d, id %d\n",
 			req->ics_head.size,
 			req->ics_head.id);
 	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", req->ics_sub_id);
@@ -289,10 +312,9 @@ static int lib_evt_channel_subscribe(struct conn_info *conn_info, void *message)
 	free(filters->filters);
 	free(filters);
 
-	res.ics_head.magic = MESSAGE_MAGIC;
 	res.ics_head.size = sizeof(res);
 	res.ics_head.id = MESSAGE_RES_EVT_SUBSCRIBE;
-	res.ics_error = error;
+	res.ics_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
 	
 	return 0;
@@ -307,8 +329,7 @@ static int lib_evt_channel_unsubscribe(struct conn_info *conn_info,
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, "Unsubscribe channel request\n");
-	log_printf(LOG_LEVEL_DEBUG, "magic %x, size %d, id %d\n",
-			req->icu_head.magic,
+	log_printf(LOG_LEVEL_DEBUG, "size %d, id %d\n",
 			req->icu_head.size,
 			req->icu_head.id);
 	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", req->icu_sub_id);
@@ -318,10 +339,9 @@ static int lib_evt_channel_unsubscribe(struct conn_info *conn_info,
 	 */
 
 
-	res.icu_head.magic = MESSAGE_MAGIC;
 	res.icu_head.size = sizeof(res);
 	res.icu_head.id = MESSAGE_RES_EVT_UNSUBSCRIBE;
-	res.icu_error = error;
+	res.icu_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
 	
 	return 0;
@@ -337,8 +357,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	req = message;
 
 	log_printf(LOG_LEVEL_DEBUG, "Publish event request\n");
-	log_printf(LOG_LEVEL_DEBUG, "magic %x, size %d, id %d\n",
-			req->led_head.magic,
+	log_printf(LOG_LEVEL_DEBUG, "size %d, id %d\n",
 			req->led_head.size,
 			req->led_head.id);
 
@@ -346,10 +365,9 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 * TODO: Add publish code here
 	 */
 
-	res.iep_head.magic = MESSAGE_MAGIC;
 	res.iep_head.size = sizeof(res);
 	res.iep_head.id = MESSAGE_RES_EVT_PUBLISH;
-	res.iep_error = error;
+	res.iep_head.error = error;
 	res.iep_event_id = event_id;
 	libais_send_response (conn_info, &res, sizeof(res));
 
@@ -365,8 +383,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info, void *
 
 	log_printf(LOG_LEVEL_DEBUG, "Clear event retentiontime request\n");
 	log_printf(LOG_LEVEL_DEBUG, 
-		"magic %x, size %d, id %d, event ID 0x%llx, chan handle 0x%x\n",
-			req->iec_head.magic,
+		"size %d, id %d, event ID 0x%llx, chan handle 0x%x\n",
 			req->iec_head.size,
 			req->iec_head.id,
 			req->iec_event_id,
@@ -376,10 +393,9 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info, void *
 	 * TODO: Add clear retention time code here
 	 */
 
-	res.iec_head.magic = MESSAGE_MAGIC;
 	res.iec_head.size = sizeof(res);
 	res.iec_head.id = MESSAGE_REQ_EVT_CLEAR_RETENTIONTIME;
-	res.iec_error = error;
+	res.iec_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
 
 	return 0;
