@@ -71,6 +71,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 static int lib_evt_event_data_get(struct conn_info *conn_info, 
 		void *message);
 static int evt_conf_change(
+		enum gmi_configuration_type configuration_type,	
 		struct sockaddr_in *member_list, int member_list_entries,
 		struct sockaddr_in *left_list, int left_list_entries,
 		struct sockaddr_in *joined_list, int joined_list_entries);
@@ -149,8 +150,10 @@ struct service_handler evt_service_handler = {
 	.confchg_fn					= evt_conf_change,
 	.libais_init_fn				= evt_initialize,
 	.libais_exit_fn				= evt_finalize,
-	.aisexec_init_fn			= evt_exec_init
+	.exec_init_fn				= evt_exec_init
 };
+
+static gmi_recovery_plug_handle evt_recovery_plug_handle;
 
 /* 
  * list of all retained events 
@@ -1947,9 +1950,10 @@ data_get_done:
  * received for each node for the detection of duplicate events.
  */
 static int evt_conf_change(
-		struct sockaddr_in *member_list, int member_list_entries,
-		struct sockaddr_in *left_list, int left_list_entries,
-		struct sockaddr_in *joined_list, int joined_list_entries)
+	enum gmi_configuration_type configuration_type,	
+	struct sockaddr_in *member_list, int member_list_entries,
+	struct sockaddr_in *left_list, int left_list_entries,
+	struct sockaddr_in *joined_list, int joined_list_entries)
 {
 	struct in_addr my_node = {SA_CLM_LOCAL_NODE_ID};
 	SaClmClusterNodeT *cn;
@@ -2033,7 +2037,9 @@ static int evt_conf_change(
 		set_event_id(cn->nodeId);
 	}
 
-	
+	if (configuration_type == GMI_CONFIGURATION_REGULAR) {
+		gmi_recovery_plug_unplug (evt_recovery_plug_handle);
+	}
 	return 0;
 }
 
@@ -2092,8 +2098,17 @@ static int evt_finalize(struct conn_info *conn_info)
  */
 static int evt_exec_init(void)
 {
-	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
+    int res;
+
+	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
+	res = gmi_recovery_plug_create (&evt_recovery_plug_handle);
+	if (res != 0) {
+		log_printf(LOG_LEVEL_ERROR,
+			"Could not create recovery plug for event service.\n");
+		return (-1);
+	}
+	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n"); 
 	/*
 	 * Create an event to be sent when we have to drop messages
 	 * for an application.
@@ -2103,6 +2118,7 @@ static int evt_exec_init(void)
 	if (dropped_event == 0) {
 		log_printf(LOG_LEVEL_ERROR, 
 					"Memory Allocation Failure, event service not started\n");
+		res = gmi_recovery_plug_destroy (evt_recovery_plug_handle);
 		errno = ENOMEM;
 		return -1;
 	}
