@@ -412,6 +412,8 @@ int amfReadNetwork (char **error_string,
 	int res = 0;
 	int line_number = 0;
 
+	memset (mcast_addr, 0, sizeof (struct sockaddr_in));
+	memset (bindnet_addr, 0, sizeof (struct sockaddr_in));
 
 	mcast_addr->sin_family = AF_INET;
 	fp = fopen ("/etc/ais/network.conf", "r");
