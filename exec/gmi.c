@@ -989,6 +989,10 @@ int gmi_mcast (
 		assert (iovec[i].iov_len < MESSAGE_SIZE_MAX);
 	}
 
+	if (!gmi_send_ok(priority, total_size)) {
+		return -1;
+	}
+
 	packet_count = (total_size / packet_size);
 
 	gmi_log_printf (gmi_log_level_debug, "Message size is %d\n", total_size);
