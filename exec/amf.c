@@ -1890,6 +1890,8 @@ static int message_handler_req_amf_init (struct conn_info *conn_info, void *mess
 
 	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
+	list_init (&conn_info->conn_list);
+
 	if (conn_info->authenticated) {
 		return (0);
 	}
