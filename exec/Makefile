@@ -41,7 +41,10 @@ LDFLAGS = -g
 #CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
-EXEC_OBJS = main.o clm.o amf.o ckpt.o parse.o print.o mempool.o libgmi.a
+EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c parse.c print.c mempool.c
+GMI_OBJS = aispoll.c gmi.c tlist.c hdb.c
+
+EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o parse.o print.o mempool.o libgmi.a
 
 GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o
 
@@ -62,5 +65,28 @@ libgmi.so.1.0: $(GMI_OBJS)
 clean:
 	rm -f *.o aisexec libgmi.so.1.0 libgmi.so.1 libgmi.so libgmi.a gmon.out
 
+depend:
+	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(GMI_SRC) > /dev/null 2>&1
+
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+# DO NOT DELETE
+
+main.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+main.o: ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h
+main.o: parse.h main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
+clm.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+clm.o: ../include/list.h ../include/queue.h aispoll.h gmi.h parse.h main.h
+clm.o: clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h mempool.h
+amf.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+amf.o: ../include/list.h ../include/queue.h gmi.h aispoll.h mempool.h parse.h
+amf.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h
+ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+ckpt.o: ../include/list.h ../include/queue.h aispoll.h mempool.h parse.h
+ckpt.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h gmi.h
+evt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+evt.o: ../include/list.h ../include/queue.h aispoll.h mempool.h parse.h
+evt.o: main.h clm.h amf.h handlers.h ckpt.h evt.h hdb.h print.h gmi.h
+parse.o: ../include/ais_types.h ../include/list.h parse.h aispoll.h mempool.h
+print.o: print.h ../include/ais_types.h parse.h ../include/list.h aispoll.h
+mempool.o: ../include/list.h mempool.h
