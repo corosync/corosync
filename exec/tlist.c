@@ -44,6 +44,7 @@ struct timer {
 	struct timeval tv;
 	void (*timer_fn)(void *data);
 	void *data;
+	timer_handle handle_addr;
 };
 
 void timerlist_init (struct timerlist *timerlist)
@@ -69,6 +70,7 @@ void timerlist_add (struct timerlist *timerlist, struct timer *timer)
 	int found;
 
 	timeval_adjust_to_msec (&timer->tv);
+//printf ("Adding timer %d %d\n", timer->tv.tv_sec, timer->tv.tv_usec);
 	for (found = 0, timer_list = timerlist->timer_head.next;
 		timer_list != &timerlist->timer_head;
 		timer_list = timer_list->next) {
@@ -93,12 +95,13 @@ void timerlist_add (struct timerlist *timerlist, struct timer *timer)
 timer_handle timerlist_add_future (struct timerlist *timerlist,
 	void (*timer_fn) (void *data),
 	void *data,
-	int msec_in_future)
+	unsigned int msec_in_future,
+	timer_handle *handle)
 {
 	struct timer *timer;
 	struct timeval current_time;
-	int seconds;
-	int mseconds;
+	unsigned int seconds;
+	unsigned int mseconds;
 
 	timer = (struct timer *)malloc (sizeof (struct timer));
 	if (timer == 0) {
@@ -119,18 +122,36 @@ timer_handle timerlist_add_future (struct timerlist *timerlist,
 	}
 	timer->data = data;
 	timer->timer_fn = timer_fn;
+	timer->handle_addr = handle;
 	timerlist_add (timerlist, timer);
 
-	return (timer);
+	*handle = timer;
+	return (0);
 }
 
 void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
 {
 	struct timer *timer = (struct timer *)timer_handle;
 
+	*(unsigned int *)timer->handle_addr = 0;
 	list_del (&timer->list);
-	free (timer);
 	timers_inuse--;
+	free (timer);
+}
+static void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+{
+	struct timer *timer = (struct timer *)timer_handle;
+
+	*(unsigned int *)timer->handle_addr = 0;
+	list_del (&timer->list);
+	timers_inuse--;
+}
+
+static void timerlist_post_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+{
+	struct timer *timer = (struct timer *)timer_handle;
+
+	free (timer);
 }
 
 #ifdef CODE_COVERAGE_COMPILE_OUT
@@ -179,11 +200,11 @@ int timer_expire_get_tv (struct timerlist *timerlist, struct timeval *tv)
 }
 #endif /* CODE_COVERAGE_COMPILE_OUT */
 
-int timerlist_timeout_msec (struct timerlist *timerlist)
+unsigned int timerlist_timeout_msec (struct timerlist *timerlist)
 {
 	struct timeval current_time;
 	struct timer *timer_from_list;
-	int time_in_msec;
+	unsigned int time_in_msec;
 
 	/*
 	 * empty list, no expire
@@ -229,19 +250,14 @@ void timerlist_expire (struct timerlist *timerlist)
 		if ((timer_from_list->tv.tv_sec < current_time.tv_sec) ||
 			((timer_from_list->tv.tv_sec == current_time.tv_sec) &&
 			(timer_from_list->tv.tv_usec <= current_time.tv_usec))) {
+//printf ("Executing timer %d %d\n", timer_from_list->tv.tv_sec, timer_from_list->tv.tv_usec);
 			timer_list = timer_list->next;
-			list_del (&timer_from_list->list);
-			/*
-			 * This list_init is here to allow multiple deletes
-			 * of a timer without corrupting memory
-			 */
-			list_init (&timer_from_list->list);
 
-#ifdef DEBUG_MULTIPLE_DELETE
-timer_from_list->list.next = (struct list_head *)0xdeadbeef;
-timer_from_list->list.prev = (struct list_head *)0xdeadbeef;
-#endif
+			timerlist_pre_dispatch (timerlist, timer_from_list);
+
 			timer_from_list->timer_fn (timer_from_list->data);
+
+			timerlist_post_dispatch (timerlist, timer_from_list);
 		} else {
 			break; /* for timer iteration */
 		}
