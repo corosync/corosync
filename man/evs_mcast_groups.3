@@ -38,7 +38,7 @@ evs_join \- Multicast a message to selected groups
 .B #include <sys/uio.h>
 .B #include <openais/evs.h>
 .sp
-.BI "int evs_mcast_gruops(evs_handle_t *" handle ", evs_guraantee_t " guarantee ", evs_priority_t " priority ", evs_group_t *" groups ", int group_entries, struct iovec *" iovec ", int " iov_len ");
+.BI "int evs_mcast_gruops(evs_handle_t *" handle ", evs_guraantee_t " guarantee ", evs_group_t *" groups ", int group_entries, struct iovec *" iovec ", int " iov_len ");
 .SH DESCRIPTION
 The
 .B evs_mcast_groups(3)
@@ -92,47 +92,6 @@ in the same order to all processors.
 All processors must agree on the order of delivery.  Further all processors
 must have a copy of the message before any delivery takes place.  This mode is
 unimplemented in the EVS library.
-.PP
-The argument
-.I priority
-describes the priority at which a message will be sent.  Messages will be sent with
-higher priorities before messages with lower priorities.  This requirement only applies
-to the local processor.  If two processors have two different priority messages, the
-messages may be sent from either priority depending on the algorithm of the EVS library.
-
-The evs_priority_t typedef is described by:
-.IP
-.RS
-.ne 18
-.nf
-.ta 4n 30n 33n
-typedef enum {
-        EVS_PRIO_RECOVERY,
-        EVS_PRIO_HIGH,
-        EVS_PRIO_MED,
-        EVS_PRIO_LOW
-} evs_priority_t;
-.ta
-.fi
-.RE
-.IP
-.PP
-.PP
-The meanings of the evs_priority_t typedef are:
-.TP
-.B EVS_PRIO_RECOVERY
-Messages are sent from this priority level first.  This priority level is used
-for recovery of state after a partition or merge occurs.
-.TP
-.B EVS_PRIO_HIGH
-Messages are sent from this priority level second.
-.TP
-.B EVS_PRIO_MED
-Messages are sent from this priority level third.
-.I groups
-.TP
-.B EVS_PRIO_LOW
-Messages are sent from this priority level fourth.
 .PP
 The
 .I groups

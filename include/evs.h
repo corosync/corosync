@@ -45,13 +45,6 @@ typedef enum {
 } evs_dispatch_t;
 
 typedef enum {
-	EVS_PRIO_RECOVERY,
-	EVS_PRIO_HIGH,
-	EVS_PRIO_MED,
-	EVS_PRIO_LOW
-} evs_priority_t;
-
-typedef enum {
 	EVS_TYPE_UNORDERED, /* not implemented */
 	EVS_TYPE_FIFO,		/* same as agreed */
 	EVS_TYPE_AGREED,
@@ -148,7 +141,6 @@ evs_error_t evs_leave (
 evs_error_t evs_mcast_joined (
 	evs_handle_t *handle,
 	evs_guarantee_t guarantee,
-	evs_priority_t priority,
 	struct iovec *iovec,
 	int iov_len);
 
@@ -160,7 +152,6 @@ evs_error_t evs_mcast_joined (
 evs_error_t evs_mcast_groups (
 	evs_handle_t *handle,
 	evs_guarantee_t guarantee,
-	evs_priority_t priority,
 	struct evs_group *groups,
 	int group_cnt,
 	struct iovec *iovec,

@@ -290,7 +290,6 @@ struct res_lib_evs_leave {
 
 struct req_lib_evs_mcast_joined {
 	struct res_header header;
-	evs_priority_t priority;
 	evs_guarantee_t guarantee;
 	int msg_len;
 	char msg[0];
@@ -302,7 +301,6 @@ struct res_lib_evs_mcast_joined {
 
 struct req_lib_evs_mcast_groups {
 	struct res_header header;
-	evs_priority_t priority;
 	evs_guarantee_t guarantee;
 	int msg_len;
 	int group_entries;
