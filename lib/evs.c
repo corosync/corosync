@@ -469,7 +469,6 @@ error_exit:
 evs_error_t evs_mcast_joined (
 	evs_handle_t *handle,
 	evs_guarantee_t guarantee,
-	evs_priority_t priority,
 	struct iovec *iovec,
 	int iov_len)
 {
@@ -494,7 +493,6 @@ evs_error_t evs_mcast_joined (
 		msg_len;
 
 	req_lib_evs_mcast_joined.header.id = MESSAGE_REQ_EVS_MCAST_JOINED;
-	req_lib_evs_mcast_joined.priority = priority;
 	req_lib_evs_mcast_joined.guarantee = guarantee;
 	req_lib_evs_mcast_joined.msg_len = msg_len;
 
@@ -524,7 +522,6 @@ error_exit:
 evs_error_t evs_mcast_groups (
 	evs_handle_t *handle,
 	evs_guarantee_t guarantee,
-	evs_priority_t priority,
 	struct evs_group *groups,
 	int group_entries,
 	struct iovec *iovec,
@@ -548,7 +545,6 @@ evs_error_t evs_mcast_groups (
 	req_lib_evs_mcast_groups.header.size = sizeof (struct req_lib_evs_mcast_groups) + 
 		(group_entries * sizeof (struct evs_group)) + msg_len;
 	req_lib_evs_mcast_groups.header.id = MESSAGE_REQ_EVS_MCAST_GROUPS;
-	req_lib_evs_mcast_groups.priority = priority;
 	req_lib_evs_mcast_groups.guarantee = guarantee;
 	req_lib_evs_mcast_groups.msg_len = msg_len;
 	req_lib_evs_mcast_groups.group_entries = group_entries;
