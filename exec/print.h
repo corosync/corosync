@@ -35,6 +35,7 @@
 #define PRINT_H_DEFINED
 
 #include "../include/ais_types.h"
+#include "../include/saClm.h"
 
 #define LOG_MODE_DEBUG		1
 #define LOG_MODE_TIMESTAMP	2
