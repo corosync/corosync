@@ -178,6 +178,22 @@ static void totempg_confchg_fn (
 	int j;
 	int found;
 		
+	/*
+	 * Clean out the assembly area for nodes that have left the
+	 * membership.  If they return, we don't want any stale message
+	 * data that may be there.
+	 */
+	for (i = 0; i < left_list_entries; i++) {
+		for (j = 0; j < assembly_list_entries; j++) {
+			if (left_list[i].s_addr == assembly_list[j]->addr.s_addr) {
+				assembly_list[j]->index = 0;
+			}
+		}
+	}
+
+	/*
+	 * Create a message assembly area for any new members.
+	 */
 	for (i = 0; i < member_list_entries; i++) {
 		found = 0;
 		for (j = 0; j < assembly_list_entries; j++) {
@@ -190,8 +206,9 @@ static void totempg_confchg_fn (
 			assembly_list[assembly_list_entries] =
 				malloc (sizeof (struct assembly));
 			assert (assembly_list[assembly_list_entries]); // TODO
-			assembly_list[assembly_list_entries]->addr.s_addr = member_list[i].s_addr;
-			assembly_list[i]->index = 0;
+			assembly_list[assembly_list_entries]->addr.s_addr = 
+				member_list[i].s_addr;
+			assembly_list[assembly_list_entries]->index = 0;
 			assembly_list_entries += 1;
 		}
 	}
