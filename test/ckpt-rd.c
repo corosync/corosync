@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include "ais_types.h"
 #include "saCkpt.h"
@@ -68,7 +68,7 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	100000,
 	5000000000LL,
 	5,
-	20000,
+	2000,
 	10
 };
 
@@ -131,7 +131,11 @@ int main (void) {
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaAisErrorT error;
-        SaUint32T erroroneousVectorIndex = 0;
+	SaUint32T erroroneousVectorIndex = 0;
+	struct timespec delay;	
+	delay.tv_sec = 1;
+	delay.tv_nsec = 0;
+
 
 	
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
@@ -144,20 +148,21 @@ int main (void) {
 		&checkpointHandle);
 	printf ("%s: initial open of checkpoint\n",
 		get_test_output (error, SA_AIS_OK));
+	
+	while (1) {
+		error = saCkptCheckpointRead (checkpointHandle,
+			ReadVectorElements,
+			1,
+			&erroroneousVectorIndex);
+		if (error != SA_AIS_OK) {
+			printf ("%s: read checkpoint\n",
+						get_test_output (error, SA_AIS_OK));
+			return (0);
+		}
 
-	error = saCkptSectionCreate (checkpointHandle,
-		&sectionCreationAttributes1,
-		"Initial Data #0",
-		strlen ("Initial Data #0") + 1);
-
-	error = saCkptCheckpointRead (checkpointHandle,
-		ReadVectorElements,
-		1,
-		&erroroneousVectorIndex);
-	printf ("%s: read checkpoint\n",
-		get_test_output (error, SA_AIS_OK));
-
-	printf ("Checkpoint contains %s\n", (char *)ReadVectorElements->dataBuffer);
+		printf ("Checkpoint contains %s\n", (char *)ReadVectorElements->dataBuffer);
+		nanosleep(&delay,0);
+	}
 
 	return (0);
 }

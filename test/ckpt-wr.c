@@ -40,7 +40,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
-#include <sys/time.h>
+#include <time.h>
 
 #include "ais_types.h"
 #include "saCkpt.h"
@@ -65,7 +65,7 @@ SaNameT checkpointName = { 16, "checkpoint-sync\0" };
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	SA_CKPT_WR_ALL_REPLICAS,
 	100000,
-	SA_TIME_END,
+	2000,
 	5,
 	20000,
 	10
@@ -138,26 +138,74 @@ SaCkptCallbacksT callbacks = {
 	0
 };
 
+#define MAX_DATA_SIZE 100
+
 int main (void) {
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaAisErrorT error;
-	
+	char data[MAX_DATA_SIZE];
+	struct timespec delay;
+	struct timespec delay2;
+	delay.tv_sec = 1;
+	delay.tv_nsec = 0;
+	SaCkptIOVectorElementT writeElement;
+	long count = 0;
+	SaUint32T erroroneousVectorIndex = 0;
+
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
-	
+
 	error = saCkptCheckpointOpen (ckptHandle,
-		&checkpointName,
-		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
-		0,
-		&checkpointHandle);
+			&checkpointName,
+			&checkpointCreationAttributes,
+			SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+			0,
+			&checkpointHandle);
 	printf ("%s: initial open of checkpoint\n",
 		get_test_output (error, SA_AIS_OK));
 
-	error = saCkptSectionCreate (checkpointHandle,
-		&sectionCreationAttributes1,
-		"Initial Data #0",
-		strlen ("Initial Data #0") + 1);
+
+    error = saCkptSectionCreate (checkpointHandle,
+			&sectionCreationAttributes1,
+			"0",
+			strlen ("0") + 1);
+
+    do{
+			error = saCkptCheckpointRead (checkpointHandle,
+											ReadVectorElements,
+											1,
+											&erroroneousVectorIndex);
+			if (error != SA_AIS_OK) {
+				if (error == SA_AIS_ERR_TRY_AGAIN) {
+					continue;
+				}
+				return (0);
+			}
+
+			count = atol((char *)ReadVectorElements->dataBuffer);
+			
+			count++;
+			sprintf((char*)&data, "%d",(int)count);
+			writeElement.sectionId = (const SaCkptSectionIdT)*sectionCreationAttributes1.sectionId;
+			writeElement.dataBuffer = data;
+			writeElement.dataSize = strlen (data) + 1;
+			writeElement.dataOffset = 0;
+			writeElement.readSize = 0;
+
+			do {
+				error = saCkptCheckpointWrite (checkpointHandle,
+					&writeElement,
+					1,
+					&erroroneousVectorIndex);
+
+				printf ("%s: checkpoint write with data %s\n",
+							get_test_output (error, SA_AIS_OK), (char*)data);
+			}while (error == SA_AIS_ERR_TRY_AGAIN);
+
+
+			nanosleep(&delay,&delay2);
+	}while (1);
 
 	return (0);
+
 }
