@@ -1009,7 +1009,6 @@ printf ("item not present in recovery sort queue\n");
  */
 static void memb_state_operational_enter (void)
 {
-	my_failed_list_entries = 0;
 	struct in_addr joined_list[MAX_MEMBERS];
 	int joined_list_entries = 0;
 	struct in_addr left_list[MAX_MEMBERS];
@@ -1064,6 +1063,12 @@ static void memb_state_operational_enter (void)
 	my_aru_save = my_aru;
 	my_high_seq_received_save = my_aru;
 	my_last_aru = 0;
+
+	my_proc_list_entries = my_new_memb_entries;
+	memcpy (my_proc_list, my_new_memb_list,
+		sizeof (struct in_addr) * my_memb_entries);
+
+	my_failed_list_entries = 0;
 // TODO the recovery messages are leaked
 
 	totemsrp_log_printf (totemsrp_log_level_notice, "entering OPERATIONAL state.\n");
@@ -2236,9 +2241,7 @@ static void memb_state_commit_token_update (struct memb_commit_token *memb_commi
 {
 	int memb_index_this;
 
-printf ("Commit token update\n");
 	memb_index_this = (memb_commit_token->memb_index + 1) % memb_commit_token->addr_entries;
-printf ("memb index is %d\n", memb_index_this);
 	memcpy (&memb_commit_token->memb_list[memb_index_this].ring_id, &my_ring_id,
 		sizeof (struct memb_ring_id));
 assert (my_ring_id.rep.s_addr != 0);
@@ -2260,22 +2263,11 @@ static int memb_state_commit_token_send (struct memb_commit_token *memb_commit_t
 	memb_index_next = (memb_index_this + 1) % memb_commit_token->addr_entries;
 	memb_commit_token->memb_index = memb_index_this;
 
-#ifdef DEBUG
-for (i = 0; i < memb_commit_token->addr_entries; i++) {
-printf ("commit token addresses[%d] %s\n", i, inet_ntoa (memb_commit_token->addr[i]));
-}
-#endif
-
 	iovec.iov_base = memb_commit_token;
 	iovec.iov_len = sizeof (struct memb_commit_token);
 
 	encrypt_and_sign (&iovec, 1);
 
-// TODO do we store the commit token for retransmit don't think so
-//	memcpy (orf_token_retransmit, memb_commit_token,
-//		sizeof (struct memb_commit_token));
-//	orf_token_retransmit_size = sizeof (struct memb_commit_token);
-	
 	next_memb.sin_addr.s_addr = memb_commit_token->addr[memb_index_next].s_addr;
 	next_memb.sin_family = AF_INET;
 	next_memb.sin_port = sockaddr_in_mcast.sin_port;
@@ -2335,6 +2327,7 @@ static void memb_state_commit_token_create (struct memb_commit_token *commit_tok
 	commit_token->header.encapsulated = 0;
 
 	commit_token->ring_id.rep.s_addr = my_id.sin_addr.s_addr;
+
 	commit_token->ring_id.seq = token_ring_id_seq + 4;
 	qsort (token_memb, token_memb_entries, 
 		sizeof (struct in_addr), in_addr_compare);
@@ -2440,6 +2433,7 @@ static void memb_ring_id_store (
 	assert (res == sizeof (unsigned long long));
 	close (fd);
 	memcpy (&my_ring_id, &commit_token->ring_id, sizeof (struct memb_ring_id));
+	token_ring_id_seq = my_ring_id.seq;
 }
 
 void print_stats (void)
@@ -2579,7 +2573,7 @@ printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 	my_token_held = 1;
 	my_do_delivery = 0;
 
-#ifdef DROP_RANDOM
+#ifdef RANDOM_DROP
 if (random () % 100 < 10) {
 	return (0);
 }
@@ -2653,20 +2647,18 @@ if (random () % 100 < 10) {
 		my_last_aru = token->aru;
 
 		/*
-		 * Test for a token from another configuration
+		 * Discard tokens from another configuration
 		 */
 		if (memcmp (&token->ring_id, &my_ring_id,
 			sizeof (struct memb_ring_id)) != 0) {
 
-			totemsrp_log_printf (totemsrp_log_level_notice, 
-				"Token from another configuration %s.\n",
-				inet_ntoa (system_from->sin_addr));
-printf ("tokens ring %lld %s\n", token->ring_id.seq, inet_ntoa (token->ring_id.rep));
-printf ("my ring %lld %s %d\n", my_ring_id.seq, inet_ntoa (my_ring_id.rep), memb_state);
 			my_token_held = 0;
 			return (0); /* discard token */
 		}
 
+		/*
+		 * Discard retransmitted tokens
+		 */
 		if (my_token_seq >= token->token_seq) {
 			my_token_held = 0;
 			reset_token_retransmit_timeout ();
@@ -2889,7 +2881,7 @@ static int message_handler_mcast (
 	}
 
 	assert (bytes_received < PACKET_SIZE_MAX);
-#ifdef DROP_RANDOM
+#ifdef RANDOM_DROP
 if (random()%100 < 20) {
 	return (0);
 }
@@ -3215,6 +3207,11 @@ static int message_handler_memb_commit_token (
 		return (0);
 	}
 */
+#ifdef RANDOM_DROP
+if (random()%100 < 10) {
+	return (0);
+}
+#endif
 	switch (memb_state) {
 		case MEMB_STATE_OPERATIONAL:
 			/* discard token */
@@ -3237,10 +3234,9 @@ static int message_handler_memb_commit_token (
 			break;
 
 		case MEMB_STATE_COMMIT:
-			// TODO add if to match spec
-//			if (memb_commit_token->ring_seq == my_ring_id.seq) {
+			 if (memb_commit_token->ring_id.seq == my_ring_id.seq) {
 				memb_state_recovery_enter (memb_commit_token);
-//			}
+			}
 			break;
 
 		case MEMB_STATE_RECOVERY:
