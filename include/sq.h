@@ -95,9 +95,11 @@ static inline int sq_item_add (
 		return E2BIG;
 	}
 	sq_position = (sq->head + seqid - sq->head_seqid) % sq->size;
+
 //printf ("item add %d %d %d\n", sq_position, seqid, sq->head_seqid);
 	sq_item = sq->items;
 	sq_item += sq_position * sq->size_per_item;
+	assert(sq->items_inuse[sq_position] == 0);
 	memcpy (sq_item, item, sq->size_per_item);
 	sq->items_inuse[sq_position] = 1;
 
@@ -110,6 +112,16 @@ static inline int sq_item_inuse (
 
 	int sq_position;
 
+	/*
+	 * We need to say that the seqid is in use if it shouldn't 
+	 * be here in the first place.
+	 * To keep old messages from being inserted.
+	 */
+	if (seq_id < sq->head_seqid) {
+		fprintf(stderr, "sq_item_inuse: seqid %d, head %d\n", 
+						seq_id, sq->head_seqid);
+		return 1;
+	}
 	sq_position = (sq->head - sq->head_seqid + seq_id) % sq->size;
 //printf ("in use %d\n", sq_position);
 	return (sq->items_inuse[sq_position]);
