@@ -44,8 +44,8 @@ LDFLAGS =
 GMI_SRC = aispoll.c gmi.c tlist.c hdb.c crypto.c
 GMI_OBJS = aispoll.o gmi.o tlist.o hdb.o crypto.o
 
-EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c parse.c print.c mempool.c
-EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o parse.o print.o mempool.o libgmi.a
+EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c
+EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o libgmi.a
 
 all:libgmi.a libgmi.so.1.0 aisexec keygen
 
