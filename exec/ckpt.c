@@ -980,18 +980,10 @@ static int ckpt_exit_fn (struct conn_info *conn_info)
 		cleanup_list = conn_info->ais_ci.u.libckpt_ci.checkpoint_list.next;
 	}
 
-#ifdef TODO
-/* TODO close section iterators
- */
-/* 
- * TODO what about exit of open checkpoints
- */
-
 	if (conn_info->ais_ci.u.libckpt_ci.sectionIterator.sectionIteratorEntries) {
 		free (conn_info->ais_ci.u.libckpt_ci.sectionIterator.sectionIteratorEntries);
 	}
 	list_del (&conn_info->ais_ci.u.libckpt_ci.sectionIterator.list);
-#endif
 	return (0);
 }
 
@@ -1125,14 +1117,16 @@ error_exit:
 		res_lib_ckpt_checkpointopen.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN;
 		res_lib_ckpt_checkpointopen.header.error = error;
 
-		checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
-		if (checkpoint_cleanup == 0) {
-			free (ckptCheckpoint);
-			error = SA_AIS_ERR_NO_MEMORY;
-		} else {
-			memcpy(&checkpoint_cleanup->checkpoint,ckptCheckpoint,sizeof(struct saCkptCheckpoint));
-			list_add (&checkpoint_cleanup->list,
-				&req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint_list);
+		if (error == SA_AIS_OK) {
+			checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
+			if (checkpoint_cleanup == 0) {
+				free (ckptCheckpoint);
+				error = SA_AIS_ERR_NO_MEMORY;
+			} else {
+				memcpy(&checkpoint_cleanup->checkpoint,ckptCheckpoint,sizeof(struct saCkptCheckpoint));
+				list_add (&checkpoint_cleanup->list,
+					&req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint_list);
+			}
 		}
 
 		libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info, &res_lib_ckpt_checkpointopen,
