@@ -128,6 +128,6 @@ int totemsrp_callback_token_create (
 	void *data);
 
 void totemsrp_callback_token_destroy (
-	void *handle);
+	void **handle_out);
 
 #endif /* TOTEMSRP_H_DEFINED */

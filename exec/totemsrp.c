@@ -2494,12 +2494,16 @@ int totemsrp_callback_token_create (void **handle_out,
 	return (0);
 }
 
-void totemsrp_callback_token_destroy (void *handle)
+void totemsrp_callback_token_destroy (void **handle_out)
 {
-	struct token_callback_instance *h = (struct token_callback_instance *)handle;
-	
-	list_del (&h->list);
-	free (h);
+	struct token_callback_instance *h;
+
+	if (*handle_out) {
+ 		h = (struct token_callback_instance *)*handle_out;
+		list_del (&h->list);
+		free (h);
+		*handle_out = 0;
+	}
 }
 
 void totemsrp_callback_token_type (void *handle)
