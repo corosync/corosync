@@ -59,6 +59,13 @@ static void inline list_add (struct list_head *new, struct list_head *head)
 	new->prev = head;
 	head->next = new;
 }
+static void inline list_add_tail (struct list_head *new, struct list_head *head)
+{
+	head->prev->next = new;
+	new->next = head;
+	new->prev = head->prev;
+	head->prev = new;
+}
 static void inline list_del (struct list_head *remove)
 {
 	remove->next->prev = remove->prev;
@@ -71,5 +78,10 @@ static void inline list_del (struct list_head *remove)
 
 #define list_entry(ptr,type,member)\
 	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
+
+static inline int list_empty(struct list_head *l)
+{
+	return l->next == l;
+}
 
 #endif /* LIST_H_DEFINED */
