@@ -2740,6 +2740,7 @@ void totemsrp_callback_token_destroy (void **handle_out)
  		h = (struct token_callback_instance *)*handle_out;
 		list_del (&h->list);
 		free (h);
+		h = NULL;
 		*handle_out = 0;
 	}
 }
@@ -2759,6 +2760,7 @@ void token_callbacks_execute (enum totem_callback_token_type type)
 	struct list_head *callback_listhead = 0;
 	struct token_callback_instance *token_callback_instance;
 	int res;
+	int del;
 
 	switch (type) {
 	case TOTEM_CALLBACK_TOKEN_RECEIVED:
@@ -2775,22 +2777,22 @@ void token_callbacks_execute (enum totem_callback_token_type type)
 		list = list_next) {
 
 		token_callback_instance = list_entry (list, struct token_callback_instance, list);
+
 		list_next = list->next;
-		if (token_callback_instance->delete == 1) {
+		del = token_callback_instance->delete;
+		if (del == 1) {
 			list_del (list);
 		}
 
 		res = token_callback_instance->callback_fn (
 			token_callback_instance->callback_type,
 			token_callback_instance->data);
-
 		/*
 		 * This callback failed to execute, try it again on the next token
 		 */
-		if (res == -1 && token_callback_instance->delete == 1) {
+		if (res == -1 && del == 1) {
 			list_add (list, callback_listhead);
-		} else
-		if (token_callback_instance->delete) {
+		} else	if (del) {
 			free (token_callback_instance);
 		}
 	}
