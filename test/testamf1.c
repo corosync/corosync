@@ -35,6 +35,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <signal.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -238,6 +240,11 @@ static struct sched_param sched_param = {
     sched_priority: 99
 };
 
+void sigintr_handler (int signum) {
+	exit (0);
+}
+
+
 int main (void) {
 	SaAmfHandleT handle;
 	int result;
@@ -245,6 +252,7 @@ int main (void) {
 	fd_set read_fds;
 	SaNameT compName;
 
+	signal (SIGINT, sigintr_handler);
    result = sched_setscheduler (0, SCHED_RR, &sched_param);
     if (result == -1) {
 printf ("couldn't set sched priority\n");

@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -235,6 +236,11 @@ SaAmfCallbacksT amfCallbacks = {
 
 SaVersionT version = { 'A', 1, 1 };
 
+void sigintr_handler (int signum) {
+	exit (0);
+}
+
+
 int main (void) {
 	SaAmfHandleT handle;
 	int result;
@@ -243,6 +249,8 @@ int main (void) {
 	SaNameT compName;
 	int i;
 	SaAmfErrorDescriptorT errorDescriptor;
+
+	signal (SIGINT, sigintr_handler);
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_OK) {

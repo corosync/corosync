@@ -35,6 +35,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <signal.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -133,12 +135,18 @@ SaClmCallbacksT callbacks = {
 
 SaVersionT version = { 'A', 1, 1 };
 
+void sigintr_handler (int signum) {
+	exit (0);
+}
+
 int main (void) {
 	SaClmHandleT handle;
 	fd_set read_fds;
 	int select_fd;
 	int result;
 	SaClmClusterNotificationT clusterNotificationBuffer[64];
+
+	signal (SIGINT, sigintr_handler);
 
 	result = saClmInitialize (&handle, &callbacks, &version);
 	if (result != SA_OK) {
