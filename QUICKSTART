@@ -10,7 +10,7 @@ The API implements the Cluster Membership (CLM), Availabilty Management
 Framework (AMF) and the Checkpointing (CKPT) APIs.
 
 Configuring the AIS Executive:
------------------------------
+------------------------------
 The AIS Executive will automatically determine cluster membership by
 communicating on a specified multicast address and port.
 
@@ -22,14 +22,14 @@ mcastport:6000
 
 bindnetaddr specifies the address which the AIS Executive should bind to.
 This address should always end in zero.  If the local interface taffic
-traffic should routed over is 192.168.5.92, set bindnetaddr to 192.168.1.0.
+should routed over is 192.168.5.92, set bindnetaddr to 192.168.1.0.
 
 mcastaddr is a multicast address.  The default should work but you may have
 a different network configuration.  Avoid 224.x.x.x because this is a "config"
 multicast address.
 
 mcastport specifies the UDP port number.  It is possible to use the same
-multicast address on a network with the AIS services configured for multiple
+multicast address on a network with the AIS services configured for different
 UDP ports.
 
 The directory conf contains the file groups.conf which specifies the failover
@@ -48,8 +48,24 @@ Compile AIS by running make in the root directory.  Make can also be run
 in the individual directories.  Nothing is installed by make.  If install
 is desired, the files must be copied manually.
 
-Setup network
--------------
+Confiugre Host
+--------------
+For security reasons, the AIS only allows a process that had the EGID/GID
+of "ais" to connect to it.  To make development easier, it is recommended to
+create an "ais" user with the "ais" group.
+
+[root@slickdeal root]# adduser ais -g ais
+
+Set the ais user's password to something you can remember:
+
+[root@slickdeal root]# passwd ais
+Changing password for user ais.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+
+Configure Network
+-----------------
 Some networks do not automatically configure the default route.  Ensure
 the default route is configured or AIS wont be able to communicate with
 other nodes.
@@ -71,20 +87,40 @@ route which will also make AIS work properly.
 
 Run AIS Executive
 -----------------
-Get 2 or more nodes and run the AIS executive on each node.  A list of
+Get one or more nodes and run the AIS executive on each node.  A list of
 node IPs should be displayed on stdout when the nodes join a configuration.
-Run the aisexec program (after the default route is setup and the config
-files are in place).
+Run the aisexec program after following the previous directions.
+(after the default route is setup and the config
 
-Try out the CLM functionality
------------------------------
+Before running any of the test programs
+---------------------------------------
+The AIS Executive will ensure security by only allowing the ais group (or
+uid root) to connect to the service.  Switch to the ais group before
+running any applications linked to the saf api, or the applications will
+not be authenticated and won't be able to access services.
+
+[sdake@slickdeal sdake]$ su ais
+Password:
+[ais@slickdeal sdake]$ id
+uid=501(ais) gid=502(ais) groups=502(ais)
+
+Try out the AIS CLM functionality
+---------------------------------
+After aisexec is running
+
+su to ais user
+
 Run test/testclm on one node.  Then kill and add nodes.  This will cause
 callbacks to be called in the testclm application which will print out
-the node state changes.
+the node state changes.  The testclm program will not print any output
+until nodes are added to or deleted from the configuration by starting
+and stopping aisexec on other nodes.
 
 Try out the AIS AMF functionality
 ---------------------------------
 After aisexec is running
+
+su to ais user
 
 Run testamf1 on one node, testamf3 testamf4 on another node.
 One will become active one standby.  testamf2 is special in that it shows
@@ -93,6 +129,8 @@ was run from.  The ha states and readiness states will be shown.
 
 Try out the AIS CKPT functionality
 ----------------------------------
+su to ais user
+
 run ckptstress.  This will write checkpoint data as quickly as possible to
 the cluster.
 
