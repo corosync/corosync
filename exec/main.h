@@ -84,7 +84,8 @@ struct outq_item {
 
 #define SIZEINB MESSAGE_SIZE_MAX
 
-struct connection {
+struct conn_info {
+	int fd;				/* File descriptor for this connection */
 	int active;			/* Does this file descriptor have an active connection */
 	char *inb;			/* Input buffer for non-blocking reads */
 	int inb_nextheader;	/* Next message header starts here */
@@ -95,12 +96,9 @@ struct connection {
 	enum socket_service_type service;/* Type of service so dispatch knows how to route message */
 	struct saAmfComponent *component;	/* Component for which this connection relates to  TODO shouldn't this be in the ci structure */
 	int authenticated;		/* Is this connection authenticated? */
+	struct list_head conn_list;
 	struct ais_ci ais_ci;	/* libais connection information */
 };
-
-extern int connection_entries;
-
-extern struct connection *connections;
 
 extern struct sockaddr_in this_ip;
 
@@ -108,6 +106,6 @@ poll_handle aisexec_poll_handle;
 
 extern struct gmi_groupname aisexec_groupname;
 
-extern int libais_send_response (int s, void *msg, int mlen);
+extern int libais_send_response (struct conn_info *conn_info, void *msg, int mlen);
 
 #endif /* AIS_EXEC_H_DEFINED */
