@@ -279,7 +279,7 @@ saEvtInitialize(
 		goto error_nofree;
 	}
 	error = saHandleInstanceGet(&evt_instance_handle_db, *evt_handle,
-			(void**)&evti);
+			(void*)&evti);
 	if (error != SA_OK) {
 		goto error_handle_free;
 	}
@@ -348,7 +348,7 @@ saEvtSelectionObjectGet(
 	SaErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
-			(void **)&evti);
+			(void *)&evti);
 
 	if (error != SA_OK) {
 		return error;
@@ -382,7 +382,7 @@ static SaErrorT make_event(SaEvtEventHandleT *event_handle,
 	}
 
 	error = saHandleInstanceGet(&event_handle_db, *event_handle,
-				(void**)&edi);
+				(void*)&edi);
 	if (error != SA_OK) {
 			goto make_evt_done;
 	}
@@ -461,7 +461,7 @@ saEvtDispatch(
 	struct res_evt_event_data res;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
-		(void **)&evti);
+		(void *)&evti);
 	if (error != SA_OK) {
 		return error;
 	}
@@ -683,7 +683,7 @@ saEvtFinalize(SaEvtHandleT evt_handle)
 	SaErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
-			(void **)&evti);
+			(void *)&evti);
 	if (error != SA_OK) {
 		return error;
 	}
@@ -738,7 +738,7 @@ saEvtChannelOpen(
 	SaErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
-			(void**)&evti);
+			(void*)&evti);
 	
 	if (error != SA_OK) {
 		goto chan_open_done;
@@ -754,7 +754,7 @@ saEvtChannelOpen(
 	}
 
 	error = saHandleInstanceGet(&channel_handle_db, *channel_handle,
-					(void**)&eci);
+					(void*)&eci);
 	if (error != SA_OK) {
 		saHandleDestroy(&channel_handle_db, *channel_handle);
 		goto chan_open_put;
@@ -830,7 +830,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	struct res_evt_channel_close res;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto chan_close_done;
 	}
@@ -839,7 +839,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	 * get the evt handle for the fd
 	 */
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto chan_close_put1;
 	}
@@ -946,13 +946,13 @@ saEvtEventAllocate(
 	struct event_channel_instance *eci;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto alloc_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto alloc_put1;
 	}
@@ -963,7 +963,7 @@ saEvtEventAllocate(
 		goto alloc_put2;
 	}
 	error = saHandleInstanceGet(&event_handle_db, *event_handle,
-					(void**)&edi);
+					(void*)&edi);
 	if (error != SA_OK) {
 		goto alloc_put2;
 	}
@@ -998,7 +998,7 @@ saEvtEventFree(SaEvtEventHandleT event_handle)
 	struct event_data_instance *edi;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
-			(void**)&edi);
+			(void*)&edi);
 	if (error != SA_OK) {
 		goto evt_free_done;
 	}
@@ -1044,7 +1044,7 @@ saEvtEventAttributesSet(
 	int i;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
-			(void**)&edi);
+			(void*)&edi);
 	if (error != SA_OK) {
 		goto attr_set_done;
 	}
@@ -1149,7 +1149,7 @@ saEvtEventAttributesGet(
 	int i;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
-			(void**)&edi);
+			(void*)&edi);
 	if (error != SA_OK) {
 		goto attr_get_done;
 	}
@@ -1232,7 +1232,7 @@ saEvtEventDataGet(
 	}
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
-			(void**)&edi);
+			(void*)&edi);
 	if (error != SA_OK) {
 		goto data_get_done;
 	}
@@ -1392,7 +1392,7 @@ saEvtEventPublish(
 	}
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
-			(void**)&edi);
+			(void*)&edi);
 	if (error != SA_OK) {
 		goto pub_done;
 	}
@@ -1408,7 +1408,7 @@ saEvtEventPublish(
 	}
 
 	error = saHandleInstanceGet(&channel_handle_db, edi->edi_channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto pub_put1;
 	}
@@ -1422,7 +1422,7 @@ saEvtEventPublish(
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto pub_put2;
 	}
@@ -1550,7 +1550,7 @@ saEvtEventSubscribe(
 	int	sz;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto subscribe_done;
 	}
@@ -1559,7 +1559,7 @@ saEvtEventSubscribe(
 	 * get the evt handle for the fd
 	 */
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto subscribe_put1;
 	}
@@ -1644,13 +1644,13 @@ saEvtEventUnsubscribe(
 	struct res_evt_event_unsubscribe res;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto unsubscribe_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto unsubscribe_put1;
 	}
@@ -1708,13 +1708,13 @@ saEvtEventRetentionTimeClear(
 	struct res_evt_event_clear_retentiontime res;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
-			(void**)&eci);
+			(void*)&eci);
 	if (error != SA_OK) {
 		goto ret_time_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
-			eci->eci_instance_handle, (void**)&evti);
+			eci->eci_instance_handle, (void*)&evti);
 	if (error != SA_OK) {
 		goto ret_time_put1;
 	}
