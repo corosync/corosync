@@ -96,7 +96,6 @@ saServiceConnect (
 		return (SA_ERR_TRY_AGAIN);
 	}
 
-	req_lib_init.header.magic = MESSAGE_MAGIC;
 	req_lib_init.header.size = sizeof (req_lib_init);
 	req_lib_init.header.id = initType;
 
@@ -114,8 +113,8 @@ saServiceConnect (
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_init.error != SA_OK) {
-		error = res_lib_init.error;
+	if (res_lib_init.header.error != SA_OK) {
+		error = res_lib_init.header.error;
 		goto error_exit;
 	}
 
@@ -161,7 +160,7 @@ retry_recv:
 }
 
 struct message_overlay {
-	struct message_header header;
+	struct res_header header;
 	char payload[4096];
 };
 
@@ -178,14 +177,14 @@ saRecvQueue (
 	SaErrorT error;
 
 	do {
-		error = saRecvRetry (s, &message.header, sizeof (struct message_header),
+		error = saRecvRetry (s, &message.header, sizeof (struct res_header),
 			MSG_WAITALL | MSG_NOSIGNAL);
 		if (error != SA_OK) {
 			goto error_exit;
 		}
-		if (message.header.size > sizeof (struct message_header)) {
+		if (message.header.size > sizeof (struct req_header)) {
 			error = saRecvRetry (s, &message.payload,
-				message.header.size - sizeof (struct message_header),
+				message.header.size - sizeof (struct res_header),
 				MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_exit;
@@ -228,7 +227,6 @@ saActivatePoll (int s) {
 	 * Send activate poll to tell nodeexec to activate poll
 	 * on this file descriptor
 	 */
-	req_lib_activatepoll.header.magic = MESSAGE_MAGIC;
 	req_lib_activatepoll.header.size = sizeof (req_lib_activatepoll);
 	req_lib_activatepoll.header.id = MESSAGE_REQ_LIB_ACTIVATEPOLL;
 
