@@ -1,3 +1,4 @@
+#define RANDOM_DROP 1
 int my_token_held = 0;
 int my_do_delivery = 0;
 unsigned long long token_ring_id_seq = 0;
@@ -2728,6 +2729,8 @@ printf ("token retrans flag is %d my set retrans flag%d retrans queue empty %d c
 	token->retrans_flg, my_set_retrans_flg, queue_is_empty (&retrans_message_queue), my_retrans_flg_count);
 				if (token->retrans_flg == 0) { 
 					my_retrans_flg_count += 1;
+				} else {
+					my_retrans_flg_count = 0;
 				}
 				if (my_retrans_flg_count == 2) {
 					my_install_seq = token->seq;
