@@ -15,6 +15,8 @@
 #include "ais_evt.h"
 
 #define  TEST_EVENT_ORDER 1
+#define  EVT_FREQ 1000
+uint32_t evt_count = 0;
 
 extern int get_sa_error(SaErrorT, char *, int);
 char result_buf[256];
@@ -260,12 +262,15 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	}
 	if (evt_pat_get_array.patternsNumber > 0) {
 		if (strcmp(evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) == 0) {
-			printf("*** Events have been dropped at %s\n",
+			printf("*** Events have been dropped at %s",
 				ais_time_str(publish_time));
 		}
 	}
 	if (quiet < 2) {
 		printf("event id: 0x%016llx\n", event_id);
+	}
+	if (quiet == 2) {
+		if ((++evt_count % EVT_FREQ) == 0) fprintf(stderr, ".");
 	}
 
 #ifdef TEST_EVENT_ORDER
