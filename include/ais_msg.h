@@ -37,6 +37,8 @@
 #include <netinet/in.h>
 #include "ais_types.h"
 #include "evs.h"
+#include "saClm.h"
+#include "ipc_gen.h"
 
 enum req_amf_response_interfaces {
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK = 1,
@@ -48,23 +50,6 @@ enum req_amf_response_interfaces {
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFEXTERNALCOMPONENTCONTROLCALLBACK,
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFPENDINGOPERATIONCONFIRMCALLBACK
 };
-
-enum req_init_types {
-	MESSAGE_REQ_EVS_INIT,
-	MESSAGE_REQ_CLM_INIT,
-	MESSAGE_REQ_AMF_INIT,
-	MESSAGE_REQ_CKPT_INIT,
-	MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
-	MESSAGE_REQ_EVT_INIT
-};
-
-enum res_init_types {
-	MESSAGE_RES_INIT
-};
-
-#define	MESSAGE_REQ_LIB_ACTIVATEPOLL 0
-#define	MESSAGE_RES_LIB_ACTIVATEPOLL 50
 
 enum req_lib_evs_types {
 	MESSAGE_REQ_EVS_JOIN = 1,
@@ -80,22 +65,6 @@ enum res_lib_evs_types {
 	MESSAGE_RES_EVS_LEAVE,
 	MESSAGE_RES_EVS_MCAST_JOINED,
 	MESSAGE_RES_EVS_MCAST_GROUPS
-};
-
-enum req_clm_types {
-	MESSAGE_REQ_CLM_TRACKSTART = 1,
-	MESSAGE_REQ_CLM_TRACKSTOP,
-	MESSAGE_REQ_CLM_NODEGET,
-	MESSAGE_REQ_CLM_NODEGETASYNC
-};
-
-enum res_clm_types {
-	MESSAGE_RES_CLM_TRACKCALLBACK = 1,
-	MESSAGE_RES_CLM_TRACKSTART,
-	MESSAGE_RES_CLM_TRACKSTOP,
-	MESSAGE_RES_CLM_NODEGET,
-	MESSAGE_RES_CLM_NODEGETASYNC,
-	MESSAGE_RES_CLM_NODEGETCALLBACK
 };
 
 enum req_amf_types {
@@ -181,31 +150,6 @@ enum res_lib_ckpt_sectioniterator_types {
 	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT
 };
 
-enum nodeexec_message_types {
-	MESSAGE_REQ_EXEC_EVS_MCAST,
-	MESSAGE_REQ_EXEC_CLM_NODEJOIN,
-	MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER,
-	MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER,
-	MESSAGE_REQ_EXEC_AMF_ERRORREPORT,
-	MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL,
-	MESSAGE_REQ_EXEC_AMF_READINESSSTATESET,
-	MESSAGE_REQ_EXEC_AMF_HASTATESET,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD,
-	MESSAGE_REQ_EXEC_EVT_EVENTDATA,
-	MESSAGE_REQ_EXEC_EVT_CHANCMD,
-	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA
-};
-
 enum req_evt_types {
 	MESSAGE_REQ_EVT_OPEN_CHANNEL = 1,
 	MESSAGE_REQ_EVT_CLOSE_CHANNEL,
@@ -243,13 +187,6 @@ struct message_source {
 	struct conn_info *conn_info;
 	struct in_addr in_addr;
 } __attribute__((packed));
-
-struct req_clm_trackstart {
-	struct req_header header;
-	SaUint8T trackFlags;
-	SaClmClusterNotificationT *notificationBufferAddress;
-	SaUint32T numberOfItems;
-};
 
 struct res_evs_deliver_callback {
 	struct res_header header;
@@ -318,10 +255,6 @@ struct req_exec_evs_mcast {
 	int msg_len;
 	struct evs_group groups[0];
 	/* data goes here */
-};
-
-struct res_clm_trackstart {
-	struct res_header header;
 };
 
 struct req_lib_init {
@@ -784,72 +717,6 @@ struct res_lib_ckpt_checkpointsynchronizeasync {
 	struct res_header header;
 };
 
-struct req_clm_trackstop {
-	struct req_header header;
-	SaSizeT dataRead;
-	SaErrorT error;
-};
-
-struct res_clm_trackstop {
-	struct res_header header;
-};
-
-struct res_clm_trackcallback {
-	struct res_header header;
-	SaUint64T viewNumber;
-	SaUint32T numberOfItems;
-	SaUint32T numberOfMembers;
-	SaClmClusterNotificationT *notificationBufferAddress;
-	SaClmClusterNotificationT notificationBuffer[0];
-};
-
-struct req_clm_nodeget {
-	struct req_header header;
-	SaClmClusterNodeT *clusterNodeAddress;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
-};
-
-struct res_clm_nodeget {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT clusterNode;
-	int valid;
-};
-
-struct req_clm_nodegetasync {
-	struct req_header header;
-	SaClmClusterNodeT *clusterNodeAddress;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
-};
-
-struct res_clm_nodegetasync {
-	struct res_header header;
-};
-
-struct res_clm_nodegetcallback {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT *clusterNodeAddress;
-	SaClmClusterNodeT clusterNode;
-	int valid;
-};
-
-struct req_exec_clm_heartbeat {
-	struct req_header header;
-};
-
-struct res_exec_clm_heartbeat {
-	struct res_header header;
-};
-
-struct req_exec_clm_nodejoin {
-	struct req_header header;
-	SaClmClusterNodeT clusterNode;
-};
-
-
 /* 
  * MESSAGE_REQ_EVT_OPEN_CHANNEL
  *
@@ -1033,7 +900,6 @@ struct lib_event_data {
 	uint32_t				led_user_data_offset;
 	uint32_t				led_user_data_size;
 	uint32_t				led_patterns_number;
-	int msg_id;
 	uint8_t					led_body[0];
 
 };
