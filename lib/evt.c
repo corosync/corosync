@@ -39,8 +39,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#include "../include/ais_evt.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_evt.h"
 #include "util.h"
 #include "../exec/totempg.h"
 
@@ -52,8 +51,8 @@ static void eventHandleInstanceDestructor(void *instance);
  * Versions of the SAF AIS specification supported by this library
  */
 static SaVersionT supported_versions[] = {
-	{'A', 0x01, 0x01},
-	{'a', 0x01, 0x01}
+	{'B', 0x01, 0x01},
+	{'b', 0x01, 0x01}
 };
 
 static struct saVersionDatabase evt_version_database = {
@@ -197,7 +196,7 @@ static void evtHandleInstanceDestructor(void *instance)
 	/*
 	 * Empty out the queue if there are any pending messages
 	 */
-	while ((saQueueIsEmpty(&evti->ei_inq, &empty) == SA_OK) && !empty) {
+	while ((saQueueIsEmpty(&evti->ei_inq, &empty) == SA_AIS_OK) && !empty) {
 		saQueueItemGet(&evti->ei_inq, (void *)&msg);
 		saQueueItemRemove(&evti->ei_inq);
 		free(*msg);
@@ -252,20 +251,20 @@ static void eventHandleInstanceDestructor(void *instance)
  * can use to communicate with that library instance.
  */
 
-SaErrorT 
+SaAisErrorT 
 saEvtInitialize(
 	SaEvtHandleT *evt_handle,
 	const SaEvtCallbacksT *callbacks,
 	SaVersionT *version)
 {
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct event_instance *evti;
 
 	/*
 	 * validate the requested version with what we support
 	 */
 	error = saVersionVerify(&evt_version_database, version);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_nofree;
 	}
 
@@ -275,12 +274,12 @@ saEvtInitialize(
 	 */
 	error = saHandleCreate(&evt_instance_handle_db, sizeof(*evti), 
 			(void*)evt_handle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_nofree;
 	}
 	error = saHandleInstanceGet(&evt_instance_handle_db, *evt_handle,
 			(void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_handle_free;
 	}
 	memset(evti, 0, sizeof(*evti));
@@ -296,7 +295,7 @@ saEvtInitialize(
 	 * sync response
 	 */
 	error = saQueueInit(&evti->ei_inq, 1024, sizeof(void *));
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_handle_put;
 	}
 
@@ -304,7 +303,7 @@ saEvtInitialize(
 	 * Set up communication with the event server
 	 */
 	error = saServiceConnect(&evti->ei_fd, MESSAGE_REQ_EVT_INIT);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_handle_put;
 	}
 
@@ -320,7 +319,7 @@ saEvtInitialize(
 	pthread_mutex_init(&evti->ei_mutex, NULL);
 	saHandleInstancePut(&evt_instance_handle_db, *evt_handle);
 
-	return SA_OK;
+	return SA_AIS_OK;
 
 error_handle_put:
 	saHandleInstancePut(&evt_instance_handle_db, *evt_handle);
@@ -339,18 +338,18 @@ error_nofree:
  * POSIX environment the system handle could be a file descriptor that is 
  * used with the poll() or select() system calls to detect incoming callbacks.
  */
-SaErrorT
+SaAisErrorT
 saEvtSelectionObjectGet(
 	SaEvtHandleT evt_handle,
 	SaSelectionObjectT *selection_object)
 {
 	struct event_instance *evti;
-	SaErrorT error;
+	SaAisErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
 			(void *)&evti);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return error;
 	}
 
@@ -358,7 +357,7 @@ saEvtSelectionObjectGet(
 
 	saHandleInstancePut(&evt_instance_handle_db, evt_handle);
 
-	return SA_OK;
+	return SA_AIS_OK;
 }
 
 
@@ -366,24 +365,24 @@ saEvtSelectionObjectGet(
  * Alocate an event data structure and associated handle to be
  * used to supply event data to a call back function.
  */
-static SaErrorT make_event(SaEvtEventHandleT *event_handle,
+static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 				struct lib_event_data *evt)
 {
 	struct event_data_instance *edi;
 	SaEvtEventPatternT *pat;
 	SaUint8T *str;
-	SaErrorT error;
+	SaAisErrorT error;
 	int i;
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
 		(void*)event_handle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 			goto make_evt_done;
 	}
 
 	error = saHandleInstanceGet(&event_handle_db, *event_handle,
 				(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 			goto make_evt_done;
 	}
 
@@ -420,7 +419,7 @@ static SaErrorT make_event(SaEvtEventHandleT *event_handle,
 		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			printf("make_event: couldn't alloc %d bytes\n", pat->patternSize);
-			error =  SA_ERR_NO_MEMORY;
+			error =  SA_AIS_ERR_NO_MEMORY;
 			break;
 		}
 		memcpy(edi->edi_patterns.patterns[i].pattern,
@@ -438,14 +437,14 @@ make_evt_done:
  * The saEvtDispatch() function invokes, in the context of the calling 
  * thread, one or all of the pending callbacks for the handle evt_handle.
  */
-SaErrorT
+SaAisErrorT
 saEvtDispatch(
 	SaEvtHandleT evt_handle,
 	SaDispatchFlagsT dispatch_flags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaErrorT error;
+	SaAisErrorT error;
 	int dispatch_avail;
 	struct event_instance *evti;
 	SaEvtEventHandleT event_handle;
@@ -462,7 +461,7 @@ saEvtDispatch(
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
 		(void *)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return error;
 	}
 
@@ -489,7 +488,7 @@ saEvtDispatch(
 		if (empty == 1) {
 			pthread_mutex_unlock(&evti->ei_mutex);
 			error = saPollRetry(&ufds, 1, timeout);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				goto error_nounlock;
 			}
 			pthread_mutex_lock(&evti->ei_mutex);
@@ -499,7 +498,7 @@ saEvtDispatch(
 		 * Handle has been finalized in another thread
 		 */
 		if (evti->ei_finalize == 1) {
-			error = SA_OK;
+			error = SA_AIS_OK;
 			pthread_mutex_unlock(&evti->ei_mutex);
 			goto error_unlock;
 		}
@@ -530,7 +529,7 @@ saEvtDispatch(
 			dispatch_data = (struct message_overlay *)&evti->ei_message;
 			error = saRecvRetry(evti->ei_fd, &dispatch_data->header,
 				sizeof(struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				pthread_mutex_unlock(&evti->ei_mutex);
 				goto error_unlock;
 			}
@@ -538,7 +537,7 @@ saEvtDispatch(
 				error = saRecvRetry(evti->ei_fd, dispatch_data->data,
 					dispatch_data->header.size - sizeof(struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
-				if (error != SA_OK) {
+				if (error != SA_AIS_OK) {
 					pthread_mutex_unlock(&evti->ei_mutex);
 					goto error_unlock;
 				}
@@ -582,13 +581,13 @@ saEvtDispatch(
 			res.evd_head.id = MESSAGE_REQ_EVT_EVENT_DATA;
 			res.evd_head.size = sizeof(res);
 			error = saSendRetry(evti->ei_fd, &res, sizeof(res), MSG_NOSIGNAL);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error);
 					break;
 			}
 			error = saRecvQueue(evti->ei_fd, evt, &evti->ei_inq, 
 											MESSAGE_RES_EVT_EVENT_DATA);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: receive failed: %d\n", 
 						error);
 				break;
@@ -596,13 +595,13 @@ saEvtDispatch(
 			/*
 			 * No data available.  This is OK.
 			 */
-			if (evt->led_head.error == SA_ERR_NOT_EXIST) {
+			if (evt->led_head.error == SA_AIS_ERR_NOT_EXIST) {
 				// printf("MESSAGE_RES_EVT_AVAILABLE: No event data\n");
-				error = SA_OK;
+				error = SA_AIS_OK;
 				break;
 			}
 
-			if (evt->led_head.error != SA_OK) {
+			if (evt->led_head.error != SA_AIS_OK) {
 				error = evt->led_head.error;
 				printf("MESSAGE_RES_EVT_AVAILABLE: Error returned: %d\n", 
 						error);
@@ -610,7 +609,7 @@ saEvtDispatch(
 			}
 
 			error = make_event(&event_handle, evt);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 					break;
 			}
 			callbacks.saEvtEventDeliverCallback(evt->led_sub_id, event_handle,
@@ -627,7 +626,7 @@ saEvtDispatch(
 		default:
 			printf("Dispatch: Bad message type 0x%x\n",
 					dispatch_data->header.id);
-			error = SA_ERR_LIBRARY;	
+			error = SA_AIS_ERR_LIBRARY;	
 			goto error_nounlock;
 			break;
 		}
@@ -678,15 +677,15 @@ error_nounlock:
  * Moreover, the Event Service is unavailable for further use unless it is 
  * reinitialized using the saEvtInitialize() function.
  */
-SaErrorT
+SaAisErrorT
 saEvtFinalize(SaEvtHandleT evt_handle)
 {
 	struct event_instance *evti;
-	SaErrorT error;
+	SaAisErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle, 
 			(void *)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return error;
 	}
 
@@ -698,7 +697,7 @@ saEvtFinalize(SaEvtHandleT evt_handle)
 	if (evti->ei_finalize) {
 		pthread_mutex_unlock(&evti->ei_mutex);
 		saHandleInstancePut(&evt_instance_handle_db, evt_handle);
-		return SA_ERR_BAD_HANDLE;
+		return SA_AIS_ERR_BAD_HANDLE;
 	}
 
 	evti->ei_finalize = 1;
@@ -725,7 +724,7 @@ saEvtFinalize(SaEvtHandleT evt_handle)
  * matched on both open channels, the Event Service performs two 
  * callbacks -- one for each opened channel.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtChannelOpen(
 	SaEvtHandleT evt_handle, 
 	const SaNameT *channel_name, 
@@ -737,12 +736,12 @@ saEvtChannelOpen(
 	struct req_evt_channel_open req;
 	struct res_evt_channel_open res;
 	struct event_channel_instance *eci;
-	SaErrorT error;
+	SaAisErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evt_handle,
 			(void*)&evti);
 	
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_open_done;
 	}
 
@@ -751,13 +750,13 @@ saEvtChannelOpen(
 	 */
 	error = saHandleCreate(&channel_handle_db, sizeof(*eci), 
 			(void*)channel_handle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_open_put;
 	}
 
 	error = saHandleInstanceGet(&channel_handle_db, *channel_handle,
 					(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		saHandleDestroy(&channel_handle_db, *channel_handle);
 		goto chan_open_put;
 	}
@@ -777,7 +776,7 @@ saEvtChannelOpen(
 	pthread_mutex_lock(&evti->ei_mutex);
 
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		pthread_mutex_unlock (&evti->ei_mutex);
 		goto chan_open_free;
 	}
@@ -786,12 +785,12 @@ saEvtChannelOpen(
 
 	pthread_mutex_unlock (&evti->ei_mutex);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_open_free;
 	}
 
 	error = res.ico_head.error;
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_open_free;
 	}
 
@@ -804,7 +803,7 @@ saEvtChannelOpen(
 	saHandleInstancePut (&evt_instance_handle_db, evt_handle);
 	saHandleInstancePut (&channel_handle_db, *channel_handle);
 
-	return SA_OK;
+	return SA_AIS_OK;
 
 chan_open_free:
 	saHandleDestroy(&channel_handle_db, *channel_handle);
@@ -823,10 +822,10 @@ chan_open_done:
  * deletes the event channel from the cluster namespace.
  */
 
-SaErrorT 
+SaAisErrorT 
 saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 	struct req_evt_channel_close req;
@@ -834,7 +833,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_close_done;
 	}
 
@@ -843,7 +842,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	 */
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto chan_close_put1;
 	}
 
@@ -854,7 +853,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	if (eci->eci_closing) {
 		pthread_mutex_unlock(&eci->eci_mutex);
 		saHandleInstancePut(&channel_handle_db, channel_handle);
-		return SA_ERR_BAD_HANDLE;
+		return SA_AIS_ERR_BAD_HANDLE;
 	}
 	eci->eci_closing = 1;
 
@@ -873,7 +872,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	pthread_mutex_lock(&evti->ei_mutex);
 
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		pthread_mutex_unlock(&evti->ei_mutex);
 		eci->eci_closing = 0;
 		goto chan_close_put2;
@@ -881,7 +880,7 @@ saEvtChannelClose(SaEvtChannelHandleT channel_handle)
 	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
 					MESSAGE_RES_EVT_CLOSE_CHANNEL);
 	pthread_mutex_unlock(&evti->ei_mutex);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		eci->eci_closing = 0;
 		goto chan_close_put2;
 	}
@@ -904,7 +903,7 @@ chan_close_done:
 	return error;
 }
 
-SaErrorT
+SaAisErrorT
 saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
                        SaInvocationT invocation,
                        const SaNameT *channel_name,
@@ -913,10 +912,10 @@ saEvtChannelOpenAsync(SaEvtHandleT evt_handle,
 	/* 
 	 * TODO: Fill in code
 	 */
-	return SA_ERR_LIBRARY;
+	return SA_AIS_ERR_LIBRARY;
 }
 
-SaErrorT
+SaAisErrorT
 SaEvtChannelUnlink(
 	SaEvtHandleT evtHandle,
 	const SaNameT *channelName)
@@ -924,7 +923,7 @@ SaEvtChannelUnlink(
 	/* 
 	 * TODO: Fill in code
 	 */
-	return SA_ERR_LIBRARY;
+	return SA_AIS_ERR_LIBRARY;
 }
 
 /* 
@@ -938,36 +937,36 @@ SaEvtChannelUnlink(
  * eventHandle when the process has published the event and has freed the 
  * event by invoking saEvtEventFree().
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventAllocate(
 	const SaEvtChannelHandleT channel_handle, 
 	SaEvtEventHandleT *event_handle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_data_instance *edi;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto alloc_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto alloc_put1;
 	}
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
 			(void*)event_handle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto alloc_put2;
 	}
 	error = saHandleInstanceGet(&event_handle_db, *event_handle,
 					(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto alloc_put2;
 	}
 
@@ -994,15 +993,15 @@ alloc_done:
  * associated with eventHandle. The function is used to free events allocated 
  * by saEvtEventAllocate() and by saEvtEventDeliverCallback().
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventFree(SaEvtEventHandleT event_handle)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_data_instance *edi;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
 			(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto evt_free_done;
 	}
 
@@ -1013,7 +1012,7 @@ saEvtEventFree(SaEvtEventHandleT event_handle)
 	if (edi->edi_freeing) {
 		pthread_mutex_unlock(&edi->edi_mutex);
 		saHandleInstancePut(&event_handle_db, event_handle);
-		return SA_ERR_BAD_HANDLE;
+		return SA_AIS_ERR_BAD_HANDLE;
 	}
 	edi->edi_freeing = 1;
 
@@ -1032,7 +1031,7 @@ evt_free_done:
  * attributes that a process can set are the pattern_array, priority, 
  * retention_time and publisher_name attributes.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventAttributesSet(
 	const SaEvtEventHandleT event_handle, 
 	const SaEvtEventPatternArrayT *pattern_array, 
@@ -1042,13 +1041,13 @@ saEvtEventAttributesSet(
 {
 	SaEvtEventPatternT *oldpatterns;
 	SaSizeT		    oldnumber;
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_data_instance *edi;
 	int i;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
 			(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto attr_set_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
@@ -1060,7 +1059,7 @@ saEvtEventAttributesSet(
 	 * publisher_name or pattern_array not allowed to be NULL
 	 */
 	if (!publisher_name || !pattern_array) {
-			error = SA_ERR_INVALID_PARAM;
+			error = SA_AIS_ERR_INVALID_PARAM;
 			goto attr_set_unlock;
 	}
 
@@ -1072,7 +1071,7 @@ saEvtEventAttributesSet(
 	edi->edi_patterns.patterns = malloc(sizeof(SaEvtEventPatternT) * 
 					pattern_array->patternsNumber);
 	if (!edi->edi_patterns.patterns) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto attr_set_done_reset;
 	}
 	edi->edi_patterns.patternsNumber = pattern_array->patternsNumber;
@@ -1090,7 +1089,7 @@ saEvtEventAttributesSet(
 				free(edi->edi_patterns.patterns[j].pattern);
 			}
 			free(edi->edi_patterns.patterns);
-			error = SA_ERR_NO_MEMORY;
+			error = SA_AIS_ERR_NO_MEMORY;
 			goto attr_set_done_reset;
 		}
 		memcpy(edi->edi_patterns.patterns[i].pattern,
@@ -1136,7 +1135,7 @@ attr_set_done:
  * Similarly, it is the responsibility of the invoking process to allocate 
  * memory for the pattern_array.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventAttributesGet(
 	SaEvtEventHandleT event_handle, 
 	SaEvtEventPatternArrayT *pattern_array, 
@@ -1146,14 +1145,14 @@ saEvtEventAttributesGet(
 	SaTimeT *publish_time, 
 	SaEvtEventIdT *event_id)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_data_instance *edi;
 	SaSizeT npats;
 	int i;
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
 			(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto attr_get_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
@@ -1220,13 +1219,13 @@ attr_get_done:
  * associated with an event previously delivered by 
  * saEvtEventDeliverCallback().
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventDataGet(
 	const SaEvtEventHandleT event_handle, 
 	void *event_data, 
 	SaSizeT *event_data_size)
 {
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct event_data_instance *edi;
 	SaSizeT xfsize;
 
@@ -1236,7 +1235,7 @@ saEvtEventDataGet(
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
 			(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto data_get_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
@@ -1371,14 +1370,14 @@ static uint32_t aisfilt_to_evt_filt(const SaEvtEventFilterArrayT *filters,
  * invoking process to deallocate the memory for those parameters after 
  * saEvtEventPublish() returns.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventPublish(
 	const SaEvtEventHandleT event_handle, 
 	const void *event_data, 
 	SaSizeT event_data_size,
 	SaEvtEventIdT *eventid)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_data_instance *edi;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
@@ -1390,13 +1389,13 @@ saEvtEventPublish(
 	int pub_sleep_trys = PUB_SLEEP_TRYS;
 
 	if (event_data_size > SA_EVT_DATA_MAX_LEN) {
-		error = SA_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_INVALID_PARAM;
 		goto pub_done;
 	}
 
 	error = saHandleInstanceGet(&event_handle_db, event_handle,
 			(void*)&edi);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto pub_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
@@ -1406,13 +1405,13 @@ saEvtEventPublish(
 	 * can't publish.
 	 */
 	if (!edi->edi_patterns.patterns) {
-		error = SA_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_INVALID_PARAM;
 		goto pub_put1;
 	}
 
 	error = saHandleInstanceGet(&channel_handle_db, edi->edi_channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto pub_put1;
 	}
 
@@ -1420,13 +1419,13 @@ saEvtEventPublish(
 	 * See if we can publish to this channel
 	 */
 	if (!(eci->eci_open_flags & SA_EVT_CHANNEL_PUBLISHER)) {
-		error = SA_ERR_ACCESS;
+		error = SA_AIS_ERR_ACCESS;
 		goto pub_put2;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto pub_put2;
 	}
 
@@ -1441,7 +1440,7 @@ saEvtEventPublish(
 	data_start = (void *)req->led_body + pattern_size;
 
 	if (!req) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto pub_put3;
 	}
 
@@ -1471,7 +1470,7 @@ saEvtEventPublish(
 	while (--pub_sleep_trys) {
 		pthread_mutex_lock(&evti->ei_mutex);
 		error = saSendRetry(evti->ei_fd, req, req->led_head.size, MSG_NOSIGNAL);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			pthread_mutex_unlock (&evti->ei_mutex);
 			goto pub_put3_free;
 		}
@@ -1480,13 +1479,13 @@ saEvtEventPublish(
 	
 		pthread_mutex_unlock (&evti->ei_mutex);
 
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto pub_put3_free;
 		}
 
 		error = res.iep_head.error;
 
-		if (error == SA_ERR_TRY_AGAIN) {
+		if (error == SA_AIS_ERR_TRY_AGAIN) {
 			struct timespec ts;
 			struct timespec rem;
 			ts.tv_sec = PUB_SLEEP_SEC;
@@ -1497,7 +1496,7 @@ pub_sleep:
 					ts = rem;
 					goto pub_sleep;
 				}
-				error = SA_ERR_TIMEOUT;
+				error = SA_AIS_ERR_TIMEOUT;
 				goto pub_put3_free;
 			}
 			continue;
@@ -1506,8 +1505,8 @@ pub_sleep:
 		*eventid = res.iep_event_id;
 		break;
 	}
-	if (error == SA_ERR_TRY_AGAIN) {
-		error = SA_ERR_TIMEOUT;
+	if (error == SA_AIS_ERR_TRY_AGAIN) {
+		error = SA_AIS_ERR_TIMEOUT;
 	}
 
 pub_put3_free:
@@ -1539,13 +1538,13 @@ pub_done:
  * subscription is established, the old subscription can be removed by 
  * invoking the saEvtEventUnsubscribe() function.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventSubscribe(
 	const SaEvtChannelHandleT channel_handle, 
 	const SaEvtEventFilterArrayT *filters, 
 	SaEvtSubscriptionIdT subscription_id)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 	struct req_evt_event_subscribe *req;
@@ -1554,7 +1553,7 @@ saEvtEventSubscribe(
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto subscribe_done;
 	}
 
@@ -1563,7 +1562,7 @@ saEvtEventSubscribe(
 	 */
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto subscribe_put1;
 	}
 
@@ -1571,7 +1570,7 @@ saEvtEventSubscribe(
 	 * See if we can subscribe to this channel
 	 */
 	if (!(eci->eci_open_flags & SA_EVT_CHANNEL_SUBSCRIBER)) {
-		error = SA_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_INVALID_PARAM;
 		goto subscribe_put2;
 	}
 
@@ -1583,7 +1582,7 @@ saEvtEventSubscribe(
 	req = malloc(sizeof(*req) + sz);
 	
 	if (!req) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto subscribe_put2;
 	}
 
@@ -1601,7 +1600,7 @@ saEvtEventSubscribe(
 	pthread_mutex_lock(&evti->ei_mutex);
 	error = saSendRetry(evti->ei_fd, req, req->ics_head.size, MSG_NOSIGNAL);
 	free(req);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		pthread_mutex_unlock (&evti->ei_mutex);
 		goto subscribe_put2;
 	}
@@ -1610,7 +1609,7 @@ saEvtEventSubscribe(
 
 	pthread_mutex_unlock (&evti->ei_mutex);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto subscribe_put2;
 	}
 
@@ -1635,12 +1634,12 @@ subscribe_done:
  * that wishes to modify a subscription without losing any events must 
  * establish the new subscription before removing the existing subscription.
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventUnsubscribe(
 	const SaEvtChannelHandleT channel_handle, 
 	SaEvtSubscriptionIdT subscription_id)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 	struct req_evt_event_unsubscribe req;
@@ -1648,13 +1647,13 @@ saEvtEventUnsubscribe(
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto unsubscribe_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto unsubscribe_put1;
 	}
 
@@ -1666,7 +1665,7 @@ saEvtEventUnsubscribe(
 
 	pthread_mutex_lock(&evti->ei_mutex);
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		pthread_mutex_unlock (&evti->ei_mutex);
 		goto unsubscribe_put2;
 	}
@@ -1675,7 +1674,7 @@ saEvtEventUnsubscribe(
 
 	pthread_mutex_unlock (&evti->ei_mutex);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto unsubscribe_put2;
 	}
 
@@ -1699,12 +1698,12 @@ unsubscribe_done:
  * available for new subscribers. The event is held until all old subscribers 
  * in the system process the event and free the event using saEvtEventFree().
  */
-SaErrorT 
+SaAisErrorT 
 saEvtEventRetentionTimeClear(
 	const SaEvtChannelHandleT channel_handle, 
 	const SaEvtEventIdT event_id)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 	struct req_evt_event_clear_retentiontime req;
@@ -1712,13 +1711,13 @@ saEvtEventRetentionTimeClear(
 
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 			(void*)&eci);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto ret_time_done;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, 
 			eci->eci_instance_handle, (void*)&evti);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto ret_time_put1;
 	}
 
@@ -1730,7 +1729,7 @@ saEvtEventRetentionTimeClear(
 
 	pthread_mutex_lock(&evti->ei_mutex);
 	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		pthread_mutex_unlock (&evti->ei_mutex);
 		goto ret_time_put2;
 	}
@@ -1739,7 +1738,7 @@ saEvtEventRetentionTimeClear(
 
 	pthread_mutex_unlock (&evti->ei_mutex);
 
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto ret_time_put2;
 	}
 
@@ -1754,3 +1753,6 @@ ret_time_done:
 	return error;
 }
 
+/*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ */
