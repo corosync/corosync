@@ -1,0 +1,175 @@
+.\"/*
+.\" * Copyright (c) 2004 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@mvista.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH EVS_MCAST_JOINED 3 3004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+evs_join \- Multicasts to all groups joined to an handle
+.SH SYNOPSIS
+.B #include <sys/uio.h>
+.B #include <openais/evs.h>
+.sp
+.BI "int evs_mcast_joined(evs_handle_t *" handle ", evs_guraantee_t " guarantee ", evs_priority_t " priority ", struct iovec *" iovec ", int " iov_len ");
+.SH DESCRIPTION
+The
+.B evs_mcast_joined
+function is multicast a message to all the groups that have been joined with the
+.B evs_join(3)
+function for the argument
+.I handle.
+Messages that are sent to any of the groups joined to the parameter
+.I handle
+will be delivered to all processors in the system.
+.PP
+The argument
+.I guarantee
+requests a delivery guarantee for the message to be sent.  The evs_guarantee_t type is
+defined by:
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+typedef enum {
+	EVS_TYPE_UNORDERED,	/* not implemented */
+	EVS_TYPE_FIFO,          /* same as agreed */
+	EVS_TYPE_AGREED,	/* implemented */
+	EVS_TYPE_SAFE           /* not implemented */
+} evs_guarantee_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The meanings of the evs_gaurantee_t typedef are:
+.TP
+.B EVS_GUARANTEE_UNORDERED
+Messages are guaranteed to be delivered, but with no particular order.  This 
+mode is unimplemented in the EVS library.
+.TP
+.B EVS_GUARANTEE_FIFO
+Messages are guaranteed to be delivered in first sent first delivery order
+from one one.  In fact, this guarantee is actually the AGREED guarantee.
+.TP
+.B EVS_GUARANTEE_AGREED
+All processors must agree on the order of delivery.  If a message is sent
+from two or more processors at about the same time, the delivery will occur
+in the same order to all processors.
+.TP
+.B EVS_GUARANTEE_SAFE
+All processors must agree on the order of delivery.  Further all processors
+must have a copy of the message before any delivery takes place.  This mode is
+unimplemented in the EVS library.
+.PP
+The argument
+.I priority
+describes the priority at which a message will be sent.  Messages will be sent with
+higher priorities before messages with lower priorities.  This requirement only applies
+to the local processor.  If two processors have two different priority messages, the
+messages may be sent from either priority depending on the algorithm of the EVS library.
+
+The evs_priority_t typedef is described by:
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+typedef enum {
+        EVS_PRIO_RECOVERY,
+        EVS_PRIO_HIGH,
+        EVS_PRIO_MED,
+        EVS_PRIO_LOW
+} evs_priority_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The meanings of the evs_priority_t typedef are:
+.TP
+.B EVS_PRIO_RECOVERY
+Messages are sent from this priority level first.  This priority level is used
+for recovery of state after a partition or merge occurs.
+.TP
+.B EVS_PRIO_HIGH
+Messages are sent from this priority level second.
+.TP
+.B EVS_PRIO_MED
+Messages are sent from this priority level third.
+.I groups
+.TP
+.B EVS_PRIO_LOW
+Messages are sent from this priority level fourth.
+.PP
+The
+.I iovec
+argument describes the scatter/gather list which is used to transmit a message.  This
+is a standard socket structure described by:
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+struct iovec
+{
+	void *iov_base;     /* Pointer to data.  */
+	size_t iov_len;     /* Length of data.  */
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The
+.I iovlen
+argument describes the number of entires in the
+.I iovec
+argument.  
+
+.SH RETURN VALUE
+This call returns the EVS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR evs_overview (8),
+.BR evs_initialize (3),
+.BR evs_finalize (3),
+.BR evs_fd_get (3),
+.BR evs_dispatch (3),
+.BR evs_leave (3),
+.BR evs_join (3),
+.BR evs_mcast_groups (3)
+.PP
