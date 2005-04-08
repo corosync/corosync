@@ -531,6 +531,7 @@ static int ckpt_recovery_process (void)
 					 */
 					iovecs[1].iov_base = ((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id);
 					iovecs[1].iov_len = ckptCheckpointSection->sectionDescriptor.sectionId.idLen;
+					request_exec_sync_state.header.size += iovecs[1].iov_len;	
 					 
 					/*
 					 * Check to see if we can queue the new message and if you can
@@ -568,7 +569,7 @@ static int ckpt_recovery_process (void)
 					* Create and save a new Sync Section message.
 					*/			
 								
-					request_exec_sync_section.header.size =	sizeof (struct req_exec_ckpt_synchronize_section);
+					request_exec_sync_section.header.size =	sizeof (struct req_exec_ckpt_synchronize_section); 
 					request_exec_sync_section.header.id = MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION;    
 					memcpy (&request_exec_sync_section.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
 					memcpy (&request_exec_sync_section.checkpointName, &checkpoint->name, sizeof(SaNameT));
@@ -588,19 +589,21 @@ static int ckpt_recovery_process (void)
 					* Populate the Sync Section Request
 					*/
 				    iovecs[0].iov_base = (char *)&request_exec_sync_section;
-					iovecs[0].iov_len = sizeof (struct req_exec_ckpt_synchronize_section);
+					iovecs[0].iov_len = sizeof (struct req_exec_ckpt_synchronize_section);					
 					
 					/*
 					 * Populate the Section ID
 					 */
 					iovecs[1].iov_base = ((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id);
 					iovecs[1].iov_len = ckptCheckpointSection->sectionDescriptor.sectionId.idLen;
+					request_exec_sync_section.header.size += iovecs[1].iov_len;
 					
 					/*
 					 * Populate the Section Data.
 					 */
 					iovecs[2].iov_base = ((char*)ckptCheckpointSection->sectionData + recovery_section_data_offset);
 					iovecs[2].iov_len = newSectionSize;
+					request_exec_sync_section.header.size += iovecs[2].iov_len;
 					/*
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
@@ -2350,6 +2353,7 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate);
 	iovecs[1].iov_len = req_lib_ckpt_sectioncreate->header.size - sizeof (struct req_lib_ckpt_sectioncreate);
+	req_exec_ckpt_sectioncreate.header.size += iovecs[1].iov_len;
 
 #ifdef DEBUG
 printf ("LIBRARY SECTIONCREATE string is %s len is %d\n", (unsigned char *)iovecs[1].iov_base,
@@ -2403,6 +2407,7 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectiondelete) + sizeof (struct req_lib_ckpt_sectiondelete);
 	iovecs[1].iov_len = req_lib_ckpt_sectiondelete->header.size - sizeof (struct req_lib_ckpt_sectiondelete);
+	req_exec_ckpt_sectiondelete.header.size += iovecs[1].iov_len; 
 
 	if (iovecs[1].iov_len > 0) {
 		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
@@ -2441,6 +2446,7 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionexpirationtimeset) + sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
 	iovecs[1].iov_len = req_lib_ckpt_sectionexpirationtimeset->header.size - sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
+	req_exec_ckpt_sectionexpirationtimeset.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
@@ -2467,7 +2473,7 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
 	req_exec_ckpt_sectionwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE;
-	req_exec_ckpt_sectionwrite.header.size = sizeof (struct req_exec_ckpt_sectionwrite);
+	req_exec_ckpt_sectionwrite.header.size = sizeof (struct req_exec_ckpt_sectionwrite); 
 
 	memcpy (&req_exec_ckpt_sectionwrite.req_lib_ckpt_sectionwrite,
 		req_lib_ckpt_sectionwrite,
@@ -2486,10 +2492,8 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite);
 	iovecs[1].iov_len = req_lib_ckpt_sectionwrite->header.size - sizeof (struct req_lib_ckpt_sectionwrite);
+	req_exec_ckpt_sectionwrite.header.size += iovecs[1].iov_len;
 
-/*
-	printf ("LIB writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
-*/
 	if (iovecs[1].iov_len > 0) {
 		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
 	} else {
@@ -2513,7 +2517,7 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	 * checkpoint opened is writeable mode so send message to cluster
 	 */
 	req_exec_ckpt_sectionoverwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE;
-	req_exec_ckpt_sectionoverwrite.header.size = sizeof (struct req_exec_ckpt_sectionoverwrite);
+	req_exec_ckpt_sectionoverwrite.header.size = sizeof (struct req_exec_ckpt_sectionoverwrite); 
 
 	memcpy (&req_exec_ckpt_sectionoverwrite.req_lib_ckpt_sectionoverwrite,
 		req_lib_ckpt_sectionoverwrite,
@@ -2532,6 +2536,7 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionoverwrite) + sizeof (struct req_lib_ckpt_sectionoverwrite);
 	iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size - sizeof (struct req_lib_ckpt_sectionoverwrite);
+	req_exec_ckpt_sectionoverwrite.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
 		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
@@ -2575,6 +2580,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	 */
 	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionread) + sizeof (struct req_lib_ckpt_sectionread);
 	iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size - sizeof (struct req_lib_ckpt_sectionread);
+	req_exec_ckpt_sectionread.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
 		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
