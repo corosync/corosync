@@ -136,7 +136,7 @@ ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
-	ckptbench ckptbenchth testevt testevs \
+	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
 	evsbench subscription publish evtbench
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
