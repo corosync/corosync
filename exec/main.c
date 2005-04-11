@@ -969,6 +969,8 @@ int main (int argc, char **argv)
 
 	memset(&this_non_loopback_ip, 0, sizeof(struct sockaddr_in));
 
+	this_non_loopback_ip.sin_addr.s_addr = LOCALHOST_IP;
+
 	aisexec_uid_determine ();
 
 	aisexec_gid_determine ();
