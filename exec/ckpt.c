@@ -496,16 +496,14 @@ static int ckpt_recovery_process (void)
 		 		* so lets start with sending the sync_msg
 		 		*/	
 				if (recovery_section_send_flag == 0) {
-					if (ckptCheckpointSection->sectionDescriptor.sectionId.id == 0) {
-						/*
-						* This is the default section forget sending this.
-						*/
-						recovery_ckpt_section_next = recovery_ckpt_section_next->next;
-						continue;
-					}
-					log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = %s.\n", 
+					if ((int)ckptCheckpointSection->sectionDescriptor.sectionId.id) {
+						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = %s.\n", 
 												(char*)&checkpoint->name.value,
 												((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id));							
+				    } else {
+						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = default section.\n",
+							(char*)&checkpoint->name.value);
+					} 
 					request_exec_sync_state.header.size =	sizeof (struct req_exec_ckpt_synchronize_state);
 					request_exec_sync_state.header.id = MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE;
 					memcpy(&request_exec_sync_state.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
@@ -579,12 +577,15 @@ static int ckpt_recovery_process (void)
 					request_exec_sync_section.sectionId.id = 0;
 					memcpy (&request_exec_sync_section.dataOffSet, &recovery_section_data_offset, sizeof(SaUint32T));
 					memcpy (&request_exec_sync_section.dataSize, &newSectionSize, sizeof(SaUint32T));			
-					
-					log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync Section Message for ckpt = %s, section = %s, Data size = %d.\n", 
+					if (ckptCheckpointSection->sectionDescriptor.sectionId.id) {
+						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync Section Message for ckpt = %s, section = %s, Data size = %d.\n", 
 												(char*)&checkpoint->name.value,
 												((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id),
 												newSectionSize);
-							
+					} else {
+						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync Section Message for ckpt = %s, default section, Data size = %d.\n",
+										(char*)&checkpoint->name.value,newSectionSize);
+					}
 					/*
 					* Populate the Sync Section Request
 					*/
@@ -856,19 +857,42 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
 	struct list_head *checkpoint_section_list;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 
-	log_printf (LOG_LEVEL_DEBUG, "Finding checkpoint section id %s %d\n", (char*)id, idLen);
+	if (idLen != 0) {
+		log_printf (LOG_LEVEL_DEBUG, "Finding checkpoint section id %s %d\n", (char*)id, idLen);
+	}
+	else {
+		log_printf (LOG_LEVEL_DEBUG, "Finding default checkpoint section\n");
+	}
 	for (checkpoint_section_list = ckptCheckpoint->checkpointSectionsListHead.next;
 		checkpoint_section_list != &ckptCheckpoint->checkpointSectionsListHead;
 		checkpoint_section_list = checkpoint_section_list->next) {
 
 		ckptCheckpointSection = list_entry (checkpoint_section_list,
 			struct saCkptCheckpointSection, list);
-	
-		log_printf (LOG_LEVEL_DEBUG, "Checking section id %*s\n", 
-			    (int)ckptCheckpointSection->sectionDescriptor.sectionId.idLen,
-			    ckptCheckpointSection->sectionDescriptor.sectionId.id);
+		if (ckptCheckpointSection->sectionDescriptor.sectionId.idLen) {
+			log_printf (LOG_LEVEL_DEBUG, "Checking section id %*s\n", 
+				ckptCheckpointSection->sectionDescriptor.sectionId.idLen,
+				ckptCheckpointSection->sectionDescriptor.sectionId.id);
+		}
+		else {
+			log_printf (LOG_LEVEL_DEBUG, "Checking default section id\n");
+		}
 
+		/*
+		  All 3 of these values being checked MUST be = 0 to return
+		  The default section. If even one of them is NON zero follow
+		  the normal route
+		*/
+		if ((idLen ||
+				ckptCheckpointSection->sectionDescriptor.sectionId.id ||
+				ckptCheckpointSection->sectionDescriptor.sectionId.idLen) == 0) {
+			 log_printf (LOG_LEVEL_DEBUG, "Returning default section\n");
+			 return (ckptCheckpointSection);
+		}
+		
 		if (ckptCheckpointSection->sectionDescriptor.sectionId.idLen == idLen &&
+			(ckptCheckpointSection->sectionDescriptor.sectionId.id)&&
+			(id)&&
 			(memcmp (ckptCheckpointSection->sectionDescriptor.sectionId.id, 
 			id, idLen) == 0)) {
 
@@ -881,8 +905,12 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
 void checkpoint_section_release (struct saCkptCheckpointSection *section)
 {
 	list_del (&section->list);
-	free (section->sectionDescriptor.sectionId.id); 
-	free (section->sectionData);
+	if (section->sectionDescriptor.sectionId.id) {
+		free (section->sectionDescriptor.sectionId.id); 
+	}
+	if (section->sectionData) {
+		free (section->sectionData);
+	}
 	poll_timer_delete (aisexec_poll_handle, section->expiration_timer);
 	free (section);
 }
@@ -1061,11 +1089,13 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 		 */
 		ckptCheckpointSection->sectionDescriptor.sectionId.id = 0;
 		ckptCheckpointSection->sectionDescriptor.sectionId.idLen = 0;
-		ckptCheckpointSection->sectionDescriptor.sectionSize = 0;
 		ckptCheckpointSection->sectionDescriptor.expirationTime = SA_TIME_END;
 		ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
 		ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /*current time*/
-		ckptCheckpointSection->sectionData = 0;
+		ckptCheckpointSection->sectionDescriptor.sectionSize = strlen("Factory installed data\0")+1;		
+		ckptCheckpointSection->sectionData = malloc(strlen("Factory installed data\0")+1);
+		assert(ckptCheckpointSection->sectionData);
+		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
 		ckptCheckpointSection->expiration_timer = 0;
 	}
 
@@ -1194,11 +1224,13 @@ static int recovery_checkpoint_open(SaNameT *checkpointName,
 		 */
 		ckptCheckpointSection->sectionDescriptor.sectionId.id = 0;
 		ckptCheckpointSection->sectionDescriptor.sectionId.idLen = 0;
-		ckptCheckpointSection->sectionDescriptor.sectionSize = 0;
 		ckptCheckpointSection->sectionDescriptor.expirationTime = SA_TIME_END;
 		ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
 		ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /*current time*/
-		ckptCheckpointSection->sectionData = 0;
+		ckptCheckpointSection->sectionDescriptor.sectionSize = strlen("Factory installed data\0")+1;
+		ckptCheckpointSection->sectionData = malloc(strlen("Factory installed data\0")+1);
+		assert(ckptCheckpointSection->sectionData);
+		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
 		ckptCheckpointSection->expiration_timer = 0;
 	}
 
@@ -1533,8 +1565,14 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	void *sectionId;
 	SaErrorT error = SA_AIS_OK;		
 	
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, section %s.\n",
-									&checkpointName->value, SectionId);
+	if ((int)sectionDescriptor->sectionId.idLen) {
+		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, section %s.\n",
+			&checkpointName->value, SectionId);
+	} else {
+		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, default section.\n",
+			&checkpointName->value);
+	}
+	
 	ckptCheckpoint = ckpt_checkpoint_find_global (checkpointName);
 	if (ckptCheckpoint == 0) {		
 		error = SA_AIS_ERR_NOT_EXIST;
@@ -1572,19 +1610,25 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	/*
 	 * Allocate checkpoint section id
 	 */
-	sectionId = malloc ((int)sectionDescriptor->sectionId.idLen);
-	if (sectionId == 0) {
-		free (ckptCheckpointSection);
-		free (initialData);
-		error = SA_AIS_ERR_NO_MEMORY;
-		goto error_exit;
+	if (sectionDescriptor->sectionId.idLen) {
+		sectionId = malloc ((int)sectionDescriptor->sectionId.idLen);
+		if (sectionId == 0) {
+			free (ckptCheckpointSection);
+			free (initialData);
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_exit;
+		}
+	} else {
+		sectionId = 0;
 	}
 	/*
 	 * Copy checkpoint section ID and initialize data.
 	 */
-	memcpy ((char*)sectionId, SectionId,
-		(int)sectionDescriptor->sectionId.idLen);
-	
+	if (SectionId) {
+		memcpy ((char*)sectionId, (char*)SectionId, (int)sectionDescriptor->sectionId.idLen);
+	} else {
+		sectionId = 0;		
+	}
 	memset (initialData, 0, sectionDescriptor->sectionSize);
 	
 	/*
@@ -1923,8 +1967,13 @@ static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_
 		((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite),
 		req_lib_ckpt_sectionwrite->idLen);
 	if (ckptCheckpointSection == 0) {
-printf ("CANT FIND SECTION '%s'\n",
-		((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
+		if (req_lib_ckpt_sectionwrite->idLen == 0) {
+			log_printf (LOG_LEVEL_ERROR, "CANT FIND DEFAULT SECTION.\n");
+		}
+		else {
+			printf ("CANT FIND SECTION '%s'\n",
+				((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
+		}
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
