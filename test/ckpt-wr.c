@@ -71,48 +71,13 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	10
 };
 
-SaCkptSectionIdT sectionId1 = {
-	14,
-	"section ID #1"
-};
-
-SaCkptSectionIdT sectionId2 = {
-	14,
-	"section ID #2"
-};
-
-SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
-	&sectionId1,
-	SA_TIME_END
-};
-
-SaCkptSectionCreationAttributesT sectionCreationAttributes2 = {
-	&sectionId2,
-	SA_TIME_END
-};
-
 char readBuffer1[1025];
-
-char readBuffer2[1025];
 
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
-		{
-			14,
-			"section ID #1"
-		},
+		SA_CKPT_DEFAULT_SECTION_ID,	
 		readBuffer1,
 		sizeof (readBuffer1),
-		0, 
-		0
-	},
-	{
-		{
-			14,
-			"section ID #2"
-		},
-		readBuffer2,
-		sizeof (readBuffer2),
 		0, 
 		0
 	}
@@ -122,10 +87,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 char data[DATASIZE];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
-		{
-			14,
-			"section ID #1"
-		},
+		SA_CKPT_DEFAULT_SECTION_ID,
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
 		0, //5, 
@@ -165,11 +127,6 @@ int main (void) {
 		get_test_output (error, SA_AIS_OK));
 
 
-    error = saCkptSectionCreate (checkpointHandle,
-			&sectionCreationAttributes1,
-			"0",
-			strlen ("0") + 1);
-
     do{
 			error = saCkptCheckpointRead (checkpointHandle,
 											ReadVectorElements,
@@ -181,12 +138,16 @@ int main (void) {
 				}
 				return (0);
 			}
-
-			count = atol((char *)ReadVectorElements->dataBuffer);
+			
+			if (ReadVectorElements->dataBuffer == 0) {
+				printf ("Default Checkpoint has no data\n");
+			} else {
+				count = atol((char *)ReadVectorElements->dataBuffer);
+			}
 			
 			count++;
 			sprintf((char*)&data, "%d",(int)count);
-			writeElement.sectionId = (const SaCkptSectionIdT)*sectionCreationAttributes1.sectionId;
+			writeElement.sectionId = (SaCkptSectionIdT)SA_CKPT_DEFAULT_SECTION_ID;
 			writeElement.dataBuffer = data;
 			writeElement.dataSize = strlen (data) + 1;
 			writeElement.dataOffset = 0;
