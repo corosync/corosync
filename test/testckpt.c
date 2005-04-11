@@ -96,6 +96,8 @@ char readBuffer1[1025];
 
 char readBuffer2[1025];
 
+char default_read_buffer[1025];
+
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
@@ -119,31 +121,52 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	}
 };
 
+SaCkptIOVectorElementT default_read_vector[] = {
+	{
+		SA_CKPT_DEFAULT_SECTION_ID,
+        default_read_buffer, /*"written data #1, this should extend past end of old section data", */
+        sizeof(default_read_buffer), /*sizeof ("data #1, this should extend past end of old section data") + 1, */
+        0, //5,
+        0
+    }
+};
+
+
 #define DATASIZE 127000
-char data[DATASIZE];
+char data1[DATASIZE];
+char data2[DATASIZE];
+char default_write_data[56];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
 			14,
 			"section ID #1"
 		},
-		data, /*"written data #1, this should extend past end of old section data", */
+		data1, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
 		0, //5, 
 		0
-	}
-#ifdef COMPILE_OUT
+	},
 	{
 		{
-			14
+			14,
 			"section ID #2",
 		},
-		data, /*"written data #2, this should extend past end of old section data" */
+		data2, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */
 		0, //3, 
 		0
 	}
-#endif
+};
+
+SaCkptIOVectorElementT default_write_vector[] = {
+	{
+		SA_CKPT_DEFAULT_SECTION_ID,
+		default_write_data, /*"written data #1, this should extend past end of old section data", */	
+		56, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
+		0, //5,
+		0
+	}
 };
 
 SaCkptCallbacksT callbacks = {
@@ -177,6 +200,29 @@ int main (void) {
 	printf ("%s: initial open of checkpoint\n",
 		get_test_output (error, SA_AIS_OK));
 
+	error = saCkptCheckpointRead (checkpointHandle,
+				default_read_vector,
+				1,
+				&erroroneousVectorIndex);
+	printf ("%s: Reading default checkpoint section before update\n",
+		get_test_output (error, SA_AIS_OK));
+	printf (" default_read_buffer:'%s'\n", default_read_buffer);
+
+	memset (default_read_buffer, 0, sizeof (default_read_buffer));
+	memcpy(default_write_data, "This is an update to the default section date, update#1", 56);
+	error = saCkptCheckpointWrite (checkpointHandle,
+				default_write_vector,
+				1,
+				&erroroneousVectorIndex);
+	printf ("%s: Writing default checkpoint section with data '%s' \n",get_test_output (error, SA_AIS_OK), default_write_data);
+
+	error = saCkptCheckpointRead (checkpointHandle,
+				default_read_vector,
+				1,
+				&erroroneousVectorIndex);
+    printf ("%s: Reading default checkpoint section \n",
+        get_test_output (error, SA_AIS_OK));
+    printf (" default_read_buffer:'%s'\n", default_read_buffer);
 	
 	error = saCkptSectionCreate (checkpointHandle,
         &sectionCreationAttributes1,

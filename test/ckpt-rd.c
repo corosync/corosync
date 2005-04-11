@@ -72,48 +72,14 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	10
 };
 
-SaCkptSectionIdT sectionId1 = {
-	14,
-	"section ID #1"
-};
-
-SaCkptSectionIdT sectionId2 = {
-	14,
-	"section ID #2"
-};
-
-SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
-	&sectionId1,
-	SA_TIME_END
-};
-
-SaCkptSectionCreationAttributesT sectionCreationAttributes2 = {
-	&sectionId2,
-	SA_TIME_END
-};
-
 char readBuffer1[1025];
 
-char readBuffer2[1025];
 
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
-		{
-			14,
-			"section ID #1"
-		},
+		SA_CKPT_DEFAULT_SECTION_ID,
 		readBuffer1,
 		sizeof (readBuffer1),
-		0, 
-		0
-	},
-	{
-		{
-			14,
-			"section ID #2"
-		},
-		readBuffer2,
-		sizeof (readBuffer2),
 		0, 
 		0
 	}
@@ -160,7 +126,8 @@ int main (void) {
 			return (0);
 		}
 
-		printf ("Checkpoint contains %s\n", (char *)ReadVectorElements->dataBuffer);
+		printf ("Checkpoint contains %s\n", 
+			((((char*) ReadVectorElements->dataBuffer)[0] != '\0') ? (char *)ReadVectorElements->dataBuffer : "empty string."));
 		nanosleep(&delay,0);
 	}
 
