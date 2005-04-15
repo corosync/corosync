@@ -16,6 +16,7 @@
 
 #define  TEST_EVENT_ORDER 1
 #define  EVT_FREQ 1000
+#define  TRY_WAIT 2
 uint32_t evt_count = 0;
 
 extern int get_sa_error(SaAisErrorT, char *, int);
@@ -83,7 +84,7 @@ char  user_data[65536];
 char  event_data[65536];
 int user_data_size = 0;
 
-void
+int
 test_subscription()
 {
 	SaEvtHandleT handle;
@@ -99,7 +100,7 @@ test_subscription()
 
 
 	
-	int result;
+	SaAisErrorT result;
 	 
 	flags = SA_EVT_CHANNEL_SUBSCRIBER | SA_EVT_CHANNEL_CREATE;
 	strcpy(channel_name.value, channel);
@@ -107,14 +108,18 @@ test_subscription()
 
 	printf("Test subscription:\n");
 
-	result = saEvtInitialize (&handle, &callbacks, &version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, &version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Event Initialize result: %s\n", result_buf);
-		return;
+		return result;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel open result: %s\n", result_buf);
@@ -125,9 +130,11 @@ test_subscription()
 		sub_next = 1;
 
 	for (i = 0; i < sub_next; i++) {
-		result = saEvtEventSubscribe(channel_handle,
+		do {
+			result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters[i],
 			subscription_id[i]);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
@@ -139,7 +146,9 @@ test_subscription()
 	/*
 	 * See if we got the event
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("saEvtSelectionObject get %s\n", result_buf);
@@ -161,9 +170,11 @@ test_subscription()
 
 		if (pfd.revents & (POLLERR|POLLHUP)) {
 			printf("Error recieved on poll fd %d\n", fd);
-			return;
+			return SA_AIS_ERR_BAD_OPERATION;
 		}
-		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+		do {
+			result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("saEvtDispatch %s\n", result_buf);
@@ -191,6 +202,7 @@ init_fin:
 		printf("Finalize result: %s\n", result_buf);
 	}
 
+	return result;
 }
 
 static char time_buf[1024];
@@ -356,10 +368,11 @@ evt_free:
 	}
 }
 
+static int err_wait_time = -1;
 
 int main (int argc, char **argv)
 {
-	static const char opts[] = "c:s:n:qu:";
+	static const char opts[] = "c:s:n:qu:f:";
 
 	int option;
 	char *p;
@@ -396,6 +409,10 @@ int main (int argc, char **argv)
 		case 'c':
 			strcpy(channel, optarg);
 			break;
+		case 'f':
+			err_wait_time = 
+				(unsigned int)strtoul(optarg, NULL, 0);
+			break;
 		case 'n':
 			strcpy(pubname, optarg);
 			break;
@@ -415,7 +432,15 @@ int main (int argc, char **argv)
 			return 1;
 		}
 	}
-	test_subscription();
+	do {
+		if (test_subscription() != SA_AIS_OK) {
+			if (err_wait_time > 0) {
+				sleep(err_wait_time);
+			} else {
+				return 1;
+			}
+		}
+	} while (err_wait_time > 0);
 
 	return 0;
 }

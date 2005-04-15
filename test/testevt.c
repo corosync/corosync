@@ -68,6 +68,7 @@
 extern int get_sa_error(SaAisErrorT, char *, int);
 char result_buf[256];
 int result_buf_len = sizeof(result_buf);
+#define TRY_WAIT 2
 
 
 void testresult (SaAisErrorT result, SaAisErrorT expected, int test_no)
@@ -137,7 +138,7 @@ long *exp_data;
  * Test saEvtInitialize and version checking.
  */
 void test_initialize (void) {
-	int result;
+	SaAisErrorT result;
 	SaEvtHandleT handle;
 	int i;
 
@@ -147,7 +148,10 @@ void test_initialize (void) {
 	 */
 	printf("Test lib version check on initlialize\n");
 	for (i=0; i < version_size; i++) {
-		result = saEvtInitialize (&handle, 0, versions[i].version);
+		do {
+			result = saEvtInitialize (&handle, 0, versions[i].version);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+
 		testresult (result, versions[i].result, i);
 		if (result == SA_AIS_OK) {
 			saEvtFinalize(handle);
@@ -203,7 +207,9 @@ void open_callback(SaInvocationT invocation,
 	}
 
 	printf("       Close async channel:\n");
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -231,7 +237,7 @@ test_channel()
 	SaEvtChannelHandleT channel_handle;
 	SaEvtChannelOpenFlagsT flags;
 	SaNameT channel_name;
-	int result;
+	SaAisErrorT result;
 
 	struct pollfd pfd;
 	int nfd;
@@ -249,7 +255,10 @@ test_channel()
 	printf("Test Channel operations:\n");
 
 	printf("       Channel open:\n");
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, 
+				&callbacks, versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -257,14 +266,18 @@ test_channel()
 		return;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Event Finalize result: %s\n", result_buf);
@@ -273,7 +286,9 @@ test_channel()
 	}
 
 	printf("       Channel close:\n");
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -281,7 +296,9 @@ test_channel()
 		return;
 	}
 
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -293,18 +310,25 @@ test_channel()
 	 * Test channel subscribe
 	 */
 	printf("       Channel subscribe:\n");
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK)  {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -312,19 +336,25 @@ test_channel()
 		return;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
-			&subscribe_filters,
-			subscription_id);
+	do {
+		result = saEvtEventSubscribe(channel_handle,
+				&subscribe_filters,
+				subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -335,28 +365,38 @@ test_channel()
 
 	printf("       Channel unsubscribe:\n");
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event unsubscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
 		}
 		return;
 	}
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK)  {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Channel close result: %s\n", result_buf);
 	}
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Finalize result: %s\n", result_buf);
@@ -366,14 +406,19 @@ test_channel()
 	 * Test channel subscribe with no close
 	 */
 	printf("       Channel subscribe with no close at end:\n");
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
@@ -381,9 +426,11 @@ test_channel()
 		return;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -391,7 +438,9 @@ test_channel()
 		result = saEvtChannelClose(channel_handle);
 	}
 
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Finalize failed\n");
@@ -402,18 +451,25 @@ test_channel()
 	 * Test multiple subscriptions
 	 */
 	printf("       Multiple subscriptions\n");
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -421,19 +477,25 @@ test_channel()
 		return;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: First event subscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -441,19 +503,25 @@ test_channel()
 		return;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id+1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: second event subscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -466,9 +534,11 @@ test_channel()
 	 */
 	printf("       Duplicate subscription\n");
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_ERR_EXIST) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -483,16 +553,23 @@ test_channel()
 	 */
 	printf("       Unsubscribe non-existent sub_id\n");
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id+2);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, 
+				subscription_id+2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_INVALID_PARAM) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event unsubscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -500,22 +577,31 @@ test_channel()
 		return;
 	}
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: first event unsubscribe result: %s\n", result_buf);
 	}
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id+1);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, 
+				subscription_id+1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: second event unsubscribe result: %s\n", result_buf);
 	}
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Channel close result: %s\n", result_buf);
 	}
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Finalize result: %s\n", result_buf);
@@ -525,7 +611,10 @@ test_channel()
 	 * Test opening a channel async.
 	 */
 	printf("       Channel open async:\n");
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -533,14 +622,18 @@ test_channel()
 		return;
 	}
 
-	result = saEvtChannelOpenAsync(handle, open_invocation, 
+	do {
+		result = saEvtChannelOpenAsync(handle, open_invocation, 
 			&channel_name, flags);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open async result: %s\n", result_buf);
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Event Finalize result: %s\n", result_buf);
@@ -550,7 +643,9 @@ test_channel()
 	/*
 	 * See if we got the open callback
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -569,7 +664,9 @@ test_channel()
 		return;
 	}
 
-	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	do {
+		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -579,7 +676,9 @@ test_channel()
 
 
 
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -673,7 +772,8 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&my_priority,		/* priority */
 			&my_retention_time,	/* retention time */
@@ -681,6 +781,7 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 			&my_publish_time,	/* publish time */
 			&my_event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result(2): %s\n", result_buf);
@@ -745,7 +846,9 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	act_data = malloc(my_event_data_size);
 	memset(act_data, 0, my_event_data_size);
 	data_size = my_event_data_size;
-	result = saEvtEventDataGet(event_handle, act_data, &data_size);
+	do {
+		result = saEvtEventDataGet(event_handle, act_data, &data_size);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event data get result: %s\n", result_buf);
@@ -766,7 +869,9 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 dat_free:
 	free(act_data);
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -790,7 +895,7 @@ test_event()
 
 
 	
-	int result;
+	SaAisErrorT result;
 
 	int i;
 	 
@@ -801,14 +906,18 @@ test_event()
 
 	printf("Test Event operations:\n");
 
-	result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
@@ -819,7 +928,9 @@ test_event()
 	 * Allocate an event
 	 */
 	printf("       Event allocation\n");
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate result: %s\n", result_buf);
@@ -827,7 +938,8 @@ test_event()
 	}
 
 	printf("       Get event attributes(1)\n");
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			0,	/* patterns */
 			0,	/* priority */
 			0,	/* retention time */
@@ -835,6 +947,7 @@ test_event()
 			0,	/* publish time */
 			0	/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result(1): %s\n", result_buf);
@@ -847,7 +960,8 @@ test_event()
 	 */
 	printf("       Get event attributes(2)\n");
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&priority,	/* priority */
 			&retention_time,	/* retention time */
@@ -855,6 +969,7 @@ test_event()
 			&publish_time,	/* publish time */
 			&event_id	/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result(2): %s\n", result_buf);
@@ -884,11 +999,13 @@ test_event()
 	 * Set some attributes, then read them back
 	 */
 	printf("       Set/get event attributes(1)\n");
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			test_ret_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result(1): %s\n", result_buf);
@@ -896,7 +1013,8 @@ test_event()
 	}
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&priority,		/* priority */
 			&retention_time,	/* retention time */
@@ -904,6 +1022,7 @@ test_event()
 			&publish_time,		/* publish time */
 			&event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result(2): %s\n", result_buf);
@@ -968,41 +1087,55 @@ test_event()
 	 * event user data
 	 */
 	printf("       Get event data(1)\n");
-	result = saEvtEventDataGet(event_handle, 0, 0);
+	do {
+		result = saEvtEventDataGet(event_handle, 0, 0);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(1) result: %s\n", result_buf);
 	}
 	printf("       Get event data(2)\n");
-	result = saEvtEventDataGet(event_handle, event_data, 0);
+	do {
+		result = saEvtEventDataGet(event_handle, event_data, 0);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(2) result: %s\n", result_buf);
 	}
 	printf("       Get event data(3)\n");
 	event_data_size = EVENT_DATA_SIZE;
-	result = saEvtEventDataGet(event_handle, 0, &event_data_size);
+	do {
+		result = saEvtEventDataGet(event_handle, 0, &event_data_size);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(3) result: %s\n", result_buf);
 	}
 	printf("       Get event data(4)\n");
 	event_data_size = EVENT_DATA_SIZE;
-	result = saEvtEventDataGet(event_handle, event_data, &event_data_size);
+	do {
+		result = saEvtEventDataGet(event_handle, event_data, 
+				&event_data_size);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(4) result: %s\n", result_buf);
 	}
 	printf("       Get event data(5)\n");
 	event_data_size = 1;
-	result = saEvtEventDataGet(event_handle, event_data, &event_data_size);
+	do {
+		result = saEvtEventDataGet(event_handle, event_data, 
+				&event_data_size);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(5) result: %s\n", result_buf);
 	}
 
 	printf("       Free event(1)\n");
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -1014,14 +1147,18 @@ test_event()
 
 	printf("       Publish with no patterns set\n");
 
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate result: %s\n", result_buf);
 		goto evt_close;
 	}
 
-	result = saEvtEventPublish(event_handle, 0, 0, &event_id);
+	do {
+		result = saEvtEventPublish(event_handle, 0, 0, &event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_INVALID_PARAM) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result(1): %s\n", result_buf);
@@ -1033,19 +1170,25 @@ test_event()
 	 */
 	printf("       Publish with patterns set\n");
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe result: %s\n", result_buf);
-		result = saEvtChannelClose(channel_handle);
+		do {
+			result = saEvtChannelClose(channel_handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Channel close result: %s\n", result_buf);
 		}
-		result = saEvtFinalize(handle);
+		do {
+			result = saEvtFinalize(handle);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: Finalize result: %s\n", result_buf);
@@ -1054,11 +1197,13 @@ test_event()
 	}
 
 	retention_time = 0ULL;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result(2): %s\n", result_buf);
@@ -1077,8 +1222,10 @@ test_event()
 	/*
 	 * Send it
 	 */
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result(2): %s\n", result_buf);
@@ -1088,7 +1235,9 @@ test_event()
 	/*
 	 * See if we got the event
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -1107,7 +1256,9 @@ test_event()
 		return;
 	}
 
-	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	do {
+		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -1121,21 +1272,27 @@ test_event()
 	 * Test cleanup
 	 */
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
 
 evt_close:
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result: %s\n", result_buf);
 	}
 evt_fin:
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -1173,7 +1330,8 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 	printf("       multi_test_callback1 called(%d)\n", ++call_count);
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&my_priority,		/* priority */
 			&my_retention_time,	/* retention time */
@@ -1181,6 +1339,7 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 			&my_publish_time,	/* publish time */
 			&my_event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result: %s\n", result_buf);
@@ -1212,7 +1371,9 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -1267,7 +1428,7 @@ test_multi_channel1()
 
 
 	
-	int result;
+	SaAisErrorT result;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
@@ -1276,14 +1437,19 @@ test_multi_channel1()
 
 	printf("Test multiple operations:\n");
 
-	result = saEvtInitialize (&handle, &multi_callbacks, versions[0].version);
+	do {
+	result = saEvtInitialize (&handle, &multi_callbacks, 
+			versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
@@ -1293,7 +1459,9 @@ test_multi_channel1()
 	/*
 	 * Allocate an event
 	 */
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate result: %s\n", result_buf);
@@ -1312,9 +1480,11 @@ test_multi_channel1()
  */
 
 	sub_filt.filters = filt1;
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&sub_filt,
 			sub1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(1) result: %s\n", result_buf);
@@ -1322,9 +1492,11 @@ test_multi_channel1()
 	}
 
 	sub_filt.filters = filt2;
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&sub_filt,
 			sub2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(2) result: %s\n", result_buf);
@@ -1335,19 +1507,23 @@ test_multi_channel1()
 	retention_time = 0ULL;
 
 	evt_pat.patterns = &pat1;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result(1): %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result:(1) %s\n", result_buf);
@@ -1355,19 +1531,23 @@ test_multi_channel1()
 	}
 
 	evt_pat.patterns = &pat2;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result(2): %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result:(2) %s\n", result_buf);
@@ -1375,19 +1555,23 @@ test_multi_channel1()
 	}
 
 	evt_pat.patterns = &pat3;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result(3): %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id3);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result:(3) %s\n", result_buf);
@@ -1397,7 +1581,9 @@ test_multi_channel1()
 	/*
 	 * See if we got the event
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -1417,7 +1603,9 @@ test_multi_channel1()
 		}
 
 
-		result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		do {
+			result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -1436,21 +1624,27 @@ test_multi_channel1()
 	 * Test cleanup
 	 */
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
 
 evt_close:
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result: %s\n", result_buf);
 	}
 evt_fin:
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -1482,7 +1676,8 @@ multi_test_callback2(SaEvtSubscriptionIdT my_subscription_id,
 	printf("       multi_test_callback2 called(%d)\n", ++call_count);
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&my_priority,		/* priority */
 			&my_retention_time,	/* retention time */
@@ -1490,6 +1685,7 @@ multi_test_callback2(SaEvtSubscriptionIdT my_subscription_id,
 			&my_publish_time,	/* publish time */
 			&my_event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result: %s\n", result_buf);
@@ -1526,7 +1722,9 @@ multi_test_callback2(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -1570,7 +1768,7 @@ test_multi_channel2()
 
 
 	
-	int result;
+	SaAisErrorT result;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
@@ -1585,48 +1783,61 @@ test_multi_channel2()
  */
 	printf("Test multiple opens/subscribes:\n");
 
-	result = saEvtInitialize (&handle, &multi_callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &multi_callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(0) result: %s\n", result_buf);
 		goto evt_fin;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(1) result: %s\n", result_buf);
 		goto evt_fin;
 	}
 
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate result: %s\n", result_buf);
 		goto evt_close;
 	}
 	sub_filt.filters = filt1;
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&sub_filt,
 			sub1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(0) result: %s\n", result_buf);
 		goto evt_free;
 	}
 	sub_filt.filters = filt1;
-	result = saEvtEventSubscribe(channel_handle1,
+	do {
+		result = saEvtEventSubscribe(channel_handle1,
 			&sub_filt,
 			sub2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(1) result: %s\n", result_buf);
@@ -1635,19 +1846,23 @@ test_multi_channel2()
 	retention_time = 0ULL;
 
 	evt_pat.patterns = &pat1;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result: %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result: %s\n", result_buf);
@@ -1656,7 +1871,9 @@ test_multi_channel2()
 	/*
 	 * See if we got the event
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -1678,7 +1895,9 @@ test_multi_channel2()
 		}
 
 
-		result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		do {
+			result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 			get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -1697,27 +1916,35 @@ test_multi_channel2()
 	 * Test cleanup
 	 */
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
 
 evt_close:
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result(0): %s\n", result_buf);
 	}
-	result = saEvtChannelClose(channel_handle1);
+	do {
+		result = saEvtChannelClose(channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result(1): %s\n", result_buf);
 	}
 evt_fin:
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -1748,7 +1975,8 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 	printf("       multi_test_callback2 called(%d)\n", ++call_count);
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&my_priority,		/* priority */
 			&my_retention_time,	/* retention time */
@@ -1756,6 +1984,7 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 			&my_publish_time,	/* publish time */
 			&my_event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result: %s\n", result_buf);
@@ -1793,7 +2022,9 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -1840,7 +2071,7 @@ test_multi_channel3()
 
 
 	
-	int result;
+	SaAisErrorT result;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
@@ -1861,36 +2092,47 @@ test_multi_channel3()
  */
 	printf("Test multiple different channels/subscribes:\n");
 
-	result = saEvtInitialize (&handle, &multi_callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &multi_callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(0) result: %s\n", result_buf);
 		goto evt_fin;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name1, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name1, flags, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(1) result: %s\n", result_buf);
 		goto evt_fin;
 	}
 
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate(0) result: %s\n", result_buf);
 		goto evt_close;
 	}
-	result = saEvtEventAllocate(channel_handle1, &event_handle1);
+	do {
+		result = saEvtEventAllocate(channel_handle1, &event_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate(1) result: %s\n", result_buf);
@@ -1898,18 +2140,22 @@ test_multi_channel3()
 	}
 
 	sub_filt.filters = filt1;
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&sub_filt,
 			sub1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(0) result: %s\n", result_buf);
 		goto evt_free;
 	}
 	sub_filt.filters = filt1;
-	result = saEvtEventSubscribe(channel_handle1,
+	do {
+		result = saEvtEventSubscribe(channel_handle1,
 			&sub_filt,
 			sub2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe(1) result: %s\n", result_buf);
@@ -1918,11 +2164,13 @@ test_multi_channel3()
 	retention_time = 0ULL;
 
 	evt_pat.patterns = &pat1;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr(0) result: %s\n", result_buf);
@@ -1930,26 +2178,32 @@ test_multi_channel3()
 	}
 
 	evt_pat.patterns = &pat2;
-	result = saEvtEventAttributesSet(event_handle1,
+	do {
+		result = saEvtEventAttributesSet(event_handle1,
 			&evt_pat,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr(1) result: %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  DATA_SIZE, 
 								&event_id1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result: %s\n", result_buf);
 		goto evt_close;
 	}
-	result = saEvtEventPublish(event_handle1, exp_data,  DATA_SIZE, 
+	do {
+		result = saEvtEventPublish(event_handle1, exp_data,  DATA_SIZE, 
 								&event_id2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result: %s\n", result_buf);
@@ -1958,7 +2212,9 @@ test_multi_channel3()
 	/*
 	 * See if we got the events
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -1980,7 +2236,9 @@ test_multi_channel3()
 		}
 
 
-		result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		do {
+			result = saEvtDispatch(handle, SA_DISPATCH_ALL);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 		if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 			printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -1999,32 +2257,42 @@ test_multi_channel3()
 	 * Test cleanup
 	 */
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
-	result = saEvtEventFree(event_handle1);
+	do {
+		result = saEvtEventFree(event_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
 
 evt_close:
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result(0): %s\n", result_buf);
 	}
-	result = saEvtChannelClose(channel_handle1);
+	do {
+		result = saEvtChannelClose(channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result(1): %s\n", result_buf);
 	}
 evt_fin:
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2061,7 +2329,8 @@ event_callback_retained(SaEvtSubscriptionIdT my_subscription_id,
 {
 	SaAisErrorT result;
 	//printf("event_callback_retained called\n");
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			0,		/* patterns */
 			0,		/* priority */
 			0,		/* retention time */
@@ -2069,6 +2338,7 @@ event_callback_retained(SaEvtSubscriptionIdT my_subscription_id,
 			0,		/* publish time */
 			&retained_id	/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: callback attr get result: %s\n", result_buf);
@@ -2104,15 +2374,19 @@ test_retention()
 
 	printf("Test Event retention:\n");
 
-	result = saEvtInitialize (&handle, &callbacks_retain, 
+	do {
+		result = saEvtInitialize (&handle, &callbacks_retain, 
 			versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Initialize result: %s\n", result_buf);
 		return;
 	}
 
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -2120,8 +2394,10 @@ test_retention()
 		return;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
@@ -2131,7 +2407,9 @@ test_retention()
 	/*
 	 * Allocate an event
 	 */
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Allocate result: %s\n", result_buf);
@@ -2140,11 +2418,13 @@ test_retention()
 
 
 	retention_time = (EXPIRE_TIME)*1000000000ULL;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set attr result: %s\n", result_buf);
@@ -2158,7 +2438,9 @@ test_retention()
 	printf("       Receive retained event\n");
 	got_event=0;
 	retained_id=0;
-	result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result(1): %s\n", result_buf);
@@ -2166,9 +2448,11 @@ test_retention()
 	}
 
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2188,7 +2472,9 @@ test_retention()
 		goto evt_free;
 	}
 
-	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	do {
+		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -2207,7 +2493,9 @@ test_retention()
 		goto evt_free;
 	}
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: unsubscribe result: %s\n", result_buf);
@@ -2221,14 +2509,18 @@ test_retention()
 	printf("       Expire retained event\n");
 	got_event=0;
 	retained_id=0;
-	result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result(1): %s\n", result_buf);
 		goto evt_close;
 	}
 
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
@@ -2242,9 +2534,11 @@ test_retention()
 	 */
 	sleep(timeout);
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2265,7 +2559,9 @@ test_retention()
 		goto evt_free;
 	}
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: unsubscribe result: %s\n", result_buf);
@@ -2279,21 +2575,25 @@ test_retention()
 	 * wait for it.
 	 * unsubscribe
 	 * Clear it.
-	 * Then subscribe and make sure that the messages isn't delivered.
+	 * Then subscribe and make sure that the message isn't delivered.
 	 */
 	printf("       Clear event retention time\n");
 	got_event=0;
 	retained_id=0;
-	result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	do {
+		result = saEvtEventPublish(event_handle, exp_data,  0, &event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event Publish result(2): %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe result: %s\n", result_buf);
@@ -2312,7 +2612,9 @@ test_retention()
 		goto evt_free;
 	}
 
-	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	do {
+		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -2331,23 +2633,29 @@ test_retention()
 		goto evt_free;
 	}
 
-	result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	do {
+		result = saEvtEventUnsubscribe(channel_handle, subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: unsubscribe result: %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventRetentionTimeClear(channel_handle, event_id);
+	do {
+		result = saEvtEventRetentionTimeClear(channel_handle, event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: clear retention time result: %s\n", result_buf);
 		goto evt_free;
 	}
 
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event subscribe result: %s\n", result_buf);
@@ -2370,21 +2678,27 @@ test_retention()
 	 * Test cleanup
 	 */
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
 	}
 
 evt_close:
-	result = saEvtChannelClose(channel_handle);
+	do {
+		result = saEvtChannelClose(channel_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close result: %s\n", result_buf);
 	}
 evt_fin:
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2410,7 +2724,8 @@ unlink_chan_callback(SaEvtSubscriptionIdT my_subscription_id,
 	printf("            unlink_chan_callback called(%d)\n", ++call_count);
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&my_priority,		/* priority */
 			&my_retention_time,	/* retention time */
@@ -2418,6 +2733,7 @@ unlink_chan_callback(SaEvtSubscriptionIdT my_subscription_id,
 			&my_publish_time,	/* publish time */
 			&my_event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event get attr result: %s\n", result_buf);
@@ -2441,7 +2757,9 @@ unlink_chan_callback(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 evt_free:
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event free result: %s\n", result_buf);
@@ -2472,7 +2790,7 @@ test_unlink_channel()
 	SaEvtEventHandleT	event_handle2;
 	SaEvtChannelOpenFlagsT flags1, flags2;
 	SaNameT channel_name;
-	int result;
+	SaAisErrorT result;
 
 	struct pollfd pfd;
 	int nfd;
@@ -2489,7 +2807,10 @@ test_unlink_channel()
 
 	printf("Test Channel Unlink operations:\n");
 
-	result = saEvtInitialize (&handle, &unlink_callbacks, versions[0].version);
+	do {
+		result = saEvtInitialize (&handle, &unlink_callbacks, 
+				versions[0].version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2507,7 +2828,9 @@ test_unlink_channel()
 
 	strcpy(channel_name.value, channel);
 	channel_name.length = strlen(channel);
-	result = saEvtChannelUnlink(handle, &channel_name);
+	do {
+		result = saEvtChannelUnlink(handle, &channel_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel unlink(1) result: %s\n", result_buf);
@@ -2516,7 +2839,9 @@ test_unlink_channel()
 
 	strcpy(channel_name.value, unlink_channel);
 	channel_name.length = strlen(unlink_channel);
+	do {
 	result = saEvtChannelUnlink(handle, &channel_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_NOT_EXIST) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel unlink(2) result: %s\n", result_buf);
@@ -2532,8 +2857,10 @@ test_unlink_channel()
 	 */
 	printf("       2 Channel open/close/open:\n");
 
-	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 
 	if (result != SA_AIS_OK) {
@@ -2542,7 +2869,9 @@ test_unlink_channel()
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelClose(channel_handle1);
+	do {
+		result = saEvtChannelClose(channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
@@ -2550,8 +2879,10 @@ test_unlink_channel()
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(2) result: %s\n", result_buf);
@@ -2570,21 +2901,27 @@ test_unlink_channel()
 	 */
 	printf("       3 Channel unlink/open/close:\n");
 
-	result = saEvtChannelUnlink(handle, &channel_name);
+	do {
+		result = saEvtChannelUnlink(handle, &channel_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel unlink result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
 				&channel_handle2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_NOT_EXIST) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
 		goto unlink_exit;
 	}
-	result = saEvtChannelClose(channel_handle1);
+	do {
+		result = saEvtChannelClose(channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close(1) result: %s\n", result_buf);
@@ -2603,30 +2940,38 @@ test_unlink_channel()
 	 *		channel doesn't exist anymore.
 	 */
 	printf("       4 Channel open/unlink/close/open:\n");
-	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelUnlink(handle, &channel_name);
+	do {
+		result = saEvtChannelUnlink(handle, &channel_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel unlink result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelClose(channel_handle1);
+	do {
+		result = saEvtChannelClose(channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel close(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_NOT_EXIST) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open(2) result: %s\n", result_buf);
@@ -2645,41 +2990,51 @@ test_unlink_channel()
 	 */
 	printf("       5 Channel open/unlink/open/send:\n");
 
-	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
 				&channel_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelUnlink(handle, &channel_name);
+	do {
+		result = saEvtChannelUnlink(handle, &channel_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel unlink result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+	do {
+		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
 				&channel_handle2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel open result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtEventSubscribe(channel_handle1,
+	do {
+		result = saEvtEventSubscribe(channel_handle1,
 			&subscribe_filters,
 			sub1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel subscribe(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtEventSubscribe(channel_handle2,
+	do {
+		result = saEvtEventSubscribe(channel_handle2,
 			&subscribe_filters,
 			sub2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: channel subscribe(2) result: %s\n", result_buf);
@@ -2687,47 +3042,59 @@ test_unlink_channel()
 	}
 
 	retention_time = 0ULL;
-	result = saEvtEventAllocate(channel_handle1, &event_handle1);
+	do {
+		result = saEvtEventAllocate(channel_handle1, &event_handle1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event allocate(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
-	result = saEvtEventAttributesSet(event_handle1,
+	do {
+		result = saEvtEventAttributesSet(event_handle1,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtEventAllocate(channel_handle2, &event_handle2);
+	do {
+		result = saEvtEventAllocate(channel_handle2, &event_handle2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event allocate(2) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
-	result = saEvtEventAttributesSet(event_handle2,
+	do {
+		result = saEvtEventAttributesSet(event_handle2,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			retention_time,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event set(2) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
 
-	result = saEvtEventPublish(event_handle1, 0,  0, &event_id1);
+	do {
+		result = saEvtEventPublish(event_handle1, 0,  0, &event_id1);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event publish(1) result: %s\n", result_buf);
 		goto unlink_exit;
 	}
-	result = saEvtEventPublish(event_handle2, 0,  0, &event_id2);
+	do {
+		result = saEvtEventPublish(event_handle2, 0,  0, &event_id2);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event publish(2) result: %s\n", result_buf);
@@ -2735,7 +3102,9 @@ test_unlink_channel()
 	}
 
 
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: select object get result: %s\n", result_buf);
@@ -2758,7 +3127,9 @@ test_unlink_channel()
 			}
 		} else {
 
-			result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+			do {
+				result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+			} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 			if (result != SA_AIS_OK) {
 				get_sa_error(result, result_buf, result_buf_len);
 				printf("ERROR: saEvtDispatch %s\n", result_buf);
@@ -2787,7 +3158,9 @@ unlink_exit:
 	saEvtChannelClose(channel_handle1);
 	saEvtChannelClose(channel_handle2);
 	saEvtChannelUnlink(handle, &channel_name);
-	result = saEvtFinalize(handle);
+	do {
+		result = saEvtFinalize(handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Event Finalize result: %s\n", result_buf);
@@ -2809,3 +3182,7 @@ int main (void)
 
 	return (0);
 }
+
+/*
+ *	vi: set autoindent tabstop=4 shiftwidth=4 :
+ */

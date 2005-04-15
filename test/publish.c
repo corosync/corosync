@@ -17,6 +17,7 @@
 // #define EVENT_SUBSCRIBE
 
 #define PUB_RETRIES 100
+#define TRY_WAIT 2
 
 extern int get_sa_error(SaAisErrorT, char *, int);
 char result_buf[256];
@@ -126,8 +127,6 @@ test_pub()
 	uint64_t test_retention;
 	int fd;
 	int i;
-	int j;
-	int did_dot;
 
 	SaEvtEventIdT event_id;
 #ifdef EVENT_SUBSCRIBE
@@ -149,20 +148,22 @@ test_pub()
 	channel_name.length = strlen(channel);
 
 
-	result = saEvtInitialize (&handle, &callbacks, &version);
+	do {
+		result = saEvtInitialize (&handle, &callbacks, &version);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Event Initialize result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 	do {
 		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
 				&channel_handle);
-	} while (result == SA_AIS_ERR_TRY_AGAIN);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel open result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 
 	/*
@@ -171,59 +172,53 @@ test_pub()
 	printf("Publish\n");
 
 #ifdef EVENT_SUBSCRIBE
-	result = saEvtEventSubscribe(channel_handle,
+	do {
+		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("event subscribe result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 #endif
-	result = saEvtEventAllocate(channel_handle, &event_handle);
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("event Allocate result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 
 	strcpy(test_pub_name.value, pubname);
 	test_pub_name.length = strlen(pubname);
 	test_retention = ret_time;
-	result = saEvtEventAttributesSet(event_handle,
+	do {
+		result = saEvtEventAttributesSet(event_handle,
 			&evt_pat_set_array,
 			TEST_PRIORITY,
 			test_retention,
 			&test_pub_name);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("event set attr result(2): %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 
 	for (i = 0; i < pub_count; i++) {
-		did_dot = 0;
-		for (j = 0; j < PUB_RETRIES; j++) {
+		do {
 			result = saEvtEventPublish(event_handle, user_data, 
-						user_data_size, &event_id);
-			if (result == SA_AIS_ERR_TRY_AGAIN) {
-				sleep(1);
-				fprintf(stderr, ".");
-				did_dot = 1;
-				continue;
-			}
-			if (result != SA_AIS_OK) {
-				get_sa_error(result, result_buf, result_buf_len);
-				printf("event Publish result(2): %s\n", result_buf);
-				exit(result);
-			}
-			if (did_dot) {
-				printf("\n");
-			}
-			break;
+					user_data_size, &event_id);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+		if (result != SA_AIS_OK) {
+			get_sa_error(result, result_buf, result_buf_len);
+			printf("event Publish result(2): %s\n", result_buf);
+			return(result);
 		}
-
 		printf("Published event ID: 0x%llx\n", 
 				(unsigned long long)event_id);
 	}
@@ -231,34 +226,38 @@ test_pub()
 	/*
 	 * See if we got the event
 	 */
-	result = saEvtSelectionObjectGet(handle, &fd);
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("saEvtSelectionObject get %s\n", result_buf);
 		/* error */
-		exit(result);
+		return(result);
 	}
 #ifdef EVENT_SUBSCRIBE
 
 	for (i = 0; i < pub_count; i++) {
-	pfd.fd = fd;
-	pfd.events = POLLIN;
-	nfd = poll(&pfd, 1, timeout);
-	if (nfd <= 0) {
-		printf("poll fds %d\n", nfd);
-		if (nfd < 0) {
-			perror("poll error");
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		nfd = poll(&pfd, 1, timeout);
+		if (nfd <= 0) {
+			printf("poll fds %d\n", nfd);
+			if (nfd < 0) {
+				perror("poll error");
+			}
+			goto evt_free;
 		}
-		goto evt_free;
-	}
 
-	printf("Got poll event\n");
-	result = saEvtDispatch(handle, SA_DISPATCH_ONE);
-	if (result != SA_AIS_OK) {
-		get_sa_error(result, result_buf, result_buf_len);
-		printf("saEvtDispatch %s\n", result_buf);
-		exit(result);
-	}
+		printf("Got poll event\n");
+		do {
+			result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+		} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+		if (result != SA_AIS_OK) {
+			get_sa_error(result, result_buf, result_buf_len);
+			printf("saEvtDispatch %s\n", result_buf);
+			return(result);
+		}
 	}
 #endif
 
@@ -266,33 +265,35 @@ test_pub()
 	/*
 	 * Test cleanup
 	 */
-	result = saEvtEventFree(event_handle);
+	do {
+		result = saEvtEventFree(event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("event free result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 
 	do {
 		result = saEvtChannelClose(channel_handle);
-	} while (result == SA_AIS_ERR_TRY_AGAIN);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("channel close result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 	do {
 		result = saEvtFinalize(handle);
-	} while (result == SA_AIS_ERR_TRY_AGAIN);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("Event Finalize result: %s\n", result_buf);
-		exit(result);
+		return(result);
 	}
 	printf("Done\n");
-	return 0;
+	return SA_AIS_OK;
 
 }
 
@@ -316,7 +317,8 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	printf("event data size %d\n", event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;
-	result = saEvtEventAttributesGet(event_handle,
+	do {
+		result = saEvtEventAttributesGet(event_handle,
 			&evt_pat_get_array,	/* patterns */
 			&priority,		/* priority */
 			&retention_time,	/* retention time */
@@ -324,6 +326,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 			&publish_time,		/* publish time */
 			&event_id		/* event_id */
 			);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("event get attr result(2): %s\n", result_buf);
@@ -348,9 +351,11 @@ evt_free:
 }
 
 
+static int err_wait_time = -1;
+
 int main (int argc, char **argv)
 {
-	static const char opts[] = "c:i:t:n:x:u:w:";
+	static const char opts[] = "c:i:t:n:x:u:w:f:";
 
 	int ret;
 	int option;
@@ -388,6 +393,10 @@ int main (int argc, char **argv)
 		case 'n':
 			strcpy(pubname, optarg);
 			break;
+		case 'f':
+			err_wait_time = 
+				(unsigned int)strtoul(optarg, NULL, 0);
+			break;
 		case 'i':
 			subscription_id = 
 				(unsigned int)strtoul(optarg, NULL, 0);
@@ -410,13 +419,17 @@ int main (int argc, char **argv)
 	}
 	do {
 		ret = test_pub();
-		if (ret != 0) {
-			exit(ret);
-		}
-		if (wait_time < 0) {
+		if (ret != SA_AIS_OK) {
+			if (err_wait_time < 0) {
+				exit(ret);
+			} else {
+				sleep(err_wait_time);
+			}
+		} else if (wait_time < 0) {
 			break;
+		} else {
+			sleep(wait_time);
 		}
-		sleep(wait_time);
 	} while(1);
 	return 0;
 }
