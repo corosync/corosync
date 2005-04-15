@@ -37,7 +37,7 @@
 #include "totem.h"
 #include "aispoll.h"
 
-#define TOTEMSRP_PACKET_SIZE_MAX	1408
+#define TOTEMSRP_PACKET_SIZE_MAX	1404
 
 /*
  * Totem Single Ring Protocol
