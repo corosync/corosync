@@ -280,6 +280,7 @@ static void totempg_deliver_fn (
 			msg_count * sizeof (unsigned short);
 		
 		memcpy (header, iovec[0].iov_base, datasize);
+		assert(iovec);
 		data = iovec[0].iov_base;
 
 		msg_lens = (unsigned short *) (header + sizeof (struct totempg_mcast));
