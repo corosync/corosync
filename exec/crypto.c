@@ -26,20 +26,17 @@
 typedef unsigned long ulong32;
 typedef unsigned long long ulong64;
 
-/*
- * Tested on arm2401, i386, x86_64 
- */
-#if defined(__arm__) 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define ENDIAN_LITTLE
+#endif
+#if __BYTE_ORDER == __BIG_ENDIAN
 #define ENDIAN_BIG
-#define ENDIAN_32BITWORD
 #endif
-#if defined(__i386__) 
-#define ENDIAN_LITTLE
-#define ENDIAN_32BITWORD
-#endif
-#if defined(__x86_64__)
-#define ENDIAN_LITTLE
+#if __WORDIZE == 64
 #define ENDIAN_64BITWORD
+#endif
+#if __WORDIZE == 32
+#define ENDIAN_32BITWORD
 #endif
 
 /* ---- HELPER MACROS ---- */
