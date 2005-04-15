@@ -310,7 +310,11 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 	int send_ok = 0;
 	int res;
 
-	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast);
+	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast) +
+		conn_info->conn_info_partner->ais_ci.u.libevs_ci.group_entries *
+		sizeof (struct evs_group) +
+		req_lib_evs_mcast_joined->msg_len;
+
 	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_joined->msg_len;
 	req_exec_evs_mcast.group_entries = conn_info->conn_info_partner->ais_ci.u.libevs_ci.group_entries;
@@ -354,7 +358,10 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 	int send_ok = 0;
 	int res;
 
-	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast);
+	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast) +
+		sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries +
+		req_lib_evs_mcast_groups->msg_len;
+
 	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_groups->msg_len;
 	req_exec_evs_mcast.group_entries = req_lib_evs_mcast_groups->group_entries;
