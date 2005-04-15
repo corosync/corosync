@@ -1,3 +1,5 @@
+int global_seqno = 0;
+//#define RANDOM_DROP 1
 int my_token_held = 0;
 int my_do_delivery = 0;
 unsigned long long token_ring_id_seq = 0;
@@ -94,17 +96,20 @@ int totemsrp_brake;
 #define NEW_MESSAGE_QUEUE_SIZE_MAX		2000 /* allow 500 messages to be queued */
 #define RETRANS_MESSAGE_QUEUE_SIZE_MAX	2000 /* allow 500 messages to be queued */
 #define RECEIVED_MESSAGE_QUEUE_SIZE_MAX	2000 /* allow 500 messages to be queued */
-#define MAXIOVS							5
+#define MAXIOVS							5	
 #define RETRANSMIT_ENTRIES_MAX			30
 #define MISSING_MCAST_WINDOW			128
 #define TIMEOUT_STATE_GATHER_JOIN		100
 #define TIMEOUT_STATE_GATHER_CONSENSUS	200
-#define TIMEOUT_TOKEN					1000
-#define TIMEOUT_TOKEN_RETRANSMIT		200
+#define TIMEOUT_TOKEN					200
+#define TIMEOUT_TOKEN_RETRANSMIT		45
 #define PACKET_SIZE_MAX					2000
 #define FAIL_TO_RECV_CONST				250
 #define SEQNO_UNCHANGED_CONST			20
 #define TIMEOUT_DOWNCHECK           	1000
+
+void memb_set_print (char *string,
+	struct in_addr *list, int list_entries);
 
 /*
  * we compare incoming messages to determine if their endian is
@@ -184,6 +189,8 @@ static int my_deliver_memb_entries = 0;
 
 static struct memb_ring_id my_ring_id;
 
+static struct memb_ring_id my_old_ring_id;
+
 static int my_aru_count = 0;
 
 static int my_last_aru = 0;
@@ -192,7 +199,7 @@ static int my_seq_unchanged = 0;
 
 static int my_received_flg = 1;
 
-static int my_high_seq_received;
+static int my_high_seq_received = 0;
 
 static int my_install_seq = 0;
 
@@ -203,10 +210,6 @@ static int my_set_retrans_flg = 0;
 static int my_retrans_flg_count = 0;
 
 static unsigned int my_high_ring_delivered = 0;
-
-static unsigned int my_high_seq_delivered = 0;
-
-static unsigned int my_old_high_seq_delivered = 0;
 
 struct token_callback_instance {
 	struct list_head list;
@@ -244,9 +247,7 @@ struct totemsrp_socket totemsrp_sockets[2];
  */
 int my_aru = 0;
 
-int my_aru_save = 0;
-
-int my_high_seq_received_save = 0;
+static int my_high_delivered = 0;
 
 DECLARE_LIST_INIT (token_callback_received_listhead);
 DECLARE_LIST_INIT (token_callback_sent_listhead);
@@ -304,6 +305,7 @@ struct message_header {
 struct mcast {
 	struct message_header header;
 	int seq;
+	int this_seqno;
 	struct memb_ring_id ring_id;
 	struct in_addr source;
 	int guarantee;
@@ -348,6 +350,7 @@ struct memb_join {
 
 struct memb_merge_detect {
 	struct message_header header;
+	struct memb_ring_id ring_id;
 } __attribute__((packed));
 
 struct memb_commit_token_memb_entry {
@@ -473,7 +476,7 @@ static int totemsrp_build_sockets_loopback (struct sockaddr_in *sockaddr_mcast,
 	struct sockaddr_in *bound_to);
 
 static void memb_state_gather_enter (void);
-static void messages_deliver_to_app (int skip, int *start_point, int end_point);
+static void messages_deliver_to_app (int skip, int end_point);
 static int orf_token_mcast (struct orf_token *oken,
 	int fcc_mcasts_allowed, struct sockaddr_in *system_from);
 static int messages_free (int token_aru);
@@ -702,6 +705,8 @@ static int memb_consensus_agreed (void)
 			break;
 		}
 	}
+	assert (token_memb_entries >= 1);
+
 	return (agreed);
 }
 
@@ -830,7 +835,6 @@ void memb_set_and (struct in_addr *set1, int set1_entries,
 	return;
 }
 
-#ifdef CODE_COVERAGE_COMPILE_OUT
 void memb_set_print (char *string,
 	struct in_addr *list, int list_entries)
 {
@@ -841,7 +845,6 @@ void memb_set_print (char *string,
 		printf ("addr %s\n", inet_ntoa (list[i]));
 	}
 }
-#endif
 
 static void timer_function_orf_token_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
@@ -853,6 +856,60 @@ void reset_token_retransmit_timeout (void) {
 				timer_function_token_retransmit_timeout,
 				&timer_orf_token_retransmit_timeout);
 
+}
+
+/*
+ * ring_state_* is used to save and restore the sort queue
+ * state when a recovery operation fails (and enters gather)
+ */
+static int	old_ring_state_saved = 0;
+
+static int	old_ring_state_aru = 0;
+
+static int	old_ring_state_high_seq_received = 0;
+
+static void old_ring_state_save (void)
+{
+	if (old_ring_state_saved == 0) {
+		old_ring_state_saved = 1;
+		old_ring_state_aru = my_aru;
+		old_ring_state_high_seq_received = my_high_seq_received;
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"Saving state aru %d high seq recieved %d\n",
+			my_aru, my_high_seq_received);
+	}
+}
+
+static int ring_saved = 0;
+
+static void ring_save (void)
+{
+	if (ring_saved == 0) {
+		ring_saved = 1;
+		memcpy (&my_old_ring_id, &my_ring_id,
+			sizeof (struct memb_ring_id));
+	}
+}
+
+static void ring_reset (void)
+{
+	ring_saved = 0;
+}
+
+static void ring_state_restore (void)
+{
+	if (old_ring_state_saved) {
+		my_aru = old_ring_state_aru;
+		my_high_seq_received = old_ring_state_high_seq_received;
+		totemsrp_log_printf (totemsrp_log_level_debug,
+			"Restoring my_aru %d my high seq received %d\n",
+			my_aru, my_high_seq_received);
+	}
+}
+
+static void old_ring_state_reset (void)
+{
+	old_ring_state_saved = 0;
 }
 
 void reset_token_timeout (void) {
@@ -919,12 +976,7 @@ static void timer_function_orf_token_timeout (void *data)
 			break;
 		
 		case MEMB_STATE_RECOVERY:
-printf ("setting my_aru %d to %d\n", my_aru, my_aru_save);
-			my_aru = my_aru_save;
-			my_high_seq_received = my_high_seq_received_save;
-			sq_reinit (&recovery_sort_queue, 0);
-			queue_reinit (&retrans_message_queue);
-			// TODO calculate current old ring aru
+			ring_state_restore ();
 			memb_state_gather_enter();
 			break;
 	}
@@ -966,7 +1018,9 @@ void deliver_messages_from_recovery_to_regular (void)
 	void *ptr;
 	struct mcast *mcast;
 
-printf ("recovery to regular %d-%d\n", 1, my_aru);
+	totemsrp_log_printf (totemsrp_log_level_debug,
+		"recovery to regular %d-%d\n", 1, my_aru);
+
 	/*
 	 * Move messages from recovery to regular sort queue
 	 */
@@ -974,9 +1028,9 @@ printf ("recovery to regular %d-%d\n", 1, my_aru);
 	for (i = 1; i <= my_aru; i++) {
 		res = sq_item_get (&recovery_sort_queue, i, &ptr);
 		if (res != 0) {
-printf ("item not present in recovery sort queue\n");
 			continue;
 		}
+printf ("Transferring message with seq id %d\n", i);
 		recovery_message_item = (struct sort_queue_item *)ptr;
 
 		/*
@@ -988,18 +1042,62 @@ printf ("item not present in recovery sort queue\n");
 				&recovery_message_item->iovec[1],
 				sizeof (struct iovec) * recovery_message_item->iov_len);
 		} else {
-			regular_message_item.iovec[0].iov_base =
-				recovery_message_item->iovec[0].iov_base + sizeof (struct mcast);
-			regular_message_item.iovec[0].iov_len =
+			mcast = recovery_message_item->iovec[0].iov_base;
+			totemsrp_log_printf (totemsrp_log_level_notice,
+				"encapsulated is %d\n",
+				mcast->header.encapsulated);
+			if (mcast->header.encapsulated == 1) {
+				/*
+				 * Message is a recovery message encapsulated
+				 * in a new ring message
+				 */
+				regular_message_item.iovec[0].iov_base =
+					recovery_message_item->iovec[0].iov_base + sizeof (struct mcast);
+				regular_message_item.iovec[0].iov_len =
 				recovery_message_item->iovec[0].iov_len - sizeof (struct mcast);
-			mcast = regular_message_item.iovec[0].iov_base;
+				regular_message_item.iov_len = 1;
+				mcast = regular_message_item.iovec[0].iov_base;
+			} else {
+printf ("not encapsulated\n");
+				continue; /* TODO this case shouldn't happen */
+				/*
+				 * Message is originated on new ring and not
+				 * encapsulated
+				 */
+				regular_message_item.iovec[0].iov_base =
+					recovery_message_item->iovec[0].iov_base;
+				regular_message_item.iovec[0].iov_len =
+				recovery_message_item->iovec[0].iov_len;
+			}
 		}
-		regular_message_item.iov_len = recovery_message_item->iov_len;
 
-		res = sq_item_inuse (&regular_sort_queue, mcast->seq);
-		if (res == 0) {
-			sq_item_add (&regular_sort_queue,
-				&regular_message_item, mcast->seq);
+		totemsrp_log_printf (totemsrp_log_level_debug,
+			"comparing if ring id is for this processors old ring seqno %d\n",
+			 mcast->seq);
+
+		/*
+		 * Only add this message to the regular sort
+		 * queue if it was originated with the same ring
+		 * id as the previous ring
+		 */
+		if (memcmp (&my_old_ring_id, &mcast->ring_id,
+			sizeof (struct memb_ring_id)) == 0) {
+
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"adding msg with seq no %d\n", mcast->seq, mcast->this_seqno);
+
+			regular_message_item.iov_len = recovery_message_item->iov_len;
+			res = sq_item_inuse (&regular_sort_queue, mcast->seq);
+			if (res == 0) {
+				sq_item_add (&regular_sort_queue,
+					&regular_message_item, mcast->seq);
+				if (mcast->seq > old_ring_state_high_seq_received) {
+					old_ring_state_high_seq_received = mcast->seq;
+				}
+			}
+		} else {
+			totemsrp_log_printf (totemsrp_log_level_notice,
+				"-not adding msg with seq no %d\n", mcast->seq);
 		}
 	}
 }
@@ -1013,12 +1111,20 @@ static void memb_state_operational_enter (void)
 	int joined_list_entries = 0;
 	struct in_addr left_list[PROCESSOR_COUNT_MAX];
 	int left_list_entries = 0;
+	int aru_save;
 
+	old_ring_state_reset ();
+	ring_reset ();
 	deliver_messages_from_recovery_to_regular ();
 
-	printf ("Delivering to app %d to %d\n",
-		my_old_high_seq_delivered, my_high_ring_delivered);
-	messages_deliver_to_app (0, &my_old_high_seq_delivered, my_high_ring_delivered);
+	totemsrp_log_printf (totemsrp_log_level_notice,
+		"Delivering to app %d to %d\n",
+		my_high_delivered + 1, old_ring_state_high_seq_received);
+
+	aru_save = my_aru;
+	my_aru = old_ring_state_aru;
+
+	messages_deliver_to_app (0, old_ring_state_high_seq_received);
 
 	/*
 	 * Calculate joined and left list
@@ -1041,7 +1147,9 @@ static void memb_state_operational_enter (void)
 		
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of my_deliver_memb
-	messages_deliver_to_app (1, &my_old_high_seq_delivered, my_high_ring_delivered);
+	messages_deliver_to_app (1, old_ring_state_high_seq_received);
+
+	my_aru = aru_save;
 
 	/*
 	 * Deliver regular configuration to application
@@ -1057,13 +1165,14 @@ static void memb_state_operational_enter (void)
 	my_memb_entries = my_new_memb_entries;
 	memcpy (my_memb_list, my_new_memb_list,
 		sizeof (struct in_addr) * my_memb_entries);
-	last_released = my_aru;
+	last_released = 0;
 	my_set_retrans_flg = 0;
-	sq_reinit (&regular_sort_queue, my_aru);
-	sq_reinit (&recovery_sort_queue, 0);
-	my_high_seq_delivered = my_aru;
-	my_aru_save = my_aru;
-	my_high_seq_received_save = my_aru;
+	/*
+	 * The recovery sort queue now becomes the regular
+	 * sort queue.  It is necessary to copy the state
+	 * into the regular sort queue.
+	 */
+	sq_copy (&regular_sort_queue, &recovery_sort_queue);
 	my_last_aru = 0;
 
 	my_proc_list_entries = my_new_memb_entries;
@@ -1071,18 +1180,18 @@ static void memb_state_operational_enter (void)
 		sizeof (struct in_addr) * my_memb_entries);
 
 	my_failed_list_entries = 0;
+	my_high_delivered = my_aru;
 // TODO the recovery messages are leaked
 
-	my_old_high_seq_delivered = 0;
-
-	totemsrp_log_printf (totemsrp_log_level_notice, "entering OPERATIONAL state.\n");
+	totemsrp_log_printf (totemsrp_log_level_notice,
+		"entering OPERATIONAL state.\n");
 	memb_state = MEMB_STATE_OPERATIONAL;
+
 	return;
 }
 
 static void memb_state_gather_enter (void)
 {
-// TODO this isn't part of spec but i think its needed
 	memb_set_merge (&my_id.sin_addr, 1,
 		my_proc_list, &my_proc_list_entries);
 
@@ -1116,7 +1225,8 @@ static void memb_state_gather_enter (void)
 
 	memb_consensus_set (&my_id.sin_addr);
 
-	totemsrp_log_printf (totemsrp_log_level_notice, "entering GATHER state.\n");
+	totemsrp_log_printf (totemsrp_log_level_notice,
+		"entering GATHER state.\n");
 
 	memb_state = MEMB_STATE_GATHER;
 
@@ -1127,6 +1237,9 @@ void timer_function_token_retransmit_timeout (void *data);
 
 static void memb_state_commit_enter (struct memb_commit_token *commit_token)
 {
+	ring_save ();
+
+	old_ring_state_save (); 
 
 	memb_state_commit_token_update (commit_token);
 
@@ -1145,7 +1258,8 @@ static void memb_state_commit_enter (struct memb_commit_token *commit_token)
 	reset_token_timeout (); // REVIEWED
 	reset_token_retransmit_timeout (); // REVIEWED
 
-	totemsrp_log_printf (totemsrp_log_level_notice, "entering COMMIT state.\n");
+	totemsrp_log_printf (totemsrp_log_level_notice,
+		"entering COMMIT state.\n");
 
 	memb_state = MEMB_STATE_COMMIT;
 
@@ -1155,12 +1269,16 @@ static void memb_state_commit_enter (struct memb_commit_token *commit_token)
 void memb_state_recovery_enter (struct memb_commit_token *commit_token)
 {
 	int i;
-	unsigned int low_ring_aru = 0xFFFFFFFF;
 	int local_received_flg = 1;
+	unsigned int low_ring_aru;
+	unsigned int messages_originated = 0;
 
 	my_high_ring_delivered = 0;
-	int copy_min;
-	int copy_max;
+
+	sq_reinit (&recovery_sort_queue, 0);
+	queue_reinit (&retrans_message_queue);
+
+	low_ring_aru = old_ring_state_high_seq_received;
 
 	memb_state_commit_token_send (commit_token);
 
@@ -1181,41 +1299,62 @@ my_token_seq = -1;
 		my_trans_memb_list, &my_trans_memb_entries);
 
 	for (i = 0; i < my_new_memb_entries; i++) {
-		printf ("position [%d] member %s:\n", i, inet_ntoa (commit_token->addr[i]));
-		printf ("previous ring seq %lld rep %s\n",
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"position [%d] member %s:\n", i, inet_ntoa (commit_token->addr[i]));
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"previous ring seq %lld rep %s\n",
 			commit_token->memb_list[i].ring_id.seq,
 			inet_ntoa (commit_token->memb_list[i].ring_id.rep));
-//assert (commit_token->memb_list[i].ring_id.rep.s_addr);
-		printf ("aru %d high delivered %d received flag %d\n",
+
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"aru %d high delivered %d received flag %d\n",
 			commit_token->memb_list[i].aru,
 			commit_token->memb_list[i].high_delivered,
 			commit_token->memb_list[i].received_flg);
-assert (commit_token->memb_list[i].ring_id.rep.s_addr);
+
+		assert (commit_token->memb_list[i].ring_id.rep.s_addr);
 	}
 	/*
 	 * Determine if any received flag is false
 	 */
+#ifdef COMPILE_OUT
 	for (i = 0; i < commit_token->addr_entries; i++) {
 		if (memb_set_subset (&my_new_memb_list[i], 1,
 			my_trans_memb_list, my_trans_memb_entries) &&
 
 			commit_token->memb_list[i].received_flg == 0) {
+#endif
 			my_deliver_memb_entries = my_trans_memb_entries;
 			memcpy (my_deliver_memb_list, my_trans_memb_list,
 				sizeof (struct in_addr) * my_trans_memb_entries);
+#ifdef COMPILE_OUT
 			local_received_flg = 0;
 			break;
 		}
 	}
-	if (local_received_flg == 0) {
+#endif
+//	if (local_received_flg == 0) {
 		/*
-		 * Calculate low ring_aru, my_high_ring_delivered for the transitional membership
+		 * Calculate my_low_ring_aru, my_high_ring_delivered for the transitional membership
 		 */
 		for (i = 0; i < commit_token->addr_entries; i++) {
+printf ("comparing %d old ring %s.%lld with commit ring %s.%lld.\n", i,
+	inet_ntoa (my_old_ring_id.rep), my_old_ring_id.seq,
+	inet_ntoa (commit_token->memb_list[i].ring_id.rep),
+	commit_token->memb_list[i].ring_id.seq);
+printf ("memb set subset %d\n", 
+	memb_set_subset (&my_new_memb_list[i], 1, my_deliver_memb_list, my_deliver_memb_entries));
 			if (memb_set_subset (&my_new_memb_list[i], 1,
-				my_deliver_memb_list, my_deliver_memb_entries)) {
+				my_deliver_memb_list,
+				 my_deliver_memb_entries) &&
+
+			memcmp (&my_old_ring_id,
+				&commit_token->memb_list[i].ring_id,
+				sizeof (struct memb_ring_id)) == 0) {
 	
-				if (low_ring_aru > commit_token->memb_list[i].aru) {
+				if (low_ring_aru == 0 ||
+					low_ring_aru > commit_token->memb_list[i].aru) {
+
 					low_ring_aru = commit_token->memb_list[i].aru;
 				}
 				if (my_high_ring_delivered < commit_token->memb_list[i].high_delivered) {
@@ -1223,24 +1362,15 @@ assert (commit_token->memb_list[i].ring_id.rep.s_addr);
 				}
 			}
 		}
+		assert (low_ring_aru != 0xffffffff);
 		/*
-		 * Copy all old ring messages to retrans_message_queue
+		 * Cpy all old ring messages to retrans_message_queue
 		 */
-{ int j = 0;
-		// TODO this shouldn't be needed
-		copy_min = low_ring_aru;
-		if ((last_released - 1) > copy_min) {
-			copy_min = (last_released - 1);
-		}
-		
-		copy_max = my_high_ring_delivered;
-		if (copy_max > my_high_seq_received) {
-			copy_max = my_high_seq_received;
-		}
 		totemsrp_log_printf (totemsrp_log_level_notice,
-			"copying all old messages from %d to %d, range %d-%d.\n",
-			low_ring_aru, my_high_ring_delivered, copy_min, copy_max);
-		for (i = copy_min + 1; i <= copy_max; i++) {
+			"copying all old ring messages from %d-%d.\n",
+			low_ring_aru + 1, old_ring_state_high_seq_received);
+			
+		for (i = low_ring_aru + 1; i <= old_ring_state_high_seq_received; i++) {
 
 			struct sort_queue_item *sort_queue_item;
 			struct message_item message_item;
@@ -1249,42 +1379,41 @@ assert (commit_token->memb_list[i].ring_id.rep.s_addr);
 
 			res = sq_item_get (&regular_sort_queue, i, &ptr);
 			if (res != 0) {
+printf ("-not copying %d-\n", i);
 				continue;
 			}
-j++;
+printf ("copying %d\n", i);
 			sort_queue_item = ptr;
+			assert (sort_queue_item->iov_len > 0);
+			assert (sort_queue_item->iov_len <= MAXIOVS);
+			messages_originated++;
 			memset (&message_item, 0, sizeof (struct message_item));
+// TODO LEAK
 			message_item.mcast = malloc (sizeof (struct mcast));
 			assert (message_item.mcast);
 			memcpy (message_item.mcast, sort_queue_item->iovec[0].iov_base,
 				sizeof (struct mcast));
-			message_item.iov_len = sort_queue_item->iov_len;
+			memcpy (&message_item.mcast->ring_id, &my_ring_id,
+				sizeof (struct memb_ring_id));
+			message_item.mcast->header.encapsulated = 1;
 			message_item.iov_len = sort_queue_item->iov_len;
 			memcpy (&message_item.iovec, &sort_queue_item->iovec, sizeof (struct iovec) *
 				sort_queue_item->iov_len);
 			queue_item_add (&retrans_message_queue, &message_item);
 		}
 		totemsrp_log_printf (totemsrp_log_level_notice,
-			"Originated %d messages in RECOVERY.\n", j);
-}
-	}
-
-	my_aru_save = my_aru;
-	my_high_seq_received_save = my_high_seq_received;
+			"Originated %d messages in RECOVERY.\n", messages_originated);
+//	}
 
 	my_aru = 0;
 	my_aru_count = 0;
 	my_seq_unchanged = 0;
 	my_high_seq_received = 0;
 	my_install_seq = 0;
-	if (my_old_high_seq_delivered == 0) {
-		my_old_high_seq_delivered = my_high_seq_delivered;
-	}
 
 	totemsrp_log_printf (totemsrp_log_level_notice, "entering RECOVERY state.\n");
 	reset_token_timeout (); // REVIEWED
 	reset_token_retransmit_timeout (); // REVIEWED
-
 
 	memb_state = MEMB_STATE_RECOVERY;
 	return;
@@ -1504,18 +1633,13 @@ int totemsrp_mcast (
 	for (j = 0, i = 0; i < iov_len; i++) {
 		j+= iovec[i].iov_len;
 	}
-//	assert (j == FRAGMENT_SIZE || j == (FRAGMENT_SIZE - 2)); /* ensure we use the maximum badnwidth available for now */
 
-//	printf ("j is %d fragment size is %d\n", j, FRAGMENT_SIZE);
-//	assert (j <= FRAGMENT_SIZE);
-		
-
-	totemsrp_log_printf (totemsrp_log_level_debug, "Multicasting message.\n");
 	memset (&message_item, 0, sizeof (struct message_item));
 
 	/*
 	 * Allocate pending item
 	 */
+// TODO LEAK
 	message_item.mcast = malloc (sizeof (struct mcast));
 	if (message_item.mcast == 0) {
 		goto error_mcast;
@@ -1526,11 +1650,12 @@ int totemsrp_mcast (
 	 */
 	message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
 	message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
-	message_item.mcast->header.encapsulated = 0;
+	message_item.mcast->header.encapsulated = 2;
 	message_item.mcast->guarantee = guarantee;
 	message_item.mcast->source.s_addr = my_id.sin_addr.s_addr;
 
 	for (i = 0; i < iov_len; i++) {
+// TODO LEAK
 		message_item.iovec[i].iov_base = malloc (iovec[i].iov_len);
 
 		if (message_item.iovec[i].iov_base == 0) {
@@ -2025,6 +2150,9 @@ static int messages_free (int token_aru)
 	if (release_to > my_last_aru) {
 		release_to = my_last_aru;
 	}
+	if (release_to > my_high_delivered) {
+		release_to = my_high_delivered;
+	}
 
 	/*
 	 * Release retransmit list items if group aru indicates they are transmitted
@@ -2043,11 +2171,9 @@ static int messages_free (int token_aru)
 		log_release = 1;
 	}
 
-log_release=1;
  	if (log_release) {
-//TODprintf ("%d\n", lesser);
-//		totemsrp_log_printf (totemsrp_log_level_notice,
-//			"releasing messages up to and including %d\n", lesser);
+		totemsrp_log_printf (totemsrp_log_level_debug,
+			"releasing messages up to and including %d\n", release_to);
 	}
 	return (0);
 }
@@ -2076,10 +2202,14 @@ void update_aru (void)
 		}
 		my_aru = i;
 	}
-//printf ("setting received flag to false %d %d\n", my_aru, my_high_seq_received);
+//	totemsrp_log_printf (totemsrp_log_level_debug,
+//		"setting received flag to FALSE %d %d\n",
+//		my_aru, my_high_seq_received);
 	my_received_flg = 0;
 	if (my_aru == my_high_seq_received) {
-//TODOprintf ("setting received flag to TRUE %d %d\n", my_aru, my_high_seq_received);
+//		totemsrp_log_printf (totemsrp_log_level_debug,
+//			"setting received flag to TRUE %d %d\n",
+//			my_aru, my_high_seq_received);
 		my_received_flg = 1;
 	}
 }
@@ -2115,7 +2245,17 @@ static int orf_token_mcast (
 		}
 		message_item = (struct message_item *)queue_item_get (mcast_queue);
 		/* preincrement required by algo */
+		if (old_ring_state_saved &&
+			(memb_state == MEMB_STATE_GATHER ||
+			memb_state == MEMB_STATE_COMMIT)) {
+
+			totemsrp_log_printf (totemsrp_log_level_debug,
+				"not multicasting at seqno is %d\n",
+			token->seq);
+			return (0);
+		}
 		message_item->mcast->seq = ++token->seq;
+		message_item->mcast->this_seqno = global_seqno++;
 
 		/*
 		 * Build IO vector
@@ -2129,6 +2269,8 @@ static int orf_token_mcast (
 		memcpy (&sort_queue_item.iovec[1], message_item->iovec,
 			message_item->iov_len * sizeof (struct iovec));
 
+		memcpy (&mcast->ring_id, &my_ring_id, sizeof (struct memb_ring_id));
+
 		sort_queue_item.iov_len = message_item->iov_len + 1;
 
 		assert (sort_queue_item.iov_len < 16);
@@ -2138,6 +2280,8 @@ static int orf_token_mcast (
 		 */
 		sq_item_add (sort_queue,
 			&sort_queue_item, message_item->mcast->seq);
+		printf ("ORIG [%s.%d-%d]\n", inet_ntoa (message_item->mcast->source),
+			message_item->mcast->seq, message_item->mcast->this_seqno);
 
 		/*
 		 * Delete item from pending queue
@@ -2165,11 +2309,7 @@ static int orf_token_mcast (
 		 * An error here is recovered by the multicast algorithm
 		 */
 		res = sendmsg (totemsrp_sockets[0].mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
-//printf ("multicasting %d bytes\n", res);
-//f (res != iov_encrypted.iov_len) {
-//printf ("res %d errno is %d\n", res, errno);
-//}
-//		assert (res == iov_encrypted.iov_len);
+
 		iov_encrypted.iov_len = PACKET_SIZE_MAX;
 
 		if (res > 0) {
@@ -2215,13 +2355,15 @@ static int orf_token_rtr (
 	}
 
 	rtr_list = &orf_token->rtr_list[0];
-if (orf_token->rtr_list_entries) {
-printf ("Retransmit List %d\n", orf_token->rtr_list_entries);
-for (i = 0; i < orf_token->rtr_list_entries; i++) {
-	printf ("%d ", rtr_list[i].seq);
-}
-printf ("\n");
-}
+	if (orf_token->rtr_list_entries) {
+		totemsrp_log_printf (totemsrp_log_level_debug,
+			"Retransmit List %d\n", orf_token->rtr_list_entries);
+		for (i = 0; i < orf_token->rtr_list_entries; i++) {
+			totemsrp_log_printf (totemsrp_log_level_debug,
+				"%d ", rtr_list[i].seq);
+		}
+		totemsrp_log_printf (totemsrp_log_level_debug, "\n");
+	}
 
 	total_entries = orf_token->rtr_list_entries;
 
@@ -2362,19 +2504,6 @@ static int token_send (
 	iovec.iov_len = sizeof (struct orf_token) +
 		(orf_token->rtr_list_entries * sizeof (struct rtr_item));
 
-#ifdef COMPILE_OUT
-{ int i;
-if (orf_token->rtr_list_entries) {
-printf ("Retransmit List Sending %d\n", orf_token->rtr_list_entries);
-for (i = 0; i < orf_token->rtr_list_entries; i++) {
-	printf ("%d ", rtr_list[i].seq);
-assert (rtr_list[i].seq != 0);
-}
-printf ("\n");
-}
-}
-#endif
-
 	encrypt_and_sign (&iovec, 1);
 
 	/*
@@ -2404,7 +2533,8 @@ printf ("\n");
 
 	res = sendmsg (totemsrp_sockets[0].token, &msg_orf_token, MSG_NOSIGNAL);
 	if (res == -1) {
-		printf ("Couldn't send token to addr %s %s %d\n",
+		totemsrp_log_printf (totemsrp_log_level_notice,
+			"Couldn't send token to addr %s %s %d\n",
 			inet_ntoa (next_memb.sin_addr), 
 			strerror (errno), totemsrp_sockets[0].token);
 	}
@@ -2441,6 +2571,7 @@ int orf_token_send_initial (void)
 */
 		
 	orf_token.aru = 0;
+//	orf_token.aru_addr.s_addr = 0;//my_id.sin_addr.s_addr;
 	orf_token.aru_addr.s_addr = my_id.sin_addr.s_addr;
 	memcpy (&orf_token.ring_id, &my_ring_id, sizeof (struct memb_ring_id));
 	orf_token.fcc = 0;
@@ -2457,11 +2588,16 @@ static void memb_state_commit_token_update (struct memb_commit_token *memb_commi
 	int memb_index_this;
 
 	memb_index_this = (memb_commit_token->memb_index + 1) % memb_commit_token->addr_entries;
-	memcpy (&memb_commit_token->memb_list[memb_index_this].ring_id, &my_ring_id,
-		sizeof (struct memb_ring_id));
+	memcpy (&memb_commit_token->memb_list[memb_index_this].ring_id,
+		&my_old_ring_id, sizeof (struct memb_ring_id));
 assert (my_ring_id.rep.s_addr != 0);
-	memb_commit_token->memb_list[memb_index_this].aru = my_aru;
-	memb_commit_token->memb_list[memb_index_this].high_delivered = my_aru; /* no safe, for now this is my_aru */
+
+	memb_commit_token->memb_list[memb_index_this].aru = old_ring_state_aru;
+	/*
+	 *  TODO high delivered is really my_aru, but with safe this
+	 * could change?
+	 */
+	memb_commit_token->memb_list[memb_index_this].high_delivered = my_high_delivered;
 	memb_commit_token->memb_list[memb_index_this].received_flg = my_received_flg;
 }
 
@@ -2601,6 +2737,8 @@ static int memb_merge_detect_send (void)
 	memb_merge_detect.header.type = MESSAGE_TYPE_MEMB_MERGE_DETECT;
 	memb_merge_detect.header.endian_detector = ENDIAN_LOCAL;
 	memb_merge_detect.header.encapsulated = 0;
+	memcpy (&memb_merge_detect.ring_id, &my_ring_id,
+		sizeof (struct memb_ring_id));
 
 	iovec.iov_base = &memb_merge_detect;
 	iovec.iov_len = sizeof (struct memb_merge_detect);
@@ -2646,7 +2784,8 @@ static void memb_ring_id_create_or_load (
 		assert (res == sizeof (unsigned long long));
 		close (fd);
 	} else {
-		printf ("Couldn't open %s %s\n", filename, strerror (errno));
+		totemsrp_log_printf (totemsrp_log_level_warning,
+			"Couldn't open %s %s\n", filename, strerror (errno));
 	}
 	
 	memb_ring_id->rep.s_addr = my_id.sin_addr.s_addr;
@@ -2669,7 +2808,7 @@ static void memb_ring_id_store (
 		fd = open (filename, O_CREAT|O_RDWR, 0777);
 	}
 	if (fd == -1) {
-		totemsrp_log_printf (totemsrp_log_level_notice,
+		totemsrp_log_printf (totemsrp_log_level_warning,
 			"Couldn't store new ring id %llx to stable storage (%s)\n",
 				commit_token->ring_id.seq, strerror (errno));
 		assert (0);
@@ -2849,9 +2988,9 @@ if (random () % 100 < 10) {
 	 */
 	forward_token = 1;
 	if (my_ring_id.rep.s_addr == my_id.sin_addr.s_addr) {
-			if (my_seq_unchanged > SEQNO_UNCHANGED_CONST) {
-				forward_token = 0;
-			}
+		if (my_seq_unchanged > SEQNO_UNCHANGED_CONST) {
+			forward_token = 0;
+		}
 	}
 
 	if (token_ref->seq == my_last_seq) {
@@ -2874,7 +3013,6 @@ if (random () % 100 < 10) {
 		sizeof (struct rtr_item) * RETRANSMIT_ENTRIES_MAX);
 
 	if (endian_conversion_needed) {
-//		printf ("Must convert endian of token message\n");
 		orf_token_endian_convert (token, (struct orf_token *)token_convert);
 		token = (struct orf_token *)token_convert;
 	}
@@ -2965,8 +3103,14 @@ if (random () % 100 < 10) {
 		if (my_aru_count > FAIL_TO_RECV_CONST &&
 			token->aru_addr.s_addr == my_id.sin_addr.s_addr) {
 			
+printf ("FAILED TO RECEIVE\n");
+// TODO if we fail to receive, it may be possible to end with a gather
+// state of proc == failed = 0 entries
 			memb_set_merge (&token->aru_addr, 1,
 				my_failed_list, &my_failed_list_entries);
+
+			ring_state_restore ();
+
 			memb_state_gather_enter ();
 		} else {
 			my_token_seq = token->token_seq;
@@ -2982,6 +3126,7 @@ if (random () % 100 < 10) {
 				if (low_water > my_last_aru) {
 					low_water = my_last_aru;
 				}
+// TODO is this code right
 				if (queue_is_empty (&retrans_message_queue) == 0 ||
 					low_water != my_high_seq_received) {
 
@@ -2993,10 +3138,11 @@ if (random () % 100 < 10) {
 				if (token->retrans_flg == 1 && my_set_retrans_flg) {
 					token->retrans_flg = 0;
 				}
-printf ("token retrans flag is %d my set retrans flag%d retrans queue empty %d count %d, low_water %d aru %d\n", 
-	token->retrans_flg, my_set_retrans_flg,
-	queue_is_empty (&retrans_message_queue), my_retrans_flg_count,
-	low_water, token->aru);
+				totemsrp_log_printf (totemsrp_log_level_debug,
+					"token retrans flag is %d my set retrans flag%d retrans queue empty %d count %d, low_water %d aru %d\n", 
+					token->retrans_flg, my_set_retrans_flg,
+					queue_is_empty (&retrans_message_queue),
+					my_retrans_flg_count, low_water, token->aru);
 				if (token->retrans_flg == 0) { 
 					my_retrans_flg_count += 1;
 				} else {
@@ -3005,8 +3151,9 @@ printf ("token retrans flag is %d my set retrans flag%d retrans queue empty %d c
 				if (my_retrans_flg_count == 2) {
 					my_install_seq = token->seq;
 				}
-printf ("install seq %d aru %d high seq received %d\n", my_install_seq, my_aru,
-my_high_seq_received);
+				totemsrp_log_printf (totemsrp_log_level_debug,
+					"install seq %d aru %d high seq received %d\n",
+					my_install_seq, my_aru, my_high_seq_received);
 				if (my_retrans_flg_count >= 2 && my_aru >= my_install_seq && my_received_flg == 0) {
 					my_received_flg = 1;
 					my_deliver_memb_entries = my_trans_memb_entries;
@@ -3019,7 +3166,8 @@ my_high_seq_received);
 					my_rotation_counter = 0;
 				}
 				if (my_rotation_counter == 2) {
-				printf ("retrans flag count %d token aru %d install seq %d aru %d %d\n",
+				totemsrp_log_printf (totemsrp_log_level_debug,
+					"retrans flag count %d token aru %d install seq %d aru %d %d\n",
 					my_retrans_flg_count, token->aru, my_install_seq,
 					my_aru, token->seq);
 
@@ -3040,8 +3188,8 @@ printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 }
 #endif
 			if (my_do_delivery) {
-				if (memb_state != MEMB_STATE_RECOVERY) {
-					messages_deliver_to_app (0, &my_high_seq_delivered, my_high_seq_received);
+				if (memb_state == MEMB_STATE_OPERATIONAL) {
+					messages_deliver_to_app (0, my_high_seq_received);
 				}
 			}
 
@@ -3065,36 +3213,59 @@ printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 	return (0);
 }
 
-static void messages_deliver_to_app (int skip, int *start_point, int end_point)
+static void messages_deliver_to_app (int skip, int end_point)
 {
     struct sort_queue_item *sort_queue_item_p;
     int i;
     int res;
     struct mcast *mcast;
 
-	totemsrp_log_printf (totemsrp_log_level_debug,
-		"Delivering %d to %d\n", *start_point + 1, my_high_seq_received);
+	totemsrp_log_printf (totemsrp_log_level_notice,
+		"Delivering %d to %d\n", my_high_delivered + 1,
+		end_point);
+
 	/*
 	 * Deliver messages in order from rtr queue to pending delivery queue
 	 */
-	for (i = *start_point + 1; i <= end_point; i++) {
+	for (i = my_high_delivered + 1; i <= end_point; i++) {
 		void *ptr;
 
 		res = sq_item_get (&regular_sort_queue, i, &ptr);
 		if (res != 0 && skip) {
-			*start_point = i;
+printf ("-skipping %d-\n", i);
+			my_high_delivered = i;
 			continue;
 		}
+
 		/*
 		 * If hole, stop assembly
 		 */
 		if (res != 0) {
 			break;
 		}
+
 		sort_queue_item_p = ptr;
 
 		mcast = sort_queue_item_p->iovec[0].iov_base;
 		assert (mcast != (struct mcast *)0xdeadbeef);
+
+		printf ("[%s.%d-%d]\n", inet_ntoa (mcast->source),
+			mcast->seq, mcast->this_seqno);
+
+		/*
+		 * Skip messages not originated in my_deliver_memb
+		 */
+		if (skip &&
+			memb_set_subset (&mcast->source,
+				1,
+				my_deliver_memb_list,
+				my_deliver_memb_entries) == 0) {
+
+printf ("-skipping %d - wrong ip", i);
+			my_high_delivered = i;
+			continue;
+		}
+		my_high_delivered = i;
 
 		/*
 		 * Message found
@@ -3103,10 +3274,8 @@ static void messages_deliver_to_app (int skip, int *start_point, int end_point)
 			"Delivering MCAST message with seq %d to pending delivery queue\n",
 			mcast->seq);
 
-		*start_point = i;
-
 		/*
-		 * Message is locally originated multicasat
+		 * Message is locally originated multicast
 		 */
 	 	if (sort_queue_item_p->iov_len > 1 &&
 			sort_queue_item_p->iovec[0].iov_len == sizeof (struct mcast)) {
@@ -3130,6 +3299,14 @@ static void messages_deliver_to_app (int skip, int *start_point, int end_point)
 		}
 		stats_delv += 1;
 	}
+
+	my_received_flg = 0;
+	if (my_aru == my_high_seq_received) {
+//		totemsrp_log_printf (totemsrp_log_level_debug,
+//			"setting received flag to TRUE %d %d\n",
+//			my_aru, my_high_seq_received);
+		my_received_flg = 1;
+	}
 }
 
 /*
@@ -3146,37 +3323,31 @@ static int message_handler_mcast (
 	struct sq *sort_queue;
 	struct mcast mcast_header;
 
-	if (memb_state == MEMB_STATE_RECOVERY) {
-		sort_queue = &recovery_sort_queue;
-	} else {
-		sort_queue = &regular_sort_queue;
-	}
+	
 	if (endian_conversion_needed) {
 		mcast_endian_convert (iovec[0].iov_base, &mcast_header);
 	} else {
 		memcpy (&mcast_header, iovec[0].iov_base, sizeof (struct mcast));
 	}
 
+	if (mcast_header.header.encapsulated == 1) {
+		sort_queue = &recovery_sort_queue;
+	} else {
+		sort_queue = &regular_sort_queue;
+	}
 	assert (bytes_received < PACKET_SIZE_MAX);
 #ifdef RANDOM_DROP
-if (random()%100 < 20) {
+if (random()%100 < 50) {
 	return (0);
 }
 #endif
 	cancel_token_retransmit_timeout (); // REVIEWED
 
 	/*
-	 * If the message is foriegn execute the switch below
+	 * If the message is foreign execute the switch below
 	 */
-// TODO this detection of foreign messages isn't correct
-// it doesn't work in the recovery state for the new processors
-// my_memb_list is the wrong list to use I think we should use my_new_memb_list
-	if (!memb_set_subset (&system_from->sin_addr,
-		1,
-		my_new_memb_list,
-		my_new_memb_entries)) {
-
-printf ("got foreign message\n");
+	if (memcmp (&my_ring_id, &mcast_header.ring_id,
+		sizeof (struct memb_ring_id)) != 0) {
 
 		switch (memb_state) {
 		case MEMB_STATE_OPERATIONAL:
@@ -3206,19 +3377,25 @@ printf ("got foreign message\n");
 			/* discard message */
 			break;
 		}
-		return (0); /* discard all foreign messages */
+		return (0);
 	}
+
+	totemsrp_log_printf (totemsrp_log_level_debug,
+		"Received ringid(%s:%lld) seq %d\n",
+		inet_ntoa (mcast_header.ring_id.rep),
+		mcast_header.ring_id.seq,
+		mcast_header.seq);
 	/*
 	 * Add mcast message to rtr queue if not already in rtr queue
 	 * otherwise free io vectors
 	 */
 	if (bytes_received > 0 && bytes_received < PACKET_SIZE_MAX &&
 		sq_item_inuse (sort_queue, mcast_header.seq) == 0) {
-//printf ("adding message %d\n", mcast->seq);
 
 		/*
 		 * Allocate new multicast memory block
 		 */
+// TODO LEAK
 		sort_queue_item.iovec[0].iov_base = malloc (bytes_received);
 		if (sort_queue_item.iovec[0].iov_base == 0) {
 			return (-1); /* error here is corrected by the algorithm */
@@ -3237,12 +3414,13 @@ printf ("got foreign message\n");
 		sq_item_add (sort_queue, &sort_queue_item, mcast_header.seq);
 	}
 
-	update_aru ();
+//	update_aru ();
 	if (my_token_held) {
 		my_do_delivery = 1;
 	} else {
-		if (memb_state != MEMB_STATE_RECOVERY) {
-			messages_deliver_to_app (0, &my_high_seq_delivered, my_high_seq_received);
+		if (memb_state == MEMB_STATE_OPERATIONAL) {
+			update_aru ();
+			messages_deliver_to_app (0, my_high_seq_received);
 		}
 	}
 
@@ -3257,14 +3435,13 @@ static int message_handler_memb_merge_detect (
 	int bytes_received,
 	int endian_conversion_needed)
 {
+	struct memb_merge_detect *memb_merge_detect = iovec[0].iov_base;
 
 	/*
-	 * Return if we are already aware of this configuration
+	 * do nothing if this is a merge detect from this configuration
 	 */
-	if (memb_set_subset (&system_from->sin_addr,
-		1,
-		my_new_memb_list,
-		my_new_memb_entries)) {
+	if (memcmp (&my_ring_id, &memb_merge_detect->ring_id,
+		sizeof (struct memb_ring_id)) == 0) {
 
 		return (0);
 	}
@@ -3293,11 +3470,11 @@ static int message_handler_memb_merge_detect (
 		break;
 
 	case MEMB_STATE_COMMIT:
-		/* discard message */
+		/* do nothing in commit */
 		break;
 
 	case MEMB_STATE_RECOVERY:
-		/* discard message */
+		/* do nothing in recovery */
 		break;
 	}
 	return (0);
@@ -3326,7 +3503,7 @@ int memb_join_process (struct memb_join *memb_join, struct sockaddr_in *system_f
 	
 			memb_state_commit_enter (&my_commit_token);
 		} else {
-			return (0); // TODO added to match spec
+			return (0);
 		}
 	} else
 	if (memb_set_subset (memb_join->proc_list,
@@ -3336,12 +3513,12 @@ int memb_join_process (struct memb_join *memb_join, struct sockaddr_in *system_f
 
 		memb_set_subset (memb_join->failed_list,
 		memb_join->failed_list_entries,
-		my_failed_list, // TODO changed proc to failed to match spec
+		my_failed_list,
 		my_failed_list_entries)) {
 
 		return (0);
 	} else
-	if (memb_set_subset (&system_from->sin_addr, 1, // TODO changed proc to failed to match spec
+	if (memb_set_subset (&system_from->sin_addr, 1,
 		my_failed_list, my_failed_list_entries)) {
 
 		return (0);
@@ -3479,7 +3656,8 @@ static int message_handler_memb_join (
 				my_new_memb_list,
 				my_new_memb_entries) &&
 
-				memb_join->ring_seq >= my_ring_id.seq) {
+//WORK				memb_join->ring_seq >= my_ring_id.seq) {
+				memb_join->ring_seq > my_ring_id.seq) {
 
 				memb_join_process (memb_join, system_from);
 				memb_state_gather_enter ();
@@ -3494,14 +3672,10 @@ static int message_handler_memb_join (
 
 				memb_join->ring_seq >= my_ring_id.seq) {
 
+				ring_state_restore ();
+
 				memb_join_process (memb_join, system_from);
 				memb_state_gather_enter ();
-				my_aru = my_aru_save;
-				my_high_seq_received = my_high_seq_received_save;
-				sq_reinit (&recovery_sort_queue, 0);
-				queue_reinit (&retrans_message_queue);
-
-				// TODO calculate current old ring aru
 			}
 			break;
 	}
@@ -3628,9 +3802,7 @@ static int recv_handler (poll_handle handle, int fd, int revents,
 	res = authenticate_and_decrypt (&totemsrp_iov_recv);
 	log_digest = 0;
 	if (res == -1) {
-printf ("message header type %d %d\n", message_header->type, bytes_received);
 		totemsrp_iov_recv.iov_len = PACKET_SIZE_MAX;
-//exit (1);
 		return 0;
 	}
 
