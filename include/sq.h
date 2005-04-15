@@ -44,6 +44,7 @@ struct sq {
 	int size_per_item;
 	int head_seqid;
 	int item_count;
+	int pos_max;
 };
 
 static inline int sq_init (
@@ -57,6 +58,7 @@ static inline int sq_init (
 	sq->size_per_item = size_per_item;
 	sq->head_seqid = head_seqid;
 	sq->item_count = item_count;
+	sq->pos_max = 0;
 
 	sq->items = (void *)malloc (item_count * size_per_item);
 	if (sq->items == 0) {
@@ -73,9 +75,35 @@ static inline void sq_reinit (struct sq *sq, int head_seqid)
 {
 	sq->head = 0;
 	sq->head_seqid = head_seqid;
+	sq->pos_max = 0;
 
 	memset (sq->items, 0, sq->item_count * sq->size_per_item);
 	memset (sq->items_inuse, 0, sq->item_count * sizeof (char));
+}
+
+static inline void sq_assert (struct sq *sq, int pos)
+{
+	int i;
+
+//	printf ("Instrument[%d] Asserting from %d to %d\n",
+//		pos, sq->pos_max, sq->size);
+	for (i = sq->pos_max + 1; i < sq->size; i++) {
+		assert (sq->items_inuse[i] == 0);
+	}
+}
+static inline void sq_copy (struct sq *sq_dest, struct sq *sq_src)
+{
+	sq_assert (sq_src, 20);
+	sq_dest->head = sq_src->head;
+	sq_dest->size = sq_src->item_count;
+	sq_dest->size_per_item = sq_src->size_per_item;
+	sq_dest->head_seqid = sq_src->head_seqid;
+	sq_dest->item_count = sq_src->item_count;
+	sq_dest->pos_max = sq_src->pos_max;
+	memcpy (sq_dest->items, sq_src->items,
+		sq_src->item_count * sq_src->size_per_item);
+	memcpy (sq_dest->items_inuse, sq_src->items_inuse,
+		sq_src->item_count * sizeof (char));
 }
 
 static inline void sq_free (struct sq *sq) {
@@ -95,6 +123,10 @@ static inline int sq_item_add (
 		return E2BIG;
 	}
 	sq_position = (sq->head + seqid - sq->head_seqid) % sq->size;
+	if (sq_position > sq->pos_max) {
+		sq->pos_max = sq_position;
+	}
+	assert (sq_position >= 0);
 
 //printf ("item add position %d seqid %d head seqid %d\n", sq_position, seqid, sq->head_seqid);
 	sq_item = sq->items;
