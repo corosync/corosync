@@ -1,4 +1,6 @@
 /*
+ * vi: set autoindent tabstop=4 shiftwidth=4 :
+ *
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
  * All rights reserved.
@@ -97,6 +99,18 @@ int sync_callback_count;
 #define AIS_SERVICE_HANDLERS_COUNT 5
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
 
+ /*
+  * IPC Initializers
+  */
+static int dispatch_init_send_response (struct conn_info *conn_info, void *message);
+
+static int response_init_send_response (struct conn_info *conn_info, void *message);
+
+static int (*ais_init_handlers[]) (struct conn_info *conn_info, void *message) = {
+	response_init_send_response,
+	dispatch_init_send_response
+};
+
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);
 
 enum e_ais_done {
@@ -178,6 +192,7 @@ static int libais_connection_active (struct conn_info *conn_info)
 static void libais_disconnect_delayed (struct conn_info *conn_info)
 {
 	conn_info->state = CONN_STATE_DISCONNECTING_DELAYED;
+	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTING_DELAYED;
 }
 
 static int libais_disconnect (struct conn_info *conn_info)
@@ -185,8 +200,17 @@ static int libais_disconnect (struct conn_info *conn_info)
 	int res = 0;
 	struct outq_item *outq_item;
 
-	if (ais_service_handlers[conn_info->service - 1]->libais_exit_fn) {
-		res = ais_service_handlers[conn_info->service - 1]->libais_exit_fn (conn_info);
+	if (conn_info->should_exit_fn &&
+		ais_service_handlers[conn_info->service]->libais_exit_fn) {
+
+		res = ais_service_handlers[conn_info->service]->libais_exit_fn (conn_info);
+	}
+
+	if (conn_info->conn_info_partner && 
+		conn_info->conn_info_partner->should_exit_fn &&
+		ais_service_handlers[conn_info->conn_info_partner->service]->libais_exit_fn) {
+
+		res = ais_service_handlers[conn_info->conn_info_partner->service]->libais_exit_fn (conn_info->conn_info_partner);
 	}
 
 	/*
@@ -197,6 +221,7 @@ static int libais_disconnect (struct conn_info *conn_info)
 		conn_info->state = CONN_STATE_DISCONNECTING;
 
 		close (conn_info->fd);
+
 		/*
 		 * Free the outq queued items
 		 */
@@ -211,10 +236,43 @@ static int libais_disconnect (struct conn_info *conn_info)
 	}
 
 	/*
+	 * Close the library connection and free its
+	 * data if it hasn't already been freed
+	 */
+	if (conn_info->conn_info_partner &&
+		conn_info->conn_info_partner->state != CONN_STATE_DISCONNECTING) {
+
+		conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTING;
+
+		close (conn_info->conn_info_partner->fd);
+
+		/*
+		 * Free the outq queued items
+		 */
+		while (!queue_is_empty (&conn_info->conn_info_partner->outq)) {
+			outq_item = queue_item_get (&conn_info->conn_info_partner->outq);
+			free (outq_item->msg);
+			queue_item_remove (&conn_info->conn_info_partner->outq);
+		}
+
+		queue_free (&conn_info->conn_info_partner->outq);
+		if (conn_info->conn_info_partner->inb) {
+			free (conn_info->conn_info_partner->inb);
+		}
+	}
+
+	/*
 	 * If exit_fn didn't request a retry,
 	 * free the conn_info structure
 	 */
 	if (res != -1) {
+		if (conn_info->conn_info_partner) {
+			poll_dispatch_delete (aisexec_poll_handle,
+				conn_info->conn_info_partner->fd);
+		}
+		poll_dispatch_delete (aisexec_poll_handle, conn_info->fd);
+
+		free (conn_info->conn_info_partner);
 		free (conn_info);
 	}
 
@@ -363,7 +421,6 @@ retry_sendmsg:
 		iov_send.iov_len = mlen;
 retry_sendmsg_two:
 		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
-
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg_two;
 		}
@@ -456,7 +513,65 @@ retry_accept:
 	return (0);
 }
 
-struct message_overlay {
+static int dispatch_init_send_response (struct conn_info *conn_info, void *message)
+{
+	SaErrorT error = SA_ERR_ACCESS;
+	struct req_lib_dispatch_init *req_lib_dispatch_init = (struct req_lib_dispatch_init *)message;
+	struct res_lib_dispatch_init res_lib_dispatch_init;
+	struct conn_info *msg_conn_info;
+
+	if (conn_info->authenticated) {
+		conn_info->service = req_lib_dispatch_init->resdis_header.service;
+		error = SA_OK;
+
+		conn_info->conn_info_partner = (struct conn_info *)req_lib_dispatch_init->conn_info;
+
+		msg_conn_info = (struct conn_info *)req_lib_dispatch_init->conn_info;
+		msg_conn_info->conn_info_partner = conn_info;
+	}
+
+	res_lib_dispatch_init.header.size = sizeof (struct res_lib_dispatch_init);
+	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
+	res_lib_dispatch_init.header.error = error;
+	
+	libais_send_response (conn_info, &res_lib_dispatch_init,
+		sizeof (res_lib_dispatch_init));
+
+	if (error == SA_ERR_ACCESS) {
+		return (-1);
+	}
+
+	conn_info->should_exit_fn = 1;
+	ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->libais_init_two_fn (conn_info);
+	return (0);
+}
+
+static int response_init_send_response (struct conn_info *conn_info, void *message)
+{
+	SaErrorT error = SA_ERR_ACCESS;
+	struct req_lib_response_init *req_lib_response_init = (struct req_lib_response_init *)message;
+	struct res_lib_response_init res_lib_response_init;
+
+	if (conn_info->authenticated) {
+		conn_info->service = req_lib_response_init->resdis_header.service;
+		error = SA_OK;
+	}
+	res_lib_response_init.header.size = sizeof (struct res_lib_response_init);
+	res_lib_response_init.header.id = MESSAGE_RES_INIT;
+	res_lib_response_init.header.error = error;
+	res_lib_response_init.conn_info = (unsigned long)conn_info;
+
+	libais_send_response (conn_info, &res_lib_response_init,
+		sizeof (res_lib_response_init));
+
+	if (error == SA_ERR_ACCESS) {
+		return (-1);
+	}
+	conn_info->should_exit_fn = 0;
+	return (0);
+}
+
+struct res_overlay {
 	struct res_header header;
 	char buf[4096];
 };
@@ -474,28 +589,38 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	struct ucred *cred;
 	int on = 0;
 	int send_ok = 0;
-	struct message_overlay msg_overlay;
+	struct res_overlay res_overlay;
+
+	if (revent & (POLLERR|POLLHUP)) {
+		res = libais_disconnect (conn_info);
+		return (res);
+	}
+
+	/*
+	 * Handle delayed disconnections
+	 */
+	if (conn_info->state == CONN_STATE_DISCONNECTING_DELAYED) {
+		res = libais_disconnect (conn_info);
+		return (res);
+	}
+
+	if (conn_info->state == CONN_STATE_DISCONNECTING) {
+		return (0);
+	}
+
+	if (revent & POLLOUT) {
+		cleanup_send_response (conn_info);
+	}
+
+	if ((revent & POLLIN) == 0) {
+		return (0);
+	}
 
 	msg_recv.msg_iov = &iov_recv;
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
 	msg_recv.msg_flags = 0;
-
-	if (revent & POLLOUT) {
-		cleanup_send_response (conn_info);
-	}
-	if ((revent & POLLIN) == 0) {
-		return (0);
-	}
-
-	/*
-	 * Handle delayed disconnections
-	 */
-	if (conn_info->state != CONN_STATE_ACTIVE) {
-		res = libais_disconnect (conn_info);
-		return (res);
-	}
 
 	if (conn_info->authenticated) {
 		msg_recv.msg_control = 0;
@@ -558,17 +683,15 @@ retry_recv:
 		 * else handle message using service handlers
 		 */
 		if (service == SOCKET_SERVICE_INIT) {
-			/*
-			 * Initializing service
-			 */
-			res = ais_service_handlers[header->id]->libais_init_fn (conn_info, header);
+			res = ais_init_handlers[header->id] (conn_info, header);
+// TODO error in init_two_fn needs to be handled
 		} else  {
 			/*
 			 * Not an init service, but a standard service
 			 */
-			if (header->id < 0 || header->id > ais_service_handlers[service - 1]->libais_handlers_count) {
+			if (header->id < 0 || header->id > ais_service_handlers[service]->libais_handlers_count) {
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
-				header->id, ais_service_handlers[service - 1]->libais_handlers_count);
+				header->id, ais_service_handlers[service]->libais_handlers_count);
 				res = -1;
 				goto error_disconnect;
 			}
@@ -580,27 +703,27 @@ retry_recv:
 			 * try again later
 			 */
 			send_ok =
-				(ais_service_handlers[service - 1]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
-				((ais_service_handlers[service - 1]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
+				(ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
 				(totempg_send_ok (1000 + header->size)) &&
 				(sync_in_process() == 0));
 
 			if (send_ok) {
 		//		*prio = 0;
-				res = ais_service_handlers[service - 1]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
+				res = ais_service_handlers[service]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
 			} else {
 		//		*prio = (*prio) + 1;
 
 				/*
 				 * Overload, tell library to retry
 				 */
-				msg_overlay.header.size = 
-					ais_service_handlers[service - 1]->libais_handlers[header->id].response_size;
-				msg_overlay.header.id = 
-					ais_service_handlers[service - 1]->libais_handlers[header->id].response_id;
-				msg_overlay.header.error = SA_ERR_TRY_AGAIN;
-				libais_send_response (conn_info, &msg_overlay,
-					msg_overlay.header.size);
+				res_overlay.header.size = 
+					ais_service_handlers[service]->libais_handlers[header->id].response_size;
+				res_overlay.header.id = 
+					ais_service_handlers[service]->libais_handlers[header->id].response_id;
+				res_overlay.header.error = SA_ERR_TRY_AGAIN;
+				libais_send_response (conn_info, &res_overlay,
+					res_overlay.header.size);
 			}
 		}
 		conn_info->inb_inuse -= header->size;

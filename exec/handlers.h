@@ -63,6 +63,7 @@ struct service_handler {
 		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
+	int (*libais_init_two_fn) (struct conn_info *conn_info);
 	int (*libais_exit_fn) (struct conn_info *conn_info);
 	int (*exec_init_fn) (void);
 	void (*exec_dump_fn) (void);

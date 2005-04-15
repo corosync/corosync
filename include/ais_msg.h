@@ -52,23 +52,23 @@ enum req_amf_response_interfaces {
 };
 
 enum req_lib_evs_types {
-	MESSAGE_REQ_EVS_JOIN = 1,
-	MESSAGE_REQ_EVS_LEAVE,
-	MESSAGE_REQ_EVS_MCAST_JOINED,
-	MESSAGE_REQ_EVS_MCAST_GROUPS
+	MESSAGE_REQ_EVS_JOIN = 0,
+	MESSAGE_REQ_EVS_LEAVE = 1,
+	MESSAGE_REQ_EVS_MCAST_JOINED = 2,
+	MESSAGE_REQ_EVS_MCAST_GROUPS = 3
 };
 
 enum res_lib_evs_types {
-	MESSAGE_RES_EVS_DELIVER_CALLBACK = 1,
-	MESSAGE_RES_EVS_CONFCHG_CALLBACK,
-	MESSAGE_RES_EVS_JOIN,
-	MESSAGE_RES_EVS_LEAVE,
-	MESSAGE_RES_EVS_MCAST_JOINED,
-	MESSAGE_RES_EVS_MCAST_GROUPS
+	MESSAGE_RES_EVS_DELIVER_CALLBACK = 0,
+	MESSAGE_RES_EVS_CONFCHG_CALLBACK = 1,
+	MESSAGE_RES_EVS_JOIN = 2,
+	MESSAGE_RES_EVS_LEAVE = 3,
+	MESSAGE_RES_EVS_MCAST_JOINED = 4,
+	MESSAGE_RES_EVS_MCAST_GROUPS = 5
 };
 
 enum req_amf_types {
-	MESSAGE_REQ_AMF_COMPONENTREGISTER = 1,
+	MESSAGE_REQ_AMF_COMPONENTREGISTER = 0,
 	MESSAGE_REQ_AMF_COMPONENTUNREGISTER,
 	MESSAGE_REQ_AMF_READINESSSTATEGET,
 	MESSAGE_REQ_AMF_HASTATEGET,
@@ -82,7 +82,7 @@ enum req_amf_types {
 };
 
 enum res_lib_amf_types {
-	MESSAGE_RES_AMF_COMPONENTREGISTER = 1,
+	MESSAGE_RES_AMF_COMPONENTREGISTER = 0,
 	MESSAGE_RES_AMF_COMPONENTUNREGISTER,
 	MESSAGE_RES_AMF_READINESSSTATEGET,
 	MESSAGE_RES_AMF_HASTATEGET,
@@ -170,11 +170,47 @@ struct req_exec_evs_mcast {
 	/* data goes here */
 };
 
+struct req_lib_resdis_init {
+	int size;
+	int id;
+	int service;
+};
+
+// TODO REMOVE THIS
+enum req_init_types_a {
+    MESSAGE_REQ_EVS_INIT,
+    MESSAGE_REQ_CLM_INIT,
+    MESSAGE_REQ_AMF_INIT,
+    MESSAGE_REQ_CKPT_INIT,
+    MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
+    MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
+    MESSAGE_REQ_EVT_INIT
+};
+
+struct req_lib_response_init {
+	struct req_lib_resdis_init resdis_header;
+};
+
+struct req_lib_dispatch_init {
+	struct req_lib_resdis_init resdis_header;
+	unsigned long conn_info;
+};
+
+	
 struct req_lib_init {
-	struct req_header header;
+	struct res_header header;
 };
 
 struct res_lib_init {
+	struct res_header header;
+};
+
+struct res_lib_response_init {
+	struct res_header header;
+	unsigned long conn_info;
+};
+
+struct res_lib_dispatch_init {
 	struct res_header header;
 };
 
@@ -370,7 +406,7 @@ struct req_amf_stoppingcomplete {
 };
 
 struct res_lib_amf_stoppingcomplete {
-	struct req_header header;
+	struct res_header header;
 };
 
 struct req_amf_componentcapabilitymodelget {

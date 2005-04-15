@@ -50,16 +50,9 @@
  * Size of the queue (entries) for I/O's to the API over socket IPC.
  */
 
-#define SIZEQUEUE 8192
+#define SIZEQUEUE 256
 
-enum socket_service_type {
-	SOCKET_SERVICE_INIT,
-	SOCKET_SERVICE_EVS,
-	SOCKET_SERVICE_CLM,
-	SOCKET_SERVICE_AMF,
-	SOCKET_SERVICE_CKPT,
-	SOCKET_SERVICE_EVT
-};
+#define SOCKET_SERVICE_INIT 254
 
 struct aisexec_ci {
 	struct sockaddr_in in_addr;	/* address of AF_INET socket, MUST BE FIRST IN STRUCTURE */
@@ -98,7 +91,7 @@ enum conn_state {
 };
 
 struct conn_info {
-	int fd;				/* File descriptor for this connection */
+	int fd;				/* File descriptor  */
 	enum conn_state state;			/* State of this connection */
 	char *inb;			/* Input buffer for non-blocking reads */
 	int inb_nextheader;	/* Next message header starts here */
@@ -106,11 +99,13 @@ struct conn_info {
 	int inb_inuse;		/* Bytes currently stored in input buffer */
 	struct queue outq;		/* Circular queue for outgoing requests */
 	int byte_start;			/* Byte to start sending from in head of queue */
-	enum socket_service_type service;/* Type of service so dispatch knows how to route message */
+	enum service_types service;/* Type of service so dispatch knows how to route message */
 	struct saAmfComponent *component;	/* Component for which this connection relates to  TODO shouldn't this be in the ci structure */
 	int authenticated;		/* Is this connection authenticated? */
 	struct list_head conn_list;
 	struct ais_ci ais_ci;	/* libais connection information */
+	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
+	int should_exit_fn;			/* Should call the exit function when closing this ipc */
 };
 
 extern struct sockaddr_in *this_ip;

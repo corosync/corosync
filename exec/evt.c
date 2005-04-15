@@ -64,8 +64,6 @@
 #define LOG_SERVICE LOG_SERVICE_EVT
 #include "print.h"
 
-static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, 
-		void *message);
 static int lib_evt_open_channel(struct conn_info *conn_info, void *message);
 static int lib_evt_open_channel_async(struct conn_info *conn_info, 
 		void *message);
@@ -88,7 +86,7 @@ static int evt_conf_change(
 		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
-static int evt_initialize(struct conn_info *conn_info, void *msg);
+static int evt_initialize(struct conn_info *conn_info);
 static int evt_finalize(struct conn_info *conn_info);
 static int evt_exec_init(void);
 
@@ -102,12 +100,6 @@ static void evt_sync_abort(void);
 
 
 static struct libais_handler evt_libais_handlers[] = {
-	{
-	.libais_handler_fn = 	message_handler_req_lib_activatepoll,
-	.response_size = 		sizeof(struct res_lib_activatepoll),
-	.response_id = 			MESSAGE_RES_LIB_ACTIVATEPOLL,
-	.flow_control =			FLOW_CONTROL_REQUIRED
-	},
 	{
 	.libais_handler_fn = 	lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
@@ -187,7 +179,7 @@ struct service_handler evt_service_handler = {
 	.aisexec_handler_fns_count	= sizeof(evt_exec_handler_fns) /
 									sizeof(int (*)),
 	.confchg_fn					= evt_conf_change,
-	.libais_init_fn				= evt_initialize,
+	.libais_init_two_fn			= evt_initialize,
 	.libais_exit_fn				= evt_finalize,
 	.exec_init_fn				= evt_exec_init,
 	.exec_dump_fn				= 0,
@@ -1262,22 +1254,6 @@ static int check_last_event(struct lib_event_data *evtpkt,
 }
 
 /*
- * Send a message to the app to wake it up if it is polling
- */
-static int message_handler_req_lib_activatepoll(struct conn_info *conn_info, 
-		void *message)
-{
-	struct res_lib_activatepoll res;
-
-	res.header.error = SA_AIS_OK;
-	res.header.size = sizeof (struct res_lib_activatepoll);
-	res.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
-	libais_send_response(conn_info, &res, sizeof(res));
-
-	return (0);
-}
-
-/*
  * event id generating code.  We use the node ID for this node for the
  * upper 32 bits of the event ID to make sure that we can generate a cluster
  * wide unique event ID for a given event.
@@ -1655,7 +1631,7 @@ static void __notify_event(struct conn_info *conn_info)
 		res.evd_head.size = sizeof(res);
 		res.evd_head.id = MESSAGE_RES_EVT_AVAILABLE;
 		res.evd_head.error = SA_AIS_OK;
-		libais_send_response(conn_info, &res, sizeof(res));
+		libais_send_response(conn_info->conn_info_partner, &res, sizeof(res));
 	}
 
 }
@@ -1960,34 +1936,42 @@ static struct event_svr_channel_subscr *find_subscr(
 /*
  * Handler for saEvtInitialize
  */
-static int evt_initialize(struct conn_info *conn_info, void *msg)
+static int evt_initialize(struct conn_info *conn_info)
 {
-	struct res_lib_init res;
-	struct libevt_ci *libevt_ci = &conn_info->ais_ci.u.libevt_ci;
+	struct libevt_ci *libevt_ci;
+	struct conn_info *resp_conn_info;
 	int i;
 
-	
-	res.header.size = sizeof (struct res_lib_init);
-	res.header.id = MESSAGE_RES_INIT;
-	res.header.error = SA_AIS_OK;
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtInitialize request.\n");
-	if (!conn_info->authenticated) {
-		log_printf(LOG_LEVEL_ERROR, "event service: Not authenticated\n");
-		res.header.error = SA_AIS_ERR_LIBRARY;
-		libais_send_response(conn_info, &res, sizeof(res));
-		return -1;
-	}
+	list_init (&conn_info->conn_list);
+	resp_conn_info = conn_info->conn_info_partner;
+	list_init (&resp_conn_info->conn_list);
+
+	libevt_ci = &resp_conn_info->ais_ci.u.libevt_ci;
+
+	/*
+	 * Initailze event instance data
+	 */
 
 	memset(libevt_ci, 0, sizeof(*libevt_ci));
+
+	/*
+	 * list of channels open on this instance
+	 */
 	list_init(&libevt_ci->esi_open_chans);
+
+	/*
+	 * pending event lists for each piriority
+	 */
 	for (i = SA_EVT_HIGHEST_PRIORITY; i <= SA_EVT_LOWEST_PRIORITY; i++) {
 		list_init(&libevt_ci->esi_events[i]);
 	}
-	conn_info->service = SOCKET_SERVICE_EVT;
-	list_init (&conn_info->conn_list);
-	list_add_tail(&conn_info->conn_list, &ci_head);
-	libais_send_response (conn_info, &res, sizeof(res));
+
+	/*
+	 * Keep track of all event service connections
+	 */
+	list_add_tail(&resp_conn_info->conn_list, &ci_head);
 
 	return 0;
 }
@@ -2819,7 +2803,7 @@ static int evt_conf_change(
 static int evt_finalize(struct conn_info *conn_info)
 {
 
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
+	struct libevt_ci *esip = &conn_info->conn_info_partner->ais_ci.u.libevt_ci;
 	struct event_svr_channel_open	*eco;
 	struct list_head *l, *nxt;
 
@@ -2841,7 +2825,7 @@ static int evt_finalize(struct conn_info *conn_info)
 	/*
 	 * Delete track entry if there is one
 	 */
-	list_del (&conn_info->conn_list);
+	list_del (&conn_info->conn_info_partner->conn_list);
 
 	return 0;
 }
@@ -3232,7 +3216,8 @@ open_return:
 		resa.ica_channel_handle = handle;
 		resa.ica_c_handle = ocp->ocp_c_handle;
 		resa.ica_invocation = ocp->ocp_invocation;
-		libais_send_response (ocp->ocp_conn_info, &resa, sizeof(resa));
+		libais_send_response (ocp->ocp_conn_info->conn_info_partner, 
+				&resa, sizeof(resa));
 	} else {
 		struct res_evt_channel_open res;
 		res.ico_head.size = sizeof(res);

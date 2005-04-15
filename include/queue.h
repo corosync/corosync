@@ -123,6 +123,7 @@ static inline void queue_item_remove (struct queue *queue) {
 	assert (queue->tail != queue->head);
 
 	queue->used--;
+	assert (queue->used >= 0);
 }
 
 static inline void queue_items_remove (struct queue *queue, int rel_count)

@@ -265,11 +265,23 @@ int poll_dispatch_delete (
 
 	if (found) {
 		poll_instance->poll_entries[i].ufd.fd = -1;
-		saHandleInstancePut (&poll_instance_database, handle);
-		return (0);
+		poll_instance->poll_entries[i].ufd.revents = 0;
+	}
+
+	for (i = 0; i < poll_instance->poll_entry_count; i++) {
+		if (poll_instance->ufds[i].fd == fd) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (found) {
+		poll_instance->ufds[i].fd = -1;
+		poll_instance->ufds[i].revents = 0;
 	}
 
 	saHandleInstancePut (&poll_instance_database, handle);
+	return (0);
 
 error_exit:
 	errno = EBADF;

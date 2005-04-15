@@ -83,12 +83,15 @@ void ReadinessStateSetCallback (SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfReadinessStateT readinessState)
 {
+	SaErrorT res;
+
 	switch (readinessState) {
 	case SA_AMF_IN_SERVICE:
 		printf ("ReadinessStateSetCallback: '");
 		printSaNameT ((SaNameT *)compName);
 		printf ("' requested to enter operational state SA_AMF_IN_SERVICE.\n");
-		saAmfResponse (invocation, SA_OK);
+		res = saAmfResponse (invocation, SA_OK);
+printf ("res is %d\n", res);
 		break;
 	case SA_AMF_OUT_OF_SERVICE:
 		printf ("ReadinessStateSetCallback: '");

@@ -181,6 +181,7 @@ void internal_log_printf (int logclass, char *string, ...)
 	if (logmode & LOG_MODE_STDERR) {
 		fprintf (stderr, "%s", log_string);
 	}
+	fflush (stdout);
 
 	va_end(ap);
 }

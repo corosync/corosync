@@ -244,6 +244,7 @@ int main (void) {
 	int result;
 	SaNameT compName;
 	pthread_t dispatch_thread;
+	pthread_attr_t dispatch_thread_attribute;
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_OK) {
@@ -256,6 +257,9 @@ int main (void) {
 	result = saAmfComponentRegister (&handle, &compName, NULL);
 	printf ("register result is %d (should be 1)\n", result);
 
+	pthread_attr_init (&dispatch_thread_attribute);
+	pthread_attr_setschedpolicy (&dispatch_thread_attribute, SCHED_FIFO);
+	pthread_attr_setschedparam (&dispatch_thread_attribute, 99);
 	pthread_create (&dispatch_thread, NULL, th_dispatch, &handle);
 
 	sleep (5);

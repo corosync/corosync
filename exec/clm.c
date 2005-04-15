@@ -1,4 +1,6 @@
 /*
+ * vi: set autoindent tabstop=4 shiftwidth=4 :
+ *
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
@@ -96,8 +98,6 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int clm_exec_init_fn (void);
-
 static int clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, int member_list_entries,
@@ -113,13 +113,14 @@ static void clm_sync_activate (void);
 
 static void clm_sync_abort (void);
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int clm_exec_init_fn (void);
 
-static int message_handler_req_clm_init (struct conn_info *conn_info,
-	void *message);
+static int clm_init_two_fn (struct conn_info *conn_info);
 
-static int message_handler_req_lib_activatepoll (struct conn_info *conn_info,
-	void *message);
+static int clm_exit_fn (struct conn_info *conn_info);
+
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr,
+	int endian_conversion_required);
 
 static int message_handler_req_clm_clustertrack (struct conn_info *conn_info,
 	void *message);
@@ -138,30 +139,24 @@ static int clm_exit_fn (struct conn_info *conn_info);
 struct libais_handler clm_libais_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn			= message_handler_req_lib_activatepoll,
-		.response_size				= sizeof (struct res_lib_activatepoll),
-		.response_id				= MESSAGE_RES_LIB_ACTIVATEPOLL, // TODO RESPONSE
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_clm_clustertrack,
 		.response_size				= sizeof (struct res_clm_clustertrack),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
 		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 2 */
+	{ /* 1 */
 		.libais_handler_fn			= message_handler_req_clm_trackstop,
 		.response_size				= sizeof (struct res_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
 		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 3 */
+	{ /* 2 */
 		.libais_handler_fn			= message_handler_req_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
 		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 4 */
+	{ /* 3 */
 		.libais_handler_fn			= message_handler_req_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
@@ -179,7 +174,7 @@ struct service_handler clm_service_handler = {
 	.aisexec_handler_fns		= clm_aisexec_handler_fns,
 	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
 	.confchg_fn					= clm_confchg_fn,
-	.libais_init_fn				= message_handler_req_clm_init,
+	.libais_init_two_fn			= clm_init_two_fn,
 	.libais_exit_fn				= clm_exit_fn,
 	.exec_init_fn				= clm_exec_init_fn,
 	.exec_dump_fn				= 0,
@@ -302,7 +297,6 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
         }
     }
 }
-
 
 static void libraryNotificationJoin (SaClmNodeIdT node)
 {
@@ -481,7 +475,8 @@ static void exec_clm_nodejoin_endian_conversion (struct req_exec_clm_nodejoin *i
 		SA_MAX_NAME_LENGTH);
 }
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr,
+	int endian_conversion_required)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 	struct req_exec_clm_nodejoin req_exec_clm_nodejoin_storage;
@@ -524,41 +519,11 @@ static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr 
 	return (0);
 }
 
-static int message_handler_req_clm_init (struct conn_info *conn_info, void *message)
+static int clm_init_two_fn (struct conn_info *conn_info)
 {
-	SaErrorT error = SA_ERR_SECURITY;
-	struct res_lib_init res_lib_init;
-
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
-	if (conn_info->authenticated) {
-		conn_info->service = SOCKET_SERVICE_CLM;
-		error = SA_OK;
-	}
-
-	res_lib_init.header.size = sizeof (struct res_lib_init);
-	res_lib_init.header.id = MESSAGE_RES_INIT;
-	res_lib_init.header.error = error;
-
-	libais_send_response (conn_info, &res_lib_init, sizeof (res_lib_init));
 
 	list_init (&conn_info->conn_list);
-
-	if (conn_info->authenticated) {
-		return (0);
-	}
-
-	return (-1);
-}
-
-static int message_handler_req_lib_activatepoll (struct conn_info *conn_info, void *message)
-{
-	struct res_lib_activatepoll res_lib_activatepoll;
-
-	res_lib_activatepoll.header.size = sizeof (struct res_lib_activatepoll);
-	res_lib_activatepoll.header.id = MESSAGE_RES_LIB_ACTIVATEPOLL;
-	res_lib_activatepoll.header.error = SA_OK;
-	libais_send_response (conn_info, &res_lib_activatepoll,
-		sizeof (struct res_lib_activatepoll));
 
 	return (0);
 }
@@ -568,11 +533,11 @@ int message_handler_req_clm_clustertrack (struct conn_info *conn_info, void *mes
 	struct req_clm_clustertrack *req_clm_clustertrack = (struct req_clm_clustertrack *)message;
 
 
-	conn_info->ais_ci.u.libclm_ci.trackFlags = req_clm_clustertrack->trackFlags;
+	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = req_clm_clustertrack->trackFlags;
 
-	list_add (&conn_info->conn_list, &library_notification_send_listhead);
+	list_add (&conn_info->conn_info_partner->conn_list, &library_notification_send_listhead);
 
-	libraryNotificationCurrentState (conn_info);
+	libraryNotificationCurrentState (conn_info->conn_info_partner);
 
 	return (0);
 }
@@ -582,7 +547,7 @@ static int message_handler_req_clm_trackstop (struct conn_info *conn_info, void 
 {
 	conn_info->ais_ci.u.libclm_ci.trackFlags = 0;
 
-	list_del (&conn_info->conn_list);
+	list_del (&conn_info->conn_info_partner->conn_list);
 
 	return (0);
 }
@@ -615,6 +580,7 @@ static int message_handler_req_clm_nodeget (struct conn_info *conn_info, void *m
 	res_clm_nodeget.header.error = SA_OK;
 	res_clm_nodeget.invocation = req_clm_nodeget->invocation;
 	res_clm_nodeget.valid = valid;
+	printf ("valid is %d\n", res_clm_nodeget.valid);
 	if (valid) {
 		memcpy (&res_clm_nodeget.clusterNode, clusterNode, sizeof (SaClmClusterNodeT));
 	}

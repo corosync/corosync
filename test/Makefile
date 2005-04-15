@@ -97,6 +97,9 @@ testevt: testevt.o sa_error.o $(LIBRARIES)
 testevs: testevs.o $(LIBS)
 	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
 
+testevsth: testevsth.o $(LIBS)
+	$(CC) $(LDFLAGS) -o testevsth testevsth.o $(LIBS)
+
 evsbench: evsbench.o $(LIBS)
 	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
 
@@ -165,6 +168,7 @@ ckptbench.o: ../include/ais_types.h ../include/saCkpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/saCkpt.h
 testevt.o: ../include/ais_types.h ../include/saEvt.h
 testevs.o: ../include/evs.h
+testevsth.o: ../include/evs.h
 evsbench.o: ../include/ais_types.h ../include/evs.h
 subscription.o: ../include/ais_types.h ../include/saEvt.h
 publish.o: ../include/ais_types.h ../include/saEvt.h
