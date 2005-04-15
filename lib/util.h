@@ -66,7 +66,13 @@ struct queue {
 SaErrorT
 saServiceConnect (
 	int *fdOut,
-	enum req_init_types init_type);
+	enum service_types service);
+
+SaErrorT
+saServiceConnectTwo (
+        int *responseOut,
+        int *callbackOut,
+        enum service_types service);
 
 SaErrorT
 saRecvRetry (
@@ -83,9 +89,6 @@ saRecvQueue (
 	int findMessageId);
 
 SaErrorT
-saActivatePoll (int s);
-
-SaErrorT
 saSendRetry (
 	int s,
 	const void *msg,
@@ -96,6 +99,20 @@ SaErrorT saSendMsgRetry (
 	int s,
 	struct iovec *iov,
 	int iov_len);
+
+SaErrorT saSendMsgReceiveReply (
+	int s,
+	struct iovec *iov,
+	int iov_len,
+	void *responseMessage,
+	int responseLen);
+
+SaErrorT saSendReceiveReply (
+	int s,
+	void *requestMessage,
+	int requestLen,
+	void *responseMessage,
+	int responseLen);
 
 SaErrorT
 saSelectRetry (

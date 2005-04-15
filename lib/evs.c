@@ -1,4 +1,6 @@
 /*
+ * vi: set autoindent tabstop=4 shiftwidth=4 :
+
  * Copyright (c) 2004 MontaVista Software, Inc.
  *
  * All rights reserved.
@@ -41,6 +43,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <errno.h>
 #include "util.h"
 
 #include "../include/ais_msg.h"
@@ -48,12 +51,12 @@
 #include "../include/evs.h"
 
 struct evs_inst {
-	int fd;
+	int response_fd;
+	int dispatch_fd;
 	int finalize;
 	evs_callbacks_t callbacks;
-	struct queue inq;
-	char dispatch_buffer[512000];
-	pthread_mutex_t mutex;
+	pthread_mutex_t response_mutex;
+	pthread_mutex_t dispatch_mutex;
 };
 
 static void evs_instance_destructor (void *instance);
@@ -71,31 +74,17 @@ static struct saHandleDatabase evs_handle_t_db = {
 static void evs_instance_destructor (void *instance)
 {
     struct evs_inst *evs_inst = instance;
-    void **msg;
-    int empty;
-
-    /*
-     * Empty out the queue if there are any pending messages
-     */
-    while ((saQueueIsEmpty(&evs_inst->inq, &empty) == SA_OK) && !empty) {
-        saQueueItemGet(&evs_inst->inq, (void *)&msg);
-        saQueueItemRemove(&evs_inst->inq);
-        free(*msg);
-    }
-
-    /*
-     * clean up the queue itself
-     */
-    if (evs_inst->inq.items) {
-            free(evs_inst->inq.items);
-    }
 
     /*
      * Disconnect from the server
      */
-    if (evs_inst->fd != -1) {
-        shutdown(evs_inst->fd, 0);
-        close(evs_inst->fd);
+    if (evs_inst->response_fd != -1) {
+        shutdown(evs_inst->response_fd, 0);
+        close(evs_inst->response_fd);
+    }
+    if (evs_inst->dispatch_fd != -1) {
+        shutdown(evs_inst->dispatch_fd, 0);
+        close(evs_inst->dispatch_fd);
     }
 }
 
@@ -117,23 +106,18 @@ evs_error_t evs_initialize (
 		goto error_destroy;
 	}
 
-	/*
-	 * An inq is needed to store async messages while waiting for a
-	 * sync response
-	 */
-	error = saQueueInit (&evs_inst->inq, 128, sizeof (void *));
+	error = saServiceConnectTwo (&evs_inst->response_fd,
+		&evs_inst->dispatch_fd,
+		EVS_SERVICE);
 	if (error != SA_OK) {
 		goto error_put_destroy;
 	}
 
-	error = saServiceConnect (&evs_inst->fd, MESSAGE_REQ_EVS_INIT);
-	if (error != SA_OK) {
-		goto error_put_destroy;
-	}
-	
 	memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
 
-	pthread_mutex_init (&evs_inst->mutex, NULL);
+	pthread_mutex_init (&evs_inst->response_mutex, NULL);
+
+	pthread_mutex_init (&evs_inst->dispatch_mutex, NULL);
 
 	saHandleInstancePut (&evs_handle_t_db, *handle);
 
@@ -157,20 +141,21 @@ evs_error_t evs_finalize (
 	if (error != SA_OK) {
 		return (error);
 	}
+//	  TODO is the locking right here
+	pthread_mutex_lock (&evs_inst->response_mutex);
+
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (evs_inst->finalize) {
-		pthread_mutex_unlock (&evs_inst->mutex);
+		pthread_mutex_unlock (&evs_inst->response_mutex);
 		saHandleInstancePut (&evs_handle_t_db, handle);
 		return (EVS_ERR_BAD_HANDLE);
 	}
 
 	evs_inst->finalize = 1;
 
-	saActivatePoll (evs_inst->fd);
-
-	pthread_mutex_unlock (&evs_inst->mutex);
+	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
@@ -191,16 +176,16 @@ evs_error_t evs_fd_get (
 		return (error);
 	}
 
-	*fd = evs_inst->fd; 
+	*fd = evs_inst->dispatch_fd; 
 
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (SA_OK);
 }
 
-struct message_overlay {
+struct res_overlay {
 	struct res_header header;
-	char data[4096];
+	char data[512000];
 };
 
 evs_error_t evs_dispatch (
@@ -212,15 +197,11 @@ evs_error_t evs_dispatch (
 	SaErrorT error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
-	int poll_fd;
 	struct evs_inst *evs_inst;
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
-	struct message_overlay *dispatch_data;
-	int empty;
-	struct res_header **queue_msg;
-	struct res_header *msg = NULL;
+	struct res_overlay dispatch_data;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
@@ -237,76 +218,65 @@ evs_error_t evs_dispatch (
 	}
 
 	do {
-		poll_fd = evs_inst->fd;
-
-		ufds.fd = poll_fd;
+		ufds.fd = evs_inst->dispatch_fd;
 		ufds.events = POLLIN;
 		ufds.revents = 0;
 
-		pthread_mutex_lock (&evs_inst->mutex);
-		saQueueIsEmpty (&evs_inst->inq, &empty);
-		if (empty == 1) {
-			pthread_mutex_unlock (&evs_inst->mutex);
+		error = saPollRetry (&ufds, 1, timeout);
+		if (error != SA_OK) {
+			goto error_nounlock;
+		}
 
-			error = saPollRetry (&ufds, 1, timeout);
-			if (error != SA_OK) {
-				goto error_nounlock;
-			}
+		pthread_mutex_lock (&evs_inst->dispatch_mutex);
 
-			pthread_mutex_lock (&evs_inst->mutex);
+		/*
+		 * Regather poll data in case ufds has changed since taking lock
+		 */
+		error = saPollRetry (&ufds, 1, 0);
+		if (error != SA_OK) {
+			goto error_nounlock;
 		}
 
 		/*
 		 * Handle has been finalized in another thread
 		 */
 		if (evs_inst->finalize == 1) {
-			error = SA_OK;
-			pthread_mutex_unlock (&evs_inst->mutex);
+			error = EVS_OK;
+			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			goto error_unlock;
 		}
 
-		dispatch_avail = (ufds.revents & POLLIN) | (empty == 0);
+		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatch_types == EVS_DISPATCH_ALL) {
-			pthread_mutex_unlock (&evs_inst->mutex);
+			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
-		} else
+		} else 
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&evs_inst->mutex);
+			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			continue; /* next poll */
 		}
 
-		saQueueIsEmpty (&evs_inst->inq, &empty);
-		if (empty == 0) {
+		if (ufds.revents & POLLIN) {
 			/*
-			 * Queue is not empty, read data from queue
+			 * Queue empty, read response from socket
 			 */
-			saQueueItemGet (&evs_inst->inq, (void *)&queue_msg);
-			msg = *queue_msg;
-			dispatch_data = (struct message_overlay *)msg;
-			res_evs_deliver_callback = (struct res_evs_deliver_callback *)msg;
-			res_evs_confchg_callback = (struct res_evs_confchg_callback *)msg;
-
-			saQueueItemRemove (&evs_inst->inq);
-		} else {
-			dispatch_data = (struct message_overlay *)evs_inst->dispatch_buffer;
-			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
-			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
-			/*
-			* Queue empty, read response from socket
-			*/
-			error = saRecvRetry (evs_inst->fd, &dispatch_data->header,
+			error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.header,
 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data->header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (evs_inst->fd, &dispatch_data->data,
-					dispatch_data->header.size - sizeof (struct res_header),
+			if (dispatch_data.header.size > sizeof (struct res_header)) {
+				error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.data,
+					dispatch_data.header.size - sizeof (struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
+
 				if (error != SA_OK) {
 					goto error_unlock;
 				}
 			}
+		} else {
+			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
+			continue;
 		}
 
 		/*
@@ -316,16 +286,13 @@ evs_error_t evs_dispatch (
 		*/
 		memcpy (&callbacks, &evs_inst->callbacks, sizeof (evs_callbacks_t));
 
-		pthread_mutex_unlock (&evs_inst->mutex);
+		pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data->header.id) {
-		case MESSAGE_RES_LIB_ACTIVATEPOLL:
-			ignore_dispatch = 1;
-			break;
-
+		switch (dispatch_data.header.id) {
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
+			res_evs_deliver_callback = (struct res_evs_deliver_callback *)&dispatch_data;
 			callbacks.evs_deliver_fn (
 				res_evs_deliver_callback->source_addr,
 				&res_evs_deliver_callback->msg,
@@ -333,6 +300,7 @@ evs_error_t evs_dispatch (
 			break;
 
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
+			res_evs_confchg_callback = (struct res_evs_confchg_callback *)&dispatch_data;
 			callbacks.evs_confchg_fn (
 				res_evs_confchg_callback->member_list,
 				res_evs_confchg_callback->member_list_entries,
@@ -346,9 +314,6 @@ evs_error_t evs_dispatch (
 			error = SA_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
-		}
-		if (empty == 0) {
-			free (msg);
 		}
 
 		/*
@@ -393,6 +358,7 @@ evs_error_t evs_join (
 	if (error != SA_OK) {
 		return (error);
 	}
+
 	req_lib_evs_join.header.size = sizeof (struct req_lib_evs_join) + 
 		(group_entries * sizeof (struct evs_group));
 	req_lib_evs_join.header.id = MESSAGE_REQ_EVS_JOIN;
@@ -403,13 +369,13 @@ evs_error_t evs_join (
 	iov[1].iov_base = groups;
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
-	error = saSendMsgRetry (evs_inst->fd, iov, 2);
-	if (error != SA_OK) {
-		goto error_exit;
-	}
+	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = saRecvRetry (evs_inst->fd, &res_lib_evs_join,
-		sizeof (struct res_lib_evs_join), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saSendMsgReceiveReply (evs_inst->response_fd, iov, 2,
+		&res_lib_evs_join, sizeof (struct res_lib_evs_join));
+
+	pthread_mutex_unlock (&evs_inst->response_mutex);
+
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -437,6 +403,7 @@ evs_error_t evs_leave (
 	if (error != SA_OK) {
 		return (error);
 	}
+
 	req_lib_evs_leave.header.size = sizeof (struct req_lib_evs_leave) + 
 		(group_entries * sizeof (struct evs_group));
 	req_lib_evs_leave.header.id = MESSAGE_REQ_EVS_LEAVE;
@@ -447,13 +414,13 @@ evs_error_t evs_leave (
 	iov[1].iov_base = groups;
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
-	error = saSendMsgRetry (evs_inst->fd, iov, 2);
-	if (error != SA_OK) {
-		goto error_exit;
-	}
+	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = saRecvRetry (evs_inst->fd, &res_lib_evs_leave,
-		sizeof (struct res_lib_evs_leave), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saSendMsgReceiveReply (evs_inst->response_fd, iov, 2,
+		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave));
+
+	pthread_mutex_unlock (&evs_inst->response_mutex);
+
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -500,13 +467,13 @@ evs_error_t evs_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 	
-	error = saSendMsgRetry (evs_inst->fd, iov, 1 + iov_len);
-	if (error != SA_OK) {
-		goto error_exit;
-	}
+	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = saRecvQueue (evs_inst->fd, &res_lib_evs_mcast_joined, &evs_inst->inq,
-		MESSAGE_RES_EVS_MCAST_JOINED);
+	error = saSendMsgReceiveReply (evs_inst->response_fd, iov, iov_len + 1,
+		&res_lib_evs_mcast_joined, sizeof (struct res_lib_evs_mcast_joined));
+
+	pthread_mutex_unlock (&evs_inst->response_mutex);
+
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -555,13 +522,12 @@ evs_error_t evs_mcast_groups (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 	
-	error = saSendMsgRetry (evs_inst->fd, iov, 2 + iov_len);
-	if (error != SA_OK) {
-		goto error_exit;
-	}
+	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = saRecvQueue (evs_inst->fd, &res_lib_evs_mcast_groups, &evs_inst->inq,
-		MESSAGE_RES_EVS_MCAST_GROUPS);
+	error = saSendMsgReceiveReply (evs_inst->response_fd, iov, iov_len + 2,
+		&res_lib_evs_mcast_groups, sizeof (struct res_lib_evs_mcast_groups));
+
+	pthread_mutex_unlock (&evs_inst->response_mutex);
 	if (error != SA_OK) {
 		goto error_exit;
 	}

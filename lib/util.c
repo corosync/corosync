@@ -1,4 +1,6 @@
 /*
+ * vi: set autoindent tabstop=4 shiftwidth=4 :
+ *
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
  * All rights reserved.
@@ -67,13 +69,13 @@ struct saHandle {
 SaErrorT
 saServiceConnect (
 	int *fdOut,
-	enum req_init_types initType)
+	enum service_types service)
 {
 	int fd;
 	int result;
 	struct sockaddr_un address;
-	struct req_lib_init req_lib_init;
-	struct res_lib_init res_lib_init;
+	struct req_lib_response_init req_lib_response_init;
+	struct res_lib_response_init res_lib_response_init;
 	SaErrorT error;
 	gid_t egid;
 
@@ -95,16 +97,17 @@ saServiceConnect (
 		return (SA_ERR_TRY_AGAIN);
 	}
 
-	req_lib_init.header.size = sizeof (req_lib_init);
-	req_lib_init.header.id = initType;
+	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
+	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
+	req_lib_response_init.resdis_header.service = service;
 
-	error = saSendRetry (fd, &req_lib_init, sizeof (struct req_lib_init),
-		MSG_NOSIGNAL);
+	error = saSendRetry (fd, &req_lib_response_init,
+		sizeof (struct req_lib_response_init), MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto error_exit;
 	}
-	error = saRecvRetry (fd, &res_lib_init,
-		sizeof (struct res_lib_init), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry (fd, &res_lib_response_init,
+		sizeof (struct res_lib_response_init), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -112,8 +115,8 @@ saServiceConnect (
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_init.header.error != SA_OK) {
-		error = res_lib_init.header.error;
+	if (res_lib_response_init.header.error != SA_OK) {
+		error = res_lib_response_init.header.error;
 		goto error_exit;
 	}
 
@@ -121,6 +124,115 @@ saServiceConnect (
 	return (SA_OK);
 error_exit:
 	close (fd);
+	return (error);
+}
+
+SaErrorT
+saServiceConnectTwo (
+	int *responseOut,
+	int *callbackOut,
+	enum service_types service)
+{
+	int responseFD;
+	int callbackFD;
+	int result;
+	struct sockaddr_un address;
+	struct req_lib_response_init req_lib_response_init;
+	struct res_lib_response_init res_lib_response_init;
+	struct req_lib_dispatch_init req_lib_dispatch_init;
+	struct res_lib_dispatch_init res_lib_dispatch_init;
+	SaErrorT error;
+	gid_t egid;
+
+	/*
+	 * Allow set group id binaries to be authenticated
+	 */
+	egid = getegid();
+	setregid (egid, -1);
+
+	memset (&address, 0, sizeof (struct sockaddr_un));
+	address.sun_family = PF_UNIX;
+	strcpy (address.sun_path + 1, "libais.socket");
+	responseFD = socket (PF_UNIX, SOCK_STREAM, 0);
+	if (responseFD == -1) {
+		return (SA_ERR_SYSTEM);
+	}
+	result = connect (responseFD, (struct sockaddr *)&address, sizeof (address));
+	if (result == -1) {
+		return (SA_ERR_TRY_AGAIN);
+	}
+
+	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
+	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
+	req_lib_response_init.resdis_header.service = service;
+
+	error = saSendRetry (responseFD, &req_lib_response_init,
+		sizeof (struct req_lib_response_init),
+		MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+	error = saRecvRetry (responseFD, &res_lib_response_init,
+		sizeof (struct res_lib_response_init),
+		MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	/*
+	 * Check for security errors
+	 */
+	if (res_lib_response_init.header.error != SA_OK) {
+		error = res_lib_response_init.header.error;
+		goto error_exit;
+	}
+
+	*responseOut = responseFD;
+
+/* if I comment out the 4 lines below the executive crashes */
+	callbackFD = socket (PF_UNIX, SOCK_STREAM, 0);
+	if (callbackFD == -1) {
+		return (SA_ERR_SYSTEM);
+	}
+	result = connect (callbackFD, (struct sockaddr *)&address, sizeof (address));
+	if (result == -1) {
+		return (SA_ERR_TRY_AGAIN);
+	}
+
+	req_lib_dispatch_init.resdis_header.size = sizeof (req_lib_dispatch_init);
+	req_lib_dispatch_init.resdis_header.id = MESSAGE_REQ_DISPATCH_INIT;
+	req_lib_dispatch_init.resdis_header.service = service;
+
+	req_lib_dispatch_init.conn_info = res_lib_response_init.conn_info;
+
+	error = saSendRetry (callbackFD, &req_lib_dispatch_init,
+		sizeof (struct req_lib_dispatch_init),
+		MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit_two;
+	}
+	error = saRecvRetry (callbackFD, &res_lib_dispatch_init,
+		sizeof (struct res_lib_dispatch_init),
+		MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit_two;
+	}
+
+	/*
+	 * Check for security errors
+	 */
+	if (res_lib_dispatch_init.header.error != SA_OK) {
+		error = res_lib_dispatch_init.header.error;
+		goto error_exit;
+	}
+
+	*callbackOut = callbackFD;
+	return (SA_OK);
+
+error_exit_two:
+	close (callbackFD);
+error_exit:
+	close (responseFD);
 	return (error);
 }
 
@@ -135,9 +247,8 @@ saRecvRetry (
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
-
-	iov_recv.iov_base = (void *)msg;
-	iov_recv.iov_len = len;
+	char *rbuf = (char *)msg;
+	int processed = 0;
 
 	msg_recv.msg_iov = &iov_recv;
 	msg_recv.msg_iovlen = 1;
@@ -148,14 +259,23 @@ saRecvRetry (
 	msg_recv.msg_flags = 0;
 
 retry_recv:
+	iov_recv.iov_base = (void *)&rbuf[processed];
+	iov_recv.iov_len = len - processed;
+
 	result = recvmsg (s, &msg_recv, flags);
 	if (result == -1 && errno == EINTR) {
 		goto retry_recv;
 	}
-	if (result == -1 || result != len) {
-		error = SA_ERR_SYSTEM;
+	if (result == -1 || result == 0) {
+		error = SA_ERR_MESSAGE_ERROR;
+		goto error_exit;
 	}
-	assert (result == len);
+	processed += result;
+	if (processed != len) {
+		goto retry_recv;
+	}
+	assert (processed == len);
+error_exit:
 	return (error);
 }
 
@@ -163,99 +283,6 @@ struct res_overlay {
 	struct res_header header;
 	char payload[0];
 };
-
-SaErrorT
-saRecvQueue (
-	int s,
-	void *msg,
-	struct queue *queue,
-	int findMessageId)
-{
-	struct res_overlay *overlay;
-	void *inq_msg;
-	int match;
-	SaErrorT error;
-
-	do {
-		overlay = (struct res_overlay *)msg;
-		error = saRecvRetry (s, overlay, sizeof (struct res_header),
-			MSG_WAITALL | MSG_NOSIGNAL);
-		if (error != SA_OK) {
-			goto error_exit;
-		}
-		assert (overlay->header.size != 0);
-
-		match = (overlay->header.id == findMessageId);
-
-		/*
-		 * Item doesn't match, queue it
-		 */
-		if (match == 0 && queue) {
-			inq_msg = (void *)malloc (overlay->header.size);
-			if (inq_msg == 0) {
-				error = SA_ERR_NO_MEMORY;
-				goto error_exit;
-			}
-			memcpy (inq_msg, overlay, sizeof (struct res_header));
-			overlay = (struct res_overlay *)inq_msg;
-			if (overlay->header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (s, &overlay->payload,
-					overlay->header.size - sizeof (struct res_header),
-					MSG_WAITALL | MSG_NOSIGNAL);
-				if (error != SA_OK) {
-					goto error_exit;
-				}
-			}
-
-			if (overlay->header.id != MESSAGE_RES_LIB_ACTIVATEPOLL) {
-				error = saQueueItemAdd (queue, &inq_msg);
-				if (error != SA_OK) {
-					free (inq_msg);
-					goto error_exit;
-				}
-
-				error = saActivatePoll (s);
-				if (error != SA_OK) {
-					goto error_exit;
-				}
-			}
-		} else {
-		/*
-		 *  its a match, so deliver it
-		 */
-			overlay = (struct res_overlay *)msg;
-			if (overlay->header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (s, &overlay->payload,
-					overlay->header.size - sizeof (struct res_header),
-					MSG_WAITALL | MSG_NOSIGNAL);
-				if (error != SA_OK) {
-					goto error_exit;
-				}
-			}
-			break;
-		}
-	} while (match == 0);
-
-error_exit:
-	return (error);
-}
-
-SaErrorT
-saActivatePoll (int s) {
-	struct req_lib_activatepoll req_lib_activatepoll;
-	SaErrorT error;
-
-	/*
-	 * Send activate poll to tell nodeexec to activate poll
-	 * on this file descriptor
-	 */
-	req_lib_activatepoll.header.size = sizeof (req_lib_activatepoll);
-	req_lib_activatepoll.header.id = MESSAGE_REQ_LIB_ACTIVATEPOLL;
-
-	error = saSendRetry (s, &req_lib_activatepoll,
-		sizeof (struct req_lib_activatepoll), MSG_NOSIGNAL);
-	return (error);
-}
 
 SaErrorT
 saSendRetry (
@@ -318,6 +345,55 @@ retry_send:
 	if (result == -1) {
 		error = SA_ERR_SYSTEM;
 	}
+	return (error);
+}
+
+SaErrorT saSendMsgReceiveReply (
+        int s,
+        struct iovec *iov,
+        int iov_len,
+        void *responseMessage,
+        int responseLen)
+{
+	SaErrorT error = SA_OK;
+
+	error = saSendMsgRetry (s, iov, iov_len);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+	
+	error = saRecvRetry (s, responseMessage, responseLen,
+		MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+error_exit:
+	return (error);
+}
+
+SaErrorT saSendReceiveReply (
+        int s,
+        void *requestMessage,
+        int requestLen,
+        void *responseMessage,
+        int responseLen)
+{
+	SaErrorT error = SA_OK;
+
+	error = saSendRetry (s, requestMessage, requestLen,
+		MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+	
+	error = saRecvRetry (s, responseMessage, responseLen,
+		MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+error_exit:
 	return (error);
 }
 
@@ -560,6 +636,7 @@ saQueueItemAdd (
 	queueItem += queuePosition * queue->bytesPerItem;
 	memcpy (queueItem, item, queue->bytesPerItem);
 
+	assert (queue->tail != queue->head);
 	if (queue->tail == queue->head) {
 		return (SA_ERR_LIBRARY);
 	}

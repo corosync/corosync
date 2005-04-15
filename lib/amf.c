@@ -59,13 +59,14 @@ struct res_overlay {
  * Data structure for instance data
  */
 struct amfInstance {
-	int fd;
+	int response_fd;
+	int dispatch_fd;
 	SaAmfCallbacksT callbacks;
-	struct queue inq;
 	SaNameT compName;
 	int compRegistered;
 	int finalize;
-	pthread_mutex_t mutex;
+	pthread_mutex_t response_mutex;
+	pthread_mutex_t dispatch_mutex;
 };
 
 static void amfHandleInstanceDestructor (void *);
@@ -101,13 +102,13 @@ void amfHandleInstanceDestructor (void *instance)
 {
 	struct amfInstance *amfInstance = (struct amfInstance *)instance;
 
-	if (amfInstance->fd != -1) {
-		shutdown (amfInstance->fd, 0);
-		close (amfInstance->fd);
+	if (amfInstance->response_fd != -1) {
+		shutdown (amfInstance->response_fd, 0);
+		close (amfInstance->response_fd);
 	}
-
-	if (amfInstance->inq.items) {
-		free (amfInstance->inq.items);
+	if (amfInstance->dispatch_fd != -1) {
+		shutdown (amfInstance->dispatch_fd, 0);
+		close (amfInstance->dispatch_fd);
 	}
 }
 
@@ -135,26 +136,21 @@ saAmfInitialize (
 		goto error_destroy;
 	}
 
-	amfInstance->fd = -1;
-	
-	/*
-	 * An inq is needed to store async messages while waiting for a 
-	 * sync response
-	 */
-	error = saQueueInit (&amfInstance->inq, 512, sizeof (void *));
-	if (error != SA_OK) {
-		goto error_put_destroy;
-	}
+	amfInstance->response_fd = -1;
 
-	error = saServiceConnect (&amfInstance->fd, MESSAGE_REQ_AMF_INIT);
+	amfInstance->dispatch_fd = -1;
+	
+	error = saServiceConnectTwo (&amfInstance->response_fd,
+		&amfInstance->dispatch_fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto error_put_destroy;
-// this is wrong
 	}
 
 	memcpy (&amfInstance->callbacks, amfCallbacks, sizeof (SaAmfCallbacksT));
 
-	pthread_mutex_init (&amfInstance->mutex, NULL);
+	pthread_mutex_init (&amfInstance->response_mutex, NULL);
+
+	pthread_mutex_init (&amfInstance->dispatch_mutex, NULL);
 
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 
@@ -181,7 +177,7 @@ saAmfSelectionObjectGet (
 		return (error);
 	}
 
-	*selectionObject = amfInstance->fd;
+	*selectionObject = amfInstance->dispatch_fd;
 
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 	return (SA_OK);
@@ -195,20 +191,15 @@ saAmfDispatch (
 	struct pollfd ufds;
 	int timeout = -1;
 	SaErrorT error;
+	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct amfInstance *amfInstance;
-	SaAmfCallbacksT callbacks;
 	struct res_lib_amf_healthcheckcallback *res_lib_amf_healthcheckcallback;
 	struct res_lib_amf_readinessstatesetcallback *res_lib_amf_readinessstatesetcallback;
 	struct res_lib_amf_csisetcallback *res_lib_amf_csisetcallback;
 	struct res_lib_amf_csiremovecallback *res_lib_amf_csiremovecallback;
 	struct res_lib_amf_protectiongrouptrackcallback *res_lib_amf_protectiongrouptrackcallback;
-	struct req_header **queue_msg;
-	struct req_header *msg;
-	int empty;
-	int ignore_dispatch = 0;
-	int cont = 1; /* always continue do loop except when set to 0 */
-	int poll_fd;
+	SaAmfCallbacksT callbacks;
 	struct res_overlay dispatch_data;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle,
@@ -225,12 +216,10 @@ saAmfDispatch (
 	}
 
 	do {
-		poll_fd = amfInstance->fd;
-
 		/*
 		 * Read data directly from socket
 		 */
-		ufds.fd = poll_fd;
+		ufds.fd = amfInstance->dispatch_fd;
 		ufds.events = POLLIN;
 		ufds.revents = 0;
 
@@ -239,79 +228,66 @@ saAmfDispatch (
 			goto error_nounlock;
 		}
 
-		pthread_mutex_lock (&amfInstance->mutex);
+		pthread_mutex_lock (&amfInstance->dispatch_mutex);
+
+		error = saPollRetry (&ufds, 1, 0);
+		if (error != SA_OK) {
+			goto error_nounlock;
+		}
 
 		/*
 		 * Handle has been finalized in another thread
 		 */
 		if (amfInstance->finalize == 1) {
 			error = SA_OK;
-			pthread_mutex_unlock (&amfInstance->mutex);
+			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
-			pthread_mutex_unlock (&amfInstance->mutex);
+			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&amfInstance->mutex);
+			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 			continue; /* next poll */
 		}
 
-		saQueueIsEmpty(&amfInstance->inq, &empty);
-		if (empty == 0) {
-			/*
-			 * Queue is not empty, read data from queue
-			 */
-			saQueueItemGet (&amfInstance->inq, (void *)&queue_msg);
-			msg = *queue_msg;
-			memcpy (&dispatch_data, msg, msg->size);
-			saQueueItemRemove (&amfInstance->inq);
-			free (msg);
-		} else {
+		if (ufds.revents & POLLIN) {
 			/*
 			 * Queue empty, read response from socket
 			 */
-			error = saRecvRetry (amfInstance->fd, &dispatch_data.header,
+			error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.header,
 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (amfInstance->fd, &dispatch_data.data,
+				error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_OK) {
 					goto error_unlock;
 				}
 			}
+		} else {
+			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
+			continue;
 		}
+
 		/*
 		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that amfFinalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &amfInstance->callbacks, sizeof (SaAmfCallbacksT));
-		pthread_mutex_unlock (&amfInstance->mutex);
-
+		pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming response
 		 */
 		switch (dispatch_data.header.id) {
-		case MESSAGE_RES_LIB_ACTIVATEPOLL:
-			/*
-			 * This is a do nothing message which the node executive sends
-			 * to activate the file amfHandle in poll when the library has
-			 * queued a message into amfHandle->inq
-			 * The dispatch is ignored for the following two cases:
-			 * 1) setting of timeout to zero for the DISPATCH_ALL case
-			 * 2) expiration of the do loop for the DISPATCH_ONE case
-			 */
-			ignore_dispatch = 1;
-			break;
 
 		case MESSAGE_RES_AMF_HEALTHCHECKCALLBACK:
 			res_lib_amf_healthcheckcallback = (struct res_lib_amf_healthcheckcallback *)&dispatch_data;
@@ -375,16 +351,9 @@ saAmfDispatch (
 		 */
 		switch (dispatchFlags) {
 		case SA_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
+			cont = 0;
 			break;
 		case SA_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
 			break;
 		case SA_DISPATCH_BLOCKING:
 			break;
@@ -409,22 +378,25 @@ saAmfFinalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->dispatch_mutex);
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (amfInstance->finalize) {
-		pthread_mutex_unlock (&amfInstance->mutex);
+		pthread_mutex_unlock (&amfInstance->response_mutex);
+		pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 		saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 		return (SA_ERR_BAD_HANDLE);
 	}
 
 	amfInstance->finalize = 1;
 
-	saActivatePoll (amfInstance->fd);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 
 	saHandleDestroy (&amfHandleDatabase, *amfHandle);
 
@@ -458,21 +430,12 @@ saAmfComponentRegister (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error = saSendRetry (amfInstance->fd, &req_lib_amf_componentregister, sizeof (struct req_lib_amf_componentregister), MSG_NOSIGNAL);
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
-
-	/*
-	 * Search for COMPONENTREGISTER responses and queue any
-	 * messages that dont match in this amfHandle's inq.
-	 * This must be done to avoid dropping async messages
-	 * during this sync message retrieval
-	 */
-	error = saRecvQueue (amfInstance->fd, &res_lib_amf_componentregister,
-		&amfInstance->inq, MESSAGE_RES_AMF_COMPONENTREGISTER);
+	error - saSendReceiveReply (amfInstance->response_fd, &req_lib_amf_componentregister,
+		sizeof (struct req_lib_amf_componentregister),
+		&res_lib_amf_componentregister,
+		sizeof (struct res_lib_amf_componentregister));
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
@@ -485,7 +448,7 @@ saAmfComponentRegister (
 	error = res_lib_amf_componentregister.header.error;
 
 error_unlock:
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 	return (error);
 }
@@ -515,33 +478,24 @@ saAmfComponentUnregister (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error = saSendRetry (amfInstance->fd, &req_lib_amf_componentunregister,
-		sizeof (struct req_lib_amf_componentunregister), MSG_NOSIGNAL);
+	error - saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_componentunregister,
+		sizeof (struct req_lib_amf_componentunregister),
+		&res_lib_amf_componentunregister,
+		sizeof (struct res_lib_amf_componentunregister));
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
 
-	/*
-	 * Search for COMPONENTUNREGISTER responses and queue any
-	 * messages that dont match in this amfHandle's inq.
-	 * This must be done to avoid dropping async messages
-	 * during this sync message retrieval
-	 */
-	error = saRecvQueue (amfInstance->fd, &res_lib_amf_componentunregister,
-		&amfInstance->inq, MESSAGE_RES_AMF_COMPONENTUNREGISTER);
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
-
-	if (res_lib_amf_componentunregister.header.error == SA_OK) {
+	error = res_lib_amf_componentunregister.header.error;
+	if (error == SA_OK) {
 		amfInstance->compRegistered = 0;
 	}
-	error = res_lib_amf_componentunregister.header.error;
 
 error_unlock:
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 	return (error);
 }
@@ -559,18 +513,19 @@ saAmfCompNameGet (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
 	if (amfInstance->compRegistered == 0) {
-		pthread_mutex_unlock (&amfInstance->mutex);
+		pthread_mutex_unlock (&amfInstance->response_mutex);
 		return (SA_ERR_NOT_EXIST);
 	}
 
 	memcpy (compName, &amfInstance->compName, sizeof (SaNameT));
 
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+
 	return (SA_OK);
 }
 
@@ -579,12 +534,13 @@ saAmfReadinessStateGet (
 	const SaNameT *compName,
 	SaAmfReadinessStateT *readinessState)
 {
-	int fd;
+	int fd_response;
+	int fd_dispatch;
 	SaErrorT error;
 	struct req_amf_readinessstateget req_amf_readinessstateget;
 	struct res_lib_amf_readinessstateget res_lib_amf_readinessstateget;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	error = saServiceConnectTwo (&fd_response, &fd_dispatch, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto exit_noclose;
 	}
@@ -592,22 +548,22 @@ saAmfReadinessStateGet (
 	req_amf_readinessstateget.header.size = sizeof (struct req_amf_readinessstateget);
 	memcpy (&req_amf_readinessstateget.compName, compName, sizeof (SaNameT));
 
-	error = saSendRetry (fd, &req_amf_readinessstateget,
-		sizeof (struct req_amf_readinessstateget), MSG_NOSIGNAL);
+	error - saSendReceiveReply (fd_response,
+		&req_amf_readinessstateget, sizeof (struct req_amf_readinessstateget),
+		&res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
 	if (error != SA_OK) {
 		goto exit_close;
 	}
 
-	error = saRecvRetry (fd, &res_lib_amf_readinessstateget,
-		sizeof (struct res_lib_amf_readinessstateget), MSG_WAITALL | MSG_NOSIGNAL);
+	error = res_lib_amf_readinessstateget.header.error;
 	if (error == SA_OK) {
 		memcpy (readinessState, &res_lib_amf_readinessstateget.readinessState, 
 			sizeof (SaAmfReadinessStateT));
-		error = res_lib_amf_readinessstateget.header.error;
 	}
 		
 exit_close:
-	close (fd);
+	close (fd_response);
+	close (fd_dispatch);
 exit_noclose:
 	return (error);
 }
@@ -618,6 +574,7 @@ saAmfStoppingComplete (
 	SaErrorT error)
 {
 	struct req_amf_stoppingcomplete req_amf_stoppingcomplete;
+	struct res_lib_amf_stoppingcomplete res_lib_amf_stoppingcomplete;
 	int fd;
 	SaErrorT errorResult;
 
@@ -629,11 +586,17 @@ saAmfStoppingComplete (
 	req_amf_stoppingcomplete.header.size = sizeof (struct req_amf_stoppingcomplete);
 	req_amf_stoppingcomplete.invocation = invocation;
 	req_amf_stoppingcomplete.error = error;
-	errorResult = saSendRetry (fd, &req_amf_stoppingcomplete,
-		sizeof (struct req_amf_stoppingcomplete), MSG_NOSIGNAL);
+	error = saSendReceiveReply (fd,
+		&req_amf_stoppingcomplete, sizeof (struct req_amf_stoppingcomplete),
+		&res_lib_amf_stoppingcomplete, sizeof (struct res_lib_amf_stoppingcomplete));
+	if (error != SA_OK) {
+		goto exit_close;
+	}
+	error = res_lib_amf_stoppingcomplete.header.error;
+// TODO executive needs to send reply of stopping complete
 
+exit_close:
 	close (fd);
-
 exit_noclose:
 	return (errorResult);
 }
@@ -658,17 +621,16 @@ saAmfHAStateGet (
 	memcpy (&req_amf_hastateget.compName, compName, sizeof (SaNameT));
 	memcpy (&req_amf_hastateget.csiName, csiName, sizeof (SaNameT));
 
-	error = saSendRetry (fd, &req_amf_hastateget,
-			sizeof (struct req_amf_hastateget), MSG_NOSIGNAL);
+	error = saSendReceiveReply (fd,
+		&req_amf_hastateget, sizeof (struct req_amf_hastateget),
+		&res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
 	if (error != SA_OK) {
 		goto exit_close;
 	}
 
-	error = saRecvRetry (fd, &res_lib_amf_hastateget,
-		sizeof (struct res_lib_amf_hastateget), MSG_WAITALL | MSG_NOSIGNAL);
+	error = res_lib_amf_hastateget.header.error;
 	if (error == SA_OK) {
 		memcpy (haState, &res_lib_amf_hastateget.haState, sizeof (SaAmfHAStateT));
-		error = res_lib_amf_hastateget.header.error;
 	}
 	
 exit_close:
@@ -702,21 +664,21 @@ saAmfProtectionGroupTrackStart (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error = saSendRetry (amfInstance->fd, &req_amf_protectiongrouptrackstart,
-		sizeof (struct req_amf_protectiongrouptrackstart), MSG_NOSIGNAL);
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_amf_protectiongrouptrackstart,
+		sizeof (struct req_amf_protectiongrouptrackstart),
+		&res_lib_amf_protectiongrouptrackstart,
+		sizeof (struct res_lib_amf_protectiongrouptrackstart));
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
 
-	error = saRecvQueue (amfInstance->fd, &res_lib_amf_protectiongrouptrackstart,
-		&amfInstance->inq, MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART);
-
 	error = res_lib_amf_protectiongrouptrackstart.header.error;
 
 error_unlock:
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 	return (error);
 }
@@ -740,21 +702,21 @@ saAmfProtectionGroupTrackStop (
 		return (error);
 	}
 
-	pthread_mutex_lock (&amfInstance->mutex);
+	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error = saSendRetry (amfInstance->fd, &req_amf_protectiongrouptrackstop,
-		sizeof (struct req_amf_protectiongrouptrackstop), MSG_NOSIGNAL);
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_amf_protectiongrouptrackstop,
+		sizeof (struct req_amf_protectiongrouptrackstop),
+		&res_lib_amf_protectiongrouptrackstop,
+		sizeof (struct res_lib_amf_protectiongrouptrackstop));
 	if (error != SA_OK) {
 		goto error_unlock;
 	}
 
-	error = saRecvQueue (amfInstance->fd, &res_lib_amf_protectiongrouptrackstop,
-		&amfInstance->inq, MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP);
-
 	error = res_lib_amf_protectiongrouptrackstop.header.error;
 
 error_unlock:
-	pthread_mutex_unlock (&amfInstance->mutex);
+	pthread_mutex_unlock (&amfInstance->response_mutex);
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 	return (error);
 }
@@ -788,14 +750,9 @@ saAmfErrorReport (
 		additionalData, sizeof (SaAmfAdditionalDataT));
 	*/
 
-	error = saSendRetry (fd, &req_lib_amf_errorreport,
-		sizeof (struct req_lib_amf_errorreport), MSG_NOSIGNAL);
-
-	/*
-	 * Get response from executive and respond to user application
-	 */
-	error = saRecvRetry (fd, &res_lib_amf_errorreport,
-		sizeof (struct res_lib_amf_errorreport), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saSendReceiveReply (fd,
+		&req_lib_amf_errorreport, sizeof (struct req_lib_amf_errorreport),
+		&res_lib_amf_errorreport, sizeof (struct res_lib_amf_errorreport));
 	if (error != SA_OK) {
 		goto exit_close;
 	}
@@ -825,14 +782,9 @@ saAmfErrorCancelAll (
 	req_lib_amf_errorcancelall.header.size = sizeof (struct req_lib_amf_errorcancelall);
 	memcpy (&req_lib_amf_errorcancelall.compName, compName, sizeof (SaNameT));
 
-	error = saSendRetry (fd, &req_lib_amf_errorcancelall,
-		sizeof (struct req_lib_amf_errorcancelall), MSG_NOSIGNAL);
-
-	/*
-	 * Get response from executive and respond to user application
-	 */
-	error = saRecvRetry (fd, &res_lib_amf_errorcancelall,
-		sizeof (struct res_lib_amf_errorcancelall), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saSendReceiveReply (fd,
+		&req_lib_amf_errorcancelall, sizeof (struct req_lib_amf_errorcancelall),
+		&res_lib_amf_errorcancelall, sizeof (struct res_lib_amf_errorcancelall));
 	if (error != SA_OK) {
 		goto exit_close;
 	}
@@ -864,19 +816,20 @@ saAmfComponentCapabilityModelGet (
 	req_amf_componentcapabilitymodelget.header.size = sizeof (struct req_amf_componentcapabilitymodelget);
 	memcpy (&req_amf_componentcapabilitymodelget.compName, compName, sizeof (SaNameT));
 
-	error = saSendRetry (fd, &req_amf_componentcapabilitymodelget,
-		sizeof (struct req_amf_componentcapabilitymodelget), MSG_NOSIGNAL);
+	error = saSendReceiveReply (fd,
+		&req_amf_componentcapabilitymodelget,
+		sizeof (struct req_amf_componentcapabilitymodelget),
+		&res_lib_amf_componentcapabilitymodelget,
+		sizeof (struct res_lib_amf_componentcapabilitymodelget));
 	if (error != SA_OK) {
 		goto exit_close;
 	}
+	error = res_lib_amf_componentcapabilitymodelget.header.error;
 
-	error = saRecvRetry (fd, &res_lib_amf_componentcapabilitymodelget,
-		sizeof (struct res_lib_amf_componentcapabilitymodelget), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error == SA_OK) {
 		memcpy (componentCapabilityModel,
 			&res_lib_amf_componentcapabilitymodelget.componentCapabilityModel, 
 			sizeof (SaAmfComponentCapabilityModelT));
-		error = res_lib_amf_componentcapabilitymodelget.header.error;
 	}
 		
 exit_close:
@@ -900,10 +853,12 @@ saAmfResponse (
 	SaErrorT error)
 {
 	struct req_amf_response req_amf_response;
-	int fd;
+	struct res_lib_amf_response res_lib_amf_response;
+	int fd_response;
+	int fd_dispatch;
 	SaErrorT errorResult;
 
-	errorResult = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	errorResult = saServiceConnectTwo (&fd_response, &fd_dispatch, AMF_SERVICE);
 	if (errorResult != SA_OK) {
 		goto exit_noclose;
 	}
@@ -911,10 +866,19 @@ saAmfResponse (
 	req_amf_response.header.size = sizeof (struct req_amf_response);
 	req_amf_response.invocation = invocation;
 	req_amf_response.error = error;
-	errorResult = saSendRetry (fd, &req_amf_response,
-		sizeof (struct req_amf_response), MSG_NOSIGNAL);
 
-	close (fd);
+	errorResult = saSendReceiveReply (fd_response,
+		&req_amf_response,
+		sizeof (struct req_amf_response),
+		&res_lib_amf_response,
+		sizeof (struct res_lib_amf_response));
+
+	close (fd_response);
+	close (fd_dispatch);
+
+	if (errorResult == SA_OK) {
+		errorResult = res_lib_amf_response.header.error;
+	}
 
 exit_noclose:
 	return (errorResult);

@@ -90,34 +90,35 @@ struct saHandleDatabase event_handle_db = {
 	.handleInstanceDestructor	= eventHandleInstanceDestructor
 };
 
-struct message_overlay {
+struct res_overlay {
 	struct res_header header;
-	char data[0];
+	char data[MESSAGE_SIZE_MAX];
 };
 
 /*
  * data required to support events for a given initialization
  *
- * ei_fd:			fd received from the evtInitialize call.
+ * ei_dispatch_fd:	fd used for getting callback data e.g. async event data
+ * ei_response_fd:	fd used for everything else (i.e. evt sync api commands).
  * ei_callback:		callback function.
  * ei_version:		version sent to the evtInitialize call.
  * ei_node_id:		our node id.
  * ei_node_name:	our node name.
  * ei_finalize:		instance in finalize flag
- * ei_queue:		queue for async messages while doing sync commands
- * ei_mutex:		instance mutex
+ * ei_dispatch_mutex:	mutex for dispatch fd
+ * ei_response_mutex:	mutex for response fd
  *
  */
 struct event_instance {
-	int 					ei_fd;
+	int 					ei_dispatch_fd;
+	int 					ei_response_fd;
 	SaEvtCallbacksT			ei_callback;
 	SaVersionT				ei_version;
 	SaClmNodeIdT			ei_node_id;
 	SaNameT					ei_node_name;
 	int						ei_finalize;
-	struct queue			ei_inq;
-	char 					ei_message[MESSAGE_SIZE_MAX];
-	pthread_mutex_t			ei_mutex;
+	pthread_mutex_t			ei_dispatch_mutex;
+	pthread_mutex_t			ei_response_mutex;
 };
 
 
@@ -186,31 +187,18 @@ struct event_data_instance {
 static void evtHandleInstanceDestructor(void *instance)
 {
 	struct event_instance *evti = instance;
-	void **msg;
-	int empty;
-
-	/*
-	 * Empty out the queue if there are any pending messages
-	 */
-	while ((saQueueIsEmpty(&evti->ei_inq, &empty) == SA_AIS_OK) && !empty) {
-		saQueueItemGet(&evti->ei_inq, (void *)&msg);
-		saQueueItemRemove(&evti->ei_inq);
-		free(*msg);
-	}
-
-	/*
-	 * clean up the queue itself
-	 */
-	if (evti->ei_inq.items) {
-			free(evti->ei_inq.items);
-	}
 
 	/*
 	 * Disconnect from the server
 	 */
-	if (evti->ei_fd != -1) {
-		shutdown(evti->ei_fd, 0);
-		close(evti->ei_fd);
+    if (evti->ei_response_fd != -1) {
+		shutdown(evti->ei_response_fd, 0);
+		close(evti->ei_response_fd);
+	}
+
+	if (evti->ei_dispatch_fd != -1) {
+		shutdown(evti->ei_dispatch_fd, 0);
+		close(evti->ei_dispatch_fd);
 	}
 }
 
@@ -237,6 +225,34 @@ static void eventHandleInstanceDestructor(void *instance)
 	if (edi->edi_event_data) {
 		free(edi->edi_event_data);
 	}
+}
+
+static SaErrorT evt_recv_event(int fd, struct lib_event_data **msg)
+{
+	SaErrorT error;
+	struct res_header hdr;
+	void *data;
+
+	error = saRecvRetry(fd, &hdr, sizeof(hdr), MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		goto msg_out;
+	}
+	*msg = malloc(hdr.size);
+	if (!*msg) {
+		error = SA_AIS_ERR_LIBRARY;
+		goto msg_out;
+	}
+	data = (void *)((unsigned long)*msg) + sizeof(hdr);
+	memcpy(*msg, &hdr, sizeof(hdr));
+	if (hdr.size > sizeof(hdr)) {
+		error = saRecvRetry(fd, data, hdr.size - sizeof(hdr),
+				MSG_WAITALL | MSG_NOSIGNAL);
+		if (error != SA_AIS_OK) {
+			goto msg_out;
+		}
+	}
+msg_out:
+	return error;
 }
 
 /* 
@@ -287,18 +303,10 @@ saEvtInitialize(
 	evti->ei_version = *version;
 
 	/*
-	 * An inq is needed to store async messages while waiting for a 
-	 * sync response
-	 */
-	error = saQueueInit(&evti->ei_inq, 1024, sizeof(void *));
-	if (error != SA_AIS_OK) {
-		goto error_handle_put;
-	}
-
-	/*
 	 * Set up communication with the event server
 	 */
-	error = saServiceConnect(&evti->ei_fd, MESSAGE_REQ_EVT_INIT);
+	error = saServiceConnectTwo(&evti->ei_response_fd,
+		&evti->ei_dispatch_fd, EVT_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_handle_put;
 	}
@@ -312,7 +320,8 @@ saEvtInitialize(
 				sizeof(evti->ei_callback));
 	}
 
-	pthread_mutex_init(&evti->ei_mutex, NULL);
+ 	pthread_mutex_init(&evti->ei_dispatch_mutex, NULL);
+ 	pthread_mutex_init(&evti->ei_response_mutex, NULL);
 	saHandleInstancePut(&evt_instance_handle_db, *evtHandle);
 
 	return SA_AIS_OK;
@@ -349,7 +358,7 @@ saEvtSelectionObjectGet(
 		return error;
 	}
 
-	*selectionObject = evti->ei_fd;
+	*selectionObject = evti->ei_dispatch_fd;
 
 	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 
@@ -445,14 +454,11 @@ saEvtDispatch(
 	struct event_instance *evti;
 	SaEvtEventHandleT event_handle;
 	SaEvtCallbacksT callbacks;
-	struct res_header **queue_msg;
-	struct res_header *msg = 0;
-	int empty;
 	int ignore_dispatch = 0;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int poll_fd;
-	struct message_overlay *dispatch_data;
-	struct lib_event_data *evt;
+	struct res_overlay dispatch_data;
+	struct lib_event_data *evt = 0;
 	struct res_evt_event_data res;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
@@ -469,25 +475,26 @@ saEvtDispatch(
 	}
 
 	do {
-		poll_fd = evti->ei_fd;
+		poll_fd = evti->ei_dispatch_fd;
 
 		ufds.fd = poll_fd;
 		ufds.events = POLLIN;
 		ufds.revents = 0;
 
-		pthread_mutex_lock(&evti->ei_mutex);
-		saQueueIsEmpty(&evti->ei_inq, &empty);
+		error = saPollRetry(&ufds, 1, timeout);
+		if (error != SA_AIS_OK) {
+			goto error_unlock;
+		}
+
+		pthread_mutex_lock(&evti->ei_dispatch_mutex);
+
 		/*
-		 * Read from the socket if there is nothing in
-		 * our queue.
+		 * Check the poll data in case the fd status has changed
+		 * since taking the lock
 		 */
-		if (empty == 1) {
-			pthread_mutex_unlock(&evti->ei_mutex);
-			error = saPollRetry(&ufds, 1, timeout);
-			if (error != SA_AIS_OK) {
-				goto error_nounlock;
-			}
-			pthread_mutex_lock(&evti->ei_mutex);
+		error = saPollRetry(&ufds, 1, 0);
+		if (error != SA_AIS_OK) {
+			goto error_unlock;
 		}
 
 		/*
@@ -495,49 +502,37 @@ saEvtDispatch(
 		 */
 		if (evti->ei_finalize == 1) {
 			error = SA_AIS_OK;
-			pthread_mutex_unlock(&evti->ei_mutex);
+ 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 			goto error_unlock;
 		}
 
-		dispatch_avail = (ufds.revents & POLLIN) | (empty == 0);
+ 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
-			pthread_mutex_unlock(&evti->ei_mutex);
+			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock(&evti->ei_mutex);
+		} else if (dispatch_avail == 0) {
+			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 			continue; /* next poll */
 		}
 
-		saQueueIsEmpty(&evti->ei_inq, &empty);
-		if (empty == 0) {
-			/*
-			 * Queue is not empty, read data from queue
-			 */
-			saQueueItemGet(&evti->ei_inq, (void *)&queue_msg);
-			msg = *queue_msg;
-			dispatch_data = (struct message_overlay *)msg;
-			saQueueItemRemove(&evti->ei_inq);
-		} else {
-			/*
-			 * Queue empty, read response from socket
-			 */
-			dispatch_data = (struct message_overlay *)&evti->ei_message;
-			error = saRecvRetry(evti->ei_fd, &dispatch_data->header,
-				sizeof(struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+ 		if (ufds.revents & POLLIN) {
+ 			error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
+ 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+
 			if (error != SA_AIS_OK) {
-				pthread_mutex_unlock(&evti->ei_mutex);
 				goto error_unlock;
 			}
-			if (dispatch_data->header.size > sizeof(struct res_header)) {
-				error = saRecvRetry(evti->ei_fd, dispatch_data->data,
-					dispatch_data->header.size - sizeof(struct res_header),
-					MSG_WAITALL | MSG_NOSIGNAL);
+ 			if (dispatch_data.header.size > sizeof (struct res_header)) {
+ 				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
+ 					dispatch_data.header.size - sizeof (struct res_header),
+  					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_AIS_OK) {
-					pthread_mutex_unlock(&evti->ei_mutex);
 					goto error_unlock;
 				}
-			}
+			} 
+		} else {
+ 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+ 			continue;
 		}
 		/*
 		 * Make copy of callbacks, message data, unlock instance, 
@@ -546,50 +541,41 @@ saEvtDispatch(
 		 * EvtFinalize has been called in another thread.
 		 */
 		memcpy(&callbacks, &evti->ei_callback, sizeof(evti->ei_callback));
-		pthread_mutex_unlock(&evti->ei_mutex);
+		pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 
 
 		/*
 		 * Dispatch incoming response
 		 */
-		switch (dispatch_data->header.id) {
-		case MESSAGE_RES_LIB_ACTIVATEPOLL:
-			/*
-			 * This is a do nothing message which the node 
-			 * executive sends to activate the file evtHandle 
-			 * in poll when the library has queued a message into 
-			 * evti->ei_inq. The dispatch is ignored for the 
-			 * following two cases:
-			 * 1) setting of timeout to zero for the 
-			 *    DISPATCH_ALL case
-			 * 2) expiration of the do loop for the 
-			 *    DISPATCH_ONE case
-			 */
-			ignore_dispatch = 1;
-			break;
+		switch (dispatch_data.header.id) {
 
 		case MESSAGE_RES_EVT_AVAILABLE:
 			/*
 			 * There are events available.  Send a request for one and then
 			 * dispatch it.
 			 */
-			evt = (struct lib_event_data *)&evti->ei_message;
 			res.evd_head.id = MESSAGE_REQ_EVT_EVENT_DATA;
 			res.evd_head.size = sizeof(res);
-			error = saSendRetry(evti->ei_fd, &res, sizeof(res), MSG_NOSIGNAL);
+ 
+ 			pthread_mutex_lock(&evti->ei_response_mutex);
+ 			error = saSendRetry(evti->ei_response_fd, &res, sizeof(res),
+ 				MSG_NOSIGNAL);
+ 
 			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error);
 					break;
 			}
-			error = saRecvQueue(evti->ei_fd, evt, &evti->ei_inq, 
-											MESSAGE_RES_EVT_EVENT_DATA);
+ 			error = evt_recv_event(evti->ei_response_fd, &evt);
+ 			pthread_mutex_unlock(&evti->ei_response_mutex);
+
 			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: receive failed: %d\n", 
 						error);
 				break;
 			}
 			/*
-			 * No data available.  This is OK.
+ 			 * No data available.  This is OK, another thread may have
+ 			 * grabbed it.
 			 */
 			if (evt->led_head.error == SA_AIS_ERR_NOT_EXIST) {
 				// printf("MESSAGE_RES_EVT_AVAILABLE: No event data\n");
@@ -621,7 +607,7 @@ saEvtDispatch(
 		case MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK:
 		{
 			struct res_evt_open_chan_async *resa = 
-				(struct res_evt_open_chan_async *)dispatch_data;
+				(struct res_evt_open_chan_async *)&dispatch_data;
 			struct event_channel_instance *eci;
 
 			/*
@@ -655,7 +641,7 @@ saEvtDispatch(
 
 		default:
 			printf("Dispatch: Bad message type 0x%x\n",
-					dispatch_data->header.id);
+					dispatch_data.header.id);
 			error = SA_AIS_ERR_LIBRARY;	
 			goto error_nounlock;
 			break;
@@ -666,8 +652,9 @@ saEvtDispatch(
 		 * message from the queue and we are responsible
 		 * for freeing it.
 		 */
-		if (empty == 0) {
-			free(msg);
+		if (evt) {
+			free(evt);
+			evt = 0;
 		}
 
 		/*
@@ -719,22 +706,20 @@ saEvtFinalize(SaEvtHandleT evtHandle)
 		return error;
 	}
 
-       pthread_mutex_lock(&evti->ei_mutex);
+       pthread_mutex_lock(&evti->ei_response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (evti->ei_finalize) {
-		pthread_mutex_unlock(&evti->ei_mutex);
+		pthread_mutex_unlock(&evti->ei_response_mutex);
 		saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 		return SA_AIS_ERR_BAD_HANDLE;
 	}
 
 	evti->ei_finalize = 1;
 
-	saActivatePoll(evti->ei_fd);
-
-	pthread_mutex_unlock(&evti->ei_mutex);
+	pthread_mutex_unlock(&evti->ei_response_mutex);
 
 	saHandleDestroy(&evt_instance_handle_db, evtHandle);
 	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
@@ -767,6 +752,7 @@ saEvtChannelOpen(
 	struct res_evt_channel_open res;
 	struct event_channel_instance *eci;
 	SaAisErrorT error;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
@@ -791,7 +777,6 @@ saEvtChannelOpen(
 		goto chan_open_put;
 	}
 
-
 	/*
 	 * Send the request to the server and wait for a response
 	 */
@@ -803,19 +788,22 @@ saEvtChannelOpen(
 	req.ico_channel_name = *channelName;
 
 
-	pthread_mutex_lock(&evti->ei_mutex);
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
 
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	pthread_mutex_lock(&evti->ei_response_mutex);
+
+	error = saSendMsgReceiveReply(evti->ei_response_fd, &iov, 1,
+		&res, sizeof(res));
+
+	pthread_mutex_unlock (&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
 		goto chan_open_free;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_OPEN_CHANNEL);
 
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.ico_head.id != MESSAGE_RES_EVT_OPEN_CHANNEL) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto chan_open_free;
 	}
 
@@ -857,6 +845,7 @@ saEvtChannelClose(SaEvtChannelHandleT channelHandle)
 	struct event_channel_instance *eci;
 	struct req_evt_channel_close req;
 	struct res_evt_channel_close res;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -883,9 +872,6 @@ saEvtChannelClose(SaEvtChannelHandleT channelHandle)
 		return SA_AIS_ERR_BAD_HANDLE;
 	}
 	eci->eci_closing = 1;
-
-	saActivatePoll(evti->ei_fd);
-
 	pthread_mutex_unlock(&eci->eci_mutex);
 	
 
@@ -896,18 +882,22 @@ saEvtChannelClose(SaEvtChannelHandleT channelHandle)
 	req.icc_head.id = MESSAGE_REQ_EVT_CLOSE_CHANNEL;
 	req.icc_channel_handle = eci->eci_svr_channel_handle;
 
-	pthread_mutex_lock(&evti->ei_mutex);
+	iov.iov_base = &req;
+	iov.iov_len = sizeof (req);
 
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	pthread_mutex_lock(&evti->ei_response_mutex);
+
+	error = saSendMsgReceiveReply (evti->ei_response_fd, &iov, 1,
+		&res, sizeof (res));
+
+	pthread_mutex_unlock(&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock(&evti->ei_mutex);
 		eci->eci_closing = 0;
 		goto chan_close_put2;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_CLOSE_CHANNEL);
-	pthread_mutex_unlock(&evti->ei_mutex);
-	if (error != SA_AIS_OK) {
+	if (res.icc_head.id != MESSAGE_RES_EVT_CLOSE_CHANNEL) {
+		error = SA_AIS_ERR_LIBRARY;
 		eci->eci_closing = 0;
 		goto chan_close_put2;
 	}
@@ -948,6 +938,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	struct event_channel_instance *eci;
 	SaEvtChannelHandleT channel_handle;
 	SaAisErrorT error;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
@@ -994,21 +985,23 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	req.ico_invocation = invocation;
 	req.ico_open_flag = channelOpenFlags;
 	req.ico_channel_name = *channelName;
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
 
 
-	pthread_mutex_lock(&evti->ei_mutex);
+	pthread_mutex_lock(&evti->ei_response_mutex);
 
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	error = saSendMsgReceiveReply (evti->ei_response_fd, &iov, 1,
+		&res, sizeof (res));
+
+	pthread_mutex_unlock(&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
 		goto chan_open_free;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_OPEN_CHANNEL);
 
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.ico_head.id != MESSAGE_RES_EVT_OPEN_CHANNEL) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto chan_open_free;
 	}
 
@@ -1062,6 +1055,7 @@ saEvtChannelUnlink(
 	struct event_instance *evti;
 	struct req_evt_channel_unlink req;
 	struct res_evt_channel_unlink res;
+	struct iovec iov;
 	SaAisErrorT error;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
@@ -1077,21 +1071,23 @@ saEvtChannelUnlink(
 	req.iuc_head.size = sizeof(req);
 	req.iuc_head.id = MESSAGE_REQ_EVT_UNLINK_CHANNEL;
 	req.iuc_channel_name = *channelName;
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
 
 
-	pthread_mutex_lock(&evti->ei_mutex);
+	pthread_mutex_lock(&evti->ei_response_mutex);
 
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	error = saSendMsgReceiveReply (evti->ei_response_fd, &iov, 1,
+		&res, sizeof (res));
+
+	pthread_mutex_unlock(&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
 		goto chan_unlink_put;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_UNLINK_CHANNEL);
 
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.iuc_head.id != MESSAGE_RES_EVT_UNLINK_CHANNEL) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto chan_unlink_put;
 	}
 
@@ -1564,6 +1560,7 @@ saEvtEventPublish(
 	size_t pattern_size;
 	struct event_pattern *patterns;
 	void   *data_start;
+	struct iovec iov;
 
 	if (eventDataSize > SA_EVT_DATA_MAX_LEN) {
 		error = SA_AIS_ERR_INVALID_PARAM;
@@ -1644,20 +1641,21 @@ saEvtEventPublish(
 	req->led_priority = edi->edi_priority;
 	req->led_publisher_name = edi->edi_pub_name;
 
-	pthread_mutex_lock(&evti->ei_mutex);
-	error = saSendRetry(evti->ei_fd, req, req->led_head.size, MSG_NOSIGNAL);
+	iov.iov_base = req;
+	iov.iov_len = req->led_head.size;
+
+	pthread_mutex_lock(&evti->ei_response_mutex);
+
+	error = saSendMsgReceiveReply(evti->ei_response_fd, &iov, 1, &res,
+		sizeof(res));
+
+	pthread_mutex_unlock (&evti->ei_response_mutex);
 	free(req);
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
+		pthread_mutex_unlock (&evti->ei_response_mutex);
 		goto pub_put3;
 	}
 
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_PUBLISH);
-	pthread_mutex_unlock (&evti->ei_mutex);
-	if (error != SA_AIS_OK) {
-		goto pub_put3;
-	}
 	error = res.iep_head.error;
 	if (error == SA_AIS_OK) {
 		*eventId = res.iep_event_id;
@@ -1702,6 +1700,7 @@ saEvtEventSubscribe(
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
 	int	sz;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -1757,20 +1756,16 @@ saEvtEventSubscribe(
 	req->ics_channel_handle = eci->eci_svr_channel_handle;
 	req->ics_sub_id = subscriptionId;
 	req->ics_filter_size = sz;
+	iov.iov_base = req;
+	iov.iov_len = req->ics_head.size;
 
-	pthread_mutex_lock(&evti->ei_mutex);
-	error = saSendRetry(evti->ei_fd, req, req->ics_head.size, MSG_NOSIGNAL);
+	pthread_mutex_lock(&evti->ei_response_mutex);
+	error = saSendMsgReceiveReply(evti->ei_response_fd, &iov, 1,
+		&res, sizeof(res));
+	pthread_mutex_unlock (&evti->ei_response_mutex);
 	free(req);
-	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
-		goto subscribe_put2;
-	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_SUBSCRIBE);
 
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.ics_head.id != MESSAGE_RES_EVT_SUBSCRIBE) {
 		goto subscribe_put2;
 	}
 
@@ -1805,6 +1800,7 @@ saEvtEventUnsubscribe(
 	struct event_channel_instance *eci;
 	struct req_evt_event_unsubscribe req;
 	struct res_evt_event_unsubscribe res;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -1823,19 +1819,20 @@ saEvtEventUnsubscribe(
 
 	req.icu_channel_handle = eci->eci_svr_channel_handle;
 	req.icu_sub_id = subscriptionId;
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
 
-	pthread_mutex_lock(&evti->ei_mutex);
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	pthread_mutex_lock(&evti->ei_response_mutex);
+ 	error = saSendMsgReceiveReply(evti->ei_response_fd, &iov, 1,
+ 		&res, sizeof(res));
+ 	pthread_mutex_unlock (&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
 		goto unsubscribe_put2;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_UNSUBSCRIBE);
 
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.icu_head.id != MESSAGE_RES_EVT_UNSUBSCRIBE) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto unsubscribe_put2;
 	}
 
@@ -1869,6 +1866,7 @@ saEvtEventRetentionTimeClear(
 	struct event_channel_instance *eci;
 	struct req_evt_event_clear_retentiontime req;
 	struct res_evt_event_clear_retentiontime res;
+	struct iovec iov;
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -1888,18 +1886,19 @@ saEvtEventRetentionTimeClear(
 	req.iec_channel_handle = eci->eci_svr_channel_handle;
 	req.iec_event_id = eventId;
 
-	pthread_mutex_lock(&evti->ei_mutex);
-	error = saSendRetry(evti->ei_fd, &req, sizeof(req), MSG_NOSIGNAL);
+	iov.iov_base = &req;
+	iov.iov_len = sizeof(req);
+
+	pthread_mutex_lock(&evti->ei_response_mutex);
+	error = saSendMsgReceiveReply(evti->ei_response_fd, &iov, 1,
+		&res, sizeof(res));
+	pthread_mutex_unlock (&evti->ei_response_mutex);
+
 	if (error != SA_AIS_OK) {
-		pthread_mutex_unlock (&evti->ei_mutex);
 		goto ret_time_put2;
 	}
-	error = saRecvQueue(evti->ei_fd, &res, &evti->ei_inq, 
-					MESSAGE_RES_EVT_CLEAR_RETENTIONTIME);
-
-	pthread_mutex_unlock (&evti->ei_mutex);
-
-	if (error != SA_AIS_OK) {
+	if (res.iec_head.id != MESSAGE_RES_EVT_CLEAR_RETENTIONTIME) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto ret_time_put2;
 	}
 

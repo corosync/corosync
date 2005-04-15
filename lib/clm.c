@@ -53,16 +53,17 @@
 
 struct res_overlay {
 	struct res_header header;
-	char data[128000];
+	char data[512000];
 };
 
 struct clmInstance {
-	int fd;
-	struct queue inq;
+	int response_fd;
+	int dispatch_fd;
 	SaClmCallbacksT callbacks;
 	int finalize;
 	SaClmClusterNotificationBufferT notificationBuffer;
-	pthread_mutex_t mutex;
+	pthread_mutex_t response_mutex;
+	pthread_mutex_t dispatch_mutex;
 };
 
 static void clmHandleInstanceDestructor (void *);
@@ -91,9 +92,13 @@ void clmHandleInstanceDestructor (void *instance)
 {
 	struct clmInstance *clmInstance = (struct clmInstance *)instance;
 
-	if (clmInstance->fd != -1) {
-		shutdown (clmInstance->fd, 0);
-		close (clmInstance->fd);
+	if (clmInstance->response_fd != -1) {
+		shutdown (clmInstance->response_fd, 0);
+		close (clmInstance->response_fd);
+	}
+	if (clmInstance->dispatch_fd != -1) {
+		shutdown (clmInstance->dispatch_fd, 0);
+		close (clmInstance->dispatch_fd);
 	}
 }
 
@@ -124,25 +129,21 @@ saClmInitialize (
 		goto error_destroy;
 	}
 
-	clmInstance->fd = -1;
+	clmInstance->response_fd = -1;
 
-	/*
-	 * An inq is needed to store async messages while waiting for a
-	 * sync response
-	 */
-	error = saQueueInit (&clmInstance->inq, 512, sizeof (void *));
-	if (error != SA_OK) {
-		goto error_put_destroy;
-	}
+	clmInstance->dispatch_fd = -1;
 
-	error = saServiceConnect (&clmInstance->fd, MESSAGE_REQ_CLM_INIT);
+	error = saServiceConnectTwo (&clmInstance->response_fd,
+		&clmInstance->dispatch_fd, CLM_SERVICE);
 	if (error != SA_OK) {
 		goto error_put_destroy;
 	}
 
 	memcpy (&clmInstance->callbacks, clmCallbacks, sizeof (SaClmCallbacksT));
 
-	pthread_mutex_init (&clmInstance->mutex, NULL);
+	pthread_mutex_init (&clmInstance->response_mutex, NULL);
+
+	pthread_mutex_init (&clmInstance->dispatch_mutex, NULL);
 
 	clmInstance->notificationBuffer.notification = 0;
 
@@ -172,7 +173,7 @@ saClmSelectionObjectGet (
 		return (error);
 	}
 
-	*selectionObject = clmInstance->fd;
+	*selectionObject = clmInstance->dispatch_fd;
 
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 	return (SA_OK);
@@ -188,15 +189,11 @@ saClmDispatch (
 	SaAisErrorT error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
-	int poll_fd;
 	struct clmInstance *clmInstance;
 	struct res_clm_trackcallback *res_clm_trackcallback;
 	struct res_clm_nodegetcallback *res_clm_nodegetcallback;
 	SaClmCallbacksT callbacks;
 	struct res_overlay dispatch_data;
-	int empty;
-	struct res_header **queue_msg;
-	struct res_header *msg;
 	SaClmClusterNotificationBufferT notificationBuffer;
 	int copy_items;
 
@@ -215,18 +212,16 @@ saClmDispatch (
 	}
 
 	do {
-		poll_fd = clmInstance->fd;
-
-		ufds.fd = poll_fd;
+		ufds.fd = clmInstance->dispatch_fd;
 		ufds.events = POLLIN;
 		ufds.revents = 0;
 
+		pthread_mutex_lock (&clmInstance->dispatch_mutex);
+
 		error = saPollRetry (&ufds, 1, timeout);
 		if (error != SA_OK) {
-			goto error_put;
+			goto error_unlock;
 		}
-
-		pthread_mutex_lock (&clmInstance->mutex);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -238,42 +233,33 @@ saClmDispatch (
 
 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
-			pthread_mutex_unlock (&clmInstance->mutex);
+			pthread_mutex_unlock (&clmInstance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&clmInstance->mutex);
+			pthread_mutex_unlock (&clmInstance->dispatch_mutex);
 			continue; /* next poll */
 		}
 
-		saQueueIsEmpty(&clmInstance->inq, &empty);
-		if (empty == 0) {
-			/*
-			 * Queue is not empty, read data from queue
-			 */
-			saQueueItemGet (&clmInstance->inq, (void *)&queue_msg);
-			msg = *queue_msg;
-			memcpy (&dispatch_data, msg, msg->size);
-			saQueueItemRemove (&clmInstance->inq);
-			free (msg);
-		} else {
-			/*
-			 * Queue empty, read response from socket
-			 */
-			error = saRecvRetry (clmInstance->fd, &dispatch_data.header,
+		if (ufds.revents & POLLIN) {
+			error = saRecvRetry (clmInstance->dispatch_fd, &dispatch_data.header,
 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 			if (error != SA_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (clmInstance->fd, &dispatch_data.data,
+				error = saRecvRetry (clmInstance->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_OK) {
 					goto error_unlock;
 				}
 			}
+		} else {
+			pthread_mutex_unlock (&clmInstance->dispatch_mutex);
+			continue;
 		}
+			
 		/*
 		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
@@ -283,7 +269,7 @@ saClmDispatch (
 		memcpy (&notificationBuffer, &clmInstance->notificationBuffer,
 			sizeof (SaClmClusterNotificationBufferT));
 
-		pthread_mutex_unlock (&clmInstance->mutex);
+		pthread_mutex_unlock (&clmInstance->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming message
@@ -354,8 +340,11 @@ saClmDispatch (
 		}
 	} while (cont);
 
+	goto error_put;
+
 error_unlock:
-	pthread_mutex_unlock (&clmInstance->mutex);
+	pthread_mutex_unlock (&clmInstance->dispatch_mutex);
+
 error_put:
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 	return (error);
@@ -374,22 +363,23 @@ saClmFinalize (
 		return (error);
 	}
 
-       pthread_mutex_lock (&clmInstance->mutex);
+       pthread_mutex_lock (&clmInstance->dispatch_mutex);
+       pthread_mutex_lock (&clmInstance->response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (clmInstance->finalize) {
-		pthread_mutex_unlock (&clmInstance->mutex);
+		pthread_mutex_unlock (&clmInstance->dispatch_mutex);
+		pthread_mutex_unlock (&clmInstance->response_mutex);
 		saHandleInstancePut (&clmHandleDatabase, clmHandle);
 		return (SA_ERR_BAD_HANDLE);
 	}
 
 	clmInstance->finalize = 1;
 
-	saActivatePoll (clmInstance->fd);
-
-	pthread_mutex_unlock (&clmInstance->mutex);
+	pthread_mutex_unlock (&clmInstance->dispatch_mutex);
+	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	saHandleDestroy (&clmHandleDatabase, clmHandle);
 
@@ -437,21 +427,23 @@ saClmClusterTrack (
 		return (error);
 	}
 
-	pthread_mutex_lock (&clmInstance->mutex);
+	pthread_mutex_lock (&clmInstance->response_mutex);
 
 	if (clmInstance->callbacks.saClmClusterTrackCallback == 0) {
 		error = SA_AIS_ERR_INIT;
 		goto error_exit;
 	}
 
-	error = saSendRetry (clmInstance->fd, &req_clustertrack,
+	error = saSendRetry (clmInstance->response_fd, &req_clustertrack,
 		sizeof (struct req_clm_clustertrack), MSG_NOSIGNAL);
 
 	memcpy (&clmInstance->notificationBuffer, notificationBuffer,
 		sizeof (SaClmClusterNotificationBufferT));
 
+// TODO get response packet with saRecvRetry, but need to implement that 
+// in executive service
 error_exit:
-	pthread_mutex_unlock (&clmInstance->mutex);
+	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
@@ -475,14 +467,16 @@ saClmClusterTrackStop (
 		return (error);
 	}
 
-	pthread_mutex_lock (&clmInstance->mutex);
+	pthread_mutex_lock (&clmInstance->response_mutex);
 
-	error = saSendRetry (clmInstance->fd, &req_trackstop,
+	error = saSendRetry (clmInstance->response_fd, &req_trackstop,
 		sizeof (struct req_clm_trackstop), MSG_NOSIGNAL);
 
 	clmInstance->notificationBuffer.notification = 0;
 
-	pthread_mutex_unlock (&clmInstance->mutex);
+	pthread_mutex_unlock (&clmInstance->response_mutex);
+	// TODO what about getting response from executive?  The
+	// executive should send a response
 
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
@@ -507,7 +501,7 @@ saClmClusterNodeGet (
 		return (error);
 	}
 
-	pthread_mutex_lock (&clmInstance->mutex);
+	pthread_mutex_lock (&clmInstance->response_mutex);
 
 	/*
 	 * Send request message
@@ -515,15 +509,9 @@ saClmClusterNodeGet (
 	req_clm_nodeget.header.size = sizeof (struct req_clm_nodeget);
 	req_clm_nodeget.header.id = MESSAGE_REQ_CLM_NODEGET;
 	req_clm_nodeget.nodeId = nodeId;
-	error = saSendRetry (clmInstance->fd, &req_clm_nodeget,
-		sizeof (struct req_clm_nodeget), MSG_NOSIGNAL);
-	if (error != SA_OK) {
-		goto error_exit;
-	}
 
-	error = saRecvRetry (clmInstance->fd, &res_clm_nodeget,
-		sizeof (struct res_clm_nodeget),
-		MSG_WAITALL | MSG_NOSIGNAL);
+	error = saSendReceiveReply (clmInstance->response_fd, &req_clm_nodeget,
+		sizeof (struct req_clm_nodeget), &res_clm_nodeget, sizeof (res_clm_nodeget));
 	if (error != SA_OK) {
 		goto error_exit;
 	}
@@ -534,7 +522,7 @@ saClmClusterNodeGet (
 		sizeof (SaClmClusterNodeT));
 
 error_exit:
-	pthread_mutex_unlock (&clmInstance->mutex);
+	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
@@ -564,15 +552,11 @@ saClmClusterNodeGetAsync (
 		return (error);
 	}
 
-	pthread_mutex_lock (&clmInstance->mutex);
+	pthread_mutex_lock (&clmInstance->response_mutex);
 
-	error = saSendRetry (clmInstance->fd, &req_clm_nodegetasync,
-		sizeof (struct req_clm_nodegetasync), MSG_NOSIGNAL);
-
-	pthread_mutex_unlock (&clmInstance->mutex);
-
-	error = saRecvQueue (clmInstance->fd, &res_clm_nodegetasync,
-		&clmInstance->inq, MESSAGE_RES_CLM_NODEGETASYNC);
+	error = saSendReceiveReply (clmInstance->response_fd, &req_clm_nodegetasync,
+		sizeof (struct req_clm_nodegetasync),
+		&res_clm_nodegetasync, sizeof (struct res_clm_nodegetasync));
 	if (error != SA_OK) {
 		goto error_exit;
 	}
