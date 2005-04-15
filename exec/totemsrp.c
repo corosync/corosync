@@ -423,12 +423,9 @@ void (*totemsrp_deliver_fn) (
 
 void (*totemsrp_confchg_fn) (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, void *member_list_private,
-		int member_list_entries,
-	struct in_addr *left_list, void *left_list_private,
-		int left_list_entries,
-	struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries,
+	struct in_addr *member_list, int member_list_entries,
+	struct in_addr *left_list, int left_list_entries,
+	struct in_addr *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) = 0;
 
 static struct totem_interface *totemsrp_interfaces;
@@ -565,12 +562,9 @@ int totemsrp_initialize (
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, void *member_list_private,
-			int member_list_entries,
-		struct in_addr *left_list, void *left_list_private,
-			int left_list_entries,
-		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries,
+		struct in_addr *member_list, int member_list_entries,
+		struct in_addr *left_list, int left_list_entries,
+		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
 
@@ -1041,9 +1035,9 @@ static void memb_state_operational_enter (void)
 	 * Deliver transitional configuration to application
 	 */
 	totemsrp_confchg_fn (TOTEM_CONFIGURATION_TRANSITIONAL,
-		my_trans_memb_list, 0, my_trans_memb_entries,
-		left_list, 0, left_list_entries,
-		0, 0, 0, &my_ring_id);
+		my_trans_memb_list, my_trans_memb_entries,
+		left_list, left_list_entries,
+		0, 0, &my_ring_id);
 		
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of my_deliver_memb
@@ -1053,9 +1047,9 @@ static void memb_state_operational_enter (void)
 	 * Deliver regular configuration to application
 	 */
 	totemsrp_confchg_fn (TOTEM_CONFIGURATION_REGULAR,
-		my_new_memb_list, 0, my_new_memb_entries,
-		0, 0, 0,
-		joined_list, 0, joined_list_entries, &my_ring_id);
+		my_new_memb_list, my_new_memb_entries,
+		0, 0,
+		joined_list, joined_list_entries, &my_ring_id);
 
 	/*
 	 * Install new membership

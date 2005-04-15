@@ -144,12 +144,9 @@ static void (*app_deliver_fn) (
 
 static void (*app_confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, void *member_list_private, 
-			int member_list_entries,
-		struct in_addr *left_list, void *left_list_private,
-			int left_list_entries,
-		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries,
+		struct in_addr *member_list, int member_list_entries,
+		struct in_addr *left_list, int left_list_entries,
+		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id) = 0;
 
 struct assembly {
@@ -191,12 +188,9 @@ static struct assembly *find_assembly (struct in_addr addr)
 
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, void *member_list_private, 
-		int member_list_entries,
-	struct in_addr *left_list, void *left_list_private,
-		int left_list_entries,
-	struct in_addr *joined_list, void *joined_list_private,
-		int joined_list_entries,
+	struct in_addr *member_list, int member_list_entries,
+	struct in_addr *left_list, int left_list_entries,
+	struct in_addr *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -239,9 +233,10 @@ static void totempg_confchg_fn (
 	}
 
 	app_confchg_fn (configuration_type,
-		member_list, member_list_private, member_list_entries,
-		left_list, left_list_private, left_list_entries,
-		joined_list, joined_list_private, joined_list_entries, ring_id);
+		member_list, member_list_entries,
+		left_list, left_list_entries,
+		joined_list, joined_list_entries,
+		ring_id);
 }
 
 static void totempg_deliver_fn (
@@ -454,12 +449,9 @@ int totempg_initialize (
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, void *member_list_private, 
-			int member_list_entries,
-		struct in_addr *left_list, void *left_list_private,
-			int left_list_entries,
-		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries,
+		struct in_addr *member_list, int member_list_entries,
+		struct in_addr *left_list, int left_list_entries,
+		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
 	int res;

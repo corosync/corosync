@@ -74,12 +74,9 @@ int totemsrp_initialize (
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, void *member_list_private, 
-			int member_list_entries,
-		struct in_addr *left_list, void *left_list_private,
-			int left_list_entries,
-		struct in_addr *joined_list, void *joined_list_private,
-			int joined_list_entries,
+		struct in_addr *member_list, int member_list_entries,
+		struct in_addr *left_list, int left_list_entries,
+		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
 /*
