@@ -3094,14 +3094,14 @@ if (random () % 100 < 10) {
 				token->aru_addr.s_addr = my_id.sin_addr.s_addr;
 			}
 		}
-		if (token->aru == my_last_aru && token->aru_addr.s_addr != 0) {
+		if (token->aru == last_aru && token->aru_addr.s_addr != 0) {
 			my_aru_count += 1;
 		} else {
 			my_aru_count = 0;
 		}
 
 		if (my_aru_count > FAIL_TO_RECV_CONST &&
-			token->aru_addr.s_addr == my_id.sin_addr.s_addr) {
+			token->aru_addr.s_addr != my_id.sin_addr.s_addr) {
 			
 printf ("FAILED TO RECEIVE\n");
 // TODO if we fail to receive, it may be possible to end with a gather
@@ -3123,8 +3123,8 @@ printf ("FAILED TO RECEIVE\n");
 				 * (ie: its retrans queue is empty)
 				 */
 				low_water = my_aru;
-				if (low_water > my_last_aru) {
-					low_water = my_last_aru;
+				if (low_water > last_aru) {
+					low_water = last_aru;
 				}
 // TODO is this code right
 				if (queue_is_empty (&retrans_message_queue) == 0 ||
