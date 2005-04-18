@@ -899,6 +899,7 @@ static void ring_reset (void)
 static void ring_state_restore (void)
 {
 	if (old_ring_state_saved) {
+		my_ring_id.rep.s_addr = 0;
 		my_aru = old_ring_state_aru;
 		my_high_seq_received = old_ring_state_high_seq_received;
 		totemsrp_log_printf (totemsrp_log_level_debug,
@@ -2590,7 +2591,7 @@ static void memb_state_commit_token_update (struct memb_commit_token *memb_commi
 	memb_index_this = (memb_commit_token->memb_index + 1) % memb_commit_token->addr_entries;
 	memcpy (&memb_commit_token->memb_list[memb_index_this].ring_id,
 		&my_old_ring_id, sizeof (struct memb_ring_id));
-assert (my_ring_id.rep.s_addr != 0);
+assert (my_old_ring_id.rep.s_addr != 0);
 
 	memb_commit_token->memb_list[memb_index_this].aru = old_ring_state_aru;
 	/*
