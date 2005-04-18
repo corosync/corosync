@@ -145,6 +145,8 @@ static int evs_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
+struct res_evs_confchg_callback res_evs_confchg_callback;
+
 static int evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
     struct in_addr *member_list, int member_list_entries,
@@ -155,7 +157,6 @@ static int evs_confchg_fn (
 
 	int i;
 	struct list_head *list;
-	struct res_evs_confchg_callback res_evs_confchg_callback;
 	struct conn_info *conn_info;
 
 	/*
@@ -195,6 +196,8 @@ static int evs_init_two_fn (struct conn_info *conn_info)
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize evs service.\n");
 	list_init (&conn_info->conn_list);
 	list_add (&conn_info->conn_list, &confchg_notify);
+	libais_send_response (conn_info, &res_evs_confchg_callback,
+		sizeof (res_evs_confchg_callback));
 
 	return (0);
 }
