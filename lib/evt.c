@@ -483,7 +483,7 @@ saEvtDispatch(
 
 		error = saPollRetry(&ufds, 1, timeout);
 		if (error != SA_AIS_OK) {
-			goto error_unlock;
+			goto dispatch_unlock;
 		}
 
 		pthread_mutex_lock(&evti->ei_dispatch_mutex);
@@ -494,7 +494,7 @@ saEvtDispatch(
 		 */
 		error = saPollRetry(&ufds, 1, 0);
 		if (error != SA_AIS_OK) {
-			goto error_unlock;
+			goto dispatch_unlock;
 		}
 
 		/*
@@ -502,8 +502,12 @@ saEvtDispatch(
 		 */
 		if (evti->ei_finalize == 1) {
 			error = SA_AIS_OK;
- 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
-			goto error_unlock;
+			goto dispatch_unlock;
+		}
+
+		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+			error = SA_AIS_ERR_BAD_HANDLE;
+			goto dispatch_unlock;
 		}
 
  		dispatch_avail = ufds.revents & POLLIN;
@@ -520,14 +524,14 @@ saEvtDispatch(
  				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
 
 			if (error != SA_AIS_OK) {
-				goto error_unlock;
+				goto dispatch_unlock;
 			}
  			if (dispatch_data.header.size > sizeof (struct res_header)) {
  				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
  					dispatch_data.header.size - sizeof (struct res_header),
   					MSG_WAITALL | MSG_NOSIGNAL);
 				if (error != SA_AIS_OK) {
-					goto error_unlock;
+					goto dispatch_unlock;
 				}
 			} 
 		} else {
@@ -563,6 +567,7 @@ saEvtDispatch(
  
 			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error);
+ 				pthread_mutex_unlock(&evti->ei_response_mutex);
 					break;
 			}
  			error = evt_recv_event(evti->ei_response_fd, &evt);
@@ -643,8 +648,7 @@ saEvtDispatch(
 			printf("Dispatch: Bad message type 0x%x\n",
 					dispatch_data.header.id);
 			error = SA_AIS_ERR_LIBRARY;	
-			goto error_nounlock;
-			break;
+			goto dispatch_put;
 		}
 
 		/*
@@ -678,9 +682,12 @@ saEvtDispatch(
 		}
 	} while (cont);
 
-error_unlock:
+	goto dispatch_put;
+
+dispatch_unlock:
+ 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+dispatch_put:
 	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
-error_nounlock:
 	return error;
 }
 
