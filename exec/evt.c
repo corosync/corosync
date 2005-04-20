@@ -2806,6 +2806,8 @@ static int evt_finalize(struct conn_info *conn_info)
 	struct libevt_ci *esip = &conn_info->conn_info_partner->ais_ci.u.libevt_ci;
 	struct event_svr_channel_open	*eco;
 	struct list_head *l, *nxt;
+	struct open_chan_pending *ocp;
+	struct unlink_chan_pending *ucp;
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize (Event exit request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize %d evts on list\n",
@@ -2821,6 +2823,26 @@ static int evt_finalize(struct conn_info *conn_info)
 		saHandleDestroy(&esip->esi_hdb, eco->eco_my_handle);
 	}
 
+	/*
+	 * Clean up any pending async operations
+	 */
+	for (l = open_pending.next; l != &open_pending; l = nxt) {
+		nxt = l->next;
+		ocp = list_entry(l, struct open_chan_pending, ocp_entry);
+		if (esip == &ocp->ocp_conn_info->ais_ci.u.libevt_ci) {
+			list_del(&ocp->ocp_entry);
+			free(ocp);
+		}
+	}
+
+	for (l = unlink_pending.next; l != &unlink_pending; l = nxt) {
+		nxt = l->next;
+		ucp = list_entry(l, struct unlink_chan_pending, ucp_entry);
+		if (esip == &ucp->ucp_conn_info->ais_ci.u.libevt_ci) {
+			list_del(&ucp->ucp_entry);
+			free(ucp);
+		}
+	}
 
 	/*
 	 * Delete track entry if there is one
