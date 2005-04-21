@@ -50,6 +50,7 @@
 #define SECONDS_TO_EXPIRE 4
 
 int ckptinv;
+SaInvocationT open_invocation = 16;
 void printSaNameT (SaNameT *name)
 {
 	int i;
@@ -169,14 +170,27 @@ SaCkptIOVectorElementT default_write_vector[] = {
 	}
 };
 
+SaCkptCheckpointHandleT checkpointHandle;
+
+void OpenCallBack (
+    SaInvocationT invocation,
+    const SaCkptCheckpointHandleT chckpointHandle,
+    SaAisErrorT error) {
+	
+ 	printf ("%s: This is a call back for open for invocation = %d\n",
+		get_test_output (error, SA_AIS_OK), (int)invocation);	
+
+	memcpy(&checkpointHandle, &chckpointHandle, sizeof(SaCkptCheckpointHandleT));
+
+}
+
 SaCkptCallbacksT callbacks = {
- 	0,
+ 	&OpenCallBack,
 	0
 };
 
 int main (void) {
 	SaCkptHandleT ckptHandle;
-	SaCkptCheckpointHandleT checkpointHandle;
 	SaCkptCheckpointHandleT checkpointHandle2;
 	SaCkptCheckpointHandleT checkpointHandleRead;
 	SaCkptCheckpointDescriptorT checkpointStatus;
@@ -190,6 +204,24 @@ int main (void) {
 	int sel_fd;
 	
     error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
+	error = saCkptCheckpointOpenAsync (ckptHandle,
+		open_invocation,
+        &checkpointName,
+        &checkpointCreationAttributes,
+        SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
+    printf ("%s: initial asynchronous open of checkpoint\n",
+        get_test_output (error, SA_AIS_OK));
+
+
+	error = saCkptDispatch (ckptHandle, SA_DISPATCH_ONE);
+	
+	printf ("%s: Dispatch response for open async of checkpoint\n",
+		get_test_output (error, SA_AIS_OK));
+
+	error = saCkptCheckpointClose (checkpointHandle);
+    printf ("%s: Closing checkpoint\n",
+        get_test_output (error, SA_AIS_OK));
 	
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,

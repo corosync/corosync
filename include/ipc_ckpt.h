@@ -113,6 +113,8 @@ struct req_exec_ckpt_checkpointopen {
 	struct req_header header;
 	struct message_source source;
 	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
+	SaCkptCheckpointHandleT checkpointHandle;
+	SaInvocationT invocation;
 };
 
 
@@ -121,6 +123,7 @@ struct req_lib_ckpt_checkpointopenasync {
 	SaNameT checkpointName;
 	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
+	SaCkptCheckpointHandleT checkpointHandle;
 	SaInvocationT invocation;
 };
 

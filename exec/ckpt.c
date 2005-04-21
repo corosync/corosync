@@ -1009,6 +1009,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)message;
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)&req_exec_ckpt_checkpointopen->req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopen res_lib_ckpt_checkpointopen;
+	struct res_lib_ckpt_checkpointopenasync res_lib_ckpt_checkpointopenasync;
 
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
@@ -1120,10 +1121,23 @@ error_exit:
 	 * If this node was the source of the message, respond to this node
 	 */
 	if (message_source_is_local(&req_exec_ckpt_checkpointopen->source)) {
-		res_lib_ckpt_checkpointopen.header.size = sizeof (struct res_lib_ckpt_checkpointopen);
-		res_lib_ckpt_checkpointopen.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN;
-		res_lib_ckpt_checkpointopen.header.error = error;
+		if (req_exec_ckpt_checkpointopen->invocation) {
+			res_lib_ckpt_checkpointopenasync.header.size = sizeof (struct res_lib_ckpt_checkpointopenasync);
+			res_lib_ckpt_checkpointopenasync.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
+			res_lib_ckpt_checkpointopenasync.header.error = error;
+			res_lib_ckpt_checkpointopenasync.checkpointHandle = req_exec_ckpt_checkpointopen->checkpointHandle;
+			res_lib_ckpt_checkpointopenasync.invocation = req_exec_ckpt_checkpointopen->invocation;
 
+            libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info->conn_info_partner, &res_lib_ckpt_checkpointopenasync,
+                sizeof (struct res_lib_ckpt_checkpointopenasync));
+		} else {
+			res_lib_ckpt_checkpointopen.header.size = sizeof (struct res_lib_ckpt_checkpointopen);
+			res_lib_ckpt_checkpointopen.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN;
+			res_lib_ckpt_checkpointopen.header.error = error;
+
+			libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info, &res_lib_ckpt_checkpointopen,
+				sizeof (struct res_lib_ckpt_checkpointopen));
+		}
 		if (error == SA_AIS_OK) {
 			checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
 			if (checkpoint_cleanup == 0) {
@@ -1135,9 +1149,6 @@ error_exit:
 					&req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint_list);
 			}
 		}
-
-		libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info, &res_lib_ckpt_checkpointopen,
-			sizeof (struct res_lib_ckpt_checkpointopen));
 	}
 
 /*	return (error == SA_AIS_OK ? 0 : -1); */
@@ -2182,6 +2193,9 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	memcpy (&req_exec_ckpt_checkpointopen.req_lib_ckpt_checkpointopen,
 		req_lib_ckpt_checkpointopen,
 		sizeof (struct req_lib_ckpt_checkpointopen));
+	
+	req_exec_ckpt_checkpointopen.invocation = 0;
+	req_exec_ckpt_checkpointopen.checkpointHandle = 0;
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
@@ -2193,6 +2207,29 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 
 static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *conn_info, void *message)
 {
+	struct req_lib_ckpt_checkpointopenasync *req_lib_ckpt_checkpointopenasync = (struct req_lib_ckpt_checkpointopenasync *)message;
+	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
+	struct iovec iovecs[2];
+
+	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint async.\n");
+	req_exec_ckpt_checkpointopen.header.size =
+		sizeof (struct req_exec_ckpt_checkpointopen);
+	req_exec_ckpt_checkpointopen.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN;
+
+	message_source_set (&req_exec_ckpt_checkpointopen.source, conn_info);
+
+	memcpy (&req_exec_ckpt_checkpointopen.req_lib_ckpt_checkpointopen,
+		req_lib_ckpt_checkpointopenasync,
+		sizeof (struct req_lib_ckpt_checkpointopen));
+	
+	req_exec_ckpt_checkpointopen.invocation = req_lib_ckpt_checkpointopenasync->invocation;
+	req_exec_ckpt_checkpointopen.checkpointHandle = req_lib_ckpt_checkpointopenasync->checkpointHandle;
+
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
+
+	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+
 	return (0);
 }
 
