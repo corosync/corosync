@@ -1426,9 +1426,10 @@ void error_report (
 int healthcheck_instance = 0;
 
 void timer_function_libamf_healthcheck (void *data) {
-	struct res_lib_amf_healthcheckcallback res_lib_amf_healthcheckcallback;
-	memset (&res_lib_amf_healthcheckcallback,0,sizeof(res_lib_amf_healthcheckcallback));
 	struct conn_info *conn_info = (struct conn_info *)data;
+	struct res_lib_amf_healthcheckcallback res_lib_amf_healthcheckcallback;
+
+	memset (&res_lib_amf_healthcheckcallback, 0, sizeof(res_lib_amf_healthcheckcallback));
 
 	res_lib_amf_healthcheckcallback.header.id = MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
 	res_lib_amf_healthcheckcallback.header.size = sizeof (struct res_lib_amf_healthcheckcallback);

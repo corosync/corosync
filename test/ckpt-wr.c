@@ -109,11 +109,12 @@ int main (void) {
 	char data[MAX_DATA_SIZE];
 	struct timespec delay;
 	struct timespec delay2;
-	delay.tv_sec = 1;
-	delay.tv_nsec = 0;
 	SaCkptIOVectorElementT writeElement;
 	long count = 0;
 	SaUint32T erroroneousVectorIndex = 0;
+
+	delay.tv_sec = 1;
+	delay.tv_nsec = 0;
 
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 

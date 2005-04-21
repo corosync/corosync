@@ -1014,6 +1014,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
 	struct checkpoint_cleanup *checkpoint_cleanup;
 	SaErrorT error = SA_AIS_OK;
+	int proc_index;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to open checkpoint %p\n", req_exec_ckpt_checkpointopen);
 	
@@ -1092,7 +1093,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	 * 
 	 */
 	 
-	 int proc_index = processor_index_find(&source_addr,ckptCheckpoint->ckpt_refcount);
+	 proc_index = processor_index_find(&source_addr,ckptCheckpoint->ckpt_refcount);
 	 if (proc_index == -1) {/* Could not find, lets set the processor to an index.*/
 	 	proc_index = processor_index_set(&source_addr,ckptCheckpoint->ckpt_refcount);
 	 }
@@ -1357,6 +1358,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
 	struct saCkptCheckpoint *checkpoint = 0;
 	SaAisErrorT error = SA_AIS_OK;
+	int proc_index;
 
 	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to close checkpoint %s\n", getSaNameT (&req_exec_ckpt_checkpointclose->checkpointName));
 
@@ -1372,7 +1374,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	 * sent out later as a part of the sync process.	 
 	 */
 	
-	int proc_index = processor_index_find(&source_addr, checkpoint->ckpt_refcount);
+	proc_index = processor_index_find(&source_addr, checkpoint->ckpt_refcount);
 	if (proc_index != -1 ) {	 		
 	 	checkpoint->ckpt_refcount[proc_index].count--;
 	}

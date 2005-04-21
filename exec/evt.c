@@ -3845,12 +3845,12 @@ static int evt_sync_process(void)
 	 */
 	case evt_send_open_count:
 	{
-		log_printf(RECOVERY_DEBUG, "Send open count updates\n");
 		struct req_evt_chan_command cpkt;
 		struct iovec chn_iovec;
 		struct event_svr_channel_instance *eci;
 		int res;
 
+		log_printf(RECOVERY_DEBUG, "Send open count updates\n");
 		/*
 		 * Process messages.  When we're done, send the done message
 		 * to the nodes.
