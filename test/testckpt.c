@@ -201,7 +201,7 @@ int main (void) {
 	struct timeval tv_start;
 	struct timeval tv_end;
 	struct timeval tv_elapsed;
-	int sel_fd;
+	SaSelectionObjectT sel_fd;
 	
     error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 
@@ -467,12 +467,12 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		printf ("%s: Get next section in iteartion\n",
 			get_test_output (error, SA_AIS_OK));
 		if (error == SA_OK) {
-			printf ("Section '%s' expires %llx size %d state %x update %llx\n",
+			printf ("Section '%s' expires %llx size %lld state %x update %llx\n",
 				sectionDescriptor.sectionId.id,
-				(unsigned long long)sectionDescriptor.expirationTime,
+				sectionDescriptor.expirationTime,
 				sectionDescriptor.sectionSize,
 				sectionDescriptor.sectionState,
-				(unsigned long long)sectionDescriptor.lastUpdate);
+				sectionDescriptor.lastUpdate);
 		}
 	} while (error == SA_OK);
 	printf ("The last iteration should fail\n");
@@ -482,7 +482,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
-	printf ("%s: Retrieve selection object %d\n",
+	printf ("%s: Retrieve selection object %lld\n",
 		get_test_output (error, SA_AIS_OK), sel_fd);
 
 	error = saCkptFinalize (ckptHandle);

@@ -125,7 +125,7 @@ test_pub()
 	SaEvtChannelOpenFlagsT flags;
 	SaNameT channel_name;
 	uint64_t test_retention;
-	int fd;
+	SaSelectionObjectT fd;
 	int i;
 
 	SaEvtEventIdT event_id;
@@ -314,7 +314,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	printf("sub ID: %x\n", subscription_id);
 	printf("event_handle %llx\n", 
 			(unsigned long long)event_handle);
-	printf("event data size %d\n", event_data_size);
+	printf("event data size %lld\n", event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;
 	do {
@@ -332,7 +332,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		printf("event get attr result(2): %s\n", result_buf);
 		goto evt_free;
 	}
-	printf("pattern array count: %d\n", evt_pat_get_array.patternsNumber);
+	printf("pattern array count: %lld\n", evt_pat_get_array.patternsNumber);
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		printf( "pattern %d =\"%s\"\n", i,
 				  evt_pat_get_array.patterns[i].pattern);

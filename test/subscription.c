@@ -94,7 +94,7 @@ test_subscription()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 60000;
 	int i;
 
@@ -169,7 +169,7 @@ test_subscription()
 		}
 
 		if (pfd.revents & (POLLERR|POLLHUP)) {
-			printf("Error recieved on poll fd %d\n", fd);
+			printf("Error recieved on poll fd %lld\n", fd);
 			return SA_AIS_ERR_BAD_OPERATION;
 		}
 		do {
@@ -249,7 +249,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	if (!quiet)
 		dprintf("event_handle %llx\n", (unsigned long long)event_handle);
 	if (!quiet)
-		dprintf("event data size %d\n", event_data_size);
+		dprintf("event data size %lld\n", event_data_size);
 
 	evt_pat_get_array.patterns[0].patternSize = PAT_SIZE;
 	evt_pat_get_array.patterns[1].patternSize = PAT_SIZE;
@@ -270,7 +270,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		goto evt_free;
 	}
 	if (!quiet) {
-		dprintf("pattern array count: %d\n", 
+		dprintf("pattern array count: %lld\n", 
 				evt_pat_get_array.patternsNumber);
 		for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 			dprintf( "pattern %d =\"%s\"\n", i,
@@ -332,7 +332,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 #endif
 
 	if (event_data_size != user_data_size) {
-		dprintf("unexpected data size: e=%d, a=%d\n",
+		dprintf("unexpected data size: e=%d, a=%lld\n",
 				user_data_size, event_data_size);
 		goto evt_free;
 	} 
@@ -346,7 +346,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		goto evt_free;
 	}
 	if (received_size != event_data_size) {
-		dprintf("event data mismatch e=%d, a=%d\n",
+		dprintf("event data mismatch e=%lld, a=%lld\n",
 				event_data_size, 
 				received_size);
 		goto evt_free;

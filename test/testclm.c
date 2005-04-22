@@ -88,9 +88,9 @@ void NodeGetCallback (
 	char buf[128];
 
 	if (error != SA_AIS_OK) {
-		printf ("Node for invocation %d not found (%d)\n", invocation, error);
+		printf ("Node for invocation %lld not found (%d)\n", invocation, error);
 	} else {
-		sprintf (buf, "NODEGETCALLBACK %d\n", invocation);
+		sprintf (buf, "NODEGETCALLBACK %lld\n", invocation);
 		printSaClmClusterNodeT (buf, (SaClmClusterNodeT *)clusterNode);
 	}
 }
@@ -139,7 +139,7 @@ void sigintr_handler (int signum) {
 int main (void) {
 	SaClmHandleT handle;
 	fd_set read_fds;
-	int select_fd;
+	SaSelectionObjectT select_fd;
 	int result;
 	SaClmClusterNotificationT clusterNotification[64];
 	SaClmClusterNotificationBufferT clusterNotificationBuffer;
@@ -183,7 +183,7 @@ int main (void) {
 
 	saClmSelectionObjectGet (handle, &select_fd);
 
-printf ("select fd is %d\n", select_fd);
+printf ("select fd is %lld\n", select_fd);
 	FD_ZERO (&read_fds);
 printf ("press the enter key to exit with track stop and finalize.\n");
 	do {

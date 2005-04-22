@@ -259,7 +259,7 @@ int main (void) {
 
 	pthread_attr_init (&dispatch_thread_attribute);
 	pthread_attr_setschedpolicy (&dispatch_thread_attribute, SCHED_FIFO);
-	pthread_attr_setschedparam (&dispatch_thread_attribute, 99);
+//	pthread_attr_setschedparam (&dispatch_thread_attribute, 99);
 	pthread_create (&dispatch_thread, NULL, th_dispatch, &handle);
 
 	sleep (5);

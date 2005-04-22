@@ -202,7 +202,7 @@ void open_callback(SaInvocationT invocation,
 		return;
 	}
 	if (invocation != open_invocation) {
-		printf("ERROR: Unexpected invocation value: e 0x%x, a 0x%x\n",
+		printf("ERROR: Unexpected invocation value: e 0x%llx, a 0x%llx\n",
 				open_invocation, invocation);
 	}
 
@@ -241,7 +241,7 @@ test_channel()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER |
@@ -766,7 +766,7 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 				subscription_id, my_subscription_id);
 	}
 	if (my_event_data_size != event_data_size) {
-		printf("ERROR: event data size e=%d, a=%d\n", 
+		printf("ERROR: event data size e=%lld, a=%lld\n", 
 				event_data_size,
 				my_event_data_size);
 	}
@@ -794,13 +794,13 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 4) {
-		printf("ERROR: pattern array count not 4: %d\n", 
+		printf("ERROR: pattern array count not 4: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		if (evt_pat_get_array.patterns[i].patternSize !=
 				evt_pat_set_array.patterns[i].patternSize) {
-			printf("ERROR: pattern %d count not equal g=%d, s=%d\n",
+			printf("ERROR: pattern %d count not equal g=%lld, s=%lld\n",
 				i,
 				evt_pat_get_array.patterns[i].patternSize,
 				evt_pat_set_array.patterns[i].patternSize);
@@ -855,7 +855,7 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 		goto dat_free;
 	}
 	if (data_size != event_data_size) {
-		printf("ERROR: Data size: e=%d a=%d\n", 
+		printf("ERROR: Data size: e=%lld a=%lld\n", 
 				event_data_size, data_size);
 	}
 	for (i = 0; i < (data_size/sizeof(long)); i++) {
@@ -890,7 +890,7 @@ test_event()
 	SaTimeT publish_time;
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 
 
@@ -976,7 +976,7 @@ test_event()
 		goto evt_free;
 	}
 	if (evt_pat_get_array.patternsNumber != 0) {
-		printf("ERROR: pattern array count not zero: %d\n", 
+		printf("ERROR: pattern array count not zero: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 	if (priority != SA_EVT_LOWEST_PRIORITY) {
@@ -1029,13 +1029,13 @@ test_event()
 		goto evt_free;
 	}
 	if (evt_pat_get_array.patternsNumber != 4) {
-		printf("ERROR: pattern array count not 4: %d\n", 
+		printf("ERROR: pattern array count not 4: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		if (evt_pat_get_array.patterns[i].patternSize !=
 				evt_pat_set_array.patterns[i].patternSize) {
-			printf("ERROR: pattern %d count not equal g=%d, s=%d\n",
+			printf("ERROR: pattern %d count not equal g=%lld, s=%lld\n",
 				i,
 				evt_pat_get_array.patterns[i].patternSize,
 				evt_pat_set_array.patterns[i].patternSize);
@@ -1366,7 +1366,7 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 1) {
-		printf("ERROR: pattern array count not 1: %d\n", 
+		printf("ERROR: pattern array count not 1: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 
@@ -1423,7 +1423,7 @@ test_multi_channel1()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 
 
@@ -1717,7 +1717,7 @@ multi_test_callback2(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 1) {
-		printf("ERROR: pattern array count not 1: %d\n", 
+		printf("ERROR: pattern array count not 1: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 
@@ -1763,7 +1763,7 @@ test_multi_channel2()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 
 
@@ -2017,7 +2017,7 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 1) {
-		printf("ERROR: pattern array count not 1: %d\n", 
+		printf("ERROR: pattern array count not 1: %lld\n", 
 					evt_pat_get_array.patternsNumber);
 	}
 
@@ -2066,7 +2066,7 @@ test_multi_channel3()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 
 
@@ -2362,7 +2362,7 @@ test_retention()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = (EXPIRE_TIME + 5);
 	SaAisErrorT result;
 	 
@@ -2794,7 +2794,7 @@ test_unlink_channel()
 
 	struct pollfd pfd;
 	int nfd;
-	int fd;
+	SaSelectionObjectT fd;
 	int timeout = 5000;
 	 
 	flags1 = SA_EVT_CHANNEL_PUBLISHER |

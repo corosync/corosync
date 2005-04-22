@@ -241,7 +241,7 @@ void sigintr_handler (int signum) {
 int main (int argc, char **argv) {
 	SaAmfHandleT handle;
 	int result;
-	int select_fd;
+	SaSelectionObjectT select_fd;
 	fd_set read_fds;
 	SaNameT compName;
 	int c,i;

@@ -139,9 +139,9 @@ typedef enum {
 	SA_AIS_ERR_NO_SECTIONS = 27
 } SaAisErrorT;
 
-typedef int SaSelectionObjectT;
+typedef SaUint64T SaSelectionObjectT;
 
-typedef int SaInvocationT;
+typedef SaUint64T SaInvocationT;
 
 /*
  * AMF Definitions
@@ -290,7 +290,7 @@ typedef struct {
 	SaAmfRecommendedRecoveryT recommendedRecovery;
 } SaAmfErrorDescriptorT;
 
-typedef int SaSizeT;
+typedef SaUint64T SaSizeT;
 #define SA_AMF_OPAQUE_BUFFER_SIZE_MAX 512
 typedef struct {
 	char *buffer;

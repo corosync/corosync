@@ -102,7 +102,7 @@ typedef enum {
 	SA_CKPT_SECTIONS_ANY = 5
 } SaCkptSectionsChosenT;
 
-typedef SaUint32T SaOffsetT;
+typedef SaUint64T SaOffsetT;
 
 typedef struct {
 	SaCkptSectionIdT sectionId;

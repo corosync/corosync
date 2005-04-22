@@ -167,7 +167,7 @@ void CSIRemoveCallback (
 	const SaNameT *csiName,
 	const SaAmfCSIFlagsT *csiFlags)
 {
-	printf ("CSIRemoveCallback invocation id %x compName ", invocation);
+	printf ("CSIRemoveCallback invocation id %lld compName ", invocation);
 	printSaNameT ((SaNameT *)compName);
 	printf (" csiName ");
 	printSaNameT ((SaNameT *)csiName);
@@ -250,7 +250,7 @@ int main (int argc, char **argv) {
 	SaAmfHandleT handle;
 	SaAmfHandleT handleproxy;
 	int result;
-	int select_fd;
+	SaSelectionObjectT select_fd;
 	fd_set read_fds;
 	SaNameT compName;
 	SaNameT csiName;
