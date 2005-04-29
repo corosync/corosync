@@ -3697,8 +3697,7 @@ static int message_handler_memb_join (
 				my_new_memb_list,
 				my_new_memb_entries) &&
 
-//WORK				memb_join->ring_seq >= my_ring_id.seq) {
-				memb_join->ring_seq > my_ring_id.seq) {
+				memb_join->ring_seq >= my_ring_id.seq) {
 
 				memb_join_process (memb_join, system_from);
 				memb_state_gather_enter ();
