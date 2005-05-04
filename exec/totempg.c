@@ -453,7 +453,8 @@ int totempg_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+		struct memb_ring_id *ring_id),
+	unsigned int *timeouts)
 {
 	int res;
 
@@ -466,7 +467,8 @@ int totempg_initialize (
 		poll_handle,
 		private_key, private_key_len,
 		member_private, member_private_len,
-		totempg_deliver_fn, totempg_confchg_fn);
+		totempg_deliver_fn, totempg_confchg_fn, 
+		timeouts);
  
 	totemsrp_callback_token_create (&callback_token_received_handle, 
 		TOTEM_CALLBACK_TOKEN_RECEIVED,

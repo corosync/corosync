@@ -214,6 +214,21 @@ static int my_retrans_flg_count = 0;
 
 static unsigned int my_high_ring_delivered = 0;
 
+static unsigned int timeout_token = TIMEOUT_TOKEN;
+
+static unsigned int timeout_token_retransmit = TIMEOUT_TOKEN_RETRANSMIT;
+
+static unsigned int timeout_state_gather_join = TIMEOUT_STATE_GATHER_JOIN;
+
+static unsigned int timeout_state_gather_consensus = TIMEOUT_STATE_GATHER_CONSENSUS;
+
+static unsigned int timeout_merge_detect = TIMEOUT_MERGE_DETECT;
+
+static unsigned int timeout_downcheck = TIMEOUT_DOWNCHECK;
+
+static unsigned int fail_to_recv_const = FAIL_TO_RECV_CONST;
+
+
 struct token_callback_instance {
 	struct list_head list;
 	int (*callback_fn) (enum totem_callback_token_type type, void *);
@@ -573,8 +588,10 @@ int totemsrp_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+		struct memb_ring_id *ring_id),
+	unsigned int *timeouts)
 {
+	int i;
 
 	/*
 	 * Initialize random number generator for later use to generate salt
@@ -591,6 +608,57 @@ int totemsrp_initialize (
 	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
 	memset (&next_memb, 0, sizeof (struct sockaddr_in));
 	memset (iov_buffer, 0, PACKET_SIZE_MAX);
+
+	/*
+	 * Update our timeout values if they were specified in the openais.conf
+	 * file.
+	 */
+	for (i = TOTEM_TOKEN; i < MAX_TOTEM_TIMEOUTS; i++) {
+		if (!timeouts[i]) {
+			continue;
+		}
+		switch (i) {
+		case TOTEM_TOKEN:
+			timeout_token = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Token Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_RETRANSMIT_TOKEN:
+			timeout_token_retransmit = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Token Retransmit Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_JOIN:
+			timeout_state_gather_join = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Join Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_CONSENSUS:
+			timeout_state_gather_consensus = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Consensus Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_MERGE:
+			timeout_merge_detect = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Merge Detect Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_DOWNCHECK:
+			timeout_downcheck = timeouts[i];
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Downcheck Timeout set to %u ms\n", timeouts[i]);
+			break;
+		case TOTEM_FAIL_RECV_CONST:
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Failed To Receive Const set to %u\n", timeouts[i]);
+			fail_to_recv_const = timeouts[i];
+			break;
+		default:
+			totemsrp_log_printf (totemsrp_log_level_notice,
+					"Received unknown timeout type: %d\n", timeouts[i]);
+			break;
+		}
+	}
 
 	queue_init (&new_message_queue, NEW_MESSAGE_QUEUE_SIZE_MAX,
 		sizeof (struct message_item));
@@ -859,7 +927,7 @@ void reset_token_retransmit_timeout (void)
 {
 			poll_timer_delete (*totemsrp_poll_handle,
 				timer_orf_token_retransmit_timeout);
-			poll_timer_add (*totemsrp_poll_handle, TIMEOUT_TOKEN_RETRANSMIT, 0,
+			poll_timer_add (*totemsrp_poll_handle, timeout_token_retransmit, 0,
 				timer_function_token_retransmit_timeout,
 				&timer_orf_token_retransmit_timeout);
 
@@ -868,7 +936,7 @@ void reset_token_retransmit_timeout (void)
 void start_merge_detect_timeout (void)
 {
 	if (my_merge_detect_timeout_outstanding == 0) {
-		poll_timer_add (*totemsrp_poll_handle, TIMEOUT_MERGE_DETECT, 0,
+		poll_timer_add (*totemsrp_poll_handle, timeout_merge_detect, 0,
 			timer_function_merge_detect_timeout, &timer_merge_detect_timeout);
 		my_merge_detect_timeout_outstanding = 1;
 	}
@@ -937,7 +1005,7 @@ static void old_ring_state_reset (void)
 
 void reset_token_timeout (void) {
 			poll_timer_delete (*totemsrp_poll_handle, timer_orf_token_timeout);
-			poll_timer_add (*totemsrp_poll_handle, TIMEOUT_TOKEN, (void *)9999,
+			poll_timer_add (*totemsrp_poll_handle, timeout_token, (void *)9999,
 				timer_function_orf_token_timeout, &timer_orf_token_timeout);
 }
 
@@ -1021,7 +1089,7 @@ static void memb_timer_function_state_gather (void *data)
 		`*/
 		poll_timer_delete (*totemsrp_poll_handle, memb_timer_state_gather_join_timeout);
 	
-		poll_timer_add (*totemsrp_poll_handle, TIMEOUT_STATE_GATHER_JOIN, 0,
+		poll_timer_add (*totemsrp_poll_handle, timeout_state_gather_join, 0,
 			memb_timer_function_state_gather, &memb_timer_state_gather_join_timeout);
 		break;
 	}
@@ -1225,7 +1293,7 @@ static void memb_state_gather_enter (void)
 	 */
 	poll_timer_delete (*totemsrp_poll_handle, memb_timer_state_gather_join_timeout);
 
-	poll_timer_add (*totemsrp_poll_handle, TIMEOUT_STATE_GATHER_JOIN, 0,
+	poll_timer_add (*totemsrp_poll_handle, timeout_state_gather_join, 0,
 		memb_timer_function_state_gather, &memb_timer_state_gather_join_timeout);
 
 	/*
@@ -1234,7 +1302,7 @@ static void memb_state_gather_enter (void)
 	poll_timer_delete (*totemsrp_poll_handle,
 		memb_timer_state_gather_consensus_timeout);
 
-	poll_timer_add (*totemsrp_poll_handle, TIMEOUT_STATE_GATHER_CONSENSUS, 0,
+	poll_timer_add (*totemsrp_poll_handle, timeout_state_gather_consensus, 0,
 		memb_timer_function_gather_consensus_timeout,
 		&memb_timer_state_gather_consensus_timeout);
 
@@ -1293,7 +1361,9 @@ static void memb_state_commit_enter (struct memb_commit_token *commit_token)
 void memb_state_recovery_enter (struct memb_commit_token *commit_token)
 {
 	int i;
+#ifdef COMPILE_OUT
 	int local_received_flg = 1;
+#endif
 	unsigned int low_ring_aru;
 	unsigned int messages_originated = 0;
 
@@ -1888,7 +1958,7 @@ static void timer_function_netif_check_timeout ()
 		 * be detected by token loss when the interface is downed
 		 */
 		if (my_memb_entries <= 1) {
-			poll_timer_add (*totemsrp_poll_handle, TIMEOUT_DOWNCHECK, (void *)1,
+			poll_timer_add (*totemsrp_poll_handle, timeout_downcheck, (void *)1,
 				timer_function_netif_check_timeout,
 				&timer_netif_check_timeout);
 		}
@@ -1905,7 +1975,7 @@ static void timer_function_netif_check_timeout ()
 		*/
 		cancel_token_retransmit_timeout ();
 		cancel_token_timeout ();
-		poll_timer_add (*totemsrp_poll_handle, TIMEOUT_DOWNCHECK, (void *)1,
+		poll_timer_add (*totemsrp_poll_handle, timeout_downcheck, (void *)1,
 			timer_function_netif_check_timeout,
 			&timer_netif_check_timeout);
 	}
@@ -3144,7 +3214,7 @@ if (random () % 100 < 10) {
 			my_aru_count = 0;
 		}
 
-		if (my_aru_count > FAIL_TO_RECV_CONST &&
+		if (my_aru_count > fail_to_recv_const &&
 			token->aru_addr.s_addr != my_id.sin_addr.s_addr) {
 			
 printf ("FAILED TO RECEIVE\n");

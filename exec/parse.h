@@ -74,6 +74,11 @@ struct openais_config {
 	 */
 	unsigned char *key;
 	int keylen;
+
+	/*
+	 * Timeout
+	 */
+	unsigned int timeouts[MAX_TOTEM_TIMEOUTS];
 };
 
 struct saAmfUnit {

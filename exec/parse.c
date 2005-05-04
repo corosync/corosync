@@ -63,7 +63,8 @@ typedef enum {
 	MAIN_HEAD,
 	MAIN_NETWORK,
 	MAIN_LOGGING,
-	MAIN_KEY
+	MAIN_KEY,
+	MAIN_TIMEOUT
 } main_parse_t;
 
 void setSaNameT (SaNameT *name, char *str) {
@@ -416,6 +417,7 @@ extern int openais_main_config_read (char **error_string,
 	int network_parsed = 0;
 	int logging_parsed = 0;
 	int key_parsed = 0;
+	int timeout_parsed = 0;
 	char *loc;
 	int i;
 	int parse_done = 0;
@@ -477,6 +479,10 @@ extern int openais_main_config_read (char **error_string,
 			if (key_parsed == 0 && strstr_rs (line, "key{")) {
 				key_parsed = 1;
 				parse = MAIN_KEY;
+			} else
+			if (timeout_parsed == 0 && strstr_rs (line, "timeout{")) {
+				timeout_parsed = 1;
+				parse = MAIN_TIMEOUT;
 			} else {
 				goto parse_error;
 			}
@@ -545,6 +551,27 @@ extern int openais_main_config_read (char **error_string,
 				openais_config->logfile = strdup (loc);
 			} else
 			if ((loc = strstr_rs (line, "}"))) {
+				parse = MAIN_HEAD;
+			} else {
+				goto parse_error;
+			}
+			break;
+		case MAIN_TIMEOUT:
+			if ((loc = strstr_rs (line, "token:"))) {
+					openais_config->timeouts[TOTEM_TOKEN]= atoi(loc);
+			} else if ((loc = strstr_rs (line, "retransmit:"))) {
+					openais_config->timeouts[TOTEM_RETRANSMIT_TOKEN] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "join:"))) {
+					openais_config->timeouts[TOTEM_JOIN] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "consensus:"))) {
+					openais_config->timeouts[TOTEM_CONSENSUS] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "merge:"))) {
+					openais_config->timeouts[TOTEM_MERGE] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "downcheck:"))) {
+					openais_config->timeouts[TOTEM_DOWNCHECK] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
+					openais_config->timeouts[TOTEM_FAIL_RECV_CONST] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {
 				goto parse_error;

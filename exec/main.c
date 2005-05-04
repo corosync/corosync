@@ -1150,7 +1150,8 @@ int main (int argc, char **argv)
 		sizeof (private_key),
 		0,
 		0,
-		deliver_fn, confchg_fn);
+		deliver_fn, confchg_fn,
+		openais_config.timeouts);
 	
 	this_ip = &openais_config.interfaces[0].boundto;
 
