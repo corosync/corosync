@@ -44,6 +44,16 @@ logging {
 	timestamp: on
 }
 
+timeout {
+	token: 200
+	retransmit: 45
+	join: 100
+	consensus: 200
+	merge: 200
+	downcheck: 1000
+	fail_recv_const: 250
+}
+
 The network section contains three values.  All three values must be set
 or the openais executive wll exit with an error.
 
@@ -70,6 +80,17 @@ The debug option prints out internal debugging information during runtime which 
 be helpful for developers.
 
 The timestamp option prints the date and time on each log message.
+
+The timeout section contains seven values.  This section is not normally used, but
+rather used to override the program defaults for the purposes of fine tuning for
+a given networking/processor combination or for debugging purposes. Be careful to
+use the same timeout values on each of the nodes in the cluster or unpredictable
+results may occur.
+
+All timeout values except fail_recv_const are miliseconds. fail_recv_const is 
+a message count. Until the man page is done you'll have to check the code and the 
+totem spec for the function and usage of the timeouts.
+
 
 The directory conf contains the file groups.conf which specifies the failover
 groups, service units, components, and policies to be used by the AMF.  The
