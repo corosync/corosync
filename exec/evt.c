@@ -2258,7 +2258,7 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	if (!ucp) {
 		log_printf(LOG_LEVEL_ERROR,
 				"saEvtChannelUnlink: Memory allocation failure\n");
-		error = SA_AIS_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_TRY_AGAIN;
 		goto evt_unlink_err;
 	}
 
@@ -2465,7 +2465,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	 */
 	ecs = find_subscr(eco, req->icu_sub_id); 
 	if (!ecs) {
-		error = SA_AIS_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_NOT_EXIST;
 		goto unsubr_put;
 	}
 
@@ -2569,7 +2569,9 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	struct res_evt_event_clear_retentiontime res;
 	struct req_evt_chan_command cpkt;
 	struct iovec rtn_iovec;
-	SaErrorT error = SA_AIS_OK;
+	struct event_data *edp;
+	struct list_head *l, *nxt;
+	SaErrorT error = SA_AIS_ERR_NOT_EXIST;
 	int ret;
 
 	req = message;
@@ -2581,16 +2583,33 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 			req->iec_event_id,
 			req->iec_channel_handle);
 
-	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
-	cpkt.chc_head.size = sizeof(cpkt);
-	cpkt.chc_op = EVT_CLEAR_RET_OP;
-	cpkt.u.chc_event_id = req->iec_event_id;
-	rtn_iovec.iov_base = &cpkt;
-	rtn_iovec.iov_len = cpkt.chc_head.size;
-	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
-	if (ret != 0) {
-			error = SA_AIS_ERR_LIBRARY;
+	/*
+	 * Make sure that the event really exists first
+	 */
+	for (l = retained_list.next; l != &retained_list; l = nxt) {
+		nxt = l->next;
+		edp = list_entry(l, struct event_data, ed_retained);
+		if (edp->ed_event.led_event_id == req->iec_event_id) {
+		error = SA_AIS_OK;
+				break;
+		}
+	}
+
+	/*
+	 * Then, if it's OK, send the clear request
+	 */
+	if (error == SA_AIS_OK) {
+		memset(&cpkt, 0, sizeof(cpkt));
+		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+		cpkt.chc_head.size = sizeof(cpkt);
+		cpkt.chc_op = EVT_CLEAR_RET_OP;
+		cpkt.u.chc_event_id = req->iec_event_id;
+		rtn_iovec.iov_base = &cpkt;
+		rtn_iovec.iov_len = cpkt.chc_head.size;
+		ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
+		if (ret != 0) {
+				error = SA_AIS_ERR_LIBRARY;
+		}
 	}
 
 	res.iec_head.size = sizeof(res);

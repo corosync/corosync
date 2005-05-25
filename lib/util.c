@@ -90,11 +90,11 @@ saServiceConnect (
 	strcpy (address.sun_path + 1, "libais.socket");
 	fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
-		return (SA_ERR_SYSTEM);
+		return (SA_AIS_ERR_NO_RESOURCES);
 	}
 	result = connect (fd, (struct sockaddr *)&address, sizeof (address));
 	if (result == -1) {
-		return (SA_ERR_TRY_AGAIN);
+		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
@@ -103,25 +103,25 @@ saServiceConnect (
 
 	error = saSendRetry (fd, &req_lib_response_init,
 		sizeof (struct req_lib_response_init), MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	error = saRecvRetry (fd, &res_lib_response_init,
 		sizeof (struct res_lib_response_init), MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_response_init.header.error != SA_OK) {
+	if (res_lib_response_init.header.error != SA_AIS_OK) {
 		error = res_lib_response_init.header.error;
 		goto error_exit;
 	}
 
 	*fdOut = fd;
-	return (SA_OK);
+	return (SA_AIS_OK);
 error_exit:
 	close (fd);
 	return (error);
@@ -155,11 +155,11 @@ saServiceConnectTwo (
 	strcpy (address.sun_path + 1, "libais.socket");
 	responseFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (responseFD == -1) {
-		return (SA_ERR_SYSTEM);
+		return (SA_AIS_ERR_NO_RESOURCES);
 	}
 	result = connect (responseFD, (struct sockaddr *)&address, sizeof (address));
 	if (result == -1) {
-		return (SA_ERR_TRY_AGAIN);
+		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
@@ -169,20 +169,20 @@ saServiceConnectTwo (
 	error = saSendRetry (responseFD, &req_lib_response_init,
 		sizeof (struct req_lib_response_init),
 		MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	error = saRecvRetry (responseFD, &res_lib_response_init,
 		sizeof (struct res_lib_response_init),
 		MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_response_init.header.error != SA_OK) {
+	if (res_lib_response_init.header.error != SA_AIS_OK) {
 		error = res_lib_response_init.header.error;
 		goto error_exit;
 	}
@@ -192,11 +192,11 @@ saServiceConnectTwo (
 /* if I comment out the 4 lines below the executive crashes */
 	callbackFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (callbackFD == -1) {
-		return (SA_ERR_SYSTEM);
+		return (SA_AIS_ERR_NO_RESOURCES);
 	}
 	result = connect (callbackFD, (struct sockaddr *)&address, sizeof (address));
 	if (result == -1) {
-		return (SA_ERR_TRY_AGAIN);
+		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
 	req_lib_dispatch_init.resdis_header.size = sizeof (req_lib_dispatch_init);
@@ -208,26 +208,26 @@ saServiceConnectTwo (
 	error = saSendRetry (callbackFD, &req_lib_dispatch_init,
 		sizeof (struct req_lib_dispatch_init),
 		MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
 	error = saRecvRetry (callbackFD, &res_lib_dispatch_init,
 		sizeof (struct res_lib_dispatch_init),
 		MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
 
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_dispatch_init.header.error != SA_OK) {
+	if (res_lib_dispatch_init.header.error != SA_AIS_OK) {
 		error = res_lib_dispatch_init.header.error;
 		goto error_exit;
 	}
 
 	*callbackOut = callbackFD;
-	return (SA_OK);
+	return (SA_AIS_OK);
 
 error_exit_two:
 	close (callbackFD);
@@ -243,7 +243,7 @@ saRecvRetry (
 	size_t len,
 	int flags)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
@@ -267,7 +267,7 @@ retry_recv:
 		goto retry_recv;
 	}
 	if (result == -1 || result == 0) {
-		error = SA_ERR_MESSAGE_ERROR;
+		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
 	}
 	processed += result;
@@ -291,7 +291,7 @@ saSendRetry (
 	size_t len,
 	int flags)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int result;
 
 	struct msghdr msg_send;
@@ -314,7 +314,7 @@ retry_send:
 		goto retry_send;
 	}
 	if (result == -1) {
-		error = SA_ERR_SYSTEM;
+		error = SA_AIS_ERR_LIBRARY;
 	}
 	return (error);
 }
@@ -324,7 +324,7 @@ SaErrorT saSendMsgRetry (
         struct iovec *iov,
         int iov_len)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int result;
 
 	struct msghdr msg_send;
@@ -343,7 +343,7 @@ retry_send:
 		goto retry_send;
 	}
 	if (result == -1) {
-		error = SA_ERR_SYSTEM;
+		error = SA_AIS_ERR_LIBRARY;
 	}
 	return (error);
 }
@@ -355,16 +355,16 @@ SaErrorT saSendMsgReceiveReply (
         void *responseMessage,
         int responseLen)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 
 	error = saSendMsgRetry (s, iov, iov_len);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	
 	error = saRecvRetry (s, responseMessage, responseLen,
 		MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -379,17 +379,17 @@ SaErrorT saSendReceiveReply (
         void *responseMessage,
         int responseLen)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 
 	error = saSendRetry (s, requestMessage, requestLen,
 		MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	
 	error = saRecvRetry (s, responseMessage, responseLen,
 		MSG_WAITALL | MSG_NOSIGNAL);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
@@ -405,7 +405,7 @@ saSelectRetry (
 	fd_set *exceptfds,
 	struct timeval *timeout)
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int result;
 
 retry_select:
@@ -414,7 +414,7 @@ retry_select:
 		goto retry_select;
 	}
 	if (result == -1) {
-		error = SA_ERR_SYSTEM;
+		error = SA_AIS_ERR_LIBRARY;
 	}
 
 	return (error);
@@ -426,7 +426,7 @@ saPollRetry (
         unsigned int nfds,
         int timeout) 
 {
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	int result;
 
 retry_poll:
@@ -435,7 +435,7 @@ retry_poll:
 		goto retry_poll;
 	}
 	if (result == -1) {
-		error = SA_ERR_SYSTEM;
+		error = SA_AIS_ERR_LIBRARY;
 	}
 
 	return (error);
@@ -468,14 +468,14 @@ saHandleCreate (
 			sizeof (struct saHandle) * handleDatabase->handleCount);
 		if (newHandles == 0) {
 			pthread_mutex_unlock (&handleDatabase->mutex);
-			return (SA_ERR_NO_MEMORY);
+			return (SA_AIS_ERR_NO_MEMORY);
 		}
 		handleDatabase->handles = newHandles;
 	}
 
 	instance = malloc (instanceSize);
 	if (instance == 0) {
-		return (SA_ERR_NO_MEMORY);
+		return (SA_AIS_ERR_NO_MEMORY);
 	}
 	memset (instance, 0, instanceSize);
 
@@ -489,7 +489,7 @@ saHandleCreate (
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 
@@ -503,7 +503,7 @@ saHandleDestroy (
 	pthread_mutex_unlock (&handleDatabase->mutex);
 	saHandleInstancePut (handleDatabase, handle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 
@@ -513,15 +513,15 @@ saHandleInstanceGet (
 	SaUint64T handle,
 	void **instance)
 { 
-	SaErrorT error = SA_OK;
+	SaErrorT error = SA_AIS_OK;
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (handle >= (SaUint64T)handleDatabase->handleCount) {
-		error = SA_ERR_BAD_HANDLE;
+		error = SA_AIS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 	if (handleDatabase->handles[handle].state != SA_HANDLE_STATE_ACTIVE) {
-		error = SA_ERR_BAD_HANDLE;
+		error = SA_AIS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 
@@ -557,7 +557,7 @@ saHandleInstancePut (
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 
@@ -570,7 +570,7 @@ saVersionVerify (
 	int i;
 
 	if (version == 0) {
-		return (SA_ERR_VERSION);
+		return (SA_AIS_ERR_VERSION);
 	}
 
 	for (i = 0; i < versionDatabase->versionCount; i++) {
@@ -579,7 +579,7 @@ saVersionVerify (
 			break;
 		}
 	}
-	return (found ? SA_OK : SA_ERR_VERSION);
+	return (found ? SA_AIS_OK : SA_AIS_ERR_VERSION);
 }
 
 
@@ -597,10 +597,10 @@ saQueueInit (
 	queue->bytesPerItem = bytesPerItem;
 	queue->items = (void *)malloc (queueItems * bytesPerItem);
 	if (queue->items == 0) {
-		return (SA_ERR_NO_MEMORY);
+		return (SA_AIS_ERR_NO_MEMORY);
 	}
 	memset (queue->items, 0, queueItems * bytesPerItem);
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 SaErrorT
@@ -609,7 +609,7 @@ saQueueIsFull (
 	int *isFull)
 {
 	*isFull = ((queue->size - 1) == queue->used);
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 
@@ -619,7 +619,7 @@ saQueueIsEmpty (
 	int *isEmpty)
 {
 	*isEmpty = (queue->used == 0);
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 
@@ -638,14 +638,14 @@ saQueueItemAdd (
 
 	assert (queue->tail != queue->head);
 	if (queue->tail == queue->head) {
-		return (SA_ERR_LIBRARY);
+		return (SA_AIS_ERR_LIBRARY);
 	}
 	queue->head = (queue->head + 1) % queue->size;
 	queue->used++;
 	if (queue->used > queue->usedhw) {
 		queue->usedhw = queue->used;
 	}
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 SaErrorT
@@ -658,7 +658,7 @@ saQueueItemGet (struct queue *queue, void **item)
 	queueItem = queue->items;
 	queueItem += queuePosition * queue->bytesPerItem;
 	*item = (void *)queueItem;
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 SaErrorT
@@ -666,10 +666,10 @@ saQueueItemRemove (struct queue *queue)
 {
 	queue->tail = (queue->tail + 1) % queue->size;
 	if (queue->tail == queue->head) {
-		return (SA_ERR_LIBRARY);
+		return (SA_AIS_ERR_LIBRARY);
 	}
 	queue->used--;
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 /*

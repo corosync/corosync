@@ -292,6 +292,9 @@ saEvtInitialize(
 	error = saHandleInstanceGet(&evt_instance_handle_db, *evtHandle,
 			(void*)&evti);
 	if (error != SA_AIS_OK) {
+		if (error == SA_AIS_ERR_BAD_HANDLE) {
+			error = SA_AIS_ERR_LIBRARY;
+		}
 		goto error_handle_free;
 	}
 	memset(evti, 0, sizeof(*evti));
@@ -382,6 +385,9 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
 		(void*)event_handle);
 	if (error != SA_AIS_OK) {
+		if (error == SA_AIS_ERR_NO_MEMORY) {
+			error = SA_AIS_ERR_LIBRARY;
+		}
 			goto make_evt_done;
 	}
 
@@ -424,7 +430,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			printf("make_event: couldn't alloc %lld bytes\n", pat->patternSize);
-			error =  SA_AIS_ERR_NO_MEMORY;
+			error =  SA_AIS_ERR_LIBRARY;
 			break;
 		}
 		memcpy(edi->edi_patterns.patterns[i].pattern,
@@ -1373,17 +1379,28 @@ saEvtEventAttributesGet(
 	 * pattern count of the event.  This way the caller can tell
 	 * if it got all the possible patterns. If the returned number
 	 * is more that the number supplied, then some available patterns
-	 * were not returned.
+	 * were not returned. We indicate that by returning SA_AIS_ERR_NO_SPACE.
 	 *
 	 * The same thing happens when copying the pattern strings.
 	 */
+	if (patternArray->patternsNumber < edi->edi_patterns.patternsNumber) {
+		error = SA_AIS_ERR_NO_SPACE;
+	}
+
 	patternArray->patternsNumber = edi->edi_patterns.patternsNumber;
 
 	for (i = 0; i < npats; i++) {
+
 		memcpy(patternArray->patterns[i].pattern,
 			edi->edi_patterns.patterns[i].pattern,
 			min(patternArray->patterns[i].patternSize,
 				edi->edi_patterns.patterns[i].patternSize));
+
+		if (patternArray->patterns[i].patternSize < 
+								edi->edi_patterns.patterns[i].patternSize) {
+			error = SA_AIS_ERR_NO_SPACE;
+		}
+
 		patternArray->patterns[i].patternSize = 
 			edi->edi_patterns.patterns[i].patternSize;
 	}
@@ -1424,6 +1441,9 @@ saEvtEventDataGet(
 	if (edi->edi_event_data && edi->edi_event_data_size) {
 		xfsize = min(*eventDataSize, edi->edi_event_data_size);
 		*eventDataSize = edi->edi_event_data_size;
+		if (*eventDataSize < edi->edi_event_data_size) {
+			error = SA_AIS_ERR_NO_SPACE;
+		}
 		memcpy(eventData, edi->edi_event_data, xfsize);
 	} else {
 		*eventDataSize = 0;
@@ -1737,7 +1757,7 @@ saEvtEventSubscribe(
 	 * See if we can subscribe to this channel
 	 */
 	if (!(eci->eci_open_flags & SA_EVT_CHANNEL_SUBSCRIBER)) {
-		error = SA_AIS_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_ACCESS;
 		goto subscribe_put2;
 	}
 

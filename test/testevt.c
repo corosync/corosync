@@ -557,7 +557,7 @@ test_channel()
 		result = saEvtEventUnsubscribe(channel_handle, 
 				subscription_id+2);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_ERR_INVALID_PARAM) {
+	if (result != SA_AIS_ERR_NOT_EXIST) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: event unsubscribe result: %s\n", result_buf);
 		do {
