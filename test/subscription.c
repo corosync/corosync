@@ -170,7 +170,8 @@ test_subscription()
 
 		if (pfd.revents & (POLLERR|POLLHUP)) {
 			printf("Error recieved on poll fd %lld\n", fd);
-			return SA_AIS_ERR_BAD_OPERATION;
+			result =  SA_AIS_ERR_BAD_OPERATION;
+			goto sub_fin;
 		}
 		do {
 			result = saEvtDispatch(handle, SA_DISPATCH_ONE);
@@ -304,7 +305,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	}
 
 	if (event_id == SA_EVT_EVENTID_LOST) {
-		return;
+		goto evt_free;
 	}
 
 #ifdef TEST_EVENT_ORDER
