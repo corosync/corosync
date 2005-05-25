@@ -2022,6 +2022,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 		component->probableCause = 0;
 		component->enabledUnlockedState = 0;
 		component->disabledUnlockedState = 0;
+		component->healthcheck_outstanding = 0;
 
 		if (req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName.length > 0) {
 			component->saAmfProxyComponent = amfProxyComponent;
