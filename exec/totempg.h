@@ -38,6 +38,7 @@
 #include <netinet/in.h>
 #include "aispoll.h"
 #include "totemsrp.h"
+#include "parse.h"
 
 #define MESSAGE_SIZE_MAX		256000
 
@@ -63,9 +64,7 @@ void totempg_log_printf_init (
  * Initialize the group messaging interface
  */
 int totempg_initialize (
-	struct sockaddr_in *sockaddr_mcast,
-	struct totem_interface *interfaces,
-	int interface_count,
+	struct openais_config *openais_config,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
 	int private_key_len,
@@ -81,8 +80,7 @@ int totempg_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id),
-	unsigned int *timeouts);
+		struct memb_ring_id *ring_id));
 
 /*
  * Multicast a message

@@ -65,7 +65,7 @@ struct service_handler {
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
 	int (*libais_init_two_fn) (struct conn_info *conn_info);
 	int (*libais_exit_fn) (struct conn_info *conn_info);
-	int (*exec_init_fn) (void);
+	int (*exec_init_fn) (struct openais_config *);
 	void (*exec_dump_fn) (void);
 
 	void (*sync_init) (void);

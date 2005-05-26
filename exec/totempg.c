@@ -435,9 +435,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	struct sockaddr_in *sockaddr_mcast,
-	struct totem_interface *interfaces,
-	int interface_count,
+	struct openais_config *openais_config,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
 	int private_key_len,
@@ -453,22 +451,18 @@ int totempg_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id),
-	unsigned int *timeouts)
+		struct memb_ring_id *ring_id))
 {
 	int res;
 
 	app_deliver_fn = deliver_fn;
 	app_confchg_fn = confchg_fn;
 
-	res = totemsrp_initialize (sockaddr_mcast,
-		interfaces,
-		interface_count,
+	res = totemsrp_initialize (openais_config,
 		poll_handle,
 		private_key, private_key_len,
 		member_private, member_private_len,
-		totempg_deliver_fn, totempg_confchg_fn, 
-		timeouts);
+		totempg_deliver_fn, totempg_confchg_fn);
  
 	totemsrp_callback_token_create (&callback_token_received_handle, 
 		TOTEM_CALLBACK_TOKEN_RECEIVED,

@@ -64,7 +64,8 @@ typedef enum {
 	MAIN_NETWORK,
 	MAIN_LOGGING,
 	MAIN_KEY,
-	MAIN_TIMEOUT
+	MAIN_TIMEOUT,
+	MAIN_EVENT
 } main_parse_t;
 
 void setSaNameT (SaNameT *name, char *str) {
@@ -418,6 +419,7 @@ extern int openais_main_config_read (char **error_string,
 	int logging_parsed = 0;
 	int key_parsed = 0;
 	int timeout_parsed = 0;
+	int event_parsed = 0;
 	char *loc;
 	int i;
 	int parse_done = 0;
@@ -483,6 +485,10 @@ extern int openais_main_config_read (char **error_string,
 			if (timeout_parsed == 0 && strstr_rs (line, "timeout{")) {
 				timeout_parsed = 1;
 				parse = MAIN_TIMEOUT;
+			} else 
+			if (event_parsed == 0 && strstr_rs (line, "event{")) {
+				event_parsed = 1;
+				parse = MAIN_EVENT;
 			} else {
 				goto parse_error;
 			}
@@ -571,6 +577,18 @@ extern int openais_main_config_read (char **error_string,
 					openais_config->timeouts[TOTEM_DOWNCHECK] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
 					openais_config->timeouts[TOTEM_FAIL_RECV_CONST] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "}"))) {
+				parse = MAIN_HEAD;
+			} else {
+				goto parse_error;
+			}
+			break;
+
+		case MAIN_EVENT:
+			if ((loc = strstr_rs (line, "delivery_queue_size:"))) {
+					openais_config->evt_delivery_queue_size = atoi(loc);
+			} else if ((loc = strstr_rs (line, "delivery_queue_resume:"))) {
+					openais_config->evt_delivery_queue_resume = atoi(loc);
 			} else if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {

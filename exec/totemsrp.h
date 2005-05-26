@@ -36,6 +36,7 @@
 
 #include "totem.h"
 #include "aispoll.h"
+#include "parse.h"
 
 #define TOTEMSRP_PACKET_SIZE_MAX	1404
 
@@ -58,9 +59,7 @@ void totemsrp_log_printf_init (
  * Initialize the group messaging interface
  */
 int totemsrp_initialize (
-	struct sockaddr_in *sockaddr_mcast,
-	struct totem_interface *interfaces,
-	int interface_count,
+	struct openais_config *openais_config,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
 	int private_key_len,
@@ -77,26 +76,7 @@ int totemsrp_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id),
-	unsigned int *timeouts);
-
-/*
- * Array location of various timeouts as
- * specified in openais.conf.  The last enum
- * specifies the size of the timeouts array and
- * needs to remain the last item in the list.
- */
-enum {
-	TOTEM_TOKEN,
-	TOTEM_RETRANSMIT_TOKEN,
-	TOTEM_JOIN,
-	TOTEM_CONSENSUS,
-	TOTEM_MERGE,
-	TOTEM_DOWNCHECK,
-	TOTEM_FAIL_RECV_CONST,
-
-	MAX_TOTEM_TIMEOUTS	/* Last item */
-} totem_timeout_types;
+		struct memb_ring_id *ring_id));
 
 /*
  * Multicast a message

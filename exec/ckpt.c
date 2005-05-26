@@ -78,7 +78,7 @@ typedef enum {
 
 /* TODO static totempg_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle; */
 
-static int ckpt_exec_init_fn (void);
+static int ckpt_exec_init_fn (struct openais_config *);
 
 static int ckpt_exit_fn (struct conn_info *conn_info);
 
@@ -949,7 +949,7 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 	return (-1);
 }
 
-static int ckpt_exec_init_fn (void)
+static int ckpt_exec_init_fn (struct openais_config *openais_config)
 {
 	/*
 	 *  Initialize the saved ring ID.

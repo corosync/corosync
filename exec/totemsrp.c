@@ -570,9 +570,7 @@ void print_msg (unsigned char *msg, int size)
  * Exported interfaces
  */
 int totemsrp_initialize (
-	struct sockaddr_in *sockaddr_mcast,
-	struct totem_interface *interfaces,
-	int interface_count,
+	struct openais_config *openais_config,
 	poll_handle *poll_handle,
 	unsigned char *private_key,
 	int private_key_len,
@@ -588,9 +586,10 @@ int totemsrp_initialize (
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id),
-	unsigned int *timeouts)
+		struct memb_ring_id *ring_id))
 {
+	unsigned int *timeouts = openais_config->timeouts;
+
 	int i;
 
 	/*
@@ -605,7 +604,8 @@ int totemsrp_initialize (
 	/*
 	 * Initialize local variables for totemsrp
 	 */
-	memcpy (&sockaddr_in_mcast, sockaddr_mcast, sizeof (struct sockaddr_in));
+	memcpy (&sockaddr_in_mcast, &openais_config->mcast_addr, 
+			sizeof (struct sockaddr_in));
 	memset (&next_memb, 0, sizeof (struct sockaddr_in));
 	memset (iov_buffer, 0, PACKET_SIZE_MAX);
 
@@ -672,8 +672,9 @@ int totemsrp_initialize (
 	sq_init (&recovery_sort_queue,
 		QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct sort_queue_item), 0);
 
-	totemsrp_interfaces = interfaces;
-	totemsrp_interface_count = interface_count;
+	totemsrp_interfaces = openais_config->interfaces;
+	totemsrp_interface_count = 1;
+	/* totemsrp_interface_count = openais_config->interface_count; */
 	totemsrp_poll_handle = poll_handle;
 
 	netif_down_check();
@@ -1208,7 +1209,7 @@ static void memb_state_operational_enter (void)
 	ring_reset ();
 	deliver_messages_from_recovery_to_regular ();
 
-	totemsrp_log_printf (totemsrp_log_level_notice,
+	totemsrp_log_printf (totemsrp_log_level_debug,
 		"Delivering to app %d to %d\n",
 		my_high_delivered + 1, old_ring_state_high_seq_received);
 
@@ -2374,8 +2375,8 @@ static int orf_token_mcast (
 		 */
 		sq_item_add (sort_queue,
 			&sort_queue_item, message_item->mcast->seq);
-		printf ("ORIG [%s.%d-%d]\n", inet_ntoa (message_item->mcast->source),
-			message_item->mcast->seq, message_item->mcast->this_seqno);
+// XXX		printf ("ORIG [%s.%d-%d]\n", inet_ntoa (message_item->mcast->source),
+// XXX			message_item->mcast->seq, message_item->mcast->this_seqno);
 
 		/*
 		 * Delete item from pending queue
@@ -3331,7 +3332,7 @@ static void messages_deliver_to_app (int skip, int end_point)
     int res;
     struct mcast *mcast;
 
-	totemsrp_log_printf (totemsrp_log_level_notice,
+	totemsrp_log_printf (totemsrp_log_level_debug,
 		"Delivering %d to %d\n", my_high_delivered + 1,
 		end_point);
 
@@ -3360,8 +3361,8 @@ printf ("-skipping %d-\n", i);
 		mcast = sort_queue_item_p->iovec[0].iov_base;
 		assert (mcast != (struct mcast *)0xdeadbeef);
 
-		printf ("[%s.%d-%d]\n", inet_ntoa (mcast->source),
-			mcast->seq, mcast->this_seqno);
+// XXX		printf ("[%s.%d-%d]\n", inet_ntoa (mcast->source),
+// XXX			mcast->seq, mcast->this_seqno);
 
 		/*
 		 * Skip messages not originated in my_deliver_memb

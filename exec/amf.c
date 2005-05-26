@@ -248,7 +248,7 @@ static void amf_dump (void);
 
 static int amf_exit_fn (struct conn_info *conn_info);
 
-static int amf_exec_init_fn (void);
+static int amf_exec_init_fn (struct openais_config *);
 
 static int amf_init_two_fn (struct conn_info *conn_info);
 
@@ -1810,7 +1810,7 @@ static void response_handler_csisetcallback (struct conn_info *conn_info,
 	}
 }
 
-static int amf_exec_init_fn (void)
+static int amf_exec_init_fn (struct openais_config *openais_config)
 {
 #ifdef TODO
 	int res;

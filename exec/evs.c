@@ -69,7 +69,7 @@ static DECLARE_LIST_INIT (confchg_notify);
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int evs_executive_initialize (void);
+static int evs_executive_initialize (struct openais_config *);
 
 static int evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -133,7 +133,7 @@ struct service_handler evs_service_handler = {
 	.exec_dump_fn				= 0
 };
 
-static int evs_executive_initialize (void)
+static int evs_executive_initialize (struct openais_config *openais_config)
 {
 	return (0);
 }

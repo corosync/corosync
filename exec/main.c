@@ -967,7 +967,7 @@ static void aisexec_tty_detach (void)
 #undef DEBUG
 }
 
-static void aisexec_service_handlers_init (void)
+static void aisexec_service_handlers_init (struct openais_config *openais_config)
 {
 	int i;
 	/*
@@ -978,7 +978,7 @@ static void aisexec_service_handlers_init (void)
 			if (!ais_service_handlers[i]->exec_init_fn) {
 				continue;
 			}
-			ais_service_handlers[i]->exec_init_fn ();
+			ais_service_handlers[i]->exec_init_fn (openais_config);
 		}
 	}
 }
@@ -1144,14 +1144,13 @@ int main (int argc, char **argv)
 		mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI),
 		mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI));
 
-	totempg_initialize (&openais_config.mcast_addr, openais_config.interfaces, 1,
+	totempg_initialize (&openais_config,
 		&aisexec_poll_handle,
 		private_key,
 		sizeof (private_key),
 		0,
 		0,
-		deliver_fn, confchg_fn,
-		openais_config.timeouts);
+		deliver_fn, confchg_fn);
 	
 	this_ip = &openais_config.interfaces[0].boundto;
 
@@ -1181,7 +1180,7 @@ int main (int argc, char **argv)
 
 	signal (SIGINT, sigintr_handler);
 
-	aisexec_service_handlers_init ();
+	aisexec_service_handlers_init (&openais_config);
 
 	aisexec_libais_bind (&libais_server_fd);
 

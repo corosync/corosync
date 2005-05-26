@@ -113,7 +113,7 @@ static void clm_sync_activate (void);
 
 static void clm_sync_abort (void);
 
-static int clm_exec_init_fn (void);
+static int clm_exec_init_fn (struct openais_config *);
 
 static int clm_init_two_fn (struct conn_info *conn_info);
 
@@ -184,7 +184,7 @@ struct service_handler clm_service_handler = {
 	.sync_abort					= clm_sync_abort,
 };
 
-static int clm_exec_init_fn (void)
+static int clm_exec_init_fn (struct openais_config *openais_config)
 {
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 
