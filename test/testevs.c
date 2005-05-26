@@ -98,12 +98,23 @@ int main (void)
 	evs_error_t result;
 	int i = 0;
 	int fd;
+	struct in_addr member_list[16];
+	struct in_addr local_addr;
+	int member_list_entries = sizeof (member_list) / sizeof (struct in_addr);
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != EVS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
+	
+	result = evs_membership_get (handle, &local_addr, member_list, &member_list_entries);
+	printf ("Current membership from evs_membership_get entries %d\n", member_list_entries);
+	for (i = 0; i < member_list_entries; i++) {
+		printf ("Member [%d] is %s\n", i, inet_ntoa (member_list[i]));
+	}
+	printf ("local processor from evs_membership_get %s\n", inet_ntoa (local_addr));
+
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);

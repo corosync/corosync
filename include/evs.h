@@ -157,4 +157,13 @@ evs_error_t evs_mcast_groups (
 	struct iovec *iovec,
 	int iov_len);
 
+/*
+ * Get membership information from evs
+ */
+evs_error_t evs_membership_get (
+	evs_handle_t handle,
+	struct in_addr *local_addr,
+	struct in_addr *member_list,
+	int *member_list_entries);
+
 #endif /* OPENAIS_EVS_H_DEFINED */

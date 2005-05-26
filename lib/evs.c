@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
 
- * Copyright (c) 2004 MontaVista Software, Inc.
+ * Copyright (c) 2004-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -533,6 +533,63 @@ evs_error_t evs_mcast_groups (
 	}
 
 	error = res_lib_evs_mcast_groups.header.error;
+
+error_exit:
+	saHandleInstancePut (&evs_handle_t_db, handle);
+
+	return (error);
+}
+
+evs_error_t evs_membership_get (
+	evs_handle_t handle,
+	struct in_addr *local_addr,
+	struct in_addr *member_list,
+	int *member_list_entries)
+{
+	evs_error_t error;
+	struct evs_inst *evs_inst;
+	struct iovec iov;
+	struct req_lib_evs_membership_get req_lib_evs_membership_get;
+	struct res_lib_evs_membership_get res_lib_evs_membership_get;
+
+	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_evs_membership_get.header.size = sizeof (struct req_lib_evs_membership_get);
+	req_lib_evs_membership_get.header.id = MESSAGE_REQ_EVS_MEMBERSHIP_GET;
+
+	iov.iov_base = &req_lib_evs_membership_get;
+	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
+
+	pthread_mutex_lock (&evs_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (evs_inst->response_fd, &iov, 1,
+		&res_lib_evs_membership_get, sizeof (struct res_lib_evs_membership_get));
+
+	pthread_mutex_unlock (&evs_inst->response_mutex);
+
+	if (error != SA_OK) {
+	printf ("error\n");
+		goto error_exit;
+	}
+
+	error = res_lib_evs_membership_get.header.error;
+	printf ("members is %d\n", res_lib_evs_membership_get.member_list_entries);
+
+	/*
+	 * Copy results to caller
+	 */
+	if (local_addr) {
+		memcpy (local_addr, &res_lib_evs_membership_get.local_addr, sizeof (struct in_addr));
+ 	}
+	*member_list_entries = *member_list_entries < res_lib_evs_membership_get.member_list_entries ?
+		*member_list_entries : res_lib_evs_membership_get.member_list_entries;
+	if (member_list) {
+		memcpy (member_list, &res_lib_evs_membership_get.member_list, 
+			*member_list_entries * sizeof (struct in_addr));
+	}
 
 error_exit:
 	saHandleInstancePut (&evs_handle_t_db, handle);

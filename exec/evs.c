@@ -86,6 +86,7 @@ static int message_handler_req_evs_join (struct conn_info *conn_info, void *mess
 static int message_handler_req_evs_leave (struct conn_info *conn_info, void *message);
 static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message);
 static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message);
+static int message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message);
 
 static int evs_exit_fn (struct conn_info *conn_info);
 
@@ -114,6 +115,12 @@ struct libais_handler evs_libais_handlers[] =
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
 		.flow_control				= FLOW_CONTROL_REQUIRED
+	},
+	{ /* 4 */
+		.libais_handler_fn			= message_handler_req_evs_membership_get,
+		.response_size				= sizeof (struct res_lib_evs_membership_get),
+		.response_id				= MESSAGE_RES_EVS_MEMBERSHIP_GET,
+		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -396,6 +403,27 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 
 	return (0);
 }
+static int message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message)
+{
+	struct res_lib_evs_membership_get res_lib_evs_membership_get;
+
+	res_lib_evs_membership_get.header.size = sizeof (struct res_lib_evs_membership_get);
+	res_lib_evs_membership_get.header.id = MESSAGE_RES_EVS_MEMBERSHIP_GET;
+	res_lib_evs_membership_get.header.error = EVS_OK;
+	res_lib_evs_membership_get.local_addr.s_addr = this_ip->sin_addr.s_addr;
+	memcpy (&res_lib_evs_membership_get.member_list,
+		&res_evs_confchg_callback.member_list,
+		sizeof (res_lib_evs_membership_get.member_list));
+
+	res_lib_evs_membership_get.member_list_entries =
+		res_evs_confchg_callback.member_list_entries;
+
+	libais_send_response (conn_info, &res_lib_evs_membership_get,
+		sizeof (struct res_lib_evs_membership_get));
+
+	return (0);
+}
+
 static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr, int endian_conversion_required)
 {
 	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)message;

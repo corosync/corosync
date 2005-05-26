@@ -55,7 +55,8 @@ enum req_lib_evs_types {
 	MESSAGE_REQ_EVS_JOIN = 0,
 	MESSAGE_REQ_EVS_LEAVE = 1,
 	MESSAGE_REQ_EVS_MCAST_JOINED = 2,
-	MESSAGE_REQ_EVS_MCAST_GROUPS = 3
+	MESSAGE_REQ_EVS_MCAST_GROUPS = 3,
+	MESSAGE_REQ_EVS_MEMBERSHIP_GET = 4
 };
 
 enum res_lib_evs_types {
@@ -64,7 +65,8 @@ enum res_lib_evs_types {
 	MESSAGE_RES_EVS_JOIN = 2,
 	MESSAGE_RES_EVS_LEAVE = 3,
 	MESSAGE_RES_EVS_MCAST_JOINED = 4,
-	MESSAGE_RES_EVS_MCAST_GROUPS = 5
+	MESSAGE_RES_EVS_MCAST_GROUPS = 5,
+	MESSAGE_RES_EVS_MEMBERSHIP_GET = 6
 };
 
 enum req_amf_types {
@@ -168,6 +170,17 @@ struct req_exec_evs_mcast {
 	int msg_len;
 	struct evs_group groups[0];
 	/* data goes here */
+};
+
+struct req_lib_evs_membership_get {
+	struct req_header header;
+};
+
+struct res_lib_evs_membership_get {
+	struct res_header header;
+	struct in_addr local_addr;
+	struct in_addr member_list[16];
+	int member_list_entries;
 };
 
 struct req_lib_resdis_init {

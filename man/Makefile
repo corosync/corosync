@@ -42,6 +42,7 @@ html:
 	groff -mandoc -Thtml evs_leave.3 > html/evs_leave.html
 	groff -mandoc -Thtml evs_mcast_groups.3 > html/evs_mcast_groups.html
 	groff -mandoc -Thtml evs_mcast_joined.3 > html/evs_mcast_joined.html
+	groff -mandoc -Thtml evs_membership_get.3 > html/evs_membership_get.html
 	cp index.html html
 
 clean:
