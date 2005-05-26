@@ -1,0 +1,71 @@
+.\"/*
+.\" * Copyright (c) 2004 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@mvista.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH EVS_JOIN 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+evs_join \- Joins one or more groups in the EVS library
+.SH SYNOPSIS
+.B #include <openais/evs.h>
+.sp
+.BI "int evs_membership_get(evs_handle_t " handle ", struct in_addr *" local_addr ", struct in_addr *" member_list ", int *" member_list_entries ");
+.SH DESCRIPTION
+The
+.B evs_membership_get
+function is used to determine the current processors in the configuration and also
+the local processor identifier.
+The argument
+.I handle is used to reference the evs instantiation.
+The argument 
+.I local_addr
+will return the local address of the processor.
+The argument
+.I member_list
+will return the list of processors in the current membership.
+The argument
+.I member_list_entries
+should be set with the size of member_list and will return the size of the
+member_list after return from the function.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR evs_overview (8),
+.BR evs_initialize (3),
+.BR evs_finalize (3),
+.BR evs_fd_get (3),
+.BR evs_dispatch (3),
+.BR evs_leave (3),
+.BR evs_mcast_joined (3),
+.BR evs_mcast_groups (3),
+.BR evs_mmembership_get (3)
+.PP
