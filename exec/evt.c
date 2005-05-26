@@ -88,7 +88,7 @@ static int evt_conf_change(
 
 static int evt_initialize(struct conn_info *conn_info);
 static int evt_finalize(struct conn_info *conn_info);
-static int evt_exec_init(void);
+static int evt_exec_init(struct openais_config *openais_config);
 
 /*
  * Recovery sync functions
@@ -363,6 +363,10 @@ next_chan_unlink_id()
  */
 #define MAX_EVT_DELIVERY_QUEUE	1000
 #define MIN_EVT_QUEUE_RESUME	(MAX_EVT_DELIVERY_QUEUE / 2)
+
+static unsigned int evt_delivery_queue_size = MAX_EVT_DELIVERY_QUEUE;
+static unsigned int evt_delivery_queue_resume = MIN_EVT_QUEUE_RESUME;
+
 
 #define LOST_PUB "EVENT_SERIVCE"
 #define LOST_CHAN "LOST EVENT"
@@ -1679,14 +1683,14 @@ deliver_event(struct event_data *evt,
 	 *   to let the application know that we dropped some messages.
 	 */
 	if (esip->esi_queue_blocked) {
-		if (esip->esi_nevents < MIN_EVT_QUEUE_RESUME) {
+		if (esip->esi_nevents < evt_delivery_queue_resume) {
 			esip->esi_queue_blocked = 0;
 			log_printf(LOG_LEVEL_DEBUG, "unblock\n");
 		}
 	}
 
 	if (!esip->esi_queue_blocked && 
-							(esip->esi_nevents >= MAX_EVT_DELIVERY_QUEUE)) {
+							(esip->esi_nevents >= evt_delivery_queue_size)) {
 		log_printf(LOG_LEVEL_DEBUG, "block\n");
 		esip->esi_queue_blocked = 1;
 		do_deliver_warning = 1;
@@ -2643,7 +2647,7 @@ static int lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 			list_init(&cel->cel_entry);
 			esip->esi_nevents--;
 			if (esip->esi_queue_blocked && 
-					(esip->esi_nevents < MIN_EVT_QUEUE_RESUME)) {
+					(esip->esi_nevents < evt_delivery_queue_resume)) {
 				esip->esi_queue_blocked = 0;
 				log_printf(LOG_LEVEL_DEBUG, "unblock\n");
 			}
@@ -2874,9 +2878,23 @@ static int evt_finalize(struct conn_info *conn_info)
 /*
  * Called at service start time.
  */
-static int evt_exec_init(void)
+static int evt_exec_init(struct openais_config *openais_config)
 {
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
+
+	if (openais_config->evt_delivery_queue_size) {
+		evt_delivery_queue_size = openais_config->evt_delivery_queue_size;
+		log_printf(LOG_LEVEL_NOTICE,
+				"event delivery_queue_size set to %u\n",
+				evt_delivery_queue_size);
+	}
+
+	if (openais_config->evt_delivery_queue_resume) {
+		evt_delivery_queue_resume = openais_config->evt_delivery_queue_resume;
+		log_printf(LOG_LEVEL_NOTICE,
+				"event delivery_queue_resume set to %u\n",
+				evt_delivery_queue_resume);
+	}
 
 	/*
 	 * Create an event to be sent when we have to drop messages
