@@ -564,6 +564,8 @@ saClmClusterNodeGetAsync (
 	error = res_clm_nodegetasync.header.error;
 
 error_exit:
+	pthread_mutex_unlock (&clmInstance->response_mutex);
+
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
 	return (error);
