@@ -76,7 +76,6 @@ struct ckptCheckpointInstance {
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 	SaNameT checkpointName;
-	SaUint32T maxSectionIdSize;
 	pthread_mutex_t response_mutex;
 	struct list_head list;
 };
@@ -85,7 +84,6 @@ struct ckptSectionIterationInstance {
 	int response_fd;
 	SaCkptCheckpointHandleT checkpointHandle;
 	struct list_head sectionIdListHead;
-	SaUint32T maxSectionIdSize;
 	pthread_mutex_t response_mutex;
 };
 
@@ -256,9 +254,10 @@ saCkptDispatch (
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
+		(void *)&ckptInstance);
 	if (error != SA_AIS_OK) {
-		goto error_put;
+		goto error_exit;
 	}
 
 	/*
@@ -284,9 +283,6 @@ saCkptDispatch (
 		pthread_mutex_lock(&ckptInstance->dispatch_mutex);
 
 		if (ckptInstance->finalize == 1) {
-#ifdef DBGLOGS
-			fprintf(stderr,"CKPT: This Ckpt has been finalised in a separate call so exit the dispatch process\n");
-#endif
 			error = SA_AIS_OK;
 			goto error_unlock;
 		}
@@ -343,16 +339,34 @@ saCkptDispatch (
 				res_lib_ckpt_checkpointopenasync->checkpointHandle,
 				(void *)&ckptCheckpointInstance);
 			assert (error == SA_AIS_OK); /* should only be valid handles here */
-			list_add (&ckptCheckpointInstance->list,
-				&ckptInstance->checkpoint_list);
+			if (res_lib_ckpt_checkpointopenasync->header.error == SA_AIS_OK) {
+				/*
+				 * open succeeded without error
+				 */
+				list_init (&ckptCheckpointInstance->list);
+				list_add (&ckptCheckpointInstance->list,
+					&ckptInstance->checkpoint_list);
 
-			saHandleInstancePut (&checkpointHandleDatabase,
-				ckptCheckpointInstance->checkpointHandle);
+				callbacks.saCkptCheckpointOpenCallback(
+					res_lib_ckpt_checkpointopenasync->invocation,
+					res_lib_ckpt_checkpointopenasync->checkpointHandle,
+					res_lib_ckpt_checkpointopenasync->header.error);
+				saHandleInstancePut (&checkpointHandleDatabase,
+					res_lib_ckpt_checkpointopenasync->checkpointHandle);
+			} else {
+				/*
+				 * open failed with error
+				 */
+				saHandleInstancePut (&checkpointHandleDatabase,
+					res_lib_ckpt_checkpointopenasync->checkpointHandle);
+				saHandleDestroy (&checkpointHandleDatabase,
+					res_lib_ckpt_checkpointopenasync->checkpointHandle);
 
-			callbacks.saCkptCheckpointOpenCallback(res_lib_ckpt_checkpointopenasync->invocation,
-				res_lib_ckpt_checkpointopenasync->checkpointHandle,
-				res_lib_ckpt_checkpointopenasync->header.error);
-			
+				callbacks.saCkptCheckpointOpenCallback(
+					res_lib_ckpt_checkpointopenasync->invocation,
+					-1,
+					res_lib_ckpt_checkpointopenasync->header.error);
+			}
 			break;
 		default:
 			/* TODO */
@@ -375,6 +389,7 @@ error_unlock:
 	pthread_mutex_unlock(&ckptInstance->dispatch_mutex);
 error_put:
 	saHandleInstancePut(&ckptHandleDatabase, ckptHandle);
+error_exit:
 	return (error);
 }
 
@@ -407,7 +422,6 @@ saCkptFinalize (
 	ckptInstance->finalize = 1;
 
 	pthread_mutex_unlock (&ckptInstance->response_mutex);
-
 
 	for (list = ckptInstance->checkpoint_list.next;
 		list != &ckptInstance->checkpoint_list;
@@ -442,10 +456,28 @@ saCkptCheckpointOpen (
 	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopen res_lib_ckpt_checkpointopen;
 
+	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
+		checkpointCreationAttributes == NULL) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
+	if (((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) == 0) && 
+		checkpointCreationAttributes != NULL) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
+		(void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
 	error = saHandleCreate (&checkpointHandleDatabase,
 		sizeof (struct ckptCheckpointInstance), checkpointHandle);
 	if (error != SA_AIS_OK) {
-		goto error_no_destroy;
+		goto error_put_ckpt;
 	}
 
 	error = saHandleInstanceGet (&checkpointHandleDatabase,
@@ -454,16 +486,7 @@ saCkptCheckpointOpen (
 		goto error_destroy;
 	}
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
-		(void *)&ckptInstance);
-	if (error != SA_AIS_OK) {
-		goto error_put_destroy;
-	}
-
 	ckptCheckpointInstance->response_fd = ckptInstance->response_fd;
-
-	ckptCheckpointInstance->maxSectionIdSize =
-		checkpointCreationAttributes->maxSectionIdSize;
 
 	ckptCheckpointInstance->ckptHandle = ckptHandle;
 	ckptCheckpointInstance->checkpointHandle = *checkpointHandle;
@@ -473,44 +496,50 @@ saCkptCheckpointOpen (
 	req_lib_ckpt_checkpointopen.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN;
 	memcpy (&req_lib_ckpt_checkpointopen.checkpointName, checkpointName, sizeof (SaNameT));
 	memcpy (&ckptCheckpointInstance->checkpointName, checkpointName, sizeof (SaNameT));
-	memcpy (&req_lib_ckpt_checkpointopen.checkpointCreationAttributes,
-		checkpointCreationAttributes,
-		sizeof (SaCkptCheckpointCreationAttributesT));
+	req_lib_ckpt_checkpointopen.checkpointCreationAttributesSet = 0;
+	if (checkpointCreationAttributes) {
+		memcpy (&req_lib_ckpt_checkpointopen.checkpointCreationAttributes,
+			checkpointCreationAttributes,
+			sizeof (SaCkptCheckpointCreationAttributesT));
+		req_lib_ckpt_checkpointopen.checkpointCreationAttributesSet = 1;
+	}
 	req_lib_ckpt_checkpointopen.checkpointOpenFlags = checkpointOpenFlags;
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointopen,
 		sizeof (struct req_lib_ckpt_checkpointopen), MSG_NOSIGNAL);
 	if (error != SA_AIS_OK) {
-		goto error_put_ckpt_destroy;
+		goto error_put_destroy;
 	}
 
 	error = saRecvRetry (ckptCheckpointInstance->response_fd, &res_lib_ckpt_checkpointopen,
 		sizeof (struct res_lib_ckpt_checkpointopen), MSG_WAITALL | MSG_NOSIGNAL);
 	if (error != SA_AIS_OK) {
-		goto error_put_ckpt_destroy;
+		goto error_put_destroy;
 	}
 	
 	if (res_lib_ckpt_checkpointopen.header.error != SA_AIS_OK) {
 		error = res_lib_ckpt_checkpointopen.header.error;
-		goto error_put_ckpt_destroy;
+		goto error_put_destroy;
 	}
 
 	pthread_mutex_init (&ckptCheckpointInstance->response_mutex, NULL);
 
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
 
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+
+	list_init (&ckptCheckpointInstance->list);
+
 	list_add (&ckptCheckpointInstance->list, &ckptInstance->checkpoint_list);
 	return (error);
 
-error_put_ckpt_destroy:
-	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
-
 error_put_destroy:
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
-
 error_destroy:
 	saHandleDestroy (&checkpointHandleDatabase, *checkpointHandle);
-error_no_destroy:
+error_put_ckpt:
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+error_exit:
 	return (error);
 }
 
@@ -528,10 +557,27 @@ saCkptCheckpointOpenAsync (
 	SaAisErrorT error;
 	struct req_lib_ckpt_checkpointopenasync req_lib_ckpt_checkpointopenasync;
 
+	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
+		checkpointCreationAttributes == NULL) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
+	if (((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) == 0) && 
+		checkpointCreationAttributes != NULL) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
+		(void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
 	error = saHandleCreate (&checkpointHandleDatabase,
 		sizeof (struct ckptCheckpointInstance), &checkpointHandle);
 	if (error != SA_AIS_OK) {
-		goto error_no_destroy;
+		goto error_put_ckpt;
 	}
 
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
@@ -540,15 +586,9 @@ saCkptCheckpointOpenAsync (
 		goto error_destroy;
 	}
 
-	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
-	if (error != SA_AIS_OK) {
-		goto error_put_destroy;
-	}
-
 	ckptCheckpointInstance->response_fd = ckptInstance->response_fd;
-	ckptCheckpointInstance->maxSectionIdSize =
-		checkpointCreationAttributes->maxSectionIdSize;
 	ckptCheckpointInstance->ckptHandle = ckptHandle;
+	ckptCheckpointInstance->checkpointHandle = checkpointHandle;
 	ckptCheckpointInstance->checkpointOpenFlags = checkpointOpenFlags;
 	memcpy (&ckptCheckpointInstance->checkpointName, checkpointName, sizeof (SaNameT));
 
@@ -556,9 +596,13 @@ saCkptCheckpointOpenAsync (
 	req_lib_ckpt_checkpointopenasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
 	req_lib_ckpt_checkpointopenasync.invocation = invocation;
 	memcpy (&req_lib_ckpt_checkpointopenasync.checkpointName, checkpointName, sizeof (SaNameT));
-	memcpy (&req_lib_ckpt_checkpointopenasync.checkpointCreationAttributes,
-		checkpointCreationAttributes,
-		sizeof (SaCkptCheckpointCreationAttributesT));
+	req_lib_ckpt_checkpointopenasync.checkpointCreationAttributesSet = 0;
+	if (checkpointCreationAttributes) {
+		memcpy (&req_lib_ckpt_checkpointopenasync.checkpointCreationAttributes,
+			checkpointCreationAttributes,
+			sizeof (SaCkptCheckpointCreationAttributesT));
+		req_lib_ckpt_checkpointopenasync.checkpointCreationAttributesSet = 1;
+	}
 	
 	req_lib_ckpt_checkpointopenasync.checkpointOpenFlags = checkpointOpenFlags;
 	req_lib_ckpt_checkpointopenasync.checkpointHandle = checkpointHandle;
@@ -567,21 +611,24 @@ saCkptCheckpointOpenAsync (
 		sizeof (struct req_lib_ckpt_checkpointopenasync), MSG_NOSIGNAL);
 	
 	if (error != SA_AIS_OK) {
-		goto error_put_ckpt_destroy;
+		goto error_put_destroy;
 	}
 	
 	pthread_mutex_init (&ckptCheckpointInstance->response_mutex, NULL);
 
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error);
-error_put_ckpt_destroy:
 	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+
+	return (error);
+
 error_put_destroy:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 error_destroy:
 	saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
-error_no_destroy:
+error_put_ckpt:
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
+error_exit:
 	return (error);
 }
 
@@ -616,8 +663,6 @@ saCkptCheckpointClose (
 
 
 	list_del (&ckptCheckpointInstance->list);
-
-	saHandleInstancePut (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle);
 
 	saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
 
@@ -1027,9 +1072,6 @@ saCkptSectionIterationInitialize (
 	 */
 	list_init (&ckptSectionIterationInstance->sectionIdListHead);
 
-	ckptSectionIterationInstance->maxSectionIdSize =
-		ckptCheckpointInstance->maxSectionIdSize;
-
 	req_lib_ckpt_sectioniteratorinitialize.header.size = sizeof (struct req_lib_ckpt_sectioniteratorinitialize); 
 	req_lib_ckpt_sectioniteratorinitialize.header.id = MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
 	req_lib_ckpt_sectioniteratorinitialize.sectionsChosen = sectionsChosen;
@@ -1093,8 +1135,10 @@ saCkptSectionIterationNext (
 	/*
 	 * Allocate section id storage area
 	 */
-	iteratorSectionIdListEntry = malloc (sizeof (struct list_head) +
-		ckptSectionIterationInstance->maxSectionIdSize);
+	/*
+	 *  TODO max section id size is 500
+	 */
+	iteratorSectionIdListEntry = malloc (sizeof (struct list_head) + 500);
 	if (iteratorSectionIdListEntry == 0) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_put_nounlock;

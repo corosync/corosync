@@ -219,7 +219,7 @@ int main (void) {
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
 		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle);
 	error = saCkptSectionCreate (checkpointHandle,

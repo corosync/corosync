@@ -499,8 +499,11 @@ saHandleDestroy (
 	SaUint64T handle)
 {
 	pthread_mutex_lock (&handleDatabase->mutex);
+
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
+
 	pthread_mutex_unlock (&handleDatabase->mutex);
+
 	saHandleInstancePut (handleDatabase, handle);
 
 	return (SA_AIS_OK);

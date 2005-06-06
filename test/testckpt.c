@@ -180,7 +180,7 @@ void OpenCallBack (
  	printf ("%s: This is a call back for open for invocation = %d\n",
 		get_test_output (error, SA_AIS_OK), (int)invocation);	
 
-	memcpy(&checkpointHandle, &chckpointHandle, sizeof(SaCkptCheckpointHandleT));
+	checkpointHandle = chckpointHandle;
 
 }
 
@@ -202,31 +202,39 @@ int main (void) {
 	struct timeval tv_end;
 	struct timeval tv_elapsed;
 	SaSelectionObjectT sel_fd;
+	fd_set read_set;
 	
-    error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 
 	error = saCkptCheckpointOpenAsync (ckptHandle,
 		open_invocation,
-        &checkpointName,
-        &checkpointCreationAttributes,
-        SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
+		&checkpointName,
+		&checkpointCreationAttributes,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
     printf ("%s: initial asynchronous open of checkpoint\n",
         get_test_output (error, SA_AIS_OK));
 
+	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
 
-	error = saCkptDispatch (ckptHandle, SA_DISPATCH_ONE);
+	printf ("%s: Retrieve selection object %lld\n",
+	get_test_output (error, SA_AIS_OK), sel_fd);
+
+	FD_SET (sel_fd, &read_set);
+	select (sel_fd + 1, &read_set, 0, 0, 0);
+
+	error = saCkptDispatch (ckptHandle, SA_DISPATCH_ALL);
 	
 	printf ("%s: Dispatch response for open async of checkpoint\n",
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointClose (checkpointHandle);
-    printf ("%s: Closing checkpoint\n",
-        get_test_output (error, SA_AIS_OK));
+
+	printf ("%s: Closing checkpoint\n", get_test_output (error, SA_AIS_OK));
 	
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
 		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle);
 	printf ("%s: initial open of checkpoint\n",
@@ -304,7 +312,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
 		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle2);
 	printf ("%s: Opening unlinked checkpoint\n", 
@@ -317,7 +325,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
 		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ,
 		0,
 		&checkpointHandleRead);
 
@@ -328,7 +336,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
 		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
 		&checkpointHandle);
 	printf ("%s: open after unlink/close\n",
@@ -482,8 +490,6 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
-	printf ("%s: Retrieve selection object %lld\n",
-		get_test_output (error, SA_AIS_OK), sel_fd);
 
 	error = saCkptFinalize (ckptHandle);
 	printf ("%s: Finalize checkpoint\n",
