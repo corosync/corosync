@@ -633,7 +633,7 @@ static int message_handler_req_clm_nodegetasync (struct conn_info *conn_info, vo
 		memcpy (&res_clm_nodegetcallback.clusterNode, clusterNode,
 			sizeof (SaClmClusterNodeT));
 	}
-	libais_send_response (conn_info, &res_clm_nodegetcallback,
+	libais_send_response (conn_info->conn_info_partner, &res_clm_nodegetcallback,
 		sizeof (struct res_clm_nodegetcallback));
 
 	return (0);
