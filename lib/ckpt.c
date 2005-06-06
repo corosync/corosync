@@ -705,18 +705,25 @@ saCkptActiveReplicaSet (
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		 (void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
-		goto error_exit;
+		goto error_noput;
+	}
+
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
 	}
 
 	req_lib_ckpt_activereplicaset.header.size = sizeof (struct req_lib_ckpt_activereplicaset);
-	req_lib_ckpt_activereplicaset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_ACTIVEREPLICASET;
+	req_lib_ckpt_activereplicaset.header.id = MESSAGE_REQ_CKPT_ACTIVEREPLICASET;
+	memcpy (&req_lib_ckpt_activereplicaset.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_activereplicaset,
 		sizeof (struct req_lib_ckpt_activereplicaset), MSG_NOSIGNAL);
 	if (error != SA_AIS_OK) {
-		goto error_exit;
+		goto error_put;
 	}
 
 	error = saRecvRetry (ckptCheckpointInstance->response_fd,
@@ -726,9 +733,9 @@ saCkptActiveReplicaSet (
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
+error_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
-
-error_exit:
+error_noput:
 	return (error == SA_AIS_OK ? res_lib_ckpt_activereplicaset.header.error : error);
 }
 

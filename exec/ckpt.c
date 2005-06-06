@@ -215,7 +215,7 @@ struct libais_handler ckpt_libais_handlers[] =
 	{ /* 5 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_activereplicaset,
 		.response_size		= sizeof (struct res_lib_ckpt_activereplicaset),
-		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_ACTIVEREPLICASET,
+		.response_id		= MESSAGE_RES_CKPT_ACTIVEREPLICASET,
 		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
@@ -2315,6 +2315,26 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 
 static int message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn_info, void *message)
 {
+	struct req_lib_ckpt_activereplicaset *req_lib_ckpt_activereplicaset = (struct req_lib_ckpt_activereplicaset *)message;
+	struct res_lib_ckpt_activereplicaset res_lib_ckpt_activereplicaset;
+	struct saCkptCheckpoint *checkpoint;
+	SaAisErrorT error = SA_AIS_OK;
+
+	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_activereplicaset->checkpointName);
+
+	/*
+	 * Make sure checkpoint is collocated and async update option
+	 */
+	if (((checkpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) ||
+		(checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+		error = SA_AIS_ERR_BAD_OPERATION;
+	}
+	res_lib_ckpt_activereplicaset.header.size = sizeof (struct res_lib_ckpt_activereplicaset);
+	res_lib_ckpt_activereplicaset.header.id = MESSAGE_RES_CKPT_ACTIVEREPLICASET;
+	res_lib_ckpt_activereplicaset.header.error = error;
+
+	libais_send_response (conn_info, &res_lib_ckpt_activereplicaset,
+		sizeof (struct res_lib_ckpt_activereplicaset));
 	return (0);
 }
 
