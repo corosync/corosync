@@ -66,15 +66,18 @@ struct ckptInstance {
 	int finalize;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
+	struct list_head checkpoint_list;
 };
 
 struct ckptCheckpointInstance {
 	int response_fd;
 	SaCkptHandleT ckptHandle;
+	SaCkptCheckpointHandleT checkpointHandle;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 	SaNameT checkpointName;
 	SaUint32T maxSectionIdSize;
 	pthread_mutex_t response_mutex;
+	struct list_head list;
 };
 
 struct ckptSectionIterationInstance {
@@ -197,6 +200,8 @@ saCkptInitialize (
 	}
 
 	memcpy (&ckptInstance->callbacks, callbacks, sizeof (SaCkptCallbacksT));
+
+	list_init (&ckptInstance->checkpoint_list);
 
 	pthread_mutex_init (&ckptInstance->response_mutex, NULL);
 
@@ -363,6 +368,8 @@ saCkptFinalize (
 {
 	struct ckptInstance *ckptInstance;
 	SaAisErrorT error;
+	struct list_head *list;
+	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
 		(void *)&ckptInstance);
@@ -385,9 +392,21 @@ saCkptFinalize (
 
 	pthread_mutex_unlock (&ckptInstance->response_mutex);
 
+
+	for (list = ckptInstance->checkpoint_list.next;
+		list != &ckptInstance->checkpoint_list;
+		list = list->next) {
+
+		ckptCheckpointInstance = list_entry (list,
+			struct ckptCheckpointInstance, list);
+
+		saHandleInstancePut (&checkpointHandleDatabase,
+			ckptCheckpointInstance->checkpointHandle);
+	}
+
 	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
-    saHandleDestroy (&ckptHandleDatabase, ckptHandle);
+	saHandleDestroy (&ckptHandleDatabase, ckptHandle);
 
 	return (SA_AIS_OK);
 }
@@ -413,8 +432,8 @@ saCkptCheckpointOpen (
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&checkpointHandleDatabase, *checkpointHandle,
-		(void *)&ckptCheckpointInstance);
+	error = saHandleInstanceGet (&checkpointHandleDatabase,
+		*checkpointHandle, (void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
@@ -431,6 +450,7 @@ saCkptCheckpointOpen (
 		checkpointCreationAttributes->maxSectionIdSize;
 
 	ckptCheckpointInstance->ckptHandle = ckptHandle;
+	ckptCheckpointInstance->checkpointHandle = *checkpointHandle;
 	ckptCheckpointInstance->checkpointOpenFlags = checkpointOpenFlags;
 
 	req_lib_ckpt_checkpointopen.header.size = sizeof (struct req_lib_ckpt_checkpointopen);
@@ -463,6 +483,7 @@ saCkptCheckpointOpen (
 
 	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
 
+	list_add (&ckptCheckpointInstance->list, &ckptInstance->checkpoint_list);
 	return (error);
 
 error_put_ckpt_destroy:
@@ -578,9 +599,11 @@ saCkptCheckpointClose (
 		sizeof (struct res_lib_ckpt_checkpointclose), MSG_WAITALL | MSG_NOSIGNAL);
 
 
+	list_del (&ckptCheckpointInstance->list);
+
 	saHandleInstancePut (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle);
 
-    saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
+	saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
 
 exit_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
