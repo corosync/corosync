@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
@@ -230,7 +231,7 @@ saCkptSelectionObjectGet (
 		return (error);
 	}
 
-	*selectionObject = ckptInstance->response_fd;
+	*selectionObject = ckptInstance->dispatch_fd;
 
 	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
@@ -252,6 +253,7 @@ saCkptDispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct message_overlay dispatch_data;
 	struct res_lib_ckpt_checkpointopenasync *res_lib_ckpt_checkpointopenasync;
+	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
@@ -332,6 +334,20 @@ saCkptDispatch (
 		switch (dispatch_data.header.id) {
 		case MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC:
 			res_lib_ckpt_checkpointopenasync = (struct res_lib_ckpt_checkpointopenasync *) &dispatch_data;
+
+			/*
+			 * This instance get/listadd/put required so that close
+			 * later has the proper list of checkpoints
+			 */
+			error = saHandleInstanceGet (&checkpointHandleDatabase,
+				res_lib_ckpt_checkpointopenasync->checkpointHandle,
+				(void *)&ckptCheckpointInstance);
+			assert (error == SA_AIS_OK); /* should only be valid handles here */
+			list_add (&ckptCheckpointInstance->list,
+				&ckptInstance->checkpoint_list);
+
+			saHandleInstancePut (&checkpointHandleDatabase,
+				ckptCheckpointInstance->checkpointHandle);
 
 			callbacks.saCkptCheckpointOpenCallback(res_lib_ckpt_checkpointopenasync->invocation,
 				res_lib_ckpt_checkpointopenasync->checkpointHandle,
