@@ -540,7 +540,7 @@ saClmClusterNodeGetAsync (
 	struct res_clm_nodegetasync res_clm_nodegetasync;
 	SaAisErrorT error = SA_OK;
 
-	req_clm_nodegetasync.header.size = sizeof (struct req_clm_nodeget);
+	req_clm_nodegetasync.header.size = sizeof (struct req_clm_nodegetasync);
 	req_clm_nodegetasync.header.id = MESSAGE_REQ_CLM_NODEGETASYNC;
 	memcpy (&req_clm_nodegetasync.invocation, &invocation,
 		sizeof (SaInvocationT));
