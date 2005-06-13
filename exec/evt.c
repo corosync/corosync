@@ -381,8 +381,10 @@ struct evt_pattern {
 	char 	str[sizeof(lost_evt)];
 };
 static struct evt_pattern dropped_pattern = {
-		.pat	= 	{&dropped_pattern.str[0], 
-					sizeof(lost_evt)},
+		.pat	= 	{
+					sizeof(lost_evt),
+					sizeof(lost_evt),
+					&dropped_pattern.str[0]}, 
 		.str = {SA_EVT_LOST_EVENT}
 };
 
@@ -581,6 +583,8 @@ static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 				return SA_AIS_ERR_NO_MEMORY;
 		}
 		filters->filters[i].filter.patternSize = 
+			filt[i].filter.patternSize;
+		filters->filters[i].filter.allocatedSize = 
 			filt[i].filter.patternSize;
 		memcpy(filters->filters[i].filter.pattern,
 				str, filters->filters[i].filter.patternSize);
@@ -1816,6 +1820,7 @@ convert_event(struct lib_event_data *evt)
 	eps = (SaEvtEventPatternT *)evt->led_body;  
 	for (i = 0; i < evt->led_patterns_number; i++) {
 		eps->patternSize = swab32(eps->patternSize);
+		eps->allocatedSize = swab32(eps->allocatedSize);
 		eps++;
 	}
 	

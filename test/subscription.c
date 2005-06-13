@@ -57,8 +57,9 @@ SaEvtEventFilterT filters[MAX_SUB] = {
 };
 
 SaEvtEventFilterArrayT subscribe_filters[MAX_SUB] = {
-	{ &filters[0] , 
-	1},
+	{ 
+		1, &filters[0] 
+	},
 };
 
 
@@ -69,12 +70,12 @@ SaUint8T pat2[PAT_SIZE];
 SaUint8T pat3[PAT_SIZE];
 SaUint8T pat4[PAT_SIZE];
 SaEvtEventPatternT evt_patts[5] = {
-	{pat0, PAT_SIZE},
-	{pat1, PAT_SIZE},
-	{pat2, PAT_SIZE},
-	{pat3, PAT_SIZE},
-	{pat4, PAT_SIZE}};
-SaEvtEventPatternArrayT	evt_pat_get_array = { evt_patts, 0 };
+	{PAT_SIZE, PAT_SIZE, pat0},
+	{PAT_SIZE, PAT_SIZE, pat1},
+	{PAT_SIZE, PAT_SIZE, pat2},
+	{PAT_SIZE, PAT_SIZE, pat3},
+	{PAT_SIZE, PAT_SIZE, pat4}};
+SaEvtEventPatternArrayT	evt_pat_get_array = { 5, 0, evt_patts };
 
 SaNameT test_pub_name = {13, "Test Pub Name"};
 

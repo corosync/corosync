@@ -175,15 +175,15 @@ void test_initialize (void) {
 
 
 SaEvtEventFilterT filters[] = {
-	{SA_EVT_PREFIX_FILTER, {patt1, patt1_size}},
-	{SA_EVT_SUFFIX_FILTER, {patt2, patt2_size}},
-	{SA_EVT_EXACT_FILTER, {patt3, patt3_size}},
-	{SA_EVT_PASS_ALL_FILTER, {patt4, patt4_size}}
+	{SA_EVT_PREFIX_FILTER, {patt1_size, patt1_size, patt1}},
+	{SA_EVT_SUFFIX_FILTER, {patt2_size, patt2_size, patt2}},
+	{SA_EVT_EXACT_FILTER, {patt3_size, patt3_size, patt3}},
+	{SA_EVT_PASS_ALL_FILTER, {patt4_size, patt4_size, patt4}}
 };
 
 SaEvtEventFilterArrayT subscribe_filters = {
-	filters, 
-	sizeof(filters)/sizeof(SaEvtEventFilterT)
+	sizeof(filters)/sizeof(SaEvtEventFilterT),
+	filters 
 };
 
 /*
@@ -698,25 +698,26 @@ test_channel()
 	SaUint8T pat3[100];
 	SaUint8T pat4[100];
 	SaEvtEventPatternT evt_patts[5] = {
-		{pat0, 100},
-		{pat1, 100},
-		{pat2, 100},
-		{pat3, 100},
-		{pat4, 100}};
-	SaEvtEventPatternArrayT	evt_pat_get_array = { evt_patts, 0 };
+		{100, 100, pat0},
+		{100, 100, pat1},
+		{100, 100, pat2},
+		{100, 100, pat3},
+		{100, 100, pat4}};
+	SaEvtEventPatternArrayT	evt_pat_get_array = { 5, 0, evt_patts };
 
 SaEvtEventPatternT patterns[] = {
-	{patt1, patt1_size},
-	{patt2, patt2_size},
-	{patt3, patt3_size},
-	{patt4, patt4_size}
+	{patt1_size, patt1_size, patt1},
+	{patt2_size, patt2_size, patt2},
+	{patt3_size, patt3_size, patt3},
+	{patt4_size, patt4_size, patt4}
 };
 SaNameT test_pub_name = {13, "Test Pub Name"};
 #define TEST_PRIORITY 2
 
 SaEvtEventPatternArrayT evt_pat_set_array = {
-	patterns,
-	sizeof(patterns)/sizeof(SaEvtEventPatternT)
+	sizeof(patterns)/sizeof(SaEvtEventPatternT),
+	sizeof(patterns)/sizeof(SaEvtEventPatternT),
+	patterns
 };
 
 char event_data[1000];
@@ -1392,22 +1393,22 @@ test_multi_channel1()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_EXACT_FILTER, {"ChanPat1", 8}},
+		{SA_EVT_EXACT_FILTER, {8,8, "ChanPat1"}},
 	};
 	SaEvtEventFilterT filt2[1] = {
-		{SA_EVT_EXACT_FILTER, {"ChanPat2", 8}},
+		{SA_EVT_EXACT_FILTER, {8, 8, "ChanPat2"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
-		NULL, 1
+		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {"ChanPat1", 8};
-	SaEvtEventPatternT pat2 = {"ChanPat2", 8};
-	SaEvtEventPatternT pat3 = {"ChanPat3", 8};
+	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
+	SaEvtEventPatternT pat2 = {8, 8, "ChanPat2"};
+	SaEvtEventPatternT pat3 = {8, 8, "ChanPat3"};
 
 	SaEvtEventPatternArrayT evt_pat = {
-		NULL, 1
+		1, 1, NULL
 	};
 
 
@@ -1736,17 +1737,17 @@ test_multi_channel2()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_EXACT_FILTER, {"ChanPat1", 8}},
+		{SA_EVT_EXACT_FILTER, {8, 8, "ChanPat1"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
-		NULL, 1
+		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {"ChanPat1", 8};
+	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
 
 	SaEvtEventPatternArrayT evt_pat = {
-		NULL, 1
+		1, 1, NULL
 	};
 
 
@@ -2036,18 +2037,18 @@ test_multi_channel3()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_PREFIX_FILTER, {"ChanPat", 7}},
+		{SA_EVT_PREFIX_FILTER, {7, 7, "ChanPat"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
-		NULL, 1
+		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {"ChanPat1", 8};
-	SaEvtEventPatternT pat2 = {"ChanPat2", 8};
+	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
+	SaEvtEventPatternT pat2 = {8, 8, "ChanPat2"};
 
 	SaEvtEventPatternArrayT evt_pat = {
-		NULL, 1
+		1, 1, NULL
 	};
 
 

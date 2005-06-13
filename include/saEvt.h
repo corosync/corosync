@@ -67,8 +67,9 @@ typedef struct{
 typedef SaUint8T SaEvtChannelOpenFlagsT;
 
 typedef struct {
-    SaUint8T *pattern;
+	SaSizeT	allocatedSize;
     SaSizeT patternSize;
+    SaUint8T *pattern;
 } SaEvtEventPatternT;
 
 
@@ -101,8 +102,9 @@ typedef struct {
 #define SA_EVT_DATA_MAX_LEN (64 * 1024)
 
 typedef struct {
-    SaEvtEventPatternT *patterns;
+	SaSizeT allocatedNumber;
     SaSizeT patternsNumber;
+    SaEvtEventPatternT *patterns;
 } SaEvtEventPatternArrayT;
 
 typedef SaUint8T SaEvtEventPriorityT;
@@ -121,8 +123,8 @@ typedef struct {
 } SaEvtEventFilterT;
 
 typedef struct {
-    SaEvtEventFilterT *filters;
     SaSizeT filtersNumber;
+    SaEvtEventFilterT *filters;
 } SaEvtEventFilterArrayT;
 
 

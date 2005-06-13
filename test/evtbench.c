@@ -48,15 +48,15 @@ char pubname[256] = "Test Pub Name";
 
 
 SaEvtEventFilterT filters[] = {
-	{SA_EVT_PREFIX_FILTER, {patt1, patt1_size}},
-	{SA_EVT_SUFFIX_FILTER, {patt2, patt2_size}},
-	{SA_EVT_EXACT_FILTER, {patt3, patt3_size}},
-	{SA_EVT_PASS_ALL_FILTER, {patt4, patt4_size}}
+	{SA_EVT_PREFIX_FILTER, {patt1_size, patt1_size, patt1}},
+	{SA_EVT_SUFFIX_FILTER, {patt2_size, patt2_size, patt2}},
+	{SA_EVT_EXACT_FILTER, {patt3_size, patt3_size, patt3}},
+	{SA_EVT_PASS_ALL_FILTER, {patt4_size, patt4_size, patt4}}
 };
 
 SaEvtEventFilterArrayT subscribe_filters = {
-	filters, 
-	sizeof(filters)/sizeof(SaEvtEventFilterT)
+	sizeof(filters)/sizeof(SaEvtEventFilterT),
+	filters 
 };
 
 
@@ -66,25 +66,26 @@ SaEvtEventFilterArrayT subscribe_filters = {
 	SaUint8T pat3[100];
 	SaUint8T pat4[100];
 	SaEvtEventPatternT evt_patts[5] = {
-		{pat0, 100},
-		{pat1, 100},
-		{pat2, 100},
-		{pat3, 100},
-		{pat4, 100}};
-	SaEvtEventPatternArrayT	evt_pat_get_array = { evt_patts, 0 };
+		{100, 100, pat0},
+		{100, 100, pat1},
+		{100, 100, pat2},
+		{100, 100, pat3},
+		{100, 100, pat4}};
+	SaEvtEventPatternArrayT	evt_pat_get_array = { 100, 0, evt_patts };
 
 SaEvtEventPatternT patterns[] = {
-	{patt1, patt1_size},
-	{patt2, patt2_size},
-	{patt3, patt3_size},
-	{patt4, patt4_size}
+	{patt1_size, patt1_size, patt1},
+	{patt2_size, patt2_size, patt2},
+	{patt3_size, patt3_size, patt3},
+	{patt4_size, patt4_size, patt4}
 };
 SaNameT test_pub_name;
 #define TEST_PRIORITY 2
 
 SaEvtEventPatternArrayT evt_pat_set_array = {
-	patterns,
-	sizeof(patterns)/sizeof(SaEvtEventPatternT)
+	sizeof(patterns)/sizeof(SaEvtEventPatternT),
+	sizeof(patterns)/sizeof(SaEvtEventPatternT),
+	patterns
 };
 
 char user_data_file[256];

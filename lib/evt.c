@@ -420,6 +420,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	 * Move the pattern bits into the SaEvtEventPatternArrayT
 	 */
 	edi->edi_patterns.patternsNumber = evt->led_patterns_number;
+	edi->edi_patterns.allocatedNumber = evt->led_patterns_number;
 	edi->edi_patterns.patterns = malloc(sizeof(SaEvtEventPatternT) * 
 					edi->edi_patterns.patternsNumber);
 	pat = (SaEvtEventPatternT *)evt->led_body;
@@ -427,6 +428,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 						edi->edi_patterns.patternsNumber;
 	for (i = 0; i < evt->led_patterns_number; i++) {
 		edi->edi_patterns.patterns[i].patternSize = pat->patternSize;
+		edi->edi_patterns.patterns[i].allocatedSize = pat->patternSize;
 		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			printf("make_event: couldn't alloc %lld bytes\n", pat->patternSize);
@@ -1262,6 +1264,7 @@ saEvtEventAttributesSet(
 		goto attr_set_done_reset;
 	}
 	edi->edi_patterns.patternsNumber = patternArray->patternsNumber;
+	edi->edi_patterns.allocatedNumber = patternArray->patternsNumber;
 
 	/*
 	 * copy the patterns from the caller. allocating memory for
@@ -1283,6 +1286,8 @@ saEvtEventAttributesSet(
 			patternArray->patterns[i].pattern,
 				patternArray->patterns[i].patternSize);
 		edi->edi_patterns.patterns[i].patternSize = 
+			patternArray->patterns[i].patternSize;
+		edi->edi_patterns.patterns[i].allocatedSize = 
 			patternArray->patterns[i].patternSize;
 	}
 
@@ -1372,31 +1377,53 @@ saEvtEventAttributesGet(
 		goto attr_get_unlock;
 	}
 
-	npats = min(patternArray->patternsNumber, 
-				edi->edi_patterns.patternsNumber);
 	/*
-	 * We set the returned number of patterns to the actual
-	 * pattern count of the event.  This way the caller can tell
-	 * if it got all the possible patterns. If the returned number
-	 * is more that the number supplied, then some available patterns
-	 * were not returned. We indicate that by returning SA_AIS_ERR_NO_SPACE.
+	 * The spec says that if the called passes in a NULL patterns array,
+	 * then we allocate the required data and the caller is responsible
+	 * for dealocating later. Otherwise, we copy to pre-allocated space.
+	 * If there are more patterns than allcated space, we set the return
+	 * code to SA_AIS_ERR_NO_SPACE and copy as much as will fit. We will
+	 * return the total number of patterns available in the patternsNumber
+	 * regardless of how much was allocated.
 	 *
-	 * The same thing happens when copying the pattern strings.
 	 */
-	if (patternArray->patternsNumber < edi->edi_patterns.patternsNumber) {
-		error = SA_AIS_ERR_NO_SPACE;
+	if (patternArray->patterns == NULL) {
+		npats = edi->edi_patterns.patternsNumber;
+		patternArray->allocatedNumber = edi->edi_patterns.patternsNumber;
+		patternArray->patternsNumber = edi->edi_patterns.patternsNumber;
+		patternArray->patterns = malloc(sizeof(*patternArray->patterns) * 
+				edi->edi_patterns.patternsNumber);
+		for (i = 0; i < edi->edi_patterns.patternsNumber; i++) {
+			patternArray->patterns[i].allocatedSize = 
+				edi->edi_patterns.patterns[i].allocatedSize;
+			patternArray->patterns[i].patternSize = 
+				edi->edi_patterns.patterns[i].patternSize;
+			patternArray->patterns[i].pattern = 
+				malloc(edi->edi_patterns.patterns[i].patternSize);
+		}
+	} else {
+		if (patternArray->allocatedNumber < edi->edi_patterns.allocatedNumber) {
+			error = SA_AIS_ERR_NO_SPACE;
+			npats = patternArray->allocatedNumber;
+		} else {
+			npats = edi->edi_patterns.patternsNumber;
+		}
 	}
-
 	patternArray->patternsNumber = edi->edi_patterns.patternsNumber;
 
+	/*
+	 * copy the patterns to the callers structure.  If we have pre-allocated
+	 * data, the patterns may not fit in the supplied space. In that case we
+	 * return NO_SPACE.
+	 */
 	for (i = 0; i < npats; i++) {
 
 		memcpy(patternArray->patterns[i].pattern,
 			edi->edi_patterns.patterns[i].pattern,
-			min(patternArray->patterns[i].patternSize,
+			min(patternArray->patterns[i].allocatedSize,
 				edi->edi_patterns.patterns[i].patternSize));
 
-		if (patternArray->patterns[i].patternSize < 
+		if (patternArray->patterns[i].allocatedSize < 
 								edi->edi_patterns.patterns[i].patternSize) {
 			error = SA_AIS_ERR_NO_SPACE;
 		}
