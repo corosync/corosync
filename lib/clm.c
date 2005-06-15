@@ -79,8 +79,7 @@ static struct saHandleDatabase clmHandleDatabase = {
  * Versions supported
  */
 static SaVersionT clmVersionsSupported[] = {
-	{ 'B', 1, 1 },
-	{ 'b', 1, 1 }
+	{ 'B', 1, 1 }
 };
 
 static struct saVersionDatabase clmVersionDatabase = {

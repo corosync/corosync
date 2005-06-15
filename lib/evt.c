@@ -51,8 +51,7 @@ static void eventHandleInstanceDestructor(void *instance);
  * Versions of the SAF AIS specification supported by this library
  */
 static SaVersionT supported_versions[] = {
-	{'B', 0x01, 0x01},
-	{'b', 0x01, 0x01}
+	{'B', 0x01, 0x01}
 };
 
 static struct saVersionDatabase evt_version_database = {

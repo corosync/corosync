@@ -125,8 +125,7 @@ static struct saHandleDatabase ckptSectionIterationHandleDatabase = {
  * Versions supported
  */
 static SaVersionT ckptVersionsSupported[] = {
-	{ 'B', 1, 1 },
-	{ 'b', 1, 1 }
+	{ 'B', 1, 1 }
 };
 
 static struct saVersionDatabase ckptVersionDatabase = {

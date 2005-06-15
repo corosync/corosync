@@ -85,8 +85,7 @@ static struct saHandleDatabase amfHandleDatabase = {
  * Versions supported
  */
 static SaVersionT amfVersionsSupported[] = {
-	{ 'A', 1, 1 },
-	{ 'a', 1, 1 }
+	{ 'A', 1, 1 }
 };
 
 static struct saVersionDatabase amfVersionDatabase = {
