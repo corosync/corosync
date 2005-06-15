@@ -153,7 +153,7 @@ saHandleInstancePut (
 SaErrorT
 saVersionVerify (
 	struct saVersionDatabase *versionDatabase,
-	const SaVersionT *version);
+	SaVersionT *version);
 
 SaErrorT
 saQueueInit (
@@ -188,3 +188,4 @@ SaTimeT
 clustTimeNow(void);
 
 #endif /* AIS_UTIL_H_DEFINED */
+

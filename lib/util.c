@@ -566,23 +566,63 @@ saHandleInstancePut (
 
 SaErrorT
 saVersionVerify (
-        struct saVersionDatabase *versionDatabase,
-	const SaVersionT *version)
+    struct saVersionDatabase *versionDatabase,
+	SaVersionT *version)
 {
-	int found = 0;
 	int i;
+	SaErrorT error = SA_AIS_ERR_VERSION;
 
 	if (version == 0) {
-		return (SA_AIS_ERR_VERSION);
+		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
+	/*
+	 * Look for a release code that we support.  If we find it then
+	 * make sure that the supported major version is >= to the required one.
+	 * In any case we return what we support in the version structure.
+	 */
 	for (i = 0; i < versionDatabase->versionCount; i++) {
-		if (memcmp (&versionDatabase->versionsSupported[i], version, sizeof (SaVersionT)) == 0) {
-			found = 1;
+
+		/*
+		 * Check if the caller requires and old release code that we don't support.
+		 */
+		if (version->releaseCode < versionDatabase->versionsSupported[i].releaseCode) {
+				break;
+		}
+
+		/*
+		 * Check if we can support this release code.
+		 */
+		if (version->releaseCode == versionDatabase->versionsSupported[i].releaseCode) {
+
+			/*
+			 * Check if we can support the major version requested.
+			 */
+			if (versionDatabase->versionsSupported[i].major >= version->major) {
+				error = SA_AIS_OK;
+				break;
+			} 
+
+			/*
+			 * We support the release code, but not the major version.
+			 */
 			break;
 		}
 	}
-	return (found ? SA_AIS_OK : SA_AIS_ERR_VERSION);
+
+	/*
+	 * If we fall out of the if loop, the caller requires a release code
+	 * beyond what we support.
+	 */
+	if (i == versionDatabase->versionCount) {
+		i = versionDatabase->versionCount - 1;
+	}
+
+	/*
+	 * Tell the caller what we support
+	 */
+	memcpy(version, &versionDatabase->versionsSupported[i], sizeof(*version));
+	return (error);
 }
 
 

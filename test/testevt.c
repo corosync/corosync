@@ -83,13 +83,10 @@ void testresult (SaAisErrorT result, SaAisErrorT expected, int test_no)
 }
 
 SaVersionT version1 = { 'B', 0x01, 0x01 };
-SaVersionT version2 = { 'b', 0x01, 0x01 };
-SaVersionT version3 = { 'c', 0x01, 0x01 };
-SaVersionT version4 = { 'b', 0x02, 0x01 };
-SaVersionT version5 = { 'b', 0xff, 0x01 };
-SaVersionT version6 = { 'b', 0x01, 0xff };
-SaVersionT version7 = { 'B', 0xff, 0xff };
-SaVersionT version8 = { 'C', 0xff, 0xff };
+SaVersionT version2 = { 'A', 0x01, 0x01 };
+SaVersionT version3 = { 'B', 0x02, 0x01 };
+SaVersionT version4 = { 'B', 0x01, 0xff };
+SaVersionT version5 = { 'C', 0xff, 0xff };
 
 struct version_test {
 	SaVersionT	*version;
@@ -98,11 +95,11 @@ struct version_test {
 
 struct version_test versions[] = {
 	{ &version1, SA_AIS_OK },
-	{ &version2, SA_AIS_OK },
+	{ &version2, SA_AIS_ERR_VERSION },
 	{ &version3, SA_AIS_ERR_VERSION },
-	{ &version4, SA_AIS_ERR_VERSION},
-	{ &version8, SA_AIS_ERR_VERSION},
-	{ 0, SA_AIS_ERR_VERSION}
+	{ &version4, SA_AIS_OK},
+	{ &version5, SA_AIS_ERR_VERSION},
+	{ 0, SA_AIS_ERR_INVALID_PARAM}
 };
 
 int version_size = sizeof(versions) / sizeof(struct version_test);
