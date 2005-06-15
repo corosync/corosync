@@ -142,10 +142,6 @@ void ckptHandleInstanceDestructor (void *instance)
 {
 struct ckptInstance *ckptInstance = (struct ckptInstance *)instance;
 
-	if (ckptInstance->response_fd != -1) {
-		shutdown (ckptInstance->response_fd, 0);
-		close (ckptInstance->response_fd);
-	}
 }
 
 void checkpointHandleInstanceDestructor (void *instance)
@@ -434,9 +430,18 @@ saCkptFinalize (
 			ckptCheckpointInstance->checkpointHandle);
 	}
 
+	saHandleDestroy (&ckptHandleDatabase, ckptHandle);
+
+	if (ckptInstance->response_fd != -1) {
+		shutdown (ckptInstance->response_fd, 0);
+		close (ckptInstance->response_fd);
+	}
+	if (ckptInstance->dispatch_fd != -1) {
+		shutdown (ckptInstance->dispatch_fd, 0);
+		close (ckptInstance->dispatch_fd);
+	}
 	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
-	saHandleDestroy (&ckptHandleDatabase, ckptHandle);
 
 	return (SA_AIS_OK);
 }

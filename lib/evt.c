@@ -186,20 +186,7 @@ struct event_data_instance {
  */
 static void evtHandleInstanceDestructor(void *instance)
 {
-	struct event_instance *evti = instance;
 
-	/*
-	 * Disconnect from the server
-	 */
-    if (evti->ei_response_fd != -1) {
-		shutdown(evti->ei_response_fd, 0);
-		close(evti->ei_response_fd);
-	}
-
-	if (evti->ei_dispatch_fd != -1) {
-		shutdown(evti->ei_dispatch_fd, 0);
-		close(evti->ei_dispatch_fd);
-	}
 }
 
 /*
@@ -737,6 +724,18 @@ saEvtFinalize(SaEvtHandleT evtHandle)
 	pthread_mutex_unlock(&evti->ei_response_mutex);
 
 	saHandleDestroy(&evt_instance_handle_db, evtHandle);
+	/*
+	 * Disconnect from the server
+	 */
+    if (evti->ei_response_fd != -1) {
+		shutdown(evti->ei_response_fd, 0);
+		close(evti->ei_response_fd);
+	}
+
+	if (evti->ei_dispatch_fd != -1) {
+		shutdown(evti->ei_dispatch_fd, 0);
+		close(evti->ei_dispatch_fd);
+	}
 	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 
 	return error;

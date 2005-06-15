@@ -90,16 +90,6 @@ static struct saVersionDatabase clmVersionDatabase = {
 
 void clmHandleInstanceDestructor (void *instance)
 {
-	struct clmInstance *clmInstance = (struct clmInstance *)instance;
-
-	if (clmInstance->response_fd != -1) {
-		shutdown (clmInstance->response_fd, 0);
-		close (clmInstance->response_fd);
-	}
-	if (clmInstance->dispatch_fd != -1) {
-		shutdown (clmInstance->dispatch_fd, 0);
-		close (clmInstance->dispatch_fd);
-	}
 }
 
 
@@ -382,6 +372,15 @@ saClmFinalize (
 	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	saHandleDestroy (&clmHandleDatabase, clmHandle);
+
+	if (clmInstance->response_fd != -1) {
+		shutdown (clmInstance->response_fd, 0);
+		close (clmInstance->response_fd);
+	}
+	if (clmInstance->dispatch_fd != -1) {
+		shutdown (clmInstance->dispatch_fd, 0);
+		close (clmInstance->dispatch_fd);
+	}
 
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 

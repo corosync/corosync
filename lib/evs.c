@@ -73,19 +73,6 @@ static struct saHandleDatabase evs_handle_t_db = {
  */
 static void evs_instance_destructor (void *instance)
 {
-    struct evs_inst *evs_inst = instance;
-
-    /*
-     * Disconnect from the server
-     */
-    if (evs_inst->response_fd != -1) {
-        shutdown(evs_inst->response_fd, 0);
-        close(evs_inst->response_fd);
-    }
-    if (evs_inst->dispatch_fd != -1) {
-        shutdown(evs_inst->dispatch_fd, 0);
-        close(evs_inst->dispatch_fd);
-    }
 }
 
 
@@ -157,9 +144,20 @@ evs_error_t evs_finalize (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
+	saHandleDestroy (&evs_handle_t_db, handle);
+    /*
+     * Disconnect from the server
+     */
+    if (evs_inst->response_fd != -1) {
+        shutdown(evs_inst->response_fd, 0);
+        close(evs_inst->response_fd);
+    }
+    if (evs_inst->dispatch_fd != -1) {
+        shutdown(evs_inst->dispatch_fd, 0);
+        close(evs_inst->dispatch_fd);
+    }
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
-	saHandleDestroy (&evs_handle_t_db, handle);
 
 	return (EVS_OK);
 }

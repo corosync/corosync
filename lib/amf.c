@@ -100,16 +100,6 @@ static struct saVersionDatabase amfVersionDatabase = {
 
 void amfHandleInstanceDestructor (void *instance)
 {
-	struct amfInstance *amfInstance = (struct amfInstance *)instance;
-
-	if (amfInstance->response_fd != -1) {
-		shutdown (amfInstance->response_fd, 0);
-		close (amfInstance->response_fd);
-	}
-	if (amfInstance->dispatch_fd != -1) {
-		shutdown (amfInstance->dispatch_fd, 0);
-		close (amfInstance->dispatch_fd);
-	}
 }
 
 SaErrorT
@@ -399,6 +389,15 @@ saAmfFinalize (
 	pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 
 	saHandleDestroy (&amfHandleDatabase, *amfHandle);
+
+	if (amfInstance->response_fd != -1) {
+		shutdown (amfInstance->response_fd, 0);
+		close (amfInstance->response_fd);
+	}
+	if (amfInstance->dispatch_fd != -1) {
+		shutdown (amfInstance->dispatch_fd, 0);
+		close (amfInstance->dispatch_fd);
+	}
 
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 
