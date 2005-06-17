@@ -1100,7 +1100,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	 * If the checkpoint has been unlinked, it is an invalid name
 	 */
 	if (ckptCheckpoint->unlinked) {
-		error = SA_AIS_ERR_INVALID_PARAM; /* Is this the correct return ? */
+		error = SA_AIS_ERR_NOT_EXIST; /* Is this the correct return ? */
 		goto error_exit;
 	}
 	
