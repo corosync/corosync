@@ -156,6 +156,9 @@ saClmSelectionObjectGet (
 	struct clmInstance *clmInstance;
 	SaAisErrorT error;
 
+	if (selectionObject == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_OK) {
