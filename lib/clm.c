@@ -362,14 +362,12 @@ saClmFinalize (
 		return (error);
 	}
 
-       pthread_mutex_lock (&clmInstance->dispatch_mutex);
        pthread_mutex_lock (&clmInstance->response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (clmInstance->finalize) {
-		pthread_mutex_unlock (&clmInstance->dispatch_mutex);
 		pthread_mutex_unlock (&clmInstance->response_mutex);
 		saHandleInstancePut (&clmHandleDatabase, clmHandle);
 		return (SA_ERR_BAD_HANDLE);
@@ -377,7 +375,6 @@ saClmFinalize (
 
 	clmInstance->finalize = 1;
 
-	pthread_mutex_unlock (&clmInstance->dispatch_mutex);
 	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	saHandleDestroy (&clmHandleDatabase, clmHandle);
