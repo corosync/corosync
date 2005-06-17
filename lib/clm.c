@@ -518,6 +518,9 @@ saClmClusterNodeGet (
 	struct res_clm_nodeget res_clm_nodeget;
 	SaAisErrorT error = SA_OK;
 
+	if (clusterNode == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_OK) {
