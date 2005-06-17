@@ -259,6 +259,12 @@ saCkptDispatch (
 	struct res_lib_ckpt_checkpointopenasync *res_lib_ckpt_checkpointopenasync;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
+	if (dispatchFlags != SA_DISPATCH_ONE &&
+		dispatchFlags != SA_DISPATCH_ALL &&
+		dispatchFlags != SA_DISPATCH_BLOCKING) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
 		(void *)&ckptInstance);
@@ -866,6 +872,7 @@ saCkptCheckpointStatusGet (
 		&res_lib_ckpt_checkpointstatusget.checkpointDescriptor,
 		sizeof (SaCkptCheckpointDescriptorT));
 
+printf ("error is %d\n", res_lib_ckpt_checkpointstatusget.header.error);
 error_exit:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointstatusget.header.error : error);
