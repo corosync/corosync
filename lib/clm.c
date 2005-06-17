@@ -521,6 +521,11 @@ saClmClusterNodeGet (
 	if (clusterNode == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
+
+	if (timeout == 0) {
+		return (SA_AIS_ERR_TIMEOUT);
+	}
+
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_OK) {
