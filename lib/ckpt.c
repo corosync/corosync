@@ -168,6 +168,10 @@ saCkptInitialize (
 	struct ckptInstance *ckptInstance;
 	SaAisErrorT error = SA_AIS_OK;
 
+	if (ckptHandle == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saVersionVerify (&ckptVersionDatabase, version);
 	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
