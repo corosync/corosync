@@ -54,10 +54,14 @@
 
 static int alarm_notice = 0;
 
+int outstanding = 0;
+
+
 
 void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
 {
-//	printf ("Delivering message %s\n", buf);
+	outstanding--;
+// printf ("Delivering message %s\n", msg);
 }
 
 void evs_confchg_fn (
@@ -118,11 +122,15 @@ void evs_benchmark (evs_handle_t handle,
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
 try_again:
-		result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
-			goto try_again;
-		} else {
-			write_count += 1;
+		if (outstanding < 10) {
+			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
+			if (result == EVS_ERR_TRY_AGAIN) {
+printf ("try again\n");
+				goto try_again;
+			} else {
+				write_count += 1;
+				outstanding++;
+			}
 		}
 		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
 	} while (alarm_notice == 0);

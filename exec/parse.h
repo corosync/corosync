@@ -62,8 +62,10 @@ enum amfOperationalAdministrativeState {
  * needs to remain the last item in the list.
  */
 enum {
+	TOTEM_RETRANSMITS_BEFORE_LOSS,
 	TOTEM_TOKEN,
 	TOTEM_RETRANSMIT_TOKEN,
+	TOTEM_HOLD_TOKEN,
 	TOTEM_JOIN,
 	TOTEM_CONSENSUS,
 	TOTEM_MERGE,

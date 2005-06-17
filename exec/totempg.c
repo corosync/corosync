@@ -524,6 +524,8 @@ int totempg_mcast (
 	int copy_len = 0; 
 	int copy_base = 0;
 
+	totemsrp_new_msg_signal ();
+
 	max_packet_size = TOTEMPG_PACKET_SIZE -
 		(sizeof (unsigned short) * (mcast_packed_msg_count + 1));
 

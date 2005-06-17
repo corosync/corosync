@@ -29,16 +29,16 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-#CFLAGS = -O3 -Wall -fomit-frame-pointer
-#LDFLAGS = 
+CFLAGS = -O3 -Wall -fomit-frame-pointer
+LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -Wall
+#CFLAGS = -g -Wall
 ##-DDEBUG
-LDFLAGS = -g
+#LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O2 -pg
+#CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs

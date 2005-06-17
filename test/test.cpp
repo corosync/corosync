@@ -15,10 +15,15 @@
 
 
 #include "ais_types.h"
-#include "ais_ckpt.h"
+#include "saCkpt.h"
 
 
-//SaVersionT version = { 'A', 1, 1 };
+SaVersionT version = { 'B', 1, 1 };
+
+SaCkptCallbacksT callbacks = {
+    0,
+    0
+};
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
         SA_CKPT_WR_ALL_REPLICAS,
@@ -30,8 +35,8 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 };
 
 SaCkptSectionIdT sectionId = {
-        (SaUint8T*)"section ID #1",
-        14
+        14,
+        (SaUint8T*)"section ID #1"
 };
 
 SaCkptSectionCreationAttributesT sectionCreationAttributes = {
@@ -60,7 +65,7 @@ char* getPayload(int psize) {
         return retVal;
 }
 
-SaCkptCheckpointHandleT* WriteCheckpointHandle;
+SaCkptCheckpointHandleT WriteCheckpointHandle;
 
 static long sendCount = 0;
 void process_message()
@@ -68,10 +73,11 @@ void process_message()
         struct timeval tv;
         long t1;
         long t2;
+	long told;
         SaCkptIOVectorElementT writeElement; // KJS
 
         SaUint32T erroroneousVectorIndex = 0;
-        SaErrorT error;
+        SaAisErrorT error;
         
         writeElement.sectionId = sectionId;
         writeElement.dataBuffer = getPayload(200); 
@@ -81,6 +87,7 @@ void process_message()
 
         gettimeofday(&tv, NULL);
         t1 = tv.tv_usec;
+	told = tv.tv_sec;
         
         do {
                 error = saCkptCheckpointWrite (WriteCheckpointHandle,
@@ -88,33 +95,40 @@ void process_message()
                                                1,
                                                &erroroneousVectorIndex);
 
-                if (error != SA_OK) {
+                if (error != SA_AIS_OK) {
                         fprintf(stderr,"saCkptCheckpointWrite result %d (should be 1)\n", error);
                 }
                 sendCount++;
                 fprintf(stderr,"sendCount = %d",(int)sendCount);
-        } while (error == SA_ERR_TRY_AGAIN);
+        } while (error == SA_AIS_ERR_TRY_AGAIN);
 
         gettimeofday(&tv, NULL);
         t2 = tv.tv_usec;        
-        fprintf(stderr," ,RTT::%d\n",(long)t2-t1);
+        fprintf(stderr," ,RTT::%d.%d\n",(long)tv.tv_sec - told, t2-t1);
 }
 
 int main () {
-	SaErrorT error;
+	SaAisErrorT error;
 	SaNameT* WriteCheckpointName = (SaNameT*) malloc(sizeof(SaNameT));
-        WriteCheckpointHandle = (SaCkptCheckpointHandleT*) malloc(sizeof(SaCkptCheckpointHandleT));
         char name[10];
+        SaCkptHandleT ckptHandle;
+
         sprintf(name,"ckpt%d",1);
         int namelen = strlen(name) + 1;
         memcpy(WriteCheckpointName->value, name, namelen);
         WriteCheckpointName->length = namelen;
-        error = saCkptCheckpointOpen (WriteCheckpointName,
+
+	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+
+        error = saCkptCheckpointOpen (
+			ckptHandle,
+			WriteCheckpointName,
                         &checkpointCreationAttributes,
                         SA_CKPT_CHECKPOINT_WRITE,
                         1000000000, /* 1 Second */
-                        WriteCheckpointHandle);
-        if (error != SA_OK) {
+                        &WriteCheckpointHandle);
+
+        if (error != SA_AIS_OK) {
                 fprintf(stderr,"saCkptCheckpointOpen result %d (should be 1)\n", error);
                 return error;
         }
@@ -123,7 +137,7 @@ int main () {
                                         &sectionCreationAttributes,
                                         "Initial Data #0",
                                          strlen ("Initial Data #0") + 1);
-        if (error != SA_OK) {
+        if (error != SA_AIS_OK) {
                 fprintf(stderr,"saCkptSectionCreate result = %d\n", error);
                 return error;
         }

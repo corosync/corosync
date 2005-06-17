@@ -46,7 +46,9 @@ logging {
 
 timeout {
 	token: 200
-	retransmit: 45
+	token_retransmit: 50
+	hold: 30
+	retransmits_before_loss: 4
 	join: 100
 	consensus: 200
 	merge: 200

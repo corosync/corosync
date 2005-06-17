@@ -564,19 +564,24 @@ extern int openais_main_config_read (char **error_string,
 			break;
 		case MAIN_TIMEOUT:
 			if ((loc = strstr_rs (line, "token:"))) {
-					openais_config->timeouts[TOTEM_TOKEN]= atoi(loc);
-			} else if ((loc = strstr_rs (line, "retransmit:"))) {
-					openais_config->timeouts[TOTEM_RETRANSMIT_TOKEN] = atoi(loc);
+				openais_config->timeouts[TOTEM_TOKEN]= atoi(loc);
+			} else if ((loc = strstr_rs (line, "token_retransmit:"))) {
+				openais_config->timeouts[TOTEM_RETRANSMIT_TOKEN] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "hold:"))) {
+				openais_config->timeouts[TOTEM_HOLD_TOKEN] = atoi(loc);
+			} else if ((loc = strstr_rs (line, "retransmits_before_loss:"))) {
+				openais_config->timeouts[TOTEM_RETRANSMITS_BEFORE_LOSS] = atoi(loc);
+		
 			} else if ((loc = strstr_rs (line, "join:"))) {
-					openais_config->timeouts[TOTEM_JOIN] = atoi(loc);
+				openais_config->timeouts[TOTEM_JOIN] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "consensus:"))) {
-					openais_config->timeouts[TOTEM_CONSENSUS] = atoi(loc);
+				openais_config->timeouts[TOTEM_CONSENSUS] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "merge:"))) {
-					openais_config->timeouts[TOTEM_MERGE] = atoi(loc);
+				openais_config->timeouts[TOTEM_MERGE] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "downcheck:"))) {
-					openais_config->timeouts[TOTEM_DOWNCHECK] = atoi(loc);
+				openais_config->timeouts[TOTEM_DOWNCHECK] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
-					openais_config->timeouts[TOTEM_FAIL_RECV_CONST] = atoi(loc);
+				openais_config->timeouts[TOTEM_FAIL_RECV_CONST] = atoi(loc);
 			} else if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {

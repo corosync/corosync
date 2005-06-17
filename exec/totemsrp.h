@@ -101,6 +101,8 @@ int totemsrp_callback_token_create (
 void totemsrp_callback_token_destroy (
 	void **handle_out);
 
+void totemsrp_new_msg_signal (void);
+
 extern struct sockaddr_in config_mcast_addr;
 
 #endif /* TOTEMSRP_H_DEFINED */
