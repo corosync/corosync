@@ -105,6 +105,9 @@ saClmInitialize (
 	if (clmHandle == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
+	if (version == NULL) {
+		return (SA_AIS_ERR_VERSION);
+	}
 
 	error = saVersionVerify (&clmVersionDatabase, version);
 	if (error != SA_OK) {
