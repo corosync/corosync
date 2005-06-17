@@ -814,6 +814,9 @@ saCkptCheckpointStatusGet (
 	struct req_lib_ckpt_checkpointstatusget req_lib_ckpt_checkpointstatusget;
 	struct res_lib_ckpt_checkpointstatusget res_lib_ckpt_checkpointstatusget;
 
+	if (checkpointStatus == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
