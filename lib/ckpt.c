@@ -853,7 +853,7 @@ saCkptCheckpointStatusGet (
 
 error_exit:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
-	return (error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointstatusget.header.error : error);
 }
 
 SaAisErrorT

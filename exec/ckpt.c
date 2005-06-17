@@ -1055,6 +1055,14 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 		ckptCheckpoint->referenceCount = 0;
 		ckptCheckpoint->retention_timer = 0;
 		ckptCheckpoint->expired = 0;
+		
+		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1 &&
+			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
+			ckptCheckpoint->active_replica_set = 1;
+		} else {
+			ckptCheckpoint->active_replica_set = 0;
+		}
+		
 		initialize_ckpt_refcount_array(ckptCheckpoint->ckpt_refcount);
 
 		/*
@@ -2345,6 +2353,7 @@ static int message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn
 		(checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
 		error = SA_AIS_ERR_BAD_OPERATION;
 	}
+	checkpoint->active_replica_set = 1;
 	res_lib_ckpt_activereplicaset.header.size = sizeof (struct res_lib_ckpt_activereplicaset);
 	res_lib_ckpt_activereplicaset.header.id = MESSAGE_RES_CKPT_ACTIVEREPLICASET;
 	res_lib_ckpt_activereplicaset.header.error = error;
@@ -2387,7 +2396,11 @@ static int message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *c
 	 */
 	res_lib_ckpt_checkpointstatusget.header.size = sizeof (struct res_lib_ckpt_checkpointstatusget);
 	res_lib_ckpt_checkpointstatusget.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET;
-	res_lib_ckpt_checkpointstatusget.header.error = SA_AIS_OK;
+	if (checkpoint->active_replica_set == 1) {
+		res_lib_ckpt_checkpointstatusget.header.error = SA_AIS_OK;
+	} else {
+		res_lib_ckpt_checkpointstatusget.header.error = SA_AIS_ERR_NOT_EXIST;
+	}
 
 	memcpy (&res_lib_ckpt_checkpointstatusget.checkpointDescriptor.checkpointCreationAttributes,
 		&checkpoint->checkpointCreationAttributes,
