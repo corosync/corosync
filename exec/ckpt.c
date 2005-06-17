@@ -1505,21 +1505,26 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)message;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
 	struct saCkptCheckpoint *checkpoint;
+	SaAisErrorT error = SA_AIS_ERR_BAD_OPERATION;
 
 	checkpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_checkpointretentiondurationset->checkpointName);
 	if (checkpoint) {
 		log_printf (LOG_LEVEL_NOTICE, "CKPT: Setting retention duration for checkpoint %s\n",
 			getSaNameT (&req_exec_ckpt_checkpointretentiondurationset->checkpointName));
-		checkpoint->checkpointCreationAttributes.retentionDuration = req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
-
-		if (checkpoint->expired == 0 && checkpoint->referenceCount == 0) {
-			poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
-
-			poll_timer_add (aisexec_poll_handle,
-				checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
-				checkpoint,
-				timer_function_retention,
-				&checkpoint->retention_timer);
+		if (checkpoint->unlinked == 0) {
+			checkpoint->checkpointCreationAttributes.retentionDuration =
+				req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
+	
+			if (checkpoint->expired == 0 && checkpoint->referenceCount == 0) {
+				poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
+	
+				poll_timer_add (aisexec_poll_handle,
+					checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
+					checkpoint,
+					timer_function_retention,
+					&checkpoint->retention_timer);
+			}
+			error = SA_AIS_OK;
 		}
 	}
 
@@ -1529,7 +1534,7 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 	if (message_source_is_local(&req_exec_ckpt_checkpointretentiondurationset->source)) {
 		res_lib_ckpt_checkpointretentiondurationset.header.size = sizeof (struct res_lib_ckpt_checkpointretentiondurationset);
 		res_lib_ckpt_checkpointretentiondurationset.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET;
-		res_lib_ckpt_checkpointretentiondurationset.header.error = SA_AIS_OK;
+		res_lib_ckpt_checkpointretentiondurationset.header.error = error;
 
 		libais_send_response (req_exec_ckpt_checkpointretentiondurationset->source.conn_info,
 			&res_lib_ckpt_checkpointretentiondurationset,
