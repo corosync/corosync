@@ -33,6 +33,8 @@ all: html
 
 html:
 	mkdir html
+	groff -mandoc -Thtml openais_overview.8 > html/openais_overview.html
+	groff -mandoc -Thtml openais.conf.5 > html/openais.conf.html
 	groff -mandoc -Thtml evs_overview.8 > html/evs_overview.html
 	groff -mandoc -Thtml evs_initialize.3 > html/evs_initialize.html
 	groff -mandoc -Thtml evs_finalize.3 > html/evs_finalize.html
