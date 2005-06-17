@@ -101,6 +101,11 @@ saClmInitialize (
 	struct clmInstance *clmInstance;
 	SaAisErrorT error = SA_OK;
 
+
+	if (clmHandle == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saVersionVerify (&clmVersionDatabase, version);
 	if (error != SA_OK) {
 		goto error_no_destroy;
