@@ -577,6 +577,11 @@ saClmClusterNodeGetAsync (
 
 	pthread_mutex_lock (&clmInstance->response_mutex);
 
+	if (clmInstance->callbacks.saClmClusterNodeGetCallback == NULL) {
+		error = SA_AIS_ERR_INIT;
+		goto error_exit;
+	}
+
 	error = saSendReceiveReply (clmInstance->response_fd, &req_clm_nodegetasync,
 		sizeof (struct req_clm_nodegetasync),
 		&res_clm_nodegetasync, sizeof (struct res_clm_nodegetasync));
