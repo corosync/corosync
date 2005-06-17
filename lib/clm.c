@@ -189,6 +189,13 @@ saClmDispatch (
 	SaClmClusterNotificationBufferT notificationBuffer;
 	int copy_items;
 
+	if (dispatchFlags != SA_DISPATCH_ONE &&
+		dispatchFlags != SA_DISPATCH_ALL &&
+		dispatchFlags != SA_DISPATCH_BLOCKING) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_OK) {
