@@ -197,7 +197,11 @@ saCkptInitialize (
 		goto error_put_destroy;
 	}
 
-	memcpy (&ckptInstance->callbacks, callbacks, sizeof (SaCkptCallbacksT));
+	if (callbacks) {
+		memcpy (&ckptInstance->callbacks, callbacks, sizeof (SaCkptCallbacksT));
+	} else {
+		memset (&ckptInstance->callbacks, 0, sizeof (SaCkptCallbacksT));
+	}
 
 	list_init (&ckptInstance->checkpoint_list);
 
@@ -318,6 +322,7 @@ saCkptDispatch (
 				goto error_unlock;
 			}
 		}
+
 		/*
 		* Make copy of callbacks, message data, unlock instance,
 		* and call callback. A risk of this dispatch method is that
@@ -331,6 +336,9 @@ saCkptDispatch (
 		 */
 		switch (dispatch_data.header.id) {
 		case MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC:
+			if (callbacks.saCkptCheckpointOpenCallback == NULL) {
+				continue;
+			}
 			res_lib_ckpt_checkpointopenasync = (struct res_lib_ckpt_checkpointopenasync *) &dispatch_data;
 
 			/*
