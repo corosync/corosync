@@ -133,7 +133,11 @@ saClmInitialize (
 		goto error_put_destroy;
 	}
 
-	memcpy (&clmInstance->callbacks, clmCallbacks, sizeof (SaClmCallbacksT));
+	if (clmCallbacks) {
+		memcpy (&clmInstance->callbacks, clmCallbacks, sizeof (SaClmCallbacksT));
+	} else {
+		memset (&clmInstance->callbacks, 0, sizeof (SaClmCallbacksT));
+	}
 
 	pthread_mutex_init (&clmInstance->response_mutex, NULL);
 
@@ -281,6 +285,9 @@ saClmDispatch (
 		switch (dispatch_data.header.id) {
 
 		case MESSAGE_RES_CLM_TRACKCALLBACK:
+			if (callbacks.saClmClusterTrackCallback == NULL) {
+				continue;
+			}
 			res_clm_trackcallback = (struct res_clm_trackcallback *)&dispatch_data;
 			error = SA_AIS_OK;
 
@@ -316,6 +323,9 @@ saClmDispatch (
 			break;
 
 		case MESSAGE_RES_CLM_NODEGETCALLBACK:
+			if (callbacks.saClmClusterNodeGetCallback == NULL) {
+				continue;
+			}
 			res_clm_nodegetcallback = (struct res_clm_nodegetcallback *)&dispatch_data;
 
 			callbacks.saClmClusterNodeGetCallback (
