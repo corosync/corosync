@@ -1,0 +1,176 @@
+.\"/*
+.\" * Copyright (c) 2005 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@mvista.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH OPENAIS_CONF 5 2005-06-08 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+openais.conf - openais executive configuration file
+
+.SH SYNOPSIS
+/etc/ais/openais.conf
+
+.SH DESCRIPTION
+The openais.conf instructs the openais executive about various parameters
+needed to control the openais executive.  The configuration file consists of
+bracketed top level directives.  The possible directive choices are
+.IR network { } ", " logging { } ", " timeout { } ".  These directives are
+described below.
+
+.TP
+network { }
+This top level directive contains configuration options for the network.
+.TP
+logging { }
+This top level directive contains configuration options for logging.
+.TP
+timeout { }
+This top level directive contains configuration options for protocol timeouts.
+
+.PP
+.PP
+Within the 
+.B network
+directive, there are three configuration options which are all required:
+.TP
+bindnetaddr
+This specifies the address which the openais executive should bind.
+This address should always end in zero.  If the local interface traffic should
+be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
+
+.TP
+mcastaddr
+This is the multicast address used by openais executive.  The default
+should work for most networks, but the network administrator should be queried
+about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
+multicast address.
+
+.TP
+mcastport
+This specifies the UDP port number.  It is possible to use the same multicast
+address on a network with the openais services configured for different
+UDP ports.
+
+.PP
+.PP
+Within the 
+.B logging
+directive, there are four configuration options which are all optional:
+.TP
+logoutput
+This specifies the logging output.  The choices are file, which logs to a file,
+stderr, which logs to stderr, and syslog which logs to the system log.  It is
+possible to have multiple targets by including this directive with different
+options multiple times in the top level directive.
+
+.TP
+logfile
+If the logoutput: file directive is set, this option specifies where the
+log file is written to.  
+
+.TP
+debug
+This specifies whether debug output is logged.  This is generally a bad idea, 
+unless there is some specific bug or problem that must be found in the
+executive.  Set the value to on to debug, off to turn of debugging.
+
+.TP
+timestamp
+This specifies that a timestamp is placed on all log messages.
+.PP
+.PP
+Within the 
+.B timeout
+directive, there are several configuration options which are all optional.
+It is generally not recommended to change any of these values.  Some networks
+may require larger values for token or some applications may require faster
+failure detection times (and lower values for token).
+.TP
+token
+This timeout specifies in milliseconds until a token loss is declared after not
+receiving a token.  This is the time spent detecting a failure of a processor
+in the current configuration.  Reforming a new configuration takes about 50
+milliseconds and is independent of this timeout.
+
+.TP
+token_retransmit
+This timeout specifies in milliseconds after how long before receiving a token
+the token is retransmitted.  This will be automatically calculated if token
+is modified.  It is not recommended to alter this value without guidance from
+the openais community.
+
+.TP
+hold
+This timeout specifies in milliseconds how long the token should be held by
+the representative when the protocol is under low utilization.   It is not
+recommended to alter this value without guidance from the openais community.
+
+.TP
+retransmits_before_loss
+This value identifies how many token retransmits should be attempted before
+forming a new configuration.  If this value is set, retransmit and hold will
+be automatically calculated from retransmits_before_loss and token.
+
+.TP
+join
+This timeout specifies in milliseconds how long to wait for join messages in 
+the membership protocol.
+
+.TP
+consensus
+This timeout specifies in milliseconds how long to wait for consensus to be
+achieved before starting a new round of membership configuration.
+
+.TP
+merge
+This timeout specifies in milliseconds how long to wait before checking for
+a partition when no multicast traffic is being sent.  If multicast traffic
+is being sent, the merge detection happens automatically as a function of
+the protocol.
+
+.TP
+downcheck
+This timeout specifies in milliseconds how long to wait before checking
+that a network interface is back up after it has been downed.
+
+.TP
+fail_recv_const
+This value identifies how many rotations of the token without receiving any
+of the messages may occur before a new configuration is formed.
+
+.SH "FILES"
+.TP
+/etc/ais/openais.conf
+The openais executive configuration file.
+
+.SH "SEE ALSO"
+.BR openais_overview (8)
+.PP

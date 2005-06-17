@@ -1,0 +1,204 @@
+.\"/*
+.\" * Copyright (c) 2005 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@mvista.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH OPENAIS_OVERVIEW 8 2005-06-08 "openais Man Page" "Openais Programmer's Manual"
+.SH OVERVIEW
+The openais project is a project to implement a production quality "Revised BSD"
+licensed implementation of the most recent SA Forum's Application Interface
+Specification.  The Application Interface Specification is a software API and
+policies which are used to develop applications that maintain service during
+faults.  The API consists of Availability Management Framework (AMF) which
+provides application failover, Cluster Membership (CLM), Checkpointing (CKPT),
+Eventing (EVT), Messaging (MSG), and Distributed Locking (DLOCK).
+
+Currently Messaging and Distributed Locking are unimplemented.
+
+Faults occur for various reasons:
+.PP
+* Application Faults
+.PP
+* Middleware Faults
+.PP
+* Operating System Faults
+.PP
+* Hardware Faults
+
+The major focus of high availability in the past has been to mask hardware
+faults. Faults in other components of the system have gone unsolved until
+AIS. AIS can mask many types of faults in applications, middleware,
+operating systems, or even hardware by providing a simple framework
+for allowing developers to create redundant applications. These redundant
+applications can be distributed over multiple nodes such that if any one
+node faults, another node can recover.
+
+Application programmers develop applications to periodically record their
+state using the checkpointing service. When an active application fails,
+a standby application recovers the state of the application. This
+technique, called stateful application failover, provides the fundamental
+difference between openais and other systems that have come before it.
+With stateful application failover, the end-application user doesn't
+have to reload the application or redial a telephone. The full state
+is recorded, so the end-application user sees no interruption in service.
+
+Because programmers can now distribute applications across multiple
+processes or nodes, a mechanism must exist for them to communicate.
+This mechanism is provided by two services. The event service provides
+a publish/subscribe model for events. The messaging service provides
+end to end messaging. Finally a mechanism to synchronize access is
+provided by the distributed lock service. 
+
+The openais project also provides a group messaging toolkit called EVS.
+The EVS service implements a messaging model known as Extended Virtual
+Synchrony.  This model allows one sender to transmit to many receivers.
+Certain guarantees are provided for message and membership delivery
+which make virtual synchrony ideal for developing distributed applications.
+
+.SH QUICKSTART
+The openais executive must be configured.  In the directory conf in the
+source distribution are several files that must be copied to the /etc/ais
+directory.  If openais is packaged by a distro, this may be complete.
+
+The directory contains the file openais.conf.  Please read the openais.conf(5)
+man page for details on the configuration options.  The openais project will
+work out of the box with the default configuration options, although the
+administrator may desire different options.
+
+An user and group of the name "ais" must be added to the system.  If openais
+is packaged from a distro, this step should already be completed.
+This can be achieved by executing:
+
+[root@slickdeal root]# adduser ais -g ais
+
+The openais executive uses cryptographic techniques to ensure authenticity
+and privacy of the messages.  In order for openais to be secure and operate,
+a private key must be generated and shared to all processors.
+
+First generate the key on one of the nodes:
+
+unix# ais-keygen
+openais authentication key generator.
+.PP
+Gathering 1024 bits for key from /dev/random.
+.PP
+Writing openais key to /etc/ais/authkey.
+.PP
+
+After this operation, a private key will be in the file /etc/ais/authkey.
+This private key must be copied to every processor in the cluster.  If the
+private key isn't the same for every node, those nodes with nonmatching private
+keys will not be able to join the same configuration.
+
+Copy the key to some security transportable storage or use ssh to transmit the
+key from node to node.  Then install the key with the command:
+
+unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
+
+If a message "Invalid digest" appears from the openais executive, the keys
+are not consistent between processors.
+
+Finally run the openais executive.  If openais is packaged from a distro, it
+may be set to start on system start.  It may also be turned off by default in
+which case the init script for openais must be enabled.
+
+After running aisexec, a list of all processors IP addresses running the ais
+executive and configured on the same multicast address will appear.  If they
+don't appear, there may be a problem with multicast in the distro or hardware.
+If this happens, participation in the openais mailing list may help solve the
+problem.  The email address is openais@lists.osdl.org.
+
+.SH USING LIBRARIES
+The openais AIS libraries have header files which must be included in the
+developer's application.  Once the header file is included, the developer can
+reference the AIS interfaces.
+
+The openais project recommends to distros to place include files in
+/usr/include/openais.  The following include lines must be added to
+the application to use each of the following services: 
+
+#include <openais/saClm.h> For the Cluster Membership B.01.01 service.
+.PP
+#include <openais/saCkpt.h> For the Checkpointing B.01.01 service.
+.PP
+#include <openais/saEvt.h> For the Eventing B.01.01 service.
+.PP
+#include <openais/ais_amf.h> For the AMF A.01.01 service.
+.PP
+
+The openais project recommends to distros to place library files in
+/usr/lib.  The following link lines must be added to the LDFLAGS section
+of the makefile.
+
+-lsaClm For the Cluster Membership B.01.01 service
+.PP
+-lsaCkpt For the Checkpointing B.01.01 service
+.PP
+-lsaEvt For the Eventing B.01.01 service
+.PP
+-lsaAmf For the AMF A.01.01 service
+.PP
+-lais Specify this to get access to all AIS libraries without specifying
+each library individually.
+
+.SH ARCHITECTURE
+The AIS libraries are a thin IPC interface to the openais executive.  The
+openais executive provides services for the SA Forum AIS libraries as well
+as the EVS library.
+
+The openais executive uses the Totem extended virtual synchrony protocol.  The
+advantage to the end user is excellent performance characteristics and a proven
+protocol with excellent reliability.  This protocol connects the processors
+in a configuration together so they may communicate.
+
+.SH SECURITY
+The openais executive encrypts all messages sent over the network using the
+SOBER-128 stream cipher.  The openais executive uses HMAC and SHA1 to
+authenticate all messages.  The openais executive library uses SOBER-128
+as a pseudo random number generator.  The EVS library feeds the PRNG using
+the /dev/random Linux device.
+.PP
+.SH BUGS
+The openais libraries are not particularly compliant with every aspect of the
+SA Forum's AIS specification.  The APIs themselves are consistent, but some of
+the return values and other details are not quite right yet.  The project does
+intend to be fully compliant with SAF specifications in 2005.
+
+The AMF that is currently available is AMF A.01.01.  The rest of the services
+are of the B.01.01 specification.  This is a limitation for those developers that
+desire AMF B.01.01.  The project intends to resolve this inconsistently in 2005.
+
+The openais project does not currently implement the messaging service or
+distributed locking service.
+.SH "SEE ALSO"
+.BR openais.conf (5),
+.BR evs_overview (8)
+.PP
