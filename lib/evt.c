@@ -872,6 +872,10 @@ saEvtChannelOpen(
 	SaAisErrorT error;
 	struct iovec iov;
 
+	if (!channelHandle || !channelName) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
@@ -1068,6 +1072,10 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	struct handle_list *hl;
 	struct iovec iov;
 
+	if (!channelName) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
@@ -1195,6 +1203,10 @@ saEvtChannelUnlink(
 	struct iovec iov;
 	SaAisErrorT error;
 
+	if (!channelName) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
@@ -1257,6 +1269,10 @@ saEvtEventAllocate(
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
 	struct handle_list *hl;
+
+	if (!eventHandle) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -1746,6 +1762,10 @@ saEvtEventPublish(
 	void   *data_start;
 	struct iovec iov;
 
+	if (!eventId) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	if (eventDataSize > SA_EVT_DATA_MAX_LEN) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto pub_done;
@@ -1886,6 +1906,9 @@ saEvtEventSubscribe(
 	int	sz;
 	struct iovec iov;
 
+	if (!filters) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
