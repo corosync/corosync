@@ -2035,21 +2035,19 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	ocp->ocp_timer_handle = 0;
 	list_init(&ocp->ocp_entry);
 	list_add_tail(&ocp->ocp_entry, &open_pending);
-	if (req->ico_timeout != 0) {
-		/*
-		 * Time in nanoseconds - convert to miliseconds
-		 */
-		msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
-		ret = poll_timer_add(aisexec_poll_handle,
-				msec_in_future,
-				ocp,
-				chan_open_timeout,
-				&ocp->ocp_timer_handle);
-		if (ret != 0) {
-			log_printf(LOG_LEVEL_WARNING, 
-					"Error setting timeout for open channel %s\n",
-					req->ico_channel_name.value);
-		}
+	/*
+	 * Time in nanoseconds - convert to miliseconds
+	 */
+	msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
+	ret = poll_timer_add(aisexec_poll_handle,
+			msec_in_future,
+			ocp,
+			chan_open_timeout,
+			&ocp->ocp_timer_handle);
+	if (ret != 0) {
+		log_printf(LOG_LEVEL_WARNING, 
+				"Error setting timeout for open channel %s\n",
+				req->ico_channel_name.value);
 	}
 	return 0;
 
@@ -3522,7 +3520,7 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 		if (!eci) {
 			log_printf(LOG_LEVEL_NOTICE, 
 					"Channel unlink request for %s not found\n",
-				cpkt->u.chcu.chcu_name);
+				cpkt->u.chcu.chcu_name.value);
 			break;
 		}
 

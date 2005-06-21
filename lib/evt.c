@@ -42,6 +42,7 @@
 #include "../include/ipc_evt.h"
 #include "util.h"
 #include "../exec/totempg.h"
+#include "../include/list.h"
 
 static void evtHandleInstanceDestructor(void *instance);
 static void chanHandleInstanceDestructor(void *instance);
@@ -94,6 +95,11 @@ struct res_overlay {
 	char data[MESSAGE_SIZE_MAX];
 };
 
+struct handle_list {
+	SaUint64T			hl_handle;
+	struct list_head 	hl_entry;
+};
+
 /*
  * data required to support events for a given initialization
  *
@@ -106,6 +112,7 @@ struct res_overlay {
  * ei_finalize:		instance in finalize flag
  * ei_dispatch_mutex:	mutex for dispatch fd
  * ei_response_mutex:	mutex for response fd
+ * ei_channel_list:		list of associated channels (struct handle_list)
  *
  */
 struct event_instance {
@@ -118,6 +125,7 @@ struct event_instance {
 	int						ei_finalize;
 	pthread_mutex_t			ei_dispatch_mutex;
 	pthread_mutex_t			ei_response_mutex;
+	struct list_head 		ei_channel_list;
 };
 
 
@@ -129,7 +137,10 @@ struct event_instance {
  * eci_svr_channel_handle:	channel handle returned from server
  * eci_closing:				channel in process of being closed
  * eci_mutex:				channel mutex
- *
+ * eci_event_list:			events associated with this 
+ * 							channel (struct handle_list)
+ * eci_hl:					pointer to event instance handle struct
+ * 						    for this channel.
  */
 struct event_channel_instance {
 
@@ -139,6 +150,8 @@ struct event_channel_instance {
 	SaEvtHandleT			eci_instance_handle;
 	int						eci_closing;
 	pthread_mutex_t			eci_mutex;
+	struct list_head		eci_event_list;
+	struct handle_list		*eci_hl;
 	 
 };
 
@@ -160,7 +173,8 @@ struct event_channel_instance {
  * edi_event_data_size:	size of edi_event_data
  * edi_freeing:			event is being freed
  * edi_mutex:			event data mutex
- *
+ * edi_hl:				pointer to channel's handle 
+ * 						struct for this event.
  */
 struct event_data_instance {
 	SaEvtChannelHandleT		edi_channel_handle;
@@ -175,6 +189,7 @@ struct event_data_instance {
 	SaSizeT					edi_event_data_size;
 	int						edi_freeing;
 	pthread_mutex_t			edi_mutex;
+	struct handle_list		*edi_hl;
 };
 
 
@@ -182,10 +197,37 @@ struct event_data_instance {
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle
+ * Not to be confused with event data.
  */
 static void evtHandleInstanceDestructor(void *instance)
 {
+	struct event_instance *evti = instance;
+	struct event_channel_instance *eci;
+	struct handle_list *hl;
+	struct list_head *l, *nxt;
+	uint64_t handle;
+	SaAisErrorT error;
 
+	/*
+	 * Free up any channel data 
+	 */
+	for (l = evti->ei_channel_list.next; 
+								l != &evti->ei_channel_list; l = nxt) {
+		nxt = l->next;
+
+		hl = list_entry(l, struct handle_list, hl_entry);
+		handle = hl->hl_handle;
+		error = saHandleInstanceGet(&channel_handle_db, hl->hl_handle,
+			(void*)&eci);
+		if (error != SA_AIS_OK) {
+			/*
+			 * already gone
+			 */
+			continue;
+		}
+		saHandleDestroy(&channel_handle_db, handle);
+		saHandleInstancePut(&channel_handle_db, handle);
+	}
 }
 
 /*
@@ -193,6 +235,26 @@ static void evtHandleInstanceDestructor(void *instance)
  */
 static void chanHandleInstanceDestructor(void *instance)
 {
+	struct event_channel_instance *eci  = instance;
+	struct list_head *l, *nxt;
+	struct handle_list *hl;
+	uint64_t handle;
+
+	if (eci->eci_hl) {
+		list_del(&eci->eci_hl->hl_entry);
+		free(eci->eci_hl);
+		eci->eci_hl = 0;
+	}
+	/*
+	 * Free up any channel associated events
+	 */
+	for (l = eci->eci_event_list.next; l != &eci->eci_event_list; l = nxt) {
+		nxt = l->next;
+		hl = list_entry(l, struct handle_list, hl_entry);
+		handle = hl->hl_handle;
+		saEvtEventFree(handle);
+	}
+
 }
 
 /*
@@ -202,6 +264,12 @@ static void eventHandleInstanceDestructor(void *instance)
 {
 	struct event_data_instance *edi = instance;
 	int i;
+
+	if (edi->edi_hl) {
+		list_del(&edi->edi_hl->hl_entry);
+		free(edi->edi_hl);
+		edi->edi_hl = 0;
+	}
 	for (i = 0; i < edi->edi_patterns.patternsNumber; i++) {
 		free(edi->edi_patterns.patterns[i].pattern);
 	}
@@ -258,6 +326,10 @@ saEvtInitialize(
 	SaAisErrorT error = SA_AIS_OK;
 	struct event_instance *evti;
 
+	if (!version || !evtHandle) {
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_nofree;
+	}
 	/*
 	 * validate the requested version with what we support
 	 */
@@ -284,6 +356,8 @@ saEvtInitialize(
 		goto error_handle_free;
 	}
 	memset(evti, 0, sizeof(*evti));
+	
+	list_init(&evti->ei_channel_list);
 
 	/*
 	 * Save the version so we can check with the event server
@@ -340,6 +414,10 @@ saEvtSelectionObjectGet(
 	struct event_instance *evti;
 	SaAisErrorT error;
 
+	if (!selectionObject) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle, 
 			(void *)&evti);
 
@@ -363,9 +441,11 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 				struct lib_event_data *evt)
 {
 	struct event_data_instance *edi;
+	struct event_channel_instance *eci;
 	SaEvtEventPatternT *pat;
 	SaUint8T *str;
 	SaAisErrorT error;
+	struct handle_list *hl;
 	int i;
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
@@ -381,6 +461,13 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 				(void*)&edi);
 	if (error != SA_AIS_OK) {
 			goto make_evt_done;
+	}
+
+	error = saHandleInstanceGet(&channel_handle_db, 
+			evt->led_lib_channel_handle,
+			(void*)&eci);
+	if (error != SA_AIS_OK) {
+		goto make_evt_done_put;
 	}
 
 	memset(edi, 0, sizeof(*edi));
@@ -426,6 +513,16 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		str += pat->patternSize;
 		pat++; 
 	}
+
+	hl = malloc(sizeof(*hl));
+	edi->edi_hl = hl;
+	hl->hl_handle = *event_handle;
+	list_init(&hl->hl_entry);
+	list_add(&hl->hl_entry, &eci->eci_event_list);
+
+	saHandleInstancePut (&channel_handle_db, evt->led_lib_channel_handle);
+
+make_evt_done_put:
 	saHandleInstancePut (&event_handle_db, *event_handle);
 
 make_evt_done:
@@ -455,6 +552,11 @@ saEvtDispatch(
 	struct lib_event_data *evt = 0;
 	struct res_evt_event_data res;
 
+	if (dispatchFlags < SA_DISPATCH_ONE || 
+			dispatchFlags > SA_DISPATCH_BLOCKING) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 		(void *)&evti);
 	if (error != SA_AIS_OK) {
@@ -464,7 +566,7 @@ saEvtDispatch(
 	/*
 	 * Timeout instantly for SA_DISPATCH_ALL
 	 */
-	if (dispatchFlags == SA_DISPATCH_ALL) {
+	if (dispatchFlags == SA_DISPATCH_ALL || dispatchFlags == SA_DISPATCH_ONE) {
 		timeout = 0;
 	}
 
@@ -505,7 +607,9 @@ saEvtDispatch(
 		}
 
  		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && 
+				(dispatchFlags == SA_DISPATCH_ALL || 
+				 dispatchFlags == SA_DISPATCH_ONE)) {
 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else if (dispatch_avail == 0) {
@@ -764,6 +868,7 @@ saEvtChannelOpen(
 	struct req_evt_channel_open req;
 	struct res_evt_channel_open res;
 	struct event_channel_instance *eci;
+	struct handle_list *hl;
 	SaAisErrorT error;
 	struct iovec iov;
 
@@ -783,12 +888,15 @@ saEvtChannelOpen(
 		goto chan_open_put;
 	}
 
+
 	error = saHandleInstanceGet(&channel_handle_db, *channelHandle,
 					(void*)&eci);
 	if (error != SA_AIS_OK) {
 		saHandleDestroy(&channel_handle_db, *channelHandle);
 		goto chan_open_put;
 	}
+
+	list_init(&eci->eci_event_list);
 
 	/*
 	 * Send the request to the server and wait for a response
@@ -830,6 +938,12 @@ saEvtChannelOpen(
 	eci->eci_open_flags = channelOpenFlags;
 	eci->eci_instance_handle = evtHandle;
 	eci->eci_closing = 0;
+	hl = malloc(sizeof(*hl));
+	eci->eci_hl = hl;
+	hl->hl_handle = *channelHandle;
+	list_init(&hl->hl_entry);
+	list_add(&hl->hl_entry, &evti->ei_channel_list);
+
 	pthread_mutex_init(&eci->eci_mutex, NULL);
 	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
 	saHandleInstancePut (&channel_handle_db, *channelHandle);
@@ -951,6 +1065,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	struct event_channel_instance *eci;
 	SaEvtChannelHandleT channel_handle;
 	SaAisErrorT error;
+	struct handle_list *hl;
 	struct iovec iov;
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
@@ -978,6 +1093,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 		goto chan_open_put;
 	}
 
+
 	error = saHandleInstanceGet(&channel_handle_db, channel_handle,
 					(void*)&eci);
 	if (error != SA_AIS_OK) {
@@ -985,6 +1101,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 		goto chan_open_put;
 	}
 
+	list_init(&eci->eci_event_list);
 
 	/*
 	 * Send the request to the server.  The response isn't the open channel,
@@ -1028,6 +1145,13 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	eci->eci_open_flags = channelOpenFlags;
 	eci->eci_instance_handle = evtHandle;
 	eci->eci_closing = 0;
+	list_init(&eci->eci_event_list);
+	hl = malloc(sizeof(*hl));
+	eci->eci_hl = hl;
+	hl->hl_handle = channel_handle;
+	list_init(&hl->hl_entry);
+	list_add(&hl->hl_entry, &evti->ei_channel_list);
+
 	pthread_mutex_init(&eci->eci_mutex, NULL);
 	saHandleInstancePut (&evt_instance_handle_db, evtHandle);
 	saHandleInstancePut (&channel_handle_db, channel_handle);
@@ -1132,6 +1256,7 @@ saEvtEventAllocate(
 	struct event_data_instance *edi;
 	struct event_instance *evti;
 	struct event_channel_instance *eci;
+	struct handle_list *hl;
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
@@ -1164,6 +1289,13 @@ saEvtEventAllocate(
 	edi->edi_pub_node = evti->ei_node_id;
 	edi->edi_priority = SA_EVT_LOWEST_PRIORITY;
 	edi->edi_event_id = SA_EVT_EVENTID_NONE;
+	hl = malloc(sizeof(*hl));
+	edi->edi_hl = hl;
+	hl->hl_handle = *eventHandle;
+	list_init(&hl->hl_entry);
+	list_add(&hl->hl_entry, &eci->eci_event_list);
+
+
 	saHandleInstancePut (&event_handle_db, *eventHandle);
 
 alloc_put2:

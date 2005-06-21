@@ -264,7 +264,7 @@ test_channel()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
@@ -317,7 +317,7 @@ test_channel()
 		return;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -413,7 +413,7 @@ test_channel()
 		return;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -458,7 +458,7 @@ test_channel()
 		return;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -913,7 +913,7 @@ test_event()
 		return;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -1445,7 +1445,7 @@ test_multi_channel1()
 		return;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -1792,7 +1792,7 @@ test_multi_channel2()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -1802,7 +1802,7 @@ test_multi_channel2()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2101,7 +2101,7 @@ test_multi_channel3()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2111,7 +2111,7 @@ test_multi_channel3()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name1, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name1, flags, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2393,7 +2393,7 @@ test_retention()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags, SA_TIME_MAX,
 				&channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2856,7 +2856,7 @@ test_unlink_channel()
 	printf("       2 Channel open/close/open:\n");
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags1, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 
@@ -2878,7 +2878,7 @@ test_unlink_channel()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags2, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2909,7 +2909,7 @@ test_unlink_channel()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags2, SA_TIME_MAX,
 				&channel_handle2);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_NOT_EXIST) {
@@ -2939,7 +2939,7 @@ test_unlink_channel()
 	 */
 	printf("       4 Channel open/unlink/close/open:\n");
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags1, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -2967,7 +2967,7 @@ test_unlink_channel()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags2, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags2, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_ERR_NOT_EXIST) {
@@ -2989,7 +2989,7 @@ test_unlink_channel()
 	printf("       5 Channel open/unlink/open/send:\n");
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags1, SA_TIME_MAX,
 				&channel_handle1);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
@@ -3008,7 +3008,7 @@ test_unlink_channel()
 	}
 
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags1, 0,
+		result = saEvtChannelOpen(handle, &channel_name, flags1, SA_TIME_MAX,
 				&channel_handle2);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {

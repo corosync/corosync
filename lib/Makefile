@@ -84,7 +84,7 @@ libSaCkpt.so.1.0: util.o ckpt.o
 libSaEvt.a: util.o evt.o
 	$(AR) -rc libSaEvt.a util.o evt.o
 
-libSaEvt.so.1.0: util.o ckpt.o
+libSaEvt.so.1.0: util.o evt.o
 	$(CC) -shared -Wl,-soname,libSaEvt.so.1 util.o evt.o -o $@
 	rm -f libSaEvt.so.1 libSaEvt.so
 	ln -s libSaEvt.so.1.0 libSaEvt.so.1

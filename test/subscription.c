@@ -118,8 +118,8 @@ test_subscription()
 		return result;
 	}
 	do {
-		result = saEvtChannelOpen(handle, &channel_name, flags, 0,
-				&channel_handle);
+		result = saEvtChannelOpen(handle, &channel_name, flags, 
+				SA_TIME_MAX, &channel_handle);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
 	if (result != SA_AIS_OK) {
 		get_sa_error(result, result_buf, result_buf_len);

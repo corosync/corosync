@@ -55,6 +55,16 @@ typedef uint64_t SaUint64T;
 typedef SaInt64T SaTimeT;
 
 #define SA_TIME_END ((SaTimeT)0x7fffffffffffffffull)
+#define SA_TIME_BEGIN            0x0ULL
+#define SA_TIME_UNKNOWN          0x8000000000000000ULL
+
+#define SA_TIME_ONE_MICROSECOND 1000ULL
+#define SA_TIME_ONE_MILLISECOND 1000000ULL
+#define SA_TIME_ONE_SECOND      1000000000ULL
+#define SA_TIME_ONE_MINUTE      60000000000ULL
+#define SA_TIME_ONE_HOUR        3600000000000ULL
+#define SA_TIME_ONE_DAY         86400000000000ULL
+#define SA_TIME_MAX             SA_TIME_END
 
 #define SA_MAX_NAME_LENGTH 256
 typedef struct {

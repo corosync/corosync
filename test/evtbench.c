@@ -148,8 +148,8 @@ test_pub()
 		printf("Event Initialize result: %d\n", result);
 		exit(1);
 	}
-	result = saEvtChannelOpen(handle, &channel_name, flags, 0,
-				&channel_handle);
+	result = saEvtChannelOpen(handle, &channel_name, flags, 
+			SA_TIME_MAX, &channel_handle);
 	if (result != SA_AIS_OK) {
 		printf("channel open result: %d\n", result);
 		goto evt_fin;
