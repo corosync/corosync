@@ -1390,15 +1390,13 @@ saEvtEventAttributesSet(
 	edi->edi_priority = priority;
 	edi->edi_retention_time = retentionTime;
 
-	/*
-	 * publisherName or patternArray not allowed to be NULL
-	 */
-	if (!publisherName || !patternArray) {
-			error = SA_AIS_ERR_INVALID_PARAM;
-			goto attr_set_unlock;
+	if (publisherName) {
+		edi->edi_pub_name = *publisherName;
 	}
 
-	edi->edi_pub_name = *publisherName;
+	if (!patternArray) {
+		goto attr_set_unlock;
+	}
 
 	oldpatterns = edi->edi_patterns.patterns;
 	oldnumber = edi->edi_patterns.patternsNumber;
@@ -1777,15 +1775,6 @@ saEvtEventPublish(
 		goto pub_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
-
-	/*
-	 * See if patterns have been set for this event.  If not, we
-	 * can't publish.
-	 */
-	if (!edi->edi_patterns.patterns) {
-		error = SA_AIS_ERR_INVALID_PARAM;
-		goto pub_put1;
-	}
 
 	error = saHandleInstanceGet(&channel_handle_db, edi->edi_channel_handle,
 			(void*)&eci);

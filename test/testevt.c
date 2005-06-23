@@ -725,6 +725,7 @@ SaUint8T priority;
 SaTimeT retention_time = 0ULL;
 SaNameT publisher_name = {0, {0}};
 SaSizeT event_data_size;
+int expected_pat_count;
 
 /*
  * Test event operations.
@@ -791,10 +792,15 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 			(unsigned long long)event_id, (unsigned long long)my_event_id);
 	}
 
-	if (evt_pat_get_array.patternsNumber != 4) {
-		printf("ERROR: pattern array count not 4: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+	if (evt_pat_get_array.patternsNumber != expected_pat_count) {
+		printf("ERROR: pattern array count not %d: %lld\n", 
+					expected_pat_count, evt_pat_get_array.patternsNumber);
 	}
+
+	if (expected_pat_count == 0) {
+		goto evt_free;
+	}
+
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		if (evt_pat_get_array.patterns[i].patternSize !=
 				evt_pat_set_array.patterns[i].patternSize) {
@@ -1146,29 +1152,6 @@ test_event()
 	printf("       Publish with no patterns set\n");
 
 	do {
-		result = saEvtEventAllocate(channel_handle, &event_handle);
-	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
-		get_sa_error(result, result_buf, result_buf_len);
-		printf("ERROR: event Allocate result: %s\n", result_buf);
-		goto evt_close;
-	}
-
-	do {
-		result = saEvtEventPublish(event_handle, 0, 0, &event_id);
-	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_ERR_INVALID_PARAM) {
-		get_sa_error(result, result_buf, result_buf_len);
-		printf("ERROR: event Publish result(1): %s\n", result_buf);
-		goto evt_close;
-	}
-
-	/*
-	 * Publish with pattens
-	 */
-	printf("       Publish with patterns set\n");
-
-	do {
 		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
 			subscription_id);
@@ -1194,6 +1177,65 @@ test_event()
 		return;
 	}
 
+	do {
+		result = saEvtEventAllocate(channel_handle, &event_handle);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event Allocate result: %s\n", result_buf);
+		goto evt_close;
+	}
+
+	expected_pat_count = 0;
+	do {
+		result = saEvtEventPublish(event_handle, 0, 0, &event_id);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: event Publish result(1): %s\n", result_buf);
+		goto evt_close;
+	}
+
+	/*
+	 * See if we got the event
+	 */
+	do {
+		result = saEvtSelectionObjectGet(handle, &fd);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: saEvtSelectionObject get %s\n", result_buf);
+		/* error */
+		return;
+	}
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	nfd = poll(&pfd, 1, timeout);
+	if (nfd <= 0) {
+		printf("ERROR: poll fds %d\n", nfd);
+		if (nfd < 0) {
+			perror("ERROR: poll error");
+		}
+		/* Error */
+		return;
+	}
+
+	do {
+		result = saEvtDispatch(handle, SA_DISPATCH_ONE);
+	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
+	if (result != SA_AIS_OK) {
+		get_sa_error(result, result_buf, result_buf_len);
+		printf("ERROR: saEvtDispatch %s\n", result_buf);
+		/* error */
+		return;
+	}
+
+
+	/*
+	 * Publish with pattens
+	 */
+	printf("       Publish with patterns set\n");
+
 	retention_time = 0ULL;
 	do {
 		result = saEvtEventAttributesSet(event_handle,
@@ -1216,6 +1258,7 @@ test_event()
 		exp_data[i] = lrand48();
 	}
 	event_data_size = DATA_SIZE;
+	expected_pat_count = 4;
 
 	/*
 	 * Send it
