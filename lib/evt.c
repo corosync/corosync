@@ -876,6 +876,11 @@ saEvtChannelOpen(
 		return SA_AIS_ERR_INVALID_PARAM;
 	}
 
+	if ((channelOpenFlags & ~(SA_EVT_CHANNEL_CREATE|SA_EVT_CHANNEL_PUBLISHER|
+					SA_EVT_CHANNEL_SUBSCRIBER)) != 0) {
+		return SA_AIS_ERR_BAD_FLAGS;
+	}
+
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
 			(void*)&evti);
 	
@@ -1074,6 +1079,11 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 
 	if (!channelName) {
 		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
+	if ((channelOpenFlags & ~(SA_EVT_CHANNEL_CREATE|SA_EVT_CHANNEL_PUBLISHER|
+					SA_EVT_CHANNEL_SUBSCRIBER)) != 0) {
+		return SA_AIS_ERR_BAD_FLAGS;
 	}
 
 	error = saHandleInstanceGet(&evt_instance_handle_db, evtHandle,
@@ -1305,6 +1315,8 @@ saEvtEventAllocate(
 	edi->edi_pub_node = evti->ei_node_id;
 	edi->edi_priority = SA_EVT_LOWEST_PRIORITY;
 	edi->edi_event_id = SA_EVT_EVENTID_NONE;
+	edi->edi_pub_time = SA_TIME_UNKNOWN;
+	edi->edi_retention_time = 0;
 	hl = malloc(sizeof(*hl));
 	edi->edi_hl = hl;
 	hl->hl_handle = *eventHandle;
