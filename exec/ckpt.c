@@ -1251,7 +1251,7 @@ static int recovery_checkpoint_open(SaNameT *checkpointName,
 	 * If the checkpoint has been unlinked, it is an invalid name
 	 */
 	if (ckptCheckpoint->unlinked) {
-		error = SA_AIS_ERR_BAD_CHECKPOINT; /* Is this the correct return ? */
+		error = SA_AIS_ERR_BAD_OPERATION; /* Is this the correct return ? */
 		goto error_exit;
 	}
 	
