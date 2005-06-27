@@ -1392,6 +1392,11 @@ saEvtEventAttributesSet(
 	struct event_data_instance *edi;
 	int i;
 
+	if (priority < SA_EVT_HIGHEST_PRIORITY ||
+			priority > SA_EVT_LOWEST_PRIORITY) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
+
 	error = saHandleInstanceGet(&event_handle_db, eventHandle,
 			(void*)&edi);
 	if (error != SA_AIS_OK) {
