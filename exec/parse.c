@@ -413,6 +413,7 @@ extern int openais_main_config_read (char **error_string,
 	int interface_max)
 {
 	FILE *fp;
+	int res = 0;
 	int line_number = 0;
 	main_parse_t parse = MAIN_HEAD;
 	int network_parsed = 0;
@@ -496,10 +497,10 @@ extern int openais_main_config_read (char **error_string,
 
 		case MAIN_NETWORK:
 			if ((loc = strstr_rs (line, "mcastaddr:"))) {
-				inet_aton (loc, &openais_config->mcast_addr.sin_addr);
+				res = inet_aton (loc, &openais_config->mcast_addr.sin_addr);
 			} else
 			if ((loc = strstr_rs (line, "mcastport:"))) {
-				openais_config->mcast_addr.sin_port = htons (atoi (loc));
+				res = openais_config->mcast_addr.sin_port = htons (atoi (loc));
 			} else
 			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
 				if (interface_max == openais_config->interface_count) {
@@ -508,13 +509,19 @@ extern int openais_main_config_read (char **error_string,
 					openais_config->interface_count);
 					goto parse_error;
 				}
-				inet_aton (loc,
+				res = inet_aton (loc,
 					&openais_config->interfaces[openais_config->interface_count].bindnet.sin_addr);
 				openais_config->interface_count += 1;
 			} else
 			if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
+				res = 1; /* any nonzero is ok */
 			} else {
+				goto parse_error;
+			}
+
+			if (res == 0) {
+				sprintf (error_reason, "invalid network address or port number\n");
 				goto parse_error;
 			}
 			break;
