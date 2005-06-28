@@ -57,6 +57,8 @@ timer_handle timerlist_add_future (struct timerlist *timerlist,
 
 void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle);
 
+void timerlist_del_data (struct timerlist *timerlist, timer_handle timer_handle);
+
 void timerlist_expire (struct timerlist *timerlist);
 
 unsigned int timerlist_timeout_msec (struct timerlist *timerlist);

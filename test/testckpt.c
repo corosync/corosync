@@ -316,7 +316,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		0,
 		&checkpointHandle2);
 	printf ("%s: Opening unlinked checkpoint\n", 
-		get_test_output (error, 7));
+		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointClose (checkpointHandle);
 	printf ("%s: Closing checkpoint\n", 
@@ -394,7 +394,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 									"Initial Data #2",
 									strlen ("Initial Data #2") + 1);
 	printf ("%s: creating section 2 \n",
-		get_test_output (error, SA_AIS_OK));
+		get_test_output (error, SA_AIS_ERR_EXIST));
 
 	error = saCkptSectionExpirationTimeSet (checkpointHandle,
 		&sectionId2,

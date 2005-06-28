@@ -342,6 +342,32 @@ error_exit:
 	return (-1);
 }
 
+int poll_timer_delete_data (
+	poll_handle handle,
+	poll_timer_handle timer_handle) {
+	struct poll_instance *poll_instance;
+	SaErrorT error;
+
+	if (timer_handle == 0) {
+		return (0);
+	}
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	timerlist_del_data (&poll_instance->timerlist, (void *)timer_handle);
+
+	saHandleInstancePut (&poll_instance_database, handle);
+
+	return (0);
+
+error_exit:
+        return (-1);
+
+}
+
 
 int poll_entry_compare (const void *a, const void *b) {
 	struct poll_entry *poll_entry_a = (struct poll_entry *)a;

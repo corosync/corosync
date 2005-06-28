@@ -147,6 +147,17 @@ void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
 	timers_inuse--;
 	free (timer);
 }
+
+void timerlist_del_data (struct timerlist *timerlist, timer_handle timer_handle)
+{
+	struct timer *timer = (struct timer *)timer_handle;
+
+	if (timer->data) {
+		free (timer->data);
+	}
+	timerlist_del(timerlist,timer_handle);
+}
+
 static void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
 {
 	struct timer *timer = (struct timer *)timer_handle;
