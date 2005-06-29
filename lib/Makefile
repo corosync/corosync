@@ -32,19 +32,16 @@
 #LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -DDEBUG -Wall -fPIC
+CFLAGS = -g -DDEBUG -Wall
 LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O3 -pg -DDEBUG -fPIC
+#CFLAGS = -O3 -pg -DDEBUG
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
-
-
-CFLAGS += -fPIC
 
 all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
 	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libais.a libais.so.1.0 libevs.a \
@@ -113,6 +110,10 @@ clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
 		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libevs.so* libevs.a \
 		*.da *.bb *.bbg
+ 
+# -fPIC rules required for all libraries
+%.o: %.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1

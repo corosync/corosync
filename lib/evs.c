@@ -569,12 +569,10 @@ evs_error_t evs_membership_get (
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	if (error != SA_OK) {
-	printf ("error\n");
 		goto error_exit;
 	}
 
 	error = res_lib_evs_membership_get.header.error;
-	printf ("members is %d\n", res_lib_evs_membership_get.member_list_entries);
 
 	/*
 	 * Copy results to caller

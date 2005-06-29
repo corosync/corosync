@@ -139,8 +139,6 @@ static struct saVersionDatabase ckptVersionDatabase = {
  */
 void ckptHandleInstanceDestructor (void *instance)
 {
-struct ckptInstance *ckptInstance = (struct ckptInstance *)instance;
-
 }
 
 void checkpointHandleInstanceDestructor (void *instance)

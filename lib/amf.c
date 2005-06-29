@@ -110,7 +110,7 @@ saAmfInitialize (
 	struct amfInstance *amfInstance;
 	SaErrorT error = SA_OK;
 
-	error = saVersionVerify (&amfVersionDatabase, version);
+	error = saVersionVerify (&amfVersionDatabase, (SaVersionT *)version);
 	if (error != SA_OK) {
 		goto error_no_destroy;
 	}
