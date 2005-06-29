@@ -481,6 +481,10 @@ saCkptCheckpointOpen (
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
+	if (checkpointName == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
 		checkpointCreationAttributes == NULL) {
 
