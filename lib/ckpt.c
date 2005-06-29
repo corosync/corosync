@@ -477,6 +477,10 @@ saCkptCheckpointOpen (
 	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopen res_lib_ckpt_checkpointopen;
 
+	if (checkpointHandle == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
 		checkpointCreationAttributes == NULL) {
 
