@@ -1223,6 +1223,11 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to open checkpoint %p\n", req_exec_ckpt_checkpointopen);
 	
+	if (req_exec_ckpt_checkpointopen->fail_with_error != SA_AIS_OK) {
+		error = req_exec_ckpt_checkpointopen->fail_with_error;
+		goto error_exit;
+	}
+
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointopen->checkpointName);
 
 	/*
@@ -2540,6 +2545,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	req_exec_ckpt_checkpointopen.async_call = 0;
 	req_exec_ckpt_checkpointopen.invocation = 0;
 	req_exec_ckpt_checkpointopen.checkpointHandle = 0;
+	req_exec_ckpt_checkpointopen.fail_with_error = SA_AIS_OK;
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
@@ -2569,6 +2575,7 @@ static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *c
 	req_exec_ckpt_checkpointopen.async_call = 1;
 	req_exec_ckpt_checkpointopen.invocation = req_lib_ckpt_checkpointopenasync->invocation;
 	req_exec_ckpt_checkpointopen.checkpointHandle = req_lib_ckpt_checkpointopenasync->checkpointHandle;
+	req_exec_ckpt_checkpointopen.fail_with_error = req_lib_ckpt_checkpointopenasync->fail_with_error;
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);

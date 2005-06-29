@@ -117,6 +117,7 @@ struct req_exec_ckpt_checkpointopen {
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaInvocationT invocation;
 	int async_call;
+	SaAisErrorT fail_with_error;
 };
 
 
@@ -128,6 +129,7 @@ struct req_lib_ckpt_checkpointopenasync {
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 	SaInvocationT invocation;
 	SaCkptCheckpointHandleT checkpointHandle;
+	SaAisErrorT fail_with_error;
 };
 
 struct res_lib_ckpt_checkpointopenasync {
