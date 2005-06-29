@@ -497,6 +497,13 @@ saCkptCheckpointOpen (
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
+	if (checkpointCreationAttributes &&
+		(checkpointCreationAttributes->checkpointSize >
+		(checkpointCreationAttributes->maxSections * checkpointCreationAttributes->maxSectionSize))) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
 		(void *)&ckptInstance);
 	if (error != SA_AIS_OK) {
