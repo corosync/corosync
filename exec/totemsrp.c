@@ -3577,7 +3577,9 @@ if (random()%100 < 50) {
 	return (0);
 }
 #endif
-	cancel_token_retransmit_timeout (); // REVIEWED
+	if (system_from->sin_addr.s_addr != my_id.sin_addr.s_addr) {
+		cancel_token_retransmit_timeout ();
+	}
 
 	/*
 	 * If the message is foreign execute the switch below
