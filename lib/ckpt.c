@@ -718,6 +718,9 @@ saCkptCheckpointUnlink (
 	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
 	struct res_lib_ckpt_checkpointunlink res_lib_ckpt_checkpointunlink;
 
+	if (checkpointName == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle, (void *)&ckptInstance);
 	if (error != SA_AIS_OK) {
 		goto exit_noclose;
