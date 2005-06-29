@@ -32,11 +32,11 @@
 #LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -DDEBUG -Wall
+CFLAGS = -g -DDEBUG -Wall -fPIC
 LDFLAGS = -g
 
 # Profile mode flags
-#CFLAGS = -O3 -pg -DDEBUG
+#CFLAGS = -O3 -pg -DDEBUG -fPIC
 #LDFLAGS = -pg
 
 # Code Coverage with lcov flgs
