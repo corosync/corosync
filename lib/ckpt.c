@@ -351,11 +351,12 @@ saCkptDispatch (
 			 * This instance get/listadd/put required so that close
 			 * later has the proper list of checkpoints
 			 */
-			error = saHandleInstanceGet (&checkpointHandleDatabase,
-				res_lib_ckpt_checkpointopenasync->checkpointHandle,
-				(void *)&ckptCheckpointInstance);
-			assert (error == SA_AIS_OK); /* should only be valid handles here */
 			if (res_lib_ckpt_checkpointopenasync->header.error == SA_AIS_OK) {
+				error = saHandleInstanceGet (&checkpointHandleDatabase,
+					res_lib_ckpt_checkpointopenasync->checkpointHandle,
+					(void *)&ckptCheckpointInstance);
+
+					assert (error == SA_AIS_OK); /* should only be valid handles here */
 				/*
 				 * open succeeded without error
 				 */
@@ -373,11 +374,6 @@ saCkptDispatch (
 				/*
 				 * open failed with error
 				 */
-				saHandleInstancePut (&checkpointHandleDatabase,
-					res_lib_ckpt_checkpointopenasync->checkpointHandle);
-				saHandleDestroy (&checkpointHandleDatabase,
-					res_lib_ckpt_checkpointopenasync->checkpointHandle);
-
 				callbacks.saCkptCheckpointOpenCallback(
 					res_lib_ckpt_checkpointopenasync->invocation,
 					-1,
@@ -581,6 +577,7 @@ saCkptCheckpointOpenAsync (
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaAisErrorT error;
 	struct req_lib_ckpt_checkpointopenasync req_lib_ckpt_checkpointopenasync;
+	struct res_lib_ckpt_checkpointopenasync res_lib_ckpt_checkpointopenasync;
 
 	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
 		checkpointCreationAttributes == NULL) {
@@ -638,6 +635,19 @@ saCkptCheckpointOpenAsync (
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
+
+	error = saRecvRetry (ckptCheckpointInstance->response_fd,
+		&res_lib_ckpt_checkpointopenasync,
+		sizeof (struct res_lib_ckpt_checkpointopenasync),
+		MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		goto error_put_destroy;
+	}
+	
+	if (res_lib_ckpt_checkpointopenasync.header.error != SA_AIS_OK) {
+		error = res_lib_ckpt_checkpointopenasync.header.error;
+		goto error_put_destroy;
+	}
 	
 	pthread_mutex_init (&ckptCheckpointInstance->response_mutex, NULL);
 
@@ -645,7 +655,7 @@ saCkptCheckpointOpenAsync (
 
 	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
-	return (error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointopenasync.header.error : error);
 
 error_put_destroy:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
@@ -872,7 +882,6 @@ saCkptCheckpointStatusGet (
 		&res_lib_ckpt_checkpointstatusget.checkpointDescriptor,
 		sizeof (SaCkptCheckpointDescriptorT));
 
-printf ("error is %d\n", res_lib_ckpt_checkpointstatusget.header.error);
 error_exit:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointstatusget.header.error : error);

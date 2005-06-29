@@ -1291,14 +1291,13 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 	} else {
 		if (req_lib_ckpt_checkpointopen->checkpointCreationAttributesSet &&
 			memcmp (&ckptCheckpoint->checkpointCreationAttributes,
-				&req_lib_ckpt_checkpointopen->checkpointCreationAttributesSet,
-				sizeof (SaCkptCheckpointCreationAttributesT)) == 0) {
+				&req_lib_ckpt_checkpointopen->checkpointCreationAttributes,
+				sizeof (SaCkptCheckpointCreationAttributesT)) != 0) {
 
 			error = SA_AIS_ERR_EXIST;
 			goto error_exit;
 		}
 	}
-
 
 	/*
 	 * If the checkpoint has been unlinked, it is an invalid name
@@ -1357,7 +1356,12 @@ error_exit:
 			res_lib_ckpt_checkpointopenasync.checkpointHandle = req_exec_ckpt_checkpointopen->checkpointHandle;
 			res_lib_ckpt_checkpointopenasync.invocation = req_exec_ckpt_checkpointopen->invocation;
 
-			libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info->conn_info_partner,
+			libais_send_response (
+				req_exec_ckpt_checkpointopen->source.conn_info,
+				&res_lib_ckpt_checkpointopenasync,
+				sizeof (struct res_lib_ckpt_checkpointopenasync));
+			libais_send_response (
+				req_exec_ckpt_checkpointopen->source.conn_info->conn_info_partner,
 				&res_lib_ckpt_checkpointopenasync,
 				sizeof (struct res_lib_ckpt_checkpointopenasync));
 		} else {
