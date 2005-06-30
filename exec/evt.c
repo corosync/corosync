@@ -38,6 +38,7 @@
 #define CHAN_OPEN_DEBUG LOG_LEVEL_DEBUG
 #define CHAN_UNLINK_DEBUG LOG_LEVEL_DEBUG
 #define REMOTE_OP_DEBUG LOG_LEVEL_DEBUG
+#define RETENTION_TIME_DEBUG LOG_LEVEL_DEBUG
 
 #include <sys/types.h>
 #include <malloc.h>
@@ -340,6 +341,23 @@ struct unlink_chan_pending {
  * list of pending unlink requests
  */
 static DECLARE_LIST_INIT(unlink_pending);
+
+/*
+ * Structure to track pending retention time clear requests.
+ * rtc_event_id:		event ID to clear.
+ * rtc_conn_info:		conn_info for returning to the library.
+ * rtc_entry:			list entry for pending clear list.
+ */
+struct retention_time_clear_pending {
+	SaEvtEventIdT		rtc_event_id;
+	struct conn_info	*rtc_conn_info;
+	struct list_head	rtc_entry;
+};
+
+/*
+ * list of pending clear requests.
+ */
+static DECLARE_LIST_INIT(clear_pending);
 
 /*
  * Next unlink ID
@@ -1311,7 +1329,7 @@ static void
 event_retention_timeout(void *data)
 {
 	struct event_data *edp = data;
-	log_printf(LOG_LEVEL_DEBUG, "Event ID %llx expired\n", 
+	log_printf(RETENTION_TIME_DEBUG, "Event ID %llx expired\n", 
 					edp->ed_event.led_event_id);
 	/*
 	 * adjust next_retained if we're in recovery and 
@@ -1340,14 +1358,14 @@ event_retention_timeout(void *data)
  * currently used.
  *
  */
-static void
+static SaAisErrorT
 clear_retention_time(SaEvtEventIdT event_id)
 {
 	struct event_data *edp;
 	struct list_head *l, *nxt;
 	int ret;
 
-	log_printf(LOG_LEVEL_DEBUG, "Search for Event ID %llx\n", event_id);
+	log_printf(RETENTION_TIME_DEBUG, "Search for Event ID %llx\n", event_id);
 	for (l = retained_list.next; l != &retained_list; l = nxt) {
 		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
@@ -1355,14 +1373,14 @@ clear_retention_time(SaEvtEventIdT event_id)
 				continue;
 		}
 
-		log_printf(LOG_LEVEL_DEBUG, 
+		log_printf(RETENTION_TIME_DEBUG, 
 							"Clear retention time for Event ID %llx\n", 
 				edp->ed_event.led_event_id);
 		ret = poll_timer_delete(aisexec_poll_handle, edp->ed_timer_handle);
 		if (ret != 0 ) {
 			log_printf(LOG_LEVEL_ERROR, "Error expiring event ID %llx\n",
 							edp->ed_event.led_event_id);
-			return;
+			return SA_AIS_ERR_NOT_EXIST;
 		}
 		edp->ed_event.led_retention_time = 0;
 		list_del(&edp->ed_retained);
@@ -1376,8 +1394,9 @@ clear_retention_time(SaEvtEventIdT event_id)
 			delete_channel(edp->ed_my_chan);
 		}
 		free_event_data(edp);
-		break;
+		return SA_AIS_OK;
 	}
+	return SA_AIS_ERR_NOT_EXIST;
 }
 
 /*
@@ -1897,7 +1916,7 @@ static void retain_event(struct event_data *evt)
 				"retention of event id 0x%llx failed\n",
 				evt->ed_event.led_event_id);
 	} else {
-		log_printf(LOG_LEVEL_DEBUG, "Retain event ID 0x%llx\n", 
+		log_printf(RETENTION_TIME_DEBUG, "Retain event ID 0x%llx\n", 
 					evt->ed_event.led_event_id);
 	}
 }
@@ -2239,7 +2258,7 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	struct req_evt_channel_unlink *req;
 	struct res_evt_channel_unlink res;
 	struct iovec chn_iovec;
-	struct unlink_chan_pending *ucp;
+	struct unlink_chan_pending *ucp = 0;
 	struct req_evt_chan_command cpkt;
 	SaAisErrorT error = SA_AIS_ERR_LIBRARY;
 
@@ -2271,6 +2290,7 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 
 	ucp->ucp_unlink_id = next_chan_unlink_id();
 	ucp->ucp_conn_info = conn_info;
+	list_init(&ucp->ucp_entry);
 	list_add_tail(&ucp->ucp_entry, &unlink_pending);
 
 	/*
@@ -2290,6 +2310,10 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	}
 
 evt_unlink_err:
+	if (ucp) {
+		list_del(&ucp->ucp_entry);
+		free(ucp);
+	}
 	res.iuc_head.size = sizeof(res);
 	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
 	res.iuc_head.error = error;
@@ -2575,56 +2599,59 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	struct req_evt_event_clear_retentiontime *req;
 	struct res_evt_event_clear_retentiontime res;
 	struct req_evt_chan_command cpkt;
+	struct retention_time_clear_pending *rtc = 0;
 	struct iovec rtn_iovec;
-	struct event_data *edp;
-	struct list_head *l, *nxt;
-	SaErrorT error = SA_AIS_ERR_NOT_EXIST;
+	SaAisErrorT error;
 	int ret;
 
 	req = message;
 
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(RETENTION_TIME_DEBUG, 
 		"saEvtEventRetentionTimeClear (Clear event retentiontime request)\n");
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(RETENTION_TIME_DEBUG, 
 		"event ID 0x%llx, chan handle 0x%x\n",
 			req->iec_event_id,
 			req->iec_channel_handle);
 
-	/*
-	 * Make sure that the event really exists first
-	 */
-	for (l = retained_list.next; l != &retained_list; l = nxt) {
-		nxt = l->next;
-		edp = list_entry(l, struct event_data, ed_retained);
-		if (edp->ed_event.led_event_id == req->iec_event_id) {
-		error = SA_AIS_OK;
-				break;
-		}
+	rtc = malloc(sizeof(*rtc));
+	if (!rtc) {
+		log_printf(LOG_LEVEL_ERROR,
+				"saEvtEventRetentionTimeClear: Memory allocation failure\n");
+		error = SA_AIS_ERR_TRY_AGAIN;
+		goto evt_ret_clr_err;
 	}
+	rtc->rtc_event_id = req->iec_event_id;
+	rtc->rtc_conn_info = conn_info;
+	list_init(&rtc->rtc_entry);
+	list_add_tail(&rtc->rtc_entry, &clear_pending);
 
 	/*
-	 * Then, if it's OK, send the clear request
+	 * Send the clear request
 	 */
-	if (error == SA_AIS_OK) {
-		memset(&cpkt, 0, sizeof(cpkt));
-		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
-		cpkt.chc_head.size = sizeof(cpkt);
-		cpkt.chc_op = EVT_CLEAR_RET_OP;
-		cpkt.u.chc_event_id = req->iec_event_id;
-		rtn_iovec.iov_base = &cpkt;
-		rtn_iovec.iov_len = cpkt.chc_head.size;
-		ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
-		if (ret != 0) {
-				error = SA_AIS_ERR_LIBRARY;
-		}
+	memset(&cpkt, 0, sizeof(cpkt));
+	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.size = sizeof(cpkt);
+	cpkt.chc_op = EVT_CLEAR_RET_OP;
+	cpkt.u.chc_event_id = req->iec_event_id;
+	rtn_iovec.iov_base = &cpkt;
+	rtn_iovec.iov_len = cpkt.chc_head.size;
+	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
+	if (ret == 0) {
+		return 0;
 	}
+	error = SA_AIS_ERR_LIBRARY;
 
+evt_ret_clr_err:
+	if (rtc) {
+		list_del(&rtc->rtc_entry);
+		free(rtc);
+	}
 	res.iec_head.size = sizeof(res);
 	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
 	res.iec_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-
 	return 0;
+
 }
 
 /*
@@ -2834,6 +2861,7 @@ static int evt_finalize(struct conn_info *conn_info)
 	struct list_head *l, *nxt;
 	struct open_chan_pending *ocp;
 	struct unlink_chan_pending *ucp;
+	struct retention_time_clear_pending *rtc;
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize (Event exit request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize %d evts on list\n",
@@ -2867,6 +2895,16 @@ static int evt_finalize(struct conn_info *conn_info)
 		if (esip == &ucp->ucp_conn_info->ais_ci.u.libevt_ci) {
 			list_del(&ucp->ucp_entry);
 			free(ucp);
+		}
+	}
+
+	for (l = clear_pending.next; 
+			l != &clear_pending; l = nxt) {
+		nxt = l->next;
+		rtc = list_entry(l, struct retention_time_clear_pending, rtc_entry);
+		if (esip == &rtc->rtc_conn_info->ais_ci.u.libevt_ci) {
+			list_del(&rtc->rtc_entry);
+			free(rtc);
 		}
 	}
 
@@ -3316,6 +3354,27 @@ static void evt_chan_unlink_finish(struct unlink_chan_pending *ucp)
 }
 
 /*
+ * Called by the retention time clear exec handler to
+ * respond to the application.
+ */
+static void evt_ret_time_clr_finish(struct retention_time_clear_pending *rtc,
+		SaAisErrorT ret)
+{
+	struct res_evt_event_clear_retentiontime res;
+
+	log_printf(RETENTION_TIME_DEBUG, "Retention Time Clear finish ID 0x%llx\n", 
+											rtc->rtc_event_id);
+
+	res.iec_head.size = sizeof(res);
+	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
+	res.iec_head.error = ret;
+	libais_send_response (rtc->rtc_conn_info, &res, sizeof(res));
+
+	list_del(&rtc->rtc_entry);
+	free(rtc);
+}
+
+/*
  * Take the channel command data and swap the elements so they match 
  * our architectures word order.
  */
@@ -3553,13 +3612,37 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 
 
 	/*
-	 * saEvtClearRetentiotime handler.
+	 * saEvtClearRetentionTime handler.
 	 */
-	case EVT_CLEAR_RET_OP:
-		log_printf(LOG_LEVEL_DEBUG, "Clear retention time request %llx\n",
+	case EVT_CLEAR_RET_OP: 
+	{
+		SaAisErrorT did_clear;
+		struct retention_time_clear_pending *rtc;
+		struct list_head *l, *nxt;
+
+		log_printf(RETENTION_TIME_DEBUG, "Clear retention time request %llx\n",
 				cpkt->u.chc_event_id);	
-		clear_retention_time(cpkt->u.chc_event_id);
+		did_clear = clear_retention_time(cpkt->u.chc_event_id);
+
+		/*
+		 * Respond to local library requests
+		 */
+		if (mn->mn_node_info.nodeId == my_node->nodeId) {
+			/*
+			 * Complete pending request
+			 */
+			for (l = clear_pending.next; l != &clear_pending; l = nxt) {
+				nxt = l->next;
+				rtc = list_entry(l, struct retention_time_clear_pending,
+												rtc_entry);
+				if (rtc->rtc_event_id == cpkt->u.chc_event_id) {
+					evt_ret_time_clr_finish(rtc, did_clear);
+					break;
+				}
+			}
+		}
 		break;
+	}
 	
 	/*
 	 * Set our next event ID based on the largest event ID seen
