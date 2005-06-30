@@ -3628,6 +3628,7 @@ if (random()%100 < 50) {
 	 * otherwise free io vectors
 	 */
 	if (bytes_received > 0 && bytes_received < PACKET_SIZE_MAX &&
+		my_aru < mcast_header.seq &&
 		sq_item_inuse (sort_queue, mcast_header.seq) == 0) {
 
 		/*
