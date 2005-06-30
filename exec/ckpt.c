@@ -1761,10 +1761,6 @@ static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct
 		 */
 		checkpoint_release (ckptCheckpoint);
 	}
-	else if ( ckptCheckpoint->referenceCount > 0 ) {
-		ckptCheckpoint->unlinked = 0;
-		ckptCheckpoint->expired = 0;
-	}
 
 error_exit:
 	/*
