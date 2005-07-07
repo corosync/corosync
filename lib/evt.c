@@ -195,6 +195,15 @@ struct event_data_instance {
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
+static inline int is_valid_event_id(SaEvtEventIdT evt_id)
+{
+	if (evt_id > 1000) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle
  * Not to be confused with event data.
@@ -2079,6 +2088,10 @@ saEvtEventRetentionTimeClear(
 	struct req_evt_event_clear_retentiontime req;
 	struct res_evt_event_clear_retentiontime res;
 	struct iovec iov;
+
+	if (!is_valid_event_id(eventId)) {
+		return SA_AIS_ERR_INVALID_PARAM;
+	}
 
 	error = saHandleInstanceGet(&channel_handle_db, channelHandle,
 			(void*)&eci);
