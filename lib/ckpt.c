@@ -256,6 +256,7 @@ saCkptDispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct message_overlay dispatch_data;
 	struct res_lib_ckpt_checkpointopenasync *res_lib_ckpt_checkpointopenasync;
+	struct res_lib_ckpt_checkpointsynchronizeasync *res_lib_ckpt_checkpointsynchronizeasync;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
 	if (dispatchFlags != SA_DISPATCH_ONE &&
@@ -378,6 +379,16 @@ saCkptDispatch (
 					-1,
 					res_lib_ckpt_checkpointopenasync->header.error);
 			}
+		case MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC:
+			if (callbacks.saCkptCheckpointSynchronizeCallback == NULL) {
+				continue;
+			}
+
+			res_lib_ckpt_checkpointsynchronizeasync = (struct res_lib_ckpt_checkpointsynchronizeasync *) &dispatch_data;
+
+			callbacks.saCkptCheckpointSynchronizeCallback(
+				res_lib_ckpt_checkpointsynchronizeasync->invocation,
+				res_lib_ckpt_checkpointsynchronizeasync->header.error);
 			break;
 		default:
 			/* TODO */
@@ -1619,44 +1630,52 @@ error_put:
 
 SaAisErrorT
 saCkptCheckpointSynchronizeAsync (
-	SaCkptHandleT ckptHandle,
 	SaCkptCheckpointHandleT checkpointHandle,
 	SaInvocationT invocation)
 {
-
-	return (SA_AIS_OK);
-
-/* TODO not implemented in executive
-
-	struct ckptInstance *ckptInstance;
-	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	SaAisErrorT error;
+	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointsynchronizeasync req_lib_ckpt_checkpointsynchronizeasync;
+	struct res_lib_ckpt_checkpointsynchronizeasync res_lib_ckpt_checkpointsynchronizeasync;
 
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
-
 		return (error);
 	}
 
-	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync);
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
+	}
+
+	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync); 
 	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
+	memcpy (&req_lib_ckpt_checkpointsynchronizeasync.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 	req_lib_ckpt_checkpointsynchronizeasync.invocation = invocation;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
-	pthread_mutex_lock (&ckptInstance->response_mutex);
-
-	error = saSendRetry (ckptInstance->response_fd, &req_lib_ckpt_checkpointsynchronizeasync,
+	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointsynchronizeasync,
 		sizeof (struct req_lib_ckpt_checkpointsynchronizeasync), MSG_NOSIGNAL);
 
-	pthread_mutex_unlock (&ckptInstance->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
 
+	error = saRecvRetry (ckptCheckpointInstance->response_fd,
+		&res_lib_ckpt_checkpointsynchronizeasync,
+		sizeof (struct res_lib_ckpt_checkpointsynchronizeasync),
+		MSG_WAITALL | MSG_NOSIGNAL);
+
+error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
-	saHandleInstancePut (&checkpointHandleDatabase, *checkpointHandle);
+error_put:
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
-	return (error);
-*/
+	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointsynchronizeasync.header.error : error);
+
+	return (SA_AIS_OK);
 }

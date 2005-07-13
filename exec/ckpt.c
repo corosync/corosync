@@ -3262,6 +3262,32 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 
 static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message)
 {
+	struct req_lib_ckpt_checkpointsynchronizeasync *req_lib_ckpt_checkpointsynchronizeasync = (struct req_lib_ckpt_checkpointsynchronizeasync *)message;
+	struct res_lib_ckpt_checkpointsynchronizeasync res_lib_ckpt_checkpointsynchronizeasync;
+	struct saCkptCheckpoint *checkpoint;
+
+	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointsynchronizeasync->checkpointName);
+	if ((checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+		res_lib_ckpt_checkpointsynchronizeasync.header.error = SA_AIS_ERR_BAD_OPERATION;
+	} else 
+	if (checkpoint->active_replica_set == 1) {
+		res_lib_ckpt_checkpointsynchronizeasync.header.error = SA_AIS_OK;
+	} else {
+		res_lib_ckpt_checkpointsynchronizeasync.header.error = SA_AIS_ERR_NOT_EXIST;
+	}
+
+	res_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct res_lib_ckpt_checkpointsynchronizeasync);
+	res_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
+	res_lib_ckpt_checkpointsynchronizeasync.invocation = req_lib_ckpt_checkpointsynchronizeasync->invocation;
+
+	libais_send_response (conn_info,
+		&res_lib_ckpt_checkpointsynchronizeasync,
+		sizeof (struct res_lib_ckpt_checkpointsynchronizeasync));
+
+	libais_send_response (conn_info->conn_info_partner,
+		&res_lib_ckpt_checkpointsynchronizeasync,
+		sizeof (struct res_lib_ckpt_checkpointsynchronizeasync));
+	
 	return (0);
 }
 

@@ -253,11 +253,13 @@ struct res_lib_ckpt_checkpointsynchronize {
 
 struct req_lib_ckpt_checkpointsynchronizeasync {
 	struct req_header header;
+	SaNameT checkpointName;
 	SaInvocationT invocation;
 };
 
 struct res_lib_ckpt_checkpointsynchronizeasync {
 	struct res_header header;
+	SaInvocationT invocation;
 };
 
 #endif /* IPC_CKPT_H_DEFINED */

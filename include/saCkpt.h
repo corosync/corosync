@@ -256,7 +256,6 @@ saCkptCheckpointSynchronize (
 
 SaAisErrorT
 saCkptCheckpointSynchronizeAsync (
-	SaCkptHandleT ckptHandle,
 	SaCkptCheckpointHandleT checkpointHandle,
 	SaInvocationT invocation);
 
