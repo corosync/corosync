@@ -1369,8 +1369,11 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 		ckptCheckpoint->retention_timer = 0;
 		ckptCheckpoint->expired = 0;
 		
-		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1 &&
+		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
 			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
+			ckptCheckpoint->active_replica_set = 1;
+		} else
+		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
 			ckptCheckpoint->active_replica_set = 1;
 		} else {
 			ckptCheckpoint->active_replica_set = 0;
