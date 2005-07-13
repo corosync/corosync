@@ -244,6 +244,7 @@ struct res_lib_ckpt_sectionread {
 
 struct req_lib_ckpt_checkpointsynchronize {
 	struct req_header header;
+	SaNameT checkpointName;
 };
 
 struct res_lib_ckpt_checkpointsynchronize {

@@ -3233,11 +3233,19 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 
 static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message)
 {
+	struct req_lib_ckpt_checkpointsynchronize *req_lib_ckpt_checkpointsynchronize = (struct req_lib_ckpt_checkpointsynchronize *)message;
 	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
+	struct saCkptCheckpoint *checkpoint;
+
+	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointsynchronize->checkpointName);
+	if (checkpoint->active_replica_set == 1) {
+		res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_OK;
+	} else {
+		res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_ERR_NOT_EXIST;
+	}
 
 	res_lib_ckpt_checkpointsynchronize.header.size = sizeof (struct res_lib_ckpt_checkpointsynchronize);
 	res_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
-	res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_OK;
 
 	libais_send_response (conn_info,
 		&res_lib_ckpt_checkpointsynchronize,

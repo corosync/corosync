@@ -1582,6 +1582,8 @@ saCkptCheckpointSynchronize (
 
 	req_lib_ckpt_checkpointsynchronize.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronize); 
 	req_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
+	memcpy (&req_lib_ckpt_checkpointsynchronize.checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
