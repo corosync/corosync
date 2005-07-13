@@ -1008,6 +1008,10 @@ saCkptSectionDelete (
 	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete;
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
 
+	if (sectionId == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
