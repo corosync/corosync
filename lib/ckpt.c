@@ -1327,6 +1327,10 @@ saCkptCheckpointWrite (
 	struct iovec iov[3];
 	int iov_len = 0;
 
+	if (ioVector == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
