@@ -1018,6 +1018,11 @@ saCkptSectionDelete (
 		return (error);
 	}
 
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
+	}
+
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	req_lib_ckpt_sectiondelete.header.size = sizeof (struct req_lib_ckpt_sectiondelete) + sectionId->idLen; 
@@ -1046,9 +1051,10 @@ saCkptSectionDelete (
 		sizeof (struct res_lib_ckpt_sectiondelete),
 		MSG_WAITALL | MSG_NOSIGNAL);
 
+error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
-error_exit:
+error_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 	return (error == SA_AIS_OK ? res_lib_ckpt_sectiondelete.header.error : error);
 }
