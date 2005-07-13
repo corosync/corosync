@@ -1523,6 +1523,15 @@ saCkptCheckpointRead (
 		/*
 		 * Receive checkpoint section data
 		 */
+		if (ioVector[i].dataBuffer == 0) {
+			ioVector[i].dataBuffer =
+				malloc (dataLength);
+			if (ioVector[i].dataBuffer == NULL) {
+				error = SA_AIS_ERR_NO_MEMORY;
+				goto error_exit;
+			}
+		}
+		
 		if (dataLength > 0) {
 			error = saRecvRetry (ckptCheckpointInstance->response_fd, ioVector[i].dataBuffer,
 				dataLength, MSG_WAITALL | MSG_NOSIGNAL);
@@ -1531,9 +1540,6 @@ saCkptCheckpointRead (
 			}
 		}
 		if (res_lib_ckpt_sectionread.header.error != SA_AIS_OK) {
-			if (erroneousVectorIndex) {
-				*erroneousVectorIndex = i;
-			}
 			goto error_exit;
 		}
 
@@ -1548,6 +1554,9 @@ error_exit:
 
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
+	if (error != SA_AIS_OK && erroneousVectorIndex) {
+		*erroneousVectorIndex = i;
+	}
 	return (error == SA_AIS_OK ? res_lib_ckpt_sectionread.header.error : error);
 }
 
