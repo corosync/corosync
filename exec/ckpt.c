@@ -3093,11 +3093,12 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 	struct iovec iovecs[2];
 	struct saCkptCheckpoint *checkpoint;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
+	SaAisErrorT error = SA_AIS_ERR_NOT_EXIST;
 
 	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info->fd);
 	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionoverwrite->checkpointName);
 
-	if (checkpoint && (checkpoint->expired == 0)) {
+	if (checkpoint && (checkpoint->expired == 0) && (checkpoint->active_replica_set == 1)) {
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
