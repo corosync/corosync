@@ -379,6 +379,8 @@ saCkptDispatch (
 					-1,
 					res_lib_ckpt_checkpointopenasync->header.error);
 			}
+			break;
+
 		case MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC:
 			if (callbacks.saCkptCheckpointSynchronizeCallback == NULL) {
 				continue;
