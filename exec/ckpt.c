@@ -3238,6 +3238,9 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 	struct saCkptCheckpoint *checkpoint;
 
 	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointsynchronize->checkpointName);
+	if ((checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+		res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_ERR_BAD_OPERATION;
+	} else 
 	if (checkpoint->active_replica_set == 1) {
 		res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_OK;
 	} else {
