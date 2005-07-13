@@ -1406,6 +1406,10 @@ saCkptSectionOverwrite (
 		return (SA_ERR_INVALID_PARAM);
 	}
 
+	if (sectionId == NULL) {
+		return (SA_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
