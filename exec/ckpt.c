@@ -2476,6 +2476,11 @@ static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct
 		goto error_exit;
 	}
 
+	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < req_lib_ckpt_sectionoverwrite->dataSize) {
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}
+
 	/*
 	 * Find checkpoint section to be overwritten
 	 */
