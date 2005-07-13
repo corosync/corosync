@@ -1402,6 +1402,10 @@ saCkptSectionOverwrite (
 	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
 
+	if (dataBuffer == NULL) {
+		return (SA_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
