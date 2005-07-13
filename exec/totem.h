@@ -34,6 +34,7 @@
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
 
+#define MESSAGE_SIZE_MAX			256000
 #define PROCESSOR_COUNT_MAX			16
 
 enum totem_configuration_type {

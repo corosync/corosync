@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include "../include/ipc_evt.h"
 #include "util.h"
-#include "../exec/totempg.h"
+#include "../exec/totem.h"
 #include "../include/list.h"
 
 static void evtHandleInstanceDestructor(void *instance);

@@ -46,7 +46,8 @@
 #include <string.h>
 
 #include "../include/ais_types.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_amf.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "totempg.h"
@@ -288,6 +289,9 @@ static int message_handler_req_amf_response (struct conn_info *conn_info, void *
 
 static int message_handler_req_amf_componentcapabilitymodelget (struct conn_info *conn_info, void *message);
 
+/*
+ * Service Handler Definition
+ */
 struct libais_handler amf_libais_handlers[] =
 {
 	{ /* 0 */
@@ -380,6 +384,46 @@ struct service_handler amf_service_handler = {
 	.libais_exit_fn				= amf_exit_fn,
 	.exec_init_fn				= amf_exec_init_fn,
 	.exec_dump_fn				= amf_dump
+};
+
+struct req_exec_amf_componentregister {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_amf_componentregister req_lib_amf_componentregister;
+	SaAmfReadinessStateT currentReadinessState;
+	SaAmfReadinessStateT newReadinessState;
+	SaAmfHAStateT currentHAState;
+	SaAmfHAStateT newHAState;
+} __attribute__((packed));
+
+struct req_exec_amf_componentunregister {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_amf_componentunregister req_lib_amf_componentunregister;
+};
+
+struct req_exec_amf_readinessstateset {
+	struct req_header header;
+	SaNameT compName;
+	SaAmfReadinessStateT readinessState;
+};
+
+struct req_exec_amf_hastateset {
+	struct req_header header;
+	SaNameT compName;
+	SaAmfHAStateT haState;
+};
+
+struct req_exec_amf_errorreport {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_amf_errorreport req_lib_amf_errorreport;
+};
+
+struct req_exec_amf_errorcancelall {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_amf_errorcancelall req_lib_amf_errorcancelall;
 };
 
 static void grow_amf_track_table (struct conn_info *conn_info, int growby)

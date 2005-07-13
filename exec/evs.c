@@ -51,7 +51,8 @@
 #include <arpa/inet.h>
 
 #include "../include/ais_types.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_evs.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "aispoll.h"

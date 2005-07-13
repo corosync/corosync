@@ -45,12 +45,13 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "util.h"
-
+#include "../include/ais_types.h"
 #include "../include/list.h"
 #include "../include/saCkpt.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_ckpt.h"
+
+#include "util.h"
 
 struct message_overlay {
 	struct res_header header;

@@ -39,8 +39,7 @@
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "parse.h"
-
-#define MESSAGE_SIZE_MAX		256000
+#include "totem.h"
 
 #define TOTEMPG_AGREED			0
 #define TOTEMPG_SAFE			1

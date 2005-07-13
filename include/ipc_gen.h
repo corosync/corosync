@@ -51,34 +51,6 @@ enum res_init_types {
 	MESSAGE_RES_INIT
 };
 
-enum nodeexec_message_types {
-		MESSAGE_REQ_EXEC_SYNC_BARRIER = 0,
-		MESSAGE_REQ_EXEC_EVS_MCAST = 1,
-		MESSAGE_REQ_EXEC_CLM_NODEJOIN = 2,
-		MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER = 3,
-		MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER = 4,
-		MESSAGE_REQ_EXEC_AMF_ERRORREPORT = 5,
-		MESSAGE_REQ_EXEC_AMF_ERRORCANCELALL = 6,
-		MESSAGE_REQ_EXEC_AMF_READINESSSTATESET = 7,
-		MESSAGE_REQ_EXEC_AMF_HASTATESET = 8,
-		MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN = 9,
-		MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE = 10,
-		MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK = 11,
-		MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET = 12,
-		MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE = 13,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE = 14,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE = 15,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET = 16,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE = 17,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE = 18,
-		MESSAGE_REQ_EXEC_CKPT_SECTIONREAD = 19,
-		MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE = 20,
-		MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION = 21,
-		MESSAGE_REQ_EXEC_EVT_EVENTDATA = 22,
-		MESSAGE_REQ_EXEC_EVT_CHANCMD = 23,
-		MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 24
-};
-
 struct req_header {
 	int size;
 	int id;
@@ -87,12 +59,52 @@ struct req_header {
 struct res_header {
 	int size;
 	int id;
-	SaErrorT error;
+	SaAisErrorT error;
 };
 
-struct message_source {
-    struct conn_info *conn_info;
-    struct in_addr in_addr;
-} __attribute__((packed));
+#ifdef CMPILE_OUT
+// TODO REMOVE THIS
+enum req_init_types_a {
+    MESSAGE_REQ_EVS_INIT,
+    MESSAGE_REQ_CLM_INIT,
+    MESSAGE_REQ_AMF_INIT,
+    MESSAGE_REQ_CKPT_INIT,
+    MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
+    MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
+    MESSAGE_REQ_EVT_INIT
+};
+#endif
 
+struct req_lib_resdis_init {
+	int size;
+	int id;
+	int service;
+};
+
+struct req_lib_response_init {
+	struct req_lib_resdis_init resdis_header;
+};
+
+struct req_lib_dispatch_init {
+	struct req_lib_resdis_init resdis_header;
+	unsigned long conn_info;
+};
+
+	
+struct req_lib_init {
+	struct res_header header;
+};
+
+struct res_lib_init {
+	struct res_header header;
+};
+
+struct res_lib_response_init {
+	struct res_header header;
+	unsigned long conn_info;
+};
+
+struct res_lib_dispatch_init {
+	struct res_header header;
+};
 #endif /* IPC_GEN_H_DEFINED */

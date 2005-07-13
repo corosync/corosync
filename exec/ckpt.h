@@ -34,7 +34,6 @@
 #include "../include/ais_types.h"
 #include "../include/saCkpt.h"
 #include "aispoll.h"
-#include "parse.h"
 #include "totemsrp.h"
 
 #ifndef CKPT_H_DEFINED

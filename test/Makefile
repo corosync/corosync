@@ -39,7 +39,8 @@
 CFLAGS = -c -g -Wall -DDEBUG -I../include
 CPPFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
+#LIBRARIES= /lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
 
 # Profile mode flags
@@ -104,7 +105,8 @@ evsbench: evsbench.o $(LIBS)
 	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
 
 testclm: testclm.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
+	$(CC) $(LDFLAGS) -o testclm testclm.o -lais
+# $(LIBS) -lSaClm
 
 testckpt: testckpt.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testckpt testckpt.o sa_error.o $(LIBS)
@@ -149,7 +151,7 @@ depend:
 # DO NOT DELETE
 
 testclm.o: ../include/ais_types.h ../include/saClm.h
-testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ipc_evs.h
 testamf.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
 testamf1.o: ../include/ais_types.h ../include/ais_amf.h
 testamf2.o: ../include/ais_types.h ../include/ais_amf.h
@@ -157,7 +159,7 @@ testamf3.o: ../include/ais_types.h ../include/ais_amf.h
 testamf4.o: ../include/ais_types.h ../include/ais_amf.h
 testamf5.o: ../include/ais_types.h ../include/ais_amf.h
 testamf6.o: ../include/ais_types.h ../include/ais_amf.h
-testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_msg.h
+testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ipc_evs.h
 testamfth.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
 testckpt.o: ../include/ais_types.h ../include/saCkpt.h
 ckptstress.o: ../include/ais_types.h ../include/saCkpt.h

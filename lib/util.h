@@ -38,7 +38,7 @@
 
 #include <pthread.h>
 #include <sys/poll.h>
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
 
 struct saHandleDatabase {
 	unsigned int handleCount;
@@ -115,14 +115,6 @@ SaErrorT saSendReceiveReply (
 	int responseLen);
 
 SaErrorT
-saSelectRetry (
-	int s,
-	fd_set *readfds,
-	fd_set *writefds,
-	fd_set *exceptfds,
-	struct timeval *timeout);
-
-SaErrorT
 saPollRetry (
 	struct pollfd *ufds,
 	unsigned int nfds,
@@ -154,33 +146,6 @@ SaErrorT
 saVersionVerify (
 	struct saVersionDatabase *versionDatabase,
 	SaVersionT *version);
-
-SaErrorT
-saQueueInit (
-	struct queue *queue,
-	int queueItems,
-	int sizePerItem);
-
-SaErrorT
-saQueueIsFull (
-	struct queue *queue,
-	int *isFull);
-
-SaErrorT
-saQueueIsEmpty (
-	struct queue *queue,
-	int *isEmpty);
-
-SaErrorT
-saQueueItemAdd (
-	struct queue *queue,
-	void *item);
-
-SaErrorT
-saQueueItemGet (struct queue *queue, void **item);
-
-SaErrorT
-saQueueItemRemove (struct queue *queue);
 
 #define offset_of(type,member) (int)(&(((type *)0)->member))
 

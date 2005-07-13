@@ -46,7 +46,7 @@
 
 #include "../include/ais_types.h"
 #include "../include/saClm.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
 #include "../include/ipc_clm.h"
 
 #include "util.h"

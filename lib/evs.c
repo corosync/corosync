@@ -44,11 +44,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
-#include "util.h"
 
-#include "../include/ais_msg.h"
 #include "../include/ais_types.h"
 #include "../include/evs.h"
+#include "../include/ipc_evs.h"
+#include "util.h"
 
 struct evs_inst {
 	int response_fd;

@@ -51,7 +51,7 @@
 #include <assert.h>
 
 #include "../include/ais_types.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
 #include "util.h"
 
 enum SA_HANDLE_STATE {
@@ -398,29 +398,6 @@ error_exit:
 }
 
 SaErrorT
-saSelectRetry (
-	int s,
-	fd_set *readfds,
-	fd_set *writefds,
-	fd_set *exceptfds,
-	struct timeval *timeout)
-{
-	SaErrorT error = SA_AIS_OK;
-	int result;
-
-retry_select:
-	result = select (s, readfds, writefds, exceptfds, timeout);
-	if (result == -1 && errno == EINTR) {
-		goto retry_select;
-	}
-	if (result == -1) {
-		error = SA_AIS_ERR_LIBRARY;
-	}
-
-	return (error);
-}
-
-SaErrorT
 saPollRetry (
         struct pollfd *ufds,
         unsigned int nfds,
@@ -623,96 +600,6 @@ saVersionVerify (
 	 */
 	memcpy(version, &versionDatabase->versionsSupported[i], sizeof(*version));
 	return (error);
-}
-
-
-SaErrorT
-saQueueInit (
-	struct queue *queue,
-	int queueItems,
-	int bytesPerItem)
-{
-	queue->head = 0;
-	queue->tail = queueItems - 1;
-	queue->used = 0;
-	queue->usedhw = 0;
-	queue->size = queueItems;
-	queue->bytesPerItem = bytesPerItem;
-	queue->items = (void *)malloc (queueItems * bytesPerItem);
-	if (queue->items == 0) {
-		return (SA_AIS_ERR_NO_MEMORY);
-	}
-	memset (queue->items, 0, queueItems * bytesPerItem);
-	return (SA_AIS_OK);
-}
-
-SaErrorT
-saQueueIsFull (
-	struct queue *queue,
-	int *isFull)
-{
-	*isFull = ((queue->size - 1) == queue->used);
-	return (SA_AIS_OK);
-}
-
-
-SaErrorT
-saQueueIsEmpty (
-	struct queue *queue,
-	int *isEmpty)
-{
-	*isEmpty = (queue->used == 0);
-	return (SA_AIS_OK);
-}
-
-
-SaErrorT
-saQueueItemAdd (
-	struct queue *queue,
-	void *item)
-{
-	char *queueItem;
-	int queuePosition;
-
-	queuePosition = queue->head;
-	queueItem = queue->items;
-	queueItem += queuePosition * queue->bytesPerItem;
-	memcpy (queueItem, item, queue->bytesPerItem);
-
-	assert (queue->tail != queue->head);
-	if (queue->tail == queue->head) {
-		return (SA_AIS_ERR_LIBRARY);
-	}
-	queue->head = (queue->head + 1) % queue->size;
-	queue->used++;
-	if (queue->used > queue->usedhw) {
-		queue->usedhw = queue->used;
-	}
-	return (SA_AIS_OK);
-}
-
-SaErrorT
-saQueueItemGet (struct queue *queue, void **item)
-{
-	char *queueItem;
-	int queuePosition;
-
-	queuePosition = (queue->tail + 1) % queue->size;
-	queueItem = queue->items;
-	queueItem += queuePosition * queue->bytesPerItem;
-	*item = (void *)queueItem;
-	return (SA_AIS_OK);
-}
-
-SaErrorT
-saQueueItemRemove (struct queue *queue)
-{
-	queue->tail = (queue->tail + 1) % queue->size;
-	if (queue->tail == queue->head) {
-		return (SA_AIS_ERR_LIBRARY);
-	}
-	queue->used--;
-	return (SA_AIS_OK);
 }
 
 /*

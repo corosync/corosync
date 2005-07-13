@@ -31,7 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_amf.h"
 #include "aispoll.h"
 #include "parse.h"
 #include "handlers.h"

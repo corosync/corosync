@@ -55,7 +55,7 @@ libSaClm.a: util.o clm.o
 	$(AR) -rc libSaClm.a util.o clm.o
 
 libSaClm.so.1.0: util.o clm.o
-	$(CC) -shared -Wl,-soname,libSaClm.so.1 util.o clm.o -o $@
+	$(CC) -shared -Wl,-soname,libSaClm.so.1,-version-script=libSaClm.versions util.o clm.o -o $@
 	rm -f libSaClm.so.1 libSaClm.so
 	ln -s libSaClm.so.1.0 libSaClm.so.1
 	ln -s libSaClm.so.1.0 libSaClm.so
@@ -64,7 +64,7 @@ libSaAmf.a: util.o amf.o
 	$(AR) -rc libSaAmf.a util.o amf.o
 
 libSaAmf.so.1.0: util.o amf.o
-	$(CC) -shared -Wl,-soname,libSaAmf.so.1 util.o amf.o -o $@
+	$(CC) -shared -Wl,-soname,libSaAmf.so.1,-version-script=libSaAmf.versions util.o amf.o -o $@
 	rm -f libSaAmf.so.1 libSaAmf.so
 	ln -s libSaAmf.so.1.0 libSaAmf.so.1
 	ln -s libSaAmf.so.1.0 libSaAmf.so
@@ -73,7 +73,7 @@ libSaCkpt.a: util.o ckpt.o
 	$(AR) -rc libSaCkpt.a util.o ckpt.o
 
 libSaCkpt.so.1.0: util.o ckpt.o
-	$(CC) -shared -Wl,-soname,libSaCkpt.so.1 util.o ckpt.o -o $@
+	$(CC) -shared -Wl,-soname,libSaCkpt.so.1,-version-script=libSaCkpt.versions util.o ckpt.o -o $@
 	rm -f libSaCkpt.so.1 libSaCkpt.so
 	ln -s libSaCkpt.so.1.0 libSaCkpt.so.1
 	ln -s libSaCkpt.so.1.0 libSaCkpt.so
@@ -82,7 +82,7 @@ libSaEvt.a: util.o evt.o
 	$(AR) -rc libSaEvt.a util.o evt.o
 
 libSaEvt.so.1.0: util.o evt.o
-	$(CC) -shared -Wl,-soname,libSaEvt.so.1 util.o evt.o -o $@
+	$(CC) -shared -Wl,-soname,libSaEvt.so.1,-version-script=libSaEvt.versions util.o evt.o -o $@
 	rm -f libSaEvt.so.1 libSaEvt.so
 	ln -s libSaEvt.so.1.0 libSaEvt.so.1
 	ln -s libSaEvt.so.1.0 libSaEvt.so
@@ -91,7 +91,7 @@ libais.a: util.o amf.o clm.o ckpt.o evt.o
 	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
 
 libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o
-	$(CC) -shared -Wl,-soname,libais.so.1 util.o amf.o clm.o ckpt.o \
+	$(CC) -shared -Wl,-soname,libais.so.1,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o \
 								evt.o -o $@
 	rm -f libais.so.1 libais.so
 	ln -s libais.so.1.0 libais.so.1
@@ -101,7 +101,7 @@ libevs.a: util.o evs.o
 	$(AR) -rc libevs.a util.o evs.o
 
 libevs.so.1.0: util.o evs.o
-	$(CC) -shared -Wl,-soname,libevs.so.1 util.o evs.o -o $@
+	$(CC) -shared -Wl,-soname,libevs.so.1,-version-script=libevs.versions util.o evs.o -o $@
 	rm -f libevs.so.1 libevs.so
 	ln -s libevs.so.1.0 libevs.so.1
 	ln -s libevs.so.1.0 libevs.so
@@ -119,18 +119,18 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
-util.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+util.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 util.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h util.h
 amf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ais_types.h
-amf.o: ../include/ais_msg.h ../include/evs.h ../include/saClm.h
+amf.o: ../include/ipc_evs.h ../include/evs.h ../include/saClm.h
 amf.o: ../include/ipc_gen.h util.h
 clm.o: ../include/ais_types.h ../include/saClm.h ../include/ais_types.h
-clm.o: ../include/ais_msg.h ../include/evs.h ../include/saClm.h
+clm.o: ../include/ipc_evs.h ../include/evs.h ../include/saClm.h
 clm.o: ../include/ipc_gen.h ../include/ipc_clm.h util.h
 ckpt.o: ../include/list.h ../include/ais_types.h ../include/saCkpt.h
-ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/evs.h
+ckpt.o: ../include/ais_types.h ../include/ipc_evs.h ../include/evs.h
 ckpt.o: ../include/saClm.h ../include/ipc_gen.h util.h
 evt.o: ../include/ipc_evt.h ../include/ais_types.h ../include/saEvt.h
-evt.o: ../include/saClm.h ../include/ipc_gen.h util.h ../include/ais_msg.h
+evt.o: ../include/saClm.h ../include/ipc_gen.h util.h ../include/ipc_evs.h
 evt.o: ../include/evs.h ../exec/totempg.h ../exec/aispoll.h
 evt.o: ../exec/totemsrp.h

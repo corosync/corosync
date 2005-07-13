@@ -43,7 +43,7 @@
 
 #include "ais_types.h"
 #include "ais_amf.h"
-#include "ais_msg.h"
+#include "saClm.h"
 
 void printSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;

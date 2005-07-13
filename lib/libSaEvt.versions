@@ -1,0 +1,39 @@
+# Version and symbol export for libSaClm.so
+
+OPENAIS_EVT_B.01.01 {
+	global:
+		
+		saEvtInitialize;
+		saEvtSelectionObjectGet;
+		saEvtDispatch;
+		saEvtFinalize;
+		saEvtChannelOpen;
+		saEvtChannelClose;
+		saEvtChannelOpenAsync;
+		saEvtChannelUnlink;
+		saEvtChannelAllocate;
+		saEvtEventFree;
+		saEvtEventAttributesSet;
+		saEvtEventAttributesGet;
+		saEvtEventDataGet;
+		saEvtEventPublish;
+		saEvtEventSubscribe;
+		saEvtEventUnsubscribe;
+		saEvtEventRetentionTimeClear;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saPollRetry;
+		saRecvRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saServiceConnectTwo;
+		saVersionVerify;
+		clustTimeNow;
+};

@@ -1,0 +1,30 @@
+# Version and symbol export for libSaClm.so
+
+OPENAIS_EVS_1.0 {
+	global:
+		evs_initialize;
+		evs_finalize;
+		evs_fd_get;
+		evs_dispatch;
+		evs_join;
+		evs_leave;
+		evs_mcast_joined;
+		evs_mcast_groups;
+		evs_membership_get;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saServiceConnectTwo;
+		saVersionVerify;
+		clustTimeNow;
+};

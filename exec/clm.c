@@ -53,7 +53,7 @@
 
 #include "../include/ais_types.h"
 #include "../include/saClm.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
 #include "../include/ipc_clm.h"
 #include "../include/list.h"
 #include "../include/queue.h"
@@ -136,6 +136,9 @@ static int message_handler_req_clm_nodegetasync (struct conn_info *conn_info,
 
 static int clm_exit_fn (struct conn_info *conn_info);
 
+/*
+ * Executive Handler Definition
+ */
 struct libais_handler clm_libais_handlers[] =
 {
 	{ /* 0 */
@@ -182,6 +185,11 @@ struct service_handler clm_service_handler = {
 	.sync_process				= clm_sync_process,
 	.sync_activate				= clm_sync_activate,
 	.sync_abort					= clm_sync_abort,
+};
+
+struct req_exec_clm_nodejoin {
+	struct req_header header;
+	SaClmClusterNodeT clusterNode;
 };
 
 static int clm_exec_init_fn (struct openais_config *openais_config)

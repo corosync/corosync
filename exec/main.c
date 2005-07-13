@@ -57,7 +57,6 @@
 #include <time.h>
 
 #include "../include/ais_types.h"
-#include "../include/ais_msg.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "poll.h"

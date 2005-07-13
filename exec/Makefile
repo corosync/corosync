@@ -100,22 +100,22 @@ crypto.o: crypto.c
 
 # DO NOT DELETE
 
-main.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+main.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 main.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h parse.h
 main.o: main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h
 main.o: ../include/saEvt.h swab.h print.h
 clm.o: ../include/ais_types.h ../include/saClm.h ../include/ais_types.h
-clm.o: ../include/ais_msg.h evs.h ../include/saClm.h ../include/ipc_gen.h
+clm.o: ../include/ipc_evs.h evs.h ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/ipc_clm.h ../include/list.h ../include/queue.h aispoll.h
 clm.o: totempg.h totemsrp.h parse.h main.h clm.h amf.h handlers.h ckpt.h
 clm.o: evt.h hdb.h ../include/saEvt.h mempool.h print.h
-amf.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+amf.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 amf.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 amf.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h util.h
 amf.o: parse.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h
 amf.o: hdb.h ../include/saEvt.h print.h
-ckpt.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+ckpt.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 ckpt.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 ckpt.o: ../include/queue.h aispoll.h mempool.h util.h parse.h totempg.h
 ckpt.o: totemsrp.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h
@@ -124,9 +124,9 @@ evt.o: ../include/ipc_evt.h ../include/ais_types.h ../include/saEvt.h
 evt.o: ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evt.o: ../include/queue.h util.h ../include/ais_types.h aispoll.h mempool.h
 evt.o: parse.h totempg.h totemsrp.h main.h evs.h clm.h ../include/saClm.h
-evt.o: amf.h ../include/ais_msg.h handlers.h ckpt.h evt.h hdb.h
+evt.o: amf.h ../include/ipc_evs.h handlers.h ckpt.h evt.h hdb.h
 evt.o: ../include/saEvt.h swab.h print.h
-evs.o: ../include/ais_types.h ../include/ais_msg.h ../include/ais_types.h
+evs.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 evs.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h parse.h main.h clm.h
 evs.o: ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h

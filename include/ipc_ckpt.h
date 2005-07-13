@@ -34,11 +34,9 @@
 #ifndef IPC_CKPT_H_DEFINED
 #define IPC_CKPT_H_DEFINED
 
-#include "../include/ipc_gen.h"
-#include "../include/ais_types.h"
-#include "../include/saCkpt.h"
-#include "../exec/totemsrp.h"
-#include "../exec/ckpt.h"
+#include "ais_types.h"
+#include "saCkpt.h"
+#include "ipc_gen.h"
 
 enum req_lib_ckpt_checkpoint_types {
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN = 0,
@@ -80,24 +78,6 @@ enum res_lib_ckpt_checkpoint_types {
 	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 16
 };
 
-struct req_exec_ckpt_checkpointclose {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-};
-
-struct req_exec_ckpt_checkpointretentiondurationset {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	SaTimeT retentionDuration;
-};
-
-struct req_exec_ckpt_checkpointretentiondurationexpire {
-	struct req_header header;
-	SaNameT checkpointName;
-};
-
 struct req_lib_ckpt_checkpointopen {
 	struct req_header header;
 	SaNameT checkpointName;
@@ -109,17 +89,6 @@ struct req_lib_ckpt_checkpointopen {
 struct res_lib_ckpt_checkpointopen {
 	struct res_header header;
 };
-
-struct req_exec_ckpt_checkpointopen {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
-	SaCkptCheckpointHandleT checkpointHandle;
-	SaInvocationT invocation;
-	int async_call;
-	SaAisErrorT fail_with_error;
-};
-
 
 struct req_lib_ckpt_checkpointopenasync {
 	struct req_header header;
@@ -154,12 +123,6 @@ struct req_lib_ckpt_checkpointunlink {
 
 struct res_lib_ckpt_checkpointunlink {
 	struct res_header header;
-};
-
-struct req_exec_ckpt_checkpointunlink {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
 };
 
 struct req_lib_ckpt_checkpointretentiondurationset {
@@ -202,13 +165,6 @@ struct res_lib_ckpt_sectioncreate {
 	struct res_header header;
 };
 
-struct req_exec_ckpt_sectioncreate {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate; /* this must be last */
-};
-
 struct req_lib_ckpt_sectiondelete {
 	struct req_header header;
 	SaNameT checkpointName;
@@ -217,12 +173,6 @@ struct req_lib_ckpt_sectiondelete {
 
 struct res_lib_ckpt_sectiondelete {
 	struct res_header header;
-};
-struct req_exec_ckpt_sectiondelete {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete; /* this must be last */
 };
 
 struct req_lib_ckpt_sectionexpirationtimeset {
@@ -234,13 +184,6 @@ struct req_lib_ckpt_sectionexpirationtimeset {
 
 struct res_lib_ckpt_sectionexpirationtimeset {
 	struct res_header header;
-};
-
-struct req_exec_ckpt_sectionexpirationtimeset {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionexpirationtimeset req_lib_ckpt_sectionexpirationtimeset;
 };
 
 struct req_lib_ckpt_sectioniteratorinitialize {
@@ -275,13 +218,6 @@ struct res_lib_ckpt_sectionwrite {
 	struct res_header header;
 };
 
-struct req_exec_ckpt_sectionwrite {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionwrite req_lib_ckpt_sectionwrite;
-};
-
 struct req_lib_ckpt_sectionoverwrite {
 	struct req_header header;
 	SaNameT checkpointName;
@@ -293,13 +229,6 @@ struct res_lib_ckpt_sectionoverwrite {
 	struct res_header header;
 };
 	
-struct req_exec_ckpt_sectionoverwrite {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
-};
-
 struct req_lib_ckpt_sectionread {
 	struct req_header header;
 	SaNameT checkpointName;
@@ -311,13 +240,6 @@ struct req_lib_ckpt_sectionread {
 struct res_lib_ckpt_sectionread {
 	struct res_header header;
 	SaSizeT dataRead;
-};
-
-struct req_exec_ckpt_sectionread {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionread req_lib_ckpt_sectionread;
 };
 
 struct req_lib_ckpt_checkpointsynchronize {
@@ -336,26 +258,5 @@ struct req_lib_ckpt_checkpointsynchronizeasync {
 struct res_lib_ckpt_checkpointsynchronizeasync {
 	struct res_header header;
 };
-
-struct req_exec_ckpt_synchronize_state {
-	struct req_header header;
-	struct memb_ring_id previous_ring_id;
-	SaNameT checkpointName;
-	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
-	SaCkptSectionDescriptorT sectionDescriptor;	
-	struct in_addr source_addr;
-	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
-};
-
-struct req_exec_ckpt_synchronize_section {
-	struct req_header header;
-	struct memb_ring_id previous_ring_id;
-	SaNameT checkpointName;
-	SaCkptSectionIdT sectionId;	
-	SaUint32T dataOffSet;
-	SaUint32T dataSize;	
-};
-
-
 
 #endif /* IPC_CKPT_H_DEFINED */

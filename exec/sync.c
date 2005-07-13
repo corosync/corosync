@@ -50,7 +50,7 @@
 #include <arpa/inet.h>
 
 #include "../include/ais_types.h"
-#include "../include/ipc_gen.h"
+#include "main.h"
 #include "sync.h"
 #include "totempg.h"
 #include "print.h"

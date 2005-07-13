@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -31,83 +31,109 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef IPC_CLM_H_DEFINED
-#define IPC_CLM_H_DEFINED
+#ifndef IPC_EVS_H_DEFINED
+#define IPC_EVS_H_DEFINED
 
 #include <netinet/in.h>
 #include "ais_types.h"
-#include "saClm.h"
+#include "evs.h"
 #include "ipc_gen.h"
 
-enum req_clm_types {
-	MESSAGE_REQ_CLM_TRACKSTART = 0,
-	MESSAGE_REQ_CLM_TRACKSTOP = 1,
-	MESSAGE_REQ_CLM_NODEGET = 2,
-	MESSAGE_REQ_CLM_NODEGETASYNC = 3
+enum req_lib_evs_types {
+	MESSAGE_REQ_EVS_JOIN = 0,
+	MESSAGE_REQ_EVS_LEAVE = 1,
+	MESSAGE_REQ_EVS_MCAST_JOINED = 2,
+	MESSAGE_REQ_EVS_MCAST_GROUPS = 3,
+	MESSAGE_REQ_EVS_MEMBERSHIP_GET = 4
 };
 
-enum res_clm_types {
-	MESSAGE_RES_CLM_TRACKCALLBACK = 0,
-	MESSAGE_RES_CLM_TRACKSTART = 1,
-	MESSAGE_RES_CLM_TRACKSTOP = 2,
-	MESSAGE_RES_CLM_NODEGET = 3,
-	MESSAGE_RES_CLM_NODEGETASYNC = 4,
-	MESSAGE_RES_CLM_NODEGETCALLBACK = 5
+enum res_lib_evs_types {
+	MESSAGE_RES_EVS_DELIVER_CALLBACK = 0,
+	MESSAGE_RES_EVS_CONFCHG_CALLBACK = 1,
+	MESSAGE_RES_EVS_JOIN = 2,
+	MESSAGE_RES_EVS_LEAVE = 3,
+	MESSAGE_RES_EVS_MCAST_JOINED = 4,
+	MESSAGE_RES_EVS_MCAST_GROUPS = 5,
+	MESSAGE_RES_EVS_MEMBERSHIP_GET = 6
 };
 
-struct req_clm_clustertrack {
+struct res_evs_deliver_callback {
+	struct res_header header;
+	struct in_addr source_addr;
+	int msglen;
+	char msg[0];
+};
+
+struct res_evs_confchg_callback {
+	struct res_header header;
+	int member_list_entries;
+	int left_list_entries;
+	int joined_list_entries;
+	struct in_addr member_list[16];
+	struct in_addr left_list[16];
+	struct in_addr joined_list[16];
+};
+
+struct req_lib_evs_join {
+	struct res_header header;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_join {
+	struct res_header header;
+};
+
+struct req_lib_evs_leave {
+	struct res_header header;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_leave {
+	struct res_header header;
+};
+
+struct req_lib_evs_mcast_joined {
+	struct res_header header;
+	evs_guarantee_t guarantee;
+	int msg_len;
+	char msg[0];
+};
+
+struct res_lib_evs_mcast_joined {
+	struct res_header header;
+};
+
+struct req_lib_evs_mcast_groups {
+	struct res_header header;
+	evs_guarantee_t guarantee;
+	int msg_len;
+	int group_entries;
+	struct evs_group groups[0];
+};
+
+struct res_lib_evs_mcast_groups {
+	struct res_header header;
+};
+
+
+struct req_exec_evs_mcast {
 	struct req_header header;
-	SaUint8T trackFlags;
+	int group_entries;
+	int msg_len;
+	struct evs_group groups[0];
+	/* data goes here */
 };
 
-struct res_clm_clustertrack {
-	struct res_header header;
-};
-struct req_clm_trackstop {
+struct req_lib_evs_membership_get {
 	struct req_header header;
-	SaSizeT dataRead;
-	SaErrorT error;
 };
 
-struct res_clm_trackstop {
+struct res_lib_evs_membership_get {
 	struct res_header header;
+	struct in_addr local_addr;
+	struct in_addr member_list[16];
+	int member_list_entries;
 };
-
-struct res_clm_trackcallback {
-	struct res_header header;
-	SaUint64T viewNumber;
-	SaUint32T numberOfItems;
-	SaUint32T numberOfMembers;
-	SaClmClusterNotificationT notification[0];
-};
-
-struct req_clm_nodeget {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
-};
-
-struct res_clm_nodeget {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT clusterNode;
-	int valid;
-};
-
-struct req_clm_nodegetasync {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
-};
-
-struct res_clm_nodegetasync {
-	struct res_header header;
-};
-
-struct res_clm_nodegetcallback {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT clusterNode;
-};
-
-#endif /* IPC_CLM_H_DEFINED */
+#endif /* IPC_EVS_H_DEFINED */

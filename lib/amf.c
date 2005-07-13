@@ -47,7 +47,8 @@
 
 #include "../include/ais_types.h"
 #include "../include/ais_amf.h"
-#include "../include/ais_msg.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_amf.h"
 #include "util.h"
 
 struct res_overlay {
@@ -576,7 +577,7 @@ saAmfStoppingComplete (
 	int fd;
 	SaErrorT errorResult;
 
-	errorResult = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	errorResult = saServiceConnect (&fd, AMF_SERVICE);
 	if (errorResult != SA_OK) {
 		goto exit_noclose;
 	}
@@ -610,7 +611,7 @@ saAmfHAStateGet (
 	int fd;
 	SaErrorT error;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	error = saServiceConnect (&fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto exit_noclose;
 	}
@@ -732,7 +733,7 @@ saAmfErrorReport (
 	int fd;
 	SaErrorT error;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	error = saServiceConnect (&fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto exit_noclose;
 	}
@@ -772,7 +773,7 @@ saAmfErrorCancelAll (
 	int fd;
 	SaErrorT error;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	error = saServiceConnect (&fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto exit_noclose;
 	}
@@ -806,7 +807,7 @@ saAmfComponentCapabilityModelGet (
 	struct req_amf_componentcapabilitymodelget req_amf_componentcapabilitymodelget;
 	struct res_lib_amf_componentcapabilitymodelget res_lib_amf_componentcapabilitymodelget;
 
-	error = saServiceConnect (&fd, MESSAGE_REQ_AMF_INIT);
+	error = saServiceConnect (&fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto exit_noclose;
 	}

@@ -193,6 +193,9 @@ static int ckpt_confchg_fn(
 		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
+/*
+ * Executive Handler Definition
+ */
 struct libais_handler ckpt_libais_handlers[] =
 {
 	{ /* 0 */
@@ -332,6 +335,107 @@ struct service_handler ckpt_service_handler = {
 	.sync_abort					= ckpt_recovery_abort,
 };
 
+/*
+ * All data types used for executive messages
+ */
+struct req_exec_ckpt_checkpointclose {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+};
+
+struct req_exec_ckpt_checkpointretentiondurationset {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	SaTimeT retentionDuration;
+};
+
+struct req_exec_ckpt_checkpointretentiondurationexpire {
+	struct req_header header;
+	SaNameT checkpointName;
+};
+
+struct req_exec_ckpt_checkpointopen {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
+	SaCkptCheckpointHandleT checkpointHandle;
+	SaInvocationT invocation;
+	int async_call;
+	SaAisErrorT fail_with_error;
+};
+
+struct req_exec_ckpt_checkpointunlink {
+	struct req_header header;
+	struct message_source source;
+	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
+};
+
+struct req_exec_ckpt_sectioncreate {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate; /* this must be last */
+};
+
+struct req_exec_ckpt_sectiondelete {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete; /* this must be last */
+};
+
+struct req_exec_ckpt_sectionexpirationtimeset {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectionexpirationtimeset req_lib_ckpt_sectionexpirationtimeset;
+};
+
+struct req_exec_ckpt_sectionwrite {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectionwrite req_lib_ckpt_sectionwrite;
+};
+
+struct req_exec_ckpt_sectionoverwrite {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
+};
+
+struct req_exec_ckpt_sectionread {
+	struct req_header header;
+	struct message_source source;
+	SaNameT checkpointName;
+	struct req_lib_ckpt_sectionread req_lib_ckpt_sectionread;
+};
+
+struct req_exec_ckpt_synchronize_state {
+	struct req_header header;
+	struct memb_ring_id previous_ring_id;
+	SaNameT checkpointName;
+	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
+	SaCkptSectionDescriptorT sectionDescriptor;	
+	struct in_addr source_addr;
+	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
+};
+
+struct req_exec_ckpt_synchronize_section {
+	struct req_header header;
+	struct memb_ring_id previous_ring_id;
+	SaNameT checkpointName;
+	SaCkptSectionIdT sectionId;	
+	SaUint32T dataOffSet;
+	SaUint32T dataSize;	
+};
+
+/* 
+ * Implementation
+ */
 static int processor_index_set(struct in_addr *proc_addr, 
 								struct ckpt_refcnt *ckpt_refcount) 
 {

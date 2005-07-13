@@ -31,14 +31,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_MSG_H_DEFINED
-#define AIS_MSG_H_DEFINED
+#ifndef AIS_IPC_AMF_H_DEFINED
+#define AIS_IPC_AMF_H_DEFINED
 
 #include <netinet/in.h>
-#include "ais_types.h"
-#include "evs.h"
-#include "saClm.h"
 #include "ipc_gen.h"
+#include "ais_types.h"
+#include "ais_amf.h"
 
 enum req_amf_response_interfaces {
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK = 1,
@@ -49,24 +48,6 @@ enum req_amf_response_interfaces {
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFEXTERNALCOMPONENTRESTARTCALLBACK,
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFEXTERNALCOMPONENTCONTROLCALLBACK,
 	MESSAGE_REQ_AMF_RESPONSE_SAAMFPENDINGOPERATIONCONFIRMCALLBACK
-};
-
-enum req_lib_evs_types {
-	MESSAGE_REQ_EVS_JOIN = 0,
-	MESSAGE_REQ_EVS_LEAVE = 1,
-	MESSAGE_REQ_EVS_MCAST_JOINED = 2,
-	MESSAGE_REQ_EVS_MCAST_GROUPS = 3,
-	MESSAGE_REQ_EVS_MEMBERSHIP_GET = 4
-};
-
-enum res_lib_evs_types {
-	MESSAGE_RES_EVS_DELIVER_CALLBACK = 0,
-	MESSAGE_RES_EVS_CONFCHG_CALLBACK = 1,
-	MESSAGE_RES_EVS_JOIN = 2,
-	MESSAGE_RES_EVS_LEAVE = 3,
-	MESSAGE_RES_EVS_MCAST_JOINED = 4,
-	MESSAGE_RES_EVS_MCAST_GROUPS = 5,
-	MESSAGE_RES_EVS_MEMBERSHIP_GET = 6
 };
 
 enum req_amf_types {
@@ -103,144 +84,10 @@ enum res_lib_amf_types {
 	MESSAGE_RES_AMF_RESPONSE
 };
 
-struct res_evs_deliver_callback {
-	struct res_header header;
-	struct in_addr source_addr;
-	int msglen;
-	char msg[0];
-};
-
-struct res_evs_confchg_callback {
-	struct res_header header;
-	int member_list_entries;
-	int left_list_entries;
-	int joined_list_entries;
-	struct in_addr member_list[16];
-	struct in_addr left_list[16];
-	struct in_addr joined_list[16];
-};
-
-struct req_lib_evs_join {
-	struct res_header header;
-	int group_entries;
-	struct evs_group groups[0];
-};
-
-struct res_lib_evs_join {
-	struct res_header header;
-};
-
-struct req_lib_evs_leave {
-	struct res_header header;
-	int group_entries;
-	struct evs_group groups[0];
-};
-
-struct res_lib_evs_leave {
-	struct res_header header;
-};
-
-struct req_lib_evs_mcast_joined {
-	struct res_header header;
-	evs_guarantee_t guarantee;
-	int msg_len;
-	char msg[0];
-};
-
-struct res_lib_evs_mcast_joined {
-	struct res_header header;
-};
-
-struct req_lib_evs_mcast_groups {
-	struct res_header header;
-	evs_guarantee_t guarantee;
-	int msg_len;
-	int group_entries;
-	struct evs_group groups[0];
-};
-
-struct res_lib_evs_mcast_groups {
-	struct res_header header;
-};
-
-
-struct req_exec_evs_mcast {
-	struct req_header header;
-	int group_entries;
-	int msg_len;
-	struct evs_group groups[0];
-	/* data goes here */
-};
-
-struct req_lib_evs_membership_get {
-	struct req_header header;
-};
-
-struct res_lib_evs_membership_get {
-	struct res_header header;
-	struct in_addr local_addr;
-	struct in_addr member_list[16];
-	int member_list_entries;
-};
-
-struct req_lib_resdis_init {
-	int size;
-	int id;
-	int service;
-};
-
-// TODO REMOVE THIS
-enum req_init_types_a {
-    MESSAGE_REQ_EVS_INIT,
-    MESSAGE_REQ_CLM_INIT,
-    MESSAGE_REQ_AMF_INIT,
-    MESSAGE_REQ_CKPT_INIT,
-    MESSAGE_REQ_CKPT_CHECKPOINT_INIT,
-    MESSAGE_REQ_CKPT_SECTIONITERATOR_INIT,
-    MESSAGE_REQ_EVT_INIT
-};
-
-struct req_lib_response_init {
-	struct req_lib_resdis_init resdis_header;
-};
-
-struct req_lib_dispatch_init {
-	struct req_lib_resdis_init resdis_header;
-	unsigned long conn_info;
-};
-
-	
-struct req_lib_init {
-	struct res_header header;
-};
-
-struct res_lib_init {
-	struct res_header header;
-};
-
-struct res_lib_response_init {
-	struct res_header header;
-	unsigned long conn_info;
-};
-
-struct res_lib_dispatch_init {
-	struct res_header header;
-};
-
 struct req_lib_amf_componentregister {
 	struct req_header header;
 	SaNameT compName;
 	SaNameT proxyCompName;
-} __attribute__((packed));
-
-struct req_exec_amf_componentregister {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_amf_componentregister req_lib_amf_componentregister;
-	SaAmfReadinessStateT currentReadinessState;
-	SaAmfReadinessStateT newReadinessState;
-	SaAmfHAStateT currentHAState;
-	SaAmfHAStateT newHAState;
 } __attribute__((packed));
 
 struct res_lib_amf_componentregister {
@@ -251,12 +98,6 @@ struct req_lib_amf_componentunregister {
 	struct req_header header;
 	SaNameT compName;
 	SaNameT proxyCompName;
-};
-
-struct req_exec_amf_componentunregister {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_amf_componentunregister req_lib_amf_componentunregister;
 };
 
 struct res_lib_amf_componentunregister {
@@ -286,18 +127,6 @@ struct res_lib_amf_readinessstatesetcallback {
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfReadinessStateT readinessState;
-};
-
-struct req_exec_amf_readinessstateset {
-	struct req_header header;
-	SaNameT compName;
-	SaAmfReadinessStateT readinessState;
-};
-
-struct req_exec_amf_hastateset {
-	struct req_header header;
-	SaNameT compName;
-	SaAmfHAStateT haState;
 };
 
 struct res_lib_amf_componentterminatecallback {
@@ -377,12 +206,6 @@ struct req_lib_amf_errorreport {
 	SaAmfAdditionalDataT additionalData;
 };
 
-struct req_exec_amf_errorreport {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_amf_errorreport req_lib_amf_errorreport;
-};
-
 struct res_lib_amf_errorreport {
 	struct res_header header;
 };
@@ -392,12 +215,6 @@ struct req_lib_amf_errorcancelall {
 	SaNameT compName;
 };
 
-struct req_exec_amf_errorcancelall {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_amf_errorcancelall req_lib_amf_errorcancelall;
-};
-	
 struct res_lib_amf_errorcancelall {
 	struct res_header header;
 };
@@ -432,12 +249,4 @@ struct res_lib_amf_componentcapabilitymodelget {
 	SaAmfComponentCapabilityModelT componentCapabilityModel;
 };
 
-struct req_lib_activatepoll {
-	struct req_header header;
-};
-
-struct res_lib_activatepoll {
-	struct res_header header;
-};
-
-#endif /* AIS_MSG_H_DEFINED */
+#endif /* AIS_IPC_AMF_H_DEFINED */
