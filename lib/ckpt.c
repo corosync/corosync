@@ -1634,6 +1634,7 @@ saCkptCheckpointSynchronizeAsync (
 	SaInvocationT invocation)
 {
 	SaAisErrorT error;
+	struct ckptInstance *ckptInstance;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct req_lib_ckpt_checkpointsynchronizeasync req_lib_ckpt_checkpointsynchronizeasync;
 	struct res_lib_ckpt_checkpointsynchronizeasync res_lib_ckpt_checkpointsynchronizeasync;
@@ -1648,6 +1649,20 @@ saCkptCheckpointSynchronizeAsync (
 		error = SA_AIS_ERR_ACCESS;
 		goto error_put;
 	}
+
+	error = saHandleInstanceGet (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle,
+		(void *)&ckptInstance);
+	if (error != SA_AIS_OK) {
+		goto error_put;
+	}
+
+	if (ckptInstance->callbacks.saCkptCheckpointSynchronizeCallback == NULL) {
+		saHandleInstancePut (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle);
+		error = SA_AIS_ERR_INIT;
+		goto error_put;
+	}
+
+	saHandleInstancePut (&ckptHandleDatabase, ckptCheckpointInstance->ckptHandle);
 
 	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync); 
 	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
