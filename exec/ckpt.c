@@ -3161,7 +3161,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info->fd);
 	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionread->checkpointName);
 	
-	if (checkpoint && (checkpoint->expired == 0)) {
+	if (checkpoint && (checkpoint->expired == 0) && checkpoint->active_replica_set) {
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
@@ -3194,7 +3194,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		}
 	}
 	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint to read so Returning Error. ####\n");
+		log_printf (LOG_LEVEL_ERROR, "Could Not Find the Checkpoint, section or active replica to read.\n");
 
 		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread);
 		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
