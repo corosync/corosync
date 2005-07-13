@@ -1075,11 +1075,18 @@ saCkptSectionExpirationTimeSet (
 	if (sectionId == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
-		goto error_exit_noput;
+		return (error);
 	}
+
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
+	}
+
 
 	req_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_lib_ckpt_sectionexpirationtimeset) + sectionId->idLen; 
 	req_lib_ckpt_sectionexpirationtimeset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
@@ -1113,11 +1120,12 @@ saCkptSectionExpirationTimeSet (
 		sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
 		MSG_WAITALL | MSG_NOSIGNAL);
 
+error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
-error_exit:
+error_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
-error_exit_noput:
+
 	return (error == SA_AIS_OK ? res_lib_ckpt_sectionexpirationtimeset.header.error : error);
 }
 
