@@ -3157,11 +3157,17 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	struct iovec iovecs[2];
 	struct saCkptCheckpoint *checkpoint;
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
+	SaAisErrorT error = SA_AIS_OK;
 
-	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from API fd %d\n", conn_info->fd);
+	log_printf (LOG_LEVEL_DEBUG, "Section read from API fd %d\n", conn_info->fd);
 	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionread->checkpointName);
 	
-	if (checkpoint && (checkpoint->expired == 0) && checkpoint->active_replica_set) {
+	if (checkpoint && (checkpoint->expired == 0) &&
+		checkpoint->active_replica_set && 
+
+		req_lib_ckpt_sectionread->dataSize <=
+			checkpoint->checkpointCreationAttributes.maxSectionSize) {
+
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
@@ -3192,18 +3198,35 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		} else {
 			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
+		return (0); /* DO NOT REMOVE */
 	}
-	else {
-		log_printf (LOG_LEVEL_ERROR, "Could Not Find the Checkpoint, section or active replica to read.\n");
 
-		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread);
-		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
-		res_lib_ckpt_sectionread.header.error = SA_AIS_ERR_NOT_EXIST;
+	if (checkpoint) {
+		if (checkpoint->active_replica_set == 0) {
+			log_printf (LOG_LEVEL_DEBUG,
+				"sectionread - active replica not set.\n");
+			error = SA_AIS_ERR_NOT_EXIST;
+		}
 
-		libais_send_response (conn_info,
-			&res_lib_ckpt_sectionread,
-			sizeof (struct res_lib_ckpt_sectionread));
-        }
+		if (req_lib_ckpt_sectionread->dataSize >
+			checkpoint->checkpointCreationAttributes.maxSectionSize) {
+
+			log_printf (LOG_LEVEL_DEBUG,
+				"sectionread - data size greater then max section size.\n");
+			error = SA_AIS_ERR_INVALID_PARAM;
+		}
+	} else {
+		log_printf (LOG_LEVEL_ERROR,
+			"sectionread - could not find checkpoint.\n");
+	}
+		
+	res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread);
+	res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
+	res_lib_ckpt_sectionread.header.error = error;
+
+	libais_send_response (conn_info,
+		&res_lib_ckpt_sectionread,
+		sizeof (struct res_lib_ckpt_sectionread));
 	
 	return (0);
 }
