@@ -3233,6 +3233,16 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 
 static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message)
 {
+	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
+
+	res_lib_ckpt_checkpointsynchronize.header.size = sizeof (struct res_lib_ckpt_checkpointsynchronize);
+	res_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
+	res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_OK;
+
+	libais_send_response (conn_info,
+		&res_lib_ckpt_checkpointsynchronize,
+		sizeof (struct res_lib_ckpt_checkpointsynchronize));
+	
 	return (0);
 }
 
