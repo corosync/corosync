@@ -430,7 +430,7 @@ saAmfComponentRegister (
 
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error - saSendReceiveReply (amfInstance->response_fd, &req_lib_amf_componentregister,
+	error = saSendReceiveReply (amfInstance->response_fd, &req_lib_amf_componentregister,
 		sizeof (struct req_lib_amf_componentregister),
 		&res_lib_amf_componentregister,
 		sizeof (struct res_lib_amf_componentregister));
