@@ -1475,6 +1475,10 @@ saCkptCheckpointRead (
 	int i;
 	struct iovec iov[3];
 
+	if (ioVector == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
