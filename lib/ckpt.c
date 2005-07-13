@@ -1580,6 +1580,11 @@ saCkptCheckpointSynchronize (
 		return (error);
 	}
 
+	if ((ckptCheckpointInstance->checkpointOpenFlags & SA_CKPT_CHECKPOINT_WRITE) == 0) {
+		error = SA_AIS_ERR_ACCESS;
+		goto error_put;
+	}
+
 	req_lib_ckpt_checkpointsynchronize.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronize); 
 	req_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
 	memcpy (&req_lib_ckpt_checkpointsynchronize.checkpointName,
@@ -1602,6 +1607,7 @@ saCkptCheckpointSynchronize (
 error_exit:
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
+error_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
 	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointsynchronize.header.error : error);
