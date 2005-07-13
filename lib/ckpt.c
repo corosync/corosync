@@ -1574,6 +1574,10 @@ saCkptCheckpointSynchronize (
 	struct req_lib_ckpt_checkpointsynchronize req_lib_ckpt_checkpointsynchronize;
 	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
 
+	if (timeout == 0) {
+		return (SA_AIS_ERR_TIMEOUT);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
