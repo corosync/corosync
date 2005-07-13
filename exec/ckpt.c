@@ -2393,6 +2393,16 @@ static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct in_
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
+	if (ckptCheckpoint->active_replica_set == 0) {
+		log_printf (LOG_LEVEL_NOTICE, "checkpointwrite: no active replica, returning error.\n");
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
+	}
+
+	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < req_lib_ckpt_sectionwrite->dataSize) {
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}
 
 /*
 	printf ("writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
