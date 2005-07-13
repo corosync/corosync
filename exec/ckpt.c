@@ -2271,6 +2271,12 @@ static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message
 		goto error_exit;
 	}
 
+	if (ckptCheckpoint->active_replica_set == 0) {
+		log_printf (LOG_LEVEL_NOTICE, "expirationset: no active replica, returning error.\n");
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
+	}
+
 	/*
 	 * Determine if the user is trying to set expiration time for the default section
 	 */
