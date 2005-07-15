@@ -39,8 +39,7 @@
 CFLAGS = -c -g -Wall -DDEBUG -I../include
 CPPFLAGS = -c -g -Wall -DDEBUG -I../include
 LDFLAGS = -g -L../lib
-#LIBRARIES= /lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
-LIBRARIES= ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
 
 # Profile mode flags
@@ -105,8 +104,7 @@ evsbench: evsbench.o $(LIBS)
 	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
 
 testclm: testclm.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testclm testclm.o -lais
-# $(LIBS) -lSaClm
+	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
 
 testckpt: testckpt.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testckpt testckpt.o sa_error.o $(LIBS)
