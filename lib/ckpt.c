@@ -1168,6 +1168,9 @@ saCkptSectionIterationInitialize (
 	struct req_lib_ckpt_sectioniteratorinitialize req_lib_ckpt_sectioniteratorinitialize;
 	struct res_lib_ckpt_sectioniteratorinitialize res_lib_ckpt_sectioniteratorinitialize;
 
+	if (sectionIterationHandle == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
