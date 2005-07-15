@@ -61,6 +61,7 @@ struct saCkptCheckpoint {
 	poll_timer_handle retention_timer;
 	int expired;
 	int active_replica_set;
+	int sectionCount;
 	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];	
 };
 

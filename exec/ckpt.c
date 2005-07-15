@@ -1224,6 +1224,7 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 			struct saCkptCheckpointSection, list);
 	
 		list = list->next;
+		checkpoint->sectionCount -= 1;
 		checkpoint_section_release (section);
 	}
 	list_del (&checkpoint->list);
@@ -1368,6 +1369,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct i
 		ckptCheckpoint->referenceCount = 0;
 		ckptCheckpoint->retention_timer = 0;
 		ckptCheckpoint->expired = 0;
+		ckptCheckpoint->sectionCount = 0;
 		
 		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
 			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
@@ -1747,6 +1749,7 @@ void timer_function_section_expire (void *data)
                         ckpt_id->ckpt_section_id.id,
                         (char *)&ckpt_id->ckpt_name.value);
 
+	ckptCheckpoint->sectionCount -= 1;
 	checkpoint_section_release (ckptCheckpointSection);
 free_mem :
 	free (ckpt_id);
@@ -2092,6 +2095,11 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 		goto error_exit;
 	}
 
+	if (ckptCheckpoint->sectionCount == ckptCheckpoint->checkpointCreationAttributes.maxSections) {
+		error = SA_AIS_ERR_NO_SPACE;
+		goto error_exit;
+	}
+
 	/*
 	 * Determine if user-specified checkpoint ID already exists
 	 */
@@ -2181,6 +2189,7 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 	list_init (&ckptCheckpointSection->list);
 	list_add (&ckptCheckpointSection->list,
 		&ckptCheckpoint->checkpointSectionsListHead);
+	ckptCheckpoint->sectionCount += 1;
 
 error_exit:
 	if (message_source_is_local(&req_exec_ckpt_sectioncreate->source)) {
@@ -2237,6 +2246,7 @@ static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in
 	/*
 	 * Delete checkpoint section
 	 */
+	ckptCheckpoint->sectionCount -= 1;
 	checkpoint_section_release (ckptCheckpointSection);
 
 	/*
