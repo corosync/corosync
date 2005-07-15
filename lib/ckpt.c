@@ -627,6 +627,12 @@ saCkptCheckpointOpenAsync (
 		checkpointCreationAttributes != NULL) {
 
 		failWithError = SA_AIS_ERR_INVALID_PARAM;
+	} else
+	if (checkpointCreationAttributes &&
+		(checkpointCreationAttributes->checkpointSize >
+		(checkpointCreationAttributes->maxSections * checkpointCreationAttributes->maxSectionSize))) {
+
+		failWithError = SA_AIS_ERR_INVALID_PARAM;
 	}
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
