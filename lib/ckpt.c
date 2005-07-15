@@ -635,6 +635,11 @@ saCkptCheckpointOpenAsync (
 		goto error_exit;
 	}
 
+	if (ckptInstance->callbacks.saCkptCheckpointOpenCallback == NULL) {
+		error = SA_AIS_ERR_INIT;
+		goto error_put_ckpt;
+	}
+
 	error = saHandleCreate (&checkpointHandleDatabase,
 		sizeof (struct ckptCheckpointInstance), &checkpointHandle);
 	if (error != SA_AIS_OK) {
