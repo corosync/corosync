@@ -957,6 +957,10 @@ saCkptSectionCreate (
 	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate;
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
 
+	if (sectionCreationAttributes == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
