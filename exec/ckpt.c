@@ -148,7 +148,7 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 
 static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_info *conn_info, void *message);
+static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message);
 static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
 
 
@@ -289,8 +289,8 @@ struct libais_handler ckpt_libais_handlers[] =
 		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 15 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniteratorinitialize,
-		.response_size		= sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniterationinitialize,
+		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationinitialize),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE,
 		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -3335,10 +3335,10 @@ static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_
 	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_info *conn_info, void *message)
+static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_ckpt_sectioniteratorinitialize *req_lib_ckpt_sectioniteratorinitialize = (struct req_lib_ckpt_sectioniteratorinitialize *)message;
-	struct res_lib_ckpt_sectioniteratorinitialize res_lib_ckpt_sectioniteratorinitialize;
+	struct req_lib_ckpt_sectioniterationinitialize *req_lib_ckpt_sectioniterationinitialize = (struct req_lib_ckpt_sectioniterationinitialize *)message;
+	struct res_lib_ckpt_sectioniterationinitialize res_lib_ckpt_sectioniterationinitialize;
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 	struct saCkptSectionIteratorEntry *ckptSectionIteratorEntries;
@@ -3351,8 +3351,14 @@ static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_i
 	log_printf (LOG_LEVEL_DEBUG, "section iterator initialize\n");
 	ckptSectionIterator = &conn_info->ais_ci.u.libckpt_ci.sectionIterator;
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniteratorinitialize->checkpointName);
+	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationinitialize->checkpointName);
 	if (ckptCheckpoint == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
+	}
+
+	if (ckptCheckpoint->active_replica_set == 0) {
+		log_printf (LOG_LEVEL_NOTICE, "iterationinitialize: no active replica, returning error.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -3392,12 +3398,12 @@ static int message_handler_req_lib_ckpt_sectioniteratorinitialize (struct conn_i
 	ckptSectionIterator->iteratorCount = iteratorEntries;
 
 error_exit:
-	res_lib_ckpt_sectioniteratorinitialize.header.size = sizeof (struct res_lib_ckpt_sectioniteratorinitialize);
-	res_lib_ckpt_sectioniteratorinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
-	res_lib_ckpt_sectioniteratorinitialize.header.error = error;
+	res_lib_ckpt_sectioniterationinitialize.header.size = sizeof (struct res_lib_ckpt_sectioniterationinitialize);
+	res_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
+	res_lib_ckpt_sectioniterationinitialize.header.error = error;
 
-	libais_send_response (conn_info, &res_lib_ckpt_sectioniteratorinitialize,
-		sizeof (struct res_lib_ckpt_sectioniteratorinitialize));
+	libais_send_response (conn_info, &res_lib_ckpt_sectioniterationinitialize,
+		sizeof (struct res_lib_ckpt_sectioniterationinitialize));
 
 	return (0);
 }

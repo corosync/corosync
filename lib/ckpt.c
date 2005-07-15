@@ -1165,8 +1165,8 @@ saCkptSectionIterationInitialize (
 	SaAisErrorT error;
 	struct ckptCheckpointInstance *ckptCheckpointInstance;
 	struct ckptSectionIterationInstance *ckptSectionIterationInstance;
-	struct req_lib_ckpt_sectioniteratorinitialize req_lib_ckpt_sectioniteratorinitialize;
-	struct res_lib_ckpt_sectioniteratorinitialize res_lib_ckpt_sectioniteratorinitialize;
+	struct req_lib_ckpt_sectioniterationinitialize req_lib_ckpt_sectioniterationinitialize;
+	struct res_lib_ckpt_sectioniterationinitialize res_lib_ckpt_sectioniterationinitialize;
 
 	if (sectionIterationHandle == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
@@ -1209,18 +1209,18 @@ saCkptSectionIterationInitialize (
 	 */
 	list_init (&ckptSectionIterationInstance->sectionIdListHead);
 
-	req_lib_ckpt_sectioniteratorinitialize.header.size = sizeof (struct req_lib_ckpt_sectioniteratorinitialize); 
-	req_lib_ckpt_sectioniteratorinitialize.header.id = MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
-	req_lib_ckpt_sectioniteratorinitialize.sectionsChosen = sectionsChosen;
-	req_lib_ckpt_sectioniteratorinitialize.expirationTime = expirationTime;
-	memcpy (&req_lib_ckpt_sectioniteratorinitialize.checkpointName,
+	req_lib_ckpt_sectioniterationinitialize.header.size = sizeof (struct req_lib_ckpt_sectioniterationinitialize); 
+	req_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
+	req_lib_ckpt_sectioniterationinitialize.sectionsChosen = sectionsChosen;
+	req_lib_ckpt_sectioniterationinitialize.expirationTime = expirationTime;
+	memcpy (&req_lib_ckpt_sectioniterationinitialize.checkpointName,
 		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_lock (&ckptSectionIterationInstance->response_mutex);
 
 	error = saSendRetry (ckptSectionIterationInstance->response_fd,
-		&req_lib_ckpt_sectioniteratorinitialize,
-		sizeof (struct req_lib_ckpt_sectioniteratorinitialize),
+		&req_lib_ckpt_sectioniterationinitialize,
+		sizeof (struct req_lib_ckpt_sectioniterationinitialize),
 		MSG_NOSIGNAL);
 
 	if (error != SA_AIS_OK) {
@@ -1228,15 +1228,15 @@ saCkptSectionIterationInitialize (
 	}
 
 	error = saRecvRetry (ckptSectionIterationInstance->response_fd,
-		&res_lib_ckpt_sectioniteratorinitialize,
-		sizeof (struct res_lib_ckpt_sectioniteratorinitialize),
+		&res_lib_ckpt_sectioniterationinitialize,
+		sizeof (struct res_lib_ckpt_sectioniterationinitialize),
 		MSG_WAITALL | MSG_NOSIGNAL);
 
 	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
 
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
 
-	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniteratorinitialize.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniterationinitialize.header.error : error);
 
 error_put_destroy:
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);

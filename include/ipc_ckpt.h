@@ -186,14 +186,14 @@ struct res_lib_ckpt_sectionexpirationtimeset {
 	struct res_header header;
 };
 
-struct req_lib_ckpt_sectioniteratorinitialize {
+struct req_lib_ckpt_sectioniterationinitialize {
 	struct req_header header;
 	SaNameT checkpointName;
 	SaCkptSectionsChosenT sectionsChosen;
 	SaTimeT expirationTime;
 };
 
-struct res_lib_ckpt_sectioniteratorinitialize {
+struct res_lib_ckpt_sectioniterationinitialize {
 	struct res_header header;
 };
 
