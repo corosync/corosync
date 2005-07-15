@@ -2105,6 +2105,13 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 		goto error_exit;
 	}
 
+	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < 
+		req_lib_ckpt_sectioncreate->initialDataSize) {
+
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}
+
 	/*
 	 * Determine if user-specified checkpoint ID already exists
 	 */
