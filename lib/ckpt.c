@@ -66,6 +66,7 @@ struct ckptInstance {
 	int dispatch_fd;
 	SaCkptCallbacksT callbacks;
 	int finalize;
+	SaCkptHandleT ckptHandle;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
 	struct list_head checkpoint_list;
@@ -79,14 +80,16 @@ struct ckptCheckpointInstance {
 	SaNameT checkpointName;
 	pthread_mutex_t response_mutex;
 	struct list_head list;
+	struct list_head section_iteration_list_head;
 };
 
 struct ckptSectionIterationInstance {
 	int response_fd;
-	SaCkptCheckpointHandleT checkpointHandle;
+	SaCkptSectionIterationHandleT sectionIterationHandle;
 	SaNameT checkpointName;
 	struct list_head sectionIdListHead;
 	pthread_mutex_t response_mutex;
+	struct list_head list;
 };
 
 void ckptHandleInstanceDestructor (void *instance);
@@ -135,6 +138,11 @@ static struct saVersionDatabase ckptVersionDatabase = {
 	ckptVersionsSupported
 };
 
+struct iteratorSectionIdListEntry {
+	struct list_head list;
+	char data[0];
+};
+
 
 /*
  * Implementation
@@ -150,6 +158,77 @@ void checkpointHandleInstanceDestructor (void *instance)
 
 void ckptSectionIterationHandleInstanceDestructor (void *instance)
 {
+}
+
+static void ckptSectionIterationInstanceFinalize (struct ckptSectionIterationInstance *ckptSectionIterationInstance)
+{
+	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
+	struct list_head *sectionIdIterationList;
+	struct list_head *sectionIdIterationListNext;
+	/*
+	 * iterate list of section ids for this iterator to free the allocated memory
+	 * be careful to cache next pointer because free removes memory from use
+	 */
+	for (sectionIdIterationList = ckptSectionIterationInstance->sectionIdListHead.next,
+		sectionIdIterationListNext = sectionIdIterationList->next;
+		sectionIdIterationList != &ckptSectionIterationInstance->sectionIdListHead;
+		sectionIdIterationList = sectionIdIterationListNext,
+		sectionIdIterationListNext = sectionIdIterationList->next) {
+
+		iteratorSectionIdListEntry = list_entry (sectionIdIterationList,
+			struct iteratorSectionIdListEntry, list);
+
+		free (iteratorSectionIdListEntry);
+	}
+
+	list_del (&ckptSectionIterationInstance->list);
+
+	saHandleDestroy (&ckptSectionIterationHandleDatabase,
+		ckptSectionIterationInstance->sectionIterationHandle);
+}
+
+static void ckptCheckpointInstanceFinalize (struct ckptCheckpointInstance *ckptCheckpointInstance)
+{
+	struct ckptSectionIterationInstance *sectionIterationInstance;
+	struct list_head *sectionIterationList;
+	struct list_head *sectionIterationListNext;
+
+	for (sectionIterationList = ckptCheckpointInstance->section_iteration_list_head.next,
+		sectionIterationListNext = sectionIterationList->next;
+		sectionIterationList != &ckptCheckpointInstance->section_iteration_list_head;
+		sectionIterationList = sectionIterationListNext,
+		sectionIterationListNext = sectionIterationList->next) {
+
+		sectionIterationInstance = list_entry (sectionIterationList,
+			struct ckptSectionIterationInstance, list);
+
+		ckptSectionIterationInstanceFinalize (sectionIterationInstance);
+	}
+
+	list_del (&ckptCheckpointInstance->list);
+
+	saHandleDestroy (&checkpointHandleDatabase, ckptCheckpointInstance->checkpointHandle);
+}
+
+static void ckptInstanceFinalize (struct ckptInstance *ckptInstance)
+{
+	struct ckptCheckpointInstance *ckptCheckpointInstance;
+	struct list_head *checkpointInstanceList;
+	struct list_head *checkpointInstanceListNext;
+
+	for (checkpointInstanceList = ckptInstance->checkpoint_list.next,
+		checkpointInstanceListNext = checkpointInstanceList->next;
+		checkpointInstanceList != &ckptInstance->checkpoint_list;
+		checkpointInstanceList = checkpointInstanceListNext,
+		checkpointInstanceListNext = checkpointInstanceList->next) {
+
+		ckptCheckpointInstance = list_entry (checkpointInstanceList,
+			struct ckptCheckpointInstance, list);
+
+		ckptCheckpointInstanceFinalize (ckptCheckpointInstance);
+	}
+
+	saHandleDestroy (&ckptHandleDatabase, ckptInstance->ckptHandle);
 }
 
 SaAisErrorT
@@ -197,6 +276,8 @@ saCkptInitialize (
 	}
 
 	list_init (&ckptInstance->checkpoint_list);
+
+	ckptInstance->ckptHandle = *ckptHandle;
 
 	pthread_mutex_init (&ckptInstance->response_mutex, NULL);
 
@@ -355,6 +436,7 @@ saCkptDispatch (
 				 * open succeeded without error
 				 */
 				list_init (&ckptCheckpointInstance->list);
+				list_init (&ckptCheckpointInstance->section_iteration_list_head);
 				list_add (&ckptCheckpointInstance->list,
 					&ckptInstance->checkpoint_list);
 
@@ -417,8 +499,6 @@ saCkptFinalize (
 {
 	struct ckptInstance *ckptInstance;
 	SaAisErrorT error;
-	struct list_head *list;
-	struct ckptCheckpointInstance *ckptCheckpointInstance;
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
 		(void *)&ckptInstance);
@@ -441,29 +521,19 @@ saCkptFinalize (
 
 	pthread_mutex_unlock (&ckptInstance->response_mutex);
 
-	for (list = ckptInstance->checkpoint_list.next;
-		list != &ckptInstance->checkpoint_list;
-		list = list->next) {
-
-		ckptCheckpointInstance = list_entry (list,
-			struct ckptCheckpointInstance, list);
-
-		saHandleInstancePut (&checkpointHandleDatabase,
-			ckptCheckpointInstance->checkpointHandle);
-	}
-
-	saHandleDestroy (&ckptHandleDatabase, ckptHandle);
+	ckptInstanceFinalize (ckptInstance);
 
 	if (ckptInstance->response_fd != -1) {
 		shutdown (ckptInstance->response_fd, 0);
 		close (ckptInstance->response_fd);
 	}
+
 	if (ckptInstance->dispatch_fd != -1) {
 		shutdown (ckptInstance->dispatch_fd, 0);
 		close (ckptInstance->dispatch_fd);
 	}
-	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
+	saHandleInstancePut (&ckptHandleDatabase, ckptHandle);
 
 	return (SA_AIS_OK);
 }
@@ -537,6 +607,7 @@ saCkptCheckpointOpen (
 	ckptCheckpointInstance->ckptHandle = ckptHandle;
 	ckptCheckpointInstance->checkpointHandle = *checkpointHandle;
 	ckptCheckpointInstance->checkpointOpenFlags = checkpointOpenFlags;
+	list_init (&ckptCheckpointInstance->section_iteration_list_head);
 
 	req_lib_ckpt_checkpointopen.header.size = sizeof (struct req_lib_ckpt_checkpointopen);
 	req_lib_ckpt_checkpointopen.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN;
@@ -745,10 +816,7 @@ saCkptCheckpointClose (
 	error = saRecvRetry (ckptCheckpointInstance->response_fd, &res_lib_ckpt_checkpointclose,
 		sizeof (struct res_lib_ckpt_checkpointclose), MSG_WAITALL | MSG_NOSIGNAL);
 
-
-	list_del (&ckptCheckpointInstance->list);
-
-	saHandleDestroy (&checkpointHandleDatabase, checkpointHandle);
+	ckptCheckpointInstanceFinalize (ckptCheckpointInstance);
 
 exit_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
@@ -1193,9 +1261,15 @@ saCkptSectionIterationInitialize (
 	}
 
 	ckptSectionIterationInstance->response_fd = ckptCheckpointInstance->response_fd;
-	ckptSectionIterationInstance->checkpointHandle = checkpointHandle;
+	ckptSectionIterationInstance->sectionIterationHandle = *sectionIterationHandle;
+
 	memcpy (&ckptSectionIterationInstance->checkpointName,
 		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+
+	list_init (&ckptSectionIterationInstance->list);
+
+	list_add (&ckptSectionIterationInstance->list,
+		&ckptCheckpointInstance->section_iteration_list_head);
 
 	pthread_mutex_init (&ckptSectionIterationInstance->response_mutex, NULL);
 
@@ -1242,11 +1316,6 @@ error_put_checkpoint_db:
 error_no_destroy:
 	return (error);
 }
-
-struct iteratorSectionIdListEntry {
-	struct list_head list;
-	char data[0];
-};
 
 SaAisErrorT
 saCkptSectionIterationNext (
@@ -1331,9 +1400,6 @@ saCkptSectionIterationFinalize (
 {
 	SaAisErrorT error;
 	struct ckptSectionIterationInstance *ckptSectionIterationInstance;
-	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
-	struct list_head *sectionIdIterationList;
-	struct list_head *sectionIdIterationListNext;
 	struct req_lib_ckpt_sectioniterationfinalize req_lib_ckpt_sectioniterationfinalize;
 	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
 
@@ -1366,24 +1432,10 @@ saCkptSectionIterationFinalize (
 
 	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
 
-	/*
-	 * iterate list of section ids for this iterator to free the allocated memory
-	 * be careful to cache next pointer because free removes memory from use
-	 */
-	for (sectionIdIterationList = ckptSectionIterationInstance->sectionIdListHead.next,
-		sectionIdIterationListNext = sectionIdIterationList->next;
-		sectionIdIterationList != &ckptSectionIterationInstance->sectionIdListHead;
-		sectionIdIterationList = sectionIdIterationListNext,
-		sectionIdIterationListNext = sectionIdIterationList->next) {
-
-		iteratorSectionIdListEntry = list_entry (sectionIdIterationList,
-			struct iteratorSectionIdListEntry, list);
-
-		free (iteratorSectionIdListEntry);
-	}
+	ckptSectionIterationInstanceFinalize (ckptSectionIterationInstance);
 
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
-	saHandleDestroy (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
+
 	return (error);
 
 error_put:
