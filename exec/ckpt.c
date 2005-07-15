@@ -3466,7 +3466,7 @@ static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *c
 		 * No more sections in iterator
 		 */
 		if (ckptSectionIterator->iteratorPos + 1 >= ckptSectionIterator->iteratorCount) {
-			error = SA_AIS_ERR_NOT_EXIST;
+			error = SA_AIS_ERR_NO_SECTIONS;
 			goto error_exit;
 		}
 
