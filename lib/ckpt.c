@@ -611,6 +611,9 @@ saCkptCheckpointOpenAsync (
 	struct res_lib_ckpt_checkpointopenasync res_lib_ckpt_checkpointopenasync;
 	SaAisErrorT failWithError = SA_AIS_OK;
 
+	if (checkpointName == NULL) {
+		failWithError = SA_AIS_ERR_INVALID_PARAM;
+	} else
 	if (checkpointOpenFlags &
 		~(SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE|SA_CKPT_CHECKPOINT_CREATE)) {
 		failWithError = SA_AIS_ERR_BAD_FLAGS;
@@ -648,13 +651,17 @@ saCkptCheckpointOpenAsync (
 	ckptCheckpointInstance->ckptHandle = ckptHandle;
 	ckptCheckpointInstance->checkpointHandle = checkpointHandle;
 	ckptCheckpointInstance->checkpointOpenFlags = checkpointOpenFlags;
-	memcpy (&ckptCheckpointInstance->checkpointName, checkpointName, sizeof (SaNameT));
+	if (failWithError == SA_AIS_OK) {
+		memcpy (&ckptCheckpointInstance->checkpointName, checkpointName,
+			sizeof (SaNameT));
+		memcpy (&req_lib_ckpt_checkpointopenasync.checkpointName,
+			checkpointName, sizeof (SaNameT));
+	}
 
 	req_lib_ckpt_checkpointopenasync.header.size = sizeof (struct req_lib_ckpt_checkpointopenasync);
 	req_lib_ckpt_checkpointopenasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
 	req_lib_ckpt_checkpointopenasync.invocation = invocation;
 	req_lib_ckpt_checkpointopenasync.fail_with_error = failWithError;
-	memcpy (&req_lib_ckpt_checkpointopenasync.checkpointName, checkpointName, sizeof (SaNameT));
 	req_lib_ckpt_checkpointopenasync.checkpointCreationAttributesSet = 0;
 	if (checkpointCreationAttributes) {
 		memcpy (&req_lib_ckpt_checkpointopenasync.checkpointCreationAttributes,
