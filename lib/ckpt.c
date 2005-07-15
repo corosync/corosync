@@ -149,13 +149,6 @@ void checkpointHandleInstanceDestructor (void *instance)
 
 void ckptSectionIterationHandleInstanceDestructor (void *instance)
 {
-	struct ckptSectionIterationInstance *ckptSectionIterationInstance = (struct ckptSectionIterationInstance *)instance;
-
-	if (ckptSectionIterationInstance->response_fd != -1) {
-		shutdown (ckptSectionIterationInstance->response_fd, 0);
-
-		close (ckptSectionIterationInstance->response_fd);
-	}
 }
 
 SaAisErrorT
@@ -1362,12 +1355,9 @@ saCkptSectionIterationFinalize (
 		free (iteratorSectionIdListEntry);
 	}
 
-	saHandleInstancePut (&checkpointHandleDatabase,
-		ckptSectionIterationInstance->checkpointHandle);
-
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
 
-    saHandleDestroy (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
+	saHandleDestroy (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
 
 error_noput:
 	return (error);
