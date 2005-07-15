@@ -1171,6 +1171,15 @@ saCkptSectionIterationInitialize (
 	if (sectionIterationHandle == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
+
+	if (sectionsChosen != SA_CKPT_SECTIONS_FOREVER &&
+		sectionsChosen != SA_CKPT_SECTIONS_LEQ_EXPIRATION_TIME &&
+		sectionsChosen != SA_CKPT_SECTIONS_GEQ_EXPIRATION_TIME &&
+		sectionsChosen != SA_CKPT_SECTIONS_CORRUPTED &&
+		sectionsChosen != SA_CKPT_SECTIONS_ANY) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 	error = saHandleInstanceGet (&checkpointHandleDatabase, checkpointHandle,
 		(void *)&ckptCheckpointInstance);
 	if (error != SA_AIS_OK) {
