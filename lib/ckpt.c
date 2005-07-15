@@ -84,6 +84,7 @@ struct ckptCheckpointInstance {
 struct ckptSectionIterationInstance {
 	int response_fd;
 	SaCkptCheckpointHandleT checkpointHandle;
+	SaNameT checkpointName;
 	struct list_head sectionIdListHead;
 	pthread_mutex_t response_mutex;
 };
@@ -1192,8 +1193,9 @@ saCkptSectionIterationInitialize (
 	}
 
 	ckptSectionIterationInstance->response_fd = ckptCheckpointInstance->response_fd;
-
 	ckptSectionIterationInstance->checkpointHandle = checkpointHandle;
+	memcpy (&ckptSectionIterationInstance->checkpointName,
+		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	pthread_mutex_init (&ckptSectionIterationInstance->response_mutex, NULL);
 
@@ -1332,12 +1334,37 @@ saCkptSectionIterationFinalize (
 	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
 	struct list_head *sectionIdIterationList;
 	struct list_head *sectionIdIterationListNext;
+	struct req_lib_ckpt_sectioniterationfinalize req_lib_ckpt_sectioniterationfinalize;
+	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
 
 	error = saHandleInstanceGet (&ckptSectionIterationHandleDatabase,
 		sectionIterationHandle, (void *)&ckptSectionIterationInstance);
 	if (error != SA_AIS_OK) {
-		goto error_noput;
+		goto error_exit;
 	}
+
+	req_lib_ckpt_sectioniterationfinalize.header.size = sizeof (struct req_lib_ckpt_sectioniterationfinalize); 
+	req_lib_ckpt_sectioniterationfinalize.header.id = MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE;
+	memcpy (&req_lib_ckpt_sectioniterationfinalize.checkpointName,
+		&ckptSectionIterationInstance->checkpointName, sizeof (SaNameT));
+
+	pthread_mutex_lock (&ckptSectionIterationInstance->response_mutex);
+
+	error = saSendRetry (ckptSectionIterationInstance->response_fd,
+		&req_lib_ckpt_sectioniterationfinalize,
+		sizeof (struct req_lib_ckpt_sectioniterationfinalize), MSG_NOSIGNAL);
+
+	if (error != SA_AIS_OK) {
+		goto error_put;
+	}
+
+	error = saRecvRetry (ckptSectionIterationInstance->response_fd, &res_lib_ckpt_sectioniterationfinalize,
+		sizeof (struct res_lib_ckpt_sectioniterationfinalize), MSG_WAITALL | MSG_NOSIGNAL);
+	if (error != SA_AIS_OK) {
+		goto error_put;
+	}
+
+	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
 
 	/*
 	 * iterate list of section ids for this iterator to free the allocated memory
@@ -1356,11 +1383,15 @@ saCkptSectionIterationFinalize (
 	}
 
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
-
 	saHandleDestroy (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
-
-error_noput:
 	return (error);
+
+error_put:
+	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
+
+	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
+error_exit:
+	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniterationfinalize.header.error : error);
 }
 
 SaAisErrorT

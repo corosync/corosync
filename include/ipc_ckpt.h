@@ -55,7 +55,8 @@ enum req_lib_ckpt_checkpoint_types {
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE = 13,
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC = 14,
 	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE = 15,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 16
+	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE = 16,
+	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 17
 };
 
 enum res_lib_ckpt_checkpoint_types {
@@ -75,7 +76,8 @@ enum res_lib_ckpt_checkpoint_types {
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE = 13,
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC = 14,
 	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE = 15,
-	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 16
+	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE = 16,
+	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 17
 };
 
 struct req_lib_ckpt_checkpointopen {
@@ -194,6 +196,15 @@ struct req_lib_ckpt_sectioniterationinitialize {
 };
 
 struct res_lib_ckpt_sectioniterationinitialize {
+	struct res_header header;
+};
+
+struct req_lib_ckpt_sectioniterationfinalize {
+	struct req_header header;
+	SaNameT checkpointName;
+};
+
+struct res_lib_ckpt_sectioniterationfinalize {
 	struct res_header header;
 };
 

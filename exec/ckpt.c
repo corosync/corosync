@@ -149,6 +149,7 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message);
 
 static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message);
+static int message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_info *conn_info, void *message);
 static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
 
 
@@ -295,6 +296,12 @@ struct libais_handler ckpt_libais_handlers[] =
 		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 16 */
+		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniterationfinalize,
+		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationfinalize),
+		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE,
+		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 17 */
 		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniteratornext,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniteratornext),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT,
@@ -3404,6 +3411,35 @@ error_exit:
 
 	libais_send_response (conn_info, &res_lib_ckpt_sectioniterationinitialize,
 		sizeof (struct res_lib_ckpt_sectioniterationinitialize));
+
+	return (0);
+}
+
+static int message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_info *conn_info, void *message)
+{
+	struct req_lib_ckpt_sectioniterationfinalize *req_lib_ckpt_sectioniterationfinalize = (struct req_lib_ckpt_sectioniterationfinalize *)message;
+	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
+	struct saCkptCheckpoint *ckptCheckpoint;
+	SaErrorT error = SA_AIS_OK;
+
+	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationfinalize->checkpointName);
+	if (ckptCheckpoint == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
+	}
+
+	if (ckptCheckpoint->active_replica_set == 0) {
+		log_printf (LOG_LEVEL_NOTICE, "iterationfinalize: no active replica, returning error.\n");
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
+	}
+error_exit:
+	res_lib_ckpt_sectioniterationfinalize.header.size = sizeof (struct res_lib_ckpt_sectioniterationfinalize);
+	res_lib_ckpt_sectioniterationfinalize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE;
+	res_lib_ckpt_sectioniterationfinalize.header.error = error;
+
+	libais_send_response (conn_info, &res_lib_ckpt_sectioniterationfinalize,
+		sizeof (struct res_lib_ckpt_sectioniterationfinalize));
 
 	return (0);
 }
