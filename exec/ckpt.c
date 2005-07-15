@@ -2100,6 +2100,11 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct in
 		goto error_exit;
 	}
 
+	if (ckptCheckpoint->checkpointCreationAttributes.maxSections == 1) {
+		error = SA_AIS_ERR_EXIST;
+		goto error_exit;
+	}
+
 	/*
 	 * Determine if user-specified checkpoint ID already exists
 	 */
