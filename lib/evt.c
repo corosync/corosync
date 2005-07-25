@@ -1790,7 +1790,7 @@ saEvtEventPublish(
 	}
 
 	if (eventDataSize > SA_EVT_DATA_MAX_LEN) {
-		error = SA_AIS_ERR_INVALID_PARAM;
+		error = SA_AIS_ERR_TOO_BIG;
 		goto pub_done;
 	}
 
