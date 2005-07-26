@@ -1850,13 +1850,13 @@ saEvtEventPublish(
 
 	req = malloc(sizeof(*req) + eventDataSize + pattern_size);
 
-	patterns = (struct event_pattern *)req->led_body;
-	data_start = (void *)req->led_body + pattern_size;
-
 	if (!req) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto pub_put3;
 	}
+
+	patterns = (struct event_pattern *)req->led_body;
+	data_start = (void *)req->led_body + pattern_size;
 
 	/*
 	 * copy everything to the request structure
