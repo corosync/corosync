@@ -1121,7 +1121,7 @@ test_event()
 		result = saEvtEventDataGet(event_handle, event_data, 
 				&event_data_size);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
+	if (result != SA_AIS_ERR_BAD_HANDLE) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(4) result: %s\n", result_buf);
 	}
@@ -1131,7 +1131,7 @@ test_event()
 		result = saEvtEventDataGet(event_handle, event_data, 
 				&event_data_size);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
+	if (result != SA_AIS_ERR_BAD_HANDLE) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(5) result: %s\n", result_buf);
 	}

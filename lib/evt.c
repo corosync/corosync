@@ -175,6 +175,7 @@ struct event_channel_instance {
  * edi_mutex:			event data mutex
  * edi_hl:				pointer to channel's handle 
  * 						struct for this event.
+ * edi_ro:				read only flag
  */
 struct event_data_instance {
 	SaEvtChannelHandleT		edi_channel_handle;
@@ -190,6 +191,7 @@ struct event_data_instance {
 	int						edi_freeing;
 	pthread_mutex_t			edi_mutex;
 	struct handle_list		*edi_hl;
+	int 					edi_ro;
 };
 
 
@@ -482,6 +484,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	memset(edi, 0, sizeof(*edi));
 
 	pthread_mutex_init(&edi->edi_mutex, NULL);
+	edi->edi_ro = 1;
 	edi->edi_freeing = 0;
 	edi->edi_channel_handle = evt->led_lib_channel_handle;
 	edi->edi_priority = evt->led_priority;
@@ -1319,6 +1322,7 @@ saEvtEventAllocate(
 	memset(edi, 0, sizeof(*edi));
 
 	pthread_mutex_init(&edi->edi_mutex, NULL);
+	edi->edi_ro = 0;
 	edi->edi_freeing = 0;
 	edi->edi_channel_handle = channelHandle;
 	edi->edi_pub_node = evti->ei_node_id;
@@ -1411,6 +1415,14 @@ saEvtEventAttributesSet(
 		goto attr_set_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
+
+	/*
+	 * Cannot modify an event returned via callback.
+	 */
+	if (edi->edi_ro) {
+		error = SA_AIS_ERR_ACCESS;
+		goto attr_set_unlock;
+	}
 
 	edi->edi_priority = priority;
 	edi->edi_retention_time = retentionTime;
@@ -1634,6 +1646,15 @@ saEvtEventDataGet(
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
 
+	/*
+	 * Can't get data from an event that wasn't 
+	 * a delivered event.
+	 */
+	if (!edi->edi_ro) {
+		error = SA_AIS_ERR_BAD_HANDLE;
+		goto unlock_put;
+	}
+
 	if (edi->edi_event_data && edi->edi_event_data_size) {
 		xfsize = min(*eventDataSize, edi->edi_event_data_size);
 		*eventDataSize = edi->edi_event_data_size;
@@ -1645,6 +1666,7 @@ saEvtEventDataGet(
 		*eventDataSize = 0;
 	}
 
+unlock_put:
 	pthread_mutex_unlock(&edi->edi_mutex);
 	saHandleInstancePut(&event_handle_db, eventHandle);
 data_get_done:
