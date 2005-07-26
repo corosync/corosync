@@ -1631,11 +1631,11 @@ saEvtEventDataGet(
 	void *eventData, 
 	SaSizeT *eventDataSize)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_ERR_INVALID_PARAM;
 	struct event_data_instance *edi;
 	SaSizeT xfsize;
 
-	if (!eventData || !eventDataSize) {
+	if (!eventDataSize) {
 		goto data_get_done;
 	}
 
@@ -1645,6 +1645,16 @@ saEvtEventDataGet(
 		goto data_get_done;
 	}
 	pthread_mutex_lock(&edi->edi_mutex);
+
+	/*
+	 * If no buffer was supplied, then just tell the caller
+	 * how large a buffer is needed.  
+	 */
+	if (!eventData) {
+		error = SA_AIS_ERR_NO_SPACE;
+		*eventDataSize = edi->edi_event_data_size;
+		goto unlock_put;
+	}
 
 	/*
 	 * Can't get data from an event that wasn't 
@@ -1657,10 +1667,10 @@ saEvtEventDataGet(
 
 	if (edi->edi_event_data && edi->edi_event_data_size) {
 		xfsize = min(*eventDataSize, edi->edi_event_data_size);
-		*eventDataSize = edi->edi_event_data_size;
 		if (*eventDataSize < edi->edi_event_data_size) {
 			error = SA_AIS_ERR_NO_SPACE;
 		}
+		*eventDataSize = edi->edi_event_data_size;
 		memcpy(eventData, edi->edi_event_data, xfsize);
 	} else {
 		*eventDataSize = 0;

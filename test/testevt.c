@@ -724,7 +724,7 @@ SaEvtEventIdT event_id = 0;
 SaUint8T priority;
 SaTimeT retention_time = 0ULL;
 SaNameT publisher_name = {0, {0}};
-SaSizeT event_data_size;
+SaSizeT event_data_size = 0;
 int expected_pat_count;
 
 /*
@@ -1090,19 +1090,20 @@ test_event()
 	/*
 	 * event user data
 	 */
+	event_data_size = 0;
 	printf("       Get event data(1)\n");
 	do {
-		result = saEvtEventDataGet(event_handle, 0, 0);
+		result = saEvtEventDataGet(event_handle, 0, &event_data_size);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
+	if (result != SA_AIS_ERR_NO_SPACE) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(1) result: %s\n", result_buf);
 	}
 	printf("       Get event data(2)\n");
 	do {
-		result = saEvtEventDataGet(event_handle, event_data, 0);
+		result = saEvtEventDataGet(event_handle, event_data, &event_data_size);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
+	if (result != SA_AIS_ERR_BAD_HANDLE) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(2) result: %s\n", result_buf);
 	}
@@ -1111,7 +1112,7 @@ test_event()
 	do {
 		result = saEvtEventDataGet(event_handle, 0, &event_data_size);
 	} while ((result == SA_AIS_ERR_TRY_AGAIN) && !sleep(TRY_WAIT));
-	if (result != SA_AIS_OK) {
+	if (result != SA_AIS_ERR_NO_SPACE) {
 		get_sa_error(result, result_buf, result_buf_len);
 		printf("ERROR: Get event data(3) result: %s\n", result_buf);
 	}
@@ -1151,6 +1152,7 @@ test_event()
 
 	printf("       Publish with no patterns set\n");
 
+	event_data_size = 0;
 	do {
 		result = saEvtEventSubscribe(channel_handle,
 			&subscribe_filters,
