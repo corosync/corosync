@@ -104,10 +104,12 @@ int poll_destroy (poll_handle handle)
 {
 	struct poll_instance *poll_instance;
 	SaErrorT error;
+	int res = 0;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -123,10 +125,8 @@ int poll_destroy (poll_handle handle)
 
 	saHandleInstancePut (&poll_instance_database, handle);
 
-	return (0);
-
 error_exit:
-	return (-1);
+	return (res);
 }
 
 int poll_dispatch_add (
@@ -143,10 +143,12 @@ int poll_dispatch_add (
 	int found = 0;
 	int install_pos;
 	SaErrorT error;
+	int res = 0;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -165,8 +167,8 @@ int poll_dispatch_add (
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct poll_entry));
 		if (poll_entries == 0) {
-			errno = ENOMEM;
-			goto error_exit;
+			res = -ENOMEM;
+			goto error_put;
 		}
 		poll_instance->poll_entries = poll_entries;
 	
@@ -174,8 +176,8 @@ int poll_dispatch_add (
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct pollfd));
 		if (ufds == 0) {
-			errno = ENOMEM;
-			goto error_exit;
+			res = -ENOMEM;
+			goto error_put;
 		}
 		poll_instance->ufds = ufds;
 
@@ -193,12 +195,11 @@ int poll_dispatch_add (
 	poll_instance->poll_entries[install_pos].dispatch_fn = dispatch_fn;
 	poll_instance->poll_entries[install_pos].data = data;
 
+error_put:
 	saHandleInstancePut (&poll_instance_database, handle);
 
-	return (0);
-
 error_exit:
-	return (-1);
+	return (res);
 }
 
 int poll_dispatch_modify (
@@ -211,10 +212,12 @@ int poll_dispatch_modify (
 	struct poll_instance *poll_instance;
 	int i;
 	SaErrorT error;
+	int res = 0;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -226,16 +229,18 @@ int poll_dispatch_modify (
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
 			poll_instance->poll_entries[i].prio = prio;
-			return (0);
+			
+			goto error_put;
 		}
 	}
 
-	errno = EBADF;
+	res = -EBADF;
 
+error_put:
 	saHandleInstancePut (&poll_instance_database, handle);
 
 error_exit:
-	return (-1);
+	return (res);
 }
 
 int poll_dispatch_delete (
@@ -246,10 +251,12 @@ int poll_dispatch_delete (
 	int i;
 	SaErrorT error;
 	int found = 0;
+	int res = 0;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -275,17 +282,18 @@ int poll_dispatch_delete (
 		}
 	}
 
+	res = -EBADF;
 	if (found) {
 		poll_instance->ufds[i].fd = -1;
 		poll_instance->ufds[i].revents = 0;
+		res = 0;
 	}
 
+
 	saHandleInstancePut (&poll_instance_database, handle);
-	return (0);
 
 error_exit:
-	errno = EBADF;
-	return (-1);
+	return (res);
 }
 
 int poll_timer_add (
@@ -295,20 +303,22 @@ int poll_timer_add (
 	poll_timer_handle *timer_handle_out)
 {
 	struct poll_instance *poll_instance;
-	int res = -1;
+	int res = 0;
 	SaErrorT error;
 
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
+		
 		goto error_exit;
 	}
 
 	timerlist_add_future (&poll_instance->timerlist,
 		timer_fn, data, msec_in_future, timer_handle_out);
 
-	if (timer_handle_out != 0) {
-		res = 0;
+	if (timer_handle_out == 0) {
+		res = -ENOENT;
 	}
 
 	saHandleInstancePut (&poll_instance_database, handle);
@@ -322,6 +332,7 @@ int poll_timer_delete (
 {
 	struct poll_instance *poll_instance;
 	SaErrorT error;
+	int res = 0;
 
 	if (timer_handle == 0) {
 		return (0);
@@ -329,6 +340,7 @@ int poll_timer_delete (
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -336,10 +348,8 @@ int poll_timer_delete (
 
 	saHandleInstancePut (&poll_instance_database, handle);
 
-	return (0);
-
 error_exit:
-	return (-1);
+	return (res);
 }
 
 int poll_timer_delete_data (
@@ -347,6 +357,7 @@ int poll_timer_delete_data (
 	poll_timer_handle timer_handle) {
 	struct poll_instance *poll_instance;
 	SaErrorT error;
+	int res = 0;
 
 	if (timer_handle == 0) {
 		return (0);
@@ -354,6 +365,7 @@ int poll_timer_delete_data (
 	error = saHandleInstanceGet (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (error != SA_OK) {
+		res = -ENOENT;
 		goto error_exit;
 	}
 
@@ -361,11 +373,8 @@ int poll_timer_delete_data (
 
 	saHandleInstancePut (&poll_instance_database, handle);
 
-	return (0);
-
 error_exit:
-        return (-1);
-
+	return (res);
 }
 
 
