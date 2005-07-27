@@ -73,12 +73,12 @@ SaCkptCallbacksT callbacks = {
 SaNameT checkpointName = { 5, "abra\0" };
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
-	SA_CKPT_WR_ALL_REPLICAS,
-	100000,
-	0,
-	5,
-	20000,
-	10
+        .creationFlags =        SA_CKPT_WR_ALL_REPLICAS,
+        .checkpointSize =       150000,
+        .retentionDuration =    0,
+        .maxSections =          5,
+        .maxSectionSize =       150000,
+        .maxSectionIdSize =     10
 };
 
 SaCkptSectionIdT sectionId1 = {
