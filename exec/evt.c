@@ -951,13 +951,31 @@ static void delete_channel(struct event_svr_channel_instance *eci)
 }
 
 /*
+ * Free up an event structure if it isn't being used anymore.
+ */
+static void
+free_event_data(struct event_data *edp)
+{
+	if (--edp->ed_ref_count) {
+		return;
+	}
+	log_printf(LOG_LEVEL_DEBUG, "Freeing event ID: 0x%llx\n", 
+			edp->ed_event.led_event_id);
+	if (edp->ed_delivered) {
+		free(edp->ed_delivered);
+	}
+
+	free(edp);
+}
+
+/*
  * Mark a channel for deletion.
  */
 static void unlink_channel(struct event_svr_channel_instance *eci, 
 		uint64_t unlink_id)
 {
 	struct event_data *edp;
-	struct list_head *l;
+	struct list_head *l, *nxt;
 
 	log_printf(CHAN_UNLINK_DEBUG, "Unlink request: %s, id 0x%llx\n",
 			eci->esc_channel_name.value, unlink_id);
@@ -977,14 +995,25 @@ static void unlink_channel(struct event_svr_channel_instance *eci,
 	list_add(&eci->esc_entry, &esc_unlinked_head);
 
 	/*
-	 * Scan the retained event list and tag any associated with this channel
-	 * with the unlink ID so that they get routed properly.
+	 * Scan the retained event list and remove any retained events.
+	 * Since no new opens can occur there won't be any need of sending
+	 * retained events on the channel.
 	 */
-	for (l = retained_list.next; l != &retained_list; l = l->next) {
+	for (l = retained_list.next; l != &retained_list; l = nxt) {
+		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
 		if ((edp->ed_my_chan == eci) && 
 				(edp->ed_event.led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
-			edp->ed_event.led_chan_unlink_id = unlink_id;
+			poll_timer_delete(aisexec_poll_handle, edp->ed_timer_handle);
+			edp->ed_event.led_retention_time = 0;
+			list_del(&edp->ed_retained);
+			list_init(&edp->ed_retained);
+			edp->ed_my_chan->esc_retained_count--;
+
+			log_printf(CHAN_UNLINK_DEBUG, 
+				"Unlink: Delete retained event id 0x%llx\n",
+			edp->ed_event.led_event_id);
+			free_event_data(edp);
 		}
 	}
 
@@ -1302,24 +1331,6 @@ static SaErrorT get_event_id(uint64_t *event_id)
 }
 
 
-
-/*
- * Free up an event structure if it isn't being used anymore.
- */
-static void
-free_event_data(struct event_data *edp)
-{
-	if (--edp->ed_ref_count) {
-		return;
-	}
-	log_printf(LOG_LEVEL_DEBUG, "Freeing event ID: 0x%llx\n", 
-			edp->ed_event.led_event_id);
-	if (edp->ed_delivered) {
-		free(edp->ed_delivered);
-	}
-
-	free(edp);
-}
 
 /*
  * Timer handler to delete expired events.
@@ -3050,9 +3061,11 @@ static int evt_remote_evt(void *msg, struct in_addr source_addr,
 	evtpkt->led_in_addr = source_addr;
 	evtpkt->led_receive_time = clust_time_now();
 
-	log_printf(CHAN_UNLINK_DEBUG, 
+	if (evtpkt->led_chan_unlink_id != EVT_CHAN_ACTIVE) {
+		log_printf(CHAN_UNLINK_DEBUG, 
 				"evt_remote_evt(0): chan %s, id 0x%llx\n",
 					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+	}
 	eci = find_channel(&evtpkt->led_chan_name, evtpkt->led_chan_unlink_id);
 	/*
 	 * We may have had some events that were already queued when an

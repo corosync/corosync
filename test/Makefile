@@ -54,12 +54,12 @@ TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testckpt.c ckptstress.c testparse.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
-		sa_error.c
+		sa_error.c unlink.c
 
 all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
 	testamf6 testamfth testckpt ckptstress testparse ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench
+	evsbench subscription publish evtbench unlink
 
 testparse: testparse.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o ../exec/util.o
@@ -124,6 +124,9 @@ subscription: subscription.o sa_error.o $(LIBRARIES)
 publish: publish.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o publish publish.o sa_error.o $(LIBS)
 
+unlink: unlink.o sa_error.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o unlink unlink.o sa_error.o $(LIBS)
+
 evtbench: evtbench.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o evtbench evtbench.o sa_error.o $(LIBS)
 
@@ -140,7 +143,7 @@ clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
 	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
-	evsbench subscription publish evtbench
+	evsbench subscription publish evtbench unlink
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
@@ -149,28 +152,27 @@ depend:
 # DO NOT DELETE
 
 testclm.o: ../include/ais_types.h ../include/saClm.h
-testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/ipc_evs.h
-testamf.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
+testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/saClm.h
 testamf1.o: ../include/ais_types.h ../include/ais_amf.h
 testamf2.o: ../include/ais_types.h ../include/ais_amf.h
 testamf3.o: ../include/ais_types.h ../include/ais_amf.h
 testamf4.o: ../include/ais_types.h ../include/ais_amf.h
 testamf5.o: ../include/ais_types.h ../include/ais_amf.h
 testamf6.o: ../include/ais_types.h ../include/ais_amf.h
-testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/ipc_evs.h
-testamfth.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h
-testckpt.o: ../include/ais_types.h ../include/saCkpt.h
+testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/saClm.h
+testckpt.o: ../include/ais_types.h ../include/saCkpt.h sa_error.h
 ckptstress.o: ../include/ais_types.h ../include/saCkpt.h
 testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
 testparse.o: ../exec/aispoll.h ../exec/totempg.h ../exec/totemsrp.h
-testparse.o: ../exec/print.h ../include/saClm.h ../include/ais_types.h
+testparse.o: ../exec/totem.h ../exec/parse.h ../exec/print.h
+testparse.o: ../include/saClm.h ../include/ais_types.h
 ckptbench.o: ../include/ais_types.h ../include/saCkpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/saCkpt.h
 testevt.o: ../include/ais_types.h ../include/saEvt.h
 testevs.o: ../include/evs.h
-testevsth.o: ../include/evs.h
 evsbench.o: ../include/ais_types.h ../include/evs.h
 subscription.o: ../include/ais_types.h ../include/saEvt.h
 publish.o: ../include/ais_types.h ../include/saEvt.h
 evtbench.o: ../include/ais_types.h ../include/saEvt.h
 sa_error.o: ../include/ais_types.h
+unlink.o: ../include/ais_types.h ../include/saEvt.h
