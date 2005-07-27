@@ -2358,7 +2358,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
 	SaEvtEventFilterArrayT *filters;
-	SaErrorT error = SA_AIS_OK;
+	SaErrorT error;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
@@ -2374,26 +2374,6 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 			"saEvtEventSubscribe (Subscribe request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", 
 			req->ics_sub_id);
-
-	error = evtfilt_to_aisfilt(req, &filters);
-
-	if (error == SA_AIS_OK) {
-		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
-				filters->filtersNumber);
-		for (i = 0; i < filters->filtersNumber; i++) {
-			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n", 
-					filter_types[filters->filters[i].filterType],
-					filters->filters[i].filterType,
-					filters->filters[i].filter.patternSize,
-					(filters->filters[i].filter.patternSize) 
-						? (char *)filters->filters[i].filter.pattern
-						: "");
-		}
-	}
-
-	if (error != SA_AIS_OK) {
-		goto subr_done;
-	}
 
 	/*
 	 * look up the channel handle
@@ -2413,6 +2393,26 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	ecs = find_subscr(eco, req->ics_sub_id); 
 	if (ecs) {
 		error = SA_AIS_ERR_EXIST;
+		goto subr_put;
+	}
+
+	error = evtfilt_to_aisfilt(req, &filters);
+
+	if (error == SA_AIS_OK) {
+		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
+				filters->filtersNumber);
+		for (i = 0; i < filters->filtersNumber; i++) {
+			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n", 
+					filter_types[filters->filters[i].filterType],
+					filters->filters[i].filterType,
+					filters->filters[i].filter.patternSize,
+					(filters->filters[i].filter.patternSize) 
+						? (char *)filters->filters[i].filter.pattern
+						: "");
+		}
+	}
+
+	if (error != SA_AIS_OK) {
 		goto subr_put;
 	}
 
