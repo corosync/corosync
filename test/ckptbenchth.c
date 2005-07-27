@@ -44,6 +44,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "ais_types.h"
 #include "saCkpt.h"
@@ -65,12 +66,12 @@ SaCkptCallbacksT callbacks = {
 };
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
-	SA_CKPT_WR_ALL_REPLICAS,
-	100000,
-	0,
-	5,
-	20000,
-	10
+	.creationFlags =	SA_CKPT_WR_ALL_REPLICAS,
+	.checkpointSize =	100000,
+	.retentionDuration =	0,
+	.maxSections =		5,
+	.maxSectionSize =	150000,
+	.maxSectionIdSize =	10
 };
 
 SaCkptSectionIdT sectionId1 = {
@@ -186,12 +187,7 @@ void *benchmark_thread (void *arg)
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
-		
-//			if (error == SA_ERR_TRY_AGAIN) {
-//				usleep (rand() % 500);
-//			}
 		} while (error == SA_ERR_TRY_AGAIN);
-printf ("done writing for thread %d\n", td->thread);
 		if (error != SA_OK) {
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
@@ -257,26 +253,32 @@ int main (void) {
 	for (i  = 0; i < CHECKPOINT_THREADS; i++) {
 		sprintf (checkpointName.value, "checkpoint%d \n", i);
 		error = saCkptInitialize (&ckptHandles[i], &callbacks, &version);
+		assert (error == SA_AIS_OK);
 
 		error = saCkptCheckpointOpen (ckptHandles[i],
 			&checkpointName,
 			&checkpointCreationAttributes,
-			SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
-			0,
+			SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+			SA_TIME_END,
 			&checkpointHandles[i]);
+		assert (error == SA_AIS_OK);
+
 		error = saCkptSectionCreate (checkpointHandles[i],
 			&sectionCreationAttributes1,
 			"Initial Data #0",
 			strlen ("Initial Data #0") + 1);
+		assert (error == SA_AIS_OK);
+
 		error = saCkptSectionCreate (checkpointHandles[i],
 			&sectionCreationAttributes2,
 			"Initial Data #0",
 			strlen ("Initial Data #0") + 1);
+		assert (error == SA_AIS_OK);
 	}
 
-	for (i = CHECKPOINT_THREADS-50; i < CHECKPOINT_THREADS; i++) {	/* i threads */
-		count = 3000; /* initial count */
-		size = 100000; /* initial size */
+	for (i = 1; i < CHECKPOINT_THREADS; i++) {	/* i threads */
+		count = 3000; /* initial write count */
+		size = 10000; /* initial size */
 		printf ("THREADS %d\n", i);
 		for (j = 0; j < 5; j++) { /* number of runs with i threads */
 			threaded_bench (ckptHandles, checkpointHandles, i, count, size);
@@ -286,7 +288,7 @@ int main (void) {
 			 * This keeps the run times similiar
 			 */
 			count = (((float)count) * 0.95);
-			size += 1500;
+			size += 1000;
 		}
 	}
 	return (0);
