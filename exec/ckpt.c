@@ -2261,6 +2261,8 @@ static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct in
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
+printf ("delete ckptCheckpointSection name %s\n", 
+	ckptCheckpointSection->sectionDescriptor.sectionId.id);
 
 	/*
 	 * Delete checkpoint section
