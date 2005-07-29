@@ -541,7 +541,9 @@ int message_handler_req_clm_clustertrack (struct conn_info *conn_info, void *mes
 
 
 	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = req_clm_clustertrack->trackFlags;
-	conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
+	if (req_clm_clustertrack->trackFlags != SA_TRACK_CURRENT) {
+		conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
+	}
 
 	list_add (&conn_info->conn_info_partner->conn_list, &library_notification_send_listhead);
 
