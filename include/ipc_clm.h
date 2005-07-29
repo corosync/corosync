@@ -63,13 +63,13 @@ struct req_clm_clustertrack {
 struct res_clm_clustertrack {
 	struct res_header header;
 };
-struct req_clm_trackstop {
+struct req_lib_clm_trackstop {
 	struct req_header header;
 	SaSizeT dataRead;
 	SaErrorT error;
 };
 
-struct res_clm_trackstop {
+struct res_lib_clm_trackstop {
 	struct res_header header;
 };
 

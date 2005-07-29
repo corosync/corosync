@@ -478,11 +478,12 @@ saClmClusterTrackStop (
 	SaClmHandleT clmHandle)
 {
 	struct clmInstance *clmInstance;
-	struct req_clm_trackstop req_trackstop;
+	struct req_lib_clm_trackstop req_lib_clm_trackstop;
+	struct res_lib_clm_trackstop res_lib_clm_trackstop;
 	SaAisErrorT error = SA_OK;
 
-	req_trackstop.header.size = sizeof (struct req_clm_trackstop);
-	req_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
+	req_lib_clm_trackstop.header.size = sizeof (struct req_lib_clm_trackstop);
+	req_lib_clm_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
 
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
@@ -492,18 +493,19 @@ saClmClusterTrackStop (
 
 	pthread_mutex_lock (&clmInstance->response_mutex);
 
-	error = saSendRetry (clmInstance->response_fd, &req_trackstop,
-		sizeof (struct req_clm_trackstop), MSG_NOSIGNAL);
+	error = saSendReceiveReply (clmInstance->response_fd,
+		&req_lib_clm_trackstop,
+		sizeof (struct req_lib_clm_trackstop),
+		&res_lib_clm_trackstop,
+		sizeof (struct res_lib_clm_trackstop));
+
+	pthread_mutex_unlock (&clmInstance->response_mutex);
 
 	clmInstance->notificationBuffer.notification = 0;
 
-	pthread_mutex_unlock (&clmInstance->response_mutex);
-	// TODO what about getting response from executive?  The
-	// executive should send a response
-
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
-	return (error);
+        return (error == SA_AIS_OK ? res_lib_clm_trackstop.header.error : error);
 }
 
 SaAisErrorT

@@ -124,7 +124,7 @@ static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr 
 static int message_handler_req_clm_clustertrack (struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_clm_trackstop (struct conn_info *conn_info,
+static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info,
 	void *message);
 
 static int message_handler_req_clm_nodeget (struct conn_info *conn_info,
@@ -147,8 +147,8 @@ struct libais_handler clm_libais_handlers[] =
 		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn			= message_handler_req_clm_trackstop,
-		.response_size				= sizeof (struct res_clm_trackstop),
+		.libais_handler_fn			= message_handler_req_lib_clm_trackstop,
+		.response_size				= sizeof (struct res_lib_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
 		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -541,6 +541,7 @@ int message_handler_req_clm_clustertrack (struct conn_info *conn_info, void *mes
 
 
 	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = req_clm_clustertrack->trackFlags;
+	conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
 
 	list_add (&conn_info->conn_info_partner->conn_list, &library_notification_send_listhead);
 
@@ -550,11 +551,26 @@ int message_handler_req_clm_clustertrack (struct conn_info *conn_info, void *mes
 }
 
 
-static int message_handler_req_clm_trackstop (struct conn_info *conn_info, void *message)
+static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, void *message)
 {
-	conn_info->ais_ci.u.libclm_ci.trackFlags = 0;
+	struct res_lib_clm_trackstop res_lib_clm_trackstop;
+
+	res_lib_clm_trackstop.header.size = sizeof (struct res_lib_clm_trackstop);
+	res_lib_clm_trackstop.header.id = MESSAGE_RES_CLM_TRACKSTOP;
+
+	if (conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled) {
+		res_lib_clm_trackstop.header.error = SA_OK;
+	} else {
+		res_lib_clm_trackstop.header.error = SA_AIS_ERR_NOT_EXIST;
+	}
+
+	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = 0;
+	conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 0;
 
 	list_del (&conn_info->conn_info_partner->conn_list);
+
+	libais_send_response (conn_info, &res_lib_clm_trackstop,
+		sizeof (struct res_lib_clm_trackstop));
 
 	return (0);
 }

@@ -42,6 +42,7 @@
 
 struct libclm_ci {
 	SaUint8T trackFlags;
+	int tracking_enabled;
 };
 
 extern SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id);
