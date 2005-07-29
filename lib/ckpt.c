@@ -1328,6 +1328,10 @@ saCkptSectionIterationNext (
 	struct res_lib_ckpt_sectioniteratornext res_lib_ckpt_sectioniteratornext;
 	struct iteratorSectionIdListEntry *iteratorSectionIdListEntry;
 
+	if (sectionDescriptor == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
 	error = saHandleInstanceGet (&ckptSectionIterationHandleDatabase,
 		sectionIterationHandle, (void *)&ckptSectionIterationInstance);
 	if (error != SA_AIS_OK) {
