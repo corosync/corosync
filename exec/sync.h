@@ -46,7 +46,9 @@ struct sync_callbacks {
 	void (*sync_abort) (void);
 };
 
-void sync_register (struct sync_callbacks *callbacks, int callback_count,
+void sync_register (totemsrp_handle handle,
+	struct sync_callbacks *callbacks,
+	int callback_count,
 	void (*synchronization_completed) (void));
 
 void sync_confchg_fn (

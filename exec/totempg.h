@@ -38,7 +38,6 @@
 #include <netinet/in.h>
 #include "aispoll.h"
 #include "totemsrp.h"
-#include "parse.h"
 #include "totem.h"
 
 #define TOTEMPG_AGREED			0
@@ -48,38 +47,29 @@
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
  */
-/*
- * Initialize the logger
- */
-void totempg_log_printf_init (
-	void (*log_printf) (int , char *, ...),
-	int log_level_security,
-	int log_level_error,
-	int log_level_warning,
-	int log_level_notice,
-	int log_level_debug);
 
 /*
- * Initialize the group messaging interface
+ * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	struct openais_config *openais_config,
 	poll_handle *poll_handle,
-	unsigned char *private_key,
-	int private_key_len,
-	void *member_private,
-	int member_private_len,
+	totemsrp_handle *totemsrp_handle,
+	struct totem_config *totem_config,
+
 	void (*deliver_fn) (
 		struct in_addr source_addr,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
+
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, int member_list_entries,
 		struct in_addr *left_list, int left_list_entries,
 		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
+
+void totempg_finalize (void);
 
 /*
  * Multicast a message

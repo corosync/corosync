@@ -51,18 +51,15 @@ LIBS = $(LIBRARIES) -lpthread
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testamf4.c testamf5.c testamf6.c testamfth.c  \
-		testckpt.c ckptstress.c testparse.c ckptbench.c  \
+		testckpt.c ckptstress.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
 		sa_error.c unlink.c
 
 all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
-	testamf6 testamfth testckpt ckptstress testparse ckptbench \
+	testamf6 testamfth testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink
-
-testparse: testparse.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testparse testparse.o ../exec/parse.o ../exec/print.o ../exec/mempool.o ../exec/util.o
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -141,7 +138,7 @@ ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
-	testamf5 testamf6 testamfth testckpt ckptstress testparse testtimer \
+	testamf5 testamf6 testamfth testckpt ckptstress testtimer \
 	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
 	evsbench subscription publish evtbench unlink
 %.o: %.c
@@ -162,10 +159,6 @@ testamf6.o: ../include/ais_types.h ../include/ais_amf.h
 testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/saClm.h
 testckpt.o: ../include/ais_types.h ../include/saCkpt.h sa_error.h
 ckptstress.o: ../include/ais_types.h ../include/saCkpt.h
-testparse.o: ../include/ais_types.h ../exec/parse.h ../include/list.h
-testparse.o: ../exec/aispoll.h ../exec/totempg.h ../exec/totemsrp.h
-testparse.o: ../exec/totem.h ../exec/parse.h ../exec/print.h
-testparse.o: ../include/saClm.h ../include/ais_types.h
 ckptbench.o: ../include/ais_types.h ../include/saCkpt.h
 ckptbenchth.o: ../include/ais_types.h ../include/saCkpt.h
 testevt.o: ../include/ais_types.h ../include/saEvt.h

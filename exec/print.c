@@ -43,7 +43,6 @@
 
 
 #include "print.h"
-#include "parse.h"
 #include "../include/ais_types.h"
 
 unsigned int logmode = LOG_MODE_STDERR | LOG_MODE_SYSLOG;

@@ -53,6 +53,7 @@
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"
+#include "totemsrp.h"
 #include "print.h"
 
 #define LOG_SERVICE LOG_SERVICE_SYNC
@@ -63,6 +64,8 @@ struct barrier_data {
 };
 
 static struct memb_ring_id *sync_ring_id;
+
+static totemsrp_handle sync_totemsrp_handle;
 
 static struct sync_callbacks *sync_callbacks;
 
@@ -112,15 +115,15 @@ static void sync_barrier_start (struct memb_ring_id *ring_id)
 	iovec.iov_len = sizeof (req_exec_sync_barrier_start);
 
 	result = totempg_mcast (&iovec, 1, TOTEMPG_AGREED);
-
-	
 }
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
 	sync_callbacks[sync_recovery_index].sync_init ();
-	totemsrp_callback_token_destroy (&sync_callback_token_handle);
-	totemsrp_callback_token_create (&sync_callback_token_handle,
+	totemsrp_callback_token_destroy (sync_totemsrp_handle,
+		&sync_callback_token_handle);
+	totemsrp_callback_token_create (sync_totemsrp_handle,
+		&sync_callback_token_handle,
 		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
 		sync_service_process,
@@ -145,7 +148,7 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 */
 	sync_callbacks[sync_recovery_index].sync_activate ();
 	sync_recovery_index += 1;
-	totemsrp_callback_token_destroy (&sync_callback_token_handle);
+	totemsrp_callback_token_destroy (sync_totemsrp_handle, &sync_callback_token_handle);
 	if (sync_recovery_index > sync_callback_count) {
 		sync_processing = 0;
 	} else {
@@ -154,9 +157,13 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	return (0);
 }
 
-void sync_register (struct sync_callbacks *callbacks, int callback_count,
+void sync_register (
+	totemsrp_handle handle,
+	struct sync_callbacks *callbacks,
+	int callback_count,
 	void (*synchronization_completed) (void))
 {
+	sync_totemsrp_handle = handle;
 	sync_callbacks = callbacks;
 	sync_callback_count = callback_count;
 	sync_synchronization_completed = synchronization_completed;
@@ -177,7 +184,7 @@ void sync_confchg_fn (
 
 	sync_processing = 1;
 
-	totemsrp_callback_token_destroy (&sync_callback_token_handle);
+	totemsrp_callback_token_destroy (sync_totemsrp_handle, &sync_callback_token_handle);
 
 	sync_ring_id = ring_id;
 

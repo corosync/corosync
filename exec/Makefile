@@ -30,12 +30,12 @@
 
 # Production mode flags
 CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = 
+LDFLAGS = -lpthread
 
 # Debug mode flags
 #CFLAGS = -g -Wall
 ##-DDEBUG
-#LDFLAGS = -g
+#LDFLAGS = -g -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -45,36 +45,36 @@ LDFLAGS =
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-TOTEM_SRC = aispoll.c totemsrp.c totempg.c tlist.c hdb.c crypto.c
-TOTEM_OBJS = aispoll.o totemsrp.o totempg.o tlist.o hdb.o crypto.o
+TOTEM_SRC = aispoll.c totemsrp.c totemmrp.c totempg.c totemparse.c tlist.c hdb.c crypto.c
+TOTEM_OBJS = aispoll.o totemsrp.o totemmrp.o totempg.o totemparse.o tlist.o hdb.o crypto.o
 
-EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c parse.c print.c mempool.c \
+EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c mainparse.c print.c mempool.c \
 		util.c sync.c
-EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o parse.o print.o mempool.o \
+EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o mainparse.o print.o mempool.o \
 		util.o sync.o
-EXEC_LIBS = libtotem.a
+EXEC_LIBS = libtotem_pg.a
 
 OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
 
-all:libtotem.a libtotem.so.1.0 aisexec keygen
+all:libtotem_pg.a libtotem_pg.so.1.0 aisexec keygen
 
-aisexec: $(EXEC_OBJS) libtotem.a
+aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
-libtotem.a: $(TOTEM_OBJS)
-	$(AR) -rc libtotem.a $(TOTEM_OBJS)
+libtotem_pg.a: $(TOTEM_OBJS)
+	$(AR) -rc libtotem_pg.a $(TOTEM_OBJS)
 
-libtotem.so.1.0: $(TOTEM_OBJS)
-	$(CC) -shared -Wl,-soname,libtotem.so.1 $(TOTEM_OBJS) -o $@
-	rm -f libtotem.so.1 libtotem.so
-	ln -s libtotem.so.1.0 libtotem.so.1
-	ln -s libtotem.so.1.0 libtotem.so
+libtotem_pg.so.1.0: $(TOTEM_OBJS)
+	$(CC) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
+	rm -f libtotem_pg.so.1 libtotem_pg.so
+	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
+	ln -s libtotem_pg.so.1.0 libtotem_pg.so
 
 keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen
 
 clean:
-	rm -f aisexec $(OBJS) libtotem.so.1.0 libtotem.so.1 libtotem.so libtotem.a gmon.out keygen keygen.o *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) libtotem_pg.so.1.0 libtotem_pg.so.1 libtotem_pg.so libtotem_pg.a gmon.out keygen keygen.o *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
@@ -98,44 +98,50 @@ hdb.o: hdb.c
 crypto.o: crypto.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
+totemmrp.o: totemmrp.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+totemparse.o: totemparse.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
 # DO NOT DELETE
 
 main.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 main.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
-main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h parse.h
+main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h mainparse.h
 main.o: main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h
 main.o: ../include/saEvt.h swab.h print.h
 clm.o: ../include/ais_types.h ../include/saClm.h ../include/ais_types.h
 clm.o: ../include/ipc_evs.h evs.h ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/ipc_clm.h ../include/list.h ../include/queue.h aispoll.h
-clm.o: totempg.h totemsrp.h parse.h main.h clm.h amf.h handlers.h ckpt.h
+clm.o: totempg.h totemsrp.h mainparse.h main.h clm.h amf.h handlers.h ckpt.h
 clm.o: evt.h hdb.h ../include/saEvt.h mempool.h print.h
 amf.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 amf.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 amf.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h util.h
-amf.o: parse.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h
+amf.o: mainparse.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h
 amf.o: hdb.h ../include/saEvt.h print.h
 ckpt.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 ckpt.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
-ckpt.o: ../include/queue.h aispoll.h mempool.h util.h parse.h totempg.h
+ckpt.o: ../include/queue.h aispoll.h mempool.h util.h mainparse.h totempg.h
 ckpt.o: totemsrp.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h
 ckpt.o: evt.h hdb.h ../include/saEvt.h print.h
 evt.o: ../include/ipc_evt.h ../include/ais_types.h ../include/saEvt.h
 evt.o: ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evt.o: ../include/queue.h util.h ../include/ais_types.h aispoll.h mempool.h
-evt.o: parse.h totempg.h totemsrp.h main.h evs.h clm.h ../include/saClm.h
+evt.o: mainparse.h totempg.h totemsrp.h main.h evs.h clm.h ../include/saClm.h
 evt.o: amf.h ../include/ipc_evs.h handlers.h ckpt.h evt.h hdb.h
 evt.o: ../include/saEvt.h swab.h print.h
 evs.o: ../include/ais_types.h ../include/ipc_evs.h ../include/ais_types.h
 evs.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
-evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h parse.h main.h clm.h
+evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h mainparse.h main.h clm.h
 evs.o: ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h
 evs.o: ../include/saEvt.h mempool.h print.h
-parse.o: ../include/ais_types.h ../include/list.h util.h parse.h aispoll.h
-parse.o: totempg.h totemsrp.h mempool.h print.h ../include/saClm.h
-parse.o: ../include/ais_types.h
+mainparse.o: ../include/ais_types.h ../include/list.h util.h mainparse.h aispoll.h
+mainparse.o: totempg.h totemsrp.h mempool.h print.h ../include/saClm.h
+mainparse.o: ../include/ais_types.h
 print.o: print.h ../include/ais_types.h ../include/saClm.h
-print.o: ../include/ais_types.h parse.h ../include/list.h aispoll.h totempg.h
+print.o: ../include/ais_types.h mainparse.h ../include/list.h aispoll.h totempg.h
 print.o: totemsrp.h
 mempool.o: ../include/list.h mempool.h
 util.o: ../include/ais_types.h ../include/list.h util.h

@@ -37,6 +37,62 @@
 #define MESSAGE_SIZE_MAX			256000
 #define PROCESSOR_COUNT_MAX			16
 
+/*
+ * Array location of various timeouts as
+ * specified in openais.conf.  The last enum
+ * specifies the size of the timeouts array and
+ * needs to remain the last item in the list.
+ */
+enum {
+	TOTEM_RETRANSMITS_BEFORE_LOSS,
+	TOTEM_TOKEN,
+	TOTEM_RETRANSMIT_TOKEN,
+	TOTEM_HOLD_TOKEN,
+	TOTEM_JOIN,
+	TOTEM_CONSENSUS,
+	TOTEM_MERGE,
+	TOTEM_DOWNCHECK,
+	TOTEM_FAIL_RECV_CONST,
+
+	MAX_TOTEM_TIMEOUTS	/* Last item */
+} totem_timeout_types;
+
+struct totem_interface {
+	struct sockaddr_in bindnet;
+	struct sockaddr_in boundto;
+};
+
+struct totem_logging_configuration {
+	void (*log_printf) (int, char *, ...);
+	int log_level_security;
+	int log_level_error;
+	int log_level_warning;
+	int log_level_notice;
+	int log_level_debug;
+};
+
+struct totem_config {
+	/*
+	 * network
+	 */
+	struct totem_interface *interfaces;
+	int interface_count;
+	struct sockaddr_in mcast_addr;
+
+	/*
+	 * key information
+	 */
+	unsigned char *private_key;
+	int private_key_len;
+
+	/*
+	 * Timeouts
+	 */
+	unsigned int timeouts[MAX_TOTEM_TIMEOUTS];
+
+	struct totem_logging_configuration totem_logging_configuration;
+};
+
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,
 	TOTEM_CONFIGURATION_TRANSITIONAL	
@@ -52,9 +108,5 @@ struct memb_ring_id {
 	unsigned long long seq;
 } __attribute__((packed));
 
-struct totem_interface {
-	struct sockaddr_in bindnet;
-	struct sockaddr_in boundto;
-};
 
 #endif /* TOTEM_H_DEFINED */

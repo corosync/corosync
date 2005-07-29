@@ -12,8 +12,8 @@ Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 
 This openais package is broken into four parts.  The exec directory contains
 all of the code responsible for serving the APIs.  The lib directory contains
-APIs the user can link to.  The test directory contains some simple test
-programs which exercise the APIs.  The directory conf contains example
+APIs the to which the user may link.  The test directory contains some simple
+test programs which exercise the APIs.  The directory conf contains example
 configuration files which can be copied directly onto the target system.
 
 The API implements SA Forum APIs for Cluster Membership (CLM), Availabilty
@@ -29,7 +29,7 @@ communicating on a specified multicast address and port.
 
 The directory conf contains the file openais.conf
 
-network {
+totem {
 	bindnetaddr: 192.168.1.0
 	mcastaddr: 226.94.1.1
 	mcastport: 5405
@@ -56,7 +56,7 @@ timeout {
 	fail_recv_const: 250
 }
 
-The network section contains three values.  All three values must be set
+The totem section contains three values.  All three values must be set
 or the openais executive wll exit with an error.
 
 bindnetaddr specifies the address which the openais Executive should bind to.
@@ -104,8 +104,9 @@ These two files should be placed in the /etc/ais directory.
 Building openais
 ----------------
 openais requires GCC, LD, and a Linux 2.4/2.6 kernel.  openais has been tested on
-Debian Sarge, MontaVista Carrier Grade Edition 3.1, and Redhat 9, and Fedora
-Core 2.
+Debian Sarge(i386), Redhat 9(i386), Fedora Core 2(i386), Fedora Core
+4(i386,x86_64) and MontaVista Carrier Grade Edition 3.1(i386, x86_64,
+classic ppc, ppc970, xscale).
 
 Compile openais by running make in the root directory.  Make can also be run
 in the individual directories.  Nothing is installed by make.  If install
@@ -119,7 +120,7 @@ create an "ais" user with the "ais" group.
 
 [root@slickdeal root]# adduser ais -g ais
 
-Set the ais user's password to something you can remember:
+Set the ais user's password:
 
 [root@slickdeal root]# passwd ais
 Changing password for user ais.
@@ -130,8 +131,8 @@ passwd: all authentication tokens updated successfully.
 Generate a private key
 ----------------------
 openais uses cryptographic techniques to ensure authenticity and privacy of
-messages.  In order for openais to work, a private key must be generated and
-shared to all processors.
+messages.  A private key must be generated and shared by all processors for
+correct operation.
 
 First generate the key on one of the nodes:
 
@@ -141,7 +142,7 @@ Gathering 1024 bits for key from /dev/random.
 Writing openais key to /etc/ais/authkey.
 
 
-After this is complete, a private key will be in the directory /etc/ais/authkey.
+After this is complete, a private key will be in the file /etc/ais/authkey.
 This private key must be copied to every processor that will be a member of
 the cluster.  If the private key isn't the same for every node, those nodes
 with nonmatching private keys will not be able to join the same configuration.
@@ -162,9 +163,9 @@ aisexec program after following the previous directions.
 A final note on permissions:
 It is not absolutely required that openais executive runs as root.  If
 it runs as root, it schedules at the highest round robin realtime
-priority and locks all pages into ram in case a swap would cause a delay
-in the real-time nature of the protocol.  The warning about not being
-able to lock pages is simply a warning and can be ignored if you choose
+priority and locks all of it's pages into ram in case a swap would cause a
+delay in the real-time nature of the protocol.  The warning "not  
+able to lock pages" is simply a warning and can be ignored if you choose
 to run as a non root user.
 
 The ais user/group is required because applications are authenticated
@@ -178,7 +179,7 @@ Before running any of the test programs
 ---------------------------------------
 The openais executive will ensure security by only allowing the ais group (or
 uid root) to connect to the service.  Switch to the ais group before
-running any applications linked to the saf api, or the applications will
+running any applications linked to the ais apis, or the applications will
 not be authenticated and won't be able to access services.
 
 [sdake@slickdeal sdake]$ su ais
@@ -225,7 +226,7 @@ service.  This behavior is expected by the openais specification and the
 code in testamf2.c can be read for a clearer understanding of what
 is happening.
 
-Pressing ctrl-z to background the task (which causes the heartbeat to
+Pressing ctrl-z to background the task (which causes the healthcheck to
 timeout) on a component will cause the remaining component to go
 out of service.  If ctrl-z is pressed on the active SU, the standby
 SU will become active.  CTRL-C on these tests behaves the same way.
@@ -261,6 +262,7 @@ su to ais user
 run testevs.  This will generate multicast messages and self deliver them
 
 run evsbench.  This will display the benchmark performance of the evs service.
+
 Write your own applications
 ---------------------------
 Without real applications, finding the hard bugs will be difficult.  Please

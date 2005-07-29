@@ -43,9 +43,10 @@
 #include "../include/ais_types.h"
 #include "../include/list.h"
 #include "util.h"
-#include "parse.h"
+#include "mainparse.h"
 #include "mempool.h"
 #include "print.h"
+#include "totem.h"
 
 DECLARE_LIST_INIT (saAmfGroupHead);
 
@@ -61,10 +62,7 @@ typedef enum {
 
 typedef enum {
 	MAIN_HEAD,
-	MAIN_NETWORK,
 	MAIN_LOGGING,
-	MAIN_KEY,
-	MAIN_TIMEOUT,
 	MAIN_EVENT
 } main_parse_t;
 
@@ -141,7 +139,7 @@ struct saAmfComponent *findComponent (SaNameT *name)
 	}
 }
 
-char *
+static inline char *
 strstr_rs (const char *haystack, const char *needle)
 {
 	char *end_address;
@@ -413,13 +411,9 @@ extern int openais_main_config_read (char **error_string,
 	int interface_max)
 {
 	FILE *fp;
-	int res = 0;
 	int line_number = 0;
 	main_parse_t parse = MAIN_HEAD;
-	int network_parsed = 0;
 	int logging_parsed = 0;
-	int key_parsed = 0;
-	int timeout_parsed = 0;
 	int event_parsed = 0;
 	char *loc;
 	int i;
@@ -428,17 +422,6 @@ extern int openais_main_config_read (char **error_string,
 	char *error_reason = error_string_response;
 
 	memset (openais_config, 0, sizeof (struct openais_config));
-	openais_config->interfaces = malloc (sizeof (struct totem_interface) * interface_max);
-	if (openais_config->interfaces == 0) {
-		parse_done = 1;
-		*error_string = "Out of memory trying to allocate ethernet interface storage area";
-		return -1;
-	}
-
-	memset (openais_config->interfaces, 0,
-		sizeof (struct totem_interface) * interface_max);
-
-	openais_config->mcast_addr.sin_family = AF_INET;
 	fp = fopen ("/etc/ais/openais.conf", "r");
 	if (fp == 0) {
 		parse_done = 1;
@@ -471,58 +454,15 @@ extern int openais_main_config_read (char **error_string,
 
 		switch (parse) {
 		case MAIN_HEAD:
-			if (network_parsed == 0 && strstr_rs (line, "network{")) {
-				network_parsed = 1;
-				parse = MAIN_NETWORK;
-			} else
 			if (logging_parsed == 0 && strstr_rs (line, "logging{")) {
 				logging_parsed = 1;
 				parse = MAIN_LOGGING;
 			} else
-			if (key_parsed == 0 && strstr_rs (line, "key{")) {
-				key_parsed = 1;
-				parse = MAIN_KEY;
-			} else
-			if (timeout_parsed == 0 && strstr_rs (line, "timeout{")) {
-				timeout_parsed = 1;
-				parse = MAIN_TIMEOUT;
-			} else 
 			if (event_parsed == 0 && strstr_rs (line, "event{")) {
 				event_parsed = 1;
 				parse = MAIN_EVENT;
 			} else {
-				goto parse_error;
-			}
-			break;
-
-		case MAIN_NETWORK:
-			if ((loc = strstr_rs (line, "mcastaddr:"))) {
-				res = inet_aton (loc, &openais_config->mcast_addr.sin_addr);
-			} else
-			if ((loc = strstr_rs (line, "mcastport:"))) {
-				res = openais_config->mcast_addr.sin_port = htons (atoi (loc));
-			} else
-			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
-				if (interface_max == openais_config->interface_count) {
-					sprintf (error_reason,
-						"%d is too many interfaces in /etc/ais/network.conf",
-					openais_config->interface_count);
-					goto parse_error;
-				}
-				res = inet_aton (loc,
-					&openais_config->interfaces[openais_config->interface_count].bindnet.sin_addr);
-				openais_config->interface_count += 1;
-			} else
-			if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-				res = 1; /* any nonzero is ok */
-			} else {
-				goto parse_error;
-			}
-
-			if (res == 0) {
-				sprintf (error_reason, "invalid network address or port number\n");
-				goto parse_error;
+				continue;
 			}
 			break;
 
@@ -569,32 +509,6 @@ extern int openais_main_config_read (char **error_string,
 				goto parse_error;
 			}
 			break;
-		case MAIN_TIMEOUT:
-			if ((loc = strstr_rs (line, "token:"))) {
-				openais_config->timeouts[TOTEM_TOKEN]= atoi(loc);
-			} else if ((loc = strstr_rs (line, "token_retransmit:"))) {
-				openais_config->timeouts[TOTEM_RETRANSMIT_TOKEN] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "hold:"))) {
-				openais_config->timeouts[TOTEM_HOLD_TOKEN] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "retransmits_before_loss:"))) {
-				openais_config->timeouts[TOTEM_RETRANSMITS_BEFORE_LOSS] = atoi(loc);
-		
-			} else if ((loc = strstr_rs (line, "join:"))) {
-				openais_config->timeouts[TOTEM_JOIN] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "consensus:"))) {
-				openais_config->timeouts[TOTEM_CONSENSUS] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "merge:"))) {
-				openais_config->timeouts[TOTEM_MERGE] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "downcheck:"))) {
-				openais_config->timeouts[TOTEM_DOWNCHECK] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
-				openais_config->timeouts[TOTEM_FAIL_RECV_CONST] = atoi(loc);
-			} else if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-			} else {
-				goto parse_error;
-			}
-			break;
 
 		case MAIN_EVENT:
 			if ((loc = strstr_rs (line, "delivery_queue_size:"))) {
@@ -612,25 +526,6 @@ extern int openais_main_config_read (char **error_string,
 			assert (0 == 1); /* SHOULDN'T HAPPEN */
 			break;	
 		}
-	}
-
-	/*
-	 * Some error checking of parsed data to make sure its valid
-	 */
-	parse_done = 1;
-	if (openais_config->mcast_addr.sin_addr.s_addr == 0) {
-		error_reason = "No multicast address specified";
-		goto parse_error;
-	}
-
-	if (openais_config->mcast_addr.sin_port == 0) {
-		error_reason = "No multicast port specified";
-		goto parse_error;
-	}
-
-	if (openais_config->interface_count == 0) {
-		error_reason = "No bindnet specified";
-		goto parse_error;
 	}
 
 	if ((openais_config->logmode & LOG_MODE_FILE) && openais_config->logfile == 0) {

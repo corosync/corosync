@@ -111,7 +111,7 @@ static inline void sq_free (struct sq *sq) {
 	free (sq->items_inuse);
 }
 
-static inline int sq_item_add (
+static inline void *sq_item_add (
 	struct sq *sq,
 	void *item,
 	int seqid)
@@ -120,7 +120,7 @@ static inline int sq_item_add (
 	int sq_position;
 
 	if (seqid - sq->head_seqid >= sq->size) {
-		return E2BIG;
+		return(0);
 	}
 	sq_position = (sq->head + seqid - sq->head_seqid) % sq->size;
 	if (sq_position > sq->pos_max) {
@@ -135,7 +135,7 @@ static inline int sq_item_add (
 	memcpy (sq_item, item, sq->size_per_item);
 	sq->items_inuse[sq_position] = 1;
 
-	return (0);
+	return (sq_item);
 }
 
 static inline int sq_item_inuse (

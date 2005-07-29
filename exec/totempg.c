@@ -46,7 +46,7 @@
  *	store remaining multicast into head of fragmentation data and set lens field
  *
  * If a message exceeds the maximum packet size allowed by the totem
- * single ring protocol, the protocol could loose forward progress.
+ * single ring protocol, the protocol could lose forward progress.
  * Statically calculating the allowed data amount doesn't work because
  * the amount of data allowed depends on the number of fragments in
  * each message.  In this implementation, the maximum fragment size
@@ -83,6 +83,7 @@
 
 #include "totempg.h"
 #include "totemsrp.h"
+#include "totemmrp.h"
 #include <sys/uio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,7 +128,7 @@ struct totempg_mcast {
  * Maximum packet size for totem pg messages
  */
 #define TOTEMPG_PACKET_SIZE (TOTEMSRP_PACKET_SIZE_MAX - \
-				sizeof (struct totempg_mcast))
+	sizeof (struct totempg_mcast))
 
 /*
  * Local variables used for packing small messages
@@ -407,25 +408,6 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
  * Totem Process Group Abstraction
  * depends on poll abstraction, POSIX, IPV4
  */
-/*
- * Initialize the logger
- */
-void totempg_log_printf_init (
-	void (*log_printf) (int , char *, ...),
-	int log_level_security,
-	int log_level_error,
-	int log_level_warning,
-	int log_level_notice,
-	int log_level_debug)
-{
-	totemsrp_log_printf_init (
-		log_printf,
-		log_level_security,
-		log_level_error,
-		log_level_warning,
-		log_level_notice,
-		log_level_debug);
-}
 
 void *callback_token_received_handle;
 
@@ -456,7 +438,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
 	iovecs[2].iov_base = &fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
-	res = totemsrp_mcast (iovecs, 3, 0);
+	res = totemmrp_mcast (iovecs, 3, 0);
 
 	mcast_packed_msg_count = 0;
 	fragment_size = 0;
@@ -468,17 +450,16 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	struct openais_config *openais_config,
 	poll_handle *poll_handle,
-	unsigned char *private_key,
-	int private_key_len,
-	void *member_private,
-	int member_private_len,
+	totemsrp_handle *totemsrp_handle,
+	struct totem_config *totem_config,
+
 	void (*deliver_fn) (
 		struct in_addr source_addr,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
+
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
 		struct in_addr *member_list, int member_list_entries,
@@ -491,19 +472,25 @@ int totempg_initialize (
 	app_deliver_fn = deliver_fn;
 	app_confchg_fn = confchg_fn;
 
-	res = totemsrp_initialize (openais_config,
+	res = totemmrp_initialize (
 		poll_handle,
-		private_key, private_key_len,
-		member_private, member_private_len,
+		totemsrp_handle,
+		totem_config,
 		totempg_deliver_fn, totempg_confchg_fn);
- 
-	totemsrp_callback_token_create (&callback_token_received_handle, 
+
+	totemmrp_callback_token_create (
+		&callback_token_received_handle, 
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
 		0,
 		callback_token_received_fn,
 		0);
 
 	return (res);
+}
+
+void totempg_finalize (void)
+{
+	totemmrp_finalize ();
 }
 
 static unsigned char next_fragment = 1;
@@ -524,7 +511,7 @@ int totempg_mcast (
 	int copy_len = 0; 
 	int copy_base = 0;
 
-	totemsrp_new_msg_signal ();
+	totemmrp_new_msg_signal ();
 
 	max_packet_size = TOTEMPG_PACKET_SIZE -
 		(sizeof (unsigned short) * (mcast_packed_msg_count + 1));
@@ -543,7 +530,8 @@ int totempg_mcast (
 		 * doesn't exceed the size of the fragment_buffer on the next call.
 		 */
 		if ((copy_len + fragment_size) < 
-						(max_packet_size - sizeof (unsigned short))) {
+			(max_packet_size - sizeof (unsigned short))) {
+
 			memcpy (&fragmentation_data[fragment_size],
 				iovec[i].iov_base + copy_base, copy_len);
 			fragment_size += copy_len;
@@ -591,7 +579,7 @@ int totempg_mcast (
 												sizeof(unsigned short);
 			iovecs[2].iov_base = fragmentation_data;
 			iovecs[2].iov_len = max_packet_size;
-			res = totemsrp_mcast (iovecs, 3, guarantee);
+			res = totemmrp_mcast (iovecs, 3, guarantee);
 
 			/*
 			 * Recalculate counts and indexes for the next.
@@ -637,7 +625,7 @@ int totempg_send_ok (
 	int msg_size)
 {
 	int avail = 0;
-	avail = totemsrp_avail ();
+	avail = totemmrp_avail ();
 
 	return (avail > 200);
 }

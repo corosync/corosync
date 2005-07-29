@@ -34,7 +34,7 @@
 #include "../include/ipc_gen.h"
 #include "../include/ipc_amf.h"
 #include "aispoll.h"
-#include "parse.h"
+#include "mainparse.h"
 #include "handlers.h"
 
 #ifndef AMF_H_DEFINED

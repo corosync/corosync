@@ -35,6 +35,7 @@
 #include "../include/ais_types.h"
 #include "../include/list.h"
 #include "aispoll.h"
+#include "totemsrp.h"
 #include "totempg.h"
 
 #ifndef PARSE_H_DEFINED
@@ -55,35 +56,7 @@ enum amfOperationalAdministrativeState {
 	AMF_ENABLED_STOPPING = 3
 };
 
-/*
- * Array location of various timeouts as
- * specified in openais.conf.  The last enum
- * specifies the size of the timeouts array and
- * needs to remain the last item in the list.
- */
-enum {
-	TOTEM_RETRANSMITS_BEFORE_LOSS,
-	TOTEM_TOKEN,
-	TOTEM_RETRANSMIT_TOKEN,
-	TOTEM_HOLD_TOKEN,
-	TOTEM_JOIN,
-	TOTEM_CONSENSUS,
-	TOTEM_MERGE,
-	TOTEM_DOWNCHECK,
-	TOTEM_FAIL_RECV_CONST,
-
-	MAX_TOTEM_TIMEOUTS	/* Last item */
-} totem_timeout_types;
-
-
 struct openais_config {
-	/*
-	 * network
-	 */
-    struct totem_interface *interfaces;
-    int interface_count;
-	struct sockaddr_in mcast_addr;
-
 	/*
 	 * logging
 	 */
@@ -91,21 +64,12 @@ struct openais_config {
 	char *logfile;
 
 	/*
-	 * key
-	 */
-	unsigned char *key;
-	int keylen;
-
-	/*
-	 * Timeout
-	 */
-	unsigned int timeouts[MAX_TOTEM_TIMEOUTS];
-
-	/*
 	 * Event service
 	 */
 	unsigned int evt_delivery_queue_size;
 	unsigned int evt_delivery_queue_resume;
+
+	struct totem_config totem_config;
 };
 
 struct saAmfUnit {

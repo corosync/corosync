@@ -63,7 +63,8 @@
 #include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
-#include "parse.h"
+#include "mainparse.h"
+#include "totemparse.h"
 #include "main.h"
 #include "handlers.h"
 #include "sync.h"
@@ -92,8 +93,12 @@ struct service_handler *ais_service_handlers[] = {
     &ckpt_service_handler,
     &evt_service_handler
 };
+
 struct sync_callbacks sync_callbacks[5];
+
 int sync_callback_count;
+
+totemsrp_handle totemsrp_handle_in;
 
 #define AIS_SERVICE_HANDLERS_COUNT 5
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
@@ -178,7 +183,6 @@ static void sigusr2_handler (int num)
 
 struct sockaddr_in *this_ip;
 struct sockaddr_in this_non_loopback_ip;
-struct sockaddr_in config_mcast_addr;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 char *socketname = "libais.socket";
@@ -768,6 +772,7 @@ void sigintr_handler (int signum)
 	}
 #endif
 
+	totempg_finalize ();
 	print_stats ();
 	ais_done (AIS_DONE_EXIT);
 }
@@ -825,7 +830,7 @@ void aisexec_sync_fns_build (void)
 			sync_callback_count++;
 		}
 	}
-	sync_register (sync_callbacks, sync_callback_count, sync_completed);
+	sync_register (totemsrp_handle_in, sync_callbacks, sync_callback_count, sync_completed);
 }
 
 char delivery_data[MESSAGE_SIZE_MAX];
@@ -1077,11 +1082,12 @@ void message_source_set (struct message_source *source, struct conn_info *conn_i
 }
 
 
+struct totem_logging_configuration totem_logging_configuration;
+
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
 	int res;
-	unsigned char private_key[128];
 
 	char *error_string;
 	struct openais_config openais_config;
@@ -1104,9 +1110,6 @@ int main (int argc, char **argv)
 	 * there is more then one interface in a system, so
 	 * in this case, only a warning is printed
 	 */
-	/*
-	 * Initialize group messaging interface with multicast address
-	 */
 	res = openais_main_config_read (&error_string, &openais_config, 1);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
@@ -1115,7 +1118,12 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	memcpy (&config_mcast_addr, &openais_config.mcast_addr, sizeof (struct sockaddr_in));
+	res = totem_config_read (&openais_config.totem_config, &error_string, 1);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		ais_done (AIS_DONE_MAINCONFIGREAD);
+	}
 
 	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
@@ -1134,24 +1142,23 @@ int main (int argc, char **argv)
 
 	aisexec_mlockall ();
 
-	aisexec_keyread (private_key);
+	openais_config.totem_config.totem_logging_configuration = totem_logging_configuration;
 
-	totempg_log_printf_init (internal_log_printf,
-		mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI),
-		mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI),
-		mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI),
-		mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI),
-		mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI));
+	openais_config.totem_config.totem_logging_configuration.log_level_security = mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI);
+	openais_config.totem_config.totem_logging_configuration.log_level_error = mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI);
+	openais_config.totem_config.totem_logging_configuration.log_level_warning = mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI);
+	openais_config.totem_config.totem_logging_configuration.log_level_notice = mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI);
+	openais_config.totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
+	openais_config.totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
-	totempg_initialize (&openais_config,
+	totempg_initialize (
 		&aisexec_poll_handle,
-		private_key,
-		sizeof (private_key),
-		0,
-		0,
-		deliver_fn, confchg_fn);
+		&totemsrp_handle_in,
+		&openais_config.totem_config,
+		deliver_fn,
+		confchg_fn);
 	
-	this_ip = &openais_config.interfaces[0].boundto;
+	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 
 	/*
 	 * Drop root privleges to user 'ais'

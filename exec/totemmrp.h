@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2005 MontaVista Software, Inc.
+ * Copyright (c) 2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -31,27 +31,35 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMSRP_H_DEFINED
-#define TOTEMSRP_H_DEFINED
+#ifndef TOTEMMRP_H_DEFINED
+#define TOTEMMRP_H_DEFINED
 
 #include "totem.h"
 #include "aispoll.h"
 
-#define TOTEMSRP_PACKET_SIZE_MAX	1404
-
-typedef unsigned int totemsrp_handle;
+#define TOTEMMRP_PACKET_SIZE_MAX	1404
 
 /*
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
  */
+/*
+ * Initialize the logger
+ */
+void totemmrp_log_printf_init (
+	void (*log_printf) (int , char *, ...),
+	int log_level_security,
+	int log_level_error,
+	int log_level_warning,
+	int log_level_notice,
+	int log_level_debug);
 
 /*
- * Create a protocol instance
+ * Initialize the group messaging interface
  */
-int totemsrp_initialize (
+int totemmrp_initialize (
 	poll_handle *poll_handle,
-	totemsrp_handle *handle,
+	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -66,13 +74,12 @@ int totemsrp_initialize (
 		struct in_addr *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-void totemsrp_finalize (totemsrp_handle handle);
+int totemmrp_finalize (void);
 
 /*
  * Multicast a message
  */
-int totemsrp_mcast (
-	totemsrp_handle handle,
+int totemmrp_mcast (
 	struct iovec *iovec,
 	int iov_len,
 	int priority);
@@ -80,22 +87,20 @@ int totemsrp_mcast (
 /*
  * Return number of available messages that can be queued
  */
-int totemsrp_avail (totemsrp_handle handle);
+int totemmrp_avail (void);
 
-int totemsrp_callback_token_create (
-	totemsrp_handle handle,
+int totemmrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
 	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data);
 
-void totemsrp_callback_token_destroy (
-	totemsrp_handle handle,
+void totemmrp_callback_token_destroy (
 	void **handle_out);
 
-int totemsrp_new_msg_signal (totemsrp_handle handle);
+void totemmrp_new_msg_signal (void);
 
 extern struct sockaddr_in config_mcast_addr;
 
-#endif /* TOTEMSRP_H_DEFINED */
+#endif /* TOTEMMRP_H_DEFINED */

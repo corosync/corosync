@@ -30,7 +30,7 @@
 
 # Production mode flags
 CFLAGS = -O3 -Wall
-LDFLAGS =
+LDFLAGS = -lpthread
 
 # Debug mode flags
 #CFLAGS = -g -DDEBUG
