@@ -55,14 +55,19 @@ enum res_clm_types {
 	MESSAGE_RES_CLM_NODEGETCALLBACK = 5
 };
 
-struct req_clm_clustertrack {
+struct req_lib_clm_clustertrack {
 	struct req_header header;
 	SaUint8T trackFlags;
+	int return_in_callback;
 };
 
-struct res_clm_clustertrack {
+struct res_lib_clm_clustertrack {
 	struct res_header header;
+	SaUint64T viewNumber;
+	SaUint32T numberOfItems;
+	SaClmClusterNotificationT notification[32]; /* should be PROCESSOR_COUNT_MAX */
 };
+
 struct req_lib_clm_trackstop {
 	struct req_header header;
 	SaSizeT dataRead;
@@ -73,15 +78,7 @@ struct res_lib_clm_trackstop {
 	struct res_header header;
 };
 
-struct res_clm_trackcallback {
-	struct res_header header;
-	SaUint64T viewNumber;
-	SaUint32T numberOfItems;
-	SaUint32T numberOfMembers;
-	SaClmClusterNotificationT notification[0];
-};
-
-struct req_clm_nodeget {
+struct req_lib_clm_nodeget {
 	struct req_header header;
 	SaInvocationT invocation;
 	SaClmNodeIdT nodeId;
@@ -94,7 +91,7 @@ struct res_clm_nodeget {
 	int valid;
 };
 
-struct req_clm_nodegetasync {
+struct req_lib_clm_nodegetasync {
 	struct req_header header;
 	SaInvocationT invocation;
 	SaClmNodeIdT nodeId;

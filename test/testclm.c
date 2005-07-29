@@ -144,6 +144,7 @@ int main (void) {
 	SaClmClusterNotificationT clusterNotification[64];
 	SaClmClusterNotificationBufferT clusterNotificationBuffer;
 	SaClmClusterNodeT clusterNode;
+	int i;
 
 	clusterNotificationBuffer.notification = clusterNotification;
 	clusterNotificationBuffer.numberOfItems = 64;
@@ -156,7 +157,7 @@ int main (void) {
 		exit (1);
 	}
 
-	result = saClmClusterNodeGet (handle, SA_CLM_LOCAL_NODE_ID, 0, &clusterNode);
+	result = saClmClusterNodeGet (handle, SA_CLM_LOCAL_NODE_ID, SA_TIME_END, &clusterNode);
 
 	printf ("Result of saClmClusterNodeGet %d\n", result);
 
@@ -180,6 +181,10 @@ int main (void) {
 	result = saClmClusterTrack (handle, SA_TRACK_CURRENT | SA_TRACK_CHANGES,
 		&clusterNotificationBuffer);
 	printf ("track result is %d\n", result);
+	for (i = 0; i < clusterNotificationBuffer.numberOfItems; i++) {
+		printSaClmClusterNodeT ("Results from SA_TRACK_CURRENT:",
+			&clusterNotificationBuffer.notification[i].clusterNode);
+	}
 
 	saClmSelectionObjectGet (handle, &select_fd);
 
