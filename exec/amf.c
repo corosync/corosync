@@ -2392,7 +2392,7 @@ static int amf_init_two_fn (struct conn_info *conn_info)
 
 static int message_handler_req_amf_componentregister (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_amf_componentregister *req_lib_amf_componentregister = (struct req_amf_componentregister *)message;
+	struct req_lib_amf_componentregister *req_lib_amf_componentregister = (struct req_lib_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovecs[2];
 
