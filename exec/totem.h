@@ -82,7 +82,7 @@ struct totem_config {
 	/*
 	 * key information
 	 */
-	unsigned char *private_key;
+	unsigned char private_key[128];
 	int private_key_len;
 
 	/*

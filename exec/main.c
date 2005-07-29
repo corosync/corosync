@@ -1125,6 +1125,9 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_MAINCONFIGREAD);
 	}
 
+	aisexec_keyread (openais_config.totem_config.private_key);
+	openais_config.totem_config.private_key_len = sizeof (openais_config.totem_config.private_key);
+
 	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
