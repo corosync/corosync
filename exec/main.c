@@ -753,7 +753,7 @@ error_disconnect:
 	return (res);
 }
 
-extern void print_stats (void);
+extern void print_stats (totemsrp_handle totemsrp_handle);
 
 void sigintr_handler (int signum)
 {
@@ -773,7 +773,7 @@ void sigintr_handler (int signum)
 #endif
 
 	totempg_finalize ();
-	print_stats ();
+	print_stats (totemsrp_handle_in);
 	ais_done (AIS_DONE_EXIT);
 }
 

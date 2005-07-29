@@ -3596,16 +3596,27 @@ static void memb_ring_id_store (
 	instance->token_ring_id_seq = instance->my_ring_id.seq;
 }
 
-void print_stats (struct totemsrp_instance *instance)
+void print_stats (totemsrp_handle handle)
 {
 	struct timeval tv_end;
+	struct totemsrp_instance *instance;
+	SaAisErrorT error;
+
 	gettimeofday (&tv_end, NULL);
 	
+	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		return;
+	}
+
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice, "Bytes recv %d\n", instance->stats_recv);
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice, "Bytes sent %d\n", instance->stats_sent);
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice, "Messages delivered %d\n", instance->stats_delv);
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice, "Re-Mcasts %d\n", instance->stats_remcasts);
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice, "Tokens process %d\n", instance->stats_orf_token);
+
+	saHandleInstancePut (&totemsrp_instance_database, handle);
 }
 
 int totemsrp_callback_token_create (
