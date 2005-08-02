@@ -3356,12 +3356,13 @@ static void evt_chan_unlink_finish(struct unlink_chan_pending *ucp)
 	log_printf(CHAN_UNLINK_DEBUG, "Unlink channel finish ID 0x%llx\n", 
 											ucp->ucp_unlink_id);
 
+	list_del(&ucp->ucp_entry);
+
 	res.iuc_head.size = sizeof(res);
 	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
 	res.iuc_head.error = SA_AIS_OK;
 	libais_send_response (ucp->ucp_conn_info, &res, sizeof(res));
 
-	list_del(&ucp->ucp_entry);
 	free(ucp);
 }
 
@@ -3592,13 +3593,12 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 			log_printf(LOG_LEVEL_NOTICE, 
 					"Channel unlink request for %s not found\n",
 				cpkt->u.chcu.chcu_name.value);
-			break;
+		}  else {
+			/*
+			 * Mark channel as unlinked.
+			 */
+			unlink_channel(eci, cpkt->u.chcu.chcu_unlink_id);
 		}
-
-		/*
-		 * Mark channel as unlinked.
-		 */
-		unlink_channel(eci, cpkt->u.chcu.chcu_unlink_id);
 
 		/*
 		 * respond only to local library requests.
@@ -3612,8 +3612,8 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 				ucp = list_entry(l, struct unlink_chan_pending, ucp_entry);
 				log_printf(CHAN_UNLINK_DEBUG, 
 				"Compare channel id 0x%llx 0x%llx\n", 
-					ucp->ucp_unlink_id, eci->esc_unlink_id);
-				if (ucp->ucp_unlink_id == eci->esc_unlink_id) {
+					ucp->ucp_unlink_id, cpkt->u.chcu.chcu_unlink_id);
+				if (ucp->ucp_unlink_id == cpkt->u.chcu.chcu_unlink_id) {
 					evt_chan_unlink_finish(ucp);
 					break;
 				}
