@@ -64,6 +64,7 @@ struct saHandle {
 	int state;
 	void *instance;
 	int refCount;
+	uint32_t check;
 };
 
 SaErrorT
@@ -425,7 +426,8 @@ saHandleCreate (
 	int instanceSize,
 	SaUint64T *handleOut)
 {
-	int handle;
+	uint32_t handle;
+	uint32_t check;
 	void *newHandles;
 	int found = 0;
 	void *instance;
@@ -454,6 +456,10 @@ saHandleCreate (
 	if (instance == 0) {
 		return (SA_AIS_ERR_NO_MEMORY);
 	}
+
+
+	check = random();
+
 	memset (instance, 0, instanceSize);
 
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_ACTIVE;
@@ -462,7 +468,9 @@ saHandleCreate (
 
 	handleDatabase->handles[handle].refCount = 1;
 
-	*handleOut = handle;
+	handleDatabase->handles[handle].check = check;
+
+	*handleOut = (SaUint64T)((uint64_t)check << 32 | handle);
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
@@ -473,26 +481,39 @@ saHandleCreate (
 SaErrorT
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle)
+	SaUint64T inHandle)
 {
+	SaAisErrorT error = SA_AIS_OK;
+	uint32_t check = inHandle >> 32;
+	uint32_t handle = inHandle & 0xffffffff;
+
 	pthread_mutex_lock (&handleDatabase->mutex);
+
+	if (check != handleDatabase->handles[handle].check) {
+		error = SA_AIS_ERR_BAD_HANDLE;
+		goto error_exit;
+	}
 
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
 
+error_exit:
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	saHandleInstancePut (handleDatabase, handle);
+	saHandleInstancePut (handleDatabase, inHandle);
 
-	return (SA_AIS_OK);
+	return (error);
 }
 
 
 SaErrorT
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle,
+	SaUint64T inHandle,
 	void **instance)
 { 
+	uint32_t check = inHandle >> 32;
+	uint32_t handle = inHandle & 0xffffffff;
+
 	SaErrorT error = SA_AIS_OK;
 	pthread_mutex_lock (&handleDatabase->mutex);
 
@@ -504,6 +525,11 @@ saHandleInstanceGet (
 		error = SA_AIS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
+	if (check != handleDatabase->handles[handle].check) {
+		error = SA_AIS_ERR_BAD_HANDLE;
+		goto error_exit;
+	}
+
 
 	*instance = handleDatabase->handles[handle].instance;
 
@@ -519,11 +545,19 @@ error_exit:
 SaErrorT
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle)
+	SaUint64T inHandle)
 {
 	void *instance;
+	SaAisErrorT error = SA_AIS_OK;
+	uint32_t check = inHandle >> 32;
+	uint32_t handle = inHandle & 0xffffffff;
 
 	pthread_mutex_lock (&handleDatabase->mutex);
+
+	if (check != handleDatabase->handles[handle].check) {
+		error = SA_AIS_ERR_BAD_HANDLE;
+		goto error_exit;
+	}
 
 	handleDatabase->handles[handle].refCount -= 1;
 	assert (handleDatabase->handles[handle].refCount >= 0);
@@ -535,9 +569,10 @@ saHandleInstancePut (
 		memset (&handleDatabase->handles[handle], 0, sizeof (struct saHandle));
 	}
 
+error_exit:
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	return (SA_AIS_OK);
+	return (error);
 }
 
 

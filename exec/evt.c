@@ -314,7 +314,7 @@ struct open_chan_pending {
 	struct conn_info	*ocp_conn_info;
 	SaEvtChannelOpenFlagsT	ocp_open_flag;
 	poll_timer_handle	ocp_timer_handle;
-	uint32_t			ocp_c_handle;
+	uint64_t			ocp_c_handle;
 	struct list_head	ocp_entry;
 };
 
@@ -491,7 +491,7 @@ struct event_data {
  * 					(struct event_server_instance.esi_events)
  */
 struct chan_event_list {
-	uint32_t			cel_chan_handle;
+	uint64_t			cel_chan_handle;
 	uint32_t			cel_sub_id;
 	struct event_data* 	cel_event;
 	struct list_head 	cel_entry;
@@ -513,7 +513,7 @@ struct chan_event_list {
  */
 struct event_svr_channel_open {
 	uint8_t								eco_flags;
-	uint32_t							eco_lib_handle;
+	uint64_t							eco_lib_handle;
 	uint32_t							eco_my_handle;
 	struct event_svr_channel_instance 	*eco_channel;
 	struct list_head 					eco_entry;

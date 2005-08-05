@@ -354,7 +354,7 @@ saEvtInitialize(
 	 * assign instance data to unique handle
 	 */
 	error = saHandleCreate(&evt_instance_handle_db, sizeof(*evti), 
-			(void*)evtHandle);
+			evtHandle);
 	if (error != SA_AIS_OK) {
 		goto error_nofree;
 	}
@@ -460,7 +460,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	int i;
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
-		(void*)event_handle);
+		event_handle);
 	if (error != SA_AIS_OK) {
 		if (error == SA_AIS_ERR_NO_MEMORY) {
 			error = SA_AIS_ERR_LIBRARY;
@@ -904,7 +904,7 @@ saEvtChannelOpen(
 	 * create a handle for this open channel
 	 */
 	error = saHandleCreate(&channel_handle_db, sizeof(*eci), 
-			(void*)channelHandle);
+			channelHandle);
 	if (error != SA_AIS_OK) {
 		goto chan_open_put;
 	}
@@ -1309,7 +1309,7 @@ saEvtEventAllocate(
 	}
 
 	error = saHandleCreate(&event_handle_db, sizeof(*edi), 
-			(void*)eventHandle);
+			eventHandle);
 	if (error != SA_AIS_OK) {
 		goto alloc_put2;
 	}
