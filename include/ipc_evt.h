@@ -259,6 +259,7 @@ struct res_evt_event_data {
  * led_chan_name:			Channel name (3 and 4 only)
  * led_chan_unlink_id:		directs delivery to unlinked channels.
  * led_event_id:			Event ID (2, 3 and 4 only)
+ * led_msg_id:				message ID (2, 3 and 4 only)
  * led_sub_id:				Subscription ID (2 only)
  * led_publisher_node_id:	Node ID of event publisher
  * led_publisher_name:		Node name of event publisher
@@ -279,6 +280,7 @@ struct lib_event_data {
 	SaNameT					led_chan_name;
 	uint64_t				led_chan_unlink_id;
 	SaEvtEventIdT			led_event_id;
+	uint64_t				led_msg_id;
 	SaEvtSubscriptionIdT	led_sub_id;
 	SaClmNodeIdT			led_publisher_node_id;
 	SaNameT					led_publisher_name;
@@ -358,7 +360,7 @@ enum evt_chan_ops {
  */
 struct evt_set_id {
 	struct in_addr	chc_addr;
-	SaEvtEventIdT	chc_last_id;
+	uint64_t		chc_last_id;
 };
 
 /*
