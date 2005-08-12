@@ -48,7 +48,7 @@ do_unlink()
 		return(result);
 	}
 
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 	do {
 	result = saEvtChannelUnlink(handle, &channel_name);

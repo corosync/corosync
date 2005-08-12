@@ -83,12 +83,12 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 
 SaCkptSectionIdT sectionId1 = {
 	14,
-	"section ID #1"
+	(SaUint8T *) "section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
 	14,
-	"section ID #2"
+	(SaUint8T *) "section ID #2"
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
@@ -108,7 +108,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #1"
+			(SaUint8T *) "section ID #1"
 		},
 		readBuffer1,
 		sizeof (readBuffer1),
@@ -118,7 +118,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #2"
+			(SaUint8T *) "section ID #2"
 		},
 		readBuffer2,
 		sizeof (readBuffer2),
@@ -135,7 +135,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #1"
+			(SaUint8T *) "section ID #1"
 		},
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
@@ -146,7 +146,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #2"
+			(SaUint8T *) "section ID #2"
 		},
 		data, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */

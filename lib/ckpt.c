@@ -140,7 +140,7 @@ static struct saVersionDatabase ckptVersionDatabase = {
 
 struct iteratorSectionIdListEntry {
 	struct list_head list;
-	char data[0];
+	unsigned char data[0];
 };
 
 

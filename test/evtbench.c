@@ -33,19 +33,22 @@ unsigned int subscription_id = 0xfedcba98;
 unsigned long long ret_time = 0000000000ULL; /* 0 seconds */
 char pubname[256] = "Test Pub Name";
 
-	
-#define patt1 "Filter pattern 1"
-#define patt1_size sizeof(patt1)
 
-#define patt2 "Filter pattern 2"
-#define patt2_size sizeof(patt2)
+#define _patt1 "Filter pattern 1"
+#define patt1 (SaUint8T *) _patt1
+#define patt1_size sizeof(_patt1)
 
-#define patt3 "Filter pattern 3"
-#define patt3_size sizeof(patt3)
+#define _patt2 "Filter pattern 2"
+#define patt2 (SaUint8T *) _patt2
+#define patt2_size sizeof(_patt2)
 
-#define patt4 "Filter pattern 4"
-#define patt4_size sizeof(patt4)
+#define _patt3 "Filter pattern 3"
+#define patt3 (SaUint8T *) _patt3
+#define patt3_size sizeof(_patt3)
 
+#define _patt4 "Filter pattern 4"
+#define patt4 (SaUint8T *) _patt4
+#define patt4_size sizeof(_patt4)
 
 SaEvtEventFilterT filters[] = {
 	{SA_EVT_PREFIX_FILTER, {patt1_size, patt1_size, patt1}},
@@ -139,7 +142,7 @@ test_pub()
 		SA_EVT_CHANNEL_SUBSCRIBER |
 #endif
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 
@@ -182,7 +185,7 @@ test_pub()
 		goto evt_free;
 	}
 
-	strcpy(test_pub_name.value, pubname);
+	strcpy((char *)test_pub_name.value, pubname);
 	test_pub_name.length = strlen(pubname);
 	test_retention = ret_time;
 	result = saEvtEventAttributesSet(event_handle,

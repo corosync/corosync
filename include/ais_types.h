@@ -68,8 +68,8 @@ typedef SaInt64T SaTimeT;
 
 #define SA_MAX_NAME_LENGTH 256
 typedef struct {
-		SaUint16T length;
-		unsigned char value[SA_MAX_NAME_LENGTH];
+	SaUint16T length;
+	SaUint8T value[SA_MAX_NAME_LENGTH];
 } SaNameT;
 
 typedef struct {

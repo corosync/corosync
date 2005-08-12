@@ -401,7 +401,7 @@ static struct evt_pattern dropped_pattern = {
 		.pat	= 	{
 					sizeof(lost_evt),
 					sizeof(lost_evt),
-					&dropped_pattern.str[0]}, 
+					(SaUint8T *) &dropped_pattern.str[0]},
 		.str = {SA_EVT_LOST_EVENT}
 };
 
@@ -1533,7 +1533,7 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		if (ef->filter.patternSize > ep->patternSize) {
 			break;
 		}
-		if (strncmp(ef->filter.pattern, ep->pattern,
+		if (strncmp((char *)ef->filter.pattern, (char *)ep->pattern,
 					ef->filter.patternSize) == 0) {
 			ret = SA_AIS_OK;
 		}
@@ -1542,8 +1542,8 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		if (ef->filter.patternSize > ep->patternSize) {
 			break;
 		}
-		if (strncmp(ef->filter.pattern, 
-			&ep->pattern[ep->patternSize - ef->filter.patternSize],
+		if (strncmp((char *)ef->filter.pattern, 
+			(char *)&ep->pattern[ep->patternSize - ef->filter.patternSize],
 					ef->filter.patternSize) == 0) {
 			ret = SA_AIS_OK;
 		}
@@ -1553,7 +1553,7 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 		if (ef->filter.patternSize != ep->patternSize) {
 			break;
 		}
-		if (strncmp(ef->filter.pattern, ep->pattern,
+		if (strncmp((char *)ef->filter.pattern, (char *)ep->pattern,
 					ef->filter.patternSize) == 0) {
 			ret = SA_AIS_OK;
 		}

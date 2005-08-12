@@ -104,7 +104,7 @@ test_subscription()
 	SaAisErrorT result;
 	 
 	flags = SA_EVT_CHANNEL_SUBSCRIBER | SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 	printf("Test subscription:\n");
@@ -290,7 +290,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 			ais_time_str(publish_time));
 
 		if ((evt_pat_get_array.patternsNumber == 0)|| 
-			(strcmp(evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) != 0)) {
+			(strcmp((char *)evt_pat_get_array.patterns[0].pattern, SA_EVT_LOST_EVENT) != 0)) {
 			dprintf("*** Received SA_EVT_EVENTID_LOST but pattern is wrong: %s\n",
 				evt_pat_get_array.patterns[0].pattern);
 		}
@@ -424,7 +424,7 @@ int main (int argc, char **argv)
 				(unsigned int)strtoul(p, NULL, 0);
 			p = strsep(&optarg, ",");
 			filters[sub_next].filter.pattern = malloc(strlen(p));
-			strcpy(filters[sub_next].filter.pattern, p);
+			strcpy((char *)filters[sub_next].filter.pattern, p);
 			filters[sub_next].filter.patternSize = strlen(p);
 			p = strsep(&optarg, ",");
 			filters[sub_next++].filterType = strtoul(p,0, 0);

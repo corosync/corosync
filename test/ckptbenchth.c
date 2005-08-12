@@ -76,12 +76,12 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 
 SaCkptSectionIdT sectionId1 = {
 	14,
-	"section ID #1"
+	(SaUint8T *) "section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
 	14,
-	"section ID #2"
+	(SaUint8T *) "section ID #2"
 };
 SaCkptSectionCreationAttributesT sectionCreationAttributes1 = {
 	&sectionId1,
@@ -101,7 +101,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #1"
+			(SaUint8T *) "section ID #1"
 		},
 		readBuffer1,
 		sizeof (readBuffer1),
@@ -111,7 +111,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #2"
+			(SaUint8T *) "section ID #2"
 		},
 		readBuffer2,
 		sizeof (readBuffer2),
@@ -128,7 +128,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #1"
+			(SaUint8T *) "section ID #1"
 		},
 		data, /*"written data #1, this should extend past end of old section data", */
 		DATASIZE, /*sizeof ("data #1, this should extend past end of old section data") + 1, */
@@ -139,7 +139,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
 			14,
-			"section ID #2"
+			(SaUint8T *) "section ID #2"
 		},
 		data, /*"written data #2, this should extend past end of old section data" */
 		DATASIZE, /*sizeof ("written data #2, this should extend past end of old section data") + 1, */
@@ -251,7 +251,7 @@ int main (void) {
 	 * Create CHECPOINT_THREADS checkpoints
 	 */
 	for (i  = 0; i < CHECKPOINT_THREADS; i++) {
-		sprintf (checkpointName.value, "checkpoint%d \n", i);
+		sprintf ((char *)checkpointName.value, "checkpoint%d \n", i);
 		error = saCkptInitialize (&ckptHandles[i], &callbacks, &version);
 		assert (error == SA_AIS_OK);
 

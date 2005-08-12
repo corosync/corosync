@@ -202,8 +202,8 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	memcpy (&thisClusterNode.nodeAddress.value, &this_ip->sin_addr,
 		sizeof (struct in_addr));
 	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
-	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
-	thisClusterNode.nodeName.length = strlen (thisClusterNode.nodeName.value);
+	strcpy ((char *)thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
+	thisClusterNode.nodeName.length = strlen ((char *)thisClusterNode.nodeName.value);
 	thisClusterNode.member = 1;
 	{
 		struct sysinfo s_info;
@@ -388,8 +388,8 @@ static int clm_confchg_fn (
 	memcpy (&thisClusterNode.nodeAddress.value, &this_ip->sin_addr,
 		sizeof (struct in_addr));
 	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
-	strcpy (thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
-	thisClusterNode.nodeName.length = strlen (thisClusterNode.nodeName.value);
+	strcpy ((char *)thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
+	thisClusterNode.nodeName.length = strlen ((char *)thisClusterNode.nodeName.value);
 
 	return (0);
 }

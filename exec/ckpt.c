@@ -1742,7 +1742,7 @@ void timer_function_section_expire (void *data)
         }
 
         ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-                                                                 ckpt_id->ckpt_section_id.id,
+                                                                (char *)ckpt_id->ckpt_section_id.id,
                                                                 (int)ckpt_id->ckpt_section_id.idLen);
         if (ckptCheckpointSection == 0) {
 		log_printf (LOG_LEVEL_ERROR, "CKPT: timer_function_section_expire could not find section %s in ckpt %s\n",

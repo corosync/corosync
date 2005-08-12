@@ -158,17 +158,21 @@ void test_initialize (void) {
 
 }
 
-#define patt1 "Filter pattern 1"
-#define patt1_size sizeof(patt1)
+#define _patt1 "Filter pattern 1"
+#define patt1 (SaUint8T *) _patt1
+#define patt1_size sizeof(_patt1)
 
-#define patt2 "Filter pattern 2"
-#define patt2_size sizeof(patt2)
+#define _patt2 "Filter pattern 2"
+#define patt2 (SaUint8T *) _patt2
+#define patt2_size sizeof(_patt2)
 
-#define patt3 "Filter pattern 3"
-#define patt3_size sizeof(patt3)
+#define _patt3 "Filter pattern 3"
+#define patt3 (SaUint8T *) _patt3
+#define patt3_size sizeof(_patt3)
 
-#define patt4 "Filter pattern 4"
-#define patt4_size sizeof(patt4)
+#define _patt4 "Filter pattern 4"
+#define patt4 (SaUint8T *) _patt4
+#define patt4_size sizeof(_patt4)
 
 
 SaEvtEventFilterT filters[] = {
@@ -244,7 +248,7 @@ test_channel()
 	flags = SA_EVT_CHANNEL_PUBLISHER |
 		SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 	/*
 	 * Channel open/close test
@@ -905,7 +909,7 @@ test_event()
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER | 
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 	printf("Test Event operations:\n");
@@ -1435,19 +1439,19 @@ test_multi_channel1()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_EXACT_FILTER, {8,8, "ChanPat1"}},
+		{SA_EVT_EXACT_FILTER, {8,8, (SaUint8T *) "ChanPat1"}},
 	};
 	SaEvtEventFilterT filt2[1] = {
-		{SA_EVT_EXACT_FILTER, {8, 8, "ChanPat2"}},
+		{SA_EVT_EXACT_FILTER, {8, 8, (SaUint8T *) "ChanPat2"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
 		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
-	SaEvtEventPatternT pat2 = {8, 8, "ChanPat2"};
-	SaEvtEventPatternT pat3 = {8, 8, "ChanPat3"};
+	SaEvtEventPatternT pat1 = {8, 8, (SaUint8T *) "ChanPat1"};
+	SaEvtEventPatternT pat2 = {8, 8, (SaUint8T *) "ChanPat2"};
+	SaEvtEventPatternT pat3 = {8, 8, (SaUint8T *) "ChanPat3"};
 
 	SaEvtEventPatternArrayT evt_pat = {
 		1, 1, NULL
@@ -1475,7 +1479,7 @@ test_multi_channel1()
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 	printf("Test multiple operations:\n");
@@ -1779,14 +1783,14 @@ test_multi_channel2()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_EXACT_FILTER, {8, 8, "ChanPat1"}},
+		{SA_EVT_EXACT_FILTER, {8, 8, (SaUint8T *) "ChanPat1"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
 		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
+	SaEvtEventPatternT pat1 = {8, 8, (SaUint8T *) "ChanPat1"};
 
 	SaEvtEventPatternArrayT evt_pat = {
 		1, 1, NULL
@@ -1815,7 +1819,7 @@ test_multi_channel2()
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 /*
@@ -2079,15 +2083,15 @@ test_multi_channel3()
 {
 
 	SaEvtEventFilterT filt1[1] = {
-		{SA_EVT_PREFIX_FILTER, {7, 7, "ChanPat"}},
+		{SA_EVT_PREFIX_FILTER, {7, 7, (SaUint8T *) "ChanPat"}},
 	};
 
 	SaEvtEventFilterArrayT sub_filt = {
 		1, NULL
 	};
 
-	SaEvtEventPatternT pat1 = {8, 8, "ChanPat1"};
-	SaEvtEventPatternT pat2 = {8, 8, "ChanPat2"};
+	SaEvtEventPatternT pat1 = {8, 8, (SaUint8T *) "ChanPat1"};
+	SaEvtEventPatternT pat2 = {8, 8, (SaUint8T *) "ChanPat2"};
 
 	SaEvtEventPatternArrayT evt_pat = {
 		1, 1, NULL
@@ -2118,11 +2122,11 @@ test_multi_channel3()
 	 
 	flags = SA_EVT_CHANNEL_PUBLISHER|SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
-	channel_name.length = strlen(channel_name.value);
-	strcpy(channel_name1.value, channel);
-	strcat(channel_name1.value, "_1");
-	channel_name1.length = strlen(channel_name1.value);
+	strcpy((char *)channel_name.value, channel);
+	channel_name.length = strlen((char *)channel_name.value);
+	strcpy((char *)channel_name1.value, channel);
+	strcat((char *)channel_name1.value, "_1");
+	channel_name1.length = strlen((char *)channel_name1.value);
 
 
 /*
@@ -2412,7 +2416,7 @@ test_retention()
 	flags = SA_EVT_CHANNEL_PUBLISHER |
 		SA_EVT_CHANNEL_SUBSCRIBER |
 		SA_EVT_CHANNEL_CREATE;
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 
 	printf("Test Event retention:\n");
@@ -2869,7 +2873,7 @@ test_unlink_channel()
 	 */
 	printf("       1 Channel unlink:\n");
 
-	strcpy(channel_name.value, channel);
+	strcpy((char *)channel_name.value, channel);
 	channel_name.length = strlen(channel);
 	do {
 		result = saEvtChannelUnlink(handle, &channel_name);
@@ -2880,7 +2884,7 @@ test_unlink_channel()
 		goto unlink_exit;
 	}
 
-	strcpy(channel_name.value, unlink_channel);
+	strcpy((char *)channel_name.value, unlink_channel);
 	channel_name.length = strlen(unlink_channel);
 	do {
 	result = saEvtChannelUnlink(handle, &channel_name);

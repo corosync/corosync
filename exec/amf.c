@@ -2659,8 +2659,7 @@ static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info
 	void *message)
 {
 	struct req_amf_stoppingcomplete *req_amf_stoppingcomplete = (struct req_amf_stoppingcomplete *)message;
-
-	struct conn_info *inv_conn_info;
+	struct conn_info *inv_conn_info = NULL;
 	int interface;
 
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_stoppingcomplete()\n");
@@ -2690,8 +2689,8 @@ static int message_handler_req_amf_response (struct conn_info *conn_info_nouse, 
 {
 	struct req_amf_response *req_amf_response = (struct req_amf_response *)message;
 	struct res_lib_amf_response res_lib_amf_response;
-	struct conn_info *conn_info;
-	int interface;
+	struct conn_info *conn_info = NULL;
+	int interface = 0;
 	int res;
 
 	log_printf (LOG_LEVEL_DEBUG, "Handle : message_handler_req_amf_response()\n");

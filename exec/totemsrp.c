@@ -275,7 +275,7 @@ struct sort_queue_item {
 };
 
 struct orf_token_mcast_thread_state {
-	char iobuf[9000];
+	unsigned char iobuf[9000];
 	prng_state prng_state;
 };
 
@@ -1890,19 +1890,19 @@ printf ("copying %d\n", i);
 
 static void encrypt_and_sign_worker (
 	struct totemsrp_instance *instance,
-	char *buf,
+	unsigned char *buf,
 	int *buf_len,
 	struct iovec *iovec,
 	int iov_len,
 	prng_state *prng_state_in)
 {
 	int i;
-	char *addr;
-	char keys[48];
+	unsigned char *addr;
+	unsigned char keys[48];
 	struct security_header *header;
-	char *hmac_key = &keys[32];
-	char *cipher_key = &keys[16];
-	char *initial_vector = &keys[0];
+	unsigned char *hmac_key = &keys[32];
+	unsigned char *cipher_key = &keys[16];
+	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
 	int outlen = 0;
 	hmac_state hmac_state;
@@ -1989,13 +1989,13 @@ static void encrypt_and_sign (
 	char *addr = instance->iov_encrypted.iov_base +
 		sizeof (struct security_header);
 	int i;
-	char keys[48];
+	unsigned char keys[48];
 	struct security_header *header = instance->iov_encrypted.iov_base;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
-	char *hmac_key = &keys[32];
-	char *cipher_key = &keys[16];
-	char *initial_vector = &keys[0];
+	unsigned char *hmac_key = &keys[32];
+	unsigned char *cipher_key = &keys[16];
+	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
 
 	instance->iov_encrypted.iov_len = 0;
@@ -2092,14 +2092,14 @@ static int authenticate_and_decrypt (
 	struct totemsrp_instance *instance,
 	struct iovec *iov)
 {
-	char keys[48];
+	unsigned char keys[48];
 	struct security_header *header = iov[0].iov_base;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
-	char *hmac_key = &keys[32];
-	char *cipher_key = &keys[16];
-	char *initial_vector = &keys[0];
-	char digest_comparison[HMAC_HASH_SIZE];
+	unsigned char *hmac_key = &keys[32];
+	unsigned char *cipher_key = &keys[16];
+	unsigned char *initial_vector = &keys[0];
+	unsigned char digest_comparison[HMAC_HASH_SIZE];
 	unsigned long len;
 	int res = 0;
 
@@ -3748,7 +3748,7 @@ static int message_handler_orf_token (
 	char token_storage[1500];
 	char token_convert[1500];
 	struct orf_token *token;
-	int prio = UINT_MAX;
+	unsigned int prio = UINT_MAX;
 	struct pollfd ufd;
 	int nfds;
 	struct orf_token *token_ref = (struct orf_token *)iovec->iov_base;
@@ -3762,19 +3762,19 @@ static int message_handler_orf_token (
 	struct timeval tv_current;
 	struct timeval tv_diff;
 
-gettimeofday (&tv_current, NULL);
-timersub (&tv_current, &tv_old, &tv_diff);
-memcpy (&tv_old, &tv_current, sizeof (struct timeval));
+	gettimeofday (&tv_current, NULL);
+	timersub (&tv_current, &tv_old, &tv_diff);
+	memcpy (&tv_old, &tv_current, sizeof (struct timeval));
 
-if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
-printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
-}
+	if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
+		printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
+	}
 #endif
 
 #ifdef RANDOM_DROP
-if (random () % 100 < 10) {
-	return (0);
-}
+	if (random () % 100 < 10) {
+		return (0);
+	}
 #endif
 
 	/*
