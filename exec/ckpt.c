@@ -1589,6 +1589,17 @@ static int recovery_checkpoint_open(SaNameT *checkpointName,
 		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
 		ckptCheckpointSection->expiration_timer = 0;
 
+		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
+			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
+			ckptCheckpoint->active_replica_set = 1;
+		} else
+		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
+			ckptCheckpoint->active_replica_set = 1;
+		} else {
+			ckptCheckpoint->active_replica_set = 0;
+		}
+
+
 		initialize_ckpt_refcount_array(ckptCheckpoint->ckpt_refcount);
 	}
 	else {
