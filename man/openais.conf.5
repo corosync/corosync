@@ -42,29 +42,34 @@ openais.conf - openais executive configuration file
 The openais.conf instructs the openais executive about various parameters
 needed to control the openais executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
-.IR network { } ", " logging { } ", " timeout { } ".  These directives are
-described below.
+.IR totem { } " and " logging { } ".  These directives are described below.
 
 .TP
-network { }
-This top level directive contains configuration options for the network.
+totem { }
+This top level directive contains configuration options for the totem protocol.
 .TP
 logging { }
 This top level directive contains configuration options for logging.
-.TP
-timeout { }
-This top level directive contains configuration options for protocol timeouts.
 
 .PP
 .PP
 Within the 
-.B network
-directive, there are three configuration options which are all required:
+.B totem
+directive, there are four configuration options which are all required:
+.TP
+version
+This specifies the version of the configuration file.  Currently the only
+valid verion for this directive is 1.
+
 .TP
 bindnetaddr
 This specifies the address which the openais executive should bind.
-This address should always end in zero.  If the local interface traffic should
+This address should always end in zero.  If the totem traffic should
 be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
+
+Multiple bindnetaddr directives may be specified.  When multiple bindnetaddr
+directives are specified, the totem redundant ring protocol will use multiple
+interfaces to replicate the network traffic.
 
 .TP
 mcastaddr
@@ -80,39 +85,99 @@ address on a network with the openais services configured for different
 UDP ports.
 
 .PP
-.PP
 Within the 
-.B logging
-directive, there are four configuration options which are all optional:
-.TP
-logoutput
-This specifies the logging output.  The choices are file, which logs to a file,
-stderr, which logs to stderr, and syslog which logs to the system log.  It is
-possible to have multiple targets by including this directive with different
-options multiple times in the top level directive.
+.B totem 
+directive, there are four configuration options which are all optional.
+These control secrecy & authentication, the redundant ring mode of operation,
+and network MTU, and number of sending threads.
 
 .TP
-logfile
-If the logoutput: file directive is set, this option specifies where the
-log file is written to.  
+secauth
+This specifies that HMAC/SHA1 authentication should be used to authenticate
+all messages.  It further specifies that all data should be encrypted with the
+sober128 encryption algorithm to protect data from eavesdropping.
+
+Enabling this option adds a 36 byte header to every message sent by totem which
+reduces total throughput.  Encryption and authentication consume 75% of CPU
+cycles in aisexec as measured with gprof when enabled.
+
+For 100mbit networks with 1500 MTU frame transmissions:
+A throughput of 9mb/sec is possible with 100% cpu utilization when this
+option is enabled on 3ghz cpus.
+A throughput of 10mb/sec is possible wth 20% cpu utilization when this
+optin is disabled on 3ghz cpus.
+
+For gig-e networks with large frame transmissions:
+A throughput of 20mb/sec is possible when this option is enabled on
+3ghz cpus.
+A throughput of 60mb/sec is possible when this option is disabled on
+3ghz cpus.
+
+The default is on.
 
 .TP
-debug
-This specifies whether debug output is logged.  This is generally a bad idea, 
-unless there is some specific bug or problem that must be found in the
-executive.  Set the value to on to debug, off to turn of debugging.
+redundantring
+This specifies the mode of redundant ring, which may be none, active, or
+passive.  Active replication offers slightly lower latency from transmit
+to delivery in faulty network environments but with poorer performance.
+Passive replication may nearly double the speed of the totem protocol
+if the protocol doesn't become cpu bound.  The final option is none, in
+which case only one network interface will be used to operate the totem
+protocol.
+
+At this time redundant ring is only partially implemented and not yet available.
+
+The default is none.
 
 .TP
-timestamp
-This specifies that a timestamp is placed on all log messages.
-.PP
-.PP
+netmtu
+This specifies the network maximum transmit unit.  To set this value beyond
+1500, the regular frame MTU, requires ethernet devices that support large, or
+also called jumbo, frames.  If any device in the network doesn't support large
+frames, the protocol will not operate properly.  The hosts must also have their
+mtu size set from 1500 to whatever frame size is specified here.
+
+Please note while some NICs or switches claim large frame support, they support
+9000 MTU as the maximum frame size including the IP header.  Setting the netmtu
+and host MTUs to 9000 will cause totem to use the full 9000 bytes of frame room.
+Then Linux will add a 18 byte header moving the full frame size to 9018.  As a
+result some hardware will not operate properly with this size of data.  A netmtu 
+of 8982 seems to work for the few large frame devices that have been tested.
+Some manufacturers claim large frame support when in fact they support frame
+sizes of 4500 bytes.
+
+Increasing the MTU from 1500 to 8982 doubles throughput performance from 30MB/sec
+to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth 
+directive set to off.
+
+When sending multicast traffic, if the network frequently reconfigures, chances are
+that some device in the network doesn't support large frames.
+
+Choose hardware carefully if intending to use large frame support.
+
+The default is 1500.
+
+.TP
+threads
+This directive controls how many threads are used to encrypt and send multicast
+messages.  If secauth is off, the protocol will never use threaded sending.
+If secauth is on, this directive allows systems to be configured to use
+multiple threads to encrypt and send multicast messages.
+
+A thread directive of 0 indicates that no threaded send should be used.  This
+mode offers best performance for non-SMP systems. 
+
+The default is 0.
+
 Within the 
-.B timeout
-directive, there are several configuration options which are all optional.
-It is generally not recommended to change any of these values.  Some networks
-may require larger values for token or some applications may require faster
-failure detection times (and lower values for token).
+.B totem 
+directive, there are several configuration options which are used to control
+the operation of the protocol.  It is generally not recommended to change any
+of these values without proper guidance and sufficient testing.  Some networks
+may require larger values if suffering from frequent reconfigurations.  Some
+applications may require faster failure detection times which can be achieved
+by reducing the token timeout.
+
 .TP
 token
 This timeout specifies in milliseconds until a token loss is declared after not
@@ -162,9 +227,41 @@ This timeout specifies in milliseconds how long to wait before checking
 that a network interface is back up after it has been downed.
 
 .TP
-fail_recv_const
-This value identifies how many rotations of the token without receiving any
-of the messages may occur before a new configuration is formed.
+fail_to_recv_const
+This constant specifies how many rotations of the token without receiving any
+of the messages when messages should be received may occur before a new
+configuration is formed.
+
+.TP
+seqno_unchanged_const
+This constant specifies how many rotations of the token without any multicast
+traffic should occur before the merge detection timeout is started.
+
+.PP
+Within the 
+.B logging
+directive, there are four configuration options which are all optional:
+.TP
+logoutput
+This specifies the logging output.  The choices are file, which logs to a file,
+stderr, which logs to stderr, and syslog which logs to the system log.  It is
+possible to have multiple targets by including this directive with different
+options multiple times in the top level directive.
+
+.TP
+logfile
+If the logoutput: file directive is set, this option specifies where the
+log file is written to.  
+
+.TP
+debug
+This specifies whether debug output is logged.  This is generally a bad idea, 
+unless there is some specific bug or problem that must be found in the
+executive.  Set the value to on to debug, off to turn of debugging.
+
+.TP
+timestamp
+This specifies that a timestamp is placed on all log messages.
 
 .SH "FILES"
 .TP

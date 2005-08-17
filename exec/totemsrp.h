@@ -37,7 +37,10 @@
 #include "totem.h"
 #include "aispoll.h"
 
-#define TOTEMSRP_PACKET_SIZE_MAX	1404
+#define HEADERSIZE 78
+
+//#define TOTEMSRP_PACKET_SIZE_MAX	1404
+#define TOTEMSRP_PACKET_SIZE_MAX	9000 - HEADERSIZE
 
 typedef unsigned int totemsrp_handle;
 
@@ -50,7 +53,7 @@ typedef unsigned int totemsrp_handle;
  * Create a protocol instance
  */
 int totemsrp_initialize (
-	poll_handle *poll_handle,
+	poll_handle poll_handle,
 	totemsrp_handle *handle,
 	struct totem_config *totem_config,
 
@@ -97,5 +100,7 @@ void totemsrp_callback_token_destroy (
 int totemsrp_new_msg_signal (totemsrp_handle handle);
 
 extern struct sockaddr_in config_mcast_addr;
+
+extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
 #endif /* TOTEMSRP_H_DEFINED */

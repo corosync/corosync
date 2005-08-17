@@ -74,10 +74,10 @@ SaNameT checkpointName = { 5, "abra\0" };
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
         .creationFlags =        SA_CKPT_WR_ALL_REPLICAS,
-        .checkpointSize =       150000,
+        .checkpointSize =       250000,
         .retentionDuration =    0,
         .maxSections =          5,
-        .maxSectionSize =       150000,
+        .maxSectionSize =       250000,
         .maxSectionIdSize =     10
 };
 
@@ -127,7 +127,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	}
 };
 
-#define DATASIZE 1000
+#define DATASIZE 200000
 #define LOOPS 5000
 
 char data[500000];
@@ -231,7 +231,7 @@ int main (void) {
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 
-	size = 1;
+	size = 200000;
 
 	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
 		ckpt_benchmark (checkpointHandle, size);

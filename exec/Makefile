@@ -39,14 +39,14 @@ LDFLAGS = -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
-#LDFLAGS = -pg
+#LDFLAGS = -pg -lpthread
 
 # Code Coverage with lcov flgs
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-TOTEM_SRC = aispoll.c totemsrp.c totemmrp.c totempg.c totemparse.c tlist.c hdb.c crypto.c
-TOTEM_OBJS = aispoll.o totemsrp.o totemmrp.o totempg.o totemparse.o tlist.o hdb.o crypto.o
+TOTEM_SRC = aispoll.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c hdb.c crypto.c wthread.c
+TOTEM_OBJS = aispoll.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
 
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c mainparse.c print.c mempool.c \
 		util.c sync.c
@@ -83,10 +83,19 @@ depend:
 aispoll.o: aispoll.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
+totempg.o: totempg.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
 totemsrp.o: totemsrp.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
-totempg.o: totempg.c
+totemrrp.o: totemrrp.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+totemnet.o: totemnet.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+wthread.o: wthread.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 tlist.o: tlist.c
@@ -101,7 +110,7 @@ crypto.o: crypto.c
 totemmrp.o: totemmrp.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
-totemparse.o: totemparse.c
+totemconfig.o: totemconfig.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 # DO NOT DELETE

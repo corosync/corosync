@@ -81,4 +81,9 @@ int poll_run (
 int poll_stop (
 	poll_handle handle);
 
+#ifdef COMPILE_OUT
+void poll_print_state (
+	poll_handle handle, int fd);
+#endif
+
 #endif	/* POLL_H_DEFINED */

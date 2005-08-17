@@ -92,8 +92,8 @@ SaEvtEventPatternArrayT evt_pat_set_array = {
 };
 
 char user_data_file[256];
-char  user_data[65536];
-int user_data_size = 1024;
+char  user_data[100000];
+int user_data_size = 50000;
 
 uint64_t clust_time_now(void)
 {

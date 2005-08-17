@@ -454,3 +454,31 @@ error_exit:
 
 int poll_stop (
 	poll_handle handle);
+
+#ifdef COMPILE_OUT
+void poll_print_state (
+	poll_handle handle,
+	int fd)
+{
+	struct poll_instance *poll_instance;
+	int i;
+	SaErrorT error;
+	int res = 0;
+	error = saHandleInstanceGet (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (error != SA_OK) {
+		res = -ENOENT;
+		exit (1);
+	}
+
+	for (i = 0; i < poll_instance->poll_entry_count; i++) {
+		if (poll_instance->poll_entries[i].ufd.fd == fd) {
+		printf ("fd %d\n", poll_instance->poll_entries[i].ufd.fd);
+		printf ("events %d\n", poll_instance->poll_entries[i].ufd.events);
+		printf ("dispatch_fn %x\n", poll_instance->poll_entries[i].dispatch_fn);
+		printf ("prio %d\n", poll_instance->poll_entries[i].prio);
+		}
+	}
+}
+	
+#endif

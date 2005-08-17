@@ -36,6 +36,8 @@
 
 #define MESSAGE_SIZE_MAX			256000
 #define PROCESSOR_COUNT_MAX			16
+#define FRAME_SIZE_MAX				9000
+#define SEND_THREADS_MAX			16
 
 /*
  * Array location of various timeouts as
@@ -72,6 +74,8 @@ struct totem_logging_configuration {
 };
 
 struct totem_config {
+	int version;
+
 	/*
 	 * network
 	 */
@@ -83,14 +87,39 @@ struct totem_config {
 	 * key information
 	 */
 	unsigned char private_key[128];
+
 	int private_key_len;
 
 	/*
-	 * Timeouts
+	 * Totem configuration parameters
 	 */
-	unsigned int timeouts[MAX_TOTEM_TIMEOUTS];
+	unsigned int token_timeout;
+
+	unsigned int token_retransmit_timeout;
+
+	unsigned int token_hold_timeout;
+
+	unsigned int token_retransmits_before_loss_const;
+
+	unsigned int join_timeout;
+
+	unsigned int consensus_timeout;
+
+	unsigned int merge_timeout;
+
+	unsigned int downcheck_timeout;
+
+	unsigned int fail_to_recv_const;
+
+	unsigned int seqno_unchanged_const;
 
 	struct totem_logging_configuration totem_logging_configuration;
+
+	unsigned int secauth;
+
+	unsigned int net_mtu;
+
+	unsigned int threads;
 };
 
 enum totem_configuration_type {

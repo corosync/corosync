@@ -31,76 +31,75 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMMRP_H_DEFINED
-#define TOTEMMRP_H_DEFINED
+#ifndef TOTEMRRP_H_DEFINED
+#define TOTEMRRP_H_DEFINED
+
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "totem.h"
 #include "aispoll.h"
 
-#define TOTEMMRP_PACKET_SIZE_MAX	1404
+typedef unsigned int totemrrp_handle;
+
+#define TOTEMRRP_NOFLUSH	0
+#define TOTEMRRP_FLUSH		1
 
 /*
- * Totem Single Ring Protocol
+ * Totem Network interface - also does encryption/decryption
  * depends on poll abstraction, POSIX, IPV4
  */
-/*
- * Initialize the logger
- */
-void totemmrp_log_printf_init (
-	void (*log_printf) (int , char *, ...),
-	int log_level_security,
-	int log_level_error,
-	int log_level_warning,
-	int log_level_notice,
-	int log_level_debug);
 
 /*
- * Initialize the group messaging interface
+ * Create an instance
  */
-int totemmrp_initialize (
+extern int totemrrp_initialize (
 	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
+	totemrrp_handle *handle,
 	struct totem_config *totem_config,
+	void *context,
 
 	void (*deliver_fn) (
-		struct in_addr source_addr,
-		struct iovec *iovec,
-		int iov_len,
-		int endian_conversion_required),
-	void (*confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+		void *context,
+		struct in_addr *system_from,
+		void *msg,
+		int msg_len),
 
-int totemmrp_finalize (void);
+	void (*iface_change_fn) (
+		void *context,
+		struct sockaddr_in *iface_sockaddr_in),
 
-/*
- * Multicast a message
- */
-int totemmrp_mcast (
+	void (*token_seqid_get) (
+		void *msg,
+		unsigned int *seqid,
+		unsigned int *token_is));
+
+extern int totemrrp_processor_count_set (
+	totemrrp_handle handle,
+	int processor_count);
+
+extern int totemrrp_token_send (
+	totemrrp_handle handle,
+	struct in_addr *system_to,
+	void *msg,
+	int msg_len);
+
+extern int totemrrp_mcast_noflush_send (
+	totemrrp_handle handle,
 	struct iovec *iovec,
-	int iov_len,
-	int priority);
+	int iov_len);
 
-/*
- * Return number of available messages that can be queued
- */
-int totemmrp_avail (void);
+extern int totemrrp_mcast_flush_send (
+	totemrrp_handle handle,
+	void *msg,
+	int msg_len);
 
-int totemmrp_callback_token_create (
-	void **handle_out,
-	enum totem_callback_token_type type,
-	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
+extern int totemrrp_recv_flush (totemrrp_handle handle);
 
-void totemmrp_callback_token_destroy (
-	void **handle_out);
+extern int totemrrp_send_flush (totemrrp_handle handle);
 
-void totemmrp_new_msg_signal (void);
+extern int totemrrp_iface_check (totemrrp_handle handle);
 
-extern struct sockaddr_in config_mcast_addr;
+extern int totemrrp_finalize (totemrrp_handle handle);
 
-#endif /* TOTEMMRP_H_DEFINED */
+#endif /* TOTEMRRP_H_DEFINED */

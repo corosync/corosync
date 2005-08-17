@@ -28,25 +28,24 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
+LIBS = $(LIBRARIES) -lpthread
+
 # Production mode flags
-#CFLAGS = -c -O3 -Wall -I../include
-#CFLAGS = -c -O3 -Wall -I../include
-#LDFLAGS = -L../lib
+CFLAGS = -c -O3 -Wall -I../include
+CFLAGS = -c -O3 -Wall -I../include
+LDFLAGS = -L../lib
 #LIBRARIES= ../lib/libais.a ../lib/libevs.a
 #LIBS = $(LIBRARIES) -lpthread
 
 # Debug mode flags
-CFLAGS = -c -g -Wall -DDEBUG -I../include
-CPPFLAGS = -c -g -Wall -DDEBUG -I../include
-LDFLAGS = -g -L../lib
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
-LIBS = $(LIBRARIES) -lpthread
+#CFLAGS = -c -g -Wall -DDEBUG -I../include
+#CPPFLAGS = -c -g -Wall -DDEBUG -I../include
+#LDFLAGS = -g -L../lib
 
 # Profile mode flags
 #CFLAGS = -c -O3 -pg -DDEBUG -I../include
 #LDFLAGS = -pg -L../lib
-#LIBRARIES= ../lib/libais.a ../lib/libevs.a
-#LIBS = $(LIBRARIES)
 
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \

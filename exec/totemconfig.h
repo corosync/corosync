@@ -31,76 +31,28 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMMRP_H_DEFINED
-#define TOTEMMRP_H_DEFINED
-
-#include "totem.h"
+#include <netinet/in.h>
+#include "../include/ais_types.h"
+#include "../include/list.h"
 #include "aispoll.h"
+#include "totemsrp.h"
+#include "totempg.h"
 
-#define TOTEMMRP_PACKET_SIZE_MAX	1404
+#ifndef TOTEMCONFIG_H_DEFINED
+#define TOTEMCONFIG_H_DEFINED
 
-/*
- * Totem Single Ring Protocol
- * depends on poll abstraction, POSIX, IPV4
- */
-/*
- * Initialize the logger
- */
-void totemmrp_log_printf_init (
-	void (*log_printf) (int , char *, ...),
-	int log_level_security,
-	int log_level_error,
-	int log_level_warning,
-	int log_level_notice,
-	int log_level_debug);
-
-/*
- * Initialize the group messaging interface
- */
-int totemmrp_initialize (
-	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
+extern int totem_config_read (
 	struct totem_config *totem_config,
+	char **error_string,
+	int interface_max);
+	
+extern int totem_config_validate (
+	struct totem_config *totem_config,
+	char **error_string);
 
-	void (*deliver_fn) (
-		struct in_addr source_addr,
-		struct iovec *iovec,
-		int iov_len,
-		int endian_conversion_required),
-	void (*confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+int totem_config_keyread (
+	unsigned char *key_location,
+	struct totem_config *totem_config,
+	char **error_string);
 
-int totemmrp_finalize (void);
-
-/*
- * Multicast a message
- */
-int totemmrp_mcast (
-	struct iovec *iovec,
-	int iov_len,
-	int priority);
-
-/*
- * Return number of available messages that can be queued
- */
-int totemmrp_avail (void);
-
-int totemmrp_callback_token_create (
-	void **handle_out,
-	enum totem_callback_token_type type,
-	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
-
-void totemmrp_callback_token_destroy (
-	void **handle_out);
-
-void totemmrp_new_msg_signal (void);
-
-extern struct sockaddr_in config_mcast_addr;
-
-#endif /* TOTEMMRP_H_DEFINED */
+#endif /* TOTEMCONFIG_H_DEFINED */

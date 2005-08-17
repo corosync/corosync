@@ -276,7 +276,7 @@ int main (void) {
 		assert (error == SA_AIS_OK);
 	}
 
-	for (i = 1; i < CHECKPOINT_THREADS; i++) {	/* i threads */
+	for (i = 25; i < CHECKPOINT_THREADS; i++) {	/* i threads */
 		count = 3000; /* initial write count */
 		size = 10000; /* initial size */
 		printf ("THREADS %d\n", i);

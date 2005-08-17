@@ -64,7 +64,7 @@
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainparse.h"
-#include "totemparse.h"
+#include "totemconfig.h"
 #include "main.h"
 #include "handlers.h"
 #include "sync.h"
@@ -708,7 +708,7 @@ retry_recv:
 			send_ok =
 				(ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
-				(totempg_send_ok (1000 + header->size)) &&
+				(totempg_send_ok (header->size)) &&
 				(sync_in_process() == 0));
 
 			if (send_ok) {
@@ -773,7 +773,7 @@ void sigintr_handler (int signum)
 #endif
 
 	totempg_finalize ();
-	print_stats (totemsrp_handle_in);
+//	print_stats (totemsrp_handle_in);
 	ais_done (AIS_DONE_EXIT);
 }
 
@@ -1042,29 +1042,6 @@ static void aisexec_mlockall (void)
 	};
 }
 
-void aisexec_keyread (unsigned char *key)
-{
-	int fd;
-	int res;
-
-	fd = open ("/etc/ais/authkey", O_RDONLY);
-	if (fd == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not open /etc/ais/authkey: %s\n", strerror (errno));
-		ais_done (AIS_DONE_READKEY);
-	}
-	res = read (fd, key, 128);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not read /etc/ais/authkey: %s\n", strerror (errno));
-		ais_done (AIS_DONE_READKEY);
-	}
-	if (res != 128) {
-		log_printf (LOG_LEVEL_ERROR, "Could only read %d bits of 1024 bits from /etc/ais/authkey.\n", res * 8);
-		ais_done (AIS_DONE_READKEY);
-	}
-
-	close (fd);
-}
-
 int message_source_is_local(struct message_source *source)
 {
 	int ret = 0;
@@ -1125,8 +1102,17 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	aisexec_keyread (openais_config.totem_config.private_key);
-	openais_config.totem_config.private_key_len = sizeof (openais_config.totem_config.private_key);
+	res = totem_config_keyread ("/etc/ais/authkey", &openais_config.totem_config, &error_string);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		ais_done (AIS_DONE_MAINCONFIGREAD);
+	}
+
+	res = totem_config_validate (&openais_config.totem_config, &error_string);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		ais_done (AIS_DONE_MAINCONFIGREAD);
+	}
 
 	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
@@ -1155,7 +1141,7 @@ int main (int argc, char **argv)
 	openais_config.totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
 	totempg_initialize (
-		&aisexec_poll_handle,
+		aisexec_poll_handle,
 		&totemsrp_handle_in,
 		&openais_config.totem_config,
 		deliver_fn,

@@ -86,7 +86,7 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[100];
+char buffer[253000];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
@@ -137,6 +137,7 @@ try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			&iov, 1);
 		if (result == EVS_ERR_TRY_AGAIN) {
+printf ("try again\n");
 			goto try_again_one;
 		}
 		result = evs_dispatch (handle, EVS_DISPATCH_ALL);

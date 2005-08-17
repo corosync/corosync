@@ -342,10 +342,7 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 		// TODO
 	if (res == 0) {
 		error = EVS_OK;
-	} else {
-		printf ("res is wrong\n");
 	}
-error = EVS_OK;
 
 	res_lib_evs_mcast_joined.header.size = sizeof (struct res_lib_evs_mcast_joined);
 	res_lib_evs_mcast_joined.header.id = MESSAGE_RES_EVS_MCAST_JOINED;

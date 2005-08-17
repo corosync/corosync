@@ -102,7 +102,7 @@ void totemmrp_confchg_fn (
  * Initialize the totem multiple ring protocol
  */
 int totemmrp_initialize (
-	poll_handle *poll_handle,
+	poll_handle poll_handle,
 	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 

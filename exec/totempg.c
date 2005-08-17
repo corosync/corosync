@@ -127,15 +127,17 @@ struct totempg_mcast {
 /*
  * Maximum packet size for totem pg messages
  */
-#define TOTEMPG_PACKET_SIZE (TOTEMSRP_PACKET_SIZE_MAX - \
+#define TOTEMPG_PACKET_SIZE (totempg_totem_config->net_mtu - \
 	sizeof (struct totempg_mcast))
 
 /*
  * Local variables used for packing small messages
  */
-static unsigned short mcast_packed_msg_lens[TOTEMSRP_PACKET_SIZE_MAX];
+static unsigned short mcast_packed_msg_lens[FRAME_SIZE_MAX];
 
 static int mcast_packed_msg_count = 0;
+
+struct totem_config *totempg_totem_config;
 
 static void (*app_deliver_fn) (
 		struct in_addr source_addr,
@@ -157,7 +159,7 @@ struct assembly {
 	unsigned char last_frag_num;
 };
 
-struct assembly *assembly_list[16]; // MAX PROCESSORS TODO
+struct assembly *assembly_list[PROCESSOR_COUNT_MAX];
 int assembly_list_entries = 0;
 
 /*
@@ -170,7 +172,7 @@ int assembly_list_entries = 0;
  * fragment_contuation indicates whether the first packed message in 
  * the buffer is a continuation of a previously packed fragment.
  */
-static unsigned char fragmentation_data[TOTEMPG_PACKET_SIZE];
+static unsigned char fragmentation_data[MESSAGE_SIZE_MAX];
 int fragment_size = 0;
 int fragment_continuation = 0;
 
@@ -251,7 +253,7 @@ static void totempg_deliver_fn (
 	unsigned short *msg_lens;
 	int i;
 	struct assembly *assembly;
-	char header[1500];
+	char header[FRAME_SIZE_MAX];
 	int h_index;
 	int a_i = 0;
 	int msg_count;
@@ -308,6 +310,7 @@ static void totempg_deliver_fn (
 
 		for (i = 2; i < iov_len; i++) {
 			a_i = assembly->index;
+			assert (iovec[i].iov_len + a_i <= MESSAGE_SIZE_MAX);
 			memcpy (&assembly->data[a_i], iovec[i].iov_base, iovec[i].iov_len);
 			a_i += msg_lens[i - 2];
 		}
@@ -338,6 +341,7 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
 	continuation = mcast->continuation;
 	iov_delv.iov_base = &assembly->data[0];
 	iov_delv.iov_len = assembly->index + msg_lens[0];
+//	printf ("%d %d %d\n", msg_count, continuation, assembly->last_frag_num);
 
 	/*
 	 * Make sure that if this message is a continuation, that it
@@ -399,7 +403,7 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
 		}
 		assembly->index += msg_lens[msg_count];
 	} else {
-			assembly->last_frag_num = 0;
+		assembly->last_frag_num = 0;
 		assembly->index = 0;
 	}
 }
@@ -450,7 +454,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	poll_handle *poll_handle,
+	poll_handle poll_handle,
 	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
@@ -472,6 +476,8 @@ int totempg_initialize (
 	app_deliver_fn = deliver_fn;
 	app_confchg_fn = confchg_fn;
 
+	totempg_totem_config = totem_config;
+
 	res = totemmrp_initialize (
 		poll_handle,
 		totemsrp_handle,
@@ -484,6 +490,8 @@ int totempg_initialize (
 		0,
 		callback_token_received_fn,
 		0);
+
+	totemsrp_net_mtu_adjust (totem_config);
 
 	return (res);
 }
@@ -510,6 +518,7 @@ int totempg_mcast (
 	int max_packet_size = 0;
 	int copy_len = 0; 
 	int copy_base = 0;
+	int total_size = 0;
 
 	totemmrp_new_msg_signal ();
 
@@ -517,6 +526,10 @@ int totempg_mcast (
 		(sizeof (unsigned short) * (mcast_packed_msg_count + 1));
 
 	mcast_packed_msg_lens[mcast_packed_msg_count] = 0;
+
+	for (i = 0; i < iov_len; i++) {
+		total_size += iovec[i].iov_len;
+	}
 
 	for (i = 0; i < iov_len; ) {
 		mcast.fragmented = 0;
@@ -625,9 +638,13 @@ int totempg_send_ok (
 	int msg_size)
 {
 	int avail = 0;
+	int total;
+
 	avail = totemmrp_avail ();
 
-	return (avail > 200);
+	total = (msg_size / (totempg_totem_config->net_mtu - 25) /* for totempg_mcat header */);
+
+	return (avail >= total);
 }
 /*
  *	vi: set autoindent tabstop=4 shiftwidth=4 :

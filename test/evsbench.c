@@ -52,7 +52,7 @@
 #include "ais_types.h"
 #include "evs.h"
 
-static int alarm_notice = 0;
+volatile static int alarm_notice = 0;
 
 int outstanding = 0;
 
@@ -121,13 +121,11 @@ void evs_benchmark (evs_handle_t handle,
 	iov.iov_len = write_size;
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
-try_again:
+retry_mcast:
 		if (outstanding < 10) {
 			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
-			if (result == EVS_ERR_TRY_AGAIN) {
-printf ("try again\n");
-				goto try_again;
-			} else {
+
+			if (result != EVS_ERR_TRY_AGAIN) {
 				write_count += 1;
 				outstanding++;
 			}
@@ -169,9 +167,9 @@ int main (void) {
 	result = evs_leave (handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 
-	size = 1;
+	size = 170000;
 
-	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
+	for (i = 0; i < 225; i++) { /* number of repetitions - up to 50k */
 		evs_benchmark (handle, size);
 		/*
 		 * Adjust count to 95% of previous count

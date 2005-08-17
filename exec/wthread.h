@@ -31,76 +31,34 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMMRP_H_DEFINED
-#define TOTEMMRP_H_DEFINED
 
-#include "totem.h"
-#include "aispoll.h"
+#ifndef CONFIG_WTHREAD_H_DEFINED
+#define CONFIG_WTHREAD_H_DEFINED
 
-#define TOTEMMRP_PACKET_SIZE_MAX	1404
+struct worker_thread_group {
+	int threadcount;
+	int last_scheduled;
+	struct worker_thread *threads;
+	void (*worker_fn) (void *thread_state, void *work_item);
+};
 
-/*
- * Totem Single Ring Protocol
- * depends on poll abstraction, POSIX, IPV4
- */
-/*
- * Initialize the logger
- */
-void totemmrp_log_printf_init (
-	void (*log_printf) (int , char *, ...),
-	int log_level_security,
-	int log_level_error,
-	int log_level_warning,
-	int log_level_notice,
-	int log_level_debug);
+extern int worker_thread_group_init (
+	struct worker_thread_group *worker_thread_group,
+	int threads,
+	int items_max,
+	int item_size,
+	int thread_state_size,
+	void (*thread_state_constructor)(void *),
+	void (*worker_fn)(void *thread_state, void *work_item));
 
-/*
- * Initialize the group messaging interface
- */
-int totemmrp_initialize (
-	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
-	struct totem_config *totem_config,
+extern void worker_thread_group_work_add (
+	struct worker_thread_group *worker_thread_group,
+	void *item);
 
-	void (*deliver_fn) (
-		struct in_addr source_addr,
-		struct iovec *iovec,
-		int iov_len,
-		int endian_conversion_required),
-	void (*confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+extern void worker_thread_group_wait (
+	struct worker_thread_group *worker_thread_group);
 
-int totemmrp_finalize (void);
+extern void worker_thread_group_exit (
+	struct worker_thread_group *worker_thread_group);
 
-/*
- * Multicast a message
- */
-int totemmrp_mcast (
-	struct iovec *iovec,
-	int iov_len,
-	int priority);
-
-/*
- * Return number of available messages that can be queued
- */
-int totemmrp_avail (void);
-
-int totemmrp_callback_token_create (
-	void **handle_out,
-	enum totem_callback_token_type type,
-	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
-
-void totemmrp_callback_token_destroy (
-	void **handle_out);
-
-void totemmrp_new_msg_signal (void);
-
-extern struct sockaddr_in config_mcast_addr;
-
-#endif /* TOTEMMRP_H_DEFINED */
+#endif /* WTHREAD_H_DEFINED */
