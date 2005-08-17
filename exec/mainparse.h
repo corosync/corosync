@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <netinet/in.h>
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/list.h"
 #include "aispoll.h"
 #include "totemsrp.h"

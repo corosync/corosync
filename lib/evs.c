@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/evs.h"
 #include "../include/ipc_evs.h"
 #include "util.h"

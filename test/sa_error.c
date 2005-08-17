@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "ais_types.h"
+#include "saAis.h"
 
 const char *sa_error_list[] = {
 	"OUT_OF_RANGE",

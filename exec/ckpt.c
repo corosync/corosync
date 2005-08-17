@@ -45,7 +45,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/saCkpt.h"
 #include "../include/ipc_ckpt.h"
 #include "../include/list.h"

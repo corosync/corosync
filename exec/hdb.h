@@ -35,7 +35,7 @@
 #ifndef HDB_H_DEFINED
 #define HDB_H_DEFINED
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 
 struct saHandleDatabase {
 	unsigned int handleCount;

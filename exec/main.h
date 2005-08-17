@@ -35,7 +35,7 @@
 #define TRUE 1
 #define FALSE 0
 #include <sys/un.h>
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/queue.h"
 #include "poll.h"
 #include "evs.h"

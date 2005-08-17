@@ -43,7 +43,7 @@
 #include <sys/un.h>
 #include <sys/time.h>
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "saCkpt.h"
 #include "sa_error.h"
 

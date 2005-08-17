@@ -62,7 +62,7 @@
 #include <unistd.h>
 #include <sys/poll.h>
 #include <malloc.h>
-#include "ais_types.h"
+#include "saAis.h"
 #include "saEvt.h"
 
 extern int get_sa_error(SaAisErrorT, char *, int);

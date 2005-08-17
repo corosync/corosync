@@ -49,7 +49,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "evs.h"
 
 volatile static int alarm_notice = 0;

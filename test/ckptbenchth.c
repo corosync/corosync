@@ -46,7 +46,7 @@
 #include <pthread.h>
 #include <assert.h>
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "saCkpt.h"
 
 void printSaNameT (SaNameT *name)

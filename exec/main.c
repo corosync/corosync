@@ -56,7 +56,7 @@
 #include <sched.h>
 #include <time.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "poll.h"

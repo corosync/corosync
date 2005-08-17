@@ -45,7 +45,7 @@
 #include <signal.h>
 #include <string.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_amf.h"
 #include "../include/list.h"

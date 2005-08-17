@@ -74,8 +74,8 @@ typedef struct {
 
 typedef struct {
 	char releaseCode;
-	unsigned char major;
-	unsigned char minor;
+	unsigned char majorVersion;
+	unsigned char minorVersion;
 } SaVersionT;
 
 #define SA_TRACK_CURRENT 0x01

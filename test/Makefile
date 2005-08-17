@@ -147,24 +147,24 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(TEST_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
-testclm.o: ../include/ais_types.h ../include/saClm.h
-testamf.o: ../include/ais_types.h ../include/ais_amf.h ../include/saClm.h
-testamf1.o: ../include/ais_types.h ../include/ais_amf.h
-testamf2.o: ../include/ais_types.h ../include/ais_amf.h
-testamf3.o: ../include/ais_types.h ../include/ais_amf.h
-testamf4.o: ../include/ais_types.h ../include/ais_amf.h
-testamf5.o: ../include/ais_types.h ../include/ais_amf.h
-testamf6.o: ../include/ais_types.h ../include/ais_amf.h
-testamfth.o: ../include/ais_types.h ../include/ais_amf.h ../include/saClm.h
-testckpt.o: ../include/ais_types.h ../include/saCkpt.h sa_error.h
-ckptstress.o: ../include/ais_types.h ../include/saCkpt.h
-ckptbench.o: ../include/ais_types.h ../include/saCkpt.h
-ckptbenchth.o: ../include/ais_types.h ../include/saCkpt.h
-testevt.o: ../include/ais_types.h ../include/saEvt.h
+testclm.o: ../include/saAis.h ../include/saClm.h
+testamf.o: ../include/saAis.h ../include/ais_amf.h ../include/saClm.h
+testamf1.o: ../include/saAis.h ../include/ais_amf.h
+testamf2.o: ../include/saAis.h ../include/ais_amf.h
+testamf3.o: ../include/saAis.h ../include/ais_amf.h
+testamf4.o: ../include/saAis.h ../include/ais_amf.h
+testamf5.o: ../include/saAis.h ../include/ais_amf.h
+testamf6.o: ../include/saAis.h ../include/ais_amf.h
+testamfth.o: ../include/saAis.h ../include/ais_amf.h ../include/saClm.h
+testckpt.o: ../include/saAis.h ../include/saCkpt.h sa_error.h
+ckptstress.o: ../include/saAis.h ../include/saCkpt.h
+ckptbench.o: ../include/saAis.h ../include/saCkpt.h
+ckptbenchth.o: ../include/saAis.h ../include/saCkpt.h
+testevt.o: ../include/saAis.h ../include/saEvt.h
 testevs.o: ../include/evs.h
-evsbench.o: ../include/ais_types.h ../include/evs.h
-subscription.o: ../include/ais_types.h ../include/saEvt.h
-publish.o: ../include/ais_types.h ../include/saEvt.h
-evtbench.o: ../include/ais_types.h ../include/saEvt.h
-sa_error.o: ../include/ais_types.h
-unlink.o: ../include/ais_types.h ../include/saEvt.h
+evsbench.o: ../include/saAis.h ../include/evs.h
+subscription.o: ../include/saAis.h ../include/saEvt.h
+publish.o: ../include/saAis.h ../include/saEvt.h
+evtbench.o: ../include/saAis.h ../include/saEvt.h
+sa_error.o: ../include/saAis.h
+unlink.o: ../include/saAis.h ../include/saEvt.h

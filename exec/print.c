@@ -43,7 +43,7 @@
 
 
 #include "print.h"
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 
 unsigned int logmode = LOG_MODE_STDERR | LOG_MODE_SYSLOG;
 char *logfile = 0;

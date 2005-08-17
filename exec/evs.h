@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 
 #ifndef EVS_H_DEFINED
 #define EVS_H_DEFINED

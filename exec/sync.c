@@ -49,7 +49,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"

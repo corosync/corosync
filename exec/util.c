@@ -38,7 +38,7 @@
 #include <errno.h>
 #include <sys/time.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/list.h"
 #include "util.h"
 

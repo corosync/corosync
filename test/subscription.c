@@ -11,7 +11,7 @@
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include "ais_types.h"
+#include "saAis.h"
 #include "saEvt.h"
 
 #define  TEST_EVENT_ORDER 1

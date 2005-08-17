@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <sys/time.h>
-#include "ais_types.h"
+#include "saAis.h"
 #include "saEvt.h"
 
 // #define EVENT_SUBSCRIBE

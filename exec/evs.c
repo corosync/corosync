@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_evs.h"
 #include "../include/list.h"

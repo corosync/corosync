@@ -14,7 +14,7 @@
 #include <iostream>
 
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "saCkpt.h"
 
 

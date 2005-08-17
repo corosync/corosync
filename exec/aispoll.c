@@ -41,7 +41,7 @@
 #include "aispoll.h"
 #include "../include/list.h"
 #include "hdb.h"
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "tlist.h"
 
 typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio);

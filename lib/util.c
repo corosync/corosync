@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <assert.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/ipc_gen.h"
 #include "util.h"
 
@@ -610,7 +610,7 @@ saVersionVerify (
 			/*
 			 * Check if we can support the major version requested.
 			 */
-			if (versionDatabase->versionsSupported[i].major >= version->major) {
+			if (versionDatabase->versionsSupported[i].majorVersion >= version->majorVersion) {
 				error = SA_AIS_OK;
 				break;
 			} 

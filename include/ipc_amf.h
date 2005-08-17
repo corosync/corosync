@@ -36,7 +36,7 @@
 
 #include <netinet/in.h>
 #include "ipc_gen.h"
-#include "ais_types.h"
+#include "saAis.h"
 #include "ais_amf.h"
 
 enum req_amf_response_interfaces {

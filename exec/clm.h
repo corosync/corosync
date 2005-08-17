@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/saClm.h"
 
 #ifndef CLM_H_DEFINED

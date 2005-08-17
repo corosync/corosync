@@ -44,7 +44,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/saClm.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_clm.h"

@@ -35,7 +35,7 @@
 #define IPC_EVT_H_DEFINED
 
 #include <netinet/in.h>
-#include "ais_types.h"
+#include "saAis.h"
 #include "saEvt.h"
 #include "saClm.h"
 #include "ipc_gen.h"

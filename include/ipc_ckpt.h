@@ -34,7 +34,7 @@
 #ifndef IPC_CKPT_H_DEFINED
 #define IPC_CKPT_H_DEFINED
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "saCkpt.h"
 #include "ipc_gen.h"
 

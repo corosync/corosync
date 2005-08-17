@@ -42,7 +42,7 @@
 #include <sys/un.h>
 #include <sched.h>
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "ais_amf.h"
 
 void printSaNameT (SaNameT *name)

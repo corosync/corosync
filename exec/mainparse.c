@@ -40,7 +40,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/list.h"
 #include "util.h"
 #include "mainparse.h"

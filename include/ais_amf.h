@@ -35,7 +35,7 @@
 #ifndef AIS_AMF_H_DEFINED
 #define AIS_AMF_H_DEFINED
 
-#include "ais_types.h"
+#include "saAis.h"
 
 typedef void (*SaAmfHealthcheckCallbackT) (
 	SaInvocationT invocation,

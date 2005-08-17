@@ -33,7 +33,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../exec/parse.h"
 #include "../exec/print.h"
 

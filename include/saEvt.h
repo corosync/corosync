@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ais_types.h"
+#include "saAis.h"
 
 #ifndef AIS_EVT_H_DEFINED
 #define AIS_EVT_H_DEFINED
@@ -57,8 +57,8 @@ typedef void
 );
 
 typedef struct{
-    const SaEvtChannelOpenCallbackT saEvtChannelOpenCallback;
-    const SaEvtEventDeliverCallbackT saEvtEventDeliverCallback; 
+    SaEvtChannelOpenCallbackT saEvtChannelOpenCallback;
+    SaEvtEventDeliverCallbackT saEvtEventDeliverCallback; 
 } SaEvtCallbacksT;
 
 #define SA_EVT_CHANNEL_PUBLISHER  0X1

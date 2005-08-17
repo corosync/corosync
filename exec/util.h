@@ -35,7 +35,7 @@
 #ifndef UTIL_H_DEFINED
 #define UTIL_H_DEFINED
 #include <sys/time.h>
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 
 /*
  * Compare two names.  returns non-zero on match.

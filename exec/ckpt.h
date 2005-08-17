@@ -31,7 +31,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "../include/ais_types.h"
+#include "../include/saAis.h"
 #include "../include/saCkpt.h"
 #include "aispoll.h"
 #include "totemsrp.h"

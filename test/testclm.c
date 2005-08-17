@@ -42,7 +42,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "ais_types.h"
+#include "saAis.h"
 #include "saClm.h"
 
 void printSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
