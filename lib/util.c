@@ -294,12 +294,10 @@ saSendRetry (
 {
 	SaErrorT error = SA_AIS_OK;
 	int result;
-
 	struct msghdr msg_send;
 	struct iovec iov_send;
-
-	iov_send.iov_base = (void *)msg;
-	iov_send.iov_len = len;
+	char *rbuf = (char *)msg;
+	int processed = 0;
 
 	msg_send.msg_iov = &iov_send;
 	msg_send.msg_iovlen = 1;
@@ -310,13 +308,61 @@ saSendRetry (
 	msg_send.msg_flags = 0;
 
 retry_send:
+	iov_send.iov_base = (void *)&rbuf[processed];
+	iov_send.iov_len = len - processed;
+
 	result = sendmsg (s, &msg_send, flags);
-	if (result == -1 && errno == EINTR) {
-		goto retry_send;
+
+	/*
+	 * return immediately on any kind of syscall error that maps to
+	 * SA_AIS_ERR if no part of message has been sent
+	 */
+	if (result == -1 && processed == 0) {
+		if (errno == EINTR) {
+			error = SA_AIS_ERR_TRY_AGAIN;
+			goto error_exit;
+		}
+		if (errno == EAGAIN) {
+			error = SA_AIS_ERR_TRY_AGAIN;
+			goto error_exit;
+		}
+		if (errno == EFAULT) {
+			error = SA_AIS_ERR_INVALID_PARAM;
+			goto error_exit;
+		}
 	}
+
+	/*
+	 * retry read operations that are already started except
+	 * for fault in that case, return ERR_LIBRARY
+	 */
+	if (result == -1 && processed > 0) {
+		if (errno == EINTR) {
+			goto retry_send;
+		}
+		if (errno == EAGAIN) {
+			goto retry_send;
+		}
+		if (errno == EFAULT) {
+			error = SA_AIS_ERR_LIBRARY;
+			goto error_exit;
+		}
+	}
+
+	/*
+	 * return ERR_LIBRARY on any other syscall error
+	 */
 	if (result == -1) {
 		error = SA_AIS_ERR_LIBRARY;
+		goto error_exit;
 	}
+
+	processed += result;
+	if (processed != len) {
+		goto retry_send;
+	}
+
+error_exit:
 	return (error);
 }
 
@@ -327,25 +373,99 @@ SaErrorT saSendMsgRetry (
 {
 	SaErrorT error = SA_AIS_OK;
 	int result;
+	int total_size = 0;
+	int i;
+	int csize;
+	int csize_cntr;
+	int total_sent = 0;
+	int iov_len_sendmsg = iov_len;
+	struct iovec *iov_sendmsg = iov;
+	struct iovec iovec_save;
+	int iovec_saved_position = -1;
 
 	struct msghdr msg_send;
 
-	msg_send.msg_iov = iov;
-	msg_send.msg_iovlen = iov_len;
+	for (i = 0; i < iov_len; i++) {
+		total_size += iov[i].iov_len;
+	}
+	msg_send.msg_iov = iov_sendmsg;
+	msg_send.msg_iovlen = iov_len_sendmsg;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
 
-retry_send:
-	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
-	if (result == -1 && errno == EINTR) {
-		goto retry_send;
+retry_sendmsg:
+	result = sendmsg (s, &msg_send, MSG_NOSIGNAL | MSG_DONTWAIT);
+	/*
+	 * Can't send now, and message not committed, so don't retry send
+	 */
+	if (result == -1 && iovec_saved_position == -1) {
+		if (errno == EINTR) {
+			error = SA_AIS_ERR_TRY_AGAIN;
+			goto error_exit;
+		}
+		if (errno == EAGAIN) {
+			error = SA_AIS_ERR_TRY_AGAIN;
+			goto error_exit;
+		}
+		if (errno == EFAULT) {
+			error = SA_AIS_ERR_INVALID_PARAM;
+			goto error_exit;
+		}
 	}
+
+	/*
+	 * Retry (and block) if portion of message has already been written
+	 */
+	if (result == -1 && iovec_saved_position != -1) {
+		if (errno == EINTR) {
+			goto retry_sendmsg;
+		}
+		if (errno == EAGAIN) {
+			goto retry_sendmsg;
+		}
+		if (errno == EFAULT) {
+			error = SA_AIS_ERR_LIBRARY;
+			goto error_exit;
+		}
+	}
+	
+	/*
+	 * ERR_LIBRARY for any other syscall error
+	 */
 	if (result == -1) {
 		error = SA_AIS_ERR_LIBRARY;
+		goto error_exit;
 	}
+
+	if (iovec_saved_position != -1) {
+			memcpy (&iov[iovec_saved_position], &iovec_save, sizeof (struct iovec));
+	}
+
+	total_sent += result;
+	if (total_sent != total_size) {
+		for (i = 0, csize = 0, csize_cntr = 0; i < iov_len; i++) {
+			csize += iov[i].iov_len;
+			if (csize > total_sent) {
+				break;
+			}
+
+			csize_cntr += iov[i].iov_len;
+		}
+		memcpy (&iovec_save, &iov[i], sizeof (struct iovec));
+		iovec_saved_position = i;
+		iov[i].iov_base = ((unsigned char *)(iov[i].iov_base)) +
+			(total_sent - csize_cntr);
+		iov[i].iov_len = total_size - total_sent;
+		msg_send.msg_iov = &iov[i];
+		msg_send.msg_iovlen = iov_len - i;
+
+		goto retry_sendmsg;
+	}
+
+error_exit:
 	return (error);
 }
 
