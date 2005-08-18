@@ -164,7 +164,7 @@ static inline int queue_item_iterator_next (struct queue *queue)
 
 static inline void queue_avail (struct queue *queue, int *avail)
 {
-	*avail = queue->size - queue->used - 1;
+	*avail = queue->size - queue->used - 2;
 	assert (*avail >= 0);
 }
 
