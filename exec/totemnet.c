@@ -1,4 +1,3 @@
-#define WORKER_THREAD_COUNT 2
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
  *
@@ -70,6 +69,8 @@
 #include "swab.h"
 
 #include "crypto.h"
+
+#define MCAST_SOCKET_BUFFER_SIZE (16 * 9000) /* where 16 is the transmits allowed, 9000 is mtu size */
 
 #define NETIF_STATE_REPORT_UP		1	
 #define NETIF_STATE_REPORT_DOWN		2
@@ -961,6 +962,9 @@ static int totemnet_build_sockets (
 	struct sockaddr_in sockaddr_in_test;
 	char flag;
 	int res;
+	unsigned int sendbuf_size;
+	unsigned int recvbuf_size;
+	unsigned int optlen = sizeof (sendbuf_size);
 	
 	memset (&mreq, 0, sizeof (struct ip_mreq));
 
@@ -994,6 +998,26 @@ static int totemnet_build_sockets (
 		&bound_to->sin_addr, sizeof (struct in_addr)) < 0) {
 
 		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
+	}
+
+	recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	/*
+	 * Set buffer sizes to avoid overruns
+	 */
+	res = setsockopt (sockets->mcast, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, optlen);
+	res = setsockopt (sockets->mcast, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, optlen);
+
+	res = getsockopt (sockets->mcast, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
+	if (res == 0) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			"Multicast socket recv buffer size (%d bytes).\n", recvbuf_size);
+	}
+
+	res = getsockopt (sockets->mcast, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
+	if (res == 0) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			"Multicast socket send buffer size (%d bytes).\n", sendbuf_size);
 	}
 
 	/*
