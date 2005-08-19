@@ -1051,6 +1051,12 @@ saEvtChannelClose(SaEvtChannelHandleT channelHandle)
 	}
 
 	error = res.icc_head.error;
+	if (error == SA_AIS_ERR_TRY_AGAIN) {
+		pthread_mutex_lock(&eci->eci_mutex);
+		eci->eci_closing = 0;
+		pthread_mutex_unlock(&eci->eci_mutex);
+		goto chan_close_put2;
+	}
 
 	saHandleInstancePut(&evt_instance_handle_db, 
 					eci->eci_instance_handle);
