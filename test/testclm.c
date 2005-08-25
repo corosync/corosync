@@ -48,8 +48,9 @@
 void printSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
 
+	printf ("family=%d - address=", nodeAddress->family);
 	for (i = 0; i < nodeAddress->length; i++) {
-		printf ("%d.", nodeAddress->value[i]);
+		printf ("%c", nodeAddress->value[i]);
 	}
 }
 

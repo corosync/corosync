@@ -199,10 +199,10 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	 * Build local cluster node data structure
 	 */
 	thisClusterNode.nodeId = this_ip->sin_addr.s_addr;
-	memcpy (&thisClusterNode.nodeAddress.value, &this_ip->sin_addr,
-		sizeof (struct in_addr));
-	thisClusterNode.nodeAddress.length = sizeof (struct in_addr);
-	strcpy ((char *)thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
+	sprintf (thisClusterNode.nodeAddress.value, "%s", inet_ntoa (this_ip->sin_addr));
+	thisClusterNode.nodeAddress.length = strlen (thisClusterNode.nodeAddress.value);
+	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET;
+	sprintf (thisClusterNode.nodeName.value, "%s", inet_ntoa (this_ip->sin_addr));
 	thisClusterNode.nodeName.length = strlen ((char *)thisClusterNode.nodeName.value);
 	thisClusterNode.member = 1;
 	{
