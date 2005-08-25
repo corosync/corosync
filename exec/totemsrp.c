@@ -2665,7 +2665,13 @@ if (random () % 100 < 10) {
 		 * Discard retransmitted tokens
 		 */
 		if (instance->my_token_seq >= token->token_seq) {
-			reset_token_retransmit_timeout (instance);
+			/*
+			 * If this processor receives a retransmitted token, it is sure
+		 	 * the previous processor is still alive.  As a result, it can
+			 * reset its token timeout.  If some processor previous to that
+			 * has failed, it will eventually not execute a reset of the
+			 * token timeout, and will cause a reconfiguration to occur.
+			 */
 			reset_token_timeout (instance);
 			return (0); /* discard token */
 		}		
