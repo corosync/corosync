@@ -816,7 +816,11 @@ saCkptCheckpointClose (
 	error = saRecvRetry (ckptCheckpointInstance->response_fd, &res_lib_ckpt_checkpointclose,
 		sizeof (struct res_lib_ckpt_checkpointclose), MSG_WAITALL | MSG_NOSIGNAL);
 
-	ckptCheckpointInstanceFinalize (ckptCheckpointInstance);
+	error == SA_AIS_OK ? res_lib_ckpt_checkpointclose.header.error : error;
+
+	if (error == SA_AIS_OK) {
+		ckptCheckpointInstanceFinalize (ckptCheckpointInstance);
+	}
 
 exit_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
