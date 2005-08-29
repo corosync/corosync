@@ -63,6 +63,7 @@
 #define DOWNCHECK_TIMEOUT			1000
 #define FAIL_TO_RECV_CONST			10
 #define	SEQNO_UNCHANGED_CONST			3000
+#define MINIMUM_TIMEOUT				(1000/HZ)*3
 
 static char error_string_response[512];
 
@@ -76,26 +77,47 @@ strstr_rs (const char *haystack, const char *needle)
 {
 	char *end_address;
 	char *new_needle;
+	char *token = needle + strlen (needle) - 1; /* last char is always the token */
 
+	
 	new_needle = (char *)strdup (needle);
-	new_needle[strlen(new_needle) - 1] = '\0';
+	new_needle[strlen(new_needle) - 1] = '\0'; /* remove token */
 
 	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
+	if (end_address == 0) {
+		goto not_found;
 	}
 
+	end_address += strlen (new_needle);
+
+	/*
+	 * Parse all tabs and spaces until token is found
+	 * if other character found besides token, its not a match
+	 */
+	do {
+		if (*end_address == '\t' || *end_address == ' ') {
+			end_address++;
+		} else {
+			break;
+		}
+	} while (*end_address != '\0' && *end_address != token[0]);
+
+	if (*end_address != token[0]) {
+		end_address = 0;
+		goto not_found;
+	}
+		
+	end_address++;	/* skip past token */
+
+	do {
+		if (*end_address == '\t' || *end_address == ' ') {
+			end_address++;
+		} else {
+			break;
+		}
+	} while (*end_address != '\0');
+
+not_found:
 	free (new_needle);
 	return (end_address);
 }
@@ -270,7 +292,8 @@ int totem_config_validate (
 	struct totem_config *totem_config,
 	char **error_string)
 {
-	char *error_reason = error_string_response;
+	static char local_error_reason[512];
+	char *error_reason = local_error_reason;
 
 	/*
 	 * Some error checking of parsed data to make sure its valid
@@ -321,6 +344,13 @@ int totem_config_validate (
 				(1000/HZ));
 		}
 	}
+
+	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The token timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->token_retransmit_timeout == 0) {
 		totem_config->token_retransmit_timeout =
 			(int)(totem_config->token_timeout /
@@ -331,22 +361,62 @@ int totem_config_validate (
 			(int)(totem_config->token_retransmit_timeout * 0.8 -
 			(1000/HZ));
 	}
+	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
 
 	if (totem_config->token_hold_timeout == 0) {
 		totem_config->token_hold_timeout = TOKEN_HOLD_TIMEOUT;
 	}
+
+	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->join_timeout == 0) {
 		totem_config->join_timeout = JOIN_TIMEOUT;
 	}
+
+	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The join timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->join_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->consensus_timeout == 0) {
 		totem_config->consensus_timeout = CONSENSUS_TIMEOUT;
 	}
+
+	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->merge_timeout == 0) {
 		totem_config->merge_timeout = MERGE_TIMEOUT;
 	}
+
+	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The merge timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->merge_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->downcheck_timeout == 0) {
 		totem_config->downcheck_timeout = DOWNCHECK_TIMEOUT;
 	}
+
+	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
 	if (totem_config->fail_to_recv_const == 0) {
 		totem_config->fail_to_recv_const = FAIL_TO_RECV_CONST;
 	}
@@ -366,11 +436,12 @@ int totem_config_validate (
 		error_reason = "This net_mtu parameter is greater then the maximum frame size";
 		goto parse_error;
 	}
+		
 	return (0);
 
 parse_error:
 	sprintf (error_string_response,
-		"parse error in /etc/ais/openais.conf: %s.\n", error_reason);
+		"parse error in /etc/ais/openais.conf: %s\n", error_reason);
 	*error_string = error_string_response;
 	return (-1);
 }
