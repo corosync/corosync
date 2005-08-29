@@ -641,8 +641,15 @@ int totempg_send_ok (
 	int total;
 
 	avail = totemmrp_avail ();
+	
+	/*
+	 * msg size less then totempg_totem_config->net_mtu - 25 will take up
+	 * a full message, so add +1
+	 * totempg_totem_config->net_mtu - 25 is for the totempg_mcast header
+	 */
 
-	total = (msg_size / (totempg_totem_config->net_mtu - 25) /* for totempg_mcat header */);
+
+	total = (msg_size / (totempg_totem_config->net_mtu - 25)) + 1; 
 
 	return (avail >= total);
 }
