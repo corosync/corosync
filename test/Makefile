@@ -32,16 +32,16 @@ LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEv
 LIBS = $(LIBRARIES) -lpthread
 
 # Production mode flags
-CFLAGS = -c -O3 -Wall -I../include
-CFLAGS = -c -O3 -Wall -I../include
-LDFLAGS = -L../lib
+#CFLAGS = -c -O3 -Wall -I../include
+#CFLAGS = -c -O3 -Wall -I../include
+#LDFLAGS = -L../lib
 #LIBRARIES= ../lib/libais.a ../lib/libevs.a
 #LIBS = $(LIBRARIES) -lpthread
 
 # Debug mode flags
-#CFLAGS = -c -g -Wall -DDEBUG -I../include
-#CPPFLAGS = -c -g -Wall -DDEBUG -I../include
-#LDFLAGS = -g -L../lib
+CFLAGS = -c -g -Wall -DDEBUG -I../include
+CPPFLAGS = -c -g -Wall -DDEBUG -I../include
+LDFLAGS = -g -L../lib
 
 # Profile mode flags
 #CFLAGS = -c -O3 -pg -DDEBUG -I../include
@@ -53,12 +53,12 @@ TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testckpt.c ckptstress.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
-		sa_error.c unlink.c
+		sa_error.c unlink.c testclm2.c
 
 all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
 	testamf6 testamfth testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink
+	evsbench subscription publish evtbench unlink testclm2
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -134,6 +134,9 @@ ckpt-rd: ckpt-rd.o sa_error.o $(LIBRARIES)
 
 ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckpt-wr ckpt-wr.o sa_error.o $(LIBS)
+
+testclm2: testclm2.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testclm2 testclm2.o $(LIBS)
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
