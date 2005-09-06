@@ -189,7 +189,7 @@ void interruptAction()
 	fprintf(stderr, "SIGINT signal caught\n");
 	if (mode == MODE_CALLBACK)
 	{
-		apiCall("ClusterTrackStop", handle);
+		apiCall("ClusterTrackStop", saClmClusterTrackStop(handle));
 	}
 	apiCall("Finalize", saClmFinalize(handle));
 	exit(0);
