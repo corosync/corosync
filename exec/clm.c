@@ -244,6 +244,7 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
 	struct conn_info *conn_info;
 	struct list_head *list;
+	int i;
 
 	if (notify_entries == 0) {
 		return;
@@ -253,16 +254,44 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 	res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
 	res_lib_clm_clustertrack.header.error = SA_OK;
 	res_lib_clm_clustertrack.view = view_current;
-	res_lib_clm_clustertrack.numberOfItems = notify_entries;
-	memcpy (&res_lib_clm_clustertrack.notification,
-		cluster_notification_entries,
-		sizeof (SaClmClusterNotificationT) * notify_entries);
 
     for (list = library_notification_send_listhead.next;
         list != &library_notification_send_listhead;
         list = list->next) {
 
         conn_info = list_entry (list, struct conn_info, conn_list);
+
+		/*
+		 * Track current and changes
+		 */
+		if (conn_info->ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CHANGES) {
+			/*
+			 * Copy all cluster nodes
+			 */
+			for (i = 0; i < clusterNodeEntries; i++) {
+				memcpy (&res_lib_clm_clustertrack.notification[i].clusterNode,
+					&clusterNodes[i], sizeof (SaClmClusterNodeT));
+				res_lib_clm_clustertrack.notification[i].clusterChange = SA_CLM_NODE_NO_CHANGE;
+				res_lib_clm_clustertrack.notification[i].clusterNode.member = 1;
+			}
+			/*
+			 * Copy change_only notificaiton
+			 */
+			res_lib_clm_clustertrack.numberOfItems = notify_entries + i;
+			memcpy (&res_lib_clm_clustertrack.notification[i],
+				cluster_notification_entries,
+				sizeof (SaClmClusterNotificationT) * notify_entries);
+		} else
+
+		/*
+		 * Track only changes
+		 */
+		if (conn_info->ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CHANGES_ONLY) {
+			res_lib_clm_clustertrack.numberOfItems = notify_entries;
+			memcpy (&res_lib_clm_clustertrack.notification,
+				cluster_notification_entries,
+				sizeof (SaClmClusterNotificationT) * notify_entries);
+		}
 
 		/*
 		 * Send notifications to all CLM listeners
@@ -272,23 +301,17 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
     }
 }
 
-static void notification_join (SaClmNodeIdT node)
+static void notification_join (SaClmClusterNodeT *cluster_node)
 {
 	SaClmClusterNotificationT notification;
-	int i;
 
 	/*
 	 * Generate notification element
 	 */
 	notification.clusterChange = SA_CLM_NODE_JOINED;
 	notification.clusterNode.member = 1;
-	for (i = 0; i < clusterNodeEntries; i++) {
-		if (node == clusterNodes[i].nodeId) {
-			memcpy (&notification.clusterNode, &clusterNodes[i],
-				sizeof (SaClmClusterNodeT));
-		}
-	}
-
+	memcpy (&notification.clusterNode, cluster_node,
+		sizeof (SaClmClusterNodeT)); 
 	library_notification_send (&notification, 1);
 }
 
@@ -315,8 +338,6 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 		}
 	}
 
-	library_notification_send (clusterNotification, notifyEntries);
-
 	/*
 	 * Remove entries from clusterNodes array
 	 */
@@ -334,6 +355,8 @@ static void libraryNotificationLeave (SaClmNodeIdT *nodes, int nodes_entries)
 			}
 		}
 	}
+
+	library_notification_send (clusterNotification, notifyEntries);
 }
 
 static int clm_nodejoin_send (void)
@@ -491,12 +514,12 @@ static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr 
 	 * If not received, add to internal list
 	 */
 	if (found == 0) {
+		notification_join (&req_exec_clm_nodejoin->clusterNode);
 		memcpy (&clusterNodes[clusterNodeEntries],
 			&req_exec_clm_nodejoin->clusterNode,
 			sizeof (SaClmClusterNodeT));
 
 		clusterNodeEntries += 1;
-		notification_join (req_exec_clm_nodejoin->clusterNode.nodeId);
 	}
 
 	return (0);
@@ -517,10 +540,6 @@ int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void 
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
 	int i;
 
-	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = req_lib_clm_clustertrack->trackFlags;
-
-	list_add (&conn_info->conn_info_partner->conn_list, &library_notification_send_listhead);
-
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
 	res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKSTART;
 	res_lib_clm_clustertrack.header.error = SA_AIS_OK;
@@ -535,8 +554,22 @@ int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void 
 				&clusterNodes[i], sizeof (SaClmClusterNodeT));
 		}
 		res_lib_clm_clustertrack.numberOfItems = clusterNodeEntries;
-	} else {
+	}
+	
+	/*
+	 * Record requests for cluster tracking
+	 */
+	if (req_lib_clm_clustertrack->trackFlags & SA_TRACK_CHANGES ||
+		req_lib_clm_clustertrack->trackFlags & SA_TRACK_CHANGES_ONLY) {
+
+		conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags =
+			req_lib_clm_clustertrack->trackFlags;
+			printf ("setting track flags to %d\n", conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags);
+
 		conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
+
+		list_add (&conn_info->conn_info_partner->conn_list,
+			&library_notification_send_listhead);
 	}
 
 	libais_send_response (conn_info, &res_lib_clm_clustertrack,
