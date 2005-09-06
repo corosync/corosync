@@ -289,6 +289,7 @@ saClmDispatch (
 			res_lib_clm_clustertrack = (struct res_lib_clm_clustertrack *)&dispatch_data;
 			error = SA_AIS_OK;
 
+			notificationBuffer.viewNumber = res_lib_clm_clustertrack->view;
 			notificationBuffer.notification = notification;
 			notificationBuffer.numberOfItems =
 				res_lib_clm_clustertrack->numberOfItems;
@@ -453,6 +454,8 @@ saClmClusterTrack (
 
 	if ((trackFlags & SA_TRACK_CURRENT) && (notificationBuffer != NULL)) {
 		if (notificationBuffer->notification == 0) {
+			notificationBuffer->viewNumber = res_lib_clm_clustertrack.view;
+
 			notificationBuffer->notification =
 				malloc (res_lib_clm_clustertrack.numberOfItems *
 				sizeof (SaClmClusterNotificationT));
@@ -470,7 +473,7 @@ saClmClusterTrack (
 			res_lib_clm_clustertrack.notification,
 			items_to_copy * sizeof (SaClmClusterNotificationT));
 
-		notificationBuffer->viewNumber = res_lib_clm_clustertrack.viewNumber;
+		notificationBuffer->viewNumber = res_lib_clm_clustertrack.view;
 		notificationBuffer->numberOfItems = items_to_copy;
 	}
 
@@ -495,6 +498,7 @@ saClmClusterTrackStop (
 
 	req_lib_clm_trackstop.header.size = sizeof (struct req_lib_clm_trackstop);
 	req_lib_clm_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
+printf ("cluster track stop\n");
 
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);

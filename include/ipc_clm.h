@@ -63,7 +63,7 @@ struct req_lib_clm_clustertrack {
 
 struct res_lib_clm_clustertrack {
 	struct res_header header;
-	SaUint64T viewNumber;
+	SaUint64T view;
 	SaUint32T numberOfItems;
 	SaClmClusterNotificationT notification[32]; /* should be PROCESSOR_COUNT_MAX */
 };

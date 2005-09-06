@@ -75,6 +75,10 @@ SaClmClusterNodeT clusterNodes[NODE_MAX];
 
 int clusterNodeEntries = 0;
 
+static unsigned long long view_current = 0;
+
+static unsigned long long view_initial = 0;
+
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
 SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
@@ -248,7 +252,7 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
 	res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
 	res_lib_clm_clustertrack.header.error = SA_OK;
-	res_lib_clm_clustertrack.viewNumber = 0;
+	res_lib_clm_clustertrack.view = view_current;
 	res_lib_clm_clustertrack.numberOfItems = notify_entries;
 	memcpy (&res_lib_clm_clustertrack.notification,
 		cluster_notification_entries,
@@ -341,6 +345,9 @@ static int clm_nodejoin_send (void)
 	req_exec_clm_nodejoin.header.size = sizeof (struct req_exec_clm_nodejoin);
 	req_exec_clm_nodejoin.header.id = MESSAGE_REQ_EXEC_CLM_NODEJOIN;
 // TODO dont use memcpy, use iovecs !!
+
+	thisClusterNode.initialViewNumber = view_initial;
+
 	memcpy (&req_exec_clm_nodejoin.clusterNode, &thisClusterNode,
 		sizeof (SaClmClusterNodeT));
 	
@@ -354,14 +361,19 @@ static int clm_nodejoin_send (void)
 
 static int clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+	struct in_addr *member_list, int member_list_entries,
+	struct in_addr *left_list, int left_list_entries,
+	struct in_addr *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 
 	int i;
 	SaClmNodeIdT nodes[NODE_MAX];
+
+	view_current = ring_id->seq / 4;
+	if (view_initial == 0) {
+		view_initial = ring_id->seq / 4;
+	}
 
 	log_printf (LOG_LEVEL_NOTICE, "CLM CONFIGURATION CHANGE\n");
 	log_printf (LOG_LEVEL_NOTICE, "New Configuration:\n");
@@ -512,8 +524,8 @@ int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void 
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
 	res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKSTART;
 	res_lib_clm_clustertrack.header.error = SA_AIS_OK;
-	res_lib_clm_clustertrack.viewNumber = 0;
-		res_lib_clm_clustertrack.numberOfItems = 0;
+	res_lib_clm_clustertrack.view = view_current;
+	res_lib_clm_clustertrack.numberOfItems = 0;
 
 	if (req_lib_clm_clustertrack->trackFlags & SA_TRACK_CURRENT) {
 		for (i = 0; i < clusterNodeEntries; i++) {
