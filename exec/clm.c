@@ -564,7 +564,6 @@ int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void 
 
 		conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags =
 			req_lib_clm_clustertrack->trackFlags;
-			printf ("setting track flags to %d\n", conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags);
 
 		conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
 
