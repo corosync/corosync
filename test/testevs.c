@@ -86,7 +86,7 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[253000];
+char buffer[200000];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
