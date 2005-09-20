@@ -62,7 +62,7 @@
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
 #define FAIL_TO_RECV_CONST			10
-#define	SEQNO_UNCHANGED_CONST			3000
+#define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(1000/HZ)*3
 
 static char error_string_response[512];
@@ -252,6 +252,8 @@ extern int totem_config_read (
 				totem_config->downcheck_timeout = atoi(loc);
 			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
 				totem_config->fail_to_recv_const = atoi(loc);
+			} else if ((loc = strstr_rs (line, "seqno_unchanged_const:"))) {
+				totem_config->seqno_unchanged_const = atoi(loc);
 			} else if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {
