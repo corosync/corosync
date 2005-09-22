@@ -77,7 +77,7 @@ strstr_rs (const char *haystack, const char *needle)
 {
 	char *end_address;
 	char *new_needle;
-	char *token = needle + strlen (needle) - 1; /* last char is always the token */
+	char *token = (char *)(needle + strlen (needle) - 1); /* last char is always the token */
 
 	
 	new_needle = (char *)strdup (needle);
