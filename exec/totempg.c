@@ -572,7 +572,17 @@ int totempg_mcast (
 		 * If it just fits or is too big, then send out what fits.
 		 */
 		} else {
+			unsigned char *data_ptr;
+
 			copy_len = min(copy_len, max_packet_size - fragment_size);
+			if( copy_len == max_packet_size )
+				data_ptr = iovec[i].iov_base + copy_base;
+			else {
+				data_ptr = fragmentation_data;
+				memcpy (&fragmentation_data[fragment_size],
+				iovec[i].iov_base + copy_base, copy_len);
+			}
+
 			memcpy (&fragmentation_data[fragment_size],
 				iovec[i].iov_base + copy_base, copy_len);
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
@@ -604,7 +614,7 @@ int totempg_mcast (
 			iovecs[1].iov_base = mcast_packed_msg_lens;
 			iovecs[1].iov_len = mcast_packed_msg_count * 
 												sizeof(unsigned short);
-			iovecs[2].iov_base = fragmentation_data;
+			iovecs[2].iov_base = data_ptr;
 			iovecs[2].iov_len = max_packet_size;
 			res = totemmrp_mcast (iovecs, 3, guarantee);
 
