@@ -172,7 +172,7 @@ int assembly_list_entries = 0;
  * fragment_contuation indicates whether the first packed message in 
  * the buffer is a continuation of a previously packed fragment.
  */
-static unsigned char fragmentation_data[MESSAGE_SIZE_MAX];
+static unsigned char *fragmentation_data;
 int fragment_size = 0;
 int fragment_continuation = 0;
 
@@ -478,6 +478,11 @@ int totempg_initialize (
 
 	totempg_totem_config = totem_config;
 
+	fragmentation_data = malloc (TOTEMPG_PACKET_SIZE);
+	if (fragmentation_data == 0) {
+		return (-1);
+	}
+
 	res = totemmrp_initialize (
 		poll_handle,
 		totemsrp_handle,
@@ -527,8 +532,17 @@ int totempg_mcast (
 
 	mcast_packed_msg_lens[mcast_packed_msg_count] = 0;
 
+	/*
+	 * Check if we would overwrite new message queue
+	 */
 	for (i = 0; i < iov_len; i++) {
 		total_size += iovec[i].iov_len;
+	}
+
+	if( totempg_send_ok (total_size + sizeof(unsigned short) *
+		(mcast_packed_msg_count+1)) == 0) {
+
+		return(-1);
 	}
 
 	for (i = 0; i < iov_len; ) {
