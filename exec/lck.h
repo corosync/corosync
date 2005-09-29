@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -31,73 +31,19 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
- * This implementation uses the same API as the linux kernel to
- * help us kernel developers easily use the list primatives
- */
-#ifndef LIST_H_DEFINED
-#define LIST_H_DEFINED
+#include "../include/saAis.h"
+#include "../include/saCkpt.h"
+#include "aispoll.h"
+#include "totemsrp.h"
 
-struct list_head {
-	struct list_head *next;
-	struct list_head *prev;
+#ifndef LCK_H_DEFINED
+#define LCK_H_DEFINED
+
+struct liblck_ci {
+	struct list_head resource_list;
+	struct list_head resource_cleanup_list;
 };
 
-#define DECLARE_LIST_INIT(name) \
-    struct list_head name = { &(name), &(name) }
+extern struct service_handler lck_service_handler;
 
-static void inline list_init (struct list_head *head)
-{
-	head->next = head;
-	head->prev = head;
-}
-
-static void inline list_add (struct list_head *new, struct list_head *head)
-{
-	head->next->prev = new;
-	new->next = head->next;
-	new->prev = head;
-	head->next = new;
-}
-static void inline list_add_tail (struct list_head *new, struct list_head *head)
-{
-	head->prev->next = new;
-	new->next = head;
-	new->prev = head->prev;
-	head->prev = new;
-}
-static void inline list_del (struct list_head *remove)
-{
-	remove->next->prev = remove->prev;
-	remove->prev->next = remove->next;
-#ifdef DEBUG
-	remove->next = (struct list_head *)0xdeadb33f;
-	remove->prev = (struct list_head *)0xdeadb33f;
-#endif
-}
-
-#define list_entry(ptr,type,member)\
-	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
-
-static inline int list_empty(struct list_head *l)
-{
-	return l->next == l;
-}
-
-static inline void list_splice (struct list_head *list, struct list_head *head)
-{
-	struct list_head *first;
-	struct list_head *last;
-	struct list_head *current;
-
-	first = list->next;
-	last = list->prev;
-	current = head->next;
-
-	first->prev = head;
-	head->next = first;
-	last->next = current;
-	current->prev = last;
-}
-
-#endif /* LIST_H_DEFINED */
+#endif /* CKPT_H_DEFINED */

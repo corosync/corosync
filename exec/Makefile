@@ -29,13 +29,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = -lpthread
+#CFLAGS = -O3 -Wall -fomit-frame-pointer
+#LDFLAGS = -lpthread
 
 # Debug mode flags
-#CFLAGS = -g -Wall
+CFLAGS = -g -Wall
 ##-DDEBUG
-#LDFLAGS = -g -lpthread
+LDFLAGS = -g -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -48,9 +48,9 @@ LDFLAGS = -lpthread
 TOTEM_SRC = aispoll.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c hdb.c crypto.c wthread.c
 TOTEM_OBJS = aispoll.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
 
-EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c evs.c mainparse.c print.c mempool.c \
+EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c lck.c evs.c mainparse.c print.c mempool.c \
 		util.c sync.c
-EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o evs.o mainparse.o print.o mempool.o \
+EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o lck.o evs.o mainparse.o print.o mempool.o \
 		util.o sync.o
 EXEC_LIBS = libtotem_pg.a
 

@@ -65,6 +65,7 @@ static char *log_services[] = {
 	"[AMF  ]",
 	"[CKPT ]",
 	"[EVT  ]",
+	"[LCK  ]",
 	"[EVS  ]",
 	"[SYNC ]"
 };

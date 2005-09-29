@@ -34,12 +34,15 @@
 #ifndef IPC_GEN_H_DEFINED
 #define IPC_GEN_H_DEFINED
 
+#include <netinet/in.h>
+
 enum service_types {
 	EVS_SERVICE = 0,
 	CLM_SERVICE = 1,
 	AMF_SERVICE = 2,
 	CKPT_SERVICE = 3,
-	EVT_SERVICE = 4
+	EVT_SERVICE = 4,
+	LCK_SERVICE = 5
 };
 
 enum req_init_types {
@@ -90,7 +93,6 @@ struct req_lib_dispatch_init {
 	unsigned long conn_info;
 };
 
-	
 struct req_lib_init {
 	struct res_header header;
 };
@@ -107,4 +109,9 @@ struct res_lib_response_init {
 struct res_lib_dispatch_init {
 	struct res_header header;
 };
+struct message_source {
+	struct conn_info *conn_info;
+	struct in_addr in_addr;
+} __attribute__((packed));
+
 #endif /* IPC_GEN_H_DEFINED */

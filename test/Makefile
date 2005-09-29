@@ -28,7 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
 
 # Production mode flags
@@ -53,12 +53,12 @@ TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
 		testckpt.c ckptstress.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
-		sa_error.c unlink.c testclm2.c
+		sa_error.c unlink.c testclm2.c testlck.c
 
 all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
 	testamf6 testamfth testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2
+	evsbench subscription publish evtbench unlink testclm2 testlck
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -137,6 +137,9 @@ ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
 
 testclm2: testclm2.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testclm2 testclm2.o $(LIBS)
+
+testlck: testlck.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testlck testlck.o $(LIBS)
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \

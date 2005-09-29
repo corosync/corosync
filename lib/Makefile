@@ -44,8 +44,8 @@ LDFLAGS = -g
 #LDFLAGS = -g
 
 all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
-	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libais.a libais.so.1.0 libevs.a \
-	libevs.so.1.0
+	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libSaLck.a libSaLck.so.1.0 \
+	libais.a libais.so.1.0 libevs.a libevs.so.1.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
 
@@ -87,10 +87,19 @@ libSaEvt.so.1.0: util.o evt.o
 	ln -s libSaEvt.so.1.0 libSaEvt.so.1
 	ln -s libSaEvt.so.1.0 libSaEvt.so
 
+libSaLck.a: util.o lck.o
+	$(AR) -rc libSaLck.a util.o lck.o
+
+libSaLck.so.1.0: util.o lck.o
+	$(CC) -shared -Wl,-soname,libSaLCK.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
+	rm -f libSaLck.so.1 libSaLck.so
+	ln -s libSaLck.so.1.0 libSaLck.so.1
+	ln -s libSaLck.so.1.0 libSaLck.so
+
 libais.a: util.o amf.o clm.o ckpt.o evt.o
 	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
 
-libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o
+libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o lck.o
 	$(CC) -shared -Wl,-soname,libais.so.1,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o \
 								evt.o -o $@
 	rm -f libais.so.1 libais.so
@@ -108,8 +117,8 @@ libevs.so.1.0: util.o evs.o
 
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
-		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libevs.so* libevs.a \
-		*.da *.bb *.bbg
+		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so libSaLck.a \
+		libevs.so* libevs.a *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries
 %.o: %.c

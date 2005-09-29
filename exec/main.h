@@ -43,6 +43,7 @@
 #include "amf.h"
 #include "ckpt.h"
 #include "evt.h"
+#include "lck.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED
@@ -75,6 +76,7 @@ struct ais_ci {
 		struct libamf_ci libamf_ci;
 		struct libckpt_ci libckpt_ci;
 		struct libevt_ci libevt_ci;
+		struct liblck_ci liblck_ci;
 	} u;
 };
 
@@ -135,13 +137,15 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION = 21,
 	MESSAGE_REQ_EXEC_EVT_EVENTDATA = 22,
 	MESSAGE_REQ_EXEC_EVT_CHANCMD = 23,
-	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 24
+	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 24,
+	MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN = 25,
+	MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE = 26,
+	MESSAGE_REQ_EXEC_LCK_RESOURCELOCK = 27,
+	MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK = 28,
+	MESSAGE_REQ_EXEC_LCK_RESOURCELOCKORPHAN = 29,
+	MESSAGE_REQ_EXEC_LCK_LOCKPURGE = 30
 };
 
-struct message_source {
-    struct conn_info *conn_info;
-    struct in_addr in_addr;
-} __attribute__((packed));
 extern struct sockaddr_in *this_ip;
 
 poll_handle aisexec_poll_handle;

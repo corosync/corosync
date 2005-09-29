@@ -73,6 +73,7 @@
 #include "amf.h"
 #include "ckpt.h"
 #include "evt.h"
+#include "lck.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_MAIN
@@ -91,7 +92,8 @@ struct service_handler *ais_service_handlers[] = {
     &clm_service_handler,
     &amf_service_handler,
     &ckpt_service_handler,
-    &evt_service_handler
+    &evt_service_handler,
+    &lck_service_handler
 };
 
 struct sync_callbacks sync_callbacks[5];
@@ -100,8 +102,8 @@ int sync_callback_count;
 
 totemsrp_handle totemsrp_handle_in;
 
-#define AIS_SERVICE_HANDLERS_COUNT 5
-#define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 40
+#define AIS_SERVICE_HANDLERS_COUNT 6
+#define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 50
 
  /*
   * IPC Initializers
