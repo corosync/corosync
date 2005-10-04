@@ -52,19 +52,19 @@ static void inline list_init (struct list_head *head)
 	head->prev = head;
 }
 
-static void inline list_add (struct list_head *new, struct list_head *head)
+static void inline list_add (struct list_head *element, struct list_head *head)
 {
-	head->next->prev = new;
-	new->next = head->next;
-	new->prev = head;
-	head->next = new;
+	head->next->prev = element;
+	element->next = head->next;
+	element->prev = head;
+	head->next = element;
 }
-static void inline list_add_tail (struct list_head *new, struct list_head *head)
+static void inline list_add_tail (struct list_head *element, struct list_head *head)
 {
-	head->prev->next = new;
-	new->next = head;
-	new->prev = head->prev;
-	head->prev = new;
+	head->prev->next = element;
+	element->next = head;
+	element->prev = head->prev;
+	head->prev = element;
 }
 static void inline list_del (struct list_head *remove)
 {
