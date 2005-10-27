@@ -701,7 +701,7 @@ static int ckpt_recovery_process (void)
 		 		* so lets start with sending the sync_msg
 		 		*/	
 				if (recovery_section_send_flag == 0) {
-					if ((int)ckptCheckpointSection->sectionDescriptor.sectionId.id) {
+					if (ckptCheckpointSection->sectionDescriptor.sectionId.id) {
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = %s.\n", 
 							(char*)&checkpoint->name.value,
 							((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id));							

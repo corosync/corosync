@@ -51,7 +51,7 @@ extern int totem_config_validate (
 	char **error_string);
 
 int totem_config_keyread (
-	unsigned char *key_location,
+	char *key_location,
 	struct totem_config *totem_config,
 	char **error_string);
 

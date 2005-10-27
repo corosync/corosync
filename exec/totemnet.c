@@ -89,7 +89,7 @@ struct security_header {
 } __attribute__((packed));
 
 struct totemnet_mcast_thread_state {
-	char iobuf[9000];
+	unsigned char iobuf[9000];
 	prng_state prng_state;
 };
 
@@ -237,14 +237,14 @@ static int authenticate_and_decrypt (
 	struct totemnet_instance *instance,
 	struct iovec *iov)
 {
-	char keys[48];
+	unsigned char keys[48];
 	struct security_header *header = iov[0].iov_base;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
-	char *hmac_key = &keys[32];
-	char *cipher_key = &keys[16];
-	char *initial_vector = &keys[0];
-	char digest_comparison[HMAC_HASH_SIZE];
+	unsigned char *hmac_key = &keys[32];
+	unsigned char *cipher_key = &keys[16];
+	unsigned char *initial_vector = &keys[0];
+	unsigned char digest_comparison[HMAC_HASH_SIZE];
 	unsigned long len;
 	int res = 0;
 
@@ -297,19 +297,19 @@ static int authenticate_and_decrypt (
 }
 static void encrypt_and_sign_worker (
 	struct totemnet_instance *instance,
-	char *buf,
+	unsigned char *buf,
 	int *buf_len,
 	struct iovec *iovec,
 	int iov_len,
 	prng_state *prng_state_in)
 {
 	int i;
-	char *addr;
-	char keys[48];
+	unsigned char *addr;
+	unsigned char keys[48];
 	struct security_header *header;
-	char *hmac_key = &keys[32];
-	char *cipher_key = &keys[16];
-	char *initial_vector = &keys[0];
+	unsigned char *hmac_key = &keys[32];
+	unsigned char *cipher_key = &keys[16];
+	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
 	int outlen = 0;
 	hmac_state hmac_state;
@@ -1238,7 +1238,7 @@ int totemnet_recv_flush (totemnet_handle handle)
 	struct pollfd ufd;
 	int nfds;
 	int res = 0;
-	int prio;
+	unsigned int prio;
 
 	error = saHandleInstanceGet (&totemnet_instance_database, handle,
 		(void *)&instance);

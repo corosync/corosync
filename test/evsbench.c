@@ -121,7 +121,6 @@ void evs_benchmark (evs_handle_t handle,
 	iov.iov_len = write_size;
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
-retry_mcast:
 		if (outstanding < 10) {
 			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
 

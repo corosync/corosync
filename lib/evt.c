@@ -516,7 +516,8 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		edi->edi_patterns.patterns[i].allocatedSize = pat->patternSize;
 		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
-			printf("make_event: couldn't alloc %lld bytes\n", pat->patternSize);
+			printf("make_event: couldn't alloc %llu bytes\n",
+				(unsigned long long)pat->patternSize);
 			error =  SA_AIS_ERR_LIBRARY;
 			break;
 		}

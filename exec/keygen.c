@@ -53,7 +53,7 @@ int main (void) {
 	}
 	mkdir ("/etc/ais", 0700);
 
-	printf ("Gathering %d bits for key from /dev/random.\n", sizeof (key) * 8);
+	printf ("Gathering %ld bits for key from /dev/random.\n", sizeof (key) * 8);
 	random_fd = open ("/dev/random", O_RDONLY);
 	if (random_fd == -1) {
 		perror ("Is /dev/random present? Opening /dev/random");

@@ -294,7 +294,7 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 	printf("event_callback called\n");
 	printf("sub ID: %x\n", subscription_id);
 	printf("event_handle %llx\n", (unsigned long long)event_handle);
-	printf("event data size %lld\n", event_data_size);
+	printf("event data size %llu\n", (unsigned long long)event_data_size);
 
 	evt_pat_get_array.patternsNumber = 4;
 	result = saEvtEventAttributesGet(event_handle,
@@ -309,7 +309,8 @@ event_callback( SaEvtSubscriptionIdT subscription_id,
 		printf("event get attr result(2): %d\n", result);
 		goto evt_free;
 	}
-	printf("pattern array count: %lld\n", evt_pat_get_array.patternsNumber);
+	printf("pattern array count: %llu\n",
+		(unsigned long long)evt_pat_get_array.patternsNumber);
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		printf( "pattern %d =\"%s\"\n", i,
 				  evt_pat_get_array.patterns[i].pattern);

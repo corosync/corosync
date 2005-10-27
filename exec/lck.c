@@ -393,11 +393,8 @@ static struct resource_lock *resource_lock_find (
 		list != &resource->resource_lock_list_head;
 		list = list->next) {
 
-printf ("%x next %x prev %x\n", list, list->next, list->prev);
-printf ("next resource\n");
 		resource_lock = list_entry (list, struct resource_lock, resource_list);
 
-printf ("lock id %llx\n", resource_lock->lock_id);
 		if ((memcmp (&resource_lock->callback_source,
 			source, sizeof (struct message_source)) == 0) &&
 			(lock_id == resource_lock->lock_id)) {
@@ -490,7 +487,6 @@ void lck_resource_cleanup_lock_remove (
 		list = list->next) {
 
 		resource_lock = list_entry (list, struct resource_lock, resource_cleanup_list);
-		printf ("Found another lock resource to unlock\n");
 		resource_lock_orphan (resource_lock);
 	}
 }
@@ -533,12 +529,11 @@ static int lck_exit_fn (struct conn_info *conn_info)
 	struct resource_cleanup *resource_cleanup;
 	struct list_head *list;
 	
-printf ("exit_fn\n");
 	if (conn_info->conn_info_partner->service != LCK_SERVICE) {
 		return 0;
 	}
 
-	log_printf(LOG_LEVEL_NOTICE, "lck_exit_fn conn_info = %#x, with fd = %d\n", conn_info, conn_info->fd);
+	log_printf(LOG_LEVEL_NOTICE, "lck_exit_fn conn_info = %p, with fd = %d\n", conn_info, conn_info->fd);
 	
 	/*
 	 * close all resources opened on this fd
@@ -548,13 +543,11 @@ printf ("exit_fn\n");
 		
 		resource_cleanup = list_entry (list, struct resource_cleanup, list);
 		
-printf ("resource to cleanup\n");
 		if (resource_cleanup->resource->name.length > 0)	{
 			lck_resource_cleanup_lock_remove (resource_cleanup);
 			lck_resource_close (resource_cleanup->resource);
 		}
 		
-printf ("resource cleanup %x\n", resource_cleanup);
 		list_del (&resource_cleanup->list);	
 		free (resource_cleanup);
                 
@@ -641,7 +634,6 @@ static int message_handler_req_exec_lck_resourceopen (
 			&req_exec_lck_resourceopen->source.conn_info->ais_ci.u.liblck_ci.resource_cleanup_list);
 	}
 	resource->refcount += 1;
-printf ("refcount == %d\n", resource->refcount);
 	
 	
 	/*
@@ -711,9 +703,7 @@ static int message_handler_req_exec_lck_resourceclose (
 	}
 		
 	resource->refcount -= 1;
-printf ("refcount %d\n", resource->refcount);
 	if (resource->refcount == 0) {
-		printf ("should free resource\n");
 	}
 error_exit:
 	if (message_source_is_local(&req_exec_lck_resourceclose->source)) {
@@ -762,7 +752,6 @@ void waiter_notification_list_send (struct list_head *list_notify_head)
 	struct list_head *list;
 	struct resource_lock *resource_lock;
 
-	printf ("sending waiter notification to resource_lock list\n");
 	for (list = list_notify_head->next;
 		list != list_notify_head;
 		list = list->next) {
@@ -781,7 +770,6 @@ void resource_lock_async_deliver (
 
 	if (source && message_source_is_local(source)) {
 		if (resource_lock->async_call) {
-printf ("resource lock async deliver\n");
 			res_lib_lck_resourcelockasync.header.size = sizeof (struct res_lib_lck_resourcelockasync);
 			res_lib_lck_resourcelockasync.header.id = MESSAGE_RES_LCK_RESOURCELOCKASYNC;
 			res_lib_lck_resourcelockasync.header.error = error;
@@ -803,7 +791,6 @@ void lock_response_deliver (
 {
 	struct res_lib_lck_resourcelock res_lib_lck_resourcelock;
 
-	printf ("deliver\n");
 	if (source && message_source_is_local(source)) {
 		if (resource_lock->async_call) {
 			resource_lock_async_deliver (&resource_lock->callback_source, resource_lock, error);
@@ -919,7 +906,6 @@ void unlock_algorithm (
 	struct list_head *list;
 	struct list_head *list_p;
 
-	printf ("unlock\n");
 	/*
 	 * If unlocking the ex lock, reset ex granted
 	 */
@@ -1117,7 +1103,6 @@ static int message_handler_req_exec_lck_resourceunlock (
 	if (resource == 0) {
 		goto error_exit;
 	}
-printf ("resource %x\n", resource);
 	resource->refcount -= 1;
 
 	resource_lock = resource_lock_find (resource,
@@ -1171,7 +1156,6 @@ static int message_handler_req_exec_lck_resourcelockorphan (
 	resource = resource_find (&req_exec_lck_resourcelockorphan->resource_name);
 	if (resource == 0) {
 		assert (0);
-		goto error_exit;
 	}
 	resource->refcount -= 1;
 
@@ -1182,7 +1166,7 @@ static int message_handler_req_exec_lck_resourcelockorphan (
 
 	list_del (&resource_lock->resource_cleanup_list);
 	unlock_algorithm (resource, resource_lock);
-error_exit:
+	return (0);
 }
 
 static int message_handler_req_exec_lck_lockpurge (
@@ -1240,7 +1224,6 @@ static int message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info
 	req_exec_lck_resourceopen.async_call = 0;
 	req_exec_lck_resourceopen.invocation = 0;
 	req_exec_lck_resourceopen.resource_handle = req_lib_lck_resourceopen->resourceHandle;
-printf ("lib open handle %llx\n", req_exec_lck_resourceopen.resource_handle);
 	req_exec_lck_resourceopen.fail_with_error = SA_AIS_OK;
 
 	iovec.iov_base = (char *)&req_exec_lck_resourceopen;
@@ -1271,7 +1254,6 @@ static int message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn
 		sizeof (SaNameT));
 	
 	req_exec_lck_resourceopen.resource_handle = req_lib_lck_resourceopen->resourceHandle;
-printf ("lib open handle %llx\n", req_exec_lck_resourceopen.resource_handle);
 	req_exec_lck_resourceopen.invocation = req_lib_lck_resourceopen->invocation;
 	req_exec_lck_resourceopen.open_flags = req_lib_lck_resourceopen->resourceOpenFlags;
 	req_exec_lck_resourceopen.timeout = 0;
@@ -1352,7 +1334,6 @@ static int message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info
 	req_exec_lck_resourcelock.invocation = 0;
 	req_exec_lck_resourcelock.fail_with_error = SA_AIS_OK;
 
-printf ("handle %d\n", req_exec_lck_resourcelock.resource_handle);
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 

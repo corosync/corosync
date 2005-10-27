@@ -1090,9 +1090,9 @@ static void memb_state_consensus_timeout_expired (
 	}
 }
 
-static int memb_join_message_send (struct totemsrp_instance *instance);
+static void memb_join_message_send (struct totemsrp_instance *instance);
 
-static int memb_merge_detect_transmit (struct totemsrp_instance *instance);
+static void memb_merge_detect_transmit (struct totemsrp_instance *instance);
 
 /*
  * Timers used for various states of the membership algorithm
@@ -2309,10 +2309,9 @@ static void memb_state_commit_token_create (
 	commit_token->addr_entries = token_memb_entries;
 }
 
-static int memb_join_message_send (struct totemsrp_instance *instance)
+static void memb_join_message_send (struct totemsrp_instance *instance)
 {
 	struct memb_join memb_join;
-	int res;
 
 	memb_join.header.type = MESSAGE_TYPE_MEMB_JOIN;
 	memb_join.header.endian_detector = ENDIAN_LOCAL;
@@ -2332,14 +2331,11 @@ static int memb_join_message_send (struct totemsrp_instance *instance)
 		instance->totemrrp_handle,
 		&memb_join,
 		sizeof (struct memb_join));
-
-	return (res);
 }
 
-static int memb_merge_detect_transmit (struct totemsrp_instance *instance) 
+static void memb_merge_detect_transmit (struct totemsrp_instance *instance) 
 {
 	struct memb_merge_detect memb_merge_detect;
-	int res;
 
 	memb_merge_detect.header.type = MESSAGE_TYPE_MEMB_MERGE_DETECT;
 	memb_merge_detect.header.endian_detector = ENDIAN_LOCAL;
@@ -2351,8 +2347,6 @@ static int memb_merge_detect_transmit (struct totemsrp_instance *instance)
 		instance->totemrrp_handle,
 		&memb_merge_detect,
 		sizeof (struct memb_merge_detect));
-
-	return (res);
 }
 
 static void memb_ring_id_create_or_load (
@@ -2829,7 +2823,7 @@ static void messages_deliver_to_app (
 	 * Deliver messages in order from rtr queue to pending delivery queue
 	 */
 	for (i = instance->my_high_delivered + 1; i <= end_point; i++) {
-		void *ptr;
+		void *ptr = 0;
 
 		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
 		if (res != 0 && skip) {

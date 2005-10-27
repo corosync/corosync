@@ -167,7 +167,8 @@ void CSIRemoveCallback (
 	const SaNameT *csiName,
 	const SaAmfCSIFlagsT *csiFlags)
 {
-	printf ("CSIRemoveCallback invocation id %lld compName ", invocation);
+	printf ("CSIRemoveCallback invocation id %llu compName ",
+		(unsigned long long)invocation);
 	printSaNameT ((SaNameT *)compName);
 	printf (" csiName ");
 	printSaNameT ((SaNameT *)csiName);

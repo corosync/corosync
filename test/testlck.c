@@ -54,8 +54,8 @@ void testLckResourceOpenCallback (
 	SaLckResourceHandleT lockResourceHandle,
 	SaAisErrorT error)
 {
-	printf ("testLckResourceOpenCallback invocation %lld error %d\n",
-		invocation, error);
+	printf ("testLckResourceOpenCallback invocation %llu error %d\n",
+		(unsigned long long)invocation, error);
 	resource_handle_async = lockResourceHandle;
 }
 
@@ -64,8 +64,8 @@ void testLckLockGrantCallback (
 	SaLckLockStatusT lockStatus,
 	SaAisErrorT error)
 {
-	printf ("testLckLockGrantCallback invocation %lld status %d error %d\n",
-		invocation, lockStatus, error);
+	printf ("testLckLockGrantCallback invocation %llu status %d error %d\n",
+		(unsigned long long)invocation, lockStatus, error);
 }
 
 SaLckLockIdT pr_lock_id;
@@ -77,11 +77,11 @@ void testLckLockWaiterCallback (
         SaLckLockModeT modeRequested)
 {
 	int result;
-	printf ("waiter callback mode held %d mode requested %d lock id %lld\n",
+	printf ("waiter callback mode held %d mode requested %d lock id %llu\n",
 		modeHeld,
 		modeRequested,
-		lockId);
-	printf ("pr lock id %lld\n", pr_lock_id);
+		(unsigned long long)lockId);
+	printf ("pr lock id %llu\n", (unsigned long long)pr_lock_id);
 	result = saLckResourceUnlockAsync (
 		25,
 		lockId);
@@ -92,7 +92,8 @@ void testLckResourceUnlockCallback (
         SaInvocationT invocation,
         SaAisErrorT error)
 {
-	printf ("testLckResourceUnlockCallback async invocation %lld error %d\n", invocation, error);
+	printf ("testLckResourceUnlockCallback async invocation %llu error %d\n",
+		(unsigned long long)invocation, error);
 }
 
 SaLckCallbacksT callbacks = {
@@ -159,7 +160,6 @@ int main (void) {
 		SA_TIME_ONE_SECOND,
 		&resource_handle);
 	printf ("saLckResourceOpen %d (should be 12)\n", result);
-printf ("HANDLE %llx\n", resource_handle);
 
 	result = saLckResourceClose (resource_handle);
 	printf ("saLckResourceClose %d (should be 9)\n", result);

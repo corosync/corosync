@@ -216,8 +216,8 @@ int main (void) {
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
 
-	printf ("%s: Retrieve selection object %lld\n",
-	get_test_output (error, SA_AIS_OK), sel_fd);
+	printf ("%s: Retrieve selection object %llu\n",
+	get_test_output (error, SA_AIS_OK), (unsigned long long)sel_fd);
 
 	FD_SET (sel_fd, &read_set);
 	select (sel_fd + 1, &read_set, 0, 0, 0);
@@ -475,12 +475,12 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 		printf ("%s: Get next section in iteartion\n",
 			get_test_output (error, SA_AIS_OK));
 		if (error == SA_OK) {
-			printf ("Section '%s' expires %llx size %lld state %x update %llx\n",
+			printf ("Section '%s' expires %llx size %llu state %x update %llx\n",
 				sectionDescriptor.sectionId.id,
-				sectionDescriptor.expirationTime,
-				sectionDescriptor.sectionSize,
+				(unsigned long long)sectionDescriptor.expirationTime,
+				(unsigned long long)sectionDescriptor.sectionSize,
 				sectionDescriptor.sectionState,
-				sectionDescriptor.lastUpdate);
+				(unsigned long long)sectionDescriptor.lastUpdate);
 		}
 	} while (error == SA_OK);
 	printf ("The last iteration should fail\n");

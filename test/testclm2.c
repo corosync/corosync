@@ -310,7 +310,7 @@ void printAddress(SaClmNodeAddressT *nodeAddress)
 
 void printCluster(const SaClmClusterNotificationBufferT *buffer)
 {
-	printf("  view number: %llu\n", buffer->viewNumber);
+	printf("  view number: %llu\n", (unsigned long long)buffer->viewNumber);
 	printf("  number of items: %u\n\n",  buffer->numberOfItems);
 	int j; for (j=0; j<buffer->numberOfItems; j++)
 	{
@@ -320,7 +320,7 @@ void printCluster(const SaClmClusterNotificationBufferT *buffer)
 		printf("    name: "); printName(&(buffer->notification[j].clusterNode.nodeName));
 		printf("    member: "); printBoolean(buffer->notification[j].clusterNode.member);
 		printf("    booted: "); printDate(buffer->notification[j].clusterNode.bootTimestamp);
-		printf("    initial view number: %llu\n", buffer->notification[j].clusterNode.initialViewNumber);
+		printf("    initial view number: %llu\n", (unsigned long long)buffer->notification[j].clusterNode.initialViewNumber);
 		printf("    cluster change: %s\n", decodeClusterChange(buffer->notification[j].clusterChange));
 		printf("\n");
 	}

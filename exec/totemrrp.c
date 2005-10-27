@@ -442,7 +442,7 @@ void active_token_recv (
 {
 	unsigned int cur_token_seq;
 	unsigned int last_token_seq;
-	int token_is;
+	unsigned int token_is;
 	int i;
 	struct active_instance *active_instance = (struct active_instance *)instance->rrp_algo_instance;
 
@@ -525,8 +525,8 @@ void rrp_deliver_fn (
 	void *msg,
 	int msg_len)
 {
-	int token_seqid;
-	int token_is;
+	unsigned int token_seqid;
+	unsigned int token_is;
 
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
 

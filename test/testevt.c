@@ -204,7 +204,7 @@ void open_callback(SaInvocationT invocation,
 	}
 	if (invocation != open_invocation) {
 		printf("ERROR: Unexpected invocation value: e 0x%llx, a 0x%llx\n",
-				open_invocation, invocation);
+				(long long)open_invocation, (long long)invocation);
 	}
 
 	printf("       Close async channel:\n");
@@ -769,9 +769,9 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 				subscription_id, my_subscription_id);
 	}
 	if (my_event_data_size != event_data_size) {
-		printf("ERROR: event data size e=%lld, a=%lld\n", 
-				event_data_size,
-				my_event_data_size);
+		printf("ERROR: event data size e=%llu, a=%llu\n", 
+				(unsigned long long)event_data_size,
+				(unsigned long long)my_event_data_size);
 	}
 
 	evt_pat_get_array.patternsNumber = 4;
@@ -797,8 +797,9 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != expected_pat_count) {
-		printf("ERROR: pattern array count not %d: %lld\n", 
-					expected_pat_count, evt_pat_get_array.patternsNumber);
+		printf("ERROR: pattern array count not %d: %llu\n", 
+					expected_pat_count,
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 
 	if (expected_pat_count == 0) {
@@ -808,10 +809,10 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		if (evt_pat_get_array.patterns[i].patternSize !=
 				evt_pat_set_array.patterns[i].patternSize) {
-			printf("ERROR: pattern %d count not equal g=%lld, s=%lld\n",
+			printf("ERROR: pattern %d count not equal g=%llu, s=%llu\n",
 				i,
-				evt_pat_get_array.patterns[i].patternSize,
-				evt_pat_set_array.patterns[i].patternSize);
+				(unsigned long long)evt_pat_get_array.patterns[i].patternSize,
+				(unsigned long long)evt_pat_set_array.patterns[i].patternSize);
 			printf("ERROR: pattern %d content g=\"%s\", s=\"%s\"\n",
 				i,
 				evt_pat_get_array.patterns[i].pattern,
@@ -863,8 +864,9 @@ event_callback(SaEvtSubscriptionIdT my_subscription_id,
 		goto dat_free;
 	}
 	if (data_size != event_data_size) {
-		printf("ERROR: Data size: e=%lld a=%lld\n", 
-				event_data_size, data_size);
+		printf("ERROR: Data size: e=%llu a=%llu\n", 
+				(unsigned long long)event_data_size,
+				(unsigned long long)data_size);
 	}
 	for (i = 0; i < (data_size/sizeof(long)); i++) {
 		if (act_data[i] != exp_data[i]) {
@@ -984,8 +986,8 @@ test_event()
 		goto evt_free;
 	}
 	if (evt_pat_get_array.patternsNumber != 0) {
-		printf("ERROR: pattern array count not zero: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+		printf("ERROR: pattern array count not zero: %llu\n", 
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 	if (priority != SA_EVT_LOWEST_PRIORITY) {
 		printf("ERROR: priority not lowest: 0x%x\n", priority);
@@ -1037,16 +1039,16 @@ test_event()
 		goto evt_free;
 	}
 	if (evt_pat_get_array.patternsNumber != 4) {
-		printf("ERROR: pattern array count not 4: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+		printf("ERROR: pattern array count not 4: %llu\n", 
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 	for (i = 0; i < evt_pat_get_array.patternsNumber; i++) {
 		if (evt_pat_get_array.patterns[i].patternSize !=
 				evt_pat_set_array.patterns[i].patternSize) {
 			printf("ERROR: pattern %d count not equal g=%lld, s=%lld\n",
 				i,
-				evt_pat_get_array.patterns[i].patternSize,
-				evt_pat_set_array.patterns[i].patternSize);
+				(unsigned long long)evt_pat_get_array.patterns[i].patternSize,
+				(unsigned long long)evt_pat_set_array.patterns[i].patternSize);
 			printf("ERROR: pattern %d content g=\"%s\", s=\"%s\"\n",
 				i,
 				evt_pat_get_array.patterns[i].pattern,
@@ -1414,7 +1416,7 @@ multi_test_callback1(SaEvtSubscriptionIdT my_subscription_id,
 
 	if (evt_pat_get_array.patternsNumber != 1) {
 		printf("ERROR: pattern array count not 1: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 
 evt_free:
@@ -1764,8 +1766,8 @@ multi_test_callback2(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 1) {
-		printf("ERROR: pattern array count not 1: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+		printf("ERROR: pattern array count not 1: %llu\n", 
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 
 evt_free:
@@ -2064,8 +2066,8 @@ multi_test_callback3(SaEvtSubscriptionIdT my_subscription_id,
 	}
 
 	if (evt_pat_get_array.patternsNumber != 1) {
-		printf("ERROR: pattern array count not 1: %lld\n", 
-					evt_pat_get_array.patternsNumber);
+		printf("ERROR: pattern array count not 1: %llu\n", 
+					(unsigned long long)evt_pat_get_array.patternsNumber);
 	}
 
 evt_free:
