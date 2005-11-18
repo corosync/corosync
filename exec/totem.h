@@ -120,6 +120,11 @@ struct totem_config {
 	unsigned int net_mtu;
 
 	unsigned int threads;
+	
+	int heartbeat_failures_allowed;
+	
+	/*In Milliseconds*/
+	int max_network_delay;
 };
 
 enum totem_configuration_type {

@@ -64,6 +64,7 @@
 #define FAIL_TO_RECV_CONST			10
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
+#define MAX_NETWORK_DELAY			50 /*In milliseconds*/
 
 static char error_string_response[512];
 
@@ -254,6 +255,10 @@ extern int totem_config_read (
 				totem_config->fail_to_recv_const = atoi(loc);
 			} else if ((loc = strstr_rs (line, "seqno_unchanged_const:"))) {
 				totem_config->seqno_unchanged_const = atoi(loc);
+			} else if ((loc = strstr_rs (line, "heartbeat_failures_allowed:"))) {
+				totem_config->heartbeat_failures_allowed = atoi(loc);
+			} else if ((loc = strstr_rs (line, "max_network_delay:"))) {
+				totem_config->max_network_delay = atoi(loc);
 			} else if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {
@@ -345,6 +350,16 @@ int totem_config_validate (
 				(int)(totem_config->token_retransmit_timeout * 0.8 -
 				(1000/HZ));
 		}
+	}
+
+	if (totem_config->max_network_delay == 0) {
+		totem_config->max_network_delay = MAX_NETWORK_DELAY;
+	}
+
+	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+			totem_config->max_network_delay, MINIMUM_TIMEOUT);
+		goto parse_error;
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {

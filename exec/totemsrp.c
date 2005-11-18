@@ -304,6 +304,8 @@ struct totemsrp_instance {
 	int my_retrans_flg_count;
 
 	unsigned int my_high_ring_delivered;
+	
+	int heartbeat_timeout;
 
 	/*
 	 * Queues used to order, deliver, and recover messages
@@ -349,6 +351,8 @@ struct totemsrp_instance {
 	poll_timer_handle memb_timer_state_gather_consensus_timeout;
 
 	poll_timer_handle memb_timer_state_commit_timeout;
+
+	poll_timer_handle timer_heartbeat_timeout;
 
 	/*
 	 * Function and data used to log messages
@@ -424,6 +428,8 @@ struct totemsrp_instance {
 	totemrrp_handle totemrrp_handle;
 
 	struct totem_config *totem_config;
+
+	int use_heartbeat;
 };
 
 struct message_handlers {
@@ -500,6 +506,7 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 static void memb_join_endian_convert (struct memb_join *in, struct memb_join *out);
 static void mcast_endian_convert (struct mcast *in, struct mcast *out);
 static void timer_function_orf_token_timeout (void *data);
+static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
 static void timer_function_token_hold_retransmit_timeout (void *data);
 static void timer_function_merge_detect_timeout (void *data);
@@ -647,6 +654,10 @@ int totemsrp_initialize (
 		"seqno unchanged const (%d rotations) Maximum network MTU %d\n", totem_config->seqno_unchanged_const, totem_config->net_mtu);
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
 		"send threads (%d threads)\n", totem_config->threads);
+	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+		"heartbeat_failures_allowed (%d)\n", totem_config->heartbeat_failures_allowed);
+	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+		"max_network_delay (%d ms)\n", totem_config->max_network_delay);
 
 
 	queue_init (&instance->retrans_message_queue, RETRANS_MESSAGE_QUEUE_SIZE_MAX,
@@ -663,7 +674,36 @@ int totemsrp_initialize (
 	instance->totemsrp_deliver_fn = deliver_fn;
 
 	instance->totemsrp_confchg_fn = confchg_fn;
+	instance->use_heartbeat = 1;
 
+	if ( totem_config->heartbeat_failures_allowed == 0 ) {
+		instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+			"HeartBeat is Disabled. To enable set heartbeat_failures_allowed > 0\n");
+		instance->use_heartbeat = 0;
+	}
+
+	if (instance->use_heartbeat) {
+		instance->heartbeat_timeout 
+			= (totem_config->heartbeat_failures_allowed) * totem_config->token_retransmit_timeout 
+				+ totem_config->max_network_delay;
+
+		if (instance->heartbeat_timeout >= totem_config->token_timeout) {
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+				"total heartbeat_timeout (%d ms) is not less than token timeout (%d ms)\n", 
+				instance->heartbeat_timeout,
+				totem_config->token_timeout);
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+				"heartbeat_timeout = heartbeat_failures_allowed * token_retransmit_timeout + max_network_delay\n");
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+				"heartbeat timeout should be less than the token timeout. HeartBeat is Diabled !!\n");
+			instance->use_heartbeat = 0;
+		}
+		else {
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+                		"total heartbeat_timeout (%d ms)\n", instance->heartbeat_timeout);
+		}
+	}
+	
 	totemrrp_initialize (
 		poll_handle,
 		&instance->totemrrp_handle,
@@ -1042,8 +1082,22 @@ static void reset_token_timeout (struct totemsrp_instance *instance) {
 		&instance->timer_orf_token_timeout);
 }
 
+static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
+        poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
+        poll_timer_add (instance->totemsrp_poll_handle,
+                instance->heartbeat_timeout,
+                (void *)instance,
+                timer_function_heartbeat_timeout,
+                &instance->timer_heartbeat_timeout);
+}
+
+
 static void cancel_token_timeout (struct totemsrp_instance *instance) {
 	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
+}
+
+static void cancel_heartbeat_timeout (struct totemsrp_instance *instance) {
+	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
 }
 
 static void cancel_token_retransmit_timeout (struct totemsrp_instance *instance)
@@ -1123,6 +1177,14 @@ static void timer_function_orf_token_timeout (void *data)
 			memb_state_gather_enter (instance);
 			break;
 	}
+}
+
+static void timer_function_heartbeat_timeout (void *data)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+		"HeartBeat Timer expired Invoking token loss mechanism in state %d \n", instance->memb_state);
+	timer_function_orf_token_timeout(data);
 }
 
 static void memb_timer_function_state_gather (void *data)
@@ -2624,7 +2686,7 @@ if (random () % 100 < 10) {
 	forward_token = 1;
 	if (instance->my_ring_id.rep.s_addr == instance->my_id.sin_addr.s_addr) {
 		if (instance->my_token_held) {
-			forward_token = 0;
+			forward_token = 0;			
 		}
 	}
 
@@ -2652,6 +2714,14 @@ if (random () % 100 < 10) {
 		if (memcmp (&token->ring_id, &instance->my_ring_id,
 			sizeof (struct memb_ring_id)) != 0) {
 
+			if ((forward_token)
+				&& instance->use_heartbeat) {
+				reset_heartbeat_timeout(instance);
+			} 
+			else {
+				cancel_heartbeat_timeout(instance);
+			}
+
 			return (0); /* discard token */
 		}
 
@@ -2667,6 +2737,15 @@ if (random () % 100 < 10) {
 			 * token timeout, and will cause a reconfiguration to occur.
 			 */
 			reset_token_timeout (instance);
+
+			if ((forward_token)
+				&& instance->use_heartbeat) {
+				reset_heartbeat_timeout(instance);
+			}
+			else {
+				cancel_heartbeat_timeout(instance);
+			}
+
 			return (0); /* discard token */
 		}		
 		transmits_allowed = TRANSMITS_ALLOWED;
@@ -2802,6 +2881,15 @@ printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
 		}
 		break;
 	}
+
+	if ((forward_token)
+		&& instance->use_heartbeat) {
+		reset_heartbeat_timeout(instance);
+	}
+	else {
+		cancel_heartbeat_timeout(instance);
+	}
+
 	return (0);
 }
 
