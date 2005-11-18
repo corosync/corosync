@@ -277,7 +277,7 @@ enum recovery_phases {
  */
 
 #define BASE_ID_MASK 0xffffffffLL
-static SaEvtEventIdT 	base_id = 0;
+static SaEvtEventIdT 	base_id = 1;
 static SaEvtEventIdT 	base_id_top = 0;
 static SaClmNodeIdT  	my_node_id = 0;
 static int 			 	checked_in = 0;
