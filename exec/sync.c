@@ -85,7 +85,9 @@ static int barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
-static void sync_barrier_start (struct memb_ring_id *ring_id);
+static int sync_barrier_send (struct memb_ring_id *ring_id);
+
+static int sync_start_process (enum totem_callback_token_type type, void *data);
 
 static void sync_service_init (struct memb_ring_id *ring_id);
 
@@ -97,13 +99,13 @@ struct req_exec_sync_barrier_start {
 };
 
 /*
- * Start barrier process
+ * Send a barrier data structure
  */
-static void sync_barrier_start (struct memb_ring_id *ring_id)
+static int sync_barrier_send (struct memb_ring_id *ring_id)
 {
 	struct req_exec_sync_barrier_start req_exec_sync_barrier_start;
 	struct iovec iovec;
-	int result;
+	int res;
 
 	req_exec_sync_barrier_start.header.size = sizeof (struct req_exec_sync_barrier_start);
 	req_exec_sync_barrier_start.header.id = MESSAGE_REQ_EXEC_SYNC_BARRIER;
@@ -114,7 +116,19 @@ static void sync_barrier_start (struct memb_ring_id *ring_id)
 	iovec.iov_base = (char *)&req_exec_sync_barrier_start;
 	iovec.iov_len = sizeof (req_exec_sync_barrier_start);
 
-	result = totempg_mcast (&iovec, 1, TOTEMPG_AGREED);
+	res = totempg_mcast (&iovec, 1, TOTEMPG_AGREED);
+
+	return (res);
+}
+
+void sync_start_init (struct memb_ring_id *ring_id)
+{
+	totemsrp_callback_token_create (sync_totemsrp_handle,
+		&sync_callback_token_handle,
+		TOTEM_CALLBACK_TOKEN_SENT,
+		0, /* don't delete after callback */
+		sync_start_process,
+		(void *)ring_id);
 }
 
 static void sync_service_init (struct memb_ring_id *ring_id)
@@ -122,6 +136,10 @@ static void sync_service_init (struct memb_ring_id *ring_id)
 	sync_callbacks[sync_recovery_index].sync_init ();
 	totemsrp_callback_token_destroy (sync_totemsrp_handle,
 		&sync_callback_token_handle);
+
+	/*
+	 * Create the token callback for the processing
+	 */
 	totemsrp_callback_token_create (sync_totemsrp_handle,
 		&sync_callback_token_handle,
 		TOTEM_CALLBACK_TOKEN_SENT,
@@ -130,11 +148,28 @@ static void sync_service_init (struct memb_ring_id *ring_id)
 		(void *)ring_id);
 }
 
+static int sync_start_process (enum totem_callback_token_type type, void *data)
+{
+	int res;
+	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
+
+	res = sync_barrier_send (ring_id);
+	if (res == 0) {
+		/*
+		 * Delete the token callback for the barrier
+		 */
+		totemsrp_callback_token_destroy (sync_totemsrp_handle,
+			&sync_callback_token_handle);
+	}
+	return (0);
+}
+
 static int sync_service_process (enum totem_callback_token_type type, void *data)
 {
 	int res;
 	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
 
+	
 	/*
 	 * If process returns 0, then its time to activate
 	 * and start the next service's synchronization
@@ -147,12 +182,14 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 * This sync is complete so activate and start next service sync
 	 */
 	sync_callbacks[sync_recovery_index].sync_activate ();
+	totemsrp_callback_token_destroy (sync_totemsrp_handle,
+		&sync_callback_token_handle);
 	sync_recovery_index += 1;
-	totemsrp_callback_token_destroy (sync_totemsrp_handle, &sync_callback_token_handle);
+
 	if (sync_recovery_index > sync_callback_count) {
 		sync_processing = 0;
 	} else {
-		sync_barrier_start (ring_id);
+		sync_start_init (ring_id);
 	}
 	return (0);
 }
@@ -197,7 +234,7 @@ void sync_confchg_fn (
 	memcpy (barrier_data_process, barrier_data_confchg,
 		sizeof (barrier_data_confchg));
 	barrier_data_confchg_entries = member_list_entries;
-	sync_barrier_start (ring_id);
+	sync_start_init (ring_id);
 }
 
 static struct memb_ring_id deliver_ring_id;
