@@ -425,6 +425,9 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	if (mcast_packed_msg_count == 0) {
 		return (0);
 	}
+	if (totemmrp_avail() == 0) {
+		return (0);
+	}
 	mcast.fragmented = 0;
 
 	/*
@@ -616,6 +619,7 @@ int totempg_mcast (
 												sizeof(unsigned short);
 			iovecs[2].iov_base = data_ptr;
 			iovecs[2].iov_len = max_packet_size;
+			assert (totemmrp_avail() > 0);
 			res = totemmrp_mcast (iovecs, 3, guarantee);
 
 			/*
