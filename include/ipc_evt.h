@@ -383,6 +383,11 @@ struct evt_close_unlink_chan {
 	uint64_t	chcu_unlink_id;
 };
 
+struct open_chan_req {
+	SaNameT		ocr_name;
+	uint64_t	ocr_serial_no;
+};
+
 /*
  * Sent via MESSAGE_REQ_EXEC_EVT_CHANCMD
  *
@@ -394,7 +399,7 @@ struct req_evt_chan_command {
 	struct req_header 	chc_head;
 	int 				chc_op;
 	union {
-		SaNameT					chc_chan;
+		struct open_chan_req	chc_chan;
 		SaEvtEventIdT			chc_event_id;
 		struct evt_set_id		chc_set_id;
 		struct evt_set_opens 	chc_set_opens;

@@ -305,6 +305,7 @@ static int				processed_open_counts = 0;
  * 	ocp_conn_info:		conn_info for returning to the library.
  * 	ocp_open_flags:		channel open flags
  * 	ocp_timer_handle:	timer handle for sync open
+ * 	ocp_serial_no:		Identifier for the request
  * 	ocp_entry:			list entry for pending open list.
  */
 struct open_chan_pending {
@@ -315,8 +316,17 @@ struct open_chan_pending {
 	SaEvtChannelOpenFlagsT	ocp_open_flag;
 	poll_timer_handle	ocp_timer_handle;
 	uint64_t			ocp_c_handle;
+	uint64_t			ocp_serial_no;
 	struct list_head	ocp_entry;
 };
+static uint64_t	open_serial_no = 0;
+
+/*
+ * code to indicate that the open request has timed out. The
+ * invocation data element is used for this code since it is
+ * only used by the open async call which cannot have a timeout.
+ */
+#define OPEN_TIMED_OUT 0x5a6b5a6b5a6b5a6bLLU
 
 /*
  * list of pending channel opens
@@ -1099,7 +1109,8 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_OPEN_CHAN_OP;
-	cpkt.u.chc_chan = *cn;
+	cpkt.u.chc_chan.ocr_name = *cn;
+	cpkt.u.chc_chan.ocr_serial_no = ++open_serial_no;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
@@ -2089,6 +2100,7 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	ocp->ocp_conn_info = conn_info;
 	ocp->ocp_c_handle = req->ico_c_handle;
 	ocp->ocp_timer_handle = 0;
+	ocp->ocp_serial_no = open_serial_no;
 	list_init(&ocp->ocp_entry);
 	list_add_tail(&ocp->ocp_entry, &open_pending);
 	/*
@@ -2127,8 +2139,6 @@ static int lib_evt_open_channel_async(struct conn_info *conn_info,
 	struct req_evt_channel_open *req;
 	struct res_evt_channel_open res;
 	struct open_chan_pending *ocp;
-	int msec_in_future;
-	int ret;
 
 	req = message;
 
@@ -2166,24 +2176,9 @@ static int lib_evt_open_channel_async(struct conn_info *conn_info,
 	ocp->ocp_open_flag = req->ico_open_flag;
 	ocp->ocp_conn_info = conn_info;
 	ocp->ocp_timer_handle = 0;
+	ocp->ocp_serial_no = open_serial_no;
 	list_init(&ocp->ocp_entry);
 	list_add_tail(&ocp->ocp_entry, &open_pending);
-	if (req->ico_timeout != 0) {
-		/*
-		 * Time in nanoseconds - convert to miliseconds
-		 */
-		msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
-		ret = poll_timer_add(aisexec_poll_handle,
-				msec_in_future,
-				ocp,
-				chan_open_timeout,
-				&ocp->ocp_timer_handle);
-		if (ret != 0) {
-			log_printf(LOG_LEVEL_WARNING, 
-					"Error setting timeout for open channel %s\n",
-					req->ico_channel_name.value);
-		}
-	}
 
 open_return:
 	res.ico_head.size = sizeof(res);
@@ -3271,7 +3266,9 @@ static int evt_remote_recovery_evt(void *msg, struct in_addr source_addr,
 
 
 /*
- * Timeout handler for event channel open.
+ * Timeout handler for event channel open.  We flag the structure
+ * as timed out.  Then if the open request is ever returned, we can
+ * issue a close channel and keep the reference counting correct.
  */
 static void chan_open_timeout(void *data)
 {
@@ -3281,9 +3278,8 @@ static void chan_open_timeout(void *data)
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = SA_AIS_ERR_TIMEOUT;
+	ocp->ocp_invocation = OPEN_TIMED_OUT;
 	libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
-	list_del(&ocp->ocp_entry);
-	free(ocp);
 }
 
 /*
@@ -3300,15 +3296,33 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	int ret = 0;
 	void *ptr;
 
-	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n", 
+	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n",
 											getSaNameT(&ocp->ocp_chan_name));
 	if (ocp->ocp_timer_handle) {
 		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
 		if (ret != 0 ) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 				"Error clearing timeout for open channel of %s\n",
 				   getSaNameT(&ocp->ocp_chan_name));
 		}
+	}
+
+	/*
+	 * If this is a finished open for a timed out request, then
+	 * send out a close on this channel to clean things up.
+	 */
+	if (ocp->ocp_invocation == OPEN_TIMED_OUT) {
+		log_printf(CHAN_OPEN_DEBUG, "Closing timed out open of %s\n",
+				getSaNameT(&ocp->ocp_chan_name));
+		error = evt_close_channel(&ocp->ocp_chan_name, EVT_CHAN_ACTIVE);
+		if (error != SA_AIS_OK) {
+			log_printf(CHAN_OPEN_DEBUG,
+					"Close of timed out open failed for %s\n",
+					getSaNameT(&ocp->ocp_chan_name));
+		}
+		list_del(&ocp->ocp_entry);
+		free(ocp);
+		return;
 	}
 
 	/*
@@ -3438,7 +3452,9 @@ convert_chan_packet(struct req_evt_chan_command *cpkt)
 	switch (cpkt->chc_op) {
 	
 	case EVT_OPEN_CHAN_OP:
-		cpkt->u.chc_chan.length = swab16(cpkt->u.chc_chan.length);
+		cpkt->u.chc_chan.ocr_name.length =
+			swab16(cpkt->u.chc_chan.ocr_name.length);
+		cpkt->u.chc_chan.ocr_serial_no = swab64(cpkt->u.chc_chan.ocr_serial_no);
 		break;
 
 	case EVT_UNLINK_CHAN_OP:
@@ -3532,15 +3548,16 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 		struct list_head *l, *nxt;
 
 		log_printf(CHAN_OPEN_DEBUG, "Opening channel %s for node 0x%x\n",
-						cpkt->u.chc_chan.value, mn->mn_node_info.nodeId);
-		eci = find_channel(&cpkt->u.chc_chan, EVT_CHAN_ACTIVE);
+						cpkt->u.chc_chan.ocr_name.value,
+						mn->mn_node_info.nodeId);
+		eci = find_channel(&cpkt->u.chc_chan.ocr_name, EVT_CHAN_ACTIVE);
 
 		if (!eci) {
-			eci = create_channel(&cpkt->u.chc_chan);
+			eci = create_channel(&cpkt->u.chc_chan.ocr_name);
 		}
 		if (!eci) {
 			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
-				   getSaNameT(&cpkt->u.chc_chan));
+				   getSaNameT(&cpkt->u.chc_chan.ocr_name));
 			break;
 		}
 
@@ -3553,10 +3570,11 @@ static int evt_remote_chan_op(void *msg, struct in_addr source_addr,
 			for (l = open_pending.next; l != &open_pending; l = nxt) {
 				nxt = l->next;
 				ocp = list_entry(l, struct open_chan_pending, ocp_entry);
-				log_printf(CHAN_OPEN_DEBUG, 
-				"Compare channel %s %s\n", ocp->ocp_chan_name.value,
-						eci->esc_channel_name.value);
-				if (name_match(&ocp->ocp_chan_name, &eci->esc_channel_name)) {
+				log_printf(CHAN_OPEN_DEBUG,
+				"Compare channel req no %llu %llu\n",
+					ocp->ocp_serial_no,
+					cpkt->u.chc_chan.ocr_serial_no);
+				if (ocp->ocp_serial_no == cpkt->u.chc_chan.ocr_serial_no) {
 					evt_chan_open_finish(ocp, eci);
 					break;
 				}
