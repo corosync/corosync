@@ -1373,10 +1373,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	/*
 	 * Install new membership
 	 */
- 	totemrrp_processor_count_set (
-		instance->totemrrp_handle,
-		instance->my_new_memb_entries);
-
 	instance->my_memb_entries = instance->my_new_memb_entries;
 	memcpy (instance->my_memb_list, instance->my_new_memb_list,
 		sizeof (struct in_addr) * instance->my_memb_entries);
@@ -1514,6 +1510,10 @@ instance->my_token_seq = -1;
 	 * Build regular configuration
 	 */
 	instance->my_new_memb_entries = commit_token->addr_entries;
+
+ 	totemrrp_processor_count_set (
+		instance->totemrrp_handle,
+		commit_token->addr_entries);
 
 	memcpy (instance->my_new_memb_list, commit_token->addr,
 		sizeof (struct in_addr) * instance->my_new_memb_entries);
