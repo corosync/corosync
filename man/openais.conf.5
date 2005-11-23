@@ -237,6 +237,33 @@ seqno_unchanged_const
 This constant specifies how many rotations of the token without any multicast
 traffic should occur before the merge detection timeout is started.
 
+.TP
+heartbeat_failures_allowed
+[HeartBeating mechanism]
+Configures the optional HeartBeating mechanism for faster failure detection. Keep in
+mind that engaging this mechanism in lossy networks could cause faulty loss declaration 
+as the mechanism relies on the network for heartbeating. 
+
+So as a rule of thumb use this mechanism if you require improved failure in low to 
+medium utilized networks.
+
+This constant specifies the number of heartbeat failures the system should tolerate
+before declaring heartbeat failure e.g 3. Also if this value is not set or is 0 then the
+heartbeat mechanism is not engaged in the system and token rotation is the method
+of failure detection
+
+default value = 0.
+
+.TP
+max_network_delay
+[HeartBeating mechanism]
+This constant specifies in Milliseconds the approximate delay that your network takes
+to transport one packet from one machine to another. This value is to be set by system
+engineers and please dont change if not sure as this effects the failure detection
+mechanism using heartbeat.
+
+default value = 50 milliseconds.
+
 .PP
 Within the 
 .B logging
