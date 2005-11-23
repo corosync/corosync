@@ -165,6 +165,7 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint);
 void timer_function_retention (void *data);
 unsigned int abstime_to_msec (SaTimeT time);
 void timer_function_section_expire (void *data);
+void clean_checkpoint_list(struct list_head* head);
 
 static int recovery_checkpoint_open(SaNameT *checkpointName,
 									SaCkptCheckpointCreationAttributesT *ckptAttributes,
@@ -1027,10 +1028,13 @@ static void ckpt_recovery_process_members_exit(struct in_addr *left_list,
 
 			checkpoint = list_entry (checkpoint_list,
 				struct saCkptCheckpoint, list);			
+			assert (checkpoint > 0);
 			index = processor_index_find(member, checkpoint->ckpt_refcount);			
-			if (index == -1) {
+			if (index < 0) {
+				checkpoint_list = checkpoint_list->next;
 				continue;
 			}		
+			assert ( index < PROCESSOR_COUNT_MAX);
 			/*
 			 * Decrement
 			 * 
@@ -1044,33 +1048,57 @@ static void ckpt_recovery_process_members_exit(struct in_addr *left_list,
 				log_printf (LOG_LEVEL_ERROR, "ckpt_recovery_process_members_exit: refCount for %s = %d.\n",
 												&checkpoint->name.value,checkpoint->referenceCount);			
 				assert(0);
-			}						
+			}		
 			checkpoint->ckpt_refcount[index].count = 0;
 			memset((char*)&checkpoint->ckpt_refcount[index].addr, 0, sizeof(struct in_addr));			
-			
-			/*
-			 * If checkpoint has been unlinked and this is the last reference, delete it
-			 */
-			if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
-				log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_process_members_exit: Unlinking checkpoint %s.\n",
-												&checkpoint->name.value);		
-				checkpoint_release (checkpoint);
-			} else
-			if ((checkpoint->expired == 0) && (checkpoint->referenceCount == 0)) {
-				log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_process_members_exit: Starting timer to release checkpoint %s.\n",
-												&checkpoint->name.value);
-				poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
-
-				poll_timer_add (aisexec_poll_handle,
-					checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
-					checkpoint,
-					timer_function_retention,
-					&checkpoint->retention_timer);
-			}
 		}
 		member++;
 	}
+
+	clean_checkpoint_list(&checkpoint_list_head);
+	
 	return;
+}
+
+void clean_checkpoint_list(struct list_head *head) 
+{
+	struct list_head *checkpoint_list;
+	struct saCkptCheckpoint *checkpoint;
+
+	if (list_empty(head)) {
+		log_printf (LOG_LEVEL_NOTICE, "clean_checkpoint_list: List is empty \n");
+		return;
+	}
+
+	checkpoint_list = head->next;
+        while (checkpoint_list != head) {
+		checkpoint = list_entry (checkpoint_list,
+                                struct saCkptCheckpoint, list);
+                assert (checkpoint > 0);
+
+		/*
+		* If checkpoint has been unlinked and this is the last reference, delete it
+		*/
+		 if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
+			log_printf (LOG_LEVEL_NOTICE,"clean_checkpoint_list: deallocating checkpoint %s.\n",
+                                                                                                &checkpoint->name.value);
+			checkpoint_list = checkpoint_list->next;
+			checkpoint_release (checkpoint);
+			continue;
+			
+		} 
+		else if ((checkpoint->expired == 0) && (checkpoint->referenceCount == 0)) {
+			log_printf (LOG_LEVEL_NOTICE, "clean_checkpoint_list: Starting timer to release checkpoint %s.\n",
+				&checkpoint->name.value);
+			poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
+			poll_timer_add (aisexec_poll_handle,
+				checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
+				checkpoint,
+				timer_function_retention,
+				&checkpoint->retention_timer);
+		}
+		checkpoint_list = checkpoint_list->next;
+        }
 }
 
 static int ckpt_confchg_fn (
