@@ -142,8 +142,8 @@ void log_syslog (char *log_string) {
 void internal_log_printf (int logclass, char *string, ...)
 {
 	va_list ap;
-	char newstring[1024];
-	char log_string[1024];
+	char newstring[4096];
+	char log_string[4096];
 	char char_time[512];
 	time_t curr_time;
 	int level;

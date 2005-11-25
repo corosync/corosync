@@ -1026,8 +1026,6 @@ static int totemnet_build_sockets (
 	sockaddr_in_test.sin_family = AF_INET;
 	sockaddr_in_test.sin_addr.s_addr = sockaddr_mcast->sin_addr.s_addr;
 	sockaddr_in_test.sin_port = sockaddr_mcast->sin_port;
-	printf ("binding to %s\n", inet_ntoa (sockaddr_in_test.sin_addr));
-		printf ("%d\n", sockaddr_in_test.sin_port);
 	res = bind (sockets->mcast, (struct sockaddr *)&sockaddr_in_test,
 		sizeof (struct sockaddr_in));
 	if (res == -1) {
@@ -1051,8 +1049,6 @@ static int totemnet_build_sockets (
 	sockaddr_in_test.sin_family = AF_INET;
 	sockaddr_in_test.sin_addr.s_addr = bound_to->sin_addr.s_addr;
 	sockaddr_in_test.sin_port = sockaddr_mcast->sin_port;
-	printf ("binding to %s\n", inet_ntoa (sockaddr_in_test.sin_addr));
-		printf ("%d\n", sockaddr_in_test.sin_port);
 	res = bind (sockets->token, (struct sockaddr *)&sockaddr_in_test,
 		sizeof (struct sockaddr_in));
 	if (res == -1) {
@@ -1397,5 +1393,4 @@ extern void totemnet_net_mtu_adjust (struct totem_config *totem_config)
 	} else {
 		totem_config->net_mtu -= UDPIP_HEADER_SIZE;
 	}
-printf ("adjusted frame size is %d\n", totem_config->net_mtu);
 }
