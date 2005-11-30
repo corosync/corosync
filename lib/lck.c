@@ -909,7 +909,7 @@ error_put_lck:
 }
 
 SaAisErrorT
-SaLckResourceLockAsync (
+saLckResourceLockAsync (
 	SaLckResourceHandleT lckResourceHandle,
 	SaInvocationT invocation,
 	SaLckLockIdT *lockId,

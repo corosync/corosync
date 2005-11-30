@@ -157,7 +157,7 @@ saLckResourceLock (
 	SaLckLockStatusT *lockStatus);
 
 SaAisErrorT
-SaLckResourceLockAsync (
+saLckResourceLockAsync (
 	SaLckResourceHandleT lockResourceHandle,
 	SaInvocationT invocation,
 	SaLckLockIdT *lockId,
