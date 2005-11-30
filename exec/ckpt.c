@@ -1022,19 +1022,19 @@ static void ckpt_recovery_process_members_exit(struct in_addr *left_list,
 	 */
 	member = left_list;
 	for (i = 0; i < left_list_entries; i++) {		
-		for (checkpoint_list = checkpoint_list_head.next;
-			checkpoint_list != &checkpoint_list_head;
-			checkpoint_list = checkpoint_list->next) {
+		checkpoint_list = checkpoint_list_head.next;
 
+iterate_while_loop:
+		while (checkpoint_list != &checkpoint_list_head) {
 			checkpoint = list_entry (checkpoint_list,
 				struct saCkptCheckpoint, list);			
 			assert (checkpoint > 0);
-			index = processor_index_find(member, checkpoint->ckpt_refcount);			
+			index = processor_index_find(member, checkpoint->ckpt_refcount);
+			assert (-1 <= index < PROCESSOR_COUNT_MAX);			
 			if (index < 0) {
 				checkpoint_list = checkpoint_list->next;
-				continue;
+				goto iterate_while_loop;
 			}		
-			assert ( index < PROCESSOR_COUNT_MAX);
 			/*
 			 * Decrement
 			 * 
@@ -1051,6 +1051,7 @@ static void ckpt_recovery_process_members_exit(struct in_addr *left_list,
 			}		
 			checkpoint->ckpt_refcount[index].count = 0;
 			memset((char*)&checkpoint->ckpt_refcount[index].addr, 0, sizeof(struct in_addr));			
+			checkpoint_list = checkpoint_list->next;
 		}
 		member++;
 	}
