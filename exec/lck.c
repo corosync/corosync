@@ -518,8 +518,10 @@ static int lck_exec_init_fn (struct openais_config *openais_config)
 	/*
 	 *  Initialize the saved ring ID.
 	 */
+#ifdef TODO
 	saved_ring_id.seq = 0;
 	saved_ring_id.rep.s_addr = this_ip->sin_addr.s_addr;		
+#endif
 	
 	return (0);
 }

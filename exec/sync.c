@@ -59,7 +59,7 @@
 #define LOG_SERVICE LOG_SERVICE_SYNC
 
 struct barrier_data {
-	struct in_addr addr;
+	struct totem_ip_address addr;
 	int completed;
 };
 
@@ -208,9 +208,9 @@ void sync_register (
 
 void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -228,7 +228,7 @@ void sync_confchg_fn (
 	sync_recovery_index = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
 	for (i = 0; i < member_list_entries; i++) {
-		barrier_data_confchg[i].addr.s_addr = member_list[i].s_addr;
+		totemip_copy(&barrier_data_confchg[i].addr, &member_list[i]);
 		barrier_data_confchg[i].completed = 0;
 	}
 	memcpy (barrier_data_process, barrier_data_confchg,
@@ -239,7 +239,7 @@ void sync_confchg_fn (
 
 static struct memb_ring_id deliver_ring_id;
 
-int sync_deliver_fn (void *msg, struct in_addr source_addr,
+int sync_deliver_fn (void *msg, struct totem_ip_address *source_addr,
 	int endian_conversion_needed)
 {
 	struct req_exec_sync_barrier_start *req_exec_sync_barrier_start =
@@ -265,7 +265,7 @@ int sync_deliver_fn (void *msg, struct in_addr source_addr,
 	 * Set completion for source_addr's address
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		if (source_addr.s_addr == barrier_data_process[i].addr.s_addr) {
+		if (totemip_equal(source_addr,  &barrier_data_process[i].addr)) {
 			barrier_data_process[i].completed = 1;
 			break;
 		}

@@ -237,9 +237,9 @@ static void amf_confchg_njoin (
 
 static int amf_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+    struct totem_ip_address *member_list, int member_list_entries,
+    struct totem_ip_address *left_list, int left_list_entries,
+    struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 /***
@@ -252,19 +252,19 @@ static int amf_exec_init_fn (struct openais_config *);
 
 static int amf_init_two_fn (struct conn_info *conn_info);
 
-static void amf_synchronize (void *message, struct in_addr source_addr);
+static void amf_synchronize (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_componentregister (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_componentunregister (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_amf_errorreport (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_errorreport (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_amf_errorcancelall (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_errorcancelall (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_amf_readinessstateset (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_readinessstateset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
-static int message_handler_req_exec_amf_hastateset (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_amf_hastateset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
 static int message_handler_req_amf_componentregister (struct conn_info *conn_info, void *message);
 
@@ -361,7 +361,7 @@ struct libais_handler amf_libais_handlers[] =
 	}
 };
 
-int (*amf_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
+int (*amf_aisexec_handler_fns[]) (void *, struct totem_ip_address *source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_amf_componentregister,
 	message_handler_req_exec_amf_componentunregister,
 	message_handler_req_exec_amf_errorreport,
@@ -521,7 +521,7 @@ static void component_unregister (
 	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
 
 	req_exec_amf_componentunregister.source.conn_info = 0;
-	req_exec_amf_componentunregister.source.in_addr.s_addr = 0;
+	req_exec_amf_componentunregister.source.addr.family = 0;
 
 	memset (&req_exec_amf_componentunregister.req_lib_amf_componentunregister,
 		0, sizeof (struct req_lib_amf_componentunregister));
@@ -554,7 +554,7 @@ static void component_register (
 	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
 
 	req_exec_amf_componentregister.source.conn_info = 0;
-	req_exec_amf_componentregister.source.in_addr.s_addr = 0;
+	req_exec_amf_componentregister.source.addr.family = 0;
 	req_exec_amf_componentregister.currentReadinessState = component->currentReadinessState;
 	req_exec_amf_componentregister.newReadinessState = component->newReadinessState;
 	req_exec_amf_componentregister.currentHAState = component->currentHAState;
@@ -1454,7 +1454,7 @@ void error_report (
 	req_exec_amf_errorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
 
 	req_exec_amf_errorreport.source.conn_info = 0;
-	req_exec_amf_errorreport.source.in_addr.s_addr = 0;
+	req_exec_amf_errorreport.source.addr.family = 0;
 	memcpy (&req_exec_amf_errorreport.req_lib_amf_errorreport.erroneousComponent,
 		&component->name,
 		sizeof (SaNameT));
@@ -1870,7 +1870,7 @@ static int amf_exec_init_fn (struct openais_config *openais_config)
 
 void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 {
-	if (component->source_addr.s_addr != this_ip->sin_addr.s_addr) {
+	if (!totemip_equal(&component->source_addr, this_ip)) {
 		return;
 	}
 
@@ -1880,13 +1880,13 @@ void amf_confchg_njoin (struct saAmfComponent *component ,void *data)
 
 void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 {
-	struct in_addr *source_addr = (struct in_addr *)data;
+	struct totem_ip_address *source_addr = (struct totem_ip_address *)data;
 	struct saAmfUnit *unit;
 	struct list_head *list;
 	struct saAmfComponent *leave_component = NULL;
 	enum amfDisabledUnlockedState disablestate = AMF_DISABLED_UNLOCKED_OUT_OF_SERVICE_COMPLETED;
 
-	if (component->source_addr.s_addr != source_addr->s_addr) {
+	if (!totemip_equal(&component->source_addr, source_addr)) {
 		return;
 	}
 
@@ -1904,7 +1904,7 @@ void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 		component = list_entry (list,
 			struct saAmfComponent, saAmfComponentList);
 
-		if (component->source_addr.s_addr != source_addr->s_addr) {
+		if (!totemip_equal(&component->source_addr, source_addr)) {
 			disablestate = AMF_DISABLED_UNLOCKED_FAILED;
 			continue;
 	  	}
@@ -1917,7 +1917,7 @@ void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->newHAState = SA_AMF_QUIESCED;
 		component->currentHAState = SA_AMF_QUIESCED;
-		component->source_addr.s_addr = 0;
+		component->source_addr.family = 0;
 		leave_component = component;
 	}
 
@@ -1936,9 +1936,9 @@ void amf_confchg_nleave (struct saAmfComponent *component ,void *data)
 
 static int amf_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+    struct totem_ip_address *member_list, int member_list_entries,
+    struct totem_ip_address *left_list, int left_list_entries,
+    struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -1997,7 +1997,7 @@ int amf_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-static int message_handler_req_exec_amf_componentregister (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_componentregister (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_componentregister *req_exec_amf_componentregister = (struct req_exec_amf_componentregister *)message;
 	struct res_lib_amf_componentregister res_lib_amf_componentregister;
@@ -2018,7 +2018,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	/*
 	 * If a node is joining menber ship ,Component States Synchronize
 	 */
-	if (req_exec_amf_componentregister->source.in_addr.s_addr == 0) {
+	if (req_exec_amf_componentregister->source.addr.family == 0) {
 		amf_synchronize (message, source_addr);
 		return (0);
 	}
@@ -2057,7 +2057,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 		component->local = 0;
 		component->registered = 1;
 		component->conn_info = req_exec_amf_componentregister->source.conn_info;
-		component->source_addr = source_addr;
+		totemip_copy(&component->source_addr, source_addr);
 		component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
 		component->currentHAState = 0;
@@ -2104,7 +2104,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	return (0);
 }
 
-static void amf_synchronize (void *message, struct in_addr source_addr)
+static void amf_synchronize (void *message, struct totem_ip_address *source_addr)
 {
 	struct req_exec_amf_componentregister *req_exec_amf_componentregister = (struct req_exec_amf_componentregister *)message;
 	struct saAmfComponent *component;
@@ -2118,7 +2118,7 @@ static void amf_synchronize (void *message, struct in_addr source_addr)
 	amfProxyComponent = findComponent (&req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName);
 
 	/* If this processor is component owner */
-	if (component->source_addr.s_addr == this_ip->sin_addr.s_addr) {
+	if (totemip_equal(&component->source_addr, this_ip)) {
 
 		/* No Operation */
 		return;
@@ -2135,7 +2135,7 @@ static void amf_synchronize (void *message, struct in_addr source_addr)
 	component->local = 0;
 	component->registered = 1;
 	component->conn_info = req_exec_amf_componentregister->source.conn_info;
-	component->source_addr = source_addr;
+	totemip_copy(&component->source_addr, source_addr);
 	component->currentReadinessState = SA_AMF_OUT_OF_SERVICE;
 	component->newReadinessState = SA_AMF_OUT_OF_SERVICE;
 	component->currentHAState = SA_AMF_QUIESCED;
@@ -2160,7 +2160,7 @@ static void amf_synchronize (void *message, struct in_addr source_addr)
 	return;
 }
 
-static int message_handler_req_exec_amf_componentunregister (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_componentunregister (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_componentunregister *req_exec_amf_componentunregister = (struct req_exec_amf_componentunregister *)message;
 	struct res_lib_amf_componentunregister res_lib_amf_componentunregister;
@@ -2228,7 +2228,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	return (0);
 }
 
-static int message_handler_req_exec_amf_errorreport (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_errorreport (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_errorreport *req_exec_amf_errorreport = (struct req_exec_amf_errorreport *)message;
 	struct res_lib_amf_errorreport res_lib_amf_errorreport;
@@ -2269,7 +2269,7 @@ static int message_handler_req_exec_amf_errorreport (void *message, struct in_ad
 	return (0);
 }
 
-static int message_handler_req_exec_amf_errorcancelall (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_errorcancelall (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_errorcancelall *req_exec_amf_errorcancelall = (struct req_exec_amf_errorcancelall *)message;
 	struct res_lib_amf_errorcancelall res_lib_amf_errorcancelall;
@@ -2318,7 +2318,7 @@ static int message_handler_req_exec_amf_errorcancelall (void *message, struct in
  * node.  That cluster node API has verified the readiness state, so its time to let
  * the rest of the cluster nodes know about the readiness state change.
  */
-static int message_handler_req_exec_amf_readinessstateset (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_readinessstateset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_readinessstateset *req_exec_amf_readinessstateset = (struct req_exec_amf_readinessstateset *)message;
 	struct saAmfComponent *component;
@@ -2343,7 +2343,7 @@ static int message_handler_req_exec_amf_readinessstateset (void *message, struct
  * node.  That cluster node API has verified the ha state, so its time to let
  * the rest of the cluster nodes know about the HA state change.
  */
-static int message_handler_req_exec_amf_hastateset (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_amf_hastateset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_amf_hastateset *req_exec_amf_hastateset = (struct req_exec_amf_hastateset *)message;
 	struct saAmfComponent *component;
@@ -2849,7 +2849,7 @@ static void amf_dump_comp (struct saAmfComponent *component ,void *data)
 	log_printf (level, "----------------\n" );
 	log_printf (level, "registered            = %d\n" ,component->registered);
 	log_printf (level, "local                 = %d\n" ,component->local );
-	log_printf (level, "source_addr           = %s\n" ,inet_ntoa (component->source_addr));
+	log_printf (level, "source_addr           = %s\n" ,totemip_print (&component->source_addr));
 	memset (name, 0 , sizeof(name));
 	memcpy (name, component->name.value, component->name.length);
 	log_printf (level, "name                  = %s\n" ,name );

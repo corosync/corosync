@@ -146,7 +146,7 @@ enum nodeexec_message_types {
 	MESSAGE_REQ_EXEC_LCK_LOCKPURGE = 30
 };
 
-extern struct sockaddr_in *this_ip;
+extern struct totem_ip_address *this_ip;
 
 poll_handle aisexec_poll_handle;
 

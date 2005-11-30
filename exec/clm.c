@@ -81,16 +81,16 @@ static unsigned long long view_initial = 0;
 
 static DECLARE_LIST_INIT (library_notification_send_listhead);
 
-SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
+SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id)
 {
 	SaClmClusterNodeT *ret = NULL;
 	int i;
 
-	if (node_id.s_addr == SA_CLM_LOCAL_NODE_ID) {
+	if (node_id == SA_CLM_LOCAL_NODE_ID) {
 		return (&clusterNodes[0]);
 	}
 	for (i = 0; i < clusterNodeEntries; i++) {
-		if (clusterNodes[i].nodeId == node_id.s_addr) {
+		if (clusterNodes[i].nodeId == node_id) {
 			ret = &clusterNodes[i];
 			break;
 		}
@@ -103,9 +103,9 @@ SaClmClusterNodeT *clm_get_by_nodeid (struct in_addr node_id)
  */
 static int clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+    struct totem_ip_address *member_list, int member_list_entries,
+    struct totem_ip_address *left_list, int left_list_entries,
+    struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static void clm_sync_init (void);
@@ -122,7 +122,7 @@ static int clm_init_two_fn (struct conn_info *conn_info);
 
 static int clm_exit_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr,
+static int message_handler_req_exec_clm_nodejoin (void *message, struct totem_ip_address *source_addr,
 	int endian_conversion_required);
 
 static int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info,
@@ -170,7 +170,7 @@ struct libais_handler clm_libais_handlers[] =
 	}
 };
 
-static int (*clm_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
+static int (*clm_aisexec_handler_fns[]) (void *, struct totem_ip_address *source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_clm_nodejoin
 };
 	
@@ -202,12 +202,21 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	/*
 	 * Build local cluster node data structure
 	 */
-	thisClusterNode.nodeId = this_ip->sin_addr.s_addr;
-	sprintf ((char *)thisClusterNode.nodeAddress.value, "%s", inet_ntoa (this_ip->sin_addr));
+	sprintf ((char *)thisClusterNode.nodeAddress.value, "%s", totemip_print (this_ip));
 	thisClusterNode.nodeAddress.length = strlen ((char *)thisClusterNode.nodeAddress.value);
+	if (this_ip->family == AF_INET) {
 	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET;
-	sprintf ((char *)thisClusterNode.nodeName.value, "%s", inet_ntoa (this_ip->sin_addr));
-	thisClusterNode.nodeName.length = strlen ((char *)thisClusterNode.nodeName.value);
+	} else
+	if (this_ip->family == AF_INET6) {
+	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET6;
+	} else {
+		assert (0);
+	}
+
+	strcpy ((char *)thisClusterNode.nodeName.value, (char *)thisClusterNode.nodeAddress.value);
+	thisClusterNode.nodeName.length = thisClusterNode.nodeAddress.length;
+	thisClusterNode.nodeId = this_ip->nodeid;
+	printf ("setting B to %x\n", this_ip->nodeid);
 	thisClusterNode.member = 1;
 	{
 		struct sysinfo s_info;
@@ -384,9 +393,9 @@ static int clm_nodejoin_send (void)
 
 static int clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 
@@ -401,36 +410,42 @@ static int clm_confchg_fn (
 	log_printf (LOG_LEVEL_NOTICE, "CLM CONFIGURATION CHANGE\n");
 	log_printf (LOG_LEVEL_NOTICE, "New Configuration:\n");
 	for (i = 0; i < member_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (member_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&member_list[i]));
 	}
 	log_printf (LOG_LEVEL_NOTICE, "Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (left_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&left_list[i]));
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", inet_ntoa (joined_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&joined_list[i]));
 	}
 
 	for (i = 0; i < left_list_entries; i++) {
-		nodes[i] = left_list[i].s_addr;
+		nodes[i] = left_list[i].nodeid;
 	}
 
 	libraryNotificationLeave (nodes, i);
+
 	/*
 	 * Load the thisClusterNode data structure in case we are
 	 * transitioning to network interface up or down
 	 */
-	thisClusterNode.nodeId = this_ip->sin_addr.s_addr;
-	strcpy ((char *)thisClusterNode.nodeName.value, (char *)inet_ntoa (this_ip->sin_addr));
-
-	sprintf ((char *)thisClusterNode.nodeAddress.value, "%s", inet_ntoa (this_ip->sin_addr));
+	sprintf ((char *)thisClusterNode.nodeAddress.value, "%s", totemip_print (this_ip));
 	thisClusterNode.nodeAddress.length = strlen ((char *)thisClusterNode.nodeAddress.value);
+	if (this_ip->family == AF_INET) {
 	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET;
-	sprintf ((char *)thisClusterNode.nodeName.value, "%s", inet_ntoa (this_ip->sin_addr));
-	thisClusterNode.nodeName.length = strlen ((char *)thisClusterNode.nodeName.value);
-
+	} else
+	if (this_ip->family == AF_INET6) {
+	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET6;
+	} else {
+		assert (0);
+	}
+	strcpy ((char *)thisClusterNode.nodeName.value,
+		(char *)thisClusterNode.nodeAddress.value);
+	thisClusterNode.nodeName.length = thisClusterNode.nodeAddress.length;
+	thisClusterNode.nodeId = this_ip->nodeid;
 	return (0);
 }
 
@@ -481,12 +496,12 @@ static void exec_clm_nodejoin_endian_conversion (struct req_exec_clm_nodejoin *i
 		SA_MAX_NAME_LENGTH);
 }
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr source_addr,
+static int message_handler_req_exec_clm_nodejoin (void *message, struct totem_ip_address *source_addr,
 	int endian_conversion_required)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 	struct req_exec_clm_nodejoin req_exec_clm_nodejoin_storage;
-	int found;
+	int found = 0;
 	int i;
 
 	if (endian_conversion_required) {
@@ -503,9 +518,7 @@ static int message_handler_req_exec_clm_nodejoin (void *message, struct in_addr 
 	 * Determine if nodejoin already received
 	 */
 	for (found = 0, i = 0; i < clusterNodeEntries; i++) {
-		if (memcmp (&clusterNodes[i], &req_exec_clm_nodejoin->clusterNode, 
-			sizeof (SaClmClusterNodeT)) == 0) {
-
+		if (clusterNodes[i].nodeId == req_exec_clm_nodejoin->clusterNode.nodeId) {
 			found = 1;
 		}
 	}

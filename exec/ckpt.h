@@ -41,7 +41,7 @@
 
 struct ckpt_refcnt {
 	int count;
-	struct in_addr addr;
+	struct totem_ip_address addr;
 };
 
 struct saCkptCheckpointSection {

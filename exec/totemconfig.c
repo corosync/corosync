@@ -150,7 +150,6 @@ extern int totem_config_read (
 	memset (totem_config->interfaces, 0,
 		sizeof (struct totem_interface) * interface_max);
 
-	totem_config->mcast_addr.sin_family = AF_INET;
 	totem_config->secauth = 1;
 
 	fp = fopen ("/etc/ais/openais.conf", "r");
@@ -215,14 +214,17 @@ extern int totem_config_read (
 			if ((loc = strstr_rs (line, "threads:"))) {
 				totem_config->threads = atoi (loc);
 			} else
+			if ((loc = strstr_rs (line, "nodeid:"))) {
+				res = totem_config->node_id = atoi (loc);
+			} else
 			if ((loc = strstr_rs (line, "netmtu:"))) {
 				totem_config->net_mtu = atoi (loc);
 			} else
 			if ((loc = strstr_rs (line, "mcastaddr:"))) {
-				res = inet_aton (loc, &totem_config->mcast_addr.sin_addr);
+				res = totemip_parse (&totem_config->mcast_addr, loc);
 			} else
 			if ((loc = strstr_rs (line, "mcastport:"))) {
-				res = totem_config->mcast_addr.sin_port = htons (atoi (loc));
+				res = totem_config->ip_port = htons (atoi (loc));
 			} else
 			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
 				if (interface_max == totem_config->interface_count) {
@@ -231,8 +233,7 @@ extern int totem_config_read (
 					totem_config->interface_count);
 					goto parse_error;
 				}
-				res = inet_aton (loc,
-					&totem_config->interfaces[totem_config->interface_count].bindnet.sin_addr);
+				res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, loc);
 				totem_config->interface_count += 1;
 			} else
 			if ((loc = strstr_rs (line, "token:"))) {
@@ -305,13 +306,20 @@ int totem_config_validate (
 	/*
 	 * Some error checking of parsed data to make sure its valid
 	 */
-	if (totem_config->mcast_addr.sin_addr.s_addr == 0) {
+	if ((int *)&totem_config->mcast_addr.addr == 0) {
 		error_reason = "No multicast address specified";
 		goto parse_error;
 	}
 
-	if (totem_config->mcast_addr.sin_port == 0) {
+	if (totem_config->ip_port == 0) {
 		error_reason = "No multicast port specified";
+		goto parse_error;
+	}
+
+	if (totem_config->mcast_addr.family == AF_INET6 &&
+		totem_config->node_id == 0) {
+
+		error_reason = "An IPV6 network requires that a node ID be specified.";
 		goto parse_error;
 	}
 
@@ -470,6 +478,7 @@ int totem_config_keyread (
 {
 	int fd;
 	int res;
+	int i;
 
 	if (totem_config->secauth == 0) {
 		return (0);
@@ -496,6 +505,16 @@ int totem_config_keyread (
 		sprintf (error_string_response, "Could only read %d bits of 1024 bits from %s.\n",
 			res * 8, key_location);
 		goto parse_error;
+	}
+	if (totem_config->mcast_addr.family != totem_config->interfaces[0].bindnet.family) {
+		strcpy (error_string_response, "Multicast address family does not match bind address family");
+		goto parse_error;
+	}
+	for (i = 0; i < totem_config->interface_count; i++) {
+		if (totem_config->mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
+			strcpy (error_string_response, "Not all bind address belong to the same IP family");
+			goto parse_error;
+		}
 	}
 	return (0);
 

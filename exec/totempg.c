@@ -81,6 +81,7 @@
  *	
  */
 
+#include <netinet/in.h>
 #include "totempg.h"
 #include "totemsrp.h"
 #include "totemmrp.h"
@@ -89,7 +90,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <netinet/in.h>
+
 
 #include "swab.h"
 
@@ -140,20 +141,20 @@ static int mcast_packed_msg_count = 0;
 struct totem_config *totempg_totem_config;
 
 static void (*app_deliver_fn) (
-		struct in_addr source_addr,
+		struct totem_ip_address *source_addr,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required) = 0;
 
 static void (*app_confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id) = 0;
 
 struct assembly {
-	struct in_addr addr;
+	struct totem_ip_address addr;
 	unsigned char data[MESSAGE_SIZE_MAX];
 	int index;
 	unsigned char last_frag_num;
@@ -178,12 +179,12 @@ int fragment_continuation = 0;
 
 static struct iovec iov_delv;
 
-static struct assembly *find_assembly (struct in_addr addr)
+static struct assembly *find_assembly (struct totem_ip_address *addr)
 {
 	int i;
 
 	for (i = 0; i < assembly_list_entries; i++) {
-		if (addr.s_addr == assembly_list[i]->addr.s_addr) {
+		if (totemip_equal(addr, &assembly_list[i]->addr)) {
 			return (assembly_list[i]);
 		}
 	}
@@ -192,9 +193,9 @@ static struct assembly *find_assembly (struct in_addr addr)
 
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -208,7 +209,7 @@ static void totempg_confchg_fn (
 	 */
 	for (i = 0; i < left_list_entries; i++) {
 		for (j = 0; j < assembly_list_entries; j++) {
-			if (left_list[i].s_addr == assembly_list[j]->addr.s_addr) {
+			if (totemip_equal(&left_list[i], &assembly_list[j]->addr)) {
 				assembly_list[j]->index = 0;
 			}
 		}
@@ -220,7 +221,7 @@ static void totempg_confchg_fn (
 	for (i = 0; i < member_list_entries; i++) {
 		found = 0;
 		for (j = 0; j < assembly_list_entries; j++) {
-			if (member_list[i].s_addr == assembly_list[j]->addr.s_addr) {
+			if (totemip_equal(&member_list[i], &assembly_list[j]->addr)) {
 				found = 1; 
 				break;
 			}
@@ -229,8 +230,8 @@ static void totempg_confchg_fn (
 			assembly_list[assembly_list_entries] =
 				malloc (sizeof (struct assembly));
 			assert (assembly_list[assembly_list_entries]); // TODO
-			assembly_list[assembly_list_entries]->addr.s_addr = 
-				member_list[i].s_addr;
+			totemip_copy(&assembly_list[assembly_list_entries]->addr, 
+				     &member_list[i]);
 			assembly_list[assembly_list_entries]->index = 0;
 			assembly_list_entries += 1;
 		}
@@ -244,7 +245,7 @@ static void totempg_confchg_fn (
 }
 
 static void totempg_deliver_fn (
-	struct in_addr source_addr,
+	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -462,16 +463,16 @@ int totempg_initialize (
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
-		struct in_addr source_addr,
+		struct totem_ip_address *source_addr,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
 	int res;

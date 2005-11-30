@@ -61,13 +61,13 @@ extern int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct sockaddr_in *iface_sockaddr_in));
+		struct totem_ip_address *iface_address));
 
 extern int totemnet_processor_count_set (
 	totemnet_handle handle,
@@ -75,7 +75,7 @@ extern int totemnet_processor_count_set (
 
 extern int totemnet_token_send (
 	totemnet_handle handle,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	int msg_len);
 

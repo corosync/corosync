@@ -67,19 +67,28 @@ typedef enum {
 	EVS_ERR_TOO_MANY_GROUPS=30
 } evs_error_t;
 
+#define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
+
+/* These are the things that get passed around */
+struct evs_address {
+	unsigned int nodeid;
+	unsigned short family;
+	unsigned char addr[TOTEMIP_ADDRLEN];
+};
+
 struct evs_group {
 	char key[32];
 };
 
 typedef void (*evs_deliver_fn_t) (
-	struct in_addr source_addr,
+	struct evs_address *source_addr,
 	void *msg,
 	int msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries);
+	struct evs_address *member_list, int member_list_entries,
+	struct evs_address *left_list, int left_list_entries,
+	struct evs_address *joined_list, int joined_list_entries);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
@@ -162,8 +171,8 @@ evs_error_t evs_mcast_groups (
  */
 evs_error_t evs_membership_get (
 	evs_handle_t handle,
-	struct in_addr *local_addr,
-	struct in_addr *member_list,
+	struct evs_address *local_addr,
+	struct evs_address *member_list,
 	int *member_list_entries);
 
 #endif /* OPENAIS_EVS_H_DEFINED */

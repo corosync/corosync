@@ -52,6 +52,7 @@
 
 #include "../include/saAis.h"
 #include "../include/ipc_gen.h"
+#include "totemip.h"
 #include "../include/ipc_evs.h"
 #include "../include/list.h"
 #include "../include/queue.h"
@@ -73,14 +74,14 @@ static int evs_executive_initialize (struct openais_config *);
 
 static int evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+    struct totem_ip_address *member_list, int member_list_entries,
+    struct totem_ip_address *left_list, int left_list_entries,
+    struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static int evs_init_two_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr, int endian_conversion_required);
+static int message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
 
 static int message_handler_req_evs_join (struct conn_info *conn_info, void *message);
 static int message_handler_req_evs_leave (struct conn_info *conn_info, void *message);
@@ -124,7 +125,7 @@ struct libais_handler evs_libais_handlers[] =
 	}
 };
 
-static int (*evs_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
+static int (*evs_aisexec_handler_fns[]) (void *, struct totem_ip_address *source_addr, int endian_conversion_required) = {
 	message_handler_req_exec_mcast
 };
 	
@@ -156,9 +157,9 @@ struct res_evs_confchg_callback res_evs_confchg_callback;
 
 static int evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+    struct totem_ip_address *member_list, int member_list_entries,
+    struct totem_ip_address *left_list, int left_list_entries,
+    struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 
@@ -174,15 +175,18 @@ static int evs_confchg_fn (
 	res_evs_confchg_callback.header.error = SA_OK;
 
 	for (i = 0; i < member_list_entries; i++) {
-		res_evs_confchg_callback.member_list[i].s_addr = member_list[i].s_addr;
+		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.member_list[i],
+			&member_list[i]);
 	}
 	res_evs_confchg_callback.member_list_entries = member_list_entries;
 	for (i = 0; i < left_list_entries; i++) {
-		res_evs_confchg_callback.left_list[i].s_addr = left_list[i].s_addr;
+		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.left_list[i],
+			&left_list[i]);
 	}
 	res_evs_confchg_callback.left_list_entries = left_list_entries;
 	for (i = 0; i < joined_list_entries; i++) {
-		res_evs_confchg_callback.joined_list[i].s_addr = joined_list[i].s_addr;
+		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.joined_list[i],
+			&joined_list[i]);
 	}
 	res_evs_confchg_callback.joined_list_entries = joined_list_entries;
 
@@ -407,7 +411,8 @@ static int message_handler_req_evs_membership_get (struct conn_info *conn_info, 
 	res_lib_evs_membership_get.header.size = sizeof (struct res_lib_evs_membership_get);
 	res_lib_evs_membership_get.header.id = MESSAGE_RES_EVS_MEMBERSHIP_GET;
 	res_lib_evs_membership_get.header.error = EVS_OK;
-	res_lib_evs_membership_get.local_addr.s_addr = this_ip->sin_addr.s_addr;
+	totemip_copy((struct totem_ip_address *)&res_lib_evs_membership_get.local_addr,
+		this_ip);
 	memcpy (&res_lib_evs_membership_get.member_list,
 		&res_evs_confchg_callback.member_list,
 		sizeof (res_lib_evs_membership_get.member_list));
@@ -421,7 +426,7 @@ static int message_handler_req_evs_membership_get (struct conn_info *conn_info, 
 	return (0);
 }
 
-static int message_handler_req_exec_mcast (void *message, struct in_addr source_addr, int endian_conversion_required)
+static int message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
 {
 	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)message;
 	struct res_evs_deliver_callback res_evs_deliver_callback;
@@ -460,7 +465,8 @@ static int message_handler_req_exec_mcast (void *message, struct in_addr source_
 		}
 
 		if (found) {
-			res_evs_deliver_callback.source_addr.s_addr = source_addr.s_addr;
+			totemip_copy((struct totem_ip_address *)&res_evs_deliver_callback.evs_address,
+				source_addr);
 			libais_send_response (conn_info, &res_evs_deliver_callback,
 				sizeof (struct res_evs_deliver_callback));
 			libais_send_response (conn_info, msg_addr,

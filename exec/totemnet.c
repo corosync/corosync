@@ -79,8 +79,6 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
-#define LOCALHOST_IP inet_addr("127.0.0.1")
-
 #define HMAC_HASH_SIZE 20
 struct security_header {
 	unsigned char hash_digest[HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
@@ -94,7 +92,8 @@ struct totemnet_mcast_thread_state {
 };
 
 struct totemnet_socket {
-	int mcast;
+	int mcast_recv;
+	int mcast_send;
 	int token;
 };
 
@@ -121,13 +120,13 @@ struct totemnet_instance {
 
 	void (*totemnet_deliver_fn) (
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len);
 
 	void (*totemnet_iface_change_fn) (
 		void *context,
-		struct sockaddr_in *iface_sockaddr_in);
+		struct totem_ip_address *iface_address);
 
 	/*
 	 * Function and data used to log messages
@@ -156,9 +155,7 @@ struct totemnet_instance {
 
 	struct totemnet_socket totemnet_sockets;
 
-	struct sockaddr_in sockaddr_in_mcast;
-
-	struct in_addr in_addr_mcast;
+	struct totem_ip_address mcast_address;
 
 	int stats_sent;
 
@@ -172,7 +169,7 @@ struct totemnet_instance {
 
 	struct timeval stats_tv_start;
 
-	struct sockaddr_in my_id;
+	struct totem_ip_address my_id;
 
 	int firstrun;
 
@@ -200,23 +197,23 @@ static struct saHandleDatabase totemnet_instance_database = {
 	.handleInstanceDestructor	= 0
 };
 
-static int loopback_determine (struct sockaddr_in *bound_to);
+static int loopback_determine (int family, struct totem_ip_address *bound_to);
 static void netif_down_check (struct totemnet_instance *instance);
 
 static int totemnet_build_sockets (
 	struct totemnet_instance *instance,
-	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct totem_ip_address *bindnet_address,
+	struct totem_ip_address *mcastaddress,
 	struct totemnet_socket *sockets,
-	struct sockaddr_in *bound_to,
+	struct totem_ip_address *bound_to,
 	int *interface_up);
 
 static int totemnet_build_sockets_loopback (
 	struct totemnet_instance *instance,
-	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct totem_ip_address *mcast_address,
+	struct totem_ip_address *bindnet_address,
 	struct totemnet_socket *sockets,
-	struct sockaddr_in *bound_to);
+	struct totem_ip_address *bound_to);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {
@@ -389,7 +386,9 @@ void totemnet_iovec_send (
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec_encrypt[20];
 	struct iovec *iovec_sendmsg;
+	struct sockaddr_storage sockaddr;
 	int iov_len;
+	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
 
@@ -421,8 +420,10 @@ void totemnet_iovec_send (
 	/*
 	 * Build multicast message
 	 */
-	msg_mcast.msg_name = &instance->sockaddr_in_mcast;
-	msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
+	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
+		instance->totem_config->ip_port, &sockaddr, &addrlen);
+	msg_mcast.msg_name = &sockaddr;
+	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = iovec_sendmsg;
 	msg_mcast.msg_iovlen = iov_len;
 	msg_mcast.msg_control = 0;
@@ -430,19 +431,19 @@ void totemnet_iovec_send (
 	msg_mcast.msg_flags = 0;
 
 	/*
-	 * Transmit token or multicast message
+	 * Transmit multicast message
 	 * An error here is recovered by totemnet
 	 */
-	res = sendmsg (instance->totemnet_sockets.mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
+		MSG_NOSIGNAL | MSG_DONTWAIT);
 }
 
 void totemnet_msg_send (
 	struct totemnet_instance *instance,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	int msg_len)
 {
-	struct sockaddr_in next_addr;
 	struct msghdr msg_mcast;
 	int res = 0;
 	int buf_len;
@@ -450,6 +451,8 @@ void totemnet_msg_send (
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec[2];
 	struct iovec iovec_sendmsg;
+	struct sockaddr_storage sockaddr;
+	int addrlen;
 	int fd;
 
 	if (instance->totem_config->secauth == 1) {
@@ -484,21 +487,18 @@ void totemnet_msg_send (
 		/*
 		 * system_to is non-zero, so its a token send operation
 		 */
-		next_addr.sin_addr.s_addr = system_to->s_addr;
-		next_addr.sin_port = instance->sockaddr_in_mcast.sin_port;
-		next_addr.sin_family = AF_INET;
-
+		totemip_totemip_to_sockaddr_convert(system_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
 		fd = instance->totemnet_sockets.token;
-		msg_mcast.msg_name = &next_addr;
 	} else {
 		/*
 		 * system_to is zero, so its a mcast send operation
 		 */
-		fd = instance->totemnet_sockets.mcast;
-		msg_mcast.msg_name = &instance->sockaddr_in_mcast;
+		totemip_totemip_to_sockaddr_convert(&instance->mcast_address, instance->totem_config->ip_port, &sockaddr, &addrlen);
+		fd = instance->totemnet_sockets.mcast_send;
 	}
 
-	msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
+	msg_mcast.msg_name = &sockaddr;
+	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = &iovec_sendmsg;
 	msg_mcast.msg_iovlen = 1;
 	msg_mcast.msg_control = 0;
@@ -510,7 +510,6 @@ void totemnet_msg_send (
 	 * An error here is recovered by totemnet
 	 */
 	res = sendmsg (fd, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
-//printf ("sent %d bytes\n", res);
 }
 
 static void totemnet_mcast_thread_state_constructor (
@@ -538,7 +537,9 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	int buf_len;
 	struct iovec iovec_encrypted;
 	struct iovec *iovec_sendmsg;
+	struct sockaddr_storage sockaddr;
 	unsigned int iovs;
+	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
 		memmove (&work_item->iovec[1], &work_item->iovec[0],
@@ -564,8 +565,11 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 		iovs = work_item->iov_len;
 	}
 
-	msg_mcast.msg_name = &instance->sockaddr_in_mcast;
-	msg_mcast.msg_namelen = sizeof (struct sockaddr_in);
+	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
+		instance->totem_config->ip_port, &sockaddr, &addrlen);
+
+	msg_mcast.msg_name = &sockaddr;
+	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = iovec_sendmsg;
 	msg_mcast.msg_iovlen = iovs;
 	msg_mcast.msg_control = 0;
@@ -573,16 +577,15 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	msg_mcast.msg_flags = 0;
 
 	/*
-	 * Transmit token or multicast message
+	 * Transmit multicast message
 	 * An error here is recovered by totemnet
 	 */
-	res = sendmsg (instance->totemnet_sockets.mcast, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
-
+	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
+		MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (res > 0) {
 		instance->stats_sent += res;
 	}
 }
-
 
 int totemnet_finalize (
 	totemnet_handle handle)
@@ -621,7 +624,8 @@ static int net_deliver_fn (
 	struct msghdr msg_recv;
 	struct iovec *iovec;
 	struct security_header *security_header;
-	struct sockaddr_in system_from;
+	struct sockaddr_storage system_from;
+	struct totem_ip_address from_address;
 	int bytes_received;
 	int res = 0;
 	unsigned char *msg_offset;
@@ -639,7 +643,7 @@ static int net_deliver_fn (
 	 * Receive datagram
 	 */
 	msg_recv.msg_name = &system_from;
-	msg_recv.msg_namelen = sizeof (struct sockaddr_in);
+	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_control = 0;
@@ -659,6 +663,7 @@ static int net_deliver_fn (
 		instance->totemnet_log_printf (instance->totemnet_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
 		return (0);
 	}
+	totemip_sockaddr_to_totemip_convert(&system_from, &from_address);
 
 	security_header = (struct security_header *)iovec->iov_base;
 
@@ -687,7 +692,7 @@ static int net_deliver_fn (
 	 */
 	instance->totemnet_deliver_fn (
 		instance->context,
-		&system_from.sin_addr,
+		&from_address,
 		msg_offset,
 		size_delv);
 		
@@ -697,73 +702,34 @@ static int net_deliver_fn (
 
 static int netif_determine (
 	struct totemnet_instance *instance,
-	struct sockaddr_in *bindnet,
-	struct sockaddr_in *bound_to,
-	int *interface_up)
+	struct totem_ip_address *bindnet,
+	struct totem_ip_address *bound_to,
+	int *interface_up,
+	int *interface_num)
 {
-	struct sockaddr_in *sockaddr_in;
-	int id_fd;
-	struct ifconf ifc;
-	int numreqs = 0;
 	int res;
-	int i;
-	in_addr_t mask_addr;
 
-	*interface_up = 0;
-
-	/*
-	 * Generate list of local interfaces in ifc.ifc_req structure
-	 */
-	id_fd = socket (AF_INET, SOCK_STREAM, 0);
-	ifc.ifc_buf = 0;
-	do {
-		numreqs += 32;
-		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
-		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
-		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
-		if (res < 0) {
-			close (id_fd);
-			return -1;
-		}
-	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
-	res = -1;
+	res = totemip_iface_check (bindnet, bound_to,
+		interface_up, interface_num);
 
 	/*
-	 * Find interface address to bind to
+	 * If the desired binding is to an IPV4 network and nodeid isn't
+	 * specified, retrieve the node id from this_ip network address
+	 *
+	 * IPV6 networks must have a node ID specified since the node id
+	 * field is only 32 bits.
 	 */
-	for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++) {
-		sockaddr_in = (struct sockaddr_in *)&ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_addr;
-		mask_addr = inet_addr ("255.255.255.0");
-
-		if ((sockaddr_in->sin_family == AF_INET) &&
-			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
-			(bindnet->sin_addr.s_addr & mask_addr)) {
-
-			bound_to->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
-			res = i;
-
-			if (ioctl(id_fd, SIOCGIFFLAGS, &ifc.ifc_ifcu.ifcu_req[i]) < 0) {
-				printf ("couldn't do ioctl\n");
-			}
-
-			*interface_up = ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_flags & IFF_UP;
-			break; /* for */
-		}
+	if (bound_to->family == AF_INET && bound_to->nodeid == 0) {
+		memcpy (&bound_to->nodeid, bound_to->addr, sizeof (int));
 	}
-	free (ifc.ifc_buf);
-	close (id_fd);
-	
+
 	return (res);
 }
+	
 
-static int loopback_determine (struct sockaddr_in *bound_to)
+static int loopback_determine (int family, struct totem_ip_address *bound_to)
 {
-
-	bound_to->sin_addr.s_addr = LOCALHOST_IP;
-	if (&bound_to->sin_addr.s_addr == 0) {
-		return -1;
-	}
-	return 1;
+	return totemip_localhost(family, bound_to);
 }
 
 
@@ -777,6 +743,7 @@ static void timer_function_netif_check_timeout (
 	struct totemnet_instance *instance = (struct totemnet_instance *)data;
 	int res;
 	int interface_up;
+	int interface_num;
 
 	/*
 	* Build sockets for every interface
@@ -784,23 +751,28 @@ static void timer_function_netif_check_timeout (
 	netif_determine (instance,
 		&instance->totemnet_interface->bindnet,
 		&instance->totemnet_interface->boundto,
-		&interface_up);
+		&interface_up, &interface_num);
 
-	if (instance->totemnet_sockets.mcast > 0) {
-		close (instance->totemnet_sockets.mcast);
+	if (instance->totemnet_sockets.mcast_recv > 0) {
+		close (instance->totemnet_sockets.mcast_recv);
 	 	poll_dispatch_delete (instance->totemnet_poll_handle,
-		instance->totemnet_sockets.mcast);
+			instance->totemnet_sockets.mcast_recv);
+	}
+	if (instance->totemnet_sockets.mcast_send > 0) {
+		close (instance->totemnet_sockets.mcast_send);
+	 	poll_dispatch_delete (instance->totemnet_poll_handle,
+			instance->totemnet_sockets.mcast_send);
 	}
 	if (instance->totemnet_sockets.token > 0) {
 		close (instance->totemnet_sockets.token);
 		poll_dispatch_delete (instance->totemnet_poll_handle,
-		instance->totemnet_sockets.token);
+			instance->totemnet_sockets.token);
 	}
 
 	if (!interface_up) {
 		instance->netif_bind_state = BIND_STATE_LOOPBACK;
 		res = totemnet_build_sockets_loopback(instance,
-			&instance->sockaddr_in_mcast,
+			&instance->mcast_address,
 			&instance->totemnet_interface->bindnet,
 			&instance->totemnet_sockets,
 			&instance->totemnet_interface->boundto);
@@ -815,10 +787,8 @@ static void timer_function_netif_check_timeout (
 		/*
 		* Create and bind the multicast and unicast sockets
 		*/
-		memcpy (&instance->sockaddr_in_mcast.sin_addr,
-			&instance->in_addr_mcast, sizeof (struct in_addr));
 		res = totemnet_build_sockets (instance,
-			&instance->sockaddr_in_mcast,
+			&instance->mcast_address,
 			&instance->totemnet_interface->bindnet,
 			&instance->totemnet_sockets,
 			&instance->totemnet_interface->boundto,
@@ -826,7 +796,7 @@ static void timer_function_netif_check_timeout (
 
 		poll_dispatch_add (
 			instance->totemnet_poll_handle,
-			instance->totemnet_sockets.mcast,
+			instance->totemnet_sockets.mcast_recv,
 			POLLIN, instance, net_deliver_fn, UINT_MAX);
 
 		poll_dispatch_add (
@@ -835,8 +805,7 @@ static void timer_function_netif_check_timeout (
 			POLLIN, instance, net_deliver_fn, UINT_MAX);
 	}
 
-	memcpy (&instance->my_id, &instance->totemnet_interface->boundto,
-		sizeof (struct sockaddr_in));	
+	totemip_copy (&instance->my_id, &instance->totemnet_interface->boundto);
 
 	/*
 	* This stuff depends on totemnet_build_sockets
@@ -845,7 +814,7 @@ static void timer_function_netif_check_timeout (
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
 				" The network interface [%s] is now up.\n",
-				inet_ntoa (instance->totemnet_interface->boundto.sin_addr));
+				totemip_print (&instance->totemnet_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 			instance->totemnet_iface_change_fn (instance->context, &instance->my_id);
 		}
@@ -854,15 +823,17 @@ static void timer_function_netif_check_timeout (
 		 * If this is a single processor, detect downs which may not 
 		 * be detected by token loss when the interface is downed
 		 */
-		/*
+		
+/*
 		if (instance->my_memb_entries <= 1) {
 			poll_timer_add (instance->totemnet_poll_handle,
-				instance->timeout_downcheck,
+				instance->totem_config->downcheck_timeout,
 				(void *)instance,
 				timer_function_netif_check_timeout,
 				&instance->timer_netif_check_timeout);
 		}
-		*/
+*/
+		
 	} else {		
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
@@ -874,11 +845,13 @@ static void timer_function_netif_check_timeout (
 		/*
 		 * Add a timer to retry building interfaces and request memb_gather_enter
 		 */
+/*
 		poll_timer_add (instance->totemnet_poll_handle,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);
+*/
 	}
 }
 
@@ -892,15 +865,16 @@ static void netif_down_check (struct totemnet_instance *instance)
 	timer_function_netif_check_timeout (instance);
 }
 
-	struct sockaddr_in sockaddr_in_test;
 static int totemnet_build_sockets_loopback (
 	struct totemnet_instance *instance,
-	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct totem_ip_address *mcast_addr,
+	struct totem_ip_address *bindnet_addr,
 	struct totemnet_socket *sockets,
-	struct sockaddr_in *bound_to)
+	struct totem_ip_address *bound_to)
 {
 	struct ip_mreq mreq;
+	struct sockaddr_storage sockaddr;
+	int addrlen;
 	int res;
 
 	memset (&mreq, 0, sizeof (struct ip_mreq));
@@ -908,21 +882,18 @@ static int totemnet_build_sockets_loopback (
 	/*
 	 * Determine the ip address bound to and the interface name
 	 */
-	res = loopback_determine (bound_to);
+	res = loopback_determine (mcast_addr->family, bound_to);
 
 	if (res == -1) {
 		return (-1);
 	}
 
-	/* TODO this should be somewhere else */
-	instance->my_id.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	instance->my_id.sin_family = AF_INET;
-	instance->my_id.sin_port = sockaddr_mcast->sin_port;
+	totemip_copy(&instance->my_id, bound_to);
 
 	 /*
 	 * Setup unicast socket
 	 */
-	sockets->token = socket (AF_INET, SOCK_DGRAM, 0);
+	sockets->token = socket (bound_to->family, SOCK_DGRAM, 0);
 	if (sockets->token == -1) {
 		perror ("socket2");
 		return (-1);
@@ -932,102 +903,63 @@ static int totemnet_build_sockets_loopback (
 	 * Bind to unicast socket used for token send/receives	
 	 * This has the side effect of binding to the correct interface
 	 */
-	sockaddr_in_test.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	sockaddr_in_test.sin_family = AF_INET;
-	sockaddr_in_test.sin_port = sockaddr_mcast->sin_port;
-
-	res = bind (sockets->token, (struct sockaddr *)&sockaddr_in_test,
-			sizeof (struct sockaddr_in));
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
+	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		perror ("bind2 failed");
 		return (-1);
 	}
 
-	memcpy(&instance->sockaddr_in_mcast, &sockaddr_in_test, sizeof(struct sockaddr_in));
-	sockets->mcast = sockets->token;
+	sockets->mcast_send = sockets->token;
+	sockets->mcast_recv = sockets->token;
 
 	return (0);
 }
+/* Set the socket priority to INTERACTIVE to ensure
+   that our messages don't get queued behind anything else */
+static void totemnet_traffic_control_set(struct totemnet_instance *instance, int sock)
+{
+    int prio = 6; /* TC_PRIO_INTERACTIVE */
 
+    if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int)))
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set traffic priority. (%s)\n", strerror (errno));
+}
 
-static int totemnet_build_sockets (
+static int totemnet_build_sockets_ipv4 (
 	struct totemnet_instance *instance,
-	struct sockaddr_in *sockaddr_mcast,
-	struct sockaddr_in *sockaddr_bindnet,
+	struct totem_ip_address *mcast_address,
+	struct totem_ip_address *bindnet_address,
 	struct totemnet_socket *sockets,
-	struct sockaddr_in *bound_to,
+	struct totem_ip_address *bound_to,
 	int *interface_up)
 {
 	struct ip_mreq mreq;
-	struct sockaddr_in sockaddr_in_test;
-	char flag;
-	int res;
+	struct sockaddr_storage bound_ss;
+	struct sockaddr_in *bound_sin = (struct sockaddr_in *)&bound_ss;
+	struct sockaddr_storage mcast_ss;
+	struct sockaddr_in *mcast_sin = (struct sockaddr_in *)&mcast_ss;
+	struct sockaddr_storage sockaddr;
 	unsigned int sendbuf_size;
 	unsigned int recvbuf_size;
 	unsigned int optlen = sizeof (sendbuf_size);
-	
-	memset (&mreq, 0, sizeof (struct ip_mreq));
-
-	/*
-	 * Determine the ip address bound to and the interface name
-	 */
-	res = netif_determine (instance,
-		sockaddr_bindnet,
-		bound_to,
-		interface_up);
-
-	if (res == -1) {
-		return (-1);
-	}
-
-	/* TODO this should be somewhere else */
-	instance->my_id.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	instance->my_id.sin_family = AF_INET;
-	instance->my_id.sin_port = sockaddr_mcast->sin_port;
+	int flag;
+	int addrlen;
+	int res;
 
 	/*
 	 * Create multicast socket
 	 */
-	sockets->mcast = socket (AF_INET, SOCK_DGRAM, 0);
-	if (sockets->mcast == -1) {
+	sockets->mcast_send = socket (AF_INET, SOCK_DGRAM, 0);
+	if (sockets->mcast_send == -1) {
 		perror ("socket");
 		return (-1);
-	}
-
-	if (setsockopt (sockets->mcast, SOL_IP, IP_MULTICAST_IF,
-		&bound_to->sin_addr, sizeof (struct in_addr)) < 0) {
-
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
-	}
-
-	recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
-	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
-	/*
-	 * Set buffer sizes to avoid overruns
-	 */
-	res = setsockopt (sockets->mcast, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, optlen);
-	res = setsockopt (sockets->mcast, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, optlen);
-
-	res = getsockopt (sockets->mcast, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
-	if (res == 0) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
-			"Multicast socket recv buffer size (%d bytes).\n", recvbuf_size);
-	}
-
-	res = getsockopt (sockets->mcast, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
-	if (res == 0) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
-			"Multicast socket send buffer size (%d bytes).\n", sendbuf_size);
 	}
 
 	/*
 	 * Bind to multicast socket used for multicast send/receives
 	 */
-	sockaddr_in_test.sin_family = AF_INET;
-	sockaddr_in_test.sin_addr.s_addr = sockaddr_mcast->sin_addr.s_addr;
-	sockaddr_in_test.sin_port = sockaddr_mcast->sin_port;
-	res = bind (sockets->mcast, (struct sockaddr *)&sockaddr_in_test,
-		sizeof (struct sockaddr_in));
+	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_config->ip_port, &sockaddr, &addrlen);
+	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		perror ("bind failed");
 		return (-1);
@@ -1046,49 +978,261 @@ static int totemnet_build_sockets (
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
-	sockaddr_in_test.sin_family = AF_INET;
-	sockaddr_in_test.sin_addr.s_addr = bound_to->sin_addr.s_addr;
-	sockaddr_in_test.sin_port = sockaddr_mcast->sin_port;
-	res = bind (sockets->token, (struct sockaddr *)&sockaddr_in_test,
-		sizeof (struct sockaddr_in));
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
+	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		perror ("bind2 failed");
 		return (-1);
 	}
 
-#ifdef CONFIG_USE_BROADCAST
-/* This config option doesn't work */
-{
-	int on = 1;
-	setsockopt (sockets->mcast, SOL_SOCKET, SO_BROADCAST, (char *)&on, sizeof (on));
-}
-#else
-	/*
-	 * Join group membership on socket
-	 */
-	mreq.imr_multiaddr.s_addr = sockaddr_mcast->sin_addr.s_addr;
-	mreq.imr_interface.s_addr = bound_to->sin_addr.s_addr;
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &bound_ss, &addrlen);
+	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_config->ip_port, &mcast_ss, &addrlen);
+	memset (&mreq, 0, sizeof (struct ip_mreq));
 
-	res = setsockopt (sockets->mcast, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+	if (setsockopt (sockets->mcast_send, SOL_IP, IP_MULTICAST_IF,
+		&bound_sin->sin_addr, sizeof (struct in_addr)) < 0) {
+
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not bind to device for multicast, group messaging may not work properly. (%s)\n", strerror (errno));
+	}
+
+	recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	/*
+	 * Set buffer sizes to avoid overruns
+	 */
+	res = setsockopt (sockets->mcast_send, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, optlen);
+	res = setsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, optlen);
+
+	res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
+	if (res == 0) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			"Multicast socket send buffer size (%d bytes).\n", recvbuf_size);
+	}
+
+	res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size,
+		&optlen);
+	if (res == 0) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			"Multicast socket send buffer size (%d bytes).\n", sendbuf_size);
+	}
+
+	/*
+	 * Join group membership
+	 */
+	mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
+	mreq.imr_interface.s_addr = bound_sin->sin_addr.s_addr;
+
+	res = setsockopt (sockets->mcast_send, SOL_IP, IP_ADD_MEMBERSHIP,
 		&mreq, sizeof (mreq));
 	if (res == -1) {
-		perror ("join multicast group failed");
+		perror ("join ipv4 multicast group failed");
 		return (-1);
 	}
 
-#endif
 	/*
 	 * Turn on multicast loopback
 	 */
 	flag = 1;
-	res = setsockopt (sockets->mcast, IPPROTO_IP, IP_MULTICAST_LOOP,
+	res = setsockopt (sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_LOOP,
 		&flag, sizeof (flag));
 	if (res == -1) {
 		perror ("turn off loopback");
 		return (-1);
 	}
 
+	/*
+	 * ipv4 binds to a network address, not a network interface like
+	 * ipv6.  So it is acceptable to utilize the same file descriptor
+	 * for both send and receive since outgoing packets will be
+	 * set with the correct source address
+	 */
+	sockets->mcast_recv = sockets->mcast_send;
 	return (0);
+}
+
+static int totemnet_build_sockets_ipv6 (
+	struct totemnet_instance *instance,
+	struct totem_ip_address *mcast_address,
+	struct totem_ip_address *bindnet_address,
+	struct totemnet_socket *sockets,
+	struct totem_ip_address *bound_to,
+	int *interface_up,
+	int interface_num)
+{
+	struct sockaddr_storage sockaddr;
+	struct ipv6_mreq mreq;
+	struct sockaddr_storage mcast_ss;
+	struct sockaddr_in6 *mcast_sin = (struct sockaddr_in6 *)&mcast_ss;
+	unsigned int sendbuf_size;
+        unsigned int recvbuf_size;
+        unsigned int optlen = sizeof (sendbuf_size);
+	int addrlen;
+	int res;
+	int flag;
+
+	/*
+	 * Create multicast recv socket
+	 */
+	sockets->mcast_recv = socket (AF_INET6, SOCK_DGRAM, 0);
+	if (sockets->mcast_recv == -1) {
+		perror ("socket");
+		return (-1);
+	}
+
+	/*
+	 * Bind to multicast socket used for multicast receives
+	 */
+	totemip_totemip_to_sockaddr_convert(mcast_address,
+		instance->totem_config->ip_port, &sockaddr, &addrlen);
+
+	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		perror ("bind failed");
+		return (-1);
+	}
+
+	/*
+	 * Setup mcast send socket
+	 */
+	sockets->mcast_send = socket (AF_INET6, SOCK_DGRAM, 0);
+	if (sockets->mcast_send == -1) {
+		perror ("socket");
+		return (-1);
+	}
+
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port - 1,
+		&sockaddr, &addrlen);
+	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		perror ("bind2 failed");
+		return (-1);
+	}
+
+	/*
+	 * Setup unicast socket
+	 */
+	sockets->token = socket (AF_INET6, SOCK_DGRAM, 0);
+	if (sockets->token == -1) {
+		perror ("socket2");
+		return (-1);
+	}
+
+	/*
+	 * Bind to unicast socket used for token send/receives
+	 * This has the side effect of binding to the correct interface
+	 */
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
+	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		perror ("bind2 failed");
+		return (-1);
+	}
+
+        recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+        sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+        /*
+         * Set buffer sizes to avoid overruns
+         */
+        res = setsockopt (sockets->mcast_recv, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, optlen);
+        res = setsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, optlen);
+
+        res = getsockopt (sockets->mcast_recv, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
+        if (res == 0) {
+                instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+                        "Receive multicast socket recv buffer size (%d bytes).\n", recvbuf_size);
+}
+
+        res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
+        if (res == 0) {
+                instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+                        "Transmit multicat socket send buffer size (%d bytes).\n", sendbuf_size);
+        }
+
+	/*
+	 * Join group membership on socket
+	 */
+	totemip_totemip_to_sockaddr_convert(mcast_address,
+		instance->totem_config->ip_port, &mcast_ss, &addrlen);
+	memset(&mreq, 0, sizeof(mreq));
+	memcpy(&mreq.ipv6mr_multiaddr, &mcast_sin->sin6_addr, sizeof(struct in6_addr));
+	mreq.ipv6mr_interface = interface_num;
+
+	res = setsockopt (sockets->mcast_recv, SOL_IPV6, IPV6_ADD_MEMBERSHIP,
+		&mreq, sizeof (mreq));
+	if (res == -1) {
+		perror ("join ipv6 multicast group failed");
+		return (-1);
+	}
+
+	/*
+	 * Turn on multicast loopback
+	 */
+	flag = 1;
+	res = setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+		&flag, sizeof (flag));
+	if (res == -1) {
+		perror ("turn off loopback");
+		return (-1);
+	}
+
+	flag = 255;
+	res = setsockopt (sockets->mcast_send, SOL_IPV6, IPV6_MULTICAST_HOPS,
+		&flag, sizeof (flag));
+	if (res == -1) {
+		perror ("setp mcast hops");
+		return (-1);
+	}
+
+	/*
+	 * Bind to a specific interface for multicast send and receive
+	 */
+	if (setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		&interface_num, sizeof (interface_num)) < 0) {
+	}
+
+	if (setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+		&interface_num, sizeof (interface_num)) < 0) {
+	}
+	return 0;
+}
+
+static int totemnet_build_sockets (
+	struct totemnet_instance *instance,
+	struct totem_ip_address *mcast_address,
+	struct totem_ip_address *bindnet_address,
+	struct totemnet_socket *sockets,
+	struct totem_ip_address *bound_to,
+	int *interface_up)
+{
+	int interface_num;
+	int res;
+
+	/*
+	 * Determine the ip address bound to and the interface name
+	 */
+	res = netif_determine (instance,
+		bindnet_address,
+		bound_to,
+                interface_up,
+		&interface_num);
+
+	if (res == -1) {
+		return (-1);
+	}
+
+	totemip_copy(&instance->my_id, bound_to);
+
+	if (mcast_address->family== AF_INET)
+		res = totemnet_build_sockets_ipv4 (instance, mcast_address,
+			bindnet_address, sockets, bound_to, interface_up);
+	else {
+		res = totemnet_build_sockets_ipv6 (instance, mcast_address,
+			bindnet_address, sockets, bound_to, interface_up, interface_num);
+}
+
+	/* We only send out of the token socket */
+	totemnet_traffic_control_set(instance, sockets->token);
+	return res;
 }
 	
 /*
@@ -1108,18 +1252,17 @@ int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct sockaddr_in *iface_sockaddr_in))
+		struct totem_ip_address *iface_address))
 {
 	SaAisErrorT error;
 	struct totemnet_instance *instance;
 
-	memset (&sockaddr_in_test, 0, sizeof (struct sockaddr_in));
 	error = saHandleCreate (&totemnet_instance_database,
 	sizeof (struct totemnet_instance), handle);
 	if (error != SA_OK) {
@@ -1134,7 +1277,6 @@ int totemnet_initialize (
 	totemnet_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
-
 	/*
 	* Configure logging
 	*/
@@ -1144,12 +1286,6 @@ int totemnet_initialize (
 	instance->totemnet_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemnet_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
 	instance->totemnet_log_printf = totem_config->totem_logging_configuration.log_printf;
-
-	memcpy (&instance->sockaddr_in_mcast, &totem_config->mcast_addr,
-		sizeof (struct sockaddr_in));
-
-	memcpy (&instance->in_addr_mcast, &totem_config->mcast_addr.sin_addr,
-		sizeof (struct in_addr));
 
 	/*
 	* Initialize random number generator for later use to generate salt
@@ -1164,8 +1300,7 @@ int totemnet_initialize (
 	/*
 	* Initialize local variables for totemnet
 	*/
-	memcpy (&instance->sockaddr_in_mcast, &totem_config->mcast_addr, 
-	sizeof (struct sockaddr_in));
+	totemip_copy (&instance->mcast_address, &totem_config->mcast_addr);
 	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
 
 	/*
@@ -1183,6 +1318,8 @@ int totemnet_initialize (
 
 	instance->totemnet_interface = &totem_config->interfaces[interface_no];
 	instance->totemnet_poll_handle = poll_handle;
+
+	instance->totemnet_interface->bindnet.nodeid = instance->totem_config->node_id;
 
 	instance->context = context;
 	instance->totemnet_deliver_fn = deliver_fn;
@@ -1246,11 +1383,11 @@ int totemnet_recv_flush (totemnet_handle handle)
 	instance->flushing = 1;
 
 	do {
-		ufd.fd = instance->totemnet_sockets.mcast;
+		ufd.fd = instance->totemnet_sockets.mcast_recv;
 		ufd.events = POLLIN;
 		nfds = poll (&ufd, 1, 0);
 		if (nfds == 1 && ufd.revents & POLLIN) {
-		net_deliver_fn (0, instance->totemnet_sockets.mcast,
+		net_deliver_fn (0, instance->totemnet_sockets.mcast_recv,
 			ufd.revents, instance, &prio);
 		}
 	} while (nfds == 1);
@@ -1286,7 +1423,7 @@ error_exit:
 
 int totemnet_token_send (
 	totemnet_handle handle,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	int msg_len)
 {
@@ -1324,7 +1461,7 @@ int totemnet_mcast_flush_send (
 		goto error_exit;
 	}
 	
-	totemnet_msg_send (instance, 0, msg, msg_len);
+	totemnet_msg_send (instance, NULL, msg, msg_len);
 
 	saHandleInstancePut (&totemnet_instance_database, handle);
 

@@ -41,7 +41,7 @@ faults.  The API consists of Availability Management Framework (AMF) which
 provides application failover, Cluster Membership (CLM), Checkpointing (CKPT),
 Eventing (EVT), Messaging (MSG), and Distributed Locking (DLOCK).
 
-Currently Messaging and Distributed Locking are unimplemented.
+Currently Messaging is unimplemented.
 
 Faults occur for various reasons:
 .PP
@@ -169,6 +169,26 @@ of the makefile.
 -lais Specify this to get access to all AIS libraries without specifying
 each library individually.
 
+.SH IPv6
+The openais project supports both IPv4 and IPv6 network addresses.  The entire
+cluster must use either IPv4 or IPv6 for the cluster communication mechanism.
+In order to use IPv6, IPv6 addresses must be specified in the bindnetaddr and
+mcastaddr fields in the configuration file.  The nodeid field must also be
+set.
+
+An example of this is:
+nodeid: 2
+bindnetaddr: fec0::1:a800:4ff:fe00:20
+mcastaddr: ff05::1
+
+To configure a host for IPv6, use the ifconfig program to add interfaces:
+box20: ifconfig eth0 add fec0::1:a800:4ff:fe00:20/64
+box30: ifconfig eth0 add fec0::1:a800:4ff:fe00:30/64
+
+If the /64 is not specified, a route for the IPv6 network will not be configured
+which will cause significant problems.  Make sure a route is available for
+IPv6 traffic.
+
 .SH ARCHITECTURE
 The AIS libraries are a thin IPC interface to the openais executive.  The
 openais executive provides services for the SA Forum AIS libraries as well
@@ -186,18 +206,16 @@ authenticate all messages.  The openais executive library uses SOBER-128
 as a pseudo random number generator.  The EVS library feeds the PRNG using
 the /dev/random Linux device.
 .PP
+.SH SAFTEST COMPLIANCE
+The openais libraries are now nearly compliant with every aspect of the SA
+Forum's AIS specification.  The AMF service, however, is not compliant with the
+B.01.01 specification.  The remaining services pass most of the tests of the 
+saftest suite against the B.01.01 specification.
+
 .SH BUGS
-The openais libraries are not particularly compliant with every aspect of the
-SA Forum's AIS specification.  The APIs themselves are consistent, but some of
-the return values and other details are not quite right yet.  The project does
-intend to be fully compliant with SAF specifications in 2005.
+The openais project does not currently implement the messaging service.
+The distributed locking service is buggy and incomplete.
 
-The AMF that is currently available is AMF A.01.01.  The rest of the services
-are of the B.01.01 specification.  This is a limitation for those developers that
-desire AMF B.01.01.  The project intends to resolve this inconsistently in 2005.
-
-The openais project does not currently implement the messaging service or
-distributed locking service.
 .SH "SEE ALSO"
 .BR openais.conf (5),
 .BR evs_overview (8)

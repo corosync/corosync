@@ -183,8 +183,8 @@ static void sigusr2_handler (int num)
 	return;
 }
 
-struct sockaddr_in *this_ip;
-struct sockaddr_in this_non_loopback_ip;
+struct totem_ip_address *this_ip;
+struct totem_ip_address this_non_loopback_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 char *socketname = "libais.socket";
@@ -787,7 +787,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct in_addr source_addr, int endian_conversion_required);
+static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_required);
 static int aisexec_handler_fns_count = 1;
 
 /*
@@ -838,7 +838,7 @@ void aisexec_sync_fns_build (void)
 char delivery_data[MESSAGE_SIZE_MAX];
 
 static void deliver_fn (
-	struct in_addr source_addr,
+	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -876,15 +876,15 @@ static void deliver_fn (
 
 static void confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
 
-	if (this_ip->sin_addr.s_addr != LOCALHOST_IP) {
-		memcpy(&this_non_loopback_ip, this_ip, sizeof(struct sockaddr_in));
+	if (!totemip_localhost_check(this_ip)) {
+		totemip_copy(&this_non_loopback_ip, this_ip);
 	}
 
 	/*
@@ -1047,8 +1047,8 @@ static void aisexec_mlockall (void)
 int message_source_is_local(struct message_source *source)
 {
 	int ret = 0;
-	if ((source->in_addr.s_addr == LOCALHOST_IP)
-		||(source->in_addr.s_addr == this_non_loopback_ip.sin_addr.s_addr)) {
+	if ((totemip_localhost_check(&source->addr)
+	     ||(totemip_equal(&source->addr, &this_non_loopback_ip)))) {
 		ret = 1;
 	}
 	return ret;	
@@ -1056,7 +1056,7 @@ int message_source_is_local(struct message_source *source)
 
 void message_source_set (struct message_source *source, struct conn_info *conn_info)
 {
-	source->in_addr.s_addr = this_ip->sin_addr.s_addr;
+	totemip_copy(&source->addr, this_ip);
 	source->conn_info = conn_info;
 }
 
@@ -1071,9 +1071,9 @@ int main (int argc, char **argv)
 	char *error_string;
 	struct openais_config openais_config;
 
-	memset(&this_non_loopback_ip, 0, sizeof(struct sockaddr_in));
+	memset(&this_non_loopback_ip, 0, sizeof(struct totem_ip_address));
 
-	this_non_loopback_ip.sin_addr.s_addr = LOCALHOST_IP;
+	totemip_localhost(AF_INET, &this_non_loopback_ip);
 
 	aisexec_uid_determine ();
 

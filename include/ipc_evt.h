@@ -252,7 +252,7 @@ struct res_evt_event_data {
  * MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA	(4)
  *
  * led_head:				Request/Results head
- * led_in_addr:				address of node (4 only)
+ * led_addr:				address of node (4 only)
  * led_receive_time:		Time that the message was received (4 only)
  * led_svr_channel_handle:	Server channel handle (1 only)
  * led_lib_channel_handle:	Lib channel handle (2 only)
@@ -273,7 +273,7 @@ struct res_evt_event_data {
  */
 struct lib_event_data {
 	struct res_header		led_head;
-	struct in_addr			led_in_addr;
+	struct totem_ip_address	led_addr;
 	SaTimeT					led_receive_time;
 	uint32_t				led_svr_channel_handle;
 	SaEvtChannelHandleT		led_lib_channel_handle;
@@ -359,7 +359,7 @@ enum evt_chan_ops {
  * based on the highest ID seen by any of the members
  */
 struct evt_set_id {
-	struct in_addr	chc_addr;
+	unsigned int 	chc_nodeid;
 	uint64_t		chc_last_id;
 };
 

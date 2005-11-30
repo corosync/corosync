@@ -34,7 +34,7 @@
 #ifndef IPC_EVS_H_DEFINED
 #define IPC_EVS_H_DEFINED
 
-#include <netinet/in.h>
+//#include <netinet/in6.h>
 #include "saAis.h"
 #include "evs.h"
 #include "ipc_gen.h"
@@ -59,7 +59,7 @@ enum res_lib_evs_types {
 
 struct res_evs_deliver_callback {
 	struct res_header header;
-	struct in_addr source_addr;
+	struct evs_address evs_address;
 	int msglen;
 	char msg[0];
 };
@@ -69,9 +69,9 @@ struct res_evs_confchg_callback {
 	int member_list_entries;
 	int left_list_entries;
 	int joined_list_entries;
-	struct in_addr member_list[16];
-	struct in_addr left_list[16];
-	struct in_addr joined_list[16];
+	struct evs_address member_list[16];
+	struct evs_address left_list[16];
+	struct evs_address joined_list[16];
 };
 
 struct req_lib_evs_join {

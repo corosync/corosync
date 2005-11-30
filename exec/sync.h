@@ -53,12 +53,12 @@ void sync_register (totemsrp_handle handle,
 
 void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-int sync_deliver_fn (void *msg, struct in_addr source_addr,
+int sync_deliver_fn (void *msg, struct totem_ip_address *source_addr,
 	int endian_conversion_needed);
 
 int sync_in_process (void);

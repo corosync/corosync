@@ -29,13 +29,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = -lpthread
+#CFLAGS = -O3 -Wall -fomit-frame-pointer
+#LDFLAGS = -lpthread
 
 # Debug mode flags
-#CFLAGS = -g -Wall
+CFLAGS = -g -Wall
 ##-DDEBUG
-#LDFLAGS = -g -lpthread
+LDFLAGS = -g -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -45,8 +45,8 @@ LDFLAGS = -lpthread
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-TOTEM_SRC = aispoll.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c hdb.c crypto.c wthread.c
-TOTEM_OBJS = aispoll.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
+TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c hdb.c crypto.c wthread.c
+TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
 
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c lck.c evs.c mainparse.c print.c mempool.c \
 		util.c sync.c
@@ -90,6 +90,9 @@ totemsrp.o: totemsrp.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemrrp.o: totemrrp.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+totemip.o: totemip.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemnet.o: totemnet.c

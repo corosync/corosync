@@ -71,6 +71,12 @@ Multiple bindnetaddr directives may be specified.  When multiple bindnetaddr
 directives are specified, the totem redundant ring protocol will use multiple
 interfaces to replicate the network traffic.
 
+This may also be an IPV6 address, in which case IPV6 networking will be used.
+In this case, the full address must be specified and there is no automatic
+selection of the network interface within a specific subnet as with IPv4.
+
+If IPv6 networking is used, the nodeid field must be specified.
+
 .TP
 mcastaddr
 This is the multicast address used by openais executive.  The default
@@ -78,11 +84,23 @@ should work for most networks, but the network administrator should be queried
 about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
 multicast address.
 
+This may also be an IPV6 multicast address, in which case IPV6 networking
+will be used.  If IPv6 networking is used, the nodeid field must be specified.
+
 .TP
 mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the openais services configured for different
 UDP ports.
+
+.TP
+nodeid
+This configuration option is optional when using IPv4 and required when using
+IPv6.  This is a 32 bit value specifying the node identifier delivered to the
+cluster membership service.  If this is not specified with IPv4, the node id
+will be determined from the 32 bit IP address the system is bound to.
+
+The node identifier value of zero is reserved and should not be used.
 
 .PP
 Within the 

@@ -61,14 +61,14 @@ is called.  The callback functions are described by the following type definitio
 .nf
 .ta 4n 20n 32n
 typedef void (*evs_deliver_fn_t) (
-        struct in_addr source_addr,
+        struct evs_address source_addr,
         void *msg,
         int msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-        struct in_addr *member_list, int member_list_entries,
-        struct in_addr *left_list, int left_list_entries,
-        struct in_addr *joined_list, int joined_list_entries);
+        struct evs_address *member_list, int member_list_entries,
+        struct evs_address *left_list, int left_list_entries,
+        struct evs_address *joined_list, int joined_list_entries);
 .ta
 .fi
 .RE
@@ -100,6 +100,27 @@ function.  If a configuration change occurs,
 is called.  If a delivery of a message occurs,
 .I evs_deliver_fn
 is called.
+
+The
+.I evs_address
+structure is defined 
+.IP
+.RS
+.ne 18
+.nf
+.PP
+struct evs_address {
+        unsigned int nodeid;
+        unsigned short family;
+        unsigned char addr[TOTEMIP_ADDRLEN];
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+where nodeid is a 32 bit unique node identifier, family is of the value AF_INET  for an IPV4 network, or AF_INET6 for an IPV6 network, and addr is a 32 bit address for an IPV4 network, or 128 bit address for an IPV6 network.
+
 
 .SH RETURN VALUE
 This call returns the EVS_OK value if successful, otherwise an error is returned.

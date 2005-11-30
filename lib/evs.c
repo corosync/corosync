@@ -292,7 +292,7 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)&dispatch_data;
 			callbacks.evs_deliver_fn (
-				res_evs_deliver_callback->source_addr,
+				&res_evs_deliver_callback->evs_address,
 				&res_evs_deliver_callback->msg,
 				res_evs_deliver_callback->msglen);
 			break;
@@ -540,8 +540,8 @@ error_exit:
 
 evs_error_t evs_membership_get (
 	evs_handle_t handle,
-	struct in_addr *local_addr,
-	struct in_addr *member_list,
+	struct evs_address *local_addr,
+	struct evs_address *member_list,
 	int *member_list_entries)
 {
 	evs_error_t error;

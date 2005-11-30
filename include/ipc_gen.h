@@ -35,6 +35,7 @@
 #define IPC_GEN_H_DEFINED
 
 #include <netinet/in.h>
+#include "../exec/totemip.h"
 
 enum service_types {
 	EVS_SERVICE = 0,
@@ -111,7 +112,7 @@ struct res_lib_dispatch_init {
 };
 struct message_source {
 	struct conn_info *conn_info;
-	struct in_addr in_addr;
+	struct totem_ip_address addr;
 } __attribute__((packed));
 
 #endif /* IPC_GEN_H_DEFINED */

@@ -54,13 +54,13 @@ struct libais_handler {
 struct service_handler {
 	struct libais_handler *libais_handlers;
 	int libais_handlers_count;
-	int (**aisexec_handler_fns) (void *msg, struct in_addr source_addr, int endian_conversion_needed);
+	int (**aisexec_handler_fns) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_needed);
 	int aisexec_handler_fns_count;
 	int (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
 	int (*libais_init_two_fn) (struct conn_info *conn_info);

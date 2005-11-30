@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2005 Red Hat Inc
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,21 +32,42 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../include/saAis.h"
-#include "../include/saClm.h"
+/* IPv4/6 abstraction */
 
-#ifndef CLM_H_DEFINED
-#define CLM_H_DEFINED
+#ifndef TOTEMIP_H_DEFINED
+#define TOTEMIP_H_DEFINED
 
-#include <netinet/in.h>
+#define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
-struct libclm_ci {
-	SaUint8T trackFlags;
-	int tracking_enabled;
-};
+/* These are the things that get passed around */
+struct totem_ip_address
+{
+	unsigned int   nodeid;
+	unsigned short family;
+	unsigned char  addr[TOTEMIP_ADDRLEN];
+} __attribute__((packed));
 
-extern SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id);
 
-extern struct service_handler clm_service_handler;
+extern int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
+extern int totemip_compare(const void *a, const void *b);
+extern void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
+int totemip_localhost(int family, struct totem_ip_address *localhost);
+extern int totemip_localhost_check(struct totem_ip_address *addr);
+extern const char *totemip_print(struct totem_ip_address *addr);
+extern int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr);
+extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
+					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
+extern int totemip_parse(struct totem_ip_address *totemip, char *addr);
+extern int totemip_iface_check(struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up, int *interface_num);
 
-#endif /* CLM_H_DEFINED */
+/* These two simulate a zero in_addr by clearing the family field */
+static inline void totemip_zero_set(struct totem_ip_address *addr)
+{
+	addr->family = 0;
+}
+static inline int totemip_zero_check(struct totem_ip_address *addr)
+{
+	return (addr->family == 0);
+}
+
+#endif

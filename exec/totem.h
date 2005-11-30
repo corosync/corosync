@@ -33,9 +33,10 @@
  */
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
+#include "totemip.h"
 
 #define MESSAGE_SIZE_MAX			256000
-#define PROCESSOR_COUNT_MAX			16
+#define PROCESSOR_COUNT_MAX			32
 #define FRAME_SIZE_MAX				9000
 #define SEND_THREADS_MAX			16
 
@@ -60,8 +61,8 @@ enum {
 } totem_timeout_types;
 
 struct totem_interface {
-	struct sockaddr_in bindnet;
-	struct sockaddr_in boundto;
+	struct totem_ip_address bindnet;
+	struct totem_ip_address boundto;
 };
 
 struct totem_logging_configuration {
@@ -81,7 +82,9 @@ struct totem_config {
 	 */
 	struct totem_interface *interfaces;
 	int interface_count;
-	struct sockaddr_in mcast_addr;
+	struct totem_ip_address mcast_addr;
+	uint16_t ip_port;
+	int node_id;
 
 	/*
 	 * key information
@@ -138,7 +141,7 @@ enum totem_callback_token_type {
 };
 
 struct memb_ring_id {
-	struct in_addr rep;
+	struct totem_ip_address rep;
 	unsigned long long seq;
 } __attribute__((packed));
 

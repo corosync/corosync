@@ -91,7 +91,7 @@ struct rrp_algo {
 	void (*mcast_recv) (
 		struct totemrrp_instance *instance,
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		unsigned int msg_len);
 
@@ -109,14 +109,14 @@ struct rrp_algo {
 		struct totemrrp_instance *instance,
 		unsigned int interface_no,
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		unsigned int msg_len,
 		unsigned int token_seqid);
 
 	void (*token_send) (
 		struct totemrrp_instance *instance,
-		struct in_addr *system_to,
+		struct totem_ip_address *system_to,
 		void *msg,
 		unsigned int msg_len);
 };
@@ -132,13 +132,13 @@ struct totemrrp_instance {
 	
 	void (*totemrrp_deliver_fn) (
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len);
 
 	void (*totemrrp_iface_change_fn) (
 		void *context,
-		struct sockaddr_in *iface_sockaddr_in);
+		struct totem_ip_address *iface_addr);
 
 	void (*totemrrp_token_seqid_get) (
 		void *msg,
@@ -178,7 +178,7 @@ struct totemrrp_instance {
 void passive_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len);
 
@@ -195,21 +195,21 @@ void passive_mcast_flush_send (
 void passive_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len,
 	unsigned int token_seqid);
 
 void passive_token_send (
 	struct totemrrp_instance *instance,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	unsigned int msg_len);
 
 void active_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len);
 
@@ -227,14 +227,14 @@ void active_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len,
 	unsigned int token_seqid);
 
 void active_token_send (
 	struct totemrrp_instance *instance,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	unsigned int msg_len);
 
@@ -365,7 +365,7 @@ error_exit:
 
 static void timer_function_active_token (void *context)
 {
-	struct active_instance *instance = (struct active_instance *)context;
+//	struct active_instance *instance = (struct active_instance *)context;
 }
 
 
@@ -389,7 +389,7 @@ void active_token_timer_cancel (struct active_instance *active_instance)
 void active_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len)
 {
@@ -433,7 +433,7 @@ void active_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len,
 	unsigned int token_seqid)
@@ -487,7 +487,7 @@ void active_token_recv (
 
 void active_token_send (
 	struct totemrrp_instance *instance,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	unsigned int msg_len)
 {
@@ -519,7 +519,7 @@ static void totemrrp_instance_initialize (struct totemrrp_instance *instance)
 
 void rrp_deliver_fn (
 	void *context,
-	struct in_addr *system_from,
+	struct totem_ip_address *system_from,
 	void *msg,
 	int msg_len)
 {
@@ -560,13 +560,13 @@ void rrp_deliver_fn (
 
 void rrp_iface_change_fn (
 	void *context,
-	struct sockaddr_in *iface_sockaddr_in)
+	struct totem_ip_address *iface_addr)
 {
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
 
 	deliver_fn_context->instance->totemrrp_iface_change_fn (
 		deliver_fn_context->context,
-		iface_sockaddr_in);
+		iface_addr);
 }
 
 int totemrrp_finalize (
@@ -607,13 +607,13 @@ int totemrrp_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct in_addr *system_from,
+		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct sockaddr_in *iface_sockaddr_in),
+		struct totem_ip_address *iface_addr),
 
 	void (*token_seqid_get) (
 		void *msg,
@@ -772,7 +772,7 @@ error_exit:
 
 int totemrrp_token_send (
 	totemrrp_handle handle,
-	struct in_addr *system_to,
+	struct totem_ip_address *system_to,
 	void *msg,
 	int msg_len)
 {
