@@ -91,7 +91,7 @@ libSaLck.a: util.o lck.o
 	$(AR) -rc libSaLck.a util.o lck.o
 
 libSaLck.so.1.0: util.o lck.o
-	$(CC) -shared -Wl,-soname,libSaLCK.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
+	$(CC) -shared -Wl,-soname,libSaLck.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
 	rm -f libSaLck.so.1 libSaLck.so
 	ln -s libSaLck.so.1.0 libSaLck.so.1
 	ln -s libSaLck.so.1.0 libSaLck.so
