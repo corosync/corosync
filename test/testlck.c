@@ -201,14 +201,14 @@ int main (void) {
 	printf ("saLckResourceLock EX %d (should be 1)\n", result);
 	printf ("status %d\n", status);
 		
-	result = SaLckResourceLockAsync (
+	result = saLckResourceLockAsync (
 		resource_handle,
 		0x56,
 		&pr_lock_id,
 		SA_LCK_PR_LOCK_MODE,
 		0,
 		55);
-	printf ("SaLckResourceLockAsync PR %d (should be 1)\n", result);
+	printf ("saLckResourceLockAsync PR %d (should be 1)\n", result);
 	printf ("status %d\n", status);
 	printf ("press the enter key to exit\n");
 	FD_ZERO (&read_fds);
