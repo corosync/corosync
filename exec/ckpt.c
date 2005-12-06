@@ -1527,6 +1527,9 @@ error_exit:
 		if (error == SA_AIS_OK) {
 			checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
 			if (checkpoint_cleanup == 0) {
+				list_del (&ckptCheckpoint->list);
+				list_del (&ckptCheckpointSection->list);
+				free (ckptCheckpointSection);
 				free (ckptCheckpoint);
 				error = SA_AIS_ERR_NO_MEMORY;
 			} else {

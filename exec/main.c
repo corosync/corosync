@@ -100,8 +100,6 @@ struct sync_callbacks sync_callbacks[5];
 
 int sync_callback_count;
 
-totemsrp_handle totemsrp_handle_in;
-
 #define AIS_SERVICE_HANDLERS_COUNT 6
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 50
 
@@ -755,8 +753,6 @@ error_disconnect:
 	return (res);
 }
 
-extern void print_stats (totemsrp_handle totemsrp_handle);
-
 void sigintr_handler (int signum)
 {
 
@@ -775,7 +771,6 @@ void sigintr_handler (int signum)
 #endif
 
 	totempg_finalize ();
-//	print_stats (totemsrp_handle_in);
 	ais_done (AIS_DONE_EXIT);
 }
 
@@ -832,7 +827,7 @@ void aisexec_sync_fns_build (void)
 			sync_callback_count++;
 		}
 	}
-	sync_register (totemsrp_handle_in, sync_callbacks, sync_callback_count, sync_completed);
+	sync_register (sync_callbacks, sync_callback_count, sync_completed);
 }
 
 char delivery_data[MESSAGE_SIZE_MAX];
@@ -1144,7 +1139,6 @@ int main (int argc, char **argv)
 
 	totempg_initialize (
 		aisexec_poll_handle,
-		&totemsrp_handle_in,
 		&openais_config.totem_config,
 		deliver_fn,
 		confchg_fn);

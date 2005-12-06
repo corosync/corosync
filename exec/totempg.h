@@ -53,7 +53,6 @@
  */
 int totempg_initialize (
 	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -85,9 +84,9 @@ int totempg_mcast (
 int totempg_send_ok (
 	int msg_size);
 
-void totempg_token_callback_destroy (void *handle);
+void totempg_callback_token_destroy (void *handle);
 
-int totempg_token_callback_create (void **handle_out,
+int totempg_callback_token_create (void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
 	int (*callback_fn) (enum totem_callback_token_type type, void *),

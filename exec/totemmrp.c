@@ -103,7 +103,6 @@ void totemmrp_confchg_fn (
  */
 int totemmrp_initialize (
 	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -128,8 +127,6 @@ int totemmrp_initialize (
 		totem_config,
 		totemmrp_deliver_fn,
 		totemmrp_confchg_fn);
-
-	*totemsrp_handle = totemsrp_handle_in;
 
 	return (result);
 }
@@ -169,7 +166,7 @@ int totemmrp_callback_token_create (
 }
 
 void totemmrp_callback_token_destroy (
-	void **handle_out)
+	void *handle_out)
 {
 	totemsrp_callback_token_destroy (totemsrp_handle_in, handle_out);
 }

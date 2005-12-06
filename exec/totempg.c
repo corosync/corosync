@@ -459,7 +459,6 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  */
 int totempg_initialize (
 	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -489,9 +488,9 @@ int totempg_initialize (
 
 	res = totemmrp_initialize (
 		poll_handle,
-		totemsrp_handle,
 		totem_config,
-		totempg_deliver_fn, totempg_confchg_fn);
+		totempg_deliver_fn,
+		totempg_confchg_fn);
 
 	totemmrp_callback_token_create (
 		&callback_token_received_handle, 
@@ -682,6 +681,22 @@ int totempg_send_ok (
 
 	return (avail >= total);
 }
+int totempg_callback_token_create (
+	void **handle_out,
+	enum totem_callback_token_type type,
+	int delete,
+	int (*callback_fn) (enum totem_callback_token_type type, void *),
+	void *data)
+{
+	return totemmrp_callback_token_create (handle_out, type, delete, callback_fn, data);
+}
+
+void totempg_callback_token_destroy (
+	void *handle_out)
+{
+	totemmrp_callback_token_destroy (handle_out);
+}
+
 /*
  *	vi: set autoindent tabstop=4 shiftwidth=4 :
  */

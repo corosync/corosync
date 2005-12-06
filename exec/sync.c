@@ -53,7 +53,7 @@
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"
-#include "totemsrp.h"
+#include "totempg.h"
 #include "print.h"
 
 #define LOG_SERVICE LOG_SERVICE_SYNC
@@ -64,8 +64,6 @@ struct barrier_data {
 };
 
 static struct memb_ring_id *sync_ring_id;
-
-static totemsrp_handle sync_totemsrp_handle;
 
 static struct sync_callbacks *sync_callbacks;
 
@@ -123,7 +121,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 
 void sync_start_init (struct memb_ring_id *ring_id)
 {
-	totemsrp_callback_token_create (sync_totemsrp_handle,
+	totempg_callback_token_create (
 		&sync_callback_token_handle,
 		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
@@ -134,13 +132,12 @@ void sync_start_init (struct memb_ring_id *ring_id)
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
 	sync_callbacks[sync_recovery_index].sync_init ();
-	totemsrp_callback_token_destroy (sync_totemsrp_handle,
-		&sync_callback_token_handle);
+	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	/*
 	 * Create the token callback for the processing
 	 */
-	totemsrp_callback_token_create (sync_totemsrp_handle,
+	totempg_callback_token_create (
 		&sync_callback_token_handle,
 		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
@@ -158,8 +155,7 @@ static int sync_start_process (enum totem_callback_token_type type, void *data)
 		/*
 		 * Delete the token callback for the barrier
 		 */
-		totemsrp_callback_token_destroy (sync_totemsrp_handle,
-			&sync_callback_token_handle);
+		totempg_callback_token_destroy (&sync_callback_token_handle);
 	}
 	return (0);
 }
@@ -182,8 +178,7 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 * This sync is complete so activate and start next service sync
 	 */
 	sync_callbacks[sync_recovery_index].sync_activate ();
-	totemsrp_callback_token_destroy (sync_totemsrp_handle,
-		&sync_callback_token_handle);
+	totempg_callback_token_destroy (&sync_callback_token_handle);
 	sync_recovery_index += 1;
 
 	if (sync_recovery_index > sync_callback_count) {
@@ -195,12 +190,10 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 }
 
 void sync_register (
-	totemsrp_handle handle,
 	struct sync_callbacks *callbacks,
 	int callback_count,
 	void (*synchronization_completed) (void))
 {
-	sync_totemsrp_handle = handle;
 	sync_callbacks = callbacks;
 	sync_callback_count = callback_count;
 	sync_synchronization_completed = synchronization_completed;
@@ -221,7 +214,7 @@ void sync_confchg_fn (
 
 	sync_processing = 1;
 
-	totemsrp_callback_token_destroy (sync_totemsrp_handle, &sync_callback_token_handle);
+	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	sync_ring_id = ring_id;
 

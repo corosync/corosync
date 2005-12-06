@@ -59,7 +59,6 @@ void totemmrp_log_printf_init (
  */
 int totemmrp_initialize (
 	poll_handle poll_handle,
-	totemsrp_handle *totemsrp_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -97,7 +96,7 @@ int totemmrp_callback_token_create (
 	void *data);
 
 void totemmrp_callback_token_destroy (
-	void **handle_out);
+	void *handle_out);
 
 void totemmrp_new_msg_signal (void);
 
