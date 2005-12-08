@@ -29,13 +29,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Production mode flags
-#CFLAGS = -O3 -Wall -fomit-frame-pointer
-#LDFLAGS = -lpthread
+CFLAGS = -O3 -Wall -fomit-frame-pointer
+LDFLAGS = -lpthread
 
 # Debug mode flags
-CFLAGS = -g -Wall
+#CFLAGS = -g -Wall
 ##-DDEBUG
-LDFLAGS = -g -lpthread
+#LDFLAGS = -g -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg

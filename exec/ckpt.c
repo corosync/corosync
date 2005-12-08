@@ -1030,7 +1030,8 @@ iterate_while_loop:
 				struct saCkptCheckpoint, list);			
 			assert (checkpoint > 0);
 			index = processor_index_find(member, checkpoint->ckpt_refcount);
-			assert (-1 <= index < PROCESSOR_COUNT_MAX);			
+			assert (-1 <= index);
+			assert (index < PROCESSOR_COUNT_MAX);			
 			if (index < 0) {
 				checkpoint_list = checkpoint_list->next;
 				goto iterate_while_loop;
@@ -1357,7 +1358,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct t
 
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
-	struct checkpoint_cleanup *checkpoint_cleanup;
+	struct checkpoint_cleanup *checkpoint_cleanup = 0;
 	SaErrorT error = SA_AIS_OK;
 	int proc_index;
 
@@ -1367,6 +1368,14 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct t
 		error = req_exec_ckpt_checkpointopen->fail_with_error;
 		goto error_exit;
 	}
+
+	if (message_source_is_local(&req_exec_ckpt_checkpointopen->source)) {
+		checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
+		if (checkpoint_cleanup == 0) {
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_exit;
+		}		
+	}	
 
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointopen->checkpointName);
 
@@ -1524,19 +1533,20 @@ error_exit:
 			libais_send_response (req_exec_ckpt_checkpointopen->source.conn_info, &res_lib_ckpt_checkpointopen,
 				sizeof (struct res_lib_ckpt_checkpointopen));
 		}
+
+		/*
+		 * This is the path taken when all goes well and this call was local
+		 */
 		if (error == SA_AIS_OK) {
-			checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
-			if (checkpoint_cleanup == 0) {
-				list_del (&ckptCheckpoint->list);
-				list_del (&ckptCheckpointSection->list);
-				free (ckptCheckpointSection);
-				free (ckptCheckpoint);
-				error = SA_AIS_ERR_NO_MEMORY;
-			} else {
-				memcpy(&checkpoint_cleanup->checkpoint,ckptCheckpoint,sizeof(struct saCkptCheckpoint));
-				list_add (&checkpoint_cleanup->list,
-					&req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint_list);
-			}
+			memcpy(&checkpoint_cleanup->checkpoint,ckptCheckpoint,sizeof(struct saCkptCheckpoint));
+			list_add (&checkpoint_cleanup->list,
+				&req_exec_ckpt_checkpointopen->source.conn_info->ais_ci.u.libckpt_ci.checkpoint_list);
+		} else {
+				/*
+				 * We allocated this in the hope of using it but an error occured
+				 * so deallocate it.
+				 */
+				free (checkpoint_cleanup);
 		}
 	}
 
@@ -1833,6 +1843,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	struct saCkptCheckpoint *checkpoint = 0;
 	SaAisErrorT error = SA_AIS_OK;
 	int proc_index;
+	int release_checkpoint = 0;
 
 	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to close checkpoint %s\n", getSaNameT (&req_exec_ckpt_checkpointclose->checkpointName));
 
@@ -1866,7 +1877,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	 */
 	if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
 		log_printf (LOG_LEVEL_DEBUG, "Unlinking checkpoint.\n");		
-		checkpoint_release (checkpoint);
+		release_checkpoint = 1;		
 	} else
 	if (checkpoint->referenceCount == 0) {		
 		poll_timer_add (aisexec_poll_handle,
@@ -1877,6 +1888,7 @@ extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct 
 	}
 	
 error_exit:
+	/*Remove the checkpoint from my connections checkpoint list*/
 	if (message_source_is_local(&req_exec_ckpt_checkpointclose->source)) {
 		ckpt_checkpoint_remove_cleanup (req_exec_ckpt_checkpointclose->source.conn_info,
 			checkpoint);
@@ -1887,6 +1899,11 @@ error_exit:
 		libais_send_response (req_exec_ckpt_checkpointclose->source.conn_info,
 			&res_lib_ckpt_checkpointclose, sizeof (struct res_lib_ckpt_checkpointclose));
 	}
+	/*Release the checkpoint if instructed to do so.*/
+	if (release_checkpoint) {
+		checkpoint_release(checkpoint);
+	}
+	
 	return (0);
 }
 
