@@ -63,15 +63,6 @@ SaVersionT version = { 'B', 1, 1 };
 
 SaNameT checkpointName = { 16, "checkpoint-sync\0" };
 
-SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
-	SA_CKPT_WR_ALL_REPLICAS,
-	100000,
-	5000000000LL,
-	5,
-	2000,
-	10
-};
-
 char readBuffer1[1025];
 
 
@@ -108,8 +99,8 @@ int main (void) {
 	
 	error = saCkptCheckpointOpen (ckptHandle,
 		&checkpointName,
-		&checkpointCreationAttributes,
-		SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		0,
+		SA_CKPT_CHECKPOINT_READ,
 		0,
 		&checkpointHandle);
 	printf ("%s: initial open of checkpoint\n",

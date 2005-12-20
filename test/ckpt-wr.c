@@ -63,12 +63,12 @@ SaVersionT version = { 'B', 1, 1 };
 SaNameT checkpointName = { 16, "checkpoint-sync\0" };
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
-	SA_CKPT_WR_ALL_REPLICAS,
-	100000,
-	2000,
-	5,
-	20000,
-	10
+	.creationFlags =        SA_CKPT_WR_ALL_REPLICAS,
+	.checkpointSize =       250000,
+	.retentionDuration =    SA_TIME_ONE_SECOND * 60,
+	.maxSections =          5,
+	.maxSectionSize =       250000,
+	.maxSectionIdSize =     10
 };
 
 char readBuffer1[1025];
@@ -121,7 +121,7 @@ int main (void) {
 	error = saCkptCheckpointOpen (ckptHandle,
 			&checkpointName,
 			&checkpointCreationAttributes,
-			SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+			SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 			0,
 			&checkpointHandle);
 	printf ("%s: initial open of checkpoint\n",
@@ -163,7 +163,6 @@ int main (void) {
 				printf ("%s: checkpoint write with data %s\n",
 							get_test_output (error, SA_AIS_OK), (char*)data);
 			}while (error == SA_AIS_ERR_TRY_AGAIN);
-
 
 			nanosleep(&delay,&delay2);
 	}while (1);
