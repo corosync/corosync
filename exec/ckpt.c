@@ -2058,7 +2058,35 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 								 SectionId,
 								(int)sectionDescriptor->sectionId.idLen);
 	if (ckptCheckpointSection) {
-		error = SA_AIS_ERR_EXIST;
+		/*
+		 * This use case is mostly for the default section and is not probable for any other
+		 * sections.
+		 */
+		if (sectionDescriptor->sectionSize
+			> ckptCheckpointSection->sectionDescriptor.sectionSize) {
+			
+			log_printf (LOG_LEVEL_NOTICE, 
+				"CKPT: recovery_section_create reallocating data. Present Size: %d, New Size: %d\n",
+				ckptCheckpointSection->sectionDescriptor.sectionSize,sectionDescriptor->sectionSize);
+
+			ckptCheckpointSection->sectionData =
+				realloc (ckptCheckpointSection->sectionData, sectionDescriptor->sectionSize);
+
+			if (ckptCheckpointSection->sectionData == 0) {
+				log_printf (LOG_LEVEL_ERROR,
+					"CKPT: recovery_section_create sectionData realloc returned 0 Calling error_exit.\n");
+				error = SA_AIS_ERR_NO_MEMORY;
+				checkpoint_section_release(ckptCheckpointSection);
+				goto error_exit;
+			}
+
+			ckptCheckpointSection->sectionDescriptor.sectionSize = sectionDescriptor->sectionSize;
+			error = SA_AIS_OK;
+			
+		}
+		else {
+			error = SA_AIS_ERR_EXIST;
+		}
 		goto error_exit;
 	}
 
@@ -2460,6 +2488,10 @@ static int recovery_section_write(int sectionIdLen,
 	 */
 	sizeRequired = dataOffSet + dataSize;
 	if (sizeRequired > ckptCheckpointSection->sectionDescriptor.sectionSize) {
+		log_printf (LOG_LEVEL_ERROR,
+			"recovery_section_write. write-past-end sizeRequired:(%d), dataOffSet:(%d), dataSize:(%d), sync-section-size:(%d)\n",
+			sizeRequired, dataOffSet, dataSize,
+			(int)ckptCheckpointSection->sectionDescriptor.sectionSize);
 		error = SA_AIS_ERR_ACCESS;
 		goto error_exit;		
 	}
