@@ -712,7 +712,7 @@ saLckResourceOpenAsync (
 	SaLckResourceHandleT lckResourceHandle;
 	SaAisErrorT error;
 	struct req_lib_lck_resourceopen req_lib_lck_resourceopen;
-	struct res_lib_lck_resourceopen res_lib_lck_resourceopen;
+	struct res_lib_lck_resourceopenasync res_lib_lck_resourceopenasync;
 
 	error = saHandleInstanceGet (&lckHandleDatabase, lckHandle,
 		(void *)&lckInstance);
@@ -743,6 +743,7 @@ saLckResourceOpenAsync (
 	lckResourceInstance->lckResourceHandle = lckResourceHandle;
 	lckResourceInstance->resourceOpenFlags = resourceOpenFlags;
 
+	memcpy (&lckResourceInstance->lockResourceName, lockResourceName, sizeof (SaNameT));
 	req_lib_lck_resourceopen.header.size = sizeof (struct req_lib_lck_resourceopen);
 	req_lib_lck_resourceopen.header.id = MESSAGE_REQ_LCK_RESOURCEOPENASYNC;
 	req_lib_lck_resourceopen.invocation = invocation;
@@ -755,8 +756,8 @@ saLckResourceOpenAsync (
 	error = saSendReceiveReply (lckResourceInstance->response_fd, 
 		&req_lib_lck_resourceopen,
 		sizeof (struct req_lib_lck_resourceopen),
-		&res_lib_lck_resourceopen,
-		sizeof (struct res_lib_lck_resourceopen));
+		&res_lib_lck_resourceopenasync,
+		sizeof (struct res_lib_lck_resourceopenasync));
 
 	pthread_mutex_unlock (&lckInstance->response_mutex);
 
@@ -764,7 +765,7 @@ saLckResourceOpenAsync (
 		saHandleInstancePut (&lckResourceHandleDatabase,
 			lckResourceHandle);
 		saHandleInstancePut (&lckHandleDatabase, lckHandle);
-		return (res_lib_lck_resourceopen.header.error);
+		return (res_lib_lck_resourceopenasync.header.error);
 	}
 
 	saHandleInstancePut (&lckResourceHandleDatabase, lckResourceHandle);
@@ -1003,7 +1004,7 @@ saLckResourceUnlock (
 	SaTimeT timeout)
 {
 	struct req_lib_lck_resourceunlock req_lib_lck_resourceunlock;
-	struct res_lib_lck_resourceunlock res_lib_lck_resourceunlock;
+	struct res_lib_lck_resourceunlockasync res_lib_lck_resourceunlockasync;
 	SaAisErrorT error;
 	struct lckLockIdInstance *lckLockIdInstance;
 	struct lckResourceInstance *lckResourceInstance;
@@ -1043,8 +1044,8 @@ saLckResourceUnlock (
 	error = saSendReceiveReply (lckLockIdInstance->response_fd, 
 		&req_lib_lck_resourceunlock,
 		sizeof (struct req_lib_lck_resourceunlock),
-		&res_lib_lck_resourceunlock,
-		sizeof (struct res_lib_lck_resourceunlock));
+		&res_lib_lck_resourceunlockasync,
+		sizeof (struct res_lib_lck_resourceunlockasync));
 
 	pthread_mutex_unlock (lckLockIdInstance->response_mutex);
 
@@ -1052,7 +1053,7 @@ saLckResourceUnlock (
 
 	saHandleDestroy (&lckLockIdHandleDatabase, lockId);
 
-	return (error == SA_AIS_OK ? res_lib_lck_resourceunlock.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_lck_resourceunlockasync.header.error : error);
 }
 
 SaAisErrorT
