@@ -240,6 +240,11 @@ saClmDispatch (
 			goto error_unlock;
 		}
 
+		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+			error = SA_AIS_ERR_BAD_HANDLE;
+			goto error_unlock;
+		}
+
 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
 			pthread_mutex_unlock (&clmInstance->dispatch_mutex);
