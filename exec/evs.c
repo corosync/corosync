@@ -340,9 +340,9 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_base = &req_lib_evs_mcast_joined->msg;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_joined->msg_len;
 // TODO this doesn't seem to work for some reason	
-	send_ok = totempg_send_ok (req_lib_evs_mcast_joined->msg_len); 
+	send_ok = totempg_groups_send_ok_joined (openais_group_handle, req_exec_evs_mcast_iovec, 3);
 
-	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (openais_group_handle, req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
 		// TODO
 	if (res == 0) {
 		error = EVS_OK;
@@ -389,8 +389,8 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;
 	
 // TODO this is wacky
-	send_ok = totempg_send_ok (req_lib_evs_mcast_groups->msg_len);
-	res = totempg_mcast (req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
+	send_ok = totempg_groups_send_ok_joined (openais_group_handle, req_exec_evs_mcast_iovec, 3);
+	res = totempg_groups_mcast_joined (openais_group_handle, req_exec_evs_mcast_iovec, 3, TOTEMPG_AGREED);
 	if (res == 0) {
 		error = EVS_OK;
 	}

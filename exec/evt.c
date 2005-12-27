@@ -1115,7 +1115,7 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
-	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Open mcast result: %d\n",
 				res);
 	if (res != 0) {
@@ -1151,7 +1151,7 @@ static SaErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 	cpkt.u.chcu.chcu_unlink_id = unlink_id;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
 	if (res != 0) {
 			ret = SA_AIS_ERR_LIBRARY;
 	}
@@ -2338,7 +2338,7 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	cpkt.u.chcu.chcu_unlink_id = ucp->ucp_unlink_id;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	if (totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED) == 0) {
+	if (totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED) == 0) {
 		return 0;
 	}
 
@@ -2609,7 +2609,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 */
 	pub_iovec.iov_base = req;
 	pub_iovec.iov_len = req->led_head.size;
-	result = totempg_mcast (&pub_iovec, 1, TOTEMPG_AGREED);
+	result = totempg_groups_mcast_joined (openais_group_handle, &pub_iovec, 1, TOTEMPG_AGREED);
 	if (result != 0) {
 			error = SA_AIS_ERR_LIBRARY;
 	}
@@ -2670,7 +2670,7 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	cpkt.u.chc_event_id = req->iec_event_id;
 	rtn_iovec.iov_base = &cpkt;
 	rtn_iovec.iov_len = cpkt.chc_head.size;
-	ret = totempg_mcast (&rtn_iovec, 1, TOTEMPG_AGREED);
+	ret = totempg_groups_mcast_joined (openais_group_handle, &rtn_iovec, 1, TOTEMPG_AGREED);
 	if (ret == 0) {
 		return 0;
 	}
@@ -3983,7 +3983,7 @@ static int evt_sync_process(void)
 				cpkt.u.chc_set_id.chc_last_id = md->mn_last_msg_id;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
-				res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED);
+				res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
 				if (res != 0) {
 					log_printf(RECOVERY_DEBUG, 
 						"Unable to send event id to %s\n", 
@@ -4048,7 +4048,7 @@ static int evt_sync_process(void)
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
 			chn_iovec.iov_base = &cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
-			res = totempg_mcast(&chn_iovec, 1,TOTEMPG_AGREED);
+			res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -4063,7 +4063,7 @@ static int evt_sync_process(void)
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_mcast (&chn_iovec, 1,TOTEMPG_AGREED);
+		res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
 		if (res != 0) {
 		/*
 		 * Try again later.
@@ -4110,7 +4110,7 @@ static int evt_sync_process(void)
 			evt->ed_event.led_head.id = MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA;
 			chn_iovec.iov_base = &evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
-			res = totempg_mcast(&chn_iovec, 1, TOTEMPG_AGREED);
+			res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -4137,7 +4137,7 @@ static int evt_sync_process(void)
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_mcast (&chn_iovec, 1, TOTEMPG_AGREED);
+		res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
 
 		recovery_phase = evt_wait_send_retained_events;
 		return 1;

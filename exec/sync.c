@@ -114,7 +114,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 	iovec.iov_base = (char *)&req_exec_sync_barrier_start;
 	iovec.iov_len = sizeof (req_exec_sync_barrier_start);
 
-	res = totempg_mcast (&iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED);
 
 	return (res);
 }

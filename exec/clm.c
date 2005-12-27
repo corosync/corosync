@@ -386,7 +386,7 @@ static int clm_nodejoin_send (void)
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
-	result = totempg_mcast (&req_exec_clm_iovec, 1, TOTEMPG_AGREED);
+	result = totempg_groups_mcast_joined (openais_group_handle, &req_exec_clm_iovec, 1, TOTEMPG_AGREED);
 
 	return (result);
 }

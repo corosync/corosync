@@ -441,8 +441,8 @@ int lck_resource_close (struct resource *resource)
 	iovec.iov_base = (char *)&req_exec_lck_resourceclose;
 	iovec.iov_len = sizeof (req_exec_lck_resourceclose);
 
-	if (totempg_send_ok (sizeof (struct req_exec_lck_resourceclose))) {
-		assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	if (totempg_groups_send_ok_joined (openais_group_handle, &iovec, 1)) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 		return (0);
 	}
 
@@ -471,7 +471,7 @@ void resource_lock_orphan (struct resource_lock *resource_lock)
 	iovec.iov_base = (char *)&req_exec_lck_resourcelockorphan;
 	iovec.iov_len = sizeof (req_exec_lck_resourcelockorphan);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 
 	// AAA
 }
@@ -1235,7 +1235,7 @@ static int message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info
 	iovec.iov_base = (char *)&req_exec_lck_resourceopen;
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1268,7 +1268,7 @@ static int message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn
 	iovec.iov_base = (char *)&req_exec_lck_resourceopen;
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1298,8 +1298,8 @@ static int message_handler_req_lib_lck_resourceclose (struct conn_info *conn_inf
 		iovecs[0].iov_base = (char *)&req_exec_lck_resourceclose;
 		iovecs[0].iov_len = sizeof (req_exec_lck_resourceclose);
 
-		if (totempg_send_ok (sizeof (struct req_exec_lck_resourceclose))) {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+		if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 	}
 	else {
@@ -1343,7 +1343,7 @@ static int message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1374,7 +1374,7 @@ static int message_handler_req_lib_lck_resourcelockasync (struct conn_info *conn
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1405,7 +1405,7 @@ static int message_handler_req_lib_lck_resourceunlock (struct conn_info *conn_in
 	iovec.iov_base = (char *)&req_exec_lck_resourceunlock;
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1436,7 +1436,7 @@ static int message_handler_req_lib_lck_resourceunlockasync (struct conn_info *co
 	iovec.iov_base = (char *)&req_exec_lck_resourceunlock;
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -1463,7 +1463,7 @@ static int message_handler_req_lib_lck_lockpurge (struct conn_info *conn_info, v
 	iovecs[0].iov_base = (char *)&req_exec_lck_lockpurge;
 	iovecs[0].iov_len = sizeof (req_exec_lck_lockpurge);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }

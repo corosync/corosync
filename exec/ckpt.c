@@ -755,8 +755,8 @@ static int ckpt_recovery_process (void)
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
 					 */
-					if (totempg_send_ok(iovecs[0].iov_len + iovecs[1].iov_len)){				 
-						assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+					if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 2)) {
+						assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync State Message.\n");
 					}			
 					else {
@@ -829,8 +829,8 @@ static int ckpt_recovery_process (void)
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
 					 */
-					if (totempg_send_ok(iovecs[0].iov_len + iovecs[1].iov_len + iovecs[2].iov_len)){				 
-						assert (totempg_mcast (iovecs, 3, TOTEMPG_AGREED) == 0);
+					if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 2)) {
+						assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 3, TOTEMPG_AGREED) == 0);
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync Section Message.\n");
 					}			
 					else {
@@ -1284,8 +1284,8 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-	if (totempg_send_ok (sizeof (struct req_exec_ckpt_checkpointclose))) {
-		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		return (0);
 	}
 
@@ -1833,7 +1833,7 @@ void timer_function_retention (void *data)
 	iovec.iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationexpire;
 	iovec.iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationexpire);
 
-	assert (totempg_mcast (&iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 }
 
 extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
@@ -2021,7 +2021,7 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void
 		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
 	return (0);
 }
@@ -2802,7 +2802,7 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2832,7 +2832,7 @@ static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *c
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2859,8 +2859,8 @@ static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_
 		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
 		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-		if (totempg_send_ok (sizeof (struct req_exec_ckpt_checkpointclose))) {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+		if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 	}
 	else {
@@ -2896,7 +2896,7 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2921,7 +2921,7 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -3070,9 +3070,9 @@ printf ("|\n");
 #endif
 		if (iovecs[1].iov_len > 0) {
 			log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
-			assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 		} else {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 
 	}
@@ -3123,9 +3123,9 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	req_exec_ckpt_sectiondelete.header.size += iovecs[1].iov_len; 
 
 	if (iovecs[1].iov_len > 0) {
-		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 	} else {
-		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
 
 	return (0);
@@ -3163,9 +3163,9 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 
 	if (iovecs[1].iov_len > 0) {
 		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
-		assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 	} else {
-		assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
 
 	return (0);
@@ -3218,9 +3218,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 		req_exec_ckpt_sectionwrite.header.size += iovecs[1].iov_len;
 	
 		if (iovecs[1].iov_len > 0) {
-			assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 		} else {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 	}	
 	else {
@@ -3276,9 +3276,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 		req_exec_ckpt_sectionoverwrite.header.size += iovecs[1].iov_len;
 	
 		if (iovecs[1].iov_len > 0) {
-			assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 		} else {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 	}
 	else {
@@ -3340,9 +3340,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		req_exec_ckpt_sectionread.header.size += iovecs[1].iov_len;
 	
 		if (iovecs[1].iov_len > 0) {
-			assert (totempg_mcast (iovecs, 2, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 		} else {
-			assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
 		return (0); /* DO NOT REMOVE */
 	}

@@ -187,6 +187,14 @@ struct totem_ip_address this_non_loopback_ip;
 
 char *socketname = "libais.socket";
 
+totempg_groups_handle openais_group_handle;
+
+struct totempg_group openais_group = {
+	.group		= "a",
+	.group_len	= 1
+};
+
+
 static int libais_connection_active (struct conn_info *conn_info)
 {
 	return (conn_info->state == CONN_STATE_ACTIVE);
@@ -592,6 +600,8 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	struct ucred *cred;
 	int on = 0;
 	int send_ok = 0;
+	int send_ok_joined = 0;
+	struct iovec send_ok_joined_iovec;
 	struct res_overlay res_overlay;
 
 	if (revent & (POLLERR|POLLHUP)) {
@@ -705,10 +715,15 @@ retry_recv:
 			 * to queue a message, otherwise tell the library we are busy and to
 			 * try again later
 			 */
+			send_ok_joined_iovec.iov_base = header;
+			send_ok_joined_iovec.iov_len = header->size;
+			send_ok_joined = totempg_groups_send_ok_joined (openais_group_handle,
+				&send_ok_joined_iovec, 1);
+
 			send_ok =
 				(ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
-				(totempg_send_ok (header->size)) &&
+				(send_ok_joined) &&
 				(sync_in_process() == 0));
 
 			if (send_ok) {
@@ -1139,10 +1154,18 @@ int main (int argc, char **argv)
 
 	totempg_initialize (
 		aisexec_poll_handle,
-		&openais_config.totem_config,
+		&openais_config.totem_config);
+
+	totempg_groups_initialize (
+		&openais_group_handle,
 		deliver_fn,
 		confchg_fn);
 	
+	totempg_groups_join (
+		openais_group_handle,
+		&openais_group,
+		1);
+
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 
 	/*

@@ -82,16 +82,16 @@
  */
 
 #include <netinet/in.h>
-#include "totempg.h"
-#include "totemsrp.h"
-#include "totemmrp.h"
 #include <sys/uio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-
+#include "totempg.h"
+#include "totemmrp.h"
+#include "totemsrp.h"
+#include "hdb.h"
 #include "swab.h"
 
 #define min(a,b) ((a) < (b)) ? a : b
@@ -140,19 +140,6 @@ static int mcast_packed_msg_count = 0;
 
 struct totem_config *totempg_totem_config;
 
-static void (*app_deliver_fn) (
-		struct totem_ip_address *source_addr,
-		struct iovec *iovec,
-		int iov_len,
-		int endian_conversion_required) = 0;
-
-static void (*app_confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id) = 0;
-
 struct assembly {
 	struct totem_ip_address addr;
 	unsigned char data[MESSAGE_SIZE_MAX];
@@ -174,10 +161,40 @@ int assembly_list_entries = 0;
  * the buffer is a continuation of a previously packed fragment.
  */
 static unsigned char *fragmentation_data;
-int fragment_size = 0;
-int fragment_continuation = 0;
+
+static int fragment_size = 0;
+
+static int fragment_continuation = 0;
 
 static struct iovec iov_delv;
+
+static unsigned int totempg_max_handle = 0;
+struct totempg_group_instance {
+	void (*deliver_fn) (
+		struct totem_ip_address *source_addr,
+		struct iovec *iovec,
+		int iov_len,
+		int endian_conversion_required);
+
+	void (*confchg_fn) (
+		enum totem_configuration_type configuration_type,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
+		struct memb_ring_id *ring_id);
+
+	struct totempg_group *groups;
+
+	int groups_cnt;
+};
+
+static struct saHandleDatabase totempg_groups_instance_database = {
+	.handleCount				= 0,
+	.handles					= 0,
+	.handleInstanceDestructor	= 0
+};
+
+static int send_ok (int msg_size);
 
 static struct assembly *find_assembly (struct totem_ip_address *addr)
 {
@@ -191,6 +208,110 @@ static struct assembly *find_assembly (struct totem_ip_address *addr)
 	return (0);
 }
 
+static inline void app_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id)
+{
+	int i;
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+
+	for (i = 0; i <= totempg_max_handle; i++) {
+		error = saHandleInstanceGet (&totempg_groups_instance_database,
+			i, (void *)&instance);
+
+		if (error == SA_OK) {
+			instance->confchg_fn (
+				configuration_type,
+				member_list,
+				member_list_entries,
+				left_list,
+				left_list_entries,
+				joined_list,
+				joined_list_entries,
+				ring_id);
+
+			saHandleInstancePut (&totempg_groups_instance_database, i);
+		}
+	}
+}
+static inline int group_matches (
+	struct iovec *iovec,
+	unsigned int iov_len,
+	struct totempg_group *groups_b,
+	unsigned int group_b_cnt,
+	unsigned int *adjust_iovec)
+{
+	unsigned short *group_len;
+	char *group_name;
+	int i;
+	int j;
+	
+	assert (iov_len == 1);
+
+	group_len = (unsigned short *)iovec->iov_base;
+	group_name = ((char *)iovec->iov_base) +
+		sizeof (unsigned short) * (group_len[0] + 1);
+
+	/*
+	 * Calculate amount to adjust the iovec by before delivering to app
+	 */
+	*adjust_iovec = sizeof (unsigned short) * (group_len[0] + 1);
+	for (i = 1; i < group_len[0] + 1; i++) {
+		*adjust_iovec += group_len[i];
+	}
+
+	/*
+	 * Determine if this message should be delivered to this instance
+	 */
+	for (i = 1; i < group_len[0] + 1; i++) {
+		for (j = 0; j < group_b_cnt; j++) {
+			if ((group_len[i] == groups_b[j].group_len) &&
+				(memcmp (groups_b[j].group, group_name, group_len[i]) == 0)) {
+				return (1);
+			}
+		}
+		group_name += group_len[i];
+	}
+	return (0);
+}
+	
+
+static inline void app_deliver_fn (
+	struct totem_ip_address *source_addr,
+	struct iovec *iovec,
+	unsigned int iov_len,
+	int endian_conversion_required)
+{
+	int i;
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	struct iovec stripped_iovec;
+	unsigned int adjust_iovec;
+
+	for (i = 0; i <= totempg_max_handle; i++) {
+		error = saHandleInstanceGet (&totempg_groups_instance_database,
+			i, (void *)&instance);
+
+		if (error == SA_OK) {
+			assert (iov_len == 1);
+			if (group_matches (iovec, iov_len, instance->groups, instance->groups_cnt, &adjust_iovec)) {
+				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
+				stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
+				instance->deliver_fn (
+					source_addr,
+					&stripped_iovec,
+					iov_len,
+					endian_conversion_required);
+			}
+
+			saHandleInstancePut (&totempg_groups_instance_database, i);
+		}
+	}
+}
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
@@ -459,25 +580,9 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  */
 int totempg_initialize (
 	poll_handle poll_handle,
-	struct totem_config *totem_config,
-
-	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
-		struct iovec *iovec,
-		int iov_len,
-		int endian_conversion_required),
-
-	void (*confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+	struct totem_config *totem_config)
 {
 	int res;
-
-	app_deliver_fn = deliver_fn;
-	app_confchg_fn = confchg_fn;
 
 	totempg_totem_config = totem_config;
 
@@ -514,7 +619,7 @@ static unsigned char next_fragment = 1;
 /*
  * Multicast a message
  */
-int totempg_mcast (
+static int mcast_msg (
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee)
@@ -542,7 +647,7 @@ int totempg_mcast (
 		total_size += iovec[i].iov_len;
 	}
 
-	if( totempg_send_ok (total_size + sizeof(unsigned short) *
+	if (send_ok (total_size + sizeof(unsigned short) *
 		(mcast_packed_msg_count+1)) == 0) {
 
 		return(-1);
@@ -616,7 +721,7 @@ int totempg_mcast (
 			iovecs[0].iov_len = sizeof(struct totempg_mcast);
 			iovecs[1].iov_base = mcast_packed_msg_lens;
 			iovecs[1].iov_len = mcast_packed_msg_count * 
-												sizeof(unsigned short);
+				sizeof(unsigned short);
 			iovecs[2].iov_base = data_ptr;
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemmrp_avail() > 0);
@@ -662,7 +767,7 @@ int totempg_mcast (
 /*
  * Determine if a message of msg_size could be queued
  */
-int totempg_send_ok (
+static int send_ok (
 	int msg_size)
 {
 	int avail = 0;
@@ -675,12 +780,11 @@ int totempg_send_ok (
 	 * a full message, so add +1
 	 * totempg_totem_config->net_mtu - 25 is for the totempg_mcast header
 	 */
-
-
 	total = (msg_size / (totempg_totem_config->net_mtu - 25)) + 1; 
 
 	return (avail >= total);
 }
+
 int totempg_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
@@ -700,3 +804,266 @@ void totempg_callback_token_destroy (
 /*
  *	vi: set autoindent tabstop=4 shiftwidth=4 :
  */
+
+int totempg_groups_initialize (
+	totempg_groups_handle *handle,
+
+	void (*deliver_fn) (
+		struct totem_ip_address *source_addr,
+		struct iovec *iovec,
+		int iov_len,
+		int endian_conversion_required),
+
+	void (*confchg_fn) (
+		enum totem_configuration_type configuration_type,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
+		struct memb_ring_id *ring_id))
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+
+	error = saHandleCreate (&totempg_groups_instance_database,
+		sizeof (struct totempg_group_instance), handle);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	if (*handle > totempg_max_handle) {
+		totempg_max_handle = *handle;
+	}
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, *handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_destroy;
+	}
+
+	instance->deliver_fn = deliver_fn;
+	instance->confchg_fn = confchg_fn;
+	instance->groups = 0;
+	instance->groups_cnt = 0;
+
+	saHandleInstancePut (&totempg_groups_instance_database, *handle);
+
+	return (0);
+error_destroy:
+	saHandleDestroy (&totempg_groups_instance_database, *handle);
+
+error_exit:
+	return (-1);
+}
+
+int totempg_groups_join (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int group_cnt)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	struct totempg_group *new_groups;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	new_groups = realloc (instance->groups,
+		sizeof (struct totempg_group) *
+		(instance->groups_cnt + group_cnt));
+	if (new_groups == 0) {
+		error = ENOMEM;
+		goto error_exit;
+	}
+	memcpy (&new_groups[instance->groups_cnt], 
+		groups, group_cnt * sizeof (struct totempg_group));
+	instance->groups = new_groups;
+	instance->groups_cnt = instance->groups_cnt = group_cnt;
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	return (0);
+
+error_exit:
+	return (error);
+}
+
+int totempg_groups_leave (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int group_cnt)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	return (0);
+error_exit:
+	return (error);
+}
+
+#define MAX_IOVECS_FROM_APP 32
+#define MAX_GROUPS_PER_MSG 32
+
+int totempg_groups_mcast_joined (
+	totempg_groups_handle handle,
+	struct iovec *iovec,
+	int iov_len,
+	int guarantee)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
+	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
+	int i;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	/*
+	 * Build group_len structure and the iovec_mcast structure
+	 */
+	group_len[0] = instance->groups_cnt;
+	for (i = 0; i < instance->groups_cnt; i++) {
+		group_len[i + 1] = instance->groups[i].group_len;
+		iovec_mcast[i + 1].iov_len = instance->groups[i].group_len;
+		iovec_mcast[i + 1].iov_base = instance->groups[i].group;
+	}
+	iovec_mcast[0].iov_len = (instance->groups_cnt + 1) * sizeof (unsigned short);
+	iovec_mcast[0].iov_base = group_len;
+	for (i = 0; i < iov_len; i++) {
+		iovec_mcast[i + instance->groups_cnt + 1].iov_len = iovec[i].iov_len;
+		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
+	}
+
+	mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	return (0);
+
+error_exit:
+	return (error);
+}
+
+int totempg_groups_send_ok_joined (
+	totempg_groups_handle handle,
+	struct iovec *iovec,
+	int iov_len)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	unsigned int size = 0;
+	unsigned int i;
+	unsigned int res;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	for (i = 0; i < instance->groups_cnt; i++) {
+		size += instance->groups[i].group_len;
+	}
+	for (i = 0; i < iov_len; i++) {
+		size += iovec[i].iov_len;
+	}
+
+	res = send_ok (size);
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+
+	return (res);
+error_exit:
+	return (error);
+}
+
+int totempg_groups_mcast_groups (
+	totempg_groups_handle handle,
+	int guarantee,
+	struct totempg_group *groups,
+	int groups_cnt,
+	struct iovec *iovec,
+	int iov_len)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
+	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
+	int i;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	/*
+	 * Build group_len structure and the iovec_mcast structure
+	 */
+	group_len[0] = groups_cnt;
+	for (i = 0; i < groups_cnt; i++) {
+		group_len[i + 1] = groups[i].group_len;
+		iovec_mcast[i + 1].iov_len = groups[i].group_len;
+		iovec_mcast[i + 1].iov_base = groups[i].group;
+	}
+	iovec_mcast[0].iov_len = (groups_cnt + 1) * sizeof (unsigned short);
+	iovec_mcast[0].iov_base = group_len;
+	for (i = 0; i < iov_len; i++) {
+		iovec_mcast[i + groups_cnt + 1].iov_len = iovec[i].iov_len;
+		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;
+	}
+
+	mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	return (0);
+
+error_exit:
+	return (error);
+}
+
+int totempg_groups_send_ok_groups (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int groups_cnt,
+	struct iovec *iovec,
+	int iov_len)
+{
+	SaAisErrorT error;
+	struct totempg_group_instance *instance;
+	unsigned int size = 0;
+	unsigned int i;
+	unsigned int res;
+
+	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+		(void *)&instance);
+	if (error != SA_OK) {
+		goto error_exit;
+	}
+
+	for (i = 0; i < groups_cnt; i++) {
+		size += groups[i].group_len;
+	}
+	for (i = 0; i < iov_len; i++) {
+		size += iovec[i].iov_len;
+	}
+
+	res = send_ok (size);
+
+	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	return (0);
+error_exit:
+	return (error);
+}
+

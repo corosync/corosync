@@ -532,7 +532,7 @@ static void component_unregister (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
 static void component_register (
@@ -569,7 +569,7 @@ static void component_register (
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
 /***
@@ -770,7 +770,7 @@ static void ha_state_group_set (
 	iovecs[0].iov_base = (char *)&req_exec_amf_hastateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_hastateset);
 
-	totempg_mcast (iovecs, 1, TOTEMPG_AGREED);
+	totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED);
 }
 
 void readiness_state_api_set (struct saAmfComponent *component,
@@ -839,7 +839,7 @@ static void readiness_state_group_set (
 	iovecs[0].iov_base = (char *)&req_exec_amf_readinessstateset;
 	iovecs[0].iov_len = sizeof (req_exec_amf_readinessstateset);
 
-	totempg_mcast (iovecs, 1, TOTEMPG_AGREED);
+	totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED);
 }
 
 static void dsmDisabledUnlockedRegisteredOrErrorCancel (
@@ -1463,7 +1463,7 @@ void error_report (
 	iovecs[0].iov_base = (char *)&req_exec_amf_errorreport;
 	iovecs[0].iov_len = sizeof (req_exec_amf_errorreport);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 }
 
 int healthcheck_instance = 0;
@@ -2410,7 +2410,7 @@ static int message_handler_req_amf_componentregister (struct conn_info *conn_inf
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	return (0);
 }
 
@@ -2439,7 +2439,7 @@ static int message_handler_req_amf_componentunregister (struct conn_info *conn_i
 	iovecs[0].iov_base = (char *)&req_exec_amf_componentunregister;
 	iovecs[0].iov_len = sizeof (req_exec_amf_componentunregister);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	return (0);
 }
 
@@ -2620,7 +2620,7 @@ static int message_handler_req_amf_errorreport (struct conn_info *conn_info, voi
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorreport;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorreport);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }
@@ -2650,7 +2650,7 @@ static int message_handler_req_amf_errorcancelall (struct conn_info *conn_info, 
 //	iovecs[1].iov_base = (char *)&req_lib_amf_errorcancelall;
 //	iovecs[1].iov_len = sizeof (req_lib_amf_errorcancelall);
 
-	assert (totempg_mcast (iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
 	return (0);
 }

@@ -40,6 +40,13 @@
 #include "totemsrp.h"
 #include "totem.h"
 
+typedef unsigned int totempg_groups_handle;
+
+struct totempg_group {
+	void *group;
+	int group_len;
+};
+
 #define TOTEMPG_AGREED			0
 #define TOTEMPG_SAFE			1
 
@@ -49,11 +56,28 @@
  */
 
 /*
- * Initialize the totem process group abstraction
+ * Initialize the totem process groups abstraction
  */
 int totempg_initialize (
 	poll_handle poll_handle,
-	struct totem_config *totem_config,
+	struct totem_config *totem_config
+);
+
+void totempg_finalize (void);
+
+int totempg_callback_token_create (void **handle_out,
+	enum totem_callback_token_type type,
+	int delete,
+	int (*callback_fn) (enum totem_callback_token_type type, void *),
+	void *data);
+
+void totempg_callback_token_destroy (void *handle);
+
+/*
+ * Initialize a groups instance
+ */
+int totempg_groups_initialize (
+	totempg_groups_handle *handle,
 
 	void (*deliver_fn) (
 		struct totem_ip_address *source_addr,
@@ -68,28 +92,43 @@ int totempg_initialize (
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-void totempg_finalize (void);
+int totempg_groups_finalize (
+	totempg_groups_handle handle);
 
-/*
- * Multicast a message
- */
-int totempg_mcast (
+int totempg_groups_join (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int gruop_cnt);
+
+int totempg_groups_leave (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int gruop_cnt);
+
+int totempg_groups_mcast_joined (
+	totempg_groups_handle handle,
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee);
 
-/*
- * Determine if a message of msg_size could be queued
- */
-int totempg_send_ok (
-	int msg_size);
+int totempg_groups_send_ok_joined (
+	totempg_groups_handle handle,
+	struct iovec *iovec,
+	int iov_len);
+	
+int totempg_groups_mcast_groups (
+	totempg_groups_handle handle,
+	int guarantee,
+	struct totempg_group *groups,
+	int groups_cnt,
+	struct iovec *iovec,
+	int iov_len);
 
-void totempg_callback_token_destroy (void *handle);
-
-int totempg_callback_token_create (void **handle_out,
-	enum totem_callback_token_type type,
-	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
-
+int totempg_groups_send_ok_groups (
+	totempg_groups_handle handle,
+	struct totempg_group *groups,
+	int groups_cnt,
+	struct iovec *iovec,
+	int iov_len);
+	
 #endif /* TOTEMPG_H_DEFINED */

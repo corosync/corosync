@@ -148,14 +148,17 @@ enum nodeexec_message_types {
 
 extern struct totem_ip_address *this_ip;
 
-poll_handle aisexec_poll_handle;
+extern struct totempg_group openais_group;
 
-extern struct gmi_groupname aisexec_groupname;
+extern totempg_groups_handle openais_group_handle;
+
+poll_handle aisexec_poll_handle;
 
 extern int libais_send_response (struct conn_info *conn_info, void *msg, int mlen);
 
 extern int message_source_is_local(struct message_source *source);
 
 extern void message_source_set(struct message_source *source, struct conn_info *conn_info);
+
 
 #endif /* AIS_EXEC_H_DEFINED */
