@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include "../include/list.h"
 #include "tlist.h"
@@ -133,7 +134,7 @@ void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
 {
 	struct timer *timer = (struct timer *)timer_handle;
 
-	*((unsigned int *)timer->handle_addr) = 0;
+	memset (timer->handle_addr, 0, sizeof (struct timer *));
 	/*
 	 * If the next timer after the currently expiring timer because
 	 * timerlist_del is called from a timer handler, get to the enxt
@@ -162,7 +163,7 @@ static void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle ti
 {
 	struct timer *timer = (struct timer *)timer_handle;
 
-	*((unsigned int *)timer->handle_addr) = 0;
+	memset (timer->handle_addr, 0, sizeof (struct timer *));
 	list_del (&timer->list);
 	list_init (&timer->list);
 	timers_inuse--;
