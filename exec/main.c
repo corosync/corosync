@@ -74,6 +74,7 @@
 #include "ckpt.h"
 #include "evt.h"
 #include "lck.h"
+#include "ykd.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_MAIN
@@ -1073,6 +1074,14 @@ void message_source_set (struct message_source *source, struct conn_info *conn_i
 
 struct totem_logging_configuration totem_logging_configuration;
 
+void main_primary_callback_fn (
+	struct totem_ip_address *view_list,
+	int view_list_entries,
+	int primary_component)
+{
+	log_printf (LOG_LEVEL_NOTICE, "Primary component is %d\n", primary_component);
+}
+
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
@@ -1165,6 +1174,8 @@ int main (int argc, char **argv)
 		openais_group_handle,
 		&openais_group,
 		1);
+
+	ykd_init (main_primary_callback_fn);
 
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 

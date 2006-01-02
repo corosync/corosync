@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2005-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -31,55 +31,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef PRINT_H_DEFINED
-#define PRINT_H_DEFINED
-
-#include "../include/saAis.h"
-#include "../include/saClm.h"
-
-#define LOG_MODE_DEBUG		1
-#define LOG_MODE_TIMESTAMP	2
-#define LOG_MODE_FILE		4
-#define LOG_MODE_SYSLOG		8
-#define LOG_MODE_STDERR		16
+#ifndef YKD_H_DEFINED
+#define YKD_H_DEFINED
 
 /*
- * If you change these, be sure to change log_levels in print.c
+ * Executes a callback whenever component changes
  */
-#define LOG_LEVEL_SECURITY	1
-#define LOG_LEVEL_ERROR		2
-#define LOG_LEVEL_WARNING	3
-#define LOG_LEVEL_NOTICE	4
-#define LOG_LEVEL_DEBUG		5
+int ykd_init (
+    void (*primary_callback_fn) (
+	struct totem_ip_address *view_list,
+	int view_list_entries,
+	int primary_designated));
 
 /*
- * If you change these, be sure to change log_services in print.c
+ * Returns 1 if we are primary component, 0 if not
  */
-#define LOG_SERVICE_MAIN	1
-#define LOG_SERVICE_GMI		2
-#define LOG_SERVICE_CLM		3
-#define LOG_SERVICE_AMF		4
-#define LOG_SERVICE_CKPT	5
-#define LOG_SERVICE_EVT		6
-#define LOG_SERVICE_LCK		7
-#define LOG_SERVICE_EVS		8
-#define LOG_SERVICE_SYNC	9
-#define LOG_SERVICE_YKD		10
+int ykd_primary (void);
 
-extern void internal_log_printf (int logclass, char *format, ...);
-
-#define mklog(level,service) ((level << 16) | (service))
-
-#define log_printf(level,format,args...) { internal_log_printf (mklog(level,LOG_SERVICE),format,##args); }
-
-int log_setup (char **error_string, int log_mode, char *log_file);
-
-extern char *getSaNameT (SaNameT *name);
-
-extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress);
-
-extern void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode);
-
-extern void saAmfPrintGroups (void);
-
-#endif /* PRINT_H_DEFINED */
+#endif /* YKD_H_DEFINED */

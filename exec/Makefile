@@ -49,9 +49,9 @@ TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c tote
 TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
 
 EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c lck.c evs.c mainparse.c print.c mempool.c \
-		util.c sync.c
+		util.c sync.c ykd.c
 EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o lck.o evs.o mainparse.o print.o mempool.o \
-		util.o sync.o
+		util.o sync.o ykd.o
 EXEC_LIBS = libtotem_pg.a
 
 OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
