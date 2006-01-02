@@ -31,6 +31,7 @@
 # Production mode flags
 CFLAGS = -O3 -Wall
 LDFLAGS = -lpthread
+DESTDIR=/usr/local/openais
 
 # Debug mode flags
 #CFLAGS = -g -DDEBUG
@@ -49,3 +50,30 @@ clean:
 	(cd lib; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd exec; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
+
+install:
+	mkdir -p $(DESTDIR)/sbin
+	mkdir -p $(DESTDIR)/usr/include
+	mkdir -p $(DESTDIR)/usr/lib
+	mkdir -p $(DESTDIR)/etc/ais
+
+	cp -a lib/libais.a $(DESTDIR)/usr/lib
+	cp -a lib/libais.so* $(DESTDIR)/usr/lib
+	cp -a lib/libSa*.a $(DESTDIR)/usr/lib
+	cp -a lib/libSa*.so* $(DESTDIR)/usr/lib
+	cp -a lib/libevs.a $(DESTDIR)/usr/lib
+	cp -a lib/libevs.so* $(DESTDIR)/usr/lib
+	cp -a exec/libtotem_pg* $(DESTDIR)/usr/lib
+
+	install -m 755 exec/aisexec $(DESTDIR)/sbin
+	install -m 755 exec/keygen $(DESTDIR)/sbin/ais-keygen
+	install -m 755 conf/openais.conf $(DESTDIR)/etc
+	install -m 755 conf/groups.conf $(DESTDIR)/etc
+
+	cp -a include/saAis.h $(DESTDIR)/usr/include
+	cp -a include/ais_amf.h $(DESTDIR)/usr/include
+	cp -a include/saClm.h $(DESTDIR)/usr/include
+	cp -a include/saCkpt.h $(DESTDIR)/usr/include
+	cp -a include/saEvt.h $(DESTDIR)/usr/include
+	cp -a include/evs.h $(DESTDIR)/usr/include
+	cp -a exec/totem.h $(DESTDIR)/usr/include
