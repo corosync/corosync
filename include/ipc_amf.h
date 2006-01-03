@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -39,49 +39,42 @@
 #include "saAis.h"
 #include "ais_amf.h"
 
-enum req_amf_response_interfaces {
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFHEALTHCHECKCALLBACK = 1,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFREADINESSSTATESETCALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFCOMPONENTTERMINATECALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFCSISETCALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFCSIREMOVECALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFEXTERNALCOMPONENTRESTARTCALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFEXTERNALCOMPONENTCONTROLCALLBACK,
-	MESSAGE_REQ_AMF_RESPONSE_SAAMFPENDINGOPERATIONCONFIRMCALLBACK
-};
-
-enum req_amf_types {
+enum req_lib_amf_types {
 	MESSAGE_REQ_AMF_COMPONENTREGISTER = 0,
-	MESSAGE_REQ_AMF_COMPONENTUNREGISTER,
-	MESSAGE_REQ_AMF_READINESSSTATEGET,
-	MESSAGE_REQ_AMF_HASTATEGET,
-	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART,
-	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTOP,
-	MESSAGE_REQ_AMF_ERRORREPORT,
-	MESSAGE_REQ_AMF_ERRORCANCELALL,
-	MESSAGE_REQ_AMF_STOPPINGCOMPLETE,
-	MESSAGE_REQ_AMF_RESPONSE,
-	MESSAGE_REQ_AMF_COMPONENTCAPABILITYMODELGET
+	MESSAGE_REQ_AMF_COMPONENTUNREGISTER = 1,
+	MESSAGE_REQ_AMF_PMSTART = 2,
+	MESSAGE_REQ_AMF_PMSTOP = 3,
+	MESSAGE_REQ_AMF_HEALTHCHECKSTART = 4,
+	MESSAGE_REQ_AMF_HEALTHCHECKCONFIRM = 5,
+	MESSAGE_REQ_AMF_HEALTHCHECKSTOP = 6,
+	MESSAGE_REQ_AMF_HASTATEGET = 7,
+	MESSAGE_REQ_AMF_CSIQUIESCINGCOMPLETE = 8,
+	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART = 9,
+	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTOP = 10,
+	MESSAGE_REQ_AMF_COMPONENTERRORREPORT = 11,
+	MESSAGE_REQ_AMF_COMPONENTERRORCLEAR = 12,
+	MESSAGE_REQ_AMF_RESPONSE = 13
 };
 
 enum res_lib_amf_types {
 	MESSAGE_RES_AMF_COMPONENTREGISTER = 0,
-	MESSAGE_RES_AMF_COMPONENTUNREGISTER,
-	MESSAGE_RES_AMF_READINESSSTATEGET,
-	MESSAGE_RES_AMF_HASTATEGET,
-	MESSAGE_RES_AMF_HEALTHCHECKCALLBACK,
-	MESSAGE_RES_AMF_READINESSSTATESETCALLBACK,
-	MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK,
-	MESSAGE_RES_AMF_CSISETCALLBACK,
-	MESSAGE_RES_AMF_CSIREMOVECALLBACK,
-	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART,
-	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK,
-	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP,
-	MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET,
-	MESSAGE_RES_AMF_ERRORREPORT,
-	MESSAGE_RES_AMF_ERRORCANCELALL,
-	MESSAGE_RES_AMF_STOPPINGCOMPLETE,
-	MESSAGE_RES_AMF_RESPONSE
+	MESSAGE_RES_AMF_COMPONENTUNREGISTER = 1,
+	MESSAGE_RES_AMF_PMSTART = 2,
+	MESSAGE_RES_AMF_PMSTOP = 3,
+	MESSAGE_RES_AMF_HEALTHCHECKSTART = 4,
+	MESSAGE_RES_AMF_HEALTHCHECKCONFIRM = 5,
+	MESSAGE_RES_AMF_HEALTHCHECKSTOP = 6,
+	MESSAGE_RES_AMF_HASTATEGET = 7,
+	MESSAGE_RES_AMF_CSIQUIESCINGCOMPLETE = 8,
+	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART = 9,
+	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP = 10,
+	MESSAGE_RES_AMF_COMPONENTERRORREPORT = 11,
+	MESSAGE_RES_AMF_COMPONENTERRORCLEAR = 12,
+	MESSAGE_RES_AMF_RESPONSE = 13,
+	MESSAGE_RES_AMF_CSISETCALLBACK = 14,
+	MESSAGE_RES_AMF_HEALTHCHECKCALLBACK = 15,
+	MESSAGE_RES_AMF_CSIREMOVECALLBACK = 16,
+	MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK = 17,
 };
 
 struct req_lib_amf_componentregister {
@@ -104,38 +97,65 @@ struct res_lib_amf_componentunregister {
 	struct res_header header;
 };
 
-struct req_amf_readinessstateget {
+struct req_lib_amf_pmstart {
 	struct req_header header;
 	SaNameT compName;
+	SaUint64T processId;
+	SaInt32T descendentsTreeDepth;
+	SaAmfPmErrorsT pmErrors;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
 };
 
-struct res_lib_amf_readinessstateget {
+struct res_lib_amf_pmstart {
 	struct res_header header;
-	SaAmfReadinessStateT readinessState;
 };
 
-struct res_lib_amf_healthcheckcallback {
-	struct res_header header;
-	int instance;
-	SaInvocationT invocation;
+struct req_lib_amf_pmstop {
+	struct req_header header;
 	SaNameT compName;
-	SaAmfHealthcheckT checkType;
+	SaAmfPmStopQualifierT stopQualifier;
+	SaUint64T processId;
+	SaAmfPmErrorsT pmErrors;
 };
 
-struct res_lib_amf_readinessstatesetcallback {
+struct res_lib_amf_pmstop {
 	struct res_header header;
-	SaInvocationT invocation;
-	SaNameT compName;
-	SaAmfReadinessStateT readinessState;
 };
 
-struct res_lib_amf_componentterminatecallback {
+struct req_lib_amf_healthcheckstart {
+	struct req_header header;
+	SaNameT compName;
+	SaAmfHealthcheckKeyT healthcheckKey;
+	SaAmfHealthcheckInvocationT invocationType;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
+};
+
+struct res_lib_amf_healthcheckstart {
 	struct res_header header;
-	SaInvocationT invocation;
-	SaNameT compName;
 };
 
-struct req_amf_hastateget {
+struct req_lib_amf_healthcheckconfirm {
+	struct req_header header;
+	SaNameT compName;
+	SaAmfHealthcheckKeyT healthcheckKey;
+	SaAisErrorT healthcheckResult;
+};
+
+struct res_lib_amf_healthcheckconfirm {
+	struct res_header header;
+};
+
+struct req_lib_amf_healthcheckstop {
+	struct req_header header;
+	SaNameT compName;
+	SaAmfHealthcheckKeyT healthcheckKey;
+};
+
+struct res_lib_amf_healthcheckstop {
+	struct res_header header;
+};
+
+struct req_lib_amf_hastateget {
 	struct req_header header;
 	SaNameT compName;
 	SaNameT csiName;
@@ -146,15 +166,90 @@ struct res_lib_amf_hastateget {
 	SaAmfHAStateT haState;
 };
 
+struct req_lib_amf_csiquiescingcomplete {
+	struct req_header header;
+	SaInvocationT invocation;
+	SaAisErrorT error;
+};
+
+struct res_lib_amf_csiquiescingcomplete {
+	struct res_header header;
+};
+
+struct req_lib_amf_protectiongrouptrackstart {
+	struct req_header header;
+	SaNameT csiName;
+	SaUint8T trackFlags;
+	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
+};
+
+struct res_lib_amf_protectiongrouptrackstart {
+	struct res_header header;
+};
+	
+
+struct req_lib_amf_protectiongrouptrackstop {
+	struct req_header header;
+	SaNameT csiName;
+};
+
+struct res_lib_amf_protectiongrouptrackstop {
+	struct res_header header;
+};
+
+struct req_lib_amf_componenterrorreport {
+	struct req_header header;
+	SaNameT reportingComponent;
+	SaNameT erroneousComponent;
+	SaTimeT errorDetectionTime;
+};
+
+struct res_lib_amf_componenterrorreport {
+	struct res_header header;
+};
+
+struct req_lib_amf_componenterrorclear {
+	struct req_header header;
+	SaNameT compName;
+};
+
+struct res_lib_amf_componenterrorclear {
+	struct res_header header;
+};
+
+struct req_lib_amf_response {
+	struct req_header header;
+	SaInvocationT invocation;
+	SaErrorT error;
+};
+
+struct res_lib_amf_response {
+	struct res_header header;
+};
+struct res_lib_amf_healthcheckcallback {
+	struct res_header header;
+	SaInvocationT invocation;
+	SaNameT compName;
+	SaAmfHealthcheckKeyT key;
+};
+
+#ifdef COMPILE_OUT
+
+struct res_lib_amf_componentterminatecallback {
+	struct res_header header;
+	SaInvocationT invocation;
+	SaNameT compName;
+};
+
+
+#endif
+
 struct res_lib_amf_csisetcallback {
 	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
-	SaNameT csiName;
-	SaAmfCSIFlagsT csiFlags;
 	SaAmfHAStateT haState;
-	SaNameT activeCompName;
-	SaAmfCSITransitionDescriptorT transitionDescriptor;
+	SaAmfCSIDescriptorT csiDescriptor;
 };
 
 struct res_lib_amf_csiremovecallback {
@@ -165,28 +260,14 @@ struct res_lib_amf_csiremovecallback {
 	SaAmfCSIFlagsT csiFlags;
 };
 
-struct req_amf_protectiongrouptrackstart {
-	struct req_header header;
-	SaNameT csiName;
-	SaUint8T trackFlags;
-	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
-	SaUint32T numberOfItems;
-};
-
-struct res_lib_amf_protectiongrouptrackstart {
+struct res_lib_amf_componentterminatecallback {
 	struct res_header header;
-};
-	
-
-struct req_amf_protectiongrouptrackstop {
-	struct req_header header;
-	SaNameT csiName;
+	SaInvocationT invocation;
+	SaNameT compName;
 };
 
-struct res_lib_amf_protectiongrouptrackstop {
-	struct res_header header;
-};
 
+#ifdef COMPILE_OUT
 struct res_lib_amf_protectiongrouptrackcallback {
 	struct res_header header;
 	SaNameT csiName;
@@ -197,56 +278,16 @@ struct res_lib_amf_protectiongrouptrackcallback {
 	SaAmfProtectionGroupNotificationT notificationBuffer[0];
 };
 
-struct req_lib_amf_errorreport {
-	struct req_header header;
-	SaNameT reportingComponent;
-	SaNameT erroneousComponent;
-	SaTimeT errorDetectionTime;
-	SaAmfErrorDescriptorT errorDescriptor;
-	SaAmfAdditionalDataT additionalData;
-};
+typedef enum {
+        SA_AMF_COMPONENT_CAPABILITY_X_ACTIVE_AND_Y_STANDBY = 1,
+        SA_AMF_COMPONENT_CAPABILITY_X_ACTIVE_OR_Y_STANDBY = 2,
+        SA_AMF_COMPONENT_CAPABILITY_1_ACTIVE_OR_Y_STANDBY = 3,
+        SA_AMF_COMPONENT_CAPABILITY_1_ACTIVE_OR_1_STANDBY = 4,
+        SA_AMF_COMPONENT_CAPABILITY_X_ACTIVE = 5,
+        SA_AMF_COMPONENT_CAPABILITY_1_ACTIVE = 6,
+        SA_AMF_COMPONENT_CAPABILITY_NO_ACTIVE = 7
+} SaAmfComponentCapabilityModelT;
 
-struct res_lib_amf_errorreport {
-	struct res_header header;
-};
-
-struct req_lib_amf_errorcancelall {
-	struct req_header header;
-	SaNameT compName;
-};
-
-struct res_lib_amf_errorcancelall {
-	struct res_header header;
-};
-
-struct req_amf_response {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaErrorT error;
-};
-
-struct res_lib_amf_response {
-	struct res_header header;
-};
-
-struct req_amf_stoppingcomplete {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaErrorT error;
-};
-
-struct res_lib_amf_stoppingcomplete {
-	struct res_header header;
-};
-
-struct req_amf_componentcapabilitymodelget {
-	struct req_header header;
-	SaNameT compName;
-};
-
-struct res_lib_amf_componentcapabilitymodelget {
-	struct res_header header;
-	SaAmfComponentCapabilityModelT componentCapabilityModel;
-};
+#endif
 
 #endif /* AIS_IPC_AMF_H_DEFINED */

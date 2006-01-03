@@ -132,6 +132,8 @@ int totemip_localhost(int family, struct totem_ip_address *localhost)
 {
 	char *addr_text;
 
+	memset (localhost, 0, sizeof (struct totem_ip_address));
+
 	if (family == AF_INET)
 		addr_text = LOCALHOST_IPV4;
 	else

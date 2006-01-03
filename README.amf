@@ -1,0 +1,228 @@
+AMF B.01.01 Implementation
+--------------------------
+This patch contains the basis of the AMF B.01.01 service targeted for release
+in Wilson (1.0).  It is a work in progress and incomplete at this time.
+
+What does AMF do?
+-----------------
+The AMF has many major duties:
+ * issue instantiate, terminate, and cleanup operations for components
+ * assignment of component service instances to components
+ * detection of component faults and executing recovery actions
+
+The AMF starts and stops processes that are part of the component.  A SU
+contains multiple components.  A service group contains multiple SUs.
+A SU is the unit of redundancy used to implement high availability.
+
+The process of starting and stopping components takes place using the CLC
+operations.  The AMF specification is exceedingly clear about which CLC
+operations occur for which component types and openais implements the full
+CLC operations for all of the various component types.
+
+If a component is not sa-aware, the only level of high availability that
+can be applied to the application is through execution of the CLC interfaces.
+
+A special component, called a proxy component, can be used to present an
+sa-aware component to AMF to manage a non-sa-aware component.  This would be 
+useful, for example, to implement a healthcheck operation which runs some
+operation of the unmodified application service.
+
+Components that are sa-aware have been written specifically to the AMF
+interfaces.  These components provide the most support for high availability
+for application developers.
+
+When an sa-aware component is registered, service instances are assigned
+to the component once the service unit is available to take service.  This
+service instance specifies whether the component is ACTIVE or STANDBY.  The
+component is directed by the AMF to enter either ACTIVE or STANDBY states
+and then executes its assigned operational mode.  The number of CSIs assigned
+to a component is determined by a reduction process with 6 levels of
+reduction.  The AMF provides a very clear definition of what is required
+with several examples for each reduction level.
+
+The AMF detects faults through the use of a healthcheck operation.  The user
+specifies in a configuration file healthcheck keys and timing parameters.
+This configuration is then used by the application developer to register
+a healthcheck operation in the AMF.  The healthcheck operation can be started
+or stopped.  Once started, the AMF will periodically send a request to the
+component to determine its level of health.  The AMF reacts to negative
+healthchecks or failed healthchecks by executing a recovery policy.
+
+The recovery policy attempts to restart components first.  When components
+are restarted and fail a certain number of times within a timeout period, the
+entire service unit is failed over.  When SUs on one node are restarted and fail
+a certain number of times within a timeout period, the service unit is failed
+over to a standby service unit.
+
+Currently openais implements most of what is described above.
+
+How to configure AMF
+--------------------
+The AMF doesn't specify a configuration file format.  It does specify many
+configuration options, which are mostly implemented in openais.  The
+configuration file specifies the service groups, service units, service
+instances, recovery configuration options, and information describing where
+components and CLI (command line interface) tools are located.
+
+There are several configuration options which are used to control the component
+life cycle (CLC) of the component.  These configuration options are:
+
+in the group section:
+clccli_path=/home/sdake/amfb-dec/test
+  The path to the CLC CLI applications.
+
+binary_path=/home/sdake/amfb-dec/test
+  The path to the components.
+
+in the unit section:
+bn=testamf1
+  The bn parameter specifies the binary name of the application that should be
+  run by the instantion script.  Note instantiate may already know this
+  information and hence, this is optional.
+
+instantiate=clc_cli_script
+  The instantiate parameter specifies the CLC-CLI binary program to be run to
+  instantiate a component.  An instantiation starts the processes representing
+  the component.
+
+terminate=clc_cli_script
+  The terminate parameter specifies the CLC-CLI binary program to be run to
+  terminate a component.  A terminate CLC terminates the processes representing
+  the component nicely by properly shutting down.
+
+cleanup=clc_cli_script
+  The cleanup parameter specifies the CLC-CLI binary program to be run to
+  cleanup a component.  A cleanup CLC terminates the processes representing
+  the component abruptly.
+
+There are several options to describe the component recovery escalation
+policies.  These are:
+
+component_restart_probation=100000
+  This specifies the number of milliseconds that a component can be restarted
+  in escalation level 0 (only restart components) before escalating to level 1.
+
+component_restart_max=4
+  This specifies the number of times within component_restart_probation period
+  before escalating from level 0 to level 1.
+
+unit_restart_probation=200000
+  This specifies the number of milliseconds that a unit can be restarted
+  in escalation level 1 (restart entire SU) before escalating to level 2.
+
+unit_restart_max=6
+  This specifies the number of times within unit_restart_probation period
+  before escalating from level 1 to level 2.
+
+The AMF will execute a N+M reduction process based upon the number of service
+instances specified in the configuration file and 4 configuration options
+at the groups level:
+
+preferred-active-units=3
+  This is the preferred number of active units that should be active.
+
+maximum-active-instances=3
+  This is the naximum number of active CSIs that can be assigned to a component.
+
+preferred-standby-units=2
+  This is the preferred number of standby units that should be active.
+
+maximum-standby-instances=4
+  This is the naximum number of standby CSIs that can be assigned to a component.
+
+A service instance is specified only as a name.  If there are 4 SIs, the
+reduction process will execute as per the AMF specification to assign the proper
+number of active and standby CSIs to components currently registered.  This
+is a little buggy at the moment.
+
+serviceinstance {
+	name = siaa
+}
+
+Failure detection occurs through the healthcheck option.  The healthcheck
+options are
+key
+  The name of the healthcheck parameter
+
+period
+  The number of milliseconds to wait before issueing a new healthcheck.
+
+maximum_duration
+  The maximum amount of time to wait for a healthcheck to complete before
+  declaring a failure.
+
+
+The example programs
+--------------------
+First the openais test programs should be installed.  When compiling openais
+in the exec directory a file called openais-instantiate is created.  Copy this
+to the test directory
+
+exec# cp openais-instantiate ../test
+
+Set execute permissions for the clc_cli_script
+
+exec# cd ../test
+test# chmod +x ../clc_cli_script
+
+IMPORTANT NOTE:
+Within the amf stanza, the mode variable should be set to enabled.  This option
+defaults to off and the default configuration file turns this off as well.
+This is configured off by default to keep from confusing openais users
+interested in using AIS without the alpha-AMF.
+
+example openais.conf:
+amf {
+	mode: enabled
+}
+
+The following two paths must be set in the groups.conf file:
+       clccli_path=/home/sdake/amfb-l/test
+       binary_path=/home/sdake/amfb-l/test
+
+If these are not set, the path to the clc_cli_script and component binaries
+cannot be determined and AMF will not institate the testamf1 binary.
+
+Once aisexec is run using the default configuration file, 5 service units
+will be instantiated.  The testamf1 C code will be used for all 5 SUs
+and both comp_a and comp_b.  The testamf1 program determines its component
+name at start time from the saAmfComponentNameGet api call.  The result is
+that 10 processes will be started by AMF.
+
+The testamf1 will be assigned CSIs after they execute a saAmfComponentRegister
+operation.  Note this operation causes the presence state of the testamf1
+component to be set to INSTANTIATED as required by the AMF specification.  The
+service instances and their names are defined within the configuration file.
+
+The testamf1 program reports an error via saAmfErrorReport after 10
+healthchecks.  This results in openais calling the cleanup handler, which for
+an sa-aware component, is the CLC_CLI_CLEANUP command.  This causes the cleanup
+operation of the clc_cli_script to be run.  This cleanup command then reads the
+pid of the process that was stored to /var/run at startup of the testamf1
+program.  It then executes a kill -9 on the PID.  Custom cleanup operations can
+be executed by modifying the clc_cli_script script program.
+
+After this is done 4 times (configurable) the entire service
+unit is terminated and restarted. Once this happens 6 times, the code
+escalates to level 2, which is currently unimplemented.
+
+Currently working:
+component register, healthcheck start and stop, csi assignment, n+m with
+all 6 reduction levels, error report, amf response, terminate, cleanup and
+restart escalation levels 0-1, single node (multinode not tested),
+setting presence and operational state of components internally, initial
+assignment of n+m csis based upon configuration options and fully
+following AIS AMF B spec.
+
+Not working or tested:
+escalation levels 2-3 (switchover/failover), protection group tracking,
+protection groups in general, any other model besides n+m, amf B
+specified reassignment of csis to terminated and restarted components,
+support for proxied or non-sa aware components, state machine for n+m
+needs alot of work after initial start.  Timeout periods to reduce
+escalation level for escalation policies are unimplemented.
+
+Any feedback appreciated.
+
+Keep in mind this is very early code and may have many bugs which I'd
+be happy to have reported :).

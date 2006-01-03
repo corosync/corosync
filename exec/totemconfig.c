@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -70,7 +70,7 @@ static char error_string_response[512];
 
 typedef enum {
 	MAIN_HEAD,
-	MAIN_TOTEM
+	MAIN_TOTEM,
 } main_parse_t;
 
 static inline char *
@@ -266,7 +266,6 @@ extern int totem_config_read (
 				goto parse_error;
 			}
 			break;
-
 		default:
 			assert (0 == 1); /* SHOULDN'T HAPPEN */
 			break;	

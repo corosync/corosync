@@ -41,7 +41,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "saAis.h"
+#include "ais_types.h"
 #include "ais_amf.h"
 #include "saClm.h"
 

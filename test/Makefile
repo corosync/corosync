@@ -48,15 +48,12 @@ LDFLAGS = -g -L../lib
 #LDFLAGS = -pg -L../lib
 
 EXTRA_CFLAGS = -I../include
-TEST_SRC =  testclm.c testamf.c testamf1.c testamf2.c testamf3.c \
-		testamf4.c testamf5.c testamf6.c testamfth.c  \
-		testckpt.c ckptstress.c ckptbench.c  \
+TEST_SRC =  testclm.c testamf1.c testckpt.c ckptstress.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
 		sa_error.c unlink.c testclm2.c testlck.c
 
-all: testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 \
-	testamf6 testamfth testckpt ckptstress ckptbench \
+all: testclm testamf1 testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink testclm2 testlck
 
@@ -83,6 +80,18 @@ testamf5: testamf5.o $(LIBRARIES)
 
 testamf6: testamf6.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf6 testamf6.o $(LIBS)
+
+testamf7: testamf7.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testamf7 testamf7.o $(LIBS)
+
+testamf8: testamf8.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testamf8 testamf8.o $(LIBS)
+
+testamf9: testamf9.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testamf9 testamf9.o $(LIBS)
+
+testamf10: testamf10.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testamf10 testamf10.o $(LIBS)
 
 testamfth: testamfth.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamfth testamfth.o $(LIBS)

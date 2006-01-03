@@ -31,10 +31,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "../include/ipc_gen.h"
-#include "../include/ipc_amf.h"
+#include "../include/saAis.h"
+#include "../include/saAmf.h"
 #include "aispoll.h"
-#include "mainparse.h"
+#include "amfconfig.h"
 #include "handlers.h"
 
 #ifndef AMF_H_DEFINED
@@ -47,10 +47,14 @@ struct libamf_ci_trackentry {
 	SaNameT csiName;
 };
 
+struct amf_comp;
 struct libamf_ci {
+	struct amf_comp *comp;
+/*
 	struct libamf_ci_trackentry *tracks;
 	int trackEntries;
 	int trackActive;
+*/
 };
 
 void amf_dump ();

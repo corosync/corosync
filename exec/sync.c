@@ -58,6 +58,8 @@
 
 #define LOG_SERVICE LOG_SERVICE_SYNC
 
+#define MESSAGE_REQ_SYNC_BARRIER 0
+
 struct barrier_data {
 	struct totem_ip_address addr;
 	int completed;
@@ -125,7 +127,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 	int res;
 
 	req_exec_sync_barrier_start.header.size = sizeof (struct req_exec_sync_barrier_start);
-	req_exec_sync_barrier_start.header.id = MESSAGE_REQ_EXEC_SYNC_BARRIER;
+	req_exec_sync_barrier_start.header.id = MESSAGE_REQ_SYNC_BARRIER;
 
 	memcpy (&req_exec_sync_barrier_start.ring_id, ring_id,
 		sizeof (struct memb_ring_id));

@@ -63,7 +63,8 @@
 #include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
-#include "mainparse.h"
+#include "mainconfig.h"
+#include "amfconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "handlers.h"
@@ -74,7 +75,7 @@
 #include "ckpt.h"
 #include "evt.h"
 #include "lck.h"
-#include "ykd.h"
+#include "cfg.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_MAIN
@@ -94,14 +95,15 @@ struct service_handler *ais_service_handlers[] = {
     &amf_service_handler,
     &ckpt_service_handler,
     &evt_service_handler,
-    &lck_service_handler
+    &lck_service_handler,
+	&cfg_service_handler
 };
 
 struct sync_callbacks sync_callbacks[5];
 
 int sync_callback_count;
 
-#define AIS_SERVICE_HANDLERS_COUNT 6
+#define AIS_SERVICE_HANDLERS_COUNT 7
 #define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 50
 
  /*
@@ -816,6 +818,7 @@ static void aisexec_handler_fns_build (void)
 		for (j = 0; j < ais_service_handlers[i]->aisexec_handler_fns_count; j++) {
 			aisexec_handler_fns[aisexec_handler_fns_count++] = 
 				ais_service_handlers[i]->aisexec_handler_fns[j];
+				printf ("pos %d %x\n", aisexec_handler_fns_count - 1, ais_service_handlers[i]->aisexec_handler_fns[j]);
 		}
 	}
 	log_printf (LOG_LEVEL_DEBUG, "built %d handler functions\n", aisexec_handler_fns_count);

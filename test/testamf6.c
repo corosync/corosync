@@ -40,9 +40,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sched.h>
 
-#include "saAis.h"
-#include "ais_amf.h"
+#include "ais_types.h"
+#include "saAmf.h"
 
 void printSaNameT (SaNameT *name)
 {
@@ -58,10 +59,11 @@ void setSanameT (SaNameT *name, char *str) {
 	memcpy (name->value, str, name->length);
 }
 
-
 static int health_flag = -1;
 static unsigned int healthcheck_count = 0;
 static unsigned int healthcheck_no = 0;
+
+#ifdef COMPILE_OUT
 void HealthcheckCallback (SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfHealthcheckT checkType)
@@ -100,7 +102,8 @@ void ReadinessStateSetCallback (SaInvocationT invocation,
 	case SA_AMF_STOPPING:
 		printf ("ReadinessStateSetCallback: '");
 		printSaNameT ((SaNameT *)compName);
-                printf ("' requested to enter operational state SA_AMF_STOPPING.\n");                saAmfStoppingComplete (invocation, SA_OK);
+		printf ("' requested to enter operational state SA_AMF_STOPPING.\n");
+		saAmfStoppingComplete (invocation, SA_OK);
 		break;
 	}
 }
@@ -112,46 +115,37 @@ void ComponentTerminateCallback (
 	printf ("ComponentTerminateCallback\n");
 }
 
+#endif
 void CSISetCallback (
 	SaInvocationT invocation,
 	const SaNameT *compName,
-	const SaNameT *csiName,
-	SaAmfCSIFlagsT csiFlags,
-	SaAmfHAStateT *haState,
-	SaNameT *activeCompName,
-	SaAmfCSITransitionDescriptorT transitionDescriptor)
+	SaAmfHAStateT haState,
+	SaAmfCSIDescriptorT *csiDescriptor)
 {
-	switch (*haState) {
-	case SA_AMF_ACTIVE:
+	switch (haState) {
+	case SA_AMF_HA_ACTIVE:
 		printf ("CSISetCallback: '"); 
-		printSaNameT ((SaNameT *)compName);
+		printSaNameT ((SaNameT *)&csiDescriptor->csiName);
 		printf ("' for CSI '");
 		printSaNameT ((SaNameT *)compName);
 		printf ("'");
  		printf (" requested to enter hastate SA_AMF_ACTIVE.\n");
-		saAmfResponse (invocation, SA_OK);
+//		saAmfResponse (invocation, SA_OK);
 		break;
-	case SA_AMF_STANDBY:
+
+	case SA_AMF_HA_STANDBY:
 		printf ("CSISetCallback: '"); 
 		printSaNameT ((SaNameT *)compName);
 		printf ("' for CSI '");
 		printSaNameT ((SaNameT *)compName);
 		printf ("'");
 		printf (" requested to enter hastate SA_AMF_STANDBY.\n");
-		saAmfResponse (invocation, SA_OK);
-		break;
-	case SA_AMF_QUIESCED:
-		printf ("CSISetCallback: '"); 
-		printSaNameT ((SaNameT *)compName);
-		printf ("' for CSI '");
-		printSaNameT ((SaNameT *)compName);
-		printf ("'");
-		printf (" requested to enter hastate SA_AMF_QUIESCED.\n");
-		saAmfResponse (invocation, SA_OK);
+//		saAmfResponse (invocation, SA_OK);
 		break;
 	}
 }
 
+#ifdef COMPILE_OUT
 void CSIRemoveCallback (
 	SaInvocationT invocation,
 	const SaNameT *compName,
@@ -217,25 +211,24 @@ void PendingOperationExpiredCallback (
 {
 	printf ("PendingOperationExpiredCallback\n");
 }
+#endif
 
 SaAmfCallbacksT amfCallbacks = {
-	HealthcheckCallback,
-	ReadinessStateSetCallback,
-	ComponentTerminateCallback,
-	CSISetCallback,
-	CSIRemoveCallback,
-	ProtectionGroupTrackCallback,
-	ExternalComponentRestartCallback,
-	ExternalComponentControlCallback,
-	PendingOperationConfirmCallback,
-	PendingOperationExpiredCallback
+	.saAmfCSISetCallback = CSISetCallback,
 };
 
-SaVersionT version = { 'A', 1, 1 };
+SaAmfCallbacksT amfCallbacks;
+
+SaVersionT version = { 'B', 1, 1 };
+
+static struct sched_param sched_param = {
+    sched_priority: 99
+};
 
 void sigintr_handler (int signum) {
-        exit (0);
+	exit (0);
 }
+
 
 int main (int argc, char **argv) {
 	SaAmfHandleT handle;
@@ -249,8 +242,12 @@ int main (int argc, char **argv) {
 
 	memset (&compName, 0, sizeof (SaNameT));
 	signal (SIGINT, sigintr_handler);
+	result = sched_setscheduler (0, SCHED_RR, &sched_param);
+	if (result == -1) {
+		printf ("couldn't set sched priority\n");
+ 	}
 
-	for (;;) {
+	for (;;){
 		c = getopt(argc,argv,"h:n:");
 		if (c==-1) {
 			break;
@@ -263,11 +260,11 @@ int main (int argc, char **argv) {
 			sscanf (optarg,"%ud" ,&healthcheck_count);
 			break;
 		case 'n':
-			setSanameT (&compName, optarg);
+	  		setSanameT (&compName, optarg);
 			break;
-		default :
+                default :
 			break;
-		}
+                }
 	}
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
@@ -275,24 +272,23 @@ int main (int argc, char **argv) {
 		printf ("initialize result is %d\n", result);
 		exit (1);
 	}
-	printf ("initialize result is %d\n", result);
 
 	FD_ZERO (&read_fds);
-	saAmfSelectionObjectGet (&handle, &select_fd);
+	saAmfSelectionObjectGet (handle, &select_fd);
 	FD_SET (select_fd, &read_fds);
-
-	if (compName.length <= 0){
-		setSanameT (&compName, "comp_b_in_su_z");		
+	if (compName.length <= 0) {
+		setSanameT (&compName, "comp_b_in_su_3");
 	}
 
-	result = saAmfComponentRegister (&handle, &compName, NULL);
+	result = saAmfComponentRegister (handle, &compName, NULL);
 	printf ("register result is %d (should be 1)\n", result);
 
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);
-		saAmfDispatch (&handle, SA_DISPATCH_ALL);
+		saAmfDispatch (handle, SA_DISPATCH_ALL);
 	} while (result);
 
-	saAmfFinalize (&handle);
-	return (0);
+	saAmfFinalize (handle);
+
+	exit (0);
 }

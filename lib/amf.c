@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2002-2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -46,7 +46,7 @@
 #include <sys/un.h>
 
 #include "../include/saAis.h"
-#include "../include/ais_amf.h"
+#include "../include/saAmf.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_amf.h"
 #include "util.h"
@@ -86,7 +86,7 @@ static struct saHandleDatabase amfHandleDatabase = {
  * Versions supported
  */
 static SaVersionT amfVersionsSupported[] = {
-	{ 'A', 1, 1 }
+	{ 'B', 1, 1 }
 };
 
 static struct saVersionDatabase amfVersionDatabase = {
@@ -102,14 +102,14 @@ void amfHandleInstanceDestructor (void *instance)
 {
 }
 
-SaErrorT
+SaAisErrorT
 saAmfInitialize (
 	SaAmfHandleT *amfHandle,
 	const SaAmfCallbacksT *amfCallbacks,
-	const SaVersionT *version)
+	SaVersionT *version)
 {
 	struct amfInstance *amfInstance;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_OK;
 
 	error = saVersionVerify (&amfVersionDatabase, (SaVersionT *)version);
 	if (error != SA_OK) {
@@ -154,45 +154,49 @@ error_no_destroy:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfSelectionObjectGet (
-	const SaAmfHandleT *amfHandle,
+	SaAmfHandleT amfHandle,
 	SaSelectionObjectT *selectionObject)
 {
 	struct amfInstance *amfInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle, (void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	*selectionObject = amfInstance->dispatch_fd;
 
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
 	return (SA_OK);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfDispatch (
-	const SaAmfHandleT *amfHandle,
+	SaAmfHandleT amfHandle,
 	SaDispatchFlagsT dispatchFlags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaErrorT error;
+	SaAisErrorT error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct amfInstance *amfInstance;
-	struct res_lib_amf_healthcheckcallback *res_lib_amf_healthcheckcallback;
-	struct res_lib_amf_readinessstatesetcallback *res_lib_amf_readinessstatesetcallback;
 	struct res_lib_amf_csisetcallback *res_lib_amf_csisetcallback;
+
+	struct res_lib_amf_healthcheckcallback *res_lib_amf_healthcheckcallback;
 	struct res_lib_amf_csiremovecallback *res_lib_amf_csiremovecallback;
+	struct res_lib_amf_componentterminatecallback *res_lib_amf_componentterminatecallback;
+
+	/*
 	struct res_lib_amf_protectiongrouptrackcallback *res_lib_amf_protectiongrouptrackcallback;
+	*/
 	SaAmfCallbacksT callbacks;
 	struct res_overlay dispatch_data;
 
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle,
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
@@ -285,15 +289,7 @@ saAmfDispatch (
 			callbacks.saAmfHealthcheckCallback (
 				res_lib_amf_healthcheckcallback->invocation,
 				&res_lib_amf_healthcheckcallback->compName,
-				res_lib_amf_healthcheckcallback->checkType);
-			break;
-
-		case MESSAGE_RES_AMF_READINESSSTATESETCALLBACK:
-			res_lib_amf_readinessstatesetcallback = (struct res_lib_amf_readinessstatesetcallback *)&dispatch_data;
-			callbacks.saAmfReadinessStateSetCallback (
-				res_lib_amf_readinessstatesetcallback->invocation,
-				&res_lib_amf_readinessstatesetcallback->compName,
-				res_lib_amf_readinessstatesetcallback->readinessState);
+				&res_lib_amf_healthcheckcallback->key);
 			break;
 
 		case MESSAGE_RES_AMF_CSISETCALLBACK:
@@ -301,11 +297,8 @@ saAmfDispatch (
 			callbacks.saAmfCSISetCallback (
 				res_lib_amf_csisetcallback->invocation,
 				&res_lib_amf_csisetcallback->compName,
-				&res_lib_amf_csisetcallback->csiName,
-				res_lib_amf_csisetcallback->csiFlags,
-				&res_lib_amf_csisetcallback->haState,
-				&res_lib_amf_csisetcallback->activeCompName,
-				res_lib_amf_csisetcallback->transitionDescriptor);
+				res_lib_amf_csisetcallback->haState,
+				&res_lib_amf_csisetcallback->csiDescriptor);
 			break;
 
 		case MESSAGE_RES_AMF_CSIREMOVECALLBACK:
@@ -314,9 +307,17 @@ saAmfDispatch (
 				res_lib_amf_csiremovecallback->invocation,
 				&res_lib_amf_csiremovecallback->compName,
 				&res_lib_amf_csiremovecallback->csiName,
-				&res_lib_amf_csiremovecallback->csiFlags);
+				res_lib_amf_csiremovecallback->csiFlags);
 			break;
 
+		case MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK:
+			res_lib_amf_componentterminatecallback = (struct res_lib_amf_componentterminatecallback *)&dispatch_data;
+			callbacks.saAmfComponentTerminateCallback (
+				res_lib_amf_componentterminatecallback->invocation,
+				&res_lib_amf_componentterminatecallback->compName);
+			break;
+
+#ifdef COMPILE_OUT
 		case MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK:
 			res_lib_amf_protectiongrouptrackcallback = (struct res_lib_amf_protectiongrouptrackcallback *)&dispatch_data;
 			memcpy (res_lib_amf_protectiongrouptrackcallback->notificationBufferAddress,
@@ -328,8 +329,8 @@ saAmfDispatch (
 				res_lib_amf_protectiongrouptrackcallback->numberOfItems,
 				res_lib_amf_protectiongrouptrackcallback->numberOfMembers,
 				res_lib_amf_protectiongrouptrackcallback->error);
+#endif
 			break;
-
 		default:
 			error = SA_ERR_LIBRARY;	
 			goto error_nounlock;
@@ -351,19 +352,19 @@ saAmfDispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
 error_nounlock:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfFinalize (
-	const SaAmfHandleT *amfHandle)
+	SaAmfHandleT amfHandle)
 {
 	struct amfInstance *amfInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle, (void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -378,7 +379,7 @@ saAmfFinalize (
 	if (amfInstance->finalize) {
 		pthread_mutex_unlock (&amfInstance->response_mutex);
 		pthread_mutex_unlock (&amfInstance->dispatch_mutex);
-		saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+		saHandleInstancePut (&amfHandleDatabase, amfHandle);
 		return (SA_ERR_BAD_HANDLE);
 	}
 
@@ -388,7 +389,7 @@ saAmfFinalize (
 
 	pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 
-	saHandleDestroy (&amfHandleDatabase, *amfHandle);
+	saHandleDestroy (&amfHandleDatabase, amfHandle);
 
 	if (amfInstance->response_fd != -1) {
 		shutdown (amfInstance->response_fd, 0);
@@ -399,266 +400,446 @@ saAmfFinalize (
 		close (amfInstance->dispatch_fd);
 	}
 
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
 
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfComponentRegister (
-	const SaAmfHandleT *amfHandle,
+	SaAmfHandleT amfHandle,
 	const SaNameT *compName,
 	const SaNameT *proxyCompName)
 {
 	struct amfInstance *amfInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 	struct req_lib_amf_componentregister req_lib_amf_componentregister;
 	struct res_lib_amf_componentregister res_lib_amf_componentregister;
 
-	req_lib_amf_componentregister.header.size = sizeof (struct req_lib_amf_componentregister);
-	req_lib_amf_componentregister.header.id = MESSAGE_REQ_AMF_COMPONENTREGISTER;
-	memcpy (&req_lib_amf_componentregister.compName, compName, sizeof (SaNameT));
-	if (proxyCompName) {
-		memcpy (&req_lib_amf_componentregister.proxyCompName, proxyCompName, sizeof (SaNameT));
-	} else {
-		memset (&req_lib_amf_componentregister.proxyCompName, 0, sizeof (SaNameT));
-	}
-
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
+	req_lib_amf_componentregister.header.size = sizeof (struct req_lib_amf_componentregister);
+	req_lib_amf_componentregister.header.id = MESSAGE_REQ_AMF_COMPONENTREGISTER;
+	memcpy (&req_lib_amf_componentregister.compName, compName,
+		sizeof (SaNameT));
+	if (proxyCompName) {
+		memcpy (&req_lib_amf_componentregister.proxyCompName,
+			proxyCompName, sizeof (SaNameT));
+	} else {
+		memset (&req_lib_amf_componentregister.proxyCompName, 0,
+			sizeof (SaNameT));
+	}
+
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error = saSendReceiveReply (amfInstance->response_fd, &req_lib_amf_componentregister,
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_componentregister,
 		sizeof (struct req_lib_amf_componentregister),
 		&res_lib_amf_componentregister,
 		sizeof (struct res_lib_amf_componentregister));
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
 
-	if (res_lib_amf_componentregister.header.error == SA_OK) {
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+	if (res_lib_amf_componentregister.header.error == SA_AIS_OK) {
 		amfInstance->compRegistered = 1;
 		memcpy (&amfInstance->compName, compName, sizeof (SaNameT));
 	}
-
-	error = res_lib_amf_componentregister.header.error;
-
-error_unlock:
-	pthread_mutex_unlock (&amfInstance->response_mutex);
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
-	return (error);
+        return (error == SA_AIS_OK ? res_lib_amf_componentregister.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfComponentUnregister (
-	const SaAmfHandleT *amfHandle,
+	SaAmfHandleT amfHandle,
 	const SaNameT *compName,
 	const SaNameT *proxyCompName)
 {
 	struct req_lib_amf_componentunregister req_lib_amf_componentunregister;
 	struct res_lib_amf_componentunregister res_lib_amf_componentunregister;
 	struct amfInstance *amfInstance;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	req_lib_amf_componentunregister.header.size = sizeof (struct req_lib_amf_componentunregister);
-	req_lib_amf_componentunregister.header.id = MESSAGE_REQ_AMF_COMPONENTUNREGISTER;
-	memcpy (&req_lib_amf_componentunregister.compName, compName, sizeof (SaNameT));
-	if (proxyCompName) {
-		memcpy (&req_lib_amf_componentunregister.proxyCompName, proxyCompName, sizeof (SaNameT));
-	} else {
-		memset (&req_lib_amf_componentunregister.proxyCompName, 0, sizeof (SaNameT));
-	}	
-
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
+	req_lib_amf_componentunregister.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_componentunregister.header.id = MESSAGE_REQ_AMF_COMPONENTUNREGISTER;
+	memcpy (&req_lib_amf_componentunregister.compName, compName,
+		sizeof (SaNameT));
+	if (proxyCompName) {
+		memcpy (&req_lib_amf_componentunregister.proxyCompName,
+			proxyCompName, sizeof (SaNameT));
+	} else {
+		memset (&req_lib_amf_componentunregister.proxyCompName, 0,
+			sizeof (SaNameT));
+	}	
+
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	error - saSendReceiveReply (amfInstance->response_fd,
+	error = saSendReceiveReply (amfInstance->response_fd,
 		&req_lib_amf_componentunregister,
 		sizeof (struct req_lib_amf_componentunregister),
 		&res_lib_amf_componentunregister,
 		sizeof (struct res_lib_amf_componentunregister));
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
 
-	error = res_lib_amf_componentunregister.header.error;
-	if (error == SA_OK) {
-		amfInstance->compRegistered = 0;
-	}
-
-error_unlock:
 	pthread_mutex_unlock (&amfInstance->response_mutex);
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
-	return (error);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_componentunregister.header.error : error);
 }
 
-SaErrorT
-saAmfCompNameGet (
-	const SaAmfHandleT *amfHandle,
+SaAisErrorT
+saAmfComponentNameGet (
+	SaAmfHandleT amfHandle,
 	SaNameT *compName)
 {
 	struct amfInstance *amfInstance;
-	SaErrorT error;
+	SaAisErrorT error;
+	char *env_value;
 
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
-	if (amfInstance->compRegistered == 0) {
-		pthread_mutex_unlock (&amfInstance->response_mutex);
-		return (SA_ERR_NOT_EXIST);
+	error = SA_AIS_OK;
+
+	env_value = getenv ("SA_AMF_COMPONENT_NAME");
+	if (env_value == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
 	}
 
-	memcpy (compName, &amfInstance->compName, sizeof (SaNameT));
+	strcpy (compName->value, env_value);
+	compName->length = strlen (env_value);
+
+error_exit:
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+	return (error);
+}
+
+SaAisErrorT
+saAmfPmStart (
+	SaAmfHandleT amfHandle,
+	const SaNameT *compName,
+	SaUint64T processId,
+	SaInt32T descendentsTreeDepth,
+	SaAmfPmErrorsT pmErrors,
+	SaAmfRecommendedRecoveryT recommendedRecovery)
+{
+	struct req_lib_amf_pmstart req_lib_amf_pmstart;
+	struct res_lib_amf_pmstart res_lib_amf_pmstart;
+	struct amfInstance *amfInstance;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_amf_pmstart.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_pmstart.header.id = MESSAGE_REQ_AMF_PMSTART;
+	memcpy (&req_lib_amf_pmstart.compName, compName,
+		sizeof (SaNameT));
+	req_lib_amf_pmstart.processId = processId;
+	req_lib_amf_pmstart.descendentsTreeDepth = descendentsTreeDepth;
+	req_lib_amf_pmstart.pmErrors = pmErrors;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_pmstart,
+		sizeof (struct req_lib_amf_pmstart),
+		&res_lib_amf_pmstart,
+		sizeof (struct res_lib_amf_pmstart));
 
 	pthread_mutex_unlock (&amfInstance->response_mutex);
 
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
 
-	return (SA_OK);
+        return (error == SA_AIS_OK ? res_lib_amf_pmstart.header.error : error);
 }
 
-SaErrorT
-saAmfReadinessStateGet (
+SaAisErrorT
+saAmfPmStop (
+	SaAmfHandleT amfHandle,
 	const SaNameT *compName,
-	SaAmfReadinessStateT *readinessState)
+	SaAmfPmStopQualifierT stopQualifier,
+	SaInt64T processId,
+	SaAmfPmErrorsT pmErrors)
 {
-	int fd_response;
-	int fd_dispatch;
-	SaErrorT error;
-	struct req_amf_readinessstateget req_amf_readinessstateget;
-	struct res_lib_amf_readinessstateget res_lib_amf_readinessstateget;
+	struct req_lib_amf_pmstop req_lib_amf_pmstop;
+	struct res_lib_amf_pmstop res_lib_amf_pmstop;
+	struct amfInstance *amfInstance;
+	SaAisErrorT error;
 
-	error = saServiceConnectTwo (&fd_response, &fd_dispatch, AMF_SERVICE);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
-		goto exit_noclose;
-	}
-	req_amf_readinessstateget.header.id = MESSAGE_RES_AMF_READINESSSTATEGET;
-	req_amf_readinessstateget.header.size = sizeof (struct req_amf_readinessstateget);
-	memcpy (&req_amf_readinessstateget.compName, compName, sizeof (SaNameT));
-
-	error - saSendReceiveReply (fd_response,
-		&req_amf_readinessstateget, sizeof (struct req_amf_readinessstateget),
-		&res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
-	if (error != SA_OK) {
-		goto exit_close;
+		return (error);
 	}
 
-	error = res_lib_amf_readinessstateget.header.error;
-	if (error == SA_OK) {
-		memcpy (readinessState, &res_lib_amf_readinessstateget.readinessState, 
-			sizeof (SaAmfReadinessStateT));
-	}
-		
-exit_close:
-	close (fd_response);
-	close (fd_dispatch);
-exit_noclose:
-	return (error);
+	req_lib_amf_pmstop.header.size = sizeof (struct req_lib_amf_pmstop);
+	req_lib_amf_pmstop.header.id = MESSAGE_REQ_AMF_PMSTOP;
+	memcpy (&req_lib_amf_pmstop.compName, compName, sizeof (SaNameT));
+	req_lib_amf_pmstop.stopQualifier = stopQualifier;
+	req_lib_amf_pmstop.processId = processId;
+	req_lib_amf_pmstop.pmErrors = pmErrors;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_pmstop,
+		sizeof (struct req_lib_amf_pmstop),
+		&res_lib_amf_pmstop,
+		sizeof (struct res_lib_amf_pmstop));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_pmstop.header.error : error);
+	return (SA_AIS_OK);
 }
 
-SaErrorT
-saAmfStoppingComplete (
-	SaInvocationT invocation,
-	SaErrorT error)
+SaAisErrorT
+saAmfHealthcheckStart (
+	SaAmfHandleT amfHandle,
+	const SaNameT *compName,
+	const SaAmfHealthcheckKeyT *healthcheckKey,
+	SaAmfHealthcheckInvocationT invocationType,
+	SaAmfRecommendedRecoveryT recommendedRecovery)
 {
-	struct req_amf_stoppingcomplete req_amf_stoppingcomplete;
-	struct res_lib_amf_stoppingcomplete res_lib_amf_stoppingcomplete;
-	int fd;
-	SaErrorT errorResult;
+	struct req_lib_amf_healthcheckstart req_lib_amf_healthcheckstart;
+	struct res_lib_amf_healthcheckstart res_lib_amf_healthcheckstart;
+	struct amfInstance *amfInstance;
+	SaAisErrorT error;
 
-	errorResult = saServiceConnect (&fd, AMF_SERVICE);
-	if (errorResult != SA_OK) {
-		goto exit_noclose;
-	}
-	req_amf_stoppingcomplete.header.id = MESSAGE_REQ_AMF_STOPPINGCOMPLETE;
-	req_amf_stoppingcomplete.header.size = sizeof (struct req_amf_stoppingcomplete);
-	req_amf_stoppingcomplete.invocation = invocation;
-	req_amf_stoppingcomplete.error = error;
-	error = saSendReceiveReply (fd,
-		&req_amf_stoppingcomplete, sizeof (struct req_amf_stoppingcomplete),
-		&res_lib_amf_stoppingcomplete, sizeof (struct res_lib_amf_stoppingcomplete));
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
-		goto exit_close;
+		return (error);
 	}
-	error = res_lib_amf_stoppingcomplete.header.error;
-// TODO executive needs to send reply of stopping complete
 
-exit_close:
-	close (fd);
-exit_noclose:
-	return (errorResult);
+	req_lib_amf_healthcheckstart.header.size = sizeof (struct req_lib_amf_healthcheckstart);
+	req_lib_amf_healthcheckstart.header.id = MESSAGE_REQ_AMF_HEALTHCHECKSTART;
+	memcpy (&req_lib_amf_healthcheckstart.compName, compName,
+		sizeof (SaNameT));
+	memcpy (&req_lib_amf_healthcheckstart.healthcheckKey,
+		healthcheckKey, sizeof (SaAmfHealthcheckKeyT));
+	req_lib_amf_healthcheckstart.invocationType = invocationType;
+	req_lib_amf_healthcheckstart.recommendedRecovery = recommendedRecovery;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_healthcheckstart,
+		sizeof (struct req_lib_amf_healthcheckstart),
+		&res_lib_amf_healthcheckstart,
+		sizeof (struct res_lib_amf_healthcheckstart));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_healthcheckstart.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
+saAmfHealthcheckConfirm (
+	SaAmfHandleT amfHandle,
+	const SaNameT *compName,
+	const SaAmfHealthcheckKeyT *healthcheckKey,
+	SaAisErrorT healthcheckResult)
+{
+	struct req_lib_amf_healthcheckconfirm req_lib_amf_healthcheckconfirm;
+	struct res_lib_amf_healthcheckconfirm res_lib_amf_healthcheckconfirm;
+	struct amfInstance *amfInstance;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_amf_healthcheckconfirm.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_healthcheckconfirm.header.id = MESSAGE_REQ_AMF_HEALTHCHECKCONFIRM;
+	memcpy (&req_lib_amf_healthcheckconfirm.compName, compName,
+		sizeof (SaNameT));
+	memcpy (&req_lib_amf_healthcheckconfirm.healthcheckKey,
+		healthcheckKey, sizeof (SaAmfHealthcheckKeyT));
+	req_lib_amf_healthcheckconfirm.healthcheckResult = healthcheckResult;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_healthcheckconfirm,
+		sizeof (struct req_lib_amf_healthcheckconfirm),
+		&res_lib_amf_healthcheckconfirm,
+		sizeof (struct res_lib_amf_healthcheckconfirm));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_healthcheckconfirm.header.error : error);
+}
+
+SaAisErrorT
+saAmfHealthcheckStop (
+	SaAmfHandleT amfHandle,
+	const SaNameT *compName,
+	const SaAmfHealthcheckKeyT *healthcheckKey)
+{
+	struct req_lib_amf_healthcheckstop req_lib_amf_healthcheckstop;
+	struct res_lib_amf_healthcheckstop res_lib_amf_healthcheckstop;
+	struct amfInstance *amfInstance;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_amf_healthcheckstop.header.size = sizeof (struct req_lib_amf_healthcheckstop);
+	req_lib_amf_healthcheckstop.header.id = MESSAGE_REQ_AMF_HEALTHCHECKSTOP;
+	memcpy (&req_lib_amf_healthcheckstop.compName, compName,
+		sizeof (SaNameT));
+	memcpy (&req_lib_amf_healthcheckstop.healthcheckKey,
+		healthcheckKey, sizeof (SaAmfHealthcheckKeyT));
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_healthcheckstop,
+		sizeof (struct req_lib_amf_healthcheckstop),
+		&res_lib_amf_healthcheckstop,
+		sizeof (struct res_lib_amf_healthcheckstop));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_healthcheckstop.header.error : error);
+}
+
+
+SaAisErrorT
 saAmfHAStateGet (
+	SaAmfHandleT amfHandle,
 	const SaNameT *compName,
 	const SaNameT *csiName,
-	SaAmfHAStateT *haState) {
-
-	struct req_amf_hastateget req_amf_hastateget;
+	SaAmfHAStateT *haState)
+{
+	struct amfInstance *amfInstance;
+	struct req_lib_amf_hastateget req_lib_amf_hastateget;
 	struct res_lib_amf_hastateget res_lib_amf_hastateget;
-	int fd;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	error = saServiceConnect (&fd, AMF_SERVICE);
-	if (error != SA_OK) {
-		goto exit_noclose;
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
 	}
-	req_amf_hastateget.header.id = MESSAGE_REQ_AMF_HASTATEGET;
-	req_amf_hastateget.header.size = sizeof (struct req_amf_hastateget);
-	memcpy (&req_amf_hastateget.compName, compName, sizeof (SaNameT));
-	memcpy (&req_amf_hastateget.csiName, csiName, sizeof (SaNameT));
 
-	error = saSendReceiveReply (fd,
-		&req_amf_hastateget, sizeof (struct req_amf_hastateget),
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	req_lib_amf_hastateget.header.id = MESSAGE_REQ_AMF_HASTATEGET;
+	req_lib_amf_hastateget.header.size = sizeof (struct req_lib_amf_hastateget);
+	memcpy (&req_lib_amf_hastateget.compName, compName, sizeof (SaNameT));
+	memcpy (&req_lib_amf_hastateget.csiName, csiName, sizeof (SaNameT));
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_hastateget, sizeof (struct req_lib_amf_hastateget),
 		&res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
-	if (error != SA_OK) {
-		goto exit_close;
-	}
 
-	error = res_lib_amf_hastateget.header.error;
-	if (error == SA_OK) {
-		memcpy (haState, &res_lib_amf_hastateget.haState, sizeof (SaAmfHAStateT));
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+	if (res_lib_amf_hastateget.header.error == SA_AIS_OK) {
+		memcpy (haState, &res_lib_amf_hastateget.haState,
+			sizeof (SaAmfHAStateT));
 	}
-	
-exit_close:
-	close (fd);
-exit_noclose:
-	return (error);
+        return (error == SA_AIS_OK ? res_lib_amf_hastateget.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
+saAmfCSIQuiescingComplete (
+	SaAmfHandleT amfHandle,
+	SaInvocationT invocation,
+	SaAisErrorT error)
+{
+	struct req_lib_amf_csiquiescingcomplete req_lib_amf_csiquiescingcomplete;
+	struct res_lib_amf_csiquiescingcomplete res_lib_amf_csiquiescingcomplete;
+	struct amfInstance *amfInstance;
+	SaAisErrorT errorResult;
+
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_amf_csiquiescingcomplete.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_csiquiescingcomplete.header.id = MESSAGE_REQ_AMF_CSIQUIESCINGCOMPLETE;
+	req_lib_amf_csiquiescingcomplete.invocation = invocation;
+	req_lib_amf_csiquiescingcomplete.error = error;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	errorResult = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_csiquiescingcomplete,
+		sizeof (struct req_lib_amf_csiquiescingcomplete),
+		&res_lib_amf_csiquiescingcomplete,
+		sizeof (struct res_lib_amf_csiquiescingcomplete));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (errorResult == SA_AIS_OK ? res_lib_amf_csiquiescingcomplete.header.error : errorResult);
+}
+
+SaAisErrorT
 saAmfProtectionGroupTrackStart (
-	const SaAmfHandleT *amfHandle,
+	SaAmfHandleT amfHandle,
 	const SaNameT *csiName,
 	SaUint8T trackFlags,
-	const SaAmfProtectionGroupNotificationT *notificationBuffer,
-	SaUint32T numberOfItems) {
-
+	const SaAmfProtectionGroupNotificationT *notificationBuffer)
+{
 	struct amfInstance *amfInstance;
-	struct req_amf_protectiongrouptrackstart req_amf_protectiongrouptrackstart;
+	struct req_lib_amf_protectiongrouptrackstart req_lib_amf_protectiongrouptrackstart;
 	struct res_lib_amf_protectiongrouptrackstart res_lib_amf_protectiongrouptrackstart;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	req_amf_protectiongrouptrackstart.header.size = sizeof (struct req_amf_protectiongrouptrackstart);
-	req_amf_protectiongrouptrackstart.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART;
-	memcpy (&req_amf_protectiongrouptrackstart.csiName, csiName, sizeof (SaNameT));
-	req_amf_protectiongrouptrackstart.trackFlags = trackFlags;
-	req_amf_protectiongrouptrackstart.notificationBufferAddress = (SaAmfProtectionGroupNotificationT *)notificationBuffer;
-	req_amf_protectiongrouptrackstart.numberOfItems = numberOfItems;
+	req_lib_amf_protectiongrouptrackstart.header.size = sizeof (struct req_lib_amf_protectiongrouptrackstart);
+	req_lib_amf_protectiongrouptrackstart.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART;
+	memcpy (&req_lib_amf_protectiongrouptrackstart.csiName, csiName,
+		sizeof (SaNameT));
+	req_lib_amf_protectiongrouptrackstart.trackFlags = trackFlags;
+	req_lib_amf_protectiongrouptrackstart.notificationBufferAddress = (SaAmfProtectionGroupNotificationT *)notificationBuffer;
 
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
@@ -666,219 +847,160 @@ saAmfProtectionGroupTrackStart (
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
 	error = saSendReceiveReply (amfInstance->response_fd,
-		&req_amf_protectiongrouptrackstart,
-		sizeof (struct req_amf_protectiongrouptrackstart),
+		&req_lib_amf_protectiongrouptrackstart,
+		sizeof (struct req_lib_amf_protectiongrouptrackstart),
 		&res_lib_amf_protectiongrouptrackstart,
 		sizeof (struct res_lib_amf_protectiongrouptrackstart));
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
 
-	error = res_lib_amf_protectiongrouptrackstart.header.error;
-
-error_unlock:
 	pthread_mutex_unlock (&amfInstance->response_mutex);
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
-	return (error);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_protectiongrouptrackstart.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfProtectionGroupTrackStop (
-	const SaAmfHandleT *amfHandle,
-	const SaNameT *csiName) {
-
+	SaAmfHandleT amfHandle,
+	const SaNameT *csiName)
+{
 	struct amfInstance *amfInstance;
-	struct req_amf_protectiongrouptrackstop req_amf_protectiongrouptrackstop;
+	struct req_lib_amf_protectiongrouptrackstop req_lib_amf_protectiongrouptrackstop;
 	struct res_lib_amf_protectiongrouptrackstop res_lib_amf_protectiongrouptrackstop;
-	SaErrorT error;
+	SaAisErrorT error;
 
-	req_amf_protectiongrouptrackstop.header.size = sizeof (struct req_amf_protectiongrouptrackstop);
-	req_amf_protectiongrouptrackstop.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTOP;
-	memcpy (&req_amf_protectiongrouptrackstop.csiName, csiName, sizeof (SaNameT));
-
-	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
 		return (error);
 	}
 
+	req_lib_amf_protectiongrouptrackstop.header.size = sizeof (struct req_lib_amf_protectiongrouptrackstop);
+	req_lib_amf_protectiongrouptrackstop.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTOP;
+	memcpy (&req_lib_amf_protectiongrouptrackstop.csiName, csiName, sizeof (SaNameT));
+
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
 	error = saSendReceiveReply (amfInstance->response_fd,
-		&req_amf_protectiongrouptrackstop,
-		sizeof (struct req_amf_protectiongrouptrackstop),
+		&req_lib_amf_protectiongrouptrackstop,
+		sizeof (struct req_lib_amf_protectiongrouptrackstop),
 		&res_lib_amf_protectiongrouptrackstop,
 		sizeof (struct res_lib_amf_protectiongrouptrackstop));
-	if (error != SA_OK) {
-		goto error_unlock;
-	}
 
-	error = res_lib_amf_protectiongrouptrackstop.header.error;
-
-error_unlock:
 	pthread_mutex_unlock (&amfInstance->response_mutex);
-	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
-	return (error);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_protectiongrouptrackstop.header.error : error);
 }
 
-SaErrorT
-saAmfErrorReport (
-	const SaNameT *reportingComponent,
+SaAisErrorT
+saAmfComponentErrorReport (
+	SaAmfHandleT amfHandle,
 	const SaNameT *erroneousComponent,
 	SaTimeT errorDetectionTime,
-	const SaAmfErrorDescriptorT *errorDescriptor,
-	const SaAmfAdditionalDataT *additionalData) {
-
-	struct req_lib_amf_errorreport req_lib_amf_errorreport;
-	struct res_lib_amf_errorreport res_lib_amf_errorreport;
-	int fd;
-	SaErrorT error;
-
-	error = saServiceConnect (&fd, AMF_SERVICE);
-	if (error != SA_OK) {
-		goto exit_noclose;
-	}
-	req_lib_amf_errorreport.header.id = MESSAGE_REQ_AMF_ERRORREPORT;
-	req_lib_amf_errorreport.header.size = sizeof (struct req_lib_amf_errorreport);
-	memcpy (&req_lib_amf_errorreport.reportingComponent, reportingComponent, sizeof (SaNameT));
-	memcpy (&req_lib_amf_errorreport.erroneousComponent, erroneousComponent, sizeof (SaNameT));
-	req_lib_amf_errorreport.errorDetectionTime = errorDetectionTime;
-	memcpy (&req_lib_amf_errorreport.errorDescriptor,
-		errorDescriptor, sizeof (SaAmfErrorDescriptorT));
-	/* TODO this is wrong, and needs some thinking
-	memcpy (&req_lib_amf_errorreport.additionalData,
-		additionalData, sizeof (SaAmfAdditionalDataT));
-	*/
-
-	error = saSendReceiveReply (fd,
-		&req_lib_amf_errorreport, sizeof (struct req_lib_amf_errorreport),
-		&res_lib_amf_errorreport, sizeof (struct res_lib_amf_errorreport));
-	if (error != SA_OK) {
-		goto exit_close;
-	}
-
-	error = res_lib_amf_errorreport.header.error;
-
-exit_close:
-	close (fd);
-exit_noclose:
-	return (error);
-}
-
-SaErrorT
-saAmfErrorCancelAll (
-	const SaNameT *compName) {
-
-	struct req_lib_amf_errorcancelall req_lib_amf_errorcancelall;
-	struct res_lib_amf_errorcancelall res_lib_amf_errorcancelall;
-	int fd;
-	SaErrorT error;
-
-	error = saServiceConnect (&fd, AMF_SERVICE);
-	if (error != SA_OK) {
-		goto exit_noclose;
-	}
-	req_lib_amf_errorcancelall.header.id = MESSAGE_REQ_AMF_ERRORCANCELALL;
-	req_lib_amf_errorcancelall.header.size = sizeof (struct req_lib_amf_errorcancelall);
-	memcpy (&req_lib_amf_errorcancelall.compName, compName, sizeof (SaNameT));
-
-	error = saSendReceiveReply (fd,
-		&req_lib_amf_errorcancelall, sizeof (struct req_lib_amf_errorcancelall),
-		&res_lib_amf_errorcancelall, sizeof (struct res_lib_amf_errorcancelall));
-	if (error != SA_OK) {
-		goto exit_close;
-	}
-
-	error = res_lib_amf_errorcancelall.header.error;
-
-exit_close:
-	close (fd);
-exit_noclose:
-	return (error);
-}
-
-SaErrorT
-saAmfComponentCapabilityModelGet (
-	const SaNameT *compName,
-	SaAmfComponentCapabilityModelT *componentCapabilityModel)
+	SaAmfRecommendedRecoveryT recommendedRecovery,
+	SaNtfIdentifierT ntfIdentifier)
 {
+	struct amfInstance *amfInstance;
+	struct req_lib_amf_componenterrorreport req_lib_amf_componenterrorreport;
+	struct res_lib_amf_componenterrorreport res_lib_amf_componenterrorreport;
+	SaAisErrorT error;
 
-	int fd;
-	SaErrorT error;
-	struct req_amf_componentcapabilitymodelget req_amf_componentcapabilitymodelget;
-	struct res_lib_amf_componentcapabilitymodelget res_lib_amf_componentcapabilitymodelget;
-
-	error = saServiceConnect (&fd, AMF_SERVICE);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (error != SA_OK) {
-		goto exit_noclose;
+		return (error);
 	}
-	req_amf_componentcapabilitymodelget.header.id = MESSAGE_REQ_AMF_COMPONENTCAPABILITYMODELGET;
-	req_amf_componentcapabilitymodelget.header.size = sizeof (struct req_amf_componentcapabilitymodelget);
-	memcpy (&req_amf_componentcapabilitymodelget.compName, compName, sizeof (SaNameT));
 
-	error = saSendReceiveReply (fd,
-		&req_amf_componentcapabilitymodelget,
-		sizeof (struct req_amf_componentcapabilitymodelget),
-		&res_lib_amf_componentcapabilitymodelget,
-		sizeof (struct res_lib_amf_componentcapabilitymodelget));
-	if (error != SA_OK) {
-		goto exit_close;
-	}
-	error = res_lib_amf_componentcapabilitymodelget.header.error;
+	req_lib_amf_componenterrorreport.header.id = MESSAGE_REQ_AMF_COMPONENTERRORREPORT;
+	req_lib_amf_componenterrorreport.header.size = sizeof (struct req_lib_amf_componenterrorreport);
+	memcpy (&req_lib_amf_componenterrorreport.erroneousComponent, erroneousComponent,
+		sizeof (SaNameT));
+	req_lib_amf_componenterrorreport.errorDetectionTime = errorDetectionTime;
 
-	if (error == SA_OK) {
-		memcpy (componentCapabilityModel,
-			&res_lib_amf_componentcapabilitymodelget.componentCapabilityModel, 
-			sizeof (SaAmfComponentCapabilityModelT));
-	}
-		
-exit_close:
-	close (fd);
-exit_noclose:
-	return (error);
+printf ("start error report\n");
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_componenterrorreport,
+		sizeof (struct req_lib_amf_componenterrorreport),
+		&res_lib_amf_componenterrorreport,
+		sizeof (struct res_lib_amf_componenterrorreport));
+printf ("end error report\n");
+
+	error = res_lib_amf_componenterrorreport.header.error;
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_componenterrorreport.header.error : error);
 }
 
-SaErrorT
-saAmfPendingOperationGet (
+SaAisErrorT
+saAmfComponentErrorClear (
+	SaAmfHandleT amfHandle,
 	const SaNameT *compName,
-	SaAmfPendingOperationFlagsT *pendingOperationFlags) {
+	SaNtfIdentifierT ntfIdentifier)
+{
+	struct amfInstance *amfInstance;
+	struct req_lib_amf_componenterrorclear req_lib_amf_componenterrorclear;
+	struct res_lib_amf_componenterrorclear res_lib_amf_componenterrorclear;
+	SaAisErrorT error;
 
-	*pendingOperationFlags = 0;	
-	return (SA_OK);
+	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
+	if (error != SA_OK) {
+		return (error);
+	}
+
+	req_lib_amf_componenterrorclear.header.id = MESSAGE_REQ_AMF_COMPONENTERRORCLEAR;
+	req_lib_amf_componenterrorclear.header.size = sizeof (struct req_lib_amf_componenterrorclear);
+	memcpy (&req_lib_amf_componenterrorclear.compName, compName, sizeof (SaNameT));
+
+	error = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_componenterrorclear,
+		sizeof (struct req_lib_amf_componenterrorclear),
+		&res_lib_amf_componenterrorclear,
+		sizeof (struct res_lib_amf_componenterrorclear));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (error == SA_AIS_OK ? res_lib_amf_componenterrorclear.header.error : error);
 }
 
-SaErrorT
+SaAisErrorT
 saAmfResponse (
+	SaAmfHandleT amfHandle,
 	SaInvocationT invocation,
-	SaErrorT error)
+	SaAisErrorT error)
 {
-	struct req_amf_response req_amf_response;
+	struct amfInstance *amfInstance;
+	struct req_lib_amf_response req_lib_amf_response;
 	struct res_lib_amf_response res_lib_amf_response;
-	int fd_response;
-	int fd_dispatch;
-	SaErrorT errorResult;
+	SaAisErrorT errorResult;
 
-	errorResult = saServiceConnectTwo (&fd_response, &fd_dispatch, AMF_SERVICE);
+	errorResult = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
+		(void *)&amfInstance);
 	if (errorResult != SA_OK) {
-		goto exit_noclose;
-	}
-	req_amf_response.header.id = MESSAGE_REQ_AMF_RESPONSE;
-	req_amf_response.header.size = sizeof (struct req_amf_response);
-	req_amf_response.invocation = invocation;
-	req_amf_response.error = error;
-
-	errorResult = saSendReceiveReply (fd_response,
-		&req_amf_response,
-		sizeof (struct req_amf_response),
-		&res_lib_amf_response,
-		sizeof (struct res_lib_amf_response));
-
-	close (fd_response);
-	close (fd_dispatch);
-
-	if (errorResult == SA_OK) {
-		errorResult = res_lib_amf_response.header.error;
+		return (error);
 	}
 
-exit_noclose:
-	return (errorResult);
+	req_lib_amf_response.header.id = MESSAGE_REQ_AMF_RESPONSE;
+	req_lib_amf_response.header.size = sizeof (struct req_lib_amf_response);
+	req_lib_amf_response.invocation = invocation;
+	req_lib_amf_response.error = error;
+
+	pthread_mutex_lock (&amfInstance->response_mutex);
+
+	errorResult = saSendReceiveReply (amfInstance->response_fd,
+		&req_lib_amf_response, sizeof (struct req_lib_amf_response),
+		&res_lib_amf_response, sizeof (struct res_lib_amf_response));
+
+	pthread_mutex_unlock (&amfInstance->response_mutex);
+
+	saHandleInstancePut (&amfHandleDatabase, amfHandle);
+
+        return (errorResult == SA_AIS_OK ? res_lib_amf_response.header.error : errorResult);
 }
