@@ -41,7 +41,8 @@ int ykd_init (
     void (*primary_callback_fn) (
 	struct totem_ip_address *view_list,
 	int view_list_entries,
-	int primary_designated));
+	int primary_designated,
+	struct memb_ring_id *ring_id));
 
 /*
  * Returns 1 if we are primary component, 0 if not

@@ -224,15 +224,17 @@ static inline void app_confchg_fn (
 			i, (void *)&instance);
 
 		if (error == SA_OK) {
-			instance->confchg_fn (
-				configuration_type,
-				member_list,
-				member_list_entries,
-				left_list,
-				left_list_entries,
-				joined_list,
-				joined_list_entries,
-				ring_id);
+			if (instance->confchg_fn) {
+				instance->confchg_fn (
+					configuration_type,
+					member_list,
+					member_list_entries,
+					left_list,
+					left_list_entries,
+					joined_list,
+					joined_list_entries,
+					ring_id);
+			}
 
 			saHandleInstancePut (&totempg_groups_instance_database, i);
 		}

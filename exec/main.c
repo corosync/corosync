@@ -722,10 +722,11 @@ retry_recv:
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
+				(ykd_primary() == 1) && (
 				(ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
-				(sync_in_process() == 0));
+				(sync_in_process() == 0)));
 
 			if (send_ok) {
 		//		*prio = 0;
@@ -799,7 +800,7 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_required);
-static int aisexec_handler_fns_count = 1;
+static int aisexec_handler_fns_count = 0;
 
 /*
  * Builds the handler table as an optimization
@@ -811,8 +812,6 @@ static void aisexec_handler_fns_build (void)
 	/*
 	 * Install sync handler function
 	 */
-	aisexec_handler_fns[0] = sync_deliver_fn;
-
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
 		for (j = 0; j < ais_service_handlers[i]->aisexec_handler_fns_count; j++) {
 			aisexec_handler_fns[aisexec_handler_fns_count++] = 
@@ -885,6 +884,8 @@ static void deliver_fn (
 		endian_conversion_required);
 }
 
+static struct memb_ring_id aisexec_ring_id;
+
 static void confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
@@ -894,17 +895,11 @@ static void confchg_fn (
 {
 	int i;
 
+	memcpy (&aisexec_ring_id, ring_id, sizeof (struct memb_ring_id));
+
 	if (!totemip_localhost_check(this_ip)) {
 		totemip_copy(&this_non_loopback_ip, this_ip);
 	}
-
-	/*
-	 * Execute configuration change for synchronization service
-	 */
-	sync_confchg_fn (configuration_type,
-		member_list, member_list_entries,
-		left_list, left_list_entries,
-		joined_list, joined_list_entries, ring_id);
 
 	/*
 	 * Call configuration change for all services
@@ -1074,14 +1069,6 @@ void message_source_set (struct message_source *source, struct conn_info *conn_i
 
 struct totem_logging_configuration totem_logging_configuration;
 
-void main_primary_callback_fn (
-	struct totem_ip_address *view_list,
-	int view_list_entries,
-	int primary_component)
-{
-	log_printf (LOG_LEVEL_NOTICE, "Primary component is %d\n", primary_component);
-}
-
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
@@ -1174,8 +1161,6 @@ int main (int argc, char **argv)
 		openais_group_handle,
 		&openais_group,
 		1);
-
-	ykd_init (main_primary_callback_fn);
 
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 

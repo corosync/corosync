@@ -130,10 +130,13 @@ static int ambiguous_sessions_max_entries;
 
 static int primary_designated = 0;
 
+static struct memb_ring_id ykd_ring_id;
+
 static void (*ykd_primary_callback_fn) (
 	struct totem_ip_address *view_list,
 	int view_list_entries,
-	int primary_designated) = NULL;
+	int primary_designated,
+	struct memb_ring_id *ring_id) = NULL;
 
 void ykd_state_init (void)
 {
@@ -275,8 +278,6 @@ static void ykd_deliver_fn (
 	char *msg_state = iovec->iov_base + sizeof (struct ykd_header);
 	
 #ifdef COMPILE_OUT
-	memcpy (&ykd_ring_id, &req_exec_sync_barrier_start->ring_id,
-	sizeof (struct memb_ring_id));
 
 /*
 	* Is this barrier from this configuration, if not, ignore it
@@ -351,7 +352,8 @@ static void ykd_deliver_fn (
 				ykd_primary_callback_fn (
 					view_list,
 					view_list_entries,
-					primary_designated);
+					primary_designated,
+					&ykd_ring_id);
 
 				memcpy (ykd_state.last_primary.member_list, view_list, sizeof (view_list));
 				ykd_state.last_primary.member_list_entries = view_list_entries;
@@ -375,6 +377,9 @@ static void ykd_confchg_fn (
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
 		return;
 	}
+
+	memcpy (&ykd_ring_id, ring_id, sizeof (struct memb_ring_id));
+
 	if (first_run) {
 		totemip_copy (&ykd_state.last_primary.member_list[0], this_ip);
 		ykd_state.last_primary.member_list_entries = 1;
@@ -392,7 +397,8 @@ static void ykd_confchg_fn (
 	ykd_primary_callback_fn (
 		view_list,
 		view_list_entries,
-		primary_designated);
+		primary_designated,
+		&ykd_ring_id);
 
 	memset (&state_received_confchg, 0, sizeof (state_received_confchg));
 	for (i = 0; i < member_list_entries; i++) {
@@ -417,7 +423,8 @@ int ykd_init (
 	void (*primary_callback_fn) (
 		struct totem_ip_address *view_list,
 		int view_list_entries,
-		int primary_designated))
+		int primary_designated,
+		struct memb_ring_id *ring_id))
 {
 	ykd_primary_callback_fn = primary_callback_fn;
 

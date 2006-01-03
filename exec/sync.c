@@ -53,7 +53,7 @@
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"
-#include "totempg.h"
+#include "ykd.h"
 #include "print.h"
 
 #define LOG_SERVICE LOG_SERVICE_SYNC
@@ -91,6 +91,25 @@ static void sync_service_init (struct memb_ring_id *ring_id);
 
 static int sync_service_process (enum totem_callback_token_type type, void *data);
 
+static int sync_deliver_fn (
+	struct totem_ip_address *source_addr,
+	struct iovec *iovec,
+	int iov_len,
+	int endian_conversion_required);
+
+void sync_primary_callback_fn (
+	struct totem_ip_address *view_list,
+	int view_list_entries,
+	int primary_designated,
+	struct memb_ring_id *ring_id);
+
+static struct totempg_group sync_group = {
+    .group      = "sync",
+    .group_len  = 4
+};
+
+static totempg_groups_handle sync_group_handle;
+
 struct req_exec_sync_barrier_start {
 	struct req_header header;
 	struct memb_ring_id ring_id;
@@ -114,7 +133,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 	iovec.iov_base = (char *)&req_exec_sync_barrier_start;
 	iovec.iov_len = sizeof (req_exec_sync_barrier_start);
 
-	res = totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (sync_group_handle, &iovec, 1, TOTEMPG_AGREED);
 
 	return (res);
 }
@@ -194,24 +213,41 @@ void sync_register (
 	int callback_count,
 	void (*synchronization_completed) (void))
 {
+	totempg_groups_initialize (
+		&sync_group_handle,
+		sync_deliver_fn,
+		NULL);
+
+	totempg_groups_join (
+		sync_group_handle,
+		&sync_group,
+		1);
+
+	ykd_init (sync_primary_callback_fn);
+
 	sync_callbacks = callbacks;
 	sync_callback_count = callback_count;
 	sync_synchronization_completed = synchronization_completed;
 }
 
-void sync_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+void sync_primary_callback_fn (
+	struct totem_ip_address *view_list,
+	int view_list_entries,
+	int primary_designated,
 	struct memb_ring_id *ring_id)
 {
 	int i;
 
-	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
+	if (primary_designated) {
+		log_printf (LOG_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
+	} else {
+		log_printf (LOG_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
 		return;
 	}
 
+	/*
+	 * Execute configuration change for synchronization service
+	 */
 	sync_processing = 1;
 
 	totempg_callback_token_destroy (&sync_callback_token_handle);
@@ -220,23 +256,27 @@ void sync_confchg_fn (
 
 	sync_recovery_index = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
-	for (i = 0; i < member_list_entries; i++) {
-		totemip_copy(&barrier_data_confchg[i].addr, &member_list[i]);
+	for (i = 0; i < view_list_entries; i++) {
+		totemip_copy(&barrier_data_confchg[i].addr, &view_list[i]);
 		barrier_data_confchg[i].completed = 0;
 	}
 	memcpy (barrier_data_process, barrier_data_confchg,
 		sizeof (barrier_data_confchg));
-	barrier_data_confchg_entries = member_list_entries;
+	barrier_data_confchg_entries = view_list_entries;
 	sync_start_init (ring_id);
 }
 
 static struct memb_ring_id deliver_ring_id;
 
-int sync_deliver_fn (void *msg, struct totem_ip_address *source_addr,
-	int endian_conversion_needed)
+int sync_deliver_fn (
+	struct totem_ip_address *source_addr,
+	struct iovec *iovec,
+	int iov_len,
+	int endian_conversion_required)
+
 {
 	struct req_exec_sync_barrier_start *req_exec_sync_barrier_start =
-		(struct req_exec_sync_barrier_start *)msg;
+		(struct req_exec_sync_barrier_start *)iovec[0].iov_base;
 
 	int i;
 
