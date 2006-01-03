@@ -42,7 +42,8 @@ openais.conf - openais executive configuration file
 The openais.conf instructs the openais executive about various parameters
 needed to control the openais executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
-.IR totem { } " and " logging { } ".  These directives are described below.
+.IR totem { } "," logging { } "," event { } ", and "amf { }.  These directives
+are described below.
 
 .TP
 totem { }
@@ -50,6 +51,12 @@ This top level directive contains configuration options for the totem protocol.
 .TP
 logging { }
 This top level directive contains configuration options for logging.
+.TP
+event { }
+This top level directive contains configuration options for the event service.
+.TP
+amf { }
+This top level directive contains configuration options for the AMF service.
 
 .PP
 .PP
@@ -308,11 +315,43 @@ executive.  Set the value to on to debug, off to turn of debugging.
 timestamp
 This specifies that a timestamp is placed on all log messages.
 
+.PP
+Within the 
+.B event
+directive, there are two configuration options which are all optional:
+.TP
+delivery_queue_size
+This directive describes the full size of the outgoing delivery queue to the
+application.  If applications are slow to process messages, they will be 
+delivered event loss messages.  By increasing this value, the applications
+that are slowly processing messages may have an opportunity to catch up.
+
+.TP
+delivery_queue_resume
+This directive describes when new events can be accepted by the event service
+when the delivery queue count of pending messages has reached this value. 
+Please note this is not cluster wide.
+
+.PP
+Within the 
+.B amf
+directive, there is one configuration option which is optional:
+.TP
+mode
+This can either contain the value enabled or disabled.  When enabled, AMF will
+instantiate the service groups specified in the /etc/ais/groups.conf file.
+The default is disabled.
+
+delivery_queue_size
+logoutput
 .SH "FILES"
 .TP
 /etc/ais/openais.conf
 The openais executive configuration file.
+.TP
+/etc/ais/groups.conf
+The openais AMF service groups configuration file.
 
 .SH "SEE ALSO"
-.BR openais_overview (8)
+.BR openais_overview (8), README.amf
 .PP
