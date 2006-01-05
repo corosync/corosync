@@ -113,6 +113,10 @@ struct handle_list {
  * ei_dispatch_mutex:	mutex for dispatch fd
  * ei_response_mutex:	mutex for response fd
  * ei_channel_list:		list of associated channels (struct handle_list)
+ * ei_data_available:	Indicates that there is a pending event message though
+ * 						there may not be a poll event.  This can happen
+ * 						when we get a SA_AIS_ERR_TRY_AGAIN when asking for an
+ * 						event.
  *
  */
 struct event_instance {
@@ -126,6 +130,7 @@ struct event_instance {
 	pthread_mutex_t			ei_dispatch_mutex;
 	pthread_mutex_t			ei_response_mutex;
 	struct list_head 		ei_channel_list;
+	int						ei_data_available;
 };
 
 
@@ -592,19 +597,10 @@ saEvtDispatch(
 
 		error = saPollRetry(&ufds, 1, timeout);
 		if (error != SA_AIS_OK) {
-			goto dispatch_unlock;
+			goto dispatch_put;
 		}
 
 		pthread_mutex_lock(&evti->ei_dispatch_mutex);
-
-		/*
-		 * Check the poll data in case the fd status has changed
-		 * since taking the lock
-		 */
-		error = saPollRetry(&ufds, 1, 0);
-		if (error != SA_AIS_OK) {
-			goto dispatch_unlock;
-		}
 
 		/*
 		 * Handle has been finalized in another thread
@@ -614,41 +610,64 @@ saEvtDispatch(
 			goto dispatch_unlock;
 		}
 
-		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
-			error = SA_AIS_ERR_BAD_HANDLE;
-			goto dispatch_unlock;
-		}
-
- 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && 
-				(dispatchFlags == SA_DISPATCH_ALL || 
-				 dispatchFlags == SA_DISPATCH_ONE)) {
-			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else if (dispatch_avail == 0) {
-			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
-			continue; /* next poll */
-		}
-
- 		if (ufds.revents & POLLIN) {
- 			error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
- 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
-
+		/*
+		 * If we know that we have an event waiting, we can skip the
+		 * polling and just ask for it.
+		 */
+		if (!evti->ei_data_available) {
+			/*
+			 * Check the poll data in case the fd status has changed
+			 * since taking the lock
+			 */
+			error = saPollRetry(&ufds, 1, 0);
 			if (error != SA_AIS_OK) {
 				goto dispatch_unlock;
 			}
- 			if (dispatch_data.header.size > sizeof (struct res_header)) {
- 				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
- 					dispatch_data.header.size - sizeof (struct res_header),
-  					MSG_WAITALL | MSG_NOSIGNAL);
+
+			if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+				error = SA_AIS_ERR_BAD_HANDLE;
+				goto dispatch_unlock;
+			}
+
+			dispatch_avail = ufds.revents & POLLIN;
+			if (dispatch_avail == 0 &&
+					(dispatchFlags == SA_DISPATCH_ALL ||
+					 dispatchFlags == SA_DISPATCH_ONE)) {
+				pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+				break; /* exit do while cont is 1 loop */
+			} else if (dispatch_avail == 0) {
+				pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+				continue; /* next poll */
+			}
+
+			if (ufds.revents & POLLIN) {
+				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
+					sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+
 				if (error != SA_AIS_OK) {
 					goto dispatch_unlock;
 				}
-			} 
+				if (dispatch_data.header.size > sizeof (struct res_header)) {
+					error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
+						dispatch_data.header.size - sizeof (struct res_header),
+						MSG_WAITALL | MSG_NOSIGNAL);
+					if (error != SA_AIS_OK) {
+						goto dispatch_unlock;
+					}
+				}
+			} else {
+				pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+				continue;
+			}
 		} else {
- 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
- 			continue;
+			/*
+			 * We know that we have an event available from before.
+			 * Fake up a header message and the switch statement will
+			 * take care of the rest.
+			 */
+			dispatch_data.header.id = MESSAGE_RES_EVT_AVAILABLE;
 		}
+
 		/*
 		 * Make copy of callbacks, message data, unlock instance, 
 		 * and call callback. A risk of this dispatch method is that 
@@ -665,6 +684,7 @@ saEvtDispatch(
 		switch (dispatch_data.header.id) {
 
 		case MESSAGE_RES_EVT_AVAILABLE:
+			evti->ei_data_available = 0;
 			/*
 			 * There are events available.  Send a request for one and then
 			 * dispatch it.
@@ -701,8 +721,19 @@ saEvtDispatch(
 
 			if (evt->led_head.error != SA_AIS_OK) {
 				error = evt->led_head.error;
-				printf("MESSAGE_RES_EVT_AVAILABLE: Error returned: %d\n", 
+
+				/*
+				 * If we get a try again response, we've lost the poll event
+				 * so we have a data available flag so that we know that there
+				 * really is an event waiting the next time dispatch gets
+				 * called.
+				 */
+				if (error == SA_AIS_ERR_TRY_AGAIN) {
+					evti->ei_data_available = 1;
+				} else {
+					printf("MESSAGE_RES_EVT_AVAILABLE: Error returned: %d\n",
 						error);
+				}
 				break;
 			}
 
