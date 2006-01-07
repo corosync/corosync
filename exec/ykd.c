@@ -132,6 +132,10 @@ static int primary_designated = 0;
 
 static struct memb_ring_id ykd_ring_id;
 
+static void *ykd_attempt_send_callback_token_handle = 0;
+
+static void *ykd_state_send_callback_token_handle = 0;
+
 static void (*ykd_primary_callback_fn) (
 	struct totem_ip_address *view_list,
 	int view_list_entries,
@@ -147,10 +151,11 @@ void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-void ykd_state_send (void)
+int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
 {
 	struct iovec iovec[2];
 	struct ykd_header header;
+	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
 	
@@ -159,20 +164,47 @@ void ykd_state_send (void)
 	iovec[1].iov_base = &ykd_state;
 	iovec[1].iov_len = sizeof (struct ykd_state);
 
-	totempg_groups_mcast_joined (ykd_group_handle, iovec, 2, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (ykd_group_handle, iovec, 2,
+		TOTEMPG_AGREED);
+
+	return (res);
 }
 
-void ykd_attempt_send (void)
+void ykd_state_send (void)
+{
+        totempg_callback_token_create (
+                &ykd_state_send_callback_token_handle,
+                TOTEM_CALLBACK_TOKEN_SENT,
+                1, /* delete after callback */
+                ykd_state_send_msg,
+                NULL);
+}
+
+int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
 {
 	struct iovec iovec;
 	struct ykd_header header;
+	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
 	
 	iovec.iov_base = &header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
-	totempg_groups_mcast_joined (ykd_group_handle, &iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined (ykd_group_handle, &iovec, 1,
+		TOTEMPG_AGREED);
+
+	return (res);
+}
+
+void ykd_attempt_send (void)
+{
+        totempg_callback_token_create (
+                &ykd_attempt_send_callback_token_handle,
+                TOTEM_CALLBACK_TOKEN_SENT,
+                1, /* delete after callback */
+                ykd_attempt_send_msg,
+                NULL);
 }
 
 void compute (void)

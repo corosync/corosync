@@ -948,10 +948,8 @@ int totempg_groups_mcast_joined (
 		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
-
+	error = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
 	saHandleInstancePut (&totempg_groups_instance_database, handle);
-	return (0);
 
 error_exit:
 	return (error);
@@ -1026,10 +1024,9 @@ int totempg_groups_mcast_groups (
 		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
+	error = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
 
 	saHandleInstancePut (&totempg_groups_instance_database, handle);
-	return (0);
 
 error_exit:
 	return (error);

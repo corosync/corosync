@@ -1709,6 +1709,7 @@ int totemsrp_mcast (
 	}
 	
 	if (queue_is_full (&instance->new_message_queue)) {
+printf ("queue full\n");
 		return (-1);
 	}
 	for (j = 0, i = 0; i < iov_len; i++) {
@@ -1761,17 +1762,15 @@ int totemsrp_mcast (
 	return (0);
 
 error_iovec:
-	saHandleInstancePut (&totemsrp_instance_database, handle);
 	for (j = 0; j < i; j++) {
 		free (message_item.iovec[j].iov_base);
 	}
-	return (-1);
 
 error_mcast:
 	saHandleInstancePut (&totemsrp_instance_database, handle);
 
 error_exit:
-	return (0);
+	return (-1);
 }
 
 /*

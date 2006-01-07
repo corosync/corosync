@@ -811,6 +811,7 @@ int totemrrp_mcast_flush_send (
 		goto error_exit;
 	}
 	
+// TODO this needs to return the result
 	instance->rrp_algo->mcast_flush_send (instance, msg, msg_len);
 
 	saHandleInstancePut (&totemrrp_instance_database, handle);
@@ -840,6 +841,8 @@ int totemrrp_mcast_noflush_send (
 	 * an encryption/hmac and decryption/hmac
 	 */
 	if (instance->processor_count > 1) {
+
+// TODO this needs to return the result
 		instance->rrp_algo->mcast_noflush_send (instance, iovec, iov_len);
 	}
 
