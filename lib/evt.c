@@ -286,10 +286,10 @@ static void eventHandleInstanceDestructor(void *instance)
 		free(edi->edi_hl);
 		edi->edi_hl = 0;
 	}
-	for (i = 0; i < edi->edi_patterns.patternsNumber; i++) {
-		free(edi->edi_patterns.patterns[i].pattern);
-	}
 	if (edi->edi_patterns.patterns) {
+		for (i = 0; i < edi->edi_patterns.patternsNumber; i++) {
+			free(edi->edi_patterns.patterns[i].pattern);
+		}
 		free(edi->edi_patterns.patterns);
 	}
 	if (edi->edi_event_data) {
@@ -483,10 +483,9 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 			evt->led_lib_channel_handle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
+		saHandleDestroy(&evt_instance_handle_db, *event_handle);
 		goto make_evt_done_put;
 	}
-
-	memset(edi, 0, sizeof(*edi));
 
 	pthread_mutex_init(&edi->edi_mutex, NULL);
 	edi->edi_ro = 1;
@@ -501,6 +500,15 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	edi->edi_pub_name = evt->led_publisher_name;
 	if (edi->edi_event_data_size) {
 		edi->edi_event_data = malloc(edi->edi_event_data_size);
+		if (!edi->edi_event_data) {
+			saHandleDestroy(&evt_instance_handle_db, *event_handle);
+
+			/*
+			 * saEvtDispatch doesn't return SA_AIS_ERR_NO_MEMORY
+			 */
+			error = SA_AIS_ERR_LIBRARY;
+			goto make_evt_done_put2;
+		}
 		memcpy(edi->edi_event_data, 
 				evt->led_body + evt->led_user_data_offset,
 				edi->edi_event_data_size);
@@ -513,6 +521,22 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	edi->edi_patterns.allocatedNumber = evt->led_patterns_number;
 	edi->edi_patterns.patterns = malloc(sizeof(SaEvtEventPatternT) * 
 					edi->edi_patterns.patternsNumber);
+	if (!edi->edi_patterns.patterns) {
+		/*
+		 * The destructor will take care of freeing event data already
+		 * allocated.
+		 */
+		edi->edi_patterns.patternsNumber = 0;
+		saHandleDestroy(&evt_instance_handle_db, *event_handle);
+
+		/*
+		 * saEvtDispatch doesn't return SA_AIS_ERR_NO_MEMORY
+		 */
+		error = SA_AIS_ERR_LIBRARY;
+		goto make_evt_done_put2;
+	}
+	memset(edi->edi_patterns.patterns, 0, sizeof(SaEvtEventPatternT) *
+					edi->edi_patterns.patternsNumber);
 	pat = (SaEvtEventPatternT *)evt->led_body;
 	str = evt->led_body + sizeof(SaEvtEventPatternT) * 
 						edi->edi_patterns.patternsNumber;
@@ -523,8 +547,9 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			printf("make_event: couldn't alloc %llu bytes\n",
 				(unsigned long long)pat->patternSize);
+			saHandleDestroy(&evt_instance_handle_db, *event_handle);
 			error =  SA_AIS_ERR_LIBRARY;
-			break;
+			goto make_evt_done_put2;
 		}
 		memcpy(edi->edi_patterns.patterns[i].pattern,
 				str, pat->patternSize);
@@ -533,11 +558,17 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	}
 
 	hl = malloc(sizeof(*hl));
-	edi->edi_hl = hl;
-	hl->hl_handle = *event_handle;
-	list_init(&hl->hl_entry);
-	list_add(&hl->hl_entry, &eci->eci_event_list);
+	if (!hl) {
+		saHandleDestroy(&evt_instance_handle_db, *event_handle);
+		error = SA_AIS_ERR_LIBRARY;
+	} else {
+		edi->edi_hl = hl;
+		hl->hl_handle = *event_handle;
+		list_init(&hl->hl_entry);
+		list_add(&hl->hl_entry, &eci->eci_event_list);
+	}
 
+make_evt_done_put2:
 	saHandleInstancePut (&channel_handle_db, evt->led_lib_channel_handle);
 
 make_evt_done_put:
@@ -992,6 +1023,10 @@ saEvtChannelOpen(
 	eci->eci_instance_handle = evtHandle;
 	eci->eci_closing = 0;
 	hl = malloc(sizeof(*hl));
+	if (!hl) {
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto chan_open_free;
+	}
 	eci->eci_hl = hl;
 	hl->hl_handle = *channelHandle;
 	list_init(&hl->hl_entry);
@@ -1215,6 +1250,10 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	eci->eci_closing = 0;
 	list_init(&eci->eci_event_list);
 	hl = malloc(sizeof(*hl));
+	if (!hl) {
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto chan_open_free;
+	}
 	eci->eci_hl = hl;
 	hl->hl_handle = channel_handle;
 	list_init(&hl->hl_entry);
@@ -1616,6 +1655,10 @@ saEvtEventAttributesGet(
 		patternArray->patternsNumber = edi->edi_patterns.patternsNumber;
 		patternArray->patterns = malloc(sizeof(*patternArray->patterns) * 
 				edi->edi_patterns.patternsNumber);
+		if (!patternArray->patterns) {
+			error = SA_AIS_ERR_LIBRARY;
+			goto attr_get_unlock;
+		}
 		for (i = 0; i < edi->edi_patterns.patternsNumber; i++) {
 			patternArray->patterns[i].allocatedSize = 
 				edi->edi_patterns.patterns[i].allocatedSize;
@@ -1623,6 +1666,23 @@ saEvtEventAttributesGet(
 				edi->edi_patterns.patterns[i].patternSize;
 			patternArray->patterns[i].pattern = 
 				malloc(edi->edi_patterns.patterns[i].patternSize);
+			if (!patternArray->patterns[i].pattern) {
+				int j;
+				/*
+				 * back out previous mallocs
+				 */
+				for (j = 0; j < i; j++) {
+					free(patternArray->patterns[j].pattern);
+				}
+				free(patternArray->patterns);
+
+				/*
+				 * saEvtEventAttributesGet doesn't return
+				 * SA_AIS_ERR_NO_MEMORY
+				 */
+				error = SA_AIS_ERR_LIBRARY;
+				goto attr_get_unlock;
+			}
 		}
 	} else {
 		if (patternArray->allocatedNumber < edi->edi_patterns.allocatedNumber) {
