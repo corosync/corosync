@@ -1354,10 +1354,9 @@ saEvtEventAllocate(
 	error = saHandleInstanceGet(&event_handle_db, *eventHandle,
 					(void*)&edi);
 	if (error != SA_AIS_OK) {
+		saHandleDestroy(&event_handle_db, *eventHandle);
 		goto alloc_put2;
 	}
-
-	memset(edi, 0, sizeof(*edi));
 
 	pthread_mutex_init(&edi->edi_mutex, NULL);
 	edi->edi_ro = 0;
@@ -1369,6 +1368,11 @@ saEvtEventAllocate(
 	edi->edi_pub_time = SA_TIME_UNKNOWN;
 	edi->edi_retention_time = 0;
 	hl = malloc(sizeof(*hl));
+	if (!hl) {
+		saHandleDestroy(&event_handle_db, *eventHandle);
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto alloc_put2;
+	}
 	edi->edi_hl = hl;
 	hl->hl_handle = *eventHandle;
 	list_init(&hl->hl_entry);
@@ -1380,7 +1384,7 @@ saEvtEventAllocate(
 alloc_put2:
 	saHandleInstancePut (&evt_instance_handle_db, eci->eci_instance_handle);
 alloc_put1:
-	saHandleInstancePut (&channel_handle_db, edi->edi_channel_handle);
+	saHandleInstancePut (&channel_handle_db, channelHandle);
 alloc_done:
 	return error;
 }
