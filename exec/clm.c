@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -57,6 +57,7 @@
 #include "../include/ipc_clm.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "totempg.h"
 #include "main.h"
@@ -65,6 +66,11 @@
 
 #define LOG_SERVICE LOG_SERVICE_CLM
 #include "print.h"
+
+
+enum clm_message_req_types {
+	MESSAGE_REQ_EXEC_CLM_NODEJOIN = 0
+};
 
 SaClmClusterChangesT thisClusterNodeLastChange = SA_CLM_NODE_JOINED;
 SaClmClusterNodeT thisClusterNode;
@@ -175,6 +181,8 @@ static int (*clm_aisexec_handler_fns[]) (void *, struct totem_ip_address *source
 };
 	
 struct service_handler clm_service_handler = {
+	.name						= "openais cluster membership service B.01.01",
+	.id							= CLM_SERVICE,
 	.libais_handlers			= clm_libais_handlers,
 	.libais_handlers_count		= sizeof (clm_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= clm_aisexec_handler_fns,
@@ -189,6 +197,46 @@ struct service_handler clm_service_handler = {
 	.sync_activate				= clm_sync_activate,
 	.sync_abort					= clm_sync_abort,
 };
+
+#ifdef BUILD_DYNAMIC
+struct service_handler *clm_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 clm_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= clm_get_handler_ver0
+};
+
+struct lcr_iface openais_clm_ver0[1] = {
+	{
+		.name					= "openais_clm",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&clm_service_handler_iface,
+	}
+};
+
+struct lcr_comp clm_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_clm_ver0
+};
+
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &clm_comp_ver0;
+	return (0);
+}
+
+struct service_handler *clm_get_handler_ver0 (void)
+{
+	return (&clm_service_handler);
+}
+#endif /* BUILD_DYNAMIC */
 
 struct req_exec_clm_nodejoin {
 	struct req_header header;
@@ -234,6 +282,7 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	memcpy (&clusterNodes[0], &thisClusterNode, sizeof (SaClmClusterNodeT));
 	clusterNodeEntries = 1;
 
+	main_clm_get_by_nodeid = clm_get_by_nodeid;
 	return (0);
 }
 
@@ -375,7 +424,8 @@ static int clm_nodejoin_send (void)
 	int result;
 
 	req_exec_clm_nodejoin.header.size = sizeof (struct req_exec_clm_nodejoin);
-	req_exec_clm_nodejoin.header.id = MESSAGE_REQ_EXEC_CLM_NODEJOIN;
+	req_exec_clm_nodejoin.header.id = 
+		SERVICE_ID_MAKE (CLM_SERVICE, MESSAGE_REQ_EXEC_CLM_NODEJOIN);
 // TODO dont use memcpy, use iovecs !!
 
 	thisClusterNode.initialViewNumber = view_initial;

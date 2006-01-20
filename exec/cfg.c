@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2005-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -51,6 +51,7 @@
 #include "../include/ipc_cfg.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "totempg.h"
 #include "aispoll.h"
 #include "mempool.h"
@@ -128,6 +129,8 @@ int (*cfg_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian
  * Exports the interface for the service
  */
 struct service_handler cfg_service_handler = {
+	.name					= "openais configuration service",
+	.id					= CFG_SERVICE,
 	.libais_handlers			= cfg_libais_handlers,
 	.libais_handlers_count		= sizeof (cfg_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= cfg_aisexec_handler_fns,
@@ -138,6 +141,45 @@ struct service_handler cfg_service_handler = {
 	.exec_init_fn				= cfg_exec_init_fn,
 };
 
+#ifdef BUILD_DYNAMIC
+
+struct service_handler *cfg_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 cfg_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= cfg_get_handler_ver0
+};
+
+struct lcr_iface openais_cfg_ver0[1] = {
+	{
+		.name					= "openais_cfg",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&cfg_service_handler_iface,
+	}
+};
+
+struct lcr_comp cfg_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_cfg_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &cfg_comp_ver0;
+	return (0);
+}
+
+struct service_handler *cfg_get_handler_ver0 (void)
+{
+	return (&cfg_service_handler);
+}
+#endif /* BUILD_DYNAMIC */
 /* IMPL */
 
 static int cfg_exec_init_fn (struct openais_config *openais_config)

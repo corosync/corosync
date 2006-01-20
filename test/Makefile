@@ -28,7 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a
 LIBS = $(LIBRARIES) -lpthread
 
 # Production mode flags
@@ -48,14 +48,17 @@ LDFLAGS = -g -L../lib
 #LDFLAGS = -pg -L../lib
 
 EXTRA_CFLAGS = -I../include
-TEST_SRC =  testclm.c testamf1.c testckpt.c ckptstress.c ckptbench.c  \
+TEST_SRC =  testclm.c testamf1.c \
+		testamf4.c testamf5.c testamf6.c testamfth.c  \
+		testckpt.c ckptstress.c ckptbench.c  \
 		ckptbenchth.c testevt.c testevs.c evsbench.c \
 		subscription.c publish.c evtbench.c \
-		sa_error.c unlink.c testclm2.c testlck.c
+		sa_error.c unlink.c testclm2.c testlck.c testmsg.c
 
-all: testclm testamf1 testckpt ckptstress ckptbench \
+all: testclm testamf1 \
+	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2 testlck
+	evsbench subscription publish evtbench unlink testclm2 testlck testmsg
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -80,18 +83,6 @@ testamf5: testamf5.o $(LIBRARIES)
 
 testamf6: testamf6.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamf6 testamf6.o $(LIBS)
-
-testamf7: testamf7.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf7 testamf7.o $(LIBS)
-
-testamf8: testamf8.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf8 testamf8.o $(LIBS)
-
-testamf9: testamf9.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf9 testamf9.o $(LIBS)
-
-testamf10: testamf10.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf10 testamf10.o $(LIBS)
 
 testamfth: testamfth.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testamfth testamfth.o $(LIBS)
@@ -150,11 +141,14 @@ testclm2: testclm2.o $(LIBRARIES)
 testlck: testlck.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testlck testlck.o $(LIBS)
 
+testmsg: testmsg.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testmsg testmsg.o $(LIBS)
+
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testtimer \
 	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
-	evsbench subscription publish evtbench unlink
+	evsbench subscription publish evtbench unlink testmsg
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 

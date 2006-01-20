@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2004 MontaVista Software, Inc.
+ * Copyright (c) 2003-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -50,6 +50,7 @@
 #include "../include/ipc_ckpt.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
@@ -59,6 +60,22 @@
 #define LOG_SERVICE LOG_SERVICE_CKPT
 #define CKPT_MAX_SECTION_DATA_SEND (1024*400)
 #include "print.h"
+
+enum ckpt_message_req_types {
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN = 0,
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE = 1,
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK = 2,
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET = 3,
+	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE = 4,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE = 5,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE = 6,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET = 7,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE = 8,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE = 9,
+	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD = 10,
+	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE = 11,
+	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION = 12
+};
 
 struct ckpt_identifier {
 	SaNameT ckpt_name;
@@ -327,6 +344,8 @@ static int (*ckpt_aisexec_handler_fns[]) (void *msg, struct totem_ip_address *so
 };
 
 struct service_handler ckpt_service_handler = {
+	.name				= "openais checkpoint service B.01.01",
+	.id				= CKPT_SERVICE,
 	.libais_handlers			= ckpt_libais_handlers,
 	.libais_handlers_count		= sizeof (ckpt_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= ckpt_aisexec_handler_fns,
@@ -341,6 +360,46 @@ struct service_handler ckpt_service_handler = {
 	.sync_activate				= ckpt_recovery_activate,
 	.sync_abort					= ckpt_recovery_abort,
 };
+
+#ifdef BUILD_DYNAMIC
+
+struct service_handler *ckpt_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 ckpt_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= ckpt_get_handler_ver0
+};
+
+struct lcr_iface openais_ckpt_ver0[1] = {
+	{
+		.name					= "openais_ckpt",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&ckpt_service_handler_iface,
+	}
+};
+
+struct lcr_comp ckpt_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_ckpt_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &ckpt_comp_ver0;
+	return (0);
+}
+
+struct service_handler *ckpt_get_handler_ver0 (void)
+{
+	return (&ckpt_service_handler);
+}
+#endif /* BUILD_DYNAMIC */
 
 /*
  * All data types used for executive messages
@@ -711,7 +770,9 @@ static int ckpt_recovery_process (void)
 							(char*)&checkpoint->name.value);
 					} 
 					request_exec_sync_state.header.size =	sizeof (struct req_exec_ckpt_synchronize_state);
-					request_exec_sync_state.header.id = MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE;
+					request_exec_sync_state.header.id =
+						SERVICE_ID_MAKE (CKPT_SERVICE,
+							MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE);
 					memcpy(&request_exec_sync_state.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
 					memcpy(&request_exec_sync_state.checkpointName, &checkpoint->name, sizeof(SaNameT));
 					memcpy(&request_exec_sync_state.checkpointCreationAttributes, 
@@ -788,7 +849,9 @@ static int ckpt_recovery_process (void)
 					*/			
 								
 					request_exec_sync_section.header.size =	sizeof (struct req_exec_ckpt_synchronize_section); 
-					request_exec_sync_section.header.id = MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION;    
+					request_exec_sync_section.header.id =
+						SERVICE_ID_MAKE (CKPT_SERVICE,
+							MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION);
 					memcpy (&request_exec_sync_section.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
 					memcpy (&request_exec_sync_section.checkpointName, &checkpoint->name, sizeof(SaNameT));
 					memcpy (&request_exec_sync_section.sectionId,
@@ -1276,7 +1339,9 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 	}
 	req_exec_ckpt_checkpointclose.header.size =
 		sizeof (struct req_exec_ckpt_checkpointclose);
-	req_exec_ckpt_checkpointclose.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE;
+	req_exec_ckpt_checkpointclose.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE);
 
 	memcpy (&req_exec_ckpt_checkpointclose.checkpointName,
 		&checkpoint->name, sizeof (SaNameT));
@@ -1824,7 +1889,9 @@ void timer_function_retention (void *data)
 	checkpoint->retention_timer = 0;
 	req_exec_ckpt_checkpointretentiondurationexpire.header.size =
 		sizeof (struct req_exec_ckpt_checkpointretentiondurationexpire);
-	req_exec_ckpt_checkpointretentiondurationexpire.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE;
+	req_exec_ckpt_checkpointretentiondurationexpire.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE);
 
 	memcpy (&req_exec_ckpt_checkpointretentiondurationexpire.checkpointName,
 		&checkpoint->name,
@@ -2009,7 +2076,9 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void
 
 		req_exec_ckpt_checkpointunlink.header.size =
 			sizeof (struct req_exec_ckpt_checkpointunlink);
-		req_exec_ckpt_checkpointunlink.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK;
+		req_exec_ckpt_checkpointunlink.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK);
 
 		req_exec_ckpt_checkpointunlink.source.conn_info = 0;
 		req_exec_ckpt_checkpointunlink.source.addr.family = 0;
@@ -2786,7 +2855,8 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint.\n");
 	req_exec_ckpt_checkpointopen.header.size =
 		sizeof (struct req_exec_ckpt_checkpointopen);
-	req_exec_ckpt_checkpointopen.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN;
+	req_exec_ckpt_checkpointopen.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE, MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN);
 
 	message_source_set (&req_exec_ckpt_checkpointopen.source, conn_info);
 
@@ -2816,7 +2886,8 @@ static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *c
 	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint async.\n");
 	req_exec_ckpt_checkpointopen.header.size =
 		sizeof (struct req_exec_ckpt_checkpointopen);
-	req_exec_ckpt_checkpointopen.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN;
+	req_exec_ckpt_checkpointopen.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE, MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN);
 
 	message_source_set (&req_exec_ckpt_checkpointopen.source, conn_info);
 
@@ -2849,7 +2920,9 @@ static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_
 	if (checkpoint && (checkpoint->expired == 0)) {
 		req_exec_ckpt_checkpointclose.header.size =
 			sizeof (struct req_exec_ckpt_checkpointclose);
-		req_exec_ckpt_checkpointclose.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE;
+		req_exec_ckpt_checkpointclose.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				 MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE);
 
 		message_source_set (&req_exec_ckpt_checkpointclose.source, conn_info);
 
@@ -2885,7 +2958,8 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 
 	req_exec_ckpt_checkpointunlink.header.size =
 		sizeof (struct req_exec_ckpt_checkpointunlink);
-	req_exec_ckpt_checkpointunlink.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK;
+	req_exec_ckpt_checkpointunlink.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE, MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK);
 
 	message_source_set (&req_exec_ckpt_checkpointunlink.source, conn_info);
 
@@ -2908,7 +2982,9 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_DEBUG, "DURATION SET FROM API fd %d\n", conn_info->fd);
-	req_exec_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET;
+	req_exec_ckpt_checkpointretentiondurationset.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET);
 	req_exec_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_exec_ckpt_checkpointretentiondurationset);
 
 	message_source_set (&req_exec_ckpt_checkpointretentiondurationset.source, conn_info);
@@ -3027,7 +3103,9 @@ static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_in
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
-		req_exec_ckpt_sectioncreate.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE;
+		req_exec_ckpt_sectioncreate.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE);
 		req_exec_ckpt_sectioncreate.header.size = sizeof (struct req_exec_ckpt_sectioncreate);
 
 		memcpy (&req_exec_ckpt_sectioncreate.req_lib_ckpt_sectioncreate,
@@ -3099,7 +3177,9 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 
 	log_printf (LOG_LEVEL_DEBUG, "section delete from API fd %d\n", conn_info->fd);
 
-	req_exec_ckpt_sectiondelete.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE;
+	req_exec_ckpt_sectiondelete.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE);
 	req_exec_ckpt_sectiondelete.header.size = sizeof (struct req_exec_ckpt_sectiondelete);
 
 	memcpy (&req_exec_ckpt_sectiondelete.checkpointName,
@@ -3138,7 +3218,9 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_DEBUG, "section expiration time set fd=%d\n", conn_info->fd);
-	req_exec_ckpt_sectionexpirationtimeset.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET;
+	req_exec_ckpt_sectionexpirationtimeset.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET);
 	req_exec_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_exec_ckpt_sectionexpirationtimeset);
 
 	memcpy (&req_exec_ckpt_sectionexpirationtimeset.checkpointName,
@@ -3195,7 +3277,9 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
-		req_exec_ckpt_sectionwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE;
+		req_exec_ckpt_sectionwrite.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE);
 		req_exec_ckpt_sectionwrite.header.size = sizeof (struct req_exec_ckpt_sectionwrite); 
 
 		memcpy (&req_exec_ckpt_sectionwrite.req_lib_ckpt_sectionwrite,
@@ -3253,7 +3337,9 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
-		req_exec_ckpt_sectionoverwrite.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE;
+		req_exec_ckpt_sectionoverwrite.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE);
 		req_exec_ckpt_sectionoverwrite.header.size = sizeof (struct req_exec_ckpt_sectionoverwrite); 
 	
 		memcpy (&req_exec_ckpt_sectionoverwrite.req_lib_ckpt_sectionoverwrite,
@@ -3317,7 +3403,9 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		/*
 		 * checkpoint opened is writeable mode so send message to cluster
 		 */
-		req_exec_ckpt_sectionread.header.id = MESSAGE_REQ_EXEC_CKPT_SECTIONREAD;
+		req_exec_ckpt_sectionread.header.id =
+			SERVICE_ID_MAKE (CKPT_SERVICE,
+				MESSAGE_REQ_EXEC_CKPT_SECTIONREAD);
 		req_exec_ckpt_sectionread.header.size = sizeof (struct req_exec_ckpt_sectionread);
 
 		memcpy (&req_exec_ckpt_sectionread.req_lib_ckpt_sectionread,

@@ -33,7 +33,7 @@
 
 #ifndef EVT_H
 #define EVT_H
-#include "hdb.h"
+#include "../include/hdb.h"
 #include "../include/list.h"
 #include "../include/saEvt.h"
 
@@ -64,7 +64,7 @@ struct libevt_ci {
 	struct list_head		esi_events[SA_EVT_LOWEST_PRIORITY+1];
 	int						esi_nevents;
 	int						esi_queue_blocked;
-	struct saHandleDatabase	esi_hdb;
+	struct hdb_handle_database	esi_hdb;
 };
 
 #endif

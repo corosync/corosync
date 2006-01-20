@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- *
- * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
+ * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,38 +28,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HDB_H_DEFINED
-#define HDB_H_DEFINED
+#ifndef LCR_COMP_H_DEFINED
+#define LCR_COMP_H_DEFINED
 
-#include "../include/saAis.h"
-
-struct saHandleDatabase {
-	unsigned int handleCount;
-	struct saHandle *handles;
-	pthread_mutex_t mutex;
-	void (*handleInstanceDestructor) (void *);
+/*
+ * LCR Interface
+ */
+struct lcr_iface {
+	char *name;			/* Name of the interface */
+	int version;			/* Version of this interface */
+	int *versions_replace;		/* Versions that this interface can replace */
+	int versions_replace_count;	/* Count of entries in version_replace */
+	char **dependencies;		/* Dependent interfaces */
+	int dependency_count;		/* Count of entires in dependencies */
+	int (*constructor) (void *context);	/* Constructor for this interface */
+	void (*destructor) (void *context);	/* Constructor for this interface */
+	void **interfaces;		/* List of functions in interface */
 };
 
-extern SaErrorT
-saHandleCreate (
-	struct saHandleDatabase *handleDatabase,
-	int instanceSize,
-	unsigned int *handleOut);
+/*
+ * LCR Component
+ */
+struct lcr_comp {
+	struct lcr_iface *ifaces;	/* List of interfaces in this component */
+	int iface_count;		/* size of ifaces list */
+};
+/*
+ * Exported by the component to retrieve the component information
+ */
+extern int lcr_comp_get (struct lcr_comp **component);
 
-extern SaErrorT
-saHandleDestroy (
-	struct saHandleDatabase *handleDatabase,
-	unsigned int handle);
-
-extern SaErrorT
-saHandleInstanceGet (
-	struct saHandleDatabase *handleDatabase,
-	unsigned int handle,
-	void **instance);
-
-extern SaErrorT
-saHandleInstancePut (
-	struct saHandleDatabase *handleDatabase,
-	unsigned int handle);
-
-#endif /* HDB_H_DEFINED */
+#endif /* LCR_COMP_H_DEFINED */

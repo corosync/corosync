@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2004 MontaVista Software, Inc.
+ * Copyright (c) 2004-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -52,12 +52,13 @@
 
 #include "../include/saAis.h"
 #include "../include/ipc_gen.h"
-#include "totemip.h"
 #include "../include/ipc_evs.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "totempg.h"
+#include "totemip.h"
 #include "main.h"
 #include "mempool.h"
 #include "handlers.h"
@@ -65,7 +66,9 @@
 #define LOG_SERVICE LOG_SERVICE_EVS
 #include "print.h"
 
-static DECLARE_LIST_INIT (confchg_notify);
+enum evs_exec_message_req_types {
+	MESSAGE_REQ_EXEC_EVS_MCAST = 0
+};
 
 /*
  * Service Interfaces required by service_message_handler struct
@@ -130,6 +133,8 @@ static int (*evs_aisexec_handler_fns[]) (void *, struct totem_ip_address *source
 };
 	
 struct service_handler evs_service_handler = {
+	.name						= "openais extended virtual synchrony service",
+	.id							= EVS_SERVICE,
 	.libais_handlers			= evs_libais_handlers,
 	.libais_handlers_count		= sizeof (evs_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= evs_aisexec_handler_fns,
@@ -140,6 +145,49 @@ struct service_handler evs_service_handler = {
 	.exec_init_fn				= evs_executive_initialize,
 	.exec_dump_fn				= 0
 };
+
+static DECLARE_LIST_INIT (confchg_notify);
+
+#ifdef BUILD_DYNAMIC
+
+struct service_handler *evs_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 evs_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= evs_get_handler_ver0
+};
+
+struct lcr_iface openais_evs_ver0[1] = {
+	{
+		.name					= "openais_evs",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&evs_service_handler_iface,
+	}
+};
+
+struct lcr_comp evs_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_evs_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &evs_comp_ver0;
+	return (0);
+}
+
+struct service_handler *evs_get_handler_ver0 (void)
+{
+	return (&evs_service_handler);
+}
+
+#endif /* BUILD_DYNAMIC */
 
 static int evs_executive_initialize (struct openais_config *openais_config)
 {
@@ -329,7 +377,8 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 		sizeof (struct evs_group) +
 		req_lib_evs_mcast_joined->msg_len;
 
-	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
+	req_exec_evs_mcast.header.id =
+		SERVICE_ID_MAKE (EVS_SERVICE, MESSAGE_REQ_EXEC_EVS_MCAST);
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_joined->msg_len;
 	req_exec_evs_mcast.group_entries = conn_info->conn_info_partner->ais_ci.u.libevs_ci.group_entries;
 
@@ -373,7 +422,8 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 		sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries +
 		req_lib_evs_mcast_groups->msg_len;
 
-	req_exec_evs_mcast.header.id = MESSAGE_REQ_EXEC_EVS_MCAST;
+	req_exec_evs_mcast.header.id =
+		SERVICE_ID_MAKE (EVS_SERVICE, MESSAGE_REQ_EXEC_EVS_MCAST);
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_groups->msg_len;
 	req_exec_evs_mcast.group_entries = req_lib_evs_mcast_groups->group_entries;
 

@@ -88,10 +88,10 @@
 #include <string.h>
 #include <assert.h>
 
+#include "../include/hdb.h"
 #include "totempg.h"
 #include "totemmrp.h"
 #include "totemsrp.h"
-#include "hdb.h"
 #include "swab.h"
 
 #define min(a,b) ((a) < (b)) ? a : b
@@ -188,10 +188,10 @@ struct totempg_group_instance {
 	int groups_cnt;
 };
 
-static struct saHandleDatabase totempg_groups_instance_database = {
-	.handleCount				= 0,
-	.handles					= 0,
-	.handleInstanceDestructor	= 0
+static struct hdb_handle_database totempg_groups_instance_database = {
+	.handle_count	= 0,
+	.handles	= 0,
+	.iterator	= 0
 };
 
 static int send_ok (int msg_size);
@@ -216,14 +216,14 @@ static inline void app_confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	int i;
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
+	unsigned int res;
 
 	for (i = 0; i <= totempg_max_handle; i++) {
-		error = saHandleInstanceGet (&totempg_groups_instance_database,
+		res = hdb_handle_get (&totempg_groups_instance_database,
 			i, (void *)&instance);
 
-		if (error == SA_OK) {
+		if (res == 0) {
 			if (instance->confchg_fn) {
 				instance->confchg_fn (
 					configuration_type,
@@ -236,7 +236,7 @@ static inline void app_confchg_fn (
 					ring_id);
 			}
 
-			saHandleInstancePut (&totempg_groups_instance_database, i);
+			hdb_handle_put (&totempg_groups_instance_database, i);
 		}
 	}
 }
@@ -289,16 +289,16 @@ static inline void app_deliver_fn (
 	int endian_conversion_required)
 {
 	int i;
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	struct iovec stripped_iovec;
 	unsigned int adjust_iovec;
+	unsigned int res;
 
 	for (i = 0; i <= totempg_max_handle; i++) {
-		error = saHandleInstanceGet (&totempg_groups_instance_database,
+		res = hdb_handle_get (&totempg_groups_instance_database,
 			i, (void *)&instance);
 
-		if (error == SA_OK) {
+		if (res == 0) {
 			assert (iov_len == 1);
 			if (group_matches (iovec, iov_len, instance->groups, instance->groups_cnt, &adjust_iovec)) {
 				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
@@ -310,7 +310,7 @@ static inline void app_deliver_fn (
 					endian_conversion_required);
 			}
 
-			saHandleInstancePut (&totempg_groups_instance_database, i);
+			hdb_handle_put (&totempg_groups_instance_database, i);
 		}
 	}
 }
@@ -823,12 +823,12 @@ int totempg_groups_initialize (
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
+	unsigned int res;
 
-	error = saHandleCreate (&totempg_groups_instance_database,
+	res = hdb_handle_create (&totempg_groups_instance_database,
 		sizeof (struct totempg_group_instance), handle);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -836,9 +836,9 @@ int totempg_groups_initialize (
 		totempg_max_handle = *handle;
 	}
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, *handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, *handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_destroy;
 	}
 
@@ -847,11 +847,11 @@ int totempg_groups_initialize (
 	instance->groups = 0;
 	instance->groups_cnt = 0;
 
-	saHandleInstancePut (&totempg_groups_instance_database, *handle);
+	hdb_handle_put (&totempg_groups_instance_database, *handle);
 
 	return (0);
 error_destroy:
-	saHandleDestroy (&totempg_groups_instance_database, *handle);
+	hdb_handle_destroy (&totempg_groups_instance_database, *handle);
 
 error_exit:
 	return (-1);
@@ -862,13 +862,13 @@ int totempg_groups_join (
 	struct totempg_group *groups,
 	int group_cnt)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	struct totempg_group *new_groups;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -876,7 +876,7 @@ int totempg_groups_join (
 		sizeof (struct totempg_group) *
 		(instance->groups_cnt + group_cnt));
 	if (new_groups == 0) {
-		error = ENOMEM;
+		res = ENOMEM;
 		goto error_exit;
 	}
 	memcpy (&new_groups[instance->groups_cnt], 
@@ -884,11 +884,11 @@ int totempg_groups_join (
 	instance->groups = new_groups;
 	instance->groups_cnt = instance->groups_cnt = group_cnt;
 
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 	return (0);
 
 error_exit:
-	return (error);
+	return (res);
 }
 
 int totempg_groups_leave (
@@ -896,19 +896,19 @@ int totempg_groups_leave (
 	struct totempg_group *groups,
 	int group_cnt)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 	return (0);
 error_exit:
-	return (error);
+	return (res);
 }
 
 #define MAX_IOVECS_FROM_APP 32
@@ -920,15 +920,15 @@ int totempg_groups_mcast_joined (
 	int iov_len,
 	int guarantee)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -948,11 +948,11 @@ int totempg_groups_mcast_joined (
 		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	error = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	res = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	return (error);
+	return (res);
 }
 
 int totempg_groups_send_ok_joined (
@@ -960,15 +960,14 @@ int totempg_groups_send_ok_joined (
 	struct iovec *iovec,
 	int iov_len)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	unsigned int size = 0;
 	unsigned int i;
 	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -981,11 +980,10 @@ int totempg_groups_send_ok_joined (
 
 	res = send_ok (size);
 
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 
-	return (res);
 error_exit:
-	return (error);
+	return (res);
 }
 
 int totempg_groups_mcast_groups (
@@ -996,15 +994,15 @@ int totempg_groups_mcast_groups (
 	struct iovec *iovec,
 	int iov_len)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -1024,12 +1022,12 @@ int totempg_groups_mcast_groups (
 		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	error = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
+	res = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
 
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	return (error);
+	return (res);
 }
 
 int totempg_groups_send_ok_groups (
@@ -1039,15 +1037,14 @@ int totempg_groups_send_ok_groups (
 	struct iovec *iovec,
 	int iov_len)
 {
-	SaAisErrorT error;
 	struct totempg_group_instance *instance;
 	unsigned int size = 0;
 	unsigned int i;
 	unsigned int res;
 
-	error = saHandleInstanceGet (&totempg_groups_instance_database, handle,
+	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -1060,9 +1057,9 @@ int totempg_groups_send_ok_groups (
 
 	res = send_ok (size);
 
-	saHandleInstancePut (&totempg_groups_instance_database, handle);
+	hdb_handle_put (&totempg_groups_instance_database, handle);
 	return (0);
 error_exit:
-	return (error);
+	return (res);
 }
 

@@ -1,3 +1,4 @@
+//#define BUILD_DYNAMIC 1
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
@@ -59,6 +60,7 @@
 #include "../include/saAis.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_ifact.h"
 #include "poll.h"
 #include "totempg.h"
 #include "totemsrp.h"
@@ -75,6 +77,7 @@
 #include "ckpt.h"
 #include "evt.h"
 #include "lck.h"
+#include "msg.h"
 #include "cfg.h"
 #include "swab.h"
 
@@ -89,22 +92,80 @@ int gid_valid = 0;
 /*
  * All service handlers in the AIS
  */
-struct service_handler *ais_service_handlers[] = {
-    &evs_service_handler,
-    &clm_service_handler,
-    &amf_service_handler,
-    &ckpt_service_handler,
-    &evt_service_handler,
-    &lck_service_handler,
-	&cfg_service_handler
+#ifdef BUILD_DYNAMIC
+struct dynamic_service {
+	char *name;
+	unsigned int ver;
+	unsigned int handle;
+	struct aisexec_iface_ver0 *iface_ver0;
 };
 
-struct sync_callbacks sync_callbacks[5];
+/*
+ * Still need to know the name of the service interface and version number
+ */
+struct dynamic_service dynamic_services[128] = {
+	{
+		.name			= "openais_evs",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_clm",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_amf",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_ckpt",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_evt",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_lck",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_msg",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	},
+	{
+		.name			= "openais_cfg",
+		.ver			= 0,
+		.handle			= 0,
+		.iface_ver0		= NULL
+	}
+};
+#endif /* BUILD_DYNAMIC */
+		
+static struct service_handler *ais_service_handlers[32];
 
-int sync_callback_count;
+/*
+unsigned int aisexec_ifact_handle_ver0[32];
 
-#define AIS_SERVICE_HANDLERS_COUNT 7
-#define AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX 50
+static struct aisexec_iface_ver0 *aisexec_iface_ver0[32];
+*/
+
+static unsigned int service_handlers_count = 32;
+
+SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
  /*
   * IPC Initializers
@@ -133,6 +194,8 @@ enum e_ais_done {
 	AIS_DONE_LOGSETUP = -10,
 	AIS_DONE_AMFCONFIGREAD = -11,
 };
+
+extern int openais_amf_config_read (char **error_string);
 
 static inline void ais_done (enum e_ais_done err)
 {
@@ -170,6 +233,7 @@ static inline struct conn_info *conn_info_create (int fd) {
 	return (conn_info);
 }
 
+#ifdef COMPILE_OUT
 static void sigusr2_handler (int num)
 {
 	int i;
@@ -183,6 +247,7 @@ static void sigusr2_handler (int num)
 	signal (SIGUSR2 ,sigusr2_handler);
 	return;
 }
+#endif
 
 struct totem_ip_address *this_ip;
 struct totem_ip_address this_non_loopback_ip;
@@ -801,51 +866,22 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-static int (*aisexec_handler_fns[AIS_SERVICE_HANDLER_AISEXEC_FUNCTIONS_MAX]) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_required);
-static int aisexec_handler_fns_count = 0;
-
-/*
- * Builds the handler table as an optimization
- */
-static void aisexec_handler_fns_build (void)
-{
-	int i, j;
-
-	/*
-	 * Install sync handler function
-	 */
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		for (j = 0; j < ais_service_handlers[i]->aisexec_handler_fns_count; j++) {
-			aisexec_handler_fns[aisexec_handler_fns_count++] = 
-				ais_service_handlers[i]->aisexec_handler_fns[j];
-				printf ("pos %d %x\n", aisexec_handler_fns_count - 1, ais_service_handlers[i]->aisexec_handler_fns[j]);
-		}
-	}
-	log_printf (LOG_LEVEL_DEBUG, "built %d handler functions\n", aisexec_handler_fns_count);
-}
-
-void sync_completed (void)
+static void openais_sync_completed (void)
 {
 }
 
-void aisexec_sync_fns_build (void)
+static int openais_sync_callbacks_retrieve (int sync_id,
+	struct sync_callbacks *callbacks)
 {
-	int i;
-
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->sync_init) {
-			sync_callbacks[sync_callback_count].sync_init =
-				ais_service_handlers[i]->sync_init;
-			sync_callbacks[sync_callback_count].sync_process =
-				ais_service_handlers[i]->sync_process;
-			sync_callbacks[sync_callback_count].sync_activate =
-				ais_service_handlers[i]->sync_activate;
-			sync_callbacks[sync_callback_count].sync_abort =
-				ais_service_handlers[i]->sync_abort;
-			sync_callback_count++;
-		}
+	if (ais_service_handlers[sync_id] == NULL) {
+		memset (callbacks, 0, sizeof (struct sync_callbacks));
+		return (-1);
 	}
-	sync_register (sync_callbacks, sync_callback_count, sync_completed);
+	callbacks->sync_init = ais_service_handlers[sync_id]->sync_init;
+	callbacks->sync_process = ais_service_handlers[sync_id]->sync_process;
+	callbacks->sync_activate = ais_service_handlers[sync_id]->sync_activate;
+	callbacks->sync_abort = ais_service_handlers[sync_id]->sync_abort;
+	return (0);
 }
 
 char delivery_data[MESSAGE_SIZE_MAX];
@@ -860,6 +896,8 @@ static void deliver_fn (
 	int res;
 	int pos = 0;
 	int i;
+	int service;
+	int fn_id;
 
 	/*
 	 * Build buffer without iovecs to make processing easier
@@ -883,8 +921,13 @@ static void deliver_fn (
 
 //	assert(iovec->iov_len == header->size);
 
-	res = aisexec_handler_fns[header->id](header, source_addr,
-		endian_conversion_required);
+	/*
+	 * Call the proper executive handler
+	 */
+	service = header->id >> 16;
+	fn_id = header->id & 0xffff;
+	res = ais_service_handlers[service]->aisexec_handler_fns[fn_id]
+		(header, source_addr, endian_conversion_required);
 }
 
 static struct memb_ring_id aisexec_ring_id;
@@ -907,8 +950,8 @@ static void confchg_fn (
 	/*
 	 * Call configuration change for all services
 	 */
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->confchg_fn) {
+	for (i = 0; i < service_handlers_count; i++) {
+		if (ais_service_handlers[i] && ais_service_handlers[i]->confchg_fn) {
 			ais_service_handlers[i]->confchg_fn (configuration_type,
 				member_list, member_list_entries,
 				left_list, left_list_entries,
@@ -980,22 +1023,6 @@ static void aisexec_tty_detach (void)
 	}
 #endif
 #undef DEBUG
-}
-
-static void aisexec_service_handlers_init (struct openais_config *openais_config)
-{
-	int i;
-	/*
-	 * Initialize all services
-	 */
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->exec_init_fn) {
-			if (!ais_service_handlers[i]->exec_init_fn) {
-				continue;
-			}
-			ais_service_handlers[i]->exec_init_fn (openais_config);
-		}
-	}
 }
 
 static void aisexec_libais_bind (int *server_fd)
@@ -1072,6 +1099,50 @@ void message_source_set (struct message_source *source, struct conn_info *conn_i
 
 struct totem_logging_configuration totem_logging_configuration;
 
+int service_handler_register (
+	struct service_handler *handler,
+	struct openais_config *config)
+{
+	assert (ais_service_handlers[handler->id] == NULL);
+	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
+	ais_service_handlers[handler->id] = handler;
+	if (ais_service_handlers[handler->id]->exec_init_fn) {
+		ais_service_handlers[handler->id]->exec_init_fn (config);
+	}
+}
+
+void default_services_register (struct openais_config *openais_config)
+{
+#ifdef BUILD_DYNAMIC
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		lcr_ifact_reference (
+			&dynamic_services[i].handle,
+			dynamic_services[i].name,
+			dynamic_services[i].ver,
+			(void **)&dynamic_services[i].iface_ver0,
+			(void *)0);
+
+		service_handler_register (dynamic_services[i].iface_ver0->get_handler_ver0(), openais_config);
+	}
+
+#else /* NOT BUILD_DYNAMIC */
+	/*
+	 * link everything together - better for debugging - smaller memory footprint
+	 */
+
+	service_handler_register (&evs_service_handler, openais_config);
+	service_handler_register (&clm_service_handler, openais_config);
+	service_handler_register (&amf_service_handler, openais_config);
+	service_handler_register (&ckpt_service_handler, openais_config);
+	service_handler_register (&evt_service_handler, openais_config);
+	service_handler_register (&lck_service_handler, openais_config);
+	service_handler_register (&msg_service_handler, openais_config);
+	service_handler_register (&cfg_service_handler, openais_config);
+#endif /* BUILD_DYNAMIC */
+}
+
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
@@ -1090,7 +1161,7 @@ int main (int argc, char **argv)
 
 	aisexec_poll_handle = poll_create ();
 
-	signal (SIGUSR2, sigusr2_handler);
+//TODO	signal (SIGUSR2, sigusr2_handler);
 
 	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot
@@ -1167,6 +1238,10 @@ int main (int argc, char **argv)
 
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 
+	default_services_register(&openais_config);
+
+	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);
+
 	/*
 	 * Drop root privleges to user 'ais'
 	 * TODO: Don't really need full root capabilities;
@@ -1177,10 +1252,6 @@ int main (int argc, char **argv)
 	 */
 	aisexec_priv_drop ();
 
-	aisexec_handler_fns_build ();
-
-	aisexec_sync_fns_build ();
-
 	aisexec_mempool_init ();
 
 	res = openais_amf_config_read (&error_string);
@@ -1189,13 +1260,11 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_AMFCONFIGREAD);
 	}
 	
-	aisexec_tty_detach ();
-
 	signal (SIGINT, sigintr_handler);
 
-	aisexec_service_handlers_init (&openais_config);
-
 	aisexec_libais_bind (&libais_server_fd);
+
+	aisexec_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to receive connections.\n");
 

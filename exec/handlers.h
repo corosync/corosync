@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -39,6 +39,8 @@
 #include "totempg.h"
 #include "totemsrp.h"
 
+#define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
+
 enum flow_control {
 	FLOW_CONTROL_REQUIRED = 1,
 	FLOW_CONTROL_NOT_REQUIRED = 2
@@ -52,6 +54,8 @@ struct libais_handler {
 };
 
 struct service_handler {
+	unsigned char *name;
+	unsigned short id;
 	struct libais_handler *libais_handlers;
 	int libais_handlers_count;
 	int (**aisexec_handler_fns) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_needed);
@@ -72,6 +76,11 @@ struct service_handler {
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
+};
+
+struct aisexec_iface_ver0 {
+	void (*test) (void);
+	struct service_handler *(*get_handler_ver0) (void);
 };
 
 #endif /* HANDLERS_H_DEFINED */

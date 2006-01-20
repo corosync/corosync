@@ -1,6 +1,6 @@
 int waiting = 0;
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -56,6 +56,7 @@ int waiting = 0;
 #include "../include/ipc_amf.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "totempg.h"
 #include "aispoll.h"
 #include "mempool.h"
@@ -70,6 +71,13 @@ int waiting = 0;
 #define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
 #define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG
 
+enum amf_message_req_types {
+	MESSAGE_REQ_EXEC_AMF_OPERATIONAL_STATE_COMP_SET = 0,
+	MESSAGE_REQ_EXEC_AMF_PRESENCE_STATE_COMP_SET = 1,
+	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_CSI_SET = 2,
+	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_UNIT_SET = 3,
+	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_GROUP_SET = 4
+};
 
 struct invocation {
 	void *data;
@@ -362,6 +370,8 @@ int (*amf_aisexec_handler_fns[]) (
  * Exports the interface for the service
  */
 struct service_handler amf_service_handler = {
+	.name				= "openais availability management framework B.01.01",
+	.id				= AMF_SERVICE,
 	.libais_handlers		= amf_libais_handlers,
 	.libais_handlers_count		= sizeof (amf_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= amf_aisexec_handler_fns,
@@ -371,6 +381,46 @@ struct service_handler amf_service_handler = {
 	.libais_exit_fn			= amf_exit_fn,
 	.exec_init_fn			= amf_exec_init_fn,
 };
+
+#ifdef BUILD_DYNAMIC
+
+struct service_handler *amf_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 amf_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= amf_get_handler_ver0
+};
+
+struct lcr_iface openais_amf_ver0[1] = {
+	{
+		.name			= "openais_amf",
+		.version		= 0,
+		.versions_replace	= 0,
+		.versions_replace_count = 0,
+		.dependencies		= 0,
+		.dependency_count	= 0,
+		.constructor		= NULL,
+		.destructor		= NULL,
+		.interfaces		= (void **)&amf_service_handler_iface,
+	}
+};
+
+struct lcr_comp amf_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces				= openais_amf_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &amf_comp_ver0;
+	return (0);
+}
+
+struct service_handler *amf_get_handler_ver0 (void)
+{
+	return (&amf_service_handler);
+}
+#endif /* BUILD_DYNAMIC */
 
 enum clc_command_run_operation_type {
 	CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE = 1,
@@ -1138,7 +1188,8 @@ static void error_report (struct amf_comp *comp)
 	struct iovec iovec;
 
 	req_exec_amf_error_report.header.size = sizeof (struct req_exec_amf_error_report);
-	req_exec_amf_error_report.header.id = MESSAGE_REQ_EXEC_AMF_ERROR_REPORT;
+	req_exec_amf_error_report.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE,  MESSAGE_REQ_EXEC_AMF_ERROR_REPORT);
 	memcpy (&req_exec_amf_error_report.compName,
 		&comp->name,
 		sizeof (SaNameT));
@@ -1156,7 +1207,8 @@ static void TODO_COMP_RESTART_THISISADEADPLACEHOLDER (struct amf_comp *comp)
 	struct iovec iovec;
 
 	req_exec_amf_comp_restart.header.size = sizeof (struct req_exec_amf_comp_restart);
-	req_exec_amf_comp_restart.header.id = MESSAGE_REQ_EXEC_AMF_UNIT_RESTART;
+	req_exec_amf_comp_restart.header.id = 
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_UNIT_RESTART);
 	memcpy (&req_exec_amf_comp_restart.compName, &comp->name,
 		sizeof (SaNameT));
 
@@ -1248,7 +1300,8 @@ void presence_state_comp_set (
 	struct iovec iovec;
 
 	req_exec_amf_presence_state_comp_set.header.size = sizeof (struct req_exec_amf_presence_state_comp_set);
-	req_exec_amf_presence_state_comp_set.header.id = MESSAGE_REQ_EXEC_AMF_PRESENCE_STATE_COMP_SET;
+	req_exec_amf_presence_state_comp_set.header.id = 
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_PRESENCE_STATE_COMP_SET);
 	req_exec_amf_presence_state_comp_set.presence_state = presence_state;
 	memcpy (&req_exec_amf_presence_state_comp_set.name,
 		&comp->name,
@@ -1291,6 +1344,7 @@ void operational_state_comp_set (struct amf_comp *comp, OpenaisCfgOperationalSta
 
 	req_exec_amf_operational_state_comp_set.header.size = sizeof (struct req_exec_amf_operational_state_comp_set);
 	req_exec_amf_operational_state_comp_set.header.id = MESSAGE_REQ_EXEC_AMF_OPERATIONAL_STATE_COMP_SET;
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_OPERATIONAL_STATE_COMP_SET);
 	req_exec_amf_operational_state_comp_set.operational_state = operational_state;
 	memcpy (&req_exec_amf_operational_state_comp_set.name,
 		&comp->name,
@@ -2375,7 +2429,8 @@ static int message_handler_req_lib_amf_componentunregister (struct conn_info *co
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_lib_amf_componentunregister()\n");
 
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
-	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
+	req_exec_amf_componentunregister.header.id = 
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER);
 
 	message_source_set (&req_exec_amf_componentunregister.source, conn_info);
 
@@ -2714,7 +2769,8 @@ static int message_handler_req_lib_amf_componenterrorclear (struct conn_info *co
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_lib_amf_componenterrorclear()\n");
 
 	req_exec_amf_componenterrorclear.header.size = sizeof (struct req_exec_amf_componenterrorclear);
-	req_exec_amf_componenterrorclear.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTERRORCLEAR;
+	req_exec_amf_componenterrorclear.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_COMPONENTERRORCLEAR);
 
 	message_source_set (&req_exec_amf_componenterrorclear.source, conn_info);
 
@@ -3151,7 +3207,8 @@ static void component_unregister (
 	component->probableCause = SA_AMF_NOT_RESPONDING;
 
 	req_exec_amf_componentunregister.header.size = sizeof (struct req_exec_amf_componentunregister);
-	req_exec_amf_componentunregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER;
+	req_exec_amf_componentunregister.header.id = 
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_COMPONENTUNREGISTER);
 
 	req_exec_amf_componentunregister.source.conn_info = 0;
 	req_exec_amf_componentunregister.source.in_addr.s_addr = 0;
@@ -3184,7 +3241,8 @@ static void component_register (
 		getSaNameT (&component->name));
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
-	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
+	req_exec_amf_componentregister.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER);
 
 	req_exec_amf_componentregister.source.conn_info = 0;
 	req_exec_amf_componentregister.source.in_addr.s_addr = 0;
@@ -3310,7 +3368,8 @@ static void ha_state_group_set (
 	struct req_exec_amf_hastateset req_exec_amf_hastateset;
 	struct iovec iovec;
 
-	req_exec_amf_hastateset.header.id = MESSAGE_REQ_EXEC_AMF_HASTATESET;
+	req_exec_amf_hastateset.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_HASTATESET);
 	req_exec_amf_hastateset.header.size = sizeof (struct req_exec_amf_hastateset);
 	memcpy (&req_exec_amf_hastateset.compName, &component->name, sizeof (SaNameT));
 	req_exec_amf_hastateset.haState = haState;
@@ -3378,7 +3437,8 @@ static void readiness_state_group_set (
 	struct req_exec_amf_readinessstateset req_exec_amf_readinessstateset;
 	struct iovec iovec;
 
-	req_exec_amf_readinessstateset.header.id = MESSAGE_REQ_EXEC_AMF_READINESSSTATESET;
+	req_exec_amf_readinessstateset.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_READINESSSTATESET);
 	req_exec_amf_readinessstateset.header.size = sizeof (struct req_exec_amf_readinessstateset);
 	memcpy (&req_exec_amf_readinessstateset.compName, &component->name, sizeof (SaNameT));
 	req_exec_amf_readinessstateset.readinessState = readinessState;
@@ -3977,7 +4037,8 @@ void error_report (
 	struct iovec iovec;
 
 	req_exec_amf_componenterrorreport.header.size = sizeof (struct req_exec_amf_componenterrorreport);
-	req_exec_amf_componenterrorreport.header.id = MESSAGE_REQ_EXEC_AMF_ERRORREPORT;
+	req_exec_amf_componenterrorreport.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_ERRORREPORT);
 
 	req_exec_amf_componenterrorreport.source.conn_info = 0;
 	req_exec_amf_componenterrorreport.source.in_addr.s_addr = 0;
@@ -4270,7 +4331,8 @@ static int message_handler_req_lib_amf_readinessstateget (struct conn_info *conn
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_componentregister()\n");
 
 	req_exec_amf_componentregister.header.size = sizeof (struct req_exec_amf_componentregister);
-	req_exec_amf_componentregister.header.id = MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER;
+	req_exec_amf_componentregister.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_COMPONENTREGISTER);
 
 	message_source_set (&req_exec_amf_componentregister.source, conn_info);
 

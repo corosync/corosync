@@ -1,4 +1,4 @@
-# Copyright (c) 2002-2004 MontaVista Software, Inc.
+# Copyright (c) 2002-2006 MontaVista Software, Inc.
 # 
 # All rights reserved.
 # 
@@ -28,25 +28,38 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+# BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
+#       handler modules.  If the developer intends to debug, building without
+#       dynamic modules should provide an easier route.
+
 # Production mode flags
 CFLAGS = -O3 -Wall
-LDFLAGS = -lpthread
+LDFLAGS = -lpthread -ldl
 DESTDIR=/usr/local/openais
+BUILD_DYNAMIC=1
 
 # Debug mode flags
 #CFLAGS = -g -DDEBUG
 #LDFLAGS = -g
+#BUILD_DYNAMIC=0
 
 # Profile mode flags
 #CFLAGS = -O3 -pg -DDEBUG
 #LDFLAGS = -pg
 
+ifeq (${BUILD_DYNAMIC}, 1)
+CFLAGS += -DBUILD_DYNAMIC=1 -fPIC
+LDFLAGS += -ldl -rdynamic
+endif
+
 all:
+	(cd lcr; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
 	(cd lib; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
-	(cd exec; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
+	(cd exec; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" BUILD_DYNAMIC="1");
 	(cd test; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
 
 clean:
+	(cd lcr; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd lib; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd exec; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);

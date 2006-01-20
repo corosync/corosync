@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- *
- * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
+ * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,24 +28,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SYNC_H_DEFINED
-#define SYNC_H_DEFINED
+#ifndef LCR_CKPT_H_DEFINED
+#define LCR_CKPT_H_DEFINED
 
-#include <netinet/in.h>
-#include "totempg.h"
-#include "totemsrp.h"
+/*
+ * Write data of length data_len into the section name for ckpt_handle
+ */
+int lcr_ckpt_section_write (void *ckpt_handle, char *name, void *data, int data_len);
 
-struct sync_callbacks {
-	void (*sync_init) (void);
-	int (*sync_process) (void);
-	void (*sync_activate) (void);
-	void (*sync_abort) (void);
-};
+/*
+ * Read the section name into data with data len.  Returned in data_len is the 
+ * actual data read from ckpt_handle.
+ */
+int lcr_ckpt_section_read (void *ckpt_handle, char *name, void *data, int *data_len);
 
-void sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+/*
+ * Initialize the section iterator to the first section
+ */
+int lcr_ckpt_section_iterator_first (void *ckpt_handle);
 
-int sync_in_process (void);
+/*
+ * Get the current section, return it in name, and advance to next section
+ */
+int lcr_ckpt_section_iterator_next (void *ckpt_handle, char **name);
 
-#endif /* SYNC_H_DEFINED */
+#endif /* LCR_CKPT_H_DEFINED */

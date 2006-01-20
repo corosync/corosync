@@ -67,9 +67,9 @@ struct barrier_data {
 
 static struct memb_ring_id *sync_ring_id;
 
-static struct sync_callbacks *sync_callbacks;
+static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
-static int sync_callback_count;
+static struct sync_callbacks sync_callbacks;
 
 static int sync_processing = 0;
 
@@ -93,7 +93,7 @@ static void sync_service_init (struct memb_ring_id *ring_id);
 
 static int sync_service_process (enum totem_callback_token_type type, void *data);
 
-static int sync_deliver_fn (
+static void sync_deliver_fn (
 	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
 	int iov_len,
@@ -152,7 +152,8 @@ void sync_start_init (struct memb_ring_id *ring_id)
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
-	sync_callbacks[sync_recovery_index].sync_init ();
+// AA
+	sync_callbacks.sync_init ();
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	/*
@@ -181,6 +182,27 @@ static int sync_start_process (enum totem_callback_token_type type, void *data)
 	return (0);
 }
 
+void sync_callbacks_load (void)
+{
+	int res;
+
+// TODO rewrite this to get rid of the for (;;)
+	for (;;) {
+		res = sync_callbacks_retrieve (sync_recovery_index, &sync_callbacks);
+		/*
+		 * No more service handlers have sync callbacks at this tie
+	`	 */
+		if (res == -1) {
+			sync_processing = 0;
+			break;
+		}
+		sync_recovery_index += 1;
+		if (sync_callbacks.sync_init != NULL) {
+			break;
+		}
+	}
+}
+
 static int sync_service_process (enum totem_callback_token_type type, void *data)
 {
 	int res;
@@ -191,28 +213,29 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 * If process returns 0, then its time to activate
 	 * and start the next service's synchronization
 	 */
-	res = sync_callbacks[sync_recovery_index].sync_process ();
+	res = sync_callbacks.sync_process ();
 	if (res != 0) {
 		return (0);
 	}
 	/*
 	 * This sync is complete so activate and start next service sync
 	 */
-	sync_callbacks[sync_recovery_index].sync_activate ();
+	sync_callbacks.sync_activate ();
 	totempg_callback_token_destroy (&sync_callback_token_handle);
-	sync_recovery_index += 1;
 
-	if (sync_recovery_index > sync_callback_count) {
-		sync_processing = 0;
-	} else {
+	sync_callbacks_load();
+
+	/*
+	 * if sync service found, execute it
+	 */
+	if (sync_processing && sync_callbacks.sync_init) {
 		sync_start_init (ring_id);
 	}
 	return (0);
 }
 
 void sync_register (
-	struct sync_callbacks *callbacks,
-	int callback_count,
+	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
 	void (*synchronization_completed) (void))
 {
 	totempg_groups_initialize (
@@ -227,8 +250,7 @@ void sync_register (
 
 	ykd_init (sync_primary_callback_fn);
 
-	sync_callbacks = callbacks;
-	sync_callback_count = callback_count;
+	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
 }
 
@@ -270,7 +292,7 @@ void sync_primary_callback_fn (
 
 static struct memb_ring_id deliver_ring_id;
 
-int sync_deliver_fn (
+void sync_deliver_fn (
 	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
 	int iov_len,
@@ -292,8 +314,7 @@ int sync_deliver_fn (
 	 */
 	if (memcmp (&req_exec_sync_barrier_start->ring_id, sync_ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
-		
-		return (0);
+		return;
 	}
 
 	/*
@@ -324,13 +345,17 @@ int sync_deliver_fn (
 	if (barrier_completed) {
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
-		if (sync_recovery_index < sync_callback_count) {
+
+		sync_callbacks_load();
+
+		/*
+		 * if sync service found, execute it
+		 */
+		if (sync_processing && sync_callbacks.sync_init) {
 			sync_service_init (&deliver_ring_id);
-		} else {
-			sync_processing = 0;
 		}
 	}
-	return (0);
+	return;
 }
 
 int sync_in_process (void)

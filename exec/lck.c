@@ -50,6 +50,7 @@
 #include "../include/ipc_lck.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
@@ -58,6 +59,16 @@
 
 #define LOG_SERVICE LOG_SERVICE_LCK
 #include "print.h"
+
+
+enum lck_message_req_types {
+	MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN = 0,
+	MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE = 1,
+	MESSAGE_REQ_EXEC_LCK_RESOURCELOCK = 2,
+	MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK = 3,
+	MESSAGE_REQ_EXEC_LCK_RESOURCELOCKORPHAN = 4,
+	MESSAGE_REQ_EXEC_LCK_LOCKPURGE = 5 
+};
 
 struct resource;
 struct resource_lock {
@@ -256,6 +267,8 @@ static int (*lck_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr, 
 };
 
 struct service_handler lck_service_handler = {
+	.name				= "openais distributed locking service B.01.01",
+	.id				= LCK_SERVICE,
 	.libais_handlers		= lck_libais_handlers,
 	.libais_handlers_count		= sizeof (lck_libais_handlers) / sizeof (struct libais_handler),
 	.aisexec_handler_fns		= lck_aisexec_handler_fns,
@@ -264,12 +277,52 @@ struct service_handler lck_service_handler = {
 	.libais_init_two_fn		= lck_init_two_fn,
 	.libais_exit_fn			= lck_exit_fn,
 	.exec_init_fn			= lck_exec_init_fn,
-	.exec_dump_fn			= 0,
-	.sync_init			= lck_recovery_initialize,
+	.exec_dump_fn			= NULL,
+	.sync_init			= NULL, // TODO lck_recovery_initialize,
 	.sync_process			= lck_recovery_process,
 	.sync_activate			= lck_recovery_activate,
 	.sync_abort			= lck_recovery_abort,
 };
+
+#ifdef BUILD_DYNAMIC
+
+struct service_handler *lck_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 lck_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= lck_get_handler_ver0
+};
+
+struct lcr_iface openais_lck_ver0[1] = {
+	{
+		.name					= "openais_lck",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&lck_service_handler_iface,
+	}
+};
+
+struct lcr_comp lck_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_lck_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &lck_comp_ver0;
+	return (0);
+}
+
+struct service_handler *lck_get_handler_ver0 (void)
+{
+	return (&lck_service_handler);
+}
+#endif /* BUILD_DYNAMIC */
 
 /*
  * All data types used for executive messages
@@ -433,7 +486,8 @@ int lck_resource_close (struct resource *resource)
 
 	req_exec_lck_resourceclose.header.size =
 		sizeof (struct req_exec_lck_resourceclose);
-	req_exec_lck_resourceclose.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE;
+	req_exec_lck_resourceclose.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE);
 
 	memcpy (&req_exec_lck_resourceclose.lockResourceName,
 		&resource->name, sizeof (SaNameT));
@@ -456,7 +510,8 @@ void resource_lock_orphan (struct resource_lock *resource_lock)
 
 	req_exec_lck_resourcelockorphan.header.size =
 		sizeof (struct req_exec_lck_resourcelockorphan);
-	req_exec_lck_resourcelockorphan.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCELOCKORPHAN;
+	req_exec_lck_resourcelockorphan.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCELOCKORPHAN);
 
 	memcpy (&req_exec_lck_resourcelockorphan.source,
 		&resource_lock->callback_source,
@@ -1218,7 +1273,8 @@ static int message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info
 
 	req_exec_lck_resourceopen.header.size =
 		sizeof (struct req_exec_lck_resourceopen);
-	req_exec_lck_resourceopen.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN;
+	req_exec_lck_resourceopen.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN);
 
 	message_source_set (&req_exec_lck_resourceopen.source, conn_info);
 
@@ -1251,7 +1307,8 @@ static int message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn
 
 	req_exec_lck_resourceopen.header.size =
 		sizeof (struct req_exec_lck_resourceopen);
-	req_exec_lck_resourceopen.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN;
+	req_exec_lck_resourceopen.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN);
 
 	message_source_set (&req_exec_lck_resourceopen.source, conn_info);
 
@@ -1287,7 +1344,8 @@ static int message_handler_req_lib_lck_resourceclose (struct conn_info *conn_inf
 	if (resource) {
 		req_exec_lck_resourceclose.header.size =
 			sizeof (struct req_exec_lck_resourceclose);
-		req_exec_lck_resourceclose.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE;
+		req_exec_lck_resourceclose.header.id =
+			SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE);
 
 		message_source_set (&req_exec_lck_resourceclose.source, conn_info);
 
@@ -1327,7 +1385,8 @@ static int message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info
 
 	req_exec_lck_resourcelock.header.size =
 		sizeof (struct req_exec_lck_resourcelock);
-	req_exec_lck_resourcelock.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCELOCK;
+	req_exec_lck_resourcelock.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCELOCK);
 
 	message_source_set (&req_exec_lck_resourcelock.source, conn_info);
 
@@ -1359,7 +1418,8 @@ static int message_handler_req_lib_lck_resourcelockasync (struct conn_info *conn
 
 	req_exec_lck_resourcelock.header.size =
 		sizeof (struct req_exec_lck_resourcelock);
-	req_exec_lck_resourcelock.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCELOCK;
+	req_exec_lck_resourcelock.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCELOCK);
 
 	message_source_set (&req_exec_lck_resourcelock.source, conn_info);
 
@@ -1390,7 +1450,8 @@ static int message_handler_req_lib_lck_resourceunlock (struct conn_info *conn_in
 
 	req_exec_lck_resourceunlock.header.size =
 		sizeof (struct req_exec_lck_resourceunlock);
-	req_exec_lck_resourceunlock.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK;
+	req_exec_lck_resourceunlock.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK);
 
 	message_source_set (&req_exec_lck_resourceunlock.source, conn_info);
 
@@ -1421,7 +1482,8 @@ static int message_handler_req_lib_lck_resourceunlockasync (struct conn_info *co
 
 	req_exec_lck_resourceunlock.header.size =
 		sizeof (struct req_exec_lck_resourceunlock);
-	req_exec_lck_resourceunlock.header.id = MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK;
+	req_exec_lck_resourceunlock.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK);
 
 	message_source_set (&req_exec_lck_resourceunlock.source, conn_info);
 
@@ -1452,7 +1514,8 @@ static int message_handler_req_lib_lck_lockpurge (struct conn_info *conn_info, v
 
 	req_exec_lck_lockpurge.header.size =
 		sizeof (struct req_exec_lck_lockpurge);
-	req_exec_lck_lockpurge.header.id = MESSAGE_REQ_EXEC_LCK_LOCKPURGE;
+	req_exec_lck_lockpurge.header.id =
+		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_LOCKPURGE);
 
 	message_source_set (&req_exec_lck_lockpurge.source, conn_info);
 

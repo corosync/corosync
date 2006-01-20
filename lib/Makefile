@@ -44,8 +44,8 @@ LDFLAGS = -g
 #LDFLAGS = -g
 
 all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
-	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libSaLck.a libSaLck.so.1.0 \
-	libais.a libais.so.1.0 libevs.a libevs.so.1.0 libOpenaisCfg.a libOpenaisCfg.so.1.0
+	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libSaLck.a libSaLck.so.1.0 libSaMsg.a libSaMsg.so.1.0 \
+	libais.a libais.so.1.0 libevs.a libevs.so.1.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
 
@@ -91,15 +91,24 @@ libSaLck.a: util.o lck.o
 	$(AR) -rc libSaLck.a util.o lck.o
 
 libSaLck.so.1.0: util.o lck.o
-	$(CC) -shared -Wl,-soname,libSaLck.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
+	$(CC) -shared -Wl,-soname,libSaLCK.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
 	rm -f libSaLck.so.1 libSaLck.so
 	ln -s libSaLck.so.1.0 libSaLck.so.1
 	ln -s libSaLck.so.1.0 libSaLck.so
 
-libais.a: util.o amf.o clm.o ckpt.o evt.o
-	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o
+libSaMsg.a: util.o msg.o
+	$(AR) -rc libSaMsg.a util.o msg.o
 
-libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o lck.o
+libSaMsg.so.1.0: util.o msg.o
+	$(CC) -shared -Wl,-soname,libSaMsg.so.1,-version-script=libSaMsg.versions util.o msg.o -o $@
+	rm -f libSaMsg.so.1 libSaMsg.so
+	ln -s libSaMsg.so.1.0 libSaMsg.so.1
+	ln -s libSaMsg.so.1.0 libSaMsg.so
+
+libais.a: util.o amf.o clm.o ckpt.o evt.o msg.o
+	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o msg.o
+
+libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o lck.o msg.o
 	$(CC) -shared -Wl,-soname,libais.so.1,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o \
 								evt.o -o $@
 	rm -f libais.so.1 libais.so
@@ -115,18 +124,10 @@ libevs.so.1.0: util.o evs.o
 	ln -s libevs.so.1.0 libevs.so.1
 	ln -s libevs.so.1.0 libevs.so
 
-libOpenaisCfg.a: util.o cfg.o
-	$(AR) -rc libOpenaisCfg.a util.o cfg.o
-
-libOpenaisCfg.so.1.0: util.o cfg.o
-	$(CC) -shared -Wl,-soname,libOpenaisCfg.so.1,-version-script=libOpenaisCfg.versions util.o cfg.o -o $@
-	rm -f libOpenaisCfg.so.1 libOpenaisCfg.so
-	ln -s libOpenaisCfg.so.1.0 libOpenaisCfg.so.1
-	ln -s libOpenaisCfg.so.1.0 libOpenaisCfg.so
-
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
-		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so libSaLck.a \
+		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so* libSaLck.a \
+		libSaMsg.so* libSaMsg.a libOpenaisCfg.so* libOpenaisCfg.a \
 		libevs.so* libevs.a *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries

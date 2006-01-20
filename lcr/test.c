@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- *
- * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
+ * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -31,25 +27,80 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <unistd.h>
+#include "lcr_ifact.h"
 
-#ifndef SYNC_H_DEFINED
-#define SYNC_H_DEFINED
-
-#include <netinet/in.h>
-#include "totempg.h"
-#include "totemsrp.h"
-
-struct sync_callbacks {
-	void (*sync_init) (void);
-	int (*sync_process) (void);
-	void (*sync_activate) (void);
-	void (*sync_abort) (void);
+struct iface {
+	void (*func1) (void);
+	void (*func2) (void);
+	void (*func3) (void);
 };
 
-void sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+int main (void) {
+	unsigned int a_ifact_handle_ver0;
+	unsigned int b_ifact_handle_ver0;
+	struct iface *a_iface_ver0;
+	struct iface *a_iface_ver1;
 
-int sync_in_process (void);
+	unsigned int a_ifact_handle_ver1;
+	unsigned int b_ifact_handle_ver1;
+	struct iface *b_iface_ver0;
+	struct iface *b_iface_ver1;
 
-#endif /* SYNC_H_DEFINED */
+	/*
+	 * Reference version 0 and 1 of A and B interfaces
+	 */
+	lcr_ifact_reference (
+		&a_ifact_handle_ver0,
+		"A_iface1",
+		0, /* version 0 */
+		(void **)&a_iface_ver0,
+		(void *)0xaaaa0000);
+
+	lcr_ifact_reference (
+		&b_ifact_handle_ver0,
+		"B_iface1",
+		0, /* version 0 */
+		(void **)&b_iface_ver0,
+		(void *)0xbbbb00000);
+
+	lcr_ifact_reference (
+		&a_ifact_handle_ver1,
+		"A_iface1",
+		1, /* version 1 */
+		(void **)&a_iface_ver1,
+		(void *)0xaaaa1111);
+
+	lcr_ifact_reference (
+		&b_ifact_handle_ver1,
+		"B_iface1",
+		1, /* version 1 */
+		(void **)&b_iface_ver1,
+		(void *)0xbbbb1111);
+
+	a_iface_ver0->func1();
+	a_iface_ver0->func2();
+	a_iface_ver0->func3();
+
+	lcr_ifact_release (a_ifact_handle_ver0);
+
+	a_iface_ver1->func1();
+	a_iface_ver1->func2();
+	a_iface_ver1->func3();
+
+	lcr_ifact_release (a_ifact_handle_ver1);
+
+	b_iface_ver0->func1();
+	b_iface_ver0->func2();
+	b_iface_ver0->func3();
+
+	lcr_ifact_release (b_ifact_handle_ver0);
+
+	b_iface_ver1->func1();
+	b_iface_ver1->func2();
+	b_iface_ver1->func3();
+
+	lcr_ifact_release (b_ifact_handle_ver1);
+
+	return (0);
+}

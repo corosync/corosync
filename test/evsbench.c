@@ -173,7 +173,7 @@ int main (void) {
 	result = evs_leave (handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 
-	size = 1;
+	size = 100000;
 
 	for (i = 0; i < 225; i++) { /* number of repetitions - up to 50k */
 		evs_benchmark (handle, size);

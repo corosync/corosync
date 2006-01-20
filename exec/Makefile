@@ -1,4 +1,4 @@
-# Copyright (c) 2002-2005 MontaVista Software, Inc.
+# Copyright (c) 2002-2006 MontaVista Software, Inc.
 # 
 # All rights reserved.
 # 
@@ -28,14 +28,20 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+# BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
+#	handler modules.  If the developer intends to debug, building without
+#	dynamic modules should provide an easier route.
+
 # Production mode flags
 #CFLAGS = -O3 -Wall -fomit-frame-pointer
 #LDFLAGS = -lpthread
+#BUILD_DYNAMIC=1
 
 # Debug mode flags
 CFLAGS = -g -Wall 
 #-DDEBUG
 LDFLAGS = -g -lpthread
+BUILD_DYNAMIC=1
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -45,18 +51,61 @@ LDFLAGS = -g -lpthread
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c hdb.c crypto.c wthread.c
-TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o hdb.o crypto.o wthread.o
-
-EXEC_SRC = main.c clm.c amf.c ckpt.c evt.c lck.c evs.c print.c mempool.c \
-		util.c sync.c ykd.c cfg.c mainconfig.c amfconfig.o
-EXEC_OBJS = main.o clm.o amf.o ckpt.o evt.o lck.o evs.o print.o mempool.o \
-		util.o sync.o ykd.o cfg.o mainconfig.o amfconfig.o
+# Totem objects
+TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c crypto.c wthread.c
+TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o crypto.o wthread.o
 EXEC_LIBS = libtotem_pg.a
 
-OBJS = $(TOTEM_OBJS) $(EXEC_OBJS)
+# service handler objects
+SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c
+SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o
 
-all:libtotem_pg.a libtotem_pg.so.1.0 aisexec keygen openais-instantiate
+# main executive objects
+MAIN_SRC = main.c print.c mempool.c \
+		util.c sync.c ykd.c mainconfig.c amfconfig.o
+MAIN_OBJS = main.o print.o mempool.o \
+		util.o sync.o ykd.o mainconfig.o amfconfig.o
+
+ifeq (${BUILD_DYNAMIC}, 1) 
+EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
+CFLAGS += -DBUILD_DYNAMIC=1 -fPIC
+LDFLAGS += -ldl -rdynamic
+EXEC_LIBS +=  ../lcr/lcr_ifact.o
+
+all:libtotem_pg.a libtotem_pg.so.1.0 \
+	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
+	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
+	service_msg.lcrso service_cfg.lcrso \
+	aisexec keygen openais-instantiate
+else
+EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(SERV_OBJS)
+all: libtotem_pg.a aisexec keygen openais-instantiate
+endif
+
+
+service_evs.lcrso: evs.o
+	$(CC) -shared -Wl,-soname,service_evs.lcrso evs.o -o $@
+
+service_clm.lcrso: clm.o
+	$(CC) -shared -Wl,-soname,service_clm.lcrso clm.o -o $@
+
+service_amf.lcrso: amf.o
+	$(CC) -shared -Wl,-soname,service_amf.lcrso amf.o -o $@
+
+service_ckpt.lcrso: ckpt.o
+	$(CC) -shared -Wl,-soname,service_ckpt.lcrso ckpt.o -o $@
+
+service_evt.lcrso: evt.o
+	$(CC) -shared -Wl,-soname,service_evt.lcrso evt.o -o $@
+
+service_lck.lcrso: lck.o
+	$(CC) -shared -Wl,-soname,service_lck.lcrso lck.o -o $@
+
+service_msg.lcrso: msg.o
+	$(CC) -shared -Wl,-soname,service_msg.lcrso msg.o -o $@
+
+service_cfg.lcrso: cfg.o
+	$(CC) -shared -Wl,-soname,service_cfg.lcrso cfg.o -o $@
 
 aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
@@ -77,10 +126,36 @@ openais-instantiate: openais-instantiate.o
 	$(CC) $(LDFLAGS) openais-instantiate.o -o openais-instantiate
 
 clean:
-	rm -f aisexec $(OBJS) libtotem_pg.so.1.0 libtotem_pg.so.1 libtotem_pg.so libtotem_pg.a gmon.out keygen keygen.o *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so.1.0 libtotem_pg.so.1 libtotem_pg.so libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
+
+# - fPIC rules required for service handler shared objects
+evs.o: evs.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+clm.o: clm.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+amf.o: amf.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+ckpt.o: ckpt.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+evt.o: evt.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+lck.o: lck.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+msg.o: msg.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+cfg.o: cfg.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
 
 # -fPIC rules required for lib totem
 aispoll.o: aispoll.c
@@ -107,9 +182,6 @@ wthread.o: wthread.c
 tlist.o: tlist.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
-hdb.o: hdb.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
-
 crypto.o: crypto.c
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
@@ -122,35 +194,35 @@ totemconfig.o: totemconfig.c
 # DO NOT DELETE
 
 main.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
-main.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
+main.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h amfconfig.h
-main.o: main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h
+main.o: main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h 
 main.o: ../include/saEvt.h swab.h print.h
 clm.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
-clm.o: ../include/ipc_evs.h evs.h ../include/saClm.h ../include/ipc_gen.h
+clm.o: ../include/ipc_evs.h  ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/ipc_clm.h ../include/list.h ../include/queue.h aispoll.h
 clm.o: totempg.h totemsrp.h amfconfig.h main.h clm.h amf.h handlers.h ckpt.h
-clm.o: evt.h hdb.h ../include/saEvt.h mempool.h print.h
+clm.o: evt.h  ../include/saEvt.h mempool.h print.h
 amf.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
-amf.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
+amf.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 amf.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h util.h
 amf.o: amfconfig.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h
-amf.o: hdb.h ../include/saEvt.h print.h
+amf.o:  ../include/saEvt.h print.h
 ckpt.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
-ckpt.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
+ckpt.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 ckpt.o: ../include/queue.h aispoll.h mempool.h util.h amfconfig.h totempg.h
 ckpt.o: totemsrp.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h
-ckpt.o: evt.h hdb.h ../include/saEvt.h print.h
+ckpt.o: evt.h  ../include/saEvt.h print.h
 evt.o: ../include/ipc_evt.h ../include/saAis.h ../include/saEvt.h
 evt.o: ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evt.o: ../include/queue.h util.h ../include/saAis.h aispoll.h mempool.h
-evt.o: amfconfig.h totempg.h totemsrp.h main.h evs.h clm.h ../include/saClm.h
-evt.o: amf.h ../include/ipc_evs.h handlers.h ckpt.h evt.h hdb.h
+evt.o: amfconfig.h totempg.h totemsrp.h main.h  clm.h ../include/saClm.h
+evt.o: amf.h ../include/ipc_evs.h handlers.h ckpt.h evt.h 
 evt.o: ../include/saEvt.h swab.h print.h
 evs.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
-evs.o: evs.h ../include/saClm.h ../include/ipc_gen.h ../include/list.h
+evs.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h amfconfig.h main.h clm.h
-evs.o: ../include/saClm.h amf.h handlers.h ckpt.h evt.h hdb.h
+evs.o: ../include/saClm.h amf.h handlers.h ckpt.h evt.h 
 evs.o: ../include/saEvt.h mempool.h print.h
 amfconfig.o: ../include/saAis.h ../include/list.h util.h amfconfig.h aispoll.h
 amfconfig.o: totempg.h totemsrp.h mempool.h print.h ../include/saClm.h
@@ -160,10 +232,10 @@ print.o: ../include/saAis.h amfconfig.h ../include/list.h aispoll.h totempg.h
 print.o: totemsrp.h
 mempool.o: ../include/list.h mempool.h
 util.o: ../include/saAis.h ../include/list.h util.h
-aispoll.o: aispoll.h ../include/list.h hdb.h ../include/saAis.h tlist.h
+aispoll.o: aispoll.h ../include/list.h  ../include/saAis.h tlist.h
 totemsrp.o: aispoll.h totemsrp.h ../include/queue.h ../include/sq.h
-totemsrp.o: ../include/list.h hdb.h ../include/saAis.h swab.h crypto.h
+totemsrp.o: ../include/list.h  ../include/saAis.h swab.h crypto.h
 totempg.o: totempg.h aispoll.h totemsrp.h swab.h
 tlist.o: ../include/list.h tlist.h
-hdb.o: hdb.h ../include/saAis.h
+hdb.o:  ../include/saAis.h
 crypto.o: crypto.h

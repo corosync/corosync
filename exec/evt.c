@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2004 Mark Haverkamp
- * Copyright (c) 2004 Open Source Development Lab
+ * Copyright (c) 2004-2006 Mark Haverkamp
+ * Copyright (c) 2004-2006 Open Source Development Lab
  *
  * All rights reserved.
  *
@@ -48,22 +48,29 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "../include/hdb.h"
 #include "../include/ipc_evt.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
 #include "util.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "main.h"
 #include "totemip.h"
 #include "totempg.h"
-#include "hdb.h"
 #include "clm.h"
 #include "evt.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_EVT
 #include "print.h"
+
+enum evt_message_req_types {
+	MESSAGE_REQ_EXEC_EVT_EVENTDATA = 0,
+	MESSAGE_REQ_EXEC_EVT_CHANCMD = 1,
+	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 2
+};
 
 static int lib_evt_open_channel(struct conn_info *conn_info, void *message);
 static int lib_evt_open_channel_async(struct conn_info *conn_info, 
@@ -173,6 +180,9 @@ static int (*evt_exec_handler_fns[]) (void *m, struct totem_ip_address *s,
 };
 
 struct service_handler evt_service_handler = {
+	.name						=
+								(unsigned char*)"openais event service B.01.01",
+	.id							= EVT_SERVICE,
 	.libais_handlers			= evt_libais_handlers,
 	.libais_handlers_count		= sizeof(evt_libais_handlers) /
 									sizeof(struct libais_handler),
@@ -190,6 +200,45 @@ struct service_handler evt_service_handler = {
 	.sync_abort					= evt_sync_abort
 };
 
+#ifdef BUILD_DYNAMIC
+struct service_handler *evt_get_handler_ver0 (void);
+
+struct aisexec_iface_ver0 evt_service_handler_iface = {
+	.test					= NULL,
+	.get_handler_ver0		= evt_get_handler_ver0
+};
+
+struct lcr_iface openais_evt_ver0[1] = {
+	{
+		.name					= "openais_evt",
+		.version				= 0,
+		.versions_replace		= 0,
+		.versions_replace_count = 0,
+		.dependencies			= 0,
+		.dependency_count		= 0,
+		.constructor			= NULL,
+		.destructor				= NULL,
+		.interfaces				= (void **)&evt_service_handler_iface,
+	}
+};
+
+struct lcr_comp evt_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces					= openais_evt_ver0
+};
+
+extern int lcr_comp_get (struct lcr_comp **component)
+{
+	*component = &evt_comp_ver0;
+	return (0);
+}
+
+struct service_handler *evt_get_handler_ver0 (void)
+{
+	return (&evt_service_handler);
+}
+
+#endif /* BUILD_DYNAMIC */
 
 /* 
  * list of all retained events 
@@ -1107,7 +1156,8 @@ static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	 * to create the channel.
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.id =
+		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_OPEN_CHAN_OP;
 	cpkt.u.chc_chan.ocr_name = *cn;
@@ -1144,7 +1194,8 @@ static SaErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 	 * to close the channel.
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.id =
+		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLOSE_CHAN_OP;
 	cpkt.u.chcu.chcu_name = *cn;
@@ -1297,7 +1348,7 @@ static int check_last_event(struct lib_event_data *evtpkt,
 		log_printf(LOG_LEVEL_DEBUG, 
 				"Node ID 0x%x not found for event %llx\n",
 				evtpkt->led_publisher_node_id, evtpkt->led_event_id);
-		cn = clm_get_by_nodeid(addr->nodeid);
+		cn = main_clm_get_by_nodeid(addr->nodeid);
 		if (!cn) {
 			log_printf(LOG_LEVEL_DEBUG, 
 					"Cluster Node 0x%x not found for event %llx\n",
@@ -2251,7 +2302,7 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	struct res_evt_channel_close res;
 	struct event_svr_channel_open	*eco;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
-	SaErrorT error;
+	unsigned int ret;
 	void *ptr;
 
 	req = message;
@@ -2263,21 +2314,21 @@ static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
 	/*
 	 * look up the channel handle
 	 */
-	error = saHandleInstanceGet(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb, 
 					req->icc_channel_handle, &ptr);
-	if (error != SA_AIS_OK) {
+	if (ret != 0) {
 		goto chan_close_done;
 	}
 	eco = ptr;
 
 	common_chan_close(eco, esip);
-	saHandleDestroy(&esip->esi_hdb, req->icc_channel_handle);
-	saHandleInstancePut(&esip->esi_hdb, req->icc_channel_handle);
+	hdb_handle_destroy(&esip->esi_hdb, req->icc_channel_handle);
+	hdb_handle_put(&esip->esi_hdb, req->icc_channel_handle);
 
 chan_close_done:
 	res.icc_head.size = sizeof(res);
 	res.icc_head.id = MESSAGE_RES_EVT_CLOSE_CHANNEL;
-	res.icc_head.error = error;
+	res.icc_head.error = ((ret == 0) ? SA_AIS_OK : SA_AIS_ERR_BAD_HANDLE);
 	libais_send_response (conn_info, &res, sizeof(res));
 
 	return 0;
@@ -2331,7 +2382,8 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	 * of the channel unlink.
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.id =
+		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_UNLINK_CHAN_OP;
 	cpkt.u.chcu.chcu_name = req->iuc_channel_name;
@@ -2388,6 +2440,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	struct list_head *l;
 	void *ptr;
+	unsigned int ret;
 	int i;
 
 	req = message;
@@ -2400,9 +2453,10 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	/*
 	 * look up the channel handle
 	 */
-	error = saHandleInstanceGet(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb, 
 						req->ics_channel_handle, &ptr);
-	if (error != SA_AIS_OK) {
+	if (ret != 0) {
+		error = SA_AIS_ERR_BAD_HANDLE;
 		goto subr_done;
 	}
 	eco = ptr;
@@ -2475,11 +2529,11 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 			}
 		}
 	}
-	saHandleInstancePut(&esip->esi_hdb, req->ics_channel_handle);
+	hdb_handle_put(&esip->esi_hdb, req->ics_channel_handle);
 	return 0;
 
 subr_put:
-	saHandleInstancePut(&esip->esi_hdb, req->ics_channel_handle);
+	hdb_handle_put(&esip->esi_hdb, req->ics_channel_handle);
 subr_done:
 	res.ics_head.size = sizeof(res);
 	res.ics_head.id = MESSAGE_RES_EVT_SUBSCRIBE;
@@ -2502,6 +2556,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	struct event_svr_channel_subscr *ecs;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	SaErrorT error = SA_AIS_OK;
+	unsigned int ret;
 	void *ptr;
 
 	req = message;
@@ -2515,9 +2570,10 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	 * look up the channel handle, get the open channel
 	 * data.
 	 */
-	error = saHandleInstanceGet(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb, 
 						req->icu_channel_handle, &ptr);
-	if (error != SA_AIS_OK) {
+	if (ret != 0) {
+		error = SA_AIS_ERR_BAD_HANDLE;
 		goto unsubr_done;
 	}
 	eco = ptr;
@@ -2545,7 +2601,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	free(ecs);
 
 unsubr_put:
-	saHandleInstancePut(&esip->esi_hdb, req->icu_channel_handle);
+	hdb_handle_put(&esip->esi_hdb, req->icu_channel_handle);
 unsubr_done:
 	res.icu_head.size = sizeof(res);
 	res.icu_head.id = MESSAGE_RES_EVT_UNSUBSCRIBE;
@@ -2571,6 +2627,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	struct iovec pub_iovec;
 	void *ptr;
 	int result;
+	unsigned int ret;
 
 
 	req = message;
@@ -2582,9 +2639,10 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	/*
 	 * look up and validate open channel info
 	 */
-	error = saHandleInstanceGet(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb, 
 				    req->led_svr_channel_handle, &ptr);
-	if (error != SA_AIS_OK) {
+	if (ret != 0) {
+		error = SA_AIS_ERR_BAD_HANDLE;
 		goto pub_done;
 	}
 	eco = ptr;
@@ -2596,7 +2654,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 * processes.
 	 */
 	get_event_id(&event_id, &msg_id);
-	req->led_head.id = MESSAGE_REQ_EXEC_EVT_EVENTDATA;
+	req->led_head.id = SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_EVENTDATA);
 	req->led_chan_name = eci->esc_channel_name;
 	req->led_event_id = event_id;
 	req->led_msg_id = msg_id;
@@ -2614,7 +2672,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 			error = SA_AIS_ERR_LIBRARY;
 	}
 
-	saHandleInstancePut(&esip->esi_hdb, req->led_svr_channel_handle);
+	hdb_handle_put(&esip->esi_hdb, req->led_svr_channel_handle);
 pub_done:
 	res.iep_head.size = sizeof(res);
 	res.iep_head.id = MESSAGE_RES_EVT_PUBLISH;
@@ -2664,7 +2722,8 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	 * Send the clear request
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+	cpkt.chc_head.id = 
+		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLEAR_RET_OP;
 	cpkt.u.chc_event_id = req->iec_event_id;
@@ -2909,7 +2968,7 @@ static int evt_finalize(struct conn_info *conn_info)
 		nxt = l->next;
 		eco = list_entry(l, struct event_svr_channel_open, eco_instance_entry);
 		common_chan_close(eco, esip);
-		saHandleDestroy(&esip->esi_hdb, eco->eco_my_handle);
+		hdb_handle_destroy(&esip->esi_hdb, eco->eco_my_handle);
 	}
 
 	/*
@@ -3064,7 +3123,7 @@ static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr,
 	 * See where the message came from so that we can set the 
 	 * publishing node id in the message before delivery.
 	 */
-	cn = clm_get_by_nodeid (source_addr->nodeid);
+	cn = main_clm_get_by_nodeid (source_addr->nodeid);
 	if (!cn) {
 			/*
 			 * Not sure how this can happen...
@@ -3292,16 +3351,18 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 {
 	uint32_t handle;
 	struct event_svr_channel_open *eco;
-	SaErrorT error;
+	SaErrorT error = SA_AIS_OK;
 	struct libevt_ci *esip = &ocp->ocp_conn_info->ais_ci.u.libevt_ci;
-	int ret = 0;
+	unsigned int ret = 0;
+	unsigned int timer_del_status;
 	void *ptr;
 
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n",
 											getSaNameT(&ocp->ocp_chan_name));
 	if (ocp->ocp_timer_handle) {
-		ret = poll_timer_delete(aisexec_poll_handle, ocp->ocp_timer_handle);
-		if (ret != 0 ) {
+		timer_del_status = poll_timer_delete(aisexec_poll_handle,
+				ocp->ocp_timer_handle);
+		if (timer_del_status != 0) {
 			log_printf(LOG_LEVEL_WARNING,
 				"Error clearing timeout for open channel of %s\n",
 				   getSaNameT(&ocp->ocp_chan_name));
@@ -3330,12 +3391,12 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 * Create a handle to give back to the caller to associate
 	 * with this channel open instance.
 	 */
-	error = saHandleCreate(&esip->esi_hdb, sizeof(*eco), &handle);
-	if (error != SA_AIS_OK) {
+	ret = hdb_handle_create(&esip->esi_hdb, sizeof(*eco), &handle);
+	if (ret != 0) {
 		goto open_return;
 	}
-	error = saHandleInstanceGet(&esip->esi_hdb, handle, &ptr);
-	if (error != SA_AIS_OK) {
+	ret = hdb_handle_get(&esip->esi_hdb, handle, &ptr);
+	if (ret != 0) {
 		goto open_return;
 	}
 	eco = ptr;
@@ -3358,7 +3419,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 * respond back with a handle to access this channel
 	 * open instance for later subscriptions, etc.
 	 */
-	saHandleInstancePut(&esip->esi_hdb, handle);
+	hdb_handle_put(&esip->esi_hdb, handle);
 
 open_return:
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n", 
@@ -3368,7 +3429,7 @@ open_return:
 		struct res_evt_open_chan_async resa;
 		resa.ica_head.size = sizeof(resa);
 		resa.ica_head.id = MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK;
-		resa.ica_head.error = error;
+		resa.ica_head.error = (ret == 0 ? SA_AIS_OK: SA_AIS_ERR_BAD_HANDLE);
 		resa.ica_channel_handle = handle;
 		resa.ica_c_handle = ocp->ocp_c_handle;
 		resa.ica_invocation = ocp->ocp_invocation;
@@ -3378,12 +3439,12 @@ open_return:
 		struct res_evt_channel_open res;
 		res.ico_head.size = sizeof(res);
 		res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
-		res.ico_head.error = error;
+		res.ico_head.error = (ret == 0 ? SA_AIS_OK : SA_AIS_ERR_BAD_HANDLE);
 		res.ico_channel_handle = handle;
 		libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
 	}
 
-	if (ret == 0) {
+	if (timer_del_status == 0) {
 		list_del(&ocp->ocp_entry);
 		free(ocp);
 	}
@@ -3516,12 +3577,12 @@ static int evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr,
 	}
 
 	log_printf(REMOTE_OP_DEBUG, "Remote channel operation request\n");
-	my_node = clm_get_by_nodeid(local_node);
+	my_node = main_clm_get_by_nodeid(local_node);
 	log_printf(REMOTE_OP_DEBUG, "my node ID: 0x%x\n", my_node->nodeId);
 
 	mn = evt_find_node(source_addr);
 	if (mn == NULL) {
-		cn = clm_get_by_nodeid(source_addr->nodeid);
+		cn = main_clm_get_by_nodeid(source_addr->nodeid);
 		if (cn == NULL) {
 			log_printf(LOG_LEVEL_WARNING, 
 				"Evt remote channel op: Node data for addr %s is NULL\n",
@@ -3866,7 +3927,7 @@ static void evt_sync_init(void)
 	 * Set the base event id
 	 */
 	if (!my_node_id) {
-		cn = clm_get_by_nodeid(my_node);
+		cn = main_clm_get_by_nodeid(my_node);
 		log_printf(RECOVERY_DEBUG, "My node ID 0x%x\n", cn->nodeId);
 		my_node_id = cn->nodeId;
 		set_event_id(my_node_id);
@@ -3976,14 +4037,16 @@ static int evt_sync_process(void)
 					md->mn_last_msg_id, totemip_print(add_list));
 				md->mn_started = 1;
 				memset(&cpkt, 0, sizeof(cpkt));
-				cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+				cpkt.chc_head.id =
+					SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 				cpkt.chc_head.size = sizeof(cpkt);
 				cpkt.chc_op = EVT_SET_ID_OP;
 				cpkt.u.chc_set_id.chc_nodeid = add_list->nodeid;
 				cpkt.u.chc_set_id.chc_last_id = md->mn_last_msg_id;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
-				res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
+				res = totempg_groups_mcast_joined (openais_group_handle,
+						&chn_iovec, 1, TOTEMPG_AGREED);
 				if (res != 0) {
 					log_printf(RECOVERY_DEBUG, 
 						"Unable to send event id to %s\n", 
@@ -3998,7 +4061,7 @@ static int evt_sync_process(void)
 				/*
 				 * Not seen before, add it to our list of nodes.
 				 */
-				cn = clm_get_by_nodeid(add_list->nodeid);
+				cn = main_clm_get_by_nodeid(add_list->nodeid);
 				if (!cn) {
 					/*
 					 * Error: shouldn't happen
@@ -4041,14 +4104,16 @@ static int evt_sync_process(void)
 			log_printf(RECOVERY_DEBUG, "Sending next open count\n");
 			eci = list_entry(next_chan, struct event_svr_channel_instance, 
 					esc_entry);
-			cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+			cpkt.chc_head.id =
+				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 			cpkt.chc_head.size = sizeof(cpkt);
 			cpkt.chc_op = EVT_OPEN_COUNT;
 			cpkt.u.chc_set_opens.chc_chan_name = eci->esc_channel_name;
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
 			chn_iovec.iov_base = &cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
-			res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
+			res = totempg_groups_mcast_joined (openais_group_handle,
+					&chn_iovec, 1, TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -4058,7 +4123,8 @@ static int evt_sync_process(void)
 			}
 		}
 		memset(&cpkt, 0, sizeof(cpkt));
-		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+		cpkt.chc_head.id =
+			SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
@@ -4107,7 +4173,8 @@ static int evt_sync_process(void)
 								next_retained = next_retained->next) {
 			log_printf(LOG_LEVEL_DEBUG, "Sending next retained event\n");
 			evt = list_entry(next_retained, struct event_data, ed_retained);
-			evt->ed_event.led_head.id = MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA;
+			evt->ed_event.led_head.id =
+				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA);
 			chn_iovec.iov_base = &evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
 			res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
@@ -4132,7 +4199,8 @@ static int evt_sync_process(void)
 
 		log_printf(RECOVERY_DEBUG, "DONE Sending retained events\n");
 		memset(&cpkt, 0, sizeof(cpkt));
-		cpkt.chc_head.id = MESSAGE_REQ_EXEC_EVT_CHANCMD;
+		cpkt.chc_head.id =
+				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;

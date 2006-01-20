@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -46,6 +46,7 @@
 #include "ckpt.h"
 #include "evt.h"
 #include "lck.h"
+#include "msg.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED
@@ -69,6 +70,8 @@ struct aisexec_ci {
 /*
  * Connection information for AIS connections
  */
+
+// TODO must make this dynamic
 struct ais_ci {
 	struct sockaddr_un un_addr;	/* address of AF_UNIX socket, MUST BE FIRST IN STRUCTURE */
 	union {
@@ -79,6 +82,7 @@ struct ais_ci {
 		struct libckpt_ci libckpt_ci;
 		struct libevt_ci libevt_ci;
 		struct liblck_ci liblck_ci;
+		struct libmsg_ci libmsg_ci;
 	} u;
 };
 
@@ -113,39 +117,6 @@ struct conn_info {
 	int should_exit_fn;			/* Should call the exit function when closing this ipc */
 };
 
-
-enum nodeexec_message_types {
-	MESSAGE_REQ_EXEC_EVS_MCAST = 0,
-	MESSAGE_REQ_EXEC_CLM_NODEJOIN = 1,
-	MESSAGE_REQ_EXEC_AMF_OPERATIONAL_STATE_COMP_SET = 2,
-	MESSAGE_REQ_EXEC_AMF_PRESENCE_STATE_COMP_SET = 3,
-	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_CSI_SET = 4,
-	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_UNIT_SET = 5,
-	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_GROUP_SET = 6,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN = 7,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE = 8,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK = 9,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONSET = 10,
-	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE = 11,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE = 12,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE = 13,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET = 14,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE = 15,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE = 16,
-	MESSAGE_REQ_EXEC_CKPT_SECTIONREAD = 17,
-	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE = 18,
-	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION = 19,
-	MESSAGE_REQ_EXEC_EVT_EVENTDATA = 20,
-	MESSAGE_REQ_EXEC_EVT_CHANCMD = 21,
-	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 22,
-	MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN = 23,
-	MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE = 24,
-	MESSAGE_REQ_EXEC_LCK_RESOURCELOCK = 25,
-	MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK = 26,
-	MESSAGE_REQ_EXEC_LCK_RESOURCELOCKORPHAN = 27,
-	MESSAGE_REQ_EXEC_LCK_LOCKPURGE = 28
-};
-
 extern struct totem_ip_address *this_ip;
 
 extern struct totempg_group openais_group;
@@ -160,5 +131,6 @@ extern int message_source_is_local(struct message_source *source);
 
 extern void message_source_set(struct message_source *source, struct conn_info *conn_info);
 
+extern SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 #endif /* AIS_EXEC_H_DEFINED */

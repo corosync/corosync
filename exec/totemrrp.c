@@ -62,7 +62,7 @@
 #include "../include/queue.h"
 #include "../include/sq.h"
 #include "../include/list.h"
-#include "hdb.h"
+#include "../include/hdb.h"
 #include "swab.h"
 #include "aispoll.h"
 #include "totemnet.h"
@@ -259,10 +259,10 @@ struct rrp_algo active_algo = {
 /*
  * All instances in one database
  */
-static struct saHandleDatabase totemrrp_instance_database = {
-	.handleCount			= 0,
-	.handles			= 0,
-	.handleInstanceDestructor	= 0
+static struct hdb_handle_database totemrrp_instance_database = {
+	.handle_count	= 0,
+	.handles	= 0,
+	.iterator	= 0
 };
 
 struct passive_instance *passive_instance_initialize (
@@ -573,19 +573,18 @@ int totemrrp_finalize (
 	totemrrp_handle handle)
 {
 	struct totemrrp_instance *instance;
-	SaErrorT error;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	totemnet_finalize (instance->net_handle);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -621,18 +620,18 @@ int totemrrp_initialize (
 		unsigned int *token_is))
 	
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
+	unsigned int res;
 	int i;
 
-	error = saHandleCreate (&totemrrp_instance_database,
+	res = hdb_handle_create (&totemrrp_instance_database,
 	sizeof (struct totemrrp_instance), handle);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
-	error = saHandleInstanceGet (&totemrrp_instance_database, *handle,
+	res = hdb_handle_get (&totemrrp_instance_database, *handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_destroy;
 	}
 
@@ -696,11 +695,11 @@ int totemrrp_initialize (
 	totemnet_net_mtu_adjust (totem_config);
 
 error_exit:
-	saHandleInstancePut (&totemrrp_instance_database, *handle);
+	hdb_handle_put (&totemrrp_instance_database, *handle);
 	return (0);
 
 error_destroy:
-	saHandleDestroy (&totemrrp_instance_database, *handle);
+	hdb_handle_destroy (&totemrrp_instance_database, *handle);
 	return (-1);
 }
 
@@ -708,13 +707,12 @@ int totemrrp_processor_count_set (
 	totemrrp_handle handle,
 	int processor_count)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
@@ -722,7 +720,7 @@ int totemrrp_processor_count_set (
 	totemnet_processor_count_set (instance->net_handle, processor_count);
 	instance->processor_count = processor_count;
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -730,20 +728,19 @@ error_exit:
 
 int totemrrp_recv_flush (totemrrp_handle handle)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	totemnet_recv_flush (instance->net_handle);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -751,20 +748,19 @@ error_exit:
 
 int totemrrp_send_flush (totemrrp_handle handle)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 	
 	totemnet_send_flush (instance->net_handle);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -776,20 +772,19 @@ int totemrrp_token_send (
 	void *msg,
 	int msg_len)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	instance->rrp_algo->token_send (instance, system_to, msg, msg_len);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -800,13 +795,12 @@ int totemrrp_mcast_flush_send (
 	void *msg,
 	int msg_len)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
@@ -814,7 +808,7 @@ int totemrrp_mcast_flush_send (
 // TODO this needs to return the result
 	instance->rrp_algo->mcast_flush_send (instance, msg, msg_len);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 error_exit:
 	return (res);
 }
@@ -824,13 +818,12 @@ int totemrrp_mcast_noflush_send (
 	struct iovec *iovec,
 	int iov_len)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
@@ -846,26 +839,25 @@ int totemrrp_mcast_noflush_send (
 		instance->rrp_algo->mcast_noflush_send (instance, iovec, iov_len);
 	}
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 error_exit:
 	return (res);
 }
 int totemrrp_iface_check (totemrrp_handle handle)
 {
-	SaAisErrorT error;
 	struct totemrrp_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemrrp_instance_database, handle,
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 	
 	totemnet_iface_check (instance->net_handle);
 
-	saHandleInstancePut (&totemrrp_instance_database, handle);
+	hdb_handle_put (&totemrrp_instance_database, handle);
 error_exit:
 	return (res);
 }

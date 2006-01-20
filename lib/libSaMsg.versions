@@ -1,0 +1,24 @@
+# Version and symbol export for libSaLck.so
+
+OPENAIS_LCK_B.01.01 {
+	global:
+		saLckInitialize;
+		saLckSelectionObjectGet;
+		saLckDispatch;
+		saLckinalize;
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saPollRetry;
+		saRecvRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saServiceConnectTwo;
+		saVersionVerify;
+		clustTimeNow;
+};

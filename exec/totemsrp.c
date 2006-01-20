@@ -80,7 +80,7 @@
 #include "../include/queue.h"
 #include "../include/sq.h"
 #include "../include/list.h"
-#include "hdb.h"
+#include "../include/hdb.h"
 #include "swab.h"
 
 #include "crypto.h"
@@ -545,10 +545,10 @@ void main_iface_change_fn (
 /*
  * All instances in one database
  */
-static struct saHandleDatabase totemsrp_instance_database = {
-	.handleCount				= 0,
-	.handles					= 0,
-	.handleInstanceDestructor	= 0
+static struct hdb_handle_database totemsrp_instance_database = {
+	.handle_count	= 0,
+	.handles	= 0,
+	.iterator	= 0
 };
 struct message_handlers totemsrp_message_handlers = {
 	6,
@@ -624,16 +624,16 @@ int totemsrp_initialize (
 		struct memb_ring_id *ring_id))
 {
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleCreate (&totemsrp_instance_database,
+	res = hdb_handle_create (&totemsrp_instance_database,
 		sizeof (struct totemsrp_instance), handle);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
-	error = saHandleInstanceGet (&totemsrp_instance_database, *handle,
+	res = hdb_handle_get (&totemsrp_instance_database, *handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_destroy;
 	}
 
@@ -749,7 +749,7 @@ int totemsrp_initialize (
 	return (0);
 
 error_destroy:
-	saHandleDestroy (&totemsrp_instance_database, *handle);
+	hdb_handle_destroy (&totemsrp_instance_database, *handle);
 
 error_exit:
 	return (-1);
@@ -759,15 +759,15 @@ void totemsrp_finalize (
 	totemsrp_handle handle)
 {
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		return;
 	}
 
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 }
 
 /*
@@ -1001,6 +1001,7 @@ static void memb_set_and (
 	return;
 }
 
+#ifdef CODE_COVERAGE
 static void memb_set_print (
 	char *string,
         struct totem_ip_address *list,
@@ -1013,6 +1014,7 @@ static void memb_set_print (
 		printf ("addr %s\n", totemip_print (&list[i]));
 	}
 }
+#endif
 
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
@@ -1674,17 +1676,17 @@ static void memb_state_recovery_enter (
 int totemsrp_new_msg_signal (totemsrp_handle handle)
 {
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
 	token_hold_cancel_send (instance);
 
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 	return (0);
 error_exit:
 	return (-1);
@@ -1700,11 +1702,11 @@ int totemsrp_mcast (
 	int j;
 	struct message_item message_item;
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 	
@@ -1758,7 +1760,7 @@ printf ("queue full\n");
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_debug, "mcasted message added to pending queue\n");
 	queue_item_add (&instance->new_message_queue, &message_item);
 
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 	return (0);
 
 error_iovec:
@@ -1767,7 +1769,7 @@ error_iovec:
 	}
 
 error_mcast:
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 
 error_exit:
 	return (-1);
@@ -1780,17 +1782,17 @@ int totemsrp_avail (totemsrp_handle handle)
 {
 	int avail;
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
 	queue_avail (&instance->new_message_queue, &avail);
 
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 
 	return (avail);
 
@@ -2567,11 +2569,11 @@ int totemsrp_callback_token_create (
 {
 	struct token_callback_instance *callback_handle;
 	struct totemsrp_instance *instance;
-	SaErrorT error;
+	unsigned int res;
 
-	error = saHandleInstanceGet (&totemsrp_instance_database, handle,
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_exit;
 	}
 
@@ -2594,7 +2596,7 @@ int totemsrp_callback_token_create (
 		break;
 	}
 
-	saHandleInstancePut (&totemsrp_instance_database, handle);
+	hdb_handle_put (&totemsrp_instance_database, handle);
 
 error_exit:
 	return (0);

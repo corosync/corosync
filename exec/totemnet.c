@@ -65,7 +65,7 @@
 #include "../include/queue.h"
 #include "../include/sq.h"
 #include "../include/list.h"
-#include "hdb.h"
+#include "../include/hdb.h"
 #include "swab.h"
 
 #include "crypto.h"
@@ -191,10 +191,10 @@ struct work_item {
 /*
  * All instances in one database
  */
-static struct saHandleDatabase totemnet_instance_database = {
-	.handleCount			= 0,
-	.handles			= 0,
-	.handleInstanceDestructor	= 0
+static struct hdb_handle_database totemnet_instance_database = {
+	.handle_count	= 0,
+	.handles	= 0,
+	.iterator	= 0
 };
 
 static int loopback_determine (int family, struct totem_ip_address *bound_to);
@@ -591,19 +591,18 @@ int totemnet_finalize (
 	totemnet_handle handle)
 {
 	struct totemnet_instance *instance;
-	SaErrorT error;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	worker_thread_group_exit (&instance->worker_thread_group);
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1260,17 +1259,17 @@ int totemnet_initialize (
 		void *context,
 		struct totem_ip_address *iface_address))
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
+	unsigned int res;
 
-	error = saHandleCreate (&totemnet_instance_database,
-	sizeof (struct totemnet_instance), handle);
-	if (error != SA_OK) {
+	res = hdb_handle_create (&totemnet_instance_database,
+		sizeof (struct totemnet_instance), handle);
+	if (res != 0) {
 		goto error_exit;
 	}
-	error = saHandleInstanceGet (&totemnet_instance_database, *handle,
+	res = hdb_handle_get (&totemnet_instance_database, *handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		goto error_destroy;
 	}
 
@@ -1333,11 +1332,11 @@ int totemnet_initialize (
 	netif_down_check (instance);
 
 error_exit:
-	saHandleInstancePut (&totemnet_instance_database, *handle);
+	hdb_handle_put (&totemnet_instance_database, *handle);
 	return (0);
 
 error_destroy:
-	saHandleDestroy (&totemnet_instance_database, *handle);
+	hdb_handle_destroy (&totemnet_instance_database, *handle);
 	return (-1);
 }
 
@@ -1345,20 +1344,19 @@ int totemnet_processor_count_set (
 	totemnet_handle handle,
 	int processor_count)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	instance->my_memb_entries = processor_count;
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1366,16 +1364,15 @@ error_exit:
 
 int totemnet_recv_flush (totemnet_handle handle)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	struct pollfd ufd;
 	int nfds;
 	int res = 0;
 	unsigned int prio;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
@@ -1394,7 +1391,7 @@ int totemnet_recv_flush (totemnet_handle handle)
 
 	instance->flushing = 0;
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1402,20 +1399,19 @@ error_exit:
 
 int totemnet_send_flush (totemnet_handle handle)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 	
 	worker_thread_group_wait (&instance->worker_thread_group);
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1427,20 +1423,19 @@ int totemnet_token_send (
 	void *msg,
 	int msg_len)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 
 	totemnet_msg_send (instance, system_to, msg, msg_len);
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1450,20 +1445,19 @@ int totemnet_mcast_flush_send (
 	void *msg,
 	int msg_len)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 	
 	totemnet_msg_send (instance, NULL, msg, msg_len);
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
 	return (res);
@@ -1474,14 +1468,13 @@ int totemnet_mcast_noflush_send (
 	struct iovec *iovec,
 	int iov_len)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	struct work_item work_item;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
@@ -1497,26 +1490,25 @@ int totemnet_mcast_noflush_send (
 		totemnet_iovec_send (instance, iovec, iov_len);
 	}
 	
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
 	return (res);
 }
 extern int totemnet_iface_check (totemnet_handle handle)
 {
-	SaAisErrorT error;
 	struct totemnet_instance *instance;
 	int res = 0;
 
-	error = saHandleInstanceGet (&totemnet_instance_database, handle,
+	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
-	if (error != SA_OK) {
+	if (res != 0) {
 		res = ENOENT;
 		goto error_exit;
 	}
 	
 	timer_function_netif_check_timeout (instance);
 
-	saHandleInstancePut (&totemnet_instance_database, handle);
+	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
 	return (res);
 }

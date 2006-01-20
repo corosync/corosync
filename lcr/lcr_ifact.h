@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- *
- * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
+ * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,24 +28,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SYNC_H_DEFINED
-#define SYNC_H_DEFINED
+#ifndef LCR_IFACT_H_DEFINED
+#define LCR_IFACT_H_DEFINED
 
-#include <netinet/in.h>
-#include "totempg.h"
-#include "totemsrp.h"
+int lcr_ifact_reference (
+	unsigned int *handle,
+	char *iface_name,
+	int version,
+	void **interface,
+	void *context);
 
-struct sync_callbacks {
-	void (*sync_init) (void);
-	int (*sync_process) (void);
-	void (*sync_activate) (void);
-	void (*sync_abort) (void);
-};
+int lcr_ifact_release (
+	unsigned int handle);
 
-void sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
-
-int sync_in_process (void);
-
-#endif /* SYNC_H_DEFINED */
+#endif /* LCR_IFACT_H_DEFINED */

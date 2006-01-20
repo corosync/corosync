@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2005 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -31,25 +31,19 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef SYNC_H_DEFINED
-#define SYNC_H_DEFINED
-
-#include <netinet/in.h>
-#include "totempg.h"
+#include "../include/saAis.h"
+#include "../include/saCkpt.h"
+#include "aispoll.h"
 #include "totemsrp.h"
 
-struct sync_callbacks {
-	void (*sync_init) (void);
-	int (*sync_process) (void);
-	void (*sync_activate) (void);
-	void (*sync_abort) (void);
+#ifndef MSG_H_DEFINED
+#define MSG_H_DEFINED
+
+struct libmsg_ci {
+	struct list_head queue_list;
+	struct list_head queue_cleanup_list;
 };
 
-void sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+extern struct service_handler msg_service_handler;
 
-int sync_in_process (void);
-
-#endif /* SYNC_H_DEFINED */
+#endif /* MSG_H_DEFINED */
