@@ -87,6 +87,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "../include/hdb.h"
 #include "totempg.h"
@@ -195,6 +196,13 @@ static struct hdb_handle_database totempg_groups_instance_database = {
 };
 
 static int send_ok (int msg_size);
+
+static unsigned char next_fragment = 1;
+
+static pthread_mutex_t totempg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static pthread_mutex_t callback_token_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 static struct assembly *find_assembly (struct totem_ip_address *addr)
 {
@@ -613,10 +621,10 @@ int totempg_initialize (
 
 void totempg_finalize (void)
 {
+	pthread_mutex_lock (&totempg_mutex);
 	totemmrp_finalize ();
+	pthread_mutex_unlock (&totempg_mutex);
 }
-
-static unsigned char next_fragment = 1;
 
 /*
  * Multicast a message
@@ -794,13 +802,20 @@ int totempg_callback_token_create (
 	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data)
 {
-	return totemmrp_callback_token_create (handle_out, type, delete, callback_fn, data);
+	unsigned int res;
+	pthread_mutex_lock (&callback_token_mutex);
+	res = totemmrp_callback_token_create (handle_out, type, delete,
+		callback_fn, data);
+	pthread_mutex_unlock (&callback_token_mutex);
+	return (res);
 }
 
 void totempg_callback_token_destroy (
 	void *handle_out)
 {
+	pthread_mutex_lock (&callback_token_mutex);
 	totemmrp_callback_token_destroy (handle_out);
+	pthread_mutex_unlock (&callback_token_mutex);
 }
 
 /*
@@ -826,6 +841,7 @@ int totempg_groups_initialize (
 	struct totempg_group_instance *instance;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_create (&totempg_groups_instance_database,
 		sizeof (struct totempg_group_instance), handle);
 	if (res != 0) {
@@ -849,11 +865,13 @@ int totempg_groups_initialize (
 
 	hdb_handle_put (&totempg_groups_instance_database, *handle);
 
+	pthread_mutex_unlock (&totempg_mutex);
 	return (0);
 error_destroy:
 	hdb_handle_destroy (&totempg_groups_instance_database, *handle);
 
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (-1);
 }
 
@@ -866,6 +884,7 @@ int totempg_groups_join (
 	struct totempg_group *new_groups;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -885,9 +904,9 @@ int totempg_groups_join (
 	instance->groups_cnt = instance->groups_cnt = group_cnt;
 
 	hdb_handle_put (&totempg_groups_instance_database, handle);
-	return (0);
 
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 
@@ -899,6 +918,7 @@ int totempg_groups_leave (
 	struct totempg_group_instance *instance;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -906,8 +926,9 @@ int totempg_groups_leave (
 	}
 
 	hdb_handle_put (&totempg_groups_instance_database, handle);
-	return (0);
+
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 
@@ -926,6 +947,7 @@ int totempg_groups_mcast_joined (
 	int i;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -952,6 +974,7 @@ int totempg_groups_mcast_joined (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 
@@ -965,6 +988,7 @@ int totempg_groups_send_ok_joined (
 	unsigned int i;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -983,6 +1007,7 @@ int totempg_groups_send_ok_joined (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 
@@ -1000,6 +1025,7 @@ int totempg_groups_mcast_groups (
 	int i;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1027,9 +1053,13 @@ int totempg_groups_mcast_groups (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 
+/*
+ * Returns -1 if error, 0 if can't send, 1 if can send the message
+ */
 int totempg_groups_send_ok_groups (
 	totempg_groups_handle handle,
 	struct totempg_group *groups,
@@ -1042,6 +1072,7 @@ int totempg_groups_send_ok_groups (
 	unsigned int i;
 	unsigned int res;
 
+	pthread_mutex_lock (&totempg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1056,10 +1087,10 @@ int totempg_groups_send_ok_groups (
 	}
 
 	res = send_ok (size);
-
+	 
 	hdb_handle_put (&totempg_groups_instance_database, handle);
-	return (0);
 error_exit:
+	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
 

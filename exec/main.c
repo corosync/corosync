@@ -1177,6 +1177,12 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_MAINCONFIGREAD);
 	}
 
+	res = openais_amf_config_read (&error_string);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		ais_done (AIS_DONE_AMFCONFIGREAD);
+	}
+	
 	res = totem_config_read (&openais_config.totem_config, &error_string, 1);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
@@ -1254,12 +1260,6 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	res = openais_amf_config_read (&error_string);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_AMFCONFIGREAD);
-	}
-	
 	signal (SIGINT, sigintr_handler);
 
 	aisexec_libais_bind (&libais_server_fd);
