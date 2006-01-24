@@ -476,6 +476,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	error = saHandleInstanceGet(&event_handle_db, *event_handle,
 				(void*)&edi);
 	if (error != SA_AIS_OK) {
+			saHandleDestroy(&event_handle_db, *event_handle);
 			goto make_evt_done;
 	}
 
@@ -483,7 +484,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 			evt->led_lib_channel_handle,
 			(void*)&eci);
 	if (error != SA_AIS_OK) {
-		saHandleDestroy(&evt_instance_handle_db, *event_handle);
+		saHandleDestroy(&event_handle_db, *event_handle);
 		goto make_evt_done_put;
 	}
 
@@ -501,7 +502,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	if (edi->edi_event_data_size) {
 		edi->edi_event_data = malloc(edi->edi_event_data_size);
 		if (!edi->edi_event_data) {
-			saHandleDestroy(&evt_instance_handle_db, *event_handle);
+			saHandleDestroy(&event_handle_db, *event_handle);
 
 			/*
 			 * saEvtDispatch doesn't return SA_AIS_ERR_NO_MEMORY
@@ -527,7 +528,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		 * allocated.
 		 */
 		edi->edi_patterns.patternsNumber = 0;
-		saHandleDestroy(&evt_instance_handle_db, *event_handle);
+		saHandleDestroy(&event_handle_db, *event_handle);
 
 		/*
 		 * saEvtDispatch doesn't return SA_AIS_ERR_NO_MEMORY
@@ -547,7 +548,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		if (!edi->edi_patterns.patterns[i].pattern) {
 			printf("make_event: couldn't alloc %llu bytes\n",
 				(unsigned long long)pat->patternSize);
-			saHandleDestroy(&evt_instance_handle_db, *event_handle);
+			saHandleDestroy(&event_handle_db, *event_handle);
 			error =  SA_AIS_ERR_LIBRARY;
 			goto make_evt_done_put2;
 		}
@@ -559,7 +560,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 
 	hl = malloc(sizeof(*hl));
 	if (!hl) {
-		saHandleDestroy(&evt_instance_handle_db, *event_handle);
+		saHandleDestroy(&event_handle_db, *event_handle);
 		error = SA_AIS_ERR_LIBRARY;
 	} else {
 		edi->edi_hl = hl;
