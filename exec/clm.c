@@ -310,7 +310,7 @@ void library_notification_send (SaClmClusterNotificationT *cluster_notification_
 
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
 	res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
-	res_lib_clm_clustertrack.header.error = SA_OK;
+	res_lib_clm_clustertrack.header.error = SA_AIS_OK;
 	res_lib_clm_clustertrack.view = view_current;
 
     for (list = library_notification_send_listhead.next;
@@ -656,7 +656,7 @@ static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, v
 	res_lib_clm_trackstop.header.id = MESSAGE_RES_CLM_TRACKSTOP;
 
 	if (conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled) {
-		res_lib_clm_trackstop.header.error = SA_OK;
+		res_lib_clm_trackstop.header.error = SA_AIS_OK;
 	} else {
 		res_lib_clm_trackstop.header.error = SA_AIS_ERR_NOT_EXIST;
 	}
@@ -697,7 +697,7 @@ static int message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, voi
 
 	res_clm_nodeget.header.size = sizeof (struct res_clm_nodeget);
 	res_clm_nodeget.header.id = MESSAGE_RES_CLM_NODEGET;
-	res_clm_nodeget.header.error = SA_OK;
+	res_clm_nodeget.header.error = SA_AIS_OK;
 	res_clm_nodeget.invocation = req_lib_clm_nodeget->invocation;
 	res_clm_nodeget.valid = valid;
 	if (valid) {
@@ -737,7 +737,7 @@ static int message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info
 	 */
 	res_clm_nodegetasync.header.size = sizeof (struct res_clm_nodegetasync);
 	res_clm_nodegetasync.header.id = MESSAGE_RES_CLM_NODEGETASYNC;
-	res_clm_nodegetasync.header.error = SA_OK;
+	res_clm_nodegetasync.header.error = SA_AIS_OK;
 	libais_send_response (conn_info, &res_clm_nodegetasync,
 		sizeof (struct res_clm_nodegetasync));
 

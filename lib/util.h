@@ -63,86 +63,86 @@ struct queue {
 	int bytesPerItem;
 };
 
-SaErrorT
+SaAisErrorT
 saServiceConnect (
 	int *fdOut,
 	enum service_types service);
 
-SaErrorT
+SaAisErrorT
 saServiceConnectTwo (
         int *responseOut,
         int *callbackOut,
         enum service_types service);
 
-SaErrorT
+SaAisErrorT
 saRecvRetry (
 	int s,
 	void *msg,
 	size_t len,
 	int flags);
 
-SaErrorT
+SaAisErrorT
 saRecvQueue (
 	int s,
 	void *msg,
 	struct queue *queue,
 	int findMessageId);
 
-SaErrorT
+SaAisErrorT
 saSendRetry (
 	int s,
 	const void *msg,
 	size_t len,
 	int flags);
 
-SaErrorT saSendMsgRetry (
+SaAisErrorT saSendMsgRetry (
 	int s,
 	struct iovec *iov,
 	int iov_len);
 
-SaErrorT saSendMsgReceiveReply (
+SaAisErrorT saSendMsgReceiveReply (
 	int s,
 	struct iovec *iov,
 	int iov_len,
 	void *responseMessage,
 	int responseLen);
 
-SaErrorT saSendReceiveReply (
+SaAisErrorT saSendReceiveReply (
 	int s,
 	void *requestMessage,
 	int requestLen,
 	void *responseMessage,
 	int responseLen);
 
-SaErrorT
+SaAisErrorT
 saPollRetry (
 	struct pollfd *ufds,
 	unsigned int nfds,
 	int timeout);
 
-SaErrorT
+SaAisErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
 	SaUint64T *handleOut);
 
-SaErrorT
+SaAisErrorT
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle);
 
-SaErrorT
+SaAisErrorT
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle,
 	void **instance);
 
-SaErrorT
+SaAisErrorT
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle);
 
-SaErrorT
+SaAisErrorT
 saVersionVerify (
 	struct saVersionDatabase *versionDatabase,
 	SaVersionT *version);

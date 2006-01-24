@@ -621,7 +621,7 @@ DECLARE_LIST_INIT(mnd);
  * Take the filters we received from the application via the library and 
  * make them into a real SaEvtEventFilterArrayT
  */
-static SaErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
+static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 		SaEvtEventFilterArrayT **evtfilters)
 {
 
@@ -1129,13 +1129,13 @@ static int remove_open_count(
 /*
  * Send a request to open a channel to the rest of the cluster.
  */
-static SaErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
+static SaAisErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 {
 	struct req_evt_chan_command cpkt;
 	struct event_svr_channel_instance *eci;
 	struct iovec chn_iovec;
 	int res;
-	SaErrorT ret;
+	SaAisErrorT ret;
 
 	ret = SA_AIS_OK;
 
@@ -1180,12 +1180,12 @@ chan_open_end:
 /*
  * Send a request to close a channel with the rest of the cluster.
  */
-static SaErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
+static SaAisErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 {
 	struct req_evt_chan_command cpkt;
 	struct iovec chn_iovec;
 	int res;
-	SaErrorT ret;
+	SaAisErrorT ret;
 
 	ret = SA_AIS_OK;
 
@@ -1257,12 +1257,12 @@ evt_find_node(struct totem_ip_address *addr)
 	return *nlp;
 }
 
-static SaErrorT
+static SaAisErrorT
 evt_add_node(struct totem_ip_address *addr, SaClmClusterNodeT *cn) 
 {
 	struct member_node_data **nlp;
 	struct member_node_data *nl;
-	SaErrorT err = SA_AIS_ERR_EXIST;
+	SaAisErrorT err = SA_AIS_ERR_EXIST;
 
 	nlp = lookup_node(addr);
 
@@ -1375,9 +1375,9 @@ static int check_last_event(struct lib_event_data *evtpkt,
  * upper 32 bits of the event ID to make sure that we can generate a cluster
  * wide unique event ID for a given event.
  */
-SaErrorT set_event_id(SaClmNodeIdT node_id)
+SaAisErrorT set_event_id(SaClmNodeIdT node_id)
 {
-	SaErrorT err = SA_AIS_OK;
+	SaAisErrorT err = SA_AIS_OK;
 	if (base_id_top) {
 		err =  SA_AIS_ERR_EXIST;
 	}
@@ -1404,7 +1404,7 @@ static int id_in_use(uint64_t id, uint64_t base)
 	return 0;
 }
 
-static SaErrorT get_event_id(uint64_t *event_id, uint64_t *msg_id)
+static SaAisErrorT get_event_id(uint64_t *event_id, uint64_t *msg_id)
 {
 	/*
 	 * Don't reuse an event ID if it is still valid because of 
@@ -1585,7 +1585,7 @@ evt_already_delivered(struct event_data *evt,
  * Compare a filter to a given pattern.
  * return SA_AIS_OK if the pattern matches a filter
  */
-static SaErrorT
+static SaAisErrorT
 filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
 {
 	int ret;
@@ -1634,14 +1634,14 @@ filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
  * compare the event's patterns with the subscription's filter rules.
  * SA_AIS_OK is returned if the event matches the filter rules.
  */
-static SaErrorT
+static SaAisErrorT
 event_match(struct event_data *evt, 
 			struct event_svr_channel_subscr *ecs)
 {
 	SaEvtEventFilterT *ef;
 	SaEvtEventPatternT *ep;
 	uint32_t filt_count;
-	SaErrorT ret =  SA_AIS_OK;
+	SaAisErrorT ret =  SA_AIS_OK;
 	int i;
 
 	ep = (SaEvtEventPatternT *)(&evt->ed_event.led_body[0]);
@@ -2109,7 +2109,7 @@ static int evt_initialize(struct conn_info *conn_info)
  */
 static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct req_evt_channel_open *req;
 	struct res_evt_channel_open res;
 	struct open_chan_pending *ocp;
@@ -2187,7 +2187,7 @@ open_return:
 static int lib_evt_open_channel_async(struct conn_info *conn_info, 
 		void *message)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct req_evt_channel_open *req;
 	struct res_evt_channel_open res;
 	struct open_chan_pending *ocp;
@@ -2247,7 +2247,7 @@ open_return:
  * Used by the channel close code and by the implicit close
  * when saEvtFinalize is called with channels open.
  */
-static SaErrorT
+static SaAisErrorT
 common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 {
 	struct event_svr_channel_subscr *ecs;
@@ -2432,7 +2432,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
 	SaEvtEventFilterArrayT *filters;
-	SaErrorT error;
+	SaAisErrorT error;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
@@ -2555,7 +2555,7 @@ static int lib_evt_event_unsubscribe(struct conn_info *conn_info,
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	unsigned int ret;
 	void *ptr;
 
@@ -2623,7 +2623,7 @@ static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	struct event_svr_channel_instance *eci;
 	SaEvtEventIdT event_id = 0;
 	uint64_t msg_id = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct iovec pub_iovec;
 	void *ptr;
 	int result;
@@ -3351,7 +3351,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 {
 	uint32_t handle;
 	struct event_svr_channel_open *eco;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	struct libevt_ci *esip = &ocp->ocp_conn_info->ais_ci.u.libevt_ci;
 	unsigned int ret = 0;
 	unsigned int timer_del_status;

@@ -1424,7 +1424,7 @@ static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct t
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
 	struct checkpoint_cleanup *checkpoint_cleanup = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int proc_index;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to open checkpoint %p\n", req_exec_ckpt_checkpointopen);
@@ -1625,7 +1625,7 @@ static int recovery_checkpoint_open(SaNameT *checkpointName,
 	int i;	
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
-	SaErrorT error = SA_AIS_OK;	
+	SaAisErrorT error = SA_AIS_OK;	
 
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open %s\n", &checkpointName->value);
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open refcount Values\n");
@@ -1981,7 +1981,7 @@ static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct
 	struct req_lib_ckpt_checkpointunlink *req_lib_ckpt_checkpointunlink = (struct req_lib_ckpt_checkpointunlink *)&req_exec_ckpt_checkpointunlink->req_lib_ckpt_checkpointunlink;
 	struct res_lib_ckpt_checkpointunlink res_lib_ckpt_checkpointunlink;
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	
 	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to unlink checkpoint %p\n", req_exec_ckpt_checkpointunlink);
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointunlink->checkpointName);
@@ -2104,7 +2104,7 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	void *initialData;
 	void *sectionId;
 	struct ckpt_identifier *ckpt_id = 0;
-	SaErrorT error = SA_AIS_OK;		
+	SaAisErrorT error = SA_AIS_OK;		
 	
 	if ((int)sectionDescriptor->sectionId.idLen) {
 		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, section %s.\n",
@@ -2249,7 +2249,7 @@ static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct to
 	void *initialData;
 	void *sectionId;
 	struct ckpt_identifier *ckpt_id = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to create a checkpoint section.\n");
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectioncreate->checkpointName);
@@ -2385,7 +2385,7 @@ static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct to
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectiondelete->checkpointName);
 	if (ckptCheckpoint == 0) {
@@ -2449,7 +2449,7 @@ static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 	struct ckpt_identifier *ckpt_id = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to set section expiratoin time\n");
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionexpirationtimeset->checkpointName);
@@ -2531,7 +2531,7 @@ static int recovery_section_write(int sectionIdLen,
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 	int sizeRequired;	
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	char *sd;	
 	
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_write.\n");
@@ -2587,7 +2587,7 @@ static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct tot
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
 	int sizeRequired;
 	void *sectionData;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to section write.\n");
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionwrite->checkpointName);
@@ -2683,7 +2683,7 @@ static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 	void *sectionData;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to section overwrite.\n");
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionoverwrite->checkpointName);
@@ -2759,7 +2759,7 @@ static int message_handler_req_exec_ckpt_sectionread (void *message, struct tote
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
 	int sectionSize = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request for section read.\n");
 
@@ -3533,7 +3533,7 @@ static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_
 	struct list_head *checkpoint_section_list;
 	int addEntry = 0;
 	int iteratorEntries = 0;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "section iterator initialize\n");
 	ckptSectionIterator = &conn_info->ais_ci.u.libckpt_ci.sectionIterator;
@@ -3600,7 +3600,7 @@ static int message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_in
 	struct req_lib_ckpt_sectioniterationfinalize *req_lib_ckpt_sectioniterationfinalize = (struct req_lib_ckpt_sectioniterationfinalize *)message;
 	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
 	struct saCkptCheckpoint *ckptCheckpoint;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationfinalize->checkpointName);
 	if (ckptCheckpoint == 0) {
@@ -3629,7 +3629,7 @@ static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *c
 	struct req_lib_ckpt_sectioniteratornext *req_lib_ckpt_sectioniteratornext = (struct req_lib_ckpt_sectioniteratornext *)message;
 	struct res_lib_ckpt_sectioniteratornext res_lib_ckpt_sectioniteratornext;
 	struct saCkptSectionIterator *ckptSectionIterator;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int sectionIdSize = 0;
 	int iteratorPos = 0;
 

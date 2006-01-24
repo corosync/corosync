@@ -220,7 +220,7 @@ struct res_lib_amf_componenterrorclear {
 struct req_lib_amf_response {
 	struct req_header header;
 	SaInvocationT invocation;
-	SaErrorT error;
+	SaAisErrorT error;
 };
 
 struct res_lib_amf_response {

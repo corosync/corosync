@@ -220,7 +220,7 @@ static int evs_confchg_fn (
 	 */
 	res_evs_confchg_callback.header.size = sizeof (struct res_evs_confchg_callback);
 	res_evs_confchg_callback.header.id = MESSAGE_RES_EVS_CONFCHG_CALLBACK;
-	res_evs_confchg_callback.header.error = SA_OK;
+	res_evs_confchg_callback.header.error = SA_AIS_OK;
 
 	for (i = 0; i < member_list_entries; i++) {
 		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.member_list[i],
@@ -285,7 +285,7 @@ static int message_handler_req_evs_join (struct conn_info *conn_info, void *mess
 		(conn_info->conn_info_partner->ais_ci.u.libevs_ci.group_entries +
 		req_lib_evs_join->group_entries));
 	if (addr == 0) {
-		error = SA_ERR_NO_MEMORY;
+		error = SA_AIS_ERR_NO_MEMORY;
 		goto exit_error;
 	}
 	conn_info->conn_info_partner->ais_ci.u.libevs_ci.groups = addr;
@@ -489,7 +489,7 @@ static int message_handler_req_exec_mcast (void *message, struct totem_ip_addres
 	res_evs_deliver_callback.header.size = sizeof (struct res_evs_deliver_callback) +
 		req_exec_evs_mcast->msg_len;
 	res_evs_deliver_callback.header.id = MESSAGE_RES_EVS_DELIVER_CALLBACK;
-	res_evs_deliver_callback.header.error = SA_OK;
+	res_evs_deliver_callback.header.error = SA_AIS_OK;
 	res_evs_deliver_callback.msglen = req_exec_evs_mcast->msg_len;
 
 	msg_addr = (char *)req_exec_evs_mcast + sizeof (struct req_exec_evs_mcast) + 

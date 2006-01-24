@@ -79,7 +79,7 @@ void HealthcheckCallback (SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfHealthcheckKeyT *healthcheckKey)
 {
-	SaErrorT res;
+	SaAisErrorT res;
 
 	healthcheck_no++;
 /*
@@ -174,7 +174,7 @@ void ProtectionGroupTrackCallback (
 	SaAmfProtectionGroupNotificationT *notificationBuffer,
 	SaUint32T numberOfItems,
 	SaUint32T numberOfMembers,
-	SaErrorT error)
+	SaAisErrorT error)
 {
 	int i;
 

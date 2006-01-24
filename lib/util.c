@@ -67,7 +67,7 @@ struct saHandle {
 	uint32_t check;
 };
 
-SaErrorT
+SaAisErrorT
 saServiceConnect (
 	int *fdOut,
 	enum service_types service)
@@ -77,7 +77,7 @@ saServiceConnect (
 	struct sockaddr_un address;
 	struct req_lib_response_init req_lib_response_init;
 	struct res_lib_response_init res_lib_response_init;
-	SaErrorT error;
+	SaAisErrorT error;
 	gid_t egid;
 
 	/*
@@ -128,7 +128,7 @@ error_exit:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saServiceConnectTwo (
 	int *responseOut,
 	int *callbackOut,
@@ -142,7 +142,7 @@ saServiceConnectTwo (
 	struct res_lib_response_init res_lib_response_init;
 	struct req_lib_dispatch_init req_lib_dispatch_init;
 	struct res_lib_dispatch_init res_lib_dispatch_init;
-	SaErrorT error;
+	SaAisErrorT error;
 	gid_t egid;
 
 	/*
@@ -237,14 +237,14 @@ error_exit:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saRecvRetry (
 	int s,
 	void *msg,
 	size_t len,
 	int flags)
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
@@ -285,14 +285,14 @@ struct res_overlay {
 	char payload[0];
 };
 
-SaErrorT
+SaAisErrorT
 saSendRetry (
 	int s,
 	const void *msg,
 	size_t len,
 	int flags)
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int result;
 	struct msghdr msg_send;
 	struct iovec iov_send;
@@ -366,12 +366,12 @@ error_exit:
 	return (error);
 }
 
-SaErrorT saSendMsgRetry (
+SaAisErrorT saSendMsgRetry (
         int s,
         struct iovec *iov,
         int iov_len)
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int result;
 	int total_size = 0;
 	int i;
@@ -469,14 +469,14 @@ error_exit:
 	return (error);
 }
 
-SaErrorT saSendMsgReceiveReply (
+SaAisErrorT saSendMsgReceiveReply (
         int s,
         struct iovec *iov,
         int iov_len,
         void *responseMessage,
         int responseLen)
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	error = saSendMsgRetry (s, iov, iov_len);
 	if (error != SA_AIS_OK) {
@@ -493,14 +493,14 @@ error_exit:
 	return (error);
 }
 
-SaErrorT saSendReceiveReply (
+SaAisErrorT saSendReceiveReply (
         int s,
         void *requestMessage,
         int requestLen,
         void *responseMessage,
         int responseLen)
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	error = saSendRetry (s, requestMessage, requestLen,
 		MSG_NOSIGNAL);
@@ -518,13 +518,13 @@ error_exit:
 	return (error);
 }
 
-SaErrorT
+SaAisErrorT
 saPollRetry (
         struct pollfd *ufds,
         unsigned int nfds,
         int timeout) 
 {
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	int result;
 
 retry_poll:
@@ -540,7 +540,7 @@ retry_poll:
 }
 
 
-SaErrorT
+SaAisErrorT
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
@@ -598,7 +598,7 @@ saHandleCreate (
 }
 
 
-SaErrorT
+SaAisErrorT
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T inHandle)
@@ -625,7 +625,7 @@ error_exit:
 }
 
 
-SaErrorT
+SaAisErrorT
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T inHandle,
@@ -634,7 +634,7 @@ saHandleInstanceGet (
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (handle >= (SaUint64T)handleDatabase->handleCount) {
@@ -662,7 +662,7 @@ error_exit:
 }
 
 
-SaErrorT
+SaAisErrorT
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T inHandle)
@@ -696,13 +696,13 @@ error_exit:
 }
 
 
-SaErrorT
+SaAisErrorT
 saVersionVerify (
     struct saVersionDatabase *versionDatabase,
 	SaVersionT *version)
 {
 	int i;
-	SaErrorT error = SA_AIS_ERR_VERSION;
+	SaAisErrorT error = SA_AIS_ERR_VERSION;
 
 	if (version == 0) {
 		return (SA_AIS_ERR_INVALID_PARAM);

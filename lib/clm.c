@@ -327,7 +327,7 @@ saClmDispatch (
 			break;
 
 		default:
-			error = SA_ERR_LIBRARY;
+			error = SA_AIS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
@@ -377,7 +377,7 @@ saClmFinalize (
 	if (clmInstance->finalize) {
 		pthread_mutex_unlock (&clmInstance->response_mutex);
 		saHandleInstancePut (&clmHandleDatabase, clmHandle);
-		return (SA_ERR_BAD_HANDLE);
+		return (SA_AIS_ERR_BAD_HANDLE);
 	}
 
 	clmInstance->finalize = 1;

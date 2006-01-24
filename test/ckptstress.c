@@ -156,7 +156,7 @@ void *th_dispatch (void *arg)
 	struct thread_data *td = (struct thread_data *)arg;
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT handle;
-	SaErrorT error;
+	SaAisErrorT error;
 	int i;
 	SaUint32T erroroneousVectorIndex = 0;
 
@@ -175,7 +175,7 @@ void *th_dispatch (void *arg)
 			&erroroneousVectorIndex);
 		printf ("Thread %d: Attempt %d: error %d\n",
 			td->thread_no, i, error);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			printf ("Thread %d: Error from write.\n", td->thread_no);
 		}
 	}
@@ -188,7 +188,7 @@ void *th_dispatch (void *arg)
 int main (void) {
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
-	SaErrorT error;
+	SaAisErrorT error;
 	int i;
 	pthread_t dispatch_thread;
 

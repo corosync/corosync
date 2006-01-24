@@ -1,4 +1,4 @@
-extern int get_sa_error(SaErrorT error, char *str, int len);
+extern int get_sa_error(SaAisErrorT error, char *str, int len);
 
 extern char *get_sa_error_b (SaAisErrorT error);
 

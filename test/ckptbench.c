@@ -161,7 +161,7 @@ void ckpt_benchmark (SaCkptCheckpointHandleT checkpointHandle,
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	SaUint32T erroroneousVectorIndex = 0;
-	SaErrorT error;
+	SaAisErrorT error;
 	int write_count = 0;
 
 	alarm_notice = 0;
@@ -181,7 +181,7 @@ retry:
 		if (error == SA_AIS_ERR_TRY_AGAIN) {
 			goto retry;
 		}
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
 		}
@@ -208,7 +208,7 @@ void sigalrm_handler (int num)
 int main (void) {
 	SaCkptHandleT ckptHandle;
 	SaCkptCheckpointHandleT checkpointHandle;
-	SaErrorT error;
+	SaAisErrorT error;
 	int size;
 	int i;
 	

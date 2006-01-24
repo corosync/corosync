@@ -1165,7 +1165,7 @@ static void protectiongroup_notification_send (struct conn_info *conn_info,
 			sizeof (struct res_lib_amf_protectiongrouptrackcallback) +
 			(notifyEntries * sizeof (SaAmfProtectionGroupNotificationT));
 //		res_lib_amf_protectiongrouptrackcallback.header.id = MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK;
-		res_lib_amf_protectiongrouptrackcallback.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackcallback.header.error = SA_AIS_OK;
 		res_lib_amf_protectiongrouptrackcallback.numberOfItems = notifyEntries;
 		res_lib_amf_protectiongrouptrackcallback.numberOfMembers = notifyEntries;
 		memcpy (&res_lib_amf_protectiongrouptrackcallback.csiName,
@@ -1370,7 +1370,7 @@ void csi_comp_set_callback (
 
 	res_lib_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
 	res_lib_amf_csisetcallback.header.size = sizeof (struct res_lib_amf_csisetcallback);
-	res_lib_amf_csisetcallback.header.error = SA_OK;
+	res_lib_amf_csisetcallback.header.error = SA_AIS_OK;
 
 
 	memcpy (&res_lib_amf_csisetcallback.compName,
@@ -1446,7 +1446,7 @@ void csi_comp_remove_callback (struct amf_comp *comp, struct amf_csi *csi)
 
 	res_lib_amf_csiremovecallback.header.id = MESSAGE_RES_AMF_CSIREMOVECALLBACK;
 	res_lib_amf_csiremovecallback.header.size = sizeof (struct res_lib_amf_csiremovecallback);
-	res_lib_amf_csiremovecallback.header.error = SA_OK;
+	res_lib_amf_csiremovecallback.header.error = SA_AIS_OK;
 
 	csi_remove_callback_data = malloc (sizeof (struct csi_remove_callback_data));
 	assert (csi_remove_callback_data); // TODO failure here of malloc
@@ -2468,7 +2468,7 @@ static int message_handler_req_lib_amf_healthcheckstart (struct conn_info *conn_
 	struct amf_healthcheck *healthcheck;
 	struct healthcheck_active *healthcheck_active;
 	struct amf_comp *comp;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 printf ("healthcheck start\n");
 fflush (stdout);
@@ -2554,7 +2554,7 @@ static int message_handler_req_lib_amf_healthcheckstop (struct conn_info *conn_i
 	struct res_lib_amf_healthcheckstop res_lib_amf_healthcheckstop;
 	struct healthcheck_active *healthcheck_active;
 	struct amf_comp *comp;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	printf ("healthcheck stop\n");
 	comp = find_comp (&req_lib_amf_healthcheckstop->compName);
@@ -2607,7 +2607,7 @@ static int message_handler_req_lib_amf_hastateget (struct conn_info *conn_info, 
 	if (component) {
 		memcpy (&res_lib_amf_hastateget.haState, 
 			&component->currentHAState, sizeof (SaAmfHAStateT));
-		res_lib_amf_hastateget.header.error = SA_OK;
+		res_lib_amf_hastateget.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
 #endif
@@ -2662,7 +2662,7 @@ static int message_handler_req_lib_amf_protectiongrouptrackstart (struct conn_in
 	res_lib_amf_protectiongrouptrackstart.header.error = SA_ERR_NOT_EXIST;
 
 	if (amfProtectionGroup) {
-		res_lib_amf_protectiongrouptrackstart.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstart.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
 		sizeof (struct res_lib_amf_protectiongrouptrackstart));
@@ -2720,7 +2720,7 @@ static int message_handler_req_lib_amf_protectiongrouptrackstop (struct conn_inf
 	res_lib_amf_protectiongrouptrackstop.header.error = SA_ERR_NOT_EXIST;
 
 	if (track) {
-		res_lib_amf_protectiongrouptrackstop.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstop.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
 		sizeof (struct res_lib_amf_protectiongrouptrackstop));
@@ -2911,7 +2911,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	struct res_lib_amf_componentregister res_lib_amf_componentregister;
 	struct amf_comp *component;
 	struct amf_comp *amfProxyComponent;
-	SaErrorT error;
+	SaAisErrorT error;
 
 	log_printf (LOG_LEVEL_FROM_GMI, "Executive: ComponentRegister for component %s\n",
 		getSaNameT (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName));
@@ -2919,7 +2919,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	/*
 	 * Determine if proxy isn't registered
 	 */
-	error = SA_OK;
+	error = SA_AIS_OK;
 	component = find_comp (&req_exec_amf_componentregister->req_lib_amf_componentregister.compName);
 	amfProxyComponent = find_comp (&req_exec_amf_componentregister->req_lib_amf_componentregister.proxyCompName);
 
@@ -2951,7 +2951,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	/*
 	 * If component already registered, return error
 	 */
-	if (error == SA_OK) {
+	if (error == SA_AIS_OK) {
 		if (component->registered) {
 			error = SA_ERR_EXIST;
 		}
@@ -2961,7 +2961,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	 * Finally register component and setup links for proxy if
 	 * proxy present
 	 */
-	if (error == SA_OK) {
+	if (error == SA_AIS_OK) {
 		component->local = 0;
 		component->registered = 1;
 		component->conn_info = req_exec_amf_componentregister->source.conn_info;
@@ -2985,7 +2985,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	 * to the AMF library
 	 */
 	if (message_source_is_local(&req_exec_amf_componentregister->source)) {
-		if (error == SA_OK) {
+		if (error == SA_AIS_OK) {
 			component->local = 1;
 			req_exec_amf_componentregister->source.conn_info->component = component;
 		}
@@ -3005,7 +3005,7 @@ static int message_handler_req_exec_amf_componentregister (void *message, struct
 	/*
 	 * If no error on registration, determine if we should enter new state
 	 */
-	if (error == SA_OK) {
+	if (error == SA_AIS_OK) {
 		dsm (component);
 	}
 
@@ -3019,7 +3019,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	struct res_lib_amf_componentunregister res_lib_amf_componentunregister;
 	struct amf_comp *component;
 	struct amf_comp *amfProxyComponent;
-	SaErrorT error;
+	SaAisErrorT error;
 
 	log_printf (LOG_LEVEL_FROM_GMI, "Executive: Component_unregister for %s\n",
 		getSaNameT (&req_exec_amf_componentunregister->req_lib_amf_componentunregister.compName));
@@ -3030,7 +3030,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	/*
 	 * Check for proxy and component not existing in system
 	 */
-	error = SA_OK;
+	error = SA_AIS_OK;
 	if (component == 0) {
 		error = SA_ERR_NOT_EXIST;
 	}
@@ -3048,7 +3048,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	 * If there is a proxycompname, make sure it is the proxy
 	 * of compName
 	 */
-	if (error == SA_OK && amfProxyComponent) {
+	if (error == SA_AIS_OK && amfProxyComponent) {
 		if (component->saAmfProxyComponent != amfProxyComponent) {
 			error = SA_ERR_BAD_OPERATION;
 		}
@@ -3057,7 +3057,7 @@ static int message_handler_req_exec_amf_componentunregister (void *message, stru
 	/*
 	 * Finally unregister the component
 	 */
-	if (error == SA_OK) {
+	if (error == SA_AIS_OK) {
 		component->registered = 0;
 //		dsmEnabledUnlockedTransitionDisabledUnlocked (component);
 	}
@@ -3086,7 +3086,7 @@ static int message_handler_req_exec_amf_componenterrorreport (void *message, str
 	struct req_exec_amf_componenterrorreport *req_exec_amf_componenterrorreport = (struct req_exec_amf_componenterrorreport *)message;
 	struct res_lib_amf_componenterrorreport res_lib_amf_componenterrorreport;
 	struct amf_comp *comp;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_NOTICE, "Executive: ErrorReport for %s\n", 
 		getSaNameT (&req_exec_amf_componenterrorreport->req_lib_amf_componenterrorreport.erroneousComponent));
@@ -3122,7 +3122,7 @@ static int message_handler_req_exec_amf_componenterrorclear (void *message, stru
 	struct req_exec_amf_componenterrorclear *req_exec_amf_componenterrorclear = (struct req_exec_amf_componenterrorclear *)message;
 	struct res_lib_amf_componenterrorclear res_lib_amf_componenterrorclear;
 	struct amf_comp *component;
-	SaErrorT error = SA_ERR_BAD_OPERATION;
+	SaAisErrorT error = SA_ERR_BAD_OPERATION;
 
 #ifdef COMPILE_OUT
 	log_printf (LOG_LEVEL_FROM_GMI, "Executive: ErrorCancelAll for %s\n",
@@ -3139,7 +3139,7 @@ static int message_handler_req_exec_amf_componenterrorclear (void *message, stru
 			component->disabledUnlockedState = AMF_DISABLED_UNLOCKED_REGISTEREDORERRORCANCEL;
 			dsm (component);
 		}
-		error = SA_OK;
+		error = SA_AIS_OK;
 	}
 	
 	/*
@@ -3338,7 +3338,7 @@ void ha_state_api_set (struct amf_comp *component, SaAmfHAStateT haState)
 
 	res_lib_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
 	res_lib_amf_csisetcallback.header.size = sizeof (struct res_lib_amf_csisetcallback);
-	res_lib_amf_csisetcallback.header.error = SA_OK;
+	res_lib_amf_csisetcallback.header.error = SA_AIS_OK;
 
 	if (res_lib_amf_csisetcallback.invocation == -1) {
 		printf ("TODO set callback\n");
@@ -3410,7 +3410,7 @@ void readiness_state_api_set (struct amf_comp *component,
 
 	res_lib_amf_readinessstatesetcallback.header.id = MESSAGE_RES_AMF_READINESSSTATESETCALLBACK;
 	res_lib_amf_readinessstatesetcallback.header.size = sizeof (struct res_lib_amf_readinessstatesetcallback);
-	res_lib_amf_readinessstatesetcallback.header.error = SA_OK;
+	res_lib_amf_readinessstatesetcallback.header.error = SA_AIS_OK;
 	res_lib_amf_readinessstatesetcallback.invocation =
 		req_lib_amf_invocation_create (
 		MESSAGE_REQ_AMF_RESPONSE_SAAMFREADINESSSTATESETCALLBACK,
@@ -4159,7 +4159,7 @@ static void response_handler_readinessstatesetcallback (struct conn_info *conn_i
 	struct req_lib_amf_response *req_lib_amf_response)
 {
 
-	if (req_lib_amf_response->error == SA_OK && conn_info->component) {
+	if (req_lib_amf_response->error == SA_AIS_OK && conn_info->component) {
 
 	log_printf (LOG_LEVEL_ENTER_FUNC, "CALLBACK sending readiness state to %s\n", 
 		getSaNameT (&conn_info->component->name));
@@ -4175,7 +4175,7 @@ static void response_handler_csisetcallback (struct conn_info *conn_info,
 	struct req_lib_amf_response *req_lib_amf_response)
 {
 
-	if (req_lib_amf_response->error == SA_OK && conn_info->component) {
+	if (req_lib_amf_response->error == SA_AIS_OK && conn_info->component) {
 		ha_state_group_set (conn_info->component, conn_info->component->newHAState);
 	}
 }
@@ -4394,7 +4394,7 @@ static int message_handler_req_amf_readinessstateget (struct conn_info *conn_inf
 	if (component) {
 		memcpy (&res_lib_amf_readinessstateget.readinessState, 
 			&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
-		res_lib_amf_readinessstateget.header.error = SA_OK;
+		res_lib_amf_readinessstateget.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
 	return (0);
@@ -4448,7 +4448,7 @@ static int message_handler_req_lib_amf_stoppingcomplete (struct conn_info *conn_
 	res_lib_amf_protectiongrouptrackstart.header.error = SA_ERR_NOT_EXIST;
 
 	if (amfProtectionGroup) {
-		res_lib_amf_protectiongrouptrackstart.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstart.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
 		sizeof (struct res_lib_amf_protectiongrouptrackstart));
@@ -4499,7 +4499,7 @@ static int message_handler_req_amf_protectiongrouptrackstop (struct conn_info *c
 	res_lib_amf_protectiongrouptrackstop.header.error = SA_ERR_NOT_EXIST;
 
 	if (track) {
-		res_lib_amf_protectiongrouptrackstop.header.error = SA_OK;
+		res_lib_amf_protectiongrouptrackstop.header.error = SA_AIS_OK;
 	}
 	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
 		sizeof (struct res_lib_amf_protectiongrouptrackstop));
@@ -4584,7 +4584,7 @@ static int message_handler_req_amf_stoppingcomplete (struct conn_info *conn_info
 void response_handler_healthcheckcallback (struct conn_info *conn_info,
 	struct req_lib_amf_response *req_lib_amf_response) {
 
-	if (req_lib_amf_response->error == SA_OK) {
+	if (req_lib_amf_response->error == SA_AIS_OK) {
 		log_printf (LOG_LEVEL_DEBUG, "setting healthcheck ok\n");
 		conn_info->component->healthcheck_outstanding = 0;
 	}
@@ -4595,7 +4595,7 @@ static int message_handler_req_lib_amf_componentcapabilitymodelget (struct conn_
 	struct req_lib_amf_componentcapabilitymodelget *req_lib_amf_componentcapabilitymodelget = (struct req_lib_amf_componentcapabilitymodelget *)message;
 	struct res_lib_amf_componentcapabilitymodelget res_lib_amf_componentcapabilitymodelget;
 	struct amf_comp *component;
-	SaErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_lib_amf_componentcapabilitymodelget()\n");
 

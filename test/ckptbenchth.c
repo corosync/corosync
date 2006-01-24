@@ -166,7 +166,7 @@ void *benchmark_thread (void *arg)
 	SaCkptHandleT ckptHandle;
 	int write_count;
 	int write_size;
-	SaErrorT error;
+	SaAisErrorT error;
 	SaUint32T erroroneousVectorIndex = 0;
 	struct threaddata *td = (struct threaddata *)arg;
 	int ckptinv;
@@ -187,8 +187,8 @@ void *benchmark_thread (void *arg)
 			WriteVectorElements,
 			1,
 			&erroroneousVectorIndex);
-		} while (error == SA_ERR_TRY_AGAIN);
-		if (error != SA_OK) {
+		} while (error == SA_AIS_ERR_TRY_AGAIN);
+		if (error != SA_AIS_OK) {
 			printf ("saCkptCheckpointWrite result %d (should be 1)\n", error);
 			exit (1);
 		}
@@ -242,7 +242,7 @@ SaNameT checkpointName = { 12, "abra\0" };
 int main (void) {
 	SaCkptHandleT ckptHandles[500];
 	SaCkptCheckpointHandleT checkpointHandles[500];
-	SaErrorT error;
+	SaAisErrorT error;
 	int size;
 	int count;
 	int i, j;

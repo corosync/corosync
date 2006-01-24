@@ -109,20 +109,20 @@ saAmfInitialize (
 	SaVersionT *version)
 {
 	struct amfInstance *amfInstance;
-	SaAisErrorT error = SA_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	error = saVersionVerify (&amfVersionDatabase, (SaVersionT *)version);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 	
 	error = saHandleCreate (&amfHandleDatabase, sizeof (struct amfInstance), amfHandle);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&amfHandleDatabase, *amfHandle, (void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
 
@@ -132,7 +132,7 @@ saAmfInitialize (
 	
 	error = saServiceConnectTwo (&amfInstance->response_fd,
 		&amfInstance->dispatch_fd, AMF_SERVICE);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -144,7 +144,7 @@ saAmfInitialize (
 
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&amfHandleDatabase, *amfHandle);
@@ -163,14 +163,14 @@ saAmfSelectionObjectGet (
 	SaAisErrorT error;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle, (void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
 	*selectionObject = amfInstance->dispatch_fd;
 
 	saHandleInstancePut (&amfHandleDatabase, amfHandle);
-	return (SA_OK);
+	return (SA_AIS_OK);
 }
 
 SaAisErrorT
@@ -198,7 +198,7 @@ saAmfDispatch (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -218,14 +218,14 @@ saAmfDispatch (
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_nounlock;
 		}
 
 		pthread_mutex_lock (&amfInstance->dispatch_mutex);
 
 		error = saPollRetry (&ufds, 1, 0);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_nounlock;
 		}
 
@@ -233,7 +233,7 @@ saAmfDispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (amfInstance->finalize == 1) {
-			error = SA_OK;
+			error = SA_AIS_OK;
 			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 			goto error_unlock;
 		}
@@ -254,14 +254,14 @@ saAmfDispatch (
 			 */
 			error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.header,
 				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
-			if (error != SA_OK) {
+			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (struct res_header)) {
 				error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (struct res_header),
 					MSG_WAITALL | MSG_NOSIGNAL);
-				if (error != SA_OK) {
+				if (error != SA_AIS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -332,7 +332,7 @@ saAmfDispatch (
 #endif
 			break;
 		default:
-			error = SA_ERR_LIBRARY;	
+			error = SA_AIS_ERR_LIBRARY;	
 			goto error_nounlock;
 			break;
 		}
@@ -365,7 +365,7 @@ saAmfFinalize (
 	SaAisErrorT error;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle, (void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -380,7 +380,7 @@ saAmfFinalize (
 		pthread_mutex_unlock (&amfInstance->response_mutex);
 		pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 		saHandleInstancePut (&amfHandleDatabase, amfHandle);
-		return (SA_ERR_BAD_HANDLE);
+		return (SA_AIS_ERR_BAD_HANDLE);
 	}
 
 	amfInstance->finalize = 1;
@@ -418,7 +418,7 @@ saAmfComponentRegister (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -466,7 +466,7 @@ saAmfComponentUnregister (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -508,7 +508,7 @@ saAmfComponentNameGet (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -549,7 +549,7 @@ saAmfPmStart (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -591,7 +591,7 @@ saAmfPmStop (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -633,7 +633,7 @@ saAmfHealthcheckStart (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -675,7 +675,7 @@ saAmfHealthcheckConfirm (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -715,7 +715,7 @@ saAmfHealthcheckStop (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -795,7 +795,7 @@ saAmfCSIQuiescingComplete (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -840,7 +840,7 @@ saAmfProtectionGroupTrackStart (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -871,7 +871,7 @@ saAmfProtectionGroupTrackStop (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -909,7 +909,7 @@ saAmfComponentErrorReport (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -949,7 +949,7 @@ saAmfComponentErrorClear (
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (error != SA_OK) {
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -983,7 +983,7 @@ saAmfResponse (
 
 	errorResult = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
-	if (errorResult != SA_OK) {
+	if (errorResult != SA_AIS_OK) {
 		return (error);
 	}
 

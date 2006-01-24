@@ -71,7 +71,7 @@ struct res_lib_clm_clustertrack {
 struct req_lib_clm_trackstop {
 	struct req_header header;
 	SaSizeT dataRead;
-	SaErrorT error;
+	SaAisErrorT error;
 };
 
 struct res_lib_clm_trackstop {

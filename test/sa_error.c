@@ -35,7 +35,7 @@ const char *sa_error_list[] = {
 	"SA_AIS_ERR_NO_SECTIONS",
 };
 
-int get_sa_error(SaErrorT error, char *str, int len)
+int get_sa_error(SaAisErrorT error, char *str, int len)
 {
 	if (error < SA_AIS_OK || 
 			error > SA_AIS_ERR_NO_SECTIONS || 

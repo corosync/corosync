@@ -297,9 +297,9 @@ static void eventHandleInstanceDestructor(void *instance)
 	}
 }
 
-static SaErrorT evt_recv_event(int fd, struct lib_event_data **msg)
+static SaAisErrorT evt_recv_event(int fd, struct lib_event_data **msg)
 {
-	SaErrorT error;
+	SaAisErrorT error;
 	struct res_header hdr;
 	void *data;
 

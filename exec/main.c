@@ -594,14 +594,14 @@ retry_accept:
 
 static int dispatch_init_send_response (struct conn_info *conn_info, void *message)
 {
-	SaErrorT error = SA_ERR_ACCESS;
+	SaAisErrorT error = SA_AIS_ERR_ACCESS;
 	struct req_lib_dispatch_init *req_lib_dispatch_init = (struct req_lib_dispatch_init *)message;
 	struct res_lib_dispatch_init res_lib_dispatch_init;
 	struct conn_info *msg_conn_info;
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_dispatch_init->resdis_header.service;
-		error = SA_OK;
+		error = SA_AIS_OK;
 
 		conn_info->conn_info_partner = (struct conn_info *)req_lib_dispatch_init->conn_info;
 
@@ -616,7 +616,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 	libais_send_response (conn_info, &res_lib_dispatch_init,
 		sizeof (res_lib_dispatch_init));
 
-	if (error == SA_ERR_ACCESS) {
+	if (error == SA_AIS_ERR_ACCESS) {
 		return (-1);
 	}
 
@@ -627,13 +627,13 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 
 static int response_init_send_response (struct conn_info *conn_info, void *message)
 {
-	SaErrorT error = SA_ERR_ACCESS;
+	SaAisErrorT error = SA_AIS_ERR_ACCESS;
 	struct req_lib_response_init *req_lib_response_init = (struct req_lib_response_init *)message;
 	struct res_lib_response_init res_lib_response_init;
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_response_init->resdis_header.service;
-		error = SA_OK;
+		error = SA_AIS_OK;
 	}
 	res_lib_response_init.header.size = sizeof (struct res_lib_response_init);
 	res_lib_response_init.header.id = MESSAGE_RES_INIT;
@@ -643,7 +643,7 @@ static int response_init_send_response (struct conn_info *conn_info, void *messa
 	libais_send_response (conn_info, &res_lib_response_init,
 		sizeof (res_lib_response_init));
 
-	if (error == SA_ERR_ACCESS) {
+	if (error == SA_AIS_ERR_ACCESS) {
 		return (-1);
 	}
 	conn_info->should_exit_fn = 0;
@@ -808,7 +808,7 @@ retry_recv:
 					ais_service_handlers[service]->libais_handlers[header->id].response_size;
 				res_overlay.header.id = 
 					ais_service_handlers[service]->libais_handlers[header->id].response_id;
-				res_overlay.header.error = SA_ERR_TRY_AGAIN;
+				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
 				libais_send_response (conn_info, &res_overlay,
 					res_overlay.header.size);
 			}
