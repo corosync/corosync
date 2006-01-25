@@ -47,6 +47,6 @@ struct libclm_ci {
 
 extern SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id);
 
-extern struct service_handler clm_service_handler;
+extern struct openais_service_handler clm_service_handler;
 
 #endif /* CLM_H_DEFINED */

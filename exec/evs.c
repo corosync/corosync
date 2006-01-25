@@ -73,88 +73,94 @@ enum evs_exec_message_req_types {
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int evs_executive_initialize (struct openais_config *);
-
-static int evs_confchg_fn (
+static void evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
     struct totem_ip_address *member_list, int member_list_entries,
     struct totem_ip_address *left_list, int left_list_entries,
     struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int evs_init_two_fn (struct conn_info *conn_info);
+static void message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void req_exec_mcast_endian_convert (void *msg);
 
-static int message_handler_req_evs_join (struct conn_info *conn_info, void *message);
-static int message_handler_req_evs_leave (struct conn_info *conn_info, void *message);
-static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message);
-static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message);
-static int message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message);
+static void message_handler_req_evs_join (struct conn_info *conn_info, void *message);
+static void message_handler_req_evs_leave (struct conn_info *conn_info, void *message);
+static void message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message);
+static void message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message);
+static void message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message);
 
-static int evs_exit_fn (struct conn_info *conn_info);
+static int evs_lib_init_fn (struct conn_info *conn_info);
+static int evs_lib_exit_fn (struct conn_info *conn_info);
 
-struct libais_handler evs_libais_handlers[] =
+static struct openais_lib_handler evs_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn			= message_handler_req_evs_join,
+		.lib_handler_fn				= message_handler_req_evs_join,
 		.response_size				= sizeof (struct res_lib_evs_join),
 		.response_id				= MESSAGE_RES_EVS_JOIN,
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn			= message_handler_req_evs_leave,
+		.lib_handler_fn				= message_handler_req_evs_leave,
 		.response_size				= sizeof (struct res_lib_evs_leave),
 		.response_id				= MESSAGE_RES_EVS_LEAVE,
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn			= message_handler_req_evs_mcast_joined,
+		.lib_handler_fn				= message_handler_req_evs_mcast_joined,
 		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
 		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
-		.flow_control				= FLOW_CONTROL_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn			= message_handler_req_evs_mcast_groups,
+		.lib_handler_fn				= message_handler_req_evs_mcast_groups,
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
-		.flow_control				= FLOW_CONTROL_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
-		.libais_handler_fn			= message_handler_req_evs_membership_get,
+		.lib_handler_fn				= message_handler_req_evs_membership_get,
 		.response_size				= sizeof (struct res_lib_evs_membership_get),
 		.response_id				= MESSAGE_RES_EVS_MEMBERSHIP_GET,
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
-static int (*evs_aisexec_handler_fns[]) (void *, struct totem_ip_address *source_addr, int endian_conversion_required) = {
-	message_handler_req_exec_mcast
+static struct openais_exec_handler evs_exec_handlers[] =
+{
+	{
+		.exec_handler_fn 		= message_handler_req_exec_mcast,
+		.exec_endian_convert_fn	= req_exec_mcast_endian_convert
+	}
 };
 	
-struct service_handler evs_service_handler = {
-	.name						= "openais extended virtual synchrony service",
+struct openais_service_handler evs_service_handler = {
+	.name						= (unsigned char*)"openais extended virtual synchrony service",
 	.id							= EVS_SERVICE,
-	.libais_handlers			= evs_libais_handlers,
-	.libais_handlers_count		= sizeof (evs_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= evs_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (evs_aisexec_handler_fns) / sizeof (int (*)),
+	.lib_init_fn				= evs_lib_init_fn,
+	.lib_exit_fn				= evs_lib_exit_fn,
+	.lib_handlers				= evs_lib_handlers,
+	.lib_handlers_count			= sizeof (evs_lib_handlers) / sizeof (struct openais_lib_handler),
+	.exec_handlers				= evs_exec_handlers,
+	.exec_handlers_count		= sizeof (evs_exec_handlers) / sizeof (struct openais_exec_handler),
 	.confchg_fn					= evs_confchg_fn,
-	.libais_init_two_fn			= evs_init_two_fn,
-	.libais_exit_fn				= evs_exit_fn,
-	.exec_init_fn				= evs_executive_initialize,
-	.exec_dump_fn				= 0
+	.exec_init_fn				= NULL,
+	.exec_dump_fn				= NULL
 };
 
 static DECLARE_LIST_INIT (confchg_notify);
 
+/*
+ * Dynamic loading descriptor
+ */
+
 #ifdef BUILD_DYNAMIC
 
-struct service_handler *evs_get_handler_ver0 (void);
+struct openais_service_handler *evs_get_service_handler_ver0 (void);
 
-struct aisexec_iface_ver0 evs_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= evs_get_handler_ver0
+struct openais_service_handler_iface_ver0 evs_service_handler_iface = {
+	.openais_get_service_handler_ver0		= evs_get_service_handler_ver0
 };
 
 struct lcr_iface openais_evs_ver0[1] = {
@@ -176,34 +182,22 @@ struct lcr_comp evs_comp_ver0 = {
 	.ifaces					= openais_evs_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
+int lcr_comp_get (struct lcr_comp **component)
 {
 	*component = &evs_comp_ver0;
 	return (0);
 }
 
-struct service_handler *evs_get_handler_ver0 (void)
+struct openais_service_handler *evs_get_service_handler_ver0 (void)
 {
 	return (&evs_service_handler);
 }
 
 #endif /* BUILD_DYNAMIC */
 
-static int evs_executive_initialize (struct openais_config *openais_config)
-{
-	return (0);
-}
-
-static int evs_exit_fn (struct conn_info *conn_info)
-{
-
-	list_del (&conn_info->conn_list);
-	return (0);
-}
-
 struct res_evs_confchg_callback res_evs_confchg_callback;
 
-static int evs_confchg_fn (
+static void evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
     struct totem_ip_address *member_list, int member_list_entries,
     struct totem_ip_address *left_list, int left_list_entries,
@@ -246,22 +240,27 @@ static int evs_confchg_fn (
 		libais_send_response (conn_info, &res_evs_confchg_callback,
 			sizeof (res_evs_confchg_callback));
 	}
-
-	return (0);
 }
 
-static int evs_init_two_fn (struct conn_info *conn_info)
+static int evs_lib_init_fn (struct conn_info *conn_info)
 {
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize evs service.\n");
 	list_init (&conn_info->conn_list);
 	list_add (&conn_info->conn_list, &confchg_notify);
+
 	libais_send_response (conn_info, &res_evs_confchg_callback,
 		sizeof (res_evs_confchg_callback));
 
 	return (0);
 }
 
-static int message_handler_req_evs_join (struct conn_info *conn_info, void *message)
+static int evs_lib_exit_fn (struct conn_info *conn_info)
+{
+	list_del (&conn_info->conn_list);
+	return (0);
+}
+
+static void message_handler_req_evs_join (struct conn_info *conn_info, void *message)
 {
 	evs_error_t error = EVS_OK;
 	struct req_lib_evs_join *req_lib_evs_join = (struct req_lib_evs_join *)message;
@@ -303,11 +302,9 @@ exit_error:
 
 	libais_send_response (conn_info, &res_lib_evs_join,
 		sizeof (struct res_lib_evs_join));
-
-	return (0);
 }
 
-static int message_handler_req_evs_leave (struct conn_info *conn_info, void *message)
+static void message_handler_req_evs_leave (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_evs_leave *req_lib_evs_leave = (struct req_lib_evs_leave *)message;
 	struct res_lib_evs_leave res_lib_evs_leave;
@@ -358,11 +355,9 @@ static int message_handler_req_evs_leave (struct conn_info *conn_info, void *mes
 
 	libais_send_response (conn_info, &res_lib_evs_leave,
 		sizeof (struct res_lib_evs_leave));
-
-	return (0);
 }
 
-static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message)
+static void message_handler_req_evs_mcast_joined (struct conn_info *conn_info, void *message)
 {
 	evs_error_t error = EVS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_joined *req_lib_evs_mcast_joined = (struct req_lib_evs_mcast_joined *)message;
@@ -403,11 +398,9 @@ static int message_handler_req_evs_mcast_joined (struct conn_info *conn_info, vo
 
 	libais_send_response (conn_info, &res_lib_evs_mcast_joined,
 		sizeof (struct res_lib_evs_mcast_joined));
-
-	return (0);
 }
 
-static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message)
+static void message_handler_req_evs_mcast_groups (struct conn_info *conn_info, void *message)
 {
 	evs_error_t error = EVS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_groups *req_lib_evs_mcast_groups = (struct req_lib_evs_mcast_groups *)message;
@@ -451,10 +444,9 @@ static int message_handler_req_evs_mcast_groups (struct conn_info *conn_info, vo
 
 	libais_send_response (conn_info, &res_lib_evs_mcast_groups,
 		sizeof (struct res_lib_evs_mcast_groups));
-
-	return (0);
 }
-static int message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message)
+
+static void message_handler_req_evs_membership_get (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_evs_membership_get res_lib_evs_membership_get;
 
@@ -472,11 +464,13 @@ static int message_handler_req_evs_membership_get (struct conn_info *conn_info, 
 
 	libais_send_response (conn_info, &res_lib_evs_membership_get,
 		sizeof (struct res_lib_evs_membership_get));
-
-	return (0);
 }
 
-static int message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void req_exec_mcast_endian_convert (void *msg)
+{
+}
+
+static void message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr)
 {
 	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)message;
 	struct res_evs_deliver_callback res_evs_deliver_callback;
@@ -523,7 +517,4 @@ static int message_handler_req_exec_mcast (void *message, struct totem_ip_addres
 				req_exec_evs_mcast->msg_len);
 		}
 	}
-//TODO printf ("Got evs message %s\n", msg_addr);
-
-	return (0);
 }

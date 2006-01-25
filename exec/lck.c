@@ -110,77 +110,72 @@ DECLARE_LIST_INIT(resource_list_head);
 
 static int lck_exec_init_fn (struct openais_config *);
 
-static int lck_exit_fn (struct conn_info *conn_info);
+static int lck_lib_exit_fn (struct conn_info *conn_info);
 
-static int lck_init_two_fn (struct conn_info *conn_info);
+static int lck_lib_init_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_lck_resourceopen (
+static void message_handler_req_exec_lck_resourceopen (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_lck_resourceclose (
+static void message_handler_req_exec_lck_resourceclose (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_lck_resourcelock (
+static void message_handler_req_exec_lck_resourcelock (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_lck_resourceunlock (
+static void message_handler_req_exec_lck_resourceunlock (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_lck_resourcelockorphan (
+static void message_handler_req_exec_lck_resourcelockorphan (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_lck_lockpurge (
+static void message_handler_req_exec_lck_lockpurge (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_lib_lck_resourceopen (
+static void message_handler_req_lib_lck_resourceopen (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourceopenasync (
+static void message_handler_req_lib_lck_resourceopenasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourceclose (
+static void message_handler_req_lib_lck_resourceclose (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourcelock (
+static void message_handler_req_lib_lck_resourcelock (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourcelockasync (
+static void message_handler_req_lib_lck_resourcelockasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourceunlock (
+static void message_handler_req_lib_lck_resourceunlock (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_resourceunlockasync (
+static void message_handler_req_lib_lck_resourceunlockasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_lck_lockpurge (
+static void message_handler_req_lib_lck_lockpurge (
 	struct conn_info *conn_info,
 	void *message);
 
-static void lck_recovery_activate (void);
-static void lck_recovery_initialize (void);
-static int  lck_recovery_process (void);
-static void lck_recovery_finalize();
-static void lck_recovery_abort(void);
+#ifdef TODO
+static void lck_sync_init (void);
+#endif
+static int lck_sync_process (void);
+static void lck_sync_activate (void);
+static void lck_sync_abort (void);
 
 void resource_release (struct resource *resource);
 
@@ -190,125 +185,140 @@ static struct list_head *recovery_lck_section_next = 0;
 static int recovery_section_data_offset = 0;
 static int recovery_section_send_flag = 0;
 static int recovery_abort = 0;
+//static struct memb_ring_id saved_ring_id;
 */
 
-static struct memb_ring_id saved_ring_id;
 
-static int lck_confchg_fn (
+static void lck_confchg_fn (
 		enum totem_configuration_type configuration_type,
-		struct in_addr *member_list, int member_list_entries,
-		struct in_addr *left_list, int left_list_entries,
-		struct in_addr *joined_list, int joined_list_entries,
+		struct totem_ip_address *member_list, int member_list_entries,
+		struct totem_ip_address *left_list, int left_list_entries,
+		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
 /*
  * Executive Handler Definition
  */
-struct libais_handler lck_libais_handlers[] =
+static struct openais_lib_handler lck_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourceopen,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourceopen,
 		.response_size		= sizeof (struct res_lib_lck_resourceopen),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEOPEN,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourceopenasync,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourceopenasync,
 		.response_size		= sizeof (struct res_lib_lck_resourceopenasync),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEOPENASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourceclose,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourceclose,
 		.response_size		= sizeof (struct res_lib_lck_resourceclose),
 		.response_id		= MESSAGE_RES_LCK_RESOURCECLOSE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourcelock,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourcelock,
 		.response_size		= sizeof (struct res_lib_lck_resourcelock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCK,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourcelockasync,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourcelockasync,
 		.response_size		= sizeof (struct res_lib_lck_resourcelockasync),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCKASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourceunlock,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourceunlock,
 		.response_size		= sizeof (struct res_lib_lck_resourceunlock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCK,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 6 */
-		.libais_handler_fn	= message_handler_req_lib_lck_resourceunlockasync,
+		.lib_handler_fn		= message_handler_req_lib_lck_resourceunlockasync,
 		.response_size		= sizeof (struct res_lib_lck_resourceunlock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEUNLOCKASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 7 */
-		.libais_handler_fn	= message_handler_req_lib_lck_lockpurge,
+		.lib_handler_fn		= message_handler_req_lib_lck_lockpurge,
 		.response_size		= sizeof (struct res_lib_lck_lockpurge),
 		.response_id		= MESSAGE_RES_LCK_LOCKPURGE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	}
 };
 
 
-static int (*lck_aisexec_handler_fns[]) (void *msg, struct in_addr source_addr, int endian_conversion_required) = {
-	message_handler_req_exec_lck_resourceopen,
-	message_handler_req_exec_lck_resourceclose,
-	message_handler_req_exec_lck_resourcelock,
-	message_handler_req_exec_lck_resourceunlock,
-	message_handler_req_exec_lck_resourcelockorphan,
-	message_handler_req_exec_lck_lockpurge,
+static struct openais_exec_handler lck_exec_handlers[] = {
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_resourceopen,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_resourceclose,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_resourcelock,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_resourceunlock,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_resourcelockorphan,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_lck_lockpurge,
+	}
 };
 
-struct service_handler lck_service_handler = {
-	.name				= "openais distributed locking service B.01.01",
+struct openais_service_handler lck_service_handler = {
+	.name				= (unsigned char*)"openais distributed locking service B.01.01",
 	.id				= LCK_SERVICE,
-	.libais_handlers		= lck_libais_handlers,
-	.libais_handlers_count		= sizeof (lck_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= lck_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (lck_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn			= lck_confchg_fn,
-	.libais_init_two_fn		= lck_init_two_fn,
-	.libais_exit_fn			= lck_exit_fn,
+	.lib_init_fn			= lck_lib_init_fn,
+	.lib_exit_fn			= lck_lib_exit_fn,
+	.lib_handlers			= lck_lib_handlers,
+	.lib_handlers_count		= sizeof (lck_lib_handlers) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= lck_exec_init_fn,
+	.exec_handlers			= lck_exec_handlers,
+	.exec_handlers_count		= sizeof (lck_exec_handlers) / sizeof (struct openais_exec_handler),
 	.exec_dump_fn			= NULL,
-	.sync_init			= NULL, // TODO lck_recovery_initialize,
-	.sync_process			= lck_recovery_process,
-	.sync_activate			= lck_recovery_activate,
-	.sync_abort			= lck_recovery_abort,
+	.confchg_fn			= lck_confchg_fn,
+	.sync_init			= NULL, 
+//	.sync_init			= lck_sync_init,
+	.sync_process			= lck_sync_process,
+	.sync_activate			= lck_sync_activate,
+	.sync_abort			= lck_sync_abort,
 };
 
+/*
+ * Dynamic loader definition
+ */
 #ifdef BUILD_DYNAMIC
 
-struct service_handler *lck_get_handler_ver0 (void);
+struct openais_service_handler *lck_get_handler_ver0 (void);
 
-struct aisexec_iface_ver0 lck_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= lck_get_handler_ver0
+struct openais_service_handler_iface_ver0 lck_service_handler_iface = {
+	.openais_get_service_handler_ver0	= lck_get_handler_ver0
 };
 
 struct lcr_iface openais_lck_ver0[1] = {
 	{
-		.name					= "openais_lck",
-		.version				= 0,
+		.name				= "openais_lck",
+		.version			= 0,
 		.versions_replace		= 0,
-		.versions_replace_count = 0,
+		.versions_replace_count		= 0,
 		.dependencies			= 0,
 		.dependency_count		= 0,
 		.constructor			= NULL,
-		.destructor				= NULL,
-		.interfaces				= (void **)&lck_service_handler_iface,
+		.destructor			= NULL,
+		.interfaces			= (void **)&lck_service_handler_iface,
 	}
 };
 
 struct lcr_comp lck_comp_ver0 = {
-	.iface_count			= 1,
+	.iface_count				= 1,
 	.ifaces					= openais_lck_ver0
 };
 
@@ -318,7 +328,7 @@ extern int lcr_comp_get (struct lcr_comp **component)
 	return (0);
 }
 
-struct service_handler *lck_get_handler_ver0 (void)
+struct openais_service_handler *lck_get_handler_ver0 (void)
 {
 	return (&lck_service_handler);
 }
@@ -379,40 +389,35 @@ struct req_exec_lck_lockpurge {
 	struct req_lib_lck_lockpurge req_lib_lck_lockpurge;
 };
 
-static void lck_recovery_initialize (void) 
+#ifdef TODO
+static void lck_sync_init (void) 
 {
 	return;
 }
+#endif
 
-static int lck_recovery_process (void) 
+static int lck_sync_process (void) 
 {
 	return (0);
 }
 
-static void lck_recovery_finalize () 
-{
-	return;
-	
-}
-
-static void lck_recovery_activate (void) 
+static void lck_sync_activate (void) 
 {		
  	return;
 }
 
-static void lck_recovery_abort (void) 
+static void lck_sync_abort (void) 
 {
 	return;
 }
 
-static int lck_confchg_fn (
+static void lck_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
-	return (0);
 }
 
 static struct resource *resource_find (SaNameT *name)
@@ -573,15 +578,10 @@ static int lck_exec_init_fn (struct openais_config *openais_config)
 	/*
 	 *  Initialize the saved ring ID.
 	 */
-#ifdef TODO
-	saved_ring_id.seq = 0;
-	saved_ring_id.rep.s_addr = this_ip->sin_addr.s_addr;		
-#endif
-	
 	return (0);
 }
 
-static int lck_exit_fn (struct conn_info *conn_info)
+static int lck_lib_exit_fn (struct conn_info *conn_info)
 {
 	struct resource_cleanup *resource_cleanup;
 	struct list_head *list;
@@ -614,26 +614,24 @@ static int lck_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-static int lck_init_two_fn (struct conn_info *conn_info)
+static int lck_lib_init_fn (struct conn_info *conn_info)
 {
 	list_init (&conn_info->conn_info_partner->ais_ci.u.liblck_ci.resource_list);
 	list_init (&conn_info->conn_info_partner->ais_ci.u.liblck_ci.resource_cleanup_list);
 
 	return (0);
-
 }
 
-static int message_handler_req_exec_lck_resourceopen (
+static void message_handler_req_exec_lck_resourceopen (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_resourceopen *req_exec_lck_resourceopen = (struct req_exec_lck_resourceopen *)message;
 	struct res_lib_lck_resourceopen res_lib_lck_resourceopen;
 	struct res_lib_lck_resourceopenasync res_lib_lck_resourceopenasync;
 	struct resource *resource;
 	struct resource_cleanup *resource_cleanup;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceOpen %s\n",
 		getSaNameT (&req_exec_lck_resourceopen->resource_name));
@@ -739,14 +737,11 @@ error_exit:
 				sizeof (struct res_lib_lck_resourceopen));
 		}
 	}
-
-	return (0);
 }
 
-static int message_handler_req_exec_lck_resourceclose (
+static void message_handler_req_exec_lck_resourceclose (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_resourceclose *req_exec_lck_resourceclose = (struct req_exec_lck_resourceclose *)message;
 	struct res_lib_lck_resourceclose res_lib_lck_resourceclose;
@@ -776,7 +771,6 @@ error_exit:
 		libais_send_response (req_exec_lck_resourceclose->source.conn_info,
 			&res_lib_lck_resourceclose, sizeof (struct res_lib_lck_resourceclose));
 	}
-	return (0);
 }
 
 void waiter_notification_send (struct resource_lock *resource_lock)
@@ -1033,10 +1027,9 @@ void unlock_algorithm (
 	}
 }
 
-static int message_handler_req_exec_lck_resourcelock (
+static void message_handler_req_exec_lck_resourcelock (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_resourcelock *req_exec_lck_resourcelock = (struct req_exec_lck_resourcelock *)message;
 	struct resource *resource = 0;
@@ -1142,13 +1135,12 @@ static int message_handler_req_exec_lck_resourcelock (
 	}
 
 error_exit:
-	return (0);
+	return;
 }
 
-static int message_handler_req_exec_lck_resourceunlock (
+static void message_handler_req_exec_lck_resourceunlock (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_resourceunlock *req_exec_lck_resourceunlock = (struct req_exec_lck_resourceunlock *)message;
 	struct res_lib_lck_resourceunlock res_lib_lck_resourceunlock;
@@ -1199,13 +1191,11 @@ error_exit:
 				&res_lib_lck_resourceunlock, sizeof (struct res_lib_lck_resourceunlock));
 		}
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_lck_resourcelockorphan (
+static void message_handler_req_exec_lck_resourcelockorphan (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_resourcelockorphan *req_exec_lck_resourcelockorphan = (struct req_exec_lck_resourcelockorphan *)message;
 	struct resource *resource = 0;
@@ -1227,13 +1217,11 @@ static int message_handler_req_exec_lck_resourcelockorphan (
 
 	list_del (&resource_lock->resource_cleanup_list);
 	unlock_algorithm (resource, resource_lock);
-	return (0);
 }
 
-static int message_handler_req_exec_lck_lockpurge (
+static void message_handler_req_exec_lck_lockpurge (
 	void *message,
-	struct in_addr source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_lck_lockpurge *req_exec_lck_lockpurge = (struct req_exec_lck_lockpurge *)message;
 	struct res_lib_lck_lockpurge res_lib_lck_lockpurge;
@@ -1259,10 +1247,9 @@ error_exit:
 		libais_send_response (req_exec_lck_lockpurge->source.conn_info,
 			&res_lib_lck_lockpurge, sizeof (struct res_lib_lck_lockpurge));
 	}
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourceopen *req_lib_lck_resourceopen = (struct req_lib_lck_resourceopen *)message;
 	struct req_exec_lck_resourceopen req_exec_lck_resourceopen;
@@ -1292,11 +1279,9 @@ static int message_handler_req_lib_lck_resourceopen (struct conn_info *conn_info
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourceopen *req_lib_lck_resourceopen = (struct req_lib_lck_resourceopen *)message;
 	struct req_exec_lck_resourceopen req_exec_lck_resourceopen;
@@ -1326,11 +1311,9 @@ static int message_handler_req_lib_lck_resourceopenasync (struct conn_info *conn
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourceclose (struct conn_info *conn_info, void *message) {
+static void message_handler_req_lib_lck_resourceclose (struct conn_info *conn_info, void *message) {
 	struct req_lib_lck_resourceclose *req_lib_lck_resourceclose = (struct req_lib_lck_resourceclose *)message;
 	struct req_exec_lck_resourceclose req_exec_lck_resourceclose;
 	struct iovec iovecs[2];
@@ -1371,10 +1354,9 @@ static int message_handler_req_lib_lck_resourceclose (struct conn_info *conn_inf
 			&res_lib_lck_resourceclose,
 			sizeof (struct res_lib_lck_resourceclose));
 	}
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourcelock *req_lib_lck_resourcelock = (struct req_lib_lck_resourcelock *)message;
 	struct req_exec_lck_resourcelock req_exec_lck_resourcelock;
@@ -1403,11 +1385,9 @@ static int message_handler_req_lib_lck_resourcelock (struct conn_info *conn_info
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourcelockasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourcelockasync (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourcelock *req_lib_lck_resourcelock = (struct req_lib_lck_resourcelock *)message;
 	struct req_exec_lck_resourcelock req_exec_lck_resourcelock;
@@ -1435,11 +1415,9 @@ static int message_handler_req_lib_lck_resourcelockasync (struct conn_info *conn
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourceunlock (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourceunlock (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourceunlock *req_lib_lck_resourceunlock = (struct req_lib_lck_resourceunlock *)message;
 	struct req_exec_lck_resourceunlock req_exec_lck_resourceunlock;
@@ -1467,11 +1445,9 @@ static int message_handler_req_lib_lck_resourceunlock (struct conn_info *conn_in
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_resourceunlockasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_resourceunlockasync (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_resourceunlock *req_lib_lck_resourceunlock = (struct req_lib_lck_resourceunlock *)message;
 	struct req_exec_lck_resourceunlock req_exec_lck_resourceunlock;
@@ -1499,11 +1475,9 @@ static int message_handler_req_lib_lck_resourceunlockasync (struct conn_info *co
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_lck_lockpurge (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_lck_lockpurge (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_lck_lockpurge *req_lib_lck_lockpurge = (struct req_lib_lck_lockpurge *)message;
 	struct req_exec_lck_lockpurge req_exec_lck_lockpurge;
@@ -1527,7 +1501,5 @@ static int message_handler_req_lib_lck_lockpurge (struct conn_info *conn_info, v
 	iovecs[0].iov_len = sizeof (req_exec_lck_lockpurge);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 

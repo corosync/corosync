@@ -44,6 +44,6 @@ struct libmsg_ci {
 	struct list_head queue_cleanup_list;
 };
 
-extern struct service_handler msg_service_handler;
+extern struct openais_service_handler msg_service_handler;
 
 #endif /* MSG_H_DEFINED */

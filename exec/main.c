@@ -79,6 +79,7 @@
 #include "lck.h"
 #include "msg.h"
 #include "cfg.h"
+#include "ykd.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_MAIN
@@ -97,7 +98,7 @@ struct dynamic_service {
 	char *name;
 	unsigned int ver;
 	unsigned int handle;
-	struct aisexec_iface_ver0 *iface_ver0;
+	struct openais_service_handler_iface_ver0 *iface_ver0;
 };
 
 /*
@@ -155,13 +156,7 @@ struct dynamic_service dynamic_services[128] = {
 };
 #endif /* BUILD_DYNAMIC */
 		
-static struct service_handler *ais_service_handlers[32];
-
-/*
-unsigned int aisexec_ifact_handle_ver0[32];
-
-static struct aisexec_iface_ver0 *aisexec_iface_ver0[32];
-*/
+static struct openais_service_handler *ais_service_handlers[32];
 
 static unsigned int service_handlers_count = 32;
 
@@ -280,16 +275,16 @@ static int libais_disconnect (struct conn_info *conn_info)
 	struct outq_item *outq_item;
 
 	if (conn_info->should_exit_fn &&
-		ais_service_handlers[conn_info->service]->libais_exit_fn) {
+		ais_service_handlers[conn_info->service]->lib_exit_fn) {
 
-		res = ais_service_handlers[conn_info->service]->libais_exit_fn (conn_info);
+		res = ais_service_handlers[conn_info->service]->lib_exit_fn (conn_info);
 	}
 
 	if (conn_info->conn_info_partner && 
 		conn_info->conn_info_partner->should_exit_fn &&
-		ais_service_handlers[conn_info->conn_info_partner->service]->libais_exit_fn) {
+		ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn) {
 
-		res = ais_service_handlers[conn_info->conn_info_partner->service]->libais_exit_fn (conn_info->conn_info_partner);
+		res = ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn (conn_info->conn_info_partner);
 	}
 
 	/*
@@ -621,7 +616,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 	}
 
 	conn_info->should_exit_fn = 1;
-	ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->libais_init_two_fn (conn_info);
+	ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->lib_init_fn (conn_info);
 	return (0);
 }
 
@@ -770,9 +765,9 @@ retry_recv:
 			/*
 			 * Not an init service, but a standard service
 			 */
-			if (header->id < 0 || header->id > ais_service_handlers[service]->libais_handlers_count) {
+			if (header->id < 0 || header->id > ais_service_handlers[service]->lib_handlers_count) {
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
-				header->id, ais_service_handlers[service]->libais_handlers_count);
+				header->id, ais_service_handlers[service]->lib_handlers_count);
 				res = -1;
 				goto error_disconnect;
 			}
@@ -790,14 +785,14 @@ retry_recv:
 
 			send_ok =
 				(ykd_primary() == 1) && (
-				(ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_NOT_REQUIRED) ||
-				((ais_service_handlers[service]->libais_handlers[header->id].flow_control == FLOW_CONTROL_REQUIRED) &&
+				(ais_service_handlers[service]->lib_handlers[header->id].flow_control == OPENAIS_FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service_handlers[service]->lib_handlers[header->id].flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
 				(sync_in_process() == 0)));
 
 			if (send_ok) {
 		//		*prio = 0;
-				res = ais_service_handlers[service]->libais_handlers[header->id].libais_handler_fn(conn_info, header);
+				ais_service_handlers[service]->lib_handlers[header->id].lib_handler_fn(conn_info, header);
 			} else {
 		//		*prio = (*prio) + 1;
 
@@ -805,9 +800,9 @@ retry_recv:
 				 * Overload, tell library to retry
 				 */
 				res_overlay.header.size = 
-					ais_service_handlers[service]->libais_handlers[header->id].response_size;
+					ais_service_handlers[service]->lib_handlers[header->id].response_size;
 				res_overlay.header.id = 
-					ais_service_handlers[service]->libais_handlers[header->id].response_id;
+					ais_service_handlers[service]->lib_handlers[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
 				libais_send_response (conn_info, &res_overlay,
 					res_overlay.header.size);
@@ -830,7 +825,7 @@ retry_recv:
 		conn_info->inb_start = conn_info->inb_inuse;
 	}
 	
-	return (res);
+	return (0);
 
 error_disconnect:
 	res = libais_disconnect (conn_info);
@@ -893,7 +888,6 @@ static void deliver_fn (
 	int endian_conversion_required)
 {
 	struct req_header *header;
-	int res;
 	int pos = 0;
 	int i;
 	int service;
@@ -926,8 +920,13 @@ static void deliver_fn (
 	 */
 	service = header->id >> 16;
 	fn_id = header->id & 0xffff;
-	res = ais_service_handlers[service]->aisexec_handler_fns[fn_id]
-		(header, source_addr, endian_conversion_required);
+	if (endian_conversion_required) {
+		ais_service_handlers[service]->exec_handlers[fn_id].exec_endian_convert_fn
+			(header);
+	}
+
+	ais_service_handlers[service]->exec_handlers[fn_id].exec_handler_fn
+		(header, source_addr);
 }
 
 static struct memb_ring_id aisexec_ring_id;
@@ -1100,15 +1099,18 @@ void message_source_set (struct message_source *source, struct conn_info *conn_i
 struct totem_logging_configuration totem_logging_configuration;
 
 int service_handler_register (
-	struct service_handler *handler,
+	struct openais_service_handler *handler,
 	struct openais_config *config)
 {
+	int res = 0;
 	assert (ais_service_handlers[handler->id] == NULL);
 	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
 	ais_service_handlers[handler->id] = handler;
 	if (ais_service_handlers[handler->id]->exec_init_fn) {
-		ais_service_handlers[handler->id]->exec_init_fn (config);
+		res = ais_service_handlers[handler->id]->exec_init_fn (config);
 	}
+	
+	return (res);
 }
 
 void default_services_register (struct openais_config *openais_config)
@@ -1124,7 +1126,9 @@ void default_services_register (struct openais_config *openais_config)
 			(void **)&dynamic_services[i].iface_ver0,
 			(void *)0);
 
-		service_handler_register (dynamic_services[i].iface_ver0->get_handler_ver0(), openais_config);
+		service_handler_register (
+			dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
+			openais_config);
 	}
 
 #else /* NOT BUILD_DYNAMIC */

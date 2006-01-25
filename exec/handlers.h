@@ -31,56 +31,61 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef HANDLERS_H_DEFINED
-#define HANDLERS_H_DEFINED
+#ifndef OPENAIS_HANDLERS_H_DEFINED
+#define OPENAIS_HANDLERS_H_DEFINED
 
 #include <netinet/in.h>
-#include "main.h"
-#include "totempg.h"
-#include "totemsrp.h"
+#include "mainconfig.h" /* openais_config */
+#include "main.h" 	/* conn_info */
+#include "totemip.h"
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
 
-enum flow_control {
-	FLOW_CONTROL_REQUIRED = 1,
-	FLOW_CONTROL_NOT_REQUIRED = 2
+// TODO we need to abstract the conn_info data structure to make dynamic loading work perfectly
+
+enum openais_flow_control {
+	OPENAIS_FLOW_CONTROL_REQUIRED = 1,
+	OPENAIS_FLOW_CONTROL_NOT_REQUIRED = 2
 };
 
-struct libais_handler {
-	int (*libais_handler_fn) (struct conn_info *conn_info, void *msg);
+struct openais_lib_handler {
+	void (*lib_handler_fn) (struct conn_info *conn_info, void *msg);
 	int response_size;
 	int response_id;
-	enum flow_control flow_control;
+	enum openais_flow_control flow_control;
 };
 
-struct service_handler {
+struct openais_exec_handler {
+	void (*exec_handler_fn) (void *msg, struct totem_ip_address *source_addr);
+	void (*exec_endian_convert_fn) (void *msg);
+};
+	
+struct openais_service_handler {
 	unsigned char *name;
 	unsigned short id;
-	struct libais_handler *libais_handlers;
-	int libais_handlers_count;
-	int (**aisexec_handler_fns) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_needed);
-	int aisexec_handler_fns_count;
-	int (*confchg_fn) (
+	int (*lib_init_fn) (struct conn_info *conn_info);
+	int (*lib_exit_fn) (struct conn_info *conn_info);
+	struct openais_lib_handler *lib_handlers;
+	int lib_handlers_count;
+	struct openais_exec_handler *exec_handlers;
+	int (*exec_init_fn) (struct openais_config *);
+	void (*exec_dump_fn) (void);
+	int exec_handlers_count;
+	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
 		struct totem_ip_address *left_list, int left_list_entries,
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
-	int (*libais_init_fn) (struct conn_info *conn_info, void *msg);
-	int (*libais_init_two_fn) (struct conn_info *conn_info);
-	int (*libais_exit_fn) (struct conn_info *conn_info);
-	int (*exec_init_fn) (struct openais_config *);
-	void (*exec_dump_fn) (void);
-
 	void (*sync_init) (void);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 };
 
-struct aisexec_iface_ver0 {
+struct openais_service_handler_iface_ver0 {
 	void (*test) (void);
-	struct service_handler *(*get_handler_ver0) (void);
+	struct openais_service_handler *(*openais_get_service_handler_ver0) (void);
 };
 
 #endif /* HANDLERS_H_DEFINED */

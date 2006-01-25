@@ -82,6 +82,6 @@ struct libckpt_ci {
 	struct saCkptSectionIterator sectionIterator;
 };
 
-extern struct service_handler ckpt_service_handler;
+extern struct openais_service_handler ckpt_service_handler;
 
 #endif /* CKPT_H_DEFINED */

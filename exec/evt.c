@@ -72,30 +72,30 @@ enum evt_message_req_types {
 	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 2
 };
 
-static int lib_evt_open_channel(struct conn_info *conn_info, void *message);
-static int lib_evt_open_channel_async(struct conn_info *conn_info, 
+static void lib_evt_open_channel(struct conn_info *conn_info, void *message);
+static void lib_evt_open_channel_async(struct conn_info *conn_info, 
 		void *message);
-static int lib_evt_close_channel(struct conn_info *conn_info, void *message);
-static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message);
-static int lib_evt_event_subscribe(struct conn_info *conn_info, 
+static void lib_evt_close_channel(struct conn_info *conn_info, void *message);
+static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message);
+static void lib_evt_event_subscribe(struct conn_info *conn_info, 
 		void *message);
-static int lib_evt_event_unsubscribe(struct conn_info *conn_info, 
+static void lib_evt_event_unsubscribe(struct conn_info *conn_info, 
 		void *message);
-static int lib_evt_event_publish(struct conn_info *conn_info, void *message);
-static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
+static void lib_evt_event_publish(struct conn_info *conn_info, void *message);
+static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
 		void *message);
-static int lib_evt_event_data_get(struct conn_info *conn_info, 
+static void lib_evt_event_data_get(struct conn_info *conn_info, 
 		void *message);
 
-static int evt_conf_change(
+static void evt_conf_change(
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
 		struct totem_ip_address *left_list, int left_list_entries,
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
-static int evt_initialize(struct conn_info *conn_info);
-static int evt_finalize(struct conn_info *conn_info);
+static int evt_lib_init(struct conn_info *conn_info);
+static int evt_lib_exit(struct conn_info *conn_info);
 static int evt_exec_init(struct openais_config *openais_config);
 
 /*
@@ -106,94 +106,99 @@ static int evt_sync_process(void);
 static void evt_sync_activate(void);
 static void evt_sync_abort(void);
 
+static void convert_event(void *msg);
+static void convert_chan_packet(void *msg);
 
-static struct libais_handler evt_libais_handlers[] = {
+static struct openais_lib_handler evt_lib_handlers[] = {
 	{
-	.libais_handler_fn = 	lib_evt_open_channel,
+	.lib_handler_fn = 		lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_open_channel_async,
+	.lib_handler_fn = 		lib_evt_open_channel_async,
 	.response_size = 		sizeof(struct res_evt_channel_open),
 	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_close_channel,
+	.lib_handler_fn = 		lib_evt_close_channel,
 	.response_size = 		sizeof(struct res_evt_channel_close),
 	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_unlink_channel,
+	.lib_handler_fn = 		lib_evt_unlink_channel,
 	.response_size = 		sizeof(struct res_evt_channel_unlink),
 	.response_id = 			MESSAGE_RES_EVT_UNLINK_CHANNEL,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_event_subscribe,
+	.lib_handler_fn = 		lib_evt_event_subscribe,
 	.response_size = 		sizeof(struct res_evt_event_subscribe),
 	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
-	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_event_unsubscribe,
+	.lib_handler_fn = 		lib_evt_event_unsubscribe,
 	.response_size = 		sizeof(struct res_evt_event_unsubscribe),
 	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
-	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_event_publish,
+	.lib_handler_fn = 		lib_evt_event_publish,
 	.response_size = 		sizeof(struct res_evt_event_publish),
 	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_event_clear_retentiontime,
+	.lib_handler_fn = 		lib_evt_event_clear_retentiontime,
 	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
 	.response_id = 			MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
-	.flow_control =			FLOW_CONTROL_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.libais_handler_fn = 	lib_evt_event_data_get,
+	.lib_handler_fn =	 	lib_evt_event_data_get,
 	.response_size = 		sizeof(struct lib_event_data),
 	.response_id = 			MESSAGE_RES_EVT_EVENT_DATA,
-	.flow_control =			FLOW_CONTROL_NOT_REQUIRED
+	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 
 	
-static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required);
-static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required);
-static int evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required);
+static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr);
+static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr);
+static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr);
 
-static int (*evt_exec_handler_fns[]) (void *m, struct totem_ip_address *s, 
-		int endian_conversion_required) = {
-	evt_remote_evt,
-	evt_remote_chan_op,
-	evt_remote_recovery_evt
+static struct openais_exec_handler evt_exec_handlers[] = {
+	{
+		.exec_handler_fn		= evt_remote_evt,
+		.exec_endian_convert_fn = convert_event
+	},
+	{
+		.exec_handler_fn		= evt_remote_chan_op,
+		.exec_endian_convert_fn = convert_chan_packet
+	},
+	{
+		.exec_handler_fn		= evt_remote_recovery_evt,
+		.exec_endian_convert_fn = convert_event
+	}
 };
 
-struct service_handler evt_service_handler = {
+struct openais_service_handler evt_service_handler = {
 	.name						=
 								(unsigned char*)"openais event service B.01.01",
 	.id							= EVT_SERVICE,
-	.libais_handlers			= evt_libais_handlers,
-	.libais_handlers_count		= sizeof(evt_libais_handlers) /
-									sizeof(struct libais_handler),
-	.aisexec_handler_fns		= evt_exec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof(evt_exec_handler_fns) /
-									sizeof(int (*)),
-	.confchg_fn					= evt_conf_change,
-	.libais_init_two_fn			= evt_initialize,
-	.libais_exit_fn				= evt_finalize,
+	.lib_init_fn				= evt_lib_init,
+	.lib_exit_fn				= evt_lib_exit,
+	.lib_handlers				= evt_lib_handlers,
+	.lib_handlers_count			= sizeof(evt_lib_handlers) / sizeof(struct openais_lib_handler),
 	.exec_init_fn				= evt_exec_init,
-	.exec_dump_fn				= 0,
+	.exec_handlers				= evt_exec_handlers,
+	.exec_handlers_count		= sizeof(evt_exec_handlers) / sizeof(struct openais_exec_handler),
+	.exec_dump_fn				= NULL,
+	.confchg_fn					= evt_conf_change,
 	.sync_init					= evt_sync_init,
 	.sync_process				= evt_sync_process,
 	.sync_activate				= evt_sync_activate,
@@ -201,11 +206,10 @@ struct service_handler evt_service_handler = {
 };
 
 #ifdef BUILD_DYNAMIC
-struct service_handler *evt_get_handler_ver0 (void);
+struct openais_service_handler *evt_get_handler_ver0 (void);
 
-struct aisexec_iface_ver0 evt_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= evt_get_handler_ver0
+struct openais_service_handler_iface_ver0 evt_service_handler_iface = {
+	.openais_get_service_handler_ver0		= evt_get_handler_ver0
 };
 
 struct lcr_iface openais_evt_ver0[1] = {
@@ -233,7 +237,7 @@ extern int lcr_comp_get (struct lcr_comp **component)
 	return (0);
 }
 
-struct service_handler *evt_get_handler_ver0 (void)
+struct openais_service_handler *evt_get_handler_ver0 (void)
 {
 	return (&evt_service_handler);
 }
@@ -1526,7 +1530,6 @@ remove_delivered_channel(struct event_svr_channel_open *eco)
 			}
 		}
 	}
-	return;
 }
 
 /*
@@ -1902,8 +1905,9 @@ deliver_event(struct event_data *evt,
  * word order.
  */
 static void
-convert_event(struct lib_event_data *evt)
+convert_event(void *msg)
 {
+	struct lib_event_data *evt = (struct lib_event_data *)msg;
 	SaEvtEventPatternT *eps;
 	int i;
 
@@ -2064,7 +2068,7 @@ static struct event_svr_channel_subscr *find_subscr(
 /*
  * Handler for saEvtInitialize
  */
-static int evt_initialize(struct conn_info *conn_info)
+static int evt_lib_init(struct conn_info *conn_info)
 {
 	struct libevt_ci *libevt_ci;
 	struct conn_info *resp_conn_info;
@@ -2107,7 +2111,7 @@ static int evt_initialize(struct conn_info *conn_info)
 /*
  * Handler for saEvtChannelOpen
  */
-static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_open_channel(struct conn_info *conn_info, void *message)
 {
 	SaAisErrorT error;
 	struct req_evt_channel_open *req;
@@ -2169,7 +2173,7 @@ static int lib_evt_open_channel(struct conn_info *conn_info, void *message)
 				"Error setting timeout for open channel %s\n",
 				req->ico_channel_name.value);
 	}
-	return 0;
+	return;
 
 
 open_return:
@@ -2177,14 +2181,12 @@ open_return:
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-
-	return 0;
 }
 
 /*
  * Handler for saEvtChannelOpen
  */
-static int lib_evt_open_channel_async(struct conn_info *conn_info, 
+static void lib_evt_open_channel_async(struct conn_info *conn_info, 
 		void *message)
 {
 	SaAisErrorT error;
@@ -2237,8 +2239,6 @@ open_return:
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-
-	return 0;
 }
 
 
@@ -2296,7 +2296,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 /*
  * Handler for saEvtChannelClose
  */
-static int lib_evt_close_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_close_channel(struct conn_info *conn_info, void *message)
 {
 	struct req_evt_channel_close *req;
 	struct res_evt_channel_close res;
@@ -2330,14 +2330,12 @@ chan_close_done:
 	res.icc_head.id = MESSAGE_RES_EVT_CLOSE_CHANNEL;
 	res.icc_head.error = ((ret == 0) ? SA_AIS_OK : SA_AIS_ERR_BAD_HANDLE);
 	libais_send_response (conn_info, &res, sizeof(res));
-
-	return 0;
 }
 
 /*
  * Handler for saEvtChannelUnlink
  */
-static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 {
 	struct req_evt_channel_unlink *req;
 	struct res_evt_channel_unlink res;
@@ -2391,7 +2389,7 @@ static int lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	if (totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED) == 0) {
-		return 0;
+		return;
 	}
 
 evt_unlink_err:
@@ -2403,7 +2401,6 @@ evt_unlink_err:
 	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
 	res.iuc_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-	return 0;
 }
 
 /*
@@ -2427,7 +2424,7 @@ static char *filter_types[] = {
 /*
  * saEvtEventSubscribe Handler
  */
-static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
+static void lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 {
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
@@ -2530,7 +2527,7 @@ static int lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 		}
 	}
 	hdb_handle_put(&esip->esi_hdb, req->ics_channel_handle);
-	return 0;
+	return;
 
 subr_put:
 	hdb_handle_put(&esip->esi_hdb, req->ics_channel_handle);
@@ -2539,14 +2536,12 @@ subr_done:
 	res.ics_head.id = MESSAGE_RES_EVT_SUBSCRIBE;
 	res.ics_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-	
-	return 0;
 }
 
 /*
  * saEvtEventUnsubscribe Handler
  */
-static int lib_evt_event_unsubscribe(struct conn_info *conn_info, 
+static void lib_evt_event_unsubscribe(struct conn_info *conn_info, 
 		void *message)
 {
 	struct req_evt_event_unsubscribe *req;
@@ -2607,14 +2602,12 @@ unsubr_done:
 	res.icu_head.id = MESSAGE_RES_EVT_UNSUBSCRIBE;
 	res.icu_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-	
-	return 0;
 }
 
 /*
  * saEvtEventPublish Handler
  */
-static int lib_evt_event_publish(struct conn_info *conn_info, void *message)
+static void lib_evt_event_publish(struct conn_info *conn_info, void *message)
 {
 	struct lib_event_data *req;
 	struct res_evt_event_publish res;
@@ -2679,14 +2672,12 @@ pub_done:
 	res.iep_head.error = error;
 	res.iep_event_id = event_id;
 	libais_send_response (conn_info, &res, sizeof(res));
-
-	return 0;
 }
 
 /*
  * saEvtEventRetentionTimeClear handler
  */
-static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
+static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
 				void *message)
 {
 	struct req_evt_event_clear_retentiontime *req;
@@ -2731,7 +2722,8 @@ static int lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	rtn_iovec.iov_len = cpkt.chc_head.size;
 	ret = totempg_groups_mcast_joined (openais_group_handle, &rtn_iovec, 1, TOTEMPG_AGREED);
 	if (ret == 0) {
-		return 0;
+		// TODO this should really assert
+		return;
 	}
 	error = SA_AIS_ERR_LIBRARY;
 
@@ -2744,14 +2736,13 @@ evt_ret_clr_err:
 	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
 	res.iec_head.error = error;
 	libais_send_response (conn_info, &res, sizeof(res));
-	return 0;
 
 }
 
 /*
  * Send requested event data to the application
  */
-static int lib_evt_event_data_get(struct conn_info *conn_info, void *message)
+static void lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 {
 	struct lib_event_data res;
 	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
@@ -2801,7 +2792,6 @@ data_get_done:
 	if (esip->esi_nevents) {
 		__notify_event(conn_info);
 	}
-	return 0;
 }
 
 /*
@@ -2827,7 +2817,7 @@ static void remove_chan_open_info(SaClmNodeIdT node_id)
  * node list.  The node list is used to keep track of event IDs
  * received for each node for the detection of duplicate events.
  */
-static int evt_conf_change(
+static void evt_conf_change(
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
 		struct totem_ip_address *left_list, int left_list_entries,
@@ -2940,14 +2930,12 @@ static int evt_conf_change(
 					sizeof(struct totem_ip_address) * member_list_entries);
 		}
 	}
-
-	return 0;
 }
 
 /*
  * saEvtFinalize Handler
  */
-static int evt_finalize(struct conn_info *conn_info)
+static int evt_lib_exit(struct conn_info *conn_info)
 {
 
 	struct libevt_ci *esip = &conn_info->conn_info_partner->ais_ci.u.libevt_ci;
@@ -3101,8 +3089,7 @@ try_deliver_event(struct event_data *evt,
 /*
  * Receive the network event message and distribute it to local subscribers
  */
-static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required)
+static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr)
 {
 	/*
 	 * - retain events that have a retention time
@@ -3131,14 +3118,10 @@ static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr,
 			log_printf(LOG_LEVEL_DEBUG, "No cluster node data for %s\n",
 							totemip_print(source_addr));
 			errno = ENXIO;
-			return -1;
+			return;
 	}
 	log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
 					cn->nodeId, cn->nodeName.value);
-
-	if (endian_conversion_required) {
-		convert_event(evtpkt);
-	}
 
 	evtpkt->led_publisher_node_id = cn->nodeId;
 	totemip_copy(&evtpkt->led_addr, source_addr);
@@ -3171,19 +3154,18 @@ static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr,
 	if (!eci) {
 		log_printf(LOG_LEVEL_DEBUG, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
-		return 0;
+		return;
 	}
 
 	if (check_last_event(evtpkt, source_addr)) {
-		return 0;
+		return;
 	}
 
 	evt = make_local_event(evtpkt, eci);
 	if (!evt) {
 		log_printf(LOG_LEVEL_WARNING, 
 						"1Memory allocation error, can't deliver event\n");
-		errno = ENOMEM;
-		return -1;
+		return;
 	}
 		
 	if (evt->ed_event.led_retention_time) {
@@ -3192,9 +3174,6 @@ static int evt_remote_evt(void *msg, struct totem_ip_address *source_addr,
 
 	try_deliver_event(evt, eci);
 	free_event_data(evt);
-
-
-	return 0;
 }
 
 /*
@@ -3213,8 +3192,7 @@ inline SaTimeT calc_retention_time(SaTimeT retention,
 /*
  * Receive a recovery network event message and save it in the retained list
  */
-static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required)
+static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr)
 {
 	/*
 	 * - calculate remaining retention time
@@ -3239,11 +3217,7 @@ static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_ad
 	if (recovery_phase == evt_recovery_complete) {
 		log_printf(RECOVERY_EVENT_DEBUG, 
 				"Received recovery data, not in recovery mode\n");
-		return 0;
-	}
-
-	if (endian_conversion_required) {
-		convert_event(evtpkt);
+		return;
 	}
 
 	log_printf(RECOVERY_EVENT_DEBUG, 
@@ -3284,8 +3258,7 @@ static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_ad
 				 */
 				log_printf(LOG_LEVEL_NOTICE, "No node for %s\n",
 								totemip_print(&evtpkt->led_addr));
-				errno = ENXIO;
-				return -1;
+				return;
 		}
 		log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
 						md->mn_node_info.nodeId, 
@@ -3303,7 +3276,7 @@ static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_ad
 		if (!eci) {
 			log_printf(RECOVERY_EVENT_DEBUG, "Channel %s doesn't exist\n",
 				evtpkt->led_chan_name.value);
-			return 0;
+			return;
 		}
 
 		evt = make_local_event(evtpkt, eci);
@@ -3311,7 +3284,7 @@ static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_ad
 			log_printf(LOG_LEVEL_WARNING, 
 				"2Memory allocation error, can't deliver event\n");
 			errno = ENOMEM;
-			return -1;
+			return;
 		}
 			
 		retain_event(evt);
@@ -3320,8 +3293,6 @@ static int evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_ad
 				num_delivered);
 		free_event_data(evt);
 	}
-
-	return 0;
 }
 
 
@@ -3497,8 +3468,10 @@ static void evt_ret_time_clr_finish(struct retention_time_clear_pending *rtc,
  * our architectures word order.
  */
 static void
-convert_chan_packet(struct req_evt_chan_command *cpkt)
+convert_chan_packet(void *msg)
 {
+	struct req_evt_chan_command *cpkt = (struct req_evt_chan_command *)msg;
+
 	/*
 	 * converted in the main deliver_fn:
 	 * led_head.id, led_head.size.
@@ -3563,18 +3536,13 @@ convert_chan_packet(struct req_evt_chan_command *cpkt)
  * Used to communicate channel opens/closes, clear retention time,
  * config change updates...
  */
-static int evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr, 
-		int endian_conversion_required)
+static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 {
 	struct req_evt_chan_command *cpkt = msg;
 	unsigned int local_node = {SA_CLM_LOCAL_NODE_ID};
 	SaClmClusterNodeT *cn, *my_node;
 	struct member_node_data *mn;
 	struct event_svr_channel_instance *eci;
-
-	if (endian_conversion_required) {
-		convert_chan_packet(cpkt);
-	}
 
 	log_printf(REMOTE_OP_DEBUG, "Remote channel operation request\n");
 	my_node = main_clm_get_by_nodeid(local_node);
@@ -3587,7 +3555,7 @@ static int evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr,
 			log_printf(LOG_LEVEL_WARNING, 
 				"Evt remote channel op: Node data for addr %s is NULL\n",
 					totemip_print(source_addr));
-			return 0;
+			return;
 		} else {
 			evt_add_node(source_addr, cn);
 			mn = evt_find_node(source_addr);
@@ -3905,8 +3873,6 @@ static int evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr,
 						cpkt->chc_op);
 		break;
 	}
-
-	return 0;
 }
 
 /*

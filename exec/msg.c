@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2005-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -19,7 +19,8 @@
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
  * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
@@ -109,176 +110,152 @@ DECLARE_LIST_INIT(queue_group_list_head);
 
 static int msg_exec_init_fn (struct openais_config *);
 
-static int msg_exit_fn (struct conn_info *conn_info);
+static int msg_lib_exit_fn (struct conn_info *conn_info);
 
-static int msg_init_two_fn (struct conn_info *conn_info);
+static int msg_lib_init_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_msg_queueopen (
+static void message_handler_req_exec_msg_queueopen (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queueclose (
+static void message_handler_req_exec_msg_queueclose (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuestatusget (
+static void message_handler_req_exec_msg_queuestatusget (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queueunlink (
+static void message_handler_req_exec_msg_queueunlink (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegroupcreate (
+static void message_handler_req_exec_msg_queuegroupcreate (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegroupinsert (
+static void message_handler_req_exec_msg_queuegroupinsert (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegroupremove (
+static void message_handler_req_exec_msg_queuegroupremove (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegroupdelete (
+static void message_handler_req_exec_msg_queuegroupdelete (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegrouptrack (
+static void message_handler_req_exec_msg_queuegrouptrack (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_queuegrouptrackstop (
+static void message_handler_req_exec_msg_queuegrouptrackstop (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_messagesend (
+static void message_handler_req_exec_msg_messagesend (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_messageget (
+static void message_handler_req_exec_msg_messageget (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_messagecancel (
+static void message_handler_req_exec_msg_messagecancel (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_messagesendreceive (
+static void message_handler_req_exec_msg_messagesendreceive (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_msg_messagereply (
+static void message_handler_req_exec_msg_messagereply (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_lib_msg_queueopen (
+static void message_handler_req_lib_msg_queueopen (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queueopenasync (
+static void message_handler_req_lib_msg_queueopenasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queueclose (
+static void message_handler_req_lib_msg_queueclose (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuestatusget (
+static void message_handler_req_lib_msg_queuestatusget (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queueunlink (
+static void message_handler_req_lib_msg_queueunlink (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegroupcreate (
+static void message_handler_req_lib_msg_queuegroupcreate (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegroupinsert (
+static void message_handler_req_lib_msg_queuegroupinsert (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegroupremove (
+static void message_handler_req_lib_msg_queuegroupremove (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegroupdelete (
+static void message_handler_req_lib_msg_queuegroupdelete (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegrouptrack (
+static void message_handler_req_lib_msg_queuegrouptrack (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_queuegrouptrackstop (
+static void message_handler_req_lib_msg_queuegrouptrackstop (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagesend (
+static void message_handler_req_lib_msg_messagesend (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagesendasync (
+static void message_handler_req_lib_msg_messagesendasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messageget (
+static void message_handler_req_lib_msg_messageget (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagecancel (
+static void message_handler_req_lib_msg_messagecancel (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagesendreceive (
+static void message_handler_req_lib_msg_messagesendreceive (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagereply (
+static void message_handler_req_lib_msg_messagereply (
 	struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_msg_messagereplyasync (
+static void message_handler_req_lib_msg_messagereplyasync (
 	struct conn_info *conn_info,
 	void *message);
 
-static void msg_recovery_activate (void);
-static void msg_recovery_initialize (void);
-static int  msg_recovery_process (void);
-static void msg_recovery_finalize();
-static void msg_recovery_abort(void);
+#ifdef TODO
+static void msg_sync_init (void);
+#endif
+static void msg_sync_activate (void);
+static int  msg_sync_process (void);
+static void msg_sync_abort(void);
 
 void queue_release (struct message_queue *queue);
 
-/*
-static struct list_head *recovery_msg_next = 0;
-static struct list_head *recovery_msg_section_next = 0;
-static int recovery_section_data_offset = 0;
-static int recovery_section_send_flag = 0;
-static int recovery_abort = 0;
-*/
-
-static struct memb_ring_id saved_ring_id;
-
-static int msg_confchg_fn (
+static void msg_confchg_fn (
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
 		struct totem_ip_address *left_list, int left_list_entries,
@@ -288,161 +265,190 @@ static int msg_confchg_fn (
 /*
  * Executive Handler Definition
  */
-struct libais_handler msg_libais_handlers[] =
+struct openais_lib_handler msg_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queueopen,
+		.lib_handler_fn		= message_handler_req_lib_msg_queueopen,
 		.response_size		= sizeof (struct res_lib_msg_queueopen),
 		.response_id		= MESSAGE_RES_MSG_QUEUEOPEN,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queueopenasync,
+		.lib_handler_fn		= message_handler_req_lib_msg_queueopenasync,
 		.response_size		= sizeof (struct res_lib_msg_queueopenasync),
 		.response_id		= MESSAGE_RES_MSG_QUEUEOPENASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queueclose,
+		.lib_handler_fn		= message_handler_req_lib_msg_queueclose,
 		.response_size		= sizeof (struct res_lib_msg_queueclose),
 		.response_id		= MESSAGE_RES_MSG_QUEUECLOSE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuestatusget,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuestatusget,
 		.response_size		= sizeof (struct res_lib_msg_queuestatusget),
 		.response_id		= MESSAGE_RES_MSG_QUEUESTATUSGET,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queueunlink,
+		.lib_handler_fn		= message_handler_req_lib_msg_queueunlink,
 		.response_size		= sizeof (struct res_lib_msg_queueunlink),
 		.response_id		= MESSAGE_RES_MSG_QUEUEUNLINK,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegroupcreate,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupcreate,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupcreate),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPCREATE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 6 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegroupinsert,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupinsert,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupinsert),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPINSERT,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 7 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegroupremove,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupremove,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupremove),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPREMOVE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 8 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegroupdelete,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupdelete,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupdelete),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPDELETE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 9 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegrouptrack,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegrouptrack,
 		.response_size		= sizeof (struct res_lib_msg_queuegrouptrack),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPTRACK,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 10 */
-		.libais_handler_fn	= message_handler_req_lib_msg_queuegrouptrackstop,
+		.lib_handler_fn		= message_handler_req_lib_msg_queuegrouptrackstop,
 		.response_size		= sizeof (struct res_lib_msg_queuegrouptrackstop),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPTRACKSTOP,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 11 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagesend,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagesend,
 		.response_size		= sizeof (struct res_lib_msg_messagesend),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESEND,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 12 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagesendasync,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagesendasync,
 		.response_size		= sizeof (struct res_lib_msg_messagesendasync),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESENDASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 13 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messageget,
+		.lib_handler_fn		= message_handler_req_lib_msg_messageget,
 		.response_size		= sizeof (struct res_lib_msg_messageget),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEGET,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 14 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagecancel,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagecancel,
 		.response_size		= sizeof (struct res_lib_msg_messagecancel),
 		.response_id		= MESSAGE_RES_MSG_MESSAGECANCEL,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 15 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagesendreceive,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagesendreceive,
 		.response_size		= sizeof (struct res_lib_msg_messagesendreceive),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESENDRECEIVE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 16 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagereply,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagereply,
 		.response_size		= sizeof (struct res_lib_msg_messagereply),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEREPLY,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 17 */
-		.libais_handler_fn	= message_handler_req_lib_msg_messagereplyasync,
+		.lib_handler_fn		= message_handler_req_lib_msg_messagereplyasync,
 		.response_size		= sizeof (struct res_lib_msg_messagereplyasync),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEREPLYASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 };
 
 
-static int (*msg_aisexec_handler_fns[]) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_required) = {
-	message_handler_req_exec_msg_queueopen,
-	message_handler_req_exec_msg_queueclose,
-	message_handler_req_exec_msg_queuestatusget,
-	message_handler_req_exec_msg_queueunlink,
-	message_handler_req_exec_msg_queuegroupcreate,
-	message_handler_req_exec_msg_queuegroupinsert,
-	message_handler_req_exec_msg_queuegroupremove,
-	message_handler_req_exec_msg_queuegroupdelete,
-	message_handler_req_exec_msg_queuegrouptrack,
-	message_handler_req_exec_msg_queuegrouptrackstop,
-	message_handler_req_exec_msg_messagesend,
-	message_handler_req_exec_msg_messageget,
-	message_handler_req_exec_msg_messagecancel,
-	message_handler_req_exec_msg_messagesendreceive,
-	message_handler_req_exec_msg_messagereply
+static struct openais_exec_handler msg_exec_handlers[] = {
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queueopen,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queueclose,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuestatusget,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queueunlink,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegroupcreate,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegroupinsert,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegroupremove,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegroupdelete,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegrouptrack,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_queuegrouptrackstop,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_messagesend,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_messageget,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_messagecancel,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_messagesendreceive,
+	},
+	{
+		.exec_handler_fn		= message_handler_req_exec_msg_messagereply
+	}
 };
 
-struct service_handler msg_service_handler = {
-	.name				= "openais message service",
+struct openais_service_handler msg_service_handler = {
+	.name				= (unsigned char *)"openais message service B.01.01",
 	.id				= MSG_SERVICE,
-	.libais_handlers		= msg_libais_handlers,
-	.libais_handlers_count		= sizeof (msg_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= msg_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (msg_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn			= msg_confchg_fn,
-	.libais_init_two_fn		= msg_init_two_fn,
-	.libais_exit_fn			= msg_exit_fn,
+	.lib_init_fn			= msg_lib_init_fn,
+	.lib_exit_fn			= msg_lib_exit_fn,
+	.lib_handlers			= msg_lib_handlers,
+	.lib_handlers_count		= sizeof (msg_lib_handlers) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= msg_exec_init_fn,
-	.exec_dump_fn			= 0,
-	.sync_init			= msg_recovery_initialize,
-	.sync_process			= msg_recovery_process,
-	.sync_activate			= msg_recovery_activate,
-	.sync_abort			= msg_recovery_abort,
+	.exec_handlers			= msg_exec_handlers,
+	.exec_handlers_count		= sizeof (msg_exec_handlers) / sizeof (struct openais_exec_handler),
+	.confchg_fn			= msg_confchg_fn,
+	.exec_dump_fn			= NULL,
+	.sync_init			= NULL, // TODO msg_sync_init,
+	.sync_process			= msg_sync_process,
+	.sync_activate			= msg_sync_activate,
+	.sync_abort			= msg_sync_abort
 };
 
 #ifdef BUILD_DYNAMIC
-struct service_handler *msg_get_handler_ver0 (void);
+struct openais_service_handler *msg_get_handler_ver0 (void);
 
-struct aisexec_iface_ver0 msg_service_handler_iface = {
-	.test				= NULL,
-	.get_handler_ver0		= msg_get_handler_ver0
+struct openais_service_handler_iface_ver0 msg_service_handler_iface = {
+	.openais_get_service_handler_ver0	= msg_get_handler_ver0
 };
 
 struct lcr_iface openais_msg_ver0[1] = {
@@ -470,7 +476,7 @@ extern int lcr_comp_get (struct lcr_comp **component)
 	return (0);
 }
 
-struct service_handler *msg_get_handler_ver0 (void)
+struct openais_service_handler *msg_get_handler_ver0 (void)
 {
 	return (&msg_service_handler);
 }
@@ -569,40 +575,35 @@ struct req_exec_msg_messagereply {
 	int async_call;
 };
 
-static void msg_recovery_initialize (void) 
+#ifdef TODO
+static void msg_sync_init (void) 
 {
 	return;
 }
+#endif
 
-static int msg_recovery_process (void) 
+static int msg_sync_process (void) 
 {
 	return (0);
 }
 
-static void msg_recovery_finalize () 
-{
-	return;
-	
-}
-
-static void msg_recovery_activate (void) 
+static void msg_sync_activate (void) 
 {		
  	return;
 }
 
-static void msg_recovery_abort (void) 
+static void msg_sync_abort (void) 
 {
 	return;
 }
 
-static int msg_confchg_fn (
+static void msg_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
 	struct totem_ip_address *left_list, int left_list_entries,
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
-	return (0);
 }
 
 static struct message_queue *queue_find (SaNameT *name)
@@ -672,7 +673,7 @@ static int msg_exec_init_fn (struct openais_config *openais_config)
 	return (0);
 }
 
-static int msg_exit_fn (struct conn_info *conn_info)
+static int msg_lib_exit_fn (struct conn_info *conn_info)
 {
 #ifdef COMPILE_OUT
 	struct queue_cleanup *queue_cleanup;
@@ -710,33 +711,31 @@ printf ("queue cleanup %x\n", queue_cleanup);
 	return (0);
 }
 
-static int msg_init_two_fn (struct conn_info *conn_info)
+static int msg_lib_init_fn (struct conn_info *conn_info)
 {
 	list_init (&conn_info->conn_info_partner->ais_ci.u.libmsg_ci.queue_list);
 	list_init (&conn_info->conn_info_partner->ais_ci.u.libmsg_ci.queue_cleanup_list);
 
 	return (0);
-
 }
 
-static int message_handler_req_exec_msg_queueopen (
+static void message_handler_req_exec_msg_queueopen (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queueopen *req_exec_msg_queueopen = (struct req_exec_msg_queueopen *)message;
 	struct res_lib_msg_queueopen res_lib_msg_queueopen;
 	struct res_lib_msg_queueopenasync res_lib_msg_queueopenasync;
 	struct message_queue *queue;
 //	struct queue_cleanup *queue_cleanup;
-	SaErrorT error = SA_AIS_OK;
+	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saMsgQueueOpen %s\n",
 		getSaNameT (&req_exec_msg_queueopen->queue_name));
 	
 	queue = queue_find (&req_exec_msg_queueopen->queue_name);
 
-	printf ("queue %x\n", queue);
+	printf ("queue %p\n", queue);
 	/*
 	 * If queue doesn't exist, create one
 	 */
@@ -827,14 +826,11 @@ error_exit:
 				sizeof (struct res_lib_msg_queueopen));
 		}
 	}
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queueclose (
+static void message_handler_req_exec_msg_queueclose (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queueclose *req_exec_msg_queueclose = (struct req_exec_msg_queueclose *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queueclose;
@@ -866,37 +862,29 @@ error_exit:
 		libais_send_response (req_exec_msg_queueclose->source.conn_info,
 			&res_lib_msg_queueclose, sizeof (struct res_lib_msg_queueclose));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuestatusget (
+static void message_handler_req_exec_msg_queuestatusget (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuestatusget *req_exec_msg_queuestatusget =
 		(struct req_exec_msg_queuestatusget *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuestatusget;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queueunlink (
+static void message_handler_req_exec_msg_queueunlink (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queueunlink *req_exec_msg_queueunlink =
 		(struct req_exec_msg_queueunlink *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queueunlink;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegroupcreate (
+static void message_handler_req_exec_msg_queuegroupcreate (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegroupcreate *req_exec_msg_queuegroupcreate =
 		(struct req_exec_msg_queuegroupcreate *)message;
@@ -934,13 +922,11 @@ error_exit:
 			&res_lib_msg_queuegroupcreate,
 			sizeof (struct res_lib_msg_queuegroupcreate));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegroupinsert (
+static void message_handler_req_exec_msg_queuegroupinsert (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegroupinsert *req_exec_msg_queuegroupinsert =
 		(struct req_exec_msg_queuegroupinsert *)message;
@@ -983,13 +969,11 @@ error_exit:
 			&res_lib_msg_queuegroupinsert,
 			sizeof (struct res_lib_msg_queuegroupinsert));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegroupremove (
+static void message_handler_req_exec_msg_queuegroupremove (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegroupremove *req_exec_msg_queuegroupremove =
 		(struct req_exec_msg_queuegroupremove *)message;
@@ -1029,13 +1013,11 @@ error_exit:
 			&res_lib_msg_queuegroupremove,
 			sizeof (struct res_lib_msg_queuegroupremove));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegroupdelete (
+static void message_handler_req_exec_msg_queuegroupdelete (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegroupdelete *req_exec_msg_queuegroupdelete =
 		(struct req_exec_msg_queuegroupdelete *)message;
@@ -1062,95 +1044,73 @@ static int message_handler_req_exec_msg_queuegroupdelete (
 			&res_lib_msg_queuegroupdelete,
 			sizeof (struct res_lib_msg_queuegroupdelete));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegrouptrack (
+static void message_handler_req_exec_msg_queuegrouptrack (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegrouptrack *req_exec_msg_queuegrouptrack =
 		(struct req_exec_msg_queuegrouptrack *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuegrouptrack;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_queuegrouptrackstop (
+static void message_handler_req_exec_msg_queuegrouptrackstop (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_queuegrouptrackstop *req_exec_msg_queuegrouptrackstop =
 		(struct req_exec_msg_queuegrouptrackstop *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuegrouptrackstop;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_messagesend (
+static void message_handler_req_exec_msg_messagesend (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_messagesend *req_exec_msg_messagesend =
 		(struct req_exec_msg_messagesend *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagesend;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_messageget (
+static void message_handler_req_exec_msg_messageget (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_messageget *req_exec_msg_messageget =
 		(struct req_exec_msg_messageget *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messageget;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_messagecancel (
+static void message_handler_req_exec_msg_messagecancel (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_messagecancel *req_exec_msg_messagecancel =
 		(struct req_exec_msg_messagecancel *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagecancel;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_messagesendreceive (
+static void message_handler_req_exec_msg_messagesendreceive (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_messagesendreceive *req_exec_msg_messagesendreceive =
 		(struct req_exec_msg_messagesendreceive *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagesendreceive;
-
-	return (0);
 }
 
-static int message_handler_req_exec_msg_messagereply (
+static void message_handler_req_exec_msg_messagereply (
 	void *message,
-	struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_msg_messagereply *req_exec_msg_messagereply =
 		(struct req_exec_msg_messagereply *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagereply;
-
-	return (0);
 }
 
 
-static int message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)message;
 	struct req_exec_msg_queueopen req_exec_msg_queueopen;
@@ -1183,11 +1143,9 @@ static int message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, v
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)message;
 	struct req_exec_msg_queueopen req_exec_msg_queueopen;
@@ -1221,11 +1179,9 @@ static int message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_in
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queueclose (struct conn_info *conn_info, void *message) {
+static void message_handler_req_lib_msg_queueclose (struct conn_info *conn_info, void *message) {
 	struct req_lib_msg_queueclose *req_lib_msg_queueclose = (struct req_lib_msg_queueclose *)message;
 	struct req_exec_msg_queueclose req_exec_msg_queueclose;
 	struct iovec iovec;
@@ -1248,10 +1204,9 @@ static int message_handler_req_lib_msg_queueclose (struct conn_info *conn_info, 
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuestatusget (
+static void message_handler_req_lib_msg_queuestatusget (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1278,11 +1233,9 @@ static int message_handler_req_lib_msg_queuestatusget (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queueunlink (
+static void message_handler_req_lib_msg_queueunlink (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1309,11 +1262,9 @@ static int message_handler_req_lib_msg_queueunlink (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegroupcreate (
+static void message_handler_req_lib_msg_queuegroupcreate (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1340,11 +1291,9 @@ static int message_handler_req_lib_msg_queuegroupcreate (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegroupinsert (
+static void message_handler_req_lib_msg_queuegroupinsert (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1373,11 +1322,9 @@ static int message_handler_req_lib_msg_queuegroupinsert (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegroupremove (
+static void message_handler_req_lib_msg_queuegroupremove (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1406,11 +1353,9 @@ static int message_handler_req_lib_msg_queuegroupremove (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegroupdelete (
+static void message_handler_req_lib_msg_queuegroupdelete (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1437,11 +1382,9 @@ static int message_handler_req_lib_msg_queuegroupdelete (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegrouptrack (
+static void message_handler_req_lib_msg_queuegrouptrack (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1468,11 +1411,9 @@ static int message_handler_req_lib_msg_queuegrouptrack (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_queuegrouptrackstop (
+static void message_handler_req_lib_msg_queuegrouptrackstop (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1499,11 +1440,9 @@ static int message_handler_req_lib_msg_queuegrouptrackstop (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagesend (
+static void message_handler_req_lib_msg_messagesend (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1531,11 +1470,9 @@ static int message_handler_req_lib_msg_messagesend (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagesendasync (
+static void message_handler_req_lib_msg_messagesendasync (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1563,11 +1500,9 @@ static int message_handler_req_lib_msg_messagesendasync (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messageget (
+static void message_handler_req_lib_msg_messageget (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1594,11 +1529,9 @@ static int message_handler_req_lib_msg_messageget (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagecancel (
+static void message_handler_req_lib_msg_messagecancel (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1625,11 +1558,9 @@ static int message_handler_req_lib_msg_messagecancel (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagesendreceive (
+static void message_handler_req_lib_msg_messagesendreceive (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1656,11 +1587,9 @@ static int message_handler_req_lib_msg_messagesendreceive (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagereply (
+static void message_handler_req_lib_msg_messagereply (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1688,11 +1617,9 @@ static int message_handler_req_lib_msg_messagereply (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_msg_messagereplyasync (
+static void message_handler_req_lib_msg_messagereplyasync (
 	struct conn_info *conn_info,
 	void *message)
 {
@@ -1720,6 +1647,4 @@ static int message_handler_req_lib_msg_messagereplyasync (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
 		TOTEMPG_AGREED) == 0);
-
-	return (0);
 }

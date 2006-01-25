@@ -104,69 +104,69 @@ typedef enum {
 
 static int ckpt_exec_init_fn (struct openais_config *);
 
-static int ckpt_exit_fn (struct conn_info *conn_info);
+static int ckpt_lib_exit_fn (struct conn_info *conn_info);
 
-static int ckpt_init_two_fn (struct conn_info *conn_info);
+static int ckpt_lib_init_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_checkpointopen (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_synchronize_state (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_synchronize_state (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_synchronize_section (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_synchronize_section (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_checkpointclose (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_checkpointclose (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_checkpointunlink (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectioncreate (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectiondelete (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectionwrite (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_exec_ckpt_sectionread (void *message, struct totem_ip_address *source_addr, int endian_conversion_required);
+static void message_handler_req_exec_ckpt_sectionread (void *message, struct totem_ip_address *source_addr);
 
-static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointretentiondurationset (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message);
-static int message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_info *conn_info, void *message);
-static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message);
 
 
 static void ckpt_recovery_activate (void);
@@ -204,7 +204,7 @@ static int recovery_abort = 0;
 
 static struct memb_ring_id saved_ring_id;
 
-static int ckpt_confchg_fn(
+static void ckpt_confchg_fn(
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
 		struct totem_ip_address *left_list, int left_list_entries,
@@ -214,179 +214,207 @@ static int ckpt_confchg_fn(
 /*
  * Executive Handler Definition
  */
-struct libais_handler ckpt_libais_handlers[] =
+static struct openais_lib_handler ckpt_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopen,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointopen,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointopen),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPEN,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointopenasync,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointopenasync,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointopenasync),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointclose,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointclose,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointclose),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTCLOSE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointunlink,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointunlink,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointunlink),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointretentiondurationset,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointretentiondurationset,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointretentiondurationset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_activereplicaset,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_activereplicaset,
 		.response_size		= sizeof (struct res_lib_ckpt_activereplicaset),
 		.response_id		= MESSAGE_RES_CKPT_ACTIVEREPLICASET,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointstatusget,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointstatusget,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointstatusget),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioncreate,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioncreate,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioncreate),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 8 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectiondelete,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectiondelete,
 		.response_size		= sizeof (struct res_lib_ckpt_sectiondelete),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 9 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionexpirationtimeset,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionexpirationtimeset,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 10 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionwrite,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 11 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionoverwrite,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionoverwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionoverwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 12 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectionread,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionread,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionread),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 13 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronize,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointsynchronize,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronize),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 14 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_checkpointsynchronizeasync,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointsynchronizeasync,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronizeasync), /* TODO RESPONSE */
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 15 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniterationinitialize,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationinitialize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationinitialize),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 16 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniterationfinalize,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationfinalize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationfinalize),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 17 */
-		.libais_handler_fn	= message_handler_req_lib_ckpt_sectioniteratornext,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniteratornext,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniteratornext),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
 
-static int (*ckpt_aisexec_handler_fns[]) (void *msg, struct totem_ip_address *source_addr, int endian_conversion_required) = {
-	message_handler_req_exec_ckpt_checkpointopen,
-	message_handler_req_exec_ckpt_checkpointclose,
-	message_handler_req_exec_ckpt_checkpointunlink,
-	message_handler_req_exec_ckpt_checkpointretentiondurationset,
-	message_handler_req_exec_ckpt_checkpointretentiondurationexpire,
-	message_handler_req_exec_ckpt_sectioncreate,
-	message_handler_req_exec_ckpt_sectiondelete,
-	message_handler_req_exec_ckpt_sectionexpirationtimeset,
-	message_handler_req_exec_ckpt_sectionwrite,
-	message_handler_req_exec_ckpt_sectionoverwrite,
-	message_handler_req_exec_ckpt_sectionread,
-	message_handler_req_exec_ckpt_synchronize_state,
-	message_handler_req_exec_ckpt_synchronize_section
+static struct openais_exec_handler ckpt_exec_handlers[] = {
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointopen,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointclose,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointunlink,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointretentiondurationset,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointretentiondurationexpire,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectioncreate,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectiondelete,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionexpirationtimeset,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionwrite,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionoverwrite,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionread,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_synchronize_state,
+	},
+	{
+		.exec_handler_fn	= message_handler_req_exec_ckpt_synchronize_section
+	}
 };
 
-struct service_handler ckpt_service_handler = {
-	.name				= "openais checkpoint service B.01.01",
+struct openais_service_handler ckpt_service_handler = {
+	.name				= (unsigned char *)"openais checkpoint service B.01.01",
 	.id				= CKPT_SERVICE,
-	.libais_handlers			= ckpt_libais_handlers,
-	.libais_handlers_count		= sizeof (ckpt_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= ckpt_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (ckpt_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= ckpt_confchg_fn,
-	.libais_init_two_fn			= ckpt_init_two_fn,
-	.libais_exit_fn				= ckpt_exit_fn,
-	.exec_init_fn				= ckpt_exec_init_fn,
-	.exec_dump_fn				= 0,
-	.sync_init					= ckpt_recovery_initialize,
-	.sync_process				= ckpt_recovery_process,
-	.sync_activate				= ckpt_recovery_activate,
-	.sync_abort					= ckpt_recovery_abort,
+	.lib_init_fn			= ckpt_lib_init_fn,
+	.lib_exit_fn			= ckpt_lib_exit_fn,
+	.lib_handlers			= ckpt_lib_handlers,
+	.lib_handlers_count		= sizeof (ckpt_lib_handlers) / sizeof (struct openais_lib_handler),
+	.exec_init_fn			= ckpt_exec_init_fn,
+	.exec_dump_fn			= 0,
+	.exec_handlers			= ckpt_exec_handlers,
+	.exec_handlers_count		= sizeof (ckpt_exec_handlers) / sizeof (struct openais_exec_handler),
+	.confchg_fn			= ckpt_confchg_fn,
+	.sync_init			= ckpt_recovery_initialize,
+	.sync_process			= ckpt_recovery_process,
+	.sync_activate			= ckpt_recovery_activate,
+	.sync_abort			= ckpt_recovery_abort,
 };
 
+/*
+ * Dynamic loader definition
+ */
 #ifdef BUILD_DYNAMIC
 
-struct service_handler *ckpt_get_handler_ver0 (void);
+struct openais_service_handler *ckpt_get_handler_ver0 (void);
 
-struct aisexec_iface_ver0 ckpt_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= ckpt_get_handler_ver0
+struct openais_service_handler_iface_ver0 ckpt_service_handler_iface = {
+	.openais_get_service_handler_ver0		= ckpt_get_handler_ver0
 };
 
 struct lcr_iface openais_ckpt_ver0[1] = {
 	{
-		.name					= "openais_ckpt",
-		.version				= 0,
+		.name				= "openais_ckpt",
+		.version			= 0,
 		.versions_replace		= 0,
-		.versions_replace_count = 0,
+		.versions_replace_count		= 0,
 		.dependencies			= 0,
 		.dependency_count		= 0,
 		.constructor			= NULL,
-		.destructor				= NULL,
-		.interfaces				= (void **)&ckpt_service_handler_iface,
+		.destructor			= NULL,
+		.interfaces			= (void **)&ckpt_service_handler_iface,
 	}
 };
 
 struct lcr_comp ckpt_comp_ver0 = {
 	.iface_count			= 1,
-	.ifaces					= openais_ckpt_ver0
+	.ifaces				= openais_ckpt_ver0
 };
 
 extern int lcr_comp_get (struct lcr_comp **component)
@@ -395,7 +423,7 @@ extern int lcr_comp_get (struct lcr_comp **component)
 	return (0);
 }
 
-struct service_handler *ckpt_get_handler_ver0 (void)
+struct openais_service_handler *ckpt_get_handler_ver0 (void)
 {
 	return (&ckpt_service_handler);
 }
@@ -503,7 +531,7 @@ struct req_exec_ckpt_synchronize_section {
  * Implementation
  */
 static int processor_index_set(struct totem_ip_address *proc_addr, 
-								struct ckpt_refcnt *ckpt_refcount) 
+	struct ckpt_refcnt *ckpt_refcount) 
 {
 	int i;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
@@ -585,7 +613,7 @@ static int processor_add (struct totem_ip_address *proc_addr, int count, struct 
 }
 
 static int processor_index_find(struct totem_ip_address *proc_addr,
-								struct ckpt_refcnt *ckpt_refcount) 
+	struct ckpt_refcnt *ckpt_refcount) 
 { 
 	int i;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
@@ -933,7 +961,7 @@ recovery_exit_clean:
 	}
 }
 
-static void ckpt_recovery_finalize () 
+static void ckpt_recovery_finalize (void) 
 {
 	struct list_head *checkpoint_list;
 	struct list_head *checkpoint_section_list;
@@ -1059,7 +1087,7 @@ static void ckpt_replace_localhost_ip (struct totem_ip_address *joined_list) {
 
 
 static void ckpt_recovery_process_members_exit(struct totem_ip_address *left_list, 
-						int left_list_entries)
+	int left_list_entries)
 {
 	struct list_head *checkpoint_list;
 	struct saCkptCheckpoint *checkpoint;
@@ -1166,18 +1194,14 @@ void clean_checkpoint_list(struct list_head *head)
         }
 }
 
-static int ckpt_confchg_fn (
+static void ckpt_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
 	struct totem_ip_address *left_list, int left_list_entries,
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
-
 	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
-#ifdef TODO	
-		totempg_recovery_plug_unplug (ckpt_checkpoint_recovery_plug_handle);	
-#endif
 		if (recovery_state == SYNCHRONY_STATE_ENDED) {
 			memcpy (&saved_ring_id, ring_id, sizeof(struct memb_ring_id));
 		}
@@ -1191,8 +1215,6 @@ static int ckpt_confchg_fn (
 		recovery_state = SYNCHRONY_STATE_STARTED;
 		recovery_abort = 0;
 	}
-	
-	return (0);
 }
 
 static struct saCkptCheckpoint *ckpt_checkpoint_find_global (SaNameT *name)
@@ -1200,12 +1222,12 @@ static struct saCkptCheckpoint *ckpt_checkpoint_find_global (SaNameT *name)
 	struct list_head *checkpoint_list;
 	struct saCkptCheckpoint *checkpoint;
 
-   for (checkpoint_list = checkpoint_list_head.next;
-        checkpoint_list != &checkpoint_list_head;
-        checkpoint_list = checkpoint_list->next) {
+	for (checkpoint_list = checkpoint_list_head.next;
+		checkpoint_list != &checkpoint_list_head;
+		checkpoint_list = checkpoint_list->next) {
 
-        checkpoint = list_entry (checkpoint_list,
-            struct saCkptCheckpoint, list);
+		checkpoint = list_entry (checkpoint_list,
+			struct saCkptCheckpoint, list);
 
 		if (name_match (name, &checkpoint->name)) {
 			return (checkpoint);
@@ -1221,12 +1243,11 @@ static void ckpt_checkpoint_remove_cleanup (
 	struct list_head *list;
 	struct checkpoint_cleanup *checkpoint_cleanup;
 
-    for (list = conn_info->ais_ci.u.libckpt_ci.checkpoint_list.next;
+	for (list = conn_info->ais_ci.u.libckpt_ci.checkpoint_list.next;
 		list != &conn_info->ais_ci.u.libckpt_ci.checkpoint_list;
-        list = list->next) {
+		list = list->next) {
 
-        checkpoint_cleanup = list_entry (list,
-            struct checkpoint_cleanup, list);
+		checkpoint_cleanup = list_entry (list, struct checkpoint_cleanup, list);
 	
 		if (name_match (&checkpoint_cleanup->checkpoint.name, &checkpoint->name)
 				|| (checkpoint_cleanup->checkpoint.name.length == 0)) {											
@@ -1365,19 +1386,10 @@ static int ckpt_exec_init_fn (struct openais_config *openais_config)
 	saved_ring_id.seq = 0;
 	totemip_copy(&saved_ring_id.rep, this_ip);
 	
-#ifdef TODO
-	int res;
-	res = totempg_recovery_plug_create (&ckpt_checkpoint_recovery_plug_handle);
-	if (res != 0) {
-		log_printf(LOG_LEVEL_ERROR,
-		"Could not create recovery plug for clm service.\n");
-		return (-1);
-	}
-#endif 
 	return (0);
 }
 
-static int ckpt_exit_fn (struct conn_info *conn_info)
+static int ckpt_lib_exit_fn (struct conn_info *conn_info)
 {
 	struct checkpoint_cleanup *checkpoint_cleanup;
 	struct list_head *cleanup_list;
@@ -1414,7 +1426,9 @@ static int ckpt_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointopen (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void message_handler_req_exec_ckpt_checkpointopen (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)message;
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)&req_exec_ckpt_checkpointopen->req_lib_ckpt_checkpointopen;
@@ -1614,13 +1628,12 @@ error_exit:
 				free (checkpoint_cleanup);
 		}
 	}
-
-	return (0);
 }
 
-static int recovery_checkpoint_open(SaNameT *checkpointName,
-									SaCkptCheckpointCreationAttributesT *ckptAttributes,
-									struct ckpt_refcnt *ref_cnt) 
+static int recovery_checkpoint_open(
+	SaNameT *checkpointName,
+	SaCkptCheckpointCreationAttributesT *ckptAttributes,
+	struct ckpt_refcnt *ref_cnt) 
 {
 	int i;	
 	struct saCkptCheckpoint *ckptCheckpoint = 0;
@@ -1751,7 +1764,9 @@ error_exit:
 	return (error);
 }
 
-static int message_handler_req_exec_ckpt_synchronize_state (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) 
+static void message_handler_req_exec_ckpt_synchronize_state (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	int retcode;
 	struct req_exec_ckpt_synchronize_state *req_exec_ckpt_sync_state 
@@ -1763,7 +1778,7 @@ static int message_handler_req_exec_ckpt_synchronize_state (void *message, struc
 	 */
 	if (memcmp (&req_exec_ckpt_sync_state->previous_ring_id, &saved_ring_id,sizeof (struct memb_ring_id)) == 0) {
 			log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state ignoring ...\n");
-			return(0);
+			return;
 	}
 	retcode = recovery_checkpoint_open(&req_exec_ckpt_sync_state->checkpointName,
 										&req_exec_ckpt_sync_state->checkpointCreationAttributes,
@@ -1781,11 +1796,11 @@ static int message_handler_req_exec_ckpt_synchronize_state (void *message, struc
 		log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
 		log_printf(LOG_LEVEL_DEBUG, "CKPT: recovery_section_create returned %d\n",retcode);		
 	}	
-	
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_synchronize_section (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) 
+static void message_handler_req_exec_ckpt_synchronize_section (
+	void *message,
+	struct totem_ip_address *source_addr) 
 {
 	int retcode;
 	struct req_exec_ckpt_synchronize_section *req_exec_ckpt_sync_section 
@@ -1797,7 +1812,7 @@ static int message_handler_req_exec_ckpt_synchronize_section (void *message, str
 	 */
 	if (memcmp (&req_exec_ckpt_sync_section->previous_ring_id, &saved_ring_id,sizeof (struct memb_ring_id)) == 0) {
 			log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_section ignoring ...\n");
-			return(0);
+			return;
 	}
 	/*
 	 * Write the contents of the section to the checkpoint section.
@@ -1815,8 +1830,6 @@ static int message_handler_req_exec_ckpt_synchronize_section (void *message, str
 		log_printf(LOG_LEVEL_ERROR, "CKPT: message_handler_req_exec_ckpt_synchronize_section\n");
 		log_printf(LOG_LEVEL_ERROR, "CKPT: recovery_section_write returned %d\n",retcode);		
 	}
-	
-	return (0);
 }
 
 
@@ -1903,7 +1916,9 @@ void timer_function_retention (void *data)
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 }
 
-extern int message_handler_req_exec_ckpt_checkpointclose (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void message_handler_req_exec_ckpt_checkpointclose (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_ckpt_checkpointclose *req_exec_ckpt_checkpointclose = (struct req_exec_ckpt_checkpointclose *)message;
 	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
@@ -1970,11 +1985,11 @@ error_exit:
 	if (release_checkpoint) {
 		checkpoint_release(checkpoint);
 	}
-	
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointunlink (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void message_handler_req_exec_ckpt_checkpointunlink (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_ckpt_checkpointunlink *req_exec_ckpt_checkpointunlink = (struct req_exec_ckpt_checkpointunlink *)message;
 
@@ -2016,10 +2031,11 @@ error_exit:
 		libais_send_response (req_exec_ckpt_checkpointunlink->source.conn_info, &res_lib_ckpt_checkpointunlink,
 			sizeof (struct res_lib_ckpt_checkpointunlink));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)message;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
@@ -2059,10 +2075,11 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationset (void *m
 			&res_lib_ckpt_checkpointretentiondurationset,
 			sizeof (struct res_lib_ckpt_checkpointretentiondurationset));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void *message, struct totem_ip_address *source_addr, int endian_conversion_required)
+static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_ckpt_checkpointretentiondurationexpire *req_exec_ckpt_checkpointretentiondurationexpire = (struct req_exec_ckpt_checkpointretentiondurationexpire *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
@@ -2092,12 +2109,11 @@ static int message_handler_req_exec_ckpt_checkpointretentiondurationexpire (void
 
 		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
-	return (0);
 }
 
 static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
-									SaNameT *checkpointName,
-									char* SectionId) 
+	SaNameT *checkpointName,
+	char* SectionId) 
 {
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
@@ -2240,7 +2256,10 @@ error_exit:
 
 }
 
-static int message_handler_req_exec_ckpt_sectioncreate (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+static void message_handler_req_exec_ckpt_sectioncreate (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectioncreate *req_exec_ckpt_sectioncreate = (struct req_exec_ckpt_sectioncreate *)message;
 	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)&req_exec_ckpt_sectioncreate->req_lib_ckpt_sectioncreate;
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
@@ -2376,10 +2395,12 @@ error_exit:
 			&res_lib_ckpt_sectioncreate,
 			sizeof (struct res_lib_ckpt_sectioncreate));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+static void message_handler_req_exec_ckpt_sectiondelete (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectiondelete *req_exec_ckpt_sectiondelete = (struct req_exec_ckpt_sectiondelete *)message;
 	struct req_lib_ckpt_sectiondelete *req_lib_ckpt_sectiondelete = (struct req_lib_ckpt_sectiondelete *)&req_exec_ckpt_sectiondelete->req_lib_ckpt_sectiondelete;
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
@@ -2417,8 +2438,6 @@ static int message_handler_req_exec_ckpt_sectiondelete (void *message, struct to
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
-printf ("delete ckptCheckpointSection name %s\n", 
-	ckptCheckpointSection->sectionDescriptor.sectionId.id);
 
 	/*
 	 * Delete checkpoint section
@@ -2439,10 +2458,12 @@ error_exit:
 			&res_lib_ckpt_sectiondelete,
 			sizeof (struct res_lib_ckpt_sectiondelete));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectionexpirationtimeset (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectionexpirationtimeset *req_exec_ckpt_sectionexpirationtimeset = (struct req_exec_ckpt_sectionexpirationtimeset *)message;
 	struct req_lib_ckpt_sectionexpirationtimeset *req_lib_ckpt_sectionexpirationtimeset = (struct req_lib_ckpt_sectionexpirationtimeset *)&req_exec_ckpt_sectionexpirationtimeset->req_lib_ckpt_sectionexpirationtimeset;
 	struct res_lib_ckpt_sectionexpirationtimeset res_lib_ckpt_sectionexpirationtimeset;
@@ -2518,15 +2539,14 @@ error_exit:
 			&res_lib_ckpt_sectionexpirationtimeset,
 			sizeof (struct res_lib_ckpt_sectionexpirationtimeset));
 	}
-	return (0);
 }
 
 static int recovery_section_write(int sectionIdLen, 
-									char* sectionId,
-									SaNameT *checkpointName,
-									void *newData,
-									SaUint32T dataOffSet,
-									SaUint32T dataSize) 
+	char* sectionId,
+	SaNameT *checkpointName,
+	void *newData,
+	SaUint32T dataOffSet,
+	SaUint32T dataSize) 
 {
 	struct saCkptCheckpoint *ckptCheckpoint;
 	struct saCkptCheckpointSection *ckptCheckpointSection;
@@ -2579,7 +2599,10 @@ error_exit:
 }
 
 
-static int message_handler_req_exec_ckpt_sectionwrite (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+static void message_handler_req_exec_ckpt_sectionwrite (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)message;
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)&req_exec_ckpt_sectionwrite->req_lib_ckpt_sectionwrite;
 	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
@@ -2673,10 +2696,12 @@ error_exit:
 			&res_lib_ckpt_sectionwrite,
 			sizeof (struct res_lib_ckpt_sectionwrite));
 	}
-	return (0);
 }
 
-static int message_handler_req_exec_ckpt_sectionoverwrite (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+static void message_handler_req_exec_ckpt_sectionoverwrite (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectionoverwrite *req_exec_ckpt_sectionoverwrite = (struct req_exec_ckpt_sectionoverwrite *)message;
 	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)&req_exec_ckpt_sectionoverwrite->req_lib_ckpt_sectionoverwrite;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
@@ -2750,9 +2775,12 @@ error_exit:
 			&res_lib_ckpt_sectionoverwrite,
 			sizeof (struct res_lib_ckpt_sectionoverwrite));
 	}
-	return (0);
 }
-static int message_handler_req_exec_ckpt_sectionread (void *message, struct totem_ip_address *source_addr, int endian_conversion_required) {
+
+static void message_handler_req_exec_ckpt_sectionread (
+	void *message,
+	struct totem_ip_address *source_addr)
+{
 	struct req_exec_ckpt_sectionread *req_exec_ckpt_sectionread = (struct req_exec_ckpt_sectionread *)message;
 	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)&req_exec_ckpt_sectionread->req_lib_ckpt_sectionread;
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
@@ -2828,10 +2856,9 @@ error_exit:
 				sectionSize);
 		}
 	}
-	return (0);
 }
 
-static int ckpt_init_two_fn (struct conn_info *conn_info)
+static int ckpt_lib_init_fn (struct conn_info *conn_info)
 {
 	list_init (&conn_info->conn_info_partner->ais_ci.u.libckpt_ci.sectionIterator
 .list);
@@ -2846,7 +2873,9 @@ static int ckpt_init_two_fn (struct conn_info *conn_info)
 
 }
 
-static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointopen (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)message;
 	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
@@ -2873,11 +2902,11 @@ static int message_handler_req_lib_ckpt_checkpointopen (struct conn_info *conn_i
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointopenasync (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointopenasync *req_lib_ckpt_checkpointopenasync = (struct req_lib_ckpt_checkpointopenasync *)message;
 	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
@@ -2904,12 +2933,13 @@ static int message_handler_req_lib_ckpt_checkpointopenasync (struct conn_info *c
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
 
-static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_info, void *message) {
+static void message_handler_req_lib_ckpt_checkpointclose (
+	struct conn_info *conn_info,
+	void *message)
+{
 	struct req_lib_ckpt_checkpointclose *req_lib_ckpt_checkpointclose = (struct req_lib_ckpt_checkpointclose *)message;
 	struct req_exec_ckpt_checkpointclose req_exec_ckpt_checkpointclose;
 	struct iovec iovecs[2];
@@ -2947,10 +2977,11 @@ static int message_handler_req_lib_ckpt_checkpointclose (struct conn_info *conn_
 			&res_lib_ckpt_checkpointclose,
 			sizeof (struct res_lib_ckpt_checkpointclose));
 	}
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointunlink (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointunlink *req_lib_ckpt_checkpointunlink = (struct req_lib_ckpt_checkpointunlink *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
@@ -2971,11 +3002,11 @@ static int message_handler_req_lib_ckpt_checkpointunlink (struct conn_info *conn
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointretentiondurationset (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointretentiondurationset *req_lib_ckpt_checkpointretentiondurationset = (struct req_lib_ckpt_checkpointretentiondurationset *)message;
 	struct req_exec_ckpt_checkpointretentiondurationset req_exec_ckpt_checkpointretentiondurationset;
@@ -2999,10 +3030,11 @@ static int message_handler_req_lib_ckpt_checkpointretentiondurationset (struct c
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_activereplicaset (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_activereplicaset *req_lib_ckpt_activereplicaset = (struct req_lib_ckpt_activereplicaset *)message;
 	struct res_lib_ckpt_activereplicaset res_lib_ckpt_activereplicaset;
@@ -3025,10 +3057,11 @@ static int message_handler_req_lib_ckpt_activereplicaset (struct conn_info *conn
 
 	libais_send_response (conn_info, &res_lib_ckpt_activereplicaset,
 		sizeof (struct res_lib_ckpt_activereplicaset));
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointstatusget (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointstatusget *req_lib_ckpt_checkpointstatusget = (struct req_lib_ckpt_checkpointstatusget *)message;
 	struct res_lib_ckpt_checkpointstatusget res_lib_ckpt_checkpointstatusget;
@@ -3085,10 +3118,11 @@ static int message_handler_req_lib_ckpt_checkpointstatusget (struct conn_info *c
 	log_printf (LOG_LEVEL_DEBUG, "before sending message\n");
 	libais_send_response (conn_info, &res_lib_ckpt_checkpointstatusget,
                         sizeof (struct res_lib_ckpt_checkpointstatusget));
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectioncreate (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectioncreate (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)message;
 	struct req_exec_ckpt_sectioncreate req_exec_ckpt_sectioncreate;
@@ -3165,11 +3199,11 @@ printf ("|\n");
 			&res_lib_ckpt_sectioncreate,
 			sizeof (struct res_lib_ckpt_sectioncreate));
 	}
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectiondelete (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectiondelete *req_lib_ckpt_sectiondelete = (struct req_lib_ckpt_sectiondelete *)message;
 	struct req_exec_ckpt_sectiondelete req_exec_ckpt_sectiondelete;
@@ -3207,11 +3241,11 @@ static int message_handler_req_lib_ckpt_sectiondelete (struct conn_info *conn_in
 	} else {
 		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectionexpirationtimeset (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectionexpirationtimeset *req_lib_ckpt_sectionexpirationtimeset = (struct req_lib_ckpt_sectionexpirationtimeset *)message;
 	struct req_exec_ckpt_sectionexpirationtimeset req_exec_ckpt_sectionexpirationtimeset;
@@ -3249,12 +3283,11 @@ static int message_handler_req_lib_ckpt_sectionexpirationtimeset (struct conn_in
 	} else {
 		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
-
-	return (0);
 }
 
-int write_inv = 0;
-static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectionwrite (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)message;
 	struct req_exec_ckpt_sectionwrite req_exec_ckpt_sectionwrite;
@@ -3318,11 +3351,11 @@ static int message_handler_req_lib_ckpt_sectionwrite (struct conn_info *conn_inf
 			&res_lib_ckpt_sectionwrite,
 			sizeof (struct res_lib_ckpt_sectionwrite));	
 	}
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectionoverwrite (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)message;
 	struct req_exec_ckpt_sectionoverwrite req_exec_ckpt_sectionoverwrite;
@@ -3378,11 +3411,11 @@ static int message_handler_req_lib_ckpt_sectionoverwrite (struct conn_info *conn
                         &res_lib_ckpt_sectionoverwrite,
                         sizeof (struct res_lib_ckpt_sectionoverwrite));
         }
-	
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectionread (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)message;
 	struct req_exec_ckpt_sectionread req_exec_ckpt_sectionread;
@@ -3432,7 +3465,7 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 		} else {
 			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 		}
-		return (0); /* DO NOT REMOVE */
+		return;
 	}
 
 	if (checkpoint) {
@@ -3461,11 +3494,11 @@ static int message_handler_req_lib_ckpt_sectionread (struct conn_info *conn_info
 	libais_send_response (conn_info,
 		&res_lib_ckpt_sectionread,
 		sizeof (struct res_lib_ckpt_sectionread));
-	
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointsynchronize (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointsynchronize *req_lib_ckpt_checkpointsynchronize = (struct req_lib_ckpt_checkpointsynchronize *)message;
 	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
@@ -3487,11 +3520,11 @@ static int message_handler_req_lib_ckpt_checkpointsynchronize (struct conn_info 
 	libais_send_response (conn_info,
 		&res_lib_ckpt_checkpointsynchronize,
 		sizeof (struct res_lib_ckpt_checkpointsynchronize));
-	
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_checkpointsynchronizeasync (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_checkpointsynchronizeasync *req_lib_ckpt_checkpointsynchronizeasync = (struct req_lib_ckpt_checkpointsynchronizeasync *)message;
 	struct res_lib_ckpt_checkpointsynchronizeasync res_lib_ckpt_checkpointsynchronizeasync;
@@ -3518,11 +3551,11 @@ static int message_handler_req_lib_ckpt_checkpointsynchronizeasync (struct conn_
 	libais_send_response (conn_info->conn_info_partner,
 		&res_lib_ckpt_checkpointsynchronizeasync,
 		sizeof (struct res_lib_ckpt_checkpointsynchronizeasync));
-	
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectioniterationinitialize (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectioniterationinitialize (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectioniterationinitialize *req_lib_ckpt_sectioniterationinitialize = (struct req_lib_ckpt_sectioniterationinitialize *)message;
 	struct res_lib_ckpt_sectioniterationinitialize res_lib_ckpt_sectioniterationinitialize;
@@ -3591,11 +3624,11 @@ error_exit:
 
 	libais_send_response (conn_info, &res_lib_ckpt_sectioniterationinitialize,
 		sizeof (struct res_lib_ckpt_sectioniterationinitialize));
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectioniterationfinalize (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectioniterationfinalize (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectioniterationfinalize *req_lib_ckpt_sectioniterationfinalize = (struct req_lib_ckpt_sectioniterationfinalize *)message;
 	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
@@ -3620,11 +3653,11 @@ error_exit:
 
 	libais_send_response (conn_info, &res_lib_ckpt_sectioniterationfinalize,
 		sizeof (struct res_lib_ckpt_sectioniterationfinalize));
-
-	return (0);
 }
 
-static int message_handler_req_lib_ckpt_sectioniteratornext (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_ckpt_sectioniteratornext (
+	struct conn_info *conn_info,
+	void *message)
 {
 	struct req_lib_ckpt_sectioniteratornext *req_lib_ckpt_sectioniteratornext = (struct req_lib_ckpt_sectioniteratornext *)message;
 	struct res_lib_ckpt_sectioniteratornext res_lib_ckpt_sectioniteratornext;
@@ -3687,5 +3720,4 @@ error_exit:
 	libais_send_response (conn_info,
 		ckptSectionIterator->sectionIteratorEntries[iteratorPos].checkpointSection->sectionDescriptor.sectionId.id,
 		sectionIdSize);
-	return (0);
 }

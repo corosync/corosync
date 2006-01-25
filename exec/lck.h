@@ -44,6 +44,6 @@ struct liblck_ci {
 	struct list_head resource_cleanup_list;
 };
 
-extern struct service_handler lck_service_handler;
+extern struct openais_service_handler lck_service_handler;
 
 #endif /* CKPT_H_DEFINED */

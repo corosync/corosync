@@ -64,59 +64,62 @@
 #define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
 #define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG
 
-static int cfg_confchg_fn (
+static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cfg_exit_fn (struct conn_info *conn_info);
+static int cfg_lib_exit_fn (struct conn_info *conn_info);
 
 static int cfg_exec_init_fn (struct openais_config *);
 
-static int cfg_init_two_fn (struct conn_info *conn_info);
+static int cfg_lib_init_fn (struct conn_info *conn_info);
 
-static int message_handler_req_lib_cfg_statetrackstart (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_cfg_statetrackstart (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_cfg_statetrackstop (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_cfg_statetrackstop (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_cfg_administrativestateset (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_cfg_administrativestateset (struct conn_info *conn_info, void *message);
 
-static int message_handler_req_lib_cfg_administrativestateget (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_cfg_administrativestateget (struct conn_info *conn_info, void *message);
 
 /*
  * Service Handler Definition
  */
-struct libais_handler cfg_libais_handlers[] =
+static struct openais_lib_handler cfg_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn	= message_handler_req_lib_cfg_statetrackstart,
+		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstart,
 		.response_size		= sizeof (struct res_lib_cfg_statetrackstart),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn	= message_handler_req_lib_cfg_statetrackstop,
+		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
 		.response_size		= sizeof (struct res_lib_cfg_statetrackstop),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTOP,
-		.flow_control		= FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn	= message_handler_req_lib_cfg_administrativestateset,
+		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateset),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATESET,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn	= message_handler_req_lib_cfg_administrativestateget,
+		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateget),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET,
-		.flow_control		= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
-int (*cfg_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian_conversion_required) = {
+static struct openais_exec_handler cfg_exec_handlers[] =
+{
+	{
+	}
 /*
 	message_handler_req_exec_cfg_componentregister,
 	message_handler_req_exec_cfg_componentunregister,
@@ -128,44 +131,46 @@ int (*cfg_aisexec_handler_fns[]) (void *, struct in_addr source_addr, int endian
 /*
  * Exports the interface for the service
  */
-struct service_handler cfg_service_handler = {
-	.name					= "openais configuration service",
+struct openais_service_handler cfg_service_handler = {
+	.name					= (unsigned char*)"openais configuration service",
 	.id					= CFG_SERVICE,
-	.libais_handlers			= cfg_libais_handlers,
-	.libais_handlers_count		= sizeof (cfg_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= cfg_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (cfg_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= cfg_confchg_fn,
-	.libais_init_two_fn			= cfg_init_two_fn,
-	.libais_exit_fn				= cfg_exit_fn,
+	.lib_init_fn				= cfg_lib_init_fn,
+	.lib_exit_fn				= cfg_lib_exit_fn,
+	.lib_handlers				= cfg_lib_handlers,
+	.lib_handlers_count			= sizeof (cfg_lib_handlers) / sizeof (struct openais_lib_handler),
 	.exec_init_fn				= cfg_exec_init_fn,
+	.exec_handlers				= cfg_exec_handlers,
+	.exec_handlers_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (openais_exec_handler), */
+	.confchg_fn				= cfg_confchg_fn,
 };
 
+/*
+ * Dynamic Loader definition
+ */
 #ifdef BUILD_DYNAMIC
 
-struct service_handler *cfg_get_handler_ver0 (void);
+struct openais_service_handler *cfg_get_handler_ver0 (void);
 
-struct aisexec_iface_ver0 cfg_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= cfg_get_handler_ver0
+struct openais_service_handler_iface_ver0 cfg_service_handler_iface = {
+	.openais_get_service_handler_ver0	= cfg_get_handler_ver0
 };
 
 struct lcr_iface openais_cfg_ver0[1] = {
 	{
-		.name					= "openais_cfg",
-		.version				= 0,
+		.name				= "openais_cfg",
+		.version			= 0,
 		.versions_replace		= 0,
-		.versions_replace_count = 0,
+		.versions_replace_count		= 0,
 		.dependencies			= 0,
 		.dependency_count		= 0,
 		.constructor			= NULL,
-		.destructor				= NULL,
-		.interfaces				= (void **)&cfg_service_handler_iface,
+		.destructor			= NULL,
+		.interfaces			= (void **)&cfg_service_handler_iface,
 	}
 };
 
 struct lcr_comp cfg_comp_ver0 = {
-	.iface_count			= 1,
+	.iface_count				= 1,
 	.ifaces					= openais_cfg_ver0
 };
 
@@ -175,37 +180,37 @@ extern int lcr_comp_get (struct lcr_comp **component)
 	return (0);
 }
 
-struct service_handler *cfg_get_handler_ver0 (void)
+struct openais_service_handler *cfg_get_handler_ver0 (void)
 {
 	return (&cfg_service_handler);
 }
 #endif /* BUILD_DYNAMIC */
+
 /* IMPL */
 
 static int cfg_exec_init_fn (struct openais_config *openais_config)
 {
 	return (0);
 }
-static int cfg_confchg_fn (
+static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct in_addr *member_list, int member_list_entries,
-    struct in_addr *left_list, int left_list_entries,
-    struct in_addr *joined_list, int joined_list_entries,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-	return (0);
 }
 
-int cfg_exit_fn (struct conn_info *conn_info)
+int cfg_lib_exit_fn (struct conn_info *conn_info)
 {
 	return (0);
 }
 
-static int cfg_init_two_fn (struct conn_info *conn_info)
+static int cfg_lib_init_fn (struct conn_info *conn_info)
 {
         log_printf (LOG_LEVEL_DEBUG, "Got request to initalize configuration service.\n");
 
-        list_init (&conn_info->conn_list);
+   //     list_init (&conn_info->conn_list);
 
         return (0);
 }
@@ -213,37 +218,32 @@ static int cfg_init_two_fn (struct conn_info *conn_info)
 /*
  * Library Interface Implementation
  */
-static int message_handler_req_lib_cfg_statetrackstart (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_cfg_statetrackstart (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_cfg_statetrackstart *req_lib_cfg_statetrackstart = (struct req_lib_cfg_statetrackstart *)message;
+//	struct req_lib_cfg_statetrackstart *req_lib_cfg_statetrackstart = (struct req_lib_cfg_statetrackstart *)message;
 
 	log_printf (LOG_LEVEL_FROM_LIB,
 		"Handle : message_handler_req_lib_cfg_statetrackstart()\n");
-
-	return (0);
 }
 
-static int message_handler_req_lib_cfg_statetrackstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_cfg_statetrackstop (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
+//	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
 
 	log_printf (LOG_LEVEL_FROM_LIB,
 		"Handle : message_handler_req_lib_cfg_administrativestateget()\n");
-	return (0);
 }
 
-static int message_handler_req_lib_cfg_administrativestateset (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_cfg_administrativestateset (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
+//	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
 	log_printf (LOG_LEVEL_FROM_LIB,
 		"Handle : message_handler_req_lib_cfg_administrativestateset()\n");
-	return (0);
 }
-static int message_handler_req_lib_cfg_administrativestateget (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_cfg_administrativestateget (struct conn_info *conn_info, void *message)
 {
-	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
+//	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
 	log_printf (LOG_LEVEL_FROM_LIB,
 		"Handle : message_handler_req_lib_cfg_administrativestateget()\n");
-	return (0);
 }
 

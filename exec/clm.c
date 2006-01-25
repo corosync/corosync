@@ -77,9 +77,9 @@ SaClmClusterNodeT thisClusterNode;
 
 #define NODE_MAX 16
 
-SaClmClusterNodeT clusterNodes[NODE_MAX];
+static SaClmClusterNodeT clusterNodes[NODE_MAX];
 
-int clusterNodeEntries = 0;
+static int clusterNodeEntries = 0;
 
 static unsigned long long view_current = 0;
 
@@ -107,7 +107,7 @@ SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id)
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int clm_confchg_fn (
+static void clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
     struct totem_ip_address *member_list, int member_list_entries,
     struct totem_ip_address *left_list, int left_list_entries,
@@ -124,86 +124,93 @@ static void clm_sync_abort (void);
 
 static int clm_exec_init_fn (struct openais_config *);
 
-static int clm_init_two_fn (struct conn_info *conn_info);
+static int clm_lib_init_fn (struct conn_info *conn_info);
 
-static int clm_exit_fn (struct conn_info *conn_info);
+static int clm_lib_exit_fn (struct conn_info *conn_info);
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct totem_ip_address *source_addr,
-	int endian_conversion_required);
+static void message_handler_req_exec_clm_nodejoin (
+	void *message,
+	struct totem_ip_address *source_addr);
 
-static int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info,
+static void exec_clm_nodejoin_endian_convert (void *msg);
+
+static void message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info,
+static void message_handler_req_lib_clm_trackstop (struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_clm_nodeget (struct conn_info *conn_info,
+static void message_handler_req_lib_clm_nodeget (struct conn_info *conn_info,
 	void *message);
 
-static int message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info,
+static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info,
 	void *message);
-
-static int clm_exit_fn (struct conn_info *conn_info);
 
 /*
  * Executive Handler Definition
  */
-struct libais_handler clm_libais_handlers[] =
+static struct openais_lib_handler clm_lib_handlers[] =
 {
 	{ /* 0 */
-		.libais_handler_fn			= message_handler_req_lib_clm_clustertrack,
+		.lib_handler_fn				= message_handler_req_lib_clm_clustertrack,
 		.response_size				= sizeof (struct res_lib_clm_clustertrack),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
-		.libais_handler_fn			= message_handler_req_lib_clm_trackstop,
+		.lib_handler_fn				= message_handler_req_lib_clm_trackstop,
 		.response_size				= sizeof (struct res_lib_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
-		.libais_handler_fn			= message_handler_req_lib_clm_nodeget,
+		.lib_handler_fn				= message_handler_req_lib_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
-		.libais_handler_fn			= message_handler_req_lib_clm_nodegetasync,
+		.lib_handler_fn				= message_handler_req_lib_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
-		.flow_control				= FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
-static int (*clm_aisexec_handler_fns[]) (void *, struct totem_ip_address *source_addr, int endian_conversion_required) = {
-	message_handler_req_exec_clm_nodejoin
+static struct openais_exec_handler clm_exec_handlers[] =
+{
+	{
+		.exec_handler_fn		= message_handler_req_exec_clm_nodejoin,
+		.exec_endian_convert_fn	= exec_clm_nodejoin_endian_convert
+	}
 };
 	
-struct service_handler clm_service_handler = {
-	.name						= "openais cluster membership service B.01.01",
+struct openais_service_handler clm_service_handler = {
+	.name						= (unsigned char*)"openais cluster membership service B.01.01",
 	.id							= CLM_SERVICE,
-	.libais_handlers			= clm_libais_handlers,
-	.libais_handlers_count		= sizeof (clm_libais_handlers) / sizeof (struct libais_handler),
-	.aisexec_handler_fns		= clm_aisexec_handler_fns,
-	.aisexec_handler_fns_count	= sizeof (clm_aisexec_handler_fns) / sizeof (int (*)),
-	.confchg_fn					= clm_confchg_fn,
-	.libais_init_two_fn			= clm_init_two_fn,
-	.libais_exit_fn				= clm_exit_fn,
+	.lib_init_fn				= clm_lib_init_fn,
+	.lib_exit_fn				= clm_lib_exit_fn,
+	.lib_handlers				= clm_lib_handlers,
+	.lib_handlers_count			= sizeof (clm_lib_handlers) / sizeof (struct openais_lib_handler),
 	.exec_init_fn				= clm_exec_init_fn,
-	.exec_dump_fn				= 0,
+	.exec_dump_fn				= NULL,
+	.exec_handlers				= clm_exec_handlers,
+	.exec_handlers_count		= sizeof (clm_exec_handlers) / sizeof (struct openais_exec_handler),
+	.confchg_fn					= clm_confchg_fn,
 	.sync_init					= clm_sync_init,
 	.sync_process				= clm_sync_process,
 	.sync_activate				= clm_sync_activate,
 	.sync_abort					= clm_sync_abort,
 };
 
+/*
+ * Dynamic loader definition
+ */
 #ifdef BUILD_DYNAMIC
-struct service_handler *clm_get_handler_ver0 (void);
+struct openais_service_handler *clm_get_service_handler_ver0 (void);
 
-struct aisexec_iface_ver0 clm_service_handler_iface = {
-	.test					= NULL,
-	.get_handler_ver0		= clm_get_handler_ver0
+struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
+	.openais_get_service_handler_ver0		= clm_get_service_handler_ver0
 };
 
 struct lcr_iface openais_clm_ver0[1] = {
@@ -226,13 +233,13 @@ struct lcr_comp clm_comp_ver0 = {
 };
 
 
-extern int lcr_comp_get (struct lcr_comp **component)
+int lcr_comp_get (struct lcr_comp **component)
 {
 	*component = &clm_comp_ver0;
 	return (0);
 }
 
-struct service_handler *clm_get_handler_ver0 (void)
+struct openais_service_handler *clm_get_service_handler_ver0 (void)
 {
 	return (&clm_service_handler);
 }
@@ -286,7 +293,7 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	return (0);
 }
 
-static int clm_exit_fn (struct conn_info *conn_info)
+static int clm_lib_exit_fn (struct conn_info *conn_info)
 {
 	/*
 	 * Delete track entry if there is one
@@ -296,7 +303,7 @@ static int clm_exit_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-void library_notification_send (SaClmClusterNotificationT *cluster_notification_entries,
+static void library_notification_send (SaClmClusterNotificationT *cluster_notification_entries,
 	int notify_entries)
 {
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
@@ -441,7 +448,7 @@ static int clm_nodejoin_send (void)
 	return (result);
 }
 
-static int clm_confchg_fn (
+static void clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
 	struct totem_ip_address *left_list, int left_list_entries,
@@ -496,7 +503,6 @@ static int clm_confchg_fn (
 		(char *)thisClusterNode.nodeAddress.value);
 	thisClusterNode.nodeName.length = thisClusterNode.nodeAddress.length;
 	thisClusterNode.nodeId = this_ip->nodeid;
-	return (0);
 }
 
 /*
@@ -536,32 +542,18 @@ static void clm_sync_abort (void)
 }
 
 
-static void exec_clm_nodejoin_endian_conversion (struct req_exec_clm_nodejoin *in,
-	struct req_exec_clm_nodejoin *out)
+static void exec_clm_nodejoin_endian_convert (void *msg)
 {
-	// TODO this isn't complete yet
-	// TODO SaNameT needs to be packed and aligned
-	memmove (&out->clusterNode.nodeName.value[0],
-		&in->clusterNode.nodeName.value[2],
-		SA_MAX_NAME_LENGTH);
 }
 
-static int message_handler_req_exec_clm_nodejoin (void *message, struct totem_ip_address *source_addr,
-	int endian_conversion_required)
+static void message_handler_req_exec_clm_nodejoin (
+	void *message,
+	struct totem_ip_address *source_addr)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
-	struct req_exec_clm_nodejoin req_exec_clm_nodejoin_storage;
 	int found = 0;
 	int i;
 
-	if (endian_conversion_required) {
-		exec_clm_nodejoin_endian_conversion (message, &req_exec_clm_nodejoin_storage);
-		req_exec_clm_nodejoin = &req_exec_clm_nodejoin_storage;
-	} else {
-		req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
-	}
-
-		
 	log_printf (LOG_LEVEL_NOTICE, "got nodejoin message %s\n", req_exec_clm_nodejoin->clusterNode.nodeName.value);
 	
 	/*
@@ -584,11 +576,9 @@ static int message_handler_req_exec_clm_nodejoin (void *message, struct totem_ip
 
 		clusterNodeEntries += 1;
 	}
-
-	return (0);
 }
 
-static int clm_init_two_fn (struct conn_info *conn_info)
+static int clm_lib_init_fn (struct conn_info *conn_info)
 {
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
 
@@ -597,7 +587,7 @@ static int clm_init_two_fn (struct conn_info *conn_info)
 	return (0);
 }
 
-int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_clm_clustertrack *req_lib_clm_clustertrack = (struct req_lib_clm_clustertrack *)message;
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
@@ -644,11 +634,10 @@ int message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void 
 			&res_lib_clm_clustertrack,
 			sizeof (struct res_lib_clm_clustertrack));
 	}
-	return (0);
 }
 
 
-static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, void *message)
 {
 	struct res_lib_clm_trackstop res_lib_clm_trackstop;
 
@@ -668,11 +657,9 @@ static int message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, v
 
 	libais_send_response (conn_info, &res_lib_clm_trackstop,
 		sizeof (struct res_lib_clm_trackstop));
-
-	return (0);
 }
 
-static int message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_clm_nodeget *req_lib_clm_nodeget = (struct req_lib_clm_nodeget *)message;
 	struct res_clm_nodeget res_clm_nodeget;
@@ -704,11 +691,9 @@ static int message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, voi
 		memcpy (&res_clm_nodeget.clusterNode, clusterNode, sizeof (SaClmClusterNodeT));
 	}
 	libais_send_response (conn_info, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
-
-	return (0);
 }
 
-static int message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info, void *message)
 {
 	struct req_lib_clm_nodegetasync *req_lib_clm_nodegetasync = (struct req_lib_clm_nodegetasync *)message;
 	struct res_clm_nodegetasync res_clm_nodegetasync;
@@ -754,6 +739,4 @@ static int message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info
 	}
 	libais_send_response (conn_info->conn_info_partner, &res_clm_nodegetcallback,
 		sizeof (struct res_clm_nodegetcallback));
-
-	return (0);
 }

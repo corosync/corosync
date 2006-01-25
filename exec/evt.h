@@ -36,8 +36,9 @@
 #include "../include/hdb.h"
 #include "../include/list.h"
 #include "../include/saEvt.h"
+#include "handlers.h"
 
-extern struct service_handler evt_service_handler;
+extern struct openais_service_handler evt_service_handler;
 
 /*
  * event instance structure. Contains information about the

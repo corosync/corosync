@@ -44,6 +44,6 @@ struct libevs_ci {
 	int group_entries;
 };
 
-extern struct service_handler evs_service_handler;
+extern struct openais_service_handler evs_service_handler;
 
 #endif /* EVS_H_DEFINED */
