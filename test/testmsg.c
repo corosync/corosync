@@ -107,7 +107,7 @@ int main (void) {
 	signal (SIGINT, sigintr_handler);
 
 	result = saMsgInitialize (&handle, &callbacks, &version);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		printf ("Could not initialize Cluster Membership API instance error %d\n", result);
 		exit (1);
 	}

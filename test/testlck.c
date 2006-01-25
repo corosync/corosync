@@ -140,7 +140,7 @@ int main (void) {
 	signal (SIGINT, sigintr_handler);
 
 	result = saLckInitialize (&handle, &callbacks, &version);
-	if (result != SA_OK) {
+	if (result != SA_AIS_OK) {
 		printf ("Could not initialize Lock Service API instance error %d\n", result);
 		exit (1);
 	}
