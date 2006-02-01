@@ -610,13 +610,13 @@ saHandleDestroy (
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (check != handleDatabase->handles[handle].check) {
+		pthread_mutex_unlock (&handleDatabase->mutex);
 		error = SA_AIS_ERR_BAD_HANDLE;
-		goto error_exit;
+		return (error);
 	}
 
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
 
-error_exit:
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
 	saHandleInstancePut (handleDatabase, inHandle);
