@@ -68,8 +68,8 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	SA_CKPT_WR_ALL_REPLICAS,
 	100000,
 	5000000000LL,
-	5,
-	20000,
+	10,
+	200000,
 	10
 };
 
@@ -460,7 +460,7 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 			(int)checkpointStatus.numberOfSections);
 	}
 	error = saCkptSectionIterationInitialize (checkpointHandle,
-		0,
+		SA_CKPT_SECTIONS_ANY,
 		0,
 		&sectionIterator);
 	printf ("%s: initialize section iterator\n",
