@@ -134,39 +134,39 @@ static void amf_confchg_fn (
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int amf_lib_exit_fn (struct conn_info *conn_info);
+static int amf_lib_exit_fn (void *conn);
 
 static int amf_exec_init_fn (struct openais_config *);
 
-static int amf_lib_init_fn (struct conn_info *conn_info);
+static int amf_lib_init_fn (void *conn);
 
-static void message_handler_req_lib_amf_componentregister (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_componentregister (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_componentunregister (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_componentunregister (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_pmstart (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_pmstart (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_pmstop (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_pmstop (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_healthcheckstart (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_healthcheckstart (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_healthcheckconfirm (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_healthcheckconfirm (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_healthcheckstop (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_healthcheckstop (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_hastateget (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_hastateget (void *conn, void *message);
 
-static void message_handler_req_lib_amf_csiquiescingcomplete (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_csiquiescingcomplete (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_protectiongrouptrackstart (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_protectiongrouptrackstart (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_protectiongrouptrackstop (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_protectiongrouptrackstop (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_componenterrorreport (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_componenterrorreport (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_componenterrorclear (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_componenterrorclear (void *conn, void *msg);
 
-static void message_handler_req_lib_amf_response (struct conn_info *conn_info, void *message);
+static void message_handler_req_lib_amf_response (void *conn, void *msg);
 
 static void message_handler_req_exec_amf_operational_state_comp_set (
 	void *message,
@@ -217,6 +217,25 @@ void healthcheck_deactivate (struct healthcheck_active *healthcheck_active);
 void comp_healthcheck_activate (struct amf_comp *comp);
 void comp_healthcheck_deactivate (struct amf_comp *comp);
 static void escalation_policy_restart (struct amf_comp *comp);
+
+struct libamf_ci_trackentry {
+	int active;
+	SaUint8T trackFlags;
+	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
+	SaNameT csiName;
+};
+
+struct amf_comp;
+struct amf_pd {
+	struct amf_comp *comp;
+	struct list_head list;
+/*
+	struct libamf_ci_trackentry *tracks;
+	int trackEntries;
+	int trackActive;
+*/
+};
+
 
 struct clc_interface {
 	int (*instantiate) (struct amf_comp *comp);
@@ -374,6 +393,7 @@ static struct openais_exec_handler amf_exec_handlers[] = {
 struct openais_service_handler amf_service_handler = {
 	.name				= (unsigned char *)"openais availability management framework B.01.01",
 	.id				= AMF_SERVICE,
+	.private_data_size		= sizeof (struct amf_pd),
 	.lib_init_fn			= amf_lib_init_fn,
 	.lib_exit_fn			= amf_lib_exit_fn,
 	.lib_handlers			= amf_lib_handlers,
@@ -700,7 +720,7 @@ int clc_terminate_callback (struct amf_comp *comp)
 	struct res_lib_amf_componentterminatecallback res_lib_amf_componentterminatecallback;
 	struct component_terminate_callback_data *component_terminate_callback_data;
 
-	printf ("clc_terminate_callback %p\n", comp->conn_info);
+	printf ("clc_terminate_callback %p\n", comp->conn);
 	if (comp->presence_state != OPENAIS_CFG_PRESENCESTATE_INSTANTIATED) {
 		printf ("component terminated but not instantiated %s - %d\n",
 			getSaNameT (&comp->name), comp->presence_state);
@@ -731,8 +751,8 @@ printf ("component presence state %d\n", comp->presence_state);
 printf ("Creating invocation %llu", 
 	(unsigned long long)res_lib_amf_componentterminatecallback.invocation);
 				        
-	libais_send_response (
-		comp->conn_info->conn_info_partner,
+	openais_conn_send_response (
+		openais_conn_partner_get (comp->conn),
 		&res_lib_amf_componentterminatecallback,
 		sizeof (struct res_lib_amf_componentterminatecallback));
 
@@ -823,16 +843,6 @@ int clc_cleanup (struct amf_comp *comp)
 
 static int amf_exec_init_fn (struct openais_config *openais_config)
 {
-#ifdef TODO
-	int res;
-	res = totempg_recovery_plug_create (&amf_recovery_plug_handle);
-	if (res != 0) {
-		log_printf(LOG_LEVEL_ERROR,
-		"Could not create recovery plug for amf service.\n");
-
-		return (-1);
-	}
-#endif
 	if (openais_config->amf_enabled) {
 		clc_instantiate_all ();
 	}
@@ -877,14 +887,15 @@ static void amf_confchg_fn (
 #endif
 }
 
-int amf_lib_exit_fn (struct conn_info *conn_info)
+int amf_lib_exit_fn (void *conn)
 {
 	struct amf_comp *comp;
+	struct amf_pd *amf_pd = (struct amf_pd *)openais_conn_private_data_get (conn);
 
-	comp = conn_info->ais_ci.u.libamf_ci.comp;
+	comp = amf_pd->comp;
 
 	if (comp) {
-		comp->conn_info = 0;
+		comp->conn = 0;
 
 printf ("setting in exit fn to uninst for comp %p\n", comp);
 		presence_state_comp_set (
@@ -900,11 +911,12 @@ printf ("setting in exit fn to uninst for comp %p\n", comp);
 	return (0);
 }
 
-static int amf_lib_init_fn (struct conn_info *conn_info)
+static int amf_lib_init_fn (void *conn)
 {
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize availability management framework service.\n"); 
+	struct amf_pd *amf_pd = (struct amf_pd *)openais_conn_private_data_get (conn);
 
-	list_init (&conn_info->conn_list);
+	list_init (&amf_pd->list);
 
 	return (0);
 }
@@ -1173,10 +1185,10 @@ static void protectiongroup_notification_send (struct conn_info *conn_info,
 			&amfProtectionGroup->name, sizeof (SaNameT));
 
 		res_lib_amf_protectiongrouptrackcallback.notificationBufferAddress = notificationBufferAddress;
-		libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackcallback,
+		openais_conn_send_response (conno, &res_lib_amf_protectiongrouptrackcallback,
 			sizeof (struct res_lib_amf_protectiongrouptrackcallback));
 
-		libais_send_response (conn_info, protectionGroupNotification,
+		openais_conn_send_response (conno, protectionGroupNotification,
 			sizeof (SaAmfProtectionGroupNotificationT) * notifyEntries);
 
 		mempool_free (protectionGroupNotification);
@@ -1395,7 +1407,8 @@ void csi_comp_set_callback (
 		AMF_RESPONSE_CSISETCALLBACK,
 		csi_set_callback_data);
 				        
-	libais_send_response (comp->conn_info->conn_info_partner,
+	openais_conn_send_response (
+		openais_conn_partner_get (comp->conn),
 		&res_lib_amf_csisetcallback,
 		sizeof (struct res_lib_amf_csisetcallback));
 }
@@ -1467,7 +1480,8 @@ void csi_comp_remove_callback (struct amf_comp *comp, struct amf_csi *csi)
 
 	res_lib_amf_csiremovecallback.csiFlags = 0;
 				        
-	libais_send_response (comp->conn_info->conn_info_partner,
+	openais_conn_send_response (
+		openais_conn_partner_get (comp->conn),
 		&res_lib_amf_csiremovecallback,
 		sizeof (struct res_lib_amf_csiremovecallback));
 
@@ -2127,7 +2141,8 @@ void healthcheck_activate (struct healthcheck_active *healthcheck_active)
 		&healthcheck_active->key,
 		sizeof (SaAmfHealthcheckKeyT));
 
-	libais_send_response (healthcheck_active->comp->conn_info->conn_info_partner,
+	openais_conn_send_response (
+		openais_conn_partner_get (healthcheck_active->comp->conn),
 		&res_lib_amf_healthcheckcallback,
 		sizeof (struct res_lib_amf_healthcheckcallback));
 
@@ -2305,7 +2320,7 @@ static void message_handler_req_exec_amf_presence_state_comp_set (
 	}
 
 	if (req_exec_amf_presence_state_comp_set->presence_state == OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED) {
-		comp->conn_info = 0;
+		comp->conn = 0;
 	}
 
 	/*
@@ -2382,12 +2397,15 @@ static void message_handler_req_exec_amf_administrative_state_group_set (
 /*
  * Library Interface Implementation
  */
-static void message_handler_req_lib_amf_componentregister (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_componentregister (
+	void *conn,
+	 void *msg)
 {
 	struct req_lib_amf_componentregister *req_lib_amf_componentregister =
-		(struct req_lib_amf_componentregister *)message;
+		(struct req_lib_amf_componentregister *)msg;
 	struct res_lib_amf_componentregister res_lib_amf_componentregister;
 	struct amf_comp *comp;
+	struct amf_pd *amf_pd = (struct amf_pd *)openais_conn_private_data_get (conn);
 	SaAisErrorT error = SA_AIS_ERR_NOT_EXIST;
 
 	comp = find_comp (&req_lib_amf_componentregister->compName);
@@ -2396,8 +2414,8 @@ static void message_handler_req_lib_amf_componentregister (struct conn_info *con
 			OPENAIS_CFG_PRESENCESTATE_INSTANTIATED);
 		operational_state_comp_set (comp,
 			OPENAIS_CFG_OPERATIONALSTATE_ENABLED);
-		comp->conn_info = conn_info;
-		comp->conn_info->ais_ci.u.libamf_ci.comp = comp;
+		comp->conn = conn;
+		amf_pd->comp = comp;
 		comp_healthcheck_activate (comp);
 		error = SA_AIS_OK;
 	}
@@ -2405,11 +2423,13 @@ static void message_handler_req_lib_amf_componentregister (struct conn_info *con
 	res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
 	res_lib_amf_componentregister.header.size = sizeof (struct res_lib_amf_componentregister);
 	res_lib_amf_componentregister.header.error = error;
-	libais_send_response (conn_info, &res_lib_amf_componentregister,
+	openais_conn_send_response (conn, &res_lib_amf_componentregister,
 		sizeof (struct res_lib_amf_componentregister));
 }
 
-static void message_handler_req_lib_amf_componentunregister (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_componentunregister (
+	void *conn,
+	void *msg)
 {
 #ifdef COMPILE_OUT
 	struct req_lib_amf_componentunregister *req_lib_amf_componentunregister = (struct req_lib_amf_componentunregister *)message;
@@ -2441,17 +2461,22 @@ static void message_handler_req_lib_amf_componentunregister (struct conn_info *c
 #endif
 }
 
-static void message_handler_req_lib_amf_pmstart (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_pmstart (
+	void *conn,
+	void *msg)
 {
 }
-static void message_handler_req_lib_amf_pmstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_pmstop (
+	void *conn,
+	void *msg)
 {
 }
 
-static void message_handler_req_lib_amf_healthcheckstart (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_healthcheckstart (
+	void *conn, void *msg)
 {
 	struct req_lib_amf_healthcheckstart *req_lib_amf_healthcheckstart =
-		(struct req_lib_amf_healthcheckstart *)message;
+		(struct req_lib_amf_healthcheckstart *)msg;
 	struct res_lib_amf_healthcheckstart res_lib_amf_healthcheckstart;
 	struct amf_healthcheck *healthcheck;
 	struct healthcheck_active *healthcheck_active;
@@ -2505,7 +2530,7 @@ fflush (stdout);
 
 	list_add_tail (&healthcheck_active->list, &comp->healthcheck_list);
 
-	if (comp->conn_info != 0) {
+	if (comp->conn != 0) {
 printf ("Activating healthcheck for the first time %p\n", healthcheck_active);
 		healthcheck_activate (healthcheck_active);
 	}
@@ -2525,18 +2550,22 @@ error_exit:
 	res_lib_amf_healthcheckstart.header.size = sizeof (struct res_lib_amf_healthcheckstart);
 	res_lib_amf_healthcheckstart.header.error = error;
 
-	libais_send_response (conn_info, &res_lib_amf_healthcheckstart,
+	openais_conn_send_response (conn, &res_lib_amf_healthcheckstart,
 		sizeof (struct res_lib_amf_healthcheckstart));
 }
 
-static void message_handler_req_lib_amf_healthcheckconfirm (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_healthcheckconfirm (
+	void *conn,
+	void *msg)
 {
 }
 
-static void message_handler_req_lib_amf_healthcheckstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_healthcheckstop (
+	void *conn,
+	void *msg)
 {
 	struct req_lib_amf_healthcheckstop *req_lib_amf_healthcheckstop =
-		(struct req_lib_amf_healthcheckstop *)message;
+		(struct req_lib_amf_healthcheckstop *)msg;
 	struct res_lib_amf_healthcheckstop res_lib_amf_healthcheckstop;
 	struct healthcheck_active *healthcheck_active;
 	struct amf_comp *comp;
@@ -2568,14 +2597,16 @@ error_exit:
 	res_lib_amf_healthcheckstop.header.size = sizeof (struct res_lib_amf_healthcheckstop);
 	res_lib_amf_healthcheckstop.header.error = error;
 
-	libais_send_response (conn_info, &res_lib_amf_healthcheckstop,
+	openais_conn_send_response (conn, &res_lib_amf_healthcheckstop,
 		sizeof (struct res_lib_amf_healthcheckstop));
 }
 
-static void message_handler_req_lib_amf_hastateget (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_hastateget (
+	void *conn,
+	void *msg)
 {
 #ifdef COMPILE_OUT
-	struct req_lib_amf_hastateget *req_lib_amf_hastateget = (struct req_lib_amf_hastateget *)message;
+	struct req_lib_amf_hastateget *req_lib_amf_hastateget = (struct req_lib_amf_hastateget *)msg;
 	struct res_lib_amf_hastateget res_lib_amf_hastateget;
 	struct amf_comp *component;
 
@@ -2594,11 +2625,13 @@ static void message_handler_req_lib_amf_hastateget (struct conn_info *conn_info,
 			&component->currentHAState, sizeof (SaAmfHAStateT));
 		res_lib_amf_hastateget.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
+	openais_conn_send_response (conn, &res_lib_amf_hastateget, sizeof (struct res_lib_amf_hastateget));
 #endif
 }
 
-static void message_handler_req_lib_amf_protectiongrouptrackstart (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_protectiongrouptrackstart (
+	void *conn,
+	void *msg)
 {
 #ifdef COMPILE_OUT
 	struct req_lib_amf_protectiongrouptrackstart *req_lib_amf_protectiongrouptrackstart = (struct req_lib_amf_protectiongrouptrackstart *)message;
@@ -2648,7 +2681,7 @@ static void message_handler_req_lib_amf_protectiongrouptrackstart (struct conn_i
 	if (amfProtectionGroup) {
 		res_lib_amf_protectiongrouptrackstart.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
+	openais_conn_send_response (conn, &res_lib_amf_protectiongrouptrackstart,
 		sizeof (struct res_lib_amf_protectiongrouptrackstart));
 
 	if (amfProtectionGroup &&
@@ -2666,11 +2699,15 @@ static void message_handler_req_lib_amf_protectiongrouptrackstart (struct conn_i
 #endif
 }
 
-static void message_handler_req_lib_amf_csiquiescingcomplete (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_csiquiescingcomplete (
+	void *conn,
+	void *msg)
 {
 }
 
-static void message_handler_req_lib_amf_protectiongrouptrackstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_protectiongrouptrackstop (
+	void *conn,
+	void *msg)
 {
 #ifdef COMPILE_OUT
 	struct req_lib_amf_protectiongrouptrackstop *req_lib_amf_protectiongrouptrackstop = (struct req_lib_amf_protectiongrouptrackstop *)message;
@@ -2704,15 +2741,17 @@ static void message_handler_req_lib_amf_protectiongrouptrackstop (struct conn_in
 	if (track) {
 		res_lib_amf_protectiongrouptrackstop.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
+	openais_conn_send_response (conn, &res_lib_amf_protectiongrouptrackstop,
 		sizeof (struct res_lib_amf_protectiongrouptrackstop));
 
 #endif
 }
 
-static void message_handler_req_lib_amf_componenterrorreport (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_componenterrorreport (
+	void *conn,
+	void *msg)
 {
-	struct req_lib_amf_componenterrorreport *req_lib_amf_componenterrorreport = (struct req_lib_amf_componenterrorreport *)message;
+	struct req_lib_amf_componenterrorreport *req_lib_amf_componenterrorreport = (struct req_lib_amf_componenterrorreport *)msg;
 	struct res_lib_amf_componenterrorreport res_lib_amf_componenterrorreport;
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_ERR_NOT_EXIST;
@@ -2731,14 +2770,14 @@ printf ("escalation policy terminate\n");
 	res_lib_amf_componenterrorreport.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
 	res_lib_amf_componenterrorreport.header.error = error;
 
-	libais_send_response (
-		conn_info, 
-		&res_lib_amf_componenterrorreport,
+	openais_conn_send_response (
+		conn, &res_lib_amf_componenterrorreport,
 		sizeof (struct res_lib_amf_componenterrorreport));
-
 }
 
-static void message_handler_req_lib_amf_componenterrorclear (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_amf_componenterrorclear (
+	void *conn,
+	void *msg)
 {
 #ifdef COMPILLE_OUT
 	struct req_lib_amf_componenterrorclear *req_lib_amf_componenterrorclear = (struct req_lib_amf_componenterrorclear *)message;
@@ -2783,9 +2822,9 @@ void pg_comp_create (
 	list_add_tail (&pg_comp->list, &pg->pg_comp_head);
 }
 
-static void message_handler_req_lib_amf_response (struct conn_info *conn_info_nouse, void *message)
+static void message_handler_req_lib_amf_response (void *conn, void *msg)
 {
-	struct req_lib_amf_response *req_lib_amf_response = (struct req_lib_amf_response *)message;
+	struct req_lib_amf_response *req_lib_amf_response = (struct req_lib_amf_response *)msg;
 	struct res_lib_amf_response res_lib_amf_response;
 	struct conn_info *conn_info;
 	struct csi_set_callback_data *csi_set_callback_data;
@@ -2871,8 +2910,7 @@ error_exit:
 	res_lib_amf_response.header.id = MESSAGE_RES_AMF_RESPONSE;
 	res_lib_amf_response.header.size = sizeof (struct res_lib_amf_response);
 	res_lib_amf_response.header.error = SA_AIS_OK;
-	libais_send_response (conn_info_nouse,
-		&res_lib_amf_response,
+	openais_conn_send_response (conn, &res_lib_amf_response,
 		sizeof (struct res_lib_amf_response));
 
 }
@@ -2975,7 +3013,7 @@ static void message_handler_req_exec_amf_componentregister (void *message, struc
 		res_lib_amf_componentregister.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
 		res_lib_amf_componentregister.header.error = error;
 
-		libais_send_response (req_exec_amf_componentregister->source.conn_info,
+		openais_conn_send_response (req_exec_amf_componentregister->source.conn_info,
 			&res_lib_amf_componentregister,
 			sizeof (struct res_lib_amf_componentregister));
 	}
@@ -3051,7 +3089,7 @@ static void message_handler_req_exec_amf_componentunregister (void *message, str
 		res_lib_amf_componentunregister.header.id = MESSAGE_RES_AMF_COMPONENTUNREGISTER;
 		res_lib_amf_componentunregister.header.error = error;
 
-		libais_send_response (req_exec_amf_componentunregister->source.conn_info,
+		openais_conn_send_response (req_exec_amf_componentunregister->source.conn_info,
 			&res_lib_amf_componentunregister, sizeof (struct res_lib_amf_componentunregister));
 	}
 
@@ -3087,7 +3125,7 @@ static void message_handler_req_exec_amf_componenterrorreport (void *message, st
 		res_lib_amf_componenterrorreport.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
 		res_lib_amf_componenterrorreport.header.error = error;
 
-		libais_send_response (req_exec_amf_componenterrorreport->source.conn_info,
+		openais_conn_send_response (req_exec_amf_componenterrorreport->source.conn_info,
 			&res_lib_amf_componenterrorreport, sizeof (struct res_lib_amf_componenterrorreport));
 	}
 
@@ -3131,7 +3169,7 @@ static void message_handler_req_exec_amf_componenterrorclear (void *message, str
 		res_lib_amf_componenterrorclear.header.id = MESSAGE_RES_AMF_COMPONENTERRORCLEAR;
 		res_lib_amf_componenterrorclear.header.error = error;
 
-		libais_send_response (req_exec_amf_componenterrorclear->source.conn_info,
+		openais_conn_send_response (req_exec_amf_componenterrorclear->source.conn_info,
 			&res_lib_amf_componenterrorclear, sizeof (struct res_lib_amf_componenterrorclear));
 	}
 
@@ -3333,7 +3371,7 @@ void ha_state_api_set (struct amf_comp *component, SaAmfHAStateT haState)
 
 	component->newHAState = haState;
 
-	libais_send_response (component->conn_info->conn_info_partner,
+	openais_conn_send_response (component->conn_info->conn_info_partner,
 		&res_lib_amf_csisetcallback,
 		sizeof (struct res_lib_amf_csisetcallback));
 }
@@ -3402,7 +3440,7 @@ void readiness_state_api_set (struct amf_comp *component,
 
 	log_printf (LOG_LEVEL_DEBUG, "Setting conn_info %p to readiness state %d\n", component->conn_info, readinessState);
 
-	libais_send_response (component->conn_info->conn_info_partner,
+	openais_conn_send_response (component->conn_info->conn_info_partner,
 		&res_lib_amf_readinessstatesetcallback,
 		sizeof (struct res_lib_amf_readinessstatesetcallback));
 }
@@ -4373,7 +4411,7 @@ static void message_handler_req_amf_readinessstateget (struct conn_info *conn_in
 			&component->currentReadinessState, sizeof (SaAmfReadinessStateT));
 		res_lib_amf_readinessstateget.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
+	openais_conn_send_response (conn_info, &res_lib_amf_readinessstateget, sizeof (struct res_lib_amf_readinessstateget));
 	return (0);
 }
 
@@ -4427,7 +4465,7 @@ static void message_handler_req_lib_amf_stoppingcomplete (struct conn_info *conn
 	if (amfProtectionGroup) {
 		res_lib_amf_protectiongrouptrackstart.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
+	openais_conn_send_response (conn_info, &res_lib_amf_protectiongrouptrackstart,
 		sizeof (struct res_lib_amf_protectiongrouptrackstart));
 
 	if (amfProtectionGroup &&
@@ -4478,7 +4516,7 @@ static void message_handler_req_amf_protectiongrouptrackstop (struct conn_info *
 	if (track) {
 		res_lib_amf_protectiongrouptrackstop.header.error = SA_AIS_OK;
 	}
-	libais_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
+	openais_conn_send_response (conn_info, &res_lib_amf_protectiongrouptrackstop,
 		sizeof (struct res_lib_amf_protectiongrouptrackstop));
 
 	return (0);
@@ -4589,7 +4627,7 @@ static void message_handler_req_lib_amf_componentcapabilitymodelget (struct conn
 	res_lib_amf_componentcapabilitymodelget.header.size = sizeof (struct res_lib_amf_componentcapabilitymodelget);
 	res_lib_amf_componentcapabilitymodelget.header.id = MESSAGE_RES_AMF_COMPONENTCAPABILITYMODELGET;
 	res_lib_amf_componentcapabilitymodelget.header.error = error;
-	libais_send_response (conn_info, &res_lib_amf_componentcapabilitymodelget,
+	openais_conn_send_response (conn_info, &res_lib_amf_componentcapabilitymodelget,
 		sizeof (struct res_lib_amf_componentcapabilitymodelget));
 
 	return (0);

@@ -59,63 +59,7 @@
 
 #define SOCKET_SERVICE_INIT 254
 
-struct aisexec_ci {
-	struct sockaddr_in in_addr;	/* address of AF_INET socket, MUST BE FIRST IN STRUCTURE */
-	SaClmClusterNodeT clusterNode;
-	SaClmClusterChangesT lastChange;
-	unsigned char authentication_key[16];
-	int authenticated;
-};
-
-/*
- * Connection information for AIS connections
- */
-
-// TODO must make this dynamic
-struct ais_ci {
-	struct sockaddr_un un_addr;	/* address of AF_UNIX socket, MUST BE FIRST IN STRUCTURE */
-	union {
-		struct aisexec_ci aisexec_ci;
-		struct libevs_ci libevs_ci;
-		struct libclm_ci libclm_ci;
-		struct libamf_ci libamf_ci;
-		struct libckpt_ci libckpt_ci;
-		struct libevt_ci libevt_ci;
-		struct liblck_ci liblck_ci;
-		struct libmsg_ci libmsg_ci;
-	} u;
-};
-
-struct outq_item {
-	void *msg;
-	size_t mlen;
-};
-
 #define SIZEINB MESSAGE_SIZE_MAX
-
-enum conn_state {
-	CONN_STATE_ACTIVE,
-	CONN_STATE_DISCONNECTING,
-	CONN_STATE_DISCONNECTING_DELAYED
-};
-
-struct conn_info {
-	int fd;				/* File descriptor  */
-	enum conn_state state;			/* State of this connection */
-	char *inb;			/* Input buffer for non-blocking reads */
-	int inb_nextheader;	/* Next message header starts here */
-	int inb_start;		/* Start location of input buffer */
-	int inb_inuse;		/* Bytes currently stored in input buffer */
-	struct queue outq;		/* Circular queue for outgoing requests */
-	int byte_start;			/* Byte to start sending from in head of queue */
-	enum service_types service;/* Type of service so dispatch knows how to route message */
-//	struct saAmfComponent *component;	/* Component for which this connection relates to  TODO shouldn't this be in the ci structure */
-	int authenticated;		/* Is this connection authenticated? */
-	struct list_head conn_list;
-	struct ais_ci ais_ci;	/* libais connection information */
-	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
-	int should_exit_fn;			/* Should call the exit function when closing this ipc */
-};
 
 extern struct totem_ip_address *this_ip;
 
@@ -125,12 +69,16 @@ extern totempg_groups_handle openais_group_handle;
 
 poll_handle aisexec_poll_handle;
 
-extern int libais_send_response (struct conn_info *conn_info, void *msg, int mlen);
-
 extern int message_source_is_local(struct message_source *source);
 
-extern void message_source_set(struct message_source *source, struct conn_info *conn_info);
+extern void message_source_set(struct message_source *source, void *conn);
 
 extern SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
+
+extern void *openais_conn_partner_get (void *conn);
+
+extern void *openais_conn_private_data_get (void *conn);
+
+extern int openais_conn_send_response (void *conn, void *msg, int mlen);
 
 #endif /* AIS_EXEC_H_DEFINED */

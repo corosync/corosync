@@ -39,11 +39,6 @@
 #ifndef MSG_H_DEFINED
 #define MSG_H_DEFINED
 
-struct libmsg_ci {
-	struct list_head queue_list;
-	struct list_head queue_cleanup_list;
-};
-
 extern struct openais_service_handler msg_service_handler;
 
 #endif /* MSG_H_DEFINED */

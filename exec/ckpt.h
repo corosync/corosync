@@ -39,49 +39,6 @@
 #ifndef CKPT_H_DEFINED
 #define CKPT_H_DEFINED
 
-struct ckpt_refcnt {
-	int count;
-	struct totem_ip_address addr;
-};
-
-struct saCkptCheckpointSection {
-	struct list_head list;
-	SaCkptSectionDescriptorT sectionDescriptor;
-	void *sectionData;
-	poll_timer_handle expiration_timer;
-};
-
-struct saCkptCheckpoint {
-	struct list_head list;
-	SaNameT name;
-	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
-	struct list_head checkpointSectionsListHead;
-	int referenceCount;
-	int unlinked;
-	poll_timer_handle retention_timer;
-	int expired;
-	int active_replica_set;
-	int sectionCount;
-	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];	
-};
-
-struct saCkptSectionIteratorEntry {
-	int active;
-	struct saCkptCheckpointSection *checkpointSection;
-};
-
-struct saCkptSectionIterator {
-	struct list_head list;
-	struct saCkptSectionIteratorEntry *sectionIteratorEntries;
-	int iteratorCount;
-	int iteratorPos;
-};
-
-struct libckpt_ci {
-	struct list_head checkpoint_list;
-	struct saCkptSectionIterator sectionIterator;
-};
-
 extern struct openais_service_handler ckpt_service_handler;
 
 #endif /* CKPT_H_DEFINED */

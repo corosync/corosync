@@ -49,7 +49,7 @@ enum openais_flow_control {
 };
 
 struct openais_lib_handler {
-	void (*lib_handler_fn) (struct conn_info *conn_info, void *msg);
+	void (*lib_handler_fn) (void *conn, void *msg);
 	int response_size;
 	int response_id;
 	enum openais_flow_control flow_control;
@@ -63,8 +63,9 @@ struct openais_exec_handler {
 struct openais_service_handler {
 	unsigned char *name;
 	unsigned short id;
-	int (*lib_init_fn) (struct conn_info *conn_info);
-	int (*lib_exit_fn) (struct conn_info *conn_info);
+	unsigned int private_data_size;
+	int (*lib_init_fn) (void *conn);
+	int (*lib_exit_fn) (void *conn);
 	struct openais_lib_handler *lib_handlers;
 	int lib_handlers_count;
 	struct openais_exec_handler *exec_handlers;

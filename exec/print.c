@@ -203,7 +203,7 @@ char *getSaNameT (SaNameT *name)
 	return (ret_name);
 }
 
-#ifdef DEBUG
+#ifdef DEBUGA
 extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
 	int i;
 	static char node_address[300];

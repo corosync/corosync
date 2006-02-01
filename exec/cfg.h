@@ -39,6 +39,6 @@
 #ifndef CFG_H_DEFINED
 #define CFG_H_DEFINED
 
-extern struct service_handler cfg_service_handler;
+extern struct openais_service_handler cfg_service_handler;
 
 #endif /* CFG_H_DEFINED */

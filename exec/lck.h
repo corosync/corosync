@@ -39,11 +39,6 @@
 #ifndef LCK_H_DEFINED
 #define LCK_H_DEFINED
 
-struct liblck_ci {
-	struct list_head resource_list;
-	struct list_head resource_cleanup_list;
-};
-
 extern struct openais_service_handler lck_service_handler;
 
 #endif /* CKPT_H_DEFINED */

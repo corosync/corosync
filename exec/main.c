@@ -160,6 +160,32 @@ static struct openais_service_handler *ais_service_handlers[32];
 
 static unsigned int service_handlers_count = 32;
 
+struct outq_item {
+	void *msg;
+	size_t mlen;
+};
+
+enum conn_state {
+	CONN_STATE_ACTIVE,
+	CONN_STATE_DISCONNECTING,
+	CONN_STATE_DISCONNECTING_DELAYED
+};
+
+struct conn_info {
+	int fd;			/* File descriptor  */
+	enum conn_state state;	/* State of this connection */
+	char *inb;		/* Input buffer for non-blocking reads */
+	int inb_nextheader;	/* Next message header starts here */
+	int inb_start;		/* Start location of input buffer */
+	int inb_inuse;		/* Bytes currently stored in input buffer */
+	struct queue outq;	/* Circular queue for outgoing requests */
+	int byte_start;		/* Byte to start sending from in head of queue */
+	enum service_types service;/* Type of service so dispatch knows how to route message */
+	int authenticated;	/* Is this connection authenticated? */
+	void *private_data;	/* library connection private data */
+	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
+	int should_exit_fn;	/* Should call the exit function when closing this ipc */
+};
 SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
  /*
@@ -280,11 +306,17 @@ static int libais_disconnect (struct conn_info *conn_info)
 		res = ais_service_handlers[conn_info->service]->lib_exit_fn (conn_info);
 	}
 
+	/*
+	 * Call library exit handler and free private data
+	 */
 	if (conn_info->conn_info_partner && 
 		conn_info->conn_info_partner->should_exit_fn &&
 		ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn) {
 
 		res = ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn (conn_info->conn_info_partner);
+		if (conn_info->private_data) {
+			free (conn_info->private_data);
+		}
 	}
 
 	/*
@@ -416,8 +448,10 @@ retry_sendmsg:
 	return (0);
 }
 
-extern int libais_send_response (struct conn_info *conn_info,
-	void *msg, int mlen)
+extern int openais_conn_send_response (
+	void *conn,
+	void *msg,
+	int mlen)
 {
 	struct queue *outq;
 	char *cmsg;
@@ -428,6 +462,7 @@ extern int libais_send_response (struct conn_info *conn_info,
 	struct msghdr msg_send;
 	struct iovec iov_send;
 	char *msg_addr;
+	struct conn_info *conn_info = (struct conn_info *)conn;
 
 	if (!libais_connection_active (conn_info)) {
 		return (-1);
@@ -581,9 +616,6 @@ retry_accept:
 
 	poll_dispatch_add (aisexec_poll_handle, new_fd, POLLIN|POLLNVAL, conn_info,
 		poll_handler_libais_deliver, 0);
-
-// TODO is this needed, or shouldn't it be in conn_info_create ?
-	memcpy (&conn_info->ais_ci.un_addr, &un_addr, sizeof (struct sockaddr_un));
 	return (0);
 }
 
@@ -602,22 +634,58 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 
 		msg_conn_info = (struct conn_info *)req_lib_dispatch_init->conn_info;
 		msg_conn_info->conn_info_partner = conn_info;
-	}
+
+		if (error == SA_AIS_OK) {
+			int private_data_size;
+
+			private_data_size = ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->private_data_size;
+			if (private_data_size) {
+				conn_info->private_data = malloc (private_data_size);
+
+				conn_info->conn_info_partner->private_data = conn_info->private_data;
+				if (conn_info->private_data == NULL) {
+					error = SA_AIS_ERR_NO_MEMORY;
+				} else {
+					memset (conn_info->private_data, 0, private_data_size);
+				}
+			} else {
+				conn_info->private_data = NULL;
+				conn_info->conn_info_partner->private_data = NULL;
+			}
+		}
 
 	res_lib_dispatch_init.header.size = sizeof (struct res_lib_dispatch_init);
 	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
 	res_lib_dispatch_init.header.error = error;
 	
-	libais_send_response (conn_info, &res_lib_dispatch_init,
+	openais_conn_send_response (
+		conn_info,
+		&res_lib_dispatch_init,
 		sizeof (res_lib_dispatch_init));
 
-	if (error == SA_AIS_ERR_ACCESS) {
+	if (error != SA_AIS_OK) {
 		return (-1);
+	}
+
 	}
 
 	conn_info->should_exit_fn = 1;
 	ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->lib_init_fn (conn_info);
 	return (0);
+}
+
+void *openais_conn_partner_get (void *conn)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	return ((void *)conn_info->conn_info_partner);
+}
+
+void *openais_conn_private_data_get (void *conn)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	return ((void *)conn_info->private_data);
 }
 
 static int response_init_send_response (struct conn_info *conn_info, void *message)
@@ -635,7 +703,9 @@ static int response_init_send_response (struct conn_info *conn_info, void *messa
 	res_lib_response_init.header.error = error;
 	res_lib_response_init.conn_info = (unsigned long)conn_info;
 
-	libais_send_response (conn_info, &res_lib_response_init,
+	openais_conn_send_response (
+		conn_info,
+		&res_lib_response_init,
 		sizeof (res_lib_response_init));
 
 	if (error == SA_AIS_ERR_ACCESS) {
@@ -804,7 +874,9 @@ retry_recv:
 				res_overlay.header.id = 
 					ais_service_handlers[service]->lib_handlers[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
-				libais_send_response (conn_info, &res_overlay,
+				openais_conn_send_response (
+					conn_info,
+					&res_overlay,
 					res_overlay.header.size);
 			}
 		}
@@ -1089,10 +1161,12 @@ int message_source_is_local(struct message_source *source)
 	return ret;	
 }
 
-void message_source_set (struct message_source *source, struct conn_info *conn_info)
+void message_source_set (
+	struct message_source *source,
+	void *conn)
 {
 	totemip_copy(&source->addr, this_ip);
-	source->conn_info = conn_info;
+	source->conn = conn;
 }
 
 

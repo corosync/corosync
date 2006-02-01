@@ -40,11 +40,6 @@
 
 #include <netinet/in.h>
 
-struct libclm_ci {
-	SaUint8T trackFlags;
-	int tracking_enabled;
-};
-
 extern SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id);
 
 extern struct openais_service_handler clm_service_handler;

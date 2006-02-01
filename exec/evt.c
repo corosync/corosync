@@ -66,26 +66,50 @@
 #define LOG_SERVICE LOG_SERVICE_EVT
 #include "print.h"
 
+/*
+ * event instance structure. Contains information about the
+ * active connection to the API library.
+ *
+ * esi_version:				Version that the library is running.
+ * esi_open_chans:			list of open channels associated with this
+ * 							instance.  Used to clean up any data left
+ * 							allocated when the finalize is done.
+ * 							(event_svr_channel_open.eco_instance_entry)
+ * esi_events:				list of pending events to be delivered on this
+ *  						instance (struct chan_event_list.cel_entry)
+ * esi_queue_blocked:		non-zero if the delivery queue got too full
+ * 							and we're blocking new messages until we
+ * 							drain some of the queued messages.
+ * esi_nevents:				Number of events in events lists to be sent.
+ * esi_hdb:					Handle data base for open channels on this
+ * 							instance.  Used for a quick lookup of
+ * 							open channel data from a lib api message.
+ */
+struct libevt_pd {
+	SaVersionT				esi_version;
+	struct list_head		esi_open_chans;
+	struct list_head		esi_events[SA_EVT_LOWEST_PRIORITY+1];
+	int						esi_nevents;
+	int						esi_queue_blocked;
+	struct hdb_handle_database	esi_hdb;
+};
+
+
 enum evt_message_req_types {
 	MESSAGE_REQ_EXEC_EVT_EVENTDATA = 0,
 	MESSAGE_REQ_EXEC_EVT_CHANCMD = 1,
 	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 2
 };
 
-static void lib_evt_open_channel(struct conn_info *conn_info, void *message);
-static void lib_evt_open_channel_async(struct conn_info *conn_info, 
-		void *message);
-static void lib_evt_close_channel(struct conn_info *conn_info, void *message);
-static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message);
-static void lib_evt_event_subscribe(struct conn_info *conn_info, 
-		void *message);
-static void lib_evt_event_unsubscribe(struct conn_info *conn_info, 
-		void *message);
-static void lib_evt_event_publish(struct conn_info *conn_info, void *message);
-static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
-		void *message);
-static void lib_evt_event_data_get(struct conn_info *conn_info, 
-		void *message);
+static void lib_evt_open_channel(void *conn, void *message);
+static void lib_evt_open_channel_async(void *conn, void *message);
+static void lib_evt_close_channel(void *conn, void *message);
+static void lib_evt_unlink_channel(void *conn, void *message);
+static void lib_evt_event_subscribe(void *conn, void *message);
+static void lib_evt_event_unsubscribe(void *conn, void *message);
+static void lib_evt_event_publish(void *conn, void *message);
+static void lib_evt_event_clear_retentiontime(void *conn, void *message);
+static void lib_evt_event_data_get(void *conn, void *message);
 
 static void evt_conf_change(
 		enum totem_configuration_type configuration_type,
@@ -94,8 +118,8 @@ static void evt_conf_change(
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
-static int evt_lib_init(struct conn_info *conn_info);
-static int evt_lib_exit(struct conn_info *conn_info);
+static int evt_lib_init(void *conn);
+static int evt_lib_exit(void *conn);
 static int evt_exec_init(struct openais_config *openais_config);
 
 /*
@@ -190,6 +214,7 @@ struct openais_service_handler evt_service_handler = {
 	.name						=
 								(unsigned char*)"openais event service B.01.01",
 	.id							= EVT_SERVICE,
+	.private_data_size			= sizeof (struct libevt_pd),
 	.lib_init_fn				= evt_lib_init,
 	.lib_exit_fn				= evt_lib_exit,
 	.lib_handlers				= evt_lib_handlers,
@@ -206,7 +231,7 @@ struct openais_service_handler evt_service_handler = {
 };
 
 #ifdef BUILD_DYNAMIC
-struct openais_service_handler *evt_get_handler_ver0 (void);
+struct openais_service_handler *evt_get_handler_ver0(void);
 
 struct openais_service_handler_iface_ver0 evt_service_handler_iface = {
 	.openais_get_service_handler_ver0		= evt_get_handler_ver0
@@ -231,13 +256,13 @@ struct lcr_comp evt_comp_ver0 = {
 	.ifaces					= openais_evt_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
+extern int lcr_comp_get(struct lcr_comp **component)
 {
 	*component = &evt_comp_ver0;
 	return (0);
 }
 
-struct openais_service_handler *evt_get_handler_ver0 (void)
+struct openais_service_handler *evt_get_handler_ver0(void)
 {
 	return (&evt_service_handler);
 }
@@ -261,13 +286,6 @@ static DECLARE_LIST_INIT(esc_head);
  * 		struct event_svr_channel_instance
  */
 static DECLARE_LIST_INIT(esc_unlinked_head);
-
-/* 
- * list of all active event conn_info structs.
- * 		struct conn_info
- */
-static DECLARE_LIST_INIT(ci_head);
-
 
 /*
  * Track the state of event service recovery.
@@ -356,7 +374,7 @@ static int				processed_open_counts = 0;
  * 	ocp_async:			1 for async open
  * 	ocp_invocation:		invocation for async open
  * 	ocp_chan_name:		requested channel
- * 	ocp_conn_info:		conn_info for returning to the library.
+ * 	ocp_conn:			conn for returning to the library.
  * 	ocp_open_flags:		channel open flags
  * 	ocp_timer_handle:	timer handle for sync open
  * 	ocp_serial_no:		Identifier for the request
@@ -366,7 +384,7 @@ struct open_chan_pending {
 	int					ocp_async;
 	SaInvocationT		ocp_invocation;
 	SaNameT				ocp_chan_name;
-	struct conn_info	*ocp_conn_info;
+	void 				*ocp_conn;
 	SaEvtChannelOpenFlagsT	ocp_open_flag;
 	poll_timer_handle	ocp_timer_handle;
 	uint64_t			ocp_c_handle;
@@ -391,12 +409,12 @@ static void chan_open_timeout(void *data);
 /*
  * Structure to track pending channel unlink requests.
  * ucp_unlink_id:		unlink ID of unlinked channel.
- * ucp_conn_info:		conn_info for returning to the library.
+ * ucp_conn:			conn for returning to the library.
  * ucp_entry:			list entry for pending unlink list.
  */
 struct unlink_chan_pending {
 	uint64_t	 		ucp_unlink_id;
-	struct conn_info	*ucp_conn_info;
+	void				*ucp_conn;
  	struct list_head 	ucp_entry;
 };
 
@@ -408,12 +426,12 @@ static DECLARE_LIST_INIT(unlink_pending);
 /*
  * Structure to track pending retention time clear requests.
  * rtc_event_id:		event ID to clear.
- * rtc_conn_info:		conn_info for returning to the library.
+ * rtc_conn:			conn for returning to the library.
  * rtc_entry:			list entry for pending clear list.
  */
 struct retention_time_clear_pending {
 	SaEvtEventIdT		rtc_event_id;
-	struct conn_info	*rtc_conn_info;
+	void				*rtc_conn;
 	struct list_head	rtc_entry;
 };
 
@@ -573,7 +591,7 @@ struct chan_event_list {
  * 						associated server instance.
  * eco_subscr:			head of list of sbuscriptions for this channel open.
  * 						(event_svr_channel_subscr.ecs_entry)
- * eco_conn_info:		refrence to EvtInitialize who owns this open.
+ * eco_conn:			refrence to EvtInitialize who owns this open.
  */
 struct event_svr_channel_open {
 	uint8_t								eco_flags;
@@ -583,7 +601,7 @@ struct event_svr_channel_open {
 	struct list_head 					eco_entry;
 	struct list_head 					eco_instance_entry;
 	struct list_head 					eco_subscr;
-	struct conn_info					*eco_conn_info;
+	void								*eco_conn;
 };
 
 /*
@@ -1161,7 +1179,7 @@ static SaAisErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
 	cpkt.chc_head.id =
-		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_OPEN_CHAN_OP;
 	cpkt.u.chc_chan.ocr_name = *cn;
@@ -1169,7 +1187,8 @@ static SaAisErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
-	res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined(openais_group_handle,
+			&chn_iovec, 1, TOTEMPG_AGREED);
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Open mcast result: %d\n",
 				res);
 	if (res != 0) {
@@ -1199,14 +1218,15 @@ static SaAisErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
 	cpkt.chc_head.id =
-		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLOSE_CHAN_OP;
 	cpkt.u.chcu.chcu_name = *cn;
 	cpkt.u.chcu.chcu_unlink_id = unlink_id;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
+	res = totempg_groups_mcast_joined(openais_group_handle,
+			&chn_iovec, 1, TOTEMPG_AGREED);
 	if (res != 0) {
 			ret = SA_AIS_ERR_LIBRARY;
 	}
@@ -1674,11 +1694,12 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
 	struct chan_event_list *cel;
-	struct libevt_ci *esip = &op_chan->eco_conn_info->ais_ci.u.libevt_ci;
+	struct libevt_pd *esip;
 	struct list_head *l, *nxt;
 	struct list_head *l1, *l2;
 	int i;
 
+	esip = (struct libevt_pd *)openais_conn_private_data_get(op_chan->eco_conn);
 	eci = op_chan->eco_channel;
 
 	/*
@@ -1702,7 +1723,7 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 				  * See if this channel open instance belongs
 				  * to this evtinitialize instance
 				  */
-				 if (eco->eco_conn_info != op_chan->eco_conn_info) {
+				 if (eco->eco_conn != op_chan->eco_conn) {
 					 continue;
 				 }
 
@@ -1751,30 +1772,34 @@ next_event:
 /*
  * Notify the library of a pending event
  */
-static void __notify_event(struct conn_info *conn_info)
+static void __notify_event(void	*conn)
 {
 	struct res_evt_event_data res;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
+	struct libevt_pd *esip;
 
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 	log_printf(LOG_LEVEL_DEBUG, "DELIVER: notify\n");
 	if (esip->esi_nevents != 0) {
 		res.evd_head.size = sizeof(res);
 		res.evd_head.id = MESSAGE_RES_EVT_AVAILABLE;
 		res.evd_head.error = SA_AIS_OK;
-		libais_send_response(conn_info->conn_info_partner, &res, sizeof(res));
+		openais_conn_send_response(openais_conn_partner_get(conn),
+				&res, sizeof(res));
 	}
 
 }
-inline void notify_event(struct conn_info *conn_info)
+inline void notify_event(void *conn)
 {
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 	/*
 	 * Give the library a kick if there aren't already
 	 * events queued for delivery.
 	 */
 	if (esip->esi_nevents++ == 0) {
-		__notify_event(conn_info);
+		__notify_event(conn);
 	}
 }
 
@@ -1787,12 +1812,14 @@ deliver_event(struct event_data *evt,
 		struct event_svr_channel_subscr *ecs)
 {
 	struct chan_event_list *ep;
-	struct libevt_ci *esip = &eco->eco_conn_info->ais_ci.u.libevt_ci;
 	SaEvtEventPriorityT evt_prio = evt->ed_event.led_priority;
 	struct chan_event_list *cel;
 	int do_deliver_event = 0;
 	int do_deliver_warning = 0;
 	int i;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(eco->eco_conn);
 
 	if (evt_prio > SA_EVT_LOWEST_PRIORITY) {
 		evt_prio = SA_EVT_LOWEST_PRIORITY;
@@ -1863,7 +1890,7 @@ deliver_event(struct event_data *evt,
 		ep->cel_event = evt;
 		list_add_tail(&ep->cel_entry, &esip->esi_events[evt_prio]);
 		evt_delivered(evt, eco);
-		notify_event(eco->eco_conn_info);
+		notify_event(eco->eco_conn);
 	} 
 
 	/*
@@ -1896,7 +1923,7 @@ deliver_event(struct event_data *evt,
 		list_init(&ep->cel_entry);
 		ep->cel_event = ed;
 		list_add_tail(&ep->cel_entry, &esip->esi_events[SA_EVT_HIGHEST_PRIORITY]);
-		notify_event(eco->eco_conn_info);
+		notify_event(eco->eco_conn);
 	}
 }
 
@@ -2037,7 +2064,7 @@ static struct event_svr_channel_subscr *find_subscr(
 	struct event_svr_channel_subscr *ecs;
 	struct event_svr_channel_open	*eco;
 	struct list_head *l, *l1;
-	struct conn_info* conn_info = open_chan->eco_conn_info;
+	void  *conn = open_chan->eco_conn;
 
 	eci = open_chan->eco_channel;
 
@@ -2051,7 +2078,7 @@ static struct event_svr_channel_subscr *find_subscr(
 		 * Don't bother with open channels associated with another 
 		 * EvtInitialize
 		 */
-		if (eco->eco_conn_info != conn_info) {
+		if (eco->eco_conn != conn) {
 			continue;
 		}
 
@@ -2068,42 +2095,32 @@ static struct event_svr_channel_subscr *find_subscr(
 /*
  * Handler for saEvtInitialize
  */
-static int evt_lib_init(struct conn_info *conn_info)
+static int evt_lib_init(void *conn)
 {
-	struct libevt_ci *libevt_ci;
-	struct conn_info *resp_conn_info;
+	struct libevt_pd *libevt_pd;
 	int i;
+
+	libevt_pd = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtInitialize request.\n");
-	list_init (&conn_info->conn_list);
-	resp_conn_info = conn_info->conn_info_partner;
-	list_init (&resp_conn_info->conn_list);
-
-	libevt_ci = &resp_conn_info->ais_ci.u.libevt_ci;
 
 	/*
 	 * Initailze event instance data
 	 */
-
-	memset(libevt_ci, 0, sizeof(*libevt_ci));
+	memset(libevt_pd, 0, sizeof(*libevt_pd));
 
 	/*
 	 * list of channels open on this instance
 	 */
-	list_init(&libevt_ci->esi_open_chans);
+	list_init(&libevt_pd->esi_open_chans);
 
 	/*
 	 * pending event lists for each piriority
 	 */
 	for (i = SA_EVT_HIGHEST_PRIORITY; i <= SA_EVT_LOWEST_PRIORITY; i++) {
-		list_init(&libevt_ci->esi_events[i]);
+		list_init(&libevt_pd->esi_events[i]);
 	}
-
-	/*
-	 * Keep track of all event service connections
-	 */
-	list_add_tail(&resp_conn_info->conn_list, &ci_head);
 
 	return 0;
 }
@@ -2111,7 +2128,7 @@ static int evt_lib_init(struct conn_info *conn_info)
 /*
  * Handler for saEvtChannelOpen
  */
-static void lib_evt_open_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_open_channel(void *conn, void *message)
 {
 	SaAisErrorT error;
 	struct req_evt_channel_open *req;
@@ -2153,7 +2170,7 @@ static void lib_evt_open_channel(struct conn_info *conn_info, void *message)
 	ocp->ocp_invocation = 0;
 	ocp->ocp_chan_name = req->ico_channel_name;
 	ocp->ocp_open_flag = req->ico_open_flag;
-	ocp->ocp_conn_info = conn_info;
+	ocp->ocp_conn = conn;
 	ocp->ocp_c_handle = req->ico_c_handle;
 	ocp->ocp_timer_handle = 0;
 	ocp->ocp_serial_no = open_serial_no;
@@ -2180,14 +2197,13 @@ open_return:
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
  * Handler for saEvtChannelOpen
  */
-static void lib_evt_open_channel_async(struct conn_info *conn_info, 
-		void *message)
+static void lib_evt_open_channel_async(void *conn, void *message)
 {
 	SaAisErrorT error;
 	struct req_evt_channel_open *req;
@@ -2228,7 +2244,7 @@ static void lib_evt_open_channel_async(struct conn_info *conn_info,
 	ocp->ocp_c_handle = req->ico_c_handle;
 	ocp->ocp_chan_name = req->ico_channel_name;
 	ocp->ocp_open_flag = req->ico_open_flag;
-	ocp->ocp_conn_info = conn_info;
+	ocp->ocp_conn = conn;
 	ocp->ocp_timer_handle = 0;
 	ocp->ocp_serial_no = open_serial_no;
 	list_init(&ocp->ocp_entry);
@@ -2238,7 +2254,7 @@ open_return:
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 
@@ -2248,7 +2264,7 @@ open_return:
  * when saEvtFinalize is called with channels open.
  */
 static SaAisErrorT
-common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
+common_chan_close(struct event_svr_channel_open	*eco, struct libevt_pd *esip)
 {
 	struct event_svr_channel_subscr *ecs;
 	struct list_head *l, *nxt;
@@ -2296,14 +2312,16 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_ci *esip)
 /*
  * Handler for saEvtChannelClose
  */
-static void lib_evt_close_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_close_channel(void *conn, void *message)
 {
 	struct req_evt_channel_close *req;
 	struct res_evt_channel_close res;
 	struct event_svr_channel_open	*eco;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	unsigned int ret;
 	void *ptr;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 	req = message;
 
@@ -2329,13 +2347,13 @@ chan_close_done:
 	res.icc_head.size = sizeof(res);
 	res.icc_head.id = MESSAGE_RES_EVT_CLOSE_CHANNEL;
 	res.icc_head.error = ((ret == 0) ? SA_AIS_OK : SA_AIS_ERR_BAD_HANDLE);
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
  * Handler for saEvtChannelUnlink
  */
-static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
+static void lib_evt_unlink_channel(void *conn, void *message)
 {
 	struct req_evt_channel_unlink *req;
 	struct res_evt_channel_unlink res;
@@ -2371,7 +2389,7 @@ static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	}
 
 	ucp->ucp_unlink_id = next_chan_unlink_id();
-	ucp->ucp_conn_info = conn_info;
+	ucp->ucp_conn = conn;
 	list_init(&ucp->ucp_entry);
 	list_add_tail(&ucp->ucp_entry, &unlink_pending);
 
@@ -2381,14 +2399,15 @@ static void lib_evt_unlink_channel(struct conn_info *conn_info, void *message)
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
 	cpkt.chc_head.id =
-		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_UNLINK_CHAN_OP;
 	cpkt.u.chcu.chcu_name = req->iuc_channel_name;
 	cpkt.u.chcu.chcu_unlink_id = ucp->ucp_unlink_id;
 	chn_iovec.iov_base = &cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
-	if (totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED) == 0) {
+	if (totempg_groups_mcast_joined(openais_group_handle,
+								&chn_iovec, 1, TOTEMPG_AGREED) == 0) {
 		return;
 	}
 
@@ -2400,7 +2419,7 @@ evt_unlink_err:
 	res.iuc_head.size = sizeof(res);
 	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
 	res.iuc_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
@@ -2424,7 +2443,7 @@ static char *filter_types[] = {
 /*
  * saEvtEventSubscribe Handler
  */
-static void lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
+static void lib_evt_event_subscribe(void *conn, void *message)
 {
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
@@ -2434,11 +2453,13 @@ static void lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
 	struct event_data *evt;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	struct list_head *l;
 	void *ptr;
 	unsigned int ret;
 	int i;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 	req = message;
 
@@ -2503,7 +2524,7 @@ static void lib_evt_event_subscribe(struct conn_info *conn_info, void *message)
 	res.ics_head.size = sizeof(res);
 	res.ics_head.id = MESSAGE_RES_EVT_SUBSCRIBE;
 	res.ics_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 
 	/*
 	 * See if an existing event with a retention time
@@ -2535,24 +2556,25 @@ subr_done:
 	res.ics_head.size = sizeof(res);
 	res.ics_head.id = MESSAGE_RES_EVT_SUBSCRIBE;
 	res.ics_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
  * saEvtEventUnsubscribe Handler
  */
-static void lib_evt_event_unsubscribe(struct conn_info *conn_info, 
-		void *message)
+static void lib_evt_event_unsubscribe(void *conn, void *message)
 {
 	struct req_evt_event_unsubscribe *req;
 	struct res_evt_event_unsubscribe res;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	struct event_svr_channel_subscr *ecs;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	SaAisErrorT error = SA_AIS_OK;
 	unsigned int ret;
 	void *ptr;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 	req = message;
 
@@ -2601,17 +2623,16 @@ unsubr_done:
 	res.icu_head.size = sizeof(res);
 	res.icu_head.id = MESSAGE_RES_EVT_UNSUBSCRIBE;
 	res.icu_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
  * saEvtEventPublish Handler
  */
-static void lib_evt_event_publish(struct conn_info *conn_info, void *message)
+static void lib_evt_event_publish(void *conn, void *message)
 {
 	struct lib_event_data *req;
 	struct res_evt_event_publish res;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
 	SaEvtEventIdT event_id = 0;
@@ -2621,6 +2642,9 @@ static void lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	void *ptr;
 	int result;
 	unsigned int ret;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 
 	req = message;
@@ -2647,7 +2671,7 @@ static void lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 * processes.
 	 */
 	get_event_id(&event_id, &msg_id);
-	req->led_head.id = SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_EVENTDATA);
+	req->led_head.id = SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_EVENTDATA);
 	req->led_chan_name = eci->esc_channel_name;
 	req->led_event_id = event_id;
 	req->led_msg_id = msg_id;
@@ -2660,7 +2684,7 @@ static void lib_evt_event_publish(struct conn_info *conn_info, void *message)
 	 */
 	pub_iovec.iov_base = req;
 	pub_iovec.iov_len = req->led_head.size;
-	result = totempg_groups_mcast_joined (openais_group_handle, &pub_iovec, 1, TOTEMPG_AGREED);
+	result = totempg_groups_mcast_joined(openais_group_handle, &pub_iovec, 1, TOTEMPG_AGREED);
 	if (result != 0) {
 			error = SA_AIS_ERR_LIBRARY;
 	}
@@ -2671,14 +2695,13 @@ pub_done:
 	res.iep_head.id = MESSAGE_RES_EVT_PUBLISH;
 	res.iep_head.error = error;
 	res.iep_event_id = event_id;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 }
 
 /*
  * saEvtEventRetentionTimeClear handler
  */
-static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info, 
-				void *message)
+static void lib_evt_event_clear_retentiontime(void *conn, void *message)
 {
 	struct req_evt_event_clear_retentiontime *req;
 	struct res_evt_event_clear_retentiontime res;
@@ -2705,7 +2728,7 @@ static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 		goto evt_ret_clr_err;
 	}
 	rtc->rtc_event_id = req->iec_event_id;
-	rtc->rtc_conn_info = conn_info;
+	rtc->rtc_conn = conn;
 	list_init(&rtc->rtc_entry);
 	list_add_tail(&rtc->rtc_entry, &clear_pending);
 
@@ -2714,13 +2737,14 @@ static void lib_evt_event_clear_retentiontime(struct conn_info *conn_info,
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
 	cpkt.chc_head.id = 
-		SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLEAR_RET_OP;
 	cpkt.u.chc_event_id = req->iec_event_id;
 	rtn_iovec.iov_base = &cpkt;
 	rtn_iovec.iov_len = cpkt.chc_head.size;
-	ret = totempg_groups_mcast_joined (openais_group_handle, &rtn_iovec, 1, TOTEMPG_AGREED);
+	ret = totempg_groups_mcast_joined(openais_group_handle,
+			&rtn_iovec, 1, TOTEMPG_AGREED);
 	if (ret == 0) {
 		// TODO this should really assert
 		return;
@@ -2735,20 +2759,22 @@ evt_ret_clr_err:
 	res.iec_head.size = sizeof(res);
 	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
 	res.iec_head.error = error;
-	libais_send_response (conn_info, &res, sizeof(res));
+	openais_conn_send_response(conn, &res, sizeof(res));
 
 }
 
 /*
  * Send requested event data to the application
  */
-static void lib_evt_event_data_get(struct conn_info *conn_info, void *message)
+static void lib_evt_event_data_get(void *conn, void *message)
 {
 	struct lib_event_data res;
-	struct libevt_ci *esip = &conn_info->ais_ci.u.libevt_ci;
 	struct chan_event_list *cel;
 	struct event_data *edp;
 	int i;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(conn);
 
 
 	/*
@@ -2772,7 +2798,7 @@ static void lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 			edp->ed_event.led_head.id = MESSAGE_RES_EVT_EVENT_DATA;
 			edp->ed_event.led_head.error = SA_AIS_OK;
 			free(cel);
-			libais_send_response(conn_info, &edp->ed_event, 
+			openais_conn_send_response(conn, &edp->ed_event,
 											edp->ed_event.led_head.size);
 			free_event_data(edp);
 			goto data_get_done;
@@ -2782,7 +2808,7 @@ static void lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 	res.led_head.size = sizeof(res.led_head);
 	res.led_head.id = MESSAGE_RES_EVT_EVENT_DATA;
 	res.led_head.error = SA_AIS_ERR_NOT_EXIST;
-	libais_send_response(conn_info, &res, res.led_head.size);
+	openais_conn_send_response(conn, &res, res.led_head.size);
 
 	/*
 	 * See if there are any events that the app doesn't know about
@@ -2790,7 +2816,7 @@ static void lib_evt_event_data_get(struct conn_info *conn_info, void *message)
 	 */
 data_get_done:
 	if (esip->esi_nevents) {
-		__notify_event(conn_info);
+		__notify_event(conn);
 	}
 }
 
@@ -2935,15 +2961,16 @@ static void evt_conf_change(
 /*
  * saEvtFinalize Handler
  */
-static int evt_lib_exit(struct conn_info *conn_info)
+static int evt_lib_exit(void *conn)
 {
 
-	struct libevt_ci *esip = &conn_info->conn_info_partner->ais_ci.u.libevt_ci;
 	struct event_svr_channel_open	*eco;
 	struct list_head *l, *nxt;
 	struct open_chan_pending *ocp;
 	struct unlink_chan_pending *ucp;
 	struct retention_time_clear_pending *rtc;
+	struct libevt_pd *esip =
+		openais_conn_private_data_get(openais_conn_partner_get(conn));
 
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize (Event exit request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize %d evts on list\n",
@@ -2965,7 +2992,7 @@ static int evt_lib_exit(struct conn_info *conn_info)
 	for (l = open_pending.next; l != &open_pending; l = nxt) {
 		nxt = l->next;
 		ocp = list_entry(l, struct open_chan_pending, ocp_entry);
-		if (esip == &ocp->ocp_conn_info->ais_ci.u.libevt_ci) {
+		if (esip == openais_conn_private_data_get(ocp->ocp_conn)) {
 			list_del(&ocp->ocp_entry);
 			free(ocp);
 		}
@@ -2974,7 +3001,7 @@ static int evt_lib_exit(struct conn_info *conn_info)
 	for (l = unlink_pending.next; l != &unlink_pending; l = nxt) {
 		nxt = l->next;
 		ucp = list_entry(l, struct unlink_chan_pending, ucp_entry);
-		if (esip == &ucp->ucp_conn_info->ais_ci.u.libevt_ci) {
+		if (esip == openais_conn_private_data_get(ucp->ucp_conn)) {
 			list_del(&ucp->ucp_entry);
 			free(ucp);
 		}
@@ -2984,16 +3011,11 @@ static int evt_lib_exit(struct conn_info *conn_info)
 			l != &clear_pending; l = nxt) {
 		nxt = l->next;
 		rtc = list_entry(l, struct retention_time_clear_pending, rtc_entry);
-		if (esip == &rtc->rtc_conn_info->ais_ci.u.libevt_ci) {
+		if (esip == openais_conn_private_data_get(rtc->rtc_conn)) {
 			list_del(&rtc->rtc_entry);
 			free(rtc);
 		}
 	}
-
-	/*
-	 * Delete track entry if there is one
-	 */
-	list_del (&conn_info->conn_info_partner->conn_list);
 
 	return 0;
 }
@@ -3110,7 +3132,7 @@ static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr)
 	 * See where the message came from so that we can set the 
 	 * publishing node id in the message before delivery.
 	 */
-	cn = main_clm_get_by_nodeid (source_addr->nodeid);
+	cn = main_clm_get_by_nodeid(source_addr->nodeid);
 	if (!cn) {
 			/*
 			 * Not sure how this can happen...
@@ -3310,7 +3332,7 @@ static void chan_open_timeout(void *data)
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = SA_AIS_ERR_TIMEOUT;
 	ocp->ocp_invocation = OPEN_TIMED_OUT;
-	libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
+	openais_conn_send_response(ocp->ocp_conn, &res, sizeof(res));
 }
 
 /*
@@ -3320,13 +3342,15 @@ static void chan_open_timeout(void *data)
 static void evt_chan_open_finish(struct open_chan_pending *ocp, 
 		struct event_svr_channel_instance *eci)
 {
-	uint32_t handle;
 	struct event_svr_channel_open *eco;
 	SaAisErrorT error = SA_AIS_OK;
-	struct libevt_ci *esip = &ocp->ocp_conn_info->ais_ci.u.libevt_ci;
 	unsigned int ret = 0;
-	unsigned int timer_del_status;
-	void *ptr;
+	unsigned int timer_del_status = 0;
+	void *ptr = 0;
+	uint32_t handle;
+	struct libevt_pd *esip;
+
+	esip = (struct libevt_pd *)openais_conn_private_data_get(ocp->ocp_conn);
 
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n",
 											getSaNameT(&ocp->ocp_chan_name));
@@ -3382,7 +3406,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	eco->eco_channel = eci;
 	eco->eco_lib_handle = ocp->ocp_c_handle;
 	eco->eco_my_handle = handle;
-	eco->eco_conn_info = ocp->ocp_conn_info;
+	eco->eco_conn = ocp->ocp_conn;
 	list_add_tail(&eco->eco_entry, &eci->esc_open_chans);
 	list_add_tail(&eco->eco_instance_entry, &esip->esi_open_chans);
 
@@ -3404,7 +3428,7 @@ open_return:
 		resa.ica_channel_handle = handle;
 		resa.ica_c_handle = ocp->ocp_c_handle;
 		resa.ica_invocation = ocp->ocp_invocation;
-		libais_send_response (ocp->ocp_conn_info->conn_info_partner, 
+		openais_conn_send_response(openais_conn_partner_get(ocp->ocp_conn),
 				&resa, sizeof(resa));
 	} else {
 		struct res_evt_channel_open res;
@@ -3412,7 +3436,7 @@ open_return:
 		res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 		res.ico_head.error = (ret == 0 ? SA_AIS_OK : SA_AIS_ERR_BAD_HANDLE);
 		res.ico_channel_handle = handle;
-		libais_send_response (ocp->ocp_conn_info, &res, sizeof(res));
+		openais_conn_send_response(ocp->ocp_conn, &res, sizeof(res));
 	}
 
 	if (timer_del_status == 0) {
@@ -3437,7 +3461,7 @@ static void evt_chan_unlink_finish(struct unlink_chan_pending *ucp)
 	res.iuc_head.size = sizeof(res);
 	res.iuc_head.id = MESSAGE_RES_EVT_UNLINK_CHANNEL;
 	res.iuc_head.error = SA_AIS_OK;
-	libais_send_response (ucp->ucp_conn_info, &res, sizeof(res));
+	openais_conn_send_response(ucp->ucp_conn, &res, sizeof(res));
 
 	free(ucp);
 }
@@ -3457,7 +3481,7 @@ static void evt_ret_time_clr_finish(struct retention_time_clear_pending *rtc,
 	res.iec_head.size = sizeof(res);
 	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
 	res.iec_head.error = ret;
-	libais_send_response (rtc->rtc_conn_info, &res, sizeof(res));
+	openais_conn_send_response(rtc->rtc_conn, &res, sizeof(res));
 
 	list_del(&rtc->rtc_entry);
 	free(rtc);
@@ -4011,7 +4035,7 @@ static int evt_sync_process(void)
 				cpkt.u.chc_set_id.chc_last_id = md->mn_last_msg_id;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
-				res = totempg_groups_mcast_joined (openais_group_handle,
+				res = totempg_groups_mcast_joined(openais_group_handle,
 						&chn_iovec, 1, TOTEMPG_AGREED);
 				if (res != 0) {
 					log_printf(RECOVERY_DEBUG, 
@@ -4071,14 +4095,14 @@ static int evt_sync_process(void)
 			eci = list_entry(next_chan, struct event_svr_channel_instance, 
 					esc_entry);
 			cpkt.chc_head.id =
-				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 			cpkt.chc_head.size = sizeof(cpkt);
 			cpkt.chc_op = EVT_OPEN_COUNT;
 			cpkt.u.chc_set_opens.chc_chan_name = eci->esc_channel_name;
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
 			chn_iovec.iov_base = &cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
-			res = totempg_groups_mcast_joined (openais_group_handle,
+			res = totempg_groups_mcast_joined(openais_group_handle,
 					&chn_iovec, 1, TOTEMPG_AGREED);
 
 			if (res != 0) {
@@ -4090,12 +4114,13 @@ static int evt_sync_process(void)
 		}
 		memset(&cpkt, 0, sizeof(cpkt));
 		cpkt.chc_head.id =
-			SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+			SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1,TOTEMPG_AGREED);
+		res = totempg_groups_mcast_joined(openais_group_handle,
+				&chn_iovec, 1,TOTEMPG_AGREED);
 		if (res != 0) {
 		/*
 		 * Try again later.
@@ -4140,10 +4165,11 @@ static int evt_sync_process(void)
 			log_printf(LOG_LEVEL_DEBUG, "Sending next retained event\n");
 			evt = list_entry(next_retained, struct event_data, ed_retained);
 			evt->ed_event.led_head.id =
-				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA);
+				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA);
 			chn_iovec.iov_base = &evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
-			res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
+			res = totempg_groups_mcast_joined(openais_group_handle,
+					&chn_iovec, 1, TOTEMPG_AGREED);
 
 			if (res != 0) {
 			/*
@@ -4166,12 +4192,13 @@ static int evt_sync_process(void)
 		log_printf(RECOVERY_DEBUG, "DONE Sending retained events\n");
 		memset(&cpkt, 0, sizeof(cpkt));
 		cpkt.chc_head.id =
-				SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_CONF_DONE;
 		chn_iovec.iov_base = &cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
-		res = totempg_groups_mcast_joined (openais_group_handle, &chn_iovec, 1, TOTEMPG_AGREED);
+		res = totempg_groups_mcast_joined(openais_group_handle,
+				&chn_iovec, 1, TOTEMPG_AGREED);
 
 		recovery_phase = evt_wait_send_retained_events;
 		return 1;

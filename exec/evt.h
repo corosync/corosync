@@ -33,40 +33,11 @@
 
 #ifndef EVT_H
 #define EVT_H
-#include "../include/hdb.h"
-#include "../include/list.h"
+#include "../include/saAis.h"
 #include "../include/saEvt.h"
 #include "handlers.h"
 
 extern struct openais_service_handler evt_service_handler;
-
-/*
- * event instance structure. Contains information about the
- * active connection to the API library.
- *
- * esi_version:				Version that the library is running.
- * esi_open_chans:			list of open channels associated with this
- * 							instance.  Used to clean up any data left
- * 							allocated when the finalize is done.
- * 							(event_svr_channel_open.eco_instance_entry)
- * esi_events:				list of pending events to be delivered on this 
- *  						instance (struct chan_event_list.cel_entry)
- * esi_queue_blocked:		non-zero if the delivery queue got too full
- * 							and we're blocking new messages until we
- * 							drain some of the queued messages.
- * esi_nevents:				Number of events in events lists to be sent.
- * esi_hdb:					Handle data base for open channels on this
- * 							instance.  Used for a quick lookup of
- * 							open channel data from a lib api message.
- */
-struct libevt_ci {
-	SaVersionT				esi_version;
-	struct list_head		esi_open_chans;
-	struct list_head		esi_events[SA_EVT_LOWEST_PRIORITY+1];
-	int						esi_nevents;
-	int						esi_queue_blocked;
-	struct hdb_handle_database	esi_hdb;
-};
 
 #endif
 /*

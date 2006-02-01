@@ -31,17 +31,15 @@
 # BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
 #	handler modules.  If the developer intends to debug, building without
 #	dynamic modules should provide an easier route.
+BUILD_DYNAMIC=1
 
 # Production mode flags
-#CFLAGS = -O3 -Wall -fomit-frame-pointer
-#LDFLAGS = -lpthread
-#BUILD_DYNAMIC=1
+CFLAGS = -O3 -Wall -fomit-frame-pointer
+LDFLAGS = -lpthread
 
 # Debug mode flags
-CFLAGS = -g -Wall 
-#-DDEBUG
-LDFLAGS = -g -lpthread
-BUILD_DYNAMIC=1
+#CFLAGS = -g -Wall 
+#LDFLAGS = -g -lpthread
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -72,7 +70,7 @@ CFLAGS += -DBUILD_DYNAMIC=1 -fPIC
 LDFLAGS += -ldl -rdynamic
 EXEC_LIBS +=  ../lcr/lcr_ifact.o
 
-all:libtotem_pg.a libtotem_pg.so.1.0 \
+all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso \
@@ -132,6 +130,9 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
 
 # - fPIC rules required for service handler shared objects
+../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
+	$(CC) $(CFLAGS) -I../lcr -c -o $@ ../lcr/lcr_ifact.c
+
 evs.o: evs.c
 	$(CC) $(CFLAGS) -c -o $@ $(*F).c
 

@@ -110,9 +110,9 @@ DECLARE_LIST_INIT(queue_group_list_head);
 
 static int msg_exec_init_fn (struct openais_config *);
 
-static int msg_lib_exit_fn (struct conn_info *conn_info);
+static int msg_lib_exit_fn (void *conn);
 
-static int msg_lib_init_fn (struct conn_info *conn_info);
+static int msg_lib_init_fn (void *conn);
 
 static void message_handler_req_exec_msg_queueopen (
 	void *message,
@@ -175,76 +175,76 @@ static void message_handler_req_exec_msg_messagereply (
 	struct totem_ip_address *source_addr);
 
 static void message_handler_req_lib_msg_queueopen (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queueopenasync (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queueclose (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuestatusget (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queueunlink (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegroupcreate (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegroupinsert (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegroupremove (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegroupdelete (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegrouptrack (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_queuegrouptrackstop (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagesend (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagesendasync (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messageget (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagecancel (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagesendreceive (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagereply (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 static void message_handler_req_lib_msg_messagereplyasync (
-	struct conn_info *conn_info,
-	void *message);
+	void *conn,
+	void *msg);
 
 #ifdef TODO
 static void msg_sync_init (void);
@@ -261,6 +261,12 @@ static void msg_confchg_fn (
 		struct totem_ip_address *left_list, int left_list_entries,
 		struct totem_ip_address *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
+
+struct msg_pd {
+	struct list_head queue_list;
+	struct list_head queue_cleanup_list;
+};
+
 
 /*
  * Executive Handler Definition
@@ -429,6 +435,7 @@ static struct openais_exec_handler msg_exec_handlers[] = {
 struct openais_service_handler msg_service_handler = {
 	.name				= (unsigned char *)"openais message service B.01.01",
 	.id				= MSG_SERVICE,
+	.private_data_size		= sizeof (struct msg_pd),
 	.lib_init_fn			= msg_lib_init_fn,
 	.lib_exit_fn			= msg_lib_exit_fn,
 	.lib_handlers			= msg_lib_handlers,
@@ -673,18 +680,16 @@ static int msg_exec_init_fn (struct openais_config *openais_config)
 	return (0);
 }
 
-static int msg_lib_exit_fn (struct conn_info *conn_info)
+static int msg_lib_exit_fn (void *conn)
 {
+//	struct msg_pd *msg_pd = (struct msg_pd *)openais_conn_private_data_get (conn);
 #ifdef COMPILE_OUT
 	struct queue_cleanup *queue_cleanup;
 	struct list_head *list;
 	
 printf ("exit_fn\n");
-	if (conn_info->conn_info_partner->service != MSG_SERVICE) {
-		return 0;
-	}
 
-	log_printf(LOG_LEVEL_NOTICE, "msg_exit_fn conn_info = %#x, with fd = %d\n", conn_info, conn_info->fd);
+	log_printf(LOG_LEVEL_NOTICE, "msg_exit_fn conn_info = %p\n", conn);
 	
 	/*
 	 * close all queues opened on this fd
@@ -711,11 +716,12 @@ printf ("queue cleanup %x\n", queue_cleanup);
 	return (0);
 }
 
-static int msg_lib_init_fn (struct conn_info *conn_info)
+static int msg_lib_init_fn (void *conn)
 {
-	list_init (&conn_info->conn_info_partner->ais_ci.u.libmsg_ci.queue_list);
-	list_init (&conn_info->conn_info_partner->ais_ci.u.libmsg_ci.queue_cleanup_list);
+	struct msg_pd *msg_pd = (struct msg_pd *)openais_conn_private_data_get (conn);
 
+	list_init (&msg_pd->queue_list);
+	list_init (&msg_pd->queue_cleanup_list);
 	return (0);
 }
 
@@ -803,12 +809,12 @@ error_exit:
 				&req_exec_msg_queueopen->source,
 				sizeof (struct message_source));
 
-			libais_send_response (
-				req_exec_msg_queueopen->source.conn_info,
+			openais_conn_send_response (
+				req_exec_msg_queueopen->source.conn,
 				&res_lib_msg_queueopenasync,
 				sizeof (struct res_lib_msg_queueopenasync));
-			libais_send_response (
-				req_exec_msg_queueopen->source.conn_info->conn_info_partner,
+			openais_conn_send_response (
+				openais_conn_partner_get (req_exec_msg_queueopen->source.conn),
 				&res_lib_msg_queueopenasync,
 				sizeof (struct res_lib_msg_queueopenasync));
 		} else {
@@ -822,7 +828,9 @@ error_exit:
 				&req_exec_msg_queueopen->source,
 				sizeof (struct message_source));
 
-			libais_send_response (req_exec_msg_queueopen->source.conn_info, &res_lib_msg_queueopen,
+			openais_conn_send_response (
+				req_exec_msg_queueopen->source.conn,
+				&res_lib_msg_queueopen,
 				sizeof (struct res_lib_msg_queueopen));
 		}
 	}
@@ -859,7 +867,7 @@ error_exit:
 		res_lib_msg_queueclose.header.size = sizeof (struct res_lib_msg_queueclose);
 		res_lib_msg_queueclose.header.id = MESSAGE_RES_MSG_QUEUECLOSE;
 		res_lib_msg_queueclose.header.error = error;
-		libais_send_response (req_exec_msg_queueclose->source.conn_info,
+		openais_conn_send_response (req_exec_msg_queueclose->source.conn,
 			&res_lib_msg_queueclose, sizeof (struct res_lib_msg_queueclose));
 	}
 }
@@ -917,8 +925,8 @@ error_exit:
 		res_lib_msg_queuegroupcreate.header.id = MESSAGE_RES_MSG_QUEUEGROUPCREATE;
 		res_lib_msg_queuegroupcreate.header.error = error;
 
-		libais_send_response (
-			req_exec_msg_queuegroupcreate->source.conn_info,
+		openais_conn_send_response (
+			req_exec_msg_queuegroupcreate->source.conn,
 			&res_lib_msg_queuegroupcreate,
 			sizeof (struct res_lib_msg_queuegroupcreate));
 	}
@@ -964,8 +972,8 @@ error_exit:
 		res_lib_msg_queuegroupinsert.header.id = MESSAGE_RES_MSG_QUEUEGROUPCREATE;
 		res_lib_msg_queuegroupinsert.header.error = error;
 
-		libais_send_response (
-			req_exec_msg_queuegroupinsert->source.conn_info,
+		openais_conn_send_response (
+			req_exec_msg_queuegroupinsert->source.conn,
 			&res_lib_msg_queuegroupinsert,
 			sizeof (struct res_lib_msg_queuegroupinsert));
 	}
@@ -1008,8 +1016,8 @@ error_exit:
 		res_lib_msg_queuegroupremove.header.id = MESSAGE_RES_MSG_QUEUEGROUPCREATE;
 		res_lib_msg_queuegroupremove.header.error = error;
 
-		libais_send_response (
-			req_exec_msg_queuegroupremove->source.conn_info,
+		openais_conn_send_response (
+			req_exec_msg_queuegroupremove->source.conn,
 			&res_lib_msg_queuegroupremove,
 			sizeof (struct res_lib_msg_queuegroupremove));
 	}
@@ -1039,8 +1047,8 @@ static void message_handler_req_exec_msg_queuegroupdelete (
 		res_lib_msg_queuegroupdelete.header.id = MESSAGE_RES_MSG_QUEUEGROUPCREATE;
 		res_lib_msg_queuegroupdelete.header.error = error;
 
-		libais_send_response (
-			req_exec_msg_queuegroupdelete->source.conn_info,
+		openais_conn_send_response (
+			req_exec_msg_queuegroupdelete->source.conn,
 			&res_lib_msg_queuegroupdelete,
 			sizeof (struct res_lib_msg_queuegroupdelete));
 	}
@@ -1110,9 +1118,11 @@ static void message_handler_req_exec_msg_messagereply (
 }
 
 
-static void message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_msg_queueopen (
+	void *conn,
+	void *msg)
 {
-	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)message;
+	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)msg;
 	struct req_exec_msg_queueopen req_exec_msg_queueopen;
 	struct iovec iovec;
 
@@ -1124,7 +1134,7 @@ static void message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, 
 	req_exec_msg_queueopen.header.id = 
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEOPEN);
 
-	message_source_set (&req_exec_msg_queueopen.source, conn_info);
+	message_source_set (&req_exec_msg_queueopen.source, conn);
 
 	memcpy (&req_exec_msg_queueopen.queue_name,
 		&req_lib_msg_queueopen->queueName, sizeof (SaNameT));
@@ -1145,9 +1155,11 @@ static void message_handler_req_lib_msg_queueopen (struct conn_info *conn_info, 
 		TOTEMPG_AGREED) == 0);
 }
 
-static void message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_msg_queueopenasync (
+	void *conn,
+	void *msg)
 {
-	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)message;
+	struct req_lib_msg_queueopen *req_lib_msg_queueopen = (struct req_lib_msg_queueopen *)msg;
 	struct req_exec_msg_queueopen req_exec_msg_queueopen;
 	struct iovec iovec;
 
@@ -1159,7 +1171,7 @@ static void message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_i
 	req_exec_msg_queueopen.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEOPEN);
 
-	message_source_set (&req_exec_msg_queueopen.source, conn_info);
+	message_source_set (&req_exec_msg_queueopen.source, conn);
 
 	memcpy (&req_exec_msg_queueopen.queue_name,
 		&req_lib_msg_queueopen->queueName, sizeof (SaNameT));
@@ -1181,8 +1193,11 @@ static void message_handler_req_lib_msg_queueopenasync (struct conn_info *conn_i
 		TOTEMPG_AGREED) == 0);
 }
 
-static void message_handler_req_lib_msg_queueclose (struct conn_info *conn_info, void *message) {
-	struct req_lib_msg_queueclose *req_lib_msg_queueclose = (struct req_lib_msg_queueclose *)message;
+static void message_handler_req_lib_msg_queueclose (
+	void *conn,
+	void *msg)
+{
+	struct req_lib_msg_queueclose *req_lib_msg_queueclose = (struct req_lib_msg_queueclose *)msg;
 	struct req_exec_msg_queueclose req_exec_msg_queueclose;
 	struct iovec iovec;
 
@@ -1194,7 +1209,7 @@ static void message_handler_req_lib_msg_queueclose (struct conn_info *conn_info,
 	req_exec_msg_queueclose.header.id = 
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUECLOSE);
 
-	message_source_set (&req_exec_msg_queueclose.source, conn_info);
+	message_source_set (&req_exec_msg_queueclose.source, conn);
 
 	memcpy (&req_exec_msg_queueclose.queue_name,
 		&req_lib_msg_queueclose->queueName, sizeof (SaNameT));
@@ -1207,11 +1222,11 @@ static void message_handler_req_lib_msg_queueclose (struct conn_info *conn_info,
 }
 
 static void message_handler_req_lib_msg_queuestatusget (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuestatusget *req_lib_msg_queuestatusget =
-		(struct req_lib_msg_queuestatusget *)message;
+		(struct req_lib_msg_queuestatusget *)msg;
 	struct req_exec_msg_queuestatusget req_exec_msg_queuestatusget;
 	struct iovec iovec;
 
@@ -1223,7 +1238,7 @@ static void message_handler_req_lib_msg_queuestatusget (
 	req_exec_msg_queuestatusget.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUESTATUSGET);
 
-	message_source_set (&req_exec_msg_queuestatusget.source, conn_info);
+	message_source_set (&req_exec_msg_queuestatusget.source, conn);
 
 	memcpy (&req_exec_msg_queuestatusget.queue_name,
 		&req_lib_msg_queuestatusget->queueName, sizeof (SaNameT));
@@ -1236,11 +1251,11 @@ static void message_handler_req_lib_msg_queuestatusget (
 }
 
 static void message_handler_req_lib_msg_queueunlink (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queueunlink *req_lib_msg_queueunlink =
-		(struct req_lib_msg_queueunlink *)message;
+		(struct req_lib_msg_queueunlink *)msg;
 	struct req_exec_msg_queueunlink req_exec_msg_queueunlink;
 	struct iovec iovec;
 
@@ -1252,7 +1267,7 @@ static void message_handler_req_lib_msg_queueunlink (
 	req_exec_msg_queueunlink.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEUNLINK);
 
-	message_source_set (&req_exec_msg_queueunlink.source, conn_info);
+	message_source_set (&req_exec_msg_queueunlink.source, conn);
 
 	memcpy (&req_exec_msg_queueunlink.queue_name,
 		&req_lib_msg_queueunlink->queueName, sizeof (SaNameT));
@@ -1265,11 +1280,11 @@ static void message_handler_req_lib_msg_queueunlink (
 }
 
 static void message_handler_req_lib_msg_queuegroupcreate (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegroupcreate *req_lib_msg_queuegroupcreate =
-		(struct req_lib_msg_queuegroupcreate *)message;
+		(struct req_lib_msg_queuegroupcreate *)msg;
 	struct req_exec_msg_queuegroupcreate req_exec_msg_queuegroupcreate;
 	struct iovec iovec;
 
@@ -1281,7 +1296,7 @@ static void message_handler_req_lib_msg_queuegroupcreate (
 	req_exec_msg_queuegroupcreate.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEGROUPCREATE);
 
-	message_source_set (&req_exec_msg_queuegroupcreate.source, conn_info);
+	message_source_set (&req_exec_msg_queuegroupcreate.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupcreate.queue_group_name,
 		&req_lib_msg_queuegroupcreate->queueGroupName, sizeof (SaNameT));
@@ -1294,11 +1309,11 @@ static void message_handler_req_lib_msg_queuegroupcreate (
 }
 
 static void message_handler_req_lib_msg_queuegroupinsert (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegroupinsert *req_lib_msg_queuegroupinsert =
-		(struct req_lib_msg_queuegroupinsert *)message;
+		(struct req_lib_msg_queuegroupinsert *)msg;
 	struct req_exec_msg_queuegroupinsert req_exec_msg_queuegroupinsert;
 	struct iovec iovec;
 
@@ -1310,7 +1325,7 @@ static void message_handler_req_lib_msg_queuegroupinsert (
 	req_exec_msg_queuegroupinsert.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEGROUPINSERT);
 
-	message_source_set (&req_exec_msg_queuegroupinsert.source, conn_info);
+	message_source_set (&req_exec_msg_queuegroupinsert.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupinsert.queue_name,
 		&req_lib_msg_queuegroupinsert->queueName, sizeof (SaNameT));
@@ -1325,11 +1340,11 @@ static void message_handler_req_lib_msg_queuegroupinsert (
 }
 
 static void message_handler_req_lib_msg_queuegroupremove (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegroupremove *req_lib_msg_queuegroupremove =
-		(struct req_lib_msg_queuegroupremove *)message;
+		(struct req_lib_msg_queuegroupremove *)msg;
 	struct req_exec_msg_queuegroupremove req_exec_msg_queuegroupremove;
 	struct iovec iovec;
 
@@ -1341,7 +1356,7 @@ static void message_handler_req_lib_msg_queuegroupremove (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupRemove %s\n",
 		getSaNameT (&req_lib_msg_queuegroupremove->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegroupremove.source, conn_info);
+	message_source_set (&req_exec_msg_queuegroupremove.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupremove.queue_name,
 		&req_lib_msg_queuegroupremove->queueName, sizeof (SaNameT));
@@ -1356,11 +1371,11 @@ static void message_handler_req_lib_msg_queuegroupremove (
 }
 
 static void message_handler_req_lib_msg_queuegroupdelete (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegroupdelete *req_lib_msg_queuegroupdelete =
-		(struct req_lib_msg_queuegroupdelete *)message;
+		(struct req_lib_msg_queuegroupdelete *)msg;
 	struct req_exec_msg_queuegroupdelete req_exec_msg_queuegroupdelete;
 	struct iovec iovec;
 
@@ -1372,7 +1387,7 @@ static void message_handler_req_lib_msg_queuegroupdelete (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupDelete %s\n",
 		getSaNameT (&req_lib_msg_queuegroupdelete->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegroupdelete.source, conn_info);
+	message_source_set (&req_exec_msg_queuegroupdelete.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupdelete.queue_group_name,
 		&req_lib_msg_queuegroupdelete->queueGroupName, sizeof (SaNameT));
@@ -1385,11 +1400,11 @@ static void message_handler_req_lib_msg_queuegroupdelete (
 }
 
 static void message_handler_req_lib_msg_queuegrouptrack (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegrouptrack *req_lib_msg_queuegrouptrack =
-		(struct req_lib_msg_queuegrouptrack *)message;
+		(struct req_lib_msg_queuegrouptrack *)msg;
 	struct req_exec_msg_queuegrouptrack req_exec_msg_queuegrouptrack;
 	struct iovec iovec;
 
@@ -1401,7 +1416,7 @@ static void message_handler_req_lib_msg_queuegrouptrack (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupTrack %s\n",
 		getSaNameT (&req_lib_msg_queuegrouptrack->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegrouptrack.source, conn_info);
+	message_source_set (&req_exec_msg_queuegrouptrack.source, conn);
 
 	memcpy (&req_exec_msg_queuegrouptrack.queue_group_name,
 		&req_lib_msg_queuegrouptrack->queueGroupName, sizeof (SaNameT));
@@ -1414,11 +1429,11 @@ static void message_handler_req_lib_msg_queuegrouptrack (
 }
 
 static void message_handler_req_lib_msg_queuegrouptrackstop (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_queuegrouptrackstop *req_lib_msg_queuegrouptrackstop =
-		(struct req_lib_msg_queuegrouptrackstop *)message;
+		(struct req_lib_msg_queuegrouptrackstop *)msg;
 	struct req_exec_msg_queuegrouptrackstop req_exec_msg_queuegrouptrackstop;
 	struct iovec iovec;
 
@@ -1430,7 +1445,7 @@ static void message_handler_req_lib_msg_queuegrouptrackstop (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupTrackStop %s\n",
 		getSaNameT (&req_lib_msg_queuegrouptrackstop->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegrouptrackstop.source, conn_info);
+	message_source_set (&req_exec_msg_queuegrouptrackstop.source, conn);
 
 	memcpy (&req_exec_msg_queuegrouptrackstop.queue_group_name,
 		&req_lib_msg_queuegrouptrackstop->queueGroupName, sizeof (SaNameT));
@@ -1443,11 +1458,11 @@ static void message_handler_req_lib_msg_queuegrouptrackstop (
 }
 
 static void message_handler_req_lib_msg_messagesend (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagesend *req_lib_msg_messagesend =
-		(struct req_lib_msg_messagesend *)message;
+		(struct req_lib_msg_messagesend *)msg;
 	struct req_exec_msg_messagesend req_exec_msg_messagesend;
 	struct iovec iovec;
 
@@ -1460,7 +1475,7 @@ static void message_handler_req_lib_msg_messagesend (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgMessageSend %s\n",
 		getSaNameT (&req_lib_msg_messagesend->destination));
 
-	message_source_set (&req_exec_msg_messagesend.source, conn_info);
+	message_source_set (&req_exec_msg_messagesend.source, conn);
 
 	memcpy (&req_exec_msg_messagesend.destination,
 		&req_lib_msg_messagesend->destination, sizeof (SaNameT));
@@ -1473,11 +1488,11 @@ static void message_handler_req_lib_msg_messagesend (
 }
 
 static void message_handler_req_lib_msg_messagesendasync (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagesend *req_lib_msg_messagesend =
-		(struct req_lib_msg_messagesend *)message;
+		(struct req_lib_msg_messagesend *)msg;
 	struct req_exec_msg_messagesend req_exec_msg_messagesend;
 	struct iovec iovec;
 
@@ -1490,7 +1505,7 @@ static void message_handler_req_lib_msg_messagesendasync (
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGESEND);
 	req_exec_msg_messagesend.async_call = 1;
 
-	message_source_set (&req_exec_msg_messagesend.source, conn_info);
+	message_source_set (&req_exec_msg_messagesend.source, conn);
 
 	memcpy (&req_exec_msg_messagesend.destination,
 		&req_lib_msg_messagesend->destination, sizeof (SaNameT));
@@ -1503,11 +1518,11 @@ static void message_handler_req_lib_msg_messagesendasync (
 }
 
 static void message_handler_req_lib_msg_messageget (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messageget *req_lib_msg_messageget =
-		(struct req_lib_msg_messageget *)message;
+		(struct req_lib_msg_messageget *)msg;
 	struct req_exec_msg_messageget req_exec_msg_messageget;
 	struct iovec iovec;
 
@@ -1519,7 +1534,7 @@ static void message_handler_req_lib_msg_messageget (
 	req_exec_msg_messageget.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEGET);
 
-	message_source_set (&req_exec_msg_messageget.source, conn_info);
+	message_source_set (&req_exec_msg_messageget.source, conn);
 
 	memcpy (&req_exec_msg_messageget.queue_name,
 		&req_lib_msg_messageget->queueName, sizeof (SaNameT));
@@ -1532,11 +1547,11 @@ static void message_handler_req_lib_msg_messageget (
 }
 
 static void message_handler_req_lib_msg_messagecancel (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagecancel *req_lib_msg_messagecancel =
-		(struct req_lib_msg_messagecancel *)message;
+		(struct req_lib_msg_messagecancel *)msg;
 	struct req_exec_msg_messagecancel req_exec_msg_messagecancel;
 	struct iovec iovec;
 
@@ -1548,7 +1563,7 @@ static void message_handler_req_lib_msg_messagecancel (
 	req_exec_msg_messagecancel.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGECANCEL);
 
-	message_source_set (&req_exec_msg_messagecancel.source, conn_info);
+	message_source_set (&req_exec_msg_messagecancel.source, conn);
 
 	memcpy (&req_exec_msg_messagecancel.queue_name,
 		&req_lib_msg_messagecancel->queueName, sizeof (SaNameT));
@@ -1561,11 +1576,11 @@ static void message_handler_req_lib_msg_messagecancel (
 }
 
 static void message_handler_req_lib_msg_messagesendreceive (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagesendreceive *req_lib_msg_messagesendreceive =
-		(struct req_lib_msg_messagesendreceive *)message;
+		(struct req_lib_msg_messagesendreceive *)msg;
 	struct req_exec_msg_messagesendreceive req_exec_msg_messagesendreceive;
 	struct iovec iovec;
 
@@ -1577,7 +1592,7 @@ static void message_handler_req_lib_msg_messagesendreceive (
 	req_exec_msg_messagesendreceive.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGESENDRECEIVE);
 
-	message_source_set (&req_exec_msg_messagesendreceive.source, conn_info);
+	message_source_set (&req_exec_msg_messagesendreceive.source, conn);
 
 	memcpy (&req_exec_msg_messagesendreceive.queue_name,
 		&req_lib_msg_messagesendreceive->queueName, sizeof (SaNameT));
@@ -1590,11 +1605,11 @@ static void message_handler_req_lib_msg_messagesendreceive (
 }
 
 static void message_handler_req_lib_msg_messagereply (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagereply *req_lib_msg_messagereply =
-		(struct req_lib_msg_messagereply *)message;
+		(struct req_lib_msg_messagereply *)msg;
 	struct req_exec_msg_messagereply req_exec_msg_messagereply;
 	struct iovec iovec;
 
@@ -1607,7 +1622,7 @@ static void message_handler_req_lib_msg_messagereply (
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEREPLY);
 	req_exec_msg_messagereply.async_call = 0;
 
-	message_source_set (&req_exec_msg_messagereply.source, conn_info);
+	message_source_set (&req_exec_msg_messagereply.source, conn);
 
 	memcpy (&req_exec_msg_messagereply.queue_name,
 		&req_lib_msg_messagereply->queueName, sizeof (SaNameT));
@@ -1620,11 +1635,11 @@ static void message_handler_req_lib_msg_messagereply (
 }
 
 static void message_handler_req_lib_msg_messagereplyasync (
-	struct conn_info *conn_info,
-	void *message)
+	void *conn,
+	void *msg)
 {
 	struct req_lib_msg_messagereply *req_lib_msg_messagereply =
-		(struct req_lib_msg_messagereply *)message;
+		(struct req_lib_msg_messagereply *)msg;
 	struct req_exec_msg_messagereply req_exec_msg_messagereply;
 	struct iovec iovec;
 
@@ -1637,7 +1652,7 @@ static void message_handler_req_lib_msg_messagereplyasync (
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEREPLY);
 	req_exec_msg_messagereply.async_call = 1;
 
-	message_source_set (&req_exec_msg_messagereply.source, conn_info);
+	message_source_set (&req_exec_msg_messagereply.source, conn);
 
 	memcpy (&req_exec_msg_messagereply.queue_name,
 		&req_lib_msg_messagereply->queueName, sizeof (SaNameT));

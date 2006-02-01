@@ -31,20 +31,19 @@
 # BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
 #       handler modules.  If the developer intends to debug, building without
 #       dynamic modules should provide an easier route.
+BUILD_DYNAMIC=0
 
 # Production mode flags
 CFLAGS = -O3 -Wall
-LDFLAGS = -lpthread -ldl
+LDFLAGS = -lpthread
 DESTDIR=/usr/local/openais
-BUILD_DYNAMIC=1
 
 # Debug mode flags
-#CFLAGS = -g -DDEBUG
-#LDFLAGS = -g
-#BUILD_DYNAMIC=0
+#CFLAGS = -g
+#LDFLAGS = -g -lpthread
 
 # Profile mode flags
-#CFLAGS = -O3 -pg -DDEBUG
+#CFLAGS = -O3 -pg
 #LDFLAGS = -pg
 
 ifeq (${BUILD_DYNAMIC}, 1)
@@ -55,7 +54,7 @@ endif
 all:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
 	(cd lib; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
-	(cd exec; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" BUILD_DYNAMIC="1");
+	(cd exec; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" BUILD_DYNAMIC="$(BUILD_DYNAMIC)");
 	(cd test; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
 
 clean:

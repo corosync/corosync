@@ -124,9 +124,9 @@ static void clm_sync_abort (void);
 
 static int clm_exec_init_fn (struct openais_config *);
 
-static int clm_lib_init_fn (struct conn_info *conn_info);
+static int clm_lib_init_fn (void *conn);
 
-static int clm_lib_exit_fn (struct conn_info *conn_info);
+static int clm_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_clm_nodejoin (
 	void *message,
@@ -134,17 +134,20 @@ static void message_handler_req_exec_clm_nodejoin (
 
 static void exec_clm_nodejoin_endian_convert (void *msg);
 
-static void message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info,
-	void *message);
+static void message_handler_req_lib_clm_clustertrack (void *conn, void *message);
 
-static void message_handler_req_lib_clm_trackstop (struct conn_info *conn_info,
-	void *message);
+static void message_handler_req_lib_clm_trackstop (void *conn, void *message);
 
-static void message_handler_req_lib_clm_nodeget (struct conn_info *conn_info,
-	void *message);
+static void message_handler_req_lib_clm_nodeget (void *conn, void *message);
 
-static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info,
-	void *message);
+static void message_handler_req_lib_clm_nodegetasync (void *conn, void *message);
+
+struct clm_pd {
+	SaUint8T trackFlags;
+	int tracking_enabled;
+	struct list_head list;
+	void *conn;
+};
 
 /*
  * Executive Handler Definition
@@ -188,6 +191,7 @@ static struct openais_exec_handler clm_exec_handlers[] =
 struct openais_service_handler clm_service_handler = {
 	.name						= (unsigned char*)"openais cluster membership service B.01.01",
 	.id							= CLM_SERVICE,
+	.private_data_size			= sizeof (struct clm_pd),
 	.lib_init_fn				= clm_lib_init_fn,
 	.lib_exit_fn				= clm_lib_exit_fn,
 	.lib_handlers				= clm_lib_handlers,
@@ -282,10 +286,6 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 		thisClusterNode.bootTimestamp = ((SaTimeT)(current_time - s_info.uptime)) * 1000000000;
 	}
 
-#ifdef DEBUG
-    printSaClmClusterNodeT ("this cluster node", &thisClusterNode);
-#endif
-
 	memcpy (&clusterNodes[0], &thisClusterNode, sizeof (SaClmClusterNodeT));
 	clusterNodeEntries = 1;
 
@@ -293,12 +293,14 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	return (0);
 }
 
-static int clm_lib_exit_fn (struct conn_info *conn_info)
+static int clm_lib_exit_fn (void *conn)
 {
+	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
 	/*
 	 * Delete track entry if there is one
 	 */
-	list_del (&conn_info->conn_list);
+	list_del (&clm_pd->list);
+	clm_pd->conn = conn;
 
 	return (0);
 }
@@ -307,7 +309,7 @@ static void library_notification_send (SaClmClusterNotificationT *cluster_notifi
 	int notify_entries)
 {
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
-	struct conn_info *conn_info;
+	struct clm_pd *clm_pd;
 	struct list_head *list;
 	int i;
 
@@ -324,12 +326,12 @@ static void library_notification_send (SaClmClusterNotificationT *cluster_notifi
         list != &library_notification_send_listhead;
         list = list->next) {
 
-        conn_info = list_entry (list, struct conn_info, conn_list);
+        clm_pd = list_entry (list, struct clm_pd, list);
 
 		/*
 		 * Track current and changes
 		 */
-		if (conn_info->ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CHANGES) {
+		if (clm_pd->trackFlags & SA_TRACK_CHANGES) {
 			/*
 			 * Copy all cluster nodes
 			 */
@@ -348,10 +350,11 @@ static void library_notification_send (SaClmClusterNotificationT *cluster_notifi
 				sizeof (SaClmClusterNotificationT) * notify_entries);
 		} else
 
+
 		/*
 		 * Track only changes
 		 */
-		if (conn_info->ais_ci.u.libclm_ci.trackFlags & SA_TRACK_CHANGES_ONLY) {
+		if (clm_pd->trackFlags & SA_TRACK_CHANGES_ONLY) {
 			res_lib_clm_clustertrack.numberOfItems = notify_entries;
 			memcpy (&res_lib_clm_clustertrack.notification,
 				cluster_notification_entries,
@@ -361,7 +364,8 @@ static void library_notification_send (SaClmClusterNotificationT *cluster_notifi
 		/*
 		 * Send notifications to all CLM listeners
 		 */
-		libais_send_response (conn_info, &res_lib_clm_clustertrack,
+		openais_conn_send_response (clm_pd->conn,
+			&res_lib_clm_clustertrack,
 			sizeof (struct res_lib_clm_clustertrack));
     }
 }
@@ -578,19 +582,21 @@ static void message_handler_req_exec_clm_nodejoin (
 	}
 }
 
-static int clm_lib_init_fn (struct conn_info *conn_info)
+static int clm_lib_init_fn (void *conn)
 {
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
+	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
 
-	list_init (&conn_info->conn_list);
+	list_init (&clm_pd->list);
 
 	return (0);
 }
 
-static void message_handler_req_lib_clm_clustertrack (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_clustertrack (void *conn, void *msg)
 {
-	struct req_lib_clm_clustertrack *req_lib_clm_clustertrack = (struct req_lib_clm_clustertrack *)message;
+	struct req_lib_clm_clustertrack *req_lib_clm_clustertrack = (struct req_lib_clm_clustertrack *)msg;
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
+	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
 	int i;
 
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
@@ -615,53 +621,50 @@ static void message_handler_req_lib_clm_clustertrack (struct conn_info *conn_inf
 	if (req_lib_clm_clustertrack->trackFlags & SA_TRACK_CHANGES ||
 		req_lib_clm_clustertrack->trackFlags & SA_TRACK_CHANGES_ONLY) {
 
-		conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags =
-			req_lib_clm_clustertrack->trackFlags;
+		clm_pd->trackFlags = req_lib_clm_clustertrack->trackFlags;
+		clm_pd->tracking_enabled = 1;
 
-		conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 1;
-
-		list_add (&conn_info->conn_info_partner->conn_list,
-			&library_notification_send_listhead);
+		list_add (&clm_pd->list, &library_notification_send_listhead);
 	}
 
-	libais_send_response (conn_info, &res_lib_clm_clustertrack,
+	openais_conn_send_response (conn, &res_lib_clm_clustertrack,
 		sizeof (struct res_lib_clm_clustertrack));
 
 	if (req_lib_clm_clustertrack->return_in_callback) {
 		res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
 
-		libais_send_response (conn_info->conn_info_partner,
+		openais_conn_send_response (
+			openais_conn_partner_get (conn),
 			&res_lib_clm_clustertrack,
 			sizeof (struct res_lib_clm_clustertrack));
 	}
 }
 
 
-static void message_handler_req_lib_clm_trackstop (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_trackstop (void *conn, void *msg)
 {
 	struct res_lib_clm_trackstop res_lib_clm_trackstop;
+	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
 
 	res_lib_clm_trackstop.header.size = sizeof (struct res_lib_clm_trackstop);
 	res_lib_clm_trackstop.header.id = MESSAGE_RES_CLM_TRACKSTOP;
 
-	if (conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled) {
+	if (clm_pd->tracking_enabled) {
 		res_lib_clm_trackstop.header.error = SA_AIS_OK;
+		clm_pd->tracking_enabled = 0;
 	} else {
 		res_lib_clm_trackstop.header.error = SA_AIS_ERR_NOT_EXIST;
 	}
 
-	conn_info->conn_info_partner->ais_ci.u.libclm_ci.trackFlags = 0;
-	conn_info->conn_info_partner->ais_ci.u.libclm_ci.tracking_enabled = 0;
+	list_del (&clm_pd->list);
 
-	list_del (&conn_info->conn_info_partner->conn_list);
-
-	libais_send_response (conn_info, &res_lib_clm_trackstop,
+	openais_conn_send_response (conn, &res_lib_clm_trackstop,
 		sizeof (struct res_lib_clm_trackstop));
 }
 
-static void message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_nodeget (void *conn, void *msg)
 {
-	struct req_lib_clm_nodeget *req_lib_clm_nodeget = (struct req_lib_clm_nodeget *)message;
+	struct req_lib_clm_nodeget *req_lib_clm_nodeget = (struct req_lib_clm_nodeget *)msg;
 	struct res_clm_nodeget res_clm_nodeget;
 	SaClmClusterNodeT *clusterNode = 0;
 	int valid = 0;
@@ -690,12 +693,12 @@ static void message_handler_req_lib_clm_nodeget (struct conn_info *conn_info, vo
 	if (valid) {
 		memcpy (&res_clm_nodeget.clusterNode, clusterNode, sizeof (SaClmClusterNodeT));
 	}
-	libais_send_response (conn_info, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
+	openais_conn_send_response (conn, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
 }
 
-static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_info, void *message)
+static void message_handler_req_lib_clm_nodegetasync (void *conn, void *msg)
 {
-	struct req_lib_clm_nodegetasync *req_lib_clm_nodegetasync = (struct req_lib_clm_nodegetasync *)message;
+	struct req_lib_clm_nodegetasync *req_lib_clm_nodegetasync = (struct req_lib_clm_nodegetasync *)msg;
 	struct res_clm_nodegetasync res_clm_nodegetasync;
 	struct res_clm_nodegetcallback res_clm_nodegetcallback;
 	SaClmClusterNodeT *clusterNode = 0;
@@ -723,7 +726,8 @@ static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_inf
 	res_clm_nodegetasync.header.size = sizeof (struct res_clm_nodegetasync);
 	res_clm_nodegetasync.header.id = MESSAGE_RES_CLM_NODEGETASYNC;
 	res_clm_nodegetasync.header.error = SA_AIS_OK;
-	libais_send_response (conn_info, &res_clm_nodegetasync,
+
+	openais_conn_send_response (conn, &res_clm_nodegetasync,
 		sizeof (struct res_clm_nodegetasync));
 
 	/*
@@ -737,6 +741,7 @@ static void message_handler_req_lib_clm_nodegetasync (struct conn_info *conn_inf
 		memcpy (&res_clm_nodegetcallback.clusterNode, clusterNode,
 			sizeof (SaClmClusterNodeT));
 	}
-	libais_send_response (conn_info->conn_info_partner, &res_clm_nodegetcallback,
+	openais_conn_send_response (openais_conn_partner_get (conn),
+		&res_clm_nodegetcallback,
 		sizeof (struct res_clm_nodegetcallback));
 }

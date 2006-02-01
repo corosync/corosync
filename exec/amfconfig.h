@@ -163,7 +163,7 @@ enum clc_component_types {
 struct amf_comp {
 	int registered;
 	int local;
-	struct conn_info *conn_info;
+	void *conn;
 	SaNameT name;
 	struct in_addr source_addr;
 	struct amf_comp *proxy_comp;

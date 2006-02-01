@@ -113,8 +113,8 @@ struct res_lib_dispatch_init {
 	struct res_header header;
 };
 struct message_source {
-	struct conn_info *conn_info;
 	struct totem_ip_address addr;
+	void *conn;
 } __attribute__((packed));
 
 #endif /* IPC_GEN_H_DEFINED */

@@ -26,7 +26,7 @@
 #LDFLAGS = 
 
 # Debug mode flags
-CFLAGS = -g -DDEBUG -Wall
+CFLAGS = -g -Wall
 LDFLAGS = -g -L./
 
 # Profile mode flags
@@ -37,8 +37,7 @@ LDFLAGS = -g -L./
 #CFLAGS = -ftest-coverage -fprofile-arcs
 #LDFLAGS = -g
 
-
-CFLAGS += -fPIC
+LDFLAGS += -ldl
 
 all:liblcr.a test uic libtest_a.lcrso libtest_b.lcrso
 
@@ -46,16 +45,22 @@ liblcr.a: lcr_ifact.o
 	$(AR) -rc liblcr.a lcr_ifact.o
 
 libtest_a.lcrso: libtest_a.o
-	$(CC) -shared -Wl,-soname,libtest_b.lcrso libtest_a.o -o $@
+	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_a.o -o $@
 
 libtest_b.lcrso: libtest_b.o
-	$(CC) -shared -Wl,-soname,libtest_b.lcrso libtest_b.o -o $@
+	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_b.o -o $@
 	
 test: test.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -ldl -o test
 	
 uic: uic.o
 	$(CC) $(LDFLAGS) uic.o -o uic
+
+libtest_a.o: libtest_a.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+
+libtest_b.o: libtest_b.c
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
 
 clean:
 	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg

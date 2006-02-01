@@ -40,23 +40,6 @@
 #ifndef AMF_H_DEFINED
 #define AMF_H_DEFINED
 
-struct libamf_ci_trackentry {
-	int active;
-	SaUint8T trackFlags;
-	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
-	SaNameT csiName;
-};
-
-struct amf_comp;
-struct libamf_ci {
-	struct amf_comp *comp;
-/*
-	struct libamf_ci_trackentry *tracks;
-	int trackEntries;
-	int trackActive;
-*/
-};
-
 void amf_dump ();
 extern struct openais_service_handler amf_service_handler;
 
