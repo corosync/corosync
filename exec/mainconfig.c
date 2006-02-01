@@ -56,7 +56,8 @@ typedef enum {
 	MAIN_HEAD,
 	MAIN_LOGGING,
 	MAIN_EVENT,
-	MAIN_AMF
+	MAIN_AMF,
+	MAIN_COMPONENTS
 } main_parse_t;
 
 char *strstr_rs (const char *haystack, const char *needle)
@@ -87,6 +88,55 @@ char *strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
+#ifdef BUILD_DYNAMIC
+static void set_default_services(struct openais_config *config)
+{
+	config->dynamic_services[0].name = "openais_evs";
+	config->dynamic_services[0].ver = 0;
+	config->dynamic_services[1].name = "openais_clm";
+	config->dynamic_services[1].ver = 0;
+	config->dynamic_services[2].name = "openais_amf";
+	config->dynamic_services[2].ver = 0;
+	config->dynamic_services[3].name = "openais_ckpt";
+	config->dynamic_services[3].ver = 0;
+	config->dynamic_services[4].name = "openais_evt";
+	config->dynamic_services[4].ver = 0;
+	config->dynamic_services[5].name = "openais_lck";
+	config->dynamic_services[5].ver = 0;
+	config->dynamic_services[6].name = "openais_msg";
+	config->dynamic_services[6].ver = 0;
+	config->dynamic_services[7].name = "openais_cfg";
+	config->dynamic_services[7].ver = 0;
+	config->num_dynamic_services = 8;
+}
+
+/* Returns an allocated string */
+static char *get_component(const char *line, int *version)
+{
+	char *start_address;
+	char *end_address;
+	char *newline;
+	char *compname;
+
+	newline = strdup(line);
+
+	start_address = newline + strspn(newline, " \t");
+	end_address = start_address + strcspn(start_address, " \t:");
+
+	*end_address = '\0';
+	compname = strdup(start_address);
+
+	/* Now get version */
+	start_address = end_address+1;
+	start_address = start_address + strspn(start_address, " \t:");
+
+	*version = atoi(start_address);
+	free(newline);
+
+	return compname;
+}
+#endif
+
 extern int openais_main_config_read (char **error_string,
     struct openais_config *openais_config,
 	int interface_max)
@@ -97,6 +147,7 @@ extern int openais_main_config_read (char **error_string,
 	int logging_parsed = 0;
 	int event_parsed = 0;
 	int amf_parsed = 0;
+	int components_parsed = 0;
 	char *loc;
 	int i;
 	int parse_done = 0;
@@ -147,6 +198,10 @@ extern int openais_main_config_read (char **error_string,
 			if (amf_parsed == 0 && strstr_rs (line, "amf{")) {
 				amf_parsed = 1;
 				parse = MAIN_AMF;
+			} else
+			if (components_parsed == 0 && strstr_rs (line, "components{")) {
+				components_parsed = 1;
+				parse = MAIN_COMPONENTS;
 			} else {
 				continue;
 			}
@@ -225,10 +280,25 @@ extern int openais_main_config_read (char **error_string,
 				goto parse_error;
 			}
 			break;
-
+		case MAIN_COMPONENTS:
+			if ((loc = strstr_rs (line, "}"))) {
+				parse = MAIN_HEAD;
+			}
+#ifdef BUILD_DYNAMIC
+			else {
+				int version;
+				char *name = get_component(line, &version);
+				if (name) {
+					openais_config->dynamic_services[openais_config->num_dynamic_services].name = name;
+					openais_config->dynamic_services[openais_config->num_dynamic_services].ver = version;
+					openais_config->num_dynamic_services++;
+				}
+			}
+#endif
+			break;
 		default:
 			assert (0 == 1); /* SHOULDN'T HAPPEN */
-			break;	
+			break;
 		}
 	}
 
@@ -237,6 +307,12 @@ extern int openais_main_config_read (char **error_string,
 		goto parse_error;
 	}
 
+#ifdef BUILD_DYNAMIC
+	/* Load default services if the config file doesn't specify */
+	if (!openais_config->num_dynamic_services) {
+		set_default_services(openais_config);
+	}
+#endif
 	if (parse == MAIN_HEAD) {
 		fclose (fp);
 		return (0);

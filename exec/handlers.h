@@ -70,6 +70,7 @@ struct openais_service_handler {
 	int lib_handlers_count;
 	struct openais_exec_handler *exec_handlers;
 	int (*exec_init_fn) (struct openais_config *);
+	int (*config_init_fn) (struct openais_config *);
 	void (*exec_dump_fn) (void);
 	int exec_handlers_count;
 	void (*confchg_fn) (

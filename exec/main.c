@@ -90,72 +90,6 @@
 int ais_uid = 0;
 int gid_valid = 0;
 
-/*
- * All service handlers in the AIS
- */
-#ifdef BUILD_DYNAMIC
-struct dynamic_service {
-	char *name;
-	unsigned int ver;
-	unsigned int handle;
-	struct openais_service_handler_iface_ver0 *iface_ver0;
-};
-
-/*
- * Still need to know the name of the service interface and version number
- */
-struct dynamic_service dynamic_services[128] = {
-	{
-		.name			= "openais_evs",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_clm",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_amf",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_ckpt",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_evt",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_lck",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_msg",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	},
-	{
-		.name			= "openais_cfg",
-		.ver			= 0,
-		.handle			= 0,
-		.iface_ver0		= NULL
-	}
-};
-#endif /* BUILD_DYNAMIC */
-		
 static struct openais_service_handler *ais_service_handlers[32];
 
 static unsigned int service_handlers_count = 32;
@@ -214,6 +148,7 @@ enum e_ais_done {
 	AIS_DONE_MAINCONFIGREAD = -9,
 	AIS_DONE_LOGSETUP = -10,
 	AIS_DONE_AMFCONFIGREAD = -11,
+	AIS_DONE_DYNAMICLOAD = -12,
 };
 
 extern int openais_amf_config_read (char **error_string);
@@ -1180,10 +1115,22 @@ int service_handler_register (
 	assert (ais_service_handlers[handler->id] == NULL);
 	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
 	ais_service_handlers[handler->id] = handler;
+	if (ais_service_handlers[handler->id]->config_init_fn) {
+		res = ais_service_handlers[handler->id]->config_init_fn (config);
+	}
+	return (res);
+}
+
+int service_handler_init (
+	struct openais_service_handler *handler,
+	struct openais_config *config)
+{
+	int res = 0;
+	assert (ais_service_handlers[handler->id] != NULL);
+	log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", handler->name);
 	if (ais_service_handlers[handler->id]->exec_init_fn) {
 		res = ais_service_handlers[handler->id]->exec_init_fn (config);
 	}
-	
 	return (res);
 }
 
@@ -1192,16 +1139,20 @@ void default_services_register (struct openais_config *openais_config)
 #ifdef BUILD_DYNAMIC
 	int i;
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < openais_config->num_dynamic_services; i++) {
 		lcr_ifact_reference (
-			&dynamic_services[i].handle,
-			dynamic_services[i].name,
-			dynamic_services[i].ver,
-			(void **)&dynamic_services[i].iface_ver0,
+			&openais_config->dynamic_services[i].handle,
+			openais_config->dynamic_services[i].name,
+			openais_config->dynamic_services[i].ver,
+			(void **)&openais_config->dynamic_services[i].iface_ver0,
 			(void *)0);
 
+		if (!openais_config->dynamic_services[i].iface_ver0) {
+			log_printf(LOG_LEVEL_ERROR, "AIS Component %s did not load.\n", openais_config->dynamic_services[i].name);
+			ais_done(AIS_DONE_DYNAMICLOAD);
+		}
 		service_handler_register (
-			dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
+			openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
 			openais_config);
 	}
 
@@ -1218,6 +1169,32 @@ void default_services_register (struct openais_config *openais_config)
 	service_handler_register (&lck_service_handler, openais_config);
 	service_handler_register (&msg_service_handler, openais_config);
 	service_handler_register (&cfg_service_handler, openais_config);
+#endif /* BUILD_DYNAMIC */
+}
+
+void default_services_init (struct openais_config *openais_config)
+{
+#ifdef BUILD_DYNAMIC
+	int i;
+
+	for (i = 0; i < openais_config->num_dynamic_services; i++) {
+		service_handler_init (openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
+				      openais_config);
+	}
+
+#else /* NOT BUILD_DYNAMIC */
+	/*
+	 * link everything together - better for debugging - smaller memory footprint
+	 */
+
+	service_handler_init (&evs_service_handler, openais_config);
+	service_handler_init (&clm_service_handler, openais_config);
+	service_handler_init (&amf_service_handler, openais_config);
+	service_handler_init (&ckpt_service_handler, openais_config);
+	service_handler_init (&evt_service_handler, openais_config);
+	service_handler_init (&lck_service_handler, openais_config);
+	service_handler_init (&msg_service_handler, openais_config);
+	service_handler_init (&cfg_service_handler, openais_config);
 #endif /* BUILD_DYNAMIC */
 }
 
@@ -1260,12 +1237,14 @@ int main (int argc, char **argv)
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		ais_done (AIS_DONE_AMFCONFIGREAD);
 	}
-	
-	res = totem_config_read (&openais_config.totem_config, &error_string, 1);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
-		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_MAINCONFIGREAD);
+
+	if (!openais_config.totem_config.interface_count) {
+		res = totem_config_read (&openais_config.totem_config, &error_string, 1);
+		if (res == -1) {
+			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
+			log_printf (LOG_LEVEL_ERROR, error_string);
+			ais_done (AIS_DONE_MAINCONFIGREAD);
+		}
 	}
 
 	res = totem_config_keyread ("/etc/ais/authkey", &openais_config.totem_config, &error_string);
@@ -1306,6 +1285,8 @@ int main (int argc, char **argv)
 	openais_config.totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
 	openais_config.totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
+	default_services_register(&openais_config); 
+	
 	totempg_initialize (
 		aisexec_poll_handle,
 		&openais_config.totem_config);
@@ -1322,7 +1303,7 @@ int main (int argc, char **argv)
 
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
 
-	default_services_register(&openais_config);
+	default_services_init(&openais_config); 
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);
 
