@@ -1310,6 +1310,7 @@ saCkptSectionIterationInitialize (
 	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
 
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
+	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
 	return (error == SA_AIS_OK ? res_lib_ckpt_sectioniterationinitialize.header.error : error);
 
