@@ -336,7 +336,7 @@ static void register_this_component (void) {
 	lcr_component_register (&lck_comp_ver0);
 }
 
-static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
+void (*const __lck_ctor_comp[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 /*
  * All data types used for executive messages

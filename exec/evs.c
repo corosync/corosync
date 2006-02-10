@@ -197,7 +197,7 @@ static void evs_comp_register (void) {
 	lcr_component_register (&evs_comp_ver0);
 }
 
-static void (*const __ctor_evs_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evs_comp_register };
+void (*const __ctor_evs_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evs_comp_register };
 
 struct res_evs_confchg_callback res_evs_confchg_callback;
 

@@ -262,7 +262,7 @@ static void evt_comp_register (void) {
 	lcr_component_register (&evt_comp_ver0);
 }
 
-static void (*const __ctor_evt_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evt_comp_register };
+void (*const __ctor_evt_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evt_comp_register };
 
 /* 
  * list of all retained events 

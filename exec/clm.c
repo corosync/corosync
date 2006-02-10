@@ -244,7 +244,7 @@ static void clm_comp_register (void) {
 	lcr_component_register (&clm_comp_ver0);
 }
 
-static void (*const __ctor_clm_comp[1]) (void) __attribute__ ((section(".ctors"))) = { clm_comp_register }; 
+void (*const __ctor_clm_comp[1]) (void) __attribute__ ((section(".ctors"))) = { clm_comp_register }; 
 
 struct req_exec_clm_nodejoin {
 	struct req_header header;

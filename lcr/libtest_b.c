@@ -167,5 +167,5 @@ static void register_this_component (void)
 	lcr_component_register (&test_comp);
 }
 
-static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
+void (*const __init_libtest_b[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
