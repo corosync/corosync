@@ -253,14 +253,13 @@ saAmfDispatch (
 			 * Queue empty, read response from socket
 			 */
 			error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.header,
-				sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+				sizeof (struct res_header));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (struct res_header)) {
 				error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct res_header),
-					MSG_WAITALL | MSG_NOSIGNAL);
+					dispatch_data.header.size - sizeof (struct res_header));
 				if (error != SA_AIS_OK) {
 					goto error_unlock;
 				}

@@ -401,14 +401,13 @@ saLckDispatch (
 		}
 		
 		memset(&dispatch_data,0, sizeof(struct message_overlay));
-		error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.header, sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+		error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.header, sizeof (struct res_header));
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
 		if (dispatch_data.header.size > sizeof (struct res_header)) {
 			error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.data,
-				dispatch_data.header.size - sizeof (struct res_header),
-				MSG_WAITALL | MSG_NOSIGNAL);
+				dispatch_data.header.size - sizeof (struct res_header));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}

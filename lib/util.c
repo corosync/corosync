@@ -108,7 +108,7 @@ saServiceConnect (
 		goto error_exit;
 	}
 	error = saRecvRetry (fd, &res_lib_response_init,
-		sizeof (struct res_lib_response_init), MSG_WAITALL | MSG_NOSIGNAL);
+		sizeof (struct res_lib_response_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -174,8 +174,7 @@ saServiceConnectTwo (
 		goto error_exit;
 	}
 	error = saRecvRetry (responseFD, &res_lib_response_init,
-		sizeof (struct res_lib_response_init),
-		MSG_WAITALL | MSG_NOSIGNAL);
+		sizeof (struct res_lib_response_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -213,8 +212,7 @@ saServiceConnectTwo (
 		goto error_exit_two;
 	}
 	error = saRecvRetry (callbackFD, &res_lib_dispatch_init,
-		sizeof (struct res_lib_dispatch_init),
-		MSG_WAITALL | MSG_NOSIGNAL);
+		sizeof (struct res_lib_dispatch_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
@@ -241,8 +239,7 @@ SaAisErrorT
 saRecvRetry (
 	int s,
 	void *msg,
-	size_t len,
-	int flags)
+	size_t len)
 {
 	SaAisErrorT error = SA_AIS_OK;
 	int result;
@@ -263,7 +260,7 @@ retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
 	iov_recv.iov_len = len - processed;
 
-	result = recvmsg (s, &msg_recv, flags);
+	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL);
 	if (result == -1 && errno == EINTR) {
 		goto retry_recv;
 	}
@@ -483,8 +480,7 @@ SaAisErrorT saSendMsgReceiveReply (
 		goto error_exit;
 	}
 	
-	error = saRecvRetry (s, responseMessage, responseLen,
-		MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry (s, responseMessage, responseLen);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -508,8 +504,7 @@ SaAisErrorT saSendReceiveReply (
 		goto error_exit;
 	}
 	
-	error = saRecvRetry (s, responseMessage, responseLen,
-		MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry (s, responseMessage, responseLen);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}

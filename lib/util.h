@@ -78,15 +78,7 @@ SaAisErrorT
 saRecvRetry (
 	int s,
 	void *msg,
-	size_t len,
-	int flags);
-
-SaAisErrorT
-saRecvQueue (
-	int s,
-	void *msg,
-	struct queue *queue,
-	int findMessageId);
+	size_t len);
 
 SaAisErrorT
 saSendRetry (

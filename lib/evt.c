@@ -303,7 +303,7 @@ static SaAisErrorT evt_recv_event(int fd, struct lib_event_data **msg)
 	struct res_header hdr;
 	void *data;
 
-	error = saRecvRetry(fd, &hdr, sizeof(hdr), MSG_WAITALL | MSG_NOSIGNAL);
+	error = saRecvRetry(fd, &hdr, sizeof(hdr));
 	if (error != SA_AIS_OK) {
 		goto msg_out;
 	}
@@ -315,8 +315,7 @@ static SaAisErrorT evt_recv_event(int fd, struct lib_event_data **msg)
 	data = (void *)((unsigned long)*msg) + sizeof(hdr);
 	memcpy(*msg, &hdr, sizeof(hdr));
 	if (hdr.size > sizeof(hdr)) {
-		error = saRecvRetry(fd, data, hdr.size - sizeof(hdr),
-				MSG_WAITALL | MSG_NOSIGNAL);
+		error = saRecvRetry(fd, data, hdr.size - sizeof(hdr));
 		if (error != SA_AIS_OK) {
 			goto msg_out;
 		}
@@ -674,15 +673,14 @@ saEvtDispatch(
 
 			if (ufds.revents & POLLIN) {
 				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
-					sizeof (struct res_header), MSG_WAITALL | MSG_NOSIGNAL);
+					sizeof (struct res_header));
 
 				if (error != SA_AIS_OK) {
 					goto dispatch_unlock;
 				}
 				if (dispatch_data.header.size > sizeof (struct res_header)) {
 					error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
-						dispatch_data.header.size - sizeof (struct res_header),
-						MSG_WAITALL | MSG_NOSIGNAL);
+						dispatch_data.header.size - sizeof (struct res_header));
 					if (error != SA_AIS_OK) {
 						goto dispatch_unlock;
 					}
