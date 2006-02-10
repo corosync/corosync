@@ -1526,7 +1526,6 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 
 	if (message_source_is_local(&req_exec_ckpt_checkpointopen->source)) {
 		checkpoint_cleanup = malloc (sizeof (struct checkpoint_cleanup));
-printf ("allocating checkpoint cleanup %p\n", checkpoint_cleanup);
 		if (checkpoint_cleanup == 0) {
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
