@@ -62,7 +62,7 @@ int main (void) {
 		"B_iface1",
 		0, /* version 0 */
 		(void **)&b_iface_ver0,
-		(void *)0xbbbb00000);
+		(void *)0xbbbb0000);
 
 	lcr_ifact_reference (
 		&a_ifact_handle_ver1,

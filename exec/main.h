@@ -36,17 +36,12 @@
 #define FALSE 0
 #include <sys/un.h>
 #include "../include/saAis.h"
+#include "../include/saClm.h"
 #include "../include/queue.h"
 #include "../include/ipc_gen.h"
 #include "mainconfig.h"
 #include "poll.h"
-#include "evs.h"
-#include "clm.h"
-#include "amf.h"
-#include "ckpt.h"
-#include "evt.h"
-#include "lck.h"
-#include "msg.h"
+#include "handlers.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED

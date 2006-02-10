@@ -44,7 +44,6 @@
 /*
  * All service handlers in the AIS
  */
-#ifdef BUILD_DYNAMIC
 struct dynamic_service {
 	char *name;
 	unsigned int ver;
@@ -52,7 +51,6 @@ struct dynamic_service {
 	struct openais_service_handler_iface_ver0 *iface_ver0;
 };
 #define MAX_DYNAMIC_SERVICES 128
-#endif
 
 struct openais_config {
 	/*
@@ -73,10 +71,8 @@ struct openais_config {
 	unsigned int amf_enabled;
 
 	struct totem_config totem_config;
-#ifdef BUILD_DYNAMIC
 	struct dynamic_service dynamic_services[MAX_DYNAMIC_SERVICES];
 	int num_dynamic_services;
-#endif
 };
 
 extern char *strstr_rs (const char *haystack, const char *needle);

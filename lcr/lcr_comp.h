@@ -53,9 +53,7 @@ struct lcr_comp {
 	struct lcr_iface *ifaces;	/* List of interfaces in this component */
 	int iface_count;		/* size of ifaces list */
 };
-/*
- * Exported by the component to retrieve the component information
- */
-extern int lcr_comp_get (struct lcr_comp **component);
+
+extern void lcr_component_register (struct lcr_comp *comp);
 
 #endif /* LCR_COMP_H_DEFINED */

@@ -451,7 +451,6 @@ struct openais_service_handler msg_service_handler = {
 	.sync_abort			= msg_sync_abort
 };
 
-#ifdef BUILD_DYNAMIC
 struct openais_service_handler *msg_get_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 msg_service_handler_iface = {
@@ -477,18 +476,17 @@ struct lcr_comp msg_comp_ver0 = {
 	.ifaces				= openais_msg_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &msg_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *msg_get_handler_ver0 (void)
 {
 	return (&msg_service_handler);
 }
 
-#endif /* BUILD_DYNAMIC */
+static void register_this_component (void) {
+	lcr_component_register (&msg_comp_ver0);
+}
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
+
 /*
  * All data types used for executive messages
  */

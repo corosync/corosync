@@ -22,12 +22,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # Production mode flags
-#CFLAGS = -O3 -Wall
-#LDFLAGS = 
+CFLAGS = -O3 -Wall -fomit-frame-pointer
+LDFLAGS = -rdynamic
 
 # Debug mode flags
-CFLAGS = -g -Wall
-LDFLAGS = -g -L./
+#CFLAGS = -g -Wall
+#LDFLAGS = -g -L./ -rdynamic
 
 # Profile mode flags
 #CFLAGS = -O3 -pg -DDEBUG
@@ -39,7 +39,7 @@ LDFLAGS = -g -L./
 
 LDFLAGS += -ldl
 
-all:liblcr.a test uic libtest_a.lcrso libtest_b.lcrso
+all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
 
 liblcr.a: lcr_ifact.o
 	$(AR) -rc liblcr.a lcr_ifact.o
@@ -53,6 +53,9 @@ libtest_b.lcrso: libtest_b.o
 test: test.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -ldl -o test
 	
+test_static: test.o libtest_a.o libtest_b.o uis.o lcr_ifact.o
+	$(CC) $(LDFLAGS) test.o libtest_a.o libtest_b.o lcr_ifact.o -o test_static
+
 uic: uic.o
 	$(CC) $(LDFLAGS) uic.o -o uic
 

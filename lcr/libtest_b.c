@@ -33,28 +33,28 @@
 /*
  * Version 0 of the interface
  */
-int iface1_constructor (void *context);
+static int iface1_constructor (void *context);
 
-int iface1_destructor (void *context);
+static void iface1_destructor (void *context);
 
-void iface1_func1 (void);
+static void iface1_func1 (void);
 
-void iface1_func2 (void);
+static void iface1_func2 (void);
 
-void iface1_func3 (void);
+static void iface1_func3 (void);
 
 /*
  * Version 1 of the interface
  */
-int iface1_ver1_constructor (void *context);
+static int iface1_ver1_constructor (void *context);
 
-int iface1_ver1_destructor (void *context);
+static void iface1_ver1_destructor (void *context);
 
-void iface1_ver1_func1 (void);
+static void iface1_ver1_func1 (void);
 
-void iface1_ver1_func2 (void);
+static void iface1_ver1_func2 (void);
 
-void iface1_ver1_func3 (void);
+static void iface1_ver1_func3 (void);
 
 struct iface_list {
 	void (*iface1_func1)(void);
@@ -116,54 +116,56 @@ struct lcr_comp test_comp = {
 	.ifaces 		= iface1
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &test_comp;
-	return (0);
-}
-
-int iface1_constructor (void *context)
+static int iface1_constructor (void *context)
 {
 	printf ("B - version 0 constructor context %p\n", context);
 	return (0);
 }
 
-int iface1_destructor (void *context)
+static void iface1_destructor (void *context)
 {
 	printf ("B - version 0 destructor context %p\n", context);
-	return (0);
 }
-void iface1_func1 (void) {
+
+static void iface1_func1 (void) {
 	printf ("B - version 0 func1\n");
 }
 
-void iface1_func2 (void) {
+static void iface1_func2 (void) {
 	printf ("B - version 0 func2\n");
 }
 
-void iface1_func3 (void) {
+static void iface1_func3 (void) {
 	printf ("B - version 0 func3\n");
 }
 
-int iface1_ver1_constructor (void *context)
+static int iface1_ver1_constructor (void *context)
 {
 	printf ("B - version 1 constructor context %p\n", context);
 	return (0);
 }
 
-int iface1_ver1_destructor (void *context)
+static void iface1_ver1_destructor (void *context)
 {
 	printf ("B - version 1 destructor context %p\n", context);
-	return (0);
 }
-void iface1_ver1_func1 (void) {
+
+static void iface1_ver1_func1 (void) {
 	printf ("B - version 1 func1\n");
 }
 
-void iface1_ver1_func2 (void) {
+static void iface1_ver1_func2 (void) {
 	printf ("B - version 1 func2\n");
 }
 
-void iface1_ver1_func3 (void) {
+static void iface1_ver1_func3 (void) {
 	printf ("B - version 1 func3\n");
 }
+
+static void register_this_component (void)
+{
+	lcr_component_register (&test_comp);
+}
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
+

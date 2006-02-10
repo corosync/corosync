@@ -59,8 +59,6 @@
 #include "main.h"
 #include "totemip.h"
 #include "totempg.h"
-#include "clm.h"
-#include "evt.h"
 #include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_EVT
@@ -230,7 +228,6 @@ struct openais_service_handler evt_service_handler = {
 	.sync_abort					= evt_sync_abort
 };
 
-#ifdef BUILD_DYNAMIC
 struct openais_service_handler *evt_get_handler_ver0(void);
 
 struct openais_service_handler_iface_ver0 evt_service_handler_iface = {
@@ -256,18 +253,16 @@ struct lcr_comp evt_comp_ver0 = {
 	.ifaces					= openais_evt_ver0
 };
 
-extern int lcr_comp_get(struct lcr_comp **component)
-{
-	*component = &evt_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *evt_get_handler_ver0(void)
 {
 	return (&evt_service_handler);
 }
 
-#endif /* BUILD_DYNAMIC */
+static void evt_comp_register (void) {
+	lcr_component_register (&evt_comp_ver0);
+}
+
+static void (*const __ctor_evt_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evt_comp_register };
 
 /* 
  * list of all retained events 

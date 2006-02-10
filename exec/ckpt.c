@@ -502,8 +502,6 @@ struct openais_service_handler ckpt_service_handler = {
 /*
  * Dynamic loader definition
  */
-#ifdef BUILD_DYNAMIC
-
 struct openais_service_handler *ckpt_get_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 ckpt_service_handler_iface = {
@@ -529,17 +527,16 @@ struct lcr_comp ckpt_comp_ver0 = {
 	.ifaces				= openais_ckpt_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &ckpt_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *ckpt_get_handler_ver0 (void)
 {
 	return (&ckpt_service_handler);
 }
-#endif /* BUILD_DYNAMIC */
+
+static void register_this_component (void) {
+	lcr_component_register (&ckpt_comp_ver0);
+}
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 /*
  * All data types used for executive messages

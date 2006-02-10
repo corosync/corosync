@@ -1,8 +1,7 @@
-//#define BUILD_DYNAMIC 1
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -71,14 +70,6 @@
 #include "main.h"
 #include "handlers.h"
 #include "sync.h"
-#include "evs.h"
-#include "clm.h"
-#include "amf.h"
-#include "ckpt.h"
-#include "evt.h"
-#include "lck.h"
-#include "msg.h"
-#include "cfg.h"
 #include "ykd.h"
 #include "swab.h"
 
@@ -1127,7 +1118,7 @@ int service_handler_init (
 {
 	int res = 0;
 	assert (ais_service_handlers[handler->id] != NULL);
-	log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", handler->name);
+	log_printf (LOG_LEVEL_NOTICE, "Initializing service handler '%s'\n", handler->name);
 	if (ais_service_handlers[handler->id]->exec_init_fn) {
 		res = ais_service_handlers[handler->id]->exec_init_fn (config);
 	}
@@ -1136,7 +1127,6 @@ int service_handler_init (
 
 void default_services_register (struct openais_config *openais_config)
 {
-#ifdef BUILD_DYNAMIC
 	int i;
 
 	for (i = 0; i < openais_config->num_dynamic_services; i++) {
@@ -1150,52 +1140,25 @@ void default_services_register (struct openais_config *openais_config)
 		if (!openais_config->dynamic_services[i].iface_ver0) {
 			log_printf(LOG_LEVEL_ERROR, "AIS Component %s did not load.\n", openais_config->dynamic_services[i].name);
 			ais_done(AIS_DONE_DYNAMICLOAD);
+		} else {
+			log_printf(LOG_LEVEL_ERROR, "AIS Component %s loaded.\n", openais_config->dynamic_services[i].name);
 		}
+
 		service_handler_register (
 			openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
 			openais_config);
 	}
 
-#else /* NOT BUILD_DYNAMIC */
-	/*
-	 * link everything together - better for debugging - smaller memory footprint
-	 */
-
-	service_handler_register (&evs_service_handler, openais_config);
-	service_handler_register (&clm_service_handler, openais_config);
-	service_handler_register (&amf_service_handler, openais_config);
-	service_handler_register (&ckpt_service_handler, openais_config);
-	service_handler_register (&evt_service_handler, openais_config);
-	service_handler_register (&lck_service_handler, openais_config);
-	service_handler_register (&msg_service_handler, openais_config);
-	service_handler_register (&cfg_service_handler, openais_config);
-#endif /* BUILD_DYNAMIC */
 }
 
 void default_services_init (struct openais_config *openais_config)
 {
-#ifdef BUILD_DYNAMIC
 	int i;
 
 	for (i = 0; i < openais_config->num_dynamic_services; i++) {
 		service_handler_init (openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
 				      openais_config);
 	}
-
-#else /* NOT BUILD_DYNAMIC */
-	/*
-	 * link everything together - better for debugging - smaller memory footprint
-	 */
-
-	service_handler_init (&evs_service_handler, openais_config);
-	service_handler_init (&clm_service_handler, openais_config);
-	service_handler_init (&amf_service_handler, openais_config);
-	service_handler_init (&ckpt_service_handler, openais_config);
-	service_handler_init (&evt_service_handler, openais_config);
-	service_handler_init (&lck_service_handler, openais_config);
-	service_handler_init (&msg_service_handler, openais_config);
-	service_handler_init (&cfg_service_handler, openais_config);
-#endif /* BUILD_DYNAMIC */
 }
 
 int main (int argc, char **argv)
@@ -1226,7 +1189,7 @@ int main (int argc, char **argv)
 	 */
 	res = openais_main_config_read (&error_string, &openais_config, 1);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		ais_done (AIS_DONE_MAINCONFIGREAD);
@@ -1241,7 +1204,7 @@ int main (int argc, char **argv)
 	if (!openais_config.totem_config.interface_count) {
 		res = totem_config_read (&openais_config.totem_config, &error_string, 1);
 		if (res == -1) {
-			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc and contributors.\n");
+			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 			log_printf (LOG_LEVEL_ERROR, error_string);
 			ais_done (AIS_DONE_MAINCONFIGREAD);
 		}
@@ -1265,7 +1228,7 @@ int main (int argc, char **argv)
 		ais_done (AIS_DONE_LOGSETUP);
 	}
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2004 MontaVista Software, Inc. and contributors.\n");
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc. and contributors.\n");
 
 	/*
 	 * Set round robin realtime scheduling with priority 99
@@ -1301,8 +1264,10 @@ int main (int argc, char **argv)
 		&openais_group,
 		1);
 
+	/*
+	 * This must occur after totempg is initialized because "this_ip" must be set
+	 */
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
-
 	default_services_init(&openais_config); 
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);

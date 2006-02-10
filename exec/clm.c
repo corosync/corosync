@@ -210,7 +210,6 @@ struct openais_service_handler clm_service_handler = {
 /*
  * Dynamic loader definition
  */
-#ifdef BUILD_DYNAMIC
 struct openais_service_handler *clm_get_service_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
@@ -236,18 +235,16 @@ struct lcr_comp clm_comp_ver0 = {
 	.ifaces					= openais_clm_ver0
 };
 
-
-int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &clm_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *clm_get_service_handler_ver0 (void)
 {
 	return (&clm_service_handler);
 }
-#endif /* BUILD_DYNAMIC */
+
+static void clm_comp_register (void) {
+	lcr_component_register (&clm_comp_ver0);
+}
+
+static void (*const __ctor_clm_comp[1]) (void) __attribute__ ((section(".ctors"))) = { clm_comp_register }; 
 
 struct req_exec_clm_nodejoin {
 	struct req_header header;

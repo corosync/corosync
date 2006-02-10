@@ -148,8 +148,6 @@ struct openais_service_handler cfg_service_handler = {
 /*
  * Dynamic Loader definition
  */
-#ifdef BUILD_DYNAMIC
-
 struct openais_service_handler *cfg_get_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 cfg_service_handler_iface = {
@@ -175,17 +173,16 @@ struct lcr_comp cfg_comp_ver0 = {
 	.ifaces					= openais_cfg_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &cfg_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *cfg_get_handler_ver0 (void)
 {
 	return (&cfg_service_handler);
 }
-#endif /* BUILD_DYNAMIC */
+static void register_this_component (void) {
+printf ("registering cfg component\n");
+	lcr_component_register (&cfg_comp_ver0);
+}
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 /* IMPL */
 

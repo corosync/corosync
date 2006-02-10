@@ -15,6 +15,10 @@ interface) may have multiple functions within the class.  Each interface may
 depend upon other interfaces, and those interfaces are then loaded prior to the
 requested interface being referenced.
 
+Note that with recent changes, the lcr interface factory can be used when
+statically linking without additional steps.  The interface for notifying
+lcr of a component has changed.
+
 A list of shared objects is scanned each time an interface is requested to
 load via the following interface:
 
@@ -69,17 +73,16 @@ struct lcr_comp test_comp = {
 the iface count describes the number of interfaces within the component,
 and lcr_ifaces is an array of pointers to lcr_iface data types.
 
-The final step is to export a function which tells the LCR referencing code
-about all of this static data that is setup:
+The lcr_comp_get method has been replaced.  The final step is to setup a
+constructor that is started when the task is started.  This ctor will
+register the component with the lcr framework.
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-        lcr_ifaces[0] = iface1_ver0;
-        lcr_ifaces[1] = iface1_ver1;
-        *component = &test_comp;
-        printf ("in lcr_comp_get for test component, address %p\n", &test_comp);
-        return (0);
+static void register_this_component (void) {
+        lcr_component_register (&test_comp);
 }
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
+
 
 Now the component can be referenced and used in another application.
 int main ()
@@ -100,12 +103,11 @@ int main ()
 }
 
 
-See libtest for a sample component and test.c for an example program which
-exercises the component.
+See libtest_a and libtest_b for two sample components.  The test program
+demonstrates usage.  The test_static demonstrates operation when statically
+linked.  Note the dynamic inteface factory is still available for use when
+statically linking components.
 
 On startup, a thread is created which listens for requests from the "uic" 
 application.  These requests are then processed by the lcr service which
 would execute a live replacement.
-
-There is alot of stuff which isn't done, and if you want to try out this code,
-you will have to modify the path to the dynamic library that is loaded.

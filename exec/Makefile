@@ -31,15 +31,15 @@
 # BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
 #	handler modules.  If the developer intends to debug, building without
 #	dynamic modules should provide an easier route.
-BUILD_DYNAMIC=1
+BUILD_DYNAMIC=0
 
 # Production mode flags
 CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = -lpthread
+LDFLAGS = -lpthread -ldl
 
 # Debug mode flags
 #CFLAGS = -g -Wall 
-#LDFLAGS = -g -lpthread
+#LDFLAGS = -g -lpthread -ldl
 
 # Profile mode flags
 #CFLAGS = -O3 -pg
@@ -60,15 +60,14 @@ SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
-		util.c sync.c ykd.c mainconfig.c amfconfig.o
+		util.c sync.c ykd.c mainconfig.c amfconfig.c
 MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o ykd.o mainconfig.o amfconfig.o
+		util.o sync.o ykd.o mainconfig.o amfconfig.o ../lcr/lcr_ifact.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
-CFLAGS += -DBUILD_DYNAMIC=1 -fPIC
-LDFLAGS += -ldl -rdynamic
-EXEC_LIBS +=  ../lcr/lcr_ifact.o
+CFLAGS += -fPIC
+LDFLAGS += -rdynamic
 
 all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
@@ -197,33 +196,33 @@ totemconfig.o: totemconfig.c
 main.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 main.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h amfconfig.h
-main.o: main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h 
+main.o: main.h ../include/saClm.h handlers.h 
 main.o: ../include/saEvt.h swab.h print.h
 clm.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
 clm.o: ../include/ipc_evs.h  ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/ipc_clm.h ../include/list.h ../include/queue.h aispoll.h
-clm.o: totempg.h totemsrp.h amfconfig.h main.h clm.h amf.h handlers.h ckpt.h
-clm.o: evt.h  ../include/saEvt.h mempool.h print.h
+clm.o: totempg.h totemsrp.h amfconfig.h main.h handlers.h 
+clm.o:  ../include/saEvt.h mempool.h print.h
 amf.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 amf.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 amf.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h util.h
-amf.o: amfconfig.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h evt.h
+amf.o: amfconfig.h main.h ../include/saClm.h handlers.h
 amf.o:  ../include/saEvt.h print.h
 ckpt.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 ckpt.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 ckpt.o: ../include/queue.h aispoll.h mempool.h util.h amfconfig.h totempg.h
-ckpt.o: totemsrp.h main.h clm.h ../include/saClm.h amf.h handlers.h ckpt.h
-ckpt.o: evt.h  ../include/saEvt.h print.h
+ckpt.o: totemsrp.h main.h ../include/saClm.h handlers.h 
+ckpt.o:  ../include/saEvt.h print.h
 evt.o: ../include/ipc_evt.h ../include/saAis.h ../include/saEvt.h
 evt.o: ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evt.o: ../include/queue.h util.h ../include/saAis.h aispoll.h mempool.h
-evt.o: amfconfig.h totempg.h totemsrp.h main.h  clm.h ../include/saClm.h
-evt.o: amf.h ../include/ipc_evs.h handlers.h ckpt.h evt.h 
+evt.o: amfconfig.h totempg.h totemsrp.h main.h  ../include/saClm.h
+evt.o: ../include/ipc_evs.h handlers.h 
 evt.o: ../include/saEvt.h swab.h print.h
 evs.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 evs.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
-evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h amfconfig.h main.h clm.h
-evs.o: ../include/saClm.h amf.h handlers.h ckpt.h evt.h 
+evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h amfconfig.h main.h 
+evs.o: ../include/saClm.h handlers.h 
 evs.o: ../include/saEvt.h mempool.h print.h
 amfconfig.o: ../include/saAis.h ../include/list.h util.h amfconfig.h aispoll.h
 amfconfig.o: totempg.h totemsrp.h mempool.h print.h ../include/saClm.h

@@ -41,8 +41,8 @@ struct lcr_component_instance {
 	struct lcr_iface *ifaces;
 	int iface_count;
 	void *dl_handle;
-	int (*lcr_comp_get) (struct lcr_comp **component);
 	int refcount;
+	char library_name[256];
 };
 
 struct lcr_iface_instance {
@@ -63,6 +63,8 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 	.iterator	= 0
 };
 
+static unsigned int g_component_handle;
+
 static int lcr_select_so (const struct dirent *dirent)
 {
 	unsigned int len;
@@ -77,29 +79,14 @@ static int lcr_select_so (const struct dirent *dirent)
 	return (0);
 }
 
-int lcr_ifact_reference (
-	unsigned int *iface_handle,
+static inline struct lcr_component_instance *lcr_comp_find (
 	char *iface_name,
-	int version,
-	void **iface,
-	void *context)
+	unsigned int version,
+	int *iface_number)
 {
 	struct lcr_component_instance *instance;
-	struct lcr_component_instance new_component;
-	struct lcr_iface_instance *iface_instance;
-	int found = 0;
-	int i;
-	int res = -1;
-	struct lcr_comp *comp;
 	unsigned int component_handle;
-	struct dirent **scandir_list;
-	int scandir_entries;
-	unsigned int libs_to_scan;
-	char cwd[512];
-	char dl_name[1024];
-
-	getcwd (cwd, sizeof (cwd));
-	strcat (cwd, "/");
+	int i;
 
 	/*
 	 * Try to find interface in already loaded component
@@ -112,11 +99,65 @@ int lcr_ifact_reference (
 			if ((strcmp (instance->ifaces[i].name, iface_name) == 0) &&
 				instance->ifaces[i].version == version) {
 
-				found = 1;
-				goto found;
+				*iface_number = i;
+				return (instance);
 			}
 		}
 		hdb_handle_put (&lcr_component_instance_database, component_handle);
+	}
+
+	return (NULL);
+}
+
+static inline int lcr_lib_loaded (
+	char *library_name)
+{
+	struct lcr_component_instance *instance;
+	unsigned int component_handle;
+
+	/*
+	 * Try to find interface in already loaded component
+	 */
+	hdb_iterator_reset (&lcr_component_instance_database);
+	while (hdb_iterator_next (&lcr_component_instance_database,
+		(void **)&instance, &component_handle) == 0) {
+
+		if (strcmp (instance->library_name, library_name) == 0) {
+			return (1);
+		}
+
+		hdb_handle_put (&lcr_component_instance_database, component_handle);
+	}
+
+	return (0);
+}
+
+int lcr_ifact_reference (
+	unsigned int *iface_handle,
+	char *iface_name,
+	int version,
+	void **iface,
+	void *context)
+{
+	void *dl_handle;
+	struct lcr_iface_instance *iface_instance;
+	struct lcr_component_instance *instance;
+	int iface_number;
+	struct dirent **scandir_list;
+	int scandir_entries;
+	unsigned int libs_to_scan;
+	char cwd[512];
+	char dl_name[1024];
+
+	getcwd (cwd, sizeof (cwd));
+	strcat (cwd, "/");
+
+	/*
+	 * Determine if the component is already loaded
+	 */
+	instance = lcr_comp_find (iface_name, version, &iface_number);
+	if (instance) {
+		goto found;
 	}
 
 // TODO error checking in this code is weak
@@ -125,85 +166,64 @@ int lcr_ifact_reference (
 	 */
 	scandir_entries = scandir(".", &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries < 0)
-		printf ("ERROR %d\n", errno);
+		printf ("scandir error reason=%d\n", strerror (errno));
 	else
 	/*
-	 * ELSE do the job
+	 * no error so load the object
 	 */
 	for (libs_to_scan = 0; libs_to_scan < scandir_entries; libs_to_scan++) {
-
-	/*
-	 * Load objects, scan them, unload them if they are not a match
-	 */
-	fflush (stdout);
-	sprintf (dl_name, "%s%s", cwd, scandir_list[libs_to_scan]->d_name);
-	new_component.dl_handle =
-		dlopen (dl_name, RTLD_NOW);
-	if (new_component.dl_handle == 0) {
-		printf ("Error loading interface %s\n", dlerror());
-		return (-1);
-	}
-	new_component.lcr_comp_get =
-		dlsym (new_component.dl_handle, "lcr_comp_get");
-	if (new_component.lcr_comp_get == 0) {
-		printf ("Error linking interface %s\n", dlerror());
-		return (-1);
-	}
-	res = new_component.lcr_comp_get (&comp);
-	new_component.ifaces = comp->ifaces;
-	new_component.iface_count = comp->iface_count;
-
-	/*
-	 * Search loaded component for matching interface
-	 */
-	for (i = 0; i < new_component.iface_count; i++) {
-		if ((strcmp (new_component.ifaces[i].name, iface_name) == 0) &&
-			new_component.ifaces[i].version == version) {
-
-			hdb_handle_create (&lcr_component_instance_database,
-				sizeof (struct lcr_component_instance),
-				&component_handle);
-			hdb_handle_get (&lcr_component_instance_database,
-				component_handle, (void *)&instance);
-			memcpy (instance, &new_component,
-				sizeof (struct lcr_component_instance));
-	  
-//			printf("Found interface %s ver %d in dynamically loaded object %s\n", iface_name, version, dl_name);
-			found = 1;
-			free(scandir_list[libs_to_scan]);
+		/*
+		 * Load objects, scan them, unload them if they are not a match
+		 */
+		sprintf (dl_name, "%s%s", cwd, scandir_list[libs_to_scan]->d_name);
+		/*
+	 	 * Don't reload already loaded libraries
+		 */
+		if (lcr_lib_loaded (dl_name)) {
+			continue;
+		}
+		dl_handle = dlopen (dl_name, RTLD_NOW);
+		if (dl_handle == NULL) {
+			printf ("Error loading interface %s reason=%s\n", dl_name, dlerror());
+			return (-1);
+		}
+		instance = lcr_comp_find (iface_name, version, &iface_number);
+		if (instance) {
+			instance->dl_handle = dl_handle;
+			strcpy (instance->library_name, dl_name);
 			goto found;
 		}
-	}
 
-	/*
-	 * No matching interfaces found, try next shared object
-	 */
-	dlclose (new_component.dl_handle);
-	} /* scanning for loop */
+		/*
+		 * No matching interfaces found, try next shared object
+		 */
+		if (g_component_handle != 0xFFFFFFFF) {
+			hdb_handle_destroy (&lcr_component_instance_database,
+				g_component_handle);
+			g_component_handle = 0xFFFFFFFF;
+		}
+		dlclose (dl_handle);
+	} /* scanning for lcrso loop */
 
 	/*
 	 * No matching interfaces found in all shared objects
 	 */
 	return (-1);
 found:
-
-	if (found) {
-		*iface = instance->ifaces[i].interfaces;
-		if (instance->ifaces[i].constructor) {
-			instance->ifaces[i].constructor (context);
-		}
-		hdb_handle_create (&lcr_iface_instance_database,
-			sizeof (struct lcr_iface_instance),
-			iface_handle);
-		hdb_handle_get (&lcr_iface_instance_database,
-			*iface_handle, (void *)&iface_instance);
-		iface_instance->component_handle = component_handle;
-		iface_instance->context = context;
-		iface_instance->destructor = instance->ifaces[i].destructor;
-		res = 0;
+	*iface = instance->ifaces[iface_number].interfaces;
+	if (instance->ifaces[iface_number].constructor) {
+		instance->ifaces[iface_number].constructor (context);
 	}
+	hdb_handle_create (&lcr_iface_instance_database,
+		sizeof (struct lcr_iface_instance),
+		iface_handle);
+	hdb_handle_get (&lcr_iface_instance_database,
+		*iface_handle, (void *)&iface_instance);
+	iface_instance->component_handle = g_component_handle;
+	iface_instance->context = context;
+	iface_instance->destructor = instance->ifaces[iface_number].destructor;
 
-	return res;
+	return (0);
 }
 
 int lcr_ifact_release (unsigned int handle)
@@ -225,4 +245,22 @@ int lcr_ifact_release (unsigned int handle)
 	hdb_handle_destroy (&lcr_iface_instance_database, handle);
 
 	return (res);
+}
+
+void lcr_component_register (struct lcr_comp *comp)
+{
+	struct lcr_component_instance *instance;
+
+	hdb_handle_create (&lcr_component_instance_database,
+		sizeof (struct lcr_component_instance),
+		&g_component_handle);
+	hdb_handle_get (&lcr_component_instance_database,
+		g_component_handle, (void *)&instance);
+
+	instance->ifaces = comp->ifaces;
+	instance->iface_count = comp->iface_count;
+	instance->dl_handle = NULL;
+
+	hdb_handle_put (&lcr_component_instance_database,
+		g_component_handle);
 }

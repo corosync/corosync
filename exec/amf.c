@@ -404,8 +404,6 @@ struct openais_service_handler amf_service_handler = {
 	.confchg_fn			= amf_confchg_fn,
 };
 
-#ifdef BUILD_DYNAMIC
-
 struct openais_service_handler *amf_get_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 amf_service_handler_iface = {
@@ -432,17 +430,15 @@ struct lcr_comp amf_comp_ver0 = {
 	.ifaces				= openais_amf_ver0
 };
 
-extern int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &amf_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *amf_get_handler_ver0 (void)
 {
 	return (&amf_service_handler);
 }
-#endif /* BUILD_DYNAMIC */
+static void register_this_component (void) {
+	lcr_component_register (&amf_comp_ver0);
+}
+
+static void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 enum clc_command_run_operation_type {
 	CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE = 1,

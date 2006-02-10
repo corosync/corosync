@@ -88,7 +88,6 @@ char *strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
-#ifdef BUILD_DYNAMIC
 static void set_default_services(struct openais_config *config)
 {
 	config->dynamic_services[0].name = "openais_evs";
@@ -135,7 +134,6 @@ static char *get_component(const char *line, int *version)
 
 	return compname;
 }
-#endif
 
 extern int openais_main_config_read (char **error_string,
     struct openais_config *openais_config,
@@ -284,7 +282,6 @@ extern int openais_main_config_read (char **error_string,
 			if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			}
-#ifdef BUILD_DYNAMIC
 			else {
 				int version;
 				char *name = get_component(line, &version);
@@ -294,7 +291,6 @@ extern int openais_main_config_read (char **error_string,
 					openais_config->num_dynamic_services++;
 				}
 			}
-#endif
 			break;
 		default:
 			assert (0 == 1); /* SHOULDN'T HAPPEN */
@@ -307,12 +303,10 @@ extern int openais_main_config_read (char **error_string,
 		goto parse_error;
 	}
 
-#ifdef BUILD_DYNAMIC
 	/* Load default services if the config file doesn't specify */
 	if (!openais_config->num_dynamic_services) {
 		set_default_services(openais_config);
 	}
-#endif
 	if (parse == MAIN_HEAD) {
 		fclose (fp);
 		return (0);

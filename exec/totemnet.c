@@ -807,8 +807,8 @@ static void timer_function_netif_check_timeout (
 	totemip_copy (&instance->my_id, &instance->totemnet_interface->boundto);
 
 	/*
-	* This stuff depends on totemnet_build_sockets
-	*/
+	 * This stuff depends on totemnet_build_sockets
+	 */
 	if (interface_up) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
@@ -960,7 +960,7 @@ static int totemnet_build_sockets_ipv4 (
 	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_config->ip_port, &sockaddr, &addrlen);
 	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind failed");
+		instance->totemnet_log_printf (instance->totemnet_log_level_error, "Bind to mcast send socket failed (reason=%s)\n", strerror(errno));
 		return (-1);
 	}
 
@@ -1086,7 +1086,7 @@ static int totemnet_build_sockets_ipv6 (
 
 	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind failed");
+		instance->totemnet_log_printf (instance->totemnet_log_level_error, "Bind to mcast recv socket failed (reason=%s)\n", strerror(errno));
 		return (-1);
 	}
 
@@ -1227,7 +1227,7 @@ static int totemnet_build_sockets (
 	else {
 		res = totemnet_build_sockets_ipv6 (instance, mcast_address,
 			bindnet_address, sockets, bound_to, interface_up, interface_num);
-}
+	}
 
 	/* We only send out of the token socket */
 	totemnet_traffic_control_set(instance, sockets->token);

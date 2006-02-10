@@ -35,7 +35,7 @@ BUILD_DYNAMIC=0
 
 # Production mode flags
 CFLAGS = -O3 -Wall
-LDFLAGS = -lpthread
+LDFLAGS = -lpthread -ldl
 DESTDIR=/usr/local/openais
 
 # Debug mode flags
@@ -47,8 +47,8 @@ DESTDIR=/usr/local/openais
 #LDFLAGS = -pg
 
 ifeq (${BUILD_DYNAMIC}, 1)
-CFLAGS += -DBUILD_DYNAMIC=1 -fPIC
-LDFLAGS += -ldl -rdynamic
+CFLAGS += -fPIC
+LDFLAGS += -rdynamic
 endif
 
 all:

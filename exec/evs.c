@@ -163,8 +163,6 @@ static DECLARE_LIST_INIT (confchg_notify);
  * Dynamic loading descriptor
  */
 
-#ifdef BUILD_DYNAMIC
-
 struct openais_service_handler *evs_get_service_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 evs_service_handler_iface = {
@@ -190,18 +188,16 @@ struct lcr_comp evs_comp_ver0 = {
 	.ifaces		= openais_evs_ver0
 };
 
-int lcr_comp_get (struct lcr_comp **component)
-{
-	*component = &evs_comp_ver0;
-	return (0);
-}
-
 struct openais_service_handler *evs_get_service_handler_ver0 (void)
 {
 	return (&evs_service_handler);
 }
 
-#endif /* BUILD_DYNAMIC */
+static void evs_comp_register (void) {
+	lcr_component_register (&evs_comp_ver0);
+}
+
+static void (*const __ctor_evs_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evs_comp_register };
 
 struct res_evs_confchg_callback res_evs_confchg_callback;
 
@@ -527,3 +523,4 @@ static void message_handler_req_exec_mcast (void *msg, struct totem_ip_address *
 		}
 	}
 }
+
