@@ -1401,14 +1401,14 @@ saCkptSectionIterationNext (
 
 error_put_unlock:
 	pthread_mutex_unlock (&ckptSectionIterationInstance->response_mutex);
+	if (error != SA_AIS_OK) {
+		free (iteratorSectionIdListEntry);
+	}
 
 error_put_nounlock:
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, sectionIterationHandle);
 
 error_exit:
-	if (error != SA_AIS_OK) {
-		free (iteratorSectionIdListEntry);
-	}
 	return (error);
 }
 	
