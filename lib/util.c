@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -79,6 +80,7 @@ saServiceConnect (
 	struct res_lib_response_init res_lib_response_init;
 	SaAisErrorT error;
 	gid_t egid;
+	int res;
 
 	/*
 	 * Allow set group id binaries to be authenticated
@@ -97,6 +99,7 @@ saServiceConnect (
 	if (result == -1) {
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
+	res = fcntl (fd, F_SETFL, O_NONBLOCK);
 
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
 	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
@@ -144,6 +147,7 @@ saServiceConnectTwo (
 	struct res_lib_dispatch_init res_lib_dispatch_init;
 	SaAisErrorT error;
 	gid_t egid;
+	int res;
 
 	/*
 	 * Allow set group id binaries to be authenticated
@@ -160,6 +164,13 @@ saServiceConnectTwo (
 	}
 	result = connect (responseFD, (struct sockaddr *)&address, sizeof (address));
 	if (result == -1) {
+		close (responseFD);
+		return (SA_AIS_ERR_TRY_AGAIN);
+	}
+
+	result = fcntl (responseFD, F_SETFL, O_NONBLOCK);
+	if (result == -1) {
+		close (responseFD);
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
@@ -194,8 +205,15 @@ saServiceConnectTwo (
 	if (callbackFD == -1) {
 		return (SA_AIS_ERR_NO_RESOURCES);
 	}
+	result = fcntl (callbackFD, F_SETFL, O_NONBLOCK);
+	if (result == -1) {
+		close (callbackFD);
+		close (responseFD);
+		return (SA_AIS_ERR_TRY_AGAIN);
+	}
 	result = connect (callbackFD, (struct sockaddr *)&address, sizeof (address));
 	if (result == -1) {
+		close (responseFD);
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
@@ -260,8 +278,11 @@ retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
 	iov_recv.iov_len = len - processed;
 
-	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL);
+	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL|MSG_WAITALL);
 	if (result == -1 && errno == EINTR) {
+		goto retry_recv;
+	}
+	if (result == -1 && errno == EAGAIN) {
 		goto retry_recv;
 	}
 	if (result == -1 || result == 0) {

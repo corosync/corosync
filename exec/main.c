@@ -344,7 +344,7 @@ static int cleanup_send_response (struct conn_info *conn_info) {
 		iov_send.iov_len = queue_item->mlen - conn_info->byte_start;
 
 retry_sendmsg:
-		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
+		res = sendmsg (conn_info->fd, &msg_send, MSG_NOSIGNAL);
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg;
 		}
@@ -421,7 +421,7 @@ extern int openais_conn_send_response (
 		iov_send.iov_len = queue_item->mlen - conn_info->byte_start;
 
 retry_sendmsg:
-		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
+		res = sendmsg (conn_info->fd, &msg_send, MSG_NOSIGNAL);
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg;
 		}
@@ -455,7 +455,7 @@ retry_sendmsg:
 		iov_send.iov_base = msg;
 		iov_send.iov_len = mlen;
 retry_sendmsg_two:
-		res = sendmsg (conn_info->fd, &msg_send, MSG_DONTWAIT | MSG_NOSIGNAL);
+		res = sendmsg (conn_info->fd, &msg_send, MSG_NOSIGNAL);
 		if (res == -1 && errno == EINTR) {
 			goto retry_sendmsg_two;
 		}
@@ -509,6 +509,7 @@ static int poll_handler_libais_accept (
 	struct sockaddr_un un_addr;
 	int new_fd;
 	int on = 1;
+	int res;
 
 	addrlen = sizeof (struct sockaddr_un);
 
@@ -523,6 +524,13 @@ retry_accept:
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 		
+	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on library connection: %s\n", strerror (errno));
+		close (new_fd);
+		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
+	}
+
 	/*
 	 * Valid accept
 	 */
@@ -707,7 +715,7 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	assert (iov_recv.iov_len != 0);
 
 retry_recv:
-	res = recvmsg (fd, &msg_recv, MSG_DONTWAIT | MSG_NOSIGNAL);
+	res = recvmsg (fd, &msg_recv, MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
 		goto retry_recv;
 	} else
@@ -1036,6 +1044,12 @@ static void aisexec_libais_bind (int *server_fd)
 		log_printf (LOG_LEVEL_ERROR ,"Cannot create libais client connections socket.\n");
 		ais_done (AIS_DONE_LIBAIS_SOCKET);
 	};
+
+	res = fcntl (libais_server_fd, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
+		ais_done (AIS_DONE_LIBAIS_SOCKET);
+	}
 
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
 	un_addr.sun_family = AF_UNIX;

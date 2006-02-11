@@ -435,7 +435,7 @@ void totemnet_iovec_send (
 	 * An error here is recovered by totemnet
 	 */
 	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
-		MSG_NOSIGNAL | MSG_DONTWAIT);
+		MSG_NOSIGNAL);
 }
 
 void totemnet_msg_send (
@@ -509,7 +509,7 @@ void totemnet_msg_send (
 	 * Transmit token or multicast message
 	 * An error here is recovered by totemnet
 	 */
-	res = sendmsg (fd, &msg_mcast, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (fd, &msg_mcast, MSG_NOSIGNAL);
 }
 
 static void totemnet_mcast_thread_state_constructor (
@@ -581,7 +581,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	 * An error here is recovered by totemnet
 	 */
 	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
-		MSG_NOSIGNAL | MSG_DONTWAIT);
+		MSG_NOSIGNAL);
 	if (res > 0) {
 		instance->stats_sent += res;
 	}
@@ -649,7 +649,7 @@ static int net_deliver_fn (
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
 
-	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL);
 	if (bytes_received == -1) {
 		return (0);
 	} else {
@@ -953,6 +953,10 @@ static int totemnet_build_sockets_ipv4 (
 		perror ("socket");
 		return (-1);
 	}
+	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
+	}
 
 	/*
 	 * Bind to multicast socket used for multicast send/receives
@@ -971,6 +975,10 @@ static int totemnet_build_sockets_ipv4 (
 	if (sockets->token == -1) {
 		perror ("socket2");
 		return (-1);
+	}
+	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
 	}
 
 	/*
@@ -1077,6 +1085,11 @@ static int totemnet_build_sockets_ipv6 (
 		perror ("socket");
 		return (-1);
 	}
+	res = fcntl (sockets->mcast_recv, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast recv socket: %s\n", strerror (errno));
+	}
+
 
 	/*
 	 * Bind to multicast socket used for multicast receives
@@ -1098,6 +1111,10 @@ static int totemnet_build_sockets_ipv6 (
 		perror ("socket");
 		return (-1);
 	}
+	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast send socket: %s\n", strerror (errno));
+	}
 
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port - 1,
 		&sockaddr, &addrlen);
@@ -1115,6 +1132,11 @@ static int totemnet_build_sockets_ipv6 (
 		perror ("socket2");
 		return (-1);
 	}
+	res = fcntl (sockets->token, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
+	}
+
 
 	/*
 	 * Bind to unicast socket used for token send/receives
