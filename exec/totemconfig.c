@@ -61,7 +61,7 @@
 #define CONSENSUS_TIMEOUT			200
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
-#define FAIL_TO_RECV_CONST			10
+#define FAIL_TO_RECV_CONST			50
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
 #define MAX_NETWORK_DELAY			50 /*In milliseconds*/

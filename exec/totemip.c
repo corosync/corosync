@@ -51,6 +51,7 @@
 #include <linux/rtnetlink.h>
 
 #include "totemip.h"
+#include "swab.h"
 
 #define LOCALHOST_IPV4 "127.0.0.1"
 #define LOCALHOST_IPV6 "::1"
@@ -84,6 +85,13 @@ int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2
 void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
 {
 	memcpy(addr1, addr2, sizeof(struct totem_ip_address));
+}
+
+void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
+{
+	addr1->nodeid = swab32(addr2->nodeid);
+	addr1->family = swab16(addr2->family);
+	memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
 }
 
 /* For sorting etc. params are void * for qsort's benefit */

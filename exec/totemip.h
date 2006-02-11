@@ -51,6 +51,7 @@ struct totem_ip_address
 extern int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
 extern int totemip_compare(const void *a, const void *b);
 extern void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
+extern void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
 int totemip_localhost(int family, struct totem_ip_address *localhost);
 extern int totemip_localhost_check(struct totem_ip_address *addr);
 extern const char *totemip_print(struct totem_ip_address *addr);
