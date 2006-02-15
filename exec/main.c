@@ -562,7 +562,10 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_dispatch_init->resdis_header.service;
-		error = SA_AIS_OK;
+		if (!ais_service_handlers[req_lib_dispatch_init->resdis_header.service])
+			error = SA_AIS_ERR_NOT_SUPPORTED;
+		else
+			error = SA_AIS_OK;
 
 		conn_info->conn_info_partner = (struct conn_info *)req_lib_dispatch_init->conn_info;
 
