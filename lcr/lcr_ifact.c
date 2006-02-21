@@ -166,7 +166,7 @@ int lcr_ifact_reference (
 	 */
 	scandir_entries = scandir(".", &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries < 0)
-		printf ("scandir error reason=%d\n", strerror (errno));
+		printf ("scandir error reason=%s\n", strerror (errno));
 	else
 	/*
 	 * no error so load the object

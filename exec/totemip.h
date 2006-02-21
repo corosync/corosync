@@ -37,6 +37,18 @@
 #ifndef TOTEMIP_H_DEFINED
 #define TOTEMIP_H_DEFINED
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#ifdef SO_NOSIGPIPE
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+void totemip_nosigpipe(int s);
+#else
+#define totemip_nosigpipe(s)
+#endif
+
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
 /* These are the things that get passed around */

@@ -622,7 +622,7 @@ saCkptCheckpointOpen (
 	req_lib_ckpt_checkpointopen.checkpointOpenFlags = checkpointOpenFlags;
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointopen,
-		sizeof (struct req_lib_ckpt_checkpointopen), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointopen));
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
@@ -749,7 +749,7 @@ saCkptCheckpointOpenAsync (
 	req_lib_ckpt_checkpointopenasync.checkpointHandle = checkpointHandle;
 
 	error = saSendRetry (ckptInstance->response_fd, &req_lib_ckpt_checkpointopenasync,
-		sizeof (struct req_lib_ckpt_checkpointopenasync), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointopenasync));
 	
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
@@ -806,7 +806,7 @@ saCkptCheckpointClose (
 		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointclose,
-		sizeof (struct req_lib_ckpt_checkpointclose), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointclose));
 	if (error != SA_AIS_OK) {
 		goto exit_put;
 	}
@@ -853,7 +853,7 @@ saCkptCheckpointUnlink (
 
 
 	error = saSendRetry (ckptInstance->response_fd, &req_lib_ckpt_checkpointunlink,
-		sizeof (struct req_lib_ckpt_checkpointunlink), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointunlink));
 	if (error != SA_AIS_OK) {
 		goto exit_put;
 	}
@@ -895,7 +895,7 @@ saCkptCheckpointRetentionDurationSet (
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
-	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointretentiondurationset, sizeof (struct req_lib_ckpt_checkpointretentiondurationset), MSG_NOSIGNAL);
+	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointretentiondurationset, sizeof (struct req_lib_ckpt_checkpointretentiondurationset));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -940,7 +940,7 @@ saCkptActiveReplicaSet (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_activereplicaset,
-		sizeof (struct req_lib_ckpt_activereplicaset), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_activereplicaset));
 	if (error != SA_AIS_OK) {
 		goto error_put;
 	}
@@ -985,7 +985,7 @@ saCkptCheckpointStatusGet (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointstatusget,
-		sizeof (struct req_lib_ckpt_checkpointstatusget), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointstatusget));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1055,7 +1055,7 @@ saCkptSectionCreate (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectioncreate,
-		sizeof (struct req_lib_ckpt_sectioncreate), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectioncreate));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1064,13 +1064,13 @@ saCkptSectionCreate (
 	 * Write section identifier to server
 	 */
 	error = saSendRetry (ckptCheckpointInstance->response_fd, sectionCreationAttributes->sectionId->id,
-		sectionCreationAttributes->sectionId->idLen, MSG_NOSIGNAL);
+		sectionCreationAttributes->sectionId->idLen);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, initialData,
-		initialDataSize, MSG_NOSIGNAL);
+		initialDataSize);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1123,7 +1123,7 @@ saCkptSectionDelete (
 		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectiondelete,
-		sizeof (struct req_lib_ckpt_sectiondelete), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectiondelete));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1132,7 +1132,7 @@ saCkptSectionDelete (
 	 * Write section identifier to server
 	 */
 	error = saSendRetry (ckptCheckpointInstance->response_fd, sectionId->id,
-		sectionId->idLen, MSG_NOSIGNAL);
+		sectionId->idLen);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1186,7 +1186,7 @@ saCkptSectionExpirationTimeSet (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectionexpirationtimeset,
-		sizeof (struct req_lib_ckpt_sectionexpirationtimeset), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectionexpirationtimeset));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1196,7 +1196,7 @@ saCkptSectionExpirationTimeSet (
 	 */
 	if (sectionId->idLen) {
 		error = saSendRetry (ckptCheckpointInstance->response_fd, sectionId->id,
-			sectionId->idLen, MSG_NOSIGNAL);
+			sectionId->idLen);
 		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
@@ -1287,8 +1287,7 @@ saCkptSectionIterationInitialize (
 
 	error = saSendRetry (ckptSectionIterationInstance->response_fd,
 		&req_lib_ckpt_sectioniterationinitialize,
-		sizeof (struct req_lib_ckpt_sectioniterationinitialize),
-		MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectioniterationinitialize));
 
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
@@ -1354,7 +1353,7 @@ saCkptSectionIterationNext (
 
 	error = saSendRetry (ckptSectionIterationInstance->response_fd,
 		&req_lib_ckpt_sectioniteratornext,
-		sizeof (struct req_lib_ckpt_sectioniteratornext), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectioniteratornext));
 
 	if (error != SA_AIS_OK) {
 		goto error_put_unlock;
@@ -1426,7 +1425,7 @@ saCkptSectionIterationFinalize (
 
 	error = saSendRetry (ckptSectionIterationInstance->response_fd,
 		&req_lib_ckpt_sectioniterationfinalize,
-		sizeof (struct req_lib_ckpt_sectioniterationfinalize), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectioniterationfinalize));
 
 	if (error != SA_AIS_OK) {
 		goto error_put;
@@ -1587,19 +1586,19 @@ saCkptSectionOverwrite (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectionoverwrite,
-		sizeof (struct req_lib_ckpt_sectionoverwrite), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_sectionoverwrite));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 
 	if (sectionId->idLen) {
 		error = saSendRetry (ckptCheckpointInstance->response_fd, sectionId->id,
-			sectionId->idLen, MSG_NOSIGNAL);
+			sectionId->idLen);
 		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
 	}
-	error = saSendRetry (ckptCheckpointInstance->response_fd, dataBuffer, dataSize, MSG_NOSIGNAL);
+	error = saSendRetry (ckptCheckpointInstance->response_fd, dataBuffer, dataSize);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -1753,7 +1752,7 @@ saCkptCheckpointSynchronize (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointsynchronize,
-		sizeof (struct req_lib_ckpt_checkpointsynchronize), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointsynchronize));
 
 	if (error != SA_AIS_OK) {
 		goto error_exit;
@@ -1817,7 +1816,7 @@ saCkptCheckpointSynchronizeAsync (
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointsynchronizeasync,
-		sizeof (struct req_lib_ckpt_checkpointsynchronizeasync), MSG_NOSIGNAL);
+		sizeof (struct req_lib_ckpt_checkpointsynchronizeasync));
 
 	if (error != SA_AIS_OK) {
 		goto error_exit;

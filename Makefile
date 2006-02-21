@@ -28,34 +28,11 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
-#       handler modules.  If the developer intends to debug, building without
-#       dynamic modules should provide an easier route.
-BUILD_DYNAMIC=0
-
-# Production mode flags
-CFLAGS = -O3 -Wall
-LDFLAGS = -lpthread -ldl
-DESTDIR=/usr/local/openais
-
-# Debug mode flags
-#CFLAGS = -g
-#LDFLAGS = -g -lpthread
-
-# Profile mode flags
-#CFLAGS = -O3 -pg
-#LDFLAGS = -pg
-
-ifeq (${BUILD_DYNAMIC}, 1)
-CFLAGS += -fPIC
-LDFLAGS += -rdynamic
-endif
-
 all:
-	(cd lcr; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
-	(cd lib; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
-	(cd exec; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" BUILD_DYNAMIC="$(BUILD_DYNAMIC)");
-	(cd test; echo ==== `pwd` ===; $(MAKE) all CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)");
+	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
+	(cd lib; echo ==== `pwd` ===; $(MAKE) all);
+	(cd exec; echo ==== `pwd` ===; $(MAKE) all);
+	(cd test; echo ==== `pwd` ===; $(MAKE) all);
 
 clean:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) clean);
@@ -69,23 +46,23 @@ install:
 	mkdir -p $(DESTDIR)/usr/lib
 	mkdir -p $(DESTDIR)/etc/ais
 
-	cp -a lib/libais.a $(DESTDIR)/usr/lib
-	cp -a lib/libais.so* $(DESTDIR)/usr/lib
-	cp -a lib/libSa*.a $(DESTDIR)/usr/lib
-	cp -a lib/libSa*.so* $(DESTDIR)/usr/lib
-	cp -a lib/libevs.a $(DESTDIR)/usr/lib
-	cp -a lib/libevs.so* $(DESTDIR)/usr/lib
-	cp -a exec/libtotem_pg* $(DESTDIR)/usr/lib
+	cp lib/libais.a $(DESTDIR)/usr/lib
+	cp lib/libais.so* $(DESTDIR)/usr/lib
+	cp lib/libSa*.a $(DESTDIR)/usr/lib
+	cp lib/libSa*.so* $(DESTDIR)/usr/lib
+	cp lib/libevs.a $(DESTDIR)/usr/lib
+	cp lib/libevs.so* $(DESTDIR)/usr/lib
+	cp exec/libtotem_pg* $(DESTDIR)/usr/lib
 
 	install -m 755 exec/aisexec $(DESTDIR)/sbin
 	install -m 755 exec/keygen $(DESTDIR)/sbin/ais-keygen
 	install -m 755 conf/openais.conf $(DESTDIR)/etc
 	install -m 755 conf/groups.conf $(DESTDIR)/etc
 
-	cp -a include/saAis.h $(DESTDIR)/usr/include
-	cp -a include/ais_amf.h $(DESTDIR)/usr/include
-	cp -a include/saClm.h $(DESTDIR)/usr/include
-	cp -a include/saCkpt.h $(DESTDIR)/usr/include
-	cp -a include/saEvt.h $(DESTDIR)/usr/include
-	cp -a include/evs.h $(DESTDIR)/usr/include
-	cp -a exec/totem.h $(DESTDIR)/usr/include
+	cp include/saAis.h $(DESTDIR)/usr/include
+	cp include/ais_amf.h $(DESTDIR)/usr/include
+	cp include/saClm.h $(DESTDIR)/usr/include
+	cp include/saCkpt.h $(DESTDIR)/usr/include
+	cp include/saEvt.h $(DESTDIR)/usr/include
+	cp include/evs.h $(DESTDIR)/usr/include
+	cp exec/totem.h $(DESTDIR)/usr/include

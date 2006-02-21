@@ -34,9 +34,10 @@
 #ifndef OPENAIS_EVS_H_DEFINED
 #define OPENAIS_EVS_H_DEFINED
 
+#include <sys/types.h>
 #include <netinet/in.h>
 
-typedef uint64_t evs_handle_t;
+typedef u_int64_t evs_handle_t;
 
 typedef enum {
 	EVS_DISPATCH_ONE,

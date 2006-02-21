@@ -34,21 +34,37 @@
 
 /* IPv4/6 abstraction */
 
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#include <sys/sockio.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <netinet/in_var.h>
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <netdb.h>
-#include <sys/ioctl.h>
-#include <arpa/inet.h>
+
+#if defined(OPENAIS_LINUX)
 #include <net/if.h>
 
 /* ARGH!! I hate netlink */
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
+#endif
+
+#ifndef s6_addr16
+#define s6_addr16 __u6_addr.__u6_addr16
+#endif
 
 #include "totemip.h"
 #include "swab.h"
@@ -57,6 +73,14 @@
 #define LOCALHOST_IPV6 "::1"
 
 #define NETLINK_BUFSIZE 16384
+
+#ifdef SO_NOSIGPIPE
+void totemip_nosigpipe(int s)
+{
+	int on = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
+}
+#endif 
 
 /* Compare two addresses */
 int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
@@ -179,10 +203,12 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in *sin = (struct sockaddr_in *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+		sin->sin_len = sizeof(struct sockaddr_in);
+#endif
 		sin->sin_family = ip_addr->family;
 		sin->sin_port = port;
 		memcpy(&sin->sin_addr, ip_addr->addr, sizeof(struct in_addr));
-
 		*addrlen = sizeof(struct sockaddr_in);
 		ret = 0;
 	}
@@ -191,6 +217,9 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in6));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+		sin->sin6_len = sizeof(struct sockaddr_in6);
+#endif
 		sin->sin6_family = ip_addr->family;
 		sin->sin6_port = port;
 		sin->sin6_scope_id = 2;
@@ -206,18 +235,18 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 /* Converts an address string string into a totem_ip_address */
 int totemip_parse(struct totem_ip_address *totemip, char *addr)
 {
-        struct addrinfo *ainfo;
-        struct addrinfo ahints;
+	struct addrinfo *ainfo;
+	struct addrinfo ahints;
 	struct sockaddr_in *sa;
 	struct sockaddr_in6 *sa6;
 	int ret;
 
-        memset(&ahints, 0, sizeof(ahints));
-        ahints.ai_socktype = SOCK_DGRAM;
-        ahints.ai_protocol = IPPROTO_UDP;
+	memset(&ahints, 0, sizeof(ahints));
+	ahints.ai_socktype = SOCK_DGRAM;
+	ahints.ai_protocol = IPPROTO_UDP;
 
-        /* Lookup the nodename address */
-        ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+	/* Lookup the nodename address */
+	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
 	if (ret)
 		return -errno;
 
@@ -257,6 +286,111 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 	}
 	return ret;
 }
+
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+int totemip_iface_check(struct totem_ip_address *bindnet,
+			struct totem_ip_address *boundto,
+			int *interface_up,
+			int *interface_num)
+{
+#define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
+	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
+	
+	struct sockaddr_in *intf_addr_mask;
+	struct sockaddr_storage bindnet_ss, intf_addr_ss;
+	struct sockaddr_in *intf_addr_sin = (struct sockaddr_in *)&intf_addr_ss;
+	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
+	struct ifreq *ifr, *lifr;
+	int id_fd;
+	struct ifconf ifc;
+	struct ifreq ifrb;
+	int numreqs = 0;
+	int res;
+	int addrlen;
+
+	*interface_up = 0;
+	*interface_num = 0;
+
+	totemip_totemip_to_sockaddr_convert(bindnet,
+		0, &bindnet_ss, &addrlen);
+
+	/*
+	 * Generate list of local interfaces in ifc.ifc_req structure
+	 */
+	id_fd = socket (AF_INET, SOCK_DGRAM, 0);
+	ifc.ifc_buf = 0;
+	do {
+		numreqs += 32;
+		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
+		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
+		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
+		if (res < 0) {
+			close (id_fd);
+			return -1;
+		}
+	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
+	res = -1;
+
+	/*
+	 * Find interface address to bind to
+	 */
+	lifr = (struct ifreq *)ifc.ifc_buf + (ifc.ifc_len / sizeof(*lifr));
+	
+	for (ifr = ifc.ifc_req; ifr < lifr; ifr = NEXT_IFR(ifr)) {
+		strcpy(ifrb.ifr_name, ifr->ifr_name);
+
+		/* Skip if no address set
+		 */
+		if (ioctl(id_fd, SIOCGIFADDR, &ifrb) < 0)
+			continue;
+			
+		memcpy(&intf_addr_ss, &ifrb.ifr_addr, sizeof(intf_addr_ss));
+		if (intf_addr_sin->sin_family == AF_INET) {
+			/* Retrieve mask
+			 */
+			if (ioctl(id_fd, SIOCGIFNETMASK, &ifrb) < 0) {
+				printf ("couldn't do ioctl\n");
+				break;
+			}
+			intf_addr_mask = (struct sockaddr_in *)&ifrb.ifr_addr;
+
+			if ( bindnet_sin->sin_family == AF_INET &&
+				 (intf_addr_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr) ==
+			     (bindnet_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr)) {
+	
+				totemip_copy(boundto, bindnet);
+				memcpy(boundto->addr, &intf_addr_sin->sin_addr, sizeof(intf_addr_sin->sin_addr));
+
+				/* Get inteface state
+				 */
+				if (ioctl(id_fd, SIOCGIFFLAGS, &ifrb) < 0) {
+					printf ("couldn't do ioctl\n");
+					break;
+				}
+				*interface_up = ifrb.ifr_flags & IFF_UP;
+
+				/* Get interface index
+				 */
+#ifdef SIOCGIFINDEX
+				if (ioctl(id_fd, SIOCGIFINDEX, &ifrb) < 0) {
+					printf ("couldn't do ioctl\n");
+					break;
+				}
+				*interface_num = ifrb.ifr_index;
+#else
+				*interface_num = if_nametoindex(ifrb.ifr_name);
+#endif
+				res = 0;
+				break; /* for */
+			}
+		}
+	}
+	free (ifc.ifc_buf);
+	close (id_fd);
+	
+	return (res);
+}
+#elif defined(OPENAIS_LINUX)
 
 static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 {
@@ -411,3 +545,6 @@ finished:
 	close(fd);
 	return 0;
 }
+#endif /* OPENAIS_LINUX */
+
+

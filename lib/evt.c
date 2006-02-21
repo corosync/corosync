@@ -723,8 +723,7 @@ saEvtDispatch(
 			res.evd_head.size = sizeof(res);
  
  			pthread_mutex_lock(&evti->ei_response_mutex);
- 			error = saSendRetry(evti->ei_response_fd, &res, sizeof(res),
- 				MSG_NOSIGNAL);
+ 			error = saSendRetry(evti->ei_response_fd, &res, sizeof(res));
  
 			if (error != SA_AIS_OK) {
 				printf("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error);

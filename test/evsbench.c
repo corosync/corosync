@@ -163,7 +163,7 @@ int main (void) {
 	int i;
 	evs_error_t result;
 	evs_handle_t handle;
-	
+
 	signal (SIGALRM, sigalrm_handler);
 
 	result = evs_initialize (&handle, &callbacks);
@@ -173,7 +173,7 @@ int main (void) {
 	result = evs_leave (handle, &groups[0], 1);
 	printf ("Leave result %d\n", result);
 
-	size = 100000;
+	size = 1;
 
 	for (i = 0; i < 225; i++) { /* number of repetitions - up to 50k */
 		evs_benchmark (handle, size);

@@ -33,6 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <pthread.h>
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>
@@ -42,7 +43,6 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <netinet/in.h>
@@ -200,7 +200,17 @@ struct totem_ip_address *this_ip;
 struct totem_ip_address this_non_loopback_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
+#if defined(OPENAIS_LINUX)
+/* SUN_LEN is broken for abstract namespace 
+ */
+#define AIS_SUN_LEN(a) sizeof(*(a))
+
 char *socketname = "libais.socket";
+#else
+#define AIS_SUN_LEN(a) SUN_LEN(a)
+
+char *socketname = "/var/run/libais.socket";
+#endif
 
 totempg_groups_handle openais_group_handle;
 
@@ -508,7 +518,9 @@ static int poll_handler_libais_accept (
 	struct conn_info *conn_info;
 	struct sockaddr_un un_addr;
 	int new_fd;
+#ifdef OPENAIS_LINUX
 	int on = 1;
+#endif
 	int res;
 
 	addrlen = sizeof (struct sockaddr_un);
@@ -524,12 +536,13 @@ retry_accept:
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 		
+	totemip_nosigpipe(new_fd);
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on library connection: %s\n", strerror (errno));
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	}
+	} 
 
 	/*
 	 * Valid accept
@@ -538,7 +551,9 @@ retry_accept:
 	/*
 	 * Request credentials of sender provided by kernel
 	 */
+#ifdef OPENAIS_LINUX
 	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+#endif
 
 	log_printf (LOG_LEVEL_DEBUG, "connection received from libais client %d.\n", new_fd);
 
@@ -665,10 +680,15 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	int service;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
+#ifdef OPENAIS_LINUX
 	struct cmsghdr *cmsg;
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	struct ucred *cred;
 	int on = 0;
+#else
+	uid_t euid;
+	gid_t egid;
+#endif
 	int send_ok = 0;
 	int send_ok_joined = 0;
 	struct iovec send_ok_joined_iovec;
@@ -709,8 +729,19 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
 	} else {
+#ifdef OPENAIS_LINUX
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
+#else
+		euid = -1; egid = -1;
+		if (getpeereid(fd, &euid, &egid) != -1 &&
+		    (euid == 0 || egid == gid_valid)) {
+				conn_info->authenticated = 1;
+		}
+		if (conn_info->authenticated == 0) {
+			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", egid, gid_valid);
+		}
+#endif
 	}
 
 	iov_recv.iov_base = &conn_info->inb[conn_info->inb_start];
@@ -718,7 +749,7 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	assert (iov_recv.iov_len != 0);
 
 retry_recv:
-	res = recvmsg (fd, &msg_recv, MSG_NOSIGNAL);
+	res = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (res == -1 && errno == EINTR) {
 		goto retry_recv;
 	} else
@@ -733,6 +764,7 @@ retry_recv:
 	/*
 	 * Authenticate if this connection has not been authenticated
 	 */
+#ifdef OPENAIS_LINUX
 	if (conn_info->authenticated == 0) {
 		cmsg = CMSG_FIRSTHDR (&msg_recv);
 		cred = (struct ucred *)CMSG_DATA (cmsg);
@@ -746,6 +778,7 @@ retry_recv:
 			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", cred->gid, gid_valid);
 		}
 	}
+#endif
 	/*
 	 * Dispatch all messages received in recvmsg that can be dispatched
 	 * sizeof (struct req_header) needed at minimum to do any processing
@@ -862,9 +895,6 @@ void sigintr_handler (int signum)
 	ais_done (AIS_DONE_EXIT);
 }
 
-static struct sched_param sched_param = { 
-	sched_priority: 99
-};
 
 static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
@@ -972,9 +1002,9 @@ static void aisexec_uid_determine (void)
 {
 	struct passwd *passwd;
 
-	passwd = getpwnam("ais");
+	passwd = getpwnam(OPENAIS_USER);
 	if (passwd == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' user is not found in /etc/passwd, please read the documentation.\n");
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", OPENAIS_USER);
 		ais_done (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
@@ -983,9 +1013,9 @@ static void aisexec_uid_determine (void)
 static void aisexec_gid_determine (void)
 {
 	struct group *group;
-	group = getgrnam ("ais");
+	group = getgrnam (OPENAIS_GROUP);
 	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The 'ais' group is not found in /etc/group, please read the documentation.\n");
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", OPENAIS_GROUP);
 		ais_done (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
@@ -1048,17 +1078,28 @@ static void aisexec_libais_bind (int *server_fd)
 		ais_done (AIS_DONE_LIBAIS_SOCKET);
 	};
 
+	totemip_nosigpipe(libais_server_fd);
 	res = fcntl (libais_server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
 		ais_done (AIS_DONE_LIBAIS_SOCKET);
 	}
 
+#if !defined(OPENAIS_LINUX)
+	unlink(socketname);
+#endif
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
 	un_addr.sun_family = AF_UNIX;
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	un_addr.sun_len = sizeof(struct sockaddr_un);
+#endif
+#if defined(OPENAIS_LINUX)
 	strcpy (un_addr.sun_path + 1, socketname);
+#else
+	strcpy (un_addr.sun_path, socketname);
+#endif
 
-	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, sizeof (struct sockaddr_un));
+	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not bind AF_UNIX: %s.\n", strerror (errno));
 		ais_done (AIS_DONE_LIBAIS_BIND);
@@ -1070,28 +1111,43 @@ static void aisexec_libais_bind (int *server_fd)
 
 static void aisexec_setscheduler (void)
 {
+#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+	static struct sched_param sched_param = { 
+		sched_priority: 99
+	};
 	int res;
 
-return;
 	res = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority 99: %s\n", strerror (errno));
 	}
+#else
+	log_printf(LOG_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
+#endif
 }
 
 static void aisexec_mlockall (void)
 {
+#if !defined(OPENAIS_BSD)
 	int res;
+#endif
 	struct rlimit rlimit;
 
 	rlimit.rlim_cur = RLIM_INFINITY;
 	rlimit.rlim_max = RLIM_INFINITY;
 	setrlimit (RLIMIT_MEMLOCK, &rlimit);
 
+#if defined(OPENAIS_BSD)
+	/* under FreeBSD a process with locked page cannot call dlopen
+	 * code disabled until FreeBSD bug i386/93396 was solved
+	 */
+	log_printf (LOG_LEVEL_WARNING, "Could not lock memory of service to avoid page faults\n");
+#else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
 	};
+#endif
 }
 
 int message_source_is_local(struct message_source *source)

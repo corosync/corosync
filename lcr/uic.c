@@ -29,9 +29,9 @@
  */
 #include <sys/uio.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <netinet/in.h>
@@ -46,8 +46,19 @@
 #include <time.h>
 #include <pthread.h>
 #include <sys/poll.h>
+#include <string.h>
 
-char *socketname = "lcr.uis.socket";
+#if defined(OPENAIS_LINUX)
+/* SUN_LEN is broken for abstract namespace 
+ */
+#define AIS_SUN_LEN(a) sizeof(*(a))
+
+static char *socketname = "lcr.socket";
+#else
+#define AIS_SUN_LEN(a) SUN_LEN(a)
+
+static char *socketname = "/var/run/lcr.socket";
+#endif
 
 int uic_connect (int *fd)
 {
@@ -55,13 +66,20 @@ int uic_connect (int *fd)
 	struct sockaddr_un addr;
 
 	memset (&addr, 0, sizeof (struct sockaddr_un));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	addr.sun_len = sizeof(struct sockaddr_un);
+#endif
 	addr.sun_family = PF_UNIX;
-	strcpy (addr.sun_path + 1, "lcr.socket");
+#if defined(OPENAIS_LINUX)
+	strcpy (addr.sun_path + 1, socketname);
+#else
+	strcpy (addr.sun_path, socketname);
+#endif
 	*fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (*fd == -1) {
 		return -errno;
 	}
-	res = connect (*fd, (struct sockaddr *)&addr, sizeof (addr));
+	res = connect (*fd, (struct sockaddr *)&addr, AIS_SUN_LEN(&addr));
 	if (res == -1) {
 		return -errno;
 	}

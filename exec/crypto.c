@@ -10,12 +10,14 @@
  */
 #include <assert.h>
 #include <string.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/poll.h>
+#if defined(OPENAIS_BSD)
+#include <sys/endian.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -28,14 +30,26 @@ typedef unsigned long long ulong64;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define ENDIAN_LITTLE
-#endif
-#if __BYTE_ORDER == __BIG_ENDIAN
+#elif __BYTE_ORDER == __BIG_ENDIAN
 #define ENDIAN_BIG
+#elif _BYTE_ORDER == _LITTLE_ENDIAN
+#define ENDIAN_LITTLE
+#elif _BYTE_ORDER == _BIG_ENDIAN
+#define ENDIAN_BIG
+#elif
+#warning "cannot detect byte order"
 #endif
+
+#if defined(OPENAIS_LINUX)
 #if __WORDIZE == 64
 #define ENDIAN_64BITWORD
 #endif
 #if __WORDIZE == 32
+#define ENDIAN_32BITWORD
+#endif
+#else
+/* XXX need to find a better default
+ */
 #define ENDIAN_32BITWORD
 #endif
 
@@ -1248,7 +1262,7 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
 }
 
 /* on ANSI C platforms with 100 < CLOCKS_PER_SEC < 10000 */
-#if defined(CLOCKS_PER_SEC)
+#if defined(XCLOCKS_PER_SEC)
 
 #define ANSI_RNG
 

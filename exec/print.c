@@ -39,10 +39,14 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#if defined(OPENAIS_LINUX)
 #include <linux/un.h>
-
-
+#endif
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#include <sys/un.h>
+#endif
 #include "print.h"
+#include "totemip.h"
 #include "../include/saAis.h"
 
 unsigned int logmode = LOG_MODE_STDERR | LOG_MODE_SYSLOG;
@@ -138,7 +142,7 @@ void log_syslog (char *log_string) {
 	msg_log.msg_controllen = 0;
 	msg_log.msg_flags = 0;
 
-	res = sendmsg (log_syslog_fd, &msg_log, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = sendmsg (log_syslog_fd, &msg_log, MSG_NOSIGNAL);
 }
 
 void internal_log_printf (int logclass, char *string, ...)

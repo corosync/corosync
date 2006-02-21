@@ -435,11 +435,9 @@ struct openais_service_handler *amf_get_handler_ver0 (void)
 	return (&amf_service_handler);
 }
 
-static void register_this_component (void) {
+__attribute__ ((constructor)) static void register_this_component (void) {
 	lcr_component_register (&amf_comp_ver0);
 }
-
-void (*const __init_this_component[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 enum clc_command_run_operation_type {
 	CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE = 1,
@@ -4333,9 +4331,6 @@ static void message_handler_req_exec_amf_hastateset (void *message, struct in_ad
 
 static void message_handler_req_lib_amf_readinessstateget (struct conn_info *conn_info, void *message)
 {
-<<<<<<< .mine
-	struct req_lib_amf_readinessstateget *req_lib_amf_readinessstateget = (struct req_lib_amf_readinessstateget *)message;
-=======
 	struct req_lib_amf_componentregister *req_lib_amf_componentregister = (struct req_lib_amf_componentregister *)message;
 	struct req_exec_amf_componentregister req_exec_amf_componentregister;
 	struct iovec iovec;
@@ -4418,9 +4413,6 @@ static void message_handler_req_lib_amf_stoppingcomplete (struct conn_info *conn
 {
 	struct req_lib_amf_stoppingcomplete *req_lib_amf_stoppingcomplete = (struct req_lib_amf_stoppingcomplete *)message;
 
-<<<<<<< .mine
-	struct conn_info *inv_conn_info;
-=======
 	log_printf (LOG_LEVEL_FROM_LIB, "Handle : message_handler_req_amf_protectiongrouptrackstart()\n");
 
 	amfProtectionGroup = protectiongroup_find (&req_amf_protectiongrouptrackstart->csiName);

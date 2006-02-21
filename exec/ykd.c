@@ -42,7 +42,6 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <netinet/in.h>

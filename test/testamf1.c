@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
@@ -204,9 +205,11 @@ SaAmfCallbacksT amfCallbacks;
 
 SaVersionT version = { 'B', 1, 1 };
 
+#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
 static struct sched_param sched_param = {
     sched_priority: 99
 };
+#endif
 
 void sigintr_handler (int signum) {
 	exit (0);
@@ -233,10 +236,12 @@ int main (int argc, char **argv) {
 	extern int optind;
 
 	signal (SIGINT, sigintr_handler);
+#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
 	result = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (result == -1) {
 		printf ("couldn't set sched priority\n");
  	}
+#endif
 
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_AIS_OK) {

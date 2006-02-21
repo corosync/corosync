@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -68,6 +69,26 @@ struct saHandle {
 	uint32_t check;
 };
 
+#if defined(OPENAIS_LINUX)
+/* SUN_LEN is broken for abstract namespace 
+ */
+#define AIS_SUN_LEN(a) sizeof(*(a))
+
+static char *socketname = "libais.socket";
+#else
+#define AIS_SUN_LEN(a) SUN_LEN(a)
+
+static char *socketname = "/var/run/libais.socket";
+#endif
+
+#ifdef SO_NOSIGPIPE
+void socket_nosigpipe(int s)
+{
+	int on = 1;
+	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
+}
+#endif 
+
 SaAisErrorT
 saServiceConnect (
 	int *fdOut,
@@ -80,7 +101,6 @@ saServiceConnect (
 	struct res_lib_response_init res_lib_response_init;
 	SaAisErrorT error;
 	gid_t egid;
-	int res;
 
 	/*
 	 * Allow set group id binaries to be authenticated
@@ -89,24 +109,38 @@ saServiceConnect (
 	setregid (egid, -1);
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	address.sun_len = sizeof(struct sockaddr_un);
+#endif
 	address.sun_family = PF_UNIX;
-	strcpy (address.sun_path + 1, "libais.socket");
+#if defined(OPENAIS_LINUX)
+	strcpy (address.sun_path + 1, socketname);
+#else
+	strcpy (address.sun_path, socketname);
+#endif
 	fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
 		return (SA_AIS_ERR_NO_RESOURCES);
 	}
-	result = connect (fd, (struct sockaddr *)&address, sizeof (address));
+
+	socket_nosigpipe (fd);
+
+	result = connect (fd, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
 	if (result == -1) {
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
-	res = fcntl (fd, F_SETFL, O_NONBLOCK);
+
+	result = fcntl (fd, F_SETFL, O_NONBLOCK);
+	if (result == -1) {
+		return (SA_AIS_ERR_TRY_AGAIN);
+	}
 
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
 	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
 	req_lib_response_init.resdis_header.service = service;
 
 	error = saSendRetry (fd, &req_lib_response_init,
-		sizeof (struct req_lib_response_init), MSG_NOSIGNAL);
+		sizeof (struct req_lib_response_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -147,7 +181,6 @@ saServiceConnectTwo (
 	struct res_lib_dispatch_init res_lib_dispatch_init;
 	SaAisErrorT error;
 	gid_t egid;
-	int res;
 
 	/*
 	 * Allow set group id binaries to be authenticated
@@ -156,13 +189,23 @@ saServiceConnectTwo (
 	setregid (egid, -1);
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	address.sun_len = sizeof(struct sockaddr_un);
+#endif
 	address.sun_family = PF_UNIX;
-	strcpy (address.sun_path + 1, "libais.socket");
+#if defined(OPENAIS_LINUX)
+	strcpy (address.sun_path + 1, socketname);
+#else
+	strcpy (address.sun_path, socketname);
+#endif
 	responseFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (responseFD == -1) {
 		return (SA_AIS_ERR_NO_RESOURCES);
 	}
-	result = connect (responseFD, (struct sockaddr *)&address, sizeof (address));
+
+	socket_nosigpipe (responseFD);
+
+	result = connect (responseFD, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
 	if (result == -1) {
 		close (responseFD);
 		return (SA_AIS_ERR_TRY_AGAIN);
@@ -179,8 +222,7 @@ saServiceConnectTwo (
 	req_lib_response_init.resdis_header.service = service;
 
 	error = saSendRetry (responseFD, &req_lib_response_init,
-		sizeof (struct req_lib_response_init),
-		MSG_NOSIGNAL);
+		sizeof (struct req_lib_response_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -205,14 +247,19 @@ saServiceConnectTwo (
 	if (callbackFD == -1) {
 		return (SA_AIS_ERR_NO_RESOURCES);
 	}
-	result = fcntl (callbackFD, F_SETFL, O_NONBLOCK);
+
+	socket_nosigpipe (callbackFD);
+
+	result = connect (callbackFD, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
 	if (result == -1) {
 		close (callbackFD);
 		close (responseFD);
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
-	result = connect (callbackFD, (struct sockaddr *)&address, sizeof (address));
+
+	result = fcntl (callbackFD, F_SETFL, O_NONBLOCK);
 	if (result == -1) {
+		close (callbackFD);
 		close (responseFD);
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
@@ -224,8 +271,7 @@ saServiceConnectTwo (
 	req_lib_dispatch_init.conn_info = res_lib_response_init.conn_info;
 
 	error = saSendRetry (callbackFD, &req_lib_dispatch_init,
-		sizeof (struct req_lib_dispatch_init),
-		MSG_NOSIGNAL);
+		sizeof (struct req_lib_dispatch_init));
 	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
@@ -278,7 +324,7 @@ retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
 	iov_recv.iov_len = len - processed;
 
-	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL|MSG_WAITALL);
+	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (result == -1 && errno == EINTR) {
 		goto retry_recv;
 	}
@@ -307,8 +353,7 @@ SaAisErrorT
 saSendRetry (
 	int s,
 	const void *msg,
-	size_t len,
-	int flags)
+	size_t len)
 {
 	SaAisErrorT error = SA_AIS_OK;
 	int result;
@@ -329,7 +374,7 @@ retry_send:
 	iov_send.iov_base = (void *)&rbuf[processed];
 	iov_send.iov_len = len - processed;
 
-	result = sendmsg (s, &msg_send, flags);
+	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
 
 	/*
 	 * return immediately on any kind of syscall error that maps to
@@ -415,7 +460,7 @@ SaAisErrorT saSendMsgRetry (
 	msg_send.msg_flags = 0;
 
 retry_sendmsg:
-	result = sendmsg (s, &msg_send, MSG_NOSIGNAL | MSG_DONTWAIT);
+	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
 	/*
 	 * Can't send now, and message not committed, so don't retry send
 	 */
@@ -519,8 +564,7 @@ SaAisErrorT saSendReceiveReply (
 {
 	SaAisErrorT error = SA_AIS_OK;
 
-	error = saSendRetry (s, requestMessage, requestLen,
-		MSG_NOSIGNAL);
+	error = saSendRetry (s, requestMessage, requestLen);
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}

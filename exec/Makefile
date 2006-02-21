@@ -28,26 +28,24 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
-#	handler modules.  If the developer intends to debug, building without
-#	dynamic modules should provide an easier route.
-BUILD_DYNAMIC=0
+# Include configuration
+#
+include ../Makefile.inc
 
-# Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = -lpthread -ldl
+CFLAGS += -I../include
+LDFLAGS += -L./
 
-# Debug mode flags
-#CFLAGS = -g -Wall 
-#LDFLAGS = -g -lpthread -ldl
+ifeq (${BUILD_DYNAMIC}, 1) 
+	LDFLAGS += ${DYFLAGS}
+endif
 
-# Profile mode flags
-#CFLAGS = -O3 -pg
-#LDFLAGS = -pg -lpthread
+ifeq (${OPENAIS_COMPAT}, LINUX) 
+	LDFLAGS += -ldl
+endif
 
-# Code Coverage with lcov flgs
-#CFLAGS = -ftest-coverage -fprofile-arcs
-#LDFLAGS = -g
+# OPENAIS_USER, OPENAISGROUP
+#
+CFLAGS += -DOPENAIS_USER=\"${OPENAIS_USER}\" -DOPENAIS_GROUP=\"${OPENAIS_GROUP}\" 
 
 # Totem objects
 TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c crypto.c wthread.c
@@ -67,18 +65,46 @@ MAIN_OBJS = main.o print.o mempool.o \
 ifeq (${BUILD_DYNAMIC}, 1) 
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
 CFLAGS += -fPIC
-LDFLAGS += -rdynamic
 
 all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
+	aisexec \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso \
-	aisexec keygen openais-instantiate
+	keygen openais-instantiate
 else
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(SERV_OBJS)
 all: libtotem_pg.a aisexec keygen openais-instantiate
 endif
 
+
+ifeq (${OPENAIS_COMPAT}, DARWIN)
+
+service_evs.lcrso: evs.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load evs.o -o $@
+
+service_clm.lcrso: clm.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load clm.o -o $@
+
+service_amf.lcrso: amf.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load amf.o -o $@
+
+service_ckpt.lcrso: ckpt.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load ckpt.o -o $@
+
+service_evt.lcrso: evt.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load evt.o -o $@
+	
+service_lck.lcrso: lck.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load lck.o -o $@
+
+service_msg.lcrso: msg.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load msg.o -o $@
+
+service_cfg.lcrso: cfg.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
+
+else
 
 service_evs.lcrso: evs.o
 	$(CC) -shared -Wl,-soname,service_evs.lcrso evs.o -o $@
@@ -103,6 +129,8 @@ service_msg.lcrso: msg.o
 
 service_cfg.lcrso: cfg.o
 	$(CC) -shared -Wl,-soname,service_cfg.lcrso cfg.o -o $@
+	
+endif
 
 aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
@@ -110,11 +138,23 @@ aisexec: $(EXEC_OBJS) libtotem_pg.a
 libtotem_pg.a: $(TOTEM_OBJS)
 	$(AR) -rc libtotem_pg.a $(TOTEM_OBJS)
 
+ifeq (${OPENAIS_COMPAT}, DARWIN)
+
+libtotem_pg.so.1.0: $(TOTEM_OBJS)
+	$(CC) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
+	rm -f libtotem_pg.so.1 libtotem_pg.so
+	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
+	ln -s libtotem_pg.so.1.0 libtotem_pg.so
+
+else
+
 libtotem_pg.so.1.0: $(TOTEM_OBJS)
 	$(CC) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
 	rm -f libtotem_pg.so.1 libtotem_pg.so
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so
+
+endif
 
 keygen: keygen.o
 	$(CC) $(LDFLAGS) keygen.o -o keygen

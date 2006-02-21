@@ -27,21 +27,13 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
-# Production mode flags
-#CFLAGS = -O3 -Wall
-#LDFLAGS = 
 
-# Debug mode flags
-CFLAGS = -g -DDEBUG -Wall
-LDFLAGS = -g
+# Include configuration
+#
+include ../Makefile.inc
 
-# Profile mode flags
-#CFLAGS = -O3 -pg -DDEBUG
-#LDFLAGS = -pg
-
-# Code Coverage with lcov flgs
-#CFLAGS = -ftest-coverage -fprofile-arcs
-#LDFLAGS = -g
+CFLAGS += -I../include
+LDFLAGS += -L./
 
 all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
 	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libSaLck.a libSaLck.so.1.0 libSaMsg.a libSaMsg.so.1.0 \
@@ -54,14 +46,63 @@ LIBEVS_SRC = util.c evs.c
 libSaClm.a: util.o clm.o
 	$(AR) -rc libSaClm.a util.o clm.o
 
+ifeq (${OPENAIS_COMPAT}, DARWIN)
+
+libSaClm.so.1.0: util.o clm.o
+	$(CC) -bundle -bind_at_load util.o clm.o -o $@
+	rm -f libSaClm.so.1 libSaClm.so
+	ln -s libSaClm.so.1.0 libSaClm.so.1
+	ln -s libSaClm.so.1.0 libSaClm.so
+
+libSaAmf.so.1.0: util.o amf.o
+	$(CC) -bundle -bind_at_load util.o amf.o -o $@
+	rm -f libSaAmf.so.1 libSaAmf.so
+	ln -s libSaAmf.so.1.0 libSaAmf.so.1
+	ln -s libSaAmf.so.1.0 libSaAmf.so
+
+libSaCkpt.so.1.0: util.o ckpt.o
+	$(CC) -bundle -bind_at_load util.o ckpt.o -o $@
+	rm -f libSaCkpt.so.1 libSaCkpt.so
+	ln -s libSaCkpt.so.1.0 libSaCkpt.so.1
+	ln -s libSaCkpt.so.1.0 libSaCkpt.so
+
+libSaEvt.so.1.0: util.o evt.o
+	$(CC) -bundle -bind_at_load util.o evt.o -o $@
+	rm -f libSaEvt.so.1 libSaEvt.so
+	ln -s libSaEvt.so.1.0 libSaEvt.so.1
+	ln -s libSaEvt.so.1.0 libSaEvt.so
+
+libSaLck.so.1.0: util.o lck.o
+	$(CC) -bundle -bind_at_load util.o lck.o -o $@
+	rm -f libSaLck.so.1 libSaLck.so
+	ln -s libSaLck.so.1.0 libSaLck.so.1
+	ln -s libSaLck.so.1.0 libSaLck.so
+
+libSaMsg.so.1.0: util.o msg.o
+	$(CC) -bundle -bind_at_load util.o msg.o -o $@
+	rm -f libSaMsg.so.1 libSaMsg.so
+	ln -s libSaMsg.so.1.0 libSaMsg.so.1
+	ln -s libSaMsg.so.1.0 libSaMsg.so
+
+libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o lck.o msg.o
+	$(CC) -bundle -bind_at_load util.o amf.o clm.o ckpt.o evt.o -o $@
+	rm -f libais.so.1 libais.so
+	ln -s libais.so.1.0 libais.so.1
+	ln -s libais.so.1.0 libais.so
+
+libevs.so.1.0: util.o evs.o
+	$(CC) -bundle -bind_at_load util.o evs.o -o $@
+	rm -f libevs.so.1 libevs.so
+	ln -s libevs.so.1.0 libevs.so.1
+	ln -s libevs.so.1.0 libevs.so
+
+else
+
 libSaClm.so.1.0: util.o clm.o
 	$(CC) -shared -Wl,-soname,libSaClm.so.1,-version-script=libSaClm.versions util.o clm.o -o $@
 	rm -f libSaClm.so.1 libSaClm.so
 	ln -s libSaClm.so.1.0 libSaClm.so.1
 	ln -s libSaClm.so.1.0 libSaClm.so
-
-libSaAmf.a: util.o amf.o
-	$(AR) -rc libSaAmf.a util.o amf.o
 
 libSaAmf.so.1.0: util.o amf.o
 	$(CC) -shared -Wl,-soname,libSaAmf.so.1,-version-script=libSaAmf.versions util.o amf.o -o $@
@@ -69,17 +110,11 @@ libSaAmf.so.1.0: util.o amf.o
 	ln -s libSaAmf.so.1.0 libSaAmf.so.1
 	ln -s libSaAmf.so.1.0 libSaAmf.so
 
-libSaCkpt.a: util.o ckpt.o
-	$(AR) -rc libSaCkpt.a util.o ckpt.o
-
 libSaCkpt.so.1.0: util.o ckpt.o
 	$(CC) -shared -Wl,-soname,libSaCkpt.so.1,-version-script=libSaCkpt.versions util.o ckpt.o -o $@
 	rm -f libSaCkpt.so.1 libSaCkpt.so
 	ln -s libSaCkpt.so.1.0 libSaCkpt.so.1
 	ln -s libSaCkpt.so.1.0 libSaCkpt.so
-
-libSaEvt.a: util.o evt.o
-	$(AR) -rc libSaEvt.a util.o evt.o
 
 libSaEvt.so.1.0: util.o evt.o
 	$(CC) -shared -Wl,-soname,libSaEvt.so.1,-version-script=libSaEvt.versions util.o evt.o -o $@
@@ -87,17 +122,11 @@ libSaEvt.so.1.0: util.o evt.o
 	ln -s libSaEvt.so.1.0 libSaEvt.so.1
 	ln -s libSaEvt.so.1.0 libSaEvt.so
 
-libSaLck.a: util.o lck.o
-	$(AR) -rc libSaLck.a util.o lck.o
-
 libSaLck.so.1.0: util.o lck.o
 	$(CC) -shared -Wl,-soname,libSaLCK.so.1,-version-script=libSaLck.versions util.o lck.o -o $@
 	rm -f libSaLck.so.1 libSaLck.so
 	ln -s libSaLck.so.1.0 libSaLck.so.1
 	ln -s libSaLck.so.1.0 libSaLck.so
-
-libSaMsg.a: util.o msg.o
-	$(AR) -rc libSaMsg.a util.o msg.o
 
 libSaMsg.so.1.0: util.o msg.o
 	$(CC) -shared -Wl,-soname,libSaMsg.so.1,-version-script=libSaMsg.versions util.o msg.o -o $@
@@ -105,24 +134,41 @@ libSaMsg.so.1.0: util.o msg.o
 	ln -s libSaMsg.so.1.0 libSaMsg.so.1
 	ln -s libSaMsg.so.1.0 libSaMsg.so
 
-libais.a: util.o amf.o clm.o ckpt.o evt.o msg.o
-	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o msg.o
-
 libais.so.1.0: util.o amf.o clm.o ckpt.o evt.o lck.o msg.o
-	$(CC) -shared -Wl,-soname,libais.so.1,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o \
-								evt.o -o $@
+	$(CC) -shared -Wl,-soname,libais.so.1,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o evt.o -o $@
 	rm -f libais.so.1 libais.so
 	ln -s libais.so.1.0 libais.so.1
 	ln -s libais.so.1.0 libais.so
-	
-libevs.a: util.o evs.o
-	$(AR) -rc libevs.a util.o evs.o
 
 libevs.so.1.0: util.o evs.o
 	$(CC) -shared -Wl,-soname,libevs.so.1,-version-script=libevs.versions util.o evs.o -o $@
 	rm -f libevs.so.1 libevs.so
 	ln -s libevs.so.1.0 libevs.so.1
 	ln -s libevs.so.1.0 libevs.so
+
+endif
+
+libSaAmf.a: util.o amf.o
+	$(AR) -rc libSaAmf.a util.o amf.o
+
+libSaCkpt.a: util.o ckpt.o
+	$(AR) -rc libSaCkpt.a util.o ckpt.o
+
+libSaEvt.a: util.o evt.o
+	$(AR) -rc libSaEvt.a util.o evt.o
+
+libSaLck.a: util.o lck.o
+	$(AR) -rc libSaLck.a util.o lck.o
+
+libSaMsg.a: util.o msg.o
+	$(AR) -rc libSaMsg.a util.o msg.o
+
+libais.a: util.o amf.o clm.o ckpt.o evt.o msg.o
+	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o msg.o
+	
+libevs.a: util.o evs.o
+	$(AR) -rc libevs.a util.o evs.o
+
 
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \

@@ -21,37 +21,43 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
-# Production mode flags
-CFLAGS = -O3 -Wall -fomit-frame-pointer
-LDFLAGS = -rdynamic
 
-# Debug mode flags
-#CFLAGS = -g -Wall
-#LDFLAGS = -g -L./ -rdynamic
+# Include configuration
+#
+include ../Makefile.inc
 
-# Profile mode flags
-#CFLAGS = -O3 -pg -DDEBUG
-#LDFLAGS = -pg
+CFLAGS += -I../include
+LDFLAGS += -L./ ${DYFLAGS}
 
-# Code Coverage with lcov flgs
-#CFLAGS = -ftest-coverage -fprofile-arcs
-#LDFLAGS = -g
-
-LDFLAGS += -ldl
+ifeq (${OPENAIS_COMPAT}, LINUX) 
+	LDFLAGS += -ldl
+endif
 
 all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
 
 liblcr.a: lcr_ifact.o
 	$(AR) -rc liblcr.a lcr_ifact.o
 
+ifeq (${OPENAIS_COMPAT}, DARWIN)
+
+libtest_a.lcrso: libtest_a.o
+	$(CC) $(CFLAGS) -bundle -bundle_loader ./test libtest_a.o -o $@
+
+libtest_b.lcrso: libtest_b.o
+	$(CC) $(CFLAGS) -bundle -bundle_loader ./test libtest_b.o -o $@
+
+else
+
 libtest_a.lcrso: libtest_a.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_a.o -o $@
 
 libtest_b.lcrso: libtest_b.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_b.o -o $@
+
+endif
 	
 test: test.o uis.o lcr_ifact.o
-	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -ldl -o test
+	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -o test
 	
 test_static: test.o libtest_a.o libtest_b.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o libtest_a.o libtest_b.o lcr_ifact.o -o test_static

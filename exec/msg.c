@@ -481,11 +481,9 @@ struct openais_service_handler *msg_get_handler_ver0 (void)
 	return (&msg_service_handler);
 }
 
-static void register_this_component (void) {
+__attribute__ ((constructor)) static void register_this_component (void) {
 	lcr_component_register (&msg_comp_ver0);
 }
-
-void (*const __ctor_msg_comp[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 
 /*
  * All data types used for executive messages

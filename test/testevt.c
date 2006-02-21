@@ -61,7 +61,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/poll.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "saAis.h"
 #include "saEvt.h"
 

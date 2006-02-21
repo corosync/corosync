@@ -28,24 +28,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+# Include configuration
+#
+include ../Makefile.inc
+
 LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a
-LIBS = $(LIBRARIES) -lpthread
+LIBS = $(LIBRARIES) 
 
-# Production mode flags
-#CFLAGS = -c -O3 -Wall -I../include
-#CFLAGS = -c -O3 -Wall -I../include
-#LDFLAGS = -L../lib
-#LIBRARIES= ../lib/libais.a ../lib/libevs.a
-#LIBS = $(LIBRARIES) -lpthread
-
-# Debug mode flags
-CFLAGS = -c -g -Wall -DDEBUG -I../include
-CPPFLAGS = -c -g -Wall -DDEBUG -I../include
-LDFLAGS = -g -L../lib
-
-# Profile mode flags
-#CFLAGS = -c -O3 -pg -DDEBUG -I../include
-#LDFLAGS = -pg -L../lib
+CFLAGS += -I../include
+LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf1.c \

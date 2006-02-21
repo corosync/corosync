@@ -38,7 +38,18 @@
 
 #include <pthread.h>
 #include <sys/poll.h>
+#include <sys/socket.h>
+
 #include "../include/ipc_gen.h"
+
+#ifdef SO_NOSIGPIPE
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+void socket_nosigpipe(int s);
+#else
+#define socket_nosigpipe(s)
+#endif
 
 struct saHandleDatabase {
 	unsigned int handleCount;
@@ -84,8 +95,7 @@ SaAisErrorT
 saSendRetry (
 	int s,
 	const void *msg,
-	size_t len,
-	int flags);
+	size_t len);
 
 SaAisErrorT saSendMsgRetry (
 	int s,

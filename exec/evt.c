@@ -41,7 +41,7 @@
 #define RETENTION_TIME_DEBUG LOG_LEVEL_DEBUG
 
 #include <sys/types.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/uio.h>
@@ -258,11 +258,9 @@ struct openais_service_handler *evt_get_handler_ver0(void)
 	return (&evt_service_handler);
 }
 
-static void evt_comp_register (void) {
+__attribute__ ((constructor)) static void evt_comp_register (void) {
 	lcr_component_register (&evt_comp_ver0);
 }
-
-void (*const __ctor_evt_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evt_comp_register };
 
 /* 
  * list of all retained events 

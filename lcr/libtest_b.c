@@ -162,10 +162,8 @@ static void iface1_ver1_func3 (void) {
 	printf ("B - version 1 func3\n");
 }
 
-static void register_this_component (void)
+__attribute__ ((constructor)) static void register_this_component (void)
 {
 	lcr_component_register (&test_comp);
 }
-
-void (*const __init_libtest_b[1]) (void) __attribute__ ((section(".ctors"))) = { register_this_component };
 

@@ -36,7 +36,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
@@ -193,11 +192,9 @@ struct openais_service_handler *evs_get_service_handler_ver0 (void)
 	return (&evs_service_handler);
 }
 
-static void evs_comp_register (void) {
+__attribute__ ((constructor)) static void evs_comp_register (void) {
 	lcr_component_register (&evs_comp_ver0);
 }
-
-void (*const __ctor_evs_comp[1]) (void) __attribute__ ((section(".ctors"))) = { evs_comp_register };
 
 struct res_evs_confchg_callback res_evs_confchg_callback;
 

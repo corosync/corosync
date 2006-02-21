@@ -29,9 +29,9 @@
  */
 #include <sys/uio.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sysinfo.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <netinet/in.h>
@@ -46,10 +46,21 @@
 #include <time.h>
 #include <pthread.h>
 #include <sys/poll.h>
+#include <string.h>
 
 #define SERVER_BACKLOG 5
 
-char *socketname = "lcr.socket";
+#if defined(OPENAIS_LINUX)
+/* SUN_LEN is broken for abstract namespace 
+ */
+#define AIS_SUN_LEN(a) sizeof(*(a))
+
+static char *socketname = "lcr.socket";
+#else
+#define AIS_SUN_LEN(a) SUN_LEN(a)
+
+static char *socketname = "/var/run/lcr.socket";
+#endif
 
 static void uis_lcr_bind (int *server_fd)
 {
@@ -65,11 +76,21 @@ static void uis_lcr_bind (int *server_fd)
 		printf ("lcr_bind failed\n");
 	};
 
+#if !defined(OPENAIS_LINUX)
+	unlink(socketname);
+#endif
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	un_addr.sun_len = sizeof(struct sockaddr_un);
+#endif
 	un_addr.sun_family = AF_UNIX;
+#if defined(OPENAIS_LINUX)
 	strcpy (un_addr.sun_path + 1, socketname);
+#else
+	strcpy (un_addr.sun_path, socketname);
+#endif
 
-	res = bind (fd, (struct sockaddr *)&un_addr, sizeof (struct sockaddr_un));
+	res = bind (fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
 		printf ("Could not bind AF_UNIX: %s\n", strerror (errno));
 	}
@@ -114,7 +135,9 @@ static void *lcr_uis_server (void *data)
 	struct sockaddr_un un_addr;
 	socklen_t addrlen;
 	int nfds = 1;
+#ifdef OPENAIS_LINUX
 	int on = 1;
+#endif
 	int res;
 
 	/*
@@ -129,8 +152,10 @@ static void *lcr_uis_server (void *data)
 		if (nfds == 1 && ufds[0].revents & POLLIN) {
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
+#ifdef OPENAIS_LINUX			
 			setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
 				&on, sizeof (on));
+#endif
 			nfds = 2;		
 		}
 		if (ufds[0].revents & POLLIN) {
@@ -142,7 +167,7 @@ static void *lcr_uis_server (void *data)
 	return 0;
 }
 
-static int lcr_uis_ctors (void)
+__attribute__ ((constructor)) static int lcr_uis_ctors (void)
 {
 	pthread_t thread;
 
@@ -151,5 +176,3 @@ static int lcr_uis_ctors (void)
 	return (0);
 }
 
-static int (*const __init_uis[1]) (void) __attribute__ ((section(".ctors"))) =
-	{ lcr_uis_ctors };

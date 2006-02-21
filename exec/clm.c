@@ -36,7 +36,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#if defined(OPENAIS_LINUX)
 #include <sys/sysinfo.h>
+#endif
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#include <sys/sysctl.h>
+#endif
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
@@ -240,11 +245,9 @@ struct openais_service_handler *clm_get_service_handler_ver0 (void)
 	return (&clm_service_handler);
 }
 
-static void clm_comp_register (void) {
+__attribute__ ((constructor)) static void clm_comp_register (void) {
 	lcr_component_register (&clm_comp_ver0);
 }
-
-void (*const __ctor_clm_comp[1]) (void) __attribute__ ((section(".ctors"))) = { clm_comp_register }; 
 
 struct req_exec_clm_nodejoin {
 	struct req_header header;
@@ -275,12 +278,25 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	printf ("setting B to %x\n", this_ip->nodeid);
 	thisClusterNode.member = 1;
 	{
+#if defined(OPENAIS_LINUX)
 		struct sysinfo s_info;
 		time_t current_time;
 		sysinfo (&s_info);
 		current_time = time (NULL);
 		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
 		thisClusterNode.bootTimestamp = ((SaTimeT)(current_time - s_info.uptime)) * 1000000000;
+#elif defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+		int mib[2] = { CTL_KERN, KERN_BOOTTIME };
+		struct timeval boot_time;
+		size_t size = sizeof(boot_time);
+		
+		if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
+			boot_time.tv_sec = time (NULL);
+		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
+		thisClusterNode.bootTimestamp = ((SaTimeT)boot_time.tv_sec) * 1000000000;
+#else /* defined(CTL_KERN) && defined(KERN_BOOTTIME) */
+	#warning "no bootime support"
+#endif
 	}
 
 	memcpy (&clusterNodes[0], &thisClusterNode, sizeof (SaClmClusterNodeT));
