@@ -281,12 +281,14 @@ int decide (void)
 {
 	int i;
 
+printf ("decide 1\n");
 	/*
 	 * Determine if there is a subquorum
 	 */
 	if (subquorum (view_list, view_list_entries, last_primary_max) == 0) {
 		return (0);
 	}
+printf ("decide 2\n");
 
 	for (i = 0; i < ambiguous_sessions_max_entries; i++) {
 		if (subquorum (view_list, view_list_entries, &ambiguous_sessions_max[i]) == 0) {
@@ -294,7 +296,37 @@ int decide (void)
 		}
 		
 	}
+printf ("decide 3\n");
 	return (1);
+}
+
+void ykd_session_endian_convert (struct ykd_session *ykd_session)
+{
+	int i;
+
+	ykd_session->member_list_entries = swab32 (ykd_session->member_list_entries);
+	ykd_session->session_id = swab32 (ykd_session->session_id);
+	for (i = 0; i < ykd_session->member_list_entries; i++) {
+		totemip_copy_endian_convert (&ykd_session->member_list[i], &ykd_session->member_list[i]);
+	}
+}
+
+void ykd_state_endian_convert (struct ykd_state *ykd_state)
+{
+	int i;
+
+	ykd_session_endian_convert (&ykd_state->last_primary);
+	ykd_state->last_formed_entries = swab32 (ykd_state->last_formed_entries);
+	ykd_state->ambiguous_sessions_entries = swab32 (ykd_state->ambiguous_sessions_entries);
+	ykd_state->session_id = swab32 (ykd_state->session_id);
+
+	for (i = 0; i < ykd_state->last_formed_entries; i++) {
+		ykd_session_endian_convert (&ykd_state->last_formed[i]);
+	}
+	
+	for (i = 0; i < ykd_state->ambiguous_sessions_entries; i++) {
+		ykd_session_endian_convert (&ykd_state->ambiguous_sessions[i]);
+	}
 }
 
 static void ykd_deliver_fn (
@@ -308,20 +340,15 @@ static void ykd_deliver_fn (
 	int i;
 	char *msg_state = iovec->iov_base + sizeof (struct ykd_header);
 	
-#ifdef COMPILE_OUT
+	printf ("ykd deliver fn %s\n", totemip_print (source_addr));
+	if (endian_conversion_required) {
+	printf ("endian convert\n");
+		ykd_state_endian_convert ((struct ykd_state *)msg_state);
+	}
 
-/*
-	* Is this barrier from this configuration, if not, ignore it
-	*/
-	if (memcmp (&req_exec_sync_barrier_start->ring_id, ykd_ring_id,
-		sizeof (struct memb_ring_id)) != 0) {
-		*/
-
-	return (0);
-#endif
 	/*
-	* Set completion for source_addr's address
-	*/
+	 * Set completion for source_addr's address
+	 */
 	for (state_position = 0; state_position < state_received_confchg_entries; state_position++) {
 		if (totemip_equal(source_addr, &state_received_process[state_position].addr)) {
 			/*
