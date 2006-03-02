@@ -248,6 +248,20 @@ static inline void app_confchg_fn (
 		}
 	}
 }
+static inline void group_endian_convert (
+	struct iovec *iovec)
+{
+	unsigned short *group_len;
+	int i;
+
+	group_len = (unsigned short *)iovec->iov_base;
+	group_len[0] = swab16(group_len[0]);
+	for (i = 1; i < group_len[0] + 1; i++) {
+		group_len[i] = swab16(group_len[i]);
+	}
+
+}
+
 static inline int group_matches (
 	struct iovec *iovec,
 	unsigned int iov_len,
@@ -265,6 +279,7 @@ static inline int group_matches (
 	group_len = (unsigned short *)iovec->iov_base;
 	group_name = ((char *)iovec->iov_base) +
 		sizeof (unsigned short) * (group_len[0] + 1);
+
 
 	/*
 	 * Calculate amount to adjust the iovec by before delivering to app
@@ -302,6 +317,9 @@ static inline void app_deliver_fn (
 	unsigned int adjust_iovec;
 	unsigned int res;
 
+	if (endian_conversion_required) {
+		group_endian_convert (iovec);
+	}
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
 			i, (void *)&instance);
@@ -408,11 +426,11 @@ static void totempg_deliver_fn (
 		int datasize;
 
 		mcast = (struct totempg_mcast *)iovec[0].iov_base;
+		if (endian_conversion_required) {
+			mcast->msg_count = swab16 (mcast->msg_count);
+		}
 
 		msg_count = mcast->msg_count;
-		if (endian_conversion_required) {
-			msg_count = swab16 (mcast->msg_count);
-		}
 		datasize = sizeof (struct totempg_mcast) +
 			msg_count * sizeof (unsigned short);
 		
@@ -421,6 +439,11 @@ static void totempg_deliver_fn (
 		data = iovec[0].iov_base;
 
 		msg_lens = (unsigned short *) (header + sizeof (struct totempg_mcast));
+		if (endian_conversion_required) {
+			for (i = 0; i < mcast->msg_count; i++) {
+				msg_lens[i] = swab16 (msg_lens[i]);
+			}
+		}
 
 		memcpy (&assembly->data[assembly->index], &data[datasize],
 			iovec[0].iov_len - datasize);
@@ -447,13 +470,6 @@ static void totempg_deliver_fn (
 			a_i += msg_lens[i - 2];
 		}
 		iov_len -= 2;
-	}
-
-	if (endian_conversion_required) {
-		mcast->msg_count = swab16 (mcast->msg_count);
-		for (i = 0; i < mcast->msg_count; i++) {
-			msg_lens[i] = swab16 (msg_lens[i]);
-		}
 	}
 
 /*
