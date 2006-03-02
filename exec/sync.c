@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2005-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -54,6 +54,7 @@
 #include "totempg.h"
 #include "ykd.h"
 #include "print.h"
+#include "swab.h"
 
 #define LOG_SERVICE LOG_SERVICE_SYNC
 
@@ -291,6 +292,14 @@ void sync_primary_callback_fn (
 
 static struct memb_ring_id deliver_ring_id;
 
+void sync_endian_convert (struct req_exec_sync_barrier_start *req_exec_sync_barrier_start)
+{
+	totemip_copy_endian_convert(&req_exec_sync_barrier_start->ring_id.rep,
+		&req_exec_sync_barrier_start->ring_id.rep);
+	req_exec_sync_barrier_start->ring_id.seq = swab64 (req_exec_sync_barrier_start->ring_id.seq);
+
+}
+
 void sync_deliver_fn (
 	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
@@ -302,6 +311,10 @@ void sync_deliver_fn (
 		(struct req_exec_sync_barrier_start *)iovec[0].iov_base;
 
 	int i;
+
+	if (endian_conversion_required) {
+		sync_endian_convert (req_exec_sync_barrier_start);
+	}
 
 	int barrier_completed = 1;
 
