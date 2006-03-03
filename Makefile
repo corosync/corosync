@@ -52,6 +52,8 @@ install:
 	cp lib/libSa*.so* $(DESTDIR)/usr/lib
 	cp lib/libevs.a $(DESTDIR)/usr/lib
 	cp lib/libevs.so* $(DESTDIR)/usr/lib
+	cp lib/libcpg.a $(DESTDIR)/usr/lib
+	cp lib/libcpg.so* $(DESTDIR)/usr/lib
 	cp exec/libtotem_pg* $(DESTDIR)/usr/lib
 
 	install -m 755 exec/aisexec $(DESTDIR)/sbin

@@ -37,6 +37,7 @@ LDFLAGS += -L./
 
 all:libSaClm.a libSaClm.so.1.0 libSaAmf.a libSaAmf.so.1.0 libSaCkpt.a \
 	libSaCkpt.so.1.0 libSaEvt.a libSaEvt.so.1.0 libSaLck.a libSaLck.so.1.0 libSaMsg.a libSaMsg.so.1.0 \
+	libcpg.a libcpg.so.1.0 \
 	libais.a libais.so.1.0 libevs.a libevs.so.1.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
@@ -96,6 +97,12 @@ libevs.so.1.0: util.o evs.o
 	ln -s libevs.so.1.0 libevs.so.1
 	ln -s libevs.so.1.0 libevs.so
 
+libcpg.so.1.0: util.o cpg.o
+	$(CC) -bundle -bind_at_load util.o cpg.o -o $@
+	rm -f libcpg.so.1 libcpg.so
+	ln -s libcpg.so.1.0 libcpg.so.1
+	ln -s libcpg.so.1.0 libcpg.so
+
 else
 
 libSaClm.so.1.0: util.o clm.o
@@ -146,6 +153,12 @@ libevs.so.1.0: util.o evs.o
 	ln -s libevs.so.1.0 libevs.so.1
 	ln -s libevs.so.1.0 libevs.so
 
+libcpg.so.1.0: util.o cpg.o
+	$(CC) -shared -Wl,-soname,libcpg.so.1,-version-script=libcpg.versions util.o cpg.o -o $@
+	rm -f libcpg.so.1 libcpg.so
+	ln -s libcpg.so.1.0 libcpg.so.1
+	ln -s libcpg.so.1.0 libcpg.so
+
 endif
 
 libSaAmf.a: util.o amf.o
@@ -165,16 +178,18 @@ libSaMsg.a: util.o msg.o
 
 libais.a: util.o amf.o clm.o ckpt.o evt.o msg.o
 	$(AR) -rc libais.a util.o amf.o clm.o ckpt.o evt.o msg.o
-	
+
 libevs.a: util.o evs.o
 	$(AR) -rc libevs.a util.o evs.o
 
+libcpg.a: util.o cpg.o
+	$(AR) -rc libcpg.a util.o cpg.o
 
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
 		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so* libSaLck.a \
 		libSaMsg.so* libSaMsg.a libOpenaisCfg.so* libOpenaisCfg.a \
-		libevs.so* libevs.a *.da *.bb *.bbg
+		libevs.so* libevs.a libcpg.so* libcpg.a *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries
 %.o: %.c
@@ -184,18 +199,19 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
-util.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
-util.o: ../include/evs.h ../include/saClm.h ../include/ipc_gen.h util.h
-amf.o: ../include/saAis.h ../include/ais_amf.h ../include/saAis.h
-amf.o: ../include/ipc_evs.h ../include/evs.h ../include/saClm.h
-amf.o: ../include/ipc_gen.h util.h
+util.o: ../include/saAis.h ../include/ipc_gen.h ../exec/totemip.h util.h
+amf.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
+amf.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
+amf.o: ../include/ipc_gen.h ../include/ais_amf.h util.h
 clm.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
-clm.o: ../include/ipc_evs.h ../include/evs.h ../include/saClm.h
-clm.o: ../include/ipc_gen.h ../include/ipc_clm.h util.h
-ckpt.o: ../include/list.h ../include/saAis.h ../include/saCkpt.h
-ckpt.o: ../include/saAis.h ../include/ipc_evs.h ../include/evs.h
-ckpt.o: ../include/saClm.h ../include/ipc_gen.h util.h
+clm.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_clm.h
+clm.o: ../include/saClm.h ../include/ipc_gen.h util.h
+ckpt.o: ../include/saAis.h ../include/list.h ../include/saCkpt.h
+ckpt.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_ckpt.h
+ckpt.o: ../include/saAis.h ../include/saCkpt.h ../include/ipc_gen.h util.h
 evt.o: ../include/ipc_evt.h ../include/saAis.h ../include/saEvt.h
-evt.o: ../include/saClm.h ../include/ipc_gen.h util.h ../include/ipc_evs.h
-evt.o: ../include/evs.h ../exec/totempg.h ../exec/aispoll.h
-evt.o: ../exec/totemsrp.h
+evt.o: ../include/saClm.h ../include/ipc_gen.h util.h ../include/ipc_gen.h
+evt.o: ../exec/totemip.h ../exec/totem.h ../exec/totemip.h ../include/list.h
+cpg.o: ../include/saAis.h ../include/ipc_gen.h ../exec/totemip.h
+cpg.o: ../include/ipc_cpg.h ../include/saAis.h ../include/saClm.h
+cpg.o: ../include/ipc_gen.h util.h

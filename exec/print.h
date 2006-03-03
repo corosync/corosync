@@ -66,6 +66,7 @@
 #define LOG_SERVICE_EVS		9
 #define LOG_SERVICE_SYNC	10
 #define LOG_SERVICE_YKD		11
+#define LOG_SERVICE_CPG		12
 
 extern void internal_log_printf (int logclass, char *format, ...);
 

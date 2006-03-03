@@ -32,7 +32,7 @@
 #
 include ../Makefile.inc
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a
 LIBS = $(LIBRARIES) 
 
 CFLAGS += -I../include
@@ -49,7 +49,7 @@ TEST_SRC =  testclm.c testamf1.c \
 all: testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2 testlck testmsg
+	evsbench subscription publish evtbench unlink testclm2 testlck testmsg testcpg
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -135,11 +135,14 @@ testlck: testlck.o $(LIBRARIES)
 testmsg: testmsg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testmsg testmsg.o $(LIBS)
 
+testcpg: testcpg.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
+
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testtimer \
 	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
-	evsbench subscription publish evtbench unlink testmsg
+	evsbench subscription publish evtbench unlink testmsg testcpg
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 

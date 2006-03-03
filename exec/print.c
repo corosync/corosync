@@ -73,7 +73,8 @@ static char *log_services[] = {
 	"[MSG  ]",
 	"[EVS  ]",
 	"[SYNC ]",
-	"[YKD  ]"
+	"[YKD  ]",
+	"[CPG  ]"
 };
 
 #define LOG_MODE_DEBUG      1

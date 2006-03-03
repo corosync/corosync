@@ -53,8 +53,8 @@ TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o tot
 EXEC_LIBS = libtotem_pg.a
 
 # service handler objects
-SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c
-SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o
+SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c
+SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
@@ -70,7 +70,7 @@ all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	aisexec \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
-	service_msg.lcrso service_cfg.lcrso \
+	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
 	keygen openais-instantiate
 else
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(SERV_OBJS)
@@ -94,7 +94,7 @@ service_ckpt.lcrso: ckpt.o
 
 service_evt.lcrso: evt.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load evt.o -o $@
-	
+
 service_lck.lcrso: lck.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load lck.o -o $@
 
@@ -103,6 +103,9 @@ service_msg.lcrso: msg.o
 
 service_cfg.lcrso: cfg.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
+
+service_cpg.lcrso: cpg.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
 
 else
 
@@ -129,8 +132,12 @@ service_msg.lcrso: msg.o
 
 service_cfg.lcrso: cfg.o
 	$(CC) -shared -Wl,-soname,service_cfg.lcrso cfg.o -o $@
-	
+
+service_cpg.lcrso: cpg.o
+	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
+
 endif
+
 
 aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
@@ -194,6 +201,9 @@ msg.o: msg.c
 	$(CC) $(CFLAGS) -c -o $@ $(*F).c
 
 cfg.o: cfg.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+
+cpg.o: cpg.c
 	$(CC) $(CFLAGS) -c -o $@ $(*F).c
 
 
