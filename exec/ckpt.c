@@ -1421,9 +1421,14 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
 	return 0;
 }
 
-void checkpoint_section_release (struct saCkptCheckpointSection *section)
+/*
+ * defect 1112: We need to be able to call section release without
+ * having to to delete the timer as in the case of release being called
+ * from timer_function_section_expire where the expiry already takes care
+ * of the timer and its data
+ */
+void checkpoint_section_and_associate_timer_cleanup (struct saCkptCheckpointSection *section,int deleteTimer)
 {
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: checkpoint_section_release expiration timer = 0x%x\n", section->expiration_timer);
 	list_del (&section->list);
 	if (section->sectionDescriptor.sectionId.id) {
 		free (section->sectionDescriptor.sectionId.id); 
@@ -1431,9 +1436,21 @@ void checkpoint_section_release (struct saCkptCheckpointSection *section)
 	if (section->sectionData) {
 		free (section->sectionData);
 	}
-	poll_timer_delete (aisexec_poll_handle, section->expiration_timer);
+	/*
+	 * defect 1112 on a section release we need to delete the timer AND its data or memory leaks
+	 */
+	if (deleteTimer) {	
+		poll_timer_delete_data (aisexec_poll_handle, section->expiration_timer);
+	}
 	free (section);
 }
+
+void checkpoint_section_release (struct saCkptCheckpointSection *section)
+{
+	log_printf (LOG_LEVEL_DEBUG, "checkpoint_section_release expiration timer = 0x%x\n", section->expiration_timer);
+	checkpoint_section_and_associate_timer_cleanup (section, 1);
+}
+
 
 void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 {
@@ -1965,7 +1982,11 @@ void timer_function_section_expire (void *data)
                         (char *)&ckpt_id->ckpt_name.value);
 
 	ckptCheckpoint->sectionCount -= 1;
-	checkpoint_section_release (ckptCheckpointSection);
+	/*
+	 * defect id 1112 "memory leak in checkpoint service" Dont try to delete the timer as the timer
+	 * mechanism takes care of that. Just delete the data after this call
+	 */
+	checkpoint_section_and_associate_timer_cleanup (ckptCheckpointSection, 0);
 free_mem :
 	free (ckpt_id);
 	
@@ -2377,7 +2398,7 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	}
 
 	/*
-	 * Determine if user-specified checkpoint ID already exists
+	 * Determine if user-specified checkpoint section already exists
 	 */
 	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
 		((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate),
