@@ -45,6 +45,17 @@ html:
 	groff -mandoc -Thtml evs_mcast_groups.3 > html/evs_mcast_groups.html
 	groff -mandoc -Thtml evs_mcast_joined.3 > html/evs_mcast_joined.html
 	groff -mandoc -Thtml evs_membership_get.3 > html/evs_membership_get.html
+
+	groff -mandoc -Thtml cpg_overview.8 > html/cpg_overview.html
+	groff -mandoc -Thtml cpg_initialize.3 > html/cpg_initialize.html
+	groff -mandoc -Thtml cpg_finalize.3 > html/cpg_finalize.html
+	groff -mandoc -Thtml cpg_fd_get.3 > html/cpg_fd_get.html
+	groff -mandoc -Thtml cpg_dispatch.3 > html/cpg_dispatch.html
+	groff -mandoc -Thtml cpg_join.3 > html/cpg_join.html
+	groff -mandoc -Thtml cpg_leave.3 > html/cpg_leave.html
+	groff -mandoc -Thtml cpg_mcast_joined.3 > html/cpg_mcast_joined.html
+	groff -mandoc -Thtml cpg_membership_get.3 > html/cpg_membership_get.html
+
 	cp index.html html
 
 clean:

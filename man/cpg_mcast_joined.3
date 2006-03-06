@@ -1,0 +1,134 @@
+.\"/*
+.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CPG_MCAST_JOINED 3 3004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+cpg_join \- Multicasts to all groups joined to a handle
+.SH SYNOPSIS
+.B #include <sys/uio.h>
+.B #include <openais/cpg.h>
+.sp
+.BI "int cpg_mcast_joined(cpg_handle_t " handle ", cpg_gurantee_t " guarantee ", struct iovec *" iovec ", int " iov_len ");
+.SH DESCRIPTION
+The
+.B cpg_mcast_joined
+function is multicast a message to all the processes that have been joined with the
+.B cpg_join(3)
+funtion for the same group name.
+.I handle.
+Messages that are sent to any of the groups joined to the parameter
+.I handle
+will be delivered to all subscribed processes in the system.
+.PP
+The argument
+.I guarantee
+requests a delivery guarantee for the message to be sent.  The cpg_guarantee_t type is
+defined by:
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+typedef enum {
+        CPG_TYPE_UNORDERED,     /* not implemented */
+        CPG_TYPE_FIFO,          /* same as agreed */
+        CPG_TYPE_AGREED,        /* implemented */
+        CPG_TYPE_SAFE           /* not implemented */
+} cpg_guarantee_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The meanings of the cpg_gaurantee_t typedef are:
+.TP
+.B CPG_GUARANTEE_UNORDERED
+Messages are guaranteed to be delivered, but with no particular order.  This 
+mode is unimplemented in the CPG library.
+.TP
+.B CPG_GUARANTEE_FIFO
+Messages are guaranteed to be delivered in first sent first delivery order
+from one one.  In fact, this guarantee is actually the AGREED guarantee.
+.TP
+.B CPG_GUARANTEE_AGREED
+All processors must agree on the order of delivery.  If a message is sent
+from two or more processors at about the same time, the delivery will occur
+in the same order to all processors.
+.TP
+.B CPG_GUARANTEE_SAFE
+All processors must agree on the order of delivery.  Further all processors
+must have a copy of the message before any delivery takes place.  This mode is
+unimplemented in the CPG library.
+.PP
+The
+.I iovec
+argument describes the scatter/gather list which is used to transmit a message.  This
+is a standard socket structure described by:
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+struct iovec
+{
+        void *iov_base;     /* Pointer to data.  */
+        size_t iov_len;     /* Length of data.  */
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The
+.I iovlen
+argument describes the number of entires in the
+.I iovec
+argument.  
+
+.SH RETURN VALUE
+This call returns the CPG_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR cpg_overview (8),
+.BR cpg_initialize (3),
+.BR cpg_finalize (3),
+.BR cpg_fd_get (3),
+.BR cpg_dispatch (3),
+.BR cpg_leave (3),
+.BR cpg_join (3),
+.BR cpg_membership_get (3)
+.PP
