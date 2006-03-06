@@ -68,7 +68,6 @@ void DeliverCallback (
 void ConfchgCallback (
 	cpg_handle_t handle,
 	struct cpg_name *groupName,
-	uint64_t sequence,
 	struct cpg_address *member_list, int member_list_entries,
 	struct cpg_address *left_list, int left_list_entries,
 	struct cpg_address *joined_list, int joined_list_entries)
@@ -76,7 +75,7 @@ void ConfchgCallback (
 	int i;
 
 
-	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("' seq=%lld\n", sequence);
+	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("'\n");
 	for (i=0; i<joined_list_entries; i++)
 		printf("joined node/pid: %d/%d reason: %d\n", joined_list[i].nodeId, joined_list[i].pid, joined_list[i].reason);
 

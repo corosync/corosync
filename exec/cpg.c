@@ -71,6 +71,8 @@
 
 #define GROUP_HASH_SIZE 32
 
+#define PI_FLAG_MEMBER 1
+
 enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_PROCJOIN = 0,
 	MESSAGE_REQ_EXEC_CPG_PROCLEAVE = 1,
@@ -96,6 +98,7 @@ struct group_info {
 struct process_info {
 	struct totem_ip_address node;
 	uint32_t pid;
+	uint32_t flags;
 	void *conn;
 	void *trackerconn;
 	struct group_info *group;
@@ -372,7 +375,7 @@ static int notify_lib_joinlist(struct group_info *gi, void *conn,
 		/* Send it to all listeners */
 		for (iter = gi->members.next, tmp=iter->next; iter != &gi->members; iter = tmp, tmp=iter->next) {
 			struct process_info *pi = list_entry(iter, struct process_info, list);
-			if (pi->trackerconn) {
+			if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
 				if (openais_conn_send_response(pi->trackerconn, buf, size) == -1) {
 					// Error ??
 				}
@@ -521,7 +524,9 @@ static void cpg_confchg_fn (
 	list_init(&removed_list);
 
 	/* Tell any newly joined nodes our list of joined groups */
-	cpg_exec_send_joinlist();
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		cpg_exec_send_joinlist();
+	}
 
 	/* Remove nodes from joined groups and add removed groups to the list */
 	for (i = 0; i < left_list_entries; i++) {
@@ -563,7 +568,6 @@ static void exec_cpg_joinlist_endian_convert (void *msg)
 		jle->groupName.length = swab32(jle->groupName.length);
 		jle++;
 	}
-
 }
 
 static void exec_cpg_mcast_endian_convert (void *msg)
@@ -590,7 +594,12 @@ static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_ad
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		pi = list_entry(iter, struct process_info, list);
 		if (pi->pid == pid && pi->node.nodeid == node->nodeid) {
-			return;
+
+			/* It could be a local join message */
+			if (totemip_equal(node, this_ip) && (!pi->flags & PI_FLAG_MEMBER))
+				goto local_join;
+			else
+				return;
 		}
 	}
 
@@ -606,6 +615,9 @@ static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_ad
 	pi->trackerconn = NULL;
 	list_add_tail(&pi->list, &gi->members);
 
+local_join:
+
+	pi->flags = PI_FLAG_MEMBER;
 	notify_info.pid = pi->pid;
 	notify_info.nodeId = node->nodeid;
 	notify_info.reason = reason;
@@ -677,7 +689,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	struct res_header *res = (struct res_header *)message;
 	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(struct res_header));
 
-	log_printf(LOG_LEVEL_DEBUG, "got joinlist message from cluster\n");
+	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %s\n", totemip_print(source_addr));
 
 	/* Ignore our own messages */
 	if (totemip_equal(source_addr, this_ip))
@@ -742,7 +754,7 @@ static void cpg_exec_send_joinlist()
 			gi = list_entry(iter, struct group_info, list);
 			for (iter2 = gi->members.next; iter2 != &gi->members; iter2 = iter2->next) {
 				struct process_info *pi = list_entry(iter2, struct process_info, list);
-				if (pi->pid) {
+				if (pi->pid && pi->node.nodeid == this_ip->nodeid) {
 					count++;
 				}
 			}
@@ -769,7 +781,7 @@ static void cpg_exec_send_joinlist()
 			for (iter2 = gi->members.next; iter2 != &gi->members; iter2 = iter2->next) {
 
 				struct process_info *pi = list_entry(iter2, struct process_info, list);
-				if (pi->pid) {
+				if (pi->pid && pi->node.nodeid == this_ip->nodeid) {
 					memcpy(&jle->groupName, &gi->groupName, sizeof(struct cpg_name));
 					jle->pid = pi->pid;
 					jle++;
@@ -804,7 +816,6 @@ static void message_handler_req_lib_cpg_join (void *conn, void *message)
 	struct res_lib_cpg_join res_lib_cpg_join;
 	struct group_info *gi;
 	SaAisErrorT error = SA_AIS_OK;
-	struct cpg_groupinfo notify_info;
 
 	log_printf(LOG_LEVEL_DEBUG, "got join request on %p, pi=%p, pi->pid=%d\n", conn, pi, pi->pid);
 
@@ -828,15 +839,6 @@ static void message_handler_req_lib_cpg_join (void *conn, void *message)
 
 	/* Tell the rest of the cluster */
 	cpg_node_joinleave_send(gi, pi, MESSAGE_REQ_EXEC_CPG_PROCJOIN, CONFCHG_CPG_REASON_JOIN);
-
-        /* Tell this node */
-	notify_info.pid = pi->pid;
-	notify_info.nodeId = this_ip->nodeid;
-	notify_info.reason = CONFCHG_CPG_REASON_JOIN;
-	notify_lib_joinlist(gi, NULL,
-			    1, &notify_info,
-			    0, NULL,
-			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 
 join_err:
 	res_lib_cpg_join.header.size = sizeof(res_lib_cpg_join);
