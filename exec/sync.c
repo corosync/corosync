@@ -73,6 +73,8 @@ static struct sync_callbacks sync_callbacks;
 
 static int sync_processing = 0;
 
+static int sync_callback_loaded = 0;
+
 static void (*sync_synchronization_completed) (void);
 
 static int sync_recovery_index = 0;
@@ -198,6 +200,7 @@ void sync_callbacks_load (void)
 		}
 		sync_recovery_index += 1;
 		if (sync_callbacks.sync_init != NULL) {
+			sync_callback_loaded = 1;
 			break;
 		}
 	}
@@ -230,6 +233,9 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 */
 	if (sync_processing && sync_callbacks.sync_init) {
 		sync_start_init (ring_id);
+	}
+	else {
+		sync_callback_loaded = 0;
 	}
 	return (0);
 }
@@ -358,7 +364,9 @@ void sync_deliver_fn (
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
 
-		sync_callbacks_load();
+		if ( sync_callback_loaded != 0 ) {
+			sync_callbacks_load();
+		}
 
 		/*
 		 * if sync service found, execute it
