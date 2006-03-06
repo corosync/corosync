@@ -364,7 +364,7 @@ void sync_deliver_fn (
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
 
-		if ( sync_callback_loaded != 0 ) {
+		if ( sync_callback_loaded == 0 ) {
 			sync_callbacks_load();
 		}
 
