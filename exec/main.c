@@ -1113,15 +1113,19 @@ static void aisexec_libais_bind (int *server_fd)
 static void aisexec_setscheduler (void)
 {
 #if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
-	static struct sched_param sched_param = { 
-		sched_priority: 99
-	};
+	struct sched_param sched_param;
 	int res;
 
-	res = sched_setscheduler (0, SCHED_RR, &sched_param);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority 99: %s\n", strerror (errno));
-	}
+	res = sched_get_priority_max (SCHED_RR);
+	if (res != -1) {
+		sched_param.sched_priority = res;
+		res = sched_setscheduler (0, SCHED_RR, &sched_param);
+		if (res == -1) {
+			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n", 
+				sched_param.sched_priority, strerror (errno));
+		}
+	} else
+		log_printf (LOG_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
 #else
 	log_printf(LOG_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
 #endif
