@@ -134,7 +134,7 @@ struct amf_pg_comp {
 struct amf_group {
 	SaNameT name;
 	SaAmfGroupCapabilityModelT model;
-	SaUint32T preferred_active_units;;
+	SaUint32T preferred_active_units;
 	SaUint32T preferred_standby_units;
 	SaUint32T maximum_active_instances;
 	SaUint32T maximum_standby_instances;

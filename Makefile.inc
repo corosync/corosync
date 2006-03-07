@@ -49,7 +49,10 @@ DYFLAGS =
 # build CFLAGS, LDFLAGS
 #
 ifeq (${OPENAIS_BUILD}, RELEASE) 
-	CFLAGS += -O3 -Wall -fomit-frame-pointer
+	CFLAGS += -O3 -Wall
+ifndef OPENAIS_PROFILE
+	CFLAGS += -fomit-frame-pointer
+endif
 	LDFLAGS += 
 endif
 ifeq (${OPENAIS_BUILD}, DEBUG) 
@@ -63,6 +66,7 @@ ifdef OPENAIS_PROFILE
 endif
 ifdef OPENAIS_COVERAGE
 	CFLAGS += -ftest-coverage -fprofile-arcs
+	LDFLAGS += -ftest-coverage -fprofile-arcs
 endif
 
 # platform specific CFLAGS, LDFLAGS

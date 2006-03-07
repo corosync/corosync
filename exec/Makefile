@@ -81,28 +81,28 @@ endif
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 service_evs.lcrso: evs.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load evs.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load evs.o -o $@
 
 service_clm.lcrso: clm.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load clm.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load clm.o -o $@
 
 service_amf.lcrso: amf.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load amf.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load amf.o -o $@
 
 service_ckpt.lcrso: ckpt.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load ckpt.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load ckpt.o -o $@
 
 service_evt.lcrso: evt.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load evt.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load evt.o -o $@
 
 service_lck.lcrso: lck.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load lck.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load lck.o -o $@
 
 service_msg.lcrso: msg.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load msg.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load msg.o -o $@
 
 service_cfg.lcrso: cfg.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
 
 service_cpg.lcrso: cpg.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
@@ -148,7 +148,7 @@ libtotem_pg.a: $(TOTEM_OBJS)
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 libtotem_pg.so.1.0: $(TOTEM_OBJS)
-	$(CC) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
+	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
 	rm -f libtotem_pg.so.1 libtotem_pg.so
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so
@@ -156,7 +156,7 @@ libtotem_pg.so.1.0: $(TOTEM_OBJS)
 else
 
 libtotem_pg.so.1.0: $(TOTEM_OBJS)
-	$(CC) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
 	rm -f libtotem_pg.so.1 libtotem_pg.so
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
 	ln -s libtotem_pg.so.1.0 libtotem_pg.so
