@@ -911,6 +911,7 @@ static int openais_sync_callbacks_retrieve (int sync_id,
 		memset (callbacks, 0, sizeof (struct sync_callbacks));
 		return (-1);
 	}
+	callbacks->name = ais_service_handlers[sync_id]->name;
 	callbacks->sync_init = ais_service_handlers[sync_id]->sync_init;
 	callbacks->sync_process = ais_service_handlers[sync_id]->sync_process;
 	callbacks->sync_activate = ais_service_handlers[sync_id]->sync_activate;

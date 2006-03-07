@@ -52,6 +52,7 @@
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"
+#include "totemip.h"
 #include "ykd.h"
 #include "print.h"
 #include "swab.h"
@@ -225,7 +226,9 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	 */
 	sync_callbacks.sync_activate ();
 	totempg_callback_token_destroy (&sync_callback_token_handle);
-
+	
+	log_printf (LOG_LEVEL_NOTICE,"Synchronization actions done for (%s)\n",sync_callbacks.name);
+	
 	sync_callbacks_load();
 
 	/*
@@ -285,6 +288,7 @@ void sync_primary_callback_fn (
 	sync_ring_id = ring_id;
 
 	sync_recovery_index = 0;
+	sync_callback_loaded = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
 	for (i = 0; i < view_list_entries; i++) {
 		totemip_copy(&barrier_data_confchg[i].addr, &view_list[i]);
@@ -341,6 +345,7 @@ void sync_deliver_fn (
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
 		if (totemip_equal(source_addr,  &barrier_data_process[i].addr)) {
 			barrier_data_process[i].completed = 1;
+			log_printf (LOG_LEVEL_DEBUG,"Barrier Start Recieved From %s\n", totemip_print(&barrier_data_process[i].addr));
 			break;
 		}
 	}
@@ -349,6 +354,9 @@ void sync_deliver_fn (
 	 * Test if barrier is complete
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
+		log_printf (LOG_LEVEL_DEBUG,"Barrier completion status for %s  = %d. \n", 
+			totemip_print(&barrier_data_process[i].addr),
+			barrier_data_process[i].completed);
 		if (barrier_data_process[i].completed == 0) {
 			barrier_completed = 0;
 		}
@@ -372,6 +380,7 @@ void sync_deliver_fn (
 		 * if sync service found, execute it
 		 */
 		if (sync_processing && sync_callbacks.sync_init) {
+			log_printf (LOG_LEVEL_NOTICE,"Synchronization actions starting for (%s)\n",sync_callbacks.name);
 			sync_service_init (&deliver_ring_id);
 		}
 	}
