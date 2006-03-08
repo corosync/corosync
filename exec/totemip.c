@@ -166,13 +166,19 @@ int totemip_localhost(int family, struct totem_ip_address *localhost)
 
 	memset (localhost, 0, sizeof (struct totem_ip_address));
 
-	if (family == AF_INET)
+	if (family == AF_INET) {
 		addr_text = LOCALHOST_IPV4;
-	else
+		if (inet_pton(family, addr_text, (char *)&localhost->nodeid) <= 0) {
+			return -1;
+		}
+	} else {
 		addr_text = LOCALHOST_IPV6;
+	}
 
 	if (inet_pton(family, addr_text, (char *)localhost->addr) <= 0)
 		return -1;
+
+	localhost->family = family;
 
 	return 0;
 }

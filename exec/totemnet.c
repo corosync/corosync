@@ -185,6 +185,17 @@ struct work_item {
 	struct totemnet_instance *instance;
 };
 
+static void netif_down_check (struct totemnet_instance *instance);
+
+static int totemnet_build_sockets (
+	struct totemnet_instance *instance,
+	struct totem_ip_address *bindnet_address,
+	struct totem_ip_address *mcastaddress,
+	struct totemnet_socket *sockets,
+	struct totem_ip_address *bound_to);
+
+static struct totem_ip_address localhost;
+
 /*
  * All instances in one database
  */
@@ -193,24 +204,6 @@ static struct hdb_handle_database totemnet_instance_database = {
 	.handles	= 0,
 	.iterator	= 0
 };
-
-static int loopback_determine (int family, struct totem_ip_address *bound_to);
-static void netif_down_check (struct totemnet_instance *instance);
-
-static int totemnet_build_sockets (
-	struct totemnet_instance *instance,
-	struct totem_ip_address *bindnet_address,
-	struct totem_ip_address *mcastaddress,
-	struct totemnet_socket *sockets,
-	struct totem_ip_address *bound_to,
-	int *interface_up);
-
-static int totemnet_build_sockets_loopback (
-	struct totemnet_instance *instance,
-	struct totem_ip_address *mcast_address,
-	struct totem_ip_address *bindnet_address,
-	struct totemnet_socket *sockets,
-	struct totem_ip_address *bound_to);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {
@@ -225,6 +218,10 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 
 	instance->totemnet_iov_recv_flush.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
 
+	/*
+	 * There is always atleast 1 processor
+	 */
+	instance->my_memb_entries = 1;
 }
 
 static int authenticate_and_decrypt (
@@ -723,12 +720,6 @@ static int netif_determine (
 }
 	
 
-static int loopback_determine (int family, struct totem_ip_address *bound_to)
-{
-	return totemip_localhost(family, bound_to);
-}
-
-
 /*
  * If the interface is up, the sockets for totem are built.  If the interface is down
  * this function is requeued in the timer list to retry building the sockets later.
@@ -740,14 +731,37 @@ static void timer_function_netif_check_timeout (
 	int res;
 	int interface_up;
 	int interface_num;
+	struct totem_ip_address *bind_address;
 
 	/*
-	* Build sockets for every interface
-	*/
+	 * Build sockets for every interface
+	 */
 	netif_determine (instance,
 		&instance->totemnet_interface->bindnet,
 		&instance->totemnet_interface->boundto,
 		&interface_up, &interface_num);
+	/*
+	 * If the network interface isn't back up and we are already
+	 * in loopback mode, add timer to check again and return
+	 */
+	if ((instance->netif_bind_state == BIND_STATE_LOOPBACK &&
+		interface_up == 0) ||
+
+	(instance->my_memb_entries == 1 &&
+		instance->netif_bind_state == BIND_STATE_REGULAR &&
+		interface_up == 1)) {
+
+		poll_timer_add (instance->totemnet_poll_handle,
+			instance->totem_config->downcheck_timeout,
+			(void *)instance,
+			timer_function_netif_check_timeout,
+			&instance->timer_netif_check_timeout);
+
+		/*
+		 * Add a timer to check for a downed regular interface
+		 */
+		return;
+	}
 
 	if (instance->totemnet_sockets.mcast_recv > 0) {
 		close (instance->totemnet_sockets.mcast_recv);
@@ -756,8 +770,6 @@ static void timer_function_netif_check_timeout (
 	}
 	if (instance->totemnet_sockets.mcast_send > 0) {
 		close (instance->totemnet_sockets.mcast_send);
-	 	poll_dispatch_delete (instance->totemnet_poll_handle,
-			instance->totemnet_sockets.mcast_send);
 	}
 	if (instance->totemnet_sockets.token > 0) {
 		close (instance->totemnet_sockets.token);
@@ -765,48 +777,53 @@ static void timer_function_netif_check_timeout (
 			instance->totemnet_sockets.token);
 	}
 
-	if (!interface_up) {
+	if (interface_up == 0) {
+		/*
+		 * Interface is not up
+		 */
 		instance->netif_bind_state = BIND_STATE_LOOPBACK;
-		res = totemnet_build_sockets_loopback(instance,
-			&instance->mcast_address,
-			&instance->totemnet_interface->bindnet,
-			&instance->totemnet_sockets,
-			&instance->totemnet_interface->boundto);
+		bind_address = &localhost;
 
-		poll_dispatch_add (
-			instance->totemnet_poll_handle,
-			instance->totemnet_sockets.token,
-			POLLIN, instance, net_deliver_fn, UINT_MAX);
-
-		instance->netif_bind_state = BIND_STATE_REGULAR;
+		/*
+		 * Add a timer to retry building interfaces and request memb_gather_enter
+		 */
+		poll_timer_add (instance->totemnet_poll_handle,
+			instance->totem_config->downcheck_timeout,
+			(void *)instance,
+			timer_function_netif_check_timeout,
+			&instance->timer_netif_check_timeout);
 	} else {
 		/*
-		* Create and bind the multicast and unicast sockets
-		*/
-		res = totemnet_build_sockets (instance,
-			&instance->mcast_address,
-			&instance->totemnet_interface->bindnet,
-			&instance->totemnet_sockets,
-			&instance->totemnet_interface->boundto,
-			&interface_up);
-
-		poll_dispatch_add (
-			instance->totemnet_poll_handle,
-			instance->totemnet_sockets.mcast_recv,
-			POLLIN, instance, net_deliver_fn, UINT_MAX);
-
-		poll_dispatch_add (
-			instance->totemnet_poll_handle,
-			instance->totemnet_sockets.token,
-			POLLIN, instance, net_deliver_fn, UINT_MAX);
+		 * Interface is up
+		 */
+		instance->netif_bind_state = BIND_STATE_REGULAR;
+		bind_address = &instance->totemnet_interface->bindnet;
 	}
+	/*
+	 * Create and bind the multicast and unicast sockets
+	 */
+	res = totemnet_build_sockets (instance,
+		&instance->mcast_address,
+		bind_address,
+		&instance->totemnet_sockets,
+		&instance->totemnet_interface->boundto);
+
+	poll_dispatch_add (
+		instance->totemnet_poll_handle,
+		instance->totemnet_sockets.mcast_recv,
+		POLLIN, instance, net_deliver_fn, UINT_MAX);
+
+	poll_dispatch_add (
+		instance->totemnet_poll_handle,
+		instance->totemnet_sockets.token,
+		POLLIN, instance, net_deliver_fn, UINT_MAX);
 
 	totemip_copy (&instance->my_id, &instance->totemnet_interface->boundto);
 
 	/*
-	* This stuff depends on totemnet_build_sockets
-	*/
-	if (interface_up) {
+	 * This reports changes in the interface to the user and totemsrp
+	 */
+	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
 				"The network interface [%s] is now up.\n",
@@ -814,22 +831,17 @@ static void timer_function_netif_check_timeout (
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 			instance->totemnet_iface_change_fn (instance->context, &instance->my_id);
 		}
-
 		/*
-		 * If this is a single processor, detect downs which may not 
-		 * be detected by token loss when the interface is downed
+		 * Add a timer to check for interface going down in single membership
 		 */
-		
-/*
-		if (instance->my_memb_entries <= 1) {
+		if (instance->my_memb_entries == 1) {
 			poll_timer_add (instance->totemnet_poll_handle,
 				instance->totem_config->downcheck_timeout,
 				(void *)instance,
 				timer_function_netif_check_timeout,
 				&instance->timer_netif_check_timeout);
 		}
-*/
-		
+
 	} else {		
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
@@ -838,16 +850,6 @@ static void timer_function_netif_check_timeout (
 		}
 		instance->netif_state_report = NETIF_STATE_REPORT_UP;
 
-		/*
-		 * Add a timer to retry building interfaces and request memb_gather_enter
-		 */
-/*
-		poll_timer_add (instance->totemnet_poll_handle,
-			instance->totem_config->downcheck_timeout,
-			(void *)instance,
-			timer_function_netif_check_timeout,
-			&instance->timer_netif_check_timeout);
-*/
 	}
 }
 
@@ -861,63 +863,6 @@ static void netif_down_check (struct totemnet_instance *instance)
 	timer_function_netif_check_timeout (instance);
 }
 
-static int totemnet_build_sockets_loopback (
-	struct totemnet_instance *instance,
-	struct totem_ip_address *mcast_addr,
-	struct totem_ip_address *bindnet_addr,
-	struct totemnet_socket *sockets,
-	struct totem_ip_address *bound_to)
-{
-	struct ip_mreq mreq;
-	struct sockaddr_storage sockaddr;
-	int addrlen;
-	int res;
-
-	memset (&mreq, 0, sizeof (struct ip_mreq));
-
-	/*
-	 * Determine the ip address bound to and the interface name
-	 */
-	res = loopback_determine (mcast_addr->family, bound_to);
-
-	if (res == -1) {
-		return (-1);
-	}
-
-	totemip_copy(&instance->my_id, bound_to);
-
-	 /*
-	 * Setup unicast socket
-	 */
-	sockets->token = socket (bound_to->family, SOCK_DGRAM, 0);
-	if (sockets->token == -1) {
-		perror ("cannot create socket");
-		return (-1);
-	}
-
-	totemip_nosigpipe (sockets->token);
-	res = fcntl (sockets->token, F_SETFL, O_NONBLOCK);
-	if (res == -1) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
-		return (-1);
-	}
-
-	/*
-	 * Bind to unicast socket used for token send/receives	
-	 * This has the side effect of binding to the correct interface
-	 */
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
-	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
-		perror ("bind token socket failed");
-		return (-1);
-	}
-
-	sockets->mcast_send = sockets->token;
-	sockets->mcast_recv = sockets->token;
-
-	return (0);
-}
 /* Set the socket priority to INTERACTIVE to ensure
    that our messages don't get queued behind anything else */
 static void totemnet_traffic_control_set(struct totemnet_instance *instance, int sock)
@@ -936,7 +881,6 @@ static int totemnet_build_sockets_ip (
 	struct totem_ip_address *bindnet_address,
 	struct totemnet_socket *sockets,
 	struct totem_ip_address *bound_to,
-	int *interface_up,
 	int interface_num)
 {
 	struct sockaddr_storage sockaddr;
@@ -1075,7 +1019,7 @@ static int totemnet_build_sockets_ip (
 	res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
 	if (res == 0) {
 		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
-			"Transmit multicat socket send buffer size (%d bytes).\n", sendbuf_size);
+			"Transmit multicast socket send buffer size (%d bytes).\n", sendbuf_size);
 	}
 
 	/*
@@ -1182,10 +1126,10 @@ static int totemnet_build_sockets (
 	struct totem_ip_address *mcast_address,
 	struct totem_ip_address *bindnet_address,
 	struct totemnet_socket *sockets,
-	struct totem_ip_address *bound_to,
-	int *interface_up)
+	struct totem_ip_address *bound_to)
 {
 	int interface_num;
+	int interface_up;
 	int res;
 
 	/*
@@ -1194,7 +1138,7 @@ static int totemnet_build_sockets (
 	res = netif_determine (instance,
 		bindnet_address,
 		bound_to,
-		interface_up,
+		&interface_up,
 		&interface_num);
 
 	if (res == -1) {
@@ -1204,7 +1148,7 @@ static int totemnet_build_sockets (
 	totemip_copy(&instance->my_id, bound_to);
 
 	res = totemnet_build_sockets_ip (instance, mcast_address,
-			bindnet_address, sockets, bound_to, interface_up, interface_num);
+		bindnet_address, sockets, bound_to, interface_num);
 
 	/* We only send out of the token socket */
 	totemnet_traffic_control_set(instance, sockets->token);
@@ -1306,6 +1250,8 @@ int totemnet_initialize (
 
 	rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
 
+	totemip_localhost (instance->mcast_address.family, &localhost);
+
 	netif_down_check (instance);
 
 error_exit:
@@ -1332,7 +1278,16 @@ int totemnet_processor_count_set (
 	}
 
 	instance->my_memb_entries = processor_count;
-
+printf ("PCCCCCCCCCCCCCCCCOUNT %d\n", processor_count);
+	poll_timer_delete (instance->totemnet_poll_handle,
+		instance->timer_netif_check_timeout);
+	if (processor_count == 1) {
+		poll_timer_add (instance->totemnet_poll_handle,
+			instance->totem_config->downcheck_timeout,
+			(void *)instance,
+			timer_function_netif_check_timeout,
+			&instance->timer_netif_check_timeout);
+	}
 	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:

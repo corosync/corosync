@@ -340,7 +340,21 @@ static void ykd_deliver_fn (
 	int i;
 	char *msg_state = iovec->iov_base + sizeof (struct ykd_header);
 	
-	printf ("ykd deliver fn %s\n", totemip_print (source_addr));
+	/*
+	 * If this is a localhost address, this node is always primary
+	 */
+	if (totemip_localhost_check (source_addr)) {
+		log_printf (LOG_LEVEL_NOTICE,
+			"This processor is within the primary component.\n");
+			primary_designated = 1;
+
+			ykd_primary_callback_fn (
+				view_list,
+				view_list_entries,
+				primary_designated,
+				&ykd_ring_id);
+		return;
+	}
 	if (endian_conversion_required) {
 	printf ("endian convert\n");
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);

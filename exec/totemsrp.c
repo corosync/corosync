@@ -741,7 +741,6 @@ int totemsrp_initialize (
 	/*
 	 * Must have net_mtu adjusted by totemrrp_initialize first
 	 */
-
 	queue_init (&instance->new_message_queue,
 		(MESSAGE_SIZE_MAX / (totem_config->net_mtu - 25) /* for totempg_mcat header */),
 		sizeof (struct message_item));
