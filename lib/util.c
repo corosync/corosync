@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -90,82 +90,6 @@ void socket_nosigpipe(int s)
 #endif 
 
 SaAisErrorT
-saServiceConnect (
-	int *fdOut,
-	enum service_types service)
-{
-	int fd;
-	int result;
-	struct sockaddr_un address;
-	struct req_lib_response_init req_lib_response_init;
-	struct res_lib_response_init res_lib_response_init;
-	SaAisErrorT error;
-	gid_t egid;
-
-	/*
-	 * Allow set group id binaries to be authenticated
-	 */
-	egid = getegid();
-	setregid (egid, -1);
-
-	memset (&address, 0, sizeof (struct sockaddr_un));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
-	address.sun_len = sizeof(struct sockaddr_un);
-#endif
-	address.sun_family = PF_UNIX;
-#if defined(OPENAIS_LINUX)
-	strcpy (address.sun_path + 1, socketname);
-#else
-	strcpy (address.sun_path, socketname);
-#endif
-	fd = socket (PF_UNIX, SOCK_STREAM, 0);
-	if (fd == -1) {
-		return (SA_AIS_ERR_NO_RESOURCES);
-	}
-
-	socket_nosigpipe (fd);
-
-	result = connect (fd, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
-	if (result == -1) {
-		return (SA_AIS_ERR_TRY_AGAIN);
-	}
-
-	result = fcntl (fd, F_SETFL, O_NONBLOCK);
-	if (result == -1) {
-		return (SA_AIS_ERR_TRY_AGAIN);
-	}
-
-	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
-	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
-	req_lib_response_init.resdis_header.service = service;
-
-	error = saSendRetry (fd, &req_lib_response_init,
-		sizeof (struct req_lib_response_init));
-	if (error != SA_AIS_OK) {
-		goto error_exit;
-	}
-	error = saRecvRetry (fd, &res_lib_response_init,
-		sizeof (struct res_lib_response_init));
-	if (error != SA_AIS_OK) {
-		goto error_exit;
-	}
-
-	/*
-	 * Check for security errors
-	 */
-	if (res_lib_response_init.header.error != SA_AIS_OK) {
-		error = res_lib_response_init.header.error;
-		goto error_exit;
-	}
-
-	*fdOut = fd;
-	return (SA_AIS_OK);
-error_exit:
-	close (fd);
-	return (error);
-}
-
-SaAisErrorT
 saServiceConnectTwo (
 	int *responseOut,
 	int *callbackOut,
@@ -211,12 +135,6 @@ saServiceConnectTwo (
 		return (SA_AIS_ERR_TRY_AGAIN);
 	}
 
-	result = fcntl (responseFD, F_SETFL, O_NONBLOCK);
-	if (result == -1) {
-		close (responseFD);
-		return (SA_AIS_ERR_TRY_AGAIN);
-	}
-
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
 	req_lib_response_init.resdis_header.id = MESSAGE_REQ_RESPONSE_INIT;
 	req_lib_response_init.resdis_header.service = service;
@@ -251,13 +169,6 @@ saServiceConnectTwo (
 	socket_nosigpipe (callbackFD);
 
 	result = connect (callbackFD, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
-	if (result == -1) {
-		close (callbackFD);
-		close (responseFD);
-		return (SA_AIS_ERR_TRY_AGAIN);
-	}
-
-	result = fcntl (callbackFD, F_SETFL, O_NONBLOCK);
 	if (result == -1) {
 		close (callbackFD);
 		close (responseFD);
@@ -324,7 +235,7 @@ retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
 	iov_recv.iov_len = len - processed;
 
-	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL);
 	if (result == -1 && errno == EINTR) {
 		goto retry_recv;
 	}

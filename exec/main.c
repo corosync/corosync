@@ -749,7 +749,7 @@ static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, 
 	assert (iov_recv.iov_len != 0);
 
 retry_recv:
-	res = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+	res = recvmsg (fd, &msg_recv, MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
 		goto retry_recv;
 	} else

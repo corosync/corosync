@@ -158,6 +158,11 @@ void sigalrm_handler (int num)
 	alarm_notice = 1;
 }
 
+void sigintr_handler (int num)
+{
+	exit (1);
+}
+
 int main (void) {
 	int size;
 	int i;
@@ -165,6 +170,8 @@ int main (void) {
 	evs_handle_t handle;
 
 	signal (SIGALRM, sigalrm_handler);
+	signal (SIGINT, sigintr_handler);
+
 
 	result = evs_initialize (&handle, &callbacks);
 	printf ("Init result %d\n", result);
