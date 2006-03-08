@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -54,9 +54,9 @@ enum req_lib_ckpt_checkpoint_types {
 	MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONREAD = 12,
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE = 13,
 	MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC = 14,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE = 15,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE = 16,
-	MESSAGE_REQ_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 17
+	MESSAGE_REQ_CKPT_SECTIONITERATIONINITIALIZE = 15,
+	MESSAGE_REQ_CKPT_SECTIONITERATIONFINALIZE = 16,
+	MESSAGE_REQ_CKPT_SECTIONITERATIONNEXT = 17
 };
 
 enum res_lib_ckpt_checkpoint_types {
@@ -75,9 +75,9 @@ enum res_lib_ckpt_checkpoint_types {
 	MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD = 12,
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE = 13,
 	MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC = 14,
-	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE = 15,
-	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE = 16,
-	MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT = 17
+	MESSAGE_RES_CKPT_SECTIONITERATIONINITIALIZE = 15,
+	MESSAGE_RES_CKPT_SECTIONITERATIONFINALIZE = 16,
+	MESSAGE_RES_CKPT_SECTIONITERATIONNEXT = 17
 };
 
 struct req_lib_ckpt_checkpointopen {
@@ -197,22 +197,24 @@ struct req_lib_ckpt_sectioniterationinitialize {
 
 struct res_lib_ckpt_sectioniterationinitialize {
 	struct res_header header;
+	unsigned int iteration_handle;
 };
 
 struct req_lib_ckpt_sectioniterationfinalize {
 	struct req_header header;
-	SaNameT checkpointName;
+	unsigned int iteration_handle;
 };
 
 struct res_lib_ckpt_sectioniterationfinalize {
 	struct res_header header;
 };
 
-struct req_lib_ckpt_sectioniteratornext {
+struct req_lib_ckpt_sectioniterationnext {
 	struct req_header header;
+	unsigned int iteration_handle;
 };
 
-struct res_lib_ckpt_sectioniteratornext {
+struct res_lib_ckpt_sectioniterationnext {
 	struct res_header header;
 	SaCkptSectionDescriptorT sectionDescriptor;
 };

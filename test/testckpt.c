@@ -204,6 +204,7 @@ int main (void) {
 	struct timeval tv_elapsed;
 	SaSelectionObjectT sel_fd;
 	fd_set read_set;
+	int i;
 	
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
 
@@ -460,6 +461,11 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 			(int)checkpointStatus.memoryUsed,
 			(int)checkpointStatus.numberOfSections);
 	}
+	printf ("iterating all sections 5 times\n");
+	/*
+	 * iterate all sections 5 times
+	 */
+	for (i = 0; i < 5; i++) {
 	error = saCkptSectionIterationInitialize (checkpointHandle,
 		SA_CKPT_SECTIONS_ANY,
 		0,
@@ -467,14 +473,20 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 	printf ("%s: initialize section iterator\n",
 		get_test_output (error, SA_AIS_OK));
 
+
 	/*
 	 * Iterate all sections
 	 */
 	do {
+		printf ("Starting iteration\n");
 		error = saCkptSectionIterationNext (sectionIterator,
 			&sectionDescriptor);
-		printf ("%s: Get next section in iteartion\n",
-			get_test_output (error, SA_AIS_OK));
+		if (error == SA_AIS_ERR_NO_SECTIONS) {
+			printf ("No more sections to iterate\n");
+		} else {
+			printf ("%s: Get next section in iteration\n",
+				get_test_output (error, SA_AIS_OK));
+		}
 		if (error == SA_AIS_OK) {
 			printf ("Section '%s' expires %llx size %llu state %x update %llx\n",
 				sectionDescriptor.sectionId.id,
@@ -484,11 +496,12 @@ printf ("Please wait, testing expiry of checkpoint sections.\n");
 				(unsigned long long)sectionDescriptor.lastUpdate);
 		}
 	} while (error == SA_AIS_OK);
-	printf ("The last iteration should fail\n");
 
 	error = saCkptSectionIterationFinalize (sectionIterator);
 	printf ("%s: Finalize iteration\n",
 		get_test_output (error, SA_AIS_OK));
+
+	}
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
 

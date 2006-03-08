@@ -50,6 +50,7 @@
 #include "../include/ipc_ckpt.h"
 #include "../include/list.h"
 #include "../include/queue.h"
+#include "../include/hdb.h"
 #include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "mempool.h"
@@ -93,7 +94,7 @@ struct saCkptCheckpoint {
 	struct list_head list;
 	SaNameT name;
 	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
-	struct list_head checkpointSectionsListHead;
+	struct list_head sections_list_head;
 	int referenceCount;
 	int unlinked;
 	poll_timer_handle retention_timer;
@@ -103,21 +104,21 @@ struct saCkptCheckpoint {
 	struct ckpt_refcnt ckpt_refcount[32]; // SHOULD BE PROCESSOR COUNT MAX	
 };
 
-struct saCkptSectionIteratorEntry {
+struct iteration_entry {
 	int active;
-	struct saCkptCheckpointSection *checkpointSection;
+	struct saCkptCheckpointSection *checkpoint_section;
 };
 
-struct saCkptSectionIterator {
-	struct list_head list;
-	struct saCkptSectionIteratorEntry *sectionIteratorEntries;
-	int iteratorCount;
-	int iteratorPos;
+struct iteration_instance {
+	struct iteration_entry *iteration_entries;
+	int iteration_entries_count;
+	unsigned int iteration_pos;
 };
 
 struct ckpt_pd {
 	struct list_head checkpoint_list;
-	struct saCkptSectionIterator sectionIterator;
+	struct hdb_handle_database iteration_hdb;
+	unsigned int iteration_pos;
 };
 
 struct ckpt_identifier {
@@ -200,7 +201,7 @@ static void message_handler_req_lib_ckpt_sectioniterationfinalize (
 	void *conn,
 	void *msg);
 
-static void message_handler_req_lib_ckpt_sectioniteratornext (
+static void message_handler_req_lib_ckpt_sectioniterationnext (
 	void *conn,
 	void *msg);
 
@@ -290,7 +291,7 @@ static int process_localhost_transition = 0;
 
 DECLARE_LIST_INIT(checkpoint_list_head);
 
-DECLARE_LIST_INIT(checkpoint_iterator_list_head);
+DECLARE_LIST_INIT(checkpoint_iteration_list_head);
 
 DECLARE_LIST_INIT(checkpoint_recovery_list_head);
 
@@ -420,19 +421,19 @@ static struct openais_lib_handler ckpt_lib_handlers[] =
 	{ /* 15 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationinitialize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationinitialize),
-		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE,
+		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONINITIALIZE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 16 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationfinalize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationfinalize),
-		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE,
+		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONFINALIZE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 17 */
-		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniteratornext,
-		.response_size		= sizeof (struct res_lib_ckpt_sectioniteratornext),
-		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT,
+		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationnext,
+		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationnext),
+		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONNEXT,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -825,9 +826,9 @@ static void ckpt_recovery_initialize (void)
 		memcpy(savedCheckpoint, checkpoint, sizeof(struct saCkptCheckpoint));
 		list_init(&savedCheckpoint->list);		
 		list_add(&savedCheckpoint->list,&checkpoint_recovery_list_head);
-		list_init(&savedCheckpoint->checkpointSectionsListHead);
-		for (checkpoint_section_list = checkpoint->checkpointSectionsListHead.next;
-			checkpoint_section_list != &checkpoint->checkpointSectionsListHead;
+		list_init(&savedCheckpoint->sections_list_head);
+		for (checkpoint_section_list = checkpoint->sections_list_head.next;
+			checkpoint_section_list != &checkpoint->sections_list_head;
 			checkpoint_section_list = checkpoint_section_list->next) {
 			section = list_entry (checkpoint_section_list,
 								struct saCkptCheckpointSection, list);
@@ -837,7 +838,7 @@ static void ckpt_recovery_initialize (void)
 			poll_timer_delete_data (aisexec_poll_handle, section->expiration_timer);
 			memcpy(savedSection, section, sizeof(struct saCkptCheckpointSection));
 			list_init(&savedSection->list);		
-			list_add(&savedSection->list,&savedCheckpoint->checkpointSectionsListHead);
+			list_add(&savedSection->list,&savedCheckpoint->sections_list_head);
 		}
 	}
 	
@@ -847,7 +848,7 @@ static void ckpt_recovery_initialize (void)
 	recovery_ckpt_next = checkpoint_recovery_list_head.next;
 	savedCheckpoint = list_entry (recovery_ckpt_next,
 								struct saCkptCheckpoint, list);
-	recovery_ckpt_section_next = savedCheckpoint->checkpointSectionsListHead.next;
+	recovery_ckpt_section_next = savedCheckpoint->sections_list_head.next;
 }
 
 static int ckpt_recovery_process (void) 
@@ -886,9 +887,9 @@ static int ckpt_recovery_process (void)
 			checkpoint = list_entry (recovery_ckpt_next,
 							struct saCkptCheckpoint, list);
 			if (recovery_ckpt_section_next == 0) {
-				recovery_ckpt_section_next = checkpoint->checkpointSectionsListHead.next;
+				recovery_ckpt_section_next = checkpoint->sections_list_head.next;
 			}
-			if (recovery_ckpt_section_next != &checkpoint->checkpointSectionsListHead) {
+			if (recovery_ckpt_section_next != &checkpoint->sections_list_head) {
 				ckptCheckpointSection = list_entry (recovery_ckpt_section_next,
 											struct saCkptCheckpointSection, list);
 				/*
@@ -1085,15 +1086,15 @@ static void ckpt_recovery_finalize (void)
 		checkpoint = list_entry (checkpoint_list,
             			struct saCkptCheckpoint, list);
             			
-		checkpoint_section_list = checkpoint->checkpointSectionsListHead.next;	
-		while (!list_empty(&checkpoint->checkpointSectionsListHead)) {
+		checkpoint_section_list = checkpoint->sections_list_head.next;	
+		while (!list_empty(&checkpoint->sections_list_head)) {
 			section = list_entry (checkpoint_section_list,
 				struct saCkptCheckpointSection, list);
 			
 			list_del (&section->list);			
 			log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_finalize removed 0x%x.\n", section);
 			free (section);
-			checkpoint_section_list = checkpoint->checkpointSectionsListHead.next;
+			checkpoint_section_list = checkpoint->sections_list_head.next;
 		}
 		list_del(&checkpoint->list);
 		free(checkpoint);
@@ -1120,8 +1121,8 @@ static void ckpt_recovery_finalize (void)
 		checkpoint = list_entry (checkpoint_list,
 			struct saCkptCheckpoint, list);
 
-		for (checkpoint_section_list = checkpoint->checkpointSectionsListHead.next;
-                        checkpoint_section_list != &checkpoint->checkpointSectionsListHead;
+		for (checkpoint_section_list = checkpoint->sections_list_head.next;
+                        checkpoint_section_list != &checkpoint->sections_list_head;
                         checkpoint_section_list = checkpoint_section_list->next) {
                         section = list_entry (checkpoint_section_list,
                                                                 struct saCkptCheckpointSection, list);
@@ -1379,8 +1380,8 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
 	else {
 		log_printf (LOG_LEVEL_DEBUG, "Finding default checkpoint section\n");
 	}
-	for (checkpoint_section_list = ckptCheckpoint->checkpointSectionsListHead.next;
-		checkpoint_section_list != &ckptCheckpoint->checkpointSectionsListHead;
+	for (checkpoint_section_list = ckptCheckpoint->sections_list_head.next;
+		checkpoint_section_list != &ckptCheckpoint->sections_list_head;
 		checkpoint_section_list = checkpoint_section_list->next) {
 
 		ckptCheckpointSection = list_entry (checkpoint_section_list,
@@ -1462,8 +1463,8 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 	/*
 	 * Release all checkpoint sections for this checkpoint
 	 */
-	for (list = checkpoint->checkpointSectionsListHead.next;
-		list != &checkpoint->checkpointSectionsListHead;) {
+	for (list = checkpoint->sections_list_head.next;
+		list != &checkpoint->sections_list_head;) {
 
 		section = list_entry (list,
 			struct saCkptCheckpointSection, list);
@@ -1578,7 +1579,7 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 			sizeof (SaCkptCheckpointCreationAttributesT));
 		ckptCheckpoint->unlinked = 0;
 		list_init (&ckptCheckpoint->list);
-		list_init (&ckptCheckpoint->checkpointSectionsListHead);
+		list_init (&ckptCheckpoint->sections_list_head);
 		list_add (&ckptCheckpoint->list, &checkpoint_list_head);
 		ckptCheckpoint->referenceCount = 0;
 		ckptCheckpoint->retention_timer = 0;
@@ -1601,7 +1602,7 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 		 * Add in default checkpoint section
 		 */
 		list_init (&ckptCheckpointSection->list);
-		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->checkpointSectionsListHead);
+		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->sections_list_head);
 		
 		/*
 		 * Default section id
@@ -1779,7 +1780,7 @@ static int recovery_checkpoint_open(
 			sizeof (SaCkptCheckpointCreationAttributesT));
 		ckptCheckpoint->unlinked = 0;
 		list_init (&ckptCheckpoint->list);
-		list_init (&ckptCheckpoint->checkpointSectionsListHead);
+		list_init (&ckptCheckpoint->sections_list_head);
 		list_add (&ckptCheckpoint->list, &checkpoint_list_head);
 		ckptCheckpoint->retention_timer = 0;
 		ckptCheckpoint->expired = 0;
@@ -1788,7 +1789,7 @@ static int recovery_checkpoint_open(
 		 * Add in default checkpoint section
 		 */
 		list_init (&ckptCheckpointSection->list);
-		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->checkpointSectionsListHead);
+		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->sections_list_head);
 		
 		/*
 		 * Default section id
@@ -2352,7 +2353,7 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	 */
 	list_init (&ckptCheckpointSection->list);
 	list_add (&ckptCheckpointSection->list,
-		&ckptCheckpoint->checkpointSectionsListHead);
+		&ckptCheckpoint->sections_list_head);
 
 error_exit:
 	return (error);				
@@ -2485,7 +2486,7 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	 */
 	list_init (&ckptCheckpointSection->list);
 	list_add (&ckptCheckpointSection->list,
-		&ckptCheckpoint->checkpointSectionsListHead);
+		&ckptCheckpoint->sections_list_head);
 	ckptCheckpoint->sectionCount += 1;
 
 error_exit:
@@ -2971,13 +2972,12 @@ static int ckpt_lib_init_fn (void *conn)
 {
 	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
 
-	
-	list_init (&ckpt_pd->sectionIterator.list);
-	ckpt_pd->sectionIterator.sectionIteratorEntries = 0;
-	ckpt_pd->sectionIterator.iteratorCount = 0;
-	ckpt_pd->sectionIterator.iteratorPos = 0;
+	hdb_create (&ckpt_pd->iteration_hdb);
+
+	/* TODO
 	list_add (&ckpt_pd->sectionIterator.list,
-		&checkpoint_iterator_list_head);
+		&checkpoint_iteration_list_head);
+		*/
 	list_init (&ckpt_pd->checkpoint_list);
 
        return (0);
@@ -3011,10 +3011,12 @@ static int ckpt_lib_exit_fn (void *conn)
 		cleanup_list = ckpt_pd->checkpoint_list.next;
 	}
 
+	/* TODO
 	if (ckpt_pd->sectionIterator.sectionIteratorEntries) {
 		free (ckpt_pd->sectionIterator.sectionIteratorEntries);
 	}
 	list_del (&ckpt_pd->sectionIterator.list);
+	*/
 	return (0);
 }
 
@@ -3228,8 +3230,8 @@ static void message_handler_req_lib_ckpt_checkpointstatusget (
 	
 	if (checkpoint && (checkpoint->expired == 0)) {
 
-		for (checkpoint_section_list = checkpoint->checkpointSectionsListHead.next;
-			checkpoint_section_list != &checkpoint->checkpointSectionsListHead;
+		for (checkpoint_section_list = checkpoint->sections_list_head.next;
+			checkpoint_section_list != &checkpoint->sections_list_head;
 			checkpoint_section_list = checkpoint_section_list->next) {
 
 			checkpointSection = list_entry (checkpoint_section_list,
@@ -3717,69 +3719,101 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 {
 	struct req_lib_ckpt_sectioniterationinitialize *req_lib_ckpt_sectioniterationinitialize = (struct req_lib_ckpt_sectioniterationinitialize *)msg;
 	struct res_lib_ckpt_sectioniterationinitialize res_lib_ckpt_sectioniterationinitialize;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	struct saCkptSectionIteratorEntry *ckptSectionIteratorEntries;
-	struct saCkptSectionIterator *ckptSectionIterator;
-	struct list_head *checkpoint_section_list;
-	int addEntry = 0;
-	int iteratorEntries = 0;
+	struct saCkptCheckpoint *checkpoint;
+	struct saCkptCheckpointSection *checkpoint_section;
+	struct iteration_entry *iteration_entries;
+	struct list_head *section_list;
+	struct iteration_instance *iteration_instance;
+	unsigned int iteration_handle = 0;
+	int res;
 	SaAisErrorT error = SA_AIS_OK;
+
 	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
 
-	log_printf (LOG_LEVEL_DEBUG, "section iterator initialize\n");
-	ckptSectionIterator = &ckpt_pd->sectionIterator;
+	log_printf (LOG_LEVEL_DEBUG, "section iteration initialize\n");
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationinitialize->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationinitialize->checkpointName);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->active_replica_set == 0) {
+	if (checkpoint->active_replica_set == 0) {
 		log_printf (LOG_LEVEL_NOTICE, "iterationinitialize: no active replica, returning error.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
+	res = hdb_handle_create (&ckpt_pd->iteration_hdb, sizeof(struct iteration_instance),
+		&iteration_handle);
+	if (res != 0) {
+		goto error_exit;
+	}
+
+	res = hdb_handle_get (&ckpt_pd->iteration_hdb, iteration_handle,
+		(void **)&iteration_instance);
+	if (res != 0) {
+		hdb_handle_destroy (&ckpt_pd->iteration_hdb, iteration_handle);
+		goto error_exit;
+	}
+
+	iteration_instance->iteration_entries = NULL;
+	iteration_instance->iteration_entries_count = 0;
+	iteration_instance->iteration_pos = 0;
+
 	/*
 	 * Iterate list of checkpoint sections
 	 */
-	for (checkpoint_section_list = ckptCheckpoint->checkpointSectionsListHead.next;
-		checkpoint_section_list != &ckptCheckpoint->checkpointSectionsListHead;
-		checkpoint_section_list = checkpoint_section_list->next) {
+	for (section_list = checkpoint->sections_list_head.next;
+		section_list != &checkpoint->sections_list_head;
+		section_list = section_list->next) {
 
-		ckptCheckpointSection = list_entry (checkpoint_section_list,
+		checkpoint_section = list_entry (section_list,
 			struct saCkptCheckpointSection, list);
 
-		addEntry = 1;
-
-		/*
-		 * Item should be added to iterator list
-		 */
-		if (addEntry) {
-			iteratorEntries += 1;
-			ckptSectionIteratorEntries =
-				realloc (ckptSectionIterator->sectionIteratorEntries,
-				sizeof (struct saCkptSectionIteratorEntry) * iteratorEntries);
-			if (ckptSectionIteratorEntries == 0) {
-				if (ckptSectionIterator->sectionIteratorEntries) {
-					free (ckptSectionIterator->sectionIteratorEntries);
-				}
-				error = SA_AIS_ERR_NO_MEMORY;
-				goto error_exit;
+		switch (req_lib_ckpt_sectioniterationinitialize->sectionsChosen) {
+		case SA_CKPT_SECTIONS_FOREVER:
+			if (checkpoint_section->sectionDescriptor.expirationTime != SA_TIME_END) {
+				continue;
 			}
-			ckptSectionIteratorEntries[iteratorEntries - 1].active = 1;
-			ckptSectionIteratorEntries[iteratorEntries - 1].checkpointSection = ckptCheckpointSection;
-			ckptSectionIterator->sectionIteratorEntries = ckptSectionIteratorEntries;
+			break;
+		case SA_CKPT_SECTIONS_LEQ_EXPIRATION_TIME:
+			if (checkpoint_section->sectionDescriptor.expirationTime > req_lib_ckpt_sectioniterationinitialize->expirationTime) {
+				continue;
+			}
+			break;
+		case SA_CKPT_SECTIONS_GEQ_EXPIRATION_TIME:
+			if (checkpoint_section->sectionDescriptor.expirationTime < req_lib_ckpt_sectioniterationinitialize->expirationTime) {
+				continue;
+			}
+			break;
+		case SA_CKPT_SECTIONS_CORRUPTED:
+			/* there can be no corrupted sections - do nothing */
+			break;
+		case SA_CKPT_SECTIONS_ANY:
+			/* iterate all sections - do nothing */
+			break;
 		}
+		iteration_instance->iteration_entries_count += 1;
+		iteration_entries = realloc (iteration_instance->iteration_entries,
+			sizeof (struct iteration_entry) * iteration_instance->iteration_entries_count);
+		if (iteration_entries == NULL) {
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_put;
+		}
+		iteration_instance->iteration_entries = iteration_entries;
+		iteration_entries[iteration_instance->iteration_entries_count - 1].active = 1;
+		iteration_entries[iteration_instance->iteration_entries_count - 1].checkpoint_section = checkpoint_section;
 	}
-	ckptSectionIterator->iteratorCount = iteratorEntries;
+
+error_put:
+	hdb_handle_put (&ckpt_pd->iteration_hdb, iteration_handle);
 
 error_exit:
 	res_lib_ckpt_sectioniterationinitialize.header.size = sizeof (struct res_lib_ckpt_sectioniterationinitialize);
-	res_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORINITIALIZE;
+	res_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATIONINITIALIZE;
 	res_lib_ckpt_sectioniterationinitialize.header.error = error;
+	res_lib_ckpt_sectioniterationinitialize.iteration_handle = iteration_handle;
 
 	openais_conn_send_response (
 		conn,
@@ -3793,23 +3827,33 @@ static void message_handler_req_lib_ckpt_sectioniterationfinalize (
 {
 	struct req_lib_ckpt_sectioniterationfinalize *req_lib_ckpt_sectioniterationfinalize = (struct req_lib_ckpt_sectioniterationfinalize *)msg;
 	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
-	struct saCkptCheckpoint *ckptCheckpoint;
 	SaAisErrorT error = SA_AIS_OK;
+	struct iteration_instance *iteration_instance;
+	unsigned int res;
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationfinalize->checkpointName);
-	if (ckptCheckpoint == 0) {
-		error = SA_AIS_ERR_NOT_EXIST;
+	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
+
+	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
+		req_lib_ckpt_sectioniterationfinalize->iteration_handle,
+		(void **)&iteration_instance);
+	if (res != 0) {
+		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->active_replica_set == 0) {
-		log_printf (LOG_LEVEL_NOTICE, "iterationfinalize: no active replica, returning error.\n");
-		error = SA_AIS_ERR_NOT_EXIST;
-		goto error_exit;
-	}
+	free (iteration_instance->iteration_entries);
+
+	hdb_handle_put (&ckpt_pd->iteration_hdb,
+		req_lib_ckpt_sectioniterationfinalize->iteration_handle);
+
+	hdb_handle_destroy (&ckpt_pd->iteration_hdb,
+		req_lib_ckpt_sectioniterationfinalize->iteration_handle);
+
+	hdb_destroy (&ckpt_pd->iteration_hdb);
+
 error_exit:
 	res_lib_ckpt_sectioniterationfinalize.header.size = sizeof (struct res_lib_ckpt_sectioniterationfinalize);
-	res_lib_ckpt_sectioniterationfinalize.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORFINALIZE;
+	res_lib_ckpt_sectioniterationfinalize.header.id = MESSAGE_RES_CKPT_SECTIONITERATIONFINALIZE;
 	res_lib_ckpt_sectioniterationfinalize.header.error = error;
 
 	openais_conn_send_response (
@@ -3818,73 +3862,81 @@ error_exit:
 		sizeof (struct res_lib_ckpt_sectioniterationfinalize));
 }
 
-static void message_handler_req_lib_ckpt_sectioniteratornext (
+static void message_handler_req_lib_ckpt_sectioniterationnext (
 	void *conn,
 	void *msg)
 {
-	struct req_lib_ckpt_sectioniteratornext *req_lib_ckpt_sectioniteratornext = (struct req_lib_ckpt_sectioniteratornext *)msg;
-	struct res_lib_ckpt_sectioniteratornext res_lib_ckpt_sectioniteratornext;
-	struct saCkptSectionIterator *ckptSectionIterator;
+	struct req_lib_ckpt_sectioniterationnext *req_lib_ckpt_sectioniterationnext = (struct req_lib_ckpt_sectioniterationnext *)msg;
+	struct res_lib_ckpt_sectioniterationnext res_lib_ckpt_sectioniterationnext;
 	SaAisErrorT error = SA_AIS_OK;
 	int sectionIdSize = 0;
-	int iteratorPos = 0;
+	unsigned int res;
+	struct iteration_instance *iteration_instance;
+
 	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
 
-	req_lib_ckpt_sectioniteratornext = 0; /* this variable not used */
-
-	log_printf (LOG_LEVEL_DEBUG, "section iterator next\n");
-	ckptSectionIterator = &ckpt_pd->sectionIterator;
+	log_printf (LOG_LEVEL_DEBUG, "section iteration next\n");
+	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
+		req_lib_ckpt_sectioniterationnext->iteration_handle,
+		(void **)&iteration_instance);
+	if (res != 0) {
+		error = SA_AIS_ERR_LIBRARY;
+		goto error_exit;
+	}
 
 	/*
-	 * Find active iterator entry
+	 * Find active iteration entry
 	 */
 	for (;;) {
 		/*
-		 * No more sections in iterator
+		 * No more sections in iteration
 		 */
-		if (ckptSectionIterator->iteratorPos + 1 >= ckptSectionIterator->iteratorCount) {
+		if (iteration_instance->iteration_pos == iteration_instance->iteration_entries_count) {
 			error = SA_AIS_ERR_NO_SECTIONS;
-			goto error_exit;
+			goto error_put;
 		}
 
 		/*
-		 * active iterator entry
+		 * active iteration entry
 		 */
-		if (ckptSectionIterator->sectionIteratorEntries[ckptSectionIterator->iteratorPos].active == 1) {
+		if (iteration_instance->iteration_entries[iteration_instance->iteration_pos].active == 1) {
 			break;
 		}
 
-		ckptSectionIterator->iteratorPos += 1;
+		iteration_instance->iteration_pos += 1;
 	}
 
 	/*
 	 * Prepare response to API
 	 */
-	iteratorPos = ckptSectionIterator->iteratorPos;
+	sectionIdSize = iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->sectionDescriptor.sectionId.idLen;
 
-	sectionIdSize = ckptSectionIterator->sectionIteratorEntries[iteratorPos].checkpointSection->sectionDescriptor.sectionId.idLen;
-
-	memcpy (&res_lib_ckpt_sectioniteratornext.sectionDescriptor, 
-		&ckptSectionIterator->sectionIteratorEntries[iteratorPos].checkpointSection->sectionDescriptor,
+	memcpy (&res_lib_ckpt_sectioniterationnext.sectionDescriptor, 
+		&iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->sectionDescriptor,
 		sizeof (SaCkptSectionDescriptorT));
 
 	/*
-	 * Get to next iterator entry
+	 * Get to next iteration entry
 	 */
-	ckptSectionIterator->iteratorPos += 1;
+	iteration_instance->iteration_pos += 1;
+
+error_put:
+	hdb_handle_put (&ckpt_pd->iteration_hdb, req_lib_ckpt_sectioniterationnext->iteration_handle);
 
 error_exit:
-	res_lib_ckpt_sectioniteratornext.header.size = sizeof (struct res_lib_ckpt_sectioniteratornext) + sectionIdSize;
-	res_lib_ckpt_sectioniteratornext.header.id = MESSAGE_RES_CKPT_SECTIONITERATOR_SECTIONITERATORNEXT;
-	res_lib_ckpt_sectioniteratornext.header.error = error;
+	res_lib_ckpt_sectioniterationnext.header.size = sizeof (struct res_lib_ckpt_sectioniterationnext) + sectionIdSize;
+	res_lib_ckpt_sectioniterationnext.header.id = MESSAGE_RES_CKPT_SECTIONITERATIONNEXT;
+	res_lib_ckpt_sectioniterationnext.header.error = error;
 
 	openais_conn_send_response (
 		conn,
-		&res_lib_ckpt_sectioniteratornext,
-		sizeof (struct res_lib_ckpt_sectioniteratornext));
+		&res_lib_ckpt_sectioniterationnext,
+		sizeof (struct res_lib_ckpt_sectioniterationnext));
 
 	openais_conn_send_response (
 		conn,
-		ckptSectionIterator->sectionIteratorEntries[iteratorPos].checkpointSection->sectionDescriptor.sectionId.id,
-		sectionIdSize);
+		iteration_instance->iteration_entries[
+			iteration_instance->iteration_pos - 1].
+				checkpoint_section->sectionDescriptor.sectionId.id,
+			sectionIdSize);
 }

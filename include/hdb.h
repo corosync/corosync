@@ -57,6 +57,22 @@ struct hdb_handle_database {
 	unsigned int iterator;
 };
 
+static inline void hdb_create (
+	struct hdb_handle_database *handle_database)
+{
+	memset (handle_database, 0, sizeof (struct hdb_handle_database));
+}
+
+static inline void hdb_destroy (
+	struct hdb_handle_database *handle_database)
+{
+	if (handle_database->handles) {
+		free (handle_database->handles);
+	}
+	memset (handle_database, 0, sizeof (struct hdb_handle_database));
+}
+
+
 static inline int hdb_handle_create (
 	struct hdb_handle_database *handle_database,
 	int instance_size,
