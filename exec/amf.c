@@ -2483,6 +2483,7 @@ fflush (stdout);
 	healthcheck = find_healthcheck (&req_lib_amf_healthcheckstart->healthcheckKey);
 	if (healthcheck == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
+		goto error_exit;
 	}
 
 	comp = find_comp (&req_lib_amf_healthcheckstart->compName);

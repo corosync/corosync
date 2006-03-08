@@ -261,12 +261,17 @@ int main (int argc, char **argv) {
 		&key0,
 		SA_AMF_HEALTHCHECK_AMF_INVOKED,
 		SA_AMF_COMPONENT_FAILOVER);
+	printf ("healthcheck start result %d (should be 1)\n", result);
 
+	/*
+	 * Test already started healthcheck
+	 */
 	result = saAmfHealthcheckStart (handle,
 		&compNameGlobal,
 		&key0,
 		SA_AMF_HEALTHCHECK_AMF_INVOKED,
 		SA_AMF_COMPONENT_FAILOVER);
+	printf ("healthcheck start result %d (should be 14)\n", result);
 
 	result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
 	printf ("register result is %d (should be 1)\n", result);
