@@ -193,10 +193,10 @@ clean:
  
 # -fPIC rules required for all libraries
 %.o: %.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
 util.o: ../include/saAis.h ../include/ipc_gen.h ../exec/totemip.h util.h

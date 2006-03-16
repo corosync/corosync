@@ -66,10 +66,12 @@ uic: uic.o
 	$(CC) $(LDFLAGS) uic.o -o uic
 
 libtest_a.o: libtest_a.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 libtest_b.o: libtest_b.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 clean:
-	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg
+	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg \
+	test_static
+

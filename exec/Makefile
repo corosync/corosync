@@ -173,73 +173,73 @@ clean:
 	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so.1.0 libtotem_pg.so.1 libtotem_pg.so libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) > /dev/null 2>&1
 
 # - fPIC rules required for service handler shared objects
 ../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
-	$(CC) $(CFLAGS) -I../lcr -c -o $@ ../lcr/lcr_ifact.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -I../lcr -c -o $@ ../lcr/lcr_ifact.c
 
 evs.o: evs.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 clm.o: clm.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 amf.o: amf.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 ckpt.o: ckpt.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 evt.o: evt.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 lck.o: lck.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 msg.o: msg.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 cfg.o: cfg.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 cpg.o: cpg.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 
 # -fPIC rules required for lib totem
 aispoll.o: aispoll.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totempg.o: totempg.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemsrp.o: totemsrp.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemrrp.o: totemrrp.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemip.o: totemip.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemnet.o: totemnet.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 wthread.o: wthread.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 tlist.o: tlist.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 crypto.o: crypto.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemmrp.o: totemmrp.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 totemconfig.o: totemconfig.c
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 # DO NOT DELETE
 

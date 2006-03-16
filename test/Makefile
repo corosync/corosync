@@ -142,12 +142,14 @@ clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
 	testamf5 testamf6 testamfth testckpt ckptstress testtimer \
 	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
-	evsbench subscription publish evtbench unlink testmsg testcpg
+	evsbench subscription publish evtbench unlink testmsg testcpg \
+	testclm2 testlck
+
 %.o: %.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(TEST_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(TEST_SRC) > /dev/null 2>&1
 # DO NOT DELETE
 
 testclm.o: ../include/saAis.h ../include/saClm.h
