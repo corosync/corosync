@@ -156,11 +156,12 @@ extern int totem_config_read (
 
 	totem_config->secauth = 1;
 
-	fp = fopen ("/etc/ais/openais.conf", "r");
+	fp = fopen (OPENAIS_CONFDIR "/openais.conf", "r");
 
 	if (fp == 0) {
 		parse_done = 1;
-		sprintf (error_reason, "Can't read file reason = (%s)\n", strerror (errno));
+		sprintf (error_reason, "Can't read file %s reason = (%s)\n",
+			 OPENAIS_CONFDIR, strerror (errno));
 		*error_string = error_reason;
 		return -1;
 	}
@@ -233,8 +234,8 @@ extern int totem_config_read (
 			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
 				if (interface_max == totem_config->interface_count) {
 					sprintf (error_reason,
-						"%d is too many interfaces in /etc/ais/network.conf",
-					totem_config->interface_count);
+						"%d is too many interfaces in %s/network.conf",
+						 OPENAIS_CONFDIR, totem_config->interface_count);
 					goto parse_error;
 				}
 				res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, loc);
@@ -288,11 +289,12 @@ extern int totem_config_read (
 parse_error:
 	if (parse_done) {
 		sprintf (error_string_response,
-			"parse error in /etc/ais/openais.conf: %s.\n", error_reason);
+			"parse error in %s/openais.conf: %s.\n",
+			 OPENAIS_CONFDIR, error_reason);
 	} else {
 		sprintf (error_string_response,
-			"parse error in /etc/ais/openais.conf: %s (line %d).\n",
-			error_reason, line_number);
+			"parse error in %s/openais.conf: %s (line %d).\n",
+			 OPENAIS_CONFDIR, error_reason, line_number);
 	}
 	*error_string = error_string_response;
 	fclose (fp);

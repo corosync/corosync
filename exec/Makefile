@@ -43,9 +43,9 @@ ifeq (${OPENAIS_COMPAT}, LINUX)
 	LDFLAGS += -ldl
 endif
 
-# OPENAIS_USER, OPENAISGROUP
+# OPENAIS_USER, OPENAIS_GROUP, OPENAIS_CONFDIR
 #
-CFLAGS += -DOPENAIS_USER=\"${OPENAIS_USER}\" -DOPENAIS_GROUP=\"${OPENAIS_GROUP}\" 
+CFLAGS += -DOPENAIS_USER=\"${OPENAIS_USER}\" -DOPENAIS_GROUP=\"${OPENAIS_GROUP}\" -DOPENAIS_CONFDIR=\"${OPENAIS_CONFDIR}\"
 
 # Totem objects
 TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c crypto.c wthread.c

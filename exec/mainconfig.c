@@ -153,10 +153,11 @@ extern int openais_main_config_read (char **error_string,
 	char *error_reason = error_string_response;
 
 	memset (openais_config, 0, sizeof (struct openais_config));
-	fp = fopen ("/etc/ais/openais.conf", "r");
+	fp = fopen (OPENAIS_CONFDIR "/openais.conf", "r");
 	if (fp == 0) {
 		parse_done = 1;
-		sprintf (error_reason, "Can't read file reason = (%s)\n", strerror (errno));
+		sprintf (error_reason, "Can't read file %s/openais.conf reason = (%s)\n",
+			 OPENAIS_CONFDIR, strerror (errno));
 		*error_string = error_reason;
 		return -1;
 	}
@@ -318,11 +319,12 @@ extern int openais_main_config_read (char **error_string,
 parse_error:
 	if (parse_done) {
 		sprintf (error_string_response,
-			"parse error in /etc/ais/openais.conf: %s.\n", error_reason);
+			"parse error in %s/openais.conf: %s.\n",
+			 OPENAIS_CONFDIR, error_reason);
 	} else {
 		sprintf (error_string_response,
-			"parse error in /etc/ais/openais.conf: %s (line %d).\n",
-			error_reason, line_number);
+			"parse error in %s/openais.conf: %s (line %d).\n",
+			OPENAIS_CONFDIR, error_reason, line_number);
 	}
 	*error_string = error_string_response;
 	fclose (fp);

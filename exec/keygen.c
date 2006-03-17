@@ -51,7 +51,6 @@ int main (void) {
 		printf ("Error: Authorization key must be generated as root user.\n");
 		exit (1);
 	}
-	mkdir ("/etc/ais", 0700);
 
 	printf ("Gathering %lu bits for key from /dev/random.\n", sizeof (key) * 8);
 	random_fd = open ("/dev/random", O_RDONLY);
@@ -72,9 +71,9 @@ int main (void) {
 	/*
 	 * Open key
 	 */
-	authkey_fd = open ("/etc/ais/authkey", O_CREAT|O_WRONLY);
+	authkey_fd = open (OPENAIS_CONFDIR "/authkey", O_CREAT|O_WRONLY);
 	if (authkey_fd == -1) {
-		perror ("Could not create /etc/ais/authkey");
+		perror ("Could not create " OPENAIS_CONFDIR "/authkey");
 		exit (1);
 	}
 	/*
@@ -83,14 +82,14 @@ int main (void) {
 	fchown (authkey_fd, 0, 0);
 	fchmod (authkey_fd, 0400);
 
-	printf ("Writing openais key to /etc/ais/authkey.\n");
+	printf ("Writing openais key to " OPENAIS_CONFDIR "/authkey.\n");
 
 	/*
 	 * Write key
 	 */
 	res = write (authkey_fd, key, sizeof (key));
 	if (res == -1) {
-		perror ("Could not write /etc/ais/authkey");
+		perror ("Could not write " OPENAIS_CONFDIR "/authkey");
 		exit (1);
 	}
 	
