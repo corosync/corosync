@@ -41,7 +41,6 @@
 #include "../include/ipc_gen.h"
 #include "mainconfig.h"
 #include "poll.h"
-#include "handlers.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED

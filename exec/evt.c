@@ -54,6 +54,7 @@
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
 #include "util.h"
+#include "service.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "main.h"
@@ -131,7 +132,7 @@ static void evt_sync_abort(void);
 static void convert_event(void *msg);
 static void convert_chan_packet(void *msg);
 
-static struct openais_lib_handler evt_lib_handlers[] = {
+static struct openais_lib_handler evt_lib_service[] = {
 	{
 	.lib_handler_fn = 		lib_evt_open_channel,
 	.response_size = 		sizeof(struct res_evt_channel_open),
@@ -193,7 +194,7 @@ static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr);
 static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr);
 static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr);
 
-static struct openais_exec_handler evt_exec_handlers[] = {
+static struct openais_exec_handler evt_exec_service[] = {
 	{
 		.exec_handler_fn		= evt_remote_evt,
 		.exec_endian_convert_fn = convert_event
@@ -215,11 +216,11 @@ struct openais_service_handler evt_service_handler = {
 	.private_data_size			= sizeof (struct libevt_pd),
 	.lib_init_fn				= evt_lib_init,
 	.lib_exit_fn				= evt_lib_exit,
-	.lib_handlers				= evt_lib_handlers,
-	.lib_handlers_count			= sizeof(evt_lib_handlers) / sizeof(struct openais_lib_handler),
+	.lib_service				= evt_lib_service,
+	.lib_service_count			= sizeof(evt_lib_service) / sizeof(struct openais_lib_handler),
 	.exec_init_fn				= evt_exec_init,
-	.exec_handlers				= evt_exec_handlers,
-	.exec_handlers_count		= sizeof(evt_exec_handlers) / sizeof(struct openais_exec_handler),
+	.exec_service				= evt_exec_service,
+	.exec_service_count		= sizeof(evt_exec_service) / sizeof(struct openais_exec_handler),
 	.exec_dump_fn				= NULL,
 	.confchg_fn					= evt_conf_change,
 	.sync_init					= evt_sync_init,

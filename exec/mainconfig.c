@@ -47,6 +47,7 @@
 #include "mempool.h"
 #include "print.h"
 #include "totem.h"
+#include "service.h"
 
 DECLARE_LIST_INIT (saAmfGroupHead);
 
@@ -88,27 +89,6 @@ char *strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
-static void set_default_services(struct openais_config *config)
-{
-	config->dynamic_services[0].name = "openais_evs";
-	config->dynamic_services[0].ver = 0;
-	config->dynamic_services[1].name = "openais_clm";
-	config->dynamic_services[1].ver = 0;
-	config->dynamic_services[2].name = "openais_amf";
-	config->dynamic_services[2].ver = 0;
-	config->dynamic_services[3].name = "openais_ckpt";
-	config->dynamic_services[3].ver = 0;
-	config->dynamic_services[4].name = "openais_evt";
-	config->dynamic_services[4].ver = 0;
-	config->dynamic_services[5].name = "openais_lck";
-	config->dynamic_services[5].ver = 0;
-	config->dynamic_services[6].name = "openais_msg";
-	config->dynamic_services[6].ver = 0;
-	config->dynamic_services[7].name = "openais_cfg";
-	config->dynamic_services[7].ver = 0;
-	config->num_dynamic_services = 8;
-}
-
 /* Returns an allocated string */
 static char *get_component(const char *line, int *version)
 {
@@ -135,8 +115,10 @@ static char *get_component(const char *line, int *version)
 	return compname;
 }
 
-extern int openais_main_config_read (char **error_string,
-    struct openais_config *openais_config,
+extern int openais_main_config_read (
+	struct objdb_iface_ver0 *objdb,
+	char **error_string,
+	struct openais_config *openais_config,
 	int interface_max)
 {
 	FILE *fp;
@@ -287,9 +269,7 @@ extern int openais_main_config_read (char **error_string,
 				int version;
 				char *name = get_component(line, &version);
 				if (name) {
-					openais_config->dynamic_services[openais_config->num_dynamic_services].name = name;
-					openais_config->dynamic_services[openais_config->num_dynamic_services].ver = version;
-					openais_config->num_dynamic_services++;
+				        openais_service_objdb_add (objdb, name, version);
 				}
 			}
 			break;
@@ -304,10 +284,6 @@ extern int openais_main_config_read (char **error_string,
 		goto parse_error;
 	}
 
-	/* Load default services if the config file doesn't specify */
-	if (!openais_config->num_dynamic_services) {
-		set_default_services(openais_config);
-	}
 	if (parse == MAIN_HEAD) {
 		fclose (fp);
 		return (0);

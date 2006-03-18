@@ -53,6 +53,7 @@
 #include "../include/hdb.h"
 #include "../lcr/lcr_comp.h"
 #include "aispoll.h"
+#include "service.h"
 #include "mempool.h"
 #include "util.h"
 #include "main.h"
@@ -326,7 +327,7 @@ static void ckpt_confchg_fn(
 /*
  * Executive Handler Definition
  */
-static struct openais_lib_handler ckpt_lib_handlers[] =
+static struct openais_lib_handler ckpt_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointopen,
@@ -439,7 +440,7 @@ static struct openais_lib_handler ckpt_lib_handlers[] =
 };
 
 
-static struct openais_exec_handler ckpt_exec_handlers[] = {
+static struct openais_exec_handler ckpt_exec_service[] = {
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointopen,
 	},
@@ -487,12 +488,12 @@ struct openais_service_handler ckpt_service_handler = {
 	.private_data_size		= sizeof (struct ckpt_pd),
 	.lib_init_fn			= ckpt_lib_init_fn,
 	.lib_exit_fn			= ckpt_lib_exit_fn,
-	.lib_handlers			= ckpt_lib_handlers,
-	.lib_handlers_count		= sizeof (ckpt_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service			= ckpt_lib_service,
+	.lib_service_count		= sizeof (ckpt_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= ckpt_exec_init_fn,
 	.exec_dump_fn			= 0,
-	.exec_handlers			= ckpt_exec_handlers,
-	.exec_handlers_count		= sizeof (ckpt_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service			= ckpt_exec_service,
+	.exec_service_count		= sizeof (ckpt_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn			= ckpt_confchg_fn,
 	.sync_init			= ckpt_recovery_initialize,
 	.sync_process			= ckpt_recovery_process,

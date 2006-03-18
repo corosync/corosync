@@ -1,10 +1,9 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2004 Open Source Development Lab
+ * Copyright (c) 2006 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com), Mark Haverkamp (markh@osdl.org)
+ * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,52 +31,75 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <sys/time.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "aispoll.h"
-#include "util.h"
-#define LOG_SERVICE LOG_SERVICE_MAIN
-#include "print.h"
+#ifndef OBJDB_H_DEFINED
+#define OBJDB_H_DEFINED
 
-/*
- * Compare two names.  returns non-zero on match.
- */
-int name_match(SaNameT *name1, SaNameT *name2) 
-{
-	if (name1->length == name2->length) {
-		return ((strncmp ((char *)name1->value, (char *)name2->value,
-			name1->length)) == 0);
-	} 
-	return 0;
-}
+#define OBJECT_PARENT_HANDLE 0
 
-/*
- * Get the time of day and convert to nanoseconds
- */
-SaTimeT clust_time_now(void)
-{
-	struct timeval tv;
-	SaTimeT time_now;
+struct object_valid {
+	char *object_name;
+	int object_len;
+};
+	
+struct object_key_valid {
+	char *key_name;
+	int key_len;
+	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
+};
 
-	if (gettimeofday(&tv, 0)) {
-		return 0ULL;
-	}
+struct objdb_iface_ver0 {
+	int (*objdb_init) (void);
 
-	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
-	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+	int (*object_create) (
+		unsigned int parent_object_handle,
+		unsigned int *object_handle,
+		void *object_name,
+		unsigned int object_name_len);
 
-	return time_now;
-}
+	int (*object_priv_set) (
+		unsigned int object_handle,
+		void *priv);
 
+	int (*object_key_create) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void *value,
+		int value_len);
 
-void openais_exit_error (enum e_ais_done err)
-{
-	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
-	exit (1);
-}
+	int (*object_destroy) (
+		unsigned int object_handle);
+
+	int (*object_valid_set) (
+		unsigned int object_handle,
+		struct object_valid *object_valid_list,
+		unsigned int object_valid_list_entries);
+
+	int (*object_key_valid_set) (
+		unsigned int object_handle,
+		struct object_key_valid *object_key_valid_list,
+		unsigned int object_key_valid_list_entries);
+
+	int (*object_find_reset) (
+		unsigned int parent_object_handle);
+
+	int (*object_find) (
+		unsigned int parent_object_handle,
+		void *object_name,
+		int object_name_len,
+		unsigned int *object_handle);
+
+	int (*object_key_get) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void **value,
+		int *value_len);
+
+	int (*object_priv_get) (
+		unsigned int jobject_handle,
+		void **priv);
+};
+
+#endif /* OBJDB_H_DEFINED */

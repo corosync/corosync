@@ -51,6 +51,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
+#include "service.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
@@ -271,7 +272,7 @@ struct msg_pd {
 /*
  * Executive Handler Definition
  */
-struct openais_lib_handler msg_lib_handlers[] =
+struct openais_lib_handler msg_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queueopen,
@@ -384,7 +385,7 @@ struct openais_lib_handler msg_lib_handlers[] =
 };
 
 
-static struct openais_exec_handler msg_exec_handlers[] = {
+static struct openais_exec_handler msg_exec_service[] = {
 	{
 		.exec_handler_fn		= message_handler_req_exec_msg_queueopen,
 	},
@@ -438,11 +439,11 @@ struct openais_service_handler msg_service_handler = {
 	.private_data_size		= sizeof (struct msg_pd),
 	.lib_init_fn			= msg_lib_init_fn,
 	.lib_exit_fn			= msg_lib_exit_fn,
-	.lib_handlers			= msg_lib_handlers,
-	.lib_handlers_count		= sizeof (msg_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service			= msg_lib_service,
+	.lib_service_count		= sizeof (msg_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= msg_exec_init_fn,
-	.exec_handlers			= msg_exec_handlers,
-	.exec_handlers_count		= sizeof (msg_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service			= msg_exec_service,
+	.exec_service_count		= sizeof (msg_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn			= msg_confchg_fn,
 	.exec_dump_fn			= NULL,
 	.sync_init			= NULL, // TODO msg_sync_init,

@@ -52,11 +52,11 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
+#include "service.h"
 #include "totempg.h"
 #include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
-#include "handlers.h"
 
 #define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
@@ -88,7 +88,7 @@ static void message_handler_req_lib_cfg_administrativestateget (void *conn, void
 /*
  * Service Handler Definition
  */
-static struct openais_lib_handler cfg_lib_handlers[] =
+static struct openais_lib_handler cfg_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstart,
@@ -116,7 +116,7 @@ static struct openais_lib_handler cfg_lib_handlers[] =
 	}
 };
 
-static struct openais_exec_handler cfg_exec_handlers[] =
+static struct openais_exec_handler cfg_exec_service[] =
 {
 	{
 	}
@@ -137,11 +137,11 @@ struct openais_service_handler cfg_service_handler = {
 	.private_data_size			= 0,
 	.lib_init_fn				= cfg_lib_init_fn,
 	.lib_exit_fn				= cfg_lib_exit_fn,
-	.lib_handlers				= cfg_lib_handlers,
-	.lib_handlers_count			= sizeof (cfg_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service				= cfg_lib_service,
+	.lib_service_count			= sizeof (cfg_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn				= cfg_exec_init_fn,
-	.exec_handlers				= cfg_exec_handlers,
-	.exec_handlers_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (openais_exec_handler), */
+	.exec_service				= cfg_exec_service,
+	.exec_service_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (openais_exec_handler), */
 	.confchg_fn				= cfg_confchg_fn,
 };
 

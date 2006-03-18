@@ -62,7 +62,7 @@
 #include "totemip.h"
 #include "main.h"
 #include "mempool.h"
-#include "handlers.h"
+#include "service.h"
 #include "jhash.h"
 #include "swab.h"
 
@@ -169,7 +169,7 @@ static void cpg_exec_send_joinlist(void);
 /*
  * Library Handler Definition
  */
-static struct openais_lib_handler cpg_lib_handlers[] =
+static struct openais_lib_handler cpg_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_join,
@@ -209,7 +209,7 @@ static struct openais_lib_handler cpg_lib_handlers[] =
 	}
 };
 
-static struct openais_exec_handler cpg_exec_handlers[] =
+static struct openais_exec_handler cpg_exec_service[] =
 {
 	{ /* 0 */
 		.exec_handler_fn	= message_handler_req_exec_cpg_procjoin,
@@ -235,12 +235,12 @@ struct openais_service_handler cpg_service_handler = {
 	.private_data_size			= sizeof (struct process_info),
 	.lib_init_fn				= cpg_lib_init_fn,
 	.lib_exit_fn				= cpg_lib_exit_fn,
-	.lib_handlers				= cpg_lib_handlers,
-	.lib_handlers_count			= sizeof (cpg_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service				= cpg_lib_service,
+	.lib_service_count			= sizeof (cpg_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn				= cpg_exec_init_fn,
 	.exec_dump_fn				= NULL,
-	.exec_handlers				= cpg_exec_handlers,
-	.exec_handlers_count		        = sizeof (cpg_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service				= cpg_exec_service,
+	.exec_service_count		        = sizeof (cpg_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn                             = cpg_confchg_fn,
 };
 

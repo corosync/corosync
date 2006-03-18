@@ -58,9 +58,10 @@ SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
-		util.c sync.c ykd.c mainconfig.c amfconfig.c
+		util.c sync.c ykd.c mainconfig.c amfconfig.c service.c
 MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o ykd.o mainconfig.o amfconfig.o ../lcr/lcr_ifact.o
+		util.o sync.o ykd.o mainconfig.o amfconfig.o service.o ../lcr/lcr_ifact.o
+OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
@@ -71,9 +72,9 @@ all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
-	keygen openais-instantiate
+	objdb.lcrso keygen openais-instantiate
 else
-EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(SERV_OBJS)
+EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(OTHER_OBJS) $(SERV_OBJS)
 all: libtotem_pg.a aisexec keygen openais-instantiate
 endif
 
@@ -107,6 +108,8 @@ service_cfg.lcrso: cfg.o
 service_cpg.lcrso: cpg.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
 
+objdb.lcrso: objdb.o
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_looad objdb.o -o $@
 else
 
 service_evs.lcrso: evs.o
@@ -136,10 +139,14 @@ service_cfg.lcrso: cfg.o
 service_cpg.lcrso: cpg.o
 	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
 
+objdb.lcrso: objdb.o
+	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
+
+aisexec: $(EXEC_OBJS) libtotem_pg.a
+
 endif
 
 
-aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
 libtotem_pg.a: $(TOTEM_OBJS)
@@ -206,6 +213,8 @@ cfg.o: cfg.c
 cpg.o: cpg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
+objdb.o: objdb.c
+	$(CC) $(CFLAGS) -c -o $@ $(*F).c
 
 # -fPIC rules required for lib totem
 aispoll.o: aispoll.c
@@ -246,33 +255,33 @@ totemconfig.o: totemconfig.c
 main.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 main.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 main.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h amfconfig.h
-main.o: main.h ../include/saClm.h handlers.h 
+main.o: main.h ../include/saClm.h service.h 
 main.o: ../include/saEvt.h swab.h print.h
 clm.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
 clm.o: ../include/ipc_evs.h  ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/ipc_clm.h ../include/list.h ../include/queue.h aispoll.h
-clm.o: totempg.h totemsrp.h amfconfig.h main.h handlers.h 
+clm.o: totempg.h totemsrp.h amfconfig.h main.h service.h 
 clm.o:  ../include/saEvt.h mempool.h print.h
 amf.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 amf.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 amf.o: ../include/queue.h totempg.h aispoll.h totemsrp.h mempool.h util.h
-amf.o: amfconfig.h main.h ../include/saClm.h handlers.h
+amf.o: amfconfig.h main.h ../include/saClm.h service.h
 amf.o:  ../include/saEvt.h print.h
 ckpt.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 ckpt.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 ckpt.o: ../include/queue.h aispoll.h mempool.h util.h amfconfig.h totempg.h
-ckpt.o: totemsrp.h main.h ../include/saClm.h handlers.h 
+ckpt.o: totemsrp.h main.h ../include/saClm.h service.h 
 ckpt.o:  ../include/saEvt.h print.h
 evt.o: ../include/ipc_evt.h ../include/saAis.h ../include/saEvt.h
 evt.o: ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evt.o: ../include/queue.h util.h ../include/saAis.h aispoll.h mempool.h
 evt.o: amfconfig.h totempg.h totemsrp.h main.h  ../include/saClm.h
-evt.o: ../include/ipc_evs.h handlers.h 
+evt.o: ../include/ipc_evs.h service.h 
 evt.o: ../include/saEvt.h swab.h print.h
 evs.o: ../include/saAis.h ../include/ipc_evs.h ../include/saAis.h
 evs.o:  ../include/saClm.h ../include/ipc_gen.h ../include/list.h
 evs.o: ../include/queue.h aispoll.h totempg.h totemsrp.h amfconfig.h main.h 
-evs.o: ../include/saClm.h handlers.h 
+evs.o: ../include/saClm.h service.h 
 evs.o: ../include/saEvt.h mempool.h print.h
 amfconfig.o: ../include/saAis.h ../include/list.h util.h amfconfig.h aispoll.h
 amfconfig.o: totempg.h totemsrp.h mempool.h print.h ../include/saClm.h

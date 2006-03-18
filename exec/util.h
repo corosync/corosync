@@ -46,4 +46,22 @@ extern int name_match(SaNameT *name1, SaNameT *name2);
  * Get the time of day and convert to nanoseconds
  */
 extern SaTimeT clust_time_now(void);
+
+enum e_ais_done {
+	AIS_DONE_EXIT = -1,
+	AIS_DONE_UID_DETERMINE = -2,
+	AIS_DONE_GID_DETERMINE = -3,
+	AIS_DONE_MEMPOOL_INIT = -4,
+	AIS_DONE_FORK = -5,
+	AIS_DONE_LIBAIS_SOCKET = -6,
+	AIS_DONE_LIBAIS_BIND = -7,
+	AIS_DONE_READKEY = -8,
+	AIS_DONE_MAINCONFIGREAD = -9,
+	AIS_DONE_LOGSETUP = -10,
+	AIS_DONE_AMFCONFIGREAD = -11,
+	AIS_DONE_DYNAMICLOAD = -12,
+};
+
+void openais_exit_error (enum e_ais_done err);
+
 #endif /* UTIL_H_DEFINED */

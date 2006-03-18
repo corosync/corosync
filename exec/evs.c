@@ -60,7 +60,7 @@
 #include "totemip.h"
 #include "main.h"
 #include "mempool.h"
-#include "handlers.h"
+#include "service.h"
 
 #define LOG_SERVICE LOG_SERVICE_EVS
 #include "print.h"
@@ -99,7 +99,7 @@ struct evs_pd {
 	void *conn;
 };
 	
-static struct openais_lib_handler evs_lib_handlers[] =
+static struct openais_lib_handler evs_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_evs_join,
@@ -133,7 +133,7 @@ static struct openais_lib_handler evs_lib_handlers[] =
 	}
 };
 
-static struct openais_exec_handler evs_exec_handlers[] =
+static struct openais_exec_handler evs_exec_service[] =
 {
 	{
 		.exec_handler_fn 	= message_handler_req_exec_mcast,
@@ -147,10 +147,10 @@ struct openais_service_handler evs_service_handler = {
 	.private_data_size	= sizeof (struct evs_pd),
 	.lib_init_fn		= evs_lib_init_fn,
 	.lib_exit_fn		= evs_lib_exit_fn,
-	.lib_handlers		= evs_lib_handlers,
-	.lib_handlers_count	= sizeof (evs_lib_handlers) / sizeof (struct openais_lib_handler),
-	.exec_handlers		= evs_exec_handlers,
-	.exec_handlers_count	= sizeof (evs_exec_handlers) / sizeof (struct openais_exec_handler),
+	.lib_service		= evs_lib_service,
+	.lib_service_count	= sizeof (evs_lib_service) / sizeof (struct openais_lib_handler),
+	.exec_service		= evs_exec_service,
+	.exec_service_count	= sizeof (evs_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn		= evs_confchg_fn,
 	.exec_init_fn		= NULL,
 	.exec_dump_fn		= NULL

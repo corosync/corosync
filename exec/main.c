@@ -68,22 +68,22 @@
 #include "amfconfig.h"
 #include "totemconfig.h"
 #include "main.h"
-#include "handlers.h"
+#include "service.h"
 #include "sync.h"
 #include "ykd.h"
 #include "swab.h"
-
+#include "objdb.h"
 #define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
+
+#include "util.h"
 
 #define SERVER_BACKLOG 5
 
 int ais_uid = 0;
 int gid_valid = 0;
 
-static struct openais_service_handler *ais_service_handlers[32];
-
-static unsigned int service_handlers_count = 32;
+static unsigned int service_count = 32;
 
 struct outq_item {
 	void *msg;
@@ -120,36 +120,14 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 
 static int response_init_send_response (struct conn_info *conn_info, void *message);
 
-static int (*ais_init_handlers[]) (struct conn_info *conn_info, void *message) = {
+static int (*ais_init_service[]) (struct conn_info *conn_info, void *message) = {
 	response_init_send_response,
 	dispatch_init_send_response
 };
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);
 
-enum e_ais_done {
-	AIS_DONE_EXIT = -1,
-	AIS_DONE_UID_DETERMINE = -2,
-	AIS_DONE_GID_DETERMINE = -3,
-	AIS_DONE_MEMPOOL_INIT = -4,
-	AIS_DONE_FORK = -5,
-	AIS_DONE_LIBAIS_SOCKET = -6,
-	AIS_DONE_LIBAIS_BIND = -7,
-	AIS_DONE_READKEY = -8,
-	AIS_DONE_MAINCONFIGREAD = -9,
-	AIS_DONE_LOGSETUP = -10,
-	AIS_DONE_AMFCONFIGREAD = -11,
-	AIS_DONE_DYNAMICLOAD = -12,
-};
-
 extern int openais_amf_config_read (char **error_string);
-
-static inline void ais_done (enum e_ais_done err)
-{
-	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
-	poll_destroy (aisexec_poll_handle);
-	exit (1);
-}
 
 static inline struct conn_info *conn_info_create (int fd) {
 	struct conn_info *conn_info;
@@ -186,8 +164,8 @@ static void sigusr2_handler (int num)
 	int i;
 
 	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
-		if (ais_service_handlers[i]->exec_dump_fn) {
-			ais_service_handlers[i]->exec_dump_fn ();
+		if (ais_service[i]->exec_dump_fn) {
+			ais_service[i]->exec_dump_fn ();
 		 }
 	}
 
@@ -237,9 +215,9 @@ static int libais_disconnect (struct conn_info *conn_info)
 	struct outq_item *outq_item;
 
 	if (conn_info->should_exit_fn &&
-		ais_service_handlers[conn_info->service]->lib_exit_fn) {
+		ais_service[conn_info->service]->lib_exit_fn) {
 
-		res = ais_service_handlers[conn_info->service]->lib_exit_fn (conn_info);
+		res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
 	}
 
 	/*
@@ -247,9 +225,9 @@ static int libais_disconnect (struct conn_info *conn_info)
 	 */
 	if (conn_info->conn_info_partner && 
 		conn_info->conn_info_partner->should_exit_fn &&
-		ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn) {
+		ais_service[conn_info->conn_info_partner->service]->lib_exit_fn) {
 
-		res = ais_service_handlers[conn_info->conn_info_partner->service]->lib_exit_fn (conn_info->conn_info_partner);
+		res = ais_service[conn_info->conn_info_partner->service]->lib_exit_fn (conn_info->conn_info_partner);
 		if (conn_info->private_data) {
 			free (conn_info->private_data);
 		}
@@ -577,7 +555,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_dispatch_init->resdis_header.service;
-		if (!ais_service_handlers[req_lib_dispatch_init->resdis_header.service])
+		if (!ais_service[req_lib_dispatch_init->resdis_header.service])
 			error = SA_AIS_ERR_NOT_SUPPORTED;
 		else
 			error = SA_AIS_OK;
@@ -590,7 +568,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 		if (error == SA_AIS_OK) {
 			int private_data_size;
 
-			private_data_size = ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->private_data_size;
+			private_data_size = ais_service[req_lib_dispatch_init->resdis_header.service]->private_data_size;
 			if (private_data_size) {
 				conn_info->private_data = malloc (private_data_size);
 
@@ -622,7 +600,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 	}
 
 	conn_info->should_exit_fn = 1;
-	ais_service_handlers[req_lib_dispatch_init->resdis_header.service]->lib_init_fn (conn_info);
+	ais_service[req_lib_dispatch_init->resdis_header.service]->lib_init_fn (conn_info);
 	return (0);
 }
 
@@ -796,18 +774,18 @@ retry_recv:
 
 		/*
 		 * If this service is in init phase, initialize service
-		 * else handle message using service handlers
+		 * else handle message using service service
 		 */
 		if (service == SOCKET_SERVICE_INIT) {
-			res = ais_init_handlers[header->id] (conn_info, header);
+			res = ais_init_service[header->id] (conn_info, header);
 // TODO error in init_two_fn needs to be handled
 		} else  {
 			/*
 			 * Not an init service, but a standard service
 			 */
-			if (header->id < 0 || header->id > ais_service_handlers[service]->lib_handlers_count) {
+			if (header->id < 0 || header->id > ais_service[service]->lib_service_count) {
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
-				header->id, ais_service_handlers[service]->lib_handlers_count);
+				header->id, ais_service[service]->lib_service_count);
 				res = -1;
 				goto error_disconnect;
 			}
@@ -825,14 +803,14 @@ retry_recv:
 
 			send_ok =
 				(ykd_primary() == 1) && (
-				(ais_service_handlers[service]->lib_handlers[header->id].flow_control == OPENAIS_FLOW_CONTROL_NOT_REQUIRED) ||
-				((ais_service_handlers[service]->lib_handlers[header->id].flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) &&
+				(ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
 				(sync_in_process() == 0)));
 
 			if (send_ok) {
 		//		*prio = 0;
-				ais_service_handlers[service]->lib_handlers[header->id].lib_handler_fn(conn_info, header);
+				ais_service[service]->lib_service[header->id].lib_handler_fn(conn_info, header);
 			} else {
 		//		*prio = (*prio) + 1;
 
@@ -840,9 +818,9 @@ retry_recv:
 				 * Overload, tell library to retry
 				 */
 				res_overlay.header.size = 
-					ais_service_handlers[service]->lib_handlers[header->id].response_size;
+					ais_service[service]->lib_service[header->id].response_size;
 				res_overlay.header.id = 
-					ais_service_handlers[service]->lib_handlers[header->id].response_id;
+					ais_service[service]->lib_service[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
 				openais_conn_send_response (
 					conn_info,
@@ -892,7 +870,7 @@ void sigintr_handler (int signum)
 #endif
 
 	totempg_finalize ();
-	ais_done (AIS_DONE_EXIT);
+	openais_exit_error (AIS_DONE_EXIT);
 }
 
 
@@ -907,15 +885,15 @@ static void openais_sync_completed (void)
 static int openais_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
-	if (ais_service_handlers[sync_id] == NULL) {
+	if (ais_service[sync_id] == NULL) {
 		memset (callbacks, 0, sizeof (struct sync_callbacks));
 		return (-1);
 	}
-	callbacks->name = ais_service_handlers[sync_id]->name;
-	callbacks->sync_init = ais_service_handlers[sync_id]->sync_init;
-	callbacks->sync_process = ais_service_handlers[sync_id]->sync_process;
-	callbacks->sync_activate = ais_service_handlers[sync_id]->sync_activate;
-	callbacks->sync_abort = ais_service_handlers[sync_id]->sync_abort;
+	callbacks->name = ais_service[sync_id]->name;
+	callbacks->sync_init = ais_service[sync_id]->sync_init;
+	callbacks->sync_process = ais_service[sync_id]->sync_process;
+	callbacks->sync_activate = ais_service[sync_id]->sync_activate;
+	callbacks->sync_abort = ais_service[sync_id]->sync_abort;
 	return (0);
 }
 
@@ -961,11 +939,11 @@ static void deliver_fn (
 	service = header->id >> 16;
 	fn_id = header->id & 0xffff;
 	if (endian_conversion_required) {
-		ais_service_handlers[service]->exec_handlers[fn_id].exec_endian_convert_fn
+		ais_service[service]->exec_service[fn_id].exec_endian_convert_fn
 			(header);
 	}
 
-	ais_service_handlers[service]->exec_handlers[fn_id].exec_handler_fn
+	ais_service[service]->exec_service[fn_id].exec_handler_fn
 		(header, source_addr);
 }
 
@@ -989,9 +967,9 @@ static void confchg_fn (
 	/*
 	 * Call configuration change for all services
 	 */
-	for (i = 0; i < service_handlers_count; i++) {
-		if (ais_service_handlers[i] && ais_service_handlers[i]->confchg_fn) {
-			ais_service_handlers[i]->confchg_fn (configuration_type,
+	for (i = 0; i < service_count; i++) {
+		if (ais_service[i] && ais_service[i]->confchg_fn) {
+			ais_service[i]->confchg_fn (configuration_type,
 				member_list, member_list_entries,
 				left_list, left_list_entries,
 				joined_list, joined_list_entries, ring_id);
@@ -1006,7 +984,7 @@ static void aisexec_uid_determine (void)
 	passwd = getpwnam(OPENAIS_USER);
 	if (passwd == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", OPENAIS_USER);
-		ais_done (AIS_DONE_UID_DETERMINE);
+		openais_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
 }
@@ -1017,7 +995,7 @@ static void aisexec_gid_determine (void)
 	group = getgrnam (OPENAIS_GROUP);
 	if (group == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", OPENAIS_GROUP);
-		ais_done (AIS_DONE_GID_DETERMINE);
+		openais_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
 }
@@ -1036,7 +1014,7 @@ static void aisexec_mempool_init (void)
 	res = mempool_init (pool_sizes);
 	if (res == ENOMEM) {
 		log_printf (LOG_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
-		ais_done (AIS_DONE_MEMPOOL_INIT);
+		openais_exit_error (AIS_DONE_MEMPOOL_INIT);
 	}
 }
 
@@ -1049,7 +1027,7 @@ static void aisexec_tty_detach (void)
 	 */
 	switch (fork ()) {
 		case -1:
-			ais_done (AIS_DONE_FORK);
+			openais_exit_error (AIS_DONE_FORK);
 			break;
 		case 0:
 			/*
@@ -1076,14 +1054,14 @@ static void aisexec_libais_bind (int *server_fd)
 	libais_server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (libais_server_fd == -1) {
 		log_printf (LOG_LEVEL_ERROR ,"Cannot create libais client connections socket.\n");
-		ais_done (AIS_DONE_LIBAIS_SOCKET);
+		openais_exit_error (AIS_DONE_LIBAIS_SOCKET);
 	};
 
 	totemip_nosigpipe(libais_server_fd);
 	res = fcntl (libais_server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
-		ais_done (AIS_DONE_LIBAIS_SOCKET);
+		openais_exit_error (AIS_DONE_LIBAIS_SOCKET);
 	}
 
 #if !defined(OPENAIS_LINUX)
@@ -1103,7 +1081,7 @@ static void aisexec_libais_bind (int *server_fd)
 	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not bind AF_UNIX: %s.\n", strerror (errno));
-		ais_done (AIS_DONE_LIBAIS_BIND);
+		openais_exit_error (AIS_DONE_LIBAIS_BIND);
 	}
 	listen (libais_server_fd, SERVER_BACKLOG);
 
@@ -1176,76 +1154,14 @@ void message_source_set (
 
 struct totem_logging_configuration totem_logging_configuration;
 
-int service_handler_register (
-	struct openais_service_handler *handler,
-	struct openais_config *config)
-{
-	int res = 0;
-	assert (ais_service_handlers[handler->id] == NULL);
-	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
-	ais_service_handlers[handler->id] = handler;
-	if (ais_service_handlers[handler->id]->config_init_fn) {
-		res = ais_service_handlers[handler->id]->config_init_fn (config);
-	}
-	return (res);
-}
-
-int service_handler_init (
-	struct openais_service_handler *handler,
-	struct openais_config *config)
-{
-	int res = 0;
-	assert (ais_service_handlers[handler->id] != NULL);
-	log_printf (LOG_LEVEL_NOTICE, "Initializing service handler '%s'\n", handler->name);
-	if (ais_service_handlers[handler->id]->exec_init_fn) {
-		res = ais_service_handlers[handler->id]->exec_init_fn (config);
-	}
-	return (res);
-}
-
-void default_services_register (struct openais_config *openais_config)
-{
-	int i;
-
-	for (i = 0; i < openais_config->num_dynamic_services; i++) {
-		lcr_ifact_reference (
-			&openais_config->dynamic_services[i].handle,
-			openais_config->dynamic_services[i].name,
-			openais_config->dynamic_services[i].ver,
-			(void **)&openais_config->dynamic_services[i].iface_ver0,
-			(void *)0);
-
-		if (!openais_config->dynamic_services[i].iface_ver0) {
-			log_printf(LOG_LEVEL_ERROR, "AIS Component %s did not load.\n", openais_config->dynamic_services[i].name);
-			ais_done(AIS_DONE_DYNAMICLOAD);
-		} else {
-			log_printf(LOG_LEVEL_ERROR, "AIS Component %s loaded.\n", openais_config->dynamic_services[i].name);
-		}
-
-		service_handler_register (
-			openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
-			openais_config);
-	}
-
-}
-
-void default_services_init (struct openais_config *openais_config)
-{
-	int i;
-
-	for (i = 0; i < openais_config->num_dynamic_services; i++) {
-		service_handler_init (openais_config->dynamic_services[i].iface_ver0->openais_get_service_handler_ver0(),
-				      openais_config);
-	}
-}
-
 int main (int argc, char **argv)
 {
 	int libais_server_fd;
-	int res;
-
 	char *error_string;
 	struct openais_config openais_config;
+	unsigned int objdb_handle;
+	struct objdb_iface_ver0 *objdb;
+	int res;
 
 	memset(&this_non_loopback_ip, 0, sizeof(struct totem_ip_address));
 
@@ -1260,23 +1176,30 @@ int main (int argc, char **argv)
 //TODO	signal (SIGUSR2, sigusr2_handler);
 
 	/*
-	 * if totempg_initialize doesn't have root priveleges, it cannot
-	 * bind to a specific interface.  This only matters if
-	 * there is more then one interface in a system, so
-	 * in this case, only a warning is printed
+	 * Load the object database interface
 	 */
-	res = openais_main_config_read (&error_string, &openais_config, 1);
+	res = lcr_ifact_reference (
+		&objdb_handle,
+		"objdb",
+		0,
+		(void **)&objdb,
+		0);
+		
+	objdb->objdb_init ();
+	openais_service_default_objdb_set (objdb);
+
+	res = openais_main_config_read (objdb, &error_string, &openais_config, 1);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_MAINCONFIGREAD);
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = openais_amf_config_read (&error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_AMFCONFIGREAD);
+		openais_exit_error (AIS_DONE_AMFCONFIGREAD);
 	}
 
 	if (!openais_config.totem_config.interface_count) {
@@ -1284,26 +1207,26 @@ int main (int argc, char **argv)
 		if (res == -1) {
 			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 			log_printf (LOG_LEVEL_ERROR, error_string);
-			ais_done (AIS_DONE_MAINCONFIGREAD);
+			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 	}
 
 	res = totem_config_keyread ("/etc/ais/authkey", &openais_config.totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_MAINCONFIGREAD);
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_validate (&openais_config.totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_MAINCONFIGREAD);
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		ais_done (AIS_DONE_LOGSETUP);
+		openais_exit_error (AIS_DONE_LOGSETUP);
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc. and contributors.\n");
@@ -1326,8 +1249,12 @@ int main (int argc, char **argv)
 	openais_config.totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
 	openais_config.totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
-	default_services_register(&openais_config); 
-	
+	/*
+	 * if totempg_initialize doesn't have root priveleges, it cannot
+	 * bind to a specific interface.  This only matters if
+	 * there is more then one interface in a system, so
+	 * in this case, only a warning is printed
+	 */
 	totempg_initialize (
 		aisexec_poll_handle,
 		&openais_config.totem_config);
@@ -1346,7 +1273,8 @@ int main (int argc, char **argv)
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
-	default_services_init(&openais_config); 
+	openais_service_link_all (objdb, &openais_config);
+	
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);
 

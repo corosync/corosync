@@ -62,7 +62,7 @@ static char *log_levels[] = {
 };
 
 static char *log_services[] = {
-	"[ASSERT]",
+	"[ASSER]",
 	"[MAIN ]",
 	"[TOTEM]",
 	"[CLM  ]",
@@ -74,7 +74,8 @@ static char *log_services[] = {
 	"[EVS  ]",
 	"[SYNC ]",
 	"[YKD  ]",
-	"[CPG  ]"
+	"[CPG  ]",
+	"[SERV ]"
 };
 
 #define LOG_MODE_DEBUG      1

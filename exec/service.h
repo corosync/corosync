@@ -31,13 +31,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_HANDLERS_H_DEFINED
-#define OPENAIS_HANDLERS_H_DEFINED
+#ifndef OPENAIS_SERVICE_H_DEFINED
+#define OPENAIS_SERVICE_H_DEFINED
 
 #include <netinet/in.h>
 #include "mainconfig.h" /* openais_config */
-#include "main.h" 	/* conn_info */
 #include "totemip.h"
+#include "objdb.h"
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
 
@@ -66,13 +66,13 @@ struct openais_service_handler {
 	unsigned int private_data_size;
 	int (*lib_init_fn) (void *conn);
 	int (*lib_exit_fn) (void *conn);
-	struct openais_lib_handler *lib_handlers;
-	int lib_handlers_count;
-	struct openais_exec_handler *exec_handlers;
+	struct openais_lib_handler *lib_service;
+	int lib_service_count;
+	struct openais_exec_handler *exec_service;
 	int (*exec_init_fn) (struct openais_config *);
 	int (*config_init_fn) (struct openais_config *);
 	void (*exec_dump_fn) (void);
-	int exec_handlers_count;
+	int exec_service_count;
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
 		struct totem_ip_address *member_list, int member_list_entries,
@@ -90,4 +90,22 @@ struct openais_service_handler_iface_ver0 {
 	struct openais_service_handler *(*openais_get_service_handler_ver0) (void);
 };
 
-#endif /* HANDLERS_H_DEFINED */
+extern int openais_service_objdb_add (
+	struct objdb_iface_ver0 *objdb,
+	char *name,
+	int version);
+
+
+extern int openais_service_handler_register (
+	struct openais_service_handler *handler,
+	struct openais_config *config);
+
+extern int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb);
+
+extern int openais_service_link_all (
+	struct objdb_iface_ver0 *objdb,
+	struct openais_config *openais_config);
+
+extern struct openais_service_handler *ais_service[];
+
+#endif /* SERVICE_H_DEFINED */

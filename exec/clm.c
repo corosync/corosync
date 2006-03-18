@@ -67,7 +67,7 @@
 #include "totempg.h"
 #include "main.h"
 #include "mempool.h"
-#include "handlers.h"
+#include "service.h"
 
 #define LOG_SERVICE LOG_SERVICE_CLM
 #include "print.h"
@@ -157,7 +157,7 @@ struct clm_pd {
 /*
  * Executive Handler Definition
  */
-static struct openais_lib_handler clm_lib_handlers[] =
+static struct openais_lib_handler clm_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_clm_clustertrack,
@@ -185,7 +185,7 @@ static struct openais_lib_handler clm_lib_handlers[] =
 	}
 };
 
-static struct openais_exec_handler clm_exec_handlers[] =
+static struct openais_exec_handler clm_exec_service[] =
 {
 	{
 		.exec_handler_fn		= message_handler_req_exec_clm_nodejoin,
@@ -199,12 +199,12 @@ struct openais_service_handler clm_service_handler = {
 	.private_data_size			= sizeof (struct clm_pd),
 	.lib_init_fn				= clm_lib_init_fn,
 	.lib_exit_fn				= clm_lib_exit_fn,
-	.lib_handlers				= clm_lib_handlers,
-	.lib_handlers_count			= sizeof (clm_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service				= clm_lib_service,
+	.lib_service_count			= sizeof (clm_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn				= clm_exec_init_fn,
 	.exec_dump_fn				= NULL,
-	.exec_handlers				= clm_exec_handlers,
-	.exec_handlers_count		= sizeof (clm_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service				= clm_exec_service,
+	.exec_service_count		= sizeof (clm_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn					= clm_confchg_fn,
 	.sync_init					= clm_sync_init,
 	.sync_process				= clm_sync_process,
@@ -215,7 +215,7 @@ struct openais_service_handler clm_service_handler = {
 /*
  * Dynamic loader definition
  */
-struct openais_service_handler *clm_get_service_handler_ver0 (void);
+static struct openais_service_handler *clm_get_service_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
 	.openais_get_service_handler_ver0		= clm_get_service_handler_ver0
@@ -240,7 +240,7 @@ struct lcr_comp clm_comp_ver0 = {
 	.ifaces					= openais_clm_ver0
 };
 
-struct openais_service_handler *clm_get_service_handler_ver0 (void)
+static struct openais_service_handler *clm_get_service_handler_ver0 (void)
 {
 	return (&clm_service_handler);
 }

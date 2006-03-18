@@ -45,6 +45,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
+#include "service.h"
 #include "../include/saAis.h"
 #include "../include/saLck.h"
 #include "../include/ipc_lck.h"
@@ -205,7 +206,7 @@ struct lck_pd {
 /*
  * Executive Handler Definition
  */
-static struct openais_lib_handler lck_lib_handlers[] =
+static struct openais_lib_handler lck_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceopen,
@@ -258,7 +259,7 @@ static struct openais_lib_handler lck_lib_handlers[] =
 };
 
 
-static struct openais_exec_handler lck_exec_handlers[] = {
+static struct openais_exec_handler lck_exec_service[] = {
 	{
 		.exec_handler_fn		= message_handler_req_exec_lck_resourceopen,
 	},
@@ -285,11 +286,11 @@ struct openais_service_handler lck_service_handler = {
 	.private_data_size		= sizeof (struct lck_pd),
 	.lib_init_fn			= lck_lib_init_fn,
 	.lib_exit_fn			= lck_lib_exit_fn,
-	.lib_handlers			= lck_lib_handlers,
-	.lib_handlers_count		= sizeof (lck_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service			= lck_lib_service,
+	.lib_service_count		= sizeof (lck_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= lck_exec_init_fn,
-	.exec_handlers			= lck_exec_handlers,
-	.exec_handlers_count		= sizeof (lck_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service			= lck_exec_service,
+	.exec_service_count		= sizeof (lck_exec_service) / sizeof (struct openais_exec_handler),
 	.exec_dump_fn			= NULL,
 	.confchg_fn			= lck_confchg_fn,
 	.sync_init			= NULL, 

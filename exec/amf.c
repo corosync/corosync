@@ -63,7 +63,7 @@ int waiting = 0;
 #include "util.h"
 #include "amfconfig.h"
 #include "main.h"
-#include "handlers.h"
+#include "service.h"
 
 #define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
@@ -280,7 +280,7 @@ struct clc_interface *clc_interfaces[4] = {
 /*
  * Service Handler Definition
  */
-static struct openais_lib_handler amf_lib_handlers[] =
+static struct openais_lib_handler amf_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_amf_componentregister,
@@ -368,7 +368,7 @@ static struct openais_lib_handler amf_lib_handlers[] =
 	},
 };
 
-static struct openais_exec_handler amf_exec_handlers[] = {
+static struct openais_exec_handler amf_exec_service[] = {
 	{
 		.exec_handler_fn	= message_handler_req_exec_amf_operational_state_comp_set,
 	},
@@ -396,11 +396,11 @@ struct openais_service_handler amf_service_handler = {
 	.private_data_size		= sizeof (struct amf_pd),
 	.lib_init_fn			= amf_lib_init_fn,
 	.lib_exit_fn			= amf_lib_exit_fn,
-	.lib_handlers			= amf_lib_handlers,
-	.lib_handlers_count		= sizeof (amf_lib_handlers) / sizeof (struct openais_lib_handler),
+	.lib_service			= amf_lib_service,
+	.lib_service_count		= sizeof (amf_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= amf_exec_init_fn,
-	.exec_handlers			= amf_exec_handlers,
-	.exec_handlers_count		= sizeof (amf_exec_handlers) / sizeof (struct openais_exec_handler),
+	.exec_service			= amf_exec_service,
+	.exec_service_count		= sizeof (amf_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn			= amf_confchg_fn,
 };
 

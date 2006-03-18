@@ -37,6 +37,7 @@
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "totempg.h"
+#include "objdb.h"
 
 #ifndef MAINCONFIG_H_DEFINED
 #define MAINCONFIG_H_DEFINED
@@ -71,13 +72,13 @@ struct openais_config {
 	unsigned int amf_enabled;
 
 	struct totem_config totem_config;
-	struct dynamic_service dynamic_services[MAX_DYNAMIC_SERVICES];
-	int num_dynamic_services;
 };
 
 extern char *strstr_rs (const char *haystack, const char *needle);
 
-extern int openais_main_config_read (char **error_string,
+extern int openais_main_config_read (
+	struct objdb_iface_ver0 *objdb,
+	char **error_string,
 	struct openais_config *openais_config,
 	int interface_max);
 	
