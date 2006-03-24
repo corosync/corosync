@@ -471,7 +471,7 @@ int totem_config_validate (
 
 parse_error:
 	sprintf (error_string_response,
-		"parse error in /etc/ais/openais.conf: %s\n", error_reason);
+		"parse error in %s/openais.conf: %s\n", OPENAIS_CONFDIR, error_reason);
 	*error_string = error_string_response;
 	return (-1);
 }

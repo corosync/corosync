@@ -1209,7 +1209,7 @@ int main (int argc, char **argv)
 		}
 	}
 
-	res = totem_config_keyread ("/etc/ais/authkey", &openais_config.totem_config, &error_string);
+	res = totem_config_keyread (OPENAIS_CONFDIR "/authkey", &openais_config.totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);

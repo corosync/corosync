@@ -64,7 +64,7 @@ int main (void) {
 	 */
 	res = read (random_fd, key, sizeof (key));
 	if (res == -1) {
-		perror ("Could not read /etc/ais/authkey");
+		perror ("Could not read /dev/random");
 		exit (1);
 	}
 

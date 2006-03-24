@@ -225,6 +225,11 @@ void write_pid (void) {
 	
 	sprintf (filename,  "/var/run/openais_cleanup_%s", compNameGlobal.value);
 	fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
+	if (fd == -1) {
+		printf("Failed using /var/run for pid file, using /tmp\n");
+		sprintf (filename,  "/tmp/openais_cleanup_%s", compNameGlobal.value);
+		fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
+	}
 	sprintf (pid, "%d", getpid());
 	res = write (fd, pid, strlen (pid));
 	close (fd);

@@ -39,15 +39,25 @@ instantiate() {
 }
 
 terminate() {
-	echo clc_cli_script terminating up component $SA_AMF_COMPONENT_NAME on PID `cat /var/run/openais_cleanup_$SA_AMF_COMPONENT_NAME`
-	kill -15 `cat /var/run/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+	if [ -w /var/run ]; then
+		PIDFILEPATH=/var/run
+	else
+		PIDFILEPATH=/tmp
+	fi
+	echo clc_cli_script terminating up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+	kill -15 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	RETVAL=$?
 	return $RETVAL
 }
 
 cleanup() {
-	echo clc_cli_script cleaning up component $SA_AMF_COMPONENT_NAME on PID `cat /var/run/openais_cleanup_$SA_AMF_COMPONENT_NAME`
-	kill -9 `cat /var/run/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+	if [ -w /var/run ]; then
+		PIDFILEPATH=/var/run
+	else
+		PIDFILEPATH=/tmp
+	fi
+	echo clc_cli_script cleaning up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+	kill -9 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	RETVAL=$?
 	return $RETVAL
 }
