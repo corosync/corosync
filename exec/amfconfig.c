@@ -61,7 +61,10 @@ typedef enum {
 	AMF_GROUP,
 	AMF_UNIT,
 	AMF_COMPONENT,
+        AMF_COMPONENT_CSI_TYPE_NAMES,
 	AMF_SERVICEINSTANCE,
+        AMF_SERVICEINSTANCE_CSIDESCRIPTOR,
+        AMF_SERVICEINSTANCE_CSIDESCRIPTOR_NAMEVALUE,
 	AMF_HEALTHCHECK
 } amf_parse_t;
 
@@ -224,8 +227,13 @@ extern int openais_amf_config_read (char **error_string)
 	struct amf_comp *amf_comp = 0;
 	struct amf_si *amf_si = 0;
 	struct amf_healthcheck *amf_healthcheck = 0;
+        struct amf_comp_csi_type_name *csi_type_name = 0;
+        struct amf_csi *amf_csi = 0;
+        struct amf_csi_name_value *csi_name_value;
+
 
 	fp = fopen (OPENAIS_CONFDIR "/groups.conf", "r");
+
 	if (fp == 0) {
 		sprintf (error_string_response,
 			"Can't read %s/groups.conf file reason = (%s).\n",
@@ -386,6 +394,7 @@ extern int openais_amf_config_read (char **error_string)
 
 				list_init (&amf_comp->comp_list);
 				list_init (&amf_comp->healthcheck_list);
+                                list_init (&amf_comp->csi_type_name_head);
 				list_add_tail (&amf_comp->comp_list, &amf_unit->comp_head);
 
 				memset (amf_comp->clccli_path, 0, sizeof (&amf_comp->clccli_path));
@@ -478,6 +487,15 @@ extern int openais_amf_config_read (char **error_string)
 			if ((loc = strstr_rs (line, "bn=")) != 0) {
 				strcpy (amf_comp->binary_name, loc);
 			} else
+			if ((loc = strstr_rs (line, "csi_type_name{")) != 0) {
+                                csi_type_name =
+                                        (struct amf_comp_csi_type_name*)mempool_malloc (sizeof(struct amf_comp_csi_type_name));
+
+                                list_init(&csi_type_name->list);
+                                list_add_tail (&csi_type_name->list, &amf_comp->csi_type_name_head);
+
+                                current_parse = AMF_COMPONENT_CSI_TYPE_NAMES;
+                        } else
 			if (strstr_rs (line, "}")) {
 				current_parse = AMF_UNIT;
 			} else {
@@ -485,16 +503,78 @@ extern int openais_amf_config_read (char **error_string)
 			}
 			break;
 
+                case AMF_COMPONENT_CSI_TYPE_NAMES:
+                        if ((loc = strstr_rs (line, "name=")) != 0) {
+                                setSaNameT(&csi_type_name->name, loc);
+                        } else
+                        if ((loc = strstr_rs (line, "csi_type_name{")) != 0) {
+                                csi_type_name =
+                                (struct amf_comp_csi_type_name*)mempool_malloc (sizeof(struct amf_comp_csi_type_name));
+
+                                list_init(&csi_type_name->list);
+                                list_add_tail (&csi_type_name->list, &amf_comp->csi_type_name_head);
+
+                                current_parse = AMF_COMPONENT_CSI_TYPE_NAMES;
+                        } else
+                        if (strstr_rs (line, "}")) {
+                                current_parse = AMF_COMPONENT;
+                        } else {
+                                goto parse_error;
+                        }
+                        break;
 		case AMF_SERVICEINSTANCE:
 			if ((loc = strstr_rs (line, "name=")) != 0) {
 				setSaNameT (&amf_si->name, loc);
 			} else
+                        if ((loc = strstr_rs (line, "csi_descriptor{")) != 0) {
+                                amf_csi = (struct amf_csi*)mempool_malloc (sizeof(struct amf_csi));
+
+                                list_init(&amf_csi->list);
+                                list_init(&amf_csi->name_value_head);
+                                list_add_tail (&amf_csi->list, &amf_si->csi_head);
+
+                                current_parse = AMF_SERVICEINSTANCE_CSIDESCRIPTOR;
+                        } else
 			if (strstr_rs (line, "}")) {
 				current_parse = AMF_GROUP;
 			} else {
 				goto parse_error;
 			}
 			break;
+                case AMF_SERVICEINSTANCE_CSIDESCRIPTOR:
+                        if ((loc = strstr_rs (line, "csi_name=")) != 0) {
+                                setSaNameT (&amf_csi->name, loc);
+                        } else
+                        if ((loc = strstr_rs (line, "type_name=")) != 0) {
+                                setSaNameT (&amf_csi->type_name, loc);
+                        } else
+                        if ((loc = strstr_rs (line, "name_value{")) != 0) {
+                                 csi_name_value = (struct amf_csi_name_value*)mempool_malloc (sizeof(struct amf_csi_name_value));
+
+                                 list_init(&csi_name_value->list);
+                                 list_add_tail (&csi_name_value->list, &amf_csi->name_value_head);
+
+                                 current_parse = AMF_SERVICEINSTANCE_CSIDESCRIPTOR_NAMEVALUE;
+                        } else
+                        if (strstr_rs (line, "}")) {
+                                current_parse = AMF_SERVICEINSTANCE;
+                        } else {
+                                goto parse_error;
+                        }
+                        break;
+                case AMF_SERVICEINSTANCE_CSIDESCRIPTOR_NAMEVALUE:
+                        if ((loc = strstr_rs (line, "name=")) != 0) {
+                                strcpy(csi_name_value->name, loc);
+                        } else
+                        if ((loc = strstr_rs (line, "value=")) != 0) {
+                                strcpy(csi_name_value->value, loc);
+                        } else
+                        if (strstr_rs (line, "}")) {
+                                current_parse = AMF_SERVICEINSTANCE_CSIDESCRIPTOR;
+                        } else {
+                                goto parse_error;
+                        }
+                        break;
 
 		case AMF_HEALTHCHECK:
 			if ((loc = strstr_rs (line, "key=")) != 0) {

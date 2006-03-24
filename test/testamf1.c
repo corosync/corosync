@@ -55,6 +55,8 @@ SaAmfHealthcheckKeyT key0 = {
 	.keyLen = 4
 };
 SaNameT compNameGlobal;
+int good_health = 0;
+int good_health_limit = 0;
 
 void printSaNameT (SaNameT *name)
 {
@@ -80,7 +82,9 @@ void HealthcheckCallback (SaInvocationT invocation,
 {
 	SaAisErrorT res;
 
-	healthcheck_no++;
+	if( !good_health && healthcheck_no++);
+
+
 /*
 	printf ("Healthcheck %u for key '%s' for component ",
 		healthcheck_no, healthcheckKey->key);
@@ -88,7 +92,7 @@ void HealthcheckCallback (SaInvocationT invocation,
 	printSaNameT ((SaNameT *)compName);
 	printf ("\n");
 */
-	if (healthcheck_no == 10) {
+	if (healthcheck_no == good_health_limit ) {
 printf ("COMPONENT REPORTING ERROR %s\n", compNameGlobal.value);
 		saAmfComponentErrorReport (handle, compName, 0, SA_AMF_COMPONENT_RESTART, 0);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
@@ -98,12 +102,12 @@ printf ("COMPONENT DONE REPORTING ERROR\n");
 	}
 
 /*
-	if (healthcheck_no < 10) {
+	if (healthcheck_no < good_health_limit) {
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 	}
 */
 /*
-	if (healthcheck_no == 3) {
+	if (healthcheck_no == good_health_limit) {
 		res = saAmfHealthcheckStop (handle, &compNameGlobal, &key0);
 		stop = 1;
 	}
@@ -119,12 +123,30 @@ void ComponentTerminateCallback (
 	exit (0);
 }
 
+#if 1
+    #include <sys/time.h>
+    #define TRU "%d"
+    #define TRS "%s" 
+    #define TR(format,x) do {                               \
+	struct timeval t;\
+	gettimeofday(&t,NULL);                                   \ 	
+	printf("%s:%d: %s : %d : %u: %u :%s : " format "\n",\
+		__FILE__,__LINE__,__FUNCTION__,             \
+		getpid(),(int)t.tv_sec, (int)t.tv_usec,#x,x);          \
+    }while(0)
+#else
+    #define TRU "%d"
+    #define TRS "%s" 
+    #define TR(format,x)
+#endif
+
 void CSISetCallback (
 	SaInvocationT invocation,
 	const SaNameT *compName,
 	SaAmfHAStateT haState,
 	SaAmfCSIDescriptorT *csiDescriptor)
 {
+
 	int res;
 	switch (haState) {
 	case SA_AMF_HA_ACTIVE:
@@ -136,17 +158,54 @@ void CSISetCallback (
 		printf ("'");
  		printf (" requested to enter hastate SA_AMF_ACTIVE.\n");
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
-		break;
+		int i;
+		TR(TRU, csiDescriptor->csiAttr.number);
+		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
 
+		    if( strcmp(csiDescriptor->csiAttr.attr[i].attrName, "good_health_limit") == 0){
+			good_health = strcmp(csiDescriptor->csiAttr.attr[i].attrValue, "0") ? 0 : 1;
+			good_health_limit = atoi(csiDescriptor->csiAttr.attr[i].attrValue);
+			
+		    }
+
+ 
+		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrName);
+		    TR(TRS, csiDescriptor->csiAttr.attr[i].attrValue);
+		} 
+
+		TR(TRU, csiDescriptor->csiFlags);
+
+
+		printSaNameT((SaNameT*) &csiDescriptor->csiStateDescriptor.activeDescriptor.activeCompName);
+		TR(TRU, csiDescriptor->csiStateDescriptor.activeDescriptor.transitionDescriptor);
+
+		break;  
+         
 	case SA_AMF_HA_STANDBY:
 		printf ("CSISetCallback:"); 
 		printf ("for CSI '");
-		printSaNameT ((SaNameT *)compName);
+		printSaNameT ((SaNameT *)&csiDescriptor->csiName);
 		printf ("' for component ");
 		printSaNameT ((SaNameT *)compName);
 		printf ("'");
 		printf (" requested to enter hastate SA_AMF_STANDBY.\n");
-		saAmfResponse (handle, invocation, SA_AIS_OK);
+		res = saAmfResponse (handle, invocation, SA_AIS_OK);
+		
+		TR(TRU,csiDescriptor->csiAttr.number);
+		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
+		    if(!strcmp(csiDescriptor->csiAttr.attr[i].attrName, "good_health") && 
+		       !strcmp(csiDescriptor->csiAttr.attr[i].attrValue, "true")){
+			good_health = 1;
+		    }
+		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrName);
+		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrValue);
+		} 
+		printf("%s:%d:%s:%d\n",__FILE__,__LINE__,__FUNCTION__,res);
+		TR(TRU,csiDescriptor->csiFlags);
+
+		printSaNameT((SaNameT*) &csiDescriptor->csiStateDescriptor.standbyDescriptor.activeCompName);
+		TR(TRU,csiDescriptor->csiStateDescriptor.standbyDescriptor.standbyRank);
+
 		break;
 	case SA_AMF_HA_QUIESCED:
 		break;
@@ -216,7 +275,7 @@ static struct sched_param sched_param = {
 void sigintr_handler (int signum) {
 	exit (0);
 }
-
+ 
 void write_pid (void) {
 	char pid[256];
 	char filename[256];

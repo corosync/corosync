@@ -51,6 +51,7 @@
 #include "../include/ipc_amf.h"
 #include "util.h"
 
+
 struct res_overlay {
 	struct res_header header;
 	char data[4096];
@@ -173,6 +174,7 @@ saAmfSelectionObjectGet (
 	return (SA_AIS_OK);
 }
 
+
 SaAisErrorT
 saAmfDispatch (
 	SaAmfHandleT amfHandle,
@@ -235,6 +237,7 @@ saAmfDispatch (
 		if (amfInstance->finalize == 1) {
 			error = SA_AIS_OK;
 			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
+
 			goto error_unlock;
 		}
 
@@ -251,21 +254,27 @@ saAmfDispatch (
 		if (ufds.revents & POLLIN) {
 			/*
 			 * Queue empty, read response from socket
-			 */
+			 */ 
 			error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.header,
 				sizeof (struct res_header));
+
 			if (error != SA_AIS_OK) {
+
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (struct res_header)) {
+
 				error = saRecvRetry (amfInstance->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (struct res_header));
+
 				if (error != SA_AIS_OK) {
+
 					goto error_unlock;
 				}
 			}
 		} else {
 			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
+
 			continue;
 		}
 
@@ -274,12 +283,14 @@ saAmfDispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that amfFinalize has been called in another thread.
 		 */
+
 		memcpy (&callbacks, &amfInstance->callbacks, sizeof (SaAmfCallbacksT));
 		pthread_mutex_unlock (&amfInstance->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming response
 		 */
+
 		switch (dispatch_data.header.id) {
 
 		case MESSAGE_RES_AMF_HEALTHCHECKCALLBACK:
@@ -292,14 +303,49 @@ saAmfDispatch (
 			break;
 
 		case MESSAGE_RES_AMF_CSISETCALLBACK:
+		    {
 			res_lib_amf_csisetcallback = (struct res_lib_amf_csisetcallback *)&dispatch_data;
+
+
+
+			SaAmfCSIDescriptorT csi_descriptor;
+
+			csi_descriptor.csiFlags = res_lib_amf_csisetcallback->csiFlags;
+			memcpy(&csi_descriptor.csiName, &res_lib_amf_csisetcallback->csiName, 
+			       sizeof(SaNameT));
+			csi_descriptor.csiStateDescriptor = res_lib_amf_csisetcallback->csiStateDescriptor;
+			csi_descriptor.csiAttr.number = res_lib_amf_csisetcallback->number;
+
+			SaAmfCSIAttributeT* csi_attribute_array = malloc( sizeof( SaAmfCSIAttributeT ) * 
+									  csi_descriptor.csiAttr.number );
+
+			if( csi_attribute_array == 0) {
+			    return SA_AIS_ERR_LIBRARY;
+			}
+			csi_descriptor.csiAttr.attr = csi_attribute_array;
+
+			char* p = res_lib_amf_csisetcallback->csi_attr_buf;
+			int i;
+			
+			for (i=0; i<csi_descriptor.csiAttr.number; i++) {
+			    csi_attribute_array[i].attrName = p;
+
+			    p += strlen(p) + 1;
+			    csi_attribute_array[i].attrValue = p;
+
+			    p += strlen(p) + 1;
+			}
+			
+
 			callbacks.saAmfCSISetCallback (
 				res_lib_amf_csisetcallback->invocation,
 				&res_lib_amf_csisetcallback->compName,
 				res_lib_amf_csisetcallback->haState,
-				&res_lib_amf_csisetcallback->csiDescriptor);
-			break;
+				&csi_descriptor);
 
+			free(csi_attribute_array);
+			break;
+		    }
 		case MESSAGE_RES_AMF_CSIREMOVECALLBACK:
 			res_lib_amf_csiremovecallback = (struct res_lib_amf_csiremovecallback *)&dispatch_data;
 			callbacks.saAmfCSIRemoveCallback (

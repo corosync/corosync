@@ -386,7 +386,7 @@ static struct openais_exec_handler amf_exec_service[] = {
 	}
 };
 
-
+void amf_dump(void);
 /*
  * Exports the interface for the service
  */
@@ -402,6 +402,7 @@ struct openais_service_handler amf_service_handler = {
 	.exec_service			= amf_exec_service,
 	.exec_service_count		= sizeof (amf_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn			= amf_confchg_fn,
+    .exec_dump_fn       = amf_dump
 };
 
 struct openais_service_handler *amf_get_handler_ver0 (void);
@@ -1370,41 +1371,148 @@ void csi_comp_set_callback (
 	struct amf_csi *csi,
 	struct amf_pg *pg)
 {
-	struct res_lib_amf_csisetcallback res_lib_amf_csisetcallback;
-	struct csi_set_callback_data *csi_set_callback_data;
+    struct list_head *name_value_list;
+    struct res_lib_amf_csisetcallback* res_lib_amf_csisetcallback;     
+    void*  p;
 
-	printf ("\t%s\n",
-		getSaNameT (&comp->name));
-
-	res_lib_amf_csisetcallback.header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
-	res_lib_amf_csisetcallback.header.size = sizeof (struct res_lib_amf_csisetcallback);
-	res_lib_amf_csisetcallback.header.error = SA_AIS_OK;
+    struct csi_set_callback_data *csi_set_callback_data;
+    struct amf_csi_name_value *name_value;
 
 
-	memcpy (&res_lib_amf_csisetcallback.compName,
+
+    size_t char_legnth_of_csi_attrs=0;
+    size_t num_of_csi_attrs=0;
+    printf("\t   Assigning CSI %s to component\n", getSaNameT (&csi->name));
+
+    for (name_value_list = csi->name_value_head.next;
+	name_value_list != &csi->name_value_head;
+	name_value_list = name_value_list->next) {
+	num_of_csi_attrs++;
+	name_value = list_entry (name_value_list, struct amf_csi_name_value, list);
+	printf("\t\tname = %s, value = %s\n", name_value->name, name_value->value);
+	char_legnth_of_csi_attrs += strlen(name_value->name);
+	char_legnth_of_csi_attrs += strlen(name_value->value);
+	char_legnth_of_csi_attrs += 2;
+    }
+    p = malloc(sizeof(struct res_lib_amf_csisetcallback)+
+	       char_legnth_of_csi_attrs);
+
+
+    assert(p);
+
+    res_lib_amf_csisetcallback = (struct res_lib_amf_csisetcallback*)p;
+
+
+
+
+    
+    /* Address of the buffer containing the Csi name value pair  */
+    char* csi_attribute_buf = res_lib_amf_csisetcallback->csi_attr_buf;
+				       
+
+
+
+
+   /* Byteoffset start att the zero byte  */
+   unsigned int byte_offset = 0;
+
+   for (name_value_list = csi->name_value_head.next;
+	 name_value_list != &csi->name_value_head;
+	 name_value_list = name_value_list->next) {
+       
+	  name_value = list_entry (name_value_list, struct amf_csi_name_value, list);
+	  
+	  strcpy(&csi_attribute_buf[byte_offset],
+		 (char*)name_value->name);
+
+	  byte_offset += strlen(name_value->name) + 1;
+
+	  strcpy(&csi_attribute_buf[byte_offset],
+		 (char*)name_value->value);
+
+	  byte_offset += strlen(name_value->value) + 1;
+   }
+
+   res_lib_amf_csisetcallback->number = num_of_csi_attrs;
+      
+
+   res_lib_amf_csisetcallback->csiFlags = SA_AMF_CSI_ADD_ONE;  
+
+   switch (comp->unit->requested_ha_state) {
+      case SA_AMF_HA_ACTIVE:
+	  {
+	      res_lib_amf_csisetcallback->csiStateDescriptor.activeDescriptor.activeCompName.length = 0;
+	      res_lib_amf_csisetcallback->csiStateDescriptor.activeDescriptor.transitionDescriptor =
+		  SA_AMF_CSI_NEW_ASSIGN; 
+	      break;
+	  }
+      case  SA_AMF_HA_STANDBY:
+	  {
+	      
+	      res_lib_amf_csisetcallback->csiStateDescriptor.standbyDescriptor.activeCompName.length = 0; 
+	      res_lib_amf_csisetcallback->csiStateDescriptor.standbyDescriptor.standbyRank =  1;
+
+
+	      break;
+	  }
+      case  SA_AMF_HA_QUIESCED:
+	  {
+	      /*TODO*/
+	      break;
+	  }
+      case SA_AMF_HA_QUIESCING:
+	  {
+	      /*TODO*/
+	      break;
+	  }
+      default:
+	  {
+	      assert(SA_AMF_HA_ACTIVE||SA_AMF_HA_STANDBY||SA_AMF_HA_QUIESCING||SA_AMF_HA_QUIESCED);	      
+	      break;
+	  }
+
+      }
+
+	 
+      res_lib_amf_csisetcallback->header.id = 
+	  MESSAGE_RES_AMF_CSISETCALLBACK;
+
+      res_lib_amf_csisetcallback->header.size = 
+	  sizeof (struct res_lib_amf_csisetcallback)+
+	  char_legnth_of_csi_attrs;
+
+      res_lib_amf_csisetcallback->header.error = SA_AIS_OK;
+
+
+	memcpy (&res_lib_amf_csisetcallback->compName,
 		&comp->name, sizeof (SaNameT));
 
-	memcpy (&res_lib_amf_csisetcallback.csiDescriptor.csiName,
+	memcpy (&res_lib_amf_csisetcallback->csiName,
 		&csi->name, sizeof (SaNameT));
 
-	res_lib_amf_csisetcallback.haState = comp->unit->requested_ha_state;
-
+	res_lib_amf_csisetcallback->haState = comp->unit->requested_ha_state;
+	
 	csi_set_callback_data = malloc (sizeof (struct csi_set_callback_data));
 	assert (csi_set_callback_data); // TODO failure here of malloc
 	csi_set_callback_data->comp = comp;
 	csi_set_callback_data->csi = csi;
 	csi_set_callback_data->pg = pg;
-	printf ("pg is %p\n", pg);
+ 
 
-	res_lib_amf_csisetcallback.invocation =
+	res_lib_amf_csisetcallback->invocation =
 		invocation_create (
 		AMF_RESPONSE_CSISETCALLBACK,
 		csi_set_callback_data);
-				        
-	openais_conn_send_response (
-		openais_conn_partner_get (comp->conn),
-		&res_lib_amf_csisetcallback,
-		sizeof (struct res_lib_amf_csisetcallback));
+
+	
+	int result = openais_conn_send_response (
+	    openais_conn_partner_get (comp->conn),
+	    res_lib_amf_csisetcallback,
+	    res_lib_amf_csisetcallback->header.size);
+
+
+
+	free(p);
 }
 
 void pg_create (struct amf_si *si, struct amf_pg **pg_out)
@@ -1419,31 +1527,67 @@ void pg_create (struct amf_si *si, struct amf_pg **pg_out)
 	list_add (&pg->pg_list, &si->pg_head);
 	*pg_out = pg;
 }
-
-void csi_unit_set_callback (struct amf_csi *csi_in)
+void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
 {
-	struct list_head *list;
-	struct amf_comp *comp;
-	struct amf_pg *pg;
+    struct list_head *complist;
+    struct list_head *csilist;
+    struct list_head *typenamelist;
+    struct amf_csi *csi;
+    struct amf_pg *pg;
+    struct amf_comp *comp;
+    struct amf_comp_csi_type_name *type_name;
 
-	pg_create (csi_in->si, &pg);
-	// TODO remove si from csi data structure
+//    pg_create (csi_in->si, &pg);
+    // TODO remove si from csi data structure
 
-	printf ("assigning CSI %s to ",
-		getSaNameT (&csi_in->name));
+    printf ("assigning SI %s to ",
+        getSaNameT (&si->name));
 
-	printf ("SU %s for components:\n",
-		getSaNameT (&csi_in->unit->name));
-	for (list = csi_in->unit->comp_head.next;
-		list != &csi_in->unit->comp_head;
-		list = list->next) {
+    printf ("SU %s for components:\n",
+        getSaNameT (&unit->name));
 
-		comp = list_entry (list,
-			struct amf_comp, comp_list);
+    /*
+    ** for each component in SU, find a CSI in the SI with the same type
+    */
+    for (complist = unit->comp_head.next;
+        complist != &unit->comp_head;
+        complist = complist->next) {
 
-		csi_comp_set_callback (comp, csi_in, pg);
-	}
-}
+        comp = list_entry (complist, struct amf_comp, comp_list);
+
+        printf ("\t%s\n", getSaNameT (&comp->name));
+
+        int no_of_csi_types = 0;
+        for (typenamelist = comp->csi_type_name_head.next;
+             typenamelist != &comp->csi_type_name_head;
+             typenamelist = typenamelist->next) {
+
+                type_name = list_entry (typenamelist, struct amf_comp_csi_type_name, list);
+                no_of_csi_types++;
+                int no_of_assignments = 0;
+
+                for (csilist = si->csi_head.next;
+                      csilist != &si->csi_head;
+                      csilist = csilist->next) {
+
+                        csi = list_entry (csilist, struct amf_csi, list);
+
+                        if (!memcmp(csi->type_name.value, type_name->name.value, type_name->name.length)) {
+                                csi_comp_set_callback (comp, csi, pg);
+                                no_of_assignments++;
+                        }
+                }
+                if (no_of_assignments == 0) {
+                    printf ("\t   No CSIs of type %s configured?!!\n",
+                            getSaNameT (&type_name->name));
+                }
+        }
+        if (no_of_csi_types == 0) {
+            printf ("\t   No CSI types configured for %s ?!!\n",
+                    getSaNameT (&comp->name));
+                }
+    }
+} 
 
 void csi_comp_remove_callback (struct amf_comp *comp, struct amf_csi *csi)
 {
@@ -1701,7 +1845,6 @@ void csi_unit_create (struct amf_unit *unit, struct amf_si *si,
 void ha_state_unit_set (struct amf_unit *unit, struct amf_si *si,
 		SaAmfHAStateT ha_state)
 {
-	struct amf_csi *csi;
 
 	printf ("Assigning SI %s ", getSaNameT (&si->name));
 	printf ("to SU %s ", getSaNameT (&unit->name));
@@ -1709,9 +1852,7 @@ void ha_state_unit_set (struct amf_unit *unit, struct amf_si *si,
 
 	unit->requested_ha_state = ha_state;
 
-	csi_unit_create (unit, si, &csi);
-
-	csi_unit_set_callback (csi);
+	csi_unit_set_callback (unit, si);
 }
 
 
@@ -4744,12 +4885,13 @@ static char *hastate_ntoa (SaAmfHAStateT state)
 	return (str);
 }
 
-#ifdef COMPILE_OUT
 static void amf_dump_comp (struct amf_comp *component ,void *data)
 {
 	char	name[64];
 	int	level = LOG_LEVEL_NOTICE;
 	data = NULL;
+        struct list_head* type_name_list;
+        struct amf_comp_csi_type_name* type_name;
 
 	log_printf (level, "----------------\n" );
 	log_printf (level, "registered            = %d\n" ,component->registered);
@@ -4758,6 +4900,22 @@ static void amf_dump_comp (struct amf_comp *component ,void *data)
 	memset (name, 0 , sizeof(name));
 	memcpy (name, component->name.value, component->name.length);
 	log_printf (level, "name                  = %s\n" ,name );
+#if 1
+        log_printf (level, "csi type names\n");
+            for (type_name_list = component->csi_type_name_head.next;
+                    type_name_list != &component->csi_type_name_head;
+                    type_name_list = type_name_list->next) {
+
+                    type_name = list_entry (type_name_list,
+                            struct amf_comp_csi_type_name, list);
+
+                    log_printf (level, "   name      = %s\n" , type_name->name);
+            }
+#endif
+#if COMPILE_OUT
+	/*
+	*  TODO Change to correct state syntax and implement new ...state_ntoa
+	*/    
 	log_printf (level, "currentReadinessState = %s\n" ,readinessstate_ntoa (component->currentReadinessState));
 	log_printf (level, "newReadinessState     = %s\n" ,readinessstate_ntoa (component->newReadinessState));
 	log_printf (level, "currentHAState        = %s\n" ,hastate_ntoa (component->currentHAState));
@@ -4765,6 +4923,56 @@ static void amf_dump_comp (struct amf_comp *component ,void *data)
 	log_printf (level, "enabledUnlockedState  = %s\n" ,enabledunlockedstate_ntoa (component->enabledUnlockedState));
 	log_printf (level, "disabledUnlockedState = %s\n" ,disabledunlockedstate_ntoa (component->disabledUnlockedState));
 	log_printf (level, "probableCause         = %d\n" ,component->probableCause );
+#endif
+}
+
+void enumerate_components (
+	void (*function)(struct amf_comp *, void *data),
+	void *data)
+{
+	struct list_head *AmfGroupList;
+	struct list_head *AmfUnitList;
+	struct list_head *AmfComponentList;
+
+	struct amf_group *saAmfGroup;
+	struct amf_unit *AmfUnit;
+	struct amf_comp *AmfComponent;
+
+
+	/*
+	 * Search all groups
+	 */
+	for (AmfGroupList = amf_groupHead.next;
+		AmfGroupList != &amf_groupHead;
+		AmfGroupList = AmfGroupList->next) {
+
+		saAmfGroup = list_entry (AmfGroupList,
+			struct amf_group, group_list);
+
+		/*
+		 * Search all units
+		 */
+		for (AmfUnitList = saAmfGroup->unit_head.next;
+			AmfUnitList != &saAmfGroup->unit_head;
+			AmfUnitList = AmfUnitList->next) {
+
+			AmfUnit = list_entry (AmfUnitList,
+				struct amf_unit, unit_list);
+
+			/*
+			 * Search all components
+			 */
+			for (AmfComponentList = AmfUnit->comp_head.next;
+				AmfComponentList != &AmfUnit->comp_head;
+				AmfComponentList = AmfComponentList->next) {
+
+				AmfComponent = list_entry (AmfComponentList,
+					struct amf_comp, comp_list);
+
+				function (AmfComponent, data);
+			}
+		}
+	}
 }
 
 void amf_dump ( )
@@ -4774,4 +4982,4 @@ void amf_dump ( )
 
 	return;
 }
-#endif
+

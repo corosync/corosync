@@ -95,13 +95,21 @@ struct amf_unit {
 	enum escalation_levels escalation_level;
 };
 
+struct amf_csi_name_value {
+        struct list_head list;
+        char name[128];
+        char value[128];
+};
+
 struct amf_si;
 struct amf_csi {
 	SaNameT name;
+	SaNameT type_name;
 	struct list_head list;
 	struct amf_unit *unit;
 	struct list_head csi_list;
 	struct list_head unit_head;
+	struct list_head name_value_head;
 	struct amf_si *si;
 	int pg_set;
 };
@@ -173,6 +181,7 @@ struct amf_comp {
 
 	struct list_head comp_list;
 	struct list_head healthcheck_list;
+	struct list_head csi_type_name_head;
 
 	enum clc_component_types comptype;
 
@@ -191,6 +200,11 @@ struct amf_comp {
 	OpenaisCfgReadinessStateT readiness_state;
 	SaAmfHAStateT ha_state;
 	OpenaisCfgPresenceStateT presence_state;
+};
+
+struct amf_comp_csi_type_name {
+	struct list_head list;
+        SaNameT name;
 };
 
 extern struct list_head amf_group_head;

@@ -99,8 +99,9 @@ typedef union {
 } SaAmfCSIStateDescriptorT;
 
 typedef struct {
-	SaUint8T *attrName;
-	SaUint8T *attrValue;
+    SaUint8T *attrName;
+    SaUint8T *attrValue;
+
 } SaAmfCSIAttributeT;
 
 typedef struct {

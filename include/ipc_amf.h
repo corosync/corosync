@@ -244,12 +244,24 @@ struct res_lib_amf_componentterminatecallback {
 
 #endif
 
+/* struct res_lib_amf_csisetcallback {        */
+/*         struct res_header header;          */
+/*         SaInvocationT invocation;          */
+/*         SaNameT compName;                  */
+/*         SaAmfHAStateT haState;             */
+/*         SaAmfCSIDescriptorT csiDescriptor; */
+/* };                                         */
+
 struct res_lib_amf_csisetcallback {
 	struct res_header header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfHAStateT haState;
-	SaAmfCSIDescriptorT csiDescriptor;
+	SaAmfCSIFlagsT csiFlags;
+	SaNameT csiName;
+	SaAmfCSIStateDescriptorT csiStateDescriptor;
+	SaUint32T number;
+	char csi_attr_buf[1]; /* Actual length will be calculated  */
 };
 
 struct res_lib_amf_csiremovecallback {
