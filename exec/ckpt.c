@@ -102,7 +102,7 @@ struct saCkptCheckpoint {
 	int expired;
 	int active_replica_set;
 	int sectionCount;
-	struct ckpt_refcnt ckpt_refcount[32]; // SHOULD BE PROCESSOR COUNT MAX	
+	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
 };
 
 struct iteration_entry {
@@ -520,7 +520,7 @@ struct lcr_iface openais_ckpt_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)&ckpt_service_handler_iface,
+		.interfaces			= (void **)(void *)&ckpt_service_handler_iface,
 	}
 };
 
@@ -2737,9 +2737,9 @@ static void message_handler_req_exec_ckpt_sectionwrite (
 		goto error_exit;
 	}
 
-/*
-	printf ("writing checkpoint section is %s\n", ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
-*/
+	log_printf (LOG_LEVEL_DEBUG, "writing checkpoint section is %s\n",
+		((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
+
 	/*
 	 * Find checkpoint section to be written
 	 */
@@ -3326,19 +3326,6 @@ static void message_handler_req_lib_ckpt_sectioncreate (
 				iovecs[1].iov_len);
 		}
 	
-#ifdef DEBUG
-printf ("LIBRARY SECTIONCREATE string is %s len is %d\n", (unsigned char *)iovecs[1].iov_base,
-	iovecs[1].iov_len);
-printf ("|\n");
-{ int i;
-	char *abc = iovecs[1].iov_base;
-for (i = 0; i < 14;i++) {
-
-	printf ("%c ", abc[i]);
-}
-}
-printf ("|\n");
-#endif
 		if (iovecs[1].iov_len > 0) {
 			log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
 			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
@@ -3757,7 +3744,7 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 	}
 
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb, iteration_handle,
-		(void **)&iteration_instance);
+		(void **)(void *)&iteration_instance);
 	if (res != 0) {
 		hdb_handle_destroy (&ckpt_pd->iteration_hdb, iteration_handle);
 		goto error_exit;
@@ -3841,7 +3828,7 @@ static void message_handler_req_lib_ckpt_sectioniterationfinalize (
 
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
 		req_lib_ckpt_sectioniterationfinalize->iteration_handle,
-		(void **)&iteration_instance);
+		(void **)(void *)&iteration_instance);
 	if (res != 0) {
 		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
@@ -3884,7 +3871,7 @@ static void message_handler_req_lib_ckpt_sectioniterationnext (
 	log_printf (LOG_LEVEL_DEBUG, "section iteration next\n");
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
 		req_lib_ckpt_sectioniterationnext->iteration_handle,
-		(void **)&iteration_instance);
+		(void **)(void *)&iteration_instance);
 	if (res != 0) {
 		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;

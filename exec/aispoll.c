@@ -465,7 +465,7 @@ void poll_print_state (
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
 		printf ("fd %d\n", poll_instance->poll_entries[i].ufd.fd);
 		printf ("events %d\n", poll_instance->poll_entries[i].ufd.events);
-		printf ("dispatch_fn %x\n", poll_instance->poll_entries[i].dispatch_fn);
+		printf ("dispatch_fn %p\n", poll_instance->poll_entries[i].dispatch_fn);
 		printf ("prio %d\n", poll_instance->poll_entries[i].prio);
 		}
 	}

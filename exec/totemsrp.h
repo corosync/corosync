@@ -37,11 +37,6 @@
 #include "totem.h"
 #include "aispoll.h"
 
-#define HEADERSIZE 78
-
-//#define TOTEMSRP_PACKET_SIZE_MAX	1404
-#define TOTEMSRP_PACKET_SIZE_MAX	9000 - HEADERSIZE
-
 typedef unsigned int totemsrp_handle;
 
 /*

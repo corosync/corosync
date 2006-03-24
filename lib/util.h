@@ -42,6 +42,14 @@
 
 #include "../include/ipc_gen.h"
 
+/* Debug macro
+ */
+#ifdef DEBUG
+	#define DPRINT(s) printf s
+#else
+	#define DPRINT(s)
+#endif
+		
 #ifdef SO_NOSIGPIPE
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0

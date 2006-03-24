@@ -263,7 +263,7 @@ struct lcr_iface openais_cpg_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)&cpg_service_handler_iface,
+		.interfaces			= (void **)(void *)&cpg_service_handler_iface,
 	}
 };
 

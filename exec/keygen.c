@@ -52,7 +52,7 @@ int main (void) {
 		exit (1);
 	}
 
-	printf ("Gathering %lu bits for key from /dev/random.\n", sizeof (key) * 8);
+	printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
 	random_fd = open ("/dev/random", O_RDONLY);
 	if (random_fd == -1) {
 		perror ("Is /dev/random present? Opening /dev/random");

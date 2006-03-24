@@ -232,7 +232,7 @@ int main (void) {
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 
-	size = 200000;
+	size = 1;
 
 	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
 		ckpt_benchmark (checkpointHandle, size);

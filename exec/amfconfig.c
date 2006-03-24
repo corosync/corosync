@@ -498,7 +498,7 @@ extern int openais_amf_config_read (char **error_string)
 
 		case AMF_HEALTHCHECK:
 			if ((loc = strstr_rs (line, "key=")) != 0) {
-				strcpy (amf_healthcheck->key.key, loc);
+				strcpy ((char *)amf_healthcheck->key.key, loc);
 				amf_healthcheck->key.keyLen = strlen (loc);
 			} else 
 			if ((loc = strstr_rs (line, "period=")) != 0) {

@@ -65,7 +65,11 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 
 static unsigned int g_component_handle;
 
+#ifdef OPENAIS_LINUX
 static int lcr_select_so (const struct dirent *dirent)
+#else
+static int lcr_select_so (struct dirent *dirent)
+#endif
 {
 	unsigned int len;
 
@@ -85,7 +89,7 @@ static inline struct lcr_component_instance *lcr_comp_find (
 	int *iface_number)
 {
 	struct lcr_component_instance *instance;
-	unsigned int component_handle;
+	unsigned int component_handle = 0;
 	int i;
 
 	/*
@@ -93,7 +97,7 @@ static inline struct lcr_component_instance *lcr_comp_find (
 	 */
 	hdb_iterator_reset (&lcr_component_instance_database);
 	while (hdb_iterator_next (&lcr_component_instance_database,
-		(void **)&instance, &component_handle) == 0) {
+		(void **)(void *)&instance, &component_handle) == 0) {
 
 		for (i = 0; i < instance->iface_count; i++) {
 			if ((strcmp (instance->ifaces[i].name, iface_name) == 0) &&
@@ -113,14 +117,14 @@ static inline int lcr_lib_loaded (
 	char *library_name)
 {
 	struct lcr_component_instance *instance;
-	unsigned int component_handle;
+	unsigned int component_handle = 0;
 
 	/*
 	 * Try to find interface in already loaded component
 	 */
 	hdb_iterator_reset (&lcr_component_instance_database);
 	while (hdb_iterator_next (&lcr_component_instance_database,
-		(void **)&instance, &component_handle) == 0) {
+		(void **)(void *)&instance, &component_handle) == 0) {
 
 		if (strcmp (instance->library_name, library_name) == 0) {
 			return (1);

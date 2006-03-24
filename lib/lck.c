@@ -339,7 +339,7 @@ saLckDispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct message_overlay dispatch_data;
 	struct res_lib_lck_lockwaitercallback *res_lib_lck_lockwaitercallback;
-	struct res_lib_lck_resourceopenasync *res_lib_lck_resourceopenasync;
+	struct res_lib_lck_resourceopenasync *res_lib_lck_resourceopenasync = NULL;
 	struct res_lib_lck_resourcelockasync *res_lib_lck_resourcelockasync;
 	struct res_lib_lck_resourceunlockasync *res_lib_lck_resourceunlockasync;
 
@@ -473,7 +473,7 @@ saLckDispatch (
 			}
 			break;
 		case MESSAGE_RES_LCK_RESOURCELOCKASYNC:
-printf ("grant\n");
+			DPRINT (("grant\n"));
 			if (callbacks.saLckLockGrantCallback == NULL) {
 				continue;
 			}

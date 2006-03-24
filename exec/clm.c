@@ -231,7 +231,7 @@ struct lcr_iface openais_clm_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor				= NULL,
-		.interfaces				= (void **)&clm_service_handler_iface,
+		.interfaces				= (void **)(void *)&clm_service_handler_iface,
 	}
 };
 
@@ -264,10 +264,10 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	sprintf ((char *)thisClusterNode.nodeAddress.value, "%s", totemip_print (this_ip));
 	thisClusterNode.nodeAddress.length = strlen ((char *)thisClusterNode.nodeAddress.value);
 	if (this_ip->family == AF_INET) {
-	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET;
+		thisClusterNode.nodeAddress.family = SA_CLM_AF_INET;
 	} else
 	if (this_ip->family == AF_INET6) {
-	thisClusterNode.nodeAddress.family = SA_CLM_AF_INET6;
+		thisClusterNode.nodeAddress.family = SA_CLM_AF_INET6;
 	} else {
 		assert (0);
 	}
@@ -275,7 +275,6 @@ static int clm_exec_init_fn (struct openais_config *openais_config)
 	strcpy ((char *)thisClusterNode.nodeName.value, (char *)thisClusterNode.nodeAddress.value);
 	thisClusterNode.nodeName.length = thisClusterNode.nodeAddress.length;
 	thisClusterNode.nodeId = this_ip->nodeid;
-	printf ("setting B to %x\n", this_ip->nodeid);
 	thisClusterNode.member = 1;
 	{
 #if defined(OPENAIS_LINUX)

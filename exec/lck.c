@@ -319,7 +319,7 @@ struct lcr_iface openais_lck_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)&lck_service_handler_iface,
+		.interfaces			= (void **)(void *)&lck_service_handler_iface,
 	}
 };
 
@@ -684,7 +684,7 @@ static void message_handler_req_exec_lck_resourceopen (
 			list_init (&resource_cleanup->list);
 			list_init (&resource_cleanup->resource_lock_list_head);
 			resource_cleanup->resource = resource;
-printf ("resource is %p\n", resource);
+			log_printf (LOG_LEVEL_DEBUG, "resource is %p\n", resource);
 			resource_cleanup->resource_handle = req_exec_lck_resourceopen->resource_handle;
 			list_add (
 				&resource_cleanup->list,

@@ -245,7 +245,7 @@ struct lcr_iface openais_evt_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor				= NULL,
-		.interfaces				= (void **)&evt_service_handler_iface,
+		.interfaces				= (void **)(void *)&evt_service_handler_iface,
 	}
 };
 
@@ -3341,7 +3341,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	unsigned int ret = 0;
 	unsigned int timer_del_status = 0;
 	void *ptr = 0;
-	uint32_t handle;
+	uint32_t handle = 0;
 	struct libevt_pd *esip;
 
 	esip = (struct libevt_pd *)openais_conn_private_data_get(ocp->ocp_conn);

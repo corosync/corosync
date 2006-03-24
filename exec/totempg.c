@@ -102,6 +102,7 @@ struct totempg_mcast_header {
 	short type;
 };
 
+
 /*
  * totempg_mcast structure
  *
@@ -138,6 +139,16 @@ struct totempg_mcast {
 static unsigned short mcast_packed_msg_lens[FRAME_SIZE_MAX];
 
 static int mcast_packed_msg_count = 0;
+
+/*
+ * Function and data used to log messages
+ */
+static int totempg_log_level_security;
+static int totempg_log_level_error;
+static int totempg_log_level_warning;
+static int totempg_log_level_notice;
+static int totempg_log_level_debug;
+static void (*totempg_log_printf) (int level, char *format, ...) = NULL;
 
 struct totem_config *totempg_totem_config;
 
@@ -472,13 +483,6 @@ static void totempg_deliver_fn (
 		iov_len -= 2;
 	}
 
-/*
-printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count);
-	for (i = 0; i < mcast->msg_count; i++) {
-		printf ("len[%d] = %d\n", i, msg_lens[i]);
-	}
-*/
-
 	/*
 	 * If the last message in the buffer is a fragment, then we
 	 * can't deliver it.  We'll first deliver the full messages
@@ -489,7 +493,6 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
 	continuation = mcast->continuation;
 	iov_delv.iov_base = &assembly->data[0];
 	iov_delv.iov_len = assembly->index + msg_lens[0];
-//	printf ("%d %d %d\n", msg_count, continuation, assembly->last_frag_num);
 
 	/*
 	 * Make sure that if this message is a continuation, that it
@@ -505,15 +508,17 @@ printf ("Message fragmented %d count %d\n", mcast->fragmented, mcast->msg_count)
 	if (continuation) {
 
 		if (continuation != assembly->last_frag_num) {
-			printf("Message continuation doesn't match previous frag e: %u - a: %u\n",
-					assembly->last_frag_num, continuation);
+			totempg_log_printf (totempg_log_level_error,
+				"Message continuation doesn't match previous frag e: %u - a: %u\n",
+				assembly->last_frag_num, continuation);
 			continuation = 0;
 		}
 
 		if ((assembly->index == 0) ||
 							(!continuation && assembly->index)) {
-			printf("Throwing away broken message: continuation %u, index %u\n",
-					continuation, assembly->index);
+			totempg_log_printf (totempg_log_level_error,
+				"Throwing away broken message: continuation %u, index %u\n",
+				continuation, assembly->index);
 			continuation = 0;
 		}
 		
@@ -611,6 +616,12 @@ int totempg_initialize (
 	int res;
 
 	totempg_totem_config = totem_config;
+	totempg_log_level_security = totem_config->totem_logging_configuration.log_level_security;
+	totempg_log_level_error = totem_config->totem_logging_configuration.log_level_error;
+	totempg_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
+	totempg_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
+	totempg_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	totempg_log_printf = totem_config->totem_logging_configuration.log_printf;
 
 	fragmentation_data = malloc (TOTEMPG_PACKET_SIZE);
 	if (fragmentation_data == 0) {
@@ -878,6 +889,7 @@ int totempg_groups_initialize (
 	instance->confchg_fn = confchg_fn;
 	instance->groups = 0;
 	instance->groups_cnt = 0;
+
 
 	hdb_handle_put (&totempg_groups_instance_database, *handle);
 

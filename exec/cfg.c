@@ -164,7 +164,7 @@ struct lcr_iface openais_cfg_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)&cfg_service_handler_iface,
+		.interfaces			= (void **)(void *)&cfg_service_handler_iface,
 	}
 };
 

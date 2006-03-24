@@ -355,7 +355,6 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			/* Retrieve mask
 			 */
 			if (ioctl(id_fd, SIOCGIFNETMASK, &ifrb) < 0) {
-				printf ("couldn't do ioctl\n");
 				break;
 			}
 			intf_addr_mask = (struct sockaddr_in *)&ifrb.ifr_addr;
@@ -370,7 +369,6 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				/* Get inteface state
 				 */
 				if (ioctl(id_fd, SIOCGIFFLAGS, &ifrb) < 0) {
-					printf ("couldn't do ioctl\n");
 					break;
 				}
 				*interface_up = ifrb.ifr_flags & IFF_UP;
@@ -379,7 +377,6 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				 */
 #ifdef SIOCGIFINDEX
 				if (ioctl(id_fd, SIOCGIFINDEX, &ifrb) < 0) {
-					printf ("couldn't do ioctl\n");
 					break;
 				}
 				*interface_num = ifrb.ifr_index;

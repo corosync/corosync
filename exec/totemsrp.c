@@ -1,4 +1,3 @@
-#define TRANSMITS_ALLOWED 16
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
  *
@@ -86,7 +85,7 @@
 #define QUEUE_RTR_ITEMS_SIZE_MAX		256 /* allow 512 retransmit items */
 #define RETRANS_MESSAGE_QUEUE_SIZE_MAX	500 /* allow 500 messages to be queued */
 #define RECEIVED_MESSAGE_QUEUE_SIZE_MAX	500 /* allow 500 messages to be queued */
-#define MAXIOVS					5	
+#define MAXIOVS							5	
 #define RETRANSMIT_ENTRIES_MAX			30
 #define MISSING_MCAST_WINDOW			128
 
@@ -1710,7 +1709,7 @@ int totemsrp_mcast (
 	}
 	
 	if (queue_is_full (&instance->new_message_queue)) {
-printf ("queue full\n");
+		instance->totemsrp_log_printf (instance->totemsrp_log_level_warning, "queue full\n");
 		return (-1);
 	}
 	for (j = 0, i = 0; i < iov_len; i++) {
@@ -1823,7 +1822,7 @@ static int orf_token_remcast (
 
 	res = sq_in_range (sort_queue, seq);
 	if (res == 0) {
-printf ("sq not in range\n");
+		instance->totemsrp_log_printf (instance->totemsrp_log_level_debug, "sq not in range\n");
 		return (-1);
 	}
 	
@@ -1859,8 +1858,9 @@ static void messages_free (
 	unsigned int release_to;
 	unsigned int range = 0;
 
-//printf ("aru %x last aru %x my high delivered %x last releaed %x\n",
-//		token_aru, instance->my_last_aru, instance->my_high_delivered, instance->last_released);
+	instance->totemsrp_log_printf (instance->totemsrp_log_level_debug,
+		"aru %x last aru %x my high delivered %x last released %x\n",
+		token_aru, instance->my_last_aru, instance->my_high_delivered, instance->last_released);
 
 	release_to = token_aru;
 	if (sq_lt_compare (instance->my_last_aru, release_to)) {
@@ -2127,7 +2127,10 @@ static int orf_token_rtr (
 	 * Add messages to retransmit to RTR list
 	 * but only retry if there is room in the retransmit list
 	 */
-//printf ("high seq %x aru %x\n", instance->my_high_seq_received, instance->my_aru);
+
+	instance->totemsrp_log_printf (instance->totemsrp_log_level_debug,
+		"high seq %x aru %x\n", instance->my_high_seq_received, instance->my_aru);
+
 	range = instance->my_high_seq_received - instance->my_aru;
 	assert (range < 100000);
 
@@ -2511,7 +2514,8 @@ static void memb_ring_id_create_or_load (
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0777);
 		if (fd == -1) {
-			printf ("couldn't create file %d %s\n", fd, strerror(errno));
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_warning,
+				"Couldn't create %s %s\n", filename, strerror (errno));
 		}
 		res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
 		assert (res == sizeof (unsigned long long));
@@ -2696,19 +2700,19 @@ static int message_handler_orf_token (
 	struct timeval tv_current;
 	struct timeval tv_diff;
 
-gettimeofday (&tv_current, NULL);
-timersub (&tv_current, &tv_old, &tv_diff);
-memcpy (&tv_old, &tv_current, sizeof (struct timeval));
+	gettimeofday (&tv_current, NULL);
+	timersub (&tv_current, &tv_old, &tv_diff);
+	memcpy (&tv_old, &tv_current, sizeof (struct timeval));
 
-if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
-printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
-}
+	if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
+		printf ("OTHERS %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
+	}
 #endif
 
 #ifdef RANDOM_DROP
-if (random()%100 < 10) {
-	return (0);
-}
+	if (random()%100 < 10) {
+		return (0);
+	}
 #endif
 
 	if (endian_conversion_needed) {
@@ -2852,7 +2856,8 @@ if (random()%100 < 10) {
 		if (instance->my_aru_count > instance->totem_config->fail_to_recv_const &&
 			!totemip_equal(&token->aru_addr, &instance->my_id)) {
 			
-printf ("FAILED TO RECEIVE\n");
+			instance->totemsrp_log_printf (instance->totemsrp_log_level_error,
+				"FAILED TO RECEIVE\n");
 // TODO if we fail to receive, it may be possible to end with a gather
 // state of proc == failed = 0 entries
 			memb_set_merge (&token->aru_addr, 1,
@@ -2931,12 +2936,12 @@ printf ("FAILED TO RECEIVE\n");
 			token_send (instance, token, forward_token); 
 
 #ifdef GIVEINFO
-gettimeofday (&tv_current, NULL);
-timersub (&tv_current, &tv_old, &tv_diff);
-memcpy (&tv_old, &tv_current, sizeof (struct timeval));
-if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
-printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
-}
+			gettimeofday (&tv_current, NULL);
+			timersub (&tv_current, &tv_old, &tv_diff);
+			memcpy (&tv_old, &tv_current, sizeof (struct timeval));
+			if ((((float)tv_diff.tv_usec) / 100.0) > 5.0) {
+				printf ("I held %0.4f ms\n", ((float)tv_diff.tv_usec) / 100.0);
+			}
 #endif
 			if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
 				messages_deliver_to_app (instance, 0,
@@ -3532,15 +3537,16 @@ static int message_handler_memb_commit_token (
 	if (memb_commit_token->token_seq > 0 &&
 		instance->my_token_seq >= memb_commit_token->token_seq) {
 
-		printf ("already received commit token %d %d\n",
+		instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
+			"already received commit token %d %d\n",
 			memb_commit_token->token_seq, instance->my_token_seq);
 		return (0);
 	}
 */
 #ifdef RANDOM_DROP
-if (random()%100 < 10) {
-	return (0);
-}
+	if (random()%100 < 10) {
+		return (0);
+	}
 #endif
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:

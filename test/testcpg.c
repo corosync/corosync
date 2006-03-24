@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -145,7 +146,7 @@ int main (int argc, char *argv[]) {
 			char inbuf[132];
 			struct iovec iov;
 
-			gets(inbuf);
+			fgets(inbuf, sizeof(inbuf), stdin);
 			if (strncmp(inbuf, "EXIT", 4) == 0) {
 				cpg_leave(handle, &group_name);
 			}

@@ -70,8 +70,6 @@ void setSanameT (SaNameT *name, char *str) {
 	memcpy (name->value, str, name->length);
 }
 
-static int health_flag = -1;
-static unsigned int healthcheck_count = 0;
 static unsigned int healthcheck_no = 0;
 
 int stop = 0;
@@ -150,6 +148,10 @@ void CSISetCallback (
 		printf (" requested to enter hastate SA_AMF_STANDBY.\n");
 		saAmfResponse (handle, invocation, SA_AIS_OK);
 		break;
+	case SA_AMF_HA_QUIESCED:
+		break;
+	case SA_AMF_HA_QUIESCING:
+		break;
 	}
 }
 
@@ -157,7 +159,7 @@ void CSIRemoveCallback (
 	SaInvocationT invocation,
 	const SaNameT *compName,
 	const SaNameT *csiName,
-	const SaAmfCSIFlagsT *csiFlags)
+	SaAmfCSIFlagsT csiFlags)
 {
 	int res;
 

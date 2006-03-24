@@ -521,7 +521,8 @@ saAmfComponentNameGet (
 		goto error_exit;
 	}
 
-	strcpy (compName->value, env_value);
+	strncpy ((char *)compName->value, env_value, SA_MAX_NAME_LENGTH-1);
+	compName->value[SA_MAX_NAME_LENGTH-1] = '\0';
 	compName->length = strlen (env_value);
 
 error_exit:
@@ -918,13 +919,13 @@ saAmfComponentErrorReport (
 		sizeof (SaNameT));
 	req_lib_amf_componenterrorreport.errorDetectionTime = errorDetectionTime;
 
-printf ("start error report\n");
+    DPRINT (("start error report\n"));
 	error = saSendReceiveReply (amfInstance->response_fd,
 		&req_lib_amf_componenterrorreport,
 		sizeof (struct req_lib_amf_componenterrorreport),
 		&res_lib_amf_componenterrorreport,
 		sizeof (struct res_lib_amf_componenterrorreport));
-printf ("end error report\n");
+    DPRINT (("end error report\n"));
 
 	error = res_lib_amf_componenterrorreport.header.error;
 

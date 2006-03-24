@@ -178,7 +178,7 @@ struct lcr_iface openais_evs_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)&evs_service_handler_iface,
+		.interfaces		= (void **)(void *)&evs_service_handler_iface,
 	}
 };
 

@@ -91,7 +91,7 @@ static struct lcr_iface iface1[2] = {
 		.dependency_count	= 0,
 		.constructor		= iface1_constructor,
 		.destructor		= iface1_destructor,
-		.interfaces		= (void **)&iface_list,
+		.interfaces		= (void **)(void *)&iface_list,
 	},
 	/* version 1 */
 	{
@@ -103,7 +103,7 @@ static struct lcr_iface iface1[2] = {
 		.dependency_count	= 0,
 		.constructor		= iface1_ver1_constructor,
 		.destructor		= iface1_ver1_destructor,
-		.interfaces		= (void **)&iface_ver1_list
+		.interfaces		= (void **)(void *)&iface_ver1_list
 	}
 };
 

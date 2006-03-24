@@ -281,14 +281,12 @@ int decide (void)
 {
 	int i;
 
-printf ("decide 1\n");
 	/*
 	 * Determine if there is a subquorum
 	 */
 	if (subquorum (view_list, view_list_entries, last_primary_max) == 0) {
 		return (0);
 	}
-printf ("decide 2\n");
 
 	for (i = 0; i < ambiguous_sessions_max_entries; i++) {
 		if (subquorum (view_list, view_list_entries, &ambiguous_sessions_max[i]) == 0) {
@@ -296,7 +294,6 @@ printf ("decide 2\n");
 		}
 		
 	}
-printf ("decide 3\n");
 	return (1);
 }
 
@@ -356,7 +353,6 @@ static void ykd_deliver_fn (
 		return;
 	}
 	if (endian_conversion_required) {
-	printf ("endian convert\n");
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);
 	}
 

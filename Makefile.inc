@@ -62,7 +62,7 @@ endif
 	LDFLAGS += 
 endif
 ifeq (${OPENAIS_BUILD}, DEBUG) 
-	CFLAGS += -O0 -g -Wall
+	CFLAGS += -O0 -g -Wall -DDEBUG 
 	LDFLAGS += -g
 endif
 

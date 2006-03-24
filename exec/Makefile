@@ -109,7 +109,8 @@ service_cpg.lcrso: cpg.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
 
 objdb.lcrso: objdb.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_looad objdb.o -o $@
+	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load objdb.o -o $@
+
 else
 
 service_evs.lcrso: evs.o
@@ -142,11 +143,9 @@ service_cpg.lcrso: cpg.o
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
 
-aisexec: $(EXEC_OBJS) libtotem_pg.a
-
 endif
 
-
+aisexec: $(EXEC_OBJS) libtotem_pg.a
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
 libtotem_pg.a: $(TOTEM_OBJS)

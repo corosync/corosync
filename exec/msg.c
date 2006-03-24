@@ -468,7 +468,7 @@ struct lcr_iface openais_msg_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)&msg_service_handler_iface,
+		.interfaces		= (void **)(void *)&msg_service_handler_iface,
 	}
 };
 
@@ -873,18 +873,22 @@ static void message_handler_req_exec_msg_queuestatusget (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_queuestatusget *req_exec_msg_queuestatusget =
 		(struct req_exec_msg_queuestatusget *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuestatusget;
+#endif
 }
 
 static void message_handler_req_exec_msg_queueunlink (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_queueunlink *req_exec_msg_queueunlink =
 		(struct req_exec_msg_queueunlink *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queueunlink;
+#endif
 }
 
 static void message_handler_req_exec_msg_queuegroupcreate (
@@ -1055,63 +1059,77 @@ static void message_handler_req_exec_msg_queuegrouptrack (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_queuegrouptrack *req_exec_msg_queuegrouptrack =
 		(struct req_exec_msg_queuegrouptrack *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuegrouptrack;
+#endif
 }
 
 static void message_handler_req_exec_msg_queuegrouptrackstop (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_queuegrouptrackstop *req_exec_msg_queuegrouptrackstop =
 		(struct req_exec_msg_queuegrouptrackstop *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queuegrouptrackstop;
+#endif
 }
 
 static void message_handler_req_exec_msg_messagesend (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_messagesend *req_exec_msg_messagesend =
 		(struct req_exec_msg_messagesend *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagesend;
+#endif
 }
 
 static void message_handler_req_exec_msg_messageget (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_messageget *req_exec_msg_messageget =
 		(struct req_exec_msg_messageget *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messageget;
+#endif
 }
 
 static void message_handler_req_exec_msg_messagecancel (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_messagecancel *req_exec_msg_messagecancel =
 		(struct req_exec_msg_messagecancel *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagecancel;
+#endif
 }
 
 static void message_handler_req_exec_msg_messagesendreceive (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_messagesendreceive *req_exec_msg_messagesendreceive =
 		(struct req_exec_msg_messagesendreceive *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagesendreceive;
+#endif
 }
 
 static void message_handler_req_exec_msg_messagereply (
 	void *message,
 	struct totem_ip_address *source_addr)
 {
+#if 0
 	struct req_exec_msg_messagereply *req_exec_msg_messagereply =
 		(struct req_exec_msg_messagereply *)message;
 	struct res_lib_msg_queueclose res_lib_msg_messagereply;
+#endif
 }
 
 

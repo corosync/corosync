@@ -87,8 +87,8 @@ struct amf_unit {
 	SaAmfHAStateT assigned_ha_state;
 	SaAmfHAStateT requested_ha_state;
 
-	unsigned char clccli_path[1024];
-	unsigned char binary_path[1024];
+	char clccli_path[1024];
+	char binary_path[1024];
 
 	poll_timer_handle restart_timer;
 	int restart_count;
@@ -143,8 +143,8 @@ struct amf_group {
 	struct list_head unit_head;
 	struct list_head si_head;
 
-	unsigned char clccli_path[1024];
-	unsigned char binary_path[1024];
+	char clccli_path[1024];
+	char binary_path[1024];
 
 	unsigned int component_restart_probation;
 	unsigned int component_restart_max;
@@ -176,15 +176,15 @@ struct amf_comp {
 
 	enum clc_component_types comptype;
 
-	unsigned char clccli_path[1024];
-	unsigned char binary_path[1024];
-	unsigned char binary_name[1024];
+	char clccli_path[1024];
+	char binary_path[1024];
+	char binary_name[1024];
 
-	unsigned char instantiate_cmd[1024];
-	unsigned char terminate_cmd[1024];
-	unsigned char cleanup_cmd[1024];
-	unsigned char am_start_cmd[1024];
-	unsigned char am_stop_cmd[1024];
+	char instantiate_cmd[1024];
+	char terminate_cmd[1024];
+	char cleanup_cmd[1024];
+	char am_start_cmd[1024];
+	char am_stop_cmd[1024];
 	
 	OpenaisCfgAdministrativeStateT administrative_state;
 	OpenaisCfgOperationalStateT operational_state;

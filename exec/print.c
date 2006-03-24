@@ -185,9 +185,11 @@ void internal_log_printf (int logclass, char *string, ...)
 	}
 	if (logmode & LOG_MODE_FILE && log_file_fp != 0) {
 		fprintf (log_file_fp, "%s", log_string);
+		fflush (log_file_fp);
 	}
 	if (logmode & LOG_MODE_STDERR) {
 		fprintf (stderr, "%s", log_string);
+		fflush (stderr);
 	}
 	fflush (stdout);
 

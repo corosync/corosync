@@ -1,4 +1,3 @@
-int waiting = 0;
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  *
@@ -88,6 +87,7 @@ struct invocation {
 struct invocation *invocation_entries = 0;
 
 int invocation_entries_size = 0;
+int waiting = 0;
 
 enum amf_response_interfaces {
 	AMF_RESPONSE_HEALTHCHECKCALLBACK = 1,
@@ -421,7 +421,7 @@ struct lcr_iface openais_amf_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)&amf_service_handler_iface,
+		.interfaces		= (void **)(void *)&amf_service_handler_iface,
 	}
 };
 
@@ -524,13 +524,13 @@ void *clc_command_run (void *context)
 	char *argv[10];
 	char *envp[10];
 	int status;
-	unsigned char cmd[1024];
-	unsigned char env_comp_binary_name[1024];
-	unsigned char env_comp_binary_path[1024];
-	unsigned char env_comp_name[1024];
-	unsigned char *binary_to_run = 0;
-	unsigned char *binary_path = 0;
-	char *clc_cli_interface;
+	char cmd[1024];
+	char env_comp_binary_name[1024];
+	char env_comp_binary_path[1024];
+	char env_comp_name[1024];
+	char *binary_to_run = NULL;
+	char *binary_path = NULL;
+	char *clc_cli_interface = NULL;
 
 	sleep (1);
 
@@ -614,7 +614,7 @@ printf ("waiting for pid %d to finish\n", pid);
 
 	strcpy (env_comp_name, "SA_AMF_COMPONENT_NAME=");
 
-	strncat (env_comp_name, clc_command_run_data->comp->name.value,
+	strncat (env_comp_name, (char *)clc_command_run_data->comp->name.value,
 		clc_command_run_data->comp->name.length);
 
 	if (cmd[0] == '\0') {
@@ -978,11 +978,11 @@ DECLARE_LIST_INIT (library_notification_send_listhead);
 
 // TODO static totempg_recovery_plug_handle amf_recovery_plug_handle;
 
+#ifdef COMPILE_OUT
 static void protectiongroup_notifications_send (
 	struct amf_comp *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent)
 {
-#ifdef COMPILE_OUT
 	int i;
 	struct conn_info *conn_info;
 	struct list_head *list;
@@ -1022,15 +1022,15 @@ static void protectiongroup_notifications_send (
 			} /* if track flags active */
 		} /* for all track entries */
 	} /* for all connection entries */
-#endif
 }
+#endif
 
+#ifdef COMPILE_OUT
 static int make_protectiongroup_notification_allcomponent (
 	struct amf_comp *changedComponent,
 	SaAmfProtectionGroupChangesT changeToComponent,
 	SaAmfProtectionGroupNotificationT **notification )
 {
-#ifdef COMPILE_OUT
 	SaAmfProtectionGroupNotificationT *protectionGroupNotification = 0;
 	int notifyEntries = 0;
 	struct amf_comp *component;
@@ -1087,9 +1087,8 @@ static int make_protectiongroup_notification_allcomponent (
 		*notification = protectionGroupNotification;
 	}
 	return (notifyEntries);
-#endif
-	return (0);
 }
+#endif
 
 #ifdef COMPILE_OUT
 static int make_protectiongroup_notification (
@@ -2822,7 +2821,6 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 {
 	struct req_lib_amf_response *req_lib_amf_response = (struct req_lib_amf_response *)msg;
 	struct res_lib_amf_response res_lib_amf_response;
-	struct conn_info *conn_info;
 	struct csi_set_callback_data *csi_set_callback_data;
 	struct csi_remove_callback_data *csi_remove_callback_data;
 	struct component_terminate_callback_data *component_terminate_callback_data;
@@ -2843,7 +2841,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		goto error_exit;
 	}
 
-	log_printf (LOG_LEVEL_DEBUG, "handling response connection %p interface %x\n", conn_info, interface);
+	log_printf (LOG_LEVEL_DEBUG, "handling response connection interface %x\n", interface);
 	switch (interface) {
 	case AMF_RESPONSE_HEALTHCHECKCALLBACK:
 		healthcheck_active = (struct healthcheck_active *)data;

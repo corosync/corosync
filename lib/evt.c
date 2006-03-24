@@ -545,8 +545,8 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 		edi->edi_patterns.patterns[i].allocatedSize = pat->patternSize;
 		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
 		if (!edi->edi_patterns.patterns[i].pattern) {
-			printf("make_event: couldn't alloc %llu bytes\n",
-				(unsigned long long)pat->patternSize);
+            DPRINT (("make_event: couldn't alloc %llu bytes\n",
+				(unsigned long long)pat->patternSize));
 			saHandleDestroy(&event_handle_db, *event_handle);
 			error =  SA_AIS_ERR_LIBRARY;
 			goto make_evt_done_put2;
@@ -726,7 +726,7 @@ saEvtDispatch(
  			error = saSendRetry(evti->ei_response_fd, &res, sizeof(res));
  
 			if (error != SA_AIS_OK) {
-				printf("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error);
+				DPRINT (("MESSAGE_RES_EVT_AVAILABLE: send failed: %d\n", error));
  				pthread_mutex_unlock(&evti->ei_response_mutex);
 					break;
 			}
@@ -734,8 +734,7 @@ saEvtDispatch(
  			pthread_mutex_unlock(&evti->ei_response_mutex);
 
 			if (error != SA_AIS_OK) {
-				printf("MESSAGE_RES_EVT_AVAILABLE: receive failed: %d\n", 
-						error);
+				DPRINT (("MESSAGE_RES_EVT_AVAILABLE: receive failed: %d\n", error));
 				break;
 			}
 			/*
@@ -743,7 +742,7 @@ saEvtDispatch(
  			 * grabbed it.
 			 */
 			if (evt->led_head.error == SA_AIS_ERR_NOT_EXIST) {
-				// printf("MESSAGE_RES_EVT_AVAILABLE: No event data\n");
+                DPRINT (("MESSAGE_RES_EVT_AVAILABLE: No event data\n"));
 				error = SA_AIS_OK;
 				break;
 			}
@@ -760,8 +759,7 @@ saEvtDispatch(
 				if (error == SA_AIS_ERR_TRY_AGAIN) {
 					evti->ei_data_available = 1;
 				} else {
-					printf("MESSAGE_RES_EVT_AVAILABLE: Error returned: %d\n",
-						error);
+					DPRINT (("MESSAGE_RES_EVT_AVAILABLE: Error returned: %d\n", error));
 				}
 				break;
 			}
@@ -816,8 +814,7 @@ saEvtDispatch(
 			break;
 
 		default:
-			printf("Dispatch: Bad message type 0x%x\n",
-					dispatch_data.header.id);
+			DPRINT (("Dispatch: Bad message type 0x%x\n", dispatch_data.header.id));
 			error = SA_AIS_ERR_LIBRARY;	
 			goto dispatch_put;
 		}

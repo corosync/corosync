@@ -67,7 +67,7 @@
 
 #include "crypto.h"
 
-#define MCAST_SOCKET_BUFFER_SIZE (16 * 9000) /* where 16 is the transmits allowed, 9000 is mtu size */
+#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX) 
 
 #define NETIF_STATE_REPORT_UP		1	
 #define NETIF_STATE_REPORT_DOWN		2
@@ -84,7 +84,7 @@ struct security_header {
 } __attribute__((packed));
 
 struct totemnet_mcast_thread_state {
-	unsigned char iobuf[9000];
+	unsigned char iobuf[FRAME_SIZE_MAX];
 	prng_state prng_state;
 };
 
@@ -668,7 +668,8 @@ static int net_deliver_fn (
 
 		res = authenticate_and_decrypt (instance, iovec);
 		if (res == -1) {
-			printf ("Invalid packet data\n");
+			instance->totemnet_log_printf (instance->totemnet_log_level_security,
+				"Invalid packet data\n");
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
 		}
@@ -1278,7 +1279,6 @@ int totemnet_processor_count_set (
 	}
 
 	instance->my_memb_entries = processor_count;
-printf ("PCCCCCCCCCCCCCCCCOUNT %d\n", processor_count);
 	poll_timer_delete (instance->totemnet_poll_handle,
 		instance->timer_netif_check_timeout);
 	if (processor_count == 1) {

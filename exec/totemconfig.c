@@ -235,7 +235,7 @@ extern int totem_config_read (
 				if (interface_max == totem_config->interface_count) {
 					sprintf (error_reason,
 						"%d is too many interfaces in %s/network.conf",
-						 OPENAIS_CONFDIR, totem_config->interface_count);
+						totem_config->interface_count, OPENAIS_CONFDIR);
 					goto parse_error;
 				}
 				res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, loc);
