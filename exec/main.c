@@ -1020,7 +1020,6 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
-#define DEBUG
 #ifndef DEBUG
 	/*
 	 * Disconnect from TTY if this is not a debug run

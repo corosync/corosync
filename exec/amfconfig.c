@@ -294,10 +294,10 @@ extern int openais_amf_config_read (char **error_string)
 			} else
 			if ((loc = strstr_rs (line, "model=")) != 0) {
 				if (strcmp (loc, "2n") == 0) {
-					amf_group->model = GROUPCAPABILITYMODEL_2N;
+					amf_group->model = SA_AMF_2N_REDUNDANCY_MODEL;
 				} else
 				if (strcmp (loc, "nplusm") == 0) {
-					amf_group->model = GROUPCAPABILITYMODEL_NPLUSM;
+					amf_group->model = SA_AMF_NPM_REDUNDANCY_MODEL;
 				} else
 				if (strcmp (loc, "nway") == 0) {
 					printf ("nway redundancy model not supported.\n");
@@ -308,7 +308,7 @@ extern int openais_amf_config_read (char **error_string)
 					goto parse_error;
 				} else
 				if (strcmp (loc, "noredundancy") == 0) {
-					amf_group->model = GROUPCAPABILITYMODEL_NOREDUNDANCY;
+					amf_group->model = SA_AMF_NO_REDUNDANCY_MODEL;
 				} else {
 					goto parse_error;
 				}
@@ -353,8 +353,8 @@ extern int openais_amf_config_read (char **error_string)
 				memset (amf_unit, 0, sizeof (struct amf_unit));
 				amf_unit->amf_group = amf_group;
 
-				amf_unit->operational_state = OPENAIS_CFG_OPERATIONALSTATE_DISABLED;
-				amf_unit->presence_state = OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED;
+				amf_unit->operational_state = SA_AMF_OPERATIONAL_DISABLED;
+				amf_unit->presence_state = SA_AMF_PRESENCE_UNINSTANTIATED;
 				list_init (&amf_unit->comp_head);
 				list_init (&amf_unit->si_head);
 				amf_unit->escalation_level = ESCALATION_LEVEL_NO_ESCALATION;
@@ -370,7 +370,7 @@ extern int openais_amf_config_read (char **error_string)
 				list_init (&amf_si->csi_head);
 				list_init (&amf_si->unit_list);
 				list_init (&amf_si->pg_head);
-				list_add_tail (&amf_si->list, &amf_group->si_head);
+				list_add_tail (&amf_si->si_list, &amf_group->si_head);
 				amf_si->group = amf_group;
 				current_parse = AMF_SERVICEINSTANCE;
 			} else
@@ -389,8 +389,8 @@ extern int openais_amf_config_read (char **error_string)
 				amf_comp = (struct amf_comp *)mempool_malloc (sizeof (struct amf_comp));
 				memset (amf_comp, 0, sizeof (struct amf_comp));
 				amf_comp->unit = amf_unit;
-				amf_comp->operational_state = OPENAIS_CFG_OPERATIONALSTATE_DISABLED;
-				amf_comp->presence_state = OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED;
+				amf_comp->operational_state = SA_AMF_OPERATIONAL_DISABLED;
+				amf_comp->presence_state = SA_AMF_PRESENCE_UNINSTANTIATED;
 
 				list_init (&amf_comp->comp_list);
 				list_init (&amf_comp->healthcheck_list);
@@ -529,9 +529,9 @@ extern int openais_amf_config_read (char **error_string)
                         if ((loc = strstr_rs (line, "csi_descriptor{")) != 0) {
                                 amf_csi = (struct amf_csi*)mempool_malloc (sizeof(struct amf_csi));
 
-                                list_init(&amf_csi->list);
+                                list_init(&amf_csi->csi_list);
                                 list_init(&amf_csi->name_value_head);
-                                list_add_tail (&amf_csi->list, &amf_si->csi_head);
+                                list_add_tail (&amf_csi->csi_list, &amf_si->csi_head);
 
                                 current_parse = AMF_SERVICEINSTANCE_CSIDESCRIPTOR;
                         } else
@@ -551,8 +551,8 @@ extern int openais_amf_config_read (char **error_string)
                         if ((loc = strstr_rs (line, "name_value{")) != 0) {
                                  csi_name_value = (struct amf_csi_name_value*)mempool_malloc (sizeof(struct amf_csi_name_value));
 
-                                 list_init(&csi_name_value->list);
-                                 list_add_tail (&csi_name_value->list, &amf_csi->name_value_head);
+                                 list_init(&csi_name_value->csi_name_list);
+                                 list_add_tail (&csi_name_value->csi_name_list, &amf_csi->name_value_head);
 
                                  current_parse = AMF_SERVICEINSTANCE_CSIDESCRIPTOR_NAMEVALUE;
                         } else

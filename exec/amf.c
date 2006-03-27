@@ -122,8 +122,8 @@ struct healthcheck_active {
 	int active;
 };
 
-static char *presencestate_ntoa (OpenaisCfgPresenceStateT state);
-static char *operationalstate_ntoa (OpenaisCfgOperationalStateT state);
+static char *presencestate_ntoa (SaAmfPresenceStateT state);
+static char *operationalstate_ntoa (SaAmfOperationalStateT state);
 static char *hastate_ntoa (SaAmfHAStateT state);
 static char *readinessstate_ntoa (int state);
 
@@ -190,15 +190,15 @@ static void message_handler_req_exec_amf_administrative_state_group_set (
 
 void presence_state_comp_set (
 	struct amf_comp *comp,
-	OpenaisCfgPresenceStateT presence_state);
+	SaAmfPresenceStateT presence_state);
 
 void operational_state_comp_set (
 	struct amf_comp *comp,
-	OpenaisCfgOperationalStateT operational_state);
+	SaAmfOperationalStateT operational_state);
 
 void operational_state_unit_set (
 	struct amf_unit *unit,
-	OpenaisCfgOperationalStateT operational_state);
+	SaAmfOperationalStateT operational_state);
 
 int clc_instantiate_all (void);
 int clc_instantiate (struct amf_comp *comp);
@@ -639,31 +639,31 @@ printf ("waiting for pid %d to finish\n", pid);
 struct req_exec_amf_operational_state_comp_set {
 	struct req_header header;
 	SaNameT name;
-	OpenaisCfgOperationalStateT operational_state;
+	SaAmfOperationalStateT operational_state;
 };
 
 struct req_exec_amf_presence_state_comp_set {
 	struct req_header header;
 	SaNameT name;
-	OpenaisCfgPresenceStateT presence_state;
+	SaAmfPresenceStateT presence_state;
 };
 
 struct req_exec_amf_administrative_state_csi_set {
 	struct req_header header;
 	SaNameT name;
-	OpenaisCfgAdministrativeStateT presence_state;
+	SaAmfAdminStateT administrative_state;
 };
 
 struct req_exec_amf_administrative_state_unit_set {
 	struct req_header header;
 	SaNameT name;
-	OpenaisCfgAdministrativeStateT presence_state;
+	SaAmfAdminStateT administrative_state;
 };
 
 struct req_exec_amf_administrative_state_group_set {
 	struct req_header header;
 	SaNameT name;
-	OpenaisCfgAdministrativeStateT presence_state;
+	SaAmfAdminStateT administrative_state;
 };
 struct req_exec_amf_comp_restart {
 	struct req_header header;
@@ -717,7 +717,7 @@ int clc_terminate_callback (struct amf_comp *comp)
 	struct component_terminate_callback_data *component_terminate_callback_data;
 
 	printf ("clc_terminate_callback %p\n", comp->conn);
-	if (comp->presence_state != OPENAIS_CFG_PRESENCESTATE_INSTANTIATED) {
+	if (comp->presence_state != SA_AMF_PRESENCE_INSTANTIATED) {
 		printf ("component terminated but not instantiated %s - %d\n",
 			getSaNameT (&comp->name), comp->presence_state);
 		assert (0);
@@ -805,7 +805,7 @@ int clc_instantiate (struct amf_comp *comp)
 
 	printf ("clc instantiate for comp %s\n", getSaNameT (&comp->name));
 
-	presence_state_comp_set (comp, OPENAIS_CFG_PRESENCESTATE_INSTANTIATING);
+	presence_state_comp_set (comp, SA_AMF_PRESENCE_INSTANTIATING);
 	res = clc_interfaces[comp->comptype]->instantiate (comp);
 	return (res);
 }
@@ -816,8 +816,8 @@ int clc_terminate (struct amf_comp *comp)
 
 	printf ("clc terminate for comp %s\n", getSaNameT (&comp->name));
 assert (0);
-	operational_state_comp_set (comp, OPENAIS_CFG_OPERATIONALSTATE_DISABLED);
-	presence_state_comp_set (comp, OPENAIS_CFG_PRESENCESTATE_TERMINATING);
+	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+	presence_state_comp_set (comp, SA_AMF_PRESENCE_TERMINATING);
 
 	res = clc_interfaces[comp->comptype]->terminate (comp);
 	return (0);
@@ -829,8 +829,8 @@ int clc_cleanup (struct amf_comp *comp)
 
 	printf ("clc cleanup for comp %s\n", getSaNameT (&comp->name));
 	comp_healthcheck_deactivate (comp);
-	operational_state_comp_set (comp, OPENAIS_CFG_OPERATIONALSTATE_DISABLED);
-	presence_state_comp_set (comp, OPENAIS_CFG_PRESENCESTATE_TERMINATING);
+	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+	presence_state_comp_set (comp, SA_AMF_PRESENCE_TERMINATING);
 	res = clc_interfaces[comp->comptype]->cleanup (comp);
 	return (0);
 }
@@ -896,11 +896,11 @@ int amf_lib_exit_fn (void *conn)
 printf ("setting in exit fn to uninst for comp %p\n", comp);
 		presence_state_comp_set (
 			comp,
-			OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED);
+			SA_AMF_PRESENCE_UNINSTANTIATED);
 
 		operational_state_comp_set (
 			comp,
-			OPENAIS_CFG_OPERATIONALSTATE_DISABLED);
+			SA_AMF_OPERATIONAL_DISABLED);
 
 		comp_healthcheck_deactivate (comp);
 	}
@@ -1302,7 +1302,7 @@ void comp_healthcheck_deactivate (
 
 void presence_state_comp_set (
 	struct amf_comp *comp,
-	OpenaisCfgPresenceStateT presence_state)
+	SaAmfPresenceStateT presence_state)
 {
 	struct req_exec_amf_presence_state_comp_set req_exec_amf_presence_state_comp_set;
 	struct iovec iovec;
@@ -1335,17 +1335,17 @@ void readiness_state_comp_set (struct amf_comp *comp)
 	 * if unit in service and component is enabled, it is in service
 	 * otherwise it is out of service page 37
 	 */
-	if (comp->unit->readiness_state == OPENAIS_CFG_READINESSSTATE_INSERVICE &&
-		comp->operational_state == OPENAIS_CFG_OPERATIONALSTATE_ENABLED) {
-		comp->readiness_state = OPENAIS_CFG_READINESSSTATE_INSERVICE;
+	if (comp->unit->readiness_state == SA_AMF_READINESS_IN_SERVICE &&
+		comp->operational_state == SA_AMF_OPERATIONAL_ENABLED) {
+		comp->readiness_state = SA_AMF_READINESS_IN_SERVICE;
 	} else {
-		comp->readiness_state = OPENAIS_CFG_READINESSSTATE_OUTOFSERVICE;
+		comp->readiness_state = SA_AMF_READINESS_OUT_OF_SERVICE;
 	}
 	printf ("readiness_state_comp_set (%s)\n",
 		operationalstate_ntoa (comp->operational_state));
 }
 
-void operational_state_comp_set (struct amf_comp *comp, OpenaisCfgOperationalStateT operational_state)
+void operational_state_comp_set (struct amf_comp *comp, SaAmfOperationalStateT operational_state)
 {
 	struct req_exec_amf_operational_state_comp_set req_exec_amf_operational_state_comp_set;
 	struct iovec iovec;
@@ -1388,7 +1388,7 @@ void csi_comp_set_callback (
 	name_value_list != &csi->name_value_head;
 	name_value_list = name_value_list->next) {
 	num_of_csi_attrs++;
-	name_value = list_entry (name_value_list, struct amf_csi_name_value, list);
+	name_value = list_entry (name_value_list, struct amf_csi_name_value, csi_name_list);
 	printf("\t\tname = %s, value = %s\n", name_value->name, name_value->value);
 	char_legnth_of_csi_attrs += strlen(name_value->name);
 	char_legnth_of_csi_attrs += strlen(name_value->value);
@@ -1420,7 +1420,7 @@ void csi_comp_set_callback (
 	 name_value_list != &csi->name_value_head;
 	 name_value_list = name_value_list->next) {
        
-	  name_value = list_entry (name_value_list, struct amf_csi_name_value, list);
+	  name_value = list_entry (name_value_list, struct amf_csi_name_value, csi_name_list);
 	  
 	  strcpy(&csi_attribute_buf[byte_offset],
 		 (char*)name_value->name);
@@ -1505,7 +1505,7 @@ void csi_comp_set_callback (
 		csi_set_callback_data);
 
 	
-	int result = openais_conn_send_response (
+	openais_conn_send_response (
 	    openais_conn_partner_get (comp->conn),
 	    res_lib_amf_csisetcallback,
 	    res_lib_amf_csisetcallback->header.size);
@@ -1570,7 +1570,7 @@ void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
                       csilist != &si->csi_head;
                       csilist = csilist->next) {
 
-                        csi = list_entry (csilist, struct amf_csi, list);
+                        csi = list_entry (csilist, struct amf_csi, csi_list);
 
                         if (!memcmp(csi->type_name.value, type_name->name.value, type_name->name.length)) {
                                 csi_comp_set_callback (comp, csi, pg);
@@ -1710,7 +1710,7 @@ void unit_cleanup (struct amf_unit *unit)
 	
 void comp_restart (struct amf_comp *comp)
 {
-	presence_state_comp_set (comp, OPENAIS_CFG_PRESENCESTATE_RESTARTING);
+	presence_state_comp_set (comp, SA_AMF_PRESENCE_RESTARTING);
 }
 
 void unit_restart (struct amf_unit *unit)
@@ -1723,7 +1723,7 @@ void unit_restart (struct amf_unit *unit)
 		list_comp = list_comp->next) {
 
 		comp = list_entry (list_comp, struct amf_comp, comp_list);
-		presence_state_comp_set (comp, OPENAIS_CFG_PRESENCESTATE_RESTARTING);
+		presence_state_comp_set (comp, SA_AMF_PRESENCE_RESTARTING);
 	}
 }
 
@@ -1762,7 +1762,7 @@ void csi_unit_remove_callbacks (struct amf_unit *unit)
 			list_csi != &si->csi_head;
 			list_csi = list_csi->next) {
 
-			csi = list_entry (list_csi, struct amf_csi, list);
+			csi = list_entry (list_csi, struct amf_csi, csi_list);
 
 			for (list_comp = csi->unit->comp_head.next;
 				list_comp != &csi->unit->comp_head;
@@ -1827,9 +1827,8 @@ void csi_unit_create (struct amf_unit *unit, struct amf_si *si,
 	printf ("creating csi for si %p unit %p\n", si, unit);
 	si->csi_count += 1;
 	csi = malloc (sizeof (struct amf_csi));
-	list_init (&csi->list);
 	list_init (&csi->csi_list);
-	list_add (&csi->list, &si->csi_head);
+	list_add (&csi->csi_list, &si->csi_head);
 	list_add (&si->unit_list, &unit->si_head);
 	csi->si = si;
 	csi->unit = unit;
@@ -1869,7 +1868,7 @@ int unit_inservice_count (struct amf_group *group)
 		unit = list_entry (list,
 			struct amf_unit, unit_list);
 
-		if (unit->readiness_state == OPENAIS_CFG_READINESSSTATE_INSERVICE) {
+		if (unit->readiness_state == SA_AMF_READINESS_IN_SERVICE) {
 			answer += 1;
 		}
 	}
@@ -1887,7 +1886,7 @@ int comp_inservice_count (struct amf_unit *unit)
 		list = list->next) {
 
 		comp = list_entry (list, struct amf_comp, comp_list);
-		if (comp->readiness_state == OPENAIS_CFG_READINESSSTATE_INSERVICE) {
+		if (comp->readiness_state == SA_AMF_READINESS_IN_SERVICE) {
 			answer += 1;
 		}
 	}
@@ -1905,8 +1904,7 @@ int si_count (struct amf_group *group)
 		list_si != &group->si_head;
 		list_si = list_si->next) {
 
-		si = list_entry (list_si,
-			struct amf_si, list);
+		si = list_entry (list_si, struct amf_si, si_list);
 
 		answer += 1;
 	}
@@ -1947,7 +1945,7 @@ void assign_nm_active (struct amf_group *group, int su_units_assign)
 		unit = list_entry (list_unit,
 			struct amf_unit, unit_list);
 
-		if (unit->readiness_state != OPENAIS_CFG_READINESSSTATE_INSERVICE) {
+		if (unit->readiness_state != SA_AMF_READINESS_IN_SERVICE) {
 			list_unit = list_unit->next;
 			continue; /* Not in service */
 		}
@@ -1957,7 +1955,7 @@ void assign_nm_active (struct amf_group *group, int su_units_assign)
 			assigned < assign_per_su &&
 			total_assigned < si_count (group)) {
 
-			si = list_entry (list_si, struct amf_si, list);
+			si = list_entry (list_si, struct amf_si, si_list);
 			assigned += 1;
 			total_assigned += 1;
 			ha_state_unit_set (unit, si, SA_AMF_HA_ACTIVE);
@@ -1991,7 +1989,7 @@ void assign_nm_standby (struct amf_group *group, int units_assign_standby)
 		unit = list_entry (list_unit,
 			struct amf_unit, unit_list);
 
-		if (unit->readiness_state != OPENAIS_CFG_READINESSSTATE_INSERVICE ||
+		if (unit->readiness_state != SA_AMF_READINESS_IN_SERVICE ||
 			unit->requested_ha_state == SA_AMF_HA_ACTIVE) {
 
 			list_unit = list_unit->next;
@@ -2000,7 +1998,7 @@ void assign_nm_standby (struct amf_group *group, int units_assign_standby)
 
 		assigned = 0;
 		while (list_si != &group->si_head && assigned < assign_per_su) {
-			si = list_entry (list_si, struct amf_si, list);
+			si = list_entry (list_si, struct amf_si, si_list);
 			assigned += 1;
 			ha_state_unit_set (unit, si, SA_AMF_HA_STANDBY);
 			list_si = list_si->next;
@@ -2021,7 +2019,7 @@ void assign_nm_spare (struct amf_group *group)
 		unit = list_entry (list,
 			struct amf_unit, unit_list);
 
-		if (unit->readiness_state == OPENAIS_CFG_READINESSSTATE_INSERVICE &&
+		if (unit->readiness_state == SA_AMF_READINESS_IN_SERVICE &&
 			(unit->requested_ha_state != SA_AMF_HA_ACTIVE &&
 			unit->requested_ha_state != SA_AMF_HA_STANDBY)) {
 
@@ -2145,7 +2143,7 @@ void assign_sis (struct amf_group *group)
 	assign_nm_standby (group, su_standby_assign);
 }
 
-void readiness_state_unit_set (struct amf_unit *unit, OpenaisCfgReadinessStateT readiness_state)
+void readiness_state_unit_set (struct amf_unit *unit, SaAmfReadinessStateT readiness_state)
 {
 	printf ("Assigning unit %s ",
 		getSaNameT (&unit->name));
@@ -2156,7 +2154,7 @@ void readiness_state_unit_set (struct amf_unit *unit, OpenaisCfgReadinessStateT 
 	assign_sis (unit->amf_group);
 }
 
-void presence_state_unit_set (struct amf_unit *unit, OpenaisCfgPresenceStateT presence_state)
+void presence_state_unit_set (struct amf_unit *unit, SaAmfPresenceStateT presence_state)
 {
 	printf ("Setting service unit presence state %s\n",
 		presencestate_ntoa (presence_state));
@@ -2169,11 +2167,11 @@ static void escalation_policy_restart (struct amf_comp *comp)
 printf ("escalation policy restart uninsint %p\n", comp);
 	presence_state_comp_set (
 		comp,
-		OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED);
+		SA_AMF_PRESENCE_UNINSTANTIATED);
 
 	operational_state_comp_set (
 		comp,
-		OPENAIS_CFG_OPERATIONALSTATE_DISABLED);
+		SA_AMF_OPERATIONAL_DISABLED);
 
 	switch (comp->unit->escalation_level) {
 
@@ -2369,7 +2367,7 @@ void healthcheck_unit_activate (
 
 void operational_state_unit_set (
 	struct amf_unit *unit,
-	OpenaisCfgOperationalStateT operational_state)
+	SaAmfOperationalStateT operational_state)
 {
 	if (operational_state == unit->operational_state) {
 		printf ("Not assigning service unit new operational state - same state\n");
@@ -2378,17 +2376,17 @@ void operational_state_unit_set (
 	unit->operational_state = operational_state;
 	printf ("Service unit operational state set to %s\n",
 		operationalstate_ntoa (operational_state));
-	if (operational_state == OPENAIS_CFG_OPERATIONALSTATE_ENABLED) {
+	if (operational_state == SA_AMF_OPERATIONAL_ENABLED) {
 		readiness_state_unit_set (unit,
-			OPENAIS_CFG_READINESSSTATE_INSERVICE);
+			SA_AMF_READINESS_IN_SERVICE);
 		/*
 		 * Start healthcheck now
 		 */
 // TODO		healthcheck_unit_activate (unit);
 	} else
-	if (operational_state == OPENAIS_CFG_OPERATIONALSTATE_DISABLED) {
+	if (operational_state == SA_AMF_OPERATIONAL_DISABLED) {
 		readiness_state_unit_set (unit,
-			OPENAIS_CFG_READINESSSTATE_OUTOFSERVICE);
+			SA_AMF_READINESS_OUT_OF_SERVICE);
 //		ha_state_unit_set (unit, si, SA_AMF_HA_STANDBY);
 
 //		healthcheck_unit_deactivate (unit);
@@ -2422,17 +2420,17 @@ static void message_handler_req_exec_amf_operational_state_comp_set (
 
 		comp_compare = list_entry (list,
 			struct amf_comp, comp_list);
-		if (comp_compare->operational_state != OPENAIS_CFG_OPERATIONALSTATE_ENABLED) {
+		if (comp_compare->operational_state != SA_AMF_OPERATIONAL_ENABLED) {
 			all_set = 0;
 			break;
 		}
 	}
 	if (all_set) {
 		operational_state_unit_set (comp->unit, 
-			OPENAIS_CFG_OPERATIONALSTATE_ENABLED);
+			SA_AMF_OPERATIONAL_ENABLED);
 	} else {
 		operational_state_unit_set (comp->unit, 
-			OPENAIS_CFG_OPERATIONALSTATE_DISABLED);
+			SA_AMF_OPERATIONAL_DISABLED);
 	}
 	readiness_state_comp_set (comp);
 }
@@ -2454,22 +2452,22 @@ static void message_handler_req_exec_amf_presence_state_comp_set (
 		return;
 	}
 
-	if (req_exec_amf_presence_state_comp_set->presence_state == OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED) {
+	if (req_exec_amf_presence_state_comp_set->presence_state == SA_AMF_PRESENCE_UNINSTANTIATED) {
 		comp->conn = 0;
 	}
 
 	/*
 	 * The restarting state can only be entered from the uninstantiated state
 	 */
-	if (req_exec_amf_presence_state_comp_set->presence_state == OPENAIS_CFG_PRESENCESTATE_RESTARTING &&
-		comp->presence_state != OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED) {
+	if (req_exec_amf_presence_state_comp_set->presence_state == SA_AMF_PRESENCE_RESTARTING &&
+		comp->presence_state != SA_AMF_PRESENCE_UNINSTANTIATED) {
 
 printf ("restart presence state set even though not in terminating state\n");
 		return;
 	}
 
 	comp->presence_state = req_exec_amf_presence_state_comp_set->presence_state;
-	if (comp->presence_state == OPENAIS_CFG_PRESENCESTATE_RESTARTING) {
+	if (comp->presence_state == SA_AMF_PRESENCE_RESTARTING) {
 		printf ("SET TO RESTARTING instantiating now\n");
 		clc_instantiate (comp);
 	}
@@ -2491,7 +2489,7 @@ printf ("restart presence state set even though not in terminating state\n");
 
 		comp_compare = list_entry (list,
 			struct amf_comp, comp_list);
-		if (comp_compare->presence_state != OPENAIS_CFG_PRESENCESTATE_INSTANTIATED) {
+		if (comp_compare->presence_state != SA_AMF_PRESENCE_INSTANTIATED) {
 			all_set = 0;
 			break;
 		}
@@ -2499,7 +2497,7 @@ printf ("restart presence state set even though not in terminating state\n");
 
 	if (all_set) {
 		presence_state_unit_set (comp->unit, 
-			OPENAIS_CFG_PRESENCESTATE_INSTANTIATED);
+			SA_AMF_PRESENCE_INSTANTIATED);
 	}
 }
 
@@ -2546,9 +2544,9 @@ static void message_handler_req_lib_amf_componentregister (
 	comp = find_comp (&req_lib_amf_componentregister->compName);
 	if (comp) {
 		presence_state_comp_set (comp,
-			OPENAIS_CFG_PRESENCESTATE_INSTANTIATED);
+			SA_AMF_PRESENCE_INSTANTIATED);
 		operational_state_comp_set (comp,
-			OPENAIS_CFG_OPERATIONALSTATE_ENABLED);
+			SA_AMF_OPERATIONAL_ENABLED);
 		comp->conn = conn;
 		amf_pd->comp = comp;
 		comp_healthcheck_activate (comp);
@@ -2673,7 +2671,7 @@ printf ("Activating healthcheck for the first time %p\n", healthcheck_active);
 
 #ifdef TODO
 do we want to do healtchecking only when full su has registered or also of non-fully registered sus
-	if (comp->unit->operational_state == OPENAIS_CFG_OPERATIONALSTATE_ENABLED) {
+	if (comp->unit->operational_state == SA_AMF_OPERATIONAL_ENABLED) {
 		/*
 		 * Start healthcheck now
 		 */
@@ -3021,7 +3019,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		printf ("response from removing the CSI\n");
 // AAAA
 		list_del (&csi_remove_callback_data->csi->si->unit_list);
-		list_del (&csi_remove_callback_data->csi->list);
+		list_del (&csi_remove_callback_data->csi->csi_list);
 		free (csi_remove_callback_data);
 		break;
 
@@ -4817,7 +4815,7 @@ static char presence_state_text[8][32] = {
 	"terminiation_failed"
 };
 
-static char *presencestate_ntoa (OpenaisCfgPresenceStateT state)
+static char *presencestate_ntoa (SaAmfPresenceStateT state)
 {
 	static char str[32];
 
@@ -4834,7 +4832,7 @@ static char operational_state_text[4][64] = {
 	"disabled"
 };
 
-static char *operationalstate_ntoa (OpenaisCfgOperationalStateT state)
+static char *operationalstate_ntoa (SaAmfOperationalStateT state)
 {
 	static char str[32];
 

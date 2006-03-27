@@ -866,7 +866,7 @@ saAmfCSIQuiescingComplete (
 }
 
 SaAisErrorT
-saAmfProtectionGroupTrackStart (
+saAmfProtectionGroupTrack (
 	SaAmfHandleT amfHandle,
 	const SaNameT *csiName,
 	SaUint8T trackFlags,

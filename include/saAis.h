@@ -52,6 +52,9 @@ typedef uint16_t SaUint16T;
 typedef uint32_t SaUint32T;
 typedef uint64_t SaUint64T;
 
+typedef float SaFloatT;
+typedef double SaDoubleT;
+typedef char * SaStringT;
 typedef SaInt64T SaTimeT;
 
 #define SA_TIME_END ((SaTimeT)0x7fffffffffffffffull)

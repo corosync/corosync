@@ -36,27 +36,9 @@
 #include "../include/saAmf.h"
 #include "../include/list.h"
 #include "aispoll.h"
-#include "../include/openaisCfg.h"
 
 #ifndef AMFCONFIG_H_DEFINED
 #define AMFCONFIG_H_DEFINED
-
-typedef enum {
-	GROUPCAPABILITYMODEL_2N,
-	GROUPCAPABILITYMODEL_NPLUSM,
-	GROUPCAPABILITYMODEL_NWAY,
-	GROUPCAPABILITYMODEL_NWAYACTIVE,
-	GROUPCAPABILITYMODEL_NOREDUNDANCY
-} SaAmfGroupCapabilityModelT;
-
-#ifdef COMPILE_OUT
-enum amfOperationalAdministrativeState {
-	AMF_DISABLED_UNLOCKED = 0,
-	AMF_DISABLED_LOCKED = 1,
-	AMF_ENABLED_UNLOCKED = 2,
-	AMF_ENABLED_STOPPING = 3
-};
-#endif
 
 struct amf_healthcheck {
 	SaAmfHealthcheckKeyT key;
@@ -68,9 +50,9 @@ struct amf_healthcheck {
 
 enum escalation_levels {
 	ESCALATION_LEVEL_NO_ESCALATION = 1,	/* execute component restart */
-        ESCALATION_LEVEL_ONE = 2,		/* escalate to service unit restart */
-        ESCALATION_LEVEL_TWO = 3,		/* escalate to service unit failover */
-        ESCALATION_LEVEL_THREE = 4		/* escalate to node failover */
+	ESCALATION_LEVEL_ONE = 2,		/* escalate to service unit restart */
+	ESCALATION_LEVEL_TWO = 3,		/* escalate to service unit failover */
+	ESCALATION_LEVEL_THREE = 4		/* escalate to node failover */
 };
 
 struct amf_unit {
@@ -79,11 +61,10 @@ struct amf_unit {
 	struct list_head unit_list;
 	struct amf_group *amf_group;
 	struct list_head si_head;
-	struct list_head si_list;
 	int si_count;
-	OpenaisCfgPresenceStateT presence_state;
-	OpenaisCfgOperationalStateT operational_state;
-	OpenaisCfgReadinessStateT readiness_state;
+	SaAmfPresenceStateT presence_state;
+	SaAmfOperationalStateT operational_state;
+	SaAmfReadinessStateT readiness_state;
 	SaAmfHAStateT assigned_ha_state;
 	SaAmfHAStateT requested_ha_state;
 
@@ -96,16 +77,15 @@ struct amf_unit {
 };
 
 struct amf_csi_name_value {
-        struct list_head list;
-        char name[128];
-        char value[128];
+	struct list_head csi_name_list;
+	char name[128];
+	char value[128];
 };
 
 struct amf_si;
 struct amf_csi {
 	SaNameT name;
 	SaNameT type_name;
-	struct list_head list;
 	struct amf_unit *unit;
 	struct list_head csi_list;
 	struct list_head unit_head;
@@ -117,13 +97,13 @@ struct amf_csi {
 struct amf_si {
 	SaNameT name;
 	int csi_count;
-	struct list_head list;
+	struct list_head si_list;
 	struct amf_group *group;
 	struct list_head csi_head;
 	struct list_head pg_head;
 	struct list_head unit_list;
-	OpenaisCfgAdministrativeStateT administrative_state;
-	OpenaisCfgOperationalStateT operational_state;
+	SaAmfAdminStateT administrative_state;
+	SaAmfOperationalStateT operational_state;
 };
 
 struct amf_pg {
@@ -141,12 +121,12 @@ struct amf_pg_comp {
 
 struct amf_group {
 	SaNameT name;
-	SaAmfGroupCapabilityModelT model;
+	saAmfRedundancyModelT model;
 	SaUint32T preferred_active_units;
 	SaUint32T preferred_standby_units;
 	SaUint32T maximum_active_instances;
 	SaUint32T maximum_standby_instances;
-	OpenaisCfgAdministrativeStateT administrativeState;
+	SaAmfAdminStateT administrative_state;
 	struct list_head group_list;
 	struct list_head unit_head;
 	struct list_head si_head;
@@ -195,16 +175,15 @@ struct amf_comp {
 	char am_start_cmd[1024];
 	char am_stop_cmd[1024];
 	
-	OpenaisCfgAdministrativeStateT administrative_state;
-	OpenaisCfgOperationalStateT operational_state;
-	OpenaisCfgReadinessStateT readiness_state;
+	SaAmfOperationalStateT operational_state;
+	SaAmfReadinessStateT readiness_state;
 	SaAmfHAStateT ha_state;
-	OpenaisCfgPresenceStateT presence_state;
+	SaAmfPresenceStateT presence_state;
 };
 
 struct amf_comp_csi_type_name {
 	struct list_head list;
-        SaNameT name;
+	SaNameT name;
 };
 
 extern struct list_head amf_group_head;

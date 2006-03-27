@@ -319,7 +319,7 @@ int main (int argc, char **argv) {
 	result = saAmfComponentCapabilityModelGet (&compName, &componentCapabilityModel);
 	printf ("component capability model get is %d (should be 1)\n", result);
 
-	result = saAmfProtectionGroupTrackStart (&handle, &csiName, SA_TRACK_CURRENT | SA_TRACK_CHANGES, protectionGroupNotificationBuffer, 64);
+	result = saAmfProtectionGroupTrack (&handle, &csiName, SA_TRACK_CURRENT | SA_TRACK_CHANGES, protectionGroupNotificationBuffer, 64);
 	printf ("track start result is %d (should be 1)\n", result);
 
 	result = saAmfProtectionGroupTrackStop (&handle, &csiName);

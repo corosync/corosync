@@ -69,6 +69,55 @@ typedef enum {
 	SA_AMF_HA_QUIESCING = 4
 } SaAmfHAStateT;
 
+typedef enum {
+	SA_AMF_READINESS_OUT_OF_SERVICE = 1,
+	SA_AMF_READINESS_IN_SERVICE = 2,
+	SA_AMF_READINESS_STOPPING = 3
+} SaAmfReadinessStateT;
+
+typedef enum {
+	SA_AMF_PRESENCE_UNINSTANTIATED = 1,
+	SA_AMF_PRESENCE_INSTANTIATING = 2,
+	SA_AMF_PRESENCE_INSTANTIATED = 3,
+	SA_AMF_PRESENCE_TERMINATING = 4,
+	SA_AMF_PRESENCE_RESTARTING = 5,
+	SA_AMF_PRESENCE_INSTANTIATION_FAILED = 6,
+	SA_AMF_PRESENCE_TERMINATION_FAILED = 7
+} SaAmfPresenceStateT;
+
+typedef enum {
+	SA_AMF_OPERATIONAL_ENABLED = 1,
+	SA_AMF_OPERATIONAL_DISABLED = 2
+} SaAmfOperationalStateT;
+
+typedef enum {
+	SA_AMF_ADMIN_UNLOCKED = 1,
+	SA_AMF_ADMIN_LOCKED = 2,
+	SA_AMF_ADMIN_LOCKED_INSTANTIATION = 3,
+	SA_AMF_ADMIN_SHUTTING_DOWN = 4
+} SaAmfAdminStateT;
+
+typedef enum {
+	SA_AMF_ASSIGNMENT_UNASSIGNED = 1,
+	SA_AMF_ASSIGNMENT_FULLY_ASSIGNED = 2,
+	SA_AMF_ASSIGNMENT_PARTIALLY_ASSIGNED = 3
+} SaAmfAssignmentStateT;
+
+typedef enum {
+	SA_AMF_PROXY_STATUS_UNPROXIED = 1,
+	SA_AMF_PROXY_STATUS_PROXIED = 2
+} SaAmfProxyStatusT;
+
+typedef enum {
+	SA_AMF_READINESS_STATE = 1,
+	SA_AMF_HA_STATE = 2,
+	SA_AMF_PRESENCE_STATE = 3,
+	SA_AMF_OP_STATE = 4,
+	SA_AMF_ADMIN_STATE = 5,
+	SA_AMF_ASSIGNMENT_STATE = 6,
+	SA_AMF_PROXY_STATUS = 7
+} SaAmfStateT;
+
 #define SA_AMF_CSI_ADD_ONE 0x1
 #define SA_AMF_CSI_TARGET_ONE 0x2
 #define SA_AMF_CSI_TARGET_ALL 0x4
@@ -148,8 +197,38 @@ typedef enum {
 	SA_AMF_NODE_SWITCHOVER = 4,
 	SA_AMF_NODE_FAILOVER = 5,
 	SA_AMF_NODE_FAILFAST = 6,
-	SA_AMF_CLUSTER_RESET = 7
+	SA_AMF_CLUSTER_RESET = 7,
+	SA_AMF_APPLICATION_RESTART = 8
 } SaAmfRecommendedRecoveryT;
+
+#define SA_AMF_COMP_SA_AWARE 0x0001
+#define SA_AMF_COMP_PROXY 0x0002
+#define SA_AMF_COMP_PROXIED 0x0004
+#define SA_AMF_COMP_LOCAL 0x0008
+typedef SaUint32T saAmfCompCategoryT;
+
+typedef enum {								
+	SA_AMF_2N_REDUNDANCY_MODEL = 1,
+	SA_AMF_NPM_REDUNDANCY_MODEL = 2,
+	SA_AMF_N_WAY_REDUNDANCY_MODEL = 3,
+	SA_AMF_N_WAY_ACTIVE_REDUNDACY_MODEL = 4,
+	SA_AMF_NO_REDUNDANCY_MODEL= 5
+} saAmfRedundancyModelT;
+
+typedef enum {								
+	SA_AMF_COMP_X_ACTIVE_AND_Y_STANDBY = 1,
+	SA_AMF_COMP_X_ACTIVE_OR_Y_STANDBY = 2,
+	SA_AMF_COMP_ONE_ACTIVE_OR_Y_STANDBY = 3,
+	SA_AMF_COMP_ONE_ACTIVE_OR_ONE_STANDBY = 4,
+	SA_AMF_COMP_X_ACTIVE = 5,
+	SA_AMF_COMP_1_ACTIVE = 6,
+	SA_AMF_COMP_NON_PRE_INSTANTIABLE = 7
+} saAmfCompCapabilityModelT;
+
+typedef enum {
+	SA_AMF_NODE_NAME = 1,
+	SA_AMF_SI_NAME = 2
+} SaAmfAdditionalInfoIdT;
 
 typedef void (*SaAmfHealthcheckCallbackT) (
 	SaInvocationT invocation,
@@ -198,9 +277,9 @@ typedef struct {
 	SaAmfProtectionGroupTrackCallbackT
 		saAmfProtectionGroupTrackCallback;
 	SaAmfExternalComponentInstantiateCallbackT
-		saAmfExternalComponentInstantiateCallback;
+		saAmfProxiedComponentInstantiateCallback;
 	SaAmfExternalComponentCleanupCallbackT
-		saAmfExternalComponentCleanupCallback;
+		saAmfProxiedComponentCleanupCallback;
 } SaAmfCallbacksT;
 
 /*
@@ -300,7 +379,7 @@ saAmfCSIQuiescingComplete(
 	SaAisErrorT error);
 
 SaAisErrorT
-saAmfProtectionGroupTrackStart (
+saAmfProtectionGroupTrack (
 	SaAmfHandleT amfHandle,
 	const SaNameT *csiName,
 	SaUint8T trackFlags,
