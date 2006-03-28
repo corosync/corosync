@@ -8,7 +8,7 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -111,7 +111,7 @@ int openais_service_objdb_add (
 	return (0);
 }
 
-static int service_handler_register (
+static int service_handler_config (
 	struct openais_service_handler *handler,
 	struct openais_config *config)
 {
@@ -121,11 +121,6 @@ static int service_handler_register (
 	ais_service[handler->id] = handler;
 	if (ais_service[handler->id]->config_init_fn) {
 		res = ais_service[handler->id]->config_init_fn (config);
-	}
-	//TODO error correction
-	log_printf (LOG_LEVEL_NOTICE, "Initializing service handler '%s'\n", handler->name);
-	if (ais_service[handler->id]->exec_init_fn) {
-		res = ais_service[handler->id]->exec_init_fn (config);
 	}
 	return (res);
 }
@@ -169,7 +164,7 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb,
 			strlen ("name"),
 			(void *)&service_name,
 			NULL);
-	
+
 		ret = objdb->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
@@ -179,7 +174,7 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb,
 		ver_int = atoi (service_ver);
 
 		/*
-		 * reference the interfafce and register it
+		 * reference the interface and register it
 		 */
 		lcr_ifact_reference (
 			&handle,
@@ -195,8 +190,23 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb,
 			log_printf(LOG_LEVEL_NOTICE, "openais component %s loaded.\n", service_name);
 		}
 
-		service_handler_register (
+		service_handler_config (
 			iface_ver0->openais_get_service_handler_ver0(), openais_config);
 	}
 	return (0);
+}
+
+int openais_service_init_all (int service_count,
+			      struct openais_config *openais_config)
+{
+	int i;
+	int res=0;
+
+	for (i = 0; i < service_count; i++) {
+		if (ais_service[i] && ais_service[i]->exec_init_fn) {
+			log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", ais_service[i]->name);
+			res = ais_service[i]->exec_init_fn (openais_config);
+		}
+	}
+	return (res);
 }

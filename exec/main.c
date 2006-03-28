@@ -1185,6 +1185,7 @@ int main (int argc, char **argv)
 		
 	objdb->objdb_init ();
 	openais_service_default_objdb_set (objdb);
+	openais_service_link_all (objdb, &openais_config);
 
 	res = openais_main_config_read (objdb, &error_string, &openais_config, 1);
 	if (res == -1) {
@@ -1271,7 +1272,7 @@ int main (int argc, char **argv)
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
-	openais_service_link_all (objdb, &openais_config);
+	openais_service_init_all (service_count, &openais_config);
 	
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);

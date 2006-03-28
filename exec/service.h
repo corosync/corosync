@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -59,7 +59,7 @@ struct openais_exec_handler {
 	void (*exec_handler_fn) (void *msg, struct totem_ip_address *source_addr);
 	void (*exec_endian_convert_fn) (void *msg);
 };
-	
+
 struct openais_service_handler {
 	unsigned char *name;
 	unsigned short id;
@@ -104,6 +104,10 @@ extern int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb);
 
 extern int openais_service_link_all (
 	struct objdb_iface_ver0 *objdb,
+	struct openais_config *openais_config);
+
+extern int openais_service_init_all (
+	int service_count,
 	struct openais_config *openais_config);
 
 extern struct openais_service_handler *ais_service[];
