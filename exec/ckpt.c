@@ -816,8 +816,8 @@ static void ckpt_recovery_initialize (void)
 		checkpoint = list_entry (checkpoint_list,
 								struct saCkptCheckpoint, list);
             
-		if (checkpoint->referenceCount <= 0) {
-			log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_initialize checkpoint %s has referenceCount 0 ignoring.\n", 
+		if (checkpoint->referenceCount < 1) { /*defect 1192*/
+			log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_initialize checkpoint %s has referenceCount < 1 ignoring.\n", 
 										(char*)&checkpoint->name.value);							
 			continue;
 		}
@@ -826,7 +826,7 @@ static void ckpt_recovery_initialize (void)
 		assert(savedCheckpoint);
 		memcpy(savedCheckpoint, checkpoint, sizeof(struct saCkptCheckpoint));
 		list_init(&savedCheckpoint->list);		
-		list_add(&savedCheckpoint->list,&checkpoint_recovery_list_head);
+		list_add_tail(&savedCheckpoint->list,&checkpoint_recovery_list_head);
 		list_init(&savedCheckpoint->sections_list_head);
 		for (checkpoint_section_list = checkpoint->sections_list_head.next;
 			checkpoint_section_list != &checkpoint->sections_list_head;
@@ -839,7 +839,7 @@ static void ckpt_recovery_initialize (void)
 			poll_timer_delete_data (aisexec_poll_handle, section->expiration_timer);
 			memcpy(savedSection, section, sizeof(struct saCkptCheckpointSection));
 			list_init(&savedSection->list);		
-			list_add(&savedSection->list,&savedCheckpoint->sections_list_head);
+			list_add_tail(&savedSection->list,&savedCheckpoint->sections_list_head);
 		}
 	}
 	
@@ -1240,11 +1240,11 @@ iterate_while_loop:
 			 * Decrement
 			 * 
 			 */
-			if (checkpoint->referenceCount >= 0) {
+			if (checkpoint->referenceCount > 0) { /*defect 1192*/
 				checkpoint->referenceCount -= checkpoint->ckpt_refcount[index].count;
 				log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_process_members_exit: refCount for %s = %d.\n",
 												&checkpoint->name.value,checkpoint->referenceCount);
-				assert (checkpoint->referenceCount >= 0);
+				assert (checkpoint->referenceCount > 0);/*defect 1192*/
 			} else {
 				log_printf (LOG_LEVEL_ERROR, "ckpt_recovery_process_members_exit: refCount for %s = %d.\n",
 												&checkpoint->name.value,checkpoint->referenceCount);			
@@ -1281,7 +1281,7 @@ void clean_checkpoint_list(struct list_head *head)
 		/*
 		* If checkpoint has been unlinked and this is the last reference, delete it
 		*/
-		 if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
+		 if (checkpoint->unlinked && checkpoint->referenceCount == 1) { /*defect 1129*/
 			log_printf (LOG_LEVEL_NOTICE,"clean_checkpoint_list: deallocating checkpoint %s.\n",
                                                                                                 &checkpoint->name.value);
 			checkpoint_list = checkpoint_list->next;
@@ -1289,7 +1289,7 @@ void clean_checkpoint_list(struct list_head *head)
 			continue;
 			
 		} 
-		else if ((checkpoint->expired == 0) && (checkpoint->referenceCount == 0)) {
+		else if ((checkpoint->expired == 0) && (checkpoint->referenceCount == 1)) { /*defect 1192*/
 			log_printf (LOG_LEVEL_NOTICE, "clean_checkpoint_list: Starting timer to release checkpoint %s.\n",
 				&checkpoint->name.value);
 			poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
@@ -1618,6 +1618,8 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 		assert(ckptCheckpointSection->sectionData);
 		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
 		ckptCheckpointSection->expiration_timer = 0;
+		
+		ckptCheckpoint->referenceCount += 1; /*defect 1129*/
 	} else {
 		if (req_lib_ckpt_checkpointopen->checkpointCreationAttributesSet &&
 			memcmp (&ckptCheckpoint->checkpointCreationAttributes,
@@ -1844,7 +1846,12 @@ static int recovery_checkpoint_open(
 	}
 
 	/*No Existing ckpts. Lets assign what we got over the network or the merged with network values*/
-	ckptCheckpoint->referenceCount = ckpt_refcount_total(ref_cnt);
+	/*
+	 * The reason why we are adding 1 is because there is an assignment vis-a-via an increment in the 
+	 * the next line. Whether the ckpt was opened earlier or just now, the referenceCount is getting
+	 * obliterated in the next line.
+	 */
+	ckptCheckpoint->referenceCount = ckpt_refcount_total(ref_cnt) + 1; /*defect 1192*/
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: OPEN ckptCheckpoint->referenceCount %d\n",ckptCheckpoint->referenceCount);
 	memcpy(ckptCheckpoint->ckpt_refcount,ref_cnt,sizeof(struct ckpt_refcnt)*PROCESSOR_COUNT_MAX);
 	
@@ -2051,18 +2058,18 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 	 				"CKPT: Could Not find Processor Info %p info.\n", 
 	 				checkpoint);
 	}
-	assert (checkpoint->referenceCount >= 0);
+	assert (checkpoint->referenceCount > 0); /*defect 1192*/
 	log_printf (LOG_LEVEL_DEBUG, "disconnect called, new CKPT ref count is %d\n", 
 		checkpoint->referenceCount);
 
 	/*
 	 * If checkpoint has been unlinked and this is the last reference, delete it
 	 */
-	if (checkpoint->unlinked && checkpoint->referenceCount == 0) {
+	if (checkpoint->unlinked && checkpoint->referenceCount == 1 ) { /*defect 1192*/
 		log_printf (LOG_LEVEL_DEBUG, "Unlinking checkpoint.\n");		
 		release_checkpoint = 1;		
 	} else
-	if (checkpoint->referenceCount == 0) {		
+	if (checkpoint->referenceCount == 1 ) { /*defect 1192*/		
 		poll_timer_add (aisexec_poll_handle,
 			checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 			checkpoint,
@@ -2114,7 +2121,7 @@ static void message_handler_req_exec_ckpt_checkpointunlink (
 	/*
 	 * Immediately delete entry if reference count is zero
 	 */
-	if (ckptCheckpoint->referenceCount == 0) {
+	if (ckptCheckpoint->referenceCount == 1) { /*defect 1192*/
 		/*
 		 * Remove retention timer since this checkpoint was unlinked and is no
 		 * longer referenced
@@ -2154,7 +2161,7 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 			checkpoint->checkpointCreationAttributes.retentionDuration =
 				req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
 	
-			if (checkpoint->expired == 0 && checkpoint->referenceCount == 0) {
+			if (checkpoint->expired == 0 && checkpoint->referenceCount == 1) { /*defect 1192*/
 				poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
 	
 				poll_timer_add (aisexec_poll_handle,
@@ -2192,7 +2199,7 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 	struct iovec iovecs[2];
 
 	checkpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName);
-	if (checkpoint && (checkpoint->expired == 0) && (checkpoint->referenceCount < 1)) {
+	if (checkpoint && (checkpoint->expired == 0) && (checkpoint->referenceCount == 1)) { /*defect 1192*/
 		log_printf (LOG_LEVEL_NOTICE, "CKPT: Expiring checkpoint %s\n", getSaNameT (&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName));
 		checkpoint->expired = 1;
 
@@ -2443,6 +2450,9 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	 */
 	memcpy (sectionId, ((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate),
 		req_lib_ckpt_sectioncreate->idLen);
+
+	/*Must be null terminated if it already isn't*/
+	((char*)(sectionId))[req_lib_ckpt_sectioncreate->idLen] = '\0';
 	
 	memcpy (initialData,
 		((char *)req_lib_ckpt_sectioncreate) +
