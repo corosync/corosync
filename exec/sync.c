@@ -53,6 +53,7 @@
 #include "sync.h"
 #include "totempg.h"
 #include "totemip.h"
+#include "totem.h"
 #include "ykd.h"
 #include "print.h"
 #include "swab.h"
@@ -101,6 +102,13 @@ static void sync_deliver_fn (
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required);
+
+void sync_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id);
 
 void sync_primary_callback_fn (
 	struct totem_ip_address *view_list,
@@ -155,7 +163,6 @@ void sync_start_init (struct memb_ring_id *ring_id)
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
-// AA
 	sync_callbacks.sync_init ();
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
@@ -214,6 +221,14 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 
 	
 	/*
+	 * If process operation not from this ring id, then ignore it and stop
+	 * processing
+	 */
+	if (memcmp (ring_id, sync_ring_id, sizeof (struct memb_ring_id)) != 0) {
+		return (0);
+	}
+	
+	/*
 	 * If process returns 0, then its time to activate
 	 * and start the next service's synchronization
 	 */
@@ -250,7 +265,7 @@ void sync_register (
 	totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,
-		NULL);
+		sync_confchg_fn);
 
 	totempg_groups_join (
 		sync_group_handle,
@@ -285,8 +300,6 @@ void sync_primary_callback_fn (
 
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
-	sync_ring_id = ring_id;
-
 	sync_recovery_index = 0;
 	sync_callback_loaded = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
@@ -297,7 +310,7 @@ void sync_primary_callback_fn (
 	memcpy (barrier_data_process, barrier_data_confchg,
 		sizeof (barrier_data_confchg));
 	barrier_data_confchg_entries = view_list_entries;
-	sync_start_init (ring_id);
+	sync_start_init (sync_ring_id);
 }
 
 static struct memb_ring_id deliver_ring_id;
@@ -387,8 +400,18 @@ void sync_deliver_fn (
 	return;
 }
 
+void sync_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	struct totem_ip_address *member_list, int member_list_entries,
+	struct totem_ip_address *left_list, int left_list_entries,
+	struct totem_ip_address *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id)
+{
+	sync_ring_id = ring_id;
+}
+
+
 int sync_in_process (void)
 {
 	return (sync_processing);
 }
-
