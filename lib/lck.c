@@ -1003,7 +1003,7 @@ saLckResourceUnlock (
 	SaTimeT timeout)
 {
 	struct req_lib_lck_resourceunlock req_lib_lck_resourceunlock;
-	struct res_lib_lck_resourceunlockasync res_lib_lck_resourceunlockasync;
+	struct res_lib_lck_resourceunlock res_lib_lck_resourceunlock;
 	SaAisErrorT error;
 	struct lckLockIdInstance *lckLockIdInstance;
 	struct lckResourceInstance *lckResourceInstance;
@@ -1043,8 +1043,8 @@ saLckResourceUnlock (
 	error = saSendReceiveReply (lckLockIdInstance->response_fd, 
 		&req_lib_lck_resourceunlock,
 		sizeof (struct req_lib_lck_resourceunlock),
-		&res_lib_lck_resourceunlockasync,
-		sizeof (struct res_lib_lck_resourceunlockasync));
+		&res_lib_lck_resourceunlock,
+		sizeof (struct res_lib_lck_resourceunlock));
 
 	pthread_mutex_unlock (lckLockIdInstance->response_mutex);
 
@@ -1052,7 +1052,7 @@ saLckResourceUnlock (
 
 	saHandleDestroy (&lckLockIdHandleDatabase, lockId);
 
-	return (error == SA_AIS_OK ? res_lib_lck_resourceunlockasync.header.error : error);
+	return (error == SA_AIS_OK ? res_lib_lck_resourceunlock.header.error : error);
 }
 
 SaAisErrorT
