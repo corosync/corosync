@@ -862,6 +862,7 @@ static int ckpt_recovery_process (void)
 	struct saCkptCheckpointSection *ckptCheckpointSection;
 	SaSizeT origSectionSize;  
 	SaSizeT newSectionSize;
+	int res;
 
 	if (recovery_abort) { /*Abort was called.*/
 		goto recovery_exit_clean;
@@ -953,8 +954,8 @@ static int ckpt_recovery_process (void)
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
 					 */
-					if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 2)) {
-						assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
+					res = totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED);
+					if (res == 0) {
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync State Message.\n");
 					}			
 					else {
@@ -1029,11 +1030,11 @@ static int ckpt_recovery_process (void)
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
 					 */
-					if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 2)) {
-						assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 3, TOTEMPG_AGREED) == 0);
+
+					res = totempg_groups_mcast_joined (openais_group_handle, iovecs, 3, TOTEMPG_AGREED);
+					if (res == 0) {
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync Section Message.\n");
-					}			
-					else {
+					} else {
 						log_printf (LOG_LEVEL_DEBUG, "CKPT: Sync Section Message Outbound Queue full need to Wait for Callback.\n");
 						return (1);
 					}									
