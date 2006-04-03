@@ -291,6 +291,7 @@ static int object_key_create (
 	memcpy (object_key->value, value, value_len);
 
 	object_key->key_len = key_len;
+	object_key->value_len = value_len;
 
 	list_init (&object_key->list);
 	list_add (&object_key->list, &instance->key_head);
