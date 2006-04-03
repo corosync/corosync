@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 RedHat, Inc.
  *
  * All rights reserved.
  *
@@ -68,7 +69,9 @@
 #define FAIL_TO_RECV_CONST			50
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
-#define MAX_NETWORK_DELAY			50 /*In milliseconds*/
+#define MAX_NETWORK_DELAY			50
+#define WINDOW_SIZE				50
+#define MAX_MESSAGES				17
 
 static char error_string_response[512];
 
@@ -186,8 +189,6 @@ extern int totem_config_read (
 			continue;
 		}
 			
-		line_number += 1;
-
 		switch (parse) {
 		case MAIN_HEAD:
 			if (totem_parsed == 0 && strstr_rs (line, "network{")) {
@@ -265,7 +266,12 @@ extern int totem_config_read (
 				totem_config->heartbeat_failures_allowed = atoi(loc);
 			} else if ((loc = strstr_rs (line, "max_network_delay:"))) {
 				totem_config->max_network_delay = atoi(loc);
-			} else if ((loc = strstr_rs (line, "}"))) {
+			} else if ((loc = strstr_rs (line, "window_size:"))) {
+				totem_config->window_size = atoi(loc);
+			} else if ((loc = strstr_rs (line, "max_messages:"))) {
+				totem_config->max_messages = atoi(loc);
+			} else
+			if ((loc = strstr_rs (line, "}"))) {
 				parse = MAIN_HEAD;
 			} else {
 				goto parse_error;
@@ -375,6 +381,14 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
+	if (totem_config->window_size == 0) {
+		totem_config->window_size = WINDOW_SIZE;
+	}
+
+	if (totem_config->max_messages == 0) {
+		totem_config->max_messages = MAX_MESSAGES;
+	}
+
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
 		sprintf (local_error_reason, "The token timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
@@ -456,6 +470,13 @@ int totem_config_validate (
 	if (totem_config->net_mtu == 0) {
 		totem_config->net_mtu = 1500;
 	}
+
+	if ((256000 / totem_config->net_mtu) < totem_config->max_messages) {
+		sprintf (local_error_reason, "The max_messages parameter (%d messages) may not be greater then (%d messages).",
+			totem_config->max_messages, 256000/totem_config->net_mtu);
+		goto parse_error;
+	}
+
 	if (totem_config->threads > SEND_THREADS_MAX) {
 		totem_config->threads = SEND_THREADS_MAX;
 	}

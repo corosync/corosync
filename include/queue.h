@@ -168,4 +168,8 @@ static inline void queue_avail (struct queue *queue, int *avail)
 	assert (*avail >= 0);
 }
 
+static inline int queue_used (struct queue *queue) {
+	return (queue->used);
+}
+
 #endif /* QUEUE_H_DEFINED */

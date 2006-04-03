@@ -1,5 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
+.\" * Copyright (c) 2006 RedHat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH OPENAIS_CONF 5 2005-06-08 "openais Man Page" "Openais Programmer's Manual"
+.TH OPENAIS_CONF 5 2006-03-28 "openais Man Page" "Openais Programmer's Manual"
 .SH NAME
 openais.conf - openais executive configuration file
 
@@ -164,7 +165,7 @@ mtu size set from 1500 to whatever frame size is specified here.
 
 Please note while some NICs or switches claim large frame support, they support
 9000 MTU as the maximum frame size including the IP header.  Setting the netmtu
-and host MTUs to 9000 will cause totem to use the full 9000 bytes of frame room.
+and host MTUs to 9000 will cause totem to use the full 9000 bytes of the frame.
 Then Linux will add a 18 byte header moving the full frame size to 9018.  As a
 result some hardware will not operate properly with this size of data.  A netmtu 
 of 8982 seems to work for the few large frame devices that have been tested.
@@ -208,7 +209,7 @@ token
 This timeout specifies in milliseconds until a token loss is declared after not
 receiving a token.  This is the time spent detecting a failure of a processor
 in the current configuration.  Reforming a new configuration takes about 50
-milliseconds and is independent of this timeout.
+milliseconds in addition to this timeout.
 
 .TP
 token_retransmit
@@ -277,17 +278,39 @@ before declaring heartbeat failure e.g 3. Also if this value is not set or is 0 
 heartbeat mechanism is not engaged in the system and token rotation is the method
 of failure detection
 
-default value = 0.
+The default is 0 (disabled).
 
 .TP
 max_network_delay
 [HeartBeating mechanism]
-This constant specifies in Milliseconds the approximate delay that your network takes
+This constant specifies in milliseconds the approximate delay that your network takes
 to transport one packet from one machine to another. This value is to be set by system
 engineers and please dont change if not sure as this effects the failure detection
 mechanism using heartbeat.
 
-default value = 50 milliseconds.
+The default is 50 milliseconds.
+
+.TP
+window_size
+This constant specifies the maximum number of messages that may be sent on one
+token rotation.  If all processors perform equally well, this value could be
+large (300), which would introduce higher latency from origination to delivery
+for very large rings.  To reduce latency in large rings(16+), the defaults are
+a safe compromise.  If 1 or more slow processor(s) are present among fast
+processors, window_size should be no larger then 256000 / netmtu to avoid
+overflow of the kernel receive buffers.  The user is notified of this by
+the display of a retransmit list in the notification logs.  There is no loss
+of data, but performance is reduced when these errors occur.
+
+The default is 50 messages.
+
+.TP
+max_messages
+This constant specifies the maximum number of messages that may be sent by one
+processor on receipt of the token.  The max_messages parameter is limited to
+256000 / netmtu to prevent overflow of the kernel transmit buffers.
+
+The default is 17 messages.
 
 .PP
 Within the 
@@ -303,13 +326,17 @@ options multiple times in the top level directive.
 .TP
 logfile
 If the logoutput: file directive is set, this option specifies where the
-log file is written to.  
+log file is written to.
+
+The default is syslog.
 
 .TP
 debug
 This specifies whether debug output is logged.  This is generally a bad idea, 
 unless there is some specific bug or problem that must be found in the
 executive.  Set the value to on to debug, off to turn of debugging.
+
+The default is off.
 
 .TP
 timestamp

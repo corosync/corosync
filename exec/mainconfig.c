@@ -164,8 +164,6 @@ extern int openais_main_config_read (
 			continue;
 		}
 			
-		line_number += 1;
-
 		switch (parse) {
 		case MAIN_HEAD:
 			if (logging_parsed == 0 && strstr_rs (line, "logging{")) {

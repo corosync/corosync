@@ -125,10 +125,13 @@ struct totem_config {
 
 	unsigned int threads;
 	
-	int heartbeat_failures_allowed;
+	unsigned int heartbeat_failures_allowed;
 	
-	/*In Milliseconds*/
-	int max_network_delay;
+	unsigned int max_network_delay;
+
+	unsigned int window_size;
+
+	unsigned int max_messages;
 };
 
 enum totem_configuration_type {
