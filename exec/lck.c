@@ -109,7 +109,7 @@ struct resource_cleanup {
 
 DECLARE_LIST_INIT(resource_list_head);
 
-static int lck_exec_init_fn (struct openais_config *);
+static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int lck_lib_exit_fn (void *conn);
 
@@ -574,7 +574,7 @@ void lck_resource_cleanup_remove (
 }
 
 
-static int lck_exec_init_fn (struct openais_config *openais_config)
+static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	/*
 	 *  Initialize the saved ring ID.

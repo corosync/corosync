@@ -127,7 +127,7 @@ static void clm_sync_activate (void);
 
 static void clm_sync_abort (void);
 
-static int clm_exec_init_fn (struct openais_config *);
+static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int clm_lib_init_fn (void *conn);
 
@@ -254,7 +254,7 @@ struct req_exec_clm_nodejoin {
 	SaClmClusterNodeT clusterNode;
 };
 
-static int clm_exec_init_fn (struct openais_config *openais_config)
+static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 

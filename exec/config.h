@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -31,59 +31,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <netinet/in.h>
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "aispoll.h"
-#include "totemsrp.h"
-#include "totempg.h"
-#include "objdb.h"
 
-#ifndef MAINCONFIG_H_DEFINED
-#define MAINCONFIG_H_DEFINED
+#ifndef CONFIG_H_DEFINED
+#define CONFIG_H_DEFINED
 
-/*
- * All service handlers in the AIS
- */
-struct dynamic_service {
-	char *name;
-	unsigned int ver;
-	unsigned int handle;
-	struct openais_service_handler_iface_ver0 *iface_ver0;
-};
-#define MAX_DYNAMIC_SERVICES 128
-
-struct openais_config {
-	/*
-	 * logging
-	 */
-	int logmode;
-	char *logfile;
-
-	/* user/group to run as */
-	char *user;
-	char *group;
-
-	/*
-	 * Event service
-	 */
-	unsigned int evt_delivery_queue_size;
-	unsigned int evt_delivery_queue_resume;
-
-	/*
-	 * AMF service
-	 */
-	unsigned int amf_enabled;
-
-	struct totem_config totem_config;
+struct config_iface_ver0 {
+	int (*config_readconfig) (struct objdb_iface_ver0 *objdb, char **error_string);
 };
 
-extern char *strstr_rs (const char *haystack, const char *needle);
 
-extern int openais_main_config_read (
-	struct objdb_iface_ver0 *objdb,
-	char **error_string,
-	struct openais_config *openais_config,
-	int interface_max);
-	
-#endif /* MAINCONFIG_H_DEFINED */
+
+#endif /* CONFIG_H_DEFINED */

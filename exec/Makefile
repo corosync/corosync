@@ -48,19 +48,19 @@ endif
 CFLAGS += -DOPENAIS_USER=\"${OPENAIS_USER}\" -DOPENAIS_GROUP=\"${OPENAIS_GROUP}\" -DOPENAIS_CONFDIR=\"${OPENAIS_CONFDIR}\"
 
 # Totem objects
-TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c totemconfig.c tlist.c crypto.c wthread.c
-TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o totemconfig.o tlist.o crypto.o wthread.o
+TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c tlist.c crypto.c wthread.c
+TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o tlist.o crypto.o wthread.o
 EXEC_LIBS = libtotem_pg.a
 
 # service handler objects
-SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c
-SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o
+SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c
+SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
-		util.c sync.c ykd.c mainconfig.c amfconfig.c service.c
+		util.c sync.c ykd.c service.c totemconfig.c mainconfig.c
 MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o ykd.o mainconfig.o amfconfig.o service.o ../lcr/lcr_ifact.o
+		util.o sync.o ykd.o  service.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
@@ -72,7 +72,7 @@ all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
-	objdb.lcrso keygen openais-instantiate
+	objdb.lcrso aisparser.lcrso keygen openais-instantiate
 else
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(OTHER_OBJS) $(SERV_OBJS)
 all: libtotem_pg.a aisexec keygen openais-instantiate
@@ -87,8 +87,8 @@ service_evs.lcrso: evs.o
 service_clm.lcrso: clm.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load clm.o -o $@
 
-service_amf.lcrso: amf.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load amf.o -o $@
+service_amf.lcrso: amf.o amfconfig.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load amf.o amfconfig.o -o $@
 
 service_ckpt.lcrso: ckpt.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load ckpt.o -o $@
@@ -106,7 +106,10 @@ service_cfg.lcrso: cfg.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
 
 service_cpg.lcrso: cpg.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
+
+aisparser.lcrso: aisparser.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load aisparser.o -o $@
 
 objdb.lcrso: objdb.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load objdb.o -o $@
@@ -119,8 +122,8 @@ service_evs.lcrso: evs.o
 service_clm.lcrso: clm.o
 	$(CC) -shared -Wl,-soname,service_clm.lcrso clm.o -o $@
 
-service_amf.lcrso: amf.o
-	$(CC) -shared -Wl,-soname,service_amf.lcrso amf.o -o $@
+service_amf.lcrso: amf.o amfconfig.o
+	$(CC) -shared -Wl,-soname,service_amf.lcrso amf.o amfconfig.o -o $@
 
 service_ckpt.lcrso: ckpt.o
 	$(CC) -shared -Wl,-soname,service_ckpt.lcrso ckpt.o -o $@
@@ -139,6 +142,9 @@ service_cfg.lcrso: cfg.o
 
 service_cpg.lcrso: cpg.o
 	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
+
+aisparser.lcrso: aisparser.o
+	$(CC) -shared -Wl,-soname,aisparser.lcrso aisparser.o -o $@
 
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
@@ -207,6 +213,9 @@ msg.o: msg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 cfg.o: cfg.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+
+aisparser.o: aisparser.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 cpg.o: cpg.c

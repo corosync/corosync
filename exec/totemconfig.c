@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -51,6 +51,7 @@
 #include "totem.h"
 #include "totemconfig.h"
 #include "print.h"
+#include "objdb.h"
 
 #define LOG_SERVICE LOG_SERVICE_GMI
 
@@ -75,75 +76,51 @@
 
 static char error_string_response[512];
 
-typedef enum {
-	MAIN_HEAD,
-	MAIN_TOTEM,
-} main_parse_t;
-
-static inline char *
-strstr_rs (const char *haystack, const char *needle)
+/* These just makes the code below a little neater */
+static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+				   char *key, char **value)
 {
-	char *end_address;
-	char *new_needle;
-	char *token = (char *)(needle + strlen (needle) - 1); /* last char is always the token */
+	int res;
 
-	
-	new_needle = (char *)strdup (needle);
-	new_needle[strlen(new_needle) - 1] = '\0'; /* remove token */
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address == 0) {
-		goto not_found;
+	*value = NULL;
+	if ( !(res = objdb->object_key_get (object_service_handle,
+					    key,
+					    strlen (key),
+					    (void *)value,
+					    NULL))) {
+		if (*value)
+			return 0;
 	}
-
-	end_address += strlen (new_needle);
-
-	/*
-	 * Parse all tabs and spaces until token is found
-	 * if other character found besides token, its not a match
-	 */
-	do {
-		if (*end_address == '\t' || *end_address == ' ') {
-			end_address++;
-		} else {
-			break;
-		}
-	} while (*end_address != '\0' && *end_address != token[0]);
-
-	if (*end_address != token[0]) {
-		end_address = 0;
-		goto not_found;
-	}
-		
-	end_address++;	/* skip past token */
-
-	do {
-		if (*end_address == '\t' || *end_address == ' ') {
-			end_address++;
-		} else {
-			break;
-		}
-	} while (*end_address != '\0');
-
-not_found:
-	free (new_needle);
-	return (end_address);
+	return -1;
 }
 
+static inline void objdb_get_int(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+				   char *key, unsigned int *intvalue)
+{
+	char *value = NULL;
+
+	if (!objdb->object_key_get (object_service_handle,
+				    key,
+				    strlen (key),
+				    (void *)&value,
+				    NULL)) {
+		if (value) {
+			*intvalue = atoi(value);
+		}
+	}
+}
+
+
 extern int totem_config_read (
+	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	char **error_string,
 	int interface_max)
 {
-	FILE *fp;
 	int res = 0;
-	int line_number = 0;
-	main_parse_t parse = MAIN_HEAD;
-	int totem_parsed = 0;
-	char *loc;
-	int i;
 	int parse_done = 0;
-	char line[512];
+	unsigned int object_service_handle;
+	char *value;
 	char *error_reason = error_string_response;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
@@ -159,151 +136,98 @@ extern int totem_config_read (
 
 	totem_config->secauth = 1;
 
-	fp = fopen (OPENAIS_CONFDIR "/openais.conf", "r");
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 
-	if (fp == 0) {
-		parse_done = 1;
-		sprintf (error_reason, "Can't read file %s reason = (%s)\n",
-			 OPENAIS_CONFDIR, strerror (errno));
-		*error_string = error_reason;
-		return -1;
-	}
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "network",
+		    strlen ("network"),
+		    &object_service_handle) == 0 ||
+	    objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "totem",
+		    strlen ("totem"),
+		    &object_service_handle) == 0) {
 
-	while (fgets (line, 255, fp)) {
-		line_number += 1;
-		line[strlen(line) - 1] = '\0';
-		/*
-		 * Clear out white space and tabs
-		 */
-		for (i = strlen (line) - 1; i > -1; i--) {
-			if (line[i] == '\t' || line[i] == ' ') {
-				line[i] = '\0';
-			} else {
-				break;
+		if (!objdb_get_string (objdb,object_service_handle, "version", &value)) {
+			if (strcmp (value, "1") == 0) {
+				totem_config->version = 1;
 			}
 		}
-		/*
-		 * Clear out comments and empty lines
-		 */
-		if (line[0] == '#' || line[0] == '\0') {
-			continue;
-		}
-			
-		switch (parse) {
-		case MAIN_HEAD:
-			if (totem_parsed == 0 && strstr_rs (line, "network{")) {
-				totem_parsed = 1;
-				parse = MAIN_TOTEM;
-			} else
-			if (totem_parsed == 0 && strstr_rs (line, "totem{")) {
-				totem_parsed = 1;
-				parse = MAIN_TOTEM;
-			} else {
-				continue;
+		if (!objdb_get_string (objdb,object_service_handle, "secauth", &value)) {
+			if (strcmp (value, "on") == 0) {
+				totem_config->secauth = 1;
 			}
-			break;
+			if (strcmp (value, "off") == 0) {
+				totem_config->secauth = 0;
+			}
+		}
+		objdb_get_int (objdb,object_service_handle, "threads", &totem_config->threads);
 
-		case MAIN_TOTEM:
-			if ((loc = strstr_rs (line, "version:"))) {
-				if (strcmp (loc, "1") == 0) {
-					totem_config->version = 1;
-				}
-			} else
-			if ((loc = strstr_rs (line, "secauth:"))) {
-				if (strcmp (loc, "on") == 0) {
-					totem_config->secauth = 1;
-				} else
-				if (strcmp (loc, "off") == 0) {
-					totem_config->secauth = 0;
-				}
-			} else
-			if ((loc = strstr_rs (line, "threads:"))) {
-				totem_config->threads = atoi (loc);
-			} else
-			if ((loc = strstr_rs (line, "nodeid:"))) {
-				res = totem_config->node_id = atoi (loc);
-			} else
-			if ((loc = strstr_rs (line, "netmtu:"))) {
-				totem_config->net_mtu = atoi (loc);
-			} else
-			if ((loc = strstr_rs (line, "mcastaddr:"))) {
-				res = totemip_parse (&totem_config->mcast_addr, loc);
-			} else
-			if ((loc = strstr_rs (line, "mcastport:"))) {
-				res = totem_config->ip_port = htons (atoi (loc));
-			} else
-			if ((loc = strstr_rs (line, "bindnetaddr:"))) {
-				if (interface_max == totem_config->interface_count) {
-					sprintf (error_reason,
-						"%d is too many interfaces in %s/network.conf",
-						totem_config->interface_count, OPENAIS_CONFDIR);
-					goto parse_error;
-				}
-				res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, loc);
-				totem_config->interface_count += 1;
-			} else
-			if ((loc = strstr_rs (line, "token:"))) {
-				totem_config->token_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "token_retransmit:"))) {
-				totem_config->token_retransmit_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "hold:"))) {
-				totem_config->token_hold_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "token_retransmits_before_loss_const:"))) {
-				totem_config->token_retransmits_before_loss_const = atoi(loc);
-			} else if ((loc = strstr_rs (line, "join:"))) {
-				totem_config->join_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "consensus:"))) {
-				totem_config->consensus_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "merge:"))) {
-				totem_config->merge_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "downcheck:"))) {
-				totem_config->downcheck_timeout = atoi(loc);
-			} else if ((loc = strstr_rs (line, "fail_recv_const:"))) {
-				totem_config->fail_to_recv_const = atoi(loc);
-			} else if ((loc = strstr_rs (line, "seqno_unchanged_const:"))) {
-				totem_config->seqno_unchanged_const = atoi(loc);
-			} else if ((loc = strstr_rs (line, "heartbeat_failures_allowed:"))) {
-				totem_config->heartbeat_failures_allowed = atoi(loc);
-			} else if ((loc = strstr_rs (line, "max_network_delay:"))) {
-				totem_config->max_network_delay = atoi(loc);
-			} else if ((loc = strstr_rs (line, "window_size:"))) {
-				totem_config->window_size = atoi(loc);
-			} else if ((loc = strstr_rs (line, "max_messages:"))) {
-				totem_config->max_messages = atoi(loc);
-			} else
-			if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-			} else {
+		objdb_get_int (objdb,object_service_handle, "nodeid", &totem_config->node_id);
+
+		objdb_get_int (objdb,object_service_handle, "netmtu", &totem_config->net_mtu);
+
+		if (!objdb_get_string (objdb,object_service_handle, "mcastaddr", &value)) {
+			res = totemip_parse (&totem_config->mcast_addr, value);
+		}
+
+		if (!objdb_get_string (objdb,object_service_handle, "mcastport", &value)) {
+			totem_config->ip_port = htons (atoi (value));
+		}
+
+		// TODO This really expects a list....copy stuff from services ?
+		if (!objdb_get_string (objdb,object_service_handle, "bindnetaddr", &value)) {
+
+			if (interface_max == totem_config->interface_count) {
+				sprintf (error_reason,
+					 "%d is too many interfaces in %s/network.conf",
+					 totem_config->interface_count, OPENAIS_CONFDIR);
 				goto parse_error;
 			}
-			break;
-		default:
-			assert (0 == 1); /* SHOULDN'T HAPPEN */
-			break;	
+			res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, value);
+			totem_config->interface_count += 1;
 		}
+
+		objdb_get_int (objdb,object_service_handle, "token", &totem_config->token_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "hold", &totem_config->token_hold_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
+
+		objdb_get_int (objdb,object_service_handle, "join", &totem_config->join_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "consensus", &totem_config->consensus_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "merge", &totem_config->merge_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "downcheck", &totem_config->downcheck_timeout);
+
+		objdb_get_int (objdb,object_service_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
+
+		objdb_get_int (objdb,object_service_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
+
+		objdb_get_int (objdb,object_service_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
+
+		objdb_get_int (objdb,object_service_handle, "max_network_delay", &totem_config->max_network_delay);
+
+		objdb_get_int (objdb,object_service_handle, "window_size", &totem_config->window_size);
+
+		objdb_get_int (objdb,object_service_handle, "max_messages", &totem_config->max_messages);
 	}
 
-
-	if (parse == MAIN_HEAD) {
-		fclose (fp);
-		return (0);
-	} else {
-		error_reason = "Missing closing brace";
-		goto parse_error;
-	}
+	return 0;
 
 parse_error:
-	if (parse_done) {
-		sprintf (error_string_response,
-			"parse error in %s/openais.conf: %s.\n",
-			 OPENAIS_CONFDIR, error_reason);
-	} else {
-		sprintf (error_string_response,
-			"parse error in %s/openais.conf: %s (line %d).\n",
-			 OPENAIS_CONFDIR, error_reason, line_number);
-	}
+
+	sprintf (error_string_response,
+		 "parse error in config %s.\n",
+		 error_reason);
+
 	*error_string = error_string_response;
-	fclose (fp);
+
 	return (-1);
 }
 
@@ -340,7 +264,7 @@ int totem_config_validate (
 	}
 
 	if (totem_config->version != 1) {
-		error_reason = "This totem parser can only parse version 1 configuration files.";
+		error_reason = "This totem parser can only parse version 1 configurations.";
 		goto parse_error;
 	}
 
@@ -487,32 +411,28 @@ int totem_config_validate (
 		error_reason = "This net_mtu parameter is greater then the maximum frame size";
 		goto parse_error;
 	}
-		
+
 	return (0);
 
 parse_error:
 	sprintf (error_string_response,
-		"parse error in %s/openais.conf: %s\n", OPENAIS_CONFDIR, error_reason);
+		 "parse error in config: %s\n", error_reason);
 	*error_string = error_string_response;
 	return (-1);
 }
 
-int totem_config_keyread (
+static int read_keyfile (
 	char *key_location,
 	struct totem_config *totem_config,
 	char **error_string)
 {
 	int fd;
 	int res;
-	int i;
 
-	if (totem_config->secauth == 0) {
-		return (0);
-	}
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
 		sprintf (error_string_response, "Could not open %s: %s\n",
-			key_location, strerror (errno));
+			 key_location, strerror (errno));
 		goto parse_error;
 	}
 
@@ -520,7 +440,7 @@ int totem_config_keyread (
 	if (res == -1) {
 		close (fd);
 		sprintf (error_string_response, "Could not read %s: %s\n",
-			key_location, strerror (errno));
+			 key_location, strerror (errno));
 		goto parse_error;
 	}
 
@@ -529,9 +449,74 @@ int totem_config_keyread (
 	if (res != 128) {
 		close (fd);
 		sprintf (error_string_response, "Could only read %d bits of 1024 bits from %s.\n",
-			res * 8, key_location);
+			 res * 8, key_location);
 		goto parse_error;
 	}
+	return 0;
+
+parse_error:
+	*error_string = error_string_response;
+	return (-1);
+}
+
+int totem_config_keyread (
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	char **error_string)
+{
+	int got_key = 0;
+	char *key_location = NULL;
+	unsigned int object_service_handle;
+	int res;
+	int i;
+
+	if (totem_config->secauth == 0) {
+		return (0);
+	}
+
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "network",
+		    strlen ("network"),
+		    &object_service_handle) == 0 ||
+	    objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "totem",
+		    strlen ("totem"),
+		    &object_service_handle) == 0) {
+
+		/* objdb may store the location of the key file */
+		if (!objdb_get_string (objdb,object_service_handle, "keyfile", &key_location)
+		    && key_location) {
+			res = read_keyfile(key_location, totem_config, error_string);
+			if (res)
+				goto key_error;
+			got_key = 1;
+		}
+		else { /* Or the key itself may be in the objdb */
+			char *key = NULL;
+			int key_len;
+			res = objdb->object_key_get (object_service_handle,
+						     "key",
+						     strlen ("key"),
+						     (void *)&key,
+						     &key_len);
+			if (res == 0 && key) {
+				memcpy(totem_config->private_key, key, key_len);
+				totem_config->private_key_len = key_len;
+				got_key = 1;
+			}
+		}
+	}
+
+	/* In desperation we read the default filename */
+	if (!got_key) {
+		res = read_keyfile(OPENAIS_CONFDIR "/authkey", totem_config, error_string);
+		if (res)
+			goto key_error;
+
+	}
+
 	if (totem_config->mcast_addr.family != totem_config->interfaces[0].bindnet.family) {
 		strcpy (error_string_response, "Multicast address family does not match bind address family");
 		goto parse_error;
@@ -546,5 +531,7 @@ int totem_config_keyread (
 
 parse_error:
 	*error_string = error_string_response;
+key_error:
 	return (-1);
+
 }

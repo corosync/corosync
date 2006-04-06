@@ -46,7 +46,6 @@
 #include "../include/list.h"
 #include "util.h"
 #include "amfconfig.h"
-#include "mainconfig.h"
 #include "mempool.h"
 #include "print.h"
 #include "totem.h"
@@ -212,6 +211,35 @@ struct amf_unit *find_unit (SaNameT *name)
 		return (0);
 	}
 }
+
+static char *strstr_rs (const char *haystack, const char *needle)
+{
+	char *end_address;
+	char *new_needle;
+
+	new_needle = (char *)mempool_strdup (needle);
+	new_needle[strlen(new_needle) - 1] = '\0';
+
+	end_address = strstr (haystack, new_needle);
+	if (end_address) {
+		end_address += strlen (new_needle);
+		end_address = strstr (end_address, needle + strlen (new_needle));
+	}
+	if (end_address) {
+		end_address += 1; /* skip past { or = */
+		do {
+			if (*end_address == '\t' || *end_address == ' ') {
+				end_address++;
+			} else {
+				break;
+			}
+		} while (*end_address != '\0');
+	}
+
+	mempool_free (new_needle);
+	return (end_address);
+}
+
 
 extern int openais_amf_config_read (char **error_string)
 {

@@ -71,7 +71,7 @@ static void cfg_confchg_fn (
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cfg_exec_init_fn (struct openais_config *);
+static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int cfg_lib_init_fn (void *conn);
 
@@ -184,7 +184,7 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 
 /* IMPL */
 
-static int cfg_exec_init_fn (struct openais_config *openais_config)
+static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	return (0);
 }

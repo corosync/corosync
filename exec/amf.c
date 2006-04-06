@@ -63,6 +63,7 @@
 #include "amfconfig.h"
 #include "main.h"
 #include "service.h"
+#include "objdb.h"
 
 #define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
@@ -136,7 +137,7 @@ static void amf_confchg_fn (
 
 static int amf_lib_exit_fn (void *conn);
 
-static int amf_exec_init_fn (struct openais_config *);
+static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int amf_lib_init_fn (void *conn);
 
@@ -837,9 +838,43 @@ int clc_cleanup (struct amf_comp *comp)
 
 /* IMPL */
 
-static int amf_exec_init_fn (struct openais_config *openais_config)
+static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	if (openais_config->amf_enabled) {
+	int res;
+	char *error_string;
+	unsigned int object_service_handle;
+	int enabled = 0;
+	char *value;
+
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "amf",
+		    strlen ("amf"),
+		    &object_service_handle) == 0) {
+
+		value = NULL;
+		if ( !objdb->object_key_get (object_service_handle,
+						    "mode",
+						    strlen ("mode"),
+						    (void *)&value,
+						    NULL) && value) {
+			if (strcmp (value, "enabled") == 0) {
+				enabled = 1;
+			} else
+			if (strcmp (value, "disabled") == 0) {
+				enabled = 0;
+			}
+		}
+	}
+
+	if (enabled) {
+		res = openais_amf_config_read (&error_string);
+		if (res == -1) {
+			log_printf (LOG_LEVEL_ERROR, error_string);
+			return res;
+		}
+
 		clc_instantiate_all ();
 	}
 	return (0);

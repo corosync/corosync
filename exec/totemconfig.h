@@ -37,11 +37,13 @@
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "totempg.h"
+#include "objdb.h"
 
 #ifndef TOTEMCONFIG_H_DEFINED
 #define TOTEMCONFIG_H_DEFINED
 
 extern int totem_config_read (
+	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	char **error_string,
 	int interface_max);
@@ -51,7 +53,7 @@ extern int totem_config_validate (
 	char **error_string);
 
 int totem_config_keyread (
-	char *key_location,
+	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	char **error_string);
 

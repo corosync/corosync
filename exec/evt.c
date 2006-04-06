@@ -119,7 +119,7 @@ static void evt_conf_change(
 
 static int evt_lib_init(void *conn);
 static int evt_lib_exit(void *conn);
-static int evt_exec_init(struct openais_config *openais_config);
+static int evt_exec_init(struct objdb_iface_ver0 *objdb);
 
 /*
  * Recovery sync functions
@@ -3017,22 +3017,42 @@ static int evt_lib_exit(void *conn)
 /*
  * Called at service start time.
  */
-static int evt_exec_init(struct openais_config *openais_config)
+static int evt_exec_init(struct objdb_iface_ver0 *objdb)
 {
+	unsigned int object_service_handle;
+	char *value;
+
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
-	if (openais_config->evt_delivery_queue_size) {
-		evt_delivery_queue_size = openais_config->evt_delivery_queue_size;
-		log_printf(LOG_LEVEL_NOTICE,
-				"event delivery_queue_size set to %u\n",
-				evt_delivery_queue_size);
-	}
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "event",
+		    strlen ("event"),
+		    &object_service_handle) == 0) {
 
-	if (openais_config->evt_delivery_queue_resume) {
-		evt_delivery_queue_resume = openais_config->evt_delivery_queue_resume;
-		log_printf(LOG_LEVEL_NOTICE,
-				"event delivery_queue_resume set to %u\n",
-				evt_delivery_queue_resume);
+		value = NULL;
+		if ( !objdb->object_key_get (object_service_handle,
+					     "delivery_queue_size",
+					     strlen ("delivery_queue_size"),
+					     (void *)&value,
+					     NULL) && value) {
+			evt_delivery_queue_size = atoi(value);
+			log_printf(LOG_LEVEL_NOTICE,
+				   "event delivery_queue_size set to %u\n",
+				   evt_delivery_queue_size);
+		}
+		value = NULL;
+		if ( !objdb->object_key_get (object_service_handle,
+					     "delivery_queue_resume",
+					     strlen ("delivery_queue_resume"),
+					     (void *)&value,
+					     NULL) && value) {
+			evt_delivery_queue_resume = atoi(value);
+			log_printf(LOG_LEVEL_NOTICE,
+				   "event delivery_queue_resume set to %u\n",
+				   evt_delivery_queue_size);
+		}
 	}
 
 	/*

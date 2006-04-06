@@ -122,7 +122,7 @@ static void cpg_confchg_fn (
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cpg_exec_init_fn (struct openais_config *);
+static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int cpg_lib_init_fn (void *conn);
 
@@ -393,7 +393,7 @@ static void remove_group(struct group_info *gi)
 }
 
 
-static int cpg_exec_init_fn (struct openais_config *openais_config)
+static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	int i;
 

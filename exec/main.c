@@ -8,7 +8,7 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -65,7 +65,6 @@
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
-#include "amfconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "service.h"
@@ -73,6 +72,7 @@
 #include "ykd.h"
 #include "swab.h"
 #include "objdb.h"
+#include "config.h"
 #define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
 
@@ -127,7 +127,6 @@ static int (*ais_init_service[]) (struct conn_info *conn_info, void *message) = 
 
 static int poll_handler_libais_deliver (poll_handle handle, int fd, int revent, void *data, unsigned int *prio);
 
-extern int openais_amf_config_read (char **error_string);
 
 static inline struct conn_info *conn_info_create (int fd) {
 	struct conn_info *conn_info;
@@ -151,7 +150,7 @@ static inline struct conn_info *conn_info_create (int fd) {
 		free (conn_info);
 		return (0);
 	}
-	
+
 	conn_info->state = CONN_STATE_ACTIVE;
 	conn_info->fd = fd;
 	conn_info->service = SOCKET_SERVICE_INIT;
@@ -179,7 +178,7 @@ struct totem_ip_address this_non_loopback_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 #if defined(OPENAIS_LINUX)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 
@@ -223,7 +222,7 @@ static int libais_disconnect (struct conn_info *conn_info)
 	/*
 	 * Call library exit handler and free private data
 	 */
-	if (conn_info->conn_info_partner && 
+	if (conn_info->conn_info_partner &&
 		conn_info->conn_info_partner->should_exit_fn &&
 		ais_service[conn_info->conn_info_partner->service]->lib_exit_fn) {
 
@@ -439,7 +438,7 @@ retry_sendmsg:
 	 * Send requested message
 	 */
 	if (queue_empty) {
-		
+
 		iov_send.iov_base = msg;
 		iov_send.iov_len = mlen;
 retry_sendmsg_two:
@@ -484,7 +483,7 @@ retry_sendmsg_two:
 	}
 	return (0);
 }
-		
+
 static int poll_handler_libais_accept (
 	poll_handle handle,
 	int fd,
@@ -513,14 +512,14 @@ retry_accept:
 		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not accept Library connection: %s\n", strerror (errno));
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
-		
+
 	totemip_nosigpipe(new_fd);
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on library connection: %s\n", strerror (errno));
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	} 
+	}
 
 	/*
 	 * Valid accept
@@ -587,7 +586,7 @@ static int dispatch_init_send_response (struct conn_info *conn_info, void *messa
 	res_lib_dispatch_init.header.size = sizeof (struct res_lib_dispatch_init);
 	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
 	res_lib_dispatch_init.header.error = error;
-	
+
 	openais_conn_send_response (
 		conn_info,
 		&res_lib_dispatch_init,
@@ -817,9 +816,9 @@ retry_recv:
 				/*
 				 * Overload, tell library to retry
 				 */
-				res_overlay.header.size = 
+				res_overlay.header.size =
 					ais_service[service]->lib_service[header->id].response_size;
-				res_overlay.header.id = 
+				res_overlay.header.id =
 					ais_service[service]->lib_service[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
 				openais_conn_send_response (
@@ -833,7 +832,7 @@ retry_recv:
 
 	if (conn_info->inb_inuse == 0) {
 		conn_info->inb_start = 0;
-	} else 
+	} else
 // BUG	if (connections[fd].inb_start + connections[fd].inb_inuse >= SIZEINB) {
 	if (conn_info->inb_start >= SIZEINB) {
 		/*
@@ -844,7 +843,7 @@ retry_recv:
 			sizeof (char) * conn_info->inb_inuse);
 		conn_info->inb_start = conn_info->inb_inuse;
 	}
-	
+
 	return (0);
 
 error_disconnect:
@@ -977,24 +976,24 @@ static void confchg_fn (
 	}
 }
 
-static void aisexec_uid_determine (void)
+static void aisexec_uid_determine (struct openais_config *openais_config)
 {
 	struct passwd *passwd;
 
-	passwd = getpwnam(OPENAIS_USER);
+	passwd = getpwnam(openais_config->user);
 	if (passwd == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", OPENAIS_USER);
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", openais_config->user);
 		openais_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
 }
 
-static void aisexec_gid_determine (void)
+static void aisexec_gid_determine (struct openais_config *openais_config)
 {
 	struct group *group;
-	group = getgrnam (OPENAIS_GROUP);
+	group = getgrnam (openais_config->group);
 	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", OPENAIS_GROUP);
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", group);
 		openais_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
@@ -1097,7 +1096,7 @@ static void aisexec_setscheduler (void)
 		sched_param.sched_priority = res;
 		res = sched_setscheduler (0, SCHED_RR, &sched_param);
 		if (res == -1) {
-			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n", 
+			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				sched_param.sched_priority, strerror (errno));
 		}
 	} else
@@ -1138,7 +1137,7 @@ int message_source_is_local(struct message_source *source)
 	     ||(totemip_equal(&source->addr, &this_non_loopback_ip)))) {
 		ret = 1;
 	}
-	return ret;	
+	return ret;
 }
 
 void message_source_set (
@@ -1158,16 +1157,16 @@ int main (int argc, char **argv)
 	char *error_string;
 	struct openais_config openais_config;
 	unsigned int objdb_handle;
+	unsigned int config_handle;
+	unsigned int config_version = 0;
 	struct objdb_iface_ver0 *objdb;
+	struct config_iface_ver0 *config;
+	char *config_iface;
 	int res;
 
 	memset(&this_non_loopback_ip, 0, sizeof(struct totem_ip_address));
 
 	totemip_localhost(AF_INET, &this_non_loopback_ip);
-
-	aisexec_uid_determine ();
-
-	aisexec_gid_determine ();
 
 	aisexec_poll_handle = poll_create ();
 
@@ -1182,9 +1181,39 @@ int main (int argc, char **argv)
 		0,
 		(void **)&objdb,
 		0);
-		
+
 	objdb->objdb_init ();
+
+	/* User's bootstrap config service */
+	config_iface = getenv("OPENAIS_DEFAULT_CONFIG_IFACE");
+	if (!config_iface) {
+		config_iface = "aisparser";
+	}
+
+	res = lcr_ifact_reference (
+		&config_handle,
+		config_iface,
+		config_version,
+		(void **)&config,
+		0);
+
+	if (res == -1) {
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
+
+		log_printf (LOG_LEVEL_ERROR, "can't open configuration module\n");
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
+	res = config->config_readconfig(objdb, &error_string);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
+
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
 	openais_service_default_objdb_set (objdb);
+
 	openais_service_link_all (objdb, &openais_config);
 
 	res = openais_main_config_read (objdb, &error_string, &openais_config, 1);
@@ -1195,14 +1224,8 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = openais_amf_config_read (&error_string);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_AMFCONFIGREAD);
-	}
-
 	if (!openais_config.totem_config.interface_count) {
-		res = totem_config_read (&openais_config.totem_config, &error_string, 1);
+		res = totem_config_read (objdb, &openais_config.totem_config, &error_string, 1);
 		if (res == -1) {
 			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 			log_printf (LOG_LEVEL_ERROR, error_string);
@@ -1210,7 +1233,7 @@ int main (int argc, char **argv)
 		}
 	}
 
-	res = totem_config_keyread (OPENAIS_CONFDIR "/authkey", &openais_config.totem_config, &error_string);
+	res = totem_config_keyread (objdb, &openais_config.totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
@@ -1227,6 +1250,10 @@ int main (int argc, char **argv)
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_LOGSETUP);
 	}
+
+	aisexec_uid_determine (&openais_config);
+
+	aisexec_gid_determine (&openais_config);
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc. and contributors.\n");
 
@@ -1262,7 +1289,7 @@ int main (int argc, char **argv)
 		&openais_group_handle,
 		deliver_fn,
 		confchg_fn);
-	
+
 	totempg_groups_join (
 		openais_group_handle,
 		&openais_group,
@@ -1272,8 +1299,8 @@ int main (int argc, char **argv)
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
 	this_ip = &openais_config.totem_config.interfaces[0].boundto;
-	openais_service_init_all (service_count, &openais_config);
-	
+	openais_service_init_all (service_count, objdb);
+
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);
 

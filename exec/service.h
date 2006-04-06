@@ -69,8 +69,8 @@ struct openais_service_handler {
 	struct openais_lib_handler *lib_service;
 	int lib_service_count;
 	struct openais_exec_handler *exec_service;
-	int (*exec_init_fn) (struct openais_config *);
-	int (*config_init_fn) (struct openais_config *);
+	int (*exec_init_fn) (struct objdb_iface_ver0 *);
+	int (*config_init_fn) (struct objdb_iface_ver0 *);
 	void (*exec_dump_fn) (void);
 	int exec_service_count;
 	void (*confchg_fn) (
@@ -108,7 +108,7 @@ extern int openais_service_link_all (
 
 extern int openais_service_init_all (
 	int service_count,
-	struct openais_config *openais_config);
+	struct objdb_iface_ver0 *objdb);
 
 extern struct openais_service_handler *ais_service[];
 

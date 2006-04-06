@@ -109,7 +109,7 @@ struct queue_cleanup {
 DECLARE_LIST_INIT(queue_list_head);
 DECLARE_LIST_INIT(queue_group_list_head);
 
-static int msg_exec_init_fn (struct openais_config *);
+static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
 static int msg_lib_exit_fn (void *conn);
 
@@ -666,7 +666,7 @@ static struct queue_group_entry *queue_group_entry_find (
 	return (0);
 }
 
-static int msg_exec_init_fn (struct openais_config *openais_config)
+static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	/*
 	 *  Initialize the saved ring ID.

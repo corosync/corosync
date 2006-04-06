@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -49,8 +49,6 @@
 #include "totem.h"
 #include "service.h"
 
-DECLARE_LIST_INIT (saAmfGroupHead);
-
 static char error_string_response[512];
 
 typedef enum {
@@ -61,58 +59,22 @@ typedef enum {
 	MAIN_COMPONENTS
 } main_parse_t;
 
-char *strstr_rs (const char *haystack, const char *needle)
+/* This just makes the code below a little neater */
+static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+				   char *key, char **value)
 {
-	char *end_address;
-	char *new_needle;
+	int res;
 
-	new_needle = (char *)mempool_strdup (needle);
-	new_needle[strlen(new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
+	*value = NULL;
+	if ( !(res = objdb->object_key_get (object_service_handle,
+					    key,
+					    strlen (key),
+					    (void *)value,
+					    NULL))) {
+		if (*value)
+			return 0;
 	}
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
-	}
-
-	mempool_free (new_needle);
-	return (end_address);
-}
-
-/* Returns an allocated string */
-static char *get_component(const char *line, int *version)
-{
-	char *start_address;
-	char *end_address;
-	char *newline;
-	char *compname;
-
-	newline = strdup(line);
-
-	start_address = newline + strspn(newline, " \t");
-	end_address = start_address + strcspn(start_address, " \t:");
-
-	*end_address = '\0';
-	compname = strdup(start_address);
-
-	/* Now get version */
-	start_address = end_address+1;
-	start_address = start_address + strspn(start_address, " \t:");
-
-	*version = atoi(start_address);
-	free(newline);
-
-	return compname;
+	return -1;
 }
 
 extern int openais_main_config_read (
@@ -121,186 +83,126 @@ extern int openais_main_config_read (
 	struct openais_config *openais_config,
 	int interface_max)
 {
-	FILE *fp;
-	int line_number = 0;
-	main_parse_t parse = MAIN_HEAD;
-	int logging_parsed = 0;
-	int event_parsed = 0;
-	int amf_parsed = 0;
-	int components_parsed = 0;
-	char *loc;
-	int i;
-	int parse_done = 0;
-	char line[512];
+	unsigned int object_service_handle;
+	char *value;
 	char *error_reason = error_string_response;
 
 	memset (openais_config, 0, sizeof (struct openais_config));
-	fp = fopen (OPENAIS_CONFDIR "/openais.conf", "r");
-	if (fp == 0) {
-		parse_done = 1;
-		sprintf (error_reason, "Can't read file %s/openais.conf reason = (%s)\n",
-			 OPENAIS_CONFDIR, strerror (errno));
-		*error_string = error_reason;
-		return -1;
-	}
 
-	while (fgets (line, 255, fp)) {
-		line_number += 1;
-		line[strlen(line) - 1] = '\0';
-		/*
-		 * Clear out white space and tabs
-		 */
-		for (i = strlen (line) - 1; i > -1; i--) {
-			if (line[i] == '\t' || line[i] == ' ') {
-				line[i] = '\0';
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "logging",
+		    strlen ("logging"),
+		    &object_service_handle) == 0) {
+
+		if (!objdb_get_string (objdb,object_service_handle, "logoutput", &value)) {
+			if (strcmp (value, "file") == 0) {
+				openais_config->logmode |= LOG_MODE_FILE;
+			} else
+			if (strcmp (value, "syslog") == 0) {
+				openais_config->logmode |= LOG_MODE_SYSLOG;
+			} else
+			if (strcmp (value, "stderr") == 0) {
+				openais_config->logmode |= LOG_MODE_STDERR;
 			} else {
-				break;
+				goto parse_error;
 			}
 		}
-		/*
-		 * Clear out comments and empty lines
-		 */
-		if (line[0] == '#' || line[0] == '\0') {
-			continue;
+		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
+			if (strcmp (value, "on") == 0) {
+				openais_config->logmode |= LOG_MODE_DEBUG;
+			} else
+			if (strcmp (value, "off") == 0) {
+		       		openais_config->logmode &= ~LOG_MODE_DEBUG;
+			} else {
+				goto parse_error;
+			}
 		}
-			
-		switch (parse) {
-		case MAIN_HEAD:
-			if (logging_parsed == 0 && strstr_rs (line, "logging{")) {
-				logging_parsed = 1;
-				parse = MAIN_LOGGING;
+		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
+			if (strcmp (value, "on") == 0) {
+				openais_config->logmode |= LOG_MODE_TIMESTAMP;
 			} else
-			if (event_parsed == 0 && strstr_rs (line, "event{")) {
-				event_parsed = 1;
-				parse = MAIN_EVENT;
-			} else
-			if (amf_parsed == 0 && strstr_rs (line, "amf{")) {
-				amf_parsed = 1;
-				parse = MAIN_AMF;
-			} else
-			if (components_parsed == 0 && strstr_rs (line, "components{")) {
-				components_parsed = 1;
-				parse = MAIN_COMPONENTS;
-			} else {
-				continue;
-			}
-			break;
-
-		case MAIN_LOGGING:
-			if ((loc = strstr_rs (line, "logoutput:"))) {
-				if (strcmp (loc, "file") == 0) {
-					openais_config->logmode |= LOG_MODE_FILE;
-				} else
-				if (strcmp (loc, "syslog") == 0) {
-					openais_config->logmode |= LOG_MODE_SYSLOG;
-				} else
-				if (strcmp (loc, "stderr") == 0) {
-					openais_config->logmode |= LOG_MODE_STDERR;
-				} else {
-					goto parse_error;
-				}
-			} else
-			if ((loc = strstr_rs (line, "debug:"))) {
-				if (strcmp (loc, "on") == 0) {
-					openais_config->logmode |= LOG_MODE_DEBUG;
-				} else
-				if (strcmp (loc, "off") == 0) {
-					openais_config->logmode &= ~LOG_MODE_DEBUG;
-				} else {
-					goto parse_error;
-				}
-			} else
-			if ((loc = strstr_rs (line, "timestamp:"))) {
-				if (strcmp (loc, "on") == 0) {
-					openais_config->logmode |= LOG_MODE_TIMESTAMP;
-				} else
-				if (strcmp (loc, "off") == 0) {
-					openais_config->logmode &= ~LOG_MODE_TIMESTAMP;
-				} else {
-					goto parse_error;
-				}
-			} else 
-			if ((loc = strstr_rs (line, "logfile:"))) {
-				openais_config->logfile = strdup (loc);
-			} else
-			if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
+			if (strcmp (value, "off") == 0) {
+				openais_config->logmode &= ~LOG_MODE_TIMESTAMP;
 			} else {
 				goto parse_error;
 			}
-			break;
-
-		case MAIN_EVENT:
-			if ((loc = strstr_rs (line, "delivery_queue_size:"))) {
-					openais_config->evt_delivery_queue_size = atoi(loc);
-			} else if ((loc = strstr_rs (line, "delivery_queue_resume:"))) {
-					openais_config->evt_delivery_queue_resume = atoi(loc);
-			} else if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-			} else {
-				goto parse_error;
-			}
-			break;
-
-		case MAIN_AMF:
-			if ((loc = strstr_rs (line, "mode:"))) {
-				if (strcmp (loc, "enabled") == 0) {
-					openais_config->amf_enabled = 1;
-				} else
-				if (strcmp (loc, "disabled") == 0) {
-					openais_config->amf_enabled = 0;
-				} else {
-					goto parse_error;
-				}
-			} else
-			if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-			} else {
-				goto parse_error;
-			}
-			break;
-		case MAIN_COMPONENTS:
-			if ((loc = strstr_rs (line, "}"))) {
-				parse = MAIN_HEAD;
-			}
-			else {
-				int version;
-				char *name = get_component(line, &version);
-				if (name) {
-				        openais_service_objdb_add (objdb, name, version);
-				}
-			}
-			break;
-		default:
-			assert (0 == 1); /* SHOULDN'T HAPPEN */
-			break;
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
+			openais_config->logfile = strdup (value);
 		}
 	}
+
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "event",
+		    strlen ("event"),
+		    &object_service_handle) == 0) {
+
+		if (!objdb_get_string (objdb,object_service_handle, "delivery_queue_size", &value)) {
+			    openais_config->evt_delivery_queue_size = atoi(value);
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "delivery_queue_resume", &value)) {
+				openais_config->evt_delivery_queue_resume = atoi(value);
+		}
+	}
+
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "amf",
+		    strlen ("amf"),
+		    &object_service_handle) == 0) {
+
+		if (!objdb_get_string (objdb,object_service_handle, "mode", &value)) {
+			if (strcmp (value, "enabled") == 0) {
+				openais_config->amf_enabled = 1;
+			} else
+			if (strcmp (value, "disabled") == 0) {
+				openais_config->amf_enabled = 0;
+			} else {
+				goto parse_error;
+			}
+		}
+	}
+
+	openais_config->user = NULL;
+	openais_config->group = NULL;
+
+	if (objdb->object_find (
+		    OBJECT_PARENT_HANDLE,
+		    "aisexec",
+		    strlen ("aisexec"),
+		    &object_service_handle) == 0) {
+
+		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
+			openais_config->user = strdup(value);
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
+			openais_config->group = strdup(value);
+		}
+	}
+
+	/* Default user/group */
+	if (!openais_config->user)
+		openais_config->user = OPENAIS_USER;
+
+	if (!openais_config->group)
+		openais_config->group = OPENAIS_GROUP;
 
 	if ((openais_config->logmode & LOG_MODE_FILE) && openais_config->logfile == 0) {
 		error_reason = "logmode set to 'file' but no logfile specified";
 		goto parse_error;
 	}
 
-	if (parse == MAIN_HEAD) {
-		fclose (fp);
-		return (0);
-	} else {
-		error_reason = "Missing closing brace";
-		goto parse_error;
-	}
+	return 0;
 
 parse_error:
-	if (parse_done) {
-		sprintf (error_string_response,
-			"parse error in %s/openais.conf: %s.\n",
-			 OPENAIS_CONFDIR, error_reason);
-	} else {
-		sprintf (error_string_response,
-			"parse error in %s/openais.conf: %s (line %d).\n",
-			OPENAIS_CONFDIR, error_reason, line_number);
-	}
+	sprintf (error_string_response,
+		 "parse error in config: %s.\n",
+		 error_reason);
+
 	*error_string = error_string_response;
-	fclose (fp);
 	return (-1);
 }

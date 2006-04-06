@@ -194,4 +194,6 @@ extern struct amf_unit *find_unit (SaNameT *name);
 
 extern struct amf_healthcheck *find_healthcheck (SaAmfHealthcheckKeyT *key);
 
+extern int openais_amf_config_read (char **error_string);
+
 #endif /* AMFCONFIG_H_DEFINED */

@@ -113,14 +113,18 @@ int openais_service_objdb_add (
 
 static int service_handler_config (
 	struct openais_service_handler *handler,
-	struct openais_config *config)
+	struct objdb_iface_ver0 *objdb)
 {
 	int res = 0;
-	assert (ais_service[handler->id] == NULL);
+
+	/* Already loaded? */
+	if (ais_service[handler->id] != NULL)
+		return 0;
+
 	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
 	ais_service[handler->id] = handler;
 	if (ais_service[handler->id]->config_init_fn) {
-		res = ais_service[handler->id]->config_init_fn (config);
+		res = ais_service[handler->id]->config_init_fn (objdb);
 	}
 	return (res);
 }
@@ -131,6 +135,28 @@ static int service_handler_config (
 int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
 {
 	int i;
+	unsigned int object_service_handle;
+	char *value = NULL;
+
+	/* Load default services unless they have been explicitly disabled */
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	if (objdb->object_find (
+		OBJECT_PARENT_HANDLE,
+		"aisexec",
+		strlen ("aisexec"),
+		&object_service_handle) == 0) {
+
+		if ( ! objdb->object_key_get (object_service_handle,
+					      "defaultservices",
+					      strlen ("defaultservices"),
+					      (void *)&value,
+					      NULL)) {
+
+			if (value && strcmp (value, "no") == 0) {
+				return 0;
+			}
+		}
+	}
 
 	for (i = 0; i < sizeof (default_services) / sizeof (struct default_service); i++) {
 		openais_service_objdb_add (objdb, default_services[i].name, default_services[i].ver);
@@ -191,13 +217,13 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb,
 		}
 
 		service_handler_config (
-			iface_ver0->openais_get_service_handler_ver0(), openais_config);
+			iface_ver0->openais_get_service_handler_ver0(), objdb);
 	}
 	return (0);
 }
 
 int openais_service_init_all (int service_count,
-			      struct openais_config *openais_config)
+			      struct objdb_iface_ver0 *objdb)
 {
 	int i;
 	int res=0;
@@ -205,7 +231,7 @@ int openais_service_init_all (int service_count,
 	for (i = 0; i < service_count; i++) {
 		if (ais_service[i] && ais_service[i]->exec_init_fn) {
 			log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", ais_service[i]->name);
-			res = ais_service[i]->exec_init_fn (openais_config);
+			res = ais_service[i]->exec_init_fn (objdb);
 		}
 	}
 	return (res);
