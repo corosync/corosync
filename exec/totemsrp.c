@@ -2944,7 +2944,6 @@ static int message_handler_orf_token (
 			
 			instance->totemsrp_log_printf (instance->totemsrp_log_level_error,
 				"FAILED TO RECEIVE\n");
-			exit (1);
 // TODO if we fail to receive, it may be possible to end with a gather
 // state of proc == failed = 0 entries
 			memb_set_merge (&token->aru_addr, 1,
