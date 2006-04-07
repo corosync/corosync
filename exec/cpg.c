@@ -477,9 +477,9 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 	struct group_info *gi;
 
 	for (i=0; i < GROUP_HASH_SIZE; i++) {
-		for (iter = group_lists[i].next, tmp=iter->next; iter != &group_lists[i]; iter = tmp, tmp=iter->next) {
+		for (iter = group_lists[i].next; iter != &group_lists[i]; iter = iter->next) {
 			gi = list_entry(iter, struct group_info, list);
-			for (iter2 = gi->members.next; iter2 != &gi->members; iter2 = iter2->next) {
+			for (iter2 = gi->members.next, tmp = iter2->next; iter2 != &gi->members; iter2 = tmp, tmp = iter2->next) {
 				pi = list_entry(iter2, struct process_info, list);
 
 				if (totemip_equal(&pi->node, node)) {
