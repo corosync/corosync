@@ -76,23 +76,23 @@ extern int totemrrp_initialize (
 
 extern int totemrrp_processor_count_set (
 	totemrrp_handle handle,
-	int processor_count);
+	unsigned int processor_count);
 
 extern int totemrrp_token_send (
 	totemrrp_handle handle,
 	struct totem_ip_address *system_to,
-	void *msg,
-	int msg_len);
+	struct iovec *iovec,
+	unsigned int iov_len);
 
 extern int totemrrp_mcast_noflush_send (
 	totemrrp_handle handle,
 	struct iovec *iovec,
-	int iov_len);
+	unsigned int iov_len);
 
 extern int totemrrp_mcast_flush_send (
 	totemrrp_handle handle,
-	void *msg,
-	int msg_len);
+	struct iovec *iovec,
+	unsigned int iov_len);
 
 extern int totemrrp_recv_flush (totemrrp_handle handle);
 

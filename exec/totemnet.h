@@ -76,18 +76,18 @@ extern int totemnet_processor_count_set (
 extern int totemnet_token_send (
 	totemnet_handle handle,
 	struct totem_ip_address *system_to,
-	void *msg,
-	int msg_len);
+	struct iovec *iovec,
+	int iov_len);
 
 extern int totemnet_mcast_flush_send (
 	totemnet_handle handle,
-	void *msg,
-	int msg_len);
+	struct iovec *iovec,
+	unsigned int iov_len);
 
 extern int totemnet_mcast_noflush_send (
 	totemnet_handle handle,
 	struct iovec *iovec,
-	int iov_len);
+	unsigned int iov_len);
 
 extern int totemnet_recv_flush (totemnet_handle handle);
 

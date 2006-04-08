@@ -208,11 +208,15 @@ struct orf_token {
 
 struct memb_join {
 	struct message_header header;
-	struct totem_ip_address proc_list[PROCESSOR_COUNT_MAX];
-	int proc_list_entries;
-	struct totem_ip_address failed_list[PROCESSOR_COUNT_MAX];
-	int failed_list_entries;
+	unsigned int proc_list_entries;
+	unsigned int failed_list_entries;
 	unsigned long long ring_seq;
+	unsigned char end_of_memb_join[0];
+/*
+ * These parts of the data structure are dynamic:
+ * struct totem_ip_address proc_list[];
+ * struct totem_ip_address failed_list[];
+ */
 } __attribute__((packed));
 
 struct memb_merge_detect {
@@ -239,8 +243,13 @@ struct memb_commit_token {
 	unsigned int retrans_flg;
 	int memb_index;
 	int addr_entries;
-	struct totem_ip_address addr[PROCESSOR_COUNT_MAX];
-	struct memb_commit_token_memb_entry memb_list[PROCESSOR_COUNT_MAX];
+	unsigned char end_of_commit_token[0];
+/*
+ * These parts of the data structure are dynamic:
+ *
+ * 	struct totem_ip_address addr[PROCESSOR_COUNT_MAX];
+ *	struct memb_commit_token_memb_entry memb_list[PROCESSOR_COUNT_MAX];
+ */
 }__attribute__((packed));
 
 struct message_item {
@@ -295,8 +304,6 @@ struct totemsrp_instance {
 	struct totem_ip_address my_memb_list[PROCESSOR_COUNT_MAX];
 
 	struct totem_ip_address my_deliver_memb_list[PROCESSOR_COUNT_MAX];
-
-	struct totem_ip_address my_nodeid_lookup_list[PROCESSOR_COUNT_MAX];
 
 	int my_proc_list_entries;
 
@@ -532,7 +539,7 @@ static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token
 static void messages_free (struct totemsrp_instance *instance, unsigned int token_aru);
 
 static void memb_ring_id_store (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
-static void memb_state_commit_token_update (struct totemsrp_instance *instance, struct memb_commit_token *memb_commit_token);
+static void memb_state_commit_token_update (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
 static int memb_state_commit_token_send (struct totemsrp_instance *instance, struct memb_commit_token *memb_commit_token);
 static void memb_state_commit_token_create (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
 static int token_hold_cancel_send (struct totemsrp_instance *instance);
@@ -1500,6 +1507,7 @@ static void memb_state_commit_enter (
 
 	old_ring_state_save (instance); 
 
+// ABC
 	memb_state_commit_token_update (instance, commit_token);
 
 	memb_state_commit_token_send (instance, commit_token);
@@ -1542,6 +1550,11 @@ static void memb_state_recovery_enter (
 	char is_originated[4096];
 	char not_originated[4096];
 	char seqno_string_hex[10];
+	struct totem_ip_address *addr;
+	struct memb_commit_token_memb_entry *memb_list;
+
+	addr = (struct totem_ip_address *)commit_token->end_of_commit_token;
+	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
 		"entering RECOVERY state.\n");
@@ -1566,7 +1579,7 @@ static void memb_state_recovery_enter (
 		instance->totemrrp_handle,
 		commit_token->addr_entries);
 
-	memcpy (instance->my_new_memb_list, commit_token->addr,
+	memcpy (instance->my_new_memb_list, addr,
 		sizeof (struct totem_ip_address) * instance->my_new_memb_entries);
 
 	/*
@@ -1578,19 +1591,19 @@ static void memb_state_recovery_enter (
 
 	for (i = 0; i < instance->my_new_memb_entries; i++) {
 		instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
-			"position [%d] member %s:\n", i, totemip_print (&commit_token->addr[i]));
+			"position [%d] member %s:\n", i, totemip_print (&addr[i]));
 		instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
 			"previous ring seq %lld rep %s\n",
-			commit_token->memb_list[i].ring_id.seq,
-			totemip_print (&commit_token->memb_list[i].ring_id.rep));
+			memb_list[i].ring_id.seq,
+			totemip_print (&memb_list[i].ring_id.rep));
 
 		instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
 			"aru %x high delivered %x received flag %d\n",
-			commit_token->memb_list[i].aru,
-			commit_token->memb_list[i].high_delivered,
-			commit_token->memb_list[i].received_flg);
+			memb_list[i].aru,
+			memb_list[i].high_delivered,
+			memb_list[i].received_flg);
 
-		assert (!totemip_zero_check(&commit_token->memb_list[i].ring_id.rep));
+		assert (!totemip_zero_check(&memb_list[i].ring_id.rep));
 	}
 	/*
 	 * Determine if any received flag is false
@@ -1599,7 +1612,7 @@ static void memb_state_recovery_enter (
 		if (memb_set_subset (&instance->my_new_memb_list[i], 1,
 			instance->my_trans_memb_list, instance->my_trans_memb_entries) &&
 
-			commit_token->memb_list[i].received_flg == 0) {
+			memb_list[i].received_flg == 0) {
 			instance->my_deliver_memb_entries = instance->my_trans_memb_entries;
 			memcpy (instance->my_deliver_memb_list, instance->my_trans_memb_list,
 				sizeof (struct totem_ip_address) * instance->my_trans_memb_entries);
@@ -1617,15 +1630,15 @@ static void memb_state_recovery_enter (
 				 instance->my_deliver_memb_entries) &&
 
 			memcmp (&instance->my_old_ring_id,
-				&commit_token->memb_list[i].ring_id,
+				&memb_list[i].ring_id,
 				sizeof (struct memb_ring_id)) == 0) {
 	
-				if (sq_lt_compare (commit_token->memb_list[i].aru, low_ring_aru)) {
+				if (sq_lt_compare (memb_list[i].aru, low_ring_aru)) {
 
-					low_ring_aru = commit_token->memb_list[i].aru;
+					low_ring_aru = memb_list[i].aru;
 				}
-				if (sq_lt_compare (instance->my_high_ring_delivered, commit_token->memb_list[i].high_delivered)) {
-					instance->my_high_ring_delivered = commit_token->memb_list[i].high_delivered;
+				if (sq_lt_compare (instance->my_high_ring_delivered, memb_list[i].high_delivered)) {
+					instance->my_high_ring_delivered = memb_list[i].high_delivered;
 				}
 			}
 		}
@@ -2191,12 +2204,17 @@ static int orf_token_rtr (
 	return (instance->fcc_remcast_current);
 }
 
-static void token_retransmit (struct totemsrp_instance *instance) {
+static void token_retransmit (struct totemsrp_instance *instance)
+{
+	struct iovec iovec;
+
+	iovec.iov_base = instance->orf_token_retransmit;
+	iovec.iov_len = instance->orf_token_retransmit_size;
 
 	totemrrp_token_send (instance->totemrrp_handle,
 		&instance->next_memb,
-		instance->orf_token_retransmit,
-		instance->orf_token_retransmit_size);
+		&iovec,
+		1);
 }
 
 /*
@@ -2264,6 +2282,7 @@ static int token_send (
 	struct orf_token *orf_token,
 	int forward_token)
 {
+	struct iovec iovec;
 	int res = 0;
 	int iov_len = sizeof (struct orf_token) +
 		(orf_token->rtr_list_entries * sizeof (struct rtr_item));
@@ -2277,10 +2296,13 @@ static int token_send (
 		return (0);
 	}
 
+	iovec.iov_base = orf_token;
+	iovec.iov_len = iov_len;
+
 	totemrrp_token_send (instance->totemrrp_handle,
 		&instance->next_memb,
-		orf_token,
-		iov_len);
+		&iovec,
+		1);
 
 	return (res);
 }
@@ -2288,6 +2310,7 @@ static int token_send (
 static int token_hold_cancel_send (struct totemsrp_instance *instance)
 {
 	struct token_hold_cancel token_hold_cancel;
+	struct iovec iovec[2];
 
 	/*
 	 * Only cancel if the token is currently held
@@ -2305,13 +2328,13 @@ static int token_hold_cancel_send (struct totemsrp_instance *instance)
 	token_hold_cancel.header.nodeid = instance->my_id.nodeid;
 	assert (token_hold_cancel.header.nodeid);
 
-	memcpy (&token_hold_cancel.ring_id, &instance->my_ring_id,
-		sizeof (struct memb_ring_id));
+	iovec[0].iov_base = &token_hold_cancel;
+	iovec[0].iov_len = sizeof (struct token_hold_cancel) -
+		sizeof (struct memb_ring_id);
+	iovec[1].iov_base = &instance->my_ring_id;
+	iovec[1].iov_len = sizeof (struct memb_ring_id);
 
-	totemrrp_mcast_flush_send (
-		instance->totemrrp_handle,
-		&token_hold_cancel,
-		sizeof (struct token_hold_cancel));
+	totemrrp_mcast_flush_send (instance->totemrrp_handle, iovec, 2);
 
 	return (0);
 }
@@ -2358,50 +2381,62 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 
 static void memb_state_commit_token_update (
 	struct totemsrp_instance *instance,
-	struct memb_commit_token *memb_commit_token)
+	struct memb_commit_token *commit_token)
 {
 	int memb_index_this;
+	struct totem_ip_address *addr;
+	struct memb_commit_token_memb_entry *memb_list;
 
-	memb_index_this = (memb_commit_token->memb_index + 1) % memb_commit_token->addr_entries;
-	memcpy (&memb_commit_token->memb_list[memb_index_this].ring_id,
+	addr = (struct totem_ip_address *)commit_token->end_of_commit_token;
+	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
+
+	memb_index_this = (commit_token->memb_index + 1) % commit_token->addr_entries;
+	memcpy (&memb_list[memb_index_this].ring_id,
 		&instance->my_old_ring_id, sizeof (struct memb_ring_id));
 	assert (!totemip_zero_check(&instance->my_old_ring_id.rep));
 
-	memb_commit_token->memb_list[memb_index_this].aru = instance->old_ring_state_aru;
+	memb_list[memb_index_this].aru = instance->old_ring_state_aru;
 	/*
 	 *  TODO high delivered is really instance->my_aru, but with safe this
 	 * could change?
 	 */
-	memb_commit_token->memb_list[memb_index_this].high_delivered = instance->my_high_delivered;
-	memb_commit_token->memb_list[memb_index_this].received_flg = instance->my_received_flg;
+	memb_list[memb_index_this].high_delivered = instance->my_high_delivered;
+	memb_list[memb_index_this].received_flg = instance->my_received_flg;
 
-	memb_commit_token->header.nodeid = instance->my_id.nodeid;
-	assert (memb_commit_token->header.nodeid);
+	commit_token->header.nodeid = instance->my_id.nodeid;
+	assert (commit_token->header.nodeid);
 }
 
 static int memb_state_commit_token_send (struct totemsrp_instance *instance,
-	struct memb_commit_token *memb_commit_token)
+	struct memb_commit_token *commit_token)
 {
 	struct iovec iovec;
 	int memb_index_this;
 	int memb_index_next;
+	struct totem_ip_address *addr;
+	struct memb_commit_token_memb_entry *memb_list;
 
-	memb_commit_token->token_seq++;
-	memb_index_this = (memb_commit_token->memb_index + 1) % memb_commit_token->addr_entries;
-	memb_index_next = (memb_index_this + 1) % memb_commit_token->addr_entries;
-	memb_commit_token->memb_index = memb_index_this;
+	addr = (struct totem_ip_address *)commit_token->end_of_commit_token;
+	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
+
+	commit_token->token_seq++;
+	memb_index_this = (commit_token->memb_index + 1) % commit_token->addr_entries;
+	memb_index_next = (memb_index_this + 1) % commit_token->addr_entries;
+	commit_token->memb_index = memb_index_this;
 
 
-	iovec.iov_base = memb_commit_token;
-	iovec.iov_len = sizeof (struct memb_commit_token);
+	iovec.iov_base = commit_token;
+	iovec.iov_len = sizeof (struct memb_commit_token) +
+		((sizeof (struct totem_ip_address) +
+			sizeof (struct memb_commit_token_memb_entry)) * commit_token->addr_entries);
 
-	totemip_copy(&instance->next_memb, &memb_commit_token->addr[memb_index_next]);
+	totemip_copy(&instance->next_memb, &addr[memb_index_next]);
 	assert (instance->next_memb.nodeid != 0);
 
 	totemrrp_token_send (instance->totemrrp_handle,
 		&instance->next_memb,
-		memb_commit_token,
-		sizeof (struct memb_commit_token));
+		&iovec,
+		1);
 
 	return (0);
 }
@@ -2438,6 +2473,8 @@ static void memb_state_commit_token_create (
 	struct memb_commit_token *commit_token)
 {
 	struct totem_ip_address token_memb[PROCESSOR_COUNT_MAX];
+	struct totem_ip_address *addr;
+	struct memb_commit_token_memb_entry *memb_list;
 	int token_memb_entries = 0;
 
 	instance->totemsrp_log_printf (instance->totemsrp_log_level_notice,
@@ -2457,19 +2494,25 @@ static void memb_state_commit_token_create (
 	totemip_copy(&commit_token->ring_id.rep, &instance->my_id);
 
 	commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
+
 	qsort (token_memb, token_memb_entries, 
 		sizeof (struct totem_ip_address), totemip_compare);
-	memcpy (commit_token->addr, token_memb,
-		token_memb_entries * sizeof (struct totem_ip_address));
-	memset (commit_token->memb_list, 0,
-		sizeof (struct memb_commit_token_memb_entry) * PROCESSOR_COUNT_MAX);
 	commit_token->memb_index = token_memb_entries - 1;
 	commit_token->addr_entries = token_memb_entries;
+
+	addr = (struct totem_ip_address *)commit_token->end_of_commit_token;
+	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
+
+	memcpy (addr, token_memb,
+		token_memb_entries * sizeof (struct totem_ip_address));
+	memset (memb_list, 0,
+		sizeof (struct memb_commit_token_memb_entry) * token_memb_entries);
 }
 
 static void memb_join_message_send (struct totemsrp_instance *instance)
 {
 	struct memb_join memb_join;
+	struct iovec iovec[3];
 
 	memb_join.header.type = MESSAGE_TYPE_MEMB_JOIN;
 	memb_join.header.endian_detector = ENDIAN_LOCAL;
@@ -2478,24 +2521,28 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	assert (memb_join.header.nodeid);
 
 	memb_join.ring_seq = instance->my_ring_id.seq;
-
-	memcpy (memb_join.proc_list, instance->my_proc_list,
-		instance->my_proc_list_entries * sizeof (struct totem_ip_address));
 	memb_join.proc_list_entries = instance->my_proc_list_entries;
-
-	memcpy (memb_join.failed_list, instance->my_failed_list,
-		instance->my_failed_list_entries * sizeof (struct totem_ip_address));
 	memb_join.failed_list_entries = instance->my_failed_list_entries;
 		
+	iovec[0].iov_base = &memb_join;
+	iovec[0].iov_len = sizeof (struct memb_join);
+	iovec[1].iov_base = &instance->my_proc_list;
+	iovec[1].iov_len = instance->my_proc_list_entries *
+		sizeof (struct totem_ip_address);
+	iovec[2].iov_base = &instance->my_failed_list;
+	iovec[2].iov_len = instance->my_failed_list_entries *
+		sizeof (struct totem_ip_address);
+
 	totemrrp_mcast_flush_send (
 		instance->totemrrp_handle,
-		&memb_join,
-		sizeof (struct memb_join));
+		iovec,
+		3);
 }
 
 static void memb_merge_detect_transmit (struct totemsrp_instance *instance) 
 {
 	struct memb_merge_detect memb_merge_detect;
+	struct iovec iovec[2];
 
 	memb_merge_detect.header.type = MESSAGE_TYPE_MEMB_MERGE_DETECT;
 	memb_merge_detect.header.endian_detector = ENDIAN_LOCAL;
@@ -2503,13 +2550,13 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 	memb_merge_detect.header.nodeid = instance->my_id.nodeid;
 	assert (memb_merge_detect.header.nodeid);
 
-	memcpy (&memb_merge_detect.ring_id, &instance->my_ring_id,
-		sizeof (struct memb_ring_id));
+	iovec[0].iov_base = &memb_merge_detect;
+	iovec[0].iov_len = sizeof (struct memb_merge_detect) -
+		sizeof (struct memb_ring_id);
+	iovec[1].iov_base = &instance->my_ring_id;
+	iovec[1].iov_len = sizeof (struct memb_ring_id);
 
-	totemrrp_mcast_flush_send (
-		instance->totemrrp_handle,
-		&memb_merge_detect,
-		sizeof (struct memb_merge_detect));
+	totemrrp_mcast_flush_send (instance->totemrrp_handle, iovec, 2);
 }
 
 static void memb_ring_id_create_or_load (
@@ -3366,14 +3413,21 @@ static int memb_join_process (
 	struct memb_join *memb_join,
 	struct totem_ip_address *system_from)
 {
-	struct memb_commit_token my_commit_token;
+	unsigned char *commit_token_storage[32000];
+	struct memb_commit_token *my_commit_token =
+		(struct memb_commit_token *)commit_token_storage;
+	struct totem_ip_address *proc_list;
+	struct totem_ip_address *failed_list;
 
-	if (memb_set_equal (memb_join->proc_list,
+	proc_list = (struct totem_ip_address *)memb_join->end_of_memb_join;
+	failed_list = proc_list + memb_join->proc_list_entries;
+
+	if (memb_set_equal (proc_list,
 		memb_join->proc_list_entries,
 		instance->my_proc_list,
 		instance->my_proc_list_entries) &&
 
-	memb_set_equal (memb_join->failed_list,
+	memb_set_equal (failed_list,
 		memb_join->failed_list_entries,
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
@@ -3383,19 +3437,19 @@ static int memb_join_process (
 		if (memb_consensus_agreed (instance) &&
 			memb_lowest_in_config (instance)) {
 
-			memb_state_commit_token_create (instance, &my_commit_token);
+			memb_state_commit_token_create (instance, my_commit_token);
 	
-			memb_state_commit_enter (instance, &my_commit_token);
+			memb_state_commit_enter (instance, my_commit_token);
 		} else {
 			return (0);
 		}
 	} else
-	if (memb_set_subset (memb_join->proc_list,
+	if (memb_set_subset (proc_list,
 		memb_join->proc_list_entries,
 		instance->my_proc_list,
 		instance->my_proc_list_entries) &&
 
-		memb_set_subset (memb_join->failed_list,
+		memb_set_subset (failed_list,
 		memb_join->failed_list_entries,
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
@@ -3407,17 +3461,17 @@ static int memb_join_process (
 
 		return (0);
 	} else {
-		memb_set_merge (memb_join->proc_list,
+		memb_set_merge (proc_list,
 			memb_join->proc_list_entries,
 			instance->my_proc_list, &instance->my_proc_list_entries);
 
 		if (memb_set_subset (&instance->my_id, 1,
-			memb_join->failed_list, memb_join->failed_list_entries)) {
+			failed_list, memb_join->failed_list_entries)) {
 
 			memb_set_merge (system_from, 1,
 				instance->my_failed_list, &instance->my_failed_list_entries);
 		} else {
-			memb_set_merge (memb_join->failed_list,
+			memb_set_merge (failed_list,
 				memb_join->failed_list_entries,
 				instance->my_failed_list, &instance->my_failed_list_entries);
 		}
@@ -3430,6 +3484,10 @@ static int memb_join_process (
 static void memb_join_endian_convert (struct memb_join *in, struct memb_join *out)
 {
 	int i;
+	struct totem_ip_address *in_proc_list;
+	struct totem_ip_address *in_failed_list;
+	struct totem_ip_address *out_proc_list;
+	struct totem_ip_address *out_failed_list;
 
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
@@ -3437,16 +3495,23 @@ static void memb_join_endian_convert (struct memb_join *in, struct memb_join *ou
 	out->proc_list_entries = swab32 (in->proc_list_entries);
 	out->failed_list_entries = swab32 (in->failed_list_entries);
 	out->ring_seq = swab64 (in->ring_seq);
+
+	in_proc_list = (struct totem_ip_address *)in->end_of_memb_join;
+	in_failed_list = in_proc_list + out->proc_list_entries;
+	out_proc_list = (struct totem_ip_address *)out->end_of_memb_join;
+	out_failed_list = out_proc_list + out->proc_list_entries;
+
 	for (i = 0; i < out->proc_list_entries; i++) {
-		totemip_copy_endian_convert(&out->proc_list[i], &in->proc_list[i]);
+		totemip_copy_endian_convert(&out_proc_list[i], &in_proc_list[i]);
 	}
 	for (i = 0; i < out->failed_list_entries; i++) {
-		totemip_copy_endian_convert(&out->failed_list[i], &in->failed_list[i]);
+		totemip_copy_endian_convert(&out_failed_list[i], &in_failed_list[i]);
 	}
 }
 
 static void memb_commit_token_endian_convert (struct memb_commit_token *in, struct memb_commit_token *out)
 {
+#ifdef COMPILE_OUT
 	int i;
 
 	out->header.type = in->header.type;
@@ -3475,6 +3540,7 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 			out->memb_list[i].received_flg = swab32 (in->memb_list[i].received_flg);
 		}
 	}
+#endif
 }
 
 static void orf_token_endian_convert (struct orf_token *in, struct orf_token *out)
@@ -3533,7 +3599,6 @@ static int message_handler_memb_join (
 {
 	struct memb_join *memb_join;
 	struct memb_join memb_join_convert;
-
 	int gather_entered;
 
 	if (endian_conversion_needed) {
@@ -3542,9 +3607,6 @@ static int message_handler_memb_join (
 	} else {
 		memb_join = (struct memb_join *)msg;
 	}
-
-	memb_set_merge(memb_join->proc_list, memb_join->proc_list_entries,
-		       instance->my_nodeid_lookup_list, &instance->my_nodeid_lookup_entries);
 
 	assert (system_from->nodeid != 0);
 
@@ -3608,13 +3670,19 @@ static int message_handler_memb_commit_token (
 	struct totem_ip_address sub[PROCESSOR_COUNT_MAX];
 	int sub_entries;
 
-	
+	struct totem_ip_address *addr;
+	struct memb_commit_token_memb_entry *memb_list;
+
 	if (endian_conversion_needed) {
 		memb_commit_token = &memb_commit_token_convert;
 		memb_commit_token_endian_convert (msg, memb_commit_token);
 	} else {
 		memb_commit_token = (struct memb_commit_token *)msg;
 	}
+	addr = (struct totem_ip_address *)memb_commit_token->end_of_commit_token;
+	memb_list = (struct memb_commit_token_memb_entry *)(addr + memb_commit_token->addr_entries);
+
+	
 	
 /* TODO do we need to check for a duplicate token?
 	if (memb_commit_token->token_seq > 0 &&
@@ -3642,7 +3710,7 @@ static int message_handler_memb_commit_token (
 				instance->my_proc_list, instance->my_proc_list_entries,
 				instance->my_failed_list, instance->my_failed_list_entries);
 			
-			if (memb_set_equal (memb_commit_token->addr,
+			if (memb_set_equal (addr,
 				memb_commit_token->addr_entries,
 				sub,
 				sub_entries) &&
