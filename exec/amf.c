@@ -859,6 +859,7 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 						    strlen ("mode"),
 						    (void *)&value,
 						    NULL) && value) {
+
 			if (strcmp (value, "enabled") == 0) {
 				enabled = 1;
 			} else

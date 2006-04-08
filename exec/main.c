@@ -976,22 +976,22 @@ static void confchg_fn (
 	}
 }
 
-static void aisexec_uid_determine (struct openais_config *openais_config)
+static void aisexec_uid_determine (struct main_config *main_config)
 {
 	struct passwd *passwd;
 
-	passwd = getpwnam(openais_config->user);
+	passwd = getpwnam(main_config->user);
 	if (passwd == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", openais_config->user);
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", main_config->user);
 		openais_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
 }
 
-static void aisexec_gid_determine (struct openais_config *openais_config)
+static void aisexec_gid_determine (struct main_config *main_config)
 {
 	struct group *group;
-	group = getgrnam (openais_config->group);
+	group = getgrnam (main_config->group);
 	if (group == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", group);
 		openais_exit_error (AIS_DONE_GID_DETERMINE);
@@ -1155,7 +1155,8 @@ int main (int argc, char **argv)
 {
 	int libais_server_fd;
 	char *error_string;
-	struct openais_config openais_config;
+	struct main_config main_config;
+	struct totem_config totem_config;
 	unsigned int objdb_handle;
 	unsigned int config_handle;
 	unsigned int config_version = 0;
@@ -1214,9 +1215,9 @@ int main (int argc, char **argv)
 
 	openais_service_default_objdb_set (objdb);
 
-	openais_service_link_all (objdb, &openais_config);
+	openais_service_link_all (objdb);
 
-	res = openais_main_config_read (objdb, &error_string, &openais_config, 1);
+	res = openais_main_config_read (objdb, &error_string, &main_config, 1);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 
@@ -1224,36 +1225,34 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	if (!openais_config.totem_config.interface_count) {
-		res = totem_config_read (objdb, &openais_config.totem_config, &error_string, 1);
-		if (res == -1) {
-			log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-			log_printf (LOG_LEVEL_ERROR, error_string);
-			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
-		}
+	res = totem_config_read (objdb, &totem_config, &error_string, 1);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = totem_config_keyread (objdb, &openais_config.totem_config, &error_string);
+	res = totem_config_keyread (objdb, &totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = totem_config_validate (&openais_config.totem_config, &error_string);
+	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = log_setup (&error_string, openais_config.logmode, openais_config.logfile);
+	res = log_setup (&error_string, main_config.logmode, main_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_LOGSETUP);
 	}
 
-	aisexec_uid_determine (&openais_config);
+	aisexec_uid_determine (&main_config);
 
-	aisexec_gid_determine (&openais_config);
+	aisexec_gid_determine (&main_config);
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc. and contributors.\n");
 
@@ -1266,14 +1265,14 @@ int main (int argc, char **argv)
 
 	aisexec_mlockall ();
 
-	openais_config.totem_config.totem_logging_configuration = totem_logging_configuration;
+	totem_config.totem_logging_configuration = totem_logging_configuration;
 
-	openais_config.totem_config.totem_logging_configuration.log_level_security = mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI);
-	openais_config.totem_config.totem_logging_configuration.log_level_error = mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI);
-	openais_config.totem_config.totem_logging_configuration.log_level_warning = mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI);
-	openais_config.totem_config.totem_logging_configuration.log_level_notice = mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI);
-	openais_config.totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
-	openais_config.totem_config.totem_logging_configuration.log_printf = internal_log_printf;
+	totem_config.totem_logging_configuration.log_level_security = mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI);
+	totem_config.totem_logging_configuration.log_level_error = mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI);
+	totem_config.totem_logging_configuration.log_level_warning = mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI);
+	totem_config.totem_logging_configuration.log_level_notice = mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI);
+	totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
+	totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
 	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot
@@ -1283,7 +1282,7 @@ int main (int argc, char **argv)
 	 */
 	totempg_initialize (
 		aisexec_poll_handle,
-		&openais_config.totem_config);
+		&totem_config);
 
 	totempg_groups_initialize (
 		&openais_group_handle,
@@ -1298,7 +1297,7 @@ int main (int argc, char **argv)
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	this_ip = &openais_config.totem_config.interfaces[0].boundto;
+	this_ip = &totem_config.interfaces[0].boundto;
 	openais_service_init_all (service_count, objdb);
 
 

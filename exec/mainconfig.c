@@ -80,14 +80,14 @@ static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int 
 extern int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
-	struct openais_config *openais_config,
+	struct main_config *main_config,
 	int interface_max)
 {
 	unsigned int object_service_handle;
 	char *value;
 	char *error_reason = error_string_response;
 
-	memset (openais_config, 0, sizeof (struct openais_config));
+	memset (main_config, 0, sizeof (struct main_config));
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 
@@ -99,76 +99,41 @@ extern int openais_main_config_read (
 
 		if (!objdb_get_string (objdb,object_service_handle, "logoutput", &value)) {
 			if (strcmp (value, "file") == 0) {
-				openais_config->logmode |= LOG_MODE_FILE;
+				main_config->logmode |= LOG_MODE_FILE;
 			} else
 			if (strcmp (value, "syslog") == 0) {
-				openais_config->logmode |= LOG_MODE_SYSLOG;
+				main_config->logmode |= LOG_MODE_SYSLOG;
 			} else
 			if (strcmp (value, "stderr") == 0) {
-				openais_config->logmode |= LOG_MODE_STDERR;
+				main_config->logmode |= LOG_MODE_STDERR;
 			} else {
 				goto parse_error;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
 			if (strcmp (value, "on") == 0) {
-				openais_config->logmode |= LOG_MODE_DEBUG;
+				main_config->logmode |= LOG_MODE_DEBUG;
 			} else
 			if (strcmp (value, "off") == 0) {
-		       		openais_config->logmode &= ~LOG_MODE_DEBUG;
+		       		main_config->logmode &= ~LOG_MODE_DEBUG;
 			} else {
 				goto parse_error;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
 			if (strcmp (value, "on") == 0) {
-				openais_config->logmode |= LOG_MODE_TIMESTAMP;
+				main_config->logmode |= LOG_MODE_TIMESTAMP;
 			} else
 			if (strcmp (value, "off") == 0) {
-				openais_config->logmode &= ~LOG_MODE_TIMESTAMP;
+				main_config->logmode &= ~LOG_MODE_TIMESTAMP;
 			} else {
 				goto parse_error;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
-			openais_config->logfile = strdup (value);
+			main_config->logfile = strdup (value);
 		}
 	}
-
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "event",
-		    strlen ("event"),
-		    &object_service_handle) == 0) {
-
-		if (!objdb_get_string (objdb,object_service_handle, "delivery_queue_size", &value)) {
-			    openais_config->evt_delivery_queue_size = atoi(value);
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "delivery_queue_resume", &value)) {
-				openais_config->evt_delivery_queue_resume = atoi(value);
-		}
-	}
-
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "amf",
-		    strlen ("amf"),
-		    &object_service_handle) == 0) {
-
-		if (!objdb_get_string (objdb,object_service_handle, "mode", &value)) {
-			if (strcmp (value, "enabled") == 0) {
-				openais_config->amf_enabled = 1;
-			} else
-			if (strcmp (value, "disabled") == 0) {
-				openais_config->amf_enabled = 0;
-			} else {
-				goto parse_error;
-			}
-		}
-	}
-
-	openais_config->user = NULL;
-	openais_config->group = NULL;
 
 	if (objdb->object_find (
 		    OBJECT_PARENT_HANDLE,
@@ -177,21 +142,21 @@ extern int openais_main_config_read (
 		    &object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
-			openais_config->user = strdup(value);
+			main_config->user = strdup(value);
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
-			openais_config->group = strdup(value);
+			main_config->group = strdup(value);
 		}
 	}
 
 	/* Default user/group */
-	if (!openais_config->user)
-		openais_config->user = OPENAIS_USER;
+	if (!main_config->user)
+		main_config->user = OPENAIS_USER;
 
-	if (!openais_config->group)
-		openais_config->group = OPENAIS_GROUP;
+	if (!main_config->group)
+		main_config->group = OPENAIS_GROUP;
 
-	if ((openais_config->logmode & LOG_MODE_FILE) && openais_config->logfile == 0) {
+	if ((main_config->logmode & LOG_MODE_FILE) && main_config->logfile == 0) {
 		error_reason = "logmode set to 'file' but no logfile specified";
 		goto parse_error;
 	}

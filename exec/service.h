@@ -34,14 +34,11 @@
 #ifndef OPENAIS_SERVICE_H_DEFINED
 #define OPENAIS_SERVICE_H_DEFINED
 
-#include <netinet/in.h>
-#include "mainconfig.h" /* openais_config */
-#include "totemip.h"
+//#include <netinet/in.h>
+#include "totem.h"
 #include "objdb.h"
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
-
-// TODO we need to abstract the conn_info data structure to make dynamic loading work perfectly
 
 enum openais_flow_control {
 	OPENAIS_FLOW_CONTROL_REQUIRED = 1,
@@ -97,14 +94,12 @@ extern int openais_service_objdb_add (
 
 
 extern int openais_service_handler_register (
-	struct openais_service_handler *handler,
-	struct openais_config *config);
+	struct openais_service_handler *handler);
 
 extern int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb);
 
 extern int openais_service_link_all (
-	struct objdb_iface_ver0 *objdb,
-	struct openais_config *openais_config);
+	struct objdb_iface_ver0 *objdb);
 
 extern int openais_service_init_all (
 	int service_count,

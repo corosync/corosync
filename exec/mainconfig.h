@@ -53,7 +53,7 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-struct openais_config {
+struct main_config {
 	/*
 	 * logging
 	 */
@@ -63,19 +63,6 @@ struct openais_config {
 	/* user/group to run as */
 	char *user;
 	char *group;
-
-	/*
-	 * Event service
-	 */
-	unsigned int evt_delivery_queue_size;
-	unsigned int evt_delivery_queue_resume;
-
-	/*
-	 * AMF service
-	 */
-	unsigned int amf_enabled;
-
-	struct totem_config totem_config;
 };
 
 extern char *strstr_rs (const char *haystack, const char *needle);
@@ -83,7 +70,7 @@ extern char *strstr_rs (const char *haystack, const char *needle);
 extern int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
-	struct openais_config *openais_config,
+	struct main_config *main_config,
 	int interface_max);
 	
 #endif /* MAINCONFIG_H_DEFINED */

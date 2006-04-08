@@ -167,8 +167,7 @@ int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
 /*
  * Links dynamic services into the executive
  */
-int openais_service_link_all (struct objdb_iface_ver0 *objdb,
-		struct openais_config *openais_config)
+int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 {
 	char *service_name;
 	unsigned char *service_ver;
@@ -206,7 +205,7 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb,
 			&handle,
 			service_name,
 			ver_int,
-			(void **)&iface_ver0,
+			(void **)(void *)&iface_ver0,
 			(void *)0);
 
 		if (iface_ver0 == 0) {

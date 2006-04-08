@@ -129,7 +129,7 @@ struct ckpt_identifier {
 
 /* TODO static totempg_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle; */
 
-static int ckpt_exec_init_fn (struct openais_config *);
+static int ckpt_exec_init_fn (struct objdb_iface_ver0 *);
 
 static int ckpt_lib_exit_fn (void *conn);
 
@@ -1508,7 +1508,7 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 	return (-1);
 }
 
-static int ckpt_exec_init_fn (struct openais_config *openais_config)
+static int ckpt_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	/*
 	 *  Initialize the saved ring ID.
