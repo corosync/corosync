@@ -109,7 +109,7 @@ char *strstr_rs (const char *haystack, const char *needle)
 
 static int parse_section(FILE *fp,
 			 struct objdb_iface_ver0 *objdb,
-			 unsigned int parent_key,
+			 unsigned int parent_handle,
 			 char **error_string)
 {
 	char line[512];
@@ -142,7 +142,8 @@ static int parse_section(FILE *fp,
 
 			loc--;
 			*loc = '\0';
-			objdb->object_create (OBJECT_PARENT_HANDLE, &new_parent,
+printf ("creating object %d %s\n", parent_handle, section);
+			objdb->object_create (parent_handle, &new_parent,
 					      section, strlen (section));
 			if (parse_section(fp, objdb, new_parent, error_string))
 				return -1;
@@ -156,8 +157,9 @@ static int parse_section(FILE *fp,
 			*(loc-1) = '\0';
 			key = remove_whitespace(line);
 			value = remove_whitespace(loc);
-			objdb->object_key_create (parent_key, key, strlen (key),
-						  value, strlen (value) + 1);
+			objdb->object_key_create (parent_handle, key,
+				strlen (key),
+				value, strlen (value) + 1);
 		}
 
 		if ((loc = strstr_rs (line, "}"))) {
@@ -165,7 +167,7 @@ static int parse_section(FILE *fp,
 		}
 	}
 
-	if (parent_key != OBJECT_PARENT_HANDLE) {
+	if (parent_handle != OBJECT_PARENT_HANDLE) {
 		*error_string = "Missing closing brace";
 		return -1;
 	}

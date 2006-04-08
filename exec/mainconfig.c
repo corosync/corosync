@@ -80,8 +80,7 @@ static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int 
 extern int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
-	struct main_config *main_config,
-	int interface_max)
+	struct main_config *main_config)
 {
 	unsigned int object_service_handle;
 	char *value;

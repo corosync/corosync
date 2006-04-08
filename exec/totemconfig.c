@@ -77,8 +77,9 @@
 static char error_string_response[512];
 
 /* These just makes the code below a little neater */
-static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
-				   char *key, char **value)
+static inline int objdb_get_string (
+	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	char *key, char **value)
 {
 	int res;
 
@@ -94,8 +95,9 @@ static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int 
 	return -1;
 }
 
-static inline void objdb_get_int(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
-				   char *key, unsigned int *intvalue)
+static inline void objdb_get_int (
+	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	char *key, unsigned int *intvalue)
 {
 	char *value = NULL;
 
@@ -119,9 +121,11 @@ extern int totem_config_read (
 {
 	int res = 0;
 	int parse_done = 0;
-	unsigned int object_service_handle;
-	char *value;
+	unsigned int object_totem_handle;
+	unsigned int object_interface_handle;
+	char *str;
 	char *error_reason = error_string_response;
+	unsigned int ringnumber = 0;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * interface_max);
@@ -142,80 +146,101 @@ extern int totem_config_read (
 		    OBJECT_PARENT_HANDLE,
 		    "network",
 		    strlen ("network"),
-		    &object_service_handle) == 0 ||
+		    &object_totem_handle) == 0 ||
 	    objdb->object_find (
 		    OBJECT_PARENT_HANDLE,
 		    "totem",
 		    strlen ("totem"),
-		    &object_service_handle) == 0) {
+		    &object_totem_handle) == 0) {
 
-		if (!objdb_get_string (objdb,object_service_handle, "version", &value)) {
-			if (strcmp (value, "1") == 0) {
-				totem_config->version = 1;
+		if (!objdb_get_string (objdb,object_totem_handle, "version", &str)) {
+			if (strcmp (str, "2") == 0) {
+				totem_config->version = 2;
 			}
 		}
-		if (!objdb_get_string (objdb,object_service_handle, "secauth", &value)) {
-			if (strcmp (value, "on") == 0) {
+		if (!objdb_get_string (objdb,object_totem_handle, "secauth", &str)) {
+			if (strcmp (str, "on") == 0) {
 				totem_config->secauth = 1;
 			}
-			if (strcmp (value, "off") == 0) {
+			if (strcmp (str, "off") == 0) {
 				totem_config->secauth = 0;
 			}
 		}
-		objdb_get_int (objdb,object_service_handle, "threads", &totem_config->threads);
+		objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
 
-		objdb_get_int (objdb,object_service_handle, "nodeid", &totem_config->node_id);
 
-		objdb_get_int (objdb,object_service_handle, "netmtu", &totem_config->net_mtu);
+		objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
 
-		if (!objdb_get_string (objdb,object_service_handle, "mcastaddr", &value)) {
-			res = totemip_parse (&totem_config->mcast_addr, value);
+		objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
+
+		objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
+
+		objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
+
+		objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
+
+		objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
+
+		objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
+
+		objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+	}
+	while (objdb->object_find (
+		    object_totem_handle,
+		    "interface",
+		    strlen ("interface"),
+		    &object_interface_handle) == 0) {
+
+		if (interface_max == totem_config->interface_count) {
+			sprintf (error_reason,
+				 "%d is too many interfaces in %s/network.conf",
+				 totem_config->interface_count, OPENAIS_CONFDIR);
+			goto parse_error;
 		}
 
-		if (!objdb_get_string (objdb,object_service_handle, "mcastport", &value)) {
-			totem_config->ip_port = htons (atoi (value));
+		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
+
+		/*
+		 * Get interface node id
+		 */
+		objdb_get_int (objdb, object_interface_handle, "nodeid", &totem_config->interfaces[ringnumber].node_id);
+
+		/*
+		 * Get interface multicast address
+		 */
+		if (!objdb_get_string (objdb, object_interface_handle, "mcastaddr", &str)) {
+			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str);
 		}
 
-		// TODO This really expects a list....copy stuff from services ?
-		if (!objdb_get_string (objdb,object_service_handle, "bindnetaddr", &value)) {
-
-			if (interface_max == totem_config->interface_count) {
-				sprintf (error_reason,
-					 "%d is too many interfaces in %s/network.conf",
-					 totem_config->interface_count, OPENAIS_CONFDIR);
-				goto parse_error;
-			}
-			res = totemip_parse (&totem_config->interfaces[totem_config->interface_count].bindnet, value);
-			totem_config->interface_count += 1;
+		/*
+		 * Get mcast port
+		 */
+		if (!objdb_get_string (objdb, object_interface_handle, "mcastport", &str)) {
+			totem_config->interfaces[ringnumber].ip_port = htons (atoi (str));
 		}
 
-		objdb_get_int (objdb,object_service_handle, "token", &totem_config->token_timeout);
+		/*
+		 * Get the bind net address
+		 */
+		if (!objdb_get_string (objdb, object_interface_handle, "bindnetaddr", &str)) {
 
-		objdb_get_int (objdb,object_service_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "hold", &totem_config->token_hold_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
-
-		objdb_get_int (objdb,object_service_handle, "join", &totem_config->join_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "consensus", &totem_config->consensus_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "merge", &totem_config->merge_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "downcheck", &totem_config->downcheck_timeout);
-
-		objdb_get_int (objdb,object_service_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
-
-		objdb_get_int (objdb,object_service_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
-
-		objdb_get_int (objdb,object_service_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
-
-		objdb_get_int (objdb,object_service_handle, "max_network_delay", &totem_config->max_network_delay);
-
-		objdb_get_int (objdb,object_service_handle, "window_size", &totem_config->window_size);
-
-		objdb_get_int (objdb,object_service_handle, "max_messages", &totem_config->max_messages);
+			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str);
+		}
+		totem_config->interface_count++;
 	}
 
 	return 0;
@@ -237,34 +262,48 @@ int totem_config_validate (
 {
 	static char local_error_reason[512];
 	char *error_reason = local_error_reason;
-
-	/*
-	 * Some error checking of parsed data to make sure its valid
-	 */
-	if ((int *)&totem_config->mcast_addr.addr == 0) {
-		error_reason = "No multicast address specified";
-		goto parse_error;
-	}
-
-	if (totem_config->ip_port == 0) {
-		error_reason = "No multicast port specified";
-		goto parse_error;
-	}
-
-	if (totem_config->mcast_addr.family == AF_INET6 &&
-		totem_config->node_id == 0) {
-
-		error_reason = "An IPV6 network requires that a node ID be specified.";
-		goto parse_error;
-	}
+	int i;
 
 	if (totem_config->interface_count == 0) {
-		error_reason = "No bindnet specified";
+		error_reason = "No interfaces defined";
 		goto parse_error;
 	}
 
-	if (totem_config->version != 1) {
-		error_reason = "This totem parser can only parse version 1 configurations.";
+	for (i = 0; i < totem_config->interface_count; i++) {
+printf ("validing interface %d of %d\n", i, totem_config->interfaces);
+		/*
+		 * Some error checking of parsed data to make sure its valid
+		 */
+		if ((int *)&totem_config->interfaces[i].mcast_addr.addr == 0) {
+			error_reason = "No multicast address specified";
+			goto parse_error;
+		}
+	
+		if (totem_config->interfaces[i].ip_port == 0) {
+			error_reason = "No multicast port specified";
+			goto parse_error;
+		}
+
+		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
+			totem_config->interfaces[i].node_id == 0) {
+	
+			error_reason = "An IPV6 network requires that a node ID be specified.";
+			goto parse_error;
+		}
+
+		if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
+			error_reason = "Multicast address family does not match bind address family";
+			goto parse_error;
+		}
+
+		if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
+			error_reason =  "Not all bind address belong to the same IP family";
+			goto parse_error;
+		}
+	}
+
+	if (totem_config->version != 2) {
+		error_reason = "This totem parser can only parse version 2 configurations.";
 		goto parse_error;
 	}
 
@@ -517,16 +556,6 @@ int totem_config_keyread (
 
 	}
 
-	if (totem_config->mcast_addr.family != totem_config->interfaces[0].bindnet.family) {
-		strcpy (error_string_response, "Multicast address family does not match bind address family");
-		goto parse_error;
-	}
-	for (i = 0; i < totem_config->interface_count; i++) {
-		if (totem_config->mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
-			strcpy (error_string_response, "Not all bind address belong to the same IP family");
-			goto parse_error;
-		}
-	}
 	return (0);
 
 parse_error:

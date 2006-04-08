@@ -105,7 +105,7 @@ struct totemnet_instance {
 
 	poll_handle totemnet_poll_handle;
 
-	struct totem_interface *totemnet_interface;
+	struct totem_interface *totem_interface;
 
 	int netif_state_report;
 
@@ -416,7 +416,7 @@ static inline void ucast_sendmsg (
 	 * Build unicast message
 	 */
 	totemip_totemip_to_sockaddr_convert(system_to,
-		instance->totem_config->ip_port, &sockaddr, &addrlen);
+		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = iovec_sendmsg;
@@ -480,7 +480,7 @@ static inline void mcast_sendmsg (
 	 * Build multicast message
 	 */
 	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
-		instance->totem_config->ip_port, &sockaddr, &addrlen);
+		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = iovec_sendmsg;
@@ -551,7 +551,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	}
 
 	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
-		instance->totem_config->ip_port, &sockaddr, &addrlen);
+		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
@@ -729,8 +729,8 @@ static void timer_function_netif_check_timeout (
 	 * Build sockets for every interface
 	 */
 	netif_determine (instance,
-		&instance->totemnet_interface->bindnet,
-		&instance->totemnet_interface->boundto,
+		&instance->totem_interface->bindnet,
+		&instance->totem_interface->boundto,
 		&interface_up, &interface_num);
 	/*
 	 * If the network interface isn't back up and we are already
@@ -789,7 +789,7 @@ static void timer_function_netif_check_timeout (
 		 * Interface is up
 		 */
 		instance->netif_bind_state = BIND_STATE_REGULAR;
-		bind_address = &instance->totemnet_interface->bindnet;
+		bind_address = &instance->totem_interface->bindnet;
 	}
 	/*
 	 * Create and bind the multicast and unicast sockets
@@ -798,7 +798,7 @@ static void timer_function_netif_check_timeout (
 		&instance->mcast_address,
 		bind_address,
 		&instance->totemnet_sockets,
-		&instance->totemnet_interface->boundto);
+		&instance->totem_interface->boundto);
 
 	poll_dispatch_add (
 		instance->totemnet_poll_handle,
@@ -810,7 +810,7 @@ static void timer_function_netif_check_timeout (
 		instance->totemnet_sockets.token,
 		POLLIN, instance, net_deliver_fn, UINT_MAX);
 
-	totemip_copy (&instance->my_id, &instance->totemnet_interface->boundto);
+	totemip_copy (&instance->my_id, &instance->totem_interface->boundto);
 
 	/*
 	 * This reports changes in the interface to the user and totemsrp
@@ -819,7 +819,7 @@ static void timer_function_netif_check_timeout (
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
 				"The network interface [%s] is now up.\n",
-				totemip_print (&instance->totemnet_interface->boundto));
+				totemip_print (&instance->totem_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 			instance->totemnet_iface_change_fn (instance->context, &instance->my_id);
 		}
@@ -918,7 +918,7 @@ static int totemnet_build_sockets_ip (
 	 * Bind to multicast socket used for multicast receives
 	 */
 	totemip_totemip_to_sockaddr_convert(mcast_address,
-		instance->totem_config->ip_port, &sockaddr, &addrlen);
+		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		perror ("bind mcast recv socket failed");
@@ -950,7 +950,7 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port - 1,
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port - 1,
 		&sockaddr, &addrlen);
 	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
@@ -987,7 +987,7 @@ static int totemnet_build_sockets_ip (
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &sockaddr, &addrlen);
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		perror ("bind token socket failed");
@@ -1017,8 +1017,8 @@ static int totemnet_build_sockets_ip (
 	/*
 	 * Join group membership on socket
 	 */
-	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_config->ip_port, &mcast_ss, &addrlen);
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_config->ip_port, &boundto_ss, &addrlen);
+	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_interface->ip_port, &mcast_ss, &addrlen);
+	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &boundto_ss, &addrlen);
 
 	switch ( bindnet_address->family ) {
 		case AF_INET:
@@ -1210,9 +1210,10 @@ int totemnet_initialize (
         rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
 
 	/*
-	* Initialize local variables for totemnet
-	*/
-	totemip_copy (&instance->mcast_address, &totem_config->mcast_addr);
+	 * Initialize local variables for totemnet
+	 */
+	instance->totem_interface = &totem_config->interfaces[interface_no];
+	totemip_copy (&instance->mcast_address, &instance->totem_interface->mcast_addr);
 	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
 
 	/*
@@ -1228,10 +1229,9 @@ int totemnet_initialize (
 			totemnet_mcast_worker_fn);
 	}
 
-	instance->totemnet_interface = &totem_config->interfaces[interface_no];
 	instance->totemnet_poll_handle = poll_handle;
 
-	instance->totemnet_interface->bindnet.nodeid = instance->totem_config->node_id;
+	instance->totem_interface->bindnet.nodeid = instance->totem_interface->node_id;
 
 	instance->context = context;
 	instance->totemnet_deliver_fn = deliver_fn;

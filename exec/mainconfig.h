@@ -70,7 +70,6 @@ extern char *strstr_rs (const char *haystack, const char *needle);
 extern int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
-	struct main_config *main_config,
-	int interface_max);
+	struct main_config *main_config);
 	
 #endif /* MAINCONFIG_H_DEFINED */

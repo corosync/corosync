@@ -1217,7 +1217,8 @@ int main (int argc, char **argv)
 
 	openais_service_link_all (objdb);
 
-	res = openais_main_config_read (objdb, &error_string, &main_config, 1);
+printf ("main config read\n");
+	res = openais_main_config_read (objdb, &error_string, &main_config);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 
@@ -1225,7 +1226,8 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = totem_config_read (objdb, &totem_config, &error_string, 1);
+  printf ("totem config read\n");
+	res = totem_config_read (objdb, &totem_config, &error_string, 3);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 		log_printf (LOG_LEVEL_ERROR, error_string);

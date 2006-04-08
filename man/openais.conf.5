@@ -43,8 +43,8 @@ openais.conf - openais executive configuration file
 The openais.conf instructs the openais executive about various parameters
 needed to control the openais executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
-.IR totem { } "," logging { } "," event { } ", and "amf { }.  These directives
-are described below.
+.IR "totem  { } , logging { } , event { } , and amf { }".
+ These directives are described below.
 
 .TP
 totem { }
@@ -63,21 +63,33 @@ This top level directive contains configuration options for the AMF service.
 .PP
 Within the 
 .B totem
-directive, there are four configuration options which are all required:
+directive, an interface directive is required.  There is also one configuration
+option which is required:
+.PP
+.PP
 .TP
 version
 This specifies the version of the configuration file.  Currently the only
-valid version for this directive is 1.
+valid version for this directive is 2.
+
+.PP
+.PP
+Within the 
+.B interface
+sub-directive of totem there are four parameters which are required unless IPV6
+is used, in which case 5 parameters are required:
+.TP
+ringnumber
+This specifies the ring number for the interface.  When using the redundant
+ring protocol, each interface should specify separate ring numbers to uniquely
+identify to the membership protocol which interface to use for which redundant
+ring.
 
 .TP
 bindnetaddr
 This specifies the address which the openais executive should bind.
 This address should always end in zero.  If the totem traffic should
 be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
-
-Multiple bindnetaddr directives may be specified.  When multiple bindnetaddr
-directives are specified, the totem redundant ring protocol will use multiple
-interfaces to replicate the network traffic.
 
 This may also be an IPV6 address, in which case IPV6 networking will be used.
 In this case, the full address must be specified and there is no automatic
@@ -106,10 +118,10 @@ nodeid
 This configuration option is optional when using IPv4 and required when using
 IPv6.  This is a 32 bit value specifying the node identifier delivered to the
 cluster membership service.  If this is not specified with IPv4, the node id
-will be determined from the 32 bit IP address the system is bound to.
+will be determined from the 32 bit IP address the system to which the system
+is bound.  The node identifier value of zero is reserved and should not be used.
 
-The node identifier value of zero is reserved and should not be used.
-
+.PP
 .PP
 Within the 
 .B totem 
@@ -145,15 +157,15 @@ The default is on.
 redundantring
 This specifies the mode of redundant ring, which may be none, active, or
 passive.  Active replication offers slightly lower latency from transmit
-to delivery in faulty network environments but with poorer performance.
+to delivery in faulty network environments but with less performance.
 Passive replication may nearly double the speed of the totem protocol
 if the protocol doesn't become cpu bound.  The final option is none, in
 which case only one network interface will be used to operate the totem
 protocol.
 
-At this time redundant ring is only partially implemented and not yet available.
-
-The default is none.
+If only one interface directive is specified, none is automatically chosen.
+If multiple interface directives are specified, only active or passive may
+be chosen.
 
 .TP
 netmtu

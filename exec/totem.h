@@ -64,6 +64,9 @@ enum {
 struct totem_interface {
 	struct totem_ip_address bindnet;
 	struct totem_ip_address boundto;
+	struct totem_ip_address mcast_addr;
+	uint16_t ip_port;
+	int node_id;
 };
 
 struct totem_logging_configuration {
@@ -83,9 +86,6 @@ struct totem_config {
 	 */
 	struct totem_interface *interfaces;
 	int interface_count;
-	struct totem_ip_address mcast_addr;
-	uint16_t ip_port;
-	int node_id;
 
 	/*
 	 * key information

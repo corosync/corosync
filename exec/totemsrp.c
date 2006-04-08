@@ -678,7 +678,7 @@ int totemsrp_initialize (
 	/*
 	 * Initialize local variables for totemsrp
 	 */
-	totemip_copy (&instance->mcast_address, &totem_config->mcast_addr);
+	totemip_copy (&instance->mcast_address, &totem_config->interfaces[0].mcast_addr);
 
 	memset (&instance->next_memb, 0, sizeof (struct totem_ip_address));
 	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
