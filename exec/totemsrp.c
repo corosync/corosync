@@ -1620,8 +1620,7 @@ static void memb_state_recovery_enter (
 				&commit_token->memb_list[i].ring_id,
 				sizeof (struct memb_ring_id)) == 0) {
 	
-				if (low_ring_aru == 0 ||
-					sq_lt_compare (commit_token->memb_list[i].aru, low_ring_aru)) {
+				if (sq_lt_compare (commit_token->memb_list[i].aru, low_ring_aru)) {
 
 					low_ring_aru = commit_token->memb_list[i].aru;
 				}
