@@ -327,13 +327,15 @@ The default is 17 messages.
 .PP
 Within the 
 .B logging
-directive, there are four configuration options which are all optional:
+directive, there are six configuration options which are all optional:
 .TP
-logoutput
-This specifies the logging output.  The choices are file, which logs to a file,
-stderr, which logs to stderr, and syslog which logs to the system log.  It is
-possible to have multiple targets by including this directive with different
-options multiple times in the top level directive.
+to_stderr
+.TP
+to_file
+.TP
+to_syslog
+These specify the destination of logging output. Any combination of
+these options may be specified.
 
 .TP
 logfile

@@ -51,14 +51,6 @@
 
 static char error_string_response[512];
 
-typedef enum {
-	MAIN_HEAD,
-	MAIN_LOGGING,
-	MAIN_EVENT,
-	MAIN_AMF,
-	MAIN_COMPONENTS
-} main_parse_t;
-
 /* This just makes the code below a little neater */
 static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
 				   char *key, char **value)
@@ -96,19 +88,31 @@ extern int openais_main_config_read (
 		    strlen ("logging"),
 		    &object_service_handle) == 0) {
 
-		if (!objdb_get_string (objdb,object_service_handle, "logoutput", &value)) {
-			if (strcmp (value, "file") == 0) {
+		if (!objdb_get_string (objdb,object_service_handle, "to_file", &value)) {
+			if (strcmp (value, "yes") == 0) {
 				main_config->logmode |= LOG_MODE_FILE;
 			} else
-			if (strcmp (value, "syslog") == 0) {
-				main_config->logmode |= LOG_MODE_SYSLOG;
-			} else
-			if (strcmp (value, "stderr") == 0) {
-				main_config->logmode |= LOG_MODE_STDERR;
-			} else {
-				goto parse_error;
+			if (strcmp (value, "no") == 0) {
+				main_config->logmode &= ~LOG_MODE_FILE;
 			}
 		}
+		if (!objdb_get_string (objdb,object_service_handle, "to_syslog", &value)) {
+			if (strcmp (value, "yes") == 0) {
+				main_config->logmode |= LOG_MODE_SYSLOG;
+			} else
+			if (strcmp (value, "no") == 0) {
+				main_config->logmode &= ~LOG_MODE_SYSLOG;
+			}
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "to_stderr", &value)) {
+			if (strcmp (value, "yes") == 0) {
+				main_config->logmode |= LOG_MODE_STDERR;
+			} else
+			if (strcmp (value, "no") == 0) {
+				main_config->logmode &= ~LOG_MODE_STDERR;
+			}
+		}
+
 		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
 			if (strcmp (value, "on") == 0) {
 				main_config->logmode |= LOG_MODE_DEBUG;
