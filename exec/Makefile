@@ -53,8 +53,8 @@ TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o tot
 EXEC_LIBS = libtotem_pg.a
 
 # service handler objects
-SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c
-SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o
+SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c amfconfig.c aisparser.c
+SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o amfconfig.o aisparser.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \

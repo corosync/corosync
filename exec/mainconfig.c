@@ -138,6 +138,7 @@ extern int openais_main_config_read (
 		}
 	}
 
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	if (objdb->object_find (
 		    OBJECT_PARENT_HANDLE,
 		    "aisexec",
