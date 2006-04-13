@@ -166,6 +166,12 @@ extern int totem_config_read (
 				totem_config->secauth = 0;
 			}
 		}
+
+		/*
+		 * Get interface node id
+		 */
+		objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
+
 		objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
 
 
@@ -213,11 +219,6 @@ extern int totem_config_read (
 		}
 
 		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
-
-		/*
-		 * Get interface node id
-		 */
-		objdb_get_int (objdb, object_interface_handle, "nodeid", &totem_config->interfaces[ringnumber].node_id);
 
 		/*
 		 * Get interface multicast address
@@ -270,7 +271,6 @@ int totem_config_validate (
 	}
 
 	for (i = 0; i < totem_config->interface_count; i++) {
-printf ("validing interface %d of %d\n", i, totem_config->interfaces);
 		/*
 		 * Some error checking of parsed data to make sure its valid
 		 */
@@ -285,7 +285,7 @@ printf ("validing interface %d of %d\n", i, totem_config->interfaces);
 		}
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
-			totem_config->interfaces[i].node_id == 0) {
+			totem_config->node_id == 0) {
 	
 			error_reason = "An IPV6 network requires that a node ID be specified.";
 			goto parse_error;
@@ -507,7 +507,6 @@ int totem_config_keyread (
 	char *key_location = NULL;
 	unsigned int object_service_handle;
 	int res;
-	int i;
 
 	if (totem_config->secauth == 0) {
 		return (0);
@@ -558,7 +557,6 @@ int totem_config_keyread (
 
 	return (0);
 
-parse_error:
 	*error_string = error_string_response;
 key_error:
 	return (-1);

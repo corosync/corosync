@@ -1231,7 +1231,7 @@ int totemnet_initialize (
 
 	instance->totemnet_poll_handle = poll_handle;
 
-	instance->totem_interface->bindnet.nodeid = instance->totem_interface->node_id;
+	instance->totem_interface->bindnet.nodeid = instance->totem_config->node_id;
 
 	instance->context = context;
 	instance->totemnet_deliver_fn = deliver_fn;

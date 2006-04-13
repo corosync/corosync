@@ -67,17 +67,10 @@ directive, an interface directive is required.  There is also one configuration
 option which is required:
 .PP
 .PP
-.TP
-version
-This specifies the version of the configuration file.  Currently the only
-valid version for this directive is 2.
-
-.PP
-.PP
 Within the 
 .B interface
-sub-directive of totem there are four parameters which are required unless IPV6
-is used, in which case 5 parameters are required:
+sub-directive of totem there are four parameters which are required:
+
 .TP
 ringnumber
 This specifies the ring number for the interface.  When using the redundant
@@ -113,21 +106,33 @@ This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the openais services configured for different
 UDP ports.
 
+.PP
+.PP
+Within the 
+.B totem 
+directive, there are six configuration options of which 1 is required,
+4 are optional, and 1 is requierd when IPV6 is configured in the interface
+subdirective.  The required directive controls the version of the totem
+configuration.  The optional option unless using IPV6 directive controls
+identification of the processor.  The optional options control secrecy and
+authentication, the redundant ring mode of operation, maximum network MTU,
+and number of sending threads, and the nodeid field.
+
+.TP
+version
+This specifies the version of the configuration file.  Currently the only
+valid version for this directive is 2.
+
+.PP
+.PP
 .TP
 nodeid
 This configuration option is optional when using IPv4 and required when using
 IPv6.  This is a 32 bit value specifying the node identifier delivered to the
 cluster membership service.  If this is not specified with IPv4, the node id
 will be determined from the 32 bit IP address the system to which the system
-is bound.  The node identifier value of zero is reserved and should not be used.
-
-.PP
-.PP
-Within the 
-.B totem 
-directive, there are four configuration options which are all optional.
-These control secrecy & authentication, the redundant ring mode of operation,
-and network MTU, and number of sending threads.
+is bound with ring identifier of 0.  The node identifier value of zero is
+reserved and should not be used.
 
 .TP
 secauth
