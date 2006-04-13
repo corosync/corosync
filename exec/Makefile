@@ -52,15 +52,15 @@ TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c tote
 TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o tlist.o crypto.o wthread.o
 EXEC_LIBS = libtotem_pg.a
 
-# service handler objects
-SERV_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c amfconfig.c aisparser.c
-SERV_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o amfconfig.o aisparser.o
+# LCR objects
+LCR_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c amfconfig.c aisparser.c vsf_ykd.c
+LCR_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o amfconfig.o aisparser.o vsf_ykd.o
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
 		util.c sync.c ykd.c service.c totemconfig.c mainconfig.c
 MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o ykd.o  service.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
+		util.o sync.o service.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
@@ -72,9 +72,9 @@ all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
-	objdb.lcrso aisparser.lcrso keygen openais-instantiate
+	objdb.lcrso aisparser.lcrso vsf_ykd.lcrso keygen openais-instantiate
 else
-EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(OTHER_OBJS) $(SERV_OBJS)
+EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(OTHER_OBJS) $(LCR_OBJS)
 all: libtotem_pg.a aisexec keygen openais-instantiate
 endif
 
@@ -114,6 +114,10 @@ aisparser.lcrso: aisparser.o
 objdb.lcrso: objdb.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load objdb.o -o $@
 
+vsf_ykd.lcrso: vsf_ykd.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load vsf_ykd.o -o $@
+
+
 else
 
 service_evs.lcrso: evs.o
@@ -145,6 +149,9 @@ service_cpg.lcrso: cpg.o
 
 aisparser.lcrso: aisparser.o
 	$(CC) -shared -Wl,-soname,aisparser.lcrso aisparser.o -o $@
+
+vsf_ykd.lcrso: vsf_ykd.o
+	$(CC) -shared -Wl,-soname,vsf_ykd.lcrso vsf_ykd.o -o $@
 
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
@@ -216,6 +223,9 @@ cfg.o: cfg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 aisparser.o: aisparser.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+
+vsf_ykd.o: vsf_ykd.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
 
 cpg.o: cpg.c

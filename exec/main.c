@@ -69,7 +69,6 @@
 #include "main.h"
 #include "service.h"
 #include "sync.h"
-#include "ykd.h"
 #include "swab.h"
 #include "objdb.h"
 #include "config.h"
@@ -801,7 +800,7 @@ retry_recv:
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
-				(ykd_primary() == 1) && (
+				(sync_primary_designated() == 1) && (
 				(ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&

@@ -1,7 +1,6 @@
 /*
- * vi: set autoindent tabstop=4 shiftwidth=4 :
- *
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -58,6 +57,9 @@
 #include "main.h"
 #include "print.h"
 #include "swab.h"
+#include "vsf.h"
+
+#include "../lcr/lcr_comp.h"
 
 #define LOG_SERVICE LOG_SERVICE_YKD
 
@@ -150,7 +152,7 @@ void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
 {
 	struct iovec iovec[2];
 	struct ykd_header header;
@@ -169,7 +171,7 @@ int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
 	return (res);
 }
 
-void ykd_state_send (void)
+static void ykd_state_send (void)
 {
         totempg_callback_token_create (
                 &ykd_state_send_callback_token_handle,
@@ -179,7 +181,7 @@ void ykd_state_send (void)
                 NULL);
 }
 
-int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
 {
 	struct iovec iovec;
 	struct ykd_header header;
@@ -196,7 +198,7 @@ int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
 	return (res);
 }
 
-void ykd_attempt_send (void)
+static void ykd_attempt_send (void)
 {
         totempg_callback_token_create (
                 &ykd_attempt_send_callback_token_handle,
@@ -206,7 +208,7 @@ void ykd_attempt_send (void)
                 NULL);
 }
 
-void compute (void)
+static void compute (void)
 {
 	int i;
 	int j;
@@ -244,7 +246,7 @@ void compute (void)
 	}
 }
 
-int subquorum (
+static int subquorum (
 	struct totem_ip_address *member_list,
 	int member_list_entries,
 	struct ykd_session *session)
@@ -277,7 +279,7 @@ int subquorum (
 	return (0);
 }
 
-int decide (void)
+static int decide (void)
 {
 	int i;
 
@@ -297,7 +299,7 @@ int decide (void)
 	return (1);
 }
 
-void ykd_session_endian_convert (struct ykd_session *ykd_session)
+static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 {
 	int i;
 
@@ -308,7 +310,7 @@ void ykd_session_endian_convert (struct ykd_session *ykd_session)
 	}
 }
 
-void ykd_state_endian_convert (struct ykd_state *ykd_state)
+static void ykd_state_endian_convert (struct ykd_state *ykd_state)
 {
 	int i;
 
@@ -487,7 +489,7 @@ struct totempg_group ykd_group = {
 	.group_len	= 3
 };
 
-int ykd_init (
+static int ykd_init (
 	void (*primary_callback_fn) (
 		struct totem_ip_address *view_list,
 		int view_list_entries,
@@ -514,7 +516,37 @@ int ykd_init (
 /*
  * Returns 1 if this processor is in the primary 
  */
-int ykd_primary (void) {
+static int ykd_primary (void) {
 	return (primary_designated);
 }
 
+/*
+ * lcrso object definition
+ */
+static struct openais_vsf_iface_ver0 vsf_ykd_iface_ver0 = {
+	.init				= ykd_init,
+	.primary			= ykd_primary
+};
+
+static struct lcr_iface openais_vsf_ykd_ver0[1] = {
+	{
+		.name			= "openais_vsf_ykd",
+		.version		= 0,
+		.versions_replace	= 0,
+		.versions_replace_count	= 0,
+		.dependencies		= 0,
+		.dependency_count	= 0,
+		.constructor		= NULL,
+		.destructor		= NULL,
+		.interfaces		= (void **)(void *)&vsf_ykd_iface_ver0,
+	}
+};
+
+static struct lcr_comp vsf_ykd_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces				= openais_vsf_ykd_ver0
+};
+
+__attribute__ ((constructor)) static void vsf_ykd_comp_register (void) {
+	lcr_component_register (&vsf_ykd_comp_ver0);
+}

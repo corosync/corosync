@@ -54,11 +54,13 @@
 #include "totempg.h"
 #include "totemip.h"
 #include "totem.h"
-#include "ykd.h"
-#include "print.h"
+#include "vsf.h"
 #include "swab.h"
 
+#include "../lcr/lcr_ifact.h"
+
 #define LOG_SERVICE LOG_SERVICE_SYNC
+#include "print.h"
 
 #define MESSAGE_REQ_SYNC_BARRIER 0
 
@@ -89,6 +91,8 @@ static int barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
+static struct openais_vsf_iface_ver0 *vsf_iface;
+
 static int sync_barrier_send (struct memb_ring_id *ring_id);
 
 static int sync_start_process (enum totem_callback_token_type type, void *data);
@@ -103,14 +107,14 @@ static void sync_deliver_fn (
 	int iov_len,
 	int endian_conversion_required);
 
-void sync_confchg_fn (
+static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
 	struct totem_ip_address *left_list, int left_list_entries,
 	struct totem_ip_address *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-void sync_primary_callback_fn (
+static void sync_primary_callback_fn (
 	struct totem_ip_address *view_list,
 	int view_list_entries,
 	int primary_designated,
@@ -262,6 +266,9 @@ void sync_register (
 	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
 	void (*synchronization_completed) (void))
 {
+	unsigned int res;
+	unsigned int ykd_handle;
+
 	totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,
@@ -272,13 +279,21 @@ void sync_register (
 		&sync_group,
 		1);
 
-	ykd_init (sync_primary_callback_fn);
+
+	res = lcr_ifact_reference (
+		&ykd_handle,
+		"openais_vsf_ykd",
+		0,
+		(void **)(void *)&vsf_iface,
+		0);
+
+	vsf_iface->init (sync_primary_callback_fn);
 
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
 }
 
-void sync_primary_callback_fn (
+static void sync_primary_callback_fn (
 	struct totem_ip_address *view_list,
 	int view_list_entries,
 	int primary_designated,
@@ -323,7 +338,7 @@ void sync_endian_convert (struct req_exec_sync_barrier_start *req_exec_sync_barr
 
 }
 
-void sync_deliver_fn (
+static void sync_deliver_fn (
 	struct totem_ip_address *source_addr,
 	struct iovec *iovec,
 	int iov_len,
@@ -400,7 +415,7 @@ void sync_deliver_fn (
 	return;
 }
 
-void sync_confchg_fn (
+static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
 	struct totem_ip_address *left_list, int left_list_entries,
@@ -414,4 +429,9 @@ void sync_confchg_fn (
 int sync_in_process (void)
 {
 	return (sync_processing);
+}
+
+int sync_primary_designated (void)
+{
+	return (vsf_iface->primary());
 }

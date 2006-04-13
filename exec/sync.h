@@ -53,4 +53,6 @@ void sync_register (
 
 int sync_in_process (void);
 
+int sync_primary_designated (void);
+
 #endif /* SYNC_H_DEFINED */
