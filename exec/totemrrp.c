@@ -116,6 +116,19 @@ struct rrp_algo {
 		struct totem_ip_address *system_to,
 		struct iovec *iovec,
 		unsigned int iov_len);	
+
+	void (*recv_flush) (
+		struct totemrrp_instance *instance);
+
+	void (*send_flush) (
+		struct totemrrp_instance *instance);
+
+	void (*iface_check) (
+		struct totemrrp_instance *instance);
+
+	void (*processor_count_set) (
+		struct totemrrp_instance *instance,
+		unsigned int processor_count);
 };
 
 struct totemrrp_instance {
@@ -161,8 +174,6 @@ struct totemrrp_instance {
 
 	totemnet_handle *net_handles;
 
-	totemnet_handle net_handle;
-
 	void *rrp_algo_instance;
 
 	int interface_count;
@@ -172,24 +183,24 @@ struct totemrrp_instance {
 	int processor_count;
 };
 
-void passive_mcast_recv (
+static void passive_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
 	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len);
 
-void passive_mcast_noflush_send (
+static void passive_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-void passive_mcast_flush_send (
+static void passive_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-void passive_token_recv (
+static void passive_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
 	struct totem_ip_address *system_from,
@@ -197,30 +208,30 @@ void passive_token_recv (
 	unsigned int msg_len,
 	unsigned int token_seqid);
 
-void passive_token_send (
+static void passive_token_send (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	unsigned int iov_len);	
 
-void active_mcast_recv (
+static void active_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
 	struct totem_ip_address *system_from,
 	void *msg,
 	unsigned int msg_len);
 
-void active_mcast_noflush_send (
+static void active_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-void active_mcast_flush_send (
+static void active_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-void active_token_recv (
+static void active_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
 	void *context,
@@ -229,12 +240,24 @@ void active_token_recv (
 	unsigned int msg_len,
 	unsigned int token_seqid);
 
-void active_token_send (
+static void active_token_send (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	unsigned int iov_len);	
 
+static void active_recv_flush (
+	struct totemrrp_instance *instance);
+
+static void active_send_flush (
+	struct totemrrp_instance *instance);
+
+static void active_iface_check (
+	struct totemrrp_instance *instance);
+
+static void active_processor_count_set (
+	struct totemrrp_instance *instance,
+	unsigned int processor_count_set);
 /*
 struct rrp_algo passive_algo = {
 	.mcast_recv		= passive_mcast_recv,
@@ -250,7 +273,11 @@ struct rrp_algo active_algo = {
 	.mcast_noflush_send	= active_mcast_noflush_send,
 	.mcast_flush_send	= active_mcast_flush_send,
 	.token_recv		= active_token_recv,
-	.token_send		= active_token_send
+	.token_send		= active_token_send,
+	.recv_flush		= active_recv_flush,
+	.send_flush		= active_recv_flush,
+	.iface_check		= active_iface_check,
+	.processor_count_set	= active_processor_count_set,
 };
 
 /*
@@ -366,7 +393,7 @@ static void timer_function_active_token (void *context)
 }
 
 
-void active_token_timer_start (struct active_instance *active_instance)
+static void active_token_timer_start (struct active_instance *active_instance)
 {
         poll_timer_add (
 		active_instance->rrp_instance->poll_handle,
@@ -376,14 +403,14 @@ void active_token_timer_start (struct active_instance *active_instance)
 		&active_instance->timer_active_token);
 }
 
-void active_token_timer_cancel (struct active_instance *active_instance)
+static void active_token_timer_cancel (struct active_instance *active_instance)
 {
         poll_timer_delete (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_active_token);
 }
 
-void active_mcast_recv (
+static void active_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
 	struct totem_ip_address *system_from,
@@ -397,7 +424,7 @@ void active_mcast_recv (
 		msg_len);
 }
 
-void active_mcast_flush_send (
+static void active_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len)
@@ -407,11 +434,12 @@ void active_mcast_flush_send (
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
-			totemnet_mcast_flush_send (instance->net_handle, iovec, iov_len);
+			totemnet_mcast_flush_send (instance->net_handles[i], iovec, iov_len);
 		}
 	}
 }
-void active_mcast_noflush_send (
+
+static void active_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	struct iovec *iovec,
 	unsigned int iov_len)
@@ -421,12 +449,12 @@ void active_mcast_noflush_send (
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
-			totemnet_mcast_noflush_send (instance->net_handle, iovec, iov_len);
+			totemnet_mcast_noflush_send (instance->net_handles[i], iovec, iov_len);
 		}
 	}
 }
 
-void active_token_recv (
+static void active_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int interface_no,
 	void *context,
@@ -482,7 +510,7 @@ void active_token_recv (
 	}
 }
 
-void active_token_send (
+static void active_token_send (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *system_to,
 	struct iovec *iovec,
@@ -494,8 +522,63 @@ void active_token_send (
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
 			totemnet_token_send (
-				instance->net_handle, system_to,
+				instance->net_handles[i], system_to,
 				iovec, iov_len);
+		}
+	}
+}
+
+static void active_recv_flush (struct totemrrp_instance *instance)
+{
+	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	unsigned int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		if (rrp_algo_instance->faulty[i] == 0) {
+
+			totemnet_recv_flush (instance->net_handles[i]);
+		}
+	}
+}
+
+static void active_send_flush (struct totemrrp_instance *instance)
+{
+	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	unsigned int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		if (rrp_algo_instance->faulty[i] == 0) {
+
+			totemnet_send_flush (instance->net_handles[i]);
+		}
+	}
+}
+
+static void active_iface_check (struct totemrrp_instance *instance)
+{
+	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	unsigned int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		if (rrp_algo_instance->faulty[i] == 0) {
+
+			totemnet_iface_check (instance->net_handles[i]);
+		}
+	}
+}
+
+static void active_processor_count_set (
+	struct totemrrp_instance *instance,
+	unsigned int processor_count)
+{
+	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	unsigned int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		if (rrp_algo_instance->faulty[i] == 0) {
+
+			totemnet_processor_count_set (instance->net_handles[i],
+				processor_count);
 		}
 	}
 }
@@ -569,6 +652,7 @@ int totemrrp_finalize (
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
+	int i;
 
 	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
@@ -577,7 +661,9 @@ int totemrrp_finalize (
 		goto error_exit;
 	}
 
-	totemnet_finalize (instance->net_handle);
+	for (i = 0; i < instance->interface_count; i++) {
+		totemnet_finalize (instance->net_handles[i]);
+	}
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 
@@ -685,7 +771,6 @@ int totemrrp_initialize (
 			rrp_deliver_fn,
 			rrp_iface_change_fn);
 	}
-	instance->net_handle = instance->net_handles[0];
 
 	totemnet_net_mtu_adjust (totem_config);
 
@@ -712,7 +797,8 @@ int totemrrp_processor_count_set (
 		goto error_exit;
 	}
 
-	totemnet_processor_count_set (instance->net_handle, processor_count);
+	instance->rrp_algo->processor_count_set (instance, processor_count);
+
 	instance->processor_count = processor_count;
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
@@ -733,7 +819,7 @@ int totemrrp_recv_flush (totemrrp_handle handle)
 		goto error_exit;
 	}
 
-	totemnet_recv_flush (instance->net_handle);
+	instance->rrp_algo->recv_flush (instance);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 
@@ -753,7 +839,7 @@ int totemrrp_send_flush (totemrrp_handle handle)
 		goto error_exit;
 	}
 	
-	totemnet_send_flush (instance->net_handle);
+	instance->rrp_algo->send_flush (instance);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 
@@ -838,6 +924,7 @@ int totemrrp_mcast_noflush_send (
 error_exit:
 	return (res);
 }
+
 int totemrrp_iface_check (totemrrp_handle handle)
 {
 	struct totemrrp_instance *instance;
@@ -850,7 +937,7 @@ int totemrrp_iface_check (totemrrp_handle handle)
 		goto error_exit;
 	}
 	
-	totemnet_iface_check (instance->net_handle);
+	instance->rrp_algo->iface_check (instance);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 error_exit:
