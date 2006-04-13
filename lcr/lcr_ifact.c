@@ -83,7 +83,10 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
-static inline struct lcr_component_instance *lcr_comp_find (
+/* TODO
+ * FC5 gcc 4.1 optimizer breaks if this code is automatically inlined
+ */
+__attribute__((noinline)) static struct lcr_component_instance *lcr_comp_find (
 	char *iface_name,
 	unsigned int version,
 	int *iface_number)
