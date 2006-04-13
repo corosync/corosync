@@ -229,13 +229,13 @@ struct openais_service_handler evt_service_handler = {
 	.sync_abort					= evt_sync_abort
 };
 
-struct openais_service_handler *evt_get_handler_ver0(void);
+static struct openais_service_handler *evt_get_handler_ver0(void);
 
-struct openais_service_handler_iface_ver0 evt_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 evt_service_handler_iface = {
 	.openais_get_service_handler_ver0		= evt_get_handler_ver0
 };
 
-struct lcr_iface openais_evt_ver0[1] = {
+static struct lcr_iface openais_evt_ver0[1] = {
 	{
 		.name					= "openais_evt",
 		.version				= 0,
@@ -245,21 +245,23 @@ struct lcr_iface openais_evt_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor				= NULL,
-		.interfaces				= (void **)(void *)&evt_service_handler_iface,
+		.interfaces				= NULL,
 	}
 };
 
-struct lcr_comp evt_comp_ver0 = {
+static struct lcr_comp evt_comp_ver0 = {
 	.iface_count			= 1,
 	.ifaces					= openais_evt_ver0
 };
 
-struct openais_service_handler *evt_get_handler_ver0(void)
+static struct openais_service_handler *evt_get_handler_ver0(void)
 {
 	return (&evt_service_handler);
 }
 
 __attribute__ ((constructor)) static void evt_comp_register (void) {
+	lcr_interfaces_set (&openais_evt_ver0[0], &evt_service_handler_iface);
+
 	lcr_component_register (&evt_comp_ver0);
 }
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -504,13 +505,13 @@ struct openais_service_handler ckpt_service_handler = {
 /*
  * Dynamic loader definition
  */
-struct openais_service_handler *ckpt_get_handler_ver0 (void);
+static struct openais_service_handler *ckpt_get_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 ckpt_service_handler_iface = {
-	.openais_get_service_handler_ver0		= ckpt_get_handler_ver0
+static struct openais_service_handler_iface_ver0 ckpt_service_handler_iface = {
+	.openais_get_service_handler_ver0	= ckpt_get_handler_ver0
 };
 
-struct lcr_iface openais_ckpt_ver0[1] = {
+static struct lcr_iface openais_ckpt_ver0[1] = {
 	{
 		.name				= "openais_ckpt",
 		.version			= 0,
@@ -520,21 +521,23 @@ struct lcr_iface openais_ckpt_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&ckpt_service_handler_iface,
+		.interfaces			= NULL
 	}
 };
 
-struct lcr_comp ckpt_comp_ver0 = {
+static struct lcr_comp ckpt_comp_ver0 = {
 	.iface_count			= 1,
 	.ifaces				= openais_ckpt_ver0
 };
 
-struct openais_service_handler *ckpt_get_handler_ver0 (void)
+static struct openais_service_handler *ckpt_get_handler_ver0 (void)
 {
 	return (&ckpt_service_handler);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
+	lcr_interfaces_set (&openais_ckpt_ver0[0], &ckpt_service_handler_iface);
+
 	lcr_component_register (&ckpt_comp_ver0);
 }
 
@@ -3728,6 +3731,7 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 	struct iteration_entry *iteration_entries;
 	struct list_head *section_list;
 	struct iteration_instance *iteration_instance;
+	void *iteration_instance_p;
 	unsigned int iteration_handle = 0;
 	int res;
 	SaAisErrorT error = SA_AIS_OK;
@@ -3755,11 +3759,12 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 	}
 
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb, iteration_handle,
-		(void **)(void *)&iteration_instance);
+		&iteration_instance_p);
 	if (res != 0) {
 		hdb_handle_destroy (&ckpt_pd->iteration_hdb, iteration_handle);
 		goto error_exit;
 	}
+	iteration_instance = (struct iteration_instance *)iteration_instance_p;
 
 	iteration_instance->iteration_entries = NULL;
 	iteration_instance->iteration_entries_count = 0;
@@ -3833,17 +3838,19 @@ static void message_handler_req_lib_ckpt_sectioniterationfinalize (
 	struct res_lib_ckpt_sectioniterationfinalize res_lib_ckpt_sectioniterationfinalize;
 	SaAisErrorT error = SA_AIS_OK;
 	struct iteration_instance *iteration_instance;
+	void *iteration_instance_p;
 	unsigned int res;
 
 	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
 
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
 		req_lib_ckpt_sectioniterationfinalize->iteration_handle,
-		(void **)(void *)&iteration_instance);
+		&iteration_instance_p);
 	if (res != 0) {
 		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
 	}
+	iteration_instance = (struct iteration_instance *)iteration_instance_p;
 
 	free (iteration_instance->iteration_entries);
 
@@ -3875,19 +3882,21 @@ static void message_handler_req_lib_ckpt_sectioniterationnext (
 	SaAisErrorT error = SA_AIS_OK;
 	int sectionIdSize = 0;
 	unsigned int res;
-	struct iteration_instance *iteration_instance;
+	struct iteration_instance *iteration_instance = NULL; // this assignment to null makes no sense and is only needed with -O2 or greater TODO
+	void *iteration_instance_p;
 
 	struct ckpt_pd *ckpt_pd = (struct ckpt_pd *)openais_conn_private_data_get (conn);
 
 	log_printf (LOG_LEVEL_DEBUG, "section iteration next\n");
 	res = hdb_handle_get (&ckpt_pd->iteration_hdb,
 		req_lib_ckpt_sectioniterationnext->iteration_handle,
-		(void **)(void *)&iteration_instance);
+		&iteration_instance_p);
 	if (res != 0) {
 		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
 	}
 
+	iteration_instance = (struct iteration_instance *)iteration_instance_p;
 	/*
 	 * Find active iteration entry
 	 */

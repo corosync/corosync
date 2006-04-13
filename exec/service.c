@@ -175,6 +175,7 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 	int ret;
 	unsigned int handle;
 	struct openais_service_handler_iface_ver0 *iface_ver0;
+	void *iface_ver0_p;
 	unsigned int ver_int;
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
@@ -205,8 +206,10 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 			&handle,
 			service_name,
 			ver_int,
-			(void **)(void *)&iface_ver0,
+			&iface_ver0_p,
 			(void *)0);
+
+		iface_ver0 = (struct openais_service_handler_iface_ver0 *)iface_ver0_p;
 
 		if (iface_ver0 == 0) {
 			log_printf(LOG_LEVEL_ERROR, "openais component %s did not load.\n", service_name);

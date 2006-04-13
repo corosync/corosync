@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -148,13 +149,13 @@ struct openais_service_handler cfg_service_handler = {
 /*
  * Dynamic Loader definition
  */
-struct openais_service_handler *cfg_get_handler_ver0 (void);
+static struct openais_service_handler *cfg_get_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 cfg_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 cfg_service_handler_iface = {
 	.openais_get_service_handler_ver0	= cfg_get_handler_ver0
 };
 
-struct lcr_iface openais_cfg_ver0[1] = {
+static struct lcr_iface openais_cfg_ver0[1] = {
 	{
 		.name				= "openais_cfg",
 		.version			= 0,
@@ -164,21 +165,23 @@ struct lcr_iface openais_cfg_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&cfg_service_handler_iface,
+		.interfaces			= NULL
 	}
 };
 
-struct lcr_comp cfg_comp_ver0 = {
+static struct lcr_comp cfg_comp_ver0 = {
 	.iface_count				= 1,
 	.ifaces					= openais_cfg_ver0
 };
 
-struct openais_service_handler *cfg_get_handler_ver0 (void)
+static struct openais_service_handler *cfg_get_handler_ver0 (void)
 {
 	return (&cfg_service_handler);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
+	lcr_interfaces_set (&openais_cfg_ver0[0], &cfg_service_handler_iface);
+
 	lcr_component_register (&cfg_comp_ver0);
 }
 

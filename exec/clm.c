@@ -1,7 +1,6 @@
 /*
- * vi: set autoindent tabstop=4 shiftwidth=4 :
- *
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -217,11 +216,11 @@ struct openais_service_handler clm_service_handler = {
  */
 static struct openais_service_handler *clm_get_service_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
 	.openais_get_service_handler_ver0		= clm_get_service_handler_ver0
 };
 
-struct lcr_iface openais_clm_ver0[1] = {
+static struct lcr_iface openais_clm_ver0[1] = {
 	{
 		.name					= "openais_clm",
 		.version				= 0,
@@ -231,11 +230,11 @@ struct lcr_iface openais_clm_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor				= NULL,
-		.interfaces				= (void **)(void *)&clm_service_handler_iface,
+		.interfaces				= NULL
 	}
 };
 
-struct lcr_comp clm_comp_ver0 = {
+static struct lcr_comp clm_comp_ver0 = {
 	.iface_count			= 1,
 	.ifaces					= openais_clm_ver0
 };
@@ -246,6 +245,8 @@ static struct openais_service_handler *clm_get_service_handler_ver0 (void)
 }
 
 __attribute__ ((constructor)) static void clm_comp_register (void) {
+	lcr_interfaces_set (&openais_clm_ver0[0], &clm_service_handler_iface);
+
 	lcr_component_register (&clm_comp_ver0);
 }
 

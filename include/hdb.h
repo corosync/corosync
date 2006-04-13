@@ -122,6 +122,7 @@ static inline int hdb_handle_get (
 	unsigned int handle,
 	void **instance)
 {
+	*instance = NULL;
 	if (handle >= handle_database->handle_count) {
 		return (-1);
 	}

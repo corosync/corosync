@@ -56,4 +56,9 @@ struct lcr_comp {
 
 extern void lcr_component_register (struct lcr_comp *comp);
 
+static inline void lcr_interfaces_set (struct lcr_iface *iface, void *iface_list)
+{
+	iface->interfaces = (void **)iface_list;
+}
+
 #endif /* LCR_COMP_H_DEFINED */

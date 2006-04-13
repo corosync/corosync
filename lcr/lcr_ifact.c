@@ -83,15 +83,13 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
-/* TODO
- * FC5 gcc 4.1 optimizer breaks if this code is automatically inlined
- */
-__attribute__((noinline)) static struct lcr_component_instance *lcr_comp_find (
+static inline struct lcr_component_instance *lcr_comp_find (
 	char *iface_name,
 	unsigned int version,
 	int *iface_number)
 {
 	struct lcr_component_instance *instance;
+	void *instance_p;
 	unsigned int component_handle = 0;
 	int i;
 
@@ -100,7 +98,9 @@ __attribute__((noinline)) static struct lcr_component_instance *lcr_comp_find (
 	 */
 	hdb_iterator_reset (&lcr_component_instance_database);
 	while (hdb_iterator_next (&lcr_component_instance_database,
-		(void **)(void *)&instance, &component_handle) == 0) {
+		&instance_p, &component_handle) == 0) {
+
+		instance = (struct lcr_component_instance *)instance_p;
 
 		for (i = 0; i < instance->iface_count; i++) {
 			if ((strcmp (instance->ifaces[i].name, iface_name) == 0) &&
@@ -120,6 +120,7 @@ static inline int lcr_lib_loaded (
 	char *library_name)
 {
 	struct lcr_component_instance *instance;
+	void *instance_p;
 	unsigned int component_handle = 0;
 
 	/*
@@ -127,7 +128,9 @@ static inline int lcr_lib_loaded (
 	 */
 	hdb_iterator_reset (&lcr_component_instance_database);
 	while (hdb_iterator_next (&lcr_component_instance_database,
-		(void **)(void *)&instance, &component_handle) == 0) {
+		(void *)&instance_p, &component_handle) == 0) {
+
+		instance = (struct lcr_component_instance *)instance_p;
 
 		if (strcmp (instance->library_name, library_name) == 0) {
 			return (1);

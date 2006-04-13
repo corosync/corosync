@@ -93,7 +93,7 @@ struct lcr_iface iface1[2]= {
 		.dependency_count	= 0,
 		.constructor		= iface1_constructor,
 		.destructor		= iface1_destructor,
-		.interfaces		= (void **)(void *)&iface_list,
+		.interfaces		= NULL
 	},
 	/*
 	 * Version 1
@@ -107,7 +107,7 @@ struct lcr_iface iface1[2]= {
 		.dependency_count	= 0,
 		.constructor		= iface1_ver1_constructor,
 		.destructor		= iface1_ver1_destructor,
-		.interfaces		= (void **)(void *)&iface_ver1_list
+		.interfaces		= NULL
 	}
 };
 
@@ -164,6 +164,8 @@ static void iface1_ver1_func3 (void) {
 
 __attribute__ ((constructor)) static void register_this_component (void)
 {
+        lcr_interfaces_set (&iface1[0], &iface_list);
+        lcr_interfaces_set (&iface1[1], &iface_ver1_list);
+
 	lcr_component_register (&test_comp);
 }
-

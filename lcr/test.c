@@ -41,11 +41,15 @@ int main (void) {
 	unsigned int b_ifact_handle_ver0;
 	struct iface *a_iface_ver0;
 	struct iface *a_iface_ver1;
+	void *a_iface_ver0_p;
+	void *a_iface_ver1_p;
 
 	unsigned int a_ifact_handle_ver1;
 	unsigned int b_ifact_handle_ver1;
 	struct iface *b_iface_ver0;
 	struct iface *b_iface_ver1;
+	void *b_iface_ver0_p;
+	void *b_iface_ver1_p;
 
 	/*
 	 * Reference version 0 and 1 of A and B interfaces
@@ -54,29 +58,37 @@ int main (void) {
 		&a_ifact_handle_ver0,
 		"A_iface1",
 		0, /* version 0 */
-		(void **)(void *)&a_iface_ver0,
+		&a_iface_ver0_p,
 		(void *)0xaaaa0000);
+
+	a_iface_ver0 = (struct iface *)a_iface_ver0_p;
 
 	lcr_ifact_reference (
 		&b_ifact_handle_ver0,
 		"B_iface1",
 		0, /* version 0 */
-		(void **)(void *)&b_iface_ver0,
+		&b_iface_ver0_p,
 		(void *)0xbbbb0000);
+
+	b_iface_ver0 = (struct iface *)b_iface_ver0_p;
 
 	lcr_ifact_reference (
 		&a_ifact_handle_ver1,
 		"A_iface1",
 		1, /* version 1 */
-		(void **)(void *)&a_iface_ver1,
+		&a_iface_ver1_p,
 		(void *)0xaaaa1111);
+
+	a_iface_ver1 = (struct iface *)a_iface_ver0_p;
 
 	lcr_ifact_reference (
 		&b_ifact_handle_ver1,
 		"B_iface1",
 		1, /* version 1 */
-		(void **)(void *)&b_iface_ver1,
+		&b_iface_ver1_p,
 		(void *)0xbbbb1111);
+
+	b_iface_ver1 = (struct iface *)b_iface_ver0_p;
 
 	a_iface_ver0->func1();
 	a_iface_ver0->func2();

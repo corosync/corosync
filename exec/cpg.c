@@ -1,6 +1,4 @@
 /*
- * vi: set autoindent tabstop=4 shiftwidth=4 :
- *
  * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
@@ -247,13 +245,13 @@ struct openais_service_handler cpg_service_handler = {
 /*
  * Dynamic loader definition
  */
-struct openais_service_handler *cpg_get_service_handler_ver0 (void);
+static struct openais_service_handler *cpg_get_service_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 cpg_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 cpg_service_handler_iface = {
 	.openais_get_service_handler_ver0		= cpg_get_service_handler_ver0
 };
 
-struct lcr_iface openais_cpg_ver0[1] = {
+static struct lcr_iface openais_cpg_ver0[1] = {
 	{
 		.name				= "openais_cpg",
 		.version			= 0,
@@ -263,22 +261,24 @@ struct lcr_iface openais_cpg_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&cpg_service_handler_iface,
+		.interfaces			= NULL
 	}
 };
 
-struct lcr_comp cpg_comp_ver0 = {
+static struct lcr_comp cpg_comp_ver0 = {
 	.iface_count			= 1,
 	.ifaces			        = openais_cpg_ver0
 };
 
 
-struct openais_service_handler *cpg_get_service_handler_ver0 (void)
+static struct openais_service_handler *cpg_get_service_handler_ver0 (void)
 {
 	return (&cpg_service_handler);
 }
 
 __attribute__ ((constructor)) static void cpg_comp_register (void) {
+        lcr_interfaces_set (&openais_cpg_ver0[0], &cpg_service_handler_iface);
+
 	lcr_component_register (&cpg_comp_ver0);
 }
 

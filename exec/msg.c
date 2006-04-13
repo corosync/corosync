@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -452,13 +453,13 @@ struct openais_service_handler msg_service_handler = {
 	.sync_abort			= msg_sync_abort
 };
 
-struct openais_service_handler *msg_get_handler_ver0 (void);
+static struct openais_service_handler *msg_get_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 msg_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 msg_service_handler_iface = {
 	.openais_get_service_handler_ver0	= msg_get_handler_ver0
 };
 
-struct lcr_iface openais_msg_ver0[1] = {
+static struct lcr_iface openais_msg_ver0[1] = {
 	{
 		.name			= "openais_msg",
 		.version		= 0,
@@ -468,21 +469,23 @@ struct lcr_iface openais_msg_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&msg_service_handler_iface,
+		.interfaces		= NULL
 	}
 };
 
-struct lcr_comp msg_comp_ver0 = {
+static struct lcr_comp msg_comp_ver0 = {
 	.iface_count			= 1,
 	.ifaces				= openais_msg_ver0
 };
 
-struct openais_service_handler *msg_get_handler_ver0 (void)
+static struct openais_service_handler *msg_get_handler_ver0 (void)
 {
 	return (&msg_service_handler);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
+	lcr_interfaces_set (&openais_msg_ver0[0], &msg_service_handler_iface);
+
 	lcr_component_register (&msg_comp_ver0);
 }
 

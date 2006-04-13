@@ -1,7 +1,6 @@
 /*
- * vi: set autoindent ;
- *
  * Copyright (c) 2004-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -162,13 +161,13 @@ static DECLARE_LIST_INIT (confchg_notify);
  * Dynamic loading descriptor
  */
 
-struct openais_service_handler *evs_get_service_handler_ver0 (void);
+static struct openais_service_handler *evs_get_service_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 evs_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 evs_service_handler_iface = {
 	.openais_get_service_handler_ver0	= evs_get_service_handler_ver0
 };
 
-struct lcr_iface openais_evs_ver0[1] = {
+static struct lcr_iface openais_evs_ver0[1] = {
 	{
 		.name			= "openais_evs",
 		.version		= 0,
@@ -178,21 +177,23 @@ struct lcr_iface openais_evs_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&evs_service_handler_iface,
+		.interfaces		= NULL,
 	}
 };
 
-struct lcr_comp evs_comp_ver0 = {
+static struct lcr_comp evs_comp_ver0 = {
 	.iface_count	= 1,
 	.ifaces		= openais_evs_ver0
 };
 
-struct openais_service_handler *evs_get_service_handler_ver0 (void)
+static struct openais_service_handler *evs_get_service_handler_ver0 (void)
 {
 	return (&evs_service_handler);
 }
 
 __attribute__ ((constructor)) static void evs_comp_register (void) {
+	lcr_interfaces_set (&openais_evs_ver0[0], &evs_service_handler_iface);
+
 	lcr_component_register (&evs_comp_ver0);
 }
 

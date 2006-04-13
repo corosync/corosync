@@ -55,7 +55,8 @@ DYFLAGS =
 # build CFLAGS, LDFLAGS
 #
 ifeq (${OPENAIS_BUILD}, RELEASE) 
-	CFLAGS += -O3 -Wall
+	CFLAGS += -O3 -Wall -DDEBUG
+# -Wstrict-aliasing=2 TODO sameday fix all of these
 ifndef OPENAIS_PROFILE
 	CFLAGS += -fomit-frame-pointer
 endif

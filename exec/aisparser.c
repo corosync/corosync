@@ -219,7 +219,7 @@ struct lcr_iface openais_aisparser_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&aisparser_iface_ver0,
+		.interfaces			= NULL,
 	}
 };
 
@@ -232,6 +232,7 @@ struct lcr_comp aisparser_comp_ver0 = {
 
 
 __attribute__ ((constructor)) static void aisparser_comp_register (void) {
+        lcr_interfaces_set (&openais_aisparser_ver0[0], &aisparser_iface_ver0);
 	lcr_component_register (&aisparser_comp_ver0);
 }
 

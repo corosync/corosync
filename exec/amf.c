@@ -409,7 +409,6 @@ struct openais_service_handler amf_service_handler = {
 struct openais_service_handler *amf_get_handler_ver0 (void);
 
 struct openais_service_handler_iface_ver0 amf_service_handler_iface = {
-	.test					= NULL,
 	.openais_get_service_handler_ver0	= amf_get_handler_ver0
 };
 
@@ -423,7 +422,7 @@ struct lcr_iface openais_amf_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&amf_service_handler_iface,
+		.interfaces		= NULL
 	}
 };
 
@@ -438,6 +437,8 @@ struct openais_service_handler *amf_get_handler_ver0 (void)
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
+        lcr_interfaces_set (&openais_amf_ver0[0], &amf_service_handler_iface);
+
 	lcr_component_register (&amf_comp_ver0);
 }
 

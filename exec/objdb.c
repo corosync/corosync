@@ -522,7 +522,7 @@ struct lcr_iface objdb_iface_ver0[1] = {
 		.dependency_count	= 0,
 		.constructor		= NULL,
 		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&objdb_iface,
+		.interfaces		= NULL,
 	}
 };
 
@@ -534,5 +534,7 @@ struct lcr_comp objdb_comp_ver0 = {
 
 
 __attribute__ ((constructor)) static void objdb_comp_register (void) {
+        lcr_interfaces_set (&objdb_iface_ver0[0], &objdb_iface);
+
 	lcr_component_register (&objdb_comp_ver0);
 }

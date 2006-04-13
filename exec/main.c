@@ -1018,6 +1018,7 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
+#define DEBUG
 #ifndef DEBUG
 	/*
 	 * Disconnect from TTY if this is not a debug run
@@ -1160,7 +1161,9 @@ int main (int argc, char **argv)
 	unsigned int config_handle;
 	unsigned int config_version = 0;
 	struct objdb_iface_ver0 *objdb;
+	void *objdb_p;
 	struct config_iface_ver0 *config;
+	void *config_p;
 	char *config_iface;
 	int res;
 
@@ -1179,8 +1182,10 @@ int main (int argc, char **argv)
 		&objdb_handle,
 		"objdb",
 		0,
-		(void **)(void *)&objdb,
+		&objdb_p,
 		0);
+
+	objdb = (struct objdb_iface_ver0 *)objdb_p;
 
 	objdb->objdb_init ();
 
@@ -1194,9 +1199,10 @@ int main (int argc, char **argv)
 		&config_handle,
 		config_iface,
 		config_version,
-		(void **)(void *)&config,
+		&config_p,
 		0);
 
+	config = (struct config_iface_ver0 *)config_p;
 	if (res == -1) {
 		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2003-2004 MontaVista Software, Inc.
+ * Copyright (c) 2005-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -303,13 +304,13 @@ struct openais_service_handler lck_service_handler = {
 /*
  * Dynamic loader definition
  */
-struct openais_service_handler *lck_get_handler_ver0 (void);
+static struct openais_service_handler *lck_get_handler_ver0 (void);
 
-struct openais_service_handler_iface_ver0 lck_service_handler_iface = {
+static struct openais_service_handler_iface_ver0 lck_service_handler_iface = {
 	.openais_get_service_handler_ver0	= lck_get_handler_ver0
 };
 
-struct lcr_iface openais_lck_ver0[1] = {
+static struct lcr_iface openais_lck_ver0[1] = {
 	{
 		.name				= "openais_lck",
 		.version			= 0,
@@ -323,17 +324,19 @@ struct lcr_iface openais_lck_ver0[1] = {
 	}
 };
 
-struct lcr_comp lck_comp_ver0 = {
+static struct lcr_comp lck_comp_ver0 = {
 	.iface_count				= 1,
 	.ifaces					= openais_lck_ver0
 };
 
-struct openais_service_handler *lck_get_handler_ver0 (void)
+static struct openais_service_handler *lck_get_handler_ver0 (void)
 {
 	return (&lck_service_handler);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
+	lcr_interfaces_set (&openais_lck_ver0[0], &lck_service_handler_iface);
+
 	lcr_component_register (&lck_comp_ver0);
 }
 
