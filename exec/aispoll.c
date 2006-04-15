@@ -245,7 +245,6 @@ int poll_dispatch_delete (
 {
 	struct poll_instance *poll_instance;
 	int i;
-	int found = 0;
 	int res = 0;
 
 	res = hdb_handle_get (&poll_instance_database, handle,
@@ -258,30 +257,13 @@ int poll_dispatch_delete (
 	/*
 	 * Find dispatch fd to delete
 	 */
+	res = -EBADF;
 	for (i = 0; i < poll_instance->poll_entry_count; i++) {
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
-			found = 1;
+			poll_instance->poll_entries[i].ufd.fd = -1;
+			poll_instance->poll_entries[i].ufd.revents = 0;
 			break;
 		}
-	}
-
-	if (found) {
-		poll_instance->poll_entries[i].ufd.fd = -1;
-		poll_instance->poll_entries[i].ufd.revents = 0;
-	}
-
-	for (i = 0; i < poll_instance->poll_entry_count; i++) {
-		if (poll_instance->ufds[i].fd == fd) {
-			found = 1;
-			break;
-		}
-	}
-
-	res = -EBADF;
-	if (found) {
-		poll_instance->ufds[i].fd = -1;
-		poll_instance->ufds[i].revents = 0;
-		res = 0;
 	}
 
 
