@@ -170,7 +170,7 @@ int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
 int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 {
 	char *service_name;
-	unsigned char *service_ver;
+	char *service_ver;
 	unsigned int object_service_handle;
 	int ret;
 	unsigned int handle;
