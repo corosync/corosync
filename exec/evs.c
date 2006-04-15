@@ -284,13 +284,6 @@ static void message_handler_req_evs_join (void *conn, void *msg)
 		goto exit_error;
 	}
 
-#ifdef DEBUG
-{ int i;
-	for (i = 0; i < req_lib_evs_join->group_entries; i++) {
-		printf ("Joining group %s\n", req_lib_evs_join->groups[i].key);
-	}
-}
-#endif
 	addr = realloc (evs_pd->groups, sizeof (struct evs_group) * 
 		(evs_pd->group_entries + req_lib_evs_join->group_entries));
 	if (addr == 0) {
