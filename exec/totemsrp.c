@@ -2085,7 +2085,7 @@ static int orf_token_mcast (
 static int orf_token_rtr (
 	struct totemsrp_instance *instance,
 	struct orf_token *orf_token,
-	int *fcc_allowed)
+	unsigned int *fcc_allowed)
 {
 	unsigned int res;
 	unsigned int i, j;
