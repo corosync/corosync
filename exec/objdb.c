@@ -509,7 +509,7 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_find_reset	= object_find_reset,
 	.object_find		= object_find,
 	.object_key_get		= object_key_get,
-	.object_priv_get	= object_priv_set
+	.object_priv_get	= object_priv_get
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {
