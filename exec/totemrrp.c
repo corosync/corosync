@@ -183,6 +183,7 @@ struct totemrrp_instance {
 	int processor_count;
 };
 
+#ifdef TODO
 static void passive_mcast_recv (
 	struct totemrrp_instance *instance,
 	void *context,
@@ -213,6 +214,7 @@ static void passive_token_send (
 	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	unsigned int iov_len);	
+#endif
 
 static void active_mcast_recv (
 	struct totemrrp_instance *instance,
@@ -275,7 +277,7 @@ struct rrp_algo active_algo = {
 	.token_recv		= active_token_recv,
 	.token_send		= active_token_send,
 	.recv_flush		= active_recv_flush,
-	.send_flush		= active_recv_flush,
+	.send_flush		= active_send_flush,
 	.iface_check		= active_iface_check,
 	.processor_count_set	= active_processor_count_set,
 };
