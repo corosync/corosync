@@ -85,7 +85,7 @@ struct totem_config {
 	 */
 	struct totem_interface *interfaces;
 	int interface_count;
-	int node_id;
+	unsigned int node_id;
 
 	/*
 	 * key information
