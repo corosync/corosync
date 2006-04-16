@@ -79,8 +79,11 @@
 
 #define SERVER_BACKLOG 5
 
-int ais_uid = 0;
-int gid_valid = 0;
+static unsigned char *release_name = "Wilson version 0.74";
+
+static int ais_uid = 0;
+
+static int gid_valid = 0;
 
 static unsigned int service_count = 32;
 
@@ -1167,6 +1170,10 @@ int main (int argc, char **argv)
 	char *config_iface;
 	int res;
 
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE %s\n", release_name);
+	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
+	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006 Red Hat, Inc.\n");
+
 	memset(&this_non_loopback_ip, 0, sizeof(struct totem_ip_address));
 
 	totemip_localhost(AF_INET, &this_non_loopback_ip);
@@ -1184,6 +1191,10 @@ int main (int argc, char **argv)
 		0,
 		&objdb_p,
 		0);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration object database component.\n");
+		openais_exit_error (AIS_DONE_OBJDB);
+	}
 
 	objdb = (struct objdb_iface_ver0 *)objdb_p;
 
@@ -1204,16 +1215,12 @@ int main (int argc, char **argv)
 
 	config = (struct config_iface_ver0 *)config_p;
 	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-
-		log_printf (LOG_LEVEL_ERROR, "can't open configuration module\n");
+		log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration component.\n");
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = config->config_readconfig(objdb, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
@@ -1224,15 +1231,12 @@ int main (int argc, char **argv)
 
 	res = openais_main_config_read (objdb, &error_string, &main_config);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string, 3);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
@@ -1258,8 +1262,6 @@ int main (int argc, char **argv)
 	aisexec_uid_determine (&main_config);
 
 	aisexec_gid_determine (&main_config);
-
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: Copyright (C) 2002-2006 MontaVista Software, Inc. and contributors.\n");
 
 	/*
 	 * Set round robin realtime scheduling with priority 99
@@ -1326,7 +1328,7 @@ int main (int argc, char **argv)
 
 	aisexec_tty_detach ();
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to receive connections.\n");
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 
 	/*
 	 * Setup libais connection dispatch routine
