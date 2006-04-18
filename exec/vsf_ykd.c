@@ -496,6 +496,8 @@ static int ykd_init (
 		int primary_designated,
 		struct memb_ring_id *ring_id))
 {
+	log_init ("YKD");
+
 	ykd_primary_callback_fn = primary_callback_fn;
 
 	totempg_groups_initialize (

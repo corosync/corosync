@@ -1,9 +1,14 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
- * All rights reserved.
- *
  * Author: Steven Dake (sdake@mvista.com)
+ *
+ * Copyright (c) 2006 Ericsson AB.
+ *		Author: Hans Feldt
+ *      Description: Added support for runtime installed loggers, tags tracing,
+ *                   and file & line printing.
+ *
+ * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -34,55 +39,117 @@
 #ifndef PRINT_H_DEFINED
 #define PRINT_H_DEFINED
 
-#include "../include/saAis.h"
-#include "../include/saClm.h"
+#include <stdarg.h>
+#include <syslog.h>
+#include "mainconfig.h"
 
 #define LOG_MODE_DEBUG		1
 #define LOG_MODE_TIMESTAMP	2
 #define LOG_MODE_FILE		4
 #define LOG_MODE_SYSLOG		8
 #define LOG_MODE_STDERR		16
+#define LOG_MODE_FILELINE   32
 
 /*
- * If you change these, be sure to change log_levels in print.c
+ * Log levels, compliant with syslog and SA Forum Log spec.
  */
-#define LOG_LEVEL_SECURITY	1
-#define LOG_LEVEL_ERROR		2
-#define LOG_LEVEL_WARNING	3
-#define LOG_LEVEL_NOTICE	4
-#define LOG_LEVEL_DEBUG		5
+#define LOG_LEVEL_EMERG	    LOG_EMERG
+#define LOG_LEVEL_ALERT		LOG_ALERT
+#define LOG_LEVEL_CRIT		LOG_CRIT
+#define LOG_LEVEL_ERROR		LOG_ERR
+#define LOG_LEVEL_WARNING	LOG_WARNING
+#define LOG_LEVEL_SECURITY	LOG_WARNING // openais specific
+#define LOG_LEVEL_NOTICE	LOG_NOTICE
+#define LOG_LEVEL_INFO	    LOG_INFO
+#define LOG_LEVEL_DEBUG		LOG_DEBUG
 
 /*
- * If you change these, be sure to change log_services in print.c
- */
-#define LOG_SERVICE_MAIN	1
-#define LOG_SERVICE_GMI		2
-#define LOG_SERVICE_CLM		3
-#define LOG_SERVICE_AMF		4
-#define LOG_SERVICE_CKPT	5
-#define LOG_SERVICE_EVT		6
-#define LOG_SERVICE_LCK		7
-#define LOG_SERVICE_MSG		8
-#define LOG_SERVICE_EVS		9
-#define LOG_SERVICE_SYNC	10
-#define LOG_SERVICE_YKD		11
-#define LOG_SERVICE_CPG		12
-#define LOG_SERVICE_SERV	13
+** Log tags, used by trace macros, uses 32 bits => 32 different tags
+*/	
+#define TAG_LOG	    1<<0
+#define TAG_ENTER	1<<1
+#define TAG_LEAVE	1<<2
+#define TAG_TRACE1	1<<3
+#define TAG_TRACE2	1<<4
+#define TAG_TRACE3	1<<5
+#define TAG_TRACE4	1<<6
+#define TAG_TRACE5	1<<7
+#define TAG_TRACE6	1<<8
+#define TAG_TRACE7	1<<9
+#define TAG_TRACE8	1<<10
 
-extern void internal_log_printf (int logclass, char *format, ...);
+struct logger {
+	char ident[6];
+	int level;
+	int tags;
+	int mode;
+};
 
-#define mklog(level,service) ((level << 16) | (service))
+extern struct logger loggers[];
 
-#define log_printf(level,format,args...) { internal_log_printf (mklog(level,LOG_SERVICE),format,##args); }
+/*
+** The logger_identifier variable holds the numerical identifier for a logger
+** obtained with log_init() and hides it from the logger.
+*/
+static int logger_identifier __attribute__((unused));
 
-int log_setup (char **error_string, int log_mode, char *log_file);
+extern void internal_log_printf (char *file, int line, int priority, char *format, ...);
+extern void internal_log_printf2 (char *file, int line, int priority, char *format, ...);
 
-extern char *getSaNameT (SaNameT *name);
+#define LEVELMASK 0x07                 /* 3 bits */
+#define LOG_LEVEL(p) ((p) & LEVELMASK)
+#define IDMASK (0x3f << 3)             /* 6 bits */
+#define LOG_ID(p)  (((p) & IDMASK) >> 3)
 
-extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress);
+#define _mkpri(lvl, id) (((id) << 3) | (lvl))
 
-extern void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode);
+static inline int mkpri (int level, int id)
+{
+	return _mkpri (level, id);
+}
 
-extern void saAmfPrintGroups (void);
+int log_setup (char **error_string, struct main_config *config);
+
+extern int _log_init (const char *ident);
+static inline void log_init (const char *ident)
+{
+	logger_identifier = _log_init (ident);
+}
+
+#define log_printf(lvl, format, args...) do { \
+    if ((lvl) <= loggers[logger_identifier].level)	{ \
+		internal_log_printf2 (__FILE__, __LINE__, _mkpri ((lvl), logger_identifier), format, ##args);  \
+    } \
+} while(0)
+
+#define dprintf(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level)	{ \
+		internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), format, ##args);  \
+    } \
+} while(0)
+
+#define ENTER() do { \
+    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_ENTER & loggers[logger_identifier].tags))	{ \
+        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), ">%s\n", __FUNCTION__); \
+    } \
+} while(0)
+
+#define ENTER_ARGS(format, args...) do { \
+    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_ENTER & loggers[logger_identifier].tags))	{ \
+        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), ">%s: " format, __FUNCTION__, ##args); \
+    } \
+} while(0)
+
+#define LEAVE() do { \
+    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_LEAVE & loggers[logger_identifier].tags))	{ \
+        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), "<%s\n", __FUNCTION__); \
+    } \
+} while(0)
+
+#define TRACE8(format, args...) do { \
+    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_TRACE8 & loggers[logger_identifier].tags)) { \
+		internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), format, ##args);  \
+    } \
+} while(0)
 
 #endif /* PRINT_H_DEFINED */

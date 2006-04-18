@@ -168,7 +168,7 @@ struct totemrrp_instance {
 
 	int totemrrp_log_level_debug;
 
-	void (*totemrrp_log_printf) (int level, char *format, ...);
+	void (*totemrrp_log_printf) (char *file, int line, int level, char *format, ...);
 
 	totemrrp_handle handle;
 
@@ -290,6 +290,9 @@ static struct hdb_handle_database totemrrp_instance_database = {
 	.handles	= 0,
 	.iterator	= 0
 };
+
+#define log_printf(level, format, args...) \
+    instance->totemrrp_log_printf (__FILE__, __LINE__, level, format, ##args)
 
 struct passive_instance *passive_instance_initialize (
 	int interface_count)

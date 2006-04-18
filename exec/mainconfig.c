@@ -69,14 +69,33 @@ static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int 
 	return -1;
 }
 
-extern int openais_main_config_read (
+static inline void objdb_get_int (
+	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	char *key, unsigned int *intvalue)
+{
+	char *value = NULL;
+
+	if (!objdb->object_key_get (object_service_handle,
+				    key,
+				    strlen (key),
+				    (void *)&value,
+				    NULL)) {
+		if (value) {
+			*intvalue = atoi(value);
+		}
+	}
+}
+
+int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config)
 {
 	unsigned int object_service_handle;
+	unsigned int object_logger_handle;
 	char *value;
 	char *error_reason = error_string_response;
+	int i;
 
 	memset (main_config, 0, sizeof (struct main_config));
 
@@ -118,7 +137,7 @@ extern int openais_main_config_read (
 				main_config->logmode |= LOG_MODE_DEBUG;
 			} else
 			if (strcmp (value, "off") == 0) {
-		       		main_config->logmode &= ~LOG_MODE_DEBUG;
+				main_config->logmode &= ~LOG_MODE_DEBUG;
 			} else {
 				goto parse_error;
 			}
@@ -135,6 +154,86 @@ extern int openais_main_config_read (
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
 			main_config->logfile = strdup (value);
+		}
+
+		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
+			if (strcmp (value, "on") == 0) {
+				main_config->logmode |= LOG_MODE_FILELINE;
+			} else
+			if (strcmp (value, "off") == 0) {
+				main_config->logmode &= ~LOG_MODE_FILELINE;
+			} else {
+				goto parse_error;
+			}
+		}
+
+		while (	objdb->object_find (object_service_handle,
+									"logger",
+									strlen ("logger"),
+									&object_logger_handle) == 0) {
+			main_config->logger =
+				realloc(main_config->logger,
+						sizeof(struct logger_config) *
+						(main_config->loggers + 1));
+			i = main_config->loggers;
+			main_config->loggers++;
+			memset(&main_config->logger[i], 0, sizeof(struct logger_config));
+
+			if (!objdb_get_string (objdb, object_logger_handle, "ident", &value)) {
+				main_config->logger[i].ident = value;
+			}
+			else {
+				error_reason = "ident required for logger directive";
+				goto parse_error;
+			}
+			if (!objdb_get_string (objdb, object_logger_handle, "debug", &value)) {
+				if (strcmp (value, "on") == 0) {
+					main_config->logger[i].level = LOG_LEVEL_DEBUG;
+				} else
+				if (strcmp (value, "off") == 0) {
+					main_config->logger[i].level &= ~LOG_LEVEL_DEBUG;
+				} else {
+					goto parse_error;
+				}
+			}
+			if (!objdb_get_string (objdb, object_logger_handle, "tags", &value)) {
+				char *token = strtok (value, "|");
+
+				while (token != NULL) {
+					if (strcmp (token, "enter") == 0) {
+						main_config->logger[i].tags |= TAG_ENTER;
+					} else
+					if (strcmp (token, "leave") == 0) {
+						main_config->logger[i].tags |= TAG_LEAVE;
+					} else
+					if (strcmp (token, "trace1") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE1;
+					} else
+					if (strcmp (token, "trace2") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE2;
+					} else
+					if (strcmp (token, "trace3") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+					if (strcmp (token, "trace4") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+					if (strcmp (token, "trace5") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+					if (strcmp (token, "trace6") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+					if (strcmp (token, "trace7") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+					if (strcmp (token, "trace8") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE3;
+					}
+
+					token = strtok(NULL, "|");
+				}
+			}
 		}
 	}
 

@@ -269,6 +269,8 @@ void sync_register (
 	unsigned int res;
 	unsigned int ykd_handle;
 
+ 	log_init ("SYNC");
+
 	totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,

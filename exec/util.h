@@ -65,4 +65,5 @@ enum e_ais_done {
 
 void openais_exit_error (enum e_ais_done err);
 
+extern char *getSaNameT (SaNameT *name);
 #endif /* UTIL_H_DEFINED */

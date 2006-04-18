@@ -671,6 +671,8 @@ static struct queue_group_entry *queue_group_entry_find (
 
 static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	log_init ("MSG");
+
 	/*
 	 *  Initialize the saved ring ID.
 	 */

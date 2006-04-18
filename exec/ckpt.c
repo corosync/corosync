@@ -1513,6 +1513,8 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 
 static int ckpt_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	log_init ("CKPT");
+
 	/*
 	 *  Initialize the saved ring ID.
 	 */

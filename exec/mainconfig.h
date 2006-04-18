@@ -53,6 +53,13 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
+struct logger_config {
+	char *ident;
+	int level;
+	int tags;
+	int mode;
+};
+
 struct main_config {
 	/*
 	 * logging
@@ -63,6 +70,9 @@ struct main_config {
 	/* user/group to run as */
 	char *user;
 	char *group;
+
+	int loggers;
+	struct logger_config *logger;
 };
 
 extern char *strstr_rs (const char *haystack, const char *needle);

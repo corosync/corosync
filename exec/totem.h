@@ -69,7 +69,7 @@ struct totem_interface {
 };
 
 struct totem_logging_configuration {
-	void (*log_printf) (int, char *, ...);
+	void (*log_printf) (char *, int, int, char *, ...);
 	int log_level_security;
 	int log_level_error;
 	int log_level_warning;

@@ -81,3 +81,17 @@ void openais_exit_error (enum e_ais_done err)
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
 	exit (1);
 }
+
+char *getSaNameT (SaNameT *name)
+{
+	static char ret_name[300];
+
+	memset (ret_name, 0, sizeof (ret_name));
+	if (name->length > 299) {
+		memcpy (ret_name, name->value, 299);
+	} else {
+
+		memcpy (ret_name, name->value, name->length);
+	}
+	return (ret_name);
+}

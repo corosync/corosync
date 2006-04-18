@@ -579,6 +579,8 @@ void lck_resource_cleanup_remove (
 
 static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	log_init ("LCK");
+
 	/*
 	 *  Initialize the saved ring ID.
 	 */

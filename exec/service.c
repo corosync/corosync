@@ -158,6 +158,8 @@ int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
 		}
 	}
 
+	log_init ("SERV");
+
 	for (i = 0; i < sizeof (default_services) / sizeof (struct default_service); i++) {
 		openais_service_objdb_add (objdb, default_services[i].name, default_services[i].ver);
 	}

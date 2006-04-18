@@ -257,6 +257,8 @@ struct req_exec_clm_nodejoin {
 
 static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	log_init ("CLM");
+
 	memset (clusterNodes, 0, sizeof (SaClmClusterNodeT) * NODE_MAX);
 
 	/*

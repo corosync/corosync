@@ -138,7 +138,7 @@ struct totemnet_instance {
 
 	int totemnet_log_level_debug;
 
-	void (*totemnet_log_printf) (int level, char *format, ...);
+	void (*totemnet_log_printf) (char *file, int line, int level, char *format, ...);
 
 	totemnet_handle handle;
 
@@ -224,6 +224,9 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 	instance->my_memb_entries = 1;
 }
 
+#define log_printf(level, format, args...) \
+    instance->totemnet_log_printf (__FILE__, __LINE__, level, format, ##args)
+
 static int authenticate_and_decrypt (
 	struct totemnet_instance *instance,
 	struct iovec *iov)
@@ -271,7 +274,7 @@ static int authenticate_and_decrypt (
 	hmac_done (&instance->totemnet_hmac_state, digest_comparison, &len);
 
 	if (memcmp (digest_comparison, header->hash_digest, len) != 0) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_security, "Received message has invalid digest... ignoring.\n");
+		log_printf (instance->totemnet_log_level_security, "Received message has invalid digest... ignoring.\n");
 		res = -1;
 		return (-1);
 	}
@@ -644,7 +647,7 @@ static int net_deliver_fn (
 	if ((instance->totem_config->secauth == 1) &&
 		(bytes_received < sizeof (struct security_header))) {
 
-		instance->totemnet_log_printf (instance->totemnet_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
+		log_printf (instance->totemnet_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
 		return (0);
 	}
 	totemip_sockaddr_to_totemip_convert(&system_from, &from_address);
@@ -659,7 +662,7 @@ static int net_deliver_fn (
 
 		res = authenticate_and_decrypt (instance, iovec);
 		if (res == -1) {
-			instance->totemnet_log_printf (instance->totemnet_log_level_security,
+			log_printf (instance->totemnet_log_level_security,
 				"Invalid packet data\n");
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
@@ -817,7 +820,7 @@ static void timer_function_netif_check_timeout (
 	 */
 	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
-			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			log_printf (instance->totemnet_log_level_notice,
 				"The network interface [%s] is now up.\n",
 				totemip_print (&instance->totem_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
@@ -836,7 +839,7 @@ static void timer_function_netif_check_timeout (
 
 	} else {		
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
-			instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+			log_printf (instance->totemnet_log_level_notice,
 				"The network interface is down.\n");
 			instance->totemnet_iface_change_fn (instance->context, &instance->my_id);
 		}
@@ -863,7 +866,7 @@ static void totemnet_traffic_control_set(struct totemnet_instance *instance, int
     int prio = 6; /* TC_PRIO_INTERACTIVE */
 
     if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int)))
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set traffic priority. (%s)\n", strerror (errno));
+		log_printf (instance->totemnet_log_level_warning, "Could not set traffic priority. (%s)\n", strerror (errno));
 #endif
 }
 
@@ -901,7 +904,7 @@ static int totemnet_build_sockets_ip (
 	totemip_nosigpipe (sockets->mcast_recv);
 	res = fcntl (sockets->mcast_recv, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
+		log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
 		return (-1);
 	}
 
@@ -937,7 +940,7 @@ static int totemnet_build_sockets_ip (
 	totemip_nosigpipe (sockets->mcast_send);
 	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
+		log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
 		return (-1);
 	}
 
@@ -970,7 +973,7 @@ static int totemnet_build_sockets_ip (
 	totemip_nosigpipe (sockets->token);
 	res = fcntl (sockets->token, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
+		log_printf (instance->totemnet_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
 		return (-1);
 	}
 
@@ -1004,13 +1007,13 @@ static int totemnet_build_sockets_ip (
 
 	res = getsockopt (sockets->mcast_recv, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
 	if (res == 0) {
-	 	instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+	 	log_printf (instance->totemnet_log_level_notice,
 			"Receive multicast socket recv buffer size (%d bytes).\n", recvbuf_size);
 	}
 
 	res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
 	if (res == 0) {
-		instance->totemnet_log_printf (instance->totemnet_log_level_notice,
+		log_printf (instance->totemnet_log_level_notice,
 			"Transmit multicast socket send buffer size (%d bytes).\n", sendbuf_size);
 	}
 

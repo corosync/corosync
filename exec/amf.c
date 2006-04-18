@@ -537,17 +537,17 @@ void *clc_command_run (void *context)
 
 	sleep (1);
 
-printf ("clc_command_run()\n");
+	dprintf ("clc_command_run()\n");
 	pid = fork();
 
 	if (pid == -1) {
-		printf ("Couldn't fork process %s\n", strerror (errno));
+		dprintf ("Couldn't fork process %s\n", strerror (errno));
 		return (0);
 	}
 
 	if (pid) {
 		waiting = 1;
-printf ("waiting for pid %d to finish\n", pid);
+		dprintf ("waiting for pid %d to finish\n", pid);
 		waitpid (pid, &status, 0);
 		if (clc_command_run_data->completion_callback) {
 			clc_command_run_data->completion_callback (context);
@@ -623,16 +623,16 @@ printf ("waiting for pid %d to finish\n", pid);
 	if (cmd[0] == '\0') {
 		return (0);
 	}
-	printf ("running command '%s' with environment:\n", cmd);
-	printf ("0 %s\n", envp[0]);
-	printf ("1 %s\n", envp[1]);
-	printf ("2 %s\n", envp[2]);
-	printf ("3 %s\n", envp[3]);
-	printf ("4 %s\n", envp[4]);
+	dprintf ("running command '%s' with environment:\n", cmd);
+	dprintf ("0 %s\n", envp[0]);
+	dprintf ("1 %s\n", envp[1]);
+	dprintf ("2 %s\n", envp[2]);
+	dprintf ("3 %s\n", envp[3]);
+	dprintf ("4 %s\n", envp[4]);
 		
 	res = execve (cmd, argv, envp);
 	if (res == -1) {
-		printf ("Couldn't exec process %d=%s\n", errno, strerror (errno));
+		dprintf ("Couldn't exec process %d=%s\n", errno, strerror (errno));
 	}
 	assert (res != -1);
 	return (0);
@@ -682,7 +682,8 @@ int clc_cli_instantiate (struct amf_comp *comp)
 
 	struct clc_command_run_data *clc_command_run_data;
 
-	printf ("clc_cli_instaniate\n");
+	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+
 	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE;
@@ -695,13 +696,13 @@ int clc_cli_instantiate (struct amf_comp *comp)
 
 int clc_instantiate_callback (struct amf_comp *comp)
 {
-	printf ("clc_instantiate_callback\n");
+	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 
 int clc_csi_set_callback (struct amf_comp *comp)
 {
-	printf ("clc_csi_set_callback\n");
+	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 
@@ -710,7 +711,7 @@ int clc_csi_set_callback (struct amf_comp *comp)
  */
 int clc_cli_terminate (struct amf_comp *comp)
 {
-	printf ("clc_cli_terminate\n");
+	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 int clc_terminate_callback (struct amf_comp *comp)
@@ -718,16 +719,17 @@ int clc_terminate_callback (struct amf_comp *comp)
 	struct res_lib_amf_componentterminatecallback res_lib_amf_componentterminatecallback;
 	struct component_terminate_callback_data *component_terminate_callback_data;
 
-	printf ("clc_terminate_callback %p\n", comp->conn);
+	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+
 	if (comp->presence_state != SA_AMF_PRESENCE_INSTANTIATED) {
-		printf ("component terminated but not instantiated %s - %d\n",
+		dprintf ("component terminated but not instantiated %s - %d\n",
 			getSaNameT (&comp->name), comp->presence_state);
 		assert (0);
 		return (0);
 	}
 
-printf ("component name terminating %s\n", getSaNameT (&comp->name));
-printf ("component presence state %d\n", comp->presence_state);
+	dprintf ("component name terminating %s\n", getSaNameT (&comp->name));
+	dprintf ("component presence state %d\n", comp->presence_state);
 
 	res_lib_amf_componentterminatecallback.header.id = MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK;
 	res_lib_amf_componentterminatecallback.header.size = sizeof (struct res_lib_amf_componentterminatecallback);
@@ -746,7 +748,7 @@ printf ("component presence state %d\n", comp->presence_state);
 		invocation_create (
 		AMF_RESPONSE_COMPONENTTERMINATECALLBACK,
 		component_terminate_callback_data);
-printf ("Creating invocation %llu", 
+	dprintf ("Creating invocation %llu", 
 	(unsigned long long)res_lib_amf_componentterminatecallback.invocation);
 				        
 	openais_conn_send_response (
@@ -759,7 +761,7 @@ printf ("Creating invocation %llu",
 
 int clc_csi_remove_callback (struct amf_comp *comp)
 {
-	printf ("clc_tcsi_remove_callback\n");
+	dprintf ("clc_tcsi_remove_callback\n");
 	return (0);
 }
 
@@ -782,7 +784,7 @@ int clc_cli_cleanup (struct amf_comp *comp)
 
 	struct clc_command_run_data *clc_command_run_data;
 
-	printf ("clc_cli_instaniate\n");
+	dprintf ("clc_cli_instaniate\n");
 	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_CLEANUP;
@@ -797,7 +799,7 @@ int clc_cli_cleanup (struct amf_comp *comp)
 
 int clc_cli_cleanup_local (struct amf_comp *comp)
 {
-	printf ("clc_cli_cleanup_local\n");
+	dprintf ("clc_cli_cleanup_local\n");
 	return (0);
 }
 
@@ -805,7 +807,7 @@ int clc_instantiate (struct amf_comp *comp)
 {
 	int res;
 
-	printf ("clc instantiate for comp %s\n", getSaNameT (&comp->name));
+	dprintf ("clc instantiate for comp %s\n", getSaNameT (&comp->name));
 
 	presence_state_comp_set (comp, SA_AMF_PRESENCE_INSTANTIATING);
 	res = clc_interfaces[comp->comptype]->instantiate (comp);
@@ -816,8 +818,8 @@ int clc_terminate (struct amf_comp *comp)
 {
 	int res;
 
-	printf ("clc terminate for comp %s\n", getSaNameT (&comp->name));
-assert (0);
+	dprintf ("clc terminate for comp %s\n", getSaNameT (&comp->name));
+	assert (0);
 	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
 	presence_state_comp_set (comp, SA_AMF_PRESENCE_TERMINATING);
 
@@ -829,7 +831,7 @@ int clc_cleanup (struct amf_comp *comp)
 {
 	int res;
 
-	printf ("clc cleanup for comp %s\n", getSaNameT (&comp->name));
+	dprintf ("clc cleanup for comp %s\n", getSaNameT (&comp->name));
 	comp_healthcheck_deactivate (comp);
 	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
 	presence_state_comp_set (comp, SA_AMF_PRESENCE_TERMINATING);
@@ -846,6 +848,8 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	unsigned int object_service_handle;
 	int enabled = 0;
 	char *value;
+
+	log_init ("AMF");
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	if (objdb->object_find (
@@ -873,6 +877,8 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	if (enabled) {
 		res = openais_amf_config_read (&error_string);
 		if (res == -1) {
+			dprintf("hej %s", "nisse");
+			TRACE8("hej %s", "nisse");
 			log_printf (LOG_LEVEL_ERROR, error_string);
 			return res;
 		}
@@ -930,7 +936,7 @@ int amf_lib_exit_fn (void *conn)
 	if (comp) {
 		comp->conn = 0;
 
-printf ("setting in exit fn to uninst for comp %p\n", comp);
+		dprintf ("setting in exit fn to uninst for comp %p\n", comp);
 		presence_state_comp_set (
 			comp,
 			SA_AMF_PRESENCE_UNINSTANTIATED);
@@ -946,7 +952,6 @@ printf ("setting in exit fn to uninst for comp %p\n", comp);
 
 static int amf_lib_init_fn (void *conn)
 {
-	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize availability management framework service.\n"); 
 	struct amf_pd *amf_pd = (struct amf_pd *)openais_conn_private_data_get (conn);
 
 	list_init (&amf_pd->list);
@@ -1332,7 +1337,7 @@ void comp_healthcheck_deactivate (
 		healthcheck_active = list_entry (list,
 			struct healthcheck_active, list);
 
-		printf ("healthcheck deactivating %p\n", healthcheck_active);
+		dprintf ("healthcheck deactivating %p\n", healthcheck_active);
 		healthcheck_deactivate (healthcheck_active);
 	}
 }
@@ -1361,10 +1366,10 @@ void presence_state_comp_set (
 
 void readiness_state_comp_set (struct amf_comp *comp)
 {
-	printf ("inputs to readiness_state_comp_set\n");
-	printf ("\tunit readiness state %s\n",
+	dprintf ("inputs to readiness_state_comp_set\n");
+	dprintf ("\tunit readiness state %s\n",
 		readinessstate_ntoa (comp->unit->readiness_state));
-	printf ("\tcomp operational state %s\n",
+	dprintf ("\tcomp operational state %s\n",
 		operationalstate_ntoa (comp->unit->readiness_state));
 
 	/*
@@ -1378,7 +1383,7 @@ void readiness_state_comp_set (struct amf_comp *comp)
 	} else {
 		comp->readiness_state = SA_AMF_READINESS_OUT_OF_SERVICE;
 	}
-	printf ("readiness_state_comp_set (%s)\n",
+	dprintf ("readiness_state_comp_set (%s)\n",
 		operationalstate_ntoa (comp->operational_state));
 }
 
@@ -1419,14 +1424,14 @@ void csi_comp_set_callback (
 
     size_t char_legnth_of_csi_attrs=0;
     size_t num_of_csi_attrs=0;
-    printf("\t   Assigning CSI %s to component\n", getSaNameT (&csi->name));
+    dprintf("\t   Assigning CSI %s to component\n", getSaNameT (&csi->name));
 
     for (name_value_list = csi->name_value_head.next;
 	name_value_list != &csi->name_value_head;
 	name_value_list = name_value_list->next) {
 	num_of_csi_attrs++;
 	name_value = list_entry (name_value_list, struct amf_csi_name_value, csi_name_list);
-	printf("\t\tname = %s, value = %s\n", name_value->name, name_value->value);
+	dprintf("\t\tname = %s, value = %s\n", name_value->name, name_value->value);
 	char_legnth_of_csi_attrs += strlen(name_value->name);
 	char_legnth_of_csi_attrs += strlen(name_value->value);
 	char_legnth_of_csi_attrs += 2;
@@ -1577,11 +1582,9 @@ void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
 //    pg_create (csi_in->si, &pg);
     // TODO remove si from csi data structure
 
-    printf ("assigning SI %s to ",
-        getSaNameT (&si->name));
-
-    printf ("SU %s for components:\n",
-        getSaNameT (&unit->name));
+    dprintf ("assigning SI %s to SU %s for components:\n",
+			 getSaNameT (&si->name),
+			 getSaNameT (&unit->name));
 
     /*
     ** for each component in SU, find a CSI in the SI with the same type
@@ -1592,7 +1595,7 @@ void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
 
         comp = list_entry (complist, struct amf_comp, comp_list);
 
-        printf ("\t%s\n", getSaNameT (&comp->name));
+        dprintf ("\t%s\n", getSaNameT (&comp->name));
 
         int no_of_csi_types = 0;
         for (typenamelist = comp->csi_type_name_head.next;
@@ -1615,12 +1618,12 @@ void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
                         }
                 }
                 if (no_of_assignments == 0) {
-                    printf ("\t   No CSIs of type %s configured?!!\n",
+                    dprintf ("\t   No CSIs of type %s configured?!!\n",
                             getSaNameT (&type_name->name));
                 }
         }
         if (no_of_csi_types == 0) {
-            printf ("\t   No CSI types configured for %s ?!!\n",
+           dprintf ("\t   No CSI types configured for %s ?!!\n",
                     getSaNameT (&comp->name));
                 }
     }
@@ -1769,7 +1772,7 @@ void clc_unit_instantiate (struct amf_unit *unit)
 	struct list_head *list_comp;
 	struct amf_comp *comp;
 
-printf ("ZZZZZZZZZZZZZZZZZ clc_unit_instantitate\n");
+	dprintf ("ZZZZZZZZZZZZZZZZZ clc_unit_instantitate\n");
 	for (list_comp = unit->comp_head.next;
 		list_comp != &unit->comp_head;
 		list_comp = list_comp->next) {
@@ -1861,7 +1864,7 @@ void csi_unit_create (struct amf_unit *unit, struct amf_si *si,
 {
 	struct amf_csi *csi;
 
-	printf ("creating csi for si %p unit %p\n", si, unit);
+	dprintf ("creating csi for si %p unit %p\n", si, unit);
 	si->csi_count += 1;
 	csi = malloc (sizeof (struct amf_csi));
 	list_init (&csi->csi_list);
@@ -1881,10 +1884,8 @@ void csi_unit_create (struct amf_unit *unit, struct amf_si *si,
 void ha_state_unit_set (struct amf_unit *unit, struct amf_si *si,
 		SaAmfHAStateT ha_state)
 {
-
-	printf ("Assigning SI %s ", getSaNameT (&si->name));
-	printf ("to SU %s ", getSaNameT (&unit->name));
-	printf ("with hastate %s\n", hastate_ntoa (ha_state));
+	dprintf ("Assigning SI %s to SU %s with hastate %s\n",
+			 getSaNameT (&si->name), getSaNameT (&unit->name), hastate_ntoa (ha_state));
 
 	unit->requested_ha_state = ha_state;
 
@@ -2130,14 +2131,14 @@ void assign_sis (struct amf_group *group)
 	 * to assign based upon reduction procedure
 	 */
 	if ((inservice_count - active_sus_needed) < 0) {
-		printf ("assignment VI - partial assignment with SIs drop outs\n");
+		dprintf ("assignment VI - partial assignment with SIs drop outs\n");
 
 		su_active_assign = active_sus_needed;
 		su_standby_assign = 0;
 		su_spare_assign = 0;
 	} else
 	if ((inservice_count - active_sus_needed - standby_sus_needed) < 0) {
-		printf ("assignment V - partial assignment with reduction of standby units\n");
+		dprintf ("assignment V - partial assignment with reduction of standby units\n");
 
 		su_active_assign = active_sus_needed;
 		if (standby_sus_needed > units_for_standby) {
@@ -2148,33 +2149,33 @@ void assign_sis (struct amf_group *group)
 		su_spare_assign = 0;
 	} else
 	if ((group->maximum_standby_instances * units_for_standby) <= si_count (group)) {
-		printf ("IV: full assignment with reduction of active service units\n");
+		dprintf ("IV: full assignment with reduction of active service units\n");
 		su_active_assign = inservice_count - standby_sus_needed;
 		su_standby_assign = standby_sus_needed;
 		su_spare_assign = 0;
 	} else 
 	if ((group->maximum_active_instances * units_for_active) <= si_count (group)) {
 
-		printf ("III: full assignment with reduction of standby service units\n");
+		dprintf ("III: full assignment with reduction of standby service units\n");
 		su_active_assign = group->preferred_active_units;
 		su_standby_assign = units_for_standby;
 		su_spare_assign = 0;
 	} else
 	if (ii_spare == 0) {
-		printf ("II: full assignment with spare reduction\n");
+		dprintf ("II: full assignment with spare reduction\n");
 
 		su_active_assign = group->preferred_active_units;
 		su_standby_assign = group->preferred_standby_units;
 		su_spare_assign = 0;
 	} else {
-		printf ("I: full assignment with spares\n");
+		dprintf ("I: full assignment with spares\n");
 
 		su_active_assign = group->preferred_active_units;
 		su_standby_assign = group->preferred_standby_units;
 		su_spare_assign = ii_spare;
 	}
 
-	printf ("(inservice=%d) (assigning active=%d) (assigning standby=%d) (assigning spares=%d)\n",
+	dprintf ("(inservice=%d) (assigning active=%d) (assigning standby=%d) (assigning spares=%d)\n",
 		inservice_count, su_active_assign, su_standby_assign, su_spare_assign);
 	assign_nm_active (group, su_active_assign);
 	assign_nm_standby (group, su_standby_assign);
@@ -2182,10 +2183,8 @@ void assign_sis (struct amf_group *group)
 
 void readiness_state_unit_set (struct amf_unit *unit, SaAmfReadinessStateT readiness_state)
 {
-	printf ("Assigning unit %s ",
-		getSaNameT (&unit->name));
-	printf ("readiness state %s\n",
-		readinessstate_ntoa (readiness_state));
+	dprintf ("Assigning unit %s readiness state %s\n",
+			 getSaNameT (&unit->name), readinessstate_ntoa (readiness_state));
 
 	unit->readiness_state = readiness_state;
 	assign_sis (unit->amf_group);
@@ -2193,15 +2192,15 @@ void readiness_state_unit_set (struct amf_unit *unit, SaAmfReadinessStateT readi
 
 void presence_state_unit_set (struct amf_unit *unit, SaAmfPresenceStateT presence_state)
 {
-	printf ("Setting service unit presence state %s\n",
+	dprintf ("Setting service unit presence state %s\n",
 		presencestate_ntoa (presence_state));
 }
 
 
 static void escalation_policy_restart (struct amf_comp *comp)
 {
-	printf ("escalation_policy_restart %d\n", comp->unit->escalation_level);
-printf ("escalation policy restart uninsint %p\n", comp);
+	dprintf ("escalation_policy_restart %d\n", comp->unit->escalation_level);
+	dprintf ("escalation policy restart uninsint %p\n", comp);
 	presence_state_comp_set (
 		comp,
 		SA_AMF_PRESENCE_UNINSTANTIATED);
@@ -2295,7 +2294,7 @@ void healthcheck_activate (struct healthcheck_active *healthcheck_active)
 	res_lib_amf_healthcheckcallback.header.error = SA_AIS_OK;
 
 
-	log_printf (LOG_LEVEL_NOTICE, "sending healthcheck to component %s\n",
+	log_printf (LOG_LEVEL_DEBUG, "sending healthcheck to component %s\n",
 		getSaNameT (&healthcheck_active->comp->name));
 
 	res_lib_amf_healthcheckcallback.invocation =
@@ -2407,11 +2406,11 @@ void operational_state_unit_set (
 	SaAmfOperationalStateT operational_state)
 {
 	if (operational_state == unit->operational_state) {
-		printf ("Not assigning service unit new operational state - same state\n");
+		dprintf ("Not assigning service unit new operational state - same state\n");
 		return;
 	}
 	unit->operational_state = operational_state;
-	printf ("Service unit operational state set to %s\n",
+	dprintf ("Service unit operational state set to %s\n",
 		operationalstate_ntoa (operational_state));
 	if (operational_state == SA_AMF_OPERATIONAL_ENABLED) {
 		readiness_state_unit_set (unit,
@@ -2445,7 +2444,7 @@ static void message_handler_req_exec_amf_operational_state_comp_set (
 	comp = find_comp (&req_exec_amf_operational_state_comp_set->name);
 	comp->operational_state = req_exec_amf_operational_state_comp_set->operational_state;
 	
-	printf ("Setting component %s operational state to %s\n",
+	dprintf ("Setting component %s operational state to %s\n",
 		getSaNameT (&comp->name),
 		operationalstate_ntoa (comp->operational_state));
 	/*
@@ -2485,7 +2484,7 @@ static void message_handler_req_exec_amf_presence_state_comp_set (
 
 	comp = find_comp (&req_exec_amf_presence_state_comp_set->name);
 	if (req_exec_amf_presence_state_comp_set->presence_state == comp->presence_state) {
-		printf ("duplicate presence state set, not setting presence state\n");
+		dprintf ("duplicate presence state set, not setting presence state\n");
 		return;
 	}
 
@@ -2499,17 +2498,17 @@ static void message_handler_req_exec_amf_presence_state_comp_set (
 	if (req_exec_amf_presence_state_comp_set->presence_state == SA_AMF_PRESENCE_RESTARTING &&
 		comp->presence_state != SA_AMF_PRESENCE_UNINSTANTIATED) {
 
-printf ("restart presence state set even though not in terminating state\n");
+		dprintf ("restart presence state set even though not in terminating state\n");
 		return;
 	}
 
 	comp->presence_state = req_exec_amf_presence_state_comp_set->presence_state;
 	if (comp->presence_state == SA_AMF_PRESENCE_RESTARTING) {
-		printf ("SET TO RESTARTING instantiating now\n");
+		dprintf ("SET TO RESTARTING instantiating now\n");
 		clc_instantiate (comp);
 	}
 
-	printf ("Setting component %s presence state %s\n",
+	dprintf ("Setting component %s presence state %s\n",
 		getSaNameT (&comp->name),
 		presencestate_ntoa (comp->presence_state));
 	
@@ -2927,6 +2926,7 @@ static void message_handler_req_lib_amf_componenterrorreport (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_ERR_NOT_EXIST;
 
+	ENTER();
 	log_printf (LOG_LEVEL_NOTICE, "Handle : message_handler_req_lib_amf_componenterrorreport()\n");
 
 printf ("ERROR REPORT\n");
@@ -3006,7 +3006,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	void *data;
 	SaAisErrorT error = SA_AIS_OK;
 
-	log_printf (LOG_LEVEL_DEBUG, "message_handler_req_lib_amf_response()\n");
+	ENTER();
 
 	res = invocation_get_and_destroy (req_lib_amf_response->invocation,
 		&interface, &data);
@@ -3017,7 +3017,6 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		goto error_exit;
 	}
 
-	log_printf (LOG_LEVEL_DEBUG, "handling response connection interface %x\n", interface);
 	switch (interface) {
 	case AMF_RESPONSE_HEALTHCHECKCALLBACK:
 		healthcheck_active = (struct healthcheck_active *)data;
@@ -3037,7 +3036,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	case AMF_RESPONSE_CSISETCALLBACK:
 		csi_set_callback_data = (struct csi_set_callback_data *)data;
 
-		printf ("csi callback executed from library.\n");
+		dprintf ("csi callback executed from library.\n");
 		csi_set_callback_data->comp->ha_state =
 			csi_set_callback_data->comp->unit->requested_ha_state;
 //		list_add (&csi_set_callback_data->comp->
@@ -3053,7 +3052,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 
 	case AMF_RESPONSE_CSIREMOVECALLBACK:
 		csi_remove_callback_data = (struct csi_remove_callback_data *)data;
-		printf ("response from removing the CSI\n");
+		dprintf ("response from removing the CSI\n");
 // AAAA
 		list_del (&csi_remove_callback_data->csi->si->unit_list);
 		list_del (&csi_remove_callback_data->csi->csi_list);
@@ -3064,7 +3063,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	case AMF_RESPONSE_COMPONENTTERMINATECALLBACK:
 		component_terminate_callback_data = (struct component_terminate_callback_data *)data;
 
-		printf ("response from terminating component\n");
+		dprintf ("response from terminating component\n");
 		comp_healthcheck_deactivate (component_terminate_callback_data->comp);
 
 		escalation_policy_restart (component_terminate_callback_data->comp);
@@ -3083,6 +3082,7 @@ error_exit:
 	openais_conn_send_response (conn, &res_lib_amf_response,
 		sizeof (struct res_lib_amf_response));
 
+	LEAVE();
 }
 
 

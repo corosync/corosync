@@ -1,9 +1,14 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  *
- * All rights reserved.
- *
  * Author: Steven Dake (sdake@mvista.com)
+ *
+ * Copyright (c) 2006 Ericsson AB.
+ *		Author: Hans Feldt
+ *      Description: Added support for runtime installed loggers, tags tracing,
+ *                   and file & line printing.
+ *
+ * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -35,6 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sys/time.h>
 #include <time.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -45,38 +51,16 @@
 #if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 #include <sys/un.h>
 #endif
+#include <syslog.h>
 #include "print.h"
 #include "totemip.h"
 #include "../include/saAis.h"
 
-unsigned int logmode = LOG_MODE_STDERR | LOG_MODE_SYSLOG;
-char *logfile = 0;
+static unsigned int logmode = LOG_MODE_STDERR | LOG_MODE_SYSLOG;
+static char *logfile = 0;
 
-static char *log_levels[] = {
-	"[ASSERT  ]",
-	"[SECURITY]",
-	"[ERROR   ]",
-	"[WARNING ]",
-	"[NOTICE  ]",
-	"[DEBUG   ]"
-};
-
-static char *log_services[] = {
-	"[ASSER]",
-	"[MAIN ]",
-	"[TOTEM]",
-	"[CLM  ]",
-	"[AMF  ]",
-	"[CKPT ]",
-	"[EVT  ]",
-	"[LCK  ]",
-	"[MSG  ]",
-	"[EVS  ]",
-	"[SYNC ]",
-	"[YKD  ]",
-	"[CPG  ]",
-	"[SERV ]"
-};
+#define MAX_LOGGERS 32
+struct logger loggers[MAX_LOGGERS];
 
 #define LOG_MODE_DEBUG      1
 #define LOG_MODE_TIMESTAMP  2
@@ -84,235 +68,148 @@ static char *log_services[] = {
 #define LOG_MODE_SYSLOG     8
 #define LOG_MODE_STDERR     16
 
-int log_syslog_fd = -1;
-FILE *log_file_fp = 0;
+static FILE *log_file_fp = 0;
 
 struct sockaddr_un syslog_sockaddr = {
 	sun_family: AF_UNIX,
 	sun_path: "/dev/log"
 };
 
-int log_setup (char **error_string, int log_mode, char *log_file)
+static int logger_init (const char *ident, int tags, int level, int mode)
 {
+	int i;
+
+	for (i = 0; i < MAX_LOGGERS; i++) {
+		if (strcmp (loggers[i].ident, ident) == 0) {
+			break;
+		}
+	}
+
+	if (i == MAX_LOGGERS) {
+		for (i = 0; i < MAX_LOGGERS; i++) {
+			if (strcmp (loggers[i].ident, "") == 0) {
+				strncpy (loggers[i].ident, ident, sizeof(loggers[i].ident));
+				loggers[i].tags = tags;
+				loggers[i].level = level;
+				if (logmode & LOG_MODE_DEBUG)
+					loggers[i].level = LOG_LEVEL_DEBUG;
+				loggers[i].mode = mode;
+				break;
+			}
+		}
+	}
+
+	assert(i < MAX_LOGGERS);
+
+	return i;
+}
+
+int _log_init (const char *ident)
+{
+	assert (ident != NULL);
+
+	return logger_init (ident, TAG_LOG, LOG_LEVEL_INFO, 0);
+}
+
+int log_setup (char **error_string, struct main_config *config)
+{
+	int i;
 	static char error_string_response[512];
 
-	if (log_mode & LOG_MODE_SYSLOG && log_syslog_fd == -1) {
-		log_syslog_fd = socket (AF_UNIX, SOCK_DGRAM, 0);
-		if (log_syslog_fd == -1) {
-			sprintf (error_string_response,
-				"Can't create syslog socket for reason (%s).\n", strerror (errno));
-			*error_string = error_string_response;
-			return (-1);
-		}
-	}
+	logmode = config->logmode;
+	logfile = config->logfile;
 
-	if (log_mode & LOG_MODE_FILE) {
-		log_file_fp = fopen (log_file, "a+");
+	if (config->logmode & LOG_MODE_FILE) {
+		log_file_fp = fopen (config->logfile, "a+");
 		if (log_file_fp == 0) {
 			sprintf (error_string_response,
-				"Can't open logfile '%s' for reason (%s).\n", logfile, strerror (errno));
+				"Can't open logfile '%s' for reason (%s).\n",
+					 config->logfile, strerror (errno));
 			*error_string = error_string_response;
 			return (-1);
 		}
 	}
-			
-	logmode = log_mode;
-	logfile = log_file;
 
+	for (i = 0; i < config->loggers; i++) {
+		if (config->logger[i].level == 0)
+			config->logger[i].level = LOG_LEVEL_INFO;
+		config->logger[i].tags |= TAG_LOG;
+		logger_init (config->logger[i].ident,
+					 config->logger[i].tags,
+					 config->logger[i].level,
+					 config->logger[i].mode);
+	}
+			
 	return (0);
 }
 
-void log_syslog (char *log_string) {
-	struct msghdr msg_log;
-	struct iovec iov_log;
-	int res;
-
-	if (log_syslog_fd == -1) {
-		log_syslog_fd = socket (AF_UNIX, SOCK_DGRAM, 0);
-	}
-	if (log_syslog_fd == -1) {
-		return;
-	}
-	iov_log.iov_base = log_string;
-	iov_log.iov_len = strlen (log_string) + 1;
-
-	msg_log.msg_iov = &iov_log;
-	msg_log.msg_iovlen = 1;
-	msg_log.msg_name = &syslog_sockaddr;
-	msg_log.msg_namelen = sizeof (syslog_sockaddr);
-	msg_log.msg_control = 0;
-	msg_log.msg_controllen = 0;
-	msg_log.msg_flags = 0;
-
-	res = sendmsg (log_syslog_fd, &msg_log, MSG_NOSIGNAL);
-}
-
-void internal_log_printf (int logclass, char *string, ...)
+static void _log_printf (char *file, int line, int priority,
+						char *format, va_list ap)
 {
-	va_list ap;
 	char newstring[4096];
 	char log_string[4096];
 	char char_time[512];
-	time_t curr_time;
-	int level;
-	int service;
+	struct timeval tv;
+	int level = LOG_LEVEL(priority);
+	int id = LOG_ID(priority);
+	int i = 0;
 
-	va_start (ap, string);
-	
-	assert (logmode != 0);
-	level = logclass >> 16;
-	service = logclass & 0xff;
+	assert (id < MAX_LOGGERS);
 
-	if (level == LOG_LEVEL_DEBUG && ((logmode & LOG_MODE_DEBUG) == 0)) {
-		return;
+	if (((logmode & LOG_MODE_FILE) || (logmode & LOG_MODE_STDERR)) &&
+		(logmode & LOG_MODE_TIMESTAMP)) {
+		gettimeofday (&tv, NULL);
+		strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S",
+				  localtime (&tv.tv_sec));
+		i = sprintf (newstring, "%s.%06ld ", char_time, tv.tv_usec);
 	}
 
-	if (((logmode & LOG_MODE_FILE) || (logmode & LOG_MODE_STDERR)) && 
-		(logmode & LOG_MODE_TIMESTAMP)) {
-		curr_time = time (NULL);
-		strftime (char_time, sizeof (char_time), "%b %d %k:%M:%S", localtime (&curr_time));
-		sprintf (newstring, "%s %s %s %s", char_time, log_levels[level], log_services[service], string);
-	} else {
-		sprintf (newstring, "%s %s %s", log_levels[level], log_services[service], string);
+	if ((level == LOG_LEVEL_DEBUG) || (logmode & LOG_MODE_FILELINE)) {
+		sprintf (&newstring[i], "[%s:%u] %s", file, line, format);
+	} else {	
+		sprintf (&newstring[i], "[%-5s] %s", loggers[id].ident, format);
 	}
 	vsprintf (log_string, newstring, ap);
 
 	/*
 	 * Output the log data
 	 */
-	if (logmode & LOG_MODE_SYSLOG) {
-		log_syslog (log_string);
-	}
 	if (logmode & LOG_MODE_FILE && log_file_fp != 0) {
 		fprintf (log_file_fp, "%s", log_string);
 		fflush (log_file_fp);
 	}
 	if (logmode & LOG_MODE_STDERR) {
 		fprintf (stderr, "%s", log_string);
-		fflush (stderr);
 	}
 	fflush (stdout);
 
+	if (logmode & LOG_MODE_SYSLOG) {
+		syslog (level, &log_string[i]);
+	}
+}
+
+void internal_log_printf (char *file, int line, int priority,
+						  char *format, ...)
+{
+	int id = LOG_ID(priority);
+	va_list ap;
+
+	assert (id < MAX_LOGGERS);
+
+	if (LOG_LEVEL(priority) > loggers[id].level) {
+		return;
+	}
+
+	va_start (ap, format);
+	_log_printf (file, line, priority, format, ap);
 	va_end(ap);
 }
 
-
-char *getSaNameT (SaNameT *name)
+void internal_log_printf2 (char *file, int line, int priority,
+						  char *format, ...)
 {
-	static char ret_name[300];
-
-	memset (ret_name, 0, sizeof (ret_name));
-	if (name->length > 299) {
-		memcpy (ret_name, name->value, 299);
-	} else {
-
-		memcpy (ret_name, name->value, name->length);
-	}
-	return (ret_name);
+	va_list ap;
+	va_start (ap, format);
+	_log_printf (file, line, priority, format, ap);
+	va_end(ap);
 }
-
-#ifdef DEBUGA
-extern char *getSaClmNodeAddressT (SaClmNodeAddressT *nodeAddress) {
-	int i;
-	static char node_address[300];
-	int pos;
-
-	for (i = 0, pos = 0; i < nodeAddress->length; i++) {
-		pos += sprintf (&node_address[pos], "%d.", nodeAddress->value[i]);
-	}
-	return (node_address);
-}
-
-void printSaClmClusterNodeT (char *description, SaClmClusterNodeT *clusterNode) {
-	log_printf (LOG_LEVEL_NOTICE, "Node Information for %s:\n", description);
-
-	log_printf (LOG_LEVEL_NOTICE, "\tnode id is %x\n", (int)clusterNode->nodeId);
-
-	log_printf (LOG_LEVEL_NOTICE, "\tnode address is %s\n", getSaClmNodeAddressT (&clusterNode->nodeAddress));
-
-	log_printf (LOG_LEVEL_NOTICE, "\tnode name is %s.\n", getSaNameT (&clusterNode->nodeName));
-
-	log_printf (LOG_LEVEL_NOTICE, "\tcluster name is %s.\n", getSaNameT (&clusterNode->clusterName));
-
-	log_printf (LOG_LEVEL_NOTICE, "\tMember is %d\n", clusterNode->member);
-
-	log_printf (LOG_LEVEL_NOTICE, "\tTimestamp is %llx nanoseconds\n", clusterNode->bootTimestamp);
-}
-#endif /* DEBUG */
-
-
-#ifdef CODE_COVERAGE_COMPILE_OUT
-void saAmfPrintGroups (void)
-{
-	struct list_head *AmfGroupList;
-	struct list_head *AmfUnitList;
-	struct list_head *AmfComponentList;
-	struct list_head *AmfProtectionGroupList;
-	struct saAmfGroup *saAmfGroup;
-	struct saAmfUnit *AmfUnit;
-	struct saAmfComponent *AmfComponent;
-	struct saAmfProtectionGroup *AmfProtectionGroup;
-
-	for (AmfGroupList = saAmfGroupHead.next;
-		AmfGroupList != &saAmfGroupHead;
-		AmfGroupList = AmfGroupList->next) {
-
-		saAmfGroup = list_entry (AmfGroupList, 
-			struct saAmfGroup, saAmfGroupList);
-
-		log_printf (LOG_LEVEL_DEBUG, "group {\n");
-		log_printf (LOG_LEVEL_DEBUG, "\tname = ", getSaNameT (&saAmfGroup->name));
-		log_printf (LOG_LEVEL_DEBUG, "\tmodel = %d\n", saAmfGroup->model);
-		log_printf (LOG_LEVEL_DEBUG, "\tactive-units = %d\n", (int)saAmfGroup->saAmfActiveUnitsDesired);
-		log_printf (LOG_LEVEL_DEBUG, "\tbackup-units = %d\n", (int)saAmfGroup->saAmfStandbyUnitsDesired);
-
-		for (AmfUnitList = saAmfGroup->saAmfUnitHead.next;
-			AmfUnitList != &saAmfGroup->saAmfUnitHead;
-			AmfUnitList = AmfUnitList->next) {
-
-			AmfUnit = list_entry (AmfUnitList, 
-				struct saAmfUnit, saAmfUnitList);
-
-			log_printf (LOG_LEVEL_DEBUG, "\tunit {\n");
-			log_printf (LOG_LEVEL_DEBUG, "\t\tname = ", getSaNameT (&AmfUnit->name));
-
-			for (AmfComponentList = AmfUnit->saAmfComponentHead.next;
-				AmfComponentList != &AmfUnit->saAmfComponentHead;
-				AmfComponentList = AmfComponentList->next) {
-
-				AmfComponent = list_entry (AmfComponentList, 
-					struct saAmfComponent, saAmfComponentList);
-				log_printf (LOG_LEVEL_DEBUG, "\t\tcomponent {\n");
-				log_printf (LOG_LEVEL_DEBUG, "\t\t\tname = ", getSaNameT (&AmfComponent->name));
-				log_printf (LOG_LEVEL_DEBUG, "\t\t\tmodel = %d\n", AmfComponent->componentCapabilityModel);
-				log_printf (LOG_LEVEL_DEBUG, "\t\t}\n");
-			}
-			log_printf (LOG_LEVEL_DEBUG, "\t}\n");
-		}
-
-		for (AmfProtectionGroupList = saAmfGroup->saAmfProtectionGroupHead.next;
-			AmfProtectionGroupList != &saAmfGroup->saAmfProtectionGroupHead;
-			AmfProtectionGroupList = AmfProtectionGroupList->next) {
-
-			AmfProtectionGroup = list_entry (AmfProtectionGroupList, 
-				struct saAmfProtectionGroup, saAmfProtectionGroupList);
-
-			log_printf (LOG_LEVEL_DEBUG, "\tprotection {\n");
-			log_printf (LOG_LEVEL_DEBUG, "\t\tname = ", getSaNameT (&AmfProtectionGroup->name));
-
-			for (AmfComponentList = AmfProtectionGroup->saAmfMembersHead.next;
-				AmfComponentList != &AmfProtectionGroup->saAmfMembersHead;
-				AmfComponentList = AmfComponentList->next) {
-
-				AmfComponent = list_entry (AmfComponentList, 
-					struct saAmfComponent, saAmfProtectionGroupList);
-
-				log_printf (LOG_LEVEL_DEBUG, "\t\tmember = ", getSaNameT (&AmfComponent->name));
-			}
-			log_printf (LOG_LEVEL_DEBUG, "\t}\n");
-		}
-		log_printf (LOG_LEVEL_DEBUG, "}\n");
-	}
-}
-#endif /* CODE_COVERAGE_COMPILE_OUT */
-

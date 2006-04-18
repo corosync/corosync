@@ -1169,6 +1169,8 @@ int main (int argc, char **argv)
 	void *config_p;
 	char *config_iface;
 	int res;
+ 	int totem_log_service;
+ 	log_init ("MAIN");
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE %s\n", release_name);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
@@ -1253,7 +1255,7 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = log_setup (&error_string, main_config.logmode, main_config.logfile);
+	res = log_setup (&error_string, &main_config);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_LOGSETUP);
@@ -1273,12 +1275,12 @@ int main (int argc, char **argv)
 	aisexec_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-
-	totem_config.totem_logging_configuration.log_level_security = mklog (LOG_LEVEL_SECURITY, LOG_SERVICE_GMI);
-	totem_config.totem_logging_configuration.log_level_error = mklog (LOG_LEVEL_ERROR, LOG_SERVICE_GMI);
-	totem_config.totem_logging_configuration.log_level_warning = mklog (LOG_LEVEL_WARNING, LOG_SERVICE_GMI);
-	totem_config.totem_logging_configuration.log_level_notice = mklog (LOG_LEVEL_NOTICE, LOG_SERVICE_GMI);
-	totem_config.totem_logging_configuration.log_level_debug = mklog (LOG_LEVEL_DEBUG, LOG_SERVICE_GMI);
+	totem_log_service = _log_init ("TOTEM");
+  	totem_config.totem_logging_configuration.log_level_security = mkpri (LOG_LEVEL_SECURITY, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_error = mkpri (LOG_LEVEL_ERROR, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_warning = mkpri (LOG_LEVEL_WARNING, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_notice = mkpri (LOG_LEVEL_NOTICE, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_debug = mkpri (LOG_LEVEL_DEBUG, totem_log_service);
 	totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
 	/*

@@ -189,6 +189,7 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 
 static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	log_init ("CFG");
 	return (0);
 }
 static void cfg_confchg_fn (

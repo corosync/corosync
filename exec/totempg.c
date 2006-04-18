@@ -148,7 +148,7 @@ static int totempg_log_level_error;
 static int totempg_log_level_warning;
 static int totempg_log_level_notice;
 static int totempg_log_level_debug;
-static void (*totempg_log_printf) (int level, char *format, ...) = NULL;
+static void (*totempg_log_printf) (char *file, int line, int level, char *format, ...) = NULL;
 
 struct totem_config *totempg_totem_config;
 
@@ -214,6 +214,8 @@ static pthread_mutex_t totempg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t callback_token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#define log_printf(level, format, args...) \
+    totempg_log_printf (__FILE__, __LINE__, level, format, ##args)
 
 static struct assembly *find_assembly (struct totem_ip_address *addr)
 {
@@ -508,7 +510,7 @@ static void totempg_deliver_fn (
 	if (continuation) {
 
 		if (continuation != assembly->last_frag_num) {
-			totempg_log_printf (totempg_log_level_error,
+			log_printf (totempg_log_level_error,
 				"Message continuation doesn't match previous frag e: %u - a: %u\n",
 				assembly->last_frag_num, continuation);
 			continuation = 0;
@@ -516,7 +518,7 @@ static void totempg_deliver_fn (
 
 		if ((assembly->index == 0) ||
 							(!continuation && assembly->index)) {
-			totempg_log_printf (totempg_log_level_error,
+			log_printf (totempg_log_level_error,
 				"Throwing away broken message: continuation %u, index %u\n",
 				continuation, assembly->index);
 			continuation = 0;
