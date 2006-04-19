@@ -168,17 +168,11 @@ ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 libtotem_pg.so.1.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
-	rm -f libtotem_pg.so.1 libtotem_pg.so
-	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
-	ln -s libtotem_pg.so.1.0 libtotem_pg.so
 
 else
 
 libtotem_pg.so.1.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
-	rm -f libtotem_pg.so.1 libtotem_pg.so
-	ln -s libtotem_pg.so.1.0 libtotem_pg.so.1
-	ln -s libtotem_pg.so.1.0 libtotem_pg.so
 
 endif
 

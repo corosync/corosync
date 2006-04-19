@@ -33,6 +33,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fnmatch.h>
 #include "lcr_comp.h"
 #include "lcr_ifact.h"
 #include "../include/hdb.h"
@@ -80,6 +81,19 @@ static int lcr_select_so (struct dirent *dirent)
 			return (1);
 		}
 	}
+	return (0);
+}
+
+#ifdef OPENAIS_LINUX
+static int pathlist_select (const struct dirent *dirent)
+#else
+static int pathlist_select (struct dirent *dirent)
+#endif
+{
+	if (fnmatch ("*.conf", dirent->d_name, 0) == 0) {
+		return (1);
+	}
+
 	return (0);
 }
 
@@ -142,39 +156,121 @@ static inline int lcr_lib_loaded (
 	return (0);
 }
 
-int lcr_ifact_reference (
-	unsigned int *iface_handle,
-	char *iface_name,
-	int version,
-	void **iface,
-	void *context)
+unsigned char *path_list[128];
+unsigned int path_list_entries = 0;
+
+static void defaults_path_build (void)
 {
-	void *dl_handle;
-	struct lcr_iface_instance *iface_instance;
-	struct lcr_component_instance *instance;
-	int iface_number;
-	struct dirent **scandir_list;
-	int scandir_entries;
-	unsigned int libs_to_scan;
-	char cwd[512];
-	char dl_name[1024];
+	char cwd[1024];
 
 	getcwd (cwd, sizeof (cwd));
 	strcat (cwd, "/");
 
-	/*
-	 * Determine if the component is already loaded
-	 */
-	instance = lcr_comp_find (iface_name, version, &iface_number);
-	if (instance) {
-		goto found;
+	path_list[0] = strdup (cwd);
+	path_list[1] = "/lib";
+	path_list[2] = "/usr/lib";
+	path_list[3] = "/lib64";
+	path_list[4] = "/usr/lib64";
+	path_list_entries = 5;
+}
+
+static void ld_library_path_build (void)
+{
+	char *ld_library_path;
+	char *my_ld_library_path;
+	char *p_s;
+	unsigned int i;
+	unsigned int len;
+
+	ld_library_path = getenv ("LD_LIBRARY_PATH");
+	if (ld_library_path == NULL) {
+		return;
+	}
+	my_ld_library_path = strdup (ld_library_path);
+	if (my_ld_library_path == 0) {
+		return;
 	}
 
-// TODO error checking in this code is weak
-	/*
-	 * Find all *.lcrso files in the cwd
-	 */
-	scandir_entries = scandir(".", &scandir_list, lcr_select_so, alphasort);
+	len = strlen (my_ld_library_path) + 1;
+
+	for (i = 0, p_s = my_ld_library_path, i = 0; i < len; i++) {
+		if (my_ld_library_path[i] == ':' || my_ld_library_path[i] == '\0') {
+			my_ld_library_path[i]='\0';
+			path_list[path_list_entries++] = strdup (p_s);
+			p_s = &my_ld_library_path[i];
+		}
+	}
+
+	free (ld_library_path);
+}
+
+static int ldso_path_build (char *path, char *filename)
+{
+	FILE *fp;
+	char string[1024];
+	char filename_cat[1024];
+	char *newpath;
+	char newpath_cat[1024];
+	char *new_filename;
+	int j;
+	struct dirent **scandir_list;
+	unsigned int scandir_entries;
+
+	sprintf (filename_cat, "%s/%s", path, filename);
+	if (filename[0] == '*') {
+		scandir_entries = scandir (
+			path,
+			&scandir_list,
+			pathlist_select, alphasort);
+		for (j = 0; j < scandir_entries; j++) {
+			ldso_path_build (path, scandir_list[j]->d_name);
+		}
+	}
+
+	fp = fopen (filename_cat, "r");
+	if (fp == NULL) {
+		return (-1);
+	}
+
+	while (fgets (string, sizeof (string), fp)) {
+		string[strlen(string) - 1] = '\0';
+		if (strncmp (string, "include", strlen ("include")) == 0) {
+			newpath = string + strlen ("include") + 1;
+			for (j = strlen (string);
+				string[j] != ' ' &&
+					string[j] != '/' &&
+					j > 0;
+				j--) {
+			}
+			string[j] = '\0';
+			new_filename = &string[j] + 1;
+			if ((string[strlen ("include ") + 1]) != '/') {
+				sprintf (newpath_cat, "%s/%s", path, newpath);
+				newpath = newpath_cat;
+			}
+			ldso_path_build (newpath, new_filename);
+			continue;
+		}
+		path_list[path_list_entries++] = strdup (string);
+	}
+	return (0);
+}
+
+static int interface_find_and_load (
+	char *path,
+	char *iface_name,
+	int version,
+	struct lcr_component_instance **instance_ret,
+	unsigned int *iface_number)
+{
+	struct lcr_component_instance *instance;
+	void *dl_handle;
+	struct dirent **scandir_list;
+	int scandir_entries;
+	unsigned int libs_to_scan;
+	char dl_name[1024];
+
+	scandir_entries = scandir (path,  &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries < 0)
 		printf ("scandir error reason=%s\n", strerror (errno));
 	else
@@ -185,19 +281,18 @@ int lcr_ifact_reference (
 		/*
 		 * Load objects, scan them, unload them if they are not a match
 		 */
-		sprintf (dl_name, "%s%s", cwd, scandir_list[libs_to_scan]->d_name);
+		sprintf (dl_name, "%s/%s", path, scandir_list[libs_to_scan]->d_name);
 		/*
 	 	 * Don't reload already loaded libraries
 		 */
 		if (lcr_lib_loaded (dl_name)) {
 			continue;
 		}
-		dl_handle = dlopen (dl_name, RTLD_NOW);
+		dl_handle = dlopen (dl_name, RTLD_LAZY);
 		if (dl_handle == NULL) {
-			printf ("Error loading interface %s reason=%s\n", dl_name, dlerror());
-			return (-1);
+			continue;
 		}
-		instance = lcr_comp_find (iface_name, version, &iface_number);
+		instance = lcr_comp_find (iface_name, version, iface_number);
 		if (instance) {
 			instance->dl_handle = dl_handle;
 			strcpy (instance->library_name, dl_name);
@@ -214,12 +309,64 @@ int lcr_ifact_reference (
 		}
 		dlclose (dl_handle);
 	} /* scanning for lcrso loop */
+	return (-1);
+
+found:
+	*instance_ret = instance;
+	return (0);
+}
+
+
+int lcr_ifact_reference (
+	unsigned int *iface_handle,
+	char *iface_name,
+	int version,
+	void **iface,
+	void *context)
+{
+	struct lcr_iface_instance *iface_instance;
+	struct lcr_component_instance *instance;
+	int iface_number;
+	unsigned int res;
+	unsigned int i;
+
+	defaults_path_build ();
+	ld_library_path_build ();
+	ldso_path_build ("/etc", "ld.so.conf");
+
+
+	/*
+	 * Determine if the component is already loaded
+	 */
+	instance = lcr_comp_find (iface_name, version, &iface_number);
+	if (instance) {
+		goto found;
+	}
+
+// TODO error checking in this code is weak
+	/*
+	 * Find all *.lcrso files in the cwd
+	 */
+	//path = getenv ("LD_LIBRARY_PATH");
+	for (i = 0; i < path_list_entries; i++) {
+	res = interface_find_and_load (
+		path_list[i],
+		iface_name,
+		version,
+		&instance,
+		&iface_number);
+
+	if (res == 0) {
+		goto found;
+	}
+	}
 
 	/*
 	 * No matching interfaces found in all shared objects
 	 */
 	return (-1);
 found:
+printf ("iface number %d\n", iface_number);
 	*iface = instance->ifaces[iface_number].interfaces;
 	if (instance->ifaces[iface_number].constructor) {
 		instance->ifaces[iface_number].constructor (context);
@@ -232,7 +379,6 @@ found:
 	iface_instance->component_handle = g_component_handle;
 	iface_instance->context = context;
 	iface_instance->destructor = instance->ifaces[iface_number].destructor;
-
 	return (0);
 }
 

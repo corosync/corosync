@@ -27,6 +27,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <assert.h>
 #include <unistd.h>
 #include "lcr_ifact.h"
 
@@ -51,42 +52,48 @@ int main (void) {
 	void *b_iface_ver0_p;
 	void *b_iface_ver1_p;
 
+	unsigned int res;
+
 	/*
 	 * Reference version 0 and 1 of A and B interfaces
 	 */
-	lcr_ifact_reference (
+	res = lcr_ifact_reference (
 		&a_ifact_handle_ver0,
 		"A_iface1",
 		0, /* version 0 */
 		&a_iface_ver0_p,
 		(void *)0xaaaa0000);
+	assert (res == 0);
 
 	a_iface_ver0 = (struct iface *)a_iface_ver0_p;
 
-	lcr_ifact_reference (
+	res = lcr_ifact_reference (
 		&b_ifact_handle_ver0,
 		"B_iface1",
 		0, /* version 0 */
 		&b_iface_ver0_p,
 		(void *)0xbbbb0000);
+	assert (res == 0);
 
 	b_iface_ver0 = (struct iface *)b_iface_ver0_p;
 
-	lcr_ifact_reference (
+	res = lcr_ifact_reference (
 		&a_ifact_handle_ver1,
 		"A_iface1",
 		1, /* version 1 */
 		&a_iface_ver1_p,
 		(void *)0xaaaa1111);
+	assert (res == 0);
 
 	a_iface_ver1 = (struct iface *)a_iface_ver0_p;
 
-	lcr_ifact_reference (
+	res = lcr_ifact_reference (
 		&b_ifact_handle_ver1,
 		"B_iface1",
 		1, /* version 1 */
 		&b_iface_ver1_p,
 		(void *)0xbbbb1111);
+	assert (res == 0);
 
 	b_iface_ver1 = (struct iface *)b_iface_ver0_p;
 

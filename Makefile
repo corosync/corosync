@@ -28,6 +28,39 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+DESTDIR=/usr/local
+ifeq "$(DESTDIR)" "/usr/local"
+SBINDIR=${DESTDIR}/usr/sbin
+INCLUDEDIR=${DESTDIR}/usr/include/openais
+INCLUDEDIR_TOTEM=${DESTDIR}/usr/include/openais/totem
+MANDIR=/usr/share/man
+else
+SBINDIR=${DESTDIR}/sbin
+INCLUDEDIR=${DESTDIR}/include/openais
+INCLUDEDIR_TOTEM=${DESTDIR}/include/openais/totem
+MANDIR=$(DESTDIR)/man
+endif
+ETCDIR=/etc
+
+ifeq "$(DESTDIR)" "/"
+ifeq "" "$(findstring 64,$(ARCH))"
+LIBDIR=${DESTDIR}/usr/lib64/openais
+LCRSODIR=$(DESTDIR)/usr/lib64/openais/lcrso
+else
+LIBDIR=${DESTDIR}/usr/lib/openais
+LCRSODIR=$(DESTDIR)/usr/lib/openais/lcrso
+endif
+else
+ifeq "" "$(findstring 64,$(ARCH))"
+LIBDIR=${DESTDIR}/lib64/openais
+LCRSODIR=$(DESTDIR)/lib64/openais/lcrso
+else
+LIBDIR=${DESTDIR}/lib/openais
+LCRSODIR=$(DESTDIR)/lib/openais/lcrso
+endif
+endif
+
+
 all:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
 	(cd lib; echo ==== `pwd` ===; $(MAKE) all);
@@ -41,30 +74,43 @@ clean:
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
 
 install:
-	mkdir -p $(DESTDIR)/sbin
-	mkdir -p $(DESTDIR)/usr/include
-	mkdir -p $(DESTDIR)/usr/lib
-	mkdir -p $(DESTDIR)/etc/ais
+	mkdir -p $(SBINDIR)
+	mkdir -p $(INCLUDEDIR)
+	mkdir -p $(INCLUDEDIR_TOTEM)
+	mkdir -p $(LIBDIR)
+	mkdir -p $(LCRSODIR)
+	mkdir -p $(ETCDIR)
+	mkdir -p /etc/ld.so.conf.d
 
-	cp lib/libais.a $(DESTDIR)/usr/lib
-	cp lib/libais.so* $(DESTDIR)/usr/lib
-	cp lib/libSa*.a $(DESTDIR)/usr/lib
-	cp lib/libSa*.so* $(DESTDIR)/usr/lib
-	cp lib/libevs.a $(DESTDIR)/usr/lib
-	cp lib/libevs.so* $(DESTDIR)/usr/lib
-	cp lib/libcpg.a $(DESTDIR)/usr/lib
-	cp lib/libcpg.so* $(DESTDIR)/usr/lib
-	cp exec/libtotem_pg* $(DESTDIR)/usr/lib
+	install -m 755 lib/libais.a $(LIBDIR)
+	install -m 755 lib/libais.so* $(LIBDIR)
+	install -m 755 lib/libSa*.a $(LIBDIR)
+	install -m 755 lib/libSa*.so* $(LIBDIR)
+	install -m 755 lib/libevs.a $(LIBDIR)
+	install -m 755 lib/libevs.so* $(LIBDIR)
+	install -m 755 lib/libcpg.a $(LIBDIR)
+	install -m 755 lib/libcpg.so* $(LIBDIR)
+	echo $(LIBDIR) > /etc/ld.so.conf.d/"openais-`uname -p`.conf"
+	echo $(LCRSODIR) >> /etc/ld.so.conf.d/"openais-`uname -p`.conf"
 
-	install -m 755 exec/aisexec $(DESTDIR)/sbin
-	install -m 755 exec/keygen $(DESTDIR)/sbin/ais-keygen
-	install -m 755 conf/openais.conf $(DESTDIR)/etc
-	install -m 755 conf/groups.conf $(DESTDIR)/etc
+	cp exec/libtotem_pg* $(LIBDIR)
+	cp exec/*lcrso $(LCRSODIR)
 
-	cp include/saAis.h $(DESTDIR)/usr/include
-	cp include/ais_amf.h $(DESTDIR)/usr/include
-	cp include/saClm.h $(DESTDIR)/usr/include
-	cp include/saCkpt.h $(DESTDIR)/usr/include
-	cp include/saEvt.h $(DESTDIR)/usr/include
-	cp include/evs.h $(DESTDIR)/usr/include
-	cp exec/totem.h $(DESTDIR)/usr/include
+	install -m 755 exec/aisexec $(SBINDIR)
+	install -m 755 exec/keygen $(SBINDIR)/ais-keygen
+	install -m 755 conf/openais.conf $(ETCDIR)
+	install -m 755 conf/groups.conf $(ETCDIR)
+
+	install -m 644 include/saAis.h $(INCLUDEDIR)
+	install -m 644 include/saAmf.h $(INCLUDEDIR)
+	install -m 644 include/saClm.h $(INCLUDEDIR)
+	install -m 644 include/saCkpt.h $(INCLUDEDIR)
+	install -m 644 include/saEvt.h $(INCLUDEDIR)
+	install -m 644 include/saEvt.h $(INCLUDEDIR)
+	install -m 644 include/saLck.h $(INCLUDEDIR)
+	install -m 644 include/saMsg.h $(INCLUDEDIR)
+	install -m 644 include/cpg.h $(INCLUDEDIR)
+	install -m 644 include/evs.h $(INCLUDEDIR)
+	install -m 644 exec/totem.h $(INCLUDEDIR_TOTEM)
+	install -m 644 exec/totemip.h $(INCLUDEDIR_TOTEM)
+	/sbin/ldconfig
