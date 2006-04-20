@@ -1,4 +1,5 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
+# Copyright (c) 2006 Red Hat, Inc.
 # 
 # All rights reserved.
 # 
@@ -33,11 +34,13 @@ ifeq "$(DESTDIR)" "/usr/local"
 SBINDIR=${DESTDIR}/usr/sbin
 INCLUDEDIR=${DESTDIR}/usr/include/openais
 INCLUDEDIR_TOTEM=${DESTDIR}/usr/include/openais/totem
+INCLUDEDIR_LCR=${DESTDIR}/usr/include/openais/lcr
 MANDIR=/usr/share/man
 else
 SBINDIR=${DESTDIR}/sbin
 INCLUDEDIR=${DESTDIR}/include/openais
 INCLUDEDIR_TOTEM=${DESTDIR}/include/openais/totem
+INCLUDEDIR_LCR=${DESTDIR}/include/openais/lcr
 MANDIR=$(DESTDIR)/man
 endif
 ETCDIR=/etc
@@ -77,9 +80,12 @@ install:
 	mkdir -p $(SBINDIR)
 	mkdir -p $(INCLUDEDIR)
 	mkdir -p $(INCLUDEDIR_TOTEM)
+	mkdir -p $(INCLUDEDIR_LCR)
 	mkdir -p $(LIBDIR)
 	mkdir -p $(LCRSODIR)
 	mkdir -p $(ETCDIR)
+	mkdir -p $(MANDIR)/man3
+	mkdir -p $(MANDIR)/man8
 	mkdir -p /etc/ld.so.conf.d
 
 	install -m 755 lib/libais.a $(LIBDIR)
@@ -111,6 +117,12 @@ install:
 	install -m 644 include/saMsg.h $(INCLUDEDIR)
 	install -m 644 include/cpg.h $(INCLUDEDIR)
 	install -m 644 include/evs.h $(INCLUDEDIR)
+	install -m 644 exec/aispoll.h $(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totem.h $(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totemip.h $(INCLUDEDIR_TOTEM)
+	install -m 644 lcr/lcr_ckpt.h $(INCLUDEDIR_LCR)
+	install -m 644 lcr/lcr_comp.h $(INCLUDEDIR_LCR)
+	install -m 644 lcr/lcr_ifact.h $(INCLUDEDIR_LCR)
+	install -m 644 man/*.3 $(MANDIR)/man3
+	install -m 644 man/*.8 $(MANDIR)/man8
 	/sbin/ldconfig

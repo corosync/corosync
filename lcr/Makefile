@@ -33,7 +33,7 @@ ifeq (${OPENAIS_COMPAT}, LINUX)
 	LDFLAGS += -ldl
 endif
 
-all:liblcr.a test test2 test_static uic libtest_a.lcrso libtest_b.lcrso
+all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
 
 liblcr.a: lcr_ifact.o
 	$(AR) -rc liblcr.a lcr_ifact.o
@@ -59,9 +59,6 @@ endif
 test: test.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -o test
 
-test2: test2.o uis.o lcr_ifact.o
-	$(CC) $(LDFLAGS) test2.o lcr_ifact.o uis.o -lpthread -o test2
-	
 test_static: test.o libtest_a.o libtest_b.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o libtest_a.o libtest_b.o lcr_ifact.o -o test_static
 
