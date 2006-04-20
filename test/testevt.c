@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2004 Mark Haverkamp
- * Copyright (c) 2004 Open Source Development Lab
+ * Copyright (c) 2004-2005 Mark Haverkamp
+ * Copyright (c) 2004-2005 Open Source Development Lab
  *
  * All rights reserved.
  *
