@@ -78,8 +78,8 @@ SaTimeT clust_time_now(void)
 
 void openais_exit_error (enum e_ais_done err)
 {
-	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting.\n");
-	exit (1);
+	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting (%d).\n", err);
+	exit (err);
 }
 
 char *getSaNameT (SaNameT *name)

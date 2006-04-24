@@ -236,6 +236,9 @@ int openais_service_init_all (int service_count,
 		if (ais_service[i] && ais_service[i]->exec_init_fn) {
 			log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", ais_service[i]->name);
 			res = ais_service[i]->exec_init_fn (objdb);
+			if (res != 0) {
+				break;
+			}
 		}
 	}
 	return (res);

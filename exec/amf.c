@@ -877,8 +877,6 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	if (enabled) {
 		res = openais_amf_config_read (&error_string);
 		if (res == -1) {
-			dprintf("hej %s", "nisse");
-			TRACE8("hej %s", "nisse");
 			log_printf (LOG_LEVEL_ERROR, error_string);
 			return res;
 		}

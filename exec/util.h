@@ -61,6 +61,7 @@ enum e_ais_done {
 	AIS_DONE_AMFCONFIGREAD = -11,
 	AIS_DONE_DYNAMICLOAD = -12,
 	AIS_DONE_OBJDB = -13,
+	AIS_DONE_INIT_SERVICES = -14,
 };
 
 void openais_exit_error (enum e_ais_done err);
