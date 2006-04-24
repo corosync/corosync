@@ -363,7 +363,7 @@ retry_sendmsg:
 	return (0);
 }
 
-extern int openais_conn_send_response (
+int openais_conn_send_response (
 	void *conn,
 	void *msg,
 	int mlen)
@@ -378,6 +378,10 @@ extern int openais_conn_send_response (
 	struct iovec iov_send;
 	char *msg_addr;
 	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	if (conn_info == NULL) {
+		return -1;
+	}
 
 	if (!libais_connection_active (conn_info)) {
 		return (-1);
@@ -609,14 +613,22 @@ void *openais_conn_partner_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	return ((void *)conn_info->conn_info_partner);
+	if (conn != NULL) {
+		return ((void *)conn_info->conn_info_partner);
+	} else {
+		return NULL;
+	}
 }
 
 void *openais_conn_private_data_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	return ((void *)conn_info->private_data);
+	if (conn != NULL) {
+		return ((void *)conn_info->private_data);
+	} else {
+		return NULL;
+	}
 }
 
 static int response_init_send_response (struct conn_info *conn_info, void *message)
@@ -1136,6 +1148,8 @@ static void aisexec_mlockall (void)
 int message_source_is_local(struct message_source *source)
 {
 	int ret = 0;
+
+	assert (source != NULL);
 	if ((totemip_localhost_check(&source->addr)
 	     ||(totemip_equal(&source->addr, &this_non_loopback_ip)))) {
 		ret = 1;
@@ -1147,6 +1161,7 @@ void message_source_set (
 	struct message_source *source,
 	void *conn)
 {
+	assert ((source != NULL) && (conn != NULL));
 	totemip_copy(&source->addr, this_ip);
 	source->conn = conn;
 }
