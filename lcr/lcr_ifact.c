@@ -201,7 +201,7 @@ static void ld_library_path_build (void)
 		}
 	}
 
-	free (ld_library_path);
+	free (my_ld_library_path);
 }
 
 static int ldso_path_build (char *path, char *filename)
@@ -210,7 +210,6 @@ static int ldso_path_build (char *path, char *filename)
 	char string[1024];
 	char filename_cat[1024];
 	char *newpath;
-	char newpath_cat[1024];
 	char *new_filename;
 	int j;
 	struct dirent **scandir_list;
@@ -222,8 +221,14 @@ static int ldso_path_build (char *path, char *filename)
 			path,
 			&scandir_list,
 			pathlist_select, alphasort);
-		for (j = 0; j < scandir_entries; j++) {
-			ldso_path_build (path, scandir_list[j]->d_name);
+		if (scandir_entries == 0) {
+			return 0;
+		} else if (scandir_entries == -1) {
+			return -1;
+		} else {
+			for (j = 0; j < scandir_entries; j++) {
+				ldso_path_build (path, scandir_list[j]->d_name);
+			}
 		}
 	}
 
@@ -244,11 +249,9 @@ static int ldso_path_build (char *path, char *filename)
 			}
 			string[j] = '\0';
 			new_filename = &string[j] + 1;
-			if ((string[strlen ("include ") + 1]) != '/') {
-				sprintf (newpath_cat, "%s/%s", path, newpath);
-				newpath = newpath_cat;
+			if (ldso_path_build (newpath, new_filename) != 0) {
+				return -1;
 			}
-			ldso_path_build (newpath, new_filename);
 			continue;
 		}
 		path_list[path_list_entries++] = strdup (string);
@@ -332,8 +335,10 @@ int lcr_ifact_reference (
 
 	defaults_path_build ();
 	ld_library_path_build ();
-	ldso_path_build ("/etc", "ld.so.conf");
 
+	if (ldso_path_build ("/etc", "ld.so.conf") == -1) {
+		return -1;
+	}
 
 	/*
 	 * Determine if the component is already loaded
