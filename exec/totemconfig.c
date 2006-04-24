@@ -508,6 +508,9 @@ int totem_config_keyread (
 	unsigned int object_service_handle;
 	int res;
 
+	memset (totem_config->private_key, 0, 128);
+	totem_config->private_key_len = 128;
+
 	if (totem_config->secauth == 0) {
 		return (0);
 	}
