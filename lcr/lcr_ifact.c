@@ -100,10 +100,10 @@ static int pathlist_select (struct dirent *dirent)
 static inline struct lcr_component_instance *lcr_comp_find (
 	char *iface_name,
 	unsigned int version,
-	int *iface_number)
+	unsigned int *iface_number)
 {
 	struct lcr_component_instance *instance;
-	void *instance_p;
+	void *instance_p = NULL;
 	unsigned int component_handle = 0;
 	int i;
 
@@ -134,7 +134,7 @@ static inline int lcr_lib_loaded (
 	char *library_name)
 {
 	struct lcr_component_instance *instance;
-	void *instance_p;
+	void *instance_p = NULL;
 	unsigned int component_handle = 0;
 
 	/*
@@ -156,7 +156,7 @@ static inline int lcr_lib_loaded (
 	return (0);
 }
 
-unsigned char *path_list[128];
+char *path_list[128];
 unsigned int path_list_entries = 0;
 
 static void defaults_path_build (void)
@@ -327,7 +327,7 @@ int lcr_ifact_reference (
 {
 	struct lcr_iface_instance *iface_instance;
 	struct lcr_component_instance *instance;
-	int iface_number;
+	unsigned int iface_number;
 	unsigned int res;
 	unsigned int i;
 

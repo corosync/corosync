@@ -161,7 +161,7 @@ static void _log_printf (char *file, int line, int priority,
 		gettimeofday (&tv, NULL);
 		strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S",
 				  localtime (&tv.tv_sec));
-		i = sprintf (newstring, "%s.%06ld ", char_time, tv.tv_usec);
+		i = sprintf (newstring, "%s.%06ld ", char_time, (long)tv.tv_usec);
 	}
 
 	if ((level == LOG_LEVEL_DEBUG) || (logmode & LOG_MODE_FILELINE)) {

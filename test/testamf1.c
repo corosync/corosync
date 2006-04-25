@@ -129,7 +129,7 @@ void ComponentTerminateCallback (
     #define TRS "%s" 
     #define TR(format,x) do {                               \
 	struct timeval t;\
-	gettimeofday(&t,NULL);                                   \ 	
+	gettimeofday(&t,NULL);                                   \
 	printf("%s:%d: %s : %d : %u: %u :%s : " format "\n",\
 		__FILE__,__LINE__,__FUNCTION__,             \
 		getpid(),(int)t.tv_sec, (int)t.tv_usec,#x,x);          \

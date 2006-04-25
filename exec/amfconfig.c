@@ -256,7 +256,7 @@ extern int openais_amf_config_read (char **error_string)
 	struct amf_healthcheck *amf_healthcheck = 0;
         struct amf_comp_csi_type_name *csi_type_name = 0;
         struct amf_csi *amf_csi = 0;
-        struct amf_csi_name_value *csi_name_value;
+        struct amf_csi_name_value *csi_name_value = NULL;
 
 
 	fp = fopen (OPENAIS_CONFDIR "/groups.conf", "r");

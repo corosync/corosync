@@ -1573,7 +1573,7 @@ void csi_unit_set_callback (struct amf_unit *unit, struct amf_si *si)
     struct list_head *csilist;
     struct list_head *typenamelist;
     struct amf_csi *csi;
-    struct amf_pg *pg;
+    struct amf_pg *pg = NULL;
     struct amf_comp *comp;
     struct amf_comp_csi_type_name *type_name;
 

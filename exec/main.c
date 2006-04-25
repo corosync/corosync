@@ -79,7 +79,7 @@
 
 #define SERVER_BACKLOG 5
 
-static unsigned char *release_name = "Wilson version 0.74";
+static char *release_name = "Wilson version 0.74";
 
 static int ais_uid = 0;
 
