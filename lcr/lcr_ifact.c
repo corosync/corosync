@@ -333,13 +333,6 @@ int lcr_ifact_reference (
 	unsigned int res;
 	unsigned int i;
 
-	defaults_path_build ();
-	ld_library_path_build ();
-
-	if (ldso_path_build ("/etc", "ld.so.conf") == -1) {
-		return -1;
-	}
-
 	/*
 	 * Determine if the component is already loaded
 	 */
@@ -347,6 +340,13 @@ int lcr_ifact_reference (
 	if (instance) {
 		goto found;
 	}
+
+	defaults_path_build ();
+	ld_library_path_build ();
+	if (ldso_path_build ("/etc", "ld.so.conf") == -1) {
+		return -1;
+	}
+
 
 // TODO error checking in this code is weak
 	/*
