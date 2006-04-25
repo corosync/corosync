@@ -249,9 +249,7 @@ static int ldso_path_build (char *path, char *filename)
 			}
 			string[j] = '\0';
 			new_filename = &string[j] + 1;
-			if (ldso_path_build (newpath, new_filename) != 0) {
-				return -1;
-			}
+			ldso_path_build (newpath, new_filename);
 			continue;
 		}
 		path_list[path_list_entries++] = strdup (string);
