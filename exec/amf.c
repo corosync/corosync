@@ -784,7 +784,7 @@ int clc_cli_cleanup (struct amf_comp *comp)
 
 	struct clc_command_run_data *clc_command_run_data;
 
-	dprintf ("clc_cli_instaniate\n");
+	dprintf ("clc_cli_cleanup\n");
 	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_CLEANUP;
