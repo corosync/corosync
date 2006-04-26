@@ -672,6 +672,7 @@ static void message_handler_req_lib_clm_trackstop (void *conn, void *msg)
 	}
 
 	list_del (&clm_pd->list);
+	list_init (&clm_pd->list);
 
 	openais_conn_send_response (conn, &res_lib_clm_trackstop,
 		sizeof (struct res_lib_clm_trackstop));
