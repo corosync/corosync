@@ -65,7 +65,8 @@ struct object_instance {
 static struct hdb_handle_database object_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
-	.iterator	= 0
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
 static int objdb_init (void)

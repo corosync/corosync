@@ -37,7 +37,7 @@
 typedef void * poll_timer_handle;
 typedef unsigned int poll_handle;
 
-poll_handle poll_create (void);
+poll_handle poll_create (pthread_mutex_t *mutex);
 
 int poll_destroy (poll_handle poll_handle);
 

@@ -11,6 +11,7 @@
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <sched.h>
 #include "saAis.h"
 #include "saEvt.h"
 
@@ -372,12 +373,18 @@ evt_free:
 
 static int err_wait_time = -1;
 
+static struct sched_param sched_param = {
+	sched_priority: 1
+};
+
 int main (int argc, char **argv)
 {
 	static const char opts[] = "c:s:n:qu:f:";
 
 	int option;
 	char *p;
+
+	sched_setscheduler (0, SCHED_RR, &sched_param);
 
 	while (1) {
 		option = getopt(argc, argv, opts);

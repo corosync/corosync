@@ -202,7 +202,8 @@ static struct totem_ip_address localhost;
 static struct hdb_handle_database totemnet_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
-	.iterator	= 0
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)

@@ -58,9 +58,9 @@ LCR_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o amfconfig.o ai
 
 # main executive objects
 MAIN_SRC = main.c print.c mempool.c \
-		util.c sync.c ykd.c service.c totemconfig.c mainconfig.c
+		util.c sync.c ykd.c service.c ipc.c totemconfig.c mainconfig.c
 MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o service.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
+		util.o sync.o service.o ipc.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 

@@ -48,7 +48,6 @@
  */
 
 #include <assert.h>
-#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -571,7 +570,8 @@ void main_iface_change_fn (
 static struct hdb_handle_database totemsrp_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
-	.iterator	= 0
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 struct message_handlers totemsrp_message_handlers = {
 	6,

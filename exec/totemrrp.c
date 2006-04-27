@@ -288,7 +288,8 @@ struct rrp_algo active_algo = {
 static struct hdb_handle_database totemrrp_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
-	.iterator	= 0
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
 #define log_printf(level, format, args...) \

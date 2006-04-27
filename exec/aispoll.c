@@ -57,6 +57,7 @@ struct poll_instance {
 	struct pollfd *ufds;
 	int poll_entry_count;
 	struct timerlist timerlist;
+	pthread_mutex_t *serialize;
 };
 
 /*
@@ -68,7 +69,7 @@ static struct hdb_handle_database poll_instance_database = {
 	.iterator	= 0
 };
 
-poll_handle poll_create (void)
+poll_handle poll_create (pthread_mutex_t *serialize)
 {
 	poll_handle handle;
 	struct poll_instance *poll_instance;
@@ -88,6 +89,7 @@ poll_handle poll_create (void)
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
+	poll_instance->serialize = serialize;
 	timerlist_init (&poll_instance->timerlist);
 
 	return (handle);
@@ -386,7 +388,9 @@ int poll_run (
 				&poll_instance->poll_entries[i].ufd,
 				sizeof (struct pollfd));
 		}
+		pthread_mutex_lock (poll_instance->serialize);
 		timeout = timerlist_timeout_msec (&poll_instance->timerlist);
+		pthread_mutex_unlock (poll_instance->serialize);
 
 retry_poll:
 		res = poll (poll_instance->ufds,
@@ -402,6 +406,7 @@ retry_poll:
 		for (i = 0; i < poll_entry_count; i++) {
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
+				pthread_mutex_lock (poll_instance->serialize);
 
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
 					poll_instance->ufds[i].fd, 
@@ -415,6 +420,7 @@ retry_poll:
 				if (res == -1) {
 					poll_instance->poll_entries[i].ufd.fd = -1; /* empty entry */
 				}
+				pthread_mutex_unlock (poll_instance->serialize);
 			}
 		}
 		timerlist_expire (&poll_instance->timerlist);

@@ -742,7 +742,6 @@ saEvtDispatch(
  			 * grabbed it.
 			 */
 			if (evt->led_head.error == SA_AIS_ERR_NOT_EXIST) {
-                DPRINT (("MESSAGE_RES_EVT_AVAILABLE: No event data\n"));
 				error = SA_AIS_OK;
 				break;
 			}

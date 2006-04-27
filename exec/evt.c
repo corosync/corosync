@@ -1838,6 +1838,7 @@ deliver_event(struct event_data *evt,
 		}
 	}
 
+	assert (esip->esi_nevents >= 0);
 	if (!esip->esi_queue_blocked && 
 							(esip->esi_nevents >= evt_delivery_queue_size)) {
 		log_printf(LOG_LEVEL_DEBUG, "block\n");
@@ -2105,6 +2106,11 @@ static int evt_lib_init(void *conn)
 	 * Initailze event instance data
 	 */
 	memset(libevt_pd, 0, sizeof(*libevt_pd));
+
+	/*
+	 * Initialize the open channel handle database.
+	 */
+	hdb_create(&libevt_pd->esi_hdb);
 
 	/*
 	 * list of channels open on this instance
@@ -3012,6 +3018,11 @@ static int evt_lib_exit(void *conn)
 			free(rtc);
 		}
 	}
+
+	/*
+	 * Destroy the open channel handle database
+	 */
+	hdb_destroy(&esip->esi_hdb);
 
 	return 0;
 }

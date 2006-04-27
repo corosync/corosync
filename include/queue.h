@@ -35,6 +35,7 @@
 #define QUEUE_H_DEFINED
 
 #include <string.h>
+#include <pthread.h>
 #include "assert.h"
 
 struct queue {
@@ -46,6 +47,7 @@ struct queue {
 	void *items;
 	int size_per_item;
 	int iterator;
+	pthread_mutex_t mutex;
 };
 
 static inline int queue_init (struct queue *queue, int queue_items, int size_per_item) {
@@ -61,17 +63,20 @@ static inline int queue_init (struct queue *queue, int queue_items, int size_per
 		return (-ENOMEM);
 	}
 	memset (queue->items, 0, queue_items * size_per_item);
+	pthread_mutex_init (&queue->mutex, NULL);
 	return (0);
 }
 
 static inline int queue_reinit (struct queue *queue)
 {
+	pthread_mutex_lock (&queue->mutex);
 	queue->head = 0;
 	queue->tail = queue->size - 1;
 	queue->used = 0;
 	queue->usedhw = 0;
 
 	memset (queue->items, 0, queue->size * queue->size_per_item);
+	pthread_mutex_unlock (&queue->mutex);
 	return (0);
 }
 
@@ -80,11 +85,21 @@ static inline void queue_free (struct queue *queue) {
 }
 
 static inline int queue_is_full (struct queue *queue) {
-	return (queue->size - 1 == queue->used);
+	int full;
+
+	pthread_mutex_lock (&queue->mutex);
+	full = queue->size - 1 == queue->used;
+	pthread_mutex_unlock (&queue->mutex);
+	return (full);
 }
 
 static inline int queue_is_empty (struct queue *queue) {
-	return (queue->used == 0);
+	int empty;
+
+	pthread_mutex_lock (&queue->mutex);
+	empty = queue->used == 0;
+	pthread_mutex_unlock (&queue->mutex);
+	return (empty);
 }
 
 static inline void queue_item_add (struct queue *queue, void *item)
@@ -92,6 +107,7 @@ static inline void queue_item_add (struct queue *queue, void *item)
 	char *queue_item;
 	int queue_position;
 
+	pthread_mutex_lock (&queue->mutex);
 	queue_position = queue->head;
 	queue_item = queue->items;
 	queue_item += queue_position * queue->size_per_item;
@@ -104,6 +120,7 @@ static inline void queue_item_add (struct queue *queue, void *item)
 	if (queue->used > queue->usedhw) {
 		queue->usedhw = queue->used;
 	}
+	pthread_mutex_unlock (&queue->mutex);
 }
 
 static inline void *queue_item_get (struct queue *queue)
@@ -111,34 +128,42 @@ static inline void *queue_item_get (struct queue *queue)
 	char *queue_item;
 	int queue_position;
 
+	pthread_mutex_lock (&queue->mutex);
 	queue_position = (queue->tail + 1) % queue->size;
 	queue_item = queue->items;
 	queue_item += queue_position * queue->size_per_item;
+	pthread_mutex_unlock (&queue->mutex);
 	return ((void *)queue_item);
 }
 
 static inline void queue_item_remove (struct queue *queue) {
+	pthread_mutex_lock (&queue->mutex);
 	queue->tail = (queue->tail + 1) % queue->size;
 	
 	assert (queue->tail != queue->head);
 
 	queue->used--;
 	assert (queue->used >= 0);
+	pthread_mutex_unlock (&queue->mutex);
 }
 
 static inline void queue_items_remove (struct queue *queue, int rel_count)
 {
+	pthread_mutex_lock (&queue->mutex);
 	queue->tail = (queue->tail + rel_count) % queue->size;
 	
 	assert (queue->tail != queue->head);
 
 	queue->used -= rel_count;
+	pthread_mutex_unlock (&queue->mutex);
 }
 
 
 static inline void queue_item_iterator_init (struct queue *queue)
 {
+	pthread_mutex_lock (&queue->mutex);
 	queue->iterator = (queue->tail + 1) % queue->size;
+	pthread_mutex_unlock (&queue->mutex);
 }
 
 static inline void *queue_item_iterator_get (struct queue *queue)
@@ -146,30 +171,46 @@ static inline void *queue_item_iterator_get (struct queue *queue)
 	char *queue_item;
 	int queue_position;
 
+	pthread_mutex_lock (&queue->mutex);
 	queue_position = (queue->iterator) % queue->size;
 	if (queue->iterator == queue->head) {
+		pthread_mutex_unlock (&queue->mutex);
 		return (0);
 	}
 	queue_item = queue->items;
 	queue_item += queue_position * queue->size_per_item;
+	pthread_mutex_unlock (&queue->mutex);
 	return ((void *)queue_item);
 }
 
 static inline int queue_item_iterator_next (struct queue *queue)
 {
+	int next_res;
+
+	pthread_mutex_lock (&queue->mutex);
 	queue->iterator = (queue->iterator + 1) % queue->size;
 
-	return (queue->iterator == queue->head);
+	next_res = queue->iterator == queue->head;
+	pthread_mutex_unlock (&queue->mutex);
+	return (next_res);
 }
 
 static inline void queue_avail (struct queue *queue, int *avail)
 {
+	pthread_mutex_lock (&queue->mutex);
 	*avail = queue->size - queue->used - 2;
 	assert (*avail >= 0);
+	pthread_mutex_unlock (&queue->mutex);
 }
 
 static inline int queue_used (struct queue *queue) {
-	return (queue->used);
+	int used;
+
+	pthread_mutex_lock (&queue->mutex);
+	used = queue->used;
+	pthread_mutex_unlock (&queue->mutex);
+
+	return (used);
 }
 
 #endif /* QUEUE_H_DEFINED */

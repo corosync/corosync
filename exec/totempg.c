@@ -203,7 +203,8 @@ struct totempg_group_instance {
 static struct hdb_handle_database totempg_groups_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
-	.iterator	= 0
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
 static int send_ok (int msg_size);
@@ -570,6 +571,8 @@ static void totempg_deliver_fn (
 
 void *callback_token_received_handle;
 
+pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 int callback_token_received_fn (enum totem_callback_token_type type,
 	void *data)
 {
@@ -577,10 +580,13 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	struct iovec iovecs[3];
 	int res;
 
+	pthread_mutex_lock (&mcast_msg_mutex);
 	if (mcast_packed_msg_count == 0) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
 		return (0);
 	}
 	if (totemmrp_avail() == 0) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
 		return (0);
 	}
 	mcast.fragmented = 0;
@@ -605,6 +611,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	mcast_packed_msg_count = 0;
 	fragment_size = 0;
 
+	pthread_mutex_unlock (&mcast_msg_mutex);
 	return (0);
 }
 
@@ -672,6 +679,7 @@ static int mcast_msg (
 	int copy_base = 0;
 	int total_size = 0;
 
+	pthread_mutex_lock (&mcast_msg_mutex);
 	totemmrp_new_msg_signal ();
 
 	max_packet_size = TOTEMPG_PACKET_SIZE -
@@ -689,6 +697,7 @@ static int mcast_msg (
 	if (send_ok (total_size + sizeof(unsigned short) *
 		(mcast_packed_msg_count+1)) == 0) {
 
+		pthread_mutex_unlock (&mcast_msg_mutex);
 		return(-1);
 	}
 
@@ -800,6 +809,7 @@ static int mcast_msg (
 			mcast_packed_msg_count++;
 	}
 
+	pthread_mutex_unlock (&mcast_msg_mutex);
 	return (res);
 }
 
