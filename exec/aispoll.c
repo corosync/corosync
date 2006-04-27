@@ -43,10 +43,9 @@
 #include "../include/hdb.h"
 #include "tlist.h"
 
-typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio);
+typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);
 
 struct poll_entry {
-	unsigned int prio;
 	struct pollfd ufd;
 	dispatch_fn_t dispatch_fn;
 	void *data;
@@ -134,8 +133,11 @@ int poll_dispatch_add (
 	int fd,
 	int events,
 	void *data,
-	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio),
-	unsigned int prio)
+	int (*dispatch_fn) (
+		poll_handle poll_handle,
+		int fd,
+		int revents,
+		void *data))
 {
 	struct poll_instance *poll_instance;
 	struct poll_entry *poll_entries;
@@ -187,7 +189,6 @@ int poll_dispatch_add (
 	/*
 	 * Install new dispatch handler
 	 */
-	poll_instance->poll_entries[install_pos].prio = prio;
 	poll_instance->poll_entries[install_pos].ufd.fd = fd;
 	poll_instance->poll_entries[install_pos].ufd.events = events;
 	poll_instance->poll_entries[install_pos].ufd.revents = 0;
@@ -205,8 +206,11 @@ int poll_dispatch_modify (
 	poll_handle handle,
 	int fd,
 	int events,
-	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio),
-	unsigned int prio)
+	int (*dispatch_fn) (
+		poll_handle poll_handle,
+		int fd,
+		int revents,
+		void *data))
 {
 	struct poll_instance *poll_instance;
 	int i;
@@ -226,7 +230,6 @@ int poll_dispatch_modify (
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
-			poll_instance->poll_entries[i].prio = prio;
 			
 			goto error_put;
 		}
@@ -354,13 +357,6 @@ error_exit:
 }
 
 
-int poll_entry_compare (const void *a, const void *b) {
-	struct poll_entry *poll_entry_a = (struct poll_entry *)a;
-	struct poll_entry *poll_entry_b = (struct poll_entry *)b;
-
-	return (poll_entry_a->prio < poll_entry_b->prio);
-}
-
 int poll_run (
 	poll_handle handle)
 {
@@ -377,12 +373,6 @@ int poll_run (
 	}
 
 	for (;;) {
-		/*
-		 * Sort the poll entries list highest priority to lowest priority
-		 * Then build ufds structure for use with poll system call
-		 */
-		qsort (poll_instance->poll_entries, poll_instance->poll_entry_count,
-			sizeof (struct poll_entry), poll_entry_compare);
 		for (i = 0; i < poll_instance->poll_entry_count; i++) {
 			memcpy (&poll_instance->ufds[i],
 				&poll_instance->poll_entries[i].ufd,
@@ -411,8 +401,7 @@ retry_poll:
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
 					poll_instance->ufds[i].fd, 
 					poll_instance->ufds[i].revents,
-					poll_instance->poll_entries[i].data,
-					&poll_instance->poll_entries[i].prio);
+					poll_instance->poll_entries[i].data);
 
 				/*
 				 * Remove dispatch functions that return -1
@@ -454,7 +443,6 @@ void poll_print_state (
 		printf ("fd %d\n", poll_instance->poll_entries[i].ufd.fd);
 		printf ("events %d\n", poll_instance->poll_entries[i].ufd.events);
 		printf ("dispatch_fn %p\n", poll_instance->poll_entries[i].dispatch_fn);
-		printf ("prio %d\n", poll_instance->poll_entries[i].prio);
 		}
 	}
 }

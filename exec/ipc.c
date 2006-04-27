@@ -719,8 +719,7 @@ static int poll_handler_libais_accept (
 	poll_handle handle,
 	int fd,
 	int revent,
-	void *data,
-	unsigned int *prio)
+	void *data)
 {
 	socklen_t addrlen;
 	struct sockaddr_un un_addr;
@@ -846,7 +845,7 @@ void openais_ipc_init (
          * Setup libais connection dispatch routine
          */
         poll_dispatch_add (aisexec_poll_handle, libais_server_fd,
-                POLLIN, 0, poll_handler_libais_accept, 0);
+                POLLIN, 0, poll_handler_libais_accept);
 
 	g_gid_valid = gid_valid;
 

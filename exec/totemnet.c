@@ -605,8 +605,7 @@ static int net_deliver_fn (
 	poll_handle handle,
 	int fd,
 	int revents,
-	void *data,
-	unsigned int *prio)
+	void *data)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)data;
 	struct msghdr msg_recv;
@@ -618,8 +617,6 @@ static int net_deliver_fn (
 	int res = 0;
 	unsigned char *msg_offset;
 	unsigned int size_delv;
-
-	*prio = UINT_MAX;
 
 	if (instance->flushing == 1) {
 		iovec = &instance->totemnet_iov_recv_flush;
@@ -807,12 +804,12 @@ static void timer_function_netif_check_timeout (
 	poll_dispatch_add (
 		instance->totemnet_poll_handle,
 		instance->totemnet_sockets.mcast_recv,
-		POLLIN, instance, net_deliver_fn, UINT_MAX);
+		POLLIN, instance, net_deliver_fn);
 
 	poll_dispatch_add (
 		instance->totemnet_poll_handle,
 		instance->totemnet_sockets.token,
-		POLLIN, instance, net_deliver_fn, UINT_MAX);
+		POLLIN, instance, net_deliver_fn);
 
 	totemip_copy (&instance->my_id, &instance->totem_interface->boundto);
 
@@ -1295,7 +1292,6 @@ int totemnet_recv_flush (totemnet_handle handle)
 	struct pollfd ufd;
 	int nfds;
 	int res = 0;
-	unsigned int prio;
 
 	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
@@ -1312,7 +1308,7 @@ int totemnet_recv_flush (totemnet_handle handle)
 		nfds = poll (&ufd, 1, 0);
 		if (nfds == 1 && ufd.revents & POLLIN) {
 		net_deliver_fn (0, instance->totemnet_sockets.mcast_recv,
-			ufd.revents, instance, &prio);
+			ufd.revents, instance);
 		}
 	} while (nfds == 1);
 

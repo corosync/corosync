@@ -46,15 +46,21 @@ int poll_dispatch_add (
 	int fd,
 	int events,
 	void *data,
-	int (*dispatch_fn) (poll_handle handle, int fd, int revents, void *data, unsigned int *prio),
-	unsigned int prio);
+
+	int (*dispatch_fn) (poll_handle handle,
+		int fd,
+		int revents,
+		void *data));
 
 int poll_dispatch_modify (
 	poll_handle handle,
 	int fd,
 	int events,
-	int (*dispatch_fn) (poll_handle poll_handle, int fd, int revents, void *data, unsigned int *prio),
-	unsigned int prio);
+
+	int (*dispatch_fn) (poll_handle poll_handle,
+		int fd,
+		int revents,
+		void *data));
 
 
 int poll_dispatch_delete (
