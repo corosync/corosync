@@ -522,6 +522,7 @@ saHandleCreate (
 	void *newHandles;
 	int found = 0;
 	void *instance;
+	int i;
 
 	pthread_mutex_lock (&handleDatabase->mutex);
 
@@ -549,7 +550,17 @@ saHandleCreate (
 	}
 
 
-	check = random();
+	/*
+	 * This code makes sure the random number isn't zero
+	 * We use 0 to specify an invalid handle out of the 1^64 address space
+	 * If we get 0 200 times in a row, the RNG may be broken
+	 */
+	for (i = 0; i < 200; i++) {
+		check = random();
+		if (check != 0) {
+			break;
+		}
+	}
 
 	memset (instance, 0, instanceSize);
 

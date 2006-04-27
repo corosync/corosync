@@ -129,4 +129,6 @@ typedef SaUint64T SaInvocationT;
 
 typedef SaUint64T SaSizeT;
 
+#define SA_HANDLE_INVALID 0x0ull
+
 #endif /* AIS_TYPES_H_DEFINED */
