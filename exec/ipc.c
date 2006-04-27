@@ -623,10 +623,8 @@ retry_recv:
 				(sync_in_process() == 0)));
 
 			if (send_ok) {
-		//		*prio = 0;
 				ais_service[service]->lib_service[header->id].lib_handler_fn(conn_info, header);
 			} else {
-		//		*prio = (*prio) + 1;
 
 				/*
 				 * Overload, tell library to retry
