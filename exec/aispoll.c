@@ -378,9 +378,7 @@ int poll_run (
 				&poll_instance->poll_entries[i].ufd,
 				sizeof (struct pollfd));
 		}
-		pthread_mutex_lock (poll_instance->serialize);
 		timeout = timerlist_timeout_msec (&poll_instance->timerlist);
-		pthread_mutex_unlock (poll_instance->serialize);
 
 retry_poll:
 		res = poll (poll_instance->ufds,
@@ -396,23 +394,25 @@ retry_poll:
 		for (i = 0; i < poll_entry_count; i++) {
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
-				pthread_mutex_lock (poll_instance->serialize);
 
+				pthread_mutex_lock (poll_instance->serialize);
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
 					poll_instance->ufds[i].fd, 
 					poll_instance->ufds[i].revents,
 					poll_instance->poll_entries[i].data);
 
+				pthread_mutex_unlock (poll_instance->serialize);
 				/*
 				 * Remove dispatch functions that return -1
 				 */
 				if (res == -1) {
 					poll_instance->poll_entries[i].ufd.fd = -1; /* empty entry */
 				}
-				pthread_mutex_unlock (poll_instance->serialize);
 			}
 		}
+		pthread_mutex_lock (poll_instance->serialize);
 		timerlist_expire (&poll_instance->timerlist);
+		pthread_mutex_unlock (poll_instance->serialize);
 	} /* for (;;) */
 
 	hdb_handle_put (&poll_instance_database, handle);

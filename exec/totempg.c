@@ -215,6 +215,8 @@ static pthread_mutex_t totempg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t callback_token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define log_printf(level, format, args...) \
     totempg_log_printf (__FILE__, __LINE__, level, format, ##args)
 
@@ -570,8 +572,6 @@ static void totempg_deliver_fn (
  */
 
 void *callback_token_received_handle;
-
-pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int callback_token_received_fn (enum totem_callback_token_type type,
 	void *data)

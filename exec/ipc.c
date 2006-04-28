@@ -392,9 +392,8 @@ retry_poll:
 			if ((ufd.revents & POLLIN) == POLLIN) {
 				libais_deliver (conn_info);
 			}
-
-			pthread_mutex_unlock (&serialize_input);
 		}
+		pthread_mutex_unlock (&serialize_input);
 	}
 
 	pthread_mutex_unlock (&serialize_input);
@@ -425,6 +424,7 @@ static int conn_info_outq_flush (struct conn_info *conn_info) {
 
 	pthread_mutex_lock (&conn_info->mutex);
 	if (!libais_connection_active (conn_info)) {
+		pthread_mutex_unlock (&conn_info->mutex);
 		return (-1);
 	}
 	outq = &conn_info->outq;
@@ -455,6 +455,7 @@ retry_sendmsg:
 			return (0);
 		}
 		if (res == -1 && errno == EPIPE) {
+			pthread_mutex_unlock (&conn_info->mutex);
 			libais_disconnect_delayed (conn_info);
 			return (0);
 		}
@@ -943,6 +944,7 @@ retry_sendmsg:
 		}
 		if (res == -1 && errno == EPIPE) {
 			libais_disconnect_delayed (conn_info);
+			pthread_mutex_unlock (&conn_info->mutex);
 			return (0);
 		}
 		if (res == -1) {
