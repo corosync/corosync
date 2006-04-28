@@ -484,7 +484,7 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 			for (iter2 = gi->members.next, tmp = iter2->next; iter2 != &gi->members; iter2 = tmp, tmp = iter2->next) {
 				pi = list_entry(iter2, struct process_info, list);
 
-				if (totemip_equal(&pi->node, node)) {
+				if (pi->node.nodeid == node->nodeid) {
 
 					/* Add it to the list of nodes to send notifications for */
 					if (!gi->rg) {
@@ -494,15 +494,19 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 							gi->rg->gi = gi;
 							gi->rg->left_list_entries = 0;
 						}
-						gi->rg->left_list[gi->rg->left_list_entries].pid = pi->pid;
-						gi->rg->left_list[gi->rg->left_list_entries].nodeId = pi->node.nodeid;
-						gi->rg->left_list[gi->rg->left_list_entries].reason = CONFCHG_CPG_REASON_NODEDOWN;
-						gi->rg->left_list_entries++;
-
-						/* Remove node info for dead node */
-						list_del(&pi->list);
-						free(pi);
+						else {
+							log_printf(LOG_LEVEL_CRIT, "Unable to allocate removed group struct. CPG callbacks will be junk.");
+							return;
+						}
 					}
+					gi->rg->left_list[gi->rg->left_list_entries].pid = pi->pid;
+					gi->rg->left_list[gi->rg->left_list_entries].nodeId = pi->node.nodeid;
+					gi->rg->left_list[gi->rg->left_list_entries].reason = CONFCHG_CPG_REASON_NODEDOWN;
+					gi->rg->left_list_entries++;
+
+					/* Remove node info for dead node */
+					list_del(&pi->list);
+					free(pi);
 				}
 			}
 		}
@@ -528,7 +532,7 @@ static void cpg_confchg_fn (
 	/* Tell any newly joined nodes our list of joined groups */
 	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 		cpg_exec_send_joinlist();
-	}
+ 	}
 
 	/* Remove nodes from joined groups and add removed groups to the list */
 	for (i = 0; i < left_list_entries; i++) {
@@ -598,7 +602,7 @@ static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_ad
 		if (pi->pid == pid && pi->node.nodeid == node->nodeid) {
 
 			/* It could be a local join message */
-			if (totemip_equal(node, this_ip) && (!pi->flags & PI_FLAG_MEMBER))
+			if (node->nodeid == this_ip->nodeid && (!pi->flags & PI_FLAG_MEMBER))
 				goto local_join;
 			else
 				return;
@@ -668,7 +672,8 @@ static void message_handler_req_exec_cpg_procleave (
         /* Find the node/PID to remove */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		pi = list_entry(iter, struct process_info, list);
-		if (pi->pid == req_exec_cpg_procjoin->pid && totemip_equal(&pi->node, source_addr)) {
+		if (pi->pid == req_exec_cpg_procjoin->pid &&
+		    pi->node.nodeid == source_addr->nodeid) {
 
 			list_del(&pi->list);
 			if (!pi->conn)
@@ -691,7 +696,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	struct res_header *res = (struct res_header *)message;
 	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(struct res_header));
 
-	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %s\n", totemip_print(source_addr));
+	log_printf(LOG_LEVEL_DEBUG, "got joinlist message from node %s\n", totemip_print(source_addr));
 
 	/* Ignore our own messages */
 	if (totemip_equal(source_addr, this_ip))
