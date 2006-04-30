@@ -533,7 +533,7 @@ static int libais_deliver (struct conn_info *conn_info)
 				conn_info->authenticated = 1;
 		}
 		if (conn_info->authenticated == 0) {
-			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", egid, gid_valid);
+			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", egid, g_gid_valid);
 		}
 #endif
 	}

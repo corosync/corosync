@@ -34,6 +34,8 @@
 #ifndef POLL_H_DEFINED
 #define POLL_H_DEFINED
 
+#include <pthread.h>
+
 typedef void * poll_timer_handle;
 typedef unsigned int poll_handle;
 
