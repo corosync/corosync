@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006 RedHat, Inc.
+.\" * Copyright (c) 2006 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -110,8 +110,8 @@ UDP ports.
 .PP
 Within the 
 .B totem 
-directive, there are six configuration options of which 1 is required,
-4 are optional, and 1 is requierd when IPV6 is configured in the interface
+directive, there are seven configuration options of which one is required,
+five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
 configuration.  The optional option unless using IPV6 directive controls
 identification of the processor.  The optional options control secrecy and
@@ -211,6 +211,18 @@ A thread directive of 0 indicates that no threaded send should be used.  This
 mode offers best performance for non-SMP systems. 
 
 The default is 0.
+
+.TP
+vsftype
+This directive controls the virtual synchrony filter type used to identify
+a primary component.  The preferred choice is YKD dynamic linear voting,
+however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
+large scale clusters that are created by changing the MAX_PROCESSORS_COUNT 
+#define in the C code totem.h file, the virtual synchrony filter "none" is
+recommended but then AMF and DLCK services (which are currently experimental)
+are not safe for use.
+
+The default is ykd.  The vsftype can also be set to none.
 
 Within the 
 .B totem 

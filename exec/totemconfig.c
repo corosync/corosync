@@ -202,6 +202,7 @@ extern int totem_config_read (
 		objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
 
 		objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
+		objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
 
 		objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
 	}
@@ -449,6 +450,9 @@ int totem_config_validate (
 	if (totem_config->net_mtu > FRAME_SIZE_MAX) {
 		error_reason = "This net_mtu parameter is greater then the maximum frame size";
 		goto parse_error;
+	}
+	if (totem_config->vsf_type == NULL) {
+		totem_config->vsf_type = "ykd";
 	}
 
 	return (0);

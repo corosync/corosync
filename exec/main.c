@@ -238,7 +238,6 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
-#define DEBUG
 #ifndef DEBUG
 	/*
 	 * Disconnect from TTY if this is not a debug run
@@ -268,7 +267,7 @@ static void aisexec_setscheduler (void)
 	res = sched_get_priority_max (SCHED_RR);
 	if (res != -1) {
 		sched_param.sched_priority = res;
-		res = sched_setscheduler (0, SCHED_RR, &sched_param);
+//		res = sched_setscheduler (0, SCHED_RR, &sched_param);
 		if (res == -1) {
 			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				sched_param.sched_priority, strerror (errno));
@@ -518,7 +517,8 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 
-	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed);
+	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed,
+		totem_config.vsf_type);
 
 	/*
 	 * Drop root privleges to user 'ais'

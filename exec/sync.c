@@ -71,6 +71,8 @@ struct barrier_data {
 
 static struct memb_ring_id *sync_ring_id;
 
+static int vsf_none = 0;
+
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
 static struct sync_callbacks sync_callbacks;
@@ -262,37 +264,68 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	return (0);
 }
 
-void sync_register (
+int sync_register (
 	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
-	void (*synchronization_completed) (void))
+	void (*synchronization_completed) (void),
+	char *vsf_type)
 {
 	unsigned int res;
-	unsigned int ykd_handle;
+	unsigned int vsf_handle;
+	void *vsf_iface_p;
+	char openais_vsf_type[1024];
 
  	log_init ("SYNC");
-
-	totempg_groups_initialize (
+	res = totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,
 		sync_confchg_fn);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR,
+			"Couldn't initialize groups interface.\n");
+		return (-1);
+	}
 
-	totempg_groups_join (
+	res = totempg_groups_join (
 		sync_group_handle,
 		&sync_group,
 		1);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "Couldn't join group.\n");
+		return (-1);
+	}
+		
+	if (strcmp (vsf_type, "none") == 0) {
+		log_printf (LOG_LEVEL_NOTICE,
+			"Not using a virtual synchrony filter.\n");
+		vsf_none = 1;
+	} else {
+		vsf_none = 0;
 
+		sprintf (openais_vsf_type, "openais_vsf_%s", vsf_type);
+		res = lcr_ifact_reference (
+			&vsf_handle,
+			openais_vsf_type,
+			0,
+			&vsf_iface_p,
+			0);
 
-	res = lcr_ifact_reference (
-		&ykd_handle,
-		"openais_vsf_ykd",
-		0,
-		(void **)(void *)&vsf_iface,
-		0);
+		if (res == -1) {
+			log_printf (LOG_LEVEL_NOTICE,
+				"Couldn't load virtual synchrony filter %s\n",
+				vsf_type);
+			return (-1);
+		}
 
-	vsf_iface->init (sync_primary_callback_fn);
+		log_printf (LOG_LEVEL_NOTICE,
+			"Using virtual synchrony filter %s\n", openais_vsf_type);
+
+		vsf_iface = (struct openais_vsf_iface_ver0 *)vsf_iface_p;
+		vsf_iface->init (sync_primary_callback_fn);
+	}
 
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
+	return (0);
 }
 
 static void sync_primary_callback_fn (
@@ -425,8 +458,19 @@ static void sync_confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	sync_ring_id = ring_id;
-}
 
+	/*
+	 * If no virtual synchrony filter configured, then start
+	 * synchronization process
+	 */
+	if (vsf_none == 1) {
+		sync_primary_callback_fn (
+			member_list,
+			member_list_entries,
+			1,
+			ring_id);
+	}
+}
 
 int sync_in_process (void)
 {
@@ -435,5 +479,9 @@ int sync_in_process (void)
 
 int sync_primary_designated (void)
 {
-	return (vsf_iface->primary());
+	if (vsf_none == 1) {
+		return (1);
+	} else {
+		return (vsf_iface->primary());
+	}
 }

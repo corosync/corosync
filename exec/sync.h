@@ -47,9 +47,10 @@ struct sync_callbacks {
 	unsigned char *name;
 };
 
-void sync_register (
+int sync_register (
 	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+	void (*synchronization_completed) (void),
+	char *vsf_type);
 
 int sync_in_process (void);
 

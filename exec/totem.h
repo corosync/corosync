@@ -132,6 +132,8 @@ struct totem_config {
 	unsigned int window_size;
 
 	unsigned int max_messages;
+
+	char *vsf_type;
 };
 
 enum totem_configuration_type {
