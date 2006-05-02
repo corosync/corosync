@@ -78,12 +78,14 @@ enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_MCAST = 3
 };
 
+#define LEFT_LIST_INITIAL_SIZE 32
 struct removed_group
 {
 	struct group_info *gi;
+	struct list_head list; /* on removed_list */
 	int left_list_entries;
-	struct cpg_groupinfo left_list[32]; /* ?? arbitrary numbers R us */
-	struct list_head list;
+	int left_list_size;
+	struct cpg_groupinfo left_list[LEFT_LIST_INITIAL_SIZE]; /* Can expand if needed */
 };
 
 struct group_info {
@@ -311,7 +313,7 @@ static int notify_lib_joinlist(struct group_info *gi, void *conn,
 	int size;
 
 	/* First, we need to know how many nodes are in the list. While we're
-	   traversing this list, look for the 'us' entry so we knw which
+	   traversing this list, look for the 'us' entry so we know which
 	   connection to send back down */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
@@ -493,11 +495,31 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 							list_add(&gi->rg->list, remlist);
 							gi->rg->gi = gi;
 							gi->rg->left_list_entries = 0;
+							gi->rg->left_list_size = LEFT_LIST_INITIAL_SIZE;
 						}
 						else {
 							log_printf(LOG_LEVEL_CRIT, "Unable to allocate removed group struct. CPG callbacks will be junk.");
 							return;
 						}
+					}
+					/* Do we need to increase the size ?
+					 * Yes, I increase this exponentially. Generally, if you've got a lot of groups,
+					 * you'll have a /lot/ of groups, and cgp_groupinfo is pretty small anyway
+					 */
+					if (gi->rg->left_list_size == gi->rg->left_list_entries) {
+						int newsize;
+						struct removed_group *newrg;
+
+						list_del(&gi->rg->list);
+						newsize = gi->rg->left_list_size * 2;
+						newrg = realloc(gi->rg, sizeof(struct removed_group) + newsize*sizeof(struct cpg_groupinfo));
+						if (!newrg) {
+							log_printf(LOG_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
+							return;
+						}
+						newrg->left_list_size = newsize+LEFT_LIST_INITIAL_SIZE;
+						gi->rg = newrg;
+						list_add(&gi->rg->list, remlist);
 					}
 					gi->rg->left_list[gi->rg->left_list_entries].pid = pi->pid;
 					gi->rg->left_list[gi->rg->left_list_entries].nodeId = pi->node.nodeid;
@@ -540,9 +562,9 @@ static void cpg_confchg_fn (
 	}
 
 	if (!list_empty(&removed_list)) {
-		struct list_head *iter;
+		struct list_head *iter, *tmp;
 
-		for (iter = removed_list.next; iter != &removed_list; iter = iter->next) {
+		for (iter = removed_list.next, tmp=iter->next; iter != &removed_list; iter = tmp, tmp = iter->next) {
 			struct removed_group *rg = list_entry(iter, struct removed_group, list);
 
 			notify_lib_joinlist(rg->gi, NULL,
@@ -562,6 +584,7 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 
 	req_exec_cpg_procjoin->pid = swab32(req_exec_cpg_procjoin->pid);
 	req_exec_cpg_procjoin->groupName.length = swab32(req_exec_cpg_procjoin->groupName.length);
+	req_exec_cpg_procjoin->reason = swab32(req_exec_cpg_procjoin->reason);
 }
 
 static void exec_cpg_joinlist_endian_convert (void *msg)
