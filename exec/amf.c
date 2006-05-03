@@ -64,9 +64,8 @@
 #include "main.h"
 #include "service.h"
 #include "objdb.h"
-
-#define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
+
 #define LOG_LEVEL_FROM_LIB LOG_LEVEL_DEBUG
 #define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
 #define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG
@@ -682,7 +681,7 @@ int clc_cli_instantiate (struct amf_comp *comp)
 
 	struct clc_command_run_data *clc_command_run_data;
 
-	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+	ENTER("comp %s\n", getSaNameT (&comp->name));
 
 	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
@@ -696,13 +695,13 @@ int clc_cli_instantiate (struct amf_comp *comp)
 
 int clc_instantiate_callback (struct amf_comp *comp)
 {
-	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+	ENTER("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 
 int clc_csi_set_callback (struct amf_comp *comp)
 {
-	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+	ENTER("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 
@@ -711,7 +710,7 @@ int clc_csi_set_callback (struct amf_comp *comp)
  */
 int clc_cli_terminate (struct amf_comp *comp)
 {
-	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+	ENTER("comp %s\n", getSaNameT (&comp->name));
 	return (0);
 }
 int clc_terminate_callback (struct amf_comp *comp)
@@ -719,7 +718,7 @@ int clc_terminate_callback (struct amf_comp *comp)
 	struct res_lib_amf_componentterminatecallback res_lib_amf_componentterminatecallback;
 	struct component_terminate_callback_data *component_terminate_callback_data;
 
-	ENTER_ARGS("comp %s\n", getSaNameT (&comp->name));
+	ENTER("comp %s\n", getSaNameT (&comp->name));
 
 	if (comp->presence_state != SA_AMF_PRESENCE_INSTANTIATED) {
 		dprintf ("component terminated but not instantiated %s - %d\n",
@@ -930,6 +929,8 @@ int amf_lib_exit_fn (void *conn)
 	struct amf_pd *amf_pd = (struct amf_pd *)openais_conn_private_data_get (conn);
 
 	comp = amf_pd->comp;
+
+	TRACE8("amf_lib_exit_fn");
 
 	if (comp) {
 		comp->conn = 0;
@@ -2291,9 +2292,8 @@ void healthcheck_activate (struct healthcheck_active *healthcheck_active)
 	res_lib_amf_healthcheckcallback.header.size = sizeof (struct res_lib_amf_healthcheckcallback);
 	res_lib_amf_healthcheckcallback.header.error = SA_AIS_OK;
 
-
-	log_printf (LOG_LEVEL_DEBUG, "sending healthcheck to component %s\n",
-		getSaNameT (&healthcheck_active->comp->name));
+	TRACE8 ("sending healthcheck to component %s",
+			getSaNameT (&healthcheck_active->comp->name));
 
 	res_lib_amf_healthcheckcallback.invocation =
 		invocation_create (
@@ -3004,7 +3004,7 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	void *data;
 	SaAisErrorT error = SA_AIS_OK;
 
-	ENTER();
+	ENTER_VOID();
 
 	res = invocation_get_and_destroy (req_lib_amf_response->invocation,
 		&interface, &data);
@@ -3080,7 +3080,7 @@ error_exit:
 	openais_conn_send_response (conn, &res_lib_amf_response,
 		sizeof (struct res_lib_amf_response));
 
-	LEAVE();
+	LEAVE_VOID();
 }
 
 

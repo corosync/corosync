@@ -202,33 +202,27 @@ int openais_main_config_read (
 				while (token != NULL) {
 					if (strcmp (token, "enter") == 0) {
 						main_config->logger[i].tags |= TAG_ENTER;
-					} else
-					if (strcmp (token, "leave") == 0) {
+					} else if (strcmp (token, "leave") == 0) {
 						main_config->logger[i].tags |= TAG_LEAVE;
-					} else
-					if (strcmp (token, "trace1") == 0) {
+					} else if (strcmp (token, "trace1") == 0) {
 						main_config->logger[i].tags |= TAG_TRACE1;
-					} else
-					if (strcmp (token, "trace2") == 0) {
+					} else if (strcmp (token, "trace2") == 0) {
 						main_config->logger[i].tags |= TAG_TRACE2;
-					} else
-					if (strcmp (token, "trace3") == 0) {
+					} else if (strcmp (token, "trace3") == 0) {
 						main_config->logger[i].tags |= TAG_TRACE3;
-					}
-					if (strcmp (token, "trace4") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
-					}
-					if (strcmp (token, "trace5") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
-					}
-					if (strcmp (token, "trace6") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
-					}
-					if (strcmp (token, "trace7") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
-					}
-					if (strcmp (token, "trace8") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
+					} else if (strcmp (token, "trace4") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE4;
+					} else if (strcmp (token, "trace5") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE5;
+					} else if (strcmp (token, "trace6") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE6;
+					} else if (strcmp (token, "trace7") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE7;
+					} else if (strcmp (token, "trace8") == 0) {
+						main_config->logger[i].tags |= TAG_TRACE8;
+					} else {
+						error_reason = "bad tags value";
+						goto parse_error;
 					}
 
 					token = strtok(NULL, "|");

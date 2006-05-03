@@ -58,8 +58,6 @@
 #include "util.h"
 #include "main.h"
 #include "totempg.h"
-
-#define LOG_SERVICE LOG_SERVICE_MSG
 #include "print.h"
 
 enum msg_exec_message_req_types {

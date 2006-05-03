@@ -56,10 +56,7 @@
 #include "totem.h"
 #include "vsf.h"
 #include "swab.h"
-
 #include "../lcr/lcr_ifact.h"
-
-#define LOG_SERVICE LOG_SERVICE_SYNC
 #include "print.h"
 
 #define MESSAGE_REQ_SYNC_BARRIER 0

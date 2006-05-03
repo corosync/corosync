@@ -60,8 +60,6 @@
 #include "main.h"
 #include "mempool.h"
 #include "service.h"
-
-#define LOG_SERVICE LOG_SERVICE_EVS
 #include "print.h"
 
 enum evs_exec_message_req_types {
@@ -71,6 +69,7 @@ enum evs_exec_message_req_types {
 /*
  * Service Interfaces required by service_message_handler struct
  */
+static int evs_exec_init_fn(struct objdb_iface_ver0 *objdb);
 static void evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	struct totem_ip_address *member_list, int member_list_entries,
@@ -151,7 +150,7 @@ struct openais_service_handler evs_service_handler = {
 	.exec_service		= evs_exec_service,
 	.exec_service_count	= sizeof (evs_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn		= evs_confchg_fn,
-	.exec_init_fn		= NULL,
+	.exec_init_fn		= evs_exec_init_fn,
 	.exec_dump_fn		= NULL
 };
 
@@ -195,6 +194,15 @@ __attribute__ ((constructor)) static void evs_comp_register (void) {
 	lcr_interfaces_set (&openais_evs_ver0[0], &evs_service_handler_iface);
 
 	lcr_component_register (&evs_comp_ver0);
+}
+
+static int evs_exec_init_fn(struct objdb_iface_ver0 *objdb)
+{
+	(void) objdb;
+
+	log_init ("EVS");
+
+	return 0;
 }
 
 struct res_evs_confchg_callback res_evs_confchg_callback;

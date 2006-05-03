@@ -58,10 +58,7 @@
 #include "print.h"
 #include "swab.h"
 #include "vsf.h"
-
 #include "../lcr/lcr_comp.h"
-
-#define LOG_SERVICE LOG_SERVICE_YKD
 
 enum ykd_header_values {
 	YKD_HEADER_SENDSTATE = 0,

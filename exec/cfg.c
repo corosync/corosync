@@ -58,9 +58,8 @@
 #include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
-
-#define LOG_SERVICE LOG_SERVICE_AMF
 #include "print.h"
+
 #define LOG_LEVEL_FROM_LIB LOG_LEVEL_DEBUG
 #define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
 #define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG

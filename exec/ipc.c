@@ -803,6 +803,8 @@ void openais_ipc_init (
 	struct sockaddr_un un_addr;
 	int res;
 
+	log_init ("IPC");
+
 	/*
 	 * Create socket for libais clients, name socket, listen for connections
 	 */

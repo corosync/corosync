@@ -59,10 +59,9 @@
 #include "util.h"
 #include "main.h"
 #include "totempg.h"
-
-#define LOG_SERVICE LOG_SERVICE_CKPT
-#define CKPT_MAX_SECTION_DATA_SEND (1024*400)
 #include "print.h"
+
+#define CKPT_MAX_SECTION_DATA_SEND (1024*400)
 
 enum ckpt_message_req_types {
 	MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN = 0,

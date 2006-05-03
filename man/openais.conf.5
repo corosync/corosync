@@ -344,7 +344,7 @@ The default is 17 messages.
 .PP
 Within the 
 .B logging
-directive, there are six configuration options which are all optional:
+directive, there are seven configuration options which are all optional:
 .TP
 to_stderr
 .TP
@@ -372,6 +372,47 @@ The default is off.
 .TP
 timestamp
 This specifies that a timestamp is placed on all log messages.
+
+The default is off.
+
+.TP
+fileline
+This specifies that file and line should be printed instead of logger name.
+
+The default is off.
+
+.PP
+.PP
+Within the 
+.B logging
+directive, logger directives are optional.
+.PP
+.PP
+Within the 
+.B logger
+sub-directive of logging there are three configuration options:
+
+.TP
+ident
+This specifies the identity (name) for which logging is specified. This directive is required.
+
+.TP
+debug
+This specifies whether debug output is logged for this particular logger.
+
+The default is off.
+
+.TP
+tags
+This specifies which tags should be traced for this particular logger.
+Set debug directive to
+.B on
+in order to enable tracing using tags.
+Values are specified using a vertical bar as a logical OR separator:
+
+enter|return|trace1|trace2|trace3|...
+
+The default is none.
 
 .PP
 Within the 

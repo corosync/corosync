@@ -47,8 +47,9 @@
 #define LOG_MODE_TIMESTAMP	2
 #define LOG_MODE_FILE		4
 #define LOG_MODE_SYSLOG		8
-#define LOG_MODE_STDERR		16
-#define LOG_MODE_FILELINE   32
+#define LOG_MODE_STDERR	   16
+#define LOG_MODE_FILELINE  32
+#define LOG_MODE_BUFFER    64
 
 /*
  * Log levels, compliant with syslog and SA Forum Log spec.
@@ -80,9 +81,9 @@
 
 struct logger {
 	char ident[6];
-	int level;
-	int tags;
-	int mode;
+	unsigned int level;
+	unsigned int tags;
+	unsigned int mode;
 };
 
 extern struct logger loggers[];
@@ -94,7 +95,9 @@ extern struct logger loggers[];
 static int logger_identifier __attribute__((unused));
 
 extern void internal_log_printf (char *file, int line, int priority, char *format, ...);
-extern void internal_log_printf2 (char *file, int line, int priority, char *format, ...);
+extern void internal_log_printf2 (char *file, int line, int level, int id, char *format, ...);
+extern void trace (char *file, int line, int tag, int id, char *format, ...);
+extern void log_flush(void);
 
 #define LEVELMASK 0x07                 /* 3 bits */
 #define LOG_LEVEL(p) ((p) & LEVELMASK)
@@ -118,37 +121,85 @@ static inline void log_init (const char *ident)
 
 #define log_printf(lvl, format, args...) do { \
     if ((lvl) <= loggers[logger_identifier].level)	{ \
-		internal_log_printf2 (__FILE__, __LINE__, _mkpri ((lvl), logger_identifier), format, ##args);  \
+		internal_log_printf2 (__FILE__, __LINE__, lvl, logger_identifier, format, ##args);  \
     } \
 } while(0)
 
 #define dprintf(format, args...) do { \
     if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level)	{ \
-		internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), format, ##args);  \
+		internal_log_printf2 (__FILE__, __LINE__, LOG_LEVEL_DEBUG, logger_identifier, format, ##args);  \
     } \
 } while(0)
 
-#define ENTER() do { \
-    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_ENTER & loggers[logger_identifier].tags))	{ \
-        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), ">%s\n", __FUNCTION__); \
+#define ENTER_VOID() do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_ENTER, logger_identifier, ">%s\n", __FUNCTION__); \
     } \
 } while(0)
 
-#define ENTER_ARGS(format, args...) do { \
-    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_ENTER & loggers[logger_identifier].tags))	{ \
-        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), ">%s: " format, __FUNCTION__, ##args); \
+#define ENTER(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level)  { \
+		trace (__FILE__, __LINE__, TAG_ENTER, logger_identifier, ">%s: " format, __FUNCTION__, ##args); \
     } \
 } while(0)
 
-#define LEAVE() do { \
-    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_LEAVE & loggers[logger_identifier].tags))	{ \
-        internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), "<%s\n", __FUNCTION__); \
+#define LEAVE_VOID() do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_LEAVE, logger_identifier, "<%s\n", __FUNCTION__); \
+    } \
+} while(0)
+
+#define LEAVE(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level)  { \
+		trace (__FILE__, __LINE__, TAG_LEAVE, logger_identifier, ">%s: " format, __FUNCTION__, ##args); \
+    } \
+} while(0)
+
+#define TRACE1(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE1, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE2(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE2, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE3(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE3, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE4(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE4, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE5(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE5, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE6(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE6, logger_identifier, format, ##args);  \
+    } \
+} while(0)
+
+#define TRACE7(format, args...) do { \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE7, logger_identifier, format, ##args);  \
     } \
 } while(0)
 
 #define TRACE8(format, args...) do { \
-    if ((LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) && (TAG_TRACE8 & loggers[logger_identifier].tags)) { \
-		internal_log_printf2 (__FILE__, __LINE__, _mkpri (LOG_LEVEL_DEBUG, logger_identifier), format, ##args);  \
+    if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level) { \
+		trace (__FILE__, __LINE__, TAG_TRACE8, logger_identifier, format, ##args);  \
     } \
 } while(0)
 

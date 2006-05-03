@@ -72,9 +72,7 @@
 #include "objdb.h"
 #include "config.h"
 #include "ipc.h"
-#define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
-
 #include "util.h"
 
 #define SERVER_BACKLOG 5

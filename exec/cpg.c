@@ -63,8 +63,6 @@
 #include "service.h"
 #include "jhash.h"
 #include "swab.h"
-
-#define LOG_SERVICE LOG_SERVICE_CPG
 #include "print.h"
 
 #define GROUP_HASH_SIZE 32

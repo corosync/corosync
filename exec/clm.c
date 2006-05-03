@@ -67,10 +67,7 @@
 #include "main.h"
 #include "mempool.h"
 #include "service.h"
-
-#define LOG_SERVICE LOG_SERVICE_CLM
 #include "print.h"
-
 
 enum clm_message_req_types {
 	MESSAGE_REQ_EXEC_CLM_NODEJOIN = 0

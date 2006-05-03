@@ -53,8 +53,6 @@
 #include "print.h"
 #include "objdb.h"
 
-#define LOG_SERVICE LOG_SERVICE_GMI
-
 #if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 	#define HZ 100  /* 10ms */
 #endif

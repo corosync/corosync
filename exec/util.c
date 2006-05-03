@@ -42,7 +42,6 @@
 #include "../include/list.h"
 #include "aispoll.h"
 #include "util.h"
-#define LOG_SERVICE LOG_SERVICE_MAIN
 #include "print.h"
 
 /*
@@ -79,6 +78,7 @@ SaTimeT clust_time_now(void)
 void openais_exit_error (enum e_ais_done err)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting (%d).\n", err);
+	log_flush();
 	exit (err);
 }
 

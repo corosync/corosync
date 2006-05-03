@@ -42,7 +42,6 @@
 #include "service.h"
 #include "mainconfig.h"
 #include "util.h"
-#define LOG_SERVICE LOG_SERVICE_SERV
 #include "print.h"
 
 struct default_service {

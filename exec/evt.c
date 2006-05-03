@@ -61,8 +61,6 @@
 #include "totemip.h"
 #include "totempg.h"
 #include "swab.h"
-
-#define LOG_SERVICE LOG_SERVICE_EVT
 #include "print.h"
 
 /*
@@ -3035,6 +3033,7 @@ static int evt_exec_init(struct objdb_iface_ver0 *objdb)
 	unsigned int object_service_handle;
 	char *value;
 
+	log_init ("EVT");
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
