@@ -373,9 +373,11 @@ evt_free:
 
 static int err_wait_time = -1;
 
+#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
 static struct sched_param sched_param = {
 	sched_priority: 1
 };
+#endif
 
 int main (int argc, char **argv)
 {
@@ -384,7 +386,9 @@ int main (int argc, char **argv)
 	int option;
 	char *p;
 
+#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
 	sched_setscheduler (0, SCHED_RR, &sched_param);
+#endif
 
 	while (1) {
 		option = getopt(argc, argv, opts);
