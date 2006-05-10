@@ -183,13 +183,18 @@ static int read_config_file_into_objdb(
 	char **error_string)
 {
 	FILE *fp;
+	char *filename;
 	char *error_reason = error_string_response;
 	int res;
 
-	fp = fopen (OPENAIS_CONFDIR "/openais.conf", "r");
+	filename = getenv("OPENAIS_AISPARSER_FILE");
+	if (!filename)
+		filename = "etc/ais/openais.conf";
+
+	fp = fopen (filename, "r");
 	if (fp == 0) {
-		sprintf (error_reason, "Can't read file %s/openais.conf reason = (%s)\n",
-			 OPENAIS_CONFDIR, strerror (errno));
+		sprintf (error_reason, "Can't read file %s reason = (%s)\n",
+			 filename, strerror (errno));
 		*error_string = error_reason;
 		return -1;
 	}

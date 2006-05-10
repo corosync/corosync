@@ -244,6 +244,7 @@ extern int openais_amf_config_read (char **error_string)
 {
 	char line[255];
 	FILE *fp;
+	char *filename;
 	amf_parse_t current_parse = AMF_HEAD;
 	int line_number = 0;
 	char *loc;
@@ -254,17 +255,20 @@ extern int openais_amf_config_read (char **error_string)
 	struct amf_comp *amf_comp = 0;
 	struct amf_si *amf_si = 0;
 	struct amf_healthcheck *amf_healthcheck = 0;
-        struct amf_comp_csi_type_name *csi_type_name = 0;
-        struct amf_csi *amf_csi = 0;
-        struct amf_csi_name_value *csi_name_value = NULL;
+	struct amf_comp_csi_type_name *csi_type_name = 0;
+	struct amf_csi *amf_csi = 0;
+	struct amf_csi_name_value *csi_name_value = NULL;
 
+	filename = getenv("OPENAIS_AMF_CONFIG_FILE");
+	if (!filename)
+		filename = "etc/ais/groups.conf";
 
-	fp = fopen (OPENAIS_CONFDIR "/groups.conf", "r");
+	fp = fopen (filename, "r");
 
 	if (fp == 0) {
 		sprintf (error_string_response,
-			"Can't read %s/groups.conf file reason = (%s).\n",
-			 OPENAIS_CONFDIR, strerror (errno));
+			"Can't read %s file reason = (%s).\n",
+			 filename, strerror (errno));
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -633,7 +637,7 @@ extern int openais_amf_config_read (char **error_string)
 
 parse_error:
 	sprintf (error_string_response,
-		"parse error at %s/groups.conf:%d.\n", OPENAIS_CONFDIR, line_number);
+		"parse error at %s: %d.\n", filename, line_number);
 	*error_string = error_string_response;
 	fclose (fp);
 	return (-1);

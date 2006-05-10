@@ -31,21 +31,6 @@ endif
 # OPENAIS_PROFILE
 # OPENAIS_COVERAGE
 
-# OPENAIS_USER, OPENAIS_GROUP default to ais
-#
-ifndef OPENAIS_USER
-	OPENAIS_USER=ais
-endif
-ifndef OPENAIS_GROUP
-	OPENAIS_GROUP=ais
-endif
-
-# OPENAIS_CONFDIR, directory where configuration files are stored
-#
-ifndef OPENAIS_CONFDIR
-	OPENAIS_CONFDIR=/etc/ais
-endif
-
 # default CFLAGS, LDFLAGS
 #
 CFLAGS = 

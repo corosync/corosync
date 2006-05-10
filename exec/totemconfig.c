@@ -212,8 +212,8 @@ extern int totem_config_read (
 
 		if (interface_max == totem_config->interface_count) {
 			sprintf (error_reason,
-				 "%d is too many interfaces in %s/network.conf",
-				 totem_config->interface_count, OPENAIS_CONFDIR);
+				 "%d is too many configured interfaces",
+				 totem_config->interface_count);
 			goto parse_error;
 		}
 
@@ -554,7 +554,10 @@ int totem_config_keyread (
 
 	/* In desperation we read the default filename */
 	if (!got_key) {
-		res = read_keyfile(OPENAIS_CONFDIR "/authkey", totem_config, error_string);
+		char *filename = getenv("OPENAIS_TOTEM_AUTHKEY_FILE");
+		if (!filename)
+			filename = "etc/ais/authkey";
+		res = read_keyfile(filename, totem_config, error_string);
 		if (res)
 			goto key_error;
 
