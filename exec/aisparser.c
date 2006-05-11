@@ -187,9 +187,9 @@ static int read_config_file_into_objdb(
 	char *error_reason = error_string_response;
 	int res;
 
-	filename = getenv("OPENAIS_AISPARSER_FILE");
+	filename = getenv("OPENAIS_MAIN_CONFIG_FILE");
 	if (!filename)
-		filename = "etc/ais/openais.conf";
+		filename = "/etc/ais/openais.conf";
 
 	fp = fopen (filename, "r");
 	if (fp == 0) {

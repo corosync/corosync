@@ -1,5 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
+.\" * Copyright (c) 2006 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH OPENAIS_OVERVIEW 8 2005-06-08 "openais Man Page" "Openais Programmer's Manual"
+.TH OPENAIS_OVERVIEW 8 2006-05-10 "openais Man Page" "Openais Programmer's Manual"
 .SH OVERVIEW
 The openais project is a project to implement a production quality "Revised BSD"
 licensed implementation of the most recent SA Forum's Application Interface
@@ -192,19 +193,66 @@ IPv6 traffic.
 .SH ARCHITECTURE
 The AIS libraries are a thin IPC interface to the openais executive.  The
 openais executive provides services for the SA Forum AIS libraries as well
-as the EVS library.
+as the EVS and CPG libraries.
 
 The openais executive uses the Totem extended virtual synchrony protocol.  The
 advantage to the end user is excellent performance characteristics and a proven
 protocol with excellent reliability.  This protocol connects the processors
 in a configuration together so they may communicate.
 
+.SH ENVIRONMENT VARIABLES
+The openais executive process uses four environment variables during startup.
+If these environment variables are not set, defaults will be used.
+
+.TP
+OPENAIS_MAIN_CONFIG_FILE
+This specifies the fully qualified path to the openais configuration file.
+
+The default is /etc/ais/openais.conf.
+
+.TP
+OPENAIS_AMF_CONFIG_FILE
+This specifies the fully qualified path to the openais Availability Management
+Framework configuration file.
+
+The default is /etc/ais/groups.conf.
+
+.TP
+OPENAIS_DEFAULT_CONFIG_IFACE
+This specifies the LCRSO that is used to parse the configuration file.  This
+allows other configuration file parsers to be implemented within the system.
+
+The default is to use the default openais configuration file parser which
+parses the format specified in openais.conf (5).
+
+.TP
+OPENAIS_TOTEM_AUTHKEY_FILE
+This specifies the fully qualified path to the shared key used to
+authenticate and encrypt data used within the Totem protocol.
+
+The default is /etc/ais/authkey.
+
 .SH SECURITY
-The openais executive encrypts all messages sent over the network using the
-SOBER-128 stream cipher.  The openais executive uses HMAC and SHA1 to
+The openais executive optionally encrypts all messages sent over the network
+using the SOBER-128 stream cipher.  The openais executive uses HMAC and SHA1 to
 authenticate all messages.  The openais executive library uses SOBER-128
 as a pseudo random number generator.  The EVS library feeds the PRNG using
 the /dev/random Linux device.
+
+If membership messages can be captured by intruders, it is possible to execute
+a denial of service attack on the cluster.  In this scenario, the cluster is
+likely already compromised and a DOS attack is the least of the administration's
+worries.
+
+The security in openais does not offer perfect forward secrecy because the keys
+are reused.  It may be possible for an intruder by capturing packets in an
+automated fashion to determine the shared key.  No such automated attack has
+been published as of yet.  In this scenario, the cluster is likely already
+compromised to allow the long-term capture of transmitted data.
+
+For security reasons, the openais executive binary aisexec should NEVER
+be setuid or setgid in the filesystem.
+
 .PP
 .SH SAFTEST COMPLIANCE
 The openais libraries are now nearly compliant with every aspect of the SA
@@ -213,8 +261,10 @@ B.01.01 specification.  The remaining services pass most of the tests of the
 saftest suite against the B.01.01 specification.
 
 .SH BUGS
-The openais project does not currently implement the messaging service.
-The distributed locking service is buggy and incomplete.
+The messaging service is partially implemented and not suitable for deployment.
+The distributed locking service is buggy and not suitable for deployment.
+The Availability Management Framework is under development and not suitable for
+deployment..
 
 .SH "SEE ALSO"
 .BR openais.conf (5),

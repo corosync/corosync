@@ -556,7 +556,7 @@ int totem_config_keyread (
 	if (!got_key) {
 		char *filename = getenv("OPENAIS_TOTEM_AUTHKEY_FILE");
 		if (!filename)
-			filename = "etc/ais/authkey";
+			filename = "/etc/ais/authkey";
 		res = read_keyfile(filename, totem_config, error_string);
 		if (res)
 			goto key_error;

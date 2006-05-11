@@ -261,7 +261,7 @@ extern int openais_amf_config_read (char **error_string)
 
 	filename = getenv("OPENAIS_AMF_CONFIG_FILE");
 	if (!filename)
-		filename = "etc/ais/groups.conf";
+		filename = "/etc/ais/groups.conf";
 
 	fp = fopen (filename, "r");
 
