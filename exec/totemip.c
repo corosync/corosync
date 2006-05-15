@@ -254,7 +254,7 @@ int totemip_parse(struct totem_ip_address *totemip, char *addr)
 	/* Lookup the nodename address */
 	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
 	if (ret)
-		return -errno;
+		return -1;
 
 	sa = (struct sockaddr_in *)ainfo->ai_addr;
 	sa6 = (struct sockaddr_in6 *)ainfo->ai_addr;
