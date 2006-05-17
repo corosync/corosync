@@ -45,7 +45,8 @@ enum service_types {
 	EVT_SERVICE = 4,
 	LCK_SERVICE = 5,
 	MSG_SERVICE = 6,
-	CFG_SERVICE = 7
+	CFG_SERVICE = 7,
+	CPG_SERVICE = 8
 };
 
 enum req_init_types {

@@ -38,8 +38,6 @@
 #include "saAis.h"
 #include "ipc_gen.h"
 
-#define CPG_SERVICE 9
-
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
 	MESSAGE_REQ_CPG_LEAVE = 1,
