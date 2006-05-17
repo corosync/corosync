@@ -254,6 +254,7 @@ static int ldso_path_build (char *path, char *filename)
 		}
 		path_list[path_list_entries++] = strdup (string);
 	}
+	fclose(fp);
 	return (0);
 }
 
