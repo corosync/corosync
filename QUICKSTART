@@ -94,7 +94,7 @@ a message count. Until the man page is done you'll have to check the code and th
 totem spec for the function and usage of the timeouts.
 
 
-The directory conf contains the file groups.conf which specifies the failover
+The directory conf contains the file amf.conf which specifies the failover
 groups, service units, components, and policies to be used by the AMF.  The
 configuration file matches the testamf1-6 programs in the test directory and
 can be copied directly.
@@ -212,7 +212,7 @@ su to ais user
 The test/testamf{1-6} implement three seperate service units (SU).  SU #1
 consists of testamf1, testamf2.  SU #2 consists of testamf3, testamf4.
 SU #3 consists of testamf5, testamf6.  The active and backup directives 
-in groups.conf define how many SU's become active and how many
+in amf.conf define how many SU's become active and how many
 become standby in the service group (SG).
 
 To test the openais AMF, run testamf3 and testamf4 on one node.  Both

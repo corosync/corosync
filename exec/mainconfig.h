@@ -75,8 +75,6 @@ struct main_config {
 	struct logger_config *logger;
 };
 
-extern char *strstr_rs (const char *haystack, const char *needle);
-
 extern int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,

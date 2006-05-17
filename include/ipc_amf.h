@@ -49,7 +49,7 @@ enum req_lib_amf_types {
 	MESSAGE_REQ_AMF_HEALTHCHECKSTOP = 6,
 	MESSAGE_REQ_AMF_HASTATEGET = 7,
 	MESSAGE_REQ_AMF_CSIQUIESCINGCOMPLETE = 8,
-	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART = 9,
+	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACK = 9,
 	MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTOP = 10,
 	MESSAGE_REQ_AMF_COMPONENTERRORREPORT = 11,
 	MESSAGE_REQ_AMF_COMPONENTERRORCLEAR = 12,
@@ -66,7 +66,7 @@ enum res_lib_amf_types {
 	MESSAGE_RES_AMF_HEALTHCHECKSTOP = 6,
 	MESSAGE_RES_AMF_HASTATEGET = 7,
 	MESSAGE_RES_AMF_CSIQUIESCINGCOMPLETE = 8,
-	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTART = 9,
+	MESSAGE_RES_AMF_PROTECTIONGROUPTRACK = 9,
 	MESSAGE_RES_AMF_PROTECTIONGROUPTRACKSTOP = 10,
 	MESSAGE_RES_AMF_COMPONENTERRORREPORT = 11,
 	MESSAGE_RES_AMF_COMPONENTERRORCLEAR = 12,
@@ -176,14 +176,14 @@ struct res_lib_amf_csiquiescingcomplete {
 	struct res_header header;
 };
 
-struct req_lib_amf_protectiongrouptrackstart {
+struct req_lib_amf_protectiongrouptrack {
 	struct req_header header;
 	SaNameT csiName;
 	SaUint8T trackFlags;
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
 };
 
-struct res_lib_amf_protectiongrouptrackstart {
+struct res_lib_amf_protectiongrouptrack {
 	struct res_header header;
 };
 	

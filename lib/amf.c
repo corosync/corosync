@@ -328,10 +328,10 @@ saAmfDispatch (
 			int i;
 			
 			for (i=0; i<csi_descriptor.csiAttr.number; i++) {
-			    csi_attribute_array[i].attrName = p;
+			    csi_attribute_array[i].attrName = (SaUint8T*)p;
 
 			    p += strlen(p) + 1;
-			    csi_attribute_array[i].attrValue = p;
+			    csi_attribute_array[i].attrValue = (SaUint8T*)p;
 
 			    p += strlen(p) + 1;
 			}
@@ -873,16 +873,16 @@ saAmfProtectionGroupTrack (
 	const SaAmfProtectionGroupNotificationT *notificationBuffer)
 {
 	struct amfInstance *amfInstance;
-	struct req_lib_amf_protectiongrouptrackstart req_lib_amf_protectiongrouptrackstart;
-	struct res_lib_amf_protectiongrouptrackstart res_lib_amf_protectiongrouptrackstart;
+	struct req_lib_amf_protectiongrouptrack req_lib_amf_protectiongrouptrack;
+	struct res_lib_amf_protectiongrouptrack res_lib_amf_protectiongrouptrack;
 	SaAisErrorT error;
 
-	req_lib_amf_protectiongrouptrackstart.header.size = sizeof (struct req_lib_amf_protectiongrouptrackstart);
-	req_lib_amf_protectiongrouptrackstart.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACKSTART;
-	memcpy (&req_lib_amf_protectiongrouptrackstart.csiName, csiName,
+	req_lib_amf_protectiongrouptrack.header.size = sizeof (struct req_lib_amf_protectiongrouptrack);
+	req_lib_amf_protectiongrouptrack.header.id = MESSAGE_REQ_AMF_PROTECTIONGROUPTRACK;
+	memcpy (&req_lib_amf_protectiongrouptrack.csiName, csiName,
 		sizeof (SaNameT));
-	req_lib_amf_protectiongrouptrackstart.trackFlags = trackFlags;
-	req_lib_amf_protectiongrouptrackstart.notificationBufferAddress = (SaAmfProtectionGroupNotificationT *)notificationBuffer;
+	req_lib_amf_protectiongrouptrack.trackFlags = trackFlags;
+	req_lib_amf_protectiongrouptrack.notificationBufferAddress = (SaAmfProtectionGroupNotificationT *)notificationBuffer;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
@@ -893,16 +893,16 @@ saAmfProtectionGroupTrack (
 	pthread_mutex_lock (&amfInstance->response_mutex);
 
 	error = saSendReceiveReply (amfInstance->response_fd,
-		&req_lib_amf_protectiongrouptrackstart,
-		sizeof (struct req_lib_amf_protectiongrouptrackstart),
-		&res_lib_amf_protectiongrouptrackstart,
-		sizeof (struct res_lib_amf_protectiongrouptrackstart));
+		&req_lib_amf_protectiongrouptrack,
+		sizeof (struct req_lib_amf_protectiongrouptrack),
+		&res_lib_amf_protectiongrouptrack,
+		sizeof (struct res_lib_amf_protectiongrouptrack));
 
 	pthread_mutex_unlock (&amfInstance->response_mutex);
 
 	saHandleInstancePut (&amfHandleDatabase, amfHandle);
 
-        return (error == SA_AIS_OK ? res_lib_amf_protectiongrouptrackstart.header.error : error);
+        return (error == SA_AIS_OK ? res_lib_amf_protectiongrouptrack.header.error : error);
 }
 
 SaAisErrorT

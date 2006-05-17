@@ -62,9 +62,12 @@ enum e_ais_done {
 	AIS_DONE_DYNAMICLOAD = -12,
 	AIS_DONE_OBJDB = -13,
 	AIS_DONE_INIT_SERVICES = -14,
+	AIS_DONE_OUT_OF_MEMORY = -15,
 };
 
 void openais_exit_error (enum e_ais_done err);
-
 extern char *getSaNameT (SaNameT *name);
+extern char *strstr_rs (const char *haystack, const char *needle);
+extern void setSaNameT (SaNameT *name, char *str);
+extern int SaNameTisEqual (SaNameT *str1, char *str2);
 #endif /* UTIL_H_DEFINED */

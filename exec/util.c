@@ -84,6 +84,7 @@ void openais_exit_error (enum e_ais_done err)
 
 char *getSaNameT (SaNameT *name)
 {
+#if 0
 	static char ret_name[300];
 
 	memset (ret_name, 0, sizeof (ret_name));
@@ -94,4 +95,53 @@ char *getSaNameT (SaNameT *name)
 		memcpy (ret_name, name->value, name->length);
 	}
 	return (ret_name);
+#endif
+	return name->value;
 }
+
+char *strstr_rs (const char *haystack, const char *needle)
+{
+	char *end_address;
+	char *new_needle;
+
+	new_needle = (char *)strdup (needle);
+	new_needle[strlen (new_needle) - 1] = '\0';
+
+	end_address = strstr (haystack, new_needle);
+	if (end_address) {
+		end_address += strlen (new_needle);
+		end_address = strstr (end_address, needle + strlen (new_needle));
+	}
+	if (end_address) {
+		end_address += 1; /* skip past { or = */
+		do {
+			if (*end_address == '\t' || *end_address == ' ') {
+				end_address++;
+			} else {
+				break;
+			}
+		} while (*end_address != '\0');
+	}
+
+	free (new_needle);
+	return (end_address);
+}
+
+void setSaNameT (SaNameT *name, char *str) {
+	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
+	if (strlen ((char *)name->value) > SA_MAX_NAME_LENGTH) {
+		name->length = SA_MAX_NAME_LENGTH;
+	} else {
+		name->length = strlen (str);
+	}
+}
+
+int SaNameTisEqual (SaNameT *str1, char *str2) {
+	if (str1->length == strlen (str2)) {
+		return ((strncmp ((char *)str1->value, (char *)str2,
+			str1->length)) == 0);
+	} else {
+		return 0;
+	}
+}
+

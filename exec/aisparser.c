@@ -49,6 +49,7 @@
 #include "objdb.h"
 #include "config.h"
 #include "mempool.h"
+#include "util.h"
 
 static int read_config_file_into_objdb(
 	struct objdb_iface_ver0 *objdb,
@@ -66,7 +67,7 @@ static int aisparser_readconfig (struct objdb_iface_ver0 *objdb, char **error_st
 }
 
 
-char *remove_whitespace(char *string)
+static char *remove_whitespace(char *string)
 {
 	char *start = string+strspn(string, " \t");
 	char *end = start+(strlen(start))-1;
@@ -77,34 +78,6 @@ char *remove_whitespace(char *string)
 		*(end+1) = '\0';
 
 	return start;
-}
-
-char *strstr_rs (const char *haystack, const char *needle)
-{
-	char *end_address;
-	char *new_needle;
-
-	new_needle = (char *)mempool_strdup (needle);
-	new_needle[strlen(new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
-	}
-
-	mempool_free (new_needle);
-	return (end_address);
 }
 
 static int parse_section(FILE *fp,

@@ -156,15 +156,16 @@ void CSISetCallback (
 		printf ("' for component ");
 		printSaNameT ((SaNameT *)compName);
 		printf ("'");
- 		printf (" requested to enter hastate SA_AMF_ACTIVE.\n");
+ 		printf (" requested to enter hastate SA_AMF_ACTIVE for CSI %s\n",
+				csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		int i;
 		TR(TRU, csiDescriptor->csiAttr.number);
 		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
 
-		    if( strcmp(csiDescriptor->csiAttr.attr[i].attrName, "good_health_limit") == 0){
-			good_health = strcmp(csiDescriptor->csiAttr.attr[i].attrValue, "0") ? 0 : 1;
-			good_health_limit = atoi(csiDescriptor->csiAttr.attr[i].attrValue);
+		    if( strcmp((char*)csiDescriptor->csiAttr.attr[i].attrName, "good_health_limit") == 0){
+			good_health = strcmp((char*)csiDescriptor->csiAttr.attr[i].attrValue, "0") ? 0 : 1;
+			good_health_limit = atoi((char*)csiDescriptor->csiAttr.attr[i].attrValue);
 			
 		    }
 
@@ -188,13 +189,14 @@ void CSISetCallback (
 		printf ("' for component ");
 		printSaNameT ((SaNameT *)compName);
 		printf ("'");
-		printf (" requested to enter hastate SA_AMF_STANDBY.\n");
+		printf (" requested to enter hastate SA_AMF_STANDBY for CSI %s\n",
+				csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		
 		TR(TRU,csiDescriptor->csiAttr.number);
 		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
-		    if(!strcmp(csiDescriptor->csiAttr.attr[i].attrName, "good_health") && 
-		       !strcmp(csiDescriptor->csiAttr.attr[i].attrValue, "true")){
+		    if(!strcmp((char*)csiDescriptor->csiAttr.attr[i].attrName, "good_health") && 
+		       !strcmp((char*)csiDescriptor->csiAttr.attr[i].attrValue, "true")){
 			good_health = 1;
 		    }
 		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrName);

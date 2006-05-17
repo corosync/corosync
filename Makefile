@@ -105,7 +105,7 @@ install:
 	install -m 755 exec/aisexec $(SBINDIR)
 	install -m 755 exec/keygen $(SBINDIR)/ais-keygen
 	install -m 755 conf/openais.conf $(ETCDIR)
-	install -m 755 conf/groups.conf $(ETCDIR)
+	install -m 755 conf/amf.conf $(ETCDIR)
 
 	install -m 644 include/saAis.h $(INCLUDEDIR)
 	install -m 644 include/saAmf.h $(INCLUDEDIR)

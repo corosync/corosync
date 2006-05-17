@@ -295,12 +295,12 @@ int poll_timer_add (
 		goto error_exit;
 	}
 
-	timerlist_add_future (&poll_instance->timerlist,
-		timer_fn, data, msec_in_future, timer_handle_out);
-
 	if (timer_handle_out == 0) {
 		res = -ENOENT;
 	}
+
+	timerlist_add_future (&poll_instance->timerlist,
+		timer_fn, data, msec_in_future, timer_handle_out);
 
 	hdb_handle_put (&poll_instance_database, handle);
 error_exit:

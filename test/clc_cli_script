@@ -33,7 +33,8 @@
 # It may be modified to do any action desired.
 
 instantiate() {
-	./openais-instantiate $COMP_BINARY_PATH/$COMP_BINARY_NAME
+	echo clc_cli_script instantiating component $SA_AMF_COMPONENT_NAME $1
+	./openais-instantiate $1
 	RETVAL=$?
 	return $RETVAL
 }
@@ -62,13 +63,22 @@ cleanup() {
 	return $RETVAL
 }
 
-case "$CLC_CLI_INTERFACE" in
+usage() {
+		echo $"Usage: $0 {instantiate|terminate|cleanup}"
+}
+
+case "$1" in
 	instantiate)
-		instantiate
+		if [ $# -gt 1 ]; then
+			instantiate $2
+		else 
+			instantiate $COMP_BINARY_PATH/$COMP_BINARY_NAME
+			exit 1
+		fi
 		;;
 
 	terminate)
-		terminiate
+		terminate
 		;;
 
 	cleanup)
@@ -76,9 +86,8 @@ case "$CLC_CLI_INTERFACE" in
 		;;
 
 	*)
-		echo $"Usage: $0 {instantiate|terminate}"
+		usage
 		exit 1
 
 esac
-
 exit 0
