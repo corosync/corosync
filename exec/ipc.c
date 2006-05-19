@@ -317,7 +317,7 @@ static int libais_disconnect (struct conn_info *conn_info)
 	int res = 0;
 
 	if (conn_info->disc == DISC_STATE_EXITING) {
-		if (ais_service[conn_info->service]->lib_exit_fn) {
+		if (conn_info->service != SOCKET_SERVICE_INIT && ais_service[conn_info->service]->lib_exit_fn) {
 			res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
 			if (res == 0) {
 				conn_info->disc = DISC_STATE_EXITED;
@@ -326,7 +326,8 @@ static int libais_disconnect (struct conn_info *conn_info)
 			return (res);
 		}
 		conn_info->disc = DISC_STATE_EXITED;
-		conn_info->conn_info_partner->disc = DISC_STATE_EXITED;
+		if (conn_info->conn_info_partner)
+			conn_info->conn_info_partner->disc = DISC_STATE_EXITED;
 		return (0);
 	}
 
