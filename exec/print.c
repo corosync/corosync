@@ -224,6 +224,10 @@ int log_setup (char **error_string, struct main_config *config)
 		}
 	}
 
+	if (config->logmode & LOG_MODE_SYSLOG) {
+		openlog("openais", LOG_CONS|LOG_PID, config->syslog_facility);
+	}
+
 	/*
 	** reinit all loggers that has initialised before log_setup() was called.
 	*/

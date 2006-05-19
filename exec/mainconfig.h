@@ -66,6 +66,7 @@ struct main_config {
 	 */
 	int logmode;
 	char *logfile;
+	int syslog_facility;
 
 	/* user/group to run as */
 	char *user;
