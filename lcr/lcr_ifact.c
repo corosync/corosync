@@ -342,9 +342,7 @@ int lcr_ifact_reference (
 
 	defaults_path_build ();
 	ld_library_path_build ();
-	if (ldso_path_build ("/etc", "ld.so.conf") == -1) {
-		return -1;
-	}
+	ldso_path_build ("/etc", "ld.so.conf");
 
 
 // TODO error checking in this code is weak
