@@ -76,25 +76,24 @@ enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_MCAST = 3
 };
 
-#define LEFT_LIST_INITIAL_SIZE 32
 struct removed_group
 {
 	struct group_info *gi;
 	struct list_head list; /* on removed_list */
 	int left_list_entries;
+	struct cpg_groupinfo left_list[PROCESSOR_COUNT_MAX];
 	int left_list_size;
-	struct cpg_groupinfo left_list[LEFT_LIST_INITIAL_SIZE]; /* Can expand if needed */
 };
 
 struct group_info {
-	struct cpg_name groupName;
+	struct cpg_name group_name;
 	struct list_head members;
 	struct list_head list;    /* on hash list */
 	struct removed_group *rg; /* when a node goes down */
 };
 
 struct process_info {
-	struct totem_ip_address node;
+	unsigned int nodeid;
 	uint32_t pid;
 	uint32_t flags;
 	void *conn;
@@ -105,7 +104,7 @@ struct process_info {
 
 struct join_list_entry {
 	uint32_t pid;
-	struct cpg_name groupName;
+	struct cpg_name group_name;
 };
 
 static struct list_head group_lists[GROUP_HASH_SIZE];
@@ -115,9 +114,9 @@ static struct list_head group_lists[GROUP_HASH_SIZE];
  */
 static void cpg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb);
@@ -128,19 +127,19 @@ static int cpg_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_cpg_procjoin (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_procleave (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_joinlist (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_mcast (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void exec_cpg_procjoin_endian_convert (void *msg);
 
@@ -284,23 +283,27 @@ __attribute__ ((constructor)) static void cpg_comp_register (void) {
 
 struct req_exec_cpg_procjoin {
 	struct req_header header;
-	struct cpg_name groupName;
+	struct cpg_name group_name;
 	uint32_t pid;
 	uint32_t reason;
 };
 
 struct req_exec_cpg_mcast {
 	struct req_header header;
-	struct cpg_name groupName;
+	struct cpg_name group_name;
 	uint32_t msglen;
 	uint32_t pid;
 	char message[];
 };
 
-static int notify_lib_joinlist(struct group_info *gi, void *conn,
-			       int joined_list_entries, struct cpg_groupinfo *joined_list,
-			       int left_list_entries, struct cpg_groupinfo *left_list,
-			       int id)
+static int notify_lib_joinlist(
+	struct group_info *gi,
+	void *conn,
+	int joined_list_entries,
+	struct cpg_groupinfo *joined_list,
+	int left_list_entries,
+	struct cpg_groupinfo *left_list,
+	int id)
 {
 	int count = 0;
 	char *buf;
@@ -334,7 +337,7 @@ static int notify_lib_joinlist(struct group_info *gi, void *conn,
 
 	res->header.size = size;
 	res->header.id = id;
-	memcpy(&res->groupName, &gi->groupName, sizeof(struct cpg_name));
+	memcpy(&res->group_name, &gi->group_name, sizeof(struct cpg_name));
 
 	/* Build up the message */
 	count = 0;
@@ -345,11 +348,11 @@ static int notify_lib_joinlist(struct group_info *gi, void *conn,
 			   own leave notifications), so exclude them from the members list here */
 			int i;
 			for (i=0; i<left_list_entries; i++) {
-				if (left_list[i].pid == pi->pid && left_list[i].nodeId == pi->node.nodeid)
+				if (left_list[i].pid == pi->pid && left_list[i].nodeid == pi->nodeid)
 					goto next_member;
 			}
 
-			retgi->nodeId = pi->node.nodeid;
+			retgi->nodeid = pi->nodeid;
 			retgi->pid = pi->pid;
 			retgi++;
 			count++;
@@ -416,7 +419,7 @@ static int cpg_lib_exit_fn (void *conn)
 
 	if (gi) {
 		notify_info.pid = pi->pid;
-		notify_info.nodeId = this_ip->nodeid;
+		notify_info.nodeid = this_ip->nodeid;
 		notify_info.reason = CONFCHG_CPG_REASON_PROCDOWN;
 		cpg_node_joinleave_send(gi, pi, MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_PROCDOWN);
 		list_del(&pi->list);
@@ -432,7 +435,7 @@ static struct group_info *get_group(struct cpg_name *name)
 
 	for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
 		gi = list_entry(iter, struct group_info, list);
-		if (memcmp(gi->groupName.value, name->value, name->length) == 0)
+		if (memcmp(gi->group_name.value, name->value, name->length) == 0)
 			break;
 	}
 
@@ -442,7 +445,7 @@ static struct group_info *get_group(struct cpg_name *name)
 			log_printf(LOG_LEVEL_WARNING, "Unable to allocate group_info struct");
 			return NULL;
 		}
-		memcpy(&gi->groupName, name, sizeof(struct cpg_name));
+		memcpy(&gi->group_name, name, sizeof(struct cpg_name));
 		gi->rg = NULL;
 		list_init(&gi->members);
 		list_add(&gi->list, &group_lists[hash]);
@@ -456,7 +459,7 @@ static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *
 	struct iovec req_exec_cpg_iovec;
 	int result;
 
-	memcpy(&req_exec_cpg_procjoin.groupName, &gi->groupName, sizeof(struct cpg_name));
+	memcpy(&req_exec_cpg_procjoin.group_name, &gi->group_name, sizeof(struct cpg_name));
 	req_exec_cpg_procjoin.pid = pi->pid;
 	req_exec_cpg_procjoin.reason = reason;
 
@@ -471,7 +474,9 @@ static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *
 	return (result);
 }
 
-static void remove_node_from_groups(struct totem_ip_address *node, struct list_head *remlist)
+static void remove_node_from_groups(
+	unsigned int nodeid,
+	struct list_head *remlist)
 {
 	int i;
 	struct list_head *iter, *iter2, *tmp;
@@ -484,7 +489,7 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 			for (iter2 = gi->members.next, tmp = iter2->next; iter2 != &gi->members; iter2 = tmp, tmp = iter2->next) {
 				pi = list_entry(iter2, struct process_info, list);
 
-				if (pi->node.nodeid == node->nodeid) {
+				if (pi->nodeid == nodeid) {
 
 					/* Add it to the list of nodes to send notifications for */
 					if (!gi->rg) {
@@ -493,7 +498,7 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 							list_add(&gi->rg->list, remlist);
 							gi->rg->gi = gi;
 							gi->rg->left_list_entries = 0;
-							gi->rg->left_list_size = LEFT_LIST_INITIAL_SIZE;
+							gi->rg->left_list_size = PROCESSOR_COUNT_MAX;
 						}
 						else {
 							log_printf(LOG_LEVEL_CRIT, "Unable to allocate removed group struct. CPG callbacks will be junk.");
@@ -515,12 +520,12 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 							log_printf(LOG_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
 							return;
 						}
-						newrg->left_list_size = newsize+LEFT_LIST_INITIAL_SIZE;
+						newrg->left_list_size = newsize+PROCESSOR_COUNT_MAX;
 						gi->rg = newrg;
 						list_add(&gi->rg->list, remlist);
 					}
 					gi->rg->left_list[gi->rg->left_list_entries].pid = pi->pid;
-					gi->rg->left_list[gi->rg->left_list_entries].nodeId = pi->node.nodeid;
+					gi->rg->left_list[gi->rg->left_list_entries].nodeid = pi->nodeid;
 					gi->rg->left_list[gi->rg->left_list_entries].reason = CONFCHG_CPG_REASON_NODEDOWN;
 					gi->rg->left_list_entries++;
 
@@ -536,12 +541,11 @@ static void remove_node_from_groups(struct totem_ip_address *node, struct list_h
 
 static void cpg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-
 	int i;
 	struct list_head removed_list;
 
@@ -556,7 +560,7 @@ static void cpg_confchg_fn (
 
 	/* Remove nodes from joined groups and add removed groups to the list */
 	for (i = 0; i < left_list_entries; i++) {
-		remove_node_from_groups(&left_list[i], &removed_list);
+		remove_node_from_groups(left_list[i], &removed_list);
 	}
 
 	if (!list_empty(&removed_list)) {
@@ -581,7 +585,7 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)msg;
 
 	req_exec_cpg_procjoin->pid = swab32(req_exec_cpg_procjoin->pid);
-	req_exec_cpg_procjoin->groupName.length = swab32(req_exec_cpg_procjoin->groupName.length);
+	req_exec_cpg_procjoin->group_name.length = swab32(req_exec_cpg_procjoin->group_name.length);
 	req_exec_cpg_procjoin->reason = swab32(req_exec_cpg_procjoin->reason);
 }
 
@@ -592,7 +596,7 @@ static void exec_cpg_joinlist_endian_convert (void *msg)
 
 	while ((void*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
-		jle->groupName.length = swab32(jle->groupName.length);
+		jle->group_name.length = swab32(jle->group_name.length);
 		jle++;
 	}
 }
@@ -603,11 +607,15 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 
 	req_exec_cpg_mcast->pid = swab32(req_exec_cpg_mcast->pid);
 	req_exec_cpg_mcast->msglen = swab32(req_exec_cpg_mcast->msglen);
-	req_exec_cpg_mcast->groupName.length = swab32(req_exec_cpg_mcast->groupName.length);
+	req_exec_cpg_mcast->group_name.length = swab32(req_exec_cpg_mcast->group_name.length);
 
 }
 
-static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_address *node, int reason)
+static void do_proc_join(
+	struct cpg_name *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason)
 {
 	struct group_info *gi;
 	struct process_info *pi;
@@ -620,13 +628,15 @@ static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_ad
 	/* See if it already exists in this group */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		pi = list_entry(iter, struct process_info, list);
-		if (pi->pid == pid && pi->node.nodeid == node->nodeid) {
+		if (pi->pid == pid && pi->nodeid == nodeid) {
 
 			/* It could be a local join message */
-			if (node->nodeid == this_ip->nodeid && (!pi->flags & PI_FLAG_MEMBER))
+			if ((nodeid == this_ip->nodeid) &&
+				(!pi->flags & PI_FLAG_MEMBER)) {
 				goto local_join;
-			else
+			} else {
 				return;
+			}
 		}
 	}
 
@@ -635,7 +645,7 @@ static void do_proc_join(struct cpg_name *name, uint32_t pid, struct totem_ip_ad
 		log_printf(LOG_LEVEL_WARNING, "Unable to allocate process_info struct");
 		return;
 	}
-	totemip_copy(&pi->node, node);
+	pi->nodeid = nodeid;
 	pi->pid = pid;
 	pi->group = gi;
 	pi->conn = NULL;
@@ -646,7 +656,7 @@ local_join:
 
 	pi->flags = PI_FLAG_MEMBER;
 	notify_info.pid = pi->pid;
-	notify_info.nodeId = node->nodeid;
+	notify_info.nodeid = nodeid;
 	notify_info.reason = reason;
 
 	notify_lib_joinlist(gi, NULL,
@@ -657,18 +667,20 @@ local_join:
 
 static void message_handler_req_exec_cpg_procjoin (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)message;
 
 	log_printf(LOG_LEVEL_DEBUG, "got procjoin message from cluster\n");
 
-	do_proc_join(&req_exec_cpg_procjoin->groupName, req_exec_cpg_procjoin->pid, source_addr, CONFCHG_CPG_REASON_JOIN);
+	do_proc_join(&req_exec_cpg_procjoin->group_name,
+		req_exec_cpg_procjoin->pid, nodeid,
+		CONFCHG_CPG_REASON_JOIN);
 }
 
 static void message_handler_req_exec_cpg_procleave (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)message;
 	struct group_info *gi;
@@ -678,11 +690,11 @@ static void message_handler_req_exec_cpg_procleave (
 
 	log_printf(LOG_LEVEL_DEBUG, "got procleave message from cluster\n");
 
-	gi = get_group(&req_exec_cpg_procjoin->groupName); /* this will always succeed ! */
+	gi = get_group(&req_exec_cpg_procjoin->group_name); /* this will always succeed ! */
 	assert(gi);
 
 	notify_info.pid = req_exec_cpg_procjoin->pid;
-	notify_info.nodeId = source_addr->nodeid;
+	notify_info.nodeid = nodeid;
 	notify_info.reason = req_exec_cpg_procjoin->reason;
 
 	notify_lib_joinlist(gi, NULL,
@@ -694,7 +706,7 @@ static void message_handler_req_exec_cpg_procleave (
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		pi = list_entry(iter, struct process_info, list);
 		if (pi->pid == req_exec_cpg_procjoin->pid &&
-		    pi->node.nodeid == source_addr->nodeid) {
+		    pi->nodeid == nodeid) {
 
 			list_del(&pi->list);
 			if (!pi->conn)
@@ -712,26 +724,29 @@ static void message_handler_req_exec_cpg_procleave (
 /* Got a proclist from another node */
 static void message_handler_req_exec_cpg_joinlist (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct res_header *res = (struct res_header *)message;
 	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(struct res_header));
 
-	log_printf(LOG_LEVEL_DEBUG, "got joinlist message from node %s\n", totemip_print(source_addr));
+	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %x\n",
+		nodeid);
 
 	/* Ignore our own messages */
-	if (totemip_equal(source_addr, this_ip))
+	if (nodeid == this_ip->nodeid) {
 		return;
+	}
 
 	while ((void*)jle < message + res->size) {
-		do_proc_join(&jle->groupName, jle->pid, source_addr, CONFCHG_CPG_REASON_NODEUP);
+		do_proc_join(&jle->group_name, jle->pid, nodeid,
+			CONFCHG_CPG_REASON_NODEUP);
 		jle++;
 	}
 }
 
 static void message_handler_req_exec_cpg_mcast (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_cpg_mcast *req_exec_cpg_mcast = (struct req_exec_cpg_mcast *)message;
 	struct res_lib_cpg_deliver_callback *res_lib_cpg_mcast;
@@ -740,7 +755,7 @@ static void message_handler_req_exec_cpg_mcast (
 	struct group_info *gi;
 	struct list_head *iter;
 
-	gi = get_group(&req_exec_cpg_mcast->groupName); /* this will always succeed ! */
+	gi = get_group(&req_exec_cpg_mcast->group_name); /* this will always succeed ! */
 	assert(gi);
 
 	res_lib_cpg_mcast = (struct res_lib_cpg_deliver_callback *)buf;
@@ -748,21 +763,26 @@ static void message_handler_req_exec_cpg_mcast (
 	res_lib_cpg_mcast->header.size = sizeof(*res_lib_cpg_mcast) + msglen;
 	res_lib_cpg_mcast->msglen = msglen;
 	res_lib_cpg_mcast->pid = req_exec_cpg_mcast->pid;
-	res_lib_cpg_mcast->nodeid = source_addr->nodeid;
-	memcpy(&res_lib_cpg_mcast->groupName, &gi->groupName, sizeof(struct cpg_name));
-	memcpy(&res_lib_cpg_mcast->message, req_exec_cpg_mcast->message, msglen);
+	res_lib_cpg_mcast->nodeid = nodeid;
+	memcpy(&res_lib_cpg_mcast->group_name, &gi->group_name,
+		sizeof(struct cpg_name));
+	memcpy(&res_lib_cpg_mcast->message, req_exec_cpg_mcast->message,
+		msglen);
 
 	/* Send to all interested members */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
 		if (pi->trackerconn) {
-			openais_conn_send_response(pi->trackerconn, buf, res_lib_cpg_mcast->header.size);
+			openais_conn_send_response(
+				pi->trackerconn,
+				buf,
+				res_lib_cpg_mcast->header.size);
 		}
 	}
 }
 
 
-static void cpg_exec_send_joinlist()
+static void cpg_exec_send_joinlist(void)
 {
 	int count = 0;
 	char *buf;
@@ -782,7 +802,7 @@ static void cpg_exec_send_joinlist()
 			gi = list_entry(iter, struct group_info, list);
 			for (iter2 = gi->members.next; iter2 != &gi->members; iter2 = iter2->next) {
 				struct process_info *pi = list_entry(iter2, struct process_info, list);
-				if (pi->pid && pi->node.nodeid == this_ip->nodeid) {
+				if (pi->pid && pi->nodeid == this_ip->nodeid) {
 					count++;
 				}
 			}
@@ -809,8 +829,8 @@ static void cpg_exec_send_joinlist()
 			for (iter2 = gi->members.next; iter2 != &gi->members; iter2 = iter2->next) {
 
 				struct process_info *pi = list_entry(iter2, struct process_info, list);
-				if (pi->pid && pi->node.nodeid == this_ip->nodeid) {
-					memcpy(&jle->groupName, &gi->groupName, sizeof(struct cpg_name));
+				if (pi->pid && pi->nodeid == this_ip->nodeid) {
+					memcpy(&jle->group_name, &gi->group_name, sizeof(struct cpg_name));
 					jle->pid = pi->pid;
 					jle++;
 				}
@@ -853,14 +873,14 @@ static void message_handler_req_lib_cpg_join (void *conn, void *message)
 		goto join_err;
 	}
 
-	gi = get_group(&req_lib_cpg_join->groupName);
+	gi = get_group(&req_lib_cpg_join->group_name);
 	if (!gi) {
 		error = SA_AIS_ERR_NO_SPACE;
 		goto join_err;
 	}
 
 	/* Add a node entry for us */
-	totemip_copy(&pi->node, this_ip);
+	pi->nodeid = this_ip->nodeid;
 	pi->pid = req_lib_cpg_join->pid;
 	pi->group = gi;
 	list_add(&pi->list, &gi->members);
@@ -931,7 +951,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 	req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_MCAST);
 	req_exec_cpg_mcast.pid = pi->pid;
 	req_exec_cpg_mcast.msglen = msglen;
-	memcpy(&req_exec_cpg_mcast.groupName, &gi->groupName, sizeof(struct cpg_name));
+	memcpy(&req_exec_cpg_mcast.group_name, &gi->group_name, sizeof(struct cpg_name));
 
 	req_exec_cpg_iovec[0].iov_base = &req_exec_cpg_mcast;
 	req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);
@@ -976,7 +996,7 @@ static void message_handler_req_lib_cpg_trackstart (void *conn, void *message)
 
 	log_printf(LOG_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
 
-	gi = get_group(&req_lib_cpg_trackstart->groupName);
+	gi = get_group(&req_lib_cpg_trackstart->group_name);
 	if (!gi) {
 		error = SA_AIS_ERR_NO_SPACE;
 		goto tstart_ret;
@@ -1005,7 +1025,7 @@ static void message_handler_req_lib_cpg_trackstop (void *conn, void *message)
 
 	log_printf(LOG_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
 
-	gi = get_group(&req_lib_cpg_trackstop->groupName);
+	gi = get_group(&req_lib_cpg_trackstop->group_name);
 	if (!gi) {
 		error = SA_AIS_ERR_NO_SPACE;
 		goto tstop_ret;

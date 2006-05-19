@@ -110,9 +110,9 @@ SaClmClusterNodeT *clm_get_by_nodeid (unsigned int node_id)
  */
 static void clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct totem_ip_address *member_list, int member_list_entries,
-    struct totem_ip_address *left_list, int left_list_entries,
-    struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static void clm_sync_init (void);
@@ -131,7 +131,7 @@ static int clm_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_clm_nodejoin (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void exec_clm_nodejoin_endian_convert (void *msg);
 
@@ -184,28 +184,28 @@ static struct openais_lib_handler clm_lib_service[] =
 static struct openais_exec_handler clm_exec_service[] =
 {
 	{
-		.exec_handler_fn		= message_handler_req_exec_clm_nodejoin,
+		.exec_handler_fn	= message_handler_req_exec_clm_nodejoin,
 		.exec_endian_convert_fn	= exec_clm_nodejoin_endian_convert
 	}
 };
 	
 struct openais_service_handler clm_service_handler = {
-	.name						= (unsigned char*)"openais cluster membership service B.01.01",
-	.id							= CLM_SERVICE,
-	.private_data_size			= sizeof (struct clm_pd),
-	.lib_init_fn				= clm_lib_init_fn,
-	.lib_exit_fn				= clm_lib_exit_fn,
-	.lib_service				= clm_lib_service,
-	.lib_service_count			= sizeof (clm_lib_service) / sizeof (struct openais_lib_handler),
-	.exec_init_fn				= clm_exec_init_fn,
-	.exec_dump_fn				= NULL,
-	.exec_service				= clm_exec_service,
-	.exec_service_count		= sizeof (clm_exec_service) / sizeof (struct openais_exec_handler),
-	.confchg_fn					= clm_confchg_fn,
-	.sync_init					= clm_sync_init,
-	.sync_process				= clm_sync_process,
-	.sync_activate				= clm_sync_activate,
-	.sync_abort					= clm_sync_abort,
+	.name			= (unsigned char*)"openais cluster membership service B.01.01",
+	.id			= CLM_SERVICE,
+	.private_data_size	= sizeof (struct clm_pd),
+	.lib_init_fn		= clm_lib_init_fn,
+	.lib_exit_fn		= clm_lib_exit_fn,
+	.lib_service		= clm_lib_service,
+	.lib_service_count	= sizeof (clm_lib_service) / sizeof (struct openais_lib_handler),
+	.exec_init_fn		= clm_exec_init_fn,
+	.exec_dump_fn		= NULL,
+	.exec_service		= clm_exec_service,
+	.exec_service_count	= sizeof (clm_exec_service) / sizeof (struct openais_exec_handler),
+	.confchg_fn		= clm_confchg_fn,
+	.sync_init		= clm_sync_init,
+	.sync_process		= clm_sync_process,
+	.sync_activate		= clm_sync_activate,
+	.sync_abort		= clm_sync_abort,
 };
 
 /*
@@ -219,15 +219,15 @@ static struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
 
 static struct lcr_iface openais_clm_ver0[1] = {
 	{
-		.name					= "openais_clm",
-		.version				= 0,
-		.versions_replace		= 0,
+		.name			= "openais_clm",
+		.version		= 0,
+		.versions_replace	= 0,
 		.versions_replace_count = 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor				= NULL,
-		.interfaces				= NULL
+		.dependencies		= 0,
+		.dependency_count	= 0,
+		.constructor		= NULL,
+		.destructor		= NULL,
+		.interfaces		= NULL
 	}
 };
 
@@ -466,9 +466,9 @@ static int clm_nodejoin_send (void)
 
 static void clm_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 
@@ -483,20 +483,20 @@ static void clm_confchg_fn (
 	log_printf (LOG_LEVEL_NOTICE, "CLM CONFIGURATION CHANGE\n");
 	log_printf (LOG_LEVEL_NOTICE, "New Configuration:\n");
 	for (i = 0; i < member_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&member_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (member_list[i]));
 	}
 	log_printf (LOG_LEVEL_NOTICE, "Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&left_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (left_list[i]));
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totemip_print (&joined_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (joined_list[i]));
 	}
 
 	for (i = 0; i < left_list_entries; i++) {
-		nodes[i] = left_list[i].nodeid;
+		nodes[i] = left_list[i];
 	}
 
 	libraryNotificationLeave (nodes, i);
@@ -564,7 +564,7 @@ static void exec_clm_nodejoin_endian_convert (void *msg)
 
 static void message_handler_req_exec_clm_nodejoin (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
 	int found = 0;

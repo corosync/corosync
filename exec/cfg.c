@@ -66,9 +66,9 @@
 
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb);
@@ -193,9 +193,9 @@ static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 }
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 }

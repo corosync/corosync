@@ -61,7 +61,6 @@ extern int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
@@ -75,7 +74,6 @@ extern int totemnet_processor_count_set (
 
 extern int totemnet_token_send (
 	totemnet_handle handle,
-	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	int iov_len);
 
@@ -98,5 +96,15 @@ extern int totemnet_iface_check (totemnet_handle handle);
 extern int totemnet_finalize (totemnet_handle handle);
 
 extern void totemnet_net_mtu_adjust (struct totem_config *totem_config);
+
+extern char *totemnet_iface_print (totemnet_handle handle);
+
+extern int totemnet_iface_get (
+	totemnet_handle handle,
+	struct totem_ip_address *addr);
+
+extern int totemnet_token_target_set (
+	totemnet_handle handle,
+	struct totem_ip_address *token_target);
 
 #endif /* TOTEMNET_H_DEFINED */

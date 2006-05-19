@@ -64,13 +64,16 @@
 #define JOIN_TIMEOUT				100
 #define CONSENSUS_TIMEOUT			200
 #define MERGE_TIMEOUT				200
-#define DOWNCHECK_TIMEOUT			1000
+#define DOWNCHECK_TIMEOUT			1000000
 #define FAIL_TO_RECV_CONST			50
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
 #define MAX_NETWORK_DELAY			50
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
+#define RRP_PROBLEM_COUNT_TIMEOUT		2000
+#define RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT	10
+#define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
 
 static char error_string_response[512];
 
@@ -114,19 +117,17 @@ static inline void objdb_get_int (
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string,
-	int interface_max)
+	char **error_string)
 {
 	int res = 0;
 	int parse_done = 0;
 	unsigned int object_totem_handle;
 	unsigned int object_interface_handle;
 	char *str;
-	char *error_reason = error_string_response;
 	unsigned int ringnumber = 0;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
-	totem_config->interfaces = malloc (sizeof (struct totem_interface) * interface_max);
+	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
 	if (totem_config->interfaces == 0) {
 		parse_done = 1;
 		*error_string = "Out of memory trying to allocate ethernet interface storage area";
@@ -134,7 +135,7 @@ extern int totem_config_read (
 	}
 
 	memset (totem_config->interfaces, 0,
-		sizeof (struct totem_interface) * interface_max);
+		sizeof (struct totem_interface) * INTERFACE_MAX);
 
 	totem_config->secauth = 1;
 
@@ -163,6 +164,9 @@ extern int totem_config_read (
 			if (strcmp (str, "off") == 0) {
 				totem_config->secauth = 0;
 			}
+		}
+		if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
+			strcpy (totem_config->rrp_mode, str);
 		}
 
 		/*
@@ -195,6 +199,12 @@ extern int totem_config_read (
 
 		objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
 
+		objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
+
+		objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
+
 		objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
 
 		objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
@@ -209,13 +219,6 @@ extern int totem_config_read (
 		    "interface",
 		    strlen ("interface"),
 		    &object_interface_handle) == 0) {
-
-		if (interface_max == totem_config->interface_count) {
-			sprintf (error_reason,
-				 "%d is too many configured interfaces",
-				 totem_config->interface_count);
-			goto parse_error;
-		}
 
 		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
 
@@ -245,14 +248,6 @@ extern int totem_config_read (
 
 	return 0;
 
-parse_error:
-
-	sprintf (error_string_response,
-		 "parse error in config %s.\n",
-		 error_reason);
-
-	*error_string = error_string_response;
-
 	return (-1);
 }
 
@@ -261,8 +256,10 @@ int totem_config_validate (
 	char **error_string)
 {
 	static char local_error_reason[512];
+	char parse_error[512];
 	char *error_reason = local_error_reason;
 	int i;
+	unsigned int interface_max = INTERFACE_MAX;
 
 	if (totem_config->interface_count == 0) {
 		error_reason = "No interfaces defined";
@@ -423,6 +420,46 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
+	if (totem_config->rrp_problem_count_timeout == 0) {
+		totem_config->rrp_problem_count_timeout = RRP_PROBLEM_COUNT_TIMEOUT;
+	}
+	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+	if (totem_config->rrp_problem_count_threshold == 0) {
+		totem_config->rrp_problem_count_threshold = RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT;
+	}
+	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
+		sprintf (local_error_reason, "The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
+		goto parse_error;
+	}
+	if (totem_config->rrp_token_expired_timeout == 0) {
+		totem_config->rrp_token_expired_timeout =
+			totem_config->token_retransmit_timeout;
+	}
+		
+	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
+		sprintf (local_error_reason, "The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (strcmp (totem_config->rrp_mode, "none") == 0) {
+		interface_max = 1;
+	}
+	if (interface_max < totem_config->interface_count) {
+		sprintf (parse_error,
+			"%d is too many configured interfaces for the rrp_mode setting %s.",
+			totem_config->interface_count,
+			totem_config->rrp_mode);
+		error_reason = parse_error;
+		goto parse_error;
+	}
+
+
 	if (totem_config->fail_to_recv_const == 0) {
 		totem_config->fail_to_recv_const = FAIL_TO_RECV_CONST;
 	}
@@ -433,9 +470,9 @@ int totem_config_validate (
 		totem_config->net_mtu = 1500;
 	}
 
-	if ((256000 / totem_config->net_mtu) < totem_config->max_messages) {
+	if ((MESSAGE_SIZE_MAX / totem_config->net_mtu) < totem_config->max_messages) {
 		sprintf (local_error_reason, "The max_messages parameter (%d messages) may not be greater then (%d messages).",
-			totem_config->max_messages, 256000/totem_config->net_mtu);
+			totem_config->max_messages, MESSAGE_SIZE_MAX / totem_config->net_mtu);
 		goto parse_error;
 	}
 

@@ -58,7 +58,6 @@
 #include "aispoll.h"
 #include "mempool.h"
 #include "main.h"
-#include "totemip.h"
 #include "totempg.h"
 #include "swab.h"
 #include "print.h"
@@ -110,9 +109,9 @@ static void lib_evt_event_data_get(void *conn, void *message);
 
 static void evt_conf_change(
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
 static int evt_lib_init(void *conn);
@@ -188,9 +187,9 @@ static struct openais_lib_handler evt_lib_service[] = {
 };
 
 	
-static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr);
-static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr);
-static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr);
+static void evt_remote_evt(void *msg, unsigned int nodeid);
+static void evt_remote_recovery_evt(void *msg, unsigned int nodeid);
+static void evt_remote_chan_op(void *msg, unsigned int nodeid);
 
 static struct openais_exec_handler evt_exec_service[] = {
 	{
@@ -352,15 +351,15 @@ static struct list_head *next_retained = 0;
 static struct list_head *next_chan = 0;
 static enum recovery_phases recovery_phase = evt_recovery_complete;
 static int				left_member_count = 0;
-static struct totem_ip_address 	*left_member_list = 0;
+static unsigned int *left_member_list = 0;
 static int				joined_member_count = 0;
-static struct totem_ip_address 	*joined_member_list = 0;
+static unsigned int *joined_member_list = 0;
 static int			 	total_member_count = 0;
-static struct totem_ip_address 	*current_member_list = 0;
+static unsigned int *current_member_list = 0;
 static int				trans_member_count = 0;
-static struct totem_ip_address	*trans_member_list = 0;
+static unsigned int *trans_member_list = 0;
 static int				add_count = 0;
-static struct totem_ip_address 	*add_list = 0;
+static unsigned int *add_list = 0;
 static int				processed_open_counts = 0;
 
 /*
@@ -625,7 +624,7 @@ struct event_svr_channel_subscr {
  * mn_entry:			List of all nodes.
  */
 struct member_node_data {
-	struct totem_ip_address	mn_node_addr;
+	unsigned int		mn_nodeid;
 	SaClmClusterNodeT	mn_node_info;
 	SaEvtEventIdT		mn_last_msg_id;
 	SaClmNodeIdT		mn_started;
@@ -832,8 +831,8 @@ static struct open_count* find_open_count(
 		}
 	}
 	log_printf(LOG_LEVEL_DEBUG, 
-			"find_open_count: node id 0x%x not found\n",
-			node_id);
+			"find_open_count: node id %s not found\n",
+			totempg_ifaces_print (node_id));
 	return 0;
 }
 
@@ -849,8 +848,8 @@ static void dump_chan_opens(struct event_svr_channel_instance *eci)
 		if (eci->esc_node_opens[i].oc_node_id == 0) {
 			break;
 		}
-		log_printf(LOG_LEVEL_NOTICE, "Node 0x%x, count %d\n",
-			eci->esc_node_opens[i].oc_node_id, 
+		log_printf(LOG_LEVEL_NOTICE, "Node %s, count %d\n",
+			totempg_ifaces_print (eci->esc_node_opens[i].oc_node_id), 
 			eci->esc_node_opens[i].oc_open_count);
 	}
 }
@@ -908,8 +907,8 @@ static int set_open_count(struct event_svr_channel_instance *eci,
 	oc = find_open_count(eci, node_id);
 	if (oc) {
 		log_printf(RECOVERY_DEBUG, 
-			"Set count: Chan %s for node 0x%x, was %d, now %d\n",
-			eci->esc_channel_name.value, node_id, 
+			"Set count: Chan %s for node %s, was %d, now %d\n",
+			eci->esc_channel_name.value, totempg_ifaces_print (node_id), 
 			oc->oc_open_count, open_count);
 
 		eci->esc_total_opens -= oc->oc_open_count;
@@ -1113,8 +1112,9 @@ static int remove_open_count(
 			break;
 		}
 
-		log_printf(RECOVERY_DEBUG, "roc: %x/%x, t %d, oc %d\n",
-			node_id, eci->esc_node_opens[i].oc_node_id,
+		log_printf(RECOVERY_DEBUG, "roc: %s/%s, t %d, oc %d\n",
+			totempg_ifaces_print (node_id),
+			totempg_ifaces_print (eci->esc_node_opens[i].oc_node_id),
 			eci->esc_total_opens, eci->esc_node_opens[i].oc_open_count);
 		
 		if (eci->esc_node_opens[i].oc_node_id == node_id) {
@@ -1240,19 +1240,19 @@ static SaAisErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
 #define NODE_HASH_SIZE 256
 static struct member_node_data *nl[NODE_HASH_SIZE] = {0};
 inline int 
-hash_sock_addr(struct totem_ip_address *addr)
+hash_sock_addr(unsigned int nodeid)
 {
-	return addr->nodeid & (NODE_HASH_SIZE - 1);
+	return nodeid & (NODE_HASH_SIZE - 1);
 }
 
-static struct member_node_data **lookup_node(struct totem_ip_address *addr)
+static struct member_node_data **lookup_node(unsigned int nodeid)
 {
-	int index = hash_sock_addr(addr);
+	int index = hash_sock_addr(nodeid);
 	struct member_node_data **nlp;
 
 	nlp = &nl[index];
 	for (nlp = &nl[index]; *nlp; nlp = &((*nlp)->mn_next)) {
-		if (totemip_equal(&(*nlp)->mn_node_addr, addr)) {
+		if ((*(nlp))->mn_nodeid == nodeid) {
 			break;
 		}
 	}
@@ -1261,11 +1261,11 @@ static struct member_node_data **lookup_node(struct totem_ip_address *addr)
 }
 
 static struct member_node_data *
-evt_find_node(struct totem_ip_address *addr)
+evt_find_node(unsigned int nodeid)
 {
 	struct member_node_data **nlp;
 
-	nlp = lookup_node(addr);
+	nlp = lookup_node(nodeid);
 
 	if (!nlp) {
 		log_printf(LOG_LEVEL_DEBUG, "find_node: Got NULL nlp?\n");
@@ -1276,13 +1276,15 @@ evt_find_node(struct totem_ip_address *addr)
 }
 
 static SaAisErrorT
-evt_add_node(struct totem_ip_address *addr, SaClmClusterNodeT *cn) 
+evt_add_node(
+	unsigned int nodeid,
+	SaClmClusterNodeT *cn) 
 {
 	struct member_node_data **nlp;
 	struct member_node_data *nl;
 	SaAisErrorT err = SA_AIS_ERR_EXIST;
 
-	nlp = lookup_node(addr);
+	nlp = lookup_node(nodeid);
 
 	if (!nlp) {
 		log_printf(LOG_LEVEL_DEBUG, "add_node: Got NULL nlp?\n");
@@ -1301,7 +1303,7 @@ evt_add_node(struct totem_ip_address *addr, SaClmClusterNodeT *cn)
 	if (nl) {
 		memset(nl, 0, sizeof(*nl));
 		err = SA_AIS_OK;
-		totemip_copy(&nl->mn_node_addr, addr);
+		nl->mn_nodeid = nodeid;
 		nl->mn_started = 1;
 	}
 	list_init(&nl->mn_entry);
@@ -1326,11 +1328,11 @@ static struct member_node_data* oldest_node()
 	int i;
 
 	for (i = 0; i < trans_member_count; i++) {
-		mn = evt_find_node(&trans_member_list[i]);
+		mn = evt_find_node(trans_member_list[i]);
 		if (!mn || (mn->mn_started == 0)) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"Transitional config Node %s not active\n",
-				totemip_print(&trans_member_list[i]));
+				"Transitional config Node %d not active\n",
+				totempg_ifaces_print (trans_member_list[i]));
 			continue;
 		}
 		if ((oldest == NULL) || 
@@ -1354,26 +1356,29 @@ static struct member_node_data* oldest_node()
  * seen it.  It's probably a retained event being sent to 
  * a new node.
  */
-static int check_last_event(struct lib_event_data *evtpkt, 
-				struct totem_ip_address *addr)
+static int check_last_event(
+	struct lib_event_data *evtpkt, 
+	unsigned int nodeid)
 {
 	struct member_node_data *nd;
 	SaClmClusterNodeT *cn;
 
 
-	nd = evt_find_node(addr);
+	nd = evt_find_node(nodeid);
 	if (!nd) {
 		log_printf(LOG_LEVEL_DEBUG, 
-				"Node ID 0x%x not found for event %llx\n",
-				evtpkt->led_publisher_node_id, evtpkt->led_event_id);
-		cn = main_clm_get_by_nodeid(addr->nodeid);
+				"Node ID %s not found for event %llx\n",
+				totempg_ifaces_print (evtpkt->led_publisher_node_id),
+				evtpkt->led_event_id);
+		cn = main_clm_get_by_nodeid(nodeid);
 		if (!cn) {
 			log_printf(LOG_LEVEL_DEBUG, 
 					"Cluster Node 0x%x not found for event %llx\n",
-				evtpkt->led_publisher_node_id, evtpkt->led_event_id);
+				totempg_ifaces_print (evtpkt->led_publisher_node_id),
+				evtpkt->led_event_id);
 		} else {
-			evt_add_node(addr, cn);
-			nd = evt_find_node(addr);
+			evt_add_node(nodeid, cn);
+			nd = evt_find_node(nodeid);
 		}
 	}
 
@@ -2845,9 +2850,9 @@ static void remove_chan_open_info(SaClmNodeIdT node_id)
  */
 static void evt_conf_change(
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id)
 {
 	log_printf(RECOVERY_DEBUG, "Evt conf change %d\n", 
@@ -2877,7 +2882,7 @@ static void evt_conf_change(
 		}
 		if (left_list_entries) {
 			left_member_list = 
-				malloc(sizeof(struct totem_ip_address) * left_list_entries);
+				malloc(sizeof(unsigned int) * left_list_entries);
 			if (!left_member_list) {
 				/* 
 			 	 * ERROR: No recovery.
@@ -2887,7 +2892,7 @@ static void evt_conf_change(
 				assert(0);
 			}
 			memcpy(left_member_list, left_list, 
-					sizeof(struct totem_ip_address) * left_list_entries);
+					sizeof(unsigned int) * left_list_entries);
 		}
 
 		if (trans_member_list) {
@@ -2896,7 +2901,7 @@ static void evt_conf_change(
 		}
 		if (member_list_entries) {
 			trans_member_list = 
-				malloc(sizeof(struct totem_ip_address) * member_list_entries);
+				malloc(sizeof(unsigned int) * member_list_entries);
 
 			if (!trans_member_list) {
 				/* 
@@ -2907,7 +2912,7 @@ static void evt_conf_change(
 				assert(0);
 			}
 			memcpy(trans_member_list, member_list, 
-					sizeof(struct totem_ip_address) * member_list_entries);
+					sizeof(unsigned int) * member_list_entries);
 		}
 	}
 
@@ -2922,7 +2927,7 @@ static void evt_conf_change(
 		}
 		if (joined_list_entries) {
 			joined_member_list = 
-				malloc(sizeof(struct totem_ip_address) * joined_list_entries);
+				malloc(sizeof(unsigned int) * joined_list_entries);
 			if (!joined_member_list) {
 				/* 
 			 	 * ERROR: No recovery.
@@ -2932,7 +2937,7 @@ static void evt_conf_change(
 				assert(0);
 			}
 			memcpy(joined_member_list, joined_list, 
-					sizeof(struct totem_ip_address) * joined_list_entries);
+					sizeof(unsigned int) * joined_list_entries);
 		}
 
 
@@ -2942,7 +2947,7 @@ static void evt_conf_change(
 		}
 		if (member_list_entries) {
 			current_member_list = 
-				malloc(sizeof(struct totem_ip_address) * member_list_entries);
+				malloc(sizeof(unsigned int) * member_list_entries);
 
 			if (!current_member_list) {
 				/* 
@@ -2953,7 +2958,7 @@ static void evt_conf_change(
 				assert(0);
 			}
 			memcpy(current_member_list, member_list, 
-					sizeof(struct totem_ip_address) * member_list_entries);
+					sizeof(unsigned int) * member_list_entries);
 		}
 	}
 }
@@ -3137,7 +3142,7 @@ try_deliver_event(struct event_data *evt,
 /*
  * Receive the network event message and distribute it to local subscribers
  */
-static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr)
+static void evt_remote_evt(void *msg, unsigned int nodeid)
 {
 	/*
 	 * - retain events that have a retention time
@@ -3151,28 +3156,28 @@ static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr)
 	struct event_data *evt;
 	SaClmClusterNodeT *cn;
 
-	log_printf(LOG_LEVEL_DEBUG, "Remote event data received from %s\n",
-					totemip_print(source_addr));
+	log_printf(LOG_LEVEL_DEBUG, "Remote event data received from nodeid %s\n",
+			totempg_ifaces_print (nodeid));
 
 	/*
 	 * See where the message came from so that we can set the 
 	 * publishing node id in the message before delivery.
 	 */
-	cn = main_clm_get_by_nodeid(source_addr->nodeid);
+	cn = main_clm_get_by_nodeid(nodeid);
 	if (!cn) {
 			/*
 			 * Not sure how this can happen...
 			 */
-			log_printf(LOG_LEVEL_DEBUG, "No cluster node data for %s\n",
-							totemip_print(source_addr));
+			log_printf(LOG_LEVEL_DEBUG, "No cluster node data for nodeid %d\n",
+				totempg_ifaces_print (nodeid));
 			errno = ENXIO;
 			return;
 	}
-	log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
-					cn->nodeId, cn->nodeName.value);
+	log_printf(LOG_LEVEL_DEBUG, "Cluster node ID %s name %s\n",
+					totempg_ifaces_print (cn->nodeId), cn->nodeName.value);
 
-	evtpkt->led_publisher_node_id = cn->nodeId;
-	totemip_copy(&evtpkt->led_addr, source_addr);
+	evtpkt->led_publisher_node_id = nodeid;
+	evtpkt->led_nodeid = nodeid;
 	evtpkt->led_receive_time = clust_time_now();
 
 	if (evtpkt->led_chan_unlink_id != EVT_CHAN_ACTIVE) {
@@ -3205,7 +3210,7 @@ static void evt_remote_evt(void *msg, struct totem_ip_address *source_addr)
 		return;
 	}
 
-	if (check_last_event(evtpkt, source_addr)) {
+	if (check_last_event(evtpkt, nodeid)) {
 		return;
 	}
 
@@ -3240,7 +3245,7 @@ inline SaTimeT calc_retention_time(SaTimeT retention,
 /*
  * Receive a recovery network event message and save it in the retained list
  */
-static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_addr)
+static void evt_remote_recovery_evt(void *msg, unsigned int nodeid)
 {
 	/*
 	 * - calculate remaining retention time
@@ -3259,8 +3264,7 @@ static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_a
 	now = clust_time_now();
 
 	log_printf(RECOVERY_EVENT_DEBUG, 
-			"Remote recovery event data received from %s\n",
-					totemip_print(source_addr));
+			"Remote recovery event data received from nodeid %d\n", nodeid);
 
 	if (recovery_phase == evt_recovery_complete) {
 		log_printf(RECOVERY_EVENT_DEBUG, 
@@ -3293,23 +3297,23 @@ static void evt_remote_recovery_evt(void *msg, struct totem_ip_address *source_a
 	 * If we haven't seen this event yet and it has remaining time, process
 	 * the event.
 	 */
-	if (!check_last_event(evtpkt, &evtpkt->led_addr) && 
-												evtpkt->led_retention_time) {
+	if (!check_last_event(evtpkt, evtpkt->led_nodeid) && 
+		evtpkt->led_retention_time) {
 		/*
 		 * See where the message came from so that we can set the 
 		 * publishing node id in the message before delivery.
 		 */
-		md = evt_find_node(&evtpkt->led_addr);
+		md = evt_find_node(evtpkt->led_nodeid);
 		if (!md) {
 				/*
 				 * Not sure how this can happen
 				 */
-				log_printf(LOG_LEVEL_NOTICE, "No node for %s\n",
-								totemip_print(&evtpkt->led_addr));
+				log_printf(LOG_LEVEL_NOTICE, "No node for nodeid %s\n",
+						totempg_ifaces_print (evtpkt->led_nodeid));
 				return;
 		}
-		log_printf(LOG_LEVEL_DEBUG, "Cluster node ID 0x%x name %s\n",
-						md->mn_node_info.nodeId, 
+		log_printf(LOG_LEVEL_DEBUG, "Cluster node ID %s name %s\n",
+						totempg_ifaces_print (md->mn_node_info.nodeId), 
 						md->mn_node_info.nodeName.value);
 
 		log_printf(CHAN_UNLINK_DEBUG, 
@@ -3586,7 +3590,7 @@ convert_chan_packet(void *msg)
  * Used to communicate channel opens/closes, clear retention time,
  * config change updates...
  */
-static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
+static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 {
 	struct req_evt_chan_command *cpkt = msg;
 	unsigned int local_node = {SA_CLM_LOCAL_NODE_ID};
@@ -3598,17 +3602,17 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 	my_node = main_clm_get_by_nodeid(local_node);
 	log_printf(REMOTE_OP_DEBUG, "my node ID: 0x%x\n", my_node->nodeId);
 
-	mn = evt_find_node(source_addr);
+	mn = evt_find_node(nodeid);
 	if (mn == NULL) {
-		cn = main_clm_get_by_nodeid(source_addr->nodeid);
+		cn = main_clm_get_by_nodeid(nodeid);
 		if (cn == NULL) {
 			log_printf(LOG_LEVEL_WARNING, 
-				"Evt remote channel op: Node data for addr %s is NULL\n",
-					totemip_print(source_addr));
+				"Evt remote channel op: Node data for nodeid %d is NULL\n",
+				nodeid);
 			return;
 		} else {
-			evt_add_node(source_addr, cn);
-			mn = evt_find_node(source_addr);
+			evt_add_node(nodeid, cn);
+			mn = evt_find_node(nodeid);
 		}
 	}
 
@@ -3627,9 +3631,9 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 		struct open_chan_pending *ocp;
 		struct list_head *l, *nxt;
 
-		log_printf(CHAN_OPEN_DEBUG, "Opening channel %s for node 0x%x\n",
+		log_printf(CHAN_OPEN_DEBUG, "Opening channel %s for node %s\n",
 						cpkt->u.chc_chan.ocr_name.value,
-						mn->mn_node_info.nodeId);
+						totempg_ifaces_print (mn->mn_node_info.nodeId));
 		eci = find_channel(&cpkt->u.chc_chan.ocr_name, EVT_CHAN_ACTIVE);
 
 		if (!eci) {
@@ -3794,17 +3798,18 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 			log_level = RECOVERY_DEBUG;
 		}
 		log_printf(log_level, 
-			"Received Set event ID OP from %s to %llx for %x my addr %x base %llx\n",
-					totemip_print(source_addr), 
+			"Received Set event ID OP from nodeid %s to %llx for %x my addr %x base %llx\n",
+					nodeid, 
 					cpkt->u.chc_set_id.chc_last_id,
 					cpkt->u.chc_set_id.chc_nodeid,
-					my_node->nodeId,
+					totempg_ifaces_print (my_node->nodeId),
 					base_id);	
 		if (cpkt->u.chc_set_id.chc_nodeid == my_node->nodeId) {
 			if (cpkt->u.chc_set_id.chc_last_id >= base_id) {
 				log_printf(RECOVERY_DEBUG, 
-					"Set event ID from %s to %llx\n",
-					totemip_print(source_addr), cpkt->u.chc_set_id.chc_last_id);	
+					"Set event ID from nodeid %s to %llx\n",
+					totempg_ifaces_print (nodeid),
+					cpkt->u.chc_set_id.chc_last_id);	
 				base_id = cpkt->u.chc_set_id.chc_last_id + 1;
 			}
 		}
@@ -3819,8 +3824,8 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 	case EVT_OPEN_COUNT:
 		if (recovery_phase == evt_recovery_complete) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"Evt open count msg from %s, but not in membership change\n",
-				totemip_print(source_addr));
+				"Evt open count msg from nodeid %s, but not in membership change\n",
+				totempg_ifaces_print (nodeid));
 		}
 
 		/*
@@ -3832,10 +3837,10 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 			processed_open_counts = 1;
 		}
 		log_printf(RECOVERY_DEBUG, 
-				"Open channel count %s is %d for node 0x%x\n",
+				"Open channel count %s is %d for node %s\n",
 				cpkt->u.chc_set_opens.chc_chan_name.value, 
 				cpkt->u.chc_set_opens.chc_open_count,
-				mn->mn_node_info.nodeId);
+				totempg_ifaces_print (mn->mn_node_info.nodeId));
 
 		eci = find_channel(&cpkt->u.chc_set_opens.chc_chan_name, 
 					EVT_CHAN_ACTIVE);
@@ -3850,9 +3855,9 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 		if (set_open_count(eci, mn->mn_node_info.nodeId, 
 									cpkt->u.chc_set_opens.chc_open_count)) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"Error setting Open channel count %s for node 0x%x\n",
+				"Error setting Open channel count %s for node %s\n",
 				cpkt->u.chc_set_opens.chc_chan_name.value, 
-				mn->mn_node_info.nodeId);
+				totempg_ifaces_print (mn->mn_node_info.nodeId));
 		}
 		break;
 
@@ -3863,16 +3868,15 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 	case EVT_OPEN_COUNT_DONE: {
 		if (recovery_phase == evt_recovery_complete) {
 			log_printf(LOG_LEVEL_ERROR, 
-				"Evt config msg from %s, but not in membership change\n",
-				totemip_print(source_addr));
+				"Evt config msg from nodeid %s, but not in membership change\n",
+				totempg_ifaces_print (nodeid));
 		}
 		log_printf(RECOVERY_DEBUG, 
-			"Receive EVT_CONF_CHANGE_DONE from %s members %d checked in %d\n",
-				totemip_print(source_addr), total_member_count, checked_in+1);
+			"Receive EVT_CONF_CHANGE_DONE from nodeid %s members %d checked in %d\n",
+				totempg_ifaces_print (nodeid), total_member_count, checked_in+1);
 		if (!mn) {
 			log_printf(RECOVERY_DEBUG, 
-				"NO NODE DATA AVAILABLE FOR %s\n",
-					totemip_print(source_addr));
+				"NO NODE DATA AVAILABLE FOR nodeid %s\n", totempg_ifaces_print (nodeid));
 		}
 
 		if (++checked_in == total_member_count) {
@@ -3902,9 +3906,9 @@ static void evt_remote_chan_op(void *msg, struct totem_ip_address *source_addr)
 	 */
 	case EVT_CONF_DONE: {
 		log_printf(RECOVERY_DEBUG, 
-				"Receive EVT_CONF_DONE from %s, members %d checked in %d\n", 
-				totemip_print(source_addr),
-					total_member_count, checked_in+1);
+				"Receive EVT_CONF_DONE from nodeid %s, members %d checked in %d\n", 
+				totempg_ifaces_print (nodeid),
+				total_member_count, checked_in+1);
 		if (++checked_in == total_member_count) {
 			/*
 			 * All recovery complete, carry on.
@@ -3935,7 +3939,7 @@ static void evt_sync_init(void)
 	struct member_node_data *md;
 	unsigned int my_node = {SA_CLM_LOCAL_NODE_ID};
 	int left_list_entries = left_member_count;
- 	struct totem_ip_address *left_list = left_member_list;
+ 	unsigned int *left_list = left_member_list;
 
 	log_printf(RECOVERY_DEBUG, "Evt synchronize initialization\n");
 
@@ -3944,7 +3948,8 @@ static void evt_sync_init(void)
 	 */
 	if (!my_node_id) {
 		cn = main_clm_get_by_nodeid(my_node);
-		log_printf(RECOVERY_DEBUG, "My node ID 0x%x\n", cn->nodeId);
+		log_printf(RECOVERY_DEBUG, "My node ID %s\n",
+			totempg_ifaces_print (cn->nodeId));
 		my_node_id = cn->nodeId;
 		set_event_id(my_node_id);
 	}
@@ -3953,17 +3958,17 @@ static void evt_sync_init(void)
 	 * account for nodes that left the membership
 	 */
 	while (left_list_entries--) {
-		md = evt_find_node(left_list);
+		md = evt_find_node(*left_list);
 		if (md == 0) {
 			log_printf(LOG_LEVEL_WARNING, 
 					"Can't find cluster node at %s\n",
-							totemip_print(&left_list[0]));
+							totempg_ifaces_print (*left_list));
 		/*
 		 * Mark this one as down.
 		 */
 		} else {
 			log_printf(RECOVERY_DEBUG, "cluster node at %s down\n",
-							totemip_print(&left_list[0]));
+							totempg_ifaces_print(*left_list));
 			md->mn_started = 0;
 			remove_chan_open_info(md->mn_node_info.nodeId);
 		}
@@ -4046,18 +4051,18 @@ static int evt_sync_process(void)
 			 * that we've seen from him.  He will set his base ID for
 			 * generating event and message IDs to the highest one seen.
 			 */
-			md = evt_find_node(add_list);
+			md = evt_find_node(*add_list);
 			if (md != NULL) {
 				log_printf(RECOVERY_DEBUG, 
 					"Send set evt ID %llx to %s\n",
-					md->mn_last_msg_id, totemip_print(add_list));
+					md->mn_last_msg_id, totempg_ifaces_print (*add_list));
 				md->mn_started = 1;
 				memset(&cpkt, 0, sizeof(cpkt));
 				cpkt.chc_head.id =
 					SERVICE_ID_MAKE (EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 				cpkt.chc_head.size = sizeof(cpkt);
 				cpkt.chc_op = EVT_SET_ID_OP;
-				cpkt.u.chc_set_id.chc_nodeid = add_list->nodeid;
+				cpkt.u.chc_set_id.chc_nodeid = *add_list;
 				cpkt.u.chc_set_id.chc_last_id = md->mn_last_msg_id;
 				chn_iovec.iov_base = &cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
@@ -4066,7 +4071,7 @@ static int evt_sync_process(void)
 				if (res != 0) {
 					log_printf(RECOVERY_DEBUG, 
 						"Unable to send event id to %s\n", 
-						totemip_print(add_list));
+						totempg_ifaces_print (*add_list));
 					/*
 					 * We'll try again later.
 					 */
@@ -4077,17 +4082,17 @@ static int evt_sync_process(void)
 				/*
 				 * Not seen before, add it to our list of nodes.
 				 */
-				cn = main_clm_get_by_nodeid(add_list->nodeid);
+				cn = main_clm_get_by_nodeid(*add_list);
 				if (!cn) {
 					/*
 					 * Error: shouldn't happen
 					 */
 					log_printf(LOG_LEVEL_ERROR,
 							"recovery error node: %s not found\n",
-							totemip_print(add_list));
+							totempg_ifaces_print (*add_list));
 					assert(0);
 				} else {
-					evt_add_node(add_list, cn);
+					evt_add_node(*add_list, cn);
 				}
 			}
 

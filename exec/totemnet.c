@@ -117,7 +117,6 @@ struct totemnet_instance {
 
 	void (*totemnet_deliver_fn) (
 		void *context,
-		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len);
 
@@ -177,6 +176,8 @@ struct totemnet_instance {
 	int flushing;
 
 	struct totem_config *totem_config;
+
+	struct totem_ip_address token_target;
 };
 
 struct work_item {
@@ -612,7 +613,6 @@ static int net_deliver_fn (
 	struct iovec *iovec;
 	struct security_header *security_header;
 	struct sockaddr_storage system_from;
-	struct totem_ip_address from_address;
 	int bytes_received;
 	int res = 0;
 	unsigned char *msg_offset;
@@ -648,7 +648,6 @@ static int net_deliver_fn (
 		log_printf (instance->totemnet_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
 		return (0);
 	}
-	totemip_sockaddr_to_totemip_convert(&system_from, &from_address);
 
 	security_header = (struct security_header *)iovec->iov_base;
 
@@ -678,7 +677,6 @@ static int net_deliver_fn (
 	 */
 	instance->totemnet_deliver_fn (
 		instance->context,
-		&from_address,
 		msg_offset,
 		size_delv);
 		
@@ -1165,7 +1163,6 @@ int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
@@ -1342,7 +1339,6 @@ error_exit:
 
 int totemnet_token_send (
 	totemnet_handle handle,
-	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	int iov_len)
 {
@@ -1356,7 +1352,7 @@ int totemnet_token_send (
 		goto error_exit;
 	}
 
-	ucast_sendmsg (instance, system_to, iovec, iov_len);
+	ucast_sendmsg (instance, &instance->token_target, iovec, iov_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 
@@ -1447,3 +1443,67 @@ extern void totemnet_net_mtu_adjust (struct totem_config *totem_config)
 		totem_config->net_mtu -= UDPIP_HEADER_SIZE;
 	}
 }
+
+char *totemnet_iface_print (totemnet_handle handle)  {
+	struct totemnet_instance *instance;
+	int res = 0;
+	char *ret_char;
+
+	res = hdb_handle_get (&totemnet_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		ret_char = "Invalid totemnet handle";
+		goto error_exit;
+	}
+	
+	ret_char = (char *)totemip_print (&instance->my_id);
+
+	hdb_handle_put (&totemnet_instance_database, handle);
+error_exit:
+	return (ret_char);
+}
+
+int totemnet_iface_get (
+	totemnet_handle handle,
+	struct totem_ip_address *addr)
+{
+	struct totemnet_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&totemnet_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	
+	memcpy (addr, &instance->my_id, sizeof (struct totem_ip_address));
+
+	hdb_handle_put (&totemnet_instance_database, handle);
+
+error_exit:
+	return (res);
+}
+
+int totemnet_token_target_set (
+	totemnet_handle handle,
+	struct totem_ip_address *token_target)
+{
+	struct totemnet_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&totemnet_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	
+	memcpy (&instance->token_target, token_target,
+		sizeof (struct totem_ip_address));
+
+	hdb_handle_put (&totemnet_instance_database, handle);
+
+error_exit:
+	return (res);
+}
+
+

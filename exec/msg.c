@@ -116,63 +116,63 @@ static int msg_lib_init_fn (void *conn);
 
 static void message_handler_req_exec_msg_queueopen (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queueclose (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuestatusget (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queueunlink (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegroupcreate (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegroupinsert (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegroupremove (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegroupdelete (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegrouptrack (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_queuegrouptrackstop (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_messagesend (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_messageget (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_messagecancel (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_messagesendreceive (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_msg_messagereply (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_lib_msg_queueopen (
 	void *conn,
@@ -257,9 +257,9 @@ void queue_release (struct message_queue *queue);
 
 static void msg_confchg_fn (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
 struct msg_pd {
@@ -604,9 +604,9 @@ static void msg_sync_abort (void)
 
 static void msg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
 }
@@ -727,7 +727,7 @@ static int msg_lib_init_fn (void *conn)
 
 static void message_handler_req_exec_msg_queueopen (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queueopen *req_exec_msg_queueopen = (struct req_exec_msg_queueopen *)message;
 	struct res_lib_msg_queueopen res_lib_msg_queueopen;
@@ -838,7 +838,7 @@ error_exit:
 
 static void message_handler_req_exec_msg_queueclose (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queueclose *req_exec_msg_queueclose = (struct req_exec_msg_queueclose *)message;
 	struct res_lib_msg_queueclose res_lib_msg_queueclose;
@@ -874,7 +874,7 @@ error_exit:
 
 static void message_handler_req_exec_msg_queuestatusget (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_queuestatusget *req_exec_msg_queuestatusget =
@@ -885,7 +885,7 @@ static void message_handler_req_exec_msg_queuestatusget (
 
 static void message_handler_req_exec_msg_queueunlink (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_queueunlink *req_exec_msg_queueunlink =
@@ -896,7 +896,7 @@ static void message_handler_req_exec_msg_queueunlink (
 
 static void message_handler_req_exec_msg_queuegroupcreate (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queuegroupcreate *req_exec_msg_queuegroupcreate =
 		(struct req_exec_msg_queuegroupcreate *)message;
@@ -938,7 +938,7 @@ error_exit:
 
 static void message_handler_req_exec_msg_queuegroupinsert (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queuegroupinsert *req_exec_msg_queuegroupinsert =
 		(struct req_exec_msg_queuegroupinsert *)message;
@@ -985,7 +985,7 @@ error_exit:
 
 static void message_handler_req_exec_msg_queuegroupremove (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queuegroupremove *req_exec_msg_queuegroupremove =
 		(struct req_exec_msg_queuegroupremove *)message;
@@ -1029,7 +1029,7 @@ error_exit:
 
 static void message_handler_req_exec_msg_queuegroupdelete (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_msg_queuegroupdelete *req_exec_msg_queuegroupdelete =
 		(struct req_exec_msg_queuegroupdelete *)message;
@@ -1060,7 +1060,7 @@ static void message_handler_req_exec_msg_queuegroupdelete (
 
 static void message_handler_req_exec_msg_queuegrouptrack (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_queuegrouptrack *req_exec_msg_queuegrouptrack =
@@ -1071,7 +1071,7 @@ static void message_handler_req_exec_msg_queuegrouptrack (
 
 static void message_handler_req_exec_msg_queuegrouptrackstop (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_queuegrouptrackstop *req_exec_msg_queuegrouptrackstop =
@@ -1082,7 +1082,7 @@ static void message_handler_req_exec_msg_queuegrouptrackstop (
 
 static void message_handler_req_exec_msg_messagesend (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_messagesend *req_exec_msg_messagesend =
@@ -1093,7 +1093,7 @@ static void message_handler_req_exec_msg_messagesend (
 
 static void message_handler_req_exec_msg_messageget (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_messageget *req_exec_msg_messageget =
@@ -1104,7 +1104,7 @@ static void message_handler_req_exec_msg_messageget (
 
 static void message_handler_req_exec_msg_messagecancel (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_messagecancel *req_exec_msg_messagecancel =
@@ -1115,7 +1115,7 @@ static void message_handler_req_exec_msg_messagecancel (
 
 static void message_handler_req_exec_msg_messagesendreceive (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_messagesendreceive *req_exec_msg_messagesendreceive =
@@ -1126,7 +1126,7 @@ static void message_handler_req_exec_msg_messagesendreceive (
 
 static void message_handler_req_exec_msg_messagereply (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 #if 0
 	struct req_exec_msg_messagereply *req_exec_msg_messagereply =

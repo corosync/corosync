@@ -81,6 +81,10 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_ADMINISTRATIVE_STATE_GROUP_SET = 4
 };
 
+#ifndef HOST_NAME_MAX
+# define HOST_NAME_MAX 255
+#endif
+
 struct invocation {
 	void *data;
 	int interface;
@@ -115,9 +119,9 @@ struct component_terminate_callback_data {
 	
 static void amf_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static int amf_lib_exit_fn (void *conn);
@@ -156,23 +160,23 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg);
 
 static void message_handler_req_exec_amf_operational_state_comp_set (
 	void *message,
-	struct totem_ip_address *source);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_amf_presence_state_comp_set (
 	void *message,
-	struct totem_ip_address *source);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_amf_administrative_state_csi_set (
 	void *message,
-	struct totem_ip_address *source);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_amf_administrative_state_unit_set (
 	void *message,
-	struct totem_ip_address *source);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_amf_administrative_state_group_set (
 	void *message,
-	struct totem_ip_address *source);
+	unsigned int nodeid);
 
 static void presence_state_comp_set (
 	struct amf_comp *comp,
@@ -993,9 +997,9 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 }
 static void amf_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 #ifdef COMPILE_OUT
@@ -2265,7 +2269,7 @@ static  void operational_state_unit_set (
 
 static void message_handler_req_exec_amf_operational_state_comp_set (
 	void *message,
-	struct totem_ip_address *address)
+	unsigned int nodeid)
 {
 	struct req_exec_amf_operational_state_comp_set *req_exec_amf_operational_state_comp_set =
 		(struct req_exec_amf_operational_state_comp_set *)message;
@@ -2300,7 +2304,7 @@ static void message_handler_req_exec_amf_operational_state_comp_set (
 
 static void message_handler_req_exec_amf_presence_state_comp_set (
 	void *message,
-	struct totem_ip_address *address)
+	unsigned int nodeid)
 {
 	struct req_exec_amf_presence_state_comp_set *req_exec_amf_presence_state_comp_set =
 		(struct req_exec_amf_presence_state_comp_set *)message;
@@ -2363,7 +2367,7 @@ static void message_handler_req_exec_amf_presence_state_comp_set (
 
 static void message_handler_req_exec_amf_administrative_state_csi_set (
 	void *message,
-	struct totem_ip_address *address)
+	unsigned int nodeid)
 {
 //	struct req_exec_amf_administrative_state_csi_set *req_exec_amf_administrative_state_csi_set =
 //		(struct req_exec_amf_administrative_state_csi_set *)message;
@@ -2371,7 +2375,7 @@ static void message_handler_req_exec_amf_administrative_state_csi_set (
 }
 static void message_handler_req_exec_amf_administrative_state_unit_set (
 	void *message,
-	struct totem_ip_address *address)
+	unsigned int nodeid)
 {
 //	struct req_exec_amf_administrative_state_unit_set *req_exec_amf_administrative_state_unit_set =
 //		(struct req_exec_amf_administrative_state_unit_set *)message;
@@ -2379,7 +2383,7 @@ static void message_handler_req_exec_amf_administrative_state_unit_set (
 }
 static void message_handler_req_exec_amf_administrative_state_group_set (
 	void *message,
-	struct totem_ip_address *source)
+	unsigned int nodeid)
 {
 //	struct req_exec_amf_administrative_state_group_set *req_exec_amf_administrative_state_group_set =
 //		(struct req_exec_amf_administrative_state_group_set *)message;

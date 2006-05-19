@@ -62,7 +62,7 @@
 #define MESSAGE_REQ_SYNC_BARRIER 0
 
 struct barrier_data {
-	struct totem_ip_address addr;
+	unsigned int nodeid;
 	int completed;
 };
 
@@ -101,20 +101,20 @@ static void sync_service_init (struct memb_ring_id *ring_id);
 static int sync_service_process (enum totem_callback_token_type type, void *data);
 
 static void sync_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required);
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
 static void sync_primary_callback_fn (
-	struct totem_ip_address *view_list,
+	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id);
@@ -326,7 +326,7 @@ int sync_register (
 }
 
 static void sync_primary_callback_fn (
-	struct totem_ip_address *view_list,
+	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id)
@@ -351,7 +351,7 @@ static void sync_primary_callback_fn (
 	sync_callback_loaded = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
 	for (i = 0; i < view_list_entries; i++) {
-		totemip_copy(&barrier_data_confchg[i].addr, &view_list[i]);
+		barrier_data_confchg[i].nodeid = view_list[i];
 		barrier_data_confchg[i].completed = 0;
 	}
 	memcpy (barrier_data_process, barrier_data_confchg,
@@ -371,7 +371,7 @@ void sync_endian_convert (struct req_exec_sync_barrier_start *req_exec_sync_barr
 }
 
 static void sync_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -403,9 +403,9 @@ static void sync_deliver_fn (
 	 * Set completion for source_addr's address
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		if (totemip_equal(source_addr,  &barrier_data_process[i].addr)) {
+		if (nodeid == barrier_data_process[i].nodeid) {
 			barrier_data_process[i].completed = 1;
-			log_printf (LOG_LEVEL_DEBUG,"Barrier Start Recieved From %s\n", totemip_print(&barrier_data_process[i].addr));
+			log_printf (LOG_LEVEL_DEBUG,"Barrier Start Recieved From %d\n", barrier_data_process[i].nodeid);
 			break;
 		}
 	}
@@ -414,8 +414,8 @@ static void sync_deliver_fn (
 	 * Test if barrier is complete
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		log_printf (LOG_LEVEL_DEBUG,"Barrier completion status for %s  = %d. \n", 
-			totemip_print(&barrier_data_process[i].addr),
+		log_printf (LOG_LEVEL_DEBUG,"Barrier completion status for nodeid %d = %d. \n", 
+			barrier_data_process[i].nodeid,
 			barrier_data_process[i].completed);
 		if (barrier_data_process[i].completed == 0) {
 			barrier_completed = 0;
@@ -449,9 +449,9 @@ static void sync_deliver_fn (
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	sync_ring_id = ring_id;

@@ -45,8 +45,7 @@
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string,
-	int interface_max);
+	char **error_string);
 	
 extern int totem_config_validate (
 	struct totem_config *totem_config,

@@ -115,7 +115,6 @@ static int parse_section(FILE *fp,
 
 			loc--;
 			*loc = '\0';
-printf ("creating object %d %s\n", parent_handle, section);
 			objdb->object_create (parent_handle, &new_parent,
 					      section, strlen (section));
 			if (parse_section(fp, objdb, new_parent, error_string))

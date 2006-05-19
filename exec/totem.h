@@ -35,11 +35,12 @@
 #define TOTEM_H_DEFINED
 #include "totemip.h"
 
-#define MESSAGE_SIZE_MAX			256000
-#define PROCESSOR_COUNT_MAX			32
-#define FRAME_SIZE_MAX				9000
-#define TRANSMITS_ALLOWED			16
-#define SEND_THREADS_MAX			16
+#define MESSAGE_SIZE_MAX	256000
+#define PROCESSOR_COUNT_MAX	32
+#define FRAME_SIZE_MAX		9000
+#define TRANSMITS_ALLOWED	16
+#define SEND_THREADS_MAX	16
+#define INTERFACE_MAX		2
 
 /*
  * Array location of various timeouts as
@@ -116,6 +117,14 @@ struct totem_config {
 	unsigned int fail_to_recv_const;
 
 	unsigned int seqno_unchanged_const;
+
+	unsigned int rrp_token_expired_timeout;
+
+	unsigned int rrp_problem_count_timeout;
+
+	unsigned int rrp_problem_count_threshold;
+
+	char rrp_mode[64];
 
 	struct totem_logging_configuration totem_logging_configuration;
 

@@ -48,6 +48,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "totem.h"
 #include "../include/saAis.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_evs.h"
@@ -56,7 +57,6 @@
 #include "../lcr/lcr_comp.h"
 #include "aispoll.h"
 #include "totempg.h"
-#include "totemip.h"
 #include "main.h"
 #include "mempool.h"
 #include "service.h"
@@ -72,12 +72,12 @@ enum evs_exec_message_req_types {
 static int evs_exec_init_fn(struct objdb_iface_ver0 *objdb);
 static void evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static void message_handler_req_exec_mcast (void *message, struct totem_ip_address *source_addr);
+static void message_handler_req_exec_mcast (void *msg, unsigned int nodeid);
 
 static void req_exec_mcast_endian_convert (void *msg);
 
@@ -209,13 +209,11 @@ struct res_evs_confchg_callback res_evs_confchg_callback;
 
 static void evs_confchg_fn (
 	enum totem_configuration_type configuration_type,
-    struct totem_ip_address *member_list, int member_list_entries,
-    struct totem_ip_address *left_list, int left_list_entries,
-    struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-
-	int i;
 	struct list_head *list;
 	struct evs_pd *evs_pd;
 
@@ -226,20 +224,16 @@ static void evs_confchg_fn (
 	res_evs_confchg_callback.header.id = MESSAGE_RES_EVS_CONFCHG_CALLBACK;
 	res_evs_confchg_callback.header.error = SA_AIS_OK;
 
-	for (i = 0; i < member_list_entries; i++) {
-		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.member_list[i],
-			&member_list[i]);
-	}
+	memcpy (res_evs_confchg_callback.member_list,
+		member_list, member_list_entries);
 	res_evs_confchg_callback.member_list_entries = member_list_entries;
-	for (i = 0; i < left_list_entries; i++) {
-		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.left_list[i],
-			&left_list[i]);
-	}
+
+	memcpy (res_evs_confchg_callback.left_list,
+		left_list, left_list_entries);
 	res_evs_confchg_callback.left_list_entries = left_list_entries;
-	for (i = 0; i < joined_list_entries; i++) {
-		totemip_copy((struct totem_ip_address *)&res_evs_confchg_callback.joined_list[i],
-			&joined_list[i]);
-	}
+
+	memcpy (res_evs_confchg_callback.joined_list,
+		joined_list, joined_list_entries);
 	res_evs_confchg_callback.joined_list_entries = joined_list_entries;
 
 	/*
@@ -457,8 +451,7 @@ static void message_handler_req_evs_membership_get (void *conn, void *msg)
 	res_lib_evs_membership_get.header.size = sizeof (struct res_lib_evs_membership_get);
 	res_lib_evs_membership_get.header.id = MESSAGE_RES_EVS_MEMBERSHIP_GET;
 	res_lib_evs_membership_get.header.error = EVS_OK;
-	totemip_copy((struct totem_ip_address *)&res_lib_evs_membership_get.local_addr,
-		this_ip);
+	res_lib_evs_membership_get.local_nodeid = this_ip->nodeid;
 	memcpy (&res_lib_evs_membership_get.member_list,
 		&res_evs_confchg_callback.member_list,
 		sizeof (res_lib_evs_membership_get.member_list));
@@ -474,7 +467,9 @@ static void req_exec_mcast_endian_convert (void *msg)
 {
 }
 
-static void message_handler_req_exec_mcast (void *msg, struct totem_ip_address *source_addr)
+static void message_handler_req_exec_mcast (
+	void *msg,
+	unsigned int nodeid)
 {
 	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)msg;
 	struct res_evs_deliver_callback res_evs_deliver_callback;
@@ -513,8 +508,7 @@ static void message_handler_req_exec_mcast (void *msg, struct totem_ip_address *
 		}
 
 		if (found) {
-			totemip_copy((struct totem_ip_address *)&res_evs_deliver_callback.evs_address,
-				source_addr);
+			res_evs_deliver_callback.local_nodeid = nodeid;
 			openais_conn_send_response (evs_pd->conn, &res_evs_deliver_callback,
 				sizeof (struct res_evs_deliver_callback));
 			openais_conn_send_response (evs_pd->conn, msg_addr,

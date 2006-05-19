@@ -41,7 +41,7 @@ struct openais_vsf_iface_ver0 {
 	 */
 	int (*init) (
 	    void (*primary_callback_fn) (
-		struct totem_ip_address *view_list,
+		unsigned int *view_list,
 		int view_list_entries,
 		int primary_designated,
 		struct memb_ring_id *ring_id));

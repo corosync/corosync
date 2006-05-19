@@ -153,7 +153,7 @@ static void (*totempg_log_printf) (char *file, int line, int level, char *format
 struct totem_config *totempg_totem_config;
 
 struct assembly {
-	struct totem_ip_address addr;
+	unsigned int nodeid;
 	unsigned char data[MESSAGE_SIZE_MAX];
 	int index;
 	unsigned char last_frag_num;
@@ -183,16 +183,16 @@ static struct iovec iov_delv;
 static unsigned int totempg_max_handle = 0;
 struct totempg_group_instance {
 	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
+		unsigned int nodeid,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required);
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id);
 
 	struct totempg_group *groups;
@@ -220,12 +220,12 @@ static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define log_printf(level, format, args...) \
     totempg_log_printf (__FILE__, __LINE__, level, format, ##args)
 
-static struct assembly *find_assembly (struct totem_ip_address *addr)
+static struct assembly *find_assembly (unsigned int nodeid)
 {
 	int i;
 
 	for (i = 0; i < assembly_list_entries; i++) {
-		if (totemip_equal(addr, &assembly_list[i]->addr)) {
+		if (nodeid == assembly_list[i]->nodeid) {
 			return (assembly_list[i]);
 		}
 	}
@@ -234,9 +234,9 @@ static struct assembly *find_assembly (struct totem_ip_address *addr)
 
 static inline void app_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -322,7 +322,7 @@ static inline int group_matches (
 	
 
 static inline void app_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	unsigned int iov_len,
 	int endian_conversion_required)
@@ -346,7 +346,7 @@ static inline void app_deliver_fn (
 				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
 				stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
 				instance->deliver_fn (
-					source_addr,
+					nodeid,
 					&stripped_iovec,
 					iov_len,
 					endian_conversion_required);
@@ -358,9 +358,9 @@ static inline void app_deliver_fn (
 }
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -374,7 +374,7 @@ static void totempg_confchg_fn (
 	 */
 	for (i = 0; i < left_list_entries; i++) {
 		for (j = 0; j < assembly_list_entries; j++) {
-			if (totemip_equal(&left_list[i], &assembly_list[j]->addr)) {
+			if (left_list[i] == assembly_list[j]->nodeid) {
 				assembly_list[j]->index = 0;
 			}
 		}
@@ -386,7 +386,7 @@ static void totempg_confchg_fn (
 	for (i = 0; i < member_list_entries; i++) {
 		found = 0;
 		for (j = 0; j < assembly_list_entries; j++) {
-			if (totemip_equal(&member_list[i], &assembly_list[j]->addr)) {
+			if (member_list[i] == assembly_list[j]->nodeid) {
 				found = 1; 
 				break;
 			}
@@ -395,8 +395,8 @@ static void totempg_confchg_fn (
 			assembly_list[assembly_list_entries] =
 				malloc (sizeof (struct assembly));
 			assert (assembly_list[assembly_list_entries]); // TODO
-			totemip_copy(&assembly_list[assembly_list_entries]->addr, 
-				     &member_list[i]);
+			assembly_list[assembly_list_entries]->nodeid =
+				member_list[i];
 			assembly_list[assembly_list_entries]->index = 0;
 			assembly_list_entries += 1;
 		}
@@ -410,7 +410,7 @@ static void totempg_confchg_fn (
 }
 
 static void totempg_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -426,7 +426,7 @@ static void totempg_deliver_fn (
 	int continuation;
 	int start;
 
-	assembly = find_assembly (source_addr);
+	assembly = find_assembly (nodeid);
 	assert (assembly);
 
 	/*
@@ -541,7 +541,7 @@ static void totempg_deliver_fn (
 	}
 
 	for  (i = start; i < msg_count; i++) {
-		app_deliver_fn(source_addr, &iov_delv, 1,
+		app_deliver_fn(nodeid, &iov_delv, 1,
 			endian_conversion_required);
 		assembly->index += msg_lens[i];
 		iov_delv.iov_base = &assembly->data[assembly->index];
@@ -865,16 +865,16 @@ int totempg_groups_initialize (
 	totempg_groups_handle *handle,
 
 	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
+		unsigned int nodeid,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
 	struct totempg_group_instance *instance;
@@ -1132,5 +1132,44 @@ int totempg_groups_send_ok_groups (
 error_exit:
 	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
+}
+
+int totempg_ifaces_get (
+	unsigned int nodeid,
+	struct totem_ip_address *interfaces,
+	unsigned int *iface_count)
+{
+	int res;
+
+	res = totemmrp_interfaces_get (
+		nodeid,
+		interfaces,
+		iface_count);
+
+	return (res);
+}
+
+char *totempg_ifaces_print (unsigned int nodeid)
+{
+	static char iface_string[256 * INTERFACE_MAX];
+	char one_iface[32];
+	struct totem_ip_address interfaces[INTERFACE_MAX];
+	unsigned int iface_count;
+	unsigned int i;
+	int res;
+
+	iface_string[0] = '\0';
+
+	res = totempg_ifaces_get (nodeid, interfaces, &iface_count);
+	if (res == -1) {
+		return ("no interface found for nodeid");
+	}
+
+	for (i = 0; i < iface_count; i++) {
+		sprintf (one_iface, "r(%d) ip(%s) ",
+			i, totemip_print (&interfaces[i]));
+		strcat (iface_string, one_iface);
+	}
+	return (iface_string);
 }
 

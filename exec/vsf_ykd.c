@@ -75,7 +75,7 @@ struct ykd_header {
 };
 
 struct ykd_session {
-	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
+	unsigned int member_list[PROCESSOR_COUNT_MAX];
 	int member_list_entries;
 	int session_id;
 };
@@ -95,7 +95,7 @@ struct ykd_state {
 };
 
 struct state_received {
-	struct totem_ip_address addr;
+	unsigned int nodeid;
 	int received;
 	struct ykd_state ykd_state;
 };
@@ -114,7 +114,7 @@ static int state_received_process_entries;
 
 static enum ykd_mode ykd_mode;
 
-static struct totem_ip_address view_list[PROCESSOR_COUNT_MAX];
+static unsigned int view_list[PROCESSOR_COUNT_MAX];
 
 static int view_list_entries;
 
@@ -135,7 +135,7 @@ static void *ykd_attempt_send_callback_token_handle = 0;
 static void *ykd_state_send_callback_token_handle = 0;
 
 static void (*ykd_primary_callback_fn) (
-	struct totem_ip_address *view_list,
+	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id) = NULL;
@@ -244,7 +244,7 @@ static void compute (void)
 }
 
 static int subquorum (
-	struct totem_ip_address *member_list,
+	unsigned int *member_list,
 	int member_list_entries,
 	struct ykd_session *session)
 {
@@ -254,7 +254,7 @@ static int subquorum (
 
 	for (i = 0; i < member_list_entries; i++) {
 		for (j = 0; j < session->member_list_entries; j++) {
-			if (totemip_equal (&member_list[i], &session->member_list[j])) {
+			if (member_list[i] == session->member_list[j]) {
 				intersections += 1;
 			}
 		}
@@ -303,7 +303,7 @@ static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 	ykd_session->member_list_entries = swab32 (ykd_session->member_list_entries);
 	ykd_session->session_id = swab32 (ykd_session->session_id);
 	for (i = 0; i < ykd_session->member_list_entries; i++) {
-		totemip_copy_endian_convert (&ykd_session->member_list[i], &ykd_session->member_list[i]);
+// TODO		totemip_copy_endian_convert (&ykd_session->member_list[i], &ykd_session->member_list[i]);
 	}
 }
 
@@ -326,7 +326,7 @@ static void ykd_state_endian_convert (struct ykd_state *ykd_state)
 }
 
 static void ykd_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -339,6 +339,7 @@ static void ykd_deliver_fn (
 	/*
 	 * If this is a localhost address, this node is always primary
 	 */
+#ifdef TODO
 	if (totemip_localhost_check (source_addr)) {
 		log_printf (LOG_LEVEL_NOTICE,
 			"This processor is within the primary component.\n");
@@ -351,6 +352,7 @@ static void ykd_deliver_fn (
 				&ykd_ring_id);
 		return;
 	}
+#endif
 	if (endian_conversion_required) {
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);
 	}
@@ -359,7 +361,7 @@ static void ykd_deliver_fn (
 	 * Set completion for source_addr's address
 	 */
 	for (state_position = 0; state_position < state_received_confchg_entries; state_position++) {
-		if (totemip_equal(source_addr, &state_received_process[state_position].addr)) {
+		if (nodeid == state_received_process[state_position].nodeid) {
 			/*
 			 * State position contains the address of the state to modify
 			 * This may be used later by the other algorithms
@@ -402,7 +404,7 @@ static void ykd_deliver_fn (
 				if (decide ()) {
 					ykd_state.session_id = session_id_max + 1;
 					memcpy (ykd_state.ambiguous_sessions[ykd_state.ambiguous_sessions_entries].member_list,
-						view_list, sizeof (struct totem_ip_address) * view_list_entries);
+						view_list, sizeof (unsigned int) * view_list_entries);
 						ykd_state.ambiguous_sessions[ykd_state.ambiguous_sessions_entries].member_list_entries = view_list_entries;
 						ykd_state.ambiguous_sessions_entries += 1;
 					ykd_attempt_send();
@@ -434,9 +436,9 @@ static void ykd_deliver_fn (
 int first_run = 1;
 static void ykd_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	int i;
@@ -448,13 +450,13 @@ static void ykd_confchg_fn (
 	memcpy (&ykd_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	if (first_run) {
-		totemip_copy (&ykd_state.last_primary.member_list[0], this_ip);
+		ykd_state.last_primary.member_list[0] = this_ip->nodeid;
 		ykd_state.last_primary.member_list_entries = 1;
 		ykd_state.last_primary.session_id = 0;
 		first_run = 0;
 	}
 	memcpy (view_list, member_list,
-		member_list_entries * sizeof (struct totem_ip_address));
+		member_list_entries * sizeof (unsigned int));
 	view_list_entries = member_list_entries;
 
 	ykd_mode = YKD_MODE_SENDSTATE;
@@ -469,7 +471,7 @@ static void ykd_confchg_fn (
 
 	memset (&state_received_confchg, 0, sizeof (state_received_confchg));
 	for (i = 0; i < member_list_entries; i++) {
-		totemip_copy(&state_received_confchg[i].addr, &member_list[i]);
+		state_received_confchg[i].nodeid = member_list[i];
 		state_received_confchg[i].received = 0;
 	}
 	memcpy (state_received_process, state_received_confchg,
@@ -488,7 +490,7 @@ struct totempg_group ykd_group = {
 
 static int ykd_init (
 	void (*primary_callback_fn) (
-		struct totem_ip_address *view_list,
+		unsigned int *view_list,
 		int view_list_entries,
 		int primary_designated,
 		struct memb_ring_id *ring_id))

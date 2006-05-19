@@ -58,65 +58,65 @@ struct totempg_group {
 /*
  * Initialize the totem process groups abstraction
  */
-int totempg_initialize (
+extern int totempg_initialize (
 	poll_handle poll_handle,
 	struct totem_config *totem_config
 );
 
-void totempg_finalize (void);
+extern void totempg_finalize (void);
 
-int totempg_callback_token_create (void **handle_out,
+extern int totempg_callback_token_create (void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
 	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data);
 
-void totempg_callback_token_destroy (void *handle);
+extern void totempg_callback_token_destroy (void *handle);
 
 /*
  * Initialize a groups instance
  */
-int totempg_groups_initialize (
+extern int totempg_groups_initialize (
 	totempg_groups_handle *handle,
 
 	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
+		unsigned int nodeid,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-int totempg_groups_finalize (
+extern int totempg_groups_finalize (
 	totempg_groups_handle handle);
 
-int totempg_groups_join (
+extern int totempg_groups_join (
 	totempg_groups_handle handle,
 	struct totempg_group *groups,
 	int gruop_cnt);
 
-int totempg_groups_leave (
+extern int totempg_groups_leave (
 	totempg_groups_handle handle,
 	struct totempg_group *groups,
 	int gruop_cnt);
 
-int totempg_groups_mcast_joined (
+extern int totempg_groups_mcast_joined (
 	totempg_groups_handle handle,
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee);
 
-int totempg_groups_send_ok_joined (
+extern int totempg_groups_send_ok_joined (
 	totempg_groups_handle handle,
 	struct iovec *iovec,
 	int iov_len);
 	
-int totempg_groups_mcast_groups (
+extern int totempg_groups_mcast_groups (
 	totempg_groups_handle handle,
 	int guarantee,
 	struct totempg_group *groups,
@@ -124,11 +124,18 @@ int totempg_groups_mcast_groups (
 	struct iovec *iovec,
 	int iov_len);
 
-int totempg_groups_send_ok_groups (
+extern int totempg_groups_send_ok_groups (
 	totempg_groups_handle handle,
 	struct totempg_group *groups,
 	int groups_cnt,
 	struct iovec *iovec,
 	int iov_len);
 	
+extern int totempg_ifaces_get (
+	unsigned int nodeid,
+        struct totem_ip_address *interfaces,
+        unsigned int *iface_count);
+
+extern char *totempg_ifaces_print (unsigned int nodeid);
+
 #endif /* TOTEMPG_H_DEFINED */

@@ -37,8 +37,6 @@
 #include "totem.h"
 #include "aispoll.h"
 
-#define TOTEMMRP_PACKET_SIZE_MAX	1404
-
 /*
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
@@ -46,7 +44,7 @@
 /*
  * Initialize the logger
  */
-void totemmrp_log_printf_init (
+extern void totemmrp_log_printf_init (
 	void (*log_printf) (int , char *, ...),
 	int log_level_security,
 	int log_level_error,
@@ -57,28 +55,28 @@ void totemmrp_log_printf_init (
 /*
  * Initialize the group messaging interface
  */
-int totemmrp_initialize (
+extern int totemmrp_initialize (
 	poll_handle poll_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
+		unsigned int nodeid,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-int totemmrp_finalize (void);
+extern int totemmrp_finalize (void);
 
 /*
  * Multicast a message
  */
-int totemmrp_mcast (
+extern int totemmrp_mcast (
 	struct iovec *iovec,
 	int iov_len,
 	int priority);
@@ -86,18 +84,23 @@ int totemmrp_mcast (
 /*
  * Return number of available messages that can be queued
  */
-int totemmrp_avail (void);
+extern int totemmrp_avail (void);
 
-int totemmrp_callback_token_create (
+extern int totemmrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
 	int (*callback_fn) (enum totem_callback_token_type type, void *),
 	void *data);
 
-void totemmrp_callback_token_destroy (
+extern void totemmrp_callback_token_destroy (
 	void *handle_out);
 
-void totemmrp_new_msg_signal (void);
+extern void totemmrp_new_msg_signal (void);
+
+extern int totemmrp_interfaces_get (
+	unsigned int nodeid,
+	struct totem_ip_address *interfaces,
+	unsigned int *iface_count);
 
 #endif /* TOTEMMRP_H_DEFINED */

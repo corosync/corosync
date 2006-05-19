@@ -116,27 +116,27 @@ static int lck_lib_init_fn (void *conn);
 
 static void message_handler_req_exec_lck_resourceopen (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_lck_resourceclose (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_lck_resourcelock (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_lck_resourceunlock (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_lck_resourcelockorphan (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_lck_lockpurge (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_lib_lck_resourceopen (
 	void *conn,
@@ -190,11 +190,11 @@ static int recovery_abort = 0;
 
 
 static void lck_confchg_fn (
-		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id);
+	enum totem_configuration_type configuration_type,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id);
 
 struct lck_pd {
 	struct list_head resource_list;
@@ -417,9 +417,9 @@ static void lck_sync_abort (void)
 
 static void lck_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
 }
@@ -626,7 +626,7 @@ static int lck_lib_init_fn (void *conn)
 
 static void message_handler_req_exec_lck_resourceopen (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_resourceopen *req_exec_lck_resourceopen = (struct req_exec_lck_resourceopen *)message;
 	struct res_lib_lck_resourceopen res_lib_lck_resourceopen;
@@ -746,7 +746,7 @@ error_exit:
 
 static void message_handler_req_exec_lck_resourceclose (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_resourceclose *req_exec_lck_resourceclose = (struct req_exec_lck_resourceclose *)message;
 	struct res_lib_lck_resourceclose res_lib_lck_resourceclose;
@@ -1036,7 +1036,7 @@ void unlock_algorithm (
 
 static void message_handler_req_exec_lck_resourcelock (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_resourcelock *req_exec_lck_resourcelock = (struct req_exec_lck_resourcelock *)message;
 	struct resource *resource = 0;
@@ -1148,7 +1148,7 @@ error_exit:
 
 static void message_handler_req_exec_lck_resourceunlock (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_resourceunlock *req_exec_lck_resourceunlock = (struct req_exec_lck_resourceunlock *)message;
 	struct res_lib_lck_resourceunlock res_lib_lck_resourceunlock;
@@ -1203,7 +1203,7 @@ error_exit:
 
 static void message_handler_req_exec_lck_resourcelockorphan (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_resourcelockorphan *req_exec_lck_resourcelockorphan = (struct req_exec_lck_resourcelockorphan *)message;
 	struct resource *resource = 0;
@@ -1229,7 +1229,7 @@ static void message_handler_req_exec_lck_resourcelockorphan (
 
 static void message_handler_req_exec_lck_lockpurge (
 	void *msg,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_lck_lockpurge *req_exec_lck_lockpurge = (struct req_exec_lck_lockpurge *)msg;
 	struct res_lib_lck_lockpurge res_lib_lck_lockpurge;

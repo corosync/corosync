@@ -60,32 +60,32 @@
 totemsrp_handle totemsrp_handle_in;
 
 void (*pg_deliver_fn) (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required) = 0;
 
 void (*pg_confchg_fn) (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) = 0;
 
 void totemmrp_deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
 {
-	pg_deliver_fn (source_addr, iovec, iov_len, endian_conversion_required);
+	pg_deliver_fn (nodeid, iovec, iov_len, endian_conversion_required);
 }
 
 void totemmrp_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
 	pg_confchg_fn (configuration_type,
@@ -103,15 +103,15 @@ int totemmrp_initialize (
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
-		struct totem_ip_address *source_addr,
+		unsigned int nodeid,
 		struct iovec *iovec,
 		int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id))
 {
 	int result;
@@ -170,4 +170,20 @@ void totemmrp_callback_token_destroy (
 
 void totemmrp_new_msg_signal (void) {
 	totemsrp_new_msg_signal (totemsrp_handle_in);
+}
+
+int totemmrp_interfaces_get (
+	unsigned int nodeid,
+	struct totem_ip_address *interfaces,
+	unsigned int *iface_count)
+{
+	int res;
+
+	res = totemsrp_interfaces_get (
+		totemsrp_handle_in,
+		nodeid,
+		interfaces,
+		iface_count);
+
+	return (res);
 }

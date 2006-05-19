@@ -668,7 +668,7 @@ error_exit:
 char delivery_data[MESSAGE_SIZE_MAX];
 
 static void deliver_fn (
-	struct totem_ip_address *source_addr,
+	unsigned int nodeid,
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
@@ -712,7 +712,7 @@ static void deliver_fn (
 	}
 
 	ais_service[service]->exec_service[fn_id].exec_handler_fn
-		(header, source_addr);
+		(header, nodeid);
 }
 
 static int poll_handler_libais_accept (
@@ -779,8 +779,7 @@ int message_source_is_local(struct message_source *source)
 	int ret = 0;
 
 	assert (source != NULL);
-	if ((totemip_localhost_check(&source->addr)
-	     ||(totemip_equal(&source->addr, my_ip)))) {
+	if (source->nodeid == my_ip->nodeid) {
 		ret = 1;
 	}
 	return ret;
@@ -791,7 +790,7 @@ void message_source_set (
 	void *conn)
 {
 	assert ((source != NULL) && (conn != NULL));
-	totemip_copy(&source->addr, this_ip);
+	source->nodeid = my_ip->nodeid;
 	source->conn = conn;
 }
 

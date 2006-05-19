@@ -61,18 +61,21 @@ extern int totemrrp_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		struct totem_ip_address *system_from,
 		void *msg,
 		int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_addr),
+		struct totem_ip_address *iface_addr,
+		unsigned int iface_no),
 
 	void (*token_seqid_get) (
 		void *msg,
 		unsigned int *seqid,
-		unsigned int *token_is));
+		unsigned int *token_is),
+
+	unsigned int (*msgs_missing) (void));
+
 
 extern int totemrrp_processor_count_set (
 	totemrrp_handle handle,
@@ -80,7 +83,6 @@ extern int totemrrp_processor_count_set (
 
 extern int totemrrp_token_send (
 	totemrrp_handle handle,
-	struct totem_ip_address *system_to,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
@@ -98,8 +100,18 @@ extern int totemrrp_recv_flush (totemrrp_handle handle);
 
 extern int totemrrp_send_flush (totemrrp_handle handle);
 
+extern int totemrrp_token_target_set (
+	totemrrp_handle handle,
+	struct totem_ip_address *target,
+	unsigned int iface_no);
+
 extern int totemrrp_iface_check (totemrrp_handle handle);
 
 extern int totemrrp_finalize (totemrrp_handle handle);
+
+extern int totemrrp_interfaces_get (
+	totemrrp_handle handle,
+	struct totem_ip_address *interfaces,
+	unsigned int *iface_count);
 
 #endif /* TOTEMRRP_H_DEFINED */

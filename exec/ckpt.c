@@ -88,7 +88,7 @@ struct saCkptCheckpointSection {
 
 struct ckpt_refcnt {
 	int count;
-	struct totem_ip_address addr;
+	unsigned int nodeid;
 };
 
 struct saCkptCheckpoint {
@@ -198,6 +198,7 @@ static void message_handler_req_lib_ckpt_checkpointsynchronizeasync (
 static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 	void *conn,
 	void *msg);
+
 static void message_handler_req_lib_ckpt_sectioniterationfinalize (
 	void *conn,
 	void *msg);
@@ -208,65 +209,65 @@ static void message_handler_req_lib_ckpt_sectioniterationnext (
 
 static void message_handler_req_exec_ckpt_checkpointopen (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_synchronize_state (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_synchronize_section (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_checkpointclose (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_checkpointunlink (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectioncreate (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectiondelete (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectionwrite (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectionoverwrite (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void message_handler_req_exec_ckpt_sectionread (
 	void *message,
-	struct totem_ip_address *source_addr);
+	unsigned int nodeid);
 
 static void ckpt_recovery_activate (void);
 static void ckpt_recovery_initialize (void);
 static int  ckpt_recovery_process (void);
 static void ckpt_recovery_finalize();
 static void ckpt_recovery_abort(void);
-static void ckpt_recovery_process_members_exit(
-	struct totem_ip_address *left_list, 
+static void ckpt_recovery_process_members_exit (
+	unsigned int *left_list,
 	int left_list_entries); 
-static void ckpt_replace_localhost_ip (struct totem_ip_address *joined_list);
+static void ckpt_replace_localhost_ip (unsigned int *joined_list);
 
 void checkpoint_release (struct saCkptCheckpoint *checkpoint);
 void timer_function_retention (void *data);
@@ -317,12 +318,12 @@ static int recovery_abort = 0;
 
 static struct memb_ring_id saved_ring_id;
 
-static void ckpt_confchg_fn(
-		enum totem_configuration_type configuration_type,
-		struct totem_ip_address *member_list, int member_list_entries,
-		struct totem_ip_address *left_list, int left_list_entries,
-		struct totem_ip_address *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id);
+static void ckpt_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id);
 
 /*
  * Executive Handler Definition
@@ -625,7 +626,7 @@ struct req_exec_ckpt_synchronize_state {
 	SaNameT checkpointName;
 	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
 	SaCkptSectionDescriptorT sectionDescriptor;	
-	struct totem_ip_address *source_addr;
+	unsigned int nodeid;
 	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
 };
 
@@ -641,25 +642,27 @@ struct req_exec_ckpt_synchronize_section {
 /* 
  * Implementation
  */
-static int processor_index_set(struct totem_ip_address *proc_addr, 
+static int processor_index_set(
+	unsigned int nodeid,
 	struct ckpt_refcnt *ckpt_refcount) 
 {
 	int i;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		if (ckpt_refcount[i].addr.family == 0) {
+		if (ckpt_refcount[i].nodeid == 0) {
 			/*
 			 * If the source addresses do not match and this element
 			 * has no stored value then store the new value and 
 			 * return the Index.
 		 	 */		
-			totemip_copy(&ckpt_refcount[i].addr, proc_addr);
+			ckpt_refcount[i].nodeid = nodeid;
 			return i;
 		}
 		/*
 		* If the source addresses match then this processor index
 		* has already been set
 		*/
-		else if (totemip_equal(&ckpt_refcount[i].addr, proc_addr)) {
+		else
+		if (ckpt_refcount[i].nodeid == nodeid) {
 			return -1;
 		}
 
@@ -669,35 +672,34 @@ static int processor_index_set(struct totem_ip_address *proc_addr,
 	 * to store the new Processor.	
 	 */
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		if (ckpt_refcount[i].addr.family == 0) {
-			log_printf (LOG_LEVEL_ERROR,"Processor Set: Index %d has proc 0 and count 0\n", i);
-		}
-		else {
-			log_printf (LOG_LEVEL_ERROR,"Processor Set: Index %d has proc %s and count %d\n",
-                                i,
-                                totemip_print(&ckpt_refcount[i].addr),
-                                ckpt_refcount[i].count);
-                }
+		log_printf (LOG_LEVEL_ERROR,"Processor Set: Index %d has proc %s and count %d\n",
+			i,
+			totempg_ifaces_print (ckpt_refcount[i].nodeid),
+			ckpt_refcount[i].count);
         }
 
 	return -1;
 }
 
-static int processor_add (struct totem_ip_address *proc_addr, int count, struct ckpt_refcnt *ckpt_refcount) 
+static int processor_add (
+	unsigned int nodeid,
+	int count,
+	struct ckpt_refcnt *ckpt_refcount) 
 {
 	int i;
         for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-                if (ckpt_refcount[i].addr.family == 0) {
+                if (ckpt_refcount[i].nodeid == 0) {
 			log_printf (LOG_LEVEL_DEBUG,"processor_add found empty slot to insert new item\n");
-                        totemip_copy(&ckpt_refcount[i].addr, proc_addr);
+			ckpt_refcount[i].nodeid = nodeid;
 			ckpt_refcount[i].count = count;
                         return i;
                 }
 		/*Dont know how we missed this in the processor find but update this*/
-		else if (totemip_equal(&ckpt_refcount[i].addr, proc_addr)) {
+		else
+		if (ckpt_refcount[i].nodeid == nodeid) {
 			ckpt_refcount[i].count += count;
-			log_printf (LOG_LEVEL_DEBUG,"processor_add for existent proc. ip %s, New count = %d\n",
-				totemip_print(&ckpt_refcount[i].addr),
+			log_printf (LOG_LEVEL_DEBUG,"processor_add for existent proc. nodeid %s, New count = %d\n",
+				totempg_ifaces_print (ckpt_refcount[i].nodeid),
 				ckpt_refcount[i].count);
 
 			return i;
@@ -709,21 +711,17 @@ static int processor_add (struct totem_ip_address *proc_addr, int count, struct 
          */
 	log_printf (LOG_LEVEL_ERROR,"Processor Add Failed. Dumping Refcount Array\n");
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		if (ckpt_refcount[i].addr.family == 0) {
-			log_printf (LOG_LEVEL_ERROR,"Processor Add: Index %d has proc 0 and count 0\n", i);
-		}
-		else {
-			log_printf (LOG_LEVEL_ERROR,"Processor Add: Index %d has proc %s and count %d\n",
-				i,
-				totemip_print(&ckpt_refcount[i].addr),
-				ckpt_refcount[i].count);
-		}
+		log_printf (LOG_LEVEL_ERROR,"Processor Add: Index %d has proc %s and count %d\n",
+			i,
+			totempg_ifaces_print (ckpt_refcount[i].nodeid),
+			ckpt_refcount[i].count);
 	}
         return -1;
 
 }
 
-static int processor_index_find(struct totem_ip_address *proc_addr,
+static int processor_index_find(
+	unsigned int nodeid,
 	struct ckpt_refcnt *ckpt_refcount) 
 { 
 	int i;
@@ -732,7 +730,7 @@ static int processor_index_find(struct totem_ip_address *proc_addr,
 		 * If the source addresses match then return the index
 		 */
 		
-		if (totemip_equal(&ckpt_refcount[i].addr, proc_addr)) {
+		if (ckpt_refcount[i].nodeid ==  nodeid) {
 			return i;
 		}				
 	}
@@ -752,25 +750,26 @@ static int ckpt_refcount_total(struct ckpt_refcnt *ckpt_refcount)
 	return total;
 }
 
-static void initialize_ckpt_refcount_array (struct ckpt_refcnt *ckpt_refcount) 
+static void initialize_ckpt_refcount_array (
+	struct ckpt_refcnt *ckpt_refcount) 
 {
-	memset((char*)ckpt_refcount, 0, PROCESSOR_COUNT_MAX * sizeof(struct ckpt_refcnt));
+	memset((char*)ckpt_refcount, 0,
+		PROCESSOR_COUNT_MAX * sizeof(struct ckpt_refcnt));
 }
 
-static void merge_ckpt_refcounts(struct ckpt_refcnt *local, struct ckpt_refcnt *network)
+static void merge_ckpt_refcounts (
+	struct ckpt_refcnt *local,
+	struct ckpt_refcnt *network)
 {
 	int index,i;	
 
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		if (local[i].addr.family == 0) {
-			continue;
-		}
-		index  = processor_index_find (&local[i].addr, network);
+		index  = processor_index_find (local[i].nodeid, network);
 		if (index == -1) { /*Could Not Find the Local Entry in the remote.Add to it*/
-			log_printf (LOG_LEVEL_DEBUG,"calling processor_add for ip %s, count %d\n",
-				totemip_print(&local[i].addr),
+			log_printf (LOG_LEVEL_DEBUG,"calling processor_add for nodeid %s, count %d\n",
+				totempg_ifaces_print (local[i].nodeid),
 				local[i].count);
-			index = processor_add (&local[i].addr, local[i].count, network);
+			index = processor_add (local[i].nodeid, local[i].count, network);
 			if (index == -1) {
 				log_printf(LOG_LEVEL_ERROR,
 					"merge_ckpt_refcounts : could not add a new processor as the MAX limit of procs is reached.Exiting\n");
@@ -786,8 +785,8 @@ static void merge_ckpt_refcounts(struct ckpt_refcnt *local, struct ckpt_refcnt *
 			else {
 				/*Found a match for this proc in the Network choose the larger of the 2.*/
 				network[index].count += local[i].count; 
-				log_printf (LOG_LEVEL_DEBUG,"setting count for %s = %d\n",
-					totemip_print(&network[index].addr),
+				log_printf (LOG_LEVEL_DEBUG,"setting count for nodeid %s = %d\n",
+					totempg_ifaces_print (network[index].nodeid),
 					network[index].count);
 			}
 		}
@@ -921,7 +920,8 @@ static int ckpt_recovery_process (void)
 					memcpy(&request_exec_sync_state.sectionDescriptor,
 							&ckptCheckpointSection->sectionDescriptor,
 							sizeof(SaCkptSectionDescriptorT));						
-					memcpy(&request_exec_sync_state.source_addr, &this_ip, sizeof(struct totem_ip_address));
+						
+					request_exec_sync_state.nodeid = this_ip->nodeid;
 				 			
 					memcpy(request_exec_sync_state.ckpt_refcount,
 							checkpoint->ckpt_refcount,
@@ -930,16 +930,10 @@ static int ckpt_recovery_process (void)
 
 					log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message Values\n");
 					for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-						if (request_exec_sync_state.ckpt_refcount[i].addr.family == 0) {
-							log_printf (LOG_LEVEL_DEBUG,"Index %d has proc 0 and count %d\n", i,
-								request_exec_sync_state.ckpt_refcount[i].count);
-						}
-						else {
-							log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
-							i,
-							totemip_print(&request_exec_sync_state.ckpt_refcount[i].addr),
-							request_exec_sync_state.ckpt_refcount[i].count);
-						}
+						log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
+						i,
+						totempg_ifaces_print (request_exec_sync_state.ckpt_refcount[i].nodeid),
+						request_exec_sync_state.ckpt_refcount[i].count);
 					}
 	
 					iovecs[0].iov_base = (char *)&request_exec_sync_state;
@@ -1169,15 +1163,13 @@ static void ckpt_recovery_abort (void)
 	return;
 }
 
-static void ckpt_replace_localhost_ip (struct totem_ip_address *joined_list) {
+static void ckpt_replace_localhost_ip (unsigned int *joined_list) {
 	struct list_head *checkpoint_list;
         struct saCkptCheckpoint *checkpoint;
-        struct totem_ip_address local_ip;
+        unsigned int localhost_nodeid = 0;
         int index;
 
 	assert(joined_list);
-
-	totemip_localhost(AF_INET, &local_ip);
 
 	for (checkpoint_list = checkpoint_list_head.next;
 		checkpoint_list != &checkpoint_list_head;
@@ -1185,37 +1177,38 @@ static void ckpt_replace_localhost_ip (struct totem_ip_address *joined_list) {
 
 		checkpoint = list_entry (checkpoint_list,
 			struct saCkptCheckpoint, list);
-		index = processor_index_find(&local_ip, checkpoint->ckpt_refcount);
+		index = processor_index_find(localhost_nodeid, checkpoint->ckpt_refcount);
 		if (index == -1) {
 			continue;
 		}		
-		memcpy(&checkpoint->ckpt_refcount[index].addr, joined_list, sizeof(struct in_addr));
-		log_printf (LOG_LEVEL_DEBUG, "Transitioning From Local Host replacing 127.0.0.1 with %s ...\n",
-			totemip_print(joined_list));
+		checkpoint->ckpt_refcount[index].nodeid = joined_list[0];
+		log_printf (LOG_LEVEL_DEBUG, "Transitioning From Local Host replacing 127.0.0.1 with %x ...\n",
+			joined_list[0]);
 
 	}
 	process_localhost_transition = 0;
 }
 
 
-static void ckpt_recovery_process_members_exit(struct totem_ip_address *left_list, 
+static void ckpt_recovery_process_members_exit (
+	unsigned int *left_list, 
 	int left_list_entries)
 {
 	struct list_head *checkpoint_list;
 	struct saCkptCheckpoint *checkpoint;
-	struct totem_ip_address *member;
-	struct totem_ip_address local_ip;
+	unsigned int *member_nodeid;
+	unsigned int localhost_nodeid;
 	int index;
 	int i;
 
-	totemip_localhost(AF_INET, &local_ip);
+	localhost_nodeid = 0; // TODO
 	
 	if (left_list_entries == 0) {
 		return;
 	}
-
+// TODO this is wrong
 	if ((left_list_entries == 1) && 
-	    (totemip_equal(left_list, &local_ip))) {
+	    *left_list == localhost_nodeid) {
 		process_localhost_transition = 1;
 		return; 
 	}
@@ -1223,7 +1216,7 @@ static void ckpt_recovery_process_members_exit(struct totem_ip_address *left_lis
 	/*
 	 *  Iterate left_list_entries. 
 	 */
-	member = left_list;
+	member_nodeid = left_list;
 	for (i = 0; i < left_list_entries; i++) {		
 		checkpoint_list = checkpoint_list_head.next;
 
@@ -1232,7 +1225,8 @@ iterate_while_loop:
 			checkpoint = list_entry (checkpoint_list,
 				struct saCkptCheckpoint, list);			
 			assert (checkpoint > 0);
-			index = processor_index_find(member, checkpoint->ckpt_refcount);
+			index = processor_index_find(*member_nodeid,
+				checkpoint->ckpt_refcount);
 			assert (-1 <= index);
 			assert (index < PROCESSOR_COUNT_MAX);			
 			if (index < 0) {
@@ -1254,10 +1248,10 @@ iterate_while_loop:
 				assert(0);
 			}		
 			checkpoint->ckpt_refcount[index].count = 0;
-			memset((char*)&checkpoint->ckpt_refcount[index].addr, 0, sizeof(struct in_addr));			
+			checkpoint->ckpt_refcount[index].nodeid = 0;
 			checkpoint_list = checkpoint_list->next;
 		}
-		member++;
+		member_nodeid++;
 	}
 
 	clean_checkpoint_list(&checkpoint_list_head);
@@ -1308,9 +1302,9 @@ void clean_checkpoint_list(struct list_head *head)
 
 static void ckpt_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	struct totem_ip_address *member_list, int member_list_entries,
-	struct totem_ip_address *left_list, int left_list_entries,
-	struct totem_ip_address *joined_list, int joined_list_entries,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id) 
 {
 	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
@@ -1525,7 +1519,7 @@ static int ckpt_exec_init_fn (struct objdb_iface_ver0 *objdb)
 
 static void message_handler_req_exec_ckpt_checkpointopen (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)message;
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)&req_exec_ckpt_checkpointopen->req_lib_ckpt_checkpointopen;
@@ -1656,12 +1650,12 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 	 * 
 	 */
 	 
-	 proc_index = processor_index_find(source_addr,ckptCheckpoint->ckpt_refcount);
+	 proc_index = processor_index_find(nodeid,ckptCheckpoint->ckpt_refcount);
 	 if (proc_index == -1) {/* Could not find, lets set the processor to an index.*/
-	 	proc_index = processor_index_set(source_addr,ckptCheckpoint->ckpt_refcount);
+	 	proc_index = processor_index_set(nodeid,ckptCheckpoint->ckpt_refcount);
 	 }
 	 if (proc_index != -1 ) {	 
-		 totemip_copy(&ckptCheckpoint->ckpt_refcount[proc_index].addr, source_addr);
+		ckptCheckpoint->ckpt_refcount[proc_index].nodeid = nodeid;
 	 	ckptCheckpoint->ckpt_refcount[proc_index].count++;
 	 }
 	 else {
@@ -1747,16 +1741,10 @@ static int recovery_checkpoint_open(
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open %s\n", &checkpointName->value);
 	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open refcount Values\n");
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-        	if (ref_cnt[i].addr.family == 0) {
-			log_printf (LOG_LEVEL_DEBUG,"Index %d has proc 0 and count %d\n", i,
-				ref_cnt[i].count);
-		}
-		else {
-			log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
-				i,
-				totemip_print(&ref_cnt[i].addr),
-				ref_cnt[i].count);
-		}
+		log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
+			i,
+			totempg_ifaces_print (ref_cnt[i].nodeid),
+			ref_cnt[i].count);
 	}
 
 	
@@ -1875,7 +1863,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_synchronize_state (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	int retcode;
 	struct req_exec_ckpt_synchronize_state *req_exec_ckpt_sync_state 
@@ -1909,7 +1897,7 @@ static void message_handler_req_exec_ckpt_synchronize_state (
 
 static void message_handler_req_exec_ckpt_synchronize_section (
 	void *message,
-	struct totem_ip_address *source_addr) 
+	unsigned int nodeid)
 {
 	int retcode;
 	struct req_exec_ckpt_synchronize_section *req_exec_ckpt_sync_section 
@@ -2031,7 +2019,7 @@ void timer_function_retention (void *data)
 
 static void message_handler_req_exec_ckpt_checkpointclose (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointclose *req_exec_ckpt_checkpointclose = (struct req_exec_ckpt_checkpointclose *)message;
 	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
@@ -2054,7 +2042,7 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 	 * sent out later as a part of the sync process.	 
 	 */
 	
-	proc_index = processor_index_find(source_addr, checkpoint->ckpt_refcount);
+	proc_index = processor_index_find(nodeid, checkpoint->ckpt_refcount);
 	if (proc_index != -1 ) {	 		
 	 	checkpoint->ckpt_refcount[proc_index].count--;
 	}
@@ -2103,7 +2091,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_checkpointunlink (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointunlink *req_exec_ckpt_checkpointunlink = (struct req_exec_ckpt_checkpointunlink *)message;
 
@@ -2151,7 +2139,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)message;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
@@ -2196,7 +2184,7 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 
 static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointretentiondurationexpire *req_exec_ckpt_checkpointretentiondurationexpire = (struct req_exec_ckpt_checkpointretentiondurationexpire *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
@@ -2215,7 +2203,7 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 				MESSAGE_REQ_EXEC_CKPT_CHECKPOINTUNLINK);
 
 		req_exec_ckpt_checkpointunlink.source.conn = 0;
-		req_exec_ckpt_checkpointunlink.source.addr.family = 0;
+		req_exec_ckpt_checkpointunlink.source.nodeid = 0;
 
 		memcpy (&req_exec_ckpt_checkpointunlink.req_lib_ckpt_checkpointunlink.checkpointName,
 			&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName,
@@ -2375,7 +2363,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectioncreate (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectioncreate *req_exec_ckpt_sectioncreate = (struct req_exec_ckpt_sectioncreate *)message;
 	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)&req_exec_ckpt_sectioncreate->req_lib_ckpt_sectioncreate;
@@ -2519,7 +2507,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectiondelete (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectiondelete *req_exec_ckpt_sectiondelete = (struct req_exec_ckpt_sectiondelete *)message;
 	struct req_lib_ckpt_sectiondelete *req_lib_ckpt_sectiondelete = (struct req_lib_ckpt_sectiondelete *)&req_exec_ckpt_sectiondelete->req_lib_ckpt_sectiondelete;
@@ -2583,7 +2571,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionexpirationtimeset *req_exec_ckpt_sectionexpirationtimeset = (struct req_exec_ckpt_sectionexpirationtimeset *)message;
 	struct req_lib_ckpt_sectionexpirationtimeset *req_lib_ckpt_sectionexpirationtimeset = (struct req_lib_ckpt_sectionexpirationtimeset *)&req_exec_ckpt_sectionexpirationtimeset->req_lib_ckpt_sectionexpirationtimeset;
@@ -2723,7 +2711,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectionwrite (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)message;
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)&req_exec_ckpt_sectionwrite->req_lib_ckpt_sectionwrite;
@@ -2823,7 +2811,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectionoverwrite (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionoverwrite *req_exec_ckpt_sectionoverwrite = (struct req_exec_ckpt_sectionoverwrite *)message;
 	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)&req_exec_ckpt_sectionoverwrite->req_lib_ckpt_sectionoverwrite;
@@ -2903,7 +2891,7 @@ error_exit:
 
 static void message_handler_req_exec_ckpt_sectionread (
 	void *message,
-	struct totem_ip_address *source_addr)
+	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionread *req_exec_ckpt_sectionread = (struct req_exec_ckpt_sectionread *)message;
 	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)&req_exec_ckpt_sectionread->req_lib_ckpt_sectionread;
