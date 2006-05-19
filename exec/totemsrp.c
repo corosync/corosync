@@ -559,6 +559,7 @@ static void mcast_endian_convert (struct mcast *in, struct mcast *out);
 static void memb_merge_detect_endian_convert (
 	struct memb_merge_detect *in,
 	struct memb_merge_detect *out);
+static void srp_addr_copy_endian_convert (struct srp_addr *out, struct srp_addr *in);
 static void timer_function_orf_token_timeout (void *data);
 static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
@@ -903,6 +904,15 @@ void srp_addr_to_nodeid (
 
 	for (i = 0; i < entries; i++) {
 		nodeid_out[i] = srp_addr_in[i].addr[0].nodeid;
+	}
+}
+
+static void srp_addr_copy_endian_convert (struct srp_addr *out, struct srp_addr *in)
+{
+	int i;
+
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		totemip_copy_endian_convert (&out->addr[i], &in->addr[i]);
 	}
 }
 
@@ -3280,6 +3290,7 @@ static void messages_deliver_to_app (
 	int res;
 	struct mcast *mcast;
 	unsigned int range = 0;
+	int endian_conversion_required = 0 ;
 	unsigned int my_high_delivered_stored = 0;
 
 	log_printf (instance->totemsrp_log_level_debug,
@@ -3348,13 +3359,10 @@ static void messages_deliver_to_app (
 			"Delivering MCAST message with seq %x to pending delivery queue\n",
 			mcast->seq);
 
-/* TODO
-		if (mcast->header.endian_detector == ENDIAN_LOCAL) {
-			srp_addr_copy (&msg_source, &mcast->source);
-		} else {
-			totemip_copy_endian_convert (&msg_source, &mcast->source);
+		if (mcast->header.endian_detector != ENDIAN_LOCAL) {
+			endian_conversion_required = 1;
+			mcast_endian_convert (mcast, mcast);
 		}
-*/
 
 		/*
 		 * Message is locally originated multicast
@@ -3365,7 +3373,7 @@ static void messages_deliver_to_app (
 				mcast->header.nodeid,
 				&sort_queue_item_p->iovec[1],
 				sort_queue_item_p->iov_len - 1,
-				mcast->header.endian_detector != ENDIAN_LOCAL);
+				endian_conversion_required);
 		} else {
 			sort_queue_item_p->iovec[0].iov_len -= sizeof (struct mcast);
 			sort_queue_item_p->iovec[0].iov_base += sizeof (struct mcast);
@@ -3374,7 +3382,7 @@ static void messages_deliver_to_app (
 				mcast->header.nodeid,
 				sort_queue_item_p->iovec,
 				sort_queue_item_p->iov_len,
-				mcast->header.endian_detector != ENDIAN_LOCAL);
+				endian_conversion_required);
 
 			sort_queue_item_p->iovec[0].iov_len += sizeof (struct mcast);
 			sort_queue_item_p->iovec[0].iov_base -= sizeof (struct mcast);
@@ -3650,35 +3658,39 @@ static int memb_join_process (
 static void memb_join_endian_convert (struct memb_join *in, struct memb_join *out)
 {
 	int i;
-	struct totem_ip_address *in_proc_list;
-	struct totem_ip_address *in_failed_list;
-	struct totem_ip_address *out_proc_list;
-	struct totem_ip_address *out_failed_list;
+	struct srp_addr *in_proc_list;
+	struct srp_addr *in_failed_list;
+	struct srp_addr *out_proc_list;
+	struct srp_addr *out_failed_list;
 
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
+	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 	out->proc_list_entries = swab32 (in->proc_list_entries);
 	out->failed_list_entries = swab32 (in->failed_list_entries);
 	out->ring_seq = swab64 (in->ring_seq);
 
-	in_proc_list = (struct totem_ip_address *)in->end_of_memb_join;
+	in_proc_list = (struct srp_addr *)in->end_of_memb_join;
 	in_failed_list = in_proc_list + out->proc_list_entries;
-	out_proc_list = (struct totem_ip_address *)out->end_of_memb_join;
+	out_proc_list = (struct srp_addr *)out->end_of_memb_join;
 	out_failed_list = out_proc_list + out->proc_list_entries;
 
 	for (i = 0; i < out->proc_list_entries; i++) {
-		totemip_copy_endian_convert(&out_proc_list[i], &in_proc_list[i]);
+		srp_addr_copy_endian_convert (&out_proc_list[i], &in_proc_list[i]);
 	}
 	for (i = 0; i < out->failed_list_entries; i++) {
-		totemip_copy_endian_convert(&out_failed_list[i], &in_failed_list[i]);
+		srp_addr_copy_endian_convert (&out_failed_list[i], &in_failed_list[i]);
 	}
 }
 
 static void memb_commit_token_endian_convert (struct memb_commit_token *in, struct memb_commit_token *out)
 {
-#ifdef COMPILE_OUT
 	int i;
+	struct srp_addr *in_addr = (struct srp_addr *)in->end_of_commit_token;
+	struct srp_addr *out_addr = (struct srp_addr *)out->end_of_commit_token;
+	struct memb_commit_token_memb_entry *in_memb_list;
+	struct memb_commit_token_memb_entry *out_memb_list;
 
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
@@ -3689,29 +3701,30 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->memb_index = swab32 (in->memb_index);
 	out->addr_entries = swab32 (in->addr_entries);
+
+	in_memb_list = (struct memb_commit_token_memb_entry *)(in_addr + out->addr_entries);
+	out_memb_list = (struct memb_commit_token_memb_entry *)(out_addr + out->addr_entries);
 	for (i = 0; i < out->addr_entries; i++) {
-		totemip_copy_endian_convert(&out->addr[i], &in->addr[i]);
+		srp_addr_copy_endian_convert (&out_addr[i], &in_addr[i]);
 
 		/*
 		 * Only convert the memb entry if it has been set
 		 */
-		if (in->memb_list[i].ring_id.rep.family != 0) {
-			totemip_copy_endian_convert(&out->memb_list[i].ring_id.rep,
-				     &in->memb_list[i].ring_id.rep);
-	
-			out->memb_list[i].ring_id.seq =
-				swab64 (in->memb_list[i].ring_id.seq);
-			out->memb_list[i].aru = swab32 (in->memb_list[i].aru);
-			out->memb_list[i].high_delivered = swab32 (in->memb_list[i].high_delivered);
-			out->memb_list[i].received_flg = swab32 (in->memb_list[i].received_flg);
+		if (in_memb_list[i].ring_id.rep.family != 0) {
+			totemip_copy_endian_convert (&out_memb_list[i].ring_id.rep,
+				     &in_memb_list[i].ring_id.rep);
+
+			out_memb_list[i].ring_id.seq =
+				swab64 (in_memb_list[i].ring_id.seq);
+			out_memb_list[i].aru = swab32 (in_memb_list[i].aru);
+			out_memb_list[i].high_delivered = swab32 (in_memb_list[i].high_delivered);
+			out_memb_list[i].received_flg = swab32 (in_memb_list[i].received_flg);
 		}
 	}
-#endif
 }
 
 static void orf_token_endian_convert (struct orf_token *in, struct orf_token *out)
 {
-#ifdef COMPILE_OUT
 	int i;
 
 	out->header.type = in->header.type;
@@ -3721,7 +3734,7 @@ static void orf_token_endian_convert (struct orf_token *in, struct orf_token *ou
 	out->token_seq = swab32 (in->token_seq);
 	out->aru = swab32 (in->aru);
 	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
-	totemip_copy_endian_convert(&out->aru_addr, &in->aru_addr);
+	out->aru_addr = swab32(in->aru_addr);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->fcc = swab32 (in->fcc);
 	out->backlog = swab32 (in->backlog);
@@ -3732,34 +3745,31 @@ static void orf_token_endian_convert (struct orf_token *in, struct orf_token *ou
 		out->rtr_list[i].ring_id.seq = swab64 (in->rtr_list[i].ring_id.seq);
 		out->rtr_list[i].seq = swab32 (in->rtr_list[i].seq);
 	}
-#endif
 }
 
 static void mcast_endian_convert (struct mcast *in, struct mcast *out)
 {
-#ifdef COMPILE_OUT
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->seq = swab32 (in->seq);
+	out->this_seqno = swab32 (in->this_seqno);
 	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
-	totemip_copy_endian_convert(&out->source, &in->source);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
-	out->guarantee = in->guarantee;
-#endif
+	out->node_id = swab32 (in->node_id);
+	out->guarantee = swab32 (in->guarantee);
+	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 
 static void memb_merge_detect_endian_convert (
 	struct memb_merge_detect *in,
 	struct memb_merge_detect *out)
 {
-#ifdef COMPILE_OUT
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
-#endif
 }
 
 static int message_handler_memb_join (
@@ -3769,12 +3779,13 @@ static int message_handler_memb_join (
 	int endian_conversion_needed)
 {
 	struct memb_join *memb_join;
-	struct memb_join memb_join_convert;
+	struct memb_join *memb_join_convert = alloca (msg_len);
 	int gather_entered;
 
 	if (endian_conversion_needed) {
-		memb_join = &memb_join_convert;
-		memb_join_endian_convert (msg, &memb_join_convert);
+		memb_join = memb_join_convert;
+		memb_join_endian_convert (msg, memb_join_convert);
+
 	} else {
 		memb_join = (struct memb_join *)msg;
 	}
@@ -3832,7 +3843,7 @@ static int message_handler_memb_commit_token (
 	int msg_len,
 	int endian_conversion_needed)
 {
-	struct memb_commit_token memb_commit_token_convert;
+	struct memb_commit_token *memb_commit_token_convert = alloca (msg_len);
 	struct memb_commit_token *memb_commit_token;
 	struct srp_addr sub[PROCESSOR_COUNT_MAX];
 	int sub_entries;
@@ -3841,7 +3852,7 @@ static int message_handler_memb_commit_token (
 	struct memb_commit_token_memb_entry *memb_list;
 
 	if (endian_conversion_needed) {
-		memb_commit_token = &memb_commit_token_convert;
+		memb_commit_token = memb_commit_token_convert;
 		memb_commit_token_endian_convert (msg, memb_commit_token);
 	} else {
 		memb_commit_token = (struct memb_commit_token *)msg;

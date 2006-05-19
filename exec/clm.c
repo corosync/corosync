@@ -67,6 +67,7 @@
 #include "main.h"
 #include "mempool.h"
 #include "service.h"
+#include "swab.h"
 #include "print.h"
 
 enum clm_message_req_types {
@@ -560,6 +561,14 @@ static void clm_sync_abort (void)
 
 static void exec_clm_nodejoin_endian_convert (void *msg)
 {
+	struct req_exec_clm_nodejoin *node_join = msg;
+
+	node_join->clusterNode.nodeId = swab32(node_join->clusterNode.nodeId);
+	node_join->clusterNode.nodeAddress.family = swab32(node_join->clusterNode.nodeAddress.family);
+	node_join->clusterNode.nodeAddress.length = swab16(node_join->clusterNode.nodeAddress.length);
+	node_join->clusterNode.initialViewNumber = swab64(node_join->clusterNode.initialViewNumber);
+	node_join->clusterNode.bootTimestamp = swab64(node_join->clusterNode.bootTimestamp);
+
 }
 
 static void message_handler_req_exec_clm_nodejoin (
