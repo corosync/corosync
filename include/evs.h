@@ -91,14 +91,14 @@ struct evs_group {
 };
 
 typedef void (*evs_deliver_fn_t) (
-	struct evs_address *source_addr,
+	unsigned int nodeid,
 	void *msg,
 	int msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-	struct evs_address *member_list, int member_list_entries,
-	struct evs_address *left_list, int left_list_entries,
-	struct evs_address *joined_list, int joined_list_entries);
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
@@ -183,8 +183,8 @@ evs_error_t evs_mcast_groups (
  */
 evs_error_t evs_membership_get (
 	evs_handle_t handle,
-	struct evs_address *local_addr,
-	struct evs_address *member_list,
-	int *member_list_entries);
+	unsigned int *local_nodeid,
+	unsigned int *member_list,
+	unsigned int *member_list_entries);
 
 #endif /* OPENAIS_EVS_H_DEFINED */

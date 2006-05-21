@@ -159,7 +159,7 @@ A throughput of 60mb/sec is possible when this option is disabled on
 The default is on.
 
 .TP
-redundantring
+rrp_mode
 This specifies the mode of redundant ring, which may be none, active, or
 passive.  Active replication offers slightly lower latency from transmit
 to delivery in faulty network environments but with less performance.
@@ -240,6 +240,8 @@ receiving a token.  This is the time spent detecting a failure of a processor
 in the current configuration.  Reforming a new configuration takes about 50
 milliseconds in addition to this timeout.
 
+The default is 1000 milliseconds.
+
 .TP
 token_retransmit
 This timeout specifies in milliseconds after how long before receiving a token
@@ -247,11 +249,15 @@ the token is retransmitted.  This will be automatically calculated if token
 is modified.  It is not recommended to alter this value without guidance from
 the openais community.
 
+The default is 238 milliseconds.
+
 .TP
 hold
 This timeout specifies in milliseconds how long the token should be held by
 the representative when the protocol is under low utilization.   It is not
 recommended to alter this value without guidance from the openais community.
+
+The default is 180 milliseconds.
 
 .TP
 retransmits_before_loss
@@ -259,15 +265,21 @@ This value identifies how many token retransmits should be attempted before
 forming a new configuration.  If this value is set, retransmit and hold will
 be automatically calculated from retransmits_before_loss and token.
 
+The default is 4 retransmissions.
+
 .TP
 join
 This timeout specifies in milliseconds how long to wait for join messages in 
 the membership protocol.
 
+The default is 100 milliseconds.
+
 .TP
 consensus
 This timeout specifies in milliseconds how long to wait for consensus to be
 achieved before starting a new round of membership configuration.
+
+The default is 200 milliseconds.
 
 .TP
 merge
@@ -276,10 +288,14 @@ a partition when no multicast traffic is being sent.  If multicast traffic
 is being sent, the merge detection happens automatically as a function of
 the protocol.
 
+The default is 200 milliseconds.
+
 .TP
 downcheck
 This timeout specifies in milliseconds how long to wait before checking
 that a network interface is back up after it has been downed.
+
+The default is 1000 millseconds.
 
 .TP
 fail_to_recv_const
@@ -287,10 +303,14 @@ This constant specifies how many rotations of the token without receiving any
 of the messages when messages should be received may occur before a new
 configuration is formed.
 
+The default is 50 failures to receive a message.
+
 .TP
 seqno_unchanged_const
 This constant specifies how many rotations of the token without any multicast
 traffic should occur before the merge detection timeout is started.
+
+The default is 30 rotations.
 
 .TP
 heartbeat_failures_allowed
@@ -340,6 +360,41 @@ processor on receipt of the token.  The max_messages parameter is limited to
 256000 / netmtu to prevent overflow of the kernel transmit buffers.
 
 The default is 17 messages.
+
+.TP
+rrp_problem_count_timeout
+This specifies the time in milliseconds to wait before decrementing the
+problem count by 1 for a particular ring to ensure a link is not marked
+faulty for transient network failures.
+
+The default is 1000 milliseconds.
+
+.TP
+rrp_problem_count_threshold
+This specifies the number of times a problem is detected with a link before
+setting the link faulty.  Once a link is set faulty, no more data is
+transmitted upon it.  Also, the problem counter is no longer decremented when
+the problem count timeout expires.
+
+A problem is detected whenever all tokens from the proceeding processor have
+not been received within the rrp_token_expired_timeout.  The
+rrp_problem_count_threshold * rrp_token_expired_timeout should be atleast 50
+milliseconds less then the token timeout, or a complete reconfiguration
+may occur.
+
+The default is 20 problem counts.
+
+.TP
+rrp_token_expired_timeout
+This specifies the time in milliseconds to increment the problem counter for
+the redundant ring protocol after not having received a token from all rings
+for a particular processor.
+
+This value will automatically be calculated from the token timeout and
+problem_count_threshold but may be overridden.  It is not recommended to
+override this value without guidance from the openais community.
+
+The default is 47 milliseconds.
 
 .PP
 Within the 

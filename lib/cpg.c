@@ -298,7 +298,7 @@ cpg_error_t cpg_dispatch (
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
 			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)&dispatch_data;
 			callbacks.cpg_deliver_fn (handle,
-						  &res_cpg_deliver_callback->groupName,
+						  &res_cpg_deliver_callback->group_name,
 						  res_cpg_deliver_callback->nodeid,
 						  res_cpg_deliver_callback->pid,
 						  &res_cpg_deliver_callback->message,
@@ -308,7 +308,7 @@ cpg_error_t cpg_dispatch (
 		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
 			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)&dispatch_data;
 			callbacks.cpg_confchg_fn (handle,
-						  &res_cpg_confchg_callback->groupName,
+						  &res_cpg_confchg_callback->group_name,
 						  (struct cpg_address *)res_cpg_confchg_callback->member_list,
 						  res_cpg_confchg_callback->member_list_entries,
 						  (struct cpg_address *)res_cpg_confchg_callback->member_list + res_cpg_confchg_callback->member_list_entries,
@@ -373,7 +373,7 @@ cpg_error_t cpg_join (
 	/* Automatically add a tracker */
 	req_lib_cpg_trackstart.header.size = sizeof (struct req_lib_cpg_trackstart);
 	req_lib_cpg_trackstart.header.id = MESSAGE_REQ_CPG_TRACKSTART;
-	memcpy(&req_lib_cpg_trackstart.groupName, group, sizeof(struct cpg_name));
+	memcpy(&req_lib_cpg_trackstart.group_name, group, sizeof(struct cpg_name));
 
 	iov[0].iov_base = &req_lib_cpg_trackstart;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
@@ -390,7 +390,7 @@ cpg_error_t cpg_join (
 	req_lib_cpg_join.header.size = sizeof (struct req_lib_cpg_join);
 	req_lib_cpg_join.header.id = MESSAGE_REQ_CPG_JOIN;
 	req_lib_cpg_join.pid = getpid();
-	memcpy(&req_lib_cpg_join.groupName, group, sizeof(struct cpg_name));
+	memcpy(&req_lib_cpg_join.group_name, group, sizeof(struct cpg_name));
 
 	iov[0].iov_base = &req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
@@ -430,7 +430,7 @@ cpg_error_t cpg_leave (
 	req_lib_cpg_leave.header.size = sizeof (struct req_lib_cpg_leave);
 	req_lib_cpg_leave.header.id = MESSAGE_REQ_CPG_LEAVE;
 	req_lib_cpg_leave.pid = getpid();
-	memcpy(&req_lib_cpg_leave.groupName, group, sizeof(struct cpg_name));
+	memcpy(&req_lib_cpg_leave.group_name, group, sizeof(struct cpg_name));
 
 	iov[0].iov_base = &req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
@@ -508,7 +508,7 @@ error_exit:
 
 cpg_error_t cpg_membership_get (
 	cpg_handle_t handle,
-	struct cpg_name *groupName,
+	struct cpg_name *group_name,
 	struct cpg_address *member_list,
 	int *member_list_entries)
 {
@@ -525,7 +525,7 @@ cpg_error_t cpg_membership_get (
 
 	req_lib_cpg_membership_get.header.size = sizeof (struct req_header);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
-	memcpy(&req_lib_cpg_membership_get.groupName, groupName, sizeof(struct cpg_name));
+	memcpy(&req_lib_cpg_membership_get.group_name, group_name, sizeof(struct cpg_name));
 
 	iov.iov_base = &req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (struct req_header);

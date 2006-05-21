@@ -114,7 +114,7 @@ struct res_lib_dispatch_init {
 	struct res_header header;
 };
 struct message_source {
-	struct totem_ip_address addr;
+	unsigned int nodeid;
 	void *conn;
 } __attribute__((packed));
 

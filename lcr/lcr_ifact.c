@@ -368,7 +368,6 @@ int lcr_ifact_reference (
 	 */
 	return (-1);
 found:
-printf ("iface number %d\n", iface_number);
 	*iface = instance->ifaces[iface_number].interfaces;
 	if (instance->ifaces[iface_number].constructor) {
 		instance->ifaces[iface_number].constructor (context);

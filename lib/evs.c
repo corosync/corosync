@@ -1,3 +1,4 @@
+#define PROCESSOR_COUNT_MAX 32
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
 
@@ -303,7 +304,7 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)&dispatch_data;
 			callbacks.evs_deliver_fn (
-				&res_evs_deliver_callback->evs_address,
+				res_evs_deliver_callback->local_nodeid,
 				&res_evs_deliver_callback->msg,
 				res_evs_deliver_callback->msglen);
 			break;
@@ -551,9 +552,9 @@ error_exit:
 
 evs_error_t evs_membership_get (
 	evs_handle_t handle,
-	struct evs_address *local_addr,
-	struct evs_address *member_list,
-	int *member_list_entries)
+	unsigned int *local_nodeid,
+	unsigned int *member_list,
+	unsigned int *member_list_entries)
 {
 	evs_error_t error;
 	struct evs_inst *evs_inst;
@@ -588,8 +589,8 @@ evs_error_t evs_membership_get (
 	/*
 	 * Copy results to caller
 	 */
-	if (local_addr) {
-		memcpy (local_addr, &res_lib_evs_membership_get.local_addr, sizeof (struct in_addr));
+	if (local_nodeid) {
+		*local_nodeid = res_lib_evs_membership_get.local_nodeid;
  	}
 	*member_list_entries = *member_list_entries < res_lib_evs_membership_get.member_list_entries ?
 		*member_list_entries : res_lib_evs_membership_get.member_list_entries;

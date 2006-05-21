@@ -58,39 +58,35 @@ int outstanding = 0;
 
 
 
-void evs_deliver_fn (struct evs_address *source_addr, void *msg, int msg_len)
+void evs_deliver_fn (
+	unsigned int nodeid,
+	void *msg,
+	int msg_len)
 {
 	outstanding--;
 // printf ("Delivering message %s\n", msg);
 }
 
 void evs_confchg_fn (
-	struct evs_address *member_list, int member_list_entries,
-	struct evs_address *left_list, int left_list_entries,
-	struct evs_address *joined_list, int joined_list_entries)
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries)
 {
 	int i;
-	char buf[1024];
 
 	printf ("CONFIGURATION CHANGE\n");
 	printf ("--------------------\n");
 	printf ("New configuration\n");
 	for (i = 0; i < member_list_entries; i++) {
-		inet_ntop (member_list[i].family, member_list[i].addr,
-			buf, sizeof (buf));
-		printf ("%s\n", buf);
+		printf ("%x\n", member_list[i]);
 	}
 	printf ("Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-		inet_ntop (left_list[i].family, left_list[i].addr,
-			buf, sizeof (buf));
-		printf ("%s\n", buf);
+		printf ("%x\n", left_list[i]);
 	}
 	printf ("Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-		inet_ntop (joined_list[i].family, joined_list[i].addr,
-			buf, sizeof (buf));
-		printf ("%s\n", buf);
+		printf ("%x\n", joined_list[i]);
 	}
 }
 

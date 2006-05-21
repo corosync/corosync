@@ -59,7 +59,7 @@ enum res_lib_evs_types {
 
 struct res_evs_deliver_callback {
 	struct res_header header;
-	struct evs_address evs_address;
+	unsigned int local_nodeid;
 	int msglen;
 	char msg[0];
 };
@@ -69,9 +69,9 @@ struct res_evs_confchg_callback {
 	int member_list_entries;
 	int left_list_entries;
 	int joined_list_entries;
-	struct evs_address member_list[16];
-	struct evs_address left_list[16];
-	struct evs_address joined_list[16];
+	unsigned int member_list[PROCESSOR_COUNT_MAX];
+	unsigned int left_list[PROCESSOR_COUNT_MAX];
+	unsigned int joined_list[PROCESSOR_COUNT_MAX];
 };
 
 struct req_lib_evs_join {
@@ -132,8 +132,8 @@ struct req_lib_evs_membership_get {
 
 struct res_lib_evs_membership_get {
 	struct res_header header;
-	struct in_addr local_addr;
-	struct in_addr member_list[16];
+	unsigned int local_nodeid;
+	unsigned int member_list[PROCESSOR_COUNT_MAX];
 	int member_list_entries;
 };
 #endif /* IPC_EVS_H_DEFINED */

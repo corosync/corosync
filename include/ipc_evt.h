@@ -273,7 +273,7 @@ struct res_evt_event_data {
  */
 struct lib_event_data {
 	struct res_header		led_head;
-	struct totem_ip_address	led_addr;
+	unsigned int			led_nodeid;
 	SaTimeT					led_receive_time;
 	uint32_t				led_svr_channel_handle;
 	SaEvtChannelHandleT		led_lib_channel_handle;

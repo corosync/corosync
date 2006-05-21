@@ -42,7 +42,10 @@
 char *delivery_string;
 
 int deliveries = 0;
-void evs_deliver_fn (struct evs_address *source_addr, void *msg, int msg_len)
+void evs_deliver_fn (
+	unsigned int nodeid,
+	void *msg,
+	int msg_len)
 {
 	char *buf = msg;
 
@@ -53,32 +56,25 @@ void evs_deliver_fn (struct evs_address *source_addr, void *msg, int msg_len)
 }
 
 void evs_confchg_fn (
-	struct evs_address *member_list, int member_list_entries,
-	struct evs_address *left_list, int left_list_entries,
-	struct evs_address *joined_list, int joined_list_entries)
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries)
 {
 	int i;
-	char buf[256];
 
 	printf ("CONFIGURATION CHANGE\n");
 	printf ("--------------------\n");
 	printf ("New configuration\n");
 	for (i = 0; i < member_list_entries; i++) {
-                inet_ntop (member_list[i].family, member_list[i].addr,
-                        buf, sizeof (buf));
-                printf ("%s\n", buf);
+                printf ("%x\n", member_list[i]);
 	}
 	printf ("Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-                inet_ntop (left_list[i].family, left_list[i].addr,
-                        buf, sizeof (buf));
-                printf ("%s\n", buf);
+                printf ("%x\n", left_list[i]);
 	}
 	printf ("Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-                inet_ntop (joined_list[i].family, joined_list[i].addr,
-                        buf, sizeof (buf));
-                printf ("%s\n", buf);
+                printf ("%x\n", joined_list[i]);
 	}
 }
 
@@ -105,10 +101,9 @@ int main (void)
 	evs_error_t result;
 	int i = 0;
 	int fd;
-	struct evs_address member_list[16];
-	struct evs_address local_addr;
-	int member_list_entries = sizeof (member_list) / sizeof (struct in_addr);
-	char buf[1024];
+	unsigned int member_list[32];
+	unsigned int local_nodeid;
+	int member_list_entries = 32;
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != EVS_OK) {
@@ -116,19 +111,16 @@ int main (void)
 		exit (0);
 	}
 	
-	result = evs_membership_get (handle, &local_addr,
+	result = evs_membership_get (handle, &local_nodeid,
 		member_list, &member_list_entries);
 	printf ("Current membership from evs_membership_get entries %d\n",
 		member_list_entries);
 	for (i = 0; i < member_list_entries; i++) {
-		inet_ntop (member_list[i].family, member_list[i].addr,
-			buf, sizeof (buf));
-		printf ("member [%d] is %s\n", i, buf);
+		printf ("member [%d] is %x\n", i, member_list[i]);
 	}
-	inet_ntop (local_addr.family, local_addr.addr,
-		buf, sizeof (buf));
-	printf ("local processor from evs_membership_get %s\n", buf);
+	printf ("local processor from evs_membership_get %x\n", local_nodeid);
 
+exit (1);
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
