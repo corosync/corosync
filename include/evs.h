@@ -37,6 +37,15 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+/**
+ * @defgroup openais Other API services provided by openais
+ */
+/**
+ * @addtogroup evs_openais
+ *
+ * @{
+ */
+
 typedef u_int64_t evs_handle_t;
 
 typedef enum {
@@ -70,7 +79,7 @@ typedef enum {
 
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
-/* These are the things that get passed around */
+/** These are the things that get passed around */
 struct evs_address {
 	unsigned int nodeid;
 	unsigned short family;
@@ -95,6 +104,8 @@ typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
 	evs_confchg_fn_t evs_confchg_fn;
 } evs_callbacks_t;
+
+/** @} */
 
 /*
  * Create a new evs connection

@@ -76,6 +76,13 @@ static void cpg_instance_destructor (void *instance)
 }
 
 
+/**
+ * @defgroup cpg_openais The closed process group API
+ * @ingroup openais
+ *
+ * @{
+ */
+
 cpg_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks)
@@ -550,3 +557,5 @@ error_exit:
 
 	return (error);
 }
+
+/** @} */

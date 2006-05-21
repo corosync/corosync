@@ -232,6 +232,13 @@ static void ckptInstanceFinalize (struct ckptInstance *ckptInstance)
 	saHandleDestroy (&ckptHandleDatabase, ckptInstance->ckptHandle);
 }
 
+/**
+ * @defgroup saCkpt SAF AIS Checkpoint API
+ * @ingroup saf
+ *
+ * @{
+ */
+
 SaAisErrorT
 saCkptInitialize (
 	SaCkptHandleT *ckptHandle,
@@ -1843,3 +1850,5 @@ error_put:
 
 	return (SA_AIS_OK);
 }
+
+/** @} */

@@ -91,6 +91,43 @@ void clmHandleInstanceDestructor (void *instance)
 }
 
 
+/**
+ * @defgroup saClm SAF AIS Cluster Membership API
+ * @ingroup saf
+ *
+ * @{
+ */
+/**
+ * This function initializes the Cluster Membership Service for the invoking
+ * process and registers the various callback functions.  This function must
+ * be invoked prior to the invocation of any other Cluster Membership Service
+ * functionality.  The handle clmHandle is returned as the reference to this
+ * association between the process and the Cluster Membership Service.  The
+ * process uses this handle in subsequent communication with the Cluster
+ * Membership Service.
+ *
+ * @param clmHandle A pointer to the handle designating this particular
+ *	initialization of the Cluster Membership Service that is to be
+ *	returned by the Cluster Membership Service.
+ * @param clmCallbacks If clmCallbacks is set to NULL, no callback is
+ *	registered; otherise, it is a pointer to an SaClmCallbacksT structure,
+ *	containing the callback functions of the process that the Cluster
+ *	Membership Service may invoke.  Only non-NULL callback functions
+ *	in this structure will be registered.
+ * @param version The version requested from the application is passed into
+ *	this parameter and the version supported is returned.
+ *
+ * @returns SA_AIS_OK if the function completed successfully.
+ * @returns SA_AIS_ERR_LIBRARY if an unexpected problem occurred in
+ *	the library.
+ * @returns SA_AIS_ERR_TRY_AGAIN if the service cannot be provided at this
+ *	time.
+ * @returns SA_AIS_ERR_INVALID_PARAM if a parameter is not set correctly.
+ * @returns SA_AIS_ERR_NO_MEMORY if the Cluster Membership Service is out
+ *	of memory and cannot provide the service.
+ * @returns SA_AIS_ERR_VERSION if the version parameter is not compatible with
+ *	the version of the Cluster Membership Service implementation.
+ */
 SaAisErrorT
 saClmInitialize (
 	SaClmHandleT *clmHandle,
@@ -157,6 +194,28 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * This function returns the operating system handle, selectionObject,
+ * assocated with the handle clmHandle.  The invoking process can use this
+ * handle to detect pending callbacks, instead of repeatedly invoking
+ * saClmDispatch() for this purpose.
+ *
+ * In a POSIX environment, the operating system handle is a file descriptor
+ * that is used with the poll() or select() system calls to detect pending
+ * callbacks.
+ *
+ * The selectionObject returned by saClmSelectionObjectGet() is valid until
+ * saClmFinalize() is invoked on the same handle clmHandle.
+ *
+ * @param clmHandle The handle, obtained through the saClmInitialize function,
+ *	designating this particular initialization of the Cluster Membership
+ * @param selectionObject A pointer to the operating system handle that the
+ *	invoking process can use to detect pending callbacks.
+ *
+ * @returns SA_AIS_OK if the function completed successfully.
+ * @returns SA_AIS_ERR_BAD_HANDLE if the handle clmHandle is invalid, since it is
+ *	ocrrupted, uninitialized, or has already been finalized.
+ */
 SaAisErrorT
 saClmSelectionObjectGet (
 	SaClmHandleT clmHandle,
@@ -180,6 +239,22 @@ saClmSelectionObjectGet (
 	return (SA_AIS_OK);
 }
 
+/**
+ * This function invokes, in the context of the calling thread, pending callbacks for
+ * the handle clmhandle in a way that is specified by the dispatchFlags parameter.
+ *
+ * @param clmHandle The handle, obtained through the saClmInitialize() function,
+ *	designating the particular initialization of the Cluster Membership Service.
+ * @param dispatchFlags Flags that specify the callback exection behavior of
+ *	saClmDispatch, which have the values SA_DISPATCH_ONE, SA_DISPATCH_ALL, or
+ *	SA_DISPATCH_BLOCKING.
+ * @returns SA_AIS_OK if the function completed successfully.
+ * @returns SA_AIS_ERR_TRY_AGAIN if the service cannot be provided at this time.  The
+ *	process may retry later.
+ * @returns SA_AIS_ERR_BAD_HANDLE if the handle clmHandle is invalid, since it is
+ *	corrupted, uninitialized, or has already been finalized.
+ * @returns SA_AIS_ERR_INVALID_PARAM if the dispatchFlags parameter is valid.
+ */
 SaAisErrorT
 saClmDispatch (
 	SaClmHandleT clmHandle,
@@ -355,6 +430,30 @@ error_put:
 	return (error);
 }
 
+
+/**
+ * The saClmFinalize function closes the assocation, represented by the clmHandle
+ * parameter, between the invoking process and the Cluster Membership Service.  The
+ * process must have invoked saClmInitialize before it invokes this function.  A
+ * process must invoke this function once for each handle it acquired by invoking
+ * saClmInitialize().
+ *
+ * If the saClmFinalize() function returns successfully, the saClmFinalize() function
+ * releases all resources acquired when saClmInitialize(0 was called.  Moreover, it
+ * stops any tracking associated with the particular handle.  Furthermore, it cancels
+ * all pending callbacks related to the particular handle.  Note that because the
+ * callback invocation is asynchronous, it is still possible that some callback calls
+ * are processed after this call returns successfully.
+ *
+ * After saClmFinalize() is invoked, the selection object is no longer valid.
+ *
+ * @param clmHandle The handle, obtained through the saClmInitialize() function,
+ *	designating this particular initialization of the Cluster Membership Service.
+ *
+ * @returns SA_AIS_OK if the function completed successfully.
+ * @returns SA_AIS_ERR_BAD_HANDLE if the handle clmHandle is invalid, since it is
+ *	corrupted, uninitialized, or has already been finalized.
+ */
 SaAisErrorT
 saClmFinalize (
 	SaClmHandleT clmHandle)
@@ -624,3 +723,5 @@ error_exit:
 
 	return (error);
 }
+
+/** @} */

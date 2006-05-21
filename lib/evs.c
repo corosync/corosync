@@ -59,6 +59,11 @@ struct evs_inst {
 	pthread_mutex_t dispatch_mutex;
 };
 
+struct res_overlay {
+	struct res_header header;
+	char data[512000];
+};
+
 static void evs_instance_destructor (void *instance);
 
 static struct saHandleDatabase evs_handle_t_db = {
@@ -76,6 +81,18 @@ static void evs_instance_destructor (void *instance)
 }
 
 
+/**
+ * @defgroup evs_openais The extended virtual synchrony passthrough API
+ * @ingroup openais
+ *
+ * @{
+ */
+/**
+ * test
+ * @param handle The handle of evs initialize
+ * @param callbacks The callbacks for evs_initialize
+ * @returns EVS_OK
+ */
 evs_error_t evs_initialize (
 	evs_handle_t *handle,
 	evs_callbacks_t *callbacks)
@@ -180,11 +197,6 @@ evs_error_t evs_fd_get (
 
 	return (SA_AIS_OK);
 }
-
-struct res_overlay {
-	struct res_header header;
-	char data[512000];
-};
 
 evs_error_t evs_dispatch (
 	evs_handle_t handle,
@@ -591,3 +603,5 @@ error_exit:
 
 	return (error);
 }
+
+/** @} */

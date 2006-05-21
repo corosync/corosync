@@ -35,6 +35,10 @@
 #ifndef AIS_TYPES_H_DEFINED
 #define AIS_TYPES_H_DEFINED
 
+/**
+ * @defgroup saf Service Availability Forum Application Interface Specification
+ */
+
 typedef enum {
 	SA_FALSE = 0,
 	SA_TRUE = 1

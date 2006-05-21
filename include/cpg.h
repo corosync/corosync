@@ -36,6 +36,11 @@
 
 #include <netinet/in.h>
 
+/**
+ * @addtogroup cpg_openais
+ *
+ * @{
+ */
 typedef uint64_t cpg_handle_t;
 
 typedef enum {
@@ -109,6 +114,8 @@ typedef struct {
 	cpg_deliver_fn_t cpg_deliver_fn;
 	cpg_confchg_fn_t cpg_confchg_fn;
 } cpg_callbacks_t;
+
+/** @} */
 
 /*
  * Create a new cpg connection

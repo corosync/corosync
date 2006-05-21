@@ -75,6 +75,7 @@ clean:
 	(cd lib; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd exec; echo ==== `pwd` ===; $(MAKE) clean);
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
+	rm -rf doc/api
 
 install:
 	mkdir -p $(SBINDIR)
@@ -126,3 +127,6 @@ install:
 	install -m 644 man/*.3 $(MANDIR)/man3
 	install -m 644 man/*.8 $(MANDIR)/man8
 	/sbin/ldconfig
+
+doxygen:
+	doxygen
