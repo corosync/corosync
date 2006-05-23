@@ -46,6 +46,8 @@
 #include "saAis.h"
 #include "cpg.h"
 
+static int quit = 0;
+
 void print_cpgname (struct cpg_name *name)
 {
 	int i;
@@ -92,7 +94,7 @@ void ConfchgCallback (
 	   NOTE: in reality we should also check the nodeid */
 	if (left_list_entries && left_list[0].pid == getpid()) {
 		printf("We have left the building\n");
-		exit(0);
+		quit = 1;
 	}
 }
 
@@ -160,7 +162,7 @@ int main (int argc, char *argv[]) {
 			if (cpg_dispatch (handle, CPG_DISPATCH_ALL) != SA_AIS_OK)
 				exit(1);
 		}
-	} while (result);
+	} while (result && !quit);
 
 
 	result = cpg_finalize (handle);
