@@ -3770,6 +3770,7 @@ static void memb_merge_detect_endian_convert (
 	out->header.nodeid = swab32 (in->header.nodeid);
 	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
+	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 
 static int message_handler_memb_join (
