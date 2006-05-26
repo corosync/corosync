@@ -1144,6 +1144,7 @@ static void memb_set_and (
 	return;
 }
 
+#ifdef CODE_COVERAGE
 static void memb_set_print (
 	char *string,
         struct srp_addr *list,
@@ -1157,10 +1158,11 @@ static void memb_set_print (
 		for (j = 0; j < INTERFACE_MAX; j++) {
 			printf ("Address %d\n", i);
 			printf ("\tiface %d %s\n", j, totemip_print (&list[i].addr[j]));
-			printf ("fmaily %d\n", list[i].addr[j].family);
+			printf ("family %d\n", list[i].addr[j].family);
 		}
 	}
 }
+#endif
 
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
