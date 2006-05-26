@@ -209,7 +209,8 @@ static int ldso_path_build (char *path, char *filename)
 	FILE *fp;
 	char string[1024];
 	char filename_cat[1024];
-	char *newpath;
+	char newpath[1024];
+	char *newpath_tmp;
 	char *new_filename;
 	int j;
 	struct dirent **scandir_list;
@@ -240,7 +241,7 @@ static int ldso_path_build (char *path, char *filename)
 	while (fgets (string, sizeof (string), fp)) {
 		string[strlen(string) - 1] = '\0';
 		if (strncmp (string, "include", strlen ("include")) == 0) {
-			newpath = string + strlen ("include") + 1;
+			newpath_tmp = string + strlen ("include") + 1;
 			for (j = strlen (string);
 				string[j] != ' ' &&
 					string[j] != '/' &&
@@ -249,6 +250,9 @@ static int ldso_path_build (char *path, char *filename)
 			}
 			string[j] = '\0';
 			new_filename = &string[j] + 1;
+			strcpy (newpath, path);
+			strcat (newpath, "/");
+			strcat (newpath, newpath_tmp);
 			ldso_path_build (newpath, new_filename);
 			continue;
 		}
