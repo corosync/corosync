@@ -139,6 +139,8 @@ extern int totem_config_read (
 
 	totem_config->secauth = 1;
 
+	strcpy (totem_config->rrp_mode, "none");
+
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 
 	if (objdb->object_find (
@@ -420,6 +422,15 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
+	/*
+	 * RRP values validation
+	 */
+	if (strcmp (totem_config->rrp_mode, "none") &&
+		strcmp (totem_config->rrp_mode, "active") &&
+		strcmp (totem_config->rrp_mode, "passive")) {
+		sprintf (local_error_reason, "The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
+		goto parse_error;
+	}
 	if (totem_config->rrp_problem_count_timeout == 0) {
 		totem_config->rrp_problem_count_timeout = RRP_PROBLEM_COUNT_TIMEOUT;
 	}
