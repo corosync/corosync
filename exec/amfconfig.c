@@ -685,7 +685,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				healthcheck->next = comp->healthcheck_head;
 				comp->healthcheck_head = healthcheck;
 				healthcheck->comp = comp;
-				strcpy (healthcheck->safHealthcheckKey.key, trim_str (loc));
+				strcpy ((char *)healthcheck->safHealthcheckKey.key, trim_str (loc));
 				healthcheck->safHealthcheckKey.keyLen = strlen (loc);
 				current_parse = AMF_HEALTHCHECK;
 			} else if (strstr_rs (line, "}")) {
