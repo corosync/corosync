@@ -2,7 +2,7 @@
 #
 # OpenAIS daemon init script for Red Hat Linux and compatibles.
 #
-# chkconfig: 2345 20 20
+# chkconfig: - 20 20
 # processname:  aisexec
 # pidfile:      /var/run/aisexec.pid
 # description:  OpenAIS daemon
