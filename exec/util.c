@@ -96,7 +96,7 @@ char *getSaNameT (SaNameT *name)
 	}
 	return (ret_name);
 #endif
-	return name->value;
+	return ((char *)name->value);
 }
 
 char *strstr_rs (const char *haystack, const char *needle)
