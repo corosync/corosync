@@ -870,7 +870,7 @@ void *active_instance_initialize (
 	if (instance == 0) {
 		goto error_exit;
 	}
-	memset (instance, 0, sizeof (struct passive_instance));
+	memset (instance, 0, sizeof (struct active_instance));
 
 	instance->faulty = malloc (sizeof (int) * interface_count);
 	if (instance->faulty == 0) {
