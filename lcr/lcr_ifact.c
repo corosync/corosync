@@ -277,9 +277,7 @@ static int interface_find_and_load (
 	char dl_name[1024];
 
 	scandir_entries = scandir (path,  &scandir_list, lcr_select_so, alphasort);
-	if (scandir_entries < 0)
-		printf ("scandir error reason=%s\n", strerror (errno));
-	else
+	if (scandir_entries > 0)
 	/*
 	 * no error so load the object
 	 */
