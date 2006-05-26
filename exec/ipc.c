@@ -665,56 +665,6 @@ error_exit:
 	return (res);
 }
 
-char delivery_data[MESSAGE_SIZE_MAX];
-
-static void deliver_fn (
-	unsigned int nodeid,
-	struct iovec *iovec,
-	int iov_len,
-	int endian_conversion_required)
-{
-	struct req_header *header;
-	int pos = 0;
-	int i;
-	int service;
-	int fn_id;
-
-	/*
-	 * Build buffer without iovecs to make processing easier
-	 * This is only used for messages which are multicast with iovecs
-	 * and self-delivered.  All other mechanisms avoid the copy.
-	 */
-	if (iov_len > 1) {
-		for (i = 0; i < iov_len; i++) {
-			memcpy (&delivery_data[pos], iovec[i].iov_base, iovec[i].iov_len);
-			pos += iovec[i].iov_len;
-			assert (pos < MESSAGE_SIZE_MAX);
-		}
-		header = (struct req_header *)delivery_data;
-	} else {
-		header = (struct req_header *)iovec[0].iov_base;
-	}
-	if (endian_conversion_required) {
-		header->id = swab32 (header->id);
-		header->size = swab32 (header->size);
-	}
-
-//	assert(iovec->iov_len == header->size);
-
-	/*
-	 * Call the proper executive handler
-	 */
-	service = header->id >> 16;
-	fn_id = header->id & 0xffff;
-	if (endian_conversion_required) {
-		ais_service[service]->exec_service[fn_id].exec_endian_convert_fn
-			(header);
-	}
-
-	ais_service[service]->exec_service[fn_id].exec_handler_fn
-		(header, nodeid);
-}
-
 static int poll_handler_libais_accept (
 	poll_handle handle,
 	int fd,
