@@ -30,39 +30,21 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 DESTDIR=/usr/local
-ifeq "$(DESTDIR)" "/usr/local"
-SBINDIR=${DESTDIR}/usr/sbin
-INCLUDEDIR=${DESTDIR}/usr/include/openais
-INCLUDEDIR_TOTEM=${DESTDIR}/usr/include/openais/totem
-INCLUDEDIR_LCR=${DESTDIR}/usr/include/openais/lcr
+SBINDIR=/usr/sbin
+INCLUDEDIR=/usr/include/openais
+INCLUDEDIR_TOTEM=/usr/include/openais/totem
+INCLUDEDIR_LCR=/usr/include/openais/lcr
 MANDIR=/usr/share/man
-else
-SBINDIR=${DESTDIR}/sbin
-INCLUDEDIR=${DESTDIR}/include/openais
-INCLUDEDIR_TOTEM=${DESTDIR}/include/openais/totem
-INCLUDEDIR_LCR=${DESTDIR}/include/openais/lcr
-MANDIR=$(DESTDIR)/man
-endif
-ETCDIR=/etc
+ETCDIR=/etc/ais
+ARCH=$(shell uname -p)
 
-ifeq "$(DESTDIR)" "/"
-ifeq "" "$(findstring 64,$(ARCH))"
-LIBDIR=${DESTDIR}/usr/lib64/openais
-LCRSODIR=$(DESTDIR)/usr/lib64/openais/lcrso
+ifeq (,$(findstring 64,$(ARCH)))
+LIBDIR=/usr/lib/openais
+LCRSODIR=/usr/lib/openais/lcrso
 else
-LIBDIR=${DESTDIR}/usr/lib/openais
-LCRSODIR=$(DESTDIR)/usr/lib/openais/lcrso
+LIBDIR=/usr/lib64/openais
+LCRSODIR=/usr/lib64/openais/lcrso
 endif
-else
-ifeq "" "$(findstring 64,$(ARCH))"
-LIBDIR=${DESTDIR}/lib64/openais
-LCRSODIR=$(DESTDIR)/lib64/openais/lcrso
-else
-LIBDIR=${DESTDIR}/lib/openais
-LCRSODIR=$(DESTDIR)/lib/openais/lcrso
-endif
-endif
-
 
 all:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
@@ -78,55 +60,56 @@ clean:
 	rm -rf doc/api
 
 install:
-	mkdir -p $(SBINDIR)
-	mkdir -p $(INCLUDEDIR)
-	mkdir -p $(INCLUDEDIR_TOTEM)
-	mkdir -p $(INCLUDEDIR_LCR)
-	mkdir -p $(LIBDIR)
-	mkdir -p $(LCRSODIR)
-	mkdir -p $(ETCDIR)
-	mkdir -p $(MANDIR)/man3
-	mkdir -p $(MANDIR)/man8
-	mkdir -p /etc/ld.so.conf.d
+	mkdir -p $(DESTDIR)$(SBINDIR)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR_LCR)
+	mkdir -p $(DESTDIR)$(LIBDIR)
+	mkdir -p $(DESTDIR)$(LCRSODIR)
+	mkdir -p $(DESTDIR)$(ETCDIR)
+	mkdir -p $(DESTDIR)$(MANDIR)/man3
+	mkdir -p $(DESTDIR)$(MANDIR)/man5
+	mkdir -p $(DESTDIR)$(MANDIR)/man8
+	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
-	install -m 755 lib/libais.a $(LIBDIR)
-	install -m 755 lib/libais.so* $(LIBDIR)
-	install -m 755 lib/libSa*.a $(LIBDIR)
-	install -m 755 lib/libSa*.so* $(LIBDIR)
-	install -m 755 lib/libevs.a $(LIBDIR)
-	install -m 755 lib/libevs.so* $(LIBDIR)
-	install -m 755 lib/libcpg.a $(LIBDIR)
-	install -m 755 lib/libcpg.so* $(LIBDIR)
-	echo $(LIBDIR) > /etc/ld.so.conf.d/"openais-`uname -p`.conf"
-	echo $(LCRSODIR) >> /etc/ld.so.conf.d/"openais-`uname -p`.conf"
+	install -m 755 lib/libais.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libais.so* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSa*.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSa*.so* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libevs.so* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcpg.so* $(DESTDIR)$(LIBDIR)
+	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
+	echo $(LCRSODIR) >> $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
 
-	cp exec/libtotem_pg* $(LIBDIR)
-	cp exec/*lcrso $(LCRSODIR)
+	install -m 755 exec/libtotem_pg* $(DESTDIR)$(LIBDIR)
+	install -m 755 exec/*lcrso $(DESTDIR)$(LCRSODIR)
 
-	install -m 755 exec/aisexec $(SBINDIR)
-	install -m 755 exec/keygen $(SBINDIR)/ais-keygen
-	install -m 755 conf/openais.conf $(ETCDIR)
-	install -m 755 conf/amf.conf $(ETCDIR)
+	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)
+	install -m 700 exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
+	install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)
+	install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)
 
-	install -m 644 include/saAis.h $(INCLUDEDIR)
-	install -m 644 include/saAmf.h $(INCLUDEDIR)
-	install -m 644 include/saClm.h $(INCLUDEDIR)
-	install -m 644 include/saCkpt.h $(INCLUDEDIR)
-	install -m 644 include/saEvt.h $(INCLUDEDIR)
-	install -m 644 include/saEvt.h $(INCLUDEDIR)
-	install -m 644 include/saLck.h $(INCLUDEDIR)
-	install -m 644 include/saMsg.h $(INCLUDEDIR)
-	install -m 644 include/cpg.h $(INCLUDEDIR)
-	install -m 644 include/evs.h $(INCLUDEDIR)
-	install -m 644 exec/aispoll.h $(INCLUDEDIR_TOTEM)
-	install -m 644 exec/totem.h $(INCLUDEDIR_TOTEM)
-	install -m 644 exec/totemip.h $(INCLUDEDIR_TOTEM)
-	install -m 644 lcr/lcr_ckpt.h $(INCLUDEDIR_LCR)
-	install -m 644 lcr/lcr_comp.h $(INCLUDEDIR_LCR)
-	install -m 644 lcr/lcr_ifact.h $(INCLUDEDIR_LCR)
-	install -m 644 man/*.3 $(MANDIR)/man3
-	install -m 644 man/*.8 $(MANDIR)/man8
-	/sbin/ldconfig
+	install -m 644 include/saAis.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saAmf.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saClm.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saCkpt.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saEvt.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saEvt.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saLck.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/saMsg.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/cpg.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/evs.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 man/*.3 $(DESTDIR)$(MANDIR)/man3
+	install -m 644 man/*.5 $(DESTDIR)$(MANDIR)/man5
+	install -m 644 man/*.8 $(DESTDIR)$(MANDIR)/man8
 
 doxygen:
 	doxygen
