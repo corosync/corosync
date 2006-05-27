@@ -265,7 +265,7 @@ static void aisexec_setscheduler (void)
 	res = sched_get_priority_max (SCHED_RR);
 	if (res != -1) {
 		sched_param.sched_priority = res;
-//		res = sched_setscheduler (0, SCHED_RR, &sched_param);
+		res = sched_setscheduler (1, SCHED_RR, &sched_param);
 		if (res == -1) {
 			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				sched_param.sched_priority, strerror (errno));
