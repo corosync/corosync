@@ -36,14 +36,13 @@ INCLUDEDIR_TOTEM=/usr/include/openais/totem
 INCLUDEDIR_LCR=/usr/include/openais/lcr
 MANDIR=/usr/share/man
 ETCDIR=/etc/ais
+LCRSODIR=/usr/libexec/lcrso
 ARCH=$(shell uname -p)
 
 ifeq (,$(findstring 64,$(ARCH)))
 LIBDIR=/usr/lib/openais
-LCRSODIR=/usr/lib/openais/lcrso
 else
 LIBDIR=/usr/lib64/openais
-LCRSODIR=/usr/lib64/openais/lcrso
 endif
 
 all:
@@ -70,20 +69,78 @@ install:
 	mkdir -p $(DESTDIR)$(MANDIR)/man3
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
-	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
+	mkdir -p $(DESTDIR)/etc/ld.so.conf.d
 
+	ln -sf libais.so.1.0.0 lib/libais.so
+	ln -sf libSaAmf.so.1.0.0 lib/libSaAmf.so
+	ln -sf libSaClm.so.1.0.0 lib/libSaClm.so
+	ln -sf libSaCkpt.so.1.0.0 lib/libSaCkpt.so
+	ln -sf libSaEvt.so.1.0.0 lib/libSaEvt.so
+	ln -sf libSaLck.so.1.0.0 lib/libSaLck.so
+	ln -sf libSaMsg.so.1.0.0 lib/libSaMsg.so
+	ln -sf libevs.so.1.0.0 lib/libevs.so
+	ln -sf libcpg.so.1.0.0 lib/libcpg.so
+	ln -sf libtotem_pg.so.1.0.0 exec/libtotem_pg.so
+
+	ln -sf libais.so.1.0.0 lib/libais.so.1
+	ln -sf libSaAmf.so.1.0.0 lib/libSaAmf.so.1
+	ln -sf libSaClm.so.1.0.0 lib/libSaClm.so.1
+	ln -sf libSaCkpt.so.1.0.0 lib/libSaCkpt.so.1
+	ln -sf libSaEvt.so.1.0.0 lib/libSaEvt.so.1
+	ln -sf libSaLck.so.1.0.0 lib/libSaLck.so.1
+	ln -sf libSaMsg.so.1.0.0 lib/libSaMsg.so.1
+	ln -sf libevs.so.1.0.0 lib/libevs.so.1
+	ln -sf libcpg.so.1.0.0 lib/libcpg.so.1
+	ln -sf libtotem_pg.so.1.0.0 exec/libtotem_pg.so.1
+
+	cp -a lib/libais.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaCkpt.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaEvt.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaLck.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaMsg.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libevs.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
+	cp -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
+
+	cp -a lib/libais.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaAmf.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaCkpt.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaEvt.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaLck.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaMsg.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libevs.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libcpg.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a exec/libtotem_pg.so.1 $(DESTDIR)$(LIBDIR)
+
+	install -m 755 lib/libais.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaAmf.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaClm.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaCkpt.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaEvt.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaLck.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaMsg.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libevs.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcpg.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 exec/libtotem_pg.so.1.* $(DESTDIR)$(LIBDIR)
+
+ifneq "NO" "$(STATICLIBS)"
 	install -m 755 lib/libais.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libais.so* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSa*.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSa*.so* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaAmf.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaClm.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaCkpt.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaEvt.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaLck.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaMsg.a $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libevs.so* $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcpg.so* $(DESTDIR)$(LIBDIR)
-	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
-	echo $(LCRSODIR) >> $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
+	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
+	install -m 755 exec/libtotem_pg.a $(DESTDIR)$(LIBDIR)
+endif
 
-	install -m 755 exec/libtotem_pg* $(DESTDIR)$(LIBDIR)
+	echo $(LIBDIR) > $(DESTDIR)/etc/ld.so.conf.d/openais-$(ARCH).conf
+
 	install -m 755 exec/*lcrso $(DESTDIR)$(LCRSODIR)
 
 	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)

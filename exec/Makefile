@@ -63,7 +63,7 @@ ifeq (${BUILD_DYNAMIC}, 1)
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
 CFLAGS += -fPIC
 
-all:libtotem_pg.a libtotem_pg.so.1.0 ../lcr/lcr_ifact.o \
+all:libtotem_pg.a libtotem_pg.so.1.0.0 ../lcr/lcr_ifact.o \
 	aisexec \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
@@ -162,12 +162,12 @@ libtotem_pg.a: $(TOTEM_OBJS)
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
-libtotem_pg.so.1.0: $(TOTEM_OBJS)
+libtotem_pg.so.1.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
 
 else
 
-libtotem_pg.so.1.0: $(TOTEM_OBJS)
+libtotem_pg.so.1.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
 
 endif
@@ -179,7 +179,7 @@ openais-instantiate: openais-instantiate.o
 	$(CC) $(LDFLAGS) openais-instantiate.o -o openais-instantiate
 
 clean:
-	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so.1.0 libtotem_pg.so.1 libtotem_pg.so libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LCR_SRC) > /dev/null 2>&1
