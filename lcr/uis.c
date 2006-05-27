@@ -122,9 +122,19 @@ static void lcr_uis_dispatch (int fd)
 {
 	struct req_msg header;
 	char msg_contents[512];
+	ssize_t readsize;
 
-	read (fd, &header, sizeof (header));
-	read (fd, msg_contents, sizeof (msg_contents));
+	/*
+	 * TODO this doesn't handle short reads
+	 */
+	readsize = read (fd, &header, sizeof (header));
+	if (readsize == -1) {
+		return;
+	}
+	readsize = read (fd, msg_contents, sizeof (msg_contents));
+	if (readsize == -1) {
+		return;
+	}
 
 	printf ("msg contents %s\n", msg_contents);
 }
