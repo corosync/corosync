@@ -162,16 +162,15 @@ unsigned int path_list_entries = 0;
 static void defaults_path_build (void)
 {
 	char cwd[1024];
+	char *res;
 
-	getcwd (cwd, sizeof (cwd));
-	strcat (cwd, "/");
-
-	path_list[0] = strdup (cwd);
-	path_list[1] = "/lib";
-	path_list[2] = "/usr/lib";
-	path_list[3] = "/lib64";
-	path_list[4] = "/usr/lib64";
-	path_list_entries = 5;
+	res = getcwd (cwd, sizeof (cwd));
+	if (res != NULL) {
+		strcat (cwd, "/");
+		path_list[0] = strdup (cwd);
+		path_list_entries++;
+	}
+	path_list[path_list_entries++] = "/usr/libexec/lcrso";
 }
 
 static void ld_library_path_build (void)
@@ -349,9 +348,8 @@ int lcr_ifact_reference (
 
 // TODO error checking in this code is weak
 	/*
-	 * Find all *.lcrso files in the cwd
+	 * Find all *.lcrso files in search paths
 	 */
-	//path = getenv ("LD_LIBRARY_PATH");
 	for (i = 0; i < path_list_entries; i++) {
 	res = interface_find_and_load (
 		path_list[i],
@@ -369,6 +367,7 @@ int lcr_ifact_reference (
 	 * No matching interfaces found in all shared objects
 	 */
 	return (-1);
+
 found:
 	*iface = instance->ifaces[iface_number].interfaces;
 	if (instance->ifaces[iface_number].constructor) {
