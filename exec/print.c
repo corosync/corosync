@@ -160,7 +160,7 @@ static void _log_printf (char *file, int line,
 	}
 
 	if ((level == LOG_LEVEL_DEBUG) || (logmode & LOG_MODE_FILELINE)) {
-		sprintf (&newstring[i], "[%s:%u] %s", file, line, format);
+		sprintf (&newstring[i], "[%s:%04u] %s", file, line, format);
 	} else {	
 		sprintf (&newstring[i], "[%-5s] %s", loggers[id].ident, format);
 	}

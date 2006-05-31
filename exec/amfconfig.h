@@ -179,11 +179,11 @@ struct amf_su {
 	struct amf_si_assignment *assigned_sis;
 
 	/* Implementation */
+	int is_local;
 	char clccli_path[PATH_MAX];
 	char binary_path[PATH_MAX];
 	SaUint32T              su_failover_cnt; /* missing in SAF specs? */
 	enum escalation_levels escalation_level;
-	SaAmfHAStateT          requested_ha_state;
 	struct amf_su         *next;
 };
 
@@ -282,11 +282,10 @@ struct amf_si {
 	SaAmfAdminStateT saAmfSIAdminState;
 	SaAmfAssignmentStateT saAmfSIAssignmentState;
 	SaUint32T saAmfSINumCurrActiveAssignments;
-	SaUint32T saAmfSINumICurrStandbyAssignments;
+	SaUint32T saAmfSINumCurrStandbyAssignments;
 
 	/* Relations */
 	struct amf_application   *application;
-	struct amf_sg            *protects_sg;
 	struct amf_csi           *csi_head;
 	struct amf_si_assignment *si_assignments;
 	struct amf_si_dependency *depends_on;
@@ -327,8 +326,10 @@ struct amf_si_assignment {
 	SaAmfHAStateT saAmfSISUHAState;
 
 	/* Relations */
+	struct amf_si *si;
 
 	/* Implementation */
+	struct amf_si_assignment *next;
 };
 
 struct amf_csi {
@@ -371,7 +372,6 @@ struct amf_csi_assignment {
 };
 
 extern struct amf_comp *amf_find_comp (struct amf_cluster *cluster, SaNameT *name);
-extern struct amf_su *amf_find_unit (struct amf_cluster *cluster, SaNameT *name);
 extern struct amf_healthcheck *amf_find_healthcheck (struct amf_comp *comp, SaAmfHealthcheckKeyT *key);
 extern int amf_config_read (struct amf_cluster *cluster, char **error_string);
 

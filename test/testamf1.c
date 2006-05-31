@@ -84,34 +84,19 @@ void HealthcheckCallback (SaInvocationT invocation,
 
 	if( !good_health && healthcheck_no++);
 
-
-/*
-	printf ("Healthcheck %u for key '%s' for component ",
-		healthcheck_no, healthcheckKey->key);
-
-	printSaNameT ((SaNameT *)compName);
-	printf ("\n");
-*/
 	if (healthcheck_no == good_health_limit ) {
-printf ("COMPONENT REPORTING ERROR %s\n", compNameGlobal.value);
+        res = saAmfResponse (handle, invocation, SA_AIS_OK);
+        res = saAmfHealthcheckStop (handle,
+                                       &compNameGlobal,
+                                       &key0);
+        printf ("healthcheck stop result %d (should be %d)\n", res, SA_AIS_OK);
+
+        printf ("COMPONENT REPORTING ERROR %s\n", compNameGlobal.value);
 		saAmfComponentErrorReport (handle, compName, 0, SA_AMF_COMPONENT_RESTART, 0);
-		res = saAmfResponse (handle, invocation, SA_AIS_OK);
-printf ("COMPONENT DONE REPORTING ERROR\n");
+        printf ("COMPONENT DONE REPORTING ERROR\n");
 	} else {
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 	}
-
-/*
-	if (healthcheck_no < good_health_limit) {
-		res = saAmfResponse (handle, invocation, SA_AIS_OK);
-	}
-*/
-/*
-	if (healthcheck_no == good_health_limit) {
-		res = saAmfHealthcheckStop (handle, &compNameGlobal, &key0);
-		stop = 1;
-	}
-*/
 }
 
 void ComponentTerminateCallback (
@@ -123,7 +108,7 @@ void ComponentTerminateCallback (
 	exit (0);
 }
 
-#if 1
+#if 0
     #include <sys/time.h>
     #define TRU "%d"
     #define TRS "%s" 
@@ -150,28 +135,22 @@ void CSISetCallback (
 	int res;
 	switch (haState) {
 	case SA_AMF_HA_ACTIVE:
-		printf ("CSISetCallback:"); 
-		printf ("for CSI '");
-		printSaNameT ((SaNameT *)&csiDescriptor->csiName);
-		printf ("' for component ");
-		printSaNameT ((SaNameT *)compName);
-		printf ("'");
- 		printf (" requested to enter hastate SA_AMF_ACTIVE for CSI %s\n",
-				csiDescriptor->csiName.value);
+		printf ("Component '%s' requested to enter hastate SA_AMF_ACTIVE for \n\tCSI '%s'\n",
+			compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		int i;
 		TR(TRU, csiDescriptor->csiAttr.number);
 		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
 
 		    if( strcmp((char*)csiDescriptor->csiAttr.attr[i].attrName, "good_health_limit") == 0){
-			good_health = strcmp((char*)csiDescriptor->csiAttr.attr[i].attrValue, "0") ? 0 : 1;
-			good_health_limit = atoi((char*)csiDescriptor->csiAttr.attr[i].attrValue);
+				good_health = strcmp((char*)csiDescriptor->csiAttr.attr[i].attrValue, "0") ? 0 : 1;
+				good_health_limit = atoi((char*)csiDescriptor->csiAttr.attr[i].attrValue);
 			
 		    }
-
- 
+#if 0
 		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrName);
 		    TR(TRS, csiDescriptor->csiAttr.attr[i].attrValue);
+#endif
 		} 
 
 		TR(TRU, csiDescriptor->csiFlags);
@@ -183,14 +162,8 @@ void CSISetCallback (
 		break;  
          
 	case SA_AMF_HA_STANDBY:
-		printf ("CSISetCallback:"); 
-		printf ("for CSI '");
-		printSaNameT ((SaNameT *)&csiDescriptor->csiName);
-		printf ("' for component ");
-		printSaNameT ((SaNameT *)compName);
-		printf ("'");
-		printf (" requested to enter hastate SA_AMF_STANDBY for CSI %s\n",
-				csiDescriptor->csiName.value);
+		printf ("Component '%s' requested to enter hastate SA_AMF_STANDBY for \n\tCSI '%s'\n",
+			compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		
 		TR(TRU,csiDescriptor->csiAttr.number);
@@ -302,6 +275,21 @@ int main (int argc, char **argv) {
 	fd_set read_fds;
 	extern char *optarg;
 	extern int optind;
+	char *name = getenv ("SA_AMF_COMPONENT_NAME");
+
+	/* test that it exist */
+	if (name == NULL) {
+		fprintf(stderr, "SA_AMF_COMPONENT_NAME missing\n");
+		exit (-1);
+	}
+
+	/* test for correct value */
+	if (strstr (name, "safComp=A,safSu=SERVICE_X_") == NULL) {
+		fprintf(stderr, "SA_AMF_COMPONENT_NAME value wrong\n");
+		exit (-2);
+	}
+
+	printf("Hello world from %s\n", name);
 
 	signal (SIGINT, sigintr_handler);
 #if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
@@ -323,26 +311,33 @@ int main (int argc, char **argv) {
 	saAmfComponentNameGet (handle, &compNameGlobal);
 	write_pid ();
 	
-
 	result = saAmfHealthcheckStart (handle,
 		&compNameGlobal,
 		&key0,
 		SA_AMF_HEALTHCHECK_AMF_INVOKED,
 		SA_AMF_COMPONENT_FAILOVER);
-	printf ("healthcheck start result %d (should be 1)\n", result);
+    printf ("healthcheck start result %d (should be %d)\n", result, SA_AIS_OK);
 
-	/*
-	 * Test already started healthcheck
-	 */
-	result = saAmfHealthcheckStart (handle,
-		&compNameGlobal,
-		&key0,
-		SA_AMF_HEALTHCHECK_AMF_INVOKED,
-		SA_AMF_COMPONENT_FAILOVER);
-	printf ("healthcheck start result %d (should be 14)\n", result);
+    {
+        SaNameT badname;
+        strcpy (badname.value, "badname");
+        badname.length = 7;
+        result = saAmfComponentRegister (handle, &badname, NULL);
+        printf ("register result is %d (should be %d)\n", result, SA_AIS_ERR_INVALID_PARAM);
+    }
 
-	result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
-	printf ("register result is %d (should be 1)\n", result);
+    result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
+    printf ("register result is %d (should be %d)\n", result, SA_AIS_OK);
+
+    /*
+     * Test already started healthcheck
+     */
+    result = saAmfHealthcheckStart (handle,
+        &compNameGlobal,
+        &key0,
+        SA_AMF_HEALTHCHECK_AMF_INVOKED,
+        SA_AMF_COMPONENT_FAILOVER);
+    printf ("healthcheck start result %d (should be %d)\n", result, SA_AIS_ERR_EXIST);
 
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);

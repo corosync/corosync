@@ -202,6 +202,8 @@ struct req_lib_amf_componenterrorreport {
 	SaNameT reportingComponent;
 	SaNameT erroneousComponent;
 	SaTimeT errorDetectionTime;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
+	SaNtfIdentifierT ntfIdentifier;
 };
 
 struct res_lib_amf_componenterrorreport {

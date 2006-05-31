@@ -91,21 +91,16 @@ static char delivery_data[MESSAGE_SIZE_MAX];
 
 SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
-#ifdef COMPILE_OUT
 static void sigusr2_handler (int num)
 {
 	int i;
 
-	for (i = 0; i < AIS_SERVICE_HANDLERS_COUNT; i++) {
+	for (i = 0; ais_service[i]; i++) {
 		if (ais_service[i]->exec_dump_fn) {
 			ais_service[i]->exec_dump_fn ();
-		 }
+		}
 	}
-
-	signal (SIGUSR2 ,sigusr2_handler);
-	return;
 }
-#endif
 
 struct totem_ip_address *this_ip;
 struct totem_ip_address this_non_loopback_ip;
@@ -531,6 +526,7 @@ int main (int argc, char **argv)
 	aisexec_mempool_init ();
 
 	signal (SIGINT, sigintr_handler);
+	signal (SIGUSR2, sigusr2_handler);
 
 	openais_ipc_init (aisexec_poll_handle, gid_valid, &this_non_loopback_ip);
 

@@ -35,8 +35,7 @@
 instantiate() {
 	echo clc_cli_script instantiating component $SA_AMF_COMPONENT_NAME $1
 	./openais-instantiate $1
-	RETVAL=$?
-	return $RETVAL
+	exit $?
 }
 
 terminate() {
@@ -47,8 +46,7 @@ terminate() {
 	fi
 	echo clc_cli_script terminating up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	kill -15 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
-	RETVAL=$?
-	return $RETVAL
+	exit $?
 }
 
 cleanup() {
@@ -59,8 +57,7 @@ cleanup() {
 	fi
 	echo clc_cli_script cleaning up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	kill -9 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
-	RETVAL=$?
-	return $RETVAL
+	exit $?
 }
 
 usage() {
@@ -73,7 +70,6 @@ case "$1" in
 			instantiate $2
 		else 
 			instantiate $COMP_BINARY_PATH/$COMP_BINARY_NAME
-			exit 1
 		fi
 		;;
 

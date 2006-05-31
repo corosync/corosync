@@ -151,7 +151,7 @@ static inline void log_init (const char *ident)
 
 #define LEAVE(format, args...) do { \
     if (LOG_LEVEL_DEBUG <= loggers[logger_identifier].level)  { \
-		trace (__FILE__, __LINE__, TAG_LEAVE, logger_identifier, ">%s: " format, __FUNCTION__, ##args); \
+		trace (__FILE__, __LINE__, TAG_LEAVE, logger_identifier, "<%s: " format, __FUNCTION__, ##args); \
     } \
 } while(0)
 

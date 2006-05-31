@@ -102,50 +102,55 @@ struct amf_healthcheck *amf_find_healthcheck (struct amf_comp *comp, SaAmfHealth
 struct amf_comp *amf_find_comp (struct amf_cluster *cluster, SaNameT *name)
 {
 	struct amf_application *app;
-	struct amf_sg *group;
-	struct amf_su *unit;
-	struct amf_comp *comp;
+	struct amf_sg *sg;
+	struct amf_su *su;
+	struct amf_comp *comp = NULL;
+	char *app_name;
+	char *sg_name;
+	char *su_name;
+	char *comp_name;
+	char *ptrptr;
+	char *buf;
+
+	/* malloc new buffer since strtok_r writes to its first argument */
+	buf = malloc (name->length);
+	memcpy (buf, name->value,name ->length);
+
+	comp_name = strtok_r(buf, ",", &ptrptr);
+	su_name = strtok_r(NULL, ",", &ptrptr);
+	sg_name = strtok_r(NULL, ",", &ptrptr);
+	app_name = strtok_r(NULL, ",", &ptrptr);
+
+	if (comp_name == NULL || su_name == NULL || sg_name == NULL || app_name == NULL) {
+		goto end;
+	}
+
+	comp_name +=  8;
+	su_name += 6;
+	sg_name += 6;
+	app_name += 7;
 
 	for (app = cluster->application_head; app != NULL; app = app->next) {
-		for (group = app->sg_head; group != NULL; group = group->next) {
-			for (unit = group->su_head; unit != NULL; unit = unit->next) {
-				for (comp = unit->comp_head; comp != NULL; comp = comp->next) {
-					if (name_match (name, &comp->name)) {
-						return comp;
+		if (strncmp (app_name, (char*)app->name.value, app->name.length) == 0) {
+			for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+				if (strncmp (sg_name, (char*)sg->name.value, sg->name.length) == 0) {
+					for (su = sg->su_head; su != NULL; su = su->next) {
+						if (strncmp (su_name, (char*)su->name.value, su->name.length) == 0) {
+							for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+								if (strncmp (comp_name, (char*)comp->name.value, comp->name.length) == 0) {
+									goto end;
+								}
+							}
+						}
 					}
 				}
 			}
 		}
 	}
 
-	return (0);
-}
-
-struct amf_su *amf_find_unit (struct amf_cluster *cluster, SaNameT *name)
-{
-	struct amf_application *app;
-	struct amf_sg *group;
-	struct amf_su *unit = 0;
-	int found = 0;
-
-	for (app = cluster->application_head;
-		  app != NULL && found == 0; app = app->next) {
-		for (group = app->sg_head;
-			  group != NULL && found == 0; group = group->next) {
-			for (unit = group->su_head;
-				  unit != NULL && found == 0; unit = unit->next) {
-				if (name_match (name, &unit->name)) {
-					found = 1;
-				}
-			}
-		}
-	}
-
-	if (found) {
-		return (unit);
-	} else {
-		return (0);
-	}
+end:
+	free (buf);
+	return comp;
 }
 
 static int init_category (struct amf_comp *comp, char *loc)
@@ -326,6 +331,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 	}
 
 	cluster->saAmfClusterStartupTimeout = -1;
+	cluster->saAmfClusterAdminState = SA_AMF_ADMIN_UNLOCKED;
 
 	while (fgets (buf, 255, fp)) {
 		line_number += 1;
@@ -372,6 +378,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				node = calloc (1, sizeof (struct amf_node));
 				node->next = cluster->node_head;
 				cluster->node_head = node;
+				node->saAmfNodeAdminState = SA_AMF_ADMIN_UNLOCKED;
 				node->saAmfNodeAutoRepair = SA_TRUE;
 				node->cluster = cluster;
 				node->saAmfNodeSuFailOverProb = -1;
@@ -383,6 +390,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				app->next = cluster->application_head;
 				cluster->application_head = app;
 				app->cluster = cluster;
+				app->saAmfApplicationAdminState = SA_AMF_ADMIN_UNLOCKED;
 				setSaNameT (&app->name, trim_str (loc));
 				current_parse = AMF_APPLICATION;
 			} else if (strstr_rs (line, "}")) {
@@ -451,6 +459,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				sg = calloc (1, sizeof (struct amf_sg));
 				sg->next = app->sg_head;
 				app->sg_head = sg;
+				sg->saAmfSGAdminState = SA_AMF_ADMIN_UNLOCKED;
 				sg->saAmfSGNumPrefActiveSUs = 1;
 				sg->saAmfSGNumPrefStandbySUs = 1;
 				sg->saAmfSGCompRestartProb = -1;
@@ -470,6 +479,8 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				si->saAmfSIPrefActiveAssignments = 1;
 				si->saAmfSIPrefStandbyAssignments = 1;
 				setSaNameT (&si->name, trim_str (loc));
+				si->saAmfSIAdminState = SA_AMF_ADMIN_UNLOCKED;
+				si->saAmfSIAssignmentState = SA_AMF_ASSIGNMENT_UNASSIGNED;
 				current_parse = AMF_SI;
 			} else if ((loc = strstr_rs (line, "safCSType=")) != 0) {
 				current_parse = AMF_CS_TYPE;
@@ -524,6 +535,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				su->next = sg->su_head;
 				sg->su_head = su;
 				su->sg = sg;
+				su->saAmfSUAdminState = SA_AMF_ADMIN_UNLOCKED;
 				su->saAmfSUOperState = SA_AMF_OPERATIONAL_DISABLED;
 				su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
 				su->escalation_level = ESCALATION_LEVEL_NO_ESCALATION;
@@ -574,6 +586,8 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				su->saAmfSUFailover = atoi (loc);
 			} else if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
 				strcpy (su->clccli_path, loc);
+			} else if ((loc = strstr_rs (line, "saAmfSUHostedByNode=")) != 0) {
+				setSaNameT (&su->saAmfSUHostedByNode, loc);
 			} else if ((loc = strstr_rs (line, "safComp=")) != 0) {
 				comp = new_comp (su);
 				comp_env_var_cnt = 0;
@@ -591,6 +605,10 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 				}
 				if (su->saAmfSUFailover > 1) {
 					error_reason = "saAmfSUFailover erroneous";
+					goto parse_error;
+				}
+				if (strcmp ((char*)su->saAmfSUHostedByNode.value, "") == 0) {
+					error_reason = "saAmfSUHostedByNode missing";
 					goto parse_error;
 				}
 				current_parse = AMF_SG;
