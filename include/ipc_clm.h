@@ -38,6 +38,7 @@
 #include "saAis.h"
 #include "saClm.h"
 #include "ipc_gen.h"
+#include "mar_clm.h"
 
 enum req_clm_types {
 	MESSAGE_REQ_CLM_TRACKSTART = 0,
@@ -56,55 +57,55 @@ enum res_clm_types {
 };
 
 struct req_lib_clm_clustertrack {
-	struct req_header header;
-	SaUint8T trackFlags;
-	int return_in_callback;
+	struct req_header header __attribute__((aligned(8)));
+	unsigned char track_flags __attribute__((aligned(8)));
+	int return_in_callback __attribute__((aligned(8)));
 };
 
 struct res_lib_clm_clustertrack {
-	struct res_header header;
-	SaUint64T view;
-	SaUint32T numberOfItems;
-	SaClmClusterNotificationT notification[32]; /* should be PROCESSOR_COUNT_MAX */
+	struct res_header header __attribute__((aligned(8)));
+	unsigned long long view __attribute__((aligned(8)));
+	unsigned int number_of_items __attribute__((aligned(8)));
+	mar_clm_cluster_notification_t notification[PROCESSOR_COUNT_MAX] __attribute__((aligned(8)));
 };
 
 struct req_lib_clm_trackstop {
-	struct req_header header;
-	SaSizeT dataRead;
-	SaAisErrorT error;
+	struct req_header header __attribute__((aligned(8)));
+	unsigned long long data_read __attribute__((aligned(8)));
+	SaAisErrorT error __attribute__((aligned(8)));
 };
 
 struct res_lib_clm_trackstop {
-	struct res_header header;
+	struct res_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_clm_nodeget {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
+	struct req_header header __attribute__((aligned(8)));
+	unsigned long long invocation __attribute__((aligned(8)));
+	unsigned int node_id __attribute__((aligned(8)));
 };
 
 struct res_clm_nodeget {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT clusterNode;
-	int valid;
+	struct res_header header __attribute__((aligned(8)));
+	unsigned long long invocation __attribute__((aligned(8)));
+	mar_clm_cluster_node_t cluster_node __attribute__((aligned(8)));
+	int valid __attribute__((aligned(8)));
 };
 
 struct req_lib_clm_nodegetasync {
-	struct req_header header;
-	SaInvocationT invocation;
-	SaClmNodeIdT nodeId;
+	struct req_header header __attribute__((aligned(8)));
+	unsigned long long invocation __attribute__((aligned(8)));
+	unsigned int node_id __attribute__((aligned(8)));
 };
 
 struct res_clm_nodegetasync {
-	struct res_header header;
+	struct res_header header __attribute__((aligned(8)));
 };
 
 struct res_clm_nodegetcallback {
-	struct res_header header;
-	SaInvocationT invocation;
-	SaClmClusterNodeT clusterNode;
+	struct res_header header __attribute__((aligned(8)));
+	SaInvocationT invocation __attribute__((aligned(8)));
+	mar_clm_cluster_node_t cluster_node __attribute__((aligned(8)));
 };
 
 #endif /* IPC_CLM_H_DEFINED */

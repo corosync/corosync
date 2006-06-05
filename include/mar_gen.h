@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (C) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -31,79 +31,31 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef IPC_GEN_H_DEFINED
-#define IPC_GEN_H_DEFINED
 
-#include <netinet/in.h>
-#include "../exec/totemip.h"
+#ifndef AIS_MAR_GEN_H_DEFINED
+#define AIS_MAR_GEN_H_DEFINED
 
-enum service_types {
-	EVS_SERVICE = 0,
-	CLM_SERVICE = 1,
-	AMF_SERVICE = 2,
-	CKPT_SERVICE = 3,
-	EVT_SERVICE = 4,
-	LCK_SERVICE = 5,
-	MSG_SERVICE = 6,
-	CFG_SERVICE = 7,
-	CPG_SERVICE = 8
-};
+#include "saAis.h"
 
-enum req_init_types {
-	MESSAGE_REQ_RESPONSE_INIT = 0,
-	MESSAGE_REQ_DISPATCH_INIT = 1
-};
+typedef struct {
+	unsigned short length;
+	unsigned char value[SA_MAX_NAME_LENGTH];
+} mar_name_t;
 
-enum res_init_types {
-	MESSAGE_RES_INIT
-};
+static inline void marshall_from_mar_name_t (
+	SaNameT *dest,
+	mar_name_t *src)
+{
+	dest->length = src->length;
+	memcpy (dest->value, src->value, SA_MAX_NAME_LENGTH);
+}
 
-struct req_header {
-	int size;
-	int id;
-} __attribute__((aligned(8)));
+static inline void marshall_to_mar_name_t (
+	mar_name_t *dest,
+	SaNameT *src)
+{
+	dest->length = src->length;
+	memcpy (dest->value, src->value, SA_MAX_NAME_LENGTH);
+}
 
-struct res_header {
-	int size;
-	int id;
-	SaAisErrorT error;
-} __attribute__((aligned(8)));
-
-struct req_lib_resdis_init {
-	int size;
-	int id;
-	int service;
-} __attribute__((aligned(8)));
-
-struct req_lib_response_init {
-	struct req_lib_resdis_init resdis_header;
-} __attribute__((aligned(8)));
-
-struct req_lib_dispatch_init {
-	struct req_lib_resdis_init resdis_header;
-	unsigned long conn_info;
-} __attribute__((aligned(8)));
-
-struct req_lib_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
-
-struct res_lib_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
-
-struct res_lib_response_init {
-	struct res_header header;
-	unsigned long conn_info;
-} __attribute__((aligned(8)));
-
-struct res_lib_dispatch_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
-
-struct message_source {
-	unsigned int nodeid;
-	void *conn;
-} __attribute__((aligned(8)));
-
-#endif /* IPC_GEN_H_DEFINED */
+#endif /* AIS_MAR_GEN_TYPES_H_DEFINED */
