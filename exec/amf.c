@@ -532,7 +532,7 @@ static char *comp_dn_make (struct amf_comp *comp, SaNameT *name)
 		comp->su->sg->name.value, comp->su->sg->application->name.value);
 	assert (i <= SA_MAX_NAME_LENGTH);
 	name->length = i;
-	return name->value;
+	return (char *)name->value;
 }
 
 static char *csi_dn_make (struct amf_csi *csi, SaNameT *name)
@@ -543,7 +543,7 @@ static char *csi_dn_make (struct amf_csi *csi, SaNameT *name)
 		csi->si->application->name.value);
 	assert (i <= SA_MAX_NAME_LENGTH);
 	name->length = i;
-	return name->value;
+	return (char *)name->value;
 }
 
 static int invocation_create (
