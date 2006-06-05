@@ -85,7 +85,7 @@ IMMS
 
 Cluster Membership
 ------------------
-* P1 32/64 bit cross-endian must be working.
+* P1 32/64 bit cross-endian testing.  Code completed and believed to be correct.
 
 Eventing
 --------
