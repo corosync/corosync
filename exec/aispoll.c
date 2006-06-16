@@ -56,7 +56,8 @@ struct poll_instance {
 	struct pollfd *ufds;
 	int poll_entry_count;
 	struct timerlist timerlist;
-	pthread_mutex_t *serialize;
+	void (*serialize_lock_fn) (void);
+	void (*serialize_unlock_fn) (void);
 };
 
 /*
@@ -68,7 +69,9 @@ static struct hdb_handle_database poll_instance_database = {
 	.iterator	= 0
 };
 
-poll_handle poll_create (pthread_mutex_t *serialize)
+poll_handle poll_create (
+	void (*serialize_lock_fn) (void),
+	void (*serialize_unlock_fn) (void))
 {
 	poll_handle handle;
 	struct poll_instance *poll_instance;
@@ -88,7 +91,8 @@ poll_handle poll_create (pthread_mutex_t *serialize)
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
-	poll_instance->serialize = serialize;
+	poll_instance->serialize_lock_fn = serialize_unlock_fn;
+	poll_instance->serialize_unlock_fn = serialize_unlock_fn;
 	timerlist_init (&poll_instance->timerlist);
 
 	return (handle);
@@ -118,7 +122,6 @@ int poll_destroy (poll_handle handle)
 	if (poll_instance->ufds) {
 		free (poll_instance->ufds);
 	}
-	timerlist_free (&poll_instance->timerlist);
 
 	hdb_handle_destroy (&poll_instance_database, handle);
 
@@ -395,13 +398,13 @@ retry_poll:
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
 
-				pthread_mutex_lock (poll_instance->serialize);
+				poll_instance->serialize_lock_fn();
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
 					poll_instance->ufds[i].fd, 
 					poll_instance->ufds[i].revents,
 					poll_instance->poll_entries[i].data);
 
-				pthread_mutex_unlock (poll_instance->serialize);
+				poll_instance->serialize_unlock_fn();
 				/*
 				 * Remove dispatch functions that return -1
 				 */
@@ -410,9 +413,9 @@ retry_poll:
 				}
 			}
 		}
-		pthread_mutex_lock (poll_instance->serialize);
+		poll_instance->serialize_lock_fn();
 		timerlist_expire (&poll_instance->timerlist);
-		pthread_mutex_unlock (poll_instance->serialize);
+		poll_instance->serialize_unlock_fn();
 	} /* for (;;) */
 
 	hdb_handle_put (&poll_instance_database, handle);

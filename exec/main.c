@@ -72,18 +72,21 @@
 #include "objdb.h"
 #include "config.h"
 #include "ipc.h"
+#include "timer.h"
 #include "print.h"
 #include "util.h"
 
 #define SERVER_BACKLOG 5
 
-static char *release_name = "Wilson version 0.74";
+static char *release_name = "Wilson version 0.77";
 
 static int ais_uid = 0;
 
 static int gid_valid = 0;
 
 static unsigned int service_count = 32;
+
+static pthread_mutex_t serialize_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct totem_logging_configuration totem_logging_configuration;
 
@@ -138,6 +141,17 @@ void sigintr_handler (int signum)
 static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
+
+void serialize_mutex_lock (void)
+{
+	pthread_mutex_lock (&serialize_mutex);
+}
+
+void serialize_mutex_unlock (void)
+{
+	pthread_mutex_unlock (&serialize_mutex);
+}
+
 
 static void openais_sync_completed (void)
 {
@@ -370,7 +384,13 @@ int main (int argc, char **argv)
 
 	totemip_localhost(AF_INET, &this_non_loopback_ip);
 
-	aisexec_poll_handle = poll_create (openais_ipc_mutex_get());
+	openais_timer_init (
+		serialize_mutex_lock,
+		serialize_mutex_unlock);
+
+	aisexec_poll_handle = poll_create (
+		serialize_mutex_lock,
+		serialize_mutex_unlock);
 
 	/*
 	 * Load the object database interface
@@ -528,9 +548,13 @@ int main (int argc, char **argv)
 	signal (SIGINT, sigintr_handler);
 	signal (SIGUSR2, sigusr2_handler);
 
-	openais_ipc_init (aisexec_poll_handle, gid_valid, &this_non_loopback_ip);
+	openais_ipc_init (
+		serialize_mutex_lock,
+		serialize_mutex_unlock,
+		gid_valid,
+		&this_non_loopback_ip);
 
-	aisexec_tty_detach ();
+//	aisexec_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 

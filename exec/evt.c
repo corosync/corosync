@@ -61,6 +61,8 @@
 #include "totempg.h"
 #include "swab.h"
 #include "print.h"
+#include "tlist.h"
+#include "timer.h"
 
 /*
  * event instance structure. Contains information about the
@@ -379,7 +381,7 @@ struct open_chan_pending {
 	SaNameT				ocp_chan_name;
 	void 				*ocp_conn;
 	SaEvtChannelOpenFlagsT	ocp_open_flag;
-	poll_timer_handle	ocp_timer_handle;
+	timer_handle		ocp_timer_handle;
 	uint64_t			ocp_c_handle;
 	uint64_t			ocp_serial_no;
 	struct list_head	ocp_entry;
@@ -547,7 +549,7 @@ struct event_svr_channel_instance {
 struct event_data {
 	uint32_t			    			ed_ref_count;
 	struct list_head		    		ed_retained;
-	poll_timer_handle 					ed_timer_handle;
+	timer_handle 						ed_timer_handle;
 	struct event_svr_channel_open 	    **ed_delivered;
 	uint32_t			    			ed_delivered_count;
 	uint32_t			    			ed_delivered_next;
@@ -1078,7 +1080,7 @@ static void unlink_channel(struct event_svr_channel_instance *eci,
 		edp = list_entry(l, struct event_data, ed_retained);
 		if ((edp->ed_my_chan == eci) && 
 				(edp->ed_event.led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
-			poll_timer_delete(aisexec_poll_handle, edp->ed_timer_handle);
+			openais_timer_delete(edp->ed_timer_handle);
 			edp->ed_event.led_retention_time = 0;
 			list_del(&edp->ed_retained);
 			list_init(&edp->ed_retained);
@@ -1486,7 +1488,6 @@ clear_retention_time(SaEvtEventIdT event_id)
 {
 	struct event_data *edp;
 	struct list_head *l, *nxt;
-	int ret;
 
 	log_printf(RETENTION_TIME_DEBUG, "Search for Event ID %llx\n", event_id);
 	for (l = retained_list.next; l != &retained_list; l = nxt) {
@@ -1499,12 +1500,7 @@ clear_retention_time(SaEvtEventIdT event_id)
 		log_printf(RETENTION_TIME_DEBUG, 
 							"Clear retention time for Event ID %llx\n", 
 				edp->ed_event.led_event_id);
-		ret = poll_timer_delete(aisexec_poll_handle, edp->ed_timer_handle);
-		if (ret != 0 ) {
-			log_printf(LOG_LEVEL_ERROR, "Error expiring event ID %llx\n",
-							edp->ed_event.led_event_id);
-			return SA_AIS_ERR_NOT_EXIST;
-		}
+		openais_timer_delete(edp->ed_timer_handle);
 		edp->ed_event.led_retention_time = 0;
 		list_del(&edp->ed_retained);
 		list_init(&edp->ed_retained);
@@ -2037,7 +2033,7 @@ static void retain_event(struct event_data *evt)
 	 * Time in nanoseconds - convert to miliseconds
 	 */
 	msec_in_future = (uint32_t)((evt->ed_event.led_retention_time) / 1000000ULL);
-	ret = poll_timer_add(aisexec_poll_handle,
+	ret = openais_timer_add(
 					msec_in_future,
 					evt,
 					event_retention_timeout,
@@ -2185,7 +2181,7 @@ static void lib_evt_open_channel(void *conn, void *message)
 	 * Time in nanoseconds - convert to miliseconds
 	 */
 	msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
-	ret = poll_timer_add(aisexec_poll_handle,
+	ret = openais_timer_add(
 			msec_in_future,
 			ocp,
 			chan_open_timeout,
@@ -3385,13 +3381,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n",
 											getSaNameT(&ocp->ocp_chan_name));
 	if (ocp->ocp_timer_handle) {
-		timer_del_status = poll_timer_delete(aisexec_poll_handle,
-				ocp->ocp_timer_handle);
-		if (timer_del_status != 0) {
-			log_printf(LOG_LEVEL_WARNING,
-				"Error clearing timeout for open channel of %s\n",
-				   getSaNameT(&ocp->ocp_chan_name));
-		}
+		openais_timer_delete (ocp->ocp_timer_handle);
 	}
 
 	/*

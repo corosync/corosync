@@ -56,6 +56,8 @@
 #include "aispoll.h"
 #include "service.h"
 #include "mempool.h"
+#include "tlist.h"
+#include "timer.h"
 #include "util.h"
 #include "main.h"
 #include "totempg.h"
@@ -83,7 +85,7 @@ struct saCkptCheckpointSection {
 	struct list_head list;
 	SaCkptSectionDescriptorT sectionDescriptor;
 	void *sectionData;
-	poll_timer_handle expiration_timer;
+	timer_handle expiration_timer;
 };
 
 struct ckpt_refcnt {
@@ -98,7 +100,7 @@ struct saCkptCheckpoint {
 	struct list_head sections_list_head;
 	int referenceCount;
 	int unlinked;
-	poll_timer_handle retention_timer;
+	timer_handle retention_timer;
 	int expired;
 	int active_replica_set;
 	int sectionCount;
@@ -837,7 +839,7 @@ static void ckpt_recovery_initialize (void)
 			savedSection = 
 				(struct saCkptCheckpointSection *) malloc (sizeof(struct saCkptCheckpointSection));
 			assert(savedSection);
-			poll_timer_delete_data (aisexec_poll_handle, section->expiration_timer);
+			openais_timer_delete_data (section->expiration_timer);
 			memcpy(savedSection, section, sizeof(struct saCkptCheckpointSection));
 			list_init(&savedSection->list);		
 			list_add_tail(&savedSection->list,&savedCheckpoint->sections_list_head);
@@ -1131,7 +1133,7 @@ static void ckpt_recovery_finalize (void)
 				memcpy(&ckpt_id->ckpt_name,&checkpoint->name,sizeof(SaNameT));
 				memcpy(&ckpt_id->ckpt_section_id, &section->sectionDescriptor.sectionId,sizeof(SaCkptSectionIdT));
 
-				poll_timer_add (aisexec_poll_handle,
+				openais_timer_add (
 					abstime_to_msec (section->sectionDescriptor.expirationTime),
 					ckpt_id,
 					timer_function_section_expire,
@@ -1289,8 +1291,8 @@ void clean_checkpoint_list(struct list_head *head)
 		else if ((checkpoint->expired == 0) && (checkpoint->referenceCount == 1)) { /*defect 1192*/
 			log_printf (LOG_LEVEL_NOTICE, "clean_checkpoint_list: Starting timer to release checkpoint %s.\n",
 				&checkpoint->name.value);
-			poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
-			poll_timer_add (aisexec_poll_handle,
+			openais_timer_delete (checkpoint->retention_timer);
+			openais_timer_add (
 				checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 				checkpoint,
 				timer_function_retention,
@@ -1439,7 +1441,7 @@ void checkpoint_section_and_associate_timer_cleanup (struct saCkptCheckpointSect
 	 * defect 1112 on a section release we need to delete the timer AND its data or memory leaks
 	 */
 	if (deleteTimer) {	
-		poll_timer_delete_data (aisexec_poll_handle, section->expiration_timer);
+		openais_timer_delete_data (section->expiration_timer);
 	}
 	free (section);
 }
@@ -1456,7 +1458,7 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 	struct list_head *list;
 	struct saCkptCheckpointSection *section;
 
-	poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
+	openais_timer_delete (checkpoint->retention_timer);
 
 	/*
 	 * Release all checkpoint sections for this checkpoint
@@ -1666,7 +1668,7 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 	/*
 	 * Reset retention duration since this checkpoint was just opened
 	 */
-	poll_timer_delete (aisexec_poll_handle, ckptCheckpoint->retention_timer);
+	openais_timer_delete (ckptCheckpoint->retention_timer);
 	ckptCheckpoint->retention_timer = 0;
 
 	/*
@@ -1851,7 +1853,7 @@ static int recovery_checkpoint_open(
 	/*
 	 * Reset retention duration since this checkpoint was just opened
 	 */
-	poll_timer_delete (aisexec_poll_handle, ckptCheckpoint->retention_timer);
+	openais_timer_delete (ckptCheckpoint->retention_timer);
 	ckptCheckpoint->retention_timer = 0;
 
 	/*
@@ -2063,7 +2065,7 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 		release_checkpoint = 1;		
 	} else
 	if (checkpoint->referenceCount == 1 ) { /*defect 1192*/		
-		poll_timer_add (aisexec_poll_handle,
+		openais_timer_add (
 			checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 			checkpoint,
 			timer_function_retention,
@@ -2155,9 +2157,9 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 				req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
 	
 			if (checkpoint->expired == 0 && checkpoint->referenceCount == 1) { /*defect 1192*/
-				poll_timer_delete (aisexec_poll_handle, checkpoint->retention_timer);
+				openais_timer_delete (checkpoint->retention_timer);
 	
-				poll_timer_add (aisexec_poll_handle,
+				openais_timer_add (
 					checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
 					checkpoint,
 					timer_function_retention,
@@ -2340,7 +2342,7 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create Enqueuing Timer to Expire section %s in ckpt %s\n",
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value);
-		poll_timer_add (aisexec_poll_handle,
+		openais_timer_add (
 			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
 			ckpt_id,
 			timer_function_section_expire,
@@ -2473,7 +2475,7 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 		log_printf (LOG_LEVEL_DEBUG, "CKPT: req_exec_ckpt_sectioncreate Enqueuing Timer to Expire section %s in ckpt %s\n",
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value);
-		poll_timer_add (aisexec_poll_handle,
+		openais_timer_add (
 			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
 			ckpt_id,
 			timer_function_section_expire,
@@ -2617,7 +2619,7 @@ static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 
 	ckptCheckpointSection->sectionDescriptor.expirationTime = req_lib_ckpt_sectionexpirationtimeset->expirationTime;
 
-	poll_timer_delete (aisexec_poll_handle, ckptCheckpointSection->expiration_timer);
+	openais_timer_delete (ckptCheckpointSection->expiration_timer);
 	ckptCheckpointSection->expiration_timer = 0;
 
 	if (req_lib_ckpt_sectionexpirationtimeset->expirationTime != SA_TIME_END) {
@@ -2629,7 +2631,7 @@ static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value,
 			ckpt_id);
-		poll_timer_add (aisexec_poll_handle,
+		openais_timer_add (
 			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
 			ckpt_id,
 			timer_function_section_expire,

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc..
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,6 +71,7 @@
 #include "swab.h"
 #include "objdb.h"
 #include "config.h"
+#include "tlist.h"
 #define LOG_SERVICE LOG_SERVICE_IPC
 #include "print.h"
 
@@ -78,11 +79,13 @@
 
 #define SERVER_BACKLOG 5
 
-static pthread_mutex_t serialize_input = PTHREAD_MUTEX_INITIALIZER;
-
 static unsigned int g_gid_valid = 0;
 
 static struct totem_ip_address *my_ip;
+
+static void (*ipc_serialize_lock_fn) (void);
+
+static void (*ipc_serialize_unlock_fn) (void);
 
 struct outq_item {
 	void *msg;
@@ -118,6 +121,7 @@ struct conn_info {
 	void *private_data;	/* library connection private data */
 	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
 	enum disc_state disc;	/* disconnect state */
+	struct timerlist timerlist;
 	pthread_mutex_t mutex;
 };
 
@@ -369,13 +373,13 @@ retry_poll:
 			goto retry_poll;
 		}
 		timeout = -1;
-		pthread_mutex_lock (&serialize_input);
+		ipc_serialize_lock_fn ();
 		if (fds == 1 && ufd.revents) {
 			if ((ufd.revents & (POLLERR|POLLHUP)) ||
 				conn_info->state == CONN_STATE_DISCONNECTING_DELAYED) {
 				res = libais_disconnect (conn_info);
 				if (res != 0) {
-					pthread_mutex_unlock (&serialize_input);
+					ipc_serialize_unlock_fn ();
 					continue;
 				} else {
 					break;
@@ -387,17 +391,17 @@ retry_poll:
 
 			if (conn_info->state == CONN_STATE_CONNECTED && conn_info->conn_info_partner == 0) {
 				timeout = 10;
-				pthread_mutex_unlock (&serialize_input);
+				ipc_serialize_unlock_fn ();
 				continue;
 			}
 			if ((ufd.revents & POLLIN) == POLLIN) {
 				libais_deliver (conn_info);
 			}
 		}
-		pthread_mutex_unlock (&serialize_input);
+		ipc_serialize_unlock_fn ();
 	}
 
-	pthread_mutex_unlock (&serialize_input);
+	ipc_serialize_unlock_fn ();
 	pthread_exit (0);
 	return (0);
 }
@@ -745,7 +749,8 @@ void message_source_set (
 }
 
 void openais_ipc_init (
-	poll_handle ais_poll_handle,
+	void (*serialize_lock_fn) (void),
+	void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid,
 	struct totem_ip_address *my_ip_in)
 {
@@ -754,6 +759,10 @@ void openais_ipc_init (
 	int res;
 
 	log_init ("IPC");
+
+	ipc_serialize_lock_fn = serialize_lock_fn;
+
+	ipc_serialize_unlock_fn = serialize_unlock_fn;
 
 	/*
 	 * Create socket for libais clients, name socket, listen for connections
@@ -972,9 +981,40 @@ retry_sendmsg_two:
 	return (0);
 }
 
-pthread_mutex_t *openais_ipc_mutex_get (void)
+int openais_ipc_timer_add (
+	void *conn,
+	void (*timer_fn) (void *data),
+	void *data,
+	unsigned int msec_in_future,
+	timer_handle *handle)
 {
-	return (&serialize_input);
+	struct conn_info *conn_info = (struct conn_info *)conn;
+	int res;
+
+	res = timerlist_add_future (
+		&conn_info->timerlist,
+		timer_fn,
+		data,
+		msec_in_future,
+		handle);
+
+	return (res);
 }
 
+void openais_ipc_timer_del (
+	void *conn,
+	timer_handle timer_handle)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
 
+	timerlist_del (&conn_info->timerlist, timer_handle);
+}
+
+void openais_ipc_timer_del_data (
+	void *conn,
+	timer_handle timer_handle)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	timerlist_del (&conn_info->timerlist, timer_handle);
+}

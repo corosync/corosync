@@ -62,11 +62,11 @@
 #include "../include/list.h"
 #include "../lcr/lcr_comp.h"
 #include "totempg.h"
-#include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
 #include "amfconfig.h"
 #include "main.h"
+#include "timer.h"
 #include "service.h"
 #include "objdb.h"
 #include "print.h"
@@ -1115,11 +1115,11 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		this_amf_node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
 
 		/* wait a while before starting applications as the AMF spec. says. */
-		poll_timer_add(aisexec_poll_handle,
-					   amf_cluster.saAmfClusterStartupTimeout,
-					   NULL,
-					   cluster_start_applications,
-					   &amf_cluster.timeout_handle);
+		openais_timer_add(
+			amf_cluster.saAmfClusterStartupTimeout,
+			NULL,
+			cluster_start_applications,
+			&amf_cluster.timeout_handle);
 	} else {
 		log_printf (LOG_LEVEL_INFO, "This CLM node (%s) is not configured as an AMF node, disabling...", hostname);
 	}
@@ -1732,11 +1732,11 @@ static void cluster_start_applications (void *data)
 	}
 
 	/* wait a while before assigning SIs as the AMF spec. says. */
-	poll_timer_add(aisexec_poll_handle,
-				   amf_cluster.saAmfClusterStartupTimeout,
-				   NULL,
-				   cluster_assign_workload,
-				   &amf_cluster.timeout_handle);
+	openais_timer_add(
+		amf_cluster.saAmfClusterStartupTimeout,
+		NULL,
+		cluster_assign_workload,
+		&amf_cluster.timeout_handle);
 }
 
 #if 0
@@ -2307,10 +2307,9 @@ static void healthcheck_activate (struct amf_healthcheck *healthcheck_active)
 		&res_lib_amf_healthcheckcallback,
 		sizeof (struct res_lib_amf_healthcheckcallback));
 
-	poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_duration);
+	openais_timer_delete (healthcheck_active->timer_handle_duration);
 
-	poll_timer_add (aisexec_poll_handle,
+	openais_timer_add (
 		healthcheck_active->saAmfHealthcheckMaxDuration,
 		(void *)healthcheck_active,
 		timer_function_healthcheck_timeout,
@@ -2322,11 +2321,9 @@ static void healthcheck_deactivate (struct amf_healthcheck *healthcheck_active)
 	dprintf ("deactivating healthcheck for component %s\n",
              getSaNameT (&healthcheck_active->comp->name));
 
-    poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_period);
+	openais_timer_delete (healthcheck_active->timer_handle_period);
 
-	poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_duration);
+	openais_timer_delete (healthcheck_active->timer_handle_duration);
 
 	invocation_destroy_by_data ((void *)healthcheck_active);
 	healthcheck_active->active = 0;
@@ -2364,7 +2361,7 @@ static  void su_operational_state_set (
 			TRACE1 ("All SUs in SG '%s' in service, assigning SIs\n", unit->sg->name.value);
 			sg_assign_si (unit->sg);
 			if (amf_cluster.timeout_handle) {
-				poll_timer_delete (aisexec_poll_handle, amf_cluster.timeout_handle);
+				openais_timer_delete (amf_cluster.timeout_handle);
 			}
 		}
 	} else if (oper_state == SA_AMF_OPERATIONAL_DISABLED) {
@@ -2956,15 +2953,14 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 			TRACE3 ("Lib healthcheck response from '%s'",
 					comp_dn_make (healthcheck->comp, &name));
 
-			poll_timer_delete (aisexec_poll_handle,
-							   healthcheck->timer_handle_duration);
+			openais_timer_delete (healthcheck->timer_handle_duration);
 			healthcheck->timer_handle_duration = 0;
 
-			poll_timer_add (aisexec_poll_handle,
-							healthcheck->saAmfHealthcheckPeriod,
-							(void *)healthcheck,
-							timer_function_healthcheck_next_fn,
-							&healthcheck->timer_handle_period);
+			openais_timer_add (
+				healthcheck->saAmfHealthcheckPeriod,
+				(void *)healthcheck,
+				timer_function_healthcheck_next_fn,
+				&healthcheck->timer_handle_period);
 			break;
 		}
 		case AMF_RESPONSE_CSISETCALLBACK: {

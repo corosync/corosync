@@ -44,8 +44,8 @@ ifeq (${OPENAIS_COMPAT}, LINUX)
 endif
 
 # Totem objects
-TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c tlist.c crypto.c wthread.c
-TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o tlist.o crypto.o wthread.o
+TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
+TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o crypto.o wthread.o
 EXEC_LIBS = libtotem_pg.a
 
 # LCR objects
@@ -53,10 +53,10 @@ LCR_SRC = evs.c clm.c amf.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c amfconfig.c ais
 LCR_OBJS = evs.o clm.o amf.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o amfconfig.o aisparser.o vsf_ykd.o
 
 # main executive objects
-MAIN_SRC = main.c print.c mempool.c \
-		util.c sync.c ykd.c service.c ipc.c totemconfig.c mainconfig.c
-MAIN_OBJS = main.o print.o mempool.o \
-		util.o sync.o service.o ipc.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
+MAIN_SRC = main.c print.c mempool.c util.c sync.c service.c ipc.c timer.c \
+	totemconfig.c mainconfig.c
+MAIN_OBJS = main.o print.o mempool.o util.o sync.o service.o ipc.o timer.o \
+	totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
@@ -244,9 +244,6 @@ totemnet.o: totemnet.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 wthread.o: wthread.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
-
-tlist.o: tlist.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 crypto.o: crypto.c

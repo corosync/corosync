@@ -35,7 +35,7 @@
 #ifndef IPC_H_DEFINED
 #define IPC_H_DEFINED
 
-#include "aispoll.h"
+#include "tlist.h"
 
 extern void message_source_set (struct message_source *source, void *conn);
 
@@ -48,10 +48,24 @@ extern void *openais_conn_private_data_get (void *conn);
 extern int openais_conn_send_response (void *conn, void *msg, int mlen);
 
 extern void openais_ipc_init (
-	poll_handle handle,
+        void (*serialize_lock_fn) (void),
+        void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid,
 	struct totem_ip_address *non_loopback_ip);
 
-extern pthread_mutex_t *openais_ipc_mutex_get (void);
+extern int openais_ipc_timer_add (
+	void *conn,
+	void (*timer_fn) (void *data),
+	void *data,
+	unsigned int msec_in_future,
+	timer_handle *handle);
+
+extern void openais_ipc_timer_del (
+	void *conn,
+	timer_handle timer_handle);
+
+extern void openais_ipc_timer_del_data (
+	void *conn,
+	timer_handle timer_handle);
 
 #endif /* IPC_H_DEFINED */
