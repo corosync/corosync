@@ -64,16 +64,16 @@ endif
 # platform specific CFLAGS, LDFLAGS
 #
 ifeq (${OPENAIS_COMPAT}, LINUX) 
-	CFLAGS += -DOPENAIS_LINUX
-	LDFLAGS += -ldl -lpthread
-	DYFLAGS += -rdynamic
+	override CFLAGS += -DOPENAIS_LINUX
+	override LDFLAGS += -ldl -lpthread
+	override DYFLAGS += -rdynamic
 endif
 ifeq (${OPENAIS_COMPAT}, BSD)
-	CFLAGS += -DOPENAIS_BSD
-	LDFLAGS += -pthread
-	DYFLAGS += -export-dynamic
+	override CFLAGS += -DOPENAIS_BSD
+	override LDFLAGS += -pthread
+	override DYFLAGS += -export-dynamic
 endif
 ifeq (${OPENAIS_COMPAT}, DARWIN)
-	CFLAGS += -DOPENAIS_DARWIN
-	LDFLAGS += -lpthread
+	override CFLAGS += -DOPENAIS_DARWIN
+	override LDFLAGS += -lpthread
 endif

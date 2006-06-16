@@ -32,15 +32,15 @@
 #
 include ../Makefile.inc
 
-CFLAGS += -I../include
+override CFLAGS += -I../include
 LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
-	LDFLAGS += ${DYFLAGS}
+	override LDFLAGS += ${DYFLAGS}
 endif
 
 ifeq (${OPENAIS_COMPAT}, LINUX) 
-	LDFLAGS += -ldl
+	override LDFLAGS += -ldl
 endif
 
 # Totem objects
@@ -61,7 +61,7 @@ OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
-CFLAGS += -fPIC
+override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.1.0.0 ../lcr/lcr_ifact.o \
 	aisexec \

@@ -2589,11 +2589,7 @@ static int memb_lowest_in_config (struct totemsrp_instance *instance)
 	struct srp_addr token_memb[PROCESSOR_COUNT_MAX];
 	int token_memb_entries = 0;
 	int i;
-	unsigned int lowest_addr;
-//	struct totem_ip_address lowest_addr;
-
-//	memset(&lowest_addr, 0xff, sizeof(lowest_addr));
-//	lowest_addr.family = instance->mcast_address.family;
+	struct totem_ip_address *lowest_addr;
 
 	memb_set_subtract (token_memb, &token_memb_entries,
 		instance->my_proc_list, instance->my_proc_list_entries,
@@ -2602,16 +2598,17 @@ static int memb_lowest_in_config (struct totemsrp_instance *instance)
 	/*
 	 * find representative by searching for smallest identifier
 	 */
-	lowest_addr = token_memb[0].addr[0].nodeid;
+	
+	lowest_addr = &token_memb[0].addr[0];
 	for (i = 1; i < token_memb_entries; i++) {
-		if (lowest_addr > token_memb[i].addr[0].nodeid) {
-			lowest_addr = token_memb[i].addr[0].nodeid;
+		if (totemip_compare(lowest_addr, &token_memb[i].addr[0]) > 0) {
+			totemip_copy (lowest_addr, &token_memb[i].addr[0]);
 		}
 	}
-	return (lowest_addr == instance->my_id.addr[0].nodeid);
+	return (totemip_compare (lowest_addr, &instance->my_id.addr[0]) == 0);
 }
 
-int srp_compare (const void *a, const void *b)
+static int srp_addr_compare (const void *a, const void *b)
 {
 	struct srp_addr *srp_a = (struct srp_addr *)a;
 	struct srp_addr *srp_b = (struct srp_addr *)b;
@@ -2645,6 +2642,13 @@ static void memb_state_commit_token_create (
 	totemip_copy(&commit_token->ring_id.rep, &instance->my_id.addr[0]);
 
 	commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
+
+	/*
+	 * This qsort is necessary to ensure the commit token traverses
+	 * the ring in the proper order
+	 */
+	qsort (token_memb, token_memb_entries, sizeof (struct srp_addr),
+		srp_addr_compare);
 
 	commit_token->memb_index = token_memb_entries - 1;
 	commit_token->addr_entries = token_memb_entries;
@@ -3911,12 +3915,10 @@ static int message_handler_memb_commit_token (
 			log_printf (instance->totemsrp_log_level_notice,
 				"Sending initial ORF token\n");
 
-//			if (totemip_equal(&instance->my_id.addr[0], &instance->my_ring_id.rep)) {
-				// TODO convert instead of initiate
-				orf_token_send_initial (instance);
-				reset_token_timeout (instance); // REVIEWED
-				reset_token_retransmit_timeout (instance); // REVIEWED
-//			}
+			// TODO convert instead of initiate
+			orf_token_send_initial (instance);
+			reset_token_timeout (instance); // REVIEWED
+			reset_token_retransmit_timeout (instance); // REVIEWED
 			break;
 	}
 	return (0);
