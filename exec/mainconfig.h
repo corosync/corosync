@@ -31,12 +31,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+/*
 #include <netinet/in.h>
 #include "../include/saAis.h"
 #include "../include/list.h"
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "totempg.h"
+*/
 #include "objdb.h"
 
 #ifndef MAINCONFIG_H_DEFINED

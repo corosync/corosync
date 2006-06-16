@@ -34,6 +34,7 @@ SBINDIR=/usr/sbin
 INCLUDEDIR=/usr/include/openais
 INCLUDEDIR_TOTEM=/usr/include/openais/totem
 INCLUDEDIR_LCR=/usr/include/openais/lcr
+INCLUDEDIR_SERVICE=/usr/include/openais/service
 MANDIR=/usr/share/man
 ETCDIR=/etc/ais
 LCRSODIR=/usr/libexec/lcrso
@@ -63,6 +64,7 @@ install:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_LCR)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	mkdir -p $(DESTDIR)$(LIBDIR)
 	mkdir -p $(DESTDIR)$(LCRSODIR)
 	mkdir -p $(DESTDIR)$(ETCDIR)
@@ -159,11 +161,17 @@ endif
 	install -m 644 include/cpg.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/evs.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/print.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 man/*.5 $(DESTDIR)$(MANDIR)/man5
 	install -m 644 man/*.8 $(DESTDIR)$(MANDIR)/man8

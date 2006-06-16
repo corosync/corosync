@@ -34,13 +34,10 @@
 
 #define TRUE 1
 #define FALSE 0
-#include <sys/un.h>
 #include "../include/saAis.h"
 #include "../include/saClm.h"
-#include "../include/queue.h"
 #include "../include/ipc_gen.h"
-#include "mainconfig.h"
-#include "poll.h"
+#include "totempg.h"
 
 #ifndef AIS_EXEC_H_DEFINED
 #define AIS_EXEC_H_DEFINED

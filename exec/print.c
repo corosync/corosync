@@ -57,6 +57,7 @@
 #include "print.h"
 #include "totemip.h"
 #include "../include/saAis.h"
+#include "mainconfig.h"
 
 static unsigned int logmode = LOG_MODE_BUFFER | LOG_MODE_STDERR | LOG_MODE_SYSLOG;
 static char *logfile = 0;

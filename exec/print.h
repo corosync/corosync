@@ -41,7 +41,6 @@
 
 #include <stdarg.h>
 #include <syslog.h>
-#include "mainconfig.h"
 
 #define LOG_MODE_DEBUG		1
 #define LOG_MODE_TIMESTAMP	2
@@ -111,7 +110,10 @@ static inline int mkpri (int level, int id)
 	return _mkpri (level, id);
 }
 
-int log_setup (char **error_string, struct main_config *config);
+#ifndef main_config
+struct main_config;
+#endif
+extern int log_setup (char **error_string, struct main_config *config);
 
 extern int _log_init (const char *ident);
 static inline void log_init (const char *ident)
