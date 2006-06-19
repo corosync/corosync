@@ -2264,8 +2264,9 @@ static int orf_token_rtr (
 	 * Retransmit messages on orf_token's RTR list from RTR queue
 	 */
 	for (instance->fcc_remcast_current = 0, i = 0;
-		instance->fcc_remcast_current <= *fcc_allowed && i < orf_token->rtr_list_entries;) {
+		instance->fcc_remcast_current < *fcc_allowed && i < orf_token->rtr_list_entries;) {
 
+printf ("entering retransmit operation\n");
 		/*
 		 * If this retransmit request isn't from this configuration,
 		 * try next rtr entry
@@ -2292,7 +2293,7 @@ static int orf_token_rtr (
 			i += 1;
 		}
 	}
-	*fcc_allowed = *fcc_allowed - instance->fcc_remcast_current - 1;
+	*fcc_allowed = *fcc_allowed - instance->fcc_remcast_current;
 
 	/*
 	 * Add messages to retransmit to RTR list
