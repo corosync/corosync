@@ -49,7 +49,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = lib include
+INPUT                  = lib include exec
 FILE_PATTERNS          = *.c *.h
 RECURSIVE              = YES
 EXAMPLE_PATH           = 

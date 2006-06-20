@@ -131,13 +131,24 @@ void CSISetCallback (
 	SaAmfHAStateT haState,
 	SaAmfCSIDescriptorT *csiDescriptor)
 {
-
+	SaAmfHAStateT state;
 	int res;
 	switch (haState) {
 	case SA_AMF_HA_ACTIVE:
 		printf ("Component '%s' requested to enter hastate SA_AMF_ACTIVE for \n\tCSI '%s'\n",
 			compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
+		if (res != SA_AIS_OK) {
+			fprintf (stderr, "saAmfResponse failed: %d\n", res);
+			exit (-1);
+		}
+
+		res = saAmfHAStateGet (handle, compName, &csiDescriptor->csiName, &state);
+		if (res != SA_AIS_OK || haState != state) {
+			fprintf (stderr, "saAmfHAStateGet failed: %d\n", res);
+			exit (-1);
+		}
+
 		int i;
 		TR(TRU, csiDescriptor->csiAttr.number);
 		for(i=0; i<csiDescriptor->csiAttr.number; i++) {
