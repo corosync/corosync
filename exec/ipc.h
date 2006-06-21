@@ -37,9 +37,9 @@
 
 #include "tlist.h"
 
-extern void message_source_set (struct message_source *source, void *conn);
+extern void message_source_set (mar_message_source_t *source, void *conn);
 
-extern int message_source_is_local (struct message_source *source);
+extern int message_source_is_local (mar_message_source_t *source);
 
 extern void *openais_conn_partner_get (void *conn);
 

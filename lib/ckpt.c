@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -48,13 +49,15 @@
 #include "../include/saAis.h"
 #include "../include/list.h"
 #include "../include/saCkpt.h"
+#include "../include/mar_gen.h"
+#include "../include/mar_ckpt.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_ckpt.h"
 
 #include "util.h"
 
 struct message_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[4096];
 };
 
@@ -399,13 +402,13 @@ saCkptDispatch (
 		}
 		
 		memset(&dispatch_data,0, sizeof(struct message_overlay));
-		error = saRecvRetry (ckptInstance->dispatch_fd, &dispatch_data.header, sizeof (struct res_header));
+		error = saRecvRetry (ckptInstance->dispatch_fd, &dispatch_data.header, sizeof (mar_res_header_t));
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
-		if (dispatch_data.header.size > sizeof (struct res_header)) {
+		if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 			error = saRecvRetry (ckptInstance->dispatch_fd, &dispatch_data.data,
-				dispatch_data.header.size - sizeof (struct res_header));
+				dispatch_data.header.size - sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
@@ -435,7 +438,7 @@ saCkptDispatch (
 			 */
 			if (res_lib_ckpt_checkpointopenasync->header.error == SA_AIS_OK) {
 				error = saHandleInstanceGet (&checkpointHandleDatabase,
-					res_lib_ckpt_checkpointopenasync->checkpointHandle,
+					res_lib_ckpt_checkpointopenasync->checkpoint_handle,
 					(void *)&ckptCheckpointInstance);
 
 					assert (error == SA_AIS_OK); /* should only be valid handles here */
@@ -449,10 +452,10 @@ saCkptDispatch (
 
 				callbacks.saCkptCheckpointOpenCallback(
 					res_lib_ckpt_checkpointopenasync->invocation,
-					res_lib_ckpt_checkpointopenasync->checkpointHandle,
+					res_lib_ckpt_checkpointopenasync->checkpoint_handle,
 					res_lib_ckpt_checkpointopenasync->header.error);
 				saHandleInstancePut (&checkpointHandleDatabase,
-					res_lib_ckpt_checkpointopenasync->checkpointHandle);
+					res_lib_ckpt_checkpointopenasync->checkpoint_handle);
 			} else {
 				/*
 				 * open failed with error
@@ -618,16 +621,20 @@ saCkptCheckpointOpen (
 
 	req_lib_ckpt_checkpointopen.header.size = sizeof (struct req_lib_ckpt_checkpointopen);
 	req_lib_ckpt_checkpointopen.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN;
-	memcpy (&req_lib_ckpt_checkpointopen.checkpointName, checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointopen.checkpoint_name,
+		(SaNameT *)checkpointName);
 	memcpy (&ckptCheckpointInstance->checkpointName, checkpointName, sizeof (SaNameT));
-	req_lib_ckpt_checkpointopen.checkpointCreationAttributesSet = 0;
+	req_lib_ckpt_checkpointopen.async_call = 0;
+	req_lib_ckpt_checkpointopen.invocation = 0;
+	req_lib_ckpt_checkpointopen.fail_with_error = SA_AIS_OK;
+	req_lib_ckpt_checkpointopen.checkpoint_creation_attributes_set = 0;
 	if (checkpointCreationAttributes) {
-		memcpy (&req_lib_ckpt_checkpointopen.checkpointCreationAttributes,
-			checkpointCreationAttributes,
-			sizeof (SaCkptCheckpointCreationAttributesT));
-		req_lib_ckpt_checkpointopen.checkpointCreationAttributesSet = 1;
+		marshall_to_mar_ckpt_checkpoint_creation_attributes_t (
+			&req_lib_ckpt_checkpointopen.checkpoint_creation_attributes,
+			(SaCkptCheckpointCreationAttributesT *)checkpointCreationAttributes);
+		req_lib_ckpt_checkpointopen.checkpoint_creation_attributes_set = 1;
 	}
-	req_lib_ckpt_checkpointopen.checkpointOpenFlags = checkpointOpenFlags;
+	req_lib_ckpt_checkpointopen.checkpoint_open_flags = checkpointOpenFlags;
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointopen,
 		sizeof (struct req_lib_ckpt_checkpointopen));
@@ -679,7 +686,7 @@ saCkptCheckpointOpenAsync (
 	struct ckptInstance *ckptInstance;
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaAisErrorT error;
-	struct req_lib_ckpt_checkpointopenasync req_lib_ckpt_checkpointopenasync;
+	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopenasync res_lib_ckpt_checkpointopenasync;
 	SaAisErrorT failWithError = SA_AIS_OK;
 
@@ -737,27 +744,29 @@ saCkptCheckpointOpenAsync (
 	if (failWithError == SA_AIS_OK) {
 		memcpy (&ckptCheckpointInstance->checkpointName, checkpointName,
 			sizeof (SaNameT));
-		memcpy (&req_lib_ckpt_checkpointopenasync.checkpointName,
-			checkpointName, sizeof (SaNameT));
+		marshall_to_mar_name_t (&req_lib_ckpt_checkpointopen.checkpoint_name,
+			(SaNameT *)checkpointName);
 	}
 
-	req_lib_ckpt_checkpointopenasync.header.size = sizeof (struct req_lib_ckpt_checkpointopenasync);
-	req_lib_ckpt_checkpointopenasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
-	req_lib_ckpt_checkpointopenasync.invocation = invocation;
-	req_lib_ckpt_checkpointopenasync.fail_with_error = failWithError;
-	req_lib_ckpt_checkpointopenasync.checkpointCreationAttributesSet = 0;
+	req_lib_ckpt_checkpointopen.header.size = sizeof (struct req_lib_ckpt_checkpointopen);
+	req_lib_ckpt_checkpointopen.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTOPEN;
+	req_lib_ckpt_checkpointopen.async_call = 1;
+	req_lib_ckpt_checkpointopen.invocation = invocation;
+	req_lib_ckpt_checkpointopen.fail_with_error = failWithError;
+	req_lib_ckpt_checkpointopen.checkpoint_creation_attributes_set = 0;
 	if (checkpointCreationAttributes) {
-		memcpy (&req_lib_ckpt_checkpointopenasync.checkpointCreationAttributes,
-			checkpointCreationAttributes,
-			sizeof (SaCkptCheckpointCreationAttributesT));
-		req_lib_ckpt_checkpointopenasync.checkpointCreationAttributesSet = 1;
+		marshall_to_mar_ckpt_checkpoint_creation_attributes_t (
+			&req_lib_ckpt_checkpointopen.checkpoint_creation_attributes,
+			(SaCkptCheckpointCreationAttributesT *)checkpointCreationAttributes);
+		req_lib_ckpt_checkpointopen.checkpoint_creation_attributes_set = 1;
 	}
 	
-	req_lib_ckpt_checkpointopenasync.checkpointOpenFlags = checkpointOpenFlags;
-	req_lib_ckpt_checkpointopenasync.checkpointHandle = checkpointHandle;
+	req_lib_ckpt_checkpointopen.checkpoint_open_flags = checkpointOpenFlags;
+	req_lib_ckpt_checkpointopen.checkpoint_handle = checkpointHandle;
 
-	error = saSendRetry (ckptInstance->response_fd, &req_lib_ckpt_checkpointopenasync,
-		sizeof (struct req_lib_ckpt_checkpointopenasync));
+	error = saSendRetry (ckptInstance->response_fd,
+		&req_lib_ckpt_checkpointopen,
+		sizeof (struct req_lib_ckpt_checkpointopen));
 	
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
@@ -810,8 +819,8 @@ saCkptCheckpointClose (
 
 	req_lib_ckpt_checkpointclose.header.size = sizeof (struct req_lib_ckpt_checkpointclose);
 	req_lib_ckpt_checkpointclose.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTCLOSE;
-	memcpy (&req_lib_ckpt_checkpointclose.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointclose.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_checkpointclose,
 		sizeof (struct req_lib_ckpt_checkpointclose));
@@ -857,8 +866,8 @@ saCkptCheckpointUnlink (
 
 	req_lib_ckpt_checkpointunlink.header.size = sizeof (struct req_lib_ckpt_checkpointunlink);
 	req_lib_ckpt_checkpointunlink.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTUNLINK;
-	memcpy (&req_lib_ckpt_checkpointunlink.checkpointName, checkpointName, sizeof (SaNameT));
-
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointunlink.checkpoint_name,
+		(SaNameT *)checkpointName);
 
 	error = saSendRetry (ckptInstance->response_fd, &req_lib_ckpt_checkpointunlink,
 		sizeof (struct req_lib_ckpt_checkpointunlink));
@@ -897,9 +906,9 @@ saCkptCheckpointRetentionDurationSet (
 	req_lib_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_lib_ckpt_checkpointretentiondurationset);
 	req_lib_ckpt_checkpointretentiondurationset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET;
 
-	req_lib_ckpt_checkpointretentiondurationset.retentionDuration = retentionDuration;
-	memcpy (&req_lib_ckpt_checkpointretentiondurationset.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	req_lib_ckpt_checkpointretentiondurationset.retention_duration = retentionDuration;
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointretentiondurationset.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -942,8 +951,8 @@ saCkptActiveReplicaSet (
 
 	req_lib_ckpt_activereplicaset.header.size = sizeof (struct req_lib_ckpt_activereplicaset);
 	req_lib_ckpt_activereplicaset.header.id = MESSAGE_REQ_CKPT_ACTIVEREPLICASET;
-	memcpy (&req_lib_ckpt_activereplicaset.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_activereplicaset.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -987,8 +996,8 @@ saCkptCheckpointStatusGet (
 	req_lib_ckpt_checkpointstatusget.header.size = sizeof (struct req_lib_ckpt_checkpointstatusget);
 	req_lib_ckpt_checkpointstatusget.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET;
 
-	memcpy (&req_lib_ckpt_checkpointstatusget.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointstatusget.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1007,9 +1016,9 @@ saCkptCheckpointStatusGet (
 
 	pthread_mutex_unlock (&ckptCheckpointInstance->response_mutex);
 
-	memcpy (checkpointStatus,
-		&res_lib_ckpt_checkpointstatusget.checkpointDescriptor,
-		sizeof (SaCkptCheckpointDescriptorT));
+	marshall_from_mar_ckpt_checkpoint_descriptor_t (
+		checkpointStatus,
+		&res_lib_ckpt_checkpointstatusget.checkpoint_descriptor);
 
 error_exit:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
@@ -1053,12 +1062,12 @@ saCkptSectionCreate (
 		initialDataSize; 
 
 	req_lib_ckpt_sectioncreate.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONCREATE;
-	req_lib_ckpt_sectioncreate.idLen = sectionCreationAttributes->sectionId->idLen;
-	req_lib_ckpt_sectioncreate.expirationTime = sectionCreationAttributes->expirationTime;
-	req_lib_ckpt_sectioncreate.initialDataSize = initialDataSize;
+	req_lib_ckpt_sectioncreate.id_len = sectionCreationAttributes->sectionId->idLen;
+	req_lib_ckpt_sectioncreate.expiration_time = sectionCreationAttributes->expirationTime;
+	req_lib_ckpt_sectioncreate.initial_data_size = initialDataSize;
 
-	memcpy (&req_lib_ckpt_sectioncreate.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_sectioncreate.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1125,10 +1134,11 @@ saCkptSectionDelete (
 
 	req_lib_ckpt_sectiondelete.header.size = sizeof (struct req_lib_ckpt_sectiondelete) + sectionId->idLen; 
 	req_lib_ckpt_sectiondelete.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONDELETE;
-	req_lib_ckpt_sectiondelete.idLen = sectionId->idLen;
+	req_lib_ckpt_sectiondelete.id_len = sectionId->idLen;
 
-	memcpy (&req_lib_ckpt_sectiondelete.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (
+		&req_lib_ckpt_sectiondelete.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectiondelete,
 		sizeof (struct req_lib_ckpt_sectiondelete));
@@ -1185,11 +1195,11 @@ saCkptSectionExpirationTimeSet (
 
 	req_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_lib_ckpt_sectionexpirationtimeset) + sectionId->idLen; 
 	req_lib_ckpt_sectionexpirationtimeset.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
-	req_lib_ckpt_sectionexpirationtimeset.idLen = sectionId->idLen;
-	req_lib_ckpt_sectionexpirationtimeset.expirationTime = expirationTime;
+	req_lib_ckpt_sectionexpirationtimeset.id_len = sectionId->idLen;
+	req_lib_ckpt_sectionexpirationtimeset.expiration_time = expirationTime;
 
-	memcpy (&req_lib_ckpt_sectionexpirationtimeset.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_sectionexpirationtimeset.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1286,10 +1296,11 @@ saCkptSectionIterationInitialize (
 
 	req_lib_ckpt_sectioniterationinitialize.header.size = sizeof (struct req_lib_ckpt_sectioniterationinitialize); 
 	req_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_REQ_CKPT_SECTIONITERATIONINITIALIZE;
-	req_lib_ckpt_sectioniterationinitialize.sectionsChosen = sectionsChosen;
-	req_lib_ckpt_sectioniterationinitialize.expirationTime = expirationTime;
-	memcpy (&req_lib_ckpt_sectioniterationinitialize.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	req_lib_ckpt_sectioniterationinitialize.sections_chosen = sectionsChosen;
+	req_lib_ckpt_sectioniterationinitialize.expiration_time = expirationTime;
+	marshall_to_mar_name_t (
+		&req_lib_ckpt_sectioniterationinitialize.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptSectionIterationInstance->response_mutex);
 
@@ -1380,9 +1391,9 @@ saCkptSectionIterationNext (
 		goto error_put_unlock;
 	}
 
-	memcpy (sectionDescriptor,
-		&res_lib_ckpt_sectioniterationnext.sectionDescriptor,
-		sizeof (SaCkptSectionDescriptorT));
+	marshall_from_mar_ckpt_section_descriptor_t (
+		sectionDescriptor,
+		&res_lib_ckpt_sectioniterationnext.section_descriptor);
 
 	sectionDescriptor->sectionId.id = &iteratorSectionIdListEntry->data[0];
 	
@@ -1504,12 +1515,12 @@ saCkptCheckpointWrite (
 
 		req_lib_ckpt_sectionwrite.header.size = sizeof (struct req_lib_ckpt_sectionwrite) + ioVector[i].sectionId.idLen + ioVector[i].dataSize; 
 
-		req_lib_ckpt_sectionwrite.dataOffset = ioVector[i].dataOffset;
-		req_lib_ckpt_sectionwrite.dataSize = ioVector[i].dataSize;
-		req_lib_ckpt_sectionwrite.idLen = ioVector[i].sectionId.idLen;
+		req_lib_ckpt_sectionwrite.data_offset = ioVector[i].dataOffset;
+		req_lib_ckpt_sectionwrite.data_size = ioVector[i].dataSize;
+		req_lib_ckpt_sectionwrite.id_len = ioVector[i].sectionId.idLen;
 
-		memcpy (&req_lib_ckpt_sectionwrite.checkpointName,
-			&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+		marshall_to_mar_name_t (&req_lib_ckpt_sectionwrite.checkpoint_name,
+			&ckptCheckpointInstance->checkpointName);
 
 		iov_len = 0;
 /* TODO check for zero length stuff */
@@ -1592,10 +1603,10 @@ saCkptSectionOverwrite (
 
 	req_lib_ckpt_sectionoverwrite.header.size = sizeof (struct req_lib_ckpt_sectionoverwrite) + sectionId->idLen + dataSize; 
 	req_lib_ckpt_sectionoverwrite.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONOVERWRITE;
-	req_lib_ckpt_sectionoverwrite.idLen = sectionId->idLen;
-	req_lib_ckpt_sectionoverwrite.dataSize = dataSize;
-	memcpy (&req_lib_ckpt_sectionoverwrite.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	req_lib_ckpt_sectionoverwrite.id_len = sectionId->idLen;
+	req_lib_ckpt_sectionoverwrite.data_size = dataSize;
+	marshall_to_mar_name_t (&req_lib_ckpt_sectionoverwrite.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 	
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1666,12 +1677,12 @@ saCkptCheckpointRead (
 		req_lib_ckpt_sectionread.header.size = sizeof (struct req_lib_ckpt_sectionread) +
 			ioVector[i].sectionId.idLen;
 
-		req_lib_ckpt_sectionread.idLen = ioVector[i].sectionId.idLen;
-		req_lib_ckpt_sectionread.dataOffset = ioVector[i].dataOffset;
-		req_lib_ckpt_sectionread.dataSize = ioVector[i].dataSize;
+		req_lib_ckpt_sectionread.id_len = ioVector[i].sectionId.idLen;
+		req_lib_ckpt_sectionread.data_offset = ioVector[i].dataOffset;
+		req_lib_ckpt_sectionread.data_size = ioVector[i].dataSize;
 
-		memcpy (&req_lib_ckpt_sectionread.checkpointName,
-			&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+		marshall_to_mar_name_t (&req_lib_ckpt_sectionread.checkpoint_name,
+			&ckptCheckpointInstance->checkpointName);
 
 		iov[0].iov_base = (char *)&req_lib_ckpt_sectionread;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionread);
@@ -1719,7 +1730,7 @@ saCkptCheckpointRead (
 		/*
 		 * Report back bytes of data read
 		 */
-		ioVector[i].readSize = res_lib_ckpt_sectionread.dataRead;
+		ioVector[i].readSize = res_lib_ckpt_sectionread.data_read;
 	}
 
 error_exit:
@@ -1760,8 +1771,8 @@ saCkptCheckpointSynchronize (
 
 	req_lib_ckpt_checkpointsynchronize.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronize); 
 	req_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
-	memcpy (&req_lib_ckpt_checkpointsynchronize.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointsynchronize.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1823,8 +1834,8 @@ saCkptCheckpointSynchronizeAsync (
 
 	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync); 
 	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
-	memcpy (&req_lib_ckpt_checkpointsynchronizeasync.checkpointName,
-		&ckptCheckpointInstance->checkpointName, sizeof (SaNameT));
+	marshall_to_mar_name_t (&req_lib_ckpt_checkpointsynchronizeasync.checkpoint_name,
+		&ckptCheckpointInstance->checkpointName);
 	req_lib_ckpt_checkpointsynchronizeasync.invocation = invocation;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);

@@ -99,10 +99,10 @@ saServiceConnectTwo (
 	int callbackFD;
 	int result;
 	struct sockaddr_un address;
-	struct req_lib_response_init req_lib_response_init;
-	struct res_lib_response_init res_lib_response_init;
-	struct req_lib_dispatch_init req_lib_dispatch_init;
-	struct res_lib_dispatch_init res_lib_dispatch_init;
+	mar_req_lib_response_init_t req_lib_response_init;
+	mar_res_lib_response_init_t res_lib_response_init;
+	mar_req_lib_dispatch_init_t req_lib_dispatch_init;
+	mar_res_lib_dispatch_init_t res_lib_dispatch_init;
 	SaAisErrorT error;
 	gid_t egid;
 
@@ -140,12 +140,12 @@ saServiceConnectTwo (
 	req_lib_response_init.resdis_header.service = service;
 
 	error = saSendRetry (responseFD, &req_lib_response_init,
-		sizeof (struct req_lib_response_init));
+		sizeof (mar_req_lib_response_init_t));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
 	error = saRecvRetry (responseFD, &res_lib_response_init,
-		sizeof (struct res_lib_response_init));
+		sizeof (mar_res_lib_response_init_t));
 	if (error != SA_AIS_OK) {
 		goto error_exit;
 	}
@@ -182,12 +182,12 @@ saServiceConnectTwo (
 	req_lib_dispatch_init.conn_info = res_lib_response_init.conn_info;
 
 	error = saSendRetry (callbackFD, &req_lib_dispatch_init,
-		sizeof (struct req_lib_dispatch_init));
+		sizeof (mar_req_lib_dispatch_init_t));
 	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
 	error = saRecvRetry (callbackFD, &res_lib_dispatch_init,
-		sizeof (struct res_lib_dispatch_init));
+		sizeof (mar_res_lib_dispatch_init_t));
 	if (error != SA_AIS_OK) {
 		goto error_exit_two;
 	}
@@ -254,11 +254,6 @@ retry_recv:
 error_exit:
 	return (error);
 }
-
-struct res_overlay {
-	struct res_header header;
-	char payload[0];
-};
 
 SaAisErrorT
 saSendRetry (

@@ -317,7 +317,7 @@ static void deliver_fn (
 	int iov_len,
 	int endian_conversion_required)
 {
-	struct req_header *header;
+	mar_req_header_t *header;
 	int pos = 0;
 	int i;
 	int service;
@@ -334,9 +334,9 @@ static void deliver_fn (
 			pos += iovec[i].iov_len;
 			assert (pos < MESSAGE_SIZE_MAX);
 		}
-		header = (struct req_header *)delivery_data;
+		header = (mar_req_header_t *)delivery_data;
 	} else {
-		header = (struct req_header *)iovec[0].iov_base;
+		header = (mar_req_header_t *)iovec[0].iov_base;
 	}
 	if (endian_conversion_required) {
 		header->id = swab32 (header->id);

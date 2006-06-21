@@ -75,37 +75,37 @@ struct cpg_name {
 #endif
 
 struct req_lib_cpg_join {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	pid_t pid;
 };
 
 struct res_lib_cpg_join {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cpg_trackstart {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	pid_t pid;
 };
 
 struct res_lib_cpg_trackstart {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cpg_trackstop {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	pid_t pid;
 };
 
 struct res_lib_cpg_trackstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cpg_mcast {
-	struct res_header header;
+	mar_res_header_t header;
 	uint32_t guarantee;
 	uint32_t msglen;
 	char message[];
@@ -113,7 +113,7 @@ struct req_lib_cpg_mcast {
 
 /* Message from another node */
 struct res_lib_cpg_deliver_callback {
-	struct res_header header;
+	mar_res_header_t header;
 	struct cpg_name group_name;
 	uint32_t msglen;
 	uint32_t nodeid;
@@ -130,12 +130,12 @@ struct cpg_groupinfo {
 
 
 struct req_lib_cpg_membership {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 };
 
 struct res_lib_cpg_confchg_callback {
-	struct res_header header;
+	mar_res_header_t header;
 	struct cpg_name group_name;
 	uint32_t member_list_entries;
 	uint32_t joined_list_entries;
@@ -146,13 +146,13 @@ struct res_lib_cpg_confchg_callback {
 };
 
 struct req_lib_cpg_leave {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	pid_t pid;
 };
 
 struct res_lib_cpg_leave {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 

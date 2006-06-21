@@ -78,27 +78,27 @@ enum res_lib_amf_types {
 };
 
 struct req_lib_amf_componentregister {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaNameT proxyCompName;
 } __attribute__((packed));
 
 struct res_lib_amf_componentregister {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_componentunregister {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaNameT proxyCompName;
 };
 
 struct res_lib_amf_componentunregister {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_pmstart {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaUint64T processId;
 	SaInt32T descendentsTreeDepth;
@@ -107,11 +107,11 @@ struct req_lib_amf_pmstart {
 };
 
 struct res_lib_amf_pmstart {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_pmstop {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfPmStopQualifierT stopQualifier;
 	SaUint64T processId;
@@ -119,11 +119,11 @@ struct req_lib_amf_pmstop {
 };
 
 struct res_lib_amf_pmstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_healthcheckstart {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT healthcheckKey;
 	SaAmfHealthcheckInvocationT invocationType;
@@ -131,74 +131,74 @@ struct req_lib_amf_healthcheckstart {
 };
 
 struct res_lib_amf_healthcheckstart {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_healthcheckconfirm {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT healthcheckKey;
 	SaAisErrorT healthcheckResult;
 };
 
 struct res_lib_amf_healthcheckconfirm {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_healthcheckstop {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT healthcheckKey;
 };
 
 struct res_lib_amf_healthcheckstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_hastateget {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaNameT csiName;
 };
 
 struct res_lib_amf_hastateget {
-	struct res_header header;
+	mar_res_header_t header;
 	SaAmfHAStateT haState;
 };
 
 struct req_lib_amf_csiquiescingcomplete {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaAisErrorT error;
 };
 
 struct res_lib_amf_csiquiescingcomplete {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_protectiongrouptrack {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT csiName;
 	SaUint8T trackFlags;
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
 };
 
 struct res_lib_amf_protectiongrouptrack {
-	struct res_header header;
+	mar_res_header_t header;
 };
 	
 
 struct req_lib_amf_protectiongrouptrackstop {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT csiName;
 };
 
 struct res_lib_amf_protectiongrouptrackstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_componenterrorreport {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT reportingComponent;
 	SaNameT erroneousComponent;
 	SaTimeT errorDetectionTime;
@@ -207,29 +207,29 @@ struct req_lib_amf_componenterrorreport {
 };
 
 struct res_lib_amf_componenterrorreport {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_componenterrorclear {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 };
 
 struct res_lib_amf_componenterrorclear {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_amf_response {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaAisErrorT error;
 };
 
 struct res_lib_amf_response {
-	struct res_header header;
+	mar_res_header_t header;
 };
 struct res_lib_amf_healthcheckcallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT key;
@@ -238,7 +238,7 @@ struct res_lib_amf_healthcheckcallback {
 #ifdef COMPILE_OUT
 
 struct res_lib_amf_componentterminatecallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaNameT compName;
 };
@@ -247,7 +247,7 @@ struct res_lib_amf_componentterminatecallback {
 #endif
 
 /* struct res_lib_amf_csisetcallback {        */
-/*         struct res_header header;          */
+/*         mar_res_header_t header;          */
 /*         SaInvocationT invocation;          */
 /*         SaNameT compName;                  */
 /*         SaAmfHAStateT haState;             */
@@ -255,7 +255,7 @@ struct res_lib_amf_componentterminatecallback {
 /* };                                         */
 
 struct res_lib_amf_csisetcallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaAmfHAStateT haState;
@@ -267,7 +267,7 @@ struct res_lib_amf_csisetcallback {
 };
 
 struct res_lib_amf_csiremovecallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaNameT compName;
 	SaNameT csiName;
@@ -275,7 +275,7 @@ struct res_lib_amf_csiremovecallback {
 };
 
 struct res_lib_amf_componentterminatecallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaNameT compName;
 };
@@ -283,7 +283,7 @@ struct res_lib_amf_componentterminatecallback {
 
 #ifdef COMPILE_OUT
 struct res_lib_amf_protectiongrouptrackcallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaNameT csiName;
 	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
 	SaUint32T numberOfItems;

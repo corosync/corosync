@@ -91,7 +91,7 @@ struct saHandleDatabase event_handle_db = {
 };
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[MESSAGE_SIZE_MAX];
 };
 
@@ -300,7 +300,7 @@ static void eventHandleInstanceDestructor(void *instance)
 static SaAisErrorT evt_recv_event(int fd, struct lib_event_data **msg)
 {
 	SaAisErrorT error;
-	struct res_header hdr;
+	mar_res_header_t hdr;
 	void *data;
 
 	error = saRecvRetry(fd, &hdr, sizeof(hdr));
@@ -673,14 +673,14 @@ saEvtDispatch(
 
 			if (ufds.revents & POLLIN) {
 				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
-					sizeof (struct res_header));
+					sizeof (mar_res_header_t));
 
 				if (error != SA_AIS_OK) {
 					goto dispatch_unlock;
 				}
-				if (dispatch_data.header.size > sizeof (struct res_header)) {
+				if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 					error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
-						dispatch_data.header.size - sizeof (struct res_header));
+						dispatch_data.header.size - sizeof (mar_res_header_t));
 					if (error != SA_AIS_OK) {
 						goto dispatch_unlock;
 					}

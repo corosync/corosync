@@ -137,6 +137,7 @@
 #include "totempg.h"
 #include "aispoll.h"
 #include "main.h"
+#include "ipc.h"
 #include "service.h"
 #include "util.h"
 #include "amf.h"

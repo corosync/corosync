@@ -34,8 +34,7 @@
 #ifndef IPC_GEN_H_DEFINED
 #define IPC_GEN_H_DEFINED
 
-#include <netinet/in.h>
-#include "../exec/totemip.h"
+#include "mar_gen.h"
 
 enum service_types {
 	EVS_SERVICE = 0,
@@ -58,52 +57,59 @@ enum res_init_types {
 	MESSAGE_RES_INIT
 };
 
-struct req_header {
-	int size;
-	int id;
-} __attribute__((aligned(8)));
+typedef struct {
+	int size __attribute__((aligned(8)));
+	int id __attribute__((aligned(8)));
+} mar_req_header_t __attribute__((aligned(8)));
 
-struct res_header {
-	int size;
-	int id;
-	SaAisErrorT error;
-} __attribute__((aligned(8)));
+static inline void swab_mar_req_header_t (mar_req_header_t *to_swab)
+{
+	swab_mar_int32_t (&to_swab->size);
+	swab_mar_int32_t (&to_swab->id);
+}
 
-struct req_lib_resdis_init {
-	int size;
-	int id;
-	int service;
-} __attribute__((aligned(8)));
+typedef struct {
+	int size; __attribute((aligned(8))) 
+	int id __attribute((aligned(8)));
+	SaAisErrorT error __attribute((aligned(8)));
+} mar_res_header_t __attribute__((aligned(8)));
 
-struct req_lib_response_init {
-	struct req_lib_resdis_init resdis_header;
-} __attribute__((aligned(8)));
+typedef struct {
+	int size __attribute((aligned(8)));
+	int id __attribute((aligned(8)));
+	int service __attribute((aligned(8)));
+} mar_req_lib_resdis_init_t __attribute__((aligned(8)));
 
-struct req_lib_dispatch_init {
-	struct req_lib_resdis_init resdis_header;
-	unsigned long conn_info;
-} __attribute__((aligned(8)));
+typedef struct {
+	mar_req_lib_resdis_init_t resdis_header __attribute__((aligned(8)));
+} mar_req_lib_response_init_t __attribute__((aligned(8)));
 
-struct req_lib_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
+typedef struct {
+	mar_req_lib_resdis_init_t resdis_header __attribute__((aligned(8)));
+	void *conn_info __attribute__((aligned(8)));
+} mar_req_lib_dispatch_init_t __attribute__((aligned(8)));
 
-struct res_lib_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
+typedef struct {
+	mar_res_header_t header __attribute__((aligned(8)));
+	void *conn_info __attribute__((aligned(8)));
+} mar_res_lib_response_init_t __attribute__((aligned(8)));
 
-struct res_lib_response_init {
-	struct res_header header;
-	unsigned long conn_info;
-} __attribute__((aligned(8)));
+typedef struct {
+	mar_res_header_t header __attribute__((aligned(8)));
+} mar_res_lib_dispatch_init_t __attribute__((aligned(8)));
 
-struct res_lib_dispatch_init {
-	struct res_header header;
-} __attribute__((aligned(8)));
+typedef struct {
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	void *conn __attribute__((aligned(8)));
+} mar_message_source_t __attribute__((aligned(8)));
 
-struct message_source {
-	unsigned int nodeid;
-	void *conn;
-} __attribute__((aligned(8)));
+/*
+ * TODO this isn't right
+ */
+static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
+{
+	swab_mar_uint32_t (&to_swab->nodeid);
+// TODO need to swab conn in some way
+}
 
 #endif /* IPC_GEN_H_DEFINED */

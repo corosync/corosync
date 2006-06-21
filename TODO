@@ -31,6 +31,7 @@ Totem
 
 YKD Virtual Synchrony Filter
 ----------------------------
+* P1 32/64 bit cross-endian must be working.
 * P2 Scale to 128 processors.
 
 LCR
@@ -104,3 +105,7 @@ Extended Virtual Synchrony Passthrough Interface
 IPC
 ---
 * There are no TODOs for the IPC system.
+
+SYNC
+----
+* P1 32/64 bit cross-endian must be working.

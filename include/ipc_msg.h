@@ -79,7 +79,7 @@ enum res_lib_msg_queue_types {
 };
 
 struct req_lib_msg_queueopen {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaNameT queueName;
 	SaMsgQueueCreationAttributesT creationAttributes;
@@ -91,107 +91,107 @@ struct req_lib_msg_queueopen {
 };
 
 struct res_lib_msg_queueopen {
-	struct res_header header;
+	mar_res_header_t header;
 	SaMsgQueueHandleT queueHandle;
-	struct message_source source;
+	mar_message_source_t source;
 };
 
 struct res_lib_msg_queueopenasync {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaMsgQueueHandleT queueHandle;
-	struct message_source source;
+	mar_message_source_t source;
 };
 
 struct req_lib_msg_queueclose {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueName;
 	SaMsgQueueHandleT queueHandle;
 };
 
 struct res_lib_msg_queueclose {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuestatusget {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueName;
 };
 
 struct res_lib_msg_queuestatusget {
-	struct res_header header;
+	mar_res_header_t header;
 	SaMsgQueueStatusT queueStatus;
 };
 
 struct req_lib_msg_queueunlink {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueName;
 };
 
 struct res_lib_msg_queueunlink {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuegroupcreate {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 	SaMsgQueueGroupPolicyT queueGroupPolicy;
 };
 
 struct res_lib_msg_queuegroupcreate {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuegroupinsert {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 	SaNameT queueName;
 };
 
 struct res_lib_msg_queuegroupinsert {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuegroupremove {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 	SaNameT queueName;
 };
 
 struct res_lib_msg_queuegroupremove {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuegroupdelete {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 };
 
 struct res_lib_msg_queuegroupdelete {
-	struct res_header header;
+	mar_res_header_t header;
 };
 	
 struct req_lib_msg_queuegrouptrack {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 	SaUint8T trackFlags;
 };
 
 struct res_lib_msg_queuegrouptrack {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_queuegrouptrackstop {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueGroupName;
 };
 
 struct res_lib_msg_queuegrouptrackstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_messagesend {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaNameT destination;
 	SaMsgMessageT message;
@@ -201,37 +201,37 @@ struct req_lib_msg_messagesend {
 };
 
 struct res_lib_msg_messagesend {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct res_lib_msg_messagesendasync {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_messageget {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueName;
 	SaTimeT timeout;
 };
 
 struct res_lib_msg_messageget {
-	struct res_header header;
+	mar_res_header_t header;
 	SaTimeT sendTime;
 	SaMsgSenderIdT senderId;
 	SaMsgMessageT message;
 };
 
 struct req_lib_msg_messagecancel {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT queueName;
 };
 
 struct res_lib_msg_messagecancel {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_msg_messagesendreceive {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT destination;
 	SaTimeT timeout;
 	SaNameT queueName;
@@ -239,13 +239,13 @@ struct req_lib_msg_messagesendreceive {
 };
 
 struct res_lib_msg_messagesendreceive {
-	struct res_header header;
+	mar_res_header_t header;
 	SaTimeT replySendTime;
 	SaMsgMessageT receiveMessage;
 };
 
 struct req_lib_msg_messagereply {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaNameT queueName;
 	SaNameT senderId;
@@ -256,11 +256,11 @@ struct req_lib_msg_messagereply {
 };
 
 struct res_lib_msg_messagereply {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct res_lib_msg_messagereplyasync {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 #endif /* IPC_MSG_H_DEFINED */

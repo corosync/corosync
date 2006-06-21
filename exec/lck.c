@@ -57,6 +57,7 @@
 #include "mempool.h"
 #include "util.h"
 #include "main.h"
+#include "ipc.h"
 #include "totempg.h"
 #include "print.h"
 
@@ -81,8 +82,8 @@ struct resource_lock {
 	struct resource *resource;
 	int async_call;
 	SaInvocationT invocation;
-	struct message_source callback_source;
-	struct message_source response_source;
+	mar_message_source_t callback_source;
+	mar_message_source_t response_source;
 	struct list_head list; /* locked resource lock list */
 	struct list_head resource_list; /* resource locks on a resource */
 	struct list_head resource_cleanup_list; /* cleanup data for resource locks */
@@ -342,8 +343,8 @@ __attribute__ ((constructor)) static void register_this_component (void) {
  * All data types used for executive messages
  */
 struct req_exec_lck_resourceopen {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT resource_name;
 	SaLckResourceHandleT resource_handle;
 	SaInvocationT invocation;
@@ -354,25 +355,25 @@ struct req_exec_lck_resourceopen {
 };
 
 struct req_exec_lck_resourceclose {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT lockResourceName;
 	SaLckResourceHandleT resource_handle;
 };
 
 struct req_exec_lck_resourcelock {
-	struct req_header header;
+	mar_req_header_t header;
 	SaLckResourceHandleT resource_handle;
 	SaInvocationT invocation;
 	int async_call;
 	SaAisErrorT fail_with_error;
-	struct message_source source;
+	mar_message_source_t source;
 	struct req_lib_lck_resourcelock req_lib_lck_resourcelock;
 };
 
 struct req_exec_lck_resourceunlock {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT resource_name;
 	SaLckLockIdT lock_id;
 	SaInvocationT invocation;
@@ -381,15 +382,15 @@ struct req_exec_lck_resourceunlock {
 };
 
 struct req_exec_lck_resourcelockorphan {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT resource_name;
 	SaLckLockIdT lock_id;
 };
 
 struct req_exec_lck_lockpurge {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	struct req_lib_lck_lockpurge req_lib_lck_lockpurge;
 };
 
@@ -445,7 +446,7 @@ static struct resource *resource_find (SaNameT *name)
 
 static struct resource_lock *resource_lock_find (
 	struct resource *resource,
-	struct message_source *source,
+	mar_message_source_t *source,
 	SaLckLockIdT lock_id)
 {
 	struct list_head *list;
@@ -458,7 +459,7 @@ static struct resource_lock *resource_lock_find (
 		resource_lock = list_entry (list, struct resource_lock, resource_list);
 
 		if ((memcmp (&resource_lock->callback_source,
-			source, sizeof (struct message_source)) == 0) &&
+			source, sizeof (mar_message_source_t)) == 0) &&
 			(lock_id == resource_lock->lock_id)) {
 
 			return (resource_lock);
@@ -523,7 +524,7 @@ void resource_lock_orphan (struct resource_lock *resource_lock)
 
 	memcpy (&req_exec_lck_resourcelockorphan.source,
 		&resource_lock->callback_source,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
 	memcpy (&req_exec_lck_resourcelockorphan.resource_name,
 		&resource_lock->resource->name,
@@ -716,7 +717,7 @@ error_exit:
 			res_lib_lck_resourceopenasync.invocation = req_exec_lck_resourceopen->invocation;
 			memcpy (&res_lib_lck_resourceopenasync.source,
 				&req_exec_lck_resourceopen->source,
-				sizeof (struct message_source));
+				sizeof (mar_message_source_t));
 
 			openais_conn_send_response (
 				req_exec_lck_resourceopen->source.conn,
@@ -735,7 +736,7 @@ error_exit:
 			res_lib_lck_resourceopen.header.error = error;
 			memcpy (&res_lib_lck_resourceopen.source,
 				&req_exec_lck_resourceopen->source,
-				sizeof (struct message_source));
+				sizeof (mar_message_source_t));
 
 			openais_conn_send_response (req_exec_lck_resourceopen->source.conn,
 				&res_lib_lck_resourceopen,
@@ -821,7 +822,7 @@ void waiter_notification_list_send (struct list_head *list_notify_head)
 }
 
 void resource_lock_async_deliver (
-	struct message_source *source,
+	mar_message_source_t *source,
 	struct resource_lock *resource_lock,
 	SaAisErrorT error)
 {
@@ -845,7 +846,7 @@ void resource_lock_async_deliver (
 }
 
 void lock_response_deliver (
-	struct message_source *source,
+	mar_message_source_t *source,
 	struct resource_lock *resource_lock,
 	SaAisErrorT error)
 {
@@ -1093,7 +1094,7 @@ static void message_handler_req_exec_lck_resourcelock (
 	 */
 	memcpy (&resource_lock->callback_source,
 		&req_exec_lck_resourcelock->req_lib_lck_resourcelock.source,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
 	lock_algorithm (resource, resource_lock);
 
@@ -1125,7 +1126,7 @@ static void message_handler_req_exec_lck_resourcelock (
 		} else {
 			memcpy (&resource_lock->response_source,
 				&req_exec_lck_resourcelock->source,
-				sizeof (struct message_source));
+				sizeof (mar_message_source_t));
 		}
 
 		/*

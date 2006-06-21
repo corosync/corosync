@@ -58,6 +58,7 @@
 #include "aispoll.h"
 #include "mempool.h"
 #include "main.h"
+#include "ipc.h"
 #include "totempg.h"
 #include "swab.h"
 #include "print.h"

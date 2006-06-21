@@ -858,7 +858,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 			} else {
 				value = rm_beginning_ws (line);
 				attribute->value = realloc (attribute->value, 
-										   sizeof (SaStringT) * csi_attr_cnt + 1);
+										   sizeof (SaStringT) * (csi_attr_cnt + 1));
 				attribute->value[csi_attr_cnt - 1] = malloc (strlen (value) + 1);
 				strcpy (attribute->value[csi_attr_cnt - 1], value);
 				attribute->value[csi_attr_cnt] = NULL;

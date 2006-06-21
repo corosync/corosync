@@ -35,12 +35,8 @@
 #ifndef UTIL_H_DEFINED
 #define UTIL_H_DEFINED
 #include <sys/time.h>
+#include "../include/mar_gen.h"
 #include "../include/saAis.h"
-
-/*
- * Compare two names.  returns non-zero on match.
- */
-extern int name_match(SaNameT *name1, SaNameT *name2);
 
 /*
  * Get the time of day and convert to nanoseconds
@@ -65,9 +61,15 @@ enum e_ais_done {
 	AIS_DONE_OUT_OF_MEMORY = -15,
 };
 
+/*
+ * Compare two names.  returns non-zero on match.
+ */
+extern int name_match(SaNameT *name1, SaNameT *name2);
+extern int mar_name_match(mar_name_t *name1, mar_name_t *name2);
 void openais_exit_error (enum e_ais_done err);
 extern char *getSaNameT (SaNameT *name);
 extern char *strstr_rs (const char *haystack, const char *needle);
 extern void setSaNameT (SaNameT *name, char *str);
+char *get_mar_name_t (mar_name_t *name);
 extern int SaNameTisEqual (SaNameT *str1, char *str2);
 #endif /* UTIL_H_DEFINED */

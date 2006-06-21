@@ -66,6 +66,7 @@
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
+#include "ipc.h"
 #include "service.h"
 #include "sync.h"
 #include "swab.h"
@@ -151,17 +152,17 @@ static int response_init_send_response (
 	void *message)
 {
 	SaAisErrorT error = SA_AIS_ERR_ACCESS;
-	struct req_lib_response_init *req_lib_response_init = (struct req_lib_response_init *)message;
-	struct res_lib_response_init res_lib_response_init;
+	mar_req_lib_response_init_t *req_lib_response_init = (mar_req_lib_response_init_t *)message;
+	mar_res_lib_response_init_t res_lib_response_init;
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_response_init->resdis_header.service;
 		error = SA_AIS_OK;
 	}
-	res_lib_response_init.header.size = sizeof (struct res_lib_response_init);
+	res_lib_response_init.header.size = sizeof (mar_res_lib_response_init_t);
 	res_lib_response_init.header.id = MESSAGE_RES_INIT;
 	res_lib_response_init.header.error = error;
-	res_lib_response_init.conn_info = (unsigned long)conn_info;
+	res_lib_response_init.conn_info = conn_info;
 
 	openais_conn_send_response (
 		conn_info,
@@ -180,8 +181,8 @@ static int dispatch_init_send_response (
 	void *message)
 {
 	SaAisErrorT error = SA_AIS_ERR_ACCESS;
-	struct req_lib_dispatch_init *req_lib_dispatch_init = (struct req_lib_dispatch_init *)message;
-	struct res_lib_dispatch_init res_lib_dispatch_init;
+	mar_req_lib_dispatch_init_t *req_lib_dispatch_init = (mar_req_lib_dispatch_init_t *)message;
+	mar_res_lib_dispatch_init_t res_lib_dispatch_init;
 	struct conn_info *msg_conn_info;
 
 	if (conn_info->authenticated) {
@@ -215,7 +216,7 @@ static int dispatch_init_send_response (
 			}
 		}
 
-	res_lib_dispatch_init.header.size = sizeof (struct res_lib_dispatch_init);
+	res_lib_dispatch_init.header.size = sizeof (mar_res_lib_dispatch_init_t);
 	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
 	res_lib_dispatch_init.header.error = error;
 
@@ -493,14 +494,14 @@ retry_sendmsg:
 
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute((aligned(8)));
 	char buf[4096];
 };
 
 static int libais_deliver (struct conn_info *conn_info)
 {
 	int res;
-	struct req_header *header;
+	mar_req_header_t *header;
 	int service;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
@@ -580,13 +581,13 @@ retry_recv:
 #endif
 	/*
 	 * Dispatch all messages received in recvmsg that can be dispatched
-	 * sizeof (struct req_header) needed at minimum to do any processing
+	 * sizeof (mar_req_header_t) needed at minimum to do any processing
 	 */
 	conn_info->inb_inuse += res;
 	conn_info->inb_start += res;
 
-	while (conn_info->inb_inuse >= sizeof (struct req_header) && res != -1) {
-		header = (struct req_header *)&conn_info->inb[conn_info->inb_start - conn_info->inb_inuse];
+	while (conn_info->inb_inuse >= sizeof (mar_req_header_t) && res != -1) {
+		header = (mar_req_header_t *)&conn_info->inb[conn_info->inb_start - conn_info->inb_inuse];
 
 		if (header->size > conn_info->inb_inuse) {
 			break;
@@ -728,7 +729,7 @@ retry_accept:
  * Exported functions
  */
 
-int message_source_is_local(struct message_source *source)
+int message_source_is_local(mar_message_source_t *source)
 {
 	int ret = 0;
 
@@ -740,7 +741,7 @@ int message_source_is_local(struct message_source *source)
 }
 
 void message_source_set (
-	struct message_source *source,
+	mar_message_source_t *source,
 	void *conn)
 {
 	assert ((source != NULL) && (conn != NULL));

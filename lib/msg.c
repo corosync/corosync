@@ -54,7 +54,7 @@
 #include "util.h"
 
 struct message_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[4096];
 };
 
@@ -347,13 +347,13 @@ saMsgDispatch (
 		}
 		
 		memset(&dispatch_data,0, sizeof(struct message_overlay));
-		error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.header, sizeof (struct res_header));
+		error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.header, sizeof (mar_res_header_t));
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
-		if (dispatch_data.header.size > sizeof (struct res_header)) {
+		if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 			error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.data,
-				dispatch_data.header.size - sizeof (struct res_header));
+				dispatch_data.header.size - sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}

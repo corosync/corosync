@@ -62,7 +62,7 @@ enum res_lib_lck_resource_types {
 };
 
 struct req_lib_lck_resourceopen {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaNameT lockResourceName;
 	SaLckResourceOpenFlagsT resourceOpenFlags;
@@ -72,30 +72,30 @@ struct req_lib_lck_resourceopen {
 };
 
 struct res_lib_lck_resourceopen {
-	struct res_header header;
+	mar_res_header_t header;
 	SaLckResourceHandleT resourceHandle;
-	struct message_source source;
+	mar_message_source_t source;
 };
 
 struct res_lib_lck_resourceopenasync {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 	SaLckResourceHandleT resourceHandle;
-	struct message_source source;
+	mar_message_source_t source;
 };
 
 struct req_lib_lck_resourceclose {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT lockResourceName;
 	SaLckResourceHandleT resourceHandle;
 };
 
 struct res_lib_lck_resourceclose {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_lck_resourcelock {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT lockResourceName;
 	SaInvocationT invocation;
 	SaLckLockModeT lockMode;
@@ -104,18 +104,18 @@ struct req_lib_lck_resourcelock {
 	SaTimeT timeout;
 	SaLckLockIdT lockId;
 	int async_call;
-	struct message_source source;
+	mar_message_source_t source;
 	SaLckResourceHandleT resourceHandle;
 };
 
 struct res_lib_lck_resourcelock {
-	struct res_header header;
+	mar_res_header_t header;
 	SaLckLockStatusT lockStatus;
 	void *resource_lock;
 };
 
 struct res_lib_lck_resourcelockasync {
-	struct res_header header;
+	mar_res_header_t header;
 	SaLckLockStatusT lockStatus;
 	SaLckLockIdT lockId;
 	void *resource_lock;
@@ -124,7 +124,7 @@ struct res_lib_lck_resourcelockasync {
 };
 
 struct req_lib_lck_resourceunlock {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT lockResourceName;
 	SaLckLockIdT lockId;
 	SaInvocationT invocation;
@@ -134,25 +134,25 @@ struct req_lib_lck_resourceunlock {
 };
 
 struct res_lib_lck_resourceunlock {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct res_lib_lck_resourceunlockasync {
-	struct res_header header;
+	mar_res_header_t header;
 	SaInvocationT invocation;
 };
 
 struct req_lib_lck_lockpurge {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT lockResourceName;
 };
 
 struct res_lib_lck_lockpurge {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct res_lib_lck_lockwaitercallback {
-	struct res_header header;
+	mar_res_header_t header;
 	SaLckWaiterSignalT waiter_signal;
 	SaLckLockIdT lock_id;
 	SaLckLockModeT mode_held;

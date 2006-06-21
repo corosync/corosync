@@ -68,9 +68,10 @@
 #include "aispoll.h"
 #include "totempg.h"
 #include "main.h"
+#include "ipc.h"
 #include "mempool.h"
 #include "service.h"
-#include "swab.h"
+#include "../include/swab.h"
 #include "print.h"
 
 enum clm_message_req_types {
@@ -257,7 +258,7 @@ __attribute__ ((constructor)) static void clm_comp_register (void) {
 }
 
 struct req_exec_clm_nodejoin {
-	struct req_header header __attribute__((aligned(8)));
+	mar_req_header_t header __attribute__((aligned(8)));
 	mar_clm_cluster_node_t cluster_node __attribute__((aligned(8)));
 };
 
@@ -306,7 +307,11 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
 			boot_time.tv_sec = time (NULL);
 		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
+<<<<<<< .mine
+		my_cluster_node.boot_timestamp = ((SaTimeT)boot_time.tv_sec) * 1000000000;
+=======
 		my_cluster_node.boot_timestmap = ((SaTimeT)boot_time.tv_sec) * 1000000000;
+>>>>>>> .r1070
 #else /* defined(CTL_KERN) && defined(KERN_BOOTTIME) */
 	#warning "no bootime support"
 #endif

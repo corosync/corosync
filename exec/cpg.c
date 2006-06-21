@@ -59,10 +59,12 @@
 #include "totempg.h"
 #include "totemip.h"
 #include "main.h"
+#include "ipc.h"
 #include "mempool.h"
 #include "service.h"
 #include "jhash.h"
 #include "swab.h"
+#include "ipc.h"
 #include "print.h"
 
 #define GROUP_HASH_SIZE 32
@@ -182,13 +184,13 @@ static struct openais_lib_handler cpg_lib_service[] =
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_mcast,
-		.response_size				= sizeof (struct res_header),
+		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CPG_MCAST,
 		.flow_control				= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_membership,
-		.response_size				= sizeof (struct res_header),
+		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CPG_MEMBERSHIP,
 		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -282,14 +284,14 @@ __attribute__ ((constructor)) static void cpg_comp_register (void) {
 }
 
 struct req_exec_cpg_procjoin {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	uint32_t pid;
 	uint32_t reason;
 };
 
 struct req_exec_cpg_mcast {
-	struct req_header header;
+	mar_req_header_t header;
 	struct cpg_name group_name;
 	uint32_t msglen;
 	uint32_t pid;
@@ -591,8 +593,8 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 
 static void exec_cpg_joinlist_endian_convert (void *msg)
 {
-	struct res_header *res = (struct res_header *)msg;
-	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(struct res_header));
+	mar_res_header_t *res = (mar_res_header_t *)msg;
+	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(mar_res_header_t));
 
 	while ((void*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
@@ -726,8 +728,8 @@ static void message_handler_req_exec_cpg_joinlist (
 	void *message,
 	unsigned int nodeid)
 {
-	struct res_header *res = (struct res_header *)message;
-	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(struct res_header));
+	mar_res_header_t *res = (mar_res_header_t *)message;
+	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(mar_res_header_t));
 
 	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %x\n",
 		nodeid);
@@ -790,7 +792,7 @@ static void cpg_exec_send_joinlist(void)
 	struct list_head *iter;
 	struct list_head *iter2;
 	struct group_info *gi;
-	struct res_header *res;
+	mar_res_header_t *res;
 	struct join_list_entry *jle;
 	struct iovec req_exec_cpg_iovec;
 
@@ -813,14 +815,14 @@ static void cpg_exec_send_joinlist(void)
 	if (!count)
 		return;
 
-	buf = alloca(sizeof(struct res_header) + sizeof(struct join_list_entry) * count);
+	buf = alloca(sizeof(mar_res_header_t) + sizeof(struct join_list_entry) * count);
 	if (!buf) {
 		log_printf(LOG_LEVEL_WARNING, "Unable to allocate joinlist buffer");
 		return;
 	}
 
-	jle = (struct join_list_entry *)(buf + sizeof(struct res_header));
-	res = (struct res_header *)buf;
+	jle = (struct join_list_entry *)(buf + sizeof(mar_res_header_t));
+	res = (mar_res_header_t *)buf;
 
 	for (i=0; i<GROUP_HASH_SIZE; i++) {
 		for (iter = group_lists[i].next; iter != &group_lists[i]; iter = iter->next) {
@@ -839,7 +841,7 @@ static void cpg_exec_send_joinlist(void)
 	}
 
 	res->id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_JOINLIST);
-	res->size = sizeof(struct res_header)+sizeof(struct join_list_entry) * count;
+	res->size = sizeof(mar_res_header_t)+sizeof(struct join_list_entry) * count;
 
 	req_exec_cpg_iovec.iov_base = buf;
 	req_exec_cpg_iovec.iov_len = res->size;
@@ -932,7 +934,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 	struct group_info *gi = pi->group;
 	struct iovec req_exec_cpg_iovec[2];
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
-	struct res_header res;
+	mar_res_header_t res;
 	int msglen = req_lib_cpg_mcast->msglen;
 	int result;
 
@@ -973,7 +975,7 @@ static void message_handler_req_lib_cpg_membership (void *conn, void *message)
 
 	log_printf(LOG_LEVEL_DEBUG, "got membership request on %p\n", conn);
 	if (!pi->group) {
-		struct res_header res;
+		mar_res_header_t res;
 		res.size = sizeof(res);
 		res.id = MESSAGE_RES_CPG_MEMBERSHIP;
 		res.error = SA_AIS_ERR_ACCESS; /* TODO Better error code */

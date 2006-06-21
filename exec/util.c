@@ -56,6 +56,15 @@ int name_match(SaNameT *name1, SaNameT *name2)
 	return 0;
 }
 
+int mar_name_match(mar_name_t *name1, mar_name_t *name2) 
+{
+	if (name1->length == name2->length) {
+		return ((strncmp ((char *)name1->value, (char *)name2->value,
+			name1->length)) == 0);
+	} 
+	return 0;
+}
+
 /*
  * Get the time of day and convert to nanoseconds
  */
@@ -96,6 +105,11 @@ char *getSaNameT (SaNameT *name)
 	}
 	return (ret_name);
 #endif
+// TODO
+	return ((char *)name->value);
+}
+
+char *get_mar_name_t (mar_name_t *name) {
 	return ((char *)name->value);
 }
 

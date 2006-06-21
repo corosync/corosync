@@ -319,7 +319,7 @@ void log_flush(void)
 
 	while (entry) {
 		internal_log_printf(entry->file, entry->line,
-							entry->level, entry->str);
+			entry->level, entry->str);
 		tmp = entry;
 		entry = entry->next;
 		free(tmp);

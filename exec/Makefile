@@ -262,19 +262,19 @@ totemconfig.o: totemconfig.c
 # DO NOT DELETE
 
 aispoll.o: aispoll.h ../include/list.h ../include/hdb.h tlist.h
-totemip.o: totemip.h swab.h
+totemip.o: totemip.h ../include/swab.h
 totemnet.o: aispoll.h totemnet.h totem.h totemip.h wthread.h
 totemnet.o: ../include/queue.h ../include/sq.h ../include/list.h
-totemnet.o: ../include/hdb.h swab.h crypto.h
+totemnet.o: ../include/hdb.h ../include/swab.h crypto.h
 totemrrp.o: ../include/queue.h ../include/sq.h ../include/list.h
-totemrrp.o: ../include/hdb.h swab.h aispoll.h totemnet.h totem.h totemip.h
+totemrrp.o: ../include/hdb.h ../include/swab.h aispoll.h totemnet.h totem.h totemip.h
 totemrrp.o: totemrrp.h
 totemsrp.o: aispoll.h totemsrp.h totem.h totemip.h totemrrp.h wthread.h
 totemsrp.o: ../include/queue.h ../include/sq.h ../include/list.h
-totemsrp.o: ../include/hdb.h swab.h crypto.h
+totemsrp.o: ../include/hdb.h ../include/swab.h crypto.h
 totemmrp.o: totem.h totemip.h totemsrp.h aispoll.h
 totempg.o: ../include/hdb.h totempg.h aispoll.h totemsrp.h totem.h totemip.h
-totempg.o: totemmrp.h swab.h
+totempg.o: totemmrp.h ../include/swab.h
 tlist.o: ../include/list.h tlist.h
 crypto.o: crypto.h
 wthread.o: wthread.h ../include/queue.h
@@ -290,7 +290,7 @@ clm.o: ../include/ipc_clm.h ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/mar_clm.h ../include/mar_gen.h ../include/mar_gen.h
 clm.o: ../include/mar_clm.h ../include/list.h ../include/queue.h
 clm.o: ../lcr/lcr_comp.h aispoll.h totempg.h totemsrp.h main.h mainconfig.h
-clm.o: objdb.h mempool.h service.h swab.h print.h
+clm.o: objdb.h mempool.h service.h ../include/swab.h print.h
 ckpt.o: ../include/saAis.h ../include/saCkpt.h ../include/ipc_ckpt.h
 ckpt.o: ../include/saAis.h ../include/saCkpt.h ../include/ipc_gen.h
 ckpt.o: ../include/list.h ../include/queue.h ../include/hdb.h
@@ -302,7 +302,7 @@ evt.o: ../include/saEvt.h ../include/saClm.h ../include/ipc_gen.h
 evt.o: ../include/list.h ../include/queue.h ../lcr/lcr_comp.h util.h
 evt.o: ../include/saAis.h service.h totem.h totemip.h objdb.h aispoll.h
 evt.o: mempool.h main.h ../include/saClm.h ../include/ipc_gen.h
-evt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h swab.h print.h
+evt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h ../include/swab.h print.h
 lck.o: service.h totem.h totemip.h objdb.h ../include/saAis.h
 lck.o: ../include/saLck.h ../include/ipc_lck.h ../include/saAis.h
 lck.o: ../include/saLck.h ../include/ipc_gen.h ../include/list.h
@@ -325,13 +325,13 @@ cpg.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
 cpg.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_cpg.h
 cpg.o: ../include/ipc_gen.h ../include/list.h ../include/queue.h
 cpg.o: ../lcr/lcr_comp.h aispoll.h totempg.h totemsrp.h totem.h totemip.h
-cpg.o: main.h mainconfig.h objdb.h mempool.h service.h jhash.h swab.h print.h
+cpg.o: main.h mainconfig.h objdb.h mempool.h service.h jhash.h ../include/swab.h print.h
 aisparser.o: ../lcr/lcr_comp.h objdb.h config.h mempool.h ../include/list.h
 aisparser.o: util.h ../include/saAis.h
 vsf_ykd.o: main.h ../include/saAis.h ../include/saClm.h ../include/saAis.h
 vsf_ykd.o: ../include/queue.h ../include/ipc_gen.h ../exec/totemip.h
 vsf_ykd.o: mainconfig.h ../include/list.h aispoll.h totemsrp.h totem.h
-vsf_ykd.o: totemip.h totempg.h objdb.h print.h swab.h vsf.h ../lcr/lcr_comp.h
+vsf_ykd.o: totemip.h totempg.h objdb.h print.h ../include/swab.h vsf.h ../lcr/lcr_comp.h
 amf.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amf.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
 amf.o: ../include/ipc_gen.h ../include/ais_amf.h ../include/list.h

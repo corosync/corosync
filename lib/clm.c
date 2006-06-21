@@ -55,7 +55,7 @@
 #include "util.h"
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header;
 	char data[512000];
 };
 
@@ -337,13 +337,13 @@ saClmDispatch (
 
 		if (ufds.revents & POLLIN) {
 			error = saRecvRetry (clmInstance->dispatch_fd, &dispatch_data.header,
-				sizeof (struct res_header));
+				sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data.header.size > sizeof (struct res_header)) {
+			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (clmInstance->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct res_header));
+					dispatch_data.header.size - sizeof (mar_res_header_t));
 				if (error != SA_AIS_OK) {
 					goto error_unlock;
 				}

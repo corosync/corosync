@@ -54,7 +54,7 @@
 #include "util.h"
 
 struct message_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[4096];
 };
 
@@ -79,7 +79,7 @@ struct lckResourceInstance {
 	SaLckResourceOpenFlagsT resourceOpenFlags;
 	SaNameT lockResourceName;
 	struct list_head list;
-	struct message_source source;
+	mar_message_source_t source;
 	pthread_mutex_t *response_mutex;
 };
 
@@ -401,13 +401,13 @@ saLckDispatch (
 		}
 		
 		memset(&dispatch_data,0, sizeof(struct message_overlay));
-		error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.header, sizeof (struct res_header));
+		error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.header, sizeof (mar_res_header_t));
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
-		if (dispatch_data.header.size > sizeof (struct res_header)) {
+		if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 			error = saRecvRetry (lckInstance->dispatch_fd, &dispatch_data.data,
-				dispatch_data.header.size - sizeof (struct res_header));
+				dispatch_data.header.size - sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
@@ -678,7 +678,7 @@ saLckResourceOpen (
 
 	memcpy (&lckResourceInstance->source,
 		&res_lib_lck_resourceopen.source,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
 	saHandleInstancePut (&lckResourceHandleDatabase, *lckResourceHandle);
 
@@ -873,7 +873,7 @@ saLckResourceLock (
 
 	memcpy (&req_lib_lck_resourcelock.source,
 		&lckResourceInstance->source,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
 	/*
 	 * no mutex needed here since its a new connection
@@ -966,7 +966,7 @@ saLckResourceLockAsync (
 
 	memcpy (&req_lib_lck_resourcelock.source,
 		&lckResourceInstance->source,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
 	/*
 	 * no mutex needed here since its a new connection

@@ -60,16 +60,6 @@ extern totempg_groups_handle openais_group_handle;
 
 poll_handle aisexec_poll_handle;
 
-extern int message_source_is_local(struct message_source *source);
-
-extern void message_source_set(struct message_source *source, void *conn);
-
 extern SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
-
-extern void *openais_conn_partner_get (void *conn);
-
-extern void *openais_conn_private_data_get (void *conn);
-
-extern int openais_conn_send_response (void *conn, void *msg, int mlen);
 
 #endif /* AIS_EXEC_H_DEFINED */

@@ -91,6 +91,7 @@
 #include "util.h"
 #include "amf.h"
 #include "main.h"
+#include "ipc.h"
 #include "service.h"
 #include "objdb.h"
 #include "print.h"
@@ -321,13 +322,13 @@ __attribute__ ((constructor)) static void register_this_component (void)
 }
 
 struct req_exec_amf_comp_register {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaNameT proxyCompName;
 };
 
 struct req_exec_amf_comp_error_report {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT reportingComponent;
 	SaNameT erroneousComponent;
 	SaTimeT errorDetectionTime;
@@ -336,7 +337,7 @@ struct req_exec_amf_comp_error_report {
 };
 
 struct req_exec_amf_response {
-	struct req_header header;
+	mar_req_header_t header;
 	SaInvocationT invocation;
 	SaAisErrorT error;
 };

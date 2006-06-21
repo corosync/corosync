@@ -61,7 +61,7 @@ struct evs_inst {
 };
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
 
@@ -272,13 +272,13 @@ evs_error_t evs_dispatch (
 			 * Queue empty, read response from socket
 			 */
 			error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.header,
-				sizeof (struct res_header));
+				sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data.header.size > sizeof (struct res_header)) {
+			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct res_header));
+					dispatch_data.header.size - sizeof (mar_res_header_t));
 
 				if (error != SA_AIS_OK) {
 					goto error_unlock;

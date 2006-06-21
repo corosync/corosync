@@ -189,7 +189,7 @@ cpg_error_t cpg_fd_get (
 }
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
 
@@ -266,13 +266,13 @@ cpg_error_t cpg_dispatch (
 			 * Queue empty, read response from socket
 			 */
 			error = saRecvRetry (cpg_inst->dispatch_fd, &dispatch_data.header,
-				sizeof (struct res_header));
+				sizeof (mar_res_header_t));
 			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data.header.size > sizeof (struct res_header)) {
+			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (cpg_inst->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct res_header));
+					dispatch_data.header.size - sizeof (mar_res_header_t));
 
 				if (error != SA_AIS_OK) {
 					goto error_unlock;
@@ -464,7 +464,7 @@ cpg_error_t cpg_mcast_joined (
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
-	struct res_header res_lib_cpg_mcast;
+	mar_res_header_t res_lib_cpg_mcast;
 	int msg_len = 0;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
@@ -490,7 +490,7 @@ cpg_error_t cpg_mcast_joined (
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, iov, iov_len + 1,
-		&res_lib_cpg_mcast, sizeof (struct res_header));
+		&res_lib_cpg_mcast, sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
@@ -523,17 +523,17 @@ cpg_error_t cpg_membership_get (
 		return (error);
 	}
 
-	req_lib_cpg_membership_get.header.size = sizeof (struct req_header);
+	req_lib_cpg_membership_get.header.size = sizeof (mar_req_header_t);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
 	memcpy(&req_lib_cpg_membership_get.group_name, group_name, sizeof(struct cpg_name));
 
 	iov.iov_base = &req_lib_cpg_membership_get;
-	iov.iov_len = sizeof (struct req_header);
+	iov.iov_len = sizeof (mar_req_header_t);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, &iov, 1,
-		&res_lib_cpg_membership_get, sizeof (struct res_header));
+		&res_lib_cpg_membership_get, sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 

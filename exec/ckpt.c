@@ -4,7 +4,8 @@
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Authors: Steven Dake (sdake@mvista.com)
+ *         Muni Bajpai (muni.osdl@gmail.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -48,6 +49,7 @@
 
 #include "../include/saAis.h"
 #include "../include/saCkpt.h"
+#include "../include/mar_ckpt.h"
 #include "../include/ipc_ckpt.h"
 #include "../include/list.h"
 #include "../include/queue.h"
@@ -60,6 +62,7 @@
 #include "timer.h"
 #include "util.h"
 #include "main.h"
+#include "ipc.h"
 #include "totempg.h"
 #include "print.h"
 
@@ -81,10 +84,10 @@ enum ckpt_message_req_types {
 	MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION = 12
 };
 
-struct saCkptCheckpointSection {
+struct checkpoint_section {
 	struct list_head list;
-	SaCkptSectionDescriptorT sectionDescriptor;
-	void *sectionData;
+	mar_ckpt_section_descriptor_t section_descriptor;
+	void *section_data;
 	timer_handle expiration_timer;
 };
 
@@ -93,10 +96,37 @@ struct ckpt_refcnt {
 	unsigned int nodeid;
 };
 
-struct saCkptCheckpoint {
+typedef struct {
+	int count __attribute__((aligned(8)));
+	unsigned int nodeid __attribute__((aligned(8)));
+} mar_ckpt_refcnt_t;
+
+static inline void marshall_to_mar_ckpt_refcnt_t (
+	mar_ckpt_refcnt_t *dest,
+	struct ckpt_refcnt *src)
+{
+	dest->count = src->count;
+	dest->nodeid = src->nodeid;
+}
+
+static inline void marshall_from_mar_ckpt_refcnt_t (
+	struct ckpt_refcnt *dest,
+	mar_ckpt_refcnt_t *src)
+{
+	dest->count = src->count;
+	dest->nodeid = src->nodeid;
+}
+
+static inline void swab_mar_ckpt_refcnt_t (mar_ckpt_refcnt_t *to_swab)
+{
+	swab_mar_int32_t (&to_swab->count);
+	swab_mar_uint32_t (&to_swab->nodeid);
+}
+
+struct checkpoint {
 	struct list_head list;
-	SaNameT name;
-	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
+	mar_name_t name;
+	mar_ckpt_checkpoint_creation_attributes_t checkpoint_creation_attributes;
 	struct list_head sections_list_head;
 	int referenceCount;
 	int unlinked;
@@ -104,12 +134,12 @@ struct saCkptCheckpoint {
 	int expired;
 	int active_replica_set;
 	int sectionCount;
-	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
+	struct ckpt_refcnt ckpt_refcnt[PROCESSOR_COUNT_MAX];
 };
 
 struct iteration_entry {
 	int active;
-	struct saCkptCheckpointSection *checkpoint_section;
+	struct checkpoint_section *checkpoint_section;
 };
 
 struct iteration_instance {
@@ -125,8 +155,8 @@ struct ckpt_pd {
 };
 
 struct ckpt_identifier {
-	SaNameT ckpt_name;
-	SaCkptSectionIdT ckpt_section_id;	
+	mar_name_t ckpt_name;
+	mar_ckpt_section_id_t ckpt_section_id;	
 };
 
 /* TODO static totempg_recovery_plug_handle ckpt_checkpoint_recovery_plug_handle; */
@@ -138,10 +168,6 @@ static int ckpt_lib_exit_fn (void *conn);
 static int ckpt_lib_init_fn (void *conn);
 
 static void message_handler_req_lib_ckpt_checkpointopen (
-	void *conn,
-	void *msg);
-
-static void message_handler_req_lib_ckpt_checkpointopenasync (
 	void *conn,
 	void *msg);
 
@@ -261,35 +287,49 @@ static void message_handler_req_exec_ckpt_sectionread (
 	void *message,
 	unsigned int nodeid);
 
+static void exec_ckpt_checkpointopen_endian_convert (void *msg);
+static void exec_ckpt_checkpointclose_endian_convert (void *msg);
+static void exec_ckpt_checkpointunlink_endian_convert (void *msg);
+static void exec_ckpt_checkpointretentiondurationset_endian_convert (void *msg);
+static void exec_ckpt_checkpointretentiondurationexpire_endian_convert (void *msg);
+static void exec_ckpt_sectioncreate_endian_convert (void *msg);
+static void exec_ckpt_sectiondelete_endian_convert (void *msg);
+static void exec_ckpt_sectrionexpirationtimeset_endian_convert (void *msg);
+static void exec_ckpt_sectionwrite_endian_convert (void *msg);
+static void exec_ckpt_sectionoverwrite_endian_convert (void *msg);
+static void exec_ckpt_sectionread_endian_convert (void *msg);
+static void exec_ckpt_synchronize_state_endian_convert (void *msg);
+static void exec_ckpt_synchronize_section_endian_convert (void *msg);
+
 static void ckpt_recovery_activate (void);
 static void ckpt_recovery_initialize (void);
 static int  ckpt_recovery_process (void);
-static void ckpt_recovery_finalize();
+static void ckpt_recovery_finalize (void);
 static void ckpt_recovery_abort(void);
 static void ckpt_recovery_process_members_exit (
 	unsigned int *left_list,
 	int left_list_entries); 
 static void ckpt_replace_localhost_ip (unsigned int *joined_list);
 
-void checkpoint_release (struct saCkptCheckpoint *checkpoint);
+void checkpoint_release (struct checkpoint *checkpoint);
 void timer_function_retention (void *data);
-unsigned int abstime_to_msec (SaTimeT time);
+unsigned int abstime_to_msec (mar_time_t time);
 void timer_function_section_expire (void *data);
 void clean_checkpoint_list(struct list_head* head);
 
 static int recovery_checkpoint_open(
-	SaNameT *checkpointName,
-	SaCkptCheckpointCreationAttributesT *ckptAttributes,
+	mar_name_t *checkpoint_name,
+	mar_ckpt_checkpoint_creation_attributes_t *ckptAttributes,
 	struct ckpt_refcnt *ref_cnt);
 
 static int recovery_section_create (
-	SaCkptSectionDescriptorT *sectionDescriptor, 
-	SaNameT *checkpointName,
-	char* SectionId);
+	mar_ckpt_section_descriptor_t *section_descriptor, 
+	mar_name_t *checkpoint_name,
+	char* section_id);
 
 static int recovery_section_write(
-	int sectionIdLen, char* sectionId , SaNameT *checkpointName,
-	void *newData, SaUint32T dataOffSet, SaUint32T dataSize);
+	int section_id_len, char *section_id, mar_name_t *checkpoint_name,
+	void *new_data, mar_uint32_t data_offset, mar_uint32_t data_size);
 									
 static int process_localhost_transition = 0;
 
@@ -301,7 +341,7 @@ DECLARE_LIST_INIT(checkpoint_recovery_list_head);
 
 struct checkpoint_cleanup {
     struct list_head list;
-    struct saCkptCheckpoint checkpoint;
+    struct checkpoint checkpoint;
 };
 
 typedef enum {
@@ -339,102 +379,96 @@ static struct openais_lib_handler ckpt_lib_service[] =
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
-		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointopenasync,
-		.response_size		= sizeof (struct res_lib_ckpt_checkpointopenasync),
-		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
-	},
-	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointclose,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointclose),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTCLOSE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 3 */
+	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointunlink,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointunlink),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTUNLINK,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 4 */
+	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointretentiondurationset,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointretentiondurationset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTRETENTIONDURATIONSET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 5 */
+	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_activereplicaset,
 		.response_size		= sizeof (struct res_lib_ckpt_activereplicaset),
 		.response_id		= MESSAGE_RES_CKPT_ACTIVEREPLICASET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 6 */
+	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointstatusget,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointstatusget),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 7 */
+	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioncreate,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioncreate),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 8 */
+	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectiondelete,
 		.response_size		= sizeof (struct res_lib_ckpt_sectiondelete),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONDELETE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 9 */
+	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionexpirationtimeset,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionexpirationtimeset),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 10 */
+	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 11 */
+	{ /* 10 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionoverwrite,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionoverwrite),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 12 */
+	{ /* 11 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectionread,
 		.response_size		= sizeof (struct res_lib_ckpt_sectionread),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 13 */
+	{ /* 12 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointsynchronize,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronize),
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 14 */
+	{ /* 13 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_checkpointsynchronizeasync,
 		.response_size		= sizeof (struct res_lib_ckpt_checkpointsynchronizeasync), /* TODO RESPONSE */
 		.response_id		= MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 15 */
+	{ /* 14 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationinitialize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationinitialize),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONINITIALIZE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 16 */
+	{ /* 15 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationfinalize,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationfinalize),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONFINALIZE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 17 */
+	{ /* 16 */
 		.lib_handler_fn		= message_handler_req_lib_ckpt_sectioniterationnext,
 		.response_size		= sizeof (struct res_lib_ckpt_sectioniterationnext),
 		.response_id		= MESSAGE_RES_CKPT_SECTIONITERATIONNEXT,
@@ -446,42 +480,56 @@ static struct openais_lib_handler ckpt_lib_service[] =
 static struct openais_exec_handler ckpt_exec_service[] = {
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointopen,
+		.exec_endian_convert_fn = exec_ckpt_checkpointopen_endian_convert
+
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointclose,
+		.exec_endian_convert_fn = exec_ckpt_checkpointclose_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointunlink,
+		.exec_endian_convert_fn = exec_ckpt_checkpointunlink_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointretentiondurationset,
+		.exec_endian_convert_fn = exec_ckpt_checkpointretentiondurationset_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_checkpointretentiondurationexpire,
+		.exec_endian_convert_fn = exec_ckpt_checkpointretentiondurationexpire_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectioncreate,
+		.exec_endian_convert_fn = exec_ckpt_sectioncreate_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectiondelete,
+		.exec_endian_convert_fn = exec_ckpt_sectiondelete_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionexpirationtimeset,
+		.exec_endian_convert_fn = exec_ckpt_sectrionexpirationtimeset_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionwrite,
+		.exec_endian_convert_fn = exec_ckpt_sectionwrite_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionoverwrite,
+		.exec_endian_convert_fn = exec_ckpt_sectionoverwrite_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_sectionread,
+		.exec_endian_convert_fn = exec_ckpt_sectionread_endian_convert
 	},
 	{
 		.exec_handler_fn	= message_handler_req_exec_ckpt_synchronize_state,
+		.exec_endian_convert_fn = exec_ckpt_synchronize_state_endian_convert
 	},
 	{
-		.exec_handler_fn	= message_handler_req_exec_ckpt_synchronize_section
+		.exec_handler_fn	= message_handler_req_exec_ckpt_synchronize_section,
+		.exec_endian_convert_fn = exec_ckpt_synchronize_section_endian_convert
 	}
 };
 
@@ -546,99 +594,110 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 /*
  * All data types used for executive messages
  */
+struct req_exec_ckpt_checkpointopen {
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_ckpt_checkpoint_creation_attributes_t checkpoint_creation_attributes __attribute__((aligned(8)));
+	mar_uint32_t checkpoint_creation_attributes_set __attribute__((aligned(8)));
+	mar_ckpt_checkpoint_open_flags_t checkpoint_open_flags __attribute__((aligned(8)));
+	mar_ckpt_checkpoint_handle_t checkpoint_handle __attribute__((aligned(8)));
+	mar_invocation_t invocation __attribute__((aligned(8)));
+	mar_uint32_t async_call __attribute__((aligned(8)));
+	mar_uint32_t fail_with_error __attribute__((aligned(8)));
+};
+
 struct req_exec_ckpt_checkpointclose {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_checkpointretentiondurationset {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	SaTimeT retentionDuration;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_time_t retention_duration __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_checkpointretentiondurationexpire {
-	struct req_header header;
-	SaNameT checkpointName;
-};
-
-struct req_exec_ckpt_checkpointopen {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_ckpt_checkpointopen req_lib_ckpt_checkpointopen;
-	SaCkptCheckpointHandleT checkpointHandle;
-	SaInvocationT invocation;
-	int async_call;
-	SaAisErrorT fail_with_error;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_checkpointunlink {
-	struct req_header header;
-	struct message_source source;
-	struct req_lib_ckpt_checkpointunlink req_lib_ckpt_checkpointunlink;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectioncreate {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectioncreate req_lib_ckpt_sectioncreate; /* this must be last */
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_time_t expiration_time __attribute__((aligned(8)));
+	mar_uint32_t initial_data_size __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectiondelete {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectiondelete req_lib_ckpt_sectiondelete; /* this must be last */
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectionexpirationtimeset {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionexpirationtimeset req_lib_ckpt_sectionexpirationtimeset;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_time_t expiration_time __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectionwrite {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionwrite req_lib_ckpt_sectionwrite;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_offset_t data_offset __attribute__((aligned(8)));
+	mar_offset_t data_size __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectionoverwrite {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionoverwrite req_lib_ckpt_sectionoverwrite;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_offset_t data_size __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_sectionread {
-	struct req_header header;
-	struct message_source source;
-	SaNameT checkpointName;
-	struct req_lib_ckpt_sectionread req_lib_ckpt_sectionread;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_message_source_t source __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_offset_t data_offset __attribute__((aligned(8)));
+	mar_offset_t data_size __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_synchronize_state {
-	struct req_header header;
-	struct memb_ring_id previous_ring_id;
-	SaNameT checkpointName;
-	SaCkptCheckpointCreationAttributesT checkpointCreationAttributes;
-	SaCkptSectionDescriptorT sectionDescriptor;	
-	unsigned int nodeid;
-	struct ckpt_refcnt ckpt_refcount[PROCESSOR_COUNT_MAX];
+	mar_req_header_t header __attribute__((aligned(8)));
+	struct memb_ring_id previous_ring_id __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_ckpt_checkpoint_creation_attributes_t checkpoint_creation_attributes __attribute__((aligned(8)));
+	mar_ckpt_section_descriptor_t section_descriptor __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_ckpt_refcnt_t ckpt_refcnt[PROCESSOR_COUNT_MAX] __attribute__((aligned(8)));
 };
 
 struct req_exec_ckpt_synchronize_section {
-	struct req_header header;
-	struct memb_ring_id previous_ring_id;
-	SaNameT checkpointName;
-	SaCkptSectionIdT sectionId;	
-	SaUint32T dataOffSet;
-	SaUint32T dataSize;	
+	mar_req_header_t header __attribute__((aligned(8)));
+	struct memb_ring_id previous_ring_id __attribute__((aligned(8)));
+	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t id_len __attribute__((aligned(8)));
+	mar_offset_t data_offset __attribute__((aligned(8)));
+	mar_offset_t data_size __attribute__((aligned(8)));	
 };
 
 /* 
@@ -646,17 +705,17 @@ struct req_exec_ckpt_synchronize_section {
  */
 static int processor_index_set(
 	unsigned int nodeid,
-	struct ckpt_refcnt *ckpt_refcount) 
+	struct ckpt_refcnt *ckpt_refcnt) 
 {
 	int i;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		if (ckpt_refcount[i].nodeid == 0) {
+		if (ckpt_refcnt[i].nodeid == 0) {
 			/*
 			 * If the source addresses do not match and this element
 			 * has no stored value then store the new value and 
 			 * return the Index.
 		 	 */		
-			ckpt_refcount[i].nodeid = nodeid;
+			ckpt_refcnt[i].nodeid = nodeid;
 			return i;
 		}
 		/*
@@ -664,7 +723,7 @@ static int processor_index_set(
 		* has already been set
 		*/
 		else
-		if (ckpt_refcount[i].nodeid == nodeid) {
+		if (ckpt_refcnt[i].nodeid == nodeid) {
 			return -1;
 		}
 
@@ -676,8 +735,8 @@ static int processor_index_set(
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
 		log_printf (LOG_LEVEL_ERROR,"Processor Set: Index %d has proc %s and count %d\n",
 			i,
-			totempg_ifaces_print (ckpt_refcount[i].nodeid),
-			ckpt_refcount[i].count);
+			totempg_ifaces_print (ckpt_refcnt[i].nodeid),
+			ckpt_refcnt[i].count);
         }
 
 	return -1;
@@ -686,23 +745,23 @@ static int processor_index_set(
 static int processor_add (
 	unsigned int nodeid,
 	int count,
-	struct ckpt_refcnt *ckpt_refcount) 
+	struct ckpt_refcnt *ckpt_refcnt) 
 {
 	int i;
         for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-                if (ckpt_refcount[i].nodeid == 0) {
+                if (ckpt_refcnt[i].nodeid == 0) {
 			log_printf (LOG_LEVEL_DEBUG,"processor_add found empty slot to insert new item\n");
-			ckpt_refcount[i].nodeid = nodeid;
-			ckpt_refcount[i].count = count;
+			ckpt_refcnt[i].nodeid = nodeid;
+			ckpt_refcnt[i].count = count;
                         return i;
                 }
 		/*Dont know how we missed this in the processor find but update this*/
 		else
-		if (ckpt_refcount[i].nodeid == nodeid) {
-			ckpt_refcount[i].count += count;
+		if (ckpt_refcnt[i].nodeid == nodeid) {
+			ckpt_refcnt[i].count += count;
 			log_printf (LOG_LEVEL_DEBUG,"processor_add for existent proc. nodeid %s, New count = %d\n",
-				totempg_ifaces_print (ckpt_refcount[i].nodeid),
-				ckpt_refcount[i].count);
+				totempg_ifaces_print (ckpt_refcnt[i].nodeid),
+				ckpt_refcnt[i].count);
 
 			return i;
 		}
@@ -715,8 +774,8 @@ static int processor_add (
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
 		log_printf (LOG_LEVEL_ERROR,"Processor Add: Index %d has proc %s and count %d\n",
 			i,
-			totempg_ifaces_print (ckpt_refcount[i].nodeid),
-			ckpt_refcount[i].count);
+			totempg_ifaces_print (ckpt_refcnt[i].nodeid),
+			ckpt_refcnt[i].count);
 	}
         return -1;
 
@@ -724,7 +783,7 @@ static int processor_add (
 
 static int processor_index_find(
 	unsigned int nodeid,
-	struct ckpt_refcnt *ckpt_refcount) 
+	struct ckpt_refcnt *ckpt_refcnt) 
 { 
 	int i;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
@@ -732,7 +791,7 @@ static int processor_index_find(
 		 * If the source addresses match then return the index
 		 */
 		
-		if (ckpt_refcount[i].nodeid ==  nodeid) {
+		if (ckpt_refcnt[i].nodeid ==  nodeid) {
 			return i;
 		}				
 	}
@@ -742,24 +801,24 @@ static int processor_index_find(
 	return -1;
 }
 
-static int ckpt_refcount_total(struct ckpt_refcnt *ckpt_refcount) 
+static int ckpt_refcnt_total(struct ckpt_refcnt *ckpt_refcnt) 
 {
 	int i;
 	int total = 0;
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		total += ckpt_refcount[i].count;
+		total += ckpt_refcnt[i].count;
 	}
 	return total;
 }
 
-static void initialize_ckpt_refcount_array (
-	struct ckpt_refcnt *ckpt_refcount) 
+static void initialize_ckpt_refcnt_array (
+	struct ckpt_refcnt *ckpt_refcnt) 
 {
-	memset((char*)ckpt_refcount, 0,
+	memset((char*)ckpt_refcnt, 0,
 		PROCESSOR_COUNT_MAX * sizeof(struct ckpt_refcnt));
 }
 
-static void merge_ckpt_refcounts (
+static void merge_ckpt_refcnts (
 	struct ckpt_refcnt *local,
 	struct ckpt_refcnt *network)
 {
@@ -774,14 +833,14 @@ static void merge_ckpt_refcounts (
 			index = processor_add (local[i].nodeid, local[i].count, network);
 			if (index == -1) {
 				log_printf(LOG_LEVEL_ERROR,
-					"merge_ckpt_refcounts : could not add a new processor as the MAX limit of procs is reached.Exiting\n");
+					"merge_ckpt_refcnts : could not add a new processor as the MAX limit of procs is reached.Exiting\n");
 				assert(0);
 			}
 		}
 		else {
 			if (local[i].count == network[index].count) {
 				/*Nothing to do here as the network is already up 2 date*/
-				log_printf (LOG_LEVEL_DEBUG,"merge_ckpt_refcounts counts match, continue\n");
+				log_printf (LOG_LEVEL_DEBUG,"merge_ckpt_refcnts counts match, continue\n");
 				continue;
 			}
 			else {
@@ -800,10 +859,10 @@ static void ckpt_recovery_initialize (void)
 {
 	struct list_head *checkpoint_list;
 	struct list_head *checkpoint_section_list;
-	struct saCkptCheckpoint *checkpoint;
-	struct saCkptCheckpointSection *section;
-	struct saCkptCheckpoint *savedCheckpoint;	
-	struct saCkptCheckpointSection *savedSection;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *section;
+	struct checkpoint *savedCheckpoint;	
+	struct checkpoint_section *savedSection;
 	
 	if (recovery_abort) { /*Abort was called.*/
 		return;
@@ -817,17 +876,17 @@ static void ckpt_recovery_initialize (void)
 		checkpoint_list = checkpoint_list->next) {
 					
 		checkpoint = list_entry (checkpoint_list,
-								struct saCkptCheckpoint, list);
+								struct checkpoint, list);
             
 		if (checkpoint->referenceCount < 1) { /*defect 1192*/
-			log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_initialize checkpoint %s has referenceCount < 1 ignoring.\n", 
+			log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_initialize checkpoint %s has referenceCount < 1 ignoring.\n", 
 										(char*)&checkpoint->name.value);							
 			continue;
 		}
 		savedCheckpoint = 
-			(struct saCkptCheckpoint *) malloc (sizeof(struct saCkptCheckpoint));
+			(struct checkpoint *) malloc (sizeof(struct checkpoint));
 		assert(savedCheckpoint);
-		memcpy(savedCheckpoint, checkpoint, sizeof(struct saCkptCheckpoint));
+		memcpy(savedCheckpoint, checkpoint, sizeof(struct checkpoint));
 		list_init(&savedCheckpoint->list);		
 		list_add_tail(&savedCheckpoint->list,&checkpoint_recovery_list_head);
 		list_init(&savedCheckpoint->sections_list_head);
@@ -835,12 +894,12 @@ static void ckpt_recovery_initialize (void)
 			checkpoint_section_list != &checkpoint->sections_list_head;
 			checkpoint_section_list = checkpoint_section_list->next) {
 			section = list_entry (checkpoint_section_list,
-								struct saCkptCheckpointSection, list);
+								struct checkpoint_section, list);
 			savedSection = 
-				(struct saCkptCheckpointSection *) malloc (sizeof(struct saCkptCheckpointSection));
+				(struct checkpoint_section *) malloc (sizeof(struct checkpoint_section));
 			assert(savedSection);
 			openais_timer_delete_data (section->expiration_timer);
-			memcpy(savedSection, section, sizeof(struct saCkptCheckpointSection));
+			memcpy(savedSection, section, sizeof(struct checkpoint_section));
 			list_init(&savedSection->list);		
 			list_add_tail(&savedSection->list,&savedCheckpoint->sections_list_head);
 		}
@@ -851,28 +910,28 @@ static void ckpt_recovery_initialize (void)
 	}
 	recovery_ckpt_next = checkpoint_recovery_list_head.next;
 	savedCheckpoint = list_entry (recovery_ckpt_next,
-								struct saCkptCheckpoint, list);
+								struct checkpoint, list);
 	recovery_ckpt_section_next = savedCheckpoint->sections_list_head.next;
 }
 
 static int ckpt_recovery_process (void) 
 {
-	int i;
 	struct req_exec_ckpt_synchronize_state request_exec_sync_state;
 	struct req_exec_ckpt_synchronize_section request_exec_sync_section;
 	struct iovec iovecs[3];
-	struct saCkptCheckpoint *checkpoint;	
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	SaSizeT origSectionSize;  
-	SaSizeT newSectionSize;
+	struct checkpoint *checkpoint;	
+	struct checkpoint_section *checkpoint_section;
+	mar_size_t origSectionSize;  
+	mar_size_t newSectionSize;
 	int res;
+	unsigned int i;
 
 	if (recovery_abort) { /*Abort was called.*/
 		goto recovery_exit_clean;
 	}
 	/*So Initialize did not have any checkpoints to Synchronize*/
 	if ((recovery_ckpt_next == 0) && (recovery_ckpt_section_next == 0)) {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_process Nothing to Process ...\n");
+		log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_process Nothing to Process ...\n");
 		goto recovery_exit_clean; 
 	}
 	
@@ -890,24 +949,25 @@ static int ckpt_recovery_process (void)
 		
 		if(recovery_ckpt_next != &checkpoint_recovery_list_head) {				
 			checkpoint = list_entry (recovery_ckpt_next,
-							struct saCkptCheckpoint, list);
+							struct checkpoint, list);
 			if (recovery_ckpt_section_next == 0) {
 				recovery_ckpt_section_next = checkpoint->sections_list_head.next;
 			}
 			if (recovery_ckpt_section_next != &checkpoint->sections_list_head) {
-				ckptCheckpointSection = list_entry (recovery_ckpt_section_next,
-											struct saCkptCheckpointSection, list);
+				checkpoint_section = list_entry (recovery_ckpt_section_next,
+					struct checkpoint_section, list);
+
 				/*
 		 		* None of the section data msgs have been sent
 		 		* so lets start with sending the sync_msg
 		 		*/	
 				if (recovery_section_send_flag == 0) {
-					if (ckptCheckpointSection->sectionDescriptor.sectionId.id) {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = %s.\n", 
+					if (checkpoint_section->section_descriptor.section_id.id) {
+						log_printf (LOG_LEVEL_DEBUG, "New Sync State Message for ckpt = %s, section = %s.\n", 
 							(char*)&checkpoint->name.value,
-							((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id));							
+							((char*)checkpoint_section->section_descriptor.section_id.id));							
 					} else {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message for ckpt = %s, section = default section.\n",
+						log_printf (LOG_LEVEL_DEBUG, "New Sync State Message for ckpt = %s, section = default section.\n",
 							(char*)&checkpoint->name.value);
 					} 
 					request_exec_sync_state.header.size =	sizeof (struct req_exec_ckpt_synchronize_state);
@@ -915,27 +975,32 @@ static int ckpt_recovery_process (void)
 						SERVICE_ID_MAKE (CKPT_SERVICE,
 							MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESTATE);
 					memcpy(&request_exec_sync_state.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
-					memcpy(&request_exec_sync_state.checkpointName, &checkpoint->name, sizeof(SaNameT));
-					memcpy(&request_exec_sync_state.checkpointCreationAttributes, 
-							&checkpoint->checkpointCreationAttributes, 
-							sizeof(SaCkptCheckpointCreationAttributesT));
-					memcpy(&request_exec_sync_state.sectionDescriptor,
-							&ckptCheckpointSection->sectionDescriptor,
-							sizeof(SaCkptSectionDescriptorT));						
+					memcpy(&request_exec_sync_state.checkpoint_name,
+						&checkpoint->name,
+						sizeof(mar_name_t));
+					memcpy(&request_exec_sync_state.checkpoint_creation_attributes, 
+							&checkpoint->checkpoint_creation_attributes, 
+							sizeof(mar_ckpt_checkpoint_creation_attributes_t));
+					memcpy(&request_exec_sync_state.section_descriptor,
+							&checkpoint_section->section_descriptor,
+							sizeof(mar_ckpt_section_descriptor_t));						
 						
 					request_exec_sync_state.nodeid = this_ip->nodeid;
 				 			
-					memcpy(request_exec_sync_state.ckpt_refcount,
-							checkpoint->ckpt_refcount,
-							sizeof(struct ckpt_refcnt)*PROCESSOR_COUNT_MAX);
-					request_exec_sync_state.sectionDescriptor.sectionId.id = 0;
+					for (i = 0; i < PROCESSOR_COUNT_MAX; i++) {
 
-					log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync State Message Values\n");
+						marshall_to_mar_ckpt_refcnt_t (
+							&request_exec_sync_state.ckpt_refcnt[i],
+							&checkpoint->ckpt_refcnt[i]);
+						}
+					request_exec_sync_state.section_descriptor.section_id.id = 0;
+
+					log_printf (LOG_LEVEL_DEBUG, "New Sync State Message Values\n");
 					for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
 						log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
 						i,
-						totempg_ifaces_print (request_exec_sync_state.ckpt_refcount[i].nodeid),
-						request_exec_sync_state.ckpt_refcount[i].count);
+						totempg_ifaces_print (request_exec_sync_state.ckpt_refcnt[i].nodeid),
+						request_exec_sync_state.ckpt_refcnt[i].count);
 					}
 	
 					iovecs[0].iov_base = (char *)&request_exec_sync_state;
@@ -944,8 +1009,8 @@ static int ckpt_recovery_process (void)
 					/*
 					 * Populate the Section ID
 					 */
-					iovecs[1].iov_base = ((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id);
-					iovecs[1].iov_len = ckptCheckpointSection->sectionDescriptor.sectionId.idLen;
+					iovecs[1].iov_base = ((char*)checkpoint_section->section_descriptor.section_id.id);
+					iovecs[1].iov_len = checkpoint_section->section_descriptor.section_id.id_len;
 					request_exec_sync_state.header.size += iovecs[1].iov_len;	
 					 
 					/*
@@ -954,16 +1019,16 @@ static int ckpt_recovery_process (void)
 					 */
 					res = totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED);
 					if (res == 0) {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync State Message.\n");
+						log_printf (LOG_LEVEL_DEBUG, "Multicasted Sync State Message.\n");
 					}			
 					else {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: Sync State Message Outbound Queue full need to Wait for Callback.\n");
+						log_printf (LOG_LEVEL_DEBUG, "Sync State Message Outbound Queue full need to Wait for Callback.\n");
 						return (1);
 					}				
 					recovery_section_send_flag = 1;				
 				}
 				
-				origSectionSize = ckptCheckpointSection->sectionDescriptor.sectionSize;  
+				origSectionSize = checkpoint_section->section_descriptor.section_size;  
 				newSectionSize = 0;
 		            
 				/*
@@ -989,20 +1054,18 @@ static int ckpt_recovery_process (void)
 						SERVICE_ID_MAKE (CKPT_SERVICE,
 							MESSAGE_REQ_EXEC_CKPT_SYNCHRONIZESECTION);
 					memcpy (&request_exec_sync_section.previous_ring_id, &saved_ring_id, sizeof(struct memb_ring_id));
-					memcpy (&request_exec_sync_section.checkpointName, &checkpoint->name, sizeof(SaNameT));
-					memcpy (&request_exec_sync_section.sectionId,
-							&ckptCheckpointSection->sectionDescriptor.sectionId,
-							sizeof(SaCkptSectionIdT));	    	    
-					request_exec_sync_section.sectionId.id = 0;
-					memcpy (&request_exec_sync_section.dataOffSet, &recovery_section_data_offset, sizeof(SaUint32T));
-					memcpy (&request_exec_sync_section.dataSize, &newSectionSize, sizeof(SaUint32T));			
-					if (ckptCheckpointSection->sectionDescriptor.sectionId.id) {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync Section Message for ckpt = %s, section = %s, Data size = %d.\n", 
+					memcpy (&request_exec_sync_section.checkpoint_name, &checkpoint->name, sizeof(mar_name_t));
+					request_exec_sync_section.id_len =
+						checkpoint_section->section_descriptor.section_id.id_len;
+					memcpy (&request_exec_sync_section.data_offset, &recovery_section_data_offset, sizeof(mar_uint32_t));
+					memcpy (&request_exec_sync_section.data_size, &newSectionSize, sizeof(mar_uint32_t));			
+					if (checkpoint_section->section_descriptor.section_id.id) {
+						log_printf (LOG_LEVEL_DEBUG, "New Sync Section Message for ckpt = %s, section = %s, Data size = %d.\n", 
 												(char*)&checkpoint->name.value,
-												((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id),
+												((char*)checkpoint_section->section_descriptor.section_id.id),
 												newSectionSize);
 					} else {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: New Sync Section Message for ckpt = %s, default section, Data size = %d.\n",
+						log_printf (LOG_LEVEL_DEBUG, "New Sync Section Message for ckpt = %s, default section, Data size = %d.\n",
 										(char*)&checkpoint->name.value,newSectionSize);
 					}
 					/*
@@ -1014,14 +1077,14 @@ static int ckpt_recovery_process (void)
 					/*
 					 * Populate the Section ID
 					 */
-					iovecs[1].iov_base = ((char*)ckptCheckpointSection->sectionDescriptor.sectionId.id);
-					iovecs[1].iov_len = ckptCheckpointSection->sectionDescriptor.sectionId.idLen;
+					iovecs[1].iov_base = ((char*)checkpoint_section->section_descriptor.section_id.id);
+					iovecs[1].iov_len = checkpoint_section->section_descriptor.section_id.id_len;
 					request_exec_sync_section.header.size += iovecs[1].iov_len;
 					
 					/*
 					 * Populate the Section Data.
 					 */
-					iovecs[2].iov_base = ((char*)ckptCheckpointSection->sectionData + recovery_section_data_offset);
+					iovecs[2].iov_base = ((char*)checkpoint_section->section_data + recovery_section_data_offset);
 					iovecs[2].iov_len = newSectionSize;
 					request_exec_sync_section.header.size += iovecs[2].iov_len;
 					/*
@@ -1031,9 +1094,9 @@ static int ckpt_recovery_process (void)
 
 					res = totempg_groups_mcast_joined (openais_group_handle, iovecs, 3, TOTEMPG_AGREED);
 					if (res == 0) {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: Multicasted Sync Section Message.\n");
+						log_printf (LOG_LEVEL_DEBUG, "Multicasted Sync Section Message.\n");
 					} else {
-						log_printf (LOG_LEVEL_DEBUG, "CKPT: Sync Section Message Outbound Queue full need to Wait for Callback.\n");
+						log_printf (LOG_LEVEL_DEBUG, "Sync Section Message Outbound Queue full need to Wait for Callback.\n");
 						return (1);
 					}									
 						
@@ -1073,8 +1136,8 @@ static void ckpt_recovery_finalize (void)
 {
 	struct list_head *checkpoint_list;
 	struct list_head *checkpoint_section_list;
-	struct saCkptCheckpoint *checkpoint;
-	struct saCkptCheckpointSection *section;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *section;
 	struct ckpt_identifier *ckpt_id;
 
 	/*
@@ -1084,12 +1147,12 @@ static void ckpt_recovery_finalize (void)
 	checkpoint_list = checkpoint_list_head.next;	
 	while (!list_empty(&checkpoint_list_head)) {
 		checkpoint = list_entry (checkpoint_list,
-            			struct saCkptCheckpoint, list);
+            			struct checkpoint, list);
             			
 		checkpoint_section_list = checkpoint->sections_list_head.next;	
 		while (!list_empty(&checkpoint->sections_list_head)) {
 			section = list_entry (checkpoint_section_list,
-				struct saCkptCheckpointSection, list);
+				struct checkpoint_section, list);
 			
 			list_del (&section->list);			
 			log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_finalize removed 0x%x.\n", section);
@@ -1119,26 +1182,26 @@ static void ckpt_recovery_finalize (void)
                 checkpoint_list = checkpoint_list->next) {
 
 		checkpoint = list_entry (checkpoint_list,
-			struct saCkptCheckpoint, list);
+			struct checkpoint, list);
 
 		for (checkpoint_section_list = checkpoint->sections_list_head.next;
                         checkpoint_section_list != &checkpoint->sections_list_head;
                         checkpoint_section_list = checkpoint_section_list->next) {
                         section = list_entry (checkpoint_section_list,
-                                                                struct saCkptCheckpointSection, list);
+                                                                struct checkpoint_section, list);
 
-			if (section->sectionDescriptor.expirationTime != SA_TIME_END) {
+			if (section->section_descriptor.expiration_time != SA_TIME_END) {
 				ckpt_id = malloc (sizeof(struct ckpt_identifier));
 				assert(ckpt_id);
-				memcpy(&ckpt_id->ckpt_name,&checkpoint->name,sizeof(SaNameT));
-				memcpy(&ckpt_id->ckpt_section_id, &section->sectionDescriptor.sectionId,sizeof(SaCkptSectionIdT));
+				memcpy(&ckpt_id->ckpt_name,&checkpoint->name,sizeof(mar_name_t));
+				memcpy(&ckpt_id->ckpt_section_id, &section->section_descriptor.section_id,sizeof(mar_ckpt_section_id_t));
 
 				openais_timer_add (
-					abstime_to_msec (section->sectionDescriptor.expirationTime),
+					abstime_to_msec (section->section_descriptor.expiration_time),
 					ckpt_id,
 					timer_function_section_expire,
 					&section->expiration_timer);
-				log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_initialize expiration timer = 0x%x\n",
+				log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_initialize expiration timer = 0x%x\n",
 					section->expiration_timer);	
 			}
                 }
@@ -1149,7 +1212,7 @@ static void ckpt_recovery_finalize (void)
 	 * Initialize the new list head for reuse.
 	 */
 	list_init(&checkpoint_recovery_list_head);
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: ckpt_recovery_finalize Done.\n");
+	log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_finalize Done.\n");
 	
 }
 
@@ -1167,7 +1230,7 @@ static void ckpt_recovery_abort (void)
 
 static void ckpt_replace_localhost_ip (unsigned int *joined_list) {
 	struct list_head *checkpoint_list;
-        struct saCkptCheckpoint *checkpoint;
+        struct checkpoint *checkpoint;
         unsigned int localhost_nodeid = 0;
         int index;
 
@@ -1178,12 +1241,12 @@ static void ckpt_replace_localhost_ip (unsigned int *joined_list) {
 		checkpoint_list = checkpoint_list->next) {
 
 		checkpoint = list_entry (checkpoint_list,
-			struct saCkptCheckpoint, list);
-		index = processor_index_find(localhost_nodeid, checkpoint->ckpt_refcount);
+			struct checkpoint, list);
+		index = processor_index_find(localhost_nodeid, checkpoint->ckpt_refcnt);
 		if (index == -1) {
 			continue;
 		}		
-		checkpoint->ckpt_refcount[index].nodeid = joined_list[0];
+		checkpoint->ckpt_refcnt[index].nodeid = joined_list[0];
 		log_printf (LOG_LEVEL_DEBUG, "Transitioning From Local Host replacing 127.0.0.1 with %x ...\n",
 			joined_list[0]);
 
@@ -1197,7 +1260,7 @@ static void ckpt_recovery_process_members_exit (
 	int left_list_entries)
 {
 	struct list_head *checkpoint_list;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 	unsigned int *member_nodeid;
 	unsigned int localhost_nodeid;
 	int index;
@@ -1225,10 +1288,10 @@ static void ckpt_recovery_process_members_exit (
 iterate_while_loop:
 		while (checkpoint_list != &checkpoint_list_head) {
 			checkpoint = list_entry (checkpoint_list,
-				struct saCkptCheckpoint, list);			
+				struct checkpoint, list);			
 			assert (checkpoint > 0);
 			index = processor_index_find(*member_nodeid,
-				checkpoint->ckpt_refcount);
+				checkpoint->ckpt_refcnt);
 			assert (-1 <= index);
 			assert (index < PROCESSOR_COUNT_MAX);			
 			if (index < 0) {
@@ -1240,7 +1303,7 @@ iterate_while_loop:
 			 * 
 			 */
 			if (checkpoint->referenceCount > 0) { /*defect 1192*/
-				checkpoint->referenceCount -= checkpoint->ckpt_refcount[index].count;
+				checkpoint->referenceCount -= checkpoint->ckpt_refcnt[index].count;
 				log_printf (LOG_LEVEL_DEBUG, "ckpt_recovery_process_members_exit: refCount for %s = %d.\n",
 												&checkpoint->name.value,checkpoint->referenceCount);
 				assert (checkpoint->referenceCount > 0);/*defect 1192*/
@@ -1249,8 +1312,8 @@ iterate_while_loop:
 												&checkpoint->name.value,checkpoint->referenceCount);			
 				assert(0);
 			}		
-			checkpoint->ckpt_refcount[index].count = 0;
-			checkpoint->ckpt_refcount[index].nodeid = 0;
+			checkpoint->ckpt_refcnt[index].count = 0;
+			checkpoint->ckpt_refcnt[index].nodeid = 0;
 			checkpoint_list = checkpoint_list->next;
 		}
 		member_nodeid++;
@@ -1264,7 +1327,7 @@ iterate_while_loop:
 void clean_checkpoint_list(struct list_head *head) 
 {
 	struct list_head *checkpoint_list;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 
 	if (list_empty(head)) {
 		log_printf (LOG_LEVEL_NOTICE, "clean_checkpoint_list: List is empty \n");
@@ -1274,7 +1337,7 @@ void clean_checkpoint_list(struct list_head *head)
 	checkpoint_list = head->next;
         while (checkpoint_list != head) {
 		checkpoint = list_entry (checkpoint_list,
-                                struct saCkptCheckpoint, list);
+                                struct checkpoint, list);
                 assert (checkpoint > 0);
 
 		/*
@@ -1293,7 +1356,7 @@ void clean_checkpoint_list(struct list_head *head)
 				&checkpoint->name.value);
 			openais_timer_delete (checkpoint->retention_timer);
 			openais_timer_add (
-				checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
+				checkpoint->checkpoint_creation_attributes.retention_duration / 1000000,
 				checkpoint,
 				timer_function_retention,
 				&checkpoint->retention_timer);
@@ -1325,19 +1388,19 @@ static void ckpt_confchg_fn (
 	}
 }
 
-static struct saCkptCheckpoint *ckpt_checkpoint_find_global (SaNameT *name)
+static struct checkpoint *checkpoint_find (mar_name_t *name)
 {
 	struct list_head *checkpoint_list;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 
 	for (checkpoint_list = checkpoint_list_head.next;
 		checkpoint_list != &checkpoint_list_head;
 		checkpoint_list = checkpoint_list->next) {
 
 		checkpoint = list_entry (checkpoint_list,
-			struct saCkptCheckpoint, list);
+			struct checkpoint, list);
 
-		if (name_match (name, &checkpoint->name)) {
+		if (mar_name_match (name, &checkpoint->name)) {
 			return (checkpoint);
 		}
 	}
@@ -1346,7 +1409,7 @@ static struct saCkptCheckpoint *ckpt_checkpoint_find_global (SaNameT *name)
 
 static void ckpt_checkpoint_remove_cleanup (
 	void *conn,
-	struct saCkptCheckpoint *checkpoint)
+	struct checkpoint *checkpoint)
 {
 	struct list_head *list;
 	struct checkpoint_cleanup *checkpoint_cleanup;
@@ -1357,7 +1420,7 @@ static void ckpt_checkpoint_remove_cleanup (
 		list = list->next) {
 
 		checkpoint_cleanup = list_entry (list, struct checkpoint_cleanup, list);
-		if (name_match (&checkpoint_cleanup->checkpoint.name, &checkpoint->name)
+		if (mar_name_match (&checkpoint_cleanup->checkpoint.name, &checkpoint->name)
 				|| (checkpoint_cleanup->checkpoint.name.length == 0)) {											
 			list_del (&checkpoint_cleanup->list);
 			free (checkpoint_cleanup);
@@ -1366,30 +1429,30 @@ static void ckpt_checkpoint_remove_cleanup (
 	}
 }
 
-static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
-	struct saCkptCheckpoint *ckptCheckpoint,
+static struct checkpoint_section *checkpoint_section_find (
+	struct checkpoint *checkpoint,
 	char *id,
-	int idLen)
+	int id_len)
 {
 	struct list_head *checkpoint_section_list;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
+	struct checkpoint_section *checkpoint_section;
 
-	if (idLen != 0) {
-		log_printf (LOG_LEVEL_DEBUG, "Finding checkpoint section id %s %d\n", (char*)id, idLen);
+	if (id_len != 0) {
+		log_printf (LOG_LEVEL_DEBUG, "Finding checkpoint section id %s %d\n", (char*)id, id_len);
 	}
 	else {
 		log_printf (LOG_LEVEL_DEBUG, "Finding default checkpoint section\n");
 	}
-	for (checkpoint_section_list = ckptCheckpoint->sections_list_head.next;
-		checkpoint_section_list != &ckptCheckpoint->sections_list_head;
+	for (checkpoint_section_list = checkpoint->sections_list_head.next;
+		checkpoint_section_list != &checkpoint->sections_list_head;
 		checkpoint_section_list = checkpoint_section_list->next) {
 
-		ckptCheckpointSection = list_entry (checkpoint_section_list,
-			struct saCkptCheckpointSection, list);
-		if (ckptCheckpointSection->sectionDescriptor.sectionId.idLen) {
+		checkpoint_section = list_entry (checkpoint_section_list,
+			struct checkpoint_section, list);
+		if (checkpoint_section->section_descriptor.section_id.id_len) {
 			log_printf (LOG_LEVEL_DEBUG, "Checking section id %*s\n", 
-				ckptCheckpointSection->sectionDescriptor.sectionId.idLen,
-				ckptCheckpointSection->sectionDescriptor.sectionId.id);
+				checkpoint_section->section_descriptor.section_id.id_len,
+				checkpoint_section->section_descriptor.section_id.id);
 		}
 		else {
 			log_printf (LOG_LEVEL_DEBUG, "Checking default section id\n");
@@ -1400,23 +1463,23 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
 		  The default section. If even one of them is NON zero follow
 		  the normal route
 		*/
-		if ((idLen ||
-				ckptCheckpointSection->sectionDescriptor.sectionId.id ||
-				ckptCheckpointSection->sectionDescriptor.sectionId.idLen) == 0) {
+		if ((id_len ||
+				checkpoint_section->section_descriptor.section_id.id ||
+				checkpoint_section->section_descriptor.section_id.id_len) == 0) {
 			 log_printf (LOG_LEVEL_DEBUG, "Returning default section\n");
-			 return (ckptCheckpointSection);
+			 return (checkpoint_section);
 		}
 		
-		if (ckptCheckpointSection->sectionDescriptor.sectionId.idLen == idLen &&
-			(ckptCheckpointSection->sectionDescriptor.sectionId.id)&&
+		if (checkpoint_section->section_descriptor.section_id.id_len == id_len &&
+			(checkpoint_section->section_descriptor.section_id.id)&&
 			(id)&&
-			(memcmp (ckptCheckpointSection->sectionDescriptor.sectionId.id, 
-			id, idLen) == 0)) {
+			(memcmp (checkpoint_section->section_descriptor.section_id.id, 
+			id, id_len) == 0)) {
 
-			log_printf (LOG_LEVEL_DEBUG, "Returning section %s(0x%x)\n", ckptCheckpointSection->sectionDescriptor.sectionId.id,
-				ckptCheckpointSection);
+			log_printf (LOG_LEVEL_DEBUG, "Returning section %s(0x%x)\n", checkpoint_section->section_descriptor.section_id.id,
+				checkpoint_section);
 
-			return (ckptCheckpointSection);
+			return (checkpoint_section);
 		}
 	}
 	return 0;
@@ -1428,14 +1491,14 @@ static struct saCkptCheckpointSection *ckpt_checkpoint_find_globalSection (
  * from timer_function_section_expire where the expiry already takes care
  * of the timer and its data
  */
-void checkpoint_section_and_associate_timer_cleanup (struct saCkptCheckpointSection *section,int deleteTimer)
+void checkpoint_section_and_associate_timer_cleanup (struct checkpoint_section *section,int deleteTimer)
 {
 	list_del (&section->list);
-	if (section->sectionDescriptor.sectionId.id) {
-		free (section->sectionDescriptor.sectionId.id); 
+	if (section->section_descriptor.section_id.id) {
+		free (section->section_descriptor.section_id.id); 
 	}
-	if (section->sectionData) {
-		free (section->sectionData);
+	if (section->section_data) {
+		free (section->section_data);
 	}
 	/*
 	 * defect 1112 on a section release we need to delete the timer AND its data or memory leaks
@@ -1446,17 +1509,17 @@ void checkpoint_section_and_associate_timer_cleanup (struct saCkptCheckpointSect
 	free (section);
 }
 
-void checkpoint_section_release (struct saCkptCheckpointSection *section)
+void checkpoint_section_release (struct checkpoint_section *section)
 {
 	log_printf (LOG_LEVEL_DEBUG, "checkpoint_section_release expiration timer = 0x%x\n", section->expiration_timer);
 	checkpoint_section_and_associate_timer_cleanup (section, 1);
 }
 
 
-void checkpoint_release (struct saCkptCheckpoint *checkpoint)
+void checkpoint_release (struct checkpoint *checkpoint)
 {
 	struct list_head *list;
-	struct saCkptCheckpointSection *section;
+	struct checkpoint_section *section;
 
 	openais_timer_delete (checkpoint->retention_timer);
 
@@ -1467,7 +1530,7 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 		list != &checkpoint->sections_list_head;) {
 
 		section = list_entry (list,
-			struct saCkptCheckpointSection, list);
+			struct checkpoint_section, list);
 	
 		list = list->next;
 		checkpoint->sectionCount -= 1;
@@ -1477,9 +1540,9 @@ void checkpoint_release (struct saCkptCheckpoint *checkpoint)
 	free (checkpoint);
 }
 
-int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
+int ckpt_checkpoint_close (struct checkpoint *checkpoint) {
 	struct req_exec_ckpt_checkpointclose req_exec_ckpt_checkpointclose;
-	struct iovec iovecs[2];
+	struct iovec iovec;
 
 	if (checkpoint->expired == 1) {
 		return (0);
@@ -1490,16 +1553,16 @@ int ckpt_checkpoint_close (struct saCkptCheckpoint *checkpoint) {
 		SERVICE_ID_MAKE (CKPT_SERVICE,
 			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE);
 
-	memcpy (&req_exec_ckpt_checkpointclose.checkpointName,
-		&checkpoint->name, sizeof (SaNameT));
+	memcpy (&req_exec_ckpt_checkpointclose.checkpoint_name,
+		&checkpoint->name, sizeof (mar_name_t));
 	memset (&req_exec_ckpt_checkpointclose.source, 0,
-		sizeof (struct message_source));
+		sizeof (mar_message_source_t));
 
-	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
-	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
+	iovec.iov_base = (char *)&req_exec_ckpt_checkpointclose;
+	iovec.iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-	if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	if (totempg_groups_send_ok_joined (openais_group_handle, &iovec, 1)) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 		return (0);
 	}
 
@@ -1519,17 +1582,168 @@ static int ckpt_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	return (0);
 }
 
+
+/*
+ * Endian conversion routines for executive message handlers
+ */
+static void exec_ckpt_checkpointopen_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_checkpointopen->header);
+	swab_mar_message_source_t (&req_exec_ckpt_checkpointopen->source);
+	swab_mar_name_t (&req_exec_ckpt_checkpointopen->checkpoint_name);
+	swab_mar_ckpt_checkpoint_creation_attributes_t (&req_exec_ckpt_checkpointopen->checkpoint_creation_attributes);
+	swab_mar_uint32_t (&req_exec_ckpt_checkpointopen->checkpoint_creation_attributes_set);
+	swab_mar_ckpt_checkpoint_open_flags_t (&req_exec_ckpt_checkpointopen->checkpoint_open_flags);
+	swab_mar_ckpt_checkpoint_handle_t (&req_exec_ckpt_checkpointopen->checkpoint_handle);
+	swab_mar_invocation_t (&req_exec_ckpt_checkpointopen->invocation);
+	swab_mar_uint32_t (&req_exec_ckpt_checkpointopen->async_call);
+	swab_mar_uint32_t (&req_exec_ckpt_checkpointopen->fail_with_error);
+}
+
+static void exec_ckpt_checkpointclose_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_checkpointclose *req_exec_ckpt_checkpointclose = (struct req_exec_ckpt_checkpointclose *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_checkpointclose->header);
+	swab_mar_message_source_t (&req_exec_ckpt_checkpointclose->source);
+	swab_mar_name_t (&req_exec_ckpt_checkpointclose->checkpoint_name);
+}
+static void exec_ckpt_checkpointunlink_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_checkpointunlink *req_exec_ckpt_checkpointunlink = (struct req_exec_ckpt_checkpointunlink *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_checkpointunlink->header);
+	swab_mar_message_source_t (&req_exec_ckpt_checkpointunlink->source);
+	swab_mar_name_t (&req_exec_ckpt_checkpointunlink->checkpoint_name);
+}
+
+static void exec_ckpt_checkpointretentiondurationset_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_checkpointretentiondurationset->header);
+	swab_mar_message_source_t (&req_exec_ckpt_checkpointretentiondurationset->source);
+	swab_mar_name_t (&req_exec_ckpt_checkpointretentiondurationset->checkpoint_name);
+	swab_mar_time_t (&req_exec_ckpt_checkpointretentiondurationset->retention_duration);
+}
+
+static void exec_ckpt_checkpointretentiondurationexpire_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_checkpointretentiondurationexpire *req_exec_ckpt_checkpointretentiondurationexpire = (struct req_exec_ckpt_checkpointretentiondurationexpire *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_checkpointretentiondurationexpire->header);
+	swab_mar_name_t (&req_exec_ckpt_checkpointretentiondurationexpire->checkpoint_name);
+}
+
+static void exec_ckpt_sectioncreate_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectioncreate *req_exec_ckpt_sectioncreate = (struct req_exec_ckpt_sectioncreate *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectioncreate->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectioncreate->source);
+	swab_mar_name_t (&req_exec_ckpt_sectioncreate->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectioncreate->id_len);
+	swab_mar_time_t (&req_exec_ckpt_sectioncreate->expiration_time);
+	swab_mar_uint32_t (&req_exec_ckpt_sectioncreate->initial_data_size);
+}
+
+static void exec_ckpt_sectiondelete_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectiondelete *req_exec_ckpt_sectiondelete = (struct req_exec_ckpt_sectiondelete *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectiondelete->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectiondelete->source);
+	swab_mar_name_t (&req_exec_ckpt_sectiondelete->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectiondelete->id_len);
+}
+
+static void exec_ckpt_sectrionexpirationtimeset_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectionexpirationtimeset *req_exec_ckpt_sectionexpirationtimeset = (struct req_exec_ckpt_sectionexpirationtimeset *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectionexpirationtimeset->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectionexpirationtimeset->source);
+	swab_mar_name_t (&req_exec_ckpt_sectionexpirationtimeset->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectionexpirationtimeset->id_len);
+	swab_mar_time_t (&req_exec_ckpt_sectionexpirationtimeset->expiration_time);
+}
+
+static void exec_ckpt_sectionwrite_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectionwrite->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectionwrite->source);
+	swab_mar_name_t (&req_exec_ckpt_sectionwrite->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectionwrite->id_len);
+	swab_mar_offset_t (&req_exec_ckpt_sectionwrite->data_size);
+}
+
+static void exec_ckpt_sectionoverwrite_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectionoverwrite *req_exec_ckpt_sectionoverwrite = (struct req_exec_ckpt_sectionoverwrite *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectionoverwrite->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectionoverwrite->source);
+	swab_mar_name_t (&req_exec_ckpt_sectionoverwrite->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectionoverwrite->id_len);
+	swab_mar_offset_t (&req_exec_ckpt_sectionoverwrite->data_size);
+}
+
+static void exec_ckpt_sectionread_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_sectionread *req_exec_ckpt_sectionread = (struct req_exec_ckpt_sectionread *)msg;
+
+	swab_mar_req_header_t (&req_exec_ckpt_sectionread->header);
+	swab_mar_message_source_t (&req_exec_ckpt_sectionread->source);
+	swab_mar_name_t (&req_exec_ckpt_sectionread->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_sectionread->id_len);
+	swab_mar_offset_t (&req_exec_ckpt_sectionread->data_offset);
+	swab_mar_offset_t (&req_exec_ckpt_sectionread->data_size);
+}
+
+static void exec_ckpt_synchronize_state_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_synchronize_state *req_exec_ckpt_synchronize_state = (struct req_exec_ckpt_synchronize_state *)msg;
+	unsigned int i;
+
+	swab_mar_req_header_t (&req_exec_ckpt_synchronize_state->header);
+//	swab_mar_memb_ring_id_t (&req_exec_ckpt_synchronize_state->memb_ring_id);
+	swab_mar_name_t (&req_exec_ckpt_synchronize_state->checkpoint_name);
+	swab_mar_ckpt_checkpoint_creation_attributes_t (&req_exec_ckpt_synchronize_state->checkpoint_creation_attributes);
+	swab_mar_ckpt_section_descriptor_t (&req_exec_ckpt_synchronize_state->section_descriptor);
+	swab_mar_uint32_t (&req_exec_ckpt_synchronize_state->nodeid);
+	for (i = 0; i < PROCESSOR_COUNT_MAX; i++) {
+		swab_mar_ckpt_refcnt_t (&req_exec_ckpt_synchronize_state->ckpt_refcnt[i]);
+	}
+}
+
+static void exec_ckpt_synchronize_section_endian_convert (void *msg)
+{
+	struct req_exec_ckpt_synchronize_section *req_exec_ckpt_synchronize_section = (struct req_exec_ckpt_synchronize_section *)msg;
+	swab_mar_req_header_t (&req_exec_ckpt_synchronize_section->header);
+//	swab_mar_memb_ring_id_t (&req_exec_ckpt_synchronize_section->memb_ring_id);
+	swab_mar_name_t (&req_exec_ckpt_synchronize_section->checkpoint_name);
+	swab_mar_uint32_t (&req_exec_ckpt_synchronize_section->id_len);
+	swab_mar_offset_t (&req_exec_ckpt_synchronize_section->data_offset);
+	swab_mar_offset_t (&req_exec_ckpt_synchronize_section->data_size);
+}
+
+/*
+ * Executive message handlers
+ */
 static void message_handler_req_exec_ckpt_checkpointopen (
 	void *message,
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_checkpointopen *req_exec_ckpt_checkpointopen = (struct req_exec_ckpt_checkpointopen *)message;
-	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)&req_exec_ckpt_checkpointopen->req_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopen res_lib_ckpt_checkpointopen;
 	struct res_lib_ckpt_checkpointopenasync res_lib_ckpt_checkpointopenasync;
 
-	struct saCkptCheckpoint *ckptCheckpoint = 0;
-	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
+	struct checkpoint *checkpoint = 0;
+	struct checkpoint_section *checkpoint_section = 0;
 	struct checkpoint_cleanup *checkpoint_cleanup = 0;
 	struct ckpt_pd *ckpt_pd;
 	SaAisErrorT error = SA_AIS_OK;
@@ -1550,82 +1764,82 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 		}		
 	}	
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointopen->checkpointName);
+	checkpoint = checkpoint_find (&req_exec_ckpt_checkpointopen->checkpoint_name);
 
 	/*
 	 * If checkpoint doesn't exist, create one
 	 */
-	if (ckptCheckpoint == 0) {
-		if ((req_lib_ckpt_checkpointopen->checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) == 0) {
+	if (checkpoint == 0) {
+		if ((req_exec_ckpt_checkpointopen->checkpoint_open_flags & SA_CKPT_CHECKPOINT_CREATE) == 0) {
 			error = SA_AIS_ERR_NOT_EXIST;
 			goto error_exit;
 		}
-		ckptCheckpoint = malloc (sizeof (struct saCkptCheckpoint));
-		if (ckptCheckpoint == 0) {
+		checkpoint = malloc (sizeof (struct checkpoint));
+		if (checkpoint == 0) {
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
 
-		ckptCheckpointSection = malloc (sizeof (struct saCkptCheckpointSection));
-		if (ckptCheckpointSection == 0) {
-			free (ckptCheckpoint);
+		checkpoint_section = malloc (sizeof (struct checkpoint_section));
+		if (checkpoint_section == 0) {
+			free (checkpoint);
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
 
-		memcpy (&ckptCheckpoint->name,
-			&req_lib_ckpt_checkpointopen->checkpointName,
-			sizeof (SaNameT));
-		memcpy (&ckptCheckpoint->checkpointCreationAttributes,
-			&req_lib_ckpt_checkpointopen->checkpointCreationAttributes,
-			sizeof (SaCkptCheckpointCreationAttributesT));
-		ckptCheckpoint->unlinked = 0;
-		list_init (&ckptCheckpoint->list);
-		list_init (&ckptCheckpoint->sections_list_head);
-		list_add (&ckptCheckpoint->list, &checkpoint_list_head);
-		ckptCheckpoint->referenceCount = 0;
-		ckptCheckpoint->retention_timer = 0;
-		ckptCheckpoint->expired = 0;
-		ckptCheckpoint->sectionCount = 0;
+		memcpy (&checkpoint->name,
+			&req_exec_ckpt_checkpointopen->checkpoint_name,
+			sizeof (mar_name_t));
+		memcpy (&checkpoint->checkpoint_creation_attributes,
+			&req_exec_ckpt_checkpointopen->checkpoint_creation_attributes,
+			sizeof (mar_ckpt_checkpoint_creation_attributes_t));
+		checkpoint->unlinked = 0;
+		list_init (&checkpoint->list);
+		list_init (&checkpoint->sections_list_head);
+		list_add (&checkpoint->list, &checkpoint_list_head);
+		checkpoint->referenceCount = 0;
+		checkpoint->retention_timer = 0;
+		checkpoint->expired = 0;
+		checkpoint->sectionCount = 0;
 		
-		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
-			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
-			ckptCheckpoint->active_replica_set = 1;
+		if ((checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
+			(checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
+			checkpoint->active_replica_set = 1;
 		} else
-		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
-			ckptCheckpoint->active_replica_set = 1;
+		if ((checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
+			checkpoint->active_replica_set = 1;
 		} else {
-			ckptCheckpoint->active_replica_set = 0;
+			checkpoint->active_replica_set = 0;
 		}
 		
-		initialize_ckpt_refcount_array(ckptCheckpoint->ckpt_refcount);
+		initialize_ckpt_refcnt_array(checkpoint->ckpt_refcnt);
 
 		/*
 		 * Add in default checkpoint section
 		 */
-		list_init (&ckptCheckpointSection->list);
-		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->sections_list_head);
+		list_init (&checkpoint_section->list);
+		list_add (&checkpoint_section->list, &checkpoint->sections_list_head);
 		
 		/*
 		 * Default section id
 		 */
-		ckptCheckpointSection->sectionDescriptor.sectionId.id = 0;
-		ckptCheckpointSection->sectionDescriptor.sectionId.idLen = 0;
-		ckptCheckpointSection->sectionDescriptor.expirationTime = SA_TIME_END;
-		ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
-		ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /*current time*/
-		ckptCheckpointSection->sectionDescriptor.sectionSize = strlen("Factory installed data\0")+1;		
-		ckptCheckpointSection->sectionData = malloc(strlen("Factory installed data\0")+1);
-		assert(ckptCheckpointSection->sectionData);
-		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
-		ckptCheckpointSection->expiration_timer = 0;
+		checkpoint_section->section_descriptor.section_id.id = 0;
+		checkpoint_section->section_descriptor.section_id.id_len = 0;
+		checkpoint_section->section_descriptor.expiration_time = SA_TIME_END;
+		checkpoint_section->section_descriptor.section_state = SA_CKPT_SECTION_VALID;
+		checkpoint_section->section_descriptor.last_update = 0; /*current time*/
+		checkpoint_section->section_descriptor.section_size = strlen("Factory installed data\0")+1;		
+		checkpoint_section->section_data = malloc(strlen("Factory installed data\0")+1);
+		assert(checkpoint_section->section_data);
+		memcpy(checkpoint_section->section_data, "Factory installed data\0", strlen("Factory installed data\0")+1);
+		checkpoint_section->expiration_timer = 0;
 		
-		ckptCheckpoint->referenceCount += 1; /*defect 1129*/
+		checkpoint->referenceCount += 1;
 	} else {
-		if (req_lib_ckpt_checkpointopen->checkpointCreationAttributesSet &&
-			memcmp (&ckptCheckpoint->checkpointCreationAttributes,
-				&req_lib_ckpt_checkpointopen->checkpointCreationAttributes,
-				sizeof (SaCkptCheckpointCreationAttributesT)) != 0) {
+		if (req_exec_ckpt_checkpointopen->checkpoint_creation_attributes_set &&
+			memcmp (&checkpoint->checkpoint_creation_attributes,
+				&req_exec_ckpt_checkpointopen->checkpoint_creation_attributes,
+				sizeof (mar_ckpt_checkpoint_creation_attributes_t)) != 0) {
 
 			error = SA_AIS_ERR_EXIST;
 			goto error_exit;
@@ -1635,16 +1849,16 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 	/*
 	 * If the checkpoint has been unlinked, it is an invalid name
 	 */
-	if (ckptCheckpoint->unlinked) {
-		error = SA_AIS_ERR_NOT_EXIST; /* Is this the correct return ? */
+	if (checkpoint->unlinked) {
+		error = SA_AIS_ERR_NOT_EXIST; /* TODO this is wrong */
 		goto error_exit;
 	}
 	
 	/*
 	 * Setup connection information and mark checkpoint as referenced
 	 */
-	log_printf (LOG_LEVEL_DEBUG, "CHECKPOINT opened is %p\n", ckptCheckpoint);
-	ckptCheckpoint->referenceCount += 1;
+	log_printf (LOG_LEVEL_DEBUG, "CHECKPOINT opened is %p\n", checkpoint);
+	checkpoint->referenceCount += 1;
 	
 	/*
 	 * Add the connection reference information to the Checkpoint to be
@@ -1652,24 +1866,24 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 	 * 
 	 */
 	 
-	 proc_index = processor_index_find(nodeid,ckptCheckpoint->ckpt_refcount);
+	 proc_index = processor_index_find(nodeid,checkpoint->ckpt_refcnt);
 	 if (proc_index == -1) {/* Could not find, lets set the processor to an index.*/
-	 	proc_index = processor_index_set(nodeid,ckptCheckpoint->ckpt_refcount);
+	 	proc_index = processor_index_set(nodeid,checkpoint->ckpt_refcnt);
 	 }
 	 if (proc_index != -1 ) {	 
-		ckptCheckpoint->ckpt_refcount[proc_index].nodeid = nodeid;
-	 	ckptCheckpoint->ckpt_refcount[proc_index].count++;
+		checkpoint->ckpt_refcnt[proc_index].nodeid = nodeid;
+	 	checkpoint->ckpt_refcnt[proc_index].count++;
 	 }
 	 else {
 	 	log_printf (LOG_LEVEL_ERROR, 
-	 		"CKPT: MAX LIMIT OF PROCESSORS reached. Cannot store new proc %p info.\n", 
-	 		ckptCheckpoint);
+	 		"MAX LIMIT OF PROCESSORS reached. Cannot store new proc %p info.\n", 
+	 		checkpoint);
 	 }
 	/*
 	 * Reset retention duration since this checkpoint was just opened
 	 */
-	openais_timer_delete (ckptCheckpoint->retention_timer);
-	ckptCheckpoint->retention_timer = 0;
+	openais_timer_delete (checkpoint->retention_timer);
+	checkpoint->retention_timer = 0;
 
 	/*
 	 * Send error result to CKPT library
@@ -1686,7 +1900,7 @@ error_exit:
 			res_lib_ckpt_checkpointopenasync.header.size = sizeof (struct res_lib_ckpt_checkpointopenasync);
 			res_lib_ckpt_checkpointopenasync.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTOPENASYNC;
 			res_lib_ckpt_checkpointopenasync.header.error = error;
-			res_lib_ckpt_checkpointopenasync.checkpointHandle = req_exec_ckpt_checkpointopen->checkpointHandle;
+			res_lib_ckpt_checkpointopenasync.checkpoint_handle = req_exec_ckpt_checkpointopen->checkpoint_handle;
 			res_lib_ckpt_checkpointopenasync.invocation = req_exec_ckpt_checkpointopen->invocation;
 
 			openais_conn_send_response (
@@ -1715,7 +1929,7 @@ error_exit:
 		 * This is the path taken when all goes well and this call was local
 		 */
 		if (error == SA_AIS_OK) {
-			memcpy(&checkpoint_cleanup->checkpoint,ckptCheckpoint,sizeof(struct saCkptCheckpoint));
+			memcpy(&checkpoint_cleanup->checkpoint,checkpoint,sizeof(struct checkpoint));
 			ckpt_pd = openais_conn_private_data_get (req_exec_ckpt_checkpointopen->source.conn);
 
 			list_add (&checkpoint_cleanup->list,
@@ -1731,17 +1945,17 @@ error_exit:
 }
 
 static int recovery_checkpoint_open(
-	SaNameT *checkpointName,
-	SaCkptCheckpointCreationAttributesT *ckptAttributes,
+	mar_name_t *checkpoint_name,
+	mar_ckpt_checkpoint_creation_attributes_t *ckptAttributes,
 	struct ckpt_refcnt *ref_cnt) 
 {
 	int i;	
-	struct saCkptCheckpoint *ckptCheckpoint = 0;
-	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
+	struct checkpoint *checkpoint = 0;
+	struct checkpoint_section *checkpoint_section = 0;
 	SaAisErrorT error = SA_AIS_OK;	
 
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open %s\n", &checkpointName->value);
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open refcount Values\n");
+	log_printf (LOG_LEVEL_DEBUG, "recovery_checkpoint_open %s\n", &checkpoint_name->value);
+	log_printf (LOG_LEVEL_DEBUG, "recovery_checkpoint_open refcnt Values\n");
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
 		log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
 			i,
@@ -1750,94 +1964,94 @@ static int recovery_checkpoint_open(
 	}
 
 	
-	ckptCheckpoint = ckpt_checkpoint_find_global (checkpointName);
+	checkpoint = checkpoint_find (checkpoint_name);
 
 	/*
 	 * If checkpoint doesn't exist, create one
 	 */
-	if (ckptCheckpoint == 0) {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open Allocating new Checkpoint %s\n", &checkpointName->value);
-		ckptCheckpoint = malloc (sizeof (struct saCkptCheckpoint));
-		if (ckptCheckpoint == 0) {
+	if (checkpoint == 0) {
+		log_printf (LOG_LEVEL_DEBUG, "recovery_checkpoint_open Allocating new Checkpoint %s\n", &checkpoint_name->value);
+		checkpoint = malloc (sizeof (struct checkpoint));
+		if (checkpoint == 0) {
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
 
-		ckptCheckpointSection = malloc (sizeof (struct saCkptCheckpointSection));
-		if (ckptCheckpointSection == 0) {
-			free (ckptCheckpoint);
+		checkpoint_section = malloc (sizeof (struct checkpoint_section));
+		if (checkpoint_section == 0) {
+			free (checkpoint);
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
 
-		memcpy (&ckptCheckpoint->name,
-			checkpointName,
-			sizeof (SaNameT));
-		memcpy (&ckptCheckpoint->checkpointCreationAttributes,
+		memcpy (&checkpoint->name,
+			checkpoint_name,
+			sizeof (mar_name_t));
+		memcpy (&checkpoint->checkpoint_creation_attributes,
 			ckptAttributes,
-			sizeof (SaCkptCheckpointCreationAttributesT));
-		ckptCheckpoint->unlinked = 0;
-		list_init (&ckptCheckpoint->list);
-		list_init (&ckptCheckpoint->sections_list_head);
-		list_add (&ckptCheckpoint->list, &checkpoint_list_head);
-		ckptCheckpoint->retention_timer = 0;
-		ckptCheckpoint->expired = 0;
+			sizeof (mar_ckpt_checkpoint_creation_attributes_t));
+		checkpoint->unlinked = 0;
+		list_init (&checkpoint->list);
+		list_init (&checkpoint->sections_list_head);
+		list_add (&checkpoint->list, &checkpoint_list_head);
+		checkpoint->retention_timer = 0;
+		checkpoint->expired = 0;
 		
 		/*
 		 * Add in default checkpoint section
 		 */
-		list_init (&ckptCheckpointSection->list);
-		list_add (&ckptCheckpointSection->list, &ckptCheckpoint->sections_list_head);
+		list_init (&checkpoint_section->list);
+		list_add (&checkpoint_section->list, &checkpoint->sections_list_head);
 		
 		/*
 		 * Default section id
 		 */
-		ckptCheckpointSection->sectionDescriptor.sectionId.id = 0;
-		ckptCheckpointSection->sectionDescriptor.sectionId.idLen = 0;
-		ckptCheckpointSection->sectionDescriptor.expirationTime = SA_TIME_END;
-		ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
-		ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /*current time*/
-		ckptCheckpointSection->sectionDescriptor.sectionSize = strlen("Factory installed data\0")+1;
-		ckptCheckpointSection->sectionData = malloc(strlen("Factory installed data\0")+1);
-		assert(ckptCheckpointSection->sectionData);
-		memcpy(ckptCheckpointSection->sectionData, "Factory installed data\0", strlen("Factory installed data\0")+1);
-		ckptCheckpointSection->expiration_timer = 0;
+		checkpoint_section->section_descriptor.section_id.id = 0;
+		checkpoint_section->section_descriptor.section_id.id_len = 0;
+		checkpoint_section->section_descriptor.expiration_time = SA_TIME_END;
+		checkpoint_section->section_descriptor.section_state = SA_CKPT_SECTION_VALID;
+		checkpoint_section->section_descriptor.last_update = 0; /*current time*/
+		checkpoint_section->section_descriptor.section_size = strlen("Factory installed data\0")+1;
+		checkpoint_section->section_data = malloc(strlen("Factory installed data\0")+1);
+		assert(checkpoint_section->section_data);
+		memcpy(checkpoint_section->section_data, "Factory installed data\0", strlen("Factory installed data\0")+1);
+		checkpoint_section->expiration_timer = 0;
 
-		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
-			(ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
-			ckptCheckpoint->active_replica_set = 1;
+		if ((checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
+			(checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
+			checkpoint->active_replica_set = 1;
 		} else
-		if ((ckptCheckpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
-			ckptCheckpoint->active_replica_set = 1;
+		if ((checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_WR_ALL_REPLICAS) == 1) {
+			checkpoint->active_replica_set = 1;
 		} else {
-			ckptCheckpoint->active_replica_set = 0;
+			checkpoint->active_replica_set = 0;
 		}
 
 
-		initialize_ckpt_refcount_array(ckptCheckpoint->ckpt_refcount);
+		initialize_ckpt_refcnt_array(checkpoint->ckpt_refcnt);
 	}
 	else {
 		/*
 		* Setup connection information and mark checkpoint as referenced
 		*/
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery CHECKPOINT reopened is %p\n", ckptCheckpoint);
+		log_printf (LOG_LEVEL_DEBUG, "recovery CHECKPOINT reopened is %p\n", checkpoint);
 	}
 
 	/*
 	 * If the checkpoint has been unlinked, it is an invalid name
 	 */
-	if (ckptCheckpoint->unlinked) {
+	if (checkpoint->unlinked) {
 		error = SA_AIS_ERR_BAD_OPERATION; /* Is this the correct return ? */
 		goto error_exit;
 	}
 
 	/*CHECK to see if there are any existing ckpts*/
-	if ((ckptCheckpoint->ckpt_refcount) &&  (ckpt_refcount_total(ckptCheckpoint->ckpt_refcount) > 0)) {
-		log_printf (LOG_LEVEL_DEBUG,"calling merge_ckpt_refcounts\n");
-		merge_ckpt_refcounts(ckptCheckpoint->ckpt_refcount, ref_cnt);
+	if ((checkpoint->ckpt_refcnt) &&  (ckpt_refcnt_total(checkpoint->ckpt_refcnt) > 0)) {
+		log_printf (LOG_LEVEL_DEBUG,"calling merge_ckpt_refcnts\n");
+		merge_ckpt_refcnts(checkpoint->ckpt_refcnt, ref_cnt);
 	}
 	else {
-		initialize_ckpt_refcount_array(ckptCheckpoint->ckpt_refcount);
+		initialize_ckpt_refcnt_array(checkpoint->ckpt_refcnt);
 	}
 
 	/*No Existing ckpts. Lets assign what we got over the network or the merged with network values*/
@@ -1846,15 +2060,15 @@ static int recovery_checkpoint_open(
 	 * the next line. Whether the ckpt was opened earlier or just now, the referenceCount is getting
 	 * obliterated in the next line.
 	 */
-	ckptCheckpoint->referenceCount = ckpt_refcount_total(ref_cnt) + 1; /*defect 1192*/
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: OPEN ckptCheckpoint->referenceCount %d\n",ckptCheckpoint->referenceCount);
-	memcpy(ckptCheckpoint->ckpt_refcount,ref_cnt,sizeof(struct ckpt_refcnt)*PROCESSOR_COUNT_MAX);
+	checkpoint->referenceCount = ckpt_refcnt_total(ref_cnt) + 1; /*defect 1192*/
+	log_printf (LOG_LEVEL_DEBUG, "OPEN checkpoint->referenceCount %d\n",checkpoint->referenceCount);
+	memcpy(checkpoint->ckpt_refcnt,ref_cnt,sizeof(struct ckpt_refcnt)*PROCESSOR_COUNT_MAX);
 	
 	/*
 	 * Reset retention duration since this checkpoint was just opened
 	 */
-	openais_timer_delete (ckptCheckpoint->retention_timer);
-	ckptCheckpoint->retention_timer = 0;
+	openais_timer_delete (checkpoint->retention_timer);
+	checkpoint->retention_timer = 0;
 
 	/*
 	 * Send error result to CKPT library
@@ -1869,31 +2083,38 @@ static void message_handler_req_exec_ckpt_synchronize_state (
 {
 	int retcode;
 	struct req_exec_ckpt_synchronize_state *req_exec_ckpt_sync_state 
-					= (struct req_exec_ckpt_synchronize_state *)message;
+		= (struct req_exec_ckpt_synchronize_state *)message;
+	struct ckpt_refcnt local_ckpt_refcnt[PROCESSOR_COUNT_MAX];
+	unsigned int i;
 					
 	/*
 	 * If the Incoming message's previous ring id == saved_ring_id
 	 * Ignore because we have seen this message before.
 	 */
 	if (memcmp (&req_exec_ckpt_sync_state->previous_ring_id, &saved_ring_id,sizeof (struct memb_ring_id)) == 0) {
-			log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state ignoring ...\n");
+			log_printf(LOG_LEVEL_DEBUG, "message_handler_req_exec_ckpt_synchronize_state ignoring ...\n");
 			return;
 	}
-	retcode = recovery_checkpoint_open(&req_exec_ckpt_sync_state->checkpointName,
-										&req_exec_ckpt_sync_state->checkpointCreationAttributes,
-										req_exec_ckpt_sync_state->ckpt_refcount);
+
+	for (i = 0; i < PROCESSOR_COUNT_MAX; i++) {
+		marshall_from_mar_ckpt_refcnt_t (&local_ckpt_refcnt[i],
+			&req_exec_ckpt_sync_state->ckpt_refcnt[i]);
+	}
+	retcode = recovery_checkpoint_open(&req_exec_ckpt_sync_state->checkpoint_name,
+		&req_exec_ckpt_sync_state->checkpoint_creation_attributes,
+		local_ckpt_refcnt);
 	if (retcode != SA_AIS_OK) {
-		log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
-		log_printf(LOG_LEVEL_DEBUG, "CKPT: recovery_checkpoint_open returned %d\n",retcode);		
+		log_printf(LOG_LEVEL_DEBUG, "message_handler_req_exec_ckpt_synchronize_state\n");
+		log_printf(LOG_LEVEL_DEBUG, "recovery_checkpoint_open returned %d\n",retcode);		
 	}
 	
-	retcode = recovery_section_create (&req_exec_ckpt_sync_state->sectionDescriptor,
-										&req_exec_ckpt_sync_state->checkpointName,
-										(char*)req_exec_ckpt_sync_state
-										+ sizeof (struct req_exec_ckpt_synchronize_state));
+	retcode = recovery_section_create (&req_exec_ckpt_sync_state->section_descriptor,
+		&req_exec_ckpt_sync_state->checkpoint_name,
+		(char*)req_exec_ckpt_sync_state
+			+ sizeof (struct req_exec_ckpt_synchronize_state));
 	if (retcode != SA_AIS_OK) {
-		log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_state\n");
-		log_printf(LOG_LEVEL_DEBUG, "CKPT: recovery_section_create returned %d\n",retcode);		
+		log_printf(LOG_LEVEL_DEBUG, "message_handler_req_exec_ckpt_synchronize_state\n");
+		log_printf(LOG_LEVEL_DEBUG, "recovery_section_create returned %d\n",retcode);		
 	}	
 }
 
@@ -1910,29 +2131,29 @@ static void message_handler_req_exec_ckpt_synchronize_section (
 	 * Ignore because we have seen this message before.
 	 */
 	if (memcmp (&req_exec_ckpt_sync_section->previous_ring_id, &saved_ring_id,sizeof (struct memb_ring_id)) == 0) {
-			log_printf(LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_synchronize_section ignoring ...\n");
+			log_printf(LOG_LEVEL_DEBUG, "message_handler_req_exec_ckpt_synchronize_section ignoring ...\n");
 			return;
 	}
 	/*
 	 * Write the contents of the section to the checkpoint section.
 	 */
-	retcode = recovery_section_write(req_exec_ckpt_sync_section->sectionId.idLen,
-							(char*)req_exec_ckpt_sync_section
-								+ sizeof (struct req_exec_ckpt_synchronize_section),
-							&req_exec_ckpt_sync_section->checkpointName,
-							(char*)req_exec_ckpt_sync_section
-								+ sizeof (struct req_exec_ckpt_synchronize_section)
-								+ req_exec_ckpt_sync_section->sectionId.idLen, 
-							req_exec_ckpt_sync_section->dataOffSet, 
-							req_exec_ckpt_sync_section->dataSize);
+	retcode = recovery_section_write(req_exec_ckpt_sync_section->id_len,
+		(char*)req_exec_ckpt_sync_section +
+			sizeof (struct req_exec_ckpt_synchronize_section),
+		&req_exec_ckpt_sync_section->checkpoint_name,
+		(char*)req_exec_ckpt_sync_section
+			+ sizeof (struct req_exec_ckpt_synchronize_section)
+			+ req_exec_ckpt_sync_section->id_len, 
+		req_exec_ckpt_sync_section->data_offset, 
+		req_exec_ckpt_sync_section->data_size);
 	if (retcode != SA_AIS_OK) {
-		log_printf(LOG_LEVEL_ERROR, "CKPT: message_handler_req_exec_ckpt_synchronize_section\n");
-		log_printf(LOG_LEVEL_ERROR, "CKPT: recovery_section_write returned %d\n",retcode);		
+		log_printf(LOG_LEVEL_ERROR, "message_handler_req_exec_ckpt_synchronize_section\n");
+		log_printf(LOG_LEVEL_ERROR, "recovery_section_write returned %d\n",retcode);		
 	}
 }
 
 
-unsigned int abstime_to_msec (SaTimeT time)
+unsigned int abstime_to_msec (mar_time_t time)
 {
 	struct timeval tv;
 	unsigned long long curr_time;
@@ -1948,49 +2169,49 @@ unsigned int abstime_to_msec (SaTimeT time)
 
 void timer_function_section_expire (void *data)
 {
-	struct saCkptCheckpoint *ckptCheckpoint = 0;
-	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
+	struct checkpoint *checkpoint = 0;
+	struct checkpoint_section *checkpoint_section = 0;
 	struct ckpt_identifier *ckpt_id = 0;
 
 	ckpt_id = (struct ckpt_identifier *)data;
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: timer_function_section_expire data = 0x%x \n",data);
-	if (ckpt_id->ckpt_section_id.idLen && ckpt_id->ckpt_section_id.id) {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: Attempting to Expire section %s in ckpt %s\n", 
+	log_printf (LOG_LEVEL_DEBUG, "timer_function_section_expire data = 0x%x \n",data);
+	if (ckpt_id->ckpt_section_id.id_len && ckpt_id->ckpt_section_id.id) {
+		log_printf (LOG_LEVEL_DEBUG, "Attempting to Expire section %s in ckpt %s\n", 
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value);
 	}
 	else {
-		log_printf (LOG_LEVEL_ERROR, "CKPT: timer_function_section_expire data incorect\n");
+		log_printf (LOG_LEVEL_ERROR, "timer_function_section_expire data incorect\n");
 		goto free_mem;
 	}
 	
-	ckptCheckpoint = ckpt_checkpoint_find_global (&ckpt_id->ckpt_name);
-        if (ckptCheckpoint == 0) {
-		log_printf (LOG_LEVEL_ERROR, "CKPT: timer_function_section_expire could not find ckpt %s\n",
+	checkpoint = checkpoint_find (&ckpt_id->ckpt_name);
+        if (checkpoint == 0) {
+		log_printf (LOG_LEVEL_ERROR, "timer_function_section_expire could not find ckpt %s\n",
                         (char *)&ckpt_id->ckpt_name.value);
 		goto free_mem;	
         }
 
-        ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
+        checkpoint_section = checkpoint_section_find (checkpoint,
                                                                 (char *)ckpt_id->ckpt_section_id.id,
-                                                                (int)ckpt_id->ckpt_section_id.idLen);
-        if (ckptCheckpointSection == 0) {
-		log_printf (LOG_LEVEL_ERROR, "CKPT: timer_function_section_expire could not find section %s in ckpt %s\n",
+                                                                (int)ckpt_id->ckpt_section_id.id_len);
+        if (checkpoint_section == 0) {
+		log_printf (LOG_LEVEL_ERROR, "timer_function_section_expire could not find section %s in ckpt %s\n",
                         ckpt_id->ckpt_section_id.id,
                         (char *)&ckpt_id->ckpt_name.value);
 		goto free_mem;
         }
 
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: Expiring section %s in ckpt %s\n",
+	log_printf (LOG_LEVEL_DEBUG, "Expiring section %s in ckpt %s\n",
                         ckpt_id->ckpt_section_id.id,
                         (char *)&ckpt_id->ckpt_name.value);
 
-	ckptCheckpoint->sectionCount -= 1;
+	checkpoint->sectionCount -= 1;
 	/*
 	 * defect id 1112 "memory leak in checkpoint service" Dont try to delete the timer as the timer
 	 * mechanism takes care of that. Just delete the data after this call
 	 */
-	checkpoint_section_and_associate_timer_cleanup (ckptCheckpointSection, 0);
+	checkpoint_section_and_associate_timer_cleanup (checkpoint_section, 0);
 free_mem :
 	free (ckpt_id);
 	
@@ -1998,7 +2219,7 @@ free_mem :
 
 void timer_function_retention (void *data)
 {
-	struct saCkptCheckpoint *checkpoint = (struct saCkptCheckpoint *)data;
+	struct checkpoint *checkpoint = (struct checkpoint *)data;
 	struct req_exec_ckpt_checkpointretentiondurationexpire req_exec_ckpt_checkpointretentiondurationexpire;
 	struct iovec iovec;
 
@@ -2009,9 +2230,9 @@ void timer_function_retention (void *data)
 		SERVICE_ID_MAKE (CKPT_SERVICE,
 			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTRETENTIONDURATIONEXPIRE);
 
-	memcpy (&req_exec_ckpt_checkpointretentiondurationexpire.checkpointName,
+	memcpy (&req_exec_ckpt_checkpointretentiondurationexpire.checkpoint_name,
 		&checkpoint->name,
-		sizeof (SaNameT));
+		sizeof (mar_name_t));
 
 	iovec.iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationexpire;
 	iovec.iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationexpire);
@@ -2025,15 +2246,16 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 {
 	struct req_exec_ckpt_checkpointclose *req_exec_ckpt_checkpointclose = (struct req_exec_ckpt_checkpointclose *)message;
 	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
-	struct saCkptCheckpoint *checkpoint = 0;
+	struct checkpoint *checkpoint = 0;
 	SaAisErrorT error = SA_AIS_OK;
 	int proc_index;
 	int release_checkpoint = 0;
 
-	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to close checkpoint %s\n", getSaNameT (&req_exec_ckpt_checkpointclose->checkpointName));
+	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to close checkpoint %s\n", get_mar_name_t (&req_exec_ckpt_checkpointclose->checkpoint_name));
 
-	checkpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_checkpointclose->checkpointName);
+	checkpoint = checkpoint_find (&req_exec_ckpt_checkpointclose->checkpoint_name);
 	if (checkpoint == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 		
@@ -2044,13 +2266,13 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 	 * sent out later as a part of the sync process.	 
 	 */
 	
-	proc_index = processor_index_find(nodeid, checkpoint->ckpt_refcount);
+	proc_index = processor_index_find(nodeid, checkpoint->ckpt_refcnt);
 	if (proc_index != -1 ) {	 		
-	 	checkpoint->ckpt_refcount[proc_index].count--;
+	 	checkpoint->ckpt_refcnt[proc_index].count--;
 	}
 	else {
 		log_printf (LOG_LEVEL_ERROR, 
-	 				"CKPT: Could Not find Processor Info %p info.\n", 
+	 				"Could Not find Processor Info %p info.\n", 
 	 				checkpoint);
 	}
 	assert (checkpoint->referenceCount > 0); /*defect 1192*/
@@ -2066,7 +2288,7 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 	} else
 	if (checkpoint->referenceCount == 1 ) { /*defect 1192*/		
 		openais_timer_add (
-			checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
+			checkpoint->checkpoint_creation_attributes.retention_duration / 1000000,
 			checkpoint,
 			timer_function_retention,
 			&checkpoint->retention_timer);
@@ -2075,18 +2297,23 @@ static void message_handler_req_exec_ckpt_checkpointclose (
 error_exit:
 	/*Remove the checkpoint from my connections checkpoint list*/
 	if (message_source_is_local(&req_exec_ckpt_checkpointclose->source)) {
-		ckpt_checkpoint_remove_cleanup (
-			req_exec_ckpt_checkpointclose->source.conn,
-			checkpoint);
 
 		res_lib_ckpt_checkpointclose.header.size = sizeof (struct res_lib_ckpt_checkpointclose);
 		res_lib_ckpt_checkpointclose.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTCLOSE;
 		res_lib_ckpt_checkpointclose.header.error = error;
 		openais_conn_send_response (req_exec_ckpt_checkpointclose->source.conn,
 			&res_lib_ckpt_checkpointclose, sizeof (struct res_lib_ckpt_checkpointclose));
+		if (error == SA_AIS_OK) {
+			ckpt_checkpoint_remove_cleanup (
+				req_exec_ckpt_checkpointclose->source.conn,
+				checkpoint);
+		}
 	}
-	/*Release the checkpoint if instructed to do so.*/
-	if (release_checkpoint) {
+
+	/*
+	 * Release the checkpoint if instructed to do so.
+	 */
+	if (error == SA_AIS_OK && release_checkpoint) {
 		checkpoint_release(checkpoint);
 	}
 }
@@ -2097,31 +2324,30 @@ static void message_handler_req_exec_ckpt_checkpointunlink (
 {
 	struct req_exec_ckpt_checkpointunlink *req_exec_ckpt_checkpointunlink = (struct req_exec_ckpt_checkpointunlink *)message;
 
-	struct req_lib_ckpt_checkpointunlink *req_lib_ckpt_checkpointunlink = (struct req_lib_ckpt_checkpointunlink *)&req_exec_ckpt_checkpointunlink->req_lib_ckpt_checkpointunlink;
 	struct res_lib_ckpt_checkpointunlink res_lib_ckpt_checkpointunlink;
-	struct saCkptCheckpoint *ckptCheckpoint = 0;
+	struct checkpoint *checkpoint = 0;
 	SaAisErrorT error = SA_AIS_OK;
 	
 	log_printf (LOG_LEVEL_DEBUG, "Got EXEC request to unlink checkpoint %p\n", req_exec_ckpt_checkpointunlink);
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointunlink->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = checkpoint_find (&req_exec_ckpt_checkpointunlink->checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
-	if (ckptCheckpoint->unlinked) {
+	if (checkpoint->unlinked) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
-	ckptCheckpoint->unlinked = 1;
+	checkpoint->unlinked = 1;
 	/*
 	 * Immediately delete entry if reference count is zero
 	 */
-	if (ckptCheckpoint->referenceCount == 1) { /*defect 1192*/
+	if (checkpoint->referenceCount == 1) { /*defect 1192*/
 		/*
 		 * Remove retention timer since this checkpoint was unlinked and is no
 		 * longer referenced
 		 */
-		checkpoint_release (ckptCheckpoint);
+		checkpoint_release (checkpoint);
 	}
 
 error_exit:
@@ -2145,22 +2371,22 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationset (
 {
 	struct req_exec_ckpt_checkpointretentiondurationset *req_exec_ckpt_checkpointretentiondurationset = (struct req_exec_ckpt_checkpointretentiondurationset *)message;
 	struct res_lib_ckpt_checkpointretentiondurationset res_lib_ckpt_checkpointretentiondurationset;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 	SaAisErrorT error = SA_AIS_ERR_BAD_OPERATION;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_checkpointretentiondurationset->checkpointName);
+	checkpoint = checkpoint_find (&req_exec_ckpt_checkpointretentiondurationset->checkpoint_name);
 	if (checkpoint) {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: Setting retention duration for checkpoint %s\n",
-			getSaNameT (&req_exec_ckpt_checkpointretentiondurationset->checkpointName));
+		log_printf (LOG_LEVEL_DEBUG, "Setting retention duration for checkpoint %s\n",
+			get_mar_name_t (&req_exec_ckpt_checkpointretentiondurationset->checkpoint_name));
 		if (checkpoint->unlinked == 0) {
-			checkpoint->checkpointCreationAttributes.retentionDuration =
-				req_exec_ckpt_checkpointretentiondurationset->retentionDuration;
+			checkpoint->checkpoint_creation_attributes.retention_duration =
+				req_exec_ckpt_checkpointretentiondurationset->retention_duration;
 	
 			if (checkpoint->expired == 0 && checkpoint->referenceCount == 1) { /*defect 1192*/
 				openais_timer_delete (checkpoint->retention_timer);
 	
 				openais_timer_add (
-					checkpoint->checkpointCreationAttributes.retentionDuration / 1000000,
+					checkpoint->checkpoint_creation_attributes.retention_duration / 1000000,
 					checkpoint,
 					timer_function_retention,
 					&checkpoint->retention_timer);
@@ -2190,12 +2416,12 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 {
 	struct req_exec_ckpt_checkpointretentiondurationexpire *req_exec_ckpt_checkpointretentiondurationexpire = (struct req_exec_ckpt_checkpointretentiondurationexpire *)message;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
-	struct saCkptCheckpoint *checkpoint;
-	struct iovec iovecs[2];
+	struct checkpoint *checkpoint;
+	struct iovec iovec;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName);
+	checkpoint = checkpoint_find (&req_exec_ckpt_checkpointretentiondurationexpire->checkpoint_name);
 	if (checkpoint && (checkpoint->expired == 0) && (checkpoint->referenceCount == 1)) { /*defect 1192*/
-		log_printf (LOG_LEVEL_NOTICE, "CKPT: Expiring checkpoint %s\n", getSaNameT (&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName));
+		log_printf (LOG_LEVEL_NOTICE, "Expiring checkpoint %s\n", get_mar_name_t (&req_exec_ckpt_checkpointretentiondurationexpire->checkpoint_name));
 		checkpoint->expired = 1;
 
 		req_exec_ckpt_checkpointunlink.header.size =
@@ -2207,38 +2433,39 @@ static void message_handler_req_exec_ckpt_checkpointretentiondurationexpire (
 		req_exec_ckpt_checkpointunlink.source.conn = 0;
 		req_exec_ckpt_checkpointunlink.source.nodeid = 0;
 
-		memcpy (&req_exec_ckpt_checkpointunlink.req_lib_ckpt_checkpointunlink.checkpointName,
-			&req_exec_ckpt_checkpointretentiondurationexpire->checkpointName,
-			sizeof (SaNameT));
+		memcpy (&req_exec_ckpt_checkpointunlink.checkpoint_name,
+			&req_exec_ckpt_checkpointretentiondurationexpire->checkpoint_name,
+			sizeof (mar_name_t));
 
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
+		iovec.iov_base = (char *)&req_exec_ckpt_checkpointunlink;
+		iovec.iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+		assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 	}
 }
 
-static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
-	SaNameT *checkpointName,
-	char* SectionId) 
+static int recovery_section_create (
+	mar_ckpt_section_descriptor_t *section_descriptor,
+	mar_name_t *checkpoint_name,
+	char *section_id) 
 {
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	void *initialData;
-	void *sectionId;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
+	void *initial_data;
 	struct ckpt_identifier *ckpt_id = 0;
 	SaAisErrorT error = SA_AIS_OK;		
+	void *section_id_new;
 	
-	if ((int)sectionDescriptor->sectionId.idLen) {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, section %s.\n",
-			&checkpointName->value, SectionId);
+	if ((int)section_descriptor->section_id.id_len) {
+		log_printf (LOG_LEVEL_DEBUG, "recovery_section_create for checkpoint %s, section %s.\n",
+			&checkpoint_name->value, section_id);
 	} else {
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create for checkpoint %s, default section.\n",
-			&checkpointName->value);
+		log_printf (LOG_LEVEL_DEBUG, "recovery_section_create for checkpoint %s, default section.\n",
+			&checkpoint_name->value);
 	}
 	
-	ckptCheckpoint = ckpt_checkpoint_find_global (checkpointName);
-	if (ckptCheckpoint == 0) {		
+	checkpoint = checkpoint_find (checkpoint_name);
+	if (checkpoint == 0) {		
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2246,33 +2473,34 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	/*
 	 * Determine if user-specified checkpoint ID already exists
 	 */	
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-								 SectionId,
-								(int)sectionDescriptor->sectionId.idLen);
-	if (ckptCheckpointSection) {
+	checkpoint_section = checkpoint_section_find (
+		checkpoint,
+		section_id,
+		(int)section_descriptor->section_id.id_len);
+	if (checkpoint_section) {
 		/*
 		 * This use case is mostly for the default section and is not probable for any other
 		 * sections.
 		 */
-		if (sectionDescriptor->sectionSize
-			> ckptCheckpointSection->sectionDescriptor.sectionSize) {
+		if (section_descriptor->section_size
+			> checkpoint_section->section_descriptor.section_size) {
 			
 			log_printf (LOG_LEVEL_NOTICE, 
-				"CKPT: recovery_section_create reallocating data. Present Size: %d, New Size: %d\n",
-				ckptCheckpointSection->sectionDescriptor.sectionSize,sectionDescriptor->sectionSize);
+				"recovery_section_create reallocating data. Present Size: %d, New Size: %d\n",
+				checkpoint_section->section_descriptor.section_size,section_descriptor->section_size);
 
-			ckptCheckpointSection->sectionData =
-				realloc (ckptCheckpointSection->sectionData, sectionDescriptor->sectionSize);
+			checkpoint_section->section_data =
+				realloc (checkpoint_section->section_data, section_descriptor->section_size);
 
-			if (ckptCheckpointSection->sectionData == 0) {
+			if (checkpoint_section->section_data == 0) {
 				log_printf (LOG_LEVEL_ERROR,
-					"CKPT: recovery_section_create sectionData realloc returned 0 Calling error_exit.\n");
+					"recovery_section_create section_data realloc returned 0 Calling error_exit.\n");
 				error = SA_AIS_ERR_NO_MEMORY;
-				checkpoint_section_release(ckptCheckpointSection);
+				checkpoint_section_release(checkpoint_section);
 				goto error_exit;
 			}
 
-			ckptCheckpointSection->sectionDescriptor.sectionSize = sectionDescriptor->sectionSize;
+			checkpoint_section->section_descriptor.section_size = section_descriptor->section_size;
 			error = SA_AIS_OK;
 			
 		}
@@ -2285,82 +2513,83 @@ static int recovery_section_create (SaCkptSectionDescriptorT *sectionDescriptor,
 	/*
 	 * Allocate checkpoint section	
 	 */
-	ckptCheckpointSection = malloc (sizeof (struct saCkptCheckpointSection));
-	if (ckptCheckpointSection == 0) {
+	checkpoint_section = malloc (sizeof (struct checkpoint_section));
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
 	/*
 	 * Allocate checkpoint section data
 	 */
-	initialData = malloc (sectionDescriptor->sectionSize);
-	if (initialData == 0) {
-		free (ckptCheckpointSection);
+	initial_data = malloc (section_descriptor->section_size);
+	if (initial_data == 0) {
+		free (checkpoint_section);
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
 	/*
 	 * Allocate checkpoint section id
 	 */
-	if (sectionDescriptor->sectionId.idLen) {
-		sectionId = malloc ((int)sectionDescriptor->sectionId.idLen);
-		if (sectionId == 0) {
-			free (ckptCheckpointSection);
-			free (initialData);
+	section_id_new = NULL;
+	if (section_descriptor->section_id.id_len) {
+		section_id_new = malloc ((int)section_descriptor->section_id.id_len);
+		if (section_id_new == 0) {
+			free (checkpoint_section);
+			free (initial_data);
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
-	} else {
-		sectionId = 0;
 	}
+
 	/*
 	 * Copy checkpoint section ID and initialize data.
 	 */
-	if (SectionId) {
-		memcpy ((char*)sectionId, (char*)SectionId, (int)sectionDescriptor->sectionId.idLen);
-	} else {
-		sectionId = 0;		
+	if (section_id) {
+		memcpy ((char*)section_id_new, (char*)section_id,
+			(int)section_descriptor->section_id.id_len);
 	}
-	memset (initialData, 0, sectionDescriptor->sectionSize);
+	memset (initial_data, 0, section_descriptor->section_size);
 	
 	/*
 	 * Configure checkpoint section
 	 */
-	memcpy(&ckptCheckpointSection->sectionDescriptor, 
-			sectionDescriptor,
-			sizeof(SaCkptSectionDescriptorT));	
-	ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;	
-	ckptCheckpointSection->sectionData = initialData;
-	ckptCheckpointSection->expiration_timer = 0;
-	ckptCheckpointSection->sectionDescriptor.sectionId.id = sectionId;
+	memcpy(&checkpoint_section->section_descriptor, 
+			section_descriptor,
+			sizeof(mar_ckpt_section_descriptor_t));	
+	checkpoint_section->section_descriptor.section_state = SA_CKPT_SECTION_VALID;	
+	checkpoint_section->section_data = initial_data;
+	checkpoint_section->expiration_timer = 0;
+	checkpoint_section->section_descriptor.section_id.id = section_id_new;
 
-	if (sectionDescriptor->expirationTime != SA_TIME_END) {		
+	if (section_descriptor->expiration_time != SA_TIME_END) {		
 		ckpt_id = malloc (sizeof(struct ckpt_identifier));
 		assert(ckpt_id);
-		memcpy(&ckpt_id->ckpt_name,checkpointName,sizeof(SaNameT));
-		memcpy(&ckpt_id->ckpt_section_id, &ckptCheckpointSection->sectionDescriptor.sectionId,sizeof(SaCkptSectionIdT));
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create Enqueuing Timer to Expire section %s in ckpt %s\n",
+		memcpy(&ckpt_id->ckpt_name, checkpoint_name,
+			sizeof(mar_name_t));
+		memcpy(&ckpt_id->ckpt_section_id,
+			&checkpoint_section->section_descriptor.section_id,
+			sizeof(mar_ckpt_section_id_t));
+		log_printf (LOG_LEVEL_DEBUG, "recovery_section_create Enqueuing Timer to Expire section %s in ckpt %s\n",
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value);
 		openais_timer_add (
-			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
+			abstime_to_msec (checkpoint_section->section_descriptor.expiration_time),
 			ckpt_id,
 			timer_function_section_expire,
-			&ckptCheckpointSection->expiration_timer);
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_create expiration timer = 0x%x\n",
-			ckptCheckpointSection->expiration_timer);
+			&checkpoint_section->expiration_timer);
+		log_printf (LOG_LEVEL_DEBUG, "recovery_section_create expiration timer = 0x%x\n",
+			checkpoint_section->expiration_timer);
 	}
 
 	/*
 	 * Add checkpoint section to checkpoint
 	 */
-	list_init (&ckptCheckpointSection->list);
-	list_add (&ckptCheckpointSection->list,
-		&ckptCheckpoint->sections_list_head);
+	list_init (&checkpoint_section->list);
+	list_add (&checkpoint_section->list,
+		&checkpoint->sections_list_head);
 
 error_exit:
 	return (error);				
-
 }
 
 static void message_handler_req_exec_ckpt_sectioncreate (
@@ -2368,34 +2597,33 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectioncreate *req_exec_ckpt_sectioncreate = (struct req_exec_ckpt_sectioncreate *)message;
-	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)&req_exec_ckpt_sectioncreate->req_lib_ckpt_sectioncreate;
 	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	void *initialData;
-	void *sectionId;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
+	void *initial_data;
+	void *section_id;
 	struct ckpt_identifier *ckpt_id = 0;
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to create a checkpoint section.\n");
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectioncreate->checkpointName);
-	if (ckptCheckpoint == 0) {
-		error = SA_AIS_ERR_LIBRARY; /* TODO find the right error for this*/
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectioncreate->checkpoint_name);
+	if (checkpoint == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->sectionCount == ckptCheckpoint->checkpointCreationAttributes.maxSections) {
+	if (checkpoint->sectionCount == checkpoint->checkpoint_creation_attributes.max_sections) {
 		error = SA_AIS_ERR_NO_SPACE;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->checkpointCreationAttributes.maxSections == 1) {
+	if (checkpoint->checkpoint_creation_attributes.max_sections == 1) {
 		error = SA_AIS_ERR_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < 
-		req_lib_ckpt_sectioncreate->initialDataSize) {
+	if (checkpoint->checkpoint_creation_attributes.max_section_size < 
+		req_exec_ckpt_sectioncreate->initial_data_size) {
 
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
@@ -2404,10 +2632,11 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	/*
 	 * Determine if user-specified checkpoint section already exists
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate),
-		req_lib_ckpt_sectioncreate->idLen);
-	if (ckptCheckpointSection) {
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)req_exec_ckpt_sectioncreate) +
+			sizeof (struct req_exec_ckpt_sectioncreate),
+		req_exec_ckpt_sectioncreate->id_len);
+	if (checkpoint_section) {
 		error = SA_AIS_ERR_EXIST;
 		goto error_exit;
 	}
@@ -2415,27 +2644,27 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	/*
 	 * Allocate checkpoint section
 	 */
-	ckptCheckpointSection = malloc (sizeof (struct saCkptCheckpointSection));
-	if (ckptCheckpointSection == 0) {
+	checkpoint_section = malloc (sizeof (struct checkpoint_section));
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
 	/*
 	 * Allocate checkpoint section data
 	 */
-	initialData = malloc (req_lib_ckpt_sectioncreate->initialDataSize);
-	if (initialData == 0) {
-		free (ckptCheckpointSection);
+	initial_data = malloc (req_exec_ckpt_sectioncreate->initial_data_size);
+	if (initial_data == 0) {
+		free (checkpoint_section);
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
 	/*
 	 * Allocate checkpoint section id
 	 */
-	sectionId = malloc (req_lib_ckpt_sectioncreate->idLen);
-	if (sectionId == 0) {
-		free (ckptCheckpointSection);
-		free (initialData);
+	section_id = malloc (req_exec_ckpt_sectioncreate->id_len + 1);
+	if (section_id == 0) {
+		free (checkpoint_section);
+		free (initial_data);
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
@@ -2443,57 +2672,68 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 	/*
 	 * Copy checkpoint section and section ID
 	 */
-	memcpy (sectionId, ((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate),
-		req_lib_ckpt_sectioncreate->idLen);
+	memcpy (section_id,
+		((char *)req_exec_ckpt_sectioncreate) +
+			sizeof (struct req_exec_ckpt_sectioncreate),
+		req_exec_ckpt_sectioncreate->id_len);
 
 	/*Must be null terminated if it already isn't*/
-	((char*)(sectionId))[req_lib_ckpt_sectioncreate->idLen] = '\0';
+	((char*)(section_id))[req_exec_ckpt_sectioncreate->id_len] = '\0';
 	
-	memcpy (initialData,
-		((char *)req_lib_ckpt_sectioncreate) +
-			sizeof (struct req_lib_ckpt_sectioncreate) +
-			req_lib_ckpt_sectioncreate->idLen,
-		req_lib_ckpt_sectioncreate->initialDataSize);
+	memcpy (initial_data,
+		((char *)req_exec_ckpt_sectioncreate) +
+			sizeof (struct req_exec_ckpt_sectioncreate) +
+			req_exec_ckpt_sectioncreate->id_len,
+		req_exec_ckpt_sectioncreate->initial_data_size);
 
 	/*
 	 * Configure checkpoint section
 	 */
-	ckptCheckpointSection->sectionDescriptor.sectionId.id = sectionId;
-	ckptCheckpointSection->sectionDescriptor.sectionId.idLen = req_lib_ckpt_sectioncreate->idLen;
-	ckptCheckpointSection->sectionDescriptor.sectionSize = req_lib_ckpt_sectioncreate->initialDataSize;
-	ckptCheckpointSection->sectionDescriptor.expirationTime = req_lib_ckpt_sectioncreate->expirationTime;
-	ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
-	ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /* TODO current time */
-	ckptCheckpointSection->sectionData = initialData;
-	ckptCheckpointSection->expiration_timer = 0;
+	checkpoint_section->section_descriptor.section_id.id = section_id;
+	checkpoint_section->section_descriptor.section_id.id_len =
+		req_exec_ckpt_sectioncreate->id_len;
+	checkpoint_section->section_descriptor.section_size =
+		req_exec_ckpt_sectioncreate->initial_data_size;
+	checkpoint_section->section_descriptor.expiration_time =
+		req_exec_ckpt_sectioncreate->expiration_time;
+	checkpoint_section->section_descriptor.section_state =
+		SA_CKPT_SECTION_VALID;
+	checkpoint_section->section_descriptor.last_update = 0; /* TODO current time */
+	checkpoint_section->section_data = initial_data;
+	checkpoint_section->expiration_timer = 0;
 
-	if (req_lib_ckpt_sectioncreate->expirationTime != SA_TIME_END) {
+	if (req_exec_ckpt_sectioncreate->expiration_time != SA_TIME_END) {
 		ckpt_id = malloc (sizeof(struct ckpt_identifier));
 		assert(ckpt_id);
-		memcpy(&ckpt_id->ckpt_name,&req_exec_ckpt_sectioncreate->checkpointName,sizeof(SaNameT));
-		memcpy(&ckpt_id->ckpt_section_id, &ckptCheckpointSection->sectionDescriptor.sectionId,sizeof(SaCkptSectionIdT));
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: req_exec_ckpt_sectioncreate Enqueuing Timer to Expire section %s in ckpt %s\n",
+		memcpy(&ckpt_id->ckpt_name,
+			&req_exec_ckpt_sectioncreate->checkpoint_name,
+			sizeof(mar_name_t));
+		memcpy(&ckpt_id->ckpt_section_id,
+			&checkpoint_section->section_descriptor.section_id,
+			sizeof(mar_ckpt_section_id_t));
+		log_printf (LOG_LEVEL_DEBUG, "req_exec_ckpt_sectioncreate Enqueuing Timer to Expire section %s in ckpt %s\n",
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value);
 		openais_timer_add (
-			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
+			abstime_to_msec (checkpoint_section->section_descriptor.expiration_time),
 			ckpt_id,
 			timer_function_section_expire,
-			&ckptCheckpointSection->expiration_timer);
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: req_exec_ckpt_sectionicreate expiration timer = 0x%x\n",
-			ckptCheckpointSection->expiration_timer);
+			&checkpoint_section->expiration_timer);
+		log_printf (LOG_LEVEL_DEBUG, "req_exec_ckpt_sectionicreate expiration timer = 0x%x\n",
+			checkpoint_section->expiration_timer);
 	}
 
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: message_handler_req_exec_ckpt_sectioncreate created section with id = %s, idLen = %d\n",
-					ckptCheckpointSection->sectionDescriptor.sectionId.id,
-					ckptCheckpointSection->sectionDescriptor.sectionId.idLen); 
+	log_printf (LOG_LEVEL_DEBUG,
+		"message_handler_req_exec_ckpt_sectioncreate created section with id = %s, id_len = %d\n",
+		checkpoint_section->section_descriptor.section_id.id,
+		checkpoint_section->section_descriptor.section_id.id_len); 
 	/*
 	 * Add checkpoint section to checkpoint
 	 */
-	list_init (&ckptCheckpointSection->list);
-	list_add (&ckptCheckpointSection->list,
-		&ckptCheckpoint->sections_list_head);
-	ckptCheckpoint->sectionCount += 1;
+	list_init (&checkpoint_section->list);
+	list_add (&checkpoint_section->list,
+		&checkpoint->sections_list_head);
+	checkpoint->sectionCount += 1;
 
 error_exit:
 	if (message_source_is_local(&req_exec_ckpt_sectioncreate->source)) {
@@ -2512,20 +2752,19 @@ static void message_handler_req_exec_ckpt_sectiondelete (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectiondelete *req_exec_ckpt_sectiondelete = (struct req_exec_ckpt_sectiondelete *)message;
-	struct req_lib_ckpt_sectiondelete *req_lib_ckpt_sectiondelete = (struct req_lib_ckpt_sectiondelete *)&req_exec_ckpt_sectiondelete->req_lib_ckpt_sectiondelete;
 	struct res_lib_ckpt_sectiondelete res_lib_ckpt_sectiondelete;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
 	SaAisErrorT error = SA_AIS_OK;
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectiondelete->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectiondelete->checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->active_replica_set == 0) {
-		log_printf (LOG_LEVEL_NOTICE, "sectiondelete: no active replica, returning error.\n");
+	if (checkpoint->active_replica_set == 0) {
+		log_printf (LOG_LEVEL_DEBUG, "sectiondelete: no active replica, returning error.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2533,7 +2772,7 @@ static void message_handler_req_exec_ckpt_sectiondelete (
 	/*
 	 * Determine if the user is trying to delete the default section
 	 */
-	if (req_lib_ckpt_sectiondelete->idLen == 0) {
+	if (req_exec_ckpt_sectiondelete->id_len == 0) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
@@ -2541,10 +2780,10 @@ static void message_handler_req_exec_ckpt_sectiondelete (
 	/*
 	 * Find checkpoint section to be deleted
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)(req_lib_ckpt_sectiondelete) + sizeof (struct req_lib_ckpt_sectiondelete)),
-		req_lib_ckpt_sectiondelete->idLen);
-	if (ckptCheckpointSection == 0) {
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)(req_exec_ckpt_sectiondelete) + sizeof (struct req_exec_ckpt_sectiondelete)),
+		req_exec_ckpt_sectiondelete->id_len);
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2552,8 +2791,8 @@ static void message_handler_req_exec_ckpt_sectiondelete (
 	/*
 	 * Delete checkpoint section
 	 */
-	ckptCheckpoint->sectionCount -= 1;
-	checkpoint_section_release (ckptCheckpointSection);
+	checkpoint->sectionCount -= 1;
+	checkpoint_section_release (checkpoint_section);
 
 	/*
 	 * return result to CKPT library
@@ -2576,21 +2815,20 @@ static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionexpirationtimeset *req_exec_ckpt_sectionexpirationtimeset = (struct req_exec_ckpt_sectionexpirationtimeset *)message;
-	struct req_lib_ckpt_sectionexpirationtimeset *req_lib_ckpt_sectionexpirationtimeset = (struct req_lib_ckpt_sectionexpirationtimeset *)&req_exec_ckpt_sectionexpirationtimeset->req_lib_ckpt_sectionexpirationtimeset;
 	struct res_lib_ckpt_sectionexpirationtimeset res_lib_ckpt_sectionexpirationtimeset;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
 	struct ckpt_identifier *ckpt_id = 0;
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to set section expiratoin time\n");
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionexpirationtimeset->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectionexpirationtimeset->checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->active_replica_set == 0) {
+	if (checkpoint->active_replica_set == 0) {
 		log_printf (LOG_LEVEL_NOTICE, "expirationset: no active replica, returning error.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
@@ -2599,7 +2837,7 @@ static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 	/*
 	 * Determine if the user is trying to set expiration time for the default section
 	 */
-	if (req_lib_ckpt_sectionexpirationtimeset->idLen == 0) {
+	if (req_exec_ckpt_sectionexpirationtimeset->id_len == 0) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
@@ -2607,43 +2845,50 @@ static void message_handler_req_exec_ckpt_sectionexpirationtimeset (
 	/*
 	 * Find checkpoint section that expiration time should be set for
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)req_lib_ckpt_sectionexpirationtimeset) +
-			sizeof (struct req_lib_ckpt_sectionexpirationtimeset),
-		req_lib_ckpt_sectionexpirationtimeset->idLen);
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)req_exec_ckpt_sectionexpirationtimeset) +
+			sizeof (struct req_exec_ckpt_sectionexpirationtimeset),
+		req_exec_ckpt_sectionexpirationtimeset->id_len);
 
-	if (ckptCheckpointSection == 0) {
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	ckptCheckpointSection->sectionDescriptor.expirationTime = req_lib_ckpt_sectionexpirationtimeset->expirationTime;
+	checkpoint_section->section_descriptor.expiration_time =
+		req_exec_ckpt_sectionexpirationtimeset->expiration_time;
 
-	openais_timer_delete (ckptCheckpointSection->expiration_timer);
-	ckptCheckpointSection->expiration_timer = 0;
+	openais_timer_delete (checkpoint_section->expiration_timer);
+	checkpoint_section->expiration_timer = 0;
 
-	if (req_lib_ckpt_sectionexpirationtimeset->expirationTime != SA_TIME_END) {
+	if (req_exec_ckpt_sectionexpirationtimeset->expiration_time != SA_TIME_END) {
 		ckpt_id = malloc (sizeof(struct ckpt_identifier));
 		assert(ckpt_id);
-		memcpy(&ckpt_id->ckpt_name,&req_exec_ckpt_sectionexpirationtimeset->checkpointName,sizeof(SaNameT));
-		memcpy(&ckpt_id->ckpt_section_id, &ckptCheckpointSection->sectionDescriptor.sectionId,sizeof(SaCkptSectionIdT));
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: req_exec_ckpt_sectionexpirationtimeset Enqueuing Timer to Expire section %s in ckpt %s, ref = 0x%x\n",
+		memcpy(&ckpt_id->ckpt_name,
+			&req_exec_ckpt_sectionexpirationtimeset->checkpoint_name,
+			sizeof(mar_name_t));
+		memcpy(&ckpt_id->ckpt_section_id,
+			&checkpoint_section->section_descriptor.section_id,
+			sizeof(mar_ckpt_section_id_t));
+		log_printf (LOG_LEVEL_DEBUG, "req_exec_ckpt_sectionexpirationtimeset Enqueuing Timer to Expire section %s in ckpt %s, ref = 0x%x\n",
 			ckpt_id->ckpt_section_id.id,
 			(char *)&ckpt_id->ckpt_name.value,
 			ckpt_id);
 		openais_timer_add (
-			abstime_to_msec (ckptCheckpointSection->sectionDescriptor.expirationTime),
+			abstime_to_msec (checkpoint_section->section_descriptor.expiration_time),
 			ckpt_id,
 			timer_function_section_expire,
-			&ckptCheckpointSection->expiration_timer);
-		log_printf (LOG_LEVEL_DEBUG, "CKPT: req_exec_ckpt_sectionexpirationtimeset expiration timer = 0x%x\n", 
-			ckptCheckpointSection->expiration_timer);
+			&checkpoint_section->expiration_timer);
+		log_printf (LOG_LEVEL_DEBUG, "req_exec_ckpt_sectionexpirationtimeset expiration timer = 0x%x\n", 
+			checkpoint_section->expiration_timer);
 	}
 
 error_exit:
-	if (message_source_is_local(&req_exec_ckpt_sectionexpirationtimeset->source)) {
-		res_lib_ckpt_sectionexpirationtimeset.header.size = sizeof (struct res_lib_ckpt_sectionexpirationtimeset);
-		res_lib_ckpt_sectionexpirationtimeset.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
+	if (message_source_is_local (&req_exec_ckpt_sectionexpirationtimeset->source)) {
+		res_lib_ckpt_sectionexpirationtimeset.header.size =
+			sizeof (struct res_lib_ckpt_sectionexpirationtimeset);
+		res_lib_ckpt_sectionexpirationtimeset.header.id =
+			 MESSAGE_RES_CKPT_CHECKPOINT_SECTIONEXPIRATIONTIMESET;
 		res_lib_ckpt_sectionexpirationtimeset.header.error = error;
 
 		openais_conn_send_response (
@@ -2653,22 +2898,22 @@ error_exit:
 	}
 }
 
-static int recovery_section_write(int sectionIdLen, 
-	char* sectionId,
-	SaNameT *checkpointName,
-	void *newData,
-	SaUint32T dataOffSet,
-	SaUint32T dataSize) 
+static int recovery_section_write(int section_id_len, 
+	char* section_id,
+	mar_name_t *checkpoint_name,
+	void *new_data,
+	mar_uint32_t data_offset,
+	mar_uint32_t data_size) 
 {
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	int sizeRequired;	
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
+	int size_required;	
 	SaAisErrorT error = SA_AIS_OK;
 	char *sd;	
 	
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: recovery_section_write.\n");
-	ckptCheckpoint = ckpt_checkpoint_find_global (checkpointName);
-	if (ckptCheckpoint == 0) {
+	log_printf (LOG_LEVEL_DEBUG, "recovery_section_write.\n");
+	checkpoint = checkpoint_find (checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2676,10 +2921,9 @@ static int recovery_section_write(int sectionIdLen,
 	/*
 	 * Find checkpoint section to be written
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-								sectionId,
-								sectionIdLen);
-	if (ckptCheckpointSection == 0) {		
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		section_id, section_id_len);
+	if (checkpoint_section == 0) {		
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2687,12 +2931,12 @@ static int recovery_section_write(int sectionIdLen,
 	/*
 	 * If write would extend past end of section data, return error;
 	 */
-	sizeRequired = dataOffSet + dataSize;
-	if (sizeRequired > ckptCheckpointSection->sectionDescriptor.sectionSize) {
+	size_required = data_offset + data_size;
+	if (size_required > checkpoint_section->section_descriptor.section_size) {
 		log_printf (LOG_LEVEL_ERROR,
-			"recovery_section_write. write-past-end sizeRequired:(%d), dataOffSet:(%d), dataSize:(%d), sync-section-size:(%d)\n",
-			sizeRequired, dataOffSet, dataSize,
-			(int)ckptCheckpointSection->sectionDescriptor.sectionSize);
+			"recovery_section_write. write-past-end size_required:(%d), data_offset:(%d), data_size:(%d), sync-section-size:(%d)\n",
+			size_required, data_offset, data_size,
+			(int)checkpoint_section->section_descriptor.section_size);
 		error = SA_AIS_ERR_ACCESS;
 		goto error_exit;		
 	}
@@ -2700,11 +2944,9 @@ static int recovery_section_write(int sectionIdLen,
 	/*
 	 * Write checkpoint section to section data
 	 */
-	if (dataSize > 0) {			
-		sd = (char *)ckptCheckpointSection->sectionData;
-		memcpy (&sd[dataOffSet],
-			newData,
-			dataSize);
+	if (data_size > 0) {			
+		sd = (char *)checkpoint_section->section_data;
+		memcpy (&sd[data_offset], new_data, data_size);
 	}	
 error_exit:	
 	return (error);	
@@ -2716,48 +2958,51 @@ static void message_handler_req_exec_ckpt_sectionwrite (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionwrite *req_exec_ckpt_sectionwrite = (struct req_exec_ckpt_sectionwrite *)message;
-	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)&req_exec_ckpt_sectionwrite->req_lib_ckpt_sectionwrite;
 	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
-	int sizeRequired;
-	void *sectionData;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section = 0;
+	int size_required;
+	void *section_data;
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to section write.\n");
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionwrite->checkpointName);
-	if (ckptCheckpoint == 0) {
-		log_printf (LOG_LEVEL_ERROR, "CKPT: ckpt_checkpoint_find_global returned 0 Calling error_exit.\n");
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectionwrite->checkpoint_name);
+	if (checkpoint == 0) {
+		log_printf (LOG_LEVEL_ERROR, "checkpoint_find returned 0 Calling error_exit.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
-	if (ckptCheckpoint->active_replica_set == 0) {
+
+	if (checkpoint->active_replica_set == 0) {
 		log_printf (LOG_LEVEL_NOTICE, "checkpointwrite: no active replica, returning error.\n");
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < req_lib_ckpt_sectionwrite->dataSize) {
+	if (checkpoint->checkpoint_creation_attributes.max_section_size < req_exec_ckpt_sectionwrite->data_size) {
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
 
 	log_printf (LOG_LEVEL_DEBUG, "writing checkpoint section is %s\n",
-		((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
+		((char *)req_exec_ckpt_sectionwrite) +
+			sizeof (struct req_exec_ckpt_sectionwrite));
 
 	/*
 	 * Find checkpoint section to be written
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite),
-		req_lib_ckpt_sectionwrite->idLen);
-	if (ckptCheckpointSection == 0) {
-		if (req_lib_ckpt_sectionwrite->idLen == 0) {
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)req_exec_ckpt_sectionwrite) +
+			sizeof (struct req_exec_ckpt_sectionwrite),
+		req_exec_ckpt_sectionwrite->id_len);
+	if (checkpoint_section == 0) {
+		if (req_exec_ckpt_sectionwrite->id_len == 0) {
 			log_printf (LOG_LEVEL_DEBUG, "CANT FIND DEFAULT SECTION.\n");
 		}
 		else {
 			log_printf (LOG_LEVEL_DEBUG, "CANT FIND SECTION '%s'\n",
-				((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite));
+				((char *)req_exec_ckpt_sectionwrite) +
+				sizeof (struct req_exec_ckpt_sectionwrite));
 		}
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
@@ -2766,11 +3011,12 @@ static void message_handler_req_exec_ckpt_sectionwrite (
 	/*
 	 * If write would extend past end of section data, enlarge section
 	 */
-	sizeRequired = req_lib_ckpt_sectionwrite->dataOffset + req_lib_ckpt_sectionwrite->dataSize;
-	if (sizeRequired > ckptCheckpointSection->sectionDescriptor.sectionSize) {
-		sectionData = realloc (ckptCheckpointSection->sectionData, sizeRequired);
-		if (sectionData == 0) {
-			log_printf (LOG_LEVEL_ERROR, "CKPT: sectionData realloc returned 0 Calling error_exit.\n");
+	size_required = req_exec_ckpt_sectionwrite->data_offset +
+		req_exec_ckpt_sectionwrite->data_size;
+	if (size_required > checkpoint_section->section_descriptor.section_size) {
+		section_data = realloc (checkpoint_section->section_data, size_required);
+		if (section_data == 0) {
+			log_printf (LOG_LEVEL_ERROR, "section_data realloc returned 0 Calling error_exit.\n");
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
@@ -2778,30 +3024,33 @@ static void message_handler_req_exec_ckpt_sectionwrite (
 		/*
 		 * Install new section data
 		 */
-		ckptCheckpointSection->sectionData = sectionData;
-		ckptCheckpointSection->sectionDescriptor.sectionSize = sizeRequired;
+		checkpoint_section->section_data = section_data;
+		checkpoint_section->section_descriptor.section_size = size_required;
 	}
 
 	/*
 	 * Write checkpoint section to section data
 	 */
-	if (req_lib_ckpt_sectionwrite->dataSize > 0) {
+	if (req_exec_ckpt_sectionwrite->data_size > 0) {
 		char *sd;
 		int *val;
-		val = ckptCheckpointSection->sectionData;
-		sd = (char *)ckptCheckpointSection->sectionData;
-		memcpy (&sd[req_lib_ckpt_sectionwrite->dataOffset],
-			((char *)req_exec_ckpt_sectionwrite) + sizeof (struct req_exec_ckpt_sectionwrite) + 
-				req_lib_ckpt_sectionwrite->idLen,
-			req_lib_ckpt_sectionwrite->dataSize);
+		val = checkpoint_section->section_data;
+		sd = (char *)checkpoint_section->section_data;
+		memcpy (&sd[req_exec_ckpt_sectionwrite->data_offset],
+			((char *)req_exec_ckpt_sectionwrite) +
+				sizeof (struct req_exec_ckpt_sectionwrite) + 
+				req_exec_ckpt_sectionwrite->id_len,
+			req_exec_ckpt_sectionwrite->data_size);
 	}
 	/*
-	 * Write write response to CKPT library
+	 * Write sectionwrite response to CKPT library
 	 */
 error_exit:
 	if (message_source_is_local(&req_exec_ckpt_sectionwrite->source)) {
-		res_lib_ckpt_sectionwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
-		res_lib_ckpt_sectionwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
+		res_lib_ckpt_sectionwrite.header.size =
+			sizeof (struct res_lib_ckpt_sectionwrite);
+		res_lib_ckpt_sectionwrite.header.id =
+			MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
 		res_lib_ckpt_sectionwrite.header.error = error;
 
 		openais_conn_send_response (
@@ -2816,21 +3065,22 @@ static void message_handler_req_exec_ckpt_sectionoverwrite (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionoverwrite *req_exec_ckpt_sectionoverwrite = (struct req_exec_ckpt_sectionoverwrite *)message;
-	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)&req_exec_ckpt_sectionoverwrite->req_lib_ckpt_sectionoverwrite;
 	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection;
-	void *sectionData;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
+	void *section_data;
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to section overwrite.\n");
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionoverwrite->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectionoverwrite->checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
-	if (ckptCheckpoint->checkpointCreationAttributes.maxSectionSize < req_lib_ckpt_sectionoverwrite->dataSize) {
+	if (checkpoint->checkpoint_creation_attributes.max_section_size <
+		req_exec_ckpt_sectionoverwrite->data_size) {
+
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
@@ -2838,11 +3088,11 @@ static void message_handler_req_exec_ckpt_sectionoverwrite (
 	/*
 	 * Find checkpoint section to be overwritten
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)req_lib_ckpt_sectionoverwrite) +
-			sizeof (struct req_lib_ckpt_sectionoverwrite),
-		req_lib_ckpt_sectionoverwrite->idLen);
-	if (ckptCheckpointSection == 0) {
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)req_exec_ckpt_sectionoverwrite) +
+			sizeof (struct req_exec_ckpt_sectionoverwrite),
+		req_exec_ckpt_sectionoverwrite->id_len);
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2850,38 +3100,45 @@ static void message_handler_req_exec_ckpt_sectionoverwrite (
 	/*
 	 * Allocate checkpoint section data
 	 */
-	sectionData = malloc (req_lib_ckpt_sectionoverwrite->dataSize);
-	if (sectionData == 0) {
+	section_data = malloc (req_exec_ckpt_sectionoverwrite->data_size);
+	if (section_data == 0) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_exit;
 	}
 
-	memcpy (sectionData,
-		((char *)req_lib_ckpt_sectionoverwrite) +
-			sizeof (struct req_lib_ckpt_sectionoverwrite) +
-			req_lib_ckpt_sectionoverwrite->idLen,
-		req_lib_ckpt_sectionoverwrite->dataSize);
+	memcpy (section_data,
+		((char *)req_exec_ckpt_sectionoverwrite) +
+			sizeof (struct req_exec_ckpt_sectionoverwrite) +
+			req_exec_ckpt_sectionoverwrite->id_len,
+		req_exec_ckpt_sectionoverwrite->data_size);
 
 	/*
 	 * release old checkpoint section data
 	 */
-	free (ckptCheckpointSection->sectionData);
+	free (checkpoint_section->section_data);
 
 	/*
 	 * Install overwritten checkpoint section data
 	 */
-	ckptCheckpointSection->sectionDescriptor.sectionSize = req_lib_ckpt_sectionoverwrite->dataSize;
-	ckptCheckpointSection->sectionDescriptor.sectionState = SA_CKPT_SECTION_VALID;
-	ckptCheckpointSection->sectionDescriptor.lastUpdate = 0; /* TODO current time */
-	ckptCheckpointSection->sectionData = sectionData;
+	checkpoint_section->section_descriptor.section_size =
+		req_exec_ckpt_sectionoverwrite->data_size;
+	checkpoint_section->section_descriptor.section_state =
+		SA_CKPT_SECTION_VALID;
+	/*
+	 * TODO current time
+	 */
+	checkpoint_section->section_descriptor.last_update = 0;
+	checkpoint_section->section_data = section_data;
 
 	/*
 	 * return result to CKPT library
 	 */
 error_exit:
 	if (message_source_is_local(&req_exec_ckpt_sectionoverwrite->source)) {
-		res_lib_ckpt_sectionoverwrite.header.size = sizeof (struct res_lib_ckpt_sectionoverwrite);
-		res_lib_ckpt_sectionoverwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
+		res_lib_ckpt_sectionoverwrite.header.size =
+			sizeof (struct res_lib_ckpt_sectionoverwrite);
+		res_lib_ckpt_sectionoverwrite.header.id =
+			MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
 		res_lib_ckpt_sectionoverwrite.header.error = error;
 
 		openais_conn_send_response (
@@ -2896,18 +3153,18 @@ static void message_handler_req_exec_ckpt_sectionread (
 	unsigned int nodeid)
 {
 	struct req_exec_ckpt_sectionread *req_exec_ckpt_sectionread = (struct req_exec_ckpt_sectionread *)message;
-	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)&req_exec_ckpt_sectionread->req_lib_ckpt_sectionread;
 	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
-	struct saCkptCheckpoint *ckptCheckpoint;
-	struct saCkptCheckpointSection *ckptCheckpointSection = 0;
-	int sectionSize = 0;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section = 0;
+	int section_size = 0;
 	SaAisErrorT error = SA_AIS_OK;
-	res_lib_ckpt_sectionread.dataRead = 0;
+
+	res_lib_ckpt_sectionread.data_read = 0;
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request for section read.\n");
 
-	ckptCheckpoint = ckpt_checkpoint_find_global (&req_exec_ckpt_sectionread->checkpointName);
-	if (ckptCheckpoint == 0) {
+	checkpoint = checkpoint_find (&req_exec_ckpt_sectionread->checkpoint_name);
+	if (checkpoint == 0) {
 		error = SA_AIS_ERR_LIBRARY; /* TODO find the right error for this */
 		goto error_exit;
 	}
@@ -2915,11 +3172,11 @@ static void message_handler_req_exec_ckpt_sectionread (
 	/*
 	 * Find checkpoint section to be read
 	 */
-	ckptCheckpointSection = ckpt_checkpoint_find_globalSection (ckptCheckpoint,
-		((char *)req_lib_ckpt_sectionread) +
-			sizeof (struct req_lib_ckpt_sectionread),
-		req_lib_ckpt_sectionread->idLen);
-	if (ckptCheckpointSection == 0) {
+	checkpoint_section = checkpoint_section_find (checkpoint,
+		((char *)req_exec_ckpt_sectionread) +
+			sizeof (struct req_exec_ckpt_sectionread),
+		req_exec_ckpt_sectionread->id_len);
+	if (checkpoint_section == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
@@ -2927,22 +3184,22 @@ static void message_handler_req_exec_ckpt_sectionread (
 	/*
 	 * Determine the section size
 	 */
-	sectionSize = ckptCheckpointSection->sectionDescriptor.sectionSize -
-		req_lib_ckpt_sectionread->dataOffset;
+	section_size = checkpoint_section->section_descriptor.section_size -
+		req_exec_ckpt_sectionread->data_offset;
 
 	/*
 	 * If the library has less space available then can be sent from the
 	 * section, reduce bytes sent to library to max requested
 	 */
-	if (sectionSize > req_lib_ckpt_sectionread->dataSize) {
-		sectionSize = req_lib_ckpt_sectionread->dataSize;
+	if (section_size > req_exec_ckpt_sectionread->data_size) {
+		section_size = req_exec_ckpt_sectionread->data_size;
 	}
 
 	/*
-	 * If dataOffset is past end of data, return INVALID PARAM
+	 * If data_offset is past end of data, return INVALID PARAM
 	 */
-	if (req_lib_ckpt_sectionread->dataOffset > ckptCheckpointSection->sectionDescriptor.sectionSize) {
-		sectionSize = 0;
+	if (req_exec_ckpt_sectionread->data_offset > checkpoint_section->section_descriptor.section_size) {
+		section_size = 0;
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
@@ -2952,12 +3209,12 @@ static void message_handler_req_exec_ckpt_sectionread (
 	 */
 error_exit:
 	if (message_source_is_local(&req_exec_ckpt_sectionread->source)) {
-		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread) + sectionSize;
+		res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread) + section_size;
 		res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
 		res_lib_ckpt_sectionread.header.error = error;
 
-		if (sectionSize != 0) {
-			res_lib_ckpt_sectionread.dataRead = sectionSize;
+		if (section_size != 0) {
+			res_lib_ckpt_sectionread.data_read = section_size;
 		}
 	
 		openais_conn_send_response (
@@ -2968,13 +3225,13 @@ error_exit:
 		/*
 		 * Write checkpoint to CKPT library section if section has data
 		 */
-		if (sectionSize) {
+		if (error == SA_AIS_OK) {
 			char *sd;
-			sd = (char *)ckptCheckpointSection->sectionData;
+			sd = (char *)checkpoint_section->section_data;
 			openais_conn_send_response (
 				req_exec_ckpt_sectionread->source.conn,
-				&sd[req_lib_ckpt_sectionread->dataOffset],
-				sectionSize);
+				&sd[req_exec_ckpt_sectionread->data_offset],
+				section_size);
 		}
 	}
 }
@@ -3038,7 +3295,7 @@ static void message_handler_req_lib_ckpt_checkpointopen (
 {
 	struct req_lib_ckpt_checkpointopen *req_lib_ckpt_checkpointopen = (struct req_lib_ckpt_checkpointopen *)msg;
 	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
-	struct iovec iovecs[2];
+	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint.\n");
 	req_exec_ckpt_checkpointopen.header.size =
@@ -3047,51 +3304,27 @@ static void message_handler_req_lib_ckpt_checkpointopen (
 		SERVICE_ID_MAKE (CKPT_SERVICE, MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN);
 
 	message_source_set (&req_exec_ckpt_checkpointopen.source, conn);
+	memcpy (&req_exec_ckpt_checkpointopen.checkpoint_name,
+		&req_lib_ckpt_checkpointopen->checkpoint_name,
+		sizeof (mar_name_t));
+	memcpy (&req_exec_ckpt_checkpointopen.checkpoint_creation_attributes,
+		&req_lib_ckpt_checkpointopen->checkpoint_creation_attributes,
+		sizeof (mar_ckpt_checkpoint_creation_attributes_t));
+	req_exec_ckpt_checkpointopen.checkpoint_open_flags = 
+		req_lib_ckpt_checkpointopen->checkpoint_open_flags;
+	req_exec_ckpt_checkpointopen.invocation =
+		req_lib_ckpt_checkpointopen->invocation;
+	req_exec_ckpt_checkpointopen.checkpoint_handle =
+		req_lib_ckpt_checkpointopen->checkpoint_handle;
+	req_exec_ckpt_checkpointopen.fail_with_error =
+		req_lib_ckpt_checkpointopen->fail_with_error;
+	req_exec_ckpt_checkpointopen.async_call =
+		req_lib_ckpt_checkpointopen->async_call;
 
-	memcpy (&req_exec_ckpt_checkpointopen.req_lib_ckpt_checkpointopen,
-		req_lib_ckpt_checkpointopen,
-		sizeof (struct req_lib_ckpt_checkpointopen));
-	
-	req_exec_ckpt_checkpointopen.async_call = 0;
-	req_exec_ckpt_checkpointopen.invocation = 0;
-	req_exec_ckpt_checkpointopen.checkpointHandle = 0;
-	req_exec_ckpt_checkpointopen.fail_with_error = SA_AIS_OK;
+	iovec.iov_base = (char *)&req_exec_ckpt_checkpointopen;
+	iovec.iov_len = sizeof (req_exec_ckpt_checkpointopen);
 
-	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
-	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
-
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-}
-
-static void message_handler_req_lib_ckpt_checkpointopenasync (
-	void *conn,
-	void *msg)
-{
-	struct req_lib_ckpt_checkpointopenasync *req_lib_ckpt_checkpointopenasync = (struct req_lib_ckpt_checkpointopenasync *)msg;
-	struct req_exec_ckpt_checkpointopen req_exec_ckpt_checkpointopen;
-	struct iovec iovecs[2];
-
-	log_printf (LOG_LEVEL_DEBUG, "Library request to open checkpoint async.\n");
-	req_exec_ckpt_checkpointopen.header.size =
-		sizeof (struct req_exec_ckpt_checkpointopen);
-	req_exec_ckpt_checkpointopen.header.id =
-		SERVICE_ID_MAKE (CKPT_SERVICE, MESSAGE_REQ_EXEC_CKPT_CHECKPOINTOPEN);
-
-	message_source_set (&req_exec_ckpt_checkpointopen.source, conn);
-
-	memcpy (&req_exec_ckpt_checkpointopen.req_lib_ckpt_checkpointopen,
-		req_lib_ckpt_checkpointopenasync,
-		sizeof (struct req_lib_ckpt_checkpointopen));
-	
-	req_exec_ckpt_checkpointopen.async_call = 1;
-	req_exec_ckpt_checkpointopen.invocation = req_lib_ckpt_checkpointopenasync->invocation;
-	req_exec_ckpt_checkpointopen.checkpointHandle = req_lib_ckpt_checkpointopenasync->checkpointHandle;
-	req_exec_ckpt_checkpointopen.fail_with_error = req_lib_ckpt_checkpointopenasync->fail_with_error;
-
-	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointopen;
-	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointopen);
-
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 }
 
 static void message_handler_req_lib_ckpt_checkpointclose (
@@ -3100,42 +3333,23 @@ static void message_handler_req_lib_ckpt_checkpointclose (
 {
 	struct req_lib_ckpt_checkpointclose *req_lib_ckpt_checkpointclose = (struct req_lib_ckpt_checkpointclose *)msg;
 	struct req_exec_ckpt_checkpointclose req_exec_ckpt_checkpointclose;
-	struct iovec iovecs[2];
-	struct saCkptCheckpoint *checkpoint;
-	struct res_lib_ckpt_checkpointclose res_lib_ckpt_checkpointclose;
+	struct iovec iovec;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointclose->checkpointName);
-	if (checkpoint && (checkpoint->expired == 0)) {
-		req_exec_ckpt_checkpointclose.header.size =
-			sizeof (struct req_exec_ckpt_checkpointclose);
-		req_exec_ckpt_checkpointclose.header.id =
-			SERVICE_ID_MAKE (CKPT_SERVICE,
-				 MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE);
+	req_exec_ckpt_checkpointclose.header.size =
+		sizeof (struct req_exec_ckpt_checkpointclose);
+	req_exec_ckpt_checkpointclose.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_CHECKPOINTCLOSE);
 
-		message_source_set (&req_exec_ckpt_checkpointclose.source, conn);
+	message_source_set (&req_exec_ckpt_checkpointclose.source, conn);
 
-		memcpy (&req_exec_ckpt_checkpointclose.checkpointName,
-			&req_lib_ckpt_checkpointclose->checkpointName, sizeof (SaNameT));
+	memcpy (&req_exec_ckpt_checkpointclose.checkpoint_name,
+		&req_lib_ckpt_checkpointclose->checkpoint_name, sizeof (mar_name_t));
 
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointclose;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointclose);
+	iovec.iov_base = (char *)&req_exec_ckpt_checkpointclose;
+	iovec.iov_len = sizeof (req_exec_ckpt_checkpointclose);
 
-		if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-		}
-	}
-	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint to close so Returning Error. ####\n");
-
-		res_lib_ckpt_checkpointclose.header.size = sizeof (struct res_lib_ckpt_checkpointclose);
-		res_lib_ckpt_checkpointclose.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTCLOSE;
-		res_lib_ckpt_checkpointclose.header.error = SA_AIS_ERR_NOT_EXIST;
-
-		openais_conn_send_response (
-			conn,
-			&res_lib_ckpt_checkpointclose,
-			sizeof (struct res_lib_ckpt_checkpointclose));
-	}
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
 }
 
 static void message_handler_req_lib_ckpt_checkpointunlink (
@@ -3144,7 +3358,7 @@ static void message_handler_req_lib_ckpt_checkpointunlink (
 {
 	struct req_lib_ckpt_checkpointunlink *req_lib_ckpt_checkpointunlink = (struct req_lib_ckpt_checkpointunlink *)msg;
 	struct req_exec_ckpt_checkpointunlink req_exec_ckpt_checkpointunlink;
-	struct iovec iovecs[2];
+	struct iovec iovec;
 
 	req_exec_ckpt_checkpointunlink.header.size =
 		sizeof (struct req_exec_ckpt_checkpointunlink);
@@ -3153,14 +3367,15 @@ static void message_handler_req_lib_ckpt_checkpointunlink (
 
 	message_source_set (&req_exec_ckpt_checkpointunlink.source, conn);
 
-	memcpy (&req_exec_ckpt_checkpointunlink.req_lib_ckpt_checkpointunlink,
-		req_lib_ckpt_checkpointunlink,
-		sizeof (struct req_lib_ckpt_checkpointunlink));
+	memcpy (&req_exec_ckpt_checkpointunlink.checkpoint_name,
+		&req_lib_ckpt_checkpointunlink->checkpoint_name,
+		sizeof (mar_name_t));
 
-	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointunlink;
-	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointunlink);
+	iovec.iov_base = (char *)&req_exec_ckpt_checkpointunlink;
+	iovec.iov_len = sizeof (req_exec_ckpt_checkpointunlink);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
+		TOTEMPG_AGREED) == 0);
 }
 
 static void message_handler_req_lib_ckpt_checkpointretentiondurationset (
@@ -3169,7 +3384,7 @@ static void message_handler_req_lib_ckpt_checkpointretentiondurationset (
 {
 	struct req_lib_ckpt_checkpointretentiondurationset *req_lib_ckpt_checkpointretentiondurationset = (struct req_lib_ckpt_checkpointretentiondurationset *)msg;
 	struct req_exec_ckpt_checkpointretentiondurationset req_exec_ckpt_checkpointretentiondurationset;
-	struct iovec iovecs[2];
+	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_DEBUG, "DURATION SET FROM API conn %p\n", conn);
 	req_exec_ckpt_checkpointretentiondurationset.header.id =
@@ -3178,16 +3393,17 @@ static void message_handler_req_lib_ckpt_checkpointretentiondurationset (
 	req_exec_ckpt_checkpointretentiondurationset.header.size = sizeof (struct req_exec_ckpt_checkpointretentiondurationset);
 
 	message_source_set (&req_exec_ckpt_checkpointretentiondurationset.source, conn);
+	memcpy (&req_exec_ckpt_checkpointretentiondurationset.checkpoint_name,
+		&req_lib_ckpt_checkpointretentiondurationset->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_checkpointretentiondurationset.retention_duration =
+		req_lib_ckpt_checkpointretentiondurationset->retention_duration;
 
-	memcpy (&req_exec_ckpt_checkpointretentiondurationset.checkpointName,
-		&req_lib_ckpt_checkpointretentiondurationset->checkpointName,
-		sizeof (SaNameT));
-	req_exec_ckpt_checkpointretentiondurationset.retentionDuration = req_lib_ckpt_checkpointretentiondurationset->retentionDuration;
+	iovec.iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
+	iovec.iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
 
-	iovecs[0].iov_base = (char *)&req_exec_ckpt_checkpointretentiondurationset;
-	iovecs[0].iov_len = sizeof (req_exec_ckpt_checkpointretentiondurationset);
-
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
+		TOTEMPG_AGREED) == 0);
 
 }
 
@@ -3197,16 +3413,16 @@ static void message_handler_req_lib_ckpt_activereplicaset (
 {
 	struct req_lib_ckpt_activereplicaset *req_lib_ckpt_activereplicaset = (struct req_lib_ckpt_activereplicaset *)msg;
 	struct res_lib_ckpt_activereplicaset res_lib_ckpt_activereplicaset;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 	SaAisErrorT error = SA_AIS_OK;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_activereplicaset->checkpointName);
+	checkpoint = checkpoint_find (&req_lib_ckpt_activereplicaset->checkpoint_name);
 
 	/*
 	 * Make sure checkpoint is collocated and async update option
 	 */
-	if (((checkpoint->checkpointCreationAttributes.creationFlags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) ||
-		(checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+	if (((checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) ||
+		(checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
 		error = SA_AIS_ERR_BAD_OPERATION;
 	}
 	checkpoint->active_replica_set = 1;
@@ -3226,18 +3442,16 @@ static void message_handler_req_lib_ckpt_checkpointstatusget (
 {
 	struct req_lib_ckpt_checkpointstatusget *req_lib_ckpt_checkpointstatusget = (struct req_lib_ckpt_checkpointstatusget *)msg;
 	struct res_lib_ckpt_checkpointstatusget res_lib_ckpt_checkpointstatusget;
-	struct saCkptCheckpoint *checkpoint;
-	int memoryUsed = 0;
-	int numberOfSections = 0;
+	struct checkpoint *checkpoint;
+	int memory_used = 0;
+	int number_of_sections = 0;
 	struct list_head *checkpoint_section_list;
-	struct saCkptCheckpointSection *checkpointSection;
-
-	log_printf (LOG_LEVEL_DEBUG, "in status get\n");
+	struct checkpoint_section *checkpointSection;
 
 	/*
 	 * Count memory used by checkpoint sections
 	 */
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointstatusget->checkpointName);
+	checkpoint = checkpoint_find (&req_lib_ckpt_checkpointstatusget->checkpoint_name);
 	
 	if (checkpoint && (checkpoint->expired == 0)) {
 
@@ -3246,10 +3460,10 @@ static void message_handler_req_lib_ckpt_checkpointstatusget (
 			checkpoint_section_list = checkpoint_section_list->next) {
 
 			checkpointSection = list_entry (checkpoint_section_list,
-				struct saCkptCheckpointSection, list);
+				struct checkpoint_section, list);
 
-			memoryUsed += checkpointSection->sectionDescriptor.sectionSize;
-			numberOfSections += 1;
+			memory_used += checkpointSection->section_descriptor.section_size;
+			number_of_sections += 1;
 		}
 
 		/*
@@ -3263,20 +3477,19 @@ static void message_handler_req_lib_ckpt_checkpointstatusget (
 			res_lib_ckpt_checkpointstatusget.header.error = SA_AIS_ERR_NOT_EXIST;
 		}
 
-		memcpy (&res_lib_ckpt_checkpointstatusget.checkpointDescriptor.checkpointCreationAttributes,
-			&checkpoint->checkpointCreationAttributes,
-			sizeof (SaCkptCheckpointCreationAttributesT));
-		res_lib_ckpt_checkpointstatusget.checkpointDescriptor.numberOfSections = numberOfSections;
-		res_lib_ckpt_checkpointstatusget.checkpointDescriptor.memoryUsed = memoryUsed;
+		memcpy (&res_lib_ckpt_checkpointstatusget.checkpoint_descriptor.checkpoint_creation_attributes,
+			&checkpoint->checkpoint_creation_attributes,
+			sizeof (mar_ckpt_checkpoint_creation_attributes_t));
+		res_lib_ckpt_checkpointstatusget.checkpoint_descriptor.number_of_sections = number_of_sections;
+		res_lib_ckpt_checkpointstatusget.checkpoint_descriptor.memory_used = memory_used;
 	}
 	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint's status so Returning Error. ####\n");
+		log_printf (LOG_LEVEL_ERROR, "#### Could Not Find the Checkpoint's status so Returning Error. ####\n");
 
 		res_lib_ckpt_checkpointstatusget.header.size = sizeof (struct res_lib_ckpt_checkpointstatusget);
 		res_lib_ckpt_checkpointstatusget.header.id = MESSAGE_RES_CKPT_CHECKPOINT_CHECKPOINTSTATUSGET;
 		res_lib_ckpt_checkpointstatusget.header.error = SA_AIS_ERR_NOT_EXIST;
 	}
-	log_printf (LOG_LEVEL_DEBUG, "before sending message\n");
 	openais_conn_send_response (
 		conn,
 		&res_lib_ckpt_checkpointstatusget,
@@ -3290,66 +3503,46 @@ static void message_handler_req_lib_ckpt_sectioncreate (
 	struct req_lib_ckpt_sectioncreate *req_lib_ckpt_sectioncreate = (struct req_lib_ckpt_sectioncreate *)msg;
 	struct req_exec_ckpt_sectioncreate req_exec_ckpt_sectioncreate;
 	struct iovec iovecs[2];
-	struct saCkptCheckpoint *checkpoint;
-	struct res_lib_ckpt_sectioncreate res_lib_ckpt_sectioncreate;
 
 	log_printf (LOG_LEVEL_DEBUG, "Section create from conn %p\n", conn);
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioncreate->checkpointName);
+	req_exec_ckpt_sectioncreate.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE);
+	req_exec_ckpt_sectioncreate.header.size = sizeof (struct req_exec_ckpt_sectioncreate);
 
-	if (checkpoint && (checkpoint->expired == 0)) {
-		/*
-		 * checkpoint opened is writeable mode so send message to cluster
-		 */
-		req_exec_ckpt_sectioncreate.header.id =
-			SERVICE_ID_MAKE (CKPT_SERVICE,
-				MESSAGE_REQ_EXEC_CKPT_SECTIONCREATE);
-		req_exec_ckpt_sectioncreate.header.size = sizeof (struct req_exec_ckpt_sectioncreate);
+	message_source_set (&req_exec_ckpt_sectioncreate.source, conn);
 
-		memcpy (&req_exec_ckpt_sectioncreate.req_lib_ckpt_sectioncreate,
-			req_lib_ckpt_sectioncreate,
-			sizeof (struct req_lib_ckpt_sectioncreate));
+	memcpy (&req_exec_ckpt_sectioncreate.checkpoint_name,
+		&req_lib_ckpt_sectioncreate->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_sectioncreate.id_len = req_lib_ckpt_sectioncreate->id_len;
+	req_exec_ckpt_sectioncreate.expiration_time =
+		req_lib_ckpt_sectioncreate->expiration_time;
+	req_exec_ckpt_sectioncreate.initial_data_size =
+		req_lib_ckpt_sectioncreate->initial_data_size;
 	
-		memcpy (&req_exec_ckpt_sectioncreate.checkpointName,
-			&req_lib_ckpt_sectioncreate->checkpointName,
-			sizeof (SaNameT));
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectioncreate;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectioncreate);
 
-		message_source_set (&req_exec_ckpt_sectioncreate.source, conn);
-
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_sectioncreate;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_sectioncreate);
-		/*
-		 * Send section name and initial data in message
-		 */
-		iovecs[1].iov_base = ((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate);
-		iovecs[1].iov_len = req_lib_ckpt_sectioncreate->header.size - sizeof (struct req_lib_ckpt_sectioncreate);
-		req_exec_ckpt_sectioncreate.header.size += iovecs[1].iov_len;
+	/*
+	 * Send section name and initial data in message
+	 */
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectioncreate) + sizeof (struct req_lib_ckpt_sectioncreate);
+	iovecs[1].iov_len = req_lib_ckpt_sectioncreate->header.size - sizeof (struct req_lib_ckpt_sectioncreate);
+	req_exec_ckpt_sectioncreate.header.size += iovecs[1].iov_len;
 	
-		if (iovecs[1].iov_len) {
-			log_printf (LOG_LEVEL_DEBUG, "CKPT: message_handler_req_lib_ckpt_sectioncreate Section = %s, idLen = %d\n",
-				iovecs[1].iov_base,
-				iovecs[1].iov_len);
-		}
-	
-		if (iovecs[1].iov_len > 0) {
-			log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
-		} else {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-		}
-
+	if (iovecs[1].iov_len) {
+		log_printf (LOG_LEVEL_DEBUG, "message_handler_req_lib_ckpt_sectioncreate Section = %s, id_len = %d\n",
+			iovecs[1].iov_base,
+			iovecs[1].iov_len);
 	}
-	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint to create a section in so Returning Error. ####\n");
-
-		res_lib_ckpt_sectioncreate.header.size = sizeof (struct res_lib_ckpt_sectioncreate);
-		res_lib_ckpt_sectioncreate.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONCREATE;
-		res_lib_ckpt_sectioncreate.header.error = SA_AIS_ERR_NOT_EXIST;
-
-		openais_conn_send_response (
-			conn,
-			&res_lib_ckpt_sectioncreate,
-			sizeof (struct res_lib_ckpt_sectioncreate));
+	
+	if (iovecs[1].iov_len > 0) {
+		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
+	} else {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
 }
 
@@ -3368,15 +3561,12 @@ static void message_handler_req_lib_ckpt_sectiondelete (
 			MESSAGE_REQ_EXEC_CKPT_SECTIONDELETE);
 	req_exec_ckpt_sectiondelete.header.size = sizeof (struct req_exec_ckpt_sectiondelete);
 
-	memcpy (&req_exec_ckpt_sectiondelete.checkpointName,
-		&req_lib_ckpt_sectiondelete->checkpointName,
-		sizeof (SaNameT));
-
-	memcpy (&req_exec_ckpt_sectiondelete.req_lib_ckpt_sectiondelete,
-		req_lib_ckpt_sectiondelete,
-		sizeof (struct req_lib_ckpt_sectiondelete));
-
 	message_source_set (&req_exec_ckpt_sectiondelete.source, conn);
+
+	memcpy (&req_exec_ckpt_sectiondelete.checkpoint_name,
+		&req_lib_ckpt_sectiondelete->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_sectiondelete.id_len = req_lib_ckpt_sectiondelete->id_len;
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectiondelete;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectiondelete);
@@ -3384,8 +3574,10 @@ static void message_handler_req_lib_ckpt_sectiondelete (
 	/*
 	 * Send section name
 	 */
-	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectiondelete) + sizeof (struct req_lib_ckpt_sectiondelete);
-	iovecs[1].iov_len = req_lib_ckpt_sectiondelete->header.size - sizeof (struct req_lib_ckpt_sectiondelete);
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectiondelete) +
+		sizeof (struct req_lib_ckpt_sectiondelete);
+	iovecs[1].iov_len = req_lib_ckpt_sectiondelete->header.size -
+		sizeof (struct req_lib_ckpt_sectiondelete);
 	req_exec_ckpt_sectiondelete.header.size += iovecs[1].iov_len; 
 
 	if (iovecs[1].iov_len > 0) {
@@ -3409,15 +3601,15 @@ static void message_handler_req_lib_ckpt_sectionexpirationtimeset (
 			MESSAGE_REQ_EXEC_CKPT_SECTIONEXPIRATIONTIMESET);
 	req_exec_ckpt_sectionexpirationtimeset.header.size = sizeof (struct req_exec_ckpt_sectionexpirationtimeset);
 
-	memcpy (&req_exec_ckpt_sectionexpirationtimeset.checkpointName,
-		&req_lib_ckpt_sectionexpirationtimeset->checkpointName,
-		sizeof (SaNameT));
-
-	memcpy (&req_exec_ckpt_sectionexpirationtimeset.req_lib_ckpt_sectionexpirationtimeset,
-		req_lib_ckpt_sectionexpirationtimeset,
-		sizeof (struct req_lib_ckpt_sectionexpirationtimeset));
-
 	message_source_set (&req_exec_ckpt_sectionexpirationtimeset.source, conn);
+
+	memcpy (&req_exec_ckpt_sectionexpirationtimeset.checkpoint_name,
+		&req_lib_ckpt_sectionexpirationtimeset->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_sectionexpirationtimeset.id_len =
+		req_lib_ckpt_sectionexpirationtimeset->id_len;
+	req_exec_ckpt_sectionexpirationtimeset.expiration_time =
+		req_lib_ckpt_sectionexpirationtimeset->expiration_time;
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionexpirationtimeset;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionexpirationtimeset);
@@ -3425,12 +3617,13 @@ static void message_handler_req_lib_ckpt_sectionexpirationtimeset (
 	/*
 	 * Send section name
 	 */
-	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionexpirationtimeset) + sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
-	iovecs[1].iov_len = req_lib_ckpt_sectionexpirationtimeset->header.size - sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionexpirationtimeset) +
+		sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
+	iovecs[1].iov_len = req_lib_ckpt_sectionexpirationtimeset->header.size -
+		sizeof (struct req_lib_ckpt_sectionexpirationtimeset);
 	req_exec_ckpt_sectionexpirationtimeset.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
-		log_printf (LOG_LEVEL_DEBUG, "IOV_BASE is %p\n", iovecs[1].iov_base);
 		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 	} else {
 		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
@@ -3444,65 +3637,56 @@ static void message_handler_req_lib_ckpt_sectionwrite (
 	struct req_lib_ckpt_sectionwrite *req_lib_ckpt_sectionwrite = (struct req_lib_ckpt_sectionwrite *)msg;
 	struct req_exec_ckpt_sectionwrite req_exec_ckpt_sectionwrite;
 	struct iovec iovecs[2];
-	struct saCkptCheckpoint *checkpoint;
-	struct res_lib_ckpt_sectionwrite res_lib_ckpt_sectionwrite;
 	
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: Received data from lib with len = %d and ref = 0x%x\n",
-			req_lib_ckpt_sectionwrite->dataSize,
-		 	req_lib_ckpt_sectionwrite->dataOffset);
+	log_printf (LOG_LEVEL_DEBUG, "Received data from lib with len = %d and ref = 0x%x\n",
+		req_lib_ckpt_sectionwrite->data_size,
+	 	req_lib_ckpt_sectionwrite->data_offset);
 
-	log_printf (LOG_LEVEL_DEBUG, "CKPT: Checkpoint section being written to is %s, idLen = %d\n",
-			((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite),
-			req_lib_ckpt_sectionwrite->idLen); 
+	log_printf (LOG_LEVEL_DEBUG, "Checkpoint section being written to is %s, id_len = %d\n",
+		((char *)req_lib_ckpt_sectionwrite) +
+			sizeof (struct req_lib_ckpt_sectionwrite),
+		req_lib_ckpt_sectionwrite->id_len); 
 
 	log_printf (LOG_LEVEL_DEBUG, "Section write from conn %p\n", conn);
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionwrite->checkpointName);
 
-	if (checkpoint && (checkpoint->expired == 0)) {
-		/*
-		 * checkpoint opened is writeable mode so send message to cluster
-		 */
-		req_exec_ckpt_sectionwrite.header.id =
-			SERVICE_ID_MAKE (CKPT_SERVICE,
-				MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE);
-		req_exec_ckpt_sectionwrite.header.size = sizeof (struct req_exec_ckpt_sectionwrite); 
+	/*
+	 * checkpoint opened is writeable mode so send message to cluster
+	 */
+	req_exec_ckpt_sectionwrite.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONWRITE);
+	req_exec_ckpt_sectionwrite.header.size =
+		sizeof (struct req_exec_ckpt_sectionwrite); 
 
-		memcpy (&req_exec_ckpt_sectionwrite.req_lib_ckpt_sectionwrite,
-			req_lib_ckpt_sectionwrite,
-			sizeof (struct req_lib_ckpt_sectionwrite));
-	
-		memcpy (&req_exec_ckpt_sectionwrite.checkpointName,
-			&req_lib_ckpt_sectionwrite->checkpointName,
-			sizeof (SaNameT));
-	
-		message_source_set (&req_exec_ckpt_sectionwrite.source, conn);
-	
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionwrite;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionwrite);
-		/*
-		 * Send section name and data to write in message
-		 */
-		iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionwrite) + sizeof (struct req_lib_ckpt_sectionwrite);
-		iovecs[1].iov_len = req_lib_ckpt_sectionwrite->header.size - sizeof (struct req_lib_ckpt_sectionwrite);
-		req_exec_ckpt_sectionwrite.header.size += iovecs[1].iov_len;
-	
-		if (iovecs[1].iov_len > 0) {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
-		} else {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-		}
-	}	
-	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint to write to Returning Error. ####\n");
+	message_source_set (&req_exec_ckpt_sectionwrite.source, conn);
 
-		res_lib_ckpt_sectionwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
-		res_lib_ckpt_sectionwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONWRITE;
-		res_lib_ckpt_sectionwrite.header.error = SA_AIS_ERR_NOT_EXIST;
+	memcpy (&req_exec_ckpt_sectionwrite.checkpoint_name,
+		&req_lib_ckpt_sectionwrite->checkpoint_name,
+		sizeof (mar_name_t));
 
-		openais_conn_send_response (
-			conn,
-			&res_lib_ckpt_sectionwrite,
-			sizeof (struct res_lib_ckpt_sectionwrite));	
+	req_exec_ckpt_sectionwrite.id_len =
+		req_lib_ckpt_sectionwrite->id_len;
+	req_exec_ckpt_sectionwrite.data_offset =
+		req_lib_ckpt_sectionwrite->data_offset;
+	req_exec_ckpt_sectionwrite.data_size =
+		req_lib_ckpt_sectionwrite->data_size;
+	
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionwrite;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionwrite);
+
+	/*
+	 * Send section name and data to write in message
+	 */
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionwrite) +
+		sizeof (struct req_lib_ckpt_sectionwrite);
+	iovecs[1].iov_len = req_lib_ckpt_sectionwrite->header.size -
+		sizeof (struct req_lib_ckpt_sectionwrite);
+	req_exec_ckpt_sectionwrite.header.size += iovecs[1].iov_len;
+	
+	if (iovecs[1].iov_len > 0) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
+	} else {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
 }
 
@@ -3513,58 +3697,40 @@ static void message_handler_req_lib_ckpt_sectionoverwrite (
 	struct req_lib_ckpt_sectionoverwrite *req_lib_ckpt_sectionoverwrite = (struct req_lib_ckpt_sectionoverwrite *)msg;
 	struct req_exec_ckpt_sectionoverwrite req_exec_ckpt_sectionoverwrite;
 	struct iovec iovecs[2];
-	struct saCkptCheckpoint *checkpoint;
-	struct res_lib_ckpt_sectionoverwrite res_lib_ckpt_sectionoverwrite;
 
 	log_printf (LOG_LEVEL_DEBUG, "Section overwrite from conn %p\n", conn);
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionoverwrite->checkpointName);
 
-	if (checkpoint && (checkpoint->expired == 0) && (checkpoint->active_replica_set == 1)) {
-		/*
-		 * checkpoint opened is writeable mode so send message to cluster
-		 */
-		req_exec_ckpt_sectionoverwrite.header.id =
-			SERVICE_ID_MAKE (CKPT_SERVICE,
-				MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE);
-		req_exec_ckpt_sectionoverwrite.header.size = sizeof (struct req_exec_ckpt_sectionoverwrite); 
+	req_exec_ckpt_sectionoverwrite.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONOVERWRITE);
+	req_exec_ckpt_sectionoverwrite.header.size =
+		sizeof (struct req_exec_ckpt_sectionoverwrite); 
+	message_source_set (&req_exec_ckpt_sectionoverwrite.source, conn);
+	memcpy (&req_exec_ckpt_sectionoverwrite.checkpoint_name,
+		&req_lib_ckpt_sectionoverwrite->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_sectionoverwrite.id_len =
+		req_lib_ckpt_sectionoverwrite->id_len;
+	req_exec_ckpt_sectionoverwrite.data_size =
+		req_lib_ckpt_sectionoverwrite->data_size;
 	
-		memcpy (&req_exec_ckpt_sectionoverwrite.req_lib_ckpt_sectionoverwrite,
-			req_lib_ckpt_sectionoverwrite,
-			sizeof (struct req_lib_ckpt_sectionoverwrite));
-	
-		memcpy (&req_exec_ckpt_sectionoverwrite.checkpointName,
-			&req_lib_ckpt_sectionoverwrite->checkpointName,
-			sizeof (SaNameT));
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionoverwrite;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionoverwrite);
 
-		message_source_set (&req_exec_ckpt_sectionoverwrite.source, conn);
+	/*
+	 * Send section name and data to overwrite in message
+	 */
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionoverwrite) +
+		sizeof (struct req_lib_ckpt_sectionoverwrite);
+	iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size -
+		sizeof (struct req_lib_ckpt_sectionoverwrite);
+	req_exec_ckpt_sectionoverwrite.header.size += iovecs[1].iov_len;
 	
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionoverwrite;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionoverwrite);
-		/*
-		 * Send section name and data to overwrite in message
-		 */
-		iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionoverwrite) + sizeof (struct req_lib_ckpt_sectionoverwrite);
-		iovecs[1].iov_len = req_lib_ckpt_sectionoverwrite->header.size - sizeof (struct req_lib_ckpt_sectionoverwrite);
-		req_exec_ckpt_sectionoverwrite.header.size += iovecs[1].iov_len;
-	
-		if (iovecs[1].iov_len > 0) {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
-		} else {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-		}
+	if (iovecs[1].iov_len > 0) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
+	} else {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
-	else {
-		log_printf (LOG_LEVEL_ERROR, "#### CKPT: Could Not Find the Checkpoint to over write so Returning Error. ####\n");
-
-		res_lib_ckpt_sectionoverwrite.header.size = sizeof (struct res_lib_ckpt_sectionwrite);
-		res_lib_ckpt_sectionoverwrite.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONOVERWRITE;
-                res_lib_ckpt_sectionoverwrite.header.error = SA_AIS_ERR_NOT_EXIST;
-
-                openais_conn_send_response (
-			conn,
-                        &res_lib_ckpt_sectionoverwrite,
-                        sizeof (struct res_lib_ckpt_sectionoverwrite));
-        }
 }
 
 static void message_handler_req_lib_ckpt_sectionread (
@@ -3574,81 +3740,45 @@ static void message_handler_req_lib_ckpt_sectionread (
 	struct req_lib_ckpt_sectionread *req_lib_ckpt_sectionread = (struct req_lib_ckpt_sectionread *)msg;
 	struct req_exec_ckpt_sectionread req_exec_ckpt_sectionread;
 	struct iovec iovecs[2];
-	struct saCkptCheckpoint *checkpoint;
-	struct res_lib_ckpt_sectionread res_lib_ckpt_sectionread;
-	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "Section read from conn %p\n", conn);
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectionread->checkpointName);
 	
-	if (checkpoint && (checkpoint->expired == 0) &&
-		checkpoint->active_replica_set && 
+	/*
+	 * checkpoint opened is writeable mode so send message to cluster
+	 */
+	req_exec_ckpt_sectionread.header.id =
+		SERVICE_ID_MAKE (CKPT_SERVICE,
+			MESSAGE_REQ_EXEC_CKPT_SECTIONREAD);
+	req_exec_ckpt_sectionread.header.size =
+		sizeof (struct req_exec_ckpt_sectionread);
+	message_source_set (&req_exec_ckpt_sectionread.source, conn);
+	memcpy (&req_exec_ckpt_sectionread.checkpoint_name,
+		&req_lib_ckpt_sectionread->checkpoint_name,
+		sizeof (mar_name_t));
+	req_exec_ckpt_sectionread.id_len =
+		req_lib_ckpt_sectionread->id_len;
+	req_exec_ckpt_sectionread.data_offset =
+		req_lib_ckpt_sectionread->data_offset;
+	req_exec_ckpt_sectionread.data_size =
+		req_lib_ckpt_sectionread->data_size;
+	
+	iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionread;
+	iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionread);
 
-		req_lib_ckpt_sectionread->dataSize <=
-			checkpoint->checkpointCreationAttributes.maxSectionSize) {
-
-		/*
-		 * checkpoint opened is writeable mode so send message to cluster
-		 */
-		req_exec_ckpt_sectionread.header.id =
-			SERVICE_ID_MAKE (CKPT_SERVICE,
-				MESSAGE_REQ_EXEC_CKPT_SECTIONREAD);
-		req_exec_ckpt_sectionread.header.size = sizeof (struct req_exec_ckpt_sectionread);
-
-		memcpy (&req_exec_ckpt_sectionread.req_lib_ckpt_sectionread,
-			req_lib_ckpt_sectionread,
-			sizeof (struct req_lib_ckpt_sectionread));
-	
-		memcpy (&req_exec_ckpt_sectionread.checkpointName,
-			&req_lib_ckpt_sectionread->checkpointName,
-			sizeof (SaNameT));
-	
-		message_source_set (&req_exec_ckpt_sectionread.source, conn);
-	
-		iovecs[0].iov_base = (char *)&req_exec_ckpt_sectionread;
-		iovecs[0].iov_len = sizeof (req_exec_ckpt_sectionread);
 		/*
 		 * Send section name and data to overwrite in message
 		 */
-		iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionread) + sizeof (struct req_lib_ckpt_sectionread);
-		iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size - sizeof (struct req_lib_ckpt_sectionread);
-		req_exec_ckpt_sectionread.header.size += iovecs[1].iov_len;
-	
-		if (iovecs[1].iov_len > 0) {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
-		} else {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
-		}
-		return;
-	}
+	iovecs[1].iov_base = ((char *)req_lib_ckpt_sectionread) +
+		sizeof (struct req_lib_ckpt_sectionread);
+	iovecs[1].iov_len = req_lib_ckpt_sectionread->header.size -
+		sizeof (struct req_lib_ckpt_sectionread);
+	req_exec_ckpt_sectionread.header.size += iovecs[1].iov_len;
 
-	if (checkpoint) {
-		if (checkpoint->active_replica_set == 0) {
-			log_printf (LOG_LEVEL_DEBUG,
-				"sectionread - active replica not set.\n");
-			error = SA_AIS_ERR_NOT_EXIST;
-		}
-
-		if (req_lib_ckpt_sectionread->dataSize >
-			checkpoint->checkpointCreationAttributes.maxSectionSize) {
-
-			log_printf (LOG_LEVEL_DEBUG,
-				"sectionread - data size greater then max section size.\n");
-			error = SA_AIS_ERR_INVALID_PARAM;
-		}
+	if (iovecs[1].iov_len > 0) {
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2, TOTEMPG_AGREED) == 0);
 	} else {
-		log_printf (LOG_LEVEL_ERROR,
-			"sectionread - could not find checkpoint.\n");
+		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
 	}
-		
-	res_lib_ckpt_sectionread.header.size = sizeof (struct res_lib_ckpt_sectionread);
-	res_lib_ckpt_sectionread.header.id = MESSAGE_RES_CKPT_CHECKPOINT_SECTIONREAD;
-	res_lib_ckpt_sectionread.header.error = error;
-
-	openais_conn_send_response (
-		conn,
-		&res_lib_ckpt_sectionread,
-		sizeof (struct res_lib_ckpt_sectionread));
 }
 
 static void message_handler_req_lib_ckpt_checkpointsynchronize (
@@ -3657,10 +3787,10 @@ static void message_handler_req_lib_ckpt_checkpointsynchronize (
 {
 	struct req_lib_ckpt_checkpointsynchronize *req_lib_ckpt_checkpointsynchronize = (struct req_lib_ckpt_checkpointsynchronize *)msg;
 	struct res_lib_ckpt_checkpointsynchronize res_lib_ckpt_checkpointsynchronize;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointsynchronize->checkpointName);
-	if ((checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+	checkpoint = checkpoint_find (&req_lib_ckpt_checkpointsynchronize->checkpoint_name);
+	if ((checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
 		res_lib_ckpt_checkpointsynchronize.header.error = SA_AIS_ERR_BAD_OPERATION;
 	} else 
 	if (checkpoint->active_replica_set == 1) {
@@ -3684,10 +3814,10 @@ static void message_handler_req_lib_ckpt_checkpointsynchronizeasync (
 {
 	struct req_lib_ckpt_checkpointsynchronizeasync *req_lib_ckpt_checkpointsynchronizeasync = (struct req_lib_ckpt_checkpointsynchronizeasync *)msg;
 	struct res_lib_ckpt_checkpointsynchronizeasync res_lib_ckpt_checkpointsynchronizeasync;
-	struct saCkptCheckpoint *checkpoint;
+	struct checkpoint *checkpoint;
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_checkpointsynchronizeasync->checkpointName);
-	if ((checkpoint->checkpointCreationAttributes.creationFlags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
+	checkpoint = checkpoint_find (&req_lib_ckpt_checkpointsynchronizeasync->checkpoint_name);
+	if ((checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) == 0) {
 		res_lib_ckpt_checkpointsynchronizeasync.header.error = SA_AIS_ERR_BAD_OPERATION;
 	} else 
 	if (checkpoint->active_replica_set == 1) {
@@ -3717,8 +3847,8 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 {
 	struct req_lib_ckpt_sectioniterationinitialize *req_lib_ckpt_sectioniterationinitialize = (struct req_lib_ckpt_sectioniterationinitialize *)msg;
 	struct res_lib_ckpt_sectioniterationinitialize res_lib_ckpt_sectioniterationinitialize;
-	struct saCkptCheckpoint *checkpoint;
-	struct saCkptCheckpointSection *checkpoint_section;
+	struct checkpoint *checkpoint;
+	struct checkpoint_section *checkpoint_section;
 	struct iteration_entry *iteration_entries;
 	struct list_head *section_list;
 	struct iteration_instance *iteration_instance;
@@ -3731,7 +3861,7 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 
 	log_printf (LOG_LEVEL_DEBUG, "section iteration initialize\n");
 
-	checkpoint = ckpt_checkpoint_find_global (&req_lib_ckpt_sectioniterationinitialize->checkpointName);
+	checkpoint = checkpoint_find (&req_lib_ckpt_sectioniterationinitialize->checkpoint_name);
 	if (checkpoint == 0) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
@@ -3769,21 +3899,21 @@ static void message_handler_req_lib_ckpt_sectioniterationinitialize (
 		section_list = section_list->next) {
 
 		checkpoint_section = list_entry (section_list,
-			struct saCkptCheckpointSection, list);
+			struct checkpoint_section, list);
 
-		switch (req_lib_ckpt_sectioniterationinitialize->sectionsChosen) {
+		switch (req_lib_ckpt_sectioniterationinitialize->sections_chosen) {
 		case SA_CKPT_SECTIONS_FOREVER:
-			if (checkpoint_section->sectionDescriptor.expirationTime != SA_TIME_END) {
+			if (checkpoint_section->section_descriptor.expiration_time != SA_TIME_END) {
 				continue;
 			}
 			break;
 		case SA_CKPT_SECTIONS_LEQ_EXPIRATION_TIME:
-			if (checkpoint_section->sectionDescriptor.expirationTime > req_lib_ckpt_sectioniterationinitialize->expirationTime) {
+			if (checkpoint_section->section_descriptor.expiration_time > req_lib_ckpt_sectioniterationinitialize->expiration_time) {
 				continue;
 			}
 			break;
 		case SA_CKPT_SECTIONS_GEQ_EXPIRATION_TIME:
-			if (checkpoint_section->sectionDescriptor.expirationTime < req_lib_ckpt_sectioniterationinitialize->expirationTime) {
+			if (checkpoint_section->section_descriptor.expiration_time < req_lib_ckpt_sectioniterationinitialize->expiration_time) {
 				continue;
 			}
 			break;
@@ -3871,7 +4001,7 @@ static void message_handler_req_lib_ckpt_sectioniterationnext (
 	struct req_lib_ckpt_sectioniterationnext *req_lib_ckpt_sectioniterationnext = (struct req_lib_ckpt_sectioniterationnext *)msg;
 	struct res_lib_ckpt_sectioniterationnext res_lib_ckpt_sectioniterationnext;
 	SaAisErrorT error = SA_AIS_OK;
-	int sectionIdSize = 0;
+	int section_id_size = 0;
 	unsigned int res;
 	struct iteration_instance *iteration_instance = NULL; // this assignment to null makes no sense and is only needed with -O2 or greater TODO
 	void *iteration_instance_p;
@@ -3913,11 +4043,11 @@ static void message_handler_req_lib_ckpt_sectioniterationnext (
 	/*
 	 * Prepare response to API
 	 */
-	sectionIdSize = iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->sectionDescriptor.sectionId.idLen;
+	section_id_size = iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->section_descriptor.section_id.id_len;
 
-	memcpy (&res_lib_ckpt_sectioniterationnext.sectionDescriptor, 
-		&iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->sectionDescriptor,
-		sizeof (SaCkptSectionDescriptorT));
+	memcpy (&res_lib_ckpt_sectioniterationnext.section_descriptor, 
+		&iteration_instance->iteration_entries[iteration_instance->iteration_pos].checkpoint_section->section_descriptor,
+		sizeof (mar_ckpt_section_descriptor_t));
 
 	/*
 	 * Get to next iteration entry
@@ -3928,7 +4058,7 @@ error_put:
 	hdb_handle_put (&ckpt_pd->iteration_hdb, req_lib_ckpt_sectioniterationnext->iteration_handle);
 
 error_exit:
-	res_lib_ckpt_sectioniterationnext.header.size = sizeof (struct res_lib_ckpt_sectioniterationnext) + sectionIdSize;
+	res_lib_ckpt_sectioniterationnext.header.size = sizeof (struct res_lib_ckpt_sectioniterationnext) + section_id_size;
 	res_lib_ckpt_sectioniterationnext.header.id = MESSAGE_RES_CKPT_SECTIONITERATIONNEXT;
 	res_lib_ckpt_sectioniterationnext.header.error = error;
 
@@ -3937,10 +4067,12 @@ error_exit:
 		&res_lib_ckpt_sectioniterationnext,
 		sizeof (struct res_lib_ckpt_sectioniterationnext));
 
-	openais_conn_send_response (
-		conn,
-		iteration_instance->iteration_entries[
-			iteration_instance->iteration_pos - 1].
-				checkpoint_section->sectionDescriptor.sectionId.id,
-			sectionIdSize);
+	if (error == SA_AIS_OK) {
+		openais_conn_send_response (
+			conn,
+			iteration_instance->iteration_entries[
+				iteration_instance->iteration_pos - 1].
+					checkpoint_section->section_descriptor.section_id.id,
+				section_id_size);
+	}
 }

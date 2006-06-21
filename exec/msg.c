@@ -57,6 +57,7 @@
 #include "mempool.h"
 #include "util.h"
 #include "main.h"
+#include "ipc.h"
 #include "totempg.h"
 #include "print.h"
 
@@ -491,8 +492,8 @@ __attribute__ ((constructor)) static void register_this_component (void) {
  * All data types used for executive messages
  */
 struct req_exec_msg_queueopen {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	int async_call;
 	SaNameT queue_name;
 	SaInvocationT invocation;
@@ -503,79 +504,79 @@ struct req_exec_msg_queueopen {
 };
 
 struct req_exec_msg_queueclose {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 
 struct req_exec_msg_queuestatusget {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 
 struct req_exec_msg_queueunlink {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 
 struct req_exec_msg_queuegroupcreate {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_queuegroupinsert {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_queuegroupremove {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_queuegroupdelete {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_queuegrouptrack {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_queuegrouptrackstop {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_group_name;
 };
 struct req_exec_msg_messagesend {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT destination;
 	int async_call;
 };
 struct req_exec_msg_messageget {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 struct req_exec_msg_messagecancel {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 struct req_exec_msg_messagesendreceive {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 };
 struct req_exec_msg_messagereply {
-	struct req_header header;
-	struct message_source source;
+	mar_req_header_t header;
+	mar_message_source_t source;
 	SaNameT queue_name;
 	int async_call;
 };
@@ -807,7 +808,7 @@ error_exit:
 			res_lib_msg_queueopenasync.invocation = req_exec_msg_queueopen->invocation;
 			memcpy (&res_lib_msg_queueopenasync.source,
 				&req_exec_msg_queueopen->source,
-				sizeof (struct message_source));
+				sizeof (mar_message_source_t));
 
 			openais_conn_send_response (
 				req_exec_msg_queueopen->source.conn,
@@ -826,7 +827,7 @@ error_exit:
 			res_lib_msg_queueopen.header.error = error;
 			memcpy (&res_lib_msg_queueopen.source,
 				&req_exec_msg_queueopen->source,
-				sizeof (struct message_source));
+				sizeof (mar_message_source_t));
 
 			openais_conn_send_response (
 				req_exec_msg_queueopen->source.conn,

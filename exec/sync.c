@@ -127,7 +127,7 @@ static struct totempg_group sync_group = {
 static totempg_groups_handle sync_group_handle;
 
 struct req_exec_sync_barrier_start {
-	struct req_header header;
+	mar_req_header_t header;
 	struct memb_ring_id ring_id;
 };
 

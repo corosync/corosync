@@ -79,7 +79,7 @@ enum res_evt_types {
  */
 struct req_evt_channel_open {
 
-	struct req_header		ico_head;
+	mar_req_header_t		ico_head;
 	SaUint8T				ico_open_flag;
 	SaNameT					ico_channel_name;
 	SaEvtChannelHandleT		ico_c_handle;
@@ -103,7 +103,7 @@ struct req_evt_channel_open {
  */
 struct res_evt_channel_open {
 
-	struct res_header	ico_head;
+	mar_res_header_t	ico_head;
 	uint32_t			ico_channel_handle;/* svr chan handle */
 
 };
@@ -120,7 +120,7 @@ struct res_evt_channel_open {
  * 						to the particular open.
  */
 struct res_evt_open_chan_async {
-	struct res_header	ica_head;
+	mar_res_header_t	ica_head;
 	SaEvtChannelHandleT	ica_c_handle;
 	uint32_t			ica_channel_handle;
 	SaInvocationT		ica_invocation;
@@ -137,7 +137,7 @@ struct res_evt_open_chan_async {
  */
 struct req_evt_channel_close {
 
-	struct req_header		icc_head;
+	mar_req_header_t		icc_head;
 	uint32_t				icc_channel_handle;
 };
 
@@ -148,7 +148,7 @@ struct req_evt_channel_close {
  *
  */
 struct res_evt_channel_close {
-	struct res_header	icc_head;
+	mar_res_header_t	icc_head;
 };
 
 /*
@@ -160,7 +160,7 @@ struct res_evt_channel_close {
  */
 struct req_evt_channel_unlink {
 
-	struct req_header		iuc_head;
+	mar_req_header_t		iuc_head;
 	SaNameT					iuc_channel_name;
 };
 
@@ -171,7 +171,7 @@ struct req_evt_channel_unlink {
  *
  */
 struct res_evt_channel_unlink {
-	struct res_header	iuc_head;
+	mar_res_header_t	iuc_head;
 };
 
 /* 
@@ -187,7 +187,7 @@ struct res_evt_channel_unlink {
  */
 struct req_evt_event_subscribe {
 
-	struct req_header		ics_head;
+	mar_req_header_t		ics_head;
 	uint32_t				ics_channel_handle;
 	SaEvtSubscriptionIdT	ics_sub_id;
 	uint32_t				ics_filter_size;
@@ -204,7 +204,7 @@ struct req_evt_event_subscribe {
  *
  */
 struct res_evt_event_subscribe {
-	struct res_header	ics_head;
+	mar_res_header_t	ics_head;
 };
 
 /*
@@ -217,7 +217,7 @@ struct res_evt_event_subscribe {
  */
 struct req_evt_event_unsubscribe {
 
-	struct req_header		icu_head;
+	mar_req_header_t		icu_head;
 	uint32_t				icu_channel_handle;
 	SaEvtSubscriptionIdT	icu_sub_id;
 };
@@ -231,7 +231,7 @@ struct req_evt_event_unsubscribe {
  *
  */
 struct res_evt_event_unsubscribe {
-	struct res_header	icu_head;
+	mar_res_header_t	icu_head;
 
 };
 
@@ -242,7 +242,7 @@ struct res_evt_event_unsubscribe {
  * evd_head:		Request Head
  */
 struct res_evt_event_data {
-		struct res_header	evd_head;
+		mar_res_header_t	evd_head;
 };
 
 /*
@@ -272,7 +272,7 @@ struct res_evt_event_data {
  * led_body:				Pattern and user data
  */
 struct lib_event_data {
-	struct res_header		led_head;
+	mar_res_header_t		led_head;
 	unsigned int			led_nodeid;
 	SaTimeT					led_receive_time;
 	uint32_t				led_svr_channel_handle;
@@ -303,7 +303,7 @@ struct lib_event_data {
  */
 struct res_evt_event_publish {
 
-	struct res_header	iep_head;
+	mar_res_header_t	iep_head;
 	SaEvtEventIdT		iep_event_id;
 };
 
@@ -319,7 +319,7 @@ struct res_evt_event_publish {
  */
 struct req_evt_event_clear_retentiontime {
 
-	struct req_header	iec_head;
+	mar_req_header_t	iec_head;
 	SaEvtEventIdT		iec_event_id;
 	uint32_t			iec_channel_handle;
 
@@ -333,7 +333,7 @@ struct req_evt_event_clear_retentiontime {
  *
  */
 struct res_evt_event_clear_retentiontime {
-	struct res_header	iec_head;
+	mar_res_header_t	iec_head;
 };
 
 
@@ -396,7 +396,7 @@ struct open_chan_req {
  * u:			union of operation options.
  */
 struct req_evt_chan_command {
-	struct req_header 	chc_head;
+	mar_req_header_t 	chc_head;
 	int 				chc_op;
 	union {
 		struct open_chan_req	chc_chan;

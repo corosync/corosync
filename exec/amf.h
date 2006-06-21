@@ -390,12 +390,12 @@ enum amf_message_req_types {
 };
 
 struct req_exec_amf_clc_cleanup_completed {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 };
 
 struct req_exec_amf_healthcheck_tmo {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT safHealthcheckKey;
 };

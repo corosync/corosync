@@ -381,7 +381,7 @@ int main (void) {
 		
 	error = saCkptSectionDelete (checkpointHandle,
 		&sectionId1);
-	printf ("%s: deleting checkpoint handle\n",
+	printf ("%s: deleting section handle\n",
 		get_test_output (error, SA_AIS_OK));
 		
 	error = saCkptSectionCreate (checkpointHandle,
@@ -392,10 +392,17 @@ int main (void) {
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptSectionCreate (checkpointHandle,
-									&sectionCreationAttributes2,
-									"Initial Data #2",
-									strlen ("Initial Data #2") + 1);
-	printf ("%s: creating section 2 \n",
+		&sectionCreationAttributes2,
+		"Initial Data #2",
+		strlen ("Initial Data #2") + 1);
+	printf ("%s: creating section 2 for first time\n",
+		get_test_output (error, SA_AIS_OK));
+
+	error = saCkptSectionCreate (checkpointHandle,
+		&sectionCreationAttributes2,
+		"Initial Data #2",
+		strlen ("Initial Data #2") + 1);
+	printf ("%s: creating section 2 for second time\n",
 		get_test_output (error, SA_AIS_ERR_EXIST));
 
 	error = saCkptSectionExpirationTimeSet (checkpointHandle,

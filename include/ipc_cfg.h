@@ -54,43 +54,43 @@ enum res_lib_cfg_types {
 };
 
 struct req_lib_cfg_statetrackstart {
-	struct req_header header;
+	mar_req_header_t header;
 	SaUint8T trackFlags;
 	OpenaisCfgStateNotificationT *notificationBufferAddress;
 };
 
 struct res_lib_cfg_statetrackstart {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cfg_statetrackstop {
-	struct req_header header;
+	mar_req_header_t header;
 };
 
 struct res_lib_cfg_statetrackstop {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cfg_administrativestateset {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	OpenaisCfgAdministrativeTargetT administrativeTarget;
 	OpenaisCfgAdministrativeStateT administrativeState;
 };
 
 struct res_lib_cfg_administrativestateset {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 struct req_lib_cfg_administrativestateget {
-	struct req_header header;
+	mar_req_header_t header;
 	SaNameT compName;
 	OpenaisCfgAdministrativeTargetT administrativeTarget;
 	OpenaisCfgAdministrativeStateT administrativeState;
 };
 
 struct res_lib_cfg_administrativestateget {
-	struct res_header header;
+	mar_res_header_t header;
 };
 
 typedef enum {

@@ -35,12 +35,71 @@
 #ifndef AIS_MAR_GEN_H_DEFINED
 #define AIS_MAR_GEN_H_DEFINED
 
+#include <stdint.h>
+#include <string.h>
+
 #include "saAis.h"
+#include "swab.h"
+
+typedef int8_t mar_int8_t;
+typedef int16_t mar_int16_t;
+typedef int32_t mar_int32_t;
+typedef int64_t mar_int64_t;
+
+typedef uint8_t mar_uint8_t;
+typedef uint16_t mar_uint16_t;
+typedef uint32_t mar_uint32_t;
+typedef uint64_t mar_uint64_t;
+
+static inline void swab_mar_int8_t (mar_int8_t *to_swab)
+{
+	return;
+}
+
+static inline void swab_mar_int16_t (mar_int16_t *to_swab)
+{
+	*to_swab = swab16 (*to_swab);
+}
+
+static inline void swab_mar_int32_t (mar_int32_t *to_swab)
+{
+	*to_swab = swab32 (*to_swab);
+}
+
+static inline void swab_mar_int64_t (mar_int64_t *to_swab)
+{
+	*to_swab = swab64 (*to_swab);
+}
+
+static inline void swab_mar_uint8_t (mar_uint8_t *to_swab)
+{
+	return;
+}
+
+static inline void swab_mar_uint16_t (mar_uint16_t *to_swab)
+{
+	*to_swab = swab16 (*to_swab);
+}
+
+static inline void swab_mar_uint32_t (mar_uint32_t *to_swab)
+{
+	*to_swab = swab32 (*to_swab);
+}
+
+static inline void swab_mar_uint64_t (mar_uint64_t *to_swab)
+{
+	*to_swab = swab64 (*to_swab);
+}
 
 typedef struct {
-	unsigned short length;
-	unsigned char value[SA_MAX_NAME_LENGTH];
+	mar_uint16_t length __attribute__((aligned(8)));
+	mar_uint8_t value[SA_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_name_t;
+
+static inline void swab_mar_name_t (mar_name_t *to_swab)
+{
+	swab_mar_uint16_t (&to_swab->length);
+}
 
 static inline void marshall_from_mar_name_t (
 	SaNameT *dest,
@@ -58,4 +117,45 @@ static inline void marshall_to_mar_name_t (
 	memcpy (dest->value, src->value, SA_MAX_NAME_LENGTH);
 }
 
+typedef enum {
+	MAR_FALSE = 0,
+	MAR_TRUE = 1
+} mar_bool_t;
+
+typedef mar_uint64_t mar_time_t;
+
+static inline void swab_mar_time_t (mar_time_t *to_swab)
+{
+	swab_mar_uint64_t (to_swab);
+}
+
+#define MAR_TIME_END ((SaTimeT)0x7fffffffffffffffull)
+#define MAR_TIME_BEGIN            0x0ULL
+#define MAR_TIME_UNKNOWN          0x8000000000000000ULL
+
+#define MAR_TIME_ONE_MICROSECOND 1000ULL
+#define MAR_TIME_ONE_MILLISECOND 1000000ULL
+#define MAR_TIME_ONE_SECOND      1000000000ULL
+#define MAR_TIME_ONE_MINUTE      60000000000ULL
+#define MAR_TIME_ONE_HOUR        3600000000000ULL
+#define MAR_TIME_ONE_DAY         86400000000000ULL
+#define MAR_TIME_MAX             SA_TIME_END
+
+#define MAR_TRACK_CURRENT 0x01
+#define MAR_TRACK_CHANGES 0x02
+#define MAR_TRACK_CHANGES_ONLY 0x04
+
+typedef mar_uint64_t mar_invocation_t;
+
+static inline void swab_mar_invocation_t (mar_invocation_t *to_swab)
+{
+	swab_mar_uint64_t (to_swab);
+}
+
+typedef mar_uint64_t mar_size_t;
+
+static inline void swab_mar_size_t (mar_size_t *to_swab)
+{
+	swab_mar_uint64_t (to_swab);
+}
 #endif /* AIS_MAR_GEN_TYPES_H_DEFINED */
