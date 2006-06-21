@@ -75,10 +75,9 @@
 #include "timer.h"
 #include "print.h"
 #include "util.h"
+#include "version.h"
 
 #define SERVER_BACKLOG 5
-
-static char *release_name = "Wilson version 0.77";
 
 static int ais_uid = 0;
 
@@ -376,7 +375,7 @@ int main (int argc, char **argv)
  	int totem_log_service;
  	log_init ("MAIN");
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE %s\n", release_name);
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006 Red Hat, Inc.\n");
 
