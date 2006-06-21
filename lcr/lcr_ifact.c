@@ -195,6 +195,7 @@ static void ld_library_path_build (void)
 	for (i = 0, p_s = my_ld_library_path, i = 0; i < len; i++) {
 		if (my_ld_library_path[i] == ':' || my_ld_library_path[i] == '\0') {
 			my_ld_library_path[i]='\0';
+//printf ("path list %x path list entries %d\n", path_list, path_list_entries);
 			path_list[path_list_entries++] = strdup (p_s);
 			p_s = &my_ld_library_path[i];
 		}
@@ -319,6 +320,7 @@ found:
 	return (0);
 }
 
+static unsigned int lcr_initialized = 0;
 
 int lcr_ifact_reference (
 	unsigned int *iface_handle,
@@ -341,10 +343,12 @@ int lcr_ifact_reference (
 		goto found;
 	}
 
-	defaults_path_build ();
-	ld_library_path_build ();
-	ldso_path_build ("/etc", "ld.so.conf");
-
+	if (lcr_initialized == 0) {
+		lcr_initialized = 1;
+		defaults_path_build ();
+		ld_library_path_build ();
+		ldso_path_build ("/etc", "ld.so.conf");
+	}
 
 // TODO error checking in this code is weak
 	/*
