@@ -384,6 +384,10 @@ int main (int argc, char **argv)
 
 	totemip_localhost(AF_INET, &this_non_loopback_ip);
 
+	signal (SIGINT, sigintr_handler);
+
+	signal (SIGUSR2, sigusr2_handler);
+
 	openais_timer_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
@@ -544,9 +548,6 @@ int main (int argc, char **argv)
 	aisexec_priv_drop ();
 
 	aisexec_mempool_init ();
-
-	signal (SIGINT, sigintr_handler);
-	signal (SIGUSR2, sigusr2_handler);
 
 	openais_ipc_init (
 		serialize_mutex_lock,

@@ -127,6 +127,9 @@ retry_poll:
 	return (0);
 }
 
+static void sigusr1_handler (int num) {
+}
+
 int openais_timer_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void))
@@ -137,6 +140,8 @@ int openais_timer_init (
 	timer_serialize_unlock_fn = serialize_unlock_fn;
 
 	timerlist_init (&timers_timerlist);
+
+        signal (SIGUSR1, sigusr1_handler);
 
 	pthread_mutex_lock (&timer_mutex);
         pthread_attr_init (&thread_attr);
@@ -168,7 +173,6 @@ int openais_timer_add (
 	pthread_mutex_unlock (&timer_mutex);
 
 	pthread_kill (thread, SIGUSR1);
-
 
 	return (res);
 }

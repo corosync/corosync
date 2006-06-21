@@ -86,7 +86,6 @@
 #include "../include/list.h"
 #include "../lcr/lcr_comp.h"
 #include "totempg.h"
-#include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
 #include "amf.h"

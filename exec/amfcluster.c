@@ -71,7 +71,6 @@
 
 #include "print.h"
 #include "amf.h"
-#include "aispoll.h"
 #include "util.h"
 #include "main.h"
 
@@ -99,7 +98,7 @@ static void timer_function_cluster_startup_tmo (void *_cluster)
 	}
 
 	/* wait a while before assigning workload */
-	poll_timer_add (aisexec_poll_handle,
+	openais_timer_add (
 		cluster->saAmfClusterStartupTimeout,
 		cluster,
 		timer_function_cluster_assign_workload_tmo,
@@ -109,7 +108,7 @@ static void timer_function_cluster_startup_tmo (void *_cluster)
 void amf_cluster_start (struct amf_cluster *cluster)
 {
 	/* wait a while before starting applications */
-	poll_timer_add (aisexec_poll_handle,
+	openais_timer_add (
 		cluster->saAmfClusterStartupTimeout,
 		cluster,
 		timer_function_cluster_startup_tmo,

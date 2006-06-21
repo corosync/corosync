@@ -37,6 +37,8 @@
 
 #include "tlist.h"
 
+typedef void * openais_timer_handle;
+
 extern void openais_timer_init (
         void (*serialize_lock) (void),
         void (*serialize_unlock) (void));

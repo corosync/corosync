@@ -410,7 +410,7 @@ extern void amf_sg_su_state_changed (
 		TRACE1 ("All SUs in SG '%s' in service, assigning SIs\n", su->sg->name.value);
 		amf_sg_assign_si (su->sg, 0);
 		if (amf_cluster.timeout_handle) {
-			poll_timer_delete (aisexec_poll_handle, amf_cluster.timeout_handle);
+			openais_timer_delete (amf_cluster.timeout_handle);
 		}
 	}
 }

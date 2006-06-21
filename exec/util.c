@@ -40,7 +40,6 @@
 
 #include "../include/saAis.h"
 #include "../include/list.h"
-#include "aispoll.h"
 #include "util.h"
 #include "print.h"
 

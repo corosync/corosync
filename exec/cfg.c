@@ -55,7 +55,6 @@
 #include "../lcr/lcr_comp.h"
 #include "service.h"
 #include "totempg.h"
-#include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
 #include "print.h"

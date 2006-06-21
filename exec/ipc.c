@@ -237,14 +237,6 @@ static int dispatch_init_send_response (
 	return (0);
 }
 
-
-/*
- * pthread_kill interrupts poll so poll can reread its events descriptor
- * via sigusr1
- */
-static void sigusr1_handler (int num) {
-}
-
 /*
  * Create a connection data structure
  */
@@ -811,8 +803,6 @@ void openais_ipc_init (
 	g_gid_valid = gid_valid;
 
 	my_ip = my_ip_in;
-
-        signal (SIGUSR1, sigusr1_handler);
 }
 
 

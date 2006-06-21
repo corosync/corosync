@@ -43,8 +43,8 @@
 #include "../include/saAmf.h"
 #include "../include/list.h"
 #include "../include/ipc_gen.h"
-#include "aispoll.h"
 #include "objdb.h"
+#include "timer.h"
 
 enum escalation_levels {
 	ESCALATION_LEVEL_NO_ESCALATION = 1,	/* execute component restart */
@@ -78,7 +78,7 @@ struct amf_cluster {
 	struct amf_application *application_head;
 
 	/* Implementation */
-	poll_timer_handle timeout_handle;
+	openais_timer_handle timeout_handle;
 };
 
 struct amf_node {
@@ -267,8 +267,8 @@ struct amf_healthcheck {
 	int active;
 	SaAmfHealthcheckInvocationT invocationType;
 	SaAmfRecommendedRecoveryT recommendedRecovery;
-	poll_timer_handle timer_handle_duration;
-	poll_timer_handle timer_handle_period;
+	openais_timer_handle timer_handle_duration;
+	openais_timer_handle timer_handle_period;
 };
 
 struct amf_si {

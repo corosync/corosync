@@ -135,7 +135,6 @@
 #include "../include/ipc_gen.h"
 #include "../include/ipc_amf.h"
 #include "totempg.h"
-#include "aispoll.h"
 #include "main.h"
 #include "ipc.h"
 #include "service.h"
@@ -832,11 +831,9 @@ static void healthcheck_deactivate (
 	dprintf ("deactivating healthcheck for component %s\n",
              getSaNameT (&healthcheck_active->comp->name));
 
-    poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_period);
+    openais_timer_delete (healthcheck_active->timer_handle_period);
 
-	poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_duration);
+	openais_timer_delete (healthcheck_active->timer_handle_duration);
 
 	invocation_destroy_by_data ((void *)healthcheck_active);
 	healthcheck_active->active = 0;
@@ -855,7 +852,7 @@ static void timer_function_healthcheck_next_fn (void *_healthcheck)
 	lib_healthcheck_request (healthcheck);
 
 	/* start duration timer for response */
-	poll_timer_add (aisexec_poll_handle,
+	openais_timer_add (
 		healthcheck->saAmfHealthcheckMaxDuration,
 		(void *)healthcheck,
 		timer_function_healthcheck_tmo,
@@ -1148,14 +1145,14 @@ SaAisErrorT amf_comp_healthcheck_start (
 
 	if (invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 		/* start timer to execute first healthcheck request */
-		poll_timer_add (aisexec_poll_handle,
-						healthcheck->saAmfHealthcheckPeriod,
-						(void *)healthcheck,
-						timer_function_healthcheck_next_fn,
-						&healthcheck->timer_handle_period);
+		openais_timer_add (
+			healthcheck->saAmfHealthcheckPeriod,
+			(void *)healthcheck,
+			timer_function_healthcheck_next_fn,
+			&healthcheck->timer_handle_period);
 	} else if (invocationType == SA_AMF_HEALTHCHECK_COMPONENT_INVOKED) {
 		/* start supervision timer */
-		poll_timer_add (aisexec_poll_handle,
+		openais_timer_add (
 			healthcheck->saAmfHealthcheckPeriod,
 			(void *)healthcheck,
 			timer_function_healthcheck_tmo,
@@ -1283,16 +1280,15 @@ int amf_comp_response_1 (
 
 			if (healthcheck->invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 				/* the response was on time, delete supervision timer */
-				poll_timer_delete (aisexec_poll_handle,
-								   healthcheck->timer_handle_duration);
+				openais_timer_delete (healthcheck->timer_handle_duration);
 				healthcheck->timer_handle_duration = 0;
 
 				/* start timer to execute next healthcheck request */
-				poll_timer_add (aisexec_poll_handle,
-								healthcheck->saAmfHealthcheckPeriod,
-								(void *)healthcheck,
-								timer_function_healthcheck_next_fn,
-								&healthcheck->timer_handle_period);
+				openais_timer_add (
+					healthcheck->saAmfHealthcheckPeriod,
+					(void *)healthcheck,
+					timer_function_healthcheck_next_fn,
+					&healthcheck->timer_handle_period);
 				*retval = SA_AIS_OK;
 			} else {
 				*retval = SA_AIS_ERR_INVALID_PARAM;
@@ -1495,9 +1491,8 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 	} else if (healthcheck->active) {
 		if (healthcheckResult == SA_AIS_OK) {
 			/* the response was on time, restart the supervision timer */
-			poll_timer_delete (aisexec_poll_handle,
-							   healthcheck->timer_handle_period);
-			poll_timer_add (aisexec_poll_handle,
+			openais_timer_delete (healthcheck->timer_handle_period);
+			openais_timer_add (
 				healthcheck->saAmfHealthcheckPeriod,
 				(void *)healthcheck,
 				timer_function_healthcheck_tmo,

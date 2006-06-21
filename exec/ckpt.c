@@ -55,7 +55,6 @@
 #include "../include/queue.h"
 #include "../include/hdb.h"
 #include "../lcr/lcr_comp.h"
-#include "aispoll.h"
 #include "service.h"
 #include "mempool.h"
 #include "tlist.h"

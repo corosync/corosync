@@ -55,7 +55,6 @@
 #include "../lcr/lcr_comp.h"
 #include "util.h"
 #include "service.h"
-#include "aispoll.h"
 #include "mempool.h"
 #include "main.h"
 #include "ipc.h"

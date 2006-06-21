@@ -53,7 +53,6 @@
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
 #include "service.h"
-#include "aispoll.h"
 #include "mempool.h"
 #include "util.h"
 #include "main.h"

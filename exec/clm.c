@@ -65,7 +65,6 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
-#include "aispoll.h"
 #include "totempg.h"
 #include "main.h"
 #include "ipc.h"
