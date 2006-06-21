@@ -211,9 +211,6 @@ int log_setup (char **error_string, struct main_config *config)
 	int i;
 	static char error_string_response[512];
 
-	logmode = config->logmode;
-	logfile = config->logfile;
-
 	if (config->logmode & LOG_MODE_FILE) {
 		log_file_fp = fopen (config->logfile, "a+");
 		if (log_file_fp == 0) {
@@ -224,6 +221,9 @@ int log_setup (char **error_string, struct main_config *config)
 			return (-1);
 		}
 	}
+
+	logmode = config->logmode;
+	logfile = config->logfile;
 
 	if (config->logmode & LOG_MODE_SYSLOG) {
 		openlog("openais", LOG_CONS|LOG_PID, config->syslog_facility);
