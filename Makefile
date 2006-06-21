@@ -171,7 +171,7 @@ endif
 	install -m 644 exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/print.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 man/*.5 $(DESTDIR)$(MANDIR)/man5
 	install -m 644 man/*.8 $(DESTDIR)$(MANDIR)/man8
