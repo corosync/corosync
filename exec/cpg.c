@@ -767,7 +767,7 @@ static void message_handler_req_exec_cpg_mcast (
 	res_lib_cpg_mcast->nodeid = nodeid;
 	memcpy(&res_lib_cpg_mcast->group_name, &gi->group_name,
 		sizeof(struct cpg_name));
-	memcpy(&res_lib_cpg_mcast->message, req_exec_cpg_mcast->message,
+	memcpy(&res_lib_cpg_mcast->message, (char*)message+sizeof(*req_exec_cpg_mcast),
 		msglen);
 
 	/* Send to all interested members */
