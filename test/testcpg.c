@@ -80,14 +80,14 @@ void ConfchgCallback (
 
 	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("'\n");
 	for (i=0; i<joined_list_entries; i++)
-		printf("joined node/pid: %d/%d reason: %d\n", joined_list[i].nodeId, joined_list[i].pid, joined_list[i].reason);
+		printf("joined node/pid: %d/%d reason: %d\n", joined_list[i].nodeid, joined_list[i].pid, joined_list[i].reason);
 
 	for (i=0; i<left_list_entries; i++)
-		printf("left node/pid: %d/%d reason: %d\n", left_list[i].nodeId, left_list[i].pid, left_list[i].reason);
+		printf("left node/pid: %d/%d reason: %d\n", left_list[i].nodeid, left_list[i].pid, left_list[i].reason);
 
 	printf("nodes in group now %d\n", member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
-		printf("node/pid: %d/%d\n", member_list[i].nodeId, member_list[i].pid);
+		printf("node/pid: %d/%d\n", member_list[i].nodeid, member_list[i].pid);
 	}
 
 	/* Is it us??

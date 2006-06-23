@@ -46,8 +46,9 @@
 #include <errno.h>
 
 #include "../include/saAis.h"
-#include "../include/ipc_cpg.h"
 #include "../include/cpg.h"
+#include "../include/ipc_cpg.h"
+#include "../include/mar_cpg.h"
 #include "util.h"
 
 struct cpg_inst {
@@ -208,6 +209,13 @@ cpg_error_t cpg_dispatch (
 	cpg_callbacks_t callbacks;
 	struct res_overlay dispatch_data;
 	int ignore_dispatch = 0;
+	struct cpg_address member_list[CPG_MEMBERS_MAX];
+	struct cpg_address left_list[CPG_MEMBERS_MAX];
+	struct cpg_address joined_list[CPG_MEMBERS_MAX];
+	struct cpg_name group_name;
+	mar_cpg_address_t *left_list_start;
+	mar_cpg_address_t *joined_list_start;
+	unsigned int i;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
 	if (error != SA_AIS_OK) {
@@ -297,24 +305,51 @@ cpg_error_t cpg_dispatch (
 		switch (dispatch_data.header.id) {
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
 			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)&dispatch_data;
+
+			marshall_from_mar_cpg_name_t (
+				&group_name,
+				&res_cpg_deliver_callback->group_name);
+
 			callbacks.cpg_deliver_fn (handle,
-						  &res_cpg_deliver_callback->group_name,
-						  res_cpg_deliver_callback->nodeid,
-						  res_cpg_deliver_callback->pid,
-						  &res_cpg_deliver_callback->message,
-						  res_cpg_deliver_callback->msglen);
+				&group_name,
+				res_cpg_deliver_callback->nodeid,
+				res_cpg_deliver_callback->pid,
+				&res_cpg_deliver_callback->message,
+				res_cpg_deliver_callback->msglen);
 			break;
 
 		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
 			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)&dispatch_data;
+
+			for (i = 0; i < res_cpg_confchg_callback->member_list_entries; i++) {
+				marshall_from_mar_cpg_address_t (&member_list[i],
+					&res_cpg_confchg_callback->member_list[i]);
+			}
+			left_list_start = res_cpg_confchg_callback->member_list +
+				res_cpg_confchg_callback->left_list_entries;
+			for (i = 0; i < res_cpg_confchg_callback->left_list_entries; i++) {
+				marshall_from_mar_cpg_address_t (&left_list[i],
+					&left_list_start[i]);
+			}
+			joined_list_start = res_cpg_confchg_callback->member_list +
+				res_cpg_confchg_callback->member_list_entries +
+				res_cpg_confchg_callback->left_list_entries;
+			for (i = 0; i < res_cpg_confchg_callback->joined_list_entries; i++) {
+				marshall_from_mar_cpg_address_t (&joined_list[i],
+					&joined_list_start[i]);
+			}
+			marshall_from_mar_cpg_name_t (
+				&group_name,
+				&res_cpg_confchg_callback->group_name);
+
 			callbacks.cpg_confchg_fn (handle,
-						  &res_cpg_confchg_callback->group_name,
-						  (struct cpg_address *)res_cpg_confchg_callback->member_list,
-						  res_cpg_confchg_callback->member_list_entries,
-						  (struct cpg_address *)res_cpg_confchg_callback->member_list + res_cpg_confchg_callback->member_list_entries,
-						  res_cpg_confchg_callback->left_list_entries,
-						  (struct cpg_address *)res_cpg_confchg_callback->member_list + res_cpg_confchg_callback->member_list_entries + res_cpg_confchg_callback->left_list_entries,
-						  res_cpg_confchg_callback->joined_list_entries);
+				&group_name,
+				member_list,
+				res_cpg_confchg_callback->member_list_entries,
+				left_list,
+				res_cpg_confchg_callback->left_list_entries,
+				joined_list,
+				res_cpg_confchg_callback->joined_list_entries);
 			break;
 
 
@@ -373,7 +408,8 @@ cpg_error_t cpg_join (
 	/* Automatically add a tracker */
 	req_lib_cpg_trackstart.header.size = sizeof (struct req_lib_cpg_trackstart);
 	req_lib_cpg_trackstart.header.id = MESSAGE_REQ_CPG_TRACKSTART;
-	memcpy(&req_lib_cpg_trackstart.group_name, group, sizeof(struct cpg_name));
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
+		group);
 
 	iov[0].iov_base = &req_lib_cpg_trackstart;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
@@ -390,7 +426,8 @@ cpg_error_t cpg_join (
 	req_lib_cpg_join.header.size = sizeof (struct req_lib_cpg_join);
 	req_lib_cpg_join.header.id = MESSAGE_REQ_CPG_JOIN;
 	req_lib_cpg_join.pid = getpid();
-	memcpy(&req_lib_cpg_join.group_name, group, sizeof(struct cpg_name));
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
+		group);
 
 	iov[0].iov_base = &req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
@@ -430,7 +467,8 @@ cpg_error_t cpg_leave (
 	req_lib_cpg_leave.header.size = sizeof (struct req_lib_cpg_leave);
 	req_lib_cpg_leave.header.id = MESSAGE_REQ_CPG_LEAVE;
 	req_lib_cpg_leave.pid = getpid();
-	memcpy(&req_lib_cpg_leave.group_name, group, sizeof(struct cpg_name));
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_leave.group_name,
+		group);
 
 	iov[0].iov_base = &req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
@@ -517,6 +555,7 @@ cpg_error_t cpg_membership_get (
 	struct iovec iov;
 	struct req_lib_cpg_membership req_lib_cpg_membership_get;
 	struct res_lib_cpg_confchg_callback res_lib_cpg_membership_get;
+	unsigned int i;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
 	if (error != SA_AIS_OK) {
@@ -525,7 +564,8 @@ cpg_error_t cpg_membership_get (
 
 	req_lib_cpg_membership_get.header.size = sizeof (mar_req_header_t);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
-	memcpy(&req_lib_cpg_membership_get.group_name, group_name, sizeof(struct cpg_name));
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_membership_get.group_name,
+		group_name);
 
 	iov.iov_base = &req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (mar_req_header_t);
@@ -548,8 +588,10 @@ cpg_error_t cpg_membership_get (
 	 */
 	*member_list_entries = res_lib_cpg_membership_get.member_list_entries;
 	if (member_list) {
-		memcpy (member_list, &res_lib_cpg_membership_get.member_list,
-			*member_list_entries * sizeof (struct cpg_address));
+		for (i = 0; i < res_lib_cpg_membership_get.member_list_entries; i++) {
+			marshall_from_mar_cpg_address_t (&member_list[i],
+				&res_lib_cpg_membership_get.member_list[i]);
+		}
 	}
 
 error_exit:

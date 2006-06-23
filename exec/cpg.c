@@ -52,6 +52,7 @@
 #include "../include/saClm.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_cpg.h"
+#include "../include/mar_cpg.h"
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
@@ -82,12 +83,12 @@ struct removed_group
 	struct group_info *gi;
 	struct list_head list; /* on removed_list */
 	int left_list_entries;
-	struct cpg_groupinfo left_list[PROCESSOR_COUNT_MAX];
+	mar_cpg_address_t left_list[PROCESSOR_COUNT_MAX];
 	int left_list_size;
 };
 
 struct group_info {
-	struct cpg_name group_name;
+	mar_cpg_name_t group_name;
 	struct list_head members;
 	struct list_head list;    /* on hash list */
 	struct removed_group *rg; /* when a node goes down */
@@ -105,7 +106,7 @@ struct process_info {
 
 struct join_list_entry {
 	uint32_t pid;
-	struct cpg_name group_name;
+	mar_cpg_name_t group_name;
 };
 
 static struct list_head group_lists[GROUP_HASH_SIZE];
@@ -283,27 +284,27 @@ __attribute__ ((constructor)) static void cpg_comp_register (void) {
 }
 
 struct req_exec_cpg_procjoin {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	uint32_t pid;
-	uint32_t reason;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint32_t reason __attribute__((aligned(8)));
 };
 
 struct req_exec_cpg_mcast {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	uint32_t msglen;
-	uint32_t pid;
-	char message[];
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
 static int notify_lib_joinlist(
 	struct group_info *gi,
 	void *conn,
 	int joined_list_entries,
-	struct cpg_groupinfo *joined_list,
+	mar_cpg_address_t *joined_list,
 	int left_list_entries,
-	struct cpg_groupinfo *left_list,
+	mar_cpg_address_t *left_list,
 	int id)
 {
 	int count = 0;
@@ -311,7 +312,7 @@ static int notify_lib_joinlist(
 	struct res_lib_cpg_confchg_callback *res;
 	struct list_head *iter;
 	struct list_head *tmp;
-	struct cpg_groupinfo *retgi;
+	mar_cpg_address_t *retgi;
 	int size;
 
 	/* First, we need to know how many nodes are in the list. While we're
@@ -326,7 +327,7 @@ static int notify_lib_joinlist(
 	log_printf(LOG_LEVEL_DEBUG, "Sending new joinlist (%d elements) to clients\n", count);
 
 	size = sizeof(struct res_lib_cpg_confchg_callback) +
-		sizeof(struct cpg_groupinfo) * (count + left_list_entries + joined_list_entries);
+		sizeof(mar_cpg_address_t) * (count + left_list_entries + joined_list_entries);
 	buf = alloca(size);
 	if (!buf)
 		return SA_AIS_ERR_NO_SPACE;
@@ -338,7 +339,7 @@ static int notify_lib_joinlist(
 
 	res->header.size = size;
 	res->header.id = id;
-	memcpy(&res->group_name, &gi->group_name, sizeof(struct cpg_name));
+	memcpy(&res->group_name, &gi->group_name, sizeof(mar_cpg_name_t));
 
 	/* Build up the message */
 	count = 0;
@@ -363,12 +364,12 @@ static int notify_lib_joinlist(
 	res->member_list_entries = count;
 
 	if (left_list_entries) {
-		memcpy(retgi, left_list, left_list_entries * sizeof(struct cpg_groupinfo));
+		memcpy(retgi, left_list, left_list_entries * sizeof(mar_cpg_address_t));
 		retgi += left_list_entries;
 	}
 
 	if (joined_list_entries) {
-		memcpy(retgi, joined_list, joined_list_entries * sizeof(struct cpg_groupinfo));
+		memcpy(retgi, joined_list, joined_list_entries * sizeof(mar_cpg_address_t));
 		retgi += joined_list_entries;
 	}
 
@@ -414,7 +415,7 @@ static int cpg_lib_exit_fn (void *conn)
 {
 	struct process_info *pi = (struct process_info *)openais_conn_private_data_get (conn);
 	struct group_info *gi = pi->group;
-	struct cpg_groupinfo notify_info;
+	mar_cpg_address_t notify_info;
 
 	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 
@@ -428,7 +429,7 @@ static int cpg_lib_exit_fn (void *conn)
 	return (0);
 }
 
-static struct group_info *get_group(struct cpg_name *name)
+static struct group_info *get_group(mar_cpg_name_t *name)
 {
 	struct list_head *iter;
 	struct group_info *gi = NULL;
@@ -446,7 +447,7 @@ static struct group_info *get_group(struct cpg_name *name)
 			log_printf(LOG_LEVEL_WARNING, "Unable to allocate group_info struct");
 			return NULL;
 		}
-		memcpy(&gi->group_name, name, sizeof(struct cpg_name));
+		memcpy(&gi->group_name, name, sizeof(mar_cpg_name_t));
 		gi->rg = NULL;
 		list_init(&gi->members);
 		list_add(&gi->list, &group_lists[hash]);
@@ -460,7 +461,7 @@ static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *
 	struct iovec req_exec_cpg_iovec;
 	int result;
 
-	memcpy(&req_exec_cpg_procjoin.group_name, &gi->group_name, sizeof(struct cpg_name));
+	memcpy(&req_exec_cpg_procjoin.group_name, &gi->group_name, sizeof(mar_cpg_name_t));
 	req_exec_cpg_procjoin.pid = pi->pid;
 	req_exec_cpg_procjoin.reason = reason;
 
@@ -516,7 +517,7 @@ static void remove_node_from_groups(
 
 						list_del(&gi->rg->list);
 						newsize = gi->rg->left_list_size * 2;
-						newrg = realloc(gi->rg, sizeof(struct removed_group) + newsize*sizeof(struct cpg_groupinfo));
+						newrg = realloc(gi->rg, sizeof(struct removed_group) + newsize*sizeof(mar_cpg_address_t));
 						if (!newrg) {
 							log_printf(LOG_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
 							return;
@@ -613,7 +614,7 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 }
 
 static void do_proc_join(
-	struct cpg_name *name,
+	mar_cpg_name_t *name,
 	uint32_t pid,
 	unsigned int nodeid,
 	int reason)
@@ -621,7 +622,7 @@ static void do_proc_join(
 	struct group_info *gi;
 	struct process_info *pi;
 	struct list_head *iter;
-	struct cpg_groupinfo notify_info;
+	mar_cpg_address_t notify_info;
 
 	gi = get_group(name); /* this will always succeed ! */
 	assert(gi);
@@ -687,7 +688,7 @@ static void message_handler_req_exec_cpg_procleave (
 	struct group_info *gi;
 	struct process_info *pi;
 	struct list_head *iter;
-	struct cpg_groupinfo notify_info;
+	mar_cpg_address_t notify_info;
 
 	log_printf(LOG_LEVEL_DEBUG, "got procleave message from cluster\n");
 
@@ -766,7 +767,7 @@ static void message_handler_req_exec_cpg_mcast (
 	res_lib_cpg_mcast->pid = req_exec_cpg_mcast->pid;
 	res_lib_cpg_mcast->nodeid = nodeid;
 	memcpy(&res_lib_cpg_mcast->group_name, &gi->group_name,
-		sizeof(struct cpg_name));
+		sizeof(mar_cpg_name_t));
 	memcpy(&res_lib_cpg_mcast->message, (char*)message+sizeof(*req_exec_cpg_mcast),
 		msglen);
 
@@ -831,7 +832,7 @@ static void cpg_exec_send_joinlist(void)
 
 				struct process_info *pi = list_entry(iter2, struct process_info, list);
 				if (pi->pid && pi->nodeid == this_ip->nodeid) {
-					memcpy(&jle->group_name, &gi->group_name, sizeof(struct cpg_name));
+					memcpy(&jle->group_name, &gi->group_name, sizeof(mar_cpg_name_t));
 					jle->pid = pi->pid;
 					jle++;
 				}
@@ -949,10 +950,12 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 	}
 
 	req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + msglen;
-	req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_MCAST);
+	req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
+		MESSAGE_REQ_EXEC_CPG_MCAST);
 	req_exec_cpg_mcast.pid = pi->pid;
 	req_exec_cpg_mcast.msglen = msglen;
-	memcpy(&req_exec_cpg_mcast.group_name, &gi->group_name, sizeof(struct cpg_name));
+	memcpy(&req_exec_cpg_mcast.group_name, &gi->group_name,
+		sizeof(mar_cpg_name_t));
 
 	req_exec_cpg_iovec[0].iov_base = &req_exec_cpg_mcast;
 	req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);

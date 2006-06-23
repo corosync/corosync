@@ -37,6 +37,7 @@
 #include <netinet/in.h>
 #include "saAis.h"
 #include "ipc_gen.h"
+#include "mar_cpg.h"
 
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
@@ -66,93 +67,77 @@ enum lib_cpg_confchg_reason {
 	CONFCHG_CPG_REASON_PROCDOWN = 5
 };
 
-#ifndef CPG_MAX_NAME_LENGTH
-#define CPG_MAX_NAME_LENGTH 128
-struct cpg_name {
-	uint32_t length;
-	char value[CPG_MAX_NAME_LENGTH];
-};
-#endif
-
 struct req_lib_cpg_join {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	pid_t pid;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_join {
-	mar_res_header_t header;
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstart {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	pid_t pid;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstart {
-	mar_res_header_t header;
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstop {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	pid_t pid;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstop {
-	mar_res_header_t header;
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_mcast {
-	mar_res_header_t header;
-	uint32_t guarantee;
-	uint32_t msglen;
-	char message[];
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t guarantee __attribute__((aligned(8)));
+	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
 /* Message from another node */
 struct res_lib_cpg_deliver_callback {
-	mar_res_header_t header;
-	struct cpg_name group_name;
-	uint32_t msglen;
-	uint32_t nodeid;
-	uint32_t pid;
-	char message[];
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint8_t message[] __attribute__((aligned(8)));
 };
-
-/* Notifications & join return a list of these */
-struct cpg_groupinfo {
-	uint32_t nodeid;
-	uint32_t pid;
-	uint32_t reason; /* How joined or left */
-};
-
 
 struct req_lib_cpg_membership {
-	mar_req_header_t header;
-	struct cpg_name group_name;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_confchg_callback {
-	mar_res_header_t header;
-	struct cpg_name group_name;
-	uint32_t member_list_entries;
-	uint32_t joined_list_entries;
-	uint32_t left_list_entries;
-	struct cpg_groupinfo member_list[];
-//	struct cpg_groupinfo left_list[];
-//	struct cpg_groupinfo joined_list[];
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t member_list_entries __attribute__((aligned(8)));
+	mar_uint32_t joined_list_entries __attribute__((aligned(8)));
+	mar_uint32_t left_list_entries __attribute__((aligned(8)));
+	mar_cpg_address_t member_list[];
+//	struct cpg_address left_list[];
+//	struct cpg_address joined_list[];
 };
 
 struct req_lib_cpg_leave {
-	mar_req_header_t header;
-	struct cpg_name group_name;
-	pid_t pid;
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_leave {
-	mar_res_header_t header;
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 

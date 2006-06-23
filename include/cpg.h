@@ -81,18 +81,18 @@ typedef enum {
 } cpg_reason_t;
 
 struct cpg_address {
-	uint32_t nodeId;
+	uint32_t nodeid;
 	uint32_t pid;
 	uint32_t reason;
 };
 
-#ifndef CPG_MAX_NAME_LENGTH
 #define CPG_MAX_NAME_LENGTH 128
 struct cpg_name {
 	uint32_t length;
 	char value[CPG_MAX_NAME_LENGTH];
 };
-#endif
+
+#define CPG_MEMBERS_MAX 128
 
 typedef void (*cpg_deliver_fn_t) (
 	cpg_handle_t handle,
