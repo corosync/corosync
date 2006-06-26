@@ -149,7 +149,7 @@ depend:
 util.o: ../include/saAis.h ../include/ipc_gen.h ../exec/totemip.h util.h
 amf.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amf.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
-amf.o: ../include/ipc_gen.h ../include/ais_amf.h util.h
+amf.o: ../include/ipc_gen.h ../include/saAmf.h util.h
 clm.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
 clm.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_clm.h
 clm.o: ../include/saClm.h ../include/ipc_gen.h util.h

@@ -37,7 +37,7 @@
 #include <netinet/in.h>
 #include "ipc_gen.h"
 #include "saAis.h"
-#include "ais_amf.h"
+#include "saAmf.h"
 
 enum req_lib_amf_types {
 	MESSAGE_REQ_AMF_COMPONENTREGISTER = 0,

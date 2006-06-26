@@ -153,14 +153,14 @@ depend:
 # DO NOT DELETE
 
 testclm.o: ../include/saAis.h ../include/saClm.h
-testamf.o: ../include/saAis.h ../include/ais_amf.h ../include/saClm.h
-testamf1.o: ../include/saAis.h ../include/ais_amf.h
-testamf2.o: ../include/saAis.h ../include/ais_amf.h
-testamf3.o: ../include/saAis.h ../include/ais_amf.h
-testamf4.o: ../include/saAis.h ../include/ais_amf.h
-testamf5.o: ../include/saAis.h ../include/ais_amf.h
-testamf6.o: ../include/saAis.h ../include/ais_amf.h
-testamfth.o: ../include/saAis.h ../include/ais_amf.h ../include/saClm.h
+testamf.o: ../include/saAis.h ../include/saAmf.h ../include/saClm.h
+testamf1.o: ../include/saAis.h ../include/saAmf.h
+testamf2.o: ../include/saAis.h ../include/saAmf.h
+testamf3.o: ../include/saAis.h ../include/saAmf.h
+testamf4.o: ../include/saAis.h ../include/saAmf.h
+testamf5.o: ../include/saAis.h ../include/saAmf.h
+testamf6.o: ../include/saAis.h ../include/saAmf.h
+testamfth.o: ../include/saAis.h ../include/saAmf.h ../include/saClm.h
 testckpt.o: ../include/saAis.h ../include/saCkpt.h sa_error.h
 ckptstress.o: ../include/saAis.h ../include/saCkpt.h
 ckptbench.o: ../include/saAis.h ../include/saCkpt.h
