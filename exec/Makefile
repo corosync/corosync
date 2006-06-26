@@ -334,12 +334,12 @@ vsf_ykd.o: mainconfig.h ../include/list.h aispoll.h totemsrp.h totem.h
 vsf_ykd.o: totemip.h totempg.h objdb.h print.h ../include/swab.h vsf.h ../lcr/lcr_comp.h
 amf.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amf.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
-amf.o: ../include/ipc_gen.h ../include/ais_amf.h ../include/list.h
+amf.o: ../include/ipc_gen.h ../include/saAmf.h ../include/list.h
 amf.o: ../lcr/lcr_comp.h totempg.h aispoll.h totemsrp.h totem.h totemip.h
 amf.o: mempool.h util.h amf.h objdb.h main.h ../include/saClm.h
 amf.o: ../include/queue.h mainconfig.h service.h print.h
 amfutil.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
-amfutil.o: ../include/ipc_amf.h ../include/ipc_gen.h ../include/ais_amf.h
+amfutil.o: ../include/ipc_amf.h ../include/ipc_gen.h ../include/saAmf.h
 amfutil.o: ../include/list.h util.h amf.h ../include/ipc_gen.h
 amfutil.o: ../exec/totemip.h aispoll.h objdb.h totem.h totemip.h print.h
 amfutil.o: mainconfig.h totemsrp.h totempg.h
@@ -362,7 +362,7 @@ amfsu.o: objdb.h util.h print.h mainconfig.h totemsrp.h totem.h totemip.h
 amfsu.o: totempg.h main.h ../include/saClm.h ../include/queue.h
 amfcomp.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfcomp.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
-amfcomp.o: ../include/ipc_gen.h ../include/ais_amf.h totempg.h aispoll.h
+amfcomp.o: ../include/ipc_gen.h ../include/saAmf.h totempg.h aispoll.h
 amfcomp.o: totemsrp.h totem.h totemip.h main.h ../include/saClm.h
 amfcomp.o: ../include/queue.h mainconfig.h ../include/list.h objdb.h
 amfcomp.o: service.h util.h amf.h print.h
