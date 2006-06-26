@@ -81,11 +81,13 @@
 
 static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static pthread_t thread;
+static pthread_t expiry_thread;
 
 static pthread_attr_t thread_attr;
 
 static struct timerlist timers_timerlist;
+
+static int in_expiry = 0;
 
 static void (*timer_serialize_lock_fn) (void);
 
@@ -104,7 +106,7 @@ static void *prioritized_timer_thread (void *data)
 	unsigned int timeout;
 
 	sched_param.sched_priority = 2;
-	res = pthread_setschedparam (thread, SCHED_RR, &sched_param);
+	res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
 
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
@@ -117,7 +119,9 @@ retry_poll:
 		pthread_mutex_lock (&timer_mutex);
 		timer_serialize_lock_fn ();
 
+		in_expiry = 1;
 		timerlist_expire (&timers_timerlist);
+		in_expiry = 0;
 		
 		timer_serialize_unlock_fn ();
 		pthread_mutex_unlock (&timer_mutex);
@@ -147,8 +151,8 @@ int openais_timer_init (
         pthread_attr_init (&thread_attr);
         pthread_attr_setstacksize (&thread_attr, 8192);
         pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
-        res = pthread_create (&thread, &thread_attr, prioritized_timer_thread,
-		NULL);
+        res = pthread_create (&expiry_thread, &thread_attr,
+		prioritized_timer_thread, NULL);
 
 	return (res);
 }
@@ -160,8 +164,15 @@ int openais_timer_add (
 	timer_handle *handle)
 {
 	int res;
+	int unlock;
 
-	pthread_mutex_lock (&timer_mutex);
+	if (in_expiry == 1 &&
+		pthread_equal (pthread_self(), expiry_thread) == 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
 
 	res = timerlist_add_future (
 		&timers_timerlist,
@@ -170,9 +181,11 @@ int openais_timer_add (
 		msec_in_future,
 		handle);
 
-	pthread_mutex_unlock (&timer_mutex);
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
 
-	pthread_kill (thread, SIGUSR1);
+	pthread_kill (expiry_thread, SIGUSR1);
 
 	return (res);
 }
@@ -180,28 +193,48 @@ int openais_timer_add (
 void openais_timer_delete (
 	timer_handle timer_handle)
 {
+	int unlock;
+
 	if (timer_handle == 0) {
 		return;
 	}
 
-	pthread_mutex_lock (&timer_mutex);
+	if (in_expiry == 1 &&
+		pthread_equal (pthread_self(), expiry_thread) == 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
 
 	timerlist_del (&timers_timerlist, timer_handle);
 
-	pthread_mutex_unlock (&timer_mutex);
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
 }
 
 void openais_timer_delete_data (
 	timer_handle timer_handle)
 {
+	int unlock;
+
 	if (timer_handle == 0) {
 		return;
 	}
-	pthread_mutex_lock (&timer_mutex);
+	if (in_expiry == 1 &&
+		pthread_equal (pthread_self(), expiry_thread) == 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
 
 	timerlist_del_data (&timers_timerlist, timer_handle);
 
-	pthread_mutex_unlock (&timer_mutex);
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
 }
 
 void openais_timer_lock (void)
