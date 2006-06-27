@@ -158,7 +158,7 @@ static int response_init_send_response (
 	res_lib_response_init.header.size = sizeof (mar_res_lib_response_init_t);
 	res_lib_response_init.header.id = MESSAGE_RES_INIT;
 	res_lib_response_init.header.error = error;
-	res_lib_response_init.conn_info = conn_info;
+	res_lib_response_init.conn_info = (unsigned long long)conn_info;
 
 	openais_conn_send_response (
 		conn_info,

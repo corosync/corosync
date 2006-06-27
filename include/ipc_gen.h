@@ -69,15 +69,15 @@ static inline void swab_mar_req_header_t (mar_req_header_t *to_swab)
 }
 
 typedef struct {
-	int size; __attribute((aligned(8))) 
-	int id __attribute((aligned(8)));
-	SaAisErrorT error __attribute((aligned(8)));
+	int size; __attribute__((aligned(8))) 
+	int id __attribute__((aligned(8)));
+	SaAisErrorT error __attribute__((aligned(8)));
 } mar_res_header_t __attribute__((aligned(8)));
 
 typedef struct {
-	int size __attribute((aligned(8)));
-	int id __attribute((aligned(8)));
-	int service __attribute((aligned(8)));
+	int size __attribute__((aligned(8)));
+	int id __attribute__((aligned(8)));
+	int service __attribute__((aligned(8)));
 } mar_req_lib_resdis_init_t __attribute__((aligned(8)));
 
 typedef struct {
@@ -86,12 +86,12 @@ typedef struct {
 
 typedef struct {
 	mar_req_lib_resdis_init_t resdis_header __attribute__((aligned(8)));
-	void *conn_info __attribute__((aligned(8)));
+	mar_uint64_t conn_info __attribute__((aligned(8)));
 } mar_req_lib_dispatch_init_t __attribute__((aligned(8)));
 
 typedef struct {
 	mar_res_header_t header __attribute__((aligned(8)));
-	void *conn_info __attribute__((aligned(8)));
+	mar_uint64_t conn_info __attribute__((aligned(8)));
 } mar_res_lib_response_init_t __attribute__((aligned(8)));
 
 typedef struct {
