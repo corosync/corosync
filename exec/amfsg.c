@@ -144,6 +144,7 @@
 #include "amf.h"
 #include "print.h"
 #include "main.h"
+#include "util.h"
 
 static inline int div_round (int a, int b)
 {
@@ -155,21 +156,19 @@ static inline int div_round (int a, int b)
 	return res;
 }
 
-static int sg_all_su_in_service(struct amf_sg *sg)
+static int all_su_instantiated(struct amf_sg *sg)
 {
 	struct amf_su   *su;
-	struct amf_comp *comp;
-	int ready = 1;
+	int all_instantiated = 1;
 
 	for (su = sg->su_head; su != NULL; su = su->next) {
-		for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-			if (su->saAmfSUReadinessState != SA_AMF_READINESS_IN_SERVICE) {
-				ready = 0;
-			}
+		if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
+			all_instantiated = 0;
+			break;
 		}
 	}
 
-	return ready;
+	return all_instantiated;
 }
 
 static int application_si_count_get (struct amf_application *app)
@@ -297,6 +296,18 @@ static int su_inservice_count_get (struct amf_sg *sg)
 	return (answer);
 }
 
+static void si_activated_callback (struct amf_si *si, int result)
+{
+	/*                                                              
+     * TODO: not implemented yet...
+     */
+}
+
+/**
+ * TODO: dependency_level not used, hard coded
+ * @param sg
+ * @param dependency_level
+ */
 void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 {
 	int active_sus_needed;
@@ -310,8 +321,15 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 	int su_spare_assign;
 
 	ENTER ("'%s'", sg->name.value);
-	/*
-	 * Number of SUs to assign to active or standby state
+
+	/**
+     * Phase 1: Calculate assignments and create all runtime objects in
+     * information model. Do not do the actual assignment, done in
+     * phase 2.
+     */
+
+	/**
+	 * Calculate number of SUs to assign to active or standby state
 	 */
 	inservice_count = (float)su_inservice_count_get (sg);
 
@@ -336,7 +354,7 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 		ii_spare = 0;
 	}
 
-	/*
+    /**
 	 * Determine number of active and standby service units
 	 * to assign based upon reduction procedure
 	 */
@@ -389,6 +407,20 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 		inservice_count, su_active_assign, su_standby_assign, su_spare_assign);
 	sg_assign_nm_active (sg, su_active_assign);
 	sg_assign_nm_standby (sg, su_standby_assign);
+
+	/**
+     * Phase 2: do the actual assignment to the component
+     */
+	{
+		struct amf_si *si;
+
+		for (si = sg->application->si_head; si != NULL; si = si->next) {
+			if (name_match (&si->saAmfSIProtectedbySG, &sg->name)) {
+				amf_si_activate (si, si_activated_callback);
+			}
+		}
+	}
+
 	LEAVE ("'%s'", sg->name.value);
 }
 
@@ -403,20 +435,35 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 	}
 }
 
-extern void amf_sg_su_state_changed (
+void amf_sg_su_state_changed (
 	struct amf_sg *sg, struct amf_su *su, SaAmfStateT type, int state)
 {
-	if (sg_all_su_in_service(su->sg)) {
-		TRACE1 ("All SUs in SG '%s' in service, assigning SIs\n", su->sg->name.value);
-		amf_sg_assign_si (su->sg, 0);
-		if (amf_cluster.timeout_handle) {
-			openais_timer_delete (amf_cluster.timeout_handle);
+	ENTER ("'%s' SU '%s' state %d", sg->name.value, su->name.value, state);
+
+	if (type == SA_AMF_PRESENCE_STATE) {
+		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
+			/*
+			 * If all SU presence states are INSTANTIATED, report to SG.
+			 */
+			if (all_su_instantiated(su->sg)) {
+				amf_application_sg_started (sg->application, sg, this_amf_node);
+			}
+		} else {
+			assert (0);
 		}
+	} else {
+		assert (0);
 	}
 }
 
 void amf_sg_init (void)
 {
 	log_init ("AMF");
+}
+
+void amf_sg_si_activated (struct amf_sg *sg, struct amf_si *si)
+{
+	ENTER ("");
+	amf_application_sg_assigned (sg->application, sg);
 }
 

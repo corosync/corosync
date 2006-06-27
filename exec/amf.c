@@ -282,7 +282,7 @@ static struct openais_service_handler amf_service_handler = {
 };
 
 struct amf_node *this_amf_node;
-struct amf_cluster amf_cluster;
+struct amf_cluster *amf_cluster;
 
 static struct openais_service_handler *amf_get_handler_ver0 (void);
 
@@ -366,7 +366,6 @@ static void amf_sync_activate (void)
 
 static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	int res;
 	char *error_string;
 	char hostname[HOST_NAME_MAX + 1];
 	struct amf_node *node;
@@ -377,10 +376,10 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		return 0;
 	}
 	
-	res = amf_config_read (&amf_cluster, &error_string);
-	if (res == -1) {
+	amf_cluster = amf_config_read (&error_string);
+	if (amf_cluster == NULL) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		return res;
+		return -1;
 	}
 
 	if (gethostname (hostname, sizeof(hostname)) == -1) {
@@ -389,7 +388,7 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	}
 
 	/* look for this node */
-	for (node = amf_cluster.node_head; node != NULL; node = node->next) {
+	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
 		if (strcmp(hostname, getSaNameT (&node->name)) == 0) {
 			this_amf_node = node;
 		}
@@ -404,7 +403,7 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		amf_si_init();
 
 		this_amf_node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
-		amf_cluster_start (&amf_cluster);
+		amf_cluster_start (amf_cluster);
 	} else {
 		log_printf (LOG_LEVEL_INFO,
 			"This CLM node (%s) is not configured as an AMF node, disabling.",
@@ -475,7 +474,7 @@ static void message_handler_req_exec_amf_comp_register (
 	struct amf_comp *comp;
 	SaAisErrorT error;
 
-	comp = amf_comp_find (&amf_cluster, &req_exec->compName);
+	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	assert (comp != NULL);
 	ENTER ("'%s'", comp->name.value);
 	error = amf_comp_register (comp);
@@ -495,7 +494,7 @@ static void message_handler_req_exec_amf_comp_error_report (
 	struct req_exec_amf_comp_error_report *req_exec = message;
 	struct amf_comp *comp;
 
-	comp = amf_comp_find (&amf_cluster, &req_exec->erroneousComponent);
+	comp = amf_comp_find (amf_cluster, &req_exec->erroneousComponent);
 	assert (comp != NULL);
 	amf_comp_error_report (comp, req_exec->recommendedRecovery);
 }
@@ -506,7 +505,7 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 	struct req_exec_amf_clc_cleanup_completed *req_exec = message;
 	struct amf_comp *comp;
 
-	comp = amf_comp_find (&amf_cluster, &req_exec->compName);
+	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
 		log_printf (LOG_ERR, "'%s' not found", &req_exec->compName.value);
 		return;
@@ -522,7 +521,7 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 	struct amf_comp *comp;
 	struct amf_healthcheck *healthcheck;
 
-	comp = amf_comp_find (&amf_cluster, &req_exec->compName);
+	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
 		log_printf (LOG_ERR, "'%s' not found", &req_exec->compName.value);
 		return;
@@ -562,7 +561,7 @@ static void message_handler_req_lib_amf_componentregister (
 	struct req_lib_amf_componentregister *req_lib = msg;
 	struct amf_comp *comp;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->compName);
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp) {
 		struct req_exec_amf_comp_register req_exec;
 		struct iovec iovec;
@@ -614,7 +613,7 @@ static void message_handler_req_lib_amf_componentunregister (
 		req_lib_amf_componentunregister,
 		sizeof (struct req_lib_amf_componentunregister));
 
-	component = amf_comp_find (&amf_cluster, &req_lib_amf_componentunregister->compName);
+	component = amf_comp_find (amf_cluster, &req_lib_amf_componentunregister->compName);
 	if (component && component->registered && component->local) {
 //		component->probableCause = SA_AMF_NOT_RESPONDING;
 	}
@@ -646,7 +645,7 @@ static void message_handler_req_lib_amf_healthcheckstart (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->compName);
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 
 	if (comp != NULL) {
 		comp->conn = conn;
@@ -674,7 +673,7 @@ static void message_handler_req_lib_amf_healthcheckconfirm (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->compName);
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
 		error = amf_comp_healthcheck_confirm (
 			comp, &req_lib->healthcheckKey, req_lib->healthcheckResult);
@@ -698,7 +697,7 @@ static void message_handler_req_lib_amf_healthcheckstop (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->compName);
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
 		error = amf_comp_healthcheck_stop (comp, &req_lib->healthcheckKey);
 	} else {
@@ -721,7 +720,7 @@ static void message_handler_req_lib_amf_hastateget (void *conn, void *msg)
 	SaAmfHAStateT ha_state;
 	SaAisErrorT error;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->compName);
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
 		error = amf_comp_hastate_get (comp, &req_lib->csiName, &ha_state);
 		res_lib.haState = ha_state;
@@ -865,7 +864,7 @@ static void message_handler_req_lib_amf_componenterrorreport (
 	struct req_lib_amf_componenterrorreport *req_lib = msg;
 	struct amf_comp *comp;
 
-	comp = amf_comp_find (&amf_cluster, &req_lib->erroneousComponent);
+	comp = amf_comp_find (amf_cluster, &req_lib->erroneousComponent);
 	if (comp != NULL) {
 		struct req_exec_amf_comp_error_report req_exec;
 		struct iovec iovec;
@@ -973,5 +972,5 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 
 static void amf_dump_fn (void)
 {
-	amf_runtime_attributes_print (&amf_cluster);
+	amf_runtime_attributes_print (amf_cluster);
 }

@@ -331,7 +331,7 @@ int main (int argc, char **argv) {
 
     {
         SaNameT badname;
-        strcpy (badname.value, "badname");
+        strcpy ((char*)badname.value, "badname");
         badname.length = 7;
         result = saAmfComponentRegister (handle, &badname, NULL);
         printf ("register result is %d (should be %d)\n", result, SA_AIS_ERR_INVALID_PARAM);

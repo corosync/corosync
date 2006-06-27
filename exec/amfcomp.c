@@ -320,6 +320,9 @@ char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name)
 	return (char *)name->value;
 }
 
+#ifndef xprintf
+#define xprintf(...)
+#endif
 static void *clc_command_run (void *context)
 {
 	struct clc_command_run_data *clc_command_run_data =
@@ -340,14 +343,14 @@ static void *clc_command_run (void *context)
 	pid = fork();
 
 	if (pid == -1) {
-		dprintf ("Couldn't fork process %s\n", strerror (errno));
+		fprintf (stderr, "Couldn't fork process %s\n", strerror (errno));
 		return (0);
 	}
 
 	if (pid) {
-		dprintf ("waiting for pid %d to finish\n", pid);
+		xprintf ("waiting for pid %d to finish\n", pid);
 		waitpid (pid, &status, 0);
-		dprintf ("process (%d) finished with %d\n", pid, status);
+		xprintf ("process (%d) finished with %d\n", pid, status);
 		if (clc_command_run_data->completion_callback) {
 			clc_command_run_data->completion_callback (context);
 		}
@@ -423,18 +426,18 @@ static void *clc_command_run (void *context)
 	envp[i] = NULL;
 	assert (i < 10);
 
-	dprintf ("running command '%s' with environment:\n", cmd);
+	xprintf ("running command '%s' with environment:\n", cmd);
 	for (i = 0; envp[i] != NULL; i++) {
-		dprintf ("   %s\n", envp[i]);
+		xprintf ("   %s\n", envp[i]);
 	}
-	dprintf (" and argv:\n", cmd);
+	xprintf (" and argv:\n");
 	for (i = 0; argv[i] != NULL; i++) {
-		dprintf ("   %s\n", argv[i]);
+		xprintf ("   %s\n", argv[i]);
 	}
 		
 	res = execve (cmd, argv, envp);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Couldn't exec program %s (%s)\n",
+		fprintf (stderr, "Couldn't exec program %s (%s)\n",
 					cmd, strerror (errno));
 	}
 	assert (res != -1);
@@ -463,7 +466,8 @@ static int clc_cli_instantiate (struct amf_comp *comp)
 	clc_command_run_data->completion_callback = NULL;
 	pthread_attr_init (&thread_attr);
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
-	res = pthread_create (&thread, &thread_attr, clc_command_run, (void *)clc_command_run_data);
+	res = pthread_create (&thread, &thread_attr, clc_command_run,
+		(void *)clc_command_run_data);
 	if (res != 0) {
 		log_printf (LOG_LEVEL_ERROR, "pthread_create failed: %d", res);
 	}
@@ -592,7 +596,8 @@ static int clc_cli_cleanup (struct amf_comp *comp)
 
 	pthread_attr_init (&thread_attr);
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
-	res = pthread_create (&thread, &thread_attr, clc_command_run, (void *)clc_command_run_data);
+	res = pthread_create (&thread, &thread_attr, clc_command_run,
+		(void *)clc_command_run_data);
 	if (res != 0) {
 		log_printf (LOG_LEVEL_ERROR, "pthread_create failed: %d", res);
 	}
@@ -678,7 +683,7 @@ struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
 	char *buf;
 
 	/* malloc new buffer since strtok_r writes to its first argument */
-	buf = malloc (name->length);
+	buf = malloc (name->length + 1);
 	memcpy (buf, name->value,name ->length);
 
 	comp_name = strtok_r(buf, ",", &ptrptr);
@@ -749,29 +754,47 @@ static void comp_ha_state_set (	struct amf_comp *comp,
 	struct amf_csi_assignment *csi_assignment,
 	SaAmfHAStateT ha_state)
 {
-	csi_assignment->saAmfCSICompHAState = ha_state;
-	TRACE1 ("Setting comp '%s' HA state: %s\n",
-			comp->name.value, amf_ha_state (csi_assignment->saAmfCSICompHAState));
-	amf_su_comp_hastate_changed (comp->su, comp, csi_assignment);
+	/*                                                              
+     * Filter component restart from reporting to SI. TODO: how is
+     * this handled the right way?
+     */
+	if (csi_assignment->saAmfCSICompHAState !=
+		csi_assignment->requested_ha_state) {
+
+		/* set confirmed HA state */
+		csi_assignment->saAmfCSICompHAState = ha_state;
+		TRACE1 ("Setting comp '%s', SU '%s' CSI '%s', HA state: %s\n",
+				comp->name.value, comp->su->name.value,
+				csi_assignment->csi->name.value,
+				amf_ha_state (csi_assignment->saAmfCSICompHAState));
+		amf_si_comp_set_ha_state_done (csi_assignment->csi->si, csi_assignment);
+	}
 }
 
 static void comp_presence_state_set (struct amf_comp *comp,
 	SaAmfPresenceStateT presence_state)
 {
-	comp->saAmfCompPresenceState = presence_state;
-	TRACE1 ("Setting comp '%s' presence state: %s\n",
-			comp->name.value, amf_presence_state (comp->saAmfCompPresenceState));
+	SaAmfPresenceStateT old = comp->saAmfCompPresenceState;
 
-	amf_su_comp_state_changed (
-		comp->su, comp, SA_AMF_PRESENCE_STATE, presence_state);
+	comp->saAmfCompPresenceState = presence_state;
+	TRACE1 ("Setting comp '%s', SU '%s' presence state: %s\n",
+		comp->name.value, comp->su->name.value,
+		amf_presence_state (comp->saAmfCompPresenceState));
+
+	/* TODO: ugly, should be done by SU... */
+	if (old != SA_AMF_PRESENCE_RESTARTING) {
+		amf_su_comp_state_changed (
+			comp->su, comp, SA_AMF_PRESENCE_STATE, presence_state);
+	}
 }
 
 static void comp_operational_state_set (struct amf_comp *comp,
 	SaAmfOperationalStateT oper_state)
 {
 	comp->saAmfCompOperState = oper_state;
-	TRACE1 ("Setting comp '%s' operational state: %s\n",
-			comp->name.value, amf_op_state (comp->saAmfCompOperState));
+	TRACE1 ("Setting comp '%s', SU '%s' operational state: %s\n",
+		comp->name.value, comp->su->name.value,
+		amf_op_state (comp->saAmfCompOperState));
 	amf_su_comp_state_changed (
 		comp->su, comp, SA_AMF_OP_STATE, oper_state);
 }
@@ -821,7 +844,7 @@ static void comp_reassign_csis (struct amf_comp *comp)
 
 	for (; csi_assignment; csi_assignment = csi_assignment->comp_next) {
 		amf_comp_hastate_set (comp, csi_assignment,
-			csi_assignment->saAmfCSICompHAState);
+			csi_assignment->requested_ha_state);
 	}
 }
 
@@ -831,9 +854,11 @@ static void healthcheck_deactivate (
 	dprintf ("deactivating healthcheck for component %s\n",
              getSaNameT (&healthcheck_active->comp->name));
 
-    openais_timer_delete (healthcheck_active->timer_handle_period);
+    poll_timer_delete (aisexec_poll_handle,
+		healthcheck_active->timer_handle_period);
 
-	openais_timer_delete (healthcheck_active->timer_handle_duration);
+	poll_timer_delete (aisexec_poll_handle,
+		healthcheck_active->timer_handle_duration);
 
 	invocation_destroy_by_data ((void *)healthcheck_active);
 	healthcheck_active->active = 0;
@@ -852,7 +877,7 @@ static void timer_function_healthcheck_next_fn (void *_healthcheck)
 	lib_healthcheck_request (healthcheck);
 
 	/* start duration timer for response */
-	openais_timer_add (
+	poll_timer_add (aisexec_poll_handle,
 		healthcheck->saAmfHealthcheckMaxDuration,
 		(void *)healthcheck,
 		timer_function_healthcheck_tmo,
@@ -944,7 +969,7 @@ static void lib_csi_set_request (
 	csi_assignment->requested_ha_state = requested_ha_state;
 	csi = csi_assignment->csi;
 
-	dprintf("\t   Assigning CSI '%s' state %s to comp '%s'\n",
+	dprintf("Assigning CSI '%s' state %s to comp '%s'\n",
 		getSaNameT (&csi->name), amf_ha_state (requested_ha_state),
 			comp->name.value);
 
@@ -1043,8 +1068,8 @@ SaAisErrorT amf_comp_register (struct amf_comp *comp)
 			comp_reassign_csis (comp);
 		}
 	} else if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING) {
-		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
 		comp_operational_state_set (comp, SA_AMF_OPERATIONAL_ENABLED);
+		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
 	}
 	else {
 		assert (0);
@@ -1093,7 +1118,14 @@ void amf_comp_healthcheck_tmo (
 void amf_comp_cleanup_completed (struct amf_comp *comp)
 {
 	TRACE2("Exec CLC cleanup completed for '%s'", &comp->name.value);
-	amf_comp_instantiate (comp);
+
+	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
+		amf_comp_instantiate (comp);
+	} else {
+		comp_presence_state_set (comp, SA_AMF_PRESENCE_UNINSTANTIATED);
+		amf_su_comp_state_changed (comp->su, comp, SA_AMF_PRESENCE_STATE,
+								   SA_AMF_PRESENCE_UNINSTANTIATED);
+	}
 }
 
 /**
@@ -1145,14 +1177,14 @@ SaAisErrorT amf_comp_healthcheck_start (
 
 	if (invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 		/* start timer to execute first healthcheck request */
-		openais_timer_add (
+		poll_timer_add (aisexec_poll_handle,
 			healthcheck->saAmfHealthcheckPeriod,
 			(void *)healthcheck,
 			timer_function_healthcheck_next_fn,
 			&healthcheck->timer_handle_period);
 	} else if (invocationType == SA_AMF_HEALTHCHECK_COMPONENT_INVOKED) {
 		/* start supervision timer */
-		openais_timer_add (
+		poll_timer_add (aisexec_poll_handle,
 			healthcheck->saAmfHealthcheckPeriod,
 			(void *)healthcheck,
 			timer_function_healthcheck_tmo,
@@ -1210,7 +1242,8 @@ void amf_comp_instantiate (struct amf_comp *comp)
 {
 	int res = 0;
 
-	ENTER ("'%s'", getSaNameT (&comp->name));
+	ENTER ("'%s' SU '%s'", getSaNameT (&comp->name),
+		getSaNameT (&comp->su->name));
 
 	if (comp->saAmfCompPresenceState != SA_AMF_PRESENCE_RESTARTING) {
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATING);
@@ -1275,16 +1308,17 @@ int amf_comp_response_1 (
 		case AMF_RESPONSE_HEALTHCHECKCALLBACK: {
 			struct amf_healthcheck *healthcheck = data;
 			SaNameT name;
-			TRACE3 ("Healthcheck response from '%s': %d",
+			TRACE8 ("Healthcheck response from '%s': %d",
 					amf_comp_dn_make (healthcheck->comp, &name), error);
 
 			if (healthcheck->invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 				/* the response was on time, delete supervision timer */
-				openais_timer_delete (healthcheck->timer_handle_duration);
+				poll_timer_delete (aisexec_poll_handle,
+				   healthcheck->timer_handle_duration);
 				healthcheck->timer_handle_duration = 0;
 
 				/* start timer to execute next healthcheck request */
-				openais_timer_add (
+				poll_timer_add (aisexec_poll_handle,
 					healthcheck->saAmfHealthcheckPeriod,
 					(void *)healthcheck,
 					timer_function_healthcheck_next_fn,
@@ -1351,14 +1385,15 @@ struct amf_comp *amf_comp_response_2 (
 		case AMF_RESPONSE_CSISETCALLBACK: {
 			struct amf_csi_assignment *csi_assignment = data;
 			dprintf ("CSI '%s' set callback response from '%s', error: %d",
-					 csi_assignment->csi->name.value, csi_assignment->comp->name.value, error);
+				csi_assignment->csi->name.value,
+				csi_assignment->comp->name.value, error);
 			comp = csi_assignment->comp;
 			if (error == SA_AIS_OK) {
 				comp_ha_state_set (comp, csi_assignment,
 								   csi_assignment->requested_ha_state);
 			} else if (error == SA_AIS_ERR_FAILED_OPERATION) {
-				amf_su_comp_error_suspected (comp->su, comp,
-											 comp->saAmfCompRecoveryOnError);
+				amf_si_comp_set_ha_state_failed (csi_assignment->csi->si,
+					csi_assignment);
 			} else {
 				*retval = SA_AIS_ERR_INVALID_PARAM;
 			}
@@ -1367,9 +1402,18 @@ struct amf_comp *amf_comp_response_2 (
 		case AMF_RESPONSE_CSIREMOVECALLBACK: {
 			struct amf_csi_assignment *csi_assignment = data;
 			dprintf ("Lib csi '%s' remove callback response from '%s', error: %d",
-					 csi_assignment->csi->name.value, csi_assignment->comp->name.value, error);
+				csi_assignment->csi->name.value,
+				csi_assignment->comp->name.value, error);
 			comp = csi_assignment->comp;
-			amf_su_comp_hastate_changed (comp->su, comp, csi_assignment);
+			if (error == SA_AIS_OK) {
+				comp_ha_state_set (comp, csi_assignment,
+								   csi_assignment->requested_ha_state);
+			} else if (error == SA_AIS_ERR_FAILED_OPERATION) {
+				amf_si_comp_set_ha_state_failed (csi_assignment->csi->si,
+					csi_assignment);
+			} else {
+				*retval = SA_AIS_ERR_INVALID_PARAM;
+			}
 			break;
 		}
 #if 0
@@ -1491,8 +1535,9 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 	} else if (healthcheck->active) {
 		if (healthcheckResult == SA_AIS_OK) {
 			/* the response was on time, restart the supervision timer */
-			openais_timer_delete (healthcheck->timer_handle_period);
-			openais_timer_add (
+			poll_timer_delete (aisexec_poll_handle,
+				healthcheck->timer_handle_period);
+			poll_timer_add (aisexec_poll_handle,
 				healthcheck->saAmfHealthcheckPeriod,
 				(void *)healthcheck,
 				timer_function_healthcheck_tmo,

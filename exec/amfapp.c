@@ -73,15 +73,24 @@
 #include "amf.h"
 #include "print.h"
 
-int amf_application_si_count_get (struct amf_application *app)
+static int all_sg_started(struct amf_application *app)
 {
-	struct amf_si *si;
-	int answer = 0;
+	struct amf_sg *sg;
+	struct amf_su *su;
+	int all_su_instantiated = 1;
 
-	for (si = app->si_head; si != NULL; si = si->next) {
-		answer += 1;
+	/* TODO: spare SUs... */
+
+	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+		for (su = sg->su_head; su != NULL; su = su->next) {
+			if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
+				all_su_instantiated = 0;
+				break;
+			}
+		}
 	}
-	return (answer);
+
+	return all_su_instantiated;
 }
 
 void amf_application_start (
@@ -90,6 +99,10 @@ void amf_application_start (
 	struct amf_sg *sg;
 
 	ENTER ("'%s'", app->name.value);
+
+	/*
+     * TODO: Calculate and set SI dependency levels
+     */
 
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		amf_sg_start (sg, node);
@@ -101,6 +114,11 @@ void amf_application_assign_workload (
 {
 	struct amf_sg *sg;
 
+	/*                                                              
+     * TODO: dependency level ignored
+     * Each dependency level should be looped and amf_sg_assign_si
+     * called several times.
+     */
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		amf_sg_assign_si (sg, 0);
 	}
@@ -110,4 +128,22 @@ void amf_application_init (void)
 {
 	log_init ("AMF");
 }
+
+void amf_application_sg_started (
+	struct amf_application *app, struct amf_sg *sg,	struct amf_node *node)
+{
+	ENTER ("'%s'", app->name.value);
+
+	if (all_sg_started (app)) {
+		amf_cluster_application_started (app->cluster, app);
+	}
+}
+
+void amf_application_sg_assigned (
+	struct amf_application *app, struct amf_sg *sg)
+{
+	ENTER ("'%s'", app->name.value);
+	amf_cluster_application_workload_assigned (app->cluster, app);
+}
+
 

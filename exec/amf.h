@@ -331,6 +331,7 @@ struct amf_si_assignment {
 	struct amf_si *si;
 
 	/* Implementation */
+	SaAmfHAStateT requested_ha_state;
 	struct amf_si_assignment *next;
 };
 
@@ -403,7 +404,7 @@ struct req_exec_amf_healthcheck_tmo {
 /*===========================================================================*/
 /* amfutil.c */
 
-extern int amf_config_read (struct amf_cluster *cluster, char **error_string);
+extern struct amf_cluster *amf_config_read (char **error_string);
 extern char *amf_serialize (struct amf_cluster *cluster);
 extern int amf_deserialize (char *buf, struct amf_cluster *cluster);
 extern void amf_state_print (struct amf_cluster *cluster);
@@ -463,6 +464,7 @@ extern void timer_function_node_probation_period_expired (void *node);
 
 /* General methods */
 extern void amf_cluster_init (void);
+extern struct amf_cluster *amf_cluster_create (void);
 extern int amf_cluster_serialize (
 	struct amf_cluster *cluster, char **buf, int *offset);
 extern struct amf_cluster *amf_cluster_deserialize (
@@ -489,7 +491,6 @@ extern int amf_application_serialize (
 	struct amf_application *application, char **buf, int *offset);
 extern struct amf_application *amf_application_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
-extern int amf_application_si_count_get (struct amf_application *app);
 
 /* Event methods */
 extern void amf_application_start (
@@ -516,6 +517,12 @@ extern struct amf_sg *amf_sg_deserialize (
 
 /* Event methods */
 extern void amf_sg_start (struct amf_sg *sg, struct amf_node *node);
+
+/**
+ * Assign SIs on a certain dependency level to SUs
+ * @param sg
+ * @param dependency_level
+ */
 extern void amf_sg_assign_si (struct amf_sg *sg, int dependency_level);
 
 extern void amf_sg_failover_node_req (
@@ -534,6 +541,8 @@ extern void amf_sg_si_ha_state_changed (
 	struct amf_sg *sg, struct amf_si *si, int state);
 extern void amf_sg_su_assignment_removed (
 	struct amf_sg *sg, struct amf_su *su);
+extern void amf_sg_si_activated (
+	struct amf_sg *sg, struct amf_si *si);
 
 /* Timer event methods */
 //static void timer_function_auto_adjust_tmo (void *sg);
@@ -563,9 +572,11 @@ extern void amf_su_remove_assignment (struct amf_su *su);
 /* Response event methods */
 extern void amf_su_comp_state_changed (
 	struct amf_su *su, struct amf_comp *comp, SaAmfStateT type, int state);
+#if 0
 extern void amf_su_comp_hastate_changed (
 	struct amf_su *su, struct amf_comp *comp,
 	struct amf_csi_assignment *csi_assignment);
+#endif
 extern void amf_su_comp_error_suspected (
 	struct amf_su *su,
 	struct amf_comp *comp,
@@ -645,6 +656,12 @@ extern struct amf_si *amf_si_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
 
 /* Event methods */
+
+/**
+ * Activate all active assignments
+ * @param si
+ * @param activated_callback_fn
+ */
 extern void amf_si_activate (
 	struct amf_si *si,
 	void (*activated_callback_fn)(struct amf_si *si, int result));
@@ -657,9 +674,20 @@ extern void amf_si_set_ha_state (
 	SaAmfHAStateT ha_state,
 	void (*set_ha_state_callback_fn)(struct amf_si *si, int result));
 
-/* Response event methods */
+/**
+ * Component reports to SI that a workload assignment succeeded.
+ * 
+ * @param si
+ * @param csi_assignment
+ */
 extern void amf_si_comp_set_ha_state_done (
 	struct amf_si *si, struct amf_csi_assignment *csi_assignment);
+
+/**
+ * Component reports to SI that a workload assignment failed.
+ * @param si
+ * @param csi_assignment
+ */
 extern void amf_si_comp_set_ha_state_failed (
 	struct amf_si *si, struct amf_csi_assignment *csi_assignment);
 
@@ -674,6 +702,6 @@ extern char *amf_csi_dn_make (struct amf_csi *csi, SaNameT *name);
 
 /*===========================================================================*/
 extern struct amf_node *this_amf_node;
-extern struct amf_cluster amf_cluster;
+extern struct amf_cluster *amf_cluster;
 
 #endif /* AMF_H_DEFINED */

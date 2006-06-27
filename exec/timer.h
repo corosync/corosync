@@ -49,6 +49,15 @@ extern int openais_timer_add (
 	void (*timer_fn) (void *data),
 	timer_handle *handle);
 
+/*
+ * This should be called when the timer is added from a timer expiration
+ */
+extern int openais_timer_add_unlocked (
+	unsigned int msec_in_future,
+	void *data,
+	void (*timer_fn) (void *data),
+	timer_handle *handle);
+
 extern void openais_timer_delete (timer_handle timer_handle);
 
 extern void openais_timer_delete_data (timer_handle timer_handle);

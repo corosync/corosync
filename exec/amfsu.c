@@ -155,6 +155,7 @@ static void su_presence_state_set (struct amf_su *su,
 	su->saAmfSUPresenceState = presence_state;
 	TRACE1 ("Setting SU '%s' presence state: %s\n",
 		su->name.value, amf_presence_state (presence_state));
+	amf_sg_su_state_changed (su->sg, su, SA_AMF_PRESENCE_STATE, presence_state);
 }
 
 static void su_operational_state_set (struct amf_su *su,
@@ -179,7 +180,7 @@ static void su_operational_state_set (struct amf_su *su,
 			amf_comp_readiness_state_set (comp, SA_AMF_READINESS_IN_SERVICE);
 		}
 
-		amf_sg_su_state_changed (su->sg, su, SA_AMF_OP_STATE, SA_AMF_OPERATIONAL_ENABLED);
+//		amf_sg_su_state_changed (su->sg, su, SA_AMF_OP_STATE, SA_AMF_OPERATIONAL_ENABLED);
 	} else if (oper_state == SA_AMF_OPERATIONAL_DISABLED) {
 		su_readiness_state_set (su, SA_AMF_READINESS_OUT_OF_SERVICE);
 	}
@@ -190,7 +191,7 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 {
 	struct amf_csi_assignment *csi_assignment;
 
-	dprintf ("  Assigning CSI '%s' to comp '%s' with hastate %s\n",
+	dprintf ("  Creating CSI '%s' to comp '%s' with hastate %s\n",
 		getSaNameT (&csi->name), getSaNameT (&comp->name),
 		amf_ha_state (ha_state));
 
@@ -201,11 +202,14 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 
 	csi_assignment->comp_next = comp->assigned_csis;
 	comp->assigned_csis = csi_assignment;
+	csi_assignment->csi_next = csi->csi_assignments;
+	csi->csi_assignments = csi_assignment;
 	setSaNameT (&csi_assignment->name, (char*)comp->name.value);
 	csi_assignment->saAmfCSICompHAState = ha_state;
 	csi_assignment->csi = csi;
 	csi_assignment->comp = comp;
-	csi_assignment->saAmfCSICompHAState = ha_state;
+	csi_assignment->saAmfCSICompHAState = 0; /* undefined confirmed HA state */
+	csi_assignment->requested_ha_state = ha_state;
 
 	if (ha_state == SA_AMF_HA_ACTIVE)
 		comp->saAmfCompNumCurrActiveCsi++;
@@ -213,8 +217,6 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 		comp->saAmfCompNumCurrStandbyCsi++;
 	else
 		assert (0);
-
-	amf_comp_hastate_set (comp, csi_assignment, ha_state);
 }
 
 static void su_cleanup (struct amf_su *su)
@@ -286,7 +288,7 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 {
 	struct amf_si_assignment *si_assignment;
 
-	dprintf ("Assigning SI '%s' to SU '%s' with hastate %s\n",
+	dprintf ("Creating SI '%s' to SU '%s' with hastate %s\n",
 		getSaNameT (&si->name), getSaNameT (&su->name),
 		amf_ha_state (ha_state));
 
@@ -295,10 +297,13 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
 	}
 	setSaNameT (&si_assignment->name, (char*)su->name.value);
-	si_assignment->saAmfSISUHAState = ha_state;
+	si_assignment->saAmfSISUHAState = 0; /* undefined confirmed HA state */
+	si_assignment->requested_ha_state = ha_state;
 	si_assignment->next = su->assigned_sis;
 	su->assigned_sis = si_assignment;
 	si_assignment->si = si;
+	memcpy (&si_assignment->si->saAmfSIProtectedbySG,
+		&su->sg->name, sizeof (SaNameT));
 
 	if (ha_state == SA_AMF_HA_ACTIVE) {
 		si->saAmfSINumCurrActiveAssignments++;

@@ -130,3 +130,63 @@ void amf_si_init (void)
 	log_init ("AMF");
 }
 
+void amf_si_comp_set_ha_state_done (
+	struct amf_si *si, struct amf_csi_assignment *csi_assignment)
+{
+	struct amf_csi *csi;
+	int all_confirmed = 1;
+
+	ENTER ("");
+
+	/**
+     * If all requested active/standby CSIs in SI are
+     * confirmed by the component, tell SG that the SI is
+     * activated.
+     */
+	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
+		struct amf_csi_assignment *tmp;
+		for (tmp = csi->csi_assignments; tmp != NULL; tmp = tmp->csi_next) {
+			if (tmp->requested_ha_state != tmp->saAmfCSICompHAState) {
+				all_confirmed = 0;
+				goto done;
+			}
+		}
+	}
+
+done:
+	if (all_confirmed) {
+		amf_sg_si_activated (csi_assignment->comp->su->sg, si);
+	}
+}
+
+void amf_si_activate (
+	struct amf_si *si,
+	void (*activated_callback_fn)(struct amf_si *si, int result))
+{
+	struct amf_csi *csi;
+
+	ENTER ("'%s'", si->name.value);
+
+	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
+		struct amf_csi_assignment *csi_assignment;
+
+		for (csi_assignment = csi->csi_assignments; csi_assignment != NULL;
+			csi_assignment = csi_assignment->csi_next) {
+
+			/*                                                              
+			 * TODO: only active assignments should be set when dependency
+			 * levels are used.
+			 */
+			amf_comp_hastate_set (csi_assignment->comp, csi_assignment,
+				csi_assignment->requested_ha_state);
+		}
+	}
+}
+
+void amf_si_comp_set_ha_state_failed (
+	struct amf_si *si, struct amf_csi_assignment *csi_assignment)
+{
+	ENTER ("");
+	assert (0);
+}
+

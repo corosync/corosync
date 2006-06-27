@@ -74,6 +74,34 @@
 #include "util.h"
 #include "main.h"
 
+/**
+ * Determine if all applications are started
+ * @param cluster
+ * 
+ * @return int
+ */
+static int all_applications_started (struct amf_cluster *cluster)
+{
+	int all_started = 1;
+	struct amf_application *app;
+	struct amf_sg *sg;
+	struct amf_su *su;
+
+	for (app = cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
+					all_started = 0;
+					goto done;
+				}
+			}
+		}
+	}
+
+done:
+	return all_started;
+}
+
 static void timer_function_cluster_assign_workload_tmo (void *_cluster)
 {
 	struct amf_application *app;
@@ -98,7 +126,7 @@ static void timer_function_cluster_startup_tmo (void *_cluster)
 	}
 
 	/* wait a while before assigning workload */
-	openais_timer_add (
+	poll_timer_add (aisexec_poll_handle,
 		cluster->saAmfClusterStartupTimeout,
 		cluster,
 		timer_function_cluster_assign_workload_tmo,
@@ -108,7 +136,7 @@ static void timer_function_cluster_startup_tmo (void *_cluster)
 void amf_cluster_start (struct amf_cluster *cluster)
 {
 	/* wait a while before starting applications */
-	openais_timer_add (
+	poll_timer_add (aisexec_poll_handle,
 		cluster->saAmfClusterStartupTimeout,
 		cluster,
 		timer_function_cluster_startup_tmo,
@@ -118,5 +146,44 @@ void amf_cluster_start (struct amf_cluster *cluster)
 void amf_cluster_init (void)
 {
 	log_init ("AMF");
+}
+
+void amf_cluster_application_started (
+	struct amf_cluster *cluster, struct amf_application *application)
+{
+	ENTER ("application '%s' started", application->name.value);
+
+	if (cluster->timeout_handle) {
+		poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
+	}
+
+	if (all_applications_started (cluster)) {
+		struct amf_application *app;
+		dprintf("All applications started, assigning workload.");
+
+		for (app = cluster->application_head; app != NULL; app = app->next) {
+			amf_application_assign_workload (app, this_amf_node);
+		}
+	}
+}
+
+struct amf_cluster *amf_cluster_create (void)
+{
+	struct amf_cluster *cluster = calloc (1, sizeof (struct amf_cluster));
+
+	if (cluster == NULL) {
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	cluster->saAmfClusterStartupTimeout = -1;
+	cluster->saAmfClusterAdminState = SA_AMF_ADMIN_UNLOCKED;
+
+	return cluster;
+}
+
+void amf_cluster_application_workload_assigned (
+	struct amf_cluster *cluster, struct amf_application *app)
+{
+	ENTER ("'%s'", app->name.value);
 }
 

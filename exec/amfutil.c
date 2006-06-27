@@ -244,7 +244,7 @@ static char *rm_beginning_ws(char *str)
 	return s;
 }
 
-int amf_config_read (struct amf_cluster *cluster, char **error_string)
+struct amf_cluster *amf_config_read (char **error_string)
 {
 	char buf[1024];
 	char *line;
@@ -254,6 +254,7 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 	int line_number = 0;
 	char *loc;
 	int i;
+	struct amf_cluster       *cluster;
 	struct amf_application   *app = 0;
 	struct amf_node          *node = 0;
 	struct amf_sg            *sg = 0;
@@ -283,11 +284,11 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 		sprintf (buf, "Can't read %s file reason = (%s).\n",
 				 filename, strerror (errno));
 		*error_string = buf;
-		return (-1);
+		return NULL;
 	}
 
-	cluster->saAmfClusterStartupTimeout = -1;
-	cluster->saAmfClusterAdminState = SA_AMF_ADMIN_UNLOCKED;
+	cluster = amf_cluster_create ();
+	assert (cluster != NULL);
 
 	while (fgets (buf, 255, fp)) {
 		line_number += 1;
@@ -880,14 +881,14 @@ int amf_config_read (struct amf_cluster *cluster, char **error_string)
 	}
 
 	fclose (fp);
-	return (0);
+	return cluster;
 
 parse_error:
 	sprintf (buf, "parse error at %s: %d: %s\n",
 			 filename, line_number, error_reason);
 	*error_string = buf;
 	fclose (fp);
-	return (-1);
+	return NULL;
 }
 
 void amf_runtime_attributes_print (struct amf_cluster *cluster)
