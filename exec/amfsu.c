@@ -378,7 +378,11 @@ void amf_su_comp_state_changed (
 
 				su_presence_state_set (comp->su, SA_AMF_PRESENCE_INSTANTIATED);
 			} else {
-				assert (0);
+				/*
+				 * This state occurs when there is more then
+				 * one SU
+				 */
+				return;
 			}
 		} else if (state == SA_AMF_PRESENCE_INSTANTIATING) {
 		} else if (state == SA_AMF_PRESENCE_RESTARTING) {
@@ -393,7 +397,7 @@ void amf_su_comp_state_changed (
 		if (state == SA_AMF_OPERATIONAL_ENABLED) {
 			struct amf_comp *comp_compare;
 			int all_set = 1;
-			for (comp_compare = comp->su->comp_head; comp_compare != NULL; comp_compare = comp->next) {
+			for (comp_compare = comp->su->comp_head; comp_compare != NULL; comp_compare = comp_compare->next) {
 				if (comp_compare->saAmfCompOperState != SA_AMF_OPERATIONAL_ENABLED) {
 					all_set = 0;
 					break;
