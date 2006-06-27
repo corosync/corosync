@@ -94,15 +94,10 @@ struct outq_item {
 };
 
 enum conn_state {
-	CONN_STATE_CONNECTING,
-	CONN_STATE_CONNECTED,
-	CONN_STATE_DISCONNECTING,
-	CONN_STATE_DISCONNECTING_DELAYED
-};
-
-enum disc_state {
-	DISC_STATE_EXITING,
-	DISC_STATE_EXITED
+	CONN_STATE_ACTIVE,
+	CONN_STATE_DELAYED,
+	CONN_STATE_CLOSED,
+	CONN_STATE_DISCONNECTED
 };
 
 struct conn_info {
@@ -121,9 +116,10 @@ struct conn_info {
 	int authenticated;	/* Is this connection authenticated? */
 	void *private_data;	/* library connection private data */
 	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
-	enum disc_state disc;	/* disconnect state */
+	int should_exit_fn;
 	struct timerlist timerlist;
 	pthread_mutex_t mutex;
+	int exit_thread;
 };
 
 static void *prioritized_poll_thread (void *conn);
@@ -172,7 +168,6 @@ static int response_init_send_response (
 	if (error == SA_AIS_ERR_ACCESS) {
 		return (-1);
 	}
-	conn_info->disc = DISC_STATE_EXITING;
 	return (0);
 }
 
@@ -231,8 +226,8 @@ static int dispatch_init_send_response (
 
 	}
 
-	conn_info->state = CONN_STATE_CONNECTED;
-	conn_info->disc = DISC_STATE_EXITING;
+	conn_info->state = CONN_STATE_ACTIVE;
+	conn_info->should_exit_fn = 1;
 	ais_service[req_lib_dispatch_init->resdis_header.service]->lib_init_fn (conn_info);
 	return (0);
 }
@@ -263,15 +258,16 @@ static inline unsigned int conn_info_create (int fd) {
 		return (ENOMEM);
 	}
 
-	conn_info->state = CONN_STATE_CONNECTING;
+	conn_info->state = CONN_STATE_ACTIVE;
 	conn_info->fd = fd;
 	conn_info->events = POLLIN|POLLNVAL;
 	conn_info->service = SOCKET_SERVICE_INIT;
+	conn_info->exit_thread = 0;
 	pthread_mutex_init (&conn_info->mutex, NULL);
 
 	pthread_attr_init (&conn_info->thread_attr);
 	pthread_attr_setstacksize (&conn_info->thread_attr, 100000);
-	pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_JOINABLE);
 	res = pthread_create (&conn_info->thread, &conn_info->thread_attr,
 		prioritized_poll_thread, conn_info);
 	return (res);
@@ -299,44 +295,82 @@ static void conn_info_destroy (struct conn_info *conn_info)
 
 static int libais_connection_active (struct conn_info *conn_info)
 {
-	return (conn_info->state == CONN_STATE_CONNECTED ||
-		conn_info->state == CONN_STATE_CONNECTING);
+	return (conn_info->state == CONN_STATE_ACTIVE);
 }
 
 static void libais_disconnect_delayed (struct conn_info *conn_info)
 {
-	conn_info->state = CONN_STATE_DISCONNECTING_DELAYED;
-	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTING_DELAYED;
+	conn_info->state = CONN_STATE_DELAYED;
+	conn_info->conn_info_partner->state = CONN_STATE_DELAYED;
 }
 
 static int libais_disconnect (struct conn_info *conn_info)
 {
 	int res = 0;
 
-	if (conn_info->disc == DISC_STATE_EXITING) {
-		if (conn_info->service != SOCKET_SERVICE_INIT && ais_service[conn_info->service]->lib_exit_fn) {
-			res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
-			if (res == 0) {
-				conn_info->disc = DISC_STATE_EXITED;
-				conn_info->conn_info_partner->disc = DISC_STATE_EXITED;
-			}
-			return (res);
-		}
-		conn_info->disc = DISC_STATE_EXITED;
-		if (conn_info->conn_info_partner)
-			conn_info->conn_info_partner->disc = DISC_STATE_EXITED;
-		return (0);
+	if (conn_info->state == CONN_STATE_DISCONNECTED) {
+		assert (0);
 	}
 
+	/*
+	 * Close active connections
+	 */
+	if (conn_info->state == CONN_STATE_ACTIVE || conn_info->state == CONN_STATE_DELAYED) {
+		close (conn_info->fd);
+		conn_info->state = CONN_STATE_CLOSED;
+		if (conn_info->conn_info_partner) {
+			close (conn_info->conn_info_partner->fd);
+			conn_info->conn_info_partner->state = CONN_STATE_CLOSED;
+		}
+	}
+
+	/*
+	 * Note we will only call the close operation once on the first time
+	 * one of the connections is closed
+	 */	
+	if (conn_info->state == CONN_STATE_CLOSED) {
+		if (conn_info->should_exit_fn &&
+			ais_service[conn_info->service]->lib_exit_fn) {
+				res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
+		}
+		if (res == -1) {
+			return (-1);
+		}
+
+		if (conn_info->conn_info_partner) {
+			if (conn_info->conn_info_partner->should_exit_fn &&
+				ais_service[conn_info->conn_info_partner->service]->lib_exit_fn) {
+					res = ais_service[conn_info->conn_info_partner->service]->lib_exit_fn (conn_info);
+			}
+			if (res == -1) {
+				return (-1);
+			}
+		}
+	}
+
+	/*
+	 * Exit other thread if it exists yet
+	 */
+	conn_info->exit_thread = 1;
+	if (conn_info->conn_info_partner) {
+		conn_info->conn_info_partner->exit_thread = 1;
+		pthread_kill (conn_info->conn_info_partner->thread, SIGUSR1);
+		pthread_join (conn_info->conn_info_partner->thread, NULL);
+	}
+	conn_info->state = CONN_STATE_DISCONNECTED;
+	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTED;
 	conn_info_destroy (conn_info);
-	conn_info_destroy (conn_info->conn_info_partner);
+	if (conn_info->conn_info_partner) {
+		conn_info_destroy (conn_info->conn_info_partner);
+	}
 
 	if (conn_info->private_data) {
 		free (conn_info->private_data);
 	}
-	free (conn_info->conn_info_partner);
+	if (conn_info->conn_info_partner) {
+		free (conn_info->conn_info_partner);
+	}
 	free (conn_info);
-
 	return (0);
 }
 
@@ -362,6 +396,9 @@ retry_poll:
 		ufd.events = conn_info->events;
 		ufd.revents = 0;
 		fds = poll (&ufd, 1, timeout);
+		if (conn_info->exit_thread) {
+			break;
+		}
 		if (fds == -1) {
 			goto retry_poll;
 		}
@@ -369,7 +406,7 @@ retry_poll:
 		ipc_serialize_lock_fn ();
 		if (fds == 1 && ufd.revents) {
 			if ((ufd.revents & (POLLERR|POLLHUP)) ||
-				conn_info->state == CONN_STATE_DISCONNECTING_DELAYED) {
+				conn_info->state == CONN_STATE_DELAYED) {
 				res = libais_disconnect (conn_info);
 				if (res != 0) {
 					ipc_serialize_unlock_fn ();
@@ -382,11 +419,6 @@ retry_poll:
 				conn_info_outq_flush (conn_info);
 			}
 
-			if (conn_info->state == CONN_STATE_CONNECTED && conn_info->conn_info_partner == 0) {
-				timeout = 10;
-				ipc_serialize_unlock_fn ();
-				continue;
-			}
 			if ((ufd.revents & POLLIN) == POLLIN) {
 				libais_deliver (conn_info);
 			}
