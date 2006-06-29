@@ -91,7 +91,7 @@ poll_handle poll_create (
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
-	poll_instance->serialize_lock_fn = serialize_unlock_fn;
+	poll_instance->serialize_lock_fn = serialize_lock_fn;
 	poll_instance->serialize_unlock_fn = serialize_unlock_fn;
 	timerlist_init (&poll_instance->timerlist);
 
