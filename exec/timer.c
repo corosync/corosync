@@ -87,8 +87,6 @@ static pthread_attr_t thread_attr;
 
 static struct timerlist timers_timerlist;
 
-static int in_expiry = 0;
-
 static void (*timer_serialize_lock_fn) (void);
 
 static void (*timer_serialize_unlock_fn) (void);
@@ -111,7 +109,9 @@ static void *prioritized_timer_thread (void *data)
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
 retry_poll:
+		timer_serialize_lock_fn ();
 		timeout = timerlist_timeout_msec (&timers_timerlist);
+		timer_serialize_unlock_fn ();
 		fds = poll (NULL, 0, timeout);
 		if (fds == -1) {
 			goto retry_poll;
@@ -119,9 +119,7 @@ retry_poll:
 		pthread_mutex_lock (&timer_mutex);
 		timer_serialize_lock_fn ();
 
-		in_expiry = 1;
 		timerlist_expire (&timers_timerlist);
-		in_expiry = 0;
 		
 		timer_serialize_unlock_fn ();
 		pthread_mutex_unlock (&timer_mutex);
@@ -149,7 +147,7 @@ int openais_timer_init (
 
 	pthread_mutex_lock (&timer_mutex);
         pthread_attr_init (&thread_attr);
-        pthread_attr_setstacksize (&thread_attr, 8192);
+        pthread_attr_setstacksize (&thread_attr, 100000);
         pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
         res = pthread_create (&expiry_thread, &thread_attr,
 		prioritized_timer_thread, NULL);
@@ -166,8 +164,7 @@ int openais_timer_add (
 	int res;
 	int unlock;
 
-	if (in_expiry == 1 &&
-		pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;
@@ -199,8 +196,7 @@ void openais_timer_delete (
 		return;
 	}
 
-	if (in_expiry == 1 &&
-		pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;
@@ -222,8 +218,7 @@ void openais_timer_delete_data (
 	if (timer_handle == 0) {
 		return;
 	}
-	if (in_expiry == 1 &&
-		pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;

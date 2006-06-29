@@ -1029,6 +1029,7 @@ int totempg_groups_send_ok_joined (
 	unsigned int res;
 
 	pthread_mutex_lock (&totempg_mutex);
+	pthread_mutex_lock (&mcast_msg_mutex);
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1047,6 +1048,7 @@ int totempg_groups_send_ok_joined (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
+	pthread_mutex_unlock (&mcast_msg_mutex);
 	pthread_mutex_unlock (&totempg_mutex);
 	return (res);
 }
