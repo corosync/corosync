@@ -426,7 +426,7 @@ cpg_error_t cpg_join (
 	req_lib_cpg_join.header.size = sizeof (struct req_lib_cpg_join);
 	req_lib_cpg_join.header.id = MESSAGE_REQ_CPG_JOIN;
 	req_lib_cpg_join.pid = getpid();
-	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_join.group_name,
 		group);
 
 	iov[0].iov_base = &req_lib_cpg_join;
