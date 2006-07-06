@@ -42,6 +42,8 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "saAis.h"
 #include "cpg.h"
@@ -76,18 +78,29 @@ void ConfchgCallback (
 	struct cpg_address *joined_list, int joined_list_entries)
 {
 	int i;
+	struct in_addr saddr;
 
 
 	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("'\n");
-	for (i=0; i<joined_list_entries; i++)
-		printf("joined node/pid: %d/%d reason: %d\n", joined_list[i].nodeid, joined_list[i].pid, joined_list[i].reason);
+	for (i=0; i<joined_list_entries; i++) {
+		saddr.s_addr = joined_list[i].nodeid;
+		printf("joined node/pid: %s/%d reason: %d\n",
+			inet_ntoa (saddr), joined_list[i].pid,
+			joined_list[i].reason);
+	}
 
-	for (i=0; i<left_list_entries; i++)
-		printf("left node/pid: %d/%d reason: %d\n", left_list[i].nodeid, left_list[i].pid, left_list[i].reason);
+	for (i=0; i<left_list_entries; i++) {
+		saddr.s_addr = left_list[i].nodeid;
+		printf("left node/pid: %s/%d reason: %d\n",
+			inet_ntoa (saddr), left_list[i].pid,
+			left_list[i].reason);
+	}
 
 	printf("nodes in group now %d\n", member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
-		printf("node/pid: %d/%d\n", member_list[i].nodeid, member_list[i].pid);
+		saddr.s_addr = member_list[i].nodeid;
+		printf("node/pid: %s/%d\n",
+			inet_ntoa (saddr), member_list[i].pid);
 	}
 
 	/* Is it us??
