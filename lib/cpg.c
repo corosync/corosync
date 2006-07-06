@@ -326,7 +326,7 @@ cpg_error_t cpg_dispatch (
 					&res_cpg_confchg_callback->member_list[i]);
 			}
 			left_list_start = res_cpg_confchg_callback->member_list +
-				res_cpg_confchg_callback->left_list_entries;
+				res_cpg_confchg_callback->member_list_entries;
 			for (i = 0; i < res_cpg_confchg_callback->left_list_entries; i++) {
 				marshall_from_mar_cpg_address_t (&left_list[i],
 					&left_list_start[i]);
