@@ -672,9 +672,9 @@ static void passive_mcast_recv (
 
 	/*
 	 * Monitor for failures
-	 * TODO doesn't handle wrap-around of the token
+	 * TODO doesn't handle wrap-around of the mcast recv count
 	 */
-	passive_instance->token_recv_count[iface_no] += 1;
+	passive_instance->mcast_recv_count[iface_no] += 1;
 	max = 0;
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if (max < passive_instance->mcast_recv_count[i]) {
