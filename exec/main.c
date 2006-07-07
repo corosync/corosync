@@ -554,7 +554,7 @@ int main (int argc, char **argv)
 		gid_valid,
 		&this_non_loopback_ip);
 
-//	aisexec_tty_detach ();
+	aisexec_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 
