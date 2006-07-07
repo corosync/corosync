@@ -59,6 +59,7 @@ enum e_ais_done {
 	AIS_DONE_OBJDB = -13,
 	AIS_DONE_INIT_SERVICES = -14,
 	AIS_DONE_OUT_OF_MEMORY = -15,
+	AIS_DONE_FATAL_ERR = -16
 };
 
 /*

@@ -9,7 +9,8 @@
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson
+ *  Author: Anders Eriksson, Lars Holm
+ *  - Component/SU restart, SU failover
  *
  * All rights reserved.
  *
@@ -171,9 +172,6 @@ struct component_terminate_callback_data {
 static void comp_presence_state_set (
 	struct amf_comp *comp,
 	SaAmfPresenceStateT presence_state);
-static void comp_operational_state_set (
-	struct amf_comp *comp,
-	SaAmfOperationalStateT operational_state);
 static int clc_cli_instantiate (struct amf_comp *comp);
 static int clc_instantiate_callback (struct amf_comp *comp);
 static int clc_csi_set_callback (struct amf_comp *comp);
@@ -185,6 +183,9 @@ static int clc_cli_cleanup_local (struct amf_comp *comp);
 static void healthcheck_deactivate (struct amf_healthcheck *healthcheck_active);
 static void lib_healthcheck_request (struct amf_healthcheck *healthcheck);
 static void timer_function_healthcheck_tmo (void *_healthcheck);
+static void lib_csi_set_request (
+	struct amf_comp *comp,
+	struct amf_csi_assignment *csi_assignment);
 
 /*
  * Life cycle functions
@@ -309,6 +310,21 @@ static void invocation_destroy_by_data (void *data)
 	}
 }
 
+/**
+ * Set suspected error flag and report to SU.
+ * 
+ * @param comp
+ * @param recommended_recovery
+ */
+static void report_error_suspected (
+	struct amf_comp *comp,
+	SaAmfRecommendedRecoveryT recommended_recovery)
+{
+	comp->error_suspected = 1;
+	amf_su_comp_error_suspected (
+		comp->su, comp, recommended_recovery);
+}
+
 char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name)
 {
 	int	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
@@ -350,6 +366,15 @@ static void *clc_command_run (void *context)
 	if (pid) {
 		xprintf ("waiting for pid %d to finish\n", pid);
 		waitpid (pid, &status, 0);
+		if (WEXITSTATUS(status) != 0) {
+			fprintf (stderr, "Error: CLC_CLI failed with exit status:"
+							 " %d - %s\n", WEXITSTATUS(status),
+						strerror (WEXITSTATUS(status)));
+			/*                                                              
+             * TODO: remove this and handle properly later...
+             */
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+		}
 		xprintf ("process (%d) finished with %d\n", pid, status);
 		if (clc_command_run_data->completion_callback) {
 			clc_command_run_data->completion_callback (context);
@@ -496,30 +521,24 @@ static int clc_cli_terminate (struct amf_comp *comp)
 	return (0);
 }
 
+/**
+ * Request component to terminate itself
+ * @param comp
+ * 
+ * @return int
+ */
 static int lib_comp_terminate_request (struct amf_comp *comp)
 {
-	struct res_lib_amf_componentterminatecallback res_lib_amf_componentterminatecallback;
+	struct res_lib_amf_componentterminatecallback res_lib;
 	struct component_terminate_callback_data *component_terminate_callback_data;
 
 	ENTER("comp %s\n", getSaNameT (&comp->name));
 
-	if (comp->saAmfCompPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
-		dprintf ("component terminated but not instantiated %s - %d\n",
-			getSaNameT (&comp->name), comp->saAmfCompPresenceState);
-		assert (0);
-		return (0);
-	}
+	res_lib.header.id = MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK;
+	res_lib.header.size = sizeof (struct res_lib_amf_componentterminatecallback);
+	res_lib.header.error = SA_AIS_OK;
 
-	dprintf ("component name terminating %s\n", getSaNameT (&comp->name));
-	dprintf ("component presence state %d\n", comp->saAmfCompPresenceState);
-
-	res_lib_amf_componentterminatecallback.header.id = MESSAGE_RES_AMF_COMPONENTTERMINATECALLBACK;
-	res_lib_amf_componentterminatecallback.header.size = sizeof (struct res_lib_amf_componentterminatecallback);
-	res_lib_amf_componentterminatecallback.header.error = SA_AIS_OK;
-
-
-	memcpy (&res_lib_amf_componentterminatecallback.compName,
-		&comp->name, sizeof (SaNameT));
+	memcpy (&res_lib.compName, &comp->name, sizeof (SaNameT));
 
 	component_terminate_callback_data =
 		malloc (sizeof (struct component_terminate_callback_data));
@@ -528,16 +547,14 @@ static int lib_comp_terminate_request (struct amf_comp *comp)
 	}
 	component_terminate_callback_data->comp = comp;
 
-	res_lib_amf_componentterminatecallback.invocation =
+	res_lib.invocation =
 		invocation_create (
 		AMF_RESPONSE_COMPONENTTERMINATECALLBACK,
 		component_terminate_callback_data);
-	dprintf ("Creating invocation %llu", 
-	(unsigned long long)res_lib_amf_componentterminatecallback.invocation);
 				        
 	openais_conn_send_response (
 		openais_conn_partner_get (comp->conn),
-		&res_lib_amf_componentterminatecallback,
+		&res_lib,
 		sizeof (struct res_lib_amf_componentterminatecallback));
 
 	return (0);
@@ -754,49 +771,25 @@ static void comp_ha_state_set (	struct amf_comp *comp,
 	struct amf_csi_assignment *csi_assignment,
 	SaAmfHAStateT ha_state)
 {
-	/*                                                              
-     * Filter component restart from reporting to SI. TODO: how is
-     * this handled the right way?
-     */
-	if (csi_assignment->saAmfCSICompHAState !=
-		csi_assignment->requested_ha_state) {
-
-		/* set confirmed HA state */
-		csi_assignment->saAmfCSICompHAState = ha_state;
-		TRACE1 ("Setting comp '%s', SU '%s' CSI '%s', HA state: %s\n",
-				comp->name.value, comp->su->name.value,
-				csi_assignment->csi->name.value,
-				amf_ha_state (csi_assignment->saAmfCSICompHAState));
-		amf_si_comp_set_ha_state_done (csi_assignment->csi->si, csi_assignment);
-	}
+	/* set confirmed HA state */
+	csi_assignment->saAmfCSICompHAState = ha_state;
+	TRACE1 ("Setting comp '%s', SU '%s' CSI '%s', HA state: %s\n",
+		comp->name.value, comp->su->name.value,
+		csi_assignment->csi->name.value,
+		amf_ha_state (csi_assignment->saAmfCSICompHAState));
+	amf_si_comp_set_ha_state_done (csi_assignment->csi->si, csi_assignment);
 }
 
 static void comp_presence_state_set (struct amf_comp *comp,
 	SaAmfPresenceStateT presence_state)
 {
-	SaAmfPresenceStateT old = comp->saAmfCompPresenceState;
-
 	comp->saAmfCompPresenceState = presence_state;
 	TRACE1 ("Setting comp '%s', SU '%s' presence state: %s\n",
 		comp->name.value, comp->su->name.value,
 		amf_presence_state (comp->saAmfCompPresenceState));
 
-	/* TODO: ugly, should be done by SU... */
-	if (old != SA_AMF_PRESENCE_RESTARTING) {
-		amf_su_comp_state_changed (
-			comp->su, comp, SA_AMF_PRESENCE_STATE, presence_state);
-	}
-}
-
-static void comp_operational_state_set (struct amf_comp *comp,
-	SaAmfOperationalStateT oper_state)
-{
-	comp->saAmfCompOperState = oper_state;
-	TRACE1 ("Setting comp '%s', SU '%s' operational state: %s\n",
-		comp->name.value, comp->su->name.value,
-		amf_op_state (comp->saAmfCompOperState));
 	amf_su_comp_state_changed (
-		comp->su, comp, SA_AMF_OP_STATE, oper_state);
+		comp->su, comp, SA_AMF_PRESENCE_STATE, presence_state);
 }
 
 #if 0
@@ -836,16 +829,99 @@ static void lib_csi_remove_request (struct amf_comp *comp,
 }
 #endif
 
-static void comp_reassign_csis (struct amf_comp *comp)
+struct amf_csi_assignment *amf_comp_get_next_csi_assignment (
+	struct amf_comp *component, const struct amf_csi_assignment *csi_assignment)
 {
-	struct amf_csi_assignment *csi_assignment = comp->assigned_csis;
+	struct amf_si *si;
+	struct amf_csi *csi;
+	struct amf_csi_assignment *tmp_csi_assignment;
+	SaNameT dn;
 
-	ENTER ("'%s'", comp->name.value);
+	amf_comp_dn_make (component, &dn);
 
-	for (; csi_assignment; csi_assignment = csi_assignment->comp_next) {
-		amf_comp_hastate_set (comp, csi_assignment,
-			csi_assignment->requested_ha_state);
+	if (csi_assignment == NULL) {
+		si = component->su->sg->application->si_head;
+		csi = si->csi_head;
+		tmp_csi_assignment = csi->assigned_csis;
+	} else {
+		tmp_csi_assignment = csi_assignment->next;
+		if (tmp_csi_assignment == NULL) {
+			csi = csi_assignment->csi->next;
+			if (csi == NULL) {
+				si = csi_assignment->csi->si->next;
+				if (si == NULL) {
+					return NULL;
+				} else {
+					csi = si->csi_head;
+					tmp_csi_assignment = csi->assigned_csis;
+				}
+			} else {
+				si = csi->si;
+				tmp_csi_assignment = csi->assigned_csis;
+			}
+		} else {	
+			csi = tmp_csi_assignment->csi;
+			si = csi->si;
+		}
 	}
+
+	for (; si != NULL; si = si->next) {
+		if (tmp_csi_assignment == NULL && csi == NULL && si != NULL) {
+			csi = si->csi_head;
+			tmp_csi_assignment = csi->assigned_csis;
+		}
+
+		for (; csi != NULL; csi = csi->next) {
+			if (tmp_csi_assignment == NULL && csi != NULL) {
+				tmp_csi_assignment = csi->assigned_csis;
+			}
+
+			for (; tmp_csi_assignment != NULL;
+				tmp_csi_assignment = tmp_csi_assignment->next) {
+
+				if (name_match (&tmp_csi_assignment->name, &dn)) {
+					return tmp_csi_assignment;
+				}
+			}
+		}
+	}
+
+	return NULL;
+}
+
+void amf_comp_foreach_csi_assignment (
+	struct amf_comp *component,
+	void (*foreach_fn)(struct amf_comp *component,
+					   struct amf_csi_assignment *csi_assignment))
+{
+	struct amf_csi_assignment *csi_assignment;
+
+	assert (foreach_fn != NULL);
+	csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+	while (csi_assignment != NULL) {
+		foreach_fn (component, csi_assignment);
+		csi_assignment = amf_comp_get_next_csi_assignment (
+			component, csi_assignment);
+	}
+}
+
+static struct amf_csi_assignment *csi_assignment_find_in (
+	struct amf_comp *component, SaNameT *csi_name)
+{
+	struct amf_csi_assignment *csi_assignment;
+	SaNameT dn;
+
+	csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+	while (csi_assignment != NULL) {
+		amf_csi_dn_make (csi_assignment->csi, &dn);
+		if (name_match (csi_name, &dn)) {
+			return csi_assignment;
+		}
+		csi_assignment = amf_comp_get_next_csi_assignment (
+			component, csi_assignment);
+	}
+
+	return NULL;
 }
 
 static void healthcheck_deactivate (
@@ -926,37 +1002,30 @@ static void timer_function_healthcheck_tmo (
 
 static void lib_healthcheck_request (struct amf_healthcheck *healthcheck)
 {
-	struct res_lib_amf_healthcheckcallback res_lib_amf_healthcheckcallback;
+	struct res_lib_amf_healthcheckcallback res_lib;
 
-	res_lib_amf_healthcheckcallback.header.id =
-		MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
-	res_lib_amf_healthcheckcallback.header.size =
-		sizeof (struct res_lib_amf_healthcheckcallback);
-	res_lib_amf_healthcheckcallback.header.error = SA_AIS_OK;
-
-	res_lib_amf_healthcheckcallback.invocation =
+	res_lib.header.id =	MESSAGE_RES_AMF_HEALTHCHECKCALLBACK;
+	res_lib.header.size = sizeof (struct res_lib_amf_healthcheckcallback);
+	res_lib.header.error = SA_AIS_OK;
+	res_lib.invocation =
 		invocation_create (AMF_RESPONSE_HEALTHCHECKCALLBACK, healthcheck);
 
-	amf_comp_dn_make (healthcheck->comp,
-					  &res_lib_amf_healthcheckcallback.compName);
-	memcpy (&res_lib_amf_healthcheckcallback.key,
-		&healthcheck->safHealthcheckKey,
+	amf_comp_dn_make (healthcheck->comp, &res_lib.compName);
+	memcpy (&res_lib.key, &healthcheck->safHealthcheckKey,
 		sizeof (SaAmfHealthcheckKeyT));
 
 	TRACE8 ("sending healthcheck request to component %s",
-			res_lib_amf_healthcheckcallback.compName.value);
+			res_lib.compName.value);
 	openais_conn_send_response (
 		openais_conn_partner_get (healthcheck->comp->conn),
-		&res_lib_amf_healthcheckcallback,
-		sizeof (struct res_lib_amf_healthcheckcallback));
+		&res_lib, sizeof (struct res_lib_amf_healthcheckcallback));
 }
 
 static void lib_csi_set_request (
 	struct amf_comp *comp,
-	struct amf_csi_assignment *csi_assignment,
-	SaAmfHAStateT requested_ha_state)
+	struct amf_csi_assignment *csi_assignment)
 {
-	struct res_lib_amf_csisetcallback* res_lib_amf_csisetcallback;     
+	struct res_lib_amf_csisetcallback* res_lib;     
 	void*  p;
 	struct amf_csi_attribute *attribute;
 	size_t char_length_of_csi_attrs=0;
@@ -966,16 +1035,18 @@ static void lib_csi_set_request (
 	char* csi_attribute_buf;
 	unsigned int byte_offset;
 
-	csi_assignment->requested_ha_state = requested_ha_state;
+	if (!amf_su_is_local (comp->su))
+		return;
+
 	csi = csi_assignment->csi;
 
-	dprintf("Assigning CSI '%s' state %s to comp '%s'\n",
-		getSaNameT (&csi->name), amf_ha_state (requested_ha_state),
+	ENTER ("Assigning CSI '%s' state %s to comp '%s'\n",
+		getSaNameT (&csi->name), amf_ha_state (csi_assignment->requested_ha_state),
 			comp->name.value);
 
 	for (attribute = csi->attributes_head;
-		 attribute != NULL;
-		 attribute = attribute->next) {
+		attribute != NULL;
+		attribute = attribute->next) {
 		for (i = 0; attribute->value[i] != NULL; i++) {
 			num_of_csi_attrs++;
 			char_length_of_csi_attrs += strlen(attribute->name);
@@ -983,23 +1054,23 @@ static void lib_csi_set_request (
 			char_length_of_csi_attrs += 2;
 		}
 	}
-	p = malloc(sizeof(struct res_lib_amf_csisetcallback)+
+	p = malloc(sizeof(struct res_lib_amf_csisetcallback) +
 			   char_length_of_csi_attrs);
 	if (p == NULL) {
 		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
 	}
 
-	res_lib_amf_csisetcallback = (struct res_lib_amf_csisetcallback*)p;
+	res_lib = (struct res_lib_amf_csisetcallback*)p;
 
 	/* Address of the buffer containing the Csi name value pair  */
-	csi_attribute_buf = res_lib_amf_csisetcallback->csi_attr_buf;
+	csi_attribute_buf = res_lib->csi_attr_buf;
 
 	/* Byteoffset start at the zero byte  */
 	byte_offset = 0;
 
 	for (attribute = csi->attributes_head;
-		 attribute != NULL;
-		 attribute = attribute->next) {
+		attribute != NULL;
+		attribute = attribute->next) {
 
 		for (i = 0; attribute->value[i] != NULL; i++) {
 			strcpy(&csi_attribute_buf[byte_offset], (char*)attribute->name);
@@ -1009,51 +1080,50 @@ static void lib_csi_set_request (
 		}
 	}
 
-	res_lib_amf_csisetcallback->number = num_of_csi_attrs;
-	res_lib_amf_csisetcallback->csiFlags = SA_AMF_CSI_ADD_ONE;  
+	res_lib->number = num_of_csi_attrs;
+	res_lib->csiFlags = SA_AMF_CSI_ADD_ONE;  
 
-	switch (requested_ha_state) {
+	switch (csi_assignment->requested_ha_state) {
 		case SA_AMF_HA_ACTIVE: {
-				res_lib_amf_csisetcallback->csiStateDescriptor.activeDescriptor.activeCompName.length = 0;
-				res_lib_amf_csisetcallback->csiStateDescriptor.activeDescriptor.transitionDescriptor =
-					SA_AMF_CSI_NEW_ASSIGN; 
-				break;
-			}
+			res_lib->csiStateDescriptor.activeDescriptor.activeCompName.length = 0;
+			res_lib->csiStateDescriptor.activeDescriptor.transitionDescriptor =
+				SA_AMF_CSI_NEW_ASSIGN; 
+			break;
+		}
 		case SA_AMF_HA_STANDBY: {
-				res_lib_amf_csisetcallback->csiStateDescriptor.standbyDescriptor.activeCompName.length = 0; 
-				res_lib_amf_csisetcallback->csiStateDescriptor.standbyDescriptor.standbyRank =  1;
-				break;
-			}
+			res_lib->csiStateDescriptor.standbyDescriptor.activeCompName.length = 0; 
+			res_lib->csiStateDescriptor.standbyDescriptor.standbyRank =  1;
+			break;
+		}
 		case SA_AMF_HA_QUIESCED: {
-				/*TODO*/
-				break;
-			}
+			/*TODO*/
+			break;
+		}
 		case SA_AMF_HA_QUIESCING: {
-				/*TODO*/
-				break;
-			}
+			/*TODO*/
+			break;
+		}
 		default: {
-				assert(SA_AMF_HA_ACTIVE||SA_AMF_HA_STANDBY||SA_AMF_HA_QUIESCING||SA_AMF_HA_QUIESCED);         
-				break;
-			}
+			assert(SA_AMF_HA_ACTIVE||SA_AMF_HA_STANDBY||SA_AMF_HA_QUIESCING||SA_AMF_HA_QUIESCED);         
+			break;
+		}
 	}
 
-	res_lib_amf_csisetcallback->header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
-	res_lib_amf_csisetcallback->header.size = 
+	res_lib->header.id = MESSAGE_RES_AMF_CSISETCALLBACK;
+	res_lib->header.size = 
 		sizeof (struct res_lib_amf_csisetcallback) +
 		char_length_of_csi_attrs;
-	res_lib_amf_csisetcallback->header.error = SA_AIS_OK;
+	res_lib->header.error = SA_AIS_OK;
 
-	amf_comp_dn_make (comp, &res_lib_amf_csisetcallback->compName);
-	amf_csi_dn_make (csi, &res_lib_amf_csisetcallback->csiName);
+	amf_comp_dn_make (comp, &res_lib->compName);
+	amf_csi_dn_make (csi, &res_lib->csiName);
 
-	res_lib_amf_csisetcallback->haState = requested_ha_state;
-	res_lib_amf_csisetcallback->invocation =
+	res_lib->haState = csi_assignment->requested_ha_state;
+	res_lib->invocation =
 		invocation_create (AMF_RESPONSE_CSISETCALLBACK, csi_assignment);
 
-	openais_conn_send_response (openais_conn_partner_get (comp->conn),
-		res_lib_amf_csisetcallback,
-		res_lib_amf_csisetcallback->header.size);
+	openais_conn_send_response (
+		openais_conn_partner_get (comp->conn), res_lib,	res_lib->header.size);
 
 	free(p);
 }
@@ -1064,11 +1134,8 @@ SaAisErrorT amf_comp_register (struct amf_comp *comp)
 
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
-		if (comp->saAmfCompReadinessState == SA_AMF_READINESS_IN_SERVICE) {
-			comp_reassign_csis (comp);
-		}
 	} else if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING) {
-		comp_operational_state_set (comp, SA_AMF_OPERATIONAL_ENABLED);
+		amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_ENABLED);
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
 	}
 	else {
@@ -1093,7 +1160,7 @@ void amf_comp_error_report (
 	}
 
 	/* report to SU and let it handle the problem */
-	amf_su_comp_error_suspected (comp->su, comp, recommendedRecovery);
+	report_error_suspected (comp, recommendedRecovery);
 }
 
 /**
@@ -1107,8 +1174,14 @@ void amf_comp_healthcheck_tmo (
 	TRACE2("Exec healthcheck tmo for '%s'", &comp->name.value);
 
 	/* report to SU and let it handle the problem */
-	amf_su_comp_error_suspected (
-		comp->su, comp, healthcheck->recommendedRecovery);
+	report_error_suspected (comp, healthcheck->recommendedRecovery);
+}
+
+static void clear_ha_state (
+	struct amf_comp *comp, struct amf_csi_assignment *csi_assignment)
+{
+	ENTER ("");
+	csi_assignment->saAmfCSICompHAState = 0;
 }
 
 /**
@@ -1119,12 +1192,16 @@ void amf_comp_cleanup_completed (struct amf_comp *comp)
 {
 	TRACE2("Exec CLC cleanup completed for '%s'", &comp->name.value);
 
+    /* Set all CSI's confirmed HA state to unknown  */
+	amf_comp_foreach_csi_assignment (comp, clear_ha_state);
+
+	/* clear error suspected flag, component is terminated now */
+	comp->error_suspected = 0;
+
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		amf_comp_instantiate (comp);
 	} else {
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_UNINSTANTIATED);
-		amf_su_comp_state_changed (comp->su, comp, SA_AMF_PRESENCE_STATE,
-								   SA_AMF_PRESENCE_UNINSTANTIATED);
 	}
 }
 
@@ -1257,26 +1334,9 @@ void amf_comp_instantiate (struct amf_comp *comp)
 void amf_comp_readiness_state_set (struct amf_comp *comp,
 	SaAmfReadinessStateT state)
 {
-#if 0
-	/*
-	 * Set component readiness state appropriately
-	 * if unit in service and component is enabled, it is in service
-	 * otherwise it is out of service page 50 B.02.01
-	 */
-	if (comp->su->saAmfSUReadinessState == SA_AMF_READINESS_IN_SERVICE &&
-		comp->saAmfCompOperState == SA_AMF_OPERATIONAL_ENABLED) {
-		comp->saAmfCompReadinessState = SA_AMF_READINESS_IN_SERVICE;
-	} else if (comp->su->saAmfSUReadinessState == SA_AMF_READINESS_STOPPING && 
-		comp->saAmfCompOperState == SA_AMF_OPERATIONAL_ENABLED) {
-		comp->saAmfCompReadinessState = SA_AMF_READINESS_STOPPING;
-	} else {
-		comp->saAmfCompReadinessState = SA_AMF_READINESS_OUT_OF_SERVICE;
-	}
-#endif
-
-	comp->saAmfCompReadinessState = state;
+//	comp->saAmfCompReadinessState = state;
 	TRACE1 ("Setting comp '%s' readiness state: %s\n",
-		comp->name.value, amf_readiness_state (comp->saAmfCompReadinessState));
+		comp->name.value, amf_readiness_state (state));
 }
 
 /**
@@ -1389,8 +1449,8 @@ struct amf_comp *amf_comp_response_2 (
 				csi_assignment->comp->name.value, error);
 			comp = csi_assignment->comp;
 			if (error == SA_AIS_OK) {
-				comp_ha_state_set (comp, csi_assignment,
-								   csi_assignment->requested_ha_state);
+				comp_ha_state_set (
+					comp, csi_assignment, csi_assignment->requested_ha_state);
 			} else if (error == SA_AIS_ERR_FAILED_OPERATION) {
 				amf_si_comp_set_ha_state_failed (csi_assignment->csi->si,
 					csi_assignment);
@@ -1416,10 +1476,14 @@ struct amf_comp *amf_comp_response_2 (
 			}
 			break;
 		}
-#if 0
-		case AMF_RESPONSE_COMPONENTTERMINATECALLBACK:
+	    case AMF_RESPONSE_COMPONENTTERMINATECALLBACK: {
+			struct component_terminate_callback_data *callback_data = data;
+			dprintf ("Lib comp '%s' terminate callback response, error: %d",
+					 callback_data->comp->name.value, error);
+			comp_presence_state_set (callback_data->comp,
+				SA_AMF_PRESENCE_UNINSTANTIATED);
 			break;
-#endif
+		}
 		default:
 			assert (0);
 			break;
@@ -1435,16 +1499,22 @@ struct amf_comp *amf_comp_response_2 (
  * @param requested_ha_state
  */
 void amf_comp_hastate_set (
-	struct amf_comp *comp,
-	struct amf_csi_assignment *csi_assignment,
-	SaAmfHAStateT requested_ha_state)
+	struct amf_comp *component,
+	struct amf_csi_assignment *csi_assignment)
 {
-	assert (comp != NULL && csi_assignment != NULL);
+	assert (component != NULL && csi_assignment != NULL);
 
-	if (!amf_su_is_local (comp->su))
-		return;
+	ENTER ("'%s'", csi_assignment->csi->name.value);
 
-	lib_csi_set_request(comp, csi_assignment, requested_ha_state);
+	if (!component->error_suspected) {
+		lib_csi_set_request(component, csi_assignment);
+	} else {
+		if (csi_assignment->requested_ha_state == SA_AMF_HA_QUIESCED) {
+			csi_assignment->saAmfCSICompHAState = csi_assignment->requested_ha_state;
+		} else {
+			assert (0);
+		}
+	}
 }
 
 /**
@@ -1458,7 +1528,11 @@ void amf_comp_terminate (struct amf_comp *comp)
 	comp_presence_state_set (comp, SA_AMF_PRESENCE_TERMINATING);
 
 	if (amf_su_is_local (comp->su)) {
-		clc_interfaces[comp->comptype]->terminate (comp);
+		if (comp->error_suspected) {
+			clc_interfaces[comp->comptype]->cleanup (comp);
+		} else {
+			clc_interfaces[comp->comptype]->terminate (comp);
+		}
 	}
 }
 
@@ -1469,8 +1543,9 @@ void amf_comp_terminate (struct amf_comp *comp)
 void amf_comp_restart (struct amf_comp *comp)
 {
 	dprintf ("comp restart '%s'\n", getSaNameT (&comp->name));
-	amf_comp_healthcheck_stop (comp, NULL);
 	comp_presence_state_set (comp, SA_AMF_PRESENCE_RESTARTING);
+	comp->saAmfCompRestartCount += 1;
+	amf_comp_healthcheck_stop (comp, NULL);
 
 	if (amf_su_is_local (comp->su)) {
 		clc_interfaces[comp->comptype]->cleanup (comp);
@@ -1489,20 +1564,16 @@ SaAisErrorT amf_comp_hastate_get (
 	struct amf_comp *comp, SaNameT *csi_name, SaAmfHAStateT *ha_state)
 {
 	struct amf_csi_assignment *assignment;
-	SaNameT name;
 
 	assert (comp != NULL && csi_name != NULL && ha_state != NULL);
 
 	dprintf ("comp ha state get from comp '%s' CSI '%s'\n",
 			 getSaNameT (&comp->name), csi_name->value);
 
-	for (assignment = comp->assigned_csis;
-		  assignment != NULL; assignment = assignment->comp_next) {
-		amf_csi_dn_make (assignment->csi, &name);
-		if (name_match (csi_name, &name)) {
-			*ha_state = assignment->saAmfCSICompHAState;
-			return SA_AIS_OK;
-		}
+	assignment = csi_assignment_find_in (comp, csi_name);
+	if (assignment != NULL) {
+		*ha_state = assignment->saAmfCSICompHAState;
+		return SA_AIS_OK;
 	}
 
 	return SA_AIS_ERR_INVALID_PARAM;
@@ -1560,3 +1631,60 @@ void amf_comp_init (void)
 	log_init ("AMF");
 }
 
+void amf_comp_operational_state_set (struct amf_comp *comp,
+	SaAmfOperationalStateT oper_state)
+{
+	comp->saAmfCompOperState = oper_state;
+	TRACE1 ("Setting comp '%s', SU '%s' operational state: %s\n",
+		comp->name.value, comp->su->name.value,
+		amf_op_state (comp->saAmfCompOperState));
+	amf_su_comp_state_changed (
+		comp->su, comp, SA_AMF_OP_STATE, oper_state);
+}
+
+int amf_comp_get_saAmfCompNumCurrActiveCsi(struct amf_comp *component)
+{
+	int cnt = 0;
+	struct amf_csi_assignment *csi_assignment;
+
+	csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+	while (csi_assignment != NULL) {
+		if (csi_assignment->saAmfCSICompHAState == SA_AMF_HA_ACTIVE) {
+			cnt++;
+		}
+		csi_assignment = amf_comp_get_next_csi_assignment (
+			component, csi_assignment);
+	}
+
+	return cnt;
+}
+
+int amf_comp_get_saAmfCompNumCurrStandbyCsi(struct amf_comp *component)
+{
+	int cnt = 0;
+	struct amf_csi_assignment *csi_assignment;
+
+	csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+	while (csi_assignment != NULL) {
+		if (csi_assignment->saAmfCSICompHAState == SA_AMF_HA_STANDBY) {
+			cnt++;
+		}
+		csi_assignment = amf_comp_get_next_csi_assignment (
+			component, csi_assignment);
+	}
+
+	return cnt;
+}
+
+SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
+	struct amf_comp *component)
+{
+	if (component->saAmfCompOperState == SA_AMF_OPERATIONAL_ENABLED) {
+		return amf_su_get_saAmfSUReadinessState (component->su);
+
+	} else if (component->saAmfCompOperState == SA_AMF_OPERATIONAL_DISABLED) {
+		return SA_AMF_READINESS_OUT_OF_SERVICE;
+	}
+
+	assert (0);
+}

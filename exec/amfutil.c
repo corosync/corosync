@@ -267,6 +267,8 @@ struct amf_cluster *amf_config_read (char **error_string)
 	struct amf_csi           *csi = 0;
 	struct amf_csi_attribute *attribute = 0;
 	SaStringT                 env_var;
+	int                       su_cnt = 0;
+	int                       sg_cnt = 0;
 	int                       comp_env_var_cnt = 0;
 	int                       comp_cs_type_cnt = 0;
 	int                       csi_attr_cnt = 0;
@@ -350,6 +352,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				app->saAmfApplicationAdminState = SA_AMF_ADMIN_UNLOCKED;
 				setSaNameT (&app->name, trim_str (loc));
 				current_parse = AMF_APPLICATION;
+				sg_cnt = 0;
 			} else if (strstr_rs (line, "}")) {
 				if (cluster->saAmfClusterStartupTimeout == -1) {
 					error_reason = "saAmfClusterStartupTimeout missing";
@@ -413,12 +416,14 @@ struct amf_cluster *amf_config_read (char **error_string)
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
 				strcpy (app->clccli_path, loc);
 			} else if ((loc = strstr_rs (line, "safSg=")) != 0) {
+				sg_cnt++;
 				sg = calloc (1, sizeof (struct amf_sg));
 				sg->next = app->sg_head;
 				app->sg_head = sg;
 				sg->saAmfSGAdminState = SA_AMF_ADMIN_UNLOCKED;
 				sg->saAmfSGNumPrefActiveSUs = 1;
 				sg->saAmfSGNumPrefStandbySUs = 1;
+				sg->saAmfSGNumPrefInserviceSUs = ~0;
 				sg->saAmfSGCompRestartProb = -1;
 				sg->saAmfSGCompRestartMax = ~0;
 				sg->saAmfSGSuRestartProb = -1;
@@ -427,6 +432,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				sg->saAmfSGAutoRepair = SA_TRUE;
 				sg->application = app;
 				current_parse = AMF_SG;
+				su_cnt = 0;
 				setSaNameT (&sg->name, trim_str (loc));
 			} else if ((loc = strstr_rs (line, "safSi=")) != 0) {
 				si = calloc (1, sizeof (struct amf_si));
@@ -437,11 +443,24 @@ struct amf_cluster *amf_config_read (char **error_string)
 				si->saAmfSIPrefStandbyAssignments = 1;
 				setSaNameT (&si->name, trim_str (loc));
 				si->saAmfSIAdminState = SA_AMF_ADMIN_UNLOCKED;
-				si->saAmfSIAssignmentState = SA_AMF_ASSIGNMENT_UNASSIGNED;
 				current_parse = AMF_SI;
 			} else if ((loc = strstr_rs (line, "safCSType=")) != 0) {
 				current_parse = AMF_CS_TYPE;
 			} else if (strstr_rs (line, "}")) {
+				if (sg_cnt == 1) {
+					for (si = app->si_head; si != NULL; si = si->next) {
+						memcpy (&si->saAmfSIProtectedbySG, &sg->name,
+								sizeof (SaNameT));
+					}
+				} else {
+					for (si = app->si_head; si != NULL; si = si->next) {
+						if (si->saAmfSIProtectedbySG.length == 0) {
+							error_reason = "saAmfSIProtectedbySG not set in SI"
+								", needed when several SGs are specified.";
+							goto parse_error;
+						}
+					}
+				}
 				current_parse = AMF_CLUSTER;
 			} else {
 				goto parse_error;
@@ -489,13 +508,14 @@ struct amf_cluster *amf_config_read (char **error_string)
 				sg->saAmfSGAutoRepair = atoi (loc);
 			} else if ((loc = strstr_rs (line, "safSu=")) != 0) {
 				su = calloc (1, sizeof (struct amf_su));
+				su_cnt++;
 				su->next = sg->su_head;
 				sg->su_head = su;
 				su->sg = sg;
 				su->saAmfSUAdminState = SA_AMF_ADMIN_UNLOCKED;
 				su->saAmfSUOperState = SA_AMF_OPERATIONAL_DISABLED;
 				su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
-				su->escalation_level = ESCALATION_LEVEL_NO_ESCALATION;
+				su->restart_control_state = SU_RC_ESCALATION_LEVEL_0;
 				su->saAmfSUFailover = 1;
 				setSaNameT (&su->name, trim_str (loc));
 				current_parse = AMF_SU;
@@ -527,6 +547,9 @@ struct amf_cluster *amf_config_read (char **error_string)
 				if (sg->saAmfSGAutoRepair > 1) {
 					error_reason = "saAmfSGAutoRepair erroneous";
 					goto parse_error;
+				}
+				if (sg->saAmfSGNumPrefInserviceSUs == ~0) {
+					sg->saAmfSGNumPrefInserviceSUs = su_cnt;
 				}
 				current_parse = AMF_APPLICATION;
 			} else {
@@ -844,10 +867,12 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs (line, "saAmfCSIDependency=")) != 0) {
 				csi_dependencies_cnt++;
 				csi->saAmfCSIDependencies = realloc (csi->saAmfCSIDependencies,
-												 (csi_dependencies_cnt + 1) * sizeof(SaNameT));
+					(csi_dependencies_cnt + 1) * sizeof(SaNameT));
 				csi->saAmfCSIDependencies[csi_dependencies_cnt] = NULL;
-				csi->saAmfCSIDependencies[csi_dependencies_cnt - 1] = malloc (sizeof(SaNameT));
-				setSaNameT (csi->saAmfCSIDependencies[csi_dependencies_cnt - 1], loc);
+				csi->saAmfCSIDependencies[csi_dependencies_cnt - 1] =
+					malloc (sizeof(SaNameT));
+				setSaNameT (
+					csi->saAmfCSIDependencies[csi_dependencies_cnt - 1], loc);
 			} else {
 				goto parse_error;
 			}
@@ -858,9 +883,10 @@ struct amf_cluster *amf_config_read (char **error_string)
 				current_parse = AMF_CSI;
 			} else {
 				value = rm_beginning_ws (line);
-				attribute->value = realloc (attribute->value, 
-										   sizeof (SaStringT) * (csi_attr_cnt + 1));
-				attribute->value[csi_attr_cnt - 1] = malloc (strlen (value) + 1);
+				attribute->value = realloc (attribute->value,
+					sizeof (SaStringT) * (csi_attr_cnt + 1));
+				attribute->value[csi_attr_cnt - 1] =
+					malloc (strlen (value) + 1);
 				strcpy (attribute->value[csi_attr_cnt - 1], value);
 				attribute->value[csi_attr_cnt] = NULL;
 				csi_attr_cnt++;
@@ -891,6 +917,22 @@ parse_error:
 	return NULL;
 }
 
+static void print_csi_assignment (struct amf_comp *comp,
+	struct amf_csi_assignment *csi_assignment)
+{
+	log_printf (LOG_INFO, "            safCSI=%s\n", csi_assignment->csi->name.value);
+	log_printf (LOG_INFO, "              HA state: %s\n",
+		ha_state_text[csi_assignment->saAmfCSICompHAState]);
+}
+
+static void print_si_assignment (struct amf_su *su,
+	struct amf_si_assignment *si_assignment)
+{
+	log_printf (LOG_INFO, "          safSi=%s\n", si_assignment->si->name.value);
+	log_printf (LOG_INFO, "            HA state: %s\n",
+			ha_state_text[si_assignment->saAmfSISUHAState]);
+}
+
 void amf_runtime_attributes_print (struct amf_cluster *cluster)
 {
 	struct amf_node *node;
@@ -900,82 +942,95 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 	struct amf_comp *comp;
 	struct amf_si *si;
 	struct amf_csi *csi;
-	struct amf_si_assignment *si_assignment;
-	struct amf_csi_assignment *csi_assignment;
 
-	dprintf("AMF runtime attributes:");
-	dprintf("===================================================");
-	dprintf("safCluster=%s", getSaNameT(&cluster->name));
-	dprintf("  admin state: %s\n", admin_state_text[cluster->saAmfClusterAdminState]);
+	log_printf (LOG_INFO, "AMF runtime attributes:");
+	log_printf (LOG_INFO, "===================================================");
+	log_printf (LOG_INFO, "safCluster=%s", getSaNameT(&cluster->name));
+	log_printf (LOG_INFO, "  admin state: %s\n",
+			admin_state_text[cluster->saAmfClusterAdminState]);
 	for (node = cluster->node_head; node != NULL; node = node->next) {
-		dprintf("  safNode=%s\n", getSaNameT (&node->name));
-		dprintf("    admin state: %s\n", admin_state_text[node->saAmfNodeAdminState]);
-		dprintf("    oper state:  %s\n", oper_state_text[node->saAmfNodeOperState]);
+		log_printf (LOG_INFO, "  safNode=%s\n", getSaNameT (&node->name));
+		log_printf (LOG_INFO, "    admin state: %s\n",
+				admin_state_text[node->saAmfNodeAdminState]);
+		log_printf (LOG_INFO, "    oper state:  %s\n",
+				oper_state_text[node->saAmfNodeOperState]);
 	}
 	for (app = cluster->application_head; app != NULL; app = app->next) {
-		dprintf("  safApp=%s\n", getSaNameT(&app->name));
-		dprintf("    admin state: %s\n", admin_state_text[app->saAmfApplicationAdminState]);
-		dprintf("    num_sg:      %d\n", app->saAmfApplicationCurrNumSG);
+		log_printf (LOG_INFO, "  safApp=%s\n", getSaNameT(&app->name));
+		log_printf (LOG_INFO, "    admin state: %s\n",
+				admin_state_text[app->saAmfApplicationAdminState]);
+		log_printf (LOG_INFO, "    num_sg:      %d\n", app->saAmfApplicationCurrNumSG);
 		for (sg = app->sg_head;	sg != NULL; sg = sg->next) {
-			dprintf("    safSG=%s\n", getSaNameT(&sg->name));
-			dprintf("      admin state:        %s\n", admin_state_text[sg->saAmfSGAdminState]);
-			dprintf("      assigned SUs        %d\n", sg->saAmfSGNumCurrAssignedSUs);
-			dprintf("      non inst. spare SUs %d\n", sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
-			dprintf("      inst. spare SUs     %d\n", sg->saAmfSGNumCurrInstantiatedSpareSUs);
+			log_printf (LOG_INFO, "    safSG=%s\n", getSaNameT(&sg->name));
+			log_printf (LOG_INFO, "      admin state:        %s\n",
+					admin_state_text[sg->saAmfSGAdminState]);
+			log_printf (LOG_INFO, "      assigned SUs        %d\n",
+					sg->saAmfSGNumCurrAssignedSUs);
+			log_printf (LOG_INFO, "      non inst. spare SUs %d\n",
+					sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
+			log_printf (LOG_INFO, "      inst. spare SUs     %d\n",
+					sg->saAmfSGNumCurrInstantiatedSpareSUs);
 			for (su = sg->su_head; su != NULL; su = su->next) {
-				dprintf("      safSU=%s\n", getSaNameT(&su->name));
-				dprintf("        oper state:      %s\n", oper_state_text[su->saAmfSUOperState]);
-				dprintf("        admin state:     %s\n", admin_state_text[su->saAmfSUAdminState]);
-				dprintf("        readiness state: %s\n", readiness_state_text[su->saAmfSUReadinessState]);
-				dprintf("        presence state:  %s\n", presence_state_text[su->saAmfSUPresenceState]);
-				dprintf("        hosted by node   %s\n", su->saAmfSUHostedByNode.value);
-				dprintf("        num active SIs   %d\n", su->saAmfSUNumCurrActiveSIs);
-				dprintf("        num standby SIs  %d\n", su->saAmfSUNumCurrStandbySIs);
-				dprintf("        restart count    %d\n", su->saAmfSURestartCount);
-				dprintf("        escalation level %d\n", su->escalation_level);
-				dprintf("        SU failover cnt  %d\n", su->su_failover_cnt);
-				dprintf("        assigned SIs:");
-				for (si_assignment = su->assigned_sis; si_assignment != NULL;
-					si_assignment = si_assignment->next) {
-					dprintf("          safSi=%s\n", si_assignment->si->name.value);
-					dprintf("            HA state: %s\n",
-						ha_state_text[si_assignment->saAmfSISUHAState]);
-				}
+				log_printf (LOG_INFO, "      safSU=%s\n", getSaNameT(&su->name));
+				log_printf (LOG_INFO, "        oper state:      %s\n",
+						oper_state_text[su->saAmfSUOperState]);
+				log_printf (LOG_INFO, "        admin state:     %s\n",
+						admin_state_text[su->saAmfSUAdminState]);
+				log_printf (LOG_INFO, "        readiness state: %s\n",
+					readiness_state_text[amf_su_get_saAmfSUReadinessState (su)]);
+				log_printf (LOG_INFO, "        presence state:  %s\n",
+						presence_state_text[su->saAmfSUPresenceState]);
+				log_printf (LOG_INFO, "        hosted by node   %s\n",
+						su->saAmfSUHostedByNode.value);
+				log_printf (LOG_INFO, "        num active SIs   %d\n",
+						amf_su_get_saAmfSUNumCurrActiveSIs (su));
+				log_printf (LOG_INFO, "        num standby SIs  %d\n",
+						amf_su_get_saAmfSUNumCurrStandbySIs (su));
+				log_printf (LOG_INFO, "        restart count    %d\n",
+						su->saAmfSURestartCount);
+				log_printf (LOG_INFO, "        restart control state %d\n",
+							su->restart_control_state);
+				log_printf (LOG_INFO, "        SU failover cnt  %d\n", su->su_failover_cnt);
+				log_printf (LOG_INFO, "        assigned SIs:");
+				amf_su_foreach_si_assignment (su, print_si_assignment);
+
 				for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-					dprintf("        safComp=%s\n", getSaNameT(&comp->name));
-					dprintf("          oper state:      %s\n",
+					log_printf (LOG_INFO, "        safComp=%s\n", getSaNameT(&comp->name));
+					log_printf (LOG_INFO, "          oper state:      %s\n",
 						oper_state_text[comp->saAmfCompOperState]);
-					dprintf("          readiness state: %s\n",
-						readiness_state_text[comp->saAmfCompReadinessState]);
-					dprintf("          presence state:  %s\n",
+					log_printf (LOG_INFO, "          readiness state: %s\n",
+						readiness_state_text[amf_comp_get_saAmfCompReadinessState (comp)]);
+					log_printf (LOG_INFO, "          presence state:  %s\n",
 						presence_state_text[comp->saAmfCompPresenceState]);
-					dprintf("          num active CSIs  %d\n",
-						comp->saAmfCompNumCurrActiveCsi);
-					dprintf("          num standby CSIs %d\n",
-						comp->saAmfCompNumCurrStandbyCsi);
-					dprintf("          restart count    %d\n", comp->saAmfCompRestartCount);
-					dprintf("          assigned CSIs:");
-					for (csi_assignment = comp->assigned_csis; csi_assignment != NULL;
-						csi_assignment = csi_assignment->comp_next) {
-						dprintf("            safCSI=%s\n", csi_assignment->csi->name.value);
-						dprintf("              HA state: %s\n",
-							ha_state_text[csi_assignment->saAmfCSICompHAState]);
-					}
+					log_printf (LOG_INFO, "          num active CSIs  %d\n",
+						amf_comp_get_saAmfCompNumCurrActiveCsi (comp));
+					log_printf (LOG_INFO, "          num standby CSIs %d\n",
+						amf_comp_get_saAmfCompNumCurrStandbyCsi (comp));
+					log_printf (LOG_INFO, "          restart count    %d\n",
+							comp->saAmfCompRestartCount);
+					log_printf (LOG_INFO, "          assigned CSIs:");
+					amf_comp_foreach_csi_assignment (
+						comp, print_csi_assignment);
 				}
 			}
 		}
 		for (si = app->si_head; si != NULL; si = si->next) {
-			dprintf("    safSi=%s\n", getSaNameT(&si->name));
-			dprintf("      admin state:         %s\n", admin_state_text[si->saAmfSIAdminState]);
-			dprintf("      assignm. state:      %s\n", assignment_state_text[si->saAmfSIAssignmentState]);
-			dprintf("      active assignments:  %d\n", si->saAmfSINumCurrActiveAssignments);
-			dprintf("      standby assignments: %d\n", si->saAmfSINumCurrStandbyAssignments);
+			log_printf (LOG_INFO, "    safSi=%s\n", getSaNameT(&si->name));
+			log_printf (LOG_INFO, "      admin state:         %s\n",
+				admin_state_text[si->saAmfSIAdminState]);
+			log_printf (LOG_INFO, "      assignm. state:      %s\n",
+				assignment_state_text[
+					amf_si_get_saAmfSIAssignmentState (si)]);
+			log_printf (LOG_INFO, "      active assignments:  %d\n",
+					amf_si_get_saAmfSINumCurrActiveAssignments (si));
+			log_printf (LOG_INFO, "      standby assignments: %d\n",
+					amf_si_get_saAmfSINumCurrStandbyAssignments (si));
 			for (csi = si->csi_head; csi != NULL; csi = csi->next) {
-				dprintf("      safCsi=%s\n", getSaNameT(&csi->name));
+				log_printf (LOG_INFO, "      safCsi=%s\n", getSaNameT(&csi->name));
 			}
 		}
 	}
-	dprintf("===================================================");
+	log_printf (LOG_INFO, "===================================================");
 }
 
 /* to be removed... */
@@ -1034,5 +1089,10 @@ const char *amf_ha_state (int state)
 const char *amf_readiness_state (int state)
 {
 	return readiness_state_text[state];
+}
+
+const char *amf_assignment_state (int state)
+{
+	return assignment_state_text[state];
 }
 

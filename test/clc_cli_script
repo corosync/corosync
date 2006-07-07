@@ -33,7 +33,7 @@
 # It may be modified to do any action desired.
 
 instantiate() {
-	echo clc_cli_script instantiating component $SA_AMF_COMPONENT_NAME $1
+#	echo clc_cli_script instantiating component $SA_AMF_COMPONENT_NAME $1
 	./openais-instantiate $1
 	exit $?
 }
@@ -44,7 +44,8 @@ terminate() {
 	else
 		PIDFILEPATH=/tmp
 	fi
-	echo clc_cli_script terminating up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+	echo clc_cli_script terminating component $SA_AMF_COMPONENT_NAME on PID \
+	`cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	kill -15 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	exit $?
 }
@@ -55,9 +56,15 @@ cleanup() {
 	else
 		PIDFILEPATH=/tmp
 	fi
-	echo clc_cli_script cleaning up component $SA_AMF_COMPONENT_NAME on PID `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
+#	echo clc_cli_script cleaning up component $SA_AMF_COMPONENT_NAME on PID \
+#	`cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	kill -9 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
-	exit $?
+	STATUS=$?
+	if [ $STATUS == 1 ]; then
+		exit 0
+	else
+		exit $STATUS
+	fi
 }
 
 usage() {

@@ -119,10 +119,10 @@ static void timer_function_cluster_startup_tmo (void *_cluster)
 	struct amf_cluster *cluster = _cluster;
 	struct amf_application *app;
 
-	dprintf("1st Cluster start timer expired, starting applications");
+	log_printf(LOG_NOTICE, "AMF Cluster: starting applications.");
 
 	for (app = cluster->application_head; app != NULL; app = app->next) {
-		amf_application_start (app, this_amf_node);
+		amf_application_start (app, NULL);
 	}
 
 	/* wait a while before assigning workload */
@@ -153,13 +153,14 @@ void amf_cluster_application_started (
 {
 	ENTER ("application '%s' started", application->name.value);
 
-	if (cluster->timeout_handle) {
-		poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
-	}
-
 	if (all_applications_started (cluster)) {
 		struct amf_application *app;
-		dprintf("All applications started, assigning workload.");
+
+		log_printf(LOG_NOTICE, "AMF Cluster: all applications started, assigning workload.");
+
+		if (cluster->timeout_handle) {
+			poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
+		}
 
 		for (app = cluster->application_head; app != NULL; app = app->next) {
 			amf_application_assign_workload (app, this_amf_node);
@@ -184,6 +185,6 @@ struct amf_cluster *amf_cluster_create (void)
 void amf_cluster_application_workload_assigned (
 	struct amf_cluster *cluster, struct amf_application *app)
 {
-	ENTER ("'%s'", app->name.value);
+	log_printf(LOG_NOTICE, "AMF Cluster: all workload assigned.");
 }
 

@@ -5,6 +5,9 @@
  *
  * Author: Steven Dake (sdake@mvista.com)
  *
+ * Copyright (c) 2006 Ericsson AB.
+ *  Author: Hans Feldt
+ *
  * This software licensed under BSD license, the text of which follows:
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -135,11 +138,12 @@ void CSISetCallback (
 	int res;
 	switch (haState) {
 	case SA_AMF_HA_ACTIVE:
-		printf ("Component '%s' requested to enter hastate SA_AMF_ACTIVE for \n\tCSI '%s'\n",
-			compName->value, csiDescriptor->csiName.value);
+		printf ("%d: Component '%s' requested to enter hastate SA_AMF_ACTIVE"
+				" for \n\tCSI '%s'\n",
+			getpid(), compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		if (res != SA_AIS_OK) {
-			fprintf (stderr, "saAmfResponse failed: %d\n", res);
+			fprintf (stderr, "%d: saAmfResponse failed: %d\n", getpid(), res);
 			exit (-1);
 		}
 
@@ -173,8 +177,9 @@ void CSISetCallback (
 		break;  
          
 	case SA_AMF_HA_STANDBY:
-		printf ("Component '%s' requested to enter hastate SA_AMF_STANDBY for \n\tCSI '%s'\n",
-			compName->value, csiDescriptor->csiName.value);
+		printf ("%d: Component '%s' requested to enter hastate SA_AMF_STANDBY "
+				"for \n\tCSI '%s'\n",
+			getpid(), compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		
 		TR(TRU,csiDescriptor->csiAttr.number);
@@ -186,7 +191,6 @@ void CSISetCallback (
 		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrName);
 		    TR(TRS,csiDescriptor->csiAttr.attr[i].attrValue);
 		} 
-		printf("%s:%d:%s:%d\n",__FILE__,__LINE__,__FUNCTION__,res);
 		TR(TRU,csiDescriptor->csiFlags);
 
 		printSaNameT((SaNameT*) &csiDescriptor->csiStateDescriptor.standbyDescriptor.activeCompName);
@@ -194,6 +198,10 @@ void CSISetCallback (
 
 		break;
 	case SA_AMF_HA_QUIESCED:
+		printf ("%d: Component '%s' requested to enter hastate SA_AMF_HA_QUIESCED "
+				"for \n\tCSI '%s'\n",
+			getpid(), compName->value, csiDescriptor->csiName.value);
+		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		break;
 	case SA_AMF_HA_QUIESCING:
 		break;
@@ -271,7 +279,7 @@ void write_pid (void) {
 	sprintf (filename,  "/var/run/openais_cleanup_%s", compNameGlobal.value);
 	fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
 	if (fd == -1) {
-		printf("Failed using /var/run for pid file, using /tmp\n");
+		printf("%d: Failed using /var/run for pid file, using /tmp\n", getpid());
 		sprintf (filename,  "/tmp/openais_cleanup_%s", compNameGlobal.value);
 		fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
 	}
@@ -295,18 +303,20 @@ int main (int argc, char **argv) {
 	}
 
 	/* test for correct value */
+#if 0
 	if (strstr (name, "safComp=A,safSu=SERVICE_X_") == NULL) {
 		fprintf(stderr, "SA_AMF_COMPONENT_NAME value wrong\n");
 		exit (-2);
 	}
+#endif
 
-	printf("Hello world from %s\n", name);
+	printf("%d: Hello world from %s\n", getpid(), name);
 
 	signal (SIGINT, sigintr_handler);
 #if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
 	result = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (result == -1) {
-		printf ("couldn't set sched priority\n");
+		printf ("%d: couldn't set sched priority\n", getpid());
  	}
 #endif
 
@@ -327,18 +337,24 @@ int main (int argc, char **argv) {
 		&key0,
 		SA_AMF_HEALTHCHECK_AMF_INVOKED,
 		SA_AMF_COMPONENT_FAILOVER);
-    printf ("healthcheck start result %d (should be %d)\n", result, SA_AIS_OK);
+	if (result != SA_AIS_OK) {
+		printf ("Error: healthcheck start result %d\n", result);
+	}
 
     {
         SaNameT badname;
         strcpy ((char*)badname.value, "badname");
         badname.length = 7;
         result = saAmfComponentRegister (handle, &badname, NULL);
-        printf ("register result is %d (should be %d)\n", result, SA_AIS_ERR_INVALID_PARAM);
+		if (result != SA_AIS_ERR_INVALID_PARAM) {
+			printf ("Error: register result is %d\n", result);
+		}
     }
 
     result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
-    printf ("register result is %d (should be %d)\n", result, SA_AIS_OK);
+	if (result != SA_AIS_OK) {
+		printf ("Error: register result is %d\n", result);
+	}
 
     /*
      * Test already started healthcheck
@@ -348,7 +364,9 @@ int main (int argc, char **argv) {
         &key0,
         SA_AMF_HEALTHCHECK_AMF_INVOKED,
         SA_AMF_COMPONENT_FAILOVER);
-    printf ("healthcheck start result %d (should be %d)\n", result, SA_AIS_ERR_EXIST);
+	if (result != SA_AIS_ERR_EXIST) {
+		printf ("Error: healthcheck start result %d\n", result);
+	}
 
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);

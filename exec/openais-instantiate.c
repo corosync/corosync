@@ -45,6 +45,10 @@ struct timespec sleeptime = {
 	.tv_nsec = 10000 /* 10 msec */
 };
 
+#ifndef xprintf
+#define xprintf(...)
+#endif
+
 /*
  * The method by which the status is returned from execve
  * needs some performance enhancement
@@ -58,7 +62,8 @@ int main (int argc, char **argv, char **envp)
 
 	pid = fork();
 	if (pid == -1) {
-		printf ("openais-instantiate: could not fork process %s\n", strerror (errno));
+		fprintf (stderr, "openais-instantiate: could not fork process %s\n",
+				 strerror (errno));
 		return (errno);
 	}
 	if (pid) {
@@ -70,23 +75,24 @@ int main (int argc, char **argv, char **envp)
 			res = waitpid (pid, &status, WNOHANG);
 			if (res) {
 				if (WEXITSTATUS(status) == 0) {
-					printf ("openais-instantiate: component instantiated\n");
+					xprintf ("openais-instantiate: component instantiated\n");
 					return (0);
 				} else {
-					printf ("openais-instantiate: could not instantiate component (return code %d = %s)\n",
-						WEXITSTATUS(status),
+					fprintf (stderr, "openais-instantiate: could not execute "
+									 "program %s, (return code %d = %s)\n",
+						argv[1], WEXITSTATUS(status),
 						strerror (WEXITSTATUS(status)));
-					return (errno);
+					return (WEXITSTATUS(status));
 				}
 			}
 			nanosleep (&sleeptime, 0);
 			
 		}
-		printf ("openais-instantiate: component instantiated\n");
+		xprintf ("openais-instantiate: component instantiated\n");
 		return (0);
 	} else {
 
-printf ("childs pid %d\n", getpid());
+		xprintf ("childs pid %d\n", getpid());
 		/*
 		 * child process
 		 */

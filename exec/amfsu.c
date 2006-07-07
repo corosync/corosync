@@ -9,7 +9,8 @@
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson
+ *  Author: Anders Eriksson, Lars Holm
+ *  - Component/SU restart, SU failover
  *
  * All rights reserved.
  *
@@ -141,21 +142,44 @@ static int presence_state_all_comps_in_su_are_set (struct amf_su *su,
 	return all_set;
 }
 
+/**
+ * This function only logs since the readiness state is runtime
+ * calculated.
+ * @param su
+ * @param amf_readiness_state
+ */
 static void su_readiness_state_set (struct amf_su *su,
 	SaAmfReadinessStateT readiness_state)
 {
-	su->saAmfSUReadinessState = readiness_state;
-	TRACE1 ("Setting SU '%s' readiness state: %s\n",
-		&su->name.value, amf_readiness_state(readiness_state));
+	log_printf (LOG_NOTICE, "Setting SU '%s' readiness state: %s\n",
+		su->name.value, amf_readiness_state (readiness_state));
+}
+
+static void clear_ha_state (
+	struct amf_su *su, struct amf_si_assignment *si_assignment)
+{
+	ENTER ("");
+	si_assignment->saAmfSISUHAState = 0;
 }
 
 static void su_presence_state_set (struct amf_su *su,
 	SaAmfPresenceStateT presence_state)
 {
+	/*                                                              
+     * Set all SI's confirmed HA state to unknown if uninstantiated
+     */
+	if (su->saAmfSUPresenceState == SA_AMF_PRESENCE_UNINSTANTIATED) {
+		amf_su_foreach_si_assignment (su, clear_ha_state);
+	}
+
 	su->saAmfSUPresenceState = presence_state;
-	TRACE1 ("Setting SU '%s' presence state: %s\n",
+	log_printf (LOG_NOTICE, "Setting SU '%s' presence state: %s\n",
 		su->name.value, amf_presence_state (presence_state));
-	amf_sg_su_state_changed (su->sg, su, SA_AMF_PRESENCE_STATE, presence_state);
+
+	if (su->restart_control_state != SU_RC_RESTART_SU_SETTING) {
+		amf_sg_su_state_changed (
+			su->sg, su, SA_AMF_PRESENCE_STATE, presence_state);
+	}
 }
 
 static void su_operational_state_set (struct amf_su *su,
@@ -163,14 +187,8 @@ static void su_operational_state_set (struct amf_su *su,
 {
 	struct amf_comp* comp;
 
-	if (oper_state == su->saAmfSUOperState) {
-		log_printf (LOG_INFO,
-			"Not assigning service unit new operational state - same state\n");
-		return;
-	}
-
 	su->saAmfSUOperState = oper_state;
-	TRACE1 ("Setting SU '%s' operational state: %s\n",
+	log_printf (LOG_NOTICE, "Setting SU '%s' operational state: %s\n",
 		su->name.value, amf_op_state (oper_state));
 
 	if (oper_state == SA_AMF_OPERATIONAL_ENABLED) {
@@ -179,15 +197,16 @@ static void su_operational_state_set (struct amf_su *su,
 		for (comp = su->comp_head; comp; comp = comp->next) {
 			amf_comp_readiness_state_set (comp, SA_AMF_READINESS_IN_SERVICE);
 		}
-
-//		amf_sg_su_state_changed (su->sg, su, SA_AMF_OP_STATE, SA_AMF_OPERATIONAL_ENABLED);
 	} else if (oper_state == SA_AMF_OPERATIONAL_DISABLED) {
 		su_readiness_state_set (su, SA_AMF_READINESS_OUT_OF_SERVICE);
+		for (comp = su->comp_head; comp; comp = comp->next) {
+			amf_comp_readiness_state_set (comp, SA_AMF_READINESS_OUT_OF_SERVICE);
+		}
 	}
 }
 
 static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
-	SaAmfHAStateT ha_state)
+	struct amf_si_assignment *si_assignment, SaAmfHAStateT ha_state)
 {
 	struct amf_csi_assignment *csi_assignment;
 
@@ -200,76 +219,52 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
 	}
 
-	csi_assignment->comp_next = comp->assigned_csis;
-	comp->assigned_csis = csi_assignment;
-	csi_assignment->csi_next = csi->csi_assignments;
-	csi->csi_assignments = csi_assignment;
-	setSaNameT (&csi_assignment->name, (char*)comp->name.value);
-	csi_assignment->saAmfCSICompHAState = ha_state;
+	csi_assignment->next = csi->assigned_csis;
+	csi->assigned_csis = csi_assignment;
+	amf_comp_dn_make (comp, &csi_assignment->name);
 	csi_assignment->csi = csi;
 	csi_assignment->comp = comp;
 	csi_assignment->saAmfCSICompHAState = 0; /* undefined confirmed HA state */
 	csi_assignment->requested_ha_state = ha_state;
-
-	if (ha_state == SA_AMF_HA_ACTIVE)
-		comp->saAmfCompNumCurrActiveCsi++;
-	else if (ha_state == SA_AMF_HA_STANDBY)
-		comp->saAmfCompNumCurrStandbyCsi++;
-	else
-		assert (0);
+	csi_assignment->si_assignment = si_assignment;
 }
 
-static void su_cleanup (struct amf_su *su)
+static void su_restart (struct amf_su *su)
 {
 	struct amf_comp *comp;
+	SaNameT dn;
+
+	ENTER ("'%s'", su->name.value);
+
+	amf_su_dn_make (su, &dn);
+	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+							"action:\n\t\tSU restart", dn.value);
+	
+	su->restart_control_state = SU_RC_RESTART_SU_DEACTIVATING;
+	su->restart_control_state = SU_RC_RESTART_SU_INSTANTIATING;
+	su->escalation_level_history_state =
+		SU_RC_ESCALATION_LEVEL_2;
+
+	su->saAmfSURestartCount += 1;
 
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
 		amf_comp_restart (comp);
 	}
 }
 
-static void escalation_policy_cleanup (struct amf_comp *comp)
+static void comp_restart (struct amf_comp *comp)
 {
-//	escalation_timer_start (comp);
+	SaNameT dn;
 
-	switch (comp->su->escalation_level) {
-	case ESCALATION_LEVEL_NO_ESCALATION:
-		comp->saAmfCompRestartCount += 1;
-		if (comp->saAmfCompRestartCount >= comp->su->sg->saAmfSGCompRestartMax) {
-			comp->su->escalation_level = ESCALATION_LEVEL_ONE;
-			escalation_policy_cleanup (comp);
-			comp->saAmfCompRestartCount = 0;
-			return;
-		}
-		dprintf ("Escalation level 0 - restart component\n");
-		dprintf ("Cleaning up and restarting component.\n");
-		amf_comp_restart (comp);
-		break;
+	ENTER ("'%s'", comp->name.value);
+	amf_comp_dn_make (comp, &dn);
+	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+							"action:\n\t\tcomponent restart", dn.value);
 
-	case ESCALATION_LEVEL_ONE:
-		comp->su->saAmfSURestartCount += 1;
-		if (comp->su->saAmfSURestartCount >= comp->su->sg->saAmfSGSuRestartMax) {
-			comp->su->escalation_level = ESCALATION_LEVEL_TWO;
-			escalation_policy_cleanup (comp);
-			comp->saAmfCompRestartCount = 0;
-			comp->su->saAmfSURestartCount = 0;
-			return;
-		}
-		dprintf ("Escalation level 1 - restart unit\n");
-		dprintf ("Cleaning up and restarting unit.\n");
-		su_cleanup (comp->su);
-		break;
-
-	case ESCALATION_LEVEL_TWO:
-		dprintf ("Escalation level TWO\n");
-		su_cleanup (comp->su);
-//		unit_terminate_failover (comp);
-		break;
-
-	case ESCALATION_LEVEL_THREE:
-//TODO
-		break;
-	}
+	comp->su->restart_control_state = SU_RC_RESTART_COMP_DEACTIVATING;
+	comp->su->restart_control_state = SU_RC_RESTART_COMP_RESTARTING;
+	comp->su->escalation_level_history_state = SU_RC_ESCALATION_LEVEL_1;
+	amf_comp_restart (comp);
 }
 
 void amf_su_instantiate (struct amf_su *su)
@@ -296,31 +291,13 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 	if (si_assignment == NULL) {
 		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
 	}
-	setSaNameT (&si_assignment->name, (char*)su->name.value);
+	amf_su_dn_make (su, &si_assignment->name);
 	si_assignment->saAmfSISUHAState = 0; /* undefined confirmed HA state */
 	si_assignment->requested_ha_state = ha_state;
-	si_assignment->next = su->assigned_sis;
-	su->assigned_sis = si_assignment;
+	si_assignment->next = si->assigned_sis;
+	si->assigned_sis = si_assignment;
 	si_assignment->si = si;
-	memcpy (&si_assignment->si->saAmfSIProtectedbySG,
-		&su->sg->name, sizeof (SaNameT));
-
-	if (ha_state == SA_AMF_HA_ACTIVE) {
-		si->saAmfSINumCurrActiveAssignments++;
-		su->saAmfSUNumCurrActiveSIs++;
-	} else if (ha_state == SA_AMF_HA_STANDBY) {
-		su->saAmfSUNumCurrStandbySIs++;
-		si->saAmfSINumCurrStandbyAssignments++;
-	} else
-		assert(0);
-
-	if ((si->saAmfSINumCurrActiveAssignments == si->saAmfSIPrefActiveAssignments) &&
-		(si->saAmfSINumCurrStandbyAssignments == si->saAmfSIPrefStandbyAssignments)) {
-		si->saAmfSIAssignmentState = SA_AMF_ASSIGNMENT_FULLY_ASSIGNED;
-	} else if ((si->saAmfSINumCurrActiveAssignments < si->saAmfSIPrefActiveAssignments) ||
-		(si->saAmfSINumCurrStandbyAssignments < si->saAmfSIPrefStandbyAssignments)) {
-		si->saAmfSIAssignmentState = SA_AMF_ASSIGNMENT_PARTIALLY_ASSIGNED;
-	}
+	si_assignment->su = su;
 
 	{
 		struct amf_csi *csi;
@@ -339,21 +316,177 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 				int no_of_assignments = 0;
 
 				for (csi = si->csi_head; csi != NULL; csi = csi->next) {
-					if (!memcmp(csi->saAmfCSTypeName.value, cs_type->value, cs_type->length)) {
-						comp_assign_csi (comp, csi, ha_state);
+					if (!memcmp(csi->saAmfCSTypeName.value, cs_type->value,
+								cs_type->length)) {
+						comp_assign_csi (comp, csi, si_assignment, ha_state);
 						no_of_assignments++;
 					}
 				}
 				if (no_of_assignments == 0) {
-					log_printf (LOG_WARNING, "\t   No CSIs of type %s configured?!!\n",
+					log_printf (
+						LOG_WARNING, "\t   No CSIs of type %s configured?!!\n",
 						getSaNameT (cs_type));
 				}
 			}
 			if (no_of_cs_types == 0) {
-				log_printf (LOG_LEVEL_ERROR, "\t   No CS types configured for comp %s ?!!\n",
+				log_printf (LOG_LEVEL_ERROR,
+					"\t   No CS types configured for comp %s ?!!\n",
 					getSaNameT (&comp->name));
 			}
 		}
+	}
+}
+
+static void si_ha_state_assumed_cbfn (
+	struct amf_si_assignment *si_assignment, int result)
+{
+	struct amf_si_assignment *tmp_si_assignment;
+	struct amf_comp *comp;
+	struct amf_csi_assignment *csi_assignment;
+	int all_confirmed = 1;
+
+	ENTER ("");
+
+	tmp_si_assignment = amf_su_get_next_si_assignment(si_assignment->su, NULL);
+
+	while (tmp_si_assignment != NULL) {
+		for (comp = tmp_si_assignment->su->comp_head; comp != NULL;
+			  comp = comp->next) {
+
+			csi_assignment = amf_comp_get_next_csi_assignment(comp, NULL);
+			while (csi_assignment != NULL) {
+
+				if (csi_assignment->requested_ha_state != 
+					csi_assignment->saAmfCSICompHAState) {
+					all_confirmed = 0;
+				}
+				csi_assignment = amf_comp_get_next_csi_assignment(
+					comp, csi_assignment);
+			}
+		}
+		tmp_si_assignment = amf_su_get_next_si_assignment(
+			si_assignment->su, tmp_si_assignment);
+	}
+
+	if (all_confirmed) {
+		switch (si_assignment->su->restart_control_state) {
+			case SU_RC_RESTART_COMP_SETTING:
+				log_printf (LOG_NOTICE, "Component restart recovery finished");
+				break;
+			case SU_RC_RESTART_SU_SETTING:
+				log_printf (LOG_NOTICE, "SU restart recovery finished");
+				break;
+			default:
+				assert (0);
+		}
+		si_assignment->su->restart_control_state =
+			si_assignment->su->escalation_level_history_state;
+	}
+}
+
+static void reassign_sis(struct amf_su *su)
+{
+	struct amf_si_assignment *si_assignment;
+
+	ENTER ("");
+
+	si_assignment = amf_su_get_next_si_assignment(su, NULL);
+
+	while (si_assignment != NULL) {
+		si_assignment->saAmfSISUHAState = 0; /* unknown */
+		amf_si_ha_state_assume (si_assignment, si_ha_state_assumed_cbfn);
+		si_assignment = amf_su_get_next_si_assignment(su, si_assignment);
+	}
+}
+
+static void su_comp_presence_state_changed (
+	struct amf_su *su, struct amf_comp *comp, int state)
+{
+	ENTER ("'%s', '%s'", su->name.value, comp->name.value);
+
+	switch (state) {
+		case SA_AMF_PRESENCE_INSTANTIATED:
+			switch (su->restart_control_state) {
+				case SU_RC_ESCALATION_LEVEL_2:
+					/*                                                              
+                     * TODO: send to node
+                     */
+				case SU_RC_ESCALATION_LEVEL_0:
+					if (presence_state_all_comps_in_su_are_set (
+						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
+
+						su_presence_state_set (
+							comp->su, SA_AMF_PRESENCE_INSTANTIATED);
+					}
+					break;
+				case SU_RC_RESTART_COMP_RESTARTING:
+					su->restart_control_state = SU_RC_RESTART_COMP_SETTING;
+					reassign_sis (comp->su);
+					break;
+				case SU_RC_RESTART_SU_INSTANTIATING:
+					if (presence_state_all_comps_in_su_are_set (
+						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
+
+						su->restart_control_state = SU_RC_RESTART_SU_SETTING;
+						su_presence_state_set (
+							comp->su, SA_AMF_PRESENCE_INSTANTIATED);
+						reassign_sis (comp->su);
+					}
+					break;
+				default:
+					dprintf ("state %d", su->restart_control_state);
+					assert (0);
+			}
+			break;
+		case SA_AMF_PRESENCE_UNINSTANTIATED:
+			if (presence_state_all_comps_in_su_are_set (
+				su, SA_AMF_PRESENCE_UNINSTANTIATED)) {
+
+				su_presence_state_set (comp->su,
+					SA_AMF_PRESENCE_UNINSTANTIATED);
+			}
+			break;
+		case SA_AMF_PRESENCE_INSTANTIATING:
+			break;
+		case SA_AMF_PRESENCE_RESTARTING:
+			break;
+		case SA_AMF_PRESENCE_TERMINATING:
+			break;
+		default:
+			assert (0);
+	}
+}
+
+static void su_comp_op_state_changed (
+	struct amf_su *su, struct amf_comp *comp, int state)
+{
+	ENTER ("'%s', '%s'", su->name.value, comp->name.value);
+
+	switch (state) {
+		case SA_AMF_OPERATIONAL_ENABLED:
+		{
+			struct amf_comp *comp_compare;
+			int all_set = 1;
+			for (comp_compare = comp->su->comp_head;
+				  comp_compare != NULL; comp_compare = comp_compare->next) {
+				if (comp_compare->saAmfCompOperState !=
+						SA_AMF_OPERATIONAL_ENABLED) {
+
+					all_set = 0;
+					break;
+				}
+			}
+			if (all_set) {
+				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_ENABLED);
+			} else {
+				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
+			}
+			break;
+		}
+		case SA_AMF_OPERATIONAL_DISABLED:
+			break;
+		default:
+			assert (0);
 	}
 }
 
@@ -367,66 +500,16 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 void amf_su_comp_state_changed (
 	struct amf_su *su, struct amf_comp *comp, SaAmfStateT type, int state)
 {
-	if (type == SA_AMF_PRESENCE_STATE) {
-		/*
-		 * If all comp presence states are INSTANTIATED, then SU should
-		 * be instantated.
-		 */
-		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
-			if (presence_state_all_comps_in_su_are_set (
-					comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
-
-				su_presence_state_set (comp->su, SA_AMF_PRESENCE_INSTANTIATED);
-			} else {
-				/*
-				 * This state occurs when there is more then
-				 * one SU
-				 */
-				return;
-			}
-		} else if (state == SA_AMF_PRESENCE_INSTANTIATING) {
-		} else if (state == SA_AMF_PRESENCE_RESTARTING) {
-		} else {
+	switch (type) {
+		case SA_AMF_PRESENCE_STATE:
+			su_comp_presence_state_changed (su, comp, state);
+			break;
+		case SA_AMF_OP_STATE:
+			su_comp_op_state_changed (su, comp, state);
+			break;
+		default:
 			assert (0);
-		}
-	} else if (type == SA_AMF_OP_STATE) {
-		/*
-		 * If all component op states are ENABLED, then SU op 
-		 * state should be ENABLED.
-		 */
-		if (state == SA_AMF_OPERATIONAL_ENABLED) {
-			struct amf_comp *comp_compare;
-			int all_set = 1;
-			for (comp_compare = comp->su->comp_head; comp_compare != NULL; comp_compare = comp_compare->next) {
-				if (comp_compare->saAmfCompOperState != SA_AMF_OPERATIONAL_ENABLED) {
-					all_set = 0;
-					break;
-				}
-			}
-			if (all_set) {
-				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_ENABLED);
-			} else {
-				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
-			}
-		} else {
-			assert (0);
-		}
-	} else {
-		assert (0);
 	}
-}
-
-/**
- * Used by a component to report a change in HA state
- * @param su
- * @param comp
- * @param csi_assignment
- */
-void amf_su_comp_hastate_changed (
-	struct amf_su *su, struct amf_comp *comp,
-	struct amf_csi_assignment *csi_assignment)
-{
-	ENTER("'%s' '%s'", comp->name.value, csi_assignment->csi->name.value);
 }
 
 /**
@@ -455,7 +538,70 @@ void amf_su_comp_error_suspected (
 	struct amf_comp *comp,
 	SaAmfRecommendedRecoveryT recommended_recovery)
 {
-	escalation_policy_cleanup (comp);
+	ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
+
+	/*                                                              
+     * Defer all new events. Workaround to be able to use gdb.
+     */
+	if (su->sg->avail_state != SG_AC_Idle) {
+		ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
+		fprintf (stderr, "Warning Debug: event deferred!\n");
+		return;
+	}
+
+	switch (su->restart_control_state) {
+		case SU_RC_ESCALATION_LEVEL_0:
+			if (comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax) {
+				su->restart_control_state = SU_RC_ESCALATION_LEVEL_1;
+				amf_su_comp_error_suspected (su, comp, recommended_recovery);
+			} else {
+				comp_restart (comp);
+			}
+			break;
+
+		case SU_RC_ESCALATION_LEVEL_1:
+			if (comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax) {
+				if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
+					su->restart_control_state = SU_RC_ESCALATION_LEVEL_2;
+					amf_su_comp_error_suspected (su, comp, recommended_recovery);
+				} else {
+					su_restart (comp->su);
+				}
+			} else {
+				comp_restart (comp);
+			}
+			break;
+
+		case SU_RC_ESCALATION_LEVEL_2:
+			if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
+
+				/*                                                              
+                 * TODO: delegate to node
+                 */
+				struct amf_si_assignment *si_assignment =
+					amf_su_get_next_si_assignment (su, NULL);
+				if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+					SaNameT dn;
+
+					su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
+					amf_comp_operational_state_set (
+						comp, SA_AMF_OPERATIONAL_DISABLED);
+					amf_comp_dn_make (comp, &dn);
+					log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+											"action:\n\t\tSU failover", dn.value);
+					amf_sg_failover_su_req (comp->su->sg, comp->su, this_amf_node);
+					return;
+				} else {
+					su_restart (comp->su);
+				}
+			} else {
+				su_restart (comp->su);
+			}
+			break;
+
+		default:
+			assert (0);
+	}
 }
 
 void amf_su_init (void)
@@ -463,3 +609,142 @@ void amf_su_init (void)
 	log_init ("AMF");
 }
 
+void amf_su_terminate (struct amf_su *su)
+{
+	struct amf_comp *comp;
+
+	ENTER ("'%s'", su->name.value);
+
+	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+		/*                                                              
+         * Terminate all components in SU abruptly
+         */
+		comp->error_suspected = 1;
+		amf_comp_terminate (comp);
+	}
+}
+
+char *amf_su_dn_make (struct amf_su *su, SaNameT *name)
+{
+	int	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
+		"safSu=%s,safSg=%s,safApp=%s",
+		su->name.value,	su->sg->name.value, su->sg->application->name.value);
+	assert (i <= SA_MAX_NAME_LENGTH);
+	name->length = i;
+	return (char *)name->value;
+}
+
+struct amf_si_assignment *amf_su_get_next_si_assignment (
+	struct amf_su *su, const struct amf_si_assignment *si_assignment)
+{
+	struct amf_si *si;
+	struct amf_si_assignment *tmp_si_assignment;
+	SaNameT dn;
+
+	amf_su_dn_make (su, &dn);
+
+	if (si_assignment == NULL) {
+		si = su->sg->application->si_head;
+		tmp_si_assignment = si->assigned_sis;
+	} else {
+		tmp_si_assignment = si_assignment->next;
+		if (tmp_si_assignment == NULL) {
+			si = si_assignment->si->next;
+			if (si == NULL) {
+				return NULL;
+			} else {
+				tmp_si_assignment = si->assigned_sis;
+			}
+		} else {
+			si = tmp_si_assignment->si;
+		}
+	}
+
+	for (; si != NULL; si = si->next) {
+		if (tmp_si_assignment == NULL && si != NULL) {
+			tmp_si_assignment = si->assigned_sis;
+		}
+		for (; tmp_si_assignment != NULL;
+			tmp_si_assignment = tmp_si_assignment->next) {
+
+			if (name_match (&tmp_si_assignment->name, &dn)) {
+				return tmp_si_assignment;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+void amf_su_foreach_si_assignment (
+	struct amf_su *su,
+	void (*foreach_fn)(struct amf_su *su,
+					   struct amf_si_assignment *si_assignment))
+{
+	struct amf_si_assignment *si_assignment;
+
+	assert (foreach_fn != NULL);
+	si_assignment = amf_su_get_next_si_assignment (su, NULL);
+	while (si_assignment != NULL) {
+		foreach_fn (su, si_assignment);
+		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+	}
+}
+
+
+int amf_su_get_saAmfSUNumCurrActiveSIs(struct amf_su *su)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+	
+	si_assignment = amf_su_get_next_si_assignment (su, NULL); 
+	while (si_assignment != NULL) {
+		if (su->sg->avail_state == SG_AC_AssigningOnRequest &&
+			si_assignment->requested_ha_state == SA_AMF_HA_ACTIVE) {
+			cnt++;
+		} else {
+			if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+				cnt++;
+			}
+		}
+		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+	}
+
+	return cnt;
+}
+
+
+int amf_su_get_saAmfSUNumCurrStandbySIs(struct amf_su *su)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+	
+	si_assignment = amf_su_get_next_si_assignment (su, NULL); 
+	while (si_assignment != NULL) {
+		if (su->sg->avail_state == SG_AC_AssigningOnRequest &&
+			si_assignment->requested_ha_state == SA_AMF_HA_STANDBY) {
+			cnt++;
+		} else {
+			if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
+				cnt++;
+			}
+		}
+		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+	}
+
+	return cnt;
+}
+
+SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (struct amf_su *su)
+{
+	if ((su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) &&
+		((su->saAmfSUPresenceState == SA_AMF_PRESENCE_INSTANTIATED) ||
+		 (su->saAmfSUPresenceState == SA_AMF_PRESENCE_RESTARTING))) {
+
+		return SA_AMF_READINESS_IN_SERVICE;
+	} else if (su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) {
+		return SA_AMF_READINESS_STOPPING;
+	} else {
+		return SA_AMF_READINESS_OUT_OF_SERVICE;
+	}
+}

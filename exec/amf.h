@@ -46,19 +46,44 @@
 #include "objdb.h"
 #include "timer.h"
 
-enum escalation_levels {
-	ESCALATION_LEVEL_NO_ESCALATION = 1,	/* execute component restart */
-	ESCALATION_LEVEL_ONE = 2,		/* escalate to service unit restart */
-	ESCALATION_LEVEL_TWO = 3,		/* escalate to service unit failover */
-	ESCALATION_LEVEL_THREE = 4		/* escalate to node failover */
-};
-
 enum clc_component_types {
 	clc_component_sa_aware = 0,			/* sa aware */
 	clc_component_proxied_pre = 1,			/* proxied, pre-instantiable */
 	clc_component_proxied_non_pre = 2,		/* proxied, non pre-instantiable */
 	clc_component_non_proxied_non_sa_aware = 3	/* non-proxied, non sa aware */
 };
+
+typedef enum {
+	SG_AC_Idle = 0,
+	SG_AC_DeactivatingDependantWorkload,
+	SG_AC_TerminatingSuspected,
+	SG_AC_ActivatingStandby,
+	SG_AC_AssigningStandbyToSpare,
+	SG_AC_ReparingComponent,
+	SG_AC_ReparingSu,
+	SG_AC_AssigningOnRequest,
+	SG_AC_InstantiatingServiceUnits,
+	SG_AC_RemovingAssignment,
+	SG_AC_AssigningActiveworkload,
+	SG_AC_AssigningAutoAdjust,
+	SG_AC_AssigningStandBy,
+	SG_AC_WaitingAfterOperationFailed
+} sg_avail_control_state_t;
+
+typedef enum {
+	SU_RC_ESCALATION_LEVEL_0 = 0,
+	SU_RC_ESCALATION_LEVEL_1,
+	SU_RC_ESCALATION_LEVEL_2,
+	SU_RC_RESTART_COMP_DEACTIVATING,
+	SU_RC_RESTART_COMP_RESTARTING,
+	SU_RC_RESTART_COMP_SETTING,
+	SU_RC_RESTART_COMP_ACTIVATING,
+	SU_RC_RESTART_SU_DEACTIVATING,
+	SU_RC_RESTART_SU_TERMINATING,
+	SU_RC_RESTART_SU_INSTANTIATING,
+	SU_RC_RESTART_SU_SETTING,
+	SU_RC_RESTART_SU_ACTIVATING
+} su_restart_control_state_t;
 
 struct amf_si_assignment;
 struct amf_csi_assignment;
@@ -153,6 +178,7 @@ struct amf_sg {
 	char clccli_path[PATH_MAX];
 	char binary_path[PATH_MAX];
 	struct amf_sg *next;
+	sg_avail_control_state_t avail_state;
 };
 
 struct amf_su {
@@ -167,24 +193,24 @@ struct amf_su {
 	SaBoolT saAmfSUPreInstantiable;
 	SaAmfOperationalStateT saAmfSUOperState;
 	SaAmfAdminStateT saAmfSUAdminState;
-	SaAmfReadinessStateT saAmfSUReadinessState;
+//	SaAmfReadinessStateT saAmfSUReadinessState;
 	SaAmfPresenceStateT saAmfSUPresenceState;
-	SaNameT saAmfSUAssignedSIs;
+//	SaNameT saAmfSUAssignedSIs;
 	SaNameT saAmfSUHostedByNode;
-	SaUint32T saAmfSUNumCurrActiveSIs;
-	SaUint32T saAmfSUNumCurrStandbySIs;
+/*     SaUint32T saAmfSUNumCurrActiveSIs;  */
+/*     SaUint32T saAmfSUNumCurrStandbySIs; */
 	SaUint32T saAmfSURestartCount;
 
 	/* Relations */
 	struct amf_sg *sg;
 	struct amf_comp *comp_head;
-	struct amf_si_assignment *assigned_sis;
 
 	/* Implementation */
+	su_restart_control_state_t restart_control_state;
+	su_restart_control_state_t escalation_level_history_state;
 	char clccli_path[PATH_MAX];
 	char binary_path[PATH_MAX];
 	SaUint32T              su_failover_cnt; /* missing in SAF specs? */
-	enum escalation_levels escalation_level;
 	struct amf_su         *next;
 };
 
@@ -230,11 +256,11 @@ struct amf_comp {
 
 	/* Runtime Attributes */
 	SaAmfOperationalStateT saAmfCompOperState;
-	SaAmfReadinessStateT saAmfCompReadinessState;
+//	SaAmfReadinessStateT saAmfCompReadinessState;
 	SaAmfPresenceStateT saAmfCompPresenceState;
 	SaUint32T saAmfCompRestartCount;
-	SaUint32T saAmfCompNumCurrActiveCsi;
-	SaUint32T saAmfCompNumCurrStandbyCsi;
+/*     SaUint32T saAmfCompNumCurrActiveCsi;  */
+/*     SaUint32T saAmfCompNumCurrStandbyCsi; */
 	SaNameT saAmfCompAssignedCsi;
 	SaNameT saAmfCompCurrProxyName;
 	SaNameT saAmfCompCurrProxiedNames;
@@ -242,7 +268,6 @@ struct amf_comp {
 	/* Relations */
 	struct amf_comp *proxy_comp;
 	struct amf_su *su;
-	struct amf_csi_assignment *assigned_csis;
 
 	/* Implementation */
 	char clccli_path[PATH_MAX];
@@ -251,6 +276,11 @@ struct amf_comp {
 	void *conn;
 	enum clc_component_types comptype;
 	struct amf_healthcheck *healthcheck_head;
+
+	/**
+     * Flag that indicates of this component has a suspected error
+	 */
+	int error_suspected;
 };
 
 struct amf_healthcheck {
@@ -282,14 +312,14 @@ struct amf_si {
 
 	/* Runtime Attributes */
 	SaAmfAdminStateT saAmfSIAdminState;
-	SaAmfAssignmentStateT saAmfSIAssignmentState;
-	SaUint32T saAmfSINumCurrActiveAssignments;
-	SaUint32T saAmfSINumCurrStandbyAssignments;
+//	SaAmfAssignmentStateT saAmfSIAssignmentState;
+//	SaUint32T saAmfSINumCurrActiveAssignments;
+//	SaUint32T saAmfSINumCurrStandbyAssignments;
 
 	/* Relations */
 	struct amf_application   *application;
 	struct amf_csi           *csi_head;
-	struct amf_si_assignment *si_assignments;
+	struct amf_si_assignment *assigned_sis;
 	struct amf_si_dependency *depends_on;
 	struct amf_si_ranked_su  *ranked_sus;
 
@@ -329,10 +359,13 @@ struct amf_si_assignment {
 
 	/* Relations */
 	struct amf_si *si;
+	struct amf_su *su;
 
 	/* Implementation */
 	SaAmfHAStateT requested_ha_state;
 	struct amf_si_assignment *next;
+	void (*assumed_callback_fn) (
+		struct amf_si_assignment *si_assignment, int result);
 };
 
 struct amf_csi {
@@ -343,7 +376,7 @@ struct amf_csi {
 
 	/* Relations */
 	struct amf_si *si;
-	struct amf_csi_assignment *csi_assignments;
+	struct amf_csi_assignment *assigned_csis;
 	struct amf_csi_attribute *attributes_head;
 
 	/* Implementation */
@@ -371,8 +404,8 @@ struct amf_csi_assignment {
 
 	/* Implementation */
 	SaAmfHAStateT requested_ha_state;
-	struct amf_csi_assignment *comp_next;
-	struct amf_csi_assignment *csi_next;
+	struct amf_csi_assignment *next;
+	struct amf_si_assignment *si_assignment;
 };
 
 enum amf_response_interfaces {
@@ -420,6 +453,7 @@ extern const char *amf_op_state (int state);
 extern const char *amf_presence_state (int state);
 extern const char *amf_ha_state (int state);
 extern const char *amf_readiness_state (int state);
+extern const char *amf_assignment_state (int state);
 
 /*===========================================================================*/
 /* amfnode.c */
@@ -515,7 +549,14 @@ extern int amf_sg_serialize (
 extern struct amf_sg *amf_sg_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
 
-/* Event methods */
+/**
+ * Request SG to start (instantiate all SUs)
+ * 
+ * @param sg
+ * @param node - NULL start all SUs in the SG
+ * @param node - !NULL start all SUs in the SG for the specified
+ *             node.
+ */
 extern void amf_sg_start (struct amf_sg *sg, struct amf_node *node);
 
 /**
@@ -528,7 +569,7 @@ extern void amf_sg_assign_si (struct amf_sg *sg, int dependency_level);
 extern void amf_sg_failover_node_req (
 	struct amf_sg *sg, struct amf_node *node);
 extern void amf_sg_failover_su_req (
-	struct amf_sg *sg, struct amf_node *node);
+	struct amf_sg *sg, struct amf_su *su, struct amf_node *node);
 extern void amf_sg_failover_comp_req (
 	struct amf_sg *sg, struct amf_node *node);
 extern void amf_sg_switchover_node_req (
@@ -553,18 +594,35 @@ extern void amf_sg_si_activated (
 /* General methods */
 extern void amf_su_init (void);
 extern struct amf_su *amf_su_create (void);
+extern char *amf_su_dn_make (struct amf_su *su, SaNameT *name);
 extern int amf_su_serialize (
 	struct amf_su *su, char **buf, int *offset);
 extern struct amf_su *amf_su_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
 extern int amf_su_is_local (struct amf_su *su);
+extern struct amf_si_assignment *amf_su_get_next_si_assignment (
+	struct amf_su *su, const struct amf_si_assignment *si_assignment);
+extern void amf_su_foreach_si_assignment (
+	struct amf_su *su,
+	void (*foreach_fn)(struct amf_su *su,
+					   struct amf_si_assignment *si_assignment));
+extern int amf_su_get_saAmfSUNumCurrActiveSIs (struct amf_su *su);
+extern int amf_su_get_saAmfSUNumCurrStandbySIs (struct amf_su *su);
+extern SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (
+	struct amf_su *su);
 
 /* Event methods */
 extern void amf_su_instantiate (struct amf_su *su);
 extern void amf_su_assign_si (
 	struct amf_su *su, struct amf_si *si, SaAmfHAStateT ha_state);
 extern void amf_su_restart_req (struct amf_su *su);
+
+/**
+ * Request termination of all component in an SU
+ * @param su
+ */
 extern void amf_su_terminate (struct amf_su *su);
+
 extern struct amf_node *amf_su_get_node (struct amf_su *su);
 extern void amf_su_escalation_level_reset (struct amf_su *su);
 extern void amf_su_remove_assignment (struct amf_su *su);
@@ -598,14 +656,29 @@ extern int amf_comp_serialize (
 	struct amf_comp *comp, char **buf, int *offset);
 extern struct amf_comp *amf_comp_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
+extern void amf_comp_foreach_csi_assignment (
+	struct amf_comp *component,
+	void (*foreach_fn)(struct amf_comp *component,
+					   struct amf_csi_assignment *csi_assignment));
+extern struct amf_csi_assignment *amf_comp_get_next_csi_assignment (
+	struct amf_comp *component, const struct amf_csi_assignment *csi_assignment);
+extern SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
+	struct amf_comp *comp);
 
 /* Event methods */
 extern void amf_comp_instantiate (struct amf_comp *comp);
 extern void amf_comp_terminate (struct amf_comp *comp);
+
+/**
+ * Request the component to assume a HA state
+ * @param comp
+ * @param csi_assignment
+ * @param requested_ha_state
+ */
 extern void amf_comp_hastate_set (
 	struct amf_comp *comp,
-	struct amf_csi_assignment *csi_assignment,
-	SaAmfHAStateT requested_ha_state);
+	struct amf_csi_assignment *csi_assignment);
+
 extern void amf_comp_restart (struct amf_comp *comp);
 extern void amf_comp_operational_state_set (
 	struct amf_comp *comp, SaAmfOperationalStateT opstate);
@@ -617,9 +690,26 @@ extern void amf_comp_healthcheck_tmo (
 	struct amf_comp *comp, struct amf_healthcheck *healthcheck);
 extern void amf_comp_cleanup_completed (struct amf_comp *comp);
 
+/**
+ * Count number of active CSI assignments
+ * @param component
+ * 
+ * @return int
+ */
+extern int amf_comp_get_saAmfCompNumCurrActiveCsi(struct amf_comp *component);
+
+/**
+ * Count number of standby CSI assignments
+ * @param component
+ * 
+ * @return int
+ */
+extern int amf_comp_get_saAmfCompNumCurrStandbyCsi(struct amf_comp *component);
+
 /*
  * Originates from library                                                                
  */
+
 extern SaAisErrorT amf_comp_healthcheck_start (
 	struct amf_comp *comp,
 	SaAmfHealthcheckKeyT *healthcheckKey,
@@ -655,24 +745,69 @@ extern int amf_si_serialize (
 extern struct amf_si *amf_si_deserialize (
 	char **buf, int *size, struct amf_cluster *cluster);
 
+/**
+ * Get number of active assignments for the specified SI
+ * @param si
+ * 
+ * @return int
+ */
+extern int amf_si_get_saAmfSINumCurrActiveAssignments (struct amf_si *si);
+
+/**
+ * Get number of standby assignments for the specified SI
+ * @param si
+ * 
+ * @return int
+ */
+extern int amf_si_get_saAmfSINumCurrStandbyAssignments (struct amf_si *si);
+
+/**
+ * Get assignment state for the specified SI.
+ * @param si
+ * 
+ * @return SaAmfAssignmentStateT
+ */
+extern SaAmfAssignmentStateT amf_si_get_saAmfSIAssignmentState (
+	struct amf_si *si);
+
 /* Event methods */
 
 /**
- * Activate all active assignments
+ * Activate all active assignments. Request component to change
+ * HA state to active.
  * @param si
  * @param activated_callback_fn
  */
 extern void amf_si_activate (
 	struct amf_si *si,
 	void (*activated_callback_fn)(struct amf_si *si, int result));
-extern void amf_si_deactivate (
-	struct amf_si *si,
-	struct amf_csi *csi,
-	void (*deactivated_callback_fn)(struct amf_si *si, int result));
-extern void amf_si_set_ha_state (
-	struct amf_si *si,
-	SaAmfHAStateT ha_state,
-	void (*set_ha_state_callback_fn)(struct amf_si *si, int result));
+
+/**
+ * Deactivate all active assignments. Request component to
+ * change HA state to quiesced.
+ * 
+ * @param si_assignment
+ * @param deactivated_callback_fn
+ * 
+ * @return int 1 - deactived immediately
+ * @return int 0 - asynchronous response through callback
+ */
+/***/
+extern int amf_si_deactivate (
+	struct amf_si_assignment *si_assignment,
+	void (*deactivated_callback_fn)(struct amf_si_assignment *si_assignment,
+		int result));
+
+/**
+ * Request SI (SU) to assume a HA state (request component)
+ * 
+ * @param si_assignment
+ * @param assumed_ha_state_callback_fn
+ */
+extern void amf_si_ha_state_assume (
+	struct amf_si_assignment *si_assignment,
+	void (*assumed_ha_state_callback_fn)(struct amf_si_assignment *si_assignment,
+		int result));
 
 /**
  * Component reports to SI that a workload assignment succeeded.
@@ -691,6 +826,13 @@ extern void amf_si_comp_set_ha_state_done (
 extern void amf_si_comp_set_ha_state_failed (
 	struct amf_si *si, struct amf_csi_assignment *csi_assignment);
 
+/**
+ * Request a CSI to delete all CSI assignments.
+ * 
+ * @param component
+ * @param csi
+ */
+extern void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su);
 
 /* General methods */
 extern struct amf_csi *amf_csi_create (void);

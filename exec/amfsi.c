@@ -3,7 +3,8 @@
  * Copyright (c) 2006 Ericsson AB.
  *  Author: Hans Feldt
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson
+ *  Author: Anders Eriksson, Lars Holm
+ *  - Component/SU restart, SU failover
  *
  * All rights reserved.
  *
@@ -112,17 +113,145 @@
 #include <stdio.h>
 #include "amf.h"
 #include "print.h"
+#include "util.h"
+#include "aispoll.h"
+#include "main.h"
+
+/**
+ * Check if any CSI assignment belonging to SU has the requested
+ * state.
+ * @param su
+ * @param hastate
+ * 
+ * @return int
+ */
+static int any_csi_has_hastate_in_su (struct amf_su *su, SaAmfHAStateT hastate)
+{
+	struct amf_comp *component;
+	struct amf_csi_assignment *csi_assignment;
+	int exist = 0;
+
+	for (component = su->comp_head; component != NULL;
+		component = component->next) {
+
+		csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+		while (csi_assignment != NULL) {
+			if (csi_assignment->saAmfCSICompHAState == hastate) {
+				exist = 1;
+				goto done;
+			}
+			csi_assignment =
+				amf_comp_get_next_csi_assignment (component, csi_assignment);
+		}
+	}
+
+	done:
+	return exist;
+}
+
+/**
+ * Check if all CSI assignments belonging to a
+ * an SI assignemnt has the requested state.
+ * @param su
+ * @param hastate
+ * 
+ * @return int
+ */
+static int all_csi_has_hastate_for_si (
+	struct amf_si_assignment *si_assignment, SaAmfHAStateT hastate)
+{
+	struct amf_comp *component;
+	struct amf_csi_assignment *tmp_csi_assignment;
+	int all = 1;
+
+	for (component = si_assignment->su->comp_head; component != NULL;
+		component = component->next) {
+
+		tmp_csi_assignment = amf_comp_get_next_csi_assignment (component, NULL);
+		while (tmp_csi_assignment != NULL) {
+			if ((tmp_csi_assignment->si_assignment == si_assignment) &&
+				(tmp_csi_assignment->saAmfCSICompHAState != hastate)) {
+
+				all = 0;
+				goto done;
+			}
+			tmp_csi_assignment =
+				amf_comp_get_next_csi_assignment (component, tmp_csi_assignment);
+		}
+	}
+
+	done:
+	return all;
+}
+
+/**
+ * Implements table 6 in 3.3.2.4
+ * TODO: active & standby is not correct calculated acc. to
+ * table. This knowledge is e.g. used in assign_si_assumed_cbfn
+ * (sg.c)
+ * @param csi_assignment
+ */
+static void set_si_ha_state (struct amf_csi_assignment *csi_assignment)
+{
+	SaAmfHAStateT old_ha_state =
+		csi_assignment->si_assignment->saAmfSISUHAState;
+	SaAmfAssignmentStateT old_assigment_state =
+		amf_si_get_saAmfSIAssignmentState (csi_assignment->csi->si);
+
+	if (all_csi_has_hastate_for_si (
+		csi_assignment->si_assignment, SA_AMF_HA_ACTIVE)) {
+
+		csi_assignment->si_assignment->saAmfSISUHAState = SA_AMF_HA_ACTIVE;
+	}
+
+	if (all_csi_has_hastate_for_si (
+		csi_assignment->si_assignment, SA_AMF_HA_STANDBY)) {
+
+		csi_assignment->si_assignment->saAmfSISUHAState = SA_AMF_HA_STANDBY;
+	}
+
+	if (any_csi_has_hastate_in_su (
+		csi_assignment->comp->su, SA_AMF_HA_QUIESCING)) {
+
+		csi_assignment->si_assignment->saAmfSISUHAState = SA_AMF_HA_QUIESCING;
+	}
+	if (any_csi_has_hastate_in_su (
+		csi_assignment->comp->su, SA_AMF_HA_QUIESCED)) {
+
+		csi_assignment->si_assignment->saAmfSISUHAState = SA_AMF_HA_QUIESCED;
+	}
+
+	/* log changes to HA state */
+	if (old_ha_state != csi_assignment->si_assignment->saAmfSISUHAState) {
+		log_printf (LOG_NOTICE, "SU HA state changed to '%s' for:\n"
+			"\t\tSI '%s', SU '%s'",
+			amf_ha_state (csi_assignment->si_assignment->saAmfSISUHAState),
+			csi_assignment->si_assignment->si->name.value,
+			csi_assignment->si_assignment->name.value);
+	}
+
+	/* log changes to assignment state */
+	if (old_assigment_state !=
+		amf_si_get_saAmfSIAssignmentState (csi_assignment->csi->si)) {
+		log_printf (LOG_NOTICE, "SI Assignment state changed to '%s' for:\n"
+			"\t\tSI '%s', SU '%s'",
+			amf_assignment_state (
+			amf_si_get_saAmfSIAssignmentState (csi_assignment->csi->si)),
+			csi_assignment->si_assignment->si->name.value,
+			csi_assignment->si_assignment->name.value);
+	}
+}
 
 char *amf_csi_dn_make (struct amf_csi *csi, SaNameT *name)
 {
-	int	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
+	int i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
 		"safCsi=%s,safSi=%s,safApp=%s",
 		csi->name.value, csi->si->name.value,
 		csi->si->application->name.value);
 	assert (i <= SA_MAX_NAME_LENGTH);
 	name->length = i;
 
-	return (char *)name->value;
+	return(char *)name->value;
 }
 
 void amf_si_init (void)
@@ -133,29 +262,22 @@ void amf_si_init (void)
 void amf_si_comp_set_ha_state_done (
 	struct amf_si *si, struct amf_csi_assignment *csi_assignment)
 {
-	struct amf_csi *csi;
-	int all_confirmed = 1;
+	ENTER ("'%s', '%s'", si->name.value, csi_assignment->csi->name.value);
 
-	ENTER ("");
+	set_si_ha_state (csi_assignment);
 
-	/**
-     * If all requested active/standby CSIs in SI are
-     * confirmed by the component, tell SG that the SI is
-     * activated.
-     */
-	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
-		struct amf_csi_assignment *tmp;
-		for (tmp = csi->csi_assignments; tmp != NULL; tmp = tmp->csi_next) {
-			if (tmp->requested_ha_state != tmp->saAmfCSICompHAState) {
-				all_confirmed = 0;
-				goto done;
-			}
-		}
-	}
+	assert (csi_assignment->si_assignment->assumed_callback_fn != NULL);
 
-done:
-	if (all_confirmed) {
-		amf_sg_si_activated (csi_assignment->comp->su->sg, si);
+	/*                                                              
+	 * Report to caller when the requested SI assignment state is
+	 * confirmed.
+	 */
+	if (csi_assignment->si_assignment->requested_ha_state ==
+		csi_assignment->si_assignment->saAmfSISUHAState) {
+
+		csi_assignment->si_assignment->assumed_callback_fn (
+			csi_assignment->si_assignment, 0);
+		csi_assignment->si_assignment->assumed_callback_fn = NULL;
 	}
 }
 
@@ -170,15 +292,18 @@ void amf_si_activate (
 	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
 		struct amf_csi_assignment *csi_assignment;
 
-		for (csi_assignment = csi->csi_assignments; csi_assignment != NULL;
-			csi_assignment = csi_assignment->csi_next) {
+		for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+			csi_assignment = csi_assignment->next) {
+
+			csi_assignment->si_assignment->requested_ha_state =
+				SA_AMF_HA_ACTIVE;
 
 			/*                                                              
 			 * TODO: only active assignments should be set when dependency
 			 * levels are used.
 			 */
-			amf_comp_hastate_set (csi_assignment->comp, csi_assignment,
-				csi_assignment->requested_ha_state);
+			csi_assignment->requested_ha_state = SA_AMF_HA_ACTIVE;
+			amf_comp_hastate_set (csi_assignment->comp, csi_assignment);
 		}
 	}
 }
@@ -188,5 +313,151 @@ void amf_si_comp_set_ha_state_failed (
 {
 	ENTER ("");
 	assert (0);
+}
+
+static void timer_function_ha_state_assumed (void *_si_assignment)
+{
+	struct amf_si_assignment *si_assignment = _si_assignment;
+
+	ENTER ("");
+	si_assignment->saAmfSISUHAState = si_assignment->requested_ha_state;
+	si_assignment->assumed_callback_fn (si_assignment, 0);
+}
+
+void amf_si_ha_state_assume (
+	struct amf_si_assignment *si_assignment,
+	void (*assumed_ha_state_callback_fn)(struct amf_si_assignment *si_assignment,
+	int result))
+{
+	struct amf_csi_assignment *csi_assignment;
+	struct amf_csi *csi;
+	int csi_assignment_cnt = 0;
+	int hastate_set_done_cnt = 0;
+
+	ENTER ("SI '%s' SU '%s' state %s", si_assignment->si->name.value,
+		si_assignment->su->name.value,
+		amf_ha_state (si_assignment->requested_ha_state));
+
+	si_assignment->assumed_callback_fn = assumed_ha_state_callback_fn;
+
+	for (csi = si_assignment->si->csi_head; csi != NULL; csi = csi->next) {
+		for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+			csi_assignment = csi_assignment->next) {
+
+			/*                                                              
+			 * If the CSI assignment and the SI assignment belongs to the
+			 * same SU, we have a match and can request the component to
+			 * change HA state.
+			 */
+			if (name_match (&csi_assignment->comp->su->name,
+				&si_assignment->su->name) &&
+				(csi_assignment->saAmfCSICompHAState !=
+				si_assignment->requested_ha_state)) {
+
+				csi_assignment_cnt++;
+				csi_assignment->requested_ha_state =
+					si_assignment->requested_ha_state;
+				amf_comp_hastate_set (csi_assignment->comp, csi_assignment);
+
+				if (csi_assignment->saAmfCSICompHAState ==
+					csi_assignment->requested_ha_state) {
+
+					hastate_set_done_cnt++;
+				}
+			}
+		}
+	}
+
+	/*                                                              
+	 * If the SU has only one component which is the faulty one, we
+	 * will not get an asynchronous response from the component.
+	 * This response (amf_si_comp_set_ha_state_done) is used to do
+	 * the next state transition. The asynchronous response is
+	 * simulated using a timeout instead.
+	 */
+	if (csi_assignment_cnt == hastate_set_done_cnt) {
+		poll_timer_handle handle;
+		poll_timer_add (aisexec_poll_handle,
+			0,
+			si_assignment,
+			timer_function_ha_state_assumed,
+			&handle);
+	}
+}
+
+/**
+ * Get number of active assignments for the specified SI
+ * @param si
+ * 
+ * @return int
+ */
+int amf_si_get_saAmfSINumCurrActiveAssignments (struct amf_si *si)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+
+	for (si_assignment = si->assigned_sis; si_assignment != NULL;
+		si_assignment = si_assignment->next) {
+
+		if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+			cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+int amf_si_get_saAmfSINumCurrStandbyAssignments (struct amf_si *si)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+
+	for (si_assignment = si->assigned_sis; si_assignment != NULL;
+		si_assignment = si_assignment->next) {
+
+		if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
+			cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+SaAmfAssignmentStateT amf_si_get_saAmfSIAssignmentState (struct amf_si *si)
+{
+	if ((amf_si_get_saAmfSINumCurrActiveAssignments (si) ==
+		si->saAmfSIPrefActiveAssignments) &&
+		(amf_si_get_saAmfSINumCurrStandbyAssignments (si) ==
+		si->saAmfSIPrefStandbyAssignments)) {
+
+		return SA_AMF_ASSIGNMENT_FULLY_ASSIGNED;
+	} else if (amf_si_get_saAmfSINumCurrActiveAssignments (si) == 0) {
+		return SA_AMF_ASSIGNMENT_UNASSIGNED;
+	} else {
+		return SA_AMF_ASSIGNMENT_PARTIALLY_ASSIGNED;
+	}
+}
+
+void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su)
+{
+	struct amf_csi_assignment *csi_assignment;
+
+	ENTER ("'%s'", su->name.value);
+
+	/*                                                              
+	* TODO: this only works for n+m where each CSI list has only
+	* two assignments, one active and one standby.
+	* TODO: use DN instead
+	*/
+	if (csi->assigned_csis->comp->su == su) {
+		csi_assignment = csi->assigned_csis;
+		csi->assigned_csis = csi_assignment->next;
+	} else {
+		csi_assignment = csi->assigned_csis->next;
+		csi->assigned_csis->next = NULL;
+		assert (csi_assignment != NULL && csi_assignment->comp->su == su);
+	}
+	assert (csi_assignment != NULL);
+	free (csi_assignment);
 }
 
