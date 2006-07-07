@@ -306,11 +306,7 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
 			boot_time.tv_sec = time (NULL);
 		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
-<<<<<<< .mine
 		my_cluster_node.boot_timestamp = ((SaTimeT)boot_time.tv_sec) * 1000000000;
-=======
-		my_cluster_node.boot_timestmap = ((SaTimeT)boot_time.tv_sec) * 1000000000;
->>>>>>> .r1070
 #else /* defined(CTL_KERN) && defined(KERN_BOOTTIME) */
 	#warning "no bootime support"
 #endif
