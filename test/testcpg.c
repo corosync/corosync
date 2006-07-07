@@ -49,6 +49,7 @@
 #include "cpg.h"
 
 static int quit = 0;
+static int show_ip = 0;
 
 void print_cpgname (struct cpg_name *name)
 {
@@ -67,7 +68,15 @@ void DeliverCallback (
 	void *msg,
 	int msg_len)
 {
-	printf("DeliverCallback: message (len=%d)from node/pid %d/%d: '%s'\n", msg_len, nodeid, pid, (char *)msg);
+	if (show_ip) {
+		struct in_addr saddr;
+		saddr.s_addr = nodeid;
+		printf("DeliverCallback: message (len=%d)from node/pid %s/%d: '%s'\n",
+		       msg_len, inet_ntoa(saddr), pid, (char *)msg);
+	}
+	else {
+		printf("DeliverCallback: message (len=%d)from node/pid %d/%d: '%s'\n", msg_len, nodeid, pid, (char *)msg);
+	}
 }
 
 void ConfchgCallback (
@@ -80,27 +89,46 @@ void ConfchgCallback (
 	int i;
 	struct in_addr saddr;
 
-
 	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("'\n");
 	for (i=0; i<joined_list_entries; i++) {
-		saddr.s_addr = joined_list[i].nodeid;
-		printf("joined node/pid: %s/%d reason: %d\n",
-			inet_ntoa (saddr), joined_list[i].pid,
-			joined_list[i].reason);
+		if (show_ip) {
+			saddr.s_addr = joined_list[i].nodeid;
+			printf("joined node/pid: %s/%d reason: %d\n",
+			       inet_ntoa (saddr), joined_list[i].pid,
+			       joined_list[i].reason);
+		}
+		else {
+			printf("joined node/pid: %d/%d reason: %d\n",
+			       joined_list[i].nodeid, joined_list[i].pid,
+			       joined_list[i].reason);
+		}
 	}
 
 	for (i=0; i<left_list_entries; i++) {
-		saddr.s_addr = left_list[i].nodeid;
-		printf("left node/pid: %s/%d reason: %d\n",
-			inet_ntoa (saddr), left_list[i].pid,
-			left_list[i].reason);
+		if (show_ip) {
+			saddr.s_addr = left_list[i].nodeid;
+			printf("left node/pid: %s/%d reason: %d\n",
+			       inet_ntoa (saddr), left_list[i].pid,
+			       left_list[i].reason);
+		}
+		else {
+			printf("left node/pid: %d/%d reason: %d\n",
+			       left_list[i].nodeid, left_list[i].pid,
+			       left_list[i].reason);
+		}
 	}
 
 	printf("nodes in group now %d\n", member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
-		saddr.s_addr = member_list[i].nodeid;
-		printf("node/pid: %s/%d\n",
-			inet_ntoa (saddr), member_list[i].pid);
+		if (show_ip) {
+			saddr.s_addr = member_list[i].nodeid;
+			printf("node/pid: %s/%d\n",
+			       inet_ntoa (saddr), member_list[i].pid);
+		}
+		else {
+			printf("node/pid: %d/%d\n",
+			       member_list[i].nodeid, member_list[i].pid);
+		}
 	}
 
 	/* Is it us??
@@ -126,10 +154,20 @@ int main (int argc, char *argv[]) {
 	fd_set read_fds;
 	int select_fd;
 	int result;
+	const char *options = "i";
+	int opt;
 
-	if (argc > 1) {
-		strcpy(group_name.value, argv[1]);
-		group_name.length = strlen(argv[1])+1;
+	while ( (opt = getopt(argc, argv, options)) != -1 ) {
+		switch (opt) {
+		case 'i':
+			show_ip = 1;
+			break;
+		}
+	}
+
+	if (argc > optind) {
+		strcpy(group_name.value, argv[optind]);
+		group_name.length = strlen(argv[optind])+1;
 	}
 	else {
 		strcpy(group_name.value, "GROUP");
