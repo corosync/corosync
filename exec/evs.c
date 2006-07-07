@@ -225,15 +225,15 @@ static void evs_confchg_fn (
 	res_evs_confchg_callback.header.error = SA_AIS_OK;
 
 	memcpy (res_evs_confchg_callback.member_list,
-		member_list, member_list_entries);
+		member_list, member_list_entries * sizeof(*member_list));
 	res_evs_confchg_callback.member_list_entries = member_list_entries;
 
 	memcpy (res_evs_confchg_callback.left_list,
-		left_list, left_list_entries);
+		left_list, left_list_entries * sizeof(*left_list));
 	res_evs_confchg_callback.left_list_entries = left_list_entries;
 
 	memcpy (res_evs_confchg_callback.joined_list,
-		joined_list, joined_list_entries);
+		joined_list, joined_list_entries * sizeof(*joined_list));
 	res_evs_confchg_callback.joined_list_entries = joined_list_entries;
 
 	/*
