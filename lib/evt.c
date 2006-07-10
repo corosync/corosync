@@ -383,7 +383,7 @@ saEvtInitialize(
 	/*
 	 * Set up communication with the event server
 	 */
-	error = saServiceConnectTwo(&evti->ei_response_fd,
+	error = saServiceConnect(&evti->ei_response_fd,
 		&evti->ei_dispatch_fd, EVT_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_handle_put;

@@ -260,7 +260,7 @@ saLckInitialize (
 
 	lckInstance->response_fd = -1;
 
-	error = saServiceConnectTwo (&lckInstance->response_fd,
+	error = saServiceConnect (&lckInstance->response_fd,
 		&lckInstance->dispatch_fd, LCK_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
@@ -850,7 +850,7 @@ saLckResourceLock (
 		goto error_destroy;
 	}
 
-	error = saServiceConnectTwo (&lock_fd, &dummy_fd, LCK_SERVICE);
+	error = saServiceConnect (&lock_fd, &dummy_fd, LCK_SERVICE);
 	if (error != SA_AIS_OK) { // TODO error handling
 		goto error_destroy;
 	}
@@ -943,7 +943,7 @@ saLckResourceLockAsync (
 		goto error_destroy;
 	}
 
-	error = saServiceConnectTwo (&lock_fd, &dummy_fd, LCK_SERVICE);
+	error = saServiceConnect (&lock_fd, &dummy_fd, LCK_SERVICE);
 	if (error != SA_AIS_OK) { // TODO error handling
 		goto error_destroy;
 	}

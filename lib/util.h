@@ -84,11 +84,6 @@ struct queue {
 
 SaAisErrorT
 saServiceConnect (
-	int *fdOut,
-	enum service_types service);
-
-SaAisErrorT
-saServiceConnectTwo (
         int *responseOut,
         int *callbackOut,
         enum service_types service);

@@ -131,7 +131,7 @@ saAmfInitialize (
 
 	amfInstance->dispatch_fd = -1;
 	
-	error = saServiceConnectTwo (&amfInstance->response_fd,
+	error = saServiceConnect (&amfInstance->response_fd,
 		&amfInstance->dispatch_fd, AMF_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;

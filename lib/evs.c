@@ -111,7 +111,7 @@ evs_error_t evs_initialize (
 		goto error_destroy;
 	}
 
-	error = saServiceConnectTwo (&evs_inst->response_fd,
+	error = saServiceConnect (&evs_inst->response_fd,
 		&evs_inst->dispatch_fd,
 		EVS_SERVICE);
 	if (error != SA_AIS_OK) {

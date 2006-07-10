@@ -130,7 +130,7 @@ openaisCfgInitialize (
 
 	cfgInstance->dispatch_fd = -1;
 	
-	error = saServiceConnectTwo (&cfgInstance->response_fd,
+	error = saServiceConnect (&cfgInstance->response_fd,
 		&cfgInstance->dispatch_fd, AMF_SERVICE);
 	if (error != SA_OK) {
 		goto error_put_destroy;

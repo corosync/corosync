@@ -101,7 +101,7 @@ cpg_error_t cpg_initialize (
 		goto error_destroy;
 	}
 
-	error = saServiceConnectTwo (&cpg_inst->dispatch_fd,
+	error = saServiceConnect (&cpg_inst->dispatch_fd,
 				     &cpg_inst->response_fd,
 		CPG_SERVICE);
 	if (error != SA_AIS_OK) {

@@ -90,7 +90,7 @@ void socket_nosigpipe(int s)
 #endif 
 
 SaAisErrorT
-saServiceConnectTwo (
+saServiceConnect (
 	int *responseOut,
 	int *callbackOut,
 	enum service_types service)

@@ -169,7 +169,7 @@ saClmInitialize (
 
 	clmInstance->dispatch_fd = -1;
 
-	error = saServiceConnectTwo (&clmInstance->response_fd,
+	error = saServiceConnect (&clmInstance->response_fd,
 		&clmInstance->dispatch_fd, CLM_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;

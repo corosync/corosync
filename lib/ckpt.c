@@ -274,7 +274,7 @@ saCkptInitialize (
 
 	ckptInstance->response_fd = -1;
 
-	error = saServiceConnectTwo (&ckptInstance->response_fd,
+	error = saServiceConnect (&ckptInstance->response_fd,
 		&ckptInstance->dispatch_fd, CKPT_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
