@@ -1,6 +1,6 @@
 # Version and symbol export for libSaClm.so
 
-OPENAIS_EVS_1.0 {
+OPENAIS_EVS_2.0 {
 	global:
 		evs_initialize;
 		evs_finalize;
@@ -24,7 +24,6 @@ OPENAIS_EVS_1.0 {
 		saSendReceiveReply;
 		saSendRetry;
 		saServiceConnect;
-		saServiceConnectTwo;
 		saVersionVerify;
 		clustTimeNow;
 };

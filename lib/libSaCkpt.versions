@@ -37,7 +37,6 @@ OPENAIS_CKPT_B.01.01 {
 		saSendReceiveReply;
 		saSendRetry;
 		saServiceConnect;
-		saServiceConnectTwo;
 		saVersionVerify;
 		clustTimeNow;
 };

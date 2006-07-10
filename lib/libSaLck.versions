@@ -6,6 +6,16 @@ OPENAIS_LCK_B.01.01 {
 		saLckSelectionObjectGet;
 		saLckDispatch;
 		saLckinalize;
+		saLckinalize;
+		saLckResourceOpen;
+		saLckResourceOpenAsync;
+		saLckResourcClose;
+		saLckResourcLock;
+		saLckResourceLockAsync;
+		saLckResourceUnlock;
+		saLckResourceUnlockAsync;
+		saLckResourceLockPurge;
+
 	local:
 		saHandleCreate;
 		saHandleDestroy;
@@ -18,7 +28,6 @@ OPENAIS_LCK_B.01.01 {
 		saSendReceiveReply;
 		saSendRetry;
 		saServiceConnect;
-		saServiceConnectTwo;
 		saVersionVerify;
 		clustTimeNow;
 };

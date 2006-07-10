@@ -23,7 +23,6 @@ OPENAIS_CPG_1.0 {
 		saSendReceiveReply;
 		saSendRetry;
 		saServiceConnect;
-		saServiceConnectTwo;
 		saVersionVerify;
 		clustTimeNow;
 };

@@ -23,7 +23,6 @@ OPENAIS_CLM_B.01.01 {
 		saSendReceiveReply;
 		saSendRetry;
 		saServiceConnect;
-		saServiceConnectTwo;
 		saVersionVerify;
 		clustTimeNow;
 };
