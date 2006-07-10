@@ -217,7 +217,7 @@ saMsgInitialize (
 
 	msgInstance->response_fd = -1;
 
-	error = saServiceConnectTwo (&msgInstance->response_fd,
+	error = saServiceConnect (&msgInstance->response_fd,
 		&msgInstance->dispatch_fd, MSG_SERVICE);
 	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
