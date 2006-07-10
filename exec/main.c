@@ -375,6 +375,8 @@ int main (int argc, char **argv)
  	int totem_log_service;
  	log_init ("MAIN");
 
+	aisexec_tty_detach ();
+
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006 Red Hat, Inc.\n");
@@ -553,8 +555,6 @@ int main (int argc, char **argv)
 		serialize_mutex_unlock,
 		gid_valid,
 		&this_non_loopback_ip);
-
-	aisexec_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 
