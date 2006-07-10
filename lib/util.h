@@ -72,16 +72,6 @@ struct saVersionDatabase {
 	SaVersionT *versionsSupported;
 };
 
-struct queue {
-	int head;
-	int tail;
-	int used;
-	int usedhw;
-	int size;
-	void *items;
-	int bytesPerItem;
-};
-
 SaAisErrorT
 saServiceConnect (
         int *responseOut,
