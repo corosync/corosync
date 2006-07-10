@@ -273,12 +273,12 @@ saMsgMessageReply (
 	const SaMsgSenderIdT *senderId,
 	SaTimeT timeout);
 
-SaAisErrorT saMsgMessageREplyAsync (
+SaAisErrorT saMsgMessageReplyAsync (
 	SaMsgHandleT msgHandle,
 	SaInvocationT invocation,
 	const SaMsgMessageT *replyMessage,
 	const SaMsgSenderIdT *senderId,
 	SaMsgAckFlagsT ackFlags);
 
-#endif /* SALCK_H_DEFINED */
+#endif /* SAMSG_H_DEFINED */
 
