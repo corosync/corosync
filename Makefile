@@ -45,6 +45,12 @@ LIBDIR=/usr/lib/openais
 else
 LIBDIR=/usr/lib64/openais
 endif
+ifeq (s390,$(ARCH))
+LIBDIR=/usr/lib/openais
+endif
+ifeq (s390x,$(ARCH))
+LIBDIR=/usr/lib64/openais
+endif
 
 all:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
