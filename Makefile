@@ -73,27 +73,27 @@ install:
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
 	mkdir -p $(DESTDIR)/etc/ld.so.conf.d
 
-	ln -sf libais.so.1.0.0 lib/libais.so
-	ln -sf libSaAmf.so.1.0.0 lib/libSaAmf.so
-	ln -sf libSaClm.so.1.0.0 lib/libSaClm.so
-	ln -sf libSaCkpt.so.1.0.0 lib/libSaCkpt.so
-	ln -sf libSaEvt.so.1.0.0 lib/libSaEvt.so
-	ln -sf libSaLck.so.1.0.0 lib/libSaLck.so
-	ln -sf libSaMsg.so.1.0.0 lib/libSaMsg.so
-	ln -sf libevs.so.1.0.0 lib/libevs.so
-	ln -sf libcpg.so.1.0.0 lib/libcpg.so
-	ln -sf libtotem_pg.so.1.0.0 exec/libtotem_pg.so
+	ln -sf libais.so.2.0.0 lib/libais.so
+	ln -sf libSaAmf.so.2.0.0 lib/libSaAmf.so
+	ln -sf libSaClm.so.2.0.0 lib/libSaClm.so
+	ln -sf libSaCkpt.so.2.0.0 lib/libSaCkpt.so
+	ln -sf libSaEvt.so.2.0.0 lib/libSaEvt.so
+	ln -sf libSaLck.so.2.0.0 lib/libSaLck.so
+	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so
+	ln -sf libevs.so.2.0.0 lib/libevs.so
+	ln -sf libcpg.so.2.0.0 lib/libcpg.so
+	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so
 
-	ln -sf libais.so.1.0.0 lib/libais.so.1
-	ln -sf libSaAmf.so.1.0.0 lib/libSaAmf.so.1
-	ln -sf libSaClm.so.1.0.0 lib/libSaClm.so.1
-	ln -sf libSaCkpt.so.1.0.0 lib/libSaCkpt.so.1
-	ln -sf libSaEvt.so.1.0.0 lib/libSaEvt.so.1
-	ln -sf libSaLck.so.1.0.0 lib/libSaLck.so.1
-	ln -sf libSaMsg.so.1.0.0 lib/libSaMsg.so.1
-	ln -sf libevs.so.1.0.0 lib/libevs.so.1
-	ln -sf libcpg.so.1.0.0 lib/libcpg.so.1
-	ln -sf libtotem_pg.so.1.0.0 exec/libtotem_pg.so.1
+	ln -sf libais.so.2.0.0 lib/libais.so.2
+	ln -sf libSaAmf.so.2.0.0 lib/libSaAmf.so.2
+	ln -sf libSaClm.so.2.0.0 lib/libSaClm.so.2
+	ln -sf libSaCkpt.so.2.0.0 lib/libSaCkpt.so.2
+	ln -sf libSaEvt.so.2.0.0 lib/libSaEvt.so.2
+	ln -sf libSaLck.so.2.0.0 lib/libSaLck.so.2
+	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so.2
+	ln -sf libevs.so.2.0.0 lib/libevs.so.2
+	ln -sf libcpg.so.2.0.0 lib/libcpg.so.2
+	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so.2
 
 	cp -a lib/libais.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
@@ -105,26 +105,26 @@ install:
 	cp -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
 	cp -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
 
-	cp -a lib/libais.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaAmf.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaCkpt.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaEvt.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaLck.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaMsg.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libevs.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libcpg.so.1 $(DESTDIR)$(LIBDIR)
-	cp -a exec/libtotem_pg.so.1 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaAmf.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaCkpt.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaEvt.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaLck.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaMsg.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libevs.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libcpg.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
 
-	install -m 755 lib/libais.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaAmf.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaClm.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaCkpt.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaEvt.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaLck.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaMsg.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libevs.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcpg.so.1.* $(DESTDIR)$(LIBDIR)
-	install -m 755 exec/libtotem_pg.so.1.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libais.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaAmf.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaClm.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaCkpt.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaEvt.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaLck.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libSaMsg.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libevs.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcpg.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
 ifneq "NO" "$(STATICLIBS)"
 	install -m 755 lib/libais.a $(DESTDIR)$(LIBDIR)

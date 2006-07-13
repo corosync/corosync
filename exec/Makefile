@@ -67,7 +67,7 @@ ifeq (${BUILD_DYNAMIC}, 1)
 EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
 override CFLAGS += -fPIC
 
-all:libtotem_pg.a libtotem_pg.so.1.0.0 ../lcr/lcr_ifact.o \
+all:libtotem_pg.a libtotem_pg.so.2.0.0 ../lcr/lcr_ifact.o \
 	aisexec \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
@@ -166,13 +166,13 @@ libtotem_pg.a: $(TOTEM_OBJS)
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
-libtotem_pg.so.1.0.0: $(TOTEM_OBJS)
+libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
 
 else
 
-libtotem_pg.so.1.0.0: $(TOTEM_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.1 $(TOTEM_OBJS) -o $@
+libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.2 $(TOTEM_OBJS) -o $@
 
 endif
 
