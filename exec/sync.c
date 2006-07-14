@@ -239,25 +239,10 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	if (res != 0) {
 		return (0);
 	}
-	/*
-	 * This sync is complete so activate and start next service sync
-	 */
-	sync_callbacks.sync_activate ();
 	totempg_callback_token_destroy (&sync_callback_token_handle);
-	
-	log_printf (LOG_LEVEL_NOTICE,"Synchronization actions done for (%s)\n",sync_callbacks.name);
-	
-	sync_callbacks_load();
 
-	/*
-	 * if sync service found, execute it
-	 */
-	if (sync_processing && sync_callbacks.sync_init) {
-		sync_start_init (ring_id);
-	}
-	else {
-		sync_callback_loaded = 0;
-	}
+	sync_start_init (ring_id);
+
 	return (0);
 }
 
@@ -375,7 +360,6 @@ static void sync_deliver_fn (
 	struct iovec *iovec,
 	int iov_len,
 	int endian_conversion_required)
-
 {
 	struct req_exec_sync_barrier_start *req_exec_sync_barrier_start =
 		(struct req_exec_sync_barrier_start *)iovec[0].iov_base;
@@ -405,7 +389,9 @@ static void sync_deliver_fn (
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
 		if (nodeid == barrier_data_process[i].nodeid) {
 			barrier_data_process[i].completed = 1;
-			log_printf (LOG_LEVEL_DEBUG,"Barrier Start Recieved From %d\n", barrier_data_process[i].nodeid);
+			log_printf (LOG_LEVEL_DEBUG,
+				"Barrier Start Recieved From %d\n",
+				barrier_data_process[i].nodeid);
 			break;
 		}
 	}
@@ -414,7 +400,8 @@ static void sync_deliver_fn (
 	 * Test if barrier is complete
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		log_printf (LOG_LEVEL_DEBUG,"Barrier completion status for nodeid %d = %d. \n", 
+		log_printf (LOG_LEVEL_DEBUG,
+			"Barrier completion status for nodeid %d = %d. \n", 
 			barrier_data_process[i].nodeid,
 			barrier_data_process[i].completed);
 		if (barrier_data_process[i].completed == 0) {
@@ -426,13 +413,26 @@ static void sync_deliver_fn (
 			"Synchronization barrier completed\n");
 	}
 	/*
+	 * This sync is complete so activate and start next service sync
+	 */
+	if (sync_callbacks.sync_activate) {
+		sync_callbacks.sync_activate ();
+	
+		log_printf (LOG_LEVEL_NOTICE,
+			"Committing synchronization for (%s)\n",
+			sync_callbacks.name);
+	
+	}
+	sync_callbacks_load ();
+
+	/*
 	 * Start synchronization if the barrier has completed
 	 */
 	if (barrier_completed) {
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
 
-		if ( sync_callback_loaded == 0 ) {
+		if (sync_callback_loaded == 0) {
 			sync_callbacks_load();
 		}
 
