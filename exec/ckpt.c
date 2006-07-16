@@ -1750,7 +1750,6 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to open checkpoint %p\n", req_exec_ckpt_checkpointopen);
 	
-printf ("opening checkpoint %s\n", req_exec_ckpt_checkpointopen->checkpoint_name.value);
 	if (req_exec_ckpt_checkpointopen->fail_with_error != SA_AIS_OK) {
 		error = req_exec_ckpt_checkpointopen->fail_with_error;
 		goto error_exit;
@@ -3166,6 +3165,11 @@ static void message_handler_req_exec_ckpt_sectionread (
 	checkpoint = checkpoint_find (&req_exec_ckpt_sectionread->checkpoint_name);
 	if (checkpoint == 0) {
 		error = SA_AIS_ERR_LIBRARY; /* TODO find the right error for this */
+		goto error_exit;
+	}
+
+	if (checkpoint->active_replica_set == 0) {
+		error = SA_AIS_ERR_NOT_EXIST;
 		goto error_exit;
 	}
 
