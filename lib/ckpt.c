@@ -571,6 +571,10 @@ saCkptCheckpointOpen (
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
+	if (checkpointOpenFlags & ~(SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE|SA_CKPT_CHECKPOINT_CREATE)) {
+		return (SA_AIS_ERR_BAD_FLAGS);
+	}
+
 	if ((checkpointOpenFlags & SA_CKPT_CHECKPOINT_CREATE) && 
 		checkpointCreationAttributes == NULL) {
 
@@ -588,10 +592,6 @@ saCkptCheckpointOpen (
 		(checkpointCreationAttributes->maxSections * checkpointCreationAttributes->maxSectionSize))) {
 
 		return (SA_AIS_ERR_INVALID_PARAM);
-	}
-
-	if (checkpointOpenFlags & ~(SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE|SA_CKPT_CHECKPOINT_CREATE)) {
-		return (SA_AIS_ERR_BAD_FLAGS);
 	}
 
 	error = saHandleInstanceGet (&ckptHandleDatabase, ckptHandle,
