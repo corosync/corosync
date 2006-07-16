@@ -1750,6 +1750,7 @@ static void message_handler_req_exec_ckpt_checkpointopen (
 
 	log_printf (LOG_LEVEL_DEBUG, "Executive request to open checkpoint %p\n", req_exec_ckpt_checkpointopen);
 	
+printf ("opening checkpoint %s\n", req_exec_ckpt_checkpointopen->checkpoint_name.value);
 	if (req_exec_ckpt_checkpointopen->fail_with_error != SA_AIS_OK) {
 		error = req_exec_ckpt_checkpointopen->fail_with_error;
 		goto error_exit;
@@ -3309,6 +3310,8 @@ static void message_handler_req_lib_ckpt_checkpointopen (
 	memcpy (&req_exec_ckpt_checkpointopen.checkpoint_creation_attributes,
 		&req_lib_ckpt_checkpointopen->checkpoint_creation_attributes,
 		sizeof (mar_ckpt_checkpoint_creation_attributes_t));
+	req_exec_ckpt_checkpointopen.checkpoint_creation_attributes_set =
+		req_lib_ckpt_checkpointopen->checkpoint_creation_attributes_set;
 	req_exec_ckpt_checkpointopen.checkpoint_open_flags = 
 		req_lib_ckpt_checkpointopen->checkpoint_open_flags;
 	req_exec_ckpt_checkpointopen.invocation =
