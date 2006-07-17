@@ -3186,6 +3186,24 @@ static void message_handler_req_exec_ckpt_sectionread (
 	}
 
 	/*
+	 * If data size is greater then max section size, return INVALID_PARAM
+	 */
+	if (checkpoint->checkpoint_creation_attributes.max_section_size < 
+		req_exec_ckpt_sectionread->data_size) {
+
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}
+
+	/*
+	 * If data_offset is past end of data, return INVALID_PARAM
+	 */
+	if (req_exec_ckpt_sectionread->data_offset > checkpoint_section->section_descriptor.section_size) {
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}
+
+	/*
 	 * Determine the section size
 	 */
 	section_size = checkpoint_section->section_descriptor.section_size -
@@ -3195,19 +3213,8 @@ static void message_handler_req_exec_ckpt_sectionread (
 	 * If the library has less space available then can be sent from the
 	 * section, reduce bytes sent to library to max requested
 	 */
-	if (section_size < req_exec_ckpt_sectionread->data_size) {
-		section_size = 0;
-		error = SA_AIS_ERR_INVALID_PARAM;
-		goto error_exit;
-	}
-
-	/*
-	 * If data_offset is past end of data, return INVALID PARAM
-	 */
-	if (req_exec_ckpt_sectionread->data_offset > checkpoint_section->section_descriptor.section_size) {
-		section_size = 0;
-		error = SA_AIS_ERR_INVALID_PARAM;
-		goto error_exit;
+	if (section_size > req_exec_ckpt_sectionread->data_size) {
+		section_size = req_exec_ckpt_sectionread->data_size;
 	}
 
 	/*
