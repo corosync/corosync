@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -145,7 +146,7 @@ saClmInitialize (
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 	if (version == NULL) {
-		return (SA_AIS_ERR_VERSION);
+		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
 	error = saVersionVerify (&clmVersionDatabase, version);
