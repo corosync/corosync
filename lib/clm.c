@@ -523,27 +523,30 @@ saClmClusterTrack (
 	int items_to_copy;
 	unsigned int i;
 
-	if ((trackFlags & SA_TRACK_CHANGES) && (trackFlags & SA_TRACK_CHANGES_ONLY)) {
-		return (SA_AIS_ERR_BAD_FLAGS);
-	}
-
-	if (trackFlags & ~(SA_TRACK_CURRENT | SA_TRACK_CHANGES | SA_TRACK_CHANGES_ONLY)) {
-		return (SA_AIS_ERR_BAD_FLAGS);
-	}
-
-	if ((notificationBuffer != NULL) &&
-		(notificationBuffer->notification != NULL) &&
-		(notificationBuffer->numberOfItems == 0)) {
-
-		return (SA_AIS_ERR_INVALID_PARAM);
-	}
-		
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
+	if ((trackFlags & SA_TRACK_CHANGES) && (trackFlags & SA_TRACK_CHANGES_ONLY)) {
+		error = SA_AIS_ERR_BAD_FLAGS;
+		goto error_nounlock;
+	}
+
+	if (trackFlags & ~(SA_TRACK_CURRENT | SA_TRACK_CHANGES | SA_TRACK_CHANGES_ONLY)) {
+		error = SA_AIS_ERR_BAD_FLAGS;
+		goto error_nounlock;
+	}
+
+	if ((notificationBuffer != NULL) &&
+		(notificationBuffer->notification != NULL) &&
+		(notificationBuffer->numberOfItems == 0)) {
+
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_nounlock;
+	}
+		
 	req_lib_clm_clustertrack.header.size = sizeof (struct req_lib_clm_clustertrack);
 	req_lib_clm_clustertrack.header.id = MESSAGE_REQ_CLM_TRACKSTART;
 	req_lib_clm_clustertrack.track_flags = trackFlags;
@@ -600,6 +603,7 @@ saClmClusterTrack (
 error_exit:
 	pthread_mutex_unlock (&clmInstance->response_mutex);
 
+error_nounlock:
 	saHandleInstancePut (&clmHandleDatabase, clmHandle);
 
         return (error == SA_AIS_OK ? res_lib_clm_clustertrack.header.error : error);
