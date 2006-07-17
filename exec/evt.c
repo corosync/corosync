@@ -264,6 +264,76 @@ __attribute__ ((constructor)) static void evt_comp_register (void) {
 	lcr_component_register (&evt_comp_ver0);
 }
 
+/*
+ * MESSAGE_REQ_EXEC_EVT_CHANCMD
+ *
+ * Used for various event related operations.
+ *
+ */
+enum evt_chan_ops {
+	EVT_OPEN_CHAN_OP,		/* chc_chan */
+	EVT_CLOSE_CHAN_OP,  		/* chc_close_unlink_chan */
+	EVT_UNLINK_CHAN_OP,  		/* chc_close_unlink_chan */
+	EVT_CLEAR_RET_OP,		/* chc_event_id */
+	EVT_SET_ID_OP,			/* chc_set_id */
+	EVT_CONF_DONE,			/* no data used */
+	EVT_OPEN_COUNT,			/* chc_set_opens */
+	EVT_OPEN_COUNT_DONE		/* no data used */
+};
+	
+/*
+ * Used during recovery to set the next issued event ID
+ * based on the highest ID seen by any of the members
+ */
+struct evt_set_id {
+	mar_uint32_t 		chc_nodeid __attribute__((aligned(8)));
+	mar_uint64_t		chc_last_id __attribute__((aligned(8)));
+};
+
+/*
+ * For set open count used during recovery to syncronize all nodes
+ *
+ * 	chc_chan_name:		Channel name.
+ * 	chc_open_count:		number of local opens of this channel.
+ */
+struct evt_set_opens {
+	mar_name_t		chc_chan_name __attribute__((aligned(8)));
+	mar_uint32_t		chc_open_count __attribute__((aligned(8)));
+};
+
+/*
+ * Used to communicate channel to close or unlink.
+ */
+#define EVT_CHAN_ACTIVE 0
+struct evt_close_unlink_chan {
+	mar_name_t		chcu_name __attribute__((aligned(8)));
+	mar_uint64_t		chcu_unlink_id __attribute__((aligned(8)));
+};
+
+struct open_chan_req {
+	mar_name_t		ocr_name __attribute__((aligned(8)));
+	mar_uint64_t		ocr_serial_no __attribute__((aligned(8)));
+};
+
+/*
+ * Sent via MESSAGE_REQ_EXEC_EVT_CHANCMD
+ *
+ * chc_head:	Request head
+ * chc_op:		Channel operation (open, close, clear retentiontime)
+ * u:			union of operation options.
+ */
+struct req_evt_chan_command {
+	mar_req_header_t 	chc_head __attribute__((aligned(8)));
+	mar_uint32_t		chc_op __attribute__((aligned(8)));
+	union {
+		struct open_chan_req		chc_chan __attribute__((aligned(8)));
+		mar_evteventid_t		chc_event_id __attribute__((aligned(8)));
+		struct evt_set_id		chc_set_id __attribute__((aligned(8)));
+		struct evt_set_opens 		chc_set_opens __attribute__((aligned(8)));
+		struct evt_close_unlink_chan	chcu __attribute__((aligned(8)));
+	} u;
+};
+
 /* 
  * list of all retained events 
  * 		struct event_data
@@ -344,9 +414,9 @@ enum recovery_phases {
  */
 
 #define BASE_ID_MASK 0xffffffffLL
-static SaEvtEventIdT 	base_id = 1;
-static SaEvtEventIdT 	base_id_top = 0;
-static SaClmNodeIdT  	my_node_id = 0;
+static mar_evteventid_t 	base_id = 1;
+static mar_evteventid_t 	base_id_top = 0;
+static mar_uint32_t  	my_node_id = 0;
 static int 			 	checked_in = 0;
 static int			 	recovery_node = 0;
 static struct list_head *next_retained = 0;
@@ -377,10 +447,10 @@ static int				processed_open_counts = 0;
  */
 struct open_chan_pending {
 	int					ocp_async;
-	SaInvocationT		ocp_invocation;
-	SaNameT				ocp_chan_name;
+	mar_invocation_t	ocp_invocation;
+	mar_name_t			ocp_chan_name;
 	void 				*ocp_conn;
-	SaEvtChannelOpenFlagsT	ocp_open_flag;
+	mar_evtchannelopenflags_t	ocp_open_flag;
 	timer_handle		ocp_timer_handle;
 	uint64_t			ocp_c_handle;
 	uint64_t			ocp_serial_no;
@@ -425,7 +495,7 @@ static DECLARE_LIST_INIT(unlink_pending);
  * rtc_entry:			list entry for pending clear list.
  */
 struct retention_time_clear_pending {
-	SaEvtEventIdT		rtc_event_id;
+	mar_evteventid_t		rtc_event_id;
 	void				*rtc_conn;
 	struct list_head	rtc_entry;
 };
@@ -471,7 +541,7 @@ char lost_evt[] = SA_EVT_LOST_EVENT;
 static int dropped_event_size;
 static struct event_data *dropped_event;
 struct evt_pattern {
-	SaEvtEventPatternT	pat;
+	mar_evt_event_pattern_t	pat;
 	char 	str[sizeof(lost_evt)];
 };
 static struct evt_pattern dropped_pattern = {
@@ -482,12 +552,12 @@ static struct evt_pattern dropped_pattern = {
 		.str = {SA_EVT_LOST_EVENT}
 };
 
-SaNameT lost_chan = {
+mar_name_t lost_chan = {
 	.value = LOST_CHAN,
 	.length = sizeof(LOST_CHAN)
 };
 
-SaNameT dropped_publisher = {
+mar_name_t dropped_publisher = {
 	.value = LOST_PUB,
 	.length = sizeof(LOST_PUB)
 };
@@ -496,7 +566,7 @@ struct event_svr_channel_open;
 struct event_svr_channel_subscr;
 
 struct open_count {
-	SaClmNodeIdT	oc_node_id;
+	mar_uint32_t	oc_node_id;
 	int32_t			oc_open_count;
 };
 
@@ -519,7 +589,7 @@ struct open_count {
  * 						so they get delivered to the proper recipients.
  */
 struct event_svr_channel_instance {
-	SaNameT				esc_channel_name;
+	mar_name_t				esc_channel_name;
 	int32_t				esc_total_opens;
 	int32_t				esc_local_opens;
 	uint32_t			esc_oc_size;
@@ -611,7 +681,7 @@ struct event_svr_channel_open {
 struct event_svr_channel_subscr {
 	struct event_svr_channel_open	*ecs_open_chan;
 	uint32_t						ecs_sub_id;
-	SaEvtEventFilterArrayT			*ecs_filters;
+	mar_evt_event_filter_array_t			*ecs_filters;
 	struct list_head 				ecs_entry;
 };
 
@@ -628,45 +698,45 @@ struct event_svr_channel_subscr {
 struct member_node_data {
 	unsigned int		mn_nodeid;
 	SaClmClusterNodeT	mn_node_info;
-	SaEvtEventIdT		mn_last_msg_id;
-	SaClmNodeIdT		mn_started;
+	mar_evteventid_t		mn_last_msg_id;
+	mar_uint32_t		mn_started;
 	struct member_node_data	*mn_next;
 	struct list_head	mn_entry;
 };
 DECLARE_LIST_INIT(mnd);
 /*
  * Take the filters we received from the application via the library and 
- * make them into a real SaEvtEventFilterArrayT
+ * make them into a real mar_evt_event_filter_array_t
  */
 static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
-		SaEvtEventFilterArrayT **evtfilters)
+		mar_evt_event_filter_array_t **evtfilters)
 {
 
-	SaEvtEventFilterArrayT *filta = 
-			(SaEvtEventFilterArrayT *)req->ics_filter_data;
-	SaEvtEventFilterArrayT *filters;
-	SaEvtEventFilterT *filt = (void *)filta + sizeof(SaEvtEventFilterArrayT);
-	SaUint8T *str = (void *)filta + sizeof(SaEvtEventFilterArrayT) + 
-			(sizeof(SaEvtEventFilterT) * filta->filtersNumber);
+	mar_evt_event_filter_array_t *filta = 
+			(mar_evt_event_filter_array_t *)req->ics_filter_data;
+	mar_evt_event_filter_array_t *filters;
+	mar_evt_event_filter_t *filt = (void *)filta + sizeof(mar_evt_event_filter_array_t);
+	SaUint8T *str = (void *)filta + sizeof(mar_evt_event_filter_array_t) + 
+			(sizeof(mar_evt_event_filter_t) * filta->filters_number);
 	int i;
 	int j;
 
-	filters = malloc(sizeof(SaEvtEventFilterArrayT));
+	filters = malloc(sizeof(mar_evt_event_filter_array_t));
 	if (!filters) {
 		return SA_AIS_ERR_NO_MEMORY;
 	}
 
-	filters->filtersNumber = filta->filtersNumber;
-	filters->filters = malloc(sizeof(SaEvtEventFilterT) * 
-				filta->filtersNumber);
+	filters->filters_number = filta->filters_number;
+	filters->filters = malloc(sizeof(mar_evt_event_filter_t) * 
+				filta->filters_number);
 	if (!filters->filters) {
 			free(filters);
 			return SA_AIS_ERR_NO_MEMORY;
 	}
 
-	for (i = 0; i < filters->filtersNumber; i++) {
+	for (i = 0; i < filters->filters_number; i++) {
 		filters->filters[i].filter.pattern = 
-			malloc(filt[i].filter.patternSize);
+			malloc(filt[i].filter.pattern_size);
 
 		if (!filters->filters[i].filter.pattern) {
 				for (j = 0; j < i; j++) {
@@ -676,14 +746,14 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 				free(filters);
 				return SA_AIS_ERR_NO_MEMORY;
 		}
-		filters->filters[i].filter.patternSize = 
-			filt[i].filter.patternSize;
-		filters->filters[i].filter.allocatedSize = 
-			filt[i].filter.patternSize;
+		filters->filters[i].filter.pattern_size = 
+			filt[i].filter.pattern_size;
+		filters->filters[i].filter.allocated_size = 
+			filt[i].filter.pattern_size;
 		memcpy(filters->filters[i].filter.pattern,
-				str, filters->filters[i].filter.patternSize);
-		filters->filters[i].filterType = filt[i].filterType;
-		str += filters->filters[i].filter.patternSize;
+				str, filters->filters[i].filter.pattern_size);
+		filters->filters[i].filter_type = filt[i].filter_type;
+		str += filters->filters[i].filter.pattern_size;
 	}
 
 	*evtfilters = filters;
@@ -694,11 +764,11 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 /*
  * Free up filter data
  */
-static void free_filters(SaEvtEventFilterArrayT *fp)
+static void free_filters(mar_evt_event_filter_array_t *fp)
 {
 	int i;
 
-	for (i = 0; i < fp->filtersNumber; i++) {
+	for (i = 0; i < fp->filters_number; i++) {
 		free(fp->filters[i].filter.pattern);
 	}
 
@@ -710,7 +780,7 @@ static void free_filters(SaEvtEventFilterArrayT *fp)
  * Look up a channel in the global channel list
  */
 static struct event_svr_channel_instance *
-find_channel(SaNameT *chan_name, uint64_t unlink_id)
+find_channel(mar_name_t *chan_name, uint64_t unlink_id)
 {
 	struct list_head *l, *head;
 	struct event_svr_channel_instance *eci;
@@ -727,7 +797,7 @@ find_channel(SaNameT *chan_name, uint64_t unlink_id)
 	for (l = head->next; l != head; l = l->next) {
 
 		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
-		if (!name_match(chan_name, &eci->esc_channel_name)) {
+		if (!mar_name_match(chan_name, &eci->esc_channel_name)) {
 			continue;
 		} else if (unlink_id != eci->esc_unlink_id) {
 			continue;
@@ -741,7 +811,7 @@ find_channel(SaNameT *chan_name, uint64_t unlink_id)
  * Find the last unlinked version of a channel.
  */
 static struct event_svr_channel_instance *
-find_last_unlinked_channel(SaNameT *chan_name)
+find_last_unlinked_channel(mar_name_t *chan_name)
 {
 	struct list_head *l;
 	struct event_svr_channel_instance *eci;
@@ -753,7 +823,7 @@ find_last_unlinked_channel(SaNameT *chan_name)
 	for (l = esc_unlinked_head.next; l != &esc_unlinked_head; l = l->next) {
 
 		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
-		if (!name_match(chan_name, &eci->esc_channel_name)) {
+		if (!mar_name_match(chan_name, &eci->esc_channel_name)) {
 			continue;
 		} 
 	}
@@ -763,7 +833,7 @@ find_last_unlinked_channel(SaNameT *chan_name)
 /*
  * Create and initialize a channel instance structure
  */
-static struct event_svr_channel_instance *create_channel(SaNameT *cn)
+static struct event_svr_channel_instance *create_channel(mar_name_t *cn)
 {
 	struct event_svr_channel_instance *eci;
 	eci = (struct event_svr_channel_instance *) malloc(sizeof(*eci));
@@ -819,7 +889,7 @@ static int check_open_size(struct event_svr_channel_instance *eci)
  */
 static struct open_count* find_open_count(
 		struct event_svr_channel_instance *eci,
-		SaClmNodeIdT node_id)
+		mar_uint32_t node_id)
 {
 	int i;
 
@@ -897,7 +967,7 @@ static void zero_chan_open_counts()
  * Replace the current open count for a node with the specified value.
  */
 static int set_open_count(struct event_svr_channel_instance *eci,
-		SaClmNodeIdT node_id, uint32_t open_count) 
+		mar_uint32_t node_id, uint32_t open_count) 
 {
 	struct open_count *oc;
 	int i;
@@ -925,7 +995,7 @@ static int set_open_count(struct event_svr_channel_instance *eci,
  * Increment the open count for the specified node.
  */
 static int inc_open_count(struct event_svr_channel_instance *eci,
-		SaClmNodeIdT node_id) 
+		mar_uint32_t node_id) 
 {
 
 	struct open_count *oc;
@@ -952,7 +1022,7 @@ static int inc_open_count(struct event_svr_channel_instance *eci,
  * specified channel.
  */
 static int dec_open_count(struct event_svr_channel_instance *eci,
-		SaClmNodeIdT node_id) 
+		mar_uint32_t node_id) 
 {
 
 	struct open_count *oc;
@@ -1101,7 +1171,7 @@ static void unlink_channel(struct event_svr_channel_instance *eci,
  */
 static int remove_open_count(
 		struct event_svr_channel_instance *eci,
-		SaClmNodeIdT node_id)
+		mar_uint32_t node_id)
 {
 	int i;
 	int j;
@@ -1147,7 +1217,7 @@ static int remove_open_count(
 /*
  * Send a request to open a channel to the rest of the cluster.
  */
-static SaAisErrorT evt_open_channel(SaNameT *cn, SaUint8T flgs)
+static SaAisErrorT evt_open_channel(mar_name_t *cn, SaUint8T flgs)
 {
 	struct req_evt_chan_command cpkt;
 	struct event_svr_channel_instance *eci;
@@ -1199,7 +1269,7 @@ chan_open_end:
 /*
  * Send a request to close a channel with the rest of the cluster.
  */
-static SaAisErrorT evt_close_channel(SaNameT *cn, uint64_t unlink_id)
+static SaAisErrorT evt_close_channel(mar_name_t *cn, uint64_t unlink_id)
 {
 	struct req_evt_chan_command cpkt;
 	struct iovec chn_iovec;
@@ -1400,13 +1470,13 @@ static int check_last_event(
  * upper 32 bits of the event ID to make sure that we can generate a cluster
  * wide unique event ID for a given event.
  */
-SaAisErrorT set_event_id(SaClmNodeIdT node_id)
+SaAisErrorT set_event_id(mar_uint32_t node_id)
 {
 	SaAisErrorT err = SA_AIS_OK;
 	if (base_id_top) {
 		err =  SA_AIS_ERR_EXIST;
 	}
-	base_id_top = (SaEvtEventIdT)node_id << 32;
+	base_id_top = (mar_evteventid_t)node_id << 32;
 	return err;
 }
 
@@ -1418,7 +1488,7 @@ static int id_in_use(uint64_t id, uint64_t base)
 {
 	struct list_head *l;
 	struct event_data *edp;
-	SaEvtEventIdT evtid = (id << 32) | (base & BASE_ID_MASK);
+	mar_evteventid_t evtid = (id << 32) | (base & BASE_ID_MASK);
 	
 	for (l = retained_list.next; l != &retained_list; l = l->next) {
 		edp = list_entry(l, struct event_data, ed_retained);
@@ -1484,7 +1554,7 @@ event_retention_timeout(void *data)
  *
  */
 static SaAisErrorT
-clear_retention_time(SaEvtEventIdT event_id)
+clear_retention_time(mar_evteventid_t event_id)
 {
 	struct event_data *edp;
 	struct list_head *l, *nxt;
@@ -1604,38 +1674,38 @@ evt_already_delivered(struct event_data *evt,
  * return SA_AIS_OK if the pattern matches a filter
  */
 static SaAisErrorT
-filter_match(SaEvtEventPatternT *ep, SaEvtEventFilterT *ef)
+filter_match(mar_evt_event_pattern_t *ep, mar_evt_event_filter_t *ef)
 {
 	int ret;
 	ret = SA_AIS_ERR_FAILED_OPERATION;
 
-	switch (ef->filterType) {
+	switch (ef->filter_type) {
 	case SA_EVT_PREFIX_FILTER:
-		if (ef->filter.patternSize > ep->patternSize) {
+		if (ef->filter.pattern_size > ep->pattern_size) {
 			break;
 		}
 		if (strncmp((char *)ef->filter.pattern, (char *)ep->pattern,
-					ef->filter.patternSize) == 0) {
+					ef->filter.pattern_size) == 0) {
 			ret = SA_AIS_OK;
 		}
 		break;
 	case SA_EVT_SUFFIX_FILTER:
-		if (ef->filter.patternSize > ep->patternSize) {
+		if (ef->filter.pattern_size > ep->pattern_size) {
 			break;
 		}
 		if (strncmp((char *)ef->filter.pattern, 
-			(char *)&ep->pattern[ep->patternSize - ef->filter.patternSize],
-					ef->filter.patternSize) == 0) {
+			(char *)&ep->pattern[ep->pattern_size - ef->filter.pattern_size],
+					ef->filter.pattern_size) == 0) {
 			ret = SA_AIS_OK;
 		}
 		
 		break;
 	case SA_EVT_EXACT_FILTER:
-		if (ef->filter.patternSize != ep->patternSize) {
+		if (ef->filter.pattern_size != ep->pattern_size) {
 			break;
 		}
 		if (strncmp((char *)ef->filter.pattern, (char *)ep->pattern,
-					ef->filter.patternSize) == 0) {
+					ef->filter.pattern_size) == 0) {
 			ret = SA_AIS_OK;
 		}
 		break;
@@ -1656,15 +1726,15 @@ static SaAisErrorT
 event_match(struct event_data *evt, 
 			struct event_svr_channel_subscr *ecs)
 {
-	SaEvtEventFilterT *ef;
-	SaEvtEventPatternT *ep;
+	mar_evt_event_filter_t *ef;
+	mar_evt_event_pattern_t *ep;
 	uint32_t filt_count;
 	SaAisErrorT ret =  SA_AIS_OK;
 	int i;
 
-	ep = (SaEvtEventPatternT *)(&evt->ed_event.led_body[0]);
+	ep = (mar_evt_event_pattern_t *)(&evt->ed_event.led_body[0]);
 	ef = ecs->ecs_filters->filters;
-	filt_count = min(ecs->ecs_filters->filtersNumber, 
+	filt_count = min(ecs->ecs_filters->filters_number, 
 			evt->ed_event.led_patterns_number);
 
 	for (i = 0; i < filt_count; i++) {
@@ -1931,7 +2001,7 @@ static void
 convert_event(void *msg)
 {
 	struct lib_event_data *evt = (struct lib_event_data *)msg;
-	SaEvtEventPatternT *eps;
+	mar_evt_event_pattern_t *eps;
 	int i;
 
 	/*
@@ -1963,10 +2033,10 @@ convert_event(void *msg)
 	 * We can't do anything about user data since it doesn't have a specified
 	 * format.  The application is on its own here.
 	 */
-	eps = (SaEvtEventPatternT *)evt->led_body;  
+	eps = (mar_evt_event_pattern_t *)evt->led_body;  
 	for (i = 0; i < evt->led_patterns_number; i++) {
-		eps->patternSize = swab32(eps->patternSize);
-		eps->allocatedSize = swab32(eps->allocatedSize);
+		eps->pattern_size = swab32(eps->pattern_size);
+		eps->allocated_size = swab32(eps->allocated_size);
 		eps++;
 	}
 	
@@ -1982,7 +2052,7 @@ make_local_event(struct lib_event_data *p,
 			struct event_svr_channel_instance *eci)
 {
 	struct event_data *ed;
-	SaEvtEventPatternT *eps;
+	mar_evt_event_pattern_t *eps;
 	SaUint8T *str;
 	uint32_t ed_size;
 	int i;
@@ -2005,12 +2075,12 @@ make_local_event(struct lib_event_data *p,
 	memcpy(&ed->ed_event, p, sizeof(*p) + 
 					p->led_user_data_offset + p->led_user_data_size);
 
-	eps = (SaEvtEventPatternT *)ed->ed_event.led_body;  
+	eps = (mar_evt_event_pattern_t *)ed->ed_event.led_body;  
 	str = ed->ed_event.led_body + 
-			(ed->ed_event.led_patterns_number * sizeof(SaEvtEventPatternT));
+			(ed->ed_event.led_patterns_number * sizeof(mar_evt_event_pattern_t));
 	for (i = 0; i < ed->ed_event.led_patterns_number; i++) {
 		eps->pattern = str;
-		str += eps->patternSize;
+		str += eps->pattern_size;
 		eps++;
 	}
 
@@ -2448,7 +2518,7 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 {
 	struct req_evt_event_subscribe *req;
 	struct res_evt_event_subscribe res;
-	SaEvtEventFilterArrayT *filters;
+	mar_evt_event_filter_array_t *filters;
 	SaAisErrorT error;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
@@ -2495,13 +2565,13 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 
 	if (error == SA_AIS_OK) {
 		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
-				filters->filtersNumber);
-		for (i = 0; i < filters->filtersNumber; i++) {
+				filters->filters_number);
+		for (i = 0; i < filters->filters_number; i++) {
 			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n", 
-					filter_types[filters->filters[i].filterType],
-					filters->filters[i].filterType,
-					filters->filters[i].filter.patternSize,
-					(filters->filters[i].filter.patternSize) 
+					filter_types[filters->filters[i].filter_type],
+					filters->filters[i].filter_type,
+					filters->filters[i].filter.pattern_size,
+					(filters->filters[i].filter.pattern_size) 
 						? (char *)filters->filters[i].filter.pattern
 						: "");
 		}
@@ -2613,7 +2683,7 @@ static void lib_evt_event_unsubscribe(void *conn, void *message)
 			"unsubscribe from channel %s subscription ID 0x%x "
 			"with %d filters\n", 
 			eci->esc_channel_name.value,
-			ecs->ecs_sub_id, ecs->ecs_filters->filtersNumber);
+			ecs->ecs_sub_id, ecs->ecs_filters->filters_number);
 
 	free_filters(ecs->ecs_filters);
 	free(ecs);
@@ -2636,7 +2706,7 @@ static void lib_evt_event_publish(void *conn, void *message)
 	struct res_evt_event_publish res;
 	struct event_svr_channel_open	*eco;
 	struct event_svr_channel_instance *eci;
-	SaEvtEventIdT event_id = 0;
+	mar_evteventid_t event_id = 0;
 	uint64_t msg_id = 0;
 	SaAisErrorT error = SA_AIS_OK;
 	struct iovec pub_iovec;
@@ -2824,7 +2894,7 @@ data_get_done:
 /*
  * Scan the list of channels and remove the specified node.
  */
-static void remove_chan_open_info(SaClmNodeIdT node_id)
+static void remove_chan_open_info(mar_uint32_t node_id)
 {
 	struct list_head *l, *nxt;
 	struct event_svr_channel_instance *eci;
@@ -3228,8 +3298,8 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 /*
  * Calculate the remaining retention time of a received event during recovery
  */
-inline SaTimeT calc_retention_time(SaTimeT retention, 
-								SaTimeT received, SaTimeT now)
+inline mar_time_t calc_retention_time(mar_time_t retention, 
+								mar_time_t received, mar_time_t now)
 {
 	if ((received < now) && ((now - received) < retention)) {
 		return retention - (now - received);
@@ -3255,7 +3325,7 @@ static void evt_remote_recovery_evt(void *msg, unsigned int nodeid)
 	struct event_data *evt;
 	struct member_node_data *md;
 	int num_delivered;
-	SaTimeT now;
+	mar_time_t now;
 
 	now = clust_time_now();
 
@@ -3379,7 +3449,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	esip = (struct libevt_pd *)openais_conn_private_data_get(ocp->ocp_conn);
 
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s\n",
-											getSaNameT(&ocp->ocp_chan_name));
+											get_mar_name_t(&ocp->ocp_chan_name));
 	if (ocp->ocp_timer_handle) {
 		openais_timer_delete (ocp->ocp_timer_handle);
 	}
@@ -3390,12 +3460,12 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	 */
 	if (ocp->ocp_invocation == OPEN_TIMED_OUT) {
 		log_printf(CHAN_OPEN_DEBUG, "Closing timed out open of %s\n",
-				getSaNameT(&ocp->ocp_chan_name));
+				get_mar_name_t(&ocp->ocp_chan_name));
 		error = evt_close_channel(&ocp->ocp_chan_name, EVT_CHAN_ACTIVE);
 		if (error != SA_AIS_OK) {
 			log_printf(CHAN_OPEN_DEBUG,
 					"Close of timed out open failed for %s\n",
-					getSaNameT(&ocp->ocp_chan_name));
+					get_mar_name_t(&ocp->ocp_chan_name));
 		}
 		list_del(&ocp->ocp_entry);
 		free(ocp);
@@ -3438,7 +3508,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 
 open_return:
 	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n", 
-											getSaNameT(&ocp->ocp_chan_name),
+											get_mar_name_t(&ocp->ocp_chan_name),
 											error);
 	if (ocp->ocp_async) {
 		struct res_evt_open_chan_async resa;
@@ -3631,7 +3701,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		}
 		if (!eci) {
 			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
-				   getSaNameT(&cpkt->u.chc_chan.ocr_name));
+				   get_mar_name_t(&cpkt->u.chc_chan.ocr_name));
 			break;
 		}
 
@@ -3656,7 +3726,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		}
 		log_printf(CHAN_OPEN_DEBUG, 
 				"Open channel %s t %d, l %d, r %d\n",
-				getSaNameT(&eci->esc_channel_name),
+				get_mar_name_t(&eci->esc_channel_name),
 				eci->esc_total_opens, eci->esc_local_opens,
 				eci->esc_retained_count);
 		break;
@@ -3839,11 +3909,11 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		}
 		if (!eci) {
 			log_printf(LOG_LEVEL_WARNING, "Could not create channel %s\n",
-				   getSaNameT(&cpkt->u.chc_set_opens.chc_chan_name));
+				   get_mar_name_t(&cpkt->u.chc_set_opens.chc_chan_name));
 			break;
 		}
 		if (set_open_count(eci, mn->mn_node_info.nodeId, 
-									cpkt->u.chc_set_opens.chc_open_count)) {
+			cpkt->u.chc_set_opens.chc_open_count)) {
 			log_printf(LOG_LEVEL_ERROR, 
 				"Error setting Open channel count %s for node %s\n",
 				cpkt->u.chc_set_opens.chc_chan_name.value, 

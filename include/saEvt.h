@@ -57,8 +57,8 @@ typedef void
 );
 
 typedef struct{
-    SaEvtChannelOpenCallbackT saEvtChannelOpenCallback;
-    SaEvtEventDeliverCallbackT saEvtEventDeliverCallback; 
+	SaEvtChannelOpenCallbackT saEvtChannelOpenCallback;
+	SaEvtEventDeliverCallbackT saEvtEventDeliverCallback; 
 } SaEvtCallbacksT;
 
 #define SA_EVT_CHANNEL_PUBLISHER  0X1
@@ -68,8 +68,8 @@ typedef SaUint8T SaEvtChannelOpenFlagsT;
 
 typedef struct {
 	SaSizeT	allocatedSize;
-    SaSizeT patternSize;
-    SaUint8T *pattern;
+	SaSizeT patternSize;
+	SaUint8T *pattern;
 } SaEvtEventPatternT;
 
 
@@ -103,28 +103,28 @@ typedef struct {
 
 typedef struct {
 	SaSizeT allocatedNumber;
-    SaSizeT patternsNumber;
-    SaEvtEventPatternT *patterns;
+	SaSizeT patternsNumber;
+	SaEvtEventPatternT *patterns;
 } SaEvtEventPatternArrayT;
 
 typedef SaUint8T SaEvtEventPriorityT;
 typedef SaUint64T SaEvtEventIdT;
 
 typedef enum {
-    SA_EVT_PREFIX_FILTER = 1,
-    SA_EVT_SUFFIX_FILTER = 2,
-    SA_EVT_EXACT_FILTER = 3,
-    SA_EVT_PASS_ALL_FILTER = 4
+	SA_EVT_PREFIX_FILTER = 1,
+	SA_EVT_SUFFIX_FILTER = 2,
+	SA_EVT_EXACT_FILTER = 3,
+	SA_EVT_PASS_ALL_FILTER = 4
 } SaEvtEventFilterTypeT;
 
 typedef struct {
-    SaEvtEventFilterTypeT filterType;
-    SaEvtEventPatternT filter;
+	SaEvtEventFilterTypeT filterType;
+	SaEvtEventPatternT filter;
 } SaEvtEventFilterT;
 
 typedef struct {
-    SaSizeT filtersNumber;
-    SaEvtEventFilterT *filters;
+	SaSizeT filtersNumber;
+	SaEvtEventFilterT *filters;
 } SaEvtEventFilterArrayT;
 
 
@@ -236,6 +236,3 @@ saEvtEventRetentionTimeClear(
 }
 #endif
 #endif /* AIS_EVT_H_DEFINED */
-/*
- *	vi: set autoindent tabstop=4 shiftwidth=4 :
- */

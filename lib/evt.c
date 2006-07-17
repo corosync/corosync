@@ -457,7 +457,7 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 {
 	struct event_data_instance *edi;
 	struct event_channel_instance *eci;
-	SaEvtEventPatternT *pat;
+	mar_evt_event_pattern_t *pat;
 	SaUint8T *str;
 	SaAisErrorT error;
 	struct handle_list *hl;
@@ -497,7 +497,8 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	edi->edi_pub_time = evt->led_publish_time;
 	edi->edi_event_data_size = evt->led_user_data_size;
 	edi->edi_event_id = evt->led_event_id;
-	edi->edi_pub_name = evt->led_publisher_name;
+	marshall_from_mar_name_t (&edi->edi_pub_name, &evt->led_publisher_name);
+
 	if (edi->edi_event_data_size) {
 		edi->edi_event_data = malloc(edi->edi_event_data_size);
 		if (!edi->edi_event_data) {
@@ -537,23 +538,24 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 	}
 	memset(edi->edi_patterns.patterns, 0, sizeof(SaEvtEventPatternT) *
 					edi->edi_patterns.patternsNumber);
-	pat = (SaEvtEventPatternT *)evt->led_body;
-	str = evt->led_body + sizeof(SaEvtEventPatternT) * 
+	pat = (mar_evt_event_pattern_t *)evt->led_body;
+	str = evt->led_body + sizeof(mar_evt_event_pattern_t) * 
 						edi->edi_patterns.patternsNumber;
 	for (i = 0; i < evt->led_patterns_number; i++) {
-		edi->edi_patterns.patterns[i].patternSize = pat->patternSize;
-		edi->edi_patterns.patterns[i].allocatedSize = pat->patternSize;
-		edi->edi_patterns.patterns[i].pattern = malloc(pat->patternSize);
+		edi->edi_patterns.patterns[i].patternSize = pat->pattern_size;
+		edi->edi_patterns.patterns[i].allocatedSize = pat->pattern_size;
+		edi->edi_patterns.patterns[i].pattern = malloc(pat->pattern_size);
 		if (!edi->edi_patterns.patterns[i].pattern) {
             DPRINT (("make_event: couldn't alloc %llu bytes\n",
-				(unsigned long long)pat->patternSize));
+				(unsigned long long)pat->pattern_size));
 			saHandleDestroy(&event_handle_db, *event_handle);
 			error =  SA_AIS_ERR_LIBRARY;
 			goto make_evt_done_put2;
 		}
+		// TODO marshall pattern
 		memcpy(edi->edi_patterns.patterns[i].pattern,
-				str, pat->patternSize);
-		str += pat->patternSize;
+				str, pat->pattern_size);
+		str += pat->pattern_size;
 		pat++; 
 	}
 
@@ -984,8 +986,7 @@ saEvtChannelOpen(
 	req.ico_c_handle = *channelHandle;
 	req.ico_timeout = timeout;
 	req.ico_open_flag = channelOpenFlags;
-	req.ico_channel_name = *channelName;
-
+	marshall_to_mar_name_t (&req.ico_channel_name, (SaNameT *)channelName);
 
 	iov.iov_base = &req;
 	iov.iov_len = sizeof(req);
@@ -1211,7 +1212,7 @@ saEvtChannelOpenAsync(SaEvtHandleT evtHandle,
 	req.ico_timeout = 0;
 	req.ico_invocation = invocation;
 	req.ico_open_flag = channelOpenFlags;
-	req.ico_channel_name = *channelName;
+	marshall_to_mar_name_t (&req.ico_channel_name, (SaNameT *)channelName);
 	iov.iov_base = &req;
 	iov.iov_len = sizeof(req);
 
@@ -1312,7 +1313,7 @@ saEvtChannelUnlink(
 	 */
 	req.iuc_head.size = sizeof(req);
 	req.iuc_head.id = MESSAGE_REQ_EVT_UNLINK_CHANNEL;
-	req.iuc_channel_name = *channelName;
+	marshall_to_mar_name_t (&req.iuc_channel_name, (SaNameT *)channelName);
 	iov.iov_base = &req;
 	iov.iov_len = sizeof(req);
 
@@ -1785,9 +1786,9 @@ data_get_done:
 static size_t patt_size(const SaEvtEventPatternArrayT *patterns)
 {
 	int i;
-	size_t size = sizeof(SaEvtEventPatternArrayT);
+	size_t size = sizeof(mar_evt_event_pattern_array_t);
 	for (i = 0; i < patterns->patternsNumber; i++) {
-		size += sizeof(SaEvtEventPatternT);
+		size += sizeof(mar_evt_event_pattern_t);
 		size += patterns->patterns[i].patternSize;
 	}
 	return size;
@@ -1796,11 +1797,12 @@ static size_t patt_size(const SaEvtEventPatternArrayT *patterns)
 /*
  * copy patterns to a form for sending to the server
  */
-static uint32_t aispatt_to_evt_patt(const SaEvtEventPatternArrayT *patterns, 
+static uint32_t aispatt_to_evt_patt(
+	const SaEvtEventPatternArrayT *patterns, 
 		void *data)
 {
 	int i;
-	SaEvtEventPatternT *pats = data;
+	mar_evt_event_pattern_t *pats = data;
 	SaUint8T *str  = (SaUint8T *)pats + 
 				(patterns->patternsNumber * sizeof(*pats));
 
@@ -1809,9 +1811,10 @@ static uint32_t aispatt_to_evt_patt(const SaEvtEventPatternArrayT *patterns,
 	 * will be later converted back into pointers when received as events.
 	 */
 	for (i = 0; i < patterns->patternsNumber; i++) {
+	// TODO marshall?
 		memcpy(str, patterns->patterns[i].pattern, 
 			 	patterns->patterns[i].patternSize);
-		pats->patternSize = patterns->patterns[i].patternSize;
+		pats->pattern_size = patterns->patterns[i].patternSize;
 		pats->pattern = (SaUint8T *)((void *)str - data);
 		str += patterns->patterns[i].patternSize;
 		pats++;
@@ -1825,10 +1828,10 @@ static uint32_t aispatt_to_evt_patt(const SaEvtEventPatternArrayT *patterns,
 static size_t filt_size(const SaEvtEventFilterArrayT *filters)
 {
 	int i;
-	size_t size = sizeof(SaEvtEventFilterArrayT);
+	size_t size = sizeof(mar_evt_event_filter_array_t);
 
 	for (i = 0; i < filters->filtersNumber; i++) {
-		size += sizeof(SaEvtEventFilterT);
+		size += sizeof(mar_evt_event_filter_t);
 		size += filters->filters[i].filter.patternSize;
 	}
 	return size;
@@ -1839,12 +1842,13 @@ static size_t filt_size(const SaEvtEventFilterArrayT *filters)
  * i.e. replace pointers with offsets.  The pointers will be reconstituted
  * by the receiver.
  */
-static uint32_t aisfilt_to_evt_filt(const SaEvtEventFilterArrayT *filters, 
-		void *data)
+static uint32_t aisfilt_to_evt_filt(
+	const SaEvtEventFilterArrayT *filters, 
+	void *data)
 {
 	int i;
-	SaEvtEventFilterArrayT *filta = data;
-	SaEvtEventFilterT *filts = data + sizeof(SaEvtEventFilterArrayT);
+	mar_evt_event_filter_array_t *filtd = data;
+	mar_evt_event_filter_t *filts = data + sizeof(mar_evt_event_filter_array_t);
 	SaUint8T *str = (SaUint8T *)filts +
 			(filters->filtersNumber * sizeof(*filts));
 
@@ -1852,13 +1856,14 @@ static uint32_t aisfilt_to_evt_filt(const SaEvtEventFilterArrayT *filters,
 	 * Pointers are replaced with offsets into the data array.  These
 	 * will be later converted back into pointers by the evt server.
 	 */
-	filta->filters = (SaEvtEventFilterT *)((void *)filts - data);
-	filta->filtersNumber = filters->filtersNumber;
+	filtd->filters = (mar_evt_event_filter_t *)((void *)filts - data);
+	filtd->filters_number = filters->filtersNumber;
 
 	for (i = 0; i < filters->filtersNumber; i++) {
-		filts->filterType = filters->filters[i].filterType;
-		filts->filter.patternSize = 
+		filts->filter_type = filters->filters[i].filterType;
+		filts->filter.pattern_size = 
 			filters->filters[i].filter.patternSize;
+			// TODO marshall pattern
 		memcpy(str,
 			 filters->filters[i].filter.pattern, 
 			 filters->filters[i].filter.patternSize);
@@ -1985,7 +1990,7 @@ saEvtEventPublish(
 	req->led_retention_time = edi->edi_retention_time;
 	req->led_publish_time = clustTimeNow();
 	req->led_priority = edi->edi_priority;
-	req->led_publisher_name = edi->edi_pub_name;
+	marshall_to_mar_name_t (&req->led_publisher_name, &edi->edi_pub_name);
 
 	iov.iov_base = req;
 	iov.iov_len = req->led_head.size;
@@ -2068,7 +2073,7 @@ saEvtEventSubscribe(
 
 	/*
 	 * Make sure that a deliver callback has been 
-	 * registered before  allowing the subscribe to continue.
+	 * registered before allowing the subscribe to continue.
 	 */
 	if (!evti->ei_callback.saEvtEventDeliverCallback) {
 		error = SA_AIS_ERR_INIT;
@@ -2099,7 +2104,7 @@ saEvtEventSubscribe(
 	 * Copy the supplied filters to the request
 	 */
 	req->ics_filter_count = aisfilt_to_evt_filt(filters, 
-						req->ics_filter_data);
+		req->ics_filter_data);
 	req->ics_head.id = MESSAGE_REQ_EVT_SUBSCRIBE;
 	req->ics_head.size = sizeof(*req) + sz;
 	req->ics_channel_handle = eci->eci_svr_channel_handle;

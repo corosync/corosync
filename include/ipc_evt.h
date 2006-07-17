@@ -39,6 +39,7 @@
 #include "saEvt.h"
 #include "saClm.h"
 #include "ipc_gen.h"
+#include "mar_evt.h"
 
 enum req_evt_types {
 	MESSAGE_REQ_EVT_OPEN_CHANNEL = 0,
@@ -69,22 +70,21 @@ enum res_evt_types {
  * MESSAGE_REQ_EVT_OPEN_CHANNEL
  * MESSAGE_REQ_EVT_OPEN_CHANNEL_ASYNC
  *
- * ico_head				Request head
- * ico_open_flag:		Channel open flags
+ * ico_head		Request head
+ * ico_open_flag:	Channel open flags
  * ico_channel_name:	Name of channel to open
- * ico_c_handle:		Local lib channel handle (used in returned event data)
- * ico_timeout:			Used only by open
- * ico_invocation:		Used only by async open
+ * ico_c_handle:	Local lib channel handle (used in returned event data)
+ * ico_timeout:		Used only by open
+ * ico_invocation:	Used only by async open
  *
  */
 struct req_evt_channel_open {
-
-	mar_req_header_t		ico_head;
-	SaUint8T				ico_open_flag;
-	SaNameT					ico_channel_name;
-	SaEvtChannelHandleT		ico_c_handle;
-	SaTimeT					ico_timeout;
-	SaInvocationT			ico_invocation;
+	mar_req_header_t	ico_head __attribute__((aligned(8)));
+	mar_uint8_t		ico_open_flag __attribute__((aligned(8)));
+	mar_name_t		ico_channel_name __attribute__((aligned(8)));
+	mar_evtchannelhandle_t	ico_c_handle __attribute__((aligned(8)));
+	mar_time_t		ico_timeout __attribute__((aligned(8)));
+	mar_invocation_t	ico_invocation __attribute__((aligned(8)));
 };
 
 /*
@@ -98,13 +98,13 @@ struct req_evt_channel_open {
  *
  * ico_head:			Results head
  * ico_error:			Request results
- * ico_channel_handle:	Server side channel handle (used in channel ops)
+ * ico_channel_handle:		Server side channel handle (used in channel ops)
  *
  */
 struct res_evt_channel_open {
 
-	mar_res_header_t	ico_head;
-	uint32_t			ico_channel_handle;/* svr chan handle */
+	mar_res_header_t	ico_head __attribute__((aligned(8)));
+	mar_uint32_t		ico_channel_handle __attribute__((aligned(8)));/* svr chan handle */
 
 };
 
@@ -120,10 +120,10 @@ struct res_evt_channel_open {
  * 						to the particular open.
  */
 struct res_evt_open_chan_async {
-	mar_res_header_t	ica_head;
-	SaEvtChannelHandleT	ica_c_handle;
-	uint32_t			ica_channel_handle;
-	SaInvocationT		ica_invocation;
+	mar_res_header_t	ica_head __attribute__((aligned(8)));
+	mar_evtchannelhandle_t	ica_c_handle __attribute__((aligned(8)));
+	mar_uint32_t		ica_channel_handle __attribute__((aligned(8)));
+	mar_invocation_t	ica_invocation __attribute__((aligned(8)));
 
 };
 
@@ -132,13 +132,12 @@ struct res_evt_open_chan_async {
  * MESSAGE_REQ_EVT_CLOSE_CHANNEL
  *
  * icc_head:			Request head
- * icc_channel_handle:	Server handle of channel to close
+ * icc_channel_handle:		Server handle of channel to close
  *
  */
 struct req_evt_channel_close {
-
-	mar_req_header_t		icc_head;
-	uint32_t				icc_channel_handle;
+	mar_req_header_t	icc_head __attribute__((aligned(8)));
+	mar_uint32_t		icc_channel_handle __attribute__((aligned(8)));
 };
 
 /*
@@ -148,7 +147,7 @@ struct req_evt_channel_close {
  *
  */
 struct res_evt_channel_close {
-	mar_res_header_t	icc_head;
+	mar_res_header_t	icc_head __attribute__((aligned(8)));
 };
 
 /*
@@ -159,9 +158,8 @@ struct res_evt_channel_close {
  *
  */
 struct req_evt_channel_unlink {
-
-	mar_req_header_t		iuc_head;
-	SaNameT					iuc_channel_name;
+	mar_req_header_t	iuc_head __attribute__((aligned(8)));
+	mar_name_t		iuc_channel_name __attribute__((aligned(8)));
 };
 
 /*
@@ -171,28 +169,27 @@ struct req_evt_channel_unlink {
  *
  */
 struct res_evt_channel_unlink {
-	mar_res_header_t	iuc_head;
+	mar_res_header_t	iuc_head __attribute__((aligned(8)));
 };
 
 /* 
  * MESSAGE_REQ_EVT_SUBSCRIBE
  *
  * ics_head:			Request head
- * ics_channel_handle:	Server handle of channel
+ * ics_channel_handle:		Server handle of channel
  * ics_sub_id:			Subscription ID
  * ics_filter_size:		Size of supplied filter data
- * ics_filter_count:	Number of filters supplied
+ * ics_filter_count:		Number of filters supplied
  * ics_filter_data:		Filter data
  *
  */
 struct req_evt_event_subscribe {
-
-	mar_req_header_t		ics_head;
-	uint32_t				ics_channel_handle;
-	SaEvtSubscriptionIdT	ics_sub_id;
-	uint32_t				ics_filter_size;
-	uint32_t				ics_filter_count;
-	uint8_t					ics_filter_data[0];
+	mar_req_header_t	ics_head __attribute__((aligned(8)));
+	mar_uint32_t		ics_channel_handle __attribute__((aligned(8)));
+	mar_evtsubscriptionid_t	ics_sub_id __attribute__((aligned(8)));
+	mar_uint32_t		ics_filter_size __attribute__((aligned(8)));
+	mar_uint32_t		ics_filter_count __attribute__((aligned(8)));
+	mar_uint8_t		ics_filter_data[0] __attribute__((aligned(8)));
 
 };
 
@@ -204,7 +201,7 @@ struct req_evt_event_subscribe {
  *
  */
 struct res_evt_event_subscribe {
-	mar_res_header_t	ics_head;
+	mar_res_header_t	ics_head __attribute__((aligned(8)));
 };
 
 /*
@@ -216,10 +213,9 @@ struct res_evt_event_subscribe {
  *
  */
 struct req_evt_event_unsubscribe {
-
-	mar_req_header_t		icu_head;
-	uint32_t				icu_channel_handle;
-	SaEvtSubscriptionIdT	icu_sub_id;
+	mar_req_header_t	icu_head __attribute__((aligned(8)));
+	mar_uint32_t		icu_channel_handle __attribute__((aligned(8)));
+	mar_evtsubscriptionid_t icu_sub_id __attribute__((aligned(8)));
 };
 
 
@@ -231,7 +227,7 @@ struct req_evt_event_unsubscribe {
  *
  */
 struct res_evt_event_unsubscribe {
-	mar_res_header_t	icu_head;
+	mar_res_header_t	icu_head __attribute__((aligned(8)));
 
 };
 
@@ -242,55 +238,55 @@ struct res_evt_event_unsubscribe {
  * evd_head:		Request Head
  */
 struct res_evt_event_data {
-		mar_res_header_t	evd_head;
+	mar_res_header_t	evd_head __attribute__((aligned(8)));
 };
 
 /*
  * MESSAGE_REQ_EVT_PUBLISH			(1)
- * MESSAGE_RES_EVT_EVENT_DATA		(2)
- * MESSAGE_REQ_EXEC_EVT_EVENTDATA	(3)
+ * MESSAGE_RES_EVT_EVENT_DATA			(2)
+ * MESSAGE_REQ_EXEC_EVT_EVENTDATA		(3)
  * MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA	(4)
  *
- * led_head:				Request/Results head
- * led_addr:				address of node (4 only)
+ * led_head:			Request/Results head
+ * led_addr:			address of node (4 only)
  * led_receive_time:		Time that the message was received (4 only)
  * led_svr_channel_handle:	Server channel handle (1 only)
  * led_lib_channel_handle:	Lib channel handle (2 only)
- * led_chan_name:			Channel name (3 and 4 only)
+ * led_chan_name:		Channel name (3 and 4 only)
  * led_chan_unlink_id:		directs delivery to unlinked channels.
- * led_event_id:			Event ID (2, 3 and 4 only)
- * led_msg_id:				message ID (2, 3 and 4 only)
- * led_sub_id:				Subscription ID (2 only)
+ * led_event_id:		Event ID (2, 3 and 4 only)
+ * led_msg_id:			message ID (2, 3 and 4 only)
+ * led_sub_id:			Subscription ID (2 only)
  * led_publisher_node_id:	Node ID of event publisher
  * led_publisher_name:		Node name of event publisher
  * led_retention_time:		Event retention time
  * led_publish_time:		Publication time of the event
- * led_priority:			Event priority
+ * led_priority:		Event priority
  * led_user_data_offset:	Offset to user data
  * led_user_data_size:		Size of user data
  * led_patterns_number:		Number of patterns in the event
- * led_body:				Pattern and user data
+ * led_body:			Pattern and user data
  */
 struct lib_event_data {
-	mar_res_header_t		led_head;
-	unsigned int			led_nodeid;
-	SaTimeT					led_receive_time;
-	uint32_t				led_svr_channel_handle;
-	SaEvtChannelHandleT		led_lib_channel_handle;
-	SaNameT					led_chan_name;
-	uint64_t				led_chan_unlink_id;
-	SaEvtEventIdT			led_event_id;
-	uint64_t				led_msg_id;
-	SaEvtSubscriptionIdT	led_sub_id;
-	SaClmNodeIdT			led_publisher_node_id;
-	SaNameT					led_publisher_name;
-	SaTimeT					led_retention_time;
-	SaTimeT					led_publish_time;
-	SaEvtEventPriorityT		led_priority;
-	uint32_t				led_user_data_offset;
-	uint32_t				led_user_data_size;
-	uint32_t				led_patterns_number;
-	uint8_t					led_body[0];
+	mar_res_header_t	led_head __attribute__((aligned(8)));
+	mar_uint32_t		led_nodeid __attribute__((aligned(8)));
+	mar_time_t		led_receive_time __attribute__((aligned(8)));
+	mar_uint32_t		led_svr_channel_handle __attribute__((aligned(8)));
+	mar_evtchannelhandle_t	led_lib_channel_handle __attribute__((aligned(8)));
+	mar_name_t		led_chan_name __attribute__((aligned(8)));
+	mar_uint64_t		led_chan_unlink_id __attribute__((aligned(8)));
+	mar_evteventid_t	led_event_id __attribute__((aligned(8)));
+	mar_uint64_t		led_msg_id __attribute__((aligned(8)));
+	mar_evtsubscriptionid_t	led_sub_id __attribute__((aligned(8)));
+	mar_uint32_t		led_publisher_node_id __attribute__((aligned(8)));
+	mar_name_t		led_publisher_name __attribute__((aligned(8)));
+	mar_time_t		led_retention_time __attribute__((aligned(8)));
+	mar_time_t		led_publish_time __attribute__((aligned(8)));
+	mar_evteventpriority_t	led_priority __attribute__((aligned(8)));
+	mar_uint32_t		led_user_data_offset __attribute__((aligned(8)));
+	mar_uint32_t		led_user_data_size __attribute__((aligned(8)));
+	mar_uint32_t		led_patterns_number __attribute__((aligned(8)));
+	mar_uint8_t		led_body[0] __attribute__((aligned(8)));
 };
 
 /*
@@ -302,9 +298,8 @@ struct lib_event_data {
  *
  */
 struct res_evt_event_publish {
-
-	mar_res_header_t	iep_head;
-	SaEvtEventIdT		iep_event_id;
+	mar_res_header_t	iep_head __attribute__((aligned(8)));
+	mar_evteventid_t	iep_event_id __attribute__((aligned(8)));
 };
 
 /*
@@ -319,9 +314,9 @@ struct res_evt_event_publish {
  */
 struct req_evt_event_clear_retentiontime {
 
-	mar_req_header_t	iec_head;
-	SaEvtEventIdT		iec_event_id;
-	uint32_t			iec_channel_handle;
+	mar_req_header_t	iec_head __attribute__((aligned(8)));
+	mar_evteventid_t	iec_event_id __attribute__((aligned(8)));
+	mar_uint32_t		iec_channel_handle __attribute__((aligned(8)));
 
 };
 
@@ -333,81 +328,7 @@ struct req_evt_event_clear_retentiontime {
  *
  */
 struct res_evt_event_clear_retentiontime {
-	mar_res_header_t	iec_head;
-};
-
-
-/*
- * MESSAGE_REQ_EXEC_EVT_CHANCMD
- *
- * Used for various event related operations.
- *
- */
-enum evt_chan_ops {
-	EVT_OPEN_CHAN_OP,		/* chc_chan */
-	EVT_CLOSE_CHAN_OP,  	/* chc_close_unlink_chan */
-	EVT_UNLINK_CHAN_OP,  	/* chc_close_unlink_chan */
-	EVT_CLEAR_RET_OP,		/* chc_event_id */
-	EVT_SET_ID_OP,			/* chc_set_id */
-	EVT_CONF_DONE,			/* no data used */
-	EVT_OPEN_COUNT,			/* chc_set_opens */
-	EVT_OPEN_COUNT_DONE		/* no data used */
-};
-	
-/*
- * Used during recovery to set the next issued event ID
- * based on the highest ID seen by any of the members
- */
-struct evt_set_id {
-	unsigned int 	chc_nodeid;
-	uint64_t		chc_last_id;
-};
-
-/*
- * For set open count used during recovery to syncronize all nodes
- *
- * 	chc_chan_name:		Channel name.
- * 	chc_open_count:		number of local opens of this channel.
- */
-struct evt_set_opens {
-	SaNameT		chc_chan_name;
-	uint32_t	chc_open_count;
-};
-
-/*
- * Used to communicate channel to close or unlink.
- */
-#define EVT_CHAN_ACTIVE 0
-struct evt_close_unlink_chan {
-	SaNameT		chcu_name;
-	uint64_t	chcu_unlink_id;
-};
-
-struct open_chan_req {
-	SaNameT		ocr_name;
-	uint64_t	ocr_serial_no;
-};
-
-/*
- * Sent via MESSAGE_REQ_EXEC_EVT_CHANCMD
- *
- * chc_head:	Request head
- * chc_op:		Channel operation (open, close, clear retentiontime)
- * u:			union of operation options.
- */
-struct req_evt_chan_command {
-	mar_req_header_t 	chc_head;
-	int 				chc_op;
-	union {
-		struct open_chan_req	chc_chan;
-		SaEvtEventIdT			chc_event_id;
-		struct evt_set_id		chc_set_id;
-		struct evt_set_opens 	chc_set_opens;
-		struct evt_close_unlink_chan	chcu;
-	} u;
+	mar_res_header_t	iec_head __attribute__((aligned(8)));
 };
 
 #endif  /* AIS_EVT_H_DEFINED */
-/*
- *	vi: set autoindent tabstop=4 shiftwidth=4 :
- */
