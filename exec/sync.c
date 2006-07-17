@@ -76,8 +76,6 @@ static struct sync_callbacks sync_callbacks;
 
 static int sync_processing = 0;
 
-static int sync_callback_loaded = 0;
-
 static void (*sync_synchronization_completed) (void);
 
 static int sync_recovery_index = 0;
@@ -203,15 +201,14 @@ void sync_callbacks_load (void)
 	for (;;) {
 		res = sync_callbacks_retrieve (sync_recovery_index, &sync_callbacks);
 		/*
-		 * No more service handlers have sync callbacks at this tie
+		 * No more service handlers have sync callbacks at this time
 	`	 */
 		if (res == -1) {
 			sync_processing = 0;
 			break;
 		}
 		sync_recovery_index += 1;
-		if (sync_callbacks.sync_init != NULL) {
-			sync_callback_loaded = 1;
+		if (sync_callbacks.sync_init) {
 			break;
 		}
 	}
@@ -333,7 +330,6 @@ static void sync_primary_callback_fn (
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	sync_recovery_index = 0;
-	sync_callback_loaded = 0;
 	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
 	for (i = 0; i < view_list_entries; i++) {
 		barrier_data_confchg[i].nodeid = view_list[i];
@@ -423,7 +419,6 @@ static void sync_deliver_fn (
 			sync_callbacks.name);
 	
 	}
-	sync_callbacks_load ();
 
 	/*
 	 * Start synchronization if the barrier has completed
@@ -432,9 +427,7 @@ static void sync_deliver_fn (
 		memcpy (barrier_data_process, barrier_data_confchg,
 			sizeof (barrier_data_confchg));
 
-		if (sync_callback_loaded == 0) {
-			sync_callbacks_load();
-		}
+		sync_callbacks_load();
 
 		/*
 		 * if sync service found, execute it
