@@ -51,6 +51,9 @@ endif
 ifeq (s390x,$(ARCH))
 LIBDIR=/usr/lib64/openais
 endif
+ifeq (ia64,$(ARCH))
+LIBDIR=/usr/lib/openais
+endif
 
 all:
 	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
