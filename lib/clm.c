@@ -620,7 +620,6 @@ saClmClusterTrackStop (
 
 	req_lib_clm_trackstop.header.size = sizeof (struct req_lib_clm_trackstop);
 	req_lib_clm_trackstop.header.id = MESSAGE_REQ_CLM_TRACKSTOP;
-	DPRINT (("cluster track stop\n"));
 	error = saHandleInstanceGet (&clmHandleDatabase, clmHandle,
 		(void *)&clmInstance);
 	if (error != SA_AIS_OK) {
