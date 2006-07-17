@@ -551,7 +551,7 @@ saClmClusterTrack (
 	req_lib_clm_clustertrack.header.id = MESSAGE_REQ_CLM_TRACKSTART;
 	req_lib_clm_clustertrack.track_flags = trackFlags;
 	req_lib_clm_clustertrack.return_in_callback = 0;
-	if ((trackFlags & SA_TRACK_CHANGES) && (notificationBuffer == NULL)) {
+	if ((trackFlags & SA_TRACK_CURRENT) && (notificationBuffer == NULL)) {
 		req_lib_clm_clustertrack.return_in_callback = 1;
 	}
 
