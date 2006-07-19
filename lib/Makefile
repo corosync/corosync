@@ -35,11 +35,16 @@ include ../Makefile.inc
 CFLAGS += -I../include
 LDFLAGS += -L./
 
-all:libSaClm.a libSaClm.so.2.0.0 libSaAmf.a libSaAmf.so.2.0.0 libSaCkpt.a \
-	libSaCkpt.so.2.0.0 libSaEvt.a libSaEvt.so.2.0.0 libSaLck.a \
-	 libSaLck.so.2.0.0 libSaMsg.a libSaMsg.so.2.0.0 \
+all:libSaClm.a libSaClm.so.2.0.0 \
+	libSaAmf.a libSaAmf.so.2.0.0 \
+	libSaCkpt.a libSaCkpt.so.2.0.0 \
+	libSaEvt.a libSaEvt.so.2.0.0 \
+	libSaLck.a libSaLck.so.2.0.0 \
+	libSaMsg.a libSaMsg.so.2.0.0 \
 	libcpg.a libcpg.so.2.0.0 \
-	libais.a libais.so.2.0.0 libevs.a libevs.so.2.0.0
+	libais.a libais.so.2.0.0 \
+	libevs.a libevs.so.2.0.0 \
+	libcfg.a libcfg.so.2.0.0
 
 LIBAIS_SRC = util.c amf.c clm.c ckpt.c evt.c
 
@@ -77,6 +82,9 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -bundle -bind_at_load util.o cpg.o -o $@
 
+libcfg.so.2.0.0: util.o cfg.o
+	$(CC) -bundle -bind_at_load util.o cfg.o -o $@
+
 else
 
 libSaClm.so.2.0.0: util.o clm.o
@@ -106,6 +114,9 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=libcpg.versions util.o cpg.o -o $@
 
+libcfg.so.2.0.0: util.o cfg.o
+	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=libcfg.versions util.o cfg.o -o $@
+
 endif
 
 libSaAmf.a: util.o amf.o
@@ -132,10 +143,13 @@ libevs.a: util.o evs.o
 libcpg.a: util.o cpg.o
 	$(AR) -rc libcpg.a util.o cpg.o
 
+libcfg.a: util.o cfg.o
+	$(AR) -rc libcfg.a util.o cfg.o
+
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
 		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so* libSaLck.a \
-		libSaMsg.so* libSaMsg.a libOpenaisCfg.so* libOpenaisCfg.a \
+		libSaMsg.so* libSaMsg.a libcfg.so* libOpenaisCfg.a \
 		libevs.so* libevs.a libcpg.so* libcpg.a *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries

@@ -1139,14 +1139,25 @@ error_exit:
 int totempg_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count)
 {
 	int res;
 
-	res = totemmrp_interfaces_get (
+	res = totemmrp_ifaces_get (
 		nodeid,
 		interfaces,
+		status,
 		iface_count);
+
+	return (res);
+}
+
+int totempg_ring_reenable (void)
+{
+	int res;
+
+	res = totemmrp_ring_reenable ();
 
 	return (res);
 }
@@ -1156,13 +1167,14 @@ char *totempg_ifaces_print (unsigned int nodeid)
 	static char iface_string[256 * INTERFACE_MAX];
 	char one_iface[64];
 	struct totem_ip_address interfaces[INTERFACE_MAX];
+	char *status;
 	unsigned int iface_count;
 	unsigned int i;
 	int res;
 
 	iface_string[0] = '\0';
 
-	res = totempg_ifaces_get (nodeid, interfaces, &iface_count);
+	res = totempg_ifaces_get (nodeid, interfaces, &status, &iface_count);
 	if (res == -1) {
 		return ("no interface found for nodeid");
 	}

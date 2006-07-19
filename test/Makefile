@@ -32,7 +32,7 @@
 #
 include ../Makefile.inc
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a
 LIBS = $(LIBRARIES) 
 
 CFLAGS += -I../include
@@ -49,7 +49,8 @@ TEST_SRC =  testclm.c testamf1.c \
 all: testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2 testlck testmsg testcpg
+	evsbench subscription publish evtbench unlink testclm2 testlck \
+	testmsg testcpg openais-cfgtool
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -137,6 +138,9 @@ testmsg: testmsg.o $(LIBRARIES)
 
 testcpg: testcpg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
+
+openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \

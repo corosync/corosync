@@ -148,6 +148,9 @@ struct rrp_algo {
 		struct totemrrp_instance *instance,
 		struct totem_ip_address *token_target,
 		unsigned int iface_no);
+
+	void (*ring_reenable) (
+		struct totemrrp_instance *instance);
 };
 
 struct totemrrp_instance {
@@ -159,6 +162,8 @@ struct totemrrp_instance {
 
 	void *context;
 	
+	char *status[INTERFACE_MAX];
+
 	void (*totemrrp_deliver_fn) (
 		void *context,
 		void *msg,
@@ -173,7 +178,6 @@ struct totemrrp_instance {
 		void *msg,
 		unsigned int *seqid,
 		unsigned int *token_is);
-
 
 	unsigned int (*totemrrp_msgs_missing) (void);
 
@@ -258,6 +262,9 @@ static void none_token_target_set (
 	struct totem_ip_address *token_target,
 	unsigned int iface_no);
 
+static void none_ring_reenable (
+	struct totemrrp_instance *instance);
+
 /*
  * Passive Replication Forward Declerations
  */
@@ -312,6 +319,9 @@ static void passive_token_target_set (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *token_target,
 	unsigned int iface_no);
+
+static void passive_ring_reenable (
+	struct totemrrp_instance *instance);
 
 /*
  * Active Replication Forward Definitions
@@ -368,6 +378,9 @@ static void active_token_target_set (
 	struct totem_ip_address *token_target,
 	unsigned int iface_no);
 
+static void active_ring_reenable (
+	struct totemrrp_instance *instance);
+
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance);
 
@@ -392,7 +405,8 @@ struct rrp_algo none_algo = {
 	.send_flush		= none_send_flush,
 	.iface_check		= none_iface_check,
 	.processor_count_set	= none_processor_count_set,
-	.token_target_set	= none_token_target_set
+	.token_target_set	= none_token_target_set,
+	.ring_reenable		= none_ring_reenable
 };
 
 struct rrp_algo passive_algo = {
@@ -407,7 +421,8 @@ struct rrp_algo passive_algo = {
 	.send_flush		= passive_send_flush,
 	.iface_check		= passive_iface_check,
 	.processor_count_set	= passive_processor_count_set,
-	.token_target_set	= passive_token_target_set
+	.token_target_set	= passive_token_target_set,
+	.ring_reenable		= passive_ring_reenable
 };
 
 struct rrp_algo active_algo = {
@@ -422,7 +437,8 @@ struct rrp_algo active_algo = {
 	.send_flush		= active_send_flush,
 	.iface_check		= active_iface_check,
 	.processor_count_set	= active_processor_count_set,
-	.token_target_set	= active_token_target_set
+	.token_target_set	= active_token_target_set,
+	.ring_reenable		= active_ring_reenable
 };
 
 struct rrp_algo *rrp_algos[] = {
@@ -532,6 +548,14 @@ static void none_token_target_set (
 	unsigned int iface_no)
 {
 	totemnet_token_target_set (instance->net_handles[0], token_target);
+}
+
+static void none_ring_reenable (
+	struct totemrrp_instance *instance)
+{
+	/*
+	 * No operation
+	 */
 }
 
 /*
@@ -687,11 +711,13 @@ static void passive_mcast_recv (
 			(max - passive_instance->mcast_recv_count[i] > 
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
-			log_printf (
-				rrp_instance->totemrrp_log_level_error,
+			sprintf (rrp_instance->status[i], 
 				"Marking ringid %d interface %s FAULTY - adminisrtative intervention required.",
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
+			log_printf (
+				rrp_instance->totemrrp_log_level_error,
+				rrp_instance->status[i]);
 		}
 	}
 }
@@ -767,12 +793,14 @@ static void passive_token_recv (
 			(max - passive_instance->token_recv_count[i] > 
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
-			log_printf (
-				rrp_instance->totemrrp_log_level_error,
+			sprintf (rrp_instance->status[i], 
 				"Marking seqid %d ringid %d interface %s FAULTY - adminisrtative intervention required.",
 				token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
+			log_printf (
+				rrp_instance->totemrrp_log_level_error,
+				rrp_instance->status[i]);
 		}
 	}
 }
@@ -857,6 +885,19 @@ static void passive_token_target_set (
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
 }
 
+static void passive_ring_reenable (
+	struct totemrrp_instance *instance)
+{
+	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
+
+	memset (rrp_algo_instance->mcast_recv_count, 0, sizeof (unsigned int) *
+		instance->interface_count);
+	memset (rrp_algo_instance->token_recv_count, 0, sizeof (unsigned int) *
+		instance->interface_count);
+	memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
+		instance->interface_count);
+}
+
 /*
  * Active Replication Implementation
  */
@@ -919,12 +960,19 @@ static void timer_function_active_problem_decrementer (void *context)
 		if (active_instance->counter_problems[i] > 0) {
 			problem_found = 1;
 			active_instance->counter_problems[i] -= 1;
-			log_printf (
-				rrp_instance->totemrrp_log_level_warning,
-				"Decrementing problem counter for iface %s to [%d of %d]",
-				totemnet_iface_print (rrp_instance->net_handles[i]),
-				active_instance->counter_problems[i],
-				rrp_instance->totem_config->rrp_problem_count_threshold);
+			if (active_instance->counter_problems[i] == 0) {
+				sprintf (rrp_instance->status[i], 
+					"ring %d active with no faults", i);
+			} else {
+				sprintf (rrp_instance->status[i], 
+					"Decrementing problem counter for iface %s to [%d of %d]",
+					totemnet_iface_print (rrp_instance->net_handles[i]),
+					active_instance->counter_problems[i],
+					rrp_instance->totem_config->rrp_problem_count_threshold);
+			}
+				log_printf (
+					rrp_instance->totemrrp_log_level_warning,
+					rrp_instance->status[i]);
 		}
 	}
 	if (problem_found) {
@@ -947,25 +995,29 @@ static void timer_function_active_token_expired (void *context)
 			if (active_instance->timer_problem_decrementer == 0) {
 				active_timer_problem_decrementer_start (active_instance);
 			}
-			log_printf (
-				rrp_instance->totemrrp_log_level_warning,
+			sprintf (rrp_instance->status[i], 
 				"Incrementing problem counter for seqid %d iface %s to [%d of %d]",
 				active_instance->last_token_seq,
 				totemnet_iface_print (rrp_instance->net_handles[i]),
 				active_instance->counter_problems[i],
 				rrp_instance->totem_config->rrp_problem_count_threshold);
+			log_printf (
+				rrp_instance->totemrrp_log_level_warning,
+				rrp_instance->status[i]);
 		}
 	}
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold)
 		{
 			active_instance->faulty[i] = 1;
-			log_printf (
-				rrp_instance->totemrrp_log_level_error,
+			sprintf (rrp_instance->status[i], 
 				"Marking seqid %d ringid %d interface %s FAULTY - adminisrtative intervention required.",
 				active_instance->last_token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
+			log_printf (
+				rrp_instance->totemrrp_log_level_error,
+				rrp_instance->status[i]);
 			active_timer_problem_decrementer_cancel (active_instance);
 		}
 	}
@@ -1184,6 +1236,19 @@ static void active_token_target_set (
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
 }
 
+static void active_ring_reenable (
+	struct totemrrp_instance *instance)
+{
+	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+
+	memset (rrp_algo_instance->last_token_recv, 0, sizeof (unsigned int) *
+		instance->interface_count);
+	memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
+		instance->interface_count);
+	memset (rrp_algo_instance->counter_problems, 0, sizeof (unsigned int) *
+		instance->interface_count);
+}
+
 struct deliver_fn_context {
 	struct totemrrp_instance *instance;
 	void *context;
@@ -1213,6 +1278,10 @@ static int totemrrp_algorithm_set (
 			res = 0;
 			break;
 		}
+	}
+	for (i = 0; i < totem_config->interface_count; i++) {
+		instance->status[i] = malloc (1024);
+		sprintf (instance->status[i], "ring %d active with no faults", i);
 	}
 	return (res);
 }
@@ -1594,14 +1663,13 @@ error_exit:
 	return (res);
 }
 
-int totemrrp_interfaces_get (
+int totemrrp_ifaces_get (
         totemrrp_handle handle,
-        struct totem_ip_address *interfaces,
-        unsigned int *iface_count)
+	char ***status,
+	unsigned int *iface_count)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
-	unsigned int i;
 
 	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
@@ -1610,11 +1678,41 @@ int totemrrp_interfaces_get (
 		goto error_exit;
 	}
 	
-	for (i = 0; i < instance->interface_count; i++) {
-		totemnet_iface_get (instance->net_handles[i], &interfaces[i]);
+	*status = instance->status;
+	
+	if (iface_count) {
+		*iface_count = instance->interface_count;
 	}
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
+
+error_exit:
+	return (res);
+}
+
+int totemrrp_ring_reenable (
+        totemrrp_handle handle)
+{
+	struct totemrrp_instance *instance;
+	int res = 0;
+	unsigned int i;
+
+printf ("totemrrp ring reenable\n");
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		res = ENOENT;
+		goto error_exit;
+	}
+	
+	instance->rrp_algo->ring_reenable (instance);
+
+	for (i = 0; i < instance->interface_count; i++) {
+		sprintf (instance->status[i], "ring %d active with no faults", i);
+	}
+
+	hdb_handle_put (&totemrrp_instance_database, handle);
+
 error_exit:
 	return (res);
 }

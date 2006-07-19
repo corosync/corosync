@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -37,7 +38,7 @@
 #include <netinet/in.h>
 #include "saAis.h"
 
-typedef SaUint64T OpenaisCfgHandleT;
+typedef SaUint64T openais_cfg_handle_t;
 
 typedef enum {
 	OPENAIS_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
@@ -109,46 +110,56 @@ extern "C" {
 #endif
 
 SaAisErrorT
-openaisCfgInitialize (
-	OpenaisCfgHandleT *cfgHandle,
-	const OpenaisCfgCallbacksT *cfgCallbacks,
-	SaVersionT *version);
+openais_cfg_initialize (
+	openais_cfg_handle_t *cfg_handle,
+	const OpenaisCfgCallbacksT *cfgCallbacks);
 
 SaAisErrorT
-openaisCfgSelectionObjectGet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_fd_get (
+	openais_cfg_handle_t cfg_handle,
 	SaSelectionObjectT *selectionObject);
 
 SaAisErrorT
-openaisCfgDispatch (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_dispatch (
+	openais_cfg_handle_t cfg_handle,
 	SaDispatchFlagsT dispatchFlags);
 
 SaAisErrorT
-openaisCfgFinalize (
-	OpenaisCfgHandleT cfgHandle);
+openais_cfg_finalize (
+	openais_cfg_handle_t cfg_handle);
 
 SaAisErrorT
-openaisCfgAdministrativeStateGet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_ring_status_get (
+	openais_cfg_handle_t cfg_handle,
+	char ***interface_names,
+	char ***status,
+	unsigned int *interface_count);
+
+SaAisErrorT
+openais_cfg_ring_reenable (
+	openais_cfg_handle_t cfg_handle);
+
+SaAisErrorT
+openais_cfg_administrative_state_get (
+	openais_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT *administrativeState);
 
 SaAisErrorT
-openaisCfgAdministrativeStateSet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_administrative_state_set (
+	openais_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT administrativeState);
 
 SaAisErrorT
-openaisCfgStateTrackStart (
-        OpenaisCfgHandleT cfgHandle,
+openais_cfg_state_track (
+        openais_cfg_handle_t cfg_handle,
         SaUint8T trackFlags,
         const OpenaisCfgStateNotificationT *notificationBuffer);
 
 SaAisErrorT
-openaisCfgStateTrackStop (
-        OpenaisCfgHandleT cfgHandle);
+openais_cfg_state_track_stop (
+        openais_cfg_handle_t cfg_handle);
 
 #ifdef __cplusplus
 }

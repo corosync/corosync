@@ -98,9 +98,12 @@ extern void totemmrp_callback_token_destroy (
 
 extern void totemmrp_new_msg_signal (void);
 
-extern int totemmrp_interfaces_get (
+extern int totemmrp_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count);
+
+extern int totemmrp_ring_reenable (void);
 
 #endif /* TOTEMMRP_H_DEFINED */

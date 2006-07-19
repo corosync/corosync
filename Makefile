@@ -102,6 +102,7 @@ install:
 	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so.2
 	ln -sf libevs.so.2.0.0 lib/libevs.so.2
 	ln -sf libcpg.so.2.0.0 lib/libcpg.so.2
+	ln -sf libcfg.so.2.0.0 lib/libcfg.so.2
 	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so.2
 
 	cp -a lib/libais.so $(DESTDIR)$(LIBDIR)
@@ -112,6 +113,7 @@ install:
 	cp -a lib/libSaMsg.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libevs.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libcfg.so $(DESTDIR)$(LIBDIR)
 	cp -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
 
 	cp -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
@@ -122,6 +124,7 @@ install:
 	cp -a lib/libSaMsg.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libevs.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libcpg.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libcfg.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
 
 	install -m 755 lib/libais.so.2.* $(DESTDIR)$(LIBDIR)
@@ -133,6 +136,7 @@ install:
 	install -m 755 lib/libSaMsg.so.2.* $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libevs.so.2.* $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libcpg.so.2.* $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcfg.so.2.* $(DESTDIR)$(LIBDIR)
 	install -m 755 exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
 ifneq "NO" "$(STATICLIBS)"
@@ -147,6 +151,7 @@ ifneq "NO" "$(STATICLIBS)"
 	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
+	install -m 755 lib/libcfg.a $(DESTDIR)$(LIBDIR)
 	install -m 755 exec/libtotem_pg.a $(DESTDIR)$(LIBDIR)
 endif
 
@@ -168,6 +173,7 @@ endif
 	install -m 644 include/saLck.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/saMsg.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/cpg.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 include/cfg.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/evs.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)

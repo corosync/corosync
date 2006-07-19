@@ -96,10 +96,14 @@ int totemsrp_new_msg_signal (totemsrp_handle handle);
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
-extern int totemsrp_interfaces_get (
+extern int totemsrp_ifaces_get (
 	totemsrp_handle handle,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count);
+
+extern int totemsrp_ring_reenable (
+	totemsrp_handle handle);
 
 #endif /* TOTEMSRP_H_DEFINED */

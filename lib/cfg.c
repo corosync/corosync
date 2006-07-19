@@ -1,6 +1,7 @@
 
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,20 +47,21 @@
 #include <sys/un.h>
 
 #include "../include/saAis.h"
-#include "../include/openaisCfg.h"
+#include "../include/cfg.h"
+#include "../include/mar_gen.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_cfg.h"
 #include "util.h"
 
 struct res_overlay {
-	struct res_header header;
+	mar_res_header_t header;
 	char data[4096];
 };
 
 /*
  * Data structure for instance data
  */
-struct cfgInstance {
+struct cfg_instance {
 	int response_fd;
 	int dispatch_fd;
 	OpenaisCfgCallbacksT callbacks;
@@ -70,112 +72,95 @@ struct cfgInstance {
 	pthread_mutex_t dispatch_mutex;
 };
 
-static void cfgHandleInstanceDestructor (void *);
+static void cfg_handleInstanceDestructor (void *);
 
 /*
  * All instances in one database
  */
-static struct saHandleDatabase cfgHandleDatabase = {
+static struct saHandleDatabase cfg_hdb = {
 	.handleCount				= 0,
 	.handles					= 0,
 	.mutex						= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= cfgHandleInstanceDestructor
+	.handleInstanceDestructor	= cfg_handleInstanceDestructor
 };
 
-/*
- * Versions supported
- */
-static SaVersionT amfVersionsSupported[] = {
-	{ 'A', 1, 1 }
-};
-
-static struct saVersionDatabase amfVersionDatabase = {
-	sizeof (amfVersionsSupported) / sizeof (SaVersionT),
-	amfVersionsSupported
-};
-	
 /*
  * Implementation
  */
-
-void cfgHandleInstanceDestructor (void *instance)
+void cfg_handleInstanceDestructor (void *instance)
 {
 }
 
 SaAisErrorT
-openaisCfgInitialize (
-	OpenaisCfgHandleT *cfgHandle,
-	const OpenaisCfgCallbacksT *amfCallbacks,
-	SaVersionT *version)
+openais_cfg_initialize (
+	openais_cfg_handle_t *cfg_handle,
+	const OpenaisCfgCallbacksT *cfgCallbacks)
 {
-	struct cfgInstance *cfgInstance;
-	SaAisErrorT error = SA_OK;
+	struct cfg_instance *cfg_instance;
+	SaAisErrorT error = SA_AIS_OK;
 
-	error = saVersionVerify (&amfVersionDatabase, (SaVersionT *)version);
-	if (error != SA_OK) {
-		goto error_no_destroy;
-	}
-	
-	error = saHandleCreate (&cfgHandleDatabase, sizeof (struct cfgInstance), cfgHandle);
-	if (error != SA_OK) {
+	error = saHandleCreate (&cfg_hdb, sizeof (struct cfg_instance), cfg_handle);
+	if (error != SA_AIS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, *cfgHandle, (void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, *cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
 
-	cfgInstance->response_fd = -1;
+	cfg_instance->response_fd = -1;
 
-	cfgInstance->dispatch_fd = -1;
+	cfg_instance->dispatch_fd = -1;
 	
-	error = saServiceConnect (&cfgInstance->response_fd,
-		&cfgInstance->dispatch_fd, AMF_SERVICE);
-	if (error != SA_OK) {
+	error = saServiceConnect (&cfg_instance->response_fd,
+		&cfg_instance->dispatch_fd, CFG_SERVICE);
+	if (error != SA_AIS_OK) {
 		goto error_put_destroy;
 	}
 
-	memcpy (&cfgInstance->callbacks, amfCallbacks, sizeof (OpenaisCfgCallbacksT));
+	if (cfgCallbacks) {
+	memcpy (&cfg_instance->callbacks, cfgCallbacks, sizeof (OpenaisCfgCallbacksT));
+	}
 
-	pthread_mutex_init (&cfgInstance->response_mutex, NULL);
+	pthread_mutex_init (&cfg_instance->response_mutex, NULL);
 
-	pthread_mutex_init (&cfgInstance->dispatch_mutex, NULL);
+	pthread_mutex_init (&cfg_instance->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&cfgHandleDatabase, *cfgHandle);
+	saHandleInstancePut (&cfg_hdb, *cfg_handle);
 
-	return (SA_OK);
+	return (SA_AIS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&cfgHandleDatabase, *cfgHandle);
+	saHandleInstancePut (&cfg_hdb, *cfg_handle);
 error_destroy:
-	saHandleDestroy (&cfgHandleDatabase, *cfgHandle);
+	saHandleDestroy (&cfg_hdb, *cfg_handle);
 error_no_destroy:
 	return (error);
 }
 
 SaAisErrorT
-openaisCfgSelectionObjectGet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_fd_get (
+	openais_cfg_handle_t cfg_handle,
 	SaSelectionObjectT *selectionObject)
 {
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle, (void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	*selectionObject = cfgInstance->dispatch_fd;
+	*selectionObject = cfg_instance->dispatch_fd;
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
-	return (SA_OK);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	return (SA_AIS_OK);
 }
 
 SaAisErrorT
-openaisCfgDispatch (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_dispatch (
+	openais_cfg_handle_t cfg_handle,
 	SaDispatchFlagsT dispatchFlags)
 {
 	struct pollfd ufds;
@@ -183,7 +168,7 @@ openaisCfgDispatch (
 	SaAisErrorT error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
 #ifdef COMPILE_OUT
 	struct res_lib_openais_healthcheckcallback *res_lib_openais_healthcheckcallback;
 	struct res_lib_openais_readinessstatesetcallback *res_lib_openais_readinessstatesetcallback;
@@ -194,9 +179,9 @@ openaisCfgDispatch (
 	OpenaisCfgCallbacksT callbacks;
 	struct res_overlay dispatch_data;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle,
-		(void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -211,38 +196,38 @@ openaisCfgDispatch (
 		/*
 		 * Read data directly from socket
 		 */
-		ufds.fd = cfgInstance->dispatch_fd;
+		ufds.fd = cfg_instance->dispatch_fd;
 		ufds.events = POLLIN;
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_nounlock;
 		}
 
-		pthread_mutex_lock (&cfgInstance->dispatch_mutex);
+		pthread_mutex_lock (&cfg_instance->dispatch_mutex);
 
 		error = saPollRetry (&ufds, 1, 0);
-		if (error != SA_OK) {
+		if (error != SA_AIS_OK) {
 			goto error_nounlock;
 		}
 
 		/*
 		 * Handle has been finalized in another thread
 		 */
-		if (cfgInstance->finalize == 1) {
-			error = SA_OK;
-			pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+		if (cfg_instance->finalize == 1) {
+			error = SA_AIS_OK;
+			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
-			pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			continue; /* next poll */
 		}
 
@@ -250,91 +235,38 @@ openaisCfgDispatch (
 			/*
 			 * Queue empty, read response from socket
 			 */
-			error = saRecvRetry (cfgInstance->dispatch_fd, &dispatch_data.header,
-				sizeof (struct res_header));
-			if (error != SA_OK) {
+			error = saRecvRetry (cfg_instance->dispatch_fd, &dispatch_data.header,
+				sizeof (mar_res_header_t));
+			if (error != SA_AIS_OK) {
 				goto error_unlock;
 			}
-			if (dispatch_data.header.size > sizeof (struct res_header)) {
-				error = saRecvRetry (cfgInstance->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (struct res_header));
-				if (error != SA_OK) {
+			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
+				error = saRecvRetry (cfg_instance->dispatch_fd, &dispatch_data.data,
+					dispatch_data.header.size - sizeof (mar_res_header_t));
+				if (error != SA_AIS_OK) {
 					goto error_unlock;
 				}
 			}
 		} else {
-			pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			continue;
 		}
 
 		/*
 		 * Make copy of callbacks, message data, unlock instance, and call callback
 		 * A risk of this dispatch method is that the callback routines may
-		 * operate at the same time that amfFinalize has been called in another thread.
+		 * operate at the same time that cfgFinalize has been called in another thread.
 		 */
-		memcpy (&callbacks, &cfgInstance->callbacks, sizeof (OpenaisCfgCallbacksT));
-		pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (OpenaisCfgCallbacksT));
+		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming response
 		 */
 		switch (dispatch_data.header.id) {
 
-#ifdef COMPILE_OUT
-		case MESSAGE_RES_AMF_HEALTHCHECKCALLBACK:
-			res_lib_openais_healthcheckcallback = (struct res_lib_openais_healthcheckcallback *)&dispatch_data;
-
-			callbacks.openaisCfgHealthcheckCallback (
-				res_lib_openais_healthcheckcallback->invocation,
-				&res_lib_openais_healthcheckcallback->compName,
-				res_lib_openais_healthcheckcallback->checkType);
-			break;
-
-		case MESSAGE_RES_AMF_READINESSSTATESETCALLBACK:
-			res_lib_openais_readinessstatesetcallback = (struct res_lib_openais_readinessstatesetcallback *)&dispatch_data;
-			callbacks.openaisCfgReadinessStateSetCallback (
-				res_lib_openais_readinessstatesetcallback->invocation,
-				&res_lib_openais_readinessstatesetcallback->compName,
-				res_lib_openais_readinessstatesetcallback->readinessState);
-			break;
-
-		case MESSAGE_RES_AMF_CSISETCALLBACK:
-			res_lib_openais_csisetcallback = (struct res_lib_openais_csisetcallback *)&dispatch_data;
-			callbacks.openaisCfgCSISetCallback (
-				res_lib_openais_csisetcallback->invocation,
-				&res_lib_openais_csisetcallback->compName,
-				&res_lib_openais_csisetcallback->csiName,
-				res_lib_openais_csisetcallback->csiFlags,
-				&res_lib_openais_csisetcallback->haState,
-				&res_lib_openais_csisetcallback->activeCompName,
-				res_lib_openais_csisetcallback->transitionDescriptor);
-			break;
-
-		case MESSAGE_RES_AMF_CSIREMOVECALLBACK:
-			res_lib_openais_csiremovecallback = (struct res_lib_openais_csiremovecallback *)&dispatch_data;
-			callbacks.openaisCfgCSIRemoveCallback (
-				res_lib_openais_csiremovecallback->invocation,
-				&res_lib_openais_csiremovecallback->compName,
-				&res_lib_openais_csiremovecallback->csiName,
-				&res_lib_openais_csiremovecallback->csiFlags);
-			break;
-
-		case MESSAGE_RES_AMF_PROTECTIONGROUPTRACKCALLBACK:
-			res_lib_cfg_statetrackcallback = (struct res_lib_cfg_statetrackcallback *)&dispatch_data;
-			memcpy (res_lib_cfg_statetrackcallback->notificationBufferAddress,
-				res_lib_cfg_statetrackcallback->notificationBuffer,
-				res_lib_cfg_statetrackcallback->numberOfItems * sizeof (OpenaisCfgProtectionGroupNotificationT));
-			callbacks.openaisCfgProtectionGroupTrackCallback(
-				&res_lib_cfg_statetrackcallback->csiName,
-				res_lib_cfg_statetrackcallback->notificationBufferAddress,
-				res_lib_cfg_statetrackcallback->numberOfItems,
-				res_lib_cfg_statetrackcallback->numberOfMembers,
-				res_lib_cfg_statetrackcallback->error);
-			break;
-
-#endif
 		default:
-			error = SA_ERR_LIBRARY;	
+			error = SA_AIS_ERR_LIBRARY;	
 			goto error_nounlock;
 			break;
 		}
@@ -354,143 +286,254 @@ openaisCfgDispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
 error_nounlock:
 	return (error);
 }
 
 SaAisErrorT
-openaisCfgFinalize (
-	OpenaisCfgHandleT cfgHandle)
+openais_cfg_finalize (
+	openais_cfg_handle_t cfg_handle)
 {
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle, (void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	pthread_mutex_lock (&cfgInstance->dispatch_mutex);
+	pthread_mutex_lock (&cfg_instance->dispatch_mutex);
 
-	pthread_mutex_lock (&cfgInstance->response_mutex);
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
-	if (cfgInstance->finalize) {
-		pthread_mutex_unlock (&cfgInstance->response_mutex);
-		pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
-		saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
-		return (SA_ERR_BAD_HANDLE);
+	if (cfg_instance->finalize) {
+		pthread_mutex_unlock (&cfg_instance->response_mutex);
+		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
+		saHandleInstancePut (&cfg_hdb, cfg_handle);
+		return (SA_AIS_ERR_BAD_HANDLE);
 	}
 
-	cfgInstance->finalize = 1;
+	cfg_instance->finalize = 1;
 
-	pthread_mutex_unlock (&cfgInstance->response_mutex);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	pthread_mutex_unlock (&cfgInstance->dispatch_mutex);
+	pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
-	saHandleDestroy (&cfgHandleDatabase, cfgHandle);
+	saHandleDestroy (&cfg_hdb, cfg_handle);
 
-	if (cfgInstance->response_fd != -1) {
-		shutdown (cfgInstance->response_fd, 0);
-		close (cfgInstance->response_fd);
+	if (cfg_instance->response_fd != -1) {
+		shutdown (cfg_instance->response_fd, 0);
+		close (cfg_instance->response_fd);
 	}
-	if (cfgInstance->dispatch_fd != -1) {
-		shutdown (cfgInstance->dispatch_fd, 0);
-		close (cfgInstance->dispatch_fd);
+	if (cfg_instance->dispatch_fd != -1) {
+		shutdown (cfg_instance->dispatch_fd, 0);
+		close (cfg_instance->dispatch_fd);
 	}
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
 
 SaAisErrorT
-openaisCfgStateTrackStart (
-	OpenaisCfgHandleT cfgHandle,
-	SaUint8T trackFlags,
-	const OpenaisCfgStateNotificationT *notificationBuffer)
+openais_cfg_ring_status_get (
+	openais_cfg_handle_t cfg_handle,
+	char ***interface_names,
+	char ***status,
+	unsigned int *interface_count)
 {
-	struct cfgInstance *cfgInstance;
-	struct req_lib_cfg_statetrackstart req_lib_cfg_statetrackstart;
-	struct res_lib_cfg_statetrackstart res_lib_cfg_statetrackstart;
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_ringstatusget req_lib_cfg_ringstatusget;
+	struct res_lib_cfg_ringstatusget res_lib_cfg_ringstatusget;
+	unsigned int i;
 	SaAisErrorT error;
 
-	req_lib_cfg_statetrackstart.header.size = sizeof (struct req_lib_cfg_statetrackstart);
-	req_lib_cfg_statetrackstart.header.id = MESSAGE_REQ_CFG_STATETRACKSTART;
-	req_lib_cfg_statetrackstart.trackFlags = trackFlags;
-	req_lib_cfg_statetrackstart.notificationBufferAddress = (OpenaisCfgStateNotificationT *)notificationBuffer;
-
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle,
-		(void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	pthread_mutex_lock (&cfgInstance->response_mutex);
+	req_lib_cfg_ringstatusget.header.size = sizeof (struct req_lib_cfg_ringstatusget);
+	req_lib_cfg_ringstatusget.header.id = MESSAGE_REQ_CFG_RINGSTATUSGET;
 
-	error = saSendReceiveReply (cfgInstance->response_fd,
-		&req_lib_cfg_statetrackstart,
-		sizeof (struct req_lib_cfg_statetrackstart),
-		&res_lib_cfg_statetrackstart,
-		sizeof (struct res_lib_cfg_statetrackstart));
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	pthread_mutex_unlock (&cfgInstance->response_mutex);
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_ringstatusget,
+		sizeof (struct req_lib_cfg_ringstatusget),
+		&res_lib_cfg_ringstatusget,
+		sizeof (struct res_lib_cfg_ringstatusget));
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_statetrackstart.header.error : error);
+	*interface_count = res_lib_cfg_ringstatusget.interface_count;
+	*interface_names = malloc (sizeof (char *) * *interface_count);
+	if (*interface_names == NULL) {
+		return (SA_AIS_ERR_NO_MEMORY);
+	}
+	memset (*interface_names, 0, sizeof (char *) * *interface_count);
+
+	*status = malloc (sizeof (char *) * *interface_count);
+	if (*status == NULL) {
+		error = SA_AIS_ERR_NO_MEMORY;
+		goto error_free_interface_names;
+	}
+	memset (*status, 0, sizeof (char *) * *interface_count);
+
+	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
+		(*(interface_names))[i] = strdup (res_lib_cfg_ringstatusget.interface_name[i]);
+		if ((*(interface_names))[i] == NULL) {
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_free_contents;
+		}
+		(*(status))[i] = strdup (res_lib_cfg_ringstatusget.interface_status[i]);
+		if ((*(status))[i] == NULL) {
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_free_contents;
+		}
+	}
+	goto no_error;
+
+error_free_contents:
+	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
+		if ((*(interface_names))[i]) {
+			free ((*(interface_names))[i]);
+		}
+		if ((*(status))[i]) {
+			free ((*(status))[i]);
+		}
+	}
+
+	free (*status);
+	
+error_free_interface_names:
+	free (*interface_names);
+	
+no_error:
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+	return (error);
 }
 
 SaAisErrorT
-openaisCfgStateTrackStop (
-	OpenaisCfgHandleT cfgHandle)
+openais_cfg_ring_reenable (
+	openais_cfg_handle_t cfg_handle)
 {
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_ringreenable req_lib_cfg_ringreenable;
+	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_ringreenable.header.size = sizeof (struct req_lib_cfg_ringreenable);
+	req_lib_cfg_ringreenable.header.id = MESSAGE_REQ_CFG_RINGREENABLE;
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_ringreenable,
+		sizeof (struct req_lib_cfg_ringreenable),
+		&res_lib_cfg_ringreenable,
+		sizeof (struct res_lib_cfg_ringreenable));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+	return (error);
+}
+
+SaAisErrorT
+openais_cfg_state_track (
+	openais_cfg_handle_t cfg_handle,
+	SaUint8T trackFlags,
+	const OpenaisCfgStateNotificationT *notificationBuffer)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_statetrack req_lib_cfg_statetrack;
+	struct res_lib_cfg_statetrack res_lib_cfg_statetrack;
+	SaAisErrorT error;
+
+	req_lib_cfg_statetrack.header.size = sizeof (struct req_lib_cfg_statetrack);
+	req_lib_cfg_statetrack.header.id = MESSAGE_REQ_CFG_STATETRACKSTART;
+	req_lib_cfg_statetrack.trackFlags = trackFlags;
+	req_lib_cfg_statetrack.notificationBufferAddress = (OpenaisCfgStateNotificationT *)notificationBuffer;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_statetrack,
+		sizeof (struct req_lib_cfg_statetrack),
+		&res_lib_cfg_statetrack,
+		sizeof (struct res_lib_cfg_statetrack));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+        return (error == SA_AIS_OK ? res_lib_cfg_statetrack.header.error : error);
+}
+
+SaAisErrorT
+openais_cfg_state_track_stop (
+	openais_cfg_handle_t cfg_handle)
+{
+	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrackstop req_lib_cfg_statetrackstop;
 	struct res_lib_cfg_statetrackstop res_lib_cfg_statetrackstop;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle,
-		(void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
 	req_lib_cfg_statetrackstop.header.size = sizeof (struct req_lib_cfg_statetrackstop);
 	req_lib_cfg_statetrackstop.header.id = MESSAGE_REQ_CFG_STATETRACKSTOP;
 
-	pthread_mutex_lock (&cfgInstance->response_mutex);
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = saSendReceiveReply (cfgInstance->response_fd,
+	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_statetrackstop,
 		sizeof (struct req_lib_cfg_statetrackstop),
 		&res_lib_cfg_statetrackstop,
 		sizeof (struct res_lib_cfg_statetrackstop));
 
-	pthread_mutex_unlock (&cfgInstance->response_mutex);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == SA_AIS_OK ? res_lib_cfg_statetrackstop.header.error : error);
 }
 
 SaAisErrorT
-openaisCfgAdministrativeStateGet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_admin_state_get (
+	openais_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT *administrativeState)
 {
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateget req_lib_cfg_administrativestateget;
 	struct res_lib_cfg_administrativestateget res_lib_cfg_administrativestateget;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle,
-		(void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -498,7 +541,7 @@ openaisCfgAdministrativeStateGet (
 	req_lib_cfg_administrativestateget.header.size = sizeof (struct req_lib_cfg_administrativestateget);
 	req_lib_cfg_administrativestateget.administrativeTarget = administrativeTarget;
 
-	error = saSendReceiveReply (cfgInstance->response_fd,
+	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_administrativestateget,
 		sizeof (struct req_lib_cfg_administrativestateget),
 		&res_lib_cfg_administrativestateget,
@@ -506,27 +549,27 @@ openaisCfgAdministrativeStateGet (
 
 	error = res_lib_cfg_administrativestateget.header.error;
 
-	pthread_mutex_unlock (&cfgInstance->response_mutex);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == SA_AIS_OK ? res_lib_cfg_administrativestateget.header.error : error);
 }
 
 SaAisErrorT
-openaisCfgAdministrativeStateSet (
-	OpenaisCfgHandleT cfgHandle,
+openais_cfg_admin_state_set (
+	openais_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT administrativeState)
 {
-	struct cfgInstance *cfgInstance;
+	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateset req_lib_cfg_administrativestateset;
 	struct res_lib_cfg_administrativestateset res_lib_cfg_administrativestateset;
 	SaAisErrorT error;
 
-	error = saHandleInstanceGet (&cfgHandleDatabase, cfgHandle,
-		(void *)&cfgInstance);
-	if (error != SA_OK) {
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
@@ -535,7 +578,7 @@ openaisCfgAdministrativeStateSet (
 	req_lib_cfg_administrativestateset.administrativeTarget = administrativeTarget;
 	req_lib_cfg_administrativestateset.administrativeState = administrativeState;
 
-	error = saSendReceiveReply (cfgInstance->response_fd,
+	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_administrativestateset,
 		sizeof (struct req_lib_cfg_administrativestateset),
 		&res_lib_cfg_administrativestateset,
@@ -543,9 +586,9 @@ openaisCfgAdministrativeStateSet (
 
 	error = res_lib_cfg_administrativestateset.header.error;
 
-	pthread_mutex_unlock (&cfgInstance->response_mutex);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfgHandleDatabase, cfgHandle);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == SA_AIS_OK ? res_lib_cfg_administrativestateset.header.error : error);
 }

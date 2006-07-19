@@ -832,10 +832,11 @@ void totemsrp_finalize (
 	hdb_handle_put (&totemsrp_instance_database, handle);
 }
 
-int totemsrp_interfaces_get (
+int totemsrp_ifaces_get (
 	totemsrp_handle handle,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count)
 {
 	struct totemsrp_instance *instance;
@@ -864,10 +865,32 @@ int totemsrp_interfaces_get (
 		res = -1;
 	}
 
+	totemrrp_ifaces_get (instance->totemrrp_handle, status, NULL);
+
 	hdb_handle_put (&totemsrp_instance_database, handle);
 error_exit:
 	return (res);
 }
+
+int totemsrp_ring_reenable (
+        totemsrp_handle handle)
+{
+	struct totemsrp_instance *instance;
+	int res;
+
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+
+	totemrrp_ring_reenable (instance->totemrrp_handle);
+
+	hdb_handle_put (&totemsrp_instance_database, handle);
+error_exit:
+	return (res);
+}
+
 
 /*
  * Set operations for use by the membership algorithm

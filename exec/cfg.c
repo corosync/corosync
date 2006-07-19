@@ -47,10 +47,14 @@
 #include <string.h>
 
 #include "../include/saAis.h"
-#include "../include/openaisCfg.h"
+#include "../include/cfg.h"
+#include "../include/mar_gen.h"
 #include "../include/ipc_gen.h"
 #include "../include/ipc_cfg.h"
 #include "../include/list.h"
+#include "totem.h"
+#include "totempg.h"
+#include "ipc.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
 #include "service.h"
@@ -58,10 +62,11 @@
 #include "mempool.h"
 #include "util.h"
 #include "print.h"
+#include "main.h"
 
-#define LOG_LEVEL_FROM_LIB LOG_LEVEL_DEBUG
-#define LOG_LEVEL_FROM_GMI LOG_LEVEL_DEBUG
-#define LOG_LEVEL_ENTER_FUNC LOG_LEVEL_DEBUG
+enum cfg_message_req_types {
+        MESSAGE_REQ_EXEC_CFG_RINGREENABLE = 0
+};
 
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -76,13 +81,33 @@ static int cfg_lib_init_fn (void *conn);
 
 static int cfg_lib_exit_fn (void *conn);
 
-static void message_handler_req_lib_cfg_statetrackstart (void *conn, void *msg);
+static void message_handler_req_exec_cfg_ringreenable (
+        void *message,
+        unsigned int nodeid);
 
-static void message_handler_req_lib_cfg_statetrackstop (void *conn, void *msg);
+static void message_handler_req_lib_cfg_ringstatusget (
+	void *conn,
+	void *msg);
 
-static void message_handler_req_lib_cfg_administrativestateset (void *conn, void *msg);
+static void message_handler_req_lib_cfg_ringreenable (
+	void *conn,
+	void *msg);
 
-static void message_handler_req_lib_cfg_administrativestateget (void *conn, void *msg);
+static void message_handler_req_lib_cfg_statetrack (
+	void *conn,
+	void *msg);
+
+static void message_handler_req_lib_cfg_statetrackstop (
+	void *conn,
+	void *msg);
+
+static void message_handler_req_lib_cfg_administrativestateset (
+	void *conn,
+	void *msg);
+
+static void message_handler_req_lib_cfg_administrativestateget (
+	void *conn,
+	void *msg);
 
 /*
  * Service Handler Definition
@@ -90,8 +115,20 @@ static void message_handler_req_lib_cfg_administrativestateget (void *conn, void
 static struct openais_lib_handler cfg_lib_service[] =
 {
 	{ /* 0 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstart,
-		.response_size		= sizeof (struct res_lib_cfg_statetrackstart),
+		.lib_handler_fn		= message_handler_req_lib_cfg_ringstatusget,
+		.response_size		= sizeof (struct res_lib_cfg_ringstatusget),
+		.response_id		= MESSAGE_RES_CFG_RINGSTATUSGET,
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+	},
+	{ /* 0 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_ringreenable,
+		.response_size		= sizeof (struct res_lib_cfg_ringreenable),
+		.response_id		= MESSAGE_RES_CFG_RINGREENABLE,
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+	},
+	{ /* 0 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
+		.response_size		= sizeof (struct res_lib_cfg_statetrack),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
@@ -118,13 +155,8 @@ static struct openais_lib_handler cfg_lib_service[] =
 static struct openais_exec_handler cfg_exec_service[] =
 {
 	{
+		message_handler_req_exec_cfg_ringreenable
 	}
-/*
-	message_handler_req_exec_cfg_componentregister,
-	message_handler_req_exec_cfg_componentunregister,
-	message_handler_req_exec_cfg_componenterrorreport,
-	message_handler_req_exec_cfg_componenterrorclear,
-*/
 };
 
 /*
@@ -183,6 +215,11 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 	lcr_component_register (&cfg_comp_ver0);
 }
 
+struct req_exec_cfg_ringreenable {
+	mar_req_header_t header __attribute__((aligned(8)));
+        mar_message_source_t source __attribute__((aligned(8)));
+};
+
 /* IMPL */
 
 static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
@@ -206,22 +243,113 @@ int cfg_lib_exit_fn (void *conn)
 
 static int cfg_lib_init_fn (void *conn)
 {
-        log_printf (LOG_LEVEL_DEBUG, "Got request to initalize configuration service.\n");
+	
+	ENTER("");
+	LEAVE("");
 
         return (0);
 }
 
 /*
+ * Executive message handlers
+ */
+static void message_handler_req_exec_cfg_ringreenable (
+        void *message,
+        unsigned int nodeid)
+{
+	struct req_exec_cfg_ringreenable *req_exec_cfg_ringreenable =
+		(struct req_exec_cfg_ringreenable *)message;
+	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
+
+	ENTER("");
+	totempg_ring_reenable ();
+        if (message_source_is_local(&req_exec_cfg_ringreenable->source)) {
+		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
+		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
+		res_lib_cfg_ringreenable.header.error = SA_AIS_OK;
+		openais_conn_send_response (
+			req_exec_cfg_ringreenable->source.conn,
+			&res_lib_cfg_ringreenable,
+			sizeof (struct res_lib_cfg_ringreenable));
+	}
+	LEAVE("");
+}
+
+
+/*
  * Library Interface Implementation
  */
-static void message_handler_req_lib_cfg_statetrackstart (
+static void message_handler_req_lib_cfg_ringstatusget (
 	void *conn,
 	void *msg)
 {
-//	struct req_lib_cfg_statetrackstart *req_lib_cfg_statetrackstart = (struct req_lib_cfg_statetrackstart *)message;
+	struct res_lib_cfg_ringstatusget res_lib_cfg_ringstatusget;
+	struct totem_ip_address interfaces[INTERFACE_MAX];
+	unsigned int iface_count;
+	char **status;
+	char *totem_ip_string;
+	unsigned int i;
 
-	log_printf (LOG_LEVEL_FROM_LIB,
-		"Handle : message_handler_req_lib_cfg_statetrackstart()\n");
+	ENTER("");
+
+	res_lib_cfg_ringstatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
+	res_lib_cfg_ringstatusget.header.size = sizeof (struct res_lib_cfg_ringstatusget);
+	res_lib_cfg_ringstatusget.header.error = SA_AIS_OK;
+
+	totempg_ifaces_get (
+		this_ip->nodeid,
+		interfaces,
+		&status,
+		&iface_count);
+
+	res_lib_cfg_ringstatusget.interface_count = iface_count;
+
+	for (i = 0; i < iface_count; i++) {
+		totem_ip_string = (char *)totemip_print (&interfaces[i]);
+		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_status[i],
+			status[i]);
+		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
+			totem_ip_string);
+	}
+	openais_conn_send_response (
+		conn,
+		&res_lib_cfg_ringstatusget,
+		sizeof (struct res_lib_cfg_ringstatusget));
+
+	LEAVE("");
+}
+
+static void message_handler_req_lib_cfg_ringreenable (
+	void *conn,
+	void *msg)
+{
+	struct req_exec_cfg_ringreenable req_exec_cfg_ringreenable;
+	struct iovec iovec;
+
+	ENTER("");
+	req_exec_cfg_ringreenable.header.size =
+		sizeof (struct req_exec_cfg_ringreenable);
+	req_exec_cfg_ringreenable.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
+		MESSAGE_REQ_EXEC_CFG_RINGREENABLE);
+	message_source_set (&req_exec_cfg_ringreenable.source, conn);
+
+	iovec.iov_base = &req_exec_cfg_ringreenable;
+	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
+
+	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
+		TOTEMPG_SAFE) == 0);
+
+	LEAVE("");
+}
+
+static void message_handler_req_lib_cfg_statetrack (
+	void *conn,
+	void *msg)
+{
+//	struct req_lib_cfg_statetrack *req_lib_cfg_statetrack = (struct req_lib_cfg_statetrack *)message;
+
+	ENTER("");
+	LEAVE("");
 }
 
 static void message_handler_req_lib_cfg_statetrackstop (
@@ -230,8 +358,8 @@ static void message_handler_req_lib_cfg_statetrackstop (
 {
 //	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
 
-	log_printf (LOG_LEVEL_FROM_LIB,
-		"Handle : message_handler_req_lib_cfg_administrativestateget()\n");
+	ENTER("");
+	LEAVE("");
 }
 
 static void message_handler_req_lib_cfg_administrativestateset (
@@ -239,15 +367,15 @@ static void message_handler_req_lib_cfg_administrativestateset (
 	void *msg)
 {
 //	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
-	log_printf (LOG_LEVEL_FROM_LIB,
-		"Handle : message_handler_req_lib_cfg_administrativestateset()\n");
+	ENTER("");
+	LEAVE("");
 }
 static void message_handler_req_lib_cfg_administrativestateget (
 	void *conn,
 	void *msg)
 {
 //	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
-	log_printf (LOG_LEVEL_FROM_LIB,
-		"Handle : message_handler_req_lib_cfg_administrativestateget()\n");
+	ENTER("");
+	LEAVE("");
 }
 

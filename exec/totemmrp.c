@@ -172,18 +172,31 @@ void totemmrp_new_msg_signal (void) {
 	totemsrp_new_msg_signal (totemsrp_handle_in);
 }
 
-int totemmrp_interfaces_get (
+int totemmrp_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count)
 {
 	int res;
 
-	res = totemsrp_interfaces_get (
+	res = totemsrp_ifaces_get (
 		totemsrp_handle_in,
 		nodeid,
 		interfaces,
+		status,
 		iface_count);
 
 	return (res);
 }
+
+extern int totemmrp_ring_reenable (void)
+{
+	int res;
+
+	res = totemsrp_ring_reenable (
+		totemsrp_handle_in);
+
+	return (res);
+}
+

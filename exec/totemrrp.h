@@ -109,9 +109,12 @@ extern int totemrrp_iface_check (totemrrp_handle handle);
 
 extern int totemrrp_finalize (totemrrp_handle handle);
 
-extern int totemrrp_interfaces_get (
+extern int totemrrp_ifaces_get (
 	totemrrp_handle handle,
-	struct totem_ip_address *interfaces,
+	char ***status,
 	unsigned int *iface_count);
+
+extern int totemrrp_ring_reenable (
+	totemrrp_handle handle);
 
 #endif /* TOTEMRRP_H_DEFINED */

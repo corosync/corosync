@@ -37,29 +37,33 @@
 #include <netinet/in.h>
 #include "ipc_gen.h"
 #include "saAis.h"
-#include "openaisCfg.h"
+#include "cfg.h"
 
 enum req_lib_cfg_types {
-        MESSAGE_REQ_CFG_STATETRACKSTART = 0,
-        MESSAGE_REQ_CFG_STATETRACKSTOP = 1,
-        MESSAGE_REQ_CFG_ADMINISTRATIVESTATESET = 2,
-        MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET = 3,
+	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
+	MESSAGE_REQ_CFG_RINGREENABLE = 1,
+        MESSAGE_REQ_CFG_STATETRACKSTART = 2,
+        MESSAGE_REQ_CFG_STATETRACKSTOP = 3,
+        MESSAGE_REQ_CFG_ADMINISTRATIVESTATESET = 4,
+        MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET = 5,
 };
 
 enum res_lib_cfg_types {
-        MESSAGE_RES_CFG_STATETRACKSTART = 0,
-        MESSAGE_RES_CFG_STATETRACKSTOP = 1,
-        MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 2,
-        MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 3,
+        MESSAGE_RES_CFG_RINGSTATUSGET = 0,
+        MESSAGE_RES_CFG_RINGREENABLE = 1,
+        MESSAGE_RES_CFG_STATETRACKSTART = 2,
+        MESSAGE_RES_CFG_STATETRACKSTOP = 3,
+        MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 4,
+        MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 5,
 };
 
-struct req_lib_cfg_statetrackstart {
+struct req_lib_cfg_statetrack {
 	mar_req_header_t header;
 	SaUint8T trackFlags;
 	OpenaisCfgStateNotificationT *notificationBufferAddress;
 };
 
-struct res_lib_cfg_statetrackstart {
+struct res_lib_cfg_statetrack {
 	mar_res_header_t header;
 };
 
@@ -90,7 +94,26 @@ struct req_lib_cfg_administrativestateget {
 };
 
 struct res_lib_cfg_administrativestateget {
-	mar_res_header_t header;
+	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_ringstatusget {
+	mar_req_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_ringstatusget {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t interface_count __attribute__((aligned(8)));
+	char interface_name[16][128] __attribute__((aligned(8)));
+	char interface_status[16][512] __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_ringreenable {
+	mar_req_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_ringreenable {
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 typedef enum {

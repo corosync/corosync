@@ -133,8 +133,11 @@ extern int totempg_groups_send_ok_groups (
 extern int totempg_ifaces_get (
 	unsigned int nodeid,
         struct totem_ip_address *interfaces,
+	char ***status,
         unsigned int *iface_count);
 
+extern int totempg_ring_reenable (void);
+	
 extern char *totempg_ifaces_print (unsigned int nodeid);
 
 #endif /* TOTEMPG_H_DEFINED */

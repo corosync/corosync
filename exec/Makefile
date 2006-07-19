@@ -1,4 +1,5 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
+
 # 
 # All rights reserved.
 # 
@@ -315,9 +316,9 @@ msg.o: ../include/list.h ../include/queue.h ../lcr/lcr_comp.h service.h
 msg.o: totem.h totemip.h objdb.h aispoll.h mempool.h util.h main.h
 msg.o: ../include/saClm.h ../include/ipc_gen.h ../exec/totemip.h mainconfig.h
 msg.o: totemsrp.h totempg.h print.h
-cfg.o: ../include/saAis.h ../include/openaisCfg.h ../include/saAis.h
+cfg.o: ../include/saAis.h ../include/cfg.h ../include/saAis.h
 cfg.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_cfg.h
-cfg.o: ../include/ipc_gen.h ../include/openaisCfg.h ../include/list.h
+cfg.o: ../include/ipc_gen.h ../include/cfg.h ../include/list.h
 cfg.o: ../include/queue.h ../lcr/lcr_comp.h service.h totem.h totemip.h
 cfg.o: objdb.h totempg.h aispoll.h totemsrp.h mempool.h util.h print.h
 cfg.o: mainconfig.h
