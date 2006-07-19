@@ -163,8 +163,12 @@ static void message_handler_req_lib_cpg_trackstop (void *conn, void *message);
 
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason);
 
-static void cpg_exec_send_joinlist(void);
+static int cpg_exec_send_joinlist(void);
 
+static void cpg_sync_init (void);
+static int  cpg_sync_process (void);
+static void cpg_sync_activate (void);
+static void cpg_sync_abort (void);
 /*
  * Library Handler Definition
  */
@@ -241,6 +245,10 @@ struct openais_service_handler cpg_service_handler = {
 	.exec_service				= cpg_exec_service,
 	.exec_service_count		        = sizeof (cpg_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn                             = cpg_confchg_fn,
+	.sync_init                              = cpg_sync_init,
+	.sync_process                           = cpg_sync_process,
+	.sync_activate                          = cpg_sync_activate,
+	.sync_abort                             = cpg_sync_abort
 };
 
 /*
@@ -297,6 +305,26 @@ struct req_exec_cpg_mcast {
 	mar_uint32_t pid __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
+
+static void cpg_sync_init (void)
+{
+}
+
+static int cpg_sync_process (void)
+{
+	return cpg_exec_send_joinlist();
+}
+
+static void cpg_sync_activate (void)
+{
+
+}
+static void cpg_sync_abort (void)
+{
+
+}
+
+
 
 static int notify_lib_joinlist(
 	struct group_info *gi,
@@ -555,11 +583,6 @@ static void cpg_confchg_fn (
 
 	list_init(&removed_list);
 
-	/* Tell any newly joined nodes our list of joined groups */
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
-		cpg_exec_send_joinlist();
- 	}
-
 	/* Remove nodes from joined groups and add removed groups to the list */
 	for (i = 0; i < left_list_entries; i++) {
 		remove_node_from_groups(left_list[i], &removed_list);
@@ -673,7 +696,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)message;
 
-	log_printf(LOG_LEVEL_DEBUG, "got procjoin message from cluster\n");
+	log_printf(LOG_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
 
 	do_proc_join(&req_exec_cpg_procjoin->group_name,
 		req_exec_cpg_procjoin->pid, nodeid,
@@ -690,7 +713,7 @@ static void message_handler_req_exec_cpg_procleave (
 	struct list_head *iter;
 	mar_cpg_address_t notify_info;
 
-	log_printf(LOG_LEVEL_DEBUG, "got procleave message from cluster\n");
+	log_printf(LOG_LEVEL_DEBUG, "got procleave message from cluster node %d\n", nodeid);
 
 	gi = get_group(&req_exec_cpg_procjoin->group_name); /* this will always succeed ! */
 	assert(gi);
@@ -731,7 +754,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	mar_res_header_t *res = (mar_res_header_t *)message;
 	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(mar_res_header_t));
 
-	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %x\n",
+	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %d\n",
 		nodeid);
 
 	/* Ignore our own messages */
@@ -784,7 +807,7 @@ static void message_handler_req_exec_cpg_mcast (
 }
 
 
-static void cpg_exec_send_joinlist(void)
+static int cpg_exec_send_joinlist(void)
 {
 	int count = 0;
 	char *buf;
@@ -813,12 +836,12 @@ static void cpg_exec_send_joinlist(void)
 
 	/* Nothing to send */
 	if (!count)
-		return;
+		return 0;
 
 	buf = alloca(sizeof(mar_res_header_t) + sizeof(struct join_list_entry) * count);
 	if (!buf) {
 		log_printf(LOG_LEVEL_WARNING, "Unable to allocate joinlist buffer");
-		return;
+		return -1;
 	}
 
 	jle = (struct join_list_entry *)(buf + sizeof(mar_res_header_t));
@@ -846,7 +869,7 @@ static void cpg_exec_send_joinlist(void)
 	req_exec_cpg_iovec.iov_base = buf;
 	req_exec_cpg_iovec.iov_len = res->size;
 
-	totempg_groups_mcast_joined (openais_group_handle, &req_exec_cpg_iovec, 1, TOTEMPG_AGREED);
+	return totempg_groups_mcast_joined (openais_group_handle, &req_exec_cpg_iovec, 1, TOTEMPG_AGREED);
 }
 
 static int cpg_lib_init_fn (void *conn)
