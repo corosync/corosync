@@ -1167,7 +1167,7 @@ char *totempg_ifaces_print (unsigned int nodeid)
 	static char iface_string[256 * INTERFACE_MAX];
 	char one_iface[64];
 	struct totem_ip_address interfaces[INTERFACE_MAX];
-	char *status;
+	char **status;
 	unsigned int iface_count;
 	unsigned int i;
 	int res;
