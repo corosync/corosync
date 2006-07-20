@@ -95,6 +95,7 @@ struct outq_item {
 
 enum conn_state {
 	CONN_STATE_ACTIVE,
+	CONN_STATE_SECURITY,
 	CONN_STATE_REQUESTED,
 	CONN_STATE_CLOSED,
 	CONN_STATE_DISCONNECTED
@@ -125,7 +126,7 @@ struct conn_info {
 
 static void *prioritized_poll_thread (void *conn);
 static int conn_info_outq_flush (struct conn_info *conn_info);
-static int libais_deliver (struct conn_info *conn_info);
+static void libais_deliver (struct conn_info *conn_info);
 
  /*
   * IPC Initializers
@@ -143,6 +144,11 @@ static int (*ais_init_service[]) (struct conn_info *conn_info, void *message) = 
 	dispatch_init_send_response
 };
 
+static void libais_disconnect_security (struct conn_info *conn_info)
+{
+	conn_info->state = CONN_STATE_SECURITY;
+	close (conn_info->fd);
+}
 
 static int response_init_send_response (
 	struct conn_info *conn_info,
@@ -167,6 +173,7 @@ static int response_init_send_response (
 		sizeof (res_lib_response_init));
 
 	if (error == SA_AIS_ERR_ACCESS) {
+		libais_disconnect_security (conn_info);
 		return (-1);
 	}
 	return (0);
@@ -223,6 +230,10 @@ static int dispatch_init_send_response (
 		&res_lib_dispatch_init,
 		sizeof (res_lib_dispatch_init));
 
+	if (error == SA_AIS_ERR_ACCESS) {
+		libais_disconnect_security (conn_info);
+		return (-1);
+	}
 	if (error != SA_AIS_OK) {
 		return (-1);
 	}
@@ -334,10 +345,8 @@ static int libais_disconnect (struct conn_info *conn_info)
 	if (conn_info->state == CONN_STATE_ACTIVE || conn_info->state == CONN_STATE_REQUESTED) {
 		close (conn_info->fd);
 		conn_info->state = CONN_STATE_CLOSED;
-//		if (conn_info->conn_info_partner) {
-			close (conn_info->conn_info_partner->fd);
-			conn_info->conn_info_partner->state = CONN_STATE_CLOSED;
-//		}
+		close (conn_info->conn_info_partner->fd);
+		conn_info->conn_info_partner->state = CONN_STATE_CLOSED;
 	}
 
 	/*
@@ -413,6 +422,13 @@ retry_poll:
 		conn_info_mutex_lock (conn_info, service);
 		
 		switch (conn_info->state) {
+		case CONN_STATE_SECURITY:
+			conn_info_mutex_unlock (conn_info, service);
+			free (conn_info->shared_mutex);
+			conn_info_destroy (conn);
+			pthread_exit (0);
+			break;
+
 		case CONN_STATE_REQUESTED:
 		case CONN_STATE_CLOSED:
 			res = libais_disconnect (conn);
@@ -565,7 +581,7 @@ struct res_overlay {
 	char buf[4096];
 };
 
-static int libais_deliver (struct conn_info *conn_info)
+static void libais_deliver (struct conn_info *conn_info)
 {
 	int res;
 	mar_req_header_t *header;
@@ -621,11 +637,10 @@ retry_recv:
 		goto retry_recv;
 	} else
 	if (res == -1 && errno != EAGAIN) {
-		goto error_exit;
+		return;
 	} else
 	if (res == 0) {
-		res = -1;
-		goto error_exit;
+		return;
 	}
 
 	/*
@@ -675,8 +690,7 @@ retry_recv:
 			if (header->id < 0 || header->id > ais_service[service]->lib_service_count) {
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
 				header->id, ais_service[service]->lib_service_count);
-				res = -1;
-				goto error_exit;
+				return ;
 			}
 
 			/*
@@ -732,10 +746,7 @@ retry_recv:
 		conn_info->inb_start = conn_info->inb_inuse;
 	}
 
-	return (0);
-
-error_exit:
-	return (res);
+	return;
 }
 
 static int poll_handler_libais_accept (
