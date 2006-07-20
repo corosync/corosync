@@ -2289,7 +2289,6 @@ static int orf_token_rtr (
 	for (instance->fcc_remcast_current = 0, i = 0;
 		instance->fcc_remcast_current < *fcc_allowed && i < orf_token->rtr_list_entries;) {
 
-printf ("entering retransmit operation\n");
 		/*
 		 * If this retransmit request isn't from this configuration,
 		 * try next rtr entry
