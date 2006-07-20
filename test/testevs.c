@@ -120,7 +120,6 @@ int main (void)
 	}
 	printf ("local processor from evs_membership_get %x\n", local_nodeid);
 
-exit (1);
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
