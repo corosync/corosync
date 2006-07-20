@@ -81,6 +81,7 @@ struct ckptCheckpointInstance {
 	SaCkptCheckpointHandleT checkpointHandle;
 	SaCkptCheckpointOpenFlagsT checkpointOpenFlags;
 	SaNameT checkpointName;
+	unsigned int checkpointId;
 	pthread_mutex_t response_mutex;
 	struct list_head list;
 	struct list_head section_iteration_list_head;
@@ -441,7 +442,10 @@ saCkptDispatch (
 					res_lib_ckpt_checkpointopenasync->checkpoint_handle,
 					(void *)&ckptCheckpointInstance);
 
-					assert (error == SA_AIS_OK); /* should only be valid handles here */
+				assert (error == SA_AIS_OK); /* should only be valid handles here */
+				ckptCheckpointInstance->checkpointId =
+					res_lib_ckpt_checkpointopenasync->ckpt_id;
+				
 				/*
 				 * open succeeded without error
 				 */
@@ -652,6 +656,8 @@ saCkptCheckpointOpen (
 		error = res_lib_ckpt_checkpointopen.header.error;
 		goto error_put_destroy;
 	}
+	ckptCheckpointInstance->checkpointId =
+		res_lib_ckpt_checkpointopen.ckpt_id;
 
 	pthread_mutex_init (&ckptCheckpointInstance->response_mutex, NULL);
 
@@ -816,6 +822,8 @@ saCkptCheckpointClose (
 	req_lib_ckpt_checkpointclose.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTCLOSE;
 	marshall_to_mar_name_t (&req_lib_ckpt_checkpointclose.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_checkpointclose.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -901,6 +909,8 @@ saCkptCheckpointRetentionDurationSet (
 	req_lib_ckpt_checkpointretentiondurationset.retention_duration = retentionDuration;
 	marshall_to_mar_name_t (&req_lib_ckpt_checkpointretentiondurationset.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_checkpointretentiondurationset.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -940,6 +950,8 @@ saCkptActiveReplicaSet (
 	req_lib_ckpt_activereplicaset.header.id = MESSAGE_REQ_CKPT_ACTIVEREPLICASET;
 	marshall_to_mar_name_t (&req_lib_ckpt_activereplicaset.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_activereplicaset.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -981,6 +993,8 @@ saCkptCheckpointStatusGet (
 
 	marshall_to_mar_name_t (&req_lib_ckpt_checkpointstatusget.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_checkpointstatusget.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1044,6 +1058,8 @@ saCkptSectionCreate (
 
 	marshall_to_mar_name_t (&req_lib_ckpt_sectioncreate.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_sectioncreate.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1115,6 +1131,8 @@ saCkptSectionDelete (
 	marshall_to_mar_name_t (
 		&req_lib_ckpt_sectiondelete.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_sectiondelete.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	error = saSendRetry (ckptCheckpointInstance->response_fd, &req_lib_ckpt_sectiondelete,
 		sizeof (struct req_lib_ckpt_sectiondelete));
@@ -1176,6 +1194,8 @@ saCkptSectionExpirationTimeSet (
 
 	marshall_to_mar_name_t (&req_lib_ckpt_sectionexpirationtimeset.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_sectionexpirationtimeset.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1277,6 +1297,8 @@ saCkptSectionIterationInitialize (
 	marshall_to_mar_name_t (
 		&req_lib_ckpt_sectioniterationinitialize.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_sectioniterationinitialize.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptSectionIterationInstance->response_mutex);
 
@@ -1483,6 +1505,8 @@ saCkptCheckpointWrite (
 
 		marshall_to_mar_name_t (&req_lib_ckpt_sectionwrite.checkpoint_name,
 			&ckptCheckpointInstance->checkpointName);
+		req_lib_ckpt_sectionwrite.ckpt_id =
+			ckptCheckpointInstance->checkpointId;
 
 		iov_len = 0;
 /* TODO check for zero length stuff */
@@ -1569,6 +1593,8 @@ saCkptSectionOverwrite (
 	req_lib_ckpt_sectionoverwrite.data_size = dataSize;
 	marshall_to_mar_name_t (&req_lib_ckpt_sectionoverwrite.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_sectionoverwrite.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 	
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1645,6 +1671,8 @@ saCkptCheckpointRead (
 
 		marshall_to_mar_name_t (&req_lib_ckpt_sectionread.checkpoint_name,
 			&ckptCheckpointInstance->checkpointName);
+		req_lib_ckpt_sectionread.ckpt_id =
+			ckptCheckpointInstance->checkpointId;
 
 		iov[0].iov_base = (char *)&req_lib_ckpt_sectionread;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionread);
@@ -1735,6 +1763,8 @@ saCkptCheckpointSynchronize (
 	req_lib_ckpt_checkpointsynchronize.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZE;
 	marshall_to_mar_name_t (&req_lib_ckpt_checkpointsynchronize.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_checkpointsynchronize.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
@@ -1790,8 +1820,11 @@ saCkptCheckpointSynchronizeAsync (
 
 	req_lib_ckpt_checkpointsynchronizeasync.header.size = sizeof (struct req_lib_ckpt_checkpointsynchronizeasync); 
 	req_lib_ckpt_checkpointsynchronizeasync.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_CHECKPOINTSYNCHRONIZEASYNC;
-	marshall_to_mar_name_t (&req_lib_ckpt_checkpointsynchronizeasync.checkpoint_name,
+	marshall_to_mar_name_t (
+		&req_lib_ckpt_checkpointsynchronizeasync.checkpoint_name,
 		&ckptCheckpointInstance->checkpointName);
+	req_lib_ckpt_checkpointsynchronizeasync.ckpt_id =
+		ckptCheckpointInstance->checkpointId;
 	req_lib_ckpt_checkpointsynchronizeasync.invocation = invocation;
 
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);

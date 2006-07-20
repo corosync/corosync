@@ -91,21 +91,25 @@ struct req_lib_ckpt_checkpointopen {
 	SaAisErrorT fail_with_error __attribute__((aligned(8)));
 	mar_invocation_t invocation __attribute__((aligned(8)));
 	mar_uint32_t async_call __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_checkpointopen {
 	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_checkpointopenasync {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_ckpt_checkpoint_handle_t checkpoint_handle __attribute__((aligned(8)));
 	mar_invocation_t invocation __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct req_lib_ckpt_checkpointclose {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_checkpointclose {
@@ -125,7 +129,9 @@ struct req_lib_ckpt_checkpointretentiondurationset {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
 	mar_time_t retention_duration __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
+
 struct res_lib_ckpt_checkpointretentiondurationset {
 	mar_res_header_t header __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
@@ -133,6 +139,7 @@ struct res_lib_ckpt_checkpointretentiondurationset {
 struct req_lib_ckpt_activereplicaset {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_activereplicaset {
@@ -142,11 +149,13 @@ struct res_lib_ckpt_activereplicaset {
 struct req_lib_ckpt_checkpointstatusget {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_checkpointstatusget {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_ckpt_checkpoint_descriptor_t checkpoint_descriptor __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct req_lib_ckpt_sectioncreate {
@@ -155,6 +164,7 @@ struct req_lib_ckpt_sectioncreate {
 	mar_uint32_t id_len __attribute__((aligned(8)));
 	mar_time_t expiration_time __attribute__((aligned(8)));
 	mar_uint32_t initial_data_size __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_sectioncreate {
@@ -164,6 +174,7 @@ struct res_lib_ckpt_sectioncreate {
 struct req_lib_ckpt_sectiondelete {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_uint32_t id_len __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
@@ -176,6 +187,7 @@ struct req_lib_ckpt_sectionexpirationtimeset {
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
 	mar_uint32_t id_len __attribute__((aligned(8)));
 	mar_time_t expiration_time __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_sectionexpirationtimeset {
@@ -185,6 +197,7 @@ struct res_lib_ckpt_sectionexpirationtimeset {
 struct req_lib_ckpt_sectioniterationinitialize {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_ckpt_sections_chosen_t sections_chosen __attribute__((aligned(8)));
 	mar_time_t expiration_time __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
@@ -216,6 +229,7 @@ struct res_lib_ckpt_sectioniterationnext {
 struct req_lib_ckpt_sectionwrite {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_uint32_t id_len __attribute__((aligned(8)));
 	mar_offset_t data_offset __attribute__((aligned(8)));
 	mar_offset_t data_size __attribute__((aligned(8)));
@@ -228,6 +242,7 @@ struct res_lib_ckpt_sectionwrite {
 struct req_lib_ckpt_sectionoverwrite {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_uint32_t id_len __attribute__((aligned(8)));
 	mar_uint32_t data_size __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
@@ -239,6 +254,7 @@ struct res_lib_ckpt_sectionoverwrite {
 struct req_lib_ckpt_sectionread {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_uint32_t id_len __attribute__((aligned(8)));
 	mar_offset_t data_offset __attribute__((aligned(8)));
 	mar_offset_t data_size __attribute__((aligned(8)));
@@ -252,6 +268,7 @@ struct res_lib_ckpt_sectionread {
 struct req_lib_ckpt_checkpointsynchronize {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
 struct res_lib_ckpt_checkpointsynchronize {
@@ -261,6 +278,7 @@ struct res_lib_ckpt_checkpointsynchronize {
 struct req_lib_ckpt_checkpointsynchronizeasync {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_name_t checkpoint_name __attribute__((aligned(8)));
+	mar_uint32_t ckpt_id __attribute__((aligned(8)));
 	mar_invocation_t invocation __attribute__((aligned(8)));
 } __attribute__((aligned(8)));
 
