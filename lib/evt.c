@@ -552,7 +552,6 @@ static SaAisErrorT make_event(SaEvtEventHandleT *event_handle,
 			error =  SA_AIS_ERR_LIBRARY;
 			goto make_evt_done_put2;
 		}
-		// TODO marshall pattern
 		memcpy(edi->edi_patterns.patterns[i].pattern,
 				str, pat->pattern_size);
 		str += pat->pattern_size;
@@ -1811,7 +1810,6 @@ static uint32_t aispatt_to_evt_patt(
 	 * will be later converted back into pointers when received as events.
 	 */
 	for (i = 0; i < patterns->patternsNumber; i++) {
-	// TODO marshall?
 		memcpy(str, patterns->patterns[i].pattern, 
 			 	patterns->patterns[i].patternSize);
 		pats->pattern_size = patterns->patterns[i].patternSize;
@@ -1863,7 +1861,6 @@ static uint32_t aisfilt_to_evt_filt(
 		filts->filter_type = filters->filters[i].filterType;
 		filts->filter.pattern_size = 
 			filters->filters[i].filter.patternSize;
-			// TODO marshall pattern
 		memcpy(str,
 			 filters->filters[i].filter.pattern, 
 			 filters->filters[i].filter.patternSize);
