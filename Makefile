@@ -91,6 +91,7 @@ install:
 	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so
 	ln -sf libevs.so.2.0.0 lib/libevs.so
 	ln -sf libcpg.so.2.0.0 lib/libcpg.so
+	ln -sf libcfg.so.2.0.0 lib/libcfg.so
 	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so
 
 	ln -sf libais.so.2.0.0 lib/libais.so.2
