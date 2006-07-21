@@ -288,7 +288,7 @@ static inline unsigned int conn_info_create (int fd) {
 	conn_info->service = SOCKET_SERVICE_INIT;
 
 	pthread_attr_init (&conn_info->thread_attr);
-	pthread_attr_setstacksize (&conn_info->thread_attr, 100000);
+	pthread_attr_setstacksize (&conn_info->thread_attr, 200000);
 	pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_DETACHED);
 	res = pthread_create (&conn_info->thread, &conn_info->thread_attr,
 		prioritized_poll_thread, conn_info);
