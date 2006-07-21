@@ -91,6 +91,7 @@ struct ckptSectionIterationInstance {
 	int response_fd;
 	SaCkptSectionIterationHandleT sectionIterationHandle;
 	SaNameT checkpointName;
+        SaSizeT maxSectionIdSize;
 	struct list_head sectionIdListHead;
 	pthread_mutex_t response_mutex;
 	unsigned int executive_iteration_handle;
@@ -483,7 +484,6 @@ saCkptDispatch (
 				res_lib_ckpt_checkpointsynchronizeasync->header.error);
 			break;
 		default:
-			/* TODO */
 			break;
 		}
 		/*
@@ -1316,6 +1316,8 @@ saCkptSectionIterationInitialize (
 
 	ckptSectionIterationInstance->executive_iteration_handle =
 		res_lib_ckpt_sectioniterationinitialize.iteration_handle;
+	ckptSectionIterationInstance->maxSectionIdSize =
+		res_lib_ckpt_sectioniterationinitialize.max_section_id_size;
 
 	saHandleInstancePut (&ckptSectionIterationHandleDatabase, *sectionIterationHandle);
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
@@ -1354,10 +1356,8 @@ saCkptSectionIterationNext (
 	/*
 	 * Allocate section id storage area
 	 */
-	/*
-	 *  TODO max section id size is 500
-	 */
-	iteratorSectionIdListEntry = malloc (sizeof (struct list_head) + 500);
+	iteratorSectionIdListEntry = malloc (sizeof (struct list_head) +
+		ckptSectionIterationInstance->maxSectionIdSize);
 	if (iteratorSectionIdListEntry == 0) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto error_put_nounlock;

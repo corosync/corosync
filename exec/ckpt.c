@@ -4088,6 +4088,8 @@ error_exit:
 	res_lib_ckpt_sectioniterationinitialize.header.id = MESSAGE_RES_CKPT_SECTIONITERATIONINITIALIZE;
 	res_lib_ckpt_sectioniterationinitialize.header.error = error;
 	res_lib_ckpt_sectioniterationinitialize.iteration_handle = iteration_handle;
+	res_lib_ckpt_sectioniterationinitialize.max_section_id_size =
+		checkpoint->checkpoint_creation_attributes.max_section_id_size;
 
 	openais_conn_send_response (
 		conn,

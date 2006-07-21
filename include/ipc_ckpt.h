@@ -205,6 +205,7 @@ struct req_lib_ckpt_sectioniterationinitialize {
 struct res_lib_ckpt_sectioniterationinitialize {
 	mar_res_header_t header __attribute__((aligned(8)));
 	unsigned int iteration_handle __attribute__((aligned(8)));
+	mar_size_t max_section_id_size;
 } __attribute__((aligned(8)));
 
 struct req_lib_ckpt_sectioniterationfinalize {
