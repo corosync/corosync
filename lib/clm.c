@@ -599,8 +599,6 @@ saClmClusterTrack (
 		notificationBuffer->numberOfItems = items_to_copy;
 	}
 
-// TODO get response packet with saRecvRetry, but need to implement that 
-// in executive service
 error_exit:
 	pthread_mutex_unlock (&clmInstance->response_mutex);
 
