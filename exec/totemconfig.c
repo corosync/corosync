@@ -498,7 +498,7 @@ int totem_config_validate (
 		goto parse_error;
 	}
 	if (totem_config->vsf_type == NULL) {
-		totem_config->vsf_type = "ykd";
+		totem_config->vsf_type = "none";
 	}
 
 	return (0);

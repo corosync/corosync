@@ -60,6 +60,8 @@
 #include "vsf.h"
 #include "../lcr/lcr_comp.h"
 
+#define YKD_PROCESSOR_COUNT_MAX 32
+
 enum ykd_header_values {
 	YKD_HEADER_SENDSTATE = 0,
 	YKD_HEADER_ATTEMPT = 1
@@ -75,7 +77,7 @@ struct ykd_header {
 };
 
 struct ykd_session {
-	unsigned int member_list[PROCESSOR_COUNT_MAX];
+	unsigned int member_list[YKD_PROCESSOR_COUNT_MAX];
 	int member_list_entries;
 	int session_id;
 };
@@ -83,11 +85,11 @@ struct ykd_session {
 struct ykd_state {
 	struct ykd_session last_primary;
 
-	struct ykd_session last_formed[PROCESSOR_COUNT_MAX];
+	struct ykd_session last_formed[YKD_PROCESSOR_COUNT_MAX];
 
 	int last_formed_entries;
 
-	struct ykd_session ambiguous_sessions[PROCESSOR_COUNT_MAX];
+	struct ykd_session ambiguous_sessions[YKD_PROCESSOR_COUNT_MAX];
 
 	int ambiguous_sessions_entries;
 
@@ -104,17 +106,17 @@ struct ykd_state ykd_state;
 
 static totempg_groups_handle ykd_group_handle;
 
-static struct state_received state_received_confchg[PROCESSOR_COUNT_MAX];
+static struct state_received state_received_confchg[YKD_PROCESSOR_COUNT_MAX];
 
 static int state_received_confchg_entries;
 
-static struct state_received state_received_process[PROCESSOR_COUNT_MAX];
+static struct state_received state_received_process[YKD_PROCESSOR_COUNT_MAX];
 
 static int state_received_process_entries;
 
 static enum ykd_mode ykd_mode;
 
-static unsigned int view_list[PROCESSOR_COUNT_MAX];
+static unsigned int view_list[YKD_PROCESSOR_COUNT_MAX];
 
 static int view_list_entries;
 
@@ -122,7 +124,7 @@ static int session_id_max;
 
 static struct ykd_session *last_primary_max;
 
-static struct ykd_session ambiguous_sessions_max[PROCESSOR_COUNT_MAX];
+static struct ykd_session ambiguous_sessions_max[YKD_PROCESSOR_COUNT_MAX];
 
 static int ambiguous_sessions_max_entries;
 
