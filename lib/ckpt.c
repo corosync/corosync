@@ -1476,6 +1476,7 @@ saCkptCheckpointWrite (
 	int i;
 	struct iovec iov[3];
 	int iov_len = 0;
+	int iov_idx;
 
 	if (ioVector == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
@@ -1493,6 +1494,20 @@ saCkptCheckpointWrite (
 	}
 	req_lib_ckpt_sectionwrite.header.id = MESSAGE_REQ_CKPT_CHECKPOINT_SECTIONWRITE;
 
+	/*
+	 * Make sure ioVector is valid
+	 */
+	for (i = 0; i < numberOfElements; i++) {
+		if (ioVector[i].dataSize == 0) {
+			*erroneousVectorIndex = i;
+			goto error_put;
+		}
+		if (ioVector[i].dataBuffer == NULL) {
+			*erroneousVectorIndex = i;
+			goto error_put;
+		}
+	}
+
 	pthread_mutex_lock (&ckptCheckpointInstance->response_mutex);
 
 	for (i = 0; i < numberOfElements; i++) {
@@ -1509,17 +1524,23 @@ saCkptCheckpointWrite (
 			ckptCheckpointInstance->checkpointId;
 
 		iov_len = 0;
-/* TODO check for zero length stuff */
-		iov[0].iov_base = (char *)&req_lib_ckpt_sectionwrite;
-		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionwrite);
-		iov[1].iov_base = ioVector[i].sectionId.id;
-		iov[1].iov_len = ioVector[i].sectionId.idLen;
-		iov[2].iov_base = ioVector[i].dataBuffer;
-		iov[2].iov_len = ioVector[i].dataSize;
+		iov_idx = 0;
+		iov[iov_idx].iov_base = (char *)&req_lib_ckpt_sectionwrite;
+		iov[iov_idx].iov_len = sizeof (struct req_lib_ckpt_sectionwrite);
+		iov_idx++;
+
+		if (ioVector[i].sectionId.idLen) {
+			iov[iov_idx].iov_base = ioVector[i].sectionId.id;
+			iov[iov_idx].iov_len = ioVector[i].sectionId.idLen;
+			iov_idx++;
+		}
+		iov[iov_idx].iov_base = ioVector[i].dataBuffer;
+		iov[iov_idx].iov_len = ioVector[i].dataSize;
+		iov_idx++;
 
 		error = saSendMsgRetry (ckptCheckpointInstance->response_fd,
 			iov,
-			3);
+			iov_idx);
 		if (error != SA_AIS_OK) {
 			goto error_exit;
 		}
