@@ -103,13 +103,15 @@ typedef struct {
 	void *conn __attribute__((aligned(8)));
 } mar_message_source_t __attribute__((aligned(8)));
 
-/*
- * TODO this isn't right
- */
 static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 {
 	swab_mar_uint32_t (&to_swab->nodeid);
-// TODO need to swab conn in some way
+	/*
+	 * if it is from a byteswapped machine, then we can safely
+	 * ignore its conn info data structure since this is only
+	 * local to the machine
+	 */
+	to_swab->conn = NULL;
 }
 
 #endif /* IPC_GEN_H_DEFINED */
