@@ -80,7 +80,7 @@ void totemip_nosigpipe(int s)
 	int on = 1;
 	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
 }
-#endif 
+#endif
 
 /* Compare two addresses */
 int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
@@ -238,8 +238,10 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 	return ret;
 }
 
-/* Converts an address string string into a totem_ip_address */
-int totemip_parse(struct totem_ip_address *totemip, char *addr)
+/* Converts an address string string into a totem_ip_address.
+   family can be AF_INET, AF_INET6 or 0 ("for "don't care")
+*/
+int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
 {
 	struct addrinfo *ainfo;
 	struct addrinfo ahints;
@@ -250,6 +252,7 @@ int totemip_parse(struct totem_ip_address *totemip, char *addr)
 	memset(&ahints, 0, sizeof(ahints));
 	ahints.ai_socktype = SOCK_DGRAM;
 	ahints.ai_protocol = IPPROTO_UDP;
+	ahints.ai_family   = family;
 
 	/* Lookup the nodename address */
 	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
@@ -301,7 +304,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 {
 #define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
-	
+
 	struct sockaddr_in *intf_addr_mask;
 	struct sockaddr_storage bindnet_ss, intf_addr_ss;
 	struct sockaddr_in *intf_addr_sin = (struct sockaddr_in *)&intf_addr_ss;
@@ -341,7 +344,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	 * Find interface address to bind to
 	 */
 	lifr = (struct ifreq *)ifc.ifc_buf + (ifc.ifc_len / sizeof(*lifr));
-	
+
 	for (ifr = ifc.ifc_req; ifr < lifr; ifr = NEXT_IFR(ifr)) {
 		strcpy(ifrb.ifr_name, ifr->ifr_name);
 
@@ -349,7 +352,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		 */
 		if (ioctl(id_fd, SIOCGIFADDR, &ifrb) < 0)
 			continue;
-			
+
 		memcpy(&intf_addr_ss, &ifrb.ifr_addr, sizeof(intf_addr_ss));
 		if (intf_addr_sin->sin_family == AF_INET) {
 			/* Retrieve mask
@@ -362,7 +365,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			if ( bindnet_sin->sin_family == AF_INET &&
 				 (intf_addr_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr) ==
 			     (bindnet_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr)) {
-	
+
 				totemip_copy(boundto, bindnet);
 				memcpy(boundto->addr, &intf_addr_sin->sin_addr, sizeof(intf_addr_sin->sin_addr));
 
@@ -390,7 +393,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	}
 	free (ifc.ifc_buf);
 	close (id_fd);
-	
+
 	return (res);
 }
 #elif defined(OPENAIS_LINUX)

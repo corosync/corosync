@@ -228,7 +228,7 @@ extern int totem_config_read (
 		 * Get interface multicast address
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastaddr", &str)) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str);
+			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
 		}
 
 		/*
@@ -243,7 +243,8 @@ extern int totem_config_read (
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "bindnetaddr", &str)) {
 
-			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str);
+			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
+					     totem_config->interfaces[ringnumber].mcast_addr.family);
 		}
 		totem_config->interface_count++;
 	}
