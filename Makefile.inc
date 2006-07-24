@@ -29,7 +29,6 @@ ifndef OPENAIS_BUILD
 endif
 
 # OPENAIS_PROFILE
-# OPENAIS_COVERAGE
 
 # default CFLAGS, LDFLAGS
 #
@@ -51,14 +50,15 @@ ifeq (${OPENAIS_BUILD}, DEBUG)
 	CFLAGS += -O0 -g -Wall -DDEBUG 
 	LDFLAGS += -g
 endif
+ifeq (${OPENAIS_BUILD}, COVERAGE)
+	CFLAGS += -O0 -g -ftest-coverage -fprofile-arcs
+	LDFLAGS += -g -ftest-coverage -fprofile-arcs
+	BUILD_DYNAMIC=0
+endif
 
 ifdef OPENAIS_PROFILE
 	CFLAGS += -pg
 	LDFLAGS += -pg
-endif
-ifdef OPENAIS_COVERAGE
-	CFLAGS += -ftest-coverage -fprofile-arcs
-	LDFLAGS += -ftest-coverage -fprofile-arcs
 endif
 
 # platform specific CFLAGS, LDFLAGS
