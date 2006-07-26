@@ -1,9 +1,10 @@
 /*
  * Copyright (C) 2006 Red Hat, Inc.
+ * Copyright (C) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -35,6 +36,7 @@
 #ifndef AIS_MAR_CLM_H_DEFINED
 #define AIS_MAR_CLM_H_DEFINED
 
+#include "swab.h"
 #include "saAis.h"
 #include "saClm.h"
 #include "mar_gen.h"
@@ -54,6 +56,12 @@ typedef struct {
 	mar_clm_node_address_family_t family __attribute__((aligned(8)));
 	unsigned char value[MAR_CLM_MAX_ADDRESS_LENGTH] __attribute__((aligned(8)));
 } mar_clm_node_address_t;
+
+static inline void swab_mar_clm_node_address_t(mar_clm_node_address_t *to_swab)
+{
+	swab_mar_uint16_t (&to_swab->length);
+	swab_mar_uint32_t (&to_swab->family);
+}
 
 static inline void marshall_from_mar_clm_node_address_t (
 	SaClmNodeAddressT *dest,
@@ -77,13 +85,23 @@ static inline void marshall_to_mar_clm_node_address_t (
  * Marshalling the SaClmClusterNodeT data structure
  */
 typedef struct {
-	unsigned int node_id __attribute__((aligned(8)));
+	mar_uint32_t node_id __attribute__((aligned(8)));
 	mar_clm_node_address_t node_address __attribute__((aligned(8)));
 	mar_name_t node_name __attribute__((aligned(8)));
-	unsigned int member __attribute__((aligned(8)));
-	unsigned long long boot_timestamp __attribute__((aligned(8)));
-	unsigned long long initial_view_number __attribute__((aligned(8)));
+	mar_uint32_t member __attribute__((aligned(8)));
+	mar_uint64_t boot_timestamp __attribute__((aligned(8)));
+	mar_uint64_t initial_view_number __attribute__((aligned(8)));
 } mar_clm_cluster_node_t;
+
+static inline void swab_mar_clm_cluster_node_t(mar_clm_cluster_node_t *to_swab)
+{
+	swab_mar_uint32_t (&to_swab->node_id);
+	swab_mar_uint32_t (&to_swab->member);
+	swab_mar_clm_node_address_t (&to_swab->node_address);
+	swab_mar_name_t (&to_swab->node_name);
+	swab_mar_uint64_t (&to_swab->boot_timestamp);
+	swab_mar_uint64_t (&to_swab->initial_view_number);
+}
 
 static inline void marshall_to_mar_clm_cluster_node_t (
 	mar_clm_cluster_node_t *dest,

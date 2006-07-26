@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (C) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -70,7 +71,6 @@
 #include "ipc.h"
 #include "mempool.h"
 #include "service.h"
-#include "../include/swab.h"
 #include "print.h"
 
 enum clm_message_req_types {
@@ -575,12 +575,8 @@ static void exec_clm_nodejoin_endian_convert (void *msg)
 {
 	struct req_exec_clm_nodejoin *node_join = msg;
 
-	node_join->cluster_node.node_id = swab32(node_join->cluster_node.node_id);
-	node_join->cluster_node.node_address.family = swab32(node_join->cluster_node.node_address.family);
-	node_join->cluster_node.node_address.length = swab16(node_join->cluster_node.node_address.length);
-	node_join->cluster_node.initial_view_number = swab64(node_join->cluster_node.initial_view_number);
-	node_join->cluster_node.boot_timestamp = swab64(node_join->cluster_node.boot_timestamp);
-
+	swab_mar_req_header_t (&node_join->header);
+	swab_mar_clm_cluster_node_t (&node_join->cluster_node);
 }
 
 static void message_handler_req_exec_clm_nodejoin (
