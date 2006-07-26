@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -32,6 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -89,7 +91,7 @@ struct resource_lock {
 };
 
 struct resource {
-	SaNameT name;
+	mar_name_t name;
 	int refcount;
 	struct list_head list;
 	struct list_head resource_lock_list_head;
@@ -169,6 +171,18 @@ static void message_handler_req_lib_lck_resourceunlockasync (
 static void message_handler_req_lib_lck_lockpurge (
 	void *conn,
 	void *msg);
+
+static void exec_lck_resourceopen_endian_convert (void *msg);
+
+static void exec_lck_resourceclose_endian_convert (void *msg);
+
+static void exec_lck_resourcelock_endian_convert (void *msg);
+
+static void exec_lck_resourceunlock_endian_convert (void *msg);
+
+static void exec_lck_resourcelockorphan_endian_convert (void *msg);
+
+static void exec_lck_lockpurge_endian_convert (void *msg);
 
 #ifdef TODO
 static void lck_sync_init (void);
@@ -260,22 +274,28 @@ static struct openais_lib_handler lck_lib_service[] =
 
 static struct openais_exec_handler lck_exec_service[] = {
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_resourceopen,
+		.exec_handler_fn	= message_handler_req_exec_lck_resourceopen,
+		.exec_endian_convert_fn	= exec_lck_resourceopen_endian_convert
 	},
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_resourceclose,
+		.exec_handler_fn	= message_handler_req_exec_lck_resourceclose,
+		.exec_endian_convert_fn	= exec_lck_resourceclose_endian_convert
 	},
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_resourcelock,
+		.exec_handler_fn	= message_handler_req_exec_lck_resourcelock,
+		.exec_endian_convert_fn	= exec_lck_resourcelock_endian_convert
 	},
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_resourceunlock,
+		.exec_handler_fn	= message_handler_req_exec_lck_resourceunlock,
+		.exec_endian_convert_fn	= exec_lck_resourceunlock_endian_convert
 	},
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_resourcelockorphan,
+		.exec_handler_fn	= message_handler_req_exec_lck_resourcelockorphan,
+		.exec_endian_convert_fn	= exec_lck_resourcelockorphan_endian_convert
 	},
 	{
-		.exec_handler_fn		= message_handler_req_exec_lck_lockpurge,
+		.exec_handler_fn	= message_handler_req_exec_lck_lockpurge,
+		.exec_endian_convert_fn	= exec_lck_lockpurge_endian_convert
 	}
 };
 
@@ -344,7 +364,7 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 struct req_exec_lck_resourceopen {
 	mar_req_header_t header;
 	mar_message_source_t source;
-	SaNameT resource_name;
+	mar_name_t resource_name;
 	SaLckResourceHandleT resource_handle;
 	SaInvocationT invocation;
 	SaTimeT timeout;
@@ -353,12 +373,39 @@ struct req_exec_lck_resourceopen {
 	SaAisErrorT fail_with_error;
 };
 
+static void exec_lck_resourceopen_endian_convert (void *msg)
+{
+	struct req_exec_lck_resourceopen *to_swab =
+		(struct req_exec_lck_resourceopen *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_mar_name_t (&to_swab->resource_name);
+	to_swab->resource_handle = swab64 (to_swab->resource_handle);
+	to_swab->invocation = swab64 (to_swab->invocation);
+	to_swab->timeout = swab64 (to_swab->timeout);
+	to_swab->open_flags = swab32 (to_swab->open_flags);
+	to_swab->async_call = swab32 (to_swab->async_call);
+	to_swab->fail_with_error = swab32 (to_swab->fail_with_error);
+}
+
 struct req_exec_lck_resourceclose {
 	mar_req_header_t header;
 	mar_message_source_t source;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 	SaLckResourceHandleT resource_handle;
 };
+
+static void exec_lck_resourceclose_endian_convert (void *msg)
+{
+	struct req_exec_lck_resourceclose *to_swab =
+		(struct req_exec_lck_resourceclose *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_mar_name_t (&to_swab->lockResourceName);
+	to_swab->resource_handle = swab64 (to_swab->resource_handle);
+}
 
 struct req_exec_lck_resourcelock {
 	mar_req_header_t header;
@@ -370,28 +417,77 @@ struct req_exec_lck_resourcelock {
 	struct req_lib_lck_resourcelock req_lib_lck_resourcelock;
 };
 
+static void exec_lck_resourcelock_endian_convert (void *msg)
+{
+	struct req_exec_lck_resourcelock *to_swab =
+		(struct req_exec_lck_resourcelock *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	to_swab->resource_handle = swab64 (to_swab->resource_handle);
+	to_swab->invocation = swab64 (to_swab->invocation);
+	to_swab->async_call = swab32 (to_swab->async_call);
+	to_swab->fail_with_error = swab32 (to_swab->fail_with_error);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_req_lib_lck_resourcelock (&to_swab->req_lib_lck_resourcelock);
+}
+
 struct req_exec_lck_resourceunlock {
 	mar_req_header_t header;
 	mar_message_source_t source;
-	SaNameT resource_name;
+	mar_name_t resource_name;
 	SaLckLockIdT lock_id;
 	SaInvocationT invocation;
 	SaTimeT timeout;
 	int async_call;
 };
 
+static void exec_lck_resourceunlock_endian_convert (void *msg)
+{
+	struct req_exec_lck_resourceunlock *to_swab =
+		(struct req_exec_lck_resourceunlock *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_mar_name_t (&to_swab->resource_name);
+	to_swab->lock_id = swab64 (to_swab->lock_id);
+	to_swab->invocation = swab64 (to_swab->invocation);
+	to_swab->timeout = swab64 (to_swab->timeout);
+	to_swab->async_call = swab32 (to_swab->async_call);
+}
+
 struct req_exec_lck_resourcelockorphan {
 	mar_req_header_t header;
 	mar_message_source_t source;
-	SaNameT resource_name;
+	mar_name_t resource_name;
 	SaLckLockIdT lock_id;
 };
+
+static void exec_lck_resourcelockorphan_endian_convert (void *msg)
+{
+	struct req_exec_lck_resourcelockorphan *to_swab =
+		(struct req_exec_lck_resourcelockorphan *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_mar_name_t (&to_swab->resource_name);
+	to_swab->lock_id = swab64 (to_swab->lock_id);
+}
 
 struct req_exec_lck_lockpurge {
 	mar_req_header_t header;
 	mar_message_source_t source;
 	struct req_lib_lck_lockpurge req_lib_lck_lockpurge;
 };
+
+static void exec_lck_lockpurge_endian_convert (void *msg)
+{
+	struct req_exec_lck_lockpurge *to_swab =
+		(struct req_exec_lck_lockpurge *)msg;
+
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_message_source_t (&to_swab->source);
+	swab_req_lib_lck_lockpurge (&to_swab->req_lib_lck_lockpurge);
+}
 
 #ifdef TODO
 static void lck_sync_init (void) 
@@ -424,7 +520,7 @@ static void lck_confchg_fn (
 {
 }
 
-static struct resource *resource_find (SaNameT *name)
+static struct resource *resource_find (mar_name_t *name)
 {
 	struct list_head *resource_list;
 	struct resource *resource;
@@ -436,7 +532,7 @@ static struct resource *resource_find (SaNameT *name)
         resource = list_entry (resource_list,
             struct resource, list);
 
-		if (name_match (name, &resource->name)) {
+		if (mar_name_match (name, &resource->name)) {
 			return (resource);
 		}
 	}
@@ -498,7 +594,7 @@ int lck_resource_close (struct resource *resource)
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE);
 
 	memcpy (&req_exec_lck_resourceclose.lockResourceName,
-		&resource->name, sizeof (SaNameT));
+		&resource->name, sizeof (mar_name_t));
 
 	iovec.iov_base = (char *)&req_exec_lck_resourceclose;
 	iovec.iov_len = sizeof (req_exec_lck_resourceclose);
@@ -527,7 +623,7 @@ void resource_lock_orphan (struct resource_lock *resource_lock)
 
 	memcpy (&req_exec_lck_resourcelockorphan.resource_name,
 		&resource_lock->resource->name,
-		sizeof (SaNameT));
+		sizeof (mar_name_t));
 		
 	req_exec_lck_resourcelockorphan.lock_id = resource_lock->lock_id;
 	
@@ -637,7 +733,7 @@ static void message_handler_req_exec_lck_resourceopen (
 	struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (req_exec_lck_resourceopen->source.conn);
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceOpen %s\n",
-		getSaNameT (&req_exec_lck_resourceopen->resource_name));
+		get_mar_name_t (&req_exec_lck_resourceopen->resource_name));
 	
 	if (req_exec_lck_resourceopen->fail_with_error != SA_AIS_OK) {
 		error = req_exec_lck_resourceopen->fail_with_error;
@@ -663,7 +759,7 @@ static void message_handler_req_exec_lck_resourceopen (
 
 		memcpy (&resource->name,
 			&req_exec_lck_resourceopen->resource_name,
-			sizeof (SaNameT));
+			sizeof (mar_name_t));
 		list_init (&resource->list);
 		list_init (&resource->resource_lock_list_head);
 		list_add (&resource->list, &resource_list_head);
@@ -754,7 +850,7 @@ static void message_handler_req_exec_lck_resourceclose (
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceClose %s\n",
-		getSaNameT (&req_exec_lck_resourceclose->lockResourceName));
+		get_mar_name_t (&req_exec_lck_resourceclose->lockResourceName));
 
 	resource = resource_find (&req_exec_lck_resourceclose->lockResourceName);
 	if (resource == 0) {
@@ -1044,7 +1140,7 @@ static void message_handler_req_exec_lck_resourcelock (
 	struct resource_cleanup *resource_cleanup = 0;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceLock %s\n",
-		getSaNameT (&req_exec_lck_resourcelock->req_lib_lck_resourcelock.lockResourceName));
+		get_mar_name_t (&req_exec_lck_resourcelock->req_lib_lck_resourcelock.lockResourceName));
 
 	resource = resource_find (&req_exec_lck_resourcelock->req_lib_lck_resourcelock.lockResourceName);
 	if (resource == 0) {
@@ -1158,7 +1254,7 @@ static void message_handler_req_exec_lck_resourceunlock (
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceUnlock %s\n",
-		getSaNameT (&req_exec_lck_resourceunlock->resource_name));
+		get_mar_name_t (&req_exec_lck_resourceunlock->resource_name));
 
 	resource = resource_find (&req_exec_lck_resourceunlock->resource_name);
 	if (resource == 0) {
@@ -1210,7 +1306,7 @@ static void message_handler_req_exec_lck_resourcelockorphan (
 	struct resource_lock *resource_lock = 0;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: Orphan resource locks for resource %s\n",
-		getSaNameT (&req_exec_lck_resourcelockorphan->resource_name));
+		get_mar_name_t (&req_exec_lck_resourcelockorphan->resource_name));
 
 	resource = resource_find (&req_exec_lck_resourcelockorphan->resource_name);
 	if (resource == 0) {
@@ -1237,7 +1333,7 @@ static void message_handler_req_exec_lck_lockpurge (
 	SaAisErrorT error = SA_AIS_OK;
 
 	log_printf (LOG_LEVEL_DEBUG, "EXEC request: saLckLockPurge %s\n",
-		getSaNameT (&req_exec_lck_lockpurge->req_lib_lck_lockpurge.lockResourceName));
+		get_mar_name_t (&req_exec_lck_lockpurge->req_lib_lck_lockpurge.lockResourceName));
 
 	resource = resource_find (&req_exec_lck_lockpurge->req_lib_lck_lockpurge.lockResourceName);
 	if (resource == 0) {
@@ -1266,7 +1362,7 @@ static void message_handler_req_lib_lck_resourceopen (
 	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceOpen %s\n",
-		getSaNameT (&req_lib_lck_resourceopen->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourceopen->lockResourceName));
 
 	req_exec_lck_resourceopen.header.size =
 		sizeof (struct req_exec_lck_resourceopen);
@@ -1300,7 +1396,7 @@ static void message_handler_req_lib_lck_resourceopenasync (
 	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceOpenAsync %s\n",
-		getSaNameT (&req_lib_lck_resourceopen->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourceopen->lockResourceName));
 
 	req_exec_lck_resourceopen.header.size =
 		sizeof (struct req_exec_lck_resourceopen);
@@ -1311,7 +1407,7 @@ static void message_handler_req_lib_lck_resourceopenasync (
 
 	memcpy (&req_exec_lck_resourceopen.resource_name,
 		&req_lib_lck_resourceopen->lockResourceName,
-		sizeof (SaNameT));
+		sizeof (mar_name_t));
 	
 	req_exec_lck_resourceopen.resource_handle = req_lib_lck_resourceopen->resourceHandle;
 	req_exec_lck_resourceopen.invocation = req_lib_lck_resourceopen->invocation;
@@ -1336,7 +1432,7 @@ static void message_handler_req_lib_lck_resourceclose (
 	struct res_lib_lck_resourceclose res_lib_lck_resourceclose;
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceClose %s\n",
-		getSaNameT (&req_lib_lck_resourceclose->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourceclose->lockResourceName));
 
 	resource = resource_find (&req_lib_lck_resourceclose->lockResourceName);
 	if (resource) {
@@ -1348,7 +1444,7 @@ static void message_handler_req_lib_lck_resourceclose (
 		message_source_set (&req_exec_lck_resourceclose.source, conn);
 
 		memcpy (&req_exec_lck_resourceclose.lockResourceName,
-			&req_lib_lck_resourceclose->lockResourceName, sizeof (SaNameT));
+			&req_lib_lck_resourceclose->lockResourceName, sizeof (mar_name_t));
 
 		req_exec_lck_resourceclose.resource_handle = req_lib_lck_resourceclose->resourceHandle;
 		iovecs[0].iov_base = (char *)&req_exec_lck_resourceclose;
@@ -1380,7 +1476,7 @@ static void message_handler_req_lib_lck_resourcelock (
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceLock %s\n",
-		getSaNameT (&req_lib_lck_resourcelock->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourcelock->lockResourceName));
 
 	req_exec_lck_resourcelock.header.size =
 		sizeof (struct req_exec_lck_resourcelock);
@@ -1413,7 +1509,7 @@ static void message_handler_req_lib_lck_resourcelockasync (
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceLockAsync %s\n",
-		getSaNameT (&req_lib_lck_resourcelock->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourcelock->lockResourceName));
 
 	req_exec_lck_resourcelock.header.size =
 		sizeof (struct req_exec_lck_resourcelock);
@@ -1445,7 +1541,7 @@ static void message_handler_req_lib_lck_resourceunlock (
 	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceUnlock %s\n",
-		getSaNameT (&req_lib_lck_resourceunlock->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourceunlock->lockResourceName));
 
 	req_exec_lck_resourceunlock.header.size =
 		sizeof (struct req_exec_lck_resourceunlock);
@@ -1456,7 +1552,7 @@ static void message_handler_req_lib_lck_resourceunlock (
 
 	memcpy (&req_exec_lck_resourceunlock.resource_name,
 		&req_lib_lck_resourceunlock->lockResourceName,
-		sizeof (SaNameT));
+		sizeof (mar_name_t));
 		
 	req_exec_lck_resourceunlock.lock_id = req_lib_lck_resourceunlock->lockId;
 	req_exec_lck_resourceunlock.async_call = 0;
@@ -1477,7 +1573,7 @@ static void message_handler_req_lib_lck_resourceunlockasync (
 	struct iovec iovec;
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceUnlockAsync %s\n",
-		getSaNameT (&req_lib_lck_resourceunlock->lockResourceName));
+		get_mar_name_t (&req_lib_lck_resourceunlock->lockResourceName));
 
 	req_exec_lck_resourceunlock.header.size =
 		sizeof (struct req_exec_lck_resourceunlock);
@@ -1488,7 +1584,7 @@ static void message_handler_req_lib_lck_resourceunlockasync (
 
 	memcpy (&req_exec_lck_resourceunlock.resource_name,
 		&req_lib_lck_resourceunlock->lockResourceName,
-		sizeof (SaNameT));
+		sizeof (mar_name_t));
 		
 	req_exec_lck_resourceunlock.lock_id = req_lib_lck_resourceunlock->lockId;
 	req_exec_lck_resourceunlock.invocation = req_lib_lck_resourceunlock->invocation;
@@ -1509,7 +1605,7 @@ static void message_handler_req_lib_lck_lockpurge (
 	struct iovec iovecs[2];
 
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saLckResourceLockPurge %s\n",
-		getSaNameT (&req_lib_lck_lockpurge->lockResourceName));
+		get_mar_name_t (&req_lib_lck_lockpurge->lockResourceName));
 
 	req_exec_lck_lockpurge.header.size =
 		sizeof (struct req_exec_lck_lockpurge);
