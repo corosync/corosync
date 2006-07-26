@@ -1,4 +1,3 @@
-#define PROCESSOR_COUNT_MAX 32
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
 
@@ -46,6 +45,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include "../exec/totem.h"
 #include "../include/saAis.h"
 #include "../include/evs.h"
 #include "../include/ipc_evs.h"
