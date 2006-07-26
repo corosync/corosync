@@ -88,6 +88,7 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "../include/hdb.h"
 #include "../include/list.h"
