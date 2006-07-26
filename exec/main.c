@@ -218,7 +218,7 @@ static void aisexec_gid_determine (struct main_config *main_config)
 	struct group *group;
 	group = getgrnam (main_config->group);
 	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", group);
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", group->gr_name);
 		openais_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;

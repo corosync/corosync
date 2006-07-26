@@ -72,18 +72,18 @@
  *
  * esi_version:				Version that the library is running.
  * esi_open_chans:			list of open channels associated with this
- * 							instance.  Used to clean up any data left
- * 							allocated when the finalize is done.
- * 							(event_svr_channel_open.eco_instance_entry)
+ *							instance.  Used to clean up any data left
+ *							allocated when the finalize is done.
+ *							(event_svr_channel_open.eco_instance_entry)
  * esi_events:				list of pending events to be delivered on this
- *  						instance (struct chan_event_list.cel_entry)
+ *							instance (struct chan_event_list.cel_entry)
  * esi_queue_blocked:		non-zero if the delivery queue got too full
- * 							and we're blocking new messages until we
- * 							drain some of the queued messages.
+ *							and we're blocking new messages until we
+ *							drain some of the queued messages.
  * esi_nevents:				Number of events in events lists to be sent.
  * esi_hdb:					Handle data base for open channels on this
- * 							instance.  Used for a quick lookup of
- * 							open channel data from a lib api message.
+ *							instance.  Used for a quick lookup of
+ *							open channel data from a lib api message.
  */
 struct libevt_pd {
 	SaVersionT				esi_version;
@@ -135,62 +135,62 @@ static void convert_chan_packet(void *msg);
 
 static struct openais_lib_handler evt_lib_service[] = {
 	{
-	.lib_handler_fn = 		lib_evt_open_channel,
-	.response_size = 		sizeof(struct res_evt_channel_open),
-	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	.lib_handler_fn =		lib_evt_open_channel,
+	.response_size =		sizeof(struct res_evt_channel_open),
+	.response_id =			MESSAGE_RES_EVT_OPEN_CHANNEL,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_open_channel_async,
-	.response_size = 		sizeof(struct res_evt_channel_open),
-	.response_id = 			MESSAGE_RES_EVT_OPEN_CHANNEL,
+	.lib_handler_fn =		lib_evt_open_channel_async,
+	.response_size =		sizeof(struct res_evt_channel_open),
+	.response_id =			MESSAGE_RES_EVT_OPEN_CHANNEL,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_close_channel,
-	.response_size = 		sizeof(struct res_evt_channel_close),
-	.response_id = 			MESSAGE_RES_EVT_CLOSE_CHANNEL,
+	.lib_handler_fn =		lib_evt_close_channel,
+	.response_size =		sizeof(struct res_evt_channel_close),
+	.response_id =			MESSAGE_RES_EVT_CLOSE_CHANNEL,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_unlink_channel,
-	.response_size = 		sizeof(struct res_evt_channel_unlink),
-	.response_id = 			MESSAGE_RES_EVT_UNLINK_CHANNEL,
+	.lib_handler_fn =		lib_evt_unlink_channel,
+	.response_size =		sizeof(struct res_evt_channel_unlink),
+	.response_id =			MESSAGE_RES_EVT_UNLINK_CHANNEL,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_event_subscribe,
-	.response_size = 		sizeof(struct res_evt_event_subscribe),
-	.response_id = 			MESSAGE_RES_EVT_SUBSCRIBE,
+	.lib_handler_fn =		lib_evt_event_subscribe,
+	.response_size =		sizeof(struct res_evt_event_subscribe),
+	.response_id =			MESSAGE_RES_EVT_SUBSCRIBE,
 	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_event_unsubscribe,
-	.response_size = 		sizeof(struct res_evt_event_unsubscribe),
-	.response_id = 			MESSAGE_RES_EVT_UNSUBSCRIBE,
+	.lib_handler_fn =		lib_evt_event_unsubscribe,
+	.response_size =		sizeof(struct res_evt_event_unsubscribe),
+	.response_id =			MESSAGE_RES_EVT_UNSUBSCRIBE,
 	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_event_publish,
-	.response_size = 		sizeof(struct res_evt_event_publish),
-	.response_id = 			MESSAGE_RES_EVT_PUBLISH,
+	.lib_handler_fn =		lib_evt_event_publish,
+	.response_size =		sizeof(struct res_evt_event_publish),
+	.response_id =			MESSAGE_RES_EVT_PUBLISH,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn = 		lib_evt_event_clear_retentiontime,
-	.response_size = 		sizeof(struct res_evt_event_clear_retentiontime),
-	.response_id = 			MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
+	.lib_handler_fn =		lib_evt_event_clear_retentiontime,
+	.response_size =		sizeof(struct res_evt_event_clear_retentiontime),
+	.response_id =			MESSAGE_RES_EVT_CLEAR_RETENTIONTIME,
 	.flow_control =			OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{
-	.lib_handler_fn =	 	lib_evt_event_data_get,
-	.response_size = 		sizeof(struct lib_event_data),
-	.response_id = 			MESSAGE_RES_EVT_EVENT_DATA,
+	.lib_handler_fn =		lib_evt_event_data_get,
+	.response_size =		sizeof(struct lib_event_data),
+	.response_id =			MESSAGE_RES_EVT_EVENT_DATA,
 	.flow_control =			OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 
-	
+
 static void evt_remote_evt(void *msg, unsigned int nodeid);
 static void evt_remote_recovery_evt(void *msg, unsigned int nodeid);
 static void evt_remote_chan_op(void *msg, unsigned int nodeid);
@@ -274,29 +274,29 @@ __attribute__ ((constructor)) static void evt_comp_register (void) {
  */
 enum evt_chan_ops {
 	EVT_OPEN_CHAN_OP,		/* chc_chan */
-	EVT_CLOSE_CHAN_OP,  		/* chc_close_unlink_chan */
-	EVT_UNLINK_CHAN_OP,  		/* chc_close_unlink_chan */
+	EVT_CLOSE_CHAN_OP,		/* chc_close_unlink_chan */
+	EVT_UNLINK_CHAN_OP,		/* chc_close_unlink_chan */
 	EVT_CLEAR_RET_OP,		/* chc_event_id */
 	EVT_SET_ID_OP,			/* chc_set_id */
 	EVT_CONF_DONE,			/* no data used */
 	EVT_OPEN_COUNT,			/* chc_set_opens */
 	EVT_OPEN_COUNT_DONE		/* no data used */
 };
-	
+
 /*
  * Used during recovery to set the next issued event ID
  * based on the highest ID seen by any of the members
  */
 struct evt_set_id {
-	mar_uint32_t 		chc_nodeid __attribute__((aligned(8)));
+	mar_uint32_t		chc_nodeid __attribute__((aligned(8)));
 	mar_uint64_t		chc_last_id __attribute__((aligned(8)));
 };
 
 /*
  * For set open count used during recovery to syncronize all nodes
  *
- * 	chc_chan_name:		Channel name.
- * 	chc_open_count:		number of local opens of this channel.
+ *	chc_chan_name:		Channel name.
+ *	chc_open_count:		number of local opens of this channel.
  */
 struct evt_set_opens {
 	mar_name_t		chc_chan_name __attribute__((aligned(8)));
@@ -325,32 +325,32 @@ struct open_chan_req {
  * u:			union of operation options.
  */
 struct req_evt_chan_command {
-	mar_req_header_t 	chc_head __attribute__((aligned(8)));
+	mar_req_header_t	chc_head __attribute__((aligned(8)));
 	mar_uint32_t		chc_op __attribute__((aligned(8)));
 	union {
 		struct open_chan_req		chc_chan __attribute__((aligned(8)));
 		mar_evteventid_t		chc_event_id __attribute__((aligned(8)));
 		struct evt_set_id		chc_set_id __attribute__((aligned(8)));
-		struct evt_set_opens 		chc_set_opens __attribute__((aligned(8)));
+		struct evt_set_opens		chc_set_opens __attribute__((aligned(8)));
 		struct evt_close_unlink_chan	chcu __attribute__((aligned(8)));
 	} u;
 };
 
-/* 
- * list of all retained events 
- * 		struct event_data
+/*
+ * list of all retained events
+ *		struct event_data
  */
 static DECLARE_LIST_INIT(retained_list);
 
 /*
  * list of all event channel information
- * 		struct event_svr_channel_instance
+ *		struct event_svr_channel_instance
  */
 static DECLARE_LIST_INIT(esc_head);
 
 /*
  * list of all unlinked event channel information
- * 		struct event_svr_channel_instance
+ *		struct event_svr_channel_instance
  */
 static DECLARE_LIST_INIT(esc_unlinked_head);
 
@@ -359,7 +359,7 @@ static DECLARE_LIST_INIT(esc_unlinked_head);
  *
  *	evt_recovery_complete:			Normal operational mode
  *
- *	evt_send_event_id:				Node is sending known last 
+ *	evt_send_event_id:				Node is sending known last
  *									event IDs.
  *
  *	evt_send_open_count:			Node is sending its open
@@ -372,7 +372,7 @@ static DECLARE_LIST_INIT(esc_unlinked_head);
  *
  *	evt_send_retained_events_done:	Node is sending done message.
  *
- *	evt_wait_send_retained_events:	Node is waiting for other nodes to 
+ *	evt_wait_send_retained_events:	Node is waiting for other nodes to
  *									finish sending retained event data.
  */
 enum recovery_phases {
@@ -393,9 +393,9 @@ enum recovery_phases {
  * my_node_id:			My cluster node id
  * checked_in:			keep track during config change.
  * recovery_node:		True if we're the recovery node. i.e. the
- * 						node that sends the retained events.
- * next_retained:		pointer to next retained message to send 
- * 						during recovery.
+ *						node that sends the retained events.
+ * next_retained:		pointer to next retained message to send
+ *						during recovery.
  * next_chan:			pointer to next channel to send during recovery.
  * recovery_phase:		Indicates what recovery is taking place.
  * left_member_count:	How many left this configuration.
@@ -407,20 +407,20 @@ enum recovery_phases {
  * trans_member_count:	Node count in transitional membership
  * trans_member_list:	Total membership from the transitional membership
  * add_count:			count of joined members used for sending event id
- * 						recovery data.
+ *						recovery data.
  * add_list:			pointer to joined list used for sending event id
- * 						recovery data.
- * processed_open_counts: 	Flag used to coordinate clearing open
- * 						channel counts for config change recovery.
+ *						recovery data.
+ * processed_open_counts:	Flag used to coordinate clearing open
+ *						channel counts for config change recovery.
  *
  */
 
 #define BASE_ID_MASK 0xffffffffLL
-static mar_evteventid_t 	base_id = 1;
-static mar_evteventid_t 	base_id_top = 0;
-static mar_uint32_t  	my_node_id = 0;
-static int 			 	checked_in = 0;
-static int			 	recovery_node = 0;
+static mar_evteventid_t	base_id = 1;
+static mar_evteventid_t	base_id_top = 0;
+static mar_uint32_t		my_node_id = 0;
+static int				checked_in = 0;
+static int				recovery_node = 0;
 static struct list_head *next_retained = 0;
 static struct list_head *next_chan = 0;
 static enum recovery_phases recovery_phase = evt_recovery_complete;
@@ -428,7 +428,7 @@ static int				left_member_count = 0;
 static unsigned int *left_member_list = 0;
 static int				joined_member_count = 0;
 static unsigned int *joined_member_list = 0;
-static int			 	total_member_count = 0;
+static int				total_member_count = 0;
 static unsigned int *current_member_list = 0;
 static int				trans_member_count = 0;
 static unsigned int *trans_member_list = 0;
@@ -438,20 +438,20 @@ static int				processed_open_counts = 0;
 
 /*
  * Structure to track pending channel open requests.
- * 	ocp_async:			1 for async open
- * 	ocp_invocation:		invocation for async open
- * 	ocp_chan_name:		requested channel
- * 	ocp_conn:			conn for returning to the library.
- * 	ocp_open_flags:		channel open flags
- * 	ocp_timer_handle:	timer handle for sync open
- * 	ocp_serial_no:		Identifier for the request
- * 	ocp_entry:			list entry for pending open list.
+ *	ocp_async:			1 for async open
+ *	ocp_invocation:		invocation for async open
+ *	ocp_chan_name:		requested channel
+ *	ocp_conn:			conn for returning to the library.
+ *	ocp_open_flags:		channel open flags
+ *	ocp_timer_handle:	timer handle for sync open
+ *	ocp_serial_no:		Identifier for the request
+ *	ocp_entry:			list entry for pending open list.
  */
 struct open_chan_pending {
 	int					ocp_async;
 	mar_invocation_t	ocp_invocation;
 	mar_name_t			ocp_chan_name;
-	void 				*ocp_conn;
+	void				*ocp_conn;
 	mar_evtchannelopenflags_t	ocp_open_flag;
 	timer_handle		ocp_timer_handle;
 	uint64_t			ocp_c_handle;
@@ -480,9 +480,9 @@ static void chan_open_timeout(void *data);
  * ucp_entry:			list entry for pending unlink list.
  */
 struct unlink_chan_pending {
-	uint64_t	 		ucp_unlink_id;
+	uint64_t			ucp_unlink_id;
 	void				*ucp_conn;
- 	struct list_head 	ucp_entry;
+	struct list_head	ucp_entry;
 };
 
 /*
@@ -524,7 +524,7 @@ next_chan_unlink_id()
 
 /*
  * Throttle event delivery to applications to keep
- * the exec from using too much memory if the app is 
+ * the exec from using too much memory if the app is
  * slow to process its events.
  */
 #define MAX_EVT_DELIVERY_QUEUE	1000
@@ -544,10 +544,10 @@ static int dropped_event_size;
 static struct event_data *dropped_event;
 struct evt_pattern {
 	mar_evt_event_pattern_t	pat;
-	char 	str[sizeof(lost_evt)];
+	char	str[sizeof(lost_evt)];
 };
 static struct evt_pattern dropped_pattern = {
-		.pat	= 	{
+		.pat	=	{
 					sizeof(lost_evt),
 					sizeof(lost_evt),
 					(SaUint8T *) &dropped_pattern.str[0]},
@@ -577,18 +577,18 @@ struct open_count {
  *
  * esc_channel_name:	The name of this channel.
  * esc_total_opens:		The total number of opens on this channel including
- * 						other nodes.
+ *						other nodes.
  * esc_local_opens:		The number of opens on this channel for this node.
  * esc_oc_size:			The total number of entries in esc_node_opens;
  * esc_node_opens:		list of node IDs and how many opens are associated.
  * esc_retained_count:	How many retained events for this channel
  * esc_open_chans:		list of opens of this channel.
- * 						(event_svr_channel_open.eco_entry)
+ *						(event_svr_channel_open.eco_entry)
  * esc_entry:			links to other channels. (used by esc_head)
  * esc_unlink_id:		If non-zero, then the channel has been marked
- * 						for unlink.  This unlink ID is used to
- * 						mark events still associated with current openings
- * 						so they get delivered to the proper recipients.
+ *						for unlink.  This unlink ID is used to
+ *						mark events still associated with current openings
+ *						so they get delivered to the proper recipients.
  */
 struct event_svr_channel_instance {
 	mar_name_t				esc_channel_name;
@@ -597,53 +597,53 @@ struct event_svr_channel_instance {
 	uint32_t			esc_oc_size;
 	struct open_count	*esc_node_opens;
 	uint32_t			esc_retained_count;
-	struct list_head 	esc_open_chans;
-	struct list_head 	esc_entry;
+	struct list_head	esc_open_chans;
+	struct list_head	esc_entry;
 	uint64_t			esc_unlink_id;
 };
 
 /*
- * Has the event data in the correct format to send to the library API 
+ * Has the event data in the correct format to send to the library API
  * with aditional field for accounting.
  *
  * ed_ref_count:		how many other strutures are referencing.
  * ed_retained:			retained event list.
  * ed_timer_handle:		Timer handle for retained event expiration.
  * ed_delivered:		arrays of open channel pointers that this event
- * 						has been delivered to. (only used for events 
- * 						with a retention time).
+ *						has been delivered to. (only used for events
+ *						with a retention time).
  * ed_delivered_count:	Number of entries available in ed_delivered.
  * ed_delivered_next:	Next free spot in ed_delivered
  * ed_my_chan:			pointer to the global channel instance associated
- * 						with this event.
+ *						with this event.
  * ed_event:			The event data formatted to be ready to send.
  */
 struct event_data {
-	uint32_t			    			ed_ref_count;
-	struct list_head		    		ed_retained;
-	timer_handle 						ed_timer_handle;
-	struct event_svr_channel_open 	    **ed_delivered;
-	uint32_t			    			ed_delivered_count;
-	uint32_t			    			ed_delivered_next;
-	struct event_svr_channel_instance   *ed_my_chan;
-	struct lib_event_data 		    	ed_event;
+	uint32_t							ed_ref_count;
+	struct list_head					ed_retained;
+	timer_handle						ed_timer_handle;
+	struct event_svr_channel_open		**ed_delivered;
+	uint32_t							ed_delivered_count;
+	uint32_t							ed_delivered_next;
+	struct event_svr_channel_instance	*ed_my_chan;
+	struct lib_event_data				ed_event;
 };
 
 /*
- * Contains a list of pending events to be delivered to a subscribed 
+ * Contains a list of pending events to be delivered to a subscribed
  * application.
  *
  * cel_chan_handle:	associated library channel handle
  * cel_sub_id:		associated library subscription ID
  * cel_event:		event structure to deliver.
- * cel_entry:		list of pending events 
- * 					(struct event_server_instance.esi_events)
+ * cel_entry:		list of pending events
+ *					(struct event_server_instance.esi_events)
  */
 struct chan_event_list {
 	uint64_t			cel_chan_handle;
 	uint32_t			cel_sub_id;
-	struct event_data* 	cel_event;
-	struct list_head 	cel_entry;
+	struct event_data*	cel_event;
+	struct list_head	cel_entry;
 };
 
 /*
@@ -654,20 +654,20 @@ struct chan_event_list {
  * eco_my_handle:		the handle used to access this data structure.
  * eco_channel:			Pointer to global channel info.
  * eco_entry:			links to other opeinings of this channel.
- * eco_instance_entry:	links to other channel opeinings for the 
- * 						associated server instance.
+ * eco_instance_entry:	links to other channel opeinings for the
+ *						associated server instance.
  * eco_subscr:			head of list of sbuscriptions for this channel open.
- * 						(event_svr_channel_subscr.ecs_entry)
+ *						(event_svr_channel_subscr.ecs_entry)
  * eco_conn:			refrence to EvtInitialize who owns this open.
  */
 struct event_svr_channel_open {
 	uint8_t								eco_flags;
 	uint64_t							eco_lib_handle;
 	uint32_t							eco_my_handle;
-	struct event_svr_channel_instance 	*eco_channel;
-	struct list_head 					eco_entry;
-	struct list_head 					eco_instance_entry;
-	struct list_head 					eco_subscr;
+	struct event_svr_channel_instance	*eco_channel;
+	struct list_head					eco_entry;
+	struct list_head					eco_instance_entry;
+	struct list_head					eco_subscr;
 	void								*eco_conn;
 };
 
@@ -684,7 +684,7 @@ struct event_svr_channel_subscr {
 	struct event_svr_channel_open	*ecs_open_chan;
 	uint32_t						ecs_sub_id;
 	mar_evt_event_filter_array_t			*ecs_filters;
-	struct list_head 				ecs_entry;
+	struct list_head				ecs_entry;
 };
 
 
@@ -693,7 +693,7 @@ struct event_svr_channel_subscr {
  * mn_node_info:		cluster node info from membership
  * mn_last_msg_id:		last seen message ID for this node
  * mn_started:			Indicates that event service has started
- * 						on this node.
+ *						on this node.
  * mn_next:				pointer to the next node in the hash chain.
  * mn_entry:			List of all nodes.
  */
@@ -707,18 +707,18 @@ struct member_node_data {
 };
 DECLARE_LIST_INIT(mnd);
 /*
- * Take the filters we received from the application via the library and 
+ * Take the filters we received from the application via the library and
  * make them into a real mar_evt_event_filter_array_t
  */
 static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 		mar_evt_event_filter_array_t **evtfilters)
 {
 
-	mar_evt_event_filter_array_t *filta = 
+	mar_evt_event_filter_array_t *filta =
 			(mar_evt_event_filter_array_t *)req->ics_filter_data;
 	mar_evt_event_filter_array_t *filters;
 	mar_evt_event_filter_t *filt = (void *)filta + sizeof(mar_evt_event_filter_array_t);
-	SaUint8T *str = (void *)filta + sizeof(mar_evt_event_filter_array_t) + 
+	SaUint8T *str = (void *)filta + sizeof(mar_evt_event_filter_array_t) +
 			(sizeof(mar_evt_event_filter_t) * filta->filters_number);
 	int i;
 	int j;
@@ -729,7 +729,7 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 	}
 
 	filters->filters_number = filta->filters_number;
-	filters->filters = malloc(sizeof(mar_evt_event_filter_t) * 
+	filters->filters = malloc(sizeof(mar_evt_event_filter_t) *
 				filta->filters_number);
 	if (!filters->filters) {
 			free(filters);
@@ -737,7 +737,7 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 	}
 
 	for (i = 0; i < filters->filters_number; i++) {
-		filters->filters[i].filter.pattern = 
+		filters->filters[i].filter.pattern =
 			malloc(filt[i].filter.pattern_size);
 
 		if (!filters->filters[i].filter.pattern) {
@@ -748,9 +748,9 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 				free(filters);
 				return SA_AIS_ERR_NO_MEMORY;
 		}
-		filters->filters[i].filter.pattern_size = 
+		filters->filters[i].filter.pattern_size =
 			filt[i].filter.pattern_size;
-		filters->filters[i].filter.allocated_size = 
+		filters->filters[i].filter.allocated_size =
 			filt[i].filter.pattern_size;
 		memcpy(filters->filters[i].filter.pattern,
 				str, filters->filters[i].filter.pattern_size);
@@ -759,7 +759,7 @@ static SaAisErrorT evtfilt_to_aisfilt(struct req_evt_event_subscribe *req,
 	}
 
 	*evtfilters = filters;
-	
+
 	return SA_AIS_OK;
 }
 
@@ -827,7 +827,7 @@ find_last_unlinked_channel(mar_name_t *chan_name)
 		eci = list_entry(l, struct event_svr_channel_instance, esc_entry);
 		if (!mar_name_match(chan_name, &eci->esc_channel_name)) {
 			continue;
-		} 
+		}
 	}
 	return 0;
 }
@@ -847,13 +847,13 @@ static struct event_svr_channel_instance *create_channel(mar_name_t *cn)
 	list_init(&eci->esc_entry);
 	list_init(&eci->esc_open_chans);
 	eci->esc_oc_size = total_member_count;
-	eci->esc_node_opens = 
+	eci->esc_node_opens =
 			malloc(sizeof(struct open_count) * total_member_count);
 	if (!eci->esc_node_opens) {
 		free(eci);
 		return 0;
 	}
-	memset(eci->esc_node_opens, 0, 
+	memset(eci->esc_node_opens, 0,
 			sizeof(struct open_count) * total_member_count);
 	eci->esc_channel_name = *cn;
 	eci->esc_channel_name.value[eci->esc_channel_name.length] = '\0';
@@ -870,15 +870,15 @@ static struct event_svr_channel_instance *create_channel(mar_name_t *cn)
 static int check_open_size(struct event_svr_channel_instance *eci)
 {
 	if (total_member_count > eci->esc_oc_size) {
-		eci->esc_node_opens = realloc(eci->esc_node_opens, 
+		eci->esc_node_opens = realloc(eci->esc_node_opens,
 							sizeof(struct open_count) * total_member_count);
 		if (!eci->esc_node_opens) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 					"Memory error realloc of node list\n");
 			return -1;
 		}
-		memset(&eci->esc_node_opens[eci->esc_oc_size], 0, 
-			sizeof(struct open_count) * 
+		memset(&eci->esc_node_opens[eci->esc_oc_size], 0,
+			sizeof(struct open_count) *
 					(total_member_count - eci->esc_oc_size));
 		eci->esc_oc_size = total_member_count;
 	}
@@ -904,7 +904,7 @@ static struct open_count* find_open_count(
 			return &eci->esc_node_opens[i];
 		}
 	}
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(LOG_LEVEL_DEBUG,
 			"find_open_count: node id %s not found\n",
 			totempg_ifaces_print (node_id));
 	return 0;
@@ -923,7 +923,7 @@ static void dump_chan_opens(struct event_svr_channel_instance *eci)
 			break;
 		}
 		log_printf(LOG_LEVEL_NOTICE, "Node %s, count %d\n",
-			totempg_ifaces_print (eci->esc_node_opens[i].oc_node_id), 
+			totempg_ifaces_print (eci->esc_node_opens[i].oc_node_id),
 			eci->esc_node_opens[i].oc_open_count);
 	}
 }
@@ -969,7 +969,7 @@ static void zero_chan_open_counts()
  * Replace the current open count for a node with the specified value.
  */
 static int set_open_count(struct event_svr_channel_instance *eci,
-		mar_uint32_t node_id, uint32_t open_count) 
+		mar_uint32_t node_id, uint32_t open_count)
 {
 	struct open_count *oc;
 	int i;
@@ -980,9 +980,9 @@ static int set_open_count(struct event_svr_channel_instance *eci,
 
 	oc = find_open_count(eci, node_id);
 	if (oc) {
-		log_printf(RECOVERY_DEBUG, 
+		log_printf(RECOVERY_DEBUG,
 			"Set count: Chan %s for node %s, was %d, now %d\n",
-			eci->esc_channel_name.value, totempg_ifaces_print (node_id), 
+			eci->esc_channel_name.value, totempg_ifaces_print (node_id),
 			oc->oc_open_count, open_count);
 
 		eci->esc_total_opens -= oc->oc_open_count;
@@ -997,7 +997,7 @@ static int set_open_count(struct event_svr_channel_instance *eci,
  * Increment the open count for the specified node.
  */
 static int inc_open_count(struct event_svr_channel_instance *eci,
-		mar_uint32_t node_id) 
+		mar_uint32_t node_id)
 {
 
 	struct open_count *oc;
@@ -1020,11 +1020,11 @@ static int inc_open_count(struct event_svr_channel_instance *eci,
 }
 
 /*
- * Decrement the open count for the specified node in the 
+ * Decrement the open count for the specified node in the
  * specified channel.
  */
 static int dec_open_count(struct event_svr_channel_instance *eci,
-		mar_uint32_t node_id) 
+		mar_uint32_t node_id)
 {
 
 	struct open_count *oc;
@@ -1057,7 +1057,7 @@ static int dec_open_count(struct event_svr_channel_instance *eci,
 static void delete_channel(struct event_svr_channel_instance *eci)
 {
 
-	log_printf(CHAN_DEL_DEBUG, 
+	log_printf(CHAN_DEL_DEBUG,
 			"Called Delete channel %s t %d, l %d, r %d\n",
 			eci->esc_channel_name.value,
 			eci->esc_total_opens, eci->esc_local_opens,
@@ -1072,20 +1072,20 @@ static void delete_channel(struct event_svr_channel_instance *eci)
 		log_printf(CHAN_DEL_DEBUG, "Delete channel %s\n",
 			eci->esc_channel_name.value);
 		log_printf(CHAN_UNLINK_DEBUG, "Delete channel %s, unlink_id %0llx\n",
-			eci->esc_channel_name.value, eci->esc_unlink_id);
+			eci->esc_channel_name.value, (unsigned long long)eci->esc_unlink_id);
 
 		if (!list_empty(&eci->esc_open_chans)) {
-				log_printf(LOG_LEVEL_NOTICE, 
+				log_printf(LOG_LEVEL_NOTICE,
 					"Last channel close request for %s (still open)\n",
 					eci->esc_channel_name.value);
 				dump_chan_opens(eci);
 				return;
 		}
-		
+
 		/*
 		 * adjust if we're sending open counts on a config change.
 		 */
-		if ((recovery_phase != evt_recovery_complete) && 
+		if ((recovery_phase != evt_recovery_complete) &&
 								(&eci->esc_entry == next_chan)) {
 			next_chan = eci->esc_entry.next;
 		}
@@ -1107,8 +1107,8 @@ free_event_data(struct event_data *edp)
 	if (--edp->ed_ref_count) {
 		return;
 	}
-	log_printf(LOG_LEVEL_DEBUG, "Freeing event ID: 0x%llx\n", 
-			edp->ed_event.led_event_id);
+	log_printf(LOG_LEVEL_DEBUG, "Freeing event ID: 0x%llx\n",
+			(unsigned long long)edp->ed_event.led_event_id);
 	if (edp->ed_delivered) {
 		free(edp->ed_delivered);
 	}
@@ -1119,23 +1119,23 @@ free_event_data(struct event_data *edp)
 /*
  * Mark a channel for deletion.
  */
-static void unlink_channel(struct event_svr_channel_instance *eci, 
+static void unlink_channel(struct event_svr_channel_instance *eci,
 		uint64_t unlink_id)
 {
 	struct event_data *edp;
 	struct list_head *l, *nxt;
 
 	log_printf(CHAN_UNLINK_DEBUG, "Unlink request: %s, id 0x%llx\n",
-			eci->esc_channel_name.value, unlink_id);
+			eci->esc_channel_name.value, (unsigned long long)unlink_id);
 	/*
-	 * The unlink ID is used to note that the channel has been marked 
-	 * for deletion and is a way to distinguish between multiple 
+	 * The unlink ID is used to note that the channel has been marked
+	 * for deletion and is a way to distinguish between multiple
 	 * channels of the same name each marked for deletion.
 	 */
 	eci->esc_unlink_id = unlink_id;
 
 	/*
-	 * Move the unlinked channel to the unlinked list.  This way 
+	 * Move the unlinked channel to the unlinked list.  This way
 	 * we don't have to worry about filtering it out when we need to
 	 * distribute retained events at recovery time.
 	 */
@@ -1150,7 +1150,7 @@ static void unlink_channel(struct event_svr_channel_instance *eci,
 	for (l = retained_list.next; l != &retained_list; l = nxt) {
 		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
-		if ((edp->ed_my_chan == eci) && 
+		if ((edp->ed_my_chan == eci) &&
 				(edp->ed_event.led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
 			openais_timer_delete(edp->ed_timer_handle);
 			edp->ed_event.led_retention_time = 0;
@@ -1158,9 +1158,9 @@ static void unlink_channel(struct event_svr_channel_instance *eci,
 			list_init(&edp->ed_retained);
 			edp->ed_my_chan->esc_retained_count--;
 
-			log_printf(CHAN_UNLINK_DEBUG, 
+			log_printf(CHAN_UNLINK_DEBUG,
 				"Unlink: Delete retained event id 0x%llx\n",
-			edp->ed_event.led_event_id);
+			(unsigned long long)edp->ed_event.led_event_id);
 			free_event_data(edp);
 		}
 	}
@@ -1190,15 +1190,15 @@ static int remove_open_count(
 			totempg_ifaces_print (node_id),
 			totempg_ifaces_print (eci->esc_node_opens[i].oc_node_id),
 			eci->esc_total_opens, eci->esc_node_opens[i].oc_open_count);
-		
+
 		if (eci->esc_node_opens[i].oc_node_id == node_id) {
 
 			eci->esc_total_opens -= eci->esc_node_opens[i].oc_open_count;
 
 			for (j = i+1; j < eci->esc_oc_size; j++, i++) {
-				eci->esc_node_opens[i].oc_node_id = 
+				eci->esc_node_opens[i].oc_node_id =
 				 eci->esc_node_opens[j].oc_node_id;
-				eci->esc_node_opens[i].oc_open_count = 
+				eci->esc_node_opens[i].oc_open_count =
 				 eci->esc_node_opens[j].oc_open_count;
 			}
 
@@ -1232,8 +1232,8 @@ static SaAisErrorT evt_open_channel(mar_name_t *cn, SaUint8T flgs)
 	eci = find_channel(cn, EVT_CHAN_ACTIVE);
 
 	/*
-	 * If the create flag set, and it doesn't exist, we can make the channel.  
-	 * Otherwise, it's an error since we're notified of channels being created 
+	 * If the create flag set, and it doesn't exist, we can make the channel.
+	 * Otherwise, it's an error since we're notified of channels being created
 	 * and opened.
 	 */
 	if (!eci && !(flgs & SA_EVT_CHANNEL_CREATE)) {
@@ -1306,14 +1306,14 @@ static SaAisErrorT evt_close_channel(mar_name_t *cn, uint64_t unlink_id)
  * Node data access functions.  Used to keep track of event IDs
  * delivery of messages.
  *
- * add_node: 	Add a new member node to our list.
+ * add_node:	Add a new member node to our list.
  * remove_node:	Remove a node that left membership.
  * find_node:	Given the node ID return a pointer to node information.
  *
  */
 #define NODE_HASH_SIZE 256
 static struct member_node_data *nl[NODE_HASH_SIZE] = {0};
-inline int 
+inline int
 hash_sock_addr(unsigned int nodeid)
 {
 	return nodeid & (NODE_HASH_SIZE - 1);
@@ -1352,7 +1352,7 @@ evt_find_node(unsigned int nodeid)
 static SaAisErrorT
 evt_add_node(
 	unsigned int nodeid,
-	SaClmClusterNodeT *cn) 
+	SaClmClusterNodeT *cn)
 {
 	struct member_node_data **nlp;
 	struct member_node_data *nl;
@@ -1389,11 +1389,11 @@ an_out:
 }
 
 /*
- * Find the oldest node in the membership.  This is the one we choose to 
+ * Find the oldest node in the membership.  This is the one we choose to
  * perform some cluster-wide functions like distributing retained events.
- * We only check nodes that were in our transitional configuration.  In this 
- * way there is a recovery node chosen for each original partition in case 
- * of a merge. 
+ * We only check nodes that were in our transitional configuration.  In this
+ * way there is a recovery node chosen for each original partition in case
+ * of a merge.
  */
 static struct member_node_data* oldest_node()
 {
@@ -1404,12 +1404,12 @@ static struct member_node_data* oldest_node()
 	for (i = 0; i < trans_member_count; i++) {
 		mn = evt_find_node(trans_member_list[i]);
 		if (!mn || (mn->mn_started == 0)) {
-			log_printf(LOG_LEVEL_ERROR, 
-				"Transitional config Node %d not active\n",
+			log_printf(LOG_LEVEL_ERROR,
+				"Transitional config Node %s not active\n",
 				totempg_ifaces_print (trans_member_list[i]));
 			continue;
 		}
-		if ((oldest == NULL) || 
+		if ((oldest == NULL) ||
 				(mn->mn_node_info.bootTimestamp <
 					 oldest->mn_node_info.bootTimestamp )) {
 			oldest = mn;
@@ -1427,11 +1427,11 @@ static struct member_node_data* oldest_node()
 /*
  * keep track of the last event ID from a node.
  * If we get an event ID less than our last, we've already
- * seen it.  It's probably a retained event being sent to 
+ * seen it.  It's probably a retained event being sent to
  * a new node.
  */
 static int check_last_event(
-	struct lib_event_data *evtpkt, 
+	struct lib_event_data *evtpkt,
 	unsigned int nodeid)
 {
 	struct member_node_data *nd;
@@ -1440,16 +1440,16 @@ static int check_last_event(
 
 	nd = evt_find_node(nodeid);
 	if (!nd) {
-		log_printf(LOG_LEVEL_DEBUG, 
+		log_printf(LOG_LEVEL_DEBUG,
 				"Node ID %s not found for event %llx\n",
 				totempg_ifaces_print (evtpkt->led_publisher_node_id),
-				evtpkt->led_event_id);
+				(unsigned long long)evtpkt->led_event_id);
 		cn = main_clm_get_by_nodeid(nodeid);
 		if (!cn) {
-			log_printf(LOG_LEVEL_DEBUG, 
-					"Cluster Node 0x%x not found for event %llx\n",
+			log_printf(LOG_LEVEL_DEBUG,
+					"Cluster Node 0x%s not found for event %llx\n",
 				totempg_ifaces_print (evtpkt->led_publisher_node_id),
-				evtpkt->led_event_id);
+				(unsigned long long)evtpkt->led_event_id);
 		} else {
 			evt_add_node(nodeid, cn);
 			nd = evt_find_node(nodeid);
@@ -1491,7 +1491,7 @@ static int id_in_use(uint64_t id, uint64_t base)
 	struct list_head *l;
 	struct event_data *edp;
 	mar_evteventid_t evtid = (id << 32) | (base & BASE_ID_MASK);
-	
+
 	for (l = retained_list.next; l != &retained_list; l = l->next) {
 		edp = list_entry(l, struct event_data, ed_retained);
 		if (edp->ed_event.led_event_id == evtid) {
@@ -1504,7 +1504,7 @@ static int id_in_use(uint64_t id, uint64_t base)
 static SaAisErrorT get_event_id(uint64_t *event_id, uint64_t *msg_id)
 {
 	/*
-	 * Don't reuse an event ID if it is still valid because of 
+	 * Don't reuse an event ID if it is still valid because of
 	 * a retained event.
 	 */
 	while (id_in_use(base_id_top, base_id)) {
@@ -1526,10 +1526,10 @@ static void
 event_retention_timeout(void *data)
 {
 	struct event_data *edp = data;
-	log_printf(RETENTION_TIME_DEBUG, "Event ID %llx expired\n", 
-					edp->ed_event.led_event_id);
+	log_printf(RETENTION_TIME_DEBUG, "Event ID %llx expired\n",
+		(unsigned long long)edp->ed_event.led_event_id);
 	/*
-	 * adjust next_retained if we're in recovery and 
+	 * adjust next_retained if we're in recovery and
 	 * were in charge of sending retained events.
 	 */
 	if (recovery_phase != evt_recovery_complete && recovery_node) {
@@ -1561,7 +1561,8 @@ clear_retention_time(mar_evteventid_t event_id)
 	struct event_data *edp;
 	struct list_head *l, *nxt;
 
-	log_printf(RETENTION_TIME_DEBUG, "Search for Event ID %llx\n", event_id);
+	log_printf(RETENTION_TIME_DEBUG, "Search for Event ID %llx\n", 
+		(unsigned long long)event_id);
 	for (l = retained_list.next; l != &retained_list; l = nxt) {
 		nxt = l->next;
 		edp = list_entry(l, struct event_data, ed_retained);
@@ -1569,9 +1570,9 @@ clear_retention_time(mar_evteventid_t event_id)
 				continue;
 		}
 
-		log_printf(RETENTION_TIME_DEBUG, 
-							"Clear retention time for Event ID %llx\n", 
-				edp->ed_event.led_event_id);
+		log_printf(RETENTION_TIME_DEBUG,
+							"Clear retention time for Event ID %llx\n",
+				(unsigned long long)edp->ed_event.led_event_id);
 		openais_timer_delete(edp->ed_timer_handle);
 		edp->ed_event.led_retention_time = 0;
 		list_del(&edp->ed_retained);
@@ -1611,7 +1612,7 @@ remove_delivered_channel(struct event_svr_channel_open *eco)
 				}
 				memmove(&edp->ed_delivered[i],
 					&edp->ed_delivered[i+1],
-					&edp->ed_delivered[edp->ed_delivered_next] - 
+					&edp->ed_delivered[edp->ed_delivered_next] -
 					   &edp->ed_delivered[i]);
 				break;
 			}
@@ -1620,7 +1621,7 @@ remove_delivered_channel(struct event_svr_channel_open *eco)
 }
 
 /*
- * If there is a retention time, add this open channel to the event so 
+ * If there is a retention time, add this open channel to the event so
  * we can check if we've already delivered this message later if a new
  * subscription matches.
  */
@@ -1632,12 +1633,12 @@ evt_delivered(struct event_data *evt, struct event_svr_channel_open *eco)
 		return;
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "delivered ID %llx to eco %p\n", 
-			evt->ed_event.led_event_id, eco);
+	log_printf(LOG_LEVEL_DEBUG, "delivered ID %llx to eco %p\n",
+			(unsigned long long)evt->ed_event.led_event_id, eco);
 	if (evt->ed_delivered_count == evt->ed_delivered_next) {
 		evt->ed_delivered = realloc(evt->ed_delivered,
 			DELIVER_SIZE * sizeof(struct event_svr_channel_open *));
-		memset(evt->ed_delivered + evt->ed_delivered_next, 0, 
+		memset(evt->ed_delivered + evt->ed_delivered_next, 0,
 			DELIVER_SIZE * sizeof(struct event_svr_channel_open *));
 		evt->ed_delivered_next = evt->ed_delivered_count;
 		evt->ed_delivered_count += DELIVER_SIZE;
@@ -1650,7 +1651,7 @@ evt_delivered(struct event_data *evt, struct event_svr_channel_open *eco)
  * Check to see if an event has already been delivered to this open channel
  */
 static int
-evt_already_delivered(struct event_data *evt, 
+evt_already_delivered(struct event_data *evt,
 		struct event_svr_channel_open *eco)
 {
 	int i;
@@ -1659,11 +1660,12 @@ evt_already_delivered(struct event_data *evt,
 		return 0;
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "Deliver count: %d deliver_next %d\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Deliver count: %d deliver_next %d\n",
 		evt->ed_delivered_count, evt->ed_delivered_next);
 	for (i = 0; i < evt->ed_delivered_next; i++) {
-		log_printf(LOG_LEVEL_DEBUG, "Checking ID %llx delivered %p eco %p\n", 
-			evt->ed_event.led_event_id, evt->ed_delivered[i], eco);
+		log_printf(LOG_LEVEL_DEBUG, "Checking ID %llx delivered %p eco %p\n",
+			(unsigned long long)evt->ed_event.led_event_id,
+			evt->ed_delivered[i], eco);
 		if (evt->ed_delivered[i] == eco) {
 			return 1;
 		}
@@ -1695,12 +1697,12 @@ filter_match(mar_evt_event_pattern_t *ep, mar_evt_event_filter_t *ef)
 		if (ef->filter.pattern_size > ep->pattern_size) {
 			break;
 		}
-		if (strncmp((char *)ef->filter.pattern, 
+		if (strncmp((char *)ef->filter.pattern,
 			(char *)&ep->pattern[ep->pattern_size - ef->filter.pattern_size],
 					ef->filter.pattern_size) == 0) {
 			ret = SA_AIS_OK;
 		}
-		
+
 		break;
 	case SA_EVT_EXACT_FILTER:
 		if (ef->filter.pattern_size != ep->pattern_size) {
@@ -1725,7 +1727,7 @@ filter_match(mar_evt_event_pattern_t *ep, mar_evt_event_filter_t *ef)
  * SA_AIS_OK is returned if the event matches the filter rules.
  */
 static SaAisErrorT
-event_match(struct event_data *evt, 
+event_match(struct event_data *evt,
 			struct event_svr_channel_subscr *ecs)
 {
 	mar_evt_event_filter_t *ef;
@@ -1736,7 +1738,7 @@ event_match(struct event_data *evt,
 
 	ep = (mar_evt_event_pattern_t *)(&evt->ed_event.led_body[0]);
 	ef = ecs->ecs_filters->filters;
-	filt_count = min(ecs->ecs_filters->filters_number, 
+	filt_count = min(ecs->ecs_filters->filters_number,
 			evt->ed_event.led_patterns_number);
 
 	for (i = 0; i < filt_count; i++) {
@@ -1780,9 +1782,9 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 			nxt = l->next;
 			cel = list_entry(l, struct chan_event_list, cel_entry);
 			/*
-		 	 * Check open channels
-		 	 */
-			 for (l1 = eci->esc_open_chans.next; 
+			 * Check open channels
+			 */
+			 for (l1 = eci->esc_open_chans.next;
 								l1 != &eci->esc_open_chans; l1 = l1->next) {
 				 eco = list_entry(l1, struct event_svr_channel_open, eco_entry);
 
@@ -1804,13 +1806,13 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 				 /*
 				  * Check subscriptions
 				  */
-				 for (l2 = eco->eco_subscr.next; 
+				 for (l2 = eco->eco_subscr.next;
 									l2 != &eco->eco_subscr; l2 = l2->next) {
-					 ecs = list_entry(l2, 
+					 ecs = list_entry(l2,
 								struct event_svr_channel_subscr, ecs_entry);
 					 if (event_match(cel->cel_event, ecs) == SA_AIS_OK) {
 						 /*
-						  * Something still matches.  
+						  * Something still matches.
 						  * We'll assign it to
 						  * the new subscription.
 						  */
@@ -1827,7 +1829,7 @@ filter_undelivered_events(struct event_svr_channel_open *op_chan)
 			 list_del(&cel->cel_entry);
 			 list_init(&cel->cel_entry);
 			 esip->esi_nevents--;
-		
+
 			 free_event_data(cel->cel_event);
 			 free(cel);
 next_event:
@@ -1874,7 +1876,7 @@ inline void notify_event(void *conn)
  * sends/queues up an event for a subscribed channel.
  */
 static void
-deliver_event(struct event_data *evt, 
+deliver_event(struct event_data *evt,
 		struct event_svr_channel_open *eco,
 		struct event_svr_channel_subscr *ecs)
 {
@@ -1910,7 +1912,7 @@ deliver_event(struct event_data *evt,
 	}
 
 	assert (esip->esi_nevents >= 0);
-	if (!esip->esi_queue_blocked && 
+	if (!esip->esi_queue_blocked &&
 							(esip->esi_nevents >= evt_delivery_queue_size)) {
 		log_printf(LOG_LEVEL_DEBUG, "block\n");
 		esip->esi_queue_blocked = 1;
@@ -1922,13 +1924,13 @@ deliver_event(struct event_data *evt,
 		for (i = SA_EVT_LOWEST_PRIORITY; i > evt_prio; i--) {
 			if (!list_empty(&esip->esi_events[i])) {
 				/*
-				 * Get the last item on the list, so we drop the most 
+				 * Get the last item on the list, so we drop the most
 				 * recent lowest priority event.
 				 */
-				cel = list_entry(esip->esi_events[i].prev, 
-											struct chan_event_list, cel_entry);
+				cel = list_entry(esip->esi_events[i].prev,
+					struct chan_event_list, cel_entry);
 				log_printf(LOG_LEVEL_DEBUG, "Drop 0x%0llx\n",
-					cel->cel_event->ed_event.led_event_id);
+					(unsigned long long)cel->cel_event->ed_event.led_event_id);
 				list_del(&cel->cel_entry);
 				free_event_data(cel->cel_event);
 				free(cel);
@@ -1947,7 +1949,7 @@ deliver_event(struct event_data *evt,
 	if (do_deliver_event) {
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 						"3Memory allocation error, can't deliver event\n");
 			return;
 		}
@@ -1959,7 +1961,7 @@ deliver_event(struct event_data *evt,
 		list_add_tail(&ep->cel_entry, &esip->esi_events[evt_prio]);
 		evt_delivered(evt, eco);
 		notify_event(eco->eco_conn);
-	} 
+	}
 
 	/*
 	 * If we dropped an event, queue this so that the application knows
@@ -1969,12 +1971,12 @@ deliver_event(struct event_data *evt,
 		struct event_data *ed;
 		ed = malloc(dropped_event_size);
 		if (!ed) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 						"4Memory allocation error, can't deliver event\n");
 			return;
 		}
-		log_printf(LOG_LEVEL_DEBUG, "Warn 0x%0llx\n", 
-								evt->ed_event.led_event_id);
+		log_printf(LOG_LEVEL_DEBUG, "Warn 0x%0llx\n",
+			(unsigned long long)evt->ed_event.led_event_id);
 		memcpy(ed, dropped_event, dropped_event_size);
 		ed->ed_event.led_publish_time = clust_time_now();
 		ed->ed_event.led_event_id = SA_EVT_EVENTID_LOST;
@@ -1982,7 +1984,7 @@ deliver_event(struct event_data *evt,
 
 		ep = malloc(sizeof(*ep));
 		if (!ep) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 						"5Memory allocation error, can't deliver event\n");
 			return;
 		}
@@ -2035,13 +2037,13 @@ convert_event(void *msg)
 	 * We can't do anything about user data since it doesn't have a specified
 	 * format.  The application is on its own here.
 	 */
-	eps = (mar_evt_event_pattern_t *)evt->led_body;  
+	eps = (mar_evt_event_pattern_t *)evt->led_body;
 	for (i = 0; i < evt->led_patterns_number; i++) {
 		eps->pattern_size = swab32(eps->pattern_size);
 		eps->allocated_size = swab32(eps->allocated_size);
 		eps++;
 	}
-	
+
 }
 
 /*
@@ -2050,7 +2052,7 @@ convert_event(void *msg)
  * - fill in some channel info
  */
 static struct event_data *
-make_local_event(struct lib_event_data *p, 
+make_local_event(struct lib_event_data *p,
 			struct event_svr_channel_instance *eci)
 {
 	struct event_data *ed;
@@ -2062,7 +2064,7 @@ make_local_event(struct lib_event_data *p,
 	ed_size = sizeof(*ed) + p->led_user_data_offset + p->led_user_data_size;
 	ed = malloc(ed_size);
 	if (!ed) {
-		log_printf(LOG_LEVEL_WARNING, 
+		log_printf(LOG_LEVEL_WARNING,
 			"Failed to allocate %u bytes for event, offset %u, data size %u\n",
 				ed_size, p->led_user_data_offset, p->led_user_data_size);
 		return 0;
@@ -2074,11 +2076,11 @@ make_local_event(struct lib_event_data *p,
 	/*
 	 * Fill in lib_event_data and make the pattern pointers valid
 	 */
-	memcpy(&ed->ed_event, p, sizeof(*p) + 
+	memcpy(&ed->ed_event, p, sizeof(*p) +
 					p->led_user_data_offset + p->led_user_data_size);
 
-	eps = (mar_evt_event_pattern_t *)ed->ed_event.led_body;  
-	str = ed->ed_event.led_body + 
+	eps = (mar_evt_event_pattern_t *)ed->ed_event.led_body;
+	str = ed->ed_event.led_body +
 			(ed->ed_event.led_patterns_number * sizeof(mar_evt_event_pattern_t));
 	for (i = 0; i < ed->ed_event.led_patterns_number; i++) {
 		eps->pattern = str;
@@ -2111,18 +2113,18 @@ static void retain_event(struct event_data *evt)
 					event_retention_timeout,
 					&evt->ed_timer_handle);
 	if (ret != 0) {
-		log_printf(LOG_LEVEL_ERROR, 
+		log_printf(LOG_LEVEL_ERROR,
 				"retention of event id 0x%llx failed\n",
-				evt->ed_event.led_event_id);
+				(unsigned long long)evt->ed_event.led_event_id);
 	} else {
-		log_printf(RETENTION_TIME_DEBUG, "Retain event ID 0x%llx for %u ms\n", 
-					evt->ed_event.led_event_id, msec_in_future);
+		log_printf(RETENTION_TIME_DEBUG, "Retain event ID 0x%llx for %u ms\n",
+			(unsigned long long)evt->ed_event.led_event_id, msec_in_future);
 	}
 }
 
 /*
  * Scan the subscription list and look for the specified subsctiption ID.
- * Only look for the ID in subscriptions that are associated with the 
+ * Only look for the ID in subscriptions that are associated with the
  * saEvtInitialize associated with the specified open channel.
  */
 static struct event_svr_channel_subscr *find_subscr(
@@ -2143,7 +2145,7 @@ static struct event_svr_channel_subscr *find_subscr(
     for (l = eci->esc_open_chans.next; l != &eci->esc_open_chans; l = l->next) {
 		eco = list_entry(l, struct event_svr_channel_open, eco_entry);
 		/*
-		 * Don't bother with open channels associated with another 
+		 * Don't bother with open channels associated with another
 		 * EvtInitialize
 		 */
 		if (eco->eco_conn != conn) {
@@ -2213,16 +2215,16 @@ static void lib_evt_open_channel(void *conn, void *message)
 	req = message;
 
 
-	log_printf(CHAN_OPEN_DEBUG, 
-			"saEvtChannelOpen (Open channel request)\n");
-	log_printf(CHAN_OPEN_DEBUG, 
-			"handle 0x%x, to 0x%llx\n",
-			req->ico_c_handle,
-			req->ico_timeout);
+	log_printf(CHAN_OPEN_DEBUG,
+		"saEvtChannelOpen (Open channel request)\n");
+	log_printf(CHAN_OPEN_DEBUG,
+		"handle 0x%llx, to 0x%llx\n",
+		(unsigned long long)req->ico_c_handle,
+		(unsigned long long)req->ico_timeout);
 	log_printf(CHAN_OPEN_DEBUG, "flags %x, channel name(%d)  %s\n",
-			req->ico_open_flag,
-			req->ico_channel_name.length,
-			req->ico_channel_name.value);
+		req->ico_open_flag,
+		req->ico_channel_name.length,
+		req->ico_channel_name.value);
 	/*
 	 * Open the channel.
 	 *
@@ -2259,7 +2261,7 @@ static void lib_evt_open_channel(void *conn, void *message)
 			chan_open_timeout,
 			&ocp->ocp_timer_handle);
 	if (ret != 0) {
-		log_printf(LOG_LEVEL_WARNING, 
+		log_printf(LOG_LEVEL_WARNING,
 				"Error setting timeout for open channel %s\n",
 				req->ico_channel_name.value);
 	}
@@ -2286,16 +2288,16 @@ static void lib_evt_open_channel_async(void *conn, void *message)
 	req = message;
 
 
-	log_printf(CHAN_OPEN_DEBUG, 
-			"saEvtChannelOpenAsync (Async Open channel request)\n");
-	log_printf(CHAN_OPEN_DEBUG, 
-			"handle 0x%x, to 0x%x\n",
-			req->ico_c_handle,
-			req->ico_invocation);
+	log_printf(CHAN_OPEN_DEBUG,
+		"saEvtChannelOpenAsync (Async Open channel request)\n");
+	log_printf(CHAN_OPEN_DEBUG,
+		"handle 0x%llx, to 0x%llx\n",
+		(unsigned long long)req->ico_c_handle,
+		(unsigned long long)req->ico_invocation);
 	log_printf(CHAN_OPEN_DEBUG, "flags %x, channel name(%d)  %s\n",
-			req->ico_open_flag,
-			req->ico_channel_name.length,
-			req->ico_channel_name.value);
+		req->ico_open_flag,
+		req->ico_channel_name.length,
+		req->ico_channel_name.value);
 	/*
 	 * Open the channel.
 	 *
@@ -2342,7 +2344,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_pd *esip)
 	struct event_svr_channel_subscr *ecs;
 	struct list_head *l, *nxt;
 
-	log_printf(LOG_LEVEL_DEBUG, "Close channel %s flags 0x%02x\n", 
+	log_printf(LOG_LEVEL_DEBUG, "Close channel %s flags 0x%02x\n",
 			eco->eco_channel->esc_channel_name.value,
 			eco->eco_flags);
 
@@ -2352,7 +2354,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_pd *esip)
 	 * Check for subscriptions and deal with them.  In this case
 	 * if there are any, we just implicitly unsubscribe.
 	 *
-	 * When We're done with the channel open data then we can 
+	 * When We're done with the channel open data then we can
 	 * remove it's handle (this frees the memory too).
 	 *
 	 */
@@ -2362,7 +2364,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_pd *esip)
 	for (l = eco->eco_subscr.next; l != &eco->eco_subscr; l = nxt) {
 		nxt = l->next;
 		ecs = list_entry(l, struct event_svr_channel_subscr, ecs_entry);
-		log_printf(LOG_LEVEL_DEBUG, "Unsubscribe ID: %x\n", 
+		log_printf(LOG_LEVEL_DEBUG, "Unsubscribe ID: %x\n",
 				ecs->ecs_sub_id);
 		list_del(&ecs->ecs_entry);
 		free(ecs);
@@ -2374,7 +2376,7 @@ common_chan_close(struct event_svr_channel_open	*eco, struct libevt_pd *esip)
 	}
 
 	/*
-	 * Remove this channel from the retained event's notion 
+	 * Remove this channel from the retained event's notion
 	 * of who they have been delivered to.
 	 */
 	remove_delivered_channel(eco);
@@ -2398,14 +2400,14 @@ static void lib_evt_close_channel(void *conn, void *message)
 
 	req = message;
 
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(LOG_LEVEL_DEBUG,
 			"saEvtChannelClose (Close channel request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "handle 0x%x\n", req->icc_channel_handle);
 
 	/*
 	 * look up the channel handle
 	 */
-	ret = hdb_handle_get(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb,
 					req->icc_channel_handle, &ptr);
 	if (ret != 0) {
 		goto chan_close_done;
@@ -2437,9 +2439,9 @@ static void lib_evt_unlink_channel(void *conn, void *message)
 
 	req = message;
 
-	log_printf(CHAN_UNLINK_DEBUG, 
+	log_printf(CHAN_UNLINK_DEBUG,
 			"saEvtChannelUnlink (Unlink channel request)\n");
-	log_printf(CHAN_UNLINK_DEBUG, "Channel Name %s\n", 
+	log_printf(CHAN_UNLINK_DEBUG, "Channel Name %s\n",
 			req->iuc_channel_name.value);
 
 	if (!find_channel(&req->iuc_channel_name, EVT_CHAN_ACTIVE)) {
@@ -2450,7 +2452,7 @@ static void lib_evt_unlink_channel(void *conn, void *message)
 
 	/*
 	 * Set up the data structure so that the channel op
-	 * mcast handler can complete the unlink comamnd back to the 
+	 * mcast handler can complete the unlink comamnd back to the
 	 * requestor.
 	 */
 	ucp = malloc(sizeof(*ucp));
@@ -2536,16 +2538,15 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 
 	req = message;
 
-	log_printf(LOG_LEVEL_DEBUG, 
-			"saEvtEventSubscribe (Subscribe request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", 
-			req->ics_sub_id);
+	log_printf(LOG_LEVEL_DEBUG,
+		"saEvtEventSubscribe (Subscribe request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%llx\n",
+		(unsigned long long)req->ics_sub_id);
 
 	/*
 	 * look up the channel handle
 	 */
-	ret = hdb_handle_get(&esip->esi_hdb, 
-						req->ics_channel_handle, &ptr);
+	ret = hdb_handle_get(&esip->esi_hdb, req->ics_channel_handle, &ptr);
 	if (ret != 0) {
 		error = SA_AIS_ERR_BAD_HANDLE;
 		goto subr_done;
@@ -2557,7 +2558,7 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 	/*
 	 * See if the id is already being used
 	 */
-	ecs = find_subscr(eco, req->ics_sub_id); 
+	ecs = find_subscr(eco, req->ics_sub_id);
 	if (ecs) {
 		error = SA_AIS_ERR_EXIST;
 		goto subr_put;
@@ -2566,14 +2567,14 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 	error = evtfilt_to_aisfilt(req, &filters);
 
 	if (error == SA_AIS_OK) {
-		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n", 
-				filters->filters_number);
+		log_printf(LOG_LEVEL_DEBUG, "Subscribe filters count %d\n",
+				(int)filters->filters_number);
 		for (i = 0; i < filters->filters_number; i++) {
-			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n", 
+			log_printf(LOG_LEVEL_DEBUG, "type %s(%d) sz %d, <%s>\n",
 					filter_types[filters->filters[i].filter_type],
 					filters->filters[i].filter_type,
-					filters->filters[i].filter.pattern_size,
-					(filters->filters[i].filter.pattern_size) 
+					(int)filters->filters[i].filter.pattern_size,
+					(filters->filters[i].filter.pattern_size)
 						? (char *)filters->filters[i].filter.pattern
 						: "");
 		}
@@ -2607,15 +2608,16 @@ static void lib_evt_event_subscribe(void *conn, void *message)
 		evt = list_entry(l, struct event_data, ed_retained);
 		log_printf(LOG_LEVEL_DEBUG,
 			"Checking event ID %llx chanp %p -- sub chanp %p\n",
-			evt->ed_event.led_event_id, evt->ed_my_chan, eci);
+			(unsigned long long)evt->ed_event.led_event_id,
+			evt->ed_my_chan, eci);
 		if (evt->ed_my_chan == eci) {
 			if (evt_already_delivered(evt, eco)) {
 				continue;
 			}
 			if (event_match(evt, ecs) == SA_AIS_OK) {
 				log_printf(LOG_LEVEL_DEBUG,
-					"deliver event ID: 0x%llx\n", 
-						evt->ed_event.led_event_id);
+					"deliver event ID: 0x%llx\n",
+						(unsigned long long)evt->ed_event.led_event_id);
 				deliver_event(evt, eco, ecs);
 			}
 		}
@@ -2651,16 +2653,16 @@ static void lib_evt_event_unsubscribe(void *conn, void *message)
 
 	req = message;
 
-	log_printf(LOG_LEVEL_DEBUG, 
-					"saEvtEventUnsubscribe (Unsubscribe request)\n");
-	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%x\n", 
-			req->icu_sub_id);
+	log_printf(LOG_LEVEL_DEBUG,
+		"saEvtEventUnsubscribe (Unsubscribe request)\n");
+	log_printf(LOG_LEVEL_DEBUG, "subscription Id: 0x%llx\n",
+		(unsigned long long)req->icu_sub_id);
 
 	/*
 	 * look up the channel handle, get the open channel
 	 * data.
 	 */
-	ret = hdb_handle_get(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb,
 						req->icu_channel_handle, &ptr);
 	if (ret != 0) {
 		error = SA_AIS_ERR_BAD_HANDLE;
@@ -2673,7 +2675,7 @@ static void lib_evt_event_unsubscribe(void *conn, void *message)
 	/*
 	 * Make sure that the id exists.
 	 */
-	ecs = find_subscr(eco, req->icu_sub_id); 
+	ecs = find_subscr(eco, req->icu_sub_id);
 	if (!ecs) {
 		error = SA_AIS_ERR_NOT_EXIST;
 		goto unsubr_put;
@@ -2681,11 +2683,11 @@ static void lib_evt_event_unsubscribe(void *conn, void *message)
 
 	list_del(&ecs->ecs_entry);
 
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(LOG_LEVEL_DEBUG,
 			"unsubscribe from channel %s subscription ID 0x%x "
-			"with %d filters\n", 
+			"with %d filters\n",
 			eci->esc_channel_name.value,
-			ecs->ecs_sub_id, ecs->ecs_filters->filters_number);
+			ecs->ecs_sub_id, (int)ecs->ecs_filters->filters_number);
 
 	free_filters(ecs->ecs_filters);
 	free(ecs);
@@ -2722,14 +2724,14 @@ static void lib_evt_event_publish(void *conn, void *message)
 
 	req = message;
 
-	log_printf(LOG_LEVEL_DEBUG, 
+	log_printf(LOG_LEVEL_DEBUG,
 			"saEvtEventPublish (Publish event request)\n");
 
 
 	/*
 	 * look up and validate open channel info
 	 */
-	ret = hdb_handle_get(&esip->esi_hdb, 
+	ret = hdb_handle_get(&esip->esi_hdb,
 				    req->led_svr_channel_handle, &ptr);
 	if (ret != 0) {
 		error = SA_AIS_ERR_BAD_HANDLE;
@@ -2786,17 +2788,17 @@ static void lib_evt_event_clear_retentiontime(void *conn, void *message)
 
 	req = message;
 
-	log_printf(RETENTION_TIME_DEBUG, 
+	log_printf(RETENTION_TIME_DEBUG,
 		"saEvtEventRetentionTimeClear (Clear event retentiontime request)\n");
-	log_printf(RETENTION_TIME_DEBUG, 
+	log_printf(RETENTION_TIME_DEBUG,
 		"event ID 0x%llx, chan handle 0x%x\n",
-			req->iec_event_id,
-			req->iec_channel_handle);
+		(unsigned long long)req->iec_event_id,
+		req->iec_channel_handle);
 
 	rtc = malloc(sizeof(*rtc));
 	if (!rtc) {
 		log_printf(LOG_LEVEL_ERROR,
-				"saEvtEventRetentionTimeClear: Memory allocation failure\n");
+			"saEvtEventRetentionTimeClear: Memory allocation failure\n");
 		error = SA_AIS_ERR_TRY_AGAIN;
 		goto evt_ret_clr_err;
 	}
@@ -2809,7 +2811,7 @@ static void lib_evt_event_clear_retentiontime(void *conn, void *message)
 	 * Send the clear request
 	 */
 	memset(&cpkt, 0, sizeof(cpkt));
-	cpkt.chc_head.id = 
+	cpkt.chc_head.id =
 		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLEAR_RET_OP;
@@ -2855,12 +2857,12 @@ static void lib_evt_event_data_get(void *conn, void *message)
 	 */
 	for (i = SA_EVT_HIGHEST_PRIORITY; i <= SA_EVT_LOWEST_PRIORITY; i++) {
 		if (!list_empty(&esip->esi_events[i])) {
-			cel = list_entry(esip->esi_events[i].next, struct chan_event_list, 
+			cel = list_entry(esip->esi_events[i].next, struct chan_event_list,
 						cel_entry);
 			list_del(&cel->cel_entry);
 			list_init(&cel->cel_entry);
 			esip->esi_nevents--;
-			if (esip->esi_queue_blocked && 
+			if (esip->esi_queue_blocked &&
 					(esip->esi_nevents < evt_delivery_queue_resume)) {
 				esip->esi_queue_blocked = 0;
 				log_printf(LOG_LEVEL_DEBUG, "unblock\n");
@@ -2875,7 +2877,7 @@ static void lib_evt_event_data_get(void *conn, void *message)
 											edp->ed_event.led_head.size);
 			free_event_data(edp);
 			goto data_get_done;
-		} 
+		}
 	}
 
 	res.led_head.size = sizeof(res.led_head);
@@ -2923,9 +2925,9 @@ static void evt_conf_change(
 		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id)
 {
-	log_printf(RECOVERY_DEBUG, "Evt conf change %d\n", 
+	log_printf(RECOVERY_DEBUG, "Evt conf change %d\n",
 			configuration_type);
-	log_printf(RECOVERY_DEBUG, "m %d, j %d, l %d\n", 
+	log_printf(RECOVERY_DEBUG, "m %d, j %d, l %d\n",
 					member_list_entries,
 					joined_list_entries,
 					left_list_entries);
@@ -2934,8 +2936,8 @@ static void evt_conf_change(
 	 * Save the various membership lists for later processing by
 	 * the synchronization functions.  The left list is only
 	 * valid in the transitional configuration, the joined list is
-	 * only valid in the regular configuration.  Other than for the 
-	 * purposes of delivering retained events from merging partitions, 
+	 * only valid in the regular configuration.  Other than for the
+	 * purposes of delivering retained events from merging partitions,
 	 * we only care about the final membership from the regular
 	 * configuration.
 	 */
@@ -2949,17 +2951,17 @@ static void evt_conf_change(
 			left_member_list = 0;
 		}
 		if (left_list_entries) {
-			left_member_list = 
+			left_member_list =
 				malloc(sizeof(unsigned int) * left_list_entries);
 			if (!left_member_list) {
-				/* 
-			 	 * ERROR: No recovery.
-		 		 */
-				log_printf(LOG_LEVEL_ERROR, 
+				/*
+				 * ERROR: No recovery.
+				 */
+				log_printf(LOG_LEVEL_ERROR,
 						"Config change left list allocation error\n");
 				assert(0);
 			}
-			memcpy(left_member_list, left_list, 
+			memcpy(left_member_list, left_list,
 					sizeof(unsigned int) * left_list_entries);
 		}
 
@@ -2968,18 +2970,18 @@ static void evt_conf_change(
 			trans_member_list = 0;
 		}
 		if (member_list_entries) {
-			trans_member_list = 
+			trans_member_list =
 				malloc(sizeof(unsigned int) * member_list_entries);
 
 			if (!trans_member_list) {
-				/* 
-			 	 * ERROR: No recovery.
-		 		 */
-				log_printf(LOG_LEVEL_ERROR, 
+				/*
+				 * ERROR: No recovery.
+				 */
+				log_printf(LOG_LEVEL_ERROR,
 				  "Config change transitional member list allocation error\n");
 				assert(0);
 			}
-			memcpy(trans_member_list, member_list, 
+			memcpy(trans_member_list, member_list,
 					sizeof(unsigned int) * member_list_entries);
 		}
 	}
@@ -2994,17 +2996,17 @@ static void evt_conf_change(
 			joined_member_list = 0;
 		}
 		if (joined_list_entries) {
-			joined_member_list = 
+			joined_member_list =
 				malloc(sizeof(unsigned int) * joined_list_entries);
 			if (!joined_member_list) {
-				/* 
-			 	 * ERROR: No recovery.
-		 		 */
-				log_printf(LOG_LEVEL_ERROR, 
+				/*
+				 * ERROR: No recovery.
+				 */
+				log_printf(LOG_LEVEL_ERROR,
 						"Config change joined list allocation error\n");
 				assert(0);
 			}
-			memcpy(joined_member_list, joined_list, 
+			memcpy(joined_member_list, joined_list,
 					sizeof(unsigned int) * joined_list_entries);
 		}
 
@@ -3014,18 +3016,18 @@ static void evt_conf_change(
 			current_member_list = 0;
 		}
 		if (member_list_entries) {
-			current_member_list = 
+			current_member_list =
 				malloc(sizeof(unsigned int) * member_list_entries);
 
 			if (!current_member_list) {
-				/* 
-			 	 * ERROR: No recovery.
-		 		 */
-				log_printf(LOG_LEVEL_ERROR, 
+				/*
+				 * ERROR: No recovery.
+				 */
+				log_printf(LOG_LEVEL_ERROR,
 						"Config change member list allocation error\n");
 				assert(0);
 			}
-			memcpy(current_member_list, member_list, 
+			memcpy(current_member_list, member_list,
 					sizeof(unsigned int) * member_list_entries);
 		}
 	}
@@ -3048,7 +3050,7 @@ static int evt_lib_exit(void *conn)
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize (Event exit request)\n");
 	log_printf(LOG_LEVEL_DEBUG, "saEvtFinalize %d evts on list\n",
 			esip->esi_nevents);
-	
+
 	/*
 	 * Clean up any open channels and associated subscriptions.
 	 */
@@ -3080,7 +3082,7 @@ static int evt_lib_exit(void *conn)
 		}
 	}
 
-	for (l = clear_pending.next; 
+	for (l = clear_pending.next;
 			l != &clear_pending; l = nxt) {
 		nxt = l->next;
 		rtc = list_entry(l, struct retention_time_clear_pending, rtc_entry);
@@ -3147,7 +3149,7 @@ static int evt_exec_init(struct objdb_iface_ver0 *objdb)
 	dropped_event_size = sizeof(*dropped_event) + sizeof(dropped_pattern);
 	dropped_event = malloc(dropped_event_size);
 	if (dropped_event == 0) {
-		log_printf(LOG_LEVEL_ERROR, 
+		log_printf(LOG_LEVEL_ERROR,
 				"Memory Allocation Failure, event service not started\n");
 		errno = ENOMEM;
 		return -1;
@@ -3155,20 +3157,20 @@ static int evt_exec_init(struct objdb_iface_ver0 *objdb)
 	memset(dropped_event, 0, sizeof(*dropped_event) + sizeof(dropped_pattern));
 	dropped_event->ed_ref_count = 1;
 	list_init(&dropped_event->ed_retained);
-	dropped_event->ed_event.led_head.size = 
+	dropped_event->ed_event.led_head.size =
 			sizeof(*dropped_event) + sizeof(dropped_pattern);
 	dropped_event->ed_event.led_head.error = SA_AIS_OK;
 	dropped_event->ed_event.led_priority = SA_EVT_HIGHEST_PRIORITY;
 	dropped_event->ed_event.led_chan_name = lost_chan;
 	dropped_event->ed_event.led_publisher_name = dropped_publisher;
 	dropped_event->ed_event.led_patterns_number = 1;
-	memcpy(&dropped_event->ed_event.led_body[0], 
+	memcpy(&dropped_event->ed_event.led_body[0],
 					&dropped_pattern, sizeof(dropped_pattern));
 	return 0;
 }
 
 static int
-try_deliver_event(struct event_data *evt, 
+try_deliver_event(struct event_data *evt,
 		struct event_svr_channel_instance *eci)
 {
 	struct list_head *l, *l1;
@@ -3228,7 +3230,7 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 			totempg_ifaces_print (nodeid));
 
 	/*
-	 * See where the message came from so that we can set the 
+	 * See where the message came from so that we can set the
 	 * publishing node id in the message before delivery.
 	 */
 	cn = main_clm_get_by_nodeid(nodeid);
@@ -3236,7 +3238,7 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 			/*
 			 * Not sure how this can happen...
 			 */
-			log_printf(LOG_LEVEL_DEBUG, "No cluster node data for nodeid %d\n",
+			log_printf(LOG_LEVEL_DEBUG, "No cluster node data for nodeid %s\n",
 				totempg_ifaces_print (nodeid));
 			errno = ENXIO;
 			return;
@@ -3249,9 +3251,10 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 	evtpkt->led_receive_time = clust_time_now();
 
 	if (evtpkt->led_chan_unlink_id != EVT_CHAN_ACTIVE) {
-		log_printf(CHAN_UNLINK_DEBUG, 
-				"evt_remote_evt(0): chan %s, id 0x%llx\n",
-					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+		log_printf(CHAN_UNLINK_DEBUG,
+			"evt_remote_evt(0): chan %s, id 0x%llx\n",
+			evtpkt->led_chan_name.value,
+			(unsigned long long)evtpkt->led_chan_unlink_id);
 	}
 	eci = find_channel(&evtpkt->led_chan_name, evtpkt->led_chan_unlink_id);
 	/*
@@ -3262,14 +3265,15 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 	 * active channel messages will be ordered behind the open.
 	 */
 	if (!eci && (evtpkt->led_chan_unlink_id == EVT_CHAN_ACTIVE)) {
-		log_printf(CHAN_UNLINK_DEBUG, 
-				"evt_remote_evt(1): chan %s, id 0x%llx\n",
-					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+		log_printf(CHAN_UNLINK_DEBUG,
+			"evt_remote_evt(1): chan %s, id 0x%llx\n",
+			evtpkt->led_chan_name.value,
+			(unsigned long long)evtpkt->led_chan_unlink_id);
 		eci = find_last_unlinked_channel(&evtpkt->led_chan_name);
 	}
 
 	/*
-	 * We shouldn't normally see an event for a channel that we 
+	 * We shouldn't normally see an event for a channel that we
 	 * don't know about.
 	 */
 	if (!eci) {
@@ -3284,11 +3288,11 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 
 	evt = make_local_event(evtpkt, eci);
 	if (!evt) {
-		log_printf(LOG_LEVEL_WARNING, 
+		log_printf(LOG_LEVEL_WARNING,
 						"1Memory allocation error, can't deliver event\n");
 		return;
 	}
-		
+
 	if (evt->ed_event.led_retention_time) {
 		retain_event(evt);
 	}
@@ -3300,7 +3304,7 @@ static void evt_remote_evt(void *msg, unsigned int nodeid)
 /*
  * Calculate the remaining retention time of a received event during recovery
  */
-inline mar_time_t calc_retention_time(mar_time_t retention, 
+inline mar_time_t calc_retention_time(mar_time_t retention,
 								mar_time_t received, mar_time_t now)
 {
 	if ((received < now) && ((now - received) < retention)) {
@@ -3331,44 +3335,47 @@ static void evt_remote_recovery_evt(void *msg, unsigned int nodeid)
 
 	now = clust_time_now();
 
-	log_printf(RECOVERY_EVENT_DEBUG, 
+	log_printf(RECOVERY_EVENT_DEBUG,
 			"Remote recovery event data received from nodeid %d\n", nodeid);
 
 	if (recovery_phase == evt_recovery_complete) {
-		log_printf(RECOVERY_EVENT_DEBUG, 
-				"Received recovery data, not in recovery mode\n");
+		log_printf(RECOVERY_EVENT_DEBUG,
+			"Received recovery data, not in recovery mode\n");
 		return;
 	}
 
-	log_printf(RECOVERY_EVENT_DEBUG, 
-			"Processing recovery of retained events\n");
+	log_printf(RECOVERY_EVENT_DEBUG,
+		"Processing recovery of retained events\n");
 	if (recovery_node) {
 		log_printf(RECOVERY_EVENT_DEBUG, "This node is the recovery node\n");
 	}
 
 	log_printf(RECOVERY_EVENT_DEBUG, "(1)EVT ID: %llx, Time: %llx\n",
-			evtpkt->led_event_id, evtpkt->led_retention_time);
+		(unsigned long long)evtpkt->led_event_id,
+		(unsigned long long)evtpkt->led_retention_time);
 	/*
 	 * Calculate remaining retention time
 	 */
 	evtpkt->led_retention_time = calc_retention_time(
-				evtpkt->led_retention_time, 
-				evtpkt->led_receive_time, 
+				evtpkt->led_retention_time,
+				evtpkt->led_receive_time,
 				now);
 
-	log_printf(RECOVERY_EVENT_DEBUG, 
-			"(2)EVT ID: %llx, ret: %llx, rec: %llx, now: %llx\n",
-			evtpkt->led_event_id, 
-			evtpkt->led_retention_time, evtpkt->led_receive_time, now);
+	log_printf(RECOVERY_EVENT_DEBUG,
+		"(2)EVT ID: %llx, ret: %llx, rec: %llx, now: %llx\n",
+		(unsigned long long)evtpkt->led_event_id,
+		(unsigned long long)evtpkt->led_retention_time,
+		(unsigned long long)evtpkt->led_receive_time,
+		(unsigned long long)now);
 
 	/*
 	 * If we haven't seen this event yet and it has remaining time, process
 	 * the event.
 	 */
-	if (!check_last_event(evtpkt, evtpkt->led_nodeid) && 
+	if (!check_last_event(evtpkt, evtpkt->led_nodeid) &&
 		evtpkt->led_retention_time) {
 		/*
-		 * See where the message came from so that we can set the 
+		 * See where the message came from so that we can set the
 		 * publishing node id in the message before delivery.
 		 */
 		md = evt_find_node(evtpkt->led_nodeid);
@@ -3381,16 +3388,17 @@ static void evt_remote_recovery_evt(void *msg, unsigned int nodeid)
 				return;
 		}
 		log_printf(LOG_LEVEL_DEBUG, "Cluster node ID %s name %s\n",
-						totempg_ifaces_print (md->mn_node_info.nodeId), 
+						totempg_ifaces_print (md->mn_node_info.nodeId),
 						md->mn_node_info.nodeName.value);
 
-		log_printf(CHAN_UNLINK_DEBUG, 
-				"evt_recovery_event: chan %s, id 0x%llx\n",
-					evtpkt->led_chan_name.value, evtpkt->led_chan_unlink_id);
+		log_printf(CHAN_UNLINK_DEBUG,
+			"evt_recovery_event: chan %s, id 0x%llx\n",
+			evtpkt->led_chan_name.value,
+			(unsigned long long)evtpkt->led_chan_unlink_id);
 		eci = find_channel(&evtpkt->led_chan_name, evtpkt->led_chan_unlink_id);
 
 		/*
-		 * We shouldn't normally see an event for a channel that we don't 
+		 * We shouldn't normally see an event for a channel that we don't
 		 * know about.
 		 */
 		if (!eci) {
@@ -3401,12 +3409,12 @@ static void evt_remote_recovery_evt(void *msg, unsigned int nodeid)
 
 		evt = make_local_event(evtpkt, eci);
 		if (!evt) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 				"2Memory allocation error, can't deliver event\n");
 			errno = ENOMEM;
 			return;
 		}
-			
+
 		retain_event(evt);
 		num_delivered = try_deliver_event(evt, eci);
 		log_printf(RECOVERY_EVENT_DEBUG, "Delivered to %d subscribers\n",
@@ -3425,7 +3433,7 @@ static void chan_open_timeout(void *data)
 {
 	struct open_chan_pending *ocp = (struct open_chan_pending *)data;
 	struct res_evt_channel_open res;
-	
+
 	res.ico_head.size = sizeof(res);
 	res.ico_head.id = MESSAGE_RES_EVT_OPEN_CHANNEL;
 	res.ico_head.error = SA_AIS_ERR_TIMEOUT;
@@ -3434,10 +3442,10 @@ static void chan_open_timeout(void *data)
 }
 
 /*
- * Called by the channel open exec handler to finish the open and 
+ * Called by the channel open exec handler to finish the open and
  * respond to the application
  */
-static void evt_chan_open_finish(struct open_chan_pending *ocp, 
+static void evt_chan_open_finish(struct open_chan_pending *ocp,
 		struct event_svr_channel_instance *eci)
 {
 	struct event_svr_channel_open *eco;
@@ -3509,7 +3517,7 @@ static void evt_chan_open_finish(struct open_chan_pending *ocp,
 	hdb_handle_put(&esip->esi_hdb, handle);
 
 open_return:
-	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n", 
+	log_printf(CHAN_OPEN_DEBUG, "Open channel finish %s send response %d\n",
 											get_mar_name_t(&ocp->ocp_chan_name),
 											error);
 	if (ocp->ocp_async) {
@@ -3545,8 +3553,8 @@ static void evt_chan_unlink_finish(struct unlink_chan_pending *ucp)
 {
 	struct res_evt_channel_unlink res;
 
-	log_printf(CHAN_UNLINK_DEBUG, "Unlink channel finish ID 0x%llx\n", 
-											ucp->ucp_unlink_id);
+	log_printf(CHAN_UNLINK_DEBUG, "Unlink channel finish ID 0x%llx\n",
+		(unsigned long long)ucp->ucp_unlink_id);
 
 	list_del(&ucp->ucp_entry);
 
@@ -3567,8 +3575,8 @@ static void evt_ret_time_clr_finish(struct retention_time_clear_pending *rtc,
 {
 	struct res_evt_event_clear_retentiontime res;
 
-	log_printf(RETENTION_TIME_DEBUG, "Retention Time Clear finish ID 0x%llx\n", 
-											rtc->rtc_event_id);
+	log_printf(RETENTION_TIME_DEBUG, "Retention Time Clear finish ID 0x%llx\n",
+		(unsigned long long)rtc->rtc_event_id);
 
 	res.iec_head.size = sizeof(res);
 	res.iec_head.id = MESSAGE_RES_EVT_CLEAR_RETENTIONTIME;
@@ -3580,7 +3588,7 @@ static void evt_ret_time_clr_finish(struct retention_time_clear_pending *rtc,
 }
 
 /*
- * Take the channel command data and swap the elements so they match 
+ * Take the channel command data and swap the elements so they match
  * our architectures word order.
  */
 static void
@@ -3601,7 +3609,7 @@ convert_chan_packet(void *msg)
 	 * on the operation.
 	 */
 	switch (cpkt->chc_op) {
-	
+
 	case EVT_OPEN_CHAN_OP:
 		swab_mar_name_t (&cpkt->u.chc_chan.ocr_name);
 		cpkt->u.chc_chan.ocr_serial_no = swab64(cpkt->u.chc_chan.ocr_serial_no);
@@ -3666,7 +3674,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	if (mn == NULL) {
 		cn = main_clm_get_by_nodeid(nodeid);
 		if (cn == NULL) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 				"Evt remote channel op: Node data for nodeid %d is NULL\n",
 				nodeid);
 			return;
@@ -3679,10 +3687,10 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	switch (cpkt->chc_op) {
 		/*
 		 * Open channel remote command.  The open channel request is done
-		 * in two steps.  When an pplication tries to open, we send an open 
-		 * channel message to the other nodes. When we receive an open channel 
-		 * message, we may create the channel structure if it doesn't exist 
-		 * and also complete applicaiton open requests for the specified 
+		 * in two steps.  When an pplication tries to open, we send an open
+		 * channel message to the other nodes. When we receive an open channel
+		 * message, we may create the channel structure if it doesn't exist
+		 * and also complete applicaiton open requests for the specified
 		 * channel.  We keep a counter of total opens for the given channel and
 		 * later when it has been completely closed (everywhere in the cluster)
 		 * we will free up the assocated channel data.
@@ -3715,16 +3723,16 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 				nxt = l->next;
 				ocp = list_entry(l, struct open_chan_pending, ocp_entry);
 				log_printf(CHAN_OPEN_DEBUG,
-				"Compare channel req no %llu %llu\n",
-					ocp->ocp_serial_no,
-					cpkt->u.chc_chan.ocr_serial_no);
+					"Compare channel req no %llu %llu\n",
+					(unsigned long long)ocp->ocp_serial_no,
+					(unsigned long long)cpkt->u.chc_chan.ocr_serial_no);
 				if (ocp->ocp_serial_no == cpkt->u.chc_chan.ocr_serial_no) {
 					evt_chan_open_finish(ocp, eci);
 					break;
 				}
 			}
 		}
-		log_printf(CHAN_OPEN_DEBUG, 
+		log_printf(CHAN_OPEN_DEBUG,
 				"Open channel %s t %d, l %d, r %d\n",
 				get_mar_name_t(&eci->esc_channel_name),
 				eci->esc_total_opens, eci->esc_local_opens,
@@ -3733,7 +3741,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	}
 
 	/*
-	 * Handle a channel close. We'll decrement the global open counter and 
+	 * Handle a channel close. We'll decrement the global open counter and
 	 * free up channel associated data when all instances are closed.
 	 */
 	case EVT_CLOSE_CHAN_OP:
@@ -3741,9 +3749,9 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 						cpkt->u.chcu.chcu_name.value, mn->mn_node_info.nodeId);
 		eci = find_channel(&cpkt->u.chcu.chcu_name, cpkt->u.chcu.chcu_unlink_id);
 		if (!eci) {
-			log_printf(LOG_LEVEL_NOTICE, 
+			log_printf(LOG_LEVEL_NOTICE,
 					"Channel close request for %s not found\n",
-				cpkt->u.chcu.chcu_name.value);	
+				cpkt->u.chcu.chcu_name.value);
 			break;
 		}
 
@@ -3751,7 +3759,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		 * if last instance, we can free up assocated data.
 		 */
 		dec_open_count(eci, mn->mn_node_info.nodeId);
-		log_printf(LOG_LEVEL_DEBUG, 
+		log_printf(LOG_LEVEL_DEBUG,
 				"Close channel %s t %d, l %d, r %d\n",
 				eci->esc_channel_name.value,
 				eci->esc_total_opens, eci->esc_local_opens,
@@ -3760,28 +3768,28 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		break;
 
 	/*
-	 * Handle a request for channel unlink saEvtChannelUnlink().  
-	 * We'll look up the channel and mark it as unlinked.  Respond to 
+	 * Handle a request for channel unlink saEvtChannelUnlink().
+	 * We'll look up the channel and mark it as unlinked.  Respond to
 	 * local library unlink commands.
 	 */
 	case EVT_UNLINK_CHAN_OP: {
 		struct unlink_chan_pending *ucp;
 		struct list_head *l, *nxt;
 
-		log_printf(CHAN_UNLINK_DEBUG, 
-				"Unlink request channel %s unlink ID 0x%llx from node 0x%x\n",
-				cpkt->u.chcu.chcu_name.value,
-				cpkt->u.chcu.chcu_unlink_id,
-				mn->mn_node_info.nodeId);
+		log_printf(CHAN_UNLINK_DEBUG,
+			"Unlink request channel %s unlink ID 0x%llx from node 0x%x\n",
+			cpkt->u.chcu.chcu_name.value,
+			(unsigned long long)cpkt->u.chcu.chcu_unlink_id,
+			mn->mn_node_info.nodeId);
 
 
 		/*
 		 * look up the channel name and get its assoicated data.
 		 */
-		eci = find_channel(&cpkt->u.chcu.chcu_name, 
+		eci = find_channel(&cpkt->u.chcu.chcu_name,
 				EVT_CHAN_ACTIVE);
 		if (!eci) {
-			log_printf(LOG_LEVEL_NOTICE, 
+			log_printf(LOG_LEVEL_NOTICE,
 					"Channel unlink request for %s not found\n",
 				cpkt->u.chcu.chcu_name.value);
 		}  else {
@@ -3801,9 +3809,10 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 			for (l = unlink_pending.next; l != &unlink_pending; l = nxt) {
 				nxt = l->next;
 				ucp = list_entry(l, struct unlink_chan_pending, ucp_entry);
-				log_printf(CHAN_UNLINK_DEBUG, 
-				"Compare channel id 0x%llx 0x%llx\n", 
-					ucp->ucp_unlink_id, cpkt->u.chcu.chcu_unlink_id);
+				log_printf(CHAN_UNLINK_DEBUG,
+					"Compare channel id 0x%llx 0x%llx\n",
+					(unsigned long long)ucp->ucp_unlink_id,
+					(unsigned long long)cpkt->u.chcu.chcu_unlink_id);
 				if (ucp->ucp_unlink_id == cpkt->u.chcu.chcu_unlink_id) {
 					evt_chan_unlink_finish(ucp);
 					break;
@@ -3811,20 +3820,20 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 			}
 		}
 		break;
- 	}
+	}
 
 
 	/*
 	 * saEvtClearRetentionTime handler.
 	 */
-	case EVT_CLEAR_RET_OP: 
+	case EVT_CLEAR_RET_OP:
 	{
 		SaAisErrorT did_clear;
 		struct retention_time_clear_pending *rtc;
 		struct list_head *l, *nxt;
 
 		log_printf(RETENTION_TIME_DEBUG, "Clear retention time request %llx\n",
-				cpkt->u.chc_event_id);	
+			(unsigned long long)cpkt->u.chc_event_id);
 		did_clear = clear_retention_time(cpkt->u.chc_event_id);
 
 		/*
@@ -3846,7 +3855,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		}
 		break;
 	}
-	
+
 	/*
 	 * Set our next event ID based on the largest event ID seen
 	 * by others in the cluster.  This way, if we've left and re-joined, we'll
@@ -3857,19 +3866,19 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 		if (cpkt->u.chc_set_id.chc_nodeid == my_node->nodeId) {
 			log_level = RECOVERY_DEBUG;
 		}
-		log_printf(log_level, 
-			"Received Set event ID OP from nodeid %s to %llx for %x my addr %x base %llx\n",
-					nodeid, 
-					cpkt->u.chc_set_id.chc_last_id,
-					cpkt->u.chc_set_id.chc_nodeid,
-					totempg_ifaces_print (my_node->nodeId),
-					base_id);	
+		log_printf(log_level,
+			"Received Set event ID OP from nodeid %x to %llx for %x my addr %s base %llx\n",
+			nodeid,
+			(unsigned long long)cpkt->u.chc_set_id.chc_last_id,
+			cpkt->u.chc_set_id.chc_nodeid,
+			totempg_ifaces_print (my_node->nodeId),
+			(unsigned long long)base_id);
 		if (cpkt->u.chc_set_id.chc_nodeid == my_node->nodeId) {
 			if (cpkt->u.chc_set_id.chc_last_id >= base_id) {
-				log_printf(RECOVERY_DEBUG, 
+				log_printf(RECOVERY_DEBUG,
 					"Set event ID from nodeid %s to %llx\n",
 					totempg_ifaces_print (nodeid),
-					cpkt->u.chc_set_id.chc_last_id);	
+					(unsigned long long)cpkt->u.chc_set_id.chc_last_id);
 				base_id = cpkt->u.chc_set_id.chc_last_id + 1;
 			}
 		}
@@ -3883,7 +3892,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	 */
 	case EVT_OPEN_COUNT:
 		if (recovery_phase == evt_recovery_complete) {
-			log_printf(LOG_LEVEL_ERROR, 
+			log_printf(LOG_LEVEL_ERROR,
 				"Evt open count msg from nodeid %s, but not in membership change\n",
 				totempg_ifaces_print (nodeid));
 		}
@@ -3896,13 +3905,13 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 			zero_chan_open_counts();
 			processed_open_counts = 1;
 		}
-		log_printf(RECOVERY_DEBUG, 
+		log_printf(RECOVERY_DEBUG,
 				"Open channel count %s is %d for node %s\n",
-				cpkt->u.chc_set_opens.chc_chan_name.value, 
+				cpkt->u.chc_set_opens.chc_chan_name.value,
 				cpkt->u.chc_set_opens.chc_open_count,
 				totempg_ifaces_print (mn->mn_node_info.nodeId));
 
-		eci = find_channel(&cpkt->u.chc_set_opens.chc_chan_name, 
+		eci = find_channel(&cpkt->u.chc_set_opens.chc_chan_name,
 					EVT_CHAN_ACTIVE);
 		if (!eci) {
 			eci = create_channel(&cpkt->u.chc_set_opens.chc_chan_name);
@@ -3912,11 +3921,11 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 				   get_mar_name_t(&cpkt->u.chc_set_opens.chc_chan_name));
 			break;
 		}
-		if (set_open_count(eci, mn->mn_node_info.nodeId, 
+		if (set_open_count(eci, mn->mn_node_info.nodeId,
 			cpkt->u.chc_set_opens.chc_open_count)) {
-			log_printf(LOG_LEVEL_ERROR, 
+			log_printf(LOG_LEVEL_ERROR,
 				"Error setting Open channel count %s for node %s\n",
-				cpkt->u.chc_set_opens.chc_chan_name.value, 
+				cpkt->u.chc_set_opens.chc_chan_name.value,
 				totempg_ifaces_print (mn->mn_node_info.nodeId));
 		}
 		break;
@@ -3927,15 +3936,15 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	 */
 	case EVT_OPEN_COUNT_DONE: {
 		if (recovery_phase == evt_recovery_complete) {
-			log_printf(LOG_LEVEL_ERROR, 
+			log_printf(LOG_LEVEL_ERROR,
 				"Evt config msg from nodeid %s, but not in membership change\n",
 				totempg_ifaces_print (nodeid));
 		}
-		log_printf(RECOVERY_DEBUG, 
+		log_printf(RECOVERY_DEBUG,
 			"Receive EVT_CONF_CHANGE_DONE from nodeid %s members %d checked in %d\n",
 				totempg_ifaces_print (nodeid), total_member_count, checked_in+1);
 		if (!mn) {
-			log_printf(RECOVERY_DEBUG, 
+			log_printf(RECOVERY_DEBUG,
 				"NO NODE DATA AVAILABLE FOR nodeid %s\n", totempg_ifaces_print (nodeid));
 		}
 
@@ -3946,7 +3955,7 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 			 */
 			mn = oldest_node();
 			if (mn && mn->mn_node_info.nodeId == my_node_id) {
-				log_printf(RECOVERY_DEBUG, 
+				log_printf(RECOVERY_DEBUG,
 					"I am oldest in my transitional config\n");
 				recovery_node = 1;
 				recovery_phase = evt_send_retained_events;
@@ -3965,8 +3974,8 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
 	 * continue operations.
 	 */
 	case EVT_CONF_DONE: {
-		log_printf(RECOVERY_DEBUG, 
-				"Receive EVT_CONF_DONE from nodeid %s, members %d checked in %d\n", 
+		log_printf(RECOVERY_DEBUG,
+				"Receive EVT_CONF_DONE from nodeid %s, members %d checked in %d\n",
 				totempg_ifaces_print (nodeid),
 				total_member_count, checked_in+1);
 		if (++checked_in == total_member_count) {
@@ -3993,13 +4002,13 @@ static void evt_remote_chan_op(void *msg, unsigned int nodeid)
  * Set up initial conditions for processing event service
  * recovery.
  */
-static void evt_sync_init(void) 
+static void evt_sync_init(void)
 {
 	SaClmClusterNodeT *cn;
 	struct member_node_data *md;
 	unsigned int my_node = {SA_CLM_LOCAL_NODE_ID};
 	int left_list_entries = left_member_count;
- 	unsigned int *left_list = left_member_list;
+	unsigned int *left_list = left_member_list;
 
 	log_printf(RECOVERY_DEBUG, "Evt synchronize initialization\n");
 
@@ -4020,7 +4029,7 @@ static void evt_sync_init(void)
 	while (left_list_entries--) {
 		md = evt_find_node(*left_list);
 		if (md == 0) {
-			log_printf(LOG_LEVEL_WARNING, 
+			log_printf(LOG_LEVEL_WARNING,
 					"Can't find cluster node at %s\n",
 							totempg_ifaces_print (*left_list));
 		/*
@@ -4039,7 +4048,7 @@ static void evt_sync_init(void)
 	 * set up for recovery processing, first phase:
 	 */
 	recovery_phase = evt_send_event_id;
-	
+
 	/*
 	 * List used to distribute last know event IDs.
 	 */
@@ -4058,29 +4067,29 @@ static void evt_sync_init(void)
 	next_retained = retained_list.next;
 
 	/*
-	 * Member check in counts for open channel counts and 
+	 * Member check in counts for open channel counts and
 	 * retained events.
 	 */
 	checked_in = 0;
 }
 
 /*
- * Handle event service recovery.  It passes through a number of states to 
+ * Handle event service recovery.  It passes through a number of states to
  * finish the recovery.
- * 
+ *
  * First, the node broadcasts the highest event ID that it has seen for any
  * joinig node.  This helps to make sure that rejoining nodes don't re-use
  * event IDs that have already been seen.
- * 
+ *
  * Next, The node broadcasts its open channel information to the other nodes.
  * This makes sure that any joining nodes have complete data on any channels
  * already open.
  *
- * Once done sending open channel information the node waits in a state for 
+ * Once done sending open channel information the node waits in a state for
  * the rest of the nodes to finish sending their data.  When the last node
  * has checked in, then the remote channel operation handler selects the next
  * state which is evt_send_retained_events if this is the oldest node in the
- * cluster, or otherwise to evt_wait_send_retained_events to wait for the 
+ * cluster, or otherwise to evt_wait_send_retained_events to wait for the
  * retained events to be sent.  When the retained events have been sent, the
  * state is changed to evt_recovery_complete and this function exits with
  * zero to inidicate that recovery is done.
@@ -4091,9 +4100,9 @@ static int evt_sync_process(void)
 	log_printf(RECOVERY_DEBUG, "Process Evt synchronization \n");
 
 	switch (recovery_phase) {
-	
+
 	/*
-	 * Send last know event ID to joining nodes to prevent duplicate 
+	 * Send last know event ID to joining nodes to prevent duplicate
 	 * event IDs.
 	 */
 	case evt_send_event_id:
@@ -4107,15 +4116,16 @@ static int evt_sync_process(void)
 		log_printf(RECOVERY_DEBUG, "Send max event ID updates\n");
 		while (add_count) {
 			/*
-			 * If we've seen this node before, send out the last msg ID 
+			 * If we've seen this node before, send out the last msg ID
 			 * that we've seen from him.  He will set his base ID for
 			 * generating event and message IDs to the highest one seen.
 			 */
 			md = evt_find_node(*add_list);
 			if (md != NULL) {
-				log_printf(RECOVERY_DEBUG, 
+				log_printf(RECOVERY_DEBUG,
 					"Send set evt ID %llx to %s\n",
-					md->mn_last_msg_id, totempg_ifaces_print (*add_list));
+					(unsigned long long)md->mn_last_msg_id,
+					totempg_ifaces_print (*add_list));
 				md->mn_started = 1;
 				memset(&cpkt, 0, sizeof(cpkt));
 				cpkt.chc_head.id =
@@ -4129,8 +4139,8 @@ static int evt_sync_process(void)
 				res = totempg_groups_mcast_joined(openais_group_handle,
 						&chn_iovec, 1, TOTEMPG_AGREED);
 				if (res != 0) {
-					log_printf(RECOVERY_DEBUG, 
-						"Unable to send event id to %s\n", 
+					log_printf(RECOVERY_DEBUG,
+						"Unable to send event id to %s\n",
 						totempg_ifaces_print (*add_list));
 					/*
 					 * We'll try again later.
@@ -4180,10 +4190,10 @@ static int evt_sync_process(void)
 		 * to the nodes.
 		 */
 		memset(&cpkt, 0, sizeof(cpkt));
-		for (;next_chan != &esc_head; 
+		for (;next_chan != &esc_head;
 								next_chan = next_chan->next) {
 			log_printf(RECOVERY_DEBUG, "Sending next open count\n");
-			eci = list_entry(next_chan, struct event_svr_channel_instance, 
+			eci = list_entry(next_chan, struct event_svr_channel_instance,
 					esc_entry);
 			cpkt.chc_head.id =
 				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
@@ -4226,7 +4236,7 @@ static int evt_sync_process(void)
 
 	/*
 	 * Wait for all nodes to finish sending open updates before proceding.
-	 * the EVT_OPEN_COUNT_DONE handler will set the state to 
+	 * the EVT_OPEN_COUNT_DONE handler will set the state to
 	 * evt_send_retained_events to get us out of this.
 	 */
 	case evt_wait_open_count_done:
@@ -4251,7 +4261,7 @@ static int evt_sync_process(void)
 		 * Process messages.  When we're done, send the done message
 		 * to the nodes.
 		 */
-		for (;next_retained != &retained_list; 
+		for (;next_retained != &retained_list;
 								next_retained = next_retained->next) {
 			log_printf(LOG_LEVEL_DEBUG, "Sending next retained event\n");
 			evt = list_entry(next_retained, struct event_data, ed_retained);
@@ -4296,8 +4306,8 @@ static int evt_sync_process(void)
 	}
 
 	/*
-	 * Wait for send of retained events to finish 
-	 * the EVT_CONF_DONE handler will set the state to 
+	 * Wait for send of retained events to finish
+	 * the EVT_CONF_DONE handler will set the state to
 	 * evt_recovery_complete to get us out of this.
 	 */
 	case evt_wait_send_retained_events:

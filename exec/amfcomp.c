@@ -1130,7 +1130,7 @@ static void lib_csi_set_request (
 
 SaAisErrorT amf_comp_register (struct amf_comp *comp)
 {
-	TRACE2("Exec comp register '%s'", &comp->name.value);
+	TRACE2("Exec comp register '%s'", comp->name.value);
 
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
@@ -1150,7 +1150,7 @@ void amf_comp_error_report (
 {
 	struct res_lib_amf_componenterrorreport res_lib;
 
-	TRACE2("Exec comp error report '%s'", &comp->name.value);
+	TRACE2("Exec comp error report '%s'", comp->name.value);
 
 	if (amf_su_is_local (comp->su)) {
 		res_lib.header.size = sizeof (struct res_lib_amf_componenterrorreport);
@@ -1171,7 +1171,7 @@ void amf_comp_error_report (
 void amf_comp_healthcheck_tmo (
 	struct amf_comp *comp, struct amf_healthcheck *healthcheck)
 {
-	TRACE2("Exec healthcheck tmo for '%s'", &comp->name.value);
+	TRACE2("Exec healthcheck tmo for '%s'", comp->name.value);
 
 	/* report to SU and let it handle the problem */
 	report_error_suspected (comp, healthcheck->recommendedRecovery);
@@ -1190,7 +1190,7 @@ static void clear_ha_state (
  */
 void amf_comp_cleanup_completed (struct amf_comp *comp)
 {
-	TRACE2("Exec CLC cleanup completed for '%s'", &comp->name.value);
+	TRACE2("Exec CLC cleanup completed for '%s'", comp->name.value);
 
     /* Set all CSI's confirmed HA state to unknown  */
 	amf_comp_foreach_csi_assignment (comp, clear_ha_state);

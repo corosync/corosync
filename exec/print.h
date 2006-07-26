@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
- *
  * Author: Steven Dake (sdake@mvista.com)
  *
  * Copyright (c) 2006 Ericsson AB.
  *		Author: Hans Feldt
  *      Description: Added support for runtime installed loggers, tags tracing,
  *                   and file & line printing.
+ *
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -93,9 +94,9 @@ extern struct logger loggers[];
 */
 static int logger_identifier __attribute__((unused));
 
-extern void internal_log_printf (char *file, int line, int priority, char *format, ...);
-extern void internal_log_printf2 (char *file, int line, int level, int id, char *format, ...);
-extern void trace (char *file, int line, int tag, int id, char *format, ...);
+extern void internal_log_printf (char *file, int line, int priority, char *format, ...) __attribute__((format(printf, 4, 5)));
+extern void internal_log_printf2 (char *file, int line, int level, int id, char *format, ...) __attribute__((format(printf, 5, 6)));
+extern void trace (char *file, int line, int tag, int id, char *format, ...) __attribute__((format(printf, 5, 6)));
 extern void log_flush(void);
 
 #define LEVELMASK 0x07                 /* 3 bits */

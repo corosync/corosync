@@ -1,9 +1,11 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- *
- * All rights reserved.
+ * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * Author: Steven Dake (sdake@mvista.com)
+ *
+ * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -71,7 +73,7 @@ struct totem_interface {
 };
 
 struct totem_logging_configuration {
-	void (*log_printf) (char *, int, int, char *, ...);
+	void (*log_printf) (char *, int, int, char *, ...) __attribute__((format(printf, 4, 5)));
 	int log_level_security;
 	int log_level_error;
 	int log_level_warning;

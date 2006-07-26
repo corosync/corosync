@@ -507,7 +507,7 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
-		log_printf (LOG_ERR, "'%s' not found", &req_exec->compName.value);
+		log_printf (LOG_ERR, "'%s' not found", req_exec->compName.value);
 		return;
 	}
 
@@ -523,7 +523,7 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
-		log_printf (LOG_ERR, "'%s' not found", &req_exec->compName.value);
+		log_printf (LOG_ERR, "'%s' not found", req_exec->compName.value);
 		return;
 	}
 
@@ -567,7 +567,7 @@ static void message_handler_req_lib_amf_componentregister (
 		struct iovec iovec;
 		struct amf_pd *amf_pd = openais_conn_private_data_get (conn);
 
-		TRACE2("Lib comp register '%s'", &req_lib->compName.value);
+		TRACE2("Lib comp register '%s'", req_lib->compName.value);
 		comp->conn = conn;
 		amf_pd->comp = comp;
 		req_exec.header.size = sizeof (struct req_exec_amf_comp_register);
@@ -582,7 +582,7 @@ static void message_handler_req_lib_amf_componentregister (
 			&iovec, 1, TOTEMPG_AGREED) == 0);
 	} else {
 		struct res_lib_amf_componentregister res_lib;
-		log_printf (LOG_ERR, "Lib comp register: comp '%s' not found", &req_lib->compName.value);
+		log_printf (LOG_ERR, "Lib comp register: comp '%s' not found", req_lib->compName.value);
 		res_lib.header.id = MESSAGE_RES_AMF_COMPONENTREGISTER;
 		res_lib.header.size = sizeof (struct res_lib_amf_componentregister);
 		res_lib.header.error = SA_AIS_ERR_INVALID_PARAM;
@@ -869,7 +869,7 @@ static void message_handler_req_lib_amf_componenterrorreport (
 		struct req_exec_amf_comp_error_report req_exec;
 		struct iovec iovec;
 
-		TRACE2("Lib comp error report for '%s'", &comp->name.value);
+		TRACE2("Lib comp error report for '%s'", comp->name.value);
 
 		req_exec.header.size = sizeof (struct req_exec_amf_comp_error_report);
 		req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
@@ -895,7 +895,7 @@ static void message_handler_req_lib_amf_componenterrorreport (
 		struct res_lib_amf_componenterrorreport res_lib;
 
 		log_printf (LOG_ERR, "Component %s not found",
-			&req_lib->erroneousComponent.value);
+			req_lib->erroneousComponent.value);
 		res_lib.header.size = sizeof (struct res_lib_amf_componenterrorreport);
 		res_lib.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
 		res_lib.header.error = SA_AIS_ERR_NOT_EXIST;

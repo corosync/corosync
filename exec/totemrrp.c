@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -32,7 +33,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 
 #include <assert.h>
 #include <pthread.h>
@@ -194,7 +194,7 @@ struct totemrrp_instance {
 
 	int totemrrp_log_level_debug;
 
-	void (*totemrrp_log_printf) (char *file, int line, int level, char *format, ...);
+	void (*totemrrp_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
 
 	totemrrp_handle handle;
 

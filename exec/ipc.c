@@ -155,6 +155,7 @@ static int response_init_send_response (
 	void *message)
 {
 	SaAisErrorT error = SA_AIS_ERR_ACCESS;
+	size_t cinfo = (size_t)conn_info;
 	mar_req_lib_response_init_t *req_lib_response_init = (mar_req_lib_response_init_t *)message;
 	mar_res_lib_response_init_t res_lib_response_init;
 
@@ -165,7 +166,7 @@ static int response_init_send_response (
 	res_lib_response_init.header.size = sizeof (mar_res_lib_response_init_t);
 	res_lib_response_init.header.id = MESSAGE_RES_INIT;
 	res_lib_response_init.header.error = error;
-	res_lib_response_init.conn_info = (unsigned long long)conn_info;
+	res_lib_response_init.conn_info = (mar_uint64_t)cinfo;
 
 	openais_conn_send_response (
 		conn_info,
@@ -184,6 +185,7 @@ static int dispatch_init_send_response (
 	void *message)
 {
 	SaAisErrorT error = SA_AIS_ERR_ACCESS;
+	size_t cinfo;
 	mar_req_lib_dispatch_init_t *req_lib_dispatch_init = (mar_req_lib_dispatch_init_t *)message;
 	mar_res_lib_dispatch_init_t res_lib_dispatch_init;
 	struct conn_info *msg_conn_info;
@@ -195,10 +197,11 @@ static int dispatch_init_send_response (
 		else
 			error = SA_AIS_OK;
 
-		conn_info->conn_info_partner = (struct conn_info *)req_lib_dispatch_init->conn_info;
+		cinfo = (size_t)req_lib_dispatch_init->conn_info;
+		conn_info->conn_info_partner = (struct conn_info *)cinfo;
 		conn_info->conn_info_partner->shared_mutex = conn_info->shared_mutex;
 
-		msg_conn_info = (struct conn_info *)req_lib_dispatch_init->conn_info;
+		msg_conn_info = (struct conn_info *)cinfo;
 		msg_conn_info->conn_info_partner = conn_info;
 
 		if (error == SA_AIS_OK) {

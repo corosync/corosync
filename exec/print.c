@@ -1,12 +1,9 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Ericsson AB.
  *
  * Author: Steven Dake (sdake@mvista.com)
- *
- * Copyright (c) 2006 Ericsson AB.
- *		Author: Hans Feldt
- *      Description: Added support for runtime installed loggers, tags tracing,
- *                   and file & line printing.
+ *         Hans Feldt
  *
  * All rights reserved.
  *

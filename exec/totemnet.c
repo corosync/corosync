@@ -1,10 +1,12 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@mvista.com)
- *
+
  * This software licensed under BSD license, the text of which follows:
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +33,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 
 #include <assert.h>
 #include <pthread.h>
@@ -137,7 +138,7 @@ struct totemnet_instance {
 
 	int totemnet_log_level_debug;
 
-	void (*totemnet_log_printf) (char *file, int line, int level, char *format, ...);
+	void (*totemnet_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
 
 	totemnet_handle handle;
 

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -423,7 +424,7 @@ struct totemsrp_instance {
 
 	int totemsrp_log_level_debug;
 
-	void (*totemsrp_log_printf) (char *file, int line, int level, char *format, ...);
+	void (*totemsrp_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
 
 	enum memb_state memb_state;
 
@@ -1350,7 +1351,7 @@ static void timer_function_orf_token_timeout (void *data)
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
 
 	log_printf (instance->totemsrp_log_level_notice,
-		"The token was lost in state %d from timer %x\n", instance->memb_state, data);
+		"The token was lost in state %d from timer %p\n", instance->memb_state, data);
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
 			totemrrp_iface_check (instance->totemrrp_handle);
@@ -2799,7 +2800,7 @@ static void memb_ring_id_store (
 		return;
 	}
 	log_printf (instance->totemsrp_log_level_notice,
-		"Storing new sequence id for ring %d\n", commit_token->ring_id.seq);
+		"Storing new sequence id for ring %llx\n", commit_token->ring_id.seq);
 	//assert (fd > 0);
 	res = write (fd, &commit_token->ring_id.seq, sizeof (unsigned long long));
 	assert (res == sizeof (unsigned long long));

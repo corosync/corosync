@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
  * Copyright (c) 2005 OSDL.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -150,7 +151,7 @@ static int totempg_log_level_error;
 static int totempg_log_level_warning;
 static int totempg_log_level_notice;
 static int totempg_log_level_debug;
-static void (*totempg_log_printf) (char *file, int line, int level, char *format, ...) = NULL;
+static void (*totempg_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5))) = NULL;
 
 struct totem_config *totempg_totem_config;
 
