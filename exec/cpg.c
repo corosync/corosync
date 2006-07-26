@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -610,7 +611,7 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)msg;
 
 	req_exec_cpg_procjoin->pid = swab32(req_exec_cpg_procjoin->pid);
-	req_exec_cpg_procjoin->group_name.length = swab32(req_exec_cpg_procjoin->group_name.length);
+	swab_mar_cpg_name_t (&req_exec_cpg_procjoin->group_name);
 	req_exec_cpg_procjoin->reason = swab32(req_exec_cpg_procjoin->reason);
 }
 
@@ -619,9 +620,11 @@ static void exec_cpg_joinlist_endian_convert (void *msg)
 	mar_res_header_t *res = (mar_res_header_t *)msg;
 	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(mar_res_header_t));
 
+	/* XXX shouldn't mar_res_header be swabbed? */
+
 	while ((void*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
-		jle->group_name.length = swab32(jle->group_name.length);
+		swab_mar_cpg_name_t (&jle->group_name);
 		jle++;
 	}
 }
@@ -630,9 +633,10 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 {
 	struct req_exec_cpg_mcast *req_exec_cpg_mcast = (struct req_exec_cpg_mcast *)msg;
 
+	swab_mar_req_header_t (&req_exec_cpg_mcast->header);
+	swab_mar_cpg_name_t (&req_exec_cpg_mcast->group_name);
 	req_exec_cpg_mcast->pid = swab32(req_exec_cpg_mcast->pid);
 	req_exec_cpg_mcast->msglen = swab32(req_exec_cpg_mcast->msglen);
-	req_exec_cpg_mcast->group_name.length = swab32(req_exec_cpg_mcast->group_name.length);
 
 }
 

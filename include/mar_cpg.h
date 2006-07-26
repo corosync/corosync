@@ -1,9 +1,10 @@
 /*
  * Copyright (c) 2006 Red Hat, Inc.
+ * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ *
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
- *
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -35,11 +36,17 @@
 #define MAR_CPG_H_DEFINED
 
 #include "cpg.h"
+#include "swab.h"
 
 typedef struct {
-	uint32_t length __attribute((aligned(8)));
-	char value[CPG_MAX_NAME_LENGTH] __attribute((aligned(8)));
+	uint32_t length __attribute__((aligned(8)));
+	char value[CPG_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_cpg_name_t;
+
+static inline void swab_mar_cpg_name_t (mar_cpg_name_t *to_swab)
+{
+	swab_mar_uint32_t (&to_swab->length);
+}
 
 static inline void marshall_from_mar_cpg_name_t (
 	struct cpg_name *dest,
