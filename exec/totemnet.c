@@ -1024,7 +1024,7 @@ static int totemnet_build_sockets_ip (
 		memset(&mreq, 0, sizeof(mreq));
 		mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
 		mreq.imr_interface.s_addr = boundto_sin->sin_addr.s_addr;
-		res = setsockopt (sockets->mcast_send, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+		res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 			&mreq, sizeof (mreq));
 		if (res == -1) {
 			perror ("join ipv4 multicast group failed");
