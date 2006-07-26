@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2004-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Author: Steven Dake (sdake@mvista.com)
+ *
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -55,6 +56,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
+#include "../include/swab.h"
 #include "totempg.h"
 #include "main.h"
 #include "ipc.h"
@@ -465,6 +467,11 @@ static void message_handler_req_evs_membership_get (void *conn, void *msg)
 
 static void req_exec_mcast_endian_convert (void *msg)
 {
+	struct req_exec_evs_mcast *req_exec_evs_mcast =
+		(struct req_exec_evs_mcast *)msg;
+	req_exec_evs_mcast->group_entries =
+		swab32 (req_exec_evs_mcast->group_entries);
+	req_exec_evs_mcast->msg_len = swab32 (req_exec_evs_mcast->msg_len);
 }
 
 static void message_handler_req_exec_mcast (
