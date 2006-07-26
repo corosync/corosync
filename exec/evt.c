@@ -2,6 +2,8 @@
  * Copyright (c) 2004-2006 Mark Haverkamp
  * Copyright (c) 2004-2006 Open Source Development Lab
  *
+ * Copyright (c) 2006 Sun Microsystems, Inc.
+ *
  * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
@@ -2017,11 +2019,11 @@ convert_event(void *msg)
 	 * led_svr_channel_handle and led_lib_channel_handle.
 	 */
 
-	evt->led_chan_name.length = swab16(evt->led_chan_name.length);
+	swab_mar_name_t (&evt->led_chan_name);
 	evt->led_chan_unlink_id = swab64(evt->led_chan_unlink_id);
 	evt->led_event_id = swab64(evt->led_event_id);
 	evt->led_sub_id = swab32(evt->led_sub_id);
-	evt->led_publisher_name.length = swab32(evt->led_publisher_name.length);
+	swab_mar_name_t (&evt->led_publisher_name);
 	evt->led_retention_time = swab64(evt->led_retention_time);
 	evt->led_publish_time = swab64(evt->led_publish_time);
 	evt->led_user_data_offset = swab32(evt->led_user_data_offset);
@@ -3601,14 +3603,13 @@ convert_chan_packet(void *msg)
 	switch (cpkt->chc_op) {
 	
 	case EVT_OPEN_CHAN_OP:
-		cpkt->u.chc_chan.ocr_name.length =
-			swab16(cpkt->u.chc_chan.ocr_name.length);
+		swab_mar_name_t (&cpkt->u.chc_chan.ocr_name);
 		cpkt->u.chc_chan.ocr_serial_no = swab64(cpkt->u.chc_chan.ocr_serial_no);
 		break;
 
 	case EVT_UNLINK_CHAN_OP:
 	case EVT_CLOSE_CHAN_OP:
-		cpkt->u.chcu.chcu_name.length = swab16(cpkt->u.chcu.chcu_name.length);
+		swab_mar_name_t (&cpkt->u.chcu.chcu_name);
 		cpkt->u.chcu.chcu_unlink_id = swab64(cpkt->u.chcu.chcu_unlink_id);
 		break;
 
@@ -3623,8 +3624,7 @@ convert_chan_packet(void *msg)
 		break;
 
 	case EVT_OPEN_COUNT:
-		cpkt->u.chc_set_opens.chc_chan_name.length = 
-			swab16(cpkt->u.chc_set_opens.chc_chan_name.length);
+		swab_mar_name_t (&cpkt->u.chc_set_opens.chc_chan_name);
 		cpkt->u.chc_set_opens.chc_open_count = 
 			swab32(cpkt->u.chc_set_opens.chc_open_count);
 		break;
