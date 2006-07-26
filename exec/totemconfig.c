@@ -235,7 +235,7 @@ extern int totem_config_read (
 		 * Get mcast port
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastport", &str)) {
-			totem_config->interfaces[ringnumber].ip_port = htons (atoi (str));
+			totem_config->interfaces[ringnumber].ip_port = atoi (str);
 		}
 
 		/*

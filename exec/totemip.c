@@ -213,7 +213,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		sin->sin_len = sizeof(struct sockaddr_in);
 #endif
 		sin->sin_family = ip_addr->family;
-		sin->sin_port = port;
+		sin->sin_port = htons (port);
 		memcpy(&sin->sin_addr, ip_addr->addr, sizeof(struct in_addr));
 		*addrlen = sizeof(struct sockaddr_in);
 		ret = 0;
@@ -227,7 +227,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		sin->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		sin->sin6_family = ip_addr->family;
-		sin->sin6_port = port;
+		sin->sin6_port = htons (port);
 		sin->sin6_scope_id = 2;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
@@ -239,8 +239,8 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 }
 
 /* Converts an address string string into a totem_ip_address.
-   family can be AF_INET, AF_INET6 or 0 ("for "don't care")
-*/
+ * family can be AF_INET, AF_INET6 or 0 (for "don't care")
+ */
 int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
 {
 	struct addrinfo *ainfo;
@@ -267,6 +267,8 @@ int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
 		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
 	else
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
+
+	freeaddrinfo(ainfo);
 
 	return 0;
 }

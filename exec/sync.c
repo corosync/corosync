@@ -55,7 +55,6 @@
 #include "totemip.h"
 #include "totem.h"
 #include "vsf.h"
-#include "swab.h"
 #include "../lcr/lcr_ifact.h"
 #include "print.h"
 
@@ -202,7 +201,7 @@ void sync_callbacks_load (void)
 		res = sync_callbacks_retrieve (sync_recovery_index, &sync_callbacks);
 		/*
 		 * No more service handlers have sync callbacks at this time
-	`	 */
+		 */
 		if (res == -1) {
 			sync_processing = 0;
 			break;
@@ -345,10 +344,8 @@ static struct memb_ring_id deliver_ring_id;
 
 void sync_endian_convert (struct req_exec_sync_barrier_start *req_exec_sync_barrier_start)
 {
-	totemip_copy_endian_convert(&req_exec_sync_barrier_start->ring_id.rep,
-		&req_exec_sync_barrier_start->ring_id.rep);
-	req_exec_sync_barrier_start->ring_id.seq = swab64 (req_exec_sync_barrier_start->ring_id.seq);
-
+	/* XXX no swab on mar_req_header_t? */
+	swab_memb_ring_id_t (&req_exec_sync_barrier_start->ring_id);
 }
 
 static void sync_deliver_fn (

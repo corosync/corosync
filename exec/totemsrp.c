@@ -2206,7 +2206,7 @@ static int orf_token_mcast (
 		memcpy (&sort_queue_item.iovec[1], message_item->iovec,
 			message_item->iov_len * sizeof (struct iovec));
 
-		memcpy (&mcast->ring_id, &instance->my_ring_id, sizeof (struct memb_ring_id));
+		memb_ring_id_copy (&mcast->ring_id, &instance->my_ring_id);
 
 		sort_queue_item.iov_len = message_item->iov_len + 1;
 
@@ -2357,8 +2357,9 @@ static int orf_token_rtr (
 				/*
 				 * Missing message not found in current retransmit list so add it
 				 */
-				memcpy (&rtr_list[orf_token->rtr_list_entries].ring_id,
-					&instance->my_ring_id, sizeof (struct memb_ring_id));
+				memb_ring_id_copy (
+					&rtr_list[orf_token->rtr_list_entries].ring_id,
+					&instance->my_ring_id);
 				rtr_list[orf_token->rtr_list_entries].seq = instance->my_aru + i;
 				orf_token->rtr_list_entries++;
 			}
@@ -2529,7 +2530,7 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	orf_token.aru = SEQNO_START_MSG - 1;
 	orf_token.aru_addr = instance->my_id.addr[0].nodeid;
 
-	memcpy (&orf_token.ring_id, &instance->my_ring_id, sizeof (struct memb_ring_id));
+	memb_ring_id_copy (&orf_token.ring_id, &instance->my_ring_id);
 	orf_token.fcc = 0;
 	orf_token.backlog = 0;
 
@@ -2552,8 +2553,8 @@ static void memb_state_commit_token_update (
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	memb_index_this = (commit_token->memb_index + 1) % commit_token->addr_entries;
-	memcpy (&memb_list[memb_index_this].ring_id,
-		&instance->my_old_ring_id, sizeof (struct memb_ring_id));
+	memb_ring_id_copy (&memb_list[memb_index_this].ring_id,
+		&instance->my_old_ring_id);
 	assert (!totemip_zero_check(&instance->my_old_ring_id.rep));
 
 	memb_list[memb_index_this].aru = instance->old_ring_state_aru;
@@ -3725,8 +3726,7 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->token_seq = swab32 (in->token_seq);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
-	out->ring_id.seq = swab64 (in->ring_id.seq);
+	memb_ring_id_copy_endian_convert (&out->ring_id, &in->ring_id);
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->memb_index = swab32 (in->memb_index);
 	out->addr_entries = swab32 (in->addr_entries);
@@ -3740,11 +3740,9 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 		 * Only convert the memb entry if it has been set
 		 */
 		if (in_memb_list[i].ring_id.rep.family != 0) {
-			totemip_copy_endian_convert (&out_memb_list[i].ring_id.rep,
-				     &in_memb_list[i].ring_id.rep);
-
-			out_memb_list[i].ring_id.seq =
-				swab64 (in_memb_list[i].ring_id.seq);
+			memb_ring_id_copy_endian_convert (
+			    &out_memb_list[i].ring_id,
+			    &in_memb_list[i].ring_id);
 			out_memb_list[i].aru = swab32 (in_memb_list[i].aru);
 			out_memb_list[i].high_delivered = swab32 (in_memb_list[i].high_delivered);
 			out_memb_list[i].received_flg = swab32 (in_memb_list[i].received_flg);
@@ -3762,16 +3760,15 @@ static void orf_token_endian_convert (struct orf_token *in, struct orf_token *ou
 	out->seq = swab32 (in->seq);
 	out->token_seq = swab32 (in->token_seq);
 	out->aru = swab32 (in->aru);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	memb_ring_id_copy_endian_convert (&out->ring_id, &in->ring_id);
 	out->aru_addr = swab32(in->aru_addr);
-	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->fcc = swab32 (in->fcc);
 	out->backlog = swab32 (in->backlog);
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->rtr_list_entries = swab32 (in->rtr_list_entries);
 	for (i = 0; i < out->rtr_list_entries; i++) {
-		totemip_copy_endian_convert(&out->rtr_list[i].ring_id.rep, &in->rtr_list[i].ring_id.rep);
-		out->rtr_list[i].ring_id.seq = swab64 (in->rtr_list[i].ring_id.seq);
+		memb_ring_id_copy_endian_convert(&out->rtr_list[i].ring_id,
+			&in->rtr_list[i].ring_id);
 		out->rtr_list[i].seq = swab32 (in->rtr_list[i].seq);
 	}
 }
@@ -3783,8 +3780,7 @@ static void mcast_endian_convert (struct mcast *in, struct mcast *out)
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->seq = swab32 (in->seq);
 	out->this_seqno = swab32 (in->this_seqno);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
-	out->ring_id.seq = swab64 (in->ring_id.seq);
+	memb_ring_id_copy_endian_convert(&out->ring_id, &in->ring_id);
 	out->node_id = swab32 (in->node_id);
 	out->guarantee = swab32 (in->guarantee);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
@@ -3797,8 +3793,7 @@ static void memb_merge_detect_endian_convert (
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
-	out->ring_id.seq = swab64 (in->ring_id.seq);
+	memb_ring_id_copy_endian_convert(&out->ring_id, &in->ring_id);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 

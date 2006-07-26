@@ -704,7 +704,7 @@ static int netif_determine (
 	 * field is only 32 bits.
 	 */
 	if (bound_to->family == AF_INET && bound_to->nodeid == 0) {
-		memcpy (&bound_to->nodeid, bound_to->addr, sizeof (int));
+		bound_to->nodeid = totemip_compute_nodeid_from_addr(bound_to);
 	}
 
 	return (res);
