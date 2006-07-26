@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,6 +33,7 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <errno.h>
+#include <string.h>
 #include <unistd.h>
 #include <fnmatch.h>
 #include "lcr_comp.h"
@@ -177,28 +179,21 @@ static void ld_library_path_build (void)
 {
 	char *ld_library_path;
 	char *my_ld_library_path;
-	char *p_s;
-	unsigned int i;
-	unsigned int len;
+	char *p_s, *ptrptr;
 
 	ld_library_path = getenv ("LD_LIBRARY_PATH");
 	if (ld_library_path == NULL) {
 		return;
 	}
 	my_ld_library_path = strdup (ld_library_path);
-	if (my_ld_library_path == 0) {
+	if (my_ld_library_path == NULL) {
 		return;
 	}
 
-	len = strlen (my_ld_library_path) + 1;
-
-	for (i = 0, p_s = my_ld_library_path, i = 0; i < len; i++) {
-		if (my_ld_library_path[i] == ':' || my_ld_library_path[i] == '\0') {
-			my_ld_library_path[i]='\0';
-//printf ("path list %x path list entries %d\n", path_list, path_list_entries);
-			path_list[path_list_entries++] = strdup (p_s);
-			p_s = &my_ld_library_path[i];
-		}
+	p_s = strtok_r (my_ld_library_path, ":", &ptrptr);
+	while (p_s != NULL) {
+		path_list[path_list_entries++] = strdup (p_s);
+		p_s = strtok_r (NULL, ":", &ptrptr);
 	}
 
 	free (my_ld_library_path);
