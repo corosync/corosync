@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Author: Steven Dake (sdake@mvista.com)
+ *
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
- *
- * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -32,6 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>
@@ -302,10 +304,12 @@ static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 {
 	int i;
 
-	ykd_session->member_list_entries = swab32 (ykd_session->member_list_entries);
+	ykd_session->member_list_entries =
+		swab32 (ykd_session->member_list_entries);
 	ykd_session->session_id = swab32 (ykd_session->session_id);
 	for (i = 0; i < ykd_session->member_list_entries; i++) {
-// TODO		totemip_copy_endian_convert (&ykd_session->member_list[i], &ykd_session->member_list[i]);
+		ykd_session->member_list[i] =
+			swab32 (ykd_session->member_list[i]);
 	}
 }
 
@@ -355,7 +359,8 @@ static void ykd_deliver_fn (
 		return;
 	}
 #endif
-	if (endian_conversion_required) {
+	if (endian_conversion_required &&
+	    (iovec->iov_len > sizeof (struct ykd_header))) {
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);
 	}
 
@@ -384,6 +389,7 @@ static void ykd_deliver_fn (
 
 	switch (ykd_mode) {
 		case YKD_MODE_SENDSTATE:
+			assert (iovec->iov_len > sizeof (struct ykd_header));
 			/*
 			 * Copy state information for the sending processor
 			 */
