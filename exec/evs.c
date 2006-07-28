@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2004-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
- * Author: Steven Dake (sdake@mvista.com)
- *
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
+ *
+ * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -290,7 +290,7 @@ static void message_handler_req_evs_join (void *conn, void *msg)
 
 	addr = realloc (evs_pd->groups, sizeof (struct evs_group) * 
 		(evs_pd->group_entries + req_lib_evs_join->group_entries));
-	if (addr == 0) {
+	if (addr == NULL) {
 		error = SA_AIS_ERR_NO_MEMORY;
 		goto exit_error;
 	}

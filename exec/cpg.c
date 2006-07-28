@@ -546,8 +546,9 @@ static void remove_node_from_groups(
 
 						list_del(&gi->rg->list);
 						newsize = gi->rg->left_list_size * 2;
-						newrg = realloc(gi->rg, sizeof(struct removed_group) + newsize*sizeof(mar_cpg_address_t));
-						if (!newrg) {
+						newrg = realloc (gi->rg,
+							sizeof(struct removed_group) + newsize * sizeof(mar_cpg_address_t));
+						if (newrg == NULL) {
 							log_printf(LOG_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
 							return;
 						}

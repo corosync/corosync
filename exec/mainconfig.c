@@ -204,10 +204,14 @@ int openais_main_config_read (
 									"logger",
 									strlen ("logger"),
 									&object_logger_handle) == 0) {
-			main_config->logger =
-				realloc(main_config->logger,
-						sizeof(struct logger_config) *
-						(main_config->loggers + 1));
+			struct logger_config *logger_tmp;
+			logger_tmp = realloc (main_config->logger,
+				sizeof(struct logger_config) * (main_config->loggers + 1));
+			if (logger_tmp == NULL) {
+				error_reason = "no more memory";
+				goto other_error;
+			}
+			main_config->logger = logger_tmp;
 			i = main_config->loggers;
 			main_config->loggers++;
 			memset(&main_config->logger[i], 0, sizeof(struct logger_config));
@@ -295,6 +299,14 @@ int openais_main_config_read (
 		main_config->syslog_facility = LOG_DAEMON;
 
 	return 0;
+
+other_error:
+	sprintf (error_string_response,
+		"error parsing config: %s.\n",
+		error_reason);
+
+	*error_string = error_string_response;
+	return -1;
 
 parse_error:
 	sprintf (error_string_response,

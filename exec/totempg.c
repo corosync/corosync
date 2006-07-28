@@ -950,7 +950,7 @@ int totempg_groups_join (
 	new_groups = realloc (instance->groups,
 		sizeof (struct totempg_group) *
 		(instance->groups_cnt + group_cnt));
-	if (new_groups == 0) {
+	if (new_groups == NULL) {
 		res = ENOMEM;
 		goto error_exit;
 	}

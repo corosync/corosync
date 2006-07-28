@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005 Red Hat Inc
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -329,14 +330,24 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	 * Generate list of local interfaces in ifc.ifc_req structure
 	 */
 	id_fd = socket (AF_INET, SOCK_DGRAM, 0);
-	ifc.ifc_buf = 0;
+	ifc.ifc_buf = NULL;
 	do {
+		void *ifc_buf_tmp;
 		numreqs += 32;
 		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
-		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
+		ifc_buf_tmp = realloc (ifc.ifc_buf, ifc.ifc_len);
+		if (ifc_buf_tmp == NULL) {
+			close (id_fd);
+			if (ifc.ifc_buf != NULL) {
+				free (ifc.ifc_buf);
+			}
+			return -1;
+		}
+		ifc.ifc_buf = ifc_buf_tmp;
 		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
 		if (res < 0) {
 			close (id_fd);
+			free (ifc.ifc_buf);
 			return -1;
 		}
 	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
@@ -393,7 +404,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			}
 		}
 	}
-	free (ifc.ifc_buf);
+	if (ifc.ifc_buf != NULL) {
+		free (ifc.ifc_buf);
+	}
 	close (id_fd);
 
 	return (res);

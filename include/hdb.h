@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -99,7 +100,7 @@ static inline int hdb_handle_create (
 		handle_database->handle_count += 1;
 		new_handles = (struct hdb_handle *)realloc (handle_database->handles,
 			sizeof (struct hdb_handle) * handle_database->handle_count);
-		if (new_handles == 0) {
+		if (new_handles == NULL) {
 			pthread_mutex_unlock (&handle_database->mutex);
 			return (-1);
 		}

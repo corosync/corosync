@@ -1,19 +1,20 @@
 /** @file amfcomp.c
  * 
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006 Ericsson AB.
+ *
+ * All rights reserved.
+ *
  * Author: Steven Dake (sdake@mvista.com)
  *
- * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt
  * - Introduced AMF B.02 information model
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson, Lars Holm
- *  - Component/SU restart, SU failover
- *
- * All rights reserved.
- *
+ * Author: Anders Eriksson, Lars Holm
+ * - Component/SU restart, SU failover
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -249,7 +250,7 @@ static int invocation_create (
 	if (invocation_addr == 0) {
 		invocation_temp = (struct invocation *)realloc (invocation_entries,
 			(invocation_entries_size + 1) * sizeof (struct invocation));
-		if (invocation_temp == 0) {
+		if (invocation_temp == NULL) {
 			return (-1);
 		}
 		invocation_entries = invocation_temp;

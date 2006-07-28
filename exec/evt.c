@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2004-2006 Mark Haverkamp
  * Copyright (c) 2004-2006 Open Source Development Lab
- *
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -869,14 +868,17 @@ static struct event_svr_channel_instance *create_channel(mar_name_t *cn)
  */
 static int check_open_size(struct event_svr_channel_instance *eci)
 {
+	struct open_count *esc_node_opens_tmp;
+
 	if (total_member_count > eci->esc_oc_size) {
-		eci->esc_node_opens = realloc(eci->esc_node_opens,
+		esc_node_opens_tmp = realloc (eci->esc_node_opens,
 							sizeof(struct open_count) * total_member_count);
-		if (!eci->esc_node_opens) {
+		if (esc_node_opens_tmp == NULL) {
 			log_printf(LOG_LEVEL_WARNING,
 					"Memory error realloc of node list\n");
 			return -1;
 		}
+		eci->esc_node_opens = esc_node_opens_tmp;
 		memset(&eci->esc_node_opens[eci->esc_oc_size], 0,
 			sizeof(struct open_count) *
 					(total_member_count - eci->esc_oc_size));
@@ -1636,8 +1638,15 @@ evt_delivered(struct event_data *evt, struct event_svr_channel_open *eco)
 	log_printf(LOG_LEVEL_DEBUG, "delivered ID %llx to eco %p\n",
 			(unsigned long long)evt->ed_event.led_event_id, eco);
 	if (evt->ed_delivered_count == evt->ed_delivered_next) {
-		evt->ed_delivered = realloc(evt->ed_delivered,
+		struct event_svr_channel_open *ed_delivered_tmp;
+
+		ed_delivered_tmp = realloc (evt->ed_delivered,
 			DELIVER_SIZE * sizeof(struct event_svr_channel_open *));
+		if (ed_delivered_tmp == NULL) {
+			log_printf(LOG_LEVEL_WARNING, "Memory error realloc\n");
+			return;
+		}
+		evt->ed_delivered = ed_delivered_tmp;
 		memset(evt->ed_delivered + evt->ed_delivered_next, 0,
 			DELIVER_SIZE * sizeof(struct event_svr_channel_open *));
 		evt->ed_delivered_next = evt->ed_delivered_count;

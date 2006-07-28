@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -170,7 +171,7 @@ int poll_dispatch_add (
 		poll_entries = (struct poll_entry *)realloc (poll_instance->poll_entries,
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct poll_entry));
-		if (poll_entries == 0) {
+		if (poll_entries == NULL) {
 			res = -ENOMEM;
 			goto error_put;
 		}
@@ -179,7 +180,7 @@ int poll_dispatch_add (
 		ufds = (struct pollfd *)realloc (poll_instance->ufds,
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct pollfd));
-		if (ufds == 0) {
+		if (ufds == NULL) {
 			res = -ENOMEM;
 			goto error_put;
 		}

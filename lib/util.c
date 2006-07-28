@@ -2,6 +2,7 @@
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -532,7 +533,7 @@ saHandleCreate (
 		handleDatabase->handleCount += 1;
 		newHandles = (struct saHandle *)realloc (handleDatabase->handles,
 			sizeof (struct saHandle) * handleDatabase->handleCount);
-		if (newHandles == 0) {
+		if (newHandles == NULL) {
 			pthread_mutex_unlock (&handleDatabase->mutex);
 			return (SA_AIS_ERR_NO_MEMORY);
 		}

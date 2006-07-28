@@ -2561,22 +2561,23 @@ static int recovery_section_create (
 		 */
 		if (section_descriptor->section_size
 			> checkpoint_section->section_descriptor.section_size) {
+			void *section_data_tmp;
 
 			log_printf (LOG_LEVEL_NOTICE,
 				"recovery_section_create reallocating data. Present Size: %d, New Size: %d\n",
 				(int)checkpoint_section->section_descriptor.section_size,
 				(int)section_descriptor->section_size);
 
-			checkpoint_section->section_data =
+			section_data_tmp =
 				realloc (checkpoint_section->section_data, section_descriptor->section_size);
-
-			if (checkpoint_section->section_data == 0) {
+			if (section_data_tmp == NULL) {
 				log_printf (LOG_LEVEL_ERROR,
-					"recovery_section_create section_data realloc returned 0 Calling error_exit.\n");
+					"recovery_section_create section_data realloc returned NULL Calling error_exit.\n");
 				error = SA_AIS_ERR_NO_MEMORY;
 				checkpoint_section_release(checkpoint_section);
 				goto error_exit;
 			}
+			checkpoint_section->section_data = section_data_tmp;
 
 			checkpoint_section->section_descriptor.section_size = section_descriptor->section_size;
 			error = SA_AIS_OK;
@@ -3107,8 +3108,8 @@ static void message_handler_req_exec_ckpt_sectionwrite (
 		req_exec_ckpt_sectionwrite->data_size;
 	if (size_required > checkpoint_section->section_descriptor.section_size) {
 		section_data = realloc (checkpoint_section->section_data, size_required);
-		if (section_data == 0) {
-			log_printf (LOG_LEVEL_ERROR, "section_data realloc returned 0 Calling error_exit.\n");
+		if (section_data == NULL) {
+			log_printf (LOG_LEVEL_ERROR, "section_data realloc returned NULL Calling error_exit.\n");
 			error = SA_AIS_ERR_NO_MEMORY;
 			goto error_exit;
 		}
