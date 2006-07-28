@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -37,6 +38,7 @@
 #include "saAis.h"
 #include "saLck.h"
 #include "ipc_gen.h"
+#include "swab.h"
 
 enum req_lib_lck_resource_types {
 	MESSAGE_REQ_LCK_RESOURCEOPEN = 0,
@@ -64,7 +66,7 @@ enum res_lib_lck_resource_types {
 struct req_lib_lck_resourceopen {
 	mar_req_header_t header;
 	SaInvocationT invocation;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 	SaLckResourceOpenFlagsT resourceOpenFlags;
 	SaLckResourceHandleT resourceHandle;
 	SaTimeT timeout;
@@ -86,7 +88,7 @@ struct res_lib_lck_resourceopenasync {
 
 struct req_lib_lck_resourceclose {
 	mar_req_header_t header;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 	SaLckResourceHandleT resourceHandle;
 };
 
@@ -96,7 +98,7 @@ struct res_lib_lck_resourceclose {
 
 struct req_lib_lck_resourcelock {
 	mar_req_header_t header;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 	SaInvocationT invocation;
 	SaLckLockModeT lockMode;
 	SaLckLockFlagsT lockFlags;
@@ -107,6 +109,22 @@ struct req_lib_lck_resourcelock {
 	mar_message_source_t source;
 	SaLckResourceHandleT resourceHandle;
 };
+
+static inline void swab_req_lib_lck_resourcelock (
+	struct req_lib_lck_resourcelock *to_swab)
+{
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_name_t (&to_swab->lockResourceName);
+	to_swab->invocation = swab64 (to_swab->invocation);
+	to_swab->lockMode = swab64 (to_swab->lockMode);
+	to_swab->lockFlags = swab32 (to_swab->lockFlags);
+	to_swab->waiterSignal = swab64 (to_swab->waiterSignal);
+	to_swab->timeout = swab64 (to_swab->timeout);
+	to_swab->lockId = swab64 (to_swab->lockId);
+	to_swab->async_call = swab32 (to_swab->async_call);
+	swab_mar_message_source_t (&to_swab->source);
+	to_swab->resourceHandle = swab64 (to_swab->resourceHandle);
+}
 
 struct res_lib_lck_resourcelock {
 	mar_res_header_t header;
@@ -125,7 +143,7 @@ struct res_lib_lck_resourcelockasync {
 
 struct req_lib_lck_resourceunlock {
 	mar_req_header_t header;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 	SaLckLockIdT lockId;
 	SaInvocationT invocation;
 	SaTimeT timeout;
@@ -144,8 +162,15 @@ struct res_lib_lck_resourceunlockasync {
 
 struct req_lib_lck_lockpurge {
 	mar_req_header_t header;
-	SaNameT lockResourceName;
+	mar_name_t lockResourceName;
 };
+
+static inline void swab_req_lib_lck_lockpurge (
+	struct req_lib_lck_lockpurge *to_swab)
+{
+	swab_mar_req_header_t (&to_swab->header);
+	swab_mar_name_t (&to_swab->lockResourceName);
+}
 
 struct res_lib_lck_lockpurge {
 	mar_res_header_t header;
