@@ -191,12 +191,15 @@ saAmfDispatch (
 	struct res_lib_amf_healthcheckcallback *res_lib_amf_healthcheckcallback;
 	struct res_lib_amf_csiremovecallback *res_lib_amf_csiremovecallback;
 	struct res_lib_amf_componentterminatecallback *res_lib_amf_componentterminatecallback;
-
-	/*
-	struct res_lib_amf_protectiongrouptrackcallback *res_lib_amf_protectiongrouptrackcallback;
-	*/
 	SaAmfCallbacksT callbacks;
 	struct res_overlay dispatch_data;
+
+	if (dispatchFlags != SA_DISPATCH_ONE &&
+		dispatchFlags != SA_DISPATCH_ALL &&
+		dispatchFlags != SA_DISPATCH_BLOCKING) {
+
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
@@ -221,23 +224,21 @@ saAmfDispatch (
 
 		error = saPollRetry (&ufds, 1, timeout);
 		if (error != SA_AIS_OK) {
-			goto error_nounlock;
+			goto error_put;
 		}
 
 		pthread_mutex_lock (&amfInstance->dispatch_mutex);
-
-		error = saPollRetry (&ufds, 1, 0);
-		if (error != SA_AIS_OK) {
-			goto error_nounlock;
-		}
 
 		/*
 		 * Handle has been finalized in another thread
 		 */
 		if (amfInstance->finalize == 1) {
 			error = SA_AIS_OK;
-			pthread_mutex_unlock (&amfInstance->dispatch_mutex);
+			goto error_unlock;
+		}
 
+		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+			error = SA_AIS_ERR_BAD_HANDLE;
 			goto error_unlock;
 		}
 
@@ -378,7 +379,7 @@ saAmfDispatch (
 			break;
 		default:
 			error = SA_AIS_ERR_LIBRARY;	
-			goto error_nounlock;
+			goto error_put;
 			break;
 		}
 
@@ -397,8 +398,10 @@ saAmfDispatch (
 	} while (cont);
 
 error_unlock:
+	pthread_mutex_unlock (&amfInstance->dispatch_mutex);
+error_put:
 	saHandleInstancePut (&amfHandleDatabase, amfHandle);
-error_nounlock:
+
 	return (error);
 }
 

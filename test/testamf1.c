@@ -370,8 +370,13 @@ int main (int argc, char **argv) {
 
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);
-		saAmfDispatch (handle, SA_DISPATCH_ALL);
+		result = saAmfDispatch (handle, SA_DISPATCH_ALL);
+
+		if (result != SA_AIS_OK) {
+			exit (-1);
+		}
 	} while (result && stop == 0);
+
 
 	printf ("healthchecks stopped for 5 seconds\n");
 	sleep (5);
@@ -383,7 +388,7 @@ int main (int argc, char **argv) {
 
 	do {
 		select (select_fd + 1, &read_fds, 0, 0, 0);
-		saAmfDispatch (handle, SA_DISPATCH_ALL);
+		result = saAmfDispatch (handle, SA_DISPATCH_ALL);
 	} while (result);
 
 	saAmfFinalize (handle);
