@@ -346,14 +346,16 @@ static void *clc_command_run (void *context)
 		(struct clc_command_run_data *)context;
 	pid_t pid;
 	int res;
-	char *argv[10];
-	char *envp[10];
+	char **argv = NULL;
+	char **envp = NULL;
 	int status;
 	char path[PATH_MAX];
 	char *cmd = 0;
 	char *comp_argv = 0;
-	char comp_name[SA_MAX_NAME_LENGTH];
+	char comp_name[SA_MAX_NAME_LENGTH + 24];
 	int i;
+	int argv_size;
+	int envp_size;
 
 	ENTER_VOID();
 
@@ -421,6 +423,12 @@ static void *clc_command_run (void *context)
 		cmd = path;
 	}
 
+	argv_size = 2;
+	argv = malloc (sizeof (char*) * argv_size);
+	if (argv == NULL) {
+		fprintf (stderr, "out-of-memory");
+		exit (-1);
+	}
 	argv[0] = cmd;
 	{
 		/* make a proper argv array */
@@ -428,45 +436,63 @@ static void *clc_command_run (void *context)
         char *ptrptr;
 		char *arg = strtok_r(comp_argv, " ", &ptrptr);
 		while (arg) {
+			argv_size++;
+			argv = realloc (argv, sizeof (char*) * argv_size);
+			if (argv == NULL) {
+				fprintf (stderr, "out-of-memory");
+				exit (-1);
+			}
 			argv[i] = arg;
-			arg = strtok_r(NULL, " ", & ptrptr);
+			arg = strtok_r(NULL, " ", &ptrptr);
 			i++;
 		}
 	}
 	argv[i] = NULL;
-	assert (i < 10);
 
-	envp[0] = comp_name;
 	i = snprintf(comp_name, SA_MAX_NAME_LENGTH,
 				  "SA_AMF_COMPONENT_NAME=safComp=%s,safSu=%s,safSg=%s,safApp=%s",
 				  clc_command_run_data->comp->name.value,
 				  clc_command_run_data->comp->su->name.value,
 				  clc_command_run_data->comp->su->sg->name.value,
 				  clc_command_run_data->comp->su->sg->application->name.value);
-	assert (i <= SA_MAX_NAME_LENGTH);
+	assert (i <= sizeof (comp_name));
 
+    /* two is for component name and NULL termination */
+	envp_size = 2;
+	envp = malloc (sizeof (char*) * envp_size);
+	if (envp == NULL) {
+		fprintf (stderr, "out-of-memory");
+		exit (-1);
+	}
+	envp[0] = comp_name;
 	for (i = 1; clc_command_run_data->comp->saAmfCompCmdEnv &&
 		   clc_command_run_data->comp->saAmfCompCmdEnv[i - 1]; i++) {
+		envp_size++;
+		envp = realloc (envp, sizeof (char*) * envp_size);
+		if (envp == NULL) {
+			fprintf (stderr, "out-of-memory");
+			exit (-1);
+		}
 		envp[i] = clc_command_run_data->comp->saAmfCompCmdEnv[i - 1];
 	}
 	envp[i] = NULL;
-	assert (i < 10);
 
-	xprintf ("running command '%s' with environment:\n", cmd);
+	xprintf ("running command '%s' with environment (%d):\n", cmd, envp_size);
 	for (i = 0; envp[i] != NULL; i++) {
 		xprintf ("   %s\n", envp[i]);
 	}
-	xprintf (" and argv:\n");
+	xprintf (" and argv (%d):\n", argv_size);
 	for (i = 0; argv[i] != NULL; i++) {
 		xprintf ("   %s\n", argv[i]);
 	}
-		
+
 	res = execve (cmd, argv, envp);
 	if (res == -1) {
 		fprintf (stderr, "Couldn't exec program %s (%s)\n",
 					cmd, strerror (errno));
 	}
-	assert (res != -1);
+	exit (res); /* abnormal exit of forked process */
+
 	return (0);
 }
 
