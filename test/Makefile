@@ -1,4 +1,5 @@
 # Copyright (c) 2002-2004 MontaVista Software, Inc.
+# Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
 # 
@@ -31,6 +32,10 @@
 # Include configuration
 #
 include ../Makefile.inc
+
+ifeq (${OPENAIS_COMPAT}, SOLARIS)
+	override LDFLAGS += -lnsl -lsocket -lrt
+endif
 
 LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a
 LIBS = $(LIBRARIES) 

@@ -36,6 +36,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#ifdef OPENAIS_SOLARIS
+#include <iso/limits_iso.h>
+#endif
 #include "lcr_comp.h"
 #include "lcr_ifact.h"
 #include "../include/hdb.h"
@@ -68,7 +71,7 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 
 static unsigned int g_component_handle;
 
-#ifdef OPENAIS_LINUX
+#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 static int lcr_select_so (const struct dirent *dirent)
 #else
 static int lcr_select_so (struct dirent *dirent)
@@ -86,6 +89,7 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
+#ifndef OPENAIS_SOLARIS
 #ifdef OPENAIS_LINUX
 static int pathlist_select (const struct dirent *dirent)
 #else
@@ -98,6 +102,7 @@ static int pathlist_select (struct dirent *dirent)
 
 	return (0);
 }
+#endif
 
 static inline struct lcr_component_instance *lcr_comp_find (
 	char *iface_name,
@@ -201,6 +206,7 @@ static void ld_library_path_build (void)
 
 static int ldso_path_build (char *path, char *filename)
 {
+#ifndef OPENAIS_SOLARIS
 	FILE *fp;
 	char string[1024];
 	char filename_cat[1024];
@@ -254,8 +260,83 @@ static int ldso_path_build (char *path, char *filename)
 		path_list[path_list_entries++] = strdup (string);
 	}
 	fclose(fp);
+#endif
 	return (0);
 }
+
+#ifdef OPENAIS_SOLARIS
+static int scandir (
+	const char *dir, struct dirent ***namelist,
+	int (*filter)(const struct dirent *),
+	int (*compar)(const struct dirent **, const struct dirent **))
+{
+	DIR *d;
+	struct dirent *entry, **names = NULL;
+	int namelist_items = 0, namelist_size = 0;
+
+	d = opendir(dir);
+	if (d == NULL)
+		return -1;
+
+	names = NULL;
+	while ((entry = readdir (d)) != NULL) {
+		struct dirent *tmpentry;
+		if ((filter != NULL) && ((*filter)(entry) == 0)) {
+			continue;
+		}
+		if (namelist_items >= namelist_size) {
+			struct dirent **tmp;
+			namelist_size += 512;
+			if ((unsigned long)namelist_size > INT_MAX) {
+				errno = EOVERFLOW;
+				goto fail;
+			}
+			tmp = realloc (names,
+				namelist_size * sizeof(struct dirent *));
+			if (tmp == NULL) {
+				goto fail;
+			}
+			names = tmp;
+		}
+		tmpentry = malloc (entry->d_reclen);
+		if (tmpentry == NULL) {
+			goto fail;
+		}
+		(void) memcpy (tmpentry, entry, entry->d_reclen);
+		names[namelist_items++] = tmpentry;
+	}
+	(void) closedir (d);
+	if ((namelist_items > 1) && (compar != NULL)) {
+		qsort (names, namelist_items, sizeof (struct dirent *),
+			(int (*)(const void *, const void *))compar);
+	}
+
+	*namelist = names;
+
+	return namelist_items;
+
+fail:
+	{
+	int err = errno;
+	(void) closedir (d);
+	while (namelist_items != 0) {
+		namelist_items--;
+		free (*namelist[namelist_items]);
+	}
+	if (names != NULL) {
+		free (names);
+	}
+	*namelist = NULL;
+	errno = err;
+	return -1;
+	}
+}
+
+static int alphasort (const struct dirent **a, const struct dirent **b)
+{
+	return strcmp ((*a)->d_name, (*b)->d_name);
+}
+#endif
 
 static int interface_find_and_load (
 	char *path,
@@ -308,11 +389,27 @@ static int interface_find_and_load (
 		}
 		dlclose (dl_handle);
 	} /* scanning for lcrso loop */
-	return (-1);
+
+
+	if (scandir_entries > 0) {
+		int i;
+		for (i = 0; i < scandir_entries; i++) {
+			free (scandir_list[i]);
+		}
+		free (scandir_list);
+	}
+	return -1;
 
 found:
 	*instance_ret = instance;
-	return (0);
+	if (scandir_entries > 0) {
+		int i;
+		for (i = 0; i < scandir_entries; i++) {
+			free (scandir_list[i]);
+		}
+		free (scandir_list);
+	}
+	return 0;
 }
 
 static unsigned int lcr_initialized = 0;

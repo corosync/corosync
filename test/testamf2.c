@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -187,9 +188,11 @@ SaAmfCallbacksT amfCallbacks;
 
 SaVersionT version = { 'B', 1, 1 };
 
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 static struct sched_param sched_param = {
     sched_priority: 99
 };
+#endif
 
 void sigintr_handler (int signum) {
 	exit (0);
@@ -206,10 +209,12 @@ int main (int argc, char **argv) {
 printf ("testamf2 pid %d\n", getpid());
 	memset (&compNameGlobal, 0, sizeof (SaNameT));
 	signal (SIGINT, sigintr_handler);
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	result = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (result == -1) {
 		printf ("couldn't set sched priority\n");
  	}
+#endif
 
 	for (;;){
 		c = getopt(argc,argv,"h:n:");

@@ -38,9 +38,10 @@
 #include <sys/un.h>
 #if defined(OPENAIS_LINUX)
 #include <sys/sysinfo.h>
-#endif
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#elif defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 #include <sys/sysctl.h>
+#elif defined(OPENAIS_SOLARIS)
+#include <utmpx.h>
 #endif
 #include <sys/ioctl.h>
 #include <netinet/in.h>
@@ -291,13 +292,16 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	my_cluster_node.node_id = this_ip->nodeid;
 	my_cluster_node.member = 1;
 	{
+#ifndef NANOSEC
+#define	NANOSEC	1000000000
+#endif
 #if defined(OPENAIS_LINUX)
 		struct sysinfo s_info;
 		time_t current_time;
 		sysinfo (&s_info);
 		current_time = time (NULL);
 		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
-		my_cluster_node.boot_timestamp = ((SaTimeT)(current_time - s_info.uptime)) * 1000000000;
+		my_cluster_node.boot_timestamp = ((SaTimeT)(current_time - s_info.uptime)) * NANOSEC;
 #elif defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 		int mib[2] = { CTL_KERN, KERN_BOOTTIME };
 		struct timeval boot_time;
@@ -306,8 +310,18 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
 			boot_time.tv_sec = time (NULL);
 		 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
-		my_cluster_node.boot_timestamp = ((SaTimeT)boot_time.tv_sec) * 1000000000;
-#else /* defined(CTL_KERN) && defined(KERN_BOOTTIME) */
+		my_cluster_node.boot_timestamp = ((SaTimeT)boot_time.tv_sec) * NANOSEC;
+#elif defined(OPENAIS_SOLARIS)
+		struct utmpx ut, *utp;
+		ut.ut_type = BOOT_TIME;
+		setutxent();
+		if ((utp = getutxid(&ut)) == NULL) {
+			my_cluster_node.boot_timestamp = ((SaTimeT)time(NULL)) * NANOSEC;
+		} else {
+			my_cluster_node.boot_timestamp = ((SaTimeT)utp->ut_xtime) * NANOSEC;
+		}
+		endutxent();
+#else
 	#warning "no bootime support"
 #endif
 	}

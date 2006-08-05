@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -35,7 +36,11 @@
 #ifndef AIS_MAR_GEN_H_DEFINED
 #define AIS_MAR_GEN_H_DEFINED
 
+#ifndef OPENAIS_SOLARIS
 #include <stdint.h>
+#else
+#include <sys/types.h>
+#endif
 #include <string.h>
 
 #include "saAis.h"

@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2006 Steven Dake (sdake@mvista.com)
+ * Copyright (c) 2006 Steven Dake (sdake@mvista.com)
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -50,15 +51,17 @@
 
 #define SERVER_BACKLOG 5
 
-#if defined(OPENAIS_LINUX)
+#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-
-static char *socketname = "lcr.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
+#endif
 
+#ifdef OPENAIS_LINUX
+static char *socketname = "lcr.socket";
+#else
 static char *socketname = "/var/run/lcr.socket";
 #endif
 

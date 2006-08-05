@@ -1,6 +1,7 @@
 #define _BSD_SOURCE
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -50,6 +51,18 @@
 
 #include "saAis.h"
 #include "saCkpt.h"
+
+#ifdef OPENAIS_SOLARIS
+#define timersub(a, b, result)						\
+    do {								\
+	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;			\
+	(result)->tv_usec = (a)->tv_usec - (b)->tv_usec;		\
+	if ((result)->tv_usec < 0) {					\
+	    --(result)->tv_sec;						\
+	    (result)->tv_usec += 1000000;				\
+	}								\
+    } while (0)
+#endif
 
 int alarm_notice = 0;
 
@@ -165,6 +178,7 @@ struct threaddata {
 	int written;
 };
 
+extern void pthread_exit(void *) __attribute__((noreturn));
 
 void *benchmark_thread (void *arg) 
 {
@@ -276,7 +290,7 @@ int main (void) {
 	 */
 	for (i  = 0; i < CHECKPOINT_THREADS_MAX; i++) {
 		sprintf ((char *)checkpointName.value, "checkpoint (%d)", i);
-		checkpointName.length = strlen (checkpointName.value);
+		checkpointName.length = strlen ((char *)checkpointName.value);
 		do {
 			error = saCkptInitialize (&ckpt_handles[i], &callbacks, &version);
 		} while (error == SA_AIS_ERR_TRY_AGAIN);

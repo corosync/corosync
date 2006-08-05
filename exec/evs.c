@@ -377,11 +377,11 @@ static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_joined->msg_len;
 	req_exec_evs_mcast.group_entries = evs_pd->group_entries;
 
-	req_exec_evs_mcast_iovec[0].iov_base = &req_exec_evs_mcast;
+	req_exec_evs_mcast_iovec[0].iov_base = (char *)&req_exec_evs_mcast;
 	req_exec_evs_mcast_iovec[0].iov_len = sizeof (req_exec_evs_mcast);
-	req_exec_evs_mcast_iovec[1].iov_base = evs_pd->groups;
+	req_exec_evs_mcast_iovec[1].iov_base = (char *)evs_pd->groups;
 	req_exec_evs_mcast_iovec[1].iov_len = evs_pd->group_entries * sizeof (struct evs_group);
-	req_exec_evs_mcast_iovec[2].iov_base = &req_lib_evs_mcast_joined->msg;
+	req_exec_evs_mcast_iovec[2].iov_base = (char *)&req_lib_evs_mcast_joined->msg;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_joined->msg_len;
 // TODO this doesn't seem to work for some reason	
 	send_ok = totempg_groups_send_ok_joined (openais_group_handle, req_exec_evs_mcast_iovec, 3);
@@ -424,9 +424,9 @@ static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 		sizeof (struct req_lib_evs_mcast_groups) + 
 		(sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries);
 
-	req_exec_evs_mcast_iovec[0].iov_base = &req_exec_evs_mcast;
+	req_exec_evs_mcast_iovec[0].iov_base = (char *)&req_exec_evs_mcast;
 	req_exec_evs_mcast_iovec[0].iov_len = sizeof (req_exec_evs_mcast);
-	req_exec_evs_mcast_iovec[1].iov_base = &req_lib_evs_mcast_groups->groups;
+	req_exec_evs_mcast_iovec[1].iov_base = (char *)&req_lib_evs_mcast_groups->groups;
 	req_exec_evs_mcast_iovec[1].iov_len = sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries;
 	req_exec_evs_mcast_iovec[2].iov_base = msg_addr;
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;

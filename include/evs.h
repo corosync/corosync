@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -46,7 +47,7 @@
  * @{
  */
 
-typedef u_int64_t evs_handle_t;
+typedef uint64_t evs_handle_t;
 
 typedef enum {
 	EVS_DISPATCH_ONE,

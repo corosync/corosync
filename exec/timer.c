@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -93,18 +94,23 @@ static void (*timer_serialize_unlock_fn) (void);
 
 static void *prioritized_timer_thread (void *data);
 
+extern void pthread_exit(void *) __attribute__((noreturn));
+
 /*
  * This thread runs at the highest priority to run system wide timers
  */
 static void *prioritized_timer_thread (void *data)
 {
 	int fds;
+	unsigned int timeout;
+
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	struct sched_param sched_param;
 	int res;
-	unsigned int timeout;
 
 	sched_param.sched_priority = 2;
 	res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+#endif
 
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
@@ -126,10 +132,13 @@ retry_poll:
 	}
 
 	pthread_exit (0);
-	return (0);
 }
 
 static void sigusr1_handler (int num) {
+#ifdef OPENAIS_SOLARIS
+	/* Rearm the signal facility */
+        signal (num, sigusr1_handler);
+#endif
 }
 
 int openais_timer_init (

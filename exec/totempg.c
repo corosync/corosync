@@ -82,6 +82,7 @@
  *	
  */
 
+#include <alloca.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>
@@ -177,7 +178,7 @@ DECLARE_LIST_INIT(assembly_list_free);
  * fragment_contuation indicates whether the first packed message in 
  * the buffer is a continuation of a previously packed fragment.
  */
-static unsigned char *fragmentation_data;
+static char *fragmentation_data;
 
 static int fragment_size = 0;
 
@@ -336,13 +337,24 @@ static inline int group_matches (
 	char *group_name;
 	int i;
 	int j;
+#ifdef __sparc
+	struct iovec iovec_aligned = { NULL, 0 };
+#endif
 	
 	assert (iov_len == 1);
+
+#ifdef __sparc
+	if ((size_t)iovec->iov_base % 4 != 0) {
+		iovec_aligned.iov_base = alloca(iovec->iov_len);
+		memcpy(iovec_aligned.iov_base, iovec->iov_base, iovec->iov_len);
+		iovec_aligned.iov_len = iovec->iov_len;
+		iovec = &iovec_aligned;
+	}
+#endif
 
 	group_len = (unsigned short *)iovec->iov_base;
 	group_name = ((char *)iovec->iov_base) +
 		sizeof (unsigned short) * (group_len[0] + 1);
-
 
 	/*
 	 * Calculate amount to adjust the iovec by before delivering to app
@@ -377,10 +389,23 @@ static inline void app_deliver_fn (
 	int i;
 	struct totempg_group_instance *instance;
 	struct iovec stripped_iovec;
+#ifdef __sparc
+	struct iovec aligned_iovec = { NULL, 0 };
+#endif
 	unsigned int adjust_iovec;
 	unsigned int res;
 
 	if (endian_conversion_required) {
+#ifdef __sparc
+		if ((size_t)iovec->iov_base % 4 != 0) {
+			/* Deal with misalignment */
+			aligned_iovec.iov_base = alloca(iovec->iov_len);
+			aligned_iovec.iov_len = iovec->iov_len;
+			memcpy(aligned_iovec.iov_base, iovec->iov_base,
+				iovec->iov_len);
+			iovec = &aligned_iovec;
+		}
+#endif
 		group_endian_convert (iovec);
 	}
 	for (i = 0; i <= totempg_max_handle; i++) {
@@ -389,9 +414,28 @@ static inline void app_deliver_fn (
 
 		if (res == 0) {
 			assert (iov_len == 1);
-			if (group_matches (iovec, iov_len, instance->groups, instance->groups_cnt, &adjust_iovec)) {
-				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
-				stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
+			if (group_matches (iovec, iov_len, instance->groups,
+				instance->groups_cnt, &adjust_iovec)) {
+				stripped_iovec.iov_len =
+					iovec->iov_len - adjust_iovec;
+#ifndef __sparc
+				stripped_iovec.iov_base =
+					(char *)iovec->iov_base + adjust_iovec;
+#else
+				if (iovec->iov_base + adjust_iovec % 4 != 0) {
+					/* Deal with misalignment */
+					/*
+					 * XXX Using alloca() is dangerous,
+					 * since it may be called multiple
+					 * times within the for() loop
+					 */
+					stripped_iovec.iov_base = alloca(
+						stripped_iovec.iov_len);
+					memcpy(stripped_iovec.iov_base,
+						iovec->iov_base + adjust_iovec,
+						stripped_iovec.iov_len);
+				}
+#endif
 				instance->deliver_fn (
 					nodeid,
 					&stripped_iovec,
@@ -458,7 +502,9 @@ static void totempg_deliver_fn (
 		msg_count = mcast->msg_count;
 		datasize = sizeof (struct totempg_mcast) +
 			msg_count * sizeof (unsigned short);
-		
+
+		assert (iovec[0].iov_len >= datasize);
+
 		memcpy (header, iovec[0].iov_base, datasize);
 		assert(iovec);
 		data = iovec[0].iov_base;
@@ -475,7 +521,7 @@ static void totempg_deliver_fn (
 	} else {
 		/* 
 		 * The message originated from local processor  
-		 * becasue there is greater than one iovec for then full msg.
+		 * because there is greater than one iovec for then full msg.
 		 */
 		h_index = 0;
 		for (i = 0; i < 2; i++) {
@@ -505,7 +551,7 @@ static void totempg_deliver_fn (
 	 */
 	msg_count = mcast->fragmented ? mcast->msg_count - 1 : mcast->msg_count;
 	continuation = mcast->continuation;
-	iov_delv.iov_base = &assembly->data[0];
+	iov_delv.iov_base = (char *)&assembly->data[0];
 	iov_delv.iov_len = assembly->index + msg_lens[0];
 
 	/*
@@ -542,7 +588,7 @@ static void totempg_deliver_fn (
 		 */
 		if (!continuation) {
 			assembly->index += msg_lens[0];
-			iov_delv.iov_base = &assembly->data[assembly->index];
+			iov_delv.iov_base = (char *)&assembly->data[assembly->index];
 			iov_delv.iov_len = msg_lens[1];
 			start = 1;
 		}
@@ -553,7 +599,7 @@ static void totempg_deliver_fn (
 		app_deliver_fn(nodeid, &iov_delv, 1,
 			endian_conversion_required);
 		assembly->index += msg_lens[i];
-		iov_delv.iov_base = &assembly->data[assembly->index];
+		iov_delv.iov_base = (char *)&assembly->data[assembly->index];
 		if (i < (msg_count - 1)) {
 			iov_delv.iov_len = msg_lens[i + 1];
 		}
@@ -616,9 +662,9 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 
 	mcast.msg_count = mcast_packed_msg_count;
 
-	iovecs[0].iov_base = &mcast;
+	iovecs[0].iov_base = (char *)&mcast;
 	iovecs[0].iov_len = sizeof (struct totempg_mcast);
-	iovecs[1].iov_base = mcast_packed_msg_lens;
+	iovecs[1].iov_base = (char *)mcast_packed_msg_lens;
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
 	iovecs[2].iov_base = &fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
@@ -744,7 +790,7 @@ static int mcast_msg (
 		 * If it just fits or is too big, then send out what fits.
 		 */
 		} else {
-			unsigned char *data_ptr;
+			char *data_ptr;
 
 			copy_len = min(copy_len, max_packet_size - fragment_size);
 			if( copy_len == max_packet_size )
@@ -781,9 +827,9 @@ static int mcast_msg (
 			 * assemble the message and send it
 			 */
 			mcast.msg_count = ++mcast_packed_msg_count;
-			iovecs[0].iov_base = &mcast;
+			iovecs[0].iov_base = (char *)&mcast;
 			iovecs[0].iov_len = sizeof(struct totempg_mcast);
-			iovecs[1].iov_base = mcast_packed_msg_lens;
+			iovecs[1].iov_base = (char *)mcast_packed_msg_lens;
 			iovecs[1].iov_len = mcast_packed_msg_count * 
 				sizeof(unsigned short);
 			iovecs[2].iov_base = data_ptr;
@@ -1020,7 +1066,7 @@ int totempg_groups_mcast_joined (
 		iovec_mcast[i + 1].iov_base = instance->groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (instance->groups_cnt + 1) * sizeof (unsigned short);
-	iovec_mcast[0].iov_base = group_len;
+	iovec_mcast[0].iov_base = (char *)group_len;
 	for (i = 0; i < iov_len; i++) {
 		iovec_mcast[i + instance->groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
@@ -1100,7 +1146,7 @@ int totempg_groups_mcast_groups (
 		iovec_mcast[i + 1].iov_base = groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (groups_cnt + 1) * sizeof (unsigned short);
-	iovec_mcast[0].iov_base = group_len;
+	iovec_mcast[0].iov_base = (char *)group_len;
 	for (i = 0; i < iov_len; i++) {
 		iovec_mcast[i + groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;

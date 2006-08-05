@@ -70,15 +70,21 @@ struct saHandle {
 	uint32_t check;
 };
 
-#if defined(OPENAIS_LINUX)
+#ifdef OPENAIS_SOLARIS
+#define MSG_NOSIGNAL 0
+#endif
+
+#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-
-static char *socketname = "libais.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
+#endif
 
+#ifdef OPENAIS_LINUX
+static char *socketname = "libais.socket";
+#else
 static char *socketname = "/var/run/libais.socket";
 #endif
 
@@ -228,9 +234,14 @@ saRecvRetry (
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
+#ifndef OPENAIS_SOLARIS
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#else
+	msg_recv.msg_accrights = NULL;
+	msg_recv.msg_accrightslen = 0;
+#endif
 
 retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
@@ -243,6 +254,16 @@ retry_recv:
 	if (result == -1 && errno == EAGAIN) {
 		goto retry_recv;
 	}
+#ifdef OPENAIS_SOLARIS
+	if (result == 0) {
+		/*
+		 * In case of disconnection, recvmsg() returns 0 and next calls to
+		 * poll() always return POLLIN
+		 */
+		error = SA_AIS_ERR_BAD_HANDLE;
+		goto error_exit;
+	}
+#endif
 	if (result == -1 || result == 0) {
 		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
@@ -273,9 +294,14 @@ saSendRetry (
 	msg_send.msg_iovlen = 1;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = NULL;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 retry_send:
 	iov_send.iov_base = (void *)&rbuf[processed];
@@ -362,9 +388,14 @@ SaAisErrorT saSendMsgRetry (
 	msg_send.msg_iovlen = iov_len_sendmsg;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = NULL;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 retry_sendmsg:
 	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
@@ -426,7 +457,7 @@ retry_sendmsg:
 		}
 		memcpy (&iovec_save, &iov[i], sizeof (struct iovec));
 		iovec_saved_position = i;
-		iov[i].iov_base = ((unsigned char *)(iov[i].iov_base)) +
+		iov[i].iov_base = ((char *)(iov[i].iov_base)) +
 			(total_sent - csize_cntr);
 		iov[i].iov_len = total_size - total_sent;
 		msg_send.msg_iov = &iov[i];

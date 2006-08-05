@@ -2,6 +2,7 @@
  * vi: set autoindent tabstop=4 shiftwidth=4 :
 
  * Copyright (c) 2004-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -374,9 +375,9 @@ evs_error_t evs_join (
 	req_lib_evs_join.header.id = MESSAGE_REQ_EVS_JOIN;
 	req_lib_evs_join.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_join;
+	iov[0].iov_base = (char *)&req_lib_evs_join;
 	iov[0].iov_len = sizeof (struct req_lib_evs_join);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (char *)groups;
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
@@ -419,9 +420,9 @@ evs_error_t evs_leave (
 	req_lib_evs_leave.header.id = MESSAGE_REQ_EVS_LEAVE;
 	req_lib_evs_leave.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_leave;
+	iov[0].iov_base = (char *)&req_lib_evs_leave;
 	iov[0].iov_len = sizeof (struct req_lib_evs_leave);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (char *)groups;
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
@@ -473,7 +474,7 @@ evs_error_t evs_mcast_joined (
 	req_lib_evs_mcast_joined.guarantee = guarantee;
 	req_lib_evs_mcast_joined.msg_len = msg_len;
 
-	iov[0].iov_base = &req_lib_evs_mcast_joined;
+	iov[0].iov_base = (char *)&req_lib_evs_mcast_joined;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 	
@@ -526,9 +527,9 @@ evs_error_t evs_mcast_groups (
 	req_lib_evs_mcast_groups.msg_len = msg_len;
 	req_lib_evs_mcast_groups.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_mcast_groups;
+	iov[0].iov_base = (char *)&req_lib_evs_mcast_groups;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_groups);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (char *)groups;
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 	
@@ -570,7 +571,7 @@ evs_error_t evs_membership_get (
 	req_lib_evs_membership_get.header.size = sizeof (struct req_lib_evs_membership_get);
 	req_lib_evs_membership_get.header.id = MESSAGE_REQ_EVS_MEMBERSHIP_GET;
 
-	iov.iov_base = &req_lib_evs_membership_get;
+	iov.iov_base = (char *)&req_lib_evs_membership_get;
 	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
 
 	pthread_mutex_lock (&evs_inst->response_mutex);

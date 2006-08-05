@@ -1,5 +1,5 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
-
+# Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
 # 
@@ -42,6 +42,10 @@ endif
 
 ifeq (${OPENAIS_COMPAT}, LINUX) 
 	override LDFLAGS += -ldl
+endif
+
+ifeq (${OPENAIS_COMPAT}, SOLARIS) 
+	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
 # Totem objects

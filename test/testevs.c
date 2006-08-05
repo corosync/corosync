@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -103,7 +104,7 @@ int main (void)
 	int fd;
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
-	int member_list_entries = 32;
+	unsigned int member_list_entries = 32;
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != EVS_OK) {

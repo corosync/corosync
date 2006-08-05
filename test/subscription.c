@@ -4,16 +4,45 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <time.h>
 #include <fcntl.h>
 #include <sys/poll.h>
-#include <stdlib.h>
+#ifndef OPENAIS_SOLARIS
+#include <stdint.h>
 #include <getopt.h>
+#else
+#include <sys/types.h>
+#endif
+#include <stdlib.h>
 #include <sched.h>
 #include "saAis.h"
 #include "saEvt.h"
+
+#ifdef OPENAIS_SOLARIS
+char * strsep(char** str, const char* delims)
+{
+	char* token;
+
+	if (*str == NULL) {
+		/* No more tokens */
+		return NULL;
+	}
+
+	token = *str;
+	while (**str != '\0') {
+		if (strchr(delims,**str)!=NULL) {
+			**str = '\0';
+			(*str)++;
+			return token;
+		}
+		(*str)++;
+	}
+	/* There is no other token */
+	*str = NULL;
+	return token;
+}
+#endif
 
 #define  TEST_EVENT_ORDER 1
 #define  EVT_FREQ 1000
@@ -171,7 +200,8 @@ test_subscription()
 		}
 
 		if (pfd.revents & (POLLERR|POLLHUP)) {
-			printf("Error recieved on poll fd %llu\n", (unsigned long long)fd);
+			printf("Error received on poll fd %llu\n",
+				(unsigned long long)fd);
 			result =  SA_AIS_ERR_BAD_OPERATION;
 			goto sub_fin;
 		}
@@ -373,7 +403,7 @@ evt_free:
 
 static int err_wait_time = -1;
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 static struct sched_param sched_param = {
 	sched_priority: 1
 };
@@ -386,7 +416,7 @@ int main (int argc, char **argv)
 	int option;
 	char *p;
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	sched_setscheduler (0, SCHED_RR, &sched_param);
 #endif
 

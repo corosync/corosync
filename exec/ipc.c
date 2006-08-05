@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -77,6 +78,10 @@
 #include "print.h"
 
 #include "util.h"
+
+#ifdef OPENAIS_SOLARIS
+#define MSG_NOSIGNAL 0
+#endif
 
 #define SERVER_BACKLOG 5
 
@@ -405,14 +410,17 @@ static void *prioritized_poll_thread (void *conn)
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct pollfd ufd;
 	int fds;
-	struct sched_param sched_param;
 	int res;
 	pthread_mutex_t *rel_mutex;
 	unsigned int service;
 	struct conn_info *cinfo_partner;
 
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
+	struct sched_param sched_param;
+
 	sched_param.sched_priority = 1;
 	res = pthread_setschedparam (conn_info->thread, SCHED_RR, &sched_param);
+#endif
 
 	ufd.fd = conn_info->fd;
 	for (;;) {
@@ -504,7 +512,7 @@ retry_poll:
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 
-char *socketname = "libais.socket";
+char socketname[20];
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 
@@ -529,9 +537,14 @@ static int conn_info_outq_flush (struct conn_info *conn_info) {
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = NULL;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 	while (!queue_is_empty (outq)) {
 		queue_item = queue_item_get (outq);
@@ -596,6 +609,8 @@ static void libais_deliver (struct conn_info *conn_info)
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	struct ucred *cred;
 	int on = 0;
+#elif defined(OPENAIS_SOLARIS)
+	int fd;
 #else
 	uid_t euid;
 	gid_t egid;
@@ -609,15 +624,25 @@ static void libais_deliver (struct conn_info *conn_info)
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
+#ifndef OPENAIS_SOLARIS
 	msg_recv.msg_flags = 0;
+#endif
 
 	if (conn_info->authenticated) {
+#ifndef OPENAIS_SOLARIS
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
+#else
+		msg_recv.msg_accrights = NULL;
+		msg_recv.msg_accrightslen = 0;
+#endif
 	} else {
 #ifdef OPENAIS_LINUX
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
+#elif defined(OPENAIS_SOLARIS)
+		msg_recv.msg_accrights = (char *)&fd;
+		msg_recv.msg_accrightslen = sizeof (fd);
 #else
 		euid = -1; egid = -1;
 		if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
@@ -643,6 +668,10 @@ retry_recv:
 		return;
 	} else
 	if (res == 0) {
+#ifdef OPENAIS_SOLARIS
+		/* res == 0 means hang up on Solaris */
+		libais_disconnect_request (conn_info);
+#endif
 		return;
 	}
 
@@ -664,6 +693,9 @@ retry_recv:
 			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", cred->gid, g_gid_valid);
 		}
 	}
+#elif defined(OPENAIS_SOLARIS)
+	/* TODO Fix this. There is no authentication on Solaris yet. */
+	conn_info->authenticated = 1;
 #endif
 	/*
 	 * Dispatch all messages received in recvmsg that can be dispatched
@@ -702,7 +734,7 @@ retry_recv:
 			 * to queue a message, otherwise tell the library we are busy and to
 			 * try again later
 			 */
-			send_ok_joined_iovec.iov_base = header;
+			send_ok_joined_iovec.iov_base = (char *)header;
 			send_ok_joined_iovec.iov_len = header->size;
 			send_ok_joined = totempg_groups_send_ok_joined (openais_group_handle,
 				&send_ok_joined_iovec, 1);
@@ -840,9 +872,16 @@ void openais_ipc_init (
 	int libais_server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+	char *socket_number;
 
 	log_init ("IPC");
 
+	socket_number = getenv ("INTERFACE_NUMBER");
+	if (socket_number) {
+		sprintf (socketname, "libais.socket%s", socket_number);
+	} else {
+		strcpy (socketname, "libais.socket");
+	}
 	ipc_serialize_lock_fn = serialize_lock_fn;
 
 	ipc_serialize_unlock_fn = serialize_unlock_fn;
@@ -953,9 +992,14 @@ int openais_conn_send_response (
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = NULL;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 	if (queue_is_full (outq)) {
 		/*

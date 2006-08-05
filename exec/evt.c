@@ -1254,7 +1254,7 @@ static SaAisErrorT evt_open_channel(mar_name_t *cn, SaUint8T flgs)
 	cpkt.chc_op = EVT_OPEN_CHAN_OP;
 	cpkt.u.chc_chan.ocr_name = *cn;
 	cpkt.u.chc_chan.ocr_serial_no = ++open_serial_no;
-	chn_iovec.iov_base = &cpkt;
+	chn_iovec.iov_base = (char *)&cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	log_printf(CHAN_OPEN_DEBUG, "evt_open_channel: Send open mcast\n");
 	res = totempg_groups_mcast_joined(openais_group_handle,
@@ -1293,7 +1293,7 @@ static SaAisErrorT evt_close_channel(mar_name_t *cn, uint64_t unlink_id)
 	cpkt.chc_op = EVT_CLOSE_CHAN_OP;
 	cpkt.u.chcu.chcu_name = *cn;
 	cpkt.u.chcu.chcu_unlink_id = unlink_id;
-	chn_iovec.iov_base = &cpkt;
+	chn_iovec.iov_base = (char *)&cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	res = totempg_groups_mcast_joined(openais_group_handle,
 			&chn_iovec, 1, TOTEMPG_AGREED);
@@ -1638,7 +1638,7 @@ evt_delivered(struct event_data *evt, struct event_svr_channel_open *eco)
 	log_printf(LOG_LEVEL_DEBUG, "delivered ID %llx to eco %p\n",
 			(unsigned long long)evt->ed_event.led_event_id, eco);
 	if (evt->ed_delivered_count == evt->ed_delivered_next) {
-		struct event_svr_channel_open *ed_delivered_tmp;
+		struct event_svr_channel_open **ed_delivered_tmp;
 
 		ed_delivered_tmp = realloc (evt->ed_delivered,
 			DELIVER_SIZE * sizeof(struct event_svr_channel_open *));
@@ -2488,7 +2488,7 @@ static void lib_evt_unlink_channel(void *conn, void *message)
 	cpkt.chc_op = EVT_UNLINK_CHAN_OP;
 	cpkt.u.chcu.chcu_name = req->iuc_channel_name;
 	cpkt.u.chcu.chcu_unlink_id = ucp->ucp_unlink_id;
-	chn_iovec.iov_base = &cpkt;
+	chn_iovec.iov_base = (char *)&cpkt;
 	chn_iovec.iov_len = cpkt.chc_head.size;
 	if (totempg_groups_mcast_joined(openais_group_handle,
 								&chn_iovec, 1, TOTEMPG_AGREED) == 0) {
@@ -2766,7 +2766,7 @@ static void lib_evt_event_publish(void *conn, void *message)
 	 * The multicasted event will be picked up and delivered
 	 * locally by the local network event receiver.
 	 */
-	pub_iovec.iov_base = req;
+	pub_iovec.iov_base = (char *)req;
 	pub_iovec.iov_len = req->led_head.size;
 	result = totempg_groups_mcast_joined(openais_group_handle, &pub_iovec, 1, TOTEMPG_AGREED);
 	if (result != 0) {
@@ -2825,7 +2825,7 @@ static void lib_evt_event_clear_retentiontime(void *conn, void *message)
 	cpkt.chc_head.size = sizeof(cpkt);
 	cpkt.chc_op = EVT_CLEAR_RET_OP;
 	cpkt.u.chc_event_id = req->iec_event_id;
-	rtn_iovec.iov_base = &cpkt;
+	rtn_iovec.iov_base = (char *)&cpkt;
 	rtn_iovec.iov_len = cpkt.chc_head.size;
 	ret = totempg_groups_mcast_joined(openais_group_handle,
 			&rtn_iovec, 1, TOTEMPG_AGREED);
@@ -4143,7 +4143,7 @@ static int evt_sync_process(void)
 				cpkt.chc_op = EVT_SET_ID_OP;
 				cpkt.u.chc_set_id.chc_nodeid = *add_list;
 				cpkt.u.chc_set_id.chc_last_id = md->mn_last_msg_id;
-				chn_iovec.iov_base = &cpkt;
+				chn_iovec.iov_base = (char *)&cpkt;
 				chn_iovec.iov_len = cpkt.chc_head.size;
 				res = totempg_groups_mcast_joined(openais_group_handle,
 						&chn_iovec, 1, TOTEMPG_AGREED);
@@ -4210,7 +4210,7 @@ static int evt_sync_process(void)
 			cpkt.chc_op = EVT_OPEN_COUNT;
 			cpkt.u.chc_set_opens.chc_chan_name = eci->esc_channel_name;
 			cpkt.u.chc_set_opens.chc_open_count = eci->esc_local_opens;
-			chn_iovec.iov_base = &cpkt;
+			chn_iovec.iov_base = (char *)&cpkt;
 			chn_iovec.iov_len = cpkt.chc_head.size;
 			res = totempg_groups_mcast_joined(openais_group_handle,
 					&chn_iovec, 1, TOTEMPG_AGREED);
@@ -4227,7 +4227,7 @@ static int evt_sync_process(void)
 			SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
-		chn_iovec.iov_base = &cpkt;
+		chn_iovec.iov_base = (char *)&cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		res = totempg_groups_mcast_joined(openais_group_handle,
 				&chn_iovec, 1,TOTEMPG_AGREED);
@@ -4276,7 +4276,7 @@ static int evt_sync_process(void)
 			evt = list_entry(next_retained, struct event_data, ed_retained);
 			evt->ed_event.led_head.id =
 				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA);
-			chn_iovec.iov_base = &evt->ed_event;
+			chn_iovec.iov_base = (char *)&evt->ed_event;
 			chn_iovec.iov_len = evt->ed_event.led_head.size;
 			res = totempg_groups_mcast_joined(openais_group_handle,
 					&chn_iovec, 1, TOTEMPG_AGREED);
@@ -4305,7 +4305,7 @@ static int evt_sync_process(void)
 				SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
 		cpkt.chc_head.size = sizeof(cpkt);
 		cpkt.chc_op = EVT_CONF_DONE;
-		chn_iovec.iov_base = &cpkt;
+		chn_iovec.iov_base = (char *)&cpkt;
 		chn_iovec.iov_len = cpkt.chc_head.size;
 		res = totempg_groups_mcast_joined(openais_group_handle,
 				&chn_iovec, 1, TOTEMPG_AGREED);

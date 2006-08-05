@@ -42,10 +42,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN) || defined(OPENAIS_SOLARIS)
 #include <sys/sockio.h>
 #include <net/if.h>
+#ifndef OPENAIS_SOLARIS
 #include <net/if_var.h>
+#endif
 #include <netinet/in_var.h>
 #endif
 #include <string.h>
@@ -63,7 +65,7 @@
 #include <linux/rtnetlink.h>
 #endif
 
-#ifndef s6_addr16
+#if ! defined(OPENAIS_SOLARIS) && ! defined(s6_addr16)
 #define s6_addr16 __u6_addr.__u6_addr16
 #endif
 
@@ -116,7 +118,9 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip
 {
 	addr1->nodeid = swab32(addr2->nodeid);
 	addr1->family = swab16(addr2->family);
-	memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
+	if (addr1 != addr2) {
+		memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
+	}
 }
 
 /* For sorting etc. params are void * for qsort's benefit */
@@ -132,8 +136,17 @@ int totemip_compare(const void *a, const void *b)
 		return (addr1->family > addr2->family);
 
 	if (addr1->family == AF_INET) {
+#ifndef __sparc
 		struct in_addr *in1 = (struct in_addr *)addr1->addr;
 		struct in_addr *in2 = (struct in_addr *)addr2->addr;
+#else
+		/* Deal with misalignment */
+		struct in_addr i1, i2;
+		struct in_addr *in1 = &i1;
+		struct in_addr *in2 = &i2;
+		memcpy(in1, addr1->addr, sizeof (*in1));
+		memcpy(in2, addr2->addr, sizeof (*in2));
+#endif
 
 		/* A bit clunky but avoids sign problems */
 		if (in1->s_addr == in2->s_addr)
@@ -151,8 +164,13 @@ int totemip_compare(const void *a, const void *b)
 	/* Remember, addresses are in big-endian format.
 	   We compare 16bits at a time rather than 32 to avoid sign problems */
 	for (i = 0; i < 8; i++) {
+#ifndef OPENAIS_SOLARIS
 		int res = htons(sin6a->s6_addr16[i]) -
 			htons(sin6b->s6_addr16[i]);
+#else
+		int res = htons(((uint16_t *)sin6a->s6_addr)[i]) -
+			htons(((uint16_t *)sin6b->s6_addr)[i]);
+#endif
 		if (res) {
 			return res;
 		}
@@ -164,14 +182,16 @@ int totemip_compare(const void *a, const void *b)
 int totemip_localhost(int family, struct totem_ip_address *localhost)
 {
 	char *addr_text;
+	uint32_t nodeid;
 
 	memset (localhost, 0, sizeof (struct totem_ip_address));
 
 	if (family == AF_INET) {
 		addr_text = LOCALHOST_IPV4;
-		if (inet_pton(family, addr_text, (char *)&localhost->nodeid) <= 0) {
+		if (inet_pton(family, addr_text, (char *)&nodeid) <= 0) {
 			return -1;
 		}
+		localhost->nodeid = ntohl(nodeid);
 	} else {
 		addr_text = LOCALHOST_IPV6;
 	}
@@ -299,14 +319,19 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 	return ret;
 }
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN) || defined(OPENAIS_SOLARIS)
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
 			int *interface_num)
 {
+#ifndef OPENAIS_SOLARIS
 #define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
+#else
+#define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
+	sizeof((a)->ifr_addr)))
+#endif
 
 	struct sockaddr_in *intf_addr_mask;
 	struct sockaddr_storage bindnet_ss, intf_addr_ss;
@@ -507,8 +532,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				parse_rtattr(tb, IFA_MAX, IFA_RTA(ifa), len);
 
 				memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
-				if (totemip_equal(&ipaddr, bindnet))
+				if (totemip_equal(&ipaddr, bindnet)) {
 					found_if = 1;
+				}
 
 				/* If the address we have is an IPv4 network address, then
 				   substitute the actual IP address of this interface */

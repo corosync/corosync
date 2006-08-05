@@ -1,12 +1,12 @@
 /*
  * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2006 Ericsson AB.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
- *
- * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author:  Steven Dake (sdake@mvista.com)
+ *	    Hans Feldt
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -120,7 +120,7 @@ void ComponentTerminateCallback (
 	gettimeofday(&t,NULL);                                   \
 	printf("%s:%d: %s : %d : %u: %u :%s : " format "\n",\
 		__FILE__,__LINE__,__FUNCTION__,             \
-		getpid(),(int)t.tv_sec, (int)t.tv_usec,#x,x);          \
+		(int)getpid(),(int)t.tv_sec, (int)t.tv_usec,#x,x);          \
     }while(0)
 #else
     #define TRU "%d"
@@ -140,10 +140,10 @@ void CSISetCallback (
 	case SA_AMF_HA_ACTIVE:
 		printf ("%d: Component '%s' requested to enter hastate SA_AMF_ACTIVE"
 				" for \n\tCSI '%s'\n",
-			getpid(), compName->value, csiDescriptor->csiName.value);
+			(int)getpid(), compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		if (res != SA_AIS_OK) {
-			fprintf (stderr, "%d: saAmfResponse failed: %d\n", getpid(), res);
+			fprintf (stderr, "%d: saAmfResponse failed: %d\n", (int)getpid(), res);
 			exit (-1);
 		}
 
@@ -179,7 +179,7 @@ void CSISetCallback (
 	case SA_AMF_HA_STANDBY:
 		printf ("%d: Component '%s' requested to enter hastate SA_AMF_STANDBY "
 				"for \n\tCSI '%s'\n",
-			getpid(), compName->value, csiDescriptor->csiName.value);
+			(int)getpid(), compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		
 		TR(TRU,csiDescriptor->csiAttr.number);
@@ -200,7 +200,7 @@ void CSISetCallback (
 	case SA_AMF_HA_QUIESCED:
 		printf ("%d: Component '%s' requested to enter hastate SA_AMF_HA_QUIESCED "
 				"for \n\tCSI '%s'\n",
-			getpid(), compName->value, csiDescriptor->csiName.value);
+			(int)getpid(), compName->value, csiDescriptor->csiName.value);
 		res = saAmfResponse (handle, invocation, SA_AIS_OK);
 		break;
 	case SA_AMF_HA_QUIESCING:
@@ -260,7 +260,7 @@ SaAmfCallbacksT amfCallbacks;
 
 SaVersionT version = { 'B', 1, 1 };
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 static struct sched_param sched_param = {
     sched_priority: 99
 };
@@ -279,11 +279,11 @@ void write_pid (void) {
 	sprintf (filename,  "/var/run/openais_cleanup_%s", compNameGlobal.value);
 	fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
 	if (fd == -1) {
-		printf("%d: Failed using /var/run for pid file, using /tmp\n", getpid());
+		printf("%d: Failed using /var/run for pid file, using /tmp\n", (int)getpid());
 		sprintf (filename,  "/tmp/openais_cleanup_%s", compNameGlobal.value);
 		fd = open (filename, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
 	}
-	sprintf (pid, "%d", getpid());
+	sprintf (pid, "%d", (int)getpid());
 	res = write (fd, pid, strlen (pid));
 	close (fd);
 }
@@ -310,13 +310,13 @@ int main (int argc, char **argv) {
 	}
 #endif
 
-	printf("%d: Hello world from %s\n", getpid(), name);
+	printf("%d: Hello world from %s\n", (int)getpid(), name);
 
 	signal (SIGINT, sigintr_handler);
-#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	result = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (result == -1) {
-		printf ("%d: couldn't set sched priority\n", getpid());
+		printf ("%d: couldn't set sched priority\n", (int)getpid());
  	}
 #endif
 

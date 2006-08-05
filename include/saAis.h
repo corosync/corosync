@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -44,7 +45,11 @@ typedef enum {
 	SA_TRUE = 1
 } SaBoolT;
 
+#ifndef OPENAIS_SOLARIS
 #include <stdint.h>
+#else
+#include <sys/types.h>
+#endif
 
 typedef int8_t SaInt8T;
 typedef int16_t SaInt16T;

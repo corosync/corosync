@@ -2,6 +2,7 @@
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -411,7 +412,7 @@ cpg_error_t cpg_join (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
 		group);
 
-	iov[0].iov_base = &req_lib_cpg_trackstart;
+	iov[0].iov_base = (char *)&req_lib_cpg_trackstart;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
 
 	error = saSendMsgReceiveReply (cpg_inst->dispatch_fd, iov, 1,
@@ -429,7 +430,7 @@ cpg_error_t cpg_join (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_join.group_name,
 		group);
 
-	iov[0].iov_base = &req_lib_cpg_join;
+	iov[0].iov_base = (char *)&req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, iov, 1,
@@ -470,7 +471,7 @@ cpg_error_t cpg_leave (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_leave.group_name,
 		group);
 
-	iov[0].iov_base = &req_lib_cpg_leave;
+	iov[0].iov_base = (char *)&req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
@@ -521,7 +522,7 @@ cpg_error_t cpg_mcast_joined (
 	req_lib_cpg_mcast.guarantee = guarantee;
 	req_lib_cpg_mcast.msglen = msg_len;
 
-	iov[0].iov_base = &req_lib_cpg_mcast;
+	iov[0].iov_base = (char *)&req_lib_cpg_mcast;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
@@ -567,7 +568,7 @@ cpg_error_t cpg_membership_get (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_membership_get.group_name,
 		group_name);
 
-	iov.iov_base = &req_lib_cpg_membership_get;
+	iov.iov_base = (char *)&req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (mar_req_header_t);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);

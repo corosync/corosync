@@ -7,9 +7,13 @@
 #include <sys/poll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifndef OPENAIS_SOLARIS
 #include <stdint.h>
-#include <stdlib.h>
 #include <getopt.h>
+#else
+#include <sys/types.h>
+#endif
+#include <stdlib.h>
 #include <sys/time.h>
 #include "saAis.h"
 #include "saEvt.h"

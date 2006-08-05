@@ -1530,7 +1530,7 @@ saCkptCheckpointWrite (
 		iov_idx++;
 
 		if (ioVector[i].sectionId.idLen) {
-			iov[iov_idx].iov_base = ioVector[i].sectionId.id;
+			iov[iov_idx].iov_base = (char *)ioVector[i].sectionId.id;
 			iov[iov_idx].iov_len = ioVector[i].sectionId.idLen;
 			iov_idx++;
 		}
@@ -1697,7 +1697,7 @@ saCkptCheckpointRead (
 
 		iov[0].iov_base = (char *)&req_lib_ckpt_sectionread;
 		iov[0].iov_len = sizeof (struct req_lib_ckpt_sectionread);
-		iov[1].iov_base = ioVector[i].sectionId.id;
+		iov[1].iov_base = (char *)ioVector[i].sectionId.id;
 		iov[1].iov_len = ioVector[i].sectionId.idLen;
 
 		error = saSendMsgRetry (ckptCheckpointInstance->response_fd,

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -333,7 +334,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 		MESSAGE_REQ_EXEC_CFG_RINGREENABLE);
 	message_source_set (&req_exec_cfg_ringreenable.source, conn);
 
-	iovec.iov_base = &req_exec_cfg_ringreenable;
+	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
 
 	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,

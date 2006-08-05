@@ -32,6 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <alloca.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -497,7 +499,7 @@ static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *
 	req_exec_cpg_procjoin.header.size = sizeof(req_exec_cpg_procjoin);
 	req_exec_cpg_procjoin.header.id = SERVICE_ID_MAKE(CPG_SERVICE, fn);
 
-	req_exec_cpg_iovec.iov_base = &req_exec_cpg_procjoin;
+	req_exec_cpg_iovec.iov_base = (char *)&req_exec_cpg_procjoin;
 	req_exec_cpg_iovec.iov_len = sizeof(req_exec_cpg_procjoin);
 
 	result = totempg_groups_mcast_joined (openais_group_handle, &req_exec_cpg_iovec, 1, TOTEMPG_AGREED);
@@ -985,9 +987,9 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 	memcpy(&req_exec_cpg_mcast.group_name, &gi->group_name,
 		sizeof(mar_cpg_name_t));
 
-	req_exec_cpg_iovec[0].iov_base = &req_exec_cpg_mcast;
+	req_exec_cpg_iovec[0].iov_base = (char *)&req_exec_cpg_mcast;
 	req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);
-	req_exec_cpg_iovec[1].iov_base = &req_lib_cpg_mcast->message;
+	req_exec_cpg_iovec[1].iov_base = (char *)&req_lib_cpg_mcast->message;
 	req_exec_cpg_iovec[1].iov_len = msglen;
 
 	// TODO: guarantee type...

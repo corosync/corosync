@@ -214,9 +214,11 @@ SaAmfCallbacksT amfCallbacks;
 
 SaVersionT version = { 'B', 1, 1 };
 
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 static struct sched_param sched_param = {
     sched_priority: 99
 };
+#endif
 
 void sigintr_handler (int signum) {
 	exit (0);
@@ -232,10 +234,12 @@ int main (int argc, char **argv) {
 
 	memset (&compNameGlobal, 0, sizeof (SaNameT));
 	signal (SIGINT, sigintr_handler);
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	result = sched_setscheduler (0, SCHED_RR, &sched_param);
 	if (result == -1) {
 		printf ("couldn't set sched priority\n");
  	}
+#endif
 
 	for (;;){
 		c = getopt(argc,argv,"h:n:");

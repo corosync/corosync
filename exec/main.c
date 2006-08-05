@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc..
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -266,7 +267,7 @@ static void aisexec_tty_detach (void)
 
 static void aisexec_setscheduler (void)
 {
-#if defined(OPENAIS_BSD) || defined(OPENAIS_LINUX)
+#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	struct sched_param sched_param;
 	int res;
 
@@ -294,7 +295,11 @@ static void aisexec_mlockall (void)
 
 	rlimit.rlim_cur = RLIM_INFINITY;
 	rlimit.rlim_max = RLIM_INFINITY;
+#ifndef OPENAIS_SOLARIS
 	setrlimit (RLIMIT_MEMLOCK, &rlimit);
+#else
+	setrlimit (RLIMIT_VMEM, &rlimit);
+#endif
 
 #if defined(OPENAIS_BSD)
 	/* under FreeBSD a process with locked page cannot call dlopen
@@ -490,7 +495,7 @@ int main (int argc, char **argv)
 	 */
 	aisexec_setscheduler ();
 
-	aisexec_mlockall ();
+//	aisexec_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_log_service = _log_init ("TOTEM");

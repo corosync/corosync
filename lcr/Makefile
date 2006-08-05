@@ -33,6 +33,10 @@ ifeq (${OPENAIS_COMPAT}, LINUX)
 	LDFLAGS += -ldl
 endif
 
+ifeq (${OPENAIS_COMPAT}, SOLARIS)
+	override LDFLAGS += -lnsl -lsocket
+endif
+
 all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
 
 liblcr.a: lcr_ifact.o

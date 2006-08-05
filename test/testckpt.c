@@ -1,6 +1,7 @@
 #define _BSD_SOURCE
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -47,6 +48,18 @@
 #include "saAis.h"
 #include "saCkpt.h"
 #include "sa_error.h"
+
+#ifdef OPENAIS_SOLARIS
+#define timersub(a, b, result)						\
+    do {								\
+	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;			\
+	(result)->tv_usec = (a)->tv_usec - (b)->tv_usec;		\
+	if ((result)->tv_usec < 0) {					\
+	    --(result)->tv_sec;						\
+	    (result)->tv_usec += 1000000;				\
+	}								\
+    } while (0)
+#endif
 
 #define SECONDS_TO_EXPIRE 4
 
@@ -207,14 +220,16 @@ int main (void) {
 	int i;
 	
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+	printf ("%s: checkpoint initialize\n",
+		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointOpenAsync (ckptHandle,
 		open_invocation,
 		&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
-    printf ("%s: initial asynchronous open of checkpoint\n",
-        get_test_output (error, SA_AIS_OK));
+	printf ("%s: initial asynchronous open of checkpoint\n",
+		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
 

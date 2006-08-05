@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
- * Author: Steven Dake (sdake@mvista.com)
- *
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
+ *
+ * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -161,9 +161,9 @@ static int ykd_state_send_msg (enum totem_callback_token_type type, void *contex
 
 	header.id = YKD_HEADER_SENDSTATE;
 	
-	iovec[0].iov_base = &header;
+	iovec[0].iov_base = (char *)&header;
 	iovec[0].iov_len = sizeof (struct ykd_header);
-	iovec[1].iov_base = &ykd_state;
+	iovec[1].iov_base = (char *)&ykd_state;
 	iovec[1].iov_len = sizeof (struct ykd_state);
 
 	res = totempg_groups_mcast_joined (ykd_group_handle, iovec, 2,
@@ -190,7 +190,7 @@ static int ykd_attempt_send_msg (enum totem_callback_token_type type, void *cont
 
 	header.id = YKD_HEADER_SENDSTATE;
 	
-	iovec.iov_base = &header;
+	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
 	res = totempg_groups_mcast_joined (ykd_group_handle, &iovec, 1,

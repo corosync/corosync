@@ -11,8 +11,12 @@ endif
 ifneq "" "$(findstring BSD,$(UNAME))"
 	OPENAIS_COMPAT=BSD
 endif
+ifeq "$(UNAME)" "SunOS"
+	OPENAIS_COMPAT=SOLARIS
+	# CC must be set to gcc compiled to link with gnu-ld 
+endif
 ifndef OPENAIS_COMPAT
-$(error "OPENAIS_COMPAT cannot be detected, it must be manually defined")
+	$(error "OPENAIS_COMPAT cannot be detected, it must be manually defined")
 endif
 
 # BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
@@ -25,7 +29,7 @@ endif
 # OPENAIS_BUILD can be defined as RELEASE or DEBUG
 #
 ifndef OPENAIS_BUILD
-	OPENAIS_BUILD=RELEASE
+	OPENAIS_BUILD=DEBUG
 endif
 
 # OPENAIS_PROFILE
@@ -36,10 +40,13 @@ CFLAGS =
 LDFLAGS =
 DYFLAGS =
 
+# Adding the TS_CLASS flag enables not being scheduled RR
+#CFLAGS += -DTS_CLASS
+
 # build CFLAGS, LDFLAGS
 #
 ifeq (${OPENAIS_BUILD}, RELEASE) 
-	CFLAGS += -O3 -Wall
+	CFLAGS += -O3 -Wall -DDEBUG
 # -Wstrict-aliasing=2 TODO sameday fix all of these
 ifndef OPENAIS_PROFILE
 	CFLAGS += -fomit-frame-pointer
@@ -47,8 +54,11 @@ endif
 	LDFLAGS += 
 endif
 ifeq (${OPENAIS_BUILD}, DEBUG) 
-	CFLAGS += -O0 -g -Wall -DDEBUG 
+	CFLAGS += -O0 -g -Wall -DDEBUG
 	LDFLAGS += -g
+	ifeq (${OPENAIS_COMPAT}, SOLARIS)
+		CFLAGS += -Werror
+	endif
 endif
 ifeq (${OPENAIS_BUILD}, COVERAGE)
 	CFLAGS += -O0 -g -ftest-coverage -fprofile-arcs
@@ -76,4 +86,10 @@ endif
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 	override CFLAGS += -DOPENAIS_DARWIN
 	override LDFLAGS += -lpthread
+endif
+ifeq (${OPENAIS_COMPAT}, SOLARIS)
+	override CFLAGS += -DOPENAIS_SOLARIS -D_REENTRANT
+	override LDFLAGS += -lpthread
+	# See http://sources.redhat.com/ml/bug-gnu-utils/2000-07/msg00168.html
+	override LDFLAGS += -Wl,--export-dynamic
 endif

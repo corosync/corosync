@@ -1438,6 +1438,10 @@ int amf_comp_response_1 (
 			assert (0);
 			break;
 	}
+
+	/* XXX we fall here in case NDEBUG is set */
+	*retval = -1;
+	return 0;
 }
 
 /**
@@ -1714,4 +1718,6 @@ SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
 	}
 
 	assert (0);
+	/* XXX we fall here in case NDEBUG is set */
+	return -1;
 }

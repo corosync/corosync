@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -38,7 +39,12 @@
 #include <pthread.h>
 #include "assert.h"
 
+#ifndef OPENAIS_SOLARIS
 struct queue {
+#else
+struct _queue {
+#define	queue _queue
+#endif
 	int head;
 	int tail;
 	int used;
