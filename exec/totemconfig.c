@@ -58,12 +58,12 @@
 #endif
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
-#define TOKEN_TIMEOUT				10000
+#define TOKEN_TIMEOUT				1000
 #define TOKEN_RETRANSMIT_TIMEOUT		(int)(TOKEN_TIMEOUT / (TOKEN_RETRANSMITS_BEFORE_LOSS_CONST + 0.2))
 #define TOKEN_HOLD_TIMEOUT			(int)(TOKEN_RETRANSMIT_TIMEOUT * 0.8 - (1000/(int)HZ))
-#define JOIN_TIMEOUT				300
-#define CONSENSUS_TIMEOUT			30000
-#define MERGE_TIMEOUT				2000
+#define JOIN_TIMEOUT				100
+#define CONSENSUS_TIMEOUT			200
+#define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000000
 #define FAIL_TO_RECV_CONST			50
 #define	SEQNO_UNCHANGED_CONST			30
@@ -125,7 +125,6 @@ extern int totem_config_read (
 	unsigned int object_interface_handle;
 	char *str;
 	unsigned int ringnumber = 0;
-	char *ring0;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -239,11 +238,6 @@ extern int totem_config_read (
 			totem_config->interfaces[ringnumber].ip_port = atoi (str);
 		}
 
-		ring0 = getenv ("INTERFACE_RING0");
-		if (ring0) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, ring0,
-					     totem_config->interfaces[ringnumber].mcast_addr.family);
-		} else {
 		/*
 		 * Get the bind net address
 		 */
@@ -251,7 +245,6 @@ extern int totem_config_read (
 
 			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
 					     totem_config->interfaces[ringnumber].mcast_addr.family);
-		}
 		}
 		totem_config->interface_count++;
 	}

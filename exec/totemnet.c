@@ -663,7 +663,6 @@ static int net_deliver_fn (
 #endif
 
 	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
-//log_printf (instance->totemnet_log_level_notice, "bytes received %d\n", bytes_received);
 	if (bytes_received == -1) {
 		return (0);
 	} else {

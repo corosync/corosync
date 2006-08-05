@@ -532,9 +532,8 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				parse_rtattr(tb, IFA_MAX, IFA_RTA(ifa), len);
 
 				memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
-				if (totemip_equal(&ipaddr, bindnet)) {
+				if (totemip_equal(&ipaddr, bindnet))
 					found_if = 1;
-				}
 
 				/* If the address we have is an IPv4 network address, then
 				   substitute the actual IP address of this interface */

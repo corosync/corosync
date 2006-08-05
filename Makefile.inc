@@ -29,7 +29,7 @@ endif
 # OPENAIS_BUILD can be defined as RELEASE or DEBUG
 #
 ifndef OPENAIS_BUILD
-	OPENAIS_BUILD=DEBUG
+	OPENAIS_BUILD=RELEASE
 endif
 
 # OPENAIS_PROFILE
@@ -46,7 +46,7 @@ DYFLAGS =
 # build CFLAGS, LDFLAGS
 #
 ifeq (${OPENAIS_BUILD}, RELEASE) 
-	CFLAGS += -O3 -Wall -DDEBUG
+	CFLAGS += -O3 -Wall
 # -Wstrict-aliasing=2 TODO sameday fix all of these
 ifndef OPENAIS_PROFILE
 	CFLAGS += -fomit-frame-pointer

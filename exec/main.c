@@ -495,7 +495,7 @@ int main (int argc, char **argv)
 	 */
 	aisexec_setscheduler ();
 
-//	aisexec_mlockall ();
+	aisexec_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_log_service = _log_init ("TOTEM");

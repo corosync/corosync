@@ -507,18 +507,19 @@ retry_poll:
 	return (0);
 }
 
-#if defined(OPENAIS_LINUX)
+#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 /* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-
-char socketname[20];
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
-
+#endif
+ 
+#if defined(OPENAIS_LINUX)
+char *socketname = "libais.socket";
+#else
 char *socketname = "/var/run/libais.socket";
 #endif
-
 
 static int conn_info_outq_flush (struct conn_info *conn_info) {
 	struct queue *outq;
@@ -872,16 +873,9 @@ void openais_ipc_init (
 	int libais_server_fd;
 	struct sockaddr_un un_addr;
 	int res;
-	char *socket_number;
 
 	log_init ("IPC");
 
-	socket_number = getenv ("INTERFACE_NUMBER");
-	if (socket_number) {
-		sprintf (socketname, "libais.socket%s", socket_number);
-	} else {
-		strcpy (socketname, "libais.socket");
-	}
 	ipc_serialize_lock_fn = serialize_lock_fn;
 
 	ipc_serialize_unlock_fn = serialize_unlock_fn;
