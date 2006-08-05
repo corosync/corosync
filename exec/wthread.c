@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -75,8 +76,15 @@ void *worker_thread (void *thread_data_in) {
 			&worker_thread->new_work_mutex);
 		}
 
+		/*
+		 * We unlock then relock the new_work_mutex to allow the
+		 * worker function to execute and also allow new work to be
+		 * added to the work queue
+	  	 */
 		data_for_worker_fn = queue_item_get (&worker_thread->queue);
+		pthread_mutex_unlock (&worker_thread->new_work_mutex);
 		worker_thread->worker_thread_group->worker_fn (orf_token_mcast_thread_state, data_for_worker_fn);
+		pthread_mutex_lock (&worker_thread->new_work_mutex);
 		queue_item_remove (&worker_thread->queue);
 		pthread_mutex_unlock (&worker_thread->new_work_mutex);
 		pthread_mutex_lock (&worker_thread->done_work_mutex);
@@ -109,8 +117,14 @@ int worker_thread_group_init (
 	}
 
 	for (i = 0; i < threads; i++) {
-		worker_thread_group->threads[i].thread_state = malloc (thread_state_size);
-		thread_state_constructor (worker_thread_group->threads[i].thread_state);
+		if (thread_state_size) {
+			worker_thread_group->threads[i].thread_state = malloc (thread_state_size);
+		} else {
+			worker_thread_group->threads[i].thread_state = NULL;
+		}
+		if (thread_state_constructor) {
+			thread_state_constructor (worker_thread_group->threads[i].thread_state);
+		}
 		worker_thread_group->threads[i].worker_thread_group = worker_thread_group;
 		pthread_mutex_init (&worker_thread_group->threads[i].new_work_mutex, NULL);
 		pthread_cond_init (&worker_thread_group->threads[i].new_work_cond, NULL);
@@ -128,7 +142,7 @@ int worker_thread_group_init (
 	return (0);
 }
 
-void worker_thread_group_work_add (
+int worker_thread_group_work_add (
 	struct worker_thread_group *worker_thread_group,
 	void *item)
 {
@@ -138,9 +152,14 @@ void worker_thread_group_work_add (
 	worker_thread_group->last_scheduled = schedule;
 
 	pthread_mutex_lock (&worker_thread_group->threads[schedule].new_work_mutex);
+	if (queue_is_full (&worker_thread_group->threads[schedule].queue)) {
+		pthread_mutex_unlock (&worker_thread_group->threads[schedule].new_work_mutex);
+		return (-1);
+	}
 	queue_item_add (&worker_thread_group->threads[schedule].queue, item);
 	pthread_cond_signal (&worker_thread_group->threads[schedule].new_work_cond);
 	pthread_mutex_unlock (&worker_thread_group->threads[schedule].new_work_mutex);
+	return (0);
 }
 
 void worker_thread_group_wait (

@@ -51,7 +51,7 @@ extern int worker_thread_group_init (
 	void (*thread_state_constructor)(void *),
 	void (*worker_fn)(void *thread_state, void *work_item));
 
-extern void worker_thread_group_work_add (
+extern int worker_thread_group_work_add (
 	struct worker_thread_group *worker_thread_group,
 	void *item);
 
