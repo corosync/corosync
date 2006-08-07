@@ -176,7 +176,7 @@ saCkptCheckpointClose (
 
 SaAisErrorT
 saCkptCheckpointUnlink (
-	SaCkptCheckpointHandleT checkpointHandle,
+	SaCkptHandleT ckptHandle,
 	const SaNameT *checkpointName);
 
 SaAisErrorT
