@@ -464,12 +464,15 @@ static struct group_info *get_group(mar_cpg_name_t *name)
 {
 	struct list_head *iter;
 	struct group_info *gi = NULL;
+	struct group_info *itergi;
 	uint32_t hash = jhash(name->value, name->length, 0) % GROUP_HASH_SIZE;
 
 	for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
-		gi = list_entry(iter, struct group_info, list);
-		if (memcmp(gi->group_name.value, name->value, name->length) == 0)
+		itergi = list_entry(iter, struct group_info, list);
+		if (memcmp(itergi->group_name.value, name->value, name->length) == 0) {
+			gi = itergi;
 			break;
+		}
 	}
 
 	if (!gi) {
