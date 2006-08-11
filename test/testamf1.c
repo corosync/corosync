@@ -295,11 +295,33 @@ int main (int argc, char **argv) {
 	extern char *optarg;
 	extern int optind;
 	char *name = getenv ("SA_AMF_COMPONENT_NAME");
+	char *env;
+
+	printf("%d: Hello world from %s\n", (int)getpid(), name);
 
 	/* test that it exist */
 	if (name == NULL) {
 		fprintf(stderr, "SA_AMF_COMPONENT_NAME missing\n");
-		exit (-1);
+		exit (1);
+	}
+
+	env = getenv ("var1");
+	if (env == NULL) {
+		printf("var1 missing\n");
+		exit (2);
+	}
+	if (strcmp (env, "val1") != 0) {
+		fprintf(stderr, "var1 value wrong\n");
+		exit (3);
+	}
+	env = getenv ("var2");
+	if (env == NULL) {
+		fprintf(stderr, "var2 wrong\n");
+		exit (4);
+	}
+	if (strcmp (env, "val2") != 0) {
+		fprintf(stderr, "var2 value wrong\n");
+		exit (5);
 	}
 
 	/* test for correct value */
@@ -309,8 +331,6 @@ int main (int argc, char **argv) {
 		exit (-2);
 	}
 #endif
-
-	printf("%d: Hello world from %s\n", (int)getpid(), name);
 
 	signal (SIGINT, sigintr_handler);
 #if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
@@ -323,7 +343,7 @@ int main (int argc, char **argv) {
 	result = saAmfInitialize (&handle, &amfCallbacks, &version);
 	if (result != SA_AIS_OK) {
 		printf ("initialize result is %d\n", result);
-		exit (1);
+		exit (6);
 	}
 
 	FD_ZERO (&read_fds);
@@ -345,13 +365,25 @@ int main (int argc, char **argv) {
         SaNameT badname;
         strcpy ((char*)badname.value, "badname");
         badname.length = 7;
-        result = saAmfComponentRegister (handle, &badname, NULL);
+		do {
+			result = saAmfComponentRegister (handle, &badname, NULL);
+			if (result == SA_AIS_ERR_TRY_AGAIN) {
+				printf("%d: TRY_AGAIN received\n", getpid());
+				sleep (1);
+			}
+		} while (result == SA_AIS_ERR_TRY_AGAIN);
 		if (result != SA_AIS_ERR_INVALID_PARAM) {
 			printf ("Error: register result is %d\n", result);
 		}
     }
 
-    result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
+	do {
+		result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
+		if (result == SA_AIS_ERR_TRY_AGAIN) {
+			printf("%d: TRY_AGAIN received\n", getpid());
+			sleep (1);
+		}
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
 	if (result != SA_AIS_OK) {
 		printf ("Error: register result is %d\n", result);
 	}
@@ -373,7 +405,7 @@ int main (int argc, char **argv) {
 		result = saAmfDispatch (handle, SA_DISPATCH_ALL);
 
 		if (result != SA_AIS_OK) {
-			exit (-1);
+			exit (7);
 		}
 	} while (result && stop == 0);
 

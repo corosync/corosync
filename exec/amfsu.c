@@ -4,13 +4,14 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * - Introduced AMF B.02 information model
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson, Lars Holm
- *  - Component/SU restart, SU failover
+ * - Component/SU restart, SU failover
+ * - Constructors/destructors
+ * - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -166,8 +167,8 @@ static void su_presence_state_set (struct amf_su *su,
 	SaAmfPresenceStateT presence_state)
 {
 	/*                                                              
-     * Set all SI's confirmed HA state to unknown if uninstantiated
-     */
+	 * Set all SI's confirmed HA state to unknown if uninstantiated
+	*/
 	if (su->saAmfSUPresenceState == SA_AMF_PRESENCE_UNINSTANTIATED) {
 		amf_su_foreach_si_assignment (su, clear_ha_state);
 	}
@@ -214,11 +215,7 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 		getSaNameT (&csi->name), getSaNameT (&comp->name),
 		amf_ha_state (ha_state));
 
-	csi_assignment = malloc (sizeof (struct amf_csi_assignment));
-	if (csi_assignment == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
-
+	csi_assignment = amf_malloc (sizeof (struct amf_csi_assignment));
 	csi_assignment->next = csi->assigned_csis;
 	csi->assigned_csis = csi_assignment;
 	amf_comp_dn_make (comp, &csi_assignment->name);
@@ -287,10 +284,7 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 		getSaNameT (&si->name), getSaNameT (&su->name),
 		amf_ha_state (ha_state));
 
-	si_assignment = malloc (sizeof (struct amf_si_assignment));
-	if (si_assignment == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
+	si_assignment = amf_malloc (sizeof (struct amf_si_assignment));
 	amf_su_dn_make (su, &si_assignment->name);
 	si_assignment->saAmfSISUHAState = 0; /* undefined confirmed HA state */
 	si_assignment->requested_ha_state = ha_state;
@@ -408,9 +402,9 @@ static void su_comp_presence_state_changed (
 		case SA_AMF_PRESENCE_INSTANTIATED:
 			switch (su->restart_control_state) {
 				case SU_RC_ESCALATION_LEVEL_2:
-					/*                                                              
-                     * TODO: send to node
-                     */
+					/* 
+					 * TODO: send to node
+					*/
 				case SU_RC_ESCALATION_LEVEL_0:
 					if (presence_state_all_comps_in_su_are_set (
 						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
@@ -541,8 +535,8 @@ void amf_su_comp_error_suspected (
 	ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
 
 	/*                                                              
-     * Defer all new events. Workaround to be able to use gdb.
-     */
+	 * Defer all new events. Workaround to be able to use gdb.
+	*/
 	if (su->sg->avail_state != SG_AC_Idle) {
 		ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
 		fprintf (stderr, "Warning Debug: event deferred!\n");
@@ -576,8 +570,8 @@ void amf_su_comp_error_suspected (
 			if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
 
 				/*                                                              
-                 * TODO: delegate to node
-                 */
+				 * TODO: delegate to node
+				*/
 				struct amf_si_assignment *si_assignment =
 					amf_su_get_next_si_assignment (su, NULL);
 				if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
@@ -616,9 +610,9 @@ void amf_su_terminate (struct amf_su *su)
 	ENTER ("'%s'", su->name.value);
 
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-		/*                                                              
-         * Terminate all components in SU abruptly
-         */
+		/* 
+		 * Terminate all components in SU abruptly
+		*/
 		comp->error_suspected = 1;
 		amf_comp_terminate (comp);
 	}
@@ -644,6 +638,9 @@ struct amf_si_assignment *amf_su_get_next_si_assignment (
 	amf_su_dn_make (su, &dn);
 
 	if (si_assignment == NULL) {
+		assert (su->sg);
+		assert (su->sg->application);
+		assert (su->sg->application->si_head);
 		si = su->sg->application->si_head;
 		tmp_si_assignment = si->assigned_sis;
 	} else {
@@ -696,7 +693,7 @@ int amf_su_get_saAmfSUNumCurrActiveSIs(struct amf_su *su)
 {
 	int cnt = 0;
 	struct amf_si_assignment *si_assignment;
-	
+
 	si_assignment = amf_su_get_next_si_assignment (su, NULL); 
 	while (si_assignment != NULL) {
 		if (su->sg->avail_state == SG_AC_AssigningOnRequest &&
@@ -748,3 +745,153 @@ SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (struct amf_su *su)
 		return SA_AMF_READINESS_OUT_OF_SERVICE;
 	}
 }
+
+/**
+ * Constructor for SU objects. Adds SU last in the ordered
+ * list owned by the specified SG. Always returns a
+ * valid SU object, out-of-memory problems are handled here.
+ * Default values are initialized.
+ * @param sg
+ * @param name
+ * 
+ * @return struct amf_su*
+ */
+struct amf_su *amf_su_new (struct amf_sg *sg, char *name)
+{
+	struct amf_su *tail = sg->su_head;
+	struct amf_su *su = calloc (1, sizeof (struct amf_su));
+
+	if (su == NULL) {
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	while (tail != NULL) {
+		if (tail->next == NULL) {
+			break;
+		}
+		tail = tail->next;
+	}
+
+	if (tail == NULL) {
+		sg->su_head	 = su;
+	} else {
+		tail->next = su;
+	}
+	su->sg = sg;
+
+	/* setup default values from spec. */
+	su->saAmfSURank = 0;
+	su->saAmfSUIsExternal = 0;
+	su->saAmfSUFailover = 1;
+	su->saAmfSUAdminState = SA_AMF_ADMIN_UNLOCKED;
+	su->saAmfSUOperState = SA_AMF_OPERATIONAL_DISABLED;
+	su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
+	su->restart_control_state = SU_RC_ESCALATION_LEVEL_0;
+
+	setSaNameT (&su->name, name);
+
+	return su;
+}
+
+void amf_su_delete (struct amf_su *su)
+{
+	struct amf_comp *comp;
+
+	for (comp = su->comp_head; comp != NULL;) {
+		struct amf_comp *tmp = comp;
+		comp = comp->next;
+		amf_comp_delete (tmp);
+	}
+
+	free (su);
+}
+
+void *amf_su_serialize (struct amf_su *su, int *len)
+{
+	int objsz = sizeof (struct amf_su);
+	struct amf_su *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, su, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_su *amf_su_deserialize (struct amf_sg *sg, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_su);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_su *tmp = (struct amf_su*) buf;
+		struct amf_su *su;
+
+		su = amf_su_new (sg, (char*) tmp->name.value);
+		su->saAmfSURank = tmp->saAmfSURank;
+		su->saAmfSUNumComponents = tmp->saAmfSUNumComponents;
+		su->saAmfSUIsExternal = tmp->saAmfSUIsExternal;
+		su->saAmfSUFailover = tmp->saAmfSUFailover;
+		su->saAmfSUPreInstantiable = tmp->saAmfSUPreInstantiable;
+		su->saAmfSUOperState = tmp->saAmfSUOperState;
+		su->saAmfSUAdminState = tmp->saAmfSUAdminState;
+		su->saAmfSUPresenceState = tmp->saAmfSUPresenceState;
+		memcpy (&su->saAmfSUHostedByNode, &tmp->saAmfSUHostedByNode,
+				sizeof (SaNameT));
+
+		TRACE8 ("%s", su->name.value);
+		return su;
+	}
+}
+
+struct amf_su *amf_su_find (struct amf_cluster *cluster, SaNameT *name)
+{
+	struct amf_application *app;
+	struct amf_sg *sg;
+	struct amf_su *su = NULL;
+	char *app_name;
+	char *sg_name;
+	char *su_name;
+	char *ptrptr;
+	char *buf;
+
+	/* malloc new buffer since strtok_r writes to its first argument */
+	buf = amf_malloc (name->length + 1);
+	memcpy (buf, name->value, name->length);
+
+	su_name = strtok_r(buf, ",", &ptrptr);
+	sg_name = strtok_r(NULL, ",", &ptrptr);
+	app_name = strtok_r(NULL, ",", &ptrptr);
+
+	if (su_name == NULL || sg_name == NULL || app_name == NULL) {
+		goto end;
+	}
+
+	su_name += 6;
+	sg_name += 6;
+	app_name += 7;
+
+	app = amf_application_find (cluster, app_name);
+	if (app == NULL) {
+		goto end;
+	}
+
+	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+		if (strncmp (sg_name, (char*)sg->name.value,
+			sg->name.length) == 0) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (strncmp (su_name, (char*)su->name.value,
+					su->name.length) == 0) {
+					goto end;
+				}
+			}
+		}
+	}
+
+end:
+	free (buf);
+	return su;
+}
+

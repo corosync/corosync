@@ -1,9 +1,10 @@
 /** @file amfcluster.c
  * 
  * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  *  - Refactoring of code into several AMF files
- *  Author: Anders Eriksson
+ *  - Constructors/destructors
+ *  - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -107,39 +108,29 @@ static void timer_function_cluster_assign_workload_tmo (void *_cluster)
 	struct amf_application *app;
 	struct amf_cluster *cluster = _cluster;
 
-	dprintf("2nd Cluster start timer expired, assigning workload to application\n");
+	dprintf("Cluster start timer expired, assigning workload to application\n");
 
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		amf_application_assign_workload (app, this_amf_node);
 	}
 }
 
-static void timer_function_cluster_startup_tmo (void *_cluster)
+void amf_cluster_start (struct amf_cluster *cluster)
 {
-	struct amf_cluster *cluster = _cluster;
 	struct amf_application *app;
 
-	log_printf(LOG_NOTICE, "AMF Cluster: starting applications.");
+	log_printf(LOG_NOTICE, "Cluster: starting applications.");
+
+	amf_cluster->state = CLUSTER_STARTING;
 
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		amf_application_start (app, NULL);
 	}
 
 	/* wait a while before assigning workload */
-	poll_timer_add (aisexec_poll_handle,
-		cluster->saAmfClusterStartupTimeout,
+	poll_timer_add (aisexec_poll_handle, cluster->saAmfClusterStartupTimeout,
 		cluster,
 		timer_function_cluster_assign_workload_tmo,
-		&cluster->timeout_handle);
-}
-
-void amf_cluster_start (struct amf_cluster *cluster)
-{
-	/* wait a while before starting applications */
-	poll_timer_add (aisexec_poll_handle,
-		cluster->saAmfClusterStartupTimeout,
-		cluster,
-		timer_function_cluster_startup_tmo,
 		&cluster->timeout_handle);
 }
 
@@ -156,7 +147,8 @@ void amf_cluster_application_started (
 	if (all_applications_started (cluster)) {
 		struct amf_application *app;
 
-		log_printf(LOG_NOTICE, "AMF Cluster: all applications started, assigning workload.");
+		log_printf(LOG_NOTICE,
+				   "Cluster: all applications started, assigning workload.");
 
 		if (cluster->timeout_handle) {
 			poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
@@ -168,7 +160,7 @@ void amf_cluster_application_started (
 	}
 }
 
-struct amf_cluster *amf_cluster_create (void)
+struct amf_cluster *amf_cluster_new (void)
 {
 	struct amf_cluster *cluster = calloc (1, sizeof (struct amf_cluster));
 
@@ -185,6 +177,39 @@ struct amf_cluster *amf_cluster_create (void)
 void amf_cluster_application_workload_assigned (
 	struct amf_cluster *cluster, struct amf_application *app)
 {
-	log_printf(LOG_NOTICE, "AMF Cluster: all workload assigned.");
+	log_printf(LOG_NOTICE, "Cluster: all workload assigned.");
+	amf_cluster->state = CLUSTER_STARTED;
+}
+
+void *amf_cluster_serialize (struct amf_cluster *cluster, int *len)
+{
+	int objsz = sizeof (struct amf_cluster);
+	struct amf_cluster *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, cluster, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_cluster *amf_cluster_deserialize (char *buf, int size)
+{
+	int objsz = sizeof (struct amf_cluster);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_cluster *obj = amf_cluster_new ();
+		if (obj == NULL) {
+			return NULL;
+		}
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->node_head = NULL;
+		obj->application_head = NULL;
+		return obj;
+	}
 }
 

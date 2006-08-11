@@ -45,6 +45,7 @@
 #include "../include/ipc_gen.h"
 #include "objdb.h"
 #include "timer.h"
+#include "aispoll.h"
 
 enum clc_component_types {
 	clc_component_sa_aware = 0,			/* sa aware */
@@ -85,9 +86,37 @@ typedef enum {
 	SU_RC_RESTART_SU_ACTIVATING
 } su_restart_control_state_t;
 
+typedef enum {
+	AMF_NONE,
+	AMF_APPLICATION,
+	AMF_CLUSTER,
+	AMF_NODE,
+	AMF_SG,
+	AMF_SU,
+	AMF_COMP,
+	AMF_COMP_ENV_VAR,
+	AMF_COMP_CS_TYPE,
+	AMF_SI,
+	AMF_SI_ASSIGNMENT,
+	AMF_SI_RANKED_SU,
+	AMF_SI_DEPENDENCY,
+	AMF_CSI,
+	AMF_CSI_ASSIGNMENT,
+	AMF_CSI_ATTRIBUTE,
+	AMF_HEALTHCHECK,
+	AMF_CSI_DEPENDENCIES,
+	AMF_CS_TYPE,
+} amf_object_type_t;
+
 struct amf_si_assignment;
 struct amf_csi_assignment;
 struct amf_healthcheck;
+
+enum cluster_states {
+	CLUSTER_UNINSTANTIATED,
+	CLUSTER_STARTING,
+	CLUSTER_STARTED
+};
 
 struct amf_cluster {
 	/* Configuration Attributes */
@@ -103,7 +132,8 @@ struct amf_cluster {
 	struct amf_application *application_head;
 
 	/* Implementation */
-	openais_timer_handle timeout_handle;
+	poll_timer_handle timeout_handle;
+	enum cluster_states state;
 };
 
 struct amf_node {
@@ -138,11 +168,12 @@ struct amf_application {
 	/* Relations */
 	struct amf_cluster *cluster;
 	struct amf_sg      *sg_head;
+	/* ordered list of SUs */
 	struct amf_si      *si_head;
+	struct amf_si      *si_tail;
 
 	/* Implementation */
 	char clccli_path[PATH_MAX];
-	char binary_path[PATH_MAX];
 	struct amf_application *next;
 };
 
@@ -172,11 +203,12 @@ struct amf_sg {
 
 	/* Relations */
 	struct amf_application *application;
+
+    /* ordered list of SUs */
 	struct amf_su          *su_head;
 
 	/* Implementation */
 	char clccli_path[PATH_MAX];
-	char binary_path[PATH_MAX];
 	struct amf_sg *next;
 	sg_avail_control_state_t avail_state;
 };
@@ -209,7 +241,6 @@ struct amf_su {
 	su_restart_control_state_t restart_control_state;
 	su_restart_control_state_t escalation_level_history_state;
 	char clccli_path[PATH_MAX];
-	char binary_path[PATH_MAX];
 	SaUint32T              su_failover_cnt; /* missing in SAF specs? */
 	struct amf_su         *next;
 };
@@ -223,33 +254,33 @@ struct amf_comp {
 	SaUint32T saAmfCompNumMaxActiveCsi;
 	SaUint32T saAmfCompNumMaxStandbyCsi;
 	SaStringT *saAmfCompCmdEnv;
-	int saAmfCompDefaultClcCliTimeout;
-	int saAmfCompDefaultCallbackTimeOut;
+	SaUint32T saAmfCompDefaultClcCliTimeout;
+	SaUint32T saAmfCompDefaultCallbackTimeOut;
 	SaStringT saAmfCompInstantiateCmd;
 	SaStringT saAmfCompInstantiateCmdArgv;
-	int saAmfCompInstantiateTimeout;
+	SaUint32T saAmfCompInstantiateTimeout;
 	SaUint32T saAmfCompInstantiationLevel;
 	SaUint32T saAmfCompNumMaxInstantiateWithoutDelay;
 	SaUint32T saAmfCompNumMaxInstantiateWithDelay;
-	int saAmfCompDelayBetweenInstantiateAttempts;
+	SaUint32T saAmfCompDelayBetweenInstantiateAttempts;
 	SaStringT saAmfCompTerminateCmd;
-	int saAmfCompTerminateTimeout;
+	SaUint32T saAmfCompTerminateTimeout;
 	SaStringT saAmfCompTerminateCmdArgv;
 	SaStringT saAmfCompCleanupCmd;
-	int saAmfCompCleanupTimeout;
+	SaUint32T saAmfCompCleanupTimeout;
 	SaStringT saAmfCompCleanupCmdArgv;
 	SaStringT saAmfCompAmStartCmd;
-	int saAmfCompAmStartTimeout;
+	SaUint32T saAmfCompAmStartTimeout;
 	SaStringT saAmfCompAmStartCmdArgv;
 	SaUint32T saAmfCompNumMaxAmStartAttempt;
 	SaStringT saAmfCompAmStopCmd;
-	int saAmfCompAmStopTimeout;
+	SaUint32T saAmfCompAmStopTimeout;
 	SaStringT saAmfCompAmStopCmdArgv;
 	SaUint32T saAmfCompNumMaxAmStopAttempt;
-	int saAmfCompTerminateCallbackTimeout;
-	int saAmfCompCSISetCallbackTimeout;
-	int saAmfCompQuiescingCompleteTimeout;
-	int saAmfCompCSIRmvCallbackTimeout;
+	SaUint32T saAmfCompTerminateCallbackTimeout;
+	SaUint32T saAmfCompCSISetCallbackTimeout;
+	SaUint32T saAmfCompQuiescingCompleteTimeout;
+	SaUint32T saAmfCompCSIRmvCallbackTimeout;
 	SaAmfRecommendedRecoveryT saAmfCompRecoveryOnError;
 	SaBoolT saAmfCompDisableRestart;
 	SaNameT saAmfCompProxyCsi;
@@ -261,17 +292,16 @@ struct amf_comp {
 	SaUint32T saAmfCompRestartCount;
 /*     SaUint32T saAmfCompNumCurrActiveCsi;  */
 /*     SaUint32T saAmfCompNumCurrStandbyCsi; */
-	SaNameT saAmfCompAssignedCsi;
+/*	SaNameT saAmfCompAssignedCsi; */
 	SaNameT saAmfCompCurrProxyName;
-	SaNameT saAmfCompCurrProxiedNames;
+	SaNameT **saAmfCompCurrProxiedNames;
 
 	/* Relations */
 	struct amf_comp *proxy_comp;
 	struct amf_su *su;
 
 	/* Implementation */
-	char clccli_path[PATH_MAX];
-	char binary_path[PATH_MAX];
+	SaStringT clccli_path;
 	struct amf_comp *next;
 	void *conn;
 	enum clc_component_types comptype;
@@ -280,7 +310,7 @@ struct amf_comp {
 	/**
      * Flag that indicates of this component has a suspected error
 	 */
-	int error_suspected;
+	SaUint32T error_suspected;
 };
 
 struct amf_healthcheck {
@@ -297,8 +327,8 @@ struct amf_healthcheck {
 	int active;
 	SaAmfHealthcheckInvocationT invocationType;
 	SaAmfRecommendedRecoveryT recommendedRecovery;
-	openais_timer_handle timer_handle_duration;
-	openais_timer_handle timer_handle_period;
+	poll_timer_handle timer_handle_duration;
+	poll_timer_handle timer_handle_period;
 };
 
 struct amf_si {
@@ -420,7 +450,10 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_COMPONENT_ERROR_REPORT = 1,
 	MESSAGE_REQ_EXEC_AMF_CLC_CLEANUP_COMPLETED = 2,
 	MESSAGE_REQ_EXEC_AMF_HEALTHCHECK_TMO = 3,
-	MESSAGE_REQ_EXEC_AMF_RESPONSE = 4
+	MESSAGE_REQ_EXEC_AMF_RESPONSE = 4,
+	MESSAGE_REQ_EXEC_AMF_SYNC_START = 5,
+	MESSAGE_REQ_EXEC_AMF_SYNC_DATA = 6,
+	MESSAGE_REQ_EXEC_AMF_SYNC_READY = 7
 };
 
 struct req_exec_amf_clc_cleanup_completed {
@@ -438,15 +471,10 @@ struct req_exec_amf_healthcheck_tmo {
 /* amfutil.c */
 
 extern struct amf_cluster *amf_config_read (char **error_string);
-extern char *amf_serialize (struct amf_cluster *cluster);
-extern int amf_deserialize (char *buf, struct amf_cluster *cluster);
-extern void amf_state_print (struct amf_cluster *cluster);
 extern void amf_runtime_attributes_print (struct amf_cluster *cluster);
 extern int amf_enabled (struct objdb_iface_ver0 *objdb);
-extern int amf_invocation_create (int interface, void *data);
-extern int amf_invocation_get_and_destroy (
-	int invocation, int *interface,	void **data);
-extern void amf_invocation_destroy_by_data (void *data);
+extern void *_amf_malloc (size_t size, char *file, unsigned int line);
+#define amf_malloc(size) _amf_malloc ((size), __FILE__, __LINE__)
 
 extern const char *amf_admin_state (int state);
 extern const char *amf_op_state (int state);
@@ -455,15 +483,31 @@ extern const char *amf_ha_state (int state);
 extern const char *amf_readiness_state (int state);
 extern const char *amf_assignment_state (int state);
 
+extern char *amf_serialize_SaNameT (
+	char *buf, int *size, int *offset, SaNameT *name);
+extern char *amf_serialize_SaStringT (
+	char *buf, int *size, int *offset, SaStringT str);
+extern char *amf_serialize_SaUint32T (
+	char *buf, int *size, int *offset, SaUint32T num);
+extern char *amf_serialize_SaUint64T (char *buf, SaUint64T num);
+extern char *amf_serialize_opaque (
+	char *buf, int *size, int *offset, char *cp, int cnt);
+extern char *amf_deserialize_SaNameT (char *buf, SaNameT *name);
+extern char *amf_deserialize_SaStringT (char *buf, SaStringT *str);
+extern char *amf_deserialize_SaUint32T (char *buf, SaUint32T *num);
+extern char *amf_deserialize_SaUint64T (char *buf, SaUint64T *num);
+extern char *amf_deserialize_opaque (char *buf, char *dst, int *cnt);
+
 /*===========================================================================*/
 /* amfnode.c */
 
 /* General methods */
-extern struct amf_node *amf_node_create (void);
-extern int amf_node_serialize (
-	struct amf_node *node, char **buf, int *offset);
+extern struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name);
+extern void amf_node_init (void);
+extern void *amf_node_serialize (struct amf_node *node, int *len);
 extern struct amf_node *amf_node_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_cluster *cluster, char *buf, int size);
+extern struct amf_node *amf_node_find (SaNameT *name);
 
 /* Event methods */
 extern void amf_node_sync_ready (struct amf_node *node);
@@ -498,11 +542,9 @@ extern void timer_function_node_probation_period_expired (void *node);
 
 /* General methods */
 extern void amf_cluster_init (void);
-extern struct amf_cluster *amf_cluster_create (void);
-extern int amf_cluster_serialize (
-	struct amf_cluster *cluster, char **buf, int *offset);
-extern struct amf_cluster *amf_cluster_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+extern struct amf_cluster *amf_cluster_new (void);
+extern void *amf_cluster_serialize (struct amf_cluster *cluster, int *len);
+extern struct amf_cluster *amf_cluster_deserialize (char *buf, int size);
 
 /* Event methods */
 extern void amf_cluster_start (struct amf_cluster *cluster);
@@ -518,13 +560,17 @@ extern void amf_cluster_application_workload_assigned (
 
 /* General methods */
 extern void amf_application_init (void);
-extern struct amf_application *amf_application_create (void);
+extern struct amf_application *amf_application_find (
+	struct amf_cluster *cluster, char *name);
+extern struct amf_application *amf_application_new (
+	struct amf_cluster *cluster);
+extern void amf_application_delete (struct amf_application *app);
 extern int amf_application_calc_and_set_si_dependency_level (
 	struct amf_application *app);
-extern int amf_application_serialize (
-	struct amf_application *application, char **buf, int *offset);
+extern void *amf_application_serialize (
+	struct amf_application *application, int *len);
 extern struct amf_application *amf_application_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_cluster *cluster, char *buf, int size);
 
 /* Event methods */
 extern void amf_application_start (
@@ -543,11 +589,12 @@ extern void amf_application_sg_assigned (
 
 /* General methods */
 extern void amf_sg_init (void);
-extern struct amf_sg *amf_sg_create (void);
-extern int amf_sg_serialize (
-	struct amf_sg *sg, char **buf, int *offset);
+extern struct amf_sg *amf_sg_find (struct amf_application *app, char *name);
+extern struct amf_sg *amf_sg_new (struct amf_application *app, char *name);
+extern void amf_sg_delete (struct amf_sg *sg);
+extern void *amf_sg_serialize (struct amf_sg *sg, int *len);
 extern struct amf_sg *amf_sg_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_application *app, char *buf, int size);
 
 /**
  * Request SG to start (instantiate all SUs)
@@ -593,12 +640,14 @@ extern void amf_sg_si_activated (
 
 /* General methods */
 extern void amf_su_init (void);
-extern struct amf_su *amf_su_create (void);
+extern struct amf_su *amf_su_find (
+	struct amf_cluster *cluster, SaNameT *name);
+extern struct amf_su *amf_su_new (struct amf_sg *sg, char *name);
+extern void amf_su_delete (struct amf_su *su);
 extern char *amf_su_dn_make (struct amf_su *su, SaNameT *name);
-extern int amf_su_serialize (
-	struct amf_su *su, char **buf, int *offset);
+extern void *amf_su_serialize (struct amf_su *su, int *len);
 extern struct amf_su *amf_su_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_sg *sg, char *buf, int size);
 extern int amf_su_is_local (struct amf_su *su);
 extern struct amf_si_assignment *amf_su_get_next_si_assignment (
 	struct amf_su *su, const struct amf_si_assignment *si_assignment);
@@ -648,14 +697,14 @@ extern void amf_su_comp_error_suspected (
 
 /* General methods */
 extern void amf_comp_init (void);
-extern struct amf_comp *amf_comp_create (struct amf_su *su);
+extern struct amf_comp *amf_comp_new (struct amf_su *su, char *name);
+extern void amf_comp_delete (struct amf_comp *comp);
 extern char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name);
 extern struct amf_comp *amf_comp_find (
 	struct amf_cluster *cluster, SaNameT *name);
-extern int amf_comp_serialize (
-	struct amf_comp *comp, char **buf, int *offset);
+extern void *amf_comp_serialize (struct amf_comp *comp, int *len);
 extern struct amf_comp *amf_comp_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_su *su, char *buf, int size);
 extern void amf_comp_foreach_csi_assignment (
 	struct amf_comp *component,
 	void (*foreach_fn)(struct amf_comp *component,
@@ -723,9 +772,10 @@ extern void amf_comp_unregister (struct amf_comp *comp);
 extern void amf_comp_error_report (
 	struct amf_comp *comp, SaAmfRecommendedRecoveryT recommendedRecovery);
 extern int amf_comp_response_1 (
-	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval);
+	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval,
+	SaUint32T *interface, SaNameT *dn);
 extern struct amf_comp *amf_comp_response_2 (
-	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval);
+	SaUint32T interface, SaNameT *dn, SaAisErrorT error, SaAisErrorT *retval);
 extern SaAisErrorT amf_comp_hastate_get (
 	struct amf_comp *comp, SaNameT *csi_name, SaAmfHAStateT *ha_state);
 extern SaAisErrorT amf_comp_healthcheck_confirm (
@@ -733,17 +783,27 @@ extern SaAisErrorT amf_comp_healthcheck_confirm (
 	SaAmfHealthcheckKeyT *healthcheckKey,
 	SaAisErrorT healthcheckResult);
 
+extern void *amf_healthcheck_serialize (
+	struct amf_healthcheck *healthcheck, int *len);
+extern struct amf_healthcheck *amf_healthcheck_deserialize (
+	struct amf_comp *comp, char *buf, int size);
+
 /*===========================================================================*/
 /* amfsi.c */
 
 /* General methods */
 extern void amf_si_init (void);
-extern struct amf_si *amf_si_create (void);
+extern struct amf_si *amf_si_find (struct amf_application *app, char *name);
+extern struct amf_si *amf_si_new (struct amf_application *app, char *name);
+extern void amf_si_delete (struct amf_si *si);
 extern int amf_si_calc_and_set_csi_dependency_level (struct amf_si *si);
-extern int amf_si_serialize (
-	struct amf_si *si, char **buf, int *offset);
+extern void *amf_si_serialize (struct amf_si *si, int *len);
 extern struct amf_si *amf_si_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_application *app, char *buf, int size);
+extern void *amf_si_assignment_serialize (
+	struct amf_si_assignment *si_assignment, int *len);
+extern struct amf_si_assignment *amf_si_assignment_deserialize (
+	struct amf_si *si, char *buf, int size);
 
 /**
  * Get number of active assignments for the specified SI
@@ -835,12 +895,27 @@ extern void amf_si_comp_set_ha_state_failed (
 extern void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su);
 
 /* General methods */
-extern struct amf_csi *amf_csi_create (void);
-extern int amf_csi_serialize (
-	struct amf_csi *csi, char **buf, int *offset);
+extern struct amf_csi *amf_csi_new (struct amf_si *si);
+extern struct amf_csi *amf_csi_find (struct amf_si *si, char *name);
+extern void amf_csi_delete (struct amf_csi *csi);
+extern void *amf_csi_serialize (struct amf_csi *csi, int *len);
 extern struct amf_csi *amf_csi_deserialize (
-	char **buf, int *size, struct amf_cluster *cluster);
+	struct amf_si *si, char *buf, int size);
+extern void *amf_csi_assignment_serialize (
+	struct amf_csi_assignment *csi_assignment, int *len);
+extern struct amf_csi_assignment *amf_csi_assignment_deserialize (
+	struct amf_csi *csi, char *buf, int size);
 extern char *amf_csi_dn_make (struct amf_csi *csi, SaNameT *name);
+extern char *amf_csi_assignment_dn_make (
+	struct amf_csi_assignment *csi_assignment, SaNameT *name);
+extern struct amf_csi_assignment *amf_csi_assignment_find (
+	struct amf_cluster *cluster, SaNameT *name);
+
+extern struct amf_csi_attribute *amf_csi_attribute_new (struct amf_csi *csi);
+extern void *amf_csi_attribute_serialize (
+	struct amf_csi_attribute *csi_attribute, int *len);
+extern struct amf_csi_attribute *amf_csi_attribute_deserialize (
+	struct amf_csi *csi, char *buf, int size);
 
 /*===========================================================================*/
 extern struct amf_node *this_amf_node;

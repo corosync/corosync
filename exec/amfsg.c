@@ -4,13 +4,14 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * - Introduced AMF B.02 information model
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson, Lars Holm
- *  - Component/SU restart, SU failover
+ * - Component/SU restart, SU failover
+ * - Constructors/destructors
+ * - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -555,9 +556,7 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 
 	ENTER ("'%s'", sg->name.value);
 
-	if (sg->avail_state == SG_AC_Idle) {
-		sg->avail_state = SG_AC_AssigningOnRequest;
-	}
+	sg->avail_state = SG_AC_AssigningOnRequest;
 
 	/**
 	 * Phase 1: Calculate assignments and create all runtime objects in
@@ -689,10 +688,15 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 
 	sg->avail_state = SG_AC_InstantiatingServiceUnits;
 
-	if (node == NULL) {
-		/* Cluster start */
-		for (su = sg->su_head; su != NULL; su = su->next) {
+	for (su = sg->su_head; su != NULL; su = su->next) {
+		if (node == NULL) {
+			/* Cluster start */
 			amf_su_instantiate (su);
+		} else {
+            /* Node start, match if SU is hosted on the specified node */
+			if (name_match (&node->name, &su->saAmfSUHostedByNode)) {
+				amf_su_instantiate (su);
+			}
 		}
 	}
 }
@@ -700,7 +704,8 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 void amf_sg_su_state_changed (
 	struct amf_sg *sg, struct amf_su *su, SaAmfStateT type, int state)
 {
-	ENTER ("'%s' SU '%s' state %d", sg->name.value, su->name.value, state);
+	ENTER ("'%s' SU '%s' state %s",
+		   sg->name.value, su->name.value, amf_presence_state(state));
 
 	if (type == SA_AMF_PRESENCE_STATE) {
 		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
@@ -761,4 +766,104 @@ void amf_sg_failover_su_req (
 	}
 }
 
+/**
+ * Constructor for SG objects. Adds SG to the list owned by
+ * the specified application. Always returns a valid SG
+ * object, out-of-memory problems are handled here. Default
+ * values are initialized.
+ * @param sg
+ * @param name
+ * 
+ * @return struct amf_sg*
+ */
+
+struct amf_sg *amf_sg_new (struct amf_application *app, char *name)
+{
+	struct amf_sg *sg = calloc (1, sizeof (struct amf_sg));
+
+	if (sg == NULL) {
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	sg->next = app->sg_head;
+	app->sg_head = sg;
+	sg->saAmfSGAdminState = SA_AMF_ADMIN_UNLOCKED;
+	sg->saAmfSGNumPrefActiveSUs = 1;
+	sg->saAmfSGNumPrefStandbySUs = 1;
+	sg->saAmfSGNumPrefInserviceSUs = ~0;
+	sg->saAmfSGCompRestartProb = -1;
+	sg->saAmfSGCompRestartMax = ~0;
+	sg->saAmfSGSuRestartProb = -1;
+	sg->saAmfSGSuRestartMax = ~0;
+	sg->saAmfSGAutoAdjustProb = -1;
+	sg->saAmfSGAutoRepair = SA_TRUE;
+	sg->application = app;
+	setSaNameT (&sg->name, name);
+
+	return sg;
+}
+
+void amf_sg_delete (struct amf_sg *sg)
+{
+	struct amf_su *su;
+
+	for (su = sg->su_head; su != NULL;) {
+		struct amf_su *tmp = su;
+		su = su->next;
+		amf_su_delete (tmp);
+	}
+
+	free (sg);
+}
+
+void *amf_sg_serialize (struct amf_sg *sg, int *len)
+{
+	int objsz = sizeof (struct amf_sg);
+	struct amf_sg *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, sg, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_sg *amf_sg_deserialize (
+	struct amf_application *app, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_sg);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		/*                                                              
+         * TODO: use amf_sg_new
+         */
+		struct amf_sg *sg = calloc (1, sizeof (struct amf_sg));
+		if (sg == NULL) {
+			return NULL;
+		}
+		memcpy (sg, buf, objsz);
+		TRACE8 ("%s", sg->name.value);
+		sg->application = app;
+		sg->su_head = NULL;
+		sg->next = app->sg_head;
+		app->sg_head = sg;
+		return sg;
+	}
+}
+
+struct amf_sg *amf_sg_find (struct amf_application *app, char *name)
+{
+	struct amf_sg *sg;
+
+	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+		if (strncmp (name, (char*)sg->name.value, sg->name.length) == 0) {
+			break;
+		}
+	}
+
+	return sg;
+}
 

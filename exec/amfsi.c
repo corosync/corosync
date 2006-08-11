@@ -1,10 +1,11 @@
 /** @file amfsi.c
  * 
  * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * - Refactoring of code into several AMF files
- *  Author: Anders Eriksson, Lars Holm
- *  - Component/SU restart, SU failover
+ * - Component/SU restart, SU failover
+ * - Constructors/destructors
+ * - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -377,11 +378,8 @@ void amf_si_ha_state_assume (
 	 */
 	if (csi_assignment_cnt == hastate_set_done_cnt) {
 		poll_timer_handle handle;
-		poll_timer_add (aisexec_poll_handle,
-			0,
-			si_assignment,
-			timer_function_ha_state_assumed,
-			&handle);
+		poll_timer_add (aisexec_poll_handle, 0, si_assignment,
+						timer_function_ha_state_assumed, &handle);
 	}
 }
 
@@ -459,5 +457,448 @@ void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su)
 	}
 	assert (csi_assignment != NULL);
 	free (csi_assignment);
+}
+
+/**
+ * Constructor for SI objects. Adds SI last in the ordered
+ * list owned by the specified application. Always returns a
+ * valid SI object, out-of-memory problems are handled here.
+ * Default values are initialized.
+ * @param app
+ * 
+ * @return struct amf_si*
+ */
+struct amf_si *amf_si_new (struct amf_application *app, char *name)
+{
+	struct amf_si *tail = app->si_head;
+	struct amf_si *si = calloc (1, sizeof (struct amf_si));
+
+	if (si == NULL) {
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	while (tail != NULL) {
+		if (tail->next == NULL) {
+			break;
+		}
+		tail = tail->next;
+	}
+
+	if (tail == NULL) {
+		app->si_head = si;
+	} else {
+		tail->next = si;
+	}
+
+	si->application = app;
+
+	/* setup default values from spec. */
+	si->saAmfSIAdminState = SA_AMF_ADMIN_UNLOCKED;
+	si->saAmfSIRank = 0;
+	si->saAmfSIPrefActiveAssignments = 1;
+	si->saAmfSIPrefStandbyAssignments = 1;
+
+	si->assigned_sis = NULL;
+	si->csi_head = NULL;
+	setSaNameT (&si->name, name);
+
+	return si;
+}
+
+void amf_si_delete (struct amf_si *si)
+{
+	struct amf_si_assignment *si_assignment;
+	struct amf_csi *csi;
+
+	for (csi = si->csi_head; csi != NULL;) {
+		struct amf_csi *tmp = csi;
+		csi = csi->next;
+		amf_csi_delete (tmp);
+	}
+
+	for (si_assignment = si->assigned_sis; si_assignment != NULL;) {
+		struct amf_si_assignment *tmp = si_assignment;
+		si_assignment = si_assignment->next;
+		free (tmp);
+	}
+
+	free (si);
+}
+
+void *amf_si_serialize (struct amf_si *si, int *len)
+{
+	int objsz = sizeof (struct amf_si);
+	struct amf_si *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, si, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_si *amf_si_deserialize (struct amf_application *app, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_si);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_si *tmp = (struct amf_si*) buf;
+		struct amf_si *si = amf_si_new (app, (char*)tmp->name.value);
+		TRACE8 ("%s", si->name.value);
+
+		memcpy (&si->saAmfSIProtectedbySG, &tmp->saAmfSIProtectedbySG,
+				sizeof (SaNameT));
+		si->saAmfSIRank = tmp->saAmfSIRank;
+		si->saAmfSINumCSIs = tmp->saAmfSINumCSIs;
+		si->saAmfSIPrefActiveAssignments = tmp->saAmfSIPrefActiveAssignments;
+		si->saAmfSIPrefStandbyAssignments = tmp->saAmfSIPrefStandbyAssignments;
+		si->saAmfSIAdminState = tmp->saAmfSIAdminState;
+		return si;
+	}
+}
+
+/*****************************************************************************
+ * SI Assignment class implementation                          *              
+ ****************************************************************************/
+
+struct amf_si_assignment *amf_si_assignment_new (struct amf_si *si)
+{
+	struct amf_si_assignment *si_assignment;
+
+	si_assignment =	amf_malloc (sizeof (struct amf_si_assignment));
+	si_assignment->si = si;
+
+	return si_assignment;
+}
+
+void *amf_si_assignment_serialize (
+	struct amf_si_assignment *si_assignment, int *len)
+{
+	int objsz = sizeof (struct amf_si_assignment);
+	struct amf_si_assignment *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, si_assignment, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_si_assignment *amf_si_assignment_deserialize (
+	struct amf_si *si, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_si_assignment);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_si_assignment *obj = amf_si_assignment_new (si);
+		if (obj == NULL) {
+			return NULL;
+		}
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->si = si;
+		obj->su = amf_su_find (si->application->cluster, &obj->name);
+		obj->next = si->assigned_sis;
+		si->assigned_sis = obj;
+		return obj;
+	}
+}
+
+struct amf_si *amf_si_find (struct amf_application *app, char *name)
+{
+	struct amf_si *si;
+
+	ENTER ("%s", name);
+
+	for (si = app->si_head; si != NULL; si = si->next) {
+		if (strncmp (name, (char*)si->name.value, si->name.length) == 0) {
+			break;
+		}
+	}
+
+	return si;
+}
+
+/*****************************************************************************
+ * CSI class implementation                                    *
+ ****************************************************************************/
+
+struct amf_csi *amf_csi_new (struct amf_si *si)
+{
+	struct amf_csi *csi;
+
+	csi = amf_malloc (sizeof (struct amf_csi));
+	csi->si = si;
+
+	return csi;
+}
+
+void amf_csi_delete (struct amf_csi *csi)
+{
+	struct amf_csi_assignment *csi_assignment;
+
+	for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;) {
+		struct amf_csi_assignment *tmp = csi_assignment;
+		csi_assignment = csi_assignment->next;
+		free (tmp);
+	}
+
+	free (csi);
+}
+
+void *amf_csi_serialize (struct amf_csi *csi, int *len)
+{
+	int objsz = sizeof (struct amf_csi);
+	struct amf_csi *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, csi, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_csi *amf_csi_deserialize (struct amf_si *si, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_csi);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_csi *obj = amf_csi_new (si);
+		if (obj == NULL) {
+			return NULL;
+		}
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->si = si;
+		obj->assigned_csis = NULL;
+		obj->attributes_head = NULL;
+		obj->next = si->csi_head;
+		si->csi_head = obj;
+		return obj;
+	}
+}
+
+struct amf_csi *amf_csi_find (struct amf_si *si, char *name)
+{
+	struct amf_csi *csi;
+
+	ENTER ("%s", name);
+
+	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
+		if (strncmp (name, (char*)csi->name.value, csi->name.length) == 0) {
+			break;
+		}
+	}
+
+	return csi;
+}
+
+/*****************************************************************************
+ * CSI Assignment class implementation                         *              
+ ****************************************************************************/
+
+struct amf_csi_assignment *amf_csi_assignment_new (struct amf_csi *csi)
+{
+	struct amf_csi_assignment *csi_assignment;
+
+	csi_assignment = amf_malloc (sizeof (struct amf_csi_assignment));
+	csi_assignment->csi = csi;
+
+	return csi_assignment;
+}
+
+void *amf_csi_assignment_serialize (
+	struct amf_csi_assignment *csi_assignment, int *len)
+{
+	int objsz = sizeof (struct amf_csi_assignment);
+	struct amf_csi_assignment *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, csi_assignment, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_csi_assignment *amf_csi_assignment_deserialize (
+	struct amf_csi *csi, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_csi_assignment);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_csi_assignment *obj = amf_csi_assignment_new (csi);
+		if (obj == NULL) {
+			return NULL;
+		}
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->csi = csi;
+		obj->comp = amf_comp_find (csi->si->application->cluster, &obj->name);
+		obj->next = csi->assigned_csis;
+		csi->assigned_csis = obj;
+		return obj;
+	}
+}
+
+char *amf_csi_assignment_dn_make (
+	struct amf_csi_assignment *csi_assignment, SaNameT *name)
+{
+	SaNameT comp_name;
+	struct amf_csi *csi = csi_assignment->csi;
+	int i;
+
+	amf_comp_dn_make (csi_assignment->comp, &comp_name);
+
+	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
+		"safCSIComp=%s,safCsi=%s,safSi=%s,safApp=%s",
+		comp_name.value,
+		csi->name.value, csi->si->name.value,
+		csi->si->application->name.value);
+	assert (i <= SA_MAX_NAME_LENGTH);
+	name->length = i;
+
+	return(char *)name->value;
+}
+
+struct amf_csi_assignment *amf_csi_assignment_find (
+	struct amf_cluster *cluster, SaNameT *name)
+{
+	struct amf_application *app;
+	struct amf_si *si;
+	struct amf_csi *csi;
+	struct amf_csi_assignment *csi_assignment = NULL;
+	char *app_name;
+	char *si_name;
+	char *csi_name;
+	char *csi_assignment_name;
+	char *buf;
+
+	ENTER ("%s", name->value);
+
+    /* malloc new buffer since we need to write to the buffer */
+	buf = amf_malloc (name->length + 1);
+	memcpy (buf, name->value, name->length + 1);
+
+	csi_assignment_name = strstr (buf, "safCSIComp=");
+	csi_name = strstr (buf, "safCsi=");
+	si_name = strstr (buf, "safSi=");
+	app_name = strstr (buf, "safApp=");
+	app_name++;
+	app_name = strstr (app_name, "safApp=");
+
+	if (csi_assignment_name == NULL || csi_name == NULL || si_name == NULL ||
+		app_name == NULL) {
+
+		goto end;
+	}
+
+	*(csi_name - 1) = '\0';
+	*(si_name - 1) = '\0';
+	*(app_name - 1) = '\0';
+
+    /* jump to value */
+	csi_assignment_name += 11;
+	csi_name += 7;
+	si_name += 6;
+	app_name += 7;
+
+	app = amf_application_find (cluster, app_name);
+	if (app == NULL) {
+		goto end;
+	}
+
+	si = amf_si_find (app, si_name);
+	if (si == NULL) {
+		goto end;
+	}
+
+	csi = amf_csi_find (si, csi_name);
+	if (csi == NULL) {
+		goto end;
+	}
+
+	for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+		csi_assignment = csi_assignment->next) {
+
+		if (strncmp (csi_assignment_name,
+			(char*)csi_assignment->name.value,
+			csi_assignment->name.length) == 0) {
+			goto end;
+		}
+	}
+
+end:
+	free (buf);
+	return csi_assignment;
+}
+
+struct amf_csi_attribute *amf_csi_attribute_new (struct amf_csi *csi)
+{
+	struct amf_csi_attribute *csi_attribute;
+
+	csi_attribute = amf_malloc (sizeof (struct amf_csi_assignment));
+	csi_attribute->next = csi->attributes_head;
+	csi->attributes_head = csi_attribute;
+
+	return csi_attribute;
+}
+
+void *amf_csi_attribute_serialize (
+	struct amf_csi_attribute *csi_attribute, int *len)
+{
+	char *buf = NULL;
+	int i, offset = 0, size = 0;
+
+	TRACE8 ("%s", csi_attribute->name);
+
+	buf = amf_serialize_SaStringT (buf, &size, &offset, csi_attribute->name);
+
+	/* count value and write to buf */
+	for (i = 0; csi_attribute->value &&
+		  csi_attribute->value[i] != NULL; i++);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset, i);
+
+	for (i = 0; csi_attribute->value &&
+		  csi_attribute->value[i] != NULL; i++) {
+		buf = amf_serialize_SaStringT (
+			buf, &size, &offset, csi_attribute->value[i]);
+	}
+
+	*len = offset;
+
+	return buf;
+}
+
+struct amf_csi_attribute *amf_csi_attribute_deserialize (
+	struct amf_csi *csi, char *buf, int size)
+{
+	char *tmp = buf;
+	struct amf_csi_attribute *csi_attribute;
+	int i;
+	SaUint32T cnt;
+
+	csi_attribute = amf_csi_attribute_new (csi);
+
+	tmp = amf_deserialize_SaStringT (tmp, &csi_attribute->name);
+	tmp = amf_deserialize_SaUint32T (tmp, &cnt);
+	csi_attribute->value = amf_malloc ((cnt + 1) * sizeof (SaStringT*));
+	for (i = 0; i < cnt; i++) {
+		tmp = amf_deserialize_SaStringT (tmp, &csi_attribute->value[i]);
+	}
+	csi_attribute->value[i] = NULL;
+
+	return csi_attribute;
 }
 

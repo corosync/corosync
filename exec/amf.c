@@ -4,12 +4,13 @@
  * Author: Steven Dake (sdake@mvista.com)
  *
  * Copyright (c) 2006 Ericsson AB.
- * Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * Description:
  * - Introduced AMF B.02 information model
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
+ * - AMF Synchronisation Control State Machine
  *
  * All rights reserved.
  *
@@ -45,9 +46,9 @@
  * The functions in this file are responsible for:
  * - starting the AMF service (amf_exec_init_fn)
  * - build the information model from the configuration file or by
- *   synchronising the state with an already started AMF node
+ *   synchronizing the state with an already started AMF node
  * - receiving AMF library requests (message_handler_req_lib_*)
- * - distributing AMF library requests to the cluster
+ * - multicast AMF library requests to the cluster
  * - receiving multicasts (message_handler_req_exec_*) and dispatch the
  *   requests to a component instance
  * - send responses to the AMF library (return values for API calls)
@@ -59,6 +60,51 @@
  * This is normally done when the API request parameters are wrong, e.g. a
  * component cannot be found. In that case, the error handling must be taken
  * care of in the lib message handler.
+ * 
+ * 1. AMF Synchronization Control State Machine
+ * =========================================
+ * 
+ * 1.1  State Transition Table
+ * 
+ * State:                  Event:                Action:  New state:
+ * ===========================================================================
+ * IDLE                    node_joined                    PROBING-1
+ * PROBING-1               timer1 timeout           A1    PROBING-2
+ * PROBING-1               SYNC_START               A2    UPDATING_CLUSTER_MODEL
+ * PROBING-2               SYNC_START[From me]            CREATING_CLUSTER_MODEL
+ * PROBING-2               SYNC_START[From other]         UPDATING_CLUSTER_MODEL
+ * CREATING_CLUSTER_MODEL  Model created                  SYNCHRONIZING
+ * SYNCHRONIZING           SYNC_READY                     NORMAL_OPERATION
+ * SYNCHRONIZING           node_left[sync_master]   A5    SYNCHRONIZING
+ * SYNCHRONIZING           node_joined                    SYNCHRONIZING
+ * UPDATING_CLUSTER_MODEL  SYNC_DATA                A3    UPDATING_CLUSTER_MODEL
+ * UPDATING_CLUSTER_MODEL  SYNC_READY               A4    NORMAL_OPERATION
+ * UPDATING_CLUSTER_MODEL  SYNC_START               A5    NORMAL_OPERATION
+ * UPDATING_CLUSTER_MODEL  node_left[sync_master]         PROBING-1
+ * NORMAL_OPERATION        node_joined                    SYNCHRONIZING
+ * NORMAL_OPERATION        node_left[sync_master] A6      NORMAL_OPERATION
+ *
+ * 1.2 State Description
+ * =====================
+ * IDLE -  Waiting to join cluster.
+ * PROBING-1 - Start timer1; wait for timer1 to expire or to get synchronised by
+ *             another node.
+ * PROBING-2 - Waiting for SYNC_START
+ * CREATING_CLUSTER_MODEL - Read configuration file and create cluster model
+ * UPDATING_CLUSTER_MODEL - Save sync master node ID; receive SYNC_DATA, 
+ *                          deserialize and save.
+ * SYNCHRONIZING - If sync master: multicast SYNC_START followed by encoded AMF
+ *                 objects as SYNC_DATA; multicast SYNC_READY
+ * NORMAL - Start cluster or node; wait for cluster changes
+ *
+ * 1.3 Action Description
+ * ======================
+ * A1 - Multicast SYNC_START message
+ * A2 - Stop timer1
+ * A3 - Decode AMF object and save
+ * A4 - Create cluster model
+ * A5 - Free received SYNC_DATA
+ * A6 - Calculate new sync master
  * 
  */
 #include <sys/types.h>
@@ -78,6 +124,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <assert.h>
+#include <netdb.h>
+#include <sys/stat.h>
 
 #include "../include/saAis.h"
 #include "../include/saAmf.h"
@@ -101,6 +149,19 @@
 
 #ifndef HOST_NAME_MAX
 # define HOST_NAME_MAX 255
+#endif
+
+#define SYNCTRACE(format, args...) do { \
+	TRACE6(">%s: " format, __FUNCTION__, ##args); \
+} while(0)
+
+/*                                                              
+ * The time AMF will wait to get synchronised by another node
+ * before it assumes it is alone in the cluster or the first
+ * node to start.
+ */
+#ifndef AMF_SYNC_TIMEOUT
+#define AMF_SYNC_TIMEOUT 3000
 #endif
 
 static void amf_confchg_fn (
@@ -135,6 +196,12 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 static void message_handler_req_exec_amf_healthcheck_tmo (
 	void *message, unsigned int nodeid);
 static void message_handler_req_exec_amf_response (
+	void *message, unsigned int nodeid);
+static void message_handler_req_exec_amf_sync_start (
+	void *message, unsigned int nodeid);
+static void message_handler_req_exec_amf_sync_data (
+	void *message, unsigned int nodeid);
+static void message_handler_req_exec_amf_sync_ready (
 	void *message, unsigned int nodeid);
 static void amf_dump_fn (void);
 static void amf_sync_init (void);
@@ -256,6 +323,15 @@ static struct openais_exec_handler amf_exec_service[] = {
 	},
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_response,
+	},
+	{
+		.exec_handler_fn = message_handler_req_exec_amf_sync_start,
+	},
+	{
+		.exec_handler_fn = message_handler_req_exec_amf_sync_data,
+	},
+	{
+		.exec_handler_fn = message_handler_req_exec_amf_sync_ready,
 	}
 };
 
@@ -337,82 +413,840 @@ struct req_exec_amf_comp_error_report {
 
 struct req_exec_amf_response {
 	mar_req_header_t header;
-	SaInvocationT invocation;
+	SaUint32T interface;
+	SaNameT dn;
 	SaAisErrorT error;
 };
 
+struct req_exec_amf_sync_data {
+	mar_req_header_t header;
+	amf_object_type_t object_type;
+};
+
+static const char *scsm_state_names[] = {
+	"unknown",
+	"IDLE",
+	"PROBING-1",
+	"PROBING-2",
+	"CREATING_CLUSTER_MODEL",
+	"SYNCHRONIZING",
+	"NORMAL_OPERATION",
+	"UPDATING_CLUSTER_MODEL",
+	"UNCONFIGURED"
+};
+
+enum scsm_states {
+	IDLE = 1,
+	PROBING_1,
+	PROBING_2,
+	CREATING_CLUSTER_MODEL,
+	SYNCHRONIZING,
+	NORMAL_OPERATION,
+	UPDATING_CLUSTER_MODEL,
+	UNCONFIGURED
+};
+
+/**
+ * Holds state for the AMF Synchronisation Control State
+ * Machine (SCSM).
+ */
+struct scsm_descriptor {
+	enum scsm_states           state;
+	poll_timer_handle          timer_handle;
+	unsigned int               sync_master;
+	unsigned int               synced_node;
+	struct amf_cluster        *cluster;
+	struct amf_node           *node;
+	struct amf_application    *app;
+	int                        app_sync_completed;
+	struct amf_sg             *sg;
+	int                        sg_sync_completed;
+	struct amf_su             *su;
+	int                        su_sync_completed;
+	struct amf_comp           *comp;
+	int                        comp_sync_completed;
+	struct amf_healthcheck    *healthcheck;
+	struct amf_si             *si;
+	int                        si_sync_completed;
+	struct amf_si_assignment  *si_assignment;
+	struct amf_csi            *csi;
+	int                        csi_sync_completed;
+	struct amf_csi_assignment *csi_assignment;
+	struct amf_csi_attribute  *csi_attribute;
+};
+
+/**
+ * Storage for AMF Synchronisation Control State Machine (SCSM).
+ */
+static struct scsm_descriptor scsm;
+
+/**
+ * My cluster node id, used to determine e.g. sync master
+ */
+static SaClmNodeIdT my_node_id;
+
 /* IMPL */
 
-static void amf_sync_init (void)
+/**
+ * Setup this_amf_node shortcut
+ */
+static struct amf_node *get_this_node_obj (struct amf_cluster *cluster)
 {
-	ENTER("");
+	char hostname[HOST_NAME_MAX + 1];
+	struct amf_node *node;
+
+	assert (cluster != NULL);
+
+	if (gethostname (hostname, sizeof(hostname)) == -1) {
+		log_printf (LOG_LEVEL_ERROR, "gethostname failed: %d", errno);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	/* look for this node */
+	for (node = cluster->node_head; node != NULL; node = node->next) {
+		if (strcmp(hostname, getSaNameT (&node->name)) == 0) {
+			return node;
+		}
+	}
+
+	return NULL;
 }
 
+/**
+ * Prints old and new sync state, sets new state
+ * @param state
+ */
+static void sync_state_set (enum scsm_states state)
+{
+	SYNCTRACE ("changing sync ctrl state from %s to %s",
+		scsm_state_names[scsm.state], scsm_state_names[state]);
+	scsm.state = state;
+}
+
+/**
+ * Multicast SYNC_START event
+ * 
+ * @return int
+ */
+static int mcast_sync_start (void)
+{
+	struct req_exec_amf_sync_data req_exec;
+	struct iovec iov[1];
+	int res;
+
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+
+	req_exec.header.size = sizeof (struct req_exec_amf_sync_data);
+	req_exec.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_SYNC_START);
+
+	iov[0].iov_base = &req_exec;
+	iov[0].iov_len  = sizeof (struct req_exec_amf_sync_data);
+
+	res = totempg_groups_mcast_joined (
+		openais_group_handle, iov, 1, TOTEMPG_AGREED);
+
+	if (res != 0) {
+		dprintf("Unable to send %d bytes of sync data\n", req_exec.header.size);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	return res;
+}
+
+/**
+ * Multicast SYNC_DATA containing a model object.
+ * 
+ * @return int
+ */
+static int mcast_sync_data (
+	void *buf, int len, amf_object_type_t object_type)
+{
+	struct req_exec_amf_sync_data req_exec;
+	struct iovec iov[2];
+	int res;
+
+	req_exec.header.size = sizeof (struct req_exec_amf_sync_data) + len;
+	SYNCTRACE ("%d bytes, type %u", req_exec.header.size , object_type);
+	req_exec.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_SYNC_DATA);
+	req_exec.object_type = object_type;
+
+	iov[0].iov_base = &req_exec;
+	iov[0].iov_len  = sizeof (struct req_exec_amf_sync_data);
+	iov[1].iov_base = buf;
+	iov[1].iov_len  = len;
+
+	res = totempg_groups_mcast_joined (
+		openais_group_handle, iov, 2, TOTEMPG_AGREED);
+
+	if (res != 0) {
+		dprintf("Unable to send %d bytes of sync data\n", req_exec.header.size);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	return res;
+}
+
+/**
+ * Multicast SYNC_READY event
+ * 
+ * @return int
+ */
+
+static int mcast_sync_ready (void)
+{
+	struct req_exec_amf_sync_data req_exec;
+	struct iovec iov[1];
+	int res;
+
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+
+	req_exec.header.size = sizeof (struct req_exec_amf_sync_data);
+	req_exec.header.id =
+		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_SYNC_READY);
+
+	iov[0].iov_base = &req_exec;
+	iov[0].iov_len  = sizeof (struct req_exec_amf_sync_data);
+
+	res = totempg_groups_mcast_joined (
+		openais_group_handle, iov, 1, TOTEMPG_AGREED);
+
+	if (res != 0) {
+		dprintf("Unable to send %d bytes of sync data\n", req_exec.header.size);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	return res;
+}
+
+/**
+ * Timer callback function. The timer waiting for external
+ * synchronisation has timed out, start competing with other
+ * nodes to determine who should read config file.
+ * @param data
+ */
+static void timer_function_scsm_timer1_tmo (void *data)
+{
+	SYNCTRACE ("");
+	if (mcast_sync_start () != 0) {
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+	sync_state_set (PROBING_2);
+}
+
+/**
+ * Execute synchronisation upon request. Should be implemented
+ * by the SYNC service. Can only be used during initial start
+ * since no deferral of lib or timer events is performed.
+ */
+static void sync_request (void)
+{
+	int res;
+
+	SYNCTRACE ("");
+
+	assert (amf_cluster->state == CLUSTER_UNINSTANTIATED);
+
+	amf_sync_init ();
+	do {
+		res = amf_sync_process ();
+		if (res == 1) {
+			/* cannot handle this now, should be implemented using totem
+			callbacks... */
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+		}
+	} while (res != 0);
+	amf_sync_activate ();
+}
+
+/**
+ * Read the configuration file and create cluster model.
+ */
+static int create_cluster_model (void)
+{
+	char *error_string;
+
+	SYNCTRACE("");
+
+	amf_cluster = amf_config_read (&error_string);
+	if (amf_cluster == NULL) {
+		log_printf (LOG_LEVEL_ERROR, error_string);
+		openais_exit_error (AIS_DONE_AMFCONFIGREAD);
+	}
+
+	this_amf_node = get_this_node_obj (amf_cluster);
+
+	if (this_amf_node == NULL) {
+		log_printf (LOG_LEVEL_INFO,
+			"This CLM node is not configured as an AMF node, disabling.");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Calculate a sync master (has the lowest node ID) from the
+ * members in the cluster. Possibly exclude one member from
+ * the list.
+ * 
+ * @param member_list
+ * @param member_list_entries
+ * @param exclude_member
+ * 
+ * @return int - node ID of new sync master
+ */
+static unsigned int calc_sync_master (
+	unsigned int *member_list, int member_list_entries,
+	unsigned int exclude_member)
+{
+	int i;
+	SaClmNodeIdT master = my_node_id;
+
+	for (i = 0; i < member_list_entries; i++) {
+		if (member_list[i] < master && member_list[i] != exclude_member) {
+			master = member_list[i];
+		}
+	}
+
+	return master;
+}
+
+/**
+ * Get hostname from TOTEM node ID
+ * @param nodeid
+ * 
+ * @return char*
+ */
+static char *hostname_get (unsigned int nodeid)
+{
+	struct totem_ip_address interfaces[INTERFACE_MAX];
+	char **status;
+	unsigned int iface_count;
+	int res;
+	struct hostent *ent;
+
+	res = totempg_ifaces_get (nodeid, interfaces, &status, &iface_count);
+	if (res == -1) {
+		log_printf (LOG_LEVEL_ERROR, "totempg_ifaces_get failed");
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	if (iface_count > 0) {
+		ent = gethostbyaddr (interfaces[0].addr, 4, interfaces[0].family);
+		if (ent == NULL) {
+			log_printf (LOG_LEVEL_ERROR, "gethostbyaddr failed: %d\n", h_errno);
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+		}
+
+		return ent->h_name;
+	} else {
+		assert (0);
+	}
+
+	return NULL;
+}
+
+static void free_synced_data (void)
+{
+	struct amf_node *node;
+	struct amf_application *app;
+
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+
+	if (scsm.cluster) {
+		for (node = scsm.cluster->node_head; node != NULL;) {
+			struct amf_node *tmp = node;
+			node = node->next;
+			free (tmp);
+		}
+		for (app = scsm.cluster->application_head; app != NULL;) {
+			struct amf_application *tmp = app;
+			app = app->next;
+			amf_application_delete (tmp);
+		}
+
+		free (scsm.cluster);
+		scsm.cluster = NULL;
+	}
+}
+
+static int healthcheck_sync (struct amf_healthcheck *healthcheck)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", healthcheck->safHealthcheckKey.key);
+
+	buf = amf_healthcheck_serialize (healthcheck, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_HEALTHCHECK);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+static int comp_sync (struct amf_comp *comp)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", comp->name.value);
+
+	if (!scsm.comp_sync_completed) {
+		buf = amf_comp_serialize (comp, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_COMP);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.comp_sync_completed = 1;
+	}
+
+	if (scsm.healthcheck == NULL) {
+		scsm.healthcheck = scsm.comp->healthcheck_head;
+	}
+	for (; scsm.healthcheck != NULL; scsm.healthcheck = scsm.healthcheck->next) {
+		if (healthcheck_sync (scsm.healthcheck) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+	scsm.comp_sync_completed = 0;
+
+	return 0;
+}
+
+static int su_sync (struct amf_su *su)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", su->name.value);
+
+	if (!scsm.su_sync_completed) {
+		buf = amf_su_serialize (su, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_SU);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.su_sync_completed = 1;
+	}
+
+	if (scsm.comp == NULL) {
+		scsm.comp = scsm.su->comp_head;
+	}
+	for (; scsm.comp != NULL; scsm.comp = scsm.comp->next) {
+		if (comp_sync (scsm.comp) != 0) {
+			return 1; /* try again later */
+		}
+	}
+	scsm.su_sync_completed = 0;
+
+	return 0;
+}
+
+static int sg_sync (struct amf_sg *sg)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", sg->name.value);
+
+	if (!scsm.sg_sync_completed) {
+		buf = amf_sg_serialize (sg, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_SG);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.sg_sync_completed = 1;
+	}
+
+	if (scsm.su == NULL) {
+		scsm.su = scsm.sg->su_head;
+	}
+	for (; scsm.su != NULL; scsm.su = scsm.su->next) {
+		if (su_sync (scsm.su) != 0) {
+			return 1; /* try again later */
+		}
+	}
+	scsm.sg_sync_completed = 0;
+
+	return 0;
+}
+
+static int csi_assignment_sync (struct amf_csi_assignment *csi_assignment)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", csi_assignment->name.value);
+
+	buf = amf_csi_assignment_serialize (csi_assignment, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_CSI_ASSIGNMENT);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+static int csi_attribute_sync (struct amf_csi_attribute *csi_attribute)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", csi_attribute->name);
+
+	buf = amf_csi_attribute_serialize (csi_attribute, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_CSI_ATTRIBUTE);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+static int csi_sync (struct amf_csi *csi)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", csi->name.value);
+
+	if (!scsm.csi_sync_completed) {
+		buf = amf_csi_serialize (csi, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_CSI);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.csi_sync_completed = 1;
+	}
+
+	if (scsm.csi_assignment == NULL) {
+		scsm.csi_assignment = scsm.csi->assigned_csis;
+	}
+	for (; scsm.csi_assignment != NULL; scsm.csi_assignment = scsm.csi_assignment->next) {
+		if (csi_assignment_sync (scsm.csi_assignment) != 0) {
+			return 1; /* try again later */
+		}
+	}
+	if (scsm.csi_attribute == NULL) {
+		scsm.csi_attribute = scsm.csi->attributes_head;
+	}
+	for (; scsm.csi_attribute != NULL; scsm.csi_attribute = scsm.csi_attribute->next) {
+		if (csi_attribute_sync (scsm.csi_attribute) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+	scsm.csi_sync_completed = 0;
+
+	return 0;
+}
+
+static int si_assignment_sync (struct amf_si_assignment *si_assignment)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", si_assignment->name.value);
+
+	buf = amf_si_assignment_serialize (si_assignment, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_SI_ASSIGNMENT);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+static int si_sync (struct amf_si *si)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", si->name.value);
+
+	if (!scsm.si_sync_completed) {
+		buf = amf_si_serialize (si, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_SI);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.si_sync_completed = 1;
+	}
+
+	if (scsm.si_assignment == NULL) {
+		scsm.si_assignment = scsm.si->assigned_sis;
+	}
+	for (; scsm.si_assignment != NULL; scsm.si_assignment = scsm.si_assignment->next) {
+		if (si_assignment_sync (scsm.si_assignment) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+	if (scsm.csi == NULL) {
+		scsm.csi = scsm.si->csi_head;
+	}
+	for (; scsm.csi != NULL; scsm.csi = scsm.csi->next) {
+		if (csi_sync (scsm.csi) != 0) {
+			return 1; /* try again later */
+		}
+	}
+	scsm.si_sync_completed = 0;
+
+	return 0;
+}
+
+static int application_sync (struct amf_application *app)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", app->name.value);
+
+	if (!scsm.app_sync_completed) {
+		buf = amf_application_serialize (app, &len);
+		assert (buf != NULL);
+		res = mcast_sync_data (buf, len, AMF_APPLICATION);
+		free (buf);
+		if (res != 0) {
+			return 1; /* try again later */
+		}
+		scsm.app_sync_completed = 1;
+	}
+
+	if (scsm.sg == NULL) {
+		scsm.sg = scsm.app->sg_head;
+	}
+
+	for (; scsm.sg != NULL; scsm.sg = scsm.sg->next) {
+		if (sg_sync (scsm.sg) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+	if (scsm.si == NULL) {
+		scsm.si = scsm.app->si_head;
+	}
+	for (; scsm.si != NULL; scsm.si = scsm.si->next) {
+		if (si_sync (scsm.si) != 0) {
+			return 1; /* try again later */
+		}
+	}
+	scsm.app_sync_completed = 0;
+
+	return 0;
+}
+
+static int node_sync (struct amf_node *node)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", node->name.value);
+	buf = amf_node_serialize (node, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_NODE);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+static int cluster_sync (struct amf_cluster *cluster)
+{
+	char *buf;
+	int len, res;
+
+	SYNCTRACE ("%s", cluster->name.value);
+	buf = amf_cluster_serialize (cluster, &len);
+	assert (buf != NULL);
+	res = mcast_sync_data (buf, len, AMF_CLUSTER);
+	free (buf);
+	if (res != 0) {
+		return 1; /* try again later */
+	}
+
+	return 0;
+}
+
+/******************************************************************************
+ * AMF Framework callback implementation                       *
+ *****************************************************************************/
+
+/**
+ * SCSM entry function for state SYNCHRONIZING
+ */
+static void amf_sync_init (void)
+{
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+
+	if (scsm.state == SYNCHRONIZING && scsm.sync_master == my_node_id) {
+		assert (amf_cluster != NULL);
+		scsm.cluster = amf_cluster;
+		scsm.node = amf_cluster->node_head;
+		scsm.app = amf_cluster->application_head;
+		scsm.app_sync_completed = 0;
+		scsm.sg = NULL;
+		scsm.sg_sync_completed = 0;
+		scsm.su = NULL;
+		scsm.su_sync_completed = 0;
+		scsm.comp = NULL;
+		scsm.comp_sync_completed = 0;
+		scsm.healthcheck = NULL;
+		scsm.si = NULL;
+		scsm.si_sync_completed = 0;
+		scsm.si_assignment = NULL;
+		scsm.csi = NULL;
+		scsm.csi_sync_completed = 0;
+		scsm.csi_assignment = NULL;
+		scsm.csi_attribute = NULL;
+	}
+}
+
+/**
+ * SCSM state SYNCHRONIZING processing function. If in correct
+ * state, encode and send each object in the information model
+ * as a SYNC_DATA message. Depth first traversal to preserve
+ * parent/child relations.
+ * 
+ * @return int
+ */
 static int amf_sync_process (void)
 {
-	ENTER("");
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+
+	if (scsm.state != SYNCHRONIZING || scsm.sync_master != my_node_id) {
+		return 0;
+	}
+
+	if (scsm.cluster) {
+		if (cluster_sync (scsm.cluster) != 0) {
+			return 1; /* try again later */
+		}
+		scsm.cluster = NULL; /* done with cluster object */
+	}
+
+	for (; scsm.node != NULL; scsm.node = scsm.node->next) {
+		if (node_sync (scsm.node) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+#ifdef DEBUG
+	{
+		/*                                                              
+		 * Test code to generate the event "sync master died" in the
+		* middle of synchronization.
+		*/
+		struct stat buf;
+		if (stat ("/tmp/amf_sync_master_crash", &buf) == 0) {
+			printf("bye...\n");
+			*((int*)NULL) = 0xbad;
+		}
+	}
+#endif
+
+	for (; scsm.app != NULL; scsm.app = scsm.app->next) {
+		if (application_sync (scsm.app) != 0) {
+			return 1; /* try again later */
+		}
+	}
+
+	SYNCTRACE ("ready");
+
 	return 0; /* ready */
 }
 
+/**
+ * SCSM abnormal exit function for state SYNCHRONIZING
+ */
 static void amf_sync_abort (void)
 {
-	ENTER("");
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+	memset (&scsm, 0, sizeof (scsm));
 }
 
+/**
+ * SCSM normal exit function for state SYNCHRONIZING
+ * All synced objects are now commited, start node.
+ */
 static void amf_sync_activate (void)
 {
-	ENTER("");
+	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
+	if (scsm.state == SYNCHRONIZING && scsm.sync_master == my_node_id) {
+		mcast_sync_ready ();
+	}
 }
 
+/**
+ * First AMF function to be called by the framework. Save
+ * our node ID and execute constructors for model objects.
+ * AMF execution continues when this node joins the
+ * cluster.
+ * @param objdb
+ * 
+ * @return int
+ */
 static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	char *error_string;
-	char hostname[HOST_NAME_MAX + 1];
-	struct amf_node *node;
+	SaClmClusterNodeT *cluster_node;
 
 	log_init ("AMF");
 
 	if (!amf_enabled (objdb)) {
 		return 0;
 	}
-	
-	amf_cluster = amf_config_read (&error_string);
-	if (amf_cluster == NULL) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
-		return -1;
-	}
 
-	if (gethostname (hostname, sizeof(hostname)) == -1) {
-		log_printf (LOG_LEVEL_ERROR, "gethostname failed: %d", errno);
-		return -1;
-	}
+	sync_state_set (IDLE);
+	cluster_node = main_clm_get_by_nodeid(SA_CLM_LOCAL_NODE_ID);
+	my_node_id = cluster_node->nodeId;
 
-	/* look for this node */
-	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
-		if (strcmp(hostname, getSaNameT (&node->name)) == 0) {
-			this_amf_node = node;
-		}
-	}
-
-	if (this_amf_node != NULL) {
-		amf_cluster_init();
-		amf_application_init();
-		amf_sg_init();
-		amf_su_init();
-		amf_comp_init();
-		amf_si_init();
-
-		this_amf_node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
-		amf_cluster_start (amf_cluster);
-	} else {
-		log_printf (LOG_LEVEL_INFO,
-			"This CLM node (%s) is not configured as an AMF node, disabling.",
-			hostname);
-	}
+	amf_cluster_init();
+	amf_node_init();
+	amf_application_init();
+	amf_sg_init();
+	amf_su_init();
+	amf_comp_init();
+	amf_si_init();
 
 	return (0);
 }
 
+/**
+ * Cluster configuration change event handler
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void amf_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	unsigned int *member_list, int member_list_entries,
@@ -420,9 +1254,84 @@ static void amf_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-	dprintf ("amf_confchg_fn : type = %d,mnum = %d,jnum = %d,lnum = %d\n",
-		configuration_type,member_list_entries,
-		joined_list_entries,left_list_entries);
+	ENTER ("mnum: %d, jnum: %d, lnum: %d, sync state: %s\n",
+		member_list_entries, joined_list_entries, left_list_entries,
+		scsm_state_names[scsm.state]);
+
+	/* not designed to handle more than one leaving node */
+	assert (left_list_entries <= 1);
+
+	switch (scsm.state) {
+		case IDLE: {
+			sync_state_set (PROBING_1);
+			if (poll_timer_add (aisexec_poll_handle, AMF_SYNC_TIMEOUT, NULL,
+				timer_function_scsm_timer1_tmo,	&scsm.timer_handle) != 0) {
+
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			break;
+		}
+		case PROBING_1:
+		case UNCONFIGURED:
+			break;
+		case UPDATING_CLUSTER_MODEL:
+			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+				sync_state_set (PROBING_1);
+				if (poll_timer_add (aisexec_poll_handle, AMF_SYNC_TIMEOUT, NULL,
+					timer_function_scsm_timer1_tmo, &scsm.timer_handle) != 0) {
+
+					openais_exit_error (AIS_DONE_FATAL_ERR);
+				}
+			}
+			break;
+		case SYNCHRONIZING: {
+			if (joined_list_entries > 0 && scsm.sync_master == my_node_id) {
+				/* restart sync */
+				mcast_sync_start ();
+			}
+			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+				scsm.sync_master =
+					calc_sync_master (
+						member_list, member_list_entries, scsm.synced_node);
+
+				if (scsm.sync_master == my_node_id) {
+					/* restart sync */
+					SYNCTRACE ("I am (new) sync master");
+					mcast_sync_start ();
+				}
+			}
+			break;
+		}
+		case NORMAL_OPERATION: {
+			if (joined_list_entries >= 1) {
+				/* TODO: can only handle one joining node */
+				assert (joined_list_entries == 1);
+				scsm.synced_node = joined_list[0];
+				sync_state_set (SYNCHRONIZING);
+				if (scsm.sync_master == my_node_id) {
+					mcast_sync_start ();
+				}
+			}
+
+			/** If nodes leave, recalculate a new sync master
+			 *  between the remaining nodes in the cluster.
+			 */
+			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+				scsm.sync_master =
+					calc_sync_master (member_list, member_list_entries, 0);
+				if (scsm.sync_master == my_node_id) {
+					SYNCTRACE ("I am (new) sync master");
+				}
+
+				/*                                                              
+				 * TODO: activate standby, ...
+				*/
+			}
+			break;
+		}
+		default:
+			assert (0);
+	}
 }
 
 static int amf_lib_exit_fn (void *conn)
@@ -448,24 +1357,15 @@ static int amf_lib_init_fn (void *conn)
 	return (0);
 }
 
-#if 0
-static int comp_inservice_count (struct amf_su *unit)
+static void amf_dump_fn (void)
 {
-	struct amf_comp *comp;
-	int answer = 0;
-
-	for (comp = unit->comp_head; comp != NULL; comp = comp->next) {
-		if (comp->saAmfCompReadinessState == SA_AMF_READINESS_IN_SERVICE) {
-			answer += 1;
-		}
-	}
-	return (answer);
+	amf_runtime_attributes_print (amf_cluster);
 }
-#endif
 
-/*
+/******************************************************************************
  * Executive Message Implementation 
- */
+ *****************************************************************************/
+
 static void message_handler_req_exec_amf_comp_register (
 	void *message, unsigned int nodeid)
 {
@@ -540,7 +1440,8 @@ static void message_handler_req_exec_amf_response (
 	struct res_lib_amf_response res_lib;
 	SaAisErrorT retval;
 
-	comp = amf_comp_response_2 (req_exec->invocation, req_exec->error, &retval);
+	comp = amf_comp_response_2 (
+		req_exec->interface, &req_exec->dn, req_exec->error, &retval);
 	assert (comp != NULL);
 
 	if (amf_su_is_local (comp->su)) {
@@ -551,9 +1452,218 @@ static void message_handler_req_exec_amf_response (
 	}
 }
 
-/*
- * Library Interface Implementation
+static void message_handler_req_exec_amf_sync_start (
+	void *message, unsigned int nodeid)
+{
+	SYNCTRACE ("from: %s", totempg_ifaces_print (nodeid));
+
+	switch (scsm.state) {
+		case IDLE:
+			break;
+		case PROBING_1:
+			poll_timer_delete (aisexec_poll_handle, scsm.timer_handle);
+			sync_state_set (UPDATING_CLUSTER_MODEL);
+			scsm.sync_master = nodeid;
+			break;
+		case PROBING_2:
+			if (my_node_id == nodeid) {
+				scsm.sync_master = nodeid;
+				sync_state_set (CREATING_CLUSTER_MODEL);
+				if (create_cluster_model() == 0) {
+					sync_state_set (SYNCHRONIZING);
+					sync_request ();
+				} else {
+                    /* TODO: I am sync master but not AMF node */
+					log_printf (LOG_LEVEL_ERROR,
+								"AMF sync error: I am sync master but not AMF node");
+					openais_exit_error (AIS_DONE_FATAL_ERR);
+				}
+			} else {
+				sync_state_set (UPDATING_CLUSTER_MODEL);
+				scsm.sync_master = nodeid;
+			}
+			break;
+		case SYNCHRONIZING:
+			break;
+		case UPDATING_CLUSTER_MODEL:
+			free_synced_data ();
+			scsm.sync_master = nodeid;
+			break;
+		case UNCONFIGURED:
+			break;
+		default:
+			dprintf ("unknown state %d", scsm.state);
+			assert (0);
+	}
+}
+
+static void message_handler_req_exec_amf_sync_data (
+	void *message, unsigned int nodeid)
+{
+	struct req_exec_amf_sync_data *req_exec = message;
+	int sz = sizeof (struct req_exec_amf_sync_data);
+
+	SYNCTRACE ("rec %d bytes, type %d",
+		   req_exec->header.size, req_exec->object_type);
+
+	if (scsm.state != UPDATING_CLUSTER_MODEL) {
+		return;
+	}
+
+	switch (req_exec->object_type)
+	{
+		case AMF_CLUSTER:
+			if ((scsm.cluster = amf_cluster_deserialize (
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("Cluster '%s' deserialised", scsm.cluster->name.value);
+			break;
+		case AMF_NODE:
+			if ((scsm.node = amf_node_deserialize (scsm.cluster,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("Node '%s' deserialised", scsm.node->name.value);
+			break;
+		case AMF_APPLICATION:
+			if ((scsm.app = amf_application_deserialize (scsm.cluster,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("App '%s' deserialised", scsm.app->name.value);
+			break;
+		case AMF_SG:
+			if ((scsm.sg = amf_sg_deserialize (scsm.app,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("SG '%s' deserialised", scsm.sg->name.value);
+			break;
+		case AMF_SU:
+			if ((scsm.su = amf_su_deserialize (scsm.sg,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("SU '%s' deserialised", scsm.su->name.value);
+			break;
+		case AMF_COMP:
+			if ((scsm.comp = amf_comp_deserialize (scsm.su,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("Component '%s' deserialised", scsm.comp->name.value);
+			break;
+		case AMF_HEALTHCHECK:
+			if ((scsm.healthcheck = amf_healthcheck_deserialize (scsm.comp,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("Healthcheck '%s' deserialised",
+					 scsm.healthcheck->safHealthcheckKey.key);
+			break;
+		case AMF_SI:
+			if ((scsm.si = amf_si_deserialize (scsm.app,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("SI '%s' deserialised", scsm.si->name.value);
+			break;
+		case AMF_SI_ASSIGNMENT:
+			if ((scsm.si_assignment = amf_si_assignment_deserialize (scsm.si,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("SI Ass '%s' deserialised",
+					 scsm.si_assignment->name.value);
+			break;
+		case AMF_CSI:
+			if ((scsm.csi = amf_csi_deserialize (scsm.si,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("CSI '%s' deserialised", scsm.csi->name.value);
+			break;
+		case AMF_CSI_ASSIGNMENT:
+			if ((scsm.csi_assignment = amf_csi_assignment_deserialize (scsm.csi,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("CSI Ass '%s' deserialised",
+					 scsm.csi_assignment->name.value);
+			break;
+		case AMF_CSI_ATTRIBUTE:
+			if ((scsm.csi_attribute = amf_csi_attribute_deserialize (scsm.csi,
+				((char*) req_exec) + sz, req_exec->header.size - sz)) == NULL) {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			SYNCTRACE ("CSI Attr '%s' deserialised",
+					 scsm.csi_attribute->name);
+			break;
+		default:
+			assert (0);
+			break;
+	}
+}
+
+/**
+ * Commit event handler for the previously received objects.
+ * Start this cluster/node now.
+ * @param message
+ * @param nodeid
  */
+static void message_handler_req_exec_amf_sync_ready (
+	void *message, unsigned int nodeid)
+{
+	SYNCTRACE ("from: %s", totempg_ifaces_print (nodeid));
+
+	switch (scsm.state) {
+		case SYNCHRONIZING:
+			sync_state_set (NORMAL_OPERATION);
+			if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
+				amf_cluster_start (amf_cluster);
+			} else {
+				SaNameT name;
+				struct amf_node *synced_node;
+
+				setSaNameT (&name, hostname_get (scsm.synced_node));
+				synced_node = amf_node_find (&name);
+				assert (synced_node != NULL);
+				amf_node_sync_ready (synced_node);
+			}
+			break;
+		case UPDATING_CLUSTER_MODEL:
+			amf_cluster = scsm.cluster;
+			assert (amf_cluster != NULL);
+			scsm.cluster = NULL;
+			this_amf_node = get_this_node_obj (amf_cluster);
+			sync_state_set (NORMAL_OPERATION);
+			if (this_amf_node != NULL) {
+#ifdef DEBUG
+				amf_runtime_attributes_print (amf_cluster);
+#endif
+				if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
+					amf_cluster_start (amf_cluster);
+				} else {
+					amf_node_sync_ready (this_amf_node);
+				}
+			} else {
+				log_printf (LOG_LEVEL_INFO,
+					"This CLM node is not configured as an AMF node, disabling.");
+				sync_state_set (UNCONFIGURED);
+			}
+			break;
+		case UNCONFIGURED:
+			break;
+		default:
+			assert (0);
+	}
+}
+
+/*****************************************************************************
+ * Library Interface Implementation
+ ****************************************************************************/
+
 static void message_handler_req_lib_amf_componentregister (
 	void *conn,
 	 void *msg)
@@ -940,13 +2050,15 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	struct req_lib_amf_response *req_lib = msg;
 	int multicast;
 	SaAisErrorT retval;
+	SaUint32T interface;
+	SaNameT dn;
 
 	/*
 	* This is an optimisation to avoid multicast of healthchecks while keeping
 	* a nice design. We multicast and make lib responses from this file.
 	*/
 	multicast = amf_comp_response_1 (
-		req_lib->invocation, req_lib->error, &retval);
+		req_lib->invocation, req_lib->error, &retval, &interface, &dn);
 
 	if (multicast) {
 		struct req_exec_amf_response req_exec;
@@ -955,7 +2067,8 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		req_exec.header.size = sizeof (struct req_exec_amf_response);
 		req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
 			MESSAGE_REQ_EXEC_AMF_RESPONSE);
-		req_exec.invocation = req_lib->invocation;
+		req_exec.interface = interface;
+		memcpy (&req_exec.dn, &dn, sizeof (SaNameT));
 		req_exec.error = req_lib->error;
 		iovec.iov_base = (char *)&req_exec;
 		iovec.iov_len = sizeof (req_exec);
@@ -970,7 +2083,3 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	}
 }
 
-static void amf_dump_fn (void)
-{
-	amf_runtime_attributes_print (amf_cluster);
-}

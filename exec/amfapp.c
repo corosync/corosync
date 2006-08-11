@@ -1,9 +1,10 @@
 /** @file amfapp.c
  * 
  * Copyright (c) 2006 Ericsson AB.
- *  Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  *  - Refactoring of code into several AMF files
- *  Author: Anders Eriksson
+ *  - Constructors/destructors
+ *  - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -69,6 +70,7 @@
  * have been executed.
  * 
  */
+#include <assert.h>
 
 #include "amf.h"
 #include "print.h"
@@ -100,9 +102,7 @@ void amf_application_start (
 
 	ENTER ("'%s'", app->name.value);
 
-	/*
-     * TODO: Calculate and set SI dependency levels
-     */
+	/* TODO: Calculate and set SI dependency levels  */
 
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		amf_sg_start (sg, node);
@@ -115,10 +115,10 @@ void amf_application_assign_workload (
 	struct amf_sg *sg;
 
 	/*                                                              
-     * TODO: dependency level ignored
-     * Each dependency level should be looped and amf_sg_assign_si
-     * called several times.
-     */
+	 * TODO: dependency level ignored
+	 * Each dependency level should be looped and amf_sg_assign_si
+	 * called several times.
+	*/
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		amf_sg_assign_si (sg, 0);
 	}
@@ -146,4 +146,82 @@ void amf_application_sg_assigned (
 	amf_cluster_application_workload_assigned (app->cluster, app);
 }
 
+struct amf_application *amf_application_new (struct amf_cluster *cluster)
+{
+	struct amf_application *app = amf_malloc (sizeof (struct amf_application));
+
+	app->cluster = cluster;
+	return app;
+}
+
+void amf_application_delete (struct amf_application *app)
+{
+	struct amf_sg *sg;
+	struct amf_si *si;
+
+	for (sg = app->sg_head; sg != NULL;) {
+		struct amf_sg *tmp = sg;
+		sg = sg->next;
+		amf_sg_delete (tmp);
+	}
+
+	for (si = app->si_head; si != NULL;) {
+		struct amf_si *tmp = si;
+		si = si->next;
+		amf_si_delete (tmp);
+	}
+
+	free (app);
+}
+
+void *amf_application_serialize (
+	struct amf_application *app, int *len)
+{
+	int objsz = sizeof (struct amf_application);
+	struct amf_application *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, app, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_application *amf_application_deserialize (
+	struct amf_cluster *cluster, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_application);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_application *obj = amf_application_new (cluster);
+		assert (obj);
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->cluster = cluster;
+		obj->sg_head = NULL;
+		obj->si_head = NULL;
+		obj->next = cluster->application_head;
+		cluster->application_head = obj;
+		return obj;
+	}
+}
+
+struct amf_application *amf_application_find (
+	struct amf_cluster *cluster, char *name)
+{
+	struct amf_application *app;
+
+	ENTER ("%s", name);
+
+	for (app = cluster->application_head; app != NULL; app = app->next) {
+		if (strncmp (name, (char*)app->name.value, app->name.length) == 0) {
+			break;
+		}
+	}
+
+	return app;
+}
 

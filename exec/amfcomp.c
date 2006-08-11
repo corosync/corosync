@@ -8,13 +8,14 @@
  *
  * Author: Steven Dake (sdake@mvista.com)
  *
- * Author: Hans Feldt
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * - Introduced AMF B.02 information model
  * - Use DN in API and multicast messages
  * - (Re-)Introduction of event based multicast messages
  * - Refactoring of code into several AMF files
- * Author: Anders Eriksson, Lars Holm
  * - Component/SU restart, SU failover
+ * - Constructors/destructors
+ * - Serializers/deserializers
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -137,12 +138,13 @@
 #include "../include/ipc_gen.h"
 #include "../include/ipc_amf.h"
 #include "totempg.h"
-#include "main.h"
+#include "timer.h"
 #include "ipc.h"
 #include "service.h"
 #include "util.h"
 #include "amf.h"
 #include "print.h"
+#include "main.h"
 
 enum clc_command_run_operation_type {
 	CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE = 1,
@@ -251,7 +253,7 @@ static int invocation_create (
 		invocation_temp = (struct invocation *)realloc (invocation_entries,
 			(invocation_entries_size + 1) * sizeof (struct invocation));
 		if (invocation_temp == NULL) {
-			return (-1);
+			openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
 		}
 		invocation_entries = invocation_temp;
 		invocation_addr = &invocation_entries[invocation_entries_size];
@@ -265,8 +267,8 @@ static int invocation_create (
 	return (loc);
 }
 
-static int invocation_get_and_destroy (SaUint64T invocation, int *interface,
-	void **data)
+static int invocation_get_and_destroy (
+	SaUint64T invocation, unsigned int *interface, void **data)
 {
 	if (invocation > invocation_entries_size) {
 		return (-1);
@@ -282,8 +284,9 @@ static int invocation_get_and_destroy (SaUint64T invocation, int *interface,
 	return (0);
 }
 
-static int invocation_get (SaUint64T invocation, int *interface,
-	void **data)
+#if 0
+static int invocation_get (
+	SaUint64T invocation, unsigned int *interface, void **data)
 {
 	if (invocation > invocation_entries_size) {
 		return (-1);
@@ -297,6 +300,7 @@ static int invocation_get (SaUint64T invocation, int *interface,
 	
 	return (0);
 }
+#endif
 
 static void invocation_destroy_by_data (void *data)
 {
@@ -369,16 +373,24 @@ static void *clc_command_run (void *context)
 	if (pid) {
 		xprintf ("waiting for pid %d to finish\n", pid);
 		waitpid (pid, &status, 0);
-		if (WEXITSTATUS(status) != 0) {
-			fprintf (stderr, "Error: CLC_CLI failed with exit status:"
-							 " %d - %s\n", WEXITSTATUS(status),
+		if (WIFEXITED (status) != 0 && WEXITSTATUS(status) != 0) {
+			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
+							 " %d - %s\n", pid, WEXITSTATUS(status),
 						strerror (WEXITSTATUS(status)));
 			/*                                                              
              * TODO: remove this and handle properly later...
              */
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 		}
-		xprintf ("process (%d) finished with %d\n", pid, status);
+		if (WIFSIGNALED (status) != 0) {
+			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
+							 " %d\n", pid, WTERMSIG(status));
+			/*                                                              
+			 * TODO: remove this and handle properly later...
+			 */
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+		}
+		xprintf ("process (%d) finished with %x\n", pid, status);
 		if (clc_command_run_data->completion_callback) {
 			clc_command_run_data->completion_callback (context);
 		}
@@ -407,7 +419,8 @@ static void *clc_command_run (void *context)
 
 	/* If command is not an absolute path, search for paths in parent objects */
 	if (cmd[0] != '/') {
-		if (strlen (clc_command_run_data->comp->clccli_path)) {
+		if (clc_command_run_data->comp->clccli_path != NULL &&
+			strlen (clc_command_run_data->comp->clccli_path)) {
 			sprintf (path, "%s/%s",
 					 clc_command_run_data->comp->clccli_path, cmd);
 		} else if (strlen (clc_command_run_data->comp->su->clccli_path)) {
@@ -424,11 +437,7 @@ static void *clc_command_run (void *context)
 	}
 
 	argv_size = 2;
-	argv = malloc (sizeof (char*) * argv_size);
-	if (argv == NULL) {
-		fprintf (stderr, "out-of-memory");
-		exit (-1);
-	}
+	argv = amf_malloc (sizeof (char*) * argv_size);
 	argv[0] = cmd;
 	{
 		/* make a proper argv array */
@@ -459,11 +468,7 @@ static void *clc_command_run (void *context)
 
     /* two is for component name and NULL termination */
 	envp_size = 2;
-	envp = malloc (sizeof (char*) * envp_size);
-	if (envp == NULL) {
-		fprintf (stderr, "out-of-memory");
-		exit (-1);
-	}
+	envp = amf_malloc (sizeof (char*) * envp_size);
 	envp[0] = comp_name;
 	for (i = 1; clc_command_run_data->comp->saAmfCompCmdEnv &&
 		   clc_command_run_data->comp->saAmfCompCmdEnv[i - 1]; i++) {
@@ -509,10 +514,7 @@ static int clc_cli_instantiate (struct amf_comp *comp)
 
 	ENTER("comp '%s'\n", getSaNameT (&comp->name));
 
-	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
-	if (clc_command_run_data == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
+	clc_command_run_data = amf_malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE;
 	clc_command_run_data->completion_callback = NULL;
@@ -568,10 +570,7 @@ static int lib_comp_terminate_request (struct amf_comp *comp)
 	memcpy (&res_lib.compName, &comp->name, sizeof (SaNameT));
 
 	component_terminate_callback_data =
-		malloc (sizeof (struct component_terminate_callback_data));
-	if (component_terminate_callback_data == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
+		amf_malloc (sizeof (struct component_terminate_callback_data));
 	component_terminate_callback_data->comp = comp;
 
 	res_lib.invocation =
@@ -630,10 +629,7 @@ static int clc_cli_cleanup (struct amf_comp *comp)
 	struct clc_command_run_data *clc_command_run_data;
 
 	dprintf ("clc_cli_cleanup\n");
-	clc_command_run_data = malloc (sizeof (struct clc_command_run_data));
-	if (clc_command_run_data == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
+	clc_command_run_data = amf_malloc (sizeof (struct clc_command_run_data));
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_CLEANUP;
 	clc_command_run_data->completion_callback = mcast_cleanup_completion_event;
@@ -694,23 +690,81 @@ struct amf_healthcheck *amf_comp_find_healthcheck (
 	return (ret_healthcheck);
 }
 
-struct amf_comp *amf_comp_create(struct amf_su *su)
+/**
+ * Constructor for component objects. Adds component last in
+ * the list owned by the specified SU. Always returns a
+ * valid comp object, out-of-memory problems are handled
+ * here. Default values are initialized.
+ * @param su
+ * @param name
+ * 
+ * @return struct amf_comp*
+ */
+struct amf_comp *amf_comp_new(struct amf_su *su, char *name)
 {
+	struct amf_comp *tail = su->comp_head;
 	struct amf_comp *comp = calloc (1, sizeof (struct amf_comp));
 
 	if (comp == NULL) {
 		openais_exit_error(AIS_DONE_OUT_OF_MEMORY);
 	}
-	comp->next = su->comp_head;
-	su->comp_head = comp;
+	while (tail != NULL) {
+		if (tail->next == NULL) {
+			break;
+		}
+		tail = tail->next;
+	}
+
+	if (tail == NULL) {
+		su->comp_head = comp;
+	} else {
+		tail->next = comp;
+	}
 	comp->su = su;
-	comp->saAmfCompOperState = SA_AMF_OPERATIONAL_DISABLED;
-	comp->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
+
+	/* setup default values from spec. */
 	comp->saAmfCompNumMaxInstantiateWithoutDelay = 2;
 	comp->saAmfCompNumMaxAmStartAttempt = 2;
 	comp->saAmfCompNumMaxAmStopAttempt = 2;
 
+	comp->saAmfCompOperState = SA_AMF_OPERATIONAL_DISABLED;
+	comp->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
+	setSaNameT (&comp->name, name);
+
 	return comp;
+}
+
+void amf_comp_delete (struct amf_comp *comp)
+{
+	int i;
+	struct amf_healthcheck *healthcheck;
+
+	for (healthcheck = comp->healthcheck_head; healthcheck != NULL;) {
+		struct amf_healthcheck *tmp = healthcheck;
+		healthcheck = healthcheck->next;
+		free (tmp);
+	}
+
+	for (i = 0; comp->saAmfCompCsTypes[i] != NULL; i++) {
+		free (comp->saAmfCompCsTypes[i]);
+	}
+	for (i = 0; comp->saAmfCompCmdEnv[i] != NULL; i++) {
+		free (comp->saAmfCompCmdEnv[i]);
+	}
+
+	free (comp->saAmfCompInstantiateCmd);
+	free (comp->saAmfCompInstantiateCmdArgv);
+	free (comp->saAmfCompTerminateCmd);
+	free (comp->saAmfCompTerminateCmdArgv);
+	free (comp->saAmfCompCleanupCmd);
+	free (comp->saAmfCompCleanupCmdArgv);
+	free (comp->saAmfCompAmStartCmd);
+	free (comp->saAmfCompAmStartCmdArgv);
+	free (comp->saAmfCompAmStopCmd);
+	free (comp->saAmfCompAmStopCmdArgv);
+	free (comp->clccli_path);
+
+	free (comp);
 }
 
 struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
@@ -727,8 +781,8 @@ struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
 	char *buf;
 
 	/* malloc new buffer since strtok_r writes to its first argument */
-	buf = malloc (name->length + 1);
-	memcpy (buf, name->value,name ->length);
+	buf = amf_malloc (name->length + 1);
+	memcpy (buf, name->value,name ->length + 1);
 
 	comp_name = strtok_r(buf, ",", &ptrptr);
 	su_name = strtok_r(NULL, ",", &ptrptr);
@@ -745,26 +799,22 @@ struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
 	sg_name += 6;
 	app_name += 7;
 
-	for (app = cluster->application_head; app != NULL; app = app->next) {
-		if (strncmp (app_name,
-					 (char*)app->name.value, app->name.length) == 0) {
-			for (sg = app->sg_head; sg != NULL; sg = sg->next) {
-				if (strncmp (sg_name, (char*)sg->name.value,
-							 sg->name.length) == 0) {
-					for (su = sg->su_head; su != NULL; su = su->next) {
-						if (strncmp (su_name, (char*)su->name.value,
-									 su->name.length) == 0) {
-							for (comp = su->comp_head;
-								  comp != NULL;
-								  comp = comp->next) {
-								if (strncmp (comp_name,
-											 (char*)comp->name.value,
-											 comp->name.length) == 0) {
-									goto end;
-								}
-							}
-						}
-					}
+	app = amf_application_find (cluster, app_name);
+	if (app == NULL) {
+		goto end;
+	}
+
+	sg = amf_sg_find (app, sg_name);
+	if (sg == NULL) {
+		goto end;
+	}
+
+	for (su = sg->su_head; su != NULL; su = su->next) {
+		if (strncmp (su_name, (char*)su->name.value, su->name.length) == 0) {
+			for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+				if (strncmp (comp_name,	(char*)comp->name.value,
+					comp->name.length) == 0) {
+					goto end;
 				}
 			}
 		}
@@ -958,10 +1008,9 @@ static void healthcheck_deactivate (
              getSaNameT (&healthcheck_active->comp->name));
 
     poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_period);
-
+					   healthcheck_active->timer_handle_period);
 	poll_timer_delete (aisexec_poll_handle,
-		healthcheck_active->timer_handle_duration);
+					   healthcheck_active->timer_handle_duration);
 
 	invocation_destroy_by_data ((void *)healthcheck_active);
 	healthcheck_active->active = 0;
@@ -1041,7 +1090,7 @@ static void lib_healthcheck_request (struct amf_healthcheck *healthcheck)
 	memcpy (&res_lib.key, &healthcheck->safHealthcheckKey,
 		sizeof (SaAmfHealthcheckKeyT));
 
-	TRACE8 ("sending healthcheck request to component %s",
+	TRACE7 ("sending healthcheck request to component %s",
 			res_lib.compName.value);
 	openais_conn_send_response (
 		openais_conn_partner_get (healthcheck->comp->conn),
@@ -1081,12 +1130,8 @@ static void lib_csi_set_request (
 			char_length_of_csi_attrs += 2;
 		}
 	}
-	p = malloc(sizeof(struct res_lib_amf_csisetcallback) +
+	p = amf_malloc(sizeof(struct res_lib_amf_csisetcallback) +
 			   char_length_of_csi_attrs);
-	if (p == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
-
 	res_lib = (struct res_lib_amf_csisetcallback*)p;
 
 	/* Address of the buffer containing the Csi name value pair  */
@@ -1148,7 +1193,6 @@ static void lib_csi_set_request (
 	res_lib->haState = csi_assignment->requested_ha_state;
 	res_lib->invocation =
 		invocation_create (AMF_RESPONSE_CSISETCALLBACK, csi_assignment);
-
 	openais_conn_send_response (
 		openais_conn_partner_get (comp->conn), res_lib,	res_lib->header.size);
 
@@ -1377,13 +1421,13 @@ void amf_comp_readiness_state_set (struct amf_comp *comp,
  * @return >0  do not respond to component, multicast response
  */
 int amf_comp_response_1 (
-	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval)
+	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval,
+	SaUint32T *interface, SaNameT *dn)
 {
 	int res;
-	int interface;
 	void *data;
 
-	res = invocation_get (invocation, &interface, &data);
+	res = invocation_get_and_destroy (invocation, interface, &data);
 
 	if (res == -1) {
 		log_printf (LOG_ERR, "Lib response: invocation not found\n");
@@ -1391,17 +1435,17 @@ int amf_comp_response_1 (
 		return 0;
 	}
 
-	switch (interface) {
+	switch (*interface) {
 		case AMF_RESPONSE_HEALTHCHECKCALLBACK: {
 			struct amf_healthcheck *healthcheck = data;
 			SaNameT name;
-			TRACE8 ("Healthcheck response from '%s': %d",
+			TRACE7 ("Healthcheck response from '%s': %d",
 					amf_comp_dn_make (healthcheck->comp, &name), error);
 
 			if (healthcheck->invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 				/* the response was on time, delete supervision timer */
 				poll_timer_delete (aisexec_poll_handle,
-				   healthcheck->timer_handle_duration);
+					healthcheck->timer_handle_duration);
 				healthcheck->timer_handle_duration = 0;
 
 				/* start timer to execute next healthcheck request */
@@ -1419,7 +1463,8 @@ int amf_comp_response_1 (
 			break;
 		}
 		case AMF_RESPONSE_CSISETCALLBACK: /* fall-through */
-	    case AMF_RESPONSE_CSIREMOVECALLBACK:
+		case AMF_RESPONSE_CSIREMOVECALLBACK:
+			amf_csi_assignment_dn_make (data, dn);
 			return 1; /* multicast event */
 			break;
 #if 0
@@ -1454,27 +1499,20 @@ int amf_comp_response_1 (
  * @return component to which the response should be sent
  */
 struct amf_comp *amf_comp_response_2 (
-	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval)
+	SaUint32T interface, SaNameT *dn, SaAisErrorT error, SaAisErrorT *retval)
 {
-	int res;
-	int interface;
-	void *data;
+	struct amf_csi_assignment *csi_assignment;
 	struct amf_comp *comp = NULL;
 
 	assert (retval != NULL);
 
 	*retval = SA_AIS_OK;
 
-	res = invocation_get_and_destroy (invocation, &interface, &data);
-	if (res == -1) {
-		log_printf (LOG_ERR, "Comp response: invocation not found\n");
-		*retval = SA_AIS_ERR_INVALID_PARAM;
-		return NULL;
-	}
-
 	switch (interface) {
 		case AMF_RESPONSE_CSISETCALLBACK: {
-			struct amf_csi_assignment *csi_assignment = data;
+			csi_assignment = amf_csi_assignment_find (amf_cluster, dn);
+			assert (csi_assignment != NULL);
+			comp = csi_assignment->comp;
 			dprintf ("CSI '%s' set callback response from '%s', error: %d",
 				csi_assignment->csi->name.value,
 				csi_assignment->comp->name.value, error);
@@ -1491,7 +1529,8 @@ struct amf_comp *amf_comp_response_2 (
 			break;
 		}
 		case AMF_RESPONSE_CSIREMOVECALLBACK: {
-			struct amf_csi_assignment *csi_assignment = data;
+			csi_assignment = amf_csi_assignment_find (amf_cluster, dn);
+			assert (csi_assignment != NULL);
 			dprintf ("Lib csi '%s' remove callback response from '%s', error: %d",
 				csi_assignment->csi->name.value,
 				csi_assignment->comp->name.value, error);
@@ -1507,6 +1546,7 @@ struct amf_comp *amf_comp_response_2 (
 			}
 			break;
 		}
+#if 0
 	    case AMF_RESPONSE_COMPONENTTERMINATECALLBACK: {
 			struct component_terminate_callback_data *callback_data = data;
 			dprintf ("Lib comp '%s' terminate callback response, error: %d",
@@ -1515,6 +1555,7 @@ struct amf_comp *amf_comp_response_2 (
 				SA_AMF_PRESENCE_UNINSTANTIATED);
 			break;
 		}
+#endif
 		default:
 			assert (0);
 			break;
@@ -1546,6 +1587,8 @@ void amf_comp_hastate_set (
 			assert (0);
 		}
 	}
+	
+	LEAVE("");
 }
 
 /**
@@ -1721,3 +1764,276 @@ SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
 	/* XXX we fall here in case NDEBUG is set */
 	return -1;
 }
+
+/**
+ * Serialize a component including variable length arrays and
+ * strings to a buffer returned. Buffer is to be freed by
+ * caller.
+ * @param component
+ * @param len
+ * 
+ * @return void*
+ */
+void *amf_comp_serialize (struct amf_comp *component, int *len)
+{
+	char *buf = NULL;
+	int i, offset = 0, size = 0;
+
+	TRACE8 ("%s", component->name.value);
+
+	buf = amf_serialize_SaNameT (buf, &size, &offset, &component->name);
+
+    /* count cstypes and write to buf */
+	for (i = 0; component->saAmfCompCsTypes &&
+		  component->saAmfCompCsTypes[i] != NULL; i++);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset, i);
+
+	for (i = 0; component->saAmfCompCsTypes &&
+		  component->saAmfCompCsTypes[i] != NULL; i++) {
+		buf = amf_serialize_SaNameT (
+			buf, &size, &offset, component->saAmfCompCsTypes[i]);
+	}
+
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompCategory);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompCapability);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxActiveCsi);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxStandbyCsi);
+
+    /* count environment vars and write to buf */
+	for (i = 0; component->saAmfCompCmdEnv[i] != NULL; i++);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset, i);
+
+	for (i = 0; component->saAmfCompCmdEnv[i] != NULL; i++) {
+		buf = amf_serialize_SaStringT (
+			buf, &size, &offset, component->saAmfCompCmdEnv[i]);
+	}
+
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompDefaultClcCliTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompDefaultCallbackTimeOut);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompInstantiateCmd);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompInstantiateCmdArgv);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompInstantiateTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompInstantiationLevel);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxInstantiateWithoutDelay);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxInstantiateWithDelay);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompDelayBetweenInstantiateAttempts);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompTerminateCmd);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompTerminateTimeout);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompTerminateCmdArgv);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompCleanupCmd);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompCleanupTimeout);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompCleanupCmdArgv);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompAmStartCmd);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompAmStartTimeout);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompAmStartCmdArgv);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxAmStartAttempt);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompAmStopCmd);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompAmStopTimeout);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->saAmfCompAmStopCmdArgv);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompNumMaxAmStopAttempt);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompTerminateCallbackTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompCSISetCallbackTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompQuiescingCompleteTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompCSIRmvCallbackTimeout);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompRecoveryOnError);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompDisableRestart);
+	buf = amf_serialize_SaNameT (
+		buf, &size, &offset, &component->saAmfCompProxyCsi);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompOperState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompPresenceState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->saAmfCompRestartCount);
+	buf = amf_serialize_SaNameT (
+		buf, &size, &offset, &component->saAmfCompCurrProxyName);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, component->clccli_path);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->comptype);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, component->error_suspected);
+
+	*len = offset;
+
+	return buf;
+}
+
+/**
+ * Deserialize a buffer into a AMF component object.
+ * @param su
+ * @param buf
+ * @param size
+ * 
+ * @return struct amf_comp*
+ */
+struct amf_comp *amf_comp_deserialize (struct amf_su *su, char *buf, int size)
+{
+	char *tmp = buf;
+	struct amf_comp *component;
+	int i;
+	SaUint32T cnt;
+
+	component = amf_comp_new (su, "");
+
+	tmp = amf_deserialize_SaNameT (tmp, &component->name);
+	tmp = amf_deserialize_SaUint32T (tmp, &cnt);
+	component->saAmfCompCsTypes = amf_malloc ((cnt + 1) * sizeof (SaNameT*));
+	for (i = 0; i < cnt; i++) {
+		component->saAmfCompCsTypes[i] = amf_malloc (sizeof (SaNameT));
+		tmp = amf_deserialize_SaNameT (tmp, component->saAmfCompCsTypes[i]);
+	}
+	component->saAmfCompCsTypes[i] = NULL;
+
+	tmp = amf_deserialize_SaUint32T (tmp, &component->saAmfCompCategory);
+	tmp = amf_deserialize_SaUint32T (tmp, &component->saAmfCompCapability);
+	tmp = amf_deserialize_SaUint32T (tmp, &component->saAmfCompNumMaxActiveCsi);
+	tmp = amf_deserialize_SaUint32T (tmp, &component->saAmfCompNumMaxStandbyCsi);
+
+	tmp = amf_deserialize_SaUint32T (tmp, &cnt);
+	component->saAmfCompCmdEnv = amf_malloc ((cnt + 1) * sizeof (SaStringT*));
+	for (i = 0; i < cnt; i++) {
+		tmp = amf_deserialize_SaStringT (tmp, &component->saAmfCompCmdEnv[i]);
+	}
+	component->saAmfCompCmdEnv[i] = NULL;
+
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompDefaultClcCliTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompDefaultCallbackTimeOut);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompInstantiateCmd);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompInstantiateCmdArgv);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompInstantiateTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompInstantiationLevel);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompNumMaxInstantiateWithoutDelay);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompNumMaxInstantiateWithDelay);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompDelayBetweenInstantiateAttempts);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompTerminateCmd);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompTerminateTimeout);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompTerminateCmdArgv);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompCleanupCmd);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompCleanupTimeout);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompCleanupCmdArgv);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompAmStartCmd);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompAmStartTimeout);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompAmStartCmdArgv);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompNumMaxAmStartAttempt);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompAmStopCmd);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompAmStopTimeout);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->saAmfCompAmStopCmdArgv);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompNumMaxAmStopAttempt);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompTerminateCallbackTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompCSISetCallbackTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompQuiescingCompleteTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompCSIRmvCallbackTimeout);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompRecoveryOnError);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompDisableRestart);
+	tmp = amf_deserialize_SaNameT (
+		tmp, &component->saAmfCompProxyCsi);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompOperState);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompPresenceState);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->saAmfCompRestartCount);
+	tmp = amf_deserialize_SaNameT (
+		tmp, &component->saAmfCompCurrProxyName);
+	tmp = amf_deserialize_SaStringT (
+		tmp, &component->clccli_path);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->comptype);
+	tmp = amf_deserialize_SaUint32T (
+		tmp, &component->error_suspected);
+
+	return component;
+}
+
+void *amf_healthcheck_serialize (struct amf_healthcheck *healthcheck, int *len)
+{
+	int objsz = sizeof (struct amf_healthcheck);
+	struct amf_healthcheck *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, healthcheck, objsz);
+	*len = objsz;
+
+	return copy;
+}
+
+struct amf_healthcheck *amf_healthcheck_deserialize (
+	struct amf_comp *comp, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_healthcheck);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_healthcheck *obj = amf_malloc (sizeof (struct amf_healthcheck));
+		memcpy (obj, buf, objsz);
+		obj->comp = comp;
+		obj->next = comp->healthcheck_head;
+		comp->healthcheck_head = obj;
+		return obj;
+	}
+}
+

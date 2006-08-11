@@ -1,7 +1,9 @@
 /** @file amfnode.c
  * 
  * Copyright (c) 2006 Ericsson AB.
- * Author: Anders Eriksson
+ * Author: Hans Feldt, Anders Eriksson, Lars Holm
+ * - Constructors/destructors
+ * - Serializers/deserializers
  *
  * All rights reserved.
  *
@@ -104,4 +106,104 @@
  * which is handled by the CLUSTER class. 
  * 
  */
+
+#include <stdlib.h>
+#include <assert.h>
+
+#include "amf.h"
+#include "util.h"
+#include "print.h"
+
+/**
+ * Node constructor
+ * @param loc
+ * @param cluster
+ * @param node
+ */
+struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name)
+{
+	struct amf_node *node = calloc (1, sizeof (struct amf_node));
+
+	if (node == NULL) {
+		openais_exit_error(AIS_DONE_OUT_OF_MEMORY);
+	}
+	node->next = cluster->node_head;
+	node->saAmfNodeAdminState = SA_AMF_ADMIN_UNLOCKED;
+	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
+	node->saAmfNodeAutoRepair = SA_TRUE;
+	node->cluster = cluster;
+	node->saAmfNodeSuFailOverProb = -1;
+	node->saAmfNodeSuFailoverMax = ~0;
+	setSaNameT (&node->name, name);
+
+	return node;
+}
+
+void *amf_node_serialize (struct amf_node *node, int *len)
+{
+	int objsz = sizeof (struct amf_node);
+	struct amf_node *copy;
+
+	copy = amf_malloc (objsz);
+	memcpy (copy, node, objsz);
+	*len = objsz;
+	TRACE8 ("%s", copy->name.value);
+
+	return copy;
+}
+
+struct amf_node *amf_node_deserialize (
+	struct amf_cluster *cluster, char *buf, int size)
+{
+	int objsz = sizeof (struct amf_node);
+
+	if (objsz > size) {
+		return NULL;
+	} else {
+		struct amf_node *obj = amf_node_new (cluster, "");
+		if (obj == NULL) {
+			return NULL;
+		}
+		memcpy (obj, buf, objsz);
+		TRACE8 ("%s", obj->name.value);
+		obj->cluster = cluster;
+		obj->next = cluster->node_head;
+		cluster->node_head = obj;
+		return obj;
+	}
+}
+
+void amf_node_sync_ready (struct amf_node *node)
+{
+	struct amf_application *app;
+
+	assert (node != NULL);
+
+	log_printf(LOG_NOTICE, "Node %s sync ready, starting hosted SUs.",
+			   node->name.value);
+
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		amf_application_start (app, node);
+	}
+}
+
+void amf_node_init (void)
+{
+	log_init ("AMF");
+}
+
+struct amf_node *amf_node_find (SaNameT *name)
+{
+	struct amf_node *node;
+
+	ENTER ("");
+
+	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
+		if (name_match (&node->name, name)) {
+			return node;
+		}
+	}
+
+	return NULL;
+}
 
