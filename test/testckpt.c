@@ -220,14 +220,16 @@ int main (void) {
 	int i;
 	
 	error = saCkptInitialize (&ckptHandle, &callbacks, &version);
+	printf ("%s: checkpoint initialize\n",
+		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointOpenAsync (ckptHandle,
 		open_invocation,
 		&checkpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
-    printf ("%s: initial asynchronous open of checkpoint\n",
-        get_test_output (error, SA_AIS_OK));
+	printf ("%s: initial asynchronous open of checkpoint\n",
+		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptSelectionObjectGet (ckptHandle, &sel_fd);
 
