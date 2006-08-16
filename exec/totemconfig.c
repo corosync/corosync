@@ -190,6 +190,7 @@ extern int totem_config_read (
 		objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
 
 		objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
+		objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
 
 		objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
 

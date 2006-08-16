@@ -275,6 +275,18 @@ the membership protocol.
 The default is 100 milliseconds.
 
 .TP
+send_join
+This timeout specifies in milliseconds an upper range between 0 and send_join
+to wait before sending a join message.  For configurations with less then
+32 nodes, this parameter is not necessary.  For larger rings, this parameter
+is necessary to ensure the NIC is not overflowed with join messages on
+formation of a new ring.  A reasonable value for large rings (128 nodes) would
+be 80msec.  Other timer values must also change if this value is changed.  Seek
+advice from the openais mailing list if trying to run larger configurations.
+
+The default is 0 milliseconds.
+
+.TP
 consensus
 This timeout specifies in milliseconds how long to wait for consensus to be
 achieved before starting a new round of membership configuration.

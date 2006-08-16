@@ -111,6 +111,8 @@ struct totem_config {
 
 	unsigned int join_timeout;
 
+	unsigned int send_join_timeout;
+
 	unsigned int consensus_timeout;
 
 	unsigned int merge_timeout;

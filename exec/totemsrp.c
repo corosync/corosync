@@ -716,8 +716,11 @@ int totemsrp_initialize (
 		"token hold (%d ms) retransmits before loss (%d retrans)\n",
 		totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
 	log_printf (instance->totemsrp_log_level_notice,
-		"join (%d ms) consensus (%d ms) merge (%d ms)\n",
-		totem_config->join_timeout, totem_config->consensus_timeout,
+		"join (%d ms) send_join (%d ms) consensus (%d ms) merge (%d ms)\n",
+		totem_config->join_timeout,
+		totem_config->send_join_timeout,
+		totem_config->consensus_timeout,
+
 		totem_config->merge_timeout);
 	log_printf (instance->totemsrp_log_level_notice,
 		"downcheck (%d ms) fail to recv const (%d msgs)\n",
@@ -2711,6 +2714,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	memb_join.header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (memb_join.header.nodeid);
 
+
 	assert (srp_addr_equal (&instance->my_proc_list[0], &instance->my_proc_list[1]) == 0);
 	memb_join.ring_seq = instance->my_ring_id.seq;
 	memb_join.proc_list_entries = instance->my_proc_list_entries;
@@ -2725,6 +2729,10 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	iovec[2].iov_base = (char *)&instance->my_failed_list;
 	iovec[2].iov_len = instance->my_failed_list_entries *
 		sizeof (struct srp_addr);
+
+	if (instance->totem_config->send_join_timeout) {
+		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
+	}
 
 	totemrrp_mcast_flush_send (
 		instance->totemrrp_handle,
