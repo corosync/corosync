@@ -108,6 +108,7 @@ install:
 
 	cp -a lib/libais.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaClm.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaCkpt.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaEvt.so $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaLck.so $(DESTDIR)$(LIBDIR)
@@ -119,6 +120,7 @@ install:
 
 	cp -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaAmf.so.2 $(DESTDIR)$(LIBDIR)
+	cp -a lib/libSaClm.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaCkpt.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaEvt.so.2 $(DESTDIR)$(LIBDIR)
 	cp -a lib/libSaLck.so.2 $(DESTDIR)$(LIBDIR)
