@@ -245,7 +245,6 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
-#ifndef DEBUG
 	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
@@ -262,7 +261,6 @@ static void aisexec_tty_detach (void)
 			exit (0);
 			break;
 	}
-#endif
 }
 
 static void aisexec_setscheduler (void)
@@ -377,11 +375,36 @@ int main (int argc, char **argv)
 	struct config_iface_ver0 *config;
 	void *config_p;
 	char *config_iface;
-	int res;
+	int res, ch;
+	int background, setprio;
  	int totem_log_service;
  	log_init ("MAIN");
 
-	aisexec_tty_detach ();
+ 	/* default configuration
+	 */
+	background = 1;
+	setprio = 1;
+ 	
+ 	while ((ch = getopt (argc, argv, "fp")) != EOF) {
+ 	
+		switch (ch) {
+			case 'f':
+				background = 0;
+				break;
+			case 'p':
+				setprio = 0;
+				break;
+			default:
+				fprintf(stderr, \
+					"usage:\n"\
+					"        -F     : Start application in foreground.\n"\
+					"        -P     : Do not set process priority.    \n");
+				return EXIT_FAILURE;
+		}
+	}	
+
+	if (background)
+		aisexec_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
@@ -493,7 +516,8 @@ int main (int argc, char **argv)
 	 * Lock all memory to avoid page faults which may interrupt
 	 * application healthchecking
 	 */
-	aisexec_setscheduler ();
+	if (setprio)
+		aisexec_setscheduler ();
 
 	aisexec_mlockall ();
 
@@ -569,5 +593,5 @@ int main (int argc, char **argv)
 	 */
 	poll_run (aisexec_poll_handle);
 
-	return (0);
+	return EXIT_SUCCESS;
 }
