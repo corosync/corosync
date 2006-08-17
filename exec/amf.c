@@ -107,6 +107,7 @@
  * A6 - Calculate new sync master
  * 
  */
+
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -202,6 +203,8 @@ static void message_handler_req_exec_amf_sync_start (
 static void message_handler_req_exec_amf_sync_data (
 	void *message, unsigned int nodeid);
 static void message_handler_req_exec_amf_sync_ready (
+	void *message, unsigned int nodeid);
+static void message_handler_req_exec_amf_cluster_start_tmo (
 	void *message, unsigned int nodeid);
 static void amf_dump_fn (void);
 static void amf_sync_init (void);
@@ -332,6 +335,9 @@ static struct openais_exec_handler amf_exec_service[] = {
 	},
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_sync_ready,
+	},
+	{
+		.exec_handler_fn = message_handler_req_exec_amf_cluster_start_tmo,
 	}
 };
 
@@ -424,7 +430,7 @@ struct req_exec_amf_sync_data {
 };
 
 static const char *scsm_state_names[] = {
-	"unknown",
+	"Unknown",
 	"IDLE",
 	"PROBING-1",
 	"PROBING-2",
@@ -447,14 +453,18 @@ enum scsm_states {
 };
 
 /**
- * Holds state for the AMF Synchronisation Control State
+ * State descriptor for the AMF Synchronisation Control State
  * Machine (SCSM).
  */
 struct scsm_descriptor {
 	enum scsm_states           state;
 	poll_timer_handle          timer_handle;
+
+	/* node ID of current sync master */
 	unsigned int               sync_master;
-	unsigned int               synced_node;
+
+	unsigned int              *joined_list;
+	unsigned int               joined_list_entries;
 	struct amf_cluster        *cluster;
 	struct amf_node           *node;
 	struct amf_application    *app;
@@ -480,15 +490,14 @@ struct scsm_descriptor {
  */
 static struct scsm_descriptor scsm;
 
-/**
- * My cluster node id, used to determine e.g. sync master
- */
-static SaClmNodeIdT my_node_id;
-
 /* IMPL */
 
 /**
- * Setup this_amf_node shortcut
+ * Get pointer to this node object.
+ * 
+ * @param cluster
+ * 
+ * @return struct amf_node*
  */
 static struct amf_node *get_this_node_obj (struct amf_cluster *cluster)
 {
@@ -513,7 +522,7 @@ static struct amf_node *get_this_node_obj (struct amf_cluster *cluster)
 }
 
 /**
- * Prints old and new sync state, sets new state
+ * Prints old and new sync state, sets new tate
  * @param state
  */
 static void sync_state_set (enum scsm_states state)
@@ -524,7 +533,7 @@ static void sync_state_set (enum scsm_states state)
 }
 
 /**
- * Multicast SYNC_START event
+ * Multicast SYNC_START message
  * 
  * @return int
  */
@@ -555,7 +564,11 @@ static int mcast_sync_start (void)
 }
 
 /**
- * Multicast SYNC_DATA containing a model object.
+ * Multicast SYNC_DATA message containing a model object.
+ * 
+ * @param buf
+ * @param len
+ * @param object_type
  * 
  * @return int
  */
@@ -589,12 +602,9 @@ static int mcast_sync_data (
 }
 
 /**
- * Multicast SYNC_READY event
- * 
- * @return int
+ * Multicast SYNC_READY message
  */
-
-static int mcast_sync_ready (void)
+static void mcast_sync_ready (void)
 {
 	struct req_exec_amf_sync_data req_exec;
 	struct iovec iov[1];
@@ -616,13 +626,11 @@ static int mcast_sync_ready (void)
 		dprintf("Unable to send %d bytes of sync data\n", req_exec.header.size);
 		openais_exit_error (AIS_DONE_FATAL_ERR);
 	}
-
-	return res;
 }
 
 /**
- * Timer callback function. The timer waiting for external
- * synchronisation has timed out, start competing with other
+ * Timer callback function. The time waiting for external
+ * synchronisation has expired, start competing with other
  * nodes to determine who should read config file.
  * @param data
  */
@@ -649,6 +657,7 @@ static void sync_request (void)
 	assert (amf_cluster->state == CLUSTER_UNINSTANTIATED);
 
 	amf_sync_init ();
+
 	do {
 		res = amf_sync_process ();
 		if (res == 1) {
@@ -657,7 +666,8 @@ static void sync_request (void)
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 		}
 	} while (res != 0);
-	amf_sync_activate ();
+
+	mcast_sync_ready ();
 }
 
 /**
@@ -679,7 +689,7 @@ static int create_cluster_model (void)
 
 	if (this_amf_node == NULL) {
 		log_printf (LOG_LEVEL_INFO,
-			"This CLM node is not configured as an AMF node, disabling.");
+			"This node is not configured as an AMF node, disabling.");
 		return -1;
 	}
 
@@ -688,24 +698,34 @@ static int create_cluster_model (void)
 
 /**
  * Calculate a sync master (has the lowest node ID) from the
- * members in the cluster. Possibly exclude one member from
- * the list.
+ * members in the cluster. Possibly excluding some members.
  * 
  * @param member_list
  * @param member_list_entries
- * @param exclude_member
+ * @param exclude_list
+ * @param exclude_list_entries
  * 
  * @return int - node ID of new sync master
  */
 static unsigned int calc_sync_master (
 	unsigned int *member_list, int member_list_entries,
-	unsigned int exclude_member)
+	unsigned int *exclude_list, int exclude_list_entries)
 {
-	int i;
-	SaClmNodeIdT master = my_node_id;
+	int i, j, exclude;
+	unsigned int master = this_ip->nodeid; /* assume this node is master */
 
 	for (i = 0; i < member_list_entries; i++) {
-		if (member_list[i] < master && member_list[i] != exclude_member) {
+		if (member_list[i] < master) {
+			exclude = 0;
+			for (j = 0; j < exclude_list_entries; j++) {
+				if (member_list[i] == exclude_list[j]) {
+					exclude = 1;
+					break;
+				}
+			}
+			if (exclude) {
+				continue;
+			}
 			master = member_list[i];
 		}
 	}
@@ -1093,18 +1113,72 @@ static int cluster_sync (struct amf_cluster *cluster)
 	return 0;
 }
 
+/**
+ * Returns true (1) if the nodeid is a member of the list
+ * @param nodeid
+ * @param list
+ * @param entries
+ * 
+ * @return int
+ */
+static int is_member (
+	unsigned int nodeid, unsigned int *list, unsigned int entries)
+{
+	int i;
+
+	for (i = 0; i < entries; i++) {
+		if (list[i] == nodeid) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static void joined_nodes_start (void)
+{
+	int i;
+
+	for (i = 0; i < scsm.joined_list_entries; i++) {
+		SaNameT name;
+		struct amf_node *synced_node;
+
+		setSaNameT (&name, hostname_get (scsm.joined_list[i]));
+		synced_node = amf_node_find (&name);
+		if (synced_node != NULL) {
+			amf_node_sync_ready (synced_node);
+		} else {
+			log_printf (LOG_LEVEL_INFO,
+				"Node %s is not configured as an AMF node", name.value);
+		}
+	}
+}
+
 /******************************************************************************
  * AMF Framework callback implementation                       *
  *****************************************************************************/
 
-/**
- * SCSM entry function for state SYNCHRONIZING
- */
 static void amf_sync_init (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
 
-	if (scsm.state == SYNCHRONIZING && scsm.sync_master == my_node_id) {
+	switch (scsm.state) {
+		case UNCONFIGURED:
+		case PROBING_1:
+		case SYNCHRONIZING:
+			break;
+		case NORMAL_OPERATION:
+			if (scsm.joined_list_entries > 0) {
+				sync_state_set (SYNCHRONIZING);
+			}
+			break;
+		default:
+			dprintf ("unknown state: %u", scsm.state);;
+			assert (0);
+	}
+
+	if (scsm.state == SYNCHRONIZING && scsm.sync_master == this_ip->nodeid) {
+		mcast_sync_start ();
 		assert (amf_cluster != NULL);
 		scsm.cluster = amf_cluster;
 		scsm.node = amf_cluster->node_head;
@@ -1139,7 +1213,7 @@ static int amf_sync_process (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
 
-	if (scsm.state != SYNCHRONIZING || scsm.sync_master != my_node_id) {
+	if (scsm.state != SYNCHRONIZING || scsm.sync_master != this_ip->nodeid) {
 		return 0;
 	}
 
@@ -1192,38 +1266,71 @@ static void amf_sync_abort (void)
 
 /**
  * SCSM normal exit function for state SYNCHRONIZING
- * All synced objects are now commited, start node.
+ * All synced objects are now commited, start node/cluster.
  */
 static void amf_sync_activate (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
-	if (scsm.state == SYNCHRONIZING && scsm.sync_master == my_node_id) {
-		mcast_sync_ready ();
+
+	switch (scsm.state) {
+		case SYNCHRONIZING:
+			sync_state_set (NORMAL_OPERATION);
+			if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
+				amf_cluster_start (amf_cluster);
+			} else {
+				joined_nodes_start ();
+			}
+			break;
+		case UPDATING_CLUSTER_MODEL:
+			amf_cluster = scsm.cluster;
+			assert (amf_cluster != NULL);
+			scsm.cluster = NULL;
+			this_amf_node = get_this_node_obj (amf_cluster);
+			sync_state_set (NORMAL_OPERATION);
+			if (this_amf_node != NULL) {
+#ifdef AMF_DEBUG
+				amf_runtime_attributes_print (amf_cluster);
+#endif
+				if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
+					amf_cluster_start (amf_cluster);
+				} else {
+					amf_node_sync_ready (this_amf_node);
+				}
+			} else {
+				log_printf (LOG_LEVEL_INFO,
+					"This node is not configured as an AMF node, disabling.");
+				sync_state_set (UNCONFIGURED);
+			}
+			break;
+		case UNCONFIGURED:
+		case PROBING_1:
+		case NORMAL_OPERATION:
+			break;
+		default:
+			dprintf ("unknown state: %u", scsm.state);;
+			assert (0);
 	}
+
+	LEAVE_VOID ();
 }
 
 /**
- * First AMF function to be called by the framework. Save
- * our node ID and execute constructors for model objects.
- * AMF execution continues when this node joins the
- * cluster.
+ * First AMF function to be called by the framework. AMF
+ * execution continues when this node joins the cluster.
  * @param objdb
  * 
  * @return int
  */
 static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	SaClmClusterNodeT *cluster_node;
-
 	log_init ("AMF");
 
 	if (!amf_enabled (objdb)) {
+		sync_state_set (UNCONFIGURED);
 		return 0;
 	}
 
 	sync_state_set (IDLE);
-	cluster_node = main_clm_get_by_nodeid(SA_CLM_LOCAL_NODE_ID);
-	my_node_id = cluster_node->nodeId;
 
 	amf_cluster_init();
 	amf_node_init();
@@ -1254,12 +1361,20 @@ static void amf_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-	ENTER ("mnum: %d, jnum: %d, lnum: %d, sync state: %s\n",
-		member_list_entries, joined_list_entries, left_list_entries,
-		scsm_state_names[scsm.state]);
+	unsigned int i;
 
-	/* not designed to handle more than one leaving node */
-	assert (left_list_entries <= 1);
+	ENTER ("mnum: %d, jnum: %d, lnum: %d, sync state: %s, ring ID %llu rep %s\n",
+		member_list_entries, joined_list_entries, left_list_entries,
+		scsm_state_names[scsm.state], ring_id->seq, totemip_print (&ring_id->rep));
+
+	scsm.joined_list_entries = joined_list_entries;
+	if (scsm.joined_list != NULL) {
+		free (scsm.joined_list);
+	}
+	scsm.joined_list = amf_malloc (joined_list_entries * sizeof (unsigned int));
+	for (i = 0; i < joined_list_entries; i++) {
+		scsm.joined_list[i] = joined_list[i];
+	}
 
 	switch (scsm.state) {
 		case IDLE: {
@@ -1272,10 +1387,18 @@ static void amf_confchg_fn (
 			break;
 		}
 		case PROBING_1:
+			/* fall-through */
+		case PROBING_2:
+			/* fall-through */
 		case UNCONFIGURED:
 			break;
 		case UPDATING_CLUSTER_MODEL:
-			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
+				/*
+				TODO: ???
+				free_synced_data ();
+				*/
+
 				sync_state_set (PROBING_1);
 				if (poll_timer_add (aisexec_poll_handle, AMF_SYNC_TIMEOUT, NULL,
 					timer_function_scsm_timer1_tmo, &scsm.timer_handle) != 0) {
@@ -1285,16 +1408,21 @@ static void amf_confchg_fn (
 			}
 			break;
 		case SYNCHRONIZING: {
-			if (joined_list_entries > 0 && scsm.sync_master == my_node_id) {
+			if (joined_list_entries > 0 && scsm.sync_master == this_ip->nodeid) {
 				/* restart sync */
 				mcast_sync_start ();
 			}
-			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+            /** If the sync master left the cluster, calculate a new sync
+             *  master between the remaining nodes in the cluster excluding
+             *  the nodes we are just syncing.
+			 */
+			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
 				scsm.sync_master =
 					calc_sync_master (
-						member_list, member_list_entries, scsm.synced_node);
+						member_list, member_list_entries,
+						scsm.joined_list, scsm.joined_list_entries);
 
-				if (scsm.sync_master == my_node_id) {
+				if (scsm.sync_master == this_ip->nodeid) {
 					/* restart sync */
 					SYNCTRACE ("I am (new) sync master");
 					mcast_sync_start ();
@@ -1303,23 +1431,15 @@ static void amf_confchg_fn (
 			break;
 		}
 		case NORMAL_OPERATION: {
-			if (joined_list_entries >= 1) {
-				/* TODO: can only handle one joining node */
-				assert (joined_list_entries == 1);
-				scsm.synced_node = joined_list[0];
-				sync_state_set (SYNCHRONIZING);
-				if (scsm.sync_master == my_node_id) {
-					mcast_sync_start ();
-				}
-			}
-
-			/** If nodes leave, recalculate a new sync master
-			 *  between the remaining nodes in the cluster.
+            /** If the sync master left the cluster, calculate a new sync
+             *  master between the remaining nodes in the cluster.
 			 */
-			if (left_list_entries > 0 && scsm.sync_master == left_list[0]) {
+			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
 				scsm.sync_master =
-					calc_sync_master (member_list, member_list_entries, 0);
-				if (scsm.sync_master == my_node_id) {
+					calc_sync_master (
+						member_list, member_list_entries, NULL, 0);
+
+				if (scsm.sync_master == this_ip->nodeid) {
 					SYNCTRACE ("I am (new) sync master");
 				}
 
@@ -1330,6 +1450,7 @@ static void amf_confchg_fn (
 			break;
 		}
 		default:
+			log_printf (LOG_LEVEL_ERROR, "unknown state: %u\n", scsm.state);
 			assert (0);
 	}
 }
@@ -1374,6 +1495,11 @@ static void message_handler_req_exec_amf_comp_register (
 	struct amf_comp *comp;
 	SaAisErrorT error;
 
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	assert (comp != NULL);
 	ENTER ("'%s'", comp->name.value);
@@ -1394,6 +1520,11 @@ static void message_handler_req_exec_amf_comp_error_report (
 	struct req_exec_amf_comp_error_report *req_exec = message;
 	struct amf_comp *comp;
 
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_exec->erroneousComponent);
 	assert (comp != NULL);
 	amf_comp_error_report (comp, req_exec->recommendedRecovery);
@@ -1404,6 +1535,11 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 {
 	struct req_exec_amf_clc_cleanup_completed *req_exec = message;
 	struct amf_comp *comp;
+
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
@@ -1421,11 +1557,18 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 	struct amf_comp *comp;
 	struct amf_healthcheck *healthcheck;
 
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
 		log_printf (LOG_ERR, "'%s' not found", req_exec->compName.value);
 		return;
 	}
+
+	ENTER ("%s", comp->name.value);
 
 	healthcheck = amf_comp_find_healthcheck (comp, &req_exec->safHealthcheckKey);
 
@@ -1439,6 +1582,13 @@ static void message_handler_req_exec_amf_response (
 	struct amf_comp *comp;
 	struct res_lib_amf_response res_lib;
 	SaAisErrorT retval;
+
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
+
+	ENTER ("%s", req_exec->dn.value);
 
 	comp = amf_comp_response_2 (
 		req_exec->interface, &req_exec->dn, req_exec->error, &retval);
@@ -1462,11 +1612,12 @@ static void message_handler_req_exec_amf_sync_start (
 			break;
 		case PROBING_1:
 			poll_timer_delete (aisexec_poll_handle, scsm.timer_handle);
+			scsm.timer_handle = 0;
 			sync_state_set (UPDATING_CLUSTER_MODEL);
 			scsm.sync_master = nodeid;
 			break;
 		case PROBING_2:
-			if (my_node_id == nodeid) {
+			if (this_ip->nodeid == nodeid) {
 				scsm.sync_master = nodeid;
 				sync_state_set (CREATING_CLUSTER_MODEL);
 				if (create_cluster_model() == 0) {
@@ -1503,8 +1654,8 @@ static void message_handler_req_exec_amf_sync_data (
 	struct req_exec_amf_sync_data *req_exec = message;
 	int sz = sizeof (struct req_exec_amf_sync_data);
 
-	SYNCTRACE ("rec %d bytes, type %d",
-		   req_exec->header.size, req_exec->object_type);
+	SYNCTRACE ("rec %d bytes, type %d, ptr %p",
+		   req_exec->header.size, req_exec->object_type, message);
 
 	if (scsm.state != UPDATING_CLUSTER_MODEL) {
 		return;
@@ -1601,6 +1752,7 @@ static void message_handler_req_exec_amf_sync_data (
 					 scsm.csi_attribute->name);
 			break;
 		default:
+			dprintf ("unknown object: %u", req_exec->object_type);
 			assert (0);
 			break;
 	}
@@ -1608,7 +1760,8 @@ static void message_handler_req_exec_amf_sync_data (
 
 /**
  * Commit event handler for the previously received objects.
- * Start this cluster/node now.
+ * Start this cluster/node now. Used at initial cluster start
+ * only.
  * @param message
  * @param nodeid
  */
@@ -1617,46 +1770,22 @@ static void message_handler_req_exec_amf_sync_ready (
 {
 	SYNCTRACE ("from: %s", totempg_ifaces_print (nodeid));
 
-	switch (scsm.state) {
-		case SYNCHRONIZING:
-			sync_state_set (NORMAL_OPERATION);
-			if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
-				amf_cluster_start (amf_cluster);
-			} else {
-				SaNameT name;
-				struct amf_node *synced_node;
+	amf_sync_activate ();
+}
 
-				setSaNameT (&name, hostname_get (scsm.synced_node));
-				synced_node = amf_node_find (&name);
-				assert (synced_node != NULL);
-				amf_node_sync_ready (synced_node);
-			}
-			break;
-		case UPDATING_CLUSTER_MODEL:
-			amf_cluster = scsm.cluster;
-			assert (amf_cluster != NULL);
-			scsm.cluster = NULL;
-			this_amf_node = get_this_node_obj (amf_cluster);
-			sync_state_set (NORMAL_OPERATION);
-			if (this_amf_node != NULL) {
-#ifdef DEBUG
-				amf_runtime_attributes_print (amf_cluster);
-#endif
-				if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
-					amf_cluster_start (amf_cluster);
-				} else {
-					amf_node_sync_ready (this_amf_node);
-				}
-			} else {
-				log_printf (LOG_LEVEL_INFO,
-					"This CLM node is not configured as an AMF node, disabling.");
-				sync_state_set (UNCONFIGURED);
-			}
-			break;
-		case UNCONFIGURED:
-			break;
-		default:
-			assert (0);
+static void message_handler_req_exec_amf_cluster_start_tmo (
+	void *message, unsigned int nodeid)
+{
+	if (scsm.state == UNCONFIGURED) {
+		return;
+	}
+	assert (scsm.state == NORMAL_OPERATION);
+
+	if (nodeid == scsm.sync_master) {
+		dprintf ("Cluster startup timeout, assigning workload");
+		amf_cluster_assign_workload (amf_cluster);
+	} else {
+		dprintf ("received CLUSTER_START_TMO from non sync-master, ignoring");
 	}
 }
 
@@ -1670,6 +1799,8 @@ static void message_handler_req_lib_amf_componentregister (
 {
 	struct req_lib_amf_componentregister *req_lib = msg;
 	struct amf_comp *comp;
+
+	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp) {
@@ -1755,6 +1886,8 @@ static void message_handler_req_lib_amf_healthcheckstart (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 
 	if (comp != NULL) {
@@ -1783,6 +1916,8 @@ static void message_handler_req_lib_amf_healthcheckconfirm (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
 		error = amf_comp_healthcheck_confirm (
@@ -1807,6 +1942,8 @@ static void message_handler_req_lib_amf_healthcheckstop (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
 		error = amf_comp_healthcheck_stop (comp, &req_lib->healthcheckKey);
@@ -1829,6 +1966,8 @@ static void message_handler_req_lib_amf_hastateget (void *conn, void *msg)
 	struct amf_comp *comp;
 	SaAmfHAStateT ha_state;
 	SaAisErrorT error;
+
+	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_lib->compName);
 	if (comp != NULL) {
@@ -1974,6 +2113,8 @@ static void message_handler_req_lib_amf_componenterrorreport (
 	struct req_lib_amf_componenterrorreport *req_lib = msg;
 	struct amf_comp *comp;
 
+	assert (scsm.state == NORMAL_OPERATION);
+
 	comp = amf_comp_find (amf_cluster, &req_lib->erroneousComponent);
 	if (comp != NULL) {
 		struct req_exec_amf_comp_error_report req_exec;
@@ -2052,6 +2193,8 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	SaAisErrorT retval;
 	SaUint32T interface;
 	SaNameT dn;
+
+	assert (scsm.state == NORMAL_OPERATION);
 
 	/*
 	* This is an optimisation to avoid multicast of healthchecks while keeping

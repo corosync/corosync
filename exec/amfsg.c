@@ -720,6 +720,7 @@ void amf_sg_su_state_changed (
 					su->sg->avail_state = SG_AC_AssigningStandBy;
 					amf_sg_assign_si (sg, 0);
 				} else {
+					dprintf ("avail-state: %u", sg->avail_state);
 					assert (0);
 				}
 			}
@@ -818,40 +819,88 @@ void amf_sg_delete (struct amf_sg *sg)
 
 void *amf_sg_serialize (struct amf_sg *sg, int *len)
 {
-	int objsz = sizeof (struct amf_sg);
-	struct amf_sg *copy;
+	char *buf = NULL;
+	int offset = 0, size = 0;
 
-	copy = amf_malloc (objsz);
-	memcpy (copy, sg, objsz);
-	*len = objsz;
-	TRACE8 ("%s", copy->name.value);
+	TRACE8 ("%s", sg->name.value);
 
-	return copy;
+	buf = amf_serialize_SaNameT (buf, &size, &offset, &sg->name);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset, sg->saAmfSGRedundancyModel);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGAutoAdjust);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumPrefActiveSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumPrefStandbySUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumPrefInserviceSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumPrefAssignedSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGMaxActiveSIsperSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGMaxStandbySIsperSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGCompRestartProb);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGCompRestartMax);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGSuRestartProb);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGSuRestartMax);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGAutoAdjustProb);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGAutoRepair);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGAdminState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumCurrAssignedSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->saAmfSGNumCurrInstantiatedSpareSUs);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, sg->clccli_path);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, sg->avail_state);
+
+	*len = offset;
+
+	return buf;
 }
 
 struct amf_sg *amf_sg_deserialize (
 	struct amf_application *app, char *buf, int size)
 {
-	int objsz = sizeof (struct amf_sg);
+	char *tmp = buf;
+	struct amf_sg *sg;
 
-	if (objsz > size) {
-		return NULL;
-	} else {
-		/*                                                              
-         * TODO: use amf_sg_new
-         */
-		struct amf_sg *sg = calloc (1, sizeof (struct amf_sg));
-		if (sg == NULL) {
-			return NULL;
-		}
-		memcpy (sg, buf, objsz);
-		TRACE8 ("%s", sg->name.value);
-		sg->application = app;
-		sg->su_head = NULL;
-		sg->next = app->sg_head;
-		app->sg_head = sg;
-		return sg;
-	}
+	sg = amf_sg_new (app, "");
+
+	tmp = amf_deserialize_SaNameT (tmp, &sg->name);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGRedundancyModel);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGAutoAdjust);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumPrefActiveSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumPrefStandbySUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumPrefInserviceSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumPrefAssignedSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGMaxActiveSIsperSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGMaxStandbySIsperSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGCompRestartProb);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGCompRestartMax);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGSuRestartProb);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGSuRestartMax);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGAutoAdjustProb);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGAutoRepair);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGAdminState);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumCurrAssignedSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGNumCurrInstantiatedSpareSUs);
+	tmp = amf_deserialize_SaStringT (tmp, &sg->clccli_path);
+	tmp = amf_deserialize_SaUint32T (tmp, &sg->avail_state);
+
+	return sg;
 }
 
 struct amf_sg *amf_sg_find (struct amf_application *app, char *name)

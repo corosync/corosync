@@ -423,13 +423,16 @@ static void *clc_command_run (void *context)
 			strlen (clc_command_run_data->comp->clccli_path)) {
 			sprintf (path, "%s/%s",
 					 clc_command_run_data->comp->clccli_path, cmd);
-		} else if (strlen (clc_command_run_data->comp->su->clccli_path)) {
+		} else if (clc_command_run_data->comp->su->clccli_path != NULL &&
+				   strlen (clc_command_run_data->comp->su->clccli_path)) {
 			sprintf (path, "%s/%s",
 					 clc_command_run_data->comp->su->clccli_path, cmd);
-		} else if (strlen (clc_command_run_data->comp->su->sg->clccli_path)) {
+		} else if (clc_command_run_data->comp->su->sg->clccli_path != NULL &&
+				   strlen (clc_command_run_data->comp->su->sg->clccli_path)) {
 			sprintf (path, "%s/%s",
 					 clc_command_run_data->comp->su->sg->clccli_path, cmd);
-		} else if (strlen (clc_command_run_data->comp->su->sg->application->clccli_path)) {
+		} else if (clc_command_run_data->comp->su->sg->application->clccli_path != NULL &&
+				   strlen (clc_command_run_data->comp->su->sg->application->clccli_path)) {
 			sprintf (path, "%s/%s",
 					 clc_command_run_data->comp->su->sg->application->clccli_path, cmd);
 		}

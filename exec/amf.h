@@ -121,7 +121,7 @@ enum cluster_states {
 struct amf_cluster {
 	/* Configuration Attributes */
 	SaNameT name;
-	int saAmfClusterStartupTimeout;
+	SaUint32T saAmfClusterStartupTimeout;
 	SaNameT saAmfClusterClmCluster;
 
 	/* Runtime Attributes */
@@ -140,7 +140,7 @@ struct amf_node {
 	/* Configuration Attributes */
 	SaNameT name;
 	SaNameT saAmfNodeClmNode;
-	int saAmfNodeSuFailOverProb;
+	SaUint32T saAmfNodeSuFailOverProb;
 	SaUint32T saAmfNodeSuFailoverMax;
 	SaBoolT saAmfNodeAutoRepair;
 	SaBoolT saAmfNodeRebootOnInstantiationFailure;
@@ -170,10 +170,9 @@ struct amf_application {
 	struct amf_sg      *sg_head;
 	/* ordered list of SUs */
 	struct amf_si      *si_head;
-	struct amf_si      *si_tail;
 
 	/* Implementation */
-	char clccli_path[PATH_MAX];
+	SaStringT clccli_path;
 	struct amf_application *next;
 };
 
@@ -188,11 +187,11 @@ struct amf_sg {
 	SaUint32T saAmfSGNumPrefAssignedSUs;
 	SaUint32T saAmfSGMaxActiveSIsperSUs;
 	SaUint32T saAmfSGMaxStandbySIsperSUs;
-	SaTimeT saAmfSGCompRestartProb;
+	SaUint32T saAmfSGCompRestartProb;
 	SaUint32T saAmfSGCompRestartMax;
-	SaTimeT saAmfSGSuRestartProb;
+	SaUint32T saAmfSGSuRestartProb;
 	SaUint32T saAmfSGSuRestartMax;
-	SaTimeT saAmfSGAutoAdjustProb;
+	SaUint32T saAmfSGAutoAdjustProb;
 	SaBoolT saAmfSGAutoRepair;
 
 	/* Runtime Attributes */
@@ -208,7 +207,7 @@ struct amf_sg {
 	struct amf_su          *su_head;
 
 	/* Implementation */
-	char clccli_path[PATH_MAX];
+	SaStringT clccli_path;
 	struct amf_sg *next;
 	sg_avail_control_state_t avail_state;
 };
@@ -240,7 +239,7 @@ struct amf_su {
 	/* Implementation */
 	su_restart_control_state_t restart_control_state;
 	su_restart_control_state_t escalation_level_history_state;
-	char clccli_path[PATH_MAX];
+	SaStringT clccli_path;
 	SaUint32T              su_failover_cnt; /* missing in SAF specs? */
 	struct amf_su         *next;
 };
@@ -316,19 +315,20 @@ struct amf_comp {
 struct amf_healthcheck {
 	/* Configuration Attributes */
 	SaAmfHealthcheckKeyT safHealthcheckKey;
-	int saAmfHealthcheckMaxDuration;
-	int saAmfHealthcheckPeriod;
+	SaUint32T saAmfHealthcheckMaxDuration;
+	SaUint32T saAmfHealthcheckPeriod;
 
 	/* Relations */
 	struct amf_comp *comp;
 
 	/* Implementation */
 	struct amf_healthcheck *next;
-	int active;
+	SaUint32T active;
 	SaAmfHealthcheckInvocationT invocationType;
 	SaAmfRecommendedRecoveryT recommendedRecovery;
 	poll_timer_handle timer_handle_duration;
 	poll_timer_handle timer_handle_period;
+
 };
 
 struct amf_si {
@@ -411,7 +411,6 @@ struct amf_csi {
 
 	/* Implementation */
 	struct amf_csi *next;
-	int pg_set;
 };
 
 struct amf_csi_attribute {
@@ -453,7 +452,8 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_RESPONSE = 4,
 	MESSAGE_REQ_EXEC_AMF_SYNC_START = 5,
 	MESSAGE_REQ_EXEC_AMF_SYNC_DATA = 6,
-	MESSAGE_REQ_EXEC_AMF_SYNC_READY = 7
+	MESSAGE_REQ_EXEC_AMF_SYNC_READY = 7,
+	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 8
 };
 
 struct req_exec_amf_clc_cleanup_completed {
@@ -465,6 +465,10 @@ struct req_exec_amf_healthcheck_tmo {
 	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT safHealthcheckKey;
+};
+
+struct req_exec_amf_cluster_start_tmo {
+	mar_req_header_t header;
 };
 
 /*===========================================================================*/
@@ -548,6 +552,7 @@ extern struct amf_cluster *amf_cluster_deserialize (char *buf, int size);
 
 /* Event methods */
 extern void amf_cluster_start (struct amf_cluster *cluster);
+extern void amf_cluster_assign_workload (struct amf_cluster *cluster);
 
 /* Response event methods */
 extern void amf_cluster_application_started (

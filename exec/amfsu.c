@@ -808,42 +808,68 @@ void amf_su_delete (struct amf_su *su)
 
 void *amf_su_serialize (struct amf_su *su, int *len)
 {
-	int objsz = sizeof (struct amf_su);
-	struct amf_su *copy;
+	char *buf = NULL;
+	int offset = 0, size = 0;
 
-	copy = amf_malloc (objsz);
-	memcpy (copy, su, objsz);
-	*len = objsz;
-	TRACE8 ("%s", copy->name.value);
+	TRACE8 ("%s", su->name.value);
 
-	return copy;
+	buf = amf_serialize_SaNameT (buf, &size, &offset, &su->name);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset, su->saAmfSURank);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUNumComponents);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUIsExternal);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUFailover);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUPreInstantiable);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUOperState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUAdminState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSUPresenceState);
+	buf = amf_serialize_SaNameT (buf, &size, &offset, &su->saAmfSUHostedByNode);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->saAmfSURestartCount);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->restart_control_state);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->escalation_level_history_state);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, su->clccli_path);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->su_failover_cnt);
+
+	*len = offset;
+
+	return buf;
 }
 
 struct amf_su *amf_su_deserialize (struct amf_sg *sg, char *buf, int size)
 {
-	int objsz = sizeof (struct amf_su);
+	char *tmp = buf;
+	struct amf_su *su;
 
-	if (objsz > size) {
-		return NULL;
-	} else {
-		struct amf_su *tmp = (struct amf_su*) buf;
-		struct amf_su *su;
+	su = amf_su_new (sg, "");
 
-		su = amf_su_new (sg, (char*) tmp->name.value);
-		su->saAmfSURank = tmp->saAmfSURank;
-		su->saAmfSUNumComponents = tmp->saAmfSUNumComponents;
-		su->saAmfSUIsExternal = tmp->saAmfSUIsExternal;
-		su->saAmfSUFailover = tmp->saAmfSUFailover;
-		su->saAmfSUPreInstantiable = tmp->saAmfSUPreInstantiable;
-		su->saAmfSUOperState = tmp->saAmfSUOperState;
-		su->saAmfSUAdminState = tmp->saAmfSUAdminState;
-		su->saAmfSUPresenceState = tmp->saAmfSUPresenceState;
-		memcpy (&su->saAmfSUHostedByNode, &tmp->saAmfSUHostedByNode,
-				sizeof (SaNameT));
+	tmp = amf_deserialize_SaNameT (tmp, &su->name);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSURank);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUNumComponents);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUIsExternal);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUFailover);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUPreInstantiable);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUOperState);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUAdminState);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSUPresenceState);
+	tmp = amf_deserialize_SaNameT (tmp, &su->saAmfSUHostedByNode);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->saAmfSURestartCount);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->restart_control_state);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->escalation_level_history_state);
+	tmp = amf_deserialize_SaStringT (tmp, &su->clccli_path);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->su_failover_cnt);
 
-		TRACE8 ("%s", su->name.value);
-		return su;
-	}
+	return su;
 }
 
 struct amf_su *amf_su_find (struct amf_cluster *cluster, SaNameT *name)
@@ -859,7 +885,7 @@ struct amf_su *amf_su_find (struct amf_cluster *cluster, SaNameT *name)
 
 	/* malloc new buffer since strtok_r writes to its first argument */
 	buf = amf_malloc (name->length + 1);
-	memcpy (buf, name->value, name->length);
+	memcpy (buf, name->value, name->length + 1);
 
 	su_name = strtok_r(buf, ",", &ptrptr);
 	sg_name = strtok_r(NULL, ",", &ptrptr);

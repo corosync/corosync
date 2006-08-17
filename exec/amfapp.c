@@ -151,6 +151,10 @@ struct amf_application *amf_application_new (struct amf_cluster *cluster)
 	struct amf_application *app = amf_malloc (sizeof (struct amf_application));
 
 	app->cluster = cluster;
+	app->next = cluster->application_head;
+	cluster->application_head = app;
+	app->sg_head = NULL;
+	app->si_head = NULL;
 	return app;
 }
 
@@ -177,36 +181,37 @@ void amf_application_delete (struct amf_application *app)
 void *amf_application_serialize (
 	struct amf_application *app, int *len)
 {
-	int objsz = sizeof (struct amf_application);
-	struct amf_application *copy;
+	char *buf = NULL;
+	int offset = 0, size = 0;
 
-	copy = amf_malloc (objsz);
-	memcpy (copy, app, objsz);
-	*len = objsz;
-	TRACE8 ("%s", copy->name.value);
+	TRACE8 ("%s", app->name.value);
 
-	return copy;
+	buf = amf_serialize_SaNameT (buf, &size, &offset, &app->name);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, app->saAmfApplicationAdminState);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, app->saAmfApplicationCurrNumSG);
+	buf = amf_serialize_SaStringT (
+		buf, &size, &offset, app->clccli_path);
+
+	*len = offset;
+
+	return buf;
 }
 
 struct amf_application *amf_application_deserialize (
 	struct amf_cluster *cluster, char *buf, int size)
 {
-	int objsz = sizeof (struct amf_application);
+	char *tmp = buf;
+	struct amf_application *app;
 
-	if (objsz > size) {
-		return NULL;
-	} else {
-		struct amf_application *obj = amf_application_new (cluster);
-		assert (obj);
-		memcpy (obj, buf, objsz);
-		TRACE8 ("%s", obj->name.value);
-		obj->cluster = cluster;
-		obj->sg_head = NULL;
-		obj->si_head = NULL;
-		obj->next = cluster->application_head;
-		cluster->application_head = obj;
-		return obj;
-	}
+	app = amf_application_new (cluster);
+	tmp = amf_deserialize_SaNameT (tmp, &app->name);
+	tmp = amf_deserialize_SaUint32T (tmp, &app->saAmfApplicationAdminState);
+	tmp = amf_deserialize_SaUint32T (tmp, &app->saAmfApplicationCurrNumSG);
+	tmp = amf_deserialize_SaStringT (tmp, &app->clccli_path);
+
+	return app;
 }
 
 struct amf_application *amf_application_find (

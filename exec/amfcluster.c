@@ -74,6 +74,7 @@
 #include "amf.h"
 #include "util.h"
 #include "main.h"
+#include "service.h"
 
 /**
  * Determine if all applications are started
@@ -105,14 +106,21 @@ done:
 
 static void timer_function_cluster_assign_workload_tmo (void *_cluster)
 {
-	struct amf_application *app;
-	struct amf_cluster *cluster = _cluster;
+	struct req_exec_amf_cluster_start_tmo req;
+	struct iovec iovec;
 
-	dprintf("Cluster start timer expired, assigning workload to application\n");
+	ENTER ("");
 
-	for (app = cluster->application_head; app != NULL; app = app->next) {
-		amf_application_assign_workload (app, this_amf_node);
-	}
+	req.header.size = sizeof (struct req_exec_amf_cluster_start_tmo);
+	req.header.id =	SERVICE_ID_MAKE (AMF_SERVICE,
+		MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO);
+
+	iovec.iov_base = (char *)&req;
+	iovec.iov_len = sizeof (req);
+
+	assert (totempg_groups_mcast_joined (openais_group_handle,
+		&iovec, 1, TOTEMPG_AGREED) == 0);
+
 }
 
 void amf_cluster_start (struct amf_cluster *cluster)
@@ -145,18 +153,15 @@ void amf_cluster_application_started (
 	ENTER ("application '%s' started", application->name.value);
 
 	if (all_applications_started (cluster)) {
-		struct amf_application *app;
-
 		log_printf(LOG_NOTICE,
 				   "Cluster: all applications started, assigning workload.");
 
 		if (cluster->timeout_handle) {
 			poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
+			cluster->timeout_handle = 0;
 		}
 
-		for (app = cluster->application_head; app != NULL; app = app->next) {
-			amf_application_assign_workload (app, this_amf_node);
-		}
+		amf_cluster_assign_workload (cluster);
 	}
 }
 
@@ -209,7 +214,25 @@ struct amf_cluster *amf_cluster_deserialize (char *buf, int size)
 		TRACE8 ("%s", obj->name.value);
 		obj->node_head = NULL;
 		obj->application_head = NULL;
+		obj->timeout_handle = 0;
+
 		return obj;
+	}
+}
+
+void amf_cluster_assign_workload (struct amf_cluster *cluster)
+{
+	struct amf_application *app;
+
+	ENTER ("");
+
+	if (cluster->timeout_handle) {
+		poll_timer_delete (aisexec_poll_handle, cluster->timeout_handle);
+		cluster->timeout_handle = 0;
+	}
+
+	for (app = cluster->application_head; app != NULL; app = app->next) {
+		amf_application_assign_workload (app, this_amf_node);
 	}
 }
 

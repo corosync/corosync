@@ -390,6 +390,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 		case AMF_APPLICATION:
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
+				app->clccli_path = amf_malloc (strlen (loc) + 1);
 				strcpy (app->clccli_path, loc);
 			} else if ((loc = strstr_rs (line, "safSg=")) != 0) {
 				sg = amf_sg_new (app, trim_str (loc));
@@ -424,6 +425,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 		case AMF_SG:
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
+				sg->clccli_path = amf_malloc (strlen (loc) + 1);
 				strcpy (sg->clccli_path, loc);
 			} else if ((loc = strstr_rs (line, "saAmfSGRedundancyModel=")) != 0) {
 				if (strcmp (loc, "2n") == 0) {
@@ -511,6 +513,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs (line, "saAmfSUFailover=")) != 0) {
 				su->saAmfSUFailover = atoi (loc);
 			} else if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
+				su->clccli_path = amf_malloc (strlen (loc) + 1);
 				strcpy (su->clccli_path, loc);
 			} else if ((loc = strstr_rs (line, "saAmfSUHostedByNode=")) != 0) {
 				setSaNameT (&su->saAmfSUHostedByNode, loc);
