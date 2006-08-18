@@ -33,7 +33,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef OPENAIS_BSD
 #include <alloca.h>
+#endif
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>

@@ -82,7 +82,9 @@
  *	
  */
 
+#ifndef OPENAIS_BSD
 #include <alloca.h>
+#endif
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>
