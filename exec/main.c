@@ -397,8 +397,8 @@ int main (int argc, char **argv)
 			default:
 				fprintf(stderr, \
 					"usage:\n"\
-					"        -F     : Start application in foreground.\n"\
-					"        -P     : Do not set process priority.    \n");
+					"        -f     : Start application in foreground.\n"\
+					"        -p     : Do not set process priority.    \n");
 				return EXIT_FAILURE;
 		}
 	}	
