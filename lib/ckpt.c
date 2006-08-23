@@ -1500,10 +1500,12 @@ saCkptCheckpointWrite (
 	for (i = 0; i < numberOfElements; i++) {
 		if (ioVector[i].dataSize == 0) {
 			*erroneousVectorIndex = i;
+			error = SA_AIS_ERR_INVALID_PARAM;
 			goto error_put;
 		}
 		if (ioVector[i].dataBuffer == NULL) {
 			*erroneousVectorIndex = i;
+			error = SA_AIS_ERR_INVALID_PARAM;
 			goto error_put;
 		}
 	}
