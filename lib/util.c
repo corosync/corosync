@@ -170,6 +170,7 @@ saServiceConnect (
 /* if I comment out the 4 lines below the executive crashes */
 	callbackFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (callbackFD == -1) {
+		close (responseFD);
 		return (SA_AIS_ERR_NO_RESOURCES);
 	}
 
