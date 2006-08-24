@@ -254,12 +254,11 @@ retry_recv:
 	if (result == -1 && errno == EAGAIN) {
 		goto retry_recv;
 	}
-#ifdef OPENAIS_SOLARIS
+#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	/* On many OS poll never return POLLHUP or POLLERR.
+	 * EOF is detected when recvmsg return 0.
+	 */
 	if (result == 0) {
-		/*
-		 * In case of disconnection, recvmsg() returns 0 and next calls to
-		 * poll() always return POLLIN
-		 */
 		error = SA_AIS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
