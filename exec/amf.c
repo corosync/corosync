@@ -274,7 +274,7 @@ static struct openais_lib_handler amf_lib_service[] =
 		.lib_handler_fn		= message_handler_req_lib_amf_csiquiescingcomplete,
 		.response_size		= sizeof (struct res_lib_amf_csiquiescingcomplete),
 		.response_id		= MESSAGE_RES_AMF_CSIQUIESCINGCOMPLETE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_amf_protectiongrouptrack,
@@ -303,8 +303,8 @@ static struct openais_lib_handler amf_lib_service[] =
 	{ /* 13 */
 		.lib_handler_fn		= message_handler_req_lib_amf_response,
 		.response_size		= sizeof (struct res_lib_amf_response),
-		.response_id		= MESSAGE_RES_AMF_RESPONSE, // TODO
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.response_id		= MESSAGE_RES_AMF_RESPONSE,
+		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
 };
 
@@ -1165,6 +1165,7 @@ static void amf_sync_init (void)
 	switch (scsm.state) {
 		case UNCONFIGURED:
 		case PROBING_1:
+		case PROBING_2:
 		case SYNCHRONIZING:
 			break;
 		case NORMAL_OPERATION:
@@ -1495,10 +1496,9 @@ static void message_handler_req_exec_amf_comp_register (
 	struct amf_comp *comp;
 	SaAisErrorT error;
 
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	assert (comp != NULL);
@@ -1520,10 +1520,9 @@ static void message_handler_req_exec_amf_comp_error_report (
 	struct req_exec_amf_comp_error_report *req_exec = message;
 	struct amf_comp *comp;
 
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_exec->erroneousComponent);
 	assert (comp != NULL);
@@ -1536,10 +1535,9 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 	struct req_exec_amf_clc_cleanup_completed *req_exec = message;
 	struct amf_comp *comp;
 
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
@@ -1557,10 +1555,9 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 	struct amf_comp *comp;
 	struct amf_healthcheck *healthcheck;
 
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
 	if (comp == NULL) {
@@ -1583,10 +1580,9 @@ static void message_handler_req_exec_amf_response (
 	struct res_lib_amf_response res_lib;
 	SaAisErrorT retval;
 
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	ENTER ("%s", req_exec->dn.value);
 
@@ -1776,10 +1772,9 @@ static void message_handler_req_exec_amf_sync_ready (
 static void message_handler_req_exec_amf_cluster_start_tmo (
 	void *message, unsigned int nodeid)
 {
-	if (scsm.state == UNCONFIGURED) {
+	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	assert (scsm.state == NORMAL_OPERATION);
 
 	if (nodeid == scsm.sync_master) {
 		dprintf ("Cluster startup timeout, assigning workload");
