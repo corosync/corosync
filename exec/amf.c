@@ -154,7 +154,7 @@
 
 #define SYNCTRACE(format, args...) do { \
 	TRACE6(">%s: " format, __FUNCTION__, ##args); \
-} while(0)
+} while (0)
 
 /*                                                              
  * The time AMF will wait to get synchronised by another node
@@ -463,6 +463,7 @@ struct scsm_descriptor {
 	/* node ID of current sync master */
 	unsigned int               sync_master;
 
+	unsigned int              *member_list;
 	unsigned int              *joined_list;
 	unsigned int               joined_list_entries;
 	struct amf_cluster        *cluster;
@@ -491,9 +492,34 @@ struct scsm_descriptor {
 static struct scsm_descriptor scsm;
 
 /* IMPL */
+static char *hostname_get (unsigned int nodeid)
+{
+        struct totem_ip_address interfaces[INTERFACE_MAX];
+        char **status;
+        unsigned int iface_count;
+        int res;
+        struct hostent *ent;
+                                                                                                                   
+        res = totempg_ifaces_get (nodeid, interfaces, &status, &iface_count);
+        if (res == -1) {
+                log_printf (LOG_LEVEL_ERROR, "totempg_ifaces_get failed for %u", nodeid);
+                openais_exit_error (AIS_DONE_FATAL_ERR);
+        }
+        if (iface_count > 0) {
+                ent = gethostbyaddr (interfaces[0].addr, 4, interfaces[0].family);
+                if (ent == NULL) {
+                        log_printf (LOG_LEVEL_ERROR, "gethostbyaddr failed: %d\n", h_errno);
+                        openais_exit_error (AIS_DONE_FATAL_ERR);
+                }
+                                                                                                                   
+                return ent->h_name;
+        }
+                                                                                                                   
+        return NULL;
+}
 
 /**
- * Get pointer to this node object.
+ * Return pointer to this node object.
  * 
  * @param cluster
  * 
@@ -501,24 +527,16 @@ static struct scsm_descriptor scsm;
  */
 static struct amf_node *get_this_node_obj (struct amf_cluster *cluster)
 {
-	char hostname[HOST_NAME_MAX + 1];
-	struct amf_node *node;
+	SaClmClusterNodeT *clm_node = main_clm_get_by_nodeid (SA_CLM_LOCAL_NODE_ID);
+	char *hostname;
+	SaNameT name;
 
-	assert (cluster != NULL);
+	assert (clm_node != NULL);
+	hostname = hostname_get (clm_node->nodeId);
+	assert (hostname != NULL);
+	setSaNameT (&name, hostname);
 
-	if (gethostname (hostname, sizeof(hostname)) == -1) {
-		log_printf (LOG_LEVEL_ERROR, "gethostname failed: %d", errno);
-		openais_exit_error (AIS_DONE_FATAL_ERR);
-	}
-
-	/* look for this node */
-	for (node = cluster->node_head; node != NULL; node = node->next) {
-		if (strcmp(hostname, getSaNameT (&node->name)) == 0) {
-			return node;
-		}
-	}
-
-	return NULL;
+	return amf_node_find (&name);
 }
 
 /**
@@ -611,7 +629,8 @@ static void mcast_sync_ready (void)
 	int res;
 
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
-
+	
+	
 	req_exec.header.size = sizeof (struct req_exec_amf_sync_data);
 	req_exec.header.id =
 		SERVICE_ID_MAKE (AMF_SERVICE, MESSAGE_REQ_EXEC_AMF_SYNC_READY);
@@ -733,40 +752,6 @@ static unsigned int calc_sync_master (
 	return master;
 }
 
-/**
- * Get hostname from TOTEM node ID
- * @param nodeid
- * 
- * @return char*
- */
-static char *hostname_get (unsigned int nodeid)
-{
-	struct totem_ip_address interfaces[INTERFACE_MAX];
-	char **status;
-	unsigned int iface_count;
-	int res;
-	struct hostent *ent;
-
-	res = totempg_ifaces_get (nodeid, interfaces, &status, &iface_count);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "totempg_ifaces_get failed");
-		openais_exit_error (AIS_DONE_FATAL_ERR);
-	}
-
-	if (iface_count > 0) {
-		ent = gethostbyaddr (interfaces[0].addr, 4, interfaces[0].family);
-		if (ent == NULL) {
-			log_printf (LOG_LEVEL_ERROR, "gethostbyaddr failed: %d\n", h_errno);
-			openais_exit_error (AIS_DONE_FATAL_ERR);
-		}
-
-		return ent->h_name;
-	} else {
-		assert (0);
-	}
-
-	return NULL;
-}
 
 static void free_synced_data (void)
 {
@@ -1141,17 +1126,38 @@ static void joined_nodes_start (void)
 
 	for (i = 0; i < scsm.joined_list_entries; i++) {
 		SaNameT name;
-		struct amf_node *synced_node;
+		struct amf_node *node;
 
 		setSaNameT (&name, hostname_get (scsm.joined_list[i]));
-		synced_node = amf_node_find (&name);
-		if (synced_node != NULL) {
-			amf_node_sync_ready (synced_node);
+		node = amf_node_find (&name);
+		if (node != NULL) {
+			node->nodeid = scsm.joined_list[i];
+			amf_node_sync_ready (node);
 		} else {
 			log_printf (LOG_LEVEL_INFO,
 				"Node %s is not configured as an AMF node", name.value);
 		}
 	}
+}
+
+static void init_nodeids (void)
+{
+	int i;
+
+	ENTER ("");
+
+	for (i = 0; scsm.member_list[i] != 0; i++) {
+		SaNameT name;
+		struct amf_node *node;
+
+		setSaNameT (&name, hostname_get (scsm.member_list[i]));
+		node = amf_node_find (&name);
+
+		assert (node != NULL);
+		node->nodeid = scsm.member_list[i];
+	}
+
+	LEAVE ("");
 }
 
 /******************************************************************************
@@ -1161,7 +1167,6 @@ static void joined_nodes_start (void)
 static void amf_sync_init (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
-
 	switch (scsm.state) {
 		case UNCONFIGURED:
 		case PROBING_1:
@@ -1276,10 +1281,22 @@ static void amf_sync_activate (void)
 	switch (scsm.state) {
 		case SYNCHRONIZING:
 			sync_state_set (NORMAL_OPERATION);
-			if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
-				amf_cluster_start (amf_cluster);
-			} else {
-				joined_nodes_start ();
+			init_nodeids ();
+			/* TODO: Remove dependencies to amf_cluster->state */
+			switch (amf_cluster->state) {
+				case CLUSTER_STARTED: {
+					joined_nodes_start ();
+					break;
+				}
+				case CLUSTER_STARTING_COMPONENTS: {
+					amf_cluster_sync_ready (amf_cluster);
+					joined_nodes_start ();
+					break;
+				}
+				case CLUSTER_UNINSTANTIATED:
+				default: {
+					amf_cluster_sync_ready (amf_cluster);
+				}
 			}
 			break;
 		case UPDATING_CLUSTER_MODEL:
@@ -1288,14 +1305,26 @@ static void amf_sync_activate (void)
 			scsm.cluster = NULL;
 			this_amf_node = get_this_node_obj (amf_cluster);
 			sync_state_set (NORMAL_OPERATION);
+			init_nodeids ();
 			if (this_amf_node != NULL) {
 #ifdef AMF_DEBUG
 				amf_runtime_attributes_print (amf_cluster);
 #endif
-				if (amf_cluster->state == CLUSTER_UNINSTANTIATED) {
-					amf_cluster_start (amf_cluster);
-				} else {
-					amf_node_sync_ready (this_amf_node);
+				/* TODO: Remove dependencies to amf_cluster->state */
+				switch (amf_cluster->state) {
+					case CLUSTER_STARTED: {
+						amf_node_sync_ready (this_amf_node); 
+						break;
+					}
+					case CLUSTER_STARTING_COMPONENTS: {
+						amf_cluster_sync_ready (amf_cluster);
+						amf_node_sync_ready (this_amf_node);
+						break;
+					}
+					case CLUSTER_UNINSTANTIATED:
+					default: {
+						amf_cluster_sync_ready (amf_cluster);
+					}
 				}
 			} else {
 				log_printf (LOG_LEVEL_INFO,
@@ -1377,6 +1406,19 @@ static void amf_confchg_fn (
 		scsm.joined_list[i] = joined_list[i];
 	}
 
+	/**
+     * Save current members of the cluster, needed to initialize
+     * each node's totem node id later.
+     */
+	if (scsm.member_list != NULL) {
+		free (scsm.member_list);
+	}
+	scsm.member_list = amf_malloc ((member_list_entries + 1) * sizeof (unsigned int));
+	for (i = 0; i < member_list_entries; i++) {
+		scsm.member_list[i] = member_list[i];
+	}
+	scsm.member_list[i] = 0;
+
 	switch (scsm.state) {
 		case IDLE: {
 			sync_state_set (PROBING_1);
@@ -1443,10 +1485,17 @@ static void amf_confchg_fn (
 				if (scsm.sync_master == this_ip->nodeid) {
 					SYNCTRACE ("I am (new) sync master");
 				}
+			}
 
-				/*                                                              
-				 * TODO: activate standby, ...
-				*/
+			if (left_list_entries > 0) {
+				int i;
+				struct amf_node *node;
+
+				for (i = 0; i < left_list_entries; i++) {
+					node = amf_node_find_by_nodeid (left_list[i]);
+					assert (node != NULL);
+					amf_node_leave(node);
+				}
 			}
 			break;
 		}
@@ -1455,6 +1504,7 @@ static void amf_confchg_fn (
 			assert (0);
 	}
 }
+
 
 static int amf_lib_exit_fn (void *conn)
 {

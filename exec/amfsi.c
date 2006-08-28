@@ -340,7 +340,6 @@ void amf_si_ha_state_assume (
 		amf_ha_state (si_assignment->requested_ha_state));
 
 	si_assignment->assumed_callback_fn = assumed_ha_state_callback_fn;
-
 	for (csi = si_assignment->si->csi_head; csi != NULL; csi = csi->next) {
 		for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
 			csi_assignment = csi_assignment->next) {
@@ -379,7 +378,7 @@ void amf_si_ha_state_assume (
 	if (csi_assignment_cnt == hastate_set_done_cnt) {
 		poll_timer_handle handle;
 		poll_timer_add (aisexec_poll_handle, 0, si_assignment,
-						timer_function_ha_state_assumed, &handle);
+			timer_function_ha_state_assumed, &handle);
 	}
 }
 
@@ -390,6 +389,7 @@ void amf_si_ha_state_assume (
  * @return int
  */
 int amf_si_get_saAmfSINumCurrActiveAssignments (struct amf_si *si)
+	
 {
 	int cnt = 0;
 	struct amf_si_assignment *si_assignment;
@@ -398,6 +398,23 @@ int amf_si_get_saAmfSINumCurrActiveAssignments (struct amf_si *si)
 		si_assignment = si_assignment->next) {
 
 		if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+			cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+int amf_si_su_get_saAmfSINumCurrActiveAssignments (struct amf_si *si,
+	struct amf_su *su)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+	for (si_assignment = si->assigned_sis; si_assignment != NULL;
+		si_assignment = si_assignment->next) {
+
+		if (si_assignment->su == su && 
+			si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
 			cnt++;
 		}
 	}
@@ -414,6 +431,24 @@ int amf_si_get_saAmfSINumCurrStandbyAssignments (struct amf_si *si)
 		si_assignment = si_assignment->next) {
 
 		if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
+			cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+int amf_si_su_get_saAmfSINumCurrStandbyAssignments (struct amf_si *si,
+	struct amf_su *su)
+{
+	int cnt = 0;
+	struct amf_si_assignment *si_assignment;
+
+	for (si_assignment = si->assigned_sis; si_assignment != NULL;
+		si_assignment = si_assignment->next) {
+
+		if (si_assignment->su == su &&
+			si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
 			cnt++;
 		}
 	}
@@ -439,24 +474,21 @@ SaAmfAssignmentStateT amf_si_get_saAmfSIAssignmentState (struct amf_si *si)
 void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su)
 {
 	struct amf_csi_assignment *csi_assignment;
-
 	ENTER ("'%s'", su->name.value);
+	struct amf_csi_assignment **prev = &csi->assigned_csis;
 
-	/*                                                              
-	* TODO: this only works for n+m where each CSI list has only
-	* two assignments, one active and one standby.
-	* TODO: use DN instead
-	*/
-	if (csi->assigned_csis->comp->su == su) {
-		csi_assignment = csi->assigned_csis;
-		csi->assigned_csis = csi_assignment->next;
-	} else {
-		csi_assignment = csi->assigned_csis->next;
-		csi->assigned_csis->next = NULL;
-		assert (csi_assignment != NULL && csi_assignment->comp->su == su);
+
+	for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+		csi_assignment = csi_assignment->next) {
+		if (csi_assignment->comp->su == su) {
+			struct amf_csi_assignment *tmp = csi_assignment;
+			*prev = csi_assignment->next;
+			dprintf ("CSI assignment %s unlinked", tmp->name.value);
+			free (tmp);
+		} else {
+			prev = &csi_assignment->next;
+		}
 	}
-	assert (csi_assignment != NULL);
-	free (csi_assignment);
 }
 
 /**
@@ -538,7 +570,8 @@ void *amf_si_serialize (struct amf_si *si, int *len)
 	return copy;
 }
 
-struct amf_si *amf_si_deserialize (struct amf_application *app, char *buf, int size)
+struct amf_si *amf_si_deserialize (
+	struct amf_application *app, char *buf, int size) 
 {
 	int objsz = sizeof (struct amf_si);
 
@@ -550,7 +583,7 @@ struct amf_si *amf_si_deserialize (struct amf_application *app, char *buf, int s
 		TRACE8 ("%s", si->name.value);
 
 		memcpy (&si->saAmfSIProtectedbySG, &tmp->saAmfSIProtectedbySG,
-				sizeof (SaNameT));
+			sizeof (SaNameT));
 		si->saAmfSIRank = tmp->saAmfSIRank;
 		si->saAmfSINumCSIs = tmp->saAmfSINumCSIs;
 		si->saAmfSIPrefActiveAssignments = tmp->saAmfSIPrefActiveAssignments;
@@ -568,7 +601,7 @@ struct amf_si_assignment *amf_si_assignment_new (struct amf_si *si)
 {
 	struct amf_si_assignment *si_assignment;
 
-	si_assignment =	amf_malloc (sizeof (struct amf_si_assignment));
+	si_assignment = amf_malloc (sizeof (struct amf_si_assignment));
 	si_assignment->si = si;
 
 	return si_assignment;
@@ -614,12 +647,14 @@ struct amf_si *amf_si_find (struct amf_application *app, char *name)
 {
 	struct amf_si *si;
 
-	ENTER ("%s", name);
-
 	for (si = app->si_head; si != NULL; si = si->next) {
 		if (strncmp (name, (char*)si->name.value, si->name.length) == 0) {
 			break;
 		}
+	}
+
+	if (si == NULL) {
+		dprintf ("SI %s not found!", name);
 	}
 
 	return si;
@@ -691,14 +726,15 @@ struct amf_csi *amf_csi_find (struct amf_si *si, char *name)
 {
 	struct amf_csi *csi;
 
-	ENTER ("%s", name);
-
 	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
 		if (strncmp (name, (char*)csi->name.value, csi->name.length) == 0) {
 			break;
 		}
 	}
 
+	if (csi == NULL) {
+		dprintf ("CSI %s not found!", name);
+	}
 	return csi;
 }
 
@@ -730,6 +766,30 @@ void *amf_csi_assignment_serialize (
 	return copy;
 }
 
+struct amf_si_assignment *si_assignment_find (
+	struct amf_csi_assignment *csi_assignment)
+{
+
+	struct amf_comp *component;
+	struct amf_si_assignment *si_assignment = NULL;
+
+	component = amf_comp_find(csi_assignment->csi->si->application->cluster, 
+		&csi_assignment->name);
+
+
+	for (si_assignment = csi_assignment->csi->si->assigned_sis;
+		si_assignment != NULL; si_assignment = si_assignment->next) {
+		SaNameT su_name; 
+		amf_su_dn_make (component->su,&su_name);
+
+		if (name_match(&su_name, &si_assignment->name)) {
+			break;
+		}
+	}
+
+	return si_assignment;
+}
+
 struct amf_csi_assignment *amf_csi_assignment_deserialize (
 	struct amf_csi *csi, char *buf, int size)
 {
@@ -746,8 +806,11 @@ struct amf_csi_assignment *amf_csi_assignment_deserialize (
 		TRACE8 ("%s", obj->name.value);
 		obj->csi = csi;
 		obj->comp = amf_comp_find (csi->si->application->cluster, &obj->name);
+		assert (obj->comp != NULL);
 		obj->next = csi->assigned_csis;
 		csi->assigned_csis = obj;
+
+		obj->si_assignment = si_assignment_find(obj);
 		return obj;
 	}
 }
@@ -785,9 +848,7 @@ struct amf_csi_assignment *amf_csi_assignment_find (
 	char *csi_assignment_name;
 	char *buf;
 
-	ENTER ("%s", name->value);
-
-    /* malloc new buffer since we need to write to the buffer */
+	/* malloc new buffer since we need to write to the buffer */
 	buf = amf_malloc (name->length + 1);
 	memcpy (buf, name->value, name->length + 1);
 
@@ -808,7 +869,7 @@ struct amf_csi_assignment *amf_csi_assignment_find (
 	*(si_name - 1) = '\0';
 	*(app_name - 1) = '\0';
 
-    /* jump to value */
+	/* jump to value */
 	csi_assignment_name += 11;
 	csi_name += 7;
 	si_name += 6;
@@ -867,11 +928,11 @@ void *amf_csi_attribute_serialize (
 
 	/* count value and write to buf */
 	for (i = 0; csi_attribute->value &&
-		  csi_attribute->value[i] != NULL; i++);
+		csi_attribute->value[i] != NULL; i++);
 	buf = amf_serialize_SaUint32T (buf, &size, &offset, i);
 
 	for (i = 0; csi_attribute->value &&
-		  csi_attribute->value[i] != NULL; i++) {
+		csi_attribute->value[i] != NULL; i++) {
 		buf = amf_serialize_SaStringT (
 			buf, &size, &offset, csi_attribute->value[i]);
 	}

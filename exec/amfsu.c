@@ -128,7 +128,7 @@
 #include "print.h"
 #include "main.h"
 
-static int presence_state_all_comps_in_su_are_set (struct amf_su *su,
+int amf_su_presence_state_all_comps_in_su_are_set (struct amf_su *su,
 	SaAmfPresenceStateT state)
 {
 	int all_set = 1;
@@ -219,8 +219,8 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 	csi_assignment->next = csi->assigned_csis;
 	csi->assigned_csis = csi_assignment;
 	amf_comp_dn_make (comp, &csi_assignment->name);
-	csi_assignment->csi = csi;
 	csi_assignment->comp = comp;
+	csi_assignment->csi = csi;
 	csi_assignment->saAmfCSICompHAState = 0; /* undefined confirmed HA state */
 	csi_assignment->requested_ha_state = ha_state;
 	csi_assignment->si_assignment = si_assignment;
@@ -235,8 +235,8 @@ static void su_restart (struct amf_su *su)
 
 	amf_su_dn_make (su, &dn);
 	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-							"action:\n\t\tSU restart", dn.value);
-	
+		"action:\n\t\tSU restart", dn.value);
+
 	su->restart_control_state = SU_RC_RESTART_SU_DEACTIVATING;
 	su->restart_control_state = SU_RC_RESTART_SU_INSTANTIATING;
 	su->escalation_level_history_state =
@@ -256,7 +256,7 @@ static void comp_restart (struct amf_comp *comp)
 	ENTER ("'%s'", comp->name.value);
 	amf_comp_dn_make (comp, &dn);
 	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-							"action:\n\t\tcomponent restart", dn.value);
+		"action:\n\t\tcomponent restart", dn.value);
 
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_DEACTIVATING;
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_RESTARTING;
@@ -311,7 +311,7 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 
 				for (csi = si->csi_head; csi != NULL; csi = csi->next) {
 					if (!memcmp(csi->saAmfCSTypeName.value, cs_type->value,
-								cs_type->length)) {
+							cs_type->length)) {
 						comp_assign_csi (comp, csi, si_assignment, ha_state);
 						no_of_assignments++;
 					}
@@ -406,7 +406,7 @@ static void su_comp_presence_state_changed (
 					 * TODO: send to node
 					*/
 				case SU_RC_ESCALATION_LEVEL_0:
-					if (presence_state_all_comps_in_su_are_set (
+					if (amf_su_presence_state_all_comps_in_su_are_set (
 						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
 
 						su_presence_state_set (
@@ -418,7 +418,7 @@ static void su_comp_presence_state_changed (
 					reassign_sis (comp->su);
 					break;
 				case SU_RC_RESTART_SU_INSTANTIATING:
-					if (presence_state_all_comps_in_su_are_set (
+					if (amf_su_presence_state_all_comps_in_su_are_set (
 						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
 
 						su->restart_control_state = SU_RC_RESTART_SU_SETTING;
@@ -433,7 +433,7 @@ static void su_comp_presence_state_changed (
 			}
 			break;
 		case SA_AMF_PRESENCE_UNINSTANTIATED:
-			if (presence_state_all_comps_in_su_are_set (
+			if (amf_su_presence_state_all_comps_in_su_are_set (
 				su, SA_AMF_PRESENCE_UNINSTANTIATED)) {
 
 				su_presence_state_set (comp->su,
@@ -458,25 +458,25 @@ static void su_comp_op_state_changed (
 
 	switch (state) {
 		case SA_AMF_OPERATIONAL_ENABLED:
-		{
-			struct amf_comp *comp_compare;
-			int all_set = 1;
-			for (comp_compare = comp->su->comp_head;
-				  comp_compare != NULL; comp_compare = comp_compare->next) {
-				if (comp_compare->saAmfCompOperState !=
+			{
+				struct amf_comp *comp_compare;
+				int all_set = 1;
+				for (comp_compare = comp->su->comp_head;
+					comp_compare != NULL; comp_compare = comp_compare->next) {
+					if (comp_compare->saAmfCompOperState !=
 						SA_AMF_OPERATIONAL_ENABLED) {
 
-					all_set = 0;
-					break;
+						all_set = 0;
+						break;
+					}
 				}
+				if (all_set) {
+					su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_ENABLED);
+				} else {
+					su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
+				}
+				break;
 			}
-			if (all_set) {
-				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_ENABLED);
-			} else {
-				su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
-			}
-			break;
-		}
 		case SA_AMF_OPERATIONAL_DISABLED:
 			break;
 		default:
@@ -534,17 +534,9 @@ void amf_su_comp_error_suspected (
 {
 	ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
 
-	/*                                                              
-	 * Defer all new events. Workaround to be able to use gdb.
-	*/
-	if (su->sg->avail_state != SG_AC_Idle) {
-		ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
-		fprintf (stderr, "Warning Debug: event deferred!\n");
-		return;
-	}
-
 	switch (su->restart_control_state) {
 		case SU_RC_ESCALATION_LEVEL_0:
+ 
 			if (comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax) {
 				su->restart_control_state = SU_RC_ESCALATION_LEVEL_1;
 				amf_su_comp_error_suspected (su, comp, recommended_recovery);
@@ -572,29 +564,23 @@ void amf_su_comp_error_suspected (
 				/*                                                              
 				 * TODO: delegate to node
 				*/
-				struct amf_si_assignment *si_assignment =
-					amf_su_get_next_si_assignment (su, NULL);
-				if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
-					SaNameT dn;
+				SaNameT dn;
 
-					su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
-					amf_comp_operational_state_set (
-						comp, SA_AMF_OPERATIONAL_DISABLED);
-					amf_comp_dn_make (comp, &dn);
-					log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-											"action:\n\t\tSU failover", dn.value);
-					amf_sg_failover_su_req (comp->su->sg, comp->su, this_amf_node);
-					return;
-				} else {
-					su_restart (comp->su);
-				}
+				su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
+				amf_comp_operational_state_set (
+					comp, SA_AMF_OPERATIONAL_DISABLED);
+				amf_comp_dn_make (comp, &dn);
+				log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+					"action:\n\t\tSU failover", dn.value);
+				amf_sg_failover_su_req (comp->su->sg, comp->su, this_amf_node);
+				return;
 			} else {
 				su_restart (comp->su);
 			}
 			break;
 
 		default:
-			assert (0);
+			break;
 	}
 }
 
@@ -620,9 +606,13 @@ void amf_su_terminate (struct amf_su *su)
 
 char *amf_su_dn_make (struct amf_su *su, SaNameT *name)
 {
-	int	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
+	int i;
+
+	assert (su != NULL);
+
+	i = snprintf((char*) name->value, SA_MAX_NAME_LENGTH,
 		"safSu=%s,safSg=%s,safApp=%s",
-		su->name.value,	su->sg->name.value, su->sg->application->name.value);
+		su->name.value, su->sg->name.value, su->sg->application->name.value);
 	assert (i <= SA_MAX_NAME_LENGTH);
 	name->length = i;
 	return (char *)name->value;
@@ -676,7 +666,7 @@ struct amf_si_assignment *amf_su_get_next_si_assignment (
 void amf_su_foreach_si_assignment (
 	struct amf_su *su,
 	void (*foreach_fn)(struct amf_su *su,
-					   struct amf_si_assignment *si_assignment))
+	struct amf_si_assignment *si_assignment))
 {
 	struct amf_si_assignment *si_assignment;
 
@@ -715,7 +705,7 @@ int amf_su_get_saAmfSUNumCurrStandbySIs(struct amf_su *su)
 {
 	int cnt = 0;
 	struct amf_si_assignment *si_assignment;
-	
+
 	si_assignment = amf_su_get_next_si_assignment (su, NULL); 
 	while (si_assignment != NULL) {
 		if (su->sg->avail_state == SG_AC_AssigningOnRequest &&
@@ -736,7 +726,7 @@ SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (struct amf_su *su)
 {
 	if ((su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) &&
 		((su->saAmfSUPresenceState == SA_AMF_PRESENCE_INSTANTIATED) ||
-		 (su->saAmfSUPresenceState == SA_AMF_PRESENCE_RESTARTING))) {
+		(su->saAmfSUPresenceState == SA_AMF_PRESENCE_RESTARTING))) {
 
 		return SA_AMF_READINESS_IN_SERVICE;
 	} else if (su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) {
@@ -773,7 +763,7 @@ struct amf_su *amf_su_new (struct amf_sg *sg, char *name)
 	}
 
 	if (tail == NULL) {
-		sg->su_head	 = su;
+		sg->su_head = su;
 	} else {
 		tail->next = su;
 	}
@@ -882,6 +872,8 @@ struct amf_su *amf_su_find (struct amf_cluster *cluster, SaNameT *name)
 	char *su_name;
 	char *ptrptr;
 	char *buf;
+
+	assert (cluster != NULL && name != NULL);
 
 	/* malloc new buffer since strtok_r writes to its first argument */
 	buf = amf_malloc (name->length + 1);

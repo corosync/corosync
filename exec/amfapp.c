@@ -75,7 +75,7 @@
 #include "amf.h"
 #include "print.h"
 
-static int all_sg_started(struct amf_application *app)
+static int all_sg_started (struct amf_application *app)
 {
 	struct amf_sg *sg;
 	struct amf_su *su;
@@ -102,6 +102,8 @@ void amf_application_start (
 
 	ENTER ("'%s'", app->name.value);
 
+	app->node_to_start = node;
+
 	/* TODO: Calculate and set SI dependency levels  */
 
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
@@ -119,6 +121,9 @@ void amf_application_assign_workload (
 	 * Each dependency level should be looped and amf_sg_assign_si
 	 * called several times.
 	*/
+
+	app->node_to_start = node;
+
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		amf_sg_assign_si (sg, 0);
 	}
@@ -133,9 +138,13 @@ void amf_application_sg_started (
 	struct amf_application *app, struct amf_sg *sg,	struct amf_node *node)
 {
 	ENTER ("'%s'", app->name.value);
-
+	
 	if (all_sg_started (app)) {
-		amf_cluster_application_started (app->cluster, app);
+		if (app->node_to_start == NULL) {
+			amf_cluster_application_started (app->cluster, app);
+		} else {
+			amf_node_application_started (app->node_to_start, app);
+		}	
 	}
 }
 
@@ -143,7 +152,11 @@ void amf_application_sg_assigned (
 	struct amf_application *app, struct amf_sg *sg)
 {
 	ENTER ("'%s'", app->name.value);
-	amf_cluster_application_workload_assigned (app->cluster, app);
+	if (app->node_to_start == NULL) {
+		amf_cluster_application_workload_assigned (app->cluster, app);
+	} else {
+		amf_node_application_workload_assigned (app->node_to_start, app);
+	}
 }
 
 struct amf_application *amf_application_new (struct amf_cluster *cluster)
@@ -219,14 +232,15 @@ struct amf_application *amf_application_find (
 {
 	struct amf_application *app;
 
-	ENTER ("%s", name);
-
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		if (strncmp (name, (char*)app->name.value, app->name.length) == 0) {
 			break;
 		}
 	}
 
+	if (app == NULL) {
+		dprintf ("App %s not found!", name);
+	}
 	return app;
 }
 

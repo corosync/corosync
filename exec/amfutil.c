@@ -49,6 +49,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "../include/saAis.h"
 #include "../include/saAmf.h"
@@ -113,21 +115,21 @@ static const char *assignment_state_text[] = {
 
 static int init_category (struct amf_comp *comp, char *loc)
 {
-	 if (strcmp (loc, "sa_aware") == 0) {
-		 comp->saAmfCompCategory = SA_AMF_COMP_SA_AWARE;
-	 } else if (strcmp (loc, "proxy") == 0) {
-		 comp->saAmfCompCategory = SA_AMF_COMP_PROXY;
-	 } else if (strcmp (loc, "proxied") == 0) {
-		 comp->saAmfCompCategory = SA_AMF_COMP_PROXIED;
-	 } else if (strcmp (loc, "local") == 0) {
-		 comp->saAmfCompCategory = SA_AMF_COMP_LOCAL;
-	 } else {
-		 return -1;
-	 }
- 
-	 return 0;
-}	
- 
+	if (strcmp (loc, "sa_aware") == 0) {
+		comp->saAmfCompCategory = SA_AMF_COMP_SA_AWARE;
+	} else if (strcmp (loc, "proxy") == 0) {
+		comp->saAmfCompCategory = SA_AMF_COMP_PROXY;
+	} else if (strcmp (loc, "proxied") == 0) {
+		comp->saAmfCompCategory = SA_AMF_COMP_PROXIED;
+	} else if (strcmp (loc, "local") == 0) {
+		comp->saAmfCompCategory = SA_AMF_COMP_LOCAL;
+	} else {
+		return -1;
+	}
+
+	return 0;
+}   
+
 static int init_capability (struct amf_comp *comp, char *loc)
 {
 	if (strcmp (loc, "x_active_and_y_standby") == 0) {
@@ -147,10 +149,10 @@ static int init_capability (struct amf_comp *comp, char *loc)
 	} else {
 		return -1;
 	}
-  
+
 	return 0;
 }
- 
+
 static int init_recovery_on_error (struct amf_comp *comp, char *loc)
 {
 	if (strcmp (loc, "component_restart") == 0) {
@@ -258,8 +260,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 	int                       csi_dependencies_cnt = 0;
 	char                     *error_reason = NULL;
 	char                     *value;
-
-	filename = getenv("OPENAIS_AMF_CONFIG_FILE");
+	filename = getenv ("OPENAIS_AMF_CONFIG_FILE");
 	if (!filename) {
 		filename = "/etc/ais/amf.conf";
 	}
@@ -267,7 +268,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 	fp = fopen (filename, "r");
 	if (fp == 0) {
 		sprintf (buf, "Can't read %s file reason = (%s).\n",
-				 filename, strerror (errno));
+			filename, strerror (errno));
 		*error_string = buf;
 		return NULL;
 	}
@@ -395,6 +396,10 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs (line, "safSg=")) != 0) {
 				sg = amf_sg_new (app, trim_str (loc));
 				sg_cnt++;
+				sg->recovery_scope.comp = NULL;
+				sg->recovery_scope.recovery_type = 0;
+				sg->recovery_scope.sis = NULL;
+				sg->recovery_scope.sus = NULL;
 				current_parse = AMF_SG;
 				su_cnt = 0;
 			} else if ((loc = strstr_rs (line, "safSi=")) != 0) {
@@ -406,7 +411,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				if (sg_cnt == 1) {
 					for (si = app->si_head; si != NULL; si = si->next) {
 						memcpy (&si->saAmfSIProtectedbySG, &sg->name,
-								sizeof (SaNameT));
+							sizeof (SaNameT));
 					}
 				} else {
 					for (si = app->si_head; si != NULL; si = si->next) {
@@ -689,7 +694,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else {
 				comp_cs_type_cnt++;
 				comp->saAmfCompCsTypes = realloc (comp->saAmfCompCsTypes,
-												 (comp_cs_type_cnt + 1) * sizeof(SaNameT));
+					(comp_cs_type_cnt + 1) * sizeof(SaNameT));
 				comp->saAmfCompCsTypes[comp_cs_type_cnt] = NULL;
 				comp->saAmfCompCsTypes[comp_cs_type_cnt - 1] = amf_malloc (sizeof(SaNameT));
 				setSaNameT (comp->saAmfCompCsTypes[comp_cs_type_cnt - 1], line);
@@ -702,7 +707,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strchr (line, '=')) != 0) {
 				comp_env_var_cnt++;
 				comp->saAmfCompCmdEnv = realloc (comp->saAmfCompCmdEnv,
-												 (comp_env_var_cnt + 1) * sizeof(SaStringT));
+					(comp_env_var_cnt + 1) * sizeof(SaStringT));
 				comp->saAmfCompCmdEnv[comp_env_var_cnt] = NULL;
 				env_var = comp->saAmfCompCmdEnv[comp_env_var_cnt - 1] = amf_malloc (strlen (line) + 1);
 				strcpy (env_var, line);
@@ -744,9 +749,9 @@ struct amf_cluster *amf_config_read (char **error_string)
 				csi->si = si;
 				setSaNameT (&csi->name, trim_str (loc));
 				current_parse = AMF_CSI;
-			} else if ((loc = strstr_rs (line, "saAmfSIProtectedbySG{")) != 0) {
+			} else if ((loc = strstr_rs (line, "saAmfSIProtectedbySG=")) != 0) {
 				setSaNameT (&si->saAmfSIProtectedbySG, loc);
-			} else if ((loc = strstr_rs (line, "saAmfSIRank{")) != 0) {
+			} else if ((loc = strstr_rs (line, "saAmfSIRank=")) != 0) {
 				si->saAmfSIRank = atoi (loc);
 			} else if ((loc = strstr_rs (line, "saAmfSINumCSIs=")) != 0) {
 				si->saAmfSINumCSIs = atoi (loc);
@@ -860,7 +865,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 parse_error:
 	sprintf (buf, "parse error at %s: %d: %s\n",
-			 filename, line_number, error_reason);
+		filename, line_number, error_reason);
 	*error_string = buf;
 	fclose (fp);
 	return NULL;
@@ -879,7 +884,7 @@ static void print_si_assignment (struct amf_su *su,
 {
 	log_printf (LOG_INFO, "          safSi=%s\n", si_assignment->si->name.value);
 	log_printf (LOG_INFO, "            HA state: %s\n",
-			ha_state_text[si_assignment->saAmfSISUHAState]);
+		ha_state_text[si_assignment->saAmfSISUHAState]);
 }
 
 void amf_runtime_attributes_print (struct amf_cluster *cluster)
@@ -896,49 +901,49 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 	log_printf (LOG_INFO, "===================================================");
 	log_printf (LOG_INFO, "safCluster=%s", getSaNameT(&cluster->name));
 	log_printf (LOG_INFO, "  admin state: %s\n",
-			admin_state_text[cluster->saAmfClusterAdminState]);
+		admin_state_text[cluster->saAmfClusterAdminState]);
 	for (node = cluster->node_head; node != NULL; node = node->next) {
 		log_printf (LOG_INFO, "  safNode=%s\n", getSaNameT (&node->name));
 		log_printf (LOG_INFO, "    admin state: %s\n",
-				admin_state_text[node->saAmfNodeAdminState]);
+			admin_state_text[node->saAmfNodeAdminState]);
 		log_printf (LOG_INFO, "    oper state:  %s\n",
-				oper_state_text[node->saAmfNodeOperState]);
+			oper_state_text[node->saAmfNodeOperState]);
 	}
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		log_printf (LOG_INFO, "  safApp=%s\n", getSaNameT(&app->name));
 		log_printf (LOG_INFO, "    admin state: %s\n",
-				admin_state_text[app->saAmfApplicationAdminState]);
+			admin_state_text[app->saAmfApplicationAdminState]);
 		log_printf (LOG_INFO, "    num_sg:      %d\n", app->saAmfApplicationCurrNumSG);
-		for (sg = app->sg_head;	sg != NULL; sg = sg->next) {
-			log_printf (LOG_INFO, "    safSG=%s\n", getSaNameT(&sg->name));
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			log_printf (LOG_INFO, "    safSg=%s\n", getSaNameT(&sg->name));
 			log_printf (LOG_INFO, "      admin state:        %s\n",
-					admin_state_text[sg->saAmfSGAdminState]);
+				admin_state_text[sg->saAmfSGAdminState]);
 			log_printf (LOG_INFO, "      assigned SUs        %d\n",
-					sg->saAmfSGNumCurrAssignedSUs);
+				sg->saAmfSGNumCurrAssignedSUs);
 			log_printf (LOG_INFO, "      non inst. spare SUs %d\n",
-					sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
+				sg->saAmfSGNumCurrNonInstantiatedSpareSUs);
 			log_printf (LOG_INFO, "      inst. spare SUs     %d\n",
-					sg->saAmfSGNumCurrInstantiatedSpareSUs);
+				sg->saAmfSGNumCurrInstantiatedSpareSUs);
 			for (su = sg->su_head; su != NULL; su = su->next) {
 				log_printf (LOG_INFO, "      safSU=%s\n", getSaNameT(&su->name));
 				log_printf (LOG_INFO, "        oper state:      %s\n",
-						oper_state_text[su->saAmfSUOperState]);
+					oper_state_text[su->saAmfSUOperState]);
 				log_printf (LOG_INFO, "        admin state:     %s\n",
-						admin_state_text[su->saAmfSUAdminState]);
+					admin_state_text[su->saAmfSUAdminState]);
 				log_printf (LOG_INFO, "        readiness state: %s\n",
 					readiness_state_text[amf_su_get_saAmfSUReadinessState (su)]);
 				log_printf (LOG_INFO, "        presence state:  %s\n",
-						presence_state_text[su->saAmfSUPresenceState]);
+					presence_state_text[su->saAmfSUPresenceState]);
 				log_printf (LOG_INFO, "        hosted by node   %s\n",
-						su->saAmfSUHostedByNode.value);
+					su->saAmfSUHostedByNode.value);
 				log_printf (LOG_INFO, "        num active SIs   %d\n",
-						amf_su_get_saAmfSUNumCurrActiveSIs (su));
+					amf_su_get_saAmfSUNumCurrActiveSIs (su));
 				log_printf (LOG_INFO, "        num standby SIs  %d\n",
-						amf_su_get_saAmfSUNumCurrStandbySIs (su));
+					amf_su_get_saAmfSUNumCurrStandbySIs (su));
 				log_printf (LOG_INFO, "        restart count    %d\n",
-						su->saAmfSURestartCount);
+					su->saAmfSURestartCount);
 				log_printf (LOG_INFO, "        restart control state %d\n",
-							su->restart_control_state);
+					su->restart_control_state);
 				log_printf (LOG_INFO, "        SU failover cnt  %d\n", su->su_failover_cnt);
 				log_printf (LOG_INFO, "        assigned SIs:");
 				amf_su_foreach_si_assignment (su, print_si_assignment);
@@ -956,7 +961,7 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 					log_printf (LOG_INFO, "          num standby CSIs %d\n",
 						amf_comp_get_saAmfCompNumCurrStandbyCsi (comp));
 					log_printf (LOG_INFO, "          restart count    %d\n",
-							comp->saAmfCompRestartCount);
+						comp->saAmfCompRestartCount);
 					log_printf (LOG_INFO, "          assigned CSIs:");
 					amf_comp_foreach_csi_assignment (
 						comp, print_csi_assignment);
@@ -969,11 +974,11 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 				admin_state_text[si->saAmfSIAdminState]);
 			log_printf (LOG_INFO, "      assignm. state:      %s\n",
 				assignment_state_text[
-					amf_si_get_saAmfSIAssignmentState (si)]);
+				amf_si_get_saAmfSIAssignmentState (si)]);
 			log_printf (LOG_INFO, "      active assignments:  %d\n",
-					amf_si_get_saAmfSINumCurrActiveAssignments (si));
+				amf_si_get_saAmfSINumCurrActiveAssignments (si));
 			log_printf (LOG_INFO, "      standby assignments: %d\n",
-					amf_si_get_saAmfSINumCurrStandbyAssignments (si));
+				amf_si_get_saAmfSINumCurrStandbyAssignments (si));
 			for (csi = si->csi_head; csi != NULL; csi = csi->next) {
 				log_printf (LOG_INFO, "      safCsi=%s\n", getSaNameT(&csi->name));
 			}
@@ -991,22 +996,22 @@ int amf_enabled (struct objdb_iface_ver0 *objdb)
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	if (objdb->object_find (
-			OBJECT_PARENT_HANDLE,
-			"amf",
-			strlen ("amf"),
-			&object_service_handle) == 0) {
+		OBJECT_PARENT_HANDLE,
+		"amf",
+		strlen ("amf"),
+		&object_service_handle) == 0) {
 
 		value = NULL;
-		if ( !objdb->object_key_get (object_service_handle,
-							"mode",
-							strlen ("mode"),
-							(void *)&value,
-							NULL) && value) {
+		if (!objdb->object_key_get (object_service_handle,
+			"mode",
+			strlen ("mode"),
+			(void *)&value,
+			NULL) && value) {
 
 			if (strcmp (value, "enabled") == 0) {
 				enabled = 1;
 			} else
-			if (strcmp (value, "disabled") == 0) {
+				if (strcmp (value, "disabled") == 0) {
 				enabled = 0;
 			}
 		}
@@ -1146,7 +1151,7 @@ char *amf_deserialize_SaStringT (char *buf, SaStringT *str)
 		memcpy (tmp_str, tmp, len);
 		tmp_str[len] = '\0';
 		*str = tmp_str;
-	} else  {
+	} else {
 		*str = NULL;
 	}
 
@@ -1185,3 +1190,86 @@ void *_amf_malloc (size_t size, char *file, unsigned int line)
 
 	return tmp;
 }
+
+int sa_amf_grep_one_sub_match(const char *string, char *pattern, 
+	SaNameT *matches_arr)
+{
+	int             status;
+	regex_t         re;
+	size_t          nmatch = 2;
+	regmatch_t      pmatch[nmatch];
+
+	int i;
+
+	ENTER("'%s %s'",string, pattern);
+
+	if (regcomp(&re, pattern, REG_EXTENDED) != 0) {
+		status = 0;
+		goto out;
+	}
+	status = regexec(&re, string, nmatch, pmatch, 0);
+	if (status != 0) {
+		regfree(&re);
+		status = 0;
+		goto out;
+	} else {
+
+
+		for (i = 0; i < nmatch; i++) {
+			int sub_string_len;
+			sub_string_len = pmatch[i].rm_eo - pmatch[i].rm_so;
+			if (i==1) {
+
+				memcpy(matches_arr[i].value, string + pmatch[i].rm_so, 
+					sub_string_len);
+				matches_arr[i].value[sub_string_len] = '\0';
+			}
+		}
+		status = 1;
+		regfree(&re);
+	}
+	out:
+	return status;
+
+}
+
+
+int sa_amf_grep(const char *string, char *pattern, size_t nmatch,
+	SaNameT *matches_arr)
+{
+	int             status;
+	regex_t         re;
+	regmatch_t      pmatch[nmatch];
+
+	int i;
+
+	ENTER("'%s %s'",string, pattern);
+	if (regcomp(&re, pattern, REG_EXTENDED) != 0) {
+		status = 0;
+		goto out;
+	}
+	status = regexec(&re, string, nmatch, pmatch, 0);
+	if (status != 0) {
+		regfree(&re);
+		status = 0;
+		goto out;
+	} else {
+
+
+		for (i = 0; i < nmatch; i++) {
+			int sub_string_len;
+			sub_string_len = pmatch[i].rm_eo - pmatch[i].rm_so; 
+			memcpy(matches_arr[i].value, string + pmatch[i].rm_so, 
+				sub_string_len);
+			matches_arr[i].value[sub_string_len] = '\0';
+			matches_arr[i].length = sub_string_len;
+		}
+		status = 1;
+		regfree(&re);
+	}
+out:
+	return status;
+
+}
+
+

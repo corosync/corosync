@@ -148,6 +148,526 @@
 #include "main.h"
 #include "util.h"
 
+static void acsm_enter_activating_standby (struct amf_sg *sg);
+static void delete_si_assignments_in_scope (struct amf_sg *sg);
+
+static void standby_su_activated_cbfn (
+	struct amf_si_assignment *si_assignment, int result);
+
+static void dependent_si_deactivated_cbfn (
+	struct amf_si_assignment *si_assignment, int result);
+
+static const char *sg_recovery_type_text[] = {
+	"Unknown",
+	"FailoverSU",
+	"FailoverNode"
+};
+
+static void return_to_idle (struct amf_sg *sg)
+{
+	SaNameT dn;
+
+	ENTER ("sg: %s state: %d", sg->name.value,sg->avail_state);
+
+	sg->avail_state = SG_AC_Idle;
+	if (sg->recovery_scope.recovery_type != 0) {
+		switch (sg->recovery_scope.recovery_type) {
+			case SG_RT_FailoverSU:
+			case SG_RT_FailoverNode:
+				assert (sg->recovery_scope.sus[0] != NULL);
+				amf_su_dn_make (sg->recovery_scope.sus[0], &dn);
+				log_printf (
+					LOG_NOTICE, "'%s' %s recovery action finished",
+					dn.value,
+					sg_recovery_type_text[sg->recovery_scope.recovery_type]);
+				break;
+			default:
+				log_printf (
+					LOG_NOTICE, "'%s' recovery action finished",
+					sg_recovery_type_text[0]);
+		}
+	}
+
+	if (sg->recovery_scope.sus != NULL) {
+		free ((void *)sg->recovery_scope.sus);
+	}
+	if (sg->recovery_scope.sis != NULL) {
+		free ((void *)sg->recovery_scope.sis);
+	}
+	memset (&sg->recovery_scope, 0, sizeof (struct sg_recovery_scope));
+}
+
+static int su_instantiated_count (struct amf_sg *sg)
+{
+	int cnt = 0;
+	struct amf_su *su;
+
+	for (su = sg->su_head; su != NULL; su = su->next) {
+		if (su->saAmfSUPresenceState == SA_AMF_PRESENCE_INSTANTIATED)
+			cnt++;
+	}
+
+	return cnt;
+}
+
+static int has_any_su_in_scope_active_workload (struct amf_sg *sg)
+{
+	struct amf_su **sus= sg->recovery_scope.sus;
+	struct amf_si_assignment *si_assignment;
+
+	while (*sus != NULL) {
+		si_assignment = amf_su_get_next_si_assignment (*sus, NULL);
+		while (si_assignment != NULL) {
+			if (si_assignment->saAmfSISUHAState != SA_AMF_HA_ACTIVE) {
+				break;
+			}
+			si_assignment = amf_su_get_next_si_assignment (
+				*sus, si_assignment);
+		}
+		if (si_assignment != NULL) {
+			break;
+		}
+		sus++;
+	}
+	return(*sus == NULL);
+}
+
+static int is_standby_for_non_active_si_in_scope (struct amf_sg *sg)
+{
+	struct amf_si **sis= sg->recovery_scope.sis;
+	struct amf_si_assignment *si_assignment;
+
+	/*
+	 * Check if there is any si in the scope which has no active assignment
+	 * and at least one standby assignment.
+	 */
+	while (*sis != NULL) {
+		si_assignment = (*sis)->assigned_sis;
+		while (si_assignment != NULL) {
+			if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+				break;
+			}
+			si_assignment = si_assignment->next;
+		}
+		if (si_assignment == NULL) {
+			/* There is no ACTIVE assignment ..*/
+			si_assignment = (*sis)->assigned_sis;
+			while (si_assignment != NULL) {
+				if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
+					break;
+				}
+				si_assignment = si_assignment->next;
+			}
+			if (si_assignment != NULL) {
+				/* .. and one STANDBY assignment*/
+				break;
+			}
+		}
+		sis++;
+	}
+	return(*sis != NULL);
+}
+
+static void acsm_enter_terminating_suspected (struct amf_sg *sg)
+{
+	struct amf_su **sus= sg->recovery_scope.sus;
+
+	sg->avail_state = SG_AC_TerminatingSuspected;
+					/*                                                              
+	* Terminate suspected SU(s)
+	*/
+	while (*sus != 0) {
+		amf_su_terminate (*sus);
+		sus++;
+	}
+}
+
+
+/**
+ * Callback function used by SI when there is no dependent SI to
+ * deactivate.
+ * @param sg
+ */
+static void dependent_si_deactivated_cbfn2 (struct amf_sg *sg)
+{
+	struct amf_su **sus = sg->recovery_scope.sus;
+	ENTER("'%s'", sg->name.value);
+
+	/* Select next state depending on if some SU in the scope is
+	 * needs to be terminated.
+	 */
+	while (*sus != NULL) {
+		ENTER("SU %s pr_state='%d'",(*sus)->name.value,
+			(*sus)->saAmfSUPresenceState);
+		if (((*sus)->saAmfSUPresenceState == 
+			SA_AMF_PRESENCE_UNINSTANTIATED) ||
+			((*sus)->saAmfSUPresenceState == 
+			SA_AMF_PRESENCE_TERMINATION_FAILED) ||
+			((*sus)->saAmfSUPresenceState == 
+			SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+			sus++;
+			continue;
+		}
+		break;
+	}
+
+	if (*sus != NULL) {
+		acsm_enter_terminating_suspected (sg);
+	} else {
+		delete_si_assignments_in_scope(sg);         
+		acsm_enter_activating_standby (sg);
+	}
+
+}
+
+static void timer_function_dependent_si_deactivated2 (void *sg)
+{
+
+	ENTER ("");
+	dependent_si_deactivated_cbfn2 (sg);
+}
+
+static struct amf_si *si_get_dependent (struct amf_si *si)
+{
+
+	struct amf_si *tmp_si = NULL;
+	ENTER("'%p'",si->depends_on);
+	if (si->depends_on != NULL) {
+
+		if (si->depends_on->name.length < SA_MAX_NAME_LENGTH) {
+			si->depends_on->name.value[si->depends_on->name.length] = '\0';  
+		}
+		SaNameT res_arr[2];
+		int is_match;
+
+
+		is_match = sa_amf_grep ((char*)si->depends_on->name.value, 
+			"safDepend=.*,safSi=(.*),safApp=.*", 
+			2, res_arr);
+
+		if (is_match) {
+			tmp_si = amf_si_find (si->application, (char*)res_arr[1].value);
+		} else {
+			log_printf (LOG_LEVEL_ERROR, "distinguished name for "
+				"amf_si_depedency failed\n");
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+		}
+	}
+	return tmp_si;
+}
+
+struct amf_si *amf_dependent_get_next (struct amf_si *si, 
+	struct amf_si *si_iter)
+{
+	struct amf_si *tmp_si;
+	struct amf_application *application;
+
+	ENTER("");
+	if (si_iter == NULL) {
+		assert(amf_cluster != NULL);
+		application = amf_cluster->application_head;
+		assert(application != NULL);    
+		tmp_si = application->si_head;
+	} else {
+		tmp_si = si_iter->next;
+		if (tmp_si == NULL) {
+			application = si->application->next;
+			if (application == NULL) {
+				goto out;
+			}
+		}
+	}
+
+	for (; tmp_si != NULL; tmp_si = tmp_si->next) {
+		struct amf_si *depends_on_si = si_get_dependent (tmp_si);
+		while (depends_on_si != NULL) {
+			if (depends_on_si == si) {
+				goto out;
+			}
+			depends_on_si = depends_on_si->next;
+		}
+	}
+	out:
+	return tmp_si;
+}
+
+static void acsm_enter_deactivating_dependent_workload (struct amf_sg *sg)
+{
+	struct amf_si **sis= sg->recovery_scope.sis;
+	struct amf_si_assignment *si_assignment;
+	int callback_pending = 0;
+
+	sg->avail_state = SG_AC_DeactivatingDependantWorkload;
+
+	ENTER("'%s'",sg->name.value);
+	/*                                                              
+	 * For each SI in the recovery scope, find all active assignments
+	 * and request them to be deactivated.
+	 */
+	while (*sis != NULL) {
+		struct amf_si *dependent_si;
+		struct amf_si *si = *sis;
+		si_assignment = si->assigned_sis;
+		dependent_si = amf_dependent_get_next (si, NULL);   
+
+		while (dependent_si != NULL) {
+			si_assignment = dependent_si->assigned_sis;
+
+			while (si_assignment != NULL) {
+
+				if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
+					si_assignment->requested_ha_state = SA_AMF_HA_QUIESCED;
+					callback_pending = 1;
+					amf_si_ha_state_assume (
+						si_assignment, dependent_si_deactivated_cbfn);
+				}
+				si_assignment = si_assignment->next;
+			}
+			dependent_si = amf_dependent_get_next (si, dependent_si);   
+		}
+		sis++;
+	}
+
+	if (callback_pending == 0) {
+		poll_timer_handle handle;
+		ENTER("");
+		poll_timer_add (aisexec_poll_handle, 0, sg,
+			timer_function_dependent_si_deactivated2, &handle);
+	}
+}
+
+/**
+ * Enter function for state SG_AC_ActivatingStandby. It activates
+ * one STANDBY assignment for each SI in the recovery scope.
+ * @param sg
+ */
+static void acsm_enter_activating_standby (struct amf_sg *sg)
+{
+	struct amf_si **sis= sg->recovery_scope.sis;
+	struct amf_si_assignment *si_assignment;
+	ENTER("'%s'",sg->name.value); 
+	sg->avail_state = SG_AC_ActivatingStandby;
+
+	/*                                                              
+	 * For each SI in the recovery scope, find one standby
+	 * SI assignment and activate it.
+	 */
+	while (*sis != NULL) {
+		si_assignment = (*sis)->assigned_sis;
+		while (si_assignment != NULL) {
+			if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
+				si_assignment->requested_ha_state = SA_AMF_HA_ACTIVE;
+				amf_si_ha_state_assume (
+					si_assignment, standby_su_activated_cbfn);
+				break;
+			}
+			si_assignment = si_assignment->next;
+		}
+		sis++;
+	}
+}
+
+static void acsm_enter_repairing_su (struct amf_sg *sg)
+{
+	struct amf_su **sus= sg->recovery_scope.sus;
+	ENTER("'%s'",sg->name.value);
+	sg->avail_state = SG_AC_ReparingSu;
+
+	/*                                                              
+	 * Instantiate SUs in current recovery scope until the configured
+	 * preference is fulfiled.
+	 */
+	while (*sus != NULL) {
+		if (su_instantiated_count ((*sus)->sg) <
+			(*sus)->sg->saAmfSGNumPrefInserviceSUs) {
+			struct amf_node *node = amf_node_find(&((*sus)->saAmfSUHostedByNode));
+			if (node == NULL) {
+				log_printf (LOG_LEVEL_ERROR, "no node to hosted on su found"
+					"amf_si_depedency failed\n");
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+			if (node->saAmfNodeOperState == SA_AMF_OPERATIONAL_ENABLED) {
+				amf_su_instantiate ((*sus));
+			} else {
+				return_to_idle (sg);
+			}
+
+		}
+		sus++;
+	}
+}
+
+/**
+ * Checks if the si pointed out is already in the scope.
+ * @param sg
+ * @param si
+ */
+static int is_si_in_scope(struct amf_sg *sg, struct amf_si *si)
+{
+	struct amf_si **tmp_sis= sg->recovery_scope.sis;
+
+	while (*tmp_sis != NULL) {
+		if (*tmp_sis == si) {
+			break;
+		}
+		tmp_sis++;
+	}
+	return(*tmp_sis == si);
+}
+
+/**
+ * Adds the si pointed out to the scope.
+ * @param sg
+ * @param si
+ */
+static void add_si_to_scope ( struct amf_sg *sg, struct amf_si *si)
+{
+	int number_of_si = 2; /* It shall be at least two */
+	struct amf_si **tmp_sis= sg->recovery_scope.sis;
+
+	ENTER ("'%s'", si->name.value);
+
+	while (*tmp_sis != NULL) {
+		number_of_si++;
+		tmp_sis++;
+	}
+
+	sg->recovery_scope.sis = (struct amf_si **)
+	realloc((void *)sg->recovery_scope.sis, 
+		sizeof (struct amf_si *)*number_of_si);
+	assert (sg->recovery_scope.sis != NULL);
+
+	tmp_sis= sg->recovery_scope.sis;
+	while (*tmp_sis != NULL) {
+		tmp_sis++;
+	}
+
+	*tmp_sis= si;
+}
+
+/**
+ * Adds the ssu pointed out to the scope.
+ * @param sg
+ * @param su
+ */
+static void add_su_to_scope (struct amf_sg *sg, struct amf_su *su)
+{
+	int number_of_su = 2; /* It shall be at least two */
+	struct amf_su **tmp_sus= sg->recovery_scope.sus;
+
+	ENTER ("'%s'", su->name.value);
+	while (*tmp_sus != NULL) {
+		number_of_su++;
+		tmp_sus++;
+	}
+	sg->recovery_scope.sus = (struct amf_su **)
+	realloc((void *)sg->recovery_scope.sus, 
+		sizeof (struct amf_su *)*number_of_su);
+	assert (sg->recovery_scope.sus != NULL);
+
+	tmp_sus= sg->recovery_scope.sus;
+	while (*tmp_sus != NULL) {
+		tmp_sus++;
+	}
+
+	*tmp_sus= su;
+}
+
+/**
+ * Set recovery scope for failover SU.
+ * @param sg
+ * @param su
+ */
+
+static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
+{
+	struct amf_si_assignment *si_assignment;
+	struct amf_si **sis;
+	struct amf_su **sus;
+
+	sg->recovery_scope.recovery_type = SG_RT_FailoverSU;
+	sg->recovery_scope.comp = NULL;
+	sg->recovery_scope.sus = (struct amf_su **)
+	calloc (2, sizeof (struct amf_su *));
+	sg->recovery_scope.sis = (struct amf_si **)
+	calloc (1, sizeof (struct amf_si *));
+
+	assert ((sg->recovery_scope.sus != NULL) &&
+		(sg->recovery_scope.sis != NULL));
+	sg->recovery_scope.sus[0] = su;
+
+	si_assignment = amf_su_get_next_si_assignment (su, NULL);
+	while (si_assignment != NULL) {
+		if (is_si_in_scope(sg, si_assignment->si) == 0) {
+			add_si_to_scope(sg,si_assignment->si );
+		}
+		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+	}
+
+	sus= sg->recovery_scope.sus;
+	dprintf("The following sus are within the scope:\n");
+	while (*sus != NULL) {
+		dprintf("%s\n", (*sus)->name.value);
+		sus++;
+	}
+	sis= sg->recovery_scope.sis;
+	dprintf("The following sis are within the scope:\n");
+	while (*sis != NULL) {
+		dprintf("%s\n", (*sis)->name.value);
+		sis++;
+	}
+}
+
+static void set_scope_for_failover_node (struct amf_sg *sg, struct amf_node *node)
+{
+	struct amf_si_assignment *si_assignment;
+	struct amf_si **sis;
+	struct amf_su **sus;
+	struct amf_su *su;
+
+	ENTER ("'%s'", node->name.value);
+	sg->recovery_scope.recovery_type = SG_RT_FailoverNode;
+	sg->recovery_scope.comp = NULL;
+	sg->recovery_scope.sus = (struct amf_su **)
+	calloc (1, sizeof (struct amf_su *));
+	sg->recovery_scope.sis = (struct amf_si **)
+	calloc (1, sizeof (struct amf_si *));
+
+	assert ((sg->recovery_scope.sus != NULL) &&
+		(sg->recovery_scope.sis != NULL));
+	for (su = sg->su_head; su != NULL; su = su->next) {
+		if (name_match (&node->name, &su->saAmfSUHostedByNode)) {
+			add_su_to_scope (sg, su);
+		}
+	}
+
+	sus = sg->recovery_scope.sus;
+	while (*sus != 0) {
+		su  = *sus;
+		si_assignment = amf_su_get_next_si_assignment (su, NULL);
+		while (si_assignment != NULL) {
+			if (is_si_in_scope(sg, si_assignment->si) == 0) {
+				add_si_to_scope(sg, si_assignment->si );
+			}
+			si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+		}
+		sus++;
+	}
+
+	sus= sg->recovery_scope.sus;
+	dprintf("The following sus are within the scope:\n");
+	while (*sus != NULL) {
+		dprintf("%s\n", (*sus)->name.value);
+		sus++;
+	}
+	sis = sg->recovery_scope.sis;
+	dprintf("The following sis are within the scope:\n");
+	while (*sis != NULL) {
+		dprintf("%s\n", (*sis)->name.value);
+		sis++;
+	}
+}
+
 /**
  * Delete all SI assignments and all CSI assignments
  * by requesting all contained components.
@@ -158,7 +678,7 @@ static void delete_si_assignments (struct amf_su *su)
 	struct amf_csi *csi;
 	struct amf_si *si;
 	struct amf_si_assignment *si_assignment;
-	
+
 	ENTER ("'%s'", su->name.value);
 
 	for (si = su->sg->application->si_head; si != NULL; si = si->next) {
@@ -178,35 +698,29 @@ static void delete_si_assignments (struct amf_su *su)
 		if (si->assigned_sis->su == su) {
 			si_assignment = si->assigned_sis;
 			si->assigned_sis = si_assignment->next;
-			dprintf ("first");
 		} else {
 			si_assignment = si->assigned_sis->next;
 			si->assigned_sis->next = NULL;
-			dprintf ("second");
 		}
-		dprintf ("%p, %d, %d",
-				 si_assignment, si_assignment->name.length,
-				 si->assigned_sis->name.length);
 		assert (si_assignment != NULL);
 		free (si_assignment);
 	}
 }
 
-static int all_si_has_hastate (struct amf_su *su, SaAmfHAStateT hastate)
+/**
+ * Delete all SI assignments and all CSI assignments in current
+ * recovery scope.
+ * @param sg
+ */
+static void delete_si_assignments_in_scope (struct amf_sg *sg) 
 {
-	struct amf_si_assignment *si_assignment;
-	int all_confirmed = 1;
+	struct amf_su **sus= sg->recovery_scope.sus;
 
-	si_assignment = amf_su_get_next_si_assignment (su, NULL);
-	while (si_assignment != NULL) {
-		if (si_assignment->saAmfSISUHAState != hastate) {
-			all_confirmed = 0;
-			break;
-		}
-		si_assignment =	amf_su_get_next_si_assignment (su, si_assignment);
+	while (*sus != NULL) {
+		delete_si_assignments (*sus);
+		sus++;
 	}
 
-	return all_confirmed;
 }
 
 /**
@@ -214,62 +728,94 @@ static int all_si_has_hastate (struct amf_su *su, SaAmfHAStateT hastate)
  * @param si_assignment
  * @param result
  */
-static void failover_su_si_deactivated_cbfn (
+static void dependent_si_deactivated_cbfn (
 	struct amf_si_assignment *si_assignment, int result)
 {
+	struct amf_sg *sg = si_assignment->su->sg;
+	struct amf_su **sus = sg->recovery_scope.sus;
+	struct amf_su *su;
+
 	ENTER ("'%s', %d", si_assignment->si->name.value, result);
 
 	/*
-	 * If all SI assignments for the SU are quiesced, goto next
-	 * state (TerminatingSuspected).
+	 * If all SI assignments for all SUs in the SG are not pending,
+	 * goto next state (TerminatingSuspected).
 	 */
 
-	if (all_si_has_hastate (si_assignment->su, SA_AMF_HA_QUIESCED)) {
-		si_assignment->su->sg->avail_state = SG_AC_TerminatingSuspected;
 
-		/*                                                              
-		 * Terminate suspected SU(s)
+	for (su = sg->su_head ; su != NULL; su = su->next) {
+		struct amf_si_assignment *si_assignment;
+		si_assignment = amf_su_get_next_si_assignment(su, NULL);
+
+		while (si_assignment != NULL) {
+			if (si_assignment->saAmfSISUHAState != 
+				si_assignment->requested_ha_state) {
+				goto still_wating;
+			}
+			si_assignment = amf_su_get_next_si_assignment(su, si_assignment);
+		}
+
+
+	}
+
+	still_wating:
+
+	if (su == NULL) {
+		sus = si_assignment->su->sg->recovery_scope.sus;
+
+		/* Select next state depending on if some SU in the scope is
+		 * needs to be terminated.
 		 */
-		amf_su_terminate (si_assignment->su);
+		while (*sus != NULL) {
+			if (((*sus)->saAmfSUPresenceState != 
+				SA_AMF_PRESENCE_UNINSTANTIATED) &&
+				((*sus)->saAmfSUPresenceState != 
+				SA_AMF_PRESENCE_TERMINATION_FAILED) &&
+				((*sus)->saAmfSUPresenceState != 
+				SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+				break;
+			}
+			sus++;
+		}
+		if (*sus != NULL) {
+			acsm_enter_terminating_suspected (sg);
+		} else {
+			delete_si_assignments_in_scope(sg);         
+			acsm_enter_activating_standby (sg);
+		}
 	}
+	LEAVE("");
 }
 
-static int su_instantiated_count (struct amf_sg *sg)
-{
-	int cnt = 0;
-	struct amf_su *su;
-
-	for (su = sg->su_head; su != NULL; su = su->next) {
-		if (su->saAmfSUPresenceState == SA_AMF_PRESENCE_INSTANTIATED)
-			cnt++;
-	}
-
-	return cnt;
-}
 
 static void standby_su_activated_cbfn (
 	struct amf_si_assignment *si_assignment, int result)
 {
-	struct amf_su *su;
+	struct amf_su **sus= si_assignment->su->sg->recovery_scope.sus;
+	struct amf_si **sis= si_assignment->su->sg->recovery_scope.sis;
 
 	ENTER ("'%s', %d", si_assignment->si->name.value, result);
 
-	/*                                                              
-	 * TODO: create SI assignment to spare and assign them
+	/*
+	 * If all SI assignments for all SIs in the scope are activated, goto next
+	 * state.
 	 */
-	si_assignment->su->sg->avail_state = SG_AC_AssigningStandbyToSpare;
 
-	si_assignment->su->sg->avail_state = SG_AC_ReparingSu;
-
-	if (all_si_has_hastate (si_assignment->su, SA_AMF_HA_ACTIVE)) {
-		for (su = si_assignment->su->sg->su_head; su != NULL; su = su->next) {
-			if ((su->saAmfSUPresenceState == SA_AMF_PRESENCE_UNINSTANTIATED) &&
-				(su_instantiated_count (si_assignment->su->sg) <
-				si_assignment->su->sg->saAmfSGNumPrefInserviceSUs)) {
-
-				amf_su_instantiate (su);
-			}
+	while (*sis != NULL) {
+		if ((*sis)->assigned_sis != NULL &&
+			(*sis)->assigned_sis->saAmfSISUHAState != SA_AMF_HA_ACTIVE) {
+			break;
 		}
+		sis++;
+	}
+
+	if (*sis == NULL) {
+		/*                                                              
+		* TODO: create SI assignment to spare and assign them
+		*/
+		(*sus)->sg->avail_state = SG_AC_AssigningStandbyToSpare;
+
+		acsm_enter_repairing_su ((*sus)->sg);
 	}
 }
 
@@ -289,7 +835,7 @@ static void assign_si_assumed_cbfn (
 	 * has been assigned or go back to idle state if not cluster
 	 * start.
 	 */
-	for (si = sg->application->si_head;	si != NULL; si = si->next) {
+	for (si = sg->application->si_head; si != NULL; si = si->next) {
 		if (name_match (&si->saAmfSIProtectedbySG, &sg->name)) {
 
 			for (tmp_si_assignment = si->assigned_sis;
@@ -311,7 +857,7 @@ static void assign_si_assumed_cbfn (
 	switch (sg->avail_state) {
 		case SG_AC_AssigningOnRequest:
 			if (si_assignment_cnt == confirmed_assignments) {
-				sg->avail_state = SG_AC_Idle;
+				return_to_idle (sg);
 				amf_application_sg_assigned (sg->application, sg);
 			} else {
 				dprintf ("%d, %d", si_assignment_cnt, confirmed_assignments);
@@ -319,75 +865,31 @@ static void assign_si_assumed_cbfn (
 			break;
 		case SG_AC_AssigningStandBy:
 			{
-				SaNameT dn;
 				if (si_assignment_cnt == confirmed_assignments) {
-					sg->avail_state = SG_AC_Idle;
-					amf_su_dn_make (si_assignment->su, &dn);
-					sg->avail_state = SG_AC_Idle;
-					log_printf (
-						LOG_NOTICE, "'%s' failover recovery action finished",
-						dn.value);
+					return_to_idle (sg);
 				}
 				break;
 			}
 		default:
 			dprintf ("%d, %d, %d", sg->avail_state, si_assignment_cnt,
-					 confirmed_assignments);
+				confirmed_assignments);
 			amf_runtime_attributes_print (amf_cluster);
 			assert (0);
 	}
 }
 
-/**
- * Find an SU assigned with standby workload and activate it.
- * @param su
- */
-static void standby_su_activate (struct amf_su *su)
-{
-	struct amf_si_assignment *su_si_assignment;
-	struct amf_si_assignment *si_assignment;
-
-	ENTER ("Old SU '%s'", su->name.value);
-
-	su->sg->avail_state = SG_AC_ActivatingStandby;
-
-	/*                                                              
-	 * For each (active) SI assignment on the old SU, find a standby
-	 * SI assignment and activate it.
-	 */
-	su_si_assignment = amf_su_get_next_si_assignment (su, NULL);
-	while (su_si_assignment != NULL) {
-		for (si_assignment = su_si_assignment->si->assigned_sis;
-			  si_assignment != NULL;
-			  si_assignment = si_assignment->next) {
-
-			if (si_assignment->saAmfSISUHAState == SA_AMF_HA_STANDBY) {
-
-				si_assignment->requested_ha_state = SA_AMF_HA_ACTIVE;
-				amf_si_ha_state_assume (
-					si_assignment, standby_su_activated_cbfn);
-				break; /* one standby is enough */
-			}
-		}
-		su_si_assignment = amf_su_get_next_si_assignment (su, su_si_assignment);
-	}
-
-	delete_si_assignments (su);
-
-	LEAVE ("");
-}
-
 static inline int div_round (int a, int b)
 {
 	int res;
-	
+
+	assert (b != 0);
 	res = a / b;
 	if ((a % b) != 0)
 		res++;
 	return res;
 }
 
-static int all_su_has_presence_state(
+static int all_su_has_presence_state (
 	struct amf_sg *sg, SaAmfPresenceStateT state)
 {
 	struct amf_su   *su;
@@ -401,6 +903,19 @@ static int all_su_has_presence_state(
 	}
 
 	return all_set;
+}
+
+static int all_su_in_scope_has_presence_state (
+	struct amf_sg *sg, SaAmfPresenceStateT state)
+{
+	struct amf_su **sus= sg->recovery_scope.sus;
+	while (*sus != NULL) {
+		if ((*sus)->saAmfSUPresenceState != state) {
+			break;
+		}
+		sus++;
+	}
+	return(*sus == NULL);
 }
 
 /**
@@ -419,107 +934,143 @@ static int sg_si_count_get (struct amf_sg *sg)
 			cnt += 1;
 		}
 	}
-	return (cnt);
+	return(cnt);
 }
 
-static void sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
+static int sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
 {
 	struct amf_su *su;
 	struct amf_si *si;
 	int assigned = 0;
-	int assign_per_su = 0;
+	int assign_to_su = 0;
 	int total_assigned = 0;
-	int si_cnt;
+	int si_left;
+	int si_total;
+	int su_left_to_assign = su_active_assign;
 
-	ENTER ("'%s'", sg->name.value);
-
-	si_cnt = sg_si_count_get (sg);
-	assign_per_su = div_round (si_cnt, su_active_assign);
-	if (assign_per_su > sg->saAmfSGMaxActiveSIsperSUs) {
-		assign_per_su = sg->saAmfSGMaxActiveSIsperSUs;
+	si_total = sg_si_count_get (sg);
+	si_left = si_total;
+	assign_to_su = div_round (si_left, su_active_assign);
+	if (assign_to_su > sg->saAmfSGMaxActiveSIsperSUs) {
+		assign_to_su = sg->saAmfSGMaxActiveSIsperSUs;
 	}
 
-	si = sg->application->si_head;
 	su = sg->su_head;
-	while (su != NULL) {
+	while (su != NULL && su_left_to_assign > 0) {
 		if (amf_su_get_saAmfSUReadinessState (su) !=
-			   SA_AMF_READINESS_IN_SERVICE ||
+			SA_AMF_READINESS_IN_SERVICE ||
 			amf_su_get_saAmfSUNumCurrActiveSIs (su) == 
-			  sg->saAmfSGMaxActiveSIsperSUs ||
+			assign_to_su ||
 			amf_su_get_saAmfSUNumCurrStandbySIs (su) > 0) {
 
 			su = su->next;
 			continue; /* Not in service */
 		}
 
+		si = sg->application->si_head;
 		assigned = 0;
-		while (si != NULL &&
-			assigned < assign_per_su &&
-			total_assigned < si_cnt) {
+		assign_to_su = div_round (si_left, su_left_to_assign);
+		while (si != NULL) {
 
-			if (amf_si_get_saAmfSINumCurrActiveAssignments (si) == 0) {
-				assigned += 1;
-				total_assigned += 1;
-				amf_su_assign_si (su, si, SA_AMF_HA_ACTIVE);
+			if (name_match (&si->saAmfSIProtectedbySG, &sg->name) &&
+				assigned < assign_to_su && 
+				amf_si_get_saAmfSINumCurrActiveAssignments(si) < 
+				su_active_assign) {
+
+				if (amf_si_su_get_saAmfSINumCurrActiveAssignments (si, su) == 
+					0) {
+
+					assigned += 1;
+					total_assigned += 1;
+					amf_su_assign_si (su, si, SA_AMF_HA_ACTIVE);
+				}
 			}
 			si = si->next;
 		}
 		su = su->next;
+		su_left_to_assign -= 1;
+		si_left -= assigned;
+		dprintf (" su_left_to_assign =%d, si_left=%d\n",
+			su_left_to_assign, si_left);
 	}
-	
+
+	assert (total_assigned <= si_total);
 	if (total_assigned == 0) {
-		dprintf ("Info: No SIs assigned!");
+		dprintf ("Info: No SIs assigned");
 	}
+	LEAVE();
+
+	return total_assigned;
 }
 
-static void sg_assign_nm_standby (struct amf_sg *sg, int su_standby_assign)
+static int sg_assign_nm_standby (struct amf_sg *sg, int su_standby_assign)
 {
 	struct amf_su *su;
 	struct amf_si *si;
 	int assigned = 0;
-	int assign_per_su = 0;
+	int assign_to_su = 0;
 	int total_assigned = 0;
-	int si_cnt;
+	int si_left;
+	int si_total;
+	int su_left_to_assign = su_standby_assign;
 
 	ENTER ("'%s'", sg->name.value);
 
 	if (su_standby_assign == 0) {
-		return;
+		return 0;
 	}
-	si_cnt = sg_si_count_get (sg);
-	assign_per_su = div_round (si_cnt, su_standby_assign);
-	if (assign_per_su > sg->saAmfSGMaxStandbySIsperSUs) {
-		assign_per_su = sg->saAmfSGMaxStandbySIsperSUs;
+	si_total = sg_si_count_get (sg);
+	si_left = si_total;
+	assign_to_su = div_round (si_left, su_standby_assign);
+	if (assign_to_su > sg->saAmfSGMaxStandbySIsperSUs) {
+		assign_to_su = sg->saAmfSGMaxStandbySIsperSUs;
 	}
 
-	si = sg->application->si_head;
 	su = sg->su_head;
-	while (su != NULL) {
+	while (su != NULL && su_left_to_assign > 0) {
 		if (amf_su_get_saAmfSUReadinessState (su) !=
-			   SA_AMF_READINESS_IN_SERVICE ||
+			SA_AMF_READINESS_IN_SERVICE ||
 			amf_su_get_saAmfSUNumCurrActiveSIs (su) > 0 ||
 			amf_su_get_saAmfSUNumCurrStandbySIs (su) ==
-			   sg->saAmfSGMaxStandbySIsperSUs) {
+			assign_to_su) {
 
 			su = su->next;
 			continue; /* Not available for assignment */
 		}
 
+		si = sg->application->si_head;
 		assigned = 0;
-		while (si != NULL && assigned < assign_per_su) {
+		assign_to_su = div_round (si_left, su_left_to_assign);
+		while (si != NULL) {
+			if (name_match (&si->saAmfSIProtectedbySG, &sg->name) &&
+				assigned < assign_to_su && 
+				amf_si_get_saAmfSINumCurrStandbyAssignments (si) < 
+				su_standby_assign) {
 
-			if (amf_si_get_saAmfSINumCurrStandbyAssignments (si) == 0) {
-				assigned += 1;
-				total_assigned += 1;
-				amf_su_assign_si (su, si, SA_AMF_HA_STANDBY);
+				if (amf_si_su_get_saAmfSINumCurrStandbyAssignments (si, su) == 
+					0) {
+
+					assigned += 1;
+					total_assigned += 1;
+					amf_su_assign_si (su, si, SA_AMF_HA_STANDBY);
+				}
 			}
 			si = si->next;
 		}
+		su_left_to_assign -= 1;
+		si_left -= assigned;
+		dprintf (" su_left_to_assign =%d, si_left=%d\n",
+			su_left_to_assign, si_left);
+
 		su = su->next;
 	}
+
+	assert (total_assigned <= si_total);
 	if (total_assigned == 0) {
 		dprintf ("Info: No SIs assigned!");
 	}
+
+	return total_assigned;
 }
 
 static int su_inservice_count_get (struct amf_sg *sg)
@@ -534,29 +1085,27 @@ static int su_inservice_count_get (struct amf_sg *sg)
 			answer += 1;
 		}
 	}
-	return (answer);
+	return(answer);
 }
+
 
 /**
  * TODO: dependency_level not used, hard coded
  * @param sg
  * @param dependency_level
  */
-void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
+static void assign_si (struct amf_sg *sg, int dependency_level)
 {
 	int active_sus_needed;
 	int standby_sus_needed;
 	int inservice_count;
-	int units_for_standby;
-	int units_for_active;
-	int ii_spare;
 	int su_active_assign;
 	int su_standby_assign;
 	int su_spare_assign;
+	int assigned = 0;
 
 	ENTER ("'%s'", sg->name.value);
 
-	sg->avail_state = SG_AC_AssigningOnRequest;
 
 	/**
 	 * Phase 1: Calculate assignments and create all runtime objects in
@@ -569,88 +1118,77 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 	 */
 	inservice_count = (float)su_inservice_count_get (sg);
 
-	active_sus_needed = div_round (sg_si_count_get (sg),
+	active_sus_needed = div_round (
+		sg_si_count_get (sg) * sg->saAmfSGNumPrefActiveSUs,
 		sg->saAmfSGMaxActiveSIsperSUs);
 
-	standby_sus_needed = div_round (sg_si_count_get (sg),
+	standby_sus_needed = div_round (
+		sg_si_count_get (sg) * sg->saAmfSGNumPrefStandbySUs,
 		sg->saAmfSGMaxStandbySIsperSUs);
 
-	units_for_active = inservice_count - sg->saAmfSGNumPrefStandbySUs;
-	if (units_for_active < 0) {
-		units_for_active = 0;
-	}
+	dprintf ("(inservice=%d) (active_sus_needed=%d) (standby_sus_needed=%d)"
+		"\n",
+		inservice_count, active_sus_needed, standby_sus_needed);
 
-	units_for_standby = inservice_count - sg->saAmfSGNumPrefActiveSUs;
-	if (units_for_standby < 0) {
-		units_for_standby = 0;
-	}
-
-	ii_spare = inservice_count - sg->saAmfSGNumPrefActiveSUs -
-		sg->saAmfSGNumPrefStandbySUs;
-
-	if (ii_spare < 0) {
-		ii_spare = 0;
-	}
-
-	/**
-	 * Determine number of active and standby service units
+	/* Determine number of active and standby service units
 	 * to assign based upon reduction procedure
 	 */
-	if ((inservice_count - active_sus_needed) < 0) {
+	if ((inservice_count < active_sus_needed)) {
 		dprintf ("assignment VI - partial assignment with SIs drop outs\n");
 
-		su_active_assign = active_sus_needed;
+		su_active_assign = inservice_count;
 		su_standby_assign = 0;
 		su_spare_assign = 0;
 	} else
-	if ((inservice_count - active_sus_needed - standby_sus_needed) < 0) {
-		dprintf ("assignment V - partial assignment with reduction "
-				 "of standby units\n");
+		if ((inservice_count < active_sus_needed + standby_sus_needed)) {
+		dprintf ("assignment V - partial assignment with reduction of"
+			" standby units\n");
 
 		su_active_assign = active_sus_needed;
-		if (standby_sus_needed > units_for_standby) {
-			su_standby_assign = units_for_standby;
-		} else {
-			su_standby_assign = standby_sus_needed;
-		}
+		su_standby_assign = inservice_count - active_sus_needed;
 		su_spare_assign = 0;
 	} else
-	if ((sg->saAmfSGMaxStandbySIsperSUs * units_for_standby) <=
-		sg_si_count_get (sg)) {
-
-		dprintf ("IV: full assignment with reduction of active service units\n");
+		if ((inservice_count < sg->saAmfSGNumPrefActiveSUs + standby_sus_needed)) {
+		dprintf ("IV: full assignment with reduction of active service"
+			" units\n");
 		su_active_assign = inservice_count - standby_sus_needed;
 		su_standby_assign = standby_sus_needed;
 		su_spare_assign = 0;
-	} else 
-	if ((sg->saAmfSGMaxActiveSIsperSUs * units_for_active) <=
-		sg_si_count_get (sg)) {
-
-		dprintf ("III: full assignment with reduction of standby "
-				 "service units\n");
+	} else
+		if ((inservice_count < 
+		sg->saAmfSGNumPrefActiveSUs + sg->saAmfSGNumPrefStandbySUs)) {
+		dprintf ("III: full assignment with reduction of standby service"
+			" units\n");
 		su_active_assign = sg->saAmfSGNumPrefActiveSUs;
-		su_standby_assign = units_for_standby;
+		su_standby_assign = inservice_count - sg->saAmfSGNumPrefActiveSUs;
 		su_spare_assign = 0;
 	} else
-	if (ii_spare == 0) {
-		dprintf ("II: full assignment with spare reduction\n");
+		if ((inservice_count == 
+		sg->saAmfSGNumPrefActiveSUs + sg->saAmfSGNumPrefStandbySUs)) {
+		if (sg->saAmfSGNumPrefInserviceSUs > inservice_count) {
+			dprintf ("II: full assignment with spare reduction\n");
+		} else {
+			dprintf ("II: full assignment without spares\n");
+		}
 
 		su_active_assign = sg->saAmfSGNumPrefActiveSUs;
 		su_standby_assign = sg->saAmfSGNumPrefStandbySUs;
 		su_spare_assign = 0;
 	} else {
 		dprintf ("I: full assignment with spares\n");
-
 		su_active_assign = sg->saAmfSGNumPrefActiveSUs;
 		su_standby_assign = sg->saAmfSGNumPrefStandbySUs;
-		su_spare_assign = ii_spare;
+		su_spare_assign = inservice_count - 
+			sg->saAmfSGNumPrefActiveSUs - sg->saAmfSGNumPrefStandbySUs;
 	}
 
 	dprintf ("(inservice=%d) (assigning active=%d) (assigning standby=%d)"
-			 " (assigning spares=%d)\n",
+		" (assigning spares=%d)\n",
 		inservice_count, su_active_assign, su_standby_assign, su_spare_assign);
-	sg_assign_nm_active (sg, su_active_assign);
-	sg_assign_nm_standby (sg, su_standby_assign);
+	assigned = sg_assign_nm_active (sg, su_active_assign);
+	assigned += sg_assign_nm_standby (sg, su_standby_assign);
+
+	assert (assigned > 0);
 
 	sg->saAmfSGNumCurrAssignedSUs = inservice_count;
 
@@ -665,7 +1203,7 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 		for (si = sg->application->si_head; si != NULL; si = si->next) {
 			if (name_match (&si->saAmfSIProtectedbySG, &sg->name)) {
 				for (si_assignment = si->assigned_sis; si_assignment != NULL;
-					  si_assignment = si_assignment->next) {
+					si_assignment = si_assignment->next) {
 
 					if (si_assignment->requested_ha_state !=
 						si_assignment->saAmfSISUHAState) {
@@ -680,9 +1218,71 @@ void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
 	LEAVE ("'%s'", sg->name.value);
 }
 
+void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
+{       
+	sg->avail_state = SG_AC_AssigningOnRequest;
+	assign_si (sg, dependency_level);
+}
+
+void amf_sg_failover_node_req (
+	struct amf_sg *sg, struct amf_node *node) 
+{
+
+	ENTER("'%s'",node->name.value);
+
+   /*                                                              
+	 * TODO: Defer all new events. Workaround is to exit.
+	*/
+	if (sg->avail_state != SG_AC_Idle) {
+		log_printf (LOG_LEVEL_ERROR, "To handle multiple simultaneous SG"
+			" recovery actions is not implemented yet:"
+			" SG '%s', NODE '%s', avail_state %d",
+			sg->name.value, node->name.value, sg->avail_state);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+		return;
+	}
+
+	set_scope_for_failover_node(sg, node);
+
+	if (has_any_su_in_scope_active_workload (sg)) {
+		acsm_enter_deactivating_dependent_workload (sg);
+	} else {
+		struct amf_su **sus = sg->recovery_scope.sus;
+
+		/* Select next state depending on if some SU in the scope is
+		 * needs to be terminated.
+		 */
+		while (*sus != NULL) {
+			ENTER("SU %s pr_state='%d'",(*sus)->name.value,
+				(*sus)->saAmfSUPresenceState);
+			if (((*sus)->saAmfSUPresenceState == 
+				SA_AMF_PRESENCE_UNINSTANTIATED) ||
+				((*sus)->saAmfSUPresenceState == 
+				SA_AMF_PRESENCE_TERMINATION_FAILED) ||
+				((*sus)->saAmfSUPresenceState == 
+				SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+				sus++;
+				continue;
+			}
+			break;
+		}
+
+		if (*sus != NULL) {
+			acsm_enter_terminating_suspected (sg);
+		} else {
+			delete_si_assignments_in_scope (sg);
+			return_to_idle (sg);         
+		}
+
+	} 
+
+}
+
 void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 {
 	struct amf_su *su;
+	sg_avail_control_state_t old_avail_state = sg->avail_state;
+	int instantiated_sus = 0;
 
 	ENTER ("'%s'", sg->name.value);
 
@@ -692,41 +1292,63 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 		if (node == NULL) {
 			/* Cluster start */
 			amf_su_instantiate (su);
+			instantiated_sus++;
 		} else {
             /* Node start, match if SU is hosted on the specified node */
 			if (name_match (&node->name, &su->saAmfSUHostedByNode)) {
 				amf_su_instantiate (su);
+				instantiated_sus++;
 			}
 		}
 	}
+
+	if (instantiated_sus == 0) {
+		sg->avail_state = old_avail_state;
+	}
 }
 
-void amf_sg_su_state_changed (
-	struct amf_sg *sg, struct amf_su *su, SaAmfStateT type, int state)
+void amf_sg_su_state_changed (struct amf_sg *sg, 
+	struct amf_su *su, SaAmfStateT type, int state)
 {
 	ENTER ("'%s' SU '%s' state %s",
-		   sg->name.value, su->name.value, amf_presence_state(state));
+		sg->name.value, su->name.value, amf_presence_state(state));
 
 	if (type == SA_AMF_PRESENCE_STATE) {
 		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
-			if (all_su_has_presence_state(su->sg,
-				SA_AMF_PRESENCE_INSTANTIATED)) {
-
-				if (sg->avail_state == SG_AC_InstantiatingServiceUnits) {
+			if (sg->avail_state == SG_AC_InstantiatingServiceUnits) {
+				if (all_su_has_presence_state(su->sg,
+					SA_AMF_PRESENCE_INSTANTIATED)) {
 					su->sg->avail_state = SG_AC_Idle;
 					amf_application_sg_started (
 						sg->application, sg, this_amf_node);
-				} else if (sg->avail_state == SG_AC_ReparingSu) {
+				}
+			} else if (sg->avail_state == SG_AC_ReparingSu) {
+				if (all_su_in_scope_has_presence_state(su->sg,
+					SA_AMF_PRESENCE_INSTANTIATED)) {
 					su->sg->avail_state = SG_AC_AssigningStandBy;
-					amf_sg_assign_si (sg, 0);
+					assign_si (sg, 0);
+
 				} else {
 					dprintf ("avail-state: %u", sg->avail_state);
 					assert (0);
 				}
+			} else {
+				assert (0);
 			}
 		} else if (state == SA_AMF_PRESENCE_UNINSTANTIATED) {
 			if (sg->avail_state == SG_AC_TerminatingSuspected) {
-				standby_su_activate (su);
+				if (all_su_in_scope_has_presence_state (sg, state)) {
+					delete_si_assignments_in_scope (sg);
+					if (is_standby_for_non_active_si_in_scope (sg)) {
+						acsm_enter_activating_standby (sg);
+					} else {
+						/*                                                              
+						* TODO: create SI assignment to spare and assign them
+						*/
+						sg->avail_state = SG_AC_AssigningStandbyToSpare;
+						acsm_enter_repairing_su (sg);
+					}
+				}
 			} else {
 				assert (0);
 			}
@@ -746,24 +1368,23 @@ void amf_sg_init (void)
 void amf_sg_failover_su_req (
 	struct amf_sg *sg, struct amf_su *su, struct amf_node *node)
 {
-	struct amf_si_assignment *si_assignment;
-
 	ENTER ("");
-
-	sg->avail_state = SG_AC_DeactivatingDependantWorkload;
-
-	/*                                                              
-	 * Deactivate workload for SU
-	 */
-	si_assignment = amf_su_get_next_si_assignment (su, NULL);
-	while (si_assignment != NULL) {
-
-		if (si_assignment->saAmfSISUHAState == SA_AMF_HA_ACTIVE) {
-			si_assignment->requested_ha_state = SA_AMF_HA_QUIESCED;
-			amf_si_ha_state_assume (
-				si_assignment, failover_su_si_deactivated_cbfn);
-		}
-		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
+   /*                                                              
+	 * TODO: Defer all new events. Workaround is to exit.
+	*/
+	if (sg->avail_state != SG_AC_Idle) {
+		log_printf (LOG_LEVEL_ERROR, "To handle multiple simultaneous SG"
+			" recovery actions is not implemented yet:"
+			" SG '%s', SU '%s', avail_state %d",
+			sg->name.value, su->name.value, sg->avail_state);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+		return;
+	}
+	set_scope_for_failover_su (sg, su);
+	if (has_any_su_in_scope_active_workload (sg)) {
+		acsm_enter_deactivating_dependent_workload (sg);
+	} else {
+		acsm_enter_terminating_suspected (sg);
 	}
 }
 
@@ -906,6 +1527,8 @@ struct amf_sg *amf_sg_deserialize (
 struct amf_sg *amf_sg_find (struct amf_application *app, char *name)
 {
 	struct amf_sg *sg;
+
+	assert (app != NULL && name != NULL);
 
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		if (strncmp (name, (char*)sg->name.value, sg->name.length) == 0) {

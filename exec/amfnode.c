@@ -113,6 +113,107 @@
 #include "amf.h"
 #include "util.h"
 #include "print.h"
+#include "main.h"
+
+
+static void amf_node_acsm_enter_leaving_spontaneously(struct amf_node *node)
+{
+	ENTER("'%s'", node->name.value);
+	node->synchronized = FALSE;
+	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_DISABLED;
+}
+
+static void amf_node_acsm_enter_failing_over (struct amf_node *node)
+{ 
+	struct amf_application *app;
+	struct amf_sg *sg;
+	struct amf_su *su;
+	struct amf_comp *component = NULL;
+
+	ENTER("'%s'", node->name.value);
+	node->acsm_state = NODE_ACSM_LEAVING_SPONTANEOUSLY_FAILING_OVER;
+
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (name_match(&node->name, &su->saAmfSUHostedByNode)) {
+					for (component = su->comp_head; component != NULL;
+						component = component->next) {
+						amf_comp_node_left(component);
+					}
+				}
+			}
+		}
+	}
+
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			amf_sg_failover_node_req(sg, node);
+		}
+	}
+}
+
+/**
+ * Node leave event is obtained from amf_confchg_fn
+ * 
+ * @param node
+ */
+void amf_node_leave (struct amf_node *node)
+{
+	ENTER("'%s'", node->name.value);
+	amf_node_acsm_enter_leaving_spontaneously(node);    
+	amf_node_acsm_enter_failing_over (node);
+
+}
+
+/**
+ * 
+ * @param node
+ */
+void amf_node_failover (struct amf_node *node)
+{
+
+}
+
+/**
+ * 
+ * @param node
+ */
+void amf_node_switchover (struct amf_node *node)
+{
+
+}
+
+/**
+ * 
+ * @param node
+ */
+void amf_node_failfast (struct amf_node *node)
+{
+
+}
+
+/**
+ * 
+ * @param node
+ * @param comp
+ */
+void amf_node_comp_restart_req (
+	struct amf_node *node, struct amf_comp *comp)
+{
+
+}
+
+/**
+ * 
+ * @param node
+ * @param comp
+ */
+void amf_node_comp_failover_req (
+	struct amf_node *node, struct amf_comp *comp)
+{
+
+}
 
 /**
  * Node constructor
@@ -120,7 +221,7 @@
  * @param cluster
  * @param node
  */
-struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name)
+struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name) 
 {
 	struct amf_node *node = calloc (1, sizeof (struct amf_node));
 
@@ -153,7 +254,7 @@ void *amf_node_serialize (struct amf_node *node, int *len)
 }
 
 struct amf_node *amf_node_deserialize (
-	struct amf_cluster *cluster, char *buf, int size)
+	struct amf_cluster *cluster, char *buf, int size) 
 {
 	int objsz = sizeof (struct amf_node);
 
@@ -180,8 +281,8 @@ void amf_node_sync_ready (struct amf_node *node)
 	assert (node != NULL);
 
 	log_printf(LOG_NOTICE, "Node %s sync ready, starting hosted SUs.",
-			   node->name.value);
-
+		node->name.value);
+	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
 	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
 		amf_application_start (app, node);
 	}
@@ -196,7 +297,11 @@ struct amf_node *amf_node_find (SaNameT *name)
 {
 	struct amf_node *node;
 
-	ENTER ("");
+	if (amf_cluster == NULL) {
+		return NULL;
+	}
+
+	assert (name != NULL);
 
 	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
 		if (name_match (&node->name, name)) {
@@ -204,6 +309,80 @@ struct amf_node *amf_node_find (SaNameT *name)
 		}
 	}
 
+	dprintf ("node %s not found!", name->value);
+
 	return NULL;
+}
+
+struct amf_node *amf_node_find_by_nodeid (unsigned int nodeid) 
+{
+	struct amf_node *node;
+
+	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
+		if (node->nodeid == nodeid) {
+			return node;
+		}
+	}
+
+	dprintf ("node %u not found!", nodeid);
+
+	return NULL;
+}
+
+static int all_applications_on_node_started (struct amf_node *node, 
+	struct amf_cluster *cluster) 
+{
+	int all_started = 1;
+	struct amf_application *app;
+	struct amf_sg *sg;
+	struct amf_su *su;
+
+	for (app = cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED && 
+					name_match(&su->saAmfSUHostedByNode,&node->name)) {
+					all_started = 0;
+					goto done;
+				}
+			}
+		}
+	}
+
+done:
+	return all_started;
+
+}
+
+void amf_node_application_started (struct amf_node *node, 
+	struct amf_application *_app)
+{
+	struct amf_application *app = _app;
+
+	ENTER ("application '%s' started", app->name.value);
+
+	if (all_applications_on_node_started (node, app->cluster)) {
+
+		log_printf(LOG_NOTICE,
+			"Node: all applications started, assigning workload.");
+	}
+
+
+	for (app = _app->cluster->application_head; app != NULL; 
+		app = app->next) {
+		amf_application_assign_workload (app, node);
+	}
+}
+
+void amf_node_application_workload_assigned (struct amf_node *node, 
+	struct amf_application *app)
+{
+
+	log_printf(LOG_NOTICE, "Node: all workload assigned on node %s", 
+		node->name.value);
+
+	/**
+     * TODO: Set node acsm state
+     */
 }
 
