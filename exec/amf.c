@@ -304,7 +304,7 @@ static struct openais_lib_handler amf_lib_service[] =
 		.lib_handler_fn		= message_handler_req_lib_amf_response,
 		.response_size		= sizeof (struct res_lib_amf_response),
 		.response_id		= MESSAGE_RES_AMF_RESPONSE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 
@@ -2231,15 +2231,35 @@ static void message_handler_req_lib_amf_componenterrorclear (
 
 }
 
+/**
+ * Handle a response from a component.
+ * 
+ * Healthcheck responses are handled locally and directly. This
+ * way we do not get healthcheck duration timeouts during e.g.
+ * AMF sync.
+ * 
+ * Other events need to be multicasted. If we are syncing, defer
+ * these event by returning TRY-AGAIN to the component.
+ * 
+ * No flow control was requested by AMF from the IPC layer (on
+ * purpose) for this lib handler. It is needed to handle
+ * healthcheck responses if it takes longer to sync than the
+ * duration period.
+ * 
+ * When multicasting, check for space in the TOTEM outbound
+ * queue and return TRY-AGAIN if the queue is full.
+ * 
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_amf_response (void *conn, void *msg)
 {
+	struct res_lib_amf_response res_lib;
 	struct req_lib_amf_response *req_lib = msg;
-	int multicast;
+	int multicast, send_ok;
 	SaAisErrorT retval;
 	SaUint32T interface;
 	SaNameT dn;
-
-	assert (scsm.state == NORMAL_OPERATION);
 
 	/*
 	* This is an optimisation to avoid multicast of healthchecks while keeping
@@ -2252,6 +2272,11 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		struct req_exec_amf_response req_exec;
 		struct iovec iovec;
 
+		if (scsm.state != NORMAL_OPERATION) {
+			retval = SA_AIS_ERR_TRY_AGAIN;
+			goto send_response;
+		}
+
 		req_exec.header.size = sizeof (struct req_exec_amf_response);
 		req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
 			MESSAGE_REQ_EXEC_AMF_RESPONSE);
@@ -2260,14 +2285,30 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 		req_exec.error = req_lib->error;
 		iovec.iov_base = (char *)&req_exec;
 		iovec.iov_len = sizeof (req_exec);
-		assert (totempg_groups_mcast_joined (
-			openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
-	} else {
-		struct res_lib_amf_response res_lib;
-		res_lib.header.id = MESSAGE_RES_AMF_RESPONSE;
-		res_lib.header.size = sizeof (struct res_lib_amf_response);
-		res_lib.header.error = retval;
-		openais_conn_send_response (conn, &res_lib, sizeof (res_lib));
+		send_ok = totempg_groups_send_ok_joined (openais_group_handle, &iovec, 1);
+
+		if (send_ok) {
+			if (totempg_groups_mcast_joined (
+				openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0) {
+				goto end;
+			} else {
+				openais_exit_error (AIS_DONE_FATAL_ERR);
+			}
+		} else {
+			/* TOTEM queue is full, try again later */
+			retval = SA_AIS_ERR_TRY_AGAIN;
+		}
 	}
+
+send_response:
+	res_lib.header.id = MESSAGE_RES_AMF_RESPONSE;
+	res_lib.header.size = sizeof (struct res_lib_amf_response);
+	res_lib.header.error = retval;
+
+	if (openais_conn_send_response (conn, &res_lib, sizeof (res_lib)) != 0) {
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+end:
+	return;
 }
 
