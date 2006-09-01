@@ -419,20 +419,35 @@ to_file
 .TP
 to_syslog
 These specify the destination of logging output. Any combination of
-these options may be specified.
+these options may be specified. Valid options are
+.B yes
+and
+.B no.
+
+The default is syslog and stderr.
+
 
 .TP
 logfile
-If the logoutput: file directive is set, this option specifies where the
-log file is written to.
+If the 
+.B to_file
+directive is set to
+.B yes
+, this option specifies the pathname of the log file.
 
-The default is syslog.
+No default.
 
 .TP
 debug
-This specifies whether debug output is logged.  This is generally a bad idea, 
-unless there is some specific bug or problem that must be found in the
-executive.  Set the value to on to debug, off to turn of debugging.
+This specifies whether debug output is logged for all services.  This is
+generally a bad idea, unless there is some specific bug or problem that must be
+found in the executive. Set the value to 
+.B on
+to debug, 
+.B off
+to turn off debugging. If enabled, individual loggers can be disabled using a
+.B logger
+directive.
 
 The default is off.
 
@@ -469,7 +484,9 @@ sub-directive of logging there are three configuration options:
 
 .TP
 ident
-This specifies the identity (name) for which logging is specified. This directive is required.
+This specifies the identity (name) for which logging is specified. This is the
+name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+required.
 
 .TP
 debug
@@ -485,7 +502,7 @@ Set debug directive to
 in order to enable tracing using tags.
 Values are specified using a vertical bar as a logical OR separator:
 
-enter|return|trace1|trace2|trace3|...
+enter|leave|trace1|trace2|trace3|...
 
 The default is none.
 

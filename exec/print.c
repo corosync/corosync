@@ -55,6 +55,7 @@
 #include <syslog.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "print.h"
 #include "totemip.h"
@@ -105,11 +106,7 @@ static int logger_init (const char *ident, int tags, int level, int mode)
 
  	for (i = 0; i < MAX_LOGGERS; i++) {
 		if (strcmp (loggers[i].ident, ident) == 0) {
-			loggers[i].tags |= tags;
-			if (level > loggers[i].level) {
-				loggers[i].level = level;
-			}
-			break;
+			goto done;
 		}
 	}
 
@@ -125,8 +122,8 @@ static int logger_init (const char *ident, int tags, int level, int mode)
 		}
 	}
 
-	assert(i < MAX_LOGGERS);
-
+done:
+	assert (i < MAX_LOGGERS);
 	return i;
 }
 
@@ -181,7 +178,6 @@ static void _log_printf (char *file, int line,
 	int i = 0;
 	int len;
 	struct log_data log_data;
-	unsigned int res = 0;
 
 	assert (id < MAX_LOGGERS);
 
@@ -238,15 +234,18 @@ static void _log_printf (char *file, int line,
 	if (log_data.log_string == NULL) {
 		goto drop_log_msg;
 	}
-	
+
+#ifndef DEBUG
 	if (log_setup_called) {
-		res = worker_thread_group_work_add (&log_thread_group, &log_data);
+		int res = worker_thread_group_work_add (&log_thread_group, &log_data);
 		if (res == 0) {
 			dropped_log_entries = 0;
 		} else {
 			dropped_log_entries += 1;
 		}
-	} else {
+	} else
+#endif
+	{
 		log_printf_worker_fn (NULL, &log_data);	
 	}
 
@@ -262,20 +261,35 @@ int _log_init (const char *ident)
 {
 	assert (ident != NULL);
 
-	/*
-	** do different things before and after log_setup() has been called
-	*/
-	if (log_setup_called) {
-		return logger_init (ident, TAG_LOG, LOG_LEVEL_INFO, 0);
+	if (logmode & LOG_MODE_DEBUG) {
+		return logger_init (ident, TAG_LOG, LOG_LEVEL_DEBUG, 0);
 	} else {
-		return logger_init (ident, ~0, LOG_LEVEL_DEBUG, 0);
+		return logger_init (ident, TAG_LOG, LOG_LEVEL_INFO, 0);
 	}
 }
+
+#ifdef PRINT_DEBUG
+static void sigusr2_handler (int num)
+{
+	int i;
+
+	for (i = 0; i < MAX_LOGGERS; i++) {
+		if (strlen (loggers[i].ident) > 0) {
+			printf("ident: %6s, tags: %08x, level: %d\n",
+				loggers[i].ident, loggers[i].tags, loggers[i].level);
+		}
+	}
+}
+#endif
 
 int log_setup (char **error_string, struct main_config *config)
 {
 	int i;
 	static char error_string_response[512];
+
+#ifdef PRINT_DEBUG
+	signal (SIGUSR2, sigusr2_handler);
+#endif
 
 	if (config->logmode & LOG_MODE_FILE) {
 		log_file_fp = fopen (config->logfile, "a+");
@@ -298,14 +312,14 @@ int log_setup (char **error_string, struct main_config *config)
 	}
 
 	/*
-	** reinit all loggers that has initialised before log_setup() was called.
+	** reinit level for all loggers that has initialised
+	** before log_setup() was called.
 	*/
 	for (i = 0; i < MAX_LOGGERS; i++) {
-		loggers[i].tags = TAG_LOG;
-		if (config->logmode & LOG_MODE_DEBUG) {
-			loggers[i].level = LOG_LEVEL_DEBUG;
-		} else {
-			loggers[i].level = LOG_LEVEL_INFO;
+		if (strlen (loggers[i].ident) > 0) {
+			if (config->logmode & LOG_MODE_DEBUG) {
+				loggers[i].level = LOG_LEVEL_DEBUG;
+			}
 		}
 	}
 
