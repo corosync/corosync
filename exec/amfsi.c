@@ -647,8 +647,10 @@ struct amf_si *amf_si_find (struct amf_application *app, char *name)
 {
 	struct amf_si *si;
 
+
 	for (si = app->si_head; si != NULL; si = si->next) {
-		if (strncmp (name, (char*)si->name.value, si->name.length) == 0) {
+		if (si->name.length == strlen(name) && 
+			strncmp (name, (char*)si->name.value, si->name.length) == 0) {
 			break;
 		}
 	}
@@ -727,7 +729,8 @@ struct amf_csi *amf_csi_find (struct amf_si *si, char *name)
 	struct amf_csi *csi;
 
 	for (csi = si->csi_head; csi != NULL; csi = csi->next) {
-		if (strncmp (name, (char*)csi->name.value, csi->name.length) == 0) {
+		if (csi->name.length == strlen(name) && 
+			strncmp (name, (char*)csi->name.value, csi->name.length) == 0) {
 			break;
 		}
 	}
@@ -893,7 +896,8 @@ struct amf_csi_assignment *amf_csi_assignment_find (
 	for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
 		csi_assignment = csi_assignment->next) {
 
-		if (strncmp (csi_assignment_name,
+		if (csi_assignment->name.length == strlen(csi_assignment_name) && 
+			strncmp (csi_assignment_name,
 			(char*)csi_assignment->name.value,
 			csi_assignment->name.length) == 0) {
 			goto end;
@@ -901,6 +905,8 @@ struct amf_csi_assignment *amf_csi_assignment_find (
 	}
 
 end:
+	assert(csi_assignment);
+
 	free (buf);
 	return csi_assignment;
 }

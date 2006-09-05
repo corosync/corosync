@@ -78,17 +78,14 @@
 static int all_sg_started (struct amf_application *app)
 {
 	struct amf_sg *sg;
-	struct amf_su *su;
 	int all_su_instantiated = 1;
 
 	/* TODO: spare SUs... */
 
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
-		for (su = sg->su_head; su != NULL; su = su->next) {
-			if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
-				all_su_instantiated = 0;
-				break;
-			}
+		if (sg->avail_state != SG_AC_Idle) {
+			all_su_instantiated = 0;
+			break;
 		}
 	}
 
@@ -233,7 +230,9 @@ struct amf_application *amf_application_find (
 	struct amf_application *app;
 
 	for (app = cluster->application_head; app != NULL; app = app->next) {
-		if (strncmp (name, (char*)app->name.value, app->name.length) == 0) {
+		
+		if (app->name.length == strlen(name) && 
+			strncmp (name, (char*)app->name.value, app->name.length) == 0) {
 			break;
 		}
 	}

@@ -794,7 +794,8 @@ struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
 	for (su = sg->su_head; su != NULL; su = su->next) {
 		if (strncmp (su_name, (char*)su->name.value, su->name.length) == 0) {
 			for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-				if (strncmp (comp_name, (char*)comp->name.value,
+				if (comp->name.length == strlen(comp_name) && 
+					strncmp (comp_name, (char*)comp->name.value,
 					comp->name.length) == 0) {
 					goto end;
 				}
@@ -2082,6 +2083,9 @@ struct amf_healthcheck *amf_healthcheck_deserialize (
 	} else {
 		struct amf_healthcheck *obj = amf_malloc (sizeof (struct amf_healthcheck));
 		memcpy (obj, buf, objsz);
+		obj->active = 0;
+		obj->timer_handle_duration = 0;
+		obj->timer_handle_period = 0;
 		obj->comp = comp;
 		obj->next = comp->healthcheck_head;
 		comp->healthcheck_head = obj;

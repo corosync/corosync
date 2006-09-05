@@ -257,6 +257,7 @@ struct amf_sg {
 	struct amf_sg            *next;
 	sg_avail_control_state_t  avail_state;
     struct sg_recovery_scope  recovery_scope;
+	struct amf_node *node_to_start;
 };
 
 struct amf_su {
@@ -852,7 +853,10 @@ extern void *amf_si_assignment_serialize (
 	struct amf_si_assignment *si_assignment, int *len);
 extern struct amf_si_assignment *amf_si_assignment_deserialize (
 	struct amf_si *si, char *buf, int size);
-
+#if 0
+char *amf_si_assignment_dn_make (struct amf_su *su, struct amf_si *si,
+	SaNameT *name);
+#endif
 /**
  * Get number of active assignments for the specified SI
  * @param si

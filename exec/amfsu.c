@@ -235,7 +235,7 @@ static void su_restart (struct amf_su *su)
 
 	amf_su_dn_make (su, &dn);
 	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-		"action:\n\t\tSU restart", dn.value);
+		"action: SU restart", dn.value);
 
 	su->restart_control_state = SU_RC_RESTART_SU_DEACTIVATING;
 	su->restart_control_state = SU_RC_RESTART_SU_INSTANTIATING;
@@ -256,7 +256,7 @@ static void comp_restart (struct amf_comp *comp)
 	ENTER ("'%s'", comp->name.value);
 	amf_comp_dn_make (comp, &dn);
 	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-		"action:\n\t\tcomponent restart", dn.value);
+		"action: Component restart", dn.value);
 
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_DEACTIVATING;
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_RESTARTING;
@@ -900,7 +900,8 @@ struct amf_su *amf_su_find (struct amf_cluster *cluster, SaNameT *name)
 		if (strncmp (sg_name, (char*)sg->name.value,
 			sg->name.length) == 0) {
 			for (su = sg->su_head; su != NULL; su = su->next) {
-				if (strncmp (su_name, (char*)su->name.value,
+				if (su->name.length == strlen(su_name) && 
+					strncmp (su_name, (char*)su->name.value,
 					su->name.length) == 0) {
 					goto end;
 				}

@@ -150,7 +150,7 @@
 
 static void acsm_enter_activating_standby (struct amf_sg *sg);
 static void delete_si_assignments_in_scope (struct amf_sg *sg);
-
+static void acsm_enter_repairing_su (struct amf_sg *sg);
 static void standby_su_activated_cbfn (
 	struct amf_si_assignment *si_assignment, int result);
 
@@ -173,13 +173,19 @@ static void return_to_idle (struct amf_sg *sg)
 	if (sg->recovery_scope.recovery_type != 0) {
 		switch (sg->recovery_scope.recovery_type) {
 			case SG_RT_FailoverSU:
-			case SG_RT_FailoverNode:
 				assert (sg->recovery_scope.sus[0] != NULL);
 				amf_su_dn_make (sg->recovery_scope.sus[0], &dn);
 				log_printf (
 					LOG_NOTICE, "'%s' %s recovery action finished",
 					dn.value,
 					sg_recovery_type_text[sg->recovery_scope.recovery_type]);
+
+				break;
+			case SG_RT_FailoverNode:
+				log_printf (
+					LOG_NOTICE, "'%s for %s' recovery action finished",
+					sg_recovery_type_text[sg->recovery_scope.recovery_type],
+					sg->name.value);
 				break;
 			default:
 				log_printf (
@@ -195,6 +201,7 @@ static void return_to_idle (struct amf_sg *sg)
 		free ((void *)sg->recovery_scope.sis);
 	}
 	memset (&sg->recovery_scope, 0, sizeof (struct sg_recovery_scope));
+	sg->node_to_start = NULL;
 }
 
 static int su_instantiated_count (struct amf_sg *sg)
@@ -327,7 +334,8 @@ static void timer_function_dependent_si_deactivated2 (void *sg)
 	dependent_si_deactivated_cbfn2 (sg);
 }
 
-static struct amf_si *si_get_dependent (struct amf_si *si)
+
+static struct amf_si *si_get_dependent (struct amf_si *si) 
 {
 
 	struct amf_si *tmp_si = NULL;
@@ -357,7 +365,7 @@ static struct amf_si *si_get_dependent (struct amf_si *si)
 }
 
 struct amf_si *amf_dependent_get_next (struct amf_si *si, 
-	struct amf_si *si_iter)
+	struct amf_si *si_iter) 
 {
 	struct amf_si *tmp_si;
 	struct amf_application *application;
@@ -435,7 +443,6 @@ static void acsm_enter_deactivating_dependent_workload (struct amf_sg *sg)
 			timer_function_dependent_si_deactivated2, &handle);
 	}
 }
-
 /**
  * Enter function for state SG_AC_ActivatingStandby. It activates
  * one STANDBY assignment for each SI in the recovery scope.
@@ -445,6 +452,7 @@ static void acsm_enter_activating_standby (struct amf_sg *sg)
 {
 	struct amf_si **sis= sg->recovery_scope.sis;
 	struct amf_si_assignment *si_assignment;
+	int is_no_standby_activated = 1;
 	ENTER("'%s'",sg->name.value); 
 	sg->avail_state = SG_AC_ActivatingStandby;
 
@@ -459,11 +467,17 @@ static void acsm_enter_activating_standby (struct amf_sg *sg)
 				si_assignment->requested_ha_state = SA_AMF_HA_ACTIVE;
 				amf_si_ha_state_assume (
 					si_assignment, standby_su_activated_cbfn);
+				is_no_standby_activated = 0;
 				break;
 			}
 			si_assignment = si_assignment->next;
 		}
 		sis++;
+	}
+
+	if (is_no_standby_activated) {
+		sg->avail_state = SG_AC_AssigningStandbyToSpare;
+		acsm_enter_repairing_su (sg);	
 	}
 }
 
@@ -472,7 +486,7 @@ static void acsm_enter_repairing_su (struct amf_sg *sg)
 	struct amf_su **sus= sg->recovery_scope.sus;
 	ENTER("'%s'",sg->name.value);
 	sg->avail_state = SG_AC_ReparingSu;
-
+	int is_any_su_instantiated = 0;
 	/*                                                              
 	 * Instantiate SUs in current recovery scope until the configured
 	 * preference is fulfiled.
@@ -487,6 +501,7 @@ static void acsm_enter_repairing_su (struct amf_sg *sg)
 				openais_exit_error (AIS_DONE_FATAL_ERR);
 			}
 			if (node->saAmfNodeOperState == SA_AMF_OPERATIONAL_ENABLED) {
+				is_any_su_instantiated = 1;	
 				amf_su_instantiate ((*sus));
 			} else {
 				return_to_idle (sg);
@@ -494,6 +509,9 @@ static void acsm_enter_repairing_su (struct amf_sg *sg)
 
 		}
 		sus++;
+	}
+	if (is_any_su_instantiated == 0) {
+		return_to_idle (sg);
 	}
 }
 
@@ -542,9 +560,9 @@ static void add_si_to_scope ( struct amf_sg *sg, struct amf_si *si)
 		tmp_sis++;
 	}
 
-	*tmp_sis= si;
+	*tmp_sis = si;
+	*(++tmp_sis) = NULL;
 }
-
 /**
  * Adds the ssu pointed out to the scope.
  * @param sg
@@ -570,7 +588,8 @@ static void add_su_to_scope (struct amf_sg *sg, struct amf_su *su)
 		tmp_sus++;
 	}
 
-	*tmp_sus= su;
+	*tmp_sus = su;
+	*(++tmp_sus) = NULL; 
 }
 
 /**
@@ -584,8 +603,10 @@ static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
 	struct amf_si_assignment *si_assignment;
 	struct amf_si **sis;
 	struct amf_su **sus;
-
+	SaNameT dn;
 	sg->recovery_scope.recovery_type = SG_RT_FailoverSU;
+
+
 	sg->recovery_scope.comp = NULL;
 	sg->recovery_scope.sus = (struct amf_su **)
 	calloc (2, sizeof (struct amf_su *));
@@ -596,6 +617,12 @@ static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
 		(sg->recovery_scope.sis != NULL));
 	sg->recovery_scope.sus[0] = su;
 
+	amf_su_dn_make (sg->recovery_scope.sus[0], &dn);
+	log_printf (
+		LOG_NOTICE, "'%s' for %s recovery action started",
+		sg_recovery_type_text[sg->recovery_scope.recovery_type],
+		dn.value);
+
 	si_assignment = amf_su_get_next_si_assignment (su, NULL);
 	while (si_assignment != NULL) {
 		if (is_si_in_scope(sg, si_assignment->si) == 0) {
@@ -604,7 +631,7 @@ static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
 		si_assignment = amf_su_get_next_si_assignment (su, si_assignment);
 	}
 
-	sus= sg->recovery_scope.sus;
+	sus = sg->recovery_scope.sus;
 	dprintf("The following sus are within the scope:\n");
 	while (*sus != NULL) {
 		dprintf("%s\n", (*sus)->name.value);
@@ -617,7 +644,6 @@ static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
 		sis++;
 	}
 }
-
 static void set_scope_for_failover_node (struct amf_sg *sg, struct amf_node *node)
 {
 	struct amf_si_assignment *si_assignment;
@@ -632,6 +658,11 @@ static void set_scope_for_failover_node (struct amf_sg *sg, struct amf_node *nod
 	calloc (1, sizeof (struct amf_su *));
 	sg->recovery_scope.sis = (struct amf_si **)
 	calloc (1, sizeof (struct amf_si *));
+
+	log_printf (
+		LOG_NOTICE, "'%s' for node %s recovery action started",
+		sg_recovery_type_text[sg->recovery_scope.recovery_type],
+		node->name.value);
 
 	assert ((sg->recovery_scope.sus != NULL) &&
 		(sg->recovery_scope.sis != NULL));
@@ -654,7 +685,7 @@ static void set_scope_for_failover_node (struct amf_sg *sg, struct amf_node *nod
 		sus++;
 	}
 
-	sus= sg->recovery_scope.sus;
+	sus = sg->recovery_scope.sus;
 	dprintf("The following sus are within the scope:\n");
 	while (*sus != NULL) {
 		dprintf("%s\n", (*sus)->name.value);
@@ -678,10 +709,13 @@ static void delete_si_assignments (struct amf_su *su)
 	struct amf_csi *csi;
 	struct amf_si *si;
 	struct amf_si_assignment *si_assignment;
-
+	struct amf_si_assignment **prev;	
 	ENTER ("'%s'", su->name.value);
 
 	for (si = su->sg->application->si_head; si != NULL; si = si->next) {
+
+		prev = &si->assigned_sis;
+
 		if (!name_match (&si->saAmfSIProtectedbySG, &su->sg->name)) {
 			continue;
 		}
@@ -690,20 +724,19 @@ static void delete_si_assignments (struct amf_su *su)
 			amf_csi_delete_assignments (csi, su);
 		}
 
-		/*                                                              
-		 * TODO: this only works for n+m where each SI list has only two
-		 * assignments, one active and one standby.
-		 * TODO: use DN instead
-		 */
-		if (si->assigned_sis->su == su) {
-			si_assignment = si->assigned_sis;
-			si->assigned_sis = si_assignment->next;
-		} else {
-			si_assignment = si->assigned_sis->next;
-			si->assigned_sis->next = NULL;
+
+		for (si_assignment = si->assigned_sis; si_assignment != NULL;
+			si_assignment = si_assignment->next) {
+			if (si_assignment->su == su) {
+				struct amf_si_assignment *tmp = si_assignment;
+				*prev = si_assignment->next;
+				dprintf ("SI assignment %s unlinked", tmp->name.value);
+				free (tmp);
+			} else {
+				prev = &si_assignment->next;
+			}
 		}
-		assert (si_assignment != NULL);
-		free (si_assignment);
+
 	}
 }
 
@@ -890,20 +923,30 @@ static inline int div_round (int a, int b)
 }
 
 static int all_su_has_presence_state (
-	struct amf_sg *sg, SaAmfPresenceStateT state)
+	struct amf_sg *sg, struct amf_node *node_to_start, 
+	SaAmfPresenceStateT state)
 {
 	struct amf_su   *su;
 	int all_set = 1;
 
 	for (su = sg->su_head; su != NULL; su = su->next) {
+
 		if (su->saAmfSUPresenceState != state) {
-			all_set = 0;
-			break;
+			if (node_to_start == NULL) {
+				all_set = 0;
+				break;
+			} else {
+				if (name_match(&node_to_start->name,
+					&su->saAmfSUHostedByNode)) {
+					all_set = 0;
+					break;
+				}
+			}
 		}
 	}
-
 	return all_set;
 }
+
 
 static int all_su_in_scope_has_presence_state (
 	struct amf_sg *sg, SaAmfPresenceStateT state)
@@ -935,6 +978,34 @@ static int sg_si_count_get (struct amf_sg *sg)
 		}
 	}
 	return(cnt);
+}
+
+int amf_si_get_saAmfSINumReqActiveAssignments(struct amf_si *si) 
+{
+	struct amf_si_assignment *si_assignment = si->assigned_sis;
+	int number_of_req_active_assignments = 0;
+
+	for (; si_assignment != NULL; si_assignment = si_assignment->next) {
+
+		if (si_assignment->requested_ha_state == SA_AMF_HA_ACTIVE) {
+			number_of_req_active_assignments++;
+		}
+	}
+	return number_of_req_active_assignments;
+}
+
+
+int amf_si_get_saAmfSINumReqStandbyAssignments(struct amf_si *si) 
+{
+	struct amf_si_assignment *si_assignment = si->assigned_sis;
+	int number_of_req_active_assignments = 0;
+
+	for (; si_assignment != NULL; si_assignment = si_assignment->next) {
+		if (si_assignment->requested_ha_state == SA_AMF_HA_STANDBY) {
+			number_of_req_active_assignments++;
+		}
+	}
+	return number_of_req_active_assignments;
 }
 
 static int sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
@@ -970,21 +1041,19 @@ static int sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
 		si = sg->application->si_head;
 		assigned = 0;
 		assign_to_su = div_round (si_left, su_left_to_assign);
+		if (assign_to_su > sg->saAmfSGMaxActiveSIsperSUs) {
+			assign_to_su = sg->saAmfSGMaxActiveSIsperSUs;
+		}
 		while (si != NULL) {
 
 			if (name_match (&si->saAmfSIProtectedbySG, &sg->name) &&
 				assigned < assign_to_su && 
-				amf_si_get_saAmfSINumCurrActiveAssignments(si) < 
-				su_active_assign) {
-
-				if (amf_si_su_get_saAmfSINumCurrActiveAssignments (si, su) == 
-					0) {
-
+				amf_si_get_saAmfSINumReqActiveAssignments(si) == 0) {
 					assigned += 1;
 					total_assigned += 1;
 					amf_su_assign_si (su, si, SA_AMF_HA_ACTIVE);
-				}
-			}
+		    	}
+			
 			si = si->next;
 		}
 		su = su->next;
@@ -1041,19 +1110,16 @@ static int sg_assign_nm_standby (struct amf_sg *sg, int su_standby_assign)
 		si = sg->application->si_head;
 		assigned = 0;
 		assign_to_su = div_round (si_left, su_left_to_assign);
+		if (assign_to_su > sg->saAmfSGMaxStandbySIsperSUs) {
+			assign_to_su = sg->saAmfSGMaxStandbySIsperSUs;
+		}
 		while (si != NULL) {
 			if (name_match (&si->saAmfSIProtectedbySG, &sg->name) &&
 				assigned < assign_to_su && 
-				amf_si_get_saAmfSINumCurrStandbyAssignments (si) < 
-				su_standby_assign) {
-
-				if (amf_si_su_get_saAmfSINumCurrStandbyAssignments (si, su) == 
-					0) {
-
+				amf_si_get_saAmfSINumReqStandbyAssignments (si) == 0) {
 					assigned += 1;
 					total_assigned += 1;
 					amf_su_assign_si (su, si, SA_AMF_HA_STANDBY);
-				}
 			}
 			si = si->next;
 		}
@@ -1094,10 +1160,10 @@ static int su_inservice_count_get (struct amf_sg *sg)
  * @param sg
  * @param dependency_level
  */
-static void assign_si (struct amf_sg *sg, int dependency_level)
+static int assign_si (struct amf_sg *sg, int dependency_level)
 {
-	int active_sus_needed;
-	int standby_sus_needed;
+	int active_sus_needed = 0;
+	int standby_sus_needed = 0;
 	int inservice_count;
 	int su_active_assign;
 	int su_standby_assign;
@@ -1105,7 +1171,6 @@ static void assign_si (struct amf_sg *sg, int dependency_level)
 	int assigned = 0;
 
 	ENTER ("'%s'", sg->name.value);
-
 
 	/**
 	 * Phase 1: Calculate assignments and create all runtime objects in
@@ -1116,15 +1181,26 @@ static void assign_si (struct amf_sg *sg, int dependency_level)
 	/**
 	 * Calculate number of SUs to assign to active or standby state
 	 */
-	inservice_count = (float)su_inservice_count_get (sg);
+	inservice_count = su_inservice_count_get (sg);
 
-	active_sus_needed = div_round (
-		sg_si_count_get (sg) * sg->saAmfSGNumPrefActiveSUs,
-		sg->saAmfSGMaxActiveSIsperSUs);
+	if (sg->saAmfSGNumPrefActiveSUs > 0) {
+		active_sus_needed = div_round (
+			sg_si_count_get (sg),
+			sg->saAmfSGMaxActiveSIsperSUs);
+	} else {
+		log_printf (LOG_LEVEL_ERROR, "ERROR: saAmfSGNumPrefActiveSUs == 0 !!");
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
 
-	standby_sus_needed = div_round (
-		sg_si_count_get (sg) * sg->saAmfSGNumPrefStandbySUs,
-		sg->saAmfSGMaxStandbySIsperSUs);
+	if (sg->saAmfSGNumPrefStandbySUs > 0) {
+		standby_sus_needed = div_round (
+			sg_si_count_get (sg),
+			sg->saAmfSGMaxStandbySIsperSUs);
+	} else {
+		log_printf (LOG_LEVEL_ERROR, "ERROR: saAmfSGNumPrefStandbySUs == 0 !!");
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+
+	}
 
 	dprintf ("(inservice=%d) (active_sus_needed=%d) (standby_sus_needed=%d)"
 		"\n",
@@ -1185,30 +1261,35 @@ static void assign_si (struct amf_sg *sg, int dependency_level)
 	dprintf ("(inservice=%d) (assigning active=%d) (assigning standby=%d)"
 		" (assigning spares=%d)\n",
 		inservice_count, su_active_assign, su_standby_assign, su_spare_assign);
-	assigned = sg_assign_nm_active (sg, su_active_assign);
-	assigned += sg_assign_nm_standby (sg, su_standby_assign);
 
-	assert (assigned > 0);
+	if (inservice_count > 0) {
+		assigned = sg_assign_nm_active (sg, su_active_assign);
+		assigned += sg_assign_nm_standby (sg, su_standby_assign);
 
-	sg->saAmfSGNumCurrAssignedSUs = inservice_count;
+#if 0
+		assert (assigned > 0);
+#endif
+		sg->saAmfSGNumCurrAssignedSUs = inservice_count;
 
 	/**
 	 * Phase 2: do the actual assignment to the component
 	 * TODO: first do active, then standby
 	 */
-	{
-		struct amf_si *si;
-		struct amf_si_assignment *si_assignment;
+		{
+			struct amf_si *si;
+			struct amf_si_assignment *si_assignment;
 
-		for (si = sg->application->si_head; si != NULL; si = si->next) {
-			if (name_match (&si->saAmfSIProtectedbySG, &sg->name)) {
-				for (si_assignment = si->assigned_sis; si_assignment != NULL;
-					si_assignment = si_assignment->next) {
+			for (si = sg->application->si_head; si != NULL; si = si->next) {
+				if (name_match (&si->saAmfSIProtectedbySG, &sg->name)) {
+					for (si_assignment = si->assigned_sis; 
+						si_assignment != NULL;
+						si_assignment = si_assignment->next) {
 
-					if (si_assignment->requested_ha_state !=
-						si_assignment->saAmfSISUHAState) {
-						amf_si_ha_state_assume (
-							si_assignment, assign_si_assumed_cbfn);
+						if (si_assignment->requested_ha_state !=
+							si_assignment->saAmfSISUHAState) {
+							amf_si_ha_state_assume (
+								si_assignment, assign_si_assumed_cbfn);
+						}
 					}
 				}
 			}
@@ -1216,19 +1297,24 @@ static void assign_si (struct amf_sg *sg, int dependency_level)
 	}
 
 	LEAVE ("'%s'", sg->name.value);
+	return assigned;
 }
 
 void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
-{       
+{   
+
 	sg->avail_state = SG_AC_AssigningOnRequest;
-	assign_si (sg, dependency_level);
+	if (assign_si (sg, dependency_level) == 0) {
+		return_to_idle (sg);	
+		amf_application_sg_assigned (sg->application, sg);	
+	}
 }
 
 void amf_sg_failover_node_req (
 	struct amf_sg *sg, struct amf_node *node) 
 {
 
-	ENTER("'%s'",node->name.value);
+	ENTER("'%s, %s'",node->name.value, sg->name.value);
 
    /*                                                              
 	 * TODO: Defer all new events. Workaround is to exit.
@@ -1277,7 +1363,6 @@ void amf_sg_failover_node_req (
 	} 
 
 }
-
 void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 {
 	struct amf_su *su;
@@ -1285,6 +1370,8 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 	int instantiated_sus = 0;
 
 	ENTER ("'%s'", sg->name.value);
+
+	sg->node_to_start = node;
 
 	sg->avail_state = SG_AC_InstantiatingServiceUnits;
 
@@ -1294,7 +1381,7 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 			amf_su_instantiate (su);
 			instantiated_sus++;
 		} else {
-            /* Node start, match if SU is hosted on the specified node */
+			/* Node start, match if SU is hosted on the specified node*/
 			if (name_match (&node->name, &su->saAmfSUHostedByNode)) {
 				amf_su_instantiate (su);
 				instantiated_sus++;
@@ -1316,7 +1403,7 @@ void amf_sg_su_state_changed (struct amf_sg *sg,
 	if (type == SA_AMF_PRESENCE_STATE) {
 		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
 			if (sg->avail_state == SG_AC_InstantiatingServiceUnits) {
-				if (all_su_has_presence_state(su->sg,
+				if (all_su_has_presence_state(sg, sg->node_to_start, 
 					SA_AMF_PRESENCE_INSTANTIATED)) {
 					su->sg->avail_state = SG_AC_Idle;
 					amf_application_sg_started (
@@ -1326,7 +1413,9 @@ void amf_sg_su_state_changed (struct amf_sg *sg,
 				if (all_su_in_scope_has_presence_state(su->sg,
 					SA_AMF_PRESENCE_INSTANTIATED)) {
 					su->sg->avail_state = SG_AC_AssigningStandBy;
-					assign_si (sg, 0);
+					if (assign_si (sg, 0) == 0) {
+						return_to_idle (sg);	
+					}
 
 				} else {
 					dprintf ("avail-state: %u", sg->avail_state);
@@ -1399,7 +1488,7 @@ void amf_sg_failover_su_req (
  * @return struct amf_sg*
  */
 
-struct amf_sg *amf_sg_new (struct amf_application *app, char *name)
+struct amf_sg *amf_sg_new (struct amf_application *app, char *name) 
 {
 	struct amf_sg *sg = calloc (1, sizeof (struct amf_sg));
 
@@ -1421,6 +1510,7 @@ struct amf_sg *amf_sg_new (struct amf_application *app, char *name)
 	sg->saAmfSGAutoRepair = SA_TRUE;
 	sg->application = app;
 	setSaNameT (&sg->name, name);
+	sg->node_to_start = NULL;
 
 	return sg;
 }
@@ -1492,7 +1582,7 @@ void *amf_sg_serialize (struct amf_sg *sg, int *len)
 }
 
 struct amf_sg *amf_sg_deserialize (
-	struct amf_application *app, char *buf, int size)
+	struct amf_application *app, char *buf, int size) 
 {
 	char *tmp = buf;
 	struct amf_sg *sg;
@@ -1524,14 +1614,13 @@ struct amf_sg *amf_sg_deserialize (
 	return sg;
 }
 
-struct amf_sg *amf_sg_find (struct amf_application *app, char *name)
+struct amf_sg *amf_sg_find (struct amf_application *app, char *name) 
 {
 	struct amf_sg *sg;
 
-	assert (app != NULL && name != NULL);
-
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
-		if (strncmp (name, (char*)sg->name.value, sg->name.length) == 0) {
+		if (sg->name.length == strlen(name) && 
+			strncmp (name, (char*)sg->name.value, sg->name.length) == 0) {
 			break;
 		}
 	}
