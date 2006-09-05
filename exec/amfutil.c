@@ -62,10 +62,15 @@
 #include "print.h"
 #include "aispoll.h"
 #include "main.h"
+#include "service.h"
 
 #ifndef OPENAIS_CLUSTER_STARTUP_TIMEOUT
 #define OPENAIS_CLUSTER_STARTUP_TIMEOUT 5000
 #endif
+
+struct req_exec_amf_msg {
+	mar_req_header_t header;
+};
 
 static const char *presence_state_text[] = {
 	"UNKNOWN",
@@ -346,10 +351,12 @@ struct amf_cluster *amf_config_read (char **error_string)
 			break;
 
 		case AMF_NODE:
-			if ((loc = strstr_rs (line, "saAmfNodeSuFailOverProb")) != 0) {
+			if ((loc = strstr_rs (line, "saAmfNodeSuFailOverProb=")) != 0) {
 				node->saAmfNodeSuFailOverProb = atol(loc);
-			} else if ((loc = strstr_rs (line, "saAmfNodeSuFailoverMax")) != 0) {
+			} else if ((loc = strstr_rs (line, "saAmfNodeSuFailoverMax=")) != 0) {
 				node->saAmfNodeSuFailoverMax = atol(loc);
+			} else if ((loc = strstr_rs (line, "saAmfNodeClmNode=")) != 0) {
+				setSaNameT (&node->saAmfNodeClmNode, trim_str (loc));
 			} else if ((loc = strstr_rs (line, "saAmfNodeAutoRepair=")) != 0) {
 				if (strcmp (loc, "true") == 0) {
 					node->saAmfNodeAutoRepair = SA_TRUE;
@@ -381,6 +388,10 @@ struct amf_cluster *amf_config_read (char **error_string)
 				}
 				if (node->saAmfNodeSuFailoverMax == ~0) {
 					error_reason = "saAmfNodeSuFailoverMax missing";
+					goto parse_error;
+				}
+				if (node->saAmfNodeClmNode.length == 0) {
+					error_reason = "saAmfNodeClmNode missing";
 					goto parse_error;
 				}
 				current_parse = AMF_CLUSTER;
@@ -902,12 +913,16 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 	log_printf (LOG_INFO, "safCluster=%s", getSaNameT(&cluster->name));
 	log_printf (LOG_INFO, "  admin state: %s\n",
 		admin_state_text[cluster->saAmfClusterAdminState]);
+	log_printf (LOG_INFO, "  state:       %u\n", cluster->state);
 	for (node = cluster->node_head; node != NULL; node = node->next) {
 		log_printf (LOG_INFO, "  safNode=%s\n", getSaNameT (&node->name));
+		log_printf (LOG_INFO, "    CLM Node:    %s\n", getSaNameT (&node->saAmfNodeClmNode));
+		log_printf (LOG_INFO, "    node ID:     %u\n", node->nodeid);
 		log_printf (LOG_INFO, "    admin state: %s\n",
 			admin_state_text[node->saAmfNodeAdminState]);
 		log_printf (LOG_INFO, "    oper state:  %s\n",
 			oper_state_text[node->saAmfNodeOperState]);
+		log_printf (LOG_INFO, "    acsm state:  %u\n", node->acsm_state);
 	}
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		log_printf (LOG_INFO, "  safApp=%s\n", getSaNameT(&app->name));
@@ -916,6 +931,8 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 		log_printf (LOG_INFO, "    num_sg:      %d\n", app->saAmfApplicationCurrNumSG);
 		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 			log_printf (LOG_INFO, "    safSg=%s\n", getSaNameT(&sg->name));
+			log_printf (LOG_INFO, "      avail_state:        %u\n",
+				sg->avail_state);
 			log_printf (LOG_INFO, "      admin state:        %s\n",
 				admin_state_text[sg->saAmfSGAdminState]);
 			log_printf (LOG_INFO, "      assigned SUs        %d\n",
@@ -1272,4 +1289,40 @@ out:
 
 }
 
+void amf_msg_mcast (int id, void *buf, size_t len)
+{
+	struct req_exec_amf_msg msg;
+	struct iovec iov[2];
+	int iov_cnt;
+	int res;
 
+//	ENTER ("%u, %p, %u", id, buf, len);
+
+	msg.header.size = sizeof (msg);
+	msg.header.id = SERVICE_ID_MAKE (AMF_SERVICE, id);
+	iov[0].iov_base = &msg;
+	iov[0].iov_len  = sizeof (msg);
+
+	if (buf == NULL) {
+		msg.header.size = sizeof (msg);
+		iov_cnt = 1;
+	} else {
+		msg.header.size = sizeof (msg) + len;
+		iov[1].iov_base = buf;
+		iov[1].iov_len  = len;
+		iov_cnt = 2;
+	}
+
+	res = totempg_groups_mcast_joined (
+		openais_group_handle, iov, iov_cnt, TOTEMPG_AGREED);
+
+	if (res != 0) {
+		dprintf("Unable to send %d bytes\n", msg.header.size);
+		openais_exit_error (AIS_DONE_FATAL_ERR);
+	}
+}
+
+void amf_util_init (void)
+{
+	log_init ("AMF");
+}

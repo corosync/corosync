@@ -1854,10 +1854,12 @@ void *amf_comp_serialize (struct amf_comp *component, int *len)
 		buf, &size, &offset, component->saAmfCompNumMaxStandbyCsi);
 
 	/* count environment vars and write to buf */
-	for (i = 0; component->saAmfCompCmdEnv[i] != NULL; i++);
+	for (i = 0; component->saAmfCompCmdEnv &&
+		  component->saAmfCompCmdEnv[i] != NULL; i++);
 	buf = amf_serialize_SaUint32T (buf, &size, &offset, i);
 
-	for (i = 0; component->saAmfCompCmdEnv[i] != NULL; i++) {
+	for (i = 0; component->saAmfCompCmdEnv &&
+		  component->saAmfCompCmdEnv[i] != NULL; i++) {
 		buf = amf_serialize_SaStringT (
 			buf, &size, &offset, component->saAmfCompCmdEnv[i]);
 	}

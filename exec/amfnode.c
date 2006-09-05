@@ -119,8 +119,8 @@
 static void amf_node_acsm_enter_leaving_spontaneously(struct amf_node *node)
 {
 	ENTER("'%s'", node->name.value);
-	node->synchronized = FALSE;
 	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_DISABLED;
+	node->nodeid = 0;
 }
 
 static void amf_node_acsm_enter_failing_over (struct amf_node *node)
@@ -160,10 +160,10 @@ static void amf_node_acsm_enter_failing_over (struct amf_node *node)
  */
 void amf_node_leave (struct amf_node *node)
 {
-	ENTER("'%s'", node->name.value);
+	ENTER("'%s', CLM node '%s'", node->name.value,
+		node->saAmfNodeClmNode.value);
 	amf_node_acsm_enter_leaving_spontaneously(node);    
 	amf_node_acsm_enter_failing_over (node);
-
 }
 
 /**
@@ -297,11 +297,7 @@ struct amf_node *amf_node_find (SaNameT *name)
 {
 	struct amf_node *node;
 
-	if (amf_cluster == NULL) {
-		return NULL;
-	}
-
-	assert (name != NULL);
+	assert (name != NULL && amf_cluster != NULL);
 
 	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
 		if (name_match (&node->name, name)) {
@@ -309,7 +305,7 @@ struct amf_node *amf_node_find (SaNameT *name)
 		}
 	}
 
-	dprintf ("node %s not found!", name->value);
+	dprintf ("node %s not found in configuration!", name->value);
 
 	return NULL;
 }
@@ -318,13 +314,32 @@ struct amf_node *amf_node_find_by_nodeid (unsigned int nodeid)
 {
 	struct amf_node *node;
 
+	assert (amf_cluster != NULL);
+
 	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
 		if (node->nodeid == nodeid) {
 			return node;
 		}
 	}
 
-	dprintf ("node %u not found!", nodeid);
+	dprintf ("node %u not found in configuration!", nodeid);
+
+	return NULL;
+}
+
+struct amf_node *amf_node_find_by_hostname (const char *hostname) 
+{
+	struct amf_node *node;
+
+	assert (hostname != NULL && amf_cluster != NULL);
+
+	for (node = amf_cluster->node_head; node != NULL; node = node->next) {
+		if (strcmp ((char*)node->saAmfNodeClmNode.value, hostname) == 0) {
+			return node;
+		}
+	}
+
+	dprintf ("node %s not found in configuration!", hostname);
 
 	return NULL;
 }

@@ -172,7 +172,7 @@ struct amf_cluster {
 	enum cluster_states state;
 };
 
-struct amf_node {
+typedef struct amf_node {
 	/* Configuration Attributes */
 	SaNameT name;
 	SaNameT saAmfNodeClmNode;
@@ -193,8 +193,7 @@ struct amf_node {
 	unsigned int nodeid;
 	struct amf_node *next;
 	amf_node_acsm_state_t acsm_state;
-	int synchronized;
-};
+} amf_node_t;
 
 struct amf_application {
 	/* Configuration Attributes */
@@ -501,7 +500,8 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_SYNC_START = 5,
 	MESSAGE_REQ_EXEC_AMF_SYNC_DATA = 6,
 	MESSAGE_REQ_EXEC_AMF_SYNC_READY = 7,
-	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 8
+	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 8,
+	MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST = 9
 };
 
 struct req_exec_amf_clc_cleanup_completed {
@@ -535,7 +535,6 @@ extern const char *amf_presence_state (int state);
 extern const char *amf_ha_state (int state);
 extern const char *amf_readiness_state (int state);
 extern const char *amf_assignment_state (int state);
-extern struct amf_node *amf_node_find_by_nodeid (unsigned int nodeid);
 extern char *amf_serialize_SaNameT (
 	char *buf, int *size, int *offset, SaNameT *name);
 extern char *amf_serialize_SaStringT (
@@ -550,6 +549,8 @@ extern char *amf_deserialize_SaStringT (char *buf, SaStringT *str);
 extern char *amf_deserialize_SaUint32T (char *buf, SaUint32T *num);
 extern char *amf_deserialize_SaUint64T (char *buf, SaUint64T *num);
 extern char *amf_deserialize_opaque (char *buf, char *dst, int *cnt);
+extern void amf_msg_mcast (int id, void *buf, size_t len);
+extern void amf_util_init (void);
 
 /*===========================================================================*/
 /* amfnode.c */
@@ -561,6 +562,8 @@ extern void *amf_node_serialize (struct amf_node *node, int *len);
 extern struct amf_node *amf_node_deserialize (
 	struct amf_cluster *cluster, char *buf, int size);
 extern struct amf_node *amf_node_find (SaNameT *name);
+extern struct amf_node *amf_node_find_by_nodeid (unsigned int nodeid);
+extern struct amf_node *amf_node_find_by_hostname (const char *hostname);
 
 /* Event methods */
 extern void amf_node_sync_ready (struct amf_node *node);
