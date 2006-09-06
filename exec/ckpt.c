@@ -1005,6 +1005,7 @@ static int ckpt_recovery_process (void)
 							&checkpoint_section->section_descriptor,
 							sizeof(mar_ckpt_section_descriptor_t));
 
+					request_exec_sync_state.ckpt_id = checkpoint->ckpt_id;
 					request_exec_sync_state.nodeid = this_ip->nodeid;
 
 					for (i = 0; i < PROCESSOR_COUNT_MAX; i++) {
@@ -1017,10 +1018,12 @@ static int ckpt_recovery_process (void)
 
 					log_printf (LOG_LEVEL_DEBUG, "New Sync State Message Values\n");
 					for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-						log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
-						i,
-						totempg_ifaces_print (request_exec_sync_state.ckpt_refcnt[i].nodeid),
-						request_exec_sync_state.ckpt_refcnt[i].count);
+						if (request_exec_sync_state.ckpt_refcnt[i].nodeid) {
+							log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
+								i,
+								totempg_ifaces_print (request_exec_sync_state.ckpt_refcnt[i].nodeid),
+								request_exec_sync_state.ckpt_refcnt[i].count);
+						}
 					}
 
 					iovecs[0].iov_base = (char *)&request_exec_sync_state;
@@ -1108,6 +1111,8 @@ static int ckpt_recovery_process (void)
 					iovecs[2].iov_base = ((char*)checkpoint_section->section_data + recovery_section_data_offset);
 					iovecs[2].iov_len = newSectionSize;
 					request_exec_sync_section.header.size += iovecs[2].iov_len;
+					request_exec_sync_section.ckpt_id = checkpoint->ckpt_id;
+
 					/*
 					 * Check to see if we can queue the new message and if you can
 					 * then mcast the message else break and create callback.
@@ -2014,10 +2019,12 @@ static int recovery_checkpoint_open (
 	log_printf (LOG_LEVEL_DEBUG, "recovery_checkpoint_open %s\n", checkpoint_name->value);
 	log_printf (LOG_LEVEL_DEBUG, "recovery_checkpoint_open refcnt Values\n");
 	for (i = 0; i < PROCESSOR_COUNT_MAX; i ++) {
-		log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
-			i,
-			totempg_ifaces_print (ref_cnt[i].nodeid),
-			ref_cnt[i].count);
+		if (ref_cnt[i].nodeid) {
+			log_printf (LOG_LEVEL_DEBUG,"Index %d has proc %s and count %d\n",
+				i,
+				totempg_ifaces_print (ref_cnt[i].nodeid),
+				ref_cnt[i].count);
+		}
 	}
 
 
