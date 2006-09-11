@@ -345,6 +345,7 @@ DECLARE_LIST_INIT(checkpoint_iteration_list_head);
 
 DECLARE_LIST_INIT(checkpoint_recovery_list_head);
 
+/* cluster wide synchronized checkpoint ID */
 static mar_uint32_t global_ckpt_id = 0;
 
 struct checkpoint_cleanup {
@@ -2103,6 +2104,11 @@ static int recovery_checkpoint_open (
 		* Setup connection information and mark checkpoint as referenced
 		*/
 		log_printf (LOG_LEVEL_DEBUG, "recovery CHECKPOINT reopened is %p\n", checkpoint);
+	}
+
+	/* synchronize global_ckpt_id to max(ckpt_id,global_ckpt_id)+1 */
+	if (ckpt_id > global_ckpt_id) {
+		global_ckpt_id = ckpt_id + 1;
 	}
 
 	/*CHECK to see if there are any existing ckpts*/
