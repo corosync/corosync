@@ -144,13 +144,6 @@ void amf_cluster_sync_ready (struct amf_cluster *cluster)
 			break;
 		}
 		case CLUSTER_STARTING_COMPONENTS: {
-			if (cluster->timeout_handle) {
-
-				poll_timer_delete (
-					aisexec_poll_handle, cluster->timeout_handle);
-
-				cluster->timeout_handle = 0;
-			}
 			break;
 		}
 		case CLUSTER_STARTING_WORKLOAD: {

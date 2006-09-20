@@ -355,8 +355,15 @@ static int all_applications_on_node_started (struct amf_node *node,
 	for (app = cluster->application_head; app != NULL; app = app->next) {
 		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 			for (su = sg->su_head; su != NULL; su = su->next) {
-				if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED && 
+ /*	TODO: Replace the if-statement below with the if-statement in this comment when
+	   	the real problem is fixed !
+  			if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED && 
 					name_match(&su->saAmfSUHostedByNode,&node->name)) {
+					all_started = 0;
+					goto done;
+				}
+*/
+				if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED ) {
 					all_started = 0;
 					goto done;
 				}
@@ -380,13 +387,13 @@ void amf_node_application_started (struct amf_node *node,
 
 		log_printf(LOG_NOTICE,
 			"Node: all applications started, assigning workload.");
+
+		for (app = _app->cluster->application_head; app != NULL; 
+			app = app->next) {
+			amf_application_assign_workload (app, node);
+		}
 	}
 
-
-	for (app = _app->cluster->application_head; app != NULL; 
-		app = app->next) {
-		amf_application_assign_workload (app, node);
-	}
 }
 
 void amf_node_application_workload_assigned (struct amf_node *node, 

@@ -1527,6 +1527,9 @@ static int amf_lib_init_fn (void *conn)
 
 static void amf_dump_fn (void)
 {
+	if (amf_cluster == NULL) {
+		return;
+	}
 	amf_runtime_attributes_print (amf_cluster);
 }
 
