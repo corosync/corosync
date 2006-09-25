@@ -337,6 +337,8 @@ static int recovery_section_write(
 	mar_uint32_t data_offset,
 	mar_uint32_t data_size);
 
+static void dump_fn(void);
+
 static int process_localhost_transition = 0;
 
 DECLARE_LIST_INIT(checkpoint_list_head);
@@ -551,7 +553,7 @@ struct openais_service_handler ckpt_service_handler = {
 	.lib_service			= ckpt_lib_service,
 	.lib_service_count		= sizeof (ckpt_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn			= ckpt_exec_init_fn,
-	.exec_dump_fn			= 0,
+	.exec_dump_fn			= dump_fn,
 	.exec_service			= ckpt_exec_service,
 	.exec_service_count		= sizeof (ckpt_exec_service) / sizeof (struct openais_exec_handler),
 	.confchg_fn			= ckpt_confchg_fn,
@@ -2107,7 +2109,7 @@ static int recovery_checkpoint_open (
 	}
 
 	/* synchronize global_ckpt_id to max(ckpt_id,global_ckpt_id)+1 */
-	if (ckpt_id > global_ckpt_id) {
+	if (ckpt_id >= global_ckpt_id) {
 		global_ckpt_id = ckpt_id + 1;
 	}
 
@@ -4238,3 +4240,54 @@ error_exit:
 				section_id_size);
 	}
 }
+
+static void dump_fn (void)
+{
+#ifdef DEBUG
+	struct list_head *checkpoint_list;
+	struct checkpoint *checkpoint;
+	struct list_head *checkpoint_section_list;
+	struct checkpoint_section *section;
+
+	log_printf (LOG_LEVEL_NOTICE,
+		"========== Checkpoint Information ===========");
+	log_printf (LOG_LEVEL_NOTICE, "global_ckpt_id: %u", global_ckpt_id);
+
+	for (checkpoint_list = checkpoint_list_head.next;
+		checkpoint_list != &checkpoint_list_head;
+		checkpoint_list = checkpoint_list->next) {
+
+		checkpoint = list_entry (checkpoint_list, struct checkpoint, list);
+
+		if (checkpoint == NULL) {
+			return;
+		}
+
+		log_printf (LOG_LEVEL_NOTICE, "Checkpoint %s (%d):",
+			checkpoint->name.value, checkpoint->name.length);
+		log_printf (LOG_LEVEL_NOTICE, "   id:       %u", checkpoint->ckpt_id);
+		log_printf (LOG_LEVEL_NOTICE, "   sec cnt:  %u", checkpoint->sectionCount);
+		log_printf (LOG_LEVEL_NOTICE, "   ref cnt:  %u", checkpoint->referenceCount);
+		log_printf (LOG_LEVEL_NOTICE, "   unlinked: %u", checkpoint->unlinked);
+
+		for (checkpoint_section_list = checkpoint->sections_list_head.next;
+			checkpoint_section_list != &checkpoint->sections_list_head;
+			checkpoint_section_list = checkpoint_section_list->next) {
+
+			section = list_entry (checkpoint_section_list,
+				struct checkpoint_section, list);
+
+			log_printf (LOG_LEVEL_NOTICE, "   Section %s (%d)",
+				section->section_descriptor.section_id.id,
+				section->section_descriptor.section_id.id_len);
+			log_printf (LOG_LEVEL_NOTICE, "      size:     %llu",
+				section->section_descriptor.section_size);
+			log_printf (LOG_LEVEL_NOTICE, "      state:    %u",
+				section->section_descriptor.section_state);
+			log_printf (LOG_LEVEL_NOTICE, "      exp time: %llu",
+				section->section_descriptor.expiration_time);
+		}
+	}
+#endif
+}
+
