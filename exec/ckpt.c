@@ -2068,6 +2068,7 @@ static int recovery_checkpoint_open (
 		checkpoint->retention_timer = 0;
 		checkpoint->expired = 0;
 
+#if 0
 		/*
 		 * Add in default checkpoint section
 		 */
@@ -2087,6 +2088,7 @@ static int recovery_checkpoint_open (
 		assert(checkpoint_section->section_data);
 		memcpy(checkpoint_section->section_data, "Factory installed data\0", strlen("Factory installed data\0")+1);
 		checkpoint_section->expiration_timer = 0;
+#endif
 
 		if ((checkpoint->checkpoint_creation_attributes.creation_flags & (SA_CKPT_WR_ACTIVE_REPLICA | SA_CKPT_WR_ACTIVE_REPLICA_WEAK)) &&
 			(checkpoint->checkpoint_creation_attributes.creation_flags & SA_CKPT_CHECKPOINT_COLLOCATED) == 0) {
@@ -2682,6 +2684,7 @@ static int recovery_section_create (
 	list_init (&checkpoint_section->list);
 	list_add (&checkpoint_section->list,
 		&checkpoint->sections_list_head);
+	checkpoint->sectionCount += 1;
 
 error_exit:
 	return (error);
