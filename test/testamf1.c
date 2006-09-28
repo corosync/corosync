@@ -298,11 +298,8 @@ SaAmfCallbacksT amfCallbacks = {
 SaAmfCallbacksT amfCallbacks;
 
 SaVersionT version = { 'B', 1, 1 };
-
 #if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
-static struct sched_param sched_param = {
-    sched_priority: 99
-};
+static struct sched_param sched_param;
 #endif
 
 void sigintr_handler (int signum) {
@@ -377,10 +374,19 @@ int main (int argc, char **argv)
 	signal (SIGUSR2, sigusr2_handler);
 
 #if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
-	result = sched_setscheduler (0, SCHED_RR, &sched_param);
-	if (result == -1) {
-		fprintf (stderr, "%d: couldn't set sched priority\n", (int)getpid());
- 	}
+
+	sched_param.sched_priority = sched_get_priority_max(SCHED_RR);
+	if (sched_param.sched_priority == -1) {
+		fprintf (stderr, "%d: couldn't retrieve the maximum scheduling " \
+		    "priority supported by the Round-Robin class (%s)\n",
+		    (int)getpid(), strerror(errno));
+	} else {
+		result = sched_setscheduler (0, SCHED_RR, &sched_param);
+		if (result == -1) {
+			fprintf (stderr, "%d: couldn't set sched priority (%s)\n",
+			    (int)getpid(), strerror(errno));
+		}
+	}
 #endif
 
 	do {

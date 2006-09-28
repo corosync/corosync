@@ -96,7 +96,7 @@ int main (int argc, char **argv, char **envp)
 		/*
 		 * child process
 		 */
-		res = execve (argv[1], &argv[2], envp);
+		res = execve (argv[1], &argv[1], envp);
 		if (res == -1) {
 			return (errno);
 		}

@@ -60,7 +60,7 @@ cleanup() {
 #	`cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	kill -9 `cat $PIDFILEPATH/openais_cleanup_$SA_AMF_COMPONENT_NAME`
 	STATUS=$?
-	if [ $STATUS == 1 ]; then
+	if [ $STATUS -eq 1 ]; then
 		exit 0
 	else
 		exit $STATUS
