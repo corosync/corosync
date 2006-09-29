@@ -1502,6 +1502,7 @@ struct amf_sg *amf_sg_new (struct amf_application *app, char *name)
 	sg->saAmfSGNumPrefActiveSUs = 1;
 	sg->saAmfSGNumPrefStandbySUs = 1;
 	sg->saAmfSGNumPrefInserviceSUs = ~0;
+	sg->saAmfSGNumPrefAssignedSUs = ~0;
 	sg->saAmfSGCompRestartProb = -1;
 	sg->saAmfSGCompRestartMax = ~0;
 	sg->saAmfSGSuRestartProb = -1;

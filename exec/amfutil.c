@@ -463,6 +463,10 @@ struct amf_cluster *amf_config_read (char **error_string)
 				sg->saAmfSGNumPrefActiveSUs = atoi (loc);
 			} else if ((loc = strstr_rs (line, "saAmfSGNumPrefStandbySUs=")) != 0) {
 				sg->saAmfSGNumPrefStandbySUs = atoi (loc);
+			} else if ((loc = strstr_rs (line, "saAmfSGNumPrefInserviceSUs=")) != 0) {
+				sg->saAmfSGNumPrefInserviceSUs = atoi (loc);
+			} else if ((loc = strstr_rs (line, "saAmfSGNumPrefAssignedSUs=")) != 0) {
+				sg->saAmfSGNumPrefAssignedSUs = atoi (loc);
 			} else if ((loc = strstr_rs (line, "saAmfSGMaxActiveSIsperSUs=")) != 0) {
 				sg->saAmfSGMaxActiveSIsperSUs = atoi (loc);
 			} else if ((loc = strstr_rs (line, "saAmfSGMaxStandbySIsperSUs=")) != 0) {
@@ -514,6 +518,10 @@ struct amf_cluster *amf_config_read (char **error_string)
 				}
 				if (sg->saAmfSGNumPrefInserviceSUs == ~0) {
 					sg->saAmfSGNumPrefInserviceSUs = su_cnt;
+				}
+				if (sg->saAmfSGNumPrefAssignedSUs == ~0) {
+					sg->saAmfSGNumPrefAssignedSUs =
+						sg->saAmfSGNumPrefInserviceSUs;
 				}
 				current_parse = AMF_APPLICATION;
 			} else {
