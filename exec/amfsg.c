@@ -1375,7 +1375,10 @@ void amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 
 	sg->avail_state = SG_AC_InstantiatingServiceUnits;
 
-	for (su = sg->su_head; su != NULL; su = su->next) {
+	for (su = sg->su_head;
+		(su != NULL) && (instantiated_sus < sg->saAmfSGNumPrefInserviceSUs);
+		 su = su->next) {
+
 		if (node == NULL) {
 			/* Cluster start */
 			amf_su_instantiate (su);
