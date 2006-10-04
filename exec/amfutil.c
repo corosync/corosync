@@ -327,11 +327,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				cluster->node_head = node;
 				current_parse = AMF_NODE;
 			} else if ((loc = strstr_rs (line, "safApp=")) != 0) {
-				app = calloc (1, sizeof (struct amf_application));
-				app->next = cluster->application_head;
-				cluster->application_head = app;
-				app->cluster = cluster;
-				app->saAmfApplicationAdminState = SA_AMF_ADMIN_UNLOCKED;
+				app = amf_application_new (cluster);
 				setSaNameT (&app->name, trim_str (loc));
 				current_parse = AMF_APPLICATION;
 				sg_cnt = 0;
@@ -409,6 +405,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				sg_cnt++;
 				sg->recovery_scope.comp = NULL;
 				sg->recovery_scope.recovery_type = 0;
+				sg->recovery_scope.node = NULL;
 				sg->recovery_scope.sis = NULL;
 				sg->recovery_scope.sus = NULL;
 				current_parse = AMF_SG;
@@ -921,7 +918,7 @@ void amf_runtime_attributes_print (struct amf_cluster *cluster)
 	log_printf (LOG_INFO, "safCluster=%s", getSaNameT(&cluster->name));
 	log_printf (LOG_INFO, "  admin state: %s\n",
 		admin_state_text[cluster->saAmfClusterAdminState]);
-	log_printf (LOG_INFO, "  state:       %u\n", cluster->state);
+	log_printf (LOG_INFO, "  state:       %u\n", cluster->acsm_state);
 	for (node = cluster->node_head; node != NULL; node = node->next) {
 		log_printf (LOG_INFO, "  safNode=%s\n", getSaNameT (&node->name));
 		log_printf (LOG_INFO, "    CLM Node:    %s\n", getSaNameT (&node->saAmfNodeClmNode));
@@ -1109,6 +1106,24 @@ char *amf_serialize_SaStringT (char *buf, int *size, int *offset, SaStringT str)
 	return amf_serialize_opaque (buf, size, offset, str, len);
 }
 
+char *amf_serialize_SaUint16T (char *buf, int *size, int *offset, SaUint16T num)
+{
+	char *tmp = buf;
+
+	if ((*size - *offset ) < sizeof (SaUint16T)) {
+		*size += sizeof (SaUint16T);
+		tmp = realloc (buf, *size);
+		if (tmp == NULL) {
+			openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+		}
+	}
+
+	*((SaUint16T *)&tmp[*offset]) = num;
+	(*offset) += sizeof (SaUint16T);
+
+	return tmp;
+}
+
 char *amf_serialize_SaUint32T (char *buf, int *size, int *offset, SaUint32T num)
 {
 	char *tmp = buf;
@@ -1127,14 +1142,8 @@ char *amf_serialize_SaUint32T (char *buf, int *size, int *offset, SaUint32T num)
 	return tmp;
 }
 
-char *amf_serialize_SaUint64T (char *buf, SaUint64T num)
-{
-	*((SaUint64T *)buf) = num;
-	return buf + sizeof (SaUint64T);
-}
-
 char *amf_serialize_opaque (
-	char *buf, int *size, int *offset, char *src, int cnt)
+	char *buf, int *size, int *offset, void *src, int cnt)
 {
 	unsigned int required_size;
 	char *tmp = buf;
@@ -1185,19 +1194,19 @@ char *amf_deserialize_SaStringT (char *buf, SaStringT *str)
 	return tmp;
 }
 
+char *amf_deserialize_SaUint16T (char *buf, SaUint16T *num)
+{
+	*num = *((SaUint16T *)buf);
+	return buf + sizeof (SaUint16T);
+}
+
 char *amf_deserialize_SaUint32T (char *buf, SaUint32T *num)
 {
 	*num = *((SaUint32T *)buf);
 	return buf + sizeof (SaUint32T);
 }
 
-char *amf_deserialize_SaUint64T (char *buf, SaUint64T *num)
-{
-	*num = *((SaUint64T *)buf);
-	return buf + sizeof (SaUint64T);
-}
-
-char *amf_deserialize_opaque (char *buf, char *dst, int *cnt)
+char *amf_deserialize_opaque (char *buf, void *dst, int *cnt)
 {
 	*cnt = *((SaUint32T *)buf);
 	memcpy (dst, buf + sizeof (SaUint32T), *cnt);
@@ -1207,6 +1216,18 @@ char *amf_deserialize_opaque (char *buf, char *dst, int *cnt)
 void *_amf_malloc (size_t size, char *file, unsigned int line)
 {
 	void *tmp = malloc (size);
+
+	if (tmp == NULL) {
+		log_printf (LOG_LEVEL_ERROR, "AMF out-of-memory at %s:%u", file, line);
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	return tmp;
+}
+
+void *_amf_calloc (size_t nmemb, size_t size, char *file, unsigned int line)
+{
+	void *tmp = calloc (nmemb, size);
 
 	if (tmp == NULL) {
 		log_printf (LOG_LEVEL_ERROR, "AMF out-of-memory at %s:%u", file, line);
@@ -1297,17 +1318,26 @@ out:
 
 }
 
-void amf_msg_mcast (int id, void *buf, size_t len)
+/**
+ * Multicast a message to the cluster. Errors are treated as
+ * fatal and will exit the program.
+ * @param msg_id
+ * @param buf
+ * @param len
+ * 
+ * @return int
+ */
+int amf_msg_mcast (int msg_id, void *buf, size_t len)
 {
 	struct req_exec_amf_msg msg;
 	struct iovec iov[2];
 	int iov_cnt;
 	int res;
 
-//	ENTER ("%u, %p, %u", id, buf, len);
+//	ENTER ("%u, %p, %u", msg_id, buf, len);
 
 	msg.header.size = sizeof (msg);
-	msg.header.id = SERVICE_ID_MAKE (AMF_SERVICE, id);
+	msg.header.id = SERVICE_ID_MAKE (AMF_SERVICE, msg_id);
 	iov[0].iov_base = &msg;
 	iov[0].iov_len  = sizeof (msg);
 
@@ -1328,6 +1358,8 @@ void amf_msg_mcast (int id, void *buf, size_t len)
 		dprintf("Unable to send %d bytes\n", msg.header.size);
 		openais_exit_error (AIS_DONE_FATAL_ERR);
 	}
+
+	return res;
 }
 
 void amf_util_init (void)

@@ -182,6 +182,7 @@ static void return_to_idle (struct amf_sg *sg)
 
 				break;
 			case SG_RT_FailoverNode:
+				amf_node_sg_failed_over (sg->recovery_scope.node, sg);
 				log_printf (
 					LOG_NOTICE, "'%s for %s' recovery action finished",
 					sg_recovery_type_text[sg->recovery_scope.recovery_type],
@@ -191,6 +192,7 @@ static void return_to_idle (struct amf_sg *sg)
 				log_printf (
 					LOG_NOTICE, "'%s' recovery action finished",
 					sg_recovery_type_text[0]);
+				break;
 		}
 	}
 
@@ -280,7 +282,7 @@ static void acsm_enter_terminating_suspected (struct amf_sg *sg)
 	struct amf_su **sus= sg->recovery_scope.sus;
 
 	sg->avail_state = SG_AC_TerminatingSuspected;
-					/*                                                              
+	/*                                                              
 	* Terminate suspected SU(s)
 	*/
 	while (*sus != 0) {
@@ -501,18 +503,19 @@ static void acsm_enter_repairing_su (struct amf_sg *sg)
 				openais_exit_error (AIS_DONE_FATAL_ERR);
 			}
 			if (node->saAmfNodeOperState == SA_AMF_OPERATIONAL_ENABLED) {
+                /* node is synchronized */
 				is_any_su_instantiated = 1;	
 				amf_su_instantiate ((*sus));
-			} else {
-				return_to_idle (sg);
 			}
 
 		}
 		sus++;
 	}
+
 	if (is_any_su_instantiated == 0) {
 		return_to_idle (sg);
 	}
+
 }
 
 /**
@@ -605,7 +608,7 @@ static void set_scope_for_failover_su (struct amf_sg *sg, struct amf_su *su)
 	struct amf_su **sus;
 	SaNameT dn;
 	sg->recovery_scope.recovery_type = SG_RT_FailoverSU;
-
+	sg->recovery_scope.node = NULL;
 
 	sg->recovery_scope.comp = NULL;
 	sg->recovery_scope.sus = (struct amf_su **)
@@ -653,6 +656,7 @@ static void set_scope_for_failover_node (struct amf_sg *sg, struct amf_node *nod
 
 	ENTER ("'%s'", node->name.value);
 	sg->recovery_scope.recovery_type = SG_RT_FailoverNode;
+	sg->recovery_scope.node = node;
 	sg->recovery_scope.comp = NULL;
 	sg->recovery_scope.sus = (struct amf_su **)
 	calloc (1, sizeof (struct amf_su *));
@@ -908,6 +912,7 @@ static void assign_si_assumed_cbfn (
 				confirmed_assignments);
 			amf_runtime_attributes_print (amf_cluster);
 			assert (0);
+			break;
 	}
 }
 
@@ -922,31 +927,57 @@ static inline int div_round (int a, int b)
 	return res;
 }
 
+#ifdef COMPILE_OUT
 static int all_su_has_presence_state (
 	struct amf_sg *sg, struct amf_node *node_to_start, 
-	SaAmfPresenceStateT state)
-{
-	struct amf_su   *su;
-	int all_set = 1;
+	SaAmfPresenceStateT state)                         
+{                                                      
+	struct amf_su   *su;                               
+	int all_set = 1;                                   
 
 	for (su = sg->su_head; su != NULL; su = su->next) {
 
 		if (su->saAmfSUPresenceState != state) {
 			if (node_to_start == NULL) {
-				all_set = 0;
+				all_set = 0;                           
+				break;                                 
+			} else {
+				if (name_match(&node_to_start->name,   
+					&su->saAmfSUHostedByNode)) {
+					all_set = 0;                       
+					break;                             
+				}
+			}                                          
+		}
+	}                                                  
+	return all_set;                                    
+}                                                      
+#endif
+
+static int no_su_has_presence_state (
+	struct amf_sg *sg, struct amf_node *node_to_start, 
+	SaAmfPresenceStateT state)
+{
+	struct amf_su *su;
+	int no_su_has_presence_state = 1;
+	for (su = sg->su_head; su != NULL; su = su->next) {
+
+		if (su->saAmfSUPresenceState == state) {
+			if (node_to_start == NULL) {
+				no_su_has_presence_state = 0;
 				break;
 			} else {
 				if (name_match(&node_to_start->name,
 					&su->saAmfSUHostedByNode)) {
-					all_set = 0;
+					no_su_has_presence_state = 0;
 					break;
 				}
 			}
 		}
 	}
-	return all_set;
-}
 
+	return no_su_has_presence_state;
+}
 
 static int all_su_in_scope_has_presence_state (
 	struct amf_sg *sg, SaAmfPresenceStateT state)
@@ -1300,14 +1331,16 @@ static int assign_si (struct amf_sg *sg, int dependency_level)
 	return assigned;
 }
 
-void amf_sg_assign_si (struct amf_sg *sg, int dependency_level)
+int amf_sg_assign_si_req (struct amf_sg *sg, int dependency_level)
 {   
+	int posible_to_assign_si;
 
 	sg->avail_state = SG_AC_AssigningOnRequest;
-	if (assign_si (sg, dependency_level) == 0) {
+
+	if ((posible_to_assign_si = assign_si (sg, dependency_level)) == 0) {
 		return_to_idle (sg);	
-		amf_application_sg_assigned (sg->application, sg);	
 	}
+	return posible_to_assign_si;
 }
 
 void amf_sg_failover_node_req (
@@ -1406,8 +1439,8 @@ void amf_sg_su_state_changed (struct amf_sg *sg,
 	if (type == SA_AMF_PRESENCE_STATE) {
 		if (state == SA_AMF_PRESENCE_INSTANTIATED) {
 			if (sg->avail_state == SG_AC_InstantiatingServiceUnits) {
-				if (all_su_has_presence_state(sg, sg->node_to_start, 
-					SA_AMF_PRESENCE_INSTANTIATED)) {
+				if (no_su_has_presence_state(sg, sg->node_to_start, 
+					SA_AMF_PRESENCE_INSTANTIATING)) {
 					su->sg->avail_state = SG_AC_Idle;
 					amf_application_sg_started (
 						sg->application, sg, this_amf_node);
@@ -1425,6 +1458,7 @@ void amf_sg_su_state_changed (struct amf_sg *sg,
 					assert (0);
 				}
 			} else {
+				dprintf ("avail-state: %u", sg->avail_state);
 				assert (0);
 			}
 		} else if (state == SA_AMF_PRESENCE_UNINSTANTIATED) {
@@ -1443,6 +1477,17 @@ void amf_sg_su_state_changed (struct amf_sg *sg,
 				}
 			} else {
 				assert (0);
+			}
+		} else if (state == SA_AMF_PRESENCE_INSTANTIATING) {
+			; /* nop */
+		} else if (state == SA_AMF_PRESENCE_INSTANTIATION_FAILED) {
+			if (sg->avail_state == SG_AC_InstantiatingServiceUnits) {
+				if (no_su_has_presence_state(sg, sg->node_to_start, 
+					SA_AMF_PRESENCE_INSTANTIATING)) {
+					su->sg->avail_state = SG_AC_Idle;
+					amf_application_sg_started (
+						sg->application, sg, this_amf_node);
+				}
 			}
 		} else {
 			assert (0);
@@ -1493,14 +1538,9 @@ void amf_sg_failover_su_req (
 
 struct amf_sg *amf_sg_new (struct amf_application *app, char *name) 
 {
-	struct amf_sg *sg = calloc (1, sizeof (struct amf_sg));
+	struct amf_sg *sg = amf_calloc (1, sizeof (struct amf_sg));
 
-	if (sg == NULL) {
-		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
-	}
-
-	sg->next = app->sg_head;
-	app->sg_head = sg;
+	setSaNameT (&sg->name, name);
 	sg->saAmfSGAdminState = SA_AMF_ADMIN_UNLOCKED;
 	sg->saAmfSGNumPrefActiveSUs = 1;
 	sg->saAmfSGNumPrefStandbySUs = 1;
@@ -1513,8 +1553,8 @@ struct amf_sg *amf_sg_new (struct amf_application *app, char *name)
 	sg->saAmfSGAutoAdjustProb = -1;
 	sg->saAmfSGAutoRepair = SA_TRUE;
 	sg->application = app;
-	setSaNameT (&sg->name, name);
-	sg->node_to_start = NULL;
+	sg->next = app->sg_head;
+	app->sg_head = sg;
 
 	return sg;
 }
@@ -1585,13 +1625,10 @@ void *amf_sg_serialize (struct amf_sg *sg, int *len)
 	return buf;
 }
 
-struct amf_sg *amf_sg_deserialize (
-	struct amf_application *app, char *buf, int size) 
+struct amf_sg *amf_sg_deserialize (struct amf_application *app, char *buf) 
 {
 	char *tmp = buf;
-	struct amf_sg *sg;
-
-	sg = amf_sg_new (app, "");
+	struct amf_sg *sg = amf_sg_new (app, "");
 
 	tmp = amf_deserialize_SaNameT (tmp, &sg->name);
 	tmp = amf_deserialize_SaUint32T (tmp, &sg->saAmfSGRedundancyModel);

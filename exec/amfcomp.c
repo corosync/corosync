@@ -482,6 +482,24 @@ static void *clc_command_run (void *context)
 	return (0);
 }
 
+static void amf_comp_instantiate_tmo (void *component)
+{
+	SaNameT compName;
+	amf_comp_dn_make (component, &compName);
+
+	amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE_TMO,
+		&compName, sizeof (SaNameT));
+}
+
+static void start_component_instantiate_timer (struct amf_comp *component)
+{
+	poll_timer_add (aisexec_poll_handle, 
+		component->saAmfCompInstantiateTimeout,
+		component,
+		amf_comp_instantiate_tmo,
+		&component->instantiate_timeout_handle);
+}
+
 /*
  * Instantiate possible operations
  */
@@ -506,6 +524,7 @@ static int clc_cli_instantiate (struct amf_comp *comp)
 	if (res != 0) {
 		log_printf (LOG_LEVEL_ERROR, "pthread_create failed: %d", res);
 	}
+	start_component_instantiate_timer (comp);
 //	clc_command_run_data->completion_callback (clc_command_run_data);
 
 // TODO error code from pthread_create
@@ -683,11 +702,8 @@ struct amf_healthcheck *amf_comp_find_healthcheck (
 struct amf_comp *amf_comp_new(struct amf_su *su, char *name)
 {
 	struct amf_comp *tail = su->comp_head;
-	struct amf_comp *comp = calloc (1, sizeof (struct amf_comp));
+	struct amf_comp *comp = amf_calloc (1, sizeof (struct amf_comp));
 
-	if (comp == NULL) {
-		openais_exit_error(AIS_DONE_OUT_OF_MEMORY);
-	}
 	while (tail != NULL) {
 		if (tail->next == NULL) {
 			break;
@@ -1184,17 +1200,37 @@ static void lib_csi_set_request (
 	free(p);
 }
 
+static void stop_component_instantiate_timer (struct amf_comp *component)
+{
+   if (component->instantiate_timeout_handle) {
+		dprintf ("Stop cluster startup timer");
+		poll_timer_delete (aisexec_poll_handle, 
+			component->instantiate_timeout_handle);
+		component->instantiate_timeout_handle = 0;
+	}
+}
+
+
 SaAisErrorT amf_comp_register (struct amf_comp *comp)
 {
 	TRACE2("Exec comp register '%s'", comp->name.value);
-	
-	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
-		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
-	} else if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING) {
-		amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_ENABLED);
-		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
-	} else {
-		assert (0);
+	stop_component_instantiate_timer (comp);
+
+	switch (comp->saAmfCompPresenceState) {
+		case SA_AMF_PRESENCE_RESTARTING:
+			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
+			break;
+		case SA_AMF_PRESENCE_INSTANTIATING:
+			amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_ENABLED);
+			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATED);
+			break;
+		case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
+            /* ignore due to instantitate timeout a while ago  */
+			break;
+		default:
+			assert (0);
+			break;
+		
 	}
 	
 	return SA_AIS_OK;
@@ -1367,23 +1403,98 @@ SaAisErrorT amf_comp_healthcheck_stop (
 	return error;
 }
 
+
 /**
  * Instantiate a component
  * @param comp
  */
 void amf_comp_instantiate (struct amf_comp *comp)
 {
-	int res = 0;
 
 	ENTER ("'%s' SU '%s'", getSaNameT (&comp->name),
 		getSaNameT (&comp->su->name));
 
-	if (comp->saAmfCompPresenceState != SA_AMF_PRESENCE_RESTARTING) {
-		comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATING);
+	switch (comp->saAmfCompPresenceState) {
+		case SA_AMF_PRESENCE_RESTARTING:
+			/* fall through */
+		case SA_AMF_PRESENCE_UNINSTANTIATED:
+			if (amf_su_is_local (comp->su)) {
+				TRACE1("Send instantiate event for comp '%s' from host %s", 
+					comp->name.value, comp->su->saAmfSUHostedByNode.value);
+				SaNameT compName;
+				amf_comp_dn_make (comp, &compName);
+				amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE,
+					&compName, sizeof (SaNameT));
+			}
+			break;
+		default:
+			dprintf("Instantiate ignored in Component presence state %d", 
+				comp->saAmfCompPresenceState);
+			break;
 	}
+}
 
-	if (amf_su_is_local (comp->su)) {
-		res = clc_interfaces[comp->comptype]->instantiate (comp);
+void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
+{
+	ENTER ("Comp instantiate timeout after %d seconds '%s' '%s'", 
+		comp->saAmfCompInstantiateTimeout, comp->su->name.value,
+		comp->name.value);
+
+	switch (comp->saAmfCompPresenceState) {
+		case SA_AMF_PRESENCE_RESTARTING:
+			amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+
+			break;
+		case SA_AMF_PRESENCE_INSTANTIATING:
+
+			amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+
+			break;
+		default:
+			assert (0);
+			break;
+	}
+}
+
+
+
+void amf_comp_instantiate_event (struct amf_comp *component)
+{
+   int res;
+   ENTER ("");
+	switch (component->saAmfCompPresenceState) {
+		case SA_AMF_PRESENCE_INSTANTIATING:
+		case SA_AMF_PRESENCE_INSTANTIATED:
+		case SA_AMF_PRESENCE_TERMINATING:
+		case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
+		case SA_AMF_PRESENCE_TERMINATION_FAILED:
+			dprintf("Instantiate ignored in Component presence state %d", 
+				component->saAmfCompPresenceState);
+			break;
+		case SA_AMF_PRESENCE_UNINSTANTIATED:
+
+			comp_presence_state_set (component, SA_AMF_PRESENCE_INSTANTIATING);
+			amf_su_comp_state_changed(component->su, 
+				component,SA_AMF_PRESENCE_STATE,SA_AMF_PRESENCE_INSTANTIATING);
+			if (amf_su_is_local (component->su)) {
+				res = clc_interfaces[component->comptype]->instantiate (
+					component);
+			}
+
+			break;
+		case SA_AMF_PRESENCE_RESTARTING:
+			if (amf_su_is_local (component->su)) {
+				res = clc_interfaces[component->comptype]->instantiate (
+					component);
+			}
+			break;
+		default:
+			dprintf("Component presence state %d", 
+				component->saAmfCompPresenceState);
+			assert (0);
+			break;
 	}
 }
 
@@ -1953,14 +2064,12 @@ void *amf_comp_serialize (struct amf_comp *component, int *len)
  * 
  * @return struct amf_comp*
  */
-struct amf_comp *amf_comp_deserialize (struct amf_su *su, char *buf, int size)
+struct amf_comp *amf_comp_deserialize (struct amf_su *su, char *buf)
 {
 	char *tmp = buf;
-	struct amf_comp *component;
 	int i;
 	SaUint32T cnt;
-
-	component = amf_comp_new (su, "");
+	struct amf_comp *component = amf_comp_new (su, "");
 
 	tmp = amf_deserialize_SaNameT (tmp, &component->name);
 	tmp = amf_deserialize_SaUint32T (tmp, &cnt);
@@ -2063,33 +2172,51 @@ struct amf_comp *amf_comp_deserialize (struct amf_su *su, char *buf, int size)
 
 void *amf_healthcheck_serialize (struct amf_healthcheck *healthcheck, int *len)
 {
-	int objsz = sizeof (struct amf_healthcheck);
-	struct amf_healthcheck *copy;
+	char *buf = NULL;
+	int offset = 0, size = 0;
 
-	copy = amf_malloc (objsz);
-	memcpy (copy, healthcheck, objsz);
-	*len = objsz;
+	TRACE8 ("%s", healthcheck->safHealthcheckKey.key);
 
-	return copy;
+	buf = amf_serialize_opaque (buf, &size, &offset,
+		&healthcheck->safHealthcheckKey.key, SA_AMF_HEALTHCHECK_KEY_MAX);
+	buf = amf_serialize_SaUint16T (buf, &size, &offset,
+		healthcheck->safHealthcheckKey.keyLen);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset,
+		healthcheck->saAmfHealthcheckMaxDuration);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset,
+		healthcheck->saAmfHealthcheckPeriod);
+
+	*len = offset;
+
+	return buf;
 }
 
 struct amf_healthcheck *amf_healthcheck_deserialize (
-	struct amf_comp *comp, char *buf, int size)
+	struct amf_comp *comp, char *buf)
 {
-	int objsz = sizeof (struct amf_healthcheck);
+	char *tmp = buf;
+	int cnt;
+	amf_healthcheck_t *healthcheck = amf_healthcheck_new (comp);
 
-	if (objsz > size) {
-		return NULL;
-	} else {
-		struct amf_healthcheck *obj = amf_malloc (sizeof (struct amf_healthcheck));
-		memcpy (obj, buf, objsz);
-		obj->active = 0;
-		obj->timer_handle_duration = 0;
-		obj->timer_handle_period = 0;
-		obj->comp = comp;
-		obj->next = comp->healthcheck_head;
-		comp->healthcheck_head = obj;
-		return obj;
-	}
+	tmp = amf_deserialize_opaque (tmp, &healthcheck->safHealthcheckKey.key, &cnt);
+	tmp = amf_deserialize_SaUint16T (tmp,
+		&healthcheck->safHealthcheckKey.keyLen);
+	tmp = amf_deserialize_SaUint32T (tmp,
+		&healthcheck->saAmfHealthcheckMaxDuration);
+	tmp = amf_deserialize_SaUint32T (tmp,
+		&healthcheck->saAmfHealthcheckPeriod);
+
+	return healthcheck;
+}
+
+amf_healthcheck_t *amf_healthcheck_new (struct amf_comp *comp)
+{
+	amf_healthcheck_t *healthcheck = amf_calloc (1, sizeof (amf_healthcheck_t));
+
+	healthcheck->comp = comp;
+	healthcheck->next = comp->healthcheck_head;
+	comp->healthcheck_head = healthcheck;
+
+	return healthcheck;
 }
 
