@@ -2084,10 +2084,6 @@ static void messages_free (
 	unsigned int release_to;
 	unsigned int range = 0;
 
-	log_printf (instance->totemsrp_log_level_debug,
-		"aru %x last aru %x my high delivered %x last released %x\n",
-		token_aru, instance->my_last_aru, instance->my_high_delivered, instance->last_released);
-
 	release_to = token_aru;
 	if (sq_lt_compare (instance->my_last_aru, release_to)) {
 		release_to = instance->my_last_aru;
@@ -2340,9 +2336,6 @@ static int orf_token_rtr (
 	 * Add messages to retransmit to RTR list
 	 * but only retry if there is room in the retransmit list
 	 */
-
-	log_printf (instance->totemsrp_log_level_debug,
-		"high seq %x aru %x\n", instance->my_high_seq_received, instance->my_aru);
 
 	range = instance->my_high_seq_received - instance->my_aru;
 	assert (range < 100000);
@@ -3347,12 +3340,14 @@ static void messages_deliver_to_app (
 	int endian_conversion_required = 0 ;
 	unsigned int my_high_delivered_stored = 0;
 
-	log_printf (instance->totemsrp_log_level_debug,
-		"Delivering %x to %x\n", instance->my_high_delivered,
-		end_point);
 
 	range = end_point - instance->my_high_delivered;
 
+	if (range) {
+		log_printf (instance->totemsrp_log_level_debug,
+			"Delivering %x to %x\n", instance->my_high_delivered,
+			end_point);
+	}
 	assert (range < 10240);
 	my_high_delivered_stored = instance->my_high_delivered;
 
