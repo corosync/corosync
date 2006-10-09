@@ -3941,9 +3941,9 @@ static int message_handler_memb_commit_token (
 			break;
 
 		case MEMB_STATE_COMMIT:
-			if (memcmp (&memb_commit_token->ring_id, &instance->my_ring_id,
-				sizeof (struct memb_ring_id)) == 0) {
-//			 if (memb_commit_token->ring_id.seq == instance->my_ring_id.seq) {
+//			if (memcmp (&memb_commit_token->ring_id, &instance->my_ring_id,
+//				sizeof (struct memb_ring_id)) == 0) {
+			 if (memb_commit_token->ring_id.seq == instance->my_ring_id.seq) {
 				memb_state_recovery_enter (instance, memb_commit_token);
 			}
 			break;
