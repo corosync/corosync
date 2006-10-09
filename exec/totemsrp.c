@@ -1116,7 +1116,7 @@ static int memb_set_subset (
 		if (found == 0) {
 			return (0);
 		}
-		found = 1;
+		found = 0;
 	}
 	return (1);
 }
