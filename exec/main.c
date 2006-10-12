@@ -531,6 +531,13 @@ int main (int argc, char **argv)
 	totem_config.totem_logging_configuration.log_printf = internal_log_printf;
 
 	/*
+	 * Sleep for a while to let other nodes in the cluster
+	 * understand that this node has been away (if it was
+	 * an aisexec restart).
+	 */
+	usleep(totem_config.token_timeout * 2000);
+
+	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot
 	 * bind to a specific interface.  This only matters if
 	 * there is more then one interface in a system, so
