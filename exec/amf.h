@@ -110,10 +110,16 @@ typedef enum {
 } sg_avail_control_state_t;
 
 
-typedef enum {
-	SG_RT_FailoverSU = 1,
-	SG_RT_FailoverNode
-} sg_recovery_type_t;
+typedef enum amf_sg_event_type {
+	SG_UNKNOWN_EV,
+	SG_FAILOVER_SU_EV,
+	SG_FAILOVER_NODE_EV,
+	SG_FAILOVER_COMP_EV,
+	SG_SWITCH_OVER_NODE_EV,
+	SG_START_EV,
+	SG_AUTO_ADJUST_EV,
+	SG_ASSIGN_SI_EV
+} amf_sg_event_type_t;
 
 typedef enum {
 	SU_RC_ESCALATION_LEVEL_0 = 0,
@@ -169,21 +175,25 @@ typedef enum {
 	CLUSTER_AC_QUISING
 } cluster_avail_control_state_t;
 
-typedef enum amf_cluster_event {
-	CLUSTER_SYNC_READY_EV = 1
-} amf_cluster_event_t;
+typedef enum amf_cluster_event_type {
+	CLUSTER_SYNC_READY_EV,
+	CLUSTER_EVENT_TYPE_CNT
+} amf_cluster_event_type_t;
+
+typedef enum amf_application_event_type {
+	APPLICATION_ASSIGN_WORKLOAD_EV,
+	APPLICATION_START_EV,
+	APPLICATION_EVENT_TYPE_CNT
+} amf_application_event_type_t;
 
 
 
-typedef struct amf_deferred {
-	struct amf_deferred *next;
-} amf_deferred_t;
-
-typedef struct cluster_deferred {
-	amf_deferred_t defered_list;
-	struct amf_node *node;
-	amf_cluster_event_t event;
-} cluster_deferredt_t;
+typedef struct amf_fifo {
+	int entry_type;
+	struct amf_fifo *next;
+	int size_of_data;
+	uint8_t data[];
+} amf_fifo_t;
 
 typedef struct amf_cluster {
 	/* Configuration Attributes */
@@ -201,7 +211,7 @@ typedef struct amf_cluster {
 	/* Implementation */
 	poll_timer_handle timeout_handle;
 	cluster_avail_control_state_t acsm_state;
-	cluster_deferredt_t *deferred_events_head;
+	amf_fifo_t *deferred_events;
 } amf_cluster_t;
 
 typedef struct amf_node {
@@ -246,10 +256,11 @@ typedef struct amf_application {
 	struct amf_application *next;
 	struct amf_node *node_to_start;
 	app_avail_control_state_t acsm_state;
+	amf_fifo_t *deferred_events;
 } amf_application_t;
 
 struct sg_recovery_scope {
-	sg_recovery_type_t recovery_type;
+	amf_sg_event_type_t event_type;
 	struct amf_si **sis;
 	struct amf_su **sus;
 	struct amf_comp *comp;
@@ -292,6 +303,7 @@ typedef struct amf_sg {
 	sg_avail_control_state_t  avail_state;
 	struct sg_recovery_scope  recovery_scope;
 	struct amf_node *node_to_start;
+	amf_fifo_t *deferred_events;
 } amf_sg_t;
 
 typedef struct amf_su {
@@ -605,6 +617,11 @@ extern char *amf_deserialize_SaUint64T (char *buf, SaUint64T *num);
 extern char *amf_deserialize_opaque (char *buf, void *dst, int *cnt);
 extern int amf_msg_mcast (int msg_id, void *buf, size_t len);
 extern void amf_util_init (void);
+extern void amf_fifo_put (int entry_type, amf_fifo_t **root, 
+	int size_of_data, void *data);
+extern int amf_fifo_get (amf_fifo_t **root, void *data);
+typedef void (*async_func_t)(void *param);
+extern void amf_call_function_asynchronous (async_func_t async_func, void *param);
 
 /*===========================================================================*/
 /* amfnode.c */

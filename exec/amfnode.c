@@ -177,14 +177,14 @@
  * Internal (static) utility functions
  *****************************************************************************/
 
-static void amf_node_acsm_enter_leaving_spontaneously(struct amf_node *node)
+static void node_acsm_enter_leaving_spontaneously(struct amf_node *node)
 {
 	ENTER("'%s'", node->name.value);
 	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_DISABLED;
 	node->nodeid = 0;
 }
 
-static void amf_node_acsm_enter_failing_over (struct amf_node *node)
+static void node_acsm_enter_failing_over (struct amf_node *node)
 { 
 	struct amf_application *app;
 	struct amf_sg *sg;
@@ -223,42 +223,6 @@ static void amf_node_acsm_enter_failing_over (struct amf_node *node)
 	}
 }
 
-#ifdef COMPILE_OUT
-static int all_applications_on_node_started (struct amf_node *node, 
-	struct amf_cluster *cluster) 
-{
-	int all_started = 1;
-	struct amf_application *app;
-	struct amf_sg *sg;
-	struct amf_su *su;
-
-	for (app = cluster->application_head; app != NULL; app = app->next) {
-		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
-			for (su = sg->su_head; su != NULL; su = su->next) {
-				/*
-				 * TODO: Replace the if-statement below with the if-statementin
-				 * this comment when the real problem is fixed !
-				 */
-				if (su->saAmfSUPresenceState !=
-					SA_AMF_PRESENCE_INSTANTIATED &&
-					name_match(&su->saAmfSUHostedByNode,&node->name)) {
-					all_started = 0; goto done;
-				}
-				if (su->saAmfSUPresenceState != SA_AMF_PRESENCE_INSTANTIATED ) {
-					all_started = 0;
-					goto done;
-				}
-			}
-		}
-	}
-
-	done:
-	return all_started;
-
-}
-#endif
-
-
 /******************************************************************************
  * Event methods
  *****************************************************************************/
@@ -280,14 +244,14 @@ void amf_node_leave (struct amf_node *node)
 		case NODE_ACSM_ESCALLATION_LEVEL_0:
 		case NODE_ACSM_ESCALLATION_LEVEL_2:
 		case NODE_ACSM_ESCALLATION_LEVEL_3:
-			amf_node_acsm_enter_leaving_spontaneously(node);    
-			amf_node_acsm_enter_failing_over (node);
+			node_acsm_enter_leaving_spontaneously(node);    
+			node_acsm_enter_failing_over (node);
 			break;
 		case NODE_ACSM_REPAIR_NEEDED:
 			break;
 		default:
 			log_printf (LOG_LEVEL_ERROR, "amf_node_leave()called in state = %d"
-				" (should have been defered)", node->acsm_state);
+				" (should have been deferred)", node->acsm_state);
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 			break;
 
@@ -372,7 +336,7 @@ void amf_node_sync_ready (struct amf_node *node)
 			break;
 		default:
 			log_printf (LOG_LEVEL_ERROR, "amf_node_sync_ready()called in state"
-				" = %d (should have been defered)", node->acsm_state);
+				" = %d (should have been deferred)", node->acsm_state);
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 			break;
 
@@ -467,10 +431,10 @@ void amf_node_application_workload_assigned (struct amf_node *node,
 void amf_node_sg_failed_over (struct amf_node *node, struct amf_sg *sg_in)
 {
 	struct amf_sg *sg;
-	struct amf_application *app;
+	struct amf_application *app = 0;
 	int all_sg_has_failed_over = 1;
 
-	assert (node != NULL && app != NULL);
+	assert (node != NULL);
 	ENTER ("Node=%s: SG '%s' started", node->name.value,
 		sg_in->name.value);
 
@@ -485,6 +449,10 @@ void amf_node_sg_failed_over (struct amf_node *node, struct amf_sg *sg_in)
 					}
 				}
 			}
+
+			break;
+		case NODE_ACSM_LEAVING_SPONTANEOUSLY_WAITING_FOR_NODE_TO_JOIN:
+			/* Accept reports of failed over sg that has completed. */
 			break;
 		default:
 			log_printf (LOG_LEVEL_ERROR, "amf_node_sg_failed_over()"

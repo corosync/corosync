@@ -576,7 +576,6 @@ void amf_su_comp_error_suspected (
 				 * TODO: delegate to node
 				*/
 				SaNameT dn;
-
 				su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
 				amf_comp_operational_state_set (
 					comp, SA_AMF_OPERATIONAL_DISABLED);

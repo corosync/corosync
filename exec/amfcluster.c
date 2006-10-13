@@ -1,3 +1,4 @@
+
 /** @file amfcluster.c
  * 
  * Copyright (c) 2006 Ericsson AB.
@@ -138,6 +139,53 @@
 #include "main.h"
 #include "service.h"
 
+/******************************************************************************
+ * Internal (static) utility functions
+ *****************************************************************************/
+
+ 
+typedef struct cluster_event {
+	amf_cluster_event_type_t event_type;
+	amf_cluster_t *cluster;
+	amf_node_t *node;
+} cluster_event_t;
+
+
+static void cluster_defer_event (amf_cluster_event_type_t event_type, 
+	struct amf_cluster *cluster, struct amf_node * node)
+{
+	cluster_event_t sync_ready_event = {event_type, cluster, node};
+	amf_fifo_put (event_type, &cluster->deferred_events, 
+		sizeof (cluster_event_t),
+		&sync_ready_event);
+}
+
+static void cluster_recall_deferred_events (amf_cluster_t *cluster) 
+{
+	cluster_event_t cluster_event;
+	
+	if (amf_fifo_get (&cluster->deferred_events, &cluster_event)) {
+		switch (cluster_event.event_type) {
+			case CLUSTER_SYNC_READY_EV:
+				log_printf (LOG_NOTICE, 
+					"Recall CLUSTER_SYNC_READY_EV");
+
+				amf_node_sync_ready (cluster_event.node);
+				break;
+			default:
+				assert (0);
+				break;
+		}
+	}
+}
+
+static void timer_function_cluster_recall_deferred_events (void *data)
+{
+	amf_cluster_t *cluster = (amf_cluster_t*)data;
+
+	ENTER ("");
+	cluster_recall_deferred_events (cluster);
+}
 
 /**
  * Determine if all applications are started so that all
@@ -222,7 +270,7 @@ static void start_cluster_startup_timer (struct amf_cluster *cluster)
 		&cluster->timeout_handle);
 }
 
-static inline void amf_cluster_enter_starting_applications (
+static inline void cluster_enter_starting_applications (
 	struct amf_cluster *cluster)
 {
 	ENTER ("");
@@ -231,48 +279,21 @@ static inline void amf_cluster_enter_starting_applications (
 	amf_cluster_start_applications (cluster);
 }
 
-static void add_assign_workload_deferred_list (struct amf_cluster *cluster, 
-	struct amf_node *node, amf_cluster_event_t event)
+static void acsm_cluster_enter_started (amf_cluster_t *cluster)
 {
-	cluster_deferredt_t *tmp_deferred_list = 
-		calloc (1, sizeof (cluster_deferredt_t));
-
-	tmp_deferred_list->defered_list.next = 
-		(amf_deferred_t*) cluster->deferred_events_head;
-	cluster->deferred_events_head = tmp_deferred_list;
-}
-
-
-static void	defer_assigning_worload_to_node (struct amf_node *node, 
-	amf_cluster_event_t event)
-{
-	
-	add_assign_workload_deferred_list(amf_cluster, node, event);
-}
-
-static amf_deferred_t *recall_defered_cluster_events (
-	struct amf_cluster *cluster)
-{
-	return (amf_deferred_t*) cluster->deferred_events_head;
-}
-
-
-static void acsm_cluster_enter_started (struct amf_cluster *cluster)
-{
-
-	amf_deferred_t *deferred_events; 
-	
+	ENTER ("");
 	amf_cluster->acsm_state = CLUSTER_AC_STARTED;
-
-	for (deferred_events = recall_defered_cluster_events (cluster);
-		deferred_events != NULL; 
-		deferred_events = deferred_events->next){
-
-		amf_node_sync_ready (((cluster_deferredt_t*)deferred_events)->node);
-	}
+	amf_call_function_asynchronous (
+		timer_function_cluster_recall_deferred_events, cluster);
 }
 
-int amf_cluster_applications_started_with_no_starting_sgs (struct amf_cluster *cluster)
+/******************************************************************************
+ * Event methods
+ *****************************************************************************/
+
+
+int amf_cluster_applications_started_with_no_starting_sgs (
+struct amf_cluster *cluster)
 {
 	return !cluster_applications_are_starting_sgs (cluster);
 }
@@ -287,24 +308,27 @@ void amf_cluster_start_tmo_event (int is_sync_masterm,
 	switch (cluster->acsm_state) {
 		case CLUSTER_AC_STARTING_APPLICATIONS:
 			if (cluster_applications_are_starting_sgs (cluster)) {
-				dprintf ("Cluster startup timeout, start waiting over time");
-				amf_cluster->acsm_state = CLUSTER_AC_WAITING_OVER_TIME;	
-			} else  {
-				dprintf ("Cluster startup timeout, assigning workload");
+				dprintf ("Cluster startup timeout," 
+					"start waiting over time");
+				amf_cluster->acsm_state = 
+					CLUSTER_AC_WAITING_OVER_TIME; 
+			} else {
+				dprintf ("Cluster startup timeout,"
+					" assigning workload");
 				acsm_cluster_enter_assigning_workload (cluster);
 			}
 			break;
 		case CLUSTER_AC_ASSIGNING_WORKLOAD:
-            /* ignore cluster startup timer expiration */
+			/* ignore cluster startup timer expiration */
 		case CLUSTER_AC_STARTED:
-            /* ignore cluster startup timer expiration */
+			/* ignore cluster startup timer expiration */
 		case CLUSTER_AC_WAITING_OVER_TIME:
-            /* ignore cluster startup timer expiration */
+			/* ignore cluster startup timer expiration */
 			break;
-
 		default:
-			log_printf(LOG_LEVEL_ERROR, "Cluster timout expired in wrong cluster"
-										" state = %d", cluster->acsm_state);
+			log_printf(LOG_LEVEL_ERROR, "Cluster timout expired"
+				" in wrong cluster"
+				" state = %d", cluster->acsm_state);
 			assert(0);
 			break;
 	}
@@ -329,33 +353,40 @@ void amf_cluster_start_applications(struct amf_cluster *cluster)
 
 void amf_cluster_sync_ready (struct amf_cluster *cluster, struct amf_node *node)
 {
-
 	log_printf(LOG_NOTICE, "Cluster: starting applications.");
 	switch (amf_cluster->acsm_state) {
 		case CLUSTER_AC_UNINSTANTIATED:
-			if (amf_cluster->saAmfClusterAdminState == SA_AMF_ADMIN_UNLOCKED) {
-				amf_cluster_enter_starting_applications (cluster);
+			if (amf_cluster->saAmfClusterAdminState == 
+				SA_AMF_ADMIN_UNLOCKED) {
+				cluster_enter_starting_applications (cluster);
 			}
 			break;
 		case CLUSTER_AC_STARTING_APPLICATIONS:
-			amf_cluster_enter_starting_applications(cluster);
+			cluster_enter_starting_applications(cluster);
 			break;
 		case CLUSTER_AC_ASSIGNING_WORKLOAD:
-			defer_assigning_worload_to_node (node, CLUSTER_SYNC_READY_EV);
-			log_printf (LOG_LEVEL_ERROR, "Sync ready not implemented in "
+			/*
+			 * Defer assigning workload to those syncronized nodes to
+			 * CLUSTER_AC_STARTED state.
+			 */
+			cluster_defer_event (CLUSTER_SYNC_READY_EV, cluster,
+				node);
+			log_printf (LOG_LEVEL_ERROR, 
+				"Sync ready not implemented in "
 				"cluster state: %u\n", amf_cluster->acsm_state);
 			assert (0);
 			break;
 		case CLUSTER_AC_WAITING_OVER_TIME:
-            /* TODO: Defer the implementation of assigning
-             * workload to those syncronized nodes to CLUSTER_AC_STARTED
-             * state.
-             */
-			defer_assigning_worload_to_node (node, CLUSTER_SYNC_READY_EV);
+			/*
+			 * Defer assigning workload to those syncronized nodes to
+			 * CLUSTER_AC_STARTED state.
+			 */
+			cluster_defer_event (CLUSTER_SYNC_READY_EV, cluster,
+				node);
 			break;
 		case CLUSTER_AC_STARTED:
 			TRACE1 ("Node sync ready sent from cluster in "
-					"CLUSTER_AC_STARTED state");
+				"CLUSTER_AC_STARTED state");
 			amf_node_sync_ready (node);
 			break;
 
@@ -363,7 +394,6 @@ void amf_cluster_sync_ready (struct amf_cluster *cluster, struct amf_node *node)
 			assert (0);
 			break;
 	}
-
 }
 
 void amf_cluster_init (void)
@@ -399,12 +429,14 @@ void amf_cluster_application_started (
 	}
 }
 
-struct amf_cluster *amf_cluster_new (void) {
-	struct amf_cluster *cluster = amf_calloc (1, sizeof (struct amf_cluster));
+struct amf_cluster *amf_cluster_new (void) 
+{
+	struct amf_cluster *cluster = amf_calloc (1, 
+					sizeof (struct amf_cluster));
 
 	cluster->saAmfClusterStartupTimeout = -1;
 	cluster->saAmfClusterAdminState = SA_AMF_ADMIN_UNLOCKED;
-	cluster->deferred_events_head = 0;
+	cluster->deferred_events = 0;
 	cluster->acsm_state = CLUSTER_AC_UNINSTANTIATED; 
 	return cluster;
 }
@@ -462,7 +494,8 @@ void *amf_cluster_serialize (struct amf_cluster *cluster, int *len)
 	return buf;
 }
 
-struct amf_cluster *amf_cluster_deserialize (char *buf) {
+struct amf_cluster *amf_cluster_deserialize (char *buf) 
+{
 	char *tmp = buf;
 	struct amf_cluster *cluster = amf_cluster_new ();
 

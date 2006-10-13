@@ -404,7 +404,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				sg = amf_sg_new (app, trim_str (loc));
 				sg_cnt++;
 				sg->recovery_scope.comp = NULL;
-				sg->recovery_scope.recovery_type = 0;
+				sg->recovery_scope.event_type = 0;
 				sg->recovery_scope.node = NULL;
 				sg->recovery_scope.sis = NULL;
 				sg->recovery_scope.sus = NULL;
@@ -1366,3 +1366,62 @@ void amf_util_init (void)
 {
 	log_init ("AMF");
 }
+
+void amf_fifo_put (int entry_type, amf_fifo_t **root, int size_of_data, 
+	void *data)
+{
+	amf_fifo_t *fifo;
+	amf_fifo_t **new_item = root;
+
+	/* Insert newest entry at the end of the single linked list */
+	for (fifo = *root; fifo != NULL; fifo = fifo->next) {
+		if (fifo->next == NULL) {
+			new_item = &fifo->next;
+		}		
+	}
+	*new_item = amf_malloc (size_of_data + sizeof (amf_fifo_t));
+	fifo = *new_item;
+	
+	/* Set data of this entry*/
+	fifo->entry_type = entry_type;
+	fifo->next = NULL;
+	fifo->size_of_data = size_of_data;
+	memcpy (fifo->data, data, size_of_data);
+}
+
+int amf_fifo_get (amf_fifo_t **root, void *data)
+{
+	amf_fifo_t *fifo;
+	int result = 0;
+
+	fifo = *root;
+	if (fifo != NULL) {
+		/* Unlink oldest entry*/
+		*root = fifo->next;
+		memcpy (data, fifo->data, fifo->size_of_data);
+		free (fifo);
+		result = 1;
+	}
+	return result;
+}
+
+
+/**
+ *
+ * Use timer to call function f (void *data) after that current
+ * execution in this thread has been re-assumed because of a
+ * time-out. Time-out time is 0 msec so f will be called as soon
+ * as possible. *
+ * 
+ * @param async_func
+ * @param func_param
+ */
+
+void amf_call_function_asynchronous (async_func_t async_func, void *func_param)
+{
+	
+	static poll_timer_handle async_func_timer_handle;
+	poll_timer_add (aisexec_poll_handle, 0, func_param, async_func, 
+		&async_func_timer_handle);
+}
+

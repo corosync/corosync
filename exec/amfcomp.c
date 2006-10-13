@@ -312,16 +312,6 @@ static void report_error_suspected (
 		comp->su, comp, recommended_recovery);
 }
 
-char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name)
-{
-	int i = snprintf ((char*) name->value, SA_MAX_NAME_LENGTH,
-		"safComp=%s,safSu=%s,safSg=%s,safApp=%s",
-		comp->name.value, comp->su->name.value,
-		comp->su->sg->name.value, comp->su->sg->application->name.value);
-	assert (i <= SA_MAX_NAME_LENGTH);
-	name->length = i;
-	return (char *)name->value;
-}
 
 #ifndef xprintf
 #define xprintf(...)
@@ -664,6 +654,17 @@ static int clc_terminate (struct amf_comp *comp)
 	return (0);
 }
 #endif
+
+char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name)
+{
+	int i = snprintf ((char*) name->value, SA_MAX_NAME_LENGTH,
+		"safComp=%s,safSu=%s,safSg=%s,safApp=%s",
+		comp->name.value, comp->su->name.value,
+		comp->su->sg->name.value, comp->su->sg->application->name.value);
+	assert (i <= SA_MAX_NAME_LENGTH);
+	name->length = i;
+	return (char *)name->value;
+}
 
 struct amf_healthcheck *amf_comp_find_healthcheck (
 	struct amf_comp *comp, SaAmfHealthcheckKeyT *key)
@@ -1203,7 +1204,7 @@ static void lib_csi_set_request (
 static void stop_component_instantiate_timer (struct amf_comp *component)
 {
    if (component->instantiate_timeout_handle) {
-		dprintf ("Stop cluster startup timer");
+		dprintf ("Stop component instantiate timer");
 		poll_timer_delete (aisexec_poll_handle, 
 			component->instantiate_timeout_handle);
 		component->instantiate_timeout_handle = 0;
@@ -1436,7 +1437,7 @@ void amf_comp_instantiate (struct amf_comp *comp)
 
 void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
 {
-	ENTER ("Comp instantiate timeout after %d seconds '%s' '%s'", 
+	ENTER ("Comp instantiate timeout after %d ms '%s' '%s'", 
 		comp->saAmfCompInstantiateTimeout, comp->su->name.value,
 		comp->name.value);
 
@@ -1452,7 +1453,11 @@ void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
 			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATION_FAILED);
 
 			break;
+		case SA_AMF_PRESENCE_INSTANTIATED:
+			assert (comp->instantiate_timeout_handle == 0);
+			break;
 		default:
+			dprintf("Presence state = %d", comp->saAmfCompPresenceState);
 			assert (0);
 			break;
 	}
@@ -1865,7 +1870,7 @@ SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
  * component process is executing has unexpectadly left the
  * node. If there is a pending interaction between AMF
  * (component) and the 'real' component process, then component
- * will indicate to its subordinate objects the the interaction
+ * will indicate to its subordinate objects the interaction
  * failed. Pending presence state changes is indicated by
  * reporting the new state is uninstantiated while pending csi
  * operations are indicated by 'operation failed'.
