@@ -52,6 +52,50 @@
 
 #define AMF_PROTOCOL_VERSION 1
 
+enum scsm_states {
+	IDLE = 1,
+	PROBING_1,
+	PROBING_2,
+	CREATING_CLUSTER_MODEL,
+	SYNCHRONIZING,
+	NORMAL_OPERATION,
+	UPDATING_CLUSTER_MODEL,
+	UNCONFIGURED
+};
+
+/**
+ * State descriptor for the AMF Synchronisation Control State
+ * Machine (SCSM).
+ */
+struct scsm_descriptor {
+	enum scsm_states           state;
+	poll_timer_handle          timer_handle;
+
+	/* node ID of current sync master */
+	unsigned int               sync_master;
+
+	unsigned int              *joined_list;
+	unsigned int               joined_list_entries;
+	struct amf_cluster        *cluster;
+	struct amf_node           *node;
+	struct amf_application    *app;
+	int                        app_sync_completed;
+	struct amf_sg             *sg;
+	int                        sg_sync_completed;
+	struct amf_su             *su;
+	int                        su_sync_completed;
+	struct amf_comp           *comp;
+	int                        comp_sync_completed;
+	struct amf_healthcheck    *healthcheck;
+	struct amf_si             *si;
+	int                        si_sync_completed;
+	struct amf_si_assignment  *si_assignment;
+	struct amf_csi            *csi;
+	int                        csi_sync_completed;
+	struct amf_csi_assignment *csi_assignment;
+	struct amf_csi_attribute  *csi_attribute;
+};
+
 enum clc_component_types {
 	clc_component_sa_aware = 0,			/* sa aware */
 	clc_component_proxied_pre = 1,			/* proxied, pre-instantiable */

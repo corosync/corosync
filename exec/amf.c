@@ -155,6 +155,10 @@
 #include "objdb.h"
 #include "print.h"
 
+#ifdef AMFTEST
+#define static
+#endif
+
 #ifndef HOST_NAME_MAX
 # define HOST_NAME_MAX 255
 #endif
@@ -471,50 +475,6 @@ static const char *scsm_state_names[] = {
 	"UNCONFIGURED"
 };
 
-enum scsm_states {
-	IDLE = 1,
-	PROBING_1,
-	PROBING_2,
-	CREATING_CLUSTER_MODEL,
-	SYNCHRONIZING,
-	NORMAL_OPERATION,
-	UPDATING_CLUSTER_MODEL,
-	UNCONFIGURED
-};
-
-/**
- * State descriptor for the AMF Synchronisation Control State
- * Machine (SCSM).
- */
-struct scsm_descriptor {
-	enum scsm_states           state;
-	poll_timer_handle          timer_handle;
-
-	/* node ID of current sync master */
-	unsigned int               sync_master;
-
-	unsigned int              *joined_list;
-	unsigned int               joined_list_entries;
-	struct amf_cluster        *cluster;
-	struct amf_node           *node;
-	struct amf_application    *app;
-	int                        app_sync_completed;
-	struct amf_sg             *sg;
-	int                        sg_sync_completed;
-	struct amf_su             *su;
-	int                        su_sync_completed;
-	struct amf_comp           *comp;
-	int                        comp_sync_completed;
-	struct amf_healthcheck    *healthcheck;
-	struct amf_si             *si;
-	int                        si_sync_completed;
-	struct amf_si_assignment  *si_assignment;
-	struct amf_csi            *csi;
-	int                        csi_sync_completed;
-	struct amf_csi_assignment *csi_assignment;
-	struct amf_csi_attribute  *csi_attribute;
-};
-
 /**
  * Storage for AMF Synchronisation Control State Machine (SCSM).
  */
@@ -658,7 +618,6 @@ static int mcast_sync_data (
 
 	if (res != 0) {
 		dprintf("Unable to send %d bytes of sync data\n", req_exec.header.size);
-		openais_exit_error (AIS_DONE_FATAL_ERR);
 	}
 
 	return res;
@@ -953,7 +912,7 @@ static int csi_sync (struct amf_csi *csi)
 		scsm.csi_sync_completed = 1;
 	}
 
-	if (scsm.csi_assignment == NULL) {
+	if (scsm.csi_assignment == NULL && scsm.csi_attribute == NULL) {
 		scsm.csi_assignment = scsm.csi->assigned_csis;
 	}
 	for (; scsm.csi_assignment != NULL; 
@@ -1010,7 +969,7 @@ static int si_sync (struct amf_si *si)
 		scsm.si_sync_completed = 1;
 	}
 
-	if (scsm.si_assignment == NULL) {
+	if (scsm.si_assignment == NULL && scsm.csi == NULL) {
 		scsm.si_assignment = scsm.si->assigned_sis;
 	}
 	for (; scsm.si_assignment != NULL; scsm.si_assignment = scsm.si_assignment->next) {
@@ -1049,7 +1008,7 @@ static int application_sync (struct amf_application *app)
 		scsm.app_sync_completed = 1;
 	}
 
-	if (scsm.sg == NULL) {
+	if (scsm.sg == NULL && scsm.si == NULL) {
 		scsm.sg = scsm.app->sg_head;
 	}
 
@@ -1228,7 +1187,7 @@ static int amf_sync_process (void)
 		}
 	}
 
-#ifdef DEBUG
+#ifdef AMFTEST
 	{
 		/*                                                              
 		 * Test code to generate the event "sync master died" in the
@@ -1295,7 +1254,7 @@ static void amf_sync_activate (void)
 			sync_state_set (NORMAL_OPERATION);
 			if (this_amf_node != NULL) {
 				this_amf_node->nodeid = this_ip->nodeid;
-#ifdef AMF_DEBUG
+#ifdef AMFDEBUG
 				amf_runtime_attributes_print (amf_cluster);
 #endif
 				amf_cluster_sync_ready (amf_cluster, this_amf_node);
@@ -1334,7 +1293,7 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		openais_exit_error (AIS_DONE_FATAL_ERR);
 	}
 
-	if (!amf_enabled (objdb)) {
+	if (objdb != NULL && !amf_enabled (objdb)) {
 		sync_state_set (UNCONFIGURED);
 		return 0;
 	}
