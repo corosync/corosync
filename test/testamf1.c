@@ -54,10 +54,16 @@
 
 SaAmfHandleT handle;
 
-SaAmfHealthcheckKeyT key0 = {
-	.key = "key1",
-	.keyLen = 4
+SaAmfHealthcheckKeyT keyAmfInvoked = {
+	.key = "amfInvoked",
+	.keyLen = 10
 };
+
+SaAmfHealthcheckKeyT keyCompInvoked = {
+	.key = "compInvoked",
+	.keyLen = 11
+};
+
 SaNameT compNameGlobal;
 int good_health = 0;
 int good_health_limit = 0;
@@ -133,7 +139,7 @@ void HealthcheckCallback (SaInvocationT invocation,
         response (handle, invocation, SA_AIS_OK);
         res = saAmfHealthcheckStop (handle,
                                        &compNameGlobal,
-                                       &key0);
+                                       &keyAmfInvoked);
         printf ("healthcheck stop result %d (should be %d)\n", res, SA_AIS_OK);
 
         printf ("COMPONENT REPORTING ERROR %s\n", compNameGlobal.value);
@@ -332,13 +338,12 @@ void write_pid (void) {
 	close (fd);
 }
 
-int main (int argc, char **argv)
+static SaSelectionObjectT comp_init ()
 {
-	int result;
-	SaSelectionObjectT select_fd;
-	fd_set read_fds;
 	char *name;
 	char *env;
+	int result;
+	SaSelectionObjectT select_fd;
 
 	name = getenv ("SA_AMF_COMPONENT_NAME");
 	if (name == NULL) {
@@ -378,13 +383,13 @@ int main (int argc, char **argv)
 	sched_param.sched_priority = sched_get_priority_max(SCHED_RR);
 	if (sched_param.sched_priority == -1) {
 		fprintf (stderr, "%d: couldn't retrieve the maximum scheduling " \
-		    "priority supported by the Round-Robin class (%s)\n",
-		    (int)getpid(), strerror(errno));
+			"priority supported by the Round-Robin class (%s)\n",
+			(int)getpid(), strerror(errno));
 	} else {
 		result = sched_setscheduler (0, SCHED_RR, &sched_param);
 		if (result == -1) {
 			fprintf (stderr, "%d: couldn't set sched priority (%s)\n",
-			    (int)getpid(), strerror(errno));
+				(int)getpid(), strerror(errno));
 		}
 	}
 #endif
@@ -400,7 +405,6 @@ int main (int argc, char **argv)
 		die ("saAmfInitialize result is %d", result);
 	}
 
-	FD_ZERO (&read_fds);
 	do {
 		result = saAmfSelectionObjectGet (handle, &select_fd);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
@@ -411,7 +415,6 @@ int main (int argc, char **argv)
 	if (result != SA_AIS_OK) {
 		die ("saAmfSelectionObjectGet failed %d", result);
 	}
-	FD_SET (select_fd, &read_fds);
 
 	do {
 		result = saAmfComponentNameGet (handle, &compNameGlobal);
@@ -424,11 +427,11 @@ int main (int argc, char **argv)
 		die ("saAmfComponentNameGet failed %d", result);
 	}
 	write_pid ();
-	
+
 	do {
 		result = saAmfHealthcheckStart (handle,
 			&compNameGlobal,
-			&key0,
+			&keyAmfInvoked,
 			SA_AMF_HEALTHCHECK_AMF_INVOKED,
 			SA_AMF_COMPONENT_FAILOVER);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
@@ -440,10 +443,25 @@ int main (int argc, char **argv)
 		die ("saAmfHealthcheckStart failed %d", result);
 	}
 
-    {
-        SaNameT badname;
-        strcpy ((char*)badname.value, "badname");
-        badname.length = 7;
+	do {
+		result = saAmfHealthcheckStart (handle,
+			&compNameGlobal,
+			&keyCompInvoked,
+			SA_AMF_HEALTHCHECK_COMPONENT_INVOKED,
+			SA_AMF_COMPONENT_FAILOVER);
+		if (result == SA_AIS_ERR_TRY_AGAIN) {
+			printf("%d: TRY_AGAIN received\n", getpid());
+			usleep (100000);
+		}
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
+	if (result != SA_AIS_OK) {
+		die ("saAmfHealthcheckStart failed %d", result);
+	}
+
+	{
+		SaNameT badname;
+		strcpy ((char*)badname.value, "badname");
+		badname.length = 7;
 		do {
 			result = saAmfComponentRegister (handle, &badname, NULL);
 			if (result == SA_AIS_ERR_TRY_AGAIN) {
@@ -454,7 +472,7 @@ int main (int argc, char **argv)
 		if (result != SA_AIS_ERR_INVALID_PARAM) {
 			die ("saAmfComponentRegister failed %d", result);
 		}
-    }
+	}
 
 	do {
 		result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
@@ -467,13 +485,13 @@ int main (int argc, char **argv)
 		die ("saAmfComponentRegister failed %d", result);
 	}
 
-    /*
-     * Test already started healthcheck
-     */
+	/*
+	 * Test already started healthcheck
+	 */
 	do {
 		result = saAmfHealthcheckStart (handle,
 			&compNameGlobal,
-			&key0,
+			&keyAmfInvoked,
 			SA_AMF_HEALTHCHECK_AMF_INVOKED,
 			SA_AMF_COMPONENT_FAILOVER);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
@@ -485,54 +503,77 @@ int main (int argc, char **argv)
 		die ("saAmfHealthcheckStart failed %d", result);
 	}
 
-	do {
-		result = select (select_fd + 1, &read_fds, 0, 0, 0);
-		if (result == -1 && errno == EINTR) {
-			switch (stop) {
-				case FINALIZE:
-					result = saAmfFinalize (handle);
-					if (result != SA_AIS_OK) {
-						die ("saAmfFinalize failed %d", result);
-					}
-					fprintf(stderr, "%d: %s exiting\n",
-							getpid(), compNameGlobal.value);
-					exit (EXIT_SUCCESS);
-					break;
-				case UNREGISTER:
-					fprintf(stderr, "%d: %s unregistering\n",
-							getpid(), compNameGlobal.value);
-					result = saAmfComponentUnregister (
-						handle, &compNameGlobal, NULL);
-					if (result != SA_AIS_OK) {
-						die ("saAmfComponentUnregister failed %d", result);
-					}
-					fprintf(stderr, "%d: waiting after unregister\n", getpid());
-					while (1) {
-						sleep (100000000);
-					}
-					break;
-				case ERROR_REPORT:
-					fprintf(stderr, "%d: %s error reporting\n",
-							getpid(), compNameGlobal.value);
-					result = saAmfComponentErrorReport (
-						handle, &compNameGlobal, 0, SA_AMF_COMPONENT_RESTART, 0);
-					if (result != SA_AIS_OK) {
-						die ("saAmfComponentErrorReport failed %d", result);
-					}
-					fprintf(stderr, "%d: waiting after error report\n", getpid());
-					while (1) {
-						sleep (100000000);
-					}
-					break;
-				default:
-					die ("unknown %d", stop);
-					break;
-			}
-		} else if (result == -1) {
-			die ("select failed - %s", strerror (errno));
-		}
+	return select_fd;
+}
 
-		if (result > 0) {
+static void handle_intr (void)
+{
+	SaAisErrorT result;
+
+	switch (stop) {
+		case FINALIZE:
+			result = saAmfFinalize (handle);
+			if (result != SA_AIS_OK) {
+				die ("saAmfFinalize failed %d", result);
+			}
+			fprintf(stderr, "%d: %s exiting\n",
+					getpid(), compNameGlobal.value);
+			exit (EXIT_SUCCESS);
+			break;
+		case UNREGISTER:
+			fprintf(stderr, "%d: %s unregistering\n",
+					getpid(), compNameGlobal.value);
+			result = saAmfComponentUnregister (
+				handle, &compNameGlobal, NULL);
+			if (result != SA_AIS_OK) {
+				die ("saAmfComponentUnregister failed %d", result);
+			}
+			fprintf(stderr, "%d: waiting after unregister\n", getpid());
+			while (1) {
+				sleep (100000000);
+			}
+			break;
+		case ERROR_REPORT:
+			fprintf(stderr, "%d: %s error reporting\n",
+					getpid(), compNameGlobal.value);
+			result = saAmfComponentErrorReport (
+				handle, &compNameGlobal, 0, SA_AMF_COMPONENT_RESTART, 0);
+			if (result != SA_AIS_OK) {
+				die ("saAmfComponentErrorReport failed %d", result);
+			}
+			fprintf(stderr, "%d: waiting after error report\n", getpid());
+			while (1) {
+				sleep (100000000);
+			}
+			break;
+		default:
+			die ("unknown %d", stop);
+			break;
+	}
+}
+
+int main (int argc, char **argv)
+{
+	int result;
+	SaSelectionObjectT select_fd;
+	fd_set read_fds;
+	struct timeval tv;
+
+	select_fd = comp_init();
+	FD_ZERO (&read_fds);
+
+	do {
+		tv.tv_sec = 2; /* related to value in amf.conf! */
+		tv.tv_usec = 0;
+		FD_SET (select_fd, &read_fds);
+		result = select (select_fd + 1, &read_fds, 0, 0, &tv);
+		if (result == -1) {
+			if (errno == EINTR) {
+				handle_intr ();
+			} else {
+				die ("select failed - %s", strerror (errno));
+			}
+		} else if (result > 0) {
 			do {
 				result = saAmfDispatch (handle, SA_DISPATCH_ALL);
 				if (result == SA_AIS_ERR_TRY_AGAIN) {
@@ -544,8 +585,22 @@ int main (int argc, char **argv)
 			if (result != SA_AIS_OK) {
 				die ("saAmfDispatch failed %d", result);
 			}
+		} else {
+            /* timeout */
+			do {
+				result = saAmfHealthcheckConfirm (handle, &compNameGlobal,
+					&keyCompInvoked, SA_AIS_OK);
+				if (result == SA_AIS_ERR_TRY_AGAIN) {
+					fprintf(stderr, "%d: TRY_AGAIN received\n", getpid());
+					usleep (100000);
+				}
+			} while (result == SA_AIS_ERR_TRY_AGAIN);
+
+			if (result != SA_AIS_OK) {
+				die ("saAmfHealthcheckConfirm failed %d", result);
+			}
 		}
-	} while (result && stop == 0);
+	} while (stop == 0);
 
 	fprintf(stderr, "%d: exiting...\n", getpid());
 	exit (EXIT_SUCCESS);
