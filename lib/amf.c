@@ -602,7 +602,7 @@ saAmfPmStart (
 		return (error);
 	}
 
-	req_lib_amf_pmstart.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_pmstart.header.size = sizeof (struct req_lib_amf_pmstart);
 	req_lib_amf_pmstart.header.id = MESSAGE_REQ_AMF_PMSTART;
 	memcpy (&req_lib_amf_pmstart.compName, compName,
 		sizeof (SaNameT));
@@ -728,7 +728,7 @@ saAmfHealthcheckConfirm (
 		return (error);
 	}
 
-	req_lib_amf_healthcheckconfirm.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_healthcheckconfirm.header.size = sizeof (struct req_lib_amf_healthcheckconfirm);
 	req_lib_amf_healthcheckconfirm.header.id = MESSAGE_REQ_AMF_HEALTHCHECKCONFIRM;
 	memcpy (&req_lib_amf_healthcheckconfirm.compName, compName,
 		sizeof (SaNameT));
@@ -848,7 +848,7 @@ saAmfCSIQuiescingComplete (
 		return (error);
 	}
 
-	req_lib_amf_csiquiescingcomplete.header.size = sizeof (struct req_lib_amf_componentunregister);
+	req_lib_amf_csiquiescingcomplete.header.size = sizeof (struct req_lib_amf_csiquiescingcomplete);
 	req_lib_amf_csiquiescingcomplete.header.id = MESSAGE_REQ_AMF_CSIQUIESCINGCOMPLETE;
 	req_lib_amf_csiquiescingcomplete.invocation = invocation;
 	req_lib_amf_csiquiescingcomplete.error = error;
