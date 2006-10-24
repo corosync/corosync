@@ -680,10 +680,13 @@ struct amf_healthcheck *amf_comp_find_healthcheck (
 		healthcheck != NULL;
 		healthcheck = healthcheck->next) {
 
-		if (memcmp (key, &healthcheck->safHealthcheckKey,
-				sizeof (SaAmfHealthcheckKeyT)) == 0) {
-			ret_healthcheck = healthcheck;
-			break;
+                if (key->keyLen == (healthcheck->safHealthcheckKey).keyLen) {
+                        if (memcmp (key->key,
+                                    (healthcheck->safHealthcheckKey).key,
+                                    key->keyLen) == 0) {
+                                ret_healthcheck = healthcheck;
+                                break;
+                        }
 		}
 	}
 
