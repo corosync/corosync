@@ -56,4 +56,12 @@ int sync_in_process (void);
 
 int sync_primary_designated (void);
 
+/**
+ * Execute synchronization upon request for the named service
+ * @param name service handler name to synchronize
+ * 
+ * @return int 0 OK, error code otherwise
+ */
+extern int sync_request (char *name);
+
 #endif /* SYNC_H_DEFINED */
