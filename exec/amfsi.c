@@ -119,6 +119,42 @@
 #include "main.h"
 
 /**
+ * Check that all CSI assignments belonging to an SI assignment
+ * has been removed.
+ * @param si_assignment
+ * 
+ * @return int
+ */
+static int all_csi_assignments_removed (amf_si_assignment_t *si_assignment)
+{
+	amf_csi_assignment_t *csi_assignment;
+	amf_csi_t *csi;
+	int all_removed = 1;
+
+	for (csi = si_assignment->si->csi_head; csi != NULL; csi = csi->next) {
+		for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+			csi_assignment = csi_assignment->next) {
+
+			/* 
+			 * If the CSI assignment and the SI assignment belongs to the
+			 * same SU, we have a match and can request the component to
+			 * remove the CSI.
+			 */
+			if (name_match (&csi_assignment->comp->su->name,
+				&si_assignment->su->name)) {
+
+				if (csi_assignment->requested_ha_state !=
+					csi_assignment->saAmfCSICompHAState) {
+					all_removed = 0;
+				}
+			}
+		}
+	}
+
+	return all_removed;
+}
+
+/**
  * Check if any CSI assignment belonging to SU has the requested
  * state.
  * @param su
@@ -358,7 +394,6 @@ void amf_si_ha_state_assume (
 				csi_assignment->requested_ha_state =
 					si_assignment->requested_ha_state;
 				amf_comp_hastate_set (csi_assignment->comp, csi_assignment);
-
 				if (csi_assignment->saAmfCSICompHAState ==
 					csi_assignment->requested_ha_state) {
 
@@ -410,6 +445,7 @@ int amf_si_su_get_saAmfSINumCurrActiveAssignments (struct amf_si *si,
 {
 	int cnt = 0;
 	struct amf_si_assignment *si_assignment;
+
 	for (si_assignment = si->assigned_sis; si_assignment != NULL;
 		si_assignment = si_assignment->next) {
 
@@ -476,7 +512,6 @@ void amf_csi_delete_assignments (struct amf_csi *csi, struct amf_su *su)
 	struct amf_csi_assignment *csi_assignment;
 	ENTER ("'%s'", su->name.value);
 	struct amf_csi_assignment **prev = &csi->assigned_csis;
-
 
 	for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
 		csi_assignment = csi_assignment->next) {
@@ -647,7 +682,6 @@ struct amf_si *amf_si_find (struct amf_application *app, char *name)
 {
 	struct amf_si *si;
 
-
 	for (si = app->si_head; si != NULL; si = si->next) {
 		if (si->name.length == strlen(name) && 
 			strncmp (name, (char*)si->name.value, si->name.length) == 0) {
@@ -771,13 +805,11 @@ void *amf_csi_assignment_serialize (
 struct amf_si_assignment *si_assignment_find (
 	struct amf_csi_assignment *csi_assignment)
 {
-
 	struct amf_comp *component;
 	struct amf_si_assignment *si_assignment = NULL;
 
 	component = amf_comp_find(csi_assignment->csi->si->application->cluster, 
 		&csi_assignment->name);
-
 
 	for (si_assignment = csi_assignment->csi->si->assigned_sis;
 		si_assignment != NULL; si_assignment = si_assignment->next) {
@@ -960,5 +992,70 @@ struct amf_csi_attribute *amf_csi_attribute_deserialize (
 	csi_attribute->value[i] = NULL;
 
 	return csi_attribute;
+}
+
+void amf_si_assignment_remove (amf_si_assignment_t *si_assignment,
+	async_func_t async_func)
+{
+	struct amf_csi_assignment *csi_assignment;
+	struct amf_csi *csi;
+	int csi_assignment_cnt = 0;
+
+	ENTER ("SI '%s' SU '%s' state %s", si_assignment->si->name.value,
+		si_assignment->su->name.value,
+		amf_ha_state (si_assignment->requested_ha_state));
+
+	si_assignment->requested_ha_state = USR_AMF_HA_STATE_REMOVED;
+	si_assignment->removed_callback_fn = async_func;
+
+	for (csi = si_assignment->si->csi_head; csi != NULL; csi = csi->next) {
+		for (csi_assignment = csi->assigned_csis; csi_assignment != NULL;
+			csi_assignment = csi_assignment->next) {
+
+			/* 
+			 * If the CSI assignment and the SI assignment belongs to the
+			 * same SU, we have a match and can request the component to
+			 * remove the CSI.
+			 */
+			if (name_match (&csi_assignment->comp->su->name,
+				&si_assignment->su->name)) {
+
+				csi_assignment_cnt++;
+				csi_assignment->requested_ha_state = USR_AMF_HA_STATE_REMOVED;
+				amf_comp_csi_remove (csi_assignment->comp, csi_assignment);
+			}
+		}
+	}
+
+	/*                                                              
+	 * If the SU has only one component which is the faulty one, we
+	 * will not get an asynchronous response from the component.
+	 * This response (amf_si_comp_set_ha_state_done) is used to do
+	 * the next state transition. The asynchronous response is
+	 * simulated using a timeout instead.
+	 */
+	if (csi_assignment_cnt == 0) {
+		amf_call_function_asynchronous (async_func, si_assignment);
+	}
+}
+
+void amf_si_comp_csi_removed (
+	struct amf_si *si, struct amf_csi_assignment *csi_assignment,
+	SaAisErrorT error)
+{
+	ENTER ("'%s', '%s'", si->name.value, csi_assignment->csi->name.value);
+
+	assert (csi_assignment->si_assignment->removed_callback_fn != NULL);
+
+	csi_assignment->saAmfCSICompHAState = USR_AMF_HA_STATE_REMOVED;
+
+	/*                                                              
+     * Report to caller when all requested CSI assignments has
+     * been removed.
+	 */
+	if (all_csi_assignments_removed(csi_assignment->si_assignment)) {
+		csi_assignment->si_assignment->removed_callback_fn (
+			csi_assignment->si_assignment);
+	}
 }
 

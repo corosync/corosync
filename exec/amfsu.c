@@ -128,7 +128,6 @@
 #include "print.h"
 #include "main.h"
 
-
 /**
  * This function only logs since the readiness state is runtime
  * calculated.
@@ -437,7 +436,7 @@ void amf_su_instantiate (struct amf_su *su)
 	}
 }
 
-void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
+amf_si_assignment_t *amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 	SaAmfHAStateT ha_state)
 {
 	struct amf_si_assignment *si_assignment;
@@ -491,6 +490,7 @@ void amf_su_assign_si (struct amf_su *su, struct amf_si *si,
 			}
 		}
 	}
+	return si_assignment;
 }
 
 
@@ -688,7 +688,6 @@ void amf_su_foreach_si_assignment (
 	}
 }
 
-
 int amf_su_get_saAmfSUNumCurrActiveSIs(struct amf_su *su)
 {
 	int cnt = 0;
@@ -709,7 +708,6 @@ int amf_su_get_saAmfSUNumCurrActiveSIs(struct amf_su *su)
 
 	return cnt;
 }
-
 
 int amf_su_get_saAmfSUNumCurrStandbySIs(struct amf_su *su)
 {

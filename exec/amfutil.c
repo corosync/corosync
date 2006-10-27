@@ -79,8 +79,8 @@ static const char *presence_state_text[] = {
 	"INSTANTIATED",
 	"TERMINATING",
 	"RESTARTING",
-	"INSTANTION_FAILED",
-	"TERMINIATION-FAILED"
+	"INSTANTIATION_FAILED",
+	"TERMINATION_FAILED"
 };
 
 static const char *oper_state_text[] = {
@@ -1228,6 +1228,18 @@ void *_amf_malloc (size_t size, char *file, unsigned int line)
 void *_amf_calloc (size_t nmemb, size_t size, char *file, unsigned int line)
 {
 	void *tmp = calloc (nmemb, size);
+
+	if (tmp == NULL) {
+		log_printf (LOG_LEVEL_ERROR, "AMF out-of-memory at %s:%u", file, line);
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	return tmp;
+}
+
+void *_amf_realloc (void* ptr, size_t size, char *file, unsigned int line)
+{
+	void *tmp = realloc (ptr, size);
 
 	if (tmp == NULL) {
 		log_printf (LOG_LEVEL_ERROR, "AMF out-of-memory at %s:%u", file, line);

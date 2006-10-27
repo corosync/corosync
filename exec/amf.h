@@ -50,6 +50,8 @@
 #include "timer.h"
 #include "aispoll.h"
 
+typedef void (*async_func_t)(void *param);
+
 #define AMF_PROTOCOL_VERSION 1
 
 enum scsm_states {
@@ -103,6 +105,10 @@ enum clc_component_types {
 	clc_component_non_proxied_non_sa_aware = 3	/* non-proxied, non sa aware */
 };
 
+typedef enum {
+	USR_AMF_HA_STATE_REMOVED = SA_AMF_HA_QUIESCING + 1
+} UsrAmfHaState;
+
 /*                                                              
  * Node Error Escallation State
  */
@@ -150,9 +156,9 @@ typedef enum {
 	SG_AC_AssigningActiveworkload,
 	SG_AC_AssigningAutoAdjust,
 	SG_AC_AssigningStandBy,
-	SG_AC_WaitingAfterOperationFailed
+	SG_AC_WaitingAfterOperationFailed,
+	SG_AC_RemovingStandbyAssignments
 } sg_avail_control_state_t;
-
 
 typedef enum amf_sg_event_type {
 	SG_UNKNOWN_EV,
@@ -229,8 +235,6 @@ typedef enum amf_application_event_type {
 	APPLICATION_START_EV,
 	APPLICATION_EVENT_TYPE_CNT
 } amf_application_event_type_t;
-
-
 
 typedef struct amf_fifo {
 	int entry_type;
@@ -535,6 +539,7 @@ typedef struct amf_si_assignment {
 	struct amf_si_assignment *next;
 	void (*assumed_callback_fn) (
 		struct amf_si_assignment *si_assignment, int result);
+	void (*removed_callback_fn) (void *_si_assignment);
 } amf_si_assignment_t;
 
 typedef struct amf_csi {
@@ -631,10 +636,12 @@ extern struct amf_cluster *amf_config_read (char **error_string);
 extern void amf_runtime_attributes_print (struct amf_cluster *cluster);
 extern int amf_enabled (struct objdb_iface_ver0 *objdb);
 extern void *_amf_malloc (size_t size, char *file, unsigned int line);
+extern void *_amf_realloc (void* ptr, size_t size, char *file, unsigned int line);
 #define amf_malloc(size) _amf_malloc ((size), __FILE__, __LINE__)
 extern void *_amf_calloc (size_t nmemb, size_t size, char *file,
 	unsigned int line);
 #define amf_calloc(nmemb,size) _amf_calloc ((nmemb), (size), __FILE__, __LINE__)
+#define amf_realloc(ptr,size) _amf_realloc ((ptr), (size), __FILE__, __LINE__)
 
 extern const char *amf_admin_state (int state);
 extern const char *amf_op_state (int state);
@@ -664,7 +671,6 @@ extern void amf_util_init (void);
 extern void amf_fifo_put (int entry_type, amf_fifo_t **root, 
 	int size_of_data, void *data);
 extern int amf_fifo_get (amf_fifo_t **root, void *data);
-typedef void (*async_func_t)(void *param);
 extern void amf_call_function_asynchronous (async_func_t async_func, void *param);
 
 /*===========================================================================*/
@@ -837,8 +843,7 @@ extern struct amf_su *amf_su_deserialize (
 extern int amf_su_is_local (struct amf_su *su);
 extern struct amf_si_assignment *amf_su_get_next_si_assignment (
 	struct amf_su *su, const struct amf_si_assignment *si_assignment);
-extern void amf_su_foreach_si_assignment (
-	struct amf_su *su,
+extern void amf_su_foreach_si_assignment (struct amf_su *su,
 	void (*foreach_fn)(struct amf_su *su,
 					   struct amf_si_assignment *si_assignment));
 extern int amf_su_get_saAmfSUNumCurrActiveSIs (struct amf_su *su);
@@ -849,7 +854,7 @@ extern int amf_su_presence_state_all_comps_in_su_are_set (struct amf_su *su,
 	SaAmfPresenceStateT state);
 /* Event methods */
 extern void amf_su_instantiate (struct amf_su *su);
-extern void amf_su_assign_si (
+extern amf_si_assignment_t *amf_su_assign_si (
 	struct amf_su *su, struct amf_si *si, SaAmfHAStateT ha_state);
 extern void amf_su_restart_req (struct amf_su *su);
 
@@ -971,6 +976,9 @@ extern void *amf_healthcheck_serialize (
 extern struct amf_healthcheck *amf_healthcheck_deserialize (
 	struct amf_comp *comp, char *buf);
 
+extern void amf_comp_csi_remove (amf_comp_t *component,
+	amf_csi_assignment_t *csi_assignment);
+
 /*===========================================================================*/
 /* amfsi.c */
 
@@ -987,6 +995,7 @@ extern void *amf_si_assignment_serialize (
 	struct amf_si_assignment *si_assignment, int *len);
 extern struct amf_si_assignment *amf_si_assignment_deserialize (
 	struct amf_si *si, char *buf);
+extern struct amf_si_assignment *amf_si_assignment_new (struct amf_si *si);
 #if 0
 char *amf_si_assignment_dn_make (struct amf_su *su, struct amf_si *si,
 	SaNameT *name);
@@ -1091,6 +1100,13 @@ extern void amf_si_comp_set_ha_state_done (
  */
 extern void amf_si_comp_set_ha_state_failed (
 	struct amf_si *si, struct amf_csi_assignment *csi_assignment);
+
+extern void amf_si_assignment_remove (amf_si_assignment_t *si_assignment,
+	async_func_t async_func);
+
+extern void amf_si_comp_csi_removed (
+	struct amf_si *si, struct amf_csi_assignment *csi_assignment,
+	SaAisErrorT error);
 
 /**
  * Request a CSI to delete all CSI assignments.

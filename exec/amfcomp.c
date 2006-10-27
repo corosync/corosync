@@ -680,13 +680,10 @@ struct amf_healthcheck *amf_comp_find_healthcheck (
 		healthcheck != NULL;
 		healthcheck = healthcheck->next) {
 
-                if (key->keyLen == (healthcheck->safHealthcheckKey).keyLen) {
-                        if (memcmp (key->key,
-                                    (healthcheck->safHealthcheckKey).key,
-                                    key->keyLen) == 0) {
-                                ret_healthcheck = healthcheck;
-                                break;
-                        }
+		if (key->keyLen == healthcheck->safHealthcheckKey.keyLen && 
+			memcmp (key, &healthcheck->safHealthcheckKey,key->keyLen) == 0) {
+			ret_healthcheck = healthcheck;
+			break;
 		}
 	}
 
@@ -871,43 +868,6 @@ static void comp_presence_state_set (struct amf_comp *comp,
 	amf_su_comp_state_changed (
 		comp->su, comp, SA_AMF_PRESENCE_STATE, presence_state);
 }
-
-#if 0
-static void lib_csi_remove_request (struct amf_comp *comp,
-	struct amf_csi *csi)
-{
-	struct res_lib_amf_csiremovecallback res_lib_amf_csiremovecallback;
-	struct csi_remove_callback_data *csi_remove_callback_data;
-
-	dprintf ("\t%s\n", getSaNameT (&comp->name));
-
-	res_lib_amf_csiremovecallback.header.id = MESSAGE_RES_AMF_CSIREMOVECALLBACK;
-	res_lib_amf_csiremovecallback.header.size = sizeof (struct res_lib_amf_csiremovecallback);
-	res_lib_amf_csiremovecallback.header.error = SA_AIS_OK;
-
-	csi_remove_callback_data = malloc (sizeof (struct csi_remove_callback_data));
-	assert (csi_remove_callback_data); // TODO failure here of malloc
-	csi_remove_callback_data->csi = csi;
-
-	res_lib_amf_csiremovecallback.invocation =
-		invocation_create (
-		AMF_RESPONSE_CSIREMOVECALLBACK,
-		csi_remove_callback_data);
-
-	memcpy (&res_lib_amf_csiremovecallback.compName,
-		&comp->name, sizeof (SaNameT));
-
-	memcpy (&res_lib_amf_csiremovecallback.csiName,
-		&csi->name, sizeof (SaNameT));
-
-	res_lib_amf_csiremovecallback.csiFlags = 0;
-
-	openais_conn_send_response (
-		openais_conn_partner_get (comp->conn),
-		&res_lib_amf_csiremovecallback,
-		sizeof (struct res_lib_amf_csiremovecallback));
-}
-#endif
 
 struct amf_csi_assignment *amf_comp_get_next_csi_assignment (
 	struct amf_comp *component,
@@ -1214,7 +1174,6 @@ static void stop_component_instantiate_timer (struct amf_comp *component)
 	}
 }
 
-
 SaAisErrorT amf_comp_register (struct amf_comp *comp)
 {
 	TRACE2("Exec comp register '%s'", comp->name.value);
@@ -1407,7 +1366,6 @@ SaAisErrorT amf_comp_healthcheck_stop (
 	return error;
 }
 
-
 /**
  * Instantiate a component
  * @param comp
@@ -1465,8 +1423,6 @@ void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
 			break;
 	}
 }
-
-
 
 void amf_comp_instantiate_event (struct amf_comp *component)
 {
@@ -1613,6 +1569,7 @@ struct amf_comp *amf_comp_response_2 (
 
 	switch (interface) {
 		case AMF_RESPONSE_CSISETCALLBACK: {
+			ENTER("'%s'", dn->value);
 				csi_assignment = amf_csi_assignment_find (amf_cluster, dn);
 				assert (csi_assignment != NULL);
 				comp = csi_assignment->comp;
@@ -1632,18 +1589,16 @@ struct amf_comp *amf_comp_response_2 (
 				break;
 			}
 		case AMF_RESPONSE_CSIREMOVECALLBACK: {
+			ENTER("'%s'", dn->value);
 				csi_assignment = amf_csi_assignment_find (amf_cluster, dn);
 				assert (csi_assignment != NULL);
 				dprintf ("Lib csi '%s' remove callback response from '%s', error: %d",
 					csi_assignment->csi->name.value,
 					csi_assignment->comp->name.value, error);
 				comp = csi_assignment->comp;
-				if (error == SA_AIS_OK) {
-					comp_ha_state_set (comp, csi_assignment,
-						csi_assignment->requested_ha_state);
-				} else if (error == SA_AIS_ERR_FAILED_OPERATION) {
-					amf_si_comp_set_ha_state_failed (csi_assignment->csi->si,
-						csi_assignment);
+				if (error == SA_AIS_OK || error == SA_AIS_ERR_FAILED_OPERATION) {
+					amf_si_comp_csi_removed (csi_assignment->csi->si,
+						csi_assignment, error);
 				} else {
 					*retval = SA_AIS_ERR_INVALID_PARAM;
 				}
@@ -1772,9 +1727,6 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 {
 	struct amf_healthcheck *healthcheck;
 	SaAisErrorT error = SA_AIS_OK;
-
-	dprintf ("Healthcheckconfirm: '%s', key '%s'",
-		comp->name.value, healthcheckKey->key);
 
 	healthcheck = amf_comp_find_healthcheck (comp, healthcheckKey);
 	if (healthcheck == NULL) {
@@ -2227,4 +2179,29 @@ amf_healthcheck_t *amf_healthcheck_new (struct amf_comp *comp)
 
 	return healthcheck;
 }
+
+void amf_comp_csi_remove (amf_comp_t *component,
+	amf_csi_assignment_t *csi_assignment)
+{
+	struct res_lib_amf_csiremovecallback res_lib;
+
+	ENTER("");
+
+	res_lib.header.id = MESSAGE_RES_AMF_CSIREMOVECALLBACK;
+	res_lib.header.size = sizeof (struct res_lib_amf_csiremovecallback);
+	res_lib.header.error = SA_AIS_OK;
+	res_lib.invocation =
+		invocation_create (AMF_RESPONSE_CSIREMOVECALLBACK, csi_assignment);
+
+	amf_comp_dn_make (component, &res_lib.compName);
+	amf_csi_dn_make (csi_assignment->csi, &res_lib.csiName);
+	res_lib.csiFlags = SA_AMF_CSI_TARGET_ONE;
+
+	TRACE7 ("sending CSI remove request to component %s",
+		res_lib.compName.value);
+	openais_conn_send_response (
+		openais_conn_partner_get (component->conn),
+		&res_lib, sizeof (struct res_lib_amf_csiremovecallback));
+}
+
 

@@ -284,10 +284,7 @@ void amf_application_start (
 					amf_sg_start (sg, node);
 				}
 			} else {
-				/* TODO: Save the start request until state == APP_AC_STARTED */
-				log_printf (LOG_LEVEL_ERROR, "Request to start application"
-					" =%s in state = %d",app->name.value, app->acsm_state);
-					openais_exit_error (AIS_DONE_FATAL_ERR);
+				application_defer_event (APPLICATION_START_EV, app , node);
 			}
 			break;
 		case APP_AC_STARTED:
