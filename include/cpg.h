@@ -57,6 +57,11 @@ typedef enum {
 } cpg_guarantee_t;
 
 typedef enum {
+	CPG_FLOW_CONTROL_DISABLED,	/* flow control is disabled - new messages may be sent */
+	CPG_FLOW_CONTROL_ENABLED	/* flow control is enabled - new messages should not be sent */
+} cpg_flow_control_state_t;
+
+typedef enum {
 	CPG_OK = 1,
 	CPG_ERR_LIBRARY = 2,
 	CPG_ERR_TIMEOUT = 5,
@@ -101,7 +106,6 @@ typedef void (*cpg_deliver_fn_t) (
 	uint32_t pid,
 	void *msg,
 	int msg_len);
-
 
 typedef void (*cpg_confchg_fn_t) (
 	cpg_handle_t handle,
@@ -182,5 +186,9 @@ cpg_error_t cpg_membership_get (
 	struct cpg_name *groupName,
 	struct cpg_address *member_list,
 	int *member_list_entries);
+
+cpg_error_t cpg_flow_control_state_get (
+	cpg_handle_t handle,
+	cpg_flow_control_state_t *flow_control_enabled);
 
 #endif /* OPENAIS_CPG_H_DEFINED */

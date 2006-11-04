@@ -2,7 +2,6 @@
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
  * Copyright (c) 2006 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -56,6 +55,7 @@ struct cpg_inst {
 	int response_fd;
 	int dispatch_fd;
 	int finalize;
+	cpg_flow_control_state_t flow_control_state;
 	cpg_callbacks_t callbacks;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
@@ -307,6 +307,7 @@ cpg_error_t cpg_dispatch (
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
 			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)&dispatch_data;
 
+			cpg_inst->flow_control_state = res_cpg_deliver_callback->flow_control_state;
 			marshall_from_mar_cpg_name_t (
 				&group_name,
 				&res_cpg_deliver_callback->group_name);
@@ -352,7 +353,6 @@ cpg_error_t cpg_dispatch (
 				joined_list,
 				res_cpg_confchg_callback->joined_list_entries);
 			break;
-
 
 		default:
 			error = SA_AIS_ERR_LIBRARY;
@@ -412,7 +412,7 @@ cpg_error_t cpg_join (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
 		group);
 
-	iov[0].iov_base = (char *)&req_lib_cpg_trackstart;
+	iov[0].iov_base = &req_lib_cpg_trackstart;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
 
 	error = saSendMsgReceiveReply (cpg_inst->dispatch_fd, iov, 1,
@@ -430,7 +430,7 @@ cpg_error_t cpg_join (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_join.group_name,
 		group);
 
-	iov[0].iov_base = (char *)&req_lib_cpg_join;
+	iov[0].iov_base = &req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, iov, 1,
@@ -471,7 +471,7 @@ cpg_error_t cpg_leave (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_leave.group_name,
 		group);
 
-	iov[0].iov_base = (char *)&req_lib_cpg_leave;
+	iov[0].iov_base = &req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
@@ -503,7 +503,7 @@ cpg_error_t cpg_mcast_joined (
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
-	mar_res_header_t res_lib_cpg_mcast;
+	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 	int msg_len = 0;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
@@ -522,14 +522,14 @@ cpg_error_t cpg_mcast_joined (
 	req_lib_cpg_mcast.guarantee = guarantee;
 	req_lib_cpg_mcast.msglen = msg_len;
 
-	iov[0].iov_base = (char *)&req_lib_cpg_mcast;
+	iov[0].iov_base = &req_lib_cpg_mcast;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, iov, iov_len + 1,
-		&res_lib_cpg_mcast, sizeof (mar_res_header_t));
+		&res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
@@ -537,7 +537,11 @@ cpg_error_t cpg_mcast_joined (
 		goto error_exit;
 	}
 
-	error = res_lib_cpg_mcast.error;
+	cpg_inst->flow_control_state = res_lib_cpg_mcast.flow_control_state;
+	if (res_lib_cpg_mcast.header.error == CPG_ERR_TRY_AGAIN) {
+		cpg_inst->flow_control_state = CPG_FLOW_CONTROL_ENABLED;
+	}
+	error = res_lib_cpg_mcast.header.error;
 
 error_exit:
 	saHandleInstancePut (&cpg_handle_t_db, handle);
@@ -568,7 +572,7 @@ cpg_error_t cpg_membership_get (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_membership_get.group_name,
 		group_name);
 
-	iov.iov_base = (char *)&req_lib_cpg_membership_get;
+	iov.iov_base = &req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (mar_req_header_t);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
@@ -601,4 +605,22 @@ error_exit:
 	return (error);
 }
 
+cpg_error_t cpg_flow_control_state_get (
+	cpg_handle_t handle,
+	cpg_flow_control_state_t *flow_control_state)
+{
+	cpg_error_t error;
+	struct cpg_inst *cpg_inst;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	*flow_control_state = cpg_inst->flow_control_state;
+
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
 /** @} */

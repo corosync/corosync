@@ -145,6 +145,7 @@ struct openais_service_handler evs_service_handler = {
 	.name			= (unsigned char*)"openais extended virtual synchrony service",
 	.id			= EVS_SERVICE,
 	.private_data_size	= sizeof (struct evs_pd),
+	.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED, 
 	.lib_init_fn		= evs_lib_init_fn,
 	.lib_exit_fn		= evs_lib_exit_fn,
 	.lib_service		= evs_lib_service,

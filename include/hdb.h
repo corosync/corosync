@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -197,7 +198,6 @@ static inline int hdb_iterator_next (
 			handle_database,
 			handle_database->iterator,
 			instance);
-		
 
 		handle_database->iterator += 1;
 		if (res == 0) {

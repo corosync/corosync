@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Red Hat, Inc.
+ *
  *
  * All rights reserved.
  *
@@ -32,34 +33,41 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define TRUE 1
-#define FALSE 0
-#include "../include/saAis.h"
-#include "../include/saClm.h"
-#include "../include/ipc_gen.h"
-#include "totempg.h"
+#ifndef FLOW_H_DEFINED
+#define FLOW_H_DEFINED
 
-#ifndef AIS_EXEC_H_DEFINED
-#define AIS_EXEC_H_DEFINED
+enum openais_flow_control_state {
+	OPENAIS_FLOW_CONTROL_STATE_DISABLED,
+	OPENAIS_FLOW_CONTROL_STATE_ENABLED
+};
 
-/*
- * Size of the queue (entries) for I/O's to the API over socket IPC.
- */
+unsigned int openais_flow_control_initialize (void);
 
-#define SIZEQUEUE 800
+unsigned int openais_flow_control_ipc_init (
+	unsigned int *flow_control_identifier,
+	unsigned int service);
 
-#define SOCKET_SERVICE_INIT 254
+unsigned int openais_flow_control_ipc_exit (
+	unsigned int flow_control_identifier);
 
-#define SIZEINB MESSAGE_SIZE_MAX
+unsigned int openais_flow_control_create (
+	unsigned int flow_control_handle,
+	unsigned int service,
+	void *id,
+	unsigned int id_len,
+	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state),
+	void *context);
 
-extern struct totem_ip_address *this_ip;
+unsigned int openais_flow_control_destroy (
+	unsigned int flow_control_identifier,
+	unsigned int service,
+	unsigned char *id,
+	unsigned int id_len);
 
-extern struct totempg_group openais_group;
+unsigned int openais_flow_control_disable (
+	unsigned int flow_control_identifier);
 
-extern totempg_groups_handle openais_group_handle;
+unsigned int openais_flow_control_enable (
+	unsigned int flow_control_identifier);
 
-poll_handle aisexec_poll_handle;
-
-extern SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
-
-#endif /* AIS_EXEC_H_DEFINED */
+#endif /* FLOW_H_DEFINED */

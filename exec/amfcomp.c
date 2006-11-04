@@ -1394,6 +1394,7 @@ void amf_comp_instantiate (struct amf_comp *comp)
 				comp->saAmfCompPresenceState);
 			break;
 	}
+	return 0;
 }
 
 void amf_comp_instantiate_tmo_event (struct amf_comp *comp)

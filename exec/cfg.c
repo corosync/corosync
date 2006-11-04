@@ -167,6 +167,7 @@ struct openais_service_handler cfg_service_handler = {
 	.name					= (unsigned char*)"openais configuration service",
 	.id					= CFG_SERVICE,
 	.private_data_size			= 0,
+	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn				= cfg_lib_init_fn,
 	.lib_exit_fn				= cfg_lib_exit_fn,
 	.lib_service				= cfg_lib_service,

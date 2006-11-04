@@ -1,4 +1,5 @@
 # Copyright (c) 2002-2004 MontaVista Software, Inc.
+# Copyright (c) 2006 Red Hat, Inc.
 # Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
@@ -45,17 +46,17 @@ LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf1.c \
-		testamf4.c testamf5.c testamf6.c testamfth.c  \
-		testckpt.c ckptstress.c ckptbench.c  \
-		ckptbenchth.c testevt.c testevs.c evsbench.c \
-		subscription.c publish.c evtbench.c \
-		sa_error.c unlink.c testclm2.c testlck.c testmsg.c
+	testamf4.c testamf5.c testamf6.c testamfth.c  \
+	testckpt.c ckptstress.c ckptbench.c  \
+	ckptbenchth.c testevt.c testevs.c evsbench.c \
+	subscription.c publish.c evtbench.c \
+	sa_error.c unlink.c testclm2.c testlck.c testmsg.c
 
 all: testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testcpg openais-cfgtool
+	testmsg testcpg cpgbench openais-cfgtool
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -143,6 +144,9 @@ testmsg: testmsg.o $(LIBRARIES)
 
 testcpg: testcpg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
+
+cpgbench: cpgbench.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o cpgbench cpgbench.o $(LIBS)
 
 openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)

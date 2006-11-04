@@ -203,6 +203,7 @@ struct openais_service_handler clm_service_handler = {
 	.name			= (unsigned char*)"openais cluster membership service B.01.01",
 	.id			= CLM_SERVICE,
 	.private_data_size	= sizeof (struct clm_pd),
+	.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn		= clm_lib_init_fn,
 	.lib_exit_fn		= clm_lib_exit_fn,
 	.lib_service		= clm_lib_service,

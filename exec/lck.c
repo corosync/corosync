@@ -303,6 +303,7 @@ struct openais_service_handler lck_service_handler = {
 	.name				= (unsigned char*)"openais distributed locking service B.01.01",
 	.id				= LCK_SERVICE,
 	.private_data_size		= sizeof (struct lck_pd),
+	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn			= lck_lib_init_fn,
 	.lib_exit_fn			= lck_lib_exit_fn,
 	.lib_service			= lck_lib_service,

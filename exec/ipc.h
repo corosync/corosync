@@ -36,6 +36,7 @@
 #define IPC_H_DEFINED
 
 #include "tlist.h"
+#include "flow.h"
 
 extern void message_source_set (mar_message_source_t *source, void *conn);
 
@@ -67,5 +68,25 @@ extern void openais_ipc_timer_del (
 extern void openais_ipc_timer_del_data (
 	void *conn,
 	timer_handle timer_handle);
+
+extern void openais_ipc_flow_control_create (
+	void *conn,
+	unsigned int service,
+	char *id,
+	int id_len,
+	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state_set),
+	void *context);
+	
+extern void openais_ipc_flow_control_destroy (
+	void *conn,
+	unsigned int service,
+	unsigned char *id,
+	int id_len);
+
+extern void openais_ipc_flow_control_local_increment (
+	void *conn);
+
+extern void openais_ipc_flow_control_local_decrement (
+	void *conn);
 
 #endif /* IPC_H_DEFINED */

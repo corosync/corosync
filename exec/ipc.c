@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
@@ -68,6 +67,7 @@
 #include "totemconfig.h"
 #include "main.h"
 #include "ipc.h"
+#include "flow.h"
 #include "service.h"
 #include "sync.h"
 #include "swab.h"
@@ -79,15 +79,26 @@
 
 #include "util.h"
 
-#ifdef OPENAIS_SOLARIS
-#define MSG_NOSIGNAL 0
-#endif
-
 #define SERVER_BACKLOG 5
+
+/*
+ * When there are this many entries left in a queue, turn on flow control
+ */
+#define FLOW_CONTROL_ENTRIES_ENABLE 400
+
+/*
+ * When there are this many entries in a queue, turn off flow control
+ */
+#define FLOW_CONTROL_ENTRIES_DISABLE 64
+
 
 static unsigned int g_gid_valid = 0;
 
 static struct totem_ip_address *my_ip;
+
+static totempg_groups_handle ipc_handle;
+
+DECLARE_LIST_INIT (conn_info_list_head);
 
 static void (*ipc_serialize_lock_fn) (void);
 
@@ -122,16 +133,22 @@ struct conn_info {
 	int authenticated;	/* Is this connection authenticated? */
 	void *private_data;	/* library connection private data */
 	struct conn_info *conn_info_partner;	/* partner connection dispatch<->response */
+	unsigned int flow_control_handle;	/* flow control identifier */
+	unsigned int flow_control_enabled;	/* flow control enabled bit */
+	unsigned int flow_control_local_count;	/* flow control local count */
+	enum openais_flow_control flow_control;	/* Does this service use IPC flow control */
+	pthread_mutex_t flow_control_mutex;
         int (*lib_exit_fn) (void *conn);
 	struct timerlist timerlist;
 	pthread_mutex_t mutex;
 	pthread_mutex_t *shared_mutex;
-
+	struct list_head list;
 };
 
 static void *prioritized_poll_thread (void *conn);
 static int conn_info_outq_flush (struct conn_info *conn_info);
 static void libais_deliver (struct conn_info *conn_info);
+static void ipc_flow_control (struct conn_info *conn_info);
 
  /*
   * IPC Initializers
@@ -250,6 +267,15 @@ static int dispatch_init_send_response (
 	conn_info->conn_info_partner->state = CONN_STATE_ACTIVE;
 	conn_info->lib_exit_fn = ais_service[conn_info->service]->lib_exit_fn;
 	ais_service[conn_info->service]->lib_init_fn (conn_info);
+
+	conn_info->flow_control = ais_service[conn_info->service]->flow_control;
+	conn_info->conn_info_partner->flow_control = ais_service[conn_info->service]->flow_control;
+	if (ais_service[conn_info->service]->flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) {
+		openais_flow_control_ipc_init (
+			&conn_info->flow_control_handle,
+			conn_info->service);
+
+	}
 	return (0);
 }
 
@@ -288,12 +314,16 @@ static inline unsigned int conn_info_create (int fd) {
 	}
 
 	pthread_mutex_init (&conn_info->mutex, NULL);
+	pthread_mutex_init (&conn_info->flow_control_mutex, NULL);
 	pthread_mutex_init (conn_info->shared_mutex, NULL);
 
 	conn_info->state = CONN_STATE_ACTIVE;
 	conn_info->fd = fd;
 	conn_info->events = POLLIN|POLLNVAL;
 	conn_info->service = SOCKET_SERVICE_INIT;
+
+	list_init (&conn_info->list);
+	list_add (&conn_info_list_head, &conn_info->list);
 
 	pthread_attr_init (&conn_info->thread_attr);
 	pthread_attr_setstacksize (&conn_info->thread_attr, 200000);
@@ -321,6 +351,7 @@ static void conn_info_destroy (struct conn_info *conn_info)
 	if (conn_info->conn_info_partner) {
 		conn_info->conn_info_partner->conn_info_partner = NULL;
 	}
+	list_del (&conn_info->list);
 	free (conn_info);
 }
 
@@ -377,6 +408,9 @@ static int libais_disconnect (struct conn_info *conn_info)
 	}
 	conn_info->state = CONN_STATE_DISCONNECTED;
 	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTED;
+	if (conn_info->flow_control_enabled == 1) {
+		openais_flow_control_disable (conn_info->flow_control_handle);
+	}
 	return (0);
 }
 
@@ -410,17 +444,14 @@ static void *prioritized_poll_thread (void *conn)
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct pollfd ufd;
 	int fds;
+	struct sched_param sched_param;
 	int res;
 	pthread_mutex_t *rel_mutex;
 	unsigned int service;
 	struct conn_info *cinfo_partner;
 
-#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
-	struct sched_param sched_param;
-
 	sched_param.sched_priority = 1;
 	res = pthread_setschedparam (conn_info->thread, SCHED_RR, &sched_param);
-#endif
 
 	ufd.fd = conn_info->fd;
 	for (;;) {
@@ -495,6 +526,9 @@ retry_poll:
 			if ((ufd.revents & POLLIN) == POLLIN) {
 				libais_deliver (conn_info);
 			}
+
+			ipc_flow_control (conn_info);
+
 		}
 
 		ipc_serialize_unlock_fn ();
@@ -507,19 +541,54 @@ retry_poll:
 	return (0);
 }
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(OPENAIS_LINUX)
 /* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-#else
-#define AIS_SUN_LEN(a) SUN_LEN(a)
-#endif
- 
-#if defined(OPENAIS_LINUX)
+
 char *socketname = "libais.socket";
 #else
+#define AIS_SUN_LEN(a) SUN_LEN(a)
+
 char *socketname = "/var/run/libais.socket";
 #endif
+
+
+static void ipc_flow_control (struct conn_info *conn_info)
+{
+	unsigned int entries_used;
+	unsigned int entries_usedhw;
+
+	entries_used = queue_used (&conn_info->outq);
+	if (conn_info->flow_control_local_count > entries_used) {
+		entries_used = conn_info->flow_control_local_count;
+	}
+	/*
+	 * IPC group-wide flow control
+	 */
+	if (conn_info->flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) {
+		if (conn_info->flow_control_enabled == 0 &&
+			((entries_used + FLOW_CONTROL_ENTRIES_ENABLE) > SIZEQUEUE)) {
+
+			entries_usedhw = queue_usedhw (&conn_info->outq);
+			log_printf (LOG_LEVEL_NOTICE, "Enabling flow control - HW mark %d of %d %p.\n", entries_usedhw, SIZEQUEUE, &conn_info->outq);
+			openais_flow_control_enable (conn_info->flow_control_handle);
+			conn_info->flow_control_enabled = 1;
+			conn_info->conn_info_partner->flow_control_enabled = 1;
+		}
+		if (conn_info->flow_control_enabled == 1 &&
+
+			entries_used <= FLOW_CONTROL_ENTRIES_DISABLE) {
+			entries_usedhw = queue_usedhw (&conn_info->outq);
+
+			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control - HW mark [%d/%d].\n",
+				entries_usedhw, SIZEQUEUE);
+			openais_flow_control_disable (conn_info->flow_control_handle);
+			conn_info->flow_control_enabled = 0;
+			conn_info->conn_info_partner->flow_control_enabled = 0;
+		}
+	}
+}
 
 static int conn_info_outq_flush (struct conn_info *conn_info) {
 	struct queue *outq;
@@ -538,14 +607,9 @@ static int conn_info_outq_flush (struct conn_info *conn_info) {
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
-#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
-#else
-	msg_send.msg_accrights = NULL;
-	msg_send.msg_accrightslen = 0;
-#endif
 
 	while (!queue_is_empty (outq)) {
 		queue_item = queue_item_get (outq);
@@ -588,6 +652,7 @@ retry_sendmsg:
 	if (queue_is_empty (outq)) {
 		conn_info->events = POLLIN|POLLNVAL;
 	}
+
 	return (0);
 }
 
@@ -610,8 +675,6 @@ static void libais_deliver (struct conn_info *conn_info)
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	struct ucred *cred;
 	int on = 0;
-#elif defined(OPENAIS_SOLARIS)
-	int fd;
 #else
 	uid_t euid;
 	gid_t egid;
@@ -625,25 +688,15 @@ static void libais_deliver (struct conn_info *conn_info)
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
 	msg_recv.msg_flags = 0;
-#endif
 
 	if (conn_info->authenticated) {
-#ifndef OPENAIS_SOLARIS
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
-#else
-		msg_recv.msg_accrights = NULL;
-		msg_recv.msg_accrightslen = 0;
-#endif
 	} else {
 #ifdef OPENAIS_LINUX
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
-#elif defined(OPENAIS_SOLARIS)
-		msg_recv.msg_accrights = (char *)&fd;
-		msg_recv.msg_accrightslen = sizeof (fd);
 #else
 		euid = -1; egid = -1;
 		if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
@@ -658,7 +711,9 @@ static void libais_deliver (struct conn_info *conn_info)
 
 	iov_recv.iov_base = &conn_info->inb[conn_info->inb_start];
 	iov_recv.iov_len = (SIZEINB) - conn_info->inb_start;
-	assert (iov_recv.iov_len != 0);
+	if (conn_info->inb_inuse == SIZEINB) {
+		return;
+	}
 
 retry_recv:
 	res = recvmsg (conn_info->fd, &msg_recv, MSG_NOSIGNAL);
@@ -669,12 +724,6 @@ retry_recv:
 		return;
 	} else
 	if (res == 0) {
-#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
-		/* On many OS poll never return POLLHUP or POLLERR.
-		 * EOF is detected when recvmsg return 0.
-		 */
-		libais_disconnect_request (conn_info);
-#endif
 		return;
 	}
 
@@ -696,9 +745,6 @@ retry_recv:
 			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", cred->gid, g_gid_valid);
 		}
 	}
-#elif defined(OPENAIS_SOLARIS)
-	/* TODO Fix this. There is no authentication on Solaris yet. */
-	conn_info->authenticated = 1;
 #endif
 	/*
 	 * Dispatch all messages received in recvmsg that can be dispatched
@@ -737,7 +783,7 @@ retry_recv:
 			 * to queue a message, otherwise tell the library we are busy and to
 			 * try again later
 			 */
-			send_ok_joined_iovec.iov_base = (char *)header;
+			send_ok_joined_iovec.iov_base = header;
 			send_ok_joined_iovec.iov_len = header->size;
 			send_ok_joined = totempg_groups_send_ok_joined (openais_group_handle,
 				&send_ok_joined_iovec, 1);
@@ -866,6 +912,29 @@ void message_source_set (
 	source->conn = conn;
 }
 
+static void ipc_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	unsigned int *member_list, int member_list_entries,
+	unsigned int *left_list, int left_list_entries,
+	unsigned int *joined_list, int joined_list_entries,
+	struct memb_ring_id *ring_id)
+{
+	struct conn_info *conn_info;
+	struct list_head *list;
+
+	/*
+	 * Turn on flow control enabled flag for all connections
+	 */
+	for (list = conn_info_list_head.next;
+		list != &conn_info_list_head;
+		list = list->next) {
+
+		conn_info = list_entry (list, struct conn_info, list);
+		conn_info->flow_control_enabled = 1;
+		conn_info->conn_info_partner->flow_control_enabled = 1;
+	}
+}
+
 void openais_ipc_init (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void),
@@ -928,6 +997,15 @@ void openais_ipc_init (
 	g_gid_valid = gid_valid;
 
 	my_ip = my_ip_in;
+
+	/*
+	 * Reset internal state of flow control when
+	 * configuration change occurs
+	 */
+	res = totempg_groups_initialize (
+		&ipc_handle,
+		NULL,
+		ipc_confchg_fn);
 }
 
 
@@ -982,20 +1060,18 @@ int openais_conn_send_response (
 	if (!libais_connection_active (conn_info)) {
 		return (-1);
 	}
+
+	ipc_flow_control (conn_info);
+
 	outq = &conn_info->outq;
 
 	msg_send.msg_iov = &iov_send;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
-#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
-#else
-	msg_send.msg_accrights = NULL;
-	msg_send.msg_accrightslen = 0;
-#endif
 
 	if (queue_is_full (outq)) {
 		/*
@@ -1134,4 +1210,63 @@ void openais_ipc_timer_del_data (
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
 	timerlist_del (&conn_info->timerlist, timer_handle);
+}
+
+void openais_ipc_flow_control_create (
+	void *conn,
+	unsigned int service,
+	char *id,
+	int id_len,
+	void (*flow_control_state_set_fn) (void *conn, enum openais_flow_control_state),
+	void *context)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	openais_flow_control_create (
+		conn_info->flow_control_handle,
+		service,
+		id,
+		id_len,
+		flow_control_state_set_fn,
+		context);	
+	conn_info->conn_info_partner->flow_control_handle = conn_info->flow_control_handle;
+}
+
+void openais_ipc_flow_control_destroy (
+	void *conn,
+	unsigned int service,
+	unsigned char *id,
+	int id_len)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	openais_flow_control_destroy (
+		conn_info->flow_control_handle,
+		service,
+		id,
+		id_len);
+}
+
+void openais_ipc_flow_control_local_increment (
+        void *conn)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	pthread_mutex_lock (&conn_info->flow_control_mutex);
+
+	conn_info->flow_control_local_count++;
+
+	pthread_mutex_unlock (&conn_info->flow_control_mutex);
+}
+
+void openais_ipc_flow_control_local_decrement (
+        void *conn)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	pthread_mutex_lock (&conn_info->flow_control_mutex);
+
+	conn_info->flow_control_local_count--;
+
+	pthread_mutex_unlock (&conn_info->flow_control_mutex);
 }

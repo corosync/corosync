@@ -374,6 +374,7 @@ static struct openais_service_handler amf_service_handler = {
 	.name				= (unsigned char *)"openais availability management framework B.01.01",
 	.id					= AMF_SERVICE,
 	.private_data_size	= sizeof (struct amf_pd),
+	.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED,
 	.lib_init_fn		= amf_lib_init_fn,
 	.lib_exit_fn		= amf_lib_exit_fn,
 	.lib_service		= amf_lib_service,

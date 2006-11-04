@@ -76,6 +76,7 @@
 #include "timer.h"
 #include "print.h"
 #include "util.h"
+#include "flow.h"
 #include "version.h"
 
 #define SERVER_BACKLOG 5
@@ -574,6 +575,9 @@ int main (int argc, char **argv)
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed,
 		totem_config.vsf_type);
+
+
+	res = openais_flow_control_initialize ();
 
 	/*
 	 * Drop root privleges to user 'ais'

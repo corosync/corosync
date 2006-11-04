@@ -214,6 +214,7 @@ struct openais_service_handler evt_service_handler = {
 								(unsigned char*)"openais event service B.01.01",
 	.id							= EVT_SERVICE,
 	.private_data_size			= sizeof (struct libevt_pd),
+	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED,
 	.lib_init_fn				= evt_lib_init,
 	.lib_exit_fn				= evt_lib_exit,
 	.lib_service				= evt_lib_service,

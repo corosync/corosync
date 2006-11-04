@@ -56,7 +56,8 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_CONFCHG_CALLBACK = 4,
 	MESSAGE_RES_CPG_DELIVER_CALLBACK = 5,
 	MESSAGE_RES_CPG_TRACKSTART = 6,
-	MESSAGE_RES_CPG_TRACKSTOP = 7
+	MESSAGE_RES_CPG_TRACKSTOP = 7,
+	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8
 };
 
 enum lib_cpg_confchg_reason {
@@ -104,6 +105,11 @@ struct req_lib_cpg_mcast {
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
+struct res_lib_cpg_mcast {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t flow_control_state __attribute__((aligned(8)));
+};
+
 /* Message from another node */
 struct res_lib_cpg_deliver_callback {
 	mar_res_header_t header __attribute__((aligned(8)));
@@ -111,6 +117,7 @@ struct res_lib_cpg_deliver_callback {
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
@@ -139,6 +146,5 @@ struct req_lib_cpg_leave {
 struct res_lib_cpg_leave {
 	mar_res_header_t header __attribute__((aligned(8)));
 };
-
 
 #endif /* IPC_CPG_H_DEFINED */

@@ -65,6 +65,7 @@ struct openais_service_handler {
 	unsigned char *name;
 	unsigned short id;
 	unsigned int private_data_size;
+	enum openais_flow_control flow_control;
 	int (*lib_init_fn) (void *conn);
 	int (*lib_exit_fn) (void *conn);
 	struct openais_lib_handler *lib_service;

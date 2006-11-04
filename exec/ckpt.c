@@ -548,6 +548,7 @@ struct openais_service_handler ckpt_service_handler = {
 	.name				= (unsigned char *)"openais checkpoint service B.01.01",
 	.id				= CKPT_SERVICE,
 	.private_data_size		= sizeof (struct ckpt_pd),
+	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn			= ckpt_lib_init_fn,
 	.lib_exit_fn			= ckpt_lib_exit_fn,
 	.lib_service			= ckpt_lib_service,
