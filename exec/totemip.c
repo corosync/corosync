@@ -63,6 +63,16 @@
 /* ARGH!! I hate netlink */
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
+
+/* this should catch 2.6.19 headers */
+#ifndef IFA_MAX
+#include <linux/if_addr.h>
+#endif
+/* redefine macro that disappeared in 2.6.19 */
+#ifndef IFA_RTA
+#define IFA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))))
+#endif
+
 #endif
 
 #if ! defined(OPENAIS_SOLARIS) && ! defined(s6_addr16)
