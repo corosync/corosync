@@ -1,8 +1,8 @@
 /** @file amfcomp.c
  * 
- * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
  * Copyright (c) 2006 Ericsson AB.
+ * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006 Sun Microsystems, Inc. Copyright (c) 2006
  *
  * All rights reserved.
  *
@@ -190,6 +190,7 @@ static void lib_csi_set_request (
 	struct amf_comp *comp,
 	struct amf_csi_assignment *csi_assignment);
 
+
 /*
  * Life cycle functions
  */
@@ -232,6 +233,13 @@ struct invocation {
 
 static struct invocation *invocation_entries = 0;
 static int invocation_entries_size = 0;
+
+static int is_not_instantiating_or_instantiated_or_restarting (amf_comp_t *comp)
+{
+	return (!(comp->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING ||
+			  comp->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATED ||
+			  comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING));
+}
 
 static int invocation_create (
 	int interface, 
@@ -308,8 +316,7 @@ static void report_error_suspected (
 	SaAmfRecommendedRecoveryT recommended_recovery)
 {
 	comp->error_suspected = 1;
-	amf_su_comp_error_suspected (
-		comp->su, comp, recommended_recovery);
+	amf_su_comp_error_suspected (comp->su, comp, recommended_recovery);
 }
 
 
@@ -350,9 +357,9 @@ static void *clc_command_run (void *context)
 				" %d - %s\n", pid, WEXITSTATUS(status),
 				strerror (WEXITSTATUS(status)));
 			/*                                                              
-			 * TODO: remove this and handle properly later...
+             * Healthcheck timout will expire laterfore the component
+             * and this will lead to Intantiation failed for the component.
 			 */
-			openais_exit_error (AIS_DONE_FATAL_ERR);
 		}
 		if (WIFSIGNALED (status) != 0) {
 			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
@@ -360,7 +367,12 @@ static void *clc_command_run (void *context)
 			/*                                                              
 			 * TODO: remove this and handle properly later...
 			 */
-			openais_exit_error (AIS_DONE_FATAL_ERR);
+
+			/*                                                              
+			 * Healthcheck timout will expire laterfore the component
+			 * and this will lead to Intantiation failed for the component.
+			 */
+
 		}
 		xprintf ("process (%d) finished with %x\n", pid, status);
 		if (clc_command_run_data->completion_callback) {
@@ -483,6 +495,7 @@ static void amf_comp_instantiate_tmo (void *component)
 
 static void start_component_instantiate_timer (struct amf_comp *component)
 {
+	ENTER("%s",component->name.value);
 	poll_timer_add (aisexec_poll_handle, 
 		component->saAmfCompInstantiateTimeout,
 		component,
@@ -726,6 +739,7 @@ struct amf_comp *amf_comp_new(struct amf_su *su, char *name)
 
 	comp->saAmfCompOperState = SA_AMF_OPERATIONAL_DISABLED;
 	comp->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
+	comp->error_suspected = 0;
 	setSaNameT (&comp->name, name);
 
 	return comp;
@@ -1009,6 +1023,14 @@ static void mcast_healthcheck_tmo_event (
 {
 	struct req_exec_amf_healthcheck_tmo req_exec;
 	struct iovec iovec;
+	if (healthcheck->active == 0) {
+		log_printf (LOG_ERR, "Healthcheck timeout: ignored key = %s, "
+							 "due to wrong state = %d, comp = %s",
+			healthcheck->safHealthcheckKey.key, 
+			healthcheck->comp->saAmfCompPresenceState, 
+			healthcheck->comp->name.value);
+		goto out;
+	}
 	req_exec.header.size = sizeof (struct req_exec_amf_healthcheck_tmo);
 	req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
 		MESSAGE_REQ_EXEC_AMF_HEALTHCHECK_TMO);
@@ -1021,6 +1043,8 @@ static void mcast_healthcheck_tmo_event (
 
 	assert (totempg_groups_mcast_joined (openais_group_handle,
 		&iovec, 1, TOTEMPG_AGREED) == 0);
+out:
+	return;
 }
 
 /**
@@ -1166,7 +1190,9 @@ static void lib_csi_set_request (
 
 static void stop_component_instantiate_timer (struct amf_comp *component)
 {
-   if (component->instantiate_timeout_handle) {
+	ENTER("%s",component->name.value);
+
+	if (component->instantiate_timeout_handle) {
 		dprintf ("Stop component instantiate timer");
 		poll_timer_delete (aisexec_poll_handle, 
 			component->instantiate_timeout_handle);
@@ -1249,7 +1275,7 @@ void amf_comp_cleanup_completed (struct amf_comp *comp)
 
 	/* clear error suspected flag, component is terminated now */
 	comp->error_suspected = 0;
-
+	
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		amf_comp_instantiate (comp);
 	} else {
@@ -1275,6 +1301,15 @@ SaAisErrorT amf_comp_healthcheck_start (
 {
 	struct amf_healthcheck *healthcheck;
 	SaAisErrorT error = SA_AIS_OK;
+	
+	if (is_not_instantiating_or_instantiated_or_restarting (comp)) {
+		log_printf (LOG_ERR, "Healthcheckstart: ignored key = %s, "
+							 "due to wrong state = %d, comp = %s",
+			healthcheckKey->key, comp->saAmfCompPresenceState, comp->name.value);
+		error = SA_AIS_OK;
+		goto error_exit;	
+	}
+		
 
 	healthcheck = amf_comp_find_healthcheck (comp, healthcheckKey);
 	if (healthcheck == 0) {
@@ -1501,6 +1536,17 @@ int amf_comp_response_1 (
 				SaNameT name;
 				TRACE7 ("Healthcheck response from '%s': %d",
 					amf_comp_dn_make (healthcheck->comp, &name), error);
+					
+				if (is_not_instantiating_or_instantiated_or_restarting(
+					healthcheck->comp)) {
+					log_printf (LOG_ERR, "HealthcheckResponse: ignored for key = %s, "
+										 "due to wrong state = %d comp = %s",
+						healthcheck->safHealthcheckKey.key, 
+						healthcheck->comp->saAmfCompPresenceState,
+						healthcheck->comp->name.value);
+					*retval = SA_AIS_OK;
+					return 0;  /* do not multicast event */
+				}
 
 				if (healthcheck->invocationType == SA_AMF_HEALTHCHECK_AMF_INVOKED) {
 				/* the response was on time, delete supervision timer */
@@ -1634,7 +1680,7 @@ void amf_comp_hastate_set (
 	struct amf_csi_assignment *csi_assignment)
 {
 	ENTER ("'%s'", csi_assignment->csi->name.value);
-
+	
 	assert (component != NULL && csi_assignment != NULL);
 
 
@@ -1644,6 +1690,8 @@ void amf_comp_hastate_set (
 		if (csi_assignment->requested_ha_state == SA_AMF_HA_QUIESCED) {
 			csi_assignment->saAmfCSICompHAState = csi_assignment->requested_ha_state;
 		} else {
+			dprintf ("csi_assignment->requested_ha_state = %d", 
+				component->error_suspected);
 			assert (0);
 		}
 	}
@@ -1730,6 +1778,13 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 	SaAisErrorT error = SA_AIS_OK;
 
 	healthcheck = amf_comp_find_healthcheck (comp, healthcheckKey);
+	if (is_not_instantiating_or_instantiated_or_restarting(comp)) {
+		log_printf (LOG_ERR, "HealthcheckConfirm: ignored for key = %s, "
+							 "due to wrong state = %d, comp = %s",
+			healthcheckKey->key, comp->saAmfCompPresenceState, comp->name.value);
+		error = SA_AIS_OK;
+		goto out;
+	}
 	if (healthcheck == NULL) {
 		log_printf (LOG_ERR, "Healthcheckstop: Healthcheck '%s' not found",
 			healthcheckKey->key);
@@ -1753,7 +1808,7 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 	} else {
 		error = SA_AIS_ERR_INVALID_PARAM;
 	}
-
+out:
 	return error;
 }
 
@@ -1839,22 +1894,24 @@ void amf_comp_node_left (struct amf_comp *component)
 	int change_pending = 0;
 	struct amf_csi_assignment *csi_assignment;
 
-	ENTER("");
+	ENTER("saAmfCompPresenceState = %d", component->saAmfCompPresenceState);
+	component->error_suspected = 0;
 	if (component->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING ||
 		component->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING ||
 		component->saAmfCompPresenceState == SA_AMF_PRESENCE_TERMINATING) {
 		change_pending = 1;
+
 	}
 
 	component->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
 
 	if (amf_su_presence_state_all_comps_in_su_are_set (component->su,
-		SA_AMF_PRESENCE_UNINSTANTIATED) != 0) {
+		SA_AMF_PRESENCE_UNINSTANTIATED)) {
 		component->su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
 	}
 
 	if (change_pending) {
-		change_pending =0;
+		change_pending = 0;
 		amf_su_comp_state_changed ( component->su,
 			component,
 			SA_AMF_PRESENCE_STATE,
@@ -1868,7 +1925,7 @@ void amf_comp_node_left (struct amf_comp *component)
 	component->saAmfCompOperState = SA_AMF_OPERATIONAL_DISABLED;
 	if (change_pending) {
 		change_pending =0;
-		amf_su_comp_state_changed ( component->su,
+		amf_su_comp_state_changed (component->su,
 			component,
 			SA_AMF_OP_STATE,
 			SA_AMF_OPERATIONAL_DISABLED);
@@ -1884,8 +1941,6 @@ void amf_comp_node_left (struct amf_comp *component)
 		csi_assignment = amf_comp_get_next_csi_assignment (
 			component, csi_assignment);
 	}
-
-
 }
 
 /**

@@ -407,7 +407,6 @@ void amf_cluster_application_started (
 	struct amf_cluster *cluster, struct amf_application *application)
 {
 	ENTER ("application '%s' started", application->name.value);
-
 	switch (cluster->acsm_state) {
 		case CLUSTER_AC_STARTING_APPLICATIONS:
 			if (cluster_applications_started_instantiated (cluster)) {

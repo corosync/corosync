@@ -320,6 +320,7 @@ static void su_comp_presence_state_changed (
 	switch (state) {
 		case SA_AMF_PRESENCE_INSTANTIATED:
 			switch (su->restart_control_state) {
+				case SU_RC_ESCALATION_LEVEL_1:
 				case SU_RC_ESCALATION_LEVEL_2:
 					/* 
 					 * TODO: send to node
@@ -419,6 +420,7 @@ int amf_su_presence_state_all_comps_in_su_are_set (struct amf_su *su,
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
 		if (comp->saAmfCompPresenceState != state) {
 			all_set = 0;
+			break;
 		}
 	}
 
@@ -568,7 +570,6 @@ void amf_su_comp_error_suspected (
 				comp_restart (comp);
 			}
 			break;
-
 		case SU_RC_ESCALATION_LEVEL_2:
 			if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
 
@@ -590,8 +591,11 @@ void amf_su_comp_error_suspected (
 			break;
 
 		default:
+			dprintf ("TODO Restarting probably, on monday");
+			dprintf ("restart_control_state = %d",
+				su->restart_control_state);
 			break;
-	}
+ 	}
 }
 
 void amf_su_init (void)

@@ -86,8 +86,8 @@ SaTimeT clust_time_now(void)
 void _openais_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
-	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting with status %d at %s:%u.\n",
-		err, file, line);
+	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "
+								 "with status %d at %s:%u.\n", err, file, line);
 	log_flush();
 	exit (EXIT_FAILURE);
 }

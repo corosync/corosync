@@ -2300,12 +2300,7 @@ send_response:
 	res_lib.header.id = MESSAGE_RES_AMF_RESPONSE;
 	res_lib.header.size = sizeof (struct res_lib_amf_response);
 	res_lib.header.error = retval;
-
-//	ENTER ("");
-
-	if (openais_conn_send_response (conn, &res_lib, sizeof (res_lib)) != 0) {
-		openais_exit_error (AIS_DONE_FATAL_ERR);
-	}
+	openais_conn_send_response (conn, &res_lib, sizeof (res_lib));
 end:
 	return;
 }

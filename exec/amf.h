@@ -746,7 +746,7 @@ extern void amf_cluster_assign_workload (struct amf_cluster *cluster);
 
 /* Response event methods */
 extern void amf_cluster_application_started (
-	struct amf_cluster *cluster, struct amf_application *app);
+	amf_cluster_t *cluster, amf_application_t *app);
 extern void amf_cluster_application_workload_assigned (
 	struct amf_cluster *cluster, struct amf_application *app);
 
@@ -800,7 +800,7 @@ extern struct amf_sg *amf_sg_deserialize (
  * @param node - !NULL start all SUs in the SG for the specified
  *             node.
  */
-extern void amf_sg_start (struct amf_sg *sg, struct amf_node *node);
+extern int amf_sg_start (struct amf_sg *sg, struct amf_node *node);
 
 /**
  * Assign SIs on a certain dependency level to SUs

@@ -335,8 +335,9 @@ void amf_node_sync_ready (struct amf_node *node)
 		case NODE_ACSM_REPAIR_NEEDED:
 			break;
 		default:
-			log_printf (LOG_LEVEL_ERROR, "amf_node_sync_ready()called in state"
-				" = %d (should have been deferred)", node->acsm_state);
+			log_printf (LOG_LEVEL_ERROR, "amf_node_sync_ready() was called in "
+										 "state = %d (should have been deferred)",
+				node->acsm_state);
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 			break;
 
