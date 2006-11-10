@@ -218,20 +218,26 @@ static int cluster_applications_started_instantiated (struct amf_cluster *cluste
 
 static int cluster_applications_are_starting_sgs(struct amf_cluster *cluster)
 {
-	struct amf_application *application = 0;
+	amf_application_t *application;
+	amf_sg_t *sg;
+	amf_su_t *su;
 	int is_starting_sgs = 0;
 
 	for (application = cluster->application_head; application != NULL;
 		application = application->next) {
-		if (application->acsm_state == APP_AC_STARTING_SGS) {
-			is_starting_sgs = 1;
-			break;
+		for (sg = application->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+
+				if (su->saAmfSUPresenceState == 
+					SA_AMF_PRESENCE_INSTANTIATING) {
+					is_starting_sgs = 1;
+					break;
+				}
+			}
 		}
 	}
 	return is_starting_sgs;
 }
-
-
 
 static void acsm_cluster_enter_assigning_workload (struct amf_cluster *cluster)
 {
