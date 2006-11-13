@@ -545,7 +545,7 @@ static int message_handler_token_hold_cancel (
 static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
 
 static void token_callbacks_execute (struct totemsrp_instance *instance, enum totem_callback_token_type type);
-static void memb_state_gather_enter (struct totemsrp_instance *instance);
+static void memb_state_gather_enter (struct totemsrp_instance *instance, int gather_from);
 static void messages_deliver_to_app (struct totemsrp_instance *instance, int skip, unsigned int end_point);
 static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token *oken,
 	int fcc_mcasts_allowed);
@@ -1341,7 +1341,7 @@ static void memb_state_consensus_timeout_expired (
 
 		memb_set_merge (no_consensus_list, no_consensus_list_entries,
 			instance->my_failed_list, &instance->my_failed_list_entries);
-		memb_state_gather_enter (instance);
+		memb_state_gather_enter (instance, 1);
 	}
 }
 
@@ -1356,26 +1356,32 @@ static void timer_function_orf_token_timeout (void *data)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
 
-	log_printf (instance->totemsrp_log_level_notice,
-		"The token was lost in state %d from timer %p\n", instance->memb_state, data);
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
+			log_printf (instance->totemsrp_log_level_notice,
+				"The token was lost in the OPERATIONAL state.\n");
 			totemrrp_iface_check (instance->totemrrp_handle);
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 2);
 			break;
 
 		case MEMB_STATE_GATHER:
+			log_printf (instance->totemsrp_log_level_notice,
+				"The consensus timeout expired.\n");
 			memb_state_consensus_timeout_expired (instance);
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 3);
 			break;
 
 		case MEMB_STATE_COMMIT:
-			memb_state_gather_enter (instance);
+			log_printf (instance->totemsrp_log_level_notice,
+				"The token was lost in the COMMIT state.\n");
+			memb_state_gather_enter (instance, 4);
 			break;
 		
 		case MEMB_STATE_RECOVERY:
+			log_printf (instance->totemsrp_log_level_notice,
+				"The token was lost in the RECOVERY state.\n");
 			ring_state_restore (instance);
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 5);
 			break;
 	}
 }
@@ -1612,14 +1618,15 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	return;
 }
 
-static void memb_state_gather_enter (struct totemsrp_instance *instance)
+static void memb_state_gather_enter (
+	struct totemsrp_instance *instance,
+	int gather_from)
 {
 	instance->my_commit_token_seq = SEQNO_START_TOKEN - 1;
 
 	memb_set_merge (
 		&instance->my_id, 1,
 		instance->my_proc_list, &instance->my_proc_list_entries);
-// AAA
 	assert (srp_addr_equal (&instance->my_proc_list[0], &instance->my_proc_list[1]) == 0);
 
 	memb_join_message_send (instance);
@@ -1659,7 +1666,7 @@ static void memb_state_gather_enter (struct totemsrp_instance *instance)
 	memb_consensus_set (instance, &instance->my_id);
 
 	log_printf (instance->totemsrp_log_level_notice,
-		"entering GATHER state.\n");
+		"entering GATHER state from %d.\n", gather_from);
 
 	instance->memb_state = MEMB_STATE_GATHER;
 
@@ -3216,8 +3223,7 @@ static int message_handler_orf_token (
 
 			ring_state_restore (instance);
 
-printf ("gather 1");
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 6);
 		} else {
 			instance->my_token_seq = token->token_seq;
 			token->token_seq += 1;
@@ -3498,8 +3504,7 @@ static int message_handler_mcast (
 			memb_set_merge (
 				&mcast_header.system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
-printf ("gather 2");
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 7);
 			break;
 
 		case MEMB_STATE_GATHER:
@@ -3511,7 +3516,7 @@ printf ("gather 2");
 
 				memb_set_merge (&mcast_header.system_from, 1,
 					instance->my_proc_list, &instance->my_proc_list_entries);
-				memb_state_gather_enter (instance);
+				memb_state_gather_enter (instance, 8);
 				return (0);
 			}
 			break;
@@ -3600,8 +3605,7 @@ static int message_handler_memb_merge_detect (
 	case MEMB_STATE_OPERATIONAL:
 		memb_set_merge (&memb_merge_detect->system_from, 1,
 			instance->my_proc_list, &instance->my_proc_list_entries);
-printf ("gather 3");
-		memb_state_gather_enter (instance);
+		memb_state_gather_enter (instance, 9);
 		break;
 
 	case MEMB_STATE_GATHER:
@@ -3613,8 +3617,7 @@ printf ("gather 3");
 
 			memb_set_merge (&memb_merge_detect->system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
-printf ("gather 4");
-			memb_state_gather_enter (instance);
+			memb_state_gather_enter (instance, 10);
 			return (0);
 		}
 		break;
@@ -3698,7 +3701,7 @@ static int memb_join_process (
 				memb_join->failed_list_entries,
 				instance->my_failed_list, &instance->my_failed_list_entries);
 		}
-		memb_state_gather_enter (instance);
+		memb_state_gather_enter (instance, 11);
 		return (1); /* gather entered */
 	}
 	return (0); /* gather not entered */
@@ -3842,7 +3845,7 @@ static int message_handler_memb_join (
 			gather_entered = memb_join_process (instance,
 				memb_join);
 			if (gather_entered == 0) {
-				memb_state_gather_enter (instance);
+				memb_state_gather_enter (instance, 12);
 			}
 			break;
 
@@ -3859,7 +3862,7 @@ static int message_handler_memb_join (
 				memb_join->ring_seq >= instance->my_ring_id.seq) {
 
 				memb_join_process (instance, memb_join);
-				memb_state_gather_enter (instance);
+				memb_state_gather_enter (instance, 13);
 			}
 			break;
 
@@ -3874,7 +3877,7 @@ static int message_handler_memb_join (
 				ring_state_restore (instance);
 
 				memb_join_process (instance, memb_join);
-				memb_state_gather_enter (instance);
+				memb_state_gather_enter (instance, 14);
 			}
 			break;
 	}
@@ -4025,7 +4028,7 @@ void main_iface_change_fn (
 
 	}
 	if (instance->iface_changes >= instance->totem_config->interface_count) {
-		memb_state_gather_enter (instance);
+		memb_state_gather_enter (instance, 15);
 	}
 }
 
