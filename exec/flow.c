@@ -34,9 +34,11 @@
 
 /*
  * New messages are allowed from the library ONLY when the processor has not
- * received a OPENAIS_FLOW_CONTROL_STATE_ENABLED from any processor.  If a OPENAIS_FLOW_CONTROL_STATE_ENABLED
- * message is sent, it must later be cancelled by a OPENAIS_FLOW_CONTROL_STATE_DISABLED
- * message.
+ * received a OPENAIS_FLOW_CONTROL_STATE_ENABLED from any processor.  If a
+ * OPENAIS_FLOW_CONTROL_STATE_ENABLED message is sent, it must later be
+ *  cancelled by a OPENAIS_FLOW_CONTROL_STATE_DISABLED message.  A configuration
+ * change with the flow controlled processor leaving the configuration will
+ * also cancel flow control.
  */
 
 #include <stdio.h>
@@ -50,8 +52,6 @@
 #include "print.h"
 #include "hdb.h"
 #include "../include/list.h"
-
-#define OPENAIS_FLOW_CONTROL_ENABLED_SERVICES_MAX 128
 
 struct flow_control_instance {
 	struct list_head list_head;
@@ -180,8 +180,10 @@ static void flow_control_confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	unsigned int i;
+	unsigned int j;
 	struct flow_control_service *flow_control_service;
 	struct list_head *list;
+	struct flow_control_node_state flow_control_node_state_temp[PROCESSOR_COUNT_MAX];
 
 	memcpy (flow_control_member_list, member_list,
 		sizeof (unsigned int) * member_list_entries);
@@ -194,15 +196,45 @@ static void flow_control_confchg_fn (
 		flow_control_service = list_entry (list, struct flow_control_service, list_all);
 
 		/*
+		 * Generate temporary flow control node state information
+		 */
+		for (i = 0; i < member_list_entries; i++) {
+			flow_control_node_state_temp[i].nodeid = member_list[i];
+			flow_control_node_state_temp[i].flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+
+			/*
+			 * Determine if previous state was set for this processor
+			 * if so keep that setting
+			 */
+			for (j = 0; j < flow_control_service->processor_count; j++) {
+				if (flow_control_service->flow_control_node_state[j].nodeid == member_list[i]) {
+					flow_control_node_state_temp[i].flow_control_state =
+						flow_control_service->flow_control_node_state[j].flow_control_state;
+					break; /* from for */
+				}
+			}
+		}
+
+		/*
+		 * Copy temporary node state information to node state information
+		 */
+		memcpy (flow_control_service->flow_control_node_state,
+			flow_control_node_state_temp,
+			sizeof (struct flow_control_node_state) * member_list_entries);
+
+		/*
 		 * Set all of the node ids after a configuration change
 		 * Turn on all flow control after a configuration change
 		 */
 		flow_control_service->processor_count = flow_control_member_list_entries;
-		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
 		for (i = 0; i < member_list_entries; i++) {
-			flow_control_service->flow_control_node_state[i].nodeid = member_list[i];
-			flow_control_service->flow_control_node_state[i].flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+			if (flow_control_service->flow_control_node_state[j].flow_control_state == OPENAIS_FLOW_CONTROL_STATE_DISABLED) {
+				flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+				flow_control_service->flow_control_state_set_fn (flow_control_service->context, flow_control_service->flow_control_state);
+			}
 		}
+
 	}
 } 
 /*

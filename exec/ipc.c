@@ -558,31 +558,53 @@ static void ipc_flow_control (struct conn_info *conn_info)
 {
 	unsigned int entries_used;
 	unsigned int entries_usedhw;
+	unsigned int flow_control_local_count;
+	unsigned int fcc;
 
+	/*
+	 * Determine FCC variable and printing variables
+	 */
 	entries_used = queue_used (&conn_info->outq);
-	if (conn_info->flow_control_local_count > entries_used) {
-		entries_used = conn_info->flow_control_local_count;
+	if (conn_info->conn_info_partner &&
+		queue_used (&conn_info->conn_info_partner->outq) > entries_used) {
+		entries_used = queue_used (&conn_info->conn_info_partner->outq);
+	}
+	entries_usedhw = queue_usedhw (&conn_info->outq);
+	if (conn_info->conn_info_partner &&
+		queue_usedhw (&conn_info->conn_info_partner->outq) > entries_used) {
+		entries_usedhw = queue_usedhw (&conn_info->conn_info_partner->outq);
+	}
+	flow_control_local_count = conn_info->flow_control_local_count;
+	if (conn_info->conn_info_partner &&
+		conn_info->conn_info_partner->flow_control_local_count > flow_control_local_count) {
+		flow_control_local_count = conn_info->conn_info_partner->flow_control_local_count;
+	}
+
+	fcc = entries_used;
+	if (flow_control_local_count > fcc) {
+		fcc = flow_control_local_count;
 	}
 	/*
 	 * IPC group-wide flow control
 	 */
 	if (conn_info->flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) {
 		if (conn_info->flow_control_enabled == 0 &&
-			((entries_used + FLOW_CONTROL_ENTRIES_ENABLE) > SIZEQUEUE)) {
+			((fcc + FLOW_CONTROL_ENTRIES_ENABLE) > SIZEQUEUE)) {
 
-			entries_usedhw = queue_usedhw (&conn_info->outq);
-			log_printf (LOG_LEVEL_NOTICE, "Enabling flow control - HW mark %d of %d %p.\n", entries_usedhw, SIZEQUEUE, &conn_info->outq);
+			log_printf (LOG_LEVEL_NOTICE, "Enabling flow control [%d/%d] - [%d].\n",
+				entries_usedhw, SIZEQUEUE,
+				flow_control_local_count);
 			openais_flow_control_enable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 1;
 			conn_info->conn_info_partner->flow_control_enabled = 1;
 		}
 		if (conn_info->flow_control_enabled == 1 &&
 
-			entries_used <= FLOW_CONTROL_ENTRIES_DISABLE) {
-			entries_usedhw = queue_usedhw (&conn_info->outq);
+			fcc <= FLOW_CONTROL_ENTRIES_DISABLE) {
 
-			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control - HW mark [%d/%d].\n",
-				entries_usedhw, SIZEQUEUE);
+			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control [%d/%d] - [%d].\n",
+				entries_usedhw, SIZEQUEUE,
+				flow_control_local_count);
 			openais_flow_control_disable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 0;
 			conn_info->conn_info_partner->flow_control_enabled = 0;
@@ -919,20 +941,6 @@ static void ipc_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-	struct conn_info *conn_info;
-	struct list_head *list;
-
-	/*
-	 * Turn on flow control enabled flag for all connections
-	 */
-	for (list = conn_info_list_head.next;
-		list != &conn_info_list_head;
-		list = list->next) {
-
-		conn_info = list_entry (list, struct conn_info, list);
-		conn_info->flow_control_enabled = 1;
-		conn_info->conn_info_partner->flow_control_enabled = 1;
-	}
 }
 
 void openais_ipc_init (
