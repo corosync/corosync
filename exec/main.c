@@ -106,6 +106,11 @@ static void sigusr2_handler (int num)
 	}
 }
 
+static void sigsegv_handler (int num)
+{
+	log_atsegv ();
+}
+
 struct totem_ip_address *this_ip;
 struct totem_ip_address this_non_loopback_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
@@ -419,9 +424,13 @@ int main (int argc, char **argv)
 
 	signal (SIGUSR2, sigusr2_handler);
 
+	signal (SIGSEGV, sigsegv_handler);
+
 	openais_timer_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
+
+	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 
 	aisexec_poll_handle = poll_create (
 		serialize_mutex_lock,
@@ -596,8 +605,6 @@ int main (int argc, char **argv)
 		serialize_mutex_unlock,
 		gid_valid,
 		&this_non_loopback_ip);
-
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
 
 	/*
 	 * Start main processing loop

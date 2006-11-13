@@ -122,6 +122,8 @@ static inline void log_init (const char *ident)
 	logger_identifier = _log_init (ident);
 }
 
+extern void log_atsegv (void);
+
 #define log_printf(lvl, format, args...) do { \
     if ((lvl) <= loggers[logger_identifier].level)	{ \
 		internal_log_printf2 (__FILE__, __LINE__, lvl, logger_identifier, format, ##args);  \

@@ -63,8 +63,6 @@ struct worker_thread {
 
 void *worker_thread (void *thread_data_in) {
 	struct thread_data *thread_data = (struct thread_data *)thread_data_in;
-	struct orf_token_mcast_thread_state *orf_token_mcast_thread_state =
-		(struct orf_token_mcast_thread_state *)thread_data->thread_state;
 	struct worker_thread *worker_thread =
 		(struct worker_thread *)thread_data->data;
 	void *data_for_worker_fn;
@@ -83,7 +81,7 @@ void *worker_thread (void *thread_data_in) {
 	  	 */
 		data_for_worker_fn = queue_item_get (&worker_thread->queue);
 		pthread_mutex_unlock (&worker_thread->new_work_mutex);
-		worker_thread->worker_thread_group->worker_fn (orf_token_mcast_thread_state, data_for_worker_fn);
+		worker_thread->worker_thread_group->worker_fn (worker_thread->thread_state, data_for_worker_fn);
 		pthread_mutex_lock (&worker_thread->new_work_mutex);
 		queue_item_remove (&worker_thread->queue);
 		pthread_mutex_unlock (&worker_thread->new_work_mutex);
@@ -184,5 +182,21 @@ void worker_thread_group_exit (
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {
 		pthread_cancel (worker_thread_group->threads[i].thread_id);
+	}
+}
+void worker_thread_group_atsegv (
+	struct worker_thread_group *worker_thread_group)
+{
+	void *data_for_worker_fn;
+	struct worker_thread *worker_thread;
+	unsigned int i;
+
+	for (i = 0; i < worker_thread_group->threadcount; i++) {
+		worker_thread = &worker_thread_group->threads[i];
+		while (queue_is_empty (&worker_thread->queue) == 0) {
+			data_for_worker_fn = queue_item_get (&worker_thread->queue);
+			worker_thread->worker_thread_group->worker_fn (worker_thread->thread_state, data_for_worker_fn);
+			queue_item_remove (&worker_thread->queue);
+		}
 	}
 }

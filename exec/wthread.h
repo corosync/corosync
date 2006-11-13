@@ -61,4 +61,7 @@ extern void worker_thread_group_wait (
 extern void worker_thread_group_exit (
 	struct worker_thread_group *worker_thread_group);
 
+extern void worker_thread_group_atsegv (
+	struct worker_thread_group *worker_thread_group);
+
 #endif /* WTHREAD_H_DEFINED */

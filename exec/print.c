@@ -3,11 +3,11 @@
  * Copyright (c) 2006 Ericsson AB.
  *
  * Author: Steven Dake (sdake@redhat.com)
- *    original work, Add worker thread to avoid blocking syslog
+ *	original work, Add worker thread to avoid blocking syslog
  *
  * Author: Hans Feldt
- *      Added support for runtime installed loggers, tags tracing,
- *    and file & line printing.
+ *      Added support for runtime installed loggers, tags tracing, 
+ *	and file & line printing.
  *
  * All rights reserved.
  *
@@ -55,7 +55,6 @@
 #include <syslog.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <signal.h>
 
 #include "print.h"
 #include "totemip.h"
@@ -100,13 +99,19 @@ struct log_data {
 	char *log_string;
 };
 
+static void log_atexit (void);
+
 static int logger_init (const char *ident, int tags, int level, int mode)
 {
 	int i;
 
  	for (i = 0; i < MAX_LOGGERS; i++) {
 		if (strcmp (loggers[i].ident, ident) == 0) {
-			goto done;
+			loggers[i].tags |= tags;
+			if (level > loggers[i].level) {
+				loggers[i].level = level;
+			}
+			break;
 		}
 	}
 
@@ -122,8 +127,8 @@ static int logger_init (const char *ident, int tags, int level, int mode)
 		}
 	}
 
-done:
-	assert (i < MAX_LOGGERS);
+	assert(i < MAX_LOGGERS);
+
 	return i;
 }
 
@@ -178,6 +183,7 @@ static void _log_printf (char *file, int line,
 	int i = 0;
 	int len;
 	struct log_data log_data;
+	unsigned int res = 0;
 
 	assert (id < MAX_LOGGERS);
 
@@ -234,18 +240,15 @@ static void _log_printf (char *file, int line,
 	if (log_data.log_string == NULL) {
 		goto drop_log_msg;
 	}
-
-#ifndef DEBUG
+	
 	if (log_setup_called) {
-		int res = worker_thread_group_work_add (&log_thread_group, &log_data);
+		res = worker_thread_group_work_add (&log_thread_group, &log_data);
 		if (res == 0) {
 			dropped_log_entries = 0;
 		} else {
 			dropped_log_entries += 1;
 		}
-	} else
-#endif
-	{
+	} else {
 		log_printf_worker_fn (NULL, &log_data);	
 	}
 
@@ -261,35 +264,20 @@ int _log_init (const char *ident)
 {
 	assert (ident != NULL);
 
-	if (logmode & LOG_MODE_DEBUG) {
-		return logger_init (ident, TAG_LOG, LOG_LEVEL_DEBUG, 0);
-	} else {
+	/*
+	** do different things before and after log_setup() has been called
+	*/
+	if (log_setup_called) {
 		return logger_init (ident, TAG_LOG, LOG_LEVEL_INFO, 0);
+	} else {
+		return logger_init (ident, ~0, LOG_LEVEL_DEBUG, 0);
 	}
 }
-
-#ifdef PRINT_DEBUG
-static void sigusr2_handler (int num)
-{
-	int i;
-
-	for (i = 0; i < MAX_LOGGERS; i++) {
-		if (strlen (loggers[i].ident) > 0) {
-			printf("ident: %6s, tags: %08x, level: %d\n",
-				loggers[i].ident, loggers[i].tags, loggers[i].level);
-		}
-	}
-}
-#endif
 
 int log_setup (char **error_string, struct main_config *config)
 {
 	int i;
 	static char error_string_response[512];
-
-#ifdef PRINT_DEBUG
-	signal (SIGUSR2, sigusr2_handler);
-#endif
 
 	if (config->logmode & LOG_MODE_FILE) {
 		log_file_fp = fopen (config->logfile, "a+");
@@ -312,14 +300,14 @@ int log_setup (char **error_string, struct main_config *config)
 	}
 
 	/*
-	** reinit level for all loggers that has initialised
-	** before log_setup() was called.
+	** reinit all loggers that has initialised before log_setup() was called.
 	*/
 	for (i = 0; i < MAX_LOGGERS; i++) {
-		if (strlen (loggers[i].ident) > 0) {
-			if (config->logmode & LOG_MODE_DEBUG) {
-				loggers[i].level = LOG_LEVEL_DEBUG;
-			}
+		loggers[i].tags = TAG_LOG;
+		if (config->logmode & LOG_MODE_DEBUG) {
+			loggers[i].level = LOG_LEVEL_DEBUG;
+		} else {
+			loggers[i].level = LOG_LEVEL_INFO;
 		}
 	}
 
@@ -336,8 +324,6 @@ int log_setup (char **error_string, struct main_config *config)
 			config->logger[i].mode);
 	}
 
-	log_setup_called = 1;
-
 	worker_thread_group_init (
 		&log_thread_group,
 		1,
@@ -347,6 +333,7 @@ int log_setup (char **error_string, struct main_config *config)
 		NULL,
 		log_printf_worker_fn);
 
+	log_setup_called = 1;
 
 	/*
 	** Flush what we have buffered
@@ -355,6 +342,7 @@ int log_setup (char **error_string, struct main_config *config)
 
 	internal_log_printf(__FILE__, __LINE__, LOG_LEVEL_DEBUG, "log setup\n");
 
+	atexit (log_atexit);
 	return (0);
 }
 
@@ -418,4 +406,18 @@ void log_flush(void)
 	}
 
 	head = tail = NULL;
+}
+
+static void log_atexit (void)
+{
+	if (log_setup_called) {
+		worker_thread_group_wait (&log_thread_group);
+	}
+}
+
+void log_atsegv (void)
+{
+	log_setup_called = 0;
+	worker_thread_group_exit (&log_thread_group);
+	worker_thread_group_atsegv (&log_thread_group);
 }
