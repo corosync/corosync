@@ -1864,8 +1864,6 @@ error_put:
 	saHandleInstancePut (&checkpointHandleDatabase, checkpointHandle);
 
 	return (error == SA_AIS_OK ? res_lib_ckpt_checkpointsynchronizeasync.header.error : error);
-
-	return (SA_AIS_OK);
 }
 
 /** @} */

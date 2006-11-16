@@ -1171,7 +1171,7 @@ retry_sendmsg_two:
 			conn_info->events = POLLIN|POLLNVAL;
 		}
 		if (res != -1) {
-			if (res + conn_info->byte_start != mlen) {
+			if (res != mlen) {
 				conn_info->byte_start += res;
 				res = -1;
 			} else {

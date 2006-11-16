@@ -487,7 +487,6 @@ int lcr_ifact_release (unsigned int handle)
 
 	res = hdb_handle_get (&lcr_iface_instance_database,
 		handle, (void *)&iface_instance);
-	return (res);
 
 	if (iface_instance->destructor) {
 		iface_instance->destructor (iface_instance->context);

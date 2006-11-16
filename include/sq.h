@@ -164,7 +164,6 @@ static inline void *sq_item_add (
 	if (sq_position > sq->pos_max) {
 		sq->pos_max = sq_position;
 	}
-	assert (sq_position >= 0);
 
 	sq_item = sq->items;
 	sq_item += sq_position * sq->size_per_item;

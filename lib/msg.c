@@ -747,7 +747,8 @@ saMsgQueueStatusGet (
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
 
-	error = SA_AIS_OK ? res_lib_msg_queuestatusget.header.error : error;
+	if (error == SA_AIS_OK)
+		error = res_lib_msg_queuestatusget.header.error;
 	if (error == SA_AIS_OK) {
 		memcpy (queueStatus, &res_lib_msg_queuestatusget.queueStatus,
 			sizeof (SaMsgQueueStatusT));
@@ -1137,7 +1138,8 @@ saMsgMessageGet (
 
 	saHandleInstancePut (&queueHandleDatabase, queueHandle);
 	
-	error = SA_AIS_OK ? res_lib_msg_messageget.header.error : error;
+	if (error == SA_AIS_OK)
+		error = res_lib_msg_messageget.header.error;
 	if (error == SA_AIS_OK) {
 		*sendTime = res_lib_msg_messageget.sendTime;
 		memcpy (senderId, &res_lib_msg_messageget.senderId,
@@ -1215,7 +1217,8 @@ saMsgMessageSendReceive (
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
 	
-	error = SA_AIS_OK ? res_lib_msg_messagesendreceive.header.error : error;
+	if (error == SA_AIS_OK)
+		error = res_lib_msg_messagesendreceive.header.error;
 	if (error == SA_AIS_OK) {
 		*replySendTime = res_lib_msg_messagesendreceive.replySendTime;
 	}

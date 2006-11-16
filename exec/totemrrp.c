@@ -712,7 +712,7 @@ static void passive_mcast_recv (
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
 			sprintf (rrp_instance->status[i], 
-				"Marking ringid %d interface %s FAULTY - adminisrtative intervention required.",
+				"Marking ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
 			log_printf (
@@ -794,7 +794,7 @@ static void passive_token_recv (
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
 			sprintf (rrp_instance->status[i], 
-				"Marking seqid %d ringid %d interface %s FAULTY - adminisrtative intervention required.",
+				"Marking seqid %d ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -1011,7 +1011,7 @@ static void timer_function_active_token_expired (void *context)
 		{
 			active_instance->faulty[i] = 1;
 			sprintf (rrp_instance->status[i], 
-				"Marking seqid %d ringid %d interface %s FAULTY - adminisrtative intervention required.",
+				"Marking seqid %d ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				active_instance->last_token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -1416,7 +1416,6 @@ int totemrrp_initialize (
 		instance);
 	if (res == -1) {
 		goto error_put;
-		return (-1);
 	}
 
 	/*

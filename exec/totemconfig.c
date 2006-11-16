@@ -120,7 +120,6 @@ extern int totem_config_read (
 	char **error_string)
 {
 	int res = 0;
-	int parse_done = 0;
 	unsigned int object_totem_handle;
 	unsigned int object_interface_handle;
 	char *str;
@@ -129,7 +128,6 @@ extern int totem_config_read (
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
 	if (totem_config->interfaces == 0) {
-		parse_done = 1;
 		*error_string = "Out of memory trying to allocate ethernet interface storage area";
 		return -1;
 	}
