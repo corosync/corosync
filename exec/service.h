@@ -62,7 +62,7 @@ struct openais_exec_handler {
 };
 
 struct openais_service_handler {
-	unsigned char *name;
+	char *name;
 	unsigned short id;
 	unsigned int private_data_size;
 	enum openais_flow_control flow_control;

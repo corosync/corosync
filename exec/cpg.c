@@ -236,7 +236,7 @@ static struct openais_exec_handler cpg_exec_service[] =
 };
 
 struct openais_service_handler cpg_service_handler = {
-	.name				        = (unsigned char*)"openais cluster closed process group service v1.01",
+	.name				        = "openais cluster closed process group service v1.01",
 	.id					= CPG_SERVICE,
 	.private_data_size			= sizeof (struct process_info),
 	.flow_control				= OPENAIS_FLOW_CONTROL_REQUIRED,

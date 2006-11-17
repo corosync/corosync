@@ -142,7 +142,7 @@ static struct openais_exec_handler evs_exec_service[] =
 };
 
 struct openais_service_handler evs_service_handler = {
-	.name			= (unsigned char*)"openais extended virtual synchrony service",
+	.name			= "openais extended virtual synchrony service",
 	.id			= EVS_SERVICE,
 	.private_data_size	= sizeof (struct evs_pd),
 	.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED, 

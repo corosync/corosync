@@ -164,7 +164,7 @@ static struct openais_exec_handler cfg_exec_service[] =
  * Exports the interface for the service
  */
 struct openais_service_handler cfg_service_handler = {
-	.name					= (unsigned char*)"openais configuration service",
+	.name					= "openais configuration service",
 	.id					= CFG_SERVICE,
 	.private_data_size			= 0,
 	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 

@@ -235,7 +235,7 @@ static void sync_callbacks_load (void)
 			break;
 		}
 		if ((service_name != NULL) &&
-			strcmp ((char*)sync_callbacks.name, service_name) != 0) {
+			strcmp (sync_callbacks.name, service_name) != 0) {
 			sync_recovery_index += 1;
 			continue;
 		}

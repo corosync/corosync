@@ -571,7 +571,7 @@ static struct openais_exec_handler ckpt_exec_service[] = {
 };
 
 struct openais_service_handler ckpt_service_handler = {
-	.name				= (unsigned char *)"openais checkpoint service B.01.01",
+	.name				= "openais checkpoint service B.01.01",
 	.id				= CKPT_SERVICE,
 	.private_data_size		= sizeof (struct ckpt_pd),
 	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 

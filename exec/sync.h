@@ -44,7 +44,7 @@ struct sync_callbacks {
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
-	unsigned char *name;
+	char *name;
 };
 
 int sync_register (

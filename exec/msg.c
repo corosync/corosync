@@ -433,7 +433,7 @@ static struct openais_exec_handler msg_exec_service[] = {
 };
 
 struct openais_service_handler msg_service_handler = {
-	.name				= (unsigned char *)"openais message service B.01.01",
+	.name				= "openais message service B.01.01",
 	.id				= MSG_SERVICE,
 	.private_data_size		= sizeof (struct msg_pd),
 	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 

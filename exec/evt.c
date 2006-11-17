@@ -210,8 +210,7 @@ static struct openais_exec_handler evt_exec_service[] = {
 };
 
 struct openais_service_handler evt_service_handler = {
-	.name						=
-								(unsigned char*)"openais event service B.01.01",
+	.name						= "openais event service B.01.01",
 	.id							= EVT_SERVICE,
 	.private_data_size			= sizeof (struct libevt_pd),
 	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED,

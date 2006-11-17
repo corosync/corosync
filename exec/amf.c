@@ -371,7 +371,7 @@ static struct openais_exec_handler amf_exec_service[] = {
  * Exports the interface for the service
  */
 static struct openais_service_handler amf_service_handler = {
-	.name				= (unsigned char *)"openais availability management framework B.01.01",
+	.name				= "openais availability management framework B.01.01",
 	.id					= AMF_SERVICE,
 	.private_data_size	= sizeof (struct amf_pd),
 	.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED,

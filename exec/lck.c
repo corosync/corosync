@@ -300,7 +300,7 @@ static struct openais_exec_handler lck_exec_service[] = {
 };
 
 struct openais_service_handler lck_service_handler = {
-	.name				= (unsigned char*)"openais distributed locking service B.01.01",
+	.name				= "openais distributed locking service B.01.01",
 	.id				= LCK_SERVICE,
 	.private_data_size		= sizeof (struct lck_pd),
 	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
