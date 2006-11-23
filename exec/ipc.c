@@ -770,6 +770,12 @@ retry_recv:
 		return;
 	} else
 	if (res == 0) {
+#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+		/* On many OS poll never return POLLHUP or POLLERR.
+		 * EOF is detected when recvmsg return 0.
+		 */
+  		libais_disconnect_request (conn_info);
+#endif
 		return;
 	}
 

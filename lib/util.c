@@ -260,7 +260,7 @@ retry_recv:
 	 * EOF is detected when recvmsg return 0.
 	 */
 	if (result == 0) {
-		error = SA_AIS_ERR_BAD_HANDLE;
+		error = SA_AIS_ERR_LIBRARY;
 		goto error_exit;
 	}
 #endif
