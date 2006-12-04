@@ -53,7 +53,7 @@
  *   requests to a component instance
  * - send responses to the AMF library (return values for API calls)
  * - handling EVS configuration change events (node leave/join)
- * - handling node synchronisation events (amf_sync_*)
+ * - handling node synchronisation events (sync_*)
  * - printing the AMF runtime attributes upon user request (USR2 signal)
  * 
  * Some API requests are responded to directly in the lib message_handler.
@@ -86,6 +86,7 @@
  * UPDATING_CLUSTER_MODEL  sync_activate            A4    NORMAL_OPERATION
  * UPDATING_CLUSTER_MODEL  SYNC_START               A5    UPDATING_CLUSTER_MODEL
  * UPDATING_CLUSTER_MODEL  node_left[sync_master]         PROBING-1
+ * UPDATING_CLUSTER_MODEL  node_joined              A7    UPDATING_CLUSTER_MODEL
  * NORMAL_OPERATION        sync_init                      SYNCHRONIZING
  * NORMAL_OPERATION        node_left[sync_master]   A6    NORMAL_OPERATION
  * NORMAL_OPERATION        SYNC_REQUEST             A8    NORMAL_OPERATION
@@ -101,7 +102,7 @@
  * UPDATING_CLUSTER_MODEL - Save sync master node ID; receive SYNC_DATA, 
  *                          deserialize and save.
  * SYNCHRONIZING - If sync master: multicast SYNC_START followed by encoded AMF
- *                 objects as SYNC_DATA; multicast SYNC_READY
+ *                 objects as SYNC_DATA;
  * NORMAL - Start cluster or node; wait for cluster changes
  *
  * 1.3 Action Description
@@ -146,7 +147,6 @@
 #include "../include/list.h"
 #include "../lcr/lcr_comp.h"
 #include "totempg.h"
-#include "mempool.h"
 #include "util.h"
 #include "amf.h"
 #include "main.h"
@@ -154,6 +154,7 @@
 #include "service.h"
 #include "objdb.h"
 #include "print.h"
+#include "sync.h"
 
 #ifdef AMFTEST
 #define static
@@ -167,7 +168,7 @@
 	TRACE6(">%s: " format, __FUNCTION__, ##args); \
 } while (0)
 
-/*                                                              
+/*
  * The time AMF will wait to get synchronised by another node
  * before it assumes it is alone in the cluster or the first
  * node to start.
@@ -214,8 +215,6 @@ static void message_handler_req_exec_amf_response (
 static void message_handler_req_exec_amf_sync_start (
 	void *message, unsigned int nodeid);
 static void message_handler_req_exec_amf_sync_data (
-	void *message, unsigned int nodeid);
-static void message_handler_req_exec_amf_sync_ready (
 	void *message, unsigned int nodeid);
 static void message_handler_req_exec_amf_cluster_start_tmo (
 	void *message, unsigned int nodeid);
@@ -335,9 +334,9 @@ static struct openais_exec_handler amf_exec_service[] = {
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_comp_error_report,
 	},
-    {
+	{
 		.exec_handler_fn = message_handler_req_exec_amf_comp_instantiate,
-    },
+	},
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_clc_cleanup_completed,
 	},
@@ -352,9 +351,6 @@ static struct openais_exec_handler amf_exec_service[] = {
 	},
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_sync_data,
-	},
-	{
-		.exec_handler_fn = message_handler_req_exec_amf_sync_ready,
 	},
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_cluster_start_tmo,
@@ -444,7 +440,6 @@ struct req_exec_amf_comp_error_report {
 	SaNtfIdentifierT ntfIdentifier;
 };
 
-
 struct req_exec_amf_response {
 	mar_req_header_t header;
 	SaUint32T interface;
@@ -464,6 +459,12 @@ struct req_exec_amf_sync_request {
 	char hostname[HOST_NAME_MAX + 1];
 };
 
+typedef struct clm_node {
+	unsigned int nodeid;
+	char hostname[HOST_NAME_MAX + 1];
+	struct clm_node *next;
+} clm_node_t;
+
 static const char *scsm_state_names[] = {
 	"Unknown",
 	"IDLE",
@@ -481,83 +482,138 @@ static const char *scsm_state_names[] = {
  */
 static struct scsm_descriptor scsm;
 
-typedef struct clm_node {
-	unsigned int nodeid;
-	char hostname[HOST_NAME_MAX + 1];
-	struct clm_node *next;
-} clm_node_t;
-
 static char hostname[HOST_NAME_MAX + 1];
 
 /*
- * Nodes in the cluster, only used for initial start
- * since before the AMF node object exist, we don't
- * have storage for the information received in
+ * List (implemented as an array) of nodes in the
+ * cluster, only used for initial start since
+ * before the AMF node object exist, we don't have
+ * storage for the information received in
  * SYNC_REQUEST msg.
  */
-static clm_node_t *clm_nodes;
+static clm_node_t *clm_node_list;
+static int clm_node_list_entries;
 
 /******************************************************************************
  * Internal (static) utility functions
  *****************************************************************************/
 
 /**
- * Find a CLM node object using nodeid as query. Allocate and
- * return new object if not found.
- * 
+ * Returns true (1) if the key is a member of the list
  * @param nodeid
+ * @param list
+ * @param entries
  * 
- * @return clm_node_t*
+ * @return int
  */
-static clm_node_t *clm_node_find_by_nodeid (unsigned int nodeid)
+static int is_list_member (
+	unsigned int key, unsigned int *list, unsigned int entries)
 {
-	clm_node_t *clm_node;
+	int i;
 
-	for (clm_node = clm_nodes; clm_node != NULL; clm_node = clm_node->next) {
-		if (clm_node->nodeid == nodeid) {
-			return clm_node;
+	for (i = 0; i < entries; i++) {
+		if (list[i] == key) {
+			return 1;
 		}
 	}
 
-	clm_node = amf_malloc (sizeof (clm_node_t));
-	clm_node->nodeid = nodeid;
-	clm_node->next = clm_nodes;
-	clm_nodes = clm_node;
-
-	return clm_node;
+	return 0;
 }
 
 /**
- * Init nodeids in the AMF node objects using information in the
- * CLM node objects.
+ * Delete the CLM node list
+ */
+static void clm_node_list_delete (void)
+{
+	if (clm_node_list != NULL) {
+		free (clm_node_list);
+		clm_node_list = NULL;
+		clm_node_list_entries = 0;
+	}
+}
+
+/**
+ * Update an CLM node list entry using nodeid as key.
+ * Allocate and initialise new memory object if not found.
+ * @param nodeid
+ * @param hostname
+ */
+static void clm_node_list_update (unsigned int nodeid, char *hostname)
+{
+	int i;
+
+	for (i = 0; i < clm_node_list_entries; i++) {
+		if (clm_node_list[i].nodeid == nodeid) {
+			strcpy (clm_node_list[i].hostname, hostname);
+			return;
+		}
+	}
+
+	/*
+	 * Not found, add at tail of list.
+	 */
+	clm_node_list_entries++;
+	clm_node_list = amf_realloc (clm_node_list,
+		sizeof (clm_node_t) * clm_node_list_entries);
+
+	clm_node_list[clm_node_list_entries - 1].nodeid = nodeid;
+	strcpy (clm_node_list[clm_node_list_entries - 1].hostname, hostname);
+}
+
+/**
+ * Returns true (1) if the nodeid is member of the CLM node list
+ * @param nodeid
+ * 
+ * @return int
+ */
+static int clm_node_list_is_member (unsigned int nodeid)
+{
+	int j;
+
+	for (j = 0; j < clm_node_list_entries; j++) {
+		if (nodeid == clm_node_list[j].nodeid)
+			return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Update the nodeid of each AMF node object using the
+ * CLM node list.
  */
 static void nodeids_init (void)
 {
+	int i;
 	amf_node_t *amf_node;
 	clm_node_t *clm_node;
 
 	ENTER ("");
 
-	for (clm_node = clm_nodes; clm_node != NULL; clm_node = clm_node->next) {
-        /*
-         * Iterate all AMF nodes if several AMF nodes are mapped to this
-         * particular CLM node.* 
-		*/
+	if (amf_cluster == NULL) {
+		return;
+	}
+
+	for (i = 0; i < clm_node_list_entries; i++) {
+		/*
+		 * Iterate all AMF nodes if several AMF nodes are mapped to this
+		 * particular CLM node.
+		 */
 		for (amf_node = amf_cluster->node_head; amf_node != NULL;
 			  amf_node = amf_node->next) {
 
 			if (strcmp ((char*)amf_node->saAmfNodeClmNode.value,
-				clm_node->hostname) == 0) {
+				clm_node_list[i].hostname) == 0) {
 
-				dprintf ("%s id set to %u", amf_node->name.value, clm_node->nodeid);
-				amf_node->nodeid = clm_node->nodeid;
+				dprintf ("%s id set to %u", amf_node->name.value, clm_node[i].nodeid);
+				amf_node->nodeid = clm_node_list[i].nodeid;
 			}
 		}
 	}
 }
 
 /**
- * Return pointer to this node object.
+ * Return pointer to this AMF node object.
  * 
  * @param cluster
  * 
@@ -624,6 +680,15 @@ static int mcast_sync_data (
 	return res;
 }
 
+static void mcast_sync_request (char *hostname)
+{
+	struct req_exec_amf_sync_request msg;
+	memcpy (msg.hostname, hostname, strlen (hostname) + 1);
+	msg.protocol_version = AMF_PROTOCOL_VERSION;
+	amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST,
+		&msg.protocol_version, sizeof (msg) - sizeof (mar_req_header_t));
+}
+
 /**
  * Timer callback function. The time waiting for external
  * synchronisation has expired, start competing with other
@@ -635,33 +700,6 @@ static void timer_function_scsm_timer1_tmo (void *data)
 	SYNCTRACE ("");
 	amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_START, NULL, 0);
 	sync_state_set (PROBING_2);
-}
-
-/**
- * Execute synchronisation upon request. Should be implemented
- * by the SYNC service. Can only be used during initial start
- * since no deferral of lib or timer events is performed.
- */
-static void sync_request (void)
-{
-	int res;
-
-	SYNCTRACE ("");
-
-	assert (amf_cluster->acsm_state == CLUSTER_AC_UNINSTANTIATED);
-
-	amf_sync_init ();
-
-	do {
-		res = amf_sync_process ();
-		if (res == 1) {
-			/* cannot handle this now, should be implemented using totem
-			callbacks... */
-			openais_exit_error (AIS_DONE_FATAL_ERR);
-		}
-	} while (res != 0);
-
-	amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_READY, NULL, 0);
 }
 
 /**
@@ -694,7 +732,8 @@ static int create_cluster_model (void)
 
 /**
  * Calculate a sync master (has the lowest node ID) from the
- * members in the cluster. Possibly excluding some members.
+ * members in the cluster. Possibly excluding some members
+ * from the CLM node list.
  * 
  * @param member_list
  * @param member_list_entries
@@ -704,24 +743,15 @@ static int create_cluster_model (void)
  * @return int - node ID of new sync master
  */
 static unsigned int calc_sync_master (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *exclude_list, int exclude_list_entries)
+	unsigned int *member_list, int member_list_entries)
 {
-	int i, j, exclude;
+	int i;
 	unsigned int master = this_ip->nodeid; /* assume this node is master */
 
 	for (i = 0; i < member_list_entries; i++) {
-		if (member_list[i] < master) {
-			exclude = 0;
-			for (j = 0; j < exclude_list_entries; j++) {
-				if (member_list[i] == exclude_list[j]) {
-					exclude = 1;
-					break;
-				}
-			}
-			if (exclude) {
-				continue;
-			}
+		if (member_list[i] < master &&
+			!clm_node_list_is_member(member_list[i])) {
+
 			master = member_list[i];
 		}
 	}
@@ -729,7 +759,9 @@ static unsigned int calc_sync_master (
 	return master;
 }
 
-
+/*
+ * Delete all received sync data
+ */
 static void free_synced_data (void)
 {
 	struct amf_node *node;
@@ -1065,46 +1097,25 @@ static int cluster_sync (struct amf_cluster *cluster)
 }
 
 /**
- * Returns true (1) if the nodeid is a member of the list
- * @param nodeid
- * @param list
- * @param entries
- * 
- * @return int
- */
-static int is_member (
-	unsigned int nodeid, unsigned int *list, unsigned int entries)
-{
-	int i;
-
-	for (i = 0; i < entries; i++) {
-		if (list[i] == nodeid) {
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-
-
-/**
  * Start the AMF nodes that has joined
  */
-
 static void cluster_joined_nodes_start (void)
 {
 	int i;
 	struct amf_node *node;
 
-	for (i = 0; i < scsm.joined_list_entries; i++) {
-		node = amf_node_find_by_nodeid (scsm.joined_list[i]);
+	ENTER ("");
+	log_printf(LOG_NOTICE, "AMF synchronisation ready, starting cluster");
+
+	for (i = 0; i < clm_node_list_entries; i++) {
+		node = amf_node_find_by_nodeid (clm_node_list[i].nodeid);
 
 		if (node != NULL) {
 			amf_cluster_sync_ready (amf_cluster, node);
 		} else {
 			log_printf (LOG_LEVEL_INFO,
-				"Info: Node %u is not configured as an AMF node", scsm.joined_list[i]);
+				"Info: Node %u is not configured as an AMF node",
+				clm_node_list[i].nodeid);
 		}
 	}
 }
@@ -1121,10 +1132,13 @@ static void amf_sync_init (void)
 		case UNCONFIGURED:
 		case PROBING_1:
 		case PROBING_2:
+			break;
+		case UPDATING_CLUSTER_MODEL:
 		case SYNCHRONIZING:
+			nodeids_init ();
 			break;
 		case NORMAL_OPERATION:
-			if (scsm.joined_list_entries > 0) {
+			if (clm_node_list_entries > 0) {
 				sync_state_set (SYNCHRONIZING);
 			}
 			break;
@@ -1137,7 +1151,6 @@ static void amf_sync_init (void)
 	if (scsm.state == SYNCHRONIZING && scsm.sync_master == this_ip->nodeid) {
 		amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_START, NULL, 0);
 		assert (amf_cluster != NULL);
-		nodeids_init ();
 		scsm.cluster = amf_cluster;
 		scsm.node = amf_cluster->node_head;
 		scsm.app = amf_cluster->application_head;
@@ -1190,14 +1203,21 @@ static int amf_sync_process (void)
 
 #ifdef AMFTEST
 	{
-		/*                                                              
+		/*
 		 * Test code to generate the event "sync master died" in the
-		* middle of synchronization.
-		*/
+		 * middle of synchronization.
+		 */
 		struct stat buf;
 		if (stat ("/tmp/amf_sync_master_crash", &buf) == 0) {
 			printf("bye...\n");
 			*((int*)NULL) = 0xbad;
+		}
+		/*
+		 * Test code to delay the synchronization.
+		 */
+		if (stat ("/tmp/amf_sync_delay", &buf) == 0) {
+			printf("delaying sync...\n");
+			return 1;
 		}
 	}
 #endif
@@ -1214,13 +1234,13 @@ static int amf_sync_process (void)
 }
 
 /**
- * SCSM abnormal exit function for state SYNCHRONIZING
+ * Sync is aborted due to node leave/join. Free received sync
+ * data and stay in the same state.
  */
 static void amf_sync_abort (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
-	memset (&scsm, 0, sizeof (scsm));
-	assert (0); /* not ready... */
+	free_synced_data ();
 }
 
 /**
@@ -1230,22 +1250,13 @@ static void amf_sync_abort (void)
  */
 static void amf_sync_activate (void)
 {
-	clm_node_t *clm_node = clm_nodes;
-
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
 
 	switch (scsm.state) {
 		case SYNCHRONIZING:
-			/* Delete all CLM nodes, not needed any longer. */
-			while (clm_node != NULL) {
-				clm_node_t *tmp = clm_node;
-				clm_node = clm_node->next;
-				free (tmp);
-			}
-			clm_nodes = NULL;
 			sync_state_set (NORMAL_OPERATION);
-			
 			cluster_joined_nodes_start ();
+			clm_node_list_delete ();
 			break;
 		case UPDATING_CLUSTER_MODEL:
 			amf_cluster = scsm.cluster;
@@ -1255,18 +1266,17 @@ static void amf_sync_activate (void)
 			sync_state_set (NORMAL_OPERATION);
 			if (this_amf_node != NULL) {
 				this_amf_node->nodeid = this_ip->nodeid;
-#ifdef AMFDEBUG
-				amf_runtime_attributes_print (amf_cluster);
-#endif
-				amf_cluster_sync_ready (amf_cluster, this_amf_node);
+				cluster_joined_nodes_start ();
 			} else {
 				log_printf (LOG_LEVEL_INFO,
 					"Info: This node is not configured as an AMF node, disabling.");
 				sync_state_set (UNCONFIGURED);
 			}
+			clm_node_list_delete ();
 			break;
 		case UNCONFIGURED:
 		case PROBING_1:
+		case PROBING_2:
 		case NORMAL_OPERATION:
 			break;
 		default:
@@ -1335,18 +1345,9 @@ static void amf_confchg_fn (
 		member_list_entries, joined_list_entries, left_list_entries,
 		scsm_state_names[scsm.state], ring_id->seq, totemip_print (&ring_id->rep));
 
-	/*
-	* Save nodes that joined, needed to initialize each
-	* node's totem node id later.
-	 */
-	scsm.joined_list_entries = joined_list_entries;
-	if (scsm.joined_list != NULL) {
-		free (scsm.joined_list);
-	}
-	scsm.joined_list = amf_malloc (joined_list_entries * sizeof (unsigned int));
-	memcpy (scsm.joined_list, joined_list, sizeof (unsigned int) * joined_list_entries);
-
 	switch (scsm.state) {
+		case UNCONFIGURED:
+			break;
 		case IDLE: {
 			sync_state_set (PROBING_1);
 			if (poll_timer_add (aisexec_poll_handle, AMF_SYNC_TIMEOUT, NULL,
@@ -1360,22 +1361,16 @@ static void amf_confchg_fn (
 			/* fall-through */
 		case PROBING_2:
 			if (joined_list_entries > 0) {
-				struct req_exec_amf_sync_request msg;
-				memcpy (msg.hostname, hostname, strlen (hostname) + 1);
-				msg.protocol_version = AMF_PROTOCOL_VERSION;
-				amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST,
-					&msg.protocol_version, sizeof (msg) - sizeof (mar_req_header_t));
+				mcast_sync_request (hostname);
 			}
 			break;
-		case UNCONFIGURED:
-			break;
 		case UPDATING_CLUSTER_MODEL:
-			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
-				/*
-				TODO: ???
-				free_synced_data ();
-				*/
+			if (joined_list_entries > 0) {
+				mcast_sync_request (hostname);
+			}
 
+			if (!is_list_member (scsm.sync_master, member_list, member_list_entries)) {
+				free_synced_data ();
 				sync_state_set (PROBING_1);
 				if (poll_timer_add (aisexec_poll_handle, AMF_SYNC_TIMEOUT, NULL,
 					timer_function_scsm_timer1_tmo, &scsm.timer_handle) != 0) {
@@ -1393,11 +1388,9 @@ static void amf_confchg_fn (
 			*  master between the remaining nodes in the cluster excluding
 			*  the nodes we are just syncing.
 			 */
-			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
+			if (!is_list_member (scsm.sync_master, member_list, member_list_entries)) {
 				scsm.sync_master =
-					calc_sync_master (
-						member_list, member_list_entries,
-						scsm.joined_list, scsm.joined_list_entries);
+					calc_sync_master (member_list, member_list_entries);
 
 				if (scsm.sync_master == this_ip->nodeid) {
 					/* restart sync */
@@ -1411,10 +1404,9 @@ static void amf_confchg_fn (
 			/* If the sync master left the cluster, calculate a new sync
 			*  master between the remaining nodes in the cluster.
 			 */
-			if (!is_member (scsm.sync_master, member_list, member_list_entries)) {
+			if (!is_list_member (scsm.sync_master, member_list, member_list_entries)) {
 				scsm.sync_master =
-					calc_sync_master (
-						member_list, member_list_entries, NULL, 0);
+					calc_sync_master (member_list, member_list_entries);
 
 				if (scsm.sync_master == this_ip->nodeid) {
 					SYNCTRACE ("I am (new) sync master");
@@ -1450,7 +1442,7 @@ static int amf_lib_exit_fn (void *conn)
 	assert (amf_pd != NULL);
 	comp = amf_pd->comp;
 
-    /* Make sure this is not a new connection */
+	/* Make sure this is not a new connection */
 	if (comp != NULL && comp->conn == conn ) {
 		comp->conn = NULL;
 		dprintf ("Lib exit from comp %s\n", getSaNameT (&comp->name));
@@ -1522,7 +1514,6 @@ static void message_handler_req_exec_amf_comp_error_report (
 	assert (comp != NULL);
 	amf_comp_error_report (comp, req_exec->recommendedRecovery);
 }
-
 
 static void message_handler_req_exec_amf_comp_instantiate(
 	void *message, unsigned int nodeid)
@@ -1598,7 +1589,6 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 	amf_comp_healthcheck_tmo (comp, healthcheck);
 }
 
-
 static void message_handler_req_exec_amf_response (
 	void *message, unsigned int nodeid)
 {
@@ -1645,7 +1635,7 @@ static void message_handler_req_exec_amf_sync_start (
 				sync_state_set (CREATING_CLUSTER_MODEL);
 				if (create_cluster_model() == 0) {
 					sync_state_set (SYNCHRONIZING);
-					sync_request ();
+					sync_request (amf_service_handler.name);
 				} else {
                     /* TODO: I am sync master but not AMF node */
 					log_printf (LOG_LEVEL_ERROR,
@@ -1782,23 +1772,6 @@ static void message_handler_req_exec_amf_sync_data (
 	}
 }
 
-/**
- * Commit event handler for the previously received objects.
- * Start this cluster/node now. Used at initial cluster start
- * only.
- * @param message
- * @param nodeid
- */
-static void message_handler_req_exec_amf_sync_ready (
-	void *message, unsigned int nodeid)
-{
-	SYNCTRACE ("from: %s", totempg_ifaces_print (nodeid));
-
-	amf_sync_activate ();
-}
-
-
-
 static void message_handler_req_exec_amf_cluster_start_tmo (
 	void *message, unsigned int nodeid)
 {
@@ -1812,21 +1785,18 @@ static void message_handler_req_exec_amf_sync_request (
 	void *message, unsigned int nodeid)
 {
 	struct req_exec_amf_sync_request *req_exec = message;
-	clm_node_t *clm_node;
 	
 	SYNCTRACE ("from: %s, name: %s, state %s", totempg_ifaces_print (nodeid),
 		req_exec->hostname, scsm_state_names[scsm.state]);
 
-	clm_node = clm_node_find_by_nodeid (nodeid);
-	assert (clm_node != NULL);
-	strcpy (clm_node->hostname, req_exec->hostname);
+	clm_node_list_update (nodeid, req_exec->hostname);
 
 	if (scsm.state == NORMAL_OPERATION) {
 		amf_node_t *amf_node = amf_cluster->node_head;
 		/*
 		 * Iterate all AMF nodes if several AMF nodes are mapped to this
-         * particular CLM node.
-		*/
+		 * particular CLM node.
+		 */
 		for (; amf_node != NULL; amf_node = amf_node->next) {
 			if (strcmp ((char*)amf_node->saAmfNodeClmNode.value,
 				req_exec->hostname) == 0) {
@@ -1836,7 +1806,6 @@ static void message_handler_req_exec_amf_sync_request (
 		}
 	}
 }
-
 
 /*****************************************************************************
  * Library Interface Implementation

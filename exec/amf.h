@@ -76,8 +76,6 @@ struct scsm_descriptor {
 	/* node ID of current sync master */
 	unsigned int               sync_master;
 
-	unsigned int              *joined_list;
-	unsigned int               joined_list_entries;
 	struct amf_cluster        *cluster;
 	struct amf_node           *node;
 	struct amf_application    *app;
@@ -597,10 +595,9 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_RESPONSE = 5,
 	MESSAGE_REQ_EXEC_AMF_SYNC_START = 6,
 	MESSAGE_REQ_EXEC_AMF_SYNC_DATA = 7,
-	MESSAGE_REQ_EXEC_AMF_SYNC_READY = 8,
-	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 9,
-	MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST = 10,
-	MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE_TMO = 11
+	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 8,
+	MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST = 9,
+	MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE_TMO = 10
 };
 
 struct req_exec_amf_clc_cleanup_completed {

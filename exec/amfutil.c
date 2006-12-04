@@ -637,7 +637,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 					error_reason = "bad value";
 					goto parse_error;
 				}
-			} else if ((loc = strstr_rs (line, "saAmfCompDisableRestart")) != 0) {
+			} else if ((loc = strstr_rs (line, "saAmfCompDisableRestart=")) != 0) {
 				if (strcmp (loc, "false") == 0) {
 					comp->saAmfCompDisableRestart = SA_FALSE;
 				} else if (strcmp (loc, "true") == 0) {

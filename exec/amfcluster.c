@@ -269,11 +269,13 @@ static inline void stop_cluster_startup_timer (struct amf_cluster *cluster)
 
 static void start_cluster_startup_timer (struct amf_cluster *cluster)
 {
-	poll_timer_add (aisexec_poll_handle, 
-		cluster->saAmfClusterStartupTimeout,
-		cluster,
-		timer_function_cluster_assign_workload_tmo,
-		&cluster->timeout_handle);
+	if (cluster->timeout_handle == 0) {
+		poll_timer_add (aisexec_poll_handle, 
+			cluster->saAmfClusterStartupTimeout,
+			cluster,
+			timer_function_cluster_assign_workload_tmo,
+			&cluster->timeout_handle);
+	}
 }
 
 static inline void cluster_enter_starting_applications (
@@ -359,7 +361,7 @@ void amf_cluster_start_applications(struct amf_cluster *cluster)
 
 void amf_cluster_sync_ready (struct amf_cluster *cluster, struct amf_node *node)
 {
-	log_printf(LOG_NOTICE, "Cluster: starting applications.");
+	ENTER ("");
 	switch (amf_cluster->acsm_state) {
 		case CLUSTER_AC_UNINSTANTIATED:
 			if (amf_cluster->saAmfClusterAdminState == 
