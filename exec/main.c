@@ -108,7 +108,16 @@ static void sigusr2_handler (int num)
 
 static void sigsegv_handler (int num)
 {
-	log_atsegv ();
+	signal (SIGSEGV, SIG_DFL);
+	log_flush ();
+	raise (SIGSEGV);
+}
+
+static void sigabrt_handler (int num)
+{
+	signal (SIGABRT, SIG_DFL);
+	log_flush ();
+	raise (SIGABRT);
 }
 
 struct totem_ip_address *this_ip;
@@ -421,10 +430,9 @@ int main (int argc, char **argv)
 	totemip_localhost(AF_INET, &this_non_loopback_ip);
 
 	signal (SIGINT, sigintr_handler);
-
 	signal (SIGUSR2, sigusr2_handler);
-
 	signal (SIGSEGV, sigsegv_handler);
+	signal (SIGABRT, sigabrt_handler);
 
 	openais_timer_init (
 		serialize_mutex_lock,
