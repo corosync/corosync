@@ -586,7 +586,6 @@ static void nodeids_init (void)
 {
 	int i;
 	amf_node_t *amf_node;
-	clm_node_t *clm_node;
 
 	ENTER ("");
 
@@ -605,7 +604,8 @@ static void nodeids_init (void)
 			if (strcmp ((char*)amf_node->saAmfNodeClmNode.value,
 				clm_node_list[i].hostname) == 0) {
 
-				dprintf ("%s id set to %u", amf_node->name.value, clm_node[i].nodeid);
+				dprintf ("%s id set to %u", amf_node->name.value,
+					clm_node_list[i].nodeid);
 				amf_node->nodeid = clm_node_list[i].nodeid;
 			}
 		}
