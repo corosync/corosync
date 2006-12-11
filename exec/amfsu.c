@@ -128,6 +128,79 @@
 #include "print.h"
 #include "main.h"
 
+static int terminate_all_components_in_level (struct amf_su *su, 
+	SaUint32T current_instantiation_level);
+static int are_all_comps_in_level_uninst_or_term_failed (struct amf_su *su);
+static int are_all_comps_in_level_instantiated (struct amf_su *su);
+static int instantiate_all_components_in_level (struct amf_su *su, 
+	SaUint32T current_instantiation_level);
+static SaUint32T su_lowest_comp_instantiation_level_set (struct amf_su *su);
+
+typedef struct su_event {
+	amf_su_event_type_t event_type;
+	amf_su_t *su;
+	amf_comp_t *comp;
+	SaAmfRecommendedRecoveryT recommended_recovery;
+} su_event_t;
+
+/**
+ * 
+ * @param su
+ * @param comp
+ * @param su_event
+ * @param event_type
+ */
+static void su_event_set(struct amf_su *su, struct amf_comp *comp, 
+	SaAmfRecommendedRecoveryT recommended_recovery,
+	su_event_t *su_event, amf_su_event_type_t event_type)
+{
+	su_event->event_type = event_type;
+	su_event->comp = comp;
+	su_event->su = su;
+	su_event->recommended_recovery = recommended_recovery;
+}
+
+static void su_defer_event (amf_su_t *su, amf_comp_t *comp, 
+	SaAmfRecommendedRecoveryT recommended_recovery, 
+	amf_su_event_type_t su_event_type)
+{
+	su_event_t event;
+	su_event_set(su, comp, recommended_recovery,&event, su_event_type);
+	ENTER("event_type = %d", event.event_type);
+	amf_fifo_put (event.event_type, &event.su->deferred_events,
+		sizeof (su_event_t), &event);
+}
+
+static void su_recall_deferred_events (amf_su_t *su)
+{
+	su_event_t su_event;
+
+	ENTER ("%s", su->name.value);
+	if (amf_fifo_get (&su->deferred_events, &su_event)) {
+		switch (su_event.event_type) {
+			case SU_COMP_ERROR_SUSPECTED_EV:
+				amf_su_comp_error_suspected (su_event.su,su_event.comp,
+					su_event.recommended_recovery);
+				break;
+			default:
+				dprintf("event_type = %d", su_event.event_type);
+				break;
+		}
+	}
+}
+
+static int has_component_restarted_max_times (amf_comp_t *comp, amf_su_t *su)
+{
+ return comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax;
+}
+
+#ifdef COMPILE_OUT
+static int has_su_restarted_max_times (amf_su_t *su)
+{
+	return su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax;
+}
+#endif
+
 /**
  * This function only logs since the readiness state is runtime
  * calculated.
@@ -162,13 +235,15 @@ static void su_presence_state_set (struct amf_su *su,
 	log_printf (LOG_NOTICE, "Setting SU '%s' presence state: %s\n",
 		su->name.value, amf_presence_state (presence_state));
 
-	if (su->restart_control_state != SU_RC_RESTART_SU_SETTING) {
-		amf_sg_su_state_changed (
-			su->sg, su, SA_AMF_PRESENCE_STATE, presence_state);
+
+	if (su->restart_control_state != SU_RC_RESTART_SU_SETTING &&
+		su->restart_control_state != SU_RC_RESTART_COMP_RESTARTING) {
+		amf_sg_su_state_changed (su->sg, su, SA_AMF_PRESENCE_STATE, 
+			presence_state);
 	}
 }
 
-static void su_operational_state_set (struct amf_su *su,
+void amf_su_operational_state_set (struct amf_su *su,
 	SaAmfOperationalStateT oper_state)
 {
 	struct amf_comp* comp;
@@ -211,28 +286,6 @@ static void comp_assign_csi (struct amf_comp *comp, struct amf_csi *csi,
 	csi_assignment->si_assignment = si_assignment;
 }
 
-static void su_restart (struct amf_su *su)
-{
-	struct amf_comp *comp;
-	SaNameT dn;
-
-	ENTER ("'%s'", su->name.value);
-
-	amf_su_dn_make (su, &dn);
-	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-		"action: SU restart", dn.value);
-
-	su->restart_control_state = SU_RC_RESTART_SU_DEACTIVATING;
-	su->restart_control_state = SU_RC_RESTART_SU_INSTANTIATING;
-	su->escalation_level_history_state =
-		SU_RC_ESCALATION_LEVEL_2;
-
-	su->saAmfSURestartCount += 1;
-
-	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-		amf_comp_restart (comp);
-	}
-}
 
 static void comp_restart (struct amf_comp *comp)
 {
@@ -245,7 +298,7 @@ static void comp_restart (struct amf_comp *comp)
 
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_DEACTIVATING;
 	comp->su->restart_control_state = SU_RC_RESTART_COMP_RESTARTING;
-	comp->su->escalation_level_history_state = SU_RC_ESCALATION_LEVEL_1;
+	comp->su->escalation_level_history_state = SU_RC_IDLE_ESCALATION_LEVEL_1;
 	amf_comp_restart (comp);
 }
 
@@ -256,9 +309,7 @@ static void si_ha_state_assumed_cbfn (
 	struct amf_comp *comp;
 	struct amf_csi_assignment *csi_assignment;
 	int all_confirmed = 1;
-
 	ENTER ("");
-
 	tmp_si_assignment = amf_su_get_next_si_assignment(si_assignment->su, NULL);
 
 	while (tmp_si_assignment != NULL) {
@@ -294,6 +345,8 @@ static void si_ha_state_assumed_cbfn (
 		}
 		si_assignment->su->restart_control_state =
 			si_assignment->su->escalation_level_history_state;
+		su_recall_deferred_events (si_assignment->su);
+
 	}
 }
 
@@ -312,25 +365,112 @@ static void reassign_sis(struct amf_su *su)
 	}
 }
 
-static void su_comp_presence_state_changed (
-	struct amf_su *su, struct amf_comp *comp, int state)
+
+static int is_any_component_instantiating (amf_su_t *su)
 {
-	ENTER ("'%s', '%s'", su->name.value, comp->name.value);
+	amf_comp_t *component;
+	int any_component_instantiating = 0;
+	for (component = su->comp_head; component != NULL; 
+		  component = component->next) {
+		if (component->saAmfCompPresenceState == 
+			SA_AMF_PRESENCE_INSTANTIATING) {
+			any_component_instantiating = 1;
+			break;
+		}
+		
+	}
+	return any_component_instantiating;
+}
+
+static int is_any_component_terminating (amf_su_t *su)
+{
+	amf_comp_t *component;
+	int any_component_terminating = 0;
+	for (component = su->comp_head; component != NULL; 
+		  component = component->next) {
+		if (component->saAmfCompPresenceState == 
+			SA_AMF_PRESENCE_TERMINATING) {
+			any_component_terminating = 1;
+			break;
+		}
+		
+	}
+	return any_component_terminating;
+}
+
+static int is_any_component_restarting (amf_su_t *su)
+{
+	amf_comp_t *component;
+	int any_component_terminating = 0;
+	for (component = su->comp_head; component != NULL; 
+		  component = component->next) {
+		if (component->saAmfCompPresenceState == 
+			SA_AMF_PRESENCE_RESTARTING) {
+			any_component_terminating = 1;
+			break;
+		}
+	}
+	return any_component_terminating;
+}
+
+static int is_any_comp_instantiation_failed (amf_su_t *su)
+{
+	amf_comp_t *comp_;
+	int comp_instantiation_failed = 0;
+
+	for (comp_ = su->comp_head; comp_ != NULL; comp_ = comp_->next) {
+
+		if (comp_->saAmfCompPresenceState == 
+			SA_AMF_PRESENCE_INSTANTIATION_FAILED) {
+			comp_instantiation_failed = 1;
+			break;
+		}
+	}
+	return comp_instantiation_failed;
+}
+
+static SaAmfPresenceStateT 	get_worst_comps_presence_state_in_su (amf_su_t *su)
+{
+	amf_comp_t *component;
+	SaAmfPresenceStateT worst_presence_state = 0;
+
+	for (component = su->comp_head; component != NULL; 
+		  component = component->next) {
+		if (component->saAmfCompPresenceState > worst_presence_state) {
+			worst_presence_state = component->saAmfCompPresenceState;
+		}
+	}
+	return worst_presence_state;
+}
+
+static void su_comp_presence_state_changed (struct amf_su *su, 
+	struct amf_comp *comp, int state)
+{
+	ENTER ("'%s', '%s' %d %d", su->name.value, comp->name.value, state,
+		su->restart_control_state);
 
 	switch (state) {
 		case SA_AMF_PRESENCE_INSTANTIATED:
 			switch (su->restart_control_state) {
-				case SU_RC_ESCALATION_LEVEL_1:
-				case SU_RC_ESCALATION_LEVEL_2:
-					/* 
-					 * TODO: send to node
-					*/
-				case SU_RC_ESCALATION_LEVEL_0:
-					if (amf_su_presence_state_all_comps_in_su_are_set (
-						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
-
-						su_presence_state_set (
-							comp->su, SA_AMF_PRESENCE_INSTANTIATED);
+				case SU_RC_IDLE_ESCALATION_LEVEL_1:
+				case SU_RC_IDLE_ESCALATION_LEVEL_2:
+				case SU_RC_IDLE_ESCALATION_LEVEL_0:
+					if (!is_any_component_instantiating (su)) {
+						if (are_all_comps_in_level_instantiated (su)) {
+							if (instantiate_all_components_in_level (su, 
+								++comp->su->current_comp_instantiation_level)) {
+                                /* All levels of instantiation is done */
+								su_presence_state_set (comp->su, 
+									SA_AMF_PRESENCE_INSTANTIATED);
+							}
+						} else {
+							if (is_any_comp_instantiation_failed (su)) {
+								su_presence_state_set (comp->su, 
+									SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+							} else {
+								assert (0);
+							}
+						}
 					}
 					break;
 				case SU_RC_RESTART_COMP_RESTARTING:
@@ -338,13 +478,21 @@ static void su_comp_presence_state_changed (
 					reassign_sis (comp->su);
 					break;
 				case SU_RC_RESTART_SU_INSTANTIATING:
-					if (amf_su_presence_state_all_comps_in_su_are_set (
-						comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
-
-						su->restart_control_state = SU_RC_RESTART_SU_SETTING;
-						su_presence_state_set (
-							comp->su, SA_AMF_PRESENCE_INSTANTIATED);
-						reassign_sis (comp->su);
+					if (!is_any_component_restarting(su)) {
+						if (amf_su_are_all_comps_in_su (
+							comp->su, SA_AMF_PRESENCE_INSTANTIATED)) {
+							su->restart_control_state = SU_RC_RESTART_SU_SETTING;
+							su_presence_state_set (comp->su, 
+								SA_AMF_PRESENCE_INSTANTIATED);
+							reassign_sis (comp->su);
+						} else {
+							if (is_any_comp_instantiation_failed (su)) {
+								su_presence_state_set (comp->su, 
+									SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+							} else {
+								assert (0);
+							}
+						}
 					}
 					break;
 				default:
@@ -354,10 +502,14 @@ static void su_comp_presence_state_changed (
 			}
 			break;
 		case SA_AMF_PRESENCE_UNINSTANTIATED:
-			if (amf_su_presence_state_all_comps_in_su_are_set (
-				su, SA_AMF_PRESENCE_UNINSTANTIATED)) {
-
-				su_presence_state_set (comp->su,SA_AMF_PRESENCE_UNINSTANTIATED);
+			if (!is_any_component_terminating (su)) {
+				if (are_all_comps_in_level_uninst_or_term_failed (su)) {
+					if (terminate_all_components_in_level (su,
+						--su->current_comp_instantiation_level)) {
+						su_presence_state_set (su,
+							get_worst_comps_presence_state_in_su (su));
+					}
+				} 
 			} 
 			break;
 		case SA_AMF_PRESENCE_INSTANTIATING:
@@ -368,8 +520,82 @@ static void su_comp_presence_state_changed (
 		case SA_AMF_PRESENCE_TERMINATING:
 			break;
 		case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
-			su_presence_state_set (
-				comp->su, SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+			switch (su->restart_control_state) {
+				case SU_RC_IDLE_ESCALATION_LEVEL_0:
+				case SU_RC_IDLE_ESCALATION_LEVEL_1:
+				case SU_RC_IDLE_ESCALATION_LEVEL_2:
+					if (!is_any_component_instantiating (su)) {
+						su_presence_state_set (comp->su,
+							SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+					}
+					break;
+				case SU_RC_RESTART_COMP_RESTARTING:
+					su->restart_control_state = 
+						su->escalation_level_history_state;
+
+					su_presence_state_set (comp->su, 
+						SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+					break;
+				case SU_RC_RESTART_SU_INSTANTIATING:
+					if (!is_any_component_instantiating (su)) {
+						su->restart_control_state = 
+							su->escalation_level_history_state;
+
+						su_presence_state_set (comp->su, 
+							SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+					}
+					break;
+				default:
+					assert (0);
+					break;
+			}
+#ifdef COMPILE_OUT
+			su_presence_state_set (comp->su, 
+				SA_AMF_PRESENCE_INSTANTIATION_FAILED);
+#endif
+			break;
+		case SA_AMF_PRESENCE_TERMINATION_FAILED:
+			switch (su->restart_control_state) {
+				case SU_RC_IDLE_ESCALATION_LEVEL_0:
+				case SU_RC_IDLE_ESCALATION_LEVEL_1:
+				case SU_RC_IDLE_ESCALATION_LEVEL_2:
+					if (!is_any_component_terminating (su)) {
+						if (are_all_comps_in_level_uninst_or_term_failed (su)) {
+							if (terminate_all_components_in_level (su,
+								--su->current_comp_instantiation_level)) {
+								su_presence_state_set (su,
+									get_worst_comps_presence_state_in_su (su));
+							}
+						} 
+					} 
+					break;
+				case SU_RC_RESTART_COMP_RESTARTING:
+					su->restart_control_state = 
+						su->escalation_level_history_state;
+
+					su_presence_state_set (comp->su, 
+						SA_AMF_PRESENCE_TERMINATION_FAILED);
+
+					break;
+				case SU_RC_RESTART_SU_INSTANTIATING:
+                    /*
+                     * TODO Reconsider SU restart control concerning
+                     * TERMINATING and INSANITATION
+                     */
+				case SU_RC_RESTART_SU_TERMINATING:
+					if (!is_any_component_terminating (su)) {
+						su->restart_control_state = 
+							su->escalation_level_history_state;
+
+						su_presence_state_set (comp->su, 
+							SA_AMF_PRESENCE_TERMINATION_FAILED);
+					}
+					break;
+				default:
+					assert (0);
+					break;
+			}
+
 			break;
 		default:
 			assert (0);
@@ -380,7 +606,7 @@ static void su_comp_presence_state_changed (
 static void su_comp_op_state_changed (
 	struct amf_su *su, struct amf_comp *comp, int state)
 {
-	ENTER ("'%s', '%s'", su->name.value, comp->name.value);
+	ENTER ("'%s', '%s' %d", su->name.value, comp->name.value, state);
 
 	switch (state) {
 		case SA_AMF_OPERATIONAL_ENABLED:
@@ -397,45 +623,147 @@ static void su_comp_op_state_changed (
 					}
 				}
 				if (all_set) {
-					su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_ENABLED);
+					amf_su_operational_state_set (comp->su, 
+						SA_AMF_OPERATIONAL_ENABLED);
 				} else {
-					su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
+					amf_su_operational_state_set (comp->su, 
+						SA_AMF_OPERATIONAL_DISABLED);
 				}
 				break;
 			}
 		case SA_AMF_OPERATIONAL_DISABLED:
+			amf_su_operational_state_set (comp->su, SA_AMF_OPERATIONAL_DISABLED);
 			break;
 		default:
 			assert (0);
 			break;
 	}
+	return;
 }
 
-int amf_su_presence_state_all_comps_in_su_are_set (struct amf_su *su,
-	SaAmfPresenceStateT state)
+/**
+ * 
+ * @param su
+ * @param comp
+ */
+static int instantiate_all_components_in_level (struct amf_su *su, 
+	SaUint32T current_instantiation_level)
 {
-	int all_set = 1;
-	struct amf_comp *comp;
+	amf_comp_t *comp;
+	SaUint32T all_components_instantiated = 1;
 
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-		if (comp->saAmfCompPresenceState != state) {
-			all_set = 0;
-			break;
+		if (su->current_comp_instantiation_level == 
+			comp->saAmfCompInstantiationLevel) {
+			all_components_instantiated = 0;
+			amf_comp_instantiate (comp);
+		}
+	}
+	return all_components_instantiated;
+}
+
+static int are_all_comps_in_level_instantiated (struct amf_su *su)
+{
+	SaUint32T level = su->current_comp_instantiation_level;
+	amf_comp_t *comp;
+	int all = 1;
+
+	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+		if (level == comp->saAmfCompInstantiationLevel) {
+			if (comp->saAmfCompPresenceState != SA_AMF_PRESENCE_INSTANTIATED) {
+				all = 0;
+				break;
+			}
 		}
 	}
 
-	return all_set;
+	return all;
 }
 
-void amf_su_instantiate (struct amf_su *su)
+
+static int are_all_comps_in_level_uninst_or_term_failed(
+	struct amf_su *su)
+{
+	SaUint32T level = su->current_comp_instantiation_level;
+	amf_comp_t *comp;
+	int all = 1;
+
+	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+		if (level == comp->saAmfCompInstantiationLevel) {
+			if (comp->saAmfCompPresenceState != SA_AMF_PRESENCE_UNINSTANTIATED &&
+				comp->saAmfCompPresenceState != SA_AMF_PRESENCE_TERMINATION_FAILED) {
+				all = 0;
+				break;
+			}
+		}
+	}
+
+	return all;
+}
+
+int amf_su_are_all_comps_in_su (struct amf_su *su,
+	SaAmfPresenceStateT state)
+{
+	int all_comps_in_su_are_set = 1;
+	amf_comp_t *component;
+	for (component = su->comp_head; component != NULL; 
+		  component = component->next) {
+
+		if (component->saAmfCompPresenceState != state) {
+			all_comps_in_su_are_set = 0;
+		}
+	}
+	return all_comps_in_su_are_set;
+}
+
+void amf_su_restart (struct amf_su *su)
 {
 	struct amf_comp *comp;
+	SaNameT dn;
 
 	ENTER ("'%s'", su->name.value);
 
+	amf_su_dn_make (su, &dn);
+	log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+		"action: SU restart", dn.value);
+
+	su->restart_control_state = SU_RC_RESTART_SU_DEACTIVATING;
+	su->restart_control_state = SU_RC_RESTART_SU_INSTANTIATING;
+	su->escalation_level_history_state = SU_RC_IDLE_ESCALATION_LEVEL_2;
+
+	su->saAmfSURestartCount += 1;
+
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
-		amf_comp_instantiate (comp);
+		amf_comp_restart (comp);
 	}
+}
+
+int amf_su_instantiate (struct amf_su *su)
+{
+	ENTER ("'%s %d'", su->name.value, su->saAmfSUPresenceState);
+
+	int performs_instantiating = 1;
+
+	switch (su->saAmfSUPresenceState) {
+		case SA_AMF_PRESENCE_UNINSTANTIATED:
+			instantiate_all_components_in_level(su, 
+				su_lowest_comp_instantiation_level_set (su));
+			break;
+		case SA_AMF_PRESENCE_RESTARTING:
+		case SA_AMF_PRESENCE_INSTANTIATING:
+			break;
+		case SA_AMF_PRESENCE_INSTANTIATED:
+		case SA_AMF_PRESENCE_TERMINATING:
+		case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
+		case SA_AMF_PRESENCE_TERMINATION_FAILED:
+			performs_instantiating = 0;
+			break;
+		default:
+			assert (0);
+			break;
+		
+	}
+	return performs_instantiating;
 }
 
 amf_si_assignment_t *amf_su_assign_si (struct amf_su *su, struct amf_si *si,
@@ -534,6 +862,30 @@ int amf_su_is_local (struct amf_su *su)
 	}
 }
 
+
+static void su_rc_enter_idle_escalation_level_1 (amf_comp_t *component,
+	SaAmfRecommendedRecoveryT recommended_recovery)
+{
+	ENTER("");
+	component->su->restart_control_state = SU_RC_IDLE_ESCALATION_LEVEL_1;
+	if (has_component_restarted_max_times (component, component->su)) {
+		component->su->restart_control_state = SU_RC_IDLE_ESCALATION_LEVEL_2;
+		amf_su_comp_error_suspected (component->su, component, recommended_recovery);
+	} else {
+		comp_restart (component);
+	}
+}
+
+static void su_rc_enter_idle_escalation_level_2 (amf_comp_t *component,
+	SaAmfRecommendedRecoveryT recommended_recovery)
+{
+	ENTER("");
+	component->su->restart_control_state = SU_RC_IDLE_ESCALATION_LEVEL_2;
+	amf_node_t *node = amf_node_find (&component->su->saAmfSUHostedByNode);
+	amf_node_comp_restart_req (node, component); 
+}
+
+
 /**
  * Called by a component to report a suspected error on a component
  * @param su
@@ -545,57 +897,61 @@ void amf_su_comp_error_suspected (
 	struct amf_comp *comp,
 	SaAmfRecommendedRecoveryT recommended_recovery)
 {
-	ENTER ("Comp '%s', SU '%s'", comp->name.value, su->name.value);
+	ENTER ("Comp '%s', SU '%s' %d", comp->name.value, su->name.value,
+		su->restart_control_state);
 
 	switch (su->restart_control_state) {
-		case SU_RC_ESCALATION_LEVEL_0:
- 
-			if (comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax) {
-				su->restart_control_state = SU_RC_ESCALATION_LEVEL_1;
-				amf_su_comp_error_suspected (su, comp, recommended_recovery);
+		case SU_RC_IDLE_ESCALATION_LEVEL_0:
+				su_rc_enter_idle_escalation_level_1 (comp,
+					recommended_recovery);
+			break;
+
+		case SU_RC_IDLE_ESCALATION_LEVEL_1:
+			if (has_component_restarted_max_times (comp, su)) {
+				su_rc_enter_idle_escalation_level_2 (comp,
+					recommended_recovery);
 			} else {
 				comp_restart (comp);
 			}
 			break;
+		case SU_RC_IDLE_ESCALATION_LEVEL_2: {
+				amf_node_t *node = amf_node_find (&comp->su->saAmfSUHostedByNode);
+				amf_node_comp_restart_req (node, comp); 
 
-		case SU_RC_ESCALATION_LEVEL_1:
-			if (comp->saAmfCompRestartCount >= su->sg->saAmfSGCompRestartMax) {
+#ifdef COMPILE_OUT
 				if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
-					su->restart_control_state = SU_RC_ESCALATION_LEVEL_2;
-					amf_su_comp_error_suspected (su, comp, recommended_recovery);
+
+					/*
+					 * TODO: delegate to node
+					*/
+					SaNameT dn;
+					amf_comp_operational_state_set (comp, 
+						SA_AMF_OPERATIONAL_DISABLED);
+					amf_su_operational_state_set (su, 
+						SA_AMF_OPERATIONAL_DISABLED);
+					
+					amf_comp_dn_make (comp, &dn);
+					log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+						"action:\n\t\tSU failover", dn.value);
+					amf_sg_failover_su_req (comp->su->sg, comp->su, this_amf_node);
+					return;
 				} else {
 					su_restart (comp->su);
 				}
-			} else {
-				comp_restart (comp);
+#endif
+				break;
 			}
+		case SU_RC_RESTART_SU_SETTING:
+		case SU_RC_RESTART_COMP_RESTARTING:
+		case SU_RC_RESTART_COMP_SETTING:
+			/* TODO: Complete the implementation of SU defer event */
+			su_defer_event (su, comp, recommended_recovery,
+				SU_COMP_ERROR_SUSPECTED_EV); 
 			break;
-		case SU_RC_ESCALATION_LEVEL_2:
-			if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
-
-				/*                                                              
-				 * TODO: delegate to node
-				*/
-				SaNameT dn;
-				su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
-				amf_comp_operational_state_set (
-					comp, SA_AMF_OPERATIONAL_DISABLED);
-				amf_comp_dn_make (comp, &dn);
-				log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
-					"action:\n\t\tSU failover", dn.value);
-				amf_sg_failover_su_req (comp->su->sg, comp->su, this_amf_node);
-				return;
-			} else {
-				su_restart (comp->su);
-			}
-			break;
-
 		default:
-			dprintf ("TODO Restarting probably, on monday");
-			dprintf ("restart_control_state = %d",
-				su->restart_control_state);
+			dprintf ("restart_control_state = %d",su->restart_control_state);
 			break;
- 	}
+	}
 }
 
 void amf_su_init (void)
@@ -603,19 +959,75 @@ void amf_su_init (void)
 	log_init ("AMF");
 }
 
-void amf_su_terminate (struct amf_su *su)
+static int get_instantiation_max_level (amf_su_t *su)
 {
-	struct amf_comp *comp;
+	amf_comp_t *comp;
+	int instantiation_level = 0;
+	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+		if (comp->saAmfCompInstantiationLevel > instantiation_level) {
+		   instantiation_level =  comp->saAmfCompInstantiationLevel;
+		}
+	}
+	return instantiation_level;
+}
 
-	ENTER ("'%s'", su->name.value);
 
+
+/**
+ * 
+ * @param su
+ * @param comp
+ */
+static int terminate_all_components_in_level (struct amf_su *su, 
+	SaUint32T current_instantiation_level)
+{
+	amf_comp_t *comp;
+	int all_components_in_level = 1;
 	for (comp = su->comp_head; comp != NULL; comp = comp->next) {
 		/* 
-		 * Terminate all components in SU abruptly
-		*/
-		comp->error_suspected = 1;
-		amf_comp_terminate (comp);
+         * Terminate all components in instantiation level in SU
+         * abruptly.
+         */
+		if (comp->saAmfCompInstantiationLevel == current_instantiation_level) {
+			amf_comp_error_suspected_set (comp);
+			amf_comp_terminate (comp);
+			all_components_in_level = 0;
+		}
 	}
+	return all_components_in_level;
+}
+
+
+
+/**
+ * su_current_instantiation_level_init
+ * @param su
+ */
+static SaUint32T su_lowest_comp_instantiation_level_set (struct amf_su *su)
+{
+	amf_comp_t *component = su->comp_head;
+	int comp_instantiation_level = component->saAmfCompInstantiationLevel;
+	for (; component != NULL; component = component->next) {
+		TRACE1("component->saAmfCompInstantiationLevel=%d",
+			component->saAmfCompInstantiationLevel);
+
+			if (component->saAmfCompInstantiationLevel < 
+				comp_instantiation_level) {
+				comp_instantiation_level = 
+					component->saAmfCompInstantiationLevel;
+			}
+	}
+	su->current_comp_instantiation_level = comp_instantiation_level;
+	return comp_instantiation_level;
+}
+
+
+void amf_su_terminate (struct amf_su *su)
+{
+	ENTER ("'%s'", su->name.value);
+	su->current_comp_instantiation_level = get_instantiation_max_level (su);
+
+	terminate_all_components_in_level (su, su->current_comp_instantiation_level);
 }
 
 char *amf_su_dn_make (struct amf_su *su, SaNameT *name)
@@ -739,7 +1151,6 @@ SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (struct amf_su *su)
 	if ((su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) &&
 		((su->saAmfSUPresenceState == SA_AMF_PRESENCE_INSTANTIATED) ||
 		(su->saAmfSUPresenceState == SA_AMF_PRESENCE_RESTARTING))) {
-
 		return SA_AMF_READINESS_IN_SERVICE;
 	} else if (su->saAmfSUOperState == SA_AMF_OPERATIONAL_ENABLED) {
 		return SA_AMF_READINESS_STOPPING;
@@ -784,8 +1195,8 @@ struct amf_su *amf_su_new (struct amf_sg *sg, char *name)
 	su->saAmfSUAdminState = SA_AMF_ADMIN_UNLOCKED;
 	su->saAmfSUOperState = SA_AMF_OPERATIONAL_DISABLED;
 	su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
-	su->restart_control_state = SU_RC_ESCALATION_LEVEL_0;
-
+	su->restart_control_state = SU_RC_IDLE_ESCALATION_LEVEL_0;
+	su->current_comp_instantiation_level = 0;
 	setSaNameT (&su->name, name);
 
 	return su;
@@ -838,6 +1249,8 @@ void *amf_su_serialize (struct amf_su *su, int *len)
 		buf, &size, &offset, su->clccli_path);
 	buf = amf_serialize_SaUint32T (
 		buf, &size, &offset, su->su_failover_cnt);
+	buf = amf_serialize_SaUint32T (
+		buf, &size, &offset, su->current_comp_instantiation_level);
 
 	*len = offset;
 
@@ -864,6 +1277,7 @@ struct amf_su *amf_su_deserialize (struct amf_sg *sg, char *buf)
 	tmp = amf_deserialize_SaUint32T (tmp, &su->escalation_level_history_state);
 	tmp = amf_deserialize_SaStringT (tmp, &su->clccli_path);
 	tmp = amf_deserialize_SaUint32T (tmp, &su->su_failover_cnt);
+	tmp = amf_deserialize_SaUint32T (tmp, &su->current_comp_instantiation_level);
 
 	return su;
 }

@@ -311,7 +311,7 @@ void amf_si_comp_set_ha_state_done (
 	 */
 	if (csi_assignment->si_assignment->requested_ha_state ==
 		csi_assignment->si_assignment->saAmfSISUHAState) {
-
+		TRACE1("'%s', '%s'", si->name.value, csi_assignment->csi->name.value);
 		csi_assignment->si_assignment->assumed_callback_fn (
 			csi_assignment->si_assignment, 0);
 		csi_assignment->si_assignment->assumed_callback_fn = NULL;

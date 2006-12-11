@@ -222,6 +222,8 @@ static void message_handler_req_exec_amf_sync_request (
 	void *message, unsigned int nodeid);
 static void message_handler_req_exec_amf_comp_instantiate_tmo(
 	void *message, unsigned int nodeid);
+static void message_handler_req_exec_amf_comp_cleanup_tmo(
+	void *message, unsigned int nodeid);
 static void amf_dump_fn (void);
 static void amf_sync_init (void);
 static int amf_sync_process (void);
@@ -361,6 +363,9 @@ static struct openais_exec_handler amf_exec_service[] = {
 	{
 		.exec_handler_fn = message_handler_req_exec_amf_comp_instantiate_tmo,
 	},
+	{
+		.exec_handler_fn = message_handler_req_exec_amf_comp_cleanup_tmo,
+	},
 };
 
 /*
@@ -444,7 +449,9 @@ struct req_exec_amf_response {
 	mar_req_header_t header;
 	SaUint32T interface;
 	SaNameT dn;
+	SaAmfHealthcheckKeyT healtcheck_key;
 	SaAisErrorT error;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
 };
 
 struct req_exec_amf_sync_data {
@@ -1505,14 +1512,16 @@ static void message_handler_req_exec_amf_comp_error_report (
 {
 	struct req_exec_amf_comp_error_report *req_exec = message;
 	struct amf_comp *comp;
+	amf_comp_t *reporting_comp;
 
 	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
 
 	comp = amf_comp_find (amf_cluster, &req_exec->erroneousComponent);
+	reporting_comp = amf_comp_find (amf_cluster, &req_exec->reportingComponent);
 	assert (comp != NULL);
-	amf_comp_error_report (comp, req_exec->recommendedRecovery);
+	amf_comp_error_report (comp, reporting_comp,req_exec->recommendedRecovery);
 }
 
 static void message_handler_req_exec_amf_comp_instantiate(
@@ -1546,12 +1555,27 @@ static void message_handler_req_exec_amf_comp_instantiate_tmo(
 	amf_comp_instantiate_tmo_event (component);
 }
 
+static void message_handler_req_exec_amf_comp_cleanup_tmo(
+	void *message, unsigned int nodeid)
+{
+	struct req_exec_amf_comp_cleanup_tmo *req_exec = message;
+	struct amf_comp *component;
+
+	component = amf_comp_find (amf_cluster, &req_exec->compName);
+	if (component == NULL) {
+		log_printf (LOG_ERR, "Error: '%s' not found", req_exec->compName.value);
+		return;
+
+	}
+	amf_comp_cleanup_tmo_event (component);
+}
+
 static void message_handler_req_exec_amf_clc_cleanup_completed (
 	void *message, unsigned int nodeid)
 {
 	struct req_exec_amf_clc_cleanup_completed *req_exec = message;
-	struct amf_comp *comp;
-
+	amf_comp_t *comp;
+	ENTER ("");
 	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
@@ -1561,8 +1585,13 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 		log_printf (LOG_ERR, "Error: '%s' not found", req_exec->compName.value);
 		return;
 	}
+	
+	if (req_exec->cleanup_exit_code != 0) {
+		amf_comp_cleanup_failed_completed (comp);
+	} else {
+		amf_comp_cleanup_completed (comp);
 
-	amf_comp_cleanup_completed (comp);
+	}
 }
 
 static void message_handler_req_exec_amf_healthcheck_tmo (
@@ -1586,7 +1615,7 @@ static void message_handler_req_exec_amf_healthcheck_tmo (
 
 	healthcheck = amf_comp_find_healthcheck (comp, &req_exec->safHealthcheckKey);
 
-	amf_comp_healthcheck_tmo (comp, healthcheck);
+	amf_comp_healthcheck_tmo (comp, req_exec->recommendedRecovery);
 }
 
 static void message_handler_req_exec_amf_response (
@@ -1604,7 +1633,8 @@ static void message_handler_req_exec_amf_response (
 	TRACE1 ("AmfResponse: %s", req_exec->dn.value);
 
 	comp = amf_comp_response_2 (
-		req_exec->interface, &req_exec->dn, req_exec->error, &retval);
+		req_exec->interface, &req_exec->dn, &req_exec->healtcheck_key,
+		req_exec->error, &retval, req_exec->recommendedRecovery);
 	assert (comp != NULL);
 
 	if (amf_su_is_local (comp->su)) {
@@ -1775,10 +1805,15 @@ static void message_handler_req_exec_amf_sync_data (
 static void message_handler_req_exec_amf_cluster_start_tmo (
 	void *message, unsigned int nodeid)
 {
+	struct req_exec_amf_cluster_start_tmo *req;
+	req = (struct req_exec_amf_cluster_start_tmo *)message;
+	
 	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
-	amf_cluster_start_tmo_event (nodeid == scsm.sync_master, amf_cluster);
+	TRACE1("%s", req->sourceNodeName.value);
+	amf_cluster_start_tmo_event (nodeid == scsm.sync_master, amf_cluster,
+		&req->sourceNodeName);
 }
 
 static void message_handler_req_exec_amf_sync_request (
@@ -2116,16 +2151,22 @@ static void message_handler_req_lib_amf_protectiongrouptrackstop (
 #endif
 }
 
+
 static void message_handler_req_lib_amf_componenterrorreport (
 	void *conn,
 	void *msg)
 {
 	struct req_lib_amf_componenterrorreport *req_lib = msg;
 	struct amf_comp *comp;
+	amf_comp_t *reporting_comp;
+	SaNameT reporting_comp_name;
 
 	assert (scsm.state == NORMAL_OPERATION);
 
 	comp = amf_comp_find (amf_cluster, &req_lib->erroneousComponent);
+	reporting_comp = amf_comp_find_from_conn_info (conn);
+	assert (reporting_comp);
+
 	if (comp != NULL) {
 		struct req_exec_amf_comp_error_report req_exec;
 		struct iovec iovec;
@@ -2135,8 +2176,8 @@ static void message_handler_req_lib_amf_componenterrorreport (
 		req_exec.header.size = sizeof (struct req_exec_amf_comp_error_report);
 		req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
 			MESSAGE_REQ_EXEC_AMF_COMPONENT_ERROR_REPORT);
-
-		memcpy (&req_exec.reportingComponent, &req_lib->reportingComponent,
+		amf_comp_dn_make(reporting_comp, &reporting_comp_name);
+		memcpy (&req_exec.reportingComponent,  &reporting_comp_name,
 			sizeof (SaNameT));
 		memcpy (&req_exec.erroneousComponent, &req_lib->erroneousComponent,
 			sizeof (SaNameT));
@@ -2225,13 +2266,14 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 	SaAisErrorT retval;
 	SaUint32T interface;
 	SaNameT dn;
-
+	SaAmfHealthcheckKeyT healthcheck_key;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
 	/*
 	* This is an optimisation to avoid multicast of healthchecks while keeping
 	* a nice design. We multicast and make lib responses from this file.
 	*/
-	multicast = amf_comp_response_1 (
-		req_lib->invocation, req_lib->error, &retval, &interface, &dn);
+	multicast = amf_comp_response_1 (req_lib->invocation, req_lib->error, 
+		&retval, &interface, &dn, &healthcheck_key, &recommendedRecovery);
 
 	if (multicast) {
 		struct req_exec_amf_response req_exec;
@@ -2247,6 +2289,9 @@ static void message_handler_req_lib_amf_response (void *conn, void *msg)
 			MESSAGE_REQ_EXEC_AMF_RESPONSE);
 		req_exec.interface = interface;
 		memcpy (&req_exec.dn, &dn, sizeof (SaNameT));
+		memcpy (&req_exec.healtcheck_key, &healthcheck_key, 
+			sizeof(SaAmfHealthcheckKeyT));
+		req_exec.recommendedRecovery = recommendedRecovery;
 		req_exec.error = req_lib->error;
 		iovec.iov_base = (char *)&req_exec;
 		iovec.iov_len = sizeof (req_exec);

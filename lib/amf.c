@@ -967,7 +967,7 @@ saAmfComponentErrorReport (
 	memcpy (&req_lib_amf_componenterrorreport.erroneousComponent, erroneousComponent,
 		sizeof (SaNameT));
 	req_lib_amf_componenterrorreport.errorDetectionTime = errorDetectionTime;
-
+	req_lib_amf_componenterrorreport.recommendedRecovery = recommendedRecovery;
     DPRINT (("start error report\n"));
 	error = saSendReceiveReply (amfInstance->response_fd,
 		&req_lib_amf_componenterrorreport,

@@ -107,14 +107,6 @@ typedef enum {
 	USR_AMF_HA_STATE_REMOVED = SA_AMF_HA_QUIESCING + 1
 } UsrAmfHaState;
 
-/*                                                              
- * Node Error Escallation State
- */
-typedef enum {
-	NODE_EESM_IDLE,
-	NODE_EESM_ESCALLATION_LEVEL_2,
-	NODE_EESM_ESCALLATION_LEVEL_3
-} amf_node_eesm_state_t;
 
 typedef enum {
 	APP_AC_UNINSTANTIATED = 1,
@@ -126,9 +118,9 @@ typedef enum {
 
 typedef enum {
 	NODE_ACSM_REPAIR_NEEDED = 1,
-	NODE_ACSM_ESCALLATION_LEVEL_0,
-	NODE_ACSM_ESCALLATION_LEVEL_2,
-	NODE_ACSM_ESCALLATION_LEVEL_3,
+	NODE_ACSM_IDLE_ESCALLATION_LEVEL_0,
+	NODE_ACSM_IDLE_ESCALLATION_LEVEL_2,
+	NODE_ACSM_IDLE_ESCALLATION_LEVEL_3,
 	NODE_ACSM_FAILING_FAST_REBOOTING_NODE,
 	NODE_ACSM_FAILING_FAST_ACTIVATING_STANDBY_NODE,
 	NODE_ACSM_FAILING_GRACEFULLY_SWITCHING_OVER,
@@ -169,10 +161,14 @@ typedef enum amf_sg_event_type {
 	SG_ASSIGN_SI_EV
 } amf_sg_event_type_t;
 
+typedef enum amf_su_event_type {
+	SU_COMP_ERROR_SUSPECTED_EV = 1
+} amf_su_event_type_t;
+
 typedef enum {
-	SU_RC_ESCALATION_LEVEL_0 = 0,
-	SU_RC_ESCALATION_LEVEL_1,
-	SU_RC_ESCALATION_LEVEL_2,
+	SU_RC_IDLE_ESCALATION_LEVEL_0 = 0,
+	SU_RC_IDLE_ESCALATION_LEVEL_1,
+	SU_RC_IDLE_ESCALATION_LEVEL_2,
 	SU_RC_RESTART_COMP_DEACTIVATING,
 	SU_RC_RESTART_COMP_RESTARTING,
 	SU_RC_RESTART_COMP_SETTING,
@@ -213,7 +209,8 @@ struct amf_healthcheck;
 typedef enum {
 	CLUSTER_AC_UNINSTANTIATED = 1,
 	CLUSTER_AC_STARTING_APPLICATIONS,
-	CLUSTER_AC_WAITING_OVER_TIME,
+	CLUSTER_AC_WAITING_OVER_TIME_1,
+	CLUSTER_AC_WAITING_OVER_TIME_2,
 	CLUSTER_AC_ASSIGNING_WORKLOAD,
 	CLUSTER_AC_STARTED,
 	CLUSTER_AC_TERMINATING_APPLICATIONS,
@@ -281,6 +278,8 @@ typedef struct amf_node {
 	unsigned int nodeid;
 	struct amf_node *next;
 	amf_node_acsm_state_t acsm_state;
+	amf_node_acsm_state_t history_state;
+
 } amf_node_t;
 
 typedef struct amf_application {
@@ -381,7 +380,9 @@ typedef struct amf_su {
 	su_restart_control_state_t escalation_level_history_state;
 	SaStringT clccli_path;
 	SaUint32T              su_failover_cnt;	/* missing in SAF specs? */
+	SaUint32T              current_comp_instantiation_level;
 	struct amf_su         *next;
+	amf_fifo_t            *deferred_events;
 } amf_su_t;
 
 typedef struct amf_comp {
@@ -446,6 +447,7 @@ typedef struct amf_comp {
 	enum clc_component_types comptype;
 	struct amf_healthcheck *healthcheck_head;
 	poll_timer_handle instantiate_timeout_handle;
+	poll_timer_handle cleanup_timeout_handle;
 	/*
 	 * Flag that indicates of this component has a suspected error
 	 */
@@ -597,18 +599,21 @@ enum amf_message_req_types {
 	MESSAGE_REQ_EXEC_AMF_SYNC_DATA = 7,
 	MESSAGE_REQ_EXEC_AMF_CLUSTER_START_TMO = 8,
 	MESSAGE_REQ_EXEC_AMF_SYNC_REQUEST = 9,
-	MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE_TMO = 10
+	MESSAGE_REQ_EXEC_AMF_COMPONENT_INSTANTIATE_TMO = 10,
+	MESSAGE_REQ_EXEC_AMF_COMPONENT_CLEANUP_TMO = 11
 };
 
 struct req_exec_amf_clc_cleanup_completed {
 	mar_req_header_t header;
 	SaNameT compName;
+	int cleanup_exit_code;
 };
 
 struct req_exec_amf_healthcheck_tmo {
 	mar_req_header_t header;
 	SaNameT compName;
 	SaAmfHealthcheckKeyT safHealthcheckKey;
+	SaAmfRecommendedRecoveryT recommendedRecovery;
 };
 
 struct req_exec_amf_comp_instantiate {
@@ -621,9 +626,14 @@ struct req_exec_amf_comp_instantiate_tmo {
 	SaNameT compName;
 };
 
+struct req_exec_amf_comp_cleanup_tmo {
+	mar_req_header_t header;
+	SaNameT compName;
+};
 
 struct req_exec_amf_cluster_start_tmo {
 	mar_req_header_t header;
+	SaNameT sourceNodeName;
 };
 
 /*===========================================================================*/
@@ -730,7 +740,7 @@ extern int amf_cluster_applications_started_with_no_starting_sgs (
 
 /* Event methods */
 extern void amf_cluster_start_tmo_event (int is_sync_master, 
-	struct amf_cluster *cluster);
+	struct amf_cluster *cluster, SaNameT *sourceNodeName);
 extern void amf_cluster_sync_ready (struct amf_cluster *cluster, 
 	struct amf_node *node);
 /**
@@ -847,10 +857,15 @@ extern int amf_su_get_saAmfSUNumCurrActiveSIs (struct amf_su *su);
 extern int amf_su_get_saAmfSUNumCurrStandbySIs (struct amf_su *su);
 extern SaAmfReadinessStateT amf_su_get_saAmfSUReadinessState (
 	struct amf_su *su);
-extern int amf_su_presence_state_all_comps_in_su_are_set (struct amf_su *su,
+extern int amf_su_are_all_comps_in_su (struct amf_su *su,
 	SaAmfPresenceStateT state);
+
 /* Event methods */
-extern void amf_su_instantiate (struct amf_su *su);
+/**
+ * 
+ * @param su
+ * @param comp
+ */
 extern amf_si_assignment_t *amf_su_assign_si (
 	struct amf_su *su, struct amf_si *si, SaAmfHAStateT ha_state);
 extern void amf_su_restart_req (struct amf_su *su);
@@ -859,8 +874,7 @@ extern void amf_su_restart_req (struct amf_su *su);
  * Request termination of all component in an SU
  * @param su
  */
-extern void amf_su_terminate (struct amf_su *su);
-
+void amf_su_terminate (struct amf_su *su);
 extern struct amf_node *amf_su_get_node (struct amf_su *su);
 extern void amf_su_escalation_level_reset (struct amf_su *su);
 extern void amf_su_remove_assignment (struct amf_su *su);
@@ -872,7 +886,10 @@ extern void amf_su_comp_error_suspected (
 	struct amf_su *su,
 	struct amf_comp *comp,
 	SaAmfRecommendedRecoveryT recommended_recovery);
-
+extern void amf_su_restart (struct amf_su *su);
+void amf_su_operational_state_set (struct amf_su *su,
+	SaAmfOperationalStateT oper_state);
+extern int amf_su_instantiate (struct amf_su *su);
 /*===========================================================================*/
 /* amfcomp.c */
 
@@ -894,6 +911,7 @@ extern struct amf_csi_assignment *amf_comp_get_next_csi_assignment (
 	struct amf_comp *component, const struct amf_csi_assignment *csi_assignment);
 extern SaAmfReadinessStateT amf_comp_get_saAmfCompReadinessState (
 	struct amf_comp *comp);
+struct amf_comp *amf_comp_find_from_conn_info (void *conn);
 
 /* Event methods */
 extern void amf_comp_instantiate (struct amf_comp *comp);
@@ -901,6 +919,7 @@ extern void amf_comp_terminate (struct amf_comp *comp);
 extern void amf_comp_node_left (struct amf_comp *comp);
 extern void amf_comp_instantiate_event(struct amf_comp *comp);
 extern void amf_comp_instantiate_tmo_event (struct amf_comp *comp);
+extern void amf_comp_cleanup_tmo_event (struct amf_comp *comp);
 
 /**
  * Request the component to assume a HA state
@@ -920,8 +939,9 @@ extern void amf_comp_readiness_state_set (
 extern struct amf_healthcheck *amf_comp_find_healthcheck (
 	struct amf_comp *comp, SaAmfHealthcheckKeyT *key);
 extern void amf_comp_healthcheck_tmo (
-	struct amf_comp *comp, struct amf_healthcheck *healthcheck);
+	struct amf_comp *comp, SaAmfRecommendedRecoveryT recommendedRecovery);
 extern void amf_comp_cleanup_completed (struct amf_comp *comp);
+extern void amf_comp_cleanup_failed_completed (amf_comp_t *comp);
 
 /**
  * Count number of active CSI assignments
@@ -954,12 +974,16 @@ extern SaAisErrorT amf_comp_healthcheck_stop (
 extern SaAisErrorT amf_comp_register (struct amf_comp *comp);
 extern void amf_comp_unregister (struct amf_comp *comp);
 extern void amf_comp_error_report (
-	struct amf_comp *comp, SaAmfRecommendedRecoveryT recommendedRecovery);
+	struct amf_comp *comp, amf_comp_t *report_comp,
+	SaAmfRecommendedRecoveryT recommendedRecovery);
 extern int amf_comp_response_1 (
 	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval,
-	SaUint32T *interface, SaNameT *dn);
+	SaUint32T *interface, SaNameT *dn, SaAmfHealthcheckKeyT *healtcheck_key,
+	SaAmfRecommendedRecoveryT *recommendedRecovery);
 extern struct amf_comp *amf_comp_response_2 (
-	SaUint32T interface, SaNameT *dn, SaAisErrorT error, SaAisErrorT *retval);
+	SaUint32T interface, SaNameT *dn, SaAmfHealthcheckKeyT *healthcheckKey,
+	SaAisErrorT error, SaAisErrorT *retval, 
+	SaAmfRecommendedRecoveryT recommendedRecovery);
 extern SaAisErrorT amf_comp_hastate_get (
 	struct amf_comp *comp, SaNameT *csi_name, SaAmfHAStateT *ha_state);
 extern SaAisErrorT amf_comp_healthcheck_confirm (
@@ -975,6 +999,9 @@ extern struct amf_healthcheck *amf_healthcheck_deserialize (
 
 extern void amf_comp_csi_remove (amf_comp_t *component,
 	amf_csi_assignment_t *csi_assignment);
+extern void amf_comp_error_suspected_clear (amf_comp_t *comp);
+extern void amf_comp_error_suspected_set (amf_comp_t *comp);
+extern int amf_comp_is_error_suspected (amf_comp_t *comp);
 
 /*===========================================================================*/
 /* amfsi.c */

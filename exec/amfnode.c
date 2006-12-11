@@ -167,7 +167,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
-
+#include <unistd.h>
 #include "amf.h"
 #include "util.h"
 #include "print.h"
@@ -223,6 +223,108 @@ static void node_acsm_enter_failing_over (struct amf_node *node)
 	}
 }
 
+/**
+ * 
+ * @param node
+ */
+static void failover_all_sg_on_node (amf_node_t *node)
+{
+	amf_application_t *app;
+	amf_sg_t *sg;
+	amf_su_t *su;
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (name_match(&su->saAmfSUHostedByNode, &node->name)) {
+					amf_sg_failover_node_req (sg, node);
+					break;
+				}
+			}
+
+		}
+	}
+}
+
+static void node_acsm_enter_failing_gracefully_failing_over (amf_node_t *node)
+{
+	ENTER("");
+	node->acsm_state = NODE_ACSM_FAILING_GRACEFULLY_FAILING_OVER;
+	failover_all_sg_on_node (node);
+}
+
+static int has_all_sg_on_node_failed_over (amf_node_t *node) 
+{
+	amf_application_t *app;
+	amf_sg_t *sg;
+	amf_su_t *su;
+	int has_all_sg_on_node_failed_over = 1;
+
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				if (name_match(&su->saAmfSUHostedByNode, &node->name)) {
+					if (sg->avail_state != SG_AC_Idle) {
+						has_all_sg_on_node_failed_over = 0;
+						goto out;
+					}
+					break;
+				}
+			}
+
+		}
+	}
+out:
+	return has_all_sg_on_node_failed_over;
+}
+
+static void repair_node (amf_node_t *node)
+{
+	ENTER("");
+	char hostname[256];
+	gethostname (hostname, 256);
+	if (!strcmp (hostname, (const char*)node->saAmfNodeClmNode.value)) {
+        /* TODO if(saAmfAutoRepair == SA_TRUE) */
+#ifdef DEBUG
+			exit (0);
+#else
+			system ("reboot");
+#endif	
+	}
+}
+
+static void enter_failing_gracefully_rebooting_node (amf_node_t *node)
+{
+	ENTER("");
+	node->acsm_state = NODE_ACSM_FAILING_GRACEFULLY_REBOOTING_NODE;
+	repair_node (node);
+}
+
+static void node_acsm_enter_idle (amf_node_t *node)
+{
+	ENTER ("history_state=%d",node->history_state);
+	node->acsm_state =  node->history_state;
+}
+
+/**
+ * 
+ * @param node
+ * @param app
+ */
+static void node_acsm_enter_joining_assigning_workload (struct amf_node *node, 
+	struct amf_application *app)
+{
+	log_printf(LOG_NOTICE,
+		"Node=%s: all applications started, assigning workload.",
+		node->name.value);
+
+	ENTER("");
+	node->acsm_state = NODE_ACSM_JOINING_ASSIGNING_WORKLOAD;
+	for (app = app->cluster->application_head; app != NULL; 
+		app = app->next) {
+		amf_application_assign_workload (app, node);
+	}
+}
+
 /******************************************************************************
  * Event methods
  *****************************************************************************/
@@ -241,11 +343,42 @@ void amf_node_leave (struct amf_node *node)
 
 
 	switch (node->acsm_state) {
-		case NODE_ACSM_ESCALLATION_LEVEL_0:
-		case NODE_ACSM_ESCALLATION_LEVEL_2:
-		case NODE_ACSM_ESCALLATION_LEVEL_3:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_0:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_2:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
 			node_acsm_enter_leaving_spontaneously(node);    
 			node_acsm_enter_failing_over (node);
+			break;
+		case NODE_ACSM_REPAIR_NEEDED:
+			break;
+		case NODE_ACSM_FAILING_GRACEFULLY_REBOOTING_NODE:
+			node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED; 
+			node_acsm_enter_idle (node);
+			break;
+		default:
+			log_printf (LOG_LEVEL_ERROR, "amf_node_leave called in state = %d"
+				" (should have been deferred)", node->acsm_state);
+			openais_exit_error (AIS_DONE_FATAL_ERR);
+			break;
+
+	}
+}
+
+/**
+ * 
+ * @param node
+ */
+void amf_node_failover (struct amf_node *node)
+{
+	assert (node != NULL);
+	ENTER("'%s', CLM node '%s'", node->name.value,
+		node->saAmfNodeClmNode.value);
+
+	switch (node->acsm_state) {
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_0:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_2:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
+			node_acsm_enter_failing_gracefully_failing_over (node);
 			break;
 		case NODE_ACSM_REPAIR_NEEDED:
 			break;
@@ -254,16 +387,7 @@ void amf_node_leave (struct amf_node *node)
 				" (should have been deferred)", node->acsm_state);
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 			break;
-
 	}
-}
-/**
- * 
- * @param node
- */
-void amf_node_failover (struct amf_node *node)
-{
-
 }
 
 /**
@@ -289,21 +413,94 @@ void amf_node_failfast (struct amf_node *node)
  * @param node
  * @param comp
  */
-void amf_node_comp_restart_req (
-	struct amf_node *node, struct amf_comp *comp)
+void amf_node_comp_restart_req (struct amf_node *node, struct amf_comp *comp)
 {
+	amf_su_t *su = comp->su;
+	ENTER("");
+	switch (node->acsm_state) {
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_0:
+			node->acsm_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_2;
+			amf_node_comp_restart_req (node, comp);
+			break;
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_2:
+			if (su->saAmfSURestartCount >= su->sg->saAmfSGSuRestartMax) {
+				SaNameT dn;
+				node->acsm_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_3;
+				amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+				amf_su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
+				amf_comp_dn_make (comp, &dn);
 
+				log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+					"action:\n\t\tSU failover", dn.value);
+
+				amf_sg_failover_su_req (su->sg, su, node);
+			} else {
+				amf_su_restart (su);
+			}
+			break;
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
+			if (su->su_failover_cnt <  node->saAmfNodeSuFailoverMax) {
+				SaNameT dn;
+				amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+				amf_su_operational_state_set (su, SA_AMF_OPERATIONAL_DISABLED);
+				amf_comp_dn_make (comp, &dn);
+
+				log_printf (LOG_NOTICE, "Error detected for '%s', recovery "
+					"action:\n\t\tSU failover", dn.value);
+
+				amf_sg_failover_su_req (su->sg, su, node);
+				return;
+			} else {
+				node->history_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_0;
+				amf_node_failover (node);
+			}
+			break;
+		default:
+			dprintf("%d",node->acsm_state);
+			assert (0);
+			break;
+	}                       	
 }
 
 /**
  * 
  * @param node
- * @param comp
  */
-void amf_node_comp_failover_req (
-	struct amf_node *node, struct amf_comp *comp)
+void amf_node_comp_failover_req (amf_node_t *node, amf_comp_t *comp)
 {
-
+	ENTER("");
+	switch (node->acsm_state) {
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_0:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_2:
+			if (comp->su->saAmfSUFailover) {
+				/* SU failover */
+				amf_sg_failover_su_req (comp->su->sg,comp->su, node);
+				
+			} else {
+				/* TODO: component failover */
+				assert (0);
+			}
+			break;
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
+			if (comp->su->su_failover_cnt < node->saAmfNodeSuFailoverMax) {
+				if (comp->su->saAmfSUFailover) {
+					/* SU failover */
+					amf_sg_failover_su_req (comp->su->sg,comp->su, node);
+					
+				} else {
+					/* TODO: component failover */
+					assert (0);
+				}
+			} else {
+				node->history_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_0;
+				amf_node_failover (node);
+			}
+			break;
+		default:
+			dprintf("%d",node->acsm_state);
+			assert (0);
+			break;
+	}
 }
 
 /**
@@ -323,9 +520,9 @@ void amf_node_sync_ready (struct amf_node *node)
 	node->saAmfNodeOperState = SA_AMF_OPERATIONAL_ENABLED;
 
 	switch (node->acsm_state) {
-		case NODE_ACSM_ESCALLATION_LEVEL_0:
-		case NODE_ACSM_ESCALLATION_LEVEL_2:
-		case NODE_ACSM_ESCALLATION_LEVEL_3:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_0:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_2:
+		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
 		case NODE_ACSM_LEAVING_SPONTANEOUSLY_WAITING_FOR_NODE_TO_JOIN:
 			node->acsm_state = NODE_ACSM_JOINING_STARTING_APPLICATIONS;
 			for (app = amf_cluster->application_head; app != NULL; app = app->next) {
@@ -369,15 +566,8 @@ void amf_node_application_started (struct amf_node *node,
 		case NODE_ACSM_JOINING_STARTING_APPLICATIONS:
 			if (amf_cluster_applications_started_with_no_starting_sgs(
 				app->cluster)) {
-				log_printf(LOG_NOTICE,
-					"Node=%s: all applications started, assigning workload.",
-					node->name.value);
 
-				node->acsm_state = NODE_ACSM_JOINING_ASSIGNING_WORKLOAD;
-				for (app = app->cluster->application_head; app != NULL; 
-					app = app->next) {
-					amf_application_assign_workload (app, node);
-				}
+				node_acsm_enter_joining_assigning_workload(node, app);
 			}
 			break;
 		default:
@@ -408,10 +598,7 @@ void amf_node_application_workload_assigned (struct amf_node *node,
 			if (amf_cluster_applications_assigned (amf_cluster)) {
 				log_printf(LOG_NOTICE, "Node=%s: all workload assigned", 
 					node->name.value);
-				/*
-				 * TODO: new state should be set via history
-				 */
-				node->acsm_state = NODE_ACSM_ESCALLATION_LEVEL_0;
+				node_acsm_enter_idle (node);
 			}
 			break;
 		default:
@@ -431,29 +618,24 @@ void amf_node_application_workload_assigned (struct amf_node *node,
  */
 void amf_node_sg_failed_over (struct amf_node *node, struct amf_sg *sg_in)
 {
-	struct amf_sg *sg;
-	struct amf_application *app = 0;
-	int all_sg_has_failed_over = 1;
-
 	assert (node != NULL);
-	ENTER ("Node=%s: SG '%s' started", node->name.value,
-		sg_in->name.value);
+	ENTER ("Node=%s: SG '%s' started %d", node->name.value,
+		sg_in->name.value,node->acsm_state);
 
 	switch (node->acsm_state) {
 		case NODE_ACSM_LEAVING_SPONTANEOUSLY_FAILING_OVER:
-			for (app = amf_cluster->application_head; app != NULL;
-				app = app->next) {
-				for (sg = app->sg_head; sg != NULL; sg = sg->next) {
-					if (sg->avail_state != SG_AC_Idle) {
-						all_sg_has_failed_over = 0;
-						goto end;
-					}
-				}
+			if (has_all_sg_on_node_failed_over (node)) { /*C2*/
+				node->acsm_state = 
+					NODE_ACSM_LEAVING_SPONTANEOUSLY_WAITING_FOR_NODE_TO_JOIN;
 			}
-
 			break;
 		case NODE_ACSM_LEAVING_SPONTANEOUSLY_WAITING_FOR_NODE_TO_JOIN:
 			/* Accept reports of failed over sg that has completed. */
+			break;
+		case NODE_ACSM_FAILING_GRACEFULLY_FAILING_OVER:
+			if (has_all_sg_on_node_failed_over (node)) { /*C2*/
+				enter_failing_gracefully_rebooting_node (node);
+			}
 			break;
 		default:
 			log_printf (LOG_LEVEL_ERROR, "amf_node_sg_failed_over()"
@@ -461,10 +643,7 @@ void amf_node_sg_failed_over (struct amf_node *node, struct amf_sg *sg_in)
 			openais_exit_error (AIS_DONE_FATAL_ERR);
 			break;
 	}
-	end:
-	if (all_sg_has_failed_over) {
-		node->acsm_state = NODE_ACSM_LEAVING_SPONTANEOUSLY_WAITING_FOR_NODE_TO_JOIN;
-	}
+
 }
 
 /******************************************************************************
@@ -494,8 +673,8 @@ struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name) {
 	node->cluster = cluster;
 	node->next = cluster->node_head;
 	cluster->node_head = node;
-	node->acsm_state = NODE_ACSM_ESCALLATION_LEVEL_0; 
-
+	node->acsm_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_0; 
+	node->history_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_0;
 	return node;
 }
 
@@ -526,6 +705,8 @@ void *amf_node_serialize (struct amf_node *node, int *len)
 		node->nodeid);
 	buf = amf_serialize_SaUint32T (buf, &size, &offset,
 		node->acsm_state);
+	buf = amf_serialize_SaUint32T (buf, &size, &offset,
+		node->history_state);
 
 	*len = offset;
 
@@ -547,6 +728,7 @@ struct amf_node *amf_node_deserialize (struct amf_cluster *cluster, char *buf) {
 	tmp = amf_deserialize_SaUint32T (tmp, &node->saAmfNodeOperState);
 	tmp = amf_deserialize_SaUint32T (tmp, &node->nodeid);
 	tmp = amf_deserialize_SaUint32T (tmp, &node->acsm_state);
+	tmp = amf_deserialize_SaUint32T (tmp, &node->history_state);
 
 	return node;
 }

@@ -188,7 +188,7 @@ void CSISetCallback (
 
 	switch (haState) {
 	case SA_AMF_HA_ACTIVE:
-		printf ("%d: Component '%s' requested to enter hastate SA_AMF_ACTIVE"
+		printf ("PID %d: Component '%s' requested to enter hastate SA_AMF_ACTIVE"
 				" for \n\tCSI '%s'\n",
 			(int)getpid(), compName->value, csiDescriptor->csiName.value);
 		response (handle, invocation, SA_AIS_OK);
@@ -222,7 +222,7 @@ void CSISetCallback (
 		break;  
          
 	case SA_AMF_HA_STANDBY:
-		printf ("%d: Component '%s' requested to enter hastate SA_AMF_STANDBY "
+		printf ("PID %d: Component '%s' requested to enter hastate SA_AMF_STANDBY "
 				"for \n\tCSI '%s'\n",
 			(int)getpid(), compName->value, csiDescriptor->csiName.value);
 		response (handle, invocation, SA_AIS_OK);

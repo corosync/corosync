@@ -174,6 +174,8 @@ static int init_recovery_on_error (struct amf_comp *comp, char *loc)
 		comp->saAmfCompRecoveryOnError = SA_AMF_APPLICATION_RESTART;
 	} else if (strcmp (loc, "cluster_reset") == 0) {
 		comp->saAmfCompRecoveryOnError = SA_AMF_CLUSTER_RESET;
+	} else if (strcmp (loc, "no_recomondation") == 0) {
+		comp->saAmfCompRecoveryOnError = SA_AMF_NO_RECOMMENDATION;
 	} else {
 		return -1;
 	}

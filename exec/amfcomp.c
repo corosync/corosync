@@ -156,6 +156,7 @@ struct clc_command_run_data {
 	struct amf_comp *comp;
 	enum clc_command_run_operation_type type;
 	void (*completion_callback) (void *context);
+	int exit_code;
 };
 
 struct clc_interface {
@@ -190,6 +191,8 @@ static void lib_csi_set_request (
 	struct amf_comp *comp,
 	struct amf_csi_assignment *csi_assignment);
 
+static void comp_recover_action (amf_comp_t *comp, 
+	SaAmfRecommendedRecoveryT recommendedRecovery);
 
 /*
  * Life cycle functions
@@ -315,8 +318,10 @@ static void report_error_suspected (
 	struct amf_comp *comp,
 	SaAmfRecommendedRecoveryT recommended_recovery)
 {
-	comp->error_suspected = 1;
-	amf_su_comp_error_suspected (comp->su, comp, recommended_recovery);
+	ENTER ("%s, recommended_recovery = %d",
+		comp->name.value, recommended_recovery);
+	amf_comp_error_suspected_set (comp);
+	comp_recover_action (comp, recommended_recovery);
 }
 
 
@@ -327,6 +332,8 @@ static void *clc_command_run (void *context)
 {
 	struct clc_command_run_data *clc_command_run_data =
 		(struct clc_command_run_data *)context;
+	clc_command_run_data->exit_code = 0;
+
 	pid_t pid;
 	int res;
 	char **argv = NULL;
@@ -356,10 +363,10 @@ static void *clc_command_run (void *context)
 			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
 				" %d - %s\n", pid, WEXITSTATUS(status),
 				strerror (WEXITSTATUS(status)));
-			/*                                                              
-             * Healthcheck timout will expire laterfore the component
-             * and this will lead to Intantiation failed for the component.
-			 */
+			/*
+             * Store the exit code from the script in the return data.
+             */
+			clc_command_run_data->exit_code = WEXITSTATUS(status);
 		}
 		if (WIFSIGNALED (status) != 0) {
 			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
@@ -493,14 +500,48 @@ static void amf_comp_instantiate_tmo (void *component)
 		&compName, sizeof (SaNameT));
 }
 
+static void amf_comp_cleanup_tmo (void *component)
+{
+	SaNameT compName;
+	amf_comp_dn_make (component, &compName);
+
+	amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_COMPONENT_CLEANUP_TMO,
+		&compName, sizeof (SaNameT));
+}
+
 static void start_component_instantiate_timer (struct amf_comp *component)
 {
 	ENTER("%s",component->name.value);
-	poll_timer_add (aisexec_poll_handle, 
-		component->saAmfCompInstantiateTimeout,
-		component,
-		amf_comp_instantiate_tmo,
-		&component->instantiate_timeout_handle);
+	if (component->instantiate_timeout_handle == 0) {
+		poll_timer_add (aisexec_poll_handle, 
+			component->saAmfCompInstantiateTimeout,
+			component,
+			amf_comp_instantiate_tmo,
+			&component->instantiate_timeout_handle);
+	}
+}
+
+static void start_component_cleanup_timer (struct amf_comp *component)
+{
+	ENTER("%s",component->name.value);
+	if (component->cleanup_timeout_handle == 0) {
+		poll_timer_add (aisexec_poll_handle, 
+			component->saAmfCompCleanupTimeout,
+			component,
+			amf_comp_cleanup_tmo,
+			&component->cleanup_timeout_handle);
+	}
+}
+
+void stop_component_cleanup_timer (struct amf_comp *component)
+{
+	ENTER("%s",component->name.value);
+
+	if (component->cleanup_timeout_handle != 0) {
+		poll_timer_delete (aisexec_poll_handle, 
+			component->cleanup_timeout_handle);
+		component->cleanup_timeout_handle  = 0;
+	}
 }
 
 /*
@@ -528,9 +569,6 @@ static int clc_cli_instantiate (struct amf_comp *comp)
 		log_printf (LOG_LEVEL_ERROR, "pthread_create failed: %d", res);
 	}
 	start_component_instantiate_timer (comp);
-//	clc_command_run_data->completion_callback (clc_command_run_data);
-
-// TODO error code from pthread_create
 	return (res);
 }
 
@@ -615,6 +653,11 @@ static void mcast_cleanup_completion_event (void *context)
 	iovec.iov_base = (char *)&req;
 	iovec.iov_len = sizeof (req);
 
+	/*
+     * Exit code from the invoked cleanup script.
+     */
+	req.cleanup_exit_code = clc_command_run_data->exit_code;
+
 	assert (totempg_groups_mcast_joined (openais_group_handle,
 		&iovec, 1, TOTEMPG_AGREED) == 0);
 }
@@ -635,7 +678,7 @@ static int clc_cli_cleanup (struct amf_comp *comp)
 	clc_command_run_data->comp = comp;
 	clc_command_run_data->type = CLC_COMMAND_RUN_OPERATION_TYPE_CLEANUP;
 	clc_command_run_data->completion_callback = mcast_cleanup_completion_event;
-
+	start_component_cleanup_timer (comp);
 	pthread_attr_init (&thread_attr);
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
 	res = pthread_create (&thread, &thread_attr, clc_command_run,
@@ -660,8 +703,8 @@ static int clc_terminate (struct amf_comp *comp)
 
 	dprintf ("clc terminate for comp %s\n", getSaNameT (&comp->name));
 	assert (0);
-	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
 	comp_presence_state_set (comp, SA_AMF_PRESENCE_TERMINATING);
+	operational_state_comp_set (comp, SA_AMF_OPERATIONAL_DISABLED);
 
 	res = clc_interfaces[comp->comptype]->terminate (comp);
 	return (0);
@@ -739,9 +782,10 @@ struct amf_comp *amf_comp_new(struct amf_su *su, char *name)
 
 	comp->saAmfCompOperState = SA_AMF_OPERATIONAL_DISABLED;
 	comp->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
-	comp->error_suspected = 0;
+	amf_comp_error_suspected_clear (comp);
 	setSaNameT (&comp->name, name);
-
+	comp->instantiate_timeout_handle = 0;
+	comp->cleanup_timeout_handle = 0;
 	return comp;
 }
 
@@ -776,6 +820,28 @@ void amf_comp_delete (struct amf_comp *comp)
 	free (comp->clccli_path);
 
 	free (comp);
+}
+
+struct amf_comp *amf_comp_find_from_conn_info (void *conn)
+{
+	struct amf_application *app;
+	struct amf_sg *sg;
+	struct amf_su *su;
+	struct amf_comp *comp;
+
+	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
+		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
+			for (su = sg->su_head; su != NULL; su = su->next) {
+				for (comp = su->comp_head; comp != NULL; comp = comp->next) {
+					if (comp->conn == conn) {
+						goto end;
+					}
+				}
+			}
+		}
+	}
+end:
+	return comp;
 }
 
 struct amf_comp *amf_comp_find (struct amf_cluster *cluster, SaNameT *name)
@@ -1038,6 +1104,7 @@ static void mcast_healthcheck_tmo_event (
 	amf_comp_dn_make (healthcheck->comp, &req_exec.compName);
 	memcpy (&req_exec.safHealthcheckKey,
 		&healthcheck->safHealthcheckKey, sizeof (SaAmfHealthcheckKeyT));
+	req_exec.recommendedRecovery = healthcheck->recommendedRecovery;
 	iovec.iov_base = (char *)&req_exec;
 	iovec.iov_len = sizeof (req_exec);
 
@@ -1217,6 +1284,8 @@ SaAisErrorT amf_comp_register (struct amf_comp *comp)
             /* ignore due to instantitate timeout a while ago  */
 			break;
 		default:
+			log_printf(LOG_LEVEL_ERROR,"comp->saAmfCompPresenceState = %d",
+				comp->saAmfCompPresenceState);
 			assert (0);
 			break;
 		
@@ -1225,19 +1294,21 @@ SaAisErrorT amf_comp_register (struct amf_comp *comp)
 	return SA_AIS_OK;
 }
 
-void amf_comp_error_report (struct amf_comp *comp, SaAmfRecommendedRecoveryT recommendedRecovery)
+void amf_comp_error_report (struct amf_comp *comp, amf_comp_t* reporting_comp, 
+	SaAmfRecommendedRecoveryT recommendedRecovery)
 {
 	struct res_lib_amf_componenterrorreport res_lib;
-	TRACE2("Exec comp error report '%s'", comp->name.value);
-	
-	if (amf_su_is_local (comp->su)) {
+	TRACE2("Exec comp error report on comp'%s' from %s", comp->name.value, 
+		reporting_comp->name.value );
+	 
+	if (amf_su_is_local (reporting_comp->su)) {
 		res_lib.header.size = sizeof (struct res_lib_amf_componenterrorreport);
 		res_lib.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
 		res_lib.header.error = SA_AIS_OK;
-		openais_conn_send_response (comp->conn, &res_lib, sizeof (res_lib));
+		openais_conn_send_response (reporting_comp->conn, &res_lib, sizeof (res_lib));
 	}
 
-	/* report to SU and let it handle the problem */
+    /* Report to SU and let it handle the problem */
 	report_error_suspected (comp, recommendedRecovery);
 }
 
@@ -1247,12 +1318,12 @@ void amf_comp_error_report (struct amf_comp *comp, SaAmfRecommendedRecoveryT rec
  * @param healthcheck
  */
 void amf_comp_healthcheck_tmo (
-	struct amf_comp *comp, struct amf_healthcheck *healthcheck)
+	struct amf_comp *comp, SaAmfRecommendedRecoveryT recommendedRecovery)
 {
 	TRACE2("Exec healthcheck tmo for '%s'", comp->name.value);
 
 	/* report to SU and let it handle the problem */
-	report_error_suspected (comp, healthcheck->recommendedRecovery);
+	report_error_suspected (comp, recommendedRecovery);
 }
 
 static void clear_ha_state (
@@ -1262,6 +1333,110 @@ static void clear_ha_state (
 	csi_assignment->saAmfCSICompHAState = 0;
 }
 
+
+static void comp_recover_action (amf_comp_t *comp, 
+	SaAmfRecommendedRecoveryT recommendedRecovery)
+{
+
+
+	ENTER ("%s %d %d", comp->name.value,recommendedRecovery, 
+		comp->saAmfCompRecoveryOnError);
+
+	amf_node_t *node = amf_node_find (&comp->su->saAmfSUHostedByNode);
+	switch (recommendedRecovery) {
+		case SA_AMF_NO_RECOMMENDATION: {
+			/*
+             * If the recommendation was SA_AMF_NO_RECOMMENDATION,
+             * then use the configured recovery action for the component
+             */
+			switch (comp->saAmfCompRecoveryOnError) {
+				case SA_AMF_NO_RECOMMENDATION:
+					if (comp->saAmfCompDisableRestart) {
+                        /* Comp or SU failover */
+						amf_node_comp_failover_req (node, comp);
+					} else {
+						/* Component restart */
+						amf_su_comp_error_suspected (comp->su, comp, 
+							recommendedRecovery);
+					}
+				case SA_AMF_COMPONENT_RESTART:
+					if (comp->saAmfCompDisableRestart) {
+                        /* Comp or SU failover */
+						amf_node_comp_failover_req (node, comp);
+					} else {
+						/* Component restart */
+						amf_su_comp_error_suspected (comp->su, comp, 
+							recommendedRecovery);
+					}
+					break;
+				case SA_AMF_COMPONENT_FAILOVER:
+                    /* SU failover */
+					amf_node_comp_failover_req (node, comp);
+					break;
+				case SA_AMF_NODE_SWITCHOVER:
+					break;
+				case SA_AMF_NODE_FAILOVER: { 
+                    /* Node failover */
+					amf_node_t *node = amf_node_find (
+						&comp->su->saAmfSUHostedByNode);
+					amf_node_failover(node);
+				}
+				break;
+				case SA_AMF_NODE_FAILFAST:
+					break;
+				case SA_AMF_CLUSTER_RESET:
+					break;
+				case SA_AMF_APPLICATION_RESTART:
+				default:
+					dprintf("recommendedRecovery=%d",recommendedRecovery);
+					assert (0);
+					break;
+			}
+			break;
+		}
+		case SA_AMF_COMPONENT_RESTART:
+			if (comp->saAmfCompDisableRestart == SA_TRUE) {
+				amf_node_comp_failover_req (node, comp);
+			} else {
+				amf_su_comp_error_suspected (comp->su, comp, recommendedRecovery);
+			}
+			break;
+		case SA_AMF_COMPONENT_FAILOVER:
+			amf_node_comp_failover_req (node, comp);
+			break;
+		case SA_AMF_NODE_SWITCHOVER:
+			break;
+		case SA_AMF_NODE_FAILOVER:
+            /* Node failover */
+			amf_node_failover (amf_node_find (&comp->su->saAmfSUHostedByNode));
+			break;
+		case SA_AMF_NODE_FAILFAST:
+			break;
+		case SA_AMF_CLUSTER_RESET:
+			break;
+		case SA_AMF_APPLICATION_RESTART:
+		default:
+			assert (0);
+			break;
+
+	}
+}
+
+/**
+ * Event method to be called when a cleanup completed event is received
+ * with failure.
+ * @param comp
+ */
+void amf_comp_cleanup_failed_completed (amf_comp_t *comp)
+{
+	ENTER ("'%s'", comp->name.value);
+
+	stop_component_cleanup_timer (comp);
+	amf_comp_error_suspected_clear (comp);
+	amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+	comp_presence_state_set (comp, SA_AMF_PRESENCE_TERMINATION_FAILED);
+}
+
 /**
  * Event method to be called when a cleanup completed event is received
  * @param comp
@@ -1269,12 +1444,12 @@ static void clear_ha_state (
 void amf_comp_cleanup_completed (struct amf_comp *comp)
 {
 	TRACE2("Exec CLC cleanup completed for '%s'", comp->name.value);
+	stop_component_cleanup_timer (comp);
 
 	/* Set all CSI's confirmed HA state to unknown  */
 	amf_comp_foreach_csi_assignment (comp, clear_ha_state);
 
-	/* clear error suspected flag, component is terminated now */
-	comp->error_suspected = 0;
+	amf_comp_error_suspected_clear (comp);
 	
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		amf_comp_instantiate (comp);
@@ -1430,6 +1605,16 @@ void amf_comp_instantiate (struct amf_comp *comp)
 	}
 }
 
+void amf_comp_cleanup_tmo_event (struct amf_comp *comp)
+{
+	ENTER ("Comp cleanup timeout after %d ms '%s' '%s'", 
+		comp->saAmfCompCleanupTimeout, comp->su->name.value,
+		comp->name.value);
+	amf_comp_error_suspected_clear(comp);	
+	amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
+	comp_presence_state_set (comp, SA_AMF_PRESENCE_TERMINATION_FAILED);
+}
+
 void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
 {
 	ENTER ("Comp instantiate timeout after %d ms '%s' '%s'", 
@@ -1515,7 +1700,8 @@ void amf_comp_readiness_state_set (struct amf_comp *comp,
  */
 int amf_comp_response_1 (
 	SaInvocationT invocation, SaAisErrorT error, SaAisErrorT *retval,
-	SaUint32T *interface, SaNameT *dn)
+	SaUint32T *interface, SaNameT *dn, SaAmfHealthcheckKeyT *healtcheck_key,
+	SaAmfRecommendedRecoveryT *recommendedRecovery)
 {
 	int res;
 	void *data;
@@ -1531,10 +1717,21 @@ int amf_comp_response_1 (
 	switch (*interface) {
 		case AMF_RESPONSE_HEALTHCHECKCALLBACK: {
 				struct amf_healthcheck *healthcheck = data;
-				SaNameT name;
-				TRACE7 ("Healthcheck response from '%s': %d",
-					amf_comp_dn_make (healthcheck->comp, &name), error);
-					
+
+				amf_comp_dn_make (healthcheck->comp, dn);
+				TRACE7 ("Healthcheck response from '%s': %d",dn->value, error);
+				/*
+                 * Healthcheck with erroneous response
+                 * and no recovery action is in progress.
+				 */
+				memcpy(healtcheck_key, &healthcheck->safHealthcheckKey,
+					sizeof (SaAmfHealthcheckKeyT));
+				*recommendedRecovery = healthcheck->recommendedRecovery;
+
+				if (error != SA_AIS_OK && 
+					!amf_comp_is_error_suspected (healthcheck->comp)) {
+					return 1; 
+				}
 				if (is_not_instantiating_or_instantiated_or_restarting(
 					healthcheck->comp)) {
 					log_printf (LOG_ERR, "HealthcheckResponse: ignored for key = %s, "
@@ -1602,8 +1799,9 @@ int amf_comp_response_1 (
  * 
  * @return component to which the response should be sent
  */
-struct amf_comp *amf_comp_response_2 (
-	SaUint32T interface, SaNameT *dn, SaAisErrorT error, SaAisErrorT *retval)
+struct amf_comp *amf_comp_response_2 (SaUint32T interface, SaNameT *dn, 
+	SaAmfHealthcheckKeyT *healthcheck_key, SaAisErrorT error, 
+	SaAisErrorT *retval, SaAmfRecommendedRecoveryT recommendedRecovery)
 {
 	struct amf_csi_assignment *csi_assignment;
 	struct amf_comp *comp = NULL;
@@ -1649,6 +1847,20 @@ struct amf_comp *amf_comp_response_2 (
 				}
 				break;
 			}
+		case AMF_RESPONSE_HEALTHCHECKCALLBACK: {
+			dprintf("AMF_RESPONSE_HEALTHCHECKCALLBACK for %s", dn->value);
+			comp = amf_comp_find (amf_cluster, dn);
+			
+			assert (comp);
+			amf_healthcheck_t *healthcheck = amf_comp_find_healthcheck (
+				comp, healthcheck_key);
+			assert (comp);
+			healthcheck->recommendedRecovery = recommendedRecovery; 
+			comp_recover_action (comp, healthcheck->recommendedRecovery);
+				
+			break;
+		}
+
 #if 0
 		case AMF_RESPONSE_COMPONENTTERMINATECALLBACK: {
 				struct component_terminate_callback_data *callback_data = data;
@@ -1682,7 +1894,7 @@ void amf_comp_hastate_set (
 	assert (component != NULL && csi_assignment != NULL);
 
 
-	if (!component->error_suspected) {
+	if (!amf_comp_is_error_suspected (component)) {
 		lib_csi_set_request(component, csi_assignment);
 	} else {
 		if (csi_assignment->requested_ha_state == SA_AMF_HA_QUIESCED) {
@@ -1708,7 +1920,7 @@ void amf_comp_terminate (struct amf_comp *comp)
 
 	if (amf_su_is_local (comp->su)) {
 		amf_comp_healthcheck_stop (comp, NULL);
-		if (comp->error_suspected) {
+		if (amf_comp_is_error_suspected(comp)) {
 			clc_interfaces[comp->comptype]->cleanup (comp);
 		} else {
 			clc_interfaces[comp->comptype]->terminate (comp);
@@ -1799,7 +2011,11 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 				&healthcheck->timer_handle_period);
 		} else if (healthcheckResult == SA_AIS_ERR_FAILED_OPERATION) {
 			/* send to cluster */
-			mcast_healthcheck_tmo_event (healthcheck);
+			if (!comp->error_suspected) {
+				poll_timer_delete (aisexec_poll_handle,
+				healthcheck->timer_handle_period);
+				mcast_healthcheck_tmo_event (healthcheck);
+			}
 		} else {
 			error = SA_AIS_ERR_INVALID_PARAM;
 		}
@@ -1893,7 +2109,7 @@ void amf_comp_node_left (struct amf_comp *component)
 	struct amf_csi_assignment *csi_assignment;
 
 	ENTER("saAmfCompPresenceState = %d", component->saAmfCompPresenceState);
-	component->error_suspected = 0;
+	amf_comp_error_suspected_clear (component);
 	if (component->saAmfCompPresenceState == SA_AMF_PRESENCE_INSTANTIATING ||
 		component->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING ||
 		component->saAmfCompPresenceState == SA_AMF_PRESENCE_TERMINATING) {
@@ -1903,7 +2119,7 @@ void amf_comp_node_left (struct amf_comp *component)
 
 	component->saAmfCompPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
 
-	if (amf_su_presence_state_all_comps_in_su_are_set (component->su,
+	if (amf_su_are_all_comps_in_su (component->su,
 		SA_AMF_PRESENCE_UNINSTANTIATED)) {
 		component->su->saAmfSUPresenceState = SA_AMF_PRESENCE_UNINSTANTIATED;
 	}
@@ -2258,4 +2474,18 @@ void amf_comp_csi_remove (amf_comp_t *component,
 		&res_lib, sizeof (struct res_lib_amf_csiremovecallback));
 }
 
+void amf_comp_error_suspected_clear (amf_comp_t *comp)
+{
+	comp->error_suspected = 0;
+}
+
+void amf_comp_error_suspected_set (amf_comp_t *comp)
+{
+	comp->error_suspected = 1;
+}
+
+int amf_comp_is_error_suspected (amf_comp_t *comp)
+{
+	return comp->error_suspected ? 1 : 0;
+}
 

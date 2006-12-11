@@ -254,7 +254,7 @@ static void application_enter_starting_sgs (struct amf_application *app,
 	int su_to_instantiate = 0;
 	app->node_to_start = node;
 	app->acsm_state = APP_AC_STARTING_SGS;
-
+	ENTER ("%s",app->name.value);
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		su_to_instantiate += amf_sg_start (sg, node);
 	}
@@ -275,6 +275,7 @@ static void application_enter_assigning_workload (amf_application_t *app)
 {
 	amf_sg_t *sg = 0;
 	int posible_to_assign_si = 0;
+	ENTER ("%s",app->name.value);
 	app->acsm_state = APP_AC_ASSIGNING_WORKLOAD;
 	for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 		if (amf_sg_assign_si_req (sg, 0)) {
@@ -289,12 +290,14 @@ static void application_enter_assigning_workload (amf_application_t *app)
 
 static void application_enter_workload_assigned (amf_application_t *app)
 {
+	ENTER ("%s", app->name.value);
 	if (all_sg_assigned (app)){
 		app->acsm_state = APP_AC_WORKLOAD_ASSIGNED;
 		if (app->node_to_start == NULL){
 			amf_cluster_application_workload_assigned (
 				app->cluster, app);
 		} else {
+			TRACE1("%s",app->node_to_start->name.value);
 			amf_node_application_workload_assigned(
 				app->node_to_start, app);
 		}
