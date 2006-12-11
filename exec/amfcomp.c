@@ -827,7 +827,7 @@ struct amf_comp *amf_comp_find_from_conn_info (void *conn)
 	struct amf_application *app;
 	struct amf_sg *sg;
 	struct amf_su *su;
-	struct amf_comp *comp;
+	struct amf_comp *comp = NULL;
 
 	for (app = amf_cluster->application_head; app != NULL; app = app->next) {
 		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
