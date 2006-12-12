@@ -200,7 +200,7 @@ static void flow_control_confchg_fn (
 		 */
 		for (i = 0; i < member_list_entries; i++) {
 			flow_control_node_state_temp[i].nodeid = member_list[i];
-			flow_control_node_state_temp[i].flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+			flow_control_node_state_temp[i].flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
 
 			/*
 			 * Determine if previous state was set for this processor
@@ -229,7 +229,7 @@ static void flow_control_confchg_fn (
 		flow_control_service->processor_count = flow_control_member_list_entries;
 		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
 		for (i = 0; i < member_list_entries; i++) {
-			if (flow_control_service->flow_control_node_state[j].flow_control_state == OPENAIS_FLOW_CONTROL_STATE_DISABLED) {
+			if (flow_control_service->flow_control_node_state[i].flow_control_state == OPENAIS_FLOW_CONTROL_STATE_ENABLED) {
 				flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
 				flow_control_service->flow_control_state_set_fn (flow_control_service->context, flow_control_service->flow_control_state);
 			}
@@ -386,10 +386,12 @@ unsigned int openais_flow_control_destroy (
 
 		if ((flow_control_service->id_len == id_len) &&
 			(memcmp (flow_control_service->id, id, id_len) == 0)) {
+			flow_control_xmit (flow_control_service,
+				OPENAIS_FLOW_CONTROL_STATE_DISABLED);
 			list_del (&flow_control_service->list);
 			list_del (&flow_control_service->list_all);
 			free (flow_control_service);
-			break; /* done */
+			break; /* done - no delete-safe for loop needed */
 		}
 	}
 	hdb_handle_put (&flow_control_hdb, flow_control_handle);
@@ -409,7 +411,6 @@ unsigned int openais_flow_control_disable (
 	struct flow_control_service *flow_control_service;
 	struct list_head *list;
 	unsigned int res;
-	unsigned int i;
 
 	res = hdb_handle_get (&flow_control_hdb, flow_control_handle,
 		(void *)&instance);
@@ -417,7 +418,6 @@ unsigned int openais_flow_control_disable (
 		goto error_exit;
 	}
 
-i = 0;
 	for (list = instance->list_head.next;
 		list != &instance->list_head;
 		list = list->next) {
