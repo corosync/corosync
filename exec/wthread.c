@@ -182,6 +182,10 @@ void worker_thread_group_exit (
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {
 		pthread_cancel (worker_thread_group->threads[i].thread_id);
+		pthread_mutex_destroy (&worker_thread_group->threads[i].new_work_mutex);
+		pthread_cond_destroy (&worker_thread_group->threads[i].new_work_cond);
+		pthread_mutex_destroy (&worker_thread_group->threads[i].done_work_mutex);
+		pthread_cond_destroy (&worker_thread_group->threads[i].done_work_cond);
 	}
 }
 void worker_thread_group_atsegv (
