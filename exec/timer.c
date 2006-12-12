@@ -152,13 +152,13 @@ int openais_timer_init (
 
 	timerlist_init (&timers_timerlist);
 
-        signal (SIGUSR1, sigusr1_handler);
+	signal (SIGUSR1, sigusr1_handler);
 
 	pthread_mutex_lock (&timer_mutex);
-        pthread_attr_init (&thread_attr);
-        pthread_attr_setstacksize (&thread_attr, 100000);
-        pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
-        res = pthread_create (&expiry_thread, &thread_attr,
+	pthread_attr_init (&thread_attr);
+	pthread_attr_setstacksize (&thread_attr, 100000);
+	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
+	res = pthread_create (&expiry_thread, &thread_attr,
 		prioritized_timer_thread, NULL);
 
 	return (res);
