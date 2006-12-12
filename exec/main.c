@@ -227,6 +227,7 @@ static void aisexec_uid_determine (struct main_config *main_config)
 		openais_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
+	endpwent ();
 }
 
 static void aisexec_gid_determine (struct main_config *main_config)
@@ -238,6 +239,7 @@ static void aisexec_gid_determine (struct main_config *main_config)
 		openais_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
+	endgrent ();
 }
 
 static void aisexec_priv_drop (void)
