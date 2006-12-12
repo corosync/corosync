@@ -74,6 +74,7 @@ static inline void hdb_destroy (
 	if (handle_database->handles) {
 		free (handle_database->handles);
 	}
+	pthread_mutex_destory (&handle_database->mutex);
 	memset (handle_database, 0, sizeof (struct hdb_handle_database));
 }
 
