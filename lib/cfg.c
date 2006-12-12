@@ -323,6 +323,10 @@ openais_cfg_finalize (
 
 	pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
+	pthread_mutex_destory (&cfg_instance->response_mutex);
+
+	pthread_mutex_destory (&cfg_instance->dispatch_mutex);
+
 	saHandleDestroy (&cfg_hdb, cfg_handle);
 
 	if (cfg_instance->response_fd != -1) {
