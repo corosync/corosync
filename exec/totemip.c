@@ -137,55 +137,57 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip
 int totemip_compare(const void *a, const void *b)
 {
 	int i;
-	const struct totem_ip_address *addr1 = a;
-	const struct totem_ip_address *addr2 = b;
-	struct in6_addr *sin6a;
-	struct in6_addr *sin6b;
+	struct totem_ip_address *totemip_a = (struct totem_ip_address *)a;
+	struct totem_ip_address *totemip_b = (struct totem_ip_address *)b;
+	struct in_addr ipv4_a1;
+	struct in_addr ipv4_a2;
+	struct in6_addr ipv6_a1;
+	struct in6_addr ipv6_a2;
+	unsigned short family;
 
-	if (addr1->family != addr2->family)
-		return (addr1->family > addr2->family);
+	/*
+	 * Use memcpy to align since totem_ip_address is unaligned on various archs
+	 */
+	memcpy (&family, &totemip_a->family, sizeof (unsigned short));
 
-	if (addr1->family == AF_INET) {
-#ifndef __sparc
-		struct in_addr *in1 = (struct in_addr *)addr1->addr;
-		struct in_addr *in2 = (struct in_addr *)addr2->addr;
-#else
-		/* Deal with misalignment */
-		struct in_addr i1, i2;
-		struct in_addr *in1 = &i1;
-		struct in_addr *in2 = &i2;
-		memcpy(in1, addr1->addr, sizeof (*in1));
-		memcpy(in2, addr2->addr, sizeof (*in2));
-#endif
-
-		/* A bit clunky but avoids sign problems */
-		if (in1->s_addr == in2->s_addr)
-			return 0;
-		if (htonl(in1->s_addr) < htonl(in2->s_addr))
-			return -1;
-		else
-			return +1;
-	}
-
-	/* Compare IPv6 addresses */
-	sin6a = (struct in6_addr *)addr1->addr;
-	sin6b = (struct in6_addr *)addr2->addr;
-
-	/* Remember, addresses are in big-endian format.
-	   We compare 16bits at a time rather than 32 to avoid sign problems */
-	for (i = 0; i < 8; i++) {
-#ifndef OPENAIS_SOLARIS
-		int res = htons(sin6a->s6_addr16[i]) -
-			htons(sin6b->s6_addr16[i]);
-#else
-		int res = htons(((uint16_t *)sin6a->s6_addr)[i]) -
-			htons(((uint16_t *)sin6b->s6_addr)[i]);
-#endif
-		if (res) {
-			return res;
+	if (family == AF_INET) {
+		memcpy (&ipv4_a1, totemip_a->addr, sizeof (struct in_addr));
+		memcpy (&ipv4_a2, totemip_b->addr, sizeof (struct in_addr));
+		if (ipv4_a1.s_addr == ipv4_a2.s_addr) {
+			return (0);
 		}
+		if (htonl(ipv4_a1.s_addr) < htonl(ipv4_a2.s_addr)) {
+			return -1;
+		} else {
+			return +1;
+		}
+	} else
+	if (family == AF_INET6) {
+		int res;
+		/*
+		 * Compare 16 bits at a time the ipv6 address
+		 */
+		memcpy (&ipv6_a1, totemip_a->addr, sizeof (struct in6_addr));
+		memcpy (&ipv6_a2, totemip_b->addr, sizeof (struct in6_addr));
+		for (i = 0; i < 8; i++) {
+#ifndef OPENAIS_SOLARIS
+		int res = htons(ipv6_a1.s6_addr16[i]) -
+			htons(ipv6_a2.s6_addr16[i]);
+#else
+		int res = htons(((uint16_t *)ipv6_a1.s6_addr)[i]) -
+			htons(((uint16_t *)ipv6_a2.s6_addr)[i]);
+#endif
+			if (res) {
+				return res;
+			}
+		}
+		return 0;
+	} else {
+		/*
+		 * Family not set, should be!
+	 	 */
+		assert (0);
 	}
-	return 0;
 }
 
 /* Build a localhost totem_ip_address */
