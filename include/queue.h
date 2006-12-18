@@ -81,6 +81,7 @@ static inline int queue_reinit (struct queue *queue)
 }
 
 static inline void queue_free (struct queue *queue) {
+	pthread_mutex_destroy (&queue->mutex);
 	free (queue->items);
 }
 
