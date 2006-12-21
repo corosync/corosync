@@ -37,7 +37,7 @@
  * 
  * AMF Application Class implementation
  * 
- * This file contains functions for handling the AMF applications. It can 
+ * This file contains functions for handling the AMF Applications. It can 
  * be viewed as the implementation of the AMF Application class
  * as described in SAI-Overview-B.02.01. The SA Forum specification 
  * SAI-AIS-AMF-B.02.01 has been used as specification of the behaviour
@@ -49,28 +49,28 @@
  *    service units contained in the service group, level by level
  *	- to handle administrative operation support for the application (FUTURE)
  *
- * The cluster class contains the following state machines:
+*  The application class contains the following state machines:
  *	- administrative state machine (ADSM)
  *	- availability control state machine (ACSM)
  *
  * The administrative state machine will be implemented in the future.
  *
- * ACSM handles initial start of an application. In the future it will also
+ * ACSM handles initial start of an Application. In the future it will also
  * handle administrative commands on the application as described in paragraph
  * 7.4 of the spec. ACSM includes two stable states (UNINSTANTIATED and
- * STARTED) and a number of states to control the transition between the
- * stable states.
+ * WORKLOAD_ASSIGNED) and a number of states to control the transition between
+ * the stable states.
  *
  * The application is in state UNINSTANTIATED when the application starts.
  * (In the future this state will also be assumed after the LOCK_INSTANTIATION
  * administrative command.)
  *
- * State WORKLOAD_ASSIGNED is assumed when the application has been initially
+ * State WORKLOAD_ASSIGNED is assumed when the Application has been initially
  * started and will in the future be re-assumed after the administrative
  * command RESTART have been executed.
  * 
- * 1. AMF Synchronization Control State Machine
- * =========================================
+*  1. AMF Application Availability Control State Machine
+*  =====================================================
  * 
  * 1.1  State Transition Table
  * 
@@ -79,20 +79,22 @@
  * UNINSTANTIATED          start                 A6,A1    STARTING_SGS
  * STARTING_SGS            start [C4]            A7
  * STARTING_SGS            sg_started [C1]       A8,A9    STARTED
+ * STARTING_SGS            assign_workload [C4]  A3       ASSIGNING_WORKLOAD
  * STARTED                 start                 A6,A1    STARTING_SGS
+ * STARTED                 start [!C4]           A7       STARTED
  * STARTED                 assign_workload       A3       ASSIGNING_WORKLOAD
- * ASSIGNING_WORKLOAD      assign_workload       A7
- * ASSIGNING_WORKLOAD      start                 A7
+ * ASSIGNING_WORKLOAD      assign_workload       A7       ASSIGNING_WORKLOAD
+ * ASSIGNING_WORKLOAD      start                 A7       ASSIGNING_WORKLOAD
  * ASSIGNING_WORKLOAD      sg_assigned [C2]      A10,A9   WORKLOAD_ASSIGNED
  * WORKLOAD_ASSIGNED       start                 A6,A1    STARTING_SGS
  * WORKLOAD_ASSIGNED       assign_workload       A3       ASSIGNING_WORKLOAD
 * 
 *  1.2 State Description
 *  =====================
-* UNINSTANTIATED -  No SUs within the SGs contained in the application have been
+* UNINSTANTIATED -  No SUs within the SGs contained in the Application have been
 *                   instantiated.
 * STARTING_SGS - Waiting for the contained SGs to start.
-* STARTED - No SUs within the SGs contained in the application are in the
+* STARTED - No SUs within the SGs contained in the Application are in the
 *           process of beein instantiated. Either the SUs are instantiated or
 *           instantiation was not possible or instantiation has failed.
 * ASSIGNING_WORKLOAD - Waiting for the contained SGs to indicate they have
@@ -102,9 +104,9 @@
 * 
 *  1.3 Actions
 *  ===========
-*  A1 - [foreach sg in application] sg_start
+*  A1 - [foreach SG in Application] sg_start
 *  A2 -
-*  A3 - [foreach sg in application] sg_assign
+*  A3 - [foreach SG in Application] sg_assign
 *  A4 -
 *  A5 -
 *  A6 - save value of received node parameter
@@ -116,10 +118,10 @@
 * 
 *  1.4 Guards
 *  ==========
-*  C1 - No sg has availability control state == INSTANTIATING_SERVICE_UNITS
-*  C2 - All sgs have availability control state == IDLE
+*  C1 - No SU has presence state == INSTANTIATING
+*  C2 - All SGs have availability control state == IDLE
 *  C3 -
-*  C4 - saved node value != received node value
+*  C4 - Sender is Cluster
 */
 
 #include <assert.h>
@@ -127,15 +129,15 @@
 #include "print.h"
 #include "util.h"
 
-/******************************************************************************
- * Internal (static) utility functions
- *****************************************************************************/
-
 typedef struct application_event {
 	amf_application_event_type_t event_type;  
 	amf_application_t *app;
 	amf_node_t	*node;
 } application_event_t;
+
+/******************************************************************************
+ * Internal (static) utility functions
+ *****************************************************************************/
 
 static	int is_cluster_start(amf_node_t *node_to_start)
 {
@@ -151,7 +153,6 @@ static void application_defer_event (
 	amf_fifo_put (event_type, &app->deferred_events, 
 		sizeof (application_event_t), &app_event);
 }
-
 
 static void application_recall_deferred_events (amf_application_t *app)
 {
@@ -181,6 +182,7 @@ static void application_recall_deferred_events (amf_application_t *app)
 		}
 	}
 }
+
 static void timer_function_application_recall_deferred_events (void *data)
 {
 	amf_application_t *app = (amf_application_t*)data;
@@ -204,7 +206,6 @@ static int no_su_is_instantiating (struct amf_application *app)
 		}
 	}
 	return all_su_instantiated;
-
 }
 
 static int all_sg_assigned (struct amf_application *app)
@@ -247,6 +248,7 @@ static void timer_function_node_application_started (void* app)
 	amf_application_t *application = (amf_application_t*)app;
 	amf_node_application_started (application->node_to_start, application);
 }
+
 static void application_enter_starting_sgs (struct amf_application *app, 
 	struct amf_node *node)
 {
@@ -305,8 +307,6 @@ static void application_enter_workload_assigned (amf_application_t *app)
 		amf_call_function_asynchronous (
 			timer_function_application_recall_deferred_events, app);
 	}
-
-
 }
 
 /******************************************************************************
@@ -337,7 +337,6 @@ void amf_application_start (
 			} else { /*is_not_cluster_start*/
 				application_defer_event (APPLICATION_START_EV, app , node);
 			}
-
 			break;
 		case APP_AC_ASSIGNING_WORKLOAD:
 			log_printf (LOG_LEVEL_ERROR, "Request to start application"
@@ -353,7 +352,6 @@ void amf_application_start (
 			break;
 	}
 }
-
 
 void amf_application_assign_workload (struct amf_application *app, 
 	struct amf_node *node)
@@ -407,6 +405,7 @@ void amf_application_assign_workload (struct amf_application *app,
 /******************************************************************************
  * Event response methods
  *****************************************************************************/
+
 void amf_application_sg_started (struct amf_application *app, struct amf_sg *sg,
 		struct amf_node *node)
 {
@@ -455,6 +454,7 @@ void amf_application_sg_assigned (
 /******************************************************************************
  * General methods
  *****************************************************************************/
+
 void amf_application_init (void)
 {
 	log_init ("AMF");

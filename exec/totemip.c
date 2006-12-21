@@ -163,7 +163,6 @@ int totemip_compare(const void *a, const void *b)
 		}
 	} else
 	if (family == AF_INET6) {
-		int res;
 		/*
 		 * Compare 16 bits at a time the ipv6 address
 		 */

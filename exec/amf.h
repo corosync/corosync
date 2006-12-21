@@ -749,7 +749,6 @@ extern void amf_cluster_sync_ready (struct amf_cluster *cluster,
  * @param app
  */
 extern void amf_cluster_start_applications(struct amf_cluster *cluster);
-extern void amf_cluster_assign_workload (struct amf_cluster *cluster);
 
 /* Response event methods */
 extern void amf_cluster_application_started (
