@@ -1575,12 +1575,13 @@ static void message_handler_req_exec_amf_clc_cleanup_completed (
 {
 	struct req_exec_amf_clc_cleanup_completed *req_exec = message;
 	amf_comp_t *comp;
-	ENTER ("");
 	if (scsm.state != NORMAL_OPERATION) {
 		return;
 	}
 
 	comp = amf_comp_find (amf_cluster, &req_exec->compName);
+	ENTER ("%s",comp->name.value);
+
 	if (comp == NULL) {
 		log_printf (LOG_ERR, "Error: '%s' not found", req_exec->compName.value);
 		return;

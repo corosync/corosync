@@ -499,11 +499,7 @@ void amf_node_comp_failover_req (amf_node_t *node, amf_comp_t *comp)
 			if (comp->su->saAmfSUFailover) {
 				/* SU failover */
 				amf_sg_failover_su_req (comp->su->sg,comp->su, node);
-				
-			} else {
-				/* TODO: component failover */
-				assert (0);
-			}
+			} 
 			break;
 		case NODE_ACSM_IDLE_ESCALLATION_LEVEL_3:
 			if (comp->su->su_failover_cnt < node->saAmfNodeSuFailoverMax) {
@@ -511,13 +507,10 @@ void amf_node_comp_failover_req (amf_node_t *node, amf_comp_t *comp)
 					/* SU failover */
 					amf_sg_failover_su_req (comp->su->sg,comp->su, node);
 					
-				} else {
-					/* TODO: component failover */
-					assert (0);
-				}
+				} 
 			} else {
 				node->history_state = NODE_ACSM_IDLE_ESCALLATION_LEVEL_0;
-				amf_node_failover (node);
+					amf_node_failover (node);
 			}
 			break;
 		default:

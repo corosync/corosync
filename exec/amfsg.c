@@ -83,7 +83,7 @@
  *      initiated.
  *	<3> All active assignments can not be transferred at the same time to the
  *      different components because the rules for dependencies between SI and
- *      SI application wide and CSI and CSI within one SI, has to be respected.
+ *      SI cluster wide and CSI and CSI within one SI, has to be respected.
  *
  * SG is fully responsible for step <1> but not fully responsible for handling
  * step <2> and <3>. However, SG uses an attribute called 'dependency level'
@@ -103,10 +103,11 @@
  *	- administrative state machine (ADSM) (NOT IN THIS RELEASE)
  *	- availability control state machine (ACSM)
  *
- * The availability control state machine contains two states and one of them
+ * The availability control state machine contains three states and one of them
  * is composite. Being a composite state means that it contains substates.
  * The states are:
  * - IDLE (non composite state)
+ * - INSTANTIATING_SERVICE_UNITS
  * - MANAGING_SG (composite state)
  * MANAGING_SG is entered at several different events which has in common
  * the need to set up or change the assignment of SIs to SUs. Only one such
@@ -117,11 +118,11 @@
  * - start (requests SG to order SU to instantiate all SUs in SG and waits
  *			for SU to indicate presence state change reports from the SUs and
  *			finally responds 'started' to the requester)
- * - assign (requests SG to assign SIs to SUs according to pre-configured 
- *			 rules (if not already done) and transfer the HA state of
- *			 the SIs on the requested SI dependency level. Then SG waits for 
- *			 confirmation that the HA state has been succesfully set and 
- *			 finally responds 'assigned' to the reqeuster)
+ * - assign_si (requests SG to assign SIs to SUs according to pre-configured 
+ *			   rules (if not already done) and transfer the HA state of
+ *			   the SIs on the requested SI dependency level. Then SG waits for 
+ *			   confirmation that the HA state has been succesfully set and 
+ *			   finally responds 'assigned' to the reqeuster)
  * - auto_adjust (this event indicates that the auto-adjust probation timer has
  *				  expired and that SG should evaluate current assignments of
  *				  SIs to SUs and if needed remove current assignments and 
@@ -138,6 +139,227 @@
  *				   in 3.12.1.3 and respond to the requester when recovery is
  *                 completed)
  * 
+* 1. SG Availability Control State Machine
+ * ==========================================
+ * 
+ * 1.1  State Transition Table
+ * 
+ * State:              Event:                Action:          New state:
+ * ============================================================================
+ * IDLE				   start			     A48,A28          INSTANTIATING_SUs
+ * IDLE				   assign_si    	     A48,A31          ASSIGNING_ON_REQ
+ * IDLE            	   failover_su           A48,[C22]A10,A11 DEACTIVATING_DEP
+ * IDLE                failover_su           A48,[!C22]A12    TERMINATING_SUSP
+ * IDLE                failover_node         A48,[!C22]A12    TERMINATING_SUSP
+ * IDLE				   failover_node         A48,[C22]A10,A11 DEACTIVATING_DEP
+ * IDLE                failover_node         A48,[C100]A34	  IDLE
+ * INSTANTIATING_SUs   start			     A48,A28          INSTANTIATING_SUs
+ * INSTANTIATING_SUs   su_state_chg          [C101]A26,A53    IDLE		  
+ * INSTANTIATING_SUs   su_state_chg          [C102]A26,A53    IDLE
+ * INSTANTIATING_SUs   assign_si    	     A31              ASSIGNING_ON_REQ
+ * INSTANTIATING_SUs   failover_su           A52			  INSTANTIATING_SUs
+ * INSTANTIATING_SUs   failover_node         A52			  INSTANTIATING_SUs
+ * ASSIGNING_ON_REQ    ha_state_assumed		 [C15]A54		  IDLE
+ * ASSIGNING_ON_REQ    failover_su           A52              ASSIGNING_ON_REQ
+ * ASSIGNING_ON_REQ    failover_node         A52              ASSIGNING_ON_REQ
+ * DEACTIVATING_DEP    si_deactivated		 [C20]            REMOVING_S-BY_ASS
+ * DEACTIVATING_DEP    si_deactivated		 [!C20]A12        TERMINATING_SUSP
+ * TERMINATING_SUSP    su_state_chg          [C103]A24,A20    ASS_S-BY_TO_SPARE
+ * TERMINATING_SUSP    su_state_chg          [C104]A24,A50    REMOVING_S-BY_ASS
+ * TERMINATING_SUSP    su_state_chg          [C105]A16,A17    ACTIVATING_S-BY
+ * TERMINATING_SUSP    su_state_chg          [C106]A20        ASS_S-BY_TO_SPARE
+ * TERMINATING_SUSP    su_state_chg          [C108]A23        REPAIRING_SU
+ * TERMINATING_SUSP    su_state_chg          [C109]           IDLE
+ * TERMINATING_SUSP    failover_su           A52              TERMINATING_SUSP
+ * TERMINATING_SUSP    failover_node         A52              TERMINATING_SUSP
+ * REMOVING_S-BY_ASS   assignment_removed    A51              REMOVING_S-BY_ASS
+ * REMOVING_S-BY_ASS   assignment_removed    [C27]&[C24]      ACTIVATING_S-BY
+ * REMOVING_S-BY_ASS   assignment_removed    [C110]A20        ASS_S-BY_TO_SPARE
+ * REMOVING_S-BY_ASS   assignment_removed    [C111]A23        REPAIRING_SU
+ * REMOVING_S-BY_ASS   assignment_removed    [C112]           IDLE
+ * REMOVING_S-BY_ASS   failover_su           A52              REMOVING_S-BY_ASS
+ * REMOVING_S-BY_ASS   failover_node         A52              REMOVING_S-BY_ASS
+ * ACTIVATING_S-BY     su_activated          [C2]&[C11]A20    ASS_S-BY_TO_SPARE
+ * ACTIVATING_S-BY     su_activated          [C113]A23        REPAIRING_SU
+ * ACTIVATING_S-BY     su_activated          [C114]           IDLE
+ * ACTIVATING_S-BY     failover_su           A52              ACTIVATING_S-BY
+ * ACTIVATING_S-BY     failover_node         A52              ACTIVATING_S-BY
+ * ASS_S-BY_TO_SPARE   ha_state_assumed      [C115]A23        REPAIRING_SU
+ * ASS_S-BY_TO_SPARE   ha_state_assumed      [C116]           IDLE
+ * ASS_S-BY_TO_SPARE   failover_su           A52              ASS_S-BY_TO_SPARE	
+ * ASS_S-BY_TO_SPARE   failover_node         A52              ASS_S-BY_TO_SPARE
+ * REPAIRING_SU        su_state_chg          [C28]A36,A37,A31 ASSIGNING_WL
+ * REPAIRING_SU        su_state_chg          [C28][C31]       IDLE
+ * REPAIRING_SU        failover_su           A52              REPAIRING_SU
+ * REPAIRING_SU        failover_node         A52              REPAIRING_SU
+ * ASSIGNING_WL        ha_state_assumed      [C15]            IDLE
+ * ASSIGNING_WL        failover_su           A52              ASSIGNING_WL
+ * ASSIGNING_WL        failover_node         A52              ASSIGNING_WL
+ * 
+ *  1.2 State Description
+ *  =====================
+ * IDLE 			 -  SG is synchronized and idle. When IDLE state is set,
+ *					  the oldest deferred event (if any) is recalled. 
+ * INSTANTIATING_SUs - INSTANTIATING_SERVICE_UNITS
+ *                    SG has ordered all contained SUs to instantiate and
+ *                    waits for the SUs to report a change of their
+ *                    presence state. SG is also prepared to accept an
+ *                    order to assign workload in this state.
+ * ASSIGNING_ON_REQ  - ASSIGNING_ON_REQUEST
+ *					  SG has on request assigned workload to all service units
+ *					  on the requested dependency level and waits for SIs to
+ *					  indicate that the requested HA-state have been set to the
+ *                    appropriate components.
+ * TERMINATING_SUSP  - TERMINATING_SUSPECTED
+ *					  SG has cleaned up all components suspected to be
+ *                    erroneous and waits for the concerned SUs to report a
+ *                    change of their presence states.
+ * REMOVING_S-BY_ASS - REMOVING_STANDBY_ASSIGNMENTS
+ *                    This state is only applicable to the n-plus-m redundancy
+ *                    model. In this state, SG has initiated the removal of
+ *                    those assignments from standby SUs that do not match the
+ *                    assignments of error suspected SUs. The reason for this
+ *                    removal is a preparation for not violating the rule which
+ *                    says an SU can not have both active and standby assign-
+ *					  ments simultaneously in the n-plus-m redundancy model.
+ * ACTIVATING_S-BY   - ACTIVATING_STANDBY
+ *                    SG has located all standby SI-assignments in the recovery
+ *                    scope and ordered the corresponding SI to set the active
+ *                    HA-state and waits for SI to indicate that the requested
+ *                    HA-state has been set to the appropriate components.
+ * ASS_S-BY_TO_SPARE - ASSIGNING_STANDBY_TO_SPARE
+ *					  Current SG is configured with a spare SU. In this state,
+ *                    SG has requested all SIs to assign the standby HA-state
+ *					  to the spare SU and waits for the SIs to indicate that
+ *					  the standby HA-state have been set.
+ * REPAIRING_SU      - REPAIRING_SU
+ *                    In this state SG has initiated instantiation of all SUs
+ *                    in current recovery scope until the configured preference
+ *                    of number of instantiated SUs is fulfiled. SG then waits
+ *                    for the concerned SUs to report a change of presence
+ *					  state.
+ * ASSIGNING_WL      - ASSIGNING_WORKLOAD
+ *                    In this state SG has initiated the assignment of workload
+ *					  to all or a subset of its contained SUs and waits for the
+ *                    concerned SIs to indicated that the requested HA-state
+ *                    has been assumed.
+ *
+ * 1.3 Actions
+ * ===========
+ * A1  - 
+ * A2  - 
+ * A3  - 
+ * A4  - 
+ * A5  - 
+ * A6  - 
+ * A7  - 
+ * A8  - 
+ * A9  - 
+ * A10 - [foreach SI in the scope]&[foreach SI-assignment with
+ *       confirmed-HA-state == ACTIVE]/set requested-ha-state = QUIESCED
+ * A11 - [foreach SI in the scope]/deactivate SI
+ * A12 - [foreach suspected SU]/terminate all components
+ * A13 - 
+ * A14 - 
+ * A15 - 
+ * A16 - [foreach SI in the scope]&[foreach SI-assignment with
+ *       confirmed-HA-state == STANDBY]/set requested-ha-state = ACTIVE
+ * A17 - [foreach SI in the scope]/activate SI
+ * A18 - 
+ * A19 - 
+ * A20 -
+ * A21 -
+ * A22 -
+ * A23 -
+ * A24 -
+ * A25 -
+ * A26 -
+ * A27 -
+ * A28 -
+ * A29 -
+ * A30 -
+ * A31 -
+ * A32 -
+ * A33 -
+ * A34 -
+ * A35 -
+ * A36 -
+ * A37 -
+ * A38 -
+ * A39 -
+ * A40 -
+ * A41 -
+ * A42 -
+ * A43 -
+ * A44 -
+ * A45 -
+ * A46 -
+ * A47 -
+ * A48 -
+ * A49 -
+
+ * 
+ * 1.4 Composite Guards
+ * ====================
+ * The meaning with these guards is just to save space in the state transition
+ * table above.
+ * C100 - [C7]&[!C22]&[C20]
+ * C101 - [C12]&[C28]
+ * C102 - [C13]&[C28]
+ * C103 - [C6]&[C21]&[C11]
+ * C104 - [C6]&[C25]&[C26]
+ * C105 - [C6]&(!([C25]|[C26]))&[C24]
+ * C106 - [C6]&(!([C25]|[C26]))&[!C24]&[C11]
+ * C107 -
+ * C108 - [C6]&(!([C25]|[C26]))&[!C24]&[!C11]&[C9]&[C10]&[!C30]
+ * C109 - [C6]&(!([C25]|[C26]))&[!C24]&[!C11]&[C9]&[C10]&[C30]
+ * C110 - [C27]&[!C24]&[C11]
+ * C111 - [C27]&[!C24]&[!C11]&[C9]&[C10]&[!C30]
+ * C112 - [C27]&[!C24]&[!C11]&[C9]&[C10]&[C30]
+ * C113 - [C2]&[!C11]&[C9]&[C10]&[!C30]
+ * C114 - [C2]&[!C11]&[C9]&[C10]&[C30]
+ * C115 - [C9]&[C10]&[!C30]
+ * C116 - [C9]&[C10]&[C30]
+ * 
+ * 1.4 Guards
+ * ==========
+ * C1  -
+ * C2  - all SI in the recovery scope
+ * C3  - 
+ * C4  -
+ * C5  -
+ * C6  - all supected SUs or components have presence state == UNINSTANTIATED
+ *       or presence state == INSTANTIATION_FAILED
+ * C7  - original event == failover node
+ * C8  -
+ * C9  - original event == failover su
+ * C10 - SaAmfSGAutoRepair == true
+ * C11 - spare SUs exist
+ * C12 - original event == start(all SUs)
+ * C13 - original event == start(node)
+ * C14 -
+ * C15 - all SI-assignments on current dependency-level have requested-ha-state
+         == confirmed-ha-state or operation failed
+ * C16 -
+ * C17 -
+ * C18 -
+ * C19 -
+ * C20 - all suspected SUs have presence state == UNINSTANTIATED or
+         presence state == xx_FAILED
+ * C21 - no SI in the scope has an SI-assignment with HA-state == STANDBY
+ * C22 - the concerned entity has ACTIVE HA-state
+ * C23 -
+ * C24 - at least one SI-assignment related to an SI in the scope has HA-state
+         == STANDBY
+ * C25 - redundancy model == N plus M
+ * C26 - at least one SU has STANDBY assignments for more SIs than those SIs
+         that are within the recovery scope
+ * C27 - no SI-assignment related to SI protected by current SG has requested
+         HA-state == REMOVED
+ * C28 - no SU has presence state == INSTANTIATING
+ * C29 - 
+ * C30 - more SUs not needed or the node hosting the SU to repair is disabled.
+ * C31 - no new additional assignments needed or possible
  */
 
 #include <stdlib.h>
@@ -154,8 +376,10 @@ static void delete_si_assignments_in_scope (struct amf_sg *sg);
 static void acsm_enter_repairing_su (struct amf_sg *sg);
 static void standby_su_activated_cbfn (
 	struct amf_si_assignment *si_assignment, int result);
-
 static void dependent_si_deactivated_cbfn (
+	struct amf_si_assignment *si_assignment, int result);
+static void dependent_si_deactivated_cbfn2 (struct amf_sg *sg);
+static void assign_si_assumed_cbfn (
 	struct amf_si_assignment *si_assignment, int result);
 static void acsm_enter_removing_standby_assignments (amf_sg_t *sg);
 static void acsm_enter_assigning_standby_to_spare (amf_sg_t *sg);
@@ -178,6 +402,10 @@ typedef struct sg_event {
 	amf_comp_t *comp;
 	amf_node_t *node;
 } sg_event_t;
+
+/******************************************************************************
+ * Internal (static) utility functions
+ *****************************************************************************/
 
 static	int is_cluster_start(amf_node_t *node_to_start) 
 {
@@ -400,45 +628,6 @@ static inline int su_presense_state_is_not (amf_su_t *su,
 		state2 && su->saAmfSUPresenceState !=  state3) ? 1 : 0;
 }
 
-/**
- * Callback function used by SI when there is no dependent SI to
- * deactivate.
- * @param sg
- */
-static void dependent_si_deactivated_cbfn2 (struct amf_sg *sg)
-{
-	struct amf_su **sus = sg->recovery_scope.sus;
-
-	ENTER("'%s'", sg->name.value);
-
-	/*
-	 * Select next state depending on if some
-	 * SU in the scope is needs to be terminated.
-	 */
-
-	while (*sus != NULL) {
-		amf_su_t *su = *sus;
-
-		ENTER("SU %s pr_state='%d'",su->name.value, 
-			su->saAmfSUPresenceState);
-
-		if (su_presense_state_is_ored (su,
-			SA_AMF_PRESENCE_UNINSTANTIATED,
-			SA_AMF_PRESENCE_TERMINATION_FAILED,
-			SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
-			sus++;
-			continue;
-		}
-		break;
-	}
-
-	if (*sus != NULL) {
-		acsm_enter_terminating_suspected (sg);
-	} else {
-		delete_si_assignments_in_scope(sg);         
-		acsm_enter_removing_standby_assignments (sg);
-	}
-}
 
 static void timer_function_dependent_si_deactivated2 (void *data)
 {
@@ -678,66 +867,6 @@ static int is_all_si_assigned (amf_sg_t *sg)
 		}
 	}
 	return (confirmed_assignments == si_assignment_cnt);
-}
-
-static void assign_si_assumed_cbfn (
-	struct amf_si_assignment *si_assignment, int result)
-{
-	struct amf_sg *sg = si_assignment->su->sg;
-	int si_assignment_cnt = 0;
-	int confirmed_assignments = 0;
-
-	ENTER ("'%s', %d", si_assignment->si->name.value, result);
-
-
-	switch (sg->avail_state) {
-		case SG_AC_AssigningOnRequest:
-			if (is_all_si_assigned (sg)) {
-				acsm_enter_idle (sg);
-				amf_application_sg_assigned (sg->application, sg);
-			} else {
-				dprintf ("%d, %d", si_assignment_cnt, confirmed_assignments);
-			}
-			break;
-		case SG_AC_AssigningStandBy:
-			{
-				if (is_all_si_assigned(sg)) {
-					acsm_enter_idle (sg);
-				}
-				break;
-			}
-		case SG_AC_AssigningStandbyToSpare: 
-			{
-				if(is_all_si_assigned (sg)) {
-					/*
-					 * All si_assignments has asumed
-					 * Prescense state SA_AMF_HA_STANDBY
-					 */
-					switch (sg->recovery_scope.event_type) {
-						case SG_FAILOVER_NODE_EV:
-							acsm_enter_idle (sg);
-							break;
-						case SG_FAILOVER_SU_EV:
-							if (sg->saAmfSGAutoRepair == SA_TRUE) {
-								acsm_enter_repairing_su (sg);
-							} 
-							break;
-						default:
-							assert (0);
-							break;
-					}
-				} else {
-					si_assignment->saAmfSISUHAState = SA_AMF_HA_STANDBY;
-				}
-			}
-			break;
-		default:
-			dprintf ("%d, %d, %d", sg->avail_state, si_assignment_cnt,
-				confirmed_assignments);
-			amf_runtime_attributes_print (amf_cluster);
-			assert (0);
-			break;
-	}
 }
 
 /**
@@ -1252,94 +1381,6 @@ static void acsm_enter_removing_standby_assignments (amf_sg_t *sg)
 	}
 }
 
-/**
- * Callback function used by SI when an SI has been deactivated.
- * @param si_assignment
- * @param result
- */
-static void dependent_si_deactivated_cbfn (
-	struct amf_si_assignment *si_assignment, int result)
-{
-	struct amf_sg *sg = si_assignment->su->sg;
-	struct amf_su **sus = sg->recovery_scope.sus;
-	struct amf_su *su;
-
-	ENTER ("'%s', %d", si_assignment->si->name.value, result);
-
-	/*
-	 * If all SI assignments for all SUs in the SG are not pending,
-	 * goto next state (TerminatingSuspected).
-	 */
-	for (su = sg->su_head ; su != NULL; su = su->next) {
-		struct amf_si_assignment *si_assignment;
-		si_assignment = amf_su_get_next_si_assignment(su, NULL);
-
-		while (si_assignment != NULL) {
-			if (si_assignment->saAmfSISUHAState != 
-				si_assignment->requested_ha_state) {
-				goto still_wating;
-			}
-			si_assignment = amf_su_get_next_si_assignment(su, 
-				si_assignment);
-		}
-	}
-
-still_wating:
-
-	if (su == NULL) {
-		sus = si_assignment->su->sg->recovery_scope.sus;
-
-		/*
-		 * Select next state depending on if some
-		 * SU in the scope is needs to be terminated.
-		 */
-
-		while (*sus != NULL) {
-			if (su_presense_state_is_not (*sus,
-				SA_AMF_PRESENCE_UNINSTANTIATED,
-				SA_AMF_PRESENCE_TERMINATION_FAILED,
-				SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
-				break;
-			}
-			sus++;
-		}
-		if (*sus != NULL) {
-			acsm_enter_terminating_suspected (sg);
-		} else {
-			acsm_enter_removing_standby_assignments (sg);
-		}
-	}
-	LEAVE("");
-}
-
-static void standby_su_activated_cbfn (
-	struct amf_si_assignment *si_assignment, int result)
-{
-	struct amf_su **sus = si_assignment->su->sg->recovery_scope.sus;
-	struct amf_si **sis = si_assignment->su->sg->recovery_scope.sis;
-
-	ENTER ("'%s', %d", si_assignment->si->name.value, result);
-
-	/*
-	 * If all SI assignments for all SIs in the scope are activated, goto next
-	 * state.
-	 */
-
-	while (*sis != NULL) {
-		if ((*sis)->assigned_sis != NULL &&
-			(*sis)->assigned_sis->saAmfSISUHAState != SA_AMF_HA_ACTIVE) {
-			break;
-		}
-		sis++;
-	}
-
-	if (*sis == NULL) {
-
-		acsm_enter_assigning_standby_to_spare ((*sus)->sg);
-	}
-}
-
-
 static inline int div_round (int a, int b)
 {
 	int res;
@@ -1475,7 +1516,7 @@ static int amf_si_get_saAmfSINumReqStandbyAssignments(struct amf_si *si)
 	return number_of_req_active_assignments;
 }
 
-static int sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
+static int sg_assign_active_nplusm (struct amf_sg *sg, int su_active_assign)
 {
 	struct amf_su *su;
 	struct amf_si *si;
@@ -1537,7 +1578,7 @@ static int sg_assign_nm_active (struct amf_sg *sg, int su_active_assign)
 	return total_assigned;
 }
 
-static int sg_assign_nm_standby (struct amf_sg *sg, int su_standby_assign)
+static int sg_assign_standby_nplusm (struct amf_sg *sg, int su_standby_assign)
 {
 	struct amf_su *su;
 	struct amf_si *si;
@@ -1659,9 +1700,16 @@ static int su_standby_out_of_service_count_get (amf_sg_t *sg)
 }
 
 /**
+ * This function calculates the number of active and standby assignments that
+ * shall be done according to what is configured and the number of in-service
+ * SUs available. This function leaves possible existing assignments as they are
+ * but possibly adds new assignments. This function also initiates the transfer
+ * of the calculated assignments to the SUs that shall execute them.
+ * 
  * TODO: dependency_level not used, hard coded
  * @param sg
  * @param dependency_level
+ * @return - the sum of assignments initiated
  */
 static int assign_si (struct amf_sg *sg, int dependency_level)
 {
@@ -1770,8 +1818,8 @@ static int assign_si (struct amf_sg *sg, int dependency_level)
 		inservice_count, su_active_assign, su_standby_assign, su_spare_assign);
 
 	if (inservice_count > 0) {
-		assigned = sg_assign_nm_active (sg, su_active_assign);
-		assigned += sg_assign_nm_standby (sg, su_standby_assign);
+		assigned = sg_assign_active_nplusm (sg, su_active_assign);
+		assigned += sg_assign_standby_nplusm (sg, su_standby_assign);
 		sg->saAmfSGNumCurrAssignedSUs = inservice_count;
 
 		/**
@@ -1856,7 +1904,41 @@ static void remove_sis_for_term_failed_su_from_scope (amf_sg_t *sg,
 #endif
 
 /**
- * sg_su_state_changed_in_instantiated
+ * This function returns 1 if the redundancy model is N plus M and at least one
+ * component of the specified SU has an active HA-state, else the function
+ * returns 0.
+ * @param sg
+ * @param su
+ * @return int
+ */
+static int is_comp_in_active_ha_state_nplusm (
+	amf_sg_t *sg, amf_su_t *su)
+{
+	amf_comp_t *component;
+	amf_csi_assignment_t *csi_assignment;
+	int comp_is_in_active_ha_state = 0;
+
+	if(sg->saAmfSGRedundancyModel == SA_AMF_NPM_REDUNDANCY_MODEL) {
+		for (component = su->comp_head; component != NULL; 
+			  component = component->next) {
+			csi_assignment = amf_comp_get_next_csi_assignment(component, NULL);
+			while (csi_assignment != NULL) {
+				if (csi_assignment->saAmfCSICompHAState == SA_AMF_HA_ACTIVE) {
+					comp_is_in_active_ha_state = 1;
+					goto out;
+				}
+				csi_assignment = amf_comp_get_next_csi_assignment(component, 
+					csi_assignment);
+			}
+		}
+	}
+out:
+	return comp_is_in_active_ha_state;
+}
+
+/**
+ * This function handles a change of presence state reported by an SU contained
+ * in specified SG. The new presence state is INSTANTIATED.
  * @param sg
  * @param su
  */
@@ -1878,7 +1960,7 @@ static void sg_su_state_changed_to_instantiated (struct amf_sg *sg, struct amf_s
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -1896,7 +1978,8 @@ static void sg_su_state_changed_to_instantiated (struct amf_sg *sg, struct amf_s
 }
 
 /**
- * amf_sg_su_state_changed_in_uninstantiated
+ * This function handles a change of presence state reported by an SU contained
+ * in specified SG. The new presence state is UNINSTANTIATED.
  * @param sg
  * @param su
  */
@@ -1932,7 +2015,7 @@ static void amf_sg_su_state_changed_to_uninstantiated (amf_sg_t *sg,
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -1946,33 +2029,9 @@ static void amf_sg_su_state_changed_to_uninstantiated (amf_sg_t *sg,
 	}
 }
 
-static int npm_and_comp_in_active_ha_state (
-	amf_sg_t *sg, amf_su_t *su)
-{
-	amf_comp_t *component;
-	amf_csi_assignment_t *csi_assignment;
-	int comp_is_in_active_ha_state = 0;
-
-	if(sg->saAmfSGRedundancyModel == SA_AMF_NPM_REDUNDANCY_MODEL) {
-		for (component = su->comp_head; component != NULL; 
-			  component = component->next) {
-			csi_assignment = amf_comp_get_next_csi_assignment(component, NULL);
-			while (csi_assignment != NULL) {
-				if (csi_assignment->saAmfCSICompHAState == SA_AMF_HA_ACTIVE) {
-					comp_is_in_active_ha_state = 1;
-					goto out;
-				}
-				csi_assignment = amf_comp_get_next_csi_assignment(component, 
-					csi_assignment);
-			}
-		}
-	}
-out:
-	return comp_is_in_active_ha_state;
-}
-
 /**
- * amf_sg_su_state_changed_in_termination_failed
+ * This function handles a change of presence state reported by an SU contained
+ * in specified SG. The new presence state is TERMINATION_FAILED.
  * @param sg
  * @param su
  */
@@ -1981,12 +2040,12 @@ static void amf_sg_su_state_changed_to_termination_failed (amf_sg_t *sg,
 {
 	ENTER("%s %s",sg->name.value, su->name.value);
 	if (no_su_has_presence_state(sg, sg->node_to_start, 
-		SA_AMF_PRESENCE_INSTANTIATING)) {
-		if (npm_and_comp_in_active_ha_state (sg, su)) {
+		SA_AMF_PRESENCE_TERMINATING)) {
+		if (is_comp_in_active_ha_state_nplusm (sg, su)) {
 			acsm_enter_idle (sg);
 			goto out;
 		}
-		
+
 		if (all_su_in_scope_has_either_two_presence_state (sg,
 			SA_AMF_PRESENCE_UNINSTANTIATED,
 			SA_AMF_PRESENCE_TERMINATION_FAILED)) {
@@ -2005,8 +2064,10 @@ static void amf_sg_su_state_changed_to_termination_failed (amf_sg_t *sg,
 out:
 	return;
 }
+
 /**
- * amf_sg_su_state_changed_in_instantiation_failed
+ * This function handles a change of presence state reported by an SU contained
+ * in specified SG. The new presence state is INSTANTIATION_FAILED.
  * @param sg
  * @param su
  */
@@ -2029,7 +2090,7 @@ static void amf_sg_su_state_changed_to_instantiation_failed (amf_sg_t *sg,
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -2043,85 +2104,17 @@ static void amf_sg_su_state_changed_to_instantiation_failed (amf_sg_t *sg,
 	}
 }
 
-int amf_sg_assign_si_req (struct amf_sg *sg, int dependency_level)
-{
-	int posible_to_assign_si;
-	sg->recovery_scope.event_type = SG_ASSIGN_SI_EV;
-	sg->avail_state = SG_AC_AssigningOnRequest;
+/******************************************************************************
+ * Event methods
+ *****************************************************************************/
 
-	if ((posible_to_assign_si = assign_si (sg, dependency_level)) == 0) {
-		acsm_enter_idle (sg);
-	}
-	return posible_to_assign_si;
-}
-
-
-void amf_sg_failover_node_req (struct amf_sg *sg, struct amf_node *node) 
-{
-	ENTER("'%s, %s'",node->name.value, sg->name.value);
-	sg_event_t sg_event;
-
-	switch (sg->avail_state) {
-		case SG_AC_Idle:
-			set_scope_for_failover_node(sg, node);
-			if (has_any_su_in_scope_active_workload (sg)) {
-				acsm_enter_deactivating_dependent_workload (sg);
-			} else {
-				amf_su_t **sus = sg->recovery_scope.sus;
-
-				/*
-				 * Select next state depending on if some
-				 * SU in the scope needs to be terminated.
-				 */
-				while (*sus != NULL) {
-
-					amf_su_t *su = *sus;
-					ENTER("SU %s pr_state='%d'",su->name.value,
-						su->saAmfSUPresenceState);
-
-					if (su_presense_state_is_ored (su,
-						SA_AMF_PRESENCE_UNINSTANTIATED,
-						SA_AMF_PRESENCE_TERMINATION_FAILED,
-						SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
-						sus++;
-						continue;
-					}
-					break;
-				}
-
-				if (*sus != NULL) {
-					acsm_enter_terminating_suspected (sg);
-				} else {
-					delete_si_assignments_in_scope (sg);
-					acsm_enter_idle (sg);         
-				}
-
-			} 
-			break;
-		case SG_AC_DeactivatingDependantWorkload:
-		case SG_AC_TerminatingSuspected:
-		case SG_AC_ActivatingStandby:
-		case SG_AC_AssigningStandbyToSpare:
-		case SG_AC_ReparingComponent:
-		case SG_AC_ReparingSu:
-		case SG_AC_AssigningOnRequest:
-		case SG_AC_InstantiatingServiceUnits:
-		case SG_AC_RemovingAssignment:
-		case SG_AC_AssigningActiveworkload:
-		case SG_AC_AssigningAutoAdjust:
-		case SG_AC_AssigningStandBy:
-		case SG_AC_WaitingAfterOperationFailed:
-		case SG_AC_RemovingStandbyAssignments:
-			sg_set_event (SG_FAILOVER_NODE_EV, sg, 0, 0, node, &sg_event); 
-			sg_defer_event (SG_FAILOVER_NODE_EV, &sg_event); 
-			break;
-		default:
-			assert (0);
-			break;
-
-	}
-}
-
+/**
+ * This function starts all SUs in the SG or all SUs on a specified node.
+ * @param sg
+ * @param node - Node on which all SUs shall be started or
+ *               NULL indicating that all SUs on all nodes shall be started.
+ * @return - No of SUs that has been attempted to start
+ */
 int amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 {
 
@@ -2182,7 +2175,7 @@ int amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 		case SG_AC_RemovingAssignment:
 		case SG_AC_AssigningActiveworkload:
 		case SG_AC_AssigningAutoAdjust:
-		case SG_AC_AssigningStandBy:
+		case SG_AC_AssigningWorkload:
 		case SG_AC_WaitingAfterOperationFailed:
 		case SG_AC_RemovingStandbyAssignments:
 		default:
@@ -2191,6 +2184,153 @@ int amf_sg_start (struct amf_sg *sg, struct amf_node *node)
 	}
 	return instantiated_sus;
 }
+
+/**
+ * This function initiates assignment of the subset of the workload which
+ * matches the specified workload dependency level, to all SUs contained in the
+ * SG according to the requirements specified in the configuration.
+ * @param sg -
+ * @param dependency_level - Dependency level to assign
+ * @return - No of SUs that has been attempted to start
+ */
+int amf_sg_assign_si_req (struct amf_sg *sg, int dependency_level)
+{
+/* TODO: Introduce state control in this function 
+ */
+	int posible_to_assign_si;
+	sg->recovery_scope.event_type = SG_ASSIGN_SI_EV;
+	sg->avail_state = SG_AC_AssigningOnRequest;
+
+	if ((posible_to_assign_si = assign_si (sg, dependency_level)) == 0) {
+		acsm_enter_idle (sg);
+	}
+	return posible_to_assign_si;
+}
+
+/**
+ * This function is called because an error has been detected and the analysis
+ * (done elsewhere) indicated that this error shall be recovered by a Node
+ * failover. This function initiates the recovery action 'Node failover'.
+ * @param sg
+ * @param su - SU to failover
+ * @param node -
+ */
+void amf_sg_failover_node_req (struct amf_sg *sg, struct amf_node *node) 
+{
+	ENTER("'%s, %s'",node->name.value, sg->name.value);
+	sg_event_t sg_event;
+
+	switch (sg->avail_state) {
+		case SG_AC_Idle:
+			set_scope_for_failover_node(sg, node);
+			if (has_any_su_in_scope_active_workload (sg)) {
+				acsm_enter_deactivating_dependent_workload (sg);
+			} else {
+				amf_su_t **sus = sg->recovery_scope.sus;
+
+				/*
+				 * Select next state depending on if some
+				 * SU in the scope needs to be terminated.
+				 */
+				while (*sus != NULL) {
+
+					amf_su_t *su = *sus;
+					ENTER("SU %s pr_state='%d'",su->name.value,
+						su->saAmfSUPresenceState);
+
+					if (su_presense_state_is_ored (su,
+						SA_AMF_PRESENCE_UNINSTANTIATED,
+						SA_AMF_PRESENCE_TERMINATION_FAILED,
+						SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+						sus++;
+						continue;
+					}
+					break;
+				}
+
+				if (*sus != NULL) {
+					acsm_enter_terminating_suspected (sg);
+				} else {
+					delete_si_assignments_in_scope (sg);
+					acsm_enter_idle (sg);         
+				}
+
+			} 
+			break;
+		case SG_AC_DeactivatingDependantWorkload:
+		case SG_AC_TerminatingSuspected:
+		case SG_AC_ActivatingStandby:
+		case SG_AC_AssigningStandbyToSpare:
+		case SG_AC_ReparingComponent:
+		case SG_AC_ReparingSu:
+		case SG_AC_AssigningOnRequest:
+		case SG_AC_InstantiatingServiceUnits:
+		case SG_AC_RemovingAssignment:
+		case SG_AC_AssigningActiveworkload:
+		case SG_AC_AssigningAutoAdjust:
+		case SG_AC_AssigningWorkload:
+		case SG_AC_WaitingAfterOperationFailed:
+		case SG_AC_RemovingStandbyAssignments:
+			sg_set_event (SG_FAILOVER_NODE_EV, sg, 0, 0, node, &sg_event); 
+			sg_defer_event (SG_FAILOVER_NODE_EV, &sg_event); 
+			break;
+		default:
+			assert (0);
+			break;
+
+	}
+}
+
+/**
+ * This function is called because an error has been detected and the analysis
+ * (done elsewhere) indicated that this error shall be recovered by an SU
+ * failover. This function initiates the recovery action 'SU failover'.
+ * @param sg
+ * @param su - SU to failover
+ * @param node -
+ */
+void amf_sg_failover_su_req (struct amf_sg *sg, struct amf_su *su, 
+	struct amf_node *node)
+{
+	ENTER ("%s", su->name.value);
+	sg_event_t sg_event;
+
+	switch (sg->avail_state) {
+		case SG_AC_Idle:
+			su->su_failover_cnt += 1;
+			set_scope_for_failover_su (sg, su);
+			if (has_any_su_in_scope_active_workload (sg)) {
+				acsm_enter_deactivating_dependent_workload (sg);
+			} else {
+				acsm_enter_terminating_suspected (sg);
+			}
+			break;
+		case SG_AC_DeactivatingDependantWorkload:
+		case SG_AC_TerminatingSuspected:
+		case SG_AC_ActivatingStandby:
+		case SG_AC_AssigningStandbyToSpare:
+		case SG_AC_ReparingComponent:
+		case SG_AC_ReparingSu:
+		case SG_AC_AssigningOnRequest:
+		case SG_AC_InstantiatingServiceUnits:
+		case SG_AC_RemovingAssignment:
+		case SG_AC_AssigningActiveworkload:
+		case SG_AC_AssigningAutoAdjust:
+		case SG_AC_AssigningWorkload:
+		case SG_AC_WaitingAfterOperationFailed:
+		case SG_AC_RemovingStandbyAssignments:
+			sg_set_event (SG_FAILOVER_SU_EV, sg, su, 0, 0, &sg_event); 
+			sg_defer_event (SG_FAILOVER_SU_EV, &sg_event); 
+			break;
+		default:
+			assert (0);
+			break;
+	}
+}
+
+/******************************************************************************
+ * Event response methods
+ *****************************************************************************/
 
 #ifdef COMPILE_OUT
 void amf_sg_su_state_changed_2 (struct amf_sg *sg, 
@@ -2212,7 +2352,7 @@ void amf_sg_su_state_changed_2 (struct amf_sg *sg,
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -2247,7 +2387,7 @@ void amf_sg_su_state_changed_2 (struct amf_sg *sg,
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -2293,7 +2433,7 @@ void amf_sg_su_state_changed_2 (struct amf_sg *sg,
 					SA_AMF_PRESENCE_INSTANTIATED,
 					SA_AMF_PRESENCE_INSTANTIATION_FAILED,
 					SA_AMF_PRESENCE_UNINSTANTIATED)) {
-					su->sg->avail_state = SG_AC_AssigningStandBy;
+					su->sg->avail_state = SG_AC_AssigningWorkload;
 					if (assign_si (sg, 0) == 0) {
 						acsm_enter_idle (sg);
 					}
@@ -2312,80 +2452,255 @@ void amf_sg_su_state_changed_2 (struct amf_sg *sg,
 }
 #endif
 
+/**
+ * SU indicates to SG that one of its state machines has changed state.
+ * @param sg - SG which contains the SU that has changed state
+ * @param su - SU which has changed state
+ * @param type - Indicates which state machine that has changed state
+ * @param state - The new state that has been assumed.
+ * 
+ */
 void amf_sg_su_state_changed (struct amf_sg *sg, struct amf_su *su, 
 	SaAmfStateT type, int state)
 {
 	ENTER ("'%s' SU '%s' state %s",
 		sg->name.value, su->name.value, amf_presence_state(state));
-
-	if (type == SA_AMF_PRESENCE_STATE) {
-		switch (state) {
-			case SA_AMF_PRESENCE_INSTANTIATED:
-				sg_su_state_changed_to_instantiated(sg, su);
-				break;
-			case SA_AMF_PRESENCE_UNINSTANTIATED:
-				amf_sg_su_state_changed_to_uninstantiated(sg, su);
-				break;
-			case SA_AMF_PRESENCE_TERMINATION_FAILED:
-				amf_sg_su_state_changed_to_termination_failed(sg, su);
-				break;
-			case SA_AMF_PRESENCE_INSTANTIATING:
-				; /* nop */
-				break;
-			case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
-				amf_sg_su_state_changed_to_instantiation_failed(sg, su);
-				break;
-			default :
-				dprintf("sg->avail_state = %d, su instantiation state = %d",
-					sg->avail_state, state);
-				assert (0);
-				break;
+	if (sg->avail_state != SG_AC_Idle) {
+		if (type == SA_AMF_PRESENCE_STATE) {
+			switch (state) {
+				case SA_AMF_PRESENCE_INSTANTIATED:
+					sg_su_state_changed_to_instantiated(sg, su);
+					break;
+				case SA_AMF_PRESENCE_UNINSTANTIATED:
+					amf_sg_su_state_changed_to_uninstantiated(sg, su);
+					break;
+				case SA_AMF_PRESENCE_TERMINATION_FAILED:
+					amf_sg_su_state_changed_to_termination_failed(sg, su);
+					break;
+				case SA_AMF_PRESENCE_INSTANTIATING:
+					; /* nop */
+					break;
+				case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
+					amf_sg_su_state_changed_to_instantiation_failed(sg, su);
+					break;
+				default :
+					dprintf("sg->avail_state = %d, su instantiation state = %d",
+						sg->avail_state, state);
+					assert (0);
+					break;
+			}
 		}
 	}
+
 }
+
+/**
+ * Callback function used by SI when there is no dependent SI to
+ * deactivate.
+ * @param sg
+ */
+static void dependent_si_deactivated_cbfn2 (struct amf_sg *sg)
+{
+	struct amf_su **sus = sg->recovery_scope.sus;
+
+	ENTER("'%s'", sg->name.value);
+
+	/*
+	 * Select next state depending on if some
+	 * SU in the scope needs to be terminated.
+	 */
+
+	while (*sus != NULL) {
+		amf_su_t *su = *sus;
+
+		ENTER("SU %s pr_state='%d'",su->name.value, 
+			su->saAmfSUPresenceState);
+
+		if (su_presense_state_is_ored (su,
+			SA_AMF_PRESENCE_UNINSTANTIATED,
+			SA_AMF_PRESENCE_TERMINATION_FAILED,
+			SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+			sus++;
+			continue;
+		}
+		break;
+	}
+
+	if (*sus != NULL) {
+		acsm_enter_terminating_suspected (sg);
+	} else {
+		delete_si_assignments_in_scope(sg);         
+		acsm_enter_removing_standby_assignments (sg);
+	}
+}
+
+/**
+ * Callback function used by SI when an SI has been deactivated, i.e.
+ * transitioned from active HA-state to any other state.
+ * @param si_assignment
+ * @param result - Indicates the result of the operation.
+ */
+static void dependent_si_deactivated_cbfn (
+	struct amf_si_assignment *si_assignment, int result)
+{
+	struct amf_sg *sg = si_assignment->su->sg;
+	struct amf_su **sus = sg->recovery_scope.sus;
+	struct amf_su *su;
+
+	ENTER ("'%s', %d", si_assignment->si->name.value, result);
+
+	/*
+	 * If all SI assignments for all SUs in the SG are not pending,
+	 * goto next state (TerminatingSuspected).
+	 */
+	for (su = sg->su_head ; su != NULL; su = su->next) {
+		struct amf_si_assignment *si_assignment;
+		si_assignment = amf_su_get_next_si_assignment(su, NULL);
+
+		while (si_assignment != NULL) {
+			if (si_assignment->saAmfSISUHAState != 
+				si_assignment->requested_ha_state) {
+				goto still_wating;
+			}
+			si_assignment = amf_su_get_next_si_assignment(su, 
+				si_assignment);
+		}
+	}
+
+still_wating:
+
+	if (su == NULL) {
+		sus = si_assignment->su->sg->recovery_scope.sus;
+
+		/*
+		 * Select next state depending on if some
+		 * SU in the scope is needs to be terminated.
+		 */
+
+		while (*sus != NULL) {
+			if (su_presense_state_is_not (*sus,
+				SA_AMF_PRESENCE_UNINSTANTIATED,
+				SA_AMF_PRESENCE_TERMINATION_FAILED,
+				SA_AMF_PRESENCE_INSTANTIATION_FAILED)) {
+				break;
+			}
+			sus++;
+		}
+		if (*sus != NULL) {
+			acsm_enter_terminating_suspected (sg);
+		} else {
+			acsm_enter_removing_standby_assignments (sg);
+		}
+	}
+	LEAVE("");
+}
+
+/**
+ * Callback function used by SI to indicate an SI has assumed a new HA-state or
+ * that the attempt to do so failed.
+ * @param si_assignment
+ * @param result - Indicates the result of the operation.
+ */
+static void assign_si_assumed_cbfn (
+	struct amf_si_assignment *si_assignment, int result)
+{
+	struct amf_sg *sg = si_assignment->su->sg;
+	int si_assignment_cnt = 0;
+	int confirmed_assignments = 0;
+
+	ENTER ("'%s', %d", si_assignment->si->name.value, result);
+
+
+	switch (sg->avail_state) {
+		case SG_AC_AssigningOnRequest:
+			if (is_all_si_assigned (sg)) {
+				acsm_enter_idle (sg);
+				amf_application_sg_assigned (sg->application, sg);
+			} else {
+				dprintf ("%d, %d", si_assignment_cnt, confirmed_assignments);
+			}
+			break;
+		case SG_AC_AssigningWorkload:
+			{
+				if (is_all_si_assigned(sg)) {
+					acsm_enter_idle (sg);
+				}
+				break;
+			}
+		case SG_AC_AssigningStandbyToSpare: 
+			{
+				if(is_all_si_assigned (sg)) {
+					/*
+					 * All si_assignments has asumed
+					 * Prescense state SA_AMF_HA_STANDBY
+					 */
+					switch (sg->recovery_scope.event_type) {
+						case SG_FAILOVER_NODE_EV:
+							acsm_enter_idle (sg);
+							break;
+						case SG_FAILOVER_SU_EV:
+							if (sg->saAmfSGAutoRepair == SA_TRUE) {
+								acsm_enter_repairing_su (sg);
+							} 
+							break;
+						default:
+							assert (0);
+							break;
+					}
+				} else {
+					si_assignment->saAmfSISUHAState = SA_AMF_HA_STANDBY;
+				}
+			}
+			break;
+		default:
+			dprintf ("%d, %d, %d", sg->avail_state, si_assignment_cnt,
+				confirmed_assignments);
+			amf_runtime_attributes_print (amf_cluster);
+			assert (0);
+			break;
+	}
+}
+
+/**
+ * Callback function used by SI when an SI has been activated, i.e. transitioned
+ * from any HA-state to an active HA-state.
+ * @param si_assignment
+ * @param result - Indicates the result of the operation.
+ */
+static void standby_su_activated_cbfn (
+	struct amf_si_assignment *si_assignment, int result)
+{
+	struct amf_su **sus = si_assignment->su->sg->recovery_scope.sus;
+	struct amf_si **sis = si_assignment->su->sg->recovery_scope.sis;
+
+	ENTER ("'%s', %d", si_assignment->si->name.value, result);
+
+	/*
+	 * If all SI assignments for all SIs in the scope are activated, goto next
+	 * state.
+	 */
+
+	while (*sis != NULL) {
+		if ((*sis)->assigned_sis != NULL &&
+			(*sis)->assigned_sis->saAmfSISUHAState != SA_AMF_HA_ACTIVE) {
+			break;
+		}
+		sis++;
+	}
+
+	if (*sis == NULL) {
+
+		acsm_enter_assigning_standby_to_spare ((*sus)->sg);
+	}
+}
+
+/******************************************************************************
+ * General methods
+ *****************************************************************************/
 
 void amf_sg_init (void)
 {
 	log_init ("AMF");
-}
-
-void amf_sg_failover_su_req (struct amf_sg *sg, struct amf_su *su, 
-	struct amf_node *node)
-{
-	ENTER ("%s", su->name.value);
-	sg_event_t sg_event;
-
-	switch (sg->avail_state) {
-		case SG_AC_Idle:
-			su->su_failover_cnt += 1;
-			set_scope_for_failover_su (sg, su);
-			if (has_any_su_in_scope_active_workload (sg)) {
-				acsm_enter_deactivating_dependent_workload (sg);
-			} else {
-				acsm_enter_terminating_suspected (sg);
-			}
-			break;
-		case SG_AC_DeactivatingDependantWorkload:
-		case SG_AC_TerminatingSuspected:
-		case SG_AC_ActivatingStandby:
-		case SG_AC_AssigningStandbyToSpare:
-		case SG_AC_ReparingComponent:
-		case SG_AC_ReparingSu:
-		case SG_AC_AssigningOnRequest:
-		case SG_AC_InstantiatingServiceUnits:
-		case SG_AC_RemovingAssignment:
-		case SG_AC_AssigningActiveworkload:
-		case SG_AC_AssigningAutoAdjust:
-		case SG_AC_AssigningStandBy:
-		case SG_AC_WaitingAfterOperationFailed:
-		case SG_AC_RemovingStandbyAssignments:
-			sg_set_event (SG_FAILOVER_SU_EV, sg, su, 0, 0, &sg_event); 
-			sg_defer_event (SG_FAILOVER_SU_EV, &sg_event); 
-			break;
-		default:
-			assert (0);
-			break;
-	}
 }
 
 /**

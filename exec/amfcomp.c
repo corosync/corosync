@@ -644,7 +644,6 @@ static void mcast_cleanup_completion_event (void *context)
 		(struct clc_command_run_data *)context;
 	struct req_exec_amf_clc_cleanup_completed req;
 	struct iovec iovec;
-
 	req.header.size = sizeof (struct req_exec_amf_clc_cleanup_completed);
 	req.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
 		MESSAGE_REQ_EXEC_AMF_CLC_CLEANUP_COMPLETED);
@@ -1443,8 +1442,11 @@ void amf_comp_cleanup_failed_completed (amf_comp_t *comp)
  */
 void amf_comp_cleanup_completed (struct amf_comp *comp)
 {
-	TRACE2("Exec CLC cleanup completed for '%s'", comp->name.value);
+	TRACE2("Exec CLC cleanup completed for '%s' %d", comp->name.value,
+		comp->saAmfCompPresenceState);
+    
 	stop_component_cleanup_timer (comp);
+
 
 	/* Set all CSI's confirmed HA state to unknown  */
 	amf_comp_foreach_csi_assignment (comp, clear_ha_state);
@@ -1453,6 +1455,9 @@ void amf_comp_cleanup_completed (struct amf_comp *comp)
 	
 	if (comp->saAmfCompPresenceState == SA_AMF_PRESENCE_RESTARTING) {
 		amf_comp_instantiate (comp);
+	} else if (comp->saAmfCompPresenceState ==
+			   SA_AMF_PRESENCE_TERMINATION_FAILED) {
+		comp_presence_state_set (comp, SA_AMF_PRESENCE_TERMINATION_FAILED);
 	} else {
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_UNINSTANTIATED);
 	}
@@ -1631,7 +1636,6 @@ void amf_comp_instantiate_tmo_event (struct amf_comp *comp)
 
 			amf_comp_operational_state_set (comp, SA_AMF_OPERATIONAL_DISABLED);
 			comp_presence_state_set (comp, SA_AMF_PRESENCE_INSTANTIATION_FAILED);
-
 			break;
 		case SA_AMF_PRESENCE_INSTANTIATED:
 			assert (comp->instantiate_timeout_handle == 0);
@@ -1923,7 +1927,9 @@ void amf_comp_terminate (struct amf_comp *comp)
 		if (amf_comp_is_error_suspected(comp)) {
 			clc_interfaces[comp->comptype]->cleanup (comp);
 		} else {
-			clc_interfaces[comp->comptype]->terminate (comp);
+            /*TODO temination implementation */
+            /*clc_interfaces[comp->comptype]->terminate (comp);*/
+			clc_interfaces[comp->comptype]->cleanup (comp);
 		}
 	}
 }
@@ -1968,7 +1974,7 @@ SaAisErrorT amf_comp_hastate_get (
 		return SA_AIS_OK;
 	}
 
-	return SA_AIS_ERR_INVALID_PARAM;
+	return SA_AIS_ERR_NOT_EXIST;
 }
 
 /**

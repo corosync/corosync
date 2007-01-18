@@ -145,7 +145,7 @@ typedef enum {
 	SG_AC_RemovingAssignment,
 	SG_AC_AssigningActiveworkload,
 	SG_AC_AssigningAutoAdjust,
-	SG_AC_AssigningStandBy,
+	SG_AC_AssigningWorkload,
 	SG_AC_WaitingAfterOperationFailed,
 	SG_AC_RemovingStandbyAssignments
 } sg_avail_control_state_t;
@@ -237,6 +237,12 @@ typedef struct amf_fifo {
 	int size_of_data;
 	uint8_t data[];
 } amf_fifo_t;
+
+
+typedef enum {
+	AMF_PRESENCE_TERMINATION_FAILED_REBOOT = 
+	SA_AMF_PRESENCE_TERMINATION_FAILED + 1
+} AmfPresenceStateT;
 
 typedef struct amf_cluster {
 	/* Configuration Attributes */
