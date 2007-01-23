@@ -187,8 +187,8 @@ typedef struct {
 
 typedef struct {
 	SaUint32T numberOfItems;
-	SaAmfProtectionGroupNotificationT *notificaton;
-} SaAmfProtectionGruopNotificationBufferT;
+	SaAmfProtectionGroupNotificationT *notification;
+} SaAmfProtectionGroupNotificationBufferT;
 
 typedef enum {
 	SA_AMF_NO_RECOMMENDATION = 1,
@@ -261,7 +261,7 @@ typedef void (*SaAmfExternalComponentCleanupCallbackT) (
 
 typedef void (*SaAmfProtectionGroupTrackCallbackT) (
 	const SaNameT *csiName,
-	SaAmfProtectionGroupNotificationT *notificationBuffer,
+	SaAmfProtectionGroupNotificationBufferT *notificationBuffer,
 	SaUint32T numberOfMembers,
 	SaAisErrorT error);
 
@@ -277,9 +277,9 @@ typedef struct {
 	SaAmfProtectionGroupTrackCallbackT
 		saAmfProtectionGroupTrackCallback;
 	SaAmfExternalComponentInstantiateCallbackT
-		saAmfProxiedComponentInstantiateCallback;
+		saAmfExternalComponentInstantiateCallback;
 	SaAmfExternalComponentCleanupCallbackT
-		saAmfProxiedComponentCleanupCallback;
+		saAmfExternalComponentCleanupCallback;
 } SaAmfCallbacksT;
 
 /*
@@ -383,7 +383,7 @@ saAmfProtectionGroupTrack (
 	SaAmfHandleT amfHandle,
 	const SaNameT *csiName,
 	SaUint8T trackFlags,
-	const SaAmfProtectionGroupNotificationT *notificationBuffer);
+	SaAmfProtectionGroupNotificationBufferT *notificationBuffer);
 
 SaAisErrorT
 saAmfProtectionGroupTrackStop (

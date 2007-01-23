@@ -873,7 +873,7 @@ saAmfProtectionGroupTrack (
 	SaAmfHandleT amfHandle,
 	const SaNameT *csiName,
 	SaUint8T trackFlags,
-	const SaAmfProtectionGroupNotificationT *notificationBuffer)
+	SaAmfProtectionGroupNotificationBufferT *notificationBuffer)
 {
 	struct amfInstance *amfInstance;
 	struct req_lib_amf_protectiongrouptrack req_lib_amf_protectiongrouptrack;
@@ -885,7 +885,7 @@ saAmfProtectionGroupTrack (
 	memcpy (&req_lib_amf_protectiongrouptrack.csiName, csiName,
 		sizeof (SaNameT));
 	req_lib_amf_protectiongrouptrack.trackFlags = trackFlags;
-	req_lib_amf_protectiongrouptrack.notificationBufferAddress = (SaAmfProtectionGroupNotificationT *)notificationBuffer;
+	req_lib_amf_protectiongrouptrack.notificationBufferAddress = (SaAmfProtectionGroupNotificationBufferT *)notificationBuffer;
 
 	error = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);

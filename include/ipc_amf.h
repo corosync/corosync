@@ -180,7 +180,7 @@ struct req_lib_amf_protectiongrouptrack {
 	mar_req_header_t header;
 	SaNameT csiName;
 	SaUint8T trackFlags;
-	SaAmfProtectionGroupNotificationT *notificationBufferAddress;
+	SaAmfProtectionGroupNotificationBufferT *notificationBufferAddress;
 };
 
 struct res_lib_amf_protectiongrouptrack {
