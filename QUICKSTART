@@ -101,6 +101,12 @@ can be copied directly.
 
 These two files should be placed in the /etc/ais directory.
 
+A few notes about the config files:
+1) Do not use DOS style termination.  This breaks the parser.
+2) Do not have blank lines in the amf.conf file.  This breaks the amf configuration
+   file parser.  We are working on fixing these bugs, but for the moment, it is
+   easy to simply avoid them.
+
 Building openais
 ----------------
 openais requires GCC, LD, and a Linux 2.4/2.6 kernel.  openais has been tested on
