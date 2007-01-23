@@ -723,6 +723,7 @@ static int create_cluster_model (void)
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_AMFCONFIGREAD);
 	}
+	log_printf (LOG_LEVEL_NOTICE, error_string);
 
 	this_amf_node = get_this_node_obj ();
 

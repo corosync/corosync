@@ -488,6 +488,7 @@ int main (int argc, char **argv)
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
+	log_printf (LOG_LEVEL_NOTICE, error_string);
 
 	openais_service_default_objdb_set (objdb);
 

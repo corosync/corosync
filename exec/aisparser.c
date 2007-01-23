@@ -175,6 +175,9 @@ static int read_config_file_into_objdb(
 
 	fclose(fp);
 
+	sprintf (error_reason, "Successfully read main configuration file '%s'.\n", filename);
+	*error_string = error_reason;
+
 	return res;
 }
 
