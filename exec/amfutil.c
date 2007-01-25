@@ -880,7 +880,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 	fclose (fp);
 
-	sprintf (error_reason, "Successfully read AMF configuration file '%s'.\n", filename);
+	sprintf (buf, "Successfully read AMF configuration file '%s'.\n", filename);
 	*error_string = buf;
 
 	return cluster;
