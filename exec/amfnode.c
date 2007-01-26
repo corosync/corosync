@@ -283,7 +283,9 @@ static int has_all_sg_on_node_failed_over (amf_node_t *node)
 		for (sg = app->sg_head; sg != NULL; sg = sg->next) {
 			for (su = sg->su_head; su != NULL; su = su->next) {
 				if (name_match(&su->saAmfSUHostedByNode, &node->name)) {
+
 					if (sg->avail_state != SG_AC_Idle) {
+						TRACE1("%s %s",sg->name.value, su->name.value);
 						has_all_sg_on_node_failed_over = 0;
 						goto out;
 					}

@@ -2465,6 +2465,7 @@ void amf_sg_su_state_changed (struct amf_sg *sg, struct amf_su *su,
 {
 	ENTER ("'%s' SU '%s' state %s",
 		sg->name.value, su->name.value, amf_presence_state(state));
+
 	if (sg->avail_state != SG_AC_Idle) {
 		if (type == SA_AMF_PRESENCE_STATE) {
 			switch (state) {
@@ -2483,6 +2484,9 @@ void amf_sg_su_state_changed (struct amf_sg *sg, struct amf_su *su,
 				case SA_AMF_PRESENCE_INSTANTIATION_FAILED:
 					amf_sg_su_state_changed_to_instantiation_failed(sg, su);
 					break;
+				case SA_AMF_PRESENCE_TERMINATING:
+					; /* nop */
+					break;
 				default :
 					dprintf("sg->avail_state = %d, su instantiation state = %d",
 						sg->avail_state, state);
@@ -2491,7 +2495,6 @@ void amf_sg_su_state_changed (struct amf_sg *sg, struct amf_su *su,
 			}
 		}
 	}
-
 }
 
 /**
