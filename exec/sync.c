@@ -391,9 +391,9 @@ static void sync_deliver_fn (
 {
 	int i;
 	int barrier_completed;
-	sync_msg_t *msg = iovec[0].iov_base;
+	sync_msg_t *msg = (sync_msg_t *)iovec[0].iov_base;
 
-	ENTER("type %d, len %d", msg->header.id, iovec[0].iov_len);
+	ENTER("type %d, len %d", msg->header.id, (int)iovec[0].iov_len);
 
 	if (endian_conversion_required) {
 		swab_mar_req_header_t (&msg->header);

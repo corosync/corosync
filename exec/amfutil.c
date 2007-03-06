@@ -1356,7 +1356,7 @@ int amf_msg_mcast (int msg_id, void *buf, size_t len)
 
 	msg.header.size = sizeof (msg);
 	msg.header.id = SERVICE_ID_MAKE (AMF_SERVICE, msg_id);
-	iov[0].iov_base = &msg;
+	iov[0].iov_base = (char *)&msg;
 	iov[0].iov_len  = sizeof (msg);
 
 	if (buf == NULL) {

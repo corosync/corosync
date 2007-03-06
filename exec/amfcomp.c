@@ -361,7 +361,7 @@ static void *clc_command_run (void *context)
 		waitpid (pid, &status, 0);
 		if (WIFEXITED (status) != 0 && WEXITSTATUS(status) != 0) {
 			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
-				" %d - %s\n", pid, WEXITSTATUS(status),
+				" %d - %s\n", (int)pid, WEXITSTATUS(status),
 				strerror (WEXITSTATUS(status)));
 			/*
              * Store the exit code from the script in the return data.
@@ -370,7 +370,7 @@ static void *clc_command_run (void *context)
 		}
 		if (WIFSIGNALED (status) != 0) {
 			fprintf (stderr, "Error: CLC_CLI (%d) failed with exit status:"
-				" %d\n", pid, WTERMSIG(status));
+				" %d\n", (int)pid, WTERMSIG(status));
 			/*                                                              
 			 * TODO: remove this and handle properly later...
 			 */
@@ -381,7 +381,7 @@ static void *clc_command_run (void *context)
 			 */
 
 		}
-		xprintf ("process (%d) finished with %x\n", pid, status);
+		xprintf ("process (%d) finished with %x\n", (int)pid, status);
 		if (clc_command_run_data->completion_callback) {
 			clc_command_run_data->completion_callback (context);
 		}

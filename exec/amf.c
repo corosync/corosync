@@ -672,7 +672,7 @@ static int mcast_sync_data (
 	req_exec.protocol_version = AMF_PROTOCOL_VERSION;
 	req_exec.object_type = object_type;
 
-	iov[0].iov_base = &req_exec;
+	iov[0].iov_base = (char *)&req_exec;
 	iov[0].iov_len  = sizeof (struct req_exec_amf_sync_data);
 	iov[1].iov_base = buf;
 	iov[1].iov_len  = len;

@@ -34,7 +34,7 @@
 
 instantiate() {
 #	echo clc_cli_script instantiating component $SA_AMF_COMPONENT_NAME $1
-	./openais-instantiate $1
+	openais-instantiate $1
 	exit $?
 }
 

@@ -13,7 +13,7 @@ ifneq "" "$(findstring BSD,$(UNAME))"
 endif
 ifeq "$(UNAME)" "SunOS"
 	OPENAIS_COMPAT=SOLARIS
-	# CC must be set to gcc compiled to link with gnu-ld 
+	# Note that CC must be set to gcc compiled to link with gnu-ld 
 endif
 ifndef OPENAIS_COMPAT
 	$(error "OPENAIS_COMPAT cannot be detected, it must be manually defined")
@@ -41,7 +41,7 @@ LDFLAGS =
 DYFLAGS =
 
 # Adding the TS_CLASS flag enables not being scheduled RR
-#CFLAGS += -DTS_CLASS
+CFLAGS += -DTS_CLASS
 
 # build CFLAGS, LDFLAGS
 #
@@ -91,5 +91,11 @@ ifeq (${OPENAIS_COMPAT}, SOLARIS)
 	override CFLAGS += -DOPENAIS_SOLARIS -D_REENTRANT
 	override LDFLAGS += -lpthread
 	# See http://sources.redhat.com/ml/bug-gnu-utils/2000-07/msg00168.html
-	override LDFLAGS += -Wl,--export-dynamic
+	override LDFLAGS += -Wl,--export-dynamic -Wl,-rpath-link=/usr/lib
+ifeq ($(shell uname -r), 5.10)
+	override CFLAGS += -DHAVE_GETPEERUCRED -DHAVE_SCANDIR -DHAVE_ALPHASORT
+endif
+ifeq ($(shell uname -r), 5.11)
+	override CFLAGS += -DHAVE_GETPEERUCRED -DHAVE_SCANDIR -DHAVE_ALPHASORT
+endif
 endif

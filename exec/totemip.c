@@ -186,6 +186,7 @@ int totemip_compare(const void *a, const void *b)
 		 * Family not set, should be!
 	 	 */
 		assert (0);
+		exit (1);
 	}
 }
 

@@ -3473,7 +3473,7 @@ static int sync_checkpoint_section_transmit (
 
 	iovecs[0].iov_base = (char *)&req_exec_ckpt_sync_checkpoint_section;
 	iovecs[0].iov_len = sizeof (req_exec_ckpt_sync_checkpoint_section);
-	iovecs[1].iov_base = checkpoint_section->section_descriptor.section_id.id;
+	iovecs[1].iov_base = (char *)checkpoint_section->section_descriptor.section_id.id;
 	iovecs[1].iov_len = checkpoint_section->section_descriptor.section_id.id_len;
 	iovecs[2].iov_base = checkpoint_section->section_data;
 	iovecs[2].iov_len = checkpoint_section->section_descriptor.section_size;

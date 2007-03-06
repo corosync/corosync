@@ -38,6 +38,10 @@
 #include <pthread.h>
 #include "assert.h"
 
+#ifdef OPENAIS_SOLARIS
+/* struct queue is already defined in sys/stream.h on Solaris */
+#define	queue _queue
+#endif
 struct queue {
 	int head;
 	int tail;

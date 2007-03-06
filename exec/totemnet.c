@@ -1106,6 +1106,7 @@ static int totemnet_build_sockets_ip (
 		}
 	}
 
+#ifndef OPENAIS_SOLARIS
 	/*
 	 * Bind to a specific interface for multicast send and receive
 	 */
@@ -1135,6 +1136,7 @@ static int totemnet_build_sockets_ip (
 		}
 		break;
 	}
+#endif
 	
 	return 0;
 }

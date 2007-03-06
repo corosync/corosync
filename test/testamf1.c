@@ -83,7 +83,7 @@ static void _die (char *file, int line, char *format, ...)
 	va_list ap;
 
 	sprintf (buf, "%d - %s:#%d - Error: '%s', exiting...\n",
-			 getpid(), file, line, format);
+			 (int)getpid(), file, line, format);
 
 	va_start (ap, format);
 	vfprintf (stderr, buf, ap);
@@ -100,7 +100,7 @@ static void response (
 	do {
 		result = saAmfResponse (handle, invocation, error);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			fprintf(stderr, "%d: TRY_AGAIN received\n", getpid());
+			fprintf(stderr, "%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -397,7 +397,7 @@ static SaSelectionObjectT comp_init ()
 	do {
 		result = saAmfInitialize (&handle, &amfCallbacks, &version);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -408,7 +408,7 @@ static SaSelectionObjectT comp_init ()
 	do {
 		result = saAmfSelectionObjectGet (handle, &select_fd);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -419,7 +419,7 @@ static SaSelectionObjectT comp_init ()
 	do {
 		result = saAmfComponentNameGet (handle, &compNameGlobal);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -435,7 +435,7 @@ static SaSelectionObjectT comp_init ()
 			SA_AMF_HEALTHCHECK_AMF_INVOKED,
 			SA_AMF_COMPONENT_FAILOVER);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -450,7 +450,7 @@ static SaSelectionObjectT comp_init ()
 			SA_AMF_HEALTHCHECK_COMPONENT_INVOKED,
 			SA_AMF_COMPONENT_FAILOVER);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -465,7 +465,7 @@ static SaSelectionObjectT comp_init ()
 		do {
 			result = saAmfComponentRegister (handle, &badname, NULL);
 			if (result == SA_AIS_ERR_TRY_AGAIN) {
-				printf("%d: TRY_AGAIN received\n", getpid());
+				printf("%d: TRY_AGAIN received\n", (int)getpid());
 				usleep (100000);
 			}
 		} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -477,7 +477,7 @@ static SaSelectionObjectT comp_init ()
 	do {
 		result = saAmfComponentRegister (handle, &compNameGlobal, NULL);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -495,7 +495,7 @@ static SaSelectionObjectT comp_init ()
 			SA_AMF_HEALTHCHECK_AMF_INVOKED,
 			SA_AMF_COMPONENT_FAILOVER);
 		if (result == SA_AIS_ERR_TRY_AGAIN) {
-			printf("%d: TRY_AGAIN received\n", getpid());
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
 			usleep (100000);
 		}
 	} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -517,31 +517,31 @@ static void handle_intr (void)
 				die ("saAmfFinalize failed %d", result);
 			}
 			fprintf(stderr, "%d: %s exiting\n",
-					getpid(), compNameGlobal.value);
+					(int)getpid(), compNameGlobal.value);
 			exit (EXIT_SUCCESS);
 			break;
 		case UNREGISTER:
 			fprintf(stderr, "%d: %s unregistering\n",
-					getpid(), compNameGlobal.value);
+					(int)getpid(), compNameGlobal.value);
 			result = saAmfComponentUnregister (
 				handle, &compNameGlobal, NULL);
 			if (result != SA_AIS_OK) {
 				die ("saAmfComponentUnregister failed %d", result);
 			}
-			fprintf(stderr, "%d: waiting after unregister\n", getpid());
+			fprintf(stderr, "%d: waiting after unregister\n", (int)getpid());
 			while (1) {
 				sleep (100000000);
 			}
 			break;
 		case ERROR_REPORT:
 			fprintf(stderr, "%d: %s error reporting\n",
-					getpid(), compNameGlobal.value);
+					(int)getpid(), compNameGlobal.value);
 			result = saAmfComponentErrorReport (
 				handle, &compNameGlobal, 0, SA_AMF_COMPONENT_RESTART, 0);
 			if (result != SA_AIS_OK) {
 				die ("saAmfComponentErrorReport failed %d", result);
 			}
-			fprintf(stderr, "%d: waiting after error report\n", getpid());
+			fprintf(stderr, "%d: waiting after error report\n", (int)getpid());
 			while (1) {
 				sleep (100000000);
 			}
@@ -577,7 +577,7 @@ int main (int argc, char **argv)
 			do {
 				result = saAmfDispatch (handle, SA_DISPATCH_ALL);
 				if (result == SA_AIS_ERR_TRY_AGAIN) {
-					fprintf(stderr, "%d: TRY_AGAIN received\n", getpid());
+					fprintf(stderr, "%d: TRY_AGAIN received\n", (int)getpid());
 					usleep (100000);
 				}
 			} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -591,7 +591,7 @@ int main (int argc, char **argv)
 				result = saAmfHealthcheckConfirm (handle, &compNameGlobal,
 					&keyCompInvoked, SA_AIS_OK);
 				if (result == SA_AIS_ERR_TRY_AGAIN) {
-					fprintf(stderr, "%d: TRY_AGAIN received\n", getpid());
+					fprintf(stderr, "%d: TRY_AGAIN received\n", (int)getpid());
 					usleep (100000);
 				}
 			} while (result == SA_AIS_ERR_TRY_AGAIN);
@@ -602,7 +602,7 @@ int main (int argc, char **argv)
 		}
 	} while (stop == 0);
 
-	fprintf(stderr, "%d: exiting...\n", getpid());
+	fprintf(stderr, "%d: exiting...\n", (int)getpid());
 	exit (EXIT_SUCCESS);
 }
 

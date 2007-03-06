@@ -54,6 +54,9 @@
 #include <signal.h>
 #include <sched.h>
 #include <time.h>
+#if defined(OPENAIS_SOLARIS) && defined(HAVE_GETPEERUCRED)
+#include <ucred.h>
+#endif
 
 #include "../include/saAis.h"
 #include "../include/list.h"
@@ -78,6 +81,10 @@
 #include "print.h"
 
 #include "util.h"
+
+#ifdef OPENAIS_SOLARIS
+#define MSG_NOSIGNAL 0
+#endif
 
 #define SERVER_BACKLOG 5
 
@@ -565,15 +572,17 @@ retry_poll:
 	return (0);
 }
 
-#if defined(OPENAIS_LINUX)
+#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 /* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-
-char *socketname = "libais.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
+#endif
 
+#if defined(OPENAIS_LINUX)
+char *socketname = "libais.socket";
+#else
 char *socketname = "/var/run/libais.socket";
 #endif
 
@@ -653,9 +662,14 @@ static int conn_info_outq_flush (struct conn_info *conn_info) {
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = 0;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 	while (!queue_is_empty (outq)) {
 		queue_item = queue_item_get (outq);
@@ -721,9 +735,6 @@ static void libais_deliver (struct conn_info *conn_info)
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	struct ucred *cred;
 	int on = 0;
-#else
-	uid_t euid;
-	gid_t egid;
 #endif
 	int send_ok = 0;
 	int send_ok_joined = 0;
@@ -734,6 +745,7 @@ static void libais_deliver (struct conn_info *conn_info)
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
+#ifndef OPENAIS_SOLARIS
 	msg_recv.msg_flags = 0;
 
 	if (conn_info->authenticated) {
@@ -741,19 +753,50 @@ static void libais_deliver (struct conn_info *conn_info)
 		msg_recv.msg_controllen = 0;
 	} else {
 #ifdef OPENAIS_LINUX
+		uid_t euid = -1;
+		gid_t egid = -1;
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
 #else
-		euid = -1; egid = -1;
 		if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
 		    (euid == 0 || egid == g_gid_valid)) {
-				conn_info->authenticated = 1;
+			conn_info->authenticated = 1;
 		}
 		if (conn_info->authenticated == 0) {
 			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", egid, g_gid_valid);
 		}
 #endif
 	}
+
+#else	/* OPENAIS_SOLARIS */
+	msg_recv.msg_accrights = 0;
+	msg_recv.msg_accrightslen = 0;
+
+	if (! conn_info->authenticated) {
+#ifdef HAVE_GETPEERUCRED
+		ucred_t *uc;
+		uid_t euid = -1;
+		gid_t egid = -1;
+		if (getpeerucred(conn_info->fd, &uc) == 0) {
+			euid = ucred_geteuid(uc);
+			egid = ucred_getegid(uc);
+			if ((euid == 0) || (egid == g_gid_valid)) {
+				conn_info->authenticated = 1;
+			}
+			ucred_free(uc);
+		}
+		if (conn_info->authenticated == 0) {
+			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", (int)egid, g_gid_valid);
+		}
+#else
+		log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated "
+				"because platform does not support "
+				"authentication with sockets, continuing "
+				"with a fake authentication\n");
+		conn_info->authenticated = 1;
+#endif
+	}
+#endif
 
 	iov_recv.iov_base = &conn_info->inb[conn_info->inb_start];
 	iov_recv.iov_len = (SIZEINB) - conn_info->inb_start;
@@ -835,7 +878,7 @@ retry_recv:
 			 * to queue a message, otherwise tell the library we are busy and to
 			 * try again later
 			 */
-			send_ok_joined_iovec.iov_base = header;
+			send_ok_joined_iovec.iov_base = (char *)header;
 			send_ok_joined_iovec.iov_len = header->size;
 			send_ok_joined = totempg_groups_send_ok_joined (openais_group_handle,
 				&send_ok_joined_iovec, 1);
@@ -1107,9 +1150,14 @@ int openais_conn_send_response (
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
+#ifndef OPENAIS_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = 0;
+	msg_send.msg_accrightslen = 0;
+#endif
 
 	if (queue_is_full (outq)) {
 		/*
