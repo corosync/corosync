@@ -264,7 +264,7 @@ static int ldso_path_build (char *path, char *filename)
 	return (0);
 }
 
-#ifndef HAVE_SCANDIR
+#if defined (OPENAIS_SOLARIS) && !defined(HAVE_SCANDIR)
 static int scandir (
 	const char *dir, struct dirent ***namelist,
 	int (*filter)(const struct dirent *),
@@ -333,7 +333,7 @@ fail:
 }
 #endif
 
-#ifndef HAVE_ALPHASORT
+#if defined (OPENAIS_SOLARIS) && !defined(HAVE_ALPHASORT)
 static int alphasort (const struct dirent **a, const struct dirent **b)
 {
 	return strcmp ((*a)->d_name, (*b)->d_name);
