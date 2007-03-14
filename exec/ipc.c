@@ -753,11 +753,11 @@ static void libais_deliver (struct conn_info *conn_info)
 		msg_recv.msg_controllen = 0;
 	} else {
 #ifdef OPENAIS_LINUX
-		uid_t euid = -1;
-		gid_t egid = -1;
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
 #else
+		uid_t euid = -1;
+		gid_t egid = -1;
 		if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
 		    (euid == 0 || egid == g_gid_valid)) {
 			conn_info->authenticated = 1;

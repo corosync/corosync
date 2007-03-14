@@ -36,12 +36,12 @@ endif
 
 # default CFLAGS, LDFLAGS
 #
-CFLAGS = 
+CFLAGS =
 LDFLAGS =
 DYFLAGS =
 
 # Adding the TS_CLASS flag enables not being scheduled RR
-CFLAGS += -DTS_CLASS
+#CFLAGS += -DTS_CLASS
 
 # build CFLAGS, LDFLAGS
 #
@@ -57,7 +57,7 @@ ifeq (${OPENAIS_BUILD}, DEBUG)
 	CFLAGS += -O0 -g -Wall -DDEBUG
 	LDFLAGS += -g
 	ifeq (${OPENAIS_COMPAT}, SOLARIS)
-		CFLAGS += -Werror
+		CFLAGS += -Werror -DTS_CLASS
 	endif
 endif
 ifeq (${OPENAIS_BUILD}, COVERAGE)
