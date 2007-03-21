@@ -33,7 +33,7 @@
 .\" */
 .TH CPG_MCAST_JOINED 3 3004-08-31 "openais Man Page" "Openais Programmer's Manual"
 .SH NAME
-cpg_join \- Multicasts to all groups joined to a handle
+cpg_mcast_joined \- Multicasts to all groups joined to a handle
 .SH SYNOPSIS
 .B #include <sys/uio.h>
 .B #include <openais/cpg.h>
@@ -42,10 +42,9 @@ cpg_join \- Multicasts to all groups joined to a handle
 .SH DESCRIPTION
 The
 .B cpg_mcast_joined
-function is multicast a message to all the processes that have been joined with the
+function will multicast a message to all the processes that have been joined with the
 .B cpg_join(3)
 funtion for the same group name.
-.I handle.
 Messages that are sent to any of the groups joined to the parameter
 .I handle
 will be delivered to all subscribed processes in the system.
@@ -73,20 +72,20 @@ typedef enum {
 .PP
 The meanings of the cpg_gaurantee_t typedef are:
 .TP
-.B CPG_GUARANTEE_UNORDERED
+.B CPG_TYPE_UNORDERED
 Messages are guaranteed to be delivered, but with no particular order.  This 
 mode is unimplemented in the CPG library.
 .TP
-.B CPG_GUARANTEE_FIFO
-Messages are guaranteed to be delivered in first sent first delivery order
-from one one.  In fact, this guarantee is actually the AGREED guarantee.
+.B CPG_TYPE_FIFO
+Messages are guaranteed to be delivered in first sent first delivery order.
+In fact, this guarantee is equivalent to the CPG_TYPE_AGREED guarantee.
 .TP
-.B CPG_GUARANTEE_AGREED
+.B CPG_TYPE_AGREED
 All processors must agree on the order of delivery.  If a message is sent
 from two or more processors at about the same time, the delivery will occur
 in the same order to all processors.
 .TP
-.B CPG_GUARANTEE_SAFE
+.B CPG_TYPE_SAFE
 All processors must agree on the order of delivery.  Further all processors
 must have a copy of the message before any delivery takes place.  This mode is
 unimplemented in the CPG library.
@@ -112,7 +111,7 @@ struct iovec
 .PP
 .PP
 The
-.I iovlen
+.I iov_len
 argument describes the number of entires in the
 .I iovec
 argument.  
