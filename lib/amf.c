@@ -1033,7 +1033,7 @@ saAmfResponse (
 	errorResult = saHandleInstanceGet (&amfHandleDatabase, amfHandle,
 		(void *)&amfInstance);
 	if (errorResult != SA_AIS_OK) {
-		return (error);
+		return (errorResult);
 	}
 
 	req_lib_amf_response.header.id = MESSAGE_REQ_AMF_RESPONSE;
