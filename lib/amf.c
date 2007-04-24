@@ -305,11 +305,13 @@ saAmfDispatch (
 
 		case MESSAGE_RES_AMF_CSISETCALLBACK:
 		    {
+			SaAmfCSIDescriptorT csi_descriptor;
+			SaAmfCSIAttributeT *csi_attribute_array;
+			char *attr_buf;
+			int i;
+
 			res_lib_amf_csisetcallback = (struct res_lib_amf_csisetcallback *)&dispatch_data;
 
-
-
-			SaAmfCSIDescriptorT csi_descriptor;
 
 			csi_descriptor.csiFlags = res_lib_amf_csisetcallback->csiFlags;
 			memcpy(&csi_descriptor.csiName, &res_lib_amf_csisetcallback->csiName, 
@@ -317,34 +319,34 @@ saAmfDispatch (
 			csi_descriptor.csiStateDescriptor = res_lib_amf_csisetcallback->csiStateDescriptor;
 			csi_descriptor.csiAttr.number = res_lib_amf_csisetcallback->number;
 
-			SaAmfCSIAttributeT* csi_attribute_array = malloc( sizeof( SaAmfCSIAttributeT ) * 
-									  csi_descriptor.csiAttr.number );
+			csi_attribute_array = malloc (sizeof (SaAmfCSIAttributeT) * 
+									  csi_descriptor.csiAttr.number);
 
-			if( csi_attribute_array == 0) {
+			if (csi_attribute_array == 0) {
 			    return SA_AIS_ERR_LIBRARY;
 			}
 			csi_descriptor.csiAttr.attr = csi_attribute_array;
 
-			char* p = res_lib_amf_csisetcallback->csi_attr_buf;
-			int i;
+			attr_buf = res_lib_amf_csisetcallback->csi_attr_buf;
 			
-			for (i=0; i<csi_descriptor.csiAttr.number; i++) {
-			    csi_attribute_array[i].attrName = (SaUint8T*)p;
+			for (i = 0; i < csi_descriptor.csiAttr.number; i++) {
+				csi_attribute_array[i].attrName = (SaUint8T*)attr_buf;
 
-			    p += strlen(p) + 1;
-			    csi_attribute_array[i].attrValue = (SaUint8T*)p;
+				attr_buf += strlen(attr_buf) + 1;
+				csi_attribute_array[i].attrValue = (SaUint8T*)attr_buf;
 
-			    p += strlen(p) + 1;
+				attr_buf += strlen(attr_buf) + 1;
 			}
 			
-
 			callbacks.saAmfCSISetCallback (
 				res_lib_amf_csisetcallback->invocation,
 				&res_lib_amf_csisetcallback->compName,
 				res_lib_amf_csisetcallback->haState,
 				&csi_descriptor);
 
-			free(csi_attribute_array);
+			if (csi_attribute_array != NULL) {
+				free(csi_attribute_array);
+			}
 			break;
 		    }
 		case MESSAGE_RES_AMF_CSIREMOVECALLBACK:
