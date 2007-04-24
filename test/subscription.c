@@ -243,6 +243,9 @@ static char time_buf[1024];
 char *ais_time_str(SaTimeT time)
 {
 	time_t t;
+	if (time == SA_TIME_UNKNOWN) {
+		return "Unknown Time";
+	}
 	t = time / 1000000000ULL;
 	strcpy(time_buf, ctime(&t));
 	return time_buf;
