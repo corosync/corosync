@@ -51,6 +51,7 @@
 
 #include "saAis.h"
 #include "saCkpt.h"
+#include "sa_error.h"
 
 #ifdef OPENAIS_SOLARIS
 #define timersub(a, b, result)						\
@@ -65,6 +66,13 @@
 #endif
 
 int alarm_notice = 0;
+
+void fail_on_error(SaAisErrorT error, char* opName) {
+	if (error != SA_AIS_OK) {
+        printf ("%s: result %s\n", opName, get_sa_error_b(error));
+        exit (1);
+	}
+}
 
 void printSaNameT (SaNameT *name)
 {
@@ -88,7 +96,7 @@ SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
 	.retentionDuration =	0,
 	.maxSections =		5,
 	.maxSectionSize =	150000,
-	.maxSectionIdSize =	10
+	.maxSectionIdSize =	15
 };
 
 SaCkptSectionIdT sectionId1 = {
@@ -206,10 +214,7 @@ void *benchmark_thread (void *arg)
 			1,
 			&erroroneousVectorIndex);
 		} while (error == SA_AIS_ERR_TRY_AGAIN);
-		if (error != SA_AIS_OK) {
-			printf ("saCkptCheckpointWrite result %d handle (should be 1)\n", error);
-			exit (1);
-		}
+		fail_on_error(error, "saCkptCheckpointWrite");
 		td->written += 1;
 	} while (alarm_notice == 0);
 	pthread_exit (0);

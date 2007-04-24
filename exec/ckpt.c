@@ -1789,6 +1789,13 @@ static void message_handler_req_exec_ckpt_sectioncreate (
 		error = SA_AIS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
+	
+	if (checkpoint->checkpoint_creation_attributes.max_section_id_size <
+		req_exec_ckpt_sectioncreate->id_len) {
+		
+		error = SA_AIS_ERR_INVALID_PARAM;
+		goto error_exit;
+	}	
 
 	/*
 	 * Determine if user-specified checkpoint section already exists
