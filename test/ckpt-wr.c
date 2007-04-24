@@ -131,13 +131,14 @@ int main (void) {
 
     do{
 			error = saCkptCheckpointRead (checkpointHandle,
-											ReadVectorElements,
-											1,
-											&erroroneousVectorIndex);
+				ReadVectorElements,
+				1,
+				&erroroneousVectorIndex);
 			if (error != SA_AIS_OK) {
 				if (error == SA_AIS_ERR_TRY_AGAIN) {
 					continue;
 				}
+printf ("error is %d\n", error);
 				return (0);
 			}
 			
