@@ -48,6 +48,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
+#include "swab.h"
 #include "service.h"
 #include "../include/saAis.h"
 #include "../include/saLck.h"

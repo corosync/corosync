@@ -43,8 +43,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "../include/swab.h"
-
 #ifdef SO_NOSIGPIPE
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0

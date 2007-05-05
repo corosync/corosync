@@ -79,8 +79,8 @@
 #define s6_addr16 __u6_addr.__u6_addr16
 #endif
 
-#include "totemip.h"
 #include "swab.h"
+#include "totemip.h"
 
 #define LOCALHOST_IPV4 "127.0.0.1"
 #define LOCALHOST_IPV6 "::1"

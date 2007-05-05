@@ -45,6 +45,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
+#include "../include/swab.h"
 #include "../exec/totem.h"
 #include "../include/saAis.h"
 #include "../include/saClm.h"

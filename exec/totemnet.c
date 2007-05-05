@@ -60,6 +60,7 @@
 #include "aispoll.h"
 #include "totemnet.h"
 #include "wthread.h"
+#include "swab.h"
 #include "../include/queue.h"
 #include "../include/sq.h"
 #include "../include/list.h"

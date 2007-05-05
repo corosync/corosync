@@ -46,7 +46,8 @@
 #include <arpa/inet.h>
 #include <sys/param.h>
 
-#include "../include/list.h"
+#include "swab.h"
+#include "list.h"
 #include "util.h"
 #include "totem.h"
 #include "totemconfig.h"

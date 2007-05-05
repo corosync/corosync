@@ -56,6 +56,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "swab.h"
 #include "print.h"
 #include "totemip.h"
 #include "../include/saAis.h"

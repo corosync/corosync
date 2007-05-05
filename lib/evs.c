@@ -46,6 +46,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include "../include/swab.h"
 #include "../exec/totem.h"
 #include "../include/saAis.h"
 #include "../include/evs.h"

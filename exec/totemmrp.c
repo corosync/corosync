@@ -53,6 +53,7 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
+#include "swab.h"
 #include "totem.h"
 #include "totemsrp.h"
 #include "aispoll.h"

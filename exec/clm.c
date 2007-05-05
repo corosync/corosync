@@ -57,6 +57,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "swab.h"
 #include "totem.h"
 #include "../include/saAis.h"
 #include "../include/saClm.h"

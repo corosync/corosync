@@ -94,6 +94,7 @@
 #include <pthread.h>
 #include <errno.h>
 
+#include "swab.h"
 #include "../include/hdb.h"
 #include "../include/list.h"
 #include "totempg.h"

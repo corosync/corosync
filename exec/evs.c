@@ -49,6 +49,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "swab.h"
 #include "totem.h"
 #include "../include/saAis.h"
 #include "../include/ipc_gen.h"
@@ -56,7 +57,6 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
-#include "../include/swab.h"
 #include "totempg.h"
 #include "main.h"
 #include "ipc.h"

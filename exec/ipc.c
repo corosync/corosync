@@ -58,6 +58,7 @@
 #include <ucred.h>
 #endif
 
+#include "swab.h"
 #include "../include/saAis.h"
 #include "../include/list.h"
 #include "../include/queue.h"

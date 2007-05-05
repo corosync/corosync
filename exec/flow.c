@@ -46,6 +46,7 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include "swab.h"
 #include "flow.h"
 #include "totem.h"
 #include "totempg.h"

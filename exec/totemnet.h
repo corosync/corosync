@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "swab.h"
 #include "totem.h"
 #include "aispoll.h"
 

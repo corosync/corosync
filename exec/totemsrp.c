@@ -73,6 +73,7 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
+#include "swab.h"
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "totemrrp.h"
@@ -81,7 +82,6 @@
 #include "../include/sq.h"
 #include "../include/list.h"
 #include "../include/hdb.h"
-#include "swab.h"
 
 #include "crypto.h"
 

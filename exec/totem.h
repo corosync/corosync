@@ -36,7 +36,6 @@
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
 #include "totemip.h"
-#include "../include/swab.h"
 
 #define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
 #define PROCESSOR_COUNT_MAX	384
