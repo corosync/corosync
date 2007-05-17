@@ -1004,6 +1004,7 @@ void message_source_set (
 	void *conn)
 {
 	assert ((source != NULL) && (conn != NULL));
+	memset (source, 0, sizeof (mar_message_source_t));
 	source->nodeid = my_ip->nodeid;
 	source->conn = conn;
 }
