@@ -29,6 +29,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+include Makefile.inc
+
 DESTDIR=/usr/local
 SBINDIR=/usr/sbin
 INCLUDEDIR=/usr/include/openais
@@ -106,29 +108,29 @@ install:
 	ln -sf libcfg.so.2.0.0 lib/libcfg.so.2
 	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so.2
 
-	cp -a lib/libais.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaClm.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaCkpt.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaEvt.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaLck.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaMsg.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libevs.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
-	cp -a lib/libcfg.so $(DESTDIR)$(LIBDIR)
-	cp -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libais.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaClm.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaCkpt.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaEvt.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaLck.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaMsg.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libevs.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libcfg.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
 
-	cp -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaAmf.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaClm.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaCkpt.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaEvt.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaLck.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libSaMsg.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libevs.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libcpg.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a lib/libcfg.so.2 $(DESTDIR)$(LIBDIR)
-	cp -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaAmf.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaClm.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaCkpt.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaEvt.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaLck.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libSaMsg.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libevs.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libcpg.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a lib/libcfg.so.2 $(DESTDIR)$(LIBDIR)
+	$(CP) -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
 
 	install -m 755 lib/libais.so.2.* $(DESTDIR)$(LIBDIR)
 	install -m 755 lib/libSaAmf.so.2.* $(DESTDIR)$(LIBDIR)

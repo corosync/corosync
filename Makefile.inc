@@ -1,12 +1,14 @@
 # Basic OS detection
 #
 UNAME=$(shell uname)
+CP=cp
 
 ifeq "$(UNAME)" "Linux"
 	OPENAIS_COMPAT=LINUX
 endif
 ifeq "$(UNAME)" "Darwin"
 	OPENAIS_COMPAT=DARWIN
+	CP=rsync
 endif
 ifneq "" "$(findstring BSD,$(UNAME))"
 	OPENAIS_COMPAT=BSD
