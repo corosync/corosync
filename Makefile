@@ -38,7 +38,7 @@ INCLUDEDIR_TOTEM=/usr/include/openais/totem
 INCLUDEDIR_LCR=/usr/include/openais/lcr
 INCLUDEDIR_SERVICE=/usr/include/openais/service
 MANDIR=/usr/share/man
-ETCDIR=/etc/ais
+ETCDIR=/etc
 LCRSODIR=/usr/libexec/lcrso
 ARCH=$(shell uname -p)
 
@@ -78,11 +78,11 @@ install:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	mkdir -p $(DESTDIR)$(LIBDIR)
 	mkdir -p $(DESTDIR)$(LCRSODIR)
-	mkdir -p $(DESTDIR)$(ETCDIR)
+	mkdir -p $(DESTDIR)$(ETCDIR)/ais
 	mkdir -p $(DESTDIR)$(MANDIR)/man3
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
-	mkdir -p $(DESTDIR)/etc/ld.so.conf.d
+	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
 	ln -sf libais.so.2.0.0 lib/libais.so
 	ln -sf libSaAmf.so.2.0.0 lib/libSaAmf.so
@@ -160,14 +160,14 @@ ifneq "NO" "$(STATICLIBS)"
 	install -m 755 exec/libtotem_pg.a $(DESTDIR)$(LIBDIR)
 endif
 
-	echo $(LIBDIR) > $(DESTDIR)/etc/ld.so.conf.d/openais-$(ARCH).conf
+	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
 
 	install -m 755 exec/*lcrso $(DESTDIR)$(LCRSODIR)
 
 	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)
 	install -m 700 exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
-	install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)
-	install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)
+	install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)/ais
+	install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais
 
 	install -m 644 include/saAis.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/saAmf.h $(DESTDIR)$(INCLUDEDIR)
