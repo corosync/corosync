@@ -1070,11 +1070,13 @@ void unlock_algorithm (
 	if (resource_lock == resource->ex_granted) {
 		resource->ex_granted = 0;
 	}
-
-	/*
-	 * Delete resource lock from whichever list it is on
-	 */
-	list_del (&resource_lock->list);
+	else {
+		/*
+		 * Delete resource lock from whichever list it is on
+		 */
+		list_del (&resource_lock->list);
+	}
+	list_del (&resource_lock->resource_list);
 
 	/*
 	 * Check if EX locks are available, if so assign one
@@ -1286,7 +1288,7 @@ error_exit:
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 			openais_conn_send_response (
-				resource_lock->callback_source.conn,
+				openais_conn_partner_get(resource_lock->callback_source.conn),
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 		} else {
