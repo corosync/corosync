@@ -142,6 +142,18 @@ cpg_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd);
 
+/* 
+ * Get and set contexts for a CPG handle
+ */
+cpg_error_t cpg_context_get (
+	cpg_handle_t handle,
+	void **context);
+
+cpg_error_t cpg_context_set (
+	cpg_handle_t handle,
+	void *context);
+
+
 /*
  * Dispatch messages and configuration changes
  */

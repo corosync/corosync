@@ -57,6 +57,7 @@ struct cpg_inst {
 	int finalize;
 	cpg_flow_control_state_t flow_control_state;
 	cpg_callbacks_t callbacks;
+	void *context;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
 };
@@ -184,6 +185,44 @@ cpg_error_t cpg_fd_get (
 	}
 
 	*fd = cpg_inst->dispatch_fd;
+
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (SA_AIS_OK);
+}
+
+cpg_error_t cpg_context_get (
+	cpg_handle_t handle,
+	void **context)
+{
+	SaAisErrorT error;
+	struct cpg_inst *cpg_inst;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	*context = cpg_inst->context;
+
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (SA_AIS_OK);
+}
+
+cpg_error_t cpg_context_set (
+	cpg_handle_t handle,
+	void *context)
+{
+	SaAisErrorT error;
+	struct cpg_inst *cpg_inst;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	cpg_inst->context = context;
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
