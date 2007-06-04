@@ -2107,27 +2107,23 @@ make_local_event(struct lib_event_data *p,
 static void retain_event(struct event_data *evt)
 {
 	uint32_t ret;
-	int msec_in_future;
-
 	evt->ed_ref_count++;
 	evt->ed_my_chan->esc_retained_count++;
 	list_add_tail(&evt->ed_retained, &retained_list);
-	/*
-	 * Time in nanoseconds - convert to miliseconds
-	 */
-	msec_in_future = (uint32_t)((evt->ed_event.led_retention_time) / 1000000ULL);
-	ret = openais_timer_add(
-					msec_in_future,
-					evt,
-					event_retention_timeout,
-					&evt->ed_timer_handle);
+
+	ret = openais_timer_add_duration (
+		evt->ed_event.led_retention_time,
+		evt,
+		event_retention_timeout,
+		&evt->ed_timer_handle);
+
 	if (ret != 0) {
 		log_printf(LOG_LEVEL_ERROR,
 				"retention of event id 0x%llx failed\n",
 				(unsigned long long)evt->ed_event.led_event_id);
 	} else {
-		log_printf(RETENTION_TIME_DEBUG, "Retain event ID 0x%llx for %u ms\n",
-			(unsigned long long)evt->ed_event.led_event_id, msec_in_future);
+		log_printf(RETENTION_TIME_DEBUG, "Retain event ID 0x%llx for %llu ms\n",
+			(unsigned long long)evt->ed_event.led_event_id, evt->ed_event.led_retention_time/100000LL);
 	}
 }
 
@@ -2218,7 +2214,6 @@ static void lib_evt_open_channel(void *conn, void *message)
 	struct req_evt_channel_open *req;
 	struct res_evt_channel_open res;
 	struct open_chan_pending *ocp;
-	int msec_in_future;
 	int ret;
 
 	req = message;
@@ -2260,15 +2255,11 @@ static void lib_evt_open_channel(void *conn, void *message)
 	ocp->ocp_serial_no = open_serial_no;
 	list_init(&ocp->ocp_entry);
 	list_add_tail(&ocp->ocp_entry, &open_pending);
-	/*
-	 * Time in nanoseconds - convert to miliseconds
-	 */
-	msec_in_future = (uint32_t)(req->ico_timeout / 1000000ULL);
-	ret = openais_timer_add(
-			msec_in_future,
-			ocp,
-			chan_open_timeout,
-			&ocp->ocp_timer_handle);
+	ret = openais_timer_add_duration (
+		req->ico_timeout,
+		ocp,
+		chan_open_timeout,
+		&ocp->ocp_timer_handle);
 	if (ret != 0) {
 		log_printf(LOG_LEVEL_WARNING,
 				"Error setting timeout for open channel %s\n",

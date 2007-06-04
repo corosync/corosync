@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -103,7 +103,7 @@ extern void pthread_exit(void *) __attribute__((noreturn));
 static void *prioritized_timer_thread (void *data)
 {
 	int fds;
-	unsigned int timeout;
+	unsigned long long timeout;
 
 #if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
 	struct sched_param sched_param;
@@ -117,7 +117,10 @@ static void *prioritized_timer_thread (void *data)
 	for (;;) {
 retry_poll:
 		timer_serialize_lock_fn ();
-		timeout = timerlist_timeout_msec (&timers_timerlist);
+		timeout = timerlist_msec_duration_to_expire (&timers_timerlist);
+		if (timeout != -1 && timeout > 0xFFFFFFFF) {
+			timeout = 0xFFFFFFFE;
+		}
 		timer_serialize_unlock_fn ();
 		fds = poll (NULL, 0, timeout);
 		if (fds == -1) {
@@ -165,8 +168,8 @@ int openais_timer_init (
 	return (res);
 }
 
-int openais_timer_add (
-	unsigned int msec_in_future,
+int openais_timer_add_absolute (
+	unsigned long long nanosec_from_epoch,
 	void *data,
 	void (*timer_fn) (void *data),
 	timer_handle *handle)
@@ -181,11 +184,43 @@ int openais_timer_add (
 		pthread_mutex_lock (&timer_mutex);
 	}
 
-	res = timerlist_add_future (
+	res = timerlist_add_absolute (
 		&timers_timerlist,
 		timer_fn,
 		data,
-		msec_in_future,
+		nanosec_from_epoch,
+		handle);
+
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
+
+	pthread_kill (expiry_thread, SIGUSR1);
+
+	return (res);
+}
+
+int openais_timer_add_duration (
+	unsigned long long nanosec_duration,
+	void *data,
+	void (*timer_fn) (void *data),
+	timer_handle *handle)
+{
+	int res;
+	int unlock;
+
+	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
+
+	res = timerlist_add_duration (
+		&timers_timerlist,
+		timer_fn,
+		data,
+		nanosec_duration,
 		handle);
 
 	if (unlock) {
@@ -214,28 +249,6 @@ void openais_timer_delete (
 	}
 
 	timerlist_del (&timers_timerlist, timer_handle);
-
-	if (unlock) {
-		pthread_mutex_unlock (&timer_mutex);
-	}
-}
-
-void openais_timer_delete_data (
-	timer_handle timer_handle)
-{
-	int unlock;
-
-	if (timer_handle == 0) {
-		return;
-	}
-	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
-		unlock = 0;
-	} else {
-		unlock = 1;
-		pthread_mutex_lock (&timer_mutex);
-	}
-
-	timerlist_del_data (&timers_timerlist, timer_handle);
 
 	if (unlock) {
 		pthread_mutex_unlock (&timer_mutex);

@@ -1262,44 +1262,6 @@ retry_sendmsg_two:
 	return (0);
 }
 
-int openais_ipc_timer_add (
-	void *conn,
-	void (*timer_fn) (void *data),
-	void *data,
-	unsigned int msec_in_future,
-	timer_handle *handle)
-{
-	struct conn_info *conn_info = (struct conn_info *)conn;
-	int res;
-
-	res = timerlist_add_future (
-		&conn_info->timerlist,
-		timer_fn,
-		data,
-		msec_in_future,
-		handle);
-
-	return (res);
-}
-
-void openais_ipc_timer_del (
-	void *conn,
-	timer_handle timer_handle)
-{
-	struct conn_info *conn_info = (struct conn_info *)conn;
-
-	timerlist_del (&conn_info->timerlist, timer_handle);
-}
-
-void openais_ipc_timer_del_data (
-	void *conn,
-	timer_handle timer_handle)
-{
-	struct conn_info *conn_info = (struct conn_info *)conn;
-
-	timerlist_del (&conn_info->timerlist, timer_handle);
-}
-
 void openais_ipc_flow_control_create (
 	void *conn,
 	unsigned int service,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -43,17 +43,14 @@ extern void openais_timer_init (
         void (*serialize_lock) (void),
         void (*serialize_unlock) (void));
 
-extern int openais_timer_add (
-	unsigned int msec_in_future,
+extern int openais_timer_add_duration (
+	unsigned long long nanoseconds_in_future,
 	void *data,
 	void (*timer_fn) (void *data),
 	timer_handle *handle);
 
-/*
- * This should be called when the timer is added from a timer expiration
- */
-extern int openais_timer_add_unlocked (
-	unsigned int msec_in_future,
+extern int openais_timer_add_absolute (
+	unsigned long long nanoseconds_from_epoch,
 	void *data,
 	void (*timer_fn) (void *data),
 	timer_handle *handle);

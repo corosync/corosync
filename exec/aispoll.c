@@ -284,7 +284,7 @@ error_exit:
 
 int poll_timer_add (
 	poll_handle handle,
-	int msec_in_future, void *data,
+	int msec_duration, void *data,
 	void (*timer_fn) (void *data),
 	poll_timer_handle *timer_handle_out)
 {
@@ -303,8 +303,8 @@ int poll_timer_add (
 		res = -ENOENT;
 	}
 
-	timerlist_add_future (&poll_instance->timerlist,
-		timer_fn, data, msec_in_future, timer_handle_out);
+	timerlist_add_duration (&poll_instance->timerlist,
+		timer_fn, data, ((unsigned long long)msec_duration) * 1000000ULL, timer_handle_out);
 
 	hdb_handle_put (&poll_instance_database, handle);
 error_exit:
@@ -336,37 +336,12 @@ error_exit:
 	return (res);
 }
 
-int poll_timer_delete_data (
-	poll_handle handle,
-	poll_timer_handle timer_handle) {
-	struct poll_instance *poll_instance;
-	int res = 0;
-
-	if (timer_handle == 0) {
-		return (0);
-	}
-	res = hdb_handle_get (&poll_instance_database, handle,
-		(void *)&poll_instance);
-	if (res != 0) {
-		res = -ENOENT;
-		goto error_exit;
-	}
-
-	timerlist_del_data (&poll_instance->timerlist, (void *)timer_handle);
-
-	hdb_handle_put (&poll_instance_database, handle);
-
-error_exit:
-	return (res);
-}
-
-
 int poll_run (
 	poll_handle handle)
 {
 	struct poll_instance *poll_instance;
 	int i;
-	int timeout = -1;
+	unsigned long long expire_timeout_msec = -1;
 	int res;
 	int poll_entry_count;
 
@@ -382,11 +357,15 @@ int poll_run (
 				&poll_instance->poll_entries[i].ufd,
 				sizeof (struct pollfd));
 		}
-		timeout = timerlist_timeout_msec (&poll_instance->timerlist);
+		expire_timeout_msec = timerlist_msec_duration_to_expire (&poll_instance->timerlist);
+
+		if (expire_timeout_msec != -1 && expire_timeout_msec > 0xFFFFFFFF) {
+			expire_timeout_msec = 0xFFFFFFFE;
+		}
 
 retry_poll:
 		res = poll (poll_instance->ufds,
-			poll_instance->poll_entry_count, timeout);
+			poll_instance->poll_entry_count, expire_timeout_msec);
 		if (errno == EINTR && res == -1) {
 			goto retry_poll;
 		} else

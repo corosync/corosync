@@ -81,10 +81,6 @@ int poll_timer_delete (
 	poll_handle handle,
 	poll_timer_handle timer_handle);
 
-int poll_timer_delete_data (
-        poll_handle handle,
-        poll_timer_handle timer_handle);
-
 int poll_run (
 	poll_handle handle);
 
