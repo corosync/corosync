@@ -1,9 +1,10 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -103,6 +104,10 @@ extern int totemmrp_ifaces_get (
 	struct totem_ip_address *interfaces,
 	char ***status,
 	unsigned int *iface_count);
+
+extern int totemmrp_my_nodeid_get (void);
+
+extern int totemmrp_my_family_get (void);
 
 extern int totemmrp_ring_reenable (void);
 

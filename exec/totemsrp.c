@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -888,6 +888,43 @@ int totemsrp_ifaces_get (
 error_exit:
 	return (res);
 }
+
+int totemsrp_my_nodeid_get (
+	totemsrp_handle handle)
+{
+	struct totemsrp_instance *instance;
+	int res;
+
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		return (0);
+	}
+
+	res = instance->totem_config->interfaces[0].boundto.nodeid;
+
+	hdb_handle_put (&totemsrp_instance_database, handle);
+	return (res);
+}
+
+int totemsrp_my_family_get (
+	totemsrp_handle handle)
+{
+	struct totemsrp_instance *instance;
+	int res;
+
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		return (0);
+	}
+
+	res = instance->totem_config->interfaces[0].boundto.family;
+
+	hdb_handle_put (&totemsrp_instance_database, handle);
+	return (res);
+}
+
 
 int totemsrp_ring_reenable (
         totemsrp_handle handle)

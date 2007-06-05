@@ -458,7 +458,7 @@ static void ykd_confchg_fn (
 	memcpy (&ykd_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	if (first_run) {
-		ykd_state.last_primary.member_list[0] = this_ip->nodeid;
+		ykd_state.last_primary.member_list[0] = totempg_my_nodeid_get();
 		ykd_state.last_primary.member_list_entries = 1;
 		ykd_state.last_primary.session_id = 0;
 		first_run = 0;

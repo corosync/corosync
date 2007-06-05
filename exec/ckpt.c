@@ -3568,7 +3568,7 @@ static int ckpt_sync_process (void)
 
 	switch (my_sync_state) {
 	case SYNC_STATE_CHECKPOINT:
-		if (my_lowest_nodeid == this_ip->nodeid) {
+		if (my_lowest_nodeid == totempg_my_nodeid_get()) {
 			TRACE1 ("should transmit checkpoints because lowest member in old configuration.\n");
 			res = sync_checkpoints_iterate ();
 
@@ -3588,7 +3588,7 @@ static int ckpt_sync_process (void)
 
 	case SYNC_STATE_REFCOUNT:
 		done_queueing = 1;
-		if (my_lowest_nodeid == this_ip->nodeid) {
+		if (my_lowest_nodeid == totempg_my_nodeid_get()) {
 			TRACE1 ("transmit refcounts because this processor is the lowest member in old configuration.\n");
 			res = sync_refcounts_iterate ();
 		}

@@ -1284,7 +1284,7 @@ error_exit:
 				req_exec_lck_resourceunlock->invocation;
 
 			openais_conn_send_response (
-				req_exec_lck_resourceunlock->source.conn,
+				openais_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 			openais_conn_send_response (

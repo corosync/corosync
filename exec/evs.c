@@ -454,7 +454,7 @@ static void message_handler_req_evs_membership_get (void *conn, void *msg)
 	res_lib_evs_membership_get.header.size = sizeof (struct res_lib_evs_membership_get);
 	res_lib_evs_membership_get.header.id = MESSAGE_RES_EVS_MEMBERSHIP_GET;
 	res_lib_evs_membership_get.header.error = EVS_OK;
-	res_lib_evs_membership_get.local_nodeid = this_ip->nodeid;
+	res_lib_evs_membership_get.local_nodeid = totempg_my_nodeid_get ();
 	memcpy (&res_lib_evs_membership_get.member_list,
 		&res_evs_confchg_callback.member_list,
 		sizeof (res_lib_evs_membership_get.member_list));

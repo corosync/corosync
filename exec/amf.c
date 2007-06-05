@@ -733,7 +733,7 @@ static int create_cluster_model (void)
 		return -1;
 	}
 
-	this_amf_node->nodeid = this_ip->nodeid;
+	this_amf_node->nodeid = totempg_my_nodeid_get();
 
 	return 0;
 }
@@ -754,7 +754,7 @@ static unsigned int calc_sync_master (
 	unsigned int *member_list, int member_list_entries)
 {
 	int i;
-	unsigned int master = this_ip->nodeid; /* assume this node is master */
+	unsigned int master = totempg_my_nodeid_get(); /* assume this node is master */
 
 	for (i = 0; i < member_list_entries; i++) {
 		if (member_list[i] < master &&
@@ -1156,7 +1156,7 @@ static void amf_sync_init (void)
 			break;
 	}
 
-	if (scsm.state == SYNCHRONIZING && scsm.sync_master == this_ip->nodeid) {
+	if (scsm.state == SYNCHRONIZING && scsm.sync_master == totempg_my_nodeid_get()) {
 		amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_START, NULL, 0);
 		assert (amf_cluster != NULL);
 		scsm.cluster = amf_cluster;
@@ -1192,7 +1192,7 @@ static int amf_sync_process (void)
 {
 	SYNCTRACE ("state %s", scsm_state_names[scsm.state]);
 
-	if (scsm.state != SYNCHRONIZING || scsm.sync_master != this_ip->nodeid) {
+	if (scsm.state != SYNCHRONIZING || scsm.sync_master != totempg_my_nodeid_get()) {
 		return 0;
 	}
 
@@ -1273,7 +1273,7 @@ static void amf_sync_activate (void)
 			this_amf_node = get_this_node_obj ();
 			sync_state_set (NORMAL_OPERATION);
 			if (this_amf_node != NULL) {
-				this_amf_node->nodeid = this_ip->nodeid;
+				this_amf_node->nodeid = totempg_my_nodeid_get();
 				cluster_joined_nodes_start ();
 			} else {
 				log_printf (LOG_LEVEL_INFO,
@@ -1388,7 +1388,7 @@ static void amf_confchg_fn (
 			}
 			break;
 		case SYNCHRONIZING: {
-			if (joined_list_entries > 0 && scsm.sync_master == this_ip->nodeid) {
+			if (joined_list_entries > 0 && scsm.sync_master == totempg_my_nodeid_get()) {
 				/* restart sync */
 				amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_START, NULL, 0);
 			}
@@ -1400,7 +1400,7 @@ static void amf_confchg_fn (
 				scsm.sync_master =
 					calc_sync_master (member_list, member_list_entries);
 
-				if (scsm.sync_master == this_ip->nodeid) {
+				if (scsm.sync_master == totempg_my_nodeid_get()) {
 					/* restart sync */
 					SYNCTRACE ("I am (new) sync master");
 					amf_msg_mcast (MESSAGE_REQ_EXEC_AMF_SYNC_START, NULL, 0);
@@ -1416,7 +1416,7 @@ static void amf_confchg_fn (
 				scsm.sync_master =
 					calc_sync_master (member_list, member_list_entries);
 
-				if (scsm.sync_master == this_ip->nodeid) {
+				if (scsm.sync_master == totempg_my_nodeid_get()) {
 					SYNCTRACE ("I am (new) sync master");
 				}
 			}
@@ -1662,7 +1662,7 @@ static void message_handler_req_exec_amf_sync_start (
 			scsm.sync_master = nodeid;
 			break;
 		case PROBING_2:
-			if (this_ip->nodeid == nodeid) {
+			if (totempg_my_nodeid_get() == nodeid) {
 				scsm.sync_master = nodeid;
 				sync_state_set (CREATING_CLUSTER_MODEL);
 				if (create_cluster_model() == 0) {

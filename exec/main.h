@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,8 +52,6 @@
 #define SOCKET_SERVICE_INIT 254
 
 #define SIZEINB MESSAGE_SIZE_MAX
-
-extern struct totem_ip_address *this_ip;
 
 extern struct totempg_group openais_group;
 

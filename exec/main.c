@@ -121,8 +121,6 @@ static void sigabrt_handler (int num)
 	raise (SIGABRT);
 }
 
-struct totem_ip_address *this_ip;
-struct totem_ip_address this_non_loopback_ip;
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
 totempg_groups_handle openais_group_handle;
@@ -200,10 +198,6 @@ static void confchg_fn (
 	int i;
 
 	memcpy (&aisexec_ring_id, ring_id, sizeof (struct memb_ring_id));
-
-	if (!totemip_localhost_check(this_ip)) {
-		totemip_copy(&this_non_loopback_ip, this_ip);
-	}
 
 	/*
 	 * Call configuration change for all services
@@ -428,10 +422,6 @@ int main (int argc, char **argv)
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006 Red Hat, Inc.\n");
 
-	memset(&this_non_loopback_ip, 0, sizeof(struct totem_ip_address));
-
-	totemip_localhost(AF_INET, &this_non_loopback_ip);
-
 	signal (SIGINT, sigintr_handler);
 	signal (SIGUSR2, sigusr2_handler);
 	signal (SIGSEGV, sigsegv_handler);
@@ -586,8 +576,6 @@ int main (int argc, char **argv)
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	this_ip = &totem_config.interfaces[0].boundto;
-
 	res = openais_service_init_all (service_count, objdb);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not init services\n");
@@ -615,8 +603,7 @@ int main (int argc, char **argv)
 	openais_ipc_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock,
-		gid_valid,
-		&this_non_loopback_ip);
+		gid_valid);
 
 	/*
 	 * Start main processing loop

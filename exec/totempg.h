@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -136,8 +137,12 @@ extern int totempg_ifaces_get (
 	char ***status,
         unsigned int *iface_count);
 
-extern int totempg_ring_reenable (void);
-	
 extern char *totempg_ifaces_print (unsigned int nodeid);
 
+extern int totempg_my_nodeid_get (void);
+
+extern int totempg_my_family_get (void);
+
+extern int totempg_ring_reenable (void);
+	
 #endif /* TOTEMPG_H_DEFINED */

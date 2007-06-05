@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,8 +51,7 @@ extern int openais_conn_send_response (void *conn, void *msg, int mlen);
 extern void openais_ipc_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void),
-	unsigned int gid_valid,
-	struct totem_ip_address *non_loopback_ip);
+	unsigned int gid_valid);
 
 extern int openais_ipc_timer_add (
 	void *conn,

@@ -1,11 +1,12 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
  * Copyright (c) 2005 OSDL.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *         Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
@@ -1252,3 +1253,12 @@ char *totempg_ifaces_print (unsigned int nodeid)
 	return (iface_string);
 }
 
+int totempg_my_nodeid_get (void)
+{
+	return (totemmrp_my_nodeid_get());
+}
+
+int totempg_my_family_get (void)
+{
+	return (totemmrp_my_family_get());
+}

@@ -264,24 +264,29 @@ struct req_exec_clm_nodejoin {
 	mar_clm_cluster_node_t cluster_node __attribute__((aligned(8)));
 };
 
-static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static void my_cluster_node_load (void)
 {
-	log_init ("CLM");
+	struct totem_ip_address interfaces[INTERFACE_MAX];
+	unsigned int iface_count;
+	char **status;
+	const char *iface_string;
 
-	memset (cluster_node_entries, 0,
-		sizeof (mar_clm_cluster_node_t) * PROCESSOR_COUNT_MAX);
+	totempg_ifaces_get (
+		totempg_my_nodeid_get (),
+		interfaces,
+		&status,
+		&iface_count);
 
-	/*
-	 * Build local cluster node data structure
-	 */
+	iface_string = totemip_print (&interfaces[0]);
+
 	sprintf ((char *)my_cluster_node.node_address.value, "%s",
-		totemip_print (this_ip));
+		iface_string);
 	my_cluster_node.node_address.length =
 		strlen ((char *)my_cluster_node.node_address.value);
-	if (this_ip->family == AF_INET) {
+	if (totempg_my_family_get () == AF_INET) {
 		my_cluster_node.node_address.family = SA_CLM_AF_INET;
 	} else
-	if (this_ip->family == AF_INET6) {
+	if (totempg_my_family_get () == AF_INET6) {
 		my_cluster_node.node_address.family = SA_CLM_AF_INET6;
 	} else {
 		assert (0);
@@ -291,8 +296,20 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 		(char *)my_cluster_node.node_address.value);
 	my_cluster_node.node_name.length =
 		my_cluster_node.node_address.length;
-	my_cluster_node.node_id = this_ip->nodeid;
+	my_cluster_node.node_id = totempg_my_nodeid_get ();
 	my_cluster_node.member = 1;
+
+	memcpy (&cluster_node_entries[0], &my_cluster_node,
+		sizeof (mar_clm_cluster_node_t));
+}
+
+static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
+{
+	log_init ("CLM");
+
+	memset (cluster_node_entries, 0,
+		sizeof (mar_clm_cluster_node_t) * PROCESSOR_COUNT_MAX);
+
 	{
 #ifndef NANOSEC
 #define	NANOSEC	1000000000
@@ -328,7 +345,6 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 #endif
 	}
 
-	memcpy (&cluster_node_entries[0], &my_cluster_node, sizeof (mar_clm_cluster_node_t));
 	cluster_node_count = 1;
 
 	main_clm_get_by_nodeid = clm_get_by_nodeid;
@@ -534,20 +550,7 @@ static void clm_confchg_fn (
 	 * Load the my_cluster_node data structure in case we are
 	 * transitioning to network interface up or down
 	 */
-	sprintf ((char *)my_cluster_node.node_address.value, "%s", totemip_print (this_ip));
-	my_cluster_node.node_address.length = strlen ((char *)my_cluster_node.node_address.value);
-	if (this_ip->family == AF_INET) {
-	my_cluster_node.node_address.family = SA_CLM_AF_INET;
-	} else
-	if (this_ip->family == AF_INET6) {
-	my_cluster_node.node_address.family = SA_CLM_AF_INET6;
-	} else {
-		assert (0);
-	}
-	strcpy ((char *)my_cluster_node.node_name.value,
-		(char *)my_cluster_node.node_address.value);
-	my_cluster_node.node_name.length = my_cluster_node.node_address.length;
-	my_cluster_node.node_id = this_ip->nodeid;
+	my_cluster_node_load ();
 }
 
 /*
