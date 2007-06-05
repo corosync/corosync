@@ -654,7 +654,7 @@ saLckResourceOpen (
 	req_lib_lck_resourceopen.header.size = sizeof (struct req_lib_lck_resourceopen);
 	req_lib_lck_resourceopen.header.id = MESSAGE_REQ_LCK_RESOURCEOPEN;
 
-	marshall_to_mar_name_t (&req_lib_lck_resourceopen.lockResourceName, lockResourceName);
+	marshall_to_mar_name_t (&req_lib_lck_resourceopen.lockResourceName, (SaNameT *)lockResourceName);
 
 	memcpy (&lckResourceInstance->lockResourceName, lockResourceName, sizeof(SaNameT));
 	req_lib_lck_resourceopen.resourceOpenFlags = resourceOpenFlags;
