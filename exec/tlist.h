@@ -45,6 +45,10 @@
 
 #include "../include/list.h"
 
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	#define HZ 100  /* 10ms */
+#endif
+
 typedef void * timer_handle;
 
 struct timerlist {

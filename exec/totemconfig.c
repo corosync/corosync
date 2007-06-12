@@ -53,10 +53,7 @@
 #include "totemconfig.h"
 #include "print.h"
 #include "objdb.h"
-
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
-	#define HZ 100  /* 10ms */
-#endif
+#include "tlist.h" /* for HZ */
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
