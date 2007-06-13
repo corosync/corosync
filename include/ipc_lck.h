@@ -158,6 +158,7 @@ struct res_lib_lck_resourceunlock {
 struct res_lib_lck_resourceunlockasync {
 	mar_res_header_t header;
 	SaInvocationT invocation;
+	SaLckLockIdT lockId;
 };
 
 struct req_lib_lck_lockpurge {

@@ -340,7 +340,7 @@ saLckDispatch (
 	struct message_overlay dispatch_data;
 	struct res_lib_lck_lockwaitercallback *res_lib_lck_lockwaitercallback;
 	struct res_lib_lck_resourceopenasync *res_lib_lck_resourceopenasync = NULL;
-	struct res_lib_lck_resourcelockasync *res_lib_lck_resourcelockasync;
+	struct res_lib_lck_resourcelockasync *res_lib_lck_resourcelockasync = NULL;
 	struct res_lib_lck_resourceunlockasync *res_lib_lck_resourceunlockasync;
 
 
@@ -519,6 +519,17 @@ saLckDispatch (
 			callbacks.saLckResourceUnlockCallback (
 				res_lib_lck_resourceunlockasync->invocation,
 				res_lib_lck_resourceunlockasync->header.error);
+
+			if (res_lib_lck_resourcelockasync->header.error == SA_AIS_OK) {
+				error = saHandleInstanceGet (&lckLockIdHandleDatabase,
+							     res_lib_lck_resourceunlockasync->lockId,
+							     (void *)&lckLockIdInstance);
+				if (error == SA_AIS_OK) {
+					saHandleInstancePut (&lckLockIdHandleDatabase, res_lib_lck_resourceunlockasync->lockId);
+
+					saHandleDestroy (&lckLockIdHandleDatabase, res_lib_lck_resourceunlockasync->lockId);
+				}
+			}
 			break;
 #ifdef NOT_DONE_YET
 

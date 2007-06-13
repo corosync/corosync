@@ -1282,6 +1282,7 @@ error_exit:
 			res_lib_lck_resourceunlockasync.header.error = error;
 			res_lib_lck_resourceunlockasync.invocation =
 				req_exec_lck_resourceunlock->invocation;
+			res_lib_lck_resourceunlockasync.lockId = req_exec_lck_resourceunlock->lock_id;
 
 			openais_conn_send_response (
 				openais_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
