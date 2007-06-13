@@ -188,6 +188,7 @@ endif
 	install -m 644 lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/print.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
