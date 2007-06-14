@@ -55,6 +55,8 @@ html:
 	groff -mandoc -Thtml cpg_leave.3 > html/cpg_leave.html
 	groff -mandoc -Thtml cpg_mcast_joined.3 > html/cpg_mcast_joined.html
 	groff -mandoc -Thtml cpg_membership_get.3 > html/cpg_membership_get.html
+	groff -mandoc -Thtml cpg_context_get.3 > html/cpg_context_get.html
+	groff -mandoc -Thtml cpg_context_set.3 > html/cpg_context_set.html
 
 	cp index.html html
 

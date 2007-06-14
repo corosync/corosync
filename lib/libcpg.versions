@@ -10,6 +10,8 @@ OPENAIS_CPG_1.0 {
 		cpg_leave;
 		cpg_mcast_joined;
 		cpg_membership_get;
+		cpg_context_get;
+		cpg_context_set;
 
 	local:
 		saHandleCreate;
