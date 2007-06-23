@@ -344,6 +344,9 @@ static SaSelectionObjectT comp_init ()
 	char *env;
 	int result;
 	SaSelectionObjectT select_fd;
+	SaAmfPmErrorsT pmErrors = (SA_AMF_PM_ZERO_EXIT | 
+							   SA_AMF_PM_NON_ZERO_EXIT | 
+							   SA_AMF_PM_ABNORMAL_END);
 
 	name = getenv ("SA_AMF_COMPONENT_NAME");
 	if (name == NULL) {
@@ -484,6 +487,21 @@ static SaSelectionObjectT comp_init ()
 	if (result != SA_AIS_OK) {
 		die ("saAmfComponentRegister failed %d", result);
 	}
+
+	/*
+	 * startup passive monitoring
+	 */
+	do {
+		result = saAmfPmStart (handle,
+			&compNameGlobal, getpid(), 1,
+			pmErrors, 
+			SA_AMF_COMPONENT_FAILOVER);
+
+		if (result == SA_AIS_ERR_TRY_AGAIN) {
+			printf("%d: TRY_AGAIN received\n", (int)getpid());
+			usleep (100000);
+		}
+	} while (result == SA_AIS_ERR_TRY_AGAIN);
 
 	/*
 	 * Test already started healthcheck

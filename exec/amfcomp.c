@@ -132,6 +132,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
+#include <dirent.h>
 
 #include "../include/saAis.h"
 #include "../include/saAmf.h"
@@ -785,6 +786,7 @@ struct amf_comp *amf_comp_new(struct amf_su *su, char *name)
 	setSaNameT (&comp->name, name);
 	comp->instantiate_timeout_handle = 0;
 	comp->cleanup_timeout_handle = 0;
+	list_init(&comp->pm_head);
 	return comp;
 }
 
@@ -1297,14 +1299,19 @@ void amf_comp_error_report (struct amf_comp *comp, amf_comp_t* reporting_comp,
 	SaAmfRecommendedRecoveryT recommendedRecovery)
 {
 	struct res_lib_amf_componenterrorreport res_lib;
-	TRACE2("Exec comp error report on comp'%s' from %s", comp->name.value, 
-		reporting_comp->name.value );
-	 
-	if (amf_su_is_local (reporting_comp->su)) {
-		res_lib.header.size = sizeof (struct res_lib_amf_componenterrorreport);
-		res_lib.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
-		res_lib.header.error = SA_AIS_OK;
-		openais_conn_send_response (reporting_comp->conn, &res_lib, sizeof (res_lib));
+
+	if (reporting_comp != NULL) {
+		TRACE2("Exec comp error report on comp'%s' from %s", comp->name.value, 
+			   reporting_comp->name.value );
+
+		if (amf_su_is_local (reporting_comp->su)) {
+			res_lib.header.size = sizeof (struct res_lib_amf_componenterrorreport);
+			res_lib.header.id = MESSAGE_RES_AMF_COMPONENTERRORREPORT;
+			res_lib.header.error = SA_AIS_OK;
+			openais_conn_send_response (reporting_comp->conn, &res_lib, sizeof (res_lib));
+		}
+	} else {
+		TRACE2("Exec comp error report on comp'%s' from AMF", comp->name.value);
 	}
 
     /* Report to SU and let it handle the problem */
@@ -1462,6 +1469,261 @@ void amf_comp_cleanup_completed (struct amf_comp *comp)
 		comp_presence_state_set (comp, SA_AMF_PRESENCE_UNINSTANTIATED);
 	}
 }
+
+/**
+ * go through the pids for this component and
+ * check the existence of of /proc/<pid>/stat
+ */
+static void timer_function_pm_fn (void *data)
+{
+	struct amf_comp *comp = (struct amf_comp *)data;
+	struct amf_pm    *pm = NULL;
+	struct list_head *pmlist = NULL;
+	struct list_head *next = NULL;
+	SaBoolT reported = SA_FALSE;
+	char f[30];
+
+	assert (comp);
+	/* we are going to ignore the pmErrors
+	 * and only check to see if the process exists.
+	 */
+	for (pmlist = comp->pm_head.next;
+		 pmlist != &comp->pm_head;
+		 pmlist = next) {
+
+		pm = list_entry(pmlist,struct amf_pm,entry);
+		next = pmlist->next;
+
+		if (pm->errors == 0) {
+			list_del(pmlist);
+			free(pm);
+			continue;
+		}
+		sprintf(f,"/proc/%llu/stat", pm->pid);
+		if (access( f, R_OK) != 0) {
+			if ((comp->su->restart_control_state != SU_RC_RESTART_SU_DEACTIVATING) &&
+				(comp->su->restart_control_state != SU_RC_RESTART_SU_TERMINATING) &&
+				(reported == SA_FALSE)) {
+
+				/* don't report it as an error if we are busy
+				 * shutting down
+				 */
+				syslog(LOG_ALERT, "component %s:%s exited",
+					   comp->su->saAmfSUHostedByNode.value, comp->name.value);
+				mcast_error_report_from_pm (comp, pm->recovery);
+				reported = SA_TRUE;
+			}
+			list_del(pmlist);
+			free(pm);
+			break;
+		}
+	}
+
+	if (!list_empty(&comp->pm_head)) {
+		pm = list_entry(comp->pm_head.next,struct amf_pm,entry);
+		poll_timer_add (aisexec_poll_handle,
+						500,
+						(void *)comp,
+						timer_function_pm_fn,
+						&pm->timer_handle_period);
+	}
+}
+
+/**
+ * Find and add all children of a given PID 
+ * @param comp the component
+ * @param pmErrors the errors to monitor
+ * @param recommendedRecovery
+ * @param dirList list of files in proc filesystem
+ * @param numProcEntriesFound number of file entries in proc filesystem
+ * @param ppid the process id to find children of
+ * @param depth the descendents tree depth to monitor
+ */
+void amf_comp_find_and_add_child_pids(
+	struct amf_comp *comp,
+	SaAmfPmErrorsT pmErrors,
+	SaAmfRecommendedRecoveryT recommendedRecovery,
+	struct dirent **dirList,
+	SaInt32T numProcEntriesFound,
+	SaUint64T ppid,
+	SaInt32T depth)
+{
+	SaUint64T parent;
+	SaUint64T p_id;
+	SaInt32T res;
+	SaInt32T n = numProcEntriesFound;
+	char f[30];
+	FILE *p;
+	struct amf_pm *pm = NULL;
+
+	while (n--) {
+
+		sprintf(f, "/proc/%s/stat", dirList[n]->d_name);
+
+		p = fopen(f, "r");
+		if (p == NULL)
+			continue;
+
+		res = fscanf(p, "%llu %*s %*c %llu", &p_id, &parent);
+
+		if ((res == 2) && (parent == ppid)) {
+
+			pm = amf_calloc(1, sizeof(struct amf_pm));
+			if ( pm == NULL ) {
+				return;
+			}
+
+			TRACE2 ("add child (pid=%llu) for comp pid=%llu (%s)\n", p_id, ppid, comp->name.value);
+
+			pm->pid = p_id;
+			pm->errors = pmErrors;
+			pm->recovery = recommendedRecovery;
+			pm->timer_handle_period = 0;
+
+			list_add(&pm->entry, &comp->pm_head);
+
+			if (depth > 1) {
+				amf_comp_find_and_add_child_pids(comp,
+												 pmErrors,
+												 recommendedRecovery,
+												 dirList,
+												 numProcEntriesFound,
+												 p_id,
+												 depth - 1);
+			}
+		}
+		fclose(p);
+	}
+}
+
+/**
+ * Handle the request to start passive monitoring
+ *
+ * @param comp the component
+ * @param pid the process id to monitor
+ * @param depth the descendents tree depth to monitor
+ * @param pmErrors the errors to monitor
+ * @param recommendedRecovery
+ *
+ * @return SaAisErrorT
+ */
+SaAisErrorT amf_comp_pm_start (
+	struct amf_comp *comp,
+	SaUint64T pid,
+	SaInt32T depth,
+	SaAmfPmErrorsT pmErrors,
+	SaAmfRecommendedRecoveryT recommendedRecovery)
+{
+	struct amf_pm *pm = NULL;
+	struct list_head *pmlist = NULL;
+	struct dirent **dirList;
+	SaInt32T numProcEntriesFound;
+
+	if (is_not_instantiating_or_instantiated_or_restarting (comp)) {
+		log_printf (LOG_ERR, "PmStart: ignored due to wrong state = %d, comp = %s",
+					comp->saAmfCompPresenceState, comp->name.value);
+		return SA_AIS_ERR_FAILED_OPERATION;
+	}
+
+	/* try and find one thats already there, and mod it */
+
+	for (pmlist = comp->pm_head.next;
+		 pmlist != &comp->pm_head;
+		 pmlist = pmlist->next) {
+
+		pm = list_entry(pmlist,struct amf_pm,entry);
+
+		if (pm->pid == pid) {
+			break;
+		}
+	}
+	if ( pm == NULL ) {
+		/* not found, create it */
+		pm = amf_calloc(1, sizeof(struct amf_pm));
+		if ( pm == NULL ) {
+			return SA_AIS_ERR_NO_MEMORY;
+		}
+
+		pm->pid = pid;
+		pm->errors = pmErrors;
+		pm->recovery = recommendedRecovery;
+		pm->timer_handle_period = 0;
+
+		if ( list_empty(&comp->pm_head)) {
+			/* only add a timer per comp */
+			/* TODO: should this timer period be a define or a config option?
+			*/
+			poll_timer_add (aisexec_poll_handle,
+							500,
+							(void *)comp,
+							timer_function_pm_fn,
+							&pm->timer_handle_period);
+
+		}
+		list_add(&pm->entry, &comp->pm_head);
+
+		numProcEntriesFound = scandir("/proc/", &dirList, 0, alphasort);
+		if (numProcEntriesFound < 0) {
+			perror("scandir");
+			return -2;
+		}
+
+		amf_comp_find_and_add_child_pids(comp,
+										 pmErrors,
+										 recommendedRecovery,
+										 dirList,
+										 numProcEntriesFound,
+										 pid,
+										 depth);
+
+		free(dirList);
+
+
+	} else {
+		/* only esculate the checking */
+		pm->errors |= pmErrors;
+
+		if (pm->recovery < recommendedRecovery) {
+			pm->recovery = recommendedRecovery;
+		}
+	}
+
+	return SA_AIS_OK;
+}
+
+/**
+ * Handle the request to stop passive monitoring on
+ * a component (or part of it)
+ *
+ * @param comp the component
+ * @param stopQualifier what processes to stop
+ * @param pid the process id to monitor
+ * @param pmErrors the errors to monitor
+ *
+ * @return SaAisErrorT - return value to component
+ */
+SaAisErrorT amf_comp_pm_stop (
+	struct amf_comp *comp,
+	SaAmfPmStopQualifierT stopQualifier,
+	SaInt64T pid,
+	SaAmfPmErrorsT pmErrors)
+{
+	struct amf_pm *pm = NULL;
+	struct list_head *pmlist = NULL;
+
+	for (pmlist = comp->pm_head.next; pmlist != &comp->pm_head; pmlist = pmlist->next) {
+
+		pm = list_entry(pmlist,struct amf_pm,entry);
+
+		if ((pm->pid == pid) ||
+			( stopQualifier == SA_AMF_PM_ALL_PROCESSES)) {
+			/* remove the error to check */
+			pm->errors &= ~pmErrors;
+		}
+	}
+	return SA_AIS_OK;
+}
+
 
 /**
  * Handle the request from a component to start a healthcheck
@@ -1924,6 +2186,7 @@ void amf_comp_terminate (struct amf_comp *comp)
 
 	if (amf_su_is_local (comp->su)) {
 		amf_comp_healthcheck_stop (comp, NULL);
+		amf_comp_pm_stop(comp, SA_AMF_PM_ALL_PROCESSES, 0, SA_AMF_PM_ALL_ERRORS);
 		if (amf_comp_is_error_suspected(comp)) {
 			clc_interfaces[comp->comptype]->cleanup (comp);
 		} else {
@@ -1946,6 +2209,7 @@ void amf_comp_restart (struct amf_comp *comp)
 
 	if (amf_su_is_local (comp->su)) {
 		amf_comp_healthcheck_stop (comp, NULL);
+		amf_comp_pm_stop(comp, SA_AMF_PM_ALL_PROCESSES, 0, SA_AMF_PM_ALL_ERRORS);
 		clc_interfaces[comp->comptype]->cleanup (comp);
 	}
 }

@@ -611,6 +611,7 @@ saAmfPmStart (
 	req_lib_amf_pmstart.processId = processId;
 	req_lib_amf_pmstart.descendentsTreeDepth = descendentsTreeDepth;
 	req_lib_amf_pmstart.pmErrors = pmErrors;
+	req_lib_amf_pmstart.recommendedRecovery = recommendedRecovery;
 
 	pthread_mutex_lock (&amfInstance->response_mutex);
 

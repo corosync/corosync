@@ -379,8 +379,7 @@ Chapter:				Deviation:
 3.7.6 No Redundancy Model		Not supported.
 3.7.7 The Effect of Administrative...	Not supported.
 3.9 Dependencies Among SIs, Compone.. 	Not supported.
-3.11 Component Monitoring		• Passive Monitoring: Not supported.
-					• External Active Monitoring:
+3.11 Component Monitoring		• External Active Monitoring:
 					  Not supported.
 3.12.1.1 Error Detection		AMF does not support that a component
 					reports an error for another component.

@@ -42,6 +42,7 @@ typedef SaUint64T SaAmfHandleT;
 #define SA_AMF_PM_ZERO_EXIT 0x1
 #define SA_AMF_PM_NON_ZERO_EXIT 0x2
 #define SA_AMF_PM_ABNORMAL_END 0x4
+#define SA_AMF_PM_ALL_ERRORS (SA_AMF_PM_ZERO_EXIT | SA_AMF_PM_NON_ZERO_EXIT | SA_AMF_PM_ABNORMAL_END)
 
 typedef SaUint32T SaAmfPmErrorsT;
 

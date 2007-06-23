@@ -1925,12 +1925,77 @@ static void message_handler_req_lib_amf_pmstart (
 	void *conn,
 	void *msg)
 {
+	struct req_lib_amf_pmstart *req_lib = msg;
+	struct res_lib_amf_pmstart  res_lib;
+	struct amf_comp *comp;
+	SaAisErrorT error = SA_AIS_OK;
+
+	TRACE2("PmStart msg: '%s', %llu %d %d %d",
+				req_lib->compName.value, 
+				req_lib->processId,
+				req_lib->descendentsTreeDepth,
+				req_lib->pmErrors,
+				req_lib->recommendedRecovery);
+
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
+
+	if (comp != NULL) {
+		comp->conn = conn;
+
+		error = amf_comp_pm_start (comp, req_lib->processId,
+								   req_lib->descendentsTreeDepth,
+								   req_lib->pmErrors,
+								   req_lib->recommendedRecovery);
+	} else {
+		log_printf (LOG_ERR, "PmStart: Component '%s' not found",
+					req_lib->compName.value);
+		error = SA_AIS_ERR_NOT_EXIST;
+	}
+
+	res_lib.header.id = MESSAGE_RES_AMF_PMSTART;
+	res_lib.header.size = sizeof (res_lib);
+	res_lib.header.error = error;
+	openais_conn_send_response (conn, &res_lib,
+								sizeof (struct res_lib_amf_pmstart));
+
 }
 
 static void message_handler_req_lib_amf_pmstop (
 	void *conn,
 	void *msg)
 {
+	struct req_lib_amf_pmstop *req_lib = msg;
+	struct res_lib_amf_pmstop  res_lib;
+	struct amf_comp *comp;
+	SaAisErrorT error = SA_AIS_OK;
+
+	TRACE2 ("PmStop msg: '%s', %llu %d %d %d",
+			req_lib->compName.value, 
+			req_lib->processId,
+			req_lib->stopQualifier,
+			req_lib->pmErrors);
+
+	comp = amf_comp_find (amf_cluster, &req_lib->compName);
+
+	if (comp != NULL) {
+		comp->conn = conn;
+
+		error = amf_comp_pm_stop (comp,
+								  req_lib->stopQualifier,
+								  req_lib->processId,
+								  req_lib->pmErrors);
+	} else {
+		log_printf (LOG_ERR, "PmStop: Component '%s' not found",
+					req_lib->compName.value);
+		error = SA_AIS_ERR_NOT_EXIST;
+	}
+
+	res_lib.header.id = MESSAGE_RES_AMF_PMSTOP;
+	res_lib.header.size = sizeof (res_lib);
+	res_lib.header.error = error;
+	openais_conn_send_response (conn, &res_lib,
+								sizeof (struct res_lib_amf_pmstop));
+
 }
 
 static void message_handler_req_lib_amf_healthcheckstart (
@@ -2153,6 +2218,36 @@ static void message_handler_req_lib_amf_protectiongrouptrackstop (
 #endif
 }
 
+/**
+ * multicast a message out reporting a component error
+ * (to be called by passive monitoring)
+ */
+void mcast_error_report_from_pm (
+    struct amf_comp *comp,
+    SaAmfRecommendedRecoveryT recommendedRecovery)
+{
+	struct req_exec_amf_comp_error_report req_exec;
+	struct iovec iovec;
+	SaNameT erroneous_comp_name;
+
+	amf_comp_dn_make(comp, &erroneous_comp_name);
+
+	TRACE2("%s %s",comp->name.value, erroneous_comp_name.value);
+
+	req_exec.header.size = sizeof (struct req_exec_amf_comp_error_report);
+	req_exec.header.id = SERVICE_ID_MAKE (AMF_SERVICE,
+			MESSAGE_REQ_EXEC_AMF_COMPONENT_ERROR_REPORT);
+
+	memcpy (&req_exec.erroneousComponent, &erroneous_comp_name, sizeof (SaNameT));
+	memcpy (&req_exec.recommendedRecovery, &recommendedRecovery, sizeof (SaAmfRecommendedRecoveryT));
+
+	iovec.iov_base = (char *)&req_exec;
+	iovec.iov_len = sizeof (req_exec);
+
+	totempg_groups_mcast_joined (openais_group_handle, 
+								 &iovec, 1, TOTEMPG_AGREED);
+
+}
 
 static void message_handler_req_lib_amf_componenterrorreport (
 	void *conn,

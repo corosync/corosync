@@ -206,6 +206,7 @@ typedef enum {
 struct amf_si_assignment;
 struct amf_csi_assignment;
 struct amf_healthcheck;
+struct amf_pm;
 
 typedef enum {
 	CLUSTER_AC_UNINSTANTIATED = 1,
@@ -453,6 +454,7 @@ typedef struct amf_comp {
 	void *conn;
 	enum clc_component_types comptype;
 	struct amf_healthcheck *healthcheck_head;
+	struct list_head pm_head;
 	poll_timer_handle instantiate_timeout_handle;
 	poll_timer_handle cleanup_timeout_handle;
 	/*
@@ -480,6 +482,19 @@ typedef struct amf_healthcheck {
 	poll_timer_handle timer_handle_period;
 
 } amf_healthcheck_t;
+
+
+typedef struct amf_pm {
+       /* Configuration Attributes */
+       SaUint64T pid;
+       SaAmfPmErrorsT errors;
+       SaAmfRecommendedRecoveryT recovery;
+
+       /* Implementation */
+	   struct list_head entry;
+       poll_timer_handle timer_handle_period;
+} amf_pm_t;
+
 
 typedef struct amf_si {
 	/* Configuration Attributes */
@@ -977,6 +992,17 @@ extern SaAisErrorT amf_comp_healthcheck_start (
 extern SaAisErrorT amf_comp_healthcheck_stop (
 	struct amf_comp *comp,
 	SaAmfHealthcheckKeyT *healthcheckKey);
+extern SaAisErrorT amf_comp_pm_start (
+	struct amf_comp *comp,
+	SaUint64T pid,
+	SaInt32T depth,
+	SaAmfPmErrorsT pmErrors,
+	SaAmfRecommendedRecoveryT recommendedRecovery);
+extern SaAisErrorT amf_comp_pm_stop (
+	struct amf_comp *comp,
+	SaAmfPmStopQualifierT stopQualifier,
+	SaInt64T pid,
+	SaAmfPmErrorsT pmErrors);
 extern SaAisErrorT amf_comp_register (struct amf_comp *comp);
 extern void amf_comp_unregister (struct amf_comp *comp);
 extern void amf_comp_error_report (
@@ -1008,6 +1034,10 @@ extern void amf_comp_csi_remove (amf_comp_t *component,
 extern void amf_comp_error_suspected_clear (amf_comp_t *comp);
 extern void amf_comp_error_suspected_set (amf_comp_t *comp);
 extern int amf_comp_is_error_suspected (amf_comp_t *comp);
+
+extern void mcast_error_report_from_pm (
+    struct amf_comp *comp,
+    SaAmfRecommendedRecoveryT recommendedRecovery);
 
 /*===========================================================================*/
 /* amfsi.c */
