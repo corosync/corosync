@@ -839,6 +839,8 @@ static void message_handler_req_exec_cpg_procleave (
 			list_del(&pi->list);
 			if (!pi->conn)
 				free(pi);
+			else
+				pi->pid = 0;
 
 			if (list_empty(&gi->members)) {
 				remove_group(gi);
