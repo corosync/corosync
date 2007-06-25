@@ -1,11 +1,12 @@
 #define _BSD_SOURCE
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@sdake.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -61,7 +62,7 @@
     } while (0)
 #endif
 
-#define SECONDS_TO_EXPIRE 4
+#define SECONDS_TO_EXPIRE 5
 
 int ckptinv;
 SaInvocationT open_invocation = 16;
@@ -76,24 +77,26 @@ void printSaNameT (SaNameT *name)
 
 SaVersionT version = { 'B', 1, 1 };
 
-SaNameT checkpointName = { 5, "abra\0" };
+SaNameT defaultCheckpointName = { 8, "defaults" };
+
+SaNameT sectionsCheckpointName = { 8, "sections" };
 
 SaCkptCheckpointCreationAttributesT checkpointCreationAttributes = {
-	SA_CKPT_WR_ALL_REPLICAS,
-	100000,
-	5000000000LL,
-	10,
-	200000,
-	10
+	.creationFlags = SA_CKPT_WR_ALL_REPLICAS,
+	.checkpointSize = 100000,
+	.retentionDuration = 5000000000LL,
+	.maxSections = 1,
+	.maxSectionSize = 200000,
+	.maxSectionIdSize = 20
 };
 
 SaCkptSectionIdT sectionId1 = {
-	14,
+	13,
 	(SaUint8T *) "section ID #1"
 };
 
 SaCkptSectionIdT sectionId2 = {
-	14,
+	13,
 	(SaUint8T *) "section ID #2"
 };
 
@@ -116,7 +119,7 @@ char default_read_buffer[1025];
 SaCkptIOVectorElementT ReadVectorElements[] = {
 	{
 		{
-			14,
+			13,
 			(SaUint8T *) "section ID #1"
 		},
 		readBuffer1,
@@ -126,7 +129,7 @@ SaCkptIOVectorElementT ReadVectorElements[] = {
 	},
 	{
 		{
-			14,
+			13,
 			(SaUint8T *) "section ID #2"
 		},
 		readBuffer2,
@@ -154,7 +157,7 @@ char default_write_data[56];
 SaCkptIOVectorElementT WriteVectorElements[] = {
 	{
 		{
-			14,
+			13,
 			(SaUint8T *) "section ID #1"
 		},
 		data1, /*"written data #1, this should extend past end of old section data", */
@@ -164,7 +167,7 @@ SaCkptIOVectorElementT WriteVectorElements[] = {
 	},
 	{
 		{
-			14,
+			13,
 			(SaUint8T *) "section ID #2",
 		},
 		data2, /*"written data #2, this should extend past end of old section data" */
@@ -225,7 +228,7 @@ int main (void) {
 
 	error = saCkptCheckpointOpenAsync (ckptHandle,
 		open_invocation,
-		&checkpointName,
+		&defaultCheckpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE);
 	printf ("%s: initial asynchronous open of checkpoint\n",
@@ -249,7 +252,7 @@ int main (void) {
 	printf ("%s: Closing checkpoint\n", get_test_output (error, SA_AIS_OK));
 	
 	error = saCkptCheckpointOpen (ckptHandle,
-		&checkpointName,
+		&defaultCheckpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
@@ -258,39 +261,60 @@ int main (void) {
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointRead (checkpointHandle,
-				default_read_vector,
-				1,
-				&erroroneousVectorIndex);
+		default_read_vector,
+		1,
+		&erroroneousVectorIndex);
 	printf ("%s: Reading default checkpoint section before update\n",
 		get_test_output (error, SA_AIS_OK));
 	printf (" default_read_buffer:'%s'\n", default_read_buffer);
 
 	memset (default_read_buffer, 0, sizeof (default_read_buffer));
-	memcpy(default_write_data, "This is an update to the default section date, update#1", 56);
+	memcpy(default_write_data,
+		"This is an update to the default section date, update#1", 56);
 	error = saCkptCheckpointWrite (checkpointHandle,
-				default_write_vector,
-				1,
-				&erroroneousVectorIndex);
-	printf ("%s: Writing default checkpoint section with data '%s' \n",get_test_output (error, SA_AIS_OK), default_write_data);
+		default_write_vector,
+		1,
+		&erroroneousVectorIndex);
+
+	printf ("%s: Writing default checkpoint section with data '%s' \n",
+		get_test_output (error, SA_AIS_OK), default_write_data);
 
 	error = saCkptCheckpointRead (checkpointHandle,
-				default_read_vector,
-				1,
-				&erroroneousVectorIndex);
-    printf ("%s: Reading default checkpoint section \n",
-        get_test_output (error, SA_AIS_OK));
-    printf (" default_read_buffer:'%s'\n", default_read_buffer);
-	
-	error = saCkptSectionCreate (checkpointHandle,
-        &sectionCreationAttributes1,
-        "Initial Data #0",
-        strlen ("Initial Data #0") + 1);
+		default_read_vector,
+		1,
+		&erroroneousVectorIndex);
 
-    printf ("%s: checkpoint section create\n",
-        get_test_output (error, SA_AIS_OK));
+	printf ("%s: Reading default checkpoint section \n",
+		get_test_output (error, SA_AIS_OK));
+
+	printf (" default_read_buffer:'%s'\n", default_read_buffer);
+	
+	error = saCkptCheckpointClose (checkpointHandle);
+
+	checkpointCreationAttributes.maxSections = 5;
+	error = saCkptCheckpointOpen (ckptHandle,
+		&sectionsCheckpointName,
+		&checkpointCreationAttributes,
+		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
+		0,
+		&checkpointHandle);
+
+	printf ("%s: checkpoint create writeable\n",
+		get_test_output (error, SA_AIS_OK));
+
+	error = saCkptSectionCreate (checkpointHandle,
+		&sectionCreationAttributes1,
+		"Initial Data #0",
+		strlen ("Initial Data #0") + 1);
+
+	printf ("%s: checkpoint section create\n",
+		get_test_output (error, SA_AIS_OK));
 
 	gettimeofday (&tv_start, 0);
-	sectionCreationAttributes1.expirationTime = ((unsigned long long)(tv_start.tv_sec + SECONDS_TO_EXPIRE)) * ((unsigned long long)1000000000) + ((unsigned long long)(tv_start.tv_usec) * ((unsigned long long)1000));
+	sectionCreationAttributes1.expirationTime =
+		 (((unsigned long long)(tv_start.tv_sec) + SECONDS_TO_EXPIRE) *
+			1000000000ULL) +
+		((unsigned long long)(tv_start.tv_usec) * 1000ULL);
 
 	error = saCkptSectionExpirationTimeSet (checkpointHandle,
 		&sectionId1,
@@ -300,17 +324,28 @@ int main (void) {
 
 	printf ("Please wait, testing expiry of checkpoint sections.\n");
 	do {
-	error = saCkptCheckpointRead (checkpointHandle,
-		ReadVectorElements,
-		1,
-		&erroroneousVectorIndex);
+		error = saCkptCheckpointRead (checkpointHandle,
+			ReadVectorElements,
+			1,
+			&erroroneousVectorIndex);
+sleep (1);
 	} while (error != SA_AIS_ERR_NOT_EXIST);
 	gettimeofday (&tv_end, NULL);
+
+	/*
+	 * avoid div by zero errors
+	 */
+	if (tv_elapsed.tv_usec == 0) {
+		tv_elapsed.tv_usec = 1;
+	}
 	timersub (&tv_end, &tv_start, &tv_elapsed);
-	printf ("Elapsed Time to expiry is %ld.%ld (should be about %d seconds)\n", tv_elapsed.tv_sec, (unsigned long)tv_elapsed.tv_usec, SECONDS_TO_EXPIRE);
+	printf ("Elapsed Time to expiry is %ld & %ld usec (should be about %d seconds)\n",
+		tv_elapsed.tv_sec,
+		tv_elapsed.tv_usec,
+		SECONDS_TO_EXPIRE);
 
 	error = saCkptCheckpointRetentionDurationSet (checkpointHandle,
-						      5000000000LL);
+	      5000000000LL);
 	printf ("%s: RetentionDurationSet\n",
 		get_test_output (error, SA_AIS_OK));
 
@@ -322,12 +357,12 @@ int main (void) {
 	printf ("%s: Section creation\n",
 		get_test_output (error, SA_AIS_OK));
 
-	error = saCkptCheckpointUnlink (ckptHandle, &checkpointName);
+	error = saCkptCheckpointUnlink (ckptHandle, &sectionsCheckpointName);
 	printf ("%s: Unlinking checkpoint\n", 
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointOpen (ckptHandle,
-		&checkpointName,
+		&sectionsCheckpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
@@ -340,7 +375,7 @@ int main (void) {
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointOpen (ckptHandle,
-		&checkpointName,
+		&sectionsCheckpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ,
 		0,
@@ -351,7 +386,7 @@ int main (void) {
 
 
 	error = saCkptCheckpointOpen (ckptHandle,
-		&checkpointName,
+		&sectionsCheckpointName,
 		&checkpointCreationAttributes,
 		SA_CKPT_CHECKPOINT_CREATE|SA_CKPT_CHECKPOINT_READ|SA_CKPT_CHECKPOINT_WRITE,
 		0,
@@ -360,7 +395,7 @@ int main (void) {
 		get_test_output (error, SA_AIS_OK));
 
 	error = saCkptCheckpointRetentionDurationSet (checkpointHandle,
-						      5000000000LL);
+		5000000000LL);
 	printf ("%s: set checkpoint retention duration\n",
 		get_test_output (error, SA_AIS_OK));
 
@@ -380,6 +415,8 @@ int main (void) {
 	printf ("%s: Create checkpoint section on read only checkpoint\n",
 		get_test_output (error, SA_AIS_ERR_ACCESS));
 
+	sectionCreationAttributes1.expirationTime = SA_TIME_END;
+
 	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes1,
 		"Initial Data #0",
@@ -392,7 +429,7 @@ int main (void) {
 		"Initial Data #0",
 		strlen ("Initial Data #0") + 1);
 	printf ("%s: Create checkpoint section when one already exists\n",
-		get_test_output (error, 14));
+		get_test_output (error, SA_AIS_ERR_EXIST));
 		
 	error = saCkptSectionDelete (checkpointHandle,
 		&sectionId1);
@@ -412,7 +449,6 @@ int main (void) {
 		strlen ("Initial Data #2") + 1);
 	printf ("%s: creating section 2 for first time\n",
 		get_test_output (error, SA_AIS_OK));
-
 	error = saCkptSectionCreate (checkpointHandle,
 		&sectionCreationAttributes2,
 		"Initial Data #2",
@@ -443,7 +479,7 @@ int main (void) {
 		ReadVectorElements,
 		2,
 		&erroroneousVectorIndex);
-	printf ("%s: checkpoint read operation",
+	printf ("%s: checkpoint read operation\n",
 		get_test_output (error, SA_AIS_OK));
 	printf ("Buffers after checkpoint read\n");
 	printf (" buffer #1: '%s'\n", readBuffer1);
