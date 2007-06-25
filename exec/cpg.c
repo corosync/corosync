@@ -174,6 +174,8 @@ static void message_handler_req_lib_cpg_trackstart (void *conn, void *message);
 
 static void message_handler_req_lib_cpg_trackstop (void *conn, void *message);
 
+static void message_handler_req_lib_cpg_local_get (void *conn, void *message);
+
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason);
 
 static int cpg_exec_send_joinlist(void);
@@ -221,6 +223,12 @@ static struct openais_lib_handler cpg_lib_service[] =
 		.lib_handler_fn				= message_handler_req_lib_cpg_trackstop,
 		.response_size				= sizeof (struct res_lib_cpg_trackstart),
 		.response_id				= MESSAGE_RES_CPG_TRACKSTOP,
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 6 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
+		.response_size				= sizeof (struct res_lib_cpg_local_get),
+		.response_id				= MESSAGE_RES_CPG_LOCAL_GET,
 		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -1193,4 +1201,17 @@ tstop_ret:
 	res_lib_cpg_trackstop.header.id = MESSAGE_RES_CPG_TRACKSTOP;
 	res_lib_cpg_trackstop.header.error = SA_AIS_OK;
 	openais_conn_send_response(conn, &res_lib_cpg_trackstop.header, sizeof(res_lib_cpg_trackstop));
+}
+
+static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
+{
+	struct res_lib_cpg_local_get res_lib_cpg_local_get;
+
+	res_lib_cpg_local_get.header.size = sizeof(res_lib_cpg_local_get);
+	res_lib_cpg_local_get.header.id = MESSAGE_RES_CPG_LOCAL_GET;
+	res_lib_cpg_local_get.header.error = SA_AIS_OK;
+	res_lib_cpg_local_get.local_nodeid = totempg_my_nodeid_get ();
+
+	openais_conn_send_response(conn, &res_lib_cpg_local_get,
+		sizeof(res_lib_cpg_local_get));
 }

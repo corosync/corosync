@@ -644,6 +644,48 @@ error_exit:
 	return (error);
 }
 
+cpg_error_t cpg_local_get (
+	cpg_handle_t handle,
+	unsigned int *local_nodeid)
+{
+	cpg_error_t error;
+	struct cpg_inst *cpg_inst;
+	struct iovec iov;
+	struct req_lib_cpg_local_get req_lib_cpg_local_get;
+	struct res_lib_cpg_local_get res_lib_cpg_local_get;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cpg_local_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cpg_local_get.header.id = MESSAGE_REQ_CPG_LOCAL_GET;
+
+	iov.iov_base = &req_lib_cpg_local_get;
+	iov.iov_len = sizeof (struct req_lib_cpg_local_get);
+
+	pthread_mutex_lock (&cpg_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (cpg_inst->response_fd, &iov, 1,
+		&res_lib_cpg_local_get, sizeof (res_lib_cpg_local_get));
+
+	pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_cpg_local_get.header.error;
+
+	*local_nodeid = res_lib_cpg_local_get.local_nodeid;
+
+error_exit:
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
 cpg_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_state)

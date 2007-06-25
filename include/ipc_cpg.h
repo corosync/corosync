@@ -45,7 +45,8 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_MCAST = 2,
 	MESSAGE_REQ_CPG_MEMBERSHIP = 3,
 	MESSAGE_REQ_CPG_TRACKSTART = 4,
-	MESSAGE_REQ_CPG_TRACKSTOP = 5
+	MESSAGE_REQ_CPG_TRACKSTOP = 5,
+	MESSAGE_REQ_CPG_LOCAL_GET = 6
 };
 
 enum res_cpg_types {
@@ -57,7 +58,8 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_DELIVER_CALLBACK = 5,
 	MESSAGE_RES_CPG_TRACKSTART = 6,
 	MESSAGE_RES_CPG_TRACKSTOP = 7,
-	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8
+	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8,
+	MESSAGE_RES_CPG_LOCAL_GET = 9
 };
 
 enum lib_cpg_confchg_reason {
@@ -96,6 +98,15 @@ struct req_lib_cpg_trackstop {
 
 struct res_lib_cpg_trackstop {
 	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_local_get {
+	mar_req_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_local_get {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_mcast {

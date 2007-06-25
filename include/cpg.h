@@ -199,6 +199,10 @@ cpg_error_t cpg_membership_get (
 	struct cpg_address *member_list,
 	int *member_list_entries);
 
+cpg_error_t cpg_local_get (
+	cpg_handle_t handle,
+	unsigned int *local_nodeid);
+
 cpg_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_enabled);

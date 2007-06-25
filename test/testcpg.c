@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Red Hat Inc
+ * Copyright (c) 2006-2007 Red Hat Inc
  *
  * All rights reserved.
  *
@@ -89,7 +89,9 @@ void ConfchgCallback (
 	int i;
 	struct in_addr saddr;
 
-	printf("\nConfchgCallback: group '"); print_cpgname(groupName); printf("'\n");
+	printf("\nConfchgCallback: group '");
+	print_cpgname(groupName);
+	printf("'\n");
 	for (i=0; i<joined_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = joined_list[i].nodeid;
@@ -156,6 +158,7 @@ int main (int argc, char *argv[]) {
 	int result;
 	const char *options = "i";
 	int opt;
+	unsigned int nodeid;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -179,6 +182,13 @@ int main (int argc, char *argv[]) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
+	result = cpg_local_get (handle, &nodeid);
+	if (result != SA_AIS_OK) {
+		printf ("Could not get local node id\n");
+		exit (1);
+	}
+
+	printf ("Local node id is %x\n", nodeid);
 	result = cpg_join(handle, &group_name);
 	if (result != SA_AIS_OK) {
 		printf ("Could not join process group, error %d\n", result);
