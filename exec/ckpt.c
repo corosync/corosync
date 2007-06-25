@@ -1000,6 +1000,8 @@ void checkpoint_section_release (struct checkpoint_section *section)
 {
 	log_printf (LOG_LEVEL_DEBUG, "checkpoint_section_release expiration timer = 0x%p\n", section->expiration_timer);
 	list_del (&section->list);
+
+	openais_timer_delete (section->expiration_timer);
 	if (section->section_descriptor.section_id.id) {
 		free (section->section_descriptor.section_id.id);
 	}
