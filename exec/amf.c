@@ -1969,7 +1969,7 @@ static void message_handler_req_lib_amf_pmstop (
 	struct amf_comp *comp;
 	SaAisErrorT error = SA_AIS_OK;
 
-	TRACE2 ("PmStop msg: '%s', %llu %d %d %d",
+	TRACE2 ("PmStop msg: '%s', %llu %d %d",
 			req_lib->compName.value, 
 			req_lib->processId,
 			req_lib->stopQualifier,

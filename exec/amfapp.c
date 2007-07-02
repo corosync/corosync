@@ -125,6 +125,7 @@
 */
 
 #include <assert.h>
+#include <stdlib.h>
 #include "amf.h"
 #include "print.h"
 #include "util.h"

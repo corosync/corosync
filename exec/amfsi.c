@@ -112,6 +112,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "amf.h"
 #include "print.h"
 #include "util.h"
