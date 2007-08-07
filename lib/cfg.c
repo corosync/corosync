@@ -89,6 +89,10 @@ static struct saHandleDatabase cfg_hdb = {
  */
 void cfg_handleInstanceDestructor (void *instance)
 {
+	struct cfg_instance *cfg_instance = instance;
+
+	pthread_mutex_destroy (&cfg_instance->response_mutex);
+	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
 }
 
 SaAisErrorT

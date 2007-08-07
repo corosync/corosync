@@ -155,15 +155,24 @@ struct iteratorSectionIdListEntry {
  */
 void ckptHandleInstanceDestructor (void *instance)
 {
+	struct ckptInstance *ckptInstance = instance;
+
+	pthread_mutex_destroy (&ckptInstance->response_mutex);
+	pthread_mutex_destroy (&ckptInstance->dispatch_mutex);
 }
 
 void checkpointHandleInstanceDestructor (void *instance)
 {
-	return;
+	struct ckptCheckpointInstance *checkpointInstance = instance;
+
+	pthread_mutex_destroy (&checkpointInstance->response_mutex);
 }
 
 void ckptSectionIterationHandleInstanceDestructor (void *instance)
 {
+	struct ckptSectionIterationInstance *iterationInstance = instance;
+
+	pthread_mutex_destroy (&iterationInstance->response_mutex);
 }
 
 static void ckptSectionIterationInstanceFinalize (struct ckptSectionIterationInstance *ckptSectionIterationInstance)

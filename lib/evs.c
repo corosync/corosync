@@ -81,6 +81,10 @@ static struct saHandleDatabase evs_handle_t_db = {
  */
 static void evs_instance_destructor (void *instance)
 {
+	struct evs_inst *evs_inst = instance;
+
+	pthread_mutex_destroy (&evs_inst->response_mutex);
+	pthread_mutex_destroy (&evs_inst->dispatch_mutex);
 }
 
 

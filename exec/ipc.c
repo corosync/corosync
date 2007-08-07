@@ -375,7 +375,8 @@ static void conn_info_destroy (struct conn_info *conn_info)
 	
 	pthread_attr_destroy (&conn_info->thread_attr);
 	pthread_mutex_destroy (&conn_info->mutex);
-	
+	pthread_mutex_destroy (&conn_info->flow_control_mutex);
+
 	list_del (&conn_info->list);
 	free (conn_info);
 }

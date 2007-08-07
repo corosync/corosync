@@ -101,6 +101,10 @@ static struct saVersionDatabase amfVersionDatabase = {
 
 void amfHandleInstanceDestructor (void *instance)
 {
+	struct amfInstance *amfInstance = instance;
+
+	pthread_mutex_destroy (&amfInstance->response_mutex);
+	pthread_mutex_destroy (&amfInstance->dispatch_mutex);
 }
 
 SaAisErrorT

@@ -130,11 +130,14 @@ struct iteratorSectionIdListEntry {
  */
 void msgHandleInstanceDestructor (void *instance)
 {
+	struct msgInstance *msgInstance = instance;
+
+	pthread_mutex_destroy (&msgInstance->response_mutex);
+	pthread_mutex_destroy (&msgInstance->dispatch_mutex);
 }
 
 void queueHandleInstanceDestructor (void *instance)
 {
-	return;
 }
 
 #ifdef COMPILE_OUT

@@ -143,11 +143,14 @@ static struct saVersionDatabase lckVersionDatabase = {
  */
 void lckHandleInstanceDestructor (void *instance)
 {
+	struct lckInstance *lckInstance = instance;
+
+	pthread_mutex_destroy (&lckInstance->response_mutex);
+	pthread_mutex_destroy (&lckInstance->dispatch_mutex);
 }
 
 void lckResourceHandleInstanceDestructor (void *instance)
 {
-	return;
 }
 
 void lckResourceHandleLockIdInstanceDestructor (void *instance)

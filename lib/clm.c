@@ -93,6 +93,10 @@ static struct saVersionDatabase clmVersionDatabase = {
 
 void clmHandleInstanceDestructor (void *instance)
 {
+	struct clmInstance *clmInstance = instance;
+
+	pthread_mutex_destroy (&clmInstance->response_mutex);
+	pthread_mutex_destroy (&clmInstance->dispatch_mutex);
 }
 
 

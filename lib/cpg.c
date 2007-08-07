@@ -76,6 +76,10 @@ static struct saHandleDatabase cpg_handle_t_db = {
  */
 static void cpg_instance_destructor (void *instance)
 {
+	struct cpg_inst *cpg_inst = instance;
+
+	pthread_mutex_destroy (&cpg_inst->response_mutex);
+	pthread_mutex_destroy (&cpg_inst->dispatch_mutex);
 }
 
 
