@@ -341,7 +341,7 @@ sleep (1);
 	timersub (&tv_end, &tv_start, &tv_elapsed);
 	printf ("Elapsed Time to expiry is %ld & %ld usec (should be about %d seconds)\n",
 		tv_elapsed.tv_sec,
-		tv_elapsed.tv_usec,
+		(long) tv_elapsed.tv_usec,
 		SECONDS_TO_EXPIRE);
 
 	error = saCkptCheckpointRetentionDurationSet (checkpointHandle,
