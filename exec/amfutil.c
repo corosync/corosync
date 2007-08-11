@@ -400,8 +400,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 		case AMF_APPLICATION:
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
-				app->clccli_path = amf_malloc (strlen (loc) + 1);
-				strcpy (app->clccli_path, loc);
+				app->clccli_path = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "safSg=")) != 0) {
 				sg = amf_sg_new (app, trim_str (loc));
 				sg_cnt++;
@@ -440,8 +439,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 		case AMF_SG:
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
-				sg->clccli_path = amf_malloc (strlen (loc) + 1);
-				strcpy (sg->clccli_path, loc);
+				sg->clccli_path = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "saAmfSGRedundancyModel=")) != 0) {
 				if (strcmp (loc, "2n") == 0) {
 					sg->saAmfSGRedundancyModel = SA_AMF_2N_REDUNDANCY_MODEL;
@@ -536,8 +534,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs (line, "saAmfSUFailover=")) != 0) {
 				su->saAmfSUFailover = atoi (loc);
 			} else if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
-				su->clccli_path = amf_malloc (strlen (loc) + 1);
-				strcpy (su->clccli_path, loc);
+				su->clccli_path = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "saAmfSUHostedByNode=")) != 0) {
 				setSaNameT (&su->saAmfSUHostedByNode, loc);
 			} else if ((loc = strstr_rs (line, "safComp=")) != 0) {
@@ -570,8 +567,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 
 		case AMF_COMP:
 			if ((loc = strstr_rs (line, "clccli_path=")) != 0) {
-				comp->clccli_path = amf_malloc (strlen (loc) + 1);
-				strcpy (comp->clccli_path, loc);
+				comp->clccli_path = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompCsTypes{")) != 0) {
 				current_parse = AMF_COMP_CS_TYPE;
 			} else if ((loc = strstr_rs(line, "saAmfCompCategory=")) != 0) {
@@ -595,11 +591,9 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs(line, "saAmfCompDefaultCallbackTimeOut=")) != 0) {
 				comp->saAmfCompDefaultCallbackTimeOut = atol (loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompInstantiateCmdArgv=")) != 0) {
-				comp->saAmfCompInstantiateCmdArgv = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompInstantiateCmdArgv, loc);
+				comp->saAmfCompInstantiateCmdArgv = amf_strdup(loc);
 			} else if ((loc = strstr_rs ( line, "saAmfCompInstantiateCmd=")) != 0) {
-				comp->saAmfCompInstantiateCmd = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompInstantiateCmd, loc);
+				comp->saAmfCompInstantiateCmd = amf_strdup(loc);
 			} else if ((loc = strstr_rs(line, "saAmfCompInstantiateTimeout=")) != 0) {
 				comp->saAmfCompInstantiateTimeout = atol (loc);
 			} else if ((loc = strstr_rs(line, "saAmfCompInstantiationLevel=")) != 0) {
@@ -611,19 +605,15 @@ struct amf_cluster *amf_config_read (char **error_string)
 			} else if ((loc = strstr_rs(line, "saAmfCompDelayBetweenInstantiateAttempts=")) != 0) {
 				comp->saAmfCompDelayBetweenInstantiateAttempts = atol (loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompTerminateCmdArgv=")) != 0) {
-				comp->saAmfCompTerminateCmdArgv = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompTerminateCmdArgv, loc);
+				comp->saAmfCompTerminateCmdArgv = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompTerminateCmd=")) != 0) {
-				comp->saAmfCompTerminateCmd = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompTerminateCmd, loc);
+				comp->saAmfCompTerminateCmd = amf_strdup(loc);
 			} else if ((loc = strstr_rs(line, "saAmfCompTerminateTimeout=")) != 0) {
 				comp->saAmfCompTerminateTimeout = atol (loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompCleanupCmdArgv=")) != 0) {
-				comp->saAmfCompCleanupCmdArgv = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompCleanupCmdArgv, loc);
+				comp->saAmfCompCleanupCmdArgv = amf_strdup(loc);
 			} else if ((loc = strstr_rs (line, "saAmfCompCleanupCmd=")) != 0) {
-				comp->saAmfCompCleanupCmd = amf_malloc (strlen(loc) + 1);
-				strcpy (comp->saAmfCompCleanupCmd, loc);
+				comp->saAmfCompCleanupCmd = amf_strdup(loc);
 			} else if ((loc = strstr_rs(line, "saAmfCompCleanupTimeout=")) != 0) {
 				comp->saAmfCompCleanupTimeout = atol (loc);
 			} else if ((loc = strstr_rs(line, "saAmfCompTerminateCallbackTimeout=")) != 0) {
@@ -727,8 +717,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				comp->saAmfCompCmdEnv = realloc (comp->saAmfCompCmdEnv,
 					(comp_env_var_cnt + 1) * sizeof(SaStringT));
 				comp->saAmfCompCmdEnv[comp_env_var_cnt] = NULL;
-				env_var = comp->saAmfCompCmdEnv[comp_env_var_cnt - 1] = amf_malloc (strlen (line) + 1);
-				strcpy (env_var, line);
+				env_var = comp->saAmfCompCmdEnv[comp_env_var_cnt - 1] = amf_strdup(line);
 			} else {
 				goto parse_error;
 			}
@@ -815,8 +804,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				attribute = calloc (1, sizeof(struct amf_csi_attribute));
 				attribute->next = csi->attributes_head;
 				csi->attributes_head = attribute;
-				attribute->name = amf_malloc (strlen (loc) + 1);
-				strcpy (attribute->name, trim_str (loc));
+				attribute->name = amf_strdup(loc);
 				csi_attr_cnt = 1;
 				current_parse = AMF_CSI_ATTRIBUTE;
 			} else if ((loc = strstr_rs (line, "saAmfCsiDependencies{")) != 0) {
@@ -857,9 +845,7 @@ struct amf_cluster *amf_config_read (char **error_string)
 				value = rm_beginning_ws (line);
 				attribute->value = realloc (attribute->value,
 					sizeof (SaStringT) * (csi_attr_cnt + 1));
-				attribute->value[csi_attr_cnt - 1] =
-					amf_malloc (strlen (value) + 1);
-				strcpy (attribute->value[csi_attr_cnt - 1], value);
+				attribute->value[csi_attr_cnt - 1] = amf_strdup(value);
 				attribute->value[csi_attr_cnt] = NULL;
 				csi_attr_cnt++;
 			}
@@ -1219,7 +1205,7 @@ char *amf_deserialize_opaque (char *buf, void *dst, int *cnt)
 	return buf + *cnt + sizeof (SaUint32T);
 }
 
-void *_amf_malloc (size_t size, char *file, unsigned int line)
+void *_amf_malloc (size_t size, const char *file, unsigned int line)
 {
 	void *tmp = malloc (size);
 
@@ -1231,7 +1217,7 @@ void *_amf_malloc (size_t size, char *file, unsigned int line)
 	return tmp;
 }
 
-void *_amf_calloc (size_t nmemb, size_t size, char *file, unsigned int line)
+void *_amf_calloc (size_t nmemb, size_t size, const char *file, unsigned int line)
 {
 	void *tmp = calloc (nmemb, size);
 
@@ -1243,7 +1229,7 @@ void *_amf_calloc (size_t nmemb, size_t size, char *file, unsigned int line)
 	return tmp;
 }
 
-void *_amf_realloc (void* ptr, size_t size, char *file, unsigned int line)
+void *_amf_realloc (void* ptr, size_t size, const char *file, unsigned int line)
 {
 	void *tmp = realloc (ptr, size);
 
@@ -1253,6 +1239,18 @@ void *_amf_realloc (void* ptr, size_t size, char *file, unsigned int line)
 	}
 
 	return tmp;
+}
+
+char *_amf_strdup (const char *in_str, const char *file, unsigned int line)
+{
+	char *out_str = strdup (in_str);
+
+	if (out_str == NULL) {
+		log_printf (LOG_LEVEL_ERROR, "AMF out-of-memory at %s:%u", file, line);
+		openais_exit_error (AIS_DONE_OUT_OF_MEMORY);
+	}
+
+	return out_str;
 }
 
 int sa_amf_grep_one_sub_match(const char *string, char *pattern, 

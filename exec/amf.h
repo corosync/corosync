@@ -664,13 +664,16 @@ struct req_exec_amf_cluster_start_tmo {
 extern struct amf_cluster *amf_config_read (char **error_string);
 extern void amf_runtime_attributes_print (struct amf_cluster *cluster);
 extern int amf_enabled (struct objdb_iface_ver0 *objdb);
-extern void *_amf_malloc (size_t size, char *file, unsigned int line);
-extern void *_amf_realloc (void* ptr, size_t size, char *file, unsigned int line);
+extern void *_amf_malloc (size_t size, const char *file, unsigned int line);
 #define amf_malloc(size) _amf_malloc ((size), __FILE__, __LINE__)
-extern void *_amf_calloc (size_t nmemb, size_t size, char *file,
+extern void *_amf_realloc (void* ptr, size_t size, const char *file, 
+	unsigned int line);
+#define amf_realloc(ptr,size) _amf_realloc ((ptr), (size), __FILE__, __LINE__)
+extern void *_amf_calloc (size_t nmemb, size_t size, const char *file,
 	unsigned int line);
 #define amf_calloc(nmemb,size) _amf_calloc ((nmemb), (size), __FILE__, __LINE__)
-#define amf_realloc(ptr,size) _amf_realloc ((ptr), (size), __FILE__, __LINE__)
+extern char *_amf_strdup (const char *str, const char *file, unsigned int line);
+#define amf_strdup(str) _amf_strdup(str, __FILE__, __LINE__)
 
 extern const char *amf_admin_state (int state);
 extern const char *amf_op_state (int state);
