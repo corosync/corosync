@@ -166,8 +166,13 @@ endif
 
 	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)
 	install -m 700 exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
-	install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)/ais
-	install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais
+
+	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then \
+		install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
+	fi
+	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/amf.conf ] ; then \
+		install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ; \
+	fi
 
 	install -m 644 include/saAis.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 include/saAmf.h $(DESTDIR)$(INCLUDEDIR)
