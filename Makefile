@@ -198,4 +198,4 @@ endif
 	install -m 644 man/*.8 $(DESTDIR)$(MANDIR)/man8
 
 doxygen:
-	doxygen
+	mkdir -p doc/api && doxygen
