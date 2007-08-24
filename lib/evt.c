@@ -109,10 +109,12 @@ struct handle_list {
  * ei_version:		version sent to the evtInitialize call.
  * ei_node_id:		our node id.
  * ei_node_name:	our node name.
- * ei_finalize:		instance in finalize flag
- * ei_dispatch_mutex:	mutex for dispatch fd
+ * ei_dispatch_mutex:	mutex for dispatch fd.  This lock also ensures that
+ *                      only one thread is using ei_dispatch_data.
  * ei_response_mutex:	mutex for response fd
  * ei_channel_list:		list of associated channels (struct handle_list)
+ * ei_dispatch_data:	event buffer for evtDispatch
+ * ei_finalize:		instance in finalize flag
  * ei_data_available:	Indicates that there is a pending event message though
  * 						there may not be a poll event.  This can happen
  * 						when we get a SA_AIS_ERR_TRY_AGAIN when asking for an
@@ -126,11 +128,12 @@ struct event_instance {
 	SaVersionT				ei_version;
 	SaClmNodeIdT			ei_node_id;
 	SaNameT					ei_node_name;
-	int						ei_finalize;
 	pthread_mutex_t			ei_dispatch_mutex;
 	pthread_mutex_t			ei_response_mutex;
 	struct list_head 		ei_channel_list;
-	int						ei_data_available;
+	struct res_overlay		ei_dispatch_data;
+	unsigned int			ei_finalize:1;
+	unsigned int			ei_data_available:1;
 };
 
 
@@ -604,7 +607,6 @@ saEvtDispatch(
 	int ignore_dispatch = 0;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int poll_fd;
-	struct res_overlay dispatch_data;
 	struct lib_event_data *evt = 0;
 	struct res_evt_event_data res;
 
@@ -679,15 +681,15 @@ saEvtDispatch(
 			}
 
 			if (ufds.revents & POLLIN) {
-				error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.header,
+				error = saRecvRetry (evti->ei_dispatch_fd, &evti->ei_dispatch_data.header,
 					sizeof (mar_res_header_t));
 
 				if (error != SA_AIS_OK) {
 					goto dispatch_unlock;
 				}
-				if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
-					error = saRecvRetry (evti->ei_dispatch_fd, &dispatch_data.data,
-						dispatch_data.header.size - sizeof (mar_res_header_t));
+				if (evti->ei_dispatch_data.header.size > sizeof (mar_res_header_t)) {
+					error = saRecvRetry (evti->ei_dispatch_fd, &evti->ei_dispatch_data.data,
+						evti->ei_dispatch_data.header.size - sizeof (mar_res_header_t));
 					if (error != SA_AIS_OK) {
 						goto dispatch_unlock;
 					}
@@ -702,7 +704,7 @@ saEvtDispatch(
 			 * Fake up a header message and the switch statement will
 			 * take care of the rest.
 			 */
-			dispatch_data.header.id = MESSAGE_RES_EVT_AVAILABLE;
+			evti->ei_dispatch_data.header.id = MESSAGE_RES_EVT_AVAILABLE;
 		}
 
 		/*
@@ -712,13 +714,11 @@ saEvtDispatch(
 		 * EvtFinalize has been called in another thread.
 		 */
 		memcpy(&callbacks, &evti->ei_callback, sizeof(evti->ei_callback));
-		pthread_mutex_unlock(&evti->ei_dispatch_mutex);
-
 
 		/*
 		 * Dispatch incoming response
 		 */
-		switch (dispatch_data.header.id) {
+		switch (evti->ei_dispatch_data.header.id) {
 
 		case MESSAGE_RES_EVT_AVAILABLE:
 			evti->ei_data_available = 0;
@@ -787,7 +787,7 @@ saEvtDispatch(
 		case MESSAGE_RES_EVT_CHAN_OPEN_CALLBACK:
 		{
 			struct res_evt_open_chan_async *resa = 
-				(struct res_evt_open_chan_async *)&dispatch_data;
+				(struct res_evt_open_chan_async *)&evti->ei_dispatch_data;
 			struct event_channel_instance *eci;
 
 			/*
@@ -820,10 +820,12 @@ saEvtDispatch(
 			break;
 
 		default:
-			DPRINT (("Dispatch: Bad message type 0x%x\n", dispatch_data.header.id));
+			DPRINT (("Dispatch: Bad message type 0x%x\n", evti->ei_dispatch_data.header.id));
 			error = SA_AIS_ERR_LIBRARY;	
-			goto dispatch_put;
+			goto dispatch_unlock;
 		}
+
+		pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 
 		/*
 		 * If empty is zero it means the we got the 
@@ -859,7 +861,7 @@ saEvtDispatch(
 	goto dispatch_put;
 
 dispatch_unlock:
- 			pthread_mutex_unlock(&evti->ei_dispatch_mutex);
+ 	pthread_mutex_unlock(&evti->ei_dispatch_mutex);
 dispatch_put:
 	saHandleInstancePut(&evt_instance_handle_db, evtHandle);
 	return error;
