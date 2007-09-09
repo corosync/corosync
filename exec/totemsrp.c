@@ -4042,7 +4042,12 @@ void main_deliver_fn (
 		log_printf (instance->totemsrp_log_level_security, "Received message is too short...  ignoring %d.\n", msg_len);
 		return;
 	}
-
+	
+	if ((int)message_header->type >= totemsrp_message_handlers.count) {
+		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
+		return;
+	}
+	
 	/*
 	 * Handle incoming message
 	 */
