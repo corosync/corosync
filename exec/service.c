@@ -204,6 +204,7 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 		/*
 		 * reference the interface and register it
 		 */
+		iface_ver0_p = NULL;
 		lcr_ifact_reference (
 			&handle,
 			service_name,
