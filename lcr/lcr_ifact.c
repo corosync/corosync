@@ -42,6 +42,7 @@
 #include "lcr_comp.h"
 #include "lcr_ifact.h"
 #include "../include/hdb.h"
+#include <stdlib.h>
 
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;
