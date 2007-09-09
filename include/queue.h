@@ -93,7 +93,7 @@ static inline int queue_is_full (struct queue *queue) {
 	int full;
 
 	pthread_mutex_lock (&queue->mutex);
-	full = queue->size - 1 == queue->used;
+	full = ((queue->size - 1) == queue->used);
 	pthread_mutex_unlock (&queue->mutex);
 	return (full);
 }
