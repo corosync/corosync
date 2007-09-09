@@ -522,6 +522,11 @@ static void sync_confchg_fn (
 
 	ENTER("");
 
+	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
+		LEAVE("");
+		return;
+	}
+
 	/*
 	 * Save current members and ring ID for later use
 	 */

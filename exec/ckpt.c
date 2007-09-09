@@ -827,13 +827,6 @@ static void ckpt_confchg_fn (
 	}
 	
 	my_lowest_nodeid = 0xffffffff;
-	for (i = 0; i < my_member_list_entries; i++) {
-		if ((my_member_list[i] != 0) &&
-			(my_member_list[i] < my_lowest_nodeid)) {
-
-			my_lowest_nodeid = my_member_list[i];
-		}
-	}
 
 	/*
 	 * Handle regular configuration
@@ -844,6 +837,13 @@ static void ckpt_confchg_fn (
 		my_member_list_entries = member_list_entries;
 		memcpy (&my_saved_ring_id, ring_id,
 			sizeof (struct memb_ring_id));
+		for (i = 0; i < my_member_list_entries; i++) {
+			if ((my_member_list[i] != 0) &&
+				(my_member_list[i] < my_lowest_nodeid)) {
+
+				my_lowest_nodeid = my_member_list[i];
+			}
+		}
 	}
 }
 
