@@ -70,7 +70,7 @@ clean:
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
 	rm -rf doc/api
 
-install:
+install: all
 	mkdir -p $(DESTDIR)$(SBINDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_TOTEM)
