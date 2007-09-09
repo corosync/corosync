@@ -373,6 +373,8 @@ static int interface_find_and_load (
 		}
 		dl_handle = dlopen (dl_name, RTLD_LAZY);
 		if (dl_handle == NULL) {
+			fprintf(stderr, "%s: open failed: %s\n",
+				dl_name, dlerror());
 			continue;
 		}
 		instance = lcr_comp_find (iface_name, version, iface_number);
