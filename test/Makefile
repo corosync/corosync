@@ -1,5 +1,5 @@
 # Copyright (c) 2002-2004 MontaVista Software, Inc.
-# Copyright (c) 2006 Red Hat, Inc.
+# Copyright (c) 2006-2007 Red Hat, Inc.
 # Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
@@ -50,13 +50,15 @@ TEST_SRC =  testclm.c testamf1.c \
 	testckpt.c ckptstress.c ckptbench.c  \
 	ckptbenchth.c testevt.c testevs.c evsbench.c \
 	subscription.c publish.c evtbench.c \
-	sa_error.c unlink.c testclm2.c testlck.c testmsg.c
+	sa_error.c unlink.c testclm2.c testlck.c testmsg.c \
+	logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
 
 all: testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testcpg testcpg2 cpgbench openais-cfgtool
+	testmsg testcpg testcpg2 cpgbench openais-cfgtool \
+	logsys_s logsys_t1 logsys_t2
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -153,6 +155,15 @@ cpgbench: cpgbench.o $(LIBRARIES)
 
 openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)
+
+logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
+	$(CC) $(LDFLAGS) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
+
+logsys_t1: logsys_t1.o ../exec/liblogsys.a
+	$(CC) $(LDFLAGS) -o logsys_t1 logsys_t1.o ../exec/liblogsys.a
+
+logsys_t2: logsys_t2.o ../exec/liblogsys.a
+	$(CC) $(LDFLAGS) -o logsys_t2 logsys_t2.o ../exec/liblogsys.a
 
 clean:
 	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
