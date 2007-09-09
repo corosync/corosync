@@ -105,6 +105,9 @@ install: all
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xNO" = "x$(STATICLIBS)" ]; then			\
 	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
+		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
+		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
+	        fi							\
 	    fi								\
 	done
 
