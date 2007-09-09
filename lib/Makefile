@@ -32,8 +32,8 @@
 #
 include ../Makefile.inc
 
-CFLAGS += -I../include
-LDFLAGS += -L./
+override CFLAGS += -I../include
+override LDFLAGS += -L./
 
 all:libSaClm.a libSaClm.so.2.0.0 \
 	libSaAmf.a libSaAmf.so.2.0.0 \

@@ -41,8 +41,8 @@ endif
 LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a
 LIBS = $(LIBRARIES) 
 
-CFLAGS += -I../include
-LDFLAGS += -L../lib
+override CFLAGS += -I../include
+override LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I../include
 TEST_SRC =  testclm.c testamf1.c \

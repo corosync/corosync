@@ -26,8 +26,8 @@
 #
 include ../Makefile.inc
 
-CFLAGS += -I../include
-LDFLAGS += -L./ ${DYFLAGS}
+override CFLAGS += -I../include
+override LDFLAGS += -L./ ${DYFLAGS}
 
 ifeq (${OPENAIS_COMPAT}, LINUX) 
 	LDFLAGS += -ldl
