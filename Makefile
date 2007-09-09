@@ -70,6 +70,12 @@ clean:
 	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
 	rm -rf doc/api
 
+AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
+		  cfg
+
+AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
+		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 
+
 install: all
 	mkdir -p $(DESTDIR)$(SBINDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
@@ -84,107 +90,41 @@ install: all
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
-	ln -sf libais.so.2.0.0 lib/libais.so
-	ln -sf libSaAmf.so.2.0.0 lib/libSaAmf.so
-	ln -sf libSaClm.so.2.0.0 lib/libSaClm.so
-	ln -sf libSaCkpt.so.2.0.0 lib/libSaCkpt.so
-	ln -sf libSaEvt.so.2.0.0 lib/libSaEvt.so
-	ln -sf libSaLck.so.2.0.0 lib/libSaLck.so
-	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so
-	ln -sf libevs.so.2.0.0 lib/libevs.so
-	ln -sf libcpg.so.2.0.0 lib/libcpg.so
-	ln -sf libcfg.so.2.0.0 lib/libcfg.so
+
 	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so
-
-	ln -sf libais.so.2.0.0 lib/libais.so.2
-	ln -sf libSaAmf.so.2.0.0 lib/libSaAmf.so.2
-	ln -sf libSaClm.so.2.0.0 lib/libSaClm.so.2
-	ln -sf libSaCkpt.so.2.0.0 lib/libSaCkpt.so.2
-	ln -sf libSaEvt.so.2.0.0 lib/libSaEvt.so.2
-	ln -sf libSaLck.so.2.0.0 lib/libSaLck.so.2
-	ln -sf libSaMsg.so.2.0.0 lib/libSaMsg.so.2
-	ln -sf libevs.so.2.0.0 lib/libevs.so.2
-	ln -sf libcpg.so.2.0.0 lib/libcpg.so.2
-	ln -sf libcfg.so.2.0.0 lib/libcfg.so.2
 	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so.2
-
-	$(CP) -a lib/libais.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaAmf.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaClm.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaCkpt.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaEvt.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaLck.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaMsg.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libevs.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libcpg.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libcfg.so $(DESTDIR)$(LIBDIR)
 	$(CP) -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
-
-	$(CP) -a lib/libais.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaAmf.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaClm.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaCkpt.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaEvt.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaLck.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libSaMsg.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libevs.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libcpg.so.2 $(DESTDIR)$(LIBDIR)
-	$(CP) -a lib/libcfg.so.2 $(DESTDIR)$(LIBDIR)
 	$(CP) -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
-
-	install -m 755 lib/libais.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaAmf.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaClm.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaCkpt.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaEvt.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaLck.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaMsg.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libevs.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcpg.so.2.* $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcfg.so.2.* $(DESTDIR)$(LIBDIR)
 	install -m 755 exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
-ifneq "NO" "$(STATICLIBS)"
-	install -m 755 lib/libais.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaAmf.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaClm.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaCkpt.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaEvt.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaLck.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libSaMsg.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libevs.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcpg.a $(DESTDIR)$(LIBDIR)
-	install -m 755 lib/libcfg.a $(DESTDIR)$(LIBDIR)
-	install -m 755 exec/libtotem_pg.a $(DESTDIR)$(LIBDIR)
-endif
+	for aLib in $(AIS_LIBS); do					\
+	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
+	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
+	    $(CP) -a lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
+	    $(CP) -a lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
+	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
+	    if [ "xNO" = "x$(STATICLIBS)" ]; then			\
+	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
+	    fi								\
+	done
 
 	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
 
 	install -m 755 exec/*lcrso $(DESTDIR)$(LCRSODIR)
-
 	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)
 	install -m 700 exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
 
-	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then \
+	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then 	   \
 		install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
 	fi
-	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/amf.conf ] ; then \
-		install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ; \
+	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/amf.conf ] ; then 		\
+		install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ;	\
 	fi
 
-	install -m 644 include/saAis.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saAmf.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saClm.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saCkpt.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saEvt.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saEvt.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saLck.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/saMsg.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/cpg.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/cfg.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 include/evs.h $(DESTDIR)$(INCLUDEDIR)
+	for aHeader in $(AIS_HEADERS); do				\
+	    install -m 644 include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
+	done
+
 	install -m 644 exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
