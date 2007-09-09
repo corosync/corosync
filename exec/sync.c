@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
  * Copyright (c) 2006 Ericsson AB.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
+ *
  * Author: Steven Dake (sdake@mvista.com)
  * Author: Hans Feldt
  *
@@ -58,8 +60,10 @@
 #include "totem.h"
 #include "vsf.h"
 #include "../lcr/lcr_ifact.h"
-#include "print.h"
+#include "logsys.h"
 #include "util.h"
+
+LOGSYS_DECLARE_SUBSYS ("SYNC", LOG_INFO);
 
 #define MESSAGE_REQ_SYNC_BARRIER 0
 #define MESSAGE_REQ_SYNC_REQUEST 1
@@ -290,7 +294,6 @@ int sync_register (
 	void *vsf_iface_p;
 	char openais_vsf_type[1024];
 
- 	log_init ("SYNC");
 	res = totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,

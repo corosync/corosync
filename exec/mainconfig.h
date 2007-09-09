@@ -1,9 +1,10 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -31,15 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
-#include <netinet/in.h>
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "aispoll.h"
-#include "totemsrp.h"
-#include "totempg.h"
-*/
 #include "objdb.h"
+#include "logsys.h"
 
 #ifndef MAINCONFIG_H_DEFINED
 #define MAINCONFIG_H_DEFINED
@@ -55,27 +49,20 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-struct logger_config {
-	char *ident;
-	int level;
-	int tags;
-	int mode;
-};
-
 struct main_config {
 	/*
-	 * logging
+	 * logging configuration
 	 */
-	int logmode;
 	char *logfile;
-	int syslog_facility;
+	unsigned int logmode;
+	unsigned int syslog_facility;
+	unsigned int minimum_priority;
 
-	/* user/group to run as */
+	/*
+	 * user/group to run as
+	 */
 	char *user;
 	char *group;
-
-	int loggers;
-	struct logger_config *logger;
 };
 
 extern int openais_main_config_read (

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (C) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -73,7 +73,10 @@
 #include "ipc.h"
 #include "mempool.h"
 #include "service.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("CLM", LOG_INFO);
+
 
 enum clm_message_req_types {
 	MESSAGE_REQ_EXEC_CLM_NODEJOIN = 0
@@ -305,8 +308,6 @@ static void my_cluster_node_load (void)
 
 static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("CLM");
-
 	memset (cluster_node_entries, 0,
 		sizeof (mar_clm_cluster_node_t) * PROCESSOR_COUNT_MAX);
 

@@ -62,8 +62,10 @@
 #include "totempg.h"
 #include "mempool.h"
 #include "util.h"
-#include "print.h"
+#include "logsys.h"
 #include "main.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 enum cfg_message_req_types {
         MESSAGE_REQ_EXEC_CFG_RINGREENABLE = 0
@@ -226,9 +228,9 @@ struct req_exec_cfg_ringreenable {
 
 static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("CFG");
 	return (0);
 }
+
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	unsigned int *member_list, int member_list_entries,

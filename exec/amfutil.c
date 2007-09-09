@@ -59,10 +59,12 @@
 #include "util.h"
 #include "amf.h"
 #include "totem.h"
-#include "print.h"
+#include "logsys.h"
 #include "aispoll.h"
 #include "main.h"
 #include "service.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 #ifndef OPENAIS_CLUSTER_STARTUP_TIMEOUT
 #define OPENAIS_CLUSTER_STARTUP_TIMEOUT 5000
@@ -1376,11 +1378,6 @@ int amf_msg_mcast (int msg_id, void *buf, size_t len)
 	}
 
 	return res;
-}
-
-void amf_util_init (void)
-{
-	log_init ("AMF");
 }
 
 void amf_fifo_put (int entry_type, amf_fifo_t **root, int size_of_data, 

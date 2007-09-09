@@ -79,9 +79,11 @@
 #include "config.h"
 #include "tlist.h"
 #define LOG_SERVICE LOG_SERVICE_IPC
-#include "print.h"
+#include "logsys.h"
 
 #include "util.h"
+
+LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
 #ifdef OPENAIS_SOLARIS
 #define MSG_NOSIGNAL 0
@@ -1025,8 +1027,6 @@ void openais_ipc_init (
 	int libais_server_fd;
 	struct sockaddr_un un_addr;
 	int res;
-
-	log_init ("IPC");
 
 	ipc_serialize_lock_fn = serialize_lock_fn;
 

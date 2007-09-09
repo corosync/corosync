@@ -58,7 +58,9 @@
 #include "main.h"
 #include "ipc.h"
 #include "totempg.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("MSG", LOG_INFO);
 
 enum msg_exec_message_req_types {
 	MESSAGE_REQ_EXEC_MSG_QUEUEOPEN = 0,
@@ -670,8 +672,6 @@ static struct queue_group_entry *queue_group_entry_find (
 
 static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("MSG");
-
 	/*
 	 *  Initialize the saved ring ID.
 	 */

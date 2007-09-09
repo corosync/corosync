@@ -378,8 +378,10 @@
 
 #include "amf.h"
 #include "util.h"
-#include "print.h"
+#include "logsys.h"
 #include "main.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 static int terminate_all_components_in_level (struct amf_su *su, 
 	SaUint32T current_instantiation_level);
@@ -1357,11 +1359,6 @@ static void si_ha_state_assumed_cbfn (
 /******************************************************************************
  * General methods
  *****************************************************************************/
-
-void amf_su_init (void)
-{
-	log_init ("AMF");
-}
 
 /**
  * Constructor for SU objects. Adds SU last in the ordered

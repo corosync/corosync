@@ -144,8 +144,10 @@
 #include "service.h"
 #include "util.h"
 #include "amf.h"
-#include "print.h"
+#include "logsys.h"
 #include "main.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 enum clc_command_run_operation_type {
 	CLC_COMMAND_RUN_OPERATION_TYPE_INSTANTIATE = 1,
@@ -2294,11 +2296,6 @@ SaAisErrorT amf_comp_healthcheck_confirm (
 	}
 out:
 	return error;
-}
-
-void amf_comp_init (void)
-{
-	log_init ("AMF");
 }
 
 void amf_comp_operational_state_set (struct amf_comp *comp,

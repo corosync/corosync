@@ -75,7 +75,7 @@
 #include "config.h"
 #include "tlist.h"
 #define LOG_SERVICE LOG_SERVICE_IPC
-#include "print.h"
+#include "logsys.h"
 
 #include "util.h"
 

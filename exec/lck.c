@@ -61,8 +61,9 @@
 #include "main.h"
 #include "ipc.h"
 #include "totempg.h"
-#include "print.h"
+#include "logsys.h"
 
+LOGSYS_DECLARE_SUBSYS ("LCK", LOG_INFO);
 
 enum lck_message_req_types {
 	MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN = 0,
@@ -675,8 +676,6 @@ void lck_resource_cleanup_remove (
 
 static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("LCK");
-
 	/*
 	 *  Initialize the saved ring ID.
 	 */

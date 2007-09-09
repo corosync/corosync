@@ -194,8 +194,10 @@
 #include <unistd.h>
 #include "amf.h"
 #include "util.h"
-#include "print.h"
+#include "logsys.h"
 #include "main.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO)
 
 /******************************************************************************
  * Internal (static) utility functions
@@ -667,12 +669,6 @@ void amf_node_sg_failed_over (struct amf_node *node, struct amf_sg *sg_in)
 /******************************************************************************
  * General methods
  *****************************************************************************/
-
-void amf_node_init (void)
-{
-	log_init ("AMF");
-}
-
 
 /**
  * Node constructor

@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2004-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -62,7 +62,9 @@
 #include "ipc.h"
 #include "mempool.h"
 #include "service.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("EVS", LOG_INFO);
 
 enum evs_exec_message_req_types {
 	MESSAGE_REQ_EXEC_EVS_MCAST = 0
@@ -202,8 +204,6 @@ __attribute__ ((constructor)) static void evs_comp_register (void) {
 static int evs_exec_init_fn(struct objdb_iface_ver0 *objdb)
 {
 	(void) objdb;
-
-	log_init ("EVS");
 
 	return 0;
 }

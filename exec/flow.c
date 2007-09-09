@@ -50,9 +50,11 @@
 #include "flow.h"
 #include "totem.h"
 #include "totempg.h"
-#include "print.h"
+#include "logsys.h"
 #include "hdb.h"
 #include "../include/list.h"
+
+LOGSYS_DECLARE_SUBSYS ("FLOW", LOG_INFO);
 
 struct flow_control_instance {
 	struct list_head list_head;
@@ -244,8 +246,6 @@ static void flow_control_confchg_fn (
 unsigned int openais_flow_control_initialize (void)
 {
 	unsigned int res;
-
-	log_init ("FLOW");
 
 	res = totempg_groups_initialize (
 		&flow_control_handle,

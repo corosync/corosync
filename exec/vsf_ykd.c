@@ -57,10 +57,12 @@
 #include <time.h>
 
 #include "main.h"
-#include "print.h"
+#include "logsys.h"
 #include "swab.h"
 #include "vsf.h"
 #include "../lcr/lcr_comp.h"
+
+LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
 
 #define YKD_PROCESSOR_COUNT_MAX 32
 
@@ -503,8 +505,6 @@ static int ykd_init (
 		int primary_designated,
 		struct memb_ring_id *ring_id))
 {
-	log_init ("YKD");
-
 	ykd_primary_callback_fn = primary_callback_fn;
 
 	totempg_groups_initialize (

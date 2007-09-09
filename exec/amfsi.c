@@ -114,10 +114,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "amf.h"
-#include "print.h"
+#include "logsys.h"
 #include "util.h"
 #include "aispoll.h"
 #include "main.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 /**
  * Check that all CSI assignments belonging to an SI assignment
@@ -290,11 +292,6 @@ char *amf_csi_dn_make (struct amf_csi *csi, SaNameT *name)
 	name->length = i;
 
 	return(char *)name->value;
-}
-
-void amf_si_init (void)
-{
-	log_init ("AMF");
 }
 
 void amf_si_comp_set_ha_state_done (

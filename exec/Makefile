@@ -1,5 +1,6 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
 # Copyright (c) 2006 Sun Microsystems, Inc.
+# Copyright (c) 2006-2007 Red Hat, Inc.
 # 
 # All rights reserved.
 # 
@@ -34,7 +35,6 @@
 include ../Makefile.inc
 
 override CFLAGS += -I../include
-LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 	override LDFLAGS += ${DYFLAGS}
@@ -51,7 +51,10 @@ endif
 # Totem objects
 TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
 TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o crypto.o wthread.o
-EXEC_LIBS = libtotem_pg.a
+LOGSYS_SRC = wthread.c logsys.c
+LOGSYS_OBJS = wthread.o logsys.o
+
+EXEC_LIBS = libtotem_pg.a liblogsys.a
 
 # AMF objects
 AMF_SRC = amf.c amfutil.c amfnode.c amfcluster.c amfapp.c amfsg.c amfsu.c amfcomp.c amfsi.c
@@ -62,25 +65,25 @@ LCR_SRC = evs.c clm.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c vsf_ykd.c
 LCR_OBJS = evs.o clm.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o vsf_ykd.o $(AMF_OBJS)
 
 # main executive objects
-MAIN_SRC = main.c print.c mempool.c util.c sync.c service.c ipc.c flow.c timer.c \
+MAIN_SRC = main.c mempool.c util.c sync.c service.c ipc.c flow.c timer.c \
 	totemconfig.c mainconfig.c
-MAIN_OBJS = main.o print.o mempool.o util.o sync.o service.o ipc.o flow.o timer.o \
+MAIN_OBJS = main.o mempool.o util.o sync.o service.o ipc.o flow.o timer.o \
 	totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
-OTHER_OBJS = objdb.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
-EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS)
+#EXEC_OBJS = $(TOTEM_OBJS) $(LOGSYS_OBJS) $(MAIN_OBJS)
+EXEC_OBJS = $(MAIN_OBJS)
 override CFLAGS += -fPIC
 
-all:libtotem_pg.a libtotem_pg.so.2.0.0 ../lcr/lcr_ifact.o \
-	aisexec \
+all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
+	../lcr/lcr_ifact.o aisexec \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
 	objdb.lcrso aisparser.lcrso vsf_ykd.lcrso keygen openais-instantiate
 else
-EXEC_OBJS = $(TOTEM_OBJS) $(MAIN_OBJS) $(OTHER_OBJS) $(LCR_OBJS)
-all: libtotem_pg.a aisexec keygen openais-instantiate
+EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
+all: libtotem_pg.a liblogsys.a aisexec keygen openais-instantiate
 endif
 
 
@@ -163,21 +166,29 @@ objdb.lcrso: objdb.o
 
 endif
 
-aisexec: $(EXEC_OBJS) libtotem_pg.a
+aisexec: $(EXEC_OBJS) $(EXEC_LIBS)
 	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
 
 libtotem_pg.a: $(TOTEM_OBJS)
 	$(AR) -rc libtotem_pg.a $(TOTEM_OBJS)
+
+liblogsys.a: $(LOGSYS_OBJS)
+	$(AR) -rc liblogsys.a $(LOGSYS_OBJS)
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@
 
+liblogsys.so.2.0.0: $(LOGSYS_OBJS)
+	$(CC) $(LDFLAGS) -bundle -bind_at_load $(LOGSYS_OBJS) -o $@
 else
 
 libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.2 $(TOTEM_OBJS) -o $@
+
+liblogsys.so.2.0.0: $(LIBLOGSYS_OBJS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.2 $(LOGSYS_OBJS) -o $@
 
 endif
 
@@ -191,7 +202,7 @@ clean:
 	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LCR_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LOGSYS_SRC) $(LCR_SRC) > /dev/null 2>&1
 
 # - fPIC rules required for service handler shared objects
 ../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
@@ -288,89 +299,89 @@ evs.o: ../exec/totemip.h ../include/ipc_evs.h ../include/saAis.h
 evs.o: ../include/evs.h ../include/ipc_gen.h ../include/list.h
 evs.o: ../include/queue.h ../lcr/lcr_comp.h aispoll.h totempg.h totemsrp.h
 evs.o: main.h ../include/saClm.h mainconfig.h objdb.h mempool.h service.h
-evs.o: print.h
+evs.o: logsys.h
 clm.o: totem.h totemip.h ../include/saAis.h ../include/saClm.h
 clm.o: ../include/saAis.h ../include/ipc_gen.h ../exec/totemip.h
 clm.o: ../include/ipc_clm.h ../include/saClm.h ../include/ipc_gen.h
 clm.o: ../include/mar_clm.h ../include/mar_gen.h ../include/mar_gen.h
 clm.o: ../include/mar_clm.h ../include/list.h ../include/queue.h
 clm.o: ../lcr/lcr_comp.h aispoll.h totempg.h totemsrp.h main.h mainconfig.h
-clm.o: objdb.h mempool.h service.h ../include/swab.h print.h
+clm.o: objdb.h mempool.h service.h ../include/swab.h logsys.h
 ckpt.o: ../include/saAis.h ../include/saCkpt.h ../include/ipc_ckpt.h
 ckpt.o: ../include/saAis.h ../include/saCkpt.h ../include/ipc_gen.h
 ckpt.o: ../include/list.h ../include/queue.h ../include/hdb.h
 ckpt.o: ../lcr/lcr_comp.h aispoll.h service.h totem.h totemip.h objdb.h
 ckpt.o: mempool.h util.h main.h ../include/saClm.h ../include/ipc_gen.h
-ckpt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h print.h
+ckpt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h logsys.h
 evt.o: ../include/hdb.h ../include/ipc_evt.h ../include/saAis.h
 evt.o: ../include/saEvt.h ../include/saClm.h ../include/ipc_gen.h
 evt.o: ../include/list.h ../include/queue.h ../lcr/lcr_comp.h util.h
 evt.o: ../include/saAis.h service.h totem.h totemip.h objdb.h aispoll.h
 evt.o: mempool.h main.h ../include/saClm.h ../include/ipc_gen.h
-evt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h ../include/swab.h print.h
+evt.o: ../exec/totemip.h mainconfig.h totemsrp.h totempg.h ../include/swab.h logsys.h
 lck.o: service.h totem.h totemip.h objdb.h ../include/saAis.h
 lck.o: ../include/saLck.h ../include/ipc_lck.h ../include/saAis.h
 lck.o: ../include/saLck.h ../include/ipc_gen.h ../include/list.h
 lck.o: ../include/queue.h ../lcr/lcr_comp.h aispoll.h mempool.h util.h main.h
 lck.o: ../include/saClm.h ../include/ipc_gen.h ../exec/totemip.h mainconfig.h
-lck.o: totemsrp.h totempg.h print.h
+lck.o: totemsrp.h totempg.h logsys.h
 msg.o: ../include/saAis.h ../include/saMsg.h ../include/ipc_msg.h
 msg.o: ../include/saAis.h ../include/saMsg.h ../include/ipc_gen.h
 msg.o: ../include/list.h ../include/queue.h ../lcr/lcr_comp.h service.h
 msg.o: totem.h totemip.h objdb.h aispoll.h mempool.h util.h main.h
 msg.o: ../include/saClm.h ../include/ipc_gen.h ../exec/totemip.h mainconfig.h
-msg.o: totemsrp.h totempg.h print.h
+msg.o: totemsrp.h totempg.h logsys.h
 cfg.o: ../include/saAis.h ../include/cfg.h ../include/saAis.h
 cfg.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_cfg.h
 cfg.o: ../include/ipc_gen.h ../include/cfg.h ../include/list.h
 cfg.o: ../include/queue.h ../lcr/lcr_comp.h service.h totem.h totemip.h
-cfg.o: objdb.h totempg.h aispoll.h totemsrp.h mempool.h util.h print.h
+cfg.o: objdb.h totempg.h aispoll.h totemsrp.h mempool.h util.h logsys.h
 cfg.o: mainconfig.h
 cpg.o: ../include/saAis.h ../include/saClm.h ../include/saAis.h
 cpg.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_cpg.h
 cpg.o: ../include/ipc_gen.h ../include/list.h ../include/queue.h
 cpg.o: ../lcr/lcr_comp.h aispoll.h totempg.h totemsrp.h totem.h totemip.h
-cpg.o: main.h mainconfig.h objdb.h mempool.h service.h jhash.h ../include/swab.h print.h
+cpg.o: main.h mainconfig.h objdb.h mempool.h service.h jhash.h ../include/swab.h logsys.h
 aisparser.o: ../lcr/lcr_comp.h objdb.h config.h mempool.h ../include/list.h
 aisparser.o: util.h ../include/saAis.h
 vsf_ykd.o: main.h ../include/saAis.h ../include/saClm.h ../include/saAis.h
 vsf_ykd.o: ../include/queue.h ../include/ipc_gen.h ../exec/totemip.h
 vsf_ykd.o: mainconfig.h ../include/list.h aispoll.h totemsrp.h totem.h
-vsf_ykd.o: totemip.h totempg.h objdb.h print.h ../include/swab.h vsf.h ../lcr/lcr_comp.h
+vsf_ykd.o: totemip.h totempg.h objdb.h logsys.h ../include/swab.h vsf.h ../lcr/lcr_comp.h
 amf.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amf.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
 amf.o: ../include/ipc_gen.h ../include/saAmf.h ../include/list.h
 amf.o: ../lcr/lcr_comp.h totempg.h aispoll.h totemsrp.h totem.h totemip.h
 amf.o: mempool.h util.h amf.h objdb.h main.h ../include/saClm.h
-amf.o: ../include/queue.h mainconfig.h service.h print.h
+amf.o: ../include/queue.h mainconfig.h service.h logsys.h
 amfutil.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfutil.o: ../include/ipc_amf.h ../include/ipc_gen.h ../include/saAmf.h
 amfutil.o: ../include/list.h util.h amf.h ../include/ipc_gen.h
-amfutil.o: ../exec/totemip.h aispoll.h objdb.h totem.h totemip.h print.h
+amfutil.o: ../exec/totemip.h aispoll.h objdb.h totem.h totemip.h logsys.h
 amfutil.o: mainconfig.h totemsrp.h totempg.h
-amfcluster.o: print.h mainconfig.h ../include/saAis.h ../include/list.h
+amfcluster.o: logsys.h mainconfig.h ../include/saAis.h ../include/list.h
 amfcluster.o: aispoll.h totemsrp.h totem.h totemip.h totempg.h objdb.h amf.h
 amfcluster.o: ../include/saAmf.h ../include/saAis.h ../include/ipc_gen.h
 amfcluster.o: ../exec/totemip.h util.h main.h ../include/saClm.h
 amfcluster.o: ../include/queue.h
 amfapp.o: amf.h ../include/saAis.h ../include/saAmf.h
 amfapp.o: ../include/saAis.h ../include/list.h ../include/ipc_gen.h
-amfapp.o: ../exec/totemip.h aispoll.h objdb.h print.h mainconfig.h
+amfapp.o: ../exec/totemip.h aispoll.h objdb.h logsys.h mainconfig.h
 amfapp.o: totemsrp.h totem.h totemip.h totempg.h
 amfsg.o: amf.h ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfsg.o: ../include/list.h ../include/ipc_gen.h ../exec/totemip.h aispoll.h
-amfsg.o: objdb.h print.h mainconfig.h totemsrp.h totem.h totemip.h totempg.h
+amfsg.o: objdb.h logsys.h mainconfig.h totemsrp.h totem.h totemip.h totempg.h
 amfsg.o: main.h ../include/saClm.h ../include/queue.h
 amfsu.o: amf.h ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfsu.o: ../include/list.h ../include/ipc_gen.h ../exec/totemip.h aispoll.h
-amfsu.o: objdb.h util.h print.h mainconfig.h totemsrp.h totem.h totemip.h
+amfsu.o: objdb.h util.h logsys.h mainconfig.h totemsrp.h totem.h totemip.h
 amfsu.o: totempg.h main.h ../include/saClm.h ../include/queue.h
 amfcomp.o: ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfcomp.o: ../include/ipc_gen.h ../exec/totemip.h ../include/ipc_amf.h
 amfcomp.o: ../include/ipc_gen.h ../include/saAmf.h totempg.h aispoll.h
 amfcomp.o: totemsrp.h totem.h totemip.h main.h ../include/saClm.h
 amfcomp.o: ../include/queue.h mainconfig.h ../include/list.h objdb.h
-amfcomp.o: service.h util.h amf.h print.h
+amfcomp.o: service.h util.h amf.h logsys.h
 amfsi.o: amf.h ../include/saAis.h ../include/saAmf.h ../include/saAis.h
 amfsi.o: ../include/list.h ../include/ipc_gen.h ../exec/totemip.h aispoll.h
-amfsi.o: objdb.h print.h mainconfig.h totemsrp.h totem.h totemip.h totempg.h
+amfsi.o: objdb.h logsys.h mainconfig.h totemsrp.h totem.h totemip.h totempg.h

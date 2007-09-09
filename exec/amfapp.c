@@ -127,8 +127,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "amf.h"
-#include "print.h"
+#include "logsys.h"
 #include "util.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 typedef struct application_event {
 	amf_application_event_type_t event_type;  
@@ -455,11 +457,6 @@ void amf_application_sg_assigned (
 /******************************************************************************
  * General methods
  *****************************************************************************/
-
-void amf_application_init (void)
-{
-	log_init ("AMF");
-}
 
 struct amf_application *amf_application_new (struct amf_cluster *cluster) {
 	struct amf_application *app = amf_calloc (1, 

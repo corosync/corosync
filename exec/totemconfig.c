@@ -51,7 +51,7 @@
 #include "util.h"
 #include "totem.h"
 #include "totemconfig.h"
-#include "print.h"
+#include "logsys.h"
 #include "objdb.h"
 #include "tlist.h" /* for HZ */
 

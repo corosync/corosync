@@ -143,11 +143,13 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "print.h"
+#include "logsys.h"
 #include "amf.h"
 #include "util.h"
 #include "main.h"
 #include "service.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 typedef struct cluster_event {
 	amf_cluster_event_type_t event_type;
@@ -494,11 +496,6 @@ void amf_cluster_application_workload_assigned (
 /******************************************************************************
  * General methods
  *****************************************************************************/
-
-void amf_cluster_init (void)
-{
-	log_init ("AMF");
-}
 
 struct amf_cluster *amf_cluster_new (void) 
 {

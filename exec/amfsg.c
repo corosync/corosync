@@ -366,9 +366,11 @@
 #include <errno.h>
 
 #include "amf.h"
-#include "print.h"
+#include "logsys.h"
 #include "main.h"
 #include "util.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 static int assign_si (struct amf_sg *sg, int dependency_level);
 static void acsm_enter_activating_standby (struct amf_sg *sg);
@@ -2700,11 +2702,6 @@ static void standby_su_activated_cbfn (
 /******************************************************************************
  * General methods
  *****************************************************************************/
-
-void amf_sg_init (void)
-{
-	log_init ("AMF");
-}
 
 /**
  * Constructor for SG objects. Adds SG to the list owned by

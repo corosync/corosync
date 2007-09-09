@@ -153,8 +153,10 @@
 #include "ipc.h"
 #include "service.h"
 #include "objdb.h"
-#include "print.h"
+#include "logsys.h"
 #include "sync.h"
+
+LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
 
 #ifdef AMFTEST
 #define static
@@ -1305,8 +1307,6 @@ static void amf_sync_activate (void)
  */
 static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("AMF");
-
 	if (gethostname (hostname, sizeof (hostname)) == -1) {
 		log_printf (LOG_LEVEL_ERROR, "gethostname failed: %d", errno);
 		openais_exit_error (AIS_DONE_FATAL_ERR);
@@ -1318,15 +1318,6 @@ static int amf_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	}
 
 	sync_state_set (IDLE);
-
-	amf_cluster_init();
-	amf_node_init();
-	amf_application_init();
-	amf_sg_init();
-	amf_su_init();
-	amf_comp_init();
-	amf_si_init();
-	amf_util_init ();
 
 	return (0);
 }

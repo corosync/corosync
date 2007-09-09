@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  * Copyright (c) 2004 Open Source Development Lab
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -41,7 +42,9 @@
 #include "../include/saAis.h"
 #include "../include/list.h"
 #include "util.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
 /*
  * Compare two names.  returns non-zero on match.
@@ -87,8 +90,8 @@ void _openais_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "
-								 "with status %d at %s:%u.\n", err, file, line);
-	log_flush();
+		"with status %d at %s:%u.\n", err, file, line);
+	logsys_flush();
 	exit (EXIT_FAILURE);
 }
 

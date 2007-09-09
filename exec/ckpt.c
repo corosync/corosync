@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -63,7 +63,9 @@
 #include "main.h"
 #include "ipc.h"
 #include "totempg.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("CKPT", LOG_INFO);
 
 #define CKPT_MAX_SECTION_DATA_SEND (1024*400)
 
@@ -1066,8 +1068,6 @@ int ckpt_checkpoint_close (
 
 static int ckpt_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
-	log_init ("CKPT");
-
 	return (0);
 }
 

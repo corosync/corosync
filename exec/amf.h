@@ -699,7 +699,6 @@ extern char *amf_deserialize_SaUint32T (char *buf, SaUint32T *num);
 extern char *amf_deserialize_SaUint64T (char *buf, SaUint64T *num);
 extern char *amf_deserialize_opaque (char *buf, void *dst, int *cnt);
 extern int amf_msg_mcast (int msg_id, void *buf, size_t len);
-extern void amf_util_init (void);
 extern void amf_fifo_put (int entry_type, amf_fifo_t **root, 
 	int size_of_data, void *data);
 extern int amf_fifo_get (amf_fifo_t **root, void *data);
@@ -710,7 +709,6 @@ extern void amf_call_function_asynchronous (async_func_t async_func, void *param
 
 /* General methods */
 extern struct amf_node *amf_node_new (struct amf_cluster *cluster, char *name);
-extern void amf_node_init (void);
 extern void *amf_node_serialize (struct amf_node *node, int *len);
 extern struct amf_node *amf_node_deserialize (
 	struct amf_cluster *cluster, char *buf);
@@ -752,7 +750,6 @@ extern void timer_function_node_probation_period_expired (void *node);
 /* amfcluster.c */
 
 /* General methods */
-extern void amf_cluster_init (void);
 extern struct amf_cluster *amf_cluster_new (void);
 extern void *amf_cluster_serialize (struct amf_cluster *cluster, int *len);
 extern struct amf_cluster *amf_cluster_deserialize (char *buf);
@@ -785,7 +782,6 @@ extern void amf_cluster_application_workload_assigned (
 /* amfapp.c */
 
 /* General methods */
-extern void amf_application_init (void);
 extern struct amf_application *amf_application_find (
 	struct amf_cluster *cluster, char *name);
 extern struct amf_application *amf_application_new (
@@ -815,7 +811,6 @@ extern void amf_application_sg_assigned (
 /* amfsg.c */
 
 /* General methods */
-extern void amf_sg_init (void);
 extern struct amf_sg *amf_sg_find (struct amf_application *app, char *name);
 extern struct amf_sg *amf_sg_new (struct amf_application *app, char *name);
 extern void amf_sg_delete (struct amf_sg *sg);
@@ -862,7 +857,6 @@ extern void amf_sg_si_activated (
 /* amfsu.c */
 
 /* General methods */
-extern void amf_su_init (void);
 extern struct amf_su *amf_su_find (
 	struct amf_cluster *cluster, SaNameT *name);
 extern struct amf_su *amf_su_new (struct amf_sg *sg, char *name);
@@ -918,7 +912,6 @@ extern int amf_su_instantiate (struct amf_su *su);
 /* amfcomp.c */
 
 /* General methods */
-extern void amf_comp_init (void);
 extern struct amf_comp *amf_comp_new (struct amf_su *su, char *name);
 extern void amf_comp_delete (struct amf_comp *comp);
 extern char *amf_comp_dn_make (struct amf_comp *comp, SaNameT *name);
@@ -1046,7 +1039,6 @@ extern void mcast_error_report_from_pm (
 /* amfsi.c */
 
 /* General methods */
-extern void amf_si_init (void);
 extern struct amf_si *amf_si_find (struct amf_application *app, char *name);
 extern struct amf_si *amf_si_new (struct amf_application *app, char *name);
 extern void amf_si_delete (struct amf_si *si);

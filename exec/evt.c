@@ -61,10 +61,11 @@
 #include "ipc.h"
 #include "totempg.h"
 #include "swab.h"
-#include "print.h"
+#include "logsys.h"
 #include "tlist.h"
 #include "timer.h"
 
+LOGSYS_DECLARE_SUBSYS ("EVT", LOG_INFO);
 /*
  * event instance structure. Contains information about the
  * active connection to the API library.
@@ -3108,7 +3109,6 @@ static int evt_exec_init(struct objdb_iface_ver0 *objdb)
 	unsigned int object_service_handle;
 	char *value;
 
-	log_init ("EVT");
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);

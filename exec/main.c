@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc..
+ * Copyright (c) 2006 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -75,10 +75,17 @@
 #include "config.h"
 #include "ipc.h"
 #include "timer.h"
-#include "print.h"
+#include "logsys.h"
 #include "util.h"
 #include "flow.h"
 #include "version.h"
+
+LOGSYS_DECLARE_SYSTEM ("openais",
+	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_DISPLAY_DEBUG | LOG_MODE_BUFFER_BEFORE_CONFIG,
+	NULL,
+	LOG_DAEMON);
+
+LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
 #define SERVER_BACKLOG 5
 
@@ -110,14 +117,14 @@ static void sigusr2_handler (int num)
 static void sigsegv_handler (int num)
 {
 	signal (SIGSEGV, SIG_DFL);
-	log_flush ();
+	logsys_flush ();
 	raise (SIGSEGV);
 }
 
 static void sigabrt_handler (int num)
 {
 	signal (SIGABRT, SIG_DFL);
-	log_flush ();
+	logsys_flush ();
 	raise (SIGABRT);
 }
 
@@ -390,7 +397,6 @@ int main (int argc, char **argv)
 	int res, ch;
 	int background, setprio;
  	int totem_log_service;
- 	log_init ("MAIN");
 
  	/* default configuration
 	 */
@@ -420,7 +426,7 @@ int main (int argc, char **argv)
 
 	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006 Red Hat, Inc.\n");
+	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006-2007 Red Hat, Inc.\n");
 
 	signal (SIGINT, sigintr_handler);
 	signal (SIGUSR2, sigusr2_handler);
@@ -513,11 +519,13 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = log_setup (&error_string, &main_config);
+	res = logsys_config_file_set (&error_string, main_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_LOGSETUP);
 	}
+	logsys_config_facility_set ("openais", main_config.syslog_facility);
+	logsys_config_mode_set (main_config.logmode);
 
 	aisexec_uid_determine (&main_config);
 
@@ -534,20 +542,21 @@ int main (int argc, char **argv)
 	aisexec_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_log_service = _log_init ("TOTEM");
-  	totem_config.totem_logging_configuration.log_level_security = mkpri (LOG_LEVEL_SECURITY, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_error = mkpri (LOG_LEVEL_ERROR, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_warning = mkpri (LOG_LEVEL_WARNING, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_notice = mkpri (LOG_LEVEL_NOTICE, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_debug = mkpri (LOG_LEVEL_DEBUG, totem_log_service);
-	totem_config.totem_logging_configuration.log_printf = internal_log_printf;
+	totem_log_service = _logsys_subsys_create ("TOTEM", LOG_INFO);
+  	totem_config.totem_logging_configuration.log_level_security = logsys_mkpri (LOG_LEVEL_SECURITY, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_error = logsys_mkpri (LOG_LEVEL_ERROR, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_warning = logsys_mkpri (LOG_LEVEL_WARNING, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_notice = logsys_mkpri (LOG_LEVEL_NOTICE, totem_log_service);
+	totem_config.totem_logging_configuration.log_level_debug = logsys_mkpri (LOG_LEVEL_DEBUG, totem_log_service);
+	totem_config.totem_logging_configuration.log_printf = logsys_log_printf;
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
 	 * understand that this node has been away (if it was
 	 * an aisexec restart).
 	 */
-	usleep(totem_config.token_timeout * 2000);
+
+// TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
 
 	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot

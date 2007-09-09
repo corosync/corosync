@@ -70,7 +70,9 @@
 #include "swab.h"
 #include "ipc.h"
 #include "flow.h"
-#include "print.h"
+#include "logsys.h"
+
+LOGSYS_DECLARE_SUBSYS ("CPG", LOG_INFO);
 
 #define GROUP_HASH_SIZE 32
 
@@ -464,8 +466,6 @@ static void remove_group(struct group_info *gi)
 static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
 	int i;
-
-	log_init ("CPG");
 
 	for (i=0; i<GROUP_HASH_SIZE; i++) {
 		list_init(&group_lists[i]);

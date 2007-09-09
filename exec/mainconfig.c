@@ -45,26 +45,30 @@
 #include "util.h"
 #include "mainconfig.h"
 #include "mempool.h"
-#include "print.h"
+#include "logsys.h"
 #include "totem.h"
 #include "service.h"
 
 static char error_string_response[512];
 
 /* This just makes the code below a little neater */
-static inline int objdb_get_string(struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
-				   char *key, char **value)
+static inline int objdb_get_string (
+	struct objdb_iface_ver0 *objdb,
+	unsigned int object_service_handle,
+	char *key, char **value)
 {
 	int res;
 
 	*value = NULL;
 	if ( !(res = objdb->object_key_get (object_service_handle,
-					    key,
-					    strlen (key),
-					    (void *)value,
-					    NULL))) {
-		if (*value)
+		key,
+		strlen (key),
+		(void *)value,
+		NULL))) {
+
+		if (*value) {
 			return 0;
+		}
 	}
 	return -1;
 }
@@ -76,15 +80,22 @@ static inline void objdb_get_int (
 	char *value = NULL;
 
 	if (!objdb->object_key_get (object_service_handle,
-				    key,
-				    strlen (key),
-				    (void *)&value,
-				    NULL)) {
+		key,
+		strlen (key),
+		(void *)&value,
+		NULL)) {
+
 		if (value) {
 			*intvalue = atoi(value);
 		}
 	}
 }
+
+static struct logsys_config_struct {
+	char subsys[6];
+	unsigned int priority;
+	unsigned int tags;
+} logsys_logger;
 
 int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
@@ -92,15 +103,15 @@ int openais_main_config_read (
 	struct main_config *main_config)
 {
 	unsigned int object_service_handle;
-	unsigned int object_logger_handle;
+	unsigned int object_logger_subsys_handle;
 	char *value;
 	char *error_reason = error_string_response;
-	int i;
 
 	memset (main_config, 0, sizeof (struct main_config));
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 
+	main_config->logmode = LOG_MODE_FLUSH_AFTER_CONFIG;
 	if (objdb->object_find (
 		    OBJECT_PARENT_HANDLE,
 		    "logging",
@@ -109,45 +120,45 @@ int openais_main_config_read (
 
 		if (!objdb_get_string (objdb,object_service_handle, "to_file", &value)) {
 			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_FILE;
+				main_config->logmode |= LOG_MODE_OUTPUT_FILE;
 			} else
 			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_FILE;
+				main_config->logmode &= ~LOG_MODE_OUTPUT_FILE;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "to_syslog", &value)) {
 			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_SYSLOG;
+				main_config->logmode |= LOG_MODE_OUTPUT_SYSLOG_THREADED;
 			} else
 			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_SYSLOG;
+				main_config->logmode &= ~LOG_MODE_OUTPUT_SYSLOG_THREADED;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "to_stderr", &value)) {
 			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_STDERR;
+				main_config->logmode |= LOG_MODE_OUTPUT_STDERR;
 			} else
 			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_STDERR;
+				main_config->logmode &= ~LOG_MODE_OUTPUT_STDERR;
 			}
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
 			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_DEBUG;
+				main_config->logmode |= LOG_MODE_DISPLAY_DEBUG;
 			} else
 			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_DEBUG;
+				main_config->logmode &= ~LOG_MODE_DISPLAY_DEBUG;
 			} else {
 				goto parse_error;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
 			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_TIMESTAMP;
+				main_config->logmode |= LOG_MODE_DISPLAY_TIMESTAMP;
 			} else
 			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_TIMESTAMP;
+				main_config->logmode &= ~LOG_MODE_DISPLAY_TIMESTAMP;
 			} else {
 				goto parse_error;
 			}
@@ -158,10 +169,10 @@ int openais_main_config_read (
 
 		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
 			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_FILELINE;
+				main_config->logmode |= LOG_MODE_DISPLAY_FILELINE;
 			} else
 			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_FILELINE;
+				main_config->logmode &= ~LOG_MODE_DISPLAY_FILELINE;
 			} else {
 				goto parse_error;
 			}
@@ -200,63 +211,56 @@ int openais_main_config_read (
 			}
 		}
 
-		while (	objdb->object_find (object_service_handle,
-									"logger",
-									strlen ("logger"),
-									&object_logger_handle) == 0) {
-			struct logger_config *logger_tmp;
-			logger_tmp = realloc (main_config->logger,
-				sizeof(struct logger_config) * (main_config->loggers + 1));
-			if (logger_tmp == NULL) {
-				error_reason = "no more memory";
-				goto other_error;
-			}
-			main_config->logger = logger_tmp;
-			i = main_config->loggers;
-			main_config->loggers++;
-			memset(&main_config->logger[i], 0, sizeof(struct logger_config));
+		while (objdb->object_find (object_service_handle,
+			"logger_subsys",
+			strlen ("logger_subsys"),
+			&object_logger_subsys_handle) == 0) {
 
-			if (!objdb_get_string (objdb, object_logger_handle, "ident", &value)) {
-				main_config->logger[i].ident = value;
+			if (!objdb_get_string (objdb,
+				object_logger_subsys_handle,
+				"subsys", &value)) {
+
+				strncpy (logsys_logger.subsys, value,
+					sizeof (logsys_logger.subsys));
 			}
 			else {
-				error_reason = "ident required for logger directive";
+				error_reason = "subsys required for logger directive";
 				goto parse_error;
 			}
-			if (!objdb_get_string (objdb, object_logger_handle, "debug", &value)) {
+			if (!objdb_get_string (objdb, object_logger_subsys_handle, "debug", &value)) {
 				if (strcmp (value, "on") == 0) {
-					main_config->logger[i].level = LOG_LEVEL_DEBUG;
+					logsys_logger.priority = LOG_LEVEL_DEBUG;
 				} else
 				if (strcmp (value, "off") == 0) {
-					main_config->logger[i].level &= ~LOG_LEVEL_DEBUG;
+					logsys_logger.priority &= ~LOG_LEVEL_DEBUG;
 				} else {
 					goto parse_error;
 				}
 			}
-			if (!objdb_get_string (objdb, object_logger_handle, "tags", &value)) {
+			if (!objdb_get_string (objdb, object_logger_subsys_handle, "tags", &value)) {
 				char *token = strtok (value, "|");
 
 				while (token != NULL) {
 					if (strcmp (token, "enter") == 0) {
-						main_config->logger[i].tags |= TAG_ENTER;
+						logsys_logger.tags |= LOGSYS_TAG_ENTER;
 					} else if (strcmp (token, "leave") == 0) {
-						main_config->logger[i].tags |= TAG_LEAVE;
+						logsys_logger.tags |= LOGSYS_TAG_LEAVE;
 					} else if (strcmp (token, "trace1") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE1;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE1;
 					} else if (strcmp (token, "trace2") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE2;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE2;
 					} else if (strcmp (token, "trace3") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE3;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE3;
 					} else if (strcmp (token, "trace4") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE4;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE4;
 					} else if (strcmp (token, "trace5") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE5;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE5;
 					} else if (strcmp (token, "trace6") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE6;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE6;
 					} else if (strcmp (token, "trace7") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE7;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE7;
 					} else if (strcmp (token, "trace8") == 0) {
-						main_config->logger[i].tags |= TAG_TRACE8;
+						logsys_logger.tags |= LOGSYS_TAG_TRACE8;
 					} else {
 						error_reason = "bad tags value";
 						goto parse_error;
@@ -265,6 +269,14 @@ int openais_main_config_read (
 					token = strtok(NULL, "|");
 				}
 			}
+			/*
+			 * set individual logger configurations
+			 */
+			logsys_config_subsys_set (
+				logsys_logger.subsys,
+				logsys_logger.tags,
+				logsys_logger.priority);
+			
 		}
 	}
 
@@ -290,23 +302,16 @@ int openais_main_config_read (
 	if (!main_config->group)
 		main_config->group = "ais";
 
-	if ((main_config->logmode & LOG_MODE_FILE) && main_config->logfile == 0) {
+	if ((main_config->logmode & LOG_MODE_OUTPUT_FILE) &&
+		(main_config->logfile == NULL)) {
 		error_reason = "logmode set to 'file' but no logfile specified";
 		goto parse_error;
 	}
 
-	if (!main_config->syslog_facility)
+	if (main_config->syslog_facility == 0)
 		main_config->syslog_facility = LOG_DAEMON;
 
 	return 0;
-
-other_error:
-	sprintf (error_string_response,
-		"error parsing config: %s.\n",
-		error_reason);
-
-	*error_string = error_string_response;
-	return -1;
 
 parse_error:
 	sprintf (error_string_response,
