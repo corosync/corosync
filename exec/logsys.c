@@ -303,7 +303,7 @@ static void _log_printf (
 	** Buffer before log has been configured has been called.
 	*/
 	if (logsys_mode & LOG_MODE_BUFFER_BEFORE_CONFIG) {
-		buffered_log_printf(file, line, priority, format, ap);
+		buffered_log_printf(file, line, logsys_mkpri(priority, id), format, ap);
 		pthread_mutex_unlock (&logsys_new_log_mutex);
 		if (config_mutex_state == LOGSYS_CONFIG_MUTEX_UNLOCKED) {
 			pthread_mutex_unlock (&logsys_config_mutex);
@@ -402,7 +402,6 @@ void logsys_config_mode_set (unsigned int mode)
 	pthread_mutex_lock (&logsys_config_mutex);
 	logsys_mode = mode;
 	if (mode & LOG_MODE_FLUSH_AFTER_CONFIG) {
-		logsys_mode = logsys_mode & ~LOG_MODE_FLUSH_AFTER_CONFIG;
 		_logsys_wthread_create ();
 		logsys_buffer_flush ();
 	}
@@ -604,7 +603,6 @@ static void logsys_buffer_flush (void)
 	}
 
 	head = tail = NULL;
-	logsys_flush();
 }
 
 void logsys_flush (void)
