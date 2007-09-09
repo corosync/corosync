@@ -49,7 +49,7 @@
 #include <saAmf.h>
 #include <ipc_gen.h>
 #include <ipc_amf.h>
-#include "util.h"
+#include <ais_util.h>
 
 
 struct res_overlay {

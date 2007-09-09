@@ -54,7 +54,7 @@
 #include <ipc_gen.h>
 #include <ipc_ckpt.h>
 
-#include "util.h"
+#include <ais_util.h>
 
 struct message_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));

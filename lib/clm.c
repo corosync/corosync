@@ -54,7 +54,7 @@
 #include <mar_gen.h>
 #include <mar_clm.h>
 
-#include "util.h"
+#include <ais_util.h>
 
 struct res_overlay {
 	mar_res_header_t header;

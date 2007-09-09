@@ -383,7 +383,9 @@ static void conn_info_destroy (struct conn_info *conn_info)
 	free (conn_info);
 }
 
-static int libais_connection_active (struct conn_info *conn_info)
+int libais_connection_active (struct conn_info *conn_info);
+
+int libais_connection_active (struct conn_info *conn_info)
 {
 	return (conn_info->state == CONN_STATE_ACTIVE);
 }

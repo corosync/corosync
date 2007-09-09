@@ -71,10 +71,11 @@ clean:
 	rm -rf doc/api
 
 AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
-		  cfg
+		  cfg aisutil
 
 AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
-		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 
+		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	   \
+		  ais_util.h
 
 install: all
 	mkdir -p $(DESTDIR)$(SBINDIR)

@@ -51,7 +51,7 @@
 #include <saAis.h>
 #include <evs.h>
 #include <ipc_evs.h>
-#include "util.h"
+#include <ais_util.h>
 
 struct evs_inst {
 	int response_fd;

@@ -51,7 +51,7 @@
 #include <mar_gen.h>
 #include <ipc_gen.h>
 #include <ipc_cfg.h>
-#include "util.h"
+#include <ais_util.h>
 
 struct res_overlay {
 	mar_res_header_t header;

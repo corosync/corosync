@@ -40,7 +40,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <ipc_evt.h>
-#include "util.h"
+#include <ais_util.h>
 #include "../exec/totem.h"
 #include <list.h>
 

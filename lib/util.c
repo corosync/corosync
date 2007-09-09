@@ -55,7 +55,7 @@
 
 #include <saAis.h>
 #include <ipc_gen.h>
-#include "util.h"
+#include <ais_util.h>
 
 enum SA_HANDLE_STATE {
 	SA_HANDLE_STATE_EMPTY,

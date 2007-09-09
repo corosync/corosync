@@ -49,7 +49,7 @@
 #include <cpg.h>
 #include <ipc_cpg.h>
 #include <mar_cpg.h>
-#include "util.h"
+#include <ais_util.h>
 
 struct cpg_inst {
 	int response_fd;
