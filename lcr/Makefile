@@ -26,7 +26,7 @@
 #
 include ../Makefile.inc
 
-override CFLAGS += -I../include
+override CFLAGS += -I../include -DPREFIX='"$(PREFIX)"'
 override LDFLAGS += -L./ ${DYFLAGS}
 
 ifeq (${OPENAIS_COMPAT}, LINUX) 
