@@ -46,13 +46,13 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "../include/saCkpt.h"
-#include "../include/mar_gen.h"
-#include "../include/mar_ckpt.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_ckpt.h"
+#include <saAis.h>
+#include <list.h>
+#include <saCkpt.h>
+#include <mar_gen.h>
+#include <mar_ckpt.h>
+#include <ipc_gen.h>
+#include <ipc_ckpt.h>
 
 #include "util.h"
 

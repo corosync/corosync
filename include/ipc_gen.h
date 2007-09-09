@@ -34,7 +34,7 @@
 #ifndef IPC_GEN_H_DEFINED
 #define IPC_GEN_H_DEFINED
 
-#include "mar_gen.h"
+#include <mar_gen.h>
 
 enum service_types {
 	EVS_SERVICE = 0,

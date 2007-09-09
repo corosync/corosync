@@ -43,8 +43,8 @@
 #endif
 #include <string.h>
 
-#include "saAis.h"
-#include "swab.h"
+#include <saAis.h>
+#include <swab.h>
 
 typedef int8_t mar_int8_t;
 typedef int16_t mar_int16_t;

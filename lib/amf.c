@@ -45,10 +45,10 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/saAis.h"
-#include "../include/saAmf.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_amf.h"
+#include <saAis.h>
+#include <saAmf.h>
+#include <ipc_gen.h>
+#include <ipc_amf.h>
 #include "util.h"
 
 

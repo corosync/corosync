@@ -45,10 +45,10 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include "../include/saAis.h"
-#include "../include/cpg.h"
-#include "../include/ipc_cpg.h"
-#include "../include/mar_cpg.h"
+#include <saAis.h>
+#include <cpg.h>
+#include <ipc_cpg.h>
+#include <mar_cpg.h>
 #include "util.h"
 
 struct cpg_inst {

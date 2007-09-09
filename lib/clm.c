@@ -45,14 +45,14 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/swab.h"
+#include <swab.h>
 #include "../exec/totem.h"
-#include "../include/saAis.h"
-#include "../include/saClm.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_clm.h"
-#include "../include/mar_gen.h"
-#include "../include/mar_clm.h"
+#include <saAis.h>
+#include <saClm.h>
+#include <ipc_gen.h>
+#include <ipc_clm.h>
+#include <mar_gen.h>
+#include <mar_clm.h>
 
 #include "util.h"
 

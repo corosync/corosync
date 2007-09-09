@@ -46,11 +46,11 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include "../include/swab.h"
+#include <swab.h>
 #include "../exec/totem.h"
-#include "../include/saAis.h"
-#include "../include/evs.h"
-#include "../include/ipc_evs.h"
+#include <saAis.h>
+#include <evs.h>
+#include <ipc_evs.h>
 #include "util.h"
 
 struct evs_inst {

@@ -45,11 +45,11 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "../include/saLck.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_lck.h"
+#include <saAis.h>
+#include <list.h>
+#include <saLck.h>
+#include <ipc_gen.h>
+#include <ipc_lck.h>
 
 #include "util.h"
 

@@ -53,8 +53,8 @@
 #include <netinet/in.h>
 #include <assert.h>
 
-#include "../include/saAis.h"
-#include "../include/ipc_gen.h"
+#include <saAis.h>
+#include <ipc_gen.h>
 #include "util.h"
 
 enum SA_HANDLE_STATE {

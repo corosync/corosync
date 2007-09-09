@@ -46,11 +46,11 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include "../include/saAis.h"
-#include "../include/cfg.h"
-#include "../include/mar_gen.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_cfg.h"
+#include <saAis.h>
+#include <cfg.h>
+#include <mar_gen.h>
+#include <ipc_gen.h>
+#include <ipc_cfg.h>
 #include "util.h"
 
 struct res_overlay {

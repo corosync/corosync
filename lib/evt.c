@@ -39,10 +39,10 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#include "../include/ipc_evt.h"
+#include <ipc_evt.h>
 #include "util.h"
 #include "../exec/totem.h"
-#include "../include/list.h"
+#include <list.h>
 
 static void evtHandleInstanceDestructor(void *instance);
 static void chanHandleInstanceDestructor(void *instance);
