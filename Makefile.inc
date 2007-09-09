@@ -1,3 +1,9 @@
+# Common options
+PREFIX=/usr/local
+DESTDIR=
+
+# Do not modify below this line
+
 # Basic OS detection
 #
 UNAME=$(shell uname)

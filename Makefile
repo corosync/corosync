@@ -31,30 +31,29 @@
 
 include Makefile.inc
 
-DESTDIR=/usr/local
-SBINDIR=/usr/sbin
-INCLUDEDIR=/usr/include/openais
-INCLUDEDIR_TOTEM=/usr/include/openais/totem
-INCLUDEDIR_LCR=/usr/include/openais/lcr
-INCLUDEDIR_SERVICE=/usr/include/openais/service
-MANDIR=/usr/share/man
+SBINDIR=$(PREFIX)/sbin
+INCLUDEDIR=$(PREFIX)/include/openais
+INCLUDEDIR_TOTEM=$(PREFIX)/include/openais/totem
+INCLUDEDIR_LCR=$(PREFIX)/include/openais/lcr
+INCLUDEDIR_SERVICE=$(PREFIX)/include/openais/service
+MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
-LCRSODIR=/usr/libexec/lcrso
+LCRSODIR=$(PREFIX)/libexec/lcrso
 ARCH=$(shell uname -p)
 
 ifeq (,$(findstring 64,$(ARCH)))
-LIBDIR=/usr/lib/openais
+LIBDIR=$(PREFIX)/lib/openais
 else
-LIBDIR=/usr/lib64/openais
+LIBDIR=$(PREFIX)/lib64/openais
 endif
 ifeq (s390,$(ARCH))
-LIBDIR=/usr/lib/openais
+LIBDIR=$(PREFIX)/lib/openais
 endif
 ifeq (s390x,$(ARCH))
-LIBDIR=/usr/lib64/openais
+LIBDIR=$(PREFIX)/lib64/openais
 endif
 ifeq (ia64,$(ARCH))
-LIBDIR=/usr/lib/openais
+LIBDIR=$(PREFIX)/lib/openais
 endif
 
 all:
