@@ -1,0 +1,18 @@
+# Version and symbol export for libaisutil.so
+
+OPENAIS_UTIL_2.0 {
+	global:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};
