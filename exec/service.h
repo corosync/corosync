@@ -43,6 +43,7 @@
 #endif
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
+#define SERVICE_HANDLER_MAXIMUM_COUNT 64
 
 enum openais_flow_control {
 	OPENAIS_FLOW_CONTROL_REQUIRED = 1,

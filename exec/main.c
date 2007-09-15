@@ -181,15 +181,29 @@ static void openais_sync_completed (void)
 static int openais_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
-	if (ais_service[sync_id] == NULL) {
+	unsigned int ais_service_index;
+	unsigned int ais_services_found = 0;
+	
+	for (ais_service_index = 0;
+		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
+		ais_service_index++) {
+
+		if (ais_service[ais_service_index] != NULL) {
+			if (ais_services_found == sync_id) {
+				break;
+			}
+			ais_services_found += 1;
+		}
+	}
+	if (ais_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
 		memset (callbacks, 0, sizeof (struct sync_callbacks));
 		return (-1);
 	}
-	callbacks->name = ais_service[sync_id]->name;
-	callbacks->sync_init = ais_service[sync_id]->sync_init;
-	callbacks->sync_process = ais_service[sync_id]->sync_process;
-	callbacks->sync_activate = ais_service[sync_id]->sync_activate;
-	callbacks->sync_abort = ais_service[sync_id]->sync_abort;
+	callbacks->name = ais_service[ais_service_index]->name;
+	callbacks->sync_init = ais_service[ais_service_index]->sync_init;
+	callbacks->sync_process = ais_service[ais_service_index]->sync_process;
+	callbacks->sync_activate = ais_service[ais_service_index]->sync_activate;
+	callbacks->sync_abort = ais_service[ais_service_index]->sync_abort;
 	return (0);
 }
 

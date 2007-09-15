@@ -91,7 +91,7 @@ static struct default_service default_services[] = {
 	}
 };
 
-struct openais_service_handler *ais_service[128];
+struct openais_service_handler *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 /*
  * Adds a service handler to the object database
