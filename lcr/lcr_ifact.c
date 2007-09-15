@@ -47,6 +47,7 @@
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;
 	int iface_count;
+	unsigned int comp_handle;
 	void *dl_handle;
 	int refcount;
 	char library_name[256];
@@ -70,7 +71,7 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 	.iterator	= 0
 };
 
-static unsigned int g_component_handle;
+static unsigned int g_component_handle = 0xFFFFFFFF;
 
 #if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
 static int lcr_select_so (const struct dirent *dirent)
@@ -174,7 +175,6 @@ static void defaults_path_build (void)
 
 	res = getcwd (cwd, sizeof (cwd));
 	if (res != NULL) {
-		strcat (cwd, "/");
 		path_list[0] = strdup (cwd);
 		path_list_entries++;
 	}
@@ -386,8 +386,8 @@ static int interface_find_and_load (
 		}
 
 		/*
-		 * No matching interfaces found, try next shared object
-		 */
+		* No matching interfaces found, try next shared object
+		*/
 		if (g_component_handle != 0xFFFFFFFF) {
 			hdb_handle_destroy (&lcr_component_instance_database,
 				g_component_handle);
@@ -450,19 +450,19 @@ int lcr_ifact_reference (
 
 // TODO error checking in this code is weak
 	/*
-	 * Find all *.lcrso files in search paths
+	 * Search through all lcrso files for desired interface
 	 */
 	for (i = 0; i < path_list_entries; i++) {
-	res = interface_find_and_load (
-		path_list[i],
-		iface_name,
-		version,
-		&instance,
-		&iface_number);
+		res = interface_find_and_load (
+			path_list[i],
+			iface_name,
+			version,
+			&instance,
+			&iface_number);
 
-	if (res == 0) {
-		goto found;
-	}
+		if (res == 0) {
+			goto found;
+		}
 	}
 
 	/*
@@ -480,9 +480,10 @@ found:
 		iface_handle);
 	hdb_handle_get (&lcr_iface_instance_database,
 		*iface_handle, (void *)&iface_instance);
-	iface_instance->component_handle = g_component_handle;
+	iface_instance->component_handle = instance->comp_handle;
 	iface_instance->context = context;
 	iface_instance->destructor = instance->ifaces[iface_number].destructor;
+	hdb_handle_put (&lcr_iface_instance_database, *iface_handle);
 	return (0);
 }
 
@@ -509,17 +510,21 @@ int lcr_ifact_release (unsigned int handle)
 void lcr_component_register (struct lcr_comp *comp)
 {
 	struct lcr_component_instance *instance;
+	static unsigned int comp_handle;
 
 	hdb_handle_create (&lcr_component_instance_database,
 		sizeof (struct lcr_component_instance),
-		&g_component_handle);
+		&comp_handle);
 	hdb_handle_get (&lcr_component_instance_database,
-		g_component_handle, (void *)&instance);
+		comp_handle, (void *)&instance);
 
 	instance->ifaces = comp->ifaces;
 	instance->iface_count = comp->iface_count;
+	instance->comp_handle = comp_handle;
 	instance->dl_handle = NULL;
 
 	hdb_handle_put (&lcr_component_instance_database,
-		g_component_handle);
+		comp_handle);
+
+	g_component_handle = comp_handle;
 }

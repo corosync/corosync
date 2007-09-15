@@ -206,7 +206,7 @@ depend:
 
 # - fPIC rules required for service handler shared objects
 ../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -I../lcr -c -o $@ ../lcr/lcr_ifact.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -I../lcr -c -o $@ ../lcr/lcr_ifact.c
 
 evs.o: evs.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c

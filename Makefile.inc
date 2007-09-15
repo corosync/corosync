@@ -1,5 +1,5 @@
 # Common options
-PREFIX=/usr/local
+PREFIX=/usr
 DESTDIR=
 
 # Do not modify below this line

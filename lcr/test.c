@@ -85,7 +85,7 @@ int main (void) {
 		(void *)0xaaaa1111);
 	assert (res == 0);
 
-	a_iface_ver1 = (struct iface *)a_iface_ver0_p;
+	a_iface_ver1 = (struct iface *)a_iface_ver1_p;
 
 	res = lcr_ifact_reference (
 		&b_ifact_handle_ver1,
@@ -95,7 +95,7 @@ int main (void) {
 		(void *)0xbbbb1111);
 	assert (res == 0);
 
-	b_iface_ver1 = (struct iface *)b_iface_ver0_p;
+	b_iface_ver1 = (struct iface *)b_iface_ver1_p;
 
 	a_iface_ver0->func1();
 	a_iface_ver0->func2();

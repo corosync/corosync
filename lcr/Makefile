@@ -61,7 +61,7 @@ libtest_b.lcrso: libtest_b.o
 endif
 	
 test: test.o uis.o lcr_ifact.o
-	$(CC) $(LDFLAGS) test.o lcr_ifact.o uis.o -lpthread -o test
+	$(CC) $(LDFLAGS) -fPIC test.o lcr_ifact.o uis.o -lpthread -o test
 
 test_static: test.o libtest_a.o libtest_b.o uis.o lcr_ifact.o
 	$(CC) $(LDFLAGS) test.o libtest_a.o libtest_b.o lcr_ifact.o -o test_static
@@ -73,6 +73,12 @@ libtest_a.o: libtest_a.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 libtest_b.o: libtest_b.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+
+lcr_ifact.o: lcr_ifact.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+
+test.o: test.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
 
 clean:
