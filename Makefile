@@ -138,7 +138,7 @@ install: all
 	install -m 644 exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/print.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 man/*.3 $(DESTDIR)$(MANDIR)/man3
