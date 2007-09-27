@@ -29,7 +29,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-include Makefile.inc
+builddir:=$(shell pwd)/
+ifneq ($(O),)
+# cleanup the path (make it absolute)
+builddir:=$(abspath $(O))/
+endif
+srcdir:=$(dir $(realpath $(MAKEFILE_LIST)))
+
+include $(srcdir)/Makefile.inc
 
 SBINDIR=$(PREFIX)/sbin
 INCLUDEDIR=$(PREFIX)/include/openais
@@ -56,18 +63,53 @@ ifeq (ia64,$(ARCH))
 LIBDIR=$(PREFIX)/lib/openais
 endif
 
-all:
-	(cd lcr; echo ==== `pwd` ===; $(MAKE) all);
-	(cd lib; echo ==== `pwd` ===; $(MAKE) all);
-	(cd exec; echo ==== `pwd` ===; $(MAKE) all);
-	(cd test; echo ==== `pwd` ===; $(MAKE) all);
+SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test
+sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
+
+all: $(SUBDIRS)
+	@(cd $(builddir)lcr; echo ==== `pwd` ===;  $(call sub_make,lcr,all));
+	@(cd $(builddir)lib; echo ==== `pwd` ===;  $(call sub_make,lib,all));
+	@(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,all));
+	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
+
+# subdirs are not phony
+.PHONY: all clean install doxygen
+
+$(builddir):
+	mkdir -p $@
+
+$(SUBDIRS):
+	mkdir -p $@
+
+help:
+	@echo 
+	@echo "Requirements: GCC, LD, and a Linux 2.4/2.6 kernel."
+	@echo "Tested on:"
+	@echo " Debian Sarge(i386), Redhat 9(i386), Fedora Core 2(i386), Fedora Core"
+	@echo " 4(i386,x86_64), SOLARIS, MontaVista Carrier Grade Edition 3.1(i386, x86_64,"
+	@echo " classic ppc, ppc970, xscale) and buildroot/uclibc(ppc e500/603e)"
+	@echo 
+	@echo Targets:
+	@echo "  all     - build all targets"
+	@echo "  install - install openais onto your system"
+	@echo "  clean   - remove generated files"
+	@echo "  doxygen - doxygen html docs"
+	@echo 
+	@echo "Options: (* - default)"
+	@echo "  OPENAIS         [DEBUG/RELEASE*] - Enable/Disable debug symbols"
+	@echo "  DESTDIR         [directory]      - Install prefix."
+	@echo "  O               [directory]      - Locate all output files in \"dir\"."
+	@echo "  BUILD_DYNAMIC   [1*/0]           - Enable/disable dynamic loading of service handler modules"
+	@echo "  OPENAIS_PROFILE [1/0*]           - Enable profiling"
+	@echo 
+ 
 
 clean:
-	(cd lcr; echo ==== `pwd` ===; $(MAKE) clean);
-	(cd lib; echo ==== `pwd` ===; $(MAKE) clean);
-	(cd exec; echo ==== `pwd` ===; $(MAKE) clean);
-	(cd test; echo ==== `pwd` ===; $(MAKE) clean);
-	rm -rf doc/api
+	(cd $(builddir)lcr; echo ==== `pwd` ===; $(call sub_make,lcr,clean));
+	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,clean));
+	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,clean));
+	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
+	rm -rf $(builddir)doc/api
 
 AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
 		  cfg aisutil
@@ -91,20 +133,20 @@ install: all
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
 
-	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so
-	ln -sf libtotem_pg.so.2.0.0 exec/libtotem_pg.so.2
-	$(CP) -a exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
-	install -m 755 exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
+	ln -sf $(builddir)libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so
+	ln -sf $(builddir)libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so.2
+	$(CP) -a $(builddir)exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
+	$(CP) -a $(builddir)exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
+	install -m 755 $(builddir)exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
 	for aLib in $(AIS_LIBS); do					\
-	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
-	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
-	    $(CP) -a lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
-	    $(CP) -a lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
+	    ln -sf $(builddir)lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
+	    ln -sf $(builddir)lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
+	    $(CP) -a $(builddir)lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
+	    $(CP) -a $(builddir)lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xNO" = "x$(STATICLIBS)" ]; then			\
-	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
+	        install -m 755 $(builddir)lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
 		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
 	        fi							\
@@ -113,37 +155,37 @@ install: all
 
 	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
 
-	install -m 755 exec/*lcrso $(DESTDIR)$(LCRSODIR)
-	install -m 755 exec/aisexec $(DESTDIR)$(SBINDIR)
-	install -m 700 exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
+	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
+	install -m 755 $(builddir)exec/aisexec $(DESTDIR)$(SBINDIR)
+	install -m 700 $(builddir)exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then 	   \
-		install -m 644 conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
+		install -m 644 $(srcdir)conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
 	fi
 	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/amf.conf ] ; then 		\
-		install -m 644 conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ;	\
+		install -m 644 $(srcdir)conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ;	\
 	fi
 
 	for aHeader in $(AIS_HEADERS); do				\
-	    install -m 644 include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
+	    install -m 644 $(srcdir)include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
 	done
 
-	install -m 644 exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 man/*.3 $(DESTDIR)$(MANDIR)/man3
-	install -m 644 man/*.5 $(DESTDIR)$(MANDIR)/man5
-	install -m 644 man/*.8 $(DESTDIR)$(MANDIR)/man8
+	install -m 644 $(srcdir)exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
+	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5
+	install -m 644 $(srcdir)man/*.8 $(DESTDIR)$(MANDIR)/man8
 
 doxygen:
 	mkdir -p doc/api && doxygen

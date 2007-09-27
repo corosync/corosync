@@ -44,7 +44,7 @@ LIBS = $(LIBRARIES)
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
 
-EXTRA_CFLAGS = -I../include
+EXTRA_CFLAGS = -I$(srcdir)include
 TEST_SRC =  testclm.c testamf1.c \
 	testamf4.c testamf5.c testamf6.c testamfth.c  \
 	testckpt.c ckptstress.c ckptbench.c  \

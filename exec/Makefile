@@ -32,9 +32,10 @@
 
 # Include configuration
 #
-include ../Makefile.inc
+include $(srcdir)Makefile.inc
 
-override CFLAGS += -I../include
+override CFLAGS += -I$(srcdir)include
+LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 	override LDFLAGS += ${DYFLAGS}
@@ -209,71 +210,71 @@ depend:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -I../lcr -c -o $@ ../lcr/lcr_ifact.c
 
 evs.o: evs.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 clm.o: clm.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 amf.o: amf.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 ckpt.o: ckpt.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 evt.o: evt.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 lck.o: lck.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 msg.o: msg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 cfg.o: cfg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 aisparser.o: aisparser.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 vsf_ykd.o: vsf_ykd.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 cpg.o: cpg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 objdb.o: objdb.c
-	$(CC) $(CFLAGS) -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # -fPIC rules required for lib totem
 aispoll.o: aispoll.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totempg.o: totempg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemsrp.o: totemsrp.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemrrp.o: totemrrp.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemip.o: totemip.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemnet.o: totemnet.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 wthread.o: wthread.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 crypto.o: crypto.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemmrp.o: totemmrp.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totemconfig.o: totemconfig.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 # DO NOT DELETE
 

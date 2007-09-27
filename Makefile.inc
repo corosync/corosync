@@ -107,3 +107,6 @@ ifeq ($(shell uname -r), 5.11)
 	override CFLAGS += -DHAVE_GETPEERUCRED -DHAVE_SCANDIR -DHAVE_ALPHASORT
 endif
 endif
+
+VPATH:=. $(srcdir) $(srcdir)$(subdir)
+

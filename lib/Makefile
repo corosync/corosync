@@ -30,9 +30,9 @@
 
 # Include configuration
 #
-include ../Makefile.inc
+include $(srcdir)Makefile.inc
 
-override CFLAGS += -I../include
+override CFLAGS += -I$(srcdir)include
 override LDFLAGS += -L./
 
 all:libSaClm.a libSaClm.so.2.0.0 \
@@ -95,37 +95,37 @@ libcfg.so.2.0.0: util.o cfg.o
 else
 
 libaisutil.so.2.0.0: util.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libaisutil.so.2,-version-script=libaisutil.versions util.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libaisutil.so.2,-version-script=$(srcdir)$(subdir)libaisutil.versions util.o -o $@
 
 libSaClm.so.2.0.0: util.o clm.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaClm.so.2,-version-script=libSaClm.versions util.o clm.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaClm.so.2,-version-script=$(srcdir)$(subdir)libSaClm.versions util.o clm.o -o $@
 
 libSaAmf.so.2.0.0: util.o amf.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaAmf.so.2,-version-script=libSaAmf.versions util.o amf.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaAmf.so.2,-version-script=$(srcdir)$(subdir)libSaAmf.versions util.o amf.o -o $@
 
 libSaCkpt.so.2.0.0: util.o ckpt.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaCkpt.so.2,-version-script=libSaCkpt.versions util.o ckpt.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaCkpt.so.2,-version-script=$(srcdir)$(subdir)libSaCkpt.versions util.o ckpt.o -o $@
 
 libSaEvt.so.2.0.0: util.o evt.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaEvt.so.2,-version-script=libSaEvt.versions util.o evt.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaEvt.so.2,-version-script=$(srcdir)$(subdir)libSaEvt.versions util.o evt.o -o $@
 
 libSaLck.so.2.0.0: util.o lck.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaLck.so.2,-version-script=libSaLck.versions util.o lck.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaLck.so.2,-version-script=$(srcdir)$(subdir)libSaLck.versions util.o lck.o -o $@
 
 libSaMsg.so.2.0.0: util.o msg.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaMsg.so.2,-version-script=libSaMsg.versions util.o msg.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libSaMsg.so.2,-version-script=$(srcdir)$(subdir)libSaMsg.versions util.o msg.o -o $@
 
 libais.so.2.0.0: util.o amf.o clm.o ckpt.o evt.o lck.o msg.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libais.so.2,-version-script=libSaAis.versions util.o amf.o clm.o ckpt.o evt.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libais.so.2,-version-script=$(srcdir)$(subdir)libSaAis.versions util.o amf.o clm.o ckpt.o evt.o -o $@
 
 libevs.so.2.0.0: util.o evs.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=libevs.versions util.o evs.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=$(srcdir)$(subdir)libevs.versions util.o evs.o -o $@
 
 libcpg.so.2.0.0: util.o cpg.o
-	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=libcpg.versions util.o cpg.o -o $@
+	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
-	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=libcfg.versions util.o cfg.o -o $@
+	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
 
 endif
 
@@ -164,7 +164,7 @@ clean:
  
 # -fPIC rules required for all libraries
 %.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(LIBAIS_SRC) > /dev/null 2>&1
