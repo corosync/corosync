@@ -1,6 +1,7 @@
 # Common options
 PREFIX=/usr
 DESTDIR=
+LCRSODIR=$(PREFIX)/libexec/lcrso
 
 # Do not modify below this line
 

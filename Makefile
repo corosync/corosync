@@ -45,7 +45,6 @@ INCLUDEDIR_LCR=$(PREFIX)/include/openais/lcr
 INCLUDEDIR_SERVICE=$(PREFIX)/include/openais/service
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
-LCRSODIR=$(PREFIX)/libexec/lcrso
 ARCH=$(shell uname -p)
 
 ifeq (,$(findstring 64,$(ARCH)))

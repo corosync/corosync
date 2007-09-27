@@ -179,7 +179,7 @@ static void defaults_path_build (void)
 		path_list_entries++;
 	}
 	
-	path_list[path_list_entries++] = PREFIX"/libexec/lcrso";
+	path_list[path_list_entries++] = LCRSODIR;
 }
 
 static void ld_library_path_build (void)
