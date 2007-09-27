@@ -145,7 +145,7 @@ install: all
 	    $(CP) -a $(builddir)lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
 	    $(CP) -a $(builddir)lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
-	    if [ "xNO" = "x$(STATICLIBS)" ]; then			\
+	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
 	        install -m 755 $(builddir)lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
 		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
