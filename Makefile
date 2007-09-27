@@ -132,15 +132,15 @@ install: all
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
 
-	ln -sf $(builddir)libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so
-	ln -sf $(builddir)libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so.2
+	ln -sf libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so
+	ln -sf libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so.2
 	$(CP) -a $(builddir)exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
 	$(CP) -a $(builddir)exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
 	install -m 755 $(builddir)exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
 	for aLib in $(AIS_LIBS); do					\
-	    ln -sf $(builddir)lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
-	    ln -sf $(builddir)lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
+	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
+	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
 	    $(CP) -a $(builddir)lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
 	    $(CP) -a $(builddir)lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
