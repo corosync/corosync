@@ -1016,9 +1016,7 @@ void lock_algorithm (
 		/*
 		 * Exclusive lock granted
 		 */
-		if (resource_lock->lock_mode == SA_LCK_PR_LOCK_MODE) {
-			lock_queue (resource, resource_lock);
-		}
+		lock_queue (resource, resource_lock);
 	} else {
 		/*
 		 * Exclusive lock not granted
