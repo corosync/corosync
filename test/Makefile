@@ -105,10 +105,10 @@ testclm: testclm.o $(LIBRARIES)
 testckpt: testckpt.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testckpt testckpt.o sa_error.o $(LIBS)
 
-ckptbench: ckptbench.o $(LIBRARIES)
+ckptbench: ckptbench.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptbench ckptbench.o sa_error.o $(LIBS)
 
-ckptbenchth: ckptbenchth.o $(LIBRARIES)
+ckptbenchth: ckptbenchth.o sa_error.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o ckptbenchth ckptbenchth.o sa_error.o $(LIBS)
 
 ckptstress: ckptstress.o $(LIBRARIES)
