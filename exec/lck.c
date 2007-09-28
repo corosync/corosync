@@ -731,7 +731,7 @@ static void message_handler_req_exec_lck_resourceopen (
 	struct resource *resource;
 	struct resource_cleanup *resource_cleanup;
 	SaAisErrorT error = SA_AIS_OK;
-	struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (req_exec_lck_resourceopen->source.conn);
+	struct lck_pd *lck_pd;
 
 	log_printf (LOG_LEVEL_NOTICE, "EXEC request: saLckResourceOpen %s\n",
 		get_mar_name_t (&req_exec_lck_resourceopen->resource_name));
@@ -780,7 +780,8 @@ static void message_handler_req_exec_lck_resourceopen (
 		if (resource_cleanup == 0) {
 			free (resource);
 			error = SA_AIS_ERR_NO_MEMORY;
-		} else {
+		} else { 
+			lck_pd = (struct lck_pd *)openais_conn_private_data_get (req_exec_lck_resourceopen->source.conn);
 			list_init (&resource_cleanup->list);
 			list_init (&resource_cleanup->resource_lock_list_head);
 			resource_cleanup->resource = resource;
