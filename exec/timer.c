@@ -177,7 +177,7 @@ int openais_timer_add_absolute (
 	int res;
 	int unlock;
 
-	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;
@@ -209,7 +209,7 @@ int openais_timer_add_duration (
 	int res;
 	int unlock;
 
-	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;
