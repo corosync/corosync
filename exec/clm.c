@@ -70,8 +70,11 @@
 #include "../lcr/lcr_comp.h"
 #include "totempg.h"
 #include "main.h"
+#include "flow.h"
+#include "tlist.h"
 #include "ipc.h"
 #include "mempool.h"
+#include "objdb.h"
 #include "service.h"
 #include "logsys.h"
 

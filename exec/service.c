@@ -40,6 +40,8 @@
 
 #include "../lcr/lcr_ifact.h"
 #include "swab.h"
+#include "objdb.h"
+#include "totem.h"
 #include "service.h"
 #include "mainconfig.h"
 #include "util.h"

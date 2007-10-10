@@ -49,6 +49,8 @@
 #include <arpa/inet.h>
 
 #include "swab.h"
+#include "objdb.h"
+#include "totem.h"
 #include "service.h"
 #include "../include/saAis.h"
 #include "../include/saLck.h"
@@ -59,6 +61,8 @@
 #include "mempool.h"
 #include "util.h"
 #include "main.h"
+#include "flow.h"
+#include "tlist.h"
 #include "ipc.h"
 #include "totempg.h"
 #include "logsys.h"

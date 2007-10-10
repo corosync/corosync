@@ -150,6 +150,8 @@
 #include "util.h"
 #include "amf.h"
 #include "main.h"
+#include "tlist.h"
+#include "flow.h"
 #include "ipc.h"
 #include "service.h"
 #include "objdb.h"

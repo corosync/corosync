@@ -70,6 +70,8 @@
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
+#include "flow.h"
+#include "tlist.h"
 #include "ipc.h"
 #include "flow.h"
 #include "service.h"

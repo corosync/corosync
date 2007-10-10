@@ -34,14 +34,6 @@
 #ifndef OPENAIS_SERVICE_H_DEFINED
 #define OPENAIS_SERVICE_H_DEFINED
 
-#ifdef OPENAIS_EXTERNAL_SERVICE
-#include <openais/totem/totem.h>
-#include <openais/service/objdb.h>
-#else
-#include "totem.h"
-#include "objdb.h"
-#endif
-
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
 #define SERVICE_HANDLER_MAXIMUM_COUNT 64
 

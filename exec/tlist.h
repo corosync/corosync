@@ -49,7 +49,10 @@
 	#define HZ 100  /* 10ms */
 #endif
 
+#ifndef TIMER_HANDLE
 typedef void * timer_handle;
+#define TIMER_HANDLE
+#endif
 
 struct timerlist {
 	struct list_head timer_head;

@@ -35,8 +35,10 @@
 #ifndef IPC_H_DEFINED
 #define IPC_H_DEFINED
 
-#include "tlist.h"
-#include "flow.h"
+#ifndef TIMER_HANDLE
+typedef void * timer_handle;
+#define TIMER_HANDLE
+#endif
 
 extern void message_source_set (mar_message_source_t *source, void *conn);
 

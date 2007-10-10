@@ -178,6 +178,8 @@ install: all
 	install -m 644 $(srcdir)lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 $(srcdir)exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 $(srcdir)exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/flow.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)exec/ipc.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)

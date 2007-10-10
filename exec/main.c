@@ -73,6 +73,8 @@
 #include "swab.h"
 #include "objdb.h"
 #include "config.h"
+#include "tlist.h"
+#include "flow.h"
 #include "ipc.h"
 #include "timer.h"
 #include "logsys.h"
