@@ -446,7 +446,7 @@ found in the executive. Set the value to
 to debug, 
 .B off
 to turn off debugging. If enabled, individual loggers can be disabled using a
-.B logger
+.B logger_subsys
 directive.
 
 The default is off.
@@ -479,12 +479,12 @@ directive, logger directives are optional.
 .PP
 .PP
 Within the 
-.B logger
+.B logger_subsys
 sub-directive of logging there are three configuration options:
 
 .TP
-ident
-This specifies the identity (name) for which logging is specified. This is the
+subsys
+This specifies the subsystem identity (name) for which logging is specified. This is the
 name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
 required.
 
