@@ -48,7 +48,7 @@
  *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
  */
 
-#ifdef OPENAIS_BSD
+#ifndef OPENAIS_BSD
 #include <alloca.h>
 #endif
 
