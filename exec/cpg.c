@@ -694,9 +694,15 @@ static void exec_cpg_joinlist_endian_convert (void *msg)
 static void exec_cpg_downlist_endian_convert (void *msg)
 {
 	struct req_exec_cpg_downlist *req_exec_cpg_downlist = (struct req_exec_cpg_downlist *)msg;
+	unsigned int i;
 
 	req_exec_cpg_downlist->left_nodes = swab32(req_exec_cpg_downlist->left_nodes);
+ 
+	for (i = 0; i < req_exec_cpg_downlist->left_nodes; i++) {
+		req_exec_cpg_downlist->nodeids[i] = swab32(req_exec_cpg_downlist->nodeids[i]);
+	}
 }
+
 
 static void exec_cpg_mcast_endian_convert (void *msg)
 {
