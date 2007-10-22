@@ -241,7 +241,7 @@ void openais_timer_delete (
 		return;
 	}
 
-	if (pthread_equal (pthread_self(), expiry_thread) == 0) {
+	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
 		unlock = 0;
 	} else {
 		unlock = 1;
