@@ -280,7 +280,7 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
-	int lpc;
+	int lpc, fd;
 	struct rlimit oflimits;
 
 	/*
@@ -306,6 +306,24 @@ static void aisexec_tty_detach (void)
 		default:
 			exit (0);
 			break;
+	}
+
+	/* Create new session */
+	setsid();
+
+	/* 
+	 * Map stdin/out/err to /dev/null.
+	 */
+	fd = open("/dev/null", O_RDWR);
+	if (fd >= 0) {
+		/* dup2 to 0 / 1 / 2 (stdin / stdout / stderr) */
+		dup2(fd, STDIN_FILENO);  /* 0 */
+		dup2(fd, STDOUT_FILENO); /* 1 */
+		dup2(fd, STDERR_FILENO); /* 2 */
+
+		/* Should be 0, but just in case it isn't... */
+		if (fd > 2) 
+			close(fd);
 	}
 }
 
