@@ -500,6 +500,8 @@ struct totemsrp_instance {
 	unsigned int my_pbl;
 
 	unsigned int my_cbl;
+
+	unsigned int operational_entered_once;
 };
 
 struct message_handlers {
@@ -1668,6 +1670,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	instance->my_received_flg = 0;
 
+	instance->operational_entered_once = 1;
+
 	return;
 }
 
@@ -2753,7 +2757,17 @@ static void memb_state_commit_token_create (
 
 	totemip_copy(&commit_token->ring_id.rep, &instance->my_id.addr[0]);
 
-	commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
+	/*
+	 * The first time operational is entered, don't increment the ring
+	 * sequence number (just reload it from stable storage).  This prevents
+	 * an error condition where if the executive is stopped and started
+	 * before a new ring is formed, the protocol will get stuck in recovery.
+	 */
+	if (instance->operational_entered_once) {
+		commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
+	} else {
+		commit_token->ring_id.seq = instance->token_ring_id_seq;
+	}
 
 	/*
 	 * This qsort is necessary to ensure the commit token traverses
