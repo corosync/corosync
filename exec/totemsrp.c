@@ -1921,14 +1921,14 @@ static void memb_state_recovery_enter (
 // TODO	 LEAK
 	message_item.mcast = malloc (sizeof (struct mcast));
 	assert (message_item.mcast);
-	memcpy (message_item.mcast, sort_queue_item->iovec[0].iov_base,
-		sizeof (struct mcast));
-	memcpy (&message_item.mcast->ring_id, &instance->my_ring_id,
-		sizeof (struct memb_ring_id));
+	message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
+	srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
 	message_item.mcast->header.encapsulated = MESSAGE_ENCAPSULATED;
 	message_item.mcast->header.nodeid = instance->my_id.addr[0].nodeid;
-	message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
 	assert (message_item.mcast->header.nodeid);
+	message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
+	memcpy (&message_item.mcast->ring_id, &instance->my_ring_id,
+		sizeof (struct memb_ring_id));
 	message_item.iov_len = sort_queue_item->iov_len;
 	memcpy (&message_item.iovec, &sort_queue_item->iovec,
 		sizeof (struct iovec) * sort_queue_item->iov_len);
