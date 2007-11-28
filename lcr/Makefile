@@ -76,10 +76,10 @@ libtest_b.o: libtest_b.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 lcr_ifact.o: lcr_ifact.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 test.o: test.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $(*F).c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 clean:
 	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg \

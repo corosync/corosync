@@ -139,17 +139,19 @@ install: all
 	install -m 755 $(builddir)exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
 
 	for aLib in $(AIS_LIBS); do					\
+	    ( cd $(builddir) ;                                          \
 	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
 	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
-	    $(CP) -a $(builddir)lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
-	    $(CP) -a $(builddir)lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
+	    $(CP) -a lib/lib$$aLib.so $(DESTDIR)$(LIBDIR);		\
+	    $(CP) -a lib/lib$$aLib.so.2 $(DESTDIR)$(LIBDIR);		\
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
-	        install -m 755 $(builddir)lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
+	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
 		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
 	        fi							\
 	    fi								\
+	    ) \
 	done
 
 	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf"
