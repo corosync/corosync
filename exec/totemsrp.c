@@ -2815,7 +2815,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 		iovs = 2;
 	} else {
 		iovs = 3;
-		iovec[2].iov_base = &instance->my_failed_list;
+		iovec[2].iov_base = instance->my_failed_list;
 		iovec[2].iov_len = instance->my_failed_list_entries *
 			sizeof (struct srp_addr);
 	}
