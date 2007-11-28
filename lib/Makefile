@@ -159,7 +159,7 @@ libcfg.a: util.o cfg.o
 clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
 		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so* libSaLck.a \
-		libSaMsg.so* libSaMsg.a libcfg.so* libOpenaisCfg.a \
+		libSaMsg.so* libSaMsg.a libcfg.so* libOpenaisCfg.a libaisutil.so* libaisutil.a \
 		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries

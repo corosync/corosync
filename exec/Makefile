@@ -200,7 +200,8 @@ openais-instantiate: openais-instantiate.o
 	$(CC) $(LDFLAGS) openais-instantiate.o -o openais-instantiate
 
 clean:
-	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out keygen keygen.o openais-instantiate *.da *.bb *.bbg
+	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out 
+	rm -f keygen keygen.o openais-instantiate *.da *.bb *.bbg liblogsys.so* liblogsys.a
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LOGSYS_SRC) $(LCR_SRC) > /dev/null 2>&1

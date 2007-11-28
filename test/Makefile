@@ -40,6 +40,12 @@ endif
 
 LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a
 LIBS = $(LIBRARIES) 
+BINARIES=testclm testamf1 \
+	testckpt ckptstress ckptbench \
+	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
+	evsbench subscription publish evtbench unlink testclm2 testlck \
+	testmsg testcpg testcpg2 cpgbench openais-cfgtool \
+	logsys_s logsys_t1 logsys_t2
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
@@ -53,12 +59,7 @@ TEST_SRC =  testclm.c testamf1.c \
 	sa_error.c unlink.c testclm2.c testlck.c testmsg.c \
 	logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
 
-all: testclm testamf1 \
-	testckpt ckptstress ckptbench \
-	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testcpg testcpg2 cpgbench openais-cfgtool \
-	logsys_s logsys_t1 logsys_t2
+all: $(BINARIES)
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
@@ -166,11 +167,7 @@ logsys_t2: logsys_t2.o ../exec/liblogsys.a
 	$(CC) $(LDFLAGS) -o logsys_t2 logsys_t2.o ../exec/liblogsys.a
 
 clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 \
-	testamf5 testamf6 testamfth testckpt ckptstress testtimer \
-	ckptbench ckptbenchth testevt testevs ckpt-wr ckpt-rd \
-	evsbench subscription publish evtbench unlink testmsg testcpg \
-	testclm2 testlck
+	rm -f *.o $(LIBRARIES) $(BINARIES)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
