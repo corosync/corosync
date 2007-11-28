@@ -84,8 +84,8 @@ help:
 	@echo 
 	@echo "Requirements: GCC, LD, and a Linux 2.4/2.6 kernel."
 	@echo "Tested on:"
-	@echo " Debian Sarge(i386), Redhat 9(i386), Fedora Core 2(i386), Fedora Core"
-	@echo " 4(i386,x86_64), SOLARIS, MontaVista Carrier Grade Edition 3.1(i386, x86_64,"
+	@echo " Debian Sarge(i386), Redhat 9(i386), Fedora Core 2 (i386), Fedora Core"
+	@echo " 4, 5 (i386,x86_64), SOLARIS, MontaVista Carrier Grade Edition 3.1(i386, x86_64,"
 	@echo " classic ppc, ppc970, xscale) and buildroot/uclibc(ppc e500/603e)"
 	@echo 
 	@echo Targets:
@@ -152,7 +152,7 @@ install: all
 	    fi								\
 	done
 
-	echo $(LIBDIR) > $(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf
+	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf"
 
 	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
 	install -m 755 $(builddir)exec/aisexec $(DESTDIR)$(SBINDIR)
