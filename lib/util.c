@@ -573,6 +573,8 @@ saHandleCreate (
 
 	instance = malloc (instanceSize);
 	if (instance == 0) {
+		free (newHandles);
+		pthread_mutex_unlock (&handleDatabase->mutex);
 		return (SA_AIS_ERR_NO_MEMORY);
 	}
 
