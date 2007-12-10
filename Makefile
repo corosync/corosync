@@ -29,14 +29,28 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-builddir:=$(shell pwd)/
+builddir:=$(CURDIR)/
 ifneq ($(O),)
 # cleanup the path (make it absolute)
 builddir:=$(abspath $(O))/
+ifeq ($(builddir),)
+builddir:=$(O)
+$(warning your abspath function is not working)
+$(warning > setting builddir to $(builddir))
 endif
-srcdir:=$(dir $(realpath $(MAKEFILE_LIST)))
+endif
 
-include $(srcdir)/Makefile.inc
+THIS_MAKEFILE:=$(realpath $(lastword $(MAKEFILE_LIST)))
+
+ifeq ($(THIS_MAKEFILE),)
+srcdir:=$(CURDIR)/
+$(warning your realpath function is not working)
+$(warning > setting srcdir to $(srcdir))
+else
+srcdir:=$(dir $(THIS_MAKEFILE))
+endif
+
+include $(srcdir)Makefile.inc
 
 SBINDIR=$(PREFIX)/sbin
 INCLUDEDIR=$(PREFIX)/include/openais
