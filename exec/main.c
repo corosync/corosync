@@ -454,6 +454,7 @@ int main (int argc, char **argv)
 		switch (ch) {
 			case 'f':
 				background = 0;
+				logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR|LOG_MODE_FLUSH_AFTER_CONFIG);
 				break;
 			case 'p':
 				setprio = 0;
