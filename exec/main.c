@@ -439,6 +439,7 @@ int main (int argc, char **argv)
 	struct config_iface_ver0 *config;
 	void *config_p;
 	char *config_iface;
+	char *iface;
 	int res, ch;
 	int background, setprio;
  	int totem_log_service;
@@ -512,25 +513,36 @@ int main (int argc, char **argv)
 		config_iface = "aisparser";
 	}
 
-	res = lcr_ifact_reference (
-		&config_handle,
-		config_iface,
-		config_version,
-		&config_p,
-		0);
+	/* Make a copy so we can deface it with strtok */
+	config_iface = strdup(config_iface);
 
-	config = (struct config_iface_ver0 *)config_p;
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration component.\n");
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
-	}
+	iface = strtok(config_iface, ":");
+	while (iface)
+	{
+		res = lcr_ifact_reference (
+			&config_handle,
+			iface,
+			config_version,
+			&config_p,
+			0);
 
-	res = config->config_readconfig(objdb, &error_string);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		config = (struct config_iface_ver0 *)config_p;
+		if (res == -1) {
+			log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration component '%s'\n", iface);
+			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		}
+
+		res = config->config_readconfig(objdb, &error_string);
+		if (res == -1) {
+			log_printf (LOG_LEVEL_ERROR, error_string);
+			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		}
+		log_printf (LOG_LEVEL_NOTICE, error_string);
+
+		iface = strtok(NULL, ":");
 	}
-	log_printf (LOG_LEVEL_NOTICE, error_string);
+	if (config_iface)
+		free(config_iface);
 
 	openais_service_default_objdb_set (objdb);
 
