@@ -284,14 +284,6 @@ static void aisexec_tty_detach (void)
 	struct rlimit oflimits;
 
 	/*
-	 * close all open files
-	 */
-	getrlimit(RLIMIT_NOFILE, &oflimits);
-	for (lpc = 0; lpc < oflimits.rlim_cur; lpc++) {
-		close(lpc);
-	}
-
-	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
 	switch (fork ()) {
