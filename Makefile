@@ -131,6 +131,8 @@ AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
 		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	   \
 		  ais_util.h
 
+EXEC_LIBS	= totem_pg logsys
+
 install: all
 	mkdir -p $(DESTDIR)$(SBINDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
@@ -146,11 +148,21 @@ install: all
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
 
 
-	ln -sf libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so
-	ln -sf libtotem_pg.so.2.0.0 $(builddir)exec/libtotem_pg.so.2
-	$(CP) -a $(builddir)exec/libtotem_pg.so $(DESTDIR)$(LIBDIR)
-	$(CP) -a $(builddir)exec/libtotem_pg.so.2 $(DESTDIR)$(LIBDIR)
-	install -m 755 $(builddir)exec/libtotem_pg.so.2.* $(DESTDIR)$(LIBDIR)
+	for eLib in $(EXEC_LIBS); do					\
+	    ( cd $(builddir) ;						\
+	    ln -sf lib$$eLib.so.2.0.0 exec/lib$$eLib.so;		\
+	    ln -sf lib$$eLib.so.2.0.0 exec/lib$$eLib.so.2;		\
+	    $(CP) -a exec/lib$$eLib.so $(DESTDIR)$(LIBDIR);		\
+	    $(CP) -a exec/lib$$eLib.so.2 $(DESTDIR)$(LIBDIR);		\
+	    install -m 755 exec/lib$$eLib.so.2.* $(DESTDIR)$(LIBDIR);	\
+	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
+		install -m 755 exec/lib$$eLib.a $(DESTDIR)$(LIBDIR);	\
+		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
+		    ranlib $(DESTDIR)$(LIBDIR)/lib$$eLib.a;		\
+		fi							\
+	    fi								\
+	    ) \
+	done
 
 	for aLib in $(AIS_LIBS); do					\
 	    ( cd $(builddir) ;                                          \
