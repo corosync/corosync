@@ -51,10 +51,13 @@ struct object_instance {
 	void *object_name;
 	int object_name_len;
 	unsigned int object_handle;
+	unsigned int parent_handle;
 	struct list_head key_head;
 	struct list_head child_head;
 	struct list_head child_list;
 	struct list_head *find_child_list;
+	struct list_head *iter_key_list;
+	struct list_head *iter_list;
 	void *priv;
 	struct object_valid *object_valid_list;
 	int object_valid_list_entries;
@@ -178,9 +181,12 @@ static int object_create (
 
 	object_instance->object_handle = *object_handle;
 	object_instance->find_child_list = &object_instance->child_head;
+	object_instance->iter_key_list = &object_instance->key_head;
+	object_instance->iter_list = &object_instance->child_head;
 	object_instance->priv = NULL;
 	object_instance->object_valid_list = NULL;
 	object_instance->object_valid_list_entries = 0;
+	object_instance->parent_handle = parent_object_handle;
 
 	hdb_handle_put (&object_instance_database, *object_handle);
 
@@ -312,10 +318,66 @@ error_exit:
 	return (-1);
 }
 
+
+static int _clear_object(struct object_instance *instance)
+{
+	struct list_head *list;
+	int res;
+	struct object_instance *find_instance = NULL;
+	struct object_key *object_key = NULL;
+
+	for (list = instance->key_head.next;
+	     list != &instance->key_head; ) {
+
+                object_key = list_entry (list, struct object_key,
+					 list);
+
+		list = list->next;
+
+		list_del(&object_key->list);
+		free(object_key->key_name);
+		free(object_key->value);
+	}
+
+	for (list = instance->child_head.next;
+	     list != &instance->child_head; ) {
+
+                find_instance = list_entry (list, struct object_instance,
+					    child_list);
+		res = _clear_object(find_instance);
+		if (res)
+			return res;
+
+		list = list->next;
+
+		list_del(&find_instance->child_list);
+		free(find_instance->object_name);
+		free(find_instance);
+	}
+
+	return 0;
+}
+
 static int object_destroy (
 	unsigned int object_handle)
 {
-	return (0);
+	struct object_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		return (res);
+	}
+
+	/* Recursively clear sub-objects & keys */
+	res = _clear_object(instance);
+
+	list_del(&instance->child_list);
+	free(instance->object_name);
+	free(instance);
+
+	return (res);
 }
 
 static int object_valid_set (
@@ -477,6 +539,153 @@ error_exit:
 	return (-1);
 }
 
+static int object_key_delete (
+	unsigned int object_handle,
+	void *key_name,
+	int key_len,
+	void *value,
+	int value_len)
+{
+	unsigned int res;
+	int ret = 0;
+	struct object_instance *instance;
+	struct object_key *object_key = NULL;
+	struct list_head *list;
+	int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
+		    (value == NULL ||
+		     (object_key->value_len == value_len &&
+		      (memcmp (object_key->value, value, value_len) == 0)))) {
+			found = 1;
+			break;
+		}
+	}
+	if (found) {
+		list_del(&object_key->list);
+		free(object_key->key_name);
+		free(object_key->value);
+		free(object_key);
+	}
+	else {
+		ret = -1;
+		errno = ENOENT;
+	}
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (ret);
+
+error_exit:
+	return (-1);
+}
+
+static int object_key_replace (
+	unsigned int object_handle,
+	void *key_name,
+	int key_len,
+	void *old_value,
+	int old_value_len,
+	void *new_value,
+	int new_value_len)
+{
+	unsigned int res;
+	int ret = 0;
+	struct object_instance *instance;
+	struct object_key *object_key = NULL;
+	struct list_head *list;
+	int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
+		    (old_value == NULL ||
+		     (object_key->value_len == old_value_len &&
+		      (memcmp (object_key->value, old_value, old_value_len) == 0)))) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (found) {
+		int i;
+
+		/*
+		 * Do validation check if validation is configured for the parent object
+		 */
+		if (instance->object_key_valid_list_entries) {
+			for (i = 0; i < instance->object_key_valid_list_entries; i++) {
+				if ((key_len ==
+				     instance->object_key_valid_list[i].key_len) &&
+				    (memcmp (key_name,
+					     instance->object_key_valid_list[i].key_name,
+					     key_len) == 0)) {
+
+					found = 1;
+					break;
+				}
+			}
+
+			/*
+			 * Item not found in validation list
+			 */
+			if (found == 0) {
+				goto error_put;
+			} else {
+				if (instance->object_key_valid_list[i].validate_callback) {
+					res = instance->object_key_valid_list[i].validate_callback (
+						key_name, key_len, new_value, new_value_len);
+					if (res != 0) {
+						goto error_put;
+					}
+				}
+			}
+		}
+
+		if (new_value_len <= object_key->value_len) {
+			void *replacement_value;
+			replacement_value = malloc(new_value_len);
+			if (!replacement_value)
+				goto error_exit;
+			free(object_key->value);
+			object_key->value = replacement_value;
+		}
+		memcpy(object_key->value, new_value, new_value_len);
+		object_key->value_len = new_value_len;
+	}
+	else {
+		ret = -1;
+		errno = ENOENT;
+	}
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (ret);
+
+error_put:
+	hdb_handle_put (&object_instance_database, object_handle);
+error_exit:
+	return (-1);
+}
+
 static int object_priv_get (
 	unsigned int object_handle,
 	void **priv)
@@ -499,18 +708,248 @@ error_exit:
 	return (-1);
 }
 
+static int _dump_object(struct object_instance *instance, FILE *file, int depth)
+{
+	struct list_head *list;
+	int res;
+	int i;
+	struct object_instance *find_instance = NULL;
+	struct object_key *object_key = NULL;
+	char stringbuf1[1024];
+	char stringbuf2[1024];
+
+	memcpy(stringbuf1, instance->object_name, instance->object_name_len);
+	stringbuf1[instance->object_name_len] = '\0';
+
+	for (i=0; i<depth; i++)
+		fprintf(file, "    ");
+
+	if (instance->object_handle != OBJECT_PARENT_HANDLE)
+		fprintf(file, "%s {\n", stringbuf1);
+
+	for (list = instance->key_head.next;
+	     list != &instance->key_head; list = list->next) {
+
+                object_key = list_entry (list, struct object_key,
+					 list);
+
+		memcpy(stringbuf1, object_key->key_name, object_key->key_len);
+		stringbuf1[object_key->key_len] = '\0';
+		memcpy(stringbuf2, object_key->value, object_key->value_len);
+		stringbuf2[object_key->value_len] = '\0';
+
+		for (i=0; i<depth+1; i++)
+			fprintf(file, "    ");
+
+		fprintf(file, "%s: %s\n", stringbuf1, stringbuf2);
+	}
+
+	for (list = instance->child_head.next;
+	     list != &instance->child_head; list = list->next) {
+
+                find_instance = list_entry (list, struct object_instance,
+					    child_list);
+		res = _dump_object(find_instance, file, depth+1);
+		if (res)
+			return res;
+	}
+	for (i=0; i<depth; i++)
+		fprintf(file, "    ");
+
+	if (instance->object_handle != OBJECT_PARENT_HANDLE)
+		fprintf(file, "}\n");
+
+	return 0;
+}
+
+
+static int object_key_iter_reset(unsigned int object_handle)
+{
+	unsigned int res;
+	struct object_instance *instance;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	instance->iter_key_list = &instance->key_head;
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (0);
+
+error_exit:
+	return (-1);
+}
+
+static int object_key_iter(unsigned int parent_object_handle,
+			   void **key_name,
+			   int *key_len,
+			   void **value,
+			   int *value_len)
+{
+	unsigned int res;
+	struct object_instance *instance;
+	struct object_key *find_key = NULL;
+	struct list_head *list;
+	unsigned int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	res = -ENOENT;
+	list = instance->iter_key_list->next;
+	if (list != &instance->key_head) {
+                find_key = list_entry (list, struct object_key, list);
+		found = 1;
+	}
+	instance->iter_key_list = list;
+	if (found) {
+		*key_name = find_key->key_name;
+		if (key_len)
+			*key_len = find_key->key_len;
+		*value = find_key->value;
+		if (value_len)
+			*value_len = find_key->value_len;
+		res = 0;
+	}
+	else {
+		res = -1;
+	}
+
+	hdb_handle_put (&object_instance_database, parent_object_handle);
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+static int object_iter_reset(unsigned int parent_object_handle)
+{
+	unsigned int res;
+	struct object_instance *instance;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	instance->iter_list = &instance->child_head;
+
+	hdb_handle_put (&object_instance_database, parent_object_handle);
+	return (0);
+
+error_exit:
+	return (-1);
+}
+
+static int object_iter(unsigned int parent_object_handle,
+		       void **object_name,
+		       int *name_len,
+		       unsigned int *object_handle)
+{
+	unsigned int res;
+	struct object_instance *instance;
+	struct object_instance *find_instance = NULL;
+	struct list_head *list;
+	unsigned int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	res = -ENOENT;
+	list = instance->iter_list->next;
+	if (list != &instance->child_head) {
+
+                find_instance = list_entry (list, struct object_instance,
+					    child_list);
+		found = 1;
+	}
+	instance->iter_list = list;
+
+	if (found) {
+		*object_handle = find_instance->object_handle;
+		*object_name = find_instance->object_name;
+		*name_len = find_instance->object_name_len;
+		res = 0;
+	}
+	else {
+		res = -1;
+	}
+
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+
+static int object_parent_get(unsigned int object_handle,
+			     unsigned int *parent_handle)
+{
+	struct object_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+			      object_handle, (void *)&instance);
+	if (res != 0) {
+		return (res);
+	}
+
+	if (object_handle == OBJECT_PARENT_HANDLE)
+		*parent_handle = 0;
+	else
+		*parent_handle = instance->parent_handle;
+
+	hdb_handle_put (&object_instance_database, object_handle);
+
+	return (0);
+}
+
+
+static int object_dump(unsigned int object_handle,
+		       FILE *file)
+{
+	struct object_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+			      object_handle, (void *)&instance);
+	if (res != 0) {
+		return (res);
+	}
+
+	res = _dump_object(instance, file, -1);
+
+	hdb_handle_put (&object_instance_database, object_handle);
+
+	return (res);
+}
+
 struct objdb_iface_ver0 objdb_iface = {
 	.objdb_init		= objdb_init,
 	.object_create		= object_create,
 	.object_priv_set	= object_priv_set,
 	.object_key_create	= object_key_create,
+	.object_key_delete	= object_key_delete,
+	.object_key_replace	= object_key_replace,
 	.object_destroy		= object_destroy,
 	.object_valid_set	= object_valid_set,
 	.object_key_valid_set	= object_key_valid_set,
 	.object_find_reset	= object_find_reset,
 	.object_find		= object_find,
 	.object_key_get		= object_key_get,
-	.object_priv_get	= object_priv_get
+	.object_key_iter	= object_key_iter,
+	.object_key_iter_reset	= object_key_iter_reset,
+	.object_iter	        = object_iter,
+	.object_iter_reset	= object_iter_reset,
+	.object_priv_get	= object_priv_get,
+	.object_parent_get	= object_parent_get,
+	.object_dump	        = object_dump
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {
