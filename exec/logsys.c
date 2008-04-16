@@ -219,6 +219,7 @@ int logsys_config_subsys_get (
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
 			*tags = logsys_loggers[i].tags;
 			*priority = logsys_loggers[i].priority;
+			pthread_mutex_unlock (&logsys_config_mutex);
 			return (0);
 		}
 	}
@@ -459,12 +460,10 @@ void logsys_config_priority_set (unsigned int priority)
 	unsigned int dummy_priority;
 
 	pthread_mutex_lock (&logsys_new_log_mutex);
-	pthread_mutex_lock (&logsys_config_mutex);
 
 	logsys_config_subsys_get ("MAIN", &tags, &dummy_priority);
 	logsys_config_subsys_set ("MAIN", tags, priority);
 
-	pthread_mutex_unlock (&logsys_config_mutex);
 	pthread_mutex_unlock (&logsys_new_log_mutex);
 }
 
