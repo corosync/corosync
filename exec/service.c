@@ -90,6 +90,10 @@ static struct default_service default_services[] = {
 	{
 		.name			 = "openais_cpg",
 		.ver			 = 0,
+	},
+	{
+		.name			 = "openais_confdb",
+		.ver			 = 0,
 	}
 };
 

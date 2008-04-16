@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
+ * Copyright (c) 2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@mvista.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -503,7 +504,7 @@ static int object_key_get (
 	void **value,
 	int *value_len)
 {
-	unsigned int res;
+	unsigned int res = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
 	struct list_head *list;
@@ -531,9 +532,12 @@ static int object_key_get (
 			*value_len = object_key->value_len;
 		}
 	}
+	else {
+		res = -1;
+	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	return (0);
+	return (res);
 
 error_exit:
 	return (-1);
@@ -888,6 +892,156 @@ error_exit:
 }
 
 
+static int object_find_from(unsigned int parent_object_handle,
+			    unsigned int start_pos,
+			    void *object_name,
+			    int object_name_len,
+			    unsigned int *object_handle,
+			    unsigned int *next_pos)
+{
+	unsigned int res;
+	unsigned int pos = 0;
+	struct object_instance *instance;
+	struct object_instance *find_instance = NULL;
+	struct list_head *list;
+	unsigned int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	res = -ENOENT;
+	for (list = instance->child_head.next;
+		list != &instance->child_head; list = list->next) {
+
+                find_instance = list_entry (list, struct object_instance,
+			child_list);
+
+		if ((find_instance->object_name_len == object_name_len) &&
+			(memcmp (find_instance->object_name, object_name,
+			object_name_len) == 0)) {
+			if (pos++ == start_pos) {
+				found = 1;
+				break;
+			}
+		}
+	}
+
+	hdb_handle_put (&object_instance_database, parent_object_handle);
+	if (found) {
+		*object_handle = find_instance->object_handle;
+		res = 0;
+	}
+	*next_pos = pos;
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+static int object_iter_from(unsigned int parent_object_handle,
+			    unsigned int start_pos,
+			    void **object_name,
+			    int *name_len,
+			    unsigned int *object_handle)
+{
+	unsigned int res;
+	unsigned int pos = 0;
+	struct object_instance *instance;
+	struct object_instance *find_instance = NULL;
+	struct list_head *list;
+	unsigned int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	res = -ENOENT;
+
+	for (list = instance->child_head.next;
+		list != &instance->child_head; list = list->next) {
+
+                find_instance = list_entry (list, struct object_instance,
+					    child_list);
+		if (pos++ == start_pos) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (found) {
+		*object_handle = find_instance->object_handle;
+		*object_name = find_instance->object_name;
+		*name_len = find_instance->object_name_len;
+		res = 0;
+	}
+	else {
+		res = -1;
+	}
+
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+static int object_key_iter_from(unsigned int parent_object_handle,
+				unsigned int start_pos,
+				void **key_name,
+				int *key_len,
+				void **value,
+				int *value_len)
+{
+	unsigned int pos = 0;
+	unsigned int res;
+	struct object_instance *instance;
+	struct object_key *find_key = NULL;
+	struct list_head *list;
+	unsigned int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		parent_object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	res = -ENOENT;
+
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		find_key = list_entry (list, struct object_key, list);
+
+		if (pos++ == start_pos) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (found) {
+		*key_name = find_key->key_name;
+		if (key_len)
+			*key_len = find_key->key_len;
+		*value = find_key->value;
+		if (value_len)
+			*value_len = find_key->value_len;
+		res = 0;
+	}
+	else {
+		res = -1;
+	}
+
+	hdb_handle_put (&object_instance_database, parent_object_handle);
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+
+
+
 static int object_parent_get(unsigned int object_handle,
 			     unsigned int *parent_handle)
 {
@@ -942,11 +1096,14 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_key_valid_set	= object_key_valid_set,
 	.object_find_reset	= object_find_reset,
 	.object_find		= object_find,
+	.object_find_from	= object_find_from,
 	.object_key_get		= object_key_get,
 	.object_key_iter	= object_key_iter,
 	.object_key_iter_reset	= object_key_iter_reset,
+	.object_key_iter_from	= object_key_iter_from,
 	.object_iter	        = object_iter,
 	.object_iter_reset	= object_iter_reset,
+	.object_iter_from	= object_iter_from,
 	.object_priv_get	= object_priv_get,
 	.object_parent_get	= object_parent_get,
 	.object_dump	        = object_dump

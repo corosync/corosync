@@ -1,6 +1,6 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
 # Copyright (c) 2006 Sun Microsystems, Inc.
-# Copyright (c) 2006-2007 Red Hat, Inc.
+# Copyright (c) 2006-2008 Red Hat, Inc.
 # 
 # All rights reserved.
 # 
@@ -62,8 +62,8 @@ AMF_SRC = amf.c amfutil.c amfnode.c amfcluster.c amfapp.c amfsg.c amfsu.c amfcom
 AMF_OBJS = amf.o amfutil.o amfnode.o amfcluster.o amfapp.o amfsg.o amfsu.o amfcomp.o amfsi.o
 
 # LCR objects
-LCR_SRC = evs.c clm.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c vsf_ykd.c objdb.c $(AMF_SRC)
-LCR_OBJS = evs.o clm.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o vsf_ykd.o objdb.o $(AMF_OBJS)
+LCR_SRC = evs.c clm.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c vsf_ykd.c objdb.c confdb.c $(AMF_SRC)
+LCR_OBJS = evs.o clm.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o vsf_ykd.o objdb.o confdb.o $(AMF_OBJS)
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c service.c ipc.c flow.c timer.c \
@@ -81,6 +81,7 @@ all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
 	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
 	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
 	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
+	service_confdb.lcrso \
 	objdb.lcrso aisparser.lcrso vsf_ykd.lcrso keygen openais-instantiate
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
@@ -113,6 +114,9 @@ service_msg.lcrso: msg.o
 
 service_cfg.lcrso: cfg.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
+
+service_confdb.lcrso: confdb.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load confdb.o -o $@
 
 service_cpg.lcrso: cpg.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
@@ -152,6 +156,9 @@ service_msg.lcrso: msg.o
 
 service_cfg.lcrso: cfg.o
 	$(CC) -shared -Wl,-soname,service_cfg.lcrso cfg.o -o $@
+
+service_confdb.lcrso: confdb.o
+	$(CC) -shared -Wl,-soname,service_confdb.lcrso confdb.o -o $@
 
 service_cpg.lcrso: cpg.o
 	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
@@ -232,6 +239,9 @@ msg.o: msg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 cfg.o: cfg.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+confdb.o: confdb.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 aisparser.o: aisparser.c

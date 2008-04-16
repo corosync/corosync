@@ -1,5 +1,5 @@
 # Copyright (c) 2002-2004 MontaVista Software, Inc.
-# Copyright (c) 2006-2007 Red Hat, Inc.
+# Copyright (c) 2006-2008 Red Hat, Inc.
 # Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
@@ -38,13 +38,13 @@ ifeq (${OPENAIS_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a
+LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
 LIBS = $(LIBRARIES) 
 BINARIES=testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testcpg testcpg2 cpgbench openais-cfgtool \
+	testmsg testcpg testcpg2 cpgbench testconfdb openais-cfgtool \
 	logsys_s logsys_t1 logsys_t2
 
 override CFLAGS += -I../include
@@ -153,6 +153,9 @@ testcpg2: testcpg2.o $(LIBRARIES)
 
 cpgbench: cpgbench.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o cpgbench cpgbench.o $(LIBS)
+
+testconfdb: testconfdb.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testconfdb testconfdb.o $(LIBS)
 
 openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)

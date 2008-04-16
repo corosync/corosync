@@ -125,11 +125,11 @@ clean:
 	rm -rf $(builddir)doc/api
 
 AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
-		  cfg aisutil
+		  cfg aisutil confdb
 
 AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
 		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	   \
-		  ais_util.h
+		  ais_util.h confdb.h
 
 EXEC_LIBS	= totem_pg logsys
 

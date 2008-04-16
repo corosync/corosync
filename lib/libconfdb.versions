@@ -1,0 +1,38 @@
+# Version and symbol export for libconfdb.so
+
+OPENAIS_CONFDB_1.0 {
+	global:
+		confdb_initialize;
+		confdb_finalize;
+		confdb_fd_get;
+		confdb_dispatch;
+		confdb_track_changes;
+		confdb_stop_track_changes;
+		confdb_object_create;
+		confdb_object_destroy;
+		confdb_object_parent_get;
+		confdb_key_create;
+		confdb_key_delete;
+		confdb_key_get;
+		confdb_key_replace;
+		confdb_object_find_start;
+		confdb_object_find;
+		confdb_object_iter_start;
+		confdb_object_iter;
+		confdb_key_iter_start;
+		confdb_key_iter;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+};

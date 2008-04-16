@@ -42,6 +42,7 @@ all:libSaClm.a libSaClm.so.2.0.0 \
 	libSaLck.a libSaLck.so.2.0.0 \
 	libSaMsg.a libSaMsg.so.2.0.0 \
 	libcpg.a libcpg.so.2.0.0 \
+	libconfdb.a libconfdb.so.2.0.0 \
 	libais.a libais.so.2.0.0 \
 	libevs.a libevs.so.2.0.0 \
 	libcfg.a libcfg.so.2.0.0 \
@@ -89,6 +90,9 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -bundle -bind_at_load util.o cpg.o -o $@
 
+libconfdb.so.2.0.0: util.o confdb.o
+	$(CC) -bundle -bind_at_load util.o confdb.o -o $@
+
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) -bundle -bind_at_load util.o cfg.o -o $@
 
@@ -124,6 +128,9 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
 
+libconfdb.so.2.0.0: util.o confdb.o
+	$(CC) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o -o $@
+
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
 
@@ -153,6 +160,9 @@ libevs.a: util.o evs.o
 libcpg.a: util.o cpg.o
 	$(AR) -rc libcpg.a util.o cpg.o
 
+libconfdb.a: util.o confdb.o
+	$(AR) -rc libconfdb.a util.o confdb.o
+
 libcfg.a: util.o cfg.o
 	$(AR) -rc libcfg.a util.o cfg.o
 
@@ -160,7 +170,8 @@ clean:
 	rm -f *.o libais.so* libais.a libSaClm.so* libSaClm.a* libSaAmf.so* libSaAmf.a \
 		libSaCkpt.so* libSaCkpt.a* libSaEvt.so* libSaEvt.a libSaLck.so* libSaLck.a \
 		libSaMsg.so* libSaMsg.a libcfg.so* libOpenaisCfg.a libaisutil.so* libaisutil.a \
-		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a *.da *.bb *.bbg
+		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a libconfdb.so* libconfdb.a libconfdb.a \
+		*.da *.bb *.bbg
  
 # -fPIC rules required for all libraries
 %.o: %.c
