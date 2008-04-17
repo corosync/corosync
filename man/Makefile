@@ -59,6 +59,21 @@ html:
 	groff -mandoc -Thtml cpg_context_set.3 > html/cpg_context_set.html
 	groff -mandoc -Thtml cpg_local_get.3 > html/cpg_local_get.html
 
+	groff -mandoc -Thtml confdb_dispatch.3> html/confdb_dispatch.html
+	groff -mandoc -Thtml confdb_fd_get.3 > html/confdb_fd_get.html
+	groff -mandoc -Thtml confdb_finalize.3 > html/confdb_finalize.html
+	groff -mandoc -Thtml confdb_initialize.3 > html/confdb_initialize.html
+	groff -mandoc -Thtml confdb_key_create.3 > html/confdb_key_create.html
+	groff -mandoc -Thtml confdb_key_delete.3 > html/confdb_key_delete.html
+	groff -mandoc -Thtml confdb_key_iter.3 > html/confdb_key_iter.html
+	groff -mandoc -Thtml confdb_key_replace.3 > html/confdb_key_replace.html
+	groff -mandoc -Thtml confdb_object_create.3 > html/confdb_object_create.html
+	groff -mandoc -Thtml confdb_object_destroy.3 > html/confdb_object_destroy.html
+	groff -mandoc -Thtml confdb_object_find.3 > html/confdb_object_find.html
+	groff -mandoc -Thtml confdb_object_iter.3 > html/confdb_object_iter.html
+	groff -mandoc -Thtml confdb_object_parent_get.3 > html/confdb_object_parent_get.html
+	groff -mandoc -Thtml confdb_overview.8 > html/confdb_overview.html
+
 	cp index.html html
 
 clean:

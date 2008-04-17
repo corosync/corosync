@@ -1,0 +1,115 @@
+.\"/*
+.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CONFDB_INITIALIZE 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+confdb_initialize \- Create a new connection to the ConfDb service
+.SH SYNOPSIS
+.B #include <openais/confdb.h>
+.sp
+.BI "int confdb_initialize(confdb_handle_t *" handle ", confdb_callbacks_t *" callbacks ");
+.SH DESCRIPTION
+The
+.B confdb_initialize
+function is used to initialize a connection to the configuration database API.
+.PP
+Each application may have several connections to the CONFDB API.  Each  application
+uses the 
+.I handle
+argument to uniquely identify the connection.  The
+.I handle
+argument is then used in other function calls to identify the connection to be used
+for communication with the CONFDB service.
+.PP
+Every time the configuration database is updated, the callback is called.
+The callback function is described by the following type definitions:
+.PP
+.PP
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 20n 32n
+
+typedef void (*confdb_change_notify_fn_t) (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	unsigned int object_handle,
+	void *object_name,
+	int  object_name_len,
+	void *key_name,
+	int key_name_len,
+	void *key_value,
+	int key_value_len);
+
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The
+.I callbacks
+argument is of the type:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+typedef struct {
+	confdb_change_notify_fn_t confdb_change_notify_fn;
+} confdb_callbacks_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+When a configuration change occurs, the callback
+is called from the
+.B confdb_dispatch()
+function. 
+.PP
+.SH RETURN VALUE
+This call returns the CONFDB_OK value if successful, otherwise an error is returned.
+.PP
+.SH BUGS
+Callbacks are not support at the moment.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR confdb_overview (8),
+.BR confdb_finalize (3),
+.BR confdb_fd_get (3),
+.BR confdb_dispatch (3),
+.PP

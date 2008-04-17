@@ -1,0 +1,77 @@
+.\"/*
+.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CONFDB_OBJECT_ITER 3 2008-04-17 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+confdb_object_iter \- Iterate through objects in the Configuration Database
+.SH SYNOPSIS
+.B #include <openais/confdb.h>
+.sp
+.BI "confdb_error_t confdb_object_iter_start(confdb_handle_t " handle ", unsigned int " parent_object_handle " ); "
+.sp
+.BI "confdb_error_t confdb_object_iter(confdb_handle_t " handle ", unsigned int " parent_object_handle ", unsigned int " *object_handle ", void " *object_name ", int " *object_name_len " ); "
+
+.SH DESCRIPTION
+The
+.B confdb_object_iter function repeatedly returns all objects that are subobjects of the specified parent. You must call 
+.B confdb_object_iter_start
+first. This establishes a context for the parent object so that it knows where you are in the list. Then the next call to
+.B confdb_object_iter
+will return the handle of the first object in the list. Subsequent calls will return any remaining objects. The function returns CONFDB_ERR_ACCESS when the all of the matching objects have been seen. The function returns the name and length of the object as well
+as its handle.
+.BR
+.BR
+.SH RETURN VALUE
+This call returns the CONFDB_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR confdb_overview (8),
+.BR confdb_initialize (3),
+.BR confdb_finalize (3),
+.BR confdb_dispatch (3),
+.BR confdb_object_create (3),
+.BR confdb_object_destroy (3),
+.BR confdb_object_parent_get (3),
+.BR confdb_key_create (3),	
+.BR confdb_key_delete (3),	
+.BR confdb_key_get (3),
+.BR confdb_key_replace (3),
+.BR confdb_object_find_start (3),
+.BR confdb_object_find (3),
+.BR confdb_object_iter_start (3),	
+.BR confdb_object_iter (3),	
+.BR confdb_key_iter_start (3),	
+.BR confdb_key_iter (3),	
+.PP
