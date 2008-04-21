@@ -175,7 +175,7 @@ objdb.lcrso: objdb.o
 endif
 
 aisexec: $(EXEC_OBJS) $(EXEC_LIBS)
-	$(CC) $(LDFLAGS) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec
+	$(CC) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec $(LDFLAGS)
 
 libtotem_pg.a: $(TOTEM_OBJS)
 	$(AR) -rc libtotem_pg.a $(TOTEM_OBJS)

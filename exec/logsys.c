@@ -255,7 +255,8 @@ static void log_printf_worker_fn (void *thread_data, void *work_item)
 {
 	struct log_data *log_data = (struct log_data *)work_item;
 
-	pthread_mutex_lock (&logsys_config_mutex);
+	if (logsys_wthread_active)
+		pthread_mutex_lock (&logsys_config_mutex);
 	/*
 	 * Output the log data
 	 */
@@ -273,7 +274,8 @@ static void log_printf_worker_fn (void *thread_data, void *work_item)
 			&log_data->log_string[log_data->syslog_pos]);
 	}
 	free (log_data->log_string);
-	pthread_mutex_unlock (&logsys_config_mutex);
+	if (logsys_wthread_active)
+		pthread_mutex_unlock (&logsys_config_mutex);
 }
 
 static void _log_printf (
@@ -467,6 +469,14 @@ void logsys_config_priority_set (unsigned int priority)
 	pthread_mutex_unlock (&logsys_new_log_mutex);
 }
 
+static void child_cleanup (void)
+{
+	memset(&log_thread_group, 0, sizeof(log_thread_group));
+	logsys_wthread_active = 0;
+	pthread_mutex_init(&logsys_config_mutex, NULL);
+	pthread_mutex_init(&logsys_new_log_mutex, NULL);
+}
+
 int _logsys_wthread_create (void)
 {
 	worker_thread_group_init (
@@ -481,6 +491,7 @@ int _logsys_wthread_create (void)
 	logsys_flush();
 
 	atexit (logsys_atexit);
+	pthread_atfork(NULL, NULL, child_cleanup);
 
 	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED && logsys_name != NULL) {
 		openlog (logsys_name, LOG_CONS|LOG_PID, logsys_facility);

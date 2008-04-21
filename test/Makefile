@@ -161,13 +161,13 @@ openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)
 
 logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
-	$(CC) $(LDFLAGS) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
+	$(CC) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a $(LDFLAGS)
 
 logsys_t1: logsys_t1.o ../exec/liblogsys.a
-	$(CC) $(LDFLAGS) -o logsys_t1 logsys_t1.o ../exec/liblogsys.a
+	$(CC) -o logsys_t1 logsys_t1.o ../exec/liblogsys.a $(LDFLAGS)
 
 logsys_t2: logsys_t2.o ../exec/liblogsys.a
-	$(CC) $(LDFLAGS) -o logsys_t2 logsys_t2.o ../exec/liblogsys.a
+	$(CC) -o logsys_t2 logsys_t2.o ../exec/liblogsys.a $(LDFLAGS)
 
 clean:
 	rm -f *.o $(LIBRARIES) $(BINARIES)
