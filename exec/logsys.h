@@ -108,9 +108,6 @@ extern void logsys_config_facility_set (
 	char *name,
 	unsigned int facility);
 
-extern void logsys_config_priority_set (
-	unsigned int priority);
-
 extern unsigned int logsys_config_subsys_set (
 	const char *subsys,
 	unsigned int tags,
@@ -281,6 +278,12 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 	_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE8,		\
 	 logsys_subsys_id, (format), ##args);				\
 	}								\
+} while(0)
+
+extern void _logsys_config_priority_set (unsigned int id, unsigned int priority);
+
+#define logsys_config_priority_set(priority) do {		        \
+	_logsys_config_priority_set (logsys_subsys_id, priority);       \
 } while(0)
 
 #endif /* LOGSYS_H_DEFINED */

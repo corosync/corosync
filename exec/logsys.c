@@ -456,15 +456,15 @@ void logsys_config_facility_set (char *name, unsigned int facility)
 	pthread_mutex_unlock (&logsys_new_log_mutex);
 }
 
-void logsys_config_priority_set (unsigned int priority)
+void _logsys_config_priority_set (unsigned int id, unsigned int priority)
 {
-	unsigned int tags;
-	unsigned int dummy_priority;
-
 	pthread_mutex_lock (&logsys_new_log_mutex);
 
-	logsys_config_subsys_get ("MAIN", &tags, &dummy_priority);
-	logsys_config_subsys_set ("MAIN", tags, priority);
+	logsys_loggers[id].priority = priority;
+
+	if (priority > logsys_loggers[id].priority) {
+		logsys_loggers[id].priority = priority;
+	}
 
 	pthread_mutex_unlock (&logsys_new_log_mutex);
 }
