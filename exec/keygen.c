@@ -72,7 +72,7 @@ int main (void) {
 	/*
 	 * Open key
 	 */
-	authkey_fd = open ("/etc/ais/authkey", O_CREAT|O_WRONLY);
+	authkey_fd = open ("/etc/ais/authkey", O_CREAT|O_WRONLY, 600);
 	if (authkey_fd == -1) {
 		perror ("Could not create /etc/ais/authkey");
 		exit (1);
@@ -80,7 +80,7 @@ int main (void) {
 	/*
 	 * Set security of authorization key to uid = 0 uid = 0 mode = 0400
 	 */
-	fchown (authkey_fd, 0, 0);
+	res = fchown (authkey_fd, 0, 0);
 	fchmod (authkey_fd, 0400);
 
 	printf ("Writing openais key to /etc/ais/authkey.\n");
