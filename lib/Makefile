@@ -60,41 +60,42 @@ libaisutil.a: util.o
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
+DARWIN_OPTS=-dynamiclib -bind_at_load -current_version 2.0.0 -compatibility_version 2.0.0
 libaisutil.so.2.0.0: util.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o -o $@
 
 libSaClm.so.2.0.0: util.o clm.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o clm.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o clm.o -o $@
 
 libSaAmf.so.2.0.0: util.o amf.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o amf.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o amf.o -o $@
 
 libSaCkpt.so.2.0.0: util.o ckpt.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o ckpt.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o ckpt.o -o $@
 
 libSaEvt.so.2.0.0: util.o evt.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o evt.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o evt.o -o $@
 
 libSaLck.so.2.0.0: util.o lck.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o lck.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o lck.o -o $@
 
 libSaMsg.so.2.0.0: util.o msg.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o msg.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o msg.o -o $@
 
 libais.so.2.0.0: util.o amf.o clm.o ckpt.o evt.o lck.o msg.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o amf.o clm.o ckpt.o evt.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o amf.o clm.o ckpt.o evt.o -o $@
 
 libevs.so.2.0.0: util.o evs.o
-	$(CC) $(LDFLAGS) -bundle -bind_at_load util.o evs.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o evs.o -o $@
 
 libcpg.so.2.0.0: util.o cpg.o
-	$(CC) -bundle -bind_at_load util.o cpg.o -o $@
+	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
 
 libconfdb.so.2.0.0: util.o confdb.o
-	$(CC) -bundle -bind_at_load util.o confdb.o -o $@
+	$(CC) $(DARWIN_OPTS) util.o confdb.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
-	$(CC) -bundle -bind_at_load util.o cfg.o -o $@
+	$(CC) $(DARWIN_OPTS) util.o cfg.o -o $@
 
 else
 
