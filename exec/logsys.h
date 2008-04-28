@@ -121,8 +121,14 @@ extern int logsys_config_subsys_get (
 extern int logsys_facility_id_get (
 	const char *name);
 
+extern char *logsys_facility_name_get (
+	unsigned int facility);
+
 extern int logsys_priority_id_get (
 	const char *name);
+
+extern char *logsys_priority_name_get (
+	unsigned int priority);
 
 extern void logsys_flush (void);
 

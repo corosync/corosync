@@ -140,6 +140,18 @@ int logsys_facility_id_get (const char *name)
 	return (-1);
 }
 
+char *logsys_facility_name_get (unsigned int facility)
+{
+	unsigned int i;
+
+	for (i = 0; facilitynames[i].c_name != NULL; i++) {
+		if (facility == facilitynames[i].c_val) {
+			return (facilitynames[i].c_name);
+		}
+	}
+	return (NULL);
+}
+
 int logsys_priority_id_get (const char *name)
 {
 	unsigned int i;
@@ -152,7 +164,7 @@ int logsys_priority_id_get (const char *name)
 	return (-1);
 }
 
-static inline char *logsys_priority_name_get (unsigned int priority)
+char *logsys_priority_name_get (unsigned int priority)
 {
 	unsigned int i;
 
