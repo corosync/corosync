@@ -569,13 +569,14 @@ int main (int argc, char **argv)
 		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
+	logsys_config_facility_set ("openais", main_config.syslog_facility);
+	logsys_config_mode_set (main_config.logmode);
+
 	res = logsys_config_file_set (&error_string, main_config.logfile);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
 		openais_exit_error (AIS_DONE_LOGSETUP);
 	}
-	logsys_config_facility_set ("openais", main_config.syslog_facility);
-	logsys_config_mode_set (main_config.logmode);
 
 	aisexec_uid_determine (&main_config);
 
