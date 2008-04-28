@@ -1,7 +1,6 @@
-
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -78,9 +77,9 @@ static void cfg_handleInstanceDestructor (void *);
  * All instances in one database
  */
 static struct saHandleDatabase cfg_hdb = {
-	.handleCount				= 0,
-	.handles					= 0,
-	.mutex						= PTHREAD_MUTEX_INITIALIZER,
+	.handleCount			= 0,
+	.handles			= 0,
+	.mutex				= PTHREAD_MUTEX_INITIALIZER,
 	.handleInstanceDestructor	= cfg_handleInstanceDestructor
 };
 
@@ -458,6 +457,81 @@ openais_cfg_ring_reenable (
 	return (error);
 }
 
+SaAisErrorT
+openais_cfg_service_load (
+	openais_cfg_handle_t cfg_handle,
+	char *service_name,
+	unsigned int service_ver)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_serviceload req_lib_cfg_serviceload;
+	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_serviceload.header.size = sizeof (struct req_lib_cfg_serviceload);
+	req_lib_cfg_serviceload.header.id = MESSAGE_REQ_CFG_SERVICELOAD;
+	memset (&req_lib_cfg_serviceload.service_name, 0,
+		sizeof (req_lib_cfg_serviceload.service_name));
+	strncpy ((char *)req_lib_cfg_serviceload.service_name, service_name,
+		sizeof (req_lib_cfg_serviceload.service_name) - 1);
+	req_lib_cfg_serviceload.service_ver = service_ver;
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_serviceload,
+		sizeof (struct req_lib_cfg_serviceload),
+		&res_lib_cfg_serviceload,
+		sizeof (struct res_lib_cfg_serviceload));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+	return (error);
+}
+
+SaAisErrorT
+openais_cfg_service_unload (
+	openais_cfg_handle_t cfg_handle,
+	char *service_name,
+	unsigned int service_ver)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_serviceunload req_lib_cfg_serviceunload;
+	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_serviceunload.header.size = sizeof (struct req_lib_cfg_serviceunload);
+	req_lib_cfg_serviceunload.header.id = MESSAGE_REQ_CFG_SERVICEUNLOAD;
+	memset (&req_lib_cfg_serviceunload.service_name, 0,
+		sizeof (req_lib_cfg_serviceunload.service_name));
+	strncpy ((char *)req_lib_cfg_serviceunload.service_name, service_name,
+		sizeof (req_lib_cfg_serviceunload.service_name) - 1);
+	req_lib_cfg_serviceunload.service_ver = service_ver;
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_serviceunload,
+		sizeof (struct req_lib_cfg_serviceunload),
+		&res_lib_cfg_serviceunload,
+		sizeof (struct res_lib_cfg_serviceunload));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+	return (error);
+}
 SaAisErrorT
 openais_cfg_state_track (
 	openais_cfg_handle_t cfg_handle,

@@ -140,6 +140,18 @@ openais_cfg_ring_reenable (
 	openais_cfg_handle_t cfg_handle);
 
 SaAisErrorT
+openais_cfg_service_load (
+	openais_cfg_handle_t cfg_handle,
+	char *service_name,
+	unsigned int service_ver);
+
+SaAisErrorT
+openais_cfg_service_unload (
+	openais_cfg_handle_t cfg_handle,
+	char *service_name,
+	unsigned int service_ver);
+
+SaAisErrorT
 openais_cfg_administrative_state_get (
 	openais_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,

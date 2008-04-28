@@ -1,11 +1,10 @@
 /*
- * vi: set autoindent tabstop=4 shiftwidth=4 :
- *
  * Copyright (c) 2006 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -99,54 +98,14 @@ static struct default_service default_services[] = {
 
 struct openais_service_handler *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
-/*
- * Adds a service handler to the object database
- */
-int openais_service_objdb_add (
-	struct objdb_iface_ver0 *objdb,
-	char *name,
-	int version)
+static unsigned int default_services_requested (struct objdb_iface_ver0 *objdb)
 {
-	unsigned int object_handle;
-
-	objdb->object_create (OBJECT_PARENT_HANDLE, &object_handle,
-		"service", strlen ("service"));
-	objdb->object_key_create (object_handle, "name", strlen ("name"),
-		name, strlen (name) + 1);
-	objdb->object_key_create (object_handle, "ver", strlen ("ver"),
-		&version, sizeof (version));
-
-	return (0);
-}
-
-static int service_handler_config (
-	struct openais_service_handler *handler,
-	struct objdb_iface_ver0 *objdb)
-{
-	int res = 0;
-
-	/* Already loaded? */
-	if (ais_service[handler->id] != NULL)
-		return 0;
-
-	log_printf (LOG_LEVEL_NOTICE, "Registering service handler '%s'\n", handler->name);
-	ais_service[handler->id] = handler;
-	if (ais_service[handler->id]->config_init_fn) {
-		res = ais_service[handler->id]->config_init_fn (objdb);
-	}
-	return (res);
-}
-
-/*
- * adds the default services to the object database
- */
-int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
-{
-	int i;
 	unsigned int object_service_handle;
-	char *value = NULL;
+	char *value;
 
-	/* Load default services unless they have been explicitly disabled */
+	/*
+	 * Don't link default services if they have been disabled
+	 */
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	if (objdb->object_find (
 		OBJECT_PARENT_HANDLE,
@@ -155,36 +114,111 @@ int openais_service_default_objdb_set (struct objdb_iface_ver0 *objdb)
 		&object_service_handle) == 0) {
 
 		if ( ! objdb->object_key_get (object_service_handle,
-					      "defaultservices",
-					      strlen ("defaultservices"),
-					      (void *)&value,
-					      NULL)) {
+			"defaultservices",
+			strlen ("defaultservices"),
+			(void *)&value,
+			NULL)) {
 
 			if (value && strcmp (value, "no") == 0) {
 				return 0;
 			}
 		}
 	}
-
-	for (i = 0; i < sizeof (default_services) / sizeof (struct default_service); i++) {
-		openais_service_objdb_add (objdb, default_services[i].name, default_services[i].ver);
-	}
-	return (0);
+		return (-1);
 }
 
-/*
- * Links dynamic services into the executive
- */
-int openais_service_link_all (struct objdb_iface_ver0 *objdb)
+unsigned int openais_service_link_and_init (
+	struct objdb_iface_ver0 *objdb,
+	char *service_name,
+	unsigned int service_ver)
 {
-	char *service_name;
-	char *service_ver;
-	unsigned int object_service_handle;
-	int ret;
-	unsigned int handle;
 	struct openais_service_handler_iface_ver0 *iface_ver0;
 	void *iface_ver0_p;
-	unsigned int ver_int;
+	unsigned int handle;
+	struct openais_service_handler *service;
+	unsigned int res;
+	unsigned int object_handle;
+
+	/*
+	 * reference the service interface
+	 */
+	iface_ver0_p = NULL;
+	lcr_ifact_reference (
+		&handle,
+		service_name,
+		service_ver,
+		&iface_ver0_p,
+		(void *)0);
+
+	iface_ver0 = (struct openais_service_handler_iface_ver0 *)iface_ver0_p;
+
+	if (iface_ver0 == 0) {
+		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
+		return (-1);
+	}
+
+
+	/*
+	 * Initialize service
+	 */
+	service = iface_ver0->openais_get_service_handler_ver0();
+
+	ais_service[service->id] = service;
+	if (service->config_init_fn) {
+		res = service->config_init_fn (objdb);
+	}
+
+	if (service->exec_init_fn) {
+		res = service->exec_init_fn (objdb);
+	}
+
+	/*
+	 * Store service in object database
+	 */
+	objdb->object_create (OBJECT_PARENT_HANDLE,
+		&object_handle,
+		"service",
+		strlen ("service"));
+
+	objdb->object_key_create (object_handle,
+		"name",
+		strlen ("name"),
+		service_name,
+		strlen (service_name) + 1);
+
+	objdb->object_key_create (object_handle,
+		"ver",
+		strlen ("ver"),
+		&service_ver,
+		sizeof (service_ver));
+
+	res = objdb->object_key_create (object_handle,
+		"handle",
+		strlen ("handle"),
+		&handle,
+		sizeof (handle));
+
+	objdb->object_key_create (object_handle,
+		"service_id",
+		strlen ("service_id"),
+		&service->id,
+		sizeof (service->id));
+
+	log_printf (LOG_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
+	return (res);
+}
+
+extern unsigned int openais_service_unlink_and_exit (
+	struct objdb_iface_ver0 *objdb,
+	char *service_name,
+	unsigned int service_ver)
+{
+	unsigned int object_service_handle;
+	char *found_service_name;
+	unsigned int *found_service_ver;
+	unsigned int *found_service_handle;
+	unsigned short *service_id;
+	unsigned int res;
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	while (objdb->object_find (
@@ -196,57 +230,64 @@ int openais_service_link_all (struct objdb_iface_ver0 *objdb)
 		objdb->object_key_get (object_service_handle,
 			"name",
 			strlen ("name"),
-			(void *)&service_name,
+			(void *)&found_service_name,
 			NULL);
 
-		ret = objdb->object_key_get (object_service_handle,
+		objdb->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
-			(void *)&service_ver,
+			(void *)&found_service_ver,
 			NULL);
-
-		ver_int = atoi (service_ver);
-
+				
 		/*
-		 * reference the interface and register it
+		 * If service found and linked exit it
 		 */
-		iface_ver0_p = NULL;
-		lcr_ifact_reference (
-			&handle,
-			service_name,
-			ver_int,
-			&iface_ver0_p,
-			(void *)0);
+		if ((strcmp (service_name, found_service_name) == 0) &&
+			(service_ver == *found_service_ver)) {
 
-		iface_ver0 = (struct openais_service_handler_iface_ver0 *)iface_ver0_p;
+			res = objdb->object_key_get (object_service_handle,
+				"handle",
+				strlen ("handle"),
+				(void *)&found_service_handle,
+				NULL);
 
-		if (iface_ver0 == 0) {
-			log_printf(LOG_LEVEL_ERROR, "openais component %s did not load.\n", service_name);
-			openais_exit_error (AIS_DONE_DYNAMICLOAD);
-		} else {
-			log_printf(LOG_LEVEL_NOTICE, "openais component %s loaded.\n", service_name);
+			res = objdb->object_key_get (object_service_handle,
+				"service_id",
+				strlen ("service_id"),
+				(void *)&service_id,
+				NULL);
+					
+			if (ais_service[*service_id]->exec_exit_fn) {
+				ais_service[*service_id]->exec_exit_fn (objdb);
+			}
+			ais_service[*service_id] = NULL;
+
+			res = lcr_ifact_release (*found_service_handle);	
+			objdb->object_destroy (object_service_handle);
+			return (res);
 		}
-
-		service_handler_config (
-			iface_ver0->openais_get_service_handler_ver0(), objdb);
 	}
-	return (0);
+	return (-1);
 }
 
-int openais_service_init_all (int service_count,
-			      struct objdb_iface_ver0 *objdb)
+/*
+ * Links default services into the executive
+ */
+unsigned int openais_service_defaults_link_and_init (struct objdb_iface_ver0 *objdb)
 {
-	int i;
-	int res=0;
+	unsigned int i;
 
-	for (i = 0; i < service_count; i++) {
-		if (ais_service[i] && ais_service[i]->exec_init_fn) {
-			log_printf (LOG_LEVEL_NOTICE, "Initialising service handler '%s'\n", ais_service[i]->name);
-			res = ais_service[i]->exec_init_fn (objdb);
-			if (res != 0) {
-				break;
-			}
-		}
+	if (default_services_requested (objdb) == 0) {
+		return (0);
 	}
-	return (res);
+	for (i = 0;
+		i < sizeof (default_services) / sizeof (struct default_service); i++) {
+
+		openais_service_link_and_init (
+			objdb,
+			default_services[i].name,
+			default_services[i].ver);
+	}
+			
+	return (0);
 }

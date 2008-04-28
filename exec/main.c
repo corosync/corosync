@@ -500,7 +500,11 @@ int main (int argc, char **argv)
 
 	objdb->objdb_init ();
 
-	/* User's bootstrap config service */
+	/*
+	 * Bootstrap in the default configuration parser or use
+	 * the openais default built in parser if the configuration parser
+	 * isn't overridden
+	 */
 	config_iface = getenv("OPENAIS_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
 		config_iface = "aisparser";
@@ -536,14 +540,6 @@ int main (int argc, char **argv)
 	}
 	if (config_iface)
 		free(config_iface);
-
-	openais_service_default_objdb_set (objdb);
-
-	res = openais_service_link_all (objdb);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not load services\n");
-		openais_exit_error (AIS_DONE_DYNAMICLOAD);
-	}
 
 	res = openais_main_config_read (objdb, &error_string, &main_config);
 	if (res == -1) {
@@ -636,11 +632,12 @@ int main (int argc, char **argv)
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	res = openais_service_init_all (service_count, objdb);
+	res = openais_service_defaults_link_and_init (objdb);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not init services\n");
+		log_printf (LOG_LEVEL_ERROR, "Could not initialize default services\n");
 		openais_exit_error (AIS_DONE_INIT_SERVICES);
 	}
+
 
 	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed,
 		totem_config.vsf_type);

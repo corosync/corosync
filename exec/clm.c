@@ -142,6 +142,8 @@ static void clm_sync_abort (void);
 
 static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb);
 
+static int clm_exec_exit_fn (struct objdb_iface_ver0 *objdb);
+
 static int clm_lib_init_fn (void *conn);
 
 static int clm_lib_exit_fn (void *conn);
@@ -216,6 +218,7 @@ struct openais_service_handler clm_service_handler = {
 	.lib_service		= clm_lib_service,
 	.lib_service_count	= sizeof (clm_lib_service) / sizeof (struct openais_lib_handler),
 	.exec_init_fn		= clm_exec_init_fn,
+	.exec_exit_fn		= clm_exec_exit_fn,
 	.exec_dump_fn		= NULL,
 	.exec_service		= clm_exec_service,
 	.exec_service_count	= sizeof (clm_exec_service) / sizeof (struct openais_exec_handler),
@@ -352,6 +355,11 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 	cluster_node_count = 1;
 
 	main_clm_get_by_nodeid = clm_get_by_nodeid;
+	return (0);
+}
+
+static int clm_exec_exit_fn (struct objdb_iface_ver0 *objdb)
+{
 	return (0);
 }
 

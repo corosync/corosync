@@ -46,6 +46,8 @@ enum req_lib_cfg_types {
         MESSAGE_REQ_CFG_STATETRACKSTOP = 3,
         MESSAGE_REQ_CFG_ADMINISTRATIVESTATESET = 4,
         MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET = 5,
+        MESSAGE_REQ_CFG_SERVICELOAD = 6,
+        MESSAGE_REQ_CFG_SERVICEUNLOAD = 7
 };
 
 enum res_lib_cfg_types {
@@ -55,6 +57,8 @@ enum res_lib_cfg_types {
         MESSAGE_RES_CFG_STATETRACKSTOP = 3,
         MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 4,
         MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 5,
+        MESSAGE_RES_CFG_SERVICELOAD = 6,
+        MESSAGE_RES_CFG_SERVICEUNLOAD = 7
 };
 
 struct req_lib_cfg_statetrack {
@@ -113,6 +117,26 @@ struct req_lib_cfg_ringreenable {
 };
 
 struct res_lib_cfg_ringreenable {
+	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_serviceload {
+	mar_res_header_t header __attribute__((aligned(8)));
+	char *service_name[256] __attribute__((aligned(8)));
+	unsigned int service_ver;
+};
+
+struct res_lib_cfg_serviceload {
+	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_serviceunload {
+	mar_res_header_t header __attribute__((aligned(8)));
+	char *service_name[256] __attribute__((aligned(8)));
+	unsigned int service_ver;
+};
+
+struct res_lib_cfg_serviceunload {
 	mar_res_header_t header __attribute__((aligned(8)));
 };
 

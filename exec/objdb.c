@@ -73,6 +73,7 @@ static struct hdb_handle_database object_instance_database = {
 	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
+
 static int objdb_init (void)
 {
 	unsigned int handle;
@@ -448,7 +449,7 @@ static int object_find_reset (
 	instance->find_child_list = &instance->child_head;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	return (0);
+	return (found == 1 ? 0 : ENOENT);
 
 error_exit:
 	return (-1);

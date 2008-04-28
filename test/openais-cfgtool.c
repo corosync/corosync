@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Red Hat Inc
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -98,19 +98,61 @@ static void ringreenable_do (void)
 	openais_cfg_finalize (handle);
 }
 
+void service_load_do (char *service, unsigned int version)
+{
+	SaAisErrorT result;
+	openais_cfg_handle_t handle;
+
+	printf ("Loading service '%s' version '%d'\n", service, version);
+	result = openais_cfg_initialize (&handle, NULL);
+	if (result != SA_AIS_OK) {
+		printf ("Could not initialize openais configuration API error %d\n", result);
+		exit (1);
+	}
+	result = openais_cfg_service_load (handle, service, version);
+	if (result != SA_AIS_OK) {
+		printf ("Could not load service (error = %d)\n", result);
+	}
+	openais_cfg_finalize (handle);
+}
+
+void service_unload_do (char *service, unsigned int version)
+{
+	SaAisErrorT result;
+	openais_cfg_handle_t handle;
+
+	printf ("Unloading service '%s' version '%d'\n", service, version);
+	result = openais_cfg_initialize (&handle, NULL);
+	if (result != SA_AIS_OK) {
+		printf ("Could not initialize openais configuration API error %d\n", result);
+		exit (1);
+	}
+	result = openais_cfg_service_unload (handle, service, version);
+	if (result != SA_AIS_OK) {
+		printf ("Could not unload service (error = %d)\n", result);
+	}
+	openais_cfg_finalize (handle);
+}
+
 void usage_do (void)
 {
-	printf ("openais-cfgtool [-s] [-r]\n\n");
+	printf ("openais-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version]\n\n");
 	printf ("A tool for displaying and configuring active parameters within openais.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
 	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");
 	printf ("\t\tre-enable redundant ring operation.\n");
+	printf ("\t-l\tLoad a service identified by name.\n");
+	printf ("\t-u\tUnload a service identified by name.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "sr";
+	const char *options = "srl:u:v:";
 	int opt;
+	int service_load = 0;
+	int service_unload = 0;
+	char *service;
+	unsigned int version;
 
 	if (argc == 1) {
 		usage_do ();
@@ -123,8 +165,25 @@ int main (int argc, char *argv[]) {
 		case 'r':
 			ringreenable_do ();
 			break;
+		case 'l':
+			service_load = 1;
+			service = strdup (optarg);
+			break;
+		case 'u':
+			service_unload = 1;
+			service = strdup (optarg);
+			break;
+		case 'v':
+			version = atoi (optarg);
 		}
 	}
 
+	if (service_load) {
+		service_load_do (service, version);
+	} else 
+	if (service_unload) {
+		service_unload_do (service, version);
+	}
+		
 	return (0);
 }

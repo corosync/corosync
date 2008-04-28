@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -68,7 +68,7 @@
 #include "logsys.h"
 #include "main.h"
 
-LOGSYS_DECLARE_SUBSYS ("AMF", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("CFG", LOG_INFO);
 
 enum cfg_message_req_types {
         MESSAGE_REQ_EXEC_CFG_RINGREENABLE = 0
@@ -115,6 +115,14 @@ static void message_handler_req_lib_cfg_administrativestateget (
 	void *conn,
 	void *msg);
 
+static void message_handler_req_lib_cfg_serviceload (
+	void *conn,
+	void *msg);
+
+static void message_handler_req_lib_cfg_serviceunload (
+	void *conn,
+	void *msg);
+
 /*
  * Service Handler Definition
  */
@@ -126,34 +134,46 @@ static struct openais_lib_handler cfg_lib_service[] =
 		.response_id		= MESSAGE_RES_CFG_RINGSTATUSGET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 0 */
+	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringreenable,
 		.response_size		= sizeof (struct res_lib_cfg_ringreenable),
 		.response_id		= MESSAGE_RES_CFG_RINGREENABLE,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 0 */
+	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
 		.response_size		= sizeof (struct res_lib_cfg_statetrack),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 1 */
+	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
 		.response_size		= sizeof (struct res_lib_cfg_statetrackstop),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTOP,
 		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 2 */
+	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateset),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATESET,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 3 */
+	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateget),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET,
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 6 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_serviceload,
+		.response_size		= sizeof (struct res_lib_cfg_serviceload),
+		.response_id		= MESSAGE_RES_CFG_SERVICELOAD,
+		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 7 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_serviceunload,
+		.response_size		= sizeof (struct res_lib_cfg_serviceunload),
+		.response_id		= MESSAGE_RES_CFG_SERVICEUNLOAD,
 		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -182,6 +202,8 @@ struct openais_service_handler cfg_service_handler = {
 	.exec_service_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (openais_exec_handler), */
 	.confchg_fn				= cfg_confchg_fn,
 };
+
+static struct objdb_iface_ver0 *my_objdb;
 
 /*
  * Dynamic Loader definition
@@ -231,6 +253,7 @@ struct req_exec_cfg_ringreenable {
 
 static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 {
+	my_objdb = objdb;
 	return (0);
 }
 
@@ -386,3 +409,49 @@ static void message_handler_req_lib_cfg_administrativestateget (
 	LEAVE("");
 }
 
+static void message_handler_req_lib_cfg_serviceload (
+	void *conn,
+	void *msg)
+{
+	struct req_lib_cfg_serviceload *req_lib_cfg_serviceload =
+		(struct req_lib_cfg_serviceload *)msg;
+	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
+
+	ENTER("");
+	openais_service_link_and_init (
+		my_objdb,
+		(char *)req_lib_cfg_serviceload->service_name,
+		req_lib_cfg_serviceload->service_ver);
+
+	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
+	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
+	res_lib_cfg_serviceload.header.error = SA_AIS_OK;
+	openais_conn_send_response (
+		conn,
+		&res_lib_cfg_serviceload,
+		sizeof (struct res_lib_cfg_serviceload));
+	LEAVE("");
+}
+
+static void message_handler_req_lib_cfg_serviceunload (
+	void *conn,
+	void *msg)
+{
+	struct req_lib_cfg_serviceunload *req_lib_cfg_serviceunload =
+		(struct req_lib_cfg_serviceunload *)msg;
+	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
+
+	ENTER("");
+	openais_service_unlink_and_exit (
+		my_objdb,
+		(char *)req_lib_cfg_serviceunload->service_name,
+		req_lib_cfg_serviceunload->service_ver);
+	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
+	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
+	res_lib_cfg_serviceunload.header.error = SA_AIS_OK;
+	openais_conn_send_response (
+		conn,
+		&res_lib_cfg_serviceunload,
+		sizeof (struct res_lib_cfg_serviceunload));
+	LEAVE("");
+}
