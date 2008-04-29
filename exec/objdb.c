@@ -449,7 +449,7 @@ static int object_find_reset (
 	instance->find_child_list = &instance->child_head;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	return (found == 1 ? 0 : ENOENT);
+	return (0);
 
 error_exit:
 	return (-1);
