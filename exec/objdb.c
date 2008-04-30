@@ -36,6 +36,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include "objdb.h"
+#include "config.h"
+#include "main.h"
 #include "../lcr/lcr_comp.h"
 #include "../include/hdb.h"
 #include "../include/list.h"
@@ -65,6 +67,8 @@ struct object_instance {
 	struct object_key_valid *object_key_valid_list;
 	int object_key_valid_list_entries;
 };
+
+struct objdb_iface_ver0 objdb_iface;
 
 static struct hdb_handle_database object_instance_database = {
 	.handle_count	= 0,
@@ -1085,6 +1089,24 @@ static int object_dump(unsigned int object_handle,
 	return (res);
 }
 
+static int object_write_config(char **error_string)
+{
+	struct config_iface_ver0 **modules;
+	int num_modules;
+	int i;
+	int res;
+
+	main_get_config_modules(&modules, &num_modules);
+	for (i=0; i<num_modules; i++) {
+		if (modules[i]->config_writeconfig) {
+			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
+			if (res)
+				return res;
+		}
+	}
+	return 0;
+}
+
 struct objdb_iface_ver0 objdb_iface = {
 	.objdb_init		= objdb_init,
 	.object_create		= object_create,
@@ -1107,7 +1129,8 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_iter_from	= object_iter_from,
 	.object_priv_get	= object_priv_get,
 	.object_parent_get	= object_parent_get,
-	.object_dump	        = object_dump
+	.object_dump	        = object_dump,
+	.object_write_config    = object_write_config,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {

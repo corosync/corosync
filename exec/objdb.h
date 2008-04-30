@@ -168,6 +168,8 @@ struct objdb_iface_ver0 {
 		int *key_len,
 		void **value,
 		int *value_len);
+
+	int (*object_write_config) (char **error_string);
 };
 
 #endif /* OBJDB_H_DEFINED */

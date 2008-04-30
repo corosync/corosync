@@ -103,6 +103,10 @@ static struct totem_logging_configuration totem_logging_configuration;
 
 static char delivery_data[MESSAGE_SIZE_MAX];
 
+static int num_config_modules;
+
+static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
+
 SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 static void sigusr2_handler (int num)
@@ -418,6 +422,12 @@ static void deliver_fn (
 		(header, nodeid);
 }
 
+void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
+{
+	*modules = config_modules;
+	*num = num_config_modules;
+}
+
 int main (int argc, char **argv)
 {
 	char *error_string;
@@ -500,6 +510,8 @@ int main (int argc, char **argv)
 
 	objdb->objdb_init ();
 
+	num_config_modules = 0;
+
 	/*
 	 * Bootstrap in the default configuration parser or use
 	 * the openais default built in parser if the configuration parser
@@ -535,6 +547,7 @@ int main (int argc, char **argv)
 			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 		log_printf (LOG_LEVEL_NOTICE, error_string);
+		config_modules[num_config_modules++] = config;
 
 		iface = strtok(NULL, ":");
 	}

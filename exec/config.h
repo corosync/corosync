@@ -37,6 +37,7 @@
 
 struct config_iface_ver0 {
 	int (*config_readconfig) (struct objdb_iface_ver0 *objdb, char **error_string);
+	int (*config_writeconfig) (struct objdb_iface_ver0 *objdb, char **error_string);
 };
 
 
