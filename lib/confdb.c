@@ -49,6 +49,8 @@
 #include <ais_util.h>
 #include <list.h>
 
+#include "sa-confdb.h"
+
 /* Hold the information for iterators so that
    callers can do recursive tree traversals.
    each object_handle can have its own iterator */
@@ -62,6 +64,7 @@ struct confdb_inst {
 	int response_fd;
 	int dispatch_fd;
 	int finalize;
+	int standalone;
 	confdb_callbacks_t callbacks;
 	void *context;
 	pthread_mutex_t response_mutex;
@@ -145,12 +148,17 @@ confdb_error_t confdb_initialize (
 		goto error_destroy;
 	}
 
-	error = saServiceConnect (&confdb_inst->dispatch_fd,
-				  &confdb_inst->response_fd,
-				  CONFDB_SERVICE);
-	if (error != SA_AIS_OK) {
-		goto error_put_destroy;
+	if (getenv("OPENAIS_DEFAULT_CONFIG_IFACE")) {
+		error = confdb_sa_init();
+		confdb_inst->standalone = 1;
 	}
+	else {
+		error = saServiceConnect (&confdb_inst->dispatch_fd,
+					  &confdb_inst->response_fd,
+					  CONFDB_SERVICE);
+	}
+	if (error != SA_AIS_OK)
+		goto error_put_destroy;
 
 	memcpy (&confdb_inst->callbacks, callbacks, sizeof (confdb_callbacks_t));
 
@@ -206,16 +214,18 @@ confdb_error_t confdb_finalize (
 	free_context_list(&confdb_inst->object_iter_head);
 	free_context_list(&confdb_inst->key_iter_head);
 
-	/*
-	 * Disconnect from the server
-	 */
-	if (confdb_inst->response_fd != -1) {
-		shutdown(confdb_inst->response_fd, 0);
-		close(confdb_inst->response_fd);
-	}
-	if (confdb_inst->dispatch_fd != -1) {
-		shutdown(confdb_inst->dispatch_fd, 0);
-		close(confdb_inst->dispatch_fd);
+	if (!confdb_inst->standalone) {
+		/*
+		 * Disconnect from the server
+		 */
+		if (confdb_inst->response_fd != -1) {
+			shutdown(confdb_inst->response_fd, 0);
+			close(confdb_inst->response_fd);
+		}
+		if (confdb_inst->dispatch_fd != -1) {
+			shutdown(confdb_inst->dispatch_fd, 0);
+			close(confdb_inst->dispatch_fd);
+		}
 	}
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -302,6 +312,11 @@ confdb_error_t confdb_dispatch (
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CONFDB_ERR_NOT_SUPPORTED;
+		goto error_unlock;
 	}
 
 	/*
@@ -450,6 +465,16 @@ confdb_error_t confdb_object_create (
 		return (error);
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_object_create(parent_object_handle,
+					    object_name, object_name_len,
+					    object_handle))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
 	req_lib_confdb_object_create.header.size = sizeof (struct req_lib_confdb_object_create);
 	req_lib_confdb_object_create.header.id = MESSAGE_REQ_CONFDB_OBJECT_CREATE;
 	req_lib_confdb_object_create.parent_object_handle = parent_object_handle;
@@ -493,6 +518,14 @@ confdb_error_t confdb_object_destroy (
 		return (error);
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_object_destroy(object_handle))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
 	req_lib_confdb_object_destroy.header.size = sizeof (struct req_lib_confdb_object_destroy);
 	req_lib_confdb_object_destroy.header.id = MESSAGE_REQ_CONFDB_OBJECT_DESTROY;
 	req_lib_confdb_object_destroy.object_handle = object_handle;
@@ -532,6 +565,14 @@ confdb_error_t confdb_object_parent_get (
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_object_parent_get(object_handle, parent_object_handle))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
 	}
 
 	req_lib_confdb_object_parent_get.header.size = sizeof (struct req_lib_confdb_object_parent_get);
@@ -577,6 +618,16 @@ confdb_error_t confdb_key_create (
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_key_create(parent_object_handle,
+					 key_name, key_name_len,
+					 value, value_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
 	}
 
 	req_lib_confdb_key_create.header.size = sizeof (struct req_lib_confdb_key_create);
@@ -625,6 +676,16 @@ confdb_error_t confdb_key_get (
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != SA_AIS_OK) {
 		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_key_get(parent_object_handle,
+				      key_name, key_name_len,
+				      value, value_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
 	}
 
 	req_lib_confdb_key_get.header.size = sizeof (struct req_lib_confdb_key_get);
@@ -680,6 +741,16 @@ confdb_error_t confdb_key_replace (
 		return (error);
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_key_replace(parent_object_handle,
+					  key_name, key_name_len,
+					  old_value, old_value_len,
+					  new_value, new_value_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
 	req_lib_confdb_key_replace.header.size = sizeof (struct req_lib_confdb_key_replace);
 	req_lib_confdb_key_replace.header.id = MESSAGE_REQ_CONFDB_KEY_REPLACE;
 	req_lib_confdb_key_replace.object_handle = parent_object_handle;
@@ -833,6 +904,18 @@ confdb_error_t confdb_object_find (
 		goto error_exit;
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_object_find(parent_object_handle,
+					  context->context,
+					  object_name, object_name_len,
+					  object_handle,
+					  &context->context))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
 	req_lib_confdb_object_find.header.size = sizeof (struct req_lib_confdb_object_find);
 	req_lib_confdb_object_find.header.id = MESSAGE_REQ_CONFDB_OBJECT_FIND;
 	req_lib_confdb_object_find.parent_object_handle = parent_object_handle;
@@ -890,6 +973,17 @@ confdb_error_t confdb_object_iter (
 		goto error_exit;
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_object_iter(parent_object_handle,
+					  context->context,
+					  object_handle,
+					  object_name, object_name_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto sa_exit;
+	}
+
 	req_lib_confdb_object_iter.header.size = sizeof (struct req_lib_confdb_object_iter);
 	req_lib_confdb_object_iter.header.id = MESSAGE_REQ_CONFDB_OBJECT_ITER;
 	req_lib_confdb_object_iter.parent_object_handle = parent_object_handle;
@@ -914,7 +1008,7 @@ confdb_error_t confdb_object_iter (
 		memcpy(object_name, res_lib_confdb_object_iter.object_name.value, *object_name_len);
 		*object_handle = res_lib_confdb_object_iter.object_handle;
 	}
-
+sa_exit:
 	context->context++;
 
 error_exit:
@@ -950,6 +1044,17 @@ confdb_error_t confdb_key_iter (
 		goto error_exit;
 	}
 
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_key_iter(parent_object_handle,
+				       context->context,
+				       key_name, key_name_len,
+				       value, value_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto sa_exit;
+	}
+
 	req_lib_confdb_key_iter.header.size = sizeof (struct req_lib_confdb_key_iter);
 	req_lib_confdb_key_iter.header.id = MESSAGE_REQ_CONFDB_KEY_ITER;
 	req_lib_confdb_key_iter.parent_object_handle = parent_object_handle;
@@ -976,6 +1081,7 @@ confdb_error_t confdb_key_iter (
 		memcpy(value, res_lib_confdb_key_iter.value.value, *value_len);
 	}
 
+sa_exit:
 	context->context++;
 
 error_exit:

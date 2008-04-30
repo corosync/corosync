@@ -91,8 +91,8 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o
-	$(CC) $(DARWIN_OPTS) util.o confdb.o -o $@
+libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+	$(CC) $(DARWIN_OPTS) util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) $(DARWIN_OPTS) util.o cfg.o -o $@
@@ -129,8 +129,8 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o
-	$(CC) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o -o $@
+libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+	$(CC) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
@@ -161,8 +161,8 @@ libevs.a: util.o evs.o
 libcpg.a: util.o cpg.o
 	$(AR) -rc libcpg.a util.o cpg.o
 
-libconfdb.a: util.o confdb.o
-	$(AR) -rc libconfdb.a util.o confdb.o
+libconfdb.a: util.o confdb.o sa-confdb.o
+	$(AR) -rc libconfdb.a util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 
 libcfg.a: util.o cfg.o
 	$(AR) -rc libcfg.a util.o cfg.o
