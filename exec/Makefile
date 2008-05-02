@@ -32,6 +32,8 @@
 
 # Include configuration
 #
+srcdir:=$(CURDIR)/../
+
 include $(srcdir)Makefile.inc
 
 override CFLAGS += -I$(srcdir)include
