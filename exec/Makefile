@@ -32,7 +32,7 @@
 
 # Include configuration
 #
-srcdir:=$(CURDIR)/../
+srcdir ?= $(CURDIR)/../
 
 include $(srcdir)Makefile.inc
 
