@@ -73,6 +73,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 static void message_handler_req_lib_confdb_object_find (void *conn, void *message);
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message);
+static void message_handler_req_lib_confdb_write (void *conn, void *message);
 
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message);
@@ -153,6 +154,12 @@ static struct openais_lib_handler confdb_lib_service[] =
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 12 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_write,
+		.response_size				= sizeof (struct res_lib_confdb_write),
+		.response_id				= MESSAGE_RES_CONFDB_WRITE,
 		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
@@ -444,6 +451,24 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	openais_conn_send_response(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
 }
 
+static void message_handler_req_lib_confdb_write (void *conn, void *message)
+{
+	struct res_lib_confdb_write res_lib_confdb_write;
+	int ret = SA_AIS_OK;
+	char *error_string;
+
+	if (global_objdb->object_write_config(&error_string))
+		ret = SA_AIS_ERR_ACCESS;
+
+	res_lib_confdb_write.header.size = sizeof(res_lib_confdb_write);
+	res_lib_confdb_write.header.id = MESSAGE_RES_CONFDB_WRITE;
+	res_lib_confdb_write.header.error = ret;
+	strcpy((char *)res_lib_confdb_write.error.value, error_string);
+	res_lib_confdb_write.error.length = strlen(error_string) + 1;
+
+	openais_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
+}
+
 /* TODO: when we have notification in the objdb. */
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message)
 {
@@ -464,4 +489,5 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	res.error = SA_AIS_ERR_NOT_SUPPORTED;
 	openais_conn_send_response(conn, &res, sizeof(res));
 }
+
 

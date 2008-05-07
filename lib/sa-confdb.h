@@ -42,3 +42,4 @@ extern int confdb_sa_key_replace(unsigned int parent_object_handle, void *key_na
 extern int confdb_sa_object_find(unsigned int parent_object_handle, unsigned int start_pos, void *object_name, int object_name_len, unsigned int *object_handle, unsigned int *next_pos);
 extern int confdb_sa_object_iter(unsigned int parent_object_handle, unsigned int start_pos, unsigned int *object_handle, void *object_name, int *object_name_len);
 extern int confdb_sa_key_iter(unsigned int parent_object_handle, unsigned int start_pos, void *key_name, int *key_name_len, void *value, int *value_len);
+extern int confdb_sa_write(char *error_text);

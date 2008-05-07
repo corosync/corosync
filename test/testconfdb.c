@@ -108,6 +108,7 @@ static void do_write_tests(confdb_handle_t handle)
 {
 	int res;
 	unsigned int object_handle;
+	char error_string[1024];
 
 	/* Add a scratch object and put some keys into it */
 	res = confdb_object_create(handle, OBJECT_PARENT_HANDLE, (void *)"testconfdb", strlen("testconfdb"), &object_handle);
@@ -153,6 +154,9 @@ static void do_write_tests(confdb_handle_t handle)
 		printf( "error destroying 'testconfdb' object: %d\n", res);
 		return;
 	}
+
+	res = confdb_write(handle, error_string);
+	printf("confdb_write returned %d: %s\n", res, error_string);
 }
 
 

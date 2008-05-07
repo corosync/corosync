@@ -270,6 +270,20 @@ int confdb_sa_object_find (
 				       next_pos);
 }
 
+int confdb_sa_write (
+	unsigned int parent_object_handle,
+	char *error_text)
+{
+	char *errtext;
+	int ret;
+
+	ret = objdb->object_write_config(&errtext);
+	if (!ret)
+		strcpy(error_text, errtext);
+
+	return ret;
+}
+
 
 int confdb_sa_object_iter (
 	unsigned int parent_object_handle,

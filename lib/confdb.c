@@ -1089,3 +1089,53 @@ error_exit:
 
 	return (error);
 }
+
+confdb_error_t confdb_write (
+	confdb_handle_t handle,
+	char *error_text)
+{
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov[2];
+	mar_req_header_t req;
+	struct res_lib_confdb_write res_lib_confdb_write;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_write(error_text))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req.size = sizeof (mar_req_header_t);
+	req.id = MESSAGE_REQ_CONFDB_WRITE;
+
+	iov[0].iov_base = (char *)&req;
+	iov[0].iov_len = sizeof (mar_req_header_t);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+				       &res_lib_confdb_write, sizeof ( struct res_lib_confdb_write));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_confdb_write.header.error;
+	memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
+
+error_exit:
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+

@@ -96,6 +96,14 @@ confdb_error_t confdb_initialize (
 confdb_error_t confdb_finalize (
 	confdb_handle_t handle);
 
+
+/*
+ * Write back the configuration
+ */
+confdb_error_t confdb_write (
+	confdb_handle_t handle,
+	char *error_text);
+
 /*
  * Get a file descriptor on which to poll.  confdb_handle_t is NOT a
  * file descriptor and may not be used directly.

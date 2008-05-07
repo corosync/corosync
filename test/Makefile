@@ -155,7 +155,7 @@ cpgbench: cpgbench.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o cpgbench cpgbench.o $(LIBS)
 
 testconfdb: testconfdb.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testconfdb testconfdb.o $(LIBS)# -rdynamic
+	$(CC) $(LDFLAGS) -o testconfdb testconfdb.o $(LIBS) -rdynamic
 
 openais-cfgtool: openais-cfgtool.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o openais-cfgtool openais-cfgtool.o $(LIBS)

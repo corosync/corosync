@@ -50,7 +50,8 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_OBJECT_PARENT_GET = 8,
 	MESSAGE_REQ_CONFDB_KEY_ITER = 9,
 	MESSAGE_REQ_CONFDB_TRACK_START = 10,
-	MESSAGE_REQ_CONFDB_TRACK_STOP = 11
+	MESSAGE_REQ_CONFDB_TRACK_STOP = 11,
+	MESSAGE_REQ_CONFDB_WRITE = 12
 };
 
 enum res_confdb_types {
@@ -66,7 +67,8 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_KEY_ITER = 9,
 	MESSAGE_RES_CONFDB_TRACK_START = 10,
 	MESSAGE_RES_CONFDB_TRACK_STOP = 11,
-	MESSAGE_RES_CONFDB_CHANGE_CALLBACK = 12
+	MESSAGE_RES_CONFDB_CHANGE_CALLBACK = 12,
+	MESSAGE_RES_CONFDB_WRITE = 13
 };
 
 
@@ -165,6 +167,11 @@ struct req_lib_confdb_key_get {
 struct res_lib_confdb_key_get {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
+};
+
+struct res_lib_confdb_write {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_name_t error __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_change_callback {
