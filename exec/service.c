@@ -318,8 +318,7 @@ extern unsigned int openais_service_unlink_all (
 			objdb, object_service_handle, service_name, *service_ver);
 
 		objdb->object_destroy (object_service_handle);
-		log_printf(LOG_LEVEL_NOTICE, "%s was unlinked\n", service_name);
-		logsys_flush ();
+		objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	}
 
 	return (0);
