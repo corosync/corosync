@@ -93,6 +93,10 @@ static struct default_service default_services[] = {
 	{
 		.name			 = "openais_confdb",
 		.ver			 = 0,
+	},
+	{
+		.name			 = "lha_crm",
+		.ver			 = 0,
 	}
 };
 
@@ -208,17 +212,47 @@ unsigned int openais_service_link_and_init (
 	return (res);
 }
 
+static int openais_service_unlink_common(
+	struct objdb_iface_ver0 *objdb,
+	unsigned int object_service_handle,
+	const char *service_name,
+	unsigned int service_version) 
+{
+	unsigned int res;
+	unsigned short *service_id;
+	unsigned int *found_service_handle;
+	res = objdb->object_key_get (object_service_handle,
+				     "handle",
+				     strlen ("handle"),
+				     (void *)&found_service_handle,
+				     NULL);
+	
+	res = objdb->object_key_get (object_service_handle,
+				     "service_id",
+				     strlen ("service_id"),
+				     (void *)&service_id,
+				     NULL);
+	
+	log_printf(LOG_LEVEL_NOTICE, "Unloading openais component: %s v%u\n",
+		   service_name, service_version);
+	
+	if (ais_service[*service_id]->exec_exit_fn) {
+		ais_service[*service_id]->exec_exit_fn (objdb);
+	}
+	ais_service[*service_id] = NULL;
+    
+	return lcr_ifact_release (*found_service_handle);	
+}
+
 extern unsigned int openais_service_unlink_and_exit (
 	struct objdb_iface_ver0 *objdb,
 	char *service_name,
 	unsigned int service_ver)
 {
+	unsigned int res;
 	unsigned int object_service_handle;
 	char *found_service_name;
 	unsigned int *found_service_ver;
-	unsigned int *found_service_handle;
-	unsigned short *service_id;
-	unsigned int res;
 
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	while (objdb->object_find (
@@ -244,30 +278,51 @@ extern unsigned int openais_service_unlink_and_exit (
 		 */
 		if ((strcmp (service_name, found_service_name) == 0) &&
 			(service_ver == *found_service_ver)) {
-
-			res = objdb->object_key_get (object_service_handle,
-				"handle",
-				strlen ("handle"),
-				(void *)&found_service_handle,
-				NULL);
-
-			res = objdb->object_key_get (object_service_handle,
-				"service_id",
-				strlen ("service_id"),
-				(void *)&service_id,
-				NULL);
-					
-			if (ais_service[*service_id]->exec_exit_fn) {
-				ais_service[*service_id]->exec_exit_fn (objdb);
-			}
-			ais_service[*service_id] = NULL;
-
-			res = lcr_ifact_release (*found_service_handle);	
+			res = openais_service_unlink_common(
+			    objdb, object_service_handle, service_name, service_ver);
 			objdb->object_destroy (object_service_handle);
-			return (res);
+			return res;
 		}
 	}
 	return (-1);
+}
+
+extern unsigned int openais_service_unlink_all (
+	struct objdb_iface_ver0 *objdb)
+{
+	char *service_name;
+	unsigned int *service_ver;
+	unsigned int object_service_handle;
+
+	log_printf(LOG_LEVEL_NOTICE, "Unloading all openais components\n");
+	
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	while (objdb->object_find (OBJECT_PARENT_HANDLE,
+				   "service",
+				   strlen ("service"),
+				   &object_service_handle) == 0) {
+		
+		objdb->object_key_get (object_service_handle,
+			"name",
+			strlen ("name"),
+			(void *)&service_name,
+			NULL);
+
+		objdb->object_key_get (object_service_handle,
+			"ver",
+			strlen ("ver"),
+			(void *)&service_ver,
+			NULL);
+				
+		openais_service_unlink_common(
+			objdb, object_service_handle, service_name, *service_ver);
+
+		objdb->object_destroy (object_service_handle);
+		log_printf(LOG_LEVEL_NOTICE, "%s was unlinked\n", service_name);
+		logsys_flush ();
+	}
+
+	return (0);
 }
 
 /*

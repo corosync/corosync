@@ -107,6 +107,8 @@ static int num_config_modules;
 
 static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
 
+static struct objdb_iface_ver0 *objdb = NULL;
+
 SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 static void sigusr2_handler (int num)
@@ -119,6 +121,50 @@ static void sigusr2_handler (int num)
 		}
 	}
 }
+
+static void *aisexec_exit (void *arg)
+{
+	if(objdb) {
+		openais_service_unlink_all (objdb);
+	}
+
+#ifdef DEBUG_MEMPOOL
+	int stats_inuse[MEMPOOL_GROUP_SIZE];
+	int stats_avail[MEMPOOL_GROUP_SIZE];
+	int stats_memoryused[MEMPOOL_GROUP_SIZE];
+	int i;
+
+	mempool_getstats (stats_inuse, stats_avail, stats_memoryused);
+	log_printf (LOG_LEVEL_DEBUG, "Memory pools:\n");
+	for (i = 0; i < MEMPOOL_GROUP_SIZE; i++) {
+	log_printf (LOG_LEVEL_DEBUG, "order %d size %d inuse %d avail %d memory used %d\n",
+		i, 1<<i, stats_inuse[i], stats_avail[i], stats_memoryused[i]);
+	}
+#endif
+
+	totempg_finalize ();
+	logsys_flush ();
+
+	openais_exit_error (AIS_DONE_EXIT);
+
+	/* never reached */
+	return NULL;
+}
+
+pthread_t aisexec_exit_thread;
+static void init_shutdown(void *data) 
+{
+	pthread_create (&aisexec_exit_thread, NULL, aisexec_exit, NULL);
+}
+
+
+static poll_timer_handle shutdown_handle;
+static void sigquit_handler (int num)
+{
+	/* avoid creating threads from within the interrupt context */
+	poll_timer_add (aisexec_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
+}
+
 
 static void sigsegv_handler (int num)
 {
@@ -145,23 +191,7 @@ struct totempg_group openais_group = {
 
 void sigintr_handler (int signum)
 {
-
-#ifdef DEBUG_MEMPOOL
-	int stats_inuse[MEMPOOL_GROUP_SIZE];
-	int stats_avail[MEMPOOL_GROUP_SIZE];
-	int stats_memoryused[MEMPOOL_GROUP_SIZE];
-	int i;
-
-	mempool_getstats (stats_inuse, stats_avail, stats_memoryused);
-	log_printf (LOG_LEVEL_DEBUG, "Memory pools:\n");
-	for (i = 0; i < MEMPOOL_GROUP_SIZE; i++) {
-	log_printf (LOG_LEVEL_DEBUG, "order %d size %d inuse %d avail %d memory used %d\n",
-		i, 1<<i, stats_inuse[i], stats_avail[i], stats_memoryused[i]);
-	}
-#endif
-
-	totempg_finalize ();
-	openais_exit_error (AIS_DONE_EXIT);
+	poll_timer_add (aisexec_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
 }
 
 
@@ -290,6 +320,7 @@ static void aisexec_tty_detach (void)
 	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
+
 	switch (fork ()) {
 		case -1:
 			openais_exit_error (AIS_DONE_FORK);
@@ -298,6 +329,10 @@ static void aisexec_tty_detach (void)
 			/*
 			 * child which is disconnected, run this process
 			 */
+/* 			setset(); */
+			close (0);
+			close (1);
+			close (2);
 			break;
 		default:
 			exit (0);
@@ -436,7 +471,6 @@ int main (int argc, char **argv)
 	unsigned int objdb_handle;
 	unsigned int config_handle;
 	unsigned int config_version = 0;
-	struct objdb_iface_ver0 *objdb;
 	void *objdb_p;
 	struct config_iface_ver0 *config;
 	void *config_p;
@@ -481,7 +515,8 @@ int main (int argc, char **argv)
 	signal (SIGUSR2, sigusr2_handler);
 	signal (SIGSEGV, sigsegv_handler);
 	signal (SIGABRT, sigabrt_handler);
-
+	signal (SIGQUIT, sigquit_handler);
+	
 	openais_timer_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
