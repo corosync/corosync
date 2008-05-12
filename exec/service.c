@@ -67,10 +67,6 @@ static struct default_service default_services[] = {
 		.ver			 = 0,
 	},
 	{
-		.name			 = "openais_ckpt",
-		.ver			 = 0,
-	},
-	{
 		.name			 = "openais_evt",
 		.ver			 = 0,
 	},
@@ -94,10 +90,6 @@ static struct default_service default_services[] = {
 		.name			 = "openais_confdb",
 		.ver			 = 0,
 	},
-	{
-		.name			 = "lha_crm",
-		.ver			 = 0,
-	}
 };
 
 struct openais_service_handler *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
@@ -331,9 +323,50 @@ unsigned int openais_service_defaults_link_and_init (struct objdb_iface_ver0 *ob
 {
 	unsigned int i;
 
-	if (default_services_requested (objdb) == 0) {
-		return (0);
+	unsigned int object_service_handle;
+	char *found_service_name;
+	char *found_service_ver;
+	unsigned int found_service_ver_atoi;
+ 
+	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	while (objdb->object_find (
+		OBJECT_PARENT_HANDLE,
+		"service",
+		strlen ("service"),
+		&object_service_handle) == 0) {
+
+		objdb->object_key_get (object_service_handle,
+			"name",
+			strlen ("name"),
+			(void *)&found_service_name,
+			NULL);
+
+		objdb->object_key_get (object_service_handle,
+			"ver",
+			strlen ("ver"),
+			(void *)&found_service_ver,
+			NULL);
+
+		found_service_ver_atoi = atoi (found_service_ver);
+
+		objdb->object_key_replace (
+			object_service_handle,
+			"ver",
+			strlen ("ver"),
+			found_service_ver,
+			strlen (found_service_ver),
+			&found_service_ver_atoi,
+			sizeof (found_service_ver_atoi));
+		
+		openais_service_link_and_init (
+			objdb,
+			found_service_name,
+			found_service_ver_atoi);
 	}
+
+ 	if (default_services_requested (objdb) == 0) {
+ 		return (0);
+ 	}
 	for (i = 0;
 		i < sizeof (default_services) / sizeof (struct default_service); i++) {
 
