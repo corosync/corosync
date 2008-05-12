@@ -6,7 +6,7 @@
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * Author: Hans Feldt, Anders Eriksson, Lars Holm
  * - Introduced AMF B.02 information model

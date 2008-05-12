@@ -3,7 +3,7 @@
  * Copyright (c) 2006 Ericsson AB.
  * Copyright (c) 2006-2007 Red Hat, Inc.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  * Author: Hans Feldt
  *
  * All rights reserved.

@@ -4,7 +4,7 @@
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@mvista.com), Mark Haverkamp (markh@osdl.org)
+ * Author: Steven Dake (sdake@redhat.com), Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
  * 

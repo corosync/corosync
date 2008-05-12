@@ -4,7 +4,7 @@
  *
  * All rights reserved.
  *
- * Authors: Steven Dake (sdake@mvista.com)
+ * Authors: Steven Dake (sdake@redhat.com)
  *         Muni Bajpai (muni.osdl@gmail.com)
  *
  * This software licensed under BSD license, the text of which follows:

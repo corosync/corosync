@@ -3,7 +3,7 @@
  * Copyright (c) 2006 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * All rights reserved.
  *

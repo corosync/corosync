@@ -1,7 +1,7 @@
 /** @file amfsg.c
  * 
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Author: Steven Dake (sdake@mvista.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * Copyright (c) 2006 Ericsson AB.
  * Author: Hans Feldt, Anders Eriksson, Lars Holm
