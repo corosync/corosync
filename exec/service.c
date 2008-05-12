@@ -67,6 +67,10 @@ static struct default_service default_services[] = {
 		.ver			 = 0,
 	},
 	{
+		.name			 = "openais_ckpt",
+		.ver			 = 0,
+	},
+	{
 		.name			 = "openais_evt",
 		.ver			 = 0,
 	},
@@ -75,13 +79,10 @@ static struct default_service default_services[] = {
 		.ver			 = 0,
 	},
 	{
-		.name			 = "openais_ckpt",
-		.ver			 = 0,
-	},
-	{
 		.name			 = "openais_msg",
 		.ver			 = 0,
 	},
+	{
 
 		.name			 = "openais_cfg",
 		.ver			 = 0,
