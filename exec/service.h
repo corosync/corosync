@@ -90,9 +90,9 @@ struct openais_service_handler_iface_ver0 {
  * Link and initialize a service
  */
 extern unsigned int openais_service_link_and_init (
-    struct objdb_iface_ver0 *objdb,
-    char *service_name,
-    unsigned int service_ver);
+	struct objdb_iface_ver0 *objdb,
+	char *service_name,
+	unsigned int service_ver);
 
 /*
  * Unlink and exit a service

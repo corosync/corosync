@@ -99,6 +99,9 @@ static struct default_service default_services[] = {
 
 struct openais_service_handler *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
+static unsigned int object_internal_configuration_handle;
+
+
 static unsigned int default_services_requested (struct objdb_iface_ver0 *objdb)
 {
 	unsigned int object_service_handle;
@@ -138,7 +141,7 @@ unsigned int openais_service_link_and_init (
 	unsigned int handle;
 	struct openais_service_handler *service;
 	unsigned int res;
-	unsigned int object_handle;
+	unsigned int object_service_handle;
 
 	/*
 	 * reference the service interface
@@ -176,30 +179,30 @@ unsigned int openais_service_link_and_init (
 	/*
 	 * Store service in object database
 	 */
-	objdb->object_create (OBJECT_PARENT_HANDLE,
-		&object_handle,
+	objdb->object_create (object_internal_configuration_handle,
+		&object_service_handle,
 		"service",
 		strlen ("service"));
 
-	objdb->object_key_create (object_handle,
+	objdb->object_key_create (object_service_handle,
 		"name",
 		strlen ("name"),
 		service_name,
 		strlen (service_name) + 1);
 
-	objdb->object_key_create (object_handle,
+	objdb->object_key_create (object_service_handle,
 		"ver",
 		strlen ("ver"),
 		&service_ver,
 		sizeof (service_ver));
 
-	res = objdb->object_key_create (object_handle,
+	res = objdb->object_key_create (object_service_handle,
 		"handle",
 		strlen ("handle"),
 		&handle,
 		sizeof (handle));
 
-	objdb->object_key_create (object_handle,
+	objdb->object_key_create (object_service_handle,
 		"service_id",
 		strlen ("service_id"),
 		&service->id,
@@ -209,7 +212,7 @@ unsigned int openais_service_link_and_init (
 	return (res);
 }
 
-static int openais_service_unlink_common(
+static int openais_service_unlink_common (
 	struct objdb_iface_ver0 *objdb,
 	unsigned int object_service_handle,
 	const char *service_name,
@@ -218,21 +221,22 @@ static int openais_service_unlink_common(
 	unsigned int res;
 	unsigned short *service_id;
 	unsigned int *found_service_handle;
+
 	res = objdb->object_key_get (object_service_handle,
-				     "handle",
-				     strlen ("handle"),
-				     (void *)&found_service_handle,
-				     NULL);
+		"handle",
+		strlen ("handle"),
+		(void *)&found_service_handle,
+		NULL);
 	
 	res = objdb->object_key_get (object_service_handle,
-				     "service_id",
-				     strlen ("service_id"),
-				     (void *)&service_id,
-				     NULL);
+		"service_id",
+		strlen ("service_id"),
+		(void *)&service_id,
+		NULL);
 	
 	log_printf(LOG_LEVEL_NOTICE, "Unloading openais component: %s v%u\n",
-		   service_name, service_version);
-	
+		service_name, service_version);
+
 	if (ais_service[*service_id]->exec_exit_fn) {
 		ais_service[*service_id]->exec_exit_fn (objdb);
 	}
@@ -251,9 +255,8 @@ extern unsigned int openais_service_unlink_and_exit (
 	char *found_service_name;
 	unsigned int *found_service_ver;
 
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
 	while (objdb->object_find (
-		OBJECT_PARENT_HANDLE,
+		object_internal_configuration_handle,
 		"service",
 		strlen ("service"),
 		&object_service_handle) == 0) {
@@ -275,8 +278,11 @@ extern unsigned int openais_service_unlink_and_exit (
 		 */
 		if ((strcmp (service_name, found_service_name) == 0) &&
 			(service_ver == *found_service_ver)) {
-			res = openais_service_unlink_common(
-			    objdb, object_service_handle, service_name, service_ver);
+
+			res = openais_service_unlink_common (
+				objdb, object_service_handle,
+				service_name, service_ver);
+
 			objdb->object_destroy (object_service_handle);
 			return res;
 		}
@@ -293,11 +299,12 @@ extern unsigned int openais_service_unlink_all (
 
 	log_printf(LOG_LEVEL_NOTICE, "Unloading all openais components\n");
 	
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
-	while (objdb->object_find (OBJECT_PARENT_HANDLE,
-				   "service",
-				   strlen ("service"),
-				   &object_service_handle) == 0) {
+	objdb->object_find_reset (object_internal_configuration_handle);
+
+	while (objdb->object_find (object_internal_configuration_handle,
+		"service",
+		strlen ("service"),
+		&object_service_handle) == 0) {
 		
 		objdb->object_key_get (object_service_handle,
 			"name",
@@ -311,11 +318,11 @@ extern unsigned int openais_service_unlink_all (
 			(void *)&service_ver,
 			NULL);
 				
-		openais_service_unlink_common(
+		openais_service_unlink_common (
 			objdb, object_service_handle, service_name, *service_ver);
 
 		objdb->object_destroy (object_service_handle);
-		objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+		objdb->object_find_reset (object_internal_configuration_handle);
 	}
 
 	return (0);
@@ -333,7 +340,13 @@ unsigned int openais_service_defaults_link_and_init (struct objdb_iface_ver0 *ob
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
  
+	objdb->object_create (OBJECT_PARENT_HANDLE,
+		&object_internal_configuration_handle,
+		"internal_configuration",
+		strlen ("internal_configuration"));
+
 	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+
 	while (objdb->object_find (
 		OBJECT_PARENT_HANDLE,
 		"service",
@@ -354,15 +367,6 @@ unsigned int openais_service_defaults_link_and_init (struct objdb_iface_ver0 *ob
 
 		found_service_ver_atoi = atoi (found_service_ver);
 
-		objdb->object_key_replace (
-			object_service_handle,
-			"ver",
-			strlen ("ver"),
-			found_service_ver,
-			strlen (found_service_ver),
-			&found_service_ver_atoi,
-			sizeof (found_service_ver_atoi));
-		
 		openais_service_link_and_init (
 			objdb,
 			found_service_name,
