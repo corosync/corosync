@@ -198,7 +198,7 @@ libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.2 $(TOTEM_OBJS) -o $@
 
 liblogsys.so.2.0.0: $(LIBLOGSYS_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.2 $(LOGSYS_OBJS) -o $@
+	$(CC) -shared -Wl,-soname,liblogsys.so.2 $(LOGSYS_OBJS) -o $@ $(LDFLAGS)
 
 endif
 
