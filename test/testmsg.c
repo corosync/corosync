@@ -46,11 +46,19 @@
 #include "saAis.h"
 #include "saMsg.h"
 
+SaMsgQueueHandleT async_handle;
+
 void QueueOpenCallback (
 	SaInvocationT invocation,
 	SaMsgQueueHandleT queueHandle,
 	SaAisErrorT error)
 {
+	/* DEBUG */
+	printf ("[DEBUG]: testmsg (QueueOpenCallback)\n");
+	printf ("[DEBUG]: \t { queueHandle = %llx }\n",
+		(unsigned long long) queueHandle);
+
+	async_handle = queueHandle;
 }
 
 void QueueGroupTrackCallback (
@@ -59,17 +67,25 @@ void QueueGroupTrackCallback (
 	SaUint32T numberOfMembers,
 	SaAisErrorT error)
 {
+	/* DEBUG */
+	printf ("[DEBUG]: testmsg (QueueGroupTrackCallback)\n");
 }
 
 void MessageDeliveredCallback (
 	SaInvocationT invocation,
 	SaAisErrorT error)
 {
+	/* DEBUG */
+	printf ("[DEBUG]: testmsg (MessageDeliveredCallback)\n");
+	printf ("[DEBUG]: \t { invocation = %llx }\n",
+		(unsigned long long) invocation);
 }
 
 void MessageReceivedCallback (
 	SaMsgQueueHandleT queueHandle)
 {
+	/* DEBUG */
+	printf ("[DEBUG]: testmsg (MessageReceivedCallback)\n");
 }
 
 SaMsgCallbacksT callbacks = {
@@ -83,13 +99,22 @@ SaVersionT version = { 'B', 1, 1 };
 
 SaMsgQueueCreationAttributesT creation_attributes = {
 	SA_MSG_QUEUE_PERSISTENT,
-	{128000, 128000, 128000},
+	{ 128000, 128000, 128000 },
 	SA_TIME_END
 };
 
 void setSaNameT (SaNameT *name, char *str) {
 	name->length = strlen (str);
-	memcpy (name->value, str, name->length);
+	strcpy (name->value, str);
+}
+
+void setSaMsgMessageT (SaMsgMessageT *message, char *data) {
+	message->type = 1;
+	message->version = 2;
+	message->size = strlen (data) + 1;
+	message->senderName = NULL;
+	message->data = strdup (data);
+	message->priority = 0;
 }
 
 void sigintr_handler (int signum) {
@@ -98,12 +123,26 @@ void sigintr_handler (int signum) {
 
 int main (void) {
 	SaMsgHandleT handle;
+	SaMsgMessageT message;
 	SaMsgQueueHandleT queue_handle;
-	fd_set read_fds;
 	SaSelectionObjectT select_fd;
+	SaInvocationT invocation = 3;
+
+	fd_set read_fds;
 	int result;
+
+	SaNameT async_name;
 	SaNameT queue_name;
 	SaNameT queue_group_name;
+	SaTimeT time;
+	SaMsgSenderIdT id;
+	SaMsgMessageT msg_a;
+	SaMsgMessageT msg_b;
+	SaMsgMessageT msg_c;
+
+	memset (&msg_a, 0, sizeof (SaMsgMessageT));
+	memset (&msg_b, 0, sizeof (SaMsgMessageT));
+	memset (&msg_c, 0, sizeof (SaMsgMessageT));
 
 	signal (SIGINT, sigintr_handler);
 
@@ -115,6 +154,7 @@ int main (void) {
 
 	saMsgSelectionObjectGet (handle, &select_fd);
 
+	setSaNameT (&async_name, "async");
 	setSaNameT (&queue_name, "queue");
 
 	result = saMsgQueueOpen (handle,
@@ -124,6 +164,15 @@ int main (void) {
 		SA_TIME_END,
 		&queue_handle);
 	printf ("saMsgQueueOpen result is %d (should be 1)\n", result);
+	printf ("saMsgQueueOpen { queue_handle = %llx }\n", queue_handle);
+
+	result = saMsgQueueOpenAsync (handle,
+				      invocation,
+				      &async_name,
+				      &creation_attributes,
+				      SA_MSG_QUEUE_CREATE);
+	printf ("saMsgQueueOpenAsync result is %d (should be 1)\n", result);
+	printf ("saMsgQueueOpen { async_handle = %llx }\n", async_handle);
 
 	setSaNameT (&queue_group_name, "queue_group");
 
@@ -145,7 +194,9 @@ int main (void) {
 		&queue_name);
 	printf ("saMsgQueueGroupInsert result is %d (should be 1)\n", result);
 
+	saMsgDispatch (handle, SA_DISPATCH_ALL);
 
+	/*
 	FD_ZERO (&read_fds);
 	do {
 		FD_SET (select_fd, &read_fds);
@@ -159,18 +210,57 @@ int main (void) {
 		}
 		saMsgDispatch (handle, SA_DISPATCH_ALL);
 	} while (result);
+	*/
 
-	result = saMsgQueueGroupRemove (
-		handle,
-		&queue_group_name,
-		&queue_name);
+	setSaMsgMessageT (&message, "test_msg_01");
+	result = saMsgMessageSend (handle, &queue_name, &message, SA_TIME_ONE_SECOND);
+	printf ("saMsgMessageSend [1] result is %d (should be 1)\n", result);
+
+	setSaMsgMessageT (&message, "test_msg_02");
+	result = saMsgMessageSend (handle, &queue_name, &message, SA_TIME_ONE_SECOND);
+	printf ("saMsgMessageSend [2] result is %d (should be 1)\n", result);
+
+	setSaMsgMessageT (&message, "test_msg_03");
+	result = saMsgMessageSend (handle, &queue_name, &message, SA_TIME_ONE_SECOND);
+	printf ("saMsgMessageSend [3] result is %d (should be 1)\n", result);
+
+	setSaMsgMessageT (&message, "test_msg_04");
+	result = saMsgMessageSendAsync (handle, invocation, &queue_name, &message,
+		SA_MSG_MESSAGE_DELIVERED_ACK);
+	printf ("saMsgMessageSendAsync [4] result is %d (should be 1)\n", result);
+
+	setSaMsgMessageT (&message, "test_msg_05");
+	result = saMsgMessageSendAsync (handle, invocation, &queue_name, &message,
+		SA_MSG_MESSAGE_DELIVERED_ACK);
+	printf ("saMsgMessageSendAsync [5] result is %d (should be 1)\n", result);
+
+	saMsgDispatch (handle, SA_DISPATCH_ALL);
+
+	result = saMsgMessageGet (queue_handle, &msg_a, &time, &id, SA_TIME_ONE_MINUTE);
+	printf ("saMsgMessageGet [a] result is %d (should be 1)\n", result);
+
+	result = saMsgMessageGet (queue_handle, &msg_b, &time, &id, SA_TIME_ONE_MINUTE);
+	printf ("saMsgMessageGet [b] result is %d (should be 1)\n", result);
+
+	result = saMsgMessageGet (queue_handle, &msg_c, &time, &id, SA_TIME_ONE_MINUTE);
+	printf ("saMsgMessageGet [c] result is %d (should be 1)\n", result);
+
+	printf ("saMsgMessageGet { (a) data = %s }\n", (char *)(msg_a.data));
+	printf ("saMsgMessageGet { (b) data = %s }\n", (char *)(msg_b.data));
+	printf ("saMsgMessageGet { (c) data = %s }\n", (char *)(msg_c.data));
+
+	result = saMsgQueueGroupRemove (handle,	&queue_group_name, &queue_name);
 	printf ("saMsgQueueGroupRemove result is %d (should be 1)\n", result);
 
-	result = saMsgQueueGroupDelete (handle,
-		&queue_group_name);
+	result = saMsgQueueGroupDelete (handle,	&queue_group_name);
 	printf ("saMsgQueueGroupDelete result is %d (should be 1)\n", result);
 
+	printf ("saMsgQueueClose { queue_handle = %llx }\n", queue_handle);
 	result = saMsgQueueClose (queue_handle);
+	printf ("saMsgQueueClose result is %d (should be 1)\n", result);
+
+	printf ("saMsgQueueClose { async_handle = %llx }\n", async_handle);
+	result = saMsgQueueClose (async_handle);
 	printf ("saMsgQueueClose result is %d (should be 1)\n", result);
 
 	result = saMsgFinalize (handle);

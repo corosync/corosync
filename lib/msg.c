@@ -46,12 +46,13 @@
 #include <sys/un.h>
 
 #include <saAis.h>
-#include <list.h>
 #include <saMsg.h>
+
 #include <ipc_gen.h>
 #include <ipc_msg.h>
-
 #include <ais_util.h>
+
+#include <list.h>
 
 struct message_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
@@ -82,7 +83,6 @@ struct msgQueueInstance {
 	struct list_head section_iteration_list_head;
 	pthread_mutex_t *response_mutex;
 };
-
 
 void msgHandleInstanceDestructor (void *instance);
 void queueHandleInstanceDestructor (void *instance);
@@ -124,7 +124,6 @@ struct iteratorSectionIdListEntry {
 	unsigned char data[0];
 };
 
-
 /*
  * Implementation
  */
@@ -138,6 +137,7 @@ void msgHandleInstanceDestructor (void *instance)
 
 void queueHandleInstanceDestructor (void *instance)
 {
+	return;
 }
 
 #ifdef COMPILE_OUT
@@ -186,7 +186,7 @@ static void msgInstanceFinalize (struct msgInstance *msgInstance)
 	saHandleDestroy (&msgHandleDatabase, msgInstance->msgHandle);
 }
 
-#endif
+#endif	/* COMPILE_OUT */
 
 SaAisErrorT
 saMsgInitialize (
@@ -194,8 +194,8 @@ saMsgInitialize (
 	const SaMsgCallbacksT *callbacks,
 	SaVersionT *version)
 {
+	SaAisErrorT error;
 	struct msgInstance *msgInstance;
-	SaAisErrorT error = SA_AIS_OK;
 
 	if (msgHandle == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
@@ -217,6 +217,10 @@ saMsgInitialize (
 	if (error != SA_AIS_OK) {
 		goto error_destroy;
 	}
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgInitialize { msgHandle = %llx }\n",
+		(unsigned long long) *msgHandle);
 
 	msgInstance->response_fd = -1;
 
@@ -258,10 +262,16 @@ saMsgSelectionObjectGet (
 	struct msgInstance *msgInstance;
 	SaAisErrorT error;
 
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgSelectionObjectGet { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
 	if (selectionObject == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
@@ -285,18 +295,18 @@ saMsgDispatch (
 	SaAisErrorT error;
 	int dispatch_avail;
 	struct msgInstance *msgInstance;
+	struct msgQueueInstance *msgQueueInstance;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct message_overlay dispatch_data;
-/*
+
 	struct res_lib_msg_queueopenasync *res_lib_msg_queueopenasync;
-	struct res_lib_msg_queuesynchronizeasync *res_lib_msg_queuesynchronizeasync;
-	struct msgQueueInstance *msgQueueInstance;
-*/
+	struct res_lib_msg_messagesendasync *res_lib_msg_messagesendasync;
+
 
 	if (dispatchFlags != SA_DISPATCH_ONE &&
-		dispatchFlags != SA_DISPATCH_ALL &&
-		dispatchFlags != SA_DISPATCH_BLOCKING) {
-
+	    dispatchFlags != SA_DISPATCH_ALL &&
+	    dispatchFlags != SA_DISPATCH_BLOCKING)
+	{
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
@@ -349,8 +359,10 @@ saMsgDispatch (
 			continue;
 		}
 		
-		memset(&dispatch_data,0, sizeof(struct message_overlay));
-		error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.header, sizeof (mar_res_header_t));
+		memset(&dispatch_data, 0, sizeof(struct message_overlay));
+
+		error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.header,
+			sizeof (mar_res_header_t));
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
@@ -368,18 +380,27 @@ saMsgDispatch (
 		* the callback routines may operate at the same time that
 		* MsgFinalize has been called in another thread.
 		*/
-		memcpy(&callbacks,&msgInstance->callbacks, sizeof(msgInstance->callbacks));
+		memcpy(&callbacks, &msgInstance->callbacks,
+		       sizeof(msgInstance->callbacks));
+
 		pthread_mutex_unlock(&msgInstance->dispatch_mutex);
+
+		/* DEBUG */
+		printf ("[DEBUG]: saMsgDispatch { id = %d }\n",
+			dispatch_data.header.id);
+
 		/*
 		 * Dispatch incoming response
 		 */
-		switch (dispatch_data.header.id) {
-#ifdef COMPILE_OUT
-		case MESSAGE_RES_MSG_QUEUE_QUEUEOPENASYNC:
+		switch (dispatch_data.header.id)
+		{
+		case MESSAGE_RES_MSG_QUEUEOPENASYNC:
+
 			if (callbacks.saMsgQueueOpenCallback == NULL) {
 				continue;
 			}
-			res_lib_msg_queueopenasync = (struct res_lib_msg_queueopenasync *) &dispatch_data;
+			res_lib_msg_queueopenasync =
+				(struct res_lib_msg_queueopenasync *) &dispatch_data;
 
 			/*
 			 * This instance get/listadd/put required so that close
@@ -390,14 +411,15 @@ saMsgDispatch (
 					res_lib_msg_queueopenasync->queueHandle,
 					(void *)&msgQueueInstance);
 
-					assert (error == SA_AIS_OK); /* should only be valid handles here */
+				assert (error == SA_AIS_OK);
+
 				/*
 				 * open succeeded without error
 				 */
 				list_init (&msgQueueInstance->list);
 				list_init (&msgQueueInstance->section_iteration_list_head);
 				list_add (&msgQueueInstance->list,
-					&msgInstance->queue_list);
+					  &msgInstance->queue_list);
 
 				callbacks.saMsgQueueOpenCallback(
 					res_lib_msg_queueopenasync->invocation,
@@ -414,30 +436,35 @@ saMsgDispatch (
 					-1,
 					res_lib_msg_queueopenasync->header.error);
 			}
+
 			break;
 
-		case MESSAGE_RES_MSG_QUEUE_QUEUESYNCHRONIZEASYNC:
-			if (callbacks.saMsgQueueSynchronizeCallback == NULL) {
+		case MESSAGE_RES_MSG_MESSAGESENDASYNC:
+
+			if (callbacks.saMsgMessageDeliveredCallback == NULL) {
 				continue;
 			}
+			res_lib_msg_messagesendasync =
+				(struct res_lib_msg_messagesendasync *) &dispatch_data;
 
-			res_lib_msg_queuesynchronizeasync = (struct res_lib_msg_queuesynchronizeasync *) &dispatch_data;
+			callbacks.saMsgMessageDeliveredCallback (
+				res_lib_msg_messagesendasync->invocation,
+				res_lib_msg_messagesendasync->header.error);
 
-			callbacks.saMsgQueueSynchronizeCallback(
-				res_lib_msg_queuesynchronizeasync->invocation,
-				res_lib_msg_queuesynchronizeasync->header.error);
 			break;
-#endif
+
 		default:
 			/* TODO */
 			break;
 		}
+
 		/*
 		 * Determine if more messages should be processed
 		 */
-		switch (dispatchFlags) {
+		switch (dispatchFlags)
+		{
 		case SA_DISPATCH_ONE:
-				cont = 0;
+			cont = 0;
 			break;
 		case SA_DISPATCH_ALL:
 			break;
@@ -445,6 +472,7 @@ saMsgDispatch (
 			break;
 		}
 	} while (cont);
+
 error_unlock:
 	pthread_mutex_unlock(&msgInstance->dispatch_mutex);
 error_put:
@@ -457,8 +485,12 @@ SaAisErrorT
 saMsgFinalize (
 	const SaMsgHandleT msgHandle)
 {
-	struct msgInstance *msgInstance;
 	SaAisErrorT error;
+	struct msgInstance *msgInstance;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgFinalize { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
 
 	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
 		(void *)&msgInstance);
@@ -481,7 +513,8 @@ saMsgFinalize (
 
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
-// TODO	msgInstanceFinalize (msgInstance);
+	/* TODO */
+	/* msgInstanceFinalize (msgInstance); */
 
 	if (msgInstance->response_fd != -1) {
 		shutdown (msgInstance->response_fd, 0);
@@ -508,10 +541,14 @@ saMsgQueueOpen (
 	SaMsgQueueHandleT *queueHandle)
 {
 	SaAisErrorT error;
-	struct msgQueueInstance *msgQueueInstance;
 	struct msgInstance *msgInstance;
+	struct msgQueueInstance *msgQueueInstance;
 	struct req_lib_msg_queueopen req_lib_msg_queueopen;
 	struct res_lib_msg_queueopen res_lib_msg_queueopen;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueOpen { queueName = %s }\n",
+		(char *) queueName->value);
 
 	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
 		(void *)&msgInstance);
@@ -538,19 +575,29 @@ saMsgQueueOpen (
 	msgQueueInstance->queueHandle = *queueHandle;
 	msgQueueInstance->openFlags = openFlags;
 
-	req_lib_msg_queueopen.header.size = sizeof (struct req_lib_msg_queueopen);
-	req_lib_msg_queueopen.header.id = MESSAGE_REQ_MSG_QUEUEOPEN;
-	memcpy (&req_lib_msg_queueopen.queueName, queueName, sizeof (SaNameT));
-	memcpy (&msgQueueInstance->queueName, queueName, sizeof (SaNameT));
+	req_lib_msg_queueopen.header.size =
+		sizeof (struct req_lib_msg_queueopen);
+	req_lib_msg_queueopen.header.id =
+		MESSAGE_REQ_MSG_QUEUEOPEN;
+
+	memcpy (&req_lib_msg_queueopen.queueName, queueName,
+		sizeof (SaNameT));
+	memcpy (&msgQueueInstance->queueName, queueName,
+		sizeof (SaNameT));
+
+	req_lib_msg_queueopen.invocation = 0;
 	req_lib_msg_queueopen.creationAttributesSet = 0;
+
 	if (creationAttributes) {
 		memcpy (&req_lib_msg_queueopen.creationAttributes,
 			creationAttributes,
 			sizeof (SaMsgQueueCreationAttributesT));
 		req_lib_msg_queueopen.creationAttributesSet = 1;
 	}
-	req_lib_msg_queueopen.openFlags = openFlags;
-	req_lib_msg_queueopen.timeout = timeout;
+
+	req_lib_msg_queueopen.openFlags = openFlags; /* ? */
+	req_lib_msg_queueopen.queueHandle = *queueHandle; /* ? */
+	req_lib_msg_queueopen.timeout = timeout; /* ? */
 
 	pthread_mutex_lock (msgQueueInstance->response_mutex);
 
@@ -591,12 +638,16 @@ saMsgQueueOpenAsync (
 	const SaMsgQueueCreationAttributesT *creationAttributes,
 	SaMsgQueueOpenFlagsT openFlags)
 {
-	struct msgQueueInstance *msgQueueInstance;
-	struct msgInstance *msgInstance;
-	SaMsgQueueHandleT queueHandle;
 	SaAisErrorT error;
+	SaMsgQueueHandleT queueHandle;
+	struct msgInstance *msgInstance;
+	struct msgQueueInstance *msgQueueInstance;
 	struct req_lib_msg_queueopen req_lib_msg_queueopen;
 	struct res_lib_msg_queueopenasync res_lib_msg_queueopenasync;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueOpenAsync { queueName = %s }\n",
+		(char *) queueName->value);
 
 	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
 		(void *)&msgInstance);
@@ -627,10 +678,20 @@ saMsgQueueOpenAsync (
 	msgQueueInstance->msgHandle = msgHandle;
 	msgQueueInstance->queueHandle = queueHandle;
 	msgQueueInstance->openFlags = openFlags;
-	req_lib_msg_queueopen.header.size = sizeof (struct req_lib_msg_queueopen);
-	req_lib_msg_queueopen.header.id = MESSAGE_REQ_MSG_QUEUEOPEN;
+
+	req_lib_msg_queueopen.header.size =
+		sizeof (struct req_lib_msg_queueopen);
+	req_lib_msg_queueopen.header.id =
+		MESSAGE_REQ_MSG_QUEUEOPENASYNC;
+
+	memcpy (&req_lib_msg_queueopen.queueName, queueName,
+		sizeof (SaNameT));
+	memcpy (&msgQueueInstance->queueName, queueName,
+		sizeof (SaNameT));
+
 	req_lib_msg_queueopen.invocation = invocation;
 	req_lib_msg_queueopen.creationAttributesSet = 0;
+
 	if (creationAttributes) {
 		memcpy (&req_lib_msg_queueopen.creationAttributes,
 			creationAttributes,
@@ -638,10 +699,11 @@ saMsgQueueOpenAsync (
 		req_lib_msg_queueopen.creationAttributesSet = 1;
 	}
 	
-	req_lib_msg_queueopen.openFlags = openFlags;
-	req_lib_msg_queueopen.queueHandle = queueHandle;
+	req_lib_msg_queueopen.openFlags = openFlags; /* ? */
+	req_lib_msg_queueopen.queueHandle = queueHandle; /* ? */
+	req_lib_msg_queueopen.timeout = 0; /* ? */
 
-	pthread_mutex_unlock (msgQueueInstance->response_mutex);
+	pthread_mutex_lock (msgQueueInstance->response_mutex);
 
 	error = saSendReceiveReply (msgQueueInstance->response_fd,
 		&req_lib_msg_queueopen,
@@ -676,10 +738,10 @@ SaAisErrorT
 saMsgQueueClose (
 	SaMsgQueueHandleT queueHandle)
 {
-	struct req_lib_msg_queueclose req_lib_msg_queueclose;
-	struct res_lib_msg_queueclose res_lib_msg_queueclose;
 	SaAisErrorT error;
 	struct msgQueueInstance *msgQueueInstance;
+	struct req_lib_msg_queueclose req_lib_msg_queueclose;
+	struct res_lib_msg_queueclose res_lib_msg_queueclose;
 
 	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle,
 		(void *)&msgQueueInstance);
@@ -687,11 +749,13 @@ saMsgQueueClose (
 		return (error);
 	}
 
-	req_lib_msg_queueclose.header.size = sizeof (struct req_lib_msg_queueclose);
-	req_lib_msg_queueclose.header.id = MESSAGE_REQ_MSG_QUEUECLOSE;
-	memcpy (&req_lib_msg_queueclose.queueName,
-		&msgQueueInstance->queueName, sizeof (SaNameT));
+	req_lib_msg_queueclose.header.size =
+		sizeof (struct req_lib_msg_queueclose);
+	req_lib_msg_queueclose.header.id =
+		MESSAGE_REQ_MSG_QUEUECLOSE;
 
+	memcpy (&req_lib_msg_queueclose.queueName, &msgQueueInstance->queueName,
+		sizeof (SaNameT));
 
 	pthread_mutex_lock (msgQueueInstance->response_mutex);
 
@@ -708,10 +772,12 @@ saMsgQueueClose (
 	}
 
 	if (error == SA_AIS_OK) {
-// TODO		msgQueueInstanceFinalize (msgQueueInstance);
+		/* TODO	*/
+		/* msgQueueInstanceFinalize (msgQueueInstance); */
 	}
 
 	saHandleInstancePut (&queueHandleDatabase, queueHandle);
+
 	return (error);
 }
 
@@ -721,22 +787,32 @@ saMsgQueueStatusGet (
 	const SaNameT *queueName,
 	SaMsgQueueStatusT *queueStatus)
 {
+	SaAisErrorT error;
 	struct msgInstance *msgInstance;
 	struct req_lib_msg_queuestatusget req_lib_msg_queuestatusget;
 	struct res_lib_msg_queuestatusget res_lib_msg_queuestatusget;
-	SaAisErrorT error;
 
 	if (queueName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueStatusGet { queueName = %s }\n",
+		(char *) queueName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuestatusget.header.size = sizeof (struct req_lib_msg_queuestatusget);
-	req_lib_msg_queuestatusget.header.id = MESSAGE_REQ_MSG_QUEUESTATUSGET;
-	memcpy (&req_lib_msg_queuestatusget.queueName, queueName, sizeof (SaNameT));
+	req_lib_msg_queuestatusget.header.size =
+		sizeof (struct req_lib_msg_queuestatusget);
+	req_lib_msg_queuestatusget.header.id =
+		MESSAGE_REQ_MSG_QUEUESTATUSGET;
+
+	memcpy (&req_lib_msg_queuestatusget.queueName, queueName,
+		sizeof (SaNameT));
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
@@ -756,9 +832,30 @@ saMsgQueueStatusGet (
 		memcpy (queueStatus, &res_lib_msg_queuestatusget.queueStatus,
 			sizeof (SaMsgQueueStatusT));
 	}
+
 	return (error);
 }
 
+SaAisErrorT
+saMsgQueueRetentionTimeSet (
+	SaMsgQueueHandleT queueHandle,
+	SaTimeT *retentionTime)
+{
+	SaAisErrorT error;
+	struct msgQueueInstance *msgQueueInstance;
+
+	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle,
+		(void *)&msgQueueInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&queueHandleDatabase, queueHandle);
+
+	return (error);
+}
 
 SaAisErrorT
 saMsgQueueUnlink (
@@ -773,14 +870,24 @@ saMsgQueueUnlink (
 	if (queueName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueUnlink { queueName = %s }\n",
+		(char *) queueName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queueunlink.header.size = sizeof (struct req_lib_msg_queueunlink);
-	req_lib_msg_queueunlink.header.id = MESSAGE_REQ_MSG_QUEUEUNLINK;
-	memcpy (&req_lib_msg_queueunlink.queueName, queueName, sizeof (SaNameT));
+	req_lib_msg_queueunlink.header.size =
+		sizeof (struct req_lib_msg_queueunlink);
+	req_lib_msg_queueunlink.header.id =
+		MESSAGE_REQ_MSG_QUEUEUNLINK;
+
+	memcpy (&req_lib_msg_queueunlink.queueName, queueName,
+		sizeof (SaNameT));
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
@@ -793,7 +900,7 @@ saMsgQueueUnlink (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queueunlink.header.error : error);
 }
 
@@ -811,15 +918,25 @@ saMsgQueueGroupCreate (
 	if (queueGroupName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupCreate { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegroupcreate.header.size = sizeof (struct req_lib_msg_queuegroupcreate);
-	req_lib_msg_queuegroupcreate.header.id = MESSAGE_REQ_MSG_QUEUEGROUPCREATE;
+	req_lib_msg_queuegroupcreate.header.size =
+		sizeof (struct req_lib_msg_queuegroupcreate);
+	req_lib_msg_queuegroupcreate.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPCREATE;
+
 	memcpy (&req_lib_msg_queuegroupcreate.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
+
 	req_lib_msg_queuegroupcreate.queueGroupPolicy = queueGroupPolicy;
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
@@ -833,7 +950,7 @@ saMsgQueueGroupCreate (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegroupcreate.header.error : error);
 }
 
@@ -851,14 +968,24 @@ saMsgQueueGroupInsert (
 	if (queueName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupInsert { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegroupinsert.header.size = sizeof (struct req_lib_msg_queuegroupinsert);
-	req_lib_msg_queuegroupinsert.header.id = MESSAGE_REQ_MSG_QUEUEGROUPINSERT;
-	memcpy (&req_lib_msg_queuegroupinsert.queueName, queueName, sizeof (SaNameT));
+	req_lib_msg_queuegroupinsert.header.size =
+		sizeof (struct req_lib_msg_queuegroupinsert);
+	req_lib_msg_queuegroupinsert.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPINSERT;
+
+	memcpy (&req_lib_msg_queuegroupinsert.queueName, queueName,
+		sizeof (SaNameT));
 	memcpy (&req_lib_msg_queuegroupinsert.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
@@ -873,7 +1000,7 @@ saMsgQueueGroupInsert (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegroupinsert.header.error : error);
 }
 
@@ -891,14 +1018,24 @@ saMsgQueueGroupRemove (
 	if (queueName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupRemove { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegroupremove.header.size = sizeof (struct req_lib_msg_queuegroupremove);
-	req_lib_msg_queuegroupremove.header.id = MESSAGE_REQ_MSG_QUEUEGROUPREMOVE;
-	memcpy (&req_lib_msg_queuegroupremove.queueName, queueName, sizeof (SaNameT));
+	req_lib_msg_queuegroupremove.header.size =
+		sizeof (struct req_lib_msg_queuegroupremove);
+	req_lib_msg_queuegroupremove.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPREMOVE;
+
+	memcpy (&req_lib_msg_queuegroupremove.queueName, queueName,
+		sizeof (SaNameT));
 	memcpy (&req_lib_msg_queuegroupremove.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
@@ -913,7 +1050,7 @@ saMsgQueueGroupRemove (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegroupremove.header.error : error);
 }
 
@@ -930,13 +1067,22 @@ saMsgQueueGroupDelete (
 	if (queueGroupName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupDelete { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegroupdelete.header.size = sizeof (struct req_lib_msg_queuegroupdelete);
-	req_lib_msg_queuegroupdelete.header.id = MESSAGE_REQ_MSG_QUEUEGROUPDELETE;
+	req_lib_msg_queuegroupdelete.header.size =
+		sizeof (struct req_lib_msg_queuegroupdelete);
+	req_lib_msg_queuegroupdelete.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPDELETE;
+
 	memcpy (&req_lib_msg_queuegroupdelete.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
@@ -951,7 +1097,7 @@ saMsgQueueGroupDelete (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegroupdelete.header.error : error);
 }
 
@@ -970,14 +1116,24 @@ saMsgQueueGroupTrack (
 	if (queueGroupName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupTrack { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegrouptrack.header.size = sizeof (struct req_lib_msg_queuegrouptrack);
-	req_lib_msg_queuegrouptrack.header.id = MESSAGE_REQ_MSG_QUEUEGROUPTRACK;
+	req_lib_msg_queuegrouptrack.header.size =
+		sizeof (struct req_lib_msg_queuegrouptrack);
+	req_lib_msg_queuegrouptrack.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPTRACK;
+
 	req_lib_msg_queuegrouptrack.trackFlags = trackFlags;
+
 	memcpy (&req_lib_msg_queuegrouptrack.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
@@ -992,7 +1148,7 @@ saMsgQueueGroupTrack (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegrouptrack.header.error : error);
 }
 
@@ -1009,13 +1165,22 @@ saMsgQueueGroupTrackStop (
 	if (queueGroupName == NULL) {
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupTrackStop { queueGroupName = %s }\n",
+		(char *) queueGroupName->value);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_queuegrouptrackstop.header.size = sizeof (struct req_lib_msg_queuegrouptrackstop);
-	req_lib_msg_queuegrouptrackstop.header.id = MESSAGE_REQ_MSG_QUEUEGROUPTRACKSTOP;
+	req_lib_msg_queuegrouptrackstop.header.size =
+		sizeof (struct req_lib_msg_queuegrouptrackstop);
+	req_lib_msg_queuegrouptrackstop.header.id =
+		MESSAGE_REQ_MSG_QUEUEGROUPTRACKSTOP;
+
 	memcpy (&req_lib_msg_queuegrouptrackstop.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
@@ -1030,8 +1195,29 @@ saMsgQueueGroupTrackStop (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_queuegrouptrackstop.header.error : error);
+}
+
+SaAisErrorT
+saMsgQueueGroupNotificationFree (
+	SaMsgHandleT msgHandle,
+	SaMsgQueueGroupNotificationT *notification)
+{
+	SaAisErrorT error;
+	struct msgInstance *msgInstance;
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&msgHandleDatabase, msgHandle);
+
+	return (error);
 }
 
 SaAisErrorT
@@ -1046,27 +1232,61 @@ saMsgMessageSend (
 	struct req_lib_msg_messagesend req_lib_msg_messagesend;
 	struct res_lib_msg_messagesend res_lib_msg_messagesend;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageSend { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagesend.header.size = sizeof (struct req_lib_msg_messagesend);
-	req_lib_msg_messagesend.header.id = MESSAGE_REQ_MSG_MESSAGESEND;
-	memcpy (&req_lib_msg_messagesend.destination, destination, sizeof (SaNameT));
+	req_lib_msg_messagesend.header.size =
+		sizeof (struct req_lib_msg_messagesend) + message->size;
+	req_lib_msg_messagesend.header.id =
+		MESSAGE_REQ_MSG_MESSAGESEND;
+
+	memcpy (&req_lib_msg_messagesend.destination, destination,
+		sizeof (SaNameT));
+	memcpy (&req_lib_msg_messagesend.message, message,
+		sizeof (SaMsgMessageT));
+
+	req_lib_msg_messagesend.invocation = 0;
+	req_lib_msg_messagesend.ackFlags = 0;
+	req_lib_msg_messagesend.async_call = 0;
+	req_lib_msg_messagesend.timeout = timeout;
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
+	/*
 	error = saSendReceiveReply (msgInstance->response_fd,
 		&req_lib_msg_messagesend,
 		sizeof (struct req_lib_msg_messagesend),
 		&res_lib_msg_messagesend,
 		sizeof (struct res_lib_msg_messagesend));
+	*/
 
+	error = saSendRetry (msgInstance->response_fd, &req_lib_msg_messagesend,
+		sizeof (struct req_lib_msg_messagesend));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saSendRetry (msgInstance->response_fd,
+		message->data, message->size);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saRecvRetry (msgInstance->response_fd, &res_lib_msg_messagesend,
+		sizeof (struct res_lib_msg_messagesend));
+
+error_exit:
 	pthread_mutex_unlock (&msgInstance->response_mutex);
-
+error_put_msg:
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_messagesend.header.error : error);
 }
 
@@ -1083,27 +1303,61 @@ saMsgMessageSendAsync (
 	struct req_lib_msg_messagesend req_lib_msg_messagesend;
 	struct res_lib_msg_messagesendasync res_lib_msg_messagesendasync;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageSendAsync { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagesend.header.size = sizeof (struct req_lib_msg_messagesend);
-	req_lib_msg_messagesend.header.id = MESSAGE_REQ_MSG_MESSAGESEND;
-	memcpy (&req_lib_msg_messagesend.destination, destination, sizeof (SaNameT));
+	req_lib_msg_messagesend.header.size =
+		sizeof (struct req_lib_msg_messagesend) + message->size;
+	req_lib_msg_messagesend.header.id =
+		MESSAGE_REQ_MSG_MESSAGESENDASYNC;
+
+	memcpy (&req_lib_msg_messagesend.destination, destination,
+		sizeof (SaNameT));
+	memcpy (&req_lib_msg_messagesend.message, message,
+		sizeof (SaMsgMessageT));
+
+	req_lib_msg_messagesend.invocation = invocation;
+	req_lib_msg_messagesend.ackFlags = ackFlags;
+	req_lib_msg_messagesend.async_call = 1;
+	req_lib_msg_messagesend.timeout = 0;
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
+	/*
 	error = saSendReceiveReply (msgInstance->response_fd,
 		&req_lib_msg_messagesend,
 		sizeof (struct req_lib_msg_messagesend),
 		&res_lib_msg_messagesendasync,
 		sizeof (struct res_lib_msg_messagesendasync));
+	*/
 
+	error = saSendRetry (msgInstance->response_fd, &req_lib_msg_messagesend,
+		sizeof (struct req_lib_msg_messagesend));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saSendRetry (msgInstance->response_fd,
+		message->data, message->size);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saRecvRetry (msgInstance->response_fd, &res_lib_msg_messagesendasync,
+		sizeof (struct res_lib_msg_messagesendasync));
+
+error_exit:
 	pthread_mutex_unlock (&msgInstance->response_mutex);
-
+error_put_msg:
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_messagesendasync.header.error : error);
 }
 
@@ -1120,27 +1374,70 @@ saMsgMessageGet (
 	struct req_lib_msg_messageget req_lib_msg_messageget;
 	struct res_lib_msg_messageget res_lib_msg_messageget;
 
-	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle, (void *)&msgQueueInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageGet { queueHandle = %llx }\n",
+		(unsigned long long) queueHandle);
+
+	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle,
+		(void *)&msgQueueInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messageget.header.size = sizeof (struct req_lib_msg_messageget);
-	req_lib_msg_messageget.header.id = MESSAGE_REQ_MSG_MESSAGEGET;
+	req_lib_msg_messageget.header.size =
+		sizeof (struct req_lib_msg_messageget);
+	req_lib_msg_messageget.header.id =
+		MESSAGE_REQ_MSG_MESSAGEGET;
+
+	memcpy (&req_lib_msg_messageget.queueName, &msgQueueInstance->queueName,
+		sizeof (SaNameT));
+
 	req_lib_msg_messageget.timeout = timeout;
 
 	pthread_mutex_lock (msgQueueInstance->response_mutex);
 
+	/*
 	error = saSendReceiveReply (msgQueueInstance->response_fd,
 		&req_lib_msg_messageget,
 		sizeof (struct req_lib_msg_messageget),
 		&res_lib_msg_messageget,
 		sizeof (struct res_lib_msg_messageget));
+	*/
 
+	error = saSendRetry (msgQueueInstance->response_fd, &req_lib_msg_messageget,
+		sizeof (struct req_lib_msg_messageget));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saRecvRetry (msgQueueInstance->response_fd, &res_lib_msg_messageget,
+		sizeof (struct res_lib_msg_messageget));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	if (message->data == NULL) {
+		message->size = res_lib_msg_messageget.message.size;
+		message->data = malloc (message->size);
+		if (message->data == NULL) {
+			error = SA_AIS_ERR_NO_MEMORY;
+			goto error_exit;
+		}
+	} else {
+		if (res_lib_msg_messageget.message.size > message->size) {
+			error = SA_AIS_ERR_NO_SPACE;
+			goto error_exit;
+		}
+	}
+
+	error = saRecvRetry (msgQueueInstance->response_fd,
+		message->data, message->size);
+
+error_exit:
 	pthread_mutex_unlock (msgQueueInstance->response_mutex);
-
+error_put_msg:
 	saHandleInstancePut (&queueHandleDatabase, queueHandle);
-	
+
 	if (error == SA_AIS_OK)
 		error = res_lib_msg_messageget.header.error;
 	if (error == SA_AIS_OK) {
@@ -1148,6 +1445,36 @@ saMsgMessageGet (
 		memcpy (senderId, &res_lib_msg_messageget.senderId,
 			sizeof (SaMsgSenderIdT));
 	}
+
+	return (error);
+}
+
+SaAisErrorT
+saMsgMessageDataFree (
+	SaMsgHandleT msgHandle,
+	void *data)
+{
+	SaAisErrorT error;
+	struct msgInstance *msgInstance;
+
+	if (data == NULL) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageDataFree { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	free (data);
+
+	saHandleInstancePut (&msgHandleDatabase, msgHandle);
+
 	return (error);
 }
 
@@ -1160,13 +1487,20 @@ saMsgMessageCancel (
 	struct req_lib_msg_messagecancel req_lib_msg_messagecancel;
 	struct res_lib_msg_messagecancel res_lib_msg_messagecancel;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, queueHandle, (void *)&msgQueueInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageCancel { queueHandle = %llx }\n",
+		(unsigned long long) queueHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, queueHandle,
+		(void *)&msgQueueInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagecancel.header.size = sizeof (struct req_lib_msg_messagecancel);
-	req_lib_msg_messagecancel.header.id = MESSAGE_REQ_MSG_MESSAGECANCEL;
+	req_lib_msg_messagecancel.header.size =
+		sizeof (struct req_lib_msg_messagecancel);
+	req_lib_msg_messagecancel.header.id =
+		MESSAGE_REQ_MSG_MESSAGECANCEL;
 
 	pthread_mutex_lock (msgQueueInstance->response_mutex);
 
@@ -1179,7 +1513,7 @@ saMsgMessageCancel (
 	pthread_mutex_unlock (msgQueueInstance->response_mutex);
 
 	saHandleInstancePut (&queueHandleDatabase, queueHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_messagecancel.header.error : error);
 }
 
@@ -1197,15 +1531,24 @@ saMsgMessageSendReceive (
 	struct req_lib_msg_messagesendreceive req_lib_msg_messagesendreceive;
 	struct res_lib_msg_messagesendreceive res_lib_msg_messagesendreceive;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageSendReceive { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagesendreceive.header.size = sizeof (struct req_lib_msg_messagesendreceive);
-	req_lib_msg_messagesendreceive.header.id = MESSAGE_REQ_MSG_MESSAGEREPLY;
+	req_lib_msg_messagesendreceive.header.size =
+		sizeof (struct req_lib_msg_messagesendreceive);
+	req_lib_msg_messagesendreceive.header.id =
+		MESSAGE_REQ_MSG_MESSAGEREPLY;
+
 	memcpy (&req_lib_msg_messagesendreceive.destination, destination,
 		sizeof (SaNameT));
+
 	req_lib_msg_messagesendreceive.timeout = timeout;
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
@@ -1225,9 +1568,9 @@ saMsgMessageSendReceive (
 	if (error == SA_AIS_OK) {
 		*replySendTime = res_lib_msg_messagesendreceive.replySendTime;
 	}
+
 	return (error);
 }
-
 
 SaAisErrorT
 saMsgMessageReply (
@@ -1241,14 +1584,23 @@ saMsgMessageReply (
 	struct req_lib_msg_messagereply req_lib_msg_messagereply;
 	struct res_lib_msg_messagereply res_lib_msg_messagereply;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageReply { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagereply.header.size = sizeof (struct req_lib_msg_messagereply);
-	req_lib_msg_messagereply.header.id = MESSAGE_REQ_MSG_MESSAGEREPLY;
-	memcpy (&req_lib_msg_messagereply.senderId, senderId, sizeof (SaMsgSenderIdT));
+	req_lib_msg_messagereply.header.size =
+		sizeof (struct req_lib_msg_messagereply);
+	req_lib_msg_messagereply.header.id =
+		MESSAGE_REQ_MSG_MESSAGEREPLY;
+
+	memcpy (&req_lib_msg_messagereply.senderId, senderId,
+		sizeof (SaMsgSenderIdT));
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
@@ -1265,7 +1617,8 @@ saMsgMessageReply (
 	return (error == SA_AIS_OK ? res_lib_msg_messagereply.header.error : error);
 }
 
-SaAisErrorT saMsgMessageReplyAsync (
+SaAisErrorT
+saMsgMessageReplyAsync (
 	SaMsgHandleT msgHandle,
 	SaInvocationT invocation,
 	const SaMsgMessageT *replyMessage,
@@ -1277,14 +1630,23 @@ SaAisErrorT saMsgMessageReplyAsync (
 	struct req_lib_msg_messagereply req_lib_msg_messagereply;
 	struct res_lib_msg_messagereplyasync res_lib_msg_messagereplyasync;
 
-	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle, (void *)&msgInstance);
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMessageReplyAsync { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
 	if (error != SA_AIS_OK) {
 		return (error);
 	}
 
-	req_lib_msg_messagereply.header.size = sizeof (struct req_lib_msg_messagereply);
-	req_lib_msg_messagereply.header.id = MESSAGE_REQ_MSG_MESSAGEREPLY;
-	memcpy (&req_lib_msg_messagereply.senderId, senderId, sizeof (SaMsgSenderIdT));
+	req_lib_msg_messagereply.header.size =
+		sizeof (struct req_lib_msg_messagereply);
+	req_lib_msg_messagereply.header.id =
+		MESSAGE_REQ_MSG_MESSAGEREPLY;
+
+	memcpy (&req_lib_msg_messagereply.senderId, senderId,
+		sizeof (SaMsgSenderIdT));
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
@@ -1297,6 +1659,107 @@ SaAisErrorT saMsgMessageReplyAsync (
 	pthread_mutex_unlock (&msgInstance->response_mutex);
 
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
-	
+
 	return (error == SA_AIS_OK ? res_lib_msg_messagereplyasync.header.error : error);
+}
+
+SaAisErrorT
+saMsgQueueCapacityThresholdSet (
+	SaMsgQueueHandleT queueHandle,
+	const SaMsgQueueThresholdsT *thresholds)
+{
+	SaAisErrorT error;
+	struct msgQueueInstance *msgQueueInstance;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueCapacityThresholdsSet { queueHandle = %llx }\n",
+		(unsigned long long) queueHandle);
+
+	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle,
+		(void *)&msgQueueInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&queueHandleDatabase, queueHandle);
+
+	return (error);
+}
+
+SaAisErrorT
+saMsgQueueCapacityThresholdGet (
+	SaMsgQueueHandleT queueHandle,
+	SaMsgQueueThresholdsT *thresholds)
+{
+	SaAisErrorT error;
+	struct msgQueueInstance *msgQueueInstance;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueCapacityThresholdGet { queueHandle = %llx }\n",
+		(unsigned long long) queueHandle);
+
+	error = saHandleInstanceGet (&queueHandleDatabase, queueHandle,
+		(void *)&msgQueueInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&queueHandleDatabase, queueHandle);
+
+	return (error);
+}
+
+SaAisErrorT
+saMsgMetadataSizeGet (
+	SaMsgHandleT msgHandle,
+	SaUint32T *metadataSize)
+{
+	SaAisErrorT error;
+	struct msgInstance *msgInstance;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgMetadataSizeGet { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&msgHandleDatabase, msgHandle);
+
+	return (error);
+}
+
+SaAisErrorT
+saMsgLimitGet (
+	SaMsgHandleT msgHandle,
+	SaMsgLimitIdT limitId,
+	SaLimitValueT *limitValue)
+{
+	SaAisErrorT error;
+	struct msgInstance *msgInstance;
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgLimitGet { msgHandle = %llx }\n",
+		(unsigned long long) msgHandle);
+
+	error = saHandleInstanceGet (&msgHandleDatabase, msgHandle,
+		(void *)&msgInstance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	/* TODO */
+
+	saHandleInstancePut (&msgHandleDatabase, msgHandle);
+
+	return (error);
 }

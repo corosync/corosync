@@ -66,7 +66,7 @@ typedef double SaDoubleT;
 typedef char * SaStringT;
 typedef SaInt64T SaTimeT;
 
-#define SA_TIME_END ((SaTimeT)0x7fffffffffffffffull)
+#define SA_TIME_END    ((SaTimeT)0x7FFFFFFFFFFFFFFFULL)
 #define SA_TIME_BEGIN            0x0ULL
 #define SA_TIME_UNKNOWN          0x8000000000000000ULL
 
@@ -79,6 +79,7 @@ typedef SaInt64T SaTimeT;
 #define SA_TIME_MAX             SA_TIME_END
 
 #define SA_MAX_NAME_LENGTH 256
+
 typedef struct {
 	SaUint16T length;
 	SaUint8T value[SA_MAX_NAME_LENGTH];
@@ -132,12 +133,20 @@ typedef enum {
 	SA_AIS_ERR_NO_SECTIONS = 27
 } SaAisErrorT;
 
+typedef union {
+	SaInt64T int64Value;
+	SaUint64T uint64Value;
+	SaTimeT timeValue;
+	SaFloatT floatValue;
+	SaDoubleT doubleValue;
+} SaLimitValueT;
+
 typedef SaUint64T SaSelectionObjectT;
 
 typedef SaUint64T SaInvocationT;
 
 typedef SaUint64T SaSizeT;
 
-#define SA_HANDLE_INVALID 0x0ull
+#define SA_HANDLE_INVALID 0x0ULL
 
 #endif /* AIS_TYPES_H_DEFINED */

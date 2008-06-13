@@ -144,13 +144,40 @@ typedef struct {
 	SaMsgMessageReceivedCallbackT saMsgMessageReceivedCallback;
 } SaMsgCallbacksT;
 
+typedef enum {
+	SA_MSG_QUEUE_CAPACITY_REACHED = 1,
+	SA_MSG_QUEUE_CAPACITY_AVAILABLE = 2,
+	SA_MSG_QUEUE_GROUP_CAPACITY_REACHED = 3,
+	SA_MSG_QUEUE_GROUP_CAPACITY_AVAILABLE = 4
+} SaMsgMessageCapacityStatusT;
+
+typedef struct {
+	SaSizeT capacityReached[SA_MSG_MESSAGE_LOWEST_PRIORITY + 1];
+	SaSizeT capacityAvailable[SA_MSG_MESSAGE_LOWEST_PRIORITY + 1];
+} SaMsgQueueThresholdsT;
+
+typedef enum {
+	SA_MSG_DEST_CAPACITY_STATUS = 1
+} SaMsgStateT;
+
+typedef enum {
+	SA_MSG_MAX_PRIORITY_AREA_SIZE_ID = 1,
+	SA_MSG_MAX_QUEUE_SIZE_ID = 2,
+	SA_MSG_MAX_NUM_QUEUES_ID = 3,
+	SA_MSG_MAX_NUM_QUEUE_GROUPS_ID = 4,
+	SA_MSG_MAX_NUM_QUEUES_PER_GROUP_ID = 5,
+	SA_MSG_MAX_MESSAGE_SIZE_ID = 6,
+	SA_MSG_MAX_REPLY_SIZE_ID = 7
+} SaMsgLimitIdT;
+
 SaAisErrorT
 saMsgInitialize (
 	SaMsgHandleT *msgHandle,
 	const SaMsgCallbacksT *msgCallbacks,
 	SaVersionT *version);
 
-SaAisErrorT saMsgSelectionObjectGet (
+SaAisErrorT
+saMsgSelectionObjectGet (
 	SaMsgHandleT msgHandle,
 	SaSelectionObjectT *selectionObject);
 
@@ -186,9 +213,14 @@ saMsgQueueClose (
 
 SaAisErrorT
 saMsgQueueStatusGet (
-	SaMsgQueueHandleT msgHandle,
+	SaMsgHandleT msgHandle,
 	const SaNameT *queueName,
 	SaMsgQueueStatusT *queueStatus);
+
+SaAisErrorT
+saMsgQueueRetentionTimeSet (
+	SaMsgQueueHandleT queueHandle,
+	SaTimeT *retentionTime);
 
 SaAisErrorT
 saMsgQueueUnlink (
@@ -231,6 +263,11 @@ saMsgQueueGroupTrackStop (
 	const SaNameT *queueGroupName);
 
 SaAisErrorT
+saMsgQueueGroupNotificationFree (
+	SaMsgHandleT msgHandle,
+	SaMsgQueueGroupNotificationT *notification);
+
+SaAisErrorT
 saMsgMessageSend (
 	SaMsgHandleT msgHandle,
 	const SaNameT *destination,
@@ -254,6 +291,11 @@ saMsgMessageGet (
 	SaTimeT timeout);
 
 SaAisErrorT
+saMsgMessageDataFree (
+	SaMsgHandleT msgHandle,
+	void *data);
+
+SaAisErrorT
 saMsgMessageCancel (
 	SaMsgQueueHandleT queueHandle);
 
@@ -273,12 +315,33 @@ saMsgMessageReply (
 	const SaMsgSenderIdT *senderId,
 	SaTimeT timeout);
 
-SaAisErrorT saMsgMessageReplyAsync (
+SaAisErrorT
+saMsgMessageReplyAsync (
 	SaMsgHandleT msgHandle,
 	SaInvocationT invocation,
 	const SaMsgMessageT *replyMessage,
 	const SaMsgSenderIdT *senderId,
 	SaMsgAckFlagsT ackFlags);
 
-#endif /* SAMSG_H_DEFINED */
+SaAisErrorT
+saMsgQueueCapacityThresholdSet (
+	SaMsgQueueHandleT queueHandle,
+	const SaMsgQueueThresholdsT *thresholds);
 
+SaAisErrorT
+saMsgQueueCapacityThresholdGet (
+	SaMsgQueueHandleT queueHandle,
+	SaMsgQueueThresholdsT *thresholds);
+
+SaAisErrorT
+saMsgMetadataSizeGet (
+	SaMsgHandleT msgHandle,
+	SaUint32T *metadataSize);
+
+SaAisErrorT
+saMsgLimitGet (
+	SaMsgHandleT msgHandle,
+	SaMsgLimitIdT limitId,
+	SaLimitValueT *limitValue);
+
+#endif /* SAMSG_H_DEFINED */

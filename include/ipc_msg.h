@@ -36,6 +36,7 @@
 
 #include "saAis.h"
 #include "saMsg.h"
+
 #include "ipc_gen.h"
 
 enum req_lib_msg_queue_types {
@@ -51,31 +52,33 @@ enum req_lib_msg_queue_types {
 	MESSAGE_REQ_MSG_QUEUEGROUPTRACK = 9,
 	MESSAGE_REQ_MSG_QUEUEGROUPTRACKSTOP = 10,
 	MESSAGE_REQ_MSG_MESSAGESEND = 11,
-	MESSAGE_REQ_MSG_MESSAGEGET = 12,
-	MESSAGE_REQ_MSG_MESSAGECANCEL = 13,
-	MESSAGE_REQ_MSG_MESSAGESENDRECEIVE = 14,
-	MESSAGE_REQ_MSG_MESSAGEREPLY = 15
+	MESSAGE_REQ_MSG_MESSAGESENDASYNC = 12,
+	MESSAGE_REQ_MSG_MESSAGEGET = 13,
+	MESSAGE_REQ_MSG_MESSAGECANCEL = 14,
+	MESSAGE_REQ_MSG_MESSAGESENDRECEIVE = 15,
+	MESSAGE_REQ_MSG_MESSAGEREPLY = 16,
+	MESSAGE_REQ_MSG_MESSAGEREPLYASYNC = 17
 };
 
 enum res_lib_msg_queue_types {
 	MESSAGE_RES_MSG_QUEUEOPEN = 0,
-	MESSAGE_RES_MSG_QUEUEOPENASYNC = 2,
-	MESSAGE_RES_MSG_QUEUECLOSE = 3,
-	MESSAGE_RES_MSG_QUEUESTATUSGET = 4,
-	MESSAGE_RES_MSG_QUEUEUNLINK = 5,
-	MESSAGE_RES_MSG_QUEUEGROUPCREATE = 6,
-	MESSAGE_RES_MSG_QUEUEGROUPINSERT = 7,
-	MESSAGE_RES_MSG_QUEUEGROUPREMOVE = 8,
-	MESSAGE_RES_MSG_QUEUEGROUPDELETE = 9,
-	MESSAGE_RES_MSG_QUEUEGROUPTRACK = 10,
-	MESSAGE_RES_MSG_QUEUEGROUPTRACKSTOP = 11,
-	MESSAGE_RES_MSG_MESSAGESEND = 12,
-	MESSAGE_RES_MSG_MESSAGESENDASYNC = 13,
-	MESSAGE_RES_MSG_MESSAGEGET = 14,
-	MESSAGE_RES_MSG_MESSAGECANCEL = 15,
-	MESSAGE_RES_MSG_MESSAGESENDRECEIVE = 16,
-	MESSAGE_RES_MSG_MESSAGEREPLY = 17,
-	MESSAGE_RES_MSG_MESSAGEREPLYASYNC = 18
+	MESSAGE_RES_MSG_QUEUEOPENASYNC = 1,
+	MESSAGE_RES_MSG_QUEUECLOSE = 2,
+	MESSAGE_RES_MSG_QUEUESTATUSGET = 3,
+	MESSAGE_RES_MSG_QUEUEUNLINK = 4,
+	MESSAGE_RES_MSG_QUEUEGROUPCREATE = 5,
+	MESSAGE_RES_MSG_QUEUEGROUPINSERT = 6,
+	MESSAGE_RES_MSG_QUEUEGROUPREMOVE = 7,
+	MESSAGE_RES_MSG_QUEUEGROUPDELETE = 8,
+	MESSAGE_RES_MSG_QUEUEGROUPTRACK = 9,
+	MESSAGE_RES_MSG_QUEUEGROUPTRACKSTOP = 10,
+	MESSAGE_RES_MSG_MESSAGESEND = 11,
+	MESSAGE_RES_MSG_MESSAGESENDASYNC = 12,
+	MESSAGE_RES_MSG_MESSAGEGET = 13,
+	MESSAGE_RES_MSG_MESSAGECANCEL = 14,
+	MESSAGE_RES_MSG_MESSAGESENDRECEIVE = 15,
+	MESSAGE_RES_MSG_MESSAGEREPLY = 16,
+	MESSAGE_RES_MSG_MESSAGEREPLYASYNC = 17
 };
 
 struct req_lib_msg_queueopen {
@@ -92,15 +95,15 @@ struct req_lib_msg_queueopen {
 
 struct res_lib_msg_queueopen {
 	mar_res_header_t header;
-	SaMsgQueueHandleT queueHandle;
 	mar_message_source_t source;
+	SaMsgQueueHandleT queueHandle;
 };
 
 struct res_lib_msg_queueopenasync {
 	mar_res_header_t header;
+	mar_message_source_t source;
 	SaInvocationT invocation;
 	SaMsgQueueHandleT queueHandle;
-	mar_message_source_t source;
 };
 
 struct req_lib_msg_queueclose {
@@ -202,10 +205,13 @@ struct req_lib_msg_messagesend {
 
 struct res_lib_msg_messagesend {
 	mar_res_header_t header;
+	mar_message_source_t source;
 };
 
 struct res_lib_msg_messagesendasync {
 	mar_res_header_t header;
+	mar_message_source_t source;
+	SaInvocationT invocation;
 };
 
 struct req_lib_msg_messageget {
@@ -216,6 +222,7 @@ struct req_lib_msg_messageget {
 
 struct res_lib_msg_messageget {
 	mar_res_header_t header;
+	mar_message_source_t source;
 	SaTimeT sendTime;
 	SaMsgSenderIdT senderId;
 	SaMsgMessageT message;
