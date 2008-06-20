@@ -50,9 +50,8 @@
 #define LOG_MODE_DISPLAY_PRIORITY	(1<<5)
 #define LOG_MODE_DISPLAY_FILELINE	(1<<6)
 #define LOG_MODE_DISPLAY_TIMESTAMP	(1<<7)
-#define LOG_MODE_DISPLAY_DEBUG		(1<<8)
-#define LOG_MODE_BUFFER_BEFORE_CONFIG	(1<<9)
-#define LOG_MODE_FLUSH_AFTER_CONFIG	(1<<10)
+#define LOG_MODE_BUFFER_BEFORE_CONFIG	(1<<8)
+#define LOG_MODE_FLUSH_AFTER_CONFIG	(1<<9)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.

@@ -70,7 +70,6 @@ LOG_MODE_OUTPUT_SYSLOG_BLOCKING: Output all log data without using a thread and 
 LOG_MODE_DISPLAY_PRIORITY: Output the priority of the log entry in the message contents.  This mode is currently not implemented.
 LOG_MODE_DISPLAY_FILELINE: Output the file and line at which the log message was created.
 LOG_MODE_DISPLAY_TIMESTAMP: Output the timestamp of the message.
-LOG_MODE_DISPLAY_DEBUG: Display debug level messages
 LOG_MODE_BUFFER_BEFORE_CONFIG: This mode is used to buffer log messages before logsys_mode_config is called.  This is useful in applications in which the logging file isn't known before the application is compiled and must be set dynamically.  It is also useful when an application calls fork to disconnect the local tty and should hold logging of messages until after the fork.
 LOG_MODE_FLUSH_AFTER_CONFIG: This mode is used to flush any buffered messages when the LOG_MODE_BUFFER_BEFORE_CONFIG declartion is specified in the declartion of the logger.
 The file parameter specifies the filename that should be used to log messages.  This parameter may be NULL if LOG_MODE_OUTPUT_FILE is not specified.

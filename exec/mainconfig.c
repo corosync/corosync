@@ -106,6 +106,7 @@ int openais_main_config_read (
 	unsigned int object_logger_subsys_handle;
 	char *value;
 	char *error_reason = error_string_response;
+	int global_debug = 0;
 
 	memset (main_config, 0, sizeof (struct main_config));
 
@@ -145,10 +146,10 @@ int openais_main_config_read (
 
 		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
 			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_DISPLAY_DEBUG;
+				global_debug = 1;
 			} else
 			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_DISPLAY_DEBUG;
+				global_debug = 0;
 			} else {
 				goto parse_error;
 			}
@@ -212,6 +213,11 @@ int openais_main_config_read (
 					goto parse_error;
 				}
 			}
+			else {
+				if (global_debug)
+					logsys_logger.priority = LOG_LEVEL_DEBUG;
+			}
+
 			if (!objdb_get_string (objdb, object_logger_subsys_handle, "tags", &value)) {
 				char *token = strtok (value, "|");
 
