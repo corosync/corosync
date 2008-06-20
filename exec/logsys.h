@@ -99,6 +99,8 @@ extern inline int logsys_mkpri (int priority, int id);
 extern void logsys_config_mode_set (
 	unsigned int mode);
 
+extern unsigned int logsys_config_mode_get (void);
+
 extern int logsys_config_file_set (
 	char **error_string,
 	char *file);

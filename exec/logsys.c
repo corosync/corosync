@@ -423,6 +423,11 @@ void logsys_config_mode_set (unsigned int mode)
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
 
+unsigned int logsys_config_mode_get (void)
+{
+	return logsys_mode;
+}
+
 int logsys_config_file_set (char **error_string, char *file)
 {
 	static char error_string_response[512];
