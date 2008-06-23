@@ -1287,11 +1287,11 @@ error_exit:
 			res_lib_lck_resourceunlockasync.lockId = req_exec_lck_resourceunlock->lock_id;
 
 			openais_conn_send_response (
-				openais_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
+				req_exec_lck_resourceunlock->source.conn,
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 			openais_conn_send_response (
-				openais_conn_partner_get(resource_lock->callback_source.conn),
+				openais_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 		} else {
@@ -1419,6 +1419,7 @@ static void message_handler_req_lib_lck_resourceopenasync (
 	req_exec_lck_resourceopen.resource_handle = req_lib_lck_resourceopen->resourceHandle;
 	req_exec_lck_resourceopen.invocation = req_lib_lck_resourceopen->invocation;
 	req_exec_lck_resourceopen.open_flags = req_lib_lck_resourceopen->resourceOpenFlags;
+	req_exec_lck_resourceopen.fail_with_error = SA_AIS_OK;
 	req_exec_lck_resourceopen.timeout = 0;
 	req_exec_lck_resourceopen.async_call = 1;
 
@@ -1532,6 +1533,7 @@ static void message_handler_req_lib_lck_resourcelockasync (
 	req_exec_lck_resourcelock.resource_handle = req_lib_lck_resourcelock->resourceHandle;
 	req_exec_lck_resourcelock.async_call = 1;
 	req_exec_lck_resourcelock.invocation = req_lib_lck_resourcelock->invocation;
+	req_exec_lck_resourcelock.fail_with_error = SA_AIS_OK;
 
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);

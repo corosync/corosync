@@ -463,6 +463,9 @@ saLckDispatch (
 					res_lib_lck_resourceopenasync->invocation,
 					res_lib_lck_resourceopenasync->resourceHandle,
 					res_lib_lck_resourceopenasync->header.error);
+				memcpy (&lckResourceInstance->source,
+						&res_lib_lck_resourceopenasync->source,
+						sizeof (mar_message_source_t));
 				saHandleInstancePut (&lckResourceHandleDatabase,
 					res_lib_lck_resourceopenasync->resourceHandle);
 			} else {
@@ -756,6 +759,8 @@ saLckResourceOpenAsync (
 	lckResourceInstance->lckResourceHandle = lckResourceHandle;
 	lckResourceInstance->resourceOpenFlags = resourceOpenFlags;
 
+	marshall_to_mar_name_t (&req_lib_lck_resourceopen.lockResourceName, 
+			(SaNameT *)lockResourceName);
 	memcpy (&lckResourceInstance->lockResourceName, lockResourceName, sizeof (SaNameT));
 	req_lib_lck_resourceopen.header.size = sizeof (struct req_lib_lck_resourceopen);
 	req_lib_lck_resourceopen.header.id = MESSAGE_REQ_LCK_RESOURCEOPENASYNC;
