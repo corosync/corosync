@@ -1130,6 +1130,7 @@ void unlock_algorithm (
 			 */
 			list_p = resource->pr_pending_list_head.next;
 			list_del (&resource->pr_pending_list_head);
+			list_init (&resource->pr_pending_list_head);
 			list_add_tail (list_p,
 				&resource->pr_granted_list_head);
 		}
