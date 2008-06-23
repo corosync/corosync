@@ -70,6 +70,7 @@ void testLckLockGrantCallback (
 }
 
 SaLckLockIdT pr_lock_id;
+SaLckLockIdT pr_lock_async_id;
 
 void testLckLockWaiterCallback (
         SaLckWaiterSignalT waiterSignal,
@@ -82,7 +83,7 @@ void testLckLockWaiterCallback (
 		modeHeld,
 		modeRequested,
 		(unsigned long long)lockId);
-	printf ("pr lock id %llu\n", (unsigned long long)pr_lock_id);
+	printf ("pr lock id %llu\n", (unsigned long long)pr_lock_async_id);
 	result = saLckResourceUnlockAsync (
 		25,
 		lockId);
@@ -107,8 +108,12 @@ SaLckCallbacksT callbacks = {
 SaVersionT version = { 'B', 1, 1 };
 
 void setSaNameT (SaNameT *name, char *str) {
-	name->length = strlen (str);
-	memcpy (name->value, str, name->length);
+	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
+	if (strlen ((char *)name->value) > SA_MAX_NAME_LENGTH) {
+		name->length = SA_MAX_NAME_LENGTH;
+	} else {
+		name->length = strlen (str);
+	}
 }
 
 void sigintr_handler (int signum) {
@@ -150,14 +155,14 @@ int main (void) {
 	th_data.handle = handle;
 	pthread_create (&dispatch_thread, NULL, th_dispatch, &th_data);
 
-	setSaNameT (&resource_name, "test_resource");
 	setSaNameT (&resource_name_async, "test_resource_async");
 
+	setSaNameT (&resource_name, "not_existingaabb");
 	result = saLckResourceOpen (
 		handle,
 		&resource_name,
-		SA_LCK_RESOURCE_CREATE,
-//		0,
+//		SA_LCK_RESOURCE_CREATE,
+		0,
 		SA_TIME_ONE_SECOND,
 		&resource_handle);
 	printf ("saLckResourceOpen %d (should be 12)\n", result);
@@ -165,6 +170,7 @@ int main (void) {
 	result = saLckResourceClose (resource_handle);
 	printf ("saLckResourceClose %d (should be 9)\n", result);
 
+	setSaNameT (&resource_name, "test_resource");
 	result = saLckResourceOpen (
 		handle,
 		&resource_name,
@@ -175,7 +181,7 @@ int main (void) {
 
 	result = saLckResourceOpenAsync (
 		handle,
-		0x56,
+		(SaInvocationT)0x56,
 		&resource_name_async,
 		SA_LCK_RESOURCE_CREATE);
 	printf ("saLckResourceOpenAsync %d (should be 1)\n", result);
@@ -191,6 +197,22 @@ int main (void) {
 	printf ("saLckResourceLock PR %d (should be 1)\n", result);
 	printf ("status %d\n", status);
 
+	result = saLckResourceUnlock (
+		pr_lock_id,
+		SA_TIME_END);
+	printf ("saLckResourceUnlock result %d (should be 1)\n", result);
+
+	result = saLckResourceLock (
+			resource_handle,
+			&pr_lock_id,
+			SA_LCK_PR_LOCK_MODE,
+			SA_LCK_LOCK_ORPHAN,
+			55,
+			SA_TIME_END,
+			&status);
+	printf ("saLckResourceLock PR %d (should be 1)\n", result);
+	printf ("status %d\n", status);
+
 	result = saLckResourceLock (
 		resource_handle,
 		&ex_lock_id,
@@ -203,9 +225,9 @@ int main (void) {
 	printf ("status %d\n", status);
 		
 	result = saLckResourceLockAsync (
-		resource_handle,
+		resource_handle_async,
 		0x56,
-		&pr_lock_id,
+		&pr_lock_async_id,
 		SA_LCK_PR_LOCK_MODE,
 		0,
 		55);
@@ -220,7 +242,8 @@ int main (void) {
 			break;
 		}
 	} while (result);
-
+	
+	printf ("Starting saLckResourceUnlock\n");
 	result = saLckResourceUnlock (
 		ex_lock_id,
 		SA_TIME_END);
