@@ -61,7 +61,6 @@
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
 #include "totempg.h"
-#include "totemip.h"
 #include "main.h"
 #include "flow.h"
 #include "tlist.h"
