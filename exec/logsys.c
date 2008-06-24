@@ -53,11 +53,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "swab.h"
 #include "logsys.h"
-#include "totemip.h"
-//#include "../include/saAis.h"
-#include "mainconfig.h"
 #include "wthread.h"
 
 /*
