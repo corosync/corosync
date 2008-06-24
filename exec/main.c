@@ -314,8 +314,7 @@ static void aisexec_mempool_init (void)
 
 static void aisexec_tty_detach (void)
 {
-	int lpc, fd;
-	struct rlimit oflimits;
+	int fd;
 
 	/*
 	 * Disconnect from TTY if this is not a debug run
