@@ -208,7 +208,7 @@ int openais_main_config_read (
 					logsys_logger.priority = LOG_LEVEL_DEBUG;
 				} else
 				if (strcmp (value, "off") == 0) {
-					logsys_logger.priority &= ~LOG_LEVEL_DEBUG;
+					logsys_logger.priority = LOG_LEVEL_INFO;
 				} else {
 					goto parse_error;
 				}
@@ -217,7 +217,13 @@ int openais_main_config_read (
 				if (global_debug)
 					logsys_logger.priority = LOG_LEVEL_DEBUG;
 			}
-
+			if (logsys_logger.priority != LOG_LEVEL_DEBUG) {
+				if (!objdb_get_string (objdb, object_logger_subsys_handle, "syslog_level", &value)) {
+					logsys_logger.priority = logsys_priority_id_get(value);
+					if (logsys_logger.priority < 0)
+						logsys_logger.priority = LOG_LEVEL_INFO;
+				}
+			}
 			if (!objdb_get_string (objdb, object_logger_subsys_handle, "tags", &value)) {
 				char *token = strtok (value, "|");
 

@@ -495,6 +495,13 @@ This specifies whether debug output is logged for this particular logger.
 The default is off.
 
 .TP
+syslog_level
+This specifies the syslog level for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
+
+The default is: info.
+
+.TP
 tags
 This specifies which tags should be traced for this particular logger.
 Set debug directive to
