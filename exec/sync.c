@@ -56,7 +56,6 @@
 #include "main.h"
 #include "sync.h"
 #include "totempg.h"
-#include "totemip.h"
 #include "totem.h"
 #include "vsf.h"
 #include "../lcr/lcr_ifact.h"
