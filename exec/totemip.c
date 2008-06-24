@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2005 Red Hat Inc
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2005-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -42,12 +41,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN) || defined(OPENAIS_SOLARIS)
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 #include <sys/sockio.h>
 #include <net/if.h>
-#ifndef OPENAIS_SOLARIS
 #include <net/if_var.h>
-#endif
 #include <netinet/in_var.h>
 #endif
 #include <string.h>
@@ -63,24 +60,14 @@
 /* ARGH!! I hate netlink */
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
-
-/* this should catch 2.6.19 headers */
-#ifndef IFA_MAX
-#include <linux/if_addr.h>
-#endif
-/* redefine macro that disappeared in 2.6.19 */
-#ifndef IFA_RTA
-#define IFA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct ifaddrmsg))))
 #endif
 
-#endif
-
-#if ! defined(OPENAIS_SOLARIS) && ! defined(s6_addr16)
+#ifndef s6_addr16
 #define s6_addr16 __u6_addr.__u6_addr16
 #endif
 
-#include "swab.h"
 #include "totemip.h"
+#include "swab.h"
 
 #define LOCALHOST_IPV4 "127.0.0.1"
 #define LOCALHOST_IPV6 "::1"
@@ -128,9 +115,7 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip
 {
 	addr1->nodeid = swab32(addr2->nodeid);
 	addr1->family = swab16(addr2->family);
-	if (addr1 != addr2) {
-		memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
-	}
+	memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
 }
 
 /* For sorting etc. params are void * for qsort's benefit */
@@ -169,13 +154,8 @@ int totemip_compare(const void *a, const void *b)
 		memcpy (&ipv6_a1, totemip_a->addr, sizeof (struct in6_addr));
 		memcpy (&ipv6_a2, totemip_b->addr, sizeof (struct in6_addr));
 		for (i = 0; i < 8; i++) {
-#ifndef OPENAIS_SOLARIS
-		int res = htons(ipv6_a1.s6_addr16[i]) -
-			htons(ipv6_a2.s6_addr16[i]);
-#else
-		int res = htons(((uint16_t *)ipv6_a1.s6_addr)[i]) -
-			htons(((uint16_t *)ipv6_a2.s6_addr)[i]);
-#endif
+			int res = htons(ipv6_a1.s6_addr16[i]) -
+				htons(ipv6_a2.s6_addr16[i]);
 			if (res) {
 				return res;
 			}
@@ -186,7 +166,6 @@ int totemip_compare(const void *a, const void *b)
 		 * Family not set, should be!
 	 	 */
 		assert (0);
-		exit (1);
 	}
 }
 
@@ -194,16 +173,14 @@ int totemip_compare(const void *a, const void *b)
 int totemip_localhost(int family, struct totem_ip_address *localhost)
 {
 	char *addr_text;
-	uint32_t nodeid;
 
 	memset (localhost, 0, sizeof (struct totem_ip_address));
 
 	if (family == AF_INET) {
 		addr_text = LOCALHOST_IPV4;
-		if (inet_pton(family, addr_text, (char *)&nodeid) <= 0) {
+		if (inet_pton(family, addr_text, (char *)&localhost->nodeid) <= 0) {
 			return -1;
 		}
-		localhost->nodeid = ntohl(nodeid);
 	} else {
 		addr_text = LOCALHOST_IPV6;
 	}
@@ -246,7 +223,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		sin->sin_len = sizeof(struct sockaddr_in);
 #endif
 		sin->sin_family = ip_addr->family;
-		sin->sin_port = htons (port);
+		sin->sin_port = port;
 		memcpy(&sin->sin_addr, ip_addr->addr, sizeof(struct in_addr));
 		*addrlen = sizeof(struct sockaddr_in);
 		ret = 0;
@@ -260,7 +237,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		sin->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		sin->sin6_family = ip_addr->family;
-		sin->sin6_port = htons (port);
+		sin->sin6_port = port;
 		sin->sin6_scope_id = 2;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
@@ -272,8 +249,8 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 }
 
 /* Converts an address string string into a totem_ip_address.
- * family can be AF_INET, AF_INET6 or 0 (for "don't care")
- */
+   family can be AF_INET, AF_INET6 or 0 ("for "don't care")
+*/
 int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
 {
 	struct addrinfo *ainfo;
@@ -300,8 +277,6 @@ int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
 		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
 	else
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
-
-	freeaddrinfo(ainfo);
 
 	return 0;
 }
@@ -331,19 +306,14 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 	return ret;
 }
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN) || defined(OPENAIS_SOLARIS)
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
 			int *interface_num)
 {
-#ifndef OPENAIS_SOLARIS
 #define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
-#else
-#define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
-	sizeof((a)->ifr_addr)))
-#endif
 
 	struct sockaddr_in *intf_addr_mask;
 	struct sockaddr_storage bindnet_ss, intf_addr_ss;
@@ -367,24 +337,14 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	 * Generate list of local interfaces in ifc.ifc_req structure
 	 */
 	id_fd = socket (AF_INET, SOCK_DGRAM, 0);
-	ifc.ifc_buf = NULL;
+	ifc.ifc_buf = 0;
 	do {
-		void *ifc_buf_tmp;
 		numreqs += 32;
 		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
-		ifc_buf_tmp = realloc (ifc.ifc_buf, ifc.ifc_len);
-		if (ifc_buf_tmp == NULL) {
-			close (id_fd);
-			if (ifc.ifc_buf != NULL) {
-				free (ifc.ifc_buf);
-			}
-			return -1;
-		}
-		ifc.ifc_buf = ifc_buf_tmp;
+		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
 		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
 		if (res < 0) {
 			close (id_fd);
-			free (ifc.ifc_buf);
 			return -1;
 		}
 	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
@@ -441,9 +401,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			}
 		}
 	}
-	if (ifc.ifc_buf != NULL) {
-		free (ifc.ifc_buf);
-	}
+	free (ifc.ifc_buf);
 	close (id_fd);
 
 	return (res);
@@ -544,8 +502,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				parse_rtattr(tb, IFA_MAX, IFA_RTA(ifa), len);
 
 				memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
-				if (totemip_equal(&ipaddr, bindnet))
+				if (totemip_equal(&ipaddr, bindnet)) {
 					found_if = 1;
+				}
 
 				/* If the address we have is an IPv4 network address, then
 				   substitute the actual IP address of this interface */

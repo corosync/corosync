@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
@@ -164,26 +164,5 @@ struct memb_ring_id {
 	unsigned long long seq;
 } __attribute__((packed));
 
-typedef struct memb_ring_id memb_ring_id_t;
- 
-static inline void swab_memb_ring_id_t (memb_ring_id_t *to_swab)
-{
-	swab_totem_ip_address_t (&to_swab->rep);
-	to_swab->seq = swab64 (to_swab->seq);
-}
-
-static inline void memb_ring_id_copy(
-	memb_ring_id_t *out, memb_ring_id_t *in)
-{
-	totemip_copy (&out->rep, &in->rep);
-	out->seq = in->seq;
-}
-
-static inline void memb_ring_id_copy_endian_convert(
-	memb_ring_id_t *out, memb_ring_id_t *in)
-{
-	totemip_copy_endian_convert (&out->rep, &in->rep);
-	out->seq = swab64 (in->seq);
-}
 
 #endif /* TOTEM_H_DEFINED */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
@@ -60,7 +60,6 @@
 #include "aispoll.h"
 #include "totemnet.h"
 #include "wthread.h"
-#include "swab.h"
 #include "../include/queue.h"
 #include "../include/sq.h"
 #include "../include/list.h"
@@ -68,10 +67,6 @@
 #include "swab.h"
 
 #include "crypto.h"
-
-#ifdef OPENAIS_SOLARIS
-#define MSG_NOSIGNAL 0
-#endif
 
 #define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX) 
 
@@ -240,8 +235,7 @@ static int authenticate_and_decrypt (
 	struct iovec *iov)
 {
 	unsigned char keys[48];
-	struct security_header *header =
-		(struct security_header *)iov[0].iov_base;
+	struct security_header *header = iov[0].iov_base;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
 	unsigned char *hmac_key = &keys[32];
@@ -274,7 +268,7 @@ static int authenticate_and_decrypt (
 	hmac_init (&instance->totemnet_hmac_state, DIGEST_SHA1, hmac_key, 16);
 
 	hmac_process (&instance->totemnet_hmac_state, 
-		(unsigned char *)iov->iov_base + HMAC_HASH_SIZE,
+		iov->iov_base + HMAC_HASH_SIZE,
 		iov->iov_len - HMAC_HASH_SIZE);
 
 	len = hash_descriptor[DIGEST_SHA1]->hashsize;
@@ -289,10 +283,8 @@ static int authenticate_and_decrypt (
 	/*
 	 * Decrypt the contents of the message with the cipher key
 	 */
-	assert(iov->iov_len >= sizeof (struct security_header));
-	sober128_read (
-		(unsigned char *)iov->iov_base + sizeof (struct security_header),
-		(unsigned long)iov->iov_len - sizeof (struct security_header),
+	sober128_read (iov->iov_base + sizeof (struct security_header),
+		iov->iov_len - sizeof (struct security_header),
 		&stream_prng_state);
 
 	return (0);
@@ -398,7 +390,7 @@ static inline void ucast_sendmsg (
 
 	if (instance->totem_config->secauth == 1) {
 
-		iovec_encrypt[0].iov_base = (char *)sheader;
+		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
 		memcpy (&iovec_encrypt[1], &iovec_in[0],
 			sizeof (struct iovec) * iov_len_in);
@@ -414,7 +406,7 @@ static inline void ucast_sendmsg (
 			iov_len_in + 1,
 			&instance->totemnet_prng_state);
 
-		iovec_encrypt[0].iov_base = (char *)encrypt_data;
+		iovec_encrypt[0].iov_base = encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
@@ -432,14 +424,9 @@ static inline void ucast_sendmsg (
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = iovec_sendmsg;
 	msg_ucast.msg_iovlen = iov_len;
-#ifndef OPENAIS_SOLARIS
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
 	msg_ucast.msg_flags = 0;
-#else
-	msg_ucast.msg_accrights = NULL;
-	msg_ucast.msg_accrightslen = 0;
-#endif
 
 	/*
 	 * Transmit multicast message
@@ -467,7 +454,7 @@ static inline void mcast_sendmsg (
 
 	if (instance->totem_config->secauth == 1) {
 
-		iovec_encrypt[0].iov_base = (char *)sheader;
+		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
 		memcpy (&iovec_encrypt[1], &iovec_in[0],
 			sizeof (struct iovec) * iov_len_in);
@@ -483,7 +470,7 @@ static inline void mcast_sendmsg (
 			iov_len_in + 1,
 			&instance->totemnet_prng_state);
 
-		iovec_encrypt[0].iov_base = (char *)encrypt_data;
+		iovec_encrypt[0].iov_base = encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
@@ -501,14 +488,9 @@ static inline void mcast_sendmsg (
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = iovec_sendmsg;
 	msg_mcast.msg_iovlen = iov_len;
-#ifndef OPENAIS_SOLARIS
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
-#else
-	msg_mcast.msg_accrights = NULL;
-	msg_mcast.msg_accrightslen = 0;
-#endif
 
 	/*
 	 * Transmit multicast message
@@ -550,7 +532,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	if (instance->totem_config->secauth == 1) {
 		memmove (&work_item->iovec[1], &work_item->iovec[0],
 			work_item->iov_len * sizeof (struct iovec));
-		work_item->iovec[0].iov_base = (char *)sheader;
+		work_item->iovec[0].iov_base = sheader;
 		work_item->iovec[0].iov_len = sizeof (struct security_header);
 
 		/*
@@ -563,7 +545,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 			&totemnet_mcast_thread_state->prng_state);
 
 			iovec_sendmsg = &iovec_encrypted;
-			iovec_sendmsg->iov_base = (char *)totemnet_mcast_thread_state->iobuf;
+			iovec_sendmsg->iov_base = totemnet_mcast_thread_state->iobuf;
 			iovec_sendmsg->iov_len = buf_len;
 			iovs = 1;
 	} else {
@@ -578,14 +560,9 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = iovec_sendmsg;
 	msg_mcast.msg_iovlen = iovs;
-#ifndef OPENAIS_SOLARIS
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
-#else
-	msg_mcast.msg_accrights = NULL;
-	msg_mcast.msg_accrightslen = 0;
-#endif
 
 	/*
 	 * Transmit multicast message
@@ -636,7 +613,7 @@ static int net_deliver_fn (
 	struct sockaddr_storage system_from;
 	int bytes_received;
 	int res = 0;
-	char *msg_offset;
+	unsigned char *msg_offset;
 	unsigned int size_delv;
 
 	if (instance->flushing == 1) {
@@ -652,14 +629,9 @@ static int net_deliver_fn (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
-#ifndef OPENAIS_SOLARIS
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
-#else
-	msg_recv.msg_accrights = NULL;
-	msg_recv.msg_accrightslen = 0;
-#endif
 
 	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (bytes_received == -1) {
@@ -730,7 +702,7 @@ static int netif_determine (
 	 * field is only 32 bits.
 	 */
 	if (bound_to->family == AF_INET && bound_to->nodeid == 0) {
-		bound_to->nodeid = totemip_compute_nodeid_from_addr(bound_to);
+		memcpy (&bound_to->nodeid, bound_to->addr, sizeof (int));
 	}
 
 	return (res);
@@ -1071,7 +1043,6 @@ static int totemnet_build_sockets_ip (
 		break;
 	}
 	
-#ifndef OPENAIS_SOLARIS
 	/*
 	 * Turn on multicast loopback
 	 */
@@ -1079,18 +1050,17 @@ static int totemnet_build_sockets_ip (
 	flag = 1;
 	switch ( bindnet_address->family ) {
 		case AF_INET:
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_MULTICAST_LOOP,
+		res = setsockopt (sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_LOOP,
 			&flag, sizeof (flag));
 		break;
 		case AF_INET6:
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+		res = setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
 			&flag, sizeof (flag));
 	}
 	if (res == -1) {
 		perror ("turn off loopback");
 		return (-1);
 	}
-#endif
 
 	/*
 	 * Set multicast packets TTL
@@ -1107,7 +1077,6 @@ static int totemnet_build_sockets_ip (
 		}
 	}
 
-#ifndef OPENAIS_SOLARIS
 	/*
 	 * Bind to a specific interface for multicast send and receive
 	 */
@@ -1137,7 +1106,6 @@ static int totemnet_build_sockets_ip (
 		}
 		break;
 	}
-#endif
 	
 	return 0;
 }

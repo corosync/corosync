@@ -1,10 +1,9 @@
 /*
- * Copyright (c) 2005 Red Hat Inc
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
- *
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2005-2007 Red Hat, Inc.
  *
  * All rights reserved.
+ *
+ * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  * 
@@ -38,8 +37,6 @@
 #ifndef TOTEMIP_H_DEFINED
 #define TOTEMIP_H_DEFINED
 
-#include <assert.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -59,16 +56,9 @@ struct totem_ip_address
 {
 	unsigned int   nodeid;
 	unsigned short family;
-	unsigned char  addr[TOTEMIP_ADDRLEN];	/* in Network Byteorder */
+	unsigned char  addr[TOTEMIP_ADDRLEN];
 } __attribute__((packed));
 
-typedef struct totem_ip_address totem_ip_address_t;
-
-static inline void swab_totem_ip_address_t (totem_ip_address_t *to_swab)
-{
-	to_swab->nodeid = swab32 (to_swab->nodeid);
-	to_swab->family = swab16 (to_swab->family);
-}
 
 extern int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
 extern int totemip_compare(const void *a, const void *b);
@@ -91,15 +81,6 @@ static inline void totemip_zero_set(struct totem_ip_address *addr)
 static inline int totemip_zero_check(struct totem_ip_address *addr)
 {
 	return (addr->family == 0);
-}
-
-static inline unsigned int totemip_compute_nodeid_from_addr(
-	const struct totem_ip_address *addr)
-{
-	struct in_addr *in = (struct in_addr *)addr->addr;
-	assert(addr->family == AF_INET);
-
-	return (unsigned int)ntohl(in->s_addr);
 }
 
 #endif

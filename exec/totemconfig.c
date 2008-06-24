@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006 RedHat, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,14 +46,16 @@
 #include <arpa/inet.h>
 #include <sys/param.h>
 
-#include "swab.h"
-#include "list.h"
+#include "../include/list.h"
 #include "util.h"
 #include "totem.h"
 #include "totemconfig.h"
 #include "logsys.h"
 #include "objdb.h"
-#include "tlist.h" /* for HZ */
+
+#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+	#define HZ 100  /* 10ms */
+#endif
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
@@ -232,7 +234,7 @@ extern int totem_config_read (
 		 * Get mcast port
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastport", &str)) {
-			totem_config->interfaces[ringnumber].ip_port = atoi (str);
+			totem_config->interfaces[ringnumber].ip_port = htons (atoi (str));
 		}
 
 		/*

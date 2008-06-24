@@ -48,10 +48,6 @@
  *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
  */
 
-#ifndef OPENAIS_BSD
-#include <alloca.h>
-#endif
-
 #include <assert.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -74,7 +70,6 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include "swab.h"
 #include "aispoll.h"
 #include "totemsrp.h"
 #include "totemrrp.h"
@@ -500,8 +495,6 @@ struct totemsrp_instance {
 	unsigned int my_pbl;
 
 	unsigned int my_cbl;
-
-	unsigned int operational_entered_once;
 };
 
 struct message_handlers {
@@ -685,6 +678,7 @@ int totemsrp_initialize (
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
+
 	res = hdb_handle_create (&totemsrp_instance_database,
 		sizeof (struct totemsrp_instance), handle);
 	if (res != 0) {
@@ -885,10 +879,25 @@ int totemsrp_ifaces_get (
 		memcpy (interfaces, &instance->my_memb_list[i],
 			sizeof (struct srp_addr));
 		*iface_count = instance->totem_config->interface_count;
+		goto finish;
+	}
+       
+	for (i = 0; i < instance->my_left_memb_entries; i++) {
+		if (instance->my_left_memb_list[i].addr[0].nodeid == nodeid) {
+			found = 1;
+			break;
+		}
+	}
+
+	if (found) {
+		memcpy (interfaces, &instance->my_left_memb_list[i],
+			sizeof (struct srp_addr));
+		*iface_count = instance->totem_config->interface_count;
 	} else {
 		res = -1;
 	}
 
+finish:
 	totemrrp_ifaces_get (instance->totemrrp_handle, status, NULL);
 
 	hdb_handle_put (&totemsrp_instance_database, handle);
@@ -951,6 +960,7 @@ int totemsrp_ring_reenable (
 error_exit:
 	return (res);
 }
+
 
 /*
  * Set operations for use by the membership algorithm
@@ -1510,12 +1520,12 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 		 * Convert recovery message into regular message
 		 */
 		if (recovery_message_item->iov_len > 1) {
-			mcast = (struct mcast *)recovery_message_item->iovec[1].iov_base;
+			mcast = recovery_message_item->iovec[1].iov_base;
 			memcpy (&regular_message_item.iovec[0],
 				&recovery_message_item->iovec[1],
 				sizeof (struct iovec) * recovery_message_item->iov_len);
 		} else {
-			mcast = (struct mcast *)recovery_message_item->iovec[0].iov_base;
+			mcast = recovery_message_item->iovec[0].iov_base;
 			if (mcast->header.encapsulated == 1) {
 				/*
 				 * Message is a recovery message encapsulated
@@ -1526,7 +1536,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 				regular_message_item.iovec[0].iov_len =
 				recovery_message_item->iovec[0].iov_len - sizeof (struct mcast);
 				regular_message_item.iov_len = 1;
-				mcast = (struct mcast *)regular_message_item.iovec[0].iov_base;
+				mcast = regular_message_item.iovec[0].iov_base;
 			} else {
 				continue; /* TODO this case shouldn't happen */
 				/*
@@ -1670,8 +1680,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	instance->my_received_flg = 0;
 
-	instance->operational_entered_once = 1;
-
 	return;
 }
 
@@ -1808,14 +1816,9 @@ static void memb_state_recovery_enter (
 	/*
 	 * Build regular configuration
 	 */
-	instance->my_new_memb_entries = commit_token->addr_entries;
-
  	totemrrp_processor_count_set (
 		instance->totemrrp_handle,
 		commit_token->addr_entries);
-
-	memcpy (instance->my_new_memb_list, addr,
-		sizeof (struct srp_addr) * instance->my_new_memb_entries);
 
 	/*
 	 * Build transitional configuration
@@ -1838,7 +1841,7 @@ static void memb_state_recovery_enter (
 			memb_list[i].high_delivered,
 			memb_list[i].received_flg);
 
-		assert (totemip_print (&memb_list[i].ring_id.rep) != 0);
+	//	assert (totemip_print (&memb_list[i].ring_id.rep) != 0);
 	}
 	/*
 	 * Determine if any received flag is false
@@ -2279,15 +2282,15 @@ static int orf_token_mcast (
 		 * Build IO vector
 		 */
 		memset (&sort_queue_item, 0, sizeof (struct sort_queue_item));
-		sort_queue_item.iovec[0].iov_base = (char *)message_item->mcast;
+		sort_queue_item.iovec[0].iov_base = message_item->mcast;
 		sort_queue_item.iovec[0].iov_len = sizeof (struct mcast);
 	
-		mcast = (struct mcast *)sort_queue_item.iovec[0].iov_base;
+		mcast = sort_queue_item.iovec[0].iov_base;
 	
 		memcpy (&sort_queue_item.iovec[1], message_item->iovec,
 			message_item->iov_len * sizeof (struct iovec));
 
-		memb_ring_id_copy (&mcast->ring_id, &instance->my_ring_id);
+		memcpy (&mcast->ring_id, &instance->my_ring_id, sizeof (struct memb_ring_id));
 
 		sort_queue_item.iov_len = message_item->iov_len + 1;
 
@@ -2435,8 +2438,8 @@ static int orf_token_rtr (
 				/*
 				 * Missing message not found in current retransmit list so add it
 				 */
-				memb_ring_id_copy (&rtr_list[orf_token->rtr_list_entries].ring_id,
-					&instance->my_ring_id);
+				memcpy (&rtr_list[orf_token->rtr_list_entries].ring_id,
+					&instance->my_ring_id, sizeof (struct memb_ring_id));
 				rtr_list[orf_token->rtr_list_entries].seq = instance->my_aru + i;
 				orf_token->rtr_list_entries++;
 			}
@@ -2606,7 +2609,7 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	orf_token.aru = SEQNO_START_MSG - 1;
 	orf_token.aru_addr = instance->my_id.addr[0].nodeid;
 
-	memb_ring_id_copy (&orf_token.ring_id, &instance->my_ring_id);
+	memcpy (&orf_token.ring_id, &instance->my_ring_id, sizeof (struct memb_ring_id));
 	orf_token.fcc = 0;
 	orf_token.backlog = 0;
 
@@ -2627,8 +2630,13 @@ static void memb_state_commit_token_update (
 	addr = (struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
-	memb_ring_id_copy (&memb_list[commit_token->memb_index].ring_id,
-		&instance->my_old_ring_id);
+	memcpy (instance->my_new_memb_list, addr,
+		sizeof (struct srp_addr) * commit_token->addr_entries);
+
+	instance->my_new_memb_entries = commit_token->addr_entries;
+
+	memcpy (&memb_list[commit_token->memb_index].ring_id,
+		&instance->my_old_ring_id, sizeof (struct memb_ring_id));
 	assert (!totemip_zero_check(&instance->my_old_ring_id.rep));
 
 	memb_list[commit_token->memb_index].aru = instance->old_ring_state_aru;
@@ -2757,17 +2765,7 @@ static void memb_state_commit_token_create (
 
 	totemip_copy(&commit_token->ring_id.rep, &instance->my_id.addr[0]);
 
-	/*
-	 * The first time operational is entered, don't increment the ring
-	 * sequence number (just reload it from stable storage).  This prevents
-	 * an error condition where if the executive is stopped and started
-	 * before a new ring is formed, the protocol will get stuck in recovery.
-	 */
-	if (instance->operational_entered_once) {
-		commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
-	} else {
-		commit_token->ring_id.seq = instance->token_ring_id_seq;
-	}
+	commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
 
 	/*
 	 * This qsort is necessary to ensure the commit token traverses
@@ -2877,7 +2875,6 @@ static void memb_ring_id_create_or_load (
 		}
 		res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
 		assert (res == sizeof (unsigned long long));
-		fsync (fd);
 		close (fd);
 	} else {
 		log_printf (instance->totemsrp_log_level_warning,
@@ -2918,7 +2915,6 @@ static void memb_ring_id_set_and_store (
 	//assert (fd > 0);
 	res = write (fd, &instance->my_ring_id.seq, sizeof (unsigned long long));
 	assert (res == sizeof (unsigned long long));
-	fsync (fd);
 	close (fd);
 }
 
@@ -3850,9 +3846,8 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 		 * Only convert the memb entry if it has been set
 		 */
 		if (in_memb_list[i].ring_id.rep.family != 0) {
-			memb_ring_id_copy_endian_convert (
-				&out_memb_list[i].ring_id,
-				&in_memb_list[i].ring_id);
+			totemip_copy_endian_convert (&out_memb_list[i].ring_id.rep,
+				     &in_memb_list[i].ring_id.rep);
 
 			out_memb_list[i].ring_id.seq =
 				swab64 (in_memb_list[i].ring_id.seq);
@@ -3873,15 +3868,16 @@ static void orf_token_endian_convert (struct orf_token *in, struct orf_token *ou
 	out->seq = swab32 (in->seq);
 	out->token_seq = swab32 (in->token_seq);
 	out->aru = swab32 (in->aru);
-	memb_ring_id_copy_endian_convert (&out->ring_id, &in->ring_id);
+	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
 	out->aru_addr = swab32(in->aru_addr);
+	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->fcc = swab32 (in->fcc);
 	out->backlog = swab32 (in->backlog);
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->rtr_list_entries = swab32 (in->rtr_list_entries);
 	for (i = 0; i < out->rtr_list_entries; i++) {
-		memb_ring_id_copy_endian_convert (&out->rtr_list[i].ring_id,
-			 &in->rtr_list[i].ring_id);
+		totemip_copy_endian_convert(&out->rtr_list[i].ring_id.rep, &in->rtr_list[i].ring_id.rep);
+		out->rtr_list[i].ring_id.seq = swab64 (in->rtr_list[i].ring_id.seq);
 		out->rtr_list[i].seq = swab32 (in->rtr_list[i].seq);
 	}
 }
@@ -3895,7 +3891,8 @@ static void mcast_endian_convert (struct mcast *in, struct mcast *out)
 
 	out->seq = swab32 (in->seq);
 	out->this_seqno = swab32 (in->this_seqno);
-	memb_ring_id_copy_endian_convert (&out->ring_id, &in->ring_id);
+	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->node_id = swab32 (in->node_id);
 	out->guarantee = swab32 (in->guarantee);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
@@ -3908,7 +3905,8 @@ static void memb_merge_detect_endian_convert (
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
-	memb_ring_id_copy_endian_convert(&out->ring_id, &in->ring_id);
+	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.seq = swab64 (in->ring_id.seq);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 
