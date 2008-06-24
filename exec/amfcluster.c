@@ -142,6 +142,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "logsys.h"
 #include "amf.h"

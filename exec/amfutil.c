@@ -51,6 +51,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <regex.h>
+#include <assert.h>
 
 #include "../include/saAis.h"
 #include "../include/saAmf.h"
