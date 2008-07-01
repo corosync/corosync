@@ -52,6 +52,8 @@
 #define LOG_MODE_DISPLAY_TIMESTAMP	(1<<7)
 #define LOG_MODE_BUFFER_BEFORE_CONFIG	(1<<8)
 #define LOG_MODE_FLUSH_AFTER_CONFIG	(1<<9)
+#define LOG_MODE_SHORT_FILELINE		(1<<10)
+#define LOG_MODE_NOSUBSYS		(1<<11)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.

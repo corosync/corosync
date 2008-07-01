@@ -69,8 +69,6 @@ static FILE *logsys_file_fp = NULL;
 
 static int logsys_facility = LOG_DAEMON;
 
-static int logsys_nosubsys = 0;
-
 static int logsys_wthread_active = 0;
 
 static pthread_mutex_t logsys_config_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -121,7 +119,7 @@ static void logsys_buffer_flush (void);
 
 void _logsys_nosubsys_set (void)
 {
-	logsys_nosubsys = 1;
+	logsys_mode |= LOG_MODE_NOSUBSYS;
 }
 
 int logsys_facility_id_get (const char *name)
@@ -298,6 +296,7 @@ static void _log_printf (
 	char newstring[4096];
 	char log_string[4096];
 	char char_time[512];
+	char *p = NULL;
 	struct timeval tv;
 	int i = 0;
 	int len;
@@ -331,9 +330,14 @@ static void _log_printf (
 	}
 
 	if ((priority == LOG_LEVEL_DEBUG) || (logsys_mode & LOG_MODE_DISPLAY_FILELINE)) {
+		if (logsys_mode & LOG_MODE_SHORT_FILELINE) {
+			p = strrchr(file, '/');
+			if (p) 
+				file = ++p;
+		}
 		sprintf (&newstring[i], "[%s:%04u] %s", file, line, format);
 	} else {	
-		if (logsys_nosubsys == 1) {
+		if (logsys_mode & LOG_MODE_NOSUBSYS) {
 			sprintf (&newstring[i], "%s", format);
 		} else {
 			sprintf (&newstring[i], "[%-5s] %s", logsys_loggers[id].subsys, format);
