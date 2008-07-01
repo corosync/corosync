@@ -1130,7 +1130,8 @@ confdb_error_t confdb_write (
 	}
 
 	error = res_lib_confdb_write.header.error;
-	memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
+	if (res_lib_confdb_write.error.length)
+		memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
 
 error_exit:
 	saHandleInstancePut (&confdb_handle_t_db, handle);

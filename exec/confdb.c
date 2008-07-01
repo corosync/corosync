@@ -455,7 +455,7 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 {
 	struct res_lib_confdb_write res_lib_confdb_write;
 	int ret = SA_AIS_OK;
-	char *error_string;
+	char *error_string = NULL;
 
 	if (global_objdb->object_write_config(&error_string))
 		ret = SA_AIS_ERR_ACCESS;
@@ -463,8 +463,11 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	res_lib_confdb_write.header.size = sizeof(res_lib_confdb_write);
 	res_lib_confdb_write.header.id = MESSAGE_RES_CONFDB_WRITE;
 	res_lib_confdb_write.header.error = ret;
-	strcpy((char *)res_lib_confdb_write.error.value, error_string);
-	res_lib_confdb_write.error.length = strlen(error_string) + 1;
+	if (error_string) {
+		strcpy((char *)res_lib_confdb_write.error.value, error_string);
+		res_lib_confdb_write.error.length = strlen(error_string) + 1;
+	} else
+		res_lib_confdb_write.error.length = 0;
 
 	openais_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
 }
