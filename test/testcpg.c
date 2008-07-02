@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2006-2007 Red Hat Inc
+ * Copyright (c) 2006-2008 Red Hat Inc
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield <pcaulfie@redhat.com>
+ * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -141,9 +141,36 @@ void ConfchgCallback (
 	}
 }
 
+void GroupsGetCallback(cpg_handle_t handle,
+		       uint32_t groupnum,
+		       uint32_t groupmax,
+		       struct cpg_name *group_name,
+		       struct cpg_address *member_list, int member_list_entries)
+{
+	int i;
+	struct in_addr saddr;
+
+	printf("Groups List Callback %d/%d: ", groupnum, groupmax);
+	print_cpgname(group_name);
+	printf("\n");
+	for (i=0; i<member_list_entries; i++) {
+		if (show_ip) {
+			saddr.s_addr = member_list[i].nodeid;
+			printf("node/pid: %s/%d\n",
+			       inet_ntoa (saddr), member_list[i].pid);
+		}
+		else {
+			printf("node/pid: %d/%d\n",
+			       member_list[i].nodeid, member_list[i].pid);
+		}
+	}
+}
+
+
 cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
+	.cpg_groups_get_fn =         GroupsGetCallback
 };
 
 void sigintr_handler (int signum) {
@@ -159,6 +186,7 @@ int main (int argc, char *argv[]) {
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
+	unsigned int num_groups;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -194,6 +222,13 @@ int main (int argc, char *argv[]) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
+
+	cpg_groups_get(handle, &num_groups);
+	if (result != SA_AIS_OK) {
+		printf ("Could not get list of groups, error %d\n", result);
+		exit (1);
+	}
+	printf("%d groups known to this node\n", num_groups);
 
 	FD_ZERO (&read_fds);
 	cpg_fd_get(handle, &select_fd);

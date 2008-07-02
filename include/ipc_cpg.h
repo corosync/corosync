@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ * Author: Christine Caulfield (ccaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -46,7 +46,8 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_MEMBERSHIP = 3,
 	MESSAGE_REQ_CPG_TRACKSTART = 4,
 	MESSAGE_REQ_CPG_TRACKSTOP = 5,
-	MESSAGE_REQ_CPG_LOCAL_GET = 6
+	MESSAGE_REQ_CPG_LOCAL_GET = 6,
+	MESSAGE_REQ_CPG_GROUPS_GET = 7
 };
 
 enum res_cpg_types {
@@ -59,7 +60,9 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_TRACKSTART = 6,
 	MESSAGE_RES_CPG_TRACKSTOP = 7,
 	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8,
-	MESSAGE_RES_CPG_LOCAL_GET = 9
+	MESSAGE_RES_CPG_LOCAL_GET = 9,
+	MESSAGE_RES_CPG_GROUPS_GET = 10,
+	MESSAGE_RES_CPG_GROUPS_CALLBACK = 11
 };
 
 enum lib_cpg_confchg_reason {
@@ -156,6 +159,24 @@ struct req_lib_cpg_leave {
 
 struct res_lib_cpg_leave {
 	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_groups_get {
+	mar_req_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_groups_get {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t num_groups __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_groups_get_callback {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t group_num  __attribute__((aligned(8)));
+	mar_uint32_t total_groups  __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t num_members __attribute__((aligned(8)));
+	mar_cpg_address_t member_list[];
 };
 
 #endif /* IPC_CPG_H_DEFINED */

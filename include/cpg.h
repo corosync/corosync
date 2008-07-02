@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield (pcaulfi@redhat.com)
+ * Author: Christine Caulfield (ccaulfi@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -114,9 +114,17 @@ typedef void (*cpg_confchg_fn_t) (
 	struct cpg_address *left_list, int left_list_entries,
 	struct cpg_address *joined_list, int joined_list_entries);
 
+typedef void (*cpg_groups_get_fn_t) (
+	cpg_handle_t handle,
+	uint32_t group_num,
+	uint32_t group_total,
+	struct cpg_name *group_name,
+	struct cpg_address *member_list, int member_list_entries);
+
 typedef struct {
 	cpg_deliver_fn_t cpg_deliver_fn;
 	cpg_confchg_fn_t cpg_confchg_fn;
+	cpg_groups_get_fn_t cpg_groups_get_fn;
 } cpg_callbacks_t;
 
 /** @} */
@@ -189,7 +197,6 @@ cpg_error_t cpg_mcast_joined (
 	struct iovec *iovec,
 	int iov_len);
 
-
 /*
  * Get membership information from cpg
  */
@@ -202,6 +209,10 @@ cpg_error_t cpg_membership_get (
 cpg_error_t cpg_local_get (
 	cpg_handle_t handle,
 	unsigned int *local_nodeid);
+
+cpg_error_t cpg_groups_get (
+	cpg_handle_t handle,
+	unsigned int *num_groups);
 
 cpg_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,

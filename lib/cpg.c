@@ -1,11 +1,11 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ * Author: Christine Caulfield (ccaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -72,7 +72,7 @@ static struct saHandleDatabase cpg_handle_t_db = {
 };
 
 /*
- * Clean up function for a cpg instance (cpg_nitialize) handle
+ * Clean up function for a cpg instance (cpg_initialize) handle
  */
 static void cpg_instance_destructor (void *instance)
 {
@@ -250,6 +250,7 @@ cpg_error_t cpg_dispatch (
 	struct cpg_inst *cpg_inst;
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
+	struct res_lib_cpg_groups_get_callback *res_lib_cpg_groups_get_callback;
 	cpg_callbacks_t callbacks;
 	struct res_overlay dispatch_data;
 	int ignore_dispatch = 0;
@@ -395,6 +396,23 @@ cpg_error_t cpg_dispatch (
 				res_cpg_confchg_callback->left_list_entries,
 				joined_list,
 				res_cpg_confchg_callback->joined_list_entries);
+			break;
+		case MESSAGE_RES_CPG_GROUPS_CALLBACK:
+			res_lib_cpg_groups_get_callback = (struct res_lib_cpg_groups_get_callback *)&dispatch_data;
+			marshall_from_mar_cpg_name_t (
+				&group_name,
+				&res_lib_cpg_groups_get_callback->group_name);
+			for (i = 0; i < res_lib_cpg_groups_get_callback->num_members; i++) {
+				marshall_from_mar_cpg_address_t (&member_list[i],
+					&res_lib_cpg_groups_get_callback->member_list[i]);
+			}
+
+			callbacks.cpg_groups_get_fn(handle,
+						    res_lib_cpg_groups_get_callback->group_num,
+						    res_lib_cpg_groups_get_callback->total_groups,
+						    &group_name,
+						    member_list,
+						    res_lib_cpg_groups_get_callback->num_members);
 			break;
 
 		default:
@@ -684,6 +702,48 @@ cpg_error_t cpg_local_get (
 
 	*local_nodeid = res_lib_cpg_local_get.local_nodeid;
 
+error_exit:
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
+cpg_error_t cpg_groups_get (
+	cpg_handle_t handle,
+	unsigned int *num_groups)
+{
+	cpg_error_t error;
+	struct cpg_inst *cpg_inst;
+	struct iovec iov;
+	struct req_lib_cpg_groups_get req_lib_cpg_groups_get;
+	struct res_lib_cpg_groups_get res_lib_cpg_groups_get;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cpg_groups_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cpg_groups_get.header.id = MESSAGE_REQ_CPG_GROUPS_GET;
+
+	iov.iov_base = &req_lib_cpg_groups_get;
+	iov.iov_len = sizeof (struct req_lib_cpg_groups_get);
+
+	pthread_mutex_lock (&cpg_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (cpg_inst->response_fd, &iov, 1,
+		&res_lib_cpg_groups_get, sizeof (res_lib_cpg_groups_get));
+
+	pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	*num_groups = res_lib_cpg_groups_get.num_groups;
+	error = res_lib_cpg_groups_get.header.error;
+
+	/* Real output is delivered via a callback */
 error_exit:
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 

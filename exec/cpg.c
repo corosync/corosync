@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2008 Red Hat, Inc.
  * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ * Author: Christine Caulfield (ccaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -180,6 +180,8 @@ static void message_handler_req_lib_cpg_trackstop (void *conn, void *message);
 
 static void message_handler_req_lib_cpg_local_get (void *conn, void *message);
 
+static void message_handler_req_lib_cpg_groups_get (void *conn, void *message);
+
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason);
 
 static int cpg_exec_send_joinlist(void);
@@ -233,6 +235,12 @@ static struct openais_lib_handler cpg_lib_service[] =
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
 		.response_size				= sizeof (struct res_lib_cpg_local_get),
 		.response_id				= MESSAGE_RES_CPG_LOCAL_GET,
+		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 7 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_groups_get,
+		.response_size				= sizeof (struct res_lib_cpg_groups_get),
+		.response_id				= MESSAGE_RES_CPG_GROUPS_GET,
 		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -494,6 +502,20 @@ static int cpg_lib_exit_fn (void *conn)
 	return (0);
 }
 
+static int count_groups(void)
+{
+	struct list_head *iter;
+	int num_groups = 0;
+	uint32_t hash;
+
+	for (hash=0 ; hash < GROUP_HASH_SIZE; hash++) {
+		for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
+			num_groups++;
+		}
+	}
+	return num_groups;
+}
+
 static struct group_info *get_group(mar_cpg_name_t *name)
 {
 	struct list_head *iter;
@@ -521,6 +543,70 @@ static struct group_info *get_group(mar_cpg_name_t *name)
 		list_add(&gi->list, &group_lists[hash]);
 	}
 	return gi;
+}
+
+static void send_group_list_callbacks(int num_groups, void *conn)
+{
+	struct list_head *iter, *piter;
+	struct group_info *gi;
+	uint32_t hash;
+	int max_proc_count=0;
+	int size;
+	int group_counter = 0;
+	char *buf = NULL;
+	struct res_lib_cpg_groups_get_callback *res;
+	mar_cpg_address_t *retgi;
+
+	for (hash=0; hash < GROUP_HASH_SIZE; hash++) {
+		for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
+			gi = list_entry(iter, struct group_info, list);
+			int proc_count = 0;
+
+			/* First, we need to know how many processes are in the list */
+			for (piter = gi->members.next; piter != &gi->members; piter = piter->next) {
+				struct process_info *pi = list_entry(piter, struct process_info, list);
+				if (pi->pid)
+					proc_count++;
+			}
+
+			/* Make sure we have adequate buffer space */
+			if (proc_count > max_proc_count) {
+				max_proc_count = proc_count+10;
+				size = max_proc_count*sizeof(mar_cpg_address_t) +
+					sizeof(struct res_lib_cpg_groups_get_callback);
+				buf = realloc(buf, size);
+				if (!buf) {
+					log_printf(LOG_LEVEL_WARNING, "Unable to allocate group_list struct");
+					return;
+				}
+			}
+
+			res = (struct res_lib_cpg_groups_get_callback *)buf;
+			retgi = res->member_list;
+
+			res->header.size = size;
+			res->header.id = MESSAGE_RES_CPG_GROUPS_CALLBACK;
+
+
+			memcpy(&res->group_name, &gi->group_name, sizeof(mar_cpg_name_t));
+			res->num_members = proc_count;
+			res->group_num = ++group_counter;
+			res->total_groups = num_groups;
+
+			for (piter = gi->members.next; piter != &gi->members; piter = piter->next) {
+				struct process_info *pi = list_entry(piter, struct process_info, list);
+				if (pi->pid) {
+					retgi->nodeid = pi->nodeid;
+					retgi->pid = pi->pid;
+					retgi->reason = 0;
+					retgi++;
+				}
+			}
+			openais_conn_send_response(conn, buf, size);
+		}
+	}
+	if (buf)
+		free(buf);
 }
 
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason)
@@ -696,7 +782,7 @@ static void exec_cpg_downlist_endian_convert (void *msg)
 	unsigned int i;
 
 	req_exec_cpg_downlist->left_nodes = swab32(req_exec_cpg_downlist->left_nodes);
- 
+
 	for (i = 0; i < req_exec_cpg_downlist->left_nodes; i++) {
 		req_exec_cpg_downlist->nodeids[i] = swab32(req_exec_cpg_downlist->nodeids[i]);
 	}
@@ -920,7 +1006,7 @@ static void message_handler_req_exec_cpg_mcast (
 	/* Send to all interested members */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
-		if (pi->trackerconn) {
+		if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
 			openais_conn_send_response(
 				pi->trackerconn,
 				buf,
@@ -1225,3 +1311,21 @@ static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
 	openais_conn_send_response(conn, &res_lib_cpg_local_get,
 		sizeof(res_lib_cpg_local_get));
 }
+
+static void message_handler_req_lib_cpg_groups_get (void *conn, void *message)
+{
+	struct res_lib_cpg_groups_get res_lib_cpg_groups_get;
+
+	res_lib_cpg_groups_get.header.size = sizeof(res_lib_cpg_groups_get);
+	res_lib_cpg_groups_get.header.id = MESSAGE_RES_CPG_GROUPS_GET;
+	res_lib_cpg_groups_get.header.error = SA_AIS_OK;
+	res_lib_cpg_groups_get.num_groups = count_groups();
+
+	openais_conn_send_response(conn, &res_lib_cpg_groups_get,
+		sizeof(res_lib_cpg_groups_get));
+
+	/* Now do the callbacks for each group */
+	send_group_list_callbacks(res_lib_cpg_groups_get.num_groups,
+		openais_conn_partner_get (conn));
+}
+
