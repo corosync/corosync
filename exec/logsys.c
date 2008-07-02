@@ -636,3 +636,41 @@ void logsys_flush (void)
 {
 	worker_thread_group_wait (&log_thread_group);
 }
+
+int logsys_init (char *name, int mode, int facility, int priority, char *file)
+{
+	char *errstr;
+
+	logsys_subsys_id = 0;
+
+	strncpy (logsys_loggers[0].subsys, name,
+		 sizeof (logsys_loggers[0].subsys));
+	logsys_config_mode_set (mode);
+	logsys_config_facility_set (name, facility);
+	logsys_config_file_set (&errstr, file);
+	_logsys_config_priority_set (0, priority);
+	if ((mode & LOG_MODE_BUFFER_BEFORE_CONFIG) == 0) {
+		_logsys_wthread_create ();
+	}
+	return (0);
+}
+
+int logsys_conf (char *name, int mode, int facility, int priority, char *file)
+{
+	char *errstr;
+
+	strncpy (logsys_loggers[0].subsys, name,
+		sizeof (logsys_loggers[0].subsys));
+	logsys_config_mode_set (mode);
+	logsys_config_facility_set (name, facility);
+	logsys_config_file_set (&errstr, file);
+	_logsys_config_priority_set (0, priority);
+	return (0);
+}
+
+void logsys_exit (void)
+{
+	logsys_subsys_id = -1;
+	logsys_flush ();
+}
+

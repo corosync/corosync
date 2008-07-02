@@ -38,6 +38,7 @@
 
 #include <stdarg.h>
 #include <syslog.h>
+#include <assert.h>
 
 /*
  * MODE_OUTPUT_SYSLOG_* modes are mutually exclusive
@@ -172,8 +173,9 @@ __attribute__ ((constructor)) static void logsys_system_init (void)	\
 	}								\
 }
 
+static unsigned int logsys_subsys_id __attribute__((unused)) = -1;	\
+
 #define LOGSYS_DECLARE_NOSUBSYS(priority)				\
-static unsigned int logsys_subsys_id __attribute__((unused));		\
 __attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
 {									\
 	_logsys_nosubsys_set();						\
@@ -182,7 +184,6 @@ __attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
 }
 
 #define LOGSYS_DECLARE_SUBSYS(subsys,priority)				\
-static unsigned int logsys_subsys_id __attribute__((unused));		\
 __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 {									\
 	logsys_subsys_id =						\
@@ -190,6 +191,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 }
 
 #define log_printf(lvl, format, args...) do {				\
+	assert (logsys_subsys_id != -1);				\
 	if ((lvl) <= logsys_loggers[logsys_subsys_id].priority)	{	\
 		_logsys_log_printf2 (__FILE__, __LINE__, lvl,		\
 			logsys_subsys_id, (format), ##args);		\
@@ -197,6 +199,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define dprintf(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_log_printf2 (__FILE__, __LINE__, LOG_DEBUG,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -204,6 +207,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define ENTER_VOID() do {						\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
 			logsys_subsys_id, ">%s\n", __FUNCTION__);	\
@@ -211,6 +215,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define ENTER(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
 			logsys_subsys_id, ">%s: " format, __FUNCTION__,	\
@@ -219,6 +224,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define LEAVE_VOID() do {						\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
 			logsys_subsys_id, "<%s\n", __FUNCTION__);	\
@@ -226,6 +232,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define LEAVE(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
 			logsys_subsys_id, "<%s: " format,		\
@@ -234,6 +241,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE1,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -241,6 +249,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE2,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -248,6 +257,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE3(format, args...) do { \
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE3,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -255,6 +265,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE4(format, args...) do { \
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE4,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -262,6 +273,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE5,	\
 		logsys_subsys_id, (format), ##args);			\
@@ -269,6 +281,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE6,	\
 			logsys_subsys_id, (format), ##args);		\
@@ -276,6 +289,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE7,	\
 			 logsys_subsys_id, (format), ##args);		\
@@ -283,6 +297,7 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
+	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 	_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE8,		\
 	 logsys_subsys_id, (format), ##args);				\
@@ -294,5 +309,11 @@ extern void _logsys_config_priority_set (unsigned int id, unsigned int priority)
 #define logsys_config_priority_set(priority) do {		        \
 	_logsys_config_priority_set (logsys_subsys_id, priority);       \
 } while(0)
+
+/* simple, function-based api */
+
+int logsys_init (char *name, int mode, int facility, int priority, char *file);
+int logsys_conf (char *name, int mode, int facility, int priority, char *file);
+void logsys_exit (void);
 
 #endif /* LOGSYS_H_DEFINED */
