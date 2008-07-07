@@ -187,6 +187,7 @@ int openais_main_config_read (
 			}
 		}
 
+		objdb->object_find_reset(object_service_handle);
 		while (objdb->object_find (object_service_handle,
 			"logger_subsys",
 			strlen ("logger_subsys"),
