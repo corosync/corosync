@@ -97,6 +97,8 @@ struct logsys_logger {
 
 extern struct logsys_logger logsys_loggers[];
 
+extern int logsys_single_id;
+
 extern inline int logsys_mkpri (int priority, int id);
 
 extern void logsys_config_mode_set (
@@ -191,6 +193,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 }
 
 #define log_printf(lvl, format, args...) do {				\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if ((lvl) <= logsys_loggers[logsys_subsys_id].priority)	{	\
 		_logsys_log_printf2 (__FILE__, __LINE__, lvl,		\
@@ -199,6 +203,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define dprintf(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_log_printf2 (__FILE__, __LINE__, LOG_DEBUG,	\
@@ -207,6 +213,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define ENTER_VOID() do {						\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
@@ -215,6 +223,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define ENTER(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
@@ -224,6 +234,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define LEAVE_VOID() do {						\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
@@ -232,6 +244,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define LEAVE(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
@@ -241,6 +255,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE1,	\
@@ -249,6 +265,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE2,	\
@@ -257,6 +275,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE3(format, args...) do { \
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE3,	\
@@ -265,6 +285,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE4(format, args...) do { \
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE4,	\
@@ -273,6 +295,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE5,	\
@@ -281,6 +305,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE6,	\
@@ -289,6 +315,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE7,	\
@@ -297,6 +325,8 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
 	assert (logsys_subsys_id != -1);				\
 	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
 	_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE8,		\

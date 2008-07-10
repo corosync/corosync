@@ -84,6 +84,8 @@ static unsigned int dropped_log_entries = 0;
 #endif
 struct logsys_logger logsys_loggers[MAX_LOGGERS];
 
+int logsys_single_id = 0;
+
 
 struct log_entry {
 	char *file;
@@ -641,7 +643,8 @@ int logsys_init (char *name, int mode, int facility, int priority, char *file)
 {
 	char *errstr;
 
-	logsys_subsys_id = 0;
+	/* logsys_subsys_id will be 0 */
+	logsys_single_id = 1;
 
 	strncpy (logsys_loggers[0].subsys, name,
 		 sizeof (logsys_loggers[0].subsys));
@@ -670,7 +673,6 @@ int logsys_conf (char *name, int mode, int facility, int priority, char *file)
 
 void logsys_exit (void)
 {
-	logsys_subsys_id = -1;
 	logsys_flush ();
 }
 
