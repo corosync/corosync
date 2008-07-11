@@ -42,19 +42,19 @@ Threaded non-blocking logging of log output data for better non-blocking perform
 .PP
 Support for 8 tracing levels and tracing the entering and leaving of functions
 .PP
-Declartion of logging system or subsystem without calling any functions
+Declaration of logging system or subsystem without calling any functions
 .PP
 Dynamic reconfiguration of the logging system parameters
 .PP
 Logging to syslog, file, stderr.
 
-.SH Declartion of the System logger
+.SH Declaration of the System logger
 The logsys library is initially configured by including logsys.h and declaring
 a logger.  Once the logger is declared either a subsystem logger or nosubsystem
 logger is declared in every file.
 
 The definition LOGSYS_DECLARE_SYSTEM is placed after the include section of one
-C file in the application.  This declartion creates a constructor function
+C file in the application.  This declaration creates a constructor function
 which will be called automatically.  This technique avoids the need for calling
 any setup functions in short applications that don't require it.
 
@@ -62,22 +62,24 @@ any setup functions in short applications that don't require it.
 The name parameter is the name of the application.
 The mode parameter is the logging mode of the system.  The following modes
 can be configured by logically ORing these flags:
-LOG_MODE_OUTPUT_FILE: Output all log data to the file parameter of this declartion
+LOG_MODE_OUTPUT_FILE: Output all log data to the file parameter of this declaration
 LOG_MODE_OUTPUT_STDERR: Output all log data to the stderr descriptor
 LOG_MODE_OUTPUT_SYSLOG_THREADED: Output all log data to syslog using a non-blocking thread
 LOG_MODE_OUTPUT_SYSLOG_LOSSY: Output all log data without using a thread but potentially losing data.  This mode is not yet implemented.
 LOG_MODE_OUTPUT_SYSLOG_BLOCKING: Output all log data without using a thread and potentially blocking at each syslog call.
 LOG_MODE_DISPLAY_PRIORITY: Output the priority of the log entry in the message contents.  This mode is currently not implemented.
 LOG_MODE_DISPLAY_FILELINE: Output the file and line at which the log message was created.
+LOG_MODE_SHORT_FILELINE: When using LOG_DEBUG level or LOG_MODE_DISPLAY_FILELINE, typically the absolute path to the file (derived at compile-time) is displayed.  Enabling this flag ensures that only the filename and line are displayed.
 LOG_MODE_DISPLAY_TIMESTAMP: Output the timestamp of the message.
 LOG_MODE_BUFFER_BEFORE_CONFIG: This mode is used to buffer log messages before logsys_mode_config is called.  This is useful in applications in which the logging file isn't known before the application is compiled and must be set dynamically.  It is also useful when an application calls fork to disconnect the local tty and should hold logging of messages until after the fork.
-LOG_MODE_FLUSH_AFTER_CONFIG: This mode is used to flush any buffered messages when the LOG_MODE_BUFFER_BEFORE_CONFIG declartion is specified in the declartion of the logger.
+LOG_MODE_FLUSH_AFTER_CONFIG: This mode is used to flush any buffered messages when the LOG_MODE_BUFFER_BEFORE_CONFIG declaration is specified in the declaration of the logger.
 The file parameter specifies the filename that should be used to log messages.  This parameter may be NULL if LOG_MODE_OUTPUT_FILE is not specified.
 The facility parameter is the syslog facility that should be used when logging
 messages.
+LOG_MODE_NOSUBSYS: Enabling this mode removes the subsystem tag from the beginning of the log lines.  This is not recommended for programs which have multiple subsystems.
 
 
-An example declartion would be:
+An example declaration would be:
 
 #include <openais/logsys.h>
 
@@ -90,7 +92,7 @@ LOGSYS_DECLARE_SYSTEM ("my_example_app",
 
 This would output any logging messages to stderr, syslog, and the file /tmp/log.
 
-.SH Declartion of subsystems or no subsystems
+.SH Declaration of subsystems or no subsystems
 The logsys library supports the logging of information to one main system or
 subsystem.  This is specified in each individual object file in the system.
 
@@ -113,7 +115,7 @@ An example of using this would be
 LOGSYS_DECLARE_SUBSYS ("SYS1", LOG_LEVEL_INFO);
 
 Any message of LOG_LEVEL_INFO priority or higher would be logged and any
-logging within the object file this declartion is specified within will be
+logging within the object file this declaration is specified within will be
 logged to the SYS1 subsystem identifier.
 
 .SH Logging Messages
