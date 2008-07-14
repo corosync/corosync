@@ -277,7 +277,9 @@ static void log_printf_worker_fn (void *thread_data, void *work_item)
 		fflush (stdout);
 	}
 
-	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED) {
+	if ((logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED) &&
+		(!((logsys_mode & LOG_MODE_FILTER_DEBUG_FROM_SYSLOG) &&
+		   (log_data->priority == LOG_LEVEL_DEBUG)))) {
 		syslog (log_data->priority,
 			&log_data->log_string[log_data->syslog_pos]);
 	}

@@ -55,6 +55,7 @@
 #define LOG_MODE_FLUSH_AFTER_CONFIG	(1<<9)
 #define LOG_MODE_SHORT_FILELINE		(1<<10)
 #define LOG_MODE_NOSUBSYS		(1<<11)
+#define LOG_MODE_FILTER_DEBUG_FROM_SYSLOG	(1<<12)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.

@@ -77,7 +77,7 @@ The file parameter specifies the filename that should be used to log messages.  
 The facility parameter is the syslog facility that should be used when logging
 messages.
 LOG_MODE_NOSUBSYS: Enabling this mode removes the subsystem tag from the beginning of the log lines.  This is not recommended for programs which have multiple subsystems.
-
+LOG_MODE_FILTER_DEBUG_FROM_SYSLOG: Enabling this mode will stop debug messages from being sent to syslog.
 
 An example declaration would be:
 
