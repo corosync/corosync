@@ -185,9 +185,6 @@ unsigned int logsys_config_subsys_set (
 			logsys_loggers[i].tags = tags;
 			logsys_loggers[i].priority = priority;
 
-			if (priority > logsys_loggers[i].priority) {
-				logsys_loggers[i].priority = priority;
-			}
 			break;
 		}
 	}
@@ -228,7 +225,7 @@ int logsys_config_subsys_get (
 			*tags = logsys_loggers[i].tags;
 			*priority = logsys_loggers[i].priority;
 			pthread_mutex_unlock (&logsys_config_mutex);
-			return (0);
+			return i;
 		}
 	}
 
@@ -482,10 +479,6 @@ void _logsys_config_priority_set (unsigned int id, unsigned int priority)
 	pthread_mutex_lock (&logsys_new_log_mutex);
 
 	logsys_loggers[id].priority = priority;
-
-	if (priority > logsys_loggers[id].priority) {
-		logsys_loggers[id].priority = priority;
-	}
 
 	pthread_mutex_unlock (&logsys_new_log_mutex);
 }

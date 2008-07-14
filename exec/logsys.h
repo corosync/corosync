@@ -181,16 +181,29 @@ static unsigned int logsys_subsys_id __attribute__((unused)) = -1;	\
 #define LOGSYS_DECLARE_NOSUBSYS(priority)				\
 __attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
 {									\
-	_logsys_nosubsys_set();						\
+	unsigned int pri, tags;						\
+									\
 	logsys_subsys_id =						\
-		_logsys_subsys_create ("MAIN", (priority));		\
+		logsys_config_subsys_get("MAIN", &tags, &pri);		\
+									\
+	if (logsys_subsys_id == -1) {					\
+		_logsys_nosubsys_set();					\
+		logsys_subsys_id =					\
+			_logsys_subsys_create ("MAIN", (priority));	\
+	}								\
 }
 
 #define LOGSYS_DECLARE_SUBSYS(subsys,priority)				\
 __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 {									\
+	unsigned int pri, tags;						\
+									\
 	logsys_subsys_id =						\
-		_logsys_subsys_create ((subsys), (priority));		\
+		logsys_config_subsys_get((subsys), &tags, &pri);	\
+									\
+	if (logsys_subsys_id == -1)					\
+		logsys_subsys_id =					\
+			_logsys_subsys_create ((subsys), (priority));	\
 }
 
 #define log_printf(lvl, format, args...) do {				\
