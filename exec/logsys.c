@@ -184,10 +184,6 @@ unsigned int logsys_config_subsys_set (
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
 			logsys_loggers[i].tags = tags;
 			logsys_loggers[i].priority = priority;
-
-			if (priority > logsys_loggers[i].priority) {
-				logsys_loggers[i].priority = priority;
-			}
 			break;
 		}
 	}
