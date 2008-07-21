@@ -546,7 +546,7 @@ saHandleCreate (
 {
 	uint32_t handle;
 	uint32_t check;
-	void *newHandles;
+	void *newHandles = NULL;
 	int found = 0;
 	void *instance;
 	int i;
