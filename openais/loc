@@ -1,0 +1,12 @@
+echo "Application Interface Specification Implementation Lines Of Code"
+echo -n "services LOC    "
+cat services/*.c services/*.h | wc -l
+
+echo -n "lib LOC     "
+cat lib/*.c | wc -l
+
+echo -n "include LOC "
+cat include/*.h | wc -l
+
+echo -n "total LOC   "
+cat services/*.c services/*.h lib/*.c include/*.h | wc -l
