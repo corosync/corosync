@@ -59,13 +59,9 @@ LOGSYS_OBJS = wthread.o logsys.o
 
 EXEC_LIBS = libtotem_pg.a liblogsys.a
 
-# AMF objects
-AMF_SRC = amf.c amfutil.c amfnode.c amfcluster.c amfapp.c amfsg.c amfsu.c amfcomp.c amfsi.c
-AMF_OBJS = amf.o amfutil.o amfnode.o amfcluster.o amfapp.o amfsg.o amfsu.o amfcomp.o amfsi.o
-
 # LCR objects
-LCR_SRC = evs.c clm.c ckpt.c evt.c lck.c msg.c cfg.c cpg.c aisparser.c vsf_ykd.c objdb.c confdb.c $(AMF_SRC)
-LCR_OBJS = evs.o clm.o ckpt.o evt.o lck.o msg.o cfg.o cpg.o aisparser.o vsf_ykd.o objdb.o confdb.o $(AMF_OBJS)
+LCR_SRC = vsf_ykd.c objdb.c confdb.c
+LCR_OBJS =aisparser.o vsf_ykd.o objdb.o confdb.o
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c service.c ipc.c flow.c timer.c \
@@ -80,51 +76,14 @@ override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
 	../lcr/lcr_ifact.o aisexec \
-	service_evs.lcrso service_clm.lcrso service_amf.lcrso \
-	service_ckpt.lcrso service_evt.lcrso service_lck.lcrso \
-	service_msg.lcrso service_cfg.lcrso service_cpg.lcrso \
-	service_confdb.lcrso \
-	objdb.lcrso aisparser.lcrso vsf_ykd.lcrso keygen openais-instantiate
+	objdb.lcrso vsf_ykd.lcrso keygen
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
-all: libtotem_pg.a liblogsys.a aisexec keygen openais-instantiate
+all: libtotem_pg.a liblogsys.a aisexec keygen
 endif
 
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
-
-service_evs.lcrso: evs.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load evs.o -o $@
-
-service_clm.lcrso: clm.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load clm.o -o $@
-
-service_amf.lcrso: $(AMF_OBJS)
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load $(AMF_OBJS) -o $@
-
-service_ckpt.lcrso: ckpt.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load ckpt.o -o $@
-
-service_evt.lcrso: evt.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load evt.o -o $@
-
-service_lck.lcrso: lck.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load lck.o -o $@
-
-service_msg.lcrso: msg.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load msg.o -o $@
-
-service_cfg.lcrso: cfg.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
-
-service_confdb.lcrso: confdb.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load confdb.o -o $@
-
-service_cpg.lcrso: cpg.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
-
-aisparser.lcrso: aisparser.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load aisparser.o -o $@
 
 objdb.lcrso: objdb.o
 	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load objdb.o -o $@
@@ -134,39 +93,6 @@ vsf_ykd.lcrso: vsf_ykd.o
 
 
 else
-
-service_evs.lcrso: evs.o
-	$(CC) -shared -Wl,-soname,service_evs.lcrso evs.o -o $@
-
-service_clm.lcrso: clm.o
-	$(CC) -shared -Wl,-soname,service_clm.lcrso clm.o -o $@
-
-service_amf.lcrso: $(AMF_OBJS)
-	$(CC) -shared -Wl,-soname,service_amf.lcrso $(AMF_OBJS) -o $@
-
-service_ckpt.lcrso: ckpt.o
-	$(CC) -shared -Wl,-soname,service_ckpt.lcrso ckpt.o -o $@
-
-service_evt.lcrso: evt.o
-	$(CC) -shared -Wl,-soname,service_evt.lcrso evt.o -o $@
-
-service_lck.lcrso: lck.o
-	$(CC) -shared -Wl,-soname,service_lck.lcrso lck.o -o $@
-
-service_msg.lcrso: msg.o
-	$(CC) -shared -Wl,-soname,service_msg.lcrso msg.o -o $@
-
-service_cfg.lcrso: cfg.o
-	$(CC) -shared -Wl,-soname,service_cfg.lcrso cfg.o -o $@
-
-service_confdb.lcrso: confdb.o
-	$(CC) -shared -Wl,-soname,service_confdb.lcrso confdb.o -o $@
-
-service_cpg.lcrso: cpg.o
-	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
-
-aisparser.lcrso: aisparser.o
-	$(CC) -shared -Wl,-soname,aisparser.lcrso aisparser.o -o $@
 
 vsf_ykd.lcrso: vsf_ykd.o
 	$(CC) -shared -Wl,-soname,vsf_ykd.lcrso vsf_ykd.o -o $@
@@ -219,40 +145,7 @@ depend:
 ../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -DLCRSODIR='"$(LCRSODIR)"' -I../lcr -c -o $@ ../lcr/lcr_ifact.c
 
-evs.o: evs.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-clm.o: clm.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-amf.o: amf.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-ckpt.o: ckpt.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-evt.o: evt.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-lck.o: lck.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-msg.o: msg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-cfg.o: cfg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-confdb.o: confdb.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-aisparser.o: aisparser.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
 vsf_ykd.o: vsf_ykd.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-cpg.o: cpg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 objdb.o: objdb.c

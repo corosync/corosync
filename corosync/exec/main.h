@@ -36,7 +36,6 @@
 #define TRUE 1
 #define FALSE 0
 #include "../include/saAis.h"
-#include "../include/saClm.h"
 #include "../include/ipc_gen.h"
 #include "objdb.h"
 #include "config.h"
@@ -61,7 +60,7 @@ extern totempg_groups_handle openais_group_handle;
 
 poll_handle aisexec_poll_handle;
 
-extern SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
+extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
