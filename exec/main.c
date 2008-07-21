@@ -109,7 +109,7 @@ static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
 
 static struct objdb_iface_ver0 *objdb = NULL;
 
-SaClmClusterNodeT *(*main_clm_get_by_nodeid) (unsigned int node_id);
+unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 static void sigusr2_handler (int num)
 {
