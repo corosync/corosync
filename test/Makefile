@@ -44,7 +44,7 @@ BINARIES=testclm testamf1 \
 	testckpt ckptstress ckptbench \
 	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
 	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testcpg testcpg2 cpgbench testconfdb openais-cfgtool \
+	testmsg testmsg2 testcpg testcpg2 cpgbench testconfdb openais-cfgtool \
 	logsys_s logsys_t1 logsys_t2
 
 override CFLAGS += -I../include
@@ -56,7 +56,7 @@ TEST_SRC =  testclm.c testamf1.c \
 	testckpt.c ckptstress.c ckptbench.c  \
 	ckptbenchth.c testevt.c testevs.c evsbench.c \
 	subscription.c publish.c evtbench.c \
-	sa_error.c unlink.c testclm2.c testlck.c testmsg.c \
+	sa_error.c unlink.c testclm2.c testlck.c testmsg.c testmsg2.c \
 	logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
 
 all: $(BINARIES)
@@ -144,6 +144,9 @@ testlck: testlck.o $(LIBRARIES)
 
 testmsg: testmsg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testmsg testmsg.o $(LIBS)
+
+testmsg2: testmsg2.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testmsg2 testmsg2.o $(LIBS)
 
 testcpg: testcpg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
