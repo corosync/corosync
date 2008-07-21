@@ -60,8 +60,8 @@ LOGSYS_OBJS = wthread.o logsys.o
 EXEC_LIBS = libtotem_pg.a liblogsys.a
 
 # LCR objects
-LCR_SRC = vsf_ykd.c objdb.c confdb.c
-LCR_OBJS =aisparser.o vsf_ykd.o objdb.o confdb.o
+LCR_SRC = vsf_ykd.c objdb.c coroparse.c
+LCR_OBJS =aisparser.o vsf_ykd.o objdb.o coroparse.o
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c service.c ipc.c flow.c timer.c \
@@ -76,7 +76,7 @@ override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
 	../lcr/lcr_ifact.o corosync \
-	objdb.lcrso vsf_ykd.lcrso keygen
+	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso keygen
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
 all: libtotem_pg.a liblogsys.a corosync keygen
@@ -91,6 +91,8 @@ objdb.lcrso: objdb.o
 vsf_ykd.lcrso: vsf_ykd.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./corosync -bind_at_load vsf_ykd.o -o $@
 
+coroparse.lcrso: coroparse.o
+	$(CC) -bundle -bundle_loader ./corosync -bind_at_load coroparse.o -o $@
 
 else
 
@@ -100,6 +102,8 @@ vsf_ykd.lcrso: vsf_ykd.o
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
 
+coroparse.lcrso: coroparse.o
+	$(CC) -shared -Wl,-soname,coroparse.lcrso coroparse.o -o $@
 endif
 
 corosync: $(EXEC_OBJS) $(EXEC_LIBS)
@@ -149,6 +153,9 @@ vsf_ykd.o: vsf_ykd.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 objdb.o: objdb.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+coroparse.o: coroparse.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # -fPIC rules required for lib totem
