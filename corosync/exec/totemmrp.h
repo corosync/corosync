@@ -36,7 +36,6 @@
 #define TOTEMMRP_H_DEFINED
 
 #include "totem.h"
-#include "aispoll.h"
 
 /*
  * Totem Single Ring Protocol

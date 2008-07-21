@@ -57,7 +57,7 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include "aispoll.h"
+#include "coropoll.h"
 #include "totemnet.h"
 #include "wthread.h"
 #include "../include/queue.h"

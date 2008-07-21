@@ -35,7 +35,7 @@
 #include <netinet/in.h>
 #include "../include/saAis.h"
 #include "../include/list.h"
-#include "aispoll.h"
+#include "coropoll.h"
 #include "totemsrp.h"
 #include "totempg.h"
 #include "objdb.h"

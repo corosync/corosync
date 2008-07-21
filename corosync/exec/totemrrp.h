@@ -39,7 +39,6 @@
 #include <sys/socket.h>
 
 #include "totem.h"
-#include "aispoll.h"
 
 typedef unsigned int totemrrp_handle;
 

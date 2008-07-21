@@ -61,7 +61,7 @@
 #include "../include/list.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_ifact.h"
-#include "poll.h"
+#include "coropoll.h"
 #include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"

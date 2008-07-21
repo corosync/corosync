@@ -37,6 +37,7 @@
 #define FALSE 0
 #include "../include/saAis.h"
 #include "../include/ipc_gen.h"
+#include "coropoll.h"
 #include "objdb.h"
 #include "config.h"
 #include "totempg.h"

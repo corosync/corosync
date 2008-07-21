@@ -70,7 +70,7 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include "aispoll.h"
+#include "coropoll.h"
 #include "totemsrp.h"
 #include "totemrrp.h"
 #include "wthread.h"

@@ -62,7 +62,7 @@
 #include "../include/list.h"
 #include "../include/hdb.h"
 #include "swab.h"
-#include "aispoll.h"
+#include "coropoll.h"
 #include "totemnet.h"
 #include "totemrrp.h"
 
