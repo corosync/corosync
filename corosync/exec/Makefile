@@ -75,21 +75,21 @@ EXEC_OBJS = $(MAIN_OBJS)
 override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
-	../lcr/lcr_ifact.o aisexec \
+	../lcr/lcr_ifact.o corosync \
 	objdb.lcrso vsf_ykd.lcrso keygen
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
-all: libtotem_pg.a liblogsys.a aisexec keygen
+all: libtotem_pg.a liblogsys.a corosync keygen
 endif
 
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 objdb.lcrso: objdb.o
-	$(CC) -bundle -bundle_loader ./aisexec -bind_at_load objdb.o -o $@
+	$(CC) -bundle -bundle_loader ./corosync -bind_at_load objdb.o -o $@
 
 vsf_ykd.lcrso: vsf_ykd.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load vsf_ykd.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./corosync -bind_at_load vsf_ykd.o -o $@
 
 
 else
@@ -102,8 +102,8 @@ objdb.lcrso: objdb.o
 
 endif
 
-aisexec: $(EXEC_OBJS) $(EXEC_LIBS)
-	$(CC) $(EXEC_OBJS) $(EXEC_LIBS) -o aisexec $(LDFLAGS)
+corosync: $(EXEC_OBJS) $(EXEC_LIBS)
+	$(CC) $(EXEC_OBJS) $(EXEC_LIBS) -o corosync $(LDFLAGS)
 
 libtotem_pg.a: $(TOTEM_OBJS)
 	$(AR) -rc libtotem_pg.a $(TOTEM_OBJS)
@@ -135,7 +135,7 @@ openais-instantiate: openais-instantiate.o
 	$(CC) $(LDFLAGS) openais-instantiate.o -o openais-instantiate
 
 clean:
-	rm -f aisexec $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out 
+	rm -f corosync $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out 
 	rm -f keygen keygen.o openais-instantiate *.da *.bb *.bbg liblogsys.so* liblogsys.a
 
 depend:
