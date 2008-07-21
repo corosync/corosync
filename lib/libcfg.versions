@@ -1,0 +1,33 @@
+# Version and symbol export for libcfg.so
+
+OPENAIS_CFG_0.82 {
+	global:
+		openais_cfg_initialize;
+		openais_cfg_fd_get;
+		openais_cfg_dispatch;
+		openais_cfg_finalize;
+		openais_cfg_administrative_state_get;
+		openais_cfg_administrative_state_set;
+		openais_cfg_track;
+		openais_cfg_track_stop;
+		openais_cfg_ring_status_get;
+		openais_cfg_ring_reenable;
+		openais_cfg_service_load;
+		openais_cfg_service_unload;
+		
+		
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saPollRetry;
+		saRecvRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

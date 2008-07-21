@@ -1,0 +1,1223 @@
+Copyright (c) 2002-2004 MontaVista Software, Inc.
+Copyright (c) 2006 Red Hat, Inc.
+
+All rights reserved.
+
+This software licensed under BSD license, the text of which follows:
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+- Neither the name of the MontaVista Software, Inc. nor the names of its
+  contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------------
+This file provides a map for developers to understand how to contribute
+to the openais project.  The purpose of this document is to prepare a
+developer to write a service for openais, or understand the architecture
+of openais.
+
+The following is described in this document:
+
+ * all files, purpose, and dependencies
+ * architecture of openais
+ * taking advantage of virtual synchrony
+ * adding libraries
+ * adding services
+
+-------------------------------------------------------------------------------
+ all files, purpose, and dependencies.
+-------------------------------------------------------------------------------
+
+*----------------*
+*- AIS INCLUDES -*
+*----------------*
+
+include/saAmf.h
+-----------------
+	Definitions for AMF interface.
+
+include/saCkpt.h
+------------------
+	Definitions for CKPT interface.
+
+include/saClm.h
+-----------------
+	Definitions for CLM interface.
+
+include/saAmf.h
+-----------------
+	Definitions for the AMF interface.
+
+include/saEvt.h
+-----------------
+	Defintiions for the EVT interface.
+
+include/saLck.h
+-----------------
+	Definitions for the LCK interface.
+
+include/cfg.h
+	Definitions for the CFG interface.
+
+include/cpg.h
+	Definitions for the CPG interface.
+
+include/evs.h
+	Definitions for the EVS interface.
+
+include/ipc_amf.h
+	IPC interface between client and server for AMF service.
+
+include/ipc_cfg.h
+	IPC interface between client and server for CFG service.
+
+include/ipc_ckpt.h
+	IPC interface between client and server for CKPT service.
+
+include/ipc_clm.h
+	IPC interface between client and server for CLM service.
+
+include/ipc_cpg.h
+	IPC interface between client and server for CPG service.
+
+include/ipc_evs.h
+	IPC interface between client and server for EVS service.
+
+include/ipc_evt.h
+	IPC interface between client and server for EVT service.
+
+include/ipc_gen.h
+	IPC interface for generic operations.
+
+include/ipc_lck.h
+	IPC interface between client and server for LCK service.
+
+include/ipc_msg.h
+	IPC interface between client and server for MSG service.
+
+include/hdb.h
+	Handle database implementation.
+
+include/list.h
+	Linked list implementation.
+
+include/swab.h
+	Byte swapping implementation.
+
+include/queue.h
+	FIFO queue implementation.
+
+include/sq.h
+	Sort queue where items are sorted according to a sequence number.  Avoids
+	Sort, hence, install of a new element takes is O(1).  Inline implementation.
+
+	depends on list.
+
+*---------------*
+* AIS LIBRARIES *
+*---------------*
+lib/amf.c
+---------
+	AMF user library linked into user application.
+
+lib/cfg.c
+---------
+	CFG user library linked into user application.
+
+lib/ckpt.c
+---------
+	CKPT user library linked into user application.
+
+lib/clm.c
+---------
+	CLM user library linked into user application.
+
+lib/cpg.c
+---------
+	CPG user library linked into user application.
+
+lib/evs.c
+---------
+	EVS user library linked into user application.
+
+lib/evt.c
+---------
+	EVT user library linked into user application.
+
+lib/lck.c
+---------
+	LCK user library linked into user application.
+
+lib/msg.c
+---------
+	MSG user library linked into uer application.
+
+lib/amf.c
+---------
+	AMF user library linked into user application.
+
+lib/ckpt.c
+----------
+	CKPT user library linked into user application.
+
+lib/evt.c
+----------
+	EVT user library linked into user application.
+
+lib/util.c
+----------
+	Utility functions used by all libraries.
+
+*-----------------*
+*- AIS EXECUTIVE -*
+*-----------------*
+
+exec/aisparser.{h|c}
+	Parser plugin for default configuration file format.
+
+exec/aispoll.{h|c}
+	Poll abstraction interface.
+
+exec/amfapp.c
+	AMF application handling.
+
+exec/amfcluster.c
+	AMF cluster handling.
+
+exec/amfcomp.c
+	AMF component level handling.
+
+exec/amf.h
+	Defines all AMF symbol names.
+
+exec/amfnode.c
+	AMF node level handling.
+
+exec/amfsg.c
+	AMF service group handling.
+
+exec/amfsi.c
+	AMF Service instance handling.
+
+exec/amfsu.c
+	AMF service unit handling.
+
+exec/amfutil.c
+	AMF utility functions.
+
+exec/cfg.c
+	Server side implementation of CFG service which is used to display
+	redundant ring status and reenabling redundant rings.
+
+exec/ckpt.c
+	Server side implementation of Checkpointing (CKPT API).
+
+exec/clm.c
+	Server side implementation of Cluster Membership (CLM API).
+
+exec/cpg.c
+	Server side implementation of closed procss groups (CPG API).
+
+exec/crypto.{c|h}
+	Cryptography functions used by openais.
+
+exec/evs.c
+	Server side implementation of extended virtual synchrony passthrough
+	(EVS API).
+
+exec/evt.c
+	Server side implementation of Event Service (EVT API).
+
+exec/ipc.{c|h}
+	All IPC operations used by openais.
+
+exec/jhash.h
+	A hash routine.
+
+exec/keygen.c
+	Secret key generator used by openais encryption tools.
+
+exec/lck.c
+	Server side implementation of the distributed lock service (LCK API).
+
+exec/main.{c|h}
+	Main function which connects all components together.
+
+exec/mainconfig.{c|h}
+	Reads main configuration that is set in the configuration parser.
+
+exec/mempool.{c|h}
+	Currently unused.
+
+exec/msg.c
+	Server side implementation of message service (MSG API).
+
+exec/objdb.{c|h}
+	Object database used to configure services.
+
+exec/openais-instantiate.c
+	instantiates a component by forking and exec'ing it and writing its
+	pid to a pid file.
+
+exec/print.{c|h}
+	Non-blocking thread-based logging service with overflow protection.
+
+exec/service.{c|h}
+	Service handling routines including the default service handler
+	description.
+
+exec/sync.{c|h}
+	The synchronization service implementation.
+
+exec/timer.{c|h}
+	Threaded based timer service.
+
+exec/tlist.h
+	Timer list used to expire timers.
+
+exec/totemconfig.{c.h}
+	The totem configuration configurator from data parsed with aisparser
+	in the configuration file.
+
+exec/totem.h
+	General definitions for the totem protocol used by the totem stack.
+
+exec/totemip.{c.h}
+	IP handling functions for totem - lowest on stack.
+
+exec/{totemrrp.{c.h}
+	The totem multi ring protocool and currently unimplemented.  Between
+	totemsrp and totempg.
+
+exec/totemnet.{c.h}
+	Network handling functions for totem - between totemip and totemrrp.
+
+exec/totempg.{c|h}
+	Process groups interface which is used by all applications - highest on
+	stack.
+
+exec/totemrrp.{c.h}
+	Redundant ring functions for totem - between totemnet and totemsrp.
+
+exec/util.{c|h}
+	Utility functions used by openais executive.
+
+exec/version.h
+	Defines build version.
+
+exec/vsf.h
+	Virtual Synchrony plugin API.
+
+exec/vsf_ykd.c
+	Virtual Synchrony YKD Dynamic Linear Voting algorithm.
+
+exec/wthread.{c|h}
+	Worker threads API.
+
+loc
+---
+Counts the lines of code in the AIS implementation.
+
+-------------------------------------------------------------------------------
+ architecture of openais
+-------------------------------------------------------------------------------
+
+The openais standards based cluster framework is a generic cluster plugin
+architecture used to create cluster APIs and services.  Usually there are
+libraries which implement APIs and are linked into the end user application.
+The libraries request services from the aisexec process, called the AIS
+executive.  The AIS executive uses the Totem protocol stack to communicate
+within the cluster and execute operations on behalf of the user.  Finally the
+response of the API is delivered once the operation has completed.
+
+
+           --------------------------------------------------
+           |   AMF and more services libraries              |
+           --------------------------------------------------
+           |                      IPC API                   |
+           --------------------------------------------------
+           |                 openais Executive              |
+           |                                                |
+           |     +---------+ +--------+ +---------+         |
+           |     | Object  | |  AIS   | | Service |         |
+           |     | Datbase | | Config | | Handler |         |
+           |     | Service | | Parser | | Manager |         |
+           |     +---------+ +--------+ +---------+         |
+           |     +-------+ +-------+                        |
+           |     |  AMF  | | more  |                        |
+           |     |Service| |svcs...|                        |
+           |     +-------+ +-------+                        |
+           |                 +---------+                    |
+           |                 |  Sync   |                    |
+           |                 | Service |                    |
+           |                 +---------+                    |
+	   |                 +---------+                    |
+           |                 |   VSF   |                    |
+           |                 | Service |                    |
+           |                 +---------+                    |
+           | +--------------------------------+ +--------+  |
+           | |                 Totem          | | Timers |  |
+           | |                 Stack          | |  API   |  |
+           | +--------------------------------+ +--------+  |
+           |                +-----------+                   |
+           |                |   Poll    |                   |
+           |                | Interface |                   |
+           |                +-----------+                   |
+           |                                                |
+           -------------------------------------------------
+
+                    Figure 1: openais Architecture
+
+Every application that intends to use openais links with the libais library.
+This library uses IPC, or more specifically BSD unix sockets, to communicate
+with the executive.  The library is a small program responsible only for
+packaging the request into a message.  This message is sent, using IPC, to
+the executive which then processes it.  The library then waits for a response.
+
+The library itself contains very little intelligence.  Some utility services
+are provided:
+
+ * create a connection to the executive
+ * send messages to the executive
+ * retrieve messages from the executive
+ * Poll on a fd
+ * create a handle instance
+ * destroy a handle instance
+ * get a reference to a handle instance
+ * release a reference to a handle instance
+
+When a library connects, it sends via a message, the service type.  The 
+service type is stored and used later to reference the message handlers
+for both the library message handlers and executive message handlers.
+Every message sent contains an integer identifier, which is used to index
+into an array of message handlers to determine the correct message handler
+to execute For the library.  Hence a message is uniquely identified by the
+message handler ID number and the service handler ID number.
+
+When a library sends a message via IPC, the delivery of the message occurs
+to the proper library message handler.  The library message handler is
+responsible for sending the message via the totem process groups API to all
+nodes in the system.
+
+This simplifies the library handler significantly.  The main purpose of the
+library handler should be to package the library request into a message that
+can be sent to all nodes.
+
+The totem process groups API sends the message according to the extended
+virtual synchrony model.  The group messaging interface also delivers the
+message according to the extended virtual synchrony model.  This has several
+advantages which are described in the virtual synchrony section.  One
+advantage that must be described now is that messages are self-delivered;
+if a node sends a message, that same message is delivered back to that 
+node.
+
+When the executive message is delivered, it is processed by the executive
+message handler.  The executive message handler contains the brains of
+AIS and is responsible for making all decisions relating to the request
+from the libais library user.
+
+-------------------------------------------------------------------------------
+ taking advantage of virtual synchrony
+-------------------------------------------------------------------------------
+
+definitions:
+processor: a system responsible for executing the virtual synchrony model
+configuration: the list of processors under which messages are delivered
+partition: one or more processors leave the configuration
+merge: one or more processors join the configuration
+group messaging: sending a message from one sender to many receivers
+
+Virtual synchrony is a model for group messaging.  This is often confused
+with particular implementations of virtual synchrony.  Try to focus on
+what virtual syncrhony provides, not how it provides it, unless interested
+in working on the group messaging interface of openais.
+
+Virtual synchrony provides several advantages:
+
+ * integrated membership
+ * strong membership guarantees
+ * agreed ordering of delivered messages
+ * same delivery of configuration changes and messages on every node
+ * self-delivery
+ * reliable communication in the face of unreliable networks
+ * recovery of messages sent within a configuration where possible
+ * use of network multicast using standard UDP/IP
+
+Integrated membership allows the group messaging interface to give
+configuration change events to the API services.  This is obviously beneficial
+to the cluster membership service (and its respective API0, but is helpful
+to other services as described later.
+
+Strong membership guarantees allow a distributed application to make decisions
+based upon the configuration (membership).  Every service in openais registers
+a configuration change function.  This function is called whenever a
+configuration change occurs.  The information passed is the current processors,
+the processors that have left the configuration, and the processors that have
+joined the configuration.  This information is then used to make decisions
+within a distributed state machine.  One example usage is that an AMF component
+running a specific processor has left the configuration, so failover actions
+must now be taken with the new configuration (and known components).
+
+Virtual synchrony requires that messages may be delivered in agreed order.
+FIFO order indicates that one sender and one receiver agree on the order of
+messages sent.  Agreed ordering takes this requirement to groups, requiring that
+one sender and all receivers agree on the order of messages sent.
+
+Consider a lock service.  The service is responsible for arbitrating locks
+between multiple processors in the system.  With fifo ordering, this is very
+difficult because a request at about the same time for a lock from two seperate
+processors may arrive at all the receivers in different order.  Agreed ordering
+ensures that all the processors are delivered the message in the same order.
+In this case the first lock message will always be from processor X, while the
+second lock message will always be from processor Y.   Hence the first request
+is always honored by all processors, and the second request is rejected (since
+the lock is taken).  This is how race conditions are avoided in distributed
+systems.
+
+Every processor is delivered a configuration change and messages within a
+configuration in the same order.  This ensures that any distributed state
+machine will make the same decisions on every processor within the
+configuration.  This also allows the configuration and the messages to be
+considered when making decisions.
+
+Virtual synchrony requires that every node is delivered messages that it
+sends.  This enables the logic to be placed in one location (the handler
+for the delivery of the group message) instead of two seperate places.  This
+also allows messages that are sent to be ordered in the stream of other
+messages within the configuration.
+
+Certain guarantees are required by virtual synchrony.  If a message is sent,
+it must be delivered by every processor unless that processor fails.  If a
+particular processor fails, a configuration change occurs creating a new
+configuration under which a new set of decisions may be made.  This implies
+that even unreliable networks must reliably deliver messages.   The 
+mplementation in openais works on unreliable as well as reliable networks.
+
+Every message sent must be delivered, unless a configuration change occurs.
+In the case of a configuration change, every message that can be recovered
+must be recovered before the new configuration is installed.  Some systems
+during partition won't continue to recover messages within the old
+configuration even though those messages can be recovered.  Virtual synchrony
+makes that impossible, except for those members that are no longer part
+of a configuration.
+
+Finally virtual syncrhony takes advantage of hardware multicast to avoid
+duplicated packets and scale to large transmit rates.  On 100mbit network,
+openais can approach wire speeds depending on the number of messages queued
+for a particular processor.
+
+What does all of this mean for the developer?
+
+ * messages are delivered reliably
+ * messages are delivered in the same order to all nodes
+ * configuration and messages can both be used to make decisions
+
+-------------------------------------------------------------------------------
+ adding libraries
+-------------------------------------------------------------------------------
+
+The first stage in adding a library to the system is to develop the library.
+
+Library code should follow these guidelines:
+
+ * use SA Forum coding style for SA Forum APIs to aid in debugging
+ * use openais coding guidelines for APIs that are not SA Forum that
+   are to be merged into the openais tree.
+ * implement all library code within one file named after the api.
+   examples are ckpt.c, clm.c, amf.c.
+ * use parallel structure as much as possible between different APIs
+ * make use of utility services provided by util.c.
+ * if something is needed that is generic and useful by all services,
+   submit patches for other libraries to use these services.
+ * use the reference counting handle manager for handle management.
+
+------------------
+ Version checking
+------------------
+
+struct saVersionDatabase {
+	int versionCount;
+	SaVersionT *versionsSupported;
+};
+
+The versionCount number describes how many entries are in the version database.
+The versionsSupported member is an array of SaVersionT describing the acceptable
+versions this API supports.
+
+An api developer specifies versions supported by adding the following C
+code to the library file:
+
+/*
+ * Versions supported
+ */
+static SaVersionT clmVersionsSupported[] = {
+	{ 'B', 1, 1 },
+	{ 'b', 1, 1 }
+};
+
+static struct saVersionDatabase clmVersionDatabase = {
+	sizeof (clmVersionsSupported) / sizeof (SaVersionT),
+	clmVersionsSupported
+};
+
+After this is specified, the following API is used to check versions:
+
+SaErrorT
+saVersionVerify (
+	struct saVersionDatabase *versionDatabase,
+	const SaVersionT *version);
+
+An example usage of this is
+	SaErrorT error;
+
+	error = saVersioNVerify (&clmVersionDatabase, version);
+
+	where version is a pointer to an SaVersionT passed into the API.
+
+error will return SA_OK if the version is valid as specified in the
+version database.
+
+------------------
+ Handle Instances
+------------------
+
+Every handle instance is stored in a handle database.  The handle database
+stores instance information for every handle used by libraries.  The system
+includes reference counting and is safe for use in threaded applications.
+
+The handle database structure is:
+
+struct saHandleDatabase {
+	unsigned int handleCount;
+	struct saHandle *handles;
+	pthread_mutex_t mutex;
+	void (*handleInstanceDestructor) (void *);
+};
+
+handleCount is the number of handles
+handles is an array of handles
+mutex is a pthread mutex used to mutually exclude access to the handle db
+handleInstanceDestructor is a callback that is called when the handle
+	should be freed because its reference count as dropped to zero.
+
+The handle database is defined in a library as follows:
+
+static void clmHandleInstanceDestructor (void *);
+
+static struct saHandleDatabase clmHandleDatabase = {
+	.handleCount			= 0,
+	.handles			= 0,
+	.mutex		 		=  PTHREAD_MUTEX_INITIALIZER,
+	.handleInstanceDestructor	= clmHandleInstanceDestructor
+};
+
+There are several APIs to access the handle database:
+
+SaErrorT
+saHandleCreate (
+	struct saHandleDatabase *handleDatabase,
+	int instanceSize,
+	int *handleOut);
+
+Creates an instance of size instanceSize in the handleDatabase paraemter
+returning the handle number in handleOut.  The handle instance reference
+count starts at the value 1.
+
+SaErrorT
+saHandleDestroy (
+	struct saHandleDatabase *handleDatabase,
+	unsigned int handle);
+
+Destroys further access to the handle.  Once the handle reference count
+drops to zero, the database destructor is called for the handle.  The handle
+instance reference count is decremented by 1.
+
+SaErrorT
+saHandleInstanceGet (
+	struct saHandleDatabase *handleDatabase,
+	unsigned int handle,
+	void **instance);
+
+Gets an instance specified handle from the handleDatabase and returns
+it in the instance member.  If the handle is valid SA_OK is returned
+otherwise an error is returned.  This is used to ensure a handle is
+valid.  Eveyr get call increases the reference count on a handle instance
+by one.
+
+SaErrorT
+saHandleInstancePut (
+	struct saHandleDatabase *handleDatabase,
+	unsigned int handle);
+
+Decrements the reference count by 1.  If the reference count indicates
+the handle has been destroyed, it will then be removed from the database
+and the destructor called on the instance data.  The put call takes care
+of freeing the handle instance data.
+
+Create a data structure for the instance, and use it within the libraries
+to store state information about the instance.  This information can be
+the handle, a mutex for protecting I/O, a queue for queueing async messages
+or whatever is needed by the API.
+
+-----------------------------------
+ communicating with the executive
+-----------------------------------
+
+A service connection is created with the following API;
+
+SaErrorT
+saServiceConnect (
+	int *responseOut,
+	int *callbackOut,
+	enum service_types service);
+
+
+The responseOut parameter specifies the file descriptor where response messages
+will be delivered.  The callback out parameter describes the file descriptor
+where callback messages are delivered.
+
+The service specifies the service to use.
+
+Messages are sent and received from the executive with the following functions:
+
+SaAisErrorT saSendMsgRetry (
+	int s,
+	struct iovec *iov,
+	int iov_len);
+
+the s member is the socket to use retrieved with saServiceConnect
+The iov is the iovector used to send a message.
+the iov_len is the number of elements in iov.
+
+This sends an IO-vectorized message.
+
+SaErrorT
+saSendRetry (
+	int s,
+	const void *msg,
+	size_t len,
+	int flags);
+
+the s member is the socket to use retrieved with saServiceConnect
+the msg member is a pointer to the message to send to the service
+the len member is the length of the message to send
+the flags parameter is the flags to use with the sendmsg system call
+
+
+This sends a data blob to the exective.
+
+A message is received from the executive with the function:
+
+SaErrorT
+saRecvRetry (
+	int s,
+	void *msg,
+	size_t len,
+	int flags);
+
+the s member is the socket to use retrieved with saServiceConnect
+the msg member is a pointer to the message to receive to the service
+the len member is the length of the message to receive
+the flags parameter is the flags to use with the sendmsg system call
+
+A message may be send and a reply waited for with the following function:
+SaAisErrorT saSendMsgReceiveReply (
+        int s,
+        struct iovec *iov,
+        int iov_len,
+        void *responseMessage,
+        int responseLen)
+
+s is the socket to send and receive the response.
+iov is the iovector to send.
+iov_len is the number of elements in iov.
+responseMessage is the data block used to store the response.
+responesLen is the length of the data block that is expected to be received.
+
+Waiting for a file descriptor using poll systemcall is done with the api:
+
+SaErrorT
+saPollRetry (
+	struct pollfd *ufds,
+	unsigned int nfds,
+	int timeout);
+
+where the parameters are the standard poll parameters.
+
+Messages can be received out of order searching for a specific message id with:
+
+----------
+ messages
+----------
+Please follow the style of the messages.  It makes debugging much easier
+if parallel style is used.
+
+An service should be added to service_types enumeration in ipc_gen or in the
+case of an external project, a number should be registered with the project.
+
+enum service_types {
+        EVS_SERVICE = 0,
+        CLM_SERVICE = 1,
+        AMF_SERVICE = 2,
+        CKPT_SERVICE = 3,
+        EVT_SERVICE = 4,
+        LCK_SERVICE = 5,
+        MSG_SERVICE = 6,
+        CFG_SERVICE = 7,
+        CPG_SERVICE = 8
+};
+
+These are the request CLM message identifiers:
+
+Each library should have an ipc_APINAME.h file in include.  It should define 
+request types and response types.
+
+enum req_clm_types {
+	MESSAGE_REQ_CLM_TRACKSTART = 0,
+	MESSAGE_REQ_CLM_TRACKSTOP = 1,
+	MESSAGE_REQ_CLM_NODEGET = 2,
+	MESSAGE_REQ_CLM_NODEGETASYNC = 3
+};
+
+These are the response CLM message identifiers:
+
+enum res_clm_types {
+        MESSAGE_RES_CLM_TRACKCALLBACK = 0,
+        MESSAGE_RES_CLM_TRACKSTART = 1,
+        MESSAGE_RES_CLM_TRACKSTOP = 2,
+        MESSAGE_RES_CLM_NODEGET = 3,
+        MESSAGE_RES_CLM_NODEGETASYNC = 4,
+        MESSAGE_RES_CLM_NODEGETCALLBACK = 5
+};
+
+A request header should be placed at the front of every message send by
+the library.
+
+typedef struct {
+        int size __attribute__((aligned(8)));
+        int id __attribute__((aligned(8)));
+} mar_req_header_t __attribute__((aligned(8)));
+
+There is also a response message header which should start every response
+message:
+
+typedef struct {
+        int size; __attribute__((aligned(8)))
+        int id __attribute__((aligned(8)));
+        SaAisErrorT error __attribute__((aligned(8)));
+} mar_res_header_t __attribute__((aligned(8)));
+
+the error parameter is used to pass errors from the executive to the library,
+including SA_ERR_TRY_AGAIN for flow control, which is described later.
+
+This is described later:
+
+typedef struct {
+        mar_uint32_t nodeid __attribute__((aligned(8)));
+        void *conn __attribute__((aligned(8)));
+} mar_message_source_t __attribute__((aligned(8)));
+
+This is the MESSAGE_REQ_CLM_TRACKSTART message id above:
+
+struct req_clm_trackstart {
+	mar_req_header_t header;
+	SaUint8T trackFlags;
+	SaClmClusterNotificationT *notificationBufferAddress;
+	SaUint32T numberOfItems;
+};
+
+The saClmClusterTrackStart api should create this message and send it to the 
+executive.
+
+responses should be of:
+
+struct res_clm_trackstart
+
+------------
+ some notes
+------------
+* Avoid doing anything tricky in the library itself.  Let the executive 
+  handler do all of the work of the system.  minimize what the API does.
+* Once an api is developed, it must be added to the makefile.  Just add
+  a line for the file to EXECOBJS build line.
+* protect I/O send/recv with a mutex.
+* always look at other libraries when there is a question about how to 
+  do something.  It has likely been thought out in another library.
+
+-------------------------------------------------------------------------------
+ adding services
+-------------------------------------------------------------------------------
+Services are defined by service handlers and messages described in
+include/ipc_SERVICE.h.  These two peices of information are used by the
+executive to dispatch the correct messages to the correct receipients.
+
+-------------------------------
+ the service handler structure
+-------------------------------
+
+A service is added by defining a structure defined in exec/service.h.  The
+structure is a little daunting:
+
+struct libais_handler {
+	int (*libais_handler_fn) (void *conn, void *msg);
+	int response_size;
+	int response_id;
+	enum openais_flow_control flow_control;
+};
+
+The response_size, response_id, and flow_control for a library handler are
+used for flow control.  A response message will be sent to the library of the
+size response_size, with the header id of response_id if the totem message
+queue is full.  Some library APIs may not need to block in this condition
+(because they don't have to use totem), so they should specify
+OPENAIS_FLOW_CONTROL_NOT_REQUIREDin the flow control field.
+
+The libais_handler_fn is a function to be called when the library handler is
+requested to be executed.
+
+struct openais_exec_handler {
+	void (*exec_handler_fn) (void *msg, unsigned int nodeid);
+	void (*exec_endian_convert_fn) (void *msg);
+};
+
+The exec_handler_fn is a function to be called when the executive handler is
+requested to execute.
+
+The exec_endian_convert_fn is a function to be called to convert the endianess
+of the executive message.  Note messages are not stored in big or little endian
+format before transmit.  Instead they are transmitted in either big endian or
+little endian depending on the byte order of the transmitter and converted to
+the host machine order on receipt of the message.
+
+struct openais_service_handler {
+	unsigned char *name;
+	unsigned short id;
+	unsigned int private_data_size;
+	int (*lib_init_fn) (void *conn);
+	int (*lib_exit_fn) (void *conn);
+	struct openais_lib_handler *lib_service;
+	int lib_service_count;
+	struct openais_exec_handler *exec_service;
+	int (*exec_init_fn) (struct objdb_iface_ver0 *);
+	int (*config_init_fn) (struct objdb_iface_ver0 *);
+	void (*exec_dump_fn) (void);
+	int exec_service_count;
+	void (*confchg_fn) (
+		enum totem_configuration_type configuration_type,
+		unsigned int *member_list, int member_list_entries,
+		unsigned int *left_list, int left_list_entries,
+		unsigned int *joined_list, int joined_list_entries,
+		struct memb_ring_id *ring_id);
+	void (*sync_init) (void);
+	int (*sync_process) (void);
+	void (*sync_activate) (void);
+	void (*sync_abort) (void);
+};
+
+name is the name of the service.
+
+id is the identifier of the service.
+
+private_data_size is the size of the private data used by the connection
+which the library and executive handlers can reference.
+
+lib_init_fn is the function executed when a library connection is made to
+the service handler.
+
+lib_exit_fn is the function executed when a library connection is exited
+either because the application closed the file descriptor, or the OS
+closed the file descriptor.
+
+lib_service is an array of openais_lib_handler data structures which define
+the library service handler.
+
+lib_service_count is the number of elements in lib_service.
+
+exec_service is an array of openais_exec_handler data structures which define
+the executive service handler.
+
+exec_init_fn is a function used to initialize the executive service.  This
+is only called once.
+
+config_init_fn is called to parse config files and populate the object
+database.
+
+exec_dump_fn is called when SIGUSR2 is sent to the executive to dump the
+current state of the service.
+
+exec_service_count is the number of entries in the exec_service array.
+
+confchg_fn is called every time a configuration change occurs.
+
+sync_init is called when the service should begin synchronization.
+
+sync_process is called to process synchronization messages.
+
+sync_activate is called to activate the current service synchronization.
+
+sync_abort is called to abort the current service synchronization.
+
+--------------
+ flow control
+--------------
+The totem protocol includes flow control so that it doesn't send too many
+messages when the network is completely full.  But the library can
+still send messages to the executive much faster then the executive can send
+them over totem.  So the library relies on the group messaging flow control to
+control flow of messages sent from the library.  If the totem queues are full,
+no more messages may be sent, so the executive in ipc.c automatically detects
+this scenario and returns an SA_ERR_TRY_AGAIN error.
+
+When a library gets SA_ERR_TRY_AGAIN, the library may either retry, or return
+this error to the user if the error is allowed by the API definitions.  The
+The other information is critical to ensuring that the library reads the correct
+message and size of message.  Make sure the libais_handler matches the messages
+used in the handler function.
+
+------------------------------------------------
+ dynamically linking the service handler plugin
+------------------------------------------------
+
+The service handler needs some special magic to dynamically be linked into
+openais.  
+
+/*
+ * Dynamic loader definition
+ */
+static struct openais_service_handler *clm_get_service_handler_ver0 (void);
+
+static struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
+        .openais_get_service_handler_ver0       = clm_get_service_handler_ver0
+};
+
+static struct lcr_iface openais_clm_ver0[1] = {
+        {
+                .name                   = "openais_clm",
+                .version                = 0,
+                .versions_replace       = 0,
+                .versions_replace_count = 0,
+                .dependencies           = 0,
+                .dependency_count       = 0,
+                .constructor            = NULL,
+                .destructor             = NULL,
+                .interfaces             = NULL
+        }
+};
+
+static struct lcr_comp clm_comp_ver0 = {
+        .iface_count                    = 1,
+        .ifaces                         = openais_clm_ver0
+};
+
+static struct openais_service_handler *clm_get_service_handler_ver0 (void)
+{
+        return (&clm_service_handler);
+}
+
+__attribute__ ((constructor)) static void clm_comp_register (void) {
+        lcr_interfaces_set (&openais_clm_ver0[0], &clm_service_handler_iface);
+
+        lcr_component_register (&clm_comp_ver0);
+}
+
+Once this code is added (substitute clm for the service being implemented),
+the service will be loaded if its in the default services list.
+
+The default service list is specified in service.c:default_services.  If
+creating an external plugin, there are configuration parameters which may
+be used to add your plugin into the openais scanning of plugins.
+
+---------------------------------
+ Connection specific information 
+---------------------------------
+Every connection may have specific connection information if private data
+is greater then zero for the service handler.  This is used to allow each
+library connection to maintain private state to that connection.  The private
+data for a connection can be retrieved with:
+struct service_pd service_pd = (struct service_pd *)openais_conn_private_data_get (conn);
+
+where service is the name of the service implemented and conn is the connection
+information likely passed into the library handler or stored in a
+message_source structure for later use by an executive handler.
+
+------------------------------
+ sending responses to the api
+------------------------------
+
+A message is sent to the library from the executive message handler using
+the function:
+
+extern int openais_conn_send_response (void *conn_info, void *msg,
+	int mlen);
+
+conn_info is passed into the library message handler or stored in the
+executive message.  This member describes the connection to send the response.
+
+msg is the message to send
+mlen is the length of the message to send
+
+Keep in mind that struct res_message should be at the beginning of the response
+message so that it follows the style used in the rest of openais.
+
+--------------------------------------------
+ deferring response to an executive message
+--------------------------------------------
+
+The message source structure is used to store information about the source of a
+message so a later executive message can respond to a library request.  In
+a library handler, the source field should be set up with:
+
+message_source_set (&req_exec_ZZZZZZZ.source, conn);
+gmi_mcast (req_exec_ZZZZZZZ)
+
+In this case conn_info is passed into the library message handler
+
+Then the executive message handler determines if this processor is responsible
+for responding:
+
+if (message_source_is_local (conn)) {
+	openais_conn_send_response ();
+
+}
+
+---------------
+ Using totempg
+---------------
+To send a message to every processor and the local processor for self
+delivery according to virtual synchrony semantics use:
+
+The totempg interface supports multiple users at one time and if you need
+to use a full totempg interface (defined in totempg.h) please ask for
+assistance on the mailing list.  If you simply want to use multicast
+transmissions in openais, do the following:
+
+       assert (totempg_groups_mcast_joined (openais_group_handle, &req_exec_clm_iovec, 1, TOTEMPG_AGREED) == 0);
+
+-----------------
+ library handler
+-----------------
+Every library handler has the prototype:
+
+static int message_handler_req_clm_init (void *conn, void *msg);
+
+The start of the handler function should look something like this:
+
+int message_handler_req_clm_trackstart (void *conn *conn,
+	void *msg)
+{
+        struct req_clm_trackstart *req_clm_trackstart =
+		(struct req_clm_trackstart *)message;
+
+ { package up library handler message into executive message }
+ { multicast message using totempg interface }
+}
+
+This assigns the void *message to a structure that can be used by the
+library handler.
+
+The conn field is used to indicate where the response should respond to.
+Use the tricks described in deferring a response to the executive handler to
+have the executive handler respond to the message.
+
+avoid doing anything tricky in a library handler.  Do all the work in the
+executive handler at first.  If later, it is possible to optimize, optimize
+away.
+
+-------------------
+ executive handler
+-------------------
+Every executive handler has the prototype:
+
+static int message_handler_req_exec_clm_nodejoin (void *msg,
+	unsigned int nodeid);
+
+The start of the handler function should look something like this:
+
+static int message_handler_req_exec_clm_nodejoin (void *msg,
+	unsigned int nodeid);
+{
+        struct req_exec_clm_nodejoin *req_exec_clm_nodejoin = (struct req_exec_clm_nodejoin *)message;
+
+ { do real work of executing request, this is done on every node }
+}
+
+The conn_info structure is not available.  If it is needed, it can be stored
+in the message sent by the library message handler in a source structure.
+
+The msg field contains the message sent by the library handler
+
+The nodeid is a unique node identifier of the node that originated the message.
+
+--------------------
+ the libais_init_fn
+--------------------
+This should be used to initialize any state for the connection.
+
+--------------------
+ the libais_exit_fn
+--------------------
+This function is called every time a service connection is disconnected by
+the executive.  Free memory, change structures, or whatever work needs to
+be done to clean up.
+
+If the exit_fn couldn't complete because it is waiting for some event, it may
+return -1, which will allow the executive to make some forward progress.  Then
+exit_fn will be called again.  Return 0 when the exit was completed.  This is
+most useful when toteom should be used to queue a message, but the queue is
+full.  In this case, waiting a few more seconds may open up the queue, so
+return -1, and then the executive will try again to call exit_fn.  Do NOT
+return -1 forever or the ais executive will spin.
+
+If -1 is returned, ENSURE that the state of the library hasn't changed so much that
+exit_fn cannot be called again.  If exit_fn returns -1, it WILL be called again
+so expect it in the code.
+
+----------------
+ the confchg_fn
+----------------
+This function is called whenever a configuration change occurs.  Some 
+services may not need this function, while others may.  This is a good way
+to sync up joining nodes with the current state of the information stored
+on a particular processor.
+
+-------------------------------------------------------------------------------
+Final comments
+-------------------------------------------------------------------------------
+GDB is your friend, especially the "where" command.  But it stops execution.
+This has a nasty side effect of killing the current configuration.  In this
+case GDB may become your enemy.
+
+printf is your friend when GDB is your enemy.  
+
+If stuck, ask on the mailing list, send your patches.  Alot of time has been
+spent designing openais, and even more time debugging it.  There are people
+that can help you debug problems, especially around things like message
+delivery.
+
+Submit patches early to get feedback, especially around things like parallel
+style.  Parallel style is very important to ensure maintainability by the
+openais community.
+
+If this document is wrong or incomplete, complain so we can get it fixed
+for other people.
+
+Have fun!

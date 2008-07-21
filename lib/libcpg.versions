@@ -1,0 +1,30 @@
+# Version and symbol export for libcpg.so
+
+OPENAIS_CPG_1.0 {
+	global:
+		cpg_initialize;
+		cpg_finalize;
+		cpg_fd_get;
+		cpg_dispatch;
+		cpg_join;
+		cpg_leave;
+		cpg_mcast_joined;
+		cpg_membership_get;
+		cpg_context_get;
+		cpg_context_set;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

@@ -1,0 +1,181 @@
+.\"/*
+.\" * Copyright (c) 2004 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH EVS_OVERVIEW 8 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH OVERVIEW
+The EVS library is delivered with the openais project.  This library is used
+to create distributed applications that operate properly during partitions, merges,
+and faults.
+.PP
+The library provides a mechanism to:
+* handle abstraction for multiple instances of an EVS library in one application
+* Deliver messages
+* Deliver configuration changes
+* join one or more groups
+* leave one or more groups
+* send messages to one or more groups
+* send messages to currently joined groups
+.PP
+The EVS library implements a messaging model known as Extended Virtual Synchrony.
+This model allows one sender to transmit to many receivers using standard UDP/IP.
+UDP/IP is unreliable and unordered, so the EVS library applies ordering and reliability
+to messages.  Hardware multicast is used to avoid duplicated packets with two or more
+receivers.  Erroneous messages are corrected automatically by the library.
+.PP
+Certain gaurantees are provided by the EVS library.  These guarantees are related to
+message delivery and configuration change delivery.
+.SH DEFINITIONS
+.TP
+.B multicast
+A multicast occurs when a network interface card sends a UDP packet to multiple
+receivers simulatenously.
+.TP
+.B processor
+A processor is the entity that executes the extended virtual synchrony algorithms.
+.TP
+.B configuration
+A configuration is the current description of the processors executing the extended
+virtual syncrhony algorithm.
+.TP
+.B configuration change
+A configuration change occurs when a new configuration is delivered.
+.TP
+.B partition
+A partition occurs when a configuration splits into two or more configurations, or
+a processor fails or is stopped and leaves the configuration.
+.TP
+.B merge
+A merge occurs when two or more configurations join into a larger new configuration.  When
+a new processor starts up, it is treated as a configuration with only one processor
+and a merge occurs.
+.TP
+.B fifo ordering
+A message is FIFO ordered when one sender and one receiver agree on the order of the
+messages sent.
+.TP
+.B agreed ordering
+A message is AGREED ordered when all processors agree on the order of the messages sent.
+.TP
+.B safe ordering
+A message is SAFE ordered when all processors agree on the order of messages sent and
+those messages are not delivered until all processors have a copy of the message to
+deliver.
+.TP
+.B virtual syncrhony
+Virtual syncrhony is obtained when all processors agree on the order of messages
+sent and configuration changes sent for each new configuration.
+.SH USING VIRTUAL SYNCHRONY
+The virtual synchrony messaging model has many benefits for developing distributed
+applications.  Applications designed using replication have the most benefits.  Applications
+that must be able to partition and merge also benefit from the virtual synchrony messaging
+model.
+.PP
+All applications receive a copy of transmitted messages even if there are errors on the
+transmission media.  This allows optimiziations when every processor must receive a copy
+of the message for replication.
+.PP
+All messages are ordered according to agreed ordering.  This mechanism allows the avoidance
+of race conditions.  Consider a lock service implemented over several processors.  Two 
+requests occur at the same time on two seperate processors.  The requests are ordered for
+every processor in the same order and delivered to the processors.  Then all processors
+will get request A before request B and can reject request B.  Any type of creation or
+deletion of a shared data structure can benefit from this mechanism.
+.PP
+Self delivery ensures that messages that are sent by a processor are also delivered back
+to that processor.  This allows the processor sending the message to execute logic when
+the message is self delivered according to agreed ordering and the virtual synchrony rules.
+It also permits all logic to be placed in one message handler instead of two seperate places.
+.PP
+Virtual Synchrony allows the current configuration to be used to make decisions in partitions
+and merges.  Since the configuration is sent in the stream of messages to the application,
+the application can alter its behavior based upon the configuration changes.
+.SH ARCHITECTURE AND ALGORITHM
+The EVS library is a thin IPC interface to the openais executive.  The openais executive
+provides services for the SA Forum AIS libraries as well as the EVS library.
+.PP
+The openais executive uses a ring protocol and membership protocol to send messages
+according to the semantics required by extended virtual synchrony.  The ring protocol
+creates a virtual ring of processors.  A token is rotated around the ring of processors.
+When the token is possessed by a processor, that processor may multicast messages to
+other processors in the system.
+.PP
+The token is called the ORF token (for ordering, reliability, flow control).  The ORF
+token orders all messages by increasing a sequence number every time a message is
+multicasted.  In this way, an ordering is placed on all messages that all processors
+agree to.  The token also contains a retransmission list.  If a token is received by
+a processor that has not yet received a message it should have, a message sequence
+number is added to the retransmission list.  A processor that has a copy of the message
+then retransmits the message.  The ORF token provides configuration-wide flow control
+by tracking the number of messages sent and limiting the number of messages that may
+be sent by one processor on each posession of the token.
+.PP
+The membership protocol is responsible for ring formation and detecting when a processor
+within a ring has failed.  If the token fails to make a rotation within a timeout period
+known as the token rotation timeout, the membership protocol will form a new ring.
+If a new processor starts, it will also form a new ring.  Two or more configurations
+may be used to form a new ring, allowing many partitions to merge together into one
+new configuration.
+.SH PERFORMANCE
+The EVS library obtains 8.5MB/sec throughput on 100 mbit network links with
+many processors.  Larger messages obtain better throughput results because the
+time to access Ethernet is about the same for a small message as it is for a
+larger message.  Smaller messages obtain better messages per second, because the
+time to send a message is not exactly the same.
+.PP
+80% of CPU utilization occurs because of encryption and authentication.  The openais
+can be built without encryption and authentication for those with no security
+requirements and low CPU utilization requirements.  Even without encryption or
+authentication, under heavy load, processor utilization can reach 25% on 1.5 GHZ
+CPU processors.
+.PP
+The current openais executive supports 16 processors, however, support for more processors is possible by changing defines in the openais executive.  This is untested, however.
+.SH SECURITY
+The EVS library encrypts all messages sent over the network using the SOBER-128
+stream cipher.  The EVS library uses HMAC and SHA1 to authenticate all messages.
+The EVS library uses SOBER-128 as a pseudo random number generator.  The EVS
+library feeds the PRNG using the /dev/random Linux device.
+.SH BUGS
+This software is not yet production, so there may still be some bugs.  But it appears
+there are very few since nobody reports any unknown bugs at this point.
+.SH "SEE ALSO"
+.BR evs_initialize (3),
+.BR evs_finalize (3),
+.BR evs_fd_get (3),
+.BR evs_dispatch (3),
+.BR evs_join (3),
+.BR evs_leave (3),
+.BR evs_mcast_joined (3),
+.BR evs_mcast_groups (3),
+.BR evs_mmembership_get (3)
+
+.PP

@@ -1,0 +1,140 @@
+.\"/*
+.\" * Copyright (c) 2004 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH EVS_INITIALIZE 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+evs_initialize \- Create a new connection to the EVS service
+.SH SYNOPSIS
+.B #include <openais/evs.h>
+.sp
+.BI "int evs_initialize(evs_handle_t *" handle ", evs_callbacks_t *" callbacks ");
+.SH DESCRIPTION
+The
+.B evs_initialize
+function is used to initialize a connection to the extended virtual synchrony API.
+.PP
+Each application may have several connections to the EVS API.  Each  application
+uses the 
+.I handle
+argument to uniquely identify the connection.  The
+.I handle
+argument is then used in other function calls to identify the connection to be used
+for communication with the EVS service.
+.PP
+Every time an EVS event occurs, one of the callbacks specified by the argument
+.I callbacks
+is called.  The callback functions are described by the following type definitions:
+.PP
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 20n 32n
+typedef void (*evs_deliver_fn_t) (
+        struct evs_address source_addr,
+        void *msg,
+        int msg_len);
+
+typedef void (*evs_confchg_fn_t) (
+        struct evs_address *member_list, int member_list_entries,
+        struct evs_address *left_list, int left_list_entries,
+        struct evs_address *joined_list, int joined_list_entries);
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The
+.I callbacks
+argument is of the type:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+typedef struct {
+        evs_deliver_fn_t evs_deliver_fn;
+        evs_confchg_fn_t evs_confchg_fn;
+} evs_callbacks_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+When a configuration change occurs or a message is to be delivered one of the callbacks
+is called from the
+.B evs_dispatch()
+function.  If a configuration change occurs,
+.I evs_confchg_fn
+is called.  If a delivery of a message occurs,
+.I evs_deliver_fn
+is called.
+
+The
+.I evs_address
+structure is defined 
+.IP
+.RS
+.ne 18
+.nf
+.PP
+struct evs_address {
+        unsigned int nodeid;
+        unsigned short family;
+        unsigned char addr[TOTEMIP_ADDRLEN];
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+where nodeid is a 32 bit unique node identifier, family is of the value AF_INET  for an IPV4 network, or AF_INET6 for an IPV6 network, and addr is a 32 bit address for an IPV4 network, or 128 bit address for an IPV6 network.
+
+
+.SH RETURN VALUE
+This call returns the EVS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR evs_overview (8),
+.BR evs_finalize (3),
+.BR evs_fd_get (3),
+.BR evs_dispatch (3),
+.BR evs_join (3),
+.BR evs_leave (3),
+.BR evs_mcast_joined (3),
+.BR evs_mcast_groups (3),
+.BR evs_mmembership_get (3)
+.PP

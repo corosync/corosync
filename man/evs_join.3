@@ -1,0 +1,103 @@
+.\"/*
+.\" * Copyright (c) 2004 MontaVista Software, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH EVS_JOIN 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+evs_join \- Joins one or more groups in the EVS library
+.SH SYNOPSIS
+.B #include <openais/evs.h>
+.sp
+.BI "int evs_join(evs_handle_t " handle ", evs_group_t *" groups ", int " group_entries ");
+.SH DESCRIPTION
+The
+.B evs_join
+function is used to join one or more groups.  When a group is joined, using the
+.B evs_mcast_joined(3)
+function will multicast to the groups joined in the argument
+.I handle.
+Messages that are sent to any of the groups joined to the parameter
+.I handle
+will be delivered by
+.B evs_dispatch(3).
+.PP
+This call may be used more then once on a handle, in which case the joined groups will
+be all of the groups passed to the
+.B evs_join(3)
+function during the lifecycle of the parameter
+.I handle.
+.PP
+
+The argument
+.I groups
+is used to specify the groups to join.  A group is a 32 byte key.  The key is
+not a string, hence, the entire key is used when joining the channel.  For that reason
+the entire group should be initialized.
+.PP
+The argument
+.I group_entries
+specifies how many entries are located in the groups argument.
+
+The
+.I groups
+argument is of the type evs_group_t which is defined by the structure:
+
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+typedef struct {
+        char key[32];
+} evs_groups_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+.SH RETURN VALUE
+This call returns the EVS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR evs_overview (8),
+.BR evs_initialize (3),
+.BR evs_finalize (3),
+.BR evs_fd_get (3),
+.BR evs_dispatch (3),
+.BR evs_leave (3),
+.BR evs_mcast_joined (3),
+.BR evs_mcast_groups (3),
+.BR evs_mmembership_get (3)
+.PP

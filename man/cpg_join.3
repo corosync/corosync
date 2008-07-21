@@ -1,0 +1,104 @@
+.\"/*
+.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CPG_JOIN 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+cpg_join \- Joins one or more groups in the CPG library
+.SH SYNOPSIS
+.B #include <openais/cpg.h>
+.sp
+.BI "int cpg_join(cpg_handle_t " handle ", struct cpg_name *" group ");
+.SH DESCRIPTION
+The
+.B cpg_join
+function is used to join one group.  When a group is joined, using the
+.B cpg_mcast_joined(3)
+function will multicast to the groups joined in the argument
+.I handle. 
+The process will also get notifications of other processes joining
+and leaving the group.
+Messages that are sent to any of the groups joined to the parameter
+.I handle
+will be delivered by
+.B cpg_dispatch(3).
+.PP
+This function may be only be called once for each handle. When a group has been joined
+the process will start to receive callbacks relating to messages send from members
+of the group or notifications of process joining/leaving the group.
+.PP
+Note that more than one process can join a CPG group and each will receive its
+own copy of any messages sent using 
+.I cpg_mcast_joined()
+and its own confchg callback.
+.PP
+
+The argument
+.I group
+is used to specify the group to join.  
+
+
+The
+.I groups
+argument is of the type struct cpg_name which is defined by the structure:
+
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+struct cpg_name {
+        int length;
+        char value[128];
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+.SH RETURN VALUE
+This call returns the CPG_OK value if successful, CPG_ERR_INVALID_PARAM if the
+handle is already joined to a group.
+.PP
+.SH ERRORS
+Not all errors are documented.
+.SH "SEE ALSO"
+.BR cpg_overview (8),
+.BR cpg_initialize (3),
+.BR cpg_finalize (3),
+.BR cpg_fd_get (3),
+.BR cpg_dispatch (3),
+.BR cpg_leave (3),
+.BR cpg_mcast_joined (3),
+.BR cpg_membership_get (3)
+.PP

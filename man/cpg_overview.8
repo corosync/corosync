@@ -1,0 +1,64 @@
+.\"/*
+.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CPG_OVERVIEW 8 2006-03-06 "openais Man Page" "Openais Programmer's Manual"
+.SH OVERVIEW
+The CPG library is delivered with the openais project.  This library is used
+to create distributed applications that operate properly during partitions, merges,
+and faults.
+.PP
+The library provides a mechanism to:
+* handle abstraction for multiple instances of an CPG library in one application
+* join one or more groups
+* leave one or more groups
+* Deliver messages to members of that group
+* Deliver configuration changes
+.PP
+.SH SECURITY
+The CPG library encrypts all messages sent over the network using the SOBER-128
+stream cipher.  The EVS library uses HMAC and SHA1 to authenticate all messages.
+The CPG library uses SOBER-128 as a pseudo random number generator.  TheCPG
+library feeds the PRNG using the /dev/random Linux device.
+.SH BUGS
+This software is not yet production, so there may still be some bugs.
+.SH "SEE ALSO"
+.BR cpg_initialize (3),
+.BR cpg_finalize (3),
+.BR cpg_fd_get (3),
+.BR cpg_dispatch (3),
+.BR cpg_join (3),
+.BR cpg_leave (3),
+.BR cpg_mcast_joined (3),
+.BR cpg_membership_get (3)
+
+.PP

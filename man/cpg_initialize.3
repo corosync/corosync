@@ -1,0 +1,172 @@
+.\"/*
+.\" * Copyright (c) 2006-2008 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CPG_INITIALIZE 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+cpg_initialize \- Create a new connection to the CPG service
+.SH SYNOPSIS
+.B #include <openais/cpg.h>
+.sp
+.BI "int cpg_initialize(cpg_handle_t *" handle ", cpg_callbacks_t *" callbacks ");
+.SH DESCRIPTION
+The
+.B cpg_initialize
+function is used to initialize a connection to the closed process groups API.
+.PP
+Each application may have several connections to the CPG API.  Each  application
+uses the 
+.I handle
+argument to uniquely identify the connection.  The
+.I handle
+argument is then used in other function calls to identify the connection to be used
+for communication with the CPG service.
+.PP
+Every time an CPG event occurs within the joined group, one of the callbacks specified by the argument
+.I callbacks
+is called.  The callback functions are described by the following type definitions:
+.PP
+.PP
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 20n 32n
+
+typedef void (*cpg_deliver_fn_t) (
+        cpg_handle_t handle,
+        struct cpg_name *group_name,
+        uint32_t nodeid,
+        uint32_t pid,
+        void *msg,
+        int msg_len);
+
+
+typedef void (*cpg_confchg_fn_t) (
+        cpg_handle_t handle,
+        struct cpg_name *group_name,
+        struct cpg_address *member_list, int member_list_entries,
+        struct cpg_address *left_list, int left_list_entries,
+        struct cpg_address *joined_list, int joined_list_entries);
+
+typedef void (*cpg_groups_get_fn_t) (
+	cpg_handle_t handle,
+	uint32_t group_num,
+	uint32_t group_total,
+	struct cpg_name *group_name,
+	struct cpg_address *member_list, int member_list_entries);
+
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+The
+.I callbacks
+argument is of the type:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+typedef struct {
+        cpg_deliver_fn_t cpg_deliver_fn;
+        cpg_confchg_fn_t cpg_confchg_fn;
+	cpg_groups_get_fn_t cpg_groups_get_fn;
+} cpg_callbacks_t;
+.ta
+.fi
+.RE
+.IP
+.PP
+When a configuration change occurs or a message is to be delivered one of the callbacks
+is called from the
+.B cpg_dispatch()
+function.  If a configuration change occurs,
+.I cpg_confchg_fn
+is called.  If a delivery of a message occurs,
+.I cpg_deliver_fn
+is called.
+
+The
+.I cpg_address
+structure is defined 
+.IP
+.RS
+.ne 18
+.nf
+.PP
+struct cpg_address {
+        unsigned int nodeid;
+        unsigned int pid;
+        unsigned int reason;
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+where nodeid is a 32 bit unique node identifier, pid is the process ID of the process that has joined/left the group
+or sent the message, and reason is an integer code indicating why the node join/left the group.
+.PP
+.IP
+.RS
+.ne 18
+.nf
+.PP
+CPG_REASON_JOIN     - the process joined a group using cpg_join().
+CPG_REASON_LEAVE    - the process left a group using cpg_leave()
+CPG_REASON_NODEDOWN - the process left a group because the node left the cluster.
+CPG_REASON_NODEUP   - the process joined a group because it was already a member of a group on a node that has just joined the cluster
+CPG_REASON_PROCDOWN - the process left a group without calling cpg_leave()
+.ta
+.fi
+.RE
+.IP
+.PP
+.SH RETURN VALUE
+This call returns the CPG_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
+.SH "SEE ALSO"
+.BR cpg_overview (8),
+.BR cpg_finalize (3),
+.BR cpg_fd_get (3),
+.BR cpg_dispatch (3),
+.BR cpg_join (3),
+.BR cpg_leave (3),
+.BR cpg_mcast_joined (3),
+.BR cpg_membership_get (3)
+.BR cpg_groups_get (3)
+.PP

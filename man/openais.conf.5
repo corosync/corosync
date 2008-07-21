@@ -1,0 +1,553 @@
+.\"/*
+.\" * Copyright (c) 2005 MontaVista Software, Inc.
+.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Steven Dake (sdake@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH OPENAIS_CONF 5 2006-03-28 "openais Man Page" "Openais Programmer's Manual"
+.SH NAME
+openais.conf - openais executive configuration file
+
+.SH SYNOPSIS
+/etc/ais/openais.conf
+
+.SH DESCRIPTION
+The openais.conf instructs the openais executive about various parameters
+needed to control the openais executive.  The configuration file consists of
+bracketed top level directives.  The possible directive choices are
+.IR "totem  { } , logging { } , event { } , and amf { }".
+ These directives are described below.
+
+.TP
+totem { }
+This top level directive contains configuration options for the totem protocol.
+.TP
+logging { }
+This top level directive contains configuration options for logging.
+.TP
+event { }
+This top level directive contains configuration options for the event service.
+.TP
+amf { }
+This top level directive contains configuration options for the AMF service.
+
+.PP
+.PP
+Within the 
+.B totem
+directive, an interface directive is required.  There is also one configuration
+option which is required:
+.PP
+.PP
+Within the 
+.B interface
+sub-directive of totem there are four parameters which are required:
+
+.TP
+ringnumber
+This specifies the ring number for the interface.  When using the redundant
+ring protocol, each interface should specify separate ring numbers to uniquely
+identify to the membership protocol which interface to use for which redundant
+ring.
+
+.TP
+bindnetaddr
+This specifies the address which the openais executive should bind.
+This address should always end in zero.  If the totem traffic should
+be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
+
+This may also be an IPV6 address, in which case IPV6 networking will be used.
+In this case, the full address must be specified and there is no automatic
+selection of the network interface within a specific subnet as with IPv4.
+
+If IPv6 networking is used, the nodeid field must be specified.
+
+.TP
+mcastaddr
+This is the multicast address used by openais executive.  The default
+should work for most networks, but the network administrator should be queried
+about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
+multicast address.
+
+This may also be an IPV6 multicast address, in which case IPV6 networking
+will be used.  If IPv6 networking is used, the nodeid field must be specified.
+
+.TP
+mcastport
+This specifies the UDP port number.  It is possible to use the same multicast
+address on a network with the openais services configured for different
+UDP ports.
+
+.PP
+.PP
+Within the 
+.B totem 
+directive, there are seven configuration options of which one is required,
+five are optional, and one is required when IPV6 is configured in the interface
+subdirective.  The required directive controls the version of the totem
+configuration.  The optional option unless using IPV6 directive controls
+identification of the processor.  The optional options control secrecy and
+authentication, the redundant ring mode of operation, maximum network MTU,
+and number of sending threads, and the nodeid field.
+
+.TP
+version
+This specifies the version of the configuration file.  Currently the only
+valid version for this directive is 2.
+
+.PP
+.PP
+.TP
+nodeid
+This configuration option is optional when using IPv4 and required when using
+IPv6.  This is a 32 bit value specifying the node identifier delivered to the
+cluster membership service.  If this is not specified with IPv4, the node id
+will be determined from the 32 bit IP address the system to which the system
+is bound with ring identifier of 0.  The node identifier value of zero is
+reserved and should not be used.
+
+.TP
+secauth
+This specifies that HMAC/SHA1 authentication should be used to authenticate
+all messages.  It further specifies that all data should be encrypted with the
+sober128 encryption algorithm to protect data from eavesdropping.
+
+Enabling this option adds a 36 byte header to every message sent by totem which
+reduces total throughput.  Encryption and authentication consume 75% of CPU
+cycles in aisexec as measured with gprof when enabled.
+
+For 100mbit networks with 1500 MTU frame transmissions:
+A throughput of 9mb/sec is possible with 100% cpu utilization when this
+option is enabled on 3ghz cpus.
+A throughput of 10mb/sec is possible wth 20% cpu utilization when this
+optin is disabled on 3ghz cpus.
+
+For gig-e networks with large frame transmissions:
+A throughput of 20mb/sec is possible when this option is enabled on
+3ghz cpus.
+A throughput of 60mb/sec is possible when this option is disabled on
+3ghz cpus.
+
+The default is on.
+
+.TP
+rrp_mode
+This specifies the mode of redundant ring, which may be none, active, or
+passive.  Active replication offers slightly lower latency from transmit
+to delivery in faulty network environments but with less performance.
+Passive replication may nearly double the speed of the totem protocol
+if the protocol doesn't become cpu bound.  The final option is none, in
+which case only one network interface will be used to operate the totem
+protocol.
+
+If only one interface directive is specified, none is automatically chosen.
+If multiple interface directives are specified, only active or passive may
+be chosen.
+
+.TP
+netmtu
+This specifies the network maximum transmit unit.  To set this value beyond
+1500, the regular frame MTU, requires ethernet devices that support large, or
+also called jumbo, frames.  If any device in the network doesn't support large
+frames, the protocol will not operate properly.  The hosts must also have their
+mtu size set from 1500 to whatever frame size is specified here.
+
+Please note while some NICs or switches claim large frame support, they support
+9000 MTU as the maximum frame size including the IP header.  Setting the netmtu
+and host MTUs to 9000 will cause totem to use the full 9000 bytes of the frame.
+Then Linux will add a 18 byte header moving the full frame size to 9018.  As a
+result some hardware will not operate properly with this size of data.  A netmtu 
+of 8982 seems to work for the few large frame devices that have been tested.
+Some manufacturers claim large frame support when in fact they support frame
+sizes of 4500 bytes.
+
+Increasing the MTU from 1500 to 8982 doubles throughput performance from 30MB/sec
+to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth 
+directive set to off.
+
+When sending multicast traffic, if the network frequently reconfigures, chances are
+that some device in the network doesn't support large frames.
+
+Choose hardware carefully if intending to use large frame support.
+
+The default is 1500.
+
+.TP
+threads
+This directive controls how many threads are used to encrypt and send multicast
+messages.  If secauth is off, the protocol will never use threaded sending.
+If secauth is on, this directive allows systems to be configured to use
+multiple threads to encrypt and send multicast messages.
+
+A thread directive of 0 indicates that no threaded send should be used.  This
+mode offers best performance for non-SMP systems. 
+
+The default is 0.
+
+.TP
+vsftype
+This directive controls the virtual synchrony filter type used to identify
+a primary component.  The preferred choice is YKD dynamic linear voting,
+however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
+large scale clusters that are created by changing the MAX_PROCESSORS_COUNT 
+#define in the C code totem.h file, the virtual synchrony filter "none" is
+recommended but then AMF and DLCK services (which are currently experimental)
+are not safe for use.
+
+The default is ykd.  The vsftype can also be set to none.
+
+Within the 
+.B totem 
+directive, there are several configuration options which are used to control
+the operation of the protocol.  It is generally not recommended to change any
+of these values without proper guidance and sufficient testing.  Some networks
+may require larger values if suffering from frequent reconfigurations.  Some
+applications may require faster failure detection times which can be achieved
+by reducing the token timeout.
+
+.TP
+token
+This timeout specifies in milliseconds until a token loss is declared after not
+receiving a token.  This is the time spent detecting a failure of a processor
+in the current configuration.  Reforming a new configuration takes about 50
+milliseconds in addition to this timeout.
+
+The default is 1000 milliseconds.
+
+.TP
+token_retransmit
+This timeout specifies in milliseconds after how long before receiving a token
+the token is retransmitted.  This will be automatically calculated if token
+is modified.  It is not recommended to alter this value without guidance from
+the openais community.
+
+The default is 238 milliseconds.
+
+.TP
+hold
+This timeout specifies in milliseconds how long the token should be held by
+the representative when the protocol is under low utilization.   It is not
+recommended to alter this value without guidance from the openais community.
+
+The default is 180 milliseconds.
+
+.TP
+retransmits_before_loss
+This value identifies how many token retransmits should be attempted before
+forming a new configuration.  If this value is set, retransmit and hold will
+be automatically calculated from retransmits_before_loss and token.
+
+The default is 4 retransmissions.
+
+.TP
+join
+This timeout specifies in milliseconds how long to wait for join messages in 
+the membership protocol.
+
+The default is 100 milliseconds.
+
+.TP
+send_join
+This timeout specifies in milliseconds an upper range between 0 and send_join
+to wait before sending a join message.  For configurations with less then
+32 nodes, this parameter is not necessary.  For larger rings, this parameter
+is necessary to ensure the NIC is not overflowed with join messages on
+formation of a new ring.  A reasonable value for large rings (128 nodes) would
+be 80msec.  Other timer values must also change if this value is changed.  Seek
+advice from the openais mailing list if trying to run larger configurations.
+
+The default is 0 milliseconds.
+
+.TP
+consensus
+This timeout specifies in milliseconds how long to wait for consensus to be
+achieved before starting a new round of membership configuration.
+
+The default is 200 milliseconds.
+
+.TP
+merge
+This timeout specifies in milliseconds how long to wait before checking for
+a partition when no multicast traffic is being sent.  If multicast traffic
+is being sent, the merge detection happens automatically as a function of
+the protocol.
+
+The default is 200 milliseconds.
+
+.TP
+downcheck
+This timeout specifies in milliseconds how long to wait before checking
+that a network interface is back up after it has been downed.
+
+The default is 1000 millseconds.
+
+.TP
+fail_to_recv_const
+This constant specifies how many rotations of the token without receiving any
+of the messages when messages should be received may occur before a new
+configuration is formed.
+
+The default is 50 failures to receive a message.
+
+.TP
+seqno_unchanged_const
+This constant specifies how many rotations of the token without any multicast
+traffic should occur before the merge detection timeout is started.
+
+The default is 30 rotations.
+
+.TP
+heartbeat_failures_allowed
+[HeartBeating mechanism]
+Configures the optional HeartBeating mechanism for faster failure detection. Keep in
+mind that engaging this mechanism in lossy networks could cause faulty loss declaration 
+as the mechanism relies on the network for heartbeating. 
+
+So as a rule of thumb use this mechanism if you require improved failure in low to 
+medium utilized networks.
+
+This constant specifies the number of heartbeat failures the system should tolerate
+before declaring heartbeat failure e.g 3. Also if this value is not set or is 0 then the
+heartbeat mechanism is not engaged in the system and token rotation is the method
+of failure detection
+
+The default is 0 (disabled).
+
+.TP
+max_network_delay
+[HeartBeating mechanism]
+This constant specifies in milliseconds the approximate delay that your network takes
+to transport one packet from one machine to another. This value is to be set by system
+engineers and please dont change if not sure as this effects the failure detection
+mechanism using heartbeat.
+
+The default is 50 milliseconds.
+
+.TP
+window_size
+This constant specifies the maximum number of messages that may be sent on one
+token rotation.  If all processors perform equally well, this value could be
+large (300), which would introduce higher latency from origination to delivery
+for very large rings.  To reduce latency in large rings(16+), the defaults are
+a safe compromise.  If 1 or more slow processor(s) are present among fast
+processors, window_size should be no larger then 256000 / netmtu to avoid
+overflow of the kernel receive buffers.  The user is notified of this by
+the display of a retransmit list in the notification logs.  There is no loss
+of data, but performance is reduced when these errors occur.
+
+The default is 50 messages.
+
+.TP
+max_messages
+This constant specifies the maximum number of messages that may be sent by one
+processor on receipt of the token.  The max_messages parameter is limited to
+256000 / netmtu to prevent overflow of the kernel transmit buffers.
+
+The default is 17 messages.
+
+.TP
+rrp_problem_count_timeout
+This specifies the time in milliseconds to wait before decrementing the
+problem count by 1 for a particular ring to ensure a link is not marked
+faulty for transient network failures.
+
+The default is 1000 milliseconds.
+
+.TP
+rrp_problem_count_threshold
+This specifies the number of times a problem is detected with a link before
+setting the link faulty.  Once a link is set faulty, no more data is
+transmitted upon it.  Also, the problem counter is no longer decremented when
+the problem count timeout expires.
+
+A problem is detected whenever all tokens from the proceeding processor have
+not been received within the rrp_token_expired_timeout.  The
+rrp_problem_count_threshold * rrp_token_expired_timeout should be atleast 50
+milliseconds less then the token timeout, or a complete reconfiguration
+may occur.
+
+The default is 20 problem counts.
+
+.TP
+rrp_token_expired_timeout
+This specifies the time in milliseconds to increment the problem counter for
+the redundant ring protocol after not having received a token from all rings
+for a particular processor.
+
+This value will automatically be calculated from the token timeout and
+problem_count_threshold but may be overridden.  It is not recommended to
+override this value without guidance from the openais community.
+
+The default is 47 milliseconds.
+
+.PP
+Within the 
+.B logging
+directive, there are seven configuration options which are all optional:
+.TP
+to_stderr
+.TP
+to_file
+.TP
+to_syslog
+These specify the destination of logging output. Any combination of
+these options may be specified. Valid options are
+.B yes
+and
+.B no.
+
+The default is syslog and stderr.
+
+
+.TP
+logfile
+If the 
+.B to_file
+directive is set to
+.B yes
+, this option specifies the pathname of the log file.
+
+No default.
+
+.TP
+debug
+This specifies whether debug output is logged for all services.  This is
+generally a bad idea, unless there is some specific bug or problem that must be
+found in the executive. Set the value to 
+.B on
+to debug, 
+.B off
+to turn off debugging. If enabled, individual loggers can be disabled using a
+.B logger_subsys
+directive.
+
+The default is off.
+
+.TP
+timestamp
+This specifies that a timestamp is placed on all log messages.
+
+The default is off.
+
+.TP
+fileline
+This specifies that file and line should be printed instead of logger name.
+
+The default is off.
+
+.TP 
+syslog_facility
+This specifies the syslog facility type that will be used for any messages
+sent to syslog. options are daemon, local0, local1, local2, local3, local4, 
+local5, local6 & local7. 
+
+The default is daemon.
+
+.PP
+.PP
+Within the 
+.B logging
+directive, logger directives are optional.
+.PP
+.PP
+Within the 
+.B logger_subsys
+sub-directive of logging there are three configuration options:
+
+.TP
+subsys
+This specifies the subsystem identity (name) for which logging is specified. This is the
+name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+required.
+
+.TP
+debug
+This specifies whether debug output is logged for this particular logger.
+
+The default is off.
+
+.TP
+syslog_level
+This specifies the syslog level for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
+
+The default is: info.
+
+.TP
+tags
+This specifies which tags should be traced for this particular logger.
+Set debug directive to
+.B on
+in order to enable tracing using tags.
+Values are specified using a vertical bar as a logical OR separator:
+
+enter|leave|trace1|trace2|trace3|...
+
+The default is none.
+
+.PP
+Within the 
+.B event
+directive, there are two configuration options which are all optional:
+.TP
+delivery_queue_size
+This directive describes the full size of the outgoing delivery queue to the
+application.  If applications are slow to process messages, they will be 
+delivered event loss messages.  By increasing this value, the applications
+that are slowly processing messages may have an opportunity to catch up.
+
+.TP
+delivery_queue_resume
+This directive describes when new events can be accepted by the event service
+when the delivery queue count of pending messages has reached this value. 
+Please note this is not cluster wide.
+
+.PP
+Within the 
+.B amf
+directive, there is one configuration option which is optional:
+.TP
+mode
+This can either contain the value enabled or disabled.  When enabled, AMF will
+start the applications specified in the /etc/ais/amf.conf file.
+The default is disabled.
+
+.SH "FILES"
+.TP
+/etc/ais/openais.conf
+The openais executive configuration file.
+.TP
+/etc/ais/amf.conf
+The openais AMF configuration file.
+
+.SH "SEE ALSO"
+.BR openais_overview (8), README.amf
+.PP

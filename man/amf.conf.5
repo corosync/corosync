@@ -1,0 +1,271 @@
+.\"/*
+.\" * Copyright (c) 2006 Ericsson AB.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Hans Feldt (Hans.Feldt at ericsson.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+
+.TH AMF.CONF 5 2006-08-29 "openais Man Page"
+
+.SH NAME
+amf.conf - openais AMF configuration file
+
+.SH DESCRIPTION
+.B amf.conf
+is the configuration file that determines the behaviour of the AIS Availability
+Management Framework service, AMF in the openais implementation.
+
+Entries in this file will for example determine what applications AMF will start
+and how to supervise them.
+.P
+By default AMF opens /etc/ais/amf.conf. The environment variable
+.B
+OPENAIS_AMF_CONFIG_FILE
+can be set to the pathname of an AMF configuration file to override
+the default behaviour.
+.P
+Any line whose first non-white-space character is
+a '#' is considered a comment line. Empty lines are ignored.
+.LP
+The file contains object entries of the form:
+.RS
+.nf
+.ft B
+.sp
+<Object Class> = <Object Name> {
+.RS
+.nf
+.ft B
+<attribute> = <value>
+.I	"..."
+.RE
+}
+.ft R
+.fi
+.RE
+.LP
+
+Object entries are nested, one entry contains another entry. This way relations
+between objects are built up. For example a component object defined inside a
+Software Unit (SU) object means that the component belongs to the SU. In other
+words, the SU is composed of the component. See the example configuration file.
+
+The relation between objects has to comply with the AMF model specified in [5].
+
+Object names shall use only printable ASCII characters. Object names shall be
+unique within its context, i.e. two components within the same service unit has
+to have different names, but can have the same name as another component within
+another service unit.
+
+Attribute names are consistent with the naming of the configuration attributes
+in [5].
+
+AMF object attributes are either configuration or runtime attributes. The AMF
+configuration file is used to specify configuration attributes. Some configuration
+attributes have default values and does not need to be specified. Others are not
+valid in certain redundancy models and so on.
+
+The type of an attribute value is either a string, a number, a time or an
+enumeration. Enumeration values are specified according to the type definition
+in the AIS specification. Time values are specified in milliseconds.
+
+Multivalue attributes are specified using multiple entries with the same
+attribute name but different values. See the example configuration file.
+
+The (RDN) value of 'safAmfNode' is a logical name for an AMF node. It is mapped
+to a real physical node using the attribute 'saAmfNodeClmNode'.
+
+The value of the attribute 'saAmfNodeClmNode' should be the hostname (without
+domain name) as given to the host at boot time. This name is returned by the
+shell command 'hostname'.
+
+Currently, AMF is enabled/disabled by an entry in the openais.conf file, see [1].
+It is default disabled.
+
+
+The following list of attributes is currently supported:
+.TP 32
+.B safAmfCluster
+.TP
+.B saAmfClusterStartupTimeout
+.TP
+.B safAmfNode
+.TP
+.B saAmfNodeClmNode
+Host name, required
+.TP
+.B saAmfNodeSuFailOverProb
+Required but not used.
+.TP
+.B saAmfNodeSuFailoverMax
+Required but not used.
+.TP
+.B safApp
+.TP
+.B clccli_path
+A path added to all CLC-CLI scripts
+.TP
+.B saAmfSIProtectedbySG
+Required when several SGs are specified
+.TP
+.B safSg
+.TP
+.B safSi
+.TP
+.B saAmfSINumCSIs
+Required but not used.
+.TP
+.B safCSType
+.TP
+.B saAmfSGRedundancyModel
+Currently only 'nplusm' is supported, required.
+.TP
+.B saAmfSGNumPrefActiveSUs
+.TP
+.B saAmfSGNumPrefStandbySUs
+.TP
+.B saAmfSGMaxActiveSIsperSUs
+.TP
+.B saAmfSGMaxStandbySIsperSUs
+.TP
+.B saAmfSGCompRestartProb
+Required but not used.
+.TP
+.B saAmfSGCompRestartMax
+.TP
+.B saAmfSGSuRestartProb
+Required but not used.
+.TP
+.B saAmfSGAutoAdjustProb
+Required but not used.
+.TP
+.B saAmfSGSuRestartMax
+.TP
+.B safSu
+.TP
+.B saAmfSUNumComponents
+Required but not used.
+.TP
+.B saAmfSUIsExternal
+Required but not used.
+.TP
+.B saAmfSUFailover
+Required but not used.
+.TP
+.B saAmfSUHostedByNode
+Required. Set to AMF node name. Note: this is a deviation from the specification.
+.TP
+.B safComp
+.TP
+.B saAmfCompCsTypes
+Multivalue
+.TP
+.B saAmfCompCategory
+.TP
+.B saAmfCompCapability
+Required but not used.
+.TP
+.B saAmfCompNumMaxActiveCsi
+Required but not used.
+.TP
+.B saAmfCompNumMaxStandbyCsi
+Required but not used.
+.TP
+.B saAmfCompCmdEnv
+Multivalue
+.TP
+.B saAmfCompDefaultClcCliTimeout
+Required but not used.
+.TP
+.B saAmfCompDefaultCallbackTimeOut
+Required but not used.
+.TP
+.B saAmfCompInstantiateCmdArgv
+.TP
+.B saAmfCompInstantiateCmd
+.TP
+.B saAmfCompTerminateCmdArgv
+Required but not used.
+.TP
+.B saAmfCompTerminateCmd
+Required but not used.
+.TP
+.B saAmfCompCleanupCmdArgv
+.TP
+.B saAmfCompCleanupCmd
+.TP
+.B saAmfCompRecoveryOnError
+Required but not used.
+.TP
+.B safHealthcheckKey
+.TP
+.B saAmfHealthcheckPeriod
+.TP
+.B saAmfHealthcheckMaxDuration
+.TP
+.B safCsi
+.TP
+.B saAmfSIPrefActiveAssignments
+.TP
+.B saAmfSIPrefStandbyAssignments
+.TP
+.B saAmfCSTypeName
+.TP
+.B safCSIAttr
+Multivalue
+
+
+.SH AUTHOR
+Hans.Feldt at ericsson.com
+
+.SH EXAMPLE
+For an AMF configuration file example, see the amf.conf file under the openais
+.B conf
+directory.
+
+.SH "FILES"
+.TP
+/etc/ais/amf.conf
+.TP
+/etc/ais/openais.conf
+
+.SH "SEE ALSO"
+[1] openais_conf (5)
+.TP
+[2] openais_overview (8)
+.TP
+[3] README.amf
+.TP
+[4] www.saforum.org - SAI-XMI-A.01.01.xml.xip
+.TP
+[5] www.saforum.org - SAI-Overview.B.02.01.pdf
+.TP
+[6] www.saforum.org - SAI-AIS-AMF-B.02.01.pdf
+.PP

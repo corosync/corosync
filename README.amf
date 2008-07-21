@@ -1,0 +1,536 @@
+AMF B.02.01 Implementation
+--------------------------
+The implementation of AMF in openais is directed by the specification 
+SAI-AIS-AMF-B.02.01, see http://www.saforum.org/specification/.
+
+What does AMF do?
+-----------------
+The AMF has many major duties:
+ * issue instantiate, terminate, and cleanup operations for components
+ * assignment of component service instances to components
+ * executing of recovery and repair actions on fault reports delivered
+   by components (fault detection is a responsibility of all entities
+   in the system)
+
+An AMF user has to provide instantiate and cleanup commands and a
+configuration file  besides from the binaries that represents the actual
+components.
+
+To start a component, AMF executes the instantiate command which starts
+processes that are part of the component. AMF can stop the component
+abruptly by running the cleaup command.
+
+An service unit (SU) contains multiple components and represents a 
+"useable service" and is configured to execute on an AMF node. The AMF node
+is mapped in the configuration to a CLM node which is "an operating system
+instance". An SU is the smallest part that can be instantiated in a redundant
+manner and can therefore be viewed as the unit of redundancy.
+
+A service group (SG) contains multiple SUs. The SG is the unit that implements
+high availability by managing its contained service units. An SG can be
+configured to execute different redundancy policies. 
+
+An application contains multiple SGs and multiple service instances (SIs).
+ 
+An SI represents the workload for an SU. An SI consists of one or more
+component service instances (CSIs). 
+
+A CSI represents the workload of a component. The CSI is configured to include
+a list of name value pairs through which the user can express the workload.
+
+The AMF specification defines several types of components.  The AMF
+specification is exceedingly clear about which CLC operations occur for which
+component types.
+
+If a component is not sa-aware, the only level of high availability that
+can be applied to the application is through execution of the CLC interfaces.
+
+A special component, called a proxy component, can be used to present an
+SA-aware component to AMF to manage a non-SA-aware component.  This would be 
+useful, for example, to implement a healthcheck operation which runs some
+operation of the unmodified application service.
+
+Components that are SA-aware have been written specifically to the AMF
+interfaces.  These components provide the most support for high availability
+for application developers.
+
+When an SA-aware component has been instantiated it has to register within a
+certain time. After a successful registration, AMF assigns workload to the
+component by making callbacks once the service unit is available to take service.
+There will be one callback for each CSI-assignment. Each CSI-assignment has
+a HA state associated which indicates how the component shall act.
+The HA state can be ACTIVE, STANDBY, QUIESCED or QUIESCING.
+
+The number of CSIs assigned to a component and the setting of their HA state
+is determined by AMF. In the configuration the operator specifies the preferred
+assignment of workload to the defined SUs. The configuration specifies also
+limits for how much work each SU can execute. If not the preferred distribution
+of workload can be met due to problems in the cluster a reduction process with
+6 levels of reduction will be executed by AMF. The purpose of the reduction
+procedure is to come as close as possible to the preferred configuration without
+violating any limits for how much workload an SU can handle. The reduction
+procedure continues until there are no SUs in-service in the SG.
+
+AMF supports fault detection through a healthcheck API.  The user
+specifies in the configuration file healthcheck keys and timing parameters.
+This configuration is then used by the application developer to register
+a healthcheck operation in the AMF.  The healthcheck operation can be started
+or stopped.  Once started, the AMF will periodically send a request to the
+component to determine its level of health. Optionally, AMF can be configured to
+instead expect the component to report its health periodically. 
+The AMF reacts to negative healthchecks or failed healthchecks by executing 
+a recovery policy.
+
+The AMF specification also includes an API for reporting errors with a 
+recommended recovery action. AMF will not take a weaker recovery action than
+what is recommended but may take a stronger action based on the recovery
+escalation policy.
+
+There is a recovery escalation policy for the recomendations:
+- component restart
+- component failover
+
+When AMF receives a recommendation to restart a component, the recovery policy
+attempts to restart the component first.  When the component is restarted and
+fail a certain number of times within a timeout period, the entire service unit
+is restarted. When the SU has been restarted a certain number of times within
+a certain timeout period, the SU is failed over to a standby SU. If AMF fails
+over too many service units out of the same node in a given time period as a
+consequence of error reports with either component restart or component
+failover recommended recovery actions, the AMF escalates the recovery to an 
+entire node fail-over.
+
+What is currently implemented ?
+-------------------------------
+
+SA-aware components can be instantiated and assigned load according to the
+configuration specified in amf.conf. Other types of components are currently
+not supported. The processes of instantiation and assignment of workload are 
+both simplified compared to the requirements in the AMF specification.
+
+Service units represented by their components can be configured to execute
+on different nodes. AMF supports initial start of the cluster as well as adding
+of a node to the cluster after the initial start. AMF also supports that a node
+leave the cluster by failing over the workload to standby service units.
+
+Healthchecks are implemented as specified with only a few details missing.
+
+The error report API is implemented but AMF ignores the recommendation of
+recovery action instead it will always try to recover by 'component restart'.
+ 
+The error escalation mechanism up to SU failover is also implemented as
+specified with a few simplifications.
+
+Only redundancy model N+M is (partly) implemented.
+
+You can find a detailed list of what is NOT implemented later in the README.
+
+How to configure AMF
+--------------------
+The AMF specification doesn't specify a configuration file format. It does
+however, describe many configuration options, which are specified formally in 
+SAI-Overview-B.02.01 chapter 4.5 - 4.11. The Overview can also be retrieved
+from http://www.saforum.org/specification/.
+
+An implementation specific feature of openais is to implement the configuration
+options in a file called amf.conf. There is a man page in the /man directory
+which describes the syntax of amf.conf and what configuration options which
+are currently supported.
+
+The example programs
+--------------------
+First the openais example programs should be installed.  When compiling openais
+in the exec directory a file called openais-instantiate is created.  Copy this
+file to a test directory of your own:
+
+mkdir /tmp/aisexample
+
+exec# cp openais-instantiate /tmp/aisexample
+
+Copy also the script which implements the instantiate, terminate and clean-up
+operations to your test directory:
+
+exec# cp ../test/clc_cli_script /tmp/aisexample/clc_cli_script
+
+Set execute permissions for the clc_cli_script
+
+exec# chmod +x /tmp/aisexample/clc_cli_script
+
+Copy the binary to be used for all components:
+exec# cp ../test/testamf1 /tmp/aisexample/testamf1
+
+Copy the amf example configuration files from the openais/conf directory to
+your test directory.
+
+exec# cp ../conf/*amf_example.conf /tmp/aisexample
+
+set environment variables to the names of the configuration files: 
+
+setenv OPENAIS_AMF_CONFIG_FILE /tmp/aisexample/amf_example.conf
+setenv OPENAIS_MAIN_CONFIG_FILE /tmp/aisexample/openais_amf_example.conf
+
+You have to specify the host on which you would like to execute the AMF example.
+Open the file 'amf_example.conf' and replace the line:
+
+saAmfNodeClmNode=p01
+
+in the following section in the cluster configuration:
+
+	safAmfNode = AMF1 {
+		saAmfNodeSuFailOverProb=2000
+		saAmfNodeSuFailoverMax=2
+		saAmfNodeClmNode=p01
+	}
+
+p01 shall be replaced with the name of your host.
+
+(You can obtain the name of your host by typing the command 'hostname' in a 
+shell.)
+
+Modify the following rows of 'openais_amf_example.conf' so that they match your
+user and group:
+
+aisexec {
+    user: nisse
+    group: users
+}
+
+(One way to obtain your user and group is to type the command 'id' in a shell.)
+
+Start aisexec by command:
+./aisexec
+
+aisexec will be run in the background.
+Once aisexec is run using the example configuration file, 2 service units
+will be instantiated.  The testamf1 C code will be used for both component A
+and component B of both SUs.  The testamf1 program determines its
+component name at start time from the saAmfComponentNameGet() api call.
+The result is that 4 processes will be started by AMF.
+
+Each testamf1 process will first try to register a bad component name and
+there after register the name returned from saAmfComponentNameGet().
+The testamf1 will be assigned CSIs after they execute a 
+saAmfComponentRegister() API call.  Note that a successful registration causes
+the state of the component and service units to be set to INSTANTIATED as
+required by the AMF specification.  The service instances and their names are
+defined within the configuration file.
+
+The component of type saAmfCSTypeName = B, which have the active HA state,
+in this case, safComp=B,safSu=SERVICE_X_1,safSg=RAID,safApp=APP-1,
+reports an error via saAmfErrorReport() after exactly 10 healthchecks.
+The healthcheck period is configured to 1 second so one error report is sent
+every 10th second.
+This results in openais calling the cleanup handler, which for
+an sa-aware component, is the CLC_CLI_CLEANUP command.  This causes the cleanup
+operation of the clc_cli_script to be run.  This cleanup command then reads the
+pid of the process that was stored to /var/run ( or /tmp) at startup of the
+testamf1 program.  It then executes a kill -9 on the PID.  Custom cleanup
+operations can be executed by modifying the clc_cli_script script program.
+
+After this is done 2 times (configurable) the entire service
+unit is terminated and restarted due to the error escalation mechanism. Once
+this happens 3 times (also configurable), the code escalates to level 2 and a
+failover of the SU takes place. After this testamf1 makes no more error
+reports and nothing will happen until some problem is recognized (like the
+process of one of the components stops executing).
+
+The states of the cluster and its contained entities can be obtained by issuing
+the following command in the shell:
+
+pkill -USR2 ais
+
+Some notes:
+-----------
+In the example, testamf1 is sending an error report at the 10th helthcheck.
+This is actually controlled by the safCSIAttr = good_health_limit in 
+file amf_example.conf and can be changed as you like.
+
+The file openais_amf_example.conf specifies logging to stderr.
+
+If you would like to follow more closely the execution of the AMF in openais,
+debug printouts can be enabled.
+
+example:
+logging {
+	fileline: off
+	to_stderr: yes
+	to_file: no
+	logfile: /tmp/openais.log
+	debug: off
+	timestamp: on
+	logger {
+		ident: AMF
+		debug: on
+		tags: enter|leave|trace1|trace2|trace3|trace4|trace6
+	}
+
+Setting 'debug: on' generally gives many printouts all other parts of openais.
+
+Run the example on a cluster with 2 nodes
+-----------------------------------------
+
+It is easy to run the example on more than one node.
+Modify the file openais_amf_example.conf:
+
+<1>
+Replace the following line:
+		bindnetaddr: 127.0.0.0
+
+bindnetaddr specifies the address which the openais Executive should bind to.
+This address should always end in zero.  If the local interface traffic
+should be routed over is 192.168.5.92, set bindnetaddr to 192.168.5.0.
+
+Modify amf_example.conf like this:
+<1>
+Remove the comment character '#' from the following lines:
+#	safAmfNode = AMF2 {
+#		saAmfNodeSuFailOverProb=2000
+#		saAmfNodeSuFailoverMax=2
+#		saAmfNodeClmNode=p02
+#	}
+and replace p02 with the name of your second machine.
+<2>
+Locate the following two lines:
+				saAmfSUHostedByNode=AMF1
+#				saAmfSUHostedByNode=AMF2
+
+Replace them with:
+
+#				saAmfSUHostedByNode=AMF1
+				saAmfSUHostedByNode=AMF2
+
+Feedback
+--------
+Any feed-back is appreciated.
+
+Keep in mind only parts of the functionality is implemented. Reports of bugs or
+behaviour not compliant with the AMF specification within the implemented part
+is greatly appreciated :-).
+
+What is currently NOT implemented ?
+-----------------------------------
+The following list specifies all chapters of the AMF specification which
+currently is NOT fully implemented. The deviations from the specification are
+described shortly except in those cases when none of the requirements in the
+chapter is implemented. 
+
+Chapter:				Deviation:
+---------				----------
+3.3.1.2 Administrative State		Not supported (always UNLOCKED).
+3.3.1.4 Readiness State			State STOPPING is not supported.
+3.3.1.5 Service Unit’s HA State ... 	State QUIESCING is not supported.
+3.3.2.2 Operational State		AMF does not detect errors in the
+					following cases:
+					• A command used by the Availability
+					  Management Framework to control the
+					  component life cycle returned an
+					  error or did not return in time.
+					• The component fails to respond in
+					  time to an Availability Management
+					  Framework's callback.
+					• The component responds to an
+					  Availability Management Framework's
+					  state change callback
+					  (SaAmfCSISetCallbackT) with an error.
+					• If the component is SA-aware, and it
+					  does not register with the
+					  Availability Management Framework
+					  within the preconfigured time-period
+					  after its instantiation.
+					• If the component is SA-aware, and it
+					  unexpectedly unregisters with the
+					  Availability Management Framework.
+					• The component terminates unexpectedly.
+					• When a fail-over recovery operation
+					  performed at the level of the service
+					  unit or the node containing the 
+					  service unit triggers an abrupt
+					  termination of the component.
+3.3.2.3 Readiness State			State STOPPING is not supported.
+3.3.2.4 Component’s HA State per ... 	State QUIESCING is not supported.
+3.3.3.1 Administrative State		Not supported (always UNLOCKED).
+3.3.5 Service Group States		Administrative state is not supported
+					(always UNLOCKED).
+3.3.6.1 Administrative State		Not supported (always UNLOCKED).
+3.3.6.2 Operational State		None of the rules for transition between states are implemented.
+3.3.7 Application States		Administrative state is not supported (always UNLOCKED).
+3.3.8 Cluster States			Administrative state is not supported (always UNLOCKED).
+3.5.1 Combined States for Pre-Inst....	Only Administrative state = UNLOCKED is supported.
+3.5.2 Combined States for Non-Pre-I...	Not supported.
+3.6 Component Capability Model		Configuration of capability model is
+					ignored. AMF expects all components to
+					be capable to be x_active_or_y_standby.
+3.7.2 2N Redundancy Model		Not supported.
+3.7.3.1 Basics				Spare service units can not be handled
+					properly.
+3.7.3.3 Configuration			• Ordered list of service units for a
+					  service group: Not supported 
+					  (the order is unpredictable).
+					• Ordered list of SIs: Neither ranking
+					  nor dependencies among SIs are 
+					  supported. SIs are assigned to SUs in 
+					  any order.
+					• Auto-adjust option: Not supported.
+					  Auto-adjust is never done.
+3.7.3.5.1 Handling of a Node Failure.. 	Not supported.
+3.7.3.6 An Example of Auto-adjust	Not supported.
+3.7.4 N-Way Redundancy Model		Not supported.
+3.7.5 N-Way Active Redundancy Model	Not supported.
+3.7.6 No Redundancy Model		Not supported.
+3.7.7 The Effect of Administrative...	Not supported.
+3.9 Dependencies Among SIs, Compone.. 	Not supported.
+3.11 Component Monitoring		• External Active Monitoring:
+					  Not supported.
+3.12.1.1 Error Detection		AMF does not support that a component
+					reports an error for another component.
+3.12.1.2 Restart			• AMF does not support terminating of
+					  components by the terminate call-back
+ 					  or the TERMINATE command.
+					• AMF does not consider component
+					  instantiation-level at restart.
+					• The configuration option
+					  disableRestart is not supported.
+3.12.1.3 Recovery			• Component or Service Unit Fail-Over:
+					  • Component fail-over is not
+					    implemented
+					  • Only SU fail-over is implemented and
+ 					    the only way to trig that case is by
+					    error escalation.
+					• Node Switch-Over: Not implemented
+					• Node Fail-Over: Not implemented
+					• Node Fail-Fast: Not implemented
+					• The configuration option 
+					  recoveryOnFailure is not handled,
+					  i.e. is never evaluated. 
+
+3.12.1.4 Repair				• The configuration attribute for
+					  automatic repair is not evaluated.
+					• The administrative operation 
+					  SA_AMF_ADMIN_REPAIRED is not 
+					  implemented.
+					• Repair after component fail-over
+					  is not implemented.
+					• Node leave while performing
+					  automatic repair of that node,
+					  is not implemented.
+					• Service unit failover recovery:
+					  Is implemented except that an attempt
+					  to repair is always done (confi- 
+					  guration attribute is not evaluated).
+					• Repair after Node Switch-Over,
+					  Fail-Over or Fail-Fast 
+					  is not implemented.
+3.12.1.5 Recovery Escalation		The recommended recovery action is not
+					evaluated at the reception of an error
+					report.
+3.12.2.1 Recommended Recovery Action	The recommended recovery action is
+					never evaluated. Recovery action
+					SA_AMF_COMPONENT_RESTART is always
+					assumed.
+3.12.2.2 Escalations of Levels 1 and 2	Is implemented with the following exception:
+					• The configuration attribute
+					  component_restart_max is compared to
+					  the restart counter of the component
+					  that has reported the error instead of
+					  against the sum of all restart
+					  counters of all components within 
+					  the SU.
+3.12.2.3 Escalation of Level 3		Not implemented
+4.2 CLC-CLI's Environment Variables	Translation of  non-printable Unicode
+					characters is not supported.
+4.4 INSTANTIATE Command			• AMF does not evaluate the exit code of
+					  the INSTANTIATE command as described
+					  in the specification.
+					• AMF does not supervise that an
+					  SA-aware component registers itself,
+					  within the time limit configured.
+					As a consequence, none of the recovery
+					actions described are implemented.
+4.5 TERMINATE Command			Not supported.
+4.6 CLEANUP Command			AMF does not evaluate the exit code of
+					the CLEANUP command and thus does not
+					implement any recovery action.
+4.7 AM_START Command			Not supported.
+4.8 AM_STOP Command			Not supported.
+5 Proxied Component Management		Not implemented.
+7 Administrative API			Not implemented
+8 Basic Operational Scenarios		Not implemented.
+9 Alarms and Notifications		Not implemented.
+
+Appendix A: Implementation of CLC ..	CLC-interfaces are partly implemented
+					for SA-aware components. 
+					The terminate operation,
+					saAmfComponentTerminateCallback(),
+					is never called.
+					No CLC-interfaces are implemented for
+					any other type of component.
+
+Appendix B: API functions in Unre....	AMF does not verify that the rules
+					described are fulfilled.
+
+
+
+Which functions of the AMF API is currently NOT implemented ?
+-------------------------------------------------------------
+
+Function					Deviation
+--------					---------
+saAmfComponentUnregister()			Is implemented in the library
+						but not in aisexec.
+
+saAmfPmStart()					Is implemented in the library
+						but not in aisexec.
+
+saAmfPmStop()					Is implemented in the library
+						but not in aisexec.
+
+saAmfHealthcheckStart()				This function takes a parameter
+						of type SaAmfRecommendedRecoveryT.
+						The value of this parameter is
+						supposed to specify what kind of
+						recovery AMF should execute if
+						the component fails a health
+						check. AMF does not read the
+						value of this parameter but
+ 						instead always tries to recover
+						the component by a component
+						restart.
+
+void (*SaAmfCSIRemoveCallbackT)()		AMF will never make a call-back
+						to this function.
+void 
+(*SaAmfComponentTerminateCallbackT)()		AMF will never make a call-back
+						to this function.
+void 
+(*SaAmfProxiedComponentInstantiateCallbackT)()	AMF will never make a call-back
+						to this function.
+void 
+(*SaAmfProxiedComponentCleanupCallbackT)()	AMF will never make a call-back
+						to this function.
+saAmfProtectionGroupTrack()			Is implemented in the library
+						but not in aisexec.
+
+saAmfProtectionGroupTrackStop()			Is implemented in the library
+						but not in aisexec.
+
+void (*SaAmfProtectionGroupTrackCallbackT)()	AMF will never make a call-back
+						to this function.
+
+saAmfProtectionGroupNotificationFree()		Not implemented.
+
+saAmfComponentErrorReport()			This function takes a parameter
+						of type SaAmfRecommendedRecoveryT.
+						The value of this parameter is
+						supposed to specify what kind of
+						recovery AMF should execute if
+						the component fails a health
+						check. AMF does not read the
+						value of this parameter but
+ 						instead always tries to recover
+						the component by a component
+						restart.
+
+saAmfComponentErrorClear()			Is implemented in the library
+						but not in aisexec.
+
+

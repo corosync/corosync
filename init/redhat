@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# OpenAIS daemon init script for Red Hat Linux and compatibles.
+#
+# chkconfig: - 20 20
+# processname:  aisexec
+# pidfile:      /var/run/aisexec.pid
+# description:  OpenAIS daemon
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+prog="aisexec"
+exec="/usr/sbin/$prog"
+lockfile="/var/lock/subsys/$prog"
+
+[ -x "$exec" ] || exit 0
+
+start() {
+    echo -n $"Starting OpenAIS daemon ($prog): "
+    daemon $exec
+    retval=$?
+    [ "$retval" -eq 0 ] && touch "$lockfile"
+    echo
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping OpenAIS daemon ($prog): "
+    killproc $prog
+    retval=$?
+    [ "$retval" -eq 0 ] && rm -f "$lockfile"
+    echo
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+    start|stop|restart)
+        $1
+        ;;
+    reload|force-reload)
+        restart
+        ;;
+    condrestart|try-restart)
+        [ ! -f "$lockfile" ] || restart
+        ;;
+    status)
+        status $prog
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|try-restart|condrestart|reload|force-reload|status}"
+        exit 2
+esac

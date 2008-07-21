@@ -1,0 +1,39 @@
+# Version and symbol export for libSaClm.so
+
+OPENAIS_AMF_B.01.01 {
+	global:
+		saAmfInitialize;
+		saAmfSelectionObjectGet;
+		saAmfDispatch;
+		saAmfFinalize;
+		saAmfComponentRegister;
+		saAmfComponentUnregister;
+		saAmfComponentNameGet;
+		saAmfPmStart;
+		saAmfPmStop;
+		saAmfHealthcheckStart;
+		saAmfHealthcheckConfirm;
+		saAmfHealthcheckStop;
+		saAmfHAStateGet;
+		saAmfCSIQuiescingComplete;
+		saAmfProtectionGroupTrack;
+		saAmfProtectionGroupTrackStop;
+		saAmfComponentErrorReport;
+		saAmfComponentErrorClear;
+		saAmfResponse;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saPollRetry;
+		saRecvRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

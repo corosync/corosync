@@ -1,0 +1,4 @@
+This directory contains init scripts used to autostart the ais executive.
+
+mvlcge contains an init script for MontaVista Linux systems.
+redhat contains an init script for Redhat systems.

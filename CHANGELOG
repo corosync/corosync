@@ -1,0 +1,232 @@
+Application Interface Specification Implementation
+--------------------------------------------------
+0.30
+* Add GMI & sort queues to build environment.
+* Changed queue.h to be more consistent with naming conventions used in tree.
+* Simplified cluster membmership service by modifying to use GMI.
+* Modified availability management framework to use GMI.
+* Modified method services connect to main executive to make services standalone
+  objects.  This could facilitate plugin services in the future.
+* Modified checkpointing for multinode using GMI.  
+* healthcheck timeouts were being caused by slow access to the filesystem for
+  sockets and deleted sockets.  This was fixed by using the abstract namespace
+  which is memory based.
+* Generic logging facility added to get rid of numerous #ifdef DEBUGs and avoid
+  the SIGPIPE and signal changes created by the libc's version of syslog.
+* Authentication for API<->executive added.  Only uid=0 or gid=ais processes can
+  connect to the executive via the libraries to provide service.
+* This release has alot of cleanups!
+* Removed all point-to-point authentication since using GMI now.
+
+* GMI provides extended virtual synchrony semantics with:
+*	- agreed message ordering (all processors agree on message order)
+*	- using available hardware multicast
+*	- group membership algorithm that currently supports 16 processors
+*	- message fragmentation to fit MTU that avoids UDP fragmentation
+*	- full recovery of messages during configuration change
+*	- 512kb message support
+*	- 3 priority levels
+
+0.29
+* Changed all send/recv functions to sendmsg/recvmsg.
+
+0.28
+* Remove current poll code and replace with poll abstraction.
+
+0.27
+* Add CKPT service to AIS Executive for single node checkpointing.
+
+0.26
+* Added support for pthreads to clm and amf interfaces.  Critical
+  sections and shared data now protected by mutex.  If Dispatch in
+  one thread, Finalize in another thread will cause Dispatch to behave
+  per spec.
+* Moved global receive buffer for APIs into handles or stack.
+* Allocate and free instance memory in handle manager instead of in each API.
+* Merge defect fixes from 0.22.1-0.22.8 into development tree.
+* CkptCheckpointHandleT and CkptSectionIteratorT functions created a new
+  connection each time any APIs using those types were called.  Now these
+  types have been encapsulated into their own handle database which doesn't
+  create (expensive) connections for each API call.
+* Changed named types such as MESSAGE_CKPT_REQ* to MESSAGE_REQ_CKPT* to match
+  structure names.
+
+0.25
+* Added ability for authentication to use none, password, or DSA depending on
+  settings in file /etc/ais/authtype.  The values are no authentication, password
+  authentication, or dsa authentication.
+* Added DSA authentication to node-to-node communication.
+	Server generates 16 byte random number, sends random number to connecting
+	client, client signs random number message with DSA private key, server
+	verifies signature with public key of client for random number message.
+* Added DSA key generator.
+* Added password authentication.  File /etc/ais/aiskeys/password is used by the
+  server to compare the client's password.  If they match, the connection is
+  authenticated.
+* Added no authentication option.
+* Fixed PPC compile to compile cleanly with -Wall.
+* Added version checking to APIs.
+
+0.24
+* Fixed problem if outbound queues have messages queued, they are not
+  sent during the poll loop because poll isn't passed the correct events flag.
+  This problem introduced in the select to poll conversion in 0.23.
+* Healthchecks for CLM service intra-node now run on seperate timers per connection.
+* Fixed problem connections intra-node were completely broken as a result
+  of the change from select to poll in 0.23.
+* Fixed bug in AMF timer_del on NULL timer.
+* Fixed few bugs in AMF intra-node communications would result in segfault.
+* Made pollfd_table global to reduce variable passing and simplify code.
+* Cleaned up with compile of -Wall which found several bugs.
+* Some minor cleanups of makefiles from major reorg in 0.23.
+* Replaced memory malloc/free/realloc with memory pool versions to avoid
+  failed memory allocation requests and improve realtime response.
+* Implemented the library portion of all checkpointing (Ckpt) APIs.
+
+0.23
+* Reorganized executive into exec directory and split executive components
+  into seperate files.
+* Placed library interfaces into lib directory.
+* Placed test components into test directory.
+* Abstracted some of the service setup and teardown code that was
+  integrated into the main loops and disconnect function call to call
+  generic functions {amf|clm}InitializeExecutive, and {amf|clm}FinalizeApi.
+* Cleaned up connection (ci) datatypes.
+* Removed old timers, replaced with generic timer implementation.
+* replaced select with poll in executive.
+* lock memory of process and set RR prio 99 to avoid priority inversions.
+* Fixed problem where accept couldn't connect because resource exhaustion,
+  executive would crash.
+
+0.22
+* Fix defect in HA state and operational state machines where states are not
+  always determined correctly.
+* Fix defect invalid argument to saAmfErrorReport will crash executive.
+* Fix defect no /var/run/aisexec.pid created for service.
+
+0.21
+* Fix defect testclm doesn't exit if no connection to AIS executive possible.
+* Fix defect aisexec crashes if no /etc/groups.conf file present.
+* Fix defect aisexec opens "groups.conf" instead of "/etc/groups.conf" file.
+* Fix defect aisexec doesn't set SaClmClusterNodeT data structure if local interface
+  not defined in /etc/clusterips, or empty/no /etc/clusterips file present.
+* Fixed some basic error reporting in aisexec to use syslog's LOG_ERR instead
+  of LOG_NOTICE.
+* Fixed SEGV if component not found for componentcapabilitymodelget API.
+
+0.20
+* Correctly parse model values in configuration file for both service
+  groups and components.
+* Changed variables with text nodeexec to aisexec.
+* Fixed a bug select wouldn't retry because errno checked for -EINTR
+  when it should be checking for EINTR.
+* Correctly determine startup HA state and send appropriate ha state
+  changes to registered receivers.
+
+0.19
+* Implemented saAmfCSISetCallback.
+* Implemented saAmfCSIRemoveCallback.
+* Implemented saAmfProtectionGroupTrackStart.
+* Implemented saAmfProtectionGroupTrackCallback.
+* Implemented saAmfProtectionGroupTrackStop.
+* Implemented saAmfErrorReport.
+* Implemented saAmfErrorCancelAll.
+* Implemented saAmfResponse.
+* Implemented saAmfComponentCapabilityModelGet.
+* Implemented saAmfPendingOperationGet dummy function.
+	This function will have to be rewritten to be
+	correct, but completes the API for now.
+* Fixed problem where queued messages would not cause select
+  to be triggered.  Occured in component register, unregister,
+  track start, track stop functions.
+
+0.18
+* Implemented saAmfReadinessStateSetCallback.
+* Implemented saAmfStoppingComplete.
+* Implemented saAmfComponentTerminateCallback.
+* Implemented saAmfHAStateGet.
+
+0.17
+* Implemented saAmfHealthcheckCallback.
+* Implemented saAmfResponse.
+* Implemented saAmfReadinessStateGet.
+* Made connect non-blocking to fix bug where blocking connects
+  could cause timeout on heartbeating.
+* Made recv's non-blocking by adding small buffer to each connection
+  and recving and processing as needed.
+* Integrated message dispatch for libais and nodeexec connections.
+* Fixed bug where SA_TRACK_CURRENT does not return current state of 
+  cluster membership after second invocation of the testclm application.
+* Seperated several functions from main.
+* Fixed bug where outqs were not flushed when data present within them
+  at end of processing loop before next select.  Previously they would
+  only flush when new data was sent on the queues.
+* Fixed bug where CLM and AMF always processed dispatch functions in
+  SA_DISPATCH_BLOCKING mode.
+
+0.16
+* zero out component data structure during parse.
+* make component register/unregister update state in the group list.
+* return ERR_NOT_EXIST and ERR_EXIST and BAD_OPERATION error codes for
+  register and unregister as per spec.
+* renamed executive message handlers to include exec in name of handler
+  function.
+* Handle null proxyCompName to register and unregister as per spec.
+* Fixed off-by-one in handle database that resulted in badness when
+  allocating memory after creating any handle (ie: create two handles).
+* Added component enumerator which enumerates all components and executes
+  a function on the component.
+* Added component enumerator to unregister all library and nodeexec
+  connections that are disconnected.
+
+0.15
+* Added correct time stamping for SaClmClusterNodeT structure.
+* Made nodeexec message handlers use the message_handler structure.
+* Made nodeexec_process_receive handle messages made of only headers
+  with no payloads.  Previously, nodeexec would lock.
+* Seperated heartbeat into two shorter messages one request and one response.
+* Changed names of some structures to be more consistent.
+
+0.14
+* Added simple linked list implementation list.h.
+* Modified parser to read data into linked lists.  This makes processing
+  register/unregister/healthchecks/management of HAState easier.
+* Exported queue implementation from nodeexec.c to queue.h.
+* Seperated parser and parser testing code to seperate source files.
+* Modified makefile to build parser test code.
+* Modified parser test code to display new linked-list implementation.
+* Partially implemented register/unregister/get component name commands
+  in AMF spec.
+
+0.13
+* Genericized nodeexec handler so it could run any type of service
+  and each service has its own set of handler functions as not to crash
+  the node executive.  This allows a set of messages to be designed
+  to not be crashable, vs trying to figure out all of the interactions
+  between a flat message name space.
+* Added size field for messages stored into the outq so 
+  two send_messages in the nodeexec wouldn't crash.  The send_message
+  function requires the size on messages, and the size was retrieved from
+  the message header.  In a two-part send, there is no message header in
+  the second message.  This was resulting in junk data and possible
+  crashes on messages that must be queued waiting for the libais to
+  recv on the other end.
+  This also fixes the MESSAGE_MAGIC value being displayed in some
+  NodeId fields of the testclm application.
+* Changed lots of type names to something more consistent.
+* Changed lots of enumerated types names to something more consistent.
+
+0.12
+* Abstracted some of the networking functions for EINTR and other errors
+  Added library handle verification and generic handle database mechanism
+  available for all services.
+* Implemented database mechanism and all abstracted functions on cluster
+  membership service.
+
+0.11
+* Defined AMF configuration file.
+* Added configuration parser for AMF service.
+* Defined inital AMF header/c files.
+
+0.1
+* Initial release of cluster membership service.

@@ -1,0 +1,28 @@
+#! /bin/sh
+#
+# Application Interface Specification Startup 
+# chkconfig: 2345 20 20
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+
+test -f /usr/sbin/aisexec | exit 0
+
+case "$1" in 
+	start)
+ 		echo -n "Starting Application Interface Specification Executive: " 
+		start-stop-daemon --start --quiet --exec /usr/sbin/aisexec
+		echo "."
+
+		;;
+       	stop)
+		echo -n "Stopping Application Interface Specification Executive: " 
+		start-stop-daemon --stop --quiet --exec /usr/sbin/aisexec
+		echo "."
+               	;;
+       	*)
+               echo "Usage: /etc/init.d/ais {start|stop}" >&2
+               exit 1
+               ;;
+esac
+
+

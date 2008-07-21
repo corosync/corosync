@@ -1,0 +1,111 @@
+The openais standards based cluster framework TODO list
+Last Updated: May 26, 2006
+
+P1 items are to be implemented before Wilson release.  P2 items may be
+implemented in Wilson if interested parties provide patches.  P3 items are
+targeted for Humphrey.
+
+Generic Items
+-------------
+* P1 32/64 bit cross-endian must be working.
+* P2 Itemize any changes required for AIS B.02.01 in the TODO list.
+* P2 doxygen-ize the include and lib directories.
+* P2 There are many TODOs in the code that need attention.
+* P2 Implement static voting virtual synchrony filter.
+* P3 Integrate with rgmanager system.
+* P3 doxygen-ize the exec directory.
+* P3 Advanced Synchronization Engine needed to synchronize data without
+     long blocking delays during configuration changes.
+
+Totem
+-----
+* P1 Test scalability to 128 processors.
+* P1 Implement safe message delivery (for both Wilson and Picacho).
+* P1 Add mechanism to reenable a redundant ring after that ring has been
+     declared faulty and then repaired by the system administration.
+* P1 In redundant ring configuration disallow binding to localhost interface.
+* P2 Flush totem messages during RECOVERY state that are in the
+     new_message_queue.
+* P2 Turn totem layer into an LCR component.
+* P3 Implement the totem multiring protocol.
+
+YKD Virtual Synchrony Filter
+----------------------------
+* P1 32/64 bit cross-endian must be working.
+* P2 Scale to 128 processors.
+
+LCR
+---
+* P2 Finish live component replacement services.
+
+Checkpointing
+-------------
+* P1 32/64 bit cross-endian must be working.
+* P1 There is a bug in that iteration doesn't work under heavy load that
+     must be fixed.
+* P1 Creation/deletion of checkpoints should be done using SAFE messaging.
+* P1 The checkpoint unlink operation doesn't work as per specification.  The
+     specification says that a checkpoint unlink should then allow a new
+     checkpoint with the same name to be created.  All cluster members using
+     the old checkpoint continue to use the old checkpoint until they all
+     stop using the checkpoint, at which point the checkpoint should be removed
+     from the cluster. 
+* P2 Conformance testing via SAF-TEST needs to reach 100%.
+
+Distributed Locking Service
+---------------------------
+* P1 32/64 bit cross-endian must be working.
+* P1 Distributed locking needs configuration change support.
+* P1 Provide kernel-based DLM service handler for distributed locking.
+* P2 Conformance testing via SAF-TEST needs to reach 100%.
+
+Messaging Service
+-----------------
+* P2 32/64 bit cross-endian must be working.
+* P2 Finish implementation.
+* P2 Conformance testing via SAF-TEST needs to reach 100%.
+
+Availability Management Framework
+---------------------------------
+* P1 32/64 bit cross-endian must be working.
+* P1 Finish next generation state machine design.
+* P1 Implement next generation state machine design.
+* P2 Conformance testing via SAF-TEST needs to reach 100%.
+
+Logging Service
+---------------
+* P2 32/64 bit cross-endian must be working.
+* P2 Design and implement.
+* P3 Conformance testing via SAF-TEST needs to reach 100%.
+
+IMMS
+----
+* P3 32/64 bit cross-endian must be working.
+* P3 Design and implement morphing the configuration object database.
+* P3 Conformance testing via SAF-TEST needs to reach 100%.
+
+Cluster Membership
+------------------
+* P1 32/64 bit cross-endian testing.  Code completed and believed to be correct.
+
+Eventing
+--------
+* P1 32/64 bit cross-endian must be working.
+
+Closed Process Groups
+---------------------
+* P1 32/64 bit cross-endian must be working.
+
+Extended Virtual Synchrony Passthrough Interface
+------------------------------------------------
+* P1 32/64 bit cross-endian must be working.
+* P1 Modify man pages to match new API semantics.
+* P1 Add mechanism to get redundant ring information from EVS interface.
+
+IPC
+---
+* There are no TODOs for the IPC system.
+
+SYNC
+----
+* P1 32/64 bit cross-endian must be working.

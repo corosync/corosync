@@ -1,0 +1,69 @@
+.\"/*
+.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH CONFDB_OVERVIEW 8 2006-03-06 "openais Man Page" "Openais Programmer's Manual"
+.SH OVERVIEW
+The CONFDB library is delivered with the openais project.  This library is used
+to examine manipulate the configuratin databser used by openais.
+.PP
+The library provides a mechanism to:
+* Create new objects
+* Create new key/value pairs within those objects
+* Remove existing keys
+* Remove an existing object and all it sub-objects and keys
+* Read keys and values
+* Iterate keys within an object
+* Iterate subobjects within a parent object
+* Find a named object
+.PP
+.SH BUGS
+This software is not yet production, so there may still be some bugs.
+.SH "SEE ALSO"
+.BR confdb_initialize (3),
+.BR confdb_finalize (3),
+.BR confdb_fd_get (3),
+.BR confdb_dispatch (3),
+.BR confdb_object_create (3),
+.BR confdb_object_destroy (3),
+.BR confdb_object_parent_get (3),
+.BR confdb_key_create (3),	
+.BR confdb_key_delete (3),	
+.BR confdb_key_get (3),
+.BR confdb_key_replace (3),
+.BR confdb_object_find_start (3),
+.BR confdb_object_find (3),
+.BR confdb_object_iter_start (3),	
+.BR confdb_object_iter (3),	
+.BR confdb_key_iter_start (3),	
+.BR confdb_key_iter (3),	
+.PP
