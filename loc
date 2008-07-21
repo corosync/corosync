@@ -1,0 +1,14 @@
+wc -l exec/*.c exec/*.h include/*.h lib/*.c lib/*.h
+
+echo "Application Interface Specification Implementation Lines Of Code"
+echo -n "exec LOC    "
+cat exec/*.c exec/*.h | wc -l
+
+echo -n "lib LOC     "
+cat lib/*.c lib/*.h | wc -l
+
+echo -n "include LOC "
+cat include/*.h | wc -l
+
+echo -n "total LOC   "
+cat exec/*.c exec/*.h lib/*.c lib/*.h include/*.h | wc -l
