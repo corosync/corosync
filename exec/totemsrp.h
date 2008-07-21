@@ -36,7 +36,7 @@
 #define TOTEMSRP_H_DEFINED
 
 #include "totem.h"
-#include "aispoll.h"
+#include "coropoll.h"
 
 typedef unsigned int totemsrp_handle;
 

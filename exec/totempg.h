@@ -37,8 +37,8 @@
 #define TOTEMPG_H_DEFINED
 
 #include <netinet/in.h>
-#include "aispoll.h"
 #include "totem.h"
+#include "coropoll.h"
 
 typedef unsigned int totempg_groups_handle;
 

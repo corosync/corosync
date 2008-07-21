@@ -56,7 +56,7 @@
 
 #include "totem.h"
 #include "totemsrp.h"
-#include "aispoll.h"
+#include "coropoll.h"
 
 totemsrp_handle totemsrp_handle_in;
 

@@ -52,8 +52,8 @@ ifeq (${OPENAIS_COMPAT}, SOLARIS)
 endif
 
 # Totem objects
-TOTEM_SRC = aispoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
-TOTEM_OBJS = aispoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o crypto.o wthread.o
+TOTEM_SRC = coropoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
+TOTEM_OBJS = coropoll.o totemip.o totemnet.o totemrrp.o totemsrp.o totemmrp.o totempg.o crypto.o wthread.o
 LOGSYS_SRC = wthread.c logsys.c
 LOGSYS_OBJS = wthread.o logsys.o
 
@@ -152,7 +152,7 @@ objdb.o: objdb.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # -fPIC rules required for lib totem
-aispoll.o: aispoll.c
+coropoll.o: coropoll.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
 
 totempg.o: totempg.c

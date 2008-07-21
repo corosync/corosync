@@ -94,6 +94,7 @@
 
 #include "../include/hdb.h"
 #include "../include/list.h"
+#include "coropoll.h"
 #include "totempg.h"
 #include "totemmrp.h"
 #include "totemsrp.h"
