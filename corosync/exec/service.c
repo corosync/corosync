@@ -55,44 +55,20 @@ struct default_service {
 
 static struct default_service default_services[] = {
 	{
-		.name			 = "openais_evs",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_clm",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_amf",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_ckpt",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_evt",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_lck",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "openais_msg",
+		.name			 = "corosync_evs",
 		.ver			 = 0,
 	},
 	{
 
-		.name			 = "openais_cfg",
+		.name			 = "corosync_cfg",
 		.ver			 = 0,
 	},
 	{
-		.name			 = "openais_cpg",
+		.name			 = "corosync_cpg",
 		.ver			 = 0,
 	},
 	{
-		.name			 = "openais_confdb",
+		.name			 = "corosync_confdb",
 		.ver			 = 0,
 	},
 };
