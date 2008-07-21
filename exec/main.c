@@ -506,9 +506,9 @@ int main (int argc, char **argv)
 	if (background)
 		aisexec_tty_detach ();
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service RELEASE '%s'\n", RELEASE_VERSION);
+	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006-2007 Red Hat, Inc.\n");
+	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
 
 	signal (SIGINT, sigintr_handler);
 	signal (SIGUSR2, sigusr2_handler);
@@ -520,7 +520,7 @@ int main (int argc, char **argv)
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
 
-	log_printf (LOG_LEVEL_NOTICE, "AIS Executive Service: started and ready to provide service.\n");
+	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
 	aisexec_poll_handle = poll_create (
 		serialize_mutex_lock,
@@ -536,7 +536,7 @@ int main (int argc, char **argv)
 		&objdb_p,
 		0);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration object database component.\n");
+		log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration object database component.\n");
 		openais_exit_error (AIS_DONE_OBJDB);
 	}
 
@@ -571,7 +571,7 @@ int main (int argc, char **argv)
 
 		config = (struct config_iface_ver0 *)config_p;
 		if (res == -1) {
-			log_printf (LOG_LEVEL_ERROR, "AIS Executive couldn't open configuration component '%s'\n", iface);
+			log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration component '%s'\n", iface);
 			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 
