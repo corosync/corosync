@@ -301,7 +301,7 @@ saMsgDispatch (
 
 	struct res_lib_msg_queueopenasync *res_lib_msg_queueopenasync;
 	struct res_lib_msg_messagesendasync *res_lib_msg_messagesendasync;
-
+	struct res_lib_msg_queuegrouptrack *res_lib_msg_queuegrouptrack;
 
 	if (dispatchFlags != SA_DISPATCH_ONE &&
 	    dispatchFlags != SA_DISPATCH_ALL &&
@@ -354,6 +354,7 @@ saMsgDispatch (
 			pthread_mutex_unlock(&msgInstance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
+
 		if (dispatch_avail == 0) {
 			pthread_mutex_unlock(&msgInstance->dispatch_mutex);
 			continue;
@@ -366,6 +367,7 @@ saMsgDispatch (
 		if (error != SA_AIS_OK) {
 			goto error_unlock;
 		}
+
 		if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 			error = saRecvRetry (msgInstance->dispatch_fd, &dispatch_data.data,
 				dispatch_data.header.size - sizeof (mar_res_header_t));
@@ -450,6 +452,26 @@ saMsgDispatch (
 			callbacks.saMsgMessageDeliveredCallback (
 				res_lib_msg_messagesendasync->invocation,
 				res_lib_msg_messagesendasync->header.error);
+
+			break;
+
+		case MESSAGE_RES_MSG_QUEUEGROUPTRACK:
+
+			if (callbacks.saMsgQueueGroupTrackCallback == NULL) {
+				continue;
+			}
+			res_lib_msg_queuegrouptrack =
+				(struct res_lib_msg_queuegrouptrack *) &dispatch_data;
+
+			res_lib_msg_queuegrouptrack->notificationBuffer.notification =
+				(SaMsgQueueGroupNotificationT *)
+				(((char *) &dispatch_data) + sizeof (struct res_lib_msg_queuegrouptrack));
+
+			callbacks.saMsgQueueGroupTrackCallback (
+				&res_lib_msg_queuegrouptrack->queueGroupName,
+				&res_lib_msg_queuegrouptrack->notificationBuffer,
+				res_lib_msg_queuegrouptrack->numberOfMembers,
+				res_lib_msg_queuegrouptrack->header.error);
 
 			break;
 
@@ -1117,6 +1139,22 @@ saMsgQueueGroupTrack (
 		return (SA_AIS_ERR_INVALID_PARAM);
 	}
 
+	if ((notificationBuffer != NULL) &&
+	    (notificationBuffer->notification != NULL) &&
+	    (notificationBuffer->numberOfItems == 0)) {
+		return (SA_AIS_ERR_INVALID_PARAM);
+	}
+
+	if ((notificationBuffer != NULL) &&
+	    (notificationBuffer->notification == NULL)) {
+		notificationBuffer->numberOfItems = 0;
+	}
+
+	if ((trackFlags & SA_TRACK_CHANGES) &&
+	    (trackFlags & SA_TRACK_CHANGES_ONLY)) {
+		return (SA_AIS_ERR_BAD_FLAGS);
+	}
+
 	/* DEBUG */
 	printf ("[DEBUG]: saMsgQueueGroupTrack { queueGroupName = %s }\n",
 		(char *) queueGroupName->value);
@@ -1133,20 +1171,67 @@ saMsgQueueGroupTrack (
 		MESSAGE_REQ_MSG_QUEUEGROUPTRACK;
 
 	req_lib_msg_queuegrouptrack.trackFlags = trackFlags;
+	req_lib_msg_queuegrouptrack.bufferFlag = (notificationBuffer != NULL);
+
+	/* DEBUG */
+	printf ("[DEBUG]: saMsgQueueGroupTrack { bufferFlag = %d }\n",
+		(int)(req_lib_msg_queuegrouptrack.bufferFlag));
 
 	memcpy (&req_lib_msg_queuegrouptrack.queueGroupName, queueGroupName,
 		sizeof (SaNameT));
 
 	pthread_mutex_lock (&msgInstance->response_mutex);
 
+	/*
 	error = saSendReceiveReply (msgInstance->response_fd,
 		&req_lib_msg_queuegrouptrack,
 		sizeof (struct req_lib_msg_queuegrouptrack),
 		&res_lib_msg_queuegrouptrack,
 		sizeof (struct res_lib_msg_queuegrouptrack));
+	*/
 
+	error = saSendRetry (msgInstance->response_fd, &req_lib_msg_queuegrouptrack,
+		sizeof (struct req_lib_msg_queuegrouptrack));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = saRecvRetry (msgInstance->response_fd, &res_lib_msg_queuegrouptrack,
+		sizeof (struct res_lib_msg_queuegrouptrack));
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	if ((trackFlags & SA_TRACK_CURRENT) && (notificationBuffer != NULL)) {
+		if (notificationBuffer->notification != NULL) {
+			if (notificationBuffer->numberOfItems < res_lib_msg_queuegrouptrack.numberOfMembers) {
+				error = SA_AIS_ERR_NO_SPACE;
+				goto error_exit;
+			}
+		} else {
+			notificationBuffer->notification =
+				malloc (sizeof (SaMsgQueueGroupNotificationT) *
+					res_lib_msg_queuegrouptrack.numberOfMembers);
+
+			if (notificationBuffer->notification == NULL) {
+				error = SA_AIS_ERR_NO_MEMORY;
+				goto error_exit;
+			}
+
+			memset (notificationBuffer->notification, 0,
+				(sizeof (SaMsgQueueGroupNotificationT) *
+				 res_lib_msg_queuegrouptrack.numberOfMembers));
+		}
+
+		error = saRecvRetry (msgInstance->response_fd,
+				     notificationBuffer->notification,
+				     (sizeof (SaMsgQueueGroupNotificationT) *
+				      res_lib_msg_queuegrouptrack.numberOfMembers));
+	}
+
+error_exit:
 	pthread_mutex_unlock (&msgInstance->response_mutex);
-
+error_put_msg:
 	saHandleInstancePut (&msgHandleDatabase, msgHandle);
 
 	return (error == SA_AIS_OK ? res_lib_msg_queuegrouptrack.header.error : error);

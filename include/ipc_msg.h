@@ -178,10 +178,14 @@ struct req_lib_msg_queuegrouptrack {
 	mar_req_header_t header;
 	SaNameT queueGroupName;
 	SaUint8T trackFlags;
+	SaUint8T bufferFlag;
 };
 
 struct res_lib_msg_queuegrouptrack {
 	mar_res_header_t header;
+	SaNameT queueGroupName;
+	SaUint32T numberOfMembers;
+	SaMsgQueueGroupNotificationBufferT notificationBuffer;
 };
 
 struct req_lib_msg_queuegrouptrackstop {
