@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *

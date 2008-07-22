@@ -83,8 +83,8 @@
 #include "objdb.h"
 #include "config.h"
 #include "tlist.h"
-#define LOG_SERVICE LOG_SERVICE_IPC
 #include "logsys.h"
+#include "coroapi.h"
 
 #include "util.h"
 
@@ -149,7 +149,7 @@ struct conn_info {
 	unsigned int flow_control_handle;	/* flow control identifier */
 	unsigned int flow_control_enabled;	/* flow control enabled bit */
 	unsigned int flow_control_local_count;	/* flow control local count */
-	enum openais_flow_control flow_control;	/* Does this service use IPC flow control */
+	enum corosync_lib_flow_control flow_control;	/* Does this service use IPC flow control */
 	pthread_mutex_t flow_control_mutex;
         int (*lib_exit_fn) (void *conn);
 	struct timerlist timerlist;
@@ -292,7 +292,7 @@ static int dispatch_init_send_response (
 
 	conn_info->flow_control = ais_service[conn_info->service]->flow_control;
 	conn_info->conn_info_partner->flow_control = ais_service[conn_info->service]->flow_control;
-	if (ais_service[conn_info->service]->flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) {
+	if (ais_service[conn_info->service]->flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) {
 		openais_flow_control_ipc_init (
 			&conn_info->flow_control_handle,
 			conn_info->service);
@@ -629,7 +629,7 @@ static void ipc_flow_control (struct conn_info *conn_info)
 	/*
 	 * IPC group-wide flow control
 	 */
-	if (conn_info->flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) {
+	if (conn_info->flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) {
 		if (conn_info->flow_control_enabled == 0 &&
 			((fcc + FLOW_CONTROL_ENTRIES_ENABLE) > SIZEQUEUE)) {
 
@@ -875,9 +875,9 @@ retry_recv:
 			/*
 			 * Not an init service, but a standard service
 			 */
-			if (header->id < 0 || header->id > ais_service[service]->lib_service_count) {
+			if (header->id < 0 || header->id > ais_service[service]->lib_engine_count) {
 				log_printf (LOG_LEVEL_SECURITY, "Invalid header id is %d min 0 max %d\n",
-				header->id, ais_service[service]->lib_service_count);
+				header->id, ais_service[service]->lib_engine_count);
 				return ;
 			}
 
@@ -894,22 +894,22 @@ retry_recv:
 
 			send_ok =
 				(sync_primary_designated() == 1) && (
-				(ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_NOT_REQUIRED) ||
-				((ais_service[service]->lib_service[header->id].flow_control == OPENAIS_FLOW_CONTROL_REQUIRED) &&
+				(ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
 				(sync_in_process() == 0)));
 
 			if (send_ok) {
-				ais_service[service]->lib_service[header->id].lib_handler_fn(conn_info, header);
+				ais_service[service]->lib_engine[header->id].lib_handler_fn(conn_info, header);
 			} else {
 
 				/*
 				 * Overload, tell library to retry
 				 */
 				res_overlay.header.size =
-					ais_service[service]->lib_service[header->id].response_size;
+					ais_service[service]->lib_engine[header->id].response_size;
 				res_overlay.header.id =
-					ais_service[service]->lib_service[header->id].response_id;
+					ais_service[service]->lib_engine[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
 				openais_conn_send_response (
 					conn_info,
@@ -1270,7 +1270,7 @@ void openais_ipc_flow_control_create (
 	unsigned int service,
 	char *id,
 	int id_len,
-	void (*flow_control_state_set_fn) (void *conn, enum openais_flow_control_state),
+	void (*flow_control_state_set_fn) (void *conn, enum corosync_flow_control_state),
 	void *context)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;

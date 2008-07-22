@@ -45,7 +45,7 @@ struct dynamic_service {
 	char *name;
 	unsigned int ver;
 	unsigned int handle;
-	struct openais_service_handler_iface_ver0 *iface_ver0;
+	struct openais_service_engine_iface_ver0 *iface_ver0;
 };
 #define MAX_DYNAMIC_SERVICES 128
 

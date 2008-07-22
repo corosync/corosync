@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -53,20 +52,10 @@
 #include "../include/ipc_gen.h"
 #include "../include/ipc_cfg.h"
 #include "../include/list.h"
-#include "totem.h"
-#include "totempg.h"
-#include "flow.h"
-#include "tlist.h"
-#include "ipc.h"
 #include "../include/queue.h"
 #include "../lcr/lcr_comp.h"
-#include "objdb.h"
-#include "service.h"
-#include "totempg.h"
-#include "mempool.h"
-#include "util.h"
-#include "logsys.h"
-#include "main.h"
+#include "../exec/logsys.h"
+#include "../include/coroapi.h"
 
 LOGSYS_DECLARE_SUBSYS ("CFG", LOG_INFO);
 
@@ -81,7 +70,9 @@ static void cfg_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb);
+static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb, struct corosync_api_v1 *corosync_api_v1);
+
+static struct corosync_api_v1 *api;
 
 static int cfg_lib_init_fn (void *conn);
 
@@ -126,59 +117,59 @@ static void message_handler_req_lib_cfg_serviceunload (
 /*
  * Service Handler Definition
  */
-static struct openais_lib_handler cfg_lib_service[] =
+static struct corosync_lib_handler cfg_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringstatusget,
 		.response_size		= sizeof (struct res_lib_cfg_ringstatusget),
 		.response_id		= MESSAGE_RES_CFG_RINGSTATUSGET,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringreenable,
 		.response_size		= sizeof (struct res_lib_cfg_ringreenable),
 		.response_id		= MESSAGE_RES_CFG_RINGREENABLE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
 		.response_size		= sizeof (struct res_lib_cfg_statetrack),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
 		.response_size		= sizeof (struct res_lib_cfg_statetrackstop),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTOP,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateset),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATESET,
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateget),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET,
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceload,
 		.response_size		= sizeof (struct res_lib_cfg_serviceload),
 		.response_id		= MESSAGE_RES_CFG_SERVICELOAD,
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceunload,
 		.response_size		= sizeof (struct res_lib_cfg_serviceunload),
 		.response_id		= MESSAGE_RES_CFG_SERVICEUNLOAD,
-		.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
-static struct openais_exec_handler cfg_exec_service[] =
+static struct corosync_exec_handler cfg_exec_engine[] =
 {
 	{
 		message_handler_req_exec_cfg_ringreenable
@@ -188,18 +179,18 @@ static struct openais_exec_handler cfg_exec_service[] =
 /*
  * Exports the interface for the service
  */
-struct openais_service_handler cfg_service_handler = {
-	.name					= "openais configuration service",
+struct corosync_service_engine cfg_service_engine = {
+	.name					= "corosync configuration service",
 	.id					= CFG_SERVICE,
 	.private_data_size			= 0,
-	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
+	.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn				= cfg_lib_init_fn,
 	.lib_exit_fn				= cfg_lib_exit_fn,
-	.lib_service				= cfg_lib_service,
-	.lib_service_count			= sizeof (cfg_lib_service) / sizeof (struct openais_lib_handler),
+	.lib_engine				= cfg_lib_engine,
+	.lib_engine_count			= sizeof (cfg_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn				= cfg_exec_init_fn,
-	.exec_service				= cfg_exec_service,
-	.exec_service_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (openais_exec_handler), */
+	.exec_engine				= cfg_exec_engine,
+	.exec_engine_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (coroync_exec_handler), */
 	.confchg_fn				= cfg_confchg_fn,
 };
 
@@ -208,15 +199,15 @@ static struct objdb_iface_ver0 *my_objdb;
 /*
  * Dynamic Loader definition
  */
-static struct openais_service_handler *cfg_get_handler_ver0 (void);
+static struct corosync_service_engine *cfg_get_handler_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 cfg_service_handler_iface = {
-	.openais_get_service_handler_ver0	= cfg_get_handler_ver0
+static struct corosync_service_engine_iface_ver0 cfg_service_engine_iface = {
+	.corosync_get_service_engine_ver0	= cfg_get_handler_ver0
 };
 
-static struct lcr_iface openais_cfg_ver0[1] = {
+static struct lcr_iface corosync_cfg_ver0[1] = {
 	{
-		.name				= "openais_cfg",
+		.name				= "corosync_cfg",
 		.version			= 0,
 		.versions_replace		= 0,
 		.versions_replace_count		= 0,
@@ -230,16 +221,16 @@ static struct lcr_iface openais_cfg_ver0[1] = {
 
 static struct lcr_comp cfg_comp_ver0 = {
 	.iface_count				= 1,
-	.ifaces					= openais_cfg_ver0
+	.ifaces					= corosync_cfg_ver0
 };
 
-static struct openais_service_handler *cfg_get_handler_ver0 (void)
+static struct corosync_service_engine *cfg_get_handler_ver0 (void)
 {
-	return (&cfg_service_handler);
+	return (&cfg_service_engine);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
-	lcr_interfaces_set (&openais_cfg_ver0[0], &cfg_service_handler_iface);
+	lcr_interfaces_set (&corosync_cfg_ver0[0], &cfg_service_engine_iface);
 
 	lcr_component_register (&cfg_comp_ver0);
 }
@@ -251,9 +242,12 @@ struct req_exec_cfg_ringreenable {
 
 /* IMPL */
 
-static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static int cfg_exec_init_fn (
+	struct objdb_iface_ver0 *objdb,
+	struct corosync_api_v1 *corosync_api_v1)
 {
 	my_objdb = objdb;
+	api = corosync_api_v1;
 	return (0);
 }
 
@@ -292,12 +286,12 @@ static void message_handler_req_exec_cfg_ringreenable (
 	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
 
 	ENTER("");
-	totempg_ring_reenable ();
-        if (message_source_is_local(&req_exec_cfg_ringreenable->source)) {
+	api->totem_ring_reenable ();
+        if (api->ipc_source_is_local(&req_exec_cfg_ringreenable->source)) {
 		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
 		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
 		res_lib_cfg_ringreenable.header.error = SA_AIS_OK;
-		openais_conn_send_response (
+		api->conn_send_response (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
@@ -326,8 +320,8 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	res_lib_cfg_ringstatusget.header.size = sizeof (struct res_lib_cfg_ringstatusget);
 	res_lib_cfg_ringstatusget.header.error = SA_AIS_OK;
 
-	totempg_ifaces_get (
-		totempg_my_nodeid_get(),
+	api->totem_ifaces_get (
+		api->totem_nodeid_get(),
 		interfaces,
 		&status,
 		&iface_count);
@@ -335,13 +329,13 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	res_lib_cfg_ringstatusget.interface_count = iface_count;
 
 	for (i = 0; i < iface_count; i++) {
-		totem_ip_string = (char *)totemip_print (&interfaces[i]);
+		totem_ip_string = (char *)api->totem_ip_print (&interfaces[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_status[i],
 			status[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
 			totem_ip_string);
 	}
-	openais_conn_send_response (
+	api->conn_send_response (
 		conn,
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget));
@@ -361,13 +355,12 @@ static void message_handler_req_lib_cfg_ringreenable (
 		sizeof (struct req_exec_cfg_ringreenable);
 	req_exec_cfg_ringreenable.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
 		MESSAGE_REQ_EXEC_CFG_RINGREENABLE);
-	message_source_set (&req_exec_cfg_ringreenable.source, conn);
+	api->ipc_source_set (&req_exec_cfg_ringreenable.source, conn);
 
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_SAFE) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
 
 	LEAVE("");
 }
@@ -418,7 +411,7 @@ static void message_handler_req_lib_cfg_serviceload (
 	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
 
 	ENTER("");
-	openais_service_link_and_init (
+	api->service_link_and_init (
 		my_objdb,
 		(char *)req_lib_cfg_serviceload->service_name,
 		req_lib_cfg_serviceload->service_ver);
@@ -426,7 +419,7 @@ static void message_handler_req_lib_cfg_serviceload (
 	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
 	res_lib_cfg_serviceload.header.error = SA_AIS_OK;
-	openais_conn_send_response (
+	api->conn_send_response (
 		conn,
 		&res_lib_cfg_serviceload,
 		sizeof (struct res_lib_cfg_serviceload));
@@ -442,14 +435,14 @@ static void message_handler_req_lib_cfg_serviceunload (
 	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
 
 	ENTER("");
-	openais_service_unlink_and_exit (
+	api->service_unlink_and_exit (
 		my_objdb,
 		(char *)req_lib_cfg_serviceunload->service_name,
 		req_lib_cfg_serviceunload->service_ver);
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
 	res_lib_cfg_serviceunload.header.error = SA_AIS_OK;
-	openais_conn_send_response (
+	api->conn_send_response (
 		conn,
 		&res_lib_cfg_serviceunload,
 		sizeof (struct res_lib_cfg_serviceunload));

@@ -65,4 +65,9 @@ extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
+extern int main_mcast (
+	struct iovec *iovec,
+	int iov_len,
+	unsigned int guarantee);
+
 #endif /* AIS_EXEC_H_DEFINED */

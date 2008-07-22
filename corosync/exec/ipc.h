@@ -35,6 +35,8 @@
 #ifndef IPC_H_DEFINED
 #define IPC_H_DEFINED
 
+#include "flow.h"
+
 #ifndef TIMER_HANDLE
 typedef void * timer_handle;
 #define TIMER_HANDLE
@@ -75,7 +77,7 @@ extern void openais_ipc_flow_control_create (
 	unsigned int service,
 	char *id,
 	int id_len,
-	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state_set),
+	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state_set),
 	void *context);
 	
 extern void openais_ipc_flow_control_destroy (

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -1696,7 +1695,6 @@ int totemrrp_ring_reenable (
 	int res = 0;
 	unsigned int i;
 
-printf ("totemrrp ring reenable\n");
 	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {

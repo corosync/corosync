@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,6 +46,14 @@
 #include "util.h"
 #include "logsys.h"
 
+#include "timer.h"
+#include "totempg.h"
+#include "totemip.h"
+#include "main.h"
+#include "ipc.h"
+
+#include "../include/coroapi.h"
+
 LOGSYS_DECLARE_SUBSYS ("SERV", LOG_INFO);
 
 struct default_service {
@@ -53,11 +61,40 @@ struct default_service {
 	int ver;
 };
 
+static struct corosync_api_v1 corosync_api_v1 = {
+	.timer_add_duration = openais_timer_add_duration,
+	.timer_add_absolute = openais_timer_add_absolute,
+	.timer_delete = openais_timer_delete,
+	.timer_time_get = NULL,
+	.ipc_source_set = message_source_set,
+	.ipc_source_is_local = message_source_is_local,
+	.ipc_private_data_get = openais_conn_private_data_get,
+	.ipc_response_send = NULL,
+	.ipc_dispatch_send = NULL,
+	.conn_send_response = openais_conn_send_response,
+	.conn_partner_get = openais_conn_partner_get,
+	.ipc_refcnt_inc =  openais_ipc_flow_control_local_increment,
+	.ipc_refcnt_dec = openais_ipc_flow_control_local_decrement,
+	.ipc_fc_create = openais_ipc_flow_control_create,
+	.ipc_fc_destroy = openais_ipc_flow_control_destroy,
+	.totem_nodeid_get = totempg_my_nodeid_get,
+	.totem_ring_reenable = totempg_ring_reenable,
+	.totem_mcast = main_mcast,
+	.service_link_and_init = openais_service_link_and_init,
+	.service_unlink_and_exit = openais_service_unlink_and_exit,
+	.totem_ifaces_get = totempg_ifaces_get,
+	.totem_ifaces_print = totempg_ifaces_print,
+	.totem_ip_print = totemip_print,
+	.error_memory_failure = NULL
+};
+
 static struct default_service default_services[] = {
+/*
 	{
 		.name			 = "corosync_evs",
 		.ver			 = 0,
 	},
+*/
 	{
 
 		.name			 = "corosync_cfg",
@@ -67,13 +104,15 @@ static struct default_service default_services[] = {
 		.name			 = "corosync_cpg",
 		.ver			 = 0,
 	},
+/*
 	{
 		.name			 = "corosync_confdb",
 		.ver			 = 0,
 	},
+*/
 };
 
-struct openais_service_handler *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
+struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static unsigned int object_internal_configuration_handle;
 
@@ -112,10 +151,10 @@ unsigned int openais_service_link_and_init (
 	char *service_name,
 	unsigned int service_ver)
 {
-	struct openais_service_handler_iface_ver0 *iface_ver0;
+	struct corosync_service_engine_iface_ver0 *iface_ver0;
 	void *iface_ver0_p;
 	unsigned int handle;
-	struct openais_service_handler *service;
+	struct corosync_service_engine *service;
 	unsigned int res;
 	unsigned int object_service_handle;
 
@@ -130,7 +169,7 @@ unsigned int openais_service_link_and_init (
 		&iface_ver0_p,
 		(void *)0);
 
-	iface_ver0 = (struct openais_service_handler_iface_ver0 *)iface_ver0_p;
+	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
 
 	if (iface_ver0 == 0) {
 		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
@@ -141,7 +180,7 @@ unsigned int openais_service_link_and_init (
 	/*
 	 * Initialize service
 	 */
-	service = iface_ver0->openais_get_service_handler_ver0();
+	service = iface_ver0->corosync_get_service_engine_ver0();
 
 	ais_service[service->id] = service;
 	if (service->config_init_fn) {
@@ -149,7 +188,7 @@ unsigned int openais_service_link_and_init (
 	}
 
 	if (service->exec_init_fn) {
-		res = service->exec_init_fn (objdb);
+		res = service->exec_init_fn (objdb, &corosync_api_v1);
 	}
 
 	/*
