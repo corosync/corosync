@@ -34,9 +34,9 @@
 
 /*
  * New messages are allowed from the library ONLY when the processor has not
- * received a OPENAIS_FLOW_CONTROL_STATE_ENABLED from any processor.  If a
- * OPENAIS_FLOW_CONTROL_STATE_ENABLED message is sent, it must later be
- *  cancelled by a OPENAIS_FLOW_CONTROL_STATE_DISABLED message.  A configuration
+ * received a COROSYNC_FLOW_CONTROL_STATE_ENABLED from any processor.  If a
+ * COROSYNC_FLOW_CONTROL_STATE_ENABLED message is sent, it must later be
+ *  cancelled by a COROSYNC_FLOW_CONTROL_STATE_DISABLED message.  A configuration
  * change with the flow controlled processor leaving the configuration will
  * also cancel flow control.
  */
@@ -67,12 +67,12 @@ struct flow_control_message {
 	unsigned int service __attribute__((aligned(8)));
 	char id[1024] __attribute__((aligned(8)));
 	unsigned int id_len __attribute__((aligned(8)));
-	enum openais_flow_control_state flow_control_state __attribute__((aligned(8)));
+	enum corosync_flow_control_state flow_control_state __attribute__((aligned(8)));
 };
 
 struct flow_control_node_state {
 	unsigned int nodeid;
-	enum openais_flow_control_state flow_control_state;
+	enum corosync_flow_control_state flow_control_state;
 };
 
 struct flow_control_service {
@@ -80,10 +80,10 @@ struct flow_control_service {
 	unsigned int service;
 	char id[1024];
 	unsigned int id_len;
-	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state);
+	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state);
 	void *context;
 	unsigned int processor_count;
-	enum openais_flow_control_state flow_control_state;
+	enum corosync_flow_control_state flow_control_state;
 	struct list_head list;
 	struct list_head list_all;
 };
@@ -107,7 +107,7 @@ static unsigned int flow_control_member_list_entries;
 
 static inline int flow_control_xmit (
 	struct flow_control_service *flow_control_service,
-	enum openais_flow_control_state flow_control_state)
+	enum corosync_flow_control_state flow_control_state)
 {
 	struct flow_control_message flow_control_message;
 	struct iovec iovec;
@@ -164,11 +164,11 @@ static void flow_control_deliver_fn (
 		 * Determine if any flow control is enabled on any nodes and set
 		 * the internal variable appropriately
 		 */
-		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
+		flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_DISABLED;
 		flow_control_service->flow_control_state_set_fn (flow_control_service->context, flow_control_service->flow_control_state);
 		for (i = 0; i < flow_control_service->processor_count; i++) {
-			if (flow_control_service->flow_control_node_state[i].flow_control_state == OPENAIS_FLOW_CONTROL_STATE_ENABLED) {
-				flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+			if (flow_control_service->flow_control_node_state[i].flow_control_state == COROSYNC_FLOW_CONTROL_STATE_ENABLED) {
+				flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_ENABLED;
 				flow_control_service->flow_control_state_set_fn (flow_control_service->context, flow_control_service->flow_control_state);
 			}
 		}
@@ -203,7 +203,7 @@ static void flow_control_confchg_fn (
 		 */
 		for (i = 0; i < member_list_entries; i++) {
 			flow_control_node_state_temp[i].nodeid = member_list[i];
-			flow_control_node_state_temp[i].flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
+			flow_control_node_state_temp[i].flow_control_state = COROSYNC_FLOW_CONTROL_STATE_DISABLED;
 
 			/*
 			 * Determine if previous state was set for this processor
@@ -230,10 +230,10 @@ static void flow_control_confchg_fn (
 		 * Turn on all flow control after a configuration change
 		 */
 		flow_control_service->processor_count = flow_control_member_list_entries;
-		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
+		flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_DISABLED;
 		for (i = 0; i < member_list_entries; i++) {
-			if (flow_control_service->flow_control_node_state[i].flow_control_state == OPENAIS_FLOW_CONTROL_STATE_ENABLED) {
-				flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
+			if (flow_control_service->flow_control_node_state[i].flow_control_state == COROSYNC_FLOW_CONTROL_STATE_ENABLED) {
+				flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_ENABLED;
 				flow_control_service->flow_control_state_set_fn (flow_control_service->context, flow_control_service->flow_control_state);
 			}
 		}
@@ -312,7 +312,7 @@ unsigned int openais_flow_control_create (
 	unsigned int service,
 	void *id,
 	unsigned int id_len,
-	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state),
+	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state),
 	void *context)
 {
 	struct flow_control_service *flow_control_service;
@@ -336,7 +336,7 @@ unsigned int openais_flow_control_create (
 	 */
 	memset (flow_control_service, 0, sizeof (struct flow_control_service));
 
-	flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
+	flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_DISABLED;
 	flow_control_service->service = service;
 	memcpy (flow_control_service->id, id, id_len);
 	flow_control_service->id_len = id_len;
@@ -388,7 +388,7 @@ unsigned int openais_flow_control_destroy (
 		if ((flow_control_service->id_len == id_len) &&
 			(memcmp (flow_control_service->id, id, id_len) == 0)) {
 			flow_control_xmit (flow_control_service,
-				OPENAIS_FLOW_CONTROL_STATE_DISABLED);
+				COROSYNC_FLOW_CONTROL_STATE_DISABLED);
 			list_del (&flow_control_service->list);
 			list_del (&flow_control_service->list_all);
 			free (flow_control_service);
@@ -424,8 +424,8 @@ unsigned int openais_flow_control_disable (
 		list = list->next) {
 
 		flow_control_service = list_entry (list, struct flow_control_service, list);
-		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_DISABLED;
-		flow_control_xmit (flow_control_service, OPENAIS_FLOW_CONTROL_STATE_DISABLED);
+		flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_DISABLED;
+		flow_control_xmit (flow_control_service, COROSYNC_FLOW_CONTROL_STATE_DISABLED);
 	}
 	hdb_handle_put (&flow_control_hdb, flow_control_handle);
 
@@ -457,8 +457,8 @@ unsigned int openais_flow_control_enable (
 
 
 		flow_control_service = list_entry (list, struct flow_control_service, list);
-		flow_control_service->flow_control_state = OPENAIS_FLOW_CONTROL_STATE_ENABLED;
-		flow_control_xmit (flow_control_service, OPENAIS_FLOW_CONTROL_STATE_ENABLED);
+		flow_control_service->flow_control_state = COROSYNC_FLOW_CONTROL_STATE_ENABLED;
+		flow_control_xmit (flow_control_service, COROSYNC_FLOW_CONTROL_STATE_ENABLED);
 	}
 	hdb_handle_put (&flow_control_hdb, flow_control_handle);
 

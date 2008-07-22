@@ -36,9 +36,10 @@
 #ifndef FLOW_H_DEFINED
 #define FLOW_H_DEFINED
 
-enum openais_flow_control_state {
-	OPENAIS_FLOW_CONTROL_STATE_DISABLED,
-	OPENAIS_FLOW_CONTROL_STATE_ENABLED
+#define COROSYNC_FLOW_CONTROL_STATE
+enum corosync_flow_control_state {
+	COROSYNC_FLOW_CONTROL_STATE_DISABLED,
+	COROSYNC_FLOW_CONTROL_STATE_ENABLED
 };
 
 unsigned int openais_flow_control_initialize (void);
@@ -55,7 +56,7 @@ unsigned int openais_flow_control_create (
 	unsigned int service,
 	void *id,
 	unsigned int id_len,
-	void (*flow_control_state_set_fn) (void *context, enum openais_flow_control_state flow_control_state),
+	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state),
 	void *context);
 
 unsigned int openais_flow_control_destroy (

@@ -52,6 +52,7 @@ void totemip_nosigpipe(int s);
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
 /* These are the things that get passed around */
+#define TOTEM_IP_ADDRESS
 struct totem_ip_address
 {
 	unsigned int   nodeid;

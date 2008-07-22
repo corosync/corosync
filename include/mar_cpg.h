@@ -1,8 +1,6 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  * Author: Patrick Caulfield (pcaulfie@redhat.com)
- *
- * Copyright (c) 2006 Sun Microsystems, Inc.
  *
  * All rights reserved.
  *

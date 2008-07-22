@@ -1,6 +1,5 @@
 # Copyright (c) 2002-2004 MontaVista Software, Inc.
 # Copyright (c) 2006-2008 Red Hat, Inc.
-# Copyright (c) 2006 Sun Microsystems, Inc.
 # 
 # All rights reserved.
 # 
@@ -38,58 +37,21 @@ ifeq (${OPENAIS_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBRARIES= ../lib/libSaClm.a ../lib/libSaAmf.a ../lib/libSaCkpt.a ../lib/libSaEvt.a ../lib/libSaLck.a ../lib/libSaMsg.a ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
+LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
 LIBS = $(LIBRARIES) 
-BINARIES=testclm testamf1 \
-	testckpt ckptstress ckptbench \
-	ckptbenchth ckpt-rd ckpt-wr testevt testevs \
-	evsbench subscription publish evtbench unlink testclm2 testlck \
-	testmsg testmsg2 testcpg testcpg2 cpgbench testconfdb openais-cfgtool \
-	logsys_s logsys_t1 logsys_t2
+BINARIES= testevs evsbench testmsg2 testcpg testcpg2 \
+		cpgbench testconfdb openais-cfgtool
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I$(srcdir)include
-TEST_SRC =  testclm.c testamf1.c \
-	testamf4.c testamf5.c testamf6.c testamfth.c  \
-	testckpt.c ckptstress.c ckptbench.c  \
-	ckptbenchth.c testevt.c testevs.c evsbench.c \
-	subscription.c publish.c evtbench.c \
-	sa_error.c unlink.c testclm2.c testlck.c testmsg.c testmsg2.c \
-	logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
+TEST_SRC = sa_error.c logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
 
 all: $(BINARIES)
 
 testtimer: testtimer.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
-
-testamf: testamf.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf testamf.o $(LIBS)
-
-testamf1: testamf1.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf1 testamf1.o $(LIBS)
-
-testamf2: testamf2.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf2 testamf2.o $(LIBS)
-
-testamf3: testamf3.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf3 testamf3.o $(LIBS)
-
-testamf4: testamf4.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf4 testamf4.o $(LIBS)
-
-testamf5: testamf5.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf5 testamf5.o $(LIBS)
-
-testamf6: testamf6.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamf6 testamf6.o $(LIBS)
-
-testamfth: testamfth.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testamfth testamfth.o $(LIBS)
-
-testevt: testevt.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testevt testevt.o sa_error.o $(LIBS)
 
 testevs: testevs.o $(LIBS)
 	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
@@ -99,54 +61,6 @@ testevsth: testevsth.o $(LIBS)
 
 evsbench: evsbench.o $(LIBS)
 	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
-
-testclm: testclm.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testclm testclm.o $(LIBS)
-
-testckpt: testckpt.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testckpt testckpt.o sa_error.o $(LIBS)
-
-ckptbench: ckptbench.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o ckptbench ckptbench.o sa_error.o $(LIBS)
-
-ckptbenchth: ckptbenchth.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o ckptbenchth ckptbenchth.o sa_error.o $(LIBS)
-
-ckptstress: ckptstress.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o ckptstress ckptstress.o $(LIBS)
-
-subscription: subscription.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o subscription subscription.o sa_error.o $(LIBS)
-
-publish: publish.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o publish publish.o sa_error.o $(LIBS)
-
-unlink: unlink.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o unlink unlink.o sa_error.o $(LIBS)
-
-evtbench: evtbench.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o evtbench evtbench.o sa_error.o $(LIBS)
-
-test: test.o $(LIBRARIES)
-	g++ $(LDFLAGS) -o test test.o $(LIBS)
-
-ckpt-rd: ckpt-rd.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o ckpt-rd ckpt-rd.o sa_error.o $(LIBS)
-
-ckpt-wr: ckpt-wr.o sa_error.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o ckpt-wr ckpt-wr.o sa_error.o $(LIBS)
-
-testclm2: testclm2.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testclm2 testclm2.o $(LIBS)
-
-testlck: testlck.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testlck testlck.o $(LIBS)
-
-testmsg: testmsg.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testmsg testmsg.o $(LIBS)
-
-testmsg2: testmsg2.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testmsg2 testmsg2.o $(LIBS)
 
 testcpg: testcpg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
@@ -180,26 +94,3 @@ clean:
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(TEST_SRC) > /dev/null 2>&1
-# DO NOT DELETE
-
-testclm.o: ../include/saAis.h ../include/saClm.h
-testamf.o: ../include/saAis.h ../include/saAmf.h ../include/saClm.h
-testamf1.o: ../include/saAis.h ../include/saAmf.h
-testamf2.o: ../include/saAis.h ../include/saAmf.h
-testamf3.o: ../include/saAis.h ../include/saAmf.h
-testamf4.o: ../include/saAis.h ../include/saAmf.h
-testamf5.o: ../include/saAis.h ../include/saAmf.h
-testamf6.o: ../include/saAis.h ../include/saAmf.h
-testamfth.o: ../include/saAis.h ../include/saAmf.h ../include/saClm.h
-testckpt.o: ../include/saAis.h ../include/saCkpt.h sa_error.h
-ckptstress.o: ../include/saAis.h ../include/saCkpt.h
-ckptbench.o: ../include/saAis.h ../include/saCkpt.h
-ckptbenchth.o: ../include/saAis.h ../include/saCkpt.h
-testevt.o: ../include/saAis.h ../include/saEvt.h
-testevs.o: ../include/evs.h
-evsbench.o: ../include/saAis.h ../include/evs.h
-subscription.o: ../include/saAis.h ../include/saEvt.h
-publish.o: ../include/saAis.h ../include/saEvt.h
-evtbench.o: ../include/saAis.h ../include/saEvt.h
-sa_error.o: ../include/saAis.h
-unlink.o: ../include/saAis.h ../include/saEvt.h

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -81,6 +80,7 @@
 #include "util.h"
 #include "flow.h"
 #include "version.h"
+#include "coroapi.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_BUFFER_BEFORE_CONFIG,
@@ -447,12 +447,12 @@ static void deliver_fn (
 	service = header->id >> 16;
 	fn_id = header->id & 0xffff;
 	if (endian_conversion_required) {
-		assert(ais_service[service]->exec_service[fn_id].exec_endian_convert_fn != NULL);
-		ais_service[service]->exec_service[fn_id].exec_endian_convert_fn
+		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
+		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
 			(header);
 	}
 
-	ais_service[service]->exec_service[fn_id].exec_handler_fn
+	ais_service[service]->exec_engine[fn_id].exec_handler_fn
 		(header, nodeid);
 }
 
@@ -460,6 +460,14 @@ void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
 {
 	*modules = config_modules;
 	*num = num_config_modules;
+}
+
+int main_mcast (
+        struct iovec *iovec,
+        int iov_len,
+        unsigned int guarantee)
+{
+	return (totempg_groups_mcast_joined (openais_group_handle, iovec, iov_len, guarantee));
 }
 
 int main (int argc, char **argv)

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
- * Copyright (c) 2006 Sun Microsystems, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
@@ -149,6 +148,7 @@ struct totem_config {
 	char *vsf_type;
 };
 
+#define TOTEM_CONFIGURATION_TYPE
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,
 	TOTEM_CONFIGURATION_TRANSITIONAL	
@@ -159,6 +159,7 @@ enum totem_callback_token_type {
 	TOTEM_CALLBACK_TOKEN_SENT = 2
 };
 
+#define MEMB_RING_ID
 struct memb_ring_id {
 	struct totem_ip_address rep;
 	unsigned long long seq;

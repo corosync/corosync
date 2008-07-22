@@ -104,6 +104,3 @@ confdb.o: confdb.c
 
 cpg.o: cpg.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-cfg.o: cfg.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
