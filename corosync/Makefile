@@ -83,6 +83,7 @@ all: $(SUBDIRS)
 	@(cd $(builddir)lcr; echo ==== `pwd` ===;  $(call sub_make,lcr,all));
 	@(cd $(builddir)lib; echo ==== `pwd` ===;  $(call sub_make,lib,all));
 	@(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,all));
+	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,exec,all));
 	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
 
 # subdirs are not phony

@@ -39,8 +39,7 @@ endif
 
 LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
 LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench testmsg2 testcpg testcpg2 \
-		cpgbench testconfdb openais-cfgtool
+BINARIES= testevs evsbench testcpg testcpg2 cpgbench testconfdb openais-cfgtool
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
