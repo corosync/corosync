@@ -172,7 +172,7 @@ try_again_two:
 	 */
 	do {
 		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
-	} while (deliveries < 900);
+	} while (deliveries < 500);
 
 	evs_fd_get (handle, &fd);
 	

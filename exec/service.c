@@ -71,8 +71,8 @@ static struct corosync_api_v1 corosync_api_v1 = {
 	.ipc_private_data_get = openais_conn_private_data_get,
 	.ipc_response_send = NULL,
 	.ipc_dispatch_send = NULL,
-	.conn_send_response = openais_conn_send_response,
-	.conn_partner_get = openais_conn_partner_get,
+	.ipc_conn_send_response = openais_conn_send_response,
+	.ipc_conn_partner_get = openais_conn_partner_get,
 	.ipc_refcnt_inc =  openais_ipc_flow_control_local_increment,
 	.ipc_refcnt_dec = openais_ipc_flow_control_local_decrement,
 	.ipc_fc_create = openais_ipc_flow_control_create,
@@ -80,21 +80,20 @@ static struct corosync_api_v1 corosync_api_v1 = {
 	.totem_nodeid_get = totempg_my_nodeid_get,
 	.totem_ring_reenable = totempg_ring_reenable,
 	.totem_mcast = main_mcast,
-	.service_link_and_init = openais_service_link_and_init,
-	.service_unlink_and_exit = openais_service_unlink_and_exit,
+	.totem_send_ok = main_send_ok,
 	.totem_ifaces_get = totempg_ifaces_get,
 	.totem_ifaces_print = totempg_ifaces_print,
 	.totem_ip_print = totemip_print,
+	.service_link_and_init = openais_service_link_and_init,
+	.service_unlink_and_exit = openais_service_unlink_and_exit,
 	.error_memory_failure = NULL
 };
 
 static struct default_service default_services[] = {
-/*
 	{
 		.name			 = "corosync_evs",
 		.ver			 = 0,
 	},
-*/
 	{
 
 		.name			 = "corosync_cfg",
@@ -104,18 +103,15 @@ static struct default_service default_services[] = {
 		.name			 = "corosync_cpg",
 		.ver			 = 0,
 	},
-/*
 	{
 		.name			 = "corosync_confdb",
 		.ver			 = 0,
 	},
-*/
 };
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static unsigned int object_internal_configuration_handle;
-
 
 static unsigned int default_services_requested (struct objdb_iface_ver0 *objdb)
 {

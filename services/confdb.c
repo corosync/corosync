@@ -43,19 +43,18 @@
 #include "../include/ipc_confdb.h"
 #include "../include/mar_gen.h"
 #include "../lcr/lcr_comp.h"
-#include "main.h"
-#include "flow.h"
-#include "ipc.h"
-#include "objdb.h"
-#include "service.h"
-#include "ipc.h"
-#include "logsys.h"
+#include "../exec/logsys.h"
+#include "../include/coroapi.h"
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_INFO);
 
 static struct objdb_iface_ver0 *global_objdb;
 
-static int confdb_exec_init_fn (struct objdb_iface_ver0 *objdb);
+static struct corosync_api_v1 *api;
+
+static int confdb_exec_init_fn (
+	struct objdb_iface_ver0 *objdb,
+	struct corosync_api_v1 *corosync_api);
 
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);
@@ -82,113 +81,113 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 /*
  * Library Handler Definition
  */
-static struct openais_lib_handler confdb_lib_service[] =
+static struct corosync_lib_handler confdb_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_create,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_CREATE,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_destroy,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_DESTROY,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find,
 		.response_size				= sizeof (struct res_lib_confdb_object_find),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_create,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_CREATE,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_get,
 		.response_size				= sizeof (struct res_lib_confdb_key_get),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_GET,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_replace,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_REPLACE,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_delete,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_DELETE,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_iter,
 		.response_size				= sizeof (struct res_lib_confdb_object_iter),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_ITER,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_parent_get,
 		.response_size				= sizeof (struct res_lib_confdb_object_parent_get),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_PARENT_GET,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter,
 		.response_size				= sizeof (struct res_lib_confdb_key_iter),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_ITER,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_start,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 12 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_write,
 		.response_size				= sizeof (struct res_lib_confdb_write),
 		.response_id				= MESSAGE_RES_CONFDB_WRITE,
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 
 
-struct openais_service_handler confdb_service_handler = {
-	.name				        = "openais cluster config database access v1.01",
+struct corosync_service_engine confdb_service_engine = {
+	.name				        = "corosync cluster config database access v1.01",
 	.id					= CONFDB_SERVICE,
 	.private_data_size			= 0,
-	.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED,
+	.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED,
 	.lib_init_fn				= confdb_lib_init_fn,
 	.lib_exit_fn				= confdb_lib_exit_fn,
-	.lib_service				= confdb_lib_service,
-	.lib_service_count			= sizeof (confdb_lib_service) / sizeof (struct openais_lib_handler),
+	.lib_engine				= confdb_lib_engine,
+	.lib_engine_count			= sizeof (confdb_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn				= confdb_exec_init_fn,
 };
 
 /*
  * Dynamic loader definition
  */
-static struct openais_service_handler *confdb_get_service_handler_ver0 (void);
+static struct corosync_service_engine *confdb_get_service_engine_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 confdb_service_handler_iface = {
-	.openais_get_service_handler_ver0		= confdb_get_service_handler_ver0
+static struct corosync_service_engine_iface_ver0 confdb_service_engine_iface = {
+	.corosync_get_service_engine_ver0		= confdb_get_service_engine_ver0
 };
 
-static struct lcr_iface openais_confdb_ver0[1] = {
+static struct lcr_iface corosync_confdb_ver0[1] = {
 	{
-		.name				= "openais_confdb",
+		.name				= "corosync_confdb",
 		.version			= 0,
 		.versions_replace		= 0,
 		.versions_replace_count         = 0,
@@ -202,23 +201,26 @@ static struct lcr_iface openais_confdb_ver0[1] = {
 
 static struct lcr_comp confdb_comp_ver0 = {
 	.iface_count			= 1,
-	.ifaces			        = openais_confdb_ver0
+	.ifaces			        = corosync_confdb_ver0
 };
 
 
-static struct openais_service_handler *confdb_get_service_handler_ver0 (void)
+static struct corosync_service_engine *confdb_get_service_engine_ver0 (void)
 {
-	return (&confdb_service_handler);
+	return (&confdb_service_engine);
 }
 
 __attribute__ ((constructor)) static void confdb_comp_register (void) {
-        lcr_interfaces_set (&openais_confdb_ver0[0], &confdb_service_handler_iface);
+        lcr_interfaces_set (&corosync_confdb_ver0[0], &confdb_service_engine_iface);
 
 	lcr_component_register (&confdb_comp_ver0);
 }
 
-static int confdb_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static int confdb_exec_init_fn (
+	struct objdb_iface_ver0 *objdb,
+	struct corosync_api_v1 *corosync_api)
 {
+	api = corosync_api;
 	global_objdb = objdb;
 	return 0;
 }
@@ -253,7 +255,7 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 	res_lib_confdb_object_create.header.size = sizeof(res_lib_confdb_object_create);
 	res_lib_confdb_object_create.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
 	res_lib_confdb_object_create.header.error = ret;
-	openais_conn_send_response(conn, &res_lib_confdb_object_create, sizeof(res_lib_confdb_object_create));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_object_create, sizeof(res_lib_confdb_object_create));
 }
 
 static void message_handler_req_lib_confdb_object_destroy (void *conn, void *message)
@@ -268,7 +270,7 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
 	res.error = ret;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 
@@ -288,7 +290,7 @@ static void message_handler_req_lib_confdb_key_create (void *conn, void *message
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_CREATE;
 	res.error = ret;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
@@ -313,7 +315,7 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	res_lib_confdb_key_get.header.size = sizeof(res_lib_confdb_key_get);
 	res_lib_confdb_key_get.header.id = MESSAGE_RES_CONFDB_KEY_GET;
 	res_lib_confdb_key_get.header.error = ret;
-	openais_conn_send_response(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
 }
 
 static void message_handler_req_lib_confdb_key_replace (void *conn, void *message)
@@ -334,7 +336,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_REPLACE;
 	res.error = ret;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_key_delete (void *conn, void *message)
@@ -353,7 +355,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_DELETE;
 	res.error = ret;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message)
@@ -371,7 +373,7 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 	res_lib_confdb_object_parent_get.header.size = sizeof(res_lib_confdb_object_parent_get);
 	res_lib_confdb_object_parent_get.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
 	res_lib_confdb_object_parent_get.header.error = ret;
-	openais_conn_send_response(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
 }
 
 
@@ -402,7 +404,7 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 	res_lib_confdb_key_iter.header.id = MESSAGE_RES_CONFDB_KEY_ITER;
 	res_lib_confdb_key_iter.header.error = ret;
 
-	openais_conn_send_response(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
 }
 
 static void message_handler_req_lib_confdb_object_iter (void *conn, void *message)
@@ -427,7 +429,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 	res_lib_confdb_object_iter.header.id = MESSAGE_RES_CONFDB_OBJECT_ITER;
 	res_lib_confdb_object_iter.header.error = ret;
 
-	openais_conn_send_response(conn, &res_lib_confdb_object_iter, sizeof(res_lib_confdb_object_iter));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_object_iter, sizeof(res_lib_confdb_object_iter));
 }
 
 static void message_handler_req_lib_confdb_object_find (void *conn, void *message)
@@ -448,7 +450,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;
 	res_lib_confdb_object_find.header.error = ret;
 
-	openais_conn_send_response(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
 }
 
 static void message_handler_req_lib_confdb_write (void *conn, void *message)
@@ -469,7 +471,7 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	} else
 		res_lib_confdb_write.error.length = 0;
 
-	openais_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
+	api->ipc_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
 }
 
 /* TODO: when we have notification in the objdb. */
@@ -480,7 +482,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn, void *messag
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
 	res.error = SA_AIS_ERR_NOT_SUPPORTED;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message)
@@ -490,7 +492,7 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_STOP;
 	res.error = SA_AIS_ERR_NOT_SUPPORTED;
-	openais_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
 

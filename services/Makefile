@@ -55,7 +55,7 @@ LCR_OBJS = evs.o cfg.o cpg.o confdb.o $(AMF_OBJS)
 
 override CFLAGS += -fPIC
 
-all: service_evs.lcrso ervice_cfg.lcrso service_cpg.lcrso service_confdb.lcrso
+all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso
 
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
