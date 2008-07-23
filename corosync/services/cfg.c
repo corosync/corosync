@@ -199,10 +199,10 @@ static struct objdb_iface_ver0 *my_objdb;
 /*
  * Dynamic Loader definition
  */
-static struct corosync_service_engine *cfg_get_handler_ver0 (void);
+static struct corosync_service_engine *cfg_get_service_engine_ver0 (void);
 
 static struct corosync_service_engine_iface_ver0 cfg_service_engine_iface = {
-	.corosync_get_service_engine_ver0	= cfg_get_handler_ver0
+	.corosync_get_service_engine_ver0	= cfg_get_service_engine_ver0
 };
 
 static struct lcr_iface corosync_cfg_ver0[1] = {
@@ -224,7 +224,7 @@ static struct lcr_comp cfg_comp_ver0 = {
 	.ifaces					= corosync_cfg_ver0
 };
 
-static struct corosync_service_engine *cfg_get_handler_ver0 (void)
+static struct corosync_service_engine *cfg_get_service_engine_ver0 (void)
 {
 	return (&cfg_service_engine);
 }
@@ -291,7 +291,7 @@ static void message_handler_req_exec_cfg_ringreenable (
 		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
 		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
 		res_lib_cfg_ringreenable.header.error = SA_AIS_OK;
-		api->conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
@@ -335,7 +335,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
 			totem_ip_string);
 	}
-	api->conn_send_response (
+	api->ipc_conn_send_response (
 		conn,
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget));
@@ -419,7 +419,7 @@ static void message_handler_req_lib_cfg_serviceload (
 	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
 	res_lib_cfg_serviceload.header.error = SA_AIS_OK;
-	api->conn_send_response (
+	api->ipc_conn_send_response (
 		conn,
 		&res_lib_cfg_serviceload,
 		sizeof (struct res_lib_cfg_serviceload));
@@ -442,7 +442,7 @@ static void message_handler_req_lib_cfg_serviceunload (
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
 	res_lib_cfg_serviceunload.header.error = SA_AIS_OK;
-	api->conn_send_response (
+	api->ipc_conn_send_response (
 		conn,
 		&res_lib_cfg_serviceunload,
 		sizeof (struct res_lib_cfg_serviceunload));

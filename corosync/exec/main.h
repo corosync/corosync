@@ -70,4 +70,8 @@ extern int main_mcast (
 	int iov_len,
 	unsigned int guarantee);
 
+extern int main_send_ok (
+        struct iovec *iovec,
+        int iov_len);
+
 #endif /* AIS_EXEC_H_DEFINED */
