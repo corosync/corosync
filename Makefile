@@ -29,28 +29,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-builddir:=$(CURDIR)/
+builddir:=$(shell pwd)/
 ifneq ($(O),)
 # cleanup the path (make it absolute)
-builddir:=$(abspath $(O))/
-ifeq ($(builddir),)
-builddir:=$(O)
-$(warning your abspath function is not working)
-$(warning > setting builddir to $(builddir))
+$(shell mkdir -p $(O))
+builddir:=$(shell cd $(O) && pwd)/
 endif
-endif
+srcdir:=$(shell cd $(dir $(MAKEFILE_LIST)) && pwd)/
 
-THIS_MAKEFILE:=$(realpath $(lastword $(MAKEFILE_LIST)))
-
-ifeq ($(THIS_MAKEFILE),)
-srcdir:=$(CURDIR)/
-$(warning your realpath function is not working)
-$(warning > setting srcdir to $(srcdir))
-else
-srcdir:=$(dir $(THIS_MAKEFILE))
-endif
-
-include $(srcdir)Makefile.inc
+include $(srcdir)/Makefile.inc
 
 SBINDIR=$(PREFIX)/sbin
 INCLUDEDIR=$(PREFIX)/include/corosync
@@ -76,14 +63,14 @@ ifeq (ia64,$(ARCH))
 LIBDIR=$(PREFIX)/lib/corosync
 endif
 
-SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test
+SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test $(builddir)services
 sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
 
 all: $(SUBDIRS)
 	@(cd $(builddir)lcr; echo ==== `pwd` ===;  $(call sub_make,lcr,all));
 	@(cd $(builddir)lib; echo ==== `pwd` ===;  $(call sub_make,lib,all));
 	@(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,all));
-	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,exec,all));
+	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,all));
 	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
 
 # subdirs are not phony
@@ -122,15 +109,14 @@ clean:
 	(cd $(builddir)lcr; echo ==== `pwd` ===; $(call sub_make,lcr,clean));
 	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,clean));
 	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,clean));
+	(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,clean));
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
 	rm -rf $(builddir)doc/api
 
-AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
-		  cfg aisutil confdb
+AIS_LIBS	= evs cpg cfg coroutil confdb
 
-AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
-		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	   \
-		  ais_util.h confdb.h
+AIS_HEADERS	= cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h \
+		  ais_util.h confdb.h list.h
 
 EXEC_LIBS	= totem_pg logsys
 

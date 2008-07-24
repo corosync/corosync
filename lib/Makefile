@@ -35,7 +35,6 @@ srcdir ?= $(CURDIR)/../
 include $(srcdir)Makefile.inc
 
 
-override CFLAGS += -I$(srcdir)include
 override LDFLAGS += -L./
 
 all: libcpg.a libcpg.so.2.0.0 \
@@ -71,19 +70,19 @@ libcpg.so.2.0.0: util.o cpg.o
 else
 
 libcoroutil.so.2.0.0: util.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroutil.so.2,-version-script=libcoroutil.versions util.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroutil.so.2,-version-script=$(srcdir)$(subdir)libcoroutil.versions util.o -o $@
 
 libevs.so.2.0.0: util.o evs.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=libevs.versions util.o evs.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=$(srcdir)$(subdir)libevs.versions util.o evs.o -o $@
 
 libcpg.so.2.0.0: util.o cpg.o
-	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=libcpg.versions util.o cpg.o -o $@
+	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
 
 libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
-	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=libcfg.versions util.o cfg.o -o $@
+	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
 
 endif
 
@@ -100,7 +99,7 @@ libcfg.a: util.o cfg.o
 	$(AR) -rc libcfg.a util.o cfg.o
 
 clean:
-	rm -f *.o libcfg.so* ibcoroutil.so* libcoroutil.a \
+	rm -f *.o libcfg.so* libcoroutil.so* libcoroutil.a \
 		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a libconfdb.so* \
 		libconfdb.a libconfdb.a \ *.da *.bb *.bbg
  

@@ -31,10 +31,10 @@
 # Include configuration
 #
 srcdir ?= $(CURDIR)/../
+subdir ?= services/
 
 include $(srcdir)Makefile.inc
 
-override CFLAGS += -I$(srcdir)include
 LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
