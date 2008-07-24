@@ -590,9 +590,9 @@ retry_poll:
 #endif
 
 #if defined(OPENAIS_LINUX)
-char *socketname = "libais.socket";
+char *socketname = "libcorosync.socket";
 #else
-char *socketname = "/var/run/libais.socket";
+char *socketname = "/var/run/libcorosync.socket";
 #endif
 
 

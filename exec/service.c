@@ -219,7 +219,7 @@ static int openais_service_unlink_common (
 		service_name, service_version);
 
 	if (ais_service[*service_id]->exec_exit_fn) {
-		ais_service[*service_id]->exec_exit_fn (api);
+		ais_service[*service_id]->exec_exit_fn ();
 	}
 	ais_service[*service_id] = NULL;
     

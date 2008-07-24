@@ -44,7 +44,11 @@
 #include <string.h>
 
 #include <saAis.h>
-#include <swab.h>
+#ifdef COROSYNC_EXTERNAL_ENGINE
+#include <corosync/engine/swab.h>
+#else
+#include "swab.h"
+#endif
 
 typedef int8_t mar_int8_t;
 typedef int16_t mar_int16_t;
@@ -100,6 +104,20 @@ typedef struct {
 	mar_uint16_t length __attribute__((aligned(8)));
 	mar_uint8_t value[SA_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_name_t;
+
+static inline char *get_mar_name_t (mar_name_t *name) {
+        return ((char *)name->value);
+}
+
+static int mar_name_match(mar_name_t *name1, mar_name_t *name2)
+{
+        if (name1->length == name2->length) {
+                return ((strncmp ((char *)name1->value, (char *)name2->value,
+                        name1->length)) == 0);
+        }
+        return 0;
+}
+
 
 static inline void swab_mar_name_t (mar_name_t *to_swab)
 {

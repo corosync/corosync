@@ -67,6 +67,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.ipc_fc_create = openais_ipc_flow_control_create,
 	.ipc_fc_destroy = openais_ipc_flow_control_destroy,
 	.totem_nodeid_get = totempg_my_nodeid_get,
+	.totem_family_get = totempg_my_family_get,
 	.totem_ring_reenable = totempg_ring_reenable,
 	.totem_mcast = main_mcast,
 	.totem_send_ok = main_send_ok,

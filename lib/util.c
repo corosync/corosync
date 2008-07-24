@@ -83,9 +83,9 @@ struct saHandle {
 #endif
 
 #ifdef OPENAIS_LINUX
-static char *socketname = "libais.socket";
+static char *socketname = "libcorosync.socket";
 #else
-static char *socketname = "/var/run/libais.socket";
+static char *socketname = "/var/run/libcorosync.socket";
 #endif
 
 #ifdef SO_NOSIGPIPE

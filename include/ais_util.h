@@ -38,7 +38,11 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 
+#ifdef COROSYNC_EXTERNAL_ENGINE
+#include <corosync/ipc_gen.h>
+#else
 #include <ipc_gen.h>
+#endif
 
 /* Debug macro
  */
