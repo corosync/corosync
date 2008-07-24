@@ -34,7 +34,7 @@
 #ifndef COROAPI_H_DEFINED
 #define COROAPI_H_DEFINED
 
-#include "../exec/objdb.h"
+#include <stdio.h>
 
 typedef void * corosync_timer_handle_t;
 
@@ -80,7 +80,148 @@ enum corosync_flow_control_state {
 };
 #endif
 
+
+#ifndef OBJECT_PARENT_HANDLE
+
+#define OBJECT_PARENT_HANDLE 0
+
+struct object_valid {
+	char *object_name;
+	int object_len;
+};
+	
+struct object_key_valid {
+	char *key_name;
+	int key_len;
+	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
+};
+
+#endif /* OBJECT_PARENT_HANDLE_DEFINED */
+
 struct corosync_api_v1 {
+	/*
+	 * Object and configuration APIs
+	 */
+	int (*object_create) (
+		unsigned int parent_object_handle,
+		unsigned int *object_handle,
+		void *object_name, unsigned int object_name_len);
+
+	int (*object_priv_set) (
+		unsigned int object_handle,
+		void *priv);
+
+	int (*object_key_create) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void *value,
+		int value_len);
+
+	int (*object_destroy) (
+		unsigned int object_handle);
+
+	int (*object_valid_set) (
+		unsigned int object_handle,
+		struct object_valid *object_valid_list,
+		unsigned int object_valid_list_entries);
+
+	int (*object_key_valid_set) (
+		unsigned int object_handle,
+		struct object_key_valid *object_key_valid_list,
+		unsigned int object_key_valid_list_entries);
+
+	int (*object_find_reset) (
+		unsigned int parent_object_handle);
+
+	int (*object_find) (
+		unsigned int parent_object_handle,
+		void *object_name,
+		int object_name_len,
+		unsigned int *object_handle);
+
+	int (*object_key_get) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void **value,
+		int *value_len);
+
+	int (*object_priv_get) (
+		unsigned int jobject_handle,
+		void **priv);
+
+	int (*object_key_replace) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void *old_value,
+		int old_value_len,
+		void *new_value,
+		int new_value_len);
+
+	int (*object_key_delete) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		void *value,
+		int value_len);
+
+	int (*object_iter_reset) (
+		unsigned int parent_object_handle);
+
+	int (*object_iter) (
+		unsigned int parent_object_handle,
+		void **object_name,
+		int *name_len,
+		unsigned int *object_handle);
+
+	int (*object_key_iter_reset) (
+		unsigned int object_handle);
+
+	int (*object_key_iter) (
+		unsigned int parent_object_handle,
+		void **key_name,
+		int *key_len,
+		void **value,
+		int *value_len);
+
+	int (*object_parent_get) (
+		unsigned int object_handle,
+		unsigned int *parent_handle);
+
+	int (*object_dump) (
+		unsigned int object_handle,
+		FILE *file);
+
+	int (*object_find_from) (
+		unsigned int parent_object_handle,
+		unsigned int start_pos,
+		void *object_name,
+		int object_name_len,
+		unsigned int *object_handle,
+		unsigned int *next_pos);
+
+	int (*object_iter_from) (
+		unsigned int parent_object_handle,
+		unsigned int start_pos,
+		void **object_name,
+		int *name_len,
+		unsigned int *object_handle);
+
+	int (*object_key_iter_from) (
+		unsigned int parent_object_handle,
+		unsigned int start_pos,
+		void **key_name,
+		int *key_len,
+		void **value,
+		int *value_len);
+
+	int (*object_write_config) (char **error_string);
+
+	/*
+	 * Time and timer APIs
+	 */
 	int (*timer_add_duration) (
 		unsigned long long nanoseconds_in_future,
 		void *data,
@@ -98,6 +239,9 @@ struct corosync_api_v1 {
 
 	unsigned long long (*timer_time_get) (void);
 
+	/*
+	 * IPC APIs
+	 */
 	void (*ipc_source_set) (mar_message_source_t *source, void *conn);
 
 	int (*ipc_source_is_local) (mar_message_source_t *source);
@@ -138,6 +282,9 @@ struct corosync_api_v1 {
 
 	void (*ipc_refcnt_dec) (void *conn);
 
+	/*
+	 * Totem APIs
+	 */
 	int (*totem_nodeid_get) (void);
 
 	int (*totem_ring_reenable) (void);
@@ -145,16 +292,6 @@ struct corosync_api_v1 {
 	int (*totem_mcast) (struct iovec *iovec, int iov_len, unsigned int gaurantee);
 
 	int (*totem_send_ok) (struct iovec *iovec, int iov_len);
-
-	unsigned int (*service_link_and_init) (
-		struct objdb_iface_ver0 *objdb,
-		char *service_name,
-		unsigned int service_ver);
-
-	unsigned int (*service_unlink_and_exit) (
-		struct objdb_iface_ver0 *objdb,
-		char *service_name,
-		unsigned int service_ver);
 
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,
@@ -166,6 +303,22 @@ struct corosync_api_v1 {
 
 	char *(*totem_ip_print) (struct totem_ip_address *addr);
 
+	/*
+	 * Service loading and unloading APIs
+	*/
+	unsigned int (*service_link_and_init) (
+		struct corosync_api_v1 *corosync_api_v1,
+		char *service_name,
+		unsigned int service_ver);
+
+	unsigned int (*service_unlink_and_exit) (
+		struct corosync_api_v1 *corosync_api_v1,
+		char *service_name,
+		unsigned int service_ver);
+
+	/*
+	 * Error handling APIs
+	 */
 	void (*error_memory_failure) (void);
 };
 
@@ -194,8 +347,8 @@ struct corosync_service_engine {
 	unsigned short id;
 	unsigned int private_data_size;
 	enum corosync_lib_flow_control flow_control;
-	int (*exec_init_fn) (struct objdb_iface_ver0 *, struct corosync_api_v1 *);
-	int (*exec_exit_fn) (struct objdb_iface_ver0 *);
+	int (*exec_init_fn) (struct corosync_api_v1 *);
+	int (*exec_exit_fn) (struct corosync_api_v1 *);
 	void (*exec_dump_fn) (void);
 	int (*lib_init_fn) (void *conn);
 	int (*lib_exit_fn) (void *conn);
@@ -203,7 +356,7 @@ struct corosync_service_engine {
 	int lib_engine_count;
 	struct corosync_exec_handler *exec_engine;
 	int exec_engine_count;
-	int (*config_init_fn) (struct objdb_iface_ver0 *);
+	int (*config_init_fn) (struct corosync_api_v1 *);
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
 		unsigned int *member_list, int member_list_entries,
@@ -215,8 +368,6 @@ struct corosync_service_engine {
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 };
-
-typedef void *corosync_timer_handle;
 
 #endif /* COROAPI_H_DEFINED */
 	

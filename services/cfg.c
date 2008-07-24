@@ -70,7 +70,7 @@ static void cfg_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cfg_exec_init_fn (struct objdb_iface_ver0 *objdb, struct corosync_api_v1 *corosync_api_v1);
+static int cfg_exec_init_fn (struct corosync_api_v1 *corosync_api_v1);
 
 static struct corosync_api_v1 *api;
 
@@ -194,8 +194,6 @@ struct corosync_service_engine cfg_service_engine = {
 	.confchg_fn				= cfg_confchg_fn,
 };
 
-static struct objdb_iface_ver0 *my_objdb;
-
 /*
  * Dynamic Loader definition
  */
@@ -243,10 +241,8 @@ struct req_exec_cfg_ringreenable {
 /* IMPL */
 
 static int cfg_exec_init_fn (
-	struct objdb_iface_ver0 *objdb,
 	struct corosync_api_v1 *corosync_api_v1)
 {
-	my_objdb = objdb;
 	api = corosync_api_v1;
 	return (0);
 }
@@ -412,7 +408,7 @@ static void message_handler_req_lib_cfg_serviceload (
 
 	ENTER("");
 	api->service_link_and_init (
-		my_objdb,
+		api,
 		(char *)req_lib_cfg_serviceload->service_name,
 		req_lib_cfg_serviceload->service_ver);
 
@@ -436,7 +432,7 @@ static void message_handler_req_lib_cfg_serviceunload (
 
 	ENTER("");
 	api->service_unlink_and_exit (
-		my_objdb,
+		api,
 		(char *)req_lib_cfg_serviceunload->service_name,
 		req_lib_cfg_serviceunload->service_ver);
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;

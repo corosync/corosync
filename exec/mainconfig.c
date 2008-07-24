@@ -47,7 +47,6 @@
 #include "mempool.h"
 #include "logsys.h"
 #include "totem.h"
-#include "service.h"
 
 static char error_string_response[512];
 

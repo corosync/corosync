@@ -67,7 +67,6 @@ enum evs_exec_message_req_types {
  * Service Interfaces required by service_message_handler struct
  */
 static int evs_exec_init_fn (
-	struct objdb_iface_ver0 *objdb,
 	struct corosync_api_v1 *corosync_api);
 
 static void evs_confchg_fn (
@@ -200,10 +199,8 @@ __attribute__ ((constructor)) static void evs_comp_register (void) {
 }
 
 static int evs_exec_init_fn (
-	struct objdb_iface_ver0 *objdb,
 	struct corosync_api_v1 *corosync_api)
 {
-	(void) objdb;
 	api = corosync_api;
 
 	return 0;

@@ -23,7 +23,7 @@
 # ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
 # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
 # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# SUBSTITUTE GOODS OR ENGINES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
 # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
@@ -53,27 +53,27 @@ endif
 include $(srcdir)Makefile.inc
 
 SBINDIR=$(PREFIX)/sbin
-INCLUDEDIR=$(PREFIX)/include/openais
-INCLUDEDIR_TOTEM=$(PREFIX)/include/openais/totem
-INCLUDEDIR_LCR=$(PREFIX)/include/openais/lcr
-INCLUDEDIR_SERVICE=$(PREFIX)/include/openais/service
+INCLUDEDIR=$(PREFIX)/include/corosync
+INCLUDEDIR_TOTEM=$(PREFIX)/include/corosync/totem
+INCLUDEDIR_LCR=$(PREFIX)/include/corosync/lcr
+INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/service
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
 ARCH=$(shell uname -p)
 
 ifeq (,$(findstring 64,$(ARCH)))
-LIBDIR=$(PREFIX)/lib/openais
+LIBDIR=$(PREFIX)/lib/corosync
 else
-LIBDIR=$(PREFIX)/lib64/openais
+LIBDIR=$(PREFIX)/lib64/corosync
 endif
 ifeq (s390,$(ARCH))
-LIBDIR=$(PREFIX)/lib/openais
+LIBDIR=$(PREFIX)/lib/corosync
 endif
 ifeq (s390x,$(ARCH))
-LIBDIR=$(PREFIX)/lib64/openais
+LIBDIR=$(PREFIX)/lib64/corosync
 endif
 ifeq (ia64,$(ARCH))
-LIBDIR=$(PREFIX)/lib/openais
+LIBDIR=$(PREFIX)/lib/corosync
 endif
 
 SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test
@@ -105,7 +105,7 @@ help:
 	@echo 
 	@echo Targets:
 	@echo "  all     - build all targets"
-	@echo "  install - install openais onto your system"
+	@echo "  install - install corosync onto your system"
 	@echo "  clean   - remove generated files"
 	@echo "  doxygen - doxygen html docs"
 	@echo 
@@ -139,10 +139,9 @@ install: all
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR_LCR)
-	mkdir -p $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	mkdir -p $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	mkdir -p $(DESTDIR)$(LIBDIR)
 	mkdir -p $(DESTDIR)$(LCRSODIR)
-	mkdir -p $(DESTDIR)$(ETCDIR)/ais
 	mkdir -p $(DESTDIR)$(MANDIR)/man3
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
@@ -181,38 +180,33 @@ install: all
 	    ) \
 	done
 
-	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf"
+	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/corosync-$(ARCH).conf"
 
 	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
-	install -m 755 $(builddir)exec/aisexec $(DESTDIR)$(SBINDIR)
+	install -m 755 $(builddir)services/*lcrso $(DESTDIR)$(LCRSODIR)
+	install -m 755 $(builddir)exec/corosync $(DESTDIR)$(SBINDIR)
 	install -m 700 $(builddir)exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
 
-	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then 	   \
-		install -m 644 $(srcdir)conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
-	fi
-	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/amf.conf ] ; then 		\
-		install -m 644 $(srcdir)conf/amf.conf $(DESTDIR)$(ETCDIR)/ais ;	\
+	if [ ! -f $(DESTDIR)$(ETCDIR)/penais.conf ] ; then 	   \
+		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
 
 	for aHeader in $(AIS_HEADERS); do				\
 	    install -m 644 $(srcdir)include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
 	done
 
-	install -m 644 $(srcdir)exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)exec/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 $(srcdir)lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
 	install -m 644 $(srcdir)lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/flow.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/ipc.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
+	install -m 644 $(srcdir)include/coroapi.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/swab.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5
 	install -m 644 $(srcdir)man/*.8 $(DESTDIR)$(MANDIR)/man8

@@ -48,12 +48,9 @@
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_INFO);
 
-static struct objdb_iface_ver0 *global_objdb;
-
 static struct corosync_api_v1 *api;
 
 static int confdb_exec_init_fn (
-	struct objdb_iface_ver0 *objdb,
 	struct corosync_api_v1 *corosync_api);
 
 static int confdb_lib_init_fn (void *conn);
@@ -217,11 +214,9 @@ __attribute__ ((constructor)) static void confdb_comp_register (void) {
 }
 
 static int confdb_exec_init_fn (
-	struct objdb_iface_ver0 *objdb,
 	struct corosync_api_v1 *corosync_api)
 {
 	api = corosync_api;
-	global_objdb = objdb;
 	return 0;
 }
 
@@ -245,7 +240,7 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 	unsigned int object_handle;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_create(req_lib_confdb_object_create->parent_object_handle,
+	if (api->object_create(req_lib_confdb_object_create->parent_object_handle,
 					&object_handle,
 					req_lib_confdb_object_create->object_name.value,
 					req_lib_confdb_object_create->object_name.length))
@@ -264,7 +259,7 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 	mar_res_header_t res;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_destroy(req_lib_confdb_object_destroy->object_handle))
+	if (api->object_destroy(req_lib_confdb_object_destroy->object_handle))
 		ret = SA_AIS_ERR_ACCESS;
 
 	res.size = sizeof(res);
@@ -280,7 +275,7 @@ static void message_handler_req_lib_confdb_key_create (void *conn, void *message
 	mar_res_header_t res;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_key_create(req_lib_confdb_key_create->object_handle,
+	if (api->object_key_create(req_lib_confdb_key_create->object_handle,
 					    req_lib_confdb_key_create->key_name.value,
 					    req_lib_confdb_key_create->key_name.length,
 					    req_lib_confdb_key_create->value.value,
@@ -301,7 +296,7 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	void *value;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_key_get(req_lib_confdb_key_get->parent_object_handle,
+	if (api->object_key_get(req_lib_confdb_key_get->parent_object_handle,
 					 req_lib_confdb_key_get->key_name.value,
 					 req_lib_confdb_key_get->key_name.length,
 					 &value,
@@ -324,7 +319,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 	mar_res_header_t res;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_key_replace(req_lib_confdb_key_replace->object_handle,
+	if (api->object_key_replace(req_lib_confdb_key_replace->object_handle,
 					     req_lib_confdb_key_replace->key_name.value,
 					     req_lib_confdb_key_replace->key_name.length,
 					     req_lib_confdb_key_replace->old_value.value,
@@ -345,7 +340,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 	mar_res_header_t res;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_key_delete(req_lib_confdb_key_delete->object_handle,
+	if (api->object_key_delete(req_lib_confdb_key_delete->object_handle,
 					    req_lib_confdb_key_delete->key_name.value,
 					    req_lib_confdb_key_delete->key_name.length,
 					    req_lib_confdb_key_delete->value.value,
@@ -365,7 +360,7 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 	unsigned int object_handle;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_parent_get(req_lib_confdb_object_parent_get->object_handle,
+	if (api->object_parent_get(req_lib_confdb_object_parent_get->object_handle,
 					    &object_handle))
 		ret = SA_AIS_ERR_ACCESS;
 
@@ -387,7 +382,7 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 	int value_len;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_key_iter_from(req_lib_confdb_key_iter->parent_object_handle,
+	if (api->object_key_iter_from(req_lib_confdb_key_iter->parent_object_handle,
 					       req_lib_confdb_key_iter->next_entry,
 					       &key_name,
 					       &key_name_len,
@@ -415,7 +410,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 	int object_name_len;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_iter_from(req_lib_confdb_object_iter->parent_object_handle,
+	if (api->object_iter_from(req_lib_confdb_object_iter->parent_object_handle,
 					   req_lib_confdb_object_iter->next_entry,
 					   &object_name,
 					   &object_name_len,
@@ -438,7 +433,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
 	int ret = SA_AIS_OK;
 
-	if (global_objdb->object_find_from(req_lib_confdb_object_find->parent_object_handle,
+	if (api->object_find_from(req_lib_confdb_object_find->parent_object_handle,
 					   req_lib_confdb_object_find->next_entry,
 					   req_lib_confdb_object_find->object_name.value,
 					   req_lib_confdb_object_find->object_name.length,
@@ -459,7 +454,7 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	int ret = SA_AIS_OK;
 	char *error_string = NULL;
 
-	if (global_objdb->object_write_config(&error_string))
+	if (api->object_write_config(&error_string))
 		ret = SA_AIS_ERR_ACCESS;
 
 	res_lib_confdb_write.header.size = sizeof(res_lib_confdb_write);

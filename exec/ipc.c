@@ -77,7 +77,6 @@
 #include "tlist.h"
 #include "ipc.h"
 #include "flow.h"
-#include "service.h"
 #include "sync.h"
 #include "swab.h"
 #include "objdb.h"
@@ -85,6 +84,7 @@
 #include "tlist.h"
 #include "logsys.h"
 #include "coroapi.h"
+#include "service.h"
 
 #include "util.h"
 

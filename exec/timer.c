@@ -67,7 +67,6 @@
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
-#include "service.h"
 #include "sync.h"
 #include "swab.h"
 #include "objdb.h"
