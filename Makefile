@@ -181,6 +181,7 @@ install: all
 	    install -m 644 $(srcdir)include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
 	done
 
+        install -m 644 $(srcdir)include/hdb.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 $(srcdir)exec/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
 	install -m 644 $(srcdir)exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
