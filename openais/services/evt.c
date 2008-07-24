@@ -3114,18 +3114,22 @@ static int evt_lib_exit(void *conn)
 static int evt_exec_init(struct corosync_api_v1 *corosync_api)
 {
 	unsigned int object_service_handle;
+	unsigned int object_find_handle;
 	char *value;
 
 	api = corosync_api;
 
 	log_printf(LOG_LEVEL_DEBUG, "Evt exec init request\n");
 
-	api->object_find_reset (OBJECT_PARENT_HANDLE);
-	if (api->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "event",
-		    strlen ("event"),
-		    &object_service_handle) == 0) {
+	api->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"event",
+		strlen ("event"),
+		&object_find_handle);
+
+	if (api->object_find_next (
+		object_find_handle,
+		&object_service_handle) == 0) {
 
 		value = NULL;
 		if ( !api->object_key_get (object_service_handle,

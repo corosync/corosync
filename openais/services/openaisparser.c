@@ -227,7 +227,6 @@ static int read_config_file_into_objdb(
 	objdb->object_key_create(object_handle, "ver", strlen("ver"),
 		"0", 2);
 
-#ifdef OUTAA
 	/*
 	 * Load msg module
 	 */
@@ -247,7 +246,6 @@ static int read_config_file_into_objdb(
 		"openais_lck", strlen("openais_lck") + 1);
 	objdb->object_key_create(object_handle, "ver", strlen("ver"),
 		"0", 2);
-#endif
 
 	sprintf (error_reason, "Successfully read main configuration file '%s'.\n", filename);
 	*error_string = error_reason;

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -105,18 +106,23 @@ int openais_main_config_read (
 	unsigned int object_logger_subsys_handle;
 	char *value;
 	char *error_reason = error_string_response;
+	unsigned int object_find_handle;
+	unsigned int object_find_logsys_handle;
 	int global_debug = 0;
+
 
 	memset (main_config, 0, sizeof (struct main_config));
 
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"logging",
+		strlen ("logging"),
+		&object_find_handle);
 
 	main_config->logmode = LOG_MODE_FLUSH_AFTER_CONFIG;
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "logging",
-		    strlen ("logging"),
-		    &object_service_handle) == 0) {
+	if (objdb->object_find_next (
+		object_find_handle,
+		&object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "to_file", &value)) {
 			if (strcmp (value, "yes") == 0) {
@@ -144,15 +150,15 @@ int openais_main_config_read (
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
-			if (strcmp (value, "on") == 0) {
-				global_debug = 1;
-			} else
-			if (strcmp (value, "off") == 0) {
-				global_debug = 0;
-			} else {
-				goto parse_error;
-			}
-		}
+                        if (strcmp (value, "on") == 0) {
+                                global_debug = 1;
+                        } else
+                        if (strcmp (value, "off") == 0) {
+                                global_debug = 0;
+                        } else {
+                                goto parse_error;
+                        }
+                }
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
 			if (strcmp (value, "on") == 0) {
 				main_config->logmode |= LOG_MODE_DISPLAY_TIMESTAMP;
@@ -179,17 +185,46 @@ int openais_main_config_read (
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "syslog_facility", &value)) {
-			main_config->syslog_facility = logsys_facility_id_get(value);
-			if (main_config->syslog_facility < 0) {
+			if (strcmp (value, "daemon") == 0) {
+				main_config->syslog_facility = LOG_DAEMON;
+			} else
+			if (strcmp (value, "local0") == 0) {
+				main_config->syslog_facility = LOG_LOCAL0;
+			} else
+			if (strcmp (value, "local1") == 0) {
+				main_config->syslog_facility = LOG_LOCAL1;
+			} else
+			if (strcmp (value, "local2") == 0) {
+				main_config->syslog_facility = LOG_LOCAL2;
+			} else
+			if (strcmp (value, "local3") == 0) {
+				main_config->syslog_facility = LOG_LOCAL3;
+			} else
+			if (strcmp (value, "local4") == 0) {
+				main_config->syslog_facility = LOG_LOCAL4;
+			} else
+			if (strcmp (value, "local5") == 0) {
+				main_config->syslog_facility = LOG_LOCAL5;
+			} else
+			if (strcmp (value, "local6") == 0) {
+				main_config->syslog_facility = LOG_LOCAL6;
+			} else
+			if (strcmp (value, "local7") == 0) {
+				main_config->syslog_facility = LOG_LOCAL7;
+			} else {
 				error_reason = "unknown syslog facility specified";
 				goto parse_error;
 			}
 		}
 
-		objdb->object_find_reset(object_service_handle);
-		while (objdb->object_find (object_service_handle,
+		objdb->object_find_create (
+			object_service_handle,
 			"logger_subsys",
 			strlen ("logger_subsys"),
+			&object_find_logsys_handle);
+
+		while (objdb->object_find_next (
+			object_find_logsys_handle,
 			&object_logger_subsys_handle) == 0) {
 
 			if (!objdb_get_string (objdb,
@@ -208,20 +243,9 @@ int openais_main_config_read (
 					logsys_logger.priority = LOG_LEVEL_DEBUG;
 				} else
 				if (strcmp (value, "off") == 0) {
-					logsys_logger.priority = LOG_LEVEL_INFO;
+					logsys_logger.priority &= ~LOG_LEVEL_DEBUG;
 				} else {
 					goto parse_error;
-				}
-			}
-			else {
-				if (global_debug)
-					logsys_logger.priority = LOG_LEVEL_DEBUG;
-			}
-			if (logsys_logger.priority != LOG_LEVEL_DEBUG) {
-				if (!objdb_get_string (objdb, object_logger_subsys_handle, "syslog_level", &value)) {
-					logsys_logger.priority = logsys_priority_id_get(value);
-					if (logsys_logger.priority < 0)
-						logsys_logger.priority = LOG_LEVEL_INFO;
 				}
 			}
 			if (!objdb_get_string (objdb, object_logger_subsys_handle, "tags", &value)) {
@@ -265,14 +289,20 @@ int openais_main_config_read (
 				logsys_logger.priority);
 			
 		}
+		objdb->object_find_destroy (object_find_logsys_handle);
 	}
 
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "aisexec",
-		    strlen ("aisexec"),
-		    &object_service_handle) == 0) {
+	objdb->object_find_destroy (object_find_handle);
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"aisexec",
+		strlen ("aisexec"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (
+		object_find_handle,
+		&object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
 			main_config->user = strdup(value);
@@ -281,6 +311,8 @@ int openais_main_config_read (
 			main_config->group = strdup(value);
 		}
 	}
+
+	objdb->object_find_destroy (object_find_handle);
 
 	/* Default user/group */
 	if (!main_config->user)

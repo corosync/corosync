@@ -132,14 +132,18 @@ struct corosync_api_v1 {
 		struct object_key_valid *object_key_valid_list,
 		unsigned int object_key_valid_list_entries);
 
-	int (*object_find_reset) (
-		unsigned int parent_object_handle);
-
-	int (*object_find) (
+	int (*object_find_create) (
 		unsigned int parent_object_handle,
 		void *object_name,
 		int object_name_len,
+		unsigned int *object_find_handle);
+
+	int (*object_find_next) (
+		unsigned int object_find_handle,
 		unsigned int *object_handle);
+
+	int (*object_find_destroy) (
+		unsigned int object_find_handle);
 
 	int (*object_key_get) (
 		unsigned int object_handle,

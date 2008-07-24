@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2007-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -68,9 +68,23 @@ struct object_instance {
 	int object_key_valid_list_entries;
 };
 
+struct object_find_instance {
+	struct list_head *find_child_list;
+	struct list_head *child_head;
+	void *object_name;
+	int object_len;
+};
+
 struct objdb_iface_ver0 objdb_iface;
 
 static struct hdb_handle_database object_instance_database = {
+	.handle_count	= 0,
+	.handles	= 0,
+	.iterator	= 0,
+	.mutex		= PTHREAD_MUTEX_INITIALIZER
+};
+
+static struct hdb_handle_database object_find_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
 	.iterator	= 0,
@@ -439,67 +453,101 @@ error_exit:
 /*
  * object db reading
  */
-static int object_find_reset (
-	unsigned int object_handle)
+static int object_find_create (
+	unsigned int object_handle,
+	void *object_name,
+	int object_len,
+	unsigned int *object_find_handle)
 {
 	unsigned int res;
-	struct object_instance *instance;
+	struct object_instance *object_instance;
+	struct object_find_instance *object_find_instance;
 
 	res = hdb_handle_get (&object_instance_database,
-		object_handle, (void *)&instance);
+		object_handle, (void *)&object_instance);
 	if (res != 0) {
 		goto error_exit;
 	}
-	instance->find_child_list = &instance->child_head;
+
+	res = hdb_handle_create (&object_find_instance_database,
+		sizeof (struct object_find_instance), object_find_handle);
+	if (res != 0) {
+		goto error_put;
+	}
+	res = hdb_handle_get (&object_find_instance_database,
+		*object_find_handle, (void *)&object_find_instance);
+	if (res != 0) {
+		goto error_destroy;
+	}
+
+	object_find_instance->find_child_list = &object_instance->child_head;
+	object_find_instance->child_head = &object_instance->child_head;
+	object_find_instance->object_name = object_name;
+	object_find_instance->object_len = object_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	hdb_handle_put (&object_find_instance_database, *object_find_handle);
 	return (0);
+
+error_destroy:
+	hdb_handle_destroy (&object_instance_database, *object_find_handle);
+
+error_put:
+	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
 	return (-1);
 }
 
-static int object_find (
-	unsigned int parent_object_handle,
-	void *object_name,
-	int object_name_len,
+static int object_find_next (
+	unsigned int object_find_handle,
 	unsigned int *object_handle)
 {
 	unsigned int res;
-	struct object_instance *instance;
-	struct object_instance *find_instance = NULL;
+	struct object_find_instance *object_find_instance;
+	struct object_instance *object_instance = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
 
-	res = hdb_handle_get (&object_instance_database,
-		parent_object_handle, (void *)&instance);
+	res = hdb_handle_get (&object_find_instance_database,
+		object_find_handle, (void *)&object_find_instance);
 	if (res != 0) {
 		goto error_exit;
 	}
-	res = -ENOENT;
-	for (list = instance->find_child_list->next;
-		list != &instance->child_head; list = list->next) {
+	res = -1;
+	for (list = object_find_instance->find_child_list->next;
+		list != object_find_instance->child_head; list = list->next) {
 
-                find_instance = list_entry (list, struct object_instance,
+                object_instance = list_entry (list, struct object_instance,
 			child_list);
 
-		if ((find_instance->object_name_len == object_name_len) &&
-			(memcmp (find_instance->object_name, object_name,
-			object_name_len) == 0)) {
+		if ((object_instance->object_name_len ==
+			object_find_instance->object_len) &&
+
+			(memcmp (object_instance->object_name,
+				object_find_instance->object_name,
+				object_find_instance->object_len) == 0)) {
+
 			found = 1;
 			break;
 		}
 	}
-	instance->find_child_list = list;
-	hdb_handle_put (&object_instance_database, parent_object_handle);
+	object_find_instance->find_child_list = list;
+	hdb_handle_put (&object_find_instance_database, object_find_handle);
 	if (found) {
-		*object_handle = find_instance->object_handle;
+		*object_handle = object_instance->object_handle;
 		res = 0;
 	}
 	return (res);
 
 error_exit:
 	return (-1);
+}
+
+static int object_find_destroy (
+	unsigned int object_find_handle)
+{
+	return (0);
 }
 
 static int object_key_get (
@@ -1117,8 +1165,9 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_destroy		= object_destroy,
 	.object_valid_set	= object_valid_set,
 	.object_key_valid_set	= object_key_valid_set,
-	.object_find_reset	= object_find_reset,
-	.object_find		= object_find,
+	.object_find_create	= object_find_create,
+	.object_find_next	= object_find_next,
+	.object_find_destroy	= object_find_destroy,
 	.object_find_from	= object_find_from,
 	.object_key_get		= object_key_get,
 	.object_key_iter	= object_key_iter,

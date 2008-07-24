@@ -10,6 +10,8 @@
  * - Refactoring of code into several AMF files
  * - Serializers/deserializers
  *
+ * Copyright (c) 2007-2008 Red Hat, Inc.
+ *
  * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
@@ -51,7 +53,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <regex.h>
-#include <assert.h>
 
 #include "../include/saAis.h"
 #include "../include/saAmf.h"
@@ -1010,12 +1011,16 @@ int amf_enabled (struct objdb_iface_ver0 *objdb)
 	unsigned int object_service_handle;
 	char *value;
 	int enabled = 0;
+	unsigned int object_find_handle;
 
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
-	if (objdb->object_find (
+	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
 		"amf",
 		strlen ("amf"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (
+		object_find_handle,
 		&object_service_handle) == 0) {
 
 		value = NULL;
@@ -1033,6 +1038,8 @@ int amf_enabled (struct objdb_iface_ver0 *objdb)
 			}
 		}
 	}
+
+	objdb->object_find_destroy (object_find_handle);
 
 	return enabled;
 }
