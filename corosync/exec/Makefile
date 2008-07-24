@@ -32,10 +32,10 @@
 # Include configuration
 #
 srcdir ?= $(CURDIR)/../
+subdir ?= exec/
 
 include $(srcdir)Makefile.inc
 
-override CFLAGS += -I$(srcdir)include
 LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
@@ -145,8 +145,8 @@ depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LOGSYS_SRC) $(LCR_SRC) > /dev/null 2>&1
 
 # - fPIC rules required for service handler shared objects
-../lcr/lcr_ifact.o: ../lcr/lcr_ifact.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -DLCRSODIR='"$(LCRSODIR)"' -I../lcr -c -o $@ ../lcr/lcr_ifact.c
+../lcr/lcr_ifact.o: $(srcdir)lcr/lcr_ifact.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -DLCRSODIR='"$(LCRSODIR)"' -I../lcr -c -o $@ $<
 
 vsf_ykd.o: vsf_ykd.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<

@@ -110,4 +110,5 @@ endif
 endif
 
 VPATH:=. $(srcdir) $(srcdir)$(subdir)
+override CFLAGS += -I$(srcdir)include -I$(srcdir)$(subdir)
 
