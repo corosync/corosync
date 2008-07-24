@@ -575,9 +575,9 @@ int main (int argc, char **argv)
 	 * the openais default built in parser if the configuration parser
 	 * isn't overridden
 	 */
-	config_iface = getenv("OPENAIS_DEFAULT_CONFIG_IFACE");
+	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
-		config_iface = "aisparser";
+		config_iface = "corosync_parser";
 	}
 
 	/* Make a copy so we can deface it with strtok */
