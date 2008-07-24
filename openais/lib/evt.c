@@ -39,10 +39,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#include <ipc_evt.h>
-#include <ais_util.h>
-#include "../exec/totem.h"
-#include <list.h>
+#include <corosync/ais_util.h>
+#include <corosync/list.h>
+#include "../include/ipc_evt.h"
+
+#define MESSAGE_SIZE_MAX 1024*1024
 
 static void evtHandleInstanceDestructor(void *instance);
 static void chanHandleInstanceDestructor(void *instance);

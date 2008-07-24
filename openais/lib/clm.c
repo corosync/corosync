@@ -45,16 +45,16 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include <swab.h>
-#include "../exec/totem.h"
+#define PROCESSOR_COUNT_MAX 384
+#include <corosync/swab.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
 #include <saAis.h>
 #include <saClm.h>
-#include <ipc_gen.h>
 #include <ipc_clm.h>
-#include <mar_gen.h>
-#include <mar_clm.h>
+#include "../include/mar_clm.h"
 
-#include <ais_util.h>
+#include "util.h"
 
 struct res_overlay {
 	mar_res_header_t header;

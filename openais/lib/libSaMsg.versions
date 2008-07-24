@@ -1,0 +1,41 @@
+# Version and symbol export for libSaMsg.so
+
+OPENAIS_MSG_B.01.01 {
+	global:
+		saMsgInitialize;
+		saMsgSelectionObjectGet;
+		saMsgDispatch;
+		saMsginalize;
+		saMsgQueueOpen;
+		saMsgQueueOpenAsync;
+		saMsgQueueClose;
+		saMsgQueueStatusGet;
+		saMsgQueueUnlink;
+		saMsgQueueGroupCreate;
+		saMsgQueueGroupInsert;
+		saMsgQueueGroupRemove;
+		saMsgQueueGroupDelete;
+		saMsgQueueGroupTrack;
+		saMsgQueueGroupTrackStop;
+		saMsgMessageSend;
+		saMsgMessageSendAsync;
+		saMsgMessageSendAsync;
+		saMsgMessageGet;
+		saMsgMessageCancel;
+		saMsgMessageReply;
+		saMsgMessageReplyAsync;
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saPollRetry;
+		saRecvRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

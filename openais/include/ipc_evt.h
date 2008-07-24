@@ -35,10 +35,10 @@
 #define IPC_EVT_H_DEFINED
 
 #include <netinet/in.h>
+#include <corosync/ipc_gen.h>
 #include "saAis.h"
 #include "saEvt.h"
 #include "saClm.h"
-#include "ipc_gen.h"
 #include "mar_evt.h"
 
 enum req_evt_types {

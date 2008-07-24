@@ -46,12 +46,12 @@
 #include <sys/un.h>
 
 #include <saAis.h>
-#include <list.h>
+#include <corosync/engine/list.h>
 #include <saLck.h>
-#include <ipc_gen.h>
-#include <ipc_lck.h>
+#include <corosync/ipc_gen.h>
+#include "../include/ipc_lck.h"
 
-#include <ais_util.h>
+#include "util.h"
 
 struct message_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));

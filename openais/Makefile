@@ -52,11 +52,7 @@ endif
 
 include $(srcdir)Makefile.inc
 
-SBINDIR=$(PREFIX)/sbin
 INCLUDEDIR=$(PREFIX)/include/openais
-INCLUDEDIR_TOTEM=$(PREFIX)/include/openais/totem
-INCLUDEDIR_LCR=$(PREFIX)/include/openais/lcr
-INCLUDEDIR_SERVICE=$(PREFIX)/include/openais/service
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
 ARCH=$(shell uname -p)
@@ -80,9 +76,8 @@ SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test
 sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
 
 all: $(SUBDIRS)
-	@(cd $(builddir)lcr; echo ==== `pwd` ===;  $(call sub_make,lcr,all));
 	@(cd $(builddir)lib; echo ==== `pwd` ===;  $(call sub_make,lib,all));
-	@(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,all));
+	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,all));
 	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
 
 # subdirs are not phony
@@ -118,27 +113,18 @@ help:
  
 
 clean:
-	(cd $(builddir)lcr; echo ==== `pwd` ===; $(call sub_make,lcr,clean));
 	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,clean));
-	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,clean));
+	(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,clean));
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
 	rm -rf $(builddir)doc/api
 
-AIS_LIBS	= ais SaAmf SaClm SaCkpt SaEvt SaLck SaMsg evs cpg \
-		  cfg aisutil confdb
+AIS_LIBS	= SaAmf SaClm SaCkpt SaEvt SaLck SaMsg
 
 AIS_HEADERS	= saAis.h saAmf.h saClm.h saCkpt.h saEvt.h saEvt.h saLck.h \
-		  saMsg.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	   \
-		  ais_util.h confdb.h
-
-EXEC_LIBS	= totem_pg logsys
+		  saMsg.h
 
 install: all
-	mkdir -p $(DESTDIR)$(SBINDIR)
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	mkdir -p $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	mkdir -p $(DESTDIR)$(INCLUDEDIR_LCR)
-	mkdir -p $(DESTDIR)$(INCLUDEDIR_SERVICE)
 	mkdir -p $(DESTDIR)$(LIBDIR)
 	mkdir -p $(DESTDIR)$(LCRSODIR)
 	mkdir -p $(DESTDIR)$(ETCDIR)/ais
@@ -146,23 +132,6 @@ install: all
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
-
-
-	for eLib in $(EXEC_LIBS); do					\
-	    ( cd $(builddir) ;						\
-	    ln -sf lib$$eLib.so.2.0.0 exec/lib$$eLib.so;		\
-	    ln -sf lib$$eLib.so.2.0.0 exec/lib$$eLib.so.2;		\
-	    $(CP) -a exec/lib$$eLib.so $(DESTDIR)$(LIBDIR);		\
-	    $(CP) -a exec/lib$$eLib.so.2 $(DESTDIR)$(LIBDIR);		\
-	    install -m 755 exec/lib$$eLib.so.2.* $(DESTDIR)$(LIBDIR);	\
-	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
-		install -m 755 exec/lib$$eLib.a $(DESTDIR)$(LIBDIR);	\
-		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
-		    ranlib $(DESTDIR)$(LIBDIR)/lib$$eLib.a;		\
-		fi							\
-	    fi								\
-	    ) \
-	done
 
 	for aLib in $(AIS_LIBS); do					\
 	    ( cd $(builddir) ;                                          \
@@ -182,9 +151,7 @@ install: all
 
 	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/openais-$(ARCH).conf"
 
-	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
-	install -m 755 $(builddir)exec/aisexec $(DESTDIR)$(SBINDIR)
-	install -m 700 $(builddir)exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
+	install -m 755 $(builddir)services/*lcrso $(DESTDIR)$(LCRSODIR)
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/ais/openais.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/openais.conf $(DESTDIR)$(ETCDIR)/ais ; \
@@ -196,25 +163,6 @@ install: all
 	for aHeader in $(AIS_HEADERS); do				\
 	    install -m 644 $(srcdir)include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
 	done
-
-	install -m 644 $(srcdir)exec/aispoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)exec/service.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/timer.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/flow.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/ipc.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)include/swab.h $(DESTDIR)$(INCLUDEDIR_SERVICE)
-	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
-	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5
-	install -m 644 $(srcdir)man/*.8 $(DESTDIR)$(MANDIR)/man8
 
 doxygen:
 	mkdir -p doc/api && doxygen

@@ -48,24 +48,17 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include "swab.h"
-#include "objdb.h"
-#include "totem.h"
-#include "service.h"
+#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
+#include <corosync/engine/swab.h>
+#include <corosync/engine/list.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/saAis.h>
+#include <corosync/lcr/lcr_comp.h>
 #include "../include/saAis.h"
 #include "../include/saLck.h"
 #include "../include/ipc_lck.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_comp.h"
-#include "mempool.h"
-#include "util.h"
-#include "main.h"
-#include "flow.h"
-#include "tlist.h"
-#include "ipc.h"
-#include "totempg.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("LCK", LOG_INFO);
 
@@ -116,7 +109,7 @@ struct resource_cleanup {
 
 DECLARE_LIST_INIT(resource_list_head);
 
-static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb);
+static int lck_exec_init_fn (struct corosync_api_v1 *);
 
 static int lck_lib_exit_fn (void *conn);
 
@@ -208,6 +201,7 @@ static int recovery_abort = 0;
 //static struct memb_ring_id saved_ring_id;
 */
 
+static struct corosync_api_v1 *api;
 
 static void lck_confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -225,60 +219,60 @@ struct lck_pd {
 /*
  * Executive Handler Definition
  */
-static struct openais_lib_handler lck_lib_service[] =
+static struct corosync_lib_handler lck_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceopen,
 		.response_size		= sizeof (struct res_lib_lck_resourceopen),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEOPEN,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceopenasync,
 		.response_size		= sizeof (struct res_lib_lck_resourceopenasync),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEOPENASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceclose,
 		.response_size		= sizeof (struct res_lib_lck_resourceclose),
 		.response_id		= MESSAGE_RES_LCK_RESOURCECLOSE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourcelock,
 		.response_size		= sizeof (struct res_lib_lck_resourcelock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCK,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourcelockasync,
 		.response_size		= sizeof (struct res_lib_lck_resourcelockasync),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCKASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceunlock,
 		.response_size		= sizeof (struct res_lib_lck_resourceunlock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCELOCK,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_lck_resourceunlockasync,
 		.response_size		= sizeof (struct res_lib_lck_resourceunlock),
 		.response_id		= MESSAGE_RES_LCK_RESOURCEUNLOCKASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_lck_lockpurge,
 		.response_size		= sizeof (struct res_lib_lck_lockpurge),
 		.response_id		= MESSAGE_RES_LCK_LOCKPURGE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	}
 };
 
 
-static struct openais_exec_handler lck_exec_service[] = {
+static struct corosync_exec_handler lck_exec_engine[] = {
 	{
 		.exec_handler_fn	= message_handler_req_exec_lck_resourceopen,
 		.exec_endian_convert_fn	= exec_lck_resourceopen_endian_convert
@@ -305,18 +299,18 @@ static struct openais_exec_handler lck_exec_service[] = {
 	}
 };
 
-struct openais_service_handler lck_service_handler = {
+struct corosync_service_engine lck_service_engine = {
 	.name				= "openais distributed locking service B.01.01",
 	.id				= LCK_SERVICE,
 	.private_data_size		= sizeof (struct lck_pd),
-	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
+	.flow_control			= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn			= lck_lib_init_fn,
 	.lib_exit_fn			= lck_lib_exit_fn,
-	.lib_service			= lck_lib_service,
-	.lib_service_count		= sizeof (lck_lib_service) / sizeof (struct openais_lib_handler),
+	.lib_engine			= lck_lib_engine,
+	.lib_engine_count		= sizeof (lck_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn			= lck_exec_init_fn,
-	.exec_service			= lck_exec_service,
-	.exec_service_count		= sizeof (lck_exec_service) / sizeof (struct openais_exec_handler),
+	.exec_engine			= lck_exec_engine,
+	.exec_engine_count		= sizeof (lck_exec_engine) / sizeof (struct corosync_exec_handler),
 	.exec_dump_fn			= NULL,
 	.confchg_fn			= lck_confchg_fn,
 	.sync_init			= NULL,
@@ -329,10 +323,10 @@ struct openais_service_handler lck_service_handler = {
 /*
  * Dynamic loader definition
  */
-static struct openais_service_handler *lck_get_handler_ver0 (void);
+static struct corosync_service_engine *lck_get_engine_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 lck_service_handler_iface = {
-	.openais_get_service_handler_ver0	= lck_get_handler_ver0
+static struct corosync_service_engine_iface_ver0 lck_service_engine_iface = {
+	.corosync_get_service_engine_ver0	= lck_get_engine_ver0
 };
 
 static struct lcr_iface openais_lck_ver0[1] = {
@@ -345,7 +339,7 @@ static struct lcr_iface openais_lck_ver0[1] = {
 		.dependency_count		= 0,
 		.constructor			= NULL,
 		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&lck_service_handler_iface,
+		.interfaces			= (void **)(void *)&lck_service_engine_iface,
 	}
 };
 
@@ -354,13 +348,13 @@ static struct lcr_comp lck_comp_ver0 = {
 	.ifaces					= openais_lck_ver0
 };
 
-static struct openais_service_handler *lck_get_handler_ver0 (void)
+static struct corosync_service_engine *lck_get_engine_ver0 (void)
 {
-	return (&lck_service_handler);
+	return (&lck_service_engine);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
-	lcr_interfaces_set (&openais_lck_ver0[0], &lck_service_handler_iface);
+	lcr_interfaces_set (&openais_lck_ver0[0], &lck_service_engine_iface);
 
 	lcr_component_register (&lck_comp_ver0);
 }
@@ -576,7 +570,7 @@ struct resource_cleanup *lck_resource_cleanup_find (
 {
 	struct list_head *list;
 	struct resource_cleanup *resource_cleanup;
-	struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (conn);
+	struct lck_pd *lck_pd = (struct lck_pd *)api->ipc_private_data_get (conn);
 
 	for (list = lck_pd->resource_cleanup_list.next;
 		list != &lck_pd->resource_cleanup_list; list = list->next) {
@@ -606,8 +600,8 @@ int lck_resource_close (struct resource *resource)
 	iovec.iov_base = (char *)&req_exec_lck_resourceclose;
 	iovec.iov_len = sizeof (req_exec_lck_resourceclose);
 
-	if (totempg_groups_send_ok_joined (openais_group_handle, &iovec, 1)) {
-		assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	if (api->totem_send_ok (&iovec, 1)) {
+		assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 		return (0);
 	}
 
@@ -637,7 +631,7 @@ void resource_lock_orphan (struct resource_lock *resource_lock)
 	iovec.iov_base = (char *)&req_exec_lck_resourcelockorphan;
 	iovec.iov_len = sizeof (req_exec_lck_resourcelockorphan);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }
 
 void lck_resource_cleanup_lock_remove (
@@ -662,7 +656,7 @@ void lck_resource_cleanup_remove (
 
 	struct list_head *list;
 	struct resource_cleanup *resource_cleanup;
-	struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (conn);
+	struct lck_pd *lck_pd = (struct lck_pd *)api->ipc_private_data_get (conn);
 
 	for (list = lck_pd->resource_cleanup_list.next;
 		list != &lck_pd->resource_cleanup_list;
@@ -678,8 +672,10 @@ void lck_resource_cleanup_remove (
 }
 
 
-static int lck_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static int lck_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+	api = corosync_api;
+
 	/*
 	 *  Initialize the saved ring ID.
 	 */
@@ -690,7 +686,7 @@ static int lck_lib_exit_fn (void *conn)
 {
 	struct resource_cleanup *resource_cleanup;
 	struct list_head *cleanup_list;
-	struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (conn);
+	struct lck_pd *lck_pd = (struct lck_pd *)api->ipc_private_data_get (conn);
 
 	log_printf(LOG_LEVEL_NOTICE, "lck_exit_fn conn_info %p\n", conn);
 
@@ -718,7 +714,7 @@ static int lck_lib_exit_fn (void *conn)
 
 static int lck_lib_init_fn (void *conn)
 {
-    struct lck_pd *lck_pd = (struct lck_pd *)openais_conn_private_data_get (conn);
+    struct lck_pd *lck_pd = (struct lck_pd *)api->ipc_private_data_get (conn);
 
 	list_init (&lck_pd->resource_list);
 	list_init (&lck_pd->resource_cleanup_list);
@@ -778,14 +774,14 @@ static void message_handler_req_exec_lck_resourceopen (
 	/*
 	 * Setup connection information and mark resource as referenced
 	 */
-	if (message_source_is_local (&req_exec_lck_resourceopen->source)) {
+	if (api->ipc_source_is_local (&req_exec_lck_resourceopen->source)) {
 		log_printf (LOG_LEVEL_DEBUG, "Lock resource opened is %p\n", resource);
 		resource_cleanup = malloc (sizeof (struct resource_cleanup));
 		if (resource_cleanup == 0) {
 			free (resource);
 			error = SA_AIS_ERR_NO_MEMORY;
 		} else { 
-			lck_pd = (struct lck_pd *)openais_conn_private_data_get (req_exec_lck_resourceopen->source.conn);
+			lck_pd = (struct lck_pd *)api->ipc_private_data_get (req_exec_lck_resourceopen->source.conn);
 			list_init (&resource_cleanup->list);
 			list_init (&resource_cleanup->resource_lock_list_head);
 			resource_cleanup->resource = resource;
@@ -806,7 +802,7 @@ error_exit:
 	/*
 	 * If this node was the source of the message, respond to this node
 	 */
-	if (message_source_is_local (&req_exec_lck_resourceopen->source)) {
+	if (api->ipc_source_is_local (&req_exec_lck_resourceopen->source)) {
 		/*
 		 * If its an async call respond with the invocation and handle
 		 */
@@ -820,12 +816,12 @@ error_exit:
 				&req_exec_lck_resourceopen->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_lck_resourceopen->source.conn,
 				&res_lib_lck_resourceopenasync,
 				sizeof (struct res_lib_lck_resourceopenasync));
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_lck_resourceopen->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_lck_resourceopen->source.conn),
 				&res_lib_lck_resourceopenasync,
 				sizeof (struct res_lib_lck_resourceopenasync));
 		} else {
@@ -839,7 +835,7 @@ error_exit:
 				&req_exec_lck_resourceopen->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (req_exec_lck_resourceopen->source.conn,
+			api->ipc_conn_send_response (req_exec_lck_resourceopen->source.conn,
 				&res_lib_lck_resourceopen,
 				sizeof (struct res_lib_lck_resourceopen));
 		}
@@ -867,7 +863,7 @@ static void message_handler_req_exec_lck_resourceclose (
 	if (resource->refcount == 0) {
 	}
 error_exit:
-	if (message_source_is_local(&req_exec_lck_resourceclose->source)) {
+	if (api->ipc_source_is_local(&req_exec_lck_resourceclose->source)) {
 		lck_resource_cleanup_remove (
 			req_exec_lck_resourceclose->source.conn,
 			req_exec_lck_resourceclose->resource_handle);
@@ -875,7 +871,7 @@ error_exit:
 		res_lib_lck_resourceclose.header.size = sizeof (struct res_lib_lck_resourceclose);
 		res_lib_lck_resourceclose.header.id = MESSAGE_RES_LCK_RESOURCECLOSE;
 		res_lib_lck_resourceclose.header.error = error;
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_lck_resourceclose->source.conn,
 			&res_lib_lck_resourceclose, sizeof (struct res_lib_lck_resourceclose));
 	}
@@ -885,7 +881,7 @@ void waiter_notification_send (struct resource_lock *resource_lock)
 {
 	struct res_lib_lck_lockwaitercallback res_lib_lck_lockwaitercallback;
 
-	if (message_source_is_local (&resource_lock->callback_source) == 0) {
+	if (api->ipc_source_is_local (&resource_lock->callback_source) == 0) {
 		return;
 	}
 
@@ -902,8 +898,8 @@ void waiter_notification_send (struct resource_lock *resource_lock)
 		res_lib_lck_lockwaitercallback.mode_held = SA_LCK_PR_LOCK_MODE;
 	}
 
-	openais_conn_send_response (
-		openais_conn_partner_get (resource_lock->callback_source.conn),
+	api->ipc_conn_send_response (
+		api->ipc_conn_partner_get (resource_lock->callback_source.conn),
 		&res_lib_lck_lockwaitercallback,
 		sizeof (struct res_lib_lck_lockwaitercallback));
 }
@@ -929,7 +925,7 @@ void resource_lock_async_deliver (
 {
 	struct res_lib_lck_resourcelockasync res_lib_lck_resourcelockasync;
 
-	if (source && message_source_is_local(source)) {
+	if (source && api->ipc_source_is_local(source)) {
 		if (resource_lock->async_call) {
 			res_lib_lck_resourcelockasync.header.size = sizeof (struct res_lib_lck_resourcelockasync);
 			res_lib_lck_resourcelockasync.header.id = MESSAGE_RES_LCK_RESOURCELOCKASYNC;
@@ -938,8 +934,8 @@ void resource_lock_async_deliver (
 			res_lib_lck_resourcelockasync.lockStatus = resource_lock->lock_status;
 			res_lib_lck_resourcelockasync.invocation = resource_lock->invocation;
 			res_lib_lck_resourcelockasync.lockId = resource_lock->lock_id;
-			openais_conn_send_response (
-				openais_conn_partner_get (source->conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (source->conn),
 				&res_lib_lck_resourcelockasync,
 				sizeof (struct res_lib_lck_resourcelockasync));
 		}
@@ -953,7 +949,7 @@ void lock_response_deliver (
 {
 	struct res_lib_lck_resourcelock res_lib_lck_resourcelock;
 
-	if (source && message_source_is_local(source)) {
+	if (source && api->ipc_source_is_local(source)) {
 		if (resource_lock->async_call) {
 			resource_lock_async_deliver (&resource_lock->callback_source, resource_lock, error);
 		} else {
@@ -962,7 +958,7 @@ void lock_response_deliver (
 			res_lib_lck_resourcelock.header.error = error;
 			res_lib_lck_resourcelock.resource_lock = (void *)resource_lock;
 			res_lib_lck_resourcelock.lockStatus = resource_lock->lock_status;
-			openais_conn_send_response (source->conn,
+			api->ipc_conn_send_response (source->conn,
 				&res_lib_lck_resourcelock,
 				sizeof (struct res_lib_lck_resourcelock));
 		}
@@ -1203,7 +1199,7 @@ static void message_handler_req_exec_lck_resourcelock (
 	/*
 	 * Add resource lock to cleanup handler for this api resource instance
 	 */
-	if (message_source_is_local (&req_exec_lck_resourcelock->source)) {
+	if (api->ipc_source_is_local (&req_exec_lck_resourcelock->source)) {
 		resource_cleanup = lck_resource_cleanup_find (
 			resource_lock->callback_source.conn,
 			req_exec_lck_resourcelock->resource_handle);
@@ -1235,14 +1231,14 @@ static void message_handler_req_exec_lck_resourcelock (
 		 * Deliver async response to library
 		 */
 		req_exec_lck_resourcelock->source.conn =
-			openais_conn_partner_get (req_exec_lck_resourcelock->source.conn);
+			api->ipc_conn_partner_get (req_exec_lck_resourcelock->source.conn);
 		resource_lock_async_deliver (
 			&req_exec_lck_resourcelock->source,
 			resource_lock,
 			SA_AIS_OK);
 // TODO why is this twice ?
 		req_exec_lck_resourcelock->source.conn =
-			openais_conn_partner_get (req_exec_lck_resourcelock->source.conn);
+			api->ipc_conn_partner_get (req_exec_lck_resourcelock->source.conn);
 	}
 
 error_exit:
@@ -1278,7 +1274,7 @@ static void message_handler_req_exec_lck_resourceunlock (
 	unlock_algorithm (resource, resource_lock);
 
 error_exit:
-	if (message_source_is_local(&req_exec_lck_resourceunlock->source)) {
+	if (api->ipc_source_is_local(&req_exec_lck_resourceunlock->source)) {
 		if (req_exec_lck_resourceunlock->async_call) {
 			res_lib_lck_resourceunlockasync.header.size = sizeof (struct res_lib_lck_resourceunlockasync);
 			res_lib_lck_resourceunlockasync.header.id = MESSAGE_RES_LCK_RESOURCEUNLOCKASYNC;
@@ -1287,19 +1283,19 @@ error_exit:
 				req_exec_lck_resourceunlock->invocation;
 			res_lib_lck_resourceunlockasync.lockId = req_exec_lck_resourceunlock->lock_id;
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_lck_resourceunlock->source.conn,
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
-			openais_conn_send_response (
-				openais_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get(req_exec_lck_resourceunlock->source.conn),
 				&res_lib_lck_resourceunlockasync,
 				sizeof (struct res_lib_lck_resourceunlockasync));
 		} else {
 			res_lib_lck_resourceunlock.header.size = sizeof (struct res_lib_lck_resourceunlock);
 			res_lib_lck_resourceunlock.header.id = MESSAGE_RES_LCK_RESOURCEUNLOCK;
 			res_lib_lck_resourceunlock.header.error = error;
-			openais_conn_send_response (req_exec_lck_resourceunlock->source.conn,
+			api->ipc_conn_send_response (req_exec_lck_resourceunlock->source.conn,
 				&res_lib_lck_resourceunlock, sizeof (struct res_lib_lck_resourceunlock));
 		}
 	}
@@ -1349,14 +1345,14 @@ static void message_handler_req_exec_lck_lockpurge (
 	}
 
 error_exit:
-	if (message_source_is_local(&req_exec_lck_lockpurge->source)) {
+	if (api->ipc_source_is_local(&req_exec_lck_lockpurge->source)) {
 //		lck_resource_cleanup_remove (req_exec_lck_lockpurge->source.conn,
 //			resource);
 
 		res_lib_lck_lockpurge.header.size = sizeof (struct res_lib_lck_lockpurge);
 		res_lib_lck_lockpurge.header.id = MESSAGE_RES_LCK_LOCKPURGE;
 		res_lib_lck_lockpurge.header.error = error;
-		openais_conn_send_response (req_exec_lck_lockpurge->source.conn,
+		api->ipc_conn_send_response (req_exec_lck_lockpurge->source.conn,
 			&res_lib_lck_lockpurge, sizeof (struct res_lib_lck_lockpurge));
 	}
 }
@@ -1377,7 +1373,7 @@ static void message_handler_req_lib_lck_resourceopen (
 	req_exec_lck_resourceopen.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN);
 
-	message_source_set (&req_exec_lck_resourceopen.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourceopen.source, conn);
 
 	memcpy (&req_exec_lck_resourceopen.resource_name,
 		&req_lib_lck_resourceopen->lockResourceName,
@@ -1392,7 +1388,7 @@ static void message_handler_req_lib_lck_resourceopen (
 	iovec.iov_base = (char *)&req_exec_lck_resourceopen;
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_resourceopenasync (
@@ -1411,7 +1407,7 @@ static void message_handler_req_lib_lck_resourceopenasync (
 	req_exec_lck_resourceopen.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEOPEN);
 
-	message_source_set (&req_exec_lck_resourceopen.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourceopen.source, conn);
 
 	memcpy (&req_exec_lck_resourceopen.resource_name,
 		&req_lib_lck_resourceopen->lockResourceName,
@@ -1427,7 +1423,7 @@ static void message_handler_req_lib_lck_resourceopenasync (
 	iovec.iov_base = (char *)&req_exec_lck_resourceopen;
 	iovec.iov_len = sizeof (req_exec_lck_resourceopen);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_resourceclose (
@@ -1450,7 +1446,7 @@ static void message_handler_req_lib_lck_resourceclose (
 		req_exec_lck_resourceclose.header.id =
 			SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCECLOSE);
 
-		message_source_set (&req_exec_lck_resourceclose.source, conn);
+		api->ipc_source_set (&req_exec_lck_resourceclose.source, conn);
 
 		memcpy (&req_exec_lck_resourceclose.lockResourceName,
 			&req_lib_lck_resourceclose->lockResourceName, sizeof (mar_name_t));
@@ -1459,8 +1455,8 @@ static void message_handler_req_lib_lck_resourceclose (
 		iovecs[0].iov_base = (char *)&req_exec_lck_resourceclose;
 		iovecs[0].iov_len = sizeof (req_exec_lck_resourceclose);
 
-		if (totempg_groups_send_ok_joined (openais_group_handle, iovecs, 1)) {
-			assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+		if (api->totem_send_ok (iovecs, 1)) {
+			assert (api->totem_mcast (iovecs, 1, TOTEM_AGREED) == 0);
 		}
 	}
 	else {
@@ -1470,7 +1466,7 @@ static void message_handler_req_lib_lck_resourceclose (
 		res_lib_lck_resourceclose.header.id = MESSAGE_RES_LCK_RESOURCECLOSE;
 		res_lib_lck_resourceclose.header.error = SA_AIS_ERR_NOT_EXIST;
 
-		openais_conn_send_response (conn,
+		api->ipc_conn_send_response (conn,
 			&res_lib_lck_resourceclose,
 			sizeof (struct res_lib_lck_resourceclose));
 	}
@@ -1492,7 +1488,7 @@ static void message_handler_req_lib_lck_resourcelock (
 	req_exec_lck_resourcelock.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCELOCK);
 
-	message_source_set (&req_exec_lck_resourcelock.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourcelock.source, conn);
 
 	memcpy (&req_exec_lck_resourcelock.req_lib_lck_resourcelock,
 		req_lib_lck_resourcelock,
@@ -1506,7 +1502,7 @@ static void message_handler_req_lib_lck_resourcelock (
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (iovecs, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_resourcelockasync (
@@ -1525,7 +1521,7 @@ static void message_handler_req_lib_lck_resourcelockasync (
 	req_exec_lck_resourcelock.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCELOCK);
 
-	message_source_set (&req_exec_lck_resourcelock.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourcelock.source, conn);
 
 	memcpy (&req_exec_lck_resourcelock.req_lib_lck_resourcelock,
 		req_lib_lck_resourcelock,
@@ -1539,7 +1535,7 @@ static void message_handler_req_lib_lck_resourcelockasync (
 	iovecs[0].iov_base = (char *)&req_exec_lck_resourcelock;
 	iovecs[0].iov_len = sizeof (req_exec_lck_resourcelock);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (iovecs, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_resourceunlock (
@@ -1558,7 +1554,7 @@ static void message_handler_req_lib_lck_resourceunlock (
 	req_exec_lck_resourceunlock.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK);
 
-	message_source_set (&req_exec_lck_resourceunlock.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourceunlock.source, conn);
 
 	memcpy (&req_exec_lck_resourceunlock.resource_name,
 		&req_lib_lck_resourceunlock->lockResourceName,
@@ -1571,7 +1567,7 @@ static void message_handler_req_lib_lck_resourceunlock (
 	iovec.iov_base = (char *)&req_exec_lck_resourceunlock;
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_resourceunlockasync (
@@ -1590,7 +1586,7 @@ static void message_handler_req_lib_lck_resourceunlockasync (
 	req_exec_lck_resourceunlock.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_RESOURCEUNLOCK);
 
-	message_source_set (&req_exec_lck_resourceunlock.source, conn);
+	api->ipc_source_set (&req_exec_lck_resourceunlock.source, conn);
 
 	memcpy (&req_exec_lck_resourceunlock.resource_name,
 		&req_lib_lck_resourceunlock->lockResourceName,
@@ -1603,7 +1599,7 @@ static void message_handler_req_lib_lck_resourceunlockasync (
 	iovec.iov_base = (char *)&req_exec_lck_resourceunlock;
 	iovec.iov_len = sizeof (req_exec_lck_resourceunlock);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_lck_lockpurge (
@@ -1622,7 +1618,7 @@ static void message_handler_req_lib_lck_lockpurge (
 	req_exec_lck_lockpurge.header.id =
 		SERVICE_ID_MAKE (LCK_SERVICE, MESSAGE_REQ_EXEC_LCK_LOCKPURGE);
 
-	message_source_set (&req_exec_lck_lockpurge.source, conn);
+	api->ipc_source_set (&req_exec_lck_lockpurge.source, conn);
 
 	memcpy (&req_exec_lck_lockpurge.req_lib_lck_lockpurge,
 		req_lib_lck_lockpurge,
@@ -1631,6 +1627,6 @@ static void message_handler_req_lib_lck_lockpurge (
 	iovecs[0].iov_base = (char *)&req_exec_lck_lockpurge;
 	iovecs[0].iov_len = sizeof (req_exec_lck_lockpurge);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1, TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (iovecs, 1, TOTEM_AGREED) == 0);
 }
 

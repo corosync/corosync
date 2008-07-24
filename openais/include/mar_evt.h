@@ -33,7 +33,7 @@
 #ifndef MAR_EVT_H_DEFINED
 #define MAR_EVT_H_DEFINED
 
-#include "mar_gen.h"
+#include <corosync/mar_gen.h>
 
 typedef mar_uint64_t mar_evtchannelhandle_t;
 

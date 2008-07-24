@@ -37,8 +37,8 @@
 
 #include "saAis.h"
 #include "saLck.h"
-#include "ipc_gen.h"
-#include "swab.h"
+#include <corosync/ipc_gen.h>
+#include <corosync/swab.h>
 
 enum req_lib_lck_resource_types {
 	MESSAGE_REQ_LCK_RESOURCEOPEN = 0,

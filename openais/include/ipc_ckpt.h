@@ -37,7 +37,7 @@
 
 #include "saAis.h"
 #include "saCkpt.h"
-#include "ipc_gen.h"
+#include <corosync/ipc_gen.h>
 #include "mar_ckpt.h"
 
 enum req_lib_ckpt_checkpoint_types {

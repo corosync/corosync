@@ -57,26 +57,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "swab.h"
-#include "totem.h"
-#include "../include/saAis.h"
+#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
+#include <corosync/engine/swab.h>
+#include <corosync/engine/list.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/saAis.h>
+#include <corosync/lcr/lcr_comp.h>
 #include "../include/saClm.h"
-#include "../include/ipc_gen.h"
 #include "../include/ipc_clm.h"
-#include "../include/mar_gen.h"
 #include "../include/mar_clm.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_comp.h"
-#include "totempg.h"
-#include "main.h"
-#include "flow.h"
-#include "tlist.h"
-#include "ipc.h"
-#include "mempool.h"
-#include "objdb.h"
-#include "service.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("CLM", LOG_INFO);
 
@@ -88,6 +79,8 @@ enum clm_message_req_types {
 mar_clm_cluster_change_t my_cluster_node_last_change = SA_CLM_NODE_JOINED;
 
 mar_clm_cluster_node_t my_cluster_node;
+
+static struct corosync_api_v1 *api;
 
 static mar_clm_cluster_node_t cluster_node_entries[PROCESSOR_COUNT_MAX];
 
@@ -140,9 +133,9 @@ static void clm_sync_activate (void);
 
 static void clm_sync_abort (void);
 
-static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb);
+static int clm_exec_init_fn (struct corosync_api_v1 *corosync_api);
 
-static int clm_exec_exit_fn (struct objdb_iface_ver0 *objdb);
+static int clm_exec_exit_fn (void);
 
 static int clm_lib_init_fn (void *conn);
 
@@ -172,35 +165,35 @@ struct clm_pd {
 /*
  * Executive Handler Definition
  */
-static struct openais_lib_handler clm_lib_service[] =
+static struct corosync_lib_handler clm_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_clm_clustertrack,
 		.response_size				= sizeof (struct res_lib_clm_clustertrack),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTART, // TODO RESPONSE
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_clm_trackstop,
 		.response_size				= sizeof (struct res_lib_clm_trackstop),
 		.response_id				= MESSAGE_RES_CLM_TRACKSTOP, // TODO RESPONSE
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_clm_nodeget,
 		.response_size				= sizeof (struct res_clm_nodeget),
 		.response_id				= MESSAGE_RES_CLM_NODEGET, // TODO RESPONSE
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_clm_nodegetasync,
 		.response_size				= sizeof (struct res_clm_nodegetasync),
 		.response_id				= MESSAGE_RES_CLM_NODEGETCALLBACK, // TODO RESPONSE
-		.flow_control				= OPENAIS_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
-static struct openais_exec_handler clm_exec_service[] =
+static struct corosync_exec_handler clm_exec_engine[] =
 {
 	{
 		.exec_handler_fn	= message_handler_req_exec_clm_nodejoin,
@@ -208,20 +201,20 @@ static struct openais_exec_handler clm_exec_service[] =
 	}
 };
 	
-struct openais_service_handler clm_service_handler = {
+struct corosync_service_engine clm_service_engine = {
 	.name			= "openais cluster membership service B.01.01",
 	.id			= CLM_SERVICE,
 	.private_data_size	= sizeof (struct clm_pd),
-	.flow_control		= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
+	.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn		= clm_lib_init_fn,
 	.lib_exit_fn		= clm_lib_exit_fn,
-	.lib_service		= clm_lib_service,
-	.lib_service_count	= sizeof (clm_lib_service) / sizeof (struct openais_lib_handler),
+	.lib_engine		= clm_lib_engine,
+	.lib_engine_count	= sizeof (clm_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn		= clm_exec_init_fn,
 	.exec_exit_fn		= clm_exec_exit_fn,
 	.exec_dump_fn		= NULL,
-	.exec_service		= clm_exec_service,
-	.exec_service_count	= sizeof (clm_exec_service) / sizeof (struct openais_exec_handler),
+	.exec_engine		= clm_exec_engine,
+	.exec_engine_count	= sizeof (clm_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn		= clm_confchg_fn,
 	.sync_init		= clm_sync_init,
 	.sync_process		= clm_sync_process,
@@ -232,10 +225,10 @@ struct openais_service_handler clm_service_handler = {
 /*
  * Dynamic loader definition
  */
-static struct openais_service_handler *clm_get_service_handler_ver0 (void);
+static struct corosync_service_engine *clm_get_service_engine_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
-	.openais_get_service_handler_ver0	= clm_get_service_handler_ver0
+static struct corosync_service_engine_iface_ver0 clm_service_engine_iface = {
+	.corosync_get_service_engine_ver0	= clm_get_service_engine_ver0
 };
 
 static struct lcr_iface openais_clm_ver0[1] = {
@@ -257,13 +250,13 @@ static struct lcr_comp clm_comp_ver0 = {
 	.ifaces				= openais_clm_ver0
 };
 
-static struct openais_service_handler *clm_get_service_handler_ver0 (void)
+static struct corosync_service_engine *clm_get_service_engine_ver0 (void)
 {
-	return (&clm_service_handler);
+	return (&clm_service_engine);
 }
 
 __attribute__ ((constructor)) static void clm_comp_register (void) {
-	lcr_interfaces_set (&openais_clm_ver0[0], &clm_service_handler_iface);
+	lcr_interfaces_set (&openais_clm_ver0[0], &clm_service_engine_iface);
 
 	lcr_component_register (&clm_comp_ver0);
 }
@@ -280,22 +273,22 @@ static void my_cluster_node_load (void)
 	char **status;
 	const char *iface_string;
 
-	totempg_ifaces_get (
-		totempg_my_nodeid_get (),
+	api->totem_ifaces_get (
+		api->totem_nodeid_get (),
 		interfaces,
 		&status,
 		&iface_count);
 
-	iface_string = totemip_print (&interfaces[0]);
+	iface_string = api->totem_ip_print (&interfaces[0]);
 
 	sprintf ((char *)my_cluster_node.node_address.value, "%s",
 		iface_string);
 	my_cluster_node.node_address.length =
 		strlen ((char *)my_cluster_node.node_address.value);
-	if (totempg_my_family_get () == AF_INET) {
+	if (api->totem_family_get () == AF_INET) {
 		my_cluster_node.node_address.family = SA_CLM_AF_INET;
 	} else
-	if (totempg_my_family_get () == AF_INET6) {
+	if (api->totem_family_get () == AF_INET6) {
 		my_cluster_node.node_address.family = SA_CLM_AF_INET6;
 	} else {
 		assert (0);
@@ -305,15 +298,17 @@ static void my_cluster_node_load (void)
 		(char *)my_cluster_node.node_address.value);
 	my_cluster_node.node_name.length =
 		my_cluster_node.node_address.length;
-	my_cluster_node.node_id = totempg_my_nodeid_get ();
+	my_cluster_node.node_id = api->totem_nodeid_get ();
 	my_cluster_node.member = 1;
 
 	memcpy (&cluster_node_entries[0], &my_cluster_node,
 		sizeof (mar_clm_cluster_node_t));
 }
 
-static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static int clm_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+	api = corosync_api;
+
 	memset (cluster_node_entries, 0,
 		sizeof (mar_clm_cluster_node_t) * PROCESSOR_COUNT_MAX);
 
@@ -354,18 +349,18 @@ static int clm_exec_init_fn (struct objdb_iface_ver0 *objdb)
 
 	cluster_node_count = 1;
 
-	main_clm_get_by_nodeid = clm_get_by_nodeid;
+//TODO	main_clm_get_by_nodeid = clm_get_by_nodeid;
 	return (0);
 }
 
-static int clm_exec_exit_fn (struct objdb_iface_ver0 *objdb)
+static int clm_exec_exit_fn (void)
 {
 	return (0);
 }
 
 static int clm_lib_exit_fn (void *conn)
 {
-	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
+	struct clm_pd *clm_pd = (struct clm_pd *)api->ipc_private_data_get (conn);
 	/*
 	 * Delete track entry if there is one
 	 */
@@ -434,7 +429,7 @@ static void library_notification_send (
 		/*
 		 * Send notifications to all CLM listeners
 		 */
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			clm_pd->conn,
 			&res_lib_clm_clustertrack,
 			sizeof (struct res_lib_clm_clustertrack));
@@ -517,7 +512,7 @@ static int clm_nodejoin_send (void)
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
-	result = totempg_groups_mcast_joined (openais_group_handle, &req_exec_clm_iovec, 1, TOTEMPG_AGREED);
+	result = api->totem_mcast (&req_exec_clm_iovec, 1, TOTEM_AGREED);
 
 	return (result);
 }
@@ -540,16 +535,16 @@ static void clm_confchg_fn (
 	log_printf (LOG_LEVEL_NOTICE, "CLM CONFIGURATION CHANGE\n");
 	log_printf (LOG_LEVEL_NOTICE, "New Configuration:\n");
 	for (i = 0; i < member_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (member_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", api->totem_ifaces_print (member_list[i]));
 	}
 	log_printf (LOG_LEVEL_NOTICE, "Members Left:\n");
 	for (i = 0; i < left_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (left_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", api->totem_ifaces_print (left_list[i]));
 	}
 
 	log_printf (LOG_LEVEL_NOTICE, "Members Joined:\n");
 	for (i = 0; i < joined_list_entries; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", totempg_ifaces_print (joined_list[i]));
+		log_printf (LOG_LEVEL_NOTICE, "\t%s\n", api->totem_ifaces_print (joined_list[i]));
 	}
 
 	for (i = 0; i < left_list_entries; i++) {
@@ -646,7 +641,7 @@ static void message_handler_req_exec_clm_nodejoin (
 static int clm_lib_init_fn (void *conn)
 {
 	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize cluster membership service.\n");
-	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
+	struct clm_pd *clm_pd = (struct clm_pd *)api->ipc_private_data_get (conn);
 
 	list_init (&clm_pd->list);
 	clm_pd->conn = conn;
@@ -658,7 +653,7 @@ static void message_handler_req_lib_clm_clustertrack (void *conn, void *msg)
 {
 	struct req_lib_clm_clustertrack *req_lib_clm_clustertrack = (struct req_lib_clm_clustertrack *)msg;
 	struct res_lib_clm_clustertrack res_lib_clm_clustertrack;
-	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
+	struct clm_pd *clm_pd = (struct clm_pd *)api->ipc_private_data_get (conn);
 	int i;
 
 	res_lib_clm_clustertrack.header.size = sizeof (struct res_lib_clm_clustertrack);
@@ -694,14 +689,14 @@ static void message_handler_req_lib_clm_clustertrack (void *conn, void *msg)
 		list_add (&clm_pd->list, &library_notification_send_listhead);
 	}
 
-	openais_conn_send_response (conn, &res_lib_clm_clustertrack,
+	api->ipc_conn_send_response (conn, &res_lib_clm_clustertrack,
 		sizeof (struct res_lib_clm_clustertrack));
 
 	if (req_lib_clm_clustertrack->return_in_callback) {
 		res_lib_clm_clustertrack.header.id = MESSAGE_RES_CLM_TRACKCALLBACK;
 
-		openais_conn_send_response (
-			openais_conn_partner_get (conn),
+		api->ipc_conn_send_response (
+			api->ipc_conn_partner_get (conn),
 			&res_lib_clm_clustertrack,
 			sizeof (struct res_lib_clm_clustertrack));
 	}
@@ -711,7 +706,7 @@ static void message_handler_req_lib_clm_clustertrack (void *conn, void *msg)
 static void message_handler_req_lib_clm_trackstop (void *conn, void *msg)
 {
 	struct res_lib_clm_trackstop res_lib_clm_trackstop;
-	struct clm_pd *clm_pd = (struct clm_pd *)openais_conn_private_data_get (conn);
+	struct clm_pd *clm_pd = (struct clm_pd *)api->ipc_private_data_get (conn);
 
 	res_lib_clm_trackstop.header.size = sizeof (struct res_lib_clm_trackstop);
 	res_lib_clm_trackstop.header.id = MESSAGE_RES_CLM_TRACKSTOP;
@@ -726,7 +721,7 @@ static void message_handler_req_lib_clm_trackstop (void *conn, void *msg)
 	list_del (&clm_pd->list);
 	list_init (&clm_pd->list);
 
-	openais_conn_send_response (conn, &res_lib_clm_trackstop,
+	api->ipc_conn_send_response (conn, &res_lib_clm_trackstop,
 		sizeof (struct res_lib_clm_trackstop));
 }
 
@@ -762,7 +757,7 @@ static void message_handler_req_lib_clm_nodeget (void *conn, void *msg)
 	if (valid) {
 		memcpy (&res_clm_nodeget.cluster_node, cluster_node, sizeof (mar_clm_cluster_node_t));
 	}
-	openais_conn_send_response (conn, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
+	api->ipc_conn_send_response (conn, &res_clm_nodeget, sizeof (struct res_clm_nodeget));
 }
 
 static void message_handler_req_lib_clm_nodegetasync (void *conn, void *msg)
@@ -797,7 +792,7 @@ static void message_handler_req_lib_clm_nodegetasync (void *conn, void *msg)
 	res_clm_nodegetasync.header.id = MESSAGE_RES_CLM_NODEGETASYNC;
 	res_clm_nodegetasync.header.error = SA_AIS_OK;
 
-	openais_conn_send_response (conn, &res_clm_nodegetasync,
+	api->ipc_conn_send_response (conn, &res_clm_nodegetasync,
 		sizeof (struct res_clm_nodegetasync));
 
 	/*
@@ -811,7 +806,7 @@ static void message_handler_req_lib_clm_nodegetasync (void *conn, void *msg)
 		memcpy (&res_clm_nodegetcallback.cluster_node, cluster_node,
 			sizeof (mar_clm_cluster_node_t));
 	}
-	openais_conn_send_response (openais_conn_partner_get (conn),
+	api->ipc_conn_send_response (api->ipc_conn_partner_get (conn),
 		&res_clm_nodegetcallback,
 		sizeof (struct res_clm_nodegetcallback));
 }

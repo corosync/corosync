@@ -36,16 +36,16 @@
 #ifndef AIS_MAR_CLM_H_DEFINED
 #define AIS_MAR_CLM_H_DEFINED
 
-#include "swab.h"
+#include <corosync/engine/swab.h>
 #include "saAis.h"
 #include "saClm.h"
-#include "mar_gen.h"
+#include <corosync/mar_gen.h>
 
 #define MAR_CLM_MAX_ADDRESS_LENGTH 64
 
 typedef enum {
-		MAR_CLM_AF_INET = 1,
-		MAR_CLM_AF_INET6 = 2
+	MAR_CLM_AF_INET = 1,
+	MAR_CLM_AF_INET6 = 2
 } mar_clm_node_address_family_t;
 
 /*

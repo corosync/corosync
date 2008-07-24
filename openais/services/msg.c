@@ -47,24 +47,17 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include "../include/saAis.h"
+#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
+#include <corosync/engine/swab.h>
+#include <corosync/engine/list.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/saAis.h>
+#include <corosync/lcr/lcr_comp.h>
 #include "../include/saMsg.h"
 #include "../include/ipc_msg.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_comp.h"
 
-#include "objdb.h"
-#include "totem.h"
-#include "service.h"
-#include "mempool.h"
-#include "util.h"
-#include "main.h"
-#include "flow.h"
-#include "tlist.h"
-#include "ipc.h"
-#include "totempg.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("MSG", LOG_INFO);
 
@@ -125,7 +118,9 @@ struct queue_cleanup {
 DECLARE_LIST_INIT(queue_list_head);
 DECLARE_LIST_INIT(queue_group_list_head);
 
-static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb);
+static struct corosync_api_v1 *api;
+
+static int msg_exec_init_fn (struct corosync_api_v1 *);
 
 static int msg_lib_exit_fn (void *conn);
 
@@ -288,120 +283,120 @@ struct msg_pd {
 /*
  * Executive Handler Definition
  */
-struct openais_lib_handler msg_lib_service[] =
+struct corosync_lib_handler msg_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queueopen,
 		.response_size		= sizeof (struct res_lib_msg_queueopen),
 		.response_id		= MESSAGE_RES_MSG_QUEUEOPEN,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queueopenasync,
 		.response_size		= sizeof (struct res_lib_msg_queueopenasync),
 		.response_id		= MESSAGE_RES_MSG_QUEUEOPENASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queueclose,
 		.response_size		= sizeof (struct res_lib_msg_queueclose),
 		.response_id		= MESSAGE_RES_MSG_QUEUECLOSE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuestatusget,
 		.response_size		= sizeof (struct res_lib_msg_queuestatusget),
 		.response_id		= MESSAGE_RES_MSG_QUEUESTATUSGET,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queueunlink,
 		.response_size		= sizeof (struct res_lib_msg_queueunlink),
 		.response_id		= MESSAGE_RES_MSG_QUEUEUNLINK,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupcreate,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupcreate),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPCREATE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupinsert,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupinsert),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPINSERT,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupremove,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupremove),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPREMOVE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegroupdelete,
 		.response_size		= sizeof (struct res_lib_msg_queuegroupdelete),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPDELETE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegrouptrack,
 		.response_size		= sizeof (struct res_lib_msg_queuegrouptrack),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPTRACK,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn		= message_handler_req_lib_msg_queuegrouptrackstop,
 		.response_size		= sizeof (struct res_lib_msg_queuegrouptrackstop),
 		.response_id		= MESSAGE_RES_MSG_QUEUEGROUPTRACKSTOP,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagesend,
 		.response_size		= sizeof (struct res_lib_msg_messagesend),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESEND,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 12 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagesendasync,
 		.response_size		= sizeof (struct res_lib_msg_messagesendasync),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESENDASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 13 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messageget,
 		.response_size		= sizeof (struct res_lib_msg_messageget),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEGET,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 14 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagecancel,
 		.response_size		= sizeof (struct res_lib_msg_messagecancel),
 		.response_id		= MESSAGE_RES_MSG_MESSAGECANCEL,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 15 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagesendreceive,
 		.response_size		= sizeof (struct res_lib_msg_messagesendreceive),
 		.response_id		= MESSAGE_RES_MSG_MESSAGESENDRECEIVE,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 16 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagereply,
 		.response_size		= sizeof (struct res_lib_msg_messagereply),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEREPLY,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 17 */
 		.lib_handler_fn		= message_handler_req_lib_msg_messagereplyasync,
 		.response_size		= sizeof (struct res_lib_msg_messagereplyasync),
 		.response_id		= MESSAGE_RES_MSG_MESSAGEREPLYASYNC,
-		.flow_control		= OPENAIS_FLOW_CONTROL_REQUIRED
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
 	},
 };
 
 
-static struct openais_exec_handler msg_exec_service[] = {
+static struct corosync_exec_handler msg_exec_engine[] = {
 	{
 		.exec_handler_fn		= message_handler_req_exec_msg_queueopen,
 	},
@@ -449,18 +444,18 @@ static struct openais_exec_handler msg_exec_service[] = {
 	}
 };
 
-struct openais_service_handler msg_service_handler = {
+struct corosync_service_engine msg_service_engine = {
 	.name				= "openais message service B.01.01",
 	.id				= MSG_SERVICE,
 	.private_data_size		= sizeof (struct msg_pd),
-	.flow_control			= OPENAIS_FLOW_CONTROL_NOT_REQUIRED, 
+	.flow_control			= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED, 
 	.lib_init_fn			= msg_lib_init_fn,
 	.lib_exit_fn			= msg_lib_exit_fn,
-	.lib_service			= msg_lib_service,
-	.lib_service_count		= sizeof (msg_lib_service) / sizeof (struct openais_lib_handler),
+	.lib_engine			= msg_lib_engine,
+	.lib_engine_count		= sizeof (msg_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn			= msg_exec_init_fn,
-	.exec_service			= msg_exec_service,
-	.exec_service_count		= sizeof (msg_exec_service) / sizeof (struct openais_exec_handler),
+	.exec_engine			= msg_exec_engine,
+	.exec_engine_count		= sizeof (msg_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn			= msg_confchg_fn,
 	.exec_dump_fn			= NULL,
 	.sync_init			= NULL, // TODO msg_sync_init,
@@ -469,10 +464,10 @@ struct openais_service_handler msg_service_handler = {
 	.sync_abort			= msg_sync_abort
 };
 
-static struct openais_service_handler *msg_get_handler_ver0 (void);
+static struct corosync_service_engine *msg_get_engine_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 msg_service_handler_iface = {
-	.openais_get_service_handler_ver0	= msg_get_handler_ver0
+static struct corosync_service_engine_iface_ver0 msg_service_engine_iface = {
+	.corosync_get_service_engine_ver0	= msg_get_engine_ver0
 };
 
 static struct lcr_iface openais_msg_ver0[1] = {
@@ -494,13 +489,13 @@ static struct lcr_comp msg_comp_ver0 = {
 	.ifaces				= openais_msg_ver0
 };
 
-static struct openais_service_handler *msg_get_handler_ver0 (void)
+static struct corosync_service_engine *msg_get_engine_ver0 (void)
 {
-	return (&msg_service_handler);
+	return (&msg_service_engine);
 }
 
 __attribute__ ((constructor)) static void register_this_component (void) {
-	lcr_interfaces_set (&openais_msg_ver0[0], &msg_service_handler_iface);
+	lcr_interfaces_set (&openais_msg_ver0[0], &msg_service_engine_iface);
 
 	lcr_component_register (&msg_comp_ver0);
 }
@@ -614,6 +609,47 @@ struct req_exec_msg_messagereply {
 	SaNameT queue_name;
 	int async_call;
 };
+
+char *getSaNameT (SaNameT *name)
+{
+#if 0
+        static char ret_name[300];
+
+        memset (ret_name, 0, sizeof (ret_name));
+        if (name->length > 299) {
+                memcpy (ret_name, name->value, 299);
+        } else {
+
+                memcpy (ret_name, name->value, name->length);
+        }
+        return (ret_name);
+#endif
+// TODO
+        return ((char *)name->value);
+}
+
+int name_match(SaNameT *name1, SaNameT *name2)
+{
+	if (name1->length == name2->length) {
+	return ((strncmp ((char *)name1->value, (char *)name2->value, name1->length)) == 0);
+	}
+	return 0;
+}
+
+SaTimeT clust_time_now(void)
+{
+	struct timeval tv;
+	SaTimeT time_now;
+
+	if (gettimeofday(&tv, 0)) {
+		return 0ULL;
+	}
+
+	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
+	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+
+	return time_now;
+}
 
 #ifdef TODO
 static void msg_sync_init (void) 
@@ -826,8 +862,10 @@ static unsigned int queue_group_track (
 	return (i);
 }
 
-static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb)
+static int msg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+	api = corosync_api;
+
 	/*
 	 *  Initialize the saved ring ID.
 	 */
@@ -841,7 +879,7 @@ static int msg_exec_init_fn (struct objdb_iface_ver0 *objdb)
 static int msg_lib_exit_fn (void *conn)
 {
 	/*
-	 * struct msg_pd *msg_pd = (struct msg_pd *)openais_conn_private_data_get (conn);
+	 * struct msg_pd *msg_pd = (struct msg_pd *)api->ipc_private_data_get (conn);
 	 */
 
 #ifdef COMPILE_OUT
@@ -856,7 +894,7 @@ static int msg_lib_exit_fn (void *conn)
 		
 		queue_cleanup = list_entry (list, struct queue_cleanup, list);
 
-		if (queue_cleanup->queue->name.length > 0)	{
+		if (queue_cleanup->queue->name.length > 0) {
 			msg_queue_cleanup_lock_remove (queue_cleanup);
 			msg_queue_close (queue_cleanup->queue);
 		}
@@ -873,7 +911,7 @@ static int msg_lib_exit_fn (void *conn)
 
 static int msg_lib_init_fn (void *conn)
 {
-	struct msg_pd *msg_pd = (struct msg_pd *)openais_conn_private_data_get (conn);
+	struct msg_pd *msg_pd = (struct msg_pd *)api->ipc_private_data_get (conn);
 
 	list_init (&msg_pd->queue_list);
 	list_init (&msg_pd->queue_cleanup_list);
@@ -950,7 +988,7 @@ error_exit:
 	/*
 	 * If this node was the source of the message, respond to this node
 	 */
-	if (message_source_is_local (&req_exec_msg_queueopen->source)) {
+	if (api->ipc_source_is_local (&req_exec_msg_queueopen->source)) {
 		/*
 		 * If its an async call respond with the invocation and handle
 		 */
@@ -971,13 +1009,13 @@ error_exit:
 				&req_exec_msg_queueopen->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_msg_queueopen->source.conn,
 				&res_lib_msg_queueopenasync,
 				sizeof (struct res_lib_msg_queueopenasync));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_queueopen->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_queueopen->source.conn),
 				&res_lib_msg_queueopenasync,
 				sizeof (struct res_lib_msg_queueopenasync));
 		} else {
@@ -997,7 +1035,7 @@ error_exit:
 				&req_exec_msg_queueopen->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_msg_queueopen->source.conn,
 				&res_lib_msg_queueopen,
 				sizeof (struct res_lib_msg_queueopen));
@@ -1030,7 +1068,7 @@ static void message_handler_req_exec_msg_queueclose (
 	}
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queueclose->source))
+	if (api->ipc_source_is_local(&req_exec_msg_queueclose->source))
 	{
 
 		/* TODO */
@@ -1047,7 +1085,7 @@ error_exit:
 			MESSAGE_RES_MSG_QUEUECLOSE;
 		res_lib_msg_queueclose.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queueclose->source.conn,
 			&res_lib_msg_queueclose,
 			sizeof (struct res_lib_msg_queueclose));
@@ -1107,14 +1145,14 @@ static void message_handler_req_exec_msg_queuegroupcreate (
 	}
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queuegroupcreate->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegroupcreate->source)) {
 		res_lib_msg_queuegroupcreate.header.size =
 			sizeof (struct res_lib_msg_queuegroupcreate);
 		res_lib_msg_queuegroupcreate.header.id =
 			MESSAGE_RES_MSG_QUEUEGROUPCREATE;
 		res_lib_msg_queuegroupcreate.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queuegroupcreate->source.conn,
 			&res_lib_msg_queuegroupcreate,
 			sizeof (struct res_lib_msg_queuegroupcreate));
@@ -1207,14 +1245,14 @@ error_track:
 	queue_group_entry->change = SA_MSG_QUEUE_GROUP_NO_CHANGE;
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queuegroupinsert->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegroupinsert->source)) {
 		res_lib_msg_queuegroupinsert.header.size =
 			sizeof (struct res_lib_msg_queuegroupinsert);
 		res_lib_msg_queuegroupinsert.header.id =
 			MESSAGE_RES_MSG_QUEUEGROUPINSERT;
 		res_lib_msg_queuegroupinsert.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queuegroupinsert->source.conn,
 			&res_lib_msg_queuegroupinsert,
 			sizeof (struct res_lib_msg_queuegroupinsert));
@@ -1239,13 +1277,13 @@ error_exit:
 				&req_exec_msg_queuegroupinsert->queue_group_name,
 				sizeof (SaNameT));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_queuegroupinsert->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_queuegroupinsert->source.conn),
 				&res_lib_msg_queuegrouptrack,
 				sizeof (struct res_lib_msg_queuegrouptrack));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_queuegroupinsert->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_queuegroupinsert->source.conn),
 				notification,
 				(sizeof (SaMsgQueueGroupNotificationT) *
 				 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems));
@@ -1335,14 +1373,14 @@ error_track:
 	list_del (&queue_group_entry->list);
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queuegroupremove->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegroupremove->source)) {
 		res_lib_msg_queuegroupremove.header.size =
 			sizeof (struct res_lib_msg_queuegroupremove);
 		res_lib_msg_queuegroupremove.header.id =
 			MESSAGE_RES_MSG_QUEUEGROUPREMOVE;
 		res_lib_msg_queuegroupremove.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queuegroupremove->source.conn,
 			&res_lib_msg_queuegroupremove,
 			sizeof (struct res_lib_msg_queuegroupremove));
@@ -1367,13 +1405,13 @@ error_exit:
 				&req_exec_msg_queuegroupremove->queue_group_name,
 				sizeof (SaNameT));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_queuegroupremove->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_queuegroupremove->source.conn),
 				&res_lib_msg_queuegrouptrack,
 				sizeof (struct res_lib_msg_queuegrouptrack));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_queuegroupremove->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_queuegroupremove->source.conn),
 				notification,
 				(sizeof (SaMsgQueueGroupNotificationT) *
 				 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems));
@@ -1400,14 +1438,14 @@ static void message_handler_req_exec_msg_queuegroupdelete (
 		error = SA_AIS_ERR_NOT_EXIST;
 	}
 
-	if (message_source_is_local(&req_exec_msg_queuegroupdelete->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegroupdelete->source)) {
 		res_lib_msg_queuegroupdelete.header.size =
 			sizeof (struct res_lib_msg_queuegroupdelete);
 		res_lib_msg_queuegroupdelete.header.id =
 			MESSAGE_RES_MSG_QUEUEGROUPDELETE;
 		res_lib_msg_queuegroupdelete.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queuegroupdelete->source.conn,
 			&res_lib_msg_queuegroupdelete,
 			sizeof (struct res_lib_msg_queuegroupdelete));
@@ -1469,7 +1507,7 @@ static void message_handler_req_exec_msg_queuegrouptrack (
 	}
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queuegrouptrack->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegrouptrack->source)) {
 		res_lib_msg_queuegrouptrack.header.size =
 			sizeof (struct res_lib_msg_queuegrouptrack);
 		res_lib_msg_queuegrouptrack.header.id =
@@ -1487,18 +1525,18 @@ error_exit:
 					(sizeof (SaMsgQueueGroupNotificationT) *
 					 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems);
 
-				openais_conn_send_response (
+				api->ipc_conn_send_response (
 					req_exec_msg_queuegrouptrack->source.conn,
 					&res_lib_msg_queuegrouptrack,
 					sizeof (struct res_lib_msg_queuegrouptrack));
 
-				openais_conn_send_response (
+				api->ipc_conn_send_response (
 					req_exec_msg_queuegrouptrack->source.conn,
 					notification,
 					(sizeof (SaMsgQueueGroupNotificationT) *
 					 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems));
 			} else {
-				openais_conn_send_response (
+				api->ipc_conn_send_response (
 					req_exec_msg_queuegrouptrack->source.conn,
 					&res_lib_msg_queuegrouptrack,
 					sizeof (struct res_lib_msg_queuegrouptrack));
@@ -1507,19 +1545,19 @@ error_exit:
 					(sizeof (SaMsgQueueGroupNotificationT) *
 					 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems);
 
-				openais_conn_send_response (
-					openais_conn_partner_get (req_exec_msg_queuegrouptrack->source.conn),
+				api->ipc_conn_send_response (
+					api->ipc_conn_partner_get (req_exec_msg_queuegrouptrack->source.conn),
 					&res_lib_msg_queuegrouptrack,
 					sizeof (struct res_lib_msg_queuegrouptrack));
 
-				openais_conn_send_response (
-					openais_conn_partner_get (req_exec_msg_queuegrouptrack->source.conn),
+				api->ipc_conn_send_response (
+					api->ipc_conn_partner_get (req_exec_msg_queuegrouptrack->source.conn),
 					notification,
 					(sizeof (SaMsgQueueGroupNotificationT) *
 					 res_lib_msg_queuegrouptrack.notificationBuffer.numberOfItems));
 			}
 		} else {
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_msg_queuegrouptrack->source.conn,
 				&res_lib_msg_queuegrouptrack,
 				sizeof (struct res_lib_msg_queuegrouptrack));
@@ -1553,14 +1591,14 @@ static void message_handler_req_exec_msg_queuegrouptrackstop (
 	queue_group->track_flags = 0;
 
 error_exit:
-	if (message_source_is_local(&req_exec_msg_queuegrouptrackstop->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_queuegrouptrackstop->source)) {
 		res_lib_msg_queuegrouptrackstop.header.size =
 			sizeof (struct res_lib_msg_queuegrouptrackstop);
 		res_lib_msg_queuegrouptrackstop.header.id =
 			MESSAGE_RES_MSG_QUEUEGROUPTRACKSTOP;
 		res_lib_msg_queuegrouptrackstop.header.error = error;
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_queuegrouptrackstop->source.conn,
 			&res_lib_msg_queuegrouptrackstop,
 			sizeof (struct res_lib_msg_queuegrouptrackstop));
@@ -1616,7 +1654,7 @@ static void message_handler_req_exec_msg_messagesend (
 
 error_exit:
 
-	if (message_source_is_local(&req_exec_msg_messagesend->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_messagesend->source)) {
 		if (req_exec_msg_messagesend->async_call) {
 			res_lib_msg_messagesendasync.header.size =
 				sizeof (struct res_lib_msg_messagesendasync);
@@ -1630,13 +1668,13 @@ error_exit:
 				&req_exec_msg_messagesend->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_msg_messagesend->source.conn,
 				&res_lib_msg_messagesendasync,
 				sizeof (struct res_lib_msg_messagesendasync));
 
-			openais_conn_send_response (
-				openais_conn_partner_get (req_exec_msg_messagesend->source.conn),
+			api->ipc_conn_send_response (
+				api->ipc_conn_partner_get (req_exec_msg_messagesend->source.conn),
 				&res_lib_msg_messagesendasync,
 				sizeof (struct res_lib_msg_messagesendasync));
 		} else {
@@ -1650,7 +1688,7 @@ error_exit:
 				&req_exec_msg_messagesend->source,
 				sizeof (mar_message_source_t));
 
-			openais_conn_send_response (
+			api->ipc_conn_send_response (
 				req_exec_msg_messagesend->source.conn,
 				&res_lib_msg_messagesend,
 				sizeof (struct res_lib_msg_messagesend));
@@ -1693,7 +1731,7 @@ static void message_handler_req_exec_msg_messageget (
 
 error_exit:
 
-	if (message_source_is_local(&req_exec_msg_messageget->source)) {
+	if (api->ipc_source_is_local(&req_exec_msg_messageget->source)) {
 		res_lib_msg_messageget.header.size =
 			sizeof (struct res_lib_msg_messageget);
 		res_lib_msg_messageget.header.id =
@@ -1706,12 +1744,12 @@ error_exit:
 			&req_exec_msg_messageget->source,
 			sizeof (mar_message_source_t));
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_messageget->source.conn,
 			&res_lib_msg_messageget,
 			sizeof (struct res_lib_msg_messageget));
 
-		openais_conn_send_response (
+		api->ipc_conn_send_response (
 			req_exec_msg_messageget->source.conn,
 			res_lib_msg_messageget.message.data,
 			res_lib_msg_messageget.message.size);
@@ -1768,7 +1806,7 @@ static void message_handler_req_lib_msg_queueopen (
 	req_exec_msg_queueopen.header.id = 
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEOPEN);
 
-	message_source_set (&req_exec_msg_queueopen.source, conn);
+	api->ipc_source_set (&req_exec_msg_queueopen.source, conn);
 
 	memcpy (&req_exec_msg_queueopen.queue_name,
 		&req_lib_msg_queueopen->queueName, sizeof (SaNameT));
@@ -1786,8 +1824,8 @@ static void message_handler_req_lib_msg_queueopen (
 	iovec.iov_base = (char *)&req_exec_msg_queueopen;
 	iovec.iov_len = sizeof (req_exec_msg_queueopen);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queueopenasync (
@@ -1807,7 +1845,7 @@ static void message_handler_req_lib_msg_queueopenasync (
 	req_exec_msg_queueopen.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEOPEN);
 
-	message_source_set (&req_exec_msg_queueopen.source, conn);
+	api->ipc_source_set (&req_exec_msg_queueopen.source, conn);
 
 	memcpy (&req_exec_msg_queueopen.queue_name,
 		&req_lib_msg_queueopen->queueName, sizeof (SaNameT));
@@ -1825,8 +1863,8 @@ static void message_handler_req_lib_msg_queueopenasync (
 	iovec.iov_base = (char *)&req_exec_msg_queueopen;
 	iovec.iov_len = sizeof (req_exec_msg_queueopen);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queueclose (
@@ -1846,7 +1884,7 @@ static void message_handler_req_lib_msg_queueclose (
 	req_exec_msg_queueclose.header.id = 
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUECLOSE);
 
-	message_source_set (&req_exec_msg_queueclose.source, conn);
+	api->ipc_source_set (&req_exec_msg_queueclose.source, conn);
 
 	memcpy (&req_exec_msg_queueclose.queue_name,
 		&req_lib_msg_queueclose->queueName, sizeof (SaNameT));
@@ -1854,8 +1892,8 @@ static void message_handler_req_lib_msg_queueclose (
 	iovec.iov_base = (char *)&req_exec_msg_queueclose;
 	iovec.iov_len = sizeof (req_exec_msg_queueclose);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuestatusget (
@@ -1875,7 +1913,7 @@ static void message_handler_req_lib_msg_queuestatusget (
 	req_exec_msg_queuestatusget.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUESTATUSGET);
 
-	message_source_set (&req_exec_msg_queuestatusget.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuestatusget.source, conn);
 
 	memcpy (&req_exec_msg_queuestatusget.queue_name,
 		&req_lib_msg_queuestatusget->queueName, sizeof (SaNameT));
@@ -1883,8 +1921,8 @@ static void message_handler_req_lib_msg_queuestatusget (
 	iovec.iov_base = (char *)&req_exec_msg_queuestatusget;
 	iovec.iov_len = sizeof (req_exec_msg_queuestatusget);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queueunlink (
@@ -1904,7 +1942,7 @@ static void message_handler_req_lib_msg_queueunlink (
 	req_exec_msg_queueunlink.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEUNLINK);
 
-	message_source_set (&req_exec_msg_queueunlink.source, conn);
+	api->ipc_source_set (&req_exec_msg_queueunlink.source, conn);
 
 	memcpy (&req_exec_msg_queueunlink.queue_name,
 		&req_lib_msg_queueunlink->queueName, sizeof (SaNameT));
@@ -1912,8 +1950,8 @@ static void message_handler_req_lib_msg_queueunlink (
 	iovec.iov_base = (char *)&req_exec_msg_queueunlink;
 	iovec.iov_len = sizeof (req_exec_msg_queueunlink);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegroupcreate (
@@ -1933,7 +1971,7 @@ static void message_handler_req_lib_msg_queuegroupcreate (
 	req_exec_msg_queuegroupcreate.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEGROUPCREATE);
 
-	message_source_set (&req_exec_msg_queuegroupcreate.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegroupcreate.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupcreate.queue_group_name,
 		&req_lib_msg_queuegroupcreate->queueGroupName, sizeof (SaNameT));
@@ -1944,8 +1982,8 @@ static void message_handler_req_lib_msg_queuegroupcreate (
 	iovec.iov_base = (char *)&req_exec_msg_queuegroupcreate;
 	iovec.iov_len = sizeof (req_exec_msg_queuegroupcreate);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegroupinsert (
@@ -1965,7 +2003,7 @@ static void message_handler_req_lib_msg_queuegroupinsert (
 	req_exec_msg_queuegroupinsert.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_QUEUEGROUPINSERT);
 
-	message_source_set (&req_exec_msg_queuegroupinsert.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegroupinsert.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupinsert.queue_name,
 		&req_lib_msg_queuegroupinsert->queueName, sizeof (SaNameT));
@@ -1975,8 +2013,8 @@ static void message_handler_req_lib_msg_queuegroupinsert (
 	iovec.iov_base = (char *)&req_exec_msg_queuegroupinsert;
 	iovec.iov_len = sizeof (req_exec_msg_queuegroupinsert);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegroupremove (
@@ -1996,7 +2034,7 @@ static void message_handler_req_lib_msg_queuegroupremove (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupRemove %s\n",
 		getSaNameT (&req_lib_msg_queuegroupremove->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegroupremove.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegroupremove.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupremove.queue_name,
 		&req_lib_msg_queuegroupremove->queueName, sizeof (SaNameT));
@@ -2006,8 +2044,8 @@ static void message_handler_req_lib_msg_queuegroupremove (
 	iovec.iov_base = (char *)&req_exec_msg_queuegroupremove;
 	iovec.iov_len = sizeof (req_exec_msg_queuegroupremove);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegroupdelete (
@@ -2027,7 +2065,7 @@ static void message_handler_req_lib_msg_queuegroupdelete (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupDelete %s\n",
 		getSaNameT (&req_lib_msg_queuegroupdelete->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegroupdelete.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegroupdelete.source, conn);
 
 	memcpy (&req_exec_msg_queuegroupdelete.queue_group_name,
 		&req_lib_msg_queuegroupdelete->queueGroupName, sizeof (SaNameT));
@@ -2035,8 +2073,8 @@ static void message_handler_req_lib_msg_queuegroupdelete (
 	iovec.iov_base = (char *)&req_exec_msg_queuegroupdelete;
 	iovec.iov_len = sizeof (req_exec_msg_queuegroupdelete);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegrouptrack (
@@ -2056,7 +2094,7 @@ static void message_handler_req_lib_msg_queuegrouptrack (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupTrack %s\n",
 		getSaNameT (&req_lib_msg_queuegrouptrack->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegrouptrack.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegrouptrack.source, conn);
 
 	memcpy (&req_exec_msg_queuegrouptrack.queue_group_name,
 		&req_lib_msg_queuegrouptrack->queueGroupName, sizeof (SaNameT));
@@ -2069,8 +2107,8 @@ static void message_handler_req_lib_msg_queuegrouptrack (
 	iovec.iov_base = (char *)&req_exec_msg_queuegrouptrack;
 	iovec.iov_len = sizeof (req_exec_msg_queuegrouptrack);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_queuegrouptrackstop (
@@ -2090,7 +2128,7 @@ static void message_handler_req_lib_msg_queuegrouptrackstop (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgQueueGroupTrackStop %s\n",
 		getSaNameT (&req_lib_msg_queuegrouptrackstop->queueGroupName));
 
-	message_source_set (&req_exec_msg_queuegrouptrackstop.source, conn);
+	api->ipc_source_set (&req_exec_msg_queuegrouptrackstop.source, conn);
 
 	memcpy (&req_exec_msg_queuegrouptrackstop.queue_group_name,
 		&req_lib_msg_queuegrouptrackstop->queueGroupName, sizeof (SaNameT));
@@ -2098,8 +2136,8 @@ static void message_handler_req_lib_msg_queuegrouptrackstop (
 	iovec.iov_base = (char *)&req_exec_msg_queuegrouptrackstop;
 	iovec.iov_len = sizeof (req_exec_msg_queuegrouptrackstop);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_messagesend (
@@ -2120,7 +2158,7 @@ static void message_handler_req_lib_msg_messagesend (
 	log_printf (LOG_LEVEL_NOTICE, "LIB request: saMsgMessageSend %s\n",
 		getSaNameT (&req_lib_msg_messagesend->destination));
 
-	message_source_set (&req_exec_msg_messagesend.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagesend.source, conn);
 
 	memcpy (&req_exec_msg_messagesend.destination,
 		&req_lib_msg_messagesend->destination, sizeof (SaNameT));
@@ -2143,11 +2181,11 @@ static void message_handler_req_lib_msg_messagesend (
 	req_exec_msg_messagesend.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2,
-			TOTEMPG_AGREED) == 0);
+		assert (api->totem_mcast (iovecs, 2,
+			TOTEM_AGREED) == 0);
 	} else {
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 1,
-			TOTEMPG_AGREED) == 0);
+		assert (api->totem_mcast (iovecs, 1,
+			TOTEM_AGREED) == 0);
 	}
 }
 
@@ -2168,7 +2206,7 @@ static void message_handler_req_lib_msg_messagesendasync (
 	req_exec_msg_messagesend.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGESEND);
 
-	message_source_set (&req_exec_msg_messagesend.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagesend.source, conn);
 
 	memcpy (&req_exec_msg_messagesend.destination,
 		&req_lib_msg_messagesend->destination, sizeof (SaNameT));
@@ -2191,11 +2229,11 @@ static void message_handler_req_lib_msg_messagesendasync (
 	req_exec_msg_messagesend.header.size += iovecs[1].iov_len;
 
 	if (iovecs[1].iov_len > 0) {
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2,
-			TOTEMPG_AGREED) == 0);
+		assert (api->totem_mcast (iovecs, 2,
+			TOTEM_AGREED) == 0);
 	} else {
-		assert (totempg_groups_mcast_joined (openais_group_handle, iovecs, 2,
-			TOTEMPG_AGREED) == 0);
+		assert (api->totem_mcast (iovecs, 2,
+			TOTEM_AGREED) == 0);
 	}
 }
 
@@ -2216,7 +2254,7 @@ static void message_handler_req_lib_msg_messageget (
 	req_exec_msg_messageget.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEGET);
 
-	message_source_set (&req_exec_msg_messageget.source, conn);
+	api->ipc_source_set (&req_exec_msg_messageget.source, conn);
 
 	memcpy (&req_exec_msg_messageget.queue_name,
 		&req_lib_msg_messageget->queueName, sizeof (SaNameT));
@@ -2224,8 +2262,8 @@ static void message_handler_req_lib_msg_messageget (
 	iovec.iov_base = (char *)&req_exec_msg_messageget;
 	iovec.iov_len = sizeof (req_exec_msg_messageget);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_messagecancel (
@@ -2245,7 +2283,7 @@ static void message_handler_req_lib_msg_messagecancel (
 	req_exec_msg_messagecancel.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGECANCEL);
 
-	message_source_set (&req_exec_msg_messagecancel.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagecancel.source, conn);
 
 	memcpy (&req_exec_msg_messagecancel.queue_name,
 		&req_lib_msg_messagecancel->queueName, sizeof (SaNameT));
@@ -2253,8 +2291,8 @@ static void message_handler_req_lib_msg_messagecancel (
 	iovec.iov_base = (char *)&req_exec_msg_messagecancel;
 	iovec.iov_len = sizeof (req_exec_msg_messagecancel);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_messagesendreceive (
@@ -2274,7 +2312,7 @@ static void message_handler_req_lib_msg_messagesendreceive (
 	req_exec_msg_messagesendreceive.header.id =
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGESENDRECEIVE);
 
-	message_source_set (&req_exec_msg_messagesendreceive.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagesendreceive.source, conn);
 
 	memcpy (&req_exec_msg_messagesendreceive.queue_name,
 		&req_lib_msg_messagesendreceive->queueName, sizeof (SaNameT));
@@ -2282,8 +2320,8 @@ static void message_handler_req_lib_msg_messagesendreceive (
 	iovec.iov_base = (char *)&req_exec_msg_messagesendreceive;
 	iovec.iov_len = sizeof (req_exec_msg_messagesendreceive);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_messagereply (
@@ -2304,7 +2342,7 @@ static void message_handler_req_lib_msg_messagereply (
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEREPLY);
 	req_exec_msg_messagereply.async_call = 0;
 
-	message_source_set (&req_exec_msg_messagereply.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagereply.source, conn);
 
 	memcpy (&req_exec_msg_messagereply.queue_name,
 		&req_lib_msg_messagereply->queueName, sizeof (SaNameT));
@@ -2312,8 +2350,8 @@ static void message_handler_req_lib_msg_messagereply (
 	iovec.iov_base = (char *)&req_exec_msg_messagereply;
 	iovec.iov_len = sizeof (req_exec_msg_messagereply);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1,
+		TOTEM_AGREED) == 0);
 }
 
 static void message_handler_req_lib_msg_messagereplyasync (
@@ -2334,7 +2372,7 @@ static void message_handler_req_lib_msg_messagereplyasync (
 		SERVICE_ID_MAKE (MSG_SERVICE, MESSAGE_REQ_EXEC_MSG_MESSAGEREPLY);
 	req_exec_msg_messagereply.async_call = 1;
 
-	message_source_set (&req_exec_msg_messagereply.source, conn);
+	api->ipc_source_set (&req_exec_msg_messagereply.source, conn);
 
 	memcpy (&req_exec_msg_messagereply.queue_name,
 		&req_lib_msg_messagereply->queueName, sizeof (SaNameT));
@@ -2342,6 +2380,5 @@ static void message_handler_req_lib_msg_messagereplyasync (
 	iovec.iov_base = (char *)&req_exec_msg_messagereply;
 	iovec.iov_len = sizeof (req_exec_msg_messagereply);
 
-	assert (totempg_groups_mcast_joined (openais_group_handle, &iovec, 1,
-		TOTEMPG_AGREED) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_AGREED) == 0);
 }

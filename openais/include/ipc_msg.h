@@ -37,7 +37,7 @@
 #include "saAis.h"
 #include "saMsg.h"
 
-#include "ipc_gen.h"
+#include <corosync/ipc_gen.h>
 
 enum req_lib_msg_queue_types {
 	MESSAGE_REQ_MSG_QUEUEOPEN = 0,

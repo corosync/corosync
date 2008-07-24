@@ -35,9 +35,9 @@
 #ifndef AIS_MAR_CKPT_H_DEFINED
 #define AIS_MAR_CKPT_H_DEFINED
 
+#include <corosync/mar_gen.h>
 #include "saAis.h"
 #include "saCkpt.h"
-#include "mar_gen.h"
 
 typedef mar_uint64_t mar_ckpt_checkpoint_handle_t;
 

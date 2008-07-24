@@ -35,9 +35,9 @@
 #define IPC_CLM_H_DEFINED
 
 #include <netinet/in.h>
+#include <corosync/ipc_gen.h>
 #include "saAis.h"
 #include "saClm.h"
-#include "ipc_gen.h"
 #include "mar_clm.h"
 
 enum req_clm_types {
