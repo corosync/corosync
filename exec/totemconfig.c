@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,16 +46,14 @@
 #include <arpa/inet.h>
 #include <sys/param.h>
 
-#include "../include/list.h"
+#include "swab.h"
+#include "list.h"
 #include "util.h"
 #include "totem.h"
 #include "totemconfig.h"
 #include "logsys.h"
 #include "objdb.h"
-
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
-	#define HZ 100  /* 10ms */
-#endif
+#include "tlist.h" /* for HZ */
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
@@ -79,19 +77,22 @@ static char error_string_response[512];
 
 /* These just makes the code below a little neater */
 static inline int objdb_get_string (
-	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	struct objdb_iface_ver0 *objdb,
+	unsigned int object_service_handle,
 	char *key, char **value)
 {
 	int res;
 
 	*value = NULL;
 	if ( !(res = objdb->object_key_get (object_service_handle,
-					    key,
-					    strlen (key),
-					    (void *)value,
-					    NULL))) {
-		if (*value)
+		key,
+		strlen (key),
+		(void *)value,
+		NULL))) {
+
+		if (*value) {
 			return 0;
+		}
 	}
 	return -1;
 }
@@ -103,16 +104,62 @@ static inline void objdb_get_int (
 	char *value = NULL;
 
 	if (!objdb->object_key_get (object_service_handle,
-				    key,
-				    strlen (key),
-				    (void *)&value,
-				    NULL)) {
+		key,
+		strlen (key),
+		(void *)&value,
+		NULL)) {
+
 		if (value) {
 			*intvalue = atoi(value);
 		}
 	}
 }
 
+static unsigned int totem_handle_find (
+	struct objdb_iface_ver0 *objdb,
+	unsigned int *totem_find_handle)  {
+
+	unsigned int object_find_handle;
+	unsigned int res;
+
+	/*
+	 * Find a network section
+	 */
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"network",
+		strlen ("network"),
+		&object_find_handle);
+
+	res = objdb->object_find_next (
+		object_find_handle,
+		totem_find_handle);
+
+	objdb->object_find_destroy (object_find_handle);
+
+	/*
+	 * Network section not found in configuration, checking for totem
+	 */
+	if (res == -1) {
+		objdb->object_find_create (
+			OBJECT_PARENT_HANDLE,
+			"totem",
+			strlen ("totem"),
+			&object_find_handle);
+
+		res = objdb->object_find_next (
+			object_find_handle,
+			totem_find_handle);
+
+		objdb->object_find_destroy (object_find_handle);
+	}
+
+	if (res == -1) {
+		return (-1);
+	}
+
+	return (0);
+}
 
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
@@ -124,6 +171,13 @@ extern int totem_config_read (
 	unsigned int object_interface_handle;
 	char *str;
 	unsigned int ringnumber = 0;
+	unsigned int object_find_interface_handle;
+
+	res = totem_handle_find (objdb, &object_totem_handle);
+	if (res == -1) {
+printf ("couldn't find totem handle\n");
+		return (-1);
+	}
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -139,87 +193,78 @@ extern int totem_config_read (
 
 	strcpy (totem_config->rrp_mode, "none");
 
-	objdb->object_find_reset (OBJECT_PARENT_HANDLE);
-
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "network",
-		    strlen ("network"),
-		    &object_totem_handle) == 0 ||
-	    objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "totem",
-		    strlen ("totem"),
-		    &object_totem_handle) == 0) {
-
-		if (!objdb_get_string (objdb,object_totem_handle, "version", &str)) {
-			if (strcmp (str, "2") == 0) {
-				totem_config->version = 2;
-			}
+	if (!objdb_get_string (objdb, object_totem_handle, "version", &str)) {
+		if (strcmp (str, "2") == 0) {
+			totem_config->version = 2;
 		}
-		if (!objdb_get_string (objdb,object_totem_handle, "secauth", &str)) {
-			if (strcmp (str, "on") == 0) {
-				totem_config->secauth = 1;
-			}
-			if (strcmp (str, "off") == 0) {
-				totem_config->secauth = 0;
-			}
-		}
-		if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
-			strcpy (totem_config->rrp_mode, str);
-		}
-
-		/*
-		 * Get interface node id
-		 */
-		objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
-
-		objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
-
-
-		objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
-
-		objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
-
-		objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
-		objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
-
-		objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
-
-		objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
-
-		objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
-
-		objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
-
-		objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
-
-		objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
-		objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
-
-		objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
 	}
-	while (objdb->object_find (
-		    object_totem_handle,
-		    "interface",
-		    strlen ("interface"),
-		    &object_interface_handle) == 0) {
+	if (!objdb_get_string (objdb, object_totem_handle, "secauth", &str)) {
+		if (strcmp (str, "on") == 0) {
+			totem_config->secauth = 1;
+		}
+		if (strcmp (str, "off") == 0) {
+			totem_config->secauth = 0;
+		}
+	}
+	if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
+		strcpy (totem_config->rrp_mode, str);
+	}
+
+	/*
+	 * Get interface node id
+	 */
+	objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
+
+	objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
+
+
+	objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
+
+	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
+
+	objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
+	objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
+
+	objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
+
+	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
+
+	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
+
+	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
+	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
+
+	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+
+	objdb->object_find_create (
+		object_totem_handle,
+		"interface",
+		strlen ("interface"),
+		&object_find_interface_handle);
+
+	while (objdb->object_find_next (
+		object_find_interface_handle,
+		&object_interface_handle) == 0) {
 
 		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
 
@@ -234,7 +279,7 @@ extern int totem_config_read (
 		 * Get mcast port
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastport", &str)) {
-			totem_config->interfaces[ringnumber].ip_port = htons (atoi (str));
+			totem_config->interfaces[ringnumber].ip_port = atoi (str);
 		}
 
 		/*
@@ -248,9 +293,9 @@ extern int totem_config_read (
 		totem_config->interface_count++;
 	}
 
-	return 0;
+	objdb->object_find_destroy (object_find_interface_handle);
 
-	return (-1);
+	return 0;
 }
 
 int totem_config_validate (
@@ -555,7 +600,7 @@ int totem_config_keyread (
 {
 	int got_key = 0;
 	char *key_location = NULL;
-	unsigned int object_service_handle;
+	unsigned int object_totem_handle;
 	int res;
 
 	memset (totem_config->private_key, 0, 128);
@@ -565,38 +610,31 @@ int totem_config_keyread (
 		return (0);
 	}
 
-	if (objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "network",
-		    strlen ("network"),
-		    &object_service_handle) == 0 ||
-	    objdb->object_find (
-		    OBJECT_PARENT_HANDLE,
-		    "totem",
-		    strlen ("totem"),
-		    &object_service_handle) == 0) {
-
-		/* objdb may store the location of the key file */
-		if (!objdb_get_string (objdb,object_service_handle, "keyfile", &key_location)
-		    && key_location) {
-			res = read_keyfile(key_location, totem_config, error_string);
-			if (res)
-				goto key_error;
-			got_key = 1;
+	res = totem_handle_find (objdb, &object_totem_handle);
+	if (res == -1) {
+		return (-1);
+	}
+	/* objdb may store the location of the key file */
+	if (!objdb_get_string (objdb,object_totem_handle, "keyfile", &key_location)
+	    && key_location) {
+		res = read_keyfile(key_location, totem_config, error_string);
+		if (res)  {
+			goto key_error;
 		}
-		else { /* Or the key itself may be in the objdb */
-			char *key = NULL;
-			int key_len;
-			res = objdb->object_key_get (object_service_handle,
-						     "key",
-						     strlen ("key"),
-						     (void *)&key,
-						     &key_len);
-			if (res == 0 && key) {
-				memcpy(totem_config->private_key, key, key_len);
-				totem_config->private_key_len = key_len;
-				got_key = 1;
-			}
+		got_key = 1;
+	} else { /* Or the key itself may be in the objdb */
+		char *key = NULL;
+		int key_len;
+		res = objdb->object_key_get (object_totem_handle,
+			"key",
+			strlen ("key"),
+			(void *)&key,
+			&key_len);
+
+		if (res == 0 && key) {
+			memcpy(totem_config->private_key, key, key_len);
+			totem_config->private_key_len = key_len;
+			got_key = 1;
 		}
 	}
 

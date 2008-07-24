@@ -86,8 +86,9 @@ void apidef_init (struct objdb_iface_ver0 *objdb) {
 	apidef_corosync_api_v1.object_destroy = objdb->object_destroy;
 	apidef_corosync_api_v1.object_valid_set = objdb->object_valid_set;
 	apidef_corosync_api_v1.object_key_valid_set = objdb->object_key_valid_set;
-	apidef_corosync_api_v1.object_find_reset = objdb->object_find_reset;
-	apidef_corosync_api_v1.object_find = objdb->object_find;
+	apidef_corosync_api_v1.object_find_create = objdb->object_find_create;
+	apidef_corosync_api_v1.object_find_next = objdb->object_find_next;
+	apidef_corosync_api_v1.object_find_destroy = objdb->object_find_destroy;
 	apidef_corosync_api_v1.object_key_get = objdb->object_key_get;
 	apidef_corosync_api_v1.object_priv_get = objdb->object_priv_get;
 	apidef_corosync_api_v1.object_key_replace = objdb->object_key_replace;

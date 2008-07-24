@@ -52,6 +52,7 @@
 #include "../include/coroapi.h"
 #include "service.h"
 
+
 LOGSYS_DECLARE_SUBSYS ("SERV", LOG_INFO);
 
 struct default_service {
@@ -65,7 +66,6 @@ static struct default_service default_services[] = {
 		.ver			 = 0,
 	},
 	{
-
 		.name			 = "corosync_cfg",
 		.ver			 = 0,
 	},
@@ -83,22 +83,27 @@ struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static unsigned int object_internal_configuration_handle;
 
-static unsigned int default_services_requested (struct corosync_api_v1 *api)
+
+static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
 	unsigned int object_service_handle;
+	unsigned int object_find_handle;
 	char *value;
 
 	/*
 	 * Don't link default services if they have been disabled
 	 */
-	api->object_find_reset (OBJECT_PARENT_HANDLE);
-	if (api->object_find (
+	corosync_api->object_find_create (
 		OBJECT_PARENT_HANDLE,
 		"aisexec",
 		strlen ("aisexec"),
+		&object_find_handle);
+
+	if (corosync_api->object_find_next (
+		object_find_handle,
 		&object_service_handle) == 0) {
 
-		if ( ! api->object_key_get (object_service_handle,
+		if ( ! corosync_api->object_key_get (object_service_handle,
 			"defaultservices",
 			strlen ("defaultservices"),
 			(void *)&value,
@@ -109,11 +114,14 @@ static unsigned int default_services_requested (struct corosync_api_v1 *api)
 			}
 		}
 	}
-		return (-1);
+
+	corosync_api->object_find_destroy (object_find_handle);
+
+	return (-1);
 }
 
 unsigned int openais_service_link_and_init (
-	struct corosync_api_v1 *api,
+	struct corosync_api_v1 *corosync_api,
 	char *service_name,
 	unsigned int service_ver)
 {
@@ -135,7 +143,7 @@ unsigned int openais_service_link_and_init (
 		&iface_ver0_p,
 		(void *)0);
 
-	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
+	iface_ver0 = (struct openais_service_engine_iface_ver0 *)iface_ver0_p;
 
 	if (iface_ver0 == 0) {
 		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
@@ -150,40 +158,40 @@ unsigned int openais_service_link_and_init (
 
 	ais_service[service->id] = service;
 	if (service->config_init_fn) {
-		res = service->config_init_fn (api);
+		res = service->config_init_fn (corosync_api);
 	}
 
 	if (service->exec_init_fn) {
-		res = service->exec_init_fn (api);
+		res = service->exec_init_fn (corosync_api);
 	}
 
 	/*
 	 * Store service in object database
 	 */
-	api->object_create (object_internal_configuration_handle,
+	corosync_api->object_create (object_internal_configuration_handle,
 		&object_service_handle,
 		"service",
 		strlen ("service"));
 
-	api->object_key_create (object_service_handle,
+	corosync_api->object_key_create (object_service_handle,
 		"name",
 		strlen ("name"),
 		service_name,
 		strlen (service_name) + 1);
 
-	api->object_key_create (object_service_handle,
+	corosync_api->object_key_create (object_service_handle,
 		"ver",
 		strlen ("ver"),
 		&service_ver,
 		sizeof (service_ver));
 
-	res = api->object_key_create (object_service_handle,
+	res = corosync_api->object_key_create (object_service_handle,
 		"handle",
 		strlen ("handle"),
 		&handle,
 		sizeof (handle));
 
-	api->object_key_create (object_service_handle,
+	corosync_api->object_key_create (object_service_handle,
 		"service_id",
 		strlen ("service_id"),
 		&service->id,
@@ -194,7 +202,7 @@ unsigned int openais_service_link_and_init (
 }
 
 static int openais_service_unlink_common (
-	struct corosync_api_v1 *api,
+	struct corosync_api_v1 *corosync_api,
 	unsigned int object_service_handle,
 	const char *service_name,
 	unsigned int service_version) 
@@ -203,13 +211,13 @@ static int openais_service_unlink_common (
 	unsigned short *service_id;
 	unsigned int *found_service_handle;
 
-	res = api->object_key_get (object_service_handle,
+	res = corosync_api->object_key_get (object_service_handle,
 		"handle",
 		strlen ("handle"),
 		(void *)&found_service_handle,
 		NULL);
 	
-	res = api->object_key_get (object_service_handle,
+	res = corosync_api->object_key_get (object_service_handle,
 		"service_id",
 		strlen ("service_id"),
 		(void *)&service_id,
@@ -227,7 +235,7 @@ static int openais_service_unlink_common (
 }
 
 extern unsigned int openais_service_unlink_and_exit (
-	struct corosync_api_v1 *api,
+	struct corosync_api_v1 *corosync_api,
 	char *service_name,
 	unsigned int service_ver)
 {
@@ -235,20 +243,25 @@ extern unsigned int openais_service_unlink_and_exit (
 	unsigned int object_service_handle;
 	char *found_service_name;
 	unsigned int *found_service_ver;
+	unsigned int object_find_handle;
 
-	while (api->object_find (
+	corosync_api->object_find_create (
 		object_internal_configuration_handle,
 		"service",
 		strlen ("service"),
+		&object_find_handle);
+
+	while (corosync_api->object_find_next (
+		object_find_handle,
 		&object_service_handle) == 0) {
 
-		api->object_key_get (object_service_handle,
+		corosync_api->object_key_get (object_service_handle,
 			"name",
 			strlen ("name"),
 			(void *)&found_service_name,
 			NULL);
 
-		api->object_key_get (object_service_handle,
+		corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
 			(void *)&found_service_ver,
@@ -261,49 +274,76 @@ extern unsigned int openais_service_unlink_and_exit (
 			(service_ver == *found_service_ver)) {
 
 			res = openais_service_unlink_common (
-				api, object_service_handle,
+				corosync_api, object_service_handle,
 				service_name, service_ver);
 
-			api->object_destroy (object_service_handle);
+			corosync_api->object_destroy (object_service_handle);
 			return res;
 		}
 	}
+
+	corosync_api->object_find_destroy (object_find_handle);
+
 	return (-1);
 }
 
 extern unsigned int openais_service_unlink_all (
-	struct corosync_api_v1 *api)
+	struct corosync_api_v1 *corosync_api)
 {
 	char *service_name;
 	unsigned int *service_ver;
 	unsigned int object_service_handle;
+	unsigned int object_find_handle;
+	unsigned int res;
 
 	log_printf(LOG_LEVEL_NOTICE, "Unloading all openais components\n");
 	
-	api->object_find_reset (object_internal_configuration_handle);
+	res = 0;
+	/*
+	 * TODO
+	 * Deleting of keys not supported during iteration at this time
+	 * hence this ugly hack
+	 */
+	for (;;) {
+		corosync_api->object_find_create (
+			object_internal_configuration_handle,
+			"service",
+			strlen ("service"),
+			&object_find_handle);
 
-	while (api->object_find (object_internal_configuration_handle,
-		"service",
-		strlen ("service"),
-		&object_service_handle) == 0) {
-		
-		api->object_key_get (object_service_handle,
+		res = corosync_api->object_find_next (
+			object_find_handle,
+			&object_service_handle);
+
+		/*
+		 * Exit from unloading
+		 */
+		if (res == -1) {
+			break;
+		}
+			
+		corosync_api->object_key_get (
+			object_service_handle,
 			"name",
 			strlen ("name"),
 			(void *)&service_name,
 			NULL);
 
-		api->object_key_get (object_service_handle,
+		corosync_api->object_key_get (
+			object_service_handle,
 			"ver",
 			strlen ("ver"),
 			(void *)&service_ver,
 			NULL);
-				
+					
 		openais_service_unlink_common (
-			api, object_service_handle, service_name, *service_ver);
+			corosync_api, object_service_handle,
+			service_name, *service_ver);
 
-		api->object_destroy (object_service_handle);
-		api->object_find_reset (object_internal_configuration_handle);
+		corosync_api->object_destroy (object_service_handle);
+
+		corosync_api->object_find_destroy (object_find_handle);
+
 	}
 
 	return (0);
@@ -312,7 +352,7 @@ extern unsigned int openais_service_unlink_all (
 /*
  * Links default services into the executive
  */
-unsigned int openais_service_defaults_link_and_init (struct corosync_api_v1 *api)
+unsigned int openais_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
 {
 	unsigned int i;
 
@@ -320,27 +360,30 @@ unsigned int openais_service_defaults_link_and_init (struct corosync_api_v1 *api
 	char *found_service_name;
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
+	unsigned int object_find_handle;
  
-	api->object_create (OBJECT_PARENT_HANDLE,
+	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,
 		"internal_configuration",
 		strlen ("internal_configuration"));
 
-	api->object_find_reset (OBJECT_PARENT_HANDLE);
-
-	while (api->object_find (
+	corosync_api->object_find_create (
 		OBJECT_PARENT_HANDLE,
 		"service",
 		strlen ("service"),
+		&object_find_handle);
+
+	while (corosync_api->object_find_next (
+		object_find_handle,
 		&object_service_handle) == 0) {
 
-		api->object_key_get (object_service_handle,
+		corosync_api->object_key_get (object_service_handle,
 			"name",
 			strlen ("name"),
 			(void *)&found_service_name,
 			NULL);
 
-		api->object_key_get (object_service_handle,
+		corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
 			(void *)&found_service_ver,
@@ -349,19 +392,22 @@ unsigned int openais_service_defaults_link_and_init (struct corosync_api_v1 *api
 		found_service_ver_atoi = atoi (found_service_ver);
 
 		openais_service_link_and_init (
-			api,
+			corosync_api,
 			found_service_name,
 			found_service_ver_atoi);
 	}
 
- 	if (default_services_requested (api) == 0) {
+	corosync_api->object_find_destroy (object_find_handle);
+
+ 	if (default_services_requested (corosync_api) == 0) {
  		return (0);
  	}
+
 	for (i = 0;
 		i < sizeof (default_services) / sizeof (struct default_service); i++) {
 
 		openais_service_link_and_init (
-			api,
+			corosync_api,
 			default_services[i].name,
 			default_services[i].ver);
 	}
