@@ -42,6 +42,7 @@ typedef void * corosync_timer_handle_t;
 
 #define PROCESSOR_COUNT_MAX 384
 #define INTERFACE_MAX 2
+#define MESSAGE_SIZE_MAX        1024*1024 /* (1MB) */
 
 #define TOTEM_AGREED	0
 #define TOTEM_SAFE	1
