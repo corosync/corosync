@@ -48,7 +48,7 @@
 #include <saAis.h>
 #include <saMsg.h>
 
-#include <corosync/engine/list.h>
+#include <corosync/list.h>
 #include <corosync/ipc_gen.h>
 
 #include "../include/ipc_msg.h"

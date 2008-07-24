@@ -49,7 +49,7 @@
 #include "../include/saAis.h"
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
-#include <corosync/engine/list.h>
+#include <corosync/list.h>
 #include "../include/saCkpt.h"
 #include "../include/ipc_ckpt.h"
 #include "../include/mar_ckpt.h"

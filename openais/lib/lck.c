@@ -46,7 +46,7 @@
 #include <sys/un.h>
 
 #include <saAis.h>
-#include <corosync/engine/list.h>
+#include <corosync/list.h>
 #include <saLck.h>
 #include <corosync/ipc_gen.h>
 #include "../include/ipc_lck.h"
