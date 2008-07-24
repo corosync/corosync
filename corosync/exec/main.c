@@ -67,7 +67,6 @@
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
-#include "service.h"
 #include "sync.h"
 #include "swab.h"
 #include "objdb.h"
@@ -79,8 +78,10 @@
 #include "logsys.h"
 #include "util.h"
 #include "flow.h"
-#include "version.h"
 #include "coroapi.h"
+#include "apidef.h"
+#include "service.h"
+#include "version.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_BUFFER_BEFORE_CONFIG,
@@ -109,6 +110,8 @@ static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
 
 static struct objdb_iface_ver0 *objdb = NULL;
 
+static struct corosync_api_v1 *api = NULL;
+
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 static void sigusr2_handler (int num)
@@ -124,8 +127,8 @@ static void sigusr2_handler (int num)
 
 static void *aisexec_exit (void *arg)
 {
-	if(objdb) {
-		openais_service_unlink_all (objdb);
+	if (api) {
+		openais_service_unlink_all (api);
 	}
 
 #ifdef DEBUG_MEMPOOL
@@ -559,6 +562,12 @@ int main (int argc, char **argv)
 
 	objdb->objdb_init ();
 
+	/*
+	 * Initialize the corosync_api_v1 definition
+	 */
+	apidef_init (objdb);
+	api = apidef_get ();
+
 	num_config_modules = 0;
 
 	/*
@@ -689,7 +698,7 @@ int main (int argc, char **argv)
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	res = openais_service_defaults_link_and_init (objdb);
+	res = openais_service_defaults_link_and_init (api);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not initialize default services\n");
 		openais_exit_error (AIS_DONE_INIT_SERVICES);

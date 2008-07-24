@@ -124,7 +124,7 @@ static void cpg_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb, struct corosync_api_v1 *);
+static int cpg_exec_init_fn (struct corosync_api_v1 *);
 
 static int cpg_lib_init_fn (void *conn);
 
@@ -465,7 +465,7 @@ static void remove_group(struct group_info *gi)
 }
 
 
-static int cpg_exec_init_fn (struct objdb_iface_ver0 *objdb, struct corosync_api_v1 *corosync_api)
+static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 	int i;
 
