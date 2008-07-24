@@ -202,11 +202,11 @@ int totemip_localhost_check(struct totem_ip_address *addr)
 	return totemip_equal(addr, &localhost);
 }
 
-const char *totemip_print(struct totem_ip_address *addr)
+char *totemip_print(struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];
 
-	return inet_ntop(addr->family, addr->addr, buf, sizeof(buf));
+	return ((char *)inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
 }
 
 /* Make a totem_ip_address into a usable sockaddr_storage */

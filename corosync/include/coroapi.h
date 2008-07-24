@@ -287,6 +287,8 @@ struct corosync_api_v1 {
 	 */
 	int (*totem_nodeid_get) (void);
 
+	int (*totem_family_get) (void);
+
 	int (*totem_ring_reenable) (void);
 
 	int (*totem_mcast) (struct iovec *iovec, int iov_len, unsigned int gaurantee);
@@ -348,7 +350,7 @@ struct corosync_service_engine {
 	unsigned int private_data_size;
 	enum corosync_lib_flow_control flow_control;
 	int (*exec_init_fn) (struct corosync_api_v1 *);
-	int (*exec_exit_fn) (struct corosync_api_v1 *);
+	int (*exec_exit_fn) (void);
 	void (*exec_dump_fn) (void);
 	int (*lib_init_fn) (void *conn);
 	int (*lib_exit_fn) (void *conn);

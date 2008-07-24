@@ -67,7 +67,7 @@ extern void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address
 extern void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
 int totemip_localhost(int family, struct totem_ip_address *localhost);
 extern int totemip_localhost_check(struct totem_ip_address *addr);
-extern const char *totemip_print(struct totem_ip_address *addr);
+extern char *totemip_print(struct totem_ip_address *addr);
 extern int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr);
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);

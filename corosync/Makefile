@@ -1,5 +1,5 @@
 # Copyright (c) 2002-2006 MontaVista Software, Inc.
-# Copyright (c) 2006 Red Hat, Inc.
+# Copyright (c) 2006-2008 Red Hat, Inc.
 # 
 # All rights reserved.
 # 
@@ -43,7 +43,7 @@ SBINDIR=$(PREFIX)/sbin
 INCLUDEDIR=$(PREFIX)/include/corosync
 INCLUDEDIR_TOTEM=$(PREFIX)/include/corosync/totem
 INCLUDEDIR_LCR=$(PREFIX)/include/corosync/lcr
-INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/service
+INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/engine
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
 ARCH=$(shell uname -p)
