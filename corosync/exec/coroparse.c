@@ -191,7 +191,7 @@ struct config_iface_ver0 aisparser_iface_ver0 = {
 
 struct lcr_iface openais_aisparser_ver0[1] = {
 	{
-		.name				= "aisparser",
+		.name				= "corosync_parser",
 		.version			= 0,
 		.versions_replace		= 0,
 		.versions_replace_count		= 0,
