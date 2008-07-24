@@ -50,11 +50,11 @@
 #include <corosync/ipc_gen.h>
 #include <corosync/mar_gen.h>
 #include <corosync/engine/swab.h>
-#include <corosync/engine/list.h>
+#include <corosync/list.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/saAis.h>
 #include <corosync/lcr/lcr_comp.h>
+#include "../include/saAis.h"
 #include "../include/saMsg.h"
 #include "../include/ipc_msg.h"
 
