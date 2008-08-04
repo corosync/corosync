@@ -1,6 +1,7 @@
-# Copyright (c) 2002-2004 MontaVista Software, Inc.
-# Copyright (c) 2006-2008 Red Hat, Inc.
+# Copyright (c) 2008 Allied Telesis Labs NZ.
 # 
+# Author: Angus Salkeld
+#
 # All rights reserved.
 # 
 # This software licensed under BSD license, the text of which follows:
@@ -31,62 +32,36 @@
 
 # Include configuration
 #
-include ../Makefile.inc
+srcdir ?= $(CURDIR)/../
+subdir ?= apps/
+
+include $(srcdir)Makefile.inc
 
 ifeq (${OPENAIS_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
-LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench testcpg testcpg2 cpgbench testconfdb
-
-override CFLAGS += -I../include
-override LDFLAGS += -L../lib
-
+LIBS = ../lib/libconfdb.a ../lib/libcfg.a
+BINARIES=corosync-objctl corosync-cfgtool keygen
+APPS_SRC=$(addsuffix .c,$(BINARIES))
 EXTRA_CFLAGS = -I$(srcdir)include
-TEST_SRC = sa_error.c logsys_s1.c logsys_s2.c logsys_s.c logsys_t1.c logsys_t2.c
 
 all: $(BINARIES)
 
-testtimer: testtimer.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testtimer testtimer.o ../exec/timer.o
+corosync-objctl: corosync-objctl.o $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
-testevs: testevs.o $(LIBS)
-	$(CC) $(LDFLAGS) -o testevs testevs.o $(LIBS)
+corosync-cfgtool: corosync-cfgtool.o $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
-testevsth: testevsth.o $(LIBS)
-	$(CC) $(LDFLAGS) -o testevsth testevsth.o $(LIBS)
-
-evsbench: evsbench.o $(LIBS)
-	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
-
-testcpg: testcpg.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
-
-testcpg2: testcpg2.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testcpg2 testcpg2.o $(LIBS)
-
-cpgbench: cpgbench.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o cpgbench cpgbench.o $(LIBS)
-
-testconfdb: testconfdb.o $(LIBRARIES)
-	$(CC) $(LDFLAGS) -o testconfdb testconfdb.o $(LIBS) -rdynamic
-
-logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
-	$(CC) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a $(LDFLAGS)
-
-logsys_t1: logsys_t1.o ../exec/liblogsys.a
-	$(CC) -o logsys_t1 logsys_t1.o ../exec/liblogsys.a $(LDFLAGS)
-
-logsys_t2: logsys_t2.o ../exec/liblogsys.a
-	$(CC) -o logsys_t2 logsys_t2.o ../exec/liblogsys.a $(LDFLAGS)
+keygen: keygen.o
+	$(CC) $(LDFLAGS) -o $@ $<
 
 clean:
-	rm -f *.o $(LIBRARIES) $(BINARIES)
+	rm -f *.o $(BINARIES)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 
 depend:
-	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(TEST_SRC) > /dev/null 2>&1
+	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(APPS_SRC) > /dev/null 2>&1

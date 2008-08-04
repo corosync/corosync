@@ -75,10 +75,10 @@ override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
 	../lcr/lcr_ifact.o corosync \
-	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso keygen
+	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
-all: libtotem_pg.a liblogsys.a corosync keygen
+all: libtotem_pg.a liblogsys.a corosync
 endif
 
 
@@ -131,15 +131,9 @@ liblogsys.so.2.0.0: $(LIBLOGSYS_OBJS)
 
 endif
 
-keygen: keygen.o
-	$(CC) $(LDFLAGS) keygen.o -o keygen
-
-openais-instantiate: openais-instantiate.o
-	$(CC) $(LDFLAGS) openais-instantiate.o -o openais-instantiate
-
 clean:
 	rm -f corosync $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out 
-	rm -f keygen keygen.o openais-instantiate *.da *.bb *.bbg liblogsys.so* liblogsys.a
+	rm -f *.da *.bb *.bbg liblogsys.so* liblogsys.a
 
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LOGSYS_SRC) $(LCR_SRC) > /dev/null 2>&1

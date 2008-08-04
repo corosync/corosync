@@ -63,13 +63,14 @@ ifeq (ia64,$(ARCH))
 LIBDIR=$(PREFIX)/lib/corosync
 endif
 
-SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)exec $(builddir)test $(builddir)services
+SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)tools $(builddir)exec $(builddir)test $(builddir)services
 sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
 
 all: $(SUBDIRS)
 	@(cd $(builddir)lcr; echo ==== `pwd` ===;  $(call sub_make,lcr,all));
 	@(cd $(builddir)lib; echo ==== `pwd` ===;  $(call sub_make,lib,all));
 	@(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,all));
+	@(cd $(builddir)tools; echo ==== `pwd` ===;  $(call sub_make,tools,all));
 	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,all));
 	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
 
@@ -108,6 +109,7 @@ help:
 clean:
 	(cd $(builddir)lcr; echo ==== `pwd` ===; $(call sub_make,lcr,clean));
 	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,clean));
+	(cd $(builddir)tools; echo ==== `pwd` ===; $(call sub_make,tools,clean));
 	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,clean));
 	(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,clean));
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
@@ -171,7 +173,8 @@ install: all
 	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
 	install -m 755 $(builddir)services/*lcrso $(DESTDIR)$(LCRSODIR)
 	install -m 755 $(builddir)exec/corosync $(DESTDIR)$(SBINDIR)
-	install -m 700 $(builddir)exec/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
+	install -m 755 $(builddir)tools/objctl $(DESTDIR)$(SBINDIR)
+	install -m 700 $(builddir)tools/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/penais.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \

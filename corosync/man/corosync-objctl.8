@@ -1,0 +1,113 @@
+.\"/*
+.\" * Copyright (c) 2008 Allied Telesis Labs NZ.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Angus Salkeld (angus.salkeld@alliedtelesis.co.nz)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" * 
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-OBJCTL 8 2008-07-29
+.SH NAME
+corosync-objctl \- Configure objects in the Object Database
+.SH SYNOPSIS
+.B "corosync-objctl [\-c|\-w|\-d|\-a|\-h] <OBJECT-SPEC>..."
+.SH DESCRIPTION
+.B corosync-objctl
+is used to configure objects within the object database at runtime.
+.SH OBJECT-SPEC
+.TP
+There are two types of entities
+.B Objects
+and
+.B Key=Value pairs
+.TP
+.B Objects
+Objects are container like entities that can hold other entities.
+They are specified as "objectA"."objectB".
+An example is logging.logger.
+.TP
+.B Key=Value pairs
+These are the entities that actually hold values (read database "fields").
+They are specified as object.key=value or just object.key if you are reading.
+.SH OPTIONS
+.TP
+.B -c
+Create a new object.
+.TP
+.B -d
+Delete an existing object.
+.TP
+.B "-w"
+Use this option when you want to write a new value to a key.
+.TP
+.B "-a"
+Display all values currently available.
+.TP
+.B -h
+Print basic usage.
+.SH EXAMPLES
+.TP
+Print the objOne object (shouldn't exist yet).
+$ corosync-objctl objOne
+.TP
+Create the objOne object.
+$ corosync-objctl -c objOne
+.TP
+Print the objOne object (empty).
+$ corosync-objctl objOne
+.br
+objOne
+.TP
+Write two new keys to the objOne object.
+$ corosync-objctl -w objOne.max=3000 objOne.min=100
+.TP
+Print the objOne object (with the two new keys).
+$ corosync-objctl objOne
+.br
+objOne.min=100
+.br
+objOne.max=3000
+.TP
+Delete the objOne.min key
+$ corosync-objctl -d objOne.min=100
+.TP
+Prove that is gone.
+$ corosync-objctl objOne
+.br
+objOne.max=3000
+.TP
+Delete the whole objOne object.
+$ corosync-objctl -d objOne
+.TP
+Prove that is gone.
+$ corosync-objctl objOne
+.SH SEE ALSO
+.BR confdb_initialize (3),
+.SH AUTHOR
+Angus Salkeld
+.PP
