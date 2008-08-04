@@ -61,10 +61,10 @@ libSaCkpt.so.2.0.0: util.o ckpt.o
 libSaEvt.so.2.0.0: util.o evt.o sa-evt.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o evt.o
 
-libSaMsg.so.2.0.0: util.o clm.o
+libSaMsg.so.2.0.0: util.o msg.o
 	$(CC) $(DARWIN_OPTS) util.o msg.o -o $@
 
-libSaLck.so.2.0.0: util.o clm.o
+libSaLck.so.2.0.0: util.o lck.o
 	$(CC) $(DARWIN_OPTS) util.o lck.o -o $@
 
 else
@@ -96,10 +96,10 @@ libSaEvt.a: util.o evt.o
 	$(AR) -rc libSaEvt.a util.o evt.o
 
 libSaMsg.a: util.o msg.o
-	$(AR) -rc libSaMsg.a util.o evt.o
+	$(AR) -rc libSaMsg.a util.o msg.o
 
-libSaLck.a: util.o msg.o
-	$(AR) -rc libSaLck.a util.o msg.o
+libSaLck.a: util.o lck.o
+	$(AR) -rc libSaLck.a util.o lck.o
 
 clean:
 	rm -f *.o libSa*.so.* libSa*.a *.da *.bb *.bbg
