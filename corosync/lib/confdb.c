@@ -659,6 +659,64 @@ error_exit:
 	return (error);
 }
 
+confdb_error_t confdb_key_delete (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	void *value,
+	int value_len)
+{
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov[2];
+	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
+	mar_res_header_t res;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_key_delete(parent_object_handle,
+					 key_name, key_name_len,
+					 value, value_len))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req_lib_confdb_key_delete.header.size = sizeof (struct req_lib_confdb_key_delete);
+	req_lib_confdb_key_delete.header.id = MESSAGE_REQ_CONFDB_KEY_DELETE;
+	req_lib_confdb_key_delete.object_handle = parent_object_handle;
+	memcpy(req_lib_confdb_key_delete.key_name.value, key_name, key_name_len);
+	req_lib_confdb_key_delete.key_name.length = key_name_len;
+	memcpy(req_lib_confdb_key_delete.value.value, value, value_len);
+	req_lib_confdb_key_delete.value.length = value_len;
+
+	iov[0].iov_base = (char *)&req_lib_confdb_key_delete;
+	iov[0].iov_len = sizeof (struct req_lib_confdb_key_delete);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+		&res, sizeof (res));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res.error;
+
+error_exit:
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
 confdb_error_t confdb_key_get (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,

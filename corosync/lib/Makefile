@@ -31,6 +31,7 @@
 # Include configuration
 #
 srcdir ?= $(CURDIR)/../
+subdir ?= lib/
 
 include $(srcdir)Makefile.inc
 

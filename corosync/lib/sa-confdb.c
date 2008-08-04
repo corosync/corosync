@@ -219,6 +219,18 @@ int confdb_sa_key_create (
 					value, value_len);
 }
 
+int confdb_sa_key_delete (
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	void *value,
+	int value_len)
+{
+	return objdb->object_key_delete(parent_object_handle,
+					key_name, key_name_len,
+					value, value_len);
+}
+
 int confdb_sa_key_get (
 	unsigned int parent_object_handle,
 	void *key_name,
