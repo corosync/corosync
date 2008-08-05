@@ -50,6 +50,17 @@ struct object_key {
 	struct list_head list;
 };
 
+struct object_tracker {
+	unsigned int object_handle;
+	void * data_pt;
+	object_track_depth_t depth;
+	object_key_change_notify_fn_t key_change_notify_fn;
+	object_create_notify_fn_t object_create_notify_fn;
+	object_destroy_notify_fn_t object_destroy_notify_fn;
+	struct list_head tracker_list;
+	struct list_head object_list;
+};
+
 struct object_instance {
 	void *object_name;
 	int object_name_len;
@@ -66,6 +77,7 @@ struct object_instance {
 	int object_valid_list_entries;
 	struct object_key_valid *object_key_valid_list;
 	int object_key_valid_list_entries;
+	struct list_head track_head;
 };
 
 struct object_find_instance {
@@ -76,6 +88,7 @@ struct object_find_instance {
 };
 
 struct objdb_iface_ver0 objdb_iface;
+struct list_head objdb_trackers_head;
 
 static struct hdb_handle_database object_instance_database = {
 	.handle_count	= 0,
@@ -118,6 +131,8 @@ static int objdb_init (void)
 	list_init (&instance->key_head);
 	list_init (&instance->child_head);
 	list_init (&instance->child_list);
+	list_init (&instance->track_head);
+	list_init (&objdb_trackers_head);
 
 	hdb_handle_put (&object_instance_database, handle);
 	return (0);
@@ -127,6 +142,153 @@ error_destroy:
 
 error_exit:
 	return (-1);
+}
+
+static int _object_notify_deleted_children(struct object_instance *parent_pt)
+{
+	struct list_head *list;
+	struct list_head *notify_list;
+	int res;
+	struct object_instance *obj_pt = NULL;
+	struct object_tracker * tracker_pt;
+
+	for (list = parent_pt->child_head.next;
+		 list != &parent_pt->child_head; list = list->next) {
+
+		obj_pt = list_entry(list, struct object_instance,
+							child_list);
+		res = _object_notify_deleted_children(obj_pt);
+		if (res)
+			return res;
+
+		for (notify_list = obj_pt->track_head.next;
+			 notify_list != &obj_pt->track_head;
+			 notify_list = notify_list->next) {
+
+			tracker_pt = list_entry (notify_list, struct object_tracker, object_list);
+
+			if ((tracker_pt != NULL) &&
+				(tracker_pt->object_destroy_notify_fn != NULL))
+				tracker_pt->object_destroy_notify_fn(parent_pt->object_handle,
+													 obj_pt->object_name,
+													 obj_pt->object_name_len,
+													 tracker_pt->data_pt);
+		}
+	}
+
+	return 0;
+}
+
+static void object_created_notification(unsigned int object_handle,
+										unsigned int parent_object_handle,
+										void *name_pt, int name_len)
+{
+	struct list_head * list;
+	struct object_instance * obj_pt;
+	struct object_tracker * tracker_pt;
+	unsigned int obj_handle = object_handle;
+	unsigned int res;
+
+	do {
+		res = hdb_handle_get (&object_instance_database,
+							  obj_handle, (void *)&obj_pt);
+
+		for (list = obj_pt->track_head.next;
+			 list != &obj_pt->track_head; list = list->next) {
+
+			tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+			if (((obj_handle == parent_object_handle) ||
+				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
+				(tracker_pt->object_create_notify_fn != NULL)) {
+				tracker_pt->object_create_notify_fn(object_handle, parent_object_handle,
+									 name_pt, name_len,
+									 tracker_pt->data_pt);
+			}
+		}
+
+		hdb_handle_put (&object_instance_database, obj_handle);
+		obj_handle = obj_pt->parent_handle;
+
+	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
+
+}
+
+static void object_pre_deletion_notification(unsigned int object_handle,
+											 unsigned int parent_object_handle,
+											 void *name_pt, int name_len)
+{
+	struct list_head * list;
+	struct object_instance * obj_pt;
+	struct object_tracker * tracker_pt;
+	unsigned int obj_handle = object_handle;
+	unsigned int res;
+
+	do {
+		res = hdb_handle_get (&object_instance_database,
+							  obj_handle, (void *)&obj_pt);
+
+		for (list = obj_pt->track_head.next;
+			 list != &obj_pt->track_head; list = list->next) {
+
+			tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+			if (((obj_handle == parent_object_handle) ||
+				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
+				(tracker_pt->object_destroy_notify_fn != NULL)) {
+				tracker_pt->object_destroy_notify_fn(parent_object_handle,
+									 name_pt, name_len,
+									 tracker_pt->data_pt);
+			}
+		}
+		/* notify child object listeners */
+		if (obj_handle == object_handle)
+			_object_notify_deleted_children(obj_pt);
+
+		hdb_handle_put (&object_instance_database, obj_handle);
+		obj_handle = obj_pt->parent_handle;
+
+	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
+
+}
+
+static void object_key_changed_notification(unsigned int object_handle,
+											void *name_pt,	int name_len,
+											void *value_pt, int value_len,
+											object_change_type_t type)
+{
+	struct list_head * list;
+	struct object_instance * obj_pt;
+	struct object_instance * owner_pt = NULL;
+	struct object_tracker * tracker_pt;
+	unsigned int obj_handle = object_handle;
+	unsigned int res;
+
+	do {
+		res = hdb_handle_get (&object_instance_database,
+							  obj_handle, (void *)&obj_pt);
+		if (owner_pt == NULL)
+			owner_pt = obj_pt;
+
+		for (list = obj_pt->track_head.next;
+			 list != &obj_pt->track_head; list = list->next) {
+
+			tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+			if (((obj_handle == object_handle) ||
+				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
+				(tracker_pt->key_change_notify_fn != NULL))
+				tracker_pt->key_change_notify_fn(type, obj_pt->parent_handle, object_handle,
+												 owner_pt->object_name, owner_pt->object_name_len,
+												 name_pt, name_len,
+												 value_pt, value_len,
+												 tracker_pt->data_pt);
+		}
+
+		hdb_handle_put (&object_instance_database, obj_handle);
+		obj_handle = obj_pt->parent_handle;
+
+	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
 }
 
 /*
@@ -189,6 +351,7 @@ static int object_create (
 	list_init (&object_instance->key_head);
 	list_init (&object_instance->child_head);
 	list_init (&object_instance->child_list);
+	list_init (&object_instance->track_head);
 	object_instance->object_name = malloc (object_name_len);
 	if (object_instance->object_name == 0) {
 		goto error_put_destroy;
@@ -211,6 +374,10 @@ static int object_create (
 	hdb_handle_put (&object_instance_database, *object_handle);
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
+	object_created_notification(object_instance->object_handle,
+								object_instance->parent_handle,
+								object_instance->object_name,
+								object_instance->object_name_len);
 
 	return (0);
 
@@ -322,6 +489,8 @@ static int object_key_create (
 
 	list_init (&object_key->list);
 	list_add (&object_key->list, &instance->key_head);
+	object_key_changed_notification(object_handle, key_name, key_len,
+								value, value_len, OBJECT_KEY_CREATED);
 
 	return (0);
 
@@ -337,7 +506,6 @@ error_put:
 error_exit:
 	return (-1);
 }
-
 
 static int _clear_object(struct object_instance *instance)
 {
@@ -389,6 +557,11 @@ static int object_destroy (
 	if (res != 0) {
 		return (res);
 	}
+
+	object_pre_deletion_notification(object_handle,
+									 instance->parent_handle,
+									 instance->object_name,
+									 instance->object_name_len);
 
 	/* Recursively clear sub-objects & keys */
 	res = _clear_object(instance);
@@ -641,6 +814,9 @@ static int object_key_delete (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	if (ret == 0)
+		object_key_changed_notification(object_handle, key_name, key_len,
+										value, value_len, OBJECT_KEY_DELETED);
 	return (ret);
 
 error_exit:
@@ -735,6 +911,9 @@ static int object_key_replace (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	if (ret == 0)
+		object_key_changed_notification(object_handle, key_name, key_len,
+										new_value, new_value_len, OBJECT_KEY_REPLACED);
 	return (ret);
 
 error_put:
@@ -1093,8 +1272,6 @@ error_exit:
 }
 
 
-
-
 static int object_parent_get(unsigned int object_handle,
 			     unsigned int *parent_handle)
 {
@@ -1117,6 +1294,89 @@ static int object_parent_get(unsigned int object_handle,
 	return (0);
 }
 
+
+static int object_track_start(unsigned int object_handle,
+							  object_track_depth_t depth,
+							  object_key_change_notify_fn_t key_change_notify_fn,
+							  object_create_notify_fn_t object_create_notify_fn,
+							  object_destroy_notify_fn_t object_destroy_notify_fn,
+							  void * priv_data_pt)
+{
+	struct object_instance *instance;
+	unsigned int res;
+	struct object_tracker * tracker_pt;
+
+	res = hdb_handle_get (&object_instance_database,
+			      object_handle, (void *)&instance);
+	if (res != 0) {
+		return (res);
+	}
+	tracker_pt = malloc(sizeof(struct object_tracker));
+
+	tracker_pt->depth = depth;
+	tracker_pt->object_handle = object_handle;
+	tracker_pt->key_change_notify_fn = key_change_notify_fn;
+	tracker_pt->object_create_notify_fn = object_create_notify_fn;
+	tracker_pt->object_destroy_notify_fn = object_destroy_notify_fn;
+	tracker_pt->data_pt = priv_data_pt;
+
+	list_init(&tracker_pt->object_list);
+	list_init(&tracker_pt->tracker_list);
+
+	list_add(&tracker_pt->object_list, &instance->track_head);
+	list_add(&tracker_pt->tracker_list, &objdb_trackers_head);
+
+	hdb_handle_put (&object_instance_database, object_handle);
+
+	return (res);
+}
+
+static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn,
+							  object_create_notify_fn_t object_create_notify_fn,
+							  object_destroy_notify_fn_t object_destroy_notify_fn,
+							  void * priv_data_pt)
+{
+	struct object_instance *instance;
+	struct object_tracker * tracker_pt = NULL;
+	struct object_tracker * obj_tracker_pt = NULL;
+	struct list_head *list, *tmp_list;
+	struct list_head *obj_list, *tmp_obj_list;
+	unsigned int res;
+
+	/* go through the global list and find all the trackers to stop */
+	for (list = objdb_trackers_head.next, tmp_list = list->next;
+		 list != &objdb_trackers_head; list = tmp_list, tmp_list = tmp_list->next) {
+
+		tracker_pt = list_entry (list, struct object_tracker, tracker_list);
+
+		if (tracker_pt && (tracker_pt->data_pt == priv_data_pt) &&
+			(tracker_pt->object_create_notify_fn == object_create_notify_fn) &&
+			(tracker_pt->object_destroy_notify_fn == object_destroy_notify_fn) &&
+			(tracker_pt->key_change_notify_fn == key_change_notify_fn)) {
+
+			/* get the object & take this tracker off of it's list. */
+
+			res = hdb_handle_get (&object_instance_database,
+								  tracker_pt->object_handle, (void *)&instance);
+			if (res != 0) continue;
+
+			for (obj_list = instance->track_head.next, tmp_obj_list = obj_list->next;
+				 obj_list != &instance->track_head; obj_list = tmp_obj_list, tmp_obj_list = tmp_obj_list->next) {
+
+				obj_tracker_pt = list_entry (obj_list, struct object_tracker, object_list);
+				if (obj_tracker_pt == tracker_pt) {
+					/* this is the tracker we are after. */
+					list_del(obj_list);
+				}
+			}
+			hdb_handle_put (&object_instance_database, tracker_pt->object_handle);
+
+			/* remove the tracker off of the global list */
+			list_del(list);
+			free(tracker_pt);
+		}
+	}
+}
 
 static int object_dump(unsigned int object_handle,
 		       FILE *file)
@@ -1178,6 +1438,8 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_iter_from	= object_iter_from,
 	.object_priv_get	= object_priv_get,
 	.object_parent_get	= object_parent_get,
+	.object_track_start	= object_track_start,
+	.object_track_stop	= object_track_stop,
 	.object_dump	        = object_dump,
 	.object_write_config    = object_write_config,
 };

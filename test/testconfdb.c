@@ -47,7 +47,9 @@
 
 /* Callbacks are not supported yet */
 confdb_callbacks_t callbacks = {
-	.confdb_change_notify_fn = NULL,
+	.confdb_key_change_notify_fn = NULL,
+	.confdb_object_create_change_notify_fn = NULL,
+	.confdb_object_delete_change_notify_fn = NULL
 };
 
 /* Recursively dump the object tree */

@@ -51,7 +51,8 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_KEY_ITER = 9,
 	MESSAGE_REQ_CONFDB_TRACK_START = 10,
 	MESSAGE_REQ_CONFDB_TRACK_STOP = 11,
-	MESSAGE_REQ_CONFDB_WRITE = 12
+	MESSAGE_REQ_CONFDB_XPATH_EVAL_EXPRESSION = 12,
+	MESSAGE_REQ_CONFDB_WRITE = 13
 };
 
 enum res_confdb_types {
@@ -67,8 +68,10 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_KEY_ITER = 9,
 	MESSAGE_RES_CONFDB_TRACK_START = 10,
 	MESSAGE_RES_CONFDB_TRACK_STOP = 11,
-	MESSAGE_RES_CONFDB_CHANGE_CALLBACK = 12,
-	MESSAGE_RES_CONFDB_WRITE = 13
+	MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK = 12,
+	MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK = 13,
+	MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK = 14,
+	MESSAGE_RES_CONFDB_WRITE = 15
 };
 
 
@@ -174,8 +177,9 @@ struct res_lib_confdb_write {
 	mar_name_t error __attribute__((aligned(8)));
 };
 
-struct res_lib_confdb_change_callback {
+struct res_lib_confdb_key_change_callback {
 	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t change_type __attribute__((aligned(8)));
 	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint32_t object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
@@ -183,5 +187,23 @@ struct res_lib_confdb_change_callback {
 	mar_name_t key_value __attribute__((aligned(8)));
 };
 
+struct res_lib_confdb_object_create_callback {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
+	mar_uint32_t object_handle __attribute__((aligned(8)));
+	mar_name_t name __attribute__((aligned(8)));
+};
+
+struct res_lib_confdb_object_destroy_callback {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
+	mar_name_t name __attribute__((aligned(8)));
+};
+
+struct req_lib_confdb_object_track_start {
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_uint32_t object_handle __attribute__((aligned(8)));
+	mar_uint32_t flags __attribute__((aligned(8)));
+};
 
 #endif /* IPC_CONFDB_H_DEFINED */

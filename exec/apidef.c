@@ -101,6 +101,8 @@ void apidef_init (struct objdb_iface_ver0 *objdb) {
 	apidef_corosync_api_v1.object_find_from = objdb->object_find_from;
 	apidef_corosync_api_v1.object_iter_from = objdb->object_iter_from;
 	apidef_corosync_api_v1.object_key_iter_from = objdb->object_key_iter_from;
+	apidef_corosync_api_v1.object_track_start = objdb->object_track_start;
+	apidef_corosync_api_v1.object_track_stop = objdb->object_track_stop;
 	apidef_corosync_api_v1.object_write_config = objdb->object_write_config;
 }
 

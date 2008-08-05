@@ -50,6 +50,11 @@ typedef enum {
 } confdb_dispatch_t;
 
 typedef enum {
+	CONFDB_TRACK_DEPTH_ONE,
+	CONFDB_TRACK_DEPTH_RECURSIVE
+} confdb_track_depth_t;
+
+typedef enum {
 	CONFDB_OK = 1,
 	CONFDB_ERR_LIBRARY = 2,
 	CONFDB_ERR_TIMEOUT = 5,
@@ -65,9 +70,15 @@ typedef enum {
 	CONFDB_ERR_SECURITY = 29,
 } confdb_error_t;
 
+typedef enum {
+	OBJECT_KEY_CREATED,
+	OBJECT_KEY_REPLACED,
+	OBJECT_KEY_DELETED
+} confdb_change_type_t;
 
-typedef void (*confdb_change_notify_fn_t) (
+typedef void (*confdb_key_change_notify_fn_t) (
 	confdb_handle_t handle,
+	confdb_change_type_t change_type,
 	unsigned int parent_object_handle,
 	unsigned int object_handle,
 	void *object_name,
@@ -77,8 +88,23 @@ typedef void (*confdb_change_notify_fn_t) (
 	void *key_value,
 	int key_value_len);
 
+typedef void (*confdb_object_create_notify_fn_t) (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	unsigned int object_handle,
+	uint8_t *name_pt,
+	int  name_len);
+
+typedef void (*confdb_object_delete_notify_fn_t) (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	uint8_t *name_pt,
+	int  name_len);
+
 typedef struct {
-	confdb_change_notify_fn_t confdb_change_notify_fn;
+	confdb_object_create_notify_fn_t confdb_object_create_change_notify_fn;
+	confdb_object_delete_notify_fn_t confdb_object_delete_change_notify_fn;
+	confdb_key_change_notify_fn_t confdb_key_change_notify_fn;
 } confdb_callbacks_t;
 
 /** @} */
@@ -118,7 +144,6 @@ confdb_error_t confdb_fd_get (
 confdb_error_t confdb_dispatch (
 	confdb_handle_t handle,
 	confdb_dispatch_t dispatch_types);
-
 
 /*
  * Change notification
@@ -194,7 +219,7 @@ confdb_error_t confdb_key_replace (
  * Object queries
  * "find" loops through all objects of a given name and is also
  * a quick way of finding a specific object,
- * "iter" returns ech object in sequence.
+ * "iter" returns each object in sequence.
  */
 confdb_error_t confdb_object_find_start (
 	confdb_handle_t handle,

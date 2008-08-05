@@ -54,6 +54,7 @@ typedef enum {
 	ACTION_DELETE,
 	ACTION_PRINT_ALL,
 	ACTION_PRINT_DEFAULT,
+	ACTION_TRACK,
 } action_types_t;
 
 typedef enum {
@@ -62,8 +63,32 @@ typedef enum {
 	FIND_KEY_ONLY
 } find_object_of_type_t;
 
+static void tail_key_changed(confdb_handle_t handle,
+							   confdb_change_type_t change_type,
+							   unsigned int parent_object_handle,
+							   unsigned int object_handle,
+							   void *object_name,
+							   int  object_name_len,
+							   void *key_name,
+							   int key_name_len,
+							   void *key_value,
+							   int key_value_len);
+
+static void tail_object_created(confdb_handle_t handle,
+								unsigned int parent_object_handle,
+								unsigned int object_handle,
+								uint8_t *name_pt,
+								int  name_len);
+
+static void tail_object_deleted(confdb_handle_t handle,
+								unsigned int parent_object_handle,
+								uint8_t *name_pt,
+								int  name_len);
+
 confdb_callbacks_t callbacks = {
-	.confdb_change_notify_fn = NULL,
+	.confdb_key_change_notify_fn = tail_key_changed,
+	.confdb_object_create_change_notify_fn = tail_object_created,
+	.confdb_object_delete_change_notify_fn = tail_object_deleted,
 };
 
 static int action;
@@ -377,6 +402,113 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	}
 }
 
+static void tail_key_changed(confdb_handle_t handle,
+							   confdb_change_type_t change_type,
+							   unsigned int parent_object_handle,
+							   unsigned int object_handle,
+							   void *object_name_pt,
+							   int  object_name_len,
+							   void *key_name_pt,
+							   int key_name_len,
+							   void *key_value_pt,
+							   int key_value_len)
+{
+	char * on = (char*)object_name_pt;
+	char * kn = (char*)key_name_pt;
+	char * kv = (char*)key_value_pt;
+
+	on[object_name_len] = '\0';
+	kv[key_value_len] = '\0';
+	kn[key_name_len] = '\0';
+	printf("key_changed> %s.%s=%s\n", on, kn, kv);
+}
+
+static void tail_object_created(confdb_handle_t handle,
+								unsigned int parent_object_handle,
+								unsigned int object_handle,
+								uint8_t *name_pt,
+								int  name_len)
+{
+	name_pt[name_len] = '\0';
+	printf("object_created> %s\n", name_pt);
+}
+
+static void tail_object_deleted(confdb_handle_t handle,
+								unsigned int parent_object_handle,
+								uint8_t *name_pt,
+								int  name_len)
+{
+	name_pt[name_len] = '\0';
+
+	printf("object_deleted> %s\n", name_pt);
+}
+
+static void listen_for_object_changes(confdb_handle_t handle)
+{
+	int result;
+	fd_set read_fds;
+	int select_fd;
+	SaBoolT quit = SA_FALSE;
+
+	FD_ZERO (&read_fds);
+	confdb_fd_get(handle, &select_fd);
+	printf ("Type \"q\" to finish\n");
+	do {
+		FD_SET (select_fd, &read_fds);
+		FD_SET (STDIN_FILENO, &read_fds);
+		result = select (select_fd + 1, &read_fds, 0, 0, 0);
+		if (result == -1) {
+			perror ("select\n");
+		}
+		if (FD_ISSET (STDIN_FILENO, &read_fds)) {
+			char inbuf[3];
+
+			fgets(inbuf, sizeof(inbuf), stdin);
+			if (strncmp(inbuf, "q", 1) == 0)
+				quit = SA_TRUE;
+		}
+		if (FD_ISSET (select_fd, &read_fds)) {
+			if (confdb_dispatch (handle, CONFDB_DISPATCH_ALL) != CONFDB_OK)
+				exit(1);
+		}
+	} while (result && quit == SA_FALSE);
+
+	confdb_stop_track_changes(handle);
+
+}
+
+static void track_object(confdb_handle_t handle, char * name_pt)
+{
+	confdb_error_t res;
+	uint32_t obj_handle;
+
+	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
+
+	if (res != CONFDB_OK) {
+		fprintf (stderr, "Could not find object \"%s\". Error %d\n",
+				 name_pt, res);
+		return;
+	}
+
+	res = confdb_track_changes (handle, obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
+	if (res != CONFDB_OK) {
+		fprintf (stderr, "Could not enable tracking on object \"%s\". Error %d\n",
+				 name_pt, res);
+		return;
+	}
+}
+
+static void stop_tracking(confdb_handle_t handle)
+{
+	confdb_error_t res;
+
+	res = confdb_stop_track_changes (handle);
+	if (res != CONFDB_OK) {
+		fprintf (stderr, "Could not stop tracking. Error %d\n", res);
+		return;
+	}
+}
+
 static void delete_object(confdb_handle_t handle, char * name_pt)
 {
 	confdb_error_t res;
@@ -425,7 +557,7 @@ int main (int argc, char *argv[]) {
 	action = ACTION_READ;
 
 	for (;;){
-		c = getopt (argc,argv,"hawcdp:");
+		c = getopt (argc,argv,"hawcdtp:");
 		if (c==-1) {
 			break;
 		}
@@ -449,6 +581,9 @@ int main (int argc, char *argv[]) {
 				break;
 			case 'w':
 				action = ACTION_WRITE;
+				break;
+			case 't':
+				action = ACTION_TRACK;
 				break;
 			default :
 				action = ACTION_READ;
@@ -485,7 +620,15 @@ int main (int argc, char *argv[]) {
 			case ACTION_DELETE:
 				delete_object(handle, argv[optind++]);
 				break;
+			case ACTION_TRACK:
+				track_object(handle, argv[optind++]);
+				break;
 		}
+	}
+
+	if (action == ACTION_TRACK) {
+		listen_for_object_changes(handle);
+		stop_tracking(handle);
 	}
 
 	result = confdb_finalize (handle);

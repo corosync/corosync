@@ -35,7 +35,7 @@
 .SH NAME
 corosync-objctl \- Configure objects in the Object Database
 .SH SYNOPSIS
-.B "corosync-objctl [\-c|\-w|\-d|\-a|\-h] <OBJECT-SPEC>..."
+.B "corosync-objctl [\-c|\-w|\-d|\-a|\-t\-h] <OBJECT-SPEC>..."
 .SH DESCRIPTION
 .B corosync-objctl
 is used to configure objects within the object database at runtime.
@@ -62,11 +62,15 @@ Create a new object.
 .B -d
 Delete an existing object.
 .TP
-.B "-w"
+.B -w
 Use this option when you want to write a new value to a key.
 .TP
-.B "-a"
+.B -a
 Display all values currently available.
+.TP
+.B -t
+Track changes to an object and it's children. As changes are made to the object
+they are printed out. this is kind of like a "tail -f" for the object database.
 .TP
 .B -h
 Print basic usage.

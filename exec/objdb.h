@@ -40,11 +40,39 @@
 
 #include <stdio.h>
 
+typedef enum {
+	OBJECT_TRACK_DEPTH_ONE,
+	OBJECT_TRACK_DEPTH_RECURSIVE
+} object_track_depth_t;
+
+typedef enum {
+	OBJECT_KEY_CREATED,
+	OBJECT_KEY_REPLACED,
+	OBJECT_KEY_DELETED
+} object_change_type_t;
+
+typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
+											  unsigned int parent_object_handle,
+											  unsigned int object_handle,
+											  void *object_name_pt, int object_name_len,
+											  void *key_name_pt, int key_len,
+											  void *key_value_pt, int key_value_len,
+											  void *priv_data_pt);
+
+typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
+										   unsigned int object_handle,
+										   void *name_pt, int name_len,
+										   void *priv_data_pt);
+
+typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
+											void *name_pt, int name_len,
+											void *priv_data_pt);
+
 struct object_valid {
 	char *object_name;
 	int object_len;
 };
-	
+
 struct object_key_valid {
 	char *key_name;
 	int key_len;
@@ -173,6 +201,20 @@ struct objdb_iface_ver0 {
 		int *key_len,
 		void **value,
 		int *value_len);
+
+	int (*object_track_start) (
+		unsigned int object_handle,
+		object_track_depth_t depth,
+		object_key_change_notify_fn_t key_change_notify_fn,
+		object_create_notify_fn_t object_create_notify_fn,
+		object_destroy_notify_fn_t object_destroy_notify_fn,
+		void * priv_data_pt);
+
+	void (*object_track_stop) (
+		object_key_change_notify_fn_t key_change_notify_fn,
+		object_create_notify_fn_t object_create_notify_fn,
+		object_destroy_notify_fn_t object_destroy_notify_fn,
+		void * priv_data_pt);
 
 	int (*object_write_config) (char **error_string);
 };

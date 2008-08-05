@@ -46,7 +46,7 @@
 #include "../exec/logsys.h"
 #include "../include/coroapi.h"
 
-LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_DEBUG);
 
 static struct corosync_api_v1 *api;
 
@@ -74,7 +74,21 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message);
 
+static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
+											unsigned int parent_object_handle,
+											unsigned int object_handle,
+											void *object_name_pt, int object_name_len,
+											void *key_name_pt, int key_name_len,
+											void *key_value_pt, int key_value_len,
+											void *priv_data_pt);
 
+static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
+											unsigned int object_handle,
+											uint8_t *name_pt, int name_len,
+											void *priv_data_pt);
+static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_handle,
+												  uint8_t *name_pt, int name_len,
+												  void *priv_data_pt);
 /*
  * Library Handler Definition
  */
@@ -149,7 +163,7 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	{ /* 11 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
 		.response_size				= sizeof (mar_res_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
+		.response_id				= MESSAGE_RES_CONFDB_TRACK_STOP,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 12 */
@@ -230,6 +244,11 @@ static int confdb_lib_exit_fn (void *conn)
 {
 
 	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
+	/* cleanup the object trackers for this client. */
+	api->object_track_stop(confdb_notify_lib_of_key_change,
+						   confdb_notify_lib_of_new_object,
+						   confdb_notify_lib_of_destroyed_object,
+						   api->ipc_conn_partner_get (conn));
 	return (0);
 }
 
@@ -469,14 +488,84 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	api->ipc_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
 }
 
-/* TODO: when we have notification in the objdb. */
+static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
+											  unsigned int parent_object_handle,
+											  unsigned int object_handle,
+											  void *object_name_pt, int object_name_len,
+											  void *key_name_pt, int key_name_len,
+											  void *key_value_pt, int key_value_len,
+											  void *priv_data_pt)
+{
+	struct res_lib_confdb_key_change_callback res;
+
+	res.header.size = sizeof(res);
+	res.header.id = MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK;
+	res.header.error = SA_AIS_OK;
+// handle & type
+	res.change_type = change_type;
+	res.parent_object_handle = parent_object_handle;
+	res.object_handle = object_handle;
+//object
+	memcpy(res.object_name.value, object_name_pt, object_name_len);
+	res.object_name.length = object_name_len;
+//key name
+	memcpy(res.key_name.value, key_name_pt, key_name_len);
+	res.key_name.length = key_name_len;
+//key value
+	memcpy(res.key_value.value, key_value_pt, key_value_len);
+	res.key_value.length = key_value_len;
+
+	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+}
+
+static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
+										   unsigned int object_handle,
+										   uint8_t *name_pt, int name_len,
+										   void *priv_data_pt)
+{
+	struct res_lib_confdb_object_create_callback res;
+
+	res.header.size = sizeof(res);
+	res.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK;
+	res.header.error = SA_AIS_OK;
+	res.parent_object_handle = parent_object_handle;
+	res.object_handle = object_handle;
+	memcpy(res.name.value, name_pt, name_len);
+	res.name.length = name_len;
+
+	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+}
+
+static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_handle,
+											uint8_t *name_pt, int name_len,
+											void *priv_data_pt)
+{
+	struct res_lib_confdb_object_destroy_callback res;
+
+	res.header.size = sizeof(res);
+	res.header.id = MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK;
+	res.header.error = SA_AIS_OK;
+	res.parent_object_handle = parent_object_handle;
+	memcpy(res.name.value, name_pt, name_len);
+	res.name.length = name_len;
+
+	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+}
+
+
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message)
 {
+	struct req_lib_confdb_object_track_start *req = (struct req_lib_confdb_object_track_start *)message;
 	mar_res_header_t res;
 
+	api->object_track_start(req->object_handle,	req->flags,
+							confdb_notify_lib_of_key_change,
+							confdb_notify_lib_of_new_object,
+							confdb_notify_lib_of_destroyed_object,
+							api->ipc_conn_partner_get (conn));
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
-	res.error = SA_AIS_ERR_NOT_SUPPORTED;
+	res.error = SA_AIS_OK;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
@@ -484,9 +573,14 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 {
 	mar_res_header_t res;
 
+	api->object_track_stop(confdb_notify_lib_of_key_change,
+						   confdb_notify_lib_of_new_object,
+						   confdb_notify_lib_of_destroyed_object,
+						   api->ipc_conn_partner_get (conn));
+
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_STOP;
-	res.error = SA_AIS_ERR_NOT_SUPPORTED;
+	res.error = SA_AIS_OK;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 

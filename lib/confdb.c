@@ -304,8 +304,10 @@ confdb_error_t confdb_dispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct confdb_inst *confdb_inst;
-	struct res_lib_confdb_change_callback *res_confdb_change_callback;
 	confdb_callbacks_t callbacks;
+	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
+	struct res_lib_confdb_object_create_callback *res_object_created_pt;
+	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
 	struct res_overlay dispatch_data;
 	int ignore_dispatch = 0;
 
@@ -400,24 +402,44 @@ confdb_error_t confdb_dispatch (
 		 * Dispatch incoming message
 		 */
 		switch (dispatch_data.header.id) {
-		case MESSAGE_RES_CONFDB_CHANGE_CALLBACK:
-			res_confdb_change_callback = (struct res_lib_confdb_change_callback *)&dispatch_data;
+			case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK:
+				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)&dispatch_data;
 
-			callbacks.confdb_change_notify_fn (handle,
-							   res_confdb_change_callback->parent_object_handle,
-							   res_confdb_change_callback->object_handle,
-							   res_confdb_change_callback->object_name.value,
-							   res_confdb_change_callback->object_name.length,
-							   res_confdb_change_callback->key_name.value,
-							   res_confdb_change_callback->key_name.length,
-							   res_confdb_change_callback->key_value.value,
-							   res_confdb_change_callback->key_value.length);
-			break;
+				callbacks.confdb_key_change_notify_fn(handle,
+					res_key_changed_pt->change_type,
+					res_key_changed_pt->object_handle,
+					res_key_changed_pt->parent_object_handle,
+					res_key_changed_pt->object_name.value,
+					res_key_changed_pt->object_name.length,
+					res_key_changed_pt->key_name.value,
+					res_key_changed_pt->key_name.length,
+					res_key_changed_pt->key_value.value,
+					res_key_changed_pt->key_value.length);
+				break;
 
-		default:
-			error = SA_AIS_ERR_LIBRARY;
-			goto error_nounlock;
-			break;
+			case MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK:
+				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)&dispatch_data;
+
+				callbacks.confdb_object_create_change_notify_fn(handle,
+					res_object_created_pt->object_handle,
+					res_object_created_pt->parent_object_handle,
+					res_object_created_pt->name.value,
+					res_object_created_pt->name.length);
+				break;
+
+			case MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK:
+				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)&dispatch_data;
+
+				callbacks.confdb_object_delete_change_notify_fn(handle,
+					res_object_destroyed_pt->parent_object_handle,
+					res_object_destroyed_pt->name.value,
+					res_object_destroyed_pt->name.length);
+				break;
+
+			default:
+				error = SA_AIS_ERR_LIBRARY;
+				goto error_nounlock;
+				break;
 		}
 
 		/*
@@ -1197,4 +1219,92 @@ error_exit:
 	return (error);
 }
 
+confdb_error_t confdb_track_changes (
+	confdb_handle_t handle,
+	unsigned int object_handle,
+	unsigned int flags)
+{
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov[2];
+	struct req_lib_confdb_object_track_start req;
+	mar_res_header_t res;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CONFDB_ERR_NOT_SUPPORTED;
+		goto error_exit;
+	}
+
+	req.header.size = sizeof (struct req_lib_confdb_object_track_start);
+	req.header.id = MESSAGE_REQ_CONFDB_TRACK_START;
+	req.object_handle = object_handle;
+	req.flags = flags;
+
+	iov[0].iov_base = (char *)&req;
+	iov[0].iov_len = sizeof (struct req_lib_confdb_object_track_start);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+		&res, sizeof ( mar_res_header_t));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res.error;
+
+error_exit:
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+confdb_error_t confdb_stop_track_changes (confdb_handle_t handle)
+{
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov[2];
+	mar_req_header_t req;
+	mar_res_header_t res;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CONFDB_ERR_NOT_SUPPORTED;
+		goto error_exit;
+	}
+
+	req.size = sizeof (mar_req_header_t);
+	req.id = MESSAGE_REQ_CONFDB_TRACK_STOP;
+
+	iov[0].iov_base = (char *)&req;
+	iov[0].iov_len = sizeof (mar_req_header_t);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+		&res, sizeof ( mar_res_header_t));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res.error;
+
+error_exit:
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+
+	return (error);
+}
 
