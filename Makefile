@@ -173,8 +173,9 @@ install: all
 	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
 	install -m 755 $(builddir)services/*lcrso $(DESTDIR)$(LCRSODIR)
 	install -m 755 $(builddir)exec/corosync $(DESTDIR)$(SBINDIR)
-	install -m 755 $(builddir)tools/objctl $(DESTDIR)$(SBINDIR)
-	install -m 700 $(builddir)tools/keygen $(DESTDIR)$(SBINDIR)/ais-keygen
+	install -m 755 $(builddir)tools/corosync-objctl $(DESTDIR)$(SBINDIR)
+	install -m 755 $(builddir)tools/corosync-cfgtool $(DESTDIR)$(SBINDIR)
+	install -m 700 $(builddir)tools/keygen $(DESTDIR)$(SBINDIR)/corosync-keygen
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/penais.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
