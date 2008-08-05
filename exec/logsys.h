@@ -351,6 +351,9 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 extern void _logsys_config_priority_set (unsigned int id, unsigned int priority);
 
 #define logsys_config_priority_set(priority) do {		        \
+	if (logsys_single_id)						\
+		logsys_subsys_id = 0;					\
+	assert (logsys_subsys_id != -1);				\
 	_logsys_config_priority_set (logsys_subsys_id, priority);       \
 } while(0)
 
