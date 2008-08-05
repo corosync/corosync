@@ -109,7 +109,7 @@ static inline char *get_mar_name_t (mar_name_t *name) {
         return ((char *)name->value);
 }
 
-static int mar_name_match(mar_name_t *name1, mar_name_t *name2)
+static inline int mar_name_match(mar_name_t *name1, mar_name_t *name2)
 {
         if (name1->length == name2->length) {
                 return ((strncmp ((char *)name1->value, (char *)name2->value,
