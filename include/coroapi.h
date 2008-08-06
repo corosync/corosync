@@ -357,6 +357,15 @@ struct corosync_api_v1 {
 
 	char *(*totem_ip_print) (struct totem_ip_address *addr);
 
+	int (*plugin_interface_reference) (
+		unsigned int *handle, 
+		char *iface_name,
+		int version,
+		void **interface,
+		void *context);
+
+	int (*plugin_interface_release) (unsigned int handle);
+
 	/*
 	 * Service loading and unloading APIs
 	*/

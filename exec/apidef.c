@@ -47,6 +47,7 @@
 #include "ipc.h"
 #include "../include/coroapi.h"
 #include "service.h"
+#include "../lcr/lcr_ifact.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 
@@ -76,6 +77,8 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.totem_ip_print = totemip_print,
 	.service_link_and_init = openais_service_link_and_init,
 	.service_unlink_and_exit = openais_service_unlink_and_exit,
+	.plugin_interface_reference = lcr_ifact_reference,
+	.plugin_interface_release = lcr_ifact_release,
 	.error_memory_failure = NULL
 };
 
