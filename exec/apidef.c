@@ -51,6 +51,15 @@
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 
+/*
+ * Remove compile warnings about type name changes
+ */
+typedef int (*typedef_tpg_join) (corosync_tpg_handle, struct corosync_tpg_group *, int);
+typedef int (*typedef_tpg_leave) (corosync_tpg_handle, struct corosync_tpg_group *, int);
+typedef int (*typedef_tpg_groups_mcast) (corosync_tpg_handle, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+typedef int (*typedef_tpg_groups_send_ok) (corosync_tpg_handle, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+
+
 static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_duration = openais_timer_add_duration,
 	.timer_add_absolute = openais_timer_add_absolute,
@@ -75,6 +84,14 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.totem_ifaces_get = totempg_ifaces_get,
 	.totem_ifaces_print = totempg_ifaces_print,
 	.totem_ip_print = totemip_print,
+	.tpg_init = totempg_groups_initialize,
+	.tpg_exit = NULL, /* missing from totempg api */
+	.tpg_join = (typedef_tpg_join)totempg_groups_join,
+	.tpg_leave = (typedef_tpg_leave)totempg_groups_leave,
+	.tpg_joined_mcast = totempg_groups_mcast_joined,
+	.tpg_joined_send_ok = totempg_groups_send_ok_joined,
+	.tpg_groups_mcast = (typedef_tpg_groups_mcast)totempg_groups_mcast_groups,
+	.tpg_groups_send_ok = (typedef_tpg_groups_send_ok)totempg_groups_send_ok_groups,
 	.service_link_and_init = openais_service_link_and_init,
 	.service_unlink_and_exit = openais_service_unlink_and_exit,
 	.plugin_interface_reference = lcr_ifact_reference,

@@ -38,6 +38,13 @@
 
 typedef void * corosync_timer_handle_t;
 
+typedef unsigned int corosync_tpg_handle;
+
+struct corosync_tpg_group {
+	void *group;
+	int group_len;
+};
+
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
 #define PROCESSOR_COUNT_MAX 384
@@ -357,6 +364,68 @@ struct corosync_api_v1 {
 
 	char *(*totem_ip_print) (struct totem_ip_address *addr);
 
+	/*
+	 * Totem open process groups API for those service engines
+	 * wanting their own groups
+	 */
+	int (*tpg_init) (
+		corosync_tpg_handle *handle,
+
+		void (*deliver_fn) (
+			unsigned int nodeid,
+			struct iovec *iovec,
+			int iov_len,
+			int endian_conversion_required),
+
+		void (*confchg_fn) (
+			enum totem_configuration_type configuration_type,
+			unsigned int *member_list, int member_list_entries,
+			unsigned int *left_list, int left_list_entries,
+			unsigned int *joined_list, int joined_list_entries,
+			struct memb_ring_id *ring_id));
+
+	int (*tpg_exit) (
+       		corosync_tpg_handle handle);
+
+	int (*tpg_join) (
+		corosync_tpg_handle handle,
+		struct corosync_tpg_group *groups,
+		int gruop_cnt);
+
+	int (*tpg_leave) (
+		corosync_tpg_handle handle,
+		struct corosync_tpg_group *groups,
+		int gruop_cnt);
+
+	int (*tpg_joined_mcast) (
+		corosync_tpg_handle handle,
+		struct iovec *iovec,
+		int iov_len,
+		int guarantee);
+
+	int (*tpg_joined_send_ok) (
+		corosync_tpg_handle handle,
+		struct iovec *iovec,
+		int iov_len);
+
+	int (*tpg_groups_mcast) (
+		corosync_tpg_handle handle,
+		int guarantee,
+		struct corosync_tpg_group *groups,
+		int groups_cnt,
+		struct iovec *iovec,
+		int iov_len);
+
+	int (*tpg_groups_send_ok) (
+		corosync_tpg_handle handle,
+		struct corosync_tpg_group *groups,
+		int groups_cnt,
+		struct iovec *iovec,
+		int iov_len);
+
+	/*
+	 * Plugin loading and unloading
+	 */
 	int (*plugin_interface_reference) (
 		unsigned int *handle, 
 		char *iface_name,
