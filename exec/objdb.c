@@ -360,7 +360,7 @@ static int object_create (
 
 	object_instance->object_name_len = object_name_len;
 
-	list_add (&object_instance->child_list, &parent_instance->child_head);
+	list_add_tail (&object_instance->child_list, &parent_instance->child_head);
 
 	object_instance->object_handle = *object_handle;
 	object_instance->find_child_list = &object_instance->child_head;
@@ -488,7 +488,7 @@ static int object_key_create (
 	object_key->value_len = value_len;
 
 	list_init (&object_key->list);
-	list_add (&object_key->list, &instance->key_head);
+	list_add_tail (&object_key->list, &instance->key_head);
 	object_key_changed_notification(object_handle, key_name, key_len,
 								value, value_len, OBJECT_KEY_CREATED);
 

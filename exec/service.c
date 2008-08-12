@@ -266,7 +266,7 @@ extern unsigned int openais_service_unlink_and_exit (
 			strlen ("ver"),
 			(void *)&found_service_ver,
 			NULL);
-				
+
 		/*
 		 * If service found and linked exit it
 		 */
@@ -294,34 +294,32 @@ extern unsigned int openais_service_unlink_all (
 	unsigned int *service_ver;
 	unsigned int object_service_handle;
 	unsigned int object_find_handle;
-	unsigned int res;
+	int found; 
 
 	log_printf(LOG_LEVEL_NOTICE, "Unloading all openais components\n");
-	
-	res = 0;
+
 	/*
 	 * TODO
 	 * Deleting of keys not supported during iteration at this time
 	 * hence this ugly hack
 	 */
-	for (;;) {
-		corosync_api->object_find_create (
+	while(corosync_api->object_find_create (
 			object_internal_configuration_handle,
 			"service",
 			strlen ("service"),
-			&object_find_handle);
+			&object_find_handle) == 0)
+	{
 
-		res = corosync_api->object_find_next (
+		found = 0;
+
+		while(corosync_api->object_find_next (
 			object_find_handle,
-			&object_service_handle);
+			&object_service_handle) == 0)
+			found = 1;
 
-		/*
-		 * Exit from unloading
-		 */
-		if (res == -1) {
+		if(!found)
 			break;
-		}
-			
+
 		corosync_api->object_key_get (
 			object_service_handle,
 			"name",
@@ -335,7 +333,7 @@ extern unsigned int openais_service_unlink_all (
 			strlen ("ver"),
 			(void *)&service_ver,
 			NULL);
-					
+
 		openais_service_unlink_common (
 			corosync_api, object_service_handle,
 			service_name, *service_ver);
