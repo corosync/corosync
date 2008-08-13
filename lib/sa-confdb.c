@@ -296,6 +296,20 @@ int confdb_sa_write (
 	return ret;
 }
 
+int confdb_sa_reload (
+	unsigned int parent_object_handle,
+	int flush,
+	char *error_text)
+{
+	char *errtext;
+	int ret;
+
+	ret = objdb->object_reload_config(flush, &errtext);
+	if (!ret)
+		strcpy(error_text, errtext);
+
+	return ret;
+}
 
 int confdb_sa_object_iter (
 	unsigned int parent_object_handle,

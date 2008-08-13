@@ -51,8 +51,8 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_KEY_ITER = 9,
 	MESSAGE_REQ_CONFDB_TRACK_START = 10,
 	MESSAGE_REQ_CONFDB_TRACK_STOP = 11,
-	MESSAGE_REQ_CONFDB_XPATH_EVAL_EXPRESSION = 12,
-	MESSAGE_REQ_CONFDB_WRITE = 13
+	MESSAGE_REQ_CONFDB_WRITE = 12,
+	MESSAGE_REQ_CONFDB_RELOAD = 13
 };
 
 enum res_confdb_types {
@@ -71,7 +71,8 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK = 12,
 	MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK = 13,
 	MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK = 14,
-	MESSAGE_RES_CONFDB_WRITE = 15
+	MESSAGE_RES_CONFDB_WRITE = 15,
+	MESSAGE_RES_CONFDB_RELOAD = 16
 };
 
 
@@ -173,6 +174,16 @@ struct res_lib_confdb_key_get {
 };
 
 struct res_lib_confdb_write {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_name_t error __attribute__((aligned(8)));
+};
+
+struct req_lib_confdb_reload {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_int32_t flush __attribute__((aligned(8)));
+};
+
+struct res_lib_confdb_reload {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_name_t error __attribute__((aligned(8)));
 };

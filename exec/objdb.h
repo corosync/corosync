@@ -217,6 +217,10 @@ struct objdb_iface_ver0 {
 		void * priv_data_pt);
 
 	int (*object_write_config) (char **error_string);
+
+	int (*object_reload_config) (
+		int flush,
+		char **error_string);
 };
 
 #endif /* OBJDB_H_DEFINED */

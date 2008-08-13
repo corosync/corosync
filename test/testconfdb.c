@@ -178,6 +178,15 @@ int main (int argc, char *argv[]) {
 	if (argv[1] && strcmp(argv[1], "write")==0)
 		do_write_tests(handle);
 
+	if (argv[1] && strcmp(argv[1], "reload")==0) {
+		/* Test reload interface */
+		result = confdb_reload(handle, 0, key_value);
+		printf ("Try to reload the config (noflush): %d (should be 1)\n", result);
+
+		result = confdb_reload(handle, 1, key_value);
+		printf ("Try to reload the config (flush): %d (should be 1)\n", result);
+	}
+
 	/* Test iterators */
 	print_config_tree(handle, OBJECT_PARENT_HANDLE, 0);
 

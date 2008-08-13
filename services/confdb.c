@@ -70,6 +70,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message);
 static void message_handler_req_lib_confdb_write (void *conn, void *message);
+static void message_handler_req_lib_confdb_reload (void *conn, void *message);
 
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message);
@@ -170,6 +171,12 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_confdb_write,
 		.response_size				= sizeof (struct res_lib_confdb_write),
 		.response_id				= MESSAGE_RES_CONFDB_WRITE,
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 13 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_reload,
+		.response_size				= sizeof (struct res_lib_confdb_reload),
+		.response_id				= MESSAGE_RES_CONFDB_RELOAD,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
@@ -486,6 +493,29 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 		res_lib_confdb_write.error.length = 0;
 
 	api->ipc_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
+}
+
+static void message_handler_req_lib_confdb_reload (void *conn, void *message)
+{
+	struct req_lib_confdb_reload *req_lib_confdb_reload = (struct req_lib_confdb_reload *)message;
+	struct res_lib_confdb_reload res_lib_confdb_reload;
+	int ret = SA_AIS_OK;
+	char *error_string = NULL;
+
+	if (api->object_reload_config(req_lib_confdb_reload->flush, &error_string))
+		ret = SA_AIS_ERR_ACCESS;
+
+	res_lib_confdb_reload.header.size = sizeof(res_lib_confdb_reload);
+	res_lib_confdb_reload.header.id = MESSAGE_RES_CONFDB_RELOAD;
+	res_lib_confdb_reload.header.error = ret;
+
+	if(error_string) {
+		strcpy((char *)res_lib_confdb_reload.error.value, error_string);
+		res_lib_confdb_reload.error.length = strlen(error_string) + 1;
+	} else
+		res_lib_confdb_reload.error.length = 0;
+
+	api->ipc_conn_send_response(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,

@@ -124,6 +124,7 @@ void apidef_init (struct objdb_iface_ver0 *objdb) {
 	apidef_corosync_api_v1.object_track_start = objdb->object_track_start;
 	apidef_corosync_api_v1.object_track_stop = objdb->object_track_stop;
 	apidef_corosync_api_v1.object_write_config = objdb->object_write_config;
+	apidef_corosync_api_v1.object_reload_config = objdb->object_reload_config;
 }
 
 struct corosync_api_v1 *apidef_get (void)

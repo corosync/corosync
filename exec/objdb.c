@@ -1415,6 +1415,36 @@ static int object_write_config(char **error_string)
 	return 0;
 }
 
+static int object_reload_config(int flush, char **error_string)
+{
+	struct config_iface_ver0 **modules;
+	int num_modules;
+	int i;
+	int res;
+
+	main_get_config_modules(&modules, &num_modules);
+
+	/* phase 1. Each module should verify that it can reload the config
+	 * and error out here if possible at all
+	 */
+	for (i=0; i<num_modules; i++) {
+		if (modules[i]->config_verifyconfig) {
+			res = modules[i]->config_verifyconfig(&objdb_iface, error_string);
+			if (res)
+				return res;
+		}
+	}
+	/* phase 2. Do it.. */
+	for (i=0; i<num_modules; i++) {
+		if (modules[i]->config_reloadconfig) {
+			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
+			if (res)
+				return res;
+		}
+	}
+	return 0;
+}
+
 struct objdb_iface_ver0 objdb_iface = {
 	.objdb_init		= objdb_init,
 	.object_create		= object_create,
@@ -1442,6 +1472,7 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_track_stop	= object_track_stop,
 	.object_dump	        = object_dump,
 	.object_write_config    = object_write_config,
+	.object_reload_config   = object_reload_config,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {
