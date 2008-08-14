@@ -1424,17 +1424,6 @@ static int object_reload_config(int flush, char **error_string)
 
 	main_get_config_modules(&modules, &num_modules);
 
-	/* phase 1. Each module should verify that it can reload the config
-	 * and error out here if possible at all
-	 */
-	for (i=0; i<num_modules; i++) {
-		if (modules[i]->config_verifyconfig) {
-			res = modules[i]->config_verifyconfig(&objdb_iface, error_string);
-			if (res)
-				return res;
-		}
-	}
-	/* phase 2. Do it.. */
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_reloadconfig) {
 			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
