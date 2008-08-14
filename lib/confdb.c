@@ -42,12 +42,12 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <saAis.h>
-#include <confdb.h>
-#include <ipc_confdb.h>
-#include <mar_gen.h>
-#include <ais_util.h>
-#include <list.h>
+#include <corosync/saAis.h>
+#include <corosync/confdb.h>
+#include <corosync/ipc_confdb.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ais_util.h>
+#include <corosync/list.h>
 
 #include "sa-confdb.h"
 

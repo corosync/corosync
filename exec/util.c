@@ -39,10 +39,10 @@
 #include <errno.h>
 #include <sys/time.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
+#include <corosync/saAis.h>
+#include <corosync/list.h>
+#include <corosync/engine/logsys.h>
 #include "util.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 

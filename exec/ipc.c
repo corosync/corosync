@@ -61,13 +61,18 @@
 #include <ucred.h>
 #endif
 
-#include "swab.h"
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_ifact.h"
+#include <corosync/swab.h>
+#include <corosync/saAis.h>
+#include <corosync/list.h>
+#include <corosync/queue.h>
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/totem/coropoll.h>
+#include <corosync/totem/totempg.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
+#include <corosync/engine/logsys.h>
+
 #include "poll.h"
-#include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
@@ -78,12 +83,7 @@
 #include "ipc.h"
 #include "flow.h"
 #include "sync.h"
-#include "swab.h"
-#include "objdb.h"
-#include "config.h"
-#include "tlist.h"
-#include "logsys.h"
-#include "coroapi.h"
+#include <corosync/engine/coroapi.h>
 #include "service.h"
 
 #include "util.h"

@@ -35,7 +35,7 @@
 #ifndef TOTEMMRP_H_DEFINED
 #define TOTEMMRP_H_DEFINED
 
-#include "totem.h"
+#include <corosync/totem/totem.h>
 
 /*
  * Totem Single Ring Protocol

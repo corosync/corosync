@@ -35,8 +35,8 @@
 #ifndef APIDEF_H_DEFINED
 #define APIDEF_H_DEFINED
 
-#include "objdb.h"
-#include "../include/coroapi.h"
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/coroapi.h>
 
 void apidef_init (struct objdb_iface_ver0 *objdb);
 

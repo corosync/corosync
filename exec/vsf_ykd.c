@@ -55,11 +55,12 @@
 #include <sched.h>
 #include <time.h>
 
+#include <corosync/engine/logsys.h>
+#include <corosync/swab.h>
+#include <corosync/lcr/lcr_comp.h>
+
 #include "main.h"
-#include "logsys.h"
-#include "swab.h"
 #include "vsf.h"
-#include "../lcr/lcr_comp.h"
 
 LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
 

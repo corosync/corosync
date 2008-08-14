@@ -54,9 +54,10 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include "totem.h"
+#include <corosync/totem/totem.h>
+#include <corosync/totem/coropoll.h>
+
 #include "totemsrp.h"
-#include "coropoll.h"
 
 totemsrp_handle totemsrp_handle_in;
 

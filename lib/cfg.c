@@ -45,12 +45,12 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include <saAis.h>
-#include <cfg.h>
-#include <mar_gen.h>
-#include <ipc_gen.h>
-#include <ipc_cfg.h>
-#include <ais_util.h>
+#include <corosync/saAis.h>
+#include <corosync/cfg.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/ipc_cfg.h>
+#include <corosync/ais_util.h>
 
 struct res_overlay {
 	mar_res_header_t header;

@@ -43,12 +43,8 @@
 #endif
 #include <string.h>
 
-#include <saAis.h>
-#ifdef COROSYNC_EXTERNAL_ENGINE
-#include <corosync/engine/swab.h>
-#else
-#include "swab.h"
-#endif
+#include <corosync/saAis.h>
+#include <corosync/swab.h>
 
 typedef int8_t mar_int8_t;
 typedef int16_t mar_int16_t;

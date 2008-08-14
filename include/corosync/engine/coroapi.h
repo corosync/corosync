@@ -35,6 +35,9 @@
 #define COROAPI_H_DEFINED
 
 #include <stdio.h>
+#ifdef OPENAIS_BSD
+#include <sys/uio.h>
+#endif
 
 typedef void * corosync_timer_handle_t;
 

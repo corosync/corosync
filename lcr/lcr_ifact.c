@@ -38,9 +38,9 @@
 #ifdef OPENAIS_SOLARIS
 #include <iso/limits_iso.h>
 #endif
-#include "lcr_comp.h"
-#include "lcr_ifact.h"
-#include "../include/hdb.h"
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/hdb.h>
 #include <stdlib.h>
 
 struct lcr_component_instance {

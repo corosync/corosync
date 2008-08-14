@@ -43,13 +43,13 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <saAis.h>
-#include <ais_util.h>
-#include "../exec/objdb.h"
-#include "../exec/config.h"
-#include "../lcr/lcr_comp.h"
-#include "../lcr/lcr_ifact.h"
-#include "../exec/logsys.h"
+#include <corosync/saAis.h>
+#include <corosync/ais_util.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/lcr/lcr_ifact.h>
 
 static struct objdb_iface_ver0 *objdb;
 

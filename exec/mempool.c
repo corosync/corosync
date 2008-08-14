@@ -36,7 +36,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../include/list.h"
+#include <corosync/list.h>
 #include "mempool.h"
 
 int mempool_bytes = 0;

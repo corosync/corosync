@@ -46,12 +46,12 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <swab.h>
-#include "../exec/totem.h"
-#include <saAis.h>
-#include <evs.h>
-#include <ipc_evs.h>
-#include <ais_util.h>
+#include <corosync/swab.h>
+#include <corosync/totem/totem.h>
+#include <corosync/saAis.h>
+#include <corosync/evs.h>
+#include <corosync/ipc_evs.h>
+#include <corosync/ais_util.h>
 
 struct evs_inst {
 	int response_fd;

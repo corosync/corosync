@@ -37,19 +37,20 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../lcr/lcr_ifact.h"
-#include "swab.h"
-#include "totem.h"
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/swab.h>
+#include <corosync/totem/totem.h>
+
 #include "mainconfig.h"
 #include "util.h"
-#include "logsys.h"
+#include <corosync/engine/logsys.h>
 
 #include "timer.h"
-#include "totempg.h"
-#include "totemip.h"
+#include <corosync/totem/totempg.h>
+#include <corosync/totem/totemip.h>
 #include "main.h"
 #include "ipc.h"
-#include "../include/coroapi.h"
+#include <corosync/engine/coroapi.h>
 #include "service.h"
 
 
@@ -143,7 +144,7 @@ unsigned int openais_service_link_and_init (
 		&iface_ver0_p,
 		(void *)0);
 
-	iface_ver0 = (struct openais_service_engine_iface_ver0 *)iface_ver0_p;
+	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
 
 	if (iface_ver0 == 0) {
 		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);

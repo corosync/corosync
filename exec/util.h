@@ -34,9 +34,10 @@
  */
 #ifndef UTIL_H_DEFINED
 #define UTIL_H_DEFINED
+
 #include <sys/time.h>
-#include "../include/mar_gen.h"
-#include "../include/saAis.h"
+#include <corosync/mar_gen.h>
+#include <corosync/saAis.h>
 
 /*
  * Get the time of day and convert to nanoseconds

@@ -35,12 +35,14 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include "objdb.h"
-#include "config.h"
+
+#include <corosync/list.h>
+#include <corosync/hdb.h>
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
+
 #include "main.h"
-#include "../lcr/lcr_comp.h"
-#include "../include/hdb.h"
-#include "../include/list.h"
 
 struct object_key {
 	void *key_name;

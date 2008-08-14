@@ -48,14 +48,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "swab.h"
-#include "../include/saAis.h"
-#include "../include/ipc_gen.h"
-#include "../lcr/lcr_comp.h"
-#include "../include/coroapi.h"
-#include "../include/ipc_evs.h"
-#include "../include/list.h"
-#include "../exec/logsys.h"
+#include <corosync/swab.h>
+#include <corosync/saAis.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/ipc_evs.h>
+#include <corosync/list.h>
+#include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SUBSYS ("EVS", LOG_INFO);
 

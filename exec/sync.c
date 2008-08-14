@@ -49,15 +49,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../include/saAis.h"
+#include <corosync/saAis.h>
+#include <corosync/swab.h>
+#include <corosync/totem/totempg.h>
+#include <corosync/totem/totem.h>
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/engine/logsys.h>
+
 #include "main.h"
 #include "sync.h"
-#include "totempg.h"
-#include "totem.h"
 #include "vsf.h"
-#include "swab.h"
-#include "../lcr/lcr_ifact.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("SYNC", LOG_INFO);
 

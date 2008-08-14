@@ -31,7 +31,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef COROSYNC_BSD
+#ifndef OPENAIS_BSD
 #include <alloca.h>
 #endif
 #include <sys/types.h>
@@ -51,18 +51,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../exec/logsys.h"
-
-#include "../include/saAis.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_cpg.h"
-#include "../include/mar_cpg.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_comp.h"
-#include "../include/coroapi.h"
-#include "../exec/logsys.h"
-#include "../include/jhash.h"
+#include <corosync/saAis.h>
+#include <corosync/cfg.h>
+#include <corosync/list.h>
+#include <corosync/queue.h>
+#include <corosync/jhash.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/ipc_cpg.h>
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/engine/coroapi.h>
 
 LOGSYS_DECLARE_SUBSYS ("CPG", LOG_INFO);
 

@@ -45,8 +45,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "saAis.h"
-#include "cfg.h"
+#include <corosync/saAis.h>
+#include <corosync/cfg.h>
 
 static void ringstatusget_do (void)
 {

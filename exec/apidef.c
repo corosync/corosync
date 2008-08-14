@@ -36,18 +36,18 @@
 #include <string.h>
 #include <assert.h>
 
-#include "swab.h"
-#include "totem.h"
+#include <corosync/swab.h>
+#include <corosync/totem/totem.h>
 #include "util.h"
-#include "logsys.h"
+#include <corosync/engine/logsys.h>
 #include "timer.h"
-#include "totempg.h"
-#include "totemip.h"
+#include <corosync/totem/totempg.h>
+#include <corosync/totem/totemip.h>
 #include "main.h"
 #include "ipc.h"
-#include "../include/coroapi.h"
+#include <corosync/engine/coroapi.h>
 #include "service.h"
-#include "../lcr/lcr_ifact.h"
+#include <corosync/lcr/lcr_ifact.h>
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 

@@ -53,7 +53,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "logsys.h"
+#include <corosync/engine/logsys.h>
 #include "wthread.h"
 
 /*
@@ -136,7 +136,7 @@ int logsys_facility_id_get (const char *name)
 	return (-1);
 }
 
-char *logsys_facility_name_get (unsigned int facility)
+const char *logsys_facility_name_get (unsigned int facility)
 {
 	unsigned int i;
 
@@ -160,7 +160,7 @@ int logsys_priority_id_get (const char *name)
 	return (-1);
 }
 
-char *logsys_priority_name_get (unsigned int priority)
+const char *logsys_priority_name_get (unsigned int priority)
 {
 	unsigned int i;
 
@@ -326,7 +326,7 @@ static void _log_printf (
 		(logsys_mode & LOG_MODE_DISPLAY_TIMESTAMP)) {
 		gettimeofday (&tv, NULL);
 		strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S",
-				  localtime (&tv.tv_sec));
+				  localtime ((time_t *)&tv.tv_sec));
 		i = sprintf (newstring, "%s.%06ld ", char_time, (long)tv.tv_usec);
 	}
 

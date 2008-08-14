@@ -46,13 +46,14 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "swab.h"
+#include <corosync/swab.h>
+#include <corosync/list.h>
+#include <corosync/hdb.h>
+#include <corosync/totem/totem.h>
+#include <corosync/totem/totempg.h>
+#include <corosync/engine/logsys.h>
+
 #include "flow.h"
-#include "totem.h"
-#include "totempg.h"
-#include "logsys.h"
-#include "hdb.h"
-#include "../include/list.h"
 
 LOGSYS_DECLARE_SUBSYS ("FLOW", LOG_INFO);
 

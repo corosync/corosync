@@ -32,11 +32,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "objdb.h"
-#include "logsys.h"
-
 #ifndef MAINCONFIG_H_DEFINED
 #define MAINCONFIG_H_DEFINED
+
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/logsys.h>
 
 /*
  * All service handlers in the AIS

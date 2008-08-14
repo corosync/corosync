@@ -45,9 +45,10 @@
 #include <signal.h>
 #include <string.h>
 
-#include "../lcr/lcr_comp.h"
-#include "objdb.h"
-#include "config.h"
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
+
 #include "mempool.h"
 #include "util.h"
 

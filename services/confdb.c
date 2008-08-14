@@ -38,13 +38,16 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "../include/saAis.h"
-#include "../include/ipc_gen.h"
-#include "../include/ipc_confdb.h"
-#include "../include/mar_gen.h"
-#include "../lcr/lcr_comp.h"
-#include "../exec/logsys.h"
-#include "../include/coroapi.h"
+#include <corosync/saAis.h>
+#include <corosync/cfg.h>
+#include <corosync/list.h>
+#include <corosync/queue.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/ipc_confdb.h>
+#include <corosync/lcr/lcr_comp.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/engine/coroapi.h>
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_DEBUG);
 

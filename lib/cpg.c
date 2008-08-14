@@ -45,11 +45,11 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <saAis.h>
-#include <cpg.h>
-#include <ipc_cpg.h>
-#include <mar_cpg.h>
-#include <ais_util.h>
+#include <corosync/saAis.h>
+#include <corosync/cpg.h>
+#include <corosync/ipc_cpg.h>
+#include <corosync/mar_cpg.h>
+#include <corosync/ais_util.h>
 
 struct cpg_inst {
 	int response_fd;

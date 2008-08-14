@@ -32,18 +32,17 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef AIS_EXEC_H_DEFINED
+#define AIS_EXEC_H_DEFINED
 
 #define TRUE 1
 #define FALSE 0
-#include "../include/saAis.h"
-#include "../include/ipc_gen.h"
-#include "coropoll.h"
-#include "objdb.h"
-#include "config.h"
-#include "totempg.h"
-
-#ifndef AIS_EXEC_H_DEFINED
-#define AIS_EXEC_H_DEFINED
+#include <corosync/saAis.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/totem/coropoll.h>
+#include <corosync/totem/totempg.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
 
 /*
  * Size of the queue (entries) for I/O's to the API over socket IPC.

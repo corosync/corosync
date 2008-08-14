@@ -53,9 +53,9 @@
 #include <netinet/in.h>
 #include <assert.h>
 
-#include <saAis.h>
-#include <ipc_gen.h>
-#include <ais_util.h>
+#include <corosync/saAis.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/ais_util.h>
 
 enum SA_HANDLE_STATE {
 	SA_HANDLE_STATE_EMPTY,
