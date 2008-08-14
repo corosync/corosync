@@ -181,9 +181,7 @@ install: all
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
 
-	for aHeader in $(AIS_HEADERS); do				\
-	    install -m 644 $(srcdir)include/corosync/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
-	done
+	install -m 644 $(srcdir)include/corosync/saAis.h $(DESTDIR)$(INCLUDEDIR);	\
 
 	install -m 644 $(srcdir)include/corosync/hdb.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 $(srcdir)include/corosync/totem/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
