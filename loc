@@ -1,12 +1,26 @@
 echo "Corosync Cluster Engine LOC"
-echo -n "exec LOC    "
-find exec -name *.[ch] -exec cat {} \; | wc -l
+echo "---------------------------"
+echo -n "exec LOC     "
+printf "%7.7s\n" `find exec -name *.[ch] -exec cat {} \; | wc -l`
 
-echo -n "lib LOC     "
-find lib -name *.[ch] -exec cat {} \; | wc -l
+echo -n "services LOC "
+printf "%7.7s\n" `find services -name *.[ch] -exec cat {} \; | wc -l`
 
-echo -n "include LOC "
-find include -name *.[ch] -exec cat {} \; | wc -l
+echo -n "lib LOC      "
+printf "%7.7s\n" `find lib -name *.[ch] -exec cat {} \; | wc -l`
 
-echo -n "total LOC   "
-find . -name *.[ch] -exec cat {} \; | wc -l
+echo -n "include LOC  "
+printf "%7.7s\n" `find include -name *.[ch] -exec cat {} \; | wc -l`
+
+echo -n "lcr LOC      "
+printf "%7.7s\n" `find lcr -name *.[ch] -exec cat {} \; | wc -l`
+
+echo -n "test LOC     "
+printf "%7.7s\n" `find test -name *.[ch] -exec cat {} \; | wc -l`
+
+echo -n "tools LOC    "
+printf "%7.7s\n" `find tools -name *.[ch] -exec cat {} \; | wc -l`
+
+echo "---------------------------"
+echo -n "total LOC    "
+printf "%7.7s\n" `find . -name *.[ch] -exec cat {} \; | wc -l`
