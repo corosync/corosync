@@ -1,4 +1,6 @@
-This directory contains init scripts used to autostart the ais executive.
+This directory contains init scripts used to start and stop the Corosync Cluster
+Engine.
 
+redhat contains an init script for Red Hat systems.
 mvlcge contains an init script for MontaVista Linux systems.
-redhat contains an init script for Redhat systems.
+generic contains an init script for Generic Systems.

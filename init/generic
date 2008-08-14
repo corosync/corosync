@@ -1,18 +1,18 @@
 #!/bin/sh
 #
-# corosync       Start the corosync cluster service
+# corosync       Start the Corosync Cluster Engine
 #
 # Author:       Andrew Beekhof <abeekhof@suse.de>
 # License:      Revised BSD
 #
 # chkconfig: - 20 20
-# processname:  aisexec
-# description:  OpenAIS daemon
+# processname:  corosync
+# description:  Corosync Cluster Engine
 #
 ### BEGIN INIT INFO
 # Description: corosync....
 #
-# Short-Description: corosync cluster services.
+# Short-Description: Corosync Cluster Engine.
 # Provides: corosync
 # Required-Start: $network
 # Should-Start: $syslog
@@ -22,11 +22,11 @@
 ### END INIT INFO
 
 do_force=0
-prog="aisexec"
+prog="corosync"
 lockfile="/var/lock/subsys/$prog"
 
 internal_status() {
-    killall -0 aisexec > /dev/null 2>&1
+    killall -0 corosync > /dev/null 2>&1
     return $?
 }
 
@@ -43,7 +43,7 @@ status() {
 }
 
 start() {
-    echo -n $"Starting OpenAIS daemon ($prog): "
+    echo -n $"Starting Corosync Cluster Engine ($prog): "
     if 
 	! internal_status
     then
@@ -69,9 +69,9 @@ do_force=0
 do_forever=1
 
 stop() {
-    echo -n $"Stopping OpenAIS daemon ($prog): "
+    echo -n $"Stopping Corosync Cluster Engine ($prog): "
 
-    killall -QUIT aisexec
+    killall -QUIT corosync
 
     if [ $do_forever = 0 ]; then
 	for i in 1 2 3 4 5 6 7 8 9 10 12 13 14 15 16 17 18 19 20; do
@@ -89,7 +89,7 @@ stop() {
 
 	if [ $do_force = 1 ]; then
 	    echo -n "Escalating... "
-	    killall -KILL aisexec
+	    killall -KILL corosync
 	    sleep 5
 	    
 	    if

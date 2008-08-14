@@ -1,23 +1,23 @@
 #!/bin/sh
 #
-# OpenAIS daemon init script for Red Hat Linux and compatibles.
+# Corosync daemon init script for Red Hat Linux and compatibles.
 #
 # chkconfig: - 20 20
-# processname:  aisexec
-# pidfile:      /var/run/aisexec.pid
-# description:  OpenAIS daemon
+# processname:  corosync
+# pidfile:      /var/run/corosync.pid
+# description:  Corosync Cluster Engine
 
 # Source function library
 . /etc/rc.d/init.d/functions
 
-prog="aisexec"
+prog="corosync"
 exec="/usr/sbin/$prog"
 lockfile="/var/lock/subsys/$prog"
 
 [ -x "$exec" ] || exit 0
 
 start() {
-    echo -n $"Starting OpenAIS daemon ($prog): "
+    echo -n $"Starting Corosync Cluster Engine ($prog): "
     daemon $exec
     retval=$?
     [ "$retval" -eq 0 ] && touch "$lockfile"
@@ -26,7 +26,7 @@ start() {
 }
 
 stop() {
-    echo -n $"Stopping OpenAIS daemon ($prog): "
+    echo -n $"Stopping Corosync Cluster Engine ($prog): "
     killproc $prog
     retval=$?
     [ "$retval" -eq 0 ] && rm -f "$lockfile"
