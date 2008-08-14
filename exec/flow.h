@@ -42,16 +42,16 @@ enum corosync_flow_control_state {
 	COROSYNC_FLOW_CONTROL_STATE_ENABLED
 };
 
-unsigned int openais_flow_control_initialize (void);
+unsigned int corosync_flow_control_initialize (void);
 
-unsigned int openais_flow_control_ipc_init (
+unsigned int corosync_flow_control_ipc_init (
 	unsigned int *flow_control_identifier,
 	unsigned int service);
 
-unsigned int openais_flow_control_ipc_exit (
+unsigned int corosync_flow_control_ipc_exit (
 	unsigned int flow_control_identifier);
 
-unsigned int openais_flow_control_create (
+unsigned int corosync_flow_control_create (
 	unsigned int flow_control_handle,
 	unsigned int service,
 	void *id,
@@ -59,16 +59,16 @@ unsigned int openais_flow_control_create (
 	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state),
 	void *context);
 
-unsigned int openais_flow_control_destroy (
+unsigned int corosync_flow_control_destroy (
 	unsigned int flow_control_identifier,
 	unsigned int service,
 	unsigned char *id,
 	unsigned int id_len);
 
-unsigned int openais_flow_control_disable (
+unsigned int corosync_flow_control_disable (
 	unsigned int flow_control_identifier);
 
-unsigned int openais_flow_control_enable (
+unsigned int corosync_flow_control_enable (
 	unsigned int flow_control_identifier);
 
 #endif /* FLOW_H_DEFINED */

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# openais       Start the openais cluster service
+# corosync       Start the corosync cluster service
 #
 # Author:       Andrew Beekhof <abeekhof@suse.de>
 # License:      Revised BSD
@@ -10,10 +10,10 @@
 # description:  OpenAIS daemon
 #
 ### BEGIN INIT INFO
-# Description: openais....
+# Description: corosync....
 #
-# Short-Description: openais cluster services.
-# Provides: openais
+# Short-Description: corosync cluster services.
+# Provides: corosync
 # Required-Start: $network
 # Should-Start: $syslog
 # Required-Stop: $network

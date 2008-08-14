@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides an extended virtual synchrony API using the openais executive
+ * Provides an extended virtual synchrony API using the corosync executive
  */
 
 #include <stdlib.h>
@@ -46,12 +46,12 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/swab.h>
-#include <corosync/totem/totem.h>
-#include <corosync/saAis.h>
-#include <corosync/evs.h>
-#include <corosync/ipc_evs.h>
-#include <corosync/ais_util.h>
+#include <swab.h>
+#include "../exec/totem.h"
+#include <saAis.h>
+#include <evs.h>
+#include <ipc_evs.h>
+#include <ais_util.h>
 
 struct evs_inst {
 	int response_fd;
@@ -89,8 +89,8 @@ static void evs_instance_destructor (void *instance)
 
 
 /**
- * @defgroup evs_openais The extended virtual synchrony passthrough API
- * @ingroup openais
+ * @defgroup evs_corosync The extended virtual synchrony passthrough API
+ * @ingroup corosync
  *
  * @{
  */

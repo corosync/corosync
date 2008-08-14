@@ -35,7 +35,7 @@ subdir ?= services/
 
 include $(srcdir)Makefile.inc
 
-override LDFLAGS += -L./
+LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 	override LDFLAGS += ${DYFLAGS}
@@ -60,16 +60,16 @@ all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso
 ifeq (${OPENAIS_COMPAT}, DARWIN)
 
 service_evs.lcrso: evs.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load evs.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load evs.o -o $@
 
 service_cfg.lcrso: cfg.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load cfg.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cfg.o -o $@
 
 service_confdb.lcrso: confdb.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load confdb.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load confdb.o -o $@
 
 service_cpg.lcrso: cpg.o
-	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load cpg.o -o $@
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./aisexec -bind_at_load cpg.o -o $@
 
 else
 

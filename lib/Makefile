@@ -35,6 +35,7 @@ subdir ?= lib/
 
 include $(srcdir)Makefile.inc
 
+
 override LDFLAGS += -L./
 
 all: libcpg.a libcpg.so.2.0.0 \
@@ -58,7 +59,7 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
+libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
@@ -78,7 +79,7 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
+libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o

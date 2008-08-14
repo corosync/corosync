@@ -40,9 +40,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
-#include <corosync/queue.h>
-
 #include "wthread.h"
+#include "../include/queue.h"
 
 struct thread_data {
 	void *thread_state;

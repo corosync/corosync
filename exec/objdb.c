@@ -35,14 +35,12 @@
 
 #include <stdio.h>
 #include <errno.h>
-
-#include <corosync/list.h>
-#include <corosync/hdb.h>
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-
+#include "objdb.h"
+#include "config.h"
 #include "main.h"
+#include "../lcr/lcr_comp.h"
+#include "../include/hdb.h"
+#include "../include/list.h"
 
 struct object_key {
 	void *key_name;
@@ -362,7 +360,7 @@ static int object_create (
 
 	object_instance->object_name_len = object_name_len;
 
-	list_add_tail (&object_instance->child_list, &parent_instance->child_head);
+	list_add (&object_instance->child_list, &parent_instance->child_head);
 
 	object_instance->object_handle = *object_handle;
 	object_instance->find_child_list = &object_instance->child_head;
@@ -490,7 +488,7 @@ static int object_key_create (
 	object_key->value_len = value_len;
 
 	list_init (&object_key->list);
-	list_add_tail (&object_key->list, &instance->key_head);
+	list_add (&object_key->list, &instance->key_head);
 	object_key_changed_notification(object_handle, key_name, key_len,
 								value, value_len, OBJECT_KEY_CREATED);
 
@@ -1417,25 +1415,6 @@ static int object_write_config(char **error_string)
 	return 0;
 }
 
-static int object_reload_config(int flush, char **error_string)
-{
-	struct config_iface_ver0 **modules;
-	int num_modules;
-	int i;
-	int res;
-
-	main_get_config_modules(&modules, &num_modules);
-
-	for (i=0; i<num_modules; i++) {
-		if (modules[i]->config_reloadconfig) {
-			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
-			if (res)
-				return res;
-		}
-	}
-	return 0;
-}
-
 struct objdb_iface_ver0 objdb_iface = {
 	.objdb_init		= objdb_init,
 	.object_create		= object_create,
@@ -1463,7 +1442,6 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_track_stop	= object_track_stop,
 	.object_dump	        = object_dump,
 	.object_write_config    = object_write_config,
-	.object_reload_config   = object_reload_config,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {

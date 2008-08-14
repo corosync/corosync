@@ -41,7 +41,7 @@ LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
 LIBS = $(LIBRARIES) 
 BINARIES= testevs evsbench testcpg testcpg2 cpgbench testconfdb
 
-#override CFLAGS += -I../include
+override CFLAGS += -I../include
 override LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I$(srcdir)include

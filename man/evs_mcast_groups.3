@@ -31,12 +31,12 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH EVS_MCAST_GROUPS 3 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.TH EVS_MCAST_GROUPS 3 2004-08-31 "corosync Man Page" "Openais Programmer's Manual"
 .SH NAME
 evs_join \- Multicast a message to selected groups
 .SH SYNOPSIS
 .B #include <sys/uio.h>
-.B #include <openais/evs.h>
+.B #include <corosync/evs.h>
 .sp
 .BI "int evs_mcast_gruops(evs_handle_t " handle ", evs_guraantee_t " guarantee ", evs_group_t *" groups ", int group_entries, struct iovec *" iovec ", int " iov_len ");
 .SH DESCRIPTION

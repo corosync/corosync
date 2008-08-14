@@ -45,10 +45,9 @@
 #include <signal.h>
 #include <string.h>
 
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-
+#include "../lcr/lcr_comp.h"
+#include "objdb.h"
+#include "config.h"
 #include "mempool.h"
 #include "util.h"
 
@@ -190,7 +189,7 @@ struct config_iface_ver0 aisparser_iface_ver0 = {
 	.config_readconfig        = aisparser_readconfig
 };
 
-struct lcr_iface openais_aisparser_ver0[1] = {
+struct lcr_iface corosync_aisparser_ver0[1] = {
 	{
 		.name				= "corosync_parser",
 		.version			= 0,
@@ -204,16 +203,16 @@ struct lcr_iface openais_aisparser_ver0[1] = {
 	}
 };
 
-struct openais_service_handler *aisparser_get_handler_ver0 (void);
+struct corosync_service_handler *aisparser_get_handler_ver0 (void);
 
 struct lcr_comp aisparser_comp_ver0 = {
 	.iface_count				= 1,
-	.ifaces					= openais_aisparser_ver0
+	.ifaces					= corosync_aisparser_ver0
 };
 
 
 __attribute__ ((constructor)) static void aisparser_comp_register (void) {
-        lcr_interfaces_set (&openais_aisparser_ver0[0], &aisparser_iface_ver0);
+        lcr_interfaces_set (&corosync_aisparser_ver0[0], &aisparser_iface_ver0);
 	lcr_component_register (&aisparser_comp_ver0);
 }
 

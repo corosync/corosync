@@ -61,18 +61,13 @@
 #include <ucred.h>
 #endif
 
-#include <corosync/swab.h>
-#include <corosync/saAis.h>
-#include <corosync/list.h>
-#include <corosync/queue.h>
-#include <corosync/lcr/lcr_ifact.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
-
+#include "swab.h"
+#include "../include/saAis.h"
+#include "../include/list.h"
+#include "../include/queue.h"
+#include "../lcr/lcr_ifact.h"
 #include "poll.h"
+#include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
@@ -83,7 +78,12 @@
 #include "ipc.h"
 #include "flow.h"
 #include "sync.h"
-#include <corosync/engine/coroapi.h>
+#include "swab.h"
+#include "objdb.h"
+#include "config.h"
+#include "tlist.h"
+#include "logsys.h"
+#include "coroapi.h"
 #include "service.h"
 
 #include "util.h"
@@ -203,7 +203,7 @@ static int response_init_send_response (
 	res_lib_response_init.header.error = error;
 	res_lib_response_init.conn_info = (mar_uint64_t)cinfo;
 
-	openais_conn_send_response (
+	corosync_conn_send_response (
 		conn_info,
 		&res_lib_response_init,
 		sizeof (res_lib_response_init));
@@ -272,7 +272,7 @@ static int dispatch_init_send_response (
 	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
 	res_lib_dispatch_init.header.error = error;
 
-	openais_conn_send_response (
+	corosync_conn_send_response (
 		conn_info,
 		&res_lib_dispatch_init,
 		sizeof (res_lib_dispatch_init));
@@ -293,7 +293,7 @@ static int dispatch_init_send_response (
 	conn_info->flow_control = ais_service[conn_info->service]->flow_control;
 	conn_info->conn_info_partner->flow_control = ais_service[conn_info->service]->flow_control;
 	if (ais_service[conn_info->service]->flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) {
-		openais_flow_control_ipc_init (
+		corosync_flow_control_ipc_init (
 			&conn_info->flow_control_handle,
 			conn_info->service);
 
@@ -444,7 +444,7 @@ static int libais_disconnect (struct conn_info *conn_info)
 	conn_info->state = CONN_STATE_DISCONNECTED;
 	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTED;
 	if (conn_info->flow_control_enabled == 1) {
-		openais_flow_control_disable (conn_info->flow_control_handle);
+		corosync_flow_control_disable (conn_info->flow_control_handle);
 	}
 	return (0);
 }
@@ -636,7 +636,7 @@ static void ipc_flow_control (struct conn_info *conn_info)
 			log_printf (LOG_LEVEL_NOTICE, "Enabling flow control [%d/%d] - [%d].\n",
 				entries_usedhw, SIZEQUEUE,
 				flow_control_local_count);
-			openais_flow_control_enable (conn_info->flow_control_handle);
+			corosync_flow_control_enable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 1;
 			conn_info->conn_info_partner->flow_control_enabled = 1;
 		}
@@ -647,7 +647,7 @@ static void ipc_flow_control (struct conn_info *conn_info)
 			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control [%d/%d] - [%d].\n",
 				entries_usedhw, SIZEQUEUE,
 				flow_control_local_count);
-			openais_flow_control_disable (conn_info->flow_control_handle);
+			corosync_flow_control_disable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 0;
 			conn_info->conn_info_partner->flow_control_enabled = 0;
 		}
@@ -883,13 +883,13 @@ retry_recv:
 
 			/*
 			 * If flow control is required of the library handle, determine that
-			 * openais is not in synchronization and that totempg has room available
+			 * corosync is not in synchronization and that totempg has room available
 			 * to queue a message, otherwise tell the library we are busy and to
 			 * try again later
 			 */
 			send_ok_joined_iovec.iov_base = (char *)header;
 			send_ok_joined_iovec.iov_len = header->size;
-			send_ok_joined = totempg_groups_send_ok_joined (openais_group_handle,
+			send_ok_joined = totempg_groups_send_ok_joined (corosync_group_handle,
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
@@ -911,7 +911,7 @@ retry_recv:
 				res_overlay.header.id =
 					ais_service[service]->lib_engine[header->id].response_id;
 				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
-				openais_conn_send_response (
+				corosync_conn_send_response (
 					conn_info,
 					&res_overlay,
 					res_overlay.header.size);
@@ -1026,7 +1026,7 @@ static void ipc_confchg_fn (
 {
 }
 
-void openais_ipc_init (
+void corosync_ipc_init (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid)
@@ -1045,14 +1045,14 @@ void openais_ipc_init (
 	libais_server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (libais_server_fd == -1) {
 		log_printf (LOG_LEVEL_ERROR ,"Cannot create libais client connections socket.\n");
-		openais_exit_error (AIS_DONE_LIBAIS_SOCKET);
+		corosync_exit_error (AIS_DONE_LIBAIS_SOCKET);
 	};
 
 	totemip_nosigpipe(libais_server_fd);
 	res = fcntl (libais_server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
-		openais_exit_error (AIS_DONE_LIBAIS_SOCKET);
+		corosync_exit_error (AIS_DONE_LIBAIS_SOCKET);
 	}
 
 #if !defined(OPENAIS_LINUX)
@@ -1072,7 +1072,7 @@ void openais_ipc_init (
 	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not bind AF_UNIX: %s.\n", strerror (errno));
-		openais_exit_error (AIS_DONE_LIBAIS_BIND);
+		corosync_exit_error (AIS_DONE_LIBAIS_BIND);
 	}
 	listen (libais_server_fd, SERVER_BACKLOG);
 
@@ -1098,7 +1098,7 @@ void openais_ipc_init (
 /*
  * Get the conn info private data
  */
-void *openais_conn_private_data_get (void *conn)
+void *corosync_conn_private_data_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1112,7 +1112,7 @@ void *openais_conn_private_data_get (void *conn)
 /*
  * Get the conn info partner connection
  */
-void *openais_conn_partner_get (void *conn)
+void *corosync_conn_partner_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1123,7 +1123,7 @@ void *openais_conn_partner_get (void *conn)
 	}
 }
 
-int openais_conn_send_response (
+int corosync_conn_send_response (
 	void *conn,
 	void *msg,
 	int mlen)
@@ -1265,7 +1265,7 @@ retry_sendmsg_two:
 	return (0);
 }
 
-void openais_ipc_flow_control_create (
+void corosync_ipc_flow_control_create (
 	void *conn,
 	unsigned int service,
 	char *id,
@@ -1275,7 +1275,7 @@ void openais_ipc_flow_control_create (
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	openais_flow_control_create (
+	corosync_flow_control_create (
 		conn_info->flow_control_handle,
 		service,
 		id,
@@ -1285,7 +1285,7 @@ void openais_ipc_flow_control_create (
 	conn_info->conn_info_partner->flow_control_handle = conn_info->flow_control_handle;
 }
 
-void openais_ipc_flow_control_destroy (
+void corosync_ipc_flow_control_destroy (
 	void *conn,
 	unsigned int service,
 	unsigned char *id,
@@ -1293,14 +1293,14 @@ void openais_ipc_flow_control_destroy (
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	openais_flow_control_destroy (
+	corosync_flow_control_destroy (
 		conn_info->flow_control_handle,
 		service,
 		id,
 		id_len);
 }
 
-void openais_ipc_flow_control_local_increment (
+void corosync_ipc_flow_control_local_increment (
         void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
@@ -1312,7 +1312,7 @@ void openais_ipc_flow_control_local_increment (
 	pthread_mutex_unlock (&conn_info->flow_control_mutex);
 }
 
-void openais_ipc_flow_control_local_decrement (
+void corosync_ipc_flow_control_local_decrement (
         void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;

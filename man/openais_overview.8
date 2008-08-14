@@ -32,9 +32,9 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH OPENAIS_OVERVIEW 8 2006-05-10 "openais Man Page" "Openais Programmer's Manual"
+.TH OPENAIS_OVERVIEW 8 2006-05-10 "corosync Man Page" "Openais Programmer's Manual"
 .SH OVERVIEW
-The openais project is a project to implement a production quality "Revised BSD"
+The corosync project is a project to implement a production quality "Revised BSD"
 licensed implementation of the most recent SA Forum's Application Interface
 Specification.  The Application Interface Specification is a software API and
 policies which are used to develop applications that maintain service during
@@ -66,7 +66,7 @@ Application programmers develop applications to periodically record their
 state using the checkpointing service. When an active application fails,
 a standby application recovers the state of the application. This
 technique, called stateful application failover, provides the fundamental
-difference between openais and other systems that have come before it.
+difference between corosync and other systems that have come before it.
 With stateful application failover, the end-application user doesn't
 have to reload the application or redial a telephone. The full state
 is recorded, so the end-application user sees no interruption in service.
@@ -78,40 +78,40 @@ a publish/subscribe model for events. The messaging service provides
 end to end messaging. Finally a mechanism to synchronize access is
 provided by the distributed lock service. 
 
-The openais project also provides a group messaging toolkit called EVS.
+The corosync project also provides a group messaging toolkit called EVS.
 The EVS service implements a messaging model known as Extended Virtual
 Synchrony.  This model allows one sender to transmit to many receivers.
 Certain guarantees are provided for message and membership delivery
 which make virtual synchrony ideal for developing distributed applications.
 
 .SH QUICKSTART
-The openais executive must be configured.  In the directory conf in the
+The corosync executive must be configured.  In the directory conf in the
 source distribution are several files that must be copied to the /etc/ais
-directory.  If openais is packaged by a distro, this may be complete.
+directory.  If corosync is packaged by a distro, this may be complete.
 
-The directory contains the file openais.conf.  Please read the openais.conf(5)
-man page for details on the configuration options.  The openais project will
+The directory contains the file corosync.conf.  Please read the corosync.conf(5)
+man page for details on the configuration options.  The corosync project will
 work out of the box with the default configuration options, although the
 administrator may desire different options.
 
-An user and group of the name "ais" must be added to the system.  If openais
+An user and group of the name "ais" must be added to the system.  If corosync
 is packaged from a distro, this step should already be completed.
 This can be achieved by executing:
 
 [root@slickdeal root]# adduser ais -g ais
 
-The openais executive uses cryptographic techniques to ensure authenticity
-and privacy of the messages.  In order for openais to be secure and operate,
+The corosync executive uses cryptographic techniques to ensure authenticity
+and privacy of the messages.  In order for corosync to be secure and operate,
 a private key must be generated and shared to all processors.
 
 First generate the key on one of the nodes:
 
 unix# ais-keygen
-openais authentication key generator.
+corosync authentication key generator.
 .PP
 Gathering 1024 bits for key from /dev/random.
 .PP
-Writing openais key to /etc/ais/authkey.
+Writing corosync key to /etc/ais/authkey.
 .PP
 
 After this operation, a private key will be in the file /etc/ais/authkey.
@@ -124,38 +124,38 @@ key from node to node.  Then install the key with the command:
 
 unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
 
-If a message "Invalid digest" appears from the openais executive, the keys
+If a message "Invalid digest" appears from the corosync executive, the keys
 are not consistent between processors.
 
-Finally run the openais executive.  If openais is packaged from a distro, it
+Finally run the corosync executive.  If corosync is packaged from a distro, it
 may be set to start on system start.  It may also be turned off by default in
-which case the init script for openais must be enabled.
+which case the init script for corosync must be enabled.
 
 After running aisexec, a list of all processors IP addresses running the ais
 executive and configured on the same multicast address will appear.  If they
 don't appear, there may be a problem with multicast in the distro or hardware.
-If this happens, participation in the openais mailing list may help solve the
-problem.  The email address is openais@lists.osdl.org.
+If this happens, participation in the corosync mailing list may help solve the
+problem.  The email address is corosync@lists.osdl.org.
 
 .SH USING LIBRARIES
-The openais AIS libraries have header files which must be included in the
+The corosync AIS libraries have header files which must be included in the
 developer's application.  Once the header file is included, the developer can
 reference the AIS interfaces.
 
-The openais project recommends to distros to place include files in
-/usr/include/openais.  The following include lines must be added to
+The corosync project recommends to distros to place include files in
+/usr/include/corosync.  The following include lines must be added to
 the application to use each of the following services: 
 
-#include <openais/saClm.h> For the Cluster Membership B.01.01 service.
+#include <corosync/saClm.h> For the Cluster Membership B.01.01 service.
 .PP
-#include <openais/saCkpt.h> For the Checkpointing B.01.01 service.
+#include <corosync/saCkpt.h> For the Checkpointing B.01.01 service.
 .PP
-#include <openais/saEvt.h> For the Eventing B.01.01 service.
+#include <corosync/saEvt.h> For the Eventing B.01.01 service.
 .PP
-#include <openais/ais_amf.h> For the AMF A.01.01 service.
+#include <corosync/ais_amf.h> For the AMF A.01.01 service.
 .PP
 
-The openais project recommends to distros to place library files in
+The corosync project recommends to distros to place library files in
 /usr/lib.  The following link lines must be added to the LDFLAGS section
 of the makefile.
 
@@ -171,7 +171,7 @@ of the makefile.
 each library individually.
 
 .SH IPv6
-The openais project supports both IPv4 and IPv6 network addresses.  The entire
+The corosync project supports both IPv4 and IPv6 network addresses.  The entire
 cluster must use either IPv4 or IPv6 for the cluster communication mechanism.
 In order to use IPv6, IPv6 addresses must be specified in the bindnetaddr and
 mcastaddr fields in the configuration file.  The nodeid field must also be
@@ -191,28 +191,28 @@ which will cause significant problems.  Make sure a route is available for
 IPv6 traffic.
 
 .SH ARCHITECTURE
-The AIS libraries are a thin IPC interface to the openais executive.  The
-openais executive provides services for the SA Forum AIS libraries as well
+The AIS libraries are a thin IPC interface to the corosync executive.  The
+corosync executive provides services for the SA Forum AIS libraries as well
 as the EVS and CPG libraries.
 
-The openais executive uses the Totem extended virtual synchrony protocol.  The
+The corosync executive uses the Totem extended virtual synchrony protocol.  The
 advantage to the end user is excellent performance characteristics and a proven
 protocol with excellent reliability.  This protocol connects the processors
 in a configuration together so they may communicate.
 
 .SH ENVIRONMENT VARIABLES
-The openais executive process uses four environment variables during startup.
+The corosync executive process uses four environment variables during startup.
 If these environment variables are not set, defaults will be used.
 
 .TP
 OPENAIS_MAIN_CONFIG_FILE
-This specifies the fully qualified path to the openais configuration file.
+This specifies the fully qualified path to the corosync configuration file.
 
-The default is /etc/ais/openais.conf.
+The default is /etc/ais/corosync.conf.
 
 .TP
 OPENAIS_AMF_CONFIG_FILE
-This specifies the fully qualified path to the openais Availability Management
+This specifies the fully qualified path to the corosync Availability Management
 Framework configuration file.
 
 The default is /etc/ais/amf.conf.
@@ -222,8 +222,8 @@ OPENAIS_DEFAULT_CONFIG_IFACE
 This specifies the LCRSO that is used to parse the configuration file.  This
 allows other configuration file parsers to be implemented within the system.
 
-The default is to use the default openais configuration file parser which
-parses the format specified in openais.conf (5).
+The default is to use the default corosync configuration file parser which
+parses the format specified in corosync.conf (5).
 
 .TP
 OPENAIS_TOTEM_AUTHKEY_FILE
@@ -233,9 +233,9 @@ authenticate and encrypt data used within the Totem protocol.
 The default is /etc/ais/authkey.
 
 .SH SECURITY
-The openais executive optionally encrypts all messages sent over the network
-using the SOBER-128 stream cipher.  The openais executive uses HMAC and SHA1 to
-authenticate all messages.  The openais executive library uses SOBER-128
+The corosync executive optionally encrypts all messages sent over the network
+using the SOBER-128 stream cipher.  The corosync executive uses HMAC and SHA1 to
+authenticate all messages.  The corosync executive library uses SOBER-128
 as a pseudo random number generator.  The EVS library feeds the PRNG using
 the /dev/random Linux device.
 
@@ -244,18 +244,18 @@ a denial of service attack on the cluster.  In this scenario, the cluster is
 likely already compromised and a DOS attack is the least of the administration's
 worries.
 
-The security in openais does not offer perfect forward secrecy because the keys
+The security in corosync does not offer perfect forward secrecy because the keys
 are reused.  It may be possible for an intruder by capturing packets in an
 automated fashion to determine the shared key.  No such automated attack has
 been published as of yet.  In this scenario, the cluster is likely already
 compromised to allow the long-term capture of transmitted data.
 
-For security reasons, the openais executive binary aisexec should NEVER
+For security reasons, the corosync executive binary aisexec should NEVER
 be setuid or setgid in the filesystem.
 
 .PP
 .SH SAFTEST COMPLIANCE
-The openais libraries are now nearly compliant with every aspect of the SA
+The corosync libraries are now nearly compliant with every aspect of the SA
 Forum's AIS specification.  The AMF service, however, is not compliant with the
 B.01.01 specification.  The remaining services pass most of the tests of the 
 saftest suite against the B.01.01 specification.
@@ -267,6 +267,6 @@ The Availability Management Framework is under development and not suitable for
 deployment..
 
 .SH "SEE ALSO"
-.BR openais.conf (5),
+.BR corosync.conf (5),
 .BR evs_overview (8)
 .PP

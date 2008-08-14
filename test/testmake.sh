@@ -3,14 +3,14 @@
 # author: Angus Salkeld (ahsalkeld@gmail.com)
 #
 # usage:
-#  run this from the base directory of openais
+#  run this from the base directory of corosync
 #
 
 
 SRCDIR=$(pwd)
 ALL_TESTS="1 2 3 4"
 
-MAKE_LOG=/tmp/openais-make-test.log
+MAKE_LOG=/tmp/corosync-make-test.log
 
 test_1()
 {
@@ -55,7 +55,7 @@ test_2()
 
 test_3()
 {
-	local BUILD_DIR=/tmp/openais-make-test
+	local BUILD_DIR=/tmp/corosync-make-test
 	echo "O=$BUILD_DIR" > $SRCDIR/make_o_path
 
 	TEST="[3] make objects separately from the source"
@@ -67,7 +67,7 @@ test_3()
 
 test_4()
 {
-	BUILD_DIR=/tmp/openais-make-test
+	BUILD_DIR=/tmp/corosync-make-test
 	rm -f $SRCDIR/make_o_path
 
 	TEST="[4] make -f SRCDIR/Makefile from the builddir"

@@ -50,8 +50,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
-#include <corosync/cpg.h>
+#include "saAis.h"
+#include "cpg.h"
 
 #ifdef OPENAIS_SOLARIS
 #define timersub(a, b, result)						\

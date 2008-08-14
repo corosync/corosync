@@ -45,8 +45,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
-#include <corosync/cpg.h>
+#include "saAis.h"
+#include "cpg.h"
 
 static int quit = 0;
 static int show_ip = 0;

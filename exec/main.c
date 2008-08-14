@@ -55,29 +55,30 @@
 #include <sched.h>
 #include <time.h>
 
-#include <corosync/swab.h>
-#include <corosync/saAis.h>
-#include <corosync/list.h>
-#include <corosync/queue.h>
-#include <corosync/lcr/lcr_ifact.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
-
+#include "swab.h"
+#include "../include/saAis.h"
+#include "../include/list.h"
+#include "../include/queue.h"
+#include "../lcr/lcr_ifact.h"
+#include "coropoll.h"
+#include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
+#include "swab.h"
+#include "objdb.h"
+#include "config.h"
 #include "tlist.h"
 #include "flow.h"
 #include "ipc.h"
 #include "timer.h"
+#include "logsys.h"
 #include "util.h"
 #include "flow.h"
+#include "coroapi.h"
 #include "apidef.h"
 #include "service.h"
 #include "version.h"
@@ -127,7 +128,7 @@ static void sigusr2_handler (int num)
 static void *aisexec_exit (void *arg)
 {
 	if (api) {
-		openais_service_unlink_all (api);
+		corosync_service_unlink_all (api);
 	}
 
 #ifdef DEBUG_MEMPOOL
@@ -147,7 +148,7 @@ static void *aisexec_exit (void *arg)
 	totempg_finalize ();
 	logsys_flush ();
 
-	openais_exit_error (AIS_DONE_EXIT);
+	corosync_exit_error (AIS_DONE_EXIT);
 
 	/* never reached */
 	return NULL;
@@ -184,9 +185,9 @@ static void sigabrt_handler (int num)
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
-totempg_groups_handle openais_group_handle;
+totempg_groups_handle corosync_group_handle;
 
-struct totempg_group openais_group = {
+struct totempg_group corosync_group = {
 	.group		= "a",
 	.group_len	= 1
 };
@@ -212,11 +213,11 @@ void serialize_mutex_unlock (void)
 }
 
 
-static void openais_sync_completed (void)
+static void corosync_sync_completed (void)
 {
 }
 
-static int openais_sync_callbacks_retrieve (int sync_id,
+static int corosync_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
 	unsigned int ais_service_index;
@@ -278,7 +279,7 @@ static void aisexec_uid_determine (struct main_config *main_config)
 	passwd = getpwnam(main_config->user);
 	if (passwd == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", main_config->user);
-		openais_exit_error (AIS_DONE_UID_DETERMINE);
+		corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
 	endpwent ();
@@ -290,7 +291,7 @@ static void aisexec_gid_determine (struct main_config *main_config)
 	group = getgrnam (main_config->group);
 	if (group == 0) {
 		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", group->gr_name);
-		openais_exit_error (AIS_DONE_GID_DETERMINE);
+		corosync_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	gid_valid = group->gr_gid;
 	endgrent ();
@@ -310,7 +311,7 @@ static void aisexec_mempool_init (void)
 	res = mempool_init (pool_sizes);
 	if (res == ENOMEM) {
 		log_printf (LOG_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
-		openais_exit_error (AIS_DONE_MEMPOOL_INIT);
+		corosync_exit_error (AIS_DONE_MEMPOOL_INIT);
 	}
 }
 
@@ -324,7 +325,7 @@ static void aisexec_tty_detach (void)
 
 	switch (fork ()) {
 		case -1:
-			openais_exit_error (AIS_DONE_FORK);
+			corosync_exit_error (AIS_DONE_FORK);
 			break;
 		case 0:
 			/*
@@ -469,14 +470,14 @@ int main_mcast (
         int iov_len,
         unsigned int guarantee)
 {
-	return (totempg_groups_mcast_joined (openais_group_handle, iovec, iov_len, guarantee));
+	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
 extern int main_send_ok (
         struct iovec *iovec,
         int iov_len)
 {
-	return (totempg_groups_send_ok_joined (openais_group_handle, iovec, iov_len));
+	return (totempg_groups_send_ok_joined (corosync_group_handle, iovec, iov_len));
 }
 
 int main (int argc, char **argv)
@@ -533,7 +534,7 @@ int main (int argc, char **argv)
 	signal (SIGABRT, sigabrt_handler);
 	signal (SIGQUIT, sigquit_handler);
 	
-	openais_timer_init (
+	corosync_timer_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
 
@@ -554,7 +555,7 @@ int main (int argc, char **argv)
 		0);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration object database component.\n");
-		openais_exit_error (AIS_DONE_OBJDB);
+		corosync_exit_error (AIS_DONE_OBJDB);
 	}
 
 	objdb = (struct objdb_iface_ver0 *)objdb_p;
@@ -571,7 +572,7 @@ int main (int argc, char **argv)
 
 	/*
 	 * Bootstrap in the default configuration parser or use
-	 * the openais default built in parser if the configuration parser
+	 * the corosync default built in parser if the configuration parser
 	 * isn't overridden
 	 */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
@@ -595,13 +596,13 @@ int main (int argc, char **argv)
 		config = (struct config_iface_ver0 *)config_p;
 		if (res == -1) {
 			log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration component '%s'\n", iface);
-			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 
 		res = config->config_readconfig(objdb, &error_string);
 		if (res == -1) {
 			log_printf (LOG_LEVEL_ERROR, error_string);
-			openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 		log_printf (LOG_LEVEL_NOTICE, error_string);
 		config_modules[num_config_modules++] = config;
@@ -611,31 +612,31 @@ int main (int argc, char **argv)
 	if (config_iface)
 		free(config_iface);
 
-	res = openais_main_config_read (objdb, &error_string, &main_config);
+	res = corosync_main_config_read (objdb, &error_string, &main_config);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_keyread (objdb, &totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, error_string);
-		openais_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	logsys_config_facility_set ("openais", main_config.syslog_facility);
+	logsys_config_facility_set ("corosync", main_config.syslog_facility);
 	logsys_config_mode_set (main_config.logmode);
 	logsys_config_file_set (&error_string, main_config.logfile);
 
@@ -685,30 +686,30 @@ int main (int argc, char **argv)
 		&totem_config);
 
 	totempg_groups_initialize (
-		&openais_group_handle,
+		&corosync_group_handle,
 		deliver_fn,
 		confchg_fn);
 
 	totempg_groups_join (
-		openais_group_handle,
-		&openais_group,
+		corosync_group_handle,
+		&corosync_group,
 		1);
 
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	res = openais_service_defaults_link_and_init (api);
+	res = corosync_service_defaults_link_and_init (api);
 	if (res == -1) {
 		log_printf (LOG_LEVEL_ERROR, "Could not initialize default services\n");
-		openais_exit_error (AIS_DONE_INIT_SERVICES);
+		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 
 
-	sync_register (openais_sync_callbacks_retrieve, openais_sync_completed,
+	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed,
 		totem_config.vsf_type);
 
 
-	res = openais_flow_control_initialize ();
+	res = corosync_flow_control_initialize ();
 
 	/*
 	 * Drop root privleges to user 'ais'
@@ -722,7 +723,7 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	openais_ipc_init (
+	corosync_ipc_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock,
 		gid_valid);

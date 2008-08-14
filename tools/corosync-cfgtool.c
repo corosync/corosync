@@ -45,26 +45,26 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
-#include <corosync/cfg.h>
+#include "saAis.h"
+#include "cfg.h"
 
 static void ringstatusget_do (void)
 {
 	SaAisErrorT result;
-	openais_cfg_handle_t handle;
+	corosync_cfg_handle_t handle;
 	unsigned int interface_count;
 	char **interface_names;
 	char **interface_status;
 	unsigned int i;
 
 	printf ("Printing ring status.\n");
-	result = openais_cfg_initialize (&handle, NULL);
+	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != SA_AIS_OK) {
-		printf ("Could not initialize openais configuration API error %d\n", result);
+		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 
-	openais_cfg_ring_status_get (handle,
+	corosync_cfg_ring_status_get (handle,
 		&interface_names,
 		&interface_status,
 		&interface_count);
@@ -75,69 +75,69 @@ static void ringstatusget_do (void)
 		printf ("\tstatus\t= %s\n", interface_status[i]);
 	}
 
-	openais_cfg_finalize (handle);
+	corosync_cfg_finalize (handle);
 }
 
 static void ringreenable_do (void)
 {
 	SaAisErrorT result;
-	openais_cfg_handle_t handle;
+	corosync_cfg_handle_t handle;
 
 	printf ("Re-enabling all failed rings.\n");
-	result = openais_cfg_initialize (&handle, NULL);
+	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != SA_AIS_OK) {
-		printf ("Could not initialize openais configuration API error %d\n", result);
+		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 
-	result = openais_cfg_ring_reenable (handle);
+	result = corosync_cfg_ring_reenable (handle);
 	if (result != SA_AIS_OK) {
 		printf ("Could not reenable ring error %d\n", result);
 	}
 
-	openais_cfg_finalize (handle);
+	corosync_cfg_finalize (handle);
 }
 
 void service_load_do (char *service, unsigned int version)
 {
 	SaAisErrorT result;
-	openais_cfg_handle_t handle;
+	corosync_cfg_handle_t handle;
 
 	printf ("Loading service '%s' version '%d'\n", service, version);
-	result = openais_cfg_initialize (&handle, NULL);
+	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != SA_AIS_OK) {
-		printf ("Could not initialize openais configuration API error %d\n", result);
+		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
-	result = openais_cfg_service_load (handle, service, version);
+	result = corosync_cfg_service_load (handle, service, version);
 	if (result != SA_AIS_OK) {
 		printf ("Could not load service (error = %d)\n", result);
 	}
-	openais_cfg_finalize (handle);
+	corosync_cfg_finalize (handle);
 }
 
 void service_unload_do (char *service, unsigned int version)
 {
 	SaAisErrorT result;
-	openais_cfg_handle_t handle;
+	corosync_cfg_handle_t handle;
 
 	printf ("Unloading service '%s' version '%d'\n", service, version);
-	result = openais_cfg_initialize (&handle, NULL);
+	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != SA_AIS_OK) {
-		printf ("Could not initialize openais configuration API error %d\n", result);
+		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
-	result = openais_cfg_service_unload (handle, service, version);
+	result = corosync_cfg_service_unload (handle, service, version);
 	if (result != SA_AIS_OK) {
 		printf ("Could not unload service (error = %d)\n", result);
 	}
-	openais_cfg_finalize (handle);
+	corosync_cfg_finalize (handle);
 }
 
 void usage_do (void)
 {
-	printf ("openais-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version]\n\n");
-	printf ("A tool for displaying and configuring active parameters within openais.\n");
+	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version]\n\n");
+	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
 	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");

@@ -49,8 +49,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
-#include <corosync/evs.h>
+#include "saAis.h"
+#include "evs.h"
 
 #ifdef OPENAIS_SOLARIS
 #define timersub(a, b, result)						\

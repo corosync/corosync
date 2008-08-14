@@ -91,14 +91,13 @@
 #include <pthread.h>
 #include <errno.h>
 
-#include <corosync/swab.h>
-#include <corosync/hdb.h>
-#include <corosync/list.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-
+#include "../include/hdb.h"
+#include "../include/list.h"
+#include "coropoll.h"
+#include "totempg.h"
 #include "totemmrp.h"
 #include "totemsrp.h"
+#include "swab.h"
 
 #define min(a,b) ((a) < (b)) ? a : b
 

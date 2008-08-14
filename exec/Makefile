@@ -36,7 +36,7 @@ subdir ?= exec/
 
 include $(srcdir)Makefile.inc
 
-override LDFLAGS += -L./ ${DYFLAGS}
+LDFLAGS += -L./
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 	override LDFLAGS += ${DYFLAGS}
@@ -60,7 +60,7 @@ EXEC_LIBS = libtotem_pg.a liblogsys.a
 
 # LCR objects
 LCR_SRC = vsf_ykd.c objdb.c coroparse.c
-LCR_OBJS = vsf_ykd.o objdb.o coroparse.o
+LCR_OBJS =aisparser.o vsf_ykd.o objdb.o coroparse.o
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c apidef.c service.c ipc.c flow.c \
@@ -74,7 +74,7 @@ EXEC_OBJS = $(MAIN_OBJS)
 override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
-	../lcr/lcr_ifact.o corosync_ \
+	../lcr/lcr_ifact.o corosync \
 	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
@@ -105,7 +105,7 @@ coroparse.lcrso: coroparse.o
 	$(CC) -shared -Wl,-soname,coroparse.lcrso coroparse.o -o $@
 endif
 
-corosync_: $(EXEC_OBJS) $(EXEC_LIBS)
+corosync: $(EXEC_OBJS) $(EXEC_LIBS)
 	$(CC) $(EXEC_OBJS) $(EXEC_LIBS) -o corosync $(LDFLAGS)
 
 libtotem_pg.a: $(TOTEM_OBJS)
@@ -140,7 +140,7 @@ depend:
 
 # - fPIC rules required for service handler shared objects
 ../lcr/lcr_ifact.o: $(srcdir)lcr/lcr_ifact.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -c -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -DLCRSODIR='"$(LCRSODIR)"' -I../lcr -c -o $@ $<
 
 vsf_ykd.o: vsf_ykd.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<

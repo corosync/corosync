@@ -45,7 +45,7 @@ endif
 
 # default CFLAGS, LDFLAGS
 #
-CFLAGS = -DLCRSODIR='"$(LCRSODIR)"'
+CFLAGS =
 LDFLAGS =
 DYFLAGS =
 

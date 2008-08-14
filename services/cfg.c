@@ -46,16 +46,16 @@
 #include <signal.h>
 #include <string.h>
 
-#include <corosync/saAis.h>
-#include <corosync/cfg.h>
-#include <corosync/list.h>
-#include <corosync/queue.h>
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
-#include <corosync/ipc_cfg.h>
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/logsys.h>
-#include <corosync/engine/coroapi.h>
+#include "../include/saAis.h"
+#include "../include/cfg.h"
+#include "../include/mar_gen.h"
+#include "../include/ipc_gen.h"
+#include "../include/ipc_cfg.h"
+#include "../include/list.h"
+#include "../include/queue.h"
+#include "../lcr/lcr_comp.h"
+#include "../exec/logsys.h"
+#include "../include/coroapi.h"
 
 LOGSYS_DECLARE_SUBSYS ("CFG", LOG_INFO);
 

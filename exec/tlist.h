@@ -43,7 +43,7 @@
 #include <string.h>
 #include <sys/param.h>
 
-#include <corosync/list.h>
+#include "../include/list.h"
 
 #ifndef HZ
 	#define HZ 100  /* 10ms */

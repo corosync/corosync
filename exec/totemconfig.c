@@ -46,15 +46,13 @@
 #include <arpa/inet.h>
 #include <sys/param.h>
 
-#include <corosync/swab.h>
-#include <corosync/list.h>
-#include <corosync/totem/totem.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
-
+#include "swab.h"
+#include "list.h"
 #include "util.h"
+#include "totem.h"
 #include "totemconfig.h"
+#include "logsys.h"
+#include "objdb.h"
 #include "tlist.h" /* for HZ */
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4

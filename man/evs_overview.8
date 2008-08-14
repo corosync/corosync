@@ -31,9 +31,9 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH EVS_OVERVIEW 8 2004-08-31 "openais Man Page" "Openais Programmer's Manual"
+.TH EVS_OVERVIEW 8 2004-08-31 "corosync Man Page" "Openais Programmer's Manual"
 .SH OVERVIEW
-The EVS library is delivered with the openais project.  This library is used
+The EVS library is delivered with the corosync project.  This library is used
 to create distributed applications that operate properly during partitions, merges,
 and faults.
 .PP
@@ -120,10 +120,10 @@ Virtual Synchrony allows the current configuration to be used to make decisions 
 and merges.  Since the configuration is sent in the stream of messages to the application,
 the application can alter its behavior based upon the configuration changes.
 .SH ARCHITECTURE AND ALGORITHM
-The EVS library is a thin IPC interface to the openais executive.  The openais executive
+The EVS library is a thin IPC interface to the corosync executive.  The corosync executive
 provides services for the SA Forum AIS libraries as well as the EVS library.
 .PP
-The openais executive uses a ring protocol and membership protocol to send messages
+The corosync executive uses a ring protocol and membership protocol to send messages
 according to the semantics required by extended virtual synchrony.  The ring protocol
 creates a virtual ring of processors.  A token is rotated around the ring of processors.
 When the token is possessed by a processor, that processor may multicast messages to
@@ -152,13 +152,13 @@ time to access Ethernet is about the same for a small message as it is for a
 larger message.  Smaller messages obtain better messages per second, because the
 time to send a message is not exactly the same.
 .PP
-80% of CPU utilization occurs because of encryption and authentication.  The openais
+80% of CPU utilization occurs because of encryption and authentication.  The corosync
 can be built without encryption and authentication for those with no security
 requirements and low CPU utilization requirements.  Even without encryption or
 authentication, under heavy load, processor utilization can reach 25% on 1.5 GHZ
 CPU processors.
 .PP
-The current openais executive supports 16 processors, however, support for more processors is possible by changing defines in the openais executive.  This is untested, however.
+The current corosync executive supports 16 processors, however, support for more processors is possible by changing defines in the corosync executive.  This is untested, however.
 .SH SECURITY
 The EVS library encrypts all messages sent over the network using the SOBER-128
 stream cipher.  The EVS library uses HMAC and SHA1 to authenticate all messages.

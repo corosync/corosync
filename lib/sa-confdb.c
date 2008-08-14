@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides stand-alone access to data in the openais object database
+ * Provides stand-alone access to data in the corosync object database
  * when aisexec is not running.
  */
 
@@ -43,13 +43,13 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
-#include <corosync/ais_util.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/lcr/lcr_ifact.h>
+#include <saAis.h>
+#include <ais_util.h>
+#include "../exec/objdb.h"
+#include "../exec/config.h"
+#include "../lcr/lcr_comp.h"
+#include "../lcr/lcr_ifact.h"
+#include "../exec/logsys.h"
 
 static struct objdb_iface_ver0 *objdb;
 
@@ -95,9 +95,9 @@ static int load_config()
 	char *error_string;
 
 	/* User's bootstrap config service */
-	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
+	config_iface = getenv("OPENAIS_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
-		config_iface = "corosync_parser";
+		config_iface = "aisparser";
 	}
 
 	/* Make a copy so we can deface it with strtok */
@@ -296,20 +296,6 @@ int confdb_sa_write (
 	return ret;
 }
 
-int confdb_sa_reload (
-	unsigned int parent_object_handle,
-	int flush,
-	char *error_text)
-{
-	char *errtext;
-	int ret;
-
-	ret = objdb->object_reload_config(flush, &errtext);
-	if (!ret)
-		strcpy(error_text, errtext);
-
-	return ret;
-}
 
 int confdb_sa_object_iter (
 	unsigned int parent_object_handle,

@@ -32,17 +32,18 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_EXEC_H_DEFINED
-#define AIS_EXEC_H_DEFINED
 
 #define TRUE 1
 #define FALSE 0
-#include <corosync/saAis.h>
-#include <corosync/ipc_gen.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
+#include "../include/saAis.h"
+#include "../include/ipc_gen.h"
+#include "coropoll.h"
+#include "objdb.h"
+#include "config.h"
+#include "totempg.h"
+
+#ifndef AIS_EXEC_H_DEFINED
+#define AIS_EXEC_H_DEFINED
 
 /*
  * Size of the queue (entries) for I/O's to the API over socket IPC.
@@ -54,9 +55,9 @@
 
 #define SIZEINB MESSAGE_SIZE_MAX
 
-extern struct totempg_group openais_group;
+extern struct totempg_group corosync_group;
 
-extern totempg_groups_handle openais_group_handle;
+extern totempg_groups_handle corosync_group_handle;
 
 poll_handle aisexec_poll_handle;
 

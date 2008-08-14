@@ -66,8 +66,8 @@
 #define s6_addr16 __u6_addr.__u6_addr16
 #endif
 
-#include <corosync/totem/totemip.h>
-#include <corosync/swab.h>
+#include "totemip.h"
+#include "swab.h"
 
 #define LOCALHOST_IPV4 "127.0.0.1"
 #define LOCALHOST_IPV6 "::1"
@@ -167,7 +167,6 @@ int totemip_compare(const void *a, const void *b)
 	 	 */
 		assert (0);
 	}
-	return 0;
 }
 
 /* Build a localhost totem_ip_address */

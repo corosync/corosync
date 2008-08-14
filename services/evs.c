@@ -48,14 +48,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/swab.h>
-#include <corosync/saAis.h>
-#include <corosync/ipc_gen.h>
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/coroapi.h>
-#include <corosync/ipc_evs.h>
-#include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include "swab.h"
+#include "../include/saAis.h"
+#include "../include/ipc_gen.h"
+#include "../lcr/lcr_comp.h"
+#include "../include/coroapi.h"
+#include "../include/ipc_evs.h"
+#include "../include/list.h"
+#include "../exec/logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("EVS", LOG_INFO);
 
@@ -168,7 +168,7 @@ static struct corosync_service_engine_iface_ver0 evs_service_engine_iface = {
 	.corosync_get_service_engine_ver0	= evs_get_service_engine_ver0
 };
 
-static struct lcr_iface openais_evs_ver0[1] = {
+static struct lcr_iface corosync_evs_ver0[1] = {
 	{
 		.name			= "corosync_evs",
 		.version		= 0,
@@ -184,7 +184,7 @@ static struct lcr_iface openais_evs_ver0[1] = {
 
 static struct lcr_comp evs_comp_ver0 = {
 	.iface_count	= 1,
-	.ifaces		= openais_evs_ver0
+	.ifaces		= corosync_evs_ver0
 };
 
 static struct corosync_service_engine *evs_get_service_engine_ver0 (void)
@@ -193,7 +193,7 @@ static struct corosync_service_engine *evs_get_service_engine_ver0 (void)
 }
 
 __attribute__ ((constructor)) static void evs_comp_register (void) {
-	lcr_interfaces_set (&openais_evs_ver0[0], &evs_service_engine_iface);
+	lcr_interfaces_set (&corosync_evs_ver0[0], &evs_service_engine_iface);
 
 	lcr_component_register (&evs_comp_ver0);
 }

@@ -29,7 +29,7 @@
  */
 #include <assert.h>
 #include <unistd.h>
-#include <corosync/lcr/lcr_ifact.h>
+#include "lcr_ifact.h"
 
 struct iface {
 	void (*func1) (void);

@@ -32,17 +32,16 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <netinet/in.h>
+#include "../include/saAis.h"
+#include "../include/list.h"
+#include "coropoll.h"
+#include "totemsrp.h"
+#include "totempg.h"
+#include "objdb.h"
+
 #ifndef TOTEMCONFIG_H_DEFINED
 #define TOTEMCONFIG_H_DEFINED
-
-#include <netinet/in.h>
-#include <corosync/saAis.h>
-#include <corosync/list.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-
-#include "totemsrp.h"
 
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,

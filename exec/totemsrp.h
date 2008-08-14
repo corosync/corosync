@@ -35,8 +35,8 @@
 #ifndef TOTEMSRP_H_DEFINED
 #define TOTEMSRP_H_DEFINED
 
-#include <corosync/totem/totem.h>
-#include <corosync/totem/coropoll.h>
+#include "totem.h"
+#include "coropoll.h"
 
 typedef unsigned int totemsrp_handle;
 

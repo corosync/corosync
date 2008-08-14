@@ -45,12 +45,12 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include <corosync/saAis.h>
-#include <corosync/cfg.h>
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
-#include <corosync/ipc_cfg.h>
-#include <corosync/ais_util.h>
+#include <saAis.h>
+#include <cfg.h>
+#include <mar_gen.h>
+#include <ipc_gen.h>
+#include <ipc_cfg.h>
+#include <ais_util.h>
 
 struct res_overlay {
 	mar_res_header_t header;
@@ -95,8 +95,8 @@ void cfg_handleInstanceDestructor (void *instance)
 }
 
 SaAisErrorT
-openais_cfg_initialize (
-	openais_cfg_handle_t *cfg_handle,
+corosync_cfg_initialize (
+	corosync_cfg_handle_t *cfg_handle,
 	const OpenaisCfgCallbacksT *cfgCallbacks)
 {
 	struct cfg_instance *cfg_instance;
@@ -143,8 +143,8 @@ error_no_destroy:
 }
 
 SaAisErrorT
-openais_cfg_fd_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_fd_get (
+	corosync_cfg_handle_t cfg_handle,
 	SaSelectionObjectT *selectionObject)
 {
 	struct cfg_instance *cfg_instance;
@@ -162,8 +162,8 @@ openais_cfg_fd_get (
 }
 
 SaAisErrorT
-openais_cfg_dispatch (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_dispatch (
+	corosync_cfg_handle_t cfg_handle,
 	SaDispatchFlagsT dispatchFlags)
 {
 	struct pollfd ufds;
@@ -173,10 +173,10 @@ openais_cfg_dispatch (
 	int dispatch_avail;
 	struct cfg_instance *cfg_instance;
 #ifdef COMPILE_OUT
-	struct res_lib_openais_healthcheckcallback *res_lib_openais_healthcheckcallback;
-	struct res_lib_openais_readinessstatesetcallback *res_lib_openais_readinessstatesetcallback;
-	struct res_lib_openais_csisetcallback *res_lib_openais_csisetcallback;
-	struct res_lib_openais_csiremovecallback *res_lib_openais_csiremovecallback;
+	struct res_lib_corosync_healthcheckcallback *res_lib_corosync_healthcheckcallback;
+	struct res_lib_corosync_readinessstatesetcallback *res_lib_corosync_readinessstatesetcallback;
+	struct res_lib_corosync_csisetcallback *res_lib_corosync_csisetcallback;
+	struct res_lib_corosync_csiremovecallback *res_lib_corosync_csiremovecallback;
 	struct res_lib_cfg_statetrackcallback *res_lib_cfg_statetrackcallback;
 #endif
 	OpenaisCfgCallbacksT callbacks;
@@ -295,8 +295,8 @@ error_nounlock:
 }
 
 SaAisErrorT
-openais_cfg_finalize (
-	openais_cfg_handle_t cfg_handle)
+corosync_cfg_finalize (
+	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
 	SaAisErrorT error;
@@ -347,8 +347,8 @@ openais_cfg_finalize (
 }
 
 SaAisErrorT
-openais_cfg_ring_status_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_ring_status_get (
+	corosync_cfg_handle_t cfg_handle,
 	char ***interface_names,
 	char ***status,
 	unsigned int *interface_count)
@@ -427,8 +427,8 @@ no_error:
 }
 
 SaAisErrorT
-openais_cfg_ring_reenable (
-	openais_cfg_handle_t cfg_handle)
+corosync_cfg_ring_reenable (
+	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_ringreenable req_lib_cfg_ringreenable;
@@ -458,8 +458,8 @@ openais_cfg_ring_reenable (
 }
 
 SaAisErrorT
-openais_cfg_service_load (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_service_load (
+	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver)
 {
@@ -496,8 +496,8 @@ openais_cfg_service_load (
 }
 
 SaAisErrorT
-openais_cfg_service_unload (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_service_unload (
+	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver)
 {
@@ -533,8 +533,8 @@ openais_cfg_service_unload (
 	return (error);
 }
 SaAisErrorT
-openais_cfg_state_track (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_state_track (
+	corosync_cfg_handle_t cfg_handle,
 	SaUint8T trackFlags,
 	const OpenaisCfgStateNotificationT *notificationBuffer)
 {
@@ -570,8 +570,8 @@ openais_cfg_state_track (
 }
 
 SaAisErrorT
-openais_cfg_state_track_stop (
-	openais_cfg_handle_t cfg_handle)
+corosync_cfg_state_track_stop (
+	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrackstop req_lib_cfg_statetrackstop;
@@ -603,8 +603,8 @@ openais_cfg_state_track_stop (
 }
 
 SaAisErrorT
-openais_cfg_admin_state_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_admin_state_get (
+	corosync_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT *administrativeState)
 {
@@ -639,8 +639,8 @@ openais_cfg_admin_state_get (
 }
 
 SaAisErrorT
-openais_cfg_admin_state_set (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_admin_state_set (
+	corosync_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT administrativeState)
 {
