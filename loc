@@ -1,14 +1,12 @@
-wc -l exec/*.c exec/*.h include/*.h lib/*.c lib/*.h
-
-echo "Application Interface Specification Implementation Lines Of Code"
+echo "Corosync Cluster Engine LOC"
 echo -n "exec LOC    "
-cat exec/*.c exec/*.h | wc -l
+find exec -name *.[ch] -exec cat {} \; | wc -l
 
 echo -n "lib LOC     "
-cat lib/*.c lib/*.h | wc -l
+find lib -name *.[ch] -exec cat {} \; | wc -l
 
 echo -n "include LOC "
-cat include/*.h | wc -l
+find include -name *.[ch] -exec cat {} \; | wc -l
 
 echo -n "total LOC   "
-cat exec/*.c exec/*.h lib/*.c lib/*.h include/*.h | wc -l
+find . -name *.[ch] -exec cat {} \; | wc -l
