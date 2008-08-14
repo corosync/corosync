@@ -1,6 +1,6 @@
 SYNCHRONIZATION ALGORITHM:
 -------------------------
-The synchronization algorithm is used for every service in openais to
+The synchronization algorithm is used for every service in corosync to
 synchronize state of he system.
 
 There are 4 events of the synchronization algorithm.  These events are in fact

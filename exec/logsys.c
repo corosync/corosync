@@ -352,7 +352,7 @@ static void _log_printf (
 			newstring[strlen (newstring) - 1] = '\0';
 		}
 		len = sprintf (log_string,
-			"%s - prior to this log entry, openais logger dropped '%d' messages because of overflow.", newstring, dropped_log_entries + 1);
+			"%s - prior to this log entry, corosync logger dropped '%d' messages because of overflow.", newstring, dropped_log_entries + 1);
 	} else {
 		len = vsprintf (log_string, newstring, ap);
 	}

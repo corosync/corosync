@@ -37,7 +37,7 @@
 #include <netinet/in.h>
 
 /**
- * @addtogroup cpg_openais
+ * @addtogroup cpg_corosync
  *
  * @{
  */

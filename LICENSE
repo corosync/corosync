@@ -44,7 +44,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 -----------------------------------------------------------------------------
-The openais project uses software from the LibTomCrypt project
+The corosync project uses software from the LibTomCrypt project
 www.libtomcrypt.org.  This software is contained the files exec/crypto.c and
 exec/crypto.h.  The following license applies to the files exec/crypto.c and
 exec/crytpo.h:

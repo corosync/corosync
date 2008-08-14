@@ -32,16 +32,16 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH OPENAIS_CONF 5 2006-03-28 "openais Man Page" "Openais Programmer's Manual"
+.TH OPENAIS_CONF 5 2006-03-28 "corosync Man Page" "Openais Programmer's Manual"
 .SH NAME
-openais.conf - openais executive configuration file
+corosync.conf - corosync executive configuration file
 
 .SH SYNOPSIS
-/etc/ais/openais.conf
+/etc/ais/corosync.conf
 
 .SH DESCRIPTION
-The openais.conf instructs the openais executive about various parameters
-needed to control the openais executive.  The configuration file consists of
+The corosync.conf instructs the corosync executive about various parameters
+needed to control the corosync executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
 .IR "totem  { } , logging { } , event { } , and amf { }".
  These directives are described below.
@@ -80,7 +80,7 @@ ring.
 
 .TP
 bindnetaddr
-This specifies the address which the openais executive should bind.
+This specifies the address which the corosync executive should bind.
 This address should always end in zero.  If the totem traffic should
 be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
 
@@ -92,7 +92,7 @@ If IPv6 networking is used, the nodeid field must be specified.
 
 .TP
 mcastaddr
-This is the multicast address used by openais executive.  The default
+This is the multicast address used by corosync executive.  The default
 should work for most networks, but the network administrator should be queried
 about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
 multicast address.
@@ -103,7 +103,7 @@ will be used.  If IPv6 networking is used, the nodeid field must be specified.
 .TP
 mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
-address on a network with the openais services configured for different
+address on a network with the corosync services configured for different
 UDP ports.
 
 .PP
@@ -247,7 +247,7 @@ token_retransmit
 This timeout specifies in milliseconds after how long before receiving a token
 the token is retransmitted.  This will be automatically calculated if token
 is modified.  It is not recommended to alter this value without guidance from
-the openais community.
+the corosync community.
 
 The default is 238 milliseconds.
 
@@ -255,7 +255,7 @@ The default is 238 milliseconds.
 hold
 This timeout specifies in milliseconds how long the token should be held by
 the representative when the protocol is under low utilization.   It is not
-recommended to alter this value without guidance from the openais community.
+recommended to alter this value without guidance from the corosync community.
 
 The default is 180 milliseconds.
 
@@ -282,7 +282,7 @@ to wait before sending a join message.  For configurations with less then
 is necessary to ensure the NIC is not overflowed with join messages on
 formation of a new ring.  A reasonable value for large rings (128 nodes) would
 be 80msec.  Other timer values must also change if this value is changed.  Seek
-advice from the openais mailing list if trying to run larger configurations.
+advice from the corosync mailing list if trying to run larger configurations.
 
 The default is 0 milliseconds.
 
@@ -404,7 +404,7 @@ for a particular processor.
 
 This value will automatically be calculated from the token timeout and
 problem_count_threshold but may be overridden.  It is not recommended to
-override this value without guidance from the openais community.
+override this value without guidance from the corosync community.
 
 The default is 47 milliseconds.
 
@@ -542,12 +542,12 @@ The default is disabled.
 
 .SH "FILES"
 .TP
-/etc/ais/openais.conf
-The openais executive configuration file.
+/etc/ais/corosync.conf
+The corosync executive configuration file.
 .TP
 /etc/ais/amf.conf
-The openais AMF configuration file.
+The corosync AMF configuration file.
 
 .SH "SEE ALSO"
-.BR openais_overview (8), README.amf
+.BR corosync_overview (8), README.amf
 .PP

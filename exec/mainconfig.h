@@ -65,7 +65,7 @@ struct main_config {
 	char *group;
 };
 
-extern int openais_main_config_read (
+extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config);

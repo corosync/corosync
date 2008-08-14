@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides a closed process group API using the openais executive
+ * Provides a closed process group API using the corosync executive
  */
 
 #include <stdlib.h>
@@ -84,8 +84,8 @@ static void cpg_instance_destructor (void *instance)
 
 
 /**
- * @defgroup cpg_openais The closed process group API
- * @ingroup openais
+ * @defgroup cpg_corosync The closed process group API
+ * @ingroup corosync
  *
  * @{
  */

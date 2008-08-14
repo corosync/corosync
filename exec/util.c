@@ -77,7 +77,7 @@ SaTimeT clust_time_now(void)
 }
 
 
-void _openais_exit_error (
+void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "

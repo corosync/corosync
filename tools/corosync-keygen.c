@@ -83,7 +83,7 @@ int main (void) {
 	res = fchown (authkey_fd, 0, 0);
 	fchmod (authkey_fd, 0400);
 
-	printf ("Writing openais key to /etc/ais/authkey.\n");
+	printf ("Writing corosync key to /etc/ais/authkey.\n");
 
 	/*
 	 * Write key

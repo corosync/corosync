@@ -691,7 +691,7 @@ int totemsrp_initialize (
 
 	rundir = getenv ("OPENAIS_RUN_DIR");
 	if (rundir == NULL) {
-		rundir = "/var/lib/openais";
+		rundir = "/var/lib/corosync";
 	}
 	
 	res = mkdir (rundir, 0700);

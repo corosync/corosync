@@ -34,7 +34,7 @@
 #ifndef VSF_H_DEFINED
 #define VSF_H_DEFINED
 
-struct openais_vsf_iface_ver0 {
+struct corosync_vsf_iface_ver0 {
 
 	/*
 	 * Executes a callback whenever component changes

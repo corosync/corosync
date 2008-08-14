@@ -35,7 +35,7 @@
 #define OPENAIS_CONFDB_H_DEFINED
 
 /**
- * @addtogroup confdb_openais
+ * @addtogroup confdb_corosync
  *
  * @{
  */

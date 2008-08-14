@@ -91,7 +91,7 @@ static int barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
-static struct openais_vsf_iface_ver0 *vsf_iface;
+static struct corosync_vsf_iface_ver0 *vsf_iface;
 
 static int sync_barrier_send (struct memb_ring_id *ring_id);
 
@@ -255,7 +255,7 @@ int sync_register (
 	unsigned int res;
 	unsigned int vsf_handle;
 	void *vsf_iface_p;
-	char openais_vsf_type[1024];
+	char corosync_vsf_type[1024];
 
 	res = totempg_groups_initialize (
 		&sync_group_handle,
@@ -283,10 +283,10 @@ int sync_register (
 	} else {
 		vsf_none = 0;
 
-		sprintf (openais_vsf_type, "openais_vsf_%s", vsf_type);
+		sprintf (corosync_vsf_type, "corosync_vsf_%s", vsf_type);
 		res = lcr_ifact_reference (
 			&vsf_handle,
-			openais_vsf_type,
+			corosync_vsf_type,
 			0,
 			&vsf_iface_p,
 			0);
@@ -299,9 +299,9 @@ int sync_register (
 		}
 
 		log_printf (LOG_LEVEL_NOTICE,
-			"Using virtual synchrony filter %s\n", openais_vsf_type);
+			"Using virtual synchrony filter %s\n", corosync_vsf_type);
 
-		vsf_iface = (struct openais_vsf_iface_ver0 *)vsf_iface_p;
+		vsf_iface = (struct corosync_vsf_iface_ver0 *)vsf_iface_p;
 		vsf_iface->init (sync_primary_callback_fn);
 	}
 

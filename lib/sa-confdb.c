@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides stand-alone access to data in the openais object database
+ * Provides stand-alone access to data in the corosync object database
  * when aisexec is not running.
  */
 

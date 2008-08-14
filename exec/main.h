@@ -54,9 +54,9 @@
 
 #define SIZEINB MESSAGE_SIZE_MAX
 
-extern struct totempg_group openais_group;
+extern struct totempg_group corosync_group;
 
-extern totempg_groups_handle openais_group_handle;
+extern totempg_groups_handle corosync_group_handle;
 
 poll_handle aisexec_poll_handle;
 

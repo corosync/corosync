@@ -98,7 +98,7 @@ static struct logsys_config_struct {
 	unsigned int tags;
 } logsys_logger;
 
-int openais_main_config_read (
+int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config)

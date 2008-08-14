@@ -32,15 +32,15 @@
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
 
-.TH AMF.CONF 5 2006-08-29 "openais Man Page"
+.TH AMF.CONF 5 2006-08-29 "corosync Man Page"
 
 .SH NAME
-amf.conf - openais AMF configuration file
+amf.conf - corosync AMF configuration file
 
 .SH DESCRIPTION
 .B amf.conf
 is the configuration file that determines the behaviour of the AIS Availability
-Management Framework service, AMF in the openais implementation.
+Management Framework service, AMF in the corosync implementation.
 
 Entries in this file will for example determine what applications AMF will start
 and how to supervise them.
@@ -106,7 +106,7 @@ The value of the attribute 'saAmfNodeClmNode' should be the hostname (without
 domain name) as given to the host at boot time. This name is returned by the
 shell command 'hostname'.
 
-Currently, AMF is enabled/disabled by an entry in the openais.conf file, see [1].
+Currently, AMF is enabled/disabled by an entry in the corosync.conf file, see [1].
 It is default disabled.
 
 
@@ -246,7 +246,7 @@ Multivalue
 Hans.Feldt at ericsson.com
 
 .SH EXAMPLE
-For an AMF configuration file example, see the amf.conf file under the openais
+For an AMF configuration file example, see the amf.conf file under the corosync
 .B conf
 directory.
 
@@ -254,12 +254,12 @@ directory.
 .TP
 /etc/ais/amf.conf
 .TP
-/etc/ais/openais.conf
+/etc/ais/corosync.conf
 
 .SH "SEE ALSO"
-[1] openais_conf (5)
+[1] corosync_conf (5)
 .TP
-[2] openais_overview (8)
+[2] corosync_overview (8)
 .TP
 [3] README.amf
 .TP

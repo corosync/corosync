@@ -38,7 +38,7 @@
 /*
  * Link and initialize a service
  */
-extern unsigned int openais_service_link_and_init (
+extern unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
 	char *service_name,
 	unsigned int service_ver);
@@ -46,21 +46,21 @@ extern unsigned int openais_service_link_and_init (
 /*
  * Unlink and exit a service
  */
-extern unsigned int openais_service_unlink_and_exit (
+extern unsigned int corosync_service_unlink_and_exit (
     struct corosync_api_v1 *objdb,
     char *service_name,
     unsigned int service_ver);
 
 /*
- * Unlink and exit all openais services
+ * Unlink and exit all corosync services
  */
-extern unsigned int openais_service_unlink_all (
+extern unsigned int corosync_service_unlink_all (
     struct corosync_api_v1 *objdb);
 
 /*
  * Load all of the default services
  */
-extern unsigned int openais_service_defaults_link_and_init (
+extern unsigned int corosync_service_defaults_link_and_init (
 	struct corosync_api_v1 *objdb);
 
 extern struct corosync_service_engine *ais_service[];

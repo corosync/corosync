@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides an extended virtual synchrony API using the openais executive
+ * Provides an extended virtual synchrony API using the corosync executive
  */
 
 #include <stdlib.h>
@@ -89,8 +89,8 @@ static void evs_instance_destructor (void *instance)
 
 
 /**
- * @defgroup evs_openais The extended virtual synchrony passthrough API
- * @ingroup openais
+ * @defgroup evs_corosync The extended virtual synchrony passthrough API
+ * @ingroup corosync
  *
  * @{
  */

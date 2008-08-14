@@ -6,32 +6,32 @@ together with object code resulting from the compiling of publicly
 available source code, may be exported from the United States under License
 Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 ***
-Security Design of openais
+Security Design of corosync
 
-The openais project intends to mitigate the following threats:
+The corosync project intends to mitigate the following threats:
 
-1. forged group messaging messages which are intended to fault the openais
+1. forged group messaging messages which are intended to fault the corosync
    executive
 2. forged group messaging messages which are intended to fault applications
-   using openais apis
+   using corosync apis
 3. monitoring of network data to capture sensitive information
 
-The openais project does not intend to mitigate the following threats:
+The corosync project does not intend to mitigate the following threats:
 
 1. physical access to the hardware which could expose the private key
 2. privledged access to the operating system which could expose the private key
    or be used to inject errors into the ais executive.
-3. library user creates requests which are intended to fault the openais
+3. library user creates requests which are intended to fault the corosync
    executive
 
-The openais project mitigates the threats using two mechanisms:
+The corosync project mitigates the threats using two mechanisms:
 
 1. Authentication
 2. Secrecy
 
 Library Interface
 -----------------
-The openais executive authenticates every library user.  The library is only
+The corosync executive authenticates every library user.  The library is only
 allowed to access services if it's GID is ais or 0.  Unauthorized library
 users are rejected.
 
@@ -42,9 +42,9 @@ fault.
 
 Group Messaging Interface
 -------------------------
-Group messaging uses UDP/IP to communicate with other openais executives using
+Group messaging uses UDP/IP to communicate with other corosync executives using
 messages.  It is possible without authentication of every packet that an
-attacker could forge messages.  These forged messages could fault the openais
+attacker could forge messages.  These forged messages could fault the corosync
 executive distributed state machines.  It would also be possible to corrupt 
 end applications by forging changes.
 
@@ -123,4 +123,4 @@ is randomly unique (within the 2^128 search space of the input to sober) to
 ensure that keys are never reused, nonce's are never reused, and hmac's are
 never reused.
 
-Comments welcome mailto:openais@lists.osdl.org
+Comments welcome mailto:corosync@lists.osdl.org

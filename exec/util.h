@@ -68,8 +68,8 @@ enum e_ais_done {
  */
 extern int name_match(SaNameT *name1, SaNameT *name2);
 extern int mar_name_match(mar_name_t *name1, mar_name_t *name2);
-#define openais_exit_error(err) _openais_exit_error ((err), __FILE__, __LINE__)
-extern void _openais_exit_error (
+#define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
+extern void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line);
 extern char *getSaNameT (SaNameT *name);
 extern char *strstr_rs (const char *haystack, const char *needle);

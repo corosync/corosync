@@ -31,14 +31,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 -------------------------------------------------------------------------------
 This file provides a map for developers to understand how to contribute
-to the openais project.  The purpose of this document is to prepare a
-developer to write a service for openais, or understand the architecture
-of openais.
+to the corosync project.  The purpose of this document is to prepare a
+developer to write a service for corosync, or understand the architecture
+of corosync.
 
 The following is described in this document:
 
  * all files, purpose, and dependencies
- * architecture of openais
+ * architecture of corosync
  * taking advantage of virtual synchrony
  * adding libraries
  * adding services
@@ -238,7 +238,7 @@ exec/cpg.c
 	Server side implementation of closed procss groups (CPG API).
 
 exec/crypto.{c|h}
-	Cryptography functions used by openais.
+	Cryptography functions used by corosync.
 
 exec/evs.c
 	Server side implementation of extended virtual synchrony passthrough
@@ -248,13 +248,13 @@ exec/evt.c
 	Server side implementation of Event Service (EVT API).
 
 exec/ipc.{c|h}
-	All IPC operations used by openais.
+	All IPC operations used by corosync.
 
 exec/jhash.h
 	A hash routine.
 
 exec/keygen.c
-	Secret key generator used by openais encryption tools.
+	Secret key generator used by corosync encryption tools.
 
 exec/lck.c
 	Server side implementation of the distributed lock service (LCK API).
@@ -274,7 +274,7 @@ exec/msg.c
 exec/objdb.{c|h}
 	Object database used to configure services.
 
-exec/openais-instantiate.c
+exec/corosync-instantiate.c
 	instantiates a component by forking and exec'ing it and writing its
 	pid to a pid file.
 
@@ -319,7 +319,7 @@ exec/totemrrp.{c.h}
 	Redundant ring functions for totem - between totemnet and totemsrp.
 
 exec/util.{c|h}
-	Utility functions used by openais executive.
+	Utility functions used by corosync executive.
 
 exec/version.h
 	Defines build version.
@@ -338,10 +338,10 @@ loc
 Counts the lines of code in the AIS implementation.
 
 -------------------------------------------------------------------------------
- architecture of openais
+ architecture of corosync
 -------------------------------------------------------------------------------
 
-The openais standards based cluster framework is a generic cluster plugin
+The corosync standards based cluster framework is a generic cluster plugin
 architecture used to create cluster APIs and services.  Usually there are
 libraries which implement APIs and are linked into the end user application.
 The libraries request services from the aisexec process, called the AIS
@@ -355,7 +355,7 @@ response of the API is delivered once the operation has completed.
            --------------------------------------------------
            |                      IPC API                   |
            --------------------------------------------------
-           |                 openais Executive              |
+           |                 corosync Executive              |
            |                                                |
            |     +---------+ +--------+ +---------+         |
            |     | Object  | |  AIS   | | Service |         |
@@ -385,9 +385,9 @@ response of the API is delivered once the operation has completed.
            |                                                |
            -------------------------------------------------
 
-                    Figure 1: openais Architecture
+                    Figure 1: corosync Architecture
 
-Every application that intends to use openais links with the libais library.
+Every application that intends to use corosync links with the libais library.
 This library uses IPC, or more specifically BSD unix sockets, to communicate
 with the executive.  The library is a small program responsible only for
 packaging the request into a message.  This message is sent, using IPC, to
@@ -449,7 +449,7 @@ group messaging: sending a message from one sender to many receivers
 Virtual synchrony is a model for group messaging.  This is often confused
 with particular implementations of virtual synchrony.  Try to focus on
 what virtual syncrhony provides, not how it provides it, unless interested
-in working on the group messaging interface of openais.
+in working on the group messaging interface of corosync.
 
 Virtual synchrony provides several advantages:
 
@@ -468,7 +468,7 @@ to the cluster membership service (and its respective API0, but is helpful
 to other services as described later.
 
 Strong membership guarantees allow a distributed application to make decisions
-based upon the configuration (membership).  Every service in openais registers
+based upon the configuration (membership).  Every service in corosync registers
 a configuration change function.  This function is called whenever a
 configuration change occurs.  The information passed is the current processors,
 the processors that have left the configuration, and the processors that have
@@ -510,7 +510,7 @@ it must be delivered by every processor unless that processor fails.  If a
 particular processor fails, a configuration change occurs creating a new
 configuration under which a new set of decisions may be made.  This implies
 that even unreliable networks must reliably deliver messages.   The 
-mplementation in openais works on unreliable as well as reliable networks.
+mplementation in corosync works on unreliable as well as reliable networks.
 
 Every message sent must be delivered, unless a configuration change occurs.
 In the case of a configuration change, every message that can be recovered
@@ -522,7 +522,7 @@ of a configuration.
 
 Finally virtual syncrhony takes advantage of hardware multicast to avoid
 duplicated packets and scale to large transmit rates.  On 100mbit network,
-openais can approach wire speeds depending on the number of messages queued
+corosync can approach wire speeds depending on the number of messages queued
 for a particular processor.
 
 What does all of this mean for the developer?
@@ -540,8 +540,8 @@ The first stage in adding a library to the system is to develop the library.
 Library code should follow these guidelines:
 
  * use SA Forum coding style for SA Forum APIs to aid in debugging
- * use openais coding guidelines for APIs that are not SA Forum that
-   are to be merged into the openais tree.
+ * use corosync coding guidelines for APIs that are not SA Forum that
+   are to be merged into the corosync tree.
  * implement all library code within one file named after the api.
    examples are ckpt.c, clm.c, amf.c.
  * use parallel structure as much as possible between different APIs
@@ -881,7 +881,7 @@ struct libais_handler {
 	int (*libais_handler_fn) (void *conn, void *msg);
 	int response_size;
 	int response_id;
-	enum openais_flow_control flow_control;
+	enum corosync_flow_control flow_control;
 };
 
 The response_size, response_id, and flow_control for a library handler are
@@ -894,7 +894,7 @@ OPENAIS_FLOW_CONTROL_NOT_REQUIREDin the flow control field.
 The libais_handler_fn is a function to be called when the library handler is
 requested to be executed.
 
-struct openais_exec_handler {
+struct corosync_exec_handler {
 	void (*exec_handler_fn) (void *msg, unsigned int nodeid);
 	void (*exec_endian_convert_fn) (void *msg);
 };
@@ -908,15 +908,15 @@ format before transmit.  Instead they are transmitted in either big endian or
 little endian depending on the byte order of the transmitter and converted to
 the host machine order on receipt of the message.
 
-struct openais_service_handler {
+struct corosync_service_handler {
 	unsigned char *name;
 	unsigned short id;
 	unsigned int private_data_size;
 	int (*lib_init_fn) (void *conn);
 	int (*lib_exit_fn) (void *conn);
-	struct openais_lib_handler *lib_service;
+	struct corosync_lib_handler *lib_service;
 	int lib_service_count;
-	struct openais_exec_handler *exec_service;
+	struct corosync_exec_handler *exec_service;
 	int (*exec_init_fn) (struct objdb_iface_ver0 *);
 	int (*config_init_fn) (struct objdb_iface_ver0 *);
 	void (*exec_dump_fn) (void);
@@ -947,12 +947,12 @@ lib_exit_fn is the function executed when a library connection is exited
 either because the application closed the file descriptor, or the OS
 closed the file descriptor.
 
-lib_service is an array of openais_lib_handler data structures which define
+lib_service is an array of corosync_lib_handler data structures which define
 the library service handler.
 
 lib_service_count is the number of elements in lib_service.
 
-exec_service is an array of openais_exec_handler data structures which define
+exec_service is an array of corosync_exec_handler data structures which define
 the executive service handler.
 
 exec_init_fn is a function used to initialize the executive service.  This
@@ -998,20 +998,20 @@ used in the handler function.
 ------------------------------------------------
 
 The service handler needs some special magic to dynamically be linked into
-openais.  
+corosync.  
 
 /*
  * Dynamic loader definition
  */
-static struct openais_service_handler *clm_get_service_handler_ver0 (void);
+static struct corosync_service_handler *clm_get_service_handler_ver0 (void);
 
-static struct openais_service_handler_iface_ver0 clm_service_handler_iface = {
-        .openais_get_service_handler_ver0       = clm_get_service_handler_ver0
+static struct corosync_service_handler_iface_ver0 clm_service_handler_iface = {
+        .corosync_get_service_handler_ver0       = clm_get_service_handler_ver0
 };
 
-static struct lcr_iface openais_clm_ver0[1] = {
+static struct lcr_iface corosync_clm_ver0[1] = {
         {
-                .name                   = "openais_clm",
+                .name                   = "corosync_clm",
                 .version                = 0,
                 .versions_replace       = 0,
                 .versions_replace_count = 0,
@@ -1025,16 +1025,16 @@ static struct lcr_iface openais_clm_ver0[1] = {
 
 static struct lcr_comp clm_comp_ver0 = {
         .iface_count                    = 1,
-        .ifaces                         = openais_clm_ver0
+        .ifaces                         = corosync_clm_ver0
 };
 
-static struct openais_service_handler *clm_get_service_handler_ver0 (void)
+static struct corosync_service_handler *clm_get_service_handler_ver0 (void)
 {
         return (&clm_service_handler);
 }
 
 __attribute__ ((constructor)) static void clm_comp_register (void) {
-        lcr_interfaces_set (&openais_clm_ver0[0], &clm_service_handler_iface);
+        lcr_interfaces_set (&corosync_clm_ver0[0], &clm_service_handler_iface);
 
         lcr_component_register (&clm_comp_ver0);
 }
@@ -1044,7 +1044,7 @@ the service will be loaded if its in the default services list.
 
 The default service list is specified in service.c:default_services.  If
 creating an external plugin, there are configuration parameters which may
-be used to add your plugin into the openais scanning of plugins.
+be used to add your plugin into the corosync scanning of plugins.
 
 ---------------------------------
  Connection specific information 
@@ -1053,7 +1053,7 @@ Every connection may have specific connection information if private data
 is greater then zero for the service handler.  This is used to allow each
 library connection to maintain private state to that connection.  The private
 data for a connection can be retrieved with:
-struct service_pd service_pd = (struct service_pd *)openais_conn_private_data_get (conn);
+struct service_pd service_pd = (struct service_pd *)corosync_conn_private_data_get (conn);
 
 where service is the name of the service implemented and conn is the connection
 information likely passed into the library handler or stored in a
@@ -1066,7 +1066,7 @@ message_source structure for later use by an executive handler.
 A message is sent to the library from the executive message handler using
 the function:
 
-extern int openais_conn_send_response (void *conn_info, void *msg,
+extern int corosync_conn_send_response (void *conn_info, void *msg,
 	int mlen);
 
 conn_info is passed into the library message handler or stored in the
@@ -1076,7 +1076,7 @@ msg is the message to send
 mlen is the length of the message to send
 
 Keep in mind that struct res_message should be at the beginning of the response
-message so that it follows the style used in the rest of openais.
+message so that it follows the style used in the rest of corosync.
 
 --------------------------------------------
  deferring response to an executive message
@@ -1095,7 +1095,7 @@ Then the executive message handler determines if this processor is responsible
 for responding:
 
 if (message_source_is_local (conn)) {
-	openais_conn_send_response ();
+	corosync_conn_send_response ();
 
 }
 
@@ -1108,9 +1108,9 @@ delivery according to virtual synchrony semantics use:
 The totempg interface supports multiple users at one time and if you need
 to use a full totempg interface (defined in totempg.h) please ask for
 assistance on the mailing list.  If you simply want to use multicast
-transmissions in openais, do the following:
+transmissions in corosync, do the following:
 
-       assert (totempg_groups_mcast_joined (openais_group_handle, &req_exec_clm_iovec, 1, TOTEMPG_AGREED) == 0);
+       assert (totempg_groups_mcast_joined (corosync_group_handle, &req_exec_clm_iovec, 1, TOTEMPG_AGREED) == 0);
 
 -----------------
  library handler
@@ -1209,13 +1209,13 @@ case GDB may become your enemy.
 printf is your friend when GDB is your enemy.  
 
 If stuck, ask on the mailing list, send your patches.  Alot of time has been
-spent designing openais, and even more time debugging it.  There are people
+spent designing corosync, and even more time debugging it.  There are people
 that can help you debug problems, especially around things like message
 delivery.
 
 Submit patches early to get feedback, especially around things like parallel
 style.  Parallel style is very important to ensure maintainability by the
-openais community.
+corosync community.
 
 If this document is wrong or incomplete, complain so we can get it fixed
 for other people.

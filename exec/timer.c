@@ -143,7 +143,7 @@ static void sigusr1_handler (int num) {
 #endif
 }
 
-int openais_timer_init (
+int corosync_timer_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void))
 {
@@ -166,7 +166,7 @@ int openais_timer_init (
 	return (res);
 }
 
-int openais_timer_add_absolute (
+int corosync_timer_add_absolute (
 	unsigned long long nanosec_from_epoch,
 	void *data,
 	void (*timer_fn) (void *data),
@@ -198,7 +198,7 @@ int openais_timer_add_absolute (
 	return (res);
 }
 
-int openais_timer_add_duration (
+int corosync_timer_add_duration (
 	unsigned long long nanosec_duration,
 	void *data,
 	void (*timer_fn) (void *data),
@@ -230,7 +230,7 @@ int openais_timer_add_duration (
 	return (res);
 }
 
-void openais_timer_delete (
+void corosync_timer_delete (
 	timer_handle timer_handle)
 {
 	int unlock;
@@ -253,12 +253,12 @@ void openais_timer_delete (
 	}
 }
 
-void openais_timer_lock (void)
+void corosync_timer_lock (void)
 {
 	pthread_mutex_lock (&timer_mutex);
 }
 
-void openais_timer_unlock (void)
+void corosync_timer_unlock (void)
 {
 	pthread_mutex_unlock (&timer_mutex);
 }

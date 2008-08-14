@@ -45,7 +45,7 @@
 
 /*
  * Array location of various timeouts as
- * specified in openais.conf.  The last enum
+ * specified in corosync.conf.  The last enum
  * specifies the size of the timeouts array and
  * needs to remain the last item in the list.
  */

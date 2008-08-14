@@ -244,7 +244,7 @@ static void flow_control_confchg_fn (
 /*
  * External API
  */
-unsigned int openais_flow_control_initialize (void)
+unsigned int corosync_flow_control_initialize (void)
 {
 	unsigned int res;
 
@@ -271,7 +271,7 @@ unsigned int openais_flow_control_initialize (void)
 	return (0);
 }
 
-unsigned int openais_flow_control_ipc_init (
+unsigned int corosync_flow_control_ipc_init (
 	unsigned int *flow_control_handle,
 	unsigned int service)
 {
@@ -301,14 +301,14 @@ error_exit:
 
 }
 
-unsigned int openais_flow_control_ipc_exit (
+unsigned int corosync_flow_control_ipc_exit (
 	unsigned int flow_control_handle)
 {
 	hdb_handle_destroy (&flow_control_hdb, flow_control_handle);
 	return (0);
 }
 
-unsigned int openais_flow_control_create (
+unsigned int corosync_flow_control_create (
 	unsigned int flow_control_handle,
 	unsigned int service,
 	void *id,
@@ -363,7 +363,7 @@ error_exit:
 	return (res);
 }
 
-unsigned int openais_flow_control_destroy (
+unsigned int corosync_flow_control_destroy (
 	unsigned int flow_control_identifier,
 	unsigned int service,
 	unsigned char *id,
@@ -406,7 +406,7 @@ error_exit:
  * Disable the ability for new messages to be sent for this service
  * with the handle id of length id_len
  */
-unsigned int openais_flow_control_disable (
+unsigned int corosync_flow_control_disable (
 	unsigned int flow_control_handle)
 {
 	struct flow_control_instance *instance;
@@ -438,7 +438,7 @@ error_exit:
  * Enable the ability for new messagess to be sent for this service
  * with the handle id of length id_len
  */
-unsigned int openais_flow_control_enable (
+unsigned int corosync_flow_control_enable (
 	unsigned int flow_control_handle)
 {
 	struct flow_control_instance *instance;

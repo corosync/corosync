@@ -38,7 +38,7 @@
 #include <netinet/in.h>
 #include "saAis.h"
 
-typedef SaUint64T openais_cfg_handle_t;
+typedef SaUint64T corosync_cfg_handle_t;
 
 typedef enum {
 	OPENAIS_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
@@ -99,7 +99,7 @@ typedef void (*OpenaisCfgStateTrackCallbackT) (
 
 typedef struct {
 	OpenaisCfgStateTrackCallbackT
-		openaisCfgStateTrackCallback;
+		corosyncCfgStateTrackCallback;
 } OpenaisCfgCallbacksT;
 
 /*
@@ -110,68 +110,68 @@ extern "C" {
 #endif
 
 SaAisErrorT
-openais_cfg_initialize (
-	openais_cfg_handle_t *cfg_handle,
+corosync_cfg_initialize (
+	corosync_cfg_handle_t *cfg_handle,
 	const OpenaisCfgCallbacksT *cfgCallbacks);
 
 SaAisErrorT
-openais_cfg_fd_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_fd_get (
+	corosync_cfg_handle_t cfg_handle,
 	SaSelectionObjectT *selectionObject);
 
 SaAisErrorT
-openais_cfg_dispatch (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_dispatch (
+	corosync_cfg_handle_t cfg_handle,
 	SaDispatchFlagsT dispatchFlags);
 
 SaAisErrorT
-openais_cfg_finalize (
-	openais_cfg_handle_t cfg_handle);
+corosync_cfg_finalize (
+	corosync_cfg_handle_t cfg_handle);
 
 SaAisErrorT
-openais_cfg_ring_status_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_ring_status_get (
+	corosync_cfg_handle_t cfg_handle,
 	char ***interface_names,
 	char ***status,
 	unsigned int *interface_count);
 
 SaAisErrorT
-openais_cfg_ring_reenable (
-	openais_cfg_handle_t cfg_handle);
+corosync_cfg_ring_reenable (
+	corosync_cfg_handle_t cfg_handle);
 
 SaAisErrorT
-openais_cfg_service_load (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_service_load (
+	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver);
 
 SaAisErrorT
-openais_cfg_service_unload (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_service_unload (
+	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver);
 
 SaAisErrorT
-openais_cfg_administrative_state_get (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_administrative_state_get (
+	corosync_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT *administrativeState);
 
 SaAisErrorT
-openais_cfg_administrative_state_set (
-	openais_cfg_handle_t cfg_handle,
+corosync_cfg_administrative_state_set (
+	corosync_cfg_handle_t cfg_handle,
 	OpenaisCfgAdministrativeTargetT administrativeTarget,
 	OpenaisCfgAdministrativeStateT administrativeState);
 
 SaAisErrorT
-openais_cfg_state_track (
-        openais_cfg_handle_t cfg_handle,
+corosync_cfg_state_track (
+        corosync_cfg_handle_t cfg_handle,
         SaUint8T trackFlags,
         const OpenaisCfgStateNotificationT *notificationBuffer);
 
 SaAisErrorT
-openais_cfg_state_track_stop (
-        openais_cfg_handle_t cfg_handle);
+corosync_cfg_state_track_stop (
+        corosync_cfg_handle_t cfg_handle);
 
 #ifdef __cplusplus
 }

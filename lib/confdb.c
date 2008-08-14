@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides access to data in the openais object database
+ * Provides access to data in the corosync object database
  */
 
 #include <stdlib.h>
@@ -125,8 +125,8 @@ static struct iter_context *find_iter_context(struct list_head *list, unsigned i
 }
 
 /**
- * @defgroup confdb_openais
- * @ingroup openais
+ * @defgroup confdb_corosync
+ * @ingroup corosync
  *
  * @{
  */

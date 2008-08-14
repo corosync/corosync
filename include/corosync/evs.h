@@ -38,10 +38,10 @@
 #include <netinet/in.h>
 
 /**
- * @defgroup openais Other API services provided by openais
+ * @defgroup corosync Other API services provided by corosync
  */
 /**
- * @addtogroup evs_openais
+ * @addtogroup evs_corosync
  *
  * @{
  */
