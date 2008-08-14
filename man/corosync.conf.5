@@ -43,7 +43,7 @@ corosync.conf - corosync executive configuration file
 The corosync.conf instructs the corosync executive about various parameters
 needed to control the corosync executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
-.IR "totem  { } , logging { } , event { } , and amf { }".
+.IR "totem  { } , logging { }.
  These directives are described below.
 
 .TP
@@ -55,9 +55,6 @@ This top level directive contains configuration options for logging.
 .TP
 event { }
 This top level directive contains configuration options for the event service.
-.TP
-amf { }
-This top level directive contains configuration options for the AMF service.
 
 .PP
 .PP
@@ -513,41 +510,11 @@ enter|leave|trace1|trace2|trace3|...
 
 The default is none.
 
-.PP
-Within the 
-.B event
-directive, there are two configuration options which are all optional:
-.TP
-delivery_queue_size
-This directive describes the full size of the outgoing delivery queue to the
-application.  If applications are slow to process messages, they will be 
-delivered event loss messages.  By increasing this value, the applications
-that are slowly processing messages may have an opportunity to catch up.
-
-.TP
-delivery_queue_resume
-This directive describes when new events can be accepted by the event service
-when the delivery queue count of pending messages has reached this value. 
-Please note this is not cluster wide.
-
-.PP
-Within the 
-.B amf
-directive, there is one configuration option which is optional:
-.TP
-mode
-This can either contain the value enabled or disabled.  When enabled, AMF will
-start the applications specified in the /etc/ais/amf.conf file.
-The default is disabled.
-
 .SH "FILES"
 .TP
-/etc/ais/corosync.conf
+/etc/corosync.conf
 The corosync executive configuration file.
-.TP
-/etc/ais/amf.conf
-The corosync AMF configuration file.
 
 .SH "SEE ALSO"
-.BR corosync_overview (8), README.amf
+.BR corosync_overview (8)
 .PP
