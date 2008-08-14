@@ -98,11 +98,11 @@ help:
 	@echo "  doxygen - doxygen html docs"
 	@echo 
 	@echo "Options: (* - default)"
-	@echo "  OPENAIS         [DEBUG/RELEASE*] - Enable/Disable debug symbols"
+	@echo "  OPENCOROSYNC         [DEBUG/RELEASE*] - Enable/Disable debug symbols"
 	@echo "  DESTDIR         [directory]      - Install prefix."
 	@echo "  O               [directory]      - Locate all output files in \"dir\"."
 	@echo "  BUILD_DYNAMIC   [1*/0]           - Enable/disable dynamic loading of service handler modules"
-	@echo "  OPENAIS_PROFILE [1/0*]           - Enable profiling"
+	@echo "  OPENCOROSYNC_PROFILE [1/0*]           - Enable profiling"
 	@echo 
  
 
@@ -115,10 +115,10 @@ clean:
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
 	rm -rf $(builddir)doc/api
 
-AIS_LIBS	= evs cpg cfg coroutil confdb
+COROSYNC_LIBS	= evs cpg cfg coroutil confdb
 
-AIS_HEADERS	= cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h \
-		  ais_util.h confdb.h list.h
+COROSYNC_HEADERS	= cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h \
+		  ais_util.h confdb.h list.h saAis.h
 
 EXEC_LIBS	= totem_pg logsys
 
@@ -145,14 +145,14 @@ install: all
 	    install -m 755 exec/lib$$eLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
 		install -m 755 exec/lib$$eLib.a $(DESTDIR)$(LIBDIR);	\
-		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
+		if [ ${OPENCOROSYNC_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$eLib.a;		\
 		fi							\
 	    fi								\
 	    ) \
 	done
 
-	for aLib in $(AIS_LIBS); do					\
+	for aLib in $(COROSYNC_LIBS); do					\
 	    ( cd $(builddir) ;                                          \
 	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so;			\
 	    ln -sf lib$$aLib.so.2.0.0 lib/lib$$aLib.so.2;		\
@@ -161,7 +161,7 @@ install: all
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
 	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
-		if [ ${OPENAIS_COMPAT} = "DARWIN" ]; then		\
+		if [ ${OPENCOROSYNC_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
 	        fi							\
 	    fi								\
@@ -181,7 +181,9 @@ install: all
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
 
-	install -m 644 $(srcdir)include/corosync/saAis.h $(DESTDIR)$(INCLUDEDIR);	\
+	for aHeader in $(COROSYNC_HEADERS); do				\
+	    install -m 644 $(srcdir)include/corosync/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
+	done
 
 	install -m 644 $(srcdir)include/corosync/hdb.h $(DESTDIR)$(INCLUDEDIR)
 	install -m 644 $(srcdir)include/corosync/totem/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
