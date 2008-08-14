@@ -39,10 +39,10 @@
 #include <errno.h>
 #include <sys/time.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
+#include <corosync/saAis.h>
+#include <corosync/list.h>
+#include <corosync/engine/logsys.h>
 #include "util.h"
-#include "logsys.h"
 
 LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
@@ -77,7 +77,7 @@ SaTimeT clust_time_now(void)
 }
 
 
-void _corosync_exit_error (
+void _openais_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "

@@ -40,8 +40,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include "saAis.h"
-#include "confdb.h"
+
+#include <corosync/saAis.h>
+#include <corosync/confdb.h>
 
 #define SEPERATOR '.'
 #define SEPERATOR_STR "."

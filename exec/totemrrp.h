@@ -38,7 +38,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "totem.h"
+#include <corosync/totem/totem.h>
 
 typedef unsigned int totemrrp_handle;
 

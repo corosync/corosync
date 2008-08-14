@@ -55,11 +55,12 @@
 #include <sched.h>
 #include <time.h>
 
+#include <corosync/engine/logsys.h>
+#include <corosync/swab.h>
+#include <corosync/lcr/lcr_comp.h>
+
 #include "main.h"
-#include "logsys.h"
-#include "swab.h"
 #include "vsf.h"
-#include "../lcr/lcr_comp.h"
 
 LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
 
@@ -531,14 +532,14 @@ static int ykd_primary (void) {
 /*
  * lcrso object definition
  */
-static struct corosync_vsf_iface_ver0 vsf_ykd_iface_ver0 = {
+static struct openais_vsf_iface_ver0 vsf_ykd_iface_ver0 = {
 	.init				= ykd_init,
 	.primary			= ykd_primary
 };
 
-static struct lcr_iface corosync_vsf_ykd_ver0[1] = {
+static struct lcr_iface openais_vsf_ykd_ver0[1] = {
 	{
-		.name			= "corosync_vsf_ykd",
+		.name			= "openais_vsf_ykd",
 		.version		= 0,
 		.versions_replace	= 0,
 		.versions_replace_count	= 0,
@@ -552,7 +553,7 @@ static struct lcr_iface corosync_vsf_ykd_ver0[1] = {
 
 static struct lcr_comp vsf_ykd_comp_ver0 = {
 	.iface_count			= 1,
-	.ifaces				= corosync_vsf_ykd_ver0
+	.ifaces				= openais_vsf_ykd_ver0
 };
 
 __attribute__ ((constructor)) static void vsf_ykd_comp_register (void) {

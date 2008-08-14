@@ -36,7 +36,8 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "../include/cpg.h"
+
+#include <corosync/cpg.h>
 
 void deliver(
 	cpg_handle_t handle,

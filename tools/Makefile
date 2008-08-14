@@ -42,7 +42,7 @@ ifeq (${OPENAIS_COMPAT}, SOLARIS)
 endif
 
 LIBS = ../lib/libconfdb.a ../lib/libcfg.a
-BINARIES=corosync-objctl corosync-cfgtool corosync-keygen
+BINARIES=corosync-objctl corosync-cfgtool keygen
 APPS_SRC=$(addsuffix .c,$(BINARIES))
 EXTRA_CFLAGS = -I$(srcdir)include
 
@@ -54,7 +54,7 @@ corosync-objctl: corosync-objctl.o $(LIBS)
 corosync-cfgtool: corosync-cfgtool.o $(LIBS)
 	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
-corosync-keygen: corosync-keygen.o
+keygen: keygen.o
 	$(CC) $(LDFLAGS) -o $@ $<
 
 clean:

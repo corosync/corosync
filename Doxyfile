@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------
 # General configuration options
 #---------------------------------------------------------------------------
-PROJECT_NAME           = corosync
+PROJECT_NAME           = openais
 PROJECT_NUMBER         = 0.75
 OUTPUT_DIRECTORY       = doc/api
 OUTPUT_LANGUAGE        = English

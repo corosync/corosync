@@ -175,29 +175,28 @@ install: all
 	install -m 755 $(builddir)exec/corosync $(DESTDIR)$(SBINDIR)
 	install -m 755 $(builddir)tools/corosync-objctl $(DESTDIR)$(SBINDIR)
 	install -m 755 $(builddir)tools/corosync-cfgtool $(DESTDIR)$(SBINDIR)
-	install -m 700 $(builddir)tools/keygen $(DESTDIR)$(SBINDIR)/corosync-keygen
+	install -m 700 $(builddir)tools/corosync-keygen $(DESTDIR)$(SBINDIR)
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/penais.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
 
 	for aHeader in $(AIS_HEADERS); do				\
-	    install -m 644 $(srcdir)include/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
+	    install -m 644 $(srcdir)include/corosync/$$aHeader $(DESTDIR)$(INCLUDEDIR);	\
 	done
 
-	install -m 644 $(srcdir)include/hdb.h $(DESTDIR)$(INCLUDEDIR)
-	install -m 644 $(srcdir)exec/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)exec/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
-	install -m 644 $(srcdir)lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
-	install -m 644 $(srcdir)include/coroapi.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
-	install -m 644 $(srcdir)exec/objdb.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
-	install -m 644 $(srcdir)exec/logsys.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
-	install -m 644 $(srcdir)exec/config.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
-	install -m 644 $(srcdir)include/swab.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/corosync/hdb.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 644 $(srcdir)include/corosync/totem/coropoll.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)include/corosync/totem/totempg.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)include/corosync/totem/totem.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)include/corosync/totem/totemip.h $(DESTDIR)$(INCLUDEDIR_TOTEM)
+	install -m 644 $(srcdir)include/corosync/lcr/lcr_ckpt.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)include/corosync/lcr/lcr_comp.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)include/corosync/lcr/lcr_ifact.h $(DESTDIR)$(INCLUDEDIR_LCR)
+	install -m 644 $(srcdir)include/corosync/engine/coroapi.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/corosync/engine/objdb.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/corosync/engine/logsys.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/corosync/engine/config.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5
 	install -m 644 $(srcdir)man/*.8 $(DESTDIR)$(MANDIR)/man8

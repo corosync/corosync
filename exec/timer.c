@@ -55,26 +55,26 @@
 #include <sched.h>
 #include <time.h>
 
-#include "swab.h"
-#include "../include/saAis.h"
-#include "../include/list.h"
-#include "../include/queue.h"
-#include "../lcr/lcr_ifact.h"
+#include <corosync/swab.h>
+#include <corosync/saAis.h>
+#include <corosync/list.h>
+#include <corosync/queue.h>
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/totem/coropoll.h>
+#include <corosync/totem/totempg.h>
+#include <corosync/engine/objdb.h>
+#include <corosync/engine/config.h>
+#define LOG_SERVICE LOG_SERVICE_IPC
+#include <corosync/engine/logsys.h>
+
 #include "poll.h"
-#include "totempg.h"
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
-#include "swab.h"
-#include "objdb.h"
-#include "config.h"
 #include "tlist.h"
-#define LOG_SERVICE LOG_SERVICE_IPC
-#include "logsys.h"
-
 #include "util.h"
 
 #define SERVER_BACKLOG 5
@@ -143,7 +143,7 @@ static void sigusr1_handler (int num) {
 #endif
 }
 
-int corosync_timer_init (
+int openais_timer_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void))
 {
@@ -166,7 +166,7 @@ int corosync_timer_init (
 	return (res);
 }
 
-int corosync_timer_add_absolute (
+int openais_timer_add_absolute (
 	unsigned long long nanosec_from_epoch,
 	void *data,
 	void (*timer_fn) (void *data),
@@ -198,7 +198,7 @@ int corosync_timer_add_absolute (
 	return (res);
 }
 
-int corosync_timer_add_duration (
+int openais_timer_add_duration (
 	unsigned long long nanosec_duration,
 	void *data,
 	void (*timer_fn) (void *data),
@@ -230,7 +230,7 @@ int corosync_timer_add_duration (
 	return (res);
 }
 
-void corosync_timer_delete (
+void openais_timer_delete (
 	timer_handle timer_handle)
 {
 	int unlock;
@@ -253,12 +253,12 @@ void corosync_timer_delete (
 	}
 }
 
-void corosync_timer_lock (void)
+void openais_timer_lock (void)
 {
 	pthread_mutex_lock (&timer_mutex);
 }
 
-void corosync_timer_unlock (void)
+void openais_timer_unlock (void)
 {
 	pthread_mutex_unlock (&timer_mutex);
 }

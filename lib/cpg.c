@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides a closed process group API using the corosync executive
+ * Provides a closed process group API using the openais executive
  */
 
 #include <stdlib.h>
@@ -45,11 +45,11 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <saAis.h>
-#include <cpg.h>
-#include <ipc_cpg.h>
-#include <mar_cpg.h>
-#include <ais_util.h>
+#include <corosync/saAis.h>
+#include <corosync/cpg.h>
+#include <corosync/ipc_cpg.h>
+#include <corosync/mar_cpg.h>
+#include <corosync/ais_util.h>
 
 struct cpg_inst {
 	int response_fd;
@@ -84,8 +84,8 @@ static void cpg_instance_destructor (void *instance)
 
 
 /**
- * @defgroup cpg_corosync The closed process group API
- * @ingroup corosync
+ * @defgroup cpg_openais The closed process group API
+ * @ingroup openais
  *
  * @{
  */

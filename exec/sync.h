@@ -36,7 +36,7 @@
 #define SYNC_H_DEFINED
 
 #include <netinet/in.h>
-#include "totempg.h"
+#include <corosync/totem/totempg.h>
 #include "totemsrp.h"
 
 struct sync_callbacks {

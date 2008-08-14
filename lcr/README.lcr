@@ -4,7 +4,7 @@ All software is composed of components, which contain multiple software classes.
 Components generally depend upon other components and sometimes classes from
 other components.
 
-Some components of corosync are the evt service, the ckpt service, the clm
+Some components of openais are the evt service, the ckpt service, the clm
 service, the totem protocol, and others.  If a defect is found in any of
 these components, the entire ais executive must be stopped, replaced, and
 restarted.

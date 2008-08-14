@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides access to data in the corosync object database
+ * Provides access to data in the openais object database
  */
 
 #include <stdlib.h>
@@ -42,12 +42,12 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <saAis.h>
-#include <confdb.h>
-#include <ipc_confdb.h>
-#include <mar_gen.h>
-#include <ais_util.h>
-#include <list.h>
+#include <corosync/saAis.h>
+#include <corosync/confdb.h>
+#include <corosync/ipc_confdb.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ais_util.h>
+#include <corosync/list.h>
 
 #include "sa-confdb.h"
 
@@ -125,8 +125,8 @@ static struct iter_context *find_iter_context(struct list_head *list, unsigned i
 }
 
 /**
- * @defgroup confdb_corosync
- * @ingroup corosync
+ * @defgroup confdb_openais
+ * @ingroup openais
  *
  * @{
  */
@@ -1212,6 +1212,58 @@ confdb_error_t confdb_write (
 	error = res_lib_confdb_write.header.error;
 	if (res_lib_confdb_write.error.length)
 		memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
+
+error_exit:
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+confdb_error_t confdb_reload (
+	confdb_handle_t handle,
+	int flush,
+	char *error_text)
+{
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov[2];
+	struct res_lib_confdb_reload res_lib_confdb_reload;
+	struct req_lib_confdb_reload req_lib_confdb_reload;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_reload(flush, error_text))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req_lib_confdb_reload.header.size = sizeof (req_lib_confdb_reload);
+	req_lib_confdb_reload.header.id = MESSAGE_REQ_CONFDB_RELOAD;
+	req_lib_confdb_reload.flush = flush;
+
+	iov[0].iov_base = (char *)&req_lib_confdb_reload;
+	iov[0].iov_len = sizeof (req_lib_confdb_reload);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+				       &res_lib_confdb_reload, sizeof (struct res_lib_confdb_reload));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_confdb_reload.header.error;
+	if(res_lib_confdb_reload.error.length)
+		memcpy(error_text, res_lib_confdb_reload.error.value, res_lib_confdb_reload.error.length);
 
 error_exit:
 	saHandleInstancePut (&confdb_handle_t_db, handle);

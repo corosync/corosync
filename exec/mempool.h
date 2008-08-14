@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../include/list.h"
+#include <corosync/list.h>
 
 #ifndef MEMPOOL_H_DEFINED
 #define MEMPOOL_H_DEFINED

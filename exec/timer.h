@@ -35,30 +35,30 @@
 #ifndef TIMER_H_DEFINED
 #define TIMER_H_DEFINED
 
-typedef void * corosync_timer_handle;
+typedef void * openais_timer_handle;
 
-extern void corosync_timer_init (
+extern void openais_timer_init (
         void (*serialize_lock) (void),
         void (*serialize_unlock) (void));
 
-extern int corosync_timer_add_duration (
+extern int openais_timer_add_duration (
 	unsigned long long nanoseconds_in_future,
 	void *data,
 	void (*timer_fn) (void *data),
-	corosync_timer_handle *handle);
+	openais_timer_handle *handle);
 
-extern int corosync_timer_add_absolute (
+extern int openais_timer_add_absolute (
 	unsigned long long nanoseconds_from_epoch,
 	void *data,
 	void (*timer_fn) (void *data),
-	corosync_timer_handle *handle);
+	openais_timer_handle *handle);
 
-extern void corosync_timer_delete (corosync_timer_handle timer_handle);
+extern void openais_timer_delete (openais_timer_handle timer_handle);
 
-extern void corosync_timer_delete_data (corosync_timer_handle timer_handle);
+extern void openais_timer_delete_data (openais_timer_handle timer_handle);
 
-extern void corosync_timer_lock (void);
+extern void openais_timer_lock (void);
 
-extern void corosync_timer_unlock (void);
+extern void openais_timer_unlock (void);
 
 #endif /* TIMER_H_DEFINED */

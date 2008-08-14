@@ -37,19 +37,20 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../lcr/lcr_ifact.h"
-#include "swab.h"
-#include "totem.h"
+#include <corosync/lcr/lcr_ifact.h>
+#include <corosync/swab.h>
+#include <corosync/totem/totem.h>
+
 #include "mainconfig.h"
 #include "util.h"
-#include "logsys.h"
+#include <corosync/engine/logsys.h>
 
 #include "timer.h"
-#include "totempg.h"
-#include "totemip.h"
+#include <corosync/totem/totempg.h>
+#include <corosync/totem/totemip.h>
 #include "main.h"
 #include "ipc.h"
-#include "../include/coroapi.h"
+#include <corosync/engine/coroapi.h>
 #include "service.h"
 
 
@@ -120,7 +121,7 @@ static unsigned int default_services_requested (struct corosync_api_v1 *corosync
 	return (-1);
 }
 
-unsigned int corosync_service_link_and_init (
+unsigned int openais_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
 	char *service_name,
 	unsigned int service_ver)
@@ -201,7 +202,7 @@ unsigned int corosync_service_link_and_init (
 	return (res);
 }
 
-static int corosync_service_unlink_common (
+static int openais_service_unlink_common (
 	struct corosync_api_v1 *corosync_api,
 	unsigned int object_service_handle,
 	const char *service_name,
@@ -223,7 +224,7 @@ static int corosync_service_unlink_common (
 		(void *)&service_id,
 		NULL);
 	
-	log_printf(LOG_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
+	log_printf(LOG_LEVEL_NOTICE, "Unloading openais component: %s v%u\n",
 		service_name, service_version);
 
 	if (ais_service[*service_id]->exec_exit_fn) {
@@ -234,7 +235,7 @@ static int corosync_service_unlink_common (
 	return lcr_ifact_release (*found_service_handle);	
 }
 
-extern unsigned int corosync_service_unlink_and_exit (
+extern unsigned int openais_service_unlink_and_exit (
 	struct corosync_api_v1 *corosync_api,
 	char *service_name,
 	unsigned int service_ver)
@@ -266,14 +267,14 @@ extern unsigned int corosync_service_unlink_and_exit (
 			strlen ("ver"),
 			(void *)&found_service_ver,
 			NULL);
-				
+
 		/*
 		 * If service found and linked exit it
 		 */
 		if ((strcmp (service_name, found_service_name) == 0) &&
 			(service_ver == *found_service_ver)) {
 
-			res = corosync_service_unlink_common (
+			res = openais_service_unlink_common (
 				corosync_api, object_service_handle,
 				service_name, service_ver);
 
@@ -287,41 +288,39 @@ extern unsigned int corosync_service_unlink_and_exit (
 	return (-1);
 }
 
-extern unsigned int corosync_service_unlink_all (
+extern unsigned int openais_service_unlink_all (
 	struct corosync_api_v1 *corosync_api)
 {
 	char *service_name;
 	unsigned int *service_ver;
 	unsigned int object_service_handle;
 	unsigned int object_find_handle;
-	unsigned int res;
+	int found; 
 
-	log_printf(LOG_LEVEL_NOTICE, "Unloading all corosync components\n");
-	
-	res = 0;
+	log_printf(LOG_LEVEL_NOTICE, "Unloading all openais components\n");
+
 	/*
 	 * TODO
 	 * Deleting of keys not supported during iteration at this time
 	 * hence this ugly hack
 	 */
-	for (;;) {
-		corosync_api->object_find_create (
+	while(corosync_api->object_find_create (
 			object_internal_configuration_handle,
 			"service",
 			strlen ("service"),
-			&object_find_handle);
+			&object_find_handle) == 0)
+	{
 
-		res = corosync_api->object_find_next (
+		found = 0;
+
+		while(corosync_api->object_find_next (
 			object_find_handle,
-			&object_service_handle);
+			&object_service_handle) == 0)
+			found = 1;
 
-		/*
-		 * Exit from unloading
-		 */
-		if (res == -1) {
+		if(!found)
 			break;
-		}
-			
+
 		corosync_api->object_key_get (
 			object_service_handle,
 			"name",
@@ -335,8 +334,8 @@ extern unsigned int corosync_service_unlink_all (
 			strlen ("ver"),
 			(void *)&service_ver,
 			NULL);
-					
-		corosync_service_unlink_common (
+
+		openais_service_unlink_common (
 			corosync_api, object_service_handle,
 			service_name, *service_ver);
 
@@ -352,7 +351,7 @@ extern unsigned int corosync_service_unlink_all (
 /*
  * Links default services into the executive
  */
-unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
+unsigned int openais_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
 {
 	unsigned int i;
 
@@ -391,7 +390,7 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 
 		found_service_ver_atoi = atoi (found_service_ver);
 
-		corosync_service_link_and_init (
+		openais_service_link_and_init (
 			corosync_api,
 			found_service_name,
 			found_service_ver_atoi);
@@ -406,7 +405,7 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	for (i = 0;
 		i < sizeof (default_services) / sizeof (struct default_service); i++) {
 
-		corosync_service_link_and_init (
+		openais_service_link_and_init (
 			corosync_api,
 			default_services[i].name,
 			default_services[i].ver);

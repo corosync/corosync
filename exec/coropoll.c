@@ -39,9 +39,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "coropoll.h"
-#include "../include/list.h"
-#include "../include/hdb.h"
+#include <corosync/totem/coropoll.h>
+#include <corosync/list.h>
+#include <corosync/hdb.h>
 #include "tlist.h"
 
 typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);

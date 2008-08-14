@@ -41,13 +41,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "../include/saAis.h"
-#include "../include/list.h"
+#include <corosync/saAis.h>
+#include <corosync/list.h>
+#include <corosync/totem/totem.h>
+#include <corosync/engine/logsys.h>
+
 #include "util.h"
 #include "mainconfig.h"
 #include "mempool.h"
-#include "logsys.h"
-#include "totem.h"
 
 static char error_string_response[512];
 
@@ -97,7 +98,7 @@ static struct logsys_config_struct {
 	unsigned int tags;
 } logsys_logger;
 
-int corosync_main_config_read (
+int openais_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config)

@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include "lcr_comp.h"
+#include <corosync/lcr/lcr_comp.h>
 
 /*
  * Version 0 of the interface

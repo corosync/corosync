@@ -38,7 +38,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include "../include/evs.h"
+#include <corosync/evs.h>
 
 char *delivery_string;
 

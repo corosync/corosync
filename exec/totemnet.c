@@ -56,14 +56,14 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include "coropoll.h"
+#include <corosync/queue.h>
+#include <corosync/sq.h>
+#include <corosync/list.h>
+#include <corosync/hdb.h>
+#include <corosync/swab.h>
+#include <corosync/totem/coropoll.h>
 #include "totemnet.h"
 #include "wthread.h"
-#include "../include/queue.h"
-#include "../include/sq.h"
-#include "../include/list.h"
-#include "../include/hdb.h"
-#include "swab.h"
 
 #include "crypto.h"
 
