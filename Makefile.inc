@@ -45,9 +45,12 @@ endif
 
 # default CFLAGS, LDFLAGS
 #
-CFLAGS = -DLCRSODIR='"$(LCRSODIR)"'
+CFLAGS =
 LDFLAGS =
 DYFLAGS =
+
+override CFLAGS += -DLCRSODIR='"$(LCRSODIR)"'
+
 
 # Adding the TS_CLASS flag enables not being scheduled RR
 #CFLAGS += -DTS_CLASS
