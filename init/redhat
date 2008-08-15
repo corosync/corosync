@@ -11,8 +11,8 @@
 . /etc/rc.d/init.d/functions
 
 prog="corosync"
-exec="/usr/sbin/$prog"
-lockfile="/var/lock/subsys/$prog"
+exec="/usr/sbin/corosync"
+lockfile="/var/lock/subsys/corosync"
 
 [ -x "$exec" ] || exit 0
 
