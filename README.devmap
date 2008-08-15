@@ -889,7 +889,7 @@ used for flow control.  A response message will be sent to the library of the
 size response_size, with the header id of response_id if the totem message
 queue is full.  Some library APIs may not need to block in this condition
 (because they don't have to use totem), so they should specify
-OPENAIS_FLOW_CONTROL_NOT_REQUIREDin the flow control field.
+COROSYNC_FLOW_CONTROL_NOT_REQUIREDin the flow control field.
 
 The libais_handler_fn is a function to be called when the library handler is
 requested to be executed.

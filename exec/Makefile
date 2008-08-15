@@ -42,11 +42,11 @@ ifeq (${BUILD_DYNAMIC}, 1)
 	override LDFLAGS += ${DYFLAGS}
 endif
 
-ifeq (${OPENAIS_COMPAT}, LINUX) 
+ifeq (${COROSYNC_COMPAT}, LINUX) 
 	override LDFLAGS += -ldl
 endif
 
-ifeq (${OPENAIS_COMPAT}, SOLARIS) 
+ifeq (${COROSYNC_COMPAT}, SOLARIS) 
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
@@ -82,7 +82,7 @@ all: libtotem_pg.a liblogsys.a corosync
 endif
 
 
-ifeq (${OPENAIS_COMPAT}, DARWIN)
+ifeq (${COROSYNC_COMPAT}, DARWIN)
 
 objdb.lcrso: objdb.o
 	$(CC) -bundle -bundle_loader ./corosync -bind_at_load objdb.o -o $@
@@ -114,7 +114,7 @@ libtotem_pg.a: $(TOTEM_OBJS)
 liblogsys.a: $(LOGSYS_OBJS)
 	$(AR) -rc liblogsys.a $(LOGSYS_OBJS)
 
-ifeq (${OPENAIS_COMPAT}, DARWIN)
+ifeq (${COROSYNC_COMPAT}, DARWIN)
 
 libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) -bundle -bind_at_load $(TOTEM_OBJS) -o $@

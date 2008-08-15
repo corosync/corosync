@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH OPENAIS_OVERVIEW 8 2006-05-10 "corosync Man Page" "Openais Programmer's Manual"
+.TH COROSYNC_OVERVIEW 8 2006-05-10 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH OVERVIEW
 The corosync project is a project to implement a production quality "Revised BSD"
 licensed implementation of the most recent SA Forum's Application Interface
@@ -205,20 +205,20 @@ The corosync executive process uses four environment variables during startup.
 If these environment variables are not set, defaults will be used.
 
 .TP
-OPENAIS_MAIN_CONFIG_FILE
+COROSYNC_MAIN_CONFIG_FILE
 This specifies the fully qualified path to the corosync configuration file.
 
 The default is /etc/ais/corosync.conf.
 
 .TP
-OPENAIS_AMF_CONFIG_FILE
+COROSYNC_AMF_CONFIG_FILE
 This specifies the fully qualified path to the corosync Availability Management
 Framework configuration file.
 
 The default is /etc/ais/amf.conf.
 
 .TP
-OPENAIS_DEFAULT_CONFIG_IFACE
+COROSYNC_DEFAULT_CONFIG_IFACE
 This specifies the LCRSO that is used to parse the configuration file.  This
 allows other configuration file parsers to be implemented within the system.
 
@@ -226,7 +226,7 @@ The default is to use the default corosync configuration file parser which
 parses the format specified in corosync.conf (5).
 
 .TP
-OPENAIS_TOTEM_AUTHKEY_FILE
+COROSYNC_TOTEM_AUTHKEY_FILE
 This specifies the fully qualified path to the shared key used to
 authenticate and encrypt data used within the Totem protocol.
 

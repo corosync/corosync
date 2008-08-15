@@ -46,7 +46,7 @@ all: libcpg.a libcpg.so.2.0.0 \
 libcoroutil.a: util.o
 	$(AR) -rc libcoroutil.a util.o
 
-ifeq (${OPENAIS_COMPAT}, DARWIN)
+ifeq (${COROSYNC_COMPAT}, DARWIN)
 
 DARWIN_OPTS=-dynamiclib -bind_at_load -current_version 2.0.0 -compatibility_version 2.0.0
 libcoroutil.so.2.0.0: util.o

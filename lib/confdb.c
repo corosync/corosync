@@ -148,7 +148,7 @@ confdb_error_t confdb_initialize (
 		goto error_destroy;
 	}
 
-	if (getenv("OPENAIS_DEFAULT_CONFIG_IFACE")) {
+	if (getenv("COROSYNC_DEFAULT_CONFIG_IFACE")) {
 		error = confdb_sa_init();
 		confdb_inst->standalone = 1;
 	}

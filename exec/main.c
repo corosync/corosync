@@ -361,7 +361,7 @@ static void aisexec_tty_detach (void)
 
 static void aisexec_setscheduler (void)
 {
-#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
+#if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
 	struct sched_param sched_param;
 	int res;
 
@@ -382,20 +382,20 @@ static void aisexec_setscheduler (void)
 
 static void aisexec_mlockall (void)
 {
-#if !defined(OPENAIS_BSD)
+#if !defined(COROSYNC_BSD)
 	int res;
 #endif
 	struct rlimit rlimit;
 
 	rlimit.rlim_cur = RLIM_INFINITY;
 	rlimit.rlim_max = RLIM_INFINITY;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	setrlimit (RLIMIT_MEMLOCK, &rlimit);
 #else
 	setrlimit (RLIMIT_VMEM, &rlimit);
 #endif
 
-#if defined(OPENAIS_BSD)
+#if defined(COROSYNC_BSD)
 	/* under FreeBSD a process with locked page cannot call dlopen
 	 * code disabled until FreeBSD bug i386/93396 was solved
 	 */

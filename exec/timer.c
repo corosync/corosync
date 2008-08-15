@@ -103,7 +103,7 @@ static void *prioritized_timer_thread (void *data)
 	int fds;
 	unsigned long long timeout;
 
-#if ! defined(TS_CLASS) && (defined(OPENAIS_BSD) || defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS))
+#if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
 	struct sched_param sched_param;
 	int res;
 
@@ -137,7 +137,7 @@ retry_poll:
 }
 
 static void sigusr1_handler (int num) {
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 	/* Rearm the signal facility */
         signal (num, sigusr1_handler);
 #endif

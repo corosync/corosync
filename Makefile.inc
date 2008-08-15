@@ -11,21 +11,21 @@ UNAME=$(shell uname)
 CP=cp
 
 ifeq "$(UNAME)" "Linux"
-	OPENAIS_COMPAT=LINUX
+	COROSYNC_COMPAT=LINUX
 endif
 ifeq "$(UNAME)" "Darwin"
-	OPENAIS_COMPAT=DARWIN
+	COROSYNC_COMPAT=DARWIN
 	CP=rsync
 endif
 ifneq "" "$(findstring BSD,$(UNAME))"
-	OPENAIS_COMPAT=BSD
+	COROSYNC_COMPAT=BSD
 endif
 ifeq "$(UNAME)" "SunOS"
-	OPENAIS_COMPAT=SOLARIS
+	COROSYNC_COMPAT=SOLARIS
 	# Note that CC must be set to gcc compiled to link with gnu-ld 
 endif
-ifndef OPENAIS_COMPAT
-	$(error "OPENAIS_COMPAT cannot be detected, it must be manually defined")
+ifndef COROSYNC_COMPAT
+	$(error "COROSYNC_COMPAT cannot be detected, it must be manually defined")
 endif
 
 # BUILD_DYNAMIC can be defined to 1 to build for dynamic loading of service
@@ -35,69 +35,72 @@ ifndef BUILD_DYNAMIC
 	BUILD_DYNAMIC=1
 endif
 
-# OPENAIS_BUILD can be defined as RELEASE or DEBUG
+# COROSYNC_BUILD can be defined as RELEASE or DEBUG
 #
-ifndef OPENAIS_BUILD
-	OPENAIS_BUILD=DEBUG
+ifndef COROSYNC_BUILD
+	COROSYNC_BUILD=DEBUG
 endif
 
-# OPENAIS_PROFILE
+# COROSYNC_PROFILE
 
 # default CFLAGS, LDFLAGS
 #
-CFLAGS = -DLCRSODIR='"$(LCRSODIR)"'
+CFLAGS =
 LDFLAGS =
 DYFLAGS =
+
+override CFLAGS += -DLCRSODIR='"$(LCRSODIR)"'
+
 
 # Adding the TS_CLASS flag enables not being scheduled RR
 #CFLAGS += -DTS_CLASS
 
 # build CFLAGS, LDFLAGS
 #
-ifeq (${OPENAIS_BUILD}, RELEASE) 
+ifeq (${COROSYNC_BUILD}, RELEASE) 
 	CFLAGS += -O3 -Wall
 # -Wstrict-aliasing=2 TODO sameday fix all of these
-ifndef OPENAIS_PROFILE
+ifndef COROSYNC_PROFILE
 	CFLAGS += -fomit-frame-pointer
 endif
 	LDFLAGS += 
 endif
-ifeq (${OPENAIS_BUILD}, DEBUG) 
+ifeq (${COROSYNC_BUILD}, DEBUG) 
 	CFLAGS += -O0 -g -Wall -DDEBUG
 	LDFLAGS += -g
-	ifeq (${OPENAIS_COMPAT}, SOLARIS)
+	ifeq (${COROSYNC_COMPAT}, SOLARIS)
 		CFLAGS += -Werror -DTS_CLASS
 	endif
 endif
-ifeq (${OPENAIS_BUILD}, COVERAGE)
+ifeq (${COROSYNC_BUILD}, COVERAGE)
 	CFLAGS += -O0 -g -ftest-coverage -fprofile-arcs
 	LDFLAGS += -g -ftest-coverage -fprofile-arcs
 	BUILD_DYNAMIC=0
 endif
 
-ifdef OPENAIS_PROFILE
+ifdef COROSYNC_PROFILE
 	CFLAGS += -pg
 	LDFLAGS += -pg
 endif
 
 # platform specific CFLAGS, LDFLAGS
 #
-ifeq (${OPENAIS_COMPAT}, LINUX) 
-	override CFLAGS += -DOPENAIS_LINUX
+ifeq (${COROSYNC_COMPAT}, LINUX) 
+	override CFLAGS += -DCOROSYNC_LINUX
 	override LDFLAGS += -ldl -lpthread
 	override DYFLAGS += -rdynamic
 endif
-ifeq (${OPENAIS_COMPAT}, BSD)
-	override CFLAGS += -DOPENAIS_BSD
+ifeq (${COROSYNC_COMPAT}, BSD)
+	override CFLAGS += -DCOROSYNC_BSD
 	override LDFLAGS += -pthread
 	override DYFLAGS += -export-dynamic
 endif
-ifeq (${OPENAIS_COMPAT}, DARWIN)
-	override CFLAGS += -DOPENAIS_DARWIN
+ifeq (${COROSYNC_COMPAT}, DARWIN)
+	override CFLAGS += -DCOROSYNC_DARWIN
 	override LDFLAGS += -lpthread
 endif
-ifeq (${OPENAIS_COMPAT}, SOLARIS)
-	override CFLAGS += -DOPENAIS_SOLARIS -D_REENTRANT
+ifeq (${COROSYNC_COMPAT}, SOLARIS)
+	override CFLAGS += -DCOROSYNC_SOLARIS -D_REENTRANT
 	override LDFLAGS += -lpthread
 	# See http://sources.redhat.com/ml/bug-gnu-utils/2000-07/msg00168.html
 	override LDFLAGS += -Wl,--export-dynamic -Wl,-rpath-link=/usr/lib

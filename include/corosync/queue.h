@@ -38,7 +38,7 @@
 #include <pthread.h>
 #include "assert.h"
 
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 /* struct queue is already defined in sys/stream.h on Solaris */
 #define	queue _queue
 #endif

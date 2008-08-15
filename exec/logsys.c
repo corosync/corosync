@@ -42,10 +42,10 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 #include <linux/un.h>
 #endif
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/un.h>
 #endif
 #define SYSLOG_NAMES

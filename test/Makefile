@@ -33,7 +33,7 @@
 #
 include ../Makefile.inc
 
-ifeq (${OPENAIS_COMPAT}, SOLARIS)
+ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 

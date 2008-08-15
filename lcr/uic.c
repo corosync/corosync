@@ -48,7 +48,7 @@
 #include <sys/poll.h>
 #include <string.h>
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
@@ -56,7 +56,7 @@
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 #endif
 
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 static char *socketname = "lcr.socket";
 #else
 static char *socketname = "/var/run/lcr.socket";
@@ -68,11 +68,11 @@ int uic_connect (int *fd)
 	struct sockaddr_un addr;
 
 	memset (&addr, 0, sizeof (struct sockaddr_un));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	addr.sun_len = sizeof(struct sockaddr_un);
 #endif
 	addr.sun_family = PF_UNIX;
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 	strcpy (addr.sun_path + 1, socketname);
 #else
 	strcpy (addr.sun_path, socketname);
@@ -110,7 +110,7 @@ int uic_msg_send (int fd, char *msg)
 	msg_send.msg_iovlen = 2;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;

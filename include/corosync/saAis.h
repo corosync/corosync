@@ -45,7 +45,7 @@ typedef enum {
 	SA_TRUE = 1
 } SaBoolT;
 
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 #include <stdint.h>
 #else
 #include <sys/types.h>

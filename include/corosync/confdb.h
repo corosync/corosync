@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_CONFDB_H_DEFINED
-#define OPENAIS_CONFDB_H_DEFINED
+#ifndef COROSYNC_CONFDB_H_DEFINED
+#define COROSYNC_CONFDB_H_DEFINED
 
 /**
  * @addtogroup confdb_corosync
@@ -267,4 +267,4 @@ confdb_error_t confdb_key_iter (
 	int *value_len);
 
 
-#endif /* OPENAIS_CONFDB_H_DEFINED */
+#endif /* COROSYNC_CONFDB_H_DEFINED */

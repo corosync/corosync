@@ -36,7 +36,7 @@
 #ifndef AIS_MAR_GEN_H_DEFINED
 #define AIS_MAR_GEN_H_DEFINED
 
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 #include <stdint.h>
 #else
 #include <sys/types.h>

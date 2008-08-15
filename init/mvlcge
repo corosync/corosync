@@ -5,7 +5,7 @@
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-test -f /usr/sbin/corosycn | exit 0
+test -f /usr/sbin/corosync | exit 0
 
 case "$1" in 
 	start)

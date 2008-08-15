@@ -35,7 +35,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fnmatch.h>
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 #include <iso/limits_iso.h>
 #endif
 #include <corosync/lcr/lcr_comp.h>
@@ -72,7 +72,7 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 
 static unsigned int g_component_handle = 0xFFFFFFFF;
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 static int lcr_select_so (const struct dirent *dirent)
 #else
 static int lcr_select_so (struct dirent *dirent)
@@ -90,8 +90,8 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
-#ifndef OPENAIS_SOLARIS
-#ifdef OPENAIS_LINUX
+#ifndef COROSYNC_SOLARIS
+#ifdef COROSYNC_LINUX
 static int pathlist_select (const struct dirent *dirent)
 #else
 static int pathlist_select (struct dirent *dirent)
@@ -207,7 +207,7 @@ static void ld_library_path_build (void)
 
 static int ldso_path_build (char *path, char *filename)
 {
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	FILE *fp;
 	char string[1024];
 	char filename_cat[1024];
@@ -265,7 +265,7 @@ static int ldso_path_build (char *path, char *filename)
 	return (0);
 }
 
-#if defined (OPENAIS_SOLARIS) && !defined(HAVE_SCANDIR)
+#if defined (COROSYNC_SOLARIS) && !defined(HAVE_SCANDIR)
 static int scandir (
 	const char *dir, struct dirent ***namelist,
 	int (*filter)(const struct dirent *),
@@ -334,7 +334,7 @@ fail:
 }
 #endif
 
-#if defined (OPENAIS_SOLARIS) && !defined(HAVE_ALPHASORT)
+#if defined (COROSYNC_SOLARIS) && !defined(HAVE_ALPHASORT)
 static int alphasort (const struct dirent **a, const struct dirent **b)
 {
 	return strcmp ((*a)->d_name, (*b)->d_name);

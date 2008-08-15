@@ -57,7 +57,7 @@
 #include <signal.h>
 #include <sched.h>
 #include <time.h>
-#if defined(OPENAIS_SOLARIS) && defined(HAVE_GETPEERUCRED)
+#if defined(COROSYNC_SOLARIS) && defined(HAVE_GETPEERUCRED)
 #include <ucred.h>
 #endif
 
@@ -90,7 +90,7 @@
 
 LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 #define MSG_NOSIGNAL 0
 #endif
 
@@ -581,7 +581,7 @@ retry_poll:
 	return (0);
 }
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 /* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
@@ -589,7 +589,7 @@ retry_poll:
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 #endif
 
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 char *socketname = "libcorosync.socket";
 #else
 char *socketname = "/var/run/libcorosync.socket";
@@ -671,7 +671,7 @@ static int conn_info_outq_flush (struct conn_info *conn_info) {
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
@@ -739,7 +739,7 @@ static void libais_deliver (struct conn_info *conn_info)
 	int service;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 	struct cmsghdr *cmsg;
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	struct ucred *cred;
@@ -754,14 +754,14 @@ static void libais_deliver (struct conn_info *conn_info)
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_recv.msg_flags = 0;
 
 	if (conn_info->authenticated) {
 		msg_recv.msg_control = 0;
 		msg_recv.msg_controllen = 0;
 	} else {
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 		msg_recv.msg_control = (void *)cmsg_cred;
 		msg_recv.msg_controllen = sizeof (cmsg_cred);
 #else
@@ -777,7 +777,7 @@ static void libais_deliver (struct conn_info *conn_info)
 #endif
 	}
 
-#else	/* OPENAIS_SOLARIS */
+#else	/* COROSYNC_SOLARIS */
 	msg_recv.msg_accrights = 0;
 	msg_recv.msg_accrightslen = 0;
 
@@ -822,7 +822,7 @@ retry_recv:
 		return;
 	} else
 	if (res == 0) {
-#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 		/* On many OS poll never return POLLHUP or POLLERR.
 		 * EOF is detected when recvmsg return 0.
 		 */
@@ -834,7 +834,7 @@ retry_recv:
 	/*
 	 * Authenticate if this connection has not been authenticated
 	 */
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 	if (conn_info->authenticated == 0) {
 		cmsg = CMSG_FIRSTHDR (&msg_recv);
 		assert (cmsg);
@@ -946,7 +946,7 @@ static int poll_handler_libais_accept (
 	socklen_t addrlen;
 	struct sockaddr_un un_addr;
 	int new_fd;
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 	int on = 1;
 #endif
 	int res;
@@ -979,7 +979,7 @@ retry_accept:
 	/*
 	 * Request credentials of sender provided by kernel
 	 */
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
 #endif
 
@@ -1055,15 +1055,15 @@ void corosync_ipc_init (
 		corosync_exit_error (AIS_DONE_LIBAIS_SOCKET);
 	}
 
-#if !defined(OPENAIS_LINUX)
+#if !defined(COROSYNC_LINUX)
 	unlink(socketname);
 #endif
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
 	un_addr.sun_family = AF_UNIX;
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	un_addr.sun_len = sizeof(struct sockaddr_un);
 #endif
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 	strcpy (un_addr.sun_path + 1, socketname);
 #else
 	strcpy (un_addr.sun_path, socketname);
@@ -1155,7 +1155,7 @@ int corosync_conn_send_response (
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 	msg_send.msg_iovlen = 1;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;

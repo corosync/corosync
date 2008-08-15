@@ -1,6 +1,6 @@
 # Version and symbol export for libcfg.so
 
-OPENAIS_CFG_0.82 {
+COROSYNC_CFG_0.82 {
 	global:
 		corosync_cfg_initialize;
 		corosync_cfg_fd_get;

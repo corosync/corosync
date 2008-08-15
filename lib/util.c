@@ -70,11 +70,11 @@ struct saHandle {
 	uint32_t check;
 };
 
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 #define MSG_NOSIGNAL 0
 #endif
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
@@ -82,7 +82,7 @@ struct saHandle {
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 #endif
 
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 static char *socketname = "libcorosync.socket";
 #else
 static char *socketname = "/var/run/libcorosync.socket";
@@ -120,11 +120,11 @@ saServiceConnect (
 	setregid (egid, -1);
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	address.sun_len = sizeof(struct sockaddr_un);
 #endif
 	address.sun_family = PF_UNIX;
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 	strcpy (address.sun_path + 1, socketname);
 #else
 	strcpy (address.sun_path, socketname);
@@ -235,7 +235,7 @@ saRecvRetry (
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
@@ -255,7 +255,7 @@ retry_recv:
 	if (result == -1 && errno == EAGAIN) {
 		goto retry_recv;
 	}
-#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	/* On many OS poll never return POLLHUP or POLLERR.
 	 * EOF is detected when recvmsg return 0.
 	 */
@@ -294,7 +294,7 @@ saSendRetry (
 	msg_send.msg_iovlen = 1;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
@@ -388,7 +388,7 @@ SaAisErrorT saSendMsgRetry (
 	msg_send.msg_iovlen = iov_len_sendmsg;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
-#ifndef OPENAIS_SOLARIS
+#ifndef COROSYNC_SOLARIS
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
