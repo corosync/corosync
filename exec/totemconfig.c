@@ -642,7 +642,7 @@ int totem_config_keyread (
 
 	/* In desperation we read the default filename */
 	if (!got_key) {
-		char *filename = getenv("OPENAIS_TOTEM_AUTHKEY_FILE");
+		char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
 		if (!filename)
 			filename = "/etc/ais/authkey";
 		res = read_keyfile(filename, totem_config, error_string);

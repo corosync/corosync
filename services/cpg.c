@@ -31,7 +31,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_BSD
+#ifndef COROSYNC_BSD
 #include <alloca.h>
 #endif
 #include <sys/types.h>

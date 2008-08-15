@@ -50,7 +50,7 @@
 
 #define SERVER_BACKLOG 5
 
-#if defined(OPENAIS_LINUX) || defined(OPENAIS_SOLARIS)
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
@@ -58,7 +58,7 @@
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 #endif
 
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 static char *socketname = "lcr.socket";
 #else
 static char *socketname = "/var/run/lcr.socket";
@@ -78,15 +78,15 @@ static void uis_lcr_bind (int *server_fd)
 		printf ("lcr_bind failed\n");
 	};
 
-#if !defined(OPENAIS_LINUX)
+#if !defined(COROSYNC_LINUX)
 	unlink(socketname);
 #endif
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	un_addr.sun_len = sizeof(struct sockaddr_un);
 #endif
 	un_addr.sun_family = AF_UNIX;
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 	strcpy (un_addr.sun_path + 1, socketname);
 #else
 	strcpy (un_addr.sun_path, socketname);
@@ -147,7 +147,7 @@ static void *lcr_uis_server (void *data)
 	struct sockaddr_un un_addr;
 	socklen_t addrlen;
 	int nfds = 1;
-#ifdef OPENAIS_LINUX
+#ifdef COROSYNC_LINUX
 	int on = 1;
 #endif
 	int res;
@@ -164,7 +164,7 @@ static void *lcr_uis_server (void *data)
 		if (nfds == 1 && ufds[0].revents & POLLIN) {
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
-#ifdef OPENAIS_LINUX			
+#ifdef COROSYNC_LINUX			
 			setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
 				&on, sizeof (on));
 #endif

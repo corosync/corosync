@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_EVS_H_DEFINED
-#define OPENAIS_EVS_H_DEFINED
+#ifndef COROSYNC_EVS_H_DEFINED
+#define COROSYNC_EVS_H_DEFINED
 
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -187,4 +187,4 @@ evs_error_t evs_membership_get (
 	unsigned int *member_list,
 	unsigned int *member_list_entries);
 
-#endif /* OPENAIS_EVS_H_DEFINED */
+#endif /* COROSYNC_EVS_H_DEFINED */

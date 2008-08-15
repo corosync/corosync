@@ -1,6 +1,6 @@
 # Version and symbol export for libaisutil.so
 
-OPENAIS_UTIL_2.0 {
+COROSYNC_UTIL_2.0 {
 	global:
 		saHandleCreate;
 		saHandleDestroy;

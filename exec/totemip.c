@@ -41,7 +41,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/sockio.h>
 #include <net/if.h>
 #include <net/if_var.h>
@@ -54,7 +54,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 #include <net/if.h>
 
 /* ARGH!! I hate netlink */
@@ -220,7 +220,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in *sin = (struct sockaddr_in *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 		sin->sin_len = sizeof(struct sockaddr_in);
 #endif
 		sin->sin_family = ip_addr->family;
@@ -234,7 +234,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in6));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 		sin->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		sin->sin6_family = ip_addr->family;
@@ -307,7 +307,7 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 	return ret;
 }
 
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
@@ -407,7 +407,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 
 	return (res);
 }
-#elif defined(OPENAIS_LINUX)
+#elif defined(COROSYNC_LINUX)
 
 static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
 {
@@ -563,6 +563,6 @@ finished:
 	close(fd);
 	return 0;
 }
-#endif /* OPENAIS_LINUX */
+#endif /* COROSYNC_LINUX */
 
 

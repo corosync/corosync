@@ -52,7 +52,7 @@
 #include <corosync/saAis.h>
 #include <corosync/evs.h>
 
-#ifdef OPENAIS_SOLARIS
+#ifdef COROSYNC_SOLARIS
 #define timersub(a, b, result)						\
     do {								\
 	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;			\

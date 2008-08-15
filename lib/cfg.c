@@ -63,7 +63,7 @@ struct res_overlay {
 struct cfg_instance {
 	int response_fd;
 	int dispatch_fd;
-	OpenaisCfgCallbacksT callbacks;
+	CorosyncCfgCallbacksT callbacks;
 	SaNameT compName;
 	int compRegistered;
 	int finalize;
@@ -97,7 +97,7 @@ void cfg_handleInstanceDestructor (void *instance)
 SaAisErrorT
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
-	const OpenaisCfgCallbacksT *cfgCallbacks)
+	const CorosyncCfgCallbacksT *cfgCallbacks)
 {
 	struct cfg_instance *cfg_instance;
 	SaAisErrorT error = SA_AIS_OK;
@@ -123,7 +123,7 @@ corosync_cfg_initialize (
 	}
 
 	if (cfgCallbacks) {
-	memcpy (&cfg_instance->callbacks, cfgCallbacks, sizeof (OpenaisCfgCallbacksT));
+	memcpy (&cfg_instance->callbacks, cfgCallbacks, sizeof (CorosyncCfgCallbacksT));
 	}
 
 	pthread_mutex_init (&cfg_instance->response_mutex, NULL);
@@ -179,7 +179,7 @@ corosync_cfg_dispatch (
 	struct res_lib_corosync_csiremovecallback *res_lib_corosync_csiremovecallback;
 	struct res_lib_cfg_statetrackcallback *res_lib_cfg_statetrackcallback;
 #endif
-	OpenaisCfgCallbacksT callbacks;
+	CorosyncCfgCallbacksT callbacks;
 	struct res_overlay dispatch_data;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
@@ -260,7 +260,7 @@ corosync_cfg_dispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that cfgFinalize has been called in another thread.
 		 */
-		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (OpenaisCfgCallbacksT));
+		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (CorosyncCfgCallbacksT));
 		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
 		/*
@@ -536,7 +536,7 @@ SaAisErrorT
 corosync_cfg_state_track (
 	corosync_cfg_handle_t cfg_handle,
 	SaUint8T trackFlags,
-	const OpenaisCfgStateNotificationT *notificationBuffer)
+	const CorosyncCfgStateNotificationT *notificationBuffer)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrack req_lib_cfg_statetrack;
@@ -546,7 +546,7 @@ corosync_cfg_state_track (
 	req_lib_cfg_statetrack.header.size = sizeof (struct req_lib_cfg_statetrack);
 	req_lib_cfg_statetrack.header.id = MESSAGE_REQ_CFG_STATETRACKSTART;
 	req_lib_cfg_statetrack.trackFlags = trackFlags;
-	req_lib_cfg_statetrack.notificationBufferAddress = (OpenaisCfgStateNotificationT *)notificationBuffer;
+	req_lib_cfg_statetrack.notificationBufferAddress = (CorosyncCfgStateNotificationT *)notificationBuffer;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
@@ -605,8 +605,8 @@ corosync_cfg_state_track_stop (
 SaAisErrorT
 corosync_cfg_admin_state_get (
 	corosync_cfg_handle_t cfg_handle,
-	OpenaisCfgAdministrativeTargetT administrativeTarget,
-	OpenaisCfgAdministrativeStateT *administrativeState)
+	CorosyncCfgAdministrativeTargetT administrativeTarget,
+	CorosyncCfgAdministrativeStateT *administrativeState)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateget req_lib_cfg_administrativestateget;
@@ -641,8 +641,8 @@ corosync_cfg_admin_state_get (
 SaAisErrorT
 corosync_cfg_admin_state_set (
 	corosync_cfg_handle_t cfg_handle,
-	OpenaisCfgAdministrativeTargetT administrativeTarget,
-	OpenaisCfgAdministrativeStateT administrativeState)
+	CorosyncCfgAdministrativeTargetT administrativeTarget,
+	CorosyncCfgAdministrativeStateT administrativeState)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateset req_lib_cfg_administrativestateset;

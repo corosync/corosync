@@ -64,7 +64,7 @@ enum res_lib_cfg_types {
 struct req_lib_cfg_statetrack {
 	mar_req_header_t header;
 	SaUint8T trackFlags;
-	OpenaisCfgStateNotificationT *notificationBufferAddress;
+	CorosyncCfgStateNotificationT *notificationBufferAddress;
 };
 
 struct res_lib_cfg_statetrack {
@@ -82,8 +82,8 @@ struct res_lib_cfg_statetrackstop {
 struct req_lib_cfg_administrativestateset {
 	mar_req_header_t header;
 	SaNameT compName;
-	OpenaisCfgAdministrativeTargetT administrativeTarget;
-	OpenaisCfgAdministrativeStateT administrativeState;
+	CorosyncCfgAdministrativeTargetT administrativeTarget;
+	CorosyncCfgAdministrativeStateT administrativeState;
 };
 
 struct res_lib_cfg_administrativestateset {
@@ -93,8 +93,8 @@ struct res_lib_cfg_administrativestateset {
 struct req_lib_cfg_administrativestateget {
 	mar_req_header_t header;
 	SaNameT compName;
-	OpenaisCfgAdministrativeTargetT administrativeTarget;
-	OpenaisCfgAdministrativeStateT administrativeState;
+	CorosyncCfgAdministrativeTargetT administrativeTarget;
+	CorosyncCfgAdministrativeStateT administrativeState;
 };
 
 struct res_lib_cfg_administrativestateget {

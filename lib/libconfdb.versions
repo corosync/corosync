@@ -1,6 +1,6 @@
 # Version and symbol export for libconfdb.so
 
-OPENAIS_CONFDB_1.0 {
+COROSYNC_CONFDB_1.0 {
 	global:
 		confdb_initialize;
 		confdb_finalize;

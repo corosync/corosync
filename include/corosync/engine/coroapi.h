@@ -35,7 +35,7 @@
 #define COROAPI_H_DEFINED
 
 #include <stdio.h>
-#ifdef OPENAIS_BSD
+#ifdef COROSYNC_BSD
 #include <sys/uio.h>
 #endif
 

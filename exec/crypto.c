@@ -15,7 +15,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/poll.h>
-#if defined(OPENAIS_BSD)
+#if defined(COROSYNC_BSD)
 #include <sys/endian.h>
 #endif
 #include <fcntl.h>
@@ -40,7 +40,7 @@ typedef unsigned long long ulong64;
 #warning "cannot detect byte order"
 #endif
 
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 #if __WORDIZE == 64
 #define ENDIAN_64BITWORD
 #endif

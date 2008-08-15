@@ -1,6 +1,6 @@
 # Version and symbol export for libSaClm.so
 
-OPENAIS_EVS_2.0 {
+COROSYNC_EVS_2.0 {
 	global:
 		evs_initialize;
 		evs_finalize;

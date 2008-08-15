@@ -32,8 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_OPENAISCFG_H_DEFINED
-#define AIS_OPENAISCFG_H_DEFINED
+#ifndef AIS_COROSYNCCFG_H_DEFINED
+#define AIS_COROSYNCCFG_H_DEFINED
 
 #include <netinet/in.h>
 #include "saAis.h"
@@ -41,66 +41,66 @@
 typedef SaUint64T corosync_cfg_handle_t;
 
 typedef enum {
-	OPENAIS_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
-	OPENAIS_CFG_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
-	OPENAIS_CFG_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
-	OPENAIS_CFG_ADMINISTRATIVETARGET_NODE = 3
-} OpenaisCfgAdministrativeTargetT;
+	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
+	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
+	COROSYNC_CFG_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
+	COROSYNC_CFG_ADMINISTRATIVETARGET_NODE = 3
+} CorosyncCfgAdministrativeTargetT;
 
 typedef enum {
-	OPENAIS_CFG_ADMINISTRATIVESTATE_UNLOCKED = 0,
-	OPENAIS_CFG_ADMINISTRATIVESTATE_LOCKED = 1,
-	OPENAIS_CFG_ADMINISTRATIVESTATE_STOPPING = 2
-} OpenaisCfgAdministrativeStateT;
+	COROSYNC_CFG_ADMINISTRATIVESTATE_UNLOCKED = 0,
+	COROSYNC_CFG_ADMINISTRATIVESTATE_LOCKED = 1,
+	COROSYNC_CFG_ADMINISTRATIVESTATE_STOPPING = 2
+} CorosyncCfgAdministrativeStateT;
 
 typedef enum {
-	OPENAIS_CFG_OPERATIONALSTATE_ENABLED = 1,
-	OPENAIS_CFG_OPERATIONALSTATE_DISABLED = 2
-} OpenaisCfgOperationalStateT;
+	COROSYNC_CFG_OPERATIONALSTATE_ENABLED = 1,
+	COROSYNC_CFG_OPERATIONALSTATE_DISABLED = 2
+} CorosyncCfgOperationalStateT;
 
 typedef enum {
-	OPENAIS_CFG_READINESSSTATE_OUTOFSERVICE = 1,
-	OPENAIS_CFG_READINESSSTATE_INSERVICE = 2,
-	OPENAIS_CFG_READINESSSTATE_STOPPING = 3
-} OpenaisCfgReadinessStateT;
+	COROSYNC_CFG_READINESSSTATE_OUTOFSERVICE = 1,
+	COROSYNC_CFG_READINESSSTATE_INSERVICE = 2,
+	COROSYNC_CFG_READINESSSTATE_STOPPING = 3
+} CorosyncCfgReadinessStateT;
 
 typedef enum {
-	OPENAIS_CFG_PRESENCESTATE_UNINSTANTIATED = 1,
-	OPENAIS_CFG_PRESENCESTATE_INSTANTIATING = 2,
-	OPENAIS_CFG_PRESENCESTATE_INSTANTIATED = 3,
-	OPENAIS_CFG_PRESENCESTATE_TERMINATING = 4,
-	OPENAIS_CFG_PRESENCESTATE_RESTARTING = 5,
-	OPENAIS_CFG_PRESENCESTATE_INSTANTIATION_FAILED = 6,
-	OPENAIS_CFG_PRESENCESTATE_TERMINATION_FAILED = 7
-} OpenaisCfgPresenceStateT;
+	COROSYNC_CFG_PRESENCESTATE_UNINSTANTIATED = 1,
+	COROSYNC_CFG_PRESENCESTATE_INSTANTIATING = 2,
+	COROSYNC_CFG_PRESENCESTATE_INSTANTIATED = 3,
+	COROSYNC_CFG_PRESENCESTATE_TERMINATING = 4,
+	COROSYNC_CFG_PRESENCESTATE_RESTARTING = 5,
+	COROSYNC_CFG_PRESENCESTATE_INSTANTIATION_FAILED = 6,
+	COROSYNC_CFG_PRESENCESTATE_TERMINATION_FAILED = 7
+} CorosyncCfgPresenceStateT;
 
 typedef enum {
-	OPENAIS_CFG_STATETYPE_OPERATIONAL = 0,
-	OPENAIS_CFG_STATETYPE_ADMINISTRATIVE = 1,
-	OPENAIS_CFG_STATETYPE_READINESS = 2,
-	OPENAIS_CFG_STATETYPE_HA = 3,
-	OPENAIS_CFG_STATETYPE_PRESENCE = 4
-} OpenaisCfgStateTypeT;
+	COROSYNC_CFG_STATETYPE_OPERATIONAL = 0,
+	COROSYNC_CFG_STATETYPE_ADMINISTRATIVE = 1,
+	COROSYNC_CFG_STATETYPE_READINESS = 2,
+	COROSYNC_CFG_STATETYPE_HA = 3,
+	COROSYNC_CFG_STATETYPE_PRESENCE = 4
+} CorosyncCfgStateTypeT;
 
 typedef struct {
 	SaNameT name;
-	OpenaisCfgStateTypeT stateType;
-	OpenaisCfgAdministrativeStateT administrativeState;
-} OpenaisCfgStateNotificationT;
+	CorosyncCfgStateTypeT stateType;
+	CorosyncCfgAdministrativeStateT administrativeState;
+} CorosyncCfgStateNotificationT;
 
 typedef struct {
         SaUint32T numberOfItems;
-        OpenaisCfgStateNotificationT *notification;
-} OpenaisCfgStateNotificationBufferT;
+        CorosyncCfgStateNotificationT *notification;
+} CorosyncCfgStateNotificationBufferT;
 
-typedef void (*OpenaisCfgStateTrackCallbackT) (
-	OpenaisCfgStateNotificationBufferT *notificationBuffer,
+typedef void (*CorosyncCfgStateTrackCallbackT) (
+	CorosyncCfgStateNotificationBufferT *notificationBuffer,
 	SaAisErrorT error);
 
 typedef struct {
-	OpenaisCfgStateTrackCallbackT
+	CorosyncCfgStateTrackCallbackT
 		corosyncCfgStateTrackCallback;
-} OpenaisCfgCallbacksT;
+} CorosyncCfgCallbacksT;
 
 /*
  * Interfaces
@@ -112,7 +112,7 @@ extern "C" {
 SaAisErrorT
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
-	const OpenaisCfgCallbacksT *cfgCallbacks);
+	const CorosyncCfgCallbacksT *cfgCallbacks);
 
 SaAisErrorT
 corosync_cfg_fd_get (
@@ -154,20 +154,20 @@ corosync_cfg_service_unload (
 SaAisErrorT
 corosync_cfg_administrative_state_get (
 	corosync_cfg_handle_t cfg_handle,
-	OpenaisCfgAdministrativeTargetT administrativeTarget,
-	OpenaisCfgAdministrativeStateT *administrativeState);
+	CorosyncCfgAdministrativeTargetT administrativeTarget,
+	CorosyncCfgAdministrativeStateT *administrativeState);
 
 SaAisErrorT
 corosync_cfg_administrative_state_set (
 	corosync_cfg_handle_t cfg_handle,
-	OpenaisCfgAdministrativeTargetT administrativeTarget,
-	OpenaisCfgAdministrativeStateT administrativeState);
+	CorosyncCfgAdministrativeTargetT administrativeTarget,
+	CorosyncCfgAdministrativeStateT administrativeState);
 
 SaAisErrorT
 corosync_cfg_state_track (
         corosync_cfg_handle_t cfg_handle,
         SaUint8T trackFlags,
-        const OpenaisCfgStateNotificationT *notificationBuffer);
+        const CorosyncCfgStateNotificationT *notificationBuffer);
 
 SaAisErrorT
 corosync_cfg_state_track_stop (
@@ -177,4 +177,4 @@ corosync_cfg_state_track_stop (
 }
 #endif
 
-#endif /* AIS_OPENAISCFG_H_DEFINED */
+#endif /* AIS_COROSYNCCFG_H_DEFINED */

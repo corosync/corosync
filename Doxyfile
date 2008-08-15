@@ -129,8 +129,8 @@ EXPAND_ONLY_PREDEF     = YES
 SEARCH_INCLUDES        = YES
 INCLUDE_PATH           = include
 INCLUDE_FILE_PATTERNS  = *.h
-PREDEFINED             = "OPENAIS_BEGIN_DECLS=" 			\
-			 "OPENAIS_END_DECLS=" 			\
+PREDEFINED             = "COROSYNC_BEGIN_DECLS=" 			\
+			 "COROSYNC_END_DECLS=" 			\
 			 "DOXYGEN_SHOULD_SKIP_THIS" 		
 SKIP_FUNCTION_MACROS   = YES
 #---------------------------------------------------------------------------

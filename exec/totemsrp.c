@@ -689,7 +689,7 @@ int totemsrp_initialize (
 		goto error_destroy;
 	}
 
-	rundir = getenv ("OPENAIS_RUN_DIR");
+	rundir = getenv ("COROSYNC_RUN_DIR");
 	if (rundir == NULL) {
 		rundir = "/var/lib/corosync";
 	}

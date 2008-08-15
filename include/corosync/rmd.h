@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_RMD_H_DEFINED
-#define OPENAIS_RMD_H_DEFINED
+#ifndef COROSYNC_RMD_H_DEFINED
+#define COROSYNC_RMD_H_DEFINED
 
 #include <netinet/in.h>
 
@@ -169,4 +169,4 @@ rmd_error_t rmd_delete (
 	rmd_handle_t *handle,
 	void *key_name, int key_len);
 
-#endif /* OPENAIS_RMD_H_DEFINED */
+#endif /* COROSYNC_RMD_H_DEFINED */

@@ -28,11 +28,11 @@ include ../Makefile.inc
 
 override LDFLAGS += -L./ ${DYFLAGS}
 
-ifeq (${OPENAIS_COMPAT}, LINUX) 
+ifeq (${COROSYNC_COMPAT}, LINUX) 
 	LDFLAGS += -ldl
 endif
 
-ifeq (${OPENAIS_COMPAT}, SOLARIS)
+ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket
 endif
 
@@ -41,7 +41,7 @@ all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
 liblcr.a: lcr_ifact.o
 	$(AR) -rc liblcr.a lcr_ifact.o
 
-ifeq (${OPENAIS_COMPAT}, DARWIN)
+ifeq (${COROSYNC_COMPAT}, DARWIN)
 
 libtest_a.lcrso: libtest_a.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ./test libtest_a.o -o $@

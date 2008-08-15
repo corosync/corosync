@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPENAIS_CPG_H_DEFINED
-#define OPENAIS_CPG_H_DEFINED
+#ifndef COROSYNC_CPG_H_DEFINED
+#define COROSYNC_CPG_H_DEFINED
 
 #include <netinet/in.h>
 
@@ -218,4 +218,4 @@ cpg_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_enabled);
 
-#endif /* OPENAIS_CPG_H_DEFINED */
+#endif /* COROSYNC_CPG_H_DEFINED */

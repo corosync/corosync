@@ -46,7 +46,7 @@ int main (void) {
 	unsigned char key[128];
 	int res;
 	
-	printf ("OpenAIS Authentication key generator.\n");
+	printf ("Corosync Cluster Engine Authentication key generator.\n");
 	if (geteuid() != 0) {
 		printf ("Error: Authorization key must be generated as root user.\n");
 		exit (1);
