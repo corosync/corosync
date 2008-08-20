@@ -277,7 +277,7 @@ static inline void sq_items_release (struct sq *sq, unsigned int seqid)
 	if ((oldhead + seqid - sq->head_seqid + 1) > sq->size) {
 //		printf ("releasing %d for %d\n", oldhead, sq->size - oldhead);
 //		printf ("releasing %d for %d\n", 0, sq->head);
-		memset (&sq->items_inuse[oldhead], 0, sq->size - oldhead);
+		memset (&sq->items_inuse[oldhead], 0, (sq->size - oldhead) * sizeof (unsigned int));
 		memset (sq->items_inuse, 0, sq->head * sizeof (unsigned int));
 	} else {
 //		printf ("releasing %d for %d\n", oldhead, seqid - sq->head_seqid + 1);
