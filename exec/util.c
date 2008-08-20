@@ -86,21 +86,18 @@ void _corosync_exit_error (
 	exit (EXIT_FAILURE);
 }
 
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
 char *getSaNameT (SaNameT *name)
 {
-#if 0
-	static char ret_name[300];
+	static char ret_name[SA_MAX_NAME_LENGTH];
 
-	memset (ret_name, 0, sizeof (ret_name));
-	if (name->length > 299) {
-		memcpy (ret_name, name->value, 299);
-	} else {
-
-		memcpy (ret_name, name->value, name->length);
+	/* if string is corrupt (non-terminated), ensure it's displayed safely */
+	if (name->length >= SA_MAX_NAME_LENGTH || name->value[name->length] != '\0') {
+		memset (ret_name, 0, sizeof (ret_name));
+		memcpy (ret_name, name->value, min(name->length, SA_MAX_NAME_LENGTH -1));
+		return (ret_name);
 	}
-	return (ret_name);
-#endif
-// TODO
 	return ((char *)name->value);
 }
 
