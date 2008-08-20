@@ -1665,6 +1665,15 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->my_last_aru = SEQNO_START_MSG;
 	sq_items_release (&instance->regular_sort_queue, SEQNO_START_MSG - 1);
 
+	/* When making my_proc_list smaller, ensure that the
+	 * now non-used entries are zero-ed out. There are some suspect
+	 * assert's that assume that there is always 2 entries in the list.
+	 * These fail when my_proc_list is reduced to 1 entry (and the
+	 * valid [0] entry is the same as the 'unused' [1] entry).
+	 */
+	memset(instance->my_proc_list, 0,
+		   sizeof (struct srp_addr) * instance->my_proc_list_entries);
+
 	instance->my_proc_list_entries = instance->my_new_memb_entries;
 	memcpy (instance->my_proc_list, instance->my_new_memb_list,
 		sizeof (struct srp_addr) * instance->my_memb_entries);
