@@ -183,6 +183,11 @@ void worker_thread_group_exit (
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {
 		pthread_cancel (worker_thread_group->threads[i].thread_id);
+
+		/* Wait for worker thread to exit gracefully before destroying
+		 * mutexes and processing items in the queue etc.
+		 */
+		pthread_join (worker_thread_group->threads[i].thread_id, NULL);
 		pthread_mutex_destroy (&worker_thread_group->threads[i].new_work_mutex);
 		pthread_cond_destroy (&worker_thread_group->threads[i].new_work_cond);
 		pthread_mutex_destroy (&worker_thread_group->threads[i].done_work_mutex);
