@@ -36,7 +36,14 @@
 #define TOTEM_H_DEFINED
 #include "totemip.h"
 
+#ifndef MESSAGE_SIZE_MAX
 #define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
+#endif /* MESSAGE_SIZE_MAX */
+
+#ifndef MESSAGE_QUEUE_MAX
+#define MESSAGE_QUEUE_MAX MESSAGE_SIZE_MAX / totem_config->net_mtu
+#endif /* MESSAGE_QUEUE_MAX */
+
 #define PROCESSOR_COUNT_MAX	384
 #define FRAME_SIZE_MAX		9000
 #define TRANSMITS_ALLOWED	16

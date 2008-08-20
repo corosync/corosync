@@ -99,7 +99,9 @@ LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 /*
  * When there are this many entries left in a queue, turn on flow control
  */
+#ifndef FLOW_CONTROL_ENTRIES_ENABLE
 #define FLOW_CONTROL_ENTRIES_ENABLE 400
+#endif /* FLOW_CONTROL_ENTRIES_ENABLE */
 
 /*
  * When there are this many entries in a queue, turn off flow control

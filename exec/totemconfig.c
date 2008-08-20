@@ -528,9 +528,9 @@ int totem_config_validate (
 		totem_config->net_mtu = 1500;
 	}
 
-	if ((MESSAGE_SIZE_MAX / totem_config->net_mtu) < totem_config->max_messages) {
+	if ((MESSAGE_QUEUE_MAX) < totem_config->max_messages) {
 		sprintf (local_error_reason, "The max_messages parameter (%d messages) may not be greater then (%d messages).",
-			totem_config->max_messages, MESSAGE_SIZE_MAX / totem_config->net_mtu);
+			totem_config->max_messages, MESSAGE_QUEUE_MAX);
 		goto parse_error;
 	}
 
