@@ -266,22 +266,6 @@ int confdb_sa_key_replace (
 					 new_value, new_value_len);
 }
 
-int confdb_sa_object_find (
-	unsigned int parent_object_handle,
-	unsigned int start_pos,
-	void *object_name,
-	int object_name_len,
-	unsigned int *object_handle,
-	unsigned int *next_pos)
-{
-	return objdb->object_find_from(parent_object_handle,
-				       start_pos,
-				       object_name,
-				       object_name_len,
-				       object_handle,
-				       next_pos);
-}
-
 int confdb_sa_write (
 	unsigned int parent_object_handle,
 	char *error_text)
@@ -311,22 +295,28 @@ int confdb_sa_reload (
 	return ret;
 }
 
-int confdb_sa_object_iter (
+int confdb_sa_object_find (
 	unsigned int parent_object_handle,
-	unsigned int start_pos,
+	unsigned int *find_handle,
 	unsigned int *object_handle,
 	void *object_name,
-	int *object_name_len)
+	int *object_name_len,
+	int copy_name)
 {
 	int res;
-	void *objname;
 
-	res = objdb->object_iter_from(parent_object_handle,
-				      start_pos,
-				      &objname, object_name_len,
+	if (!*find_handle) {
+		objdb->object_find_create(parent_object_handle,
+					  object_name, *object_name_len,
+					  find_handle);
+	}
+
+	res = objdb->object_find_next(*find_handle,
 				      object_handle);
-	if (!res) {
-		memcpy(object_name, objname, *object_name_len);
+	/* Return object name if we were called as _iter */
+	if (copy_name && !res) {
+		objdb->object_name_get(*object_handle,
+				       object_name, object_name_len);
 	}
 	return res;
 }
@@ -352,4 +342,9 @@ int confdb_sa_key_iter (
 		memcpy(value, kvalue, *value_len);
 	}
 	return res;
+}
+
+int confdb_sa_find_destroy(unsigned int find_handle)
+{
+	return objdb->object_find_destroy(find_handle);
 }

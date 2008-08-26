@@ -40,6 +40,8 @@ confdb_object_find \- Find a named object in the Configuration Database
 .BI "confdb_error_t confdb_object_find_start(confdb_handle_t " handle ", unsigned int " parent_object_handle " ); "
 .sp
 .BI "confdb_error_t confdb_object_find(confdb_handle_t " handle ", unsigned int " parent_object_handle ", void " *object_name ", int " object_name_len ", unsigned int " *object_handle " ); "
+.sp
+.BI "confdb_error_t confdb_object_find_destroy(confdb_handle_t " handle ", unsigned int " parent_object_handle " ); "
 
 .SH DESCRIPTION
 The
@@ -60,6 +62,10 @@ The library holds a seperate context for each parent object, so you can call con
 or
 .B confdb_key_iter
 calls on the same parent object.
+.BR
+.B When you have finished searching for objects, call the 
+.B confdb_object_find_destroy
+library call to free up memory associated with the search context.
 .SH RETURN VALUE
 This call returns the CONFDB_OK value if successful, otherwise an error is returned.
 .PP

@@ -52,7 +52,8 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_TRACK_START = 10,
 	MESSAGE_REQ_CONFDB_TRACK_STOP = 11,
 	MESSAGE_REQ_CONFDB_WRITE = 12,
-	MESSAGE_REQ_CONFDB_RELOAD = 13
+	MESSAGE_REQ_CONFDB_RELOAD = 13,
+	MESSAGE_REQ_CONFDB_OBJECT_FIND_DESTROY = 14
 };
 
 enum res_confdb_types {
@@ -72,7 +73,8 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK = 13,
 	MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK = 14,
 	MESSAGE_RES_CONFDB_WRITE = 15,
-	MESSAGE_RES_CONFDB_RELOAD = 16
+	MESSAGE_RES_CONFDB_RELOAD = 16,
+	MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY = 17
 };
 
 
@@ -129,25 +131,26 @@ struct req_lib_confdb_object_find {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
-	mar_uint32_t next_entry __attribute__((aligned(8)));
+	mar_uint32_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_find {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_uint32_t object_handle __attribute__((aligned(8)));
-	mar_uint32_t next_entry __attribute__((aligned(8)));
+	mar_uint32_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_iter {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
-	mar_uint32_t next_entry __attribute__((aligned(8)));
+	mar_uint32_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_iter {
 	mar_res_header_t header __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 	mar_uint32_t object_handle __attribute__((aligned(8)));
+	mar_uint32_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_iter {
@@ -166,6 +169,11 @@ struct req_lib_confdb_key_get {
 	mar_req_header_t header __attribute__((aligned(8)));
 	mar_uint32_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
+};
+
+struct req_lib_confdb_object_find_destroy {
+	mar_req_header_t header __attribute__((aligned(8)));
+	mar_uint32_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_get {

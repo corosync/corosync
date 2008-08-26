@@ -175,24 +175,14 @@ struct objdb_iface_ver0 {
 		unsigned int object_handle,
 		unsigned int *parent_handle);
 
+	int (*object_name_get) (
+		unsigned int object_handle,
+		char *object_name,
+		int *object_name_len);
+
 	int (*object_dump) (
 		unsigned int object_handle,
 		FILE *file);
-
-	int (*object_find_from) (
-		unsigned int parent_object_handle,
-		unsigned int start_pos,
-		void *object_name,
-		int object_name_len,
-		unsigned int *object_handle,
-		unsigned int *next_pos);
-
-	int (*object_iter_from) (
-		unsigned int parent_object_handle,
-		unsigned int start_pos,
-		void **object_name,
-		int *name_len,
-		unsigned int *object_handle);
 
 	int (*object_key_iter_from) (
 		unsigned int parent_object_handle,

@@ -61,6 +61,7 @@ static int confdb_lib_exit_fn (void *conn);
 
 static void message_handler_req_lib_confdb_object_create (void *conn, void *message);
 static void message_handler_req_lib_confdb_object_destroy (void *conn, void *message);
+static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void *message);
 
 static void message_handler_req_lib_confdb_key_create (void *conn, void *message);
 static void message_handler_req_lib_confdb_key_get (void *conn, void *message);
@@ -182,6 +183,12 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 		.response_id				= MESSAGE_RES_CONFDB_RELOAD,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
+	{ /* 14 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_object_find_destroy,
+		.response_size				= sizeof (mar_res_header_t),
+		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY,
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
 };
 
 
@@ -252,7 +259,6 @@ static int confdb_lib_init_fn (void *conn)
 
 static int confdb_lib_exit_fn (void *conn)
 {
-
 	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 	/* cleanup the object trackers for this client. */
 	api->object_track_stop(confdb_notify_lib_of_key_change,
@@ -292,7 +298,24 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 		ret = SA_AIS_ERR_ACCESS;
 
 	res.size = sizeof(res);
-	res.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
+	res.id = MESSAGE_RES_CONFDB_OBJECT_DESTROY;
+	res.error = ret;
+	api->ipc_conn_send_response(conn, &res, sizeof(res));
+}
+
+static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void *message)
+{
+	struct req_lib_confdb_object_find_destroy *req_lib_confdb_object_find_destroy = (struct req_lib_confdb_object_find_destroy *)message;
+	mar_res_header_t res;
+	int ret = SA_AIS_OK;
+
+	log_printf(LOG_LEVEL_DEBUG, "object_find_destroy for conn=%p, %d\n", conn, req_lib_confdb_object_find_destroy->find_handle);
+
+	if (api->object_find_destroy(req_lib_confdb_object_find_destroy->find_handle))
+		ret = SA_AIS_ERR_ACCESS;
+
+	res.size = sizeof(res);
+	res.id = MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY;
 	res.error = ret;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
@@ -435,19 +458,26 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 {
 	struct req_lib_confdb_object_iter *req_lib_confdb_object_iter = (struct req_lib_confdb_object_iter *)message;
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
-	void *object_name;
 	int object_name_len;
 	int ret = SA_AIS_OK;
 
-	if (api->object_iter_from(req_lib_confdb_object_iter->parent_object_handle,
-					   req_lib_confdb_object_iter->next_entry,
-					   &object_name,
-					   &object_name_len,
-					   &res_lib_confdb_object_iter.object_handle))
+	if (!req_lib_confdb_object_iter->find_handle) {
+		api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
+					NULL, 0,
+					&res_lib_confdb_object_iter.find_handle);
+	}
+	else
+		res_lib_confdb_object_iter.find_handle = req_lib_confdb_object_iter->find_handle;
+
+	if (api->object_find_next(res_lib_confdb_object_iter.find_handle,
+				  &res_lib_confdb_object_iter.object_handle))
 		ret = SA_AIS_ERR_ACCESS;
 	else {
+		api->object_name_get(res_lib_confdb_object_iter.object_handle,
+				     (char *)res_lib_confdb_object_iter.object_name.value,
+				     &object_name_len);
+
 		res_lib_confdb_object_iter.object_name.length = object_name_len;
-		memcpy(res_lib_confdb_object_iter.object_name.value, object_name, object_name_len);
 	}
 	res_lib_confdb_object_iter.header.size = sizeof(res_lib_confdb_object_iter);
 	res_lib_confdb_object_iter.header.id = MESSAGE_RES_CONFDB_OBJECT_ITER;
@@ -462,17 +492,23 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
 	int ret = SA_AIS_OK;
 
-	if (api->object_find_from(req_lib_confdb_object_find->parent_object_handle,
-					   req_lib_confdb_object_find->next_entry,
-					   req_lib_confdb_object_find->object_name.value,
-					   req_lib_confdb_object_find->object_name.length,
-					   &res_lib_confdb_object_find.object_handle,
-					   &res_lib_confdb_object_find.next_entry))
+	if (!req_lib_confdb_object_find->find_handle) {
+		api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
+					req_lib_confdb_object_find->object_name.value,
+					req_lib_confdb_object_find->object_name.length,
+					&res_lib_confdb_object_find.find_handle);
+	}
+	else
+		res_lib_confdb_object_find.find_handle = req_lib_confdb_object_find->find_handle;
+
+	if (api->object_find_next(res_lib_confdb_object_find.find_handle,
+				  &res_lib_confdb_object_find.object_handle))
 		ret = SA_AIS_ERR_ACCESS;
 
 	res_lib_confdb_object_find.header.size = sizeof(res_lib_confdb_object_find);
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;
 	res_lib_confdb_object_find.header.error = ret;
+
 
 	api->ipc_conn_send_response(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
 }
@@ -616,5 +652,8 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	res.error = SA_AIS_OK;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
+
+
+
 
 

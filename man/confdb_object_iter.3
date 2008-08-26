@@ -40,6 +40,8 @@ confdb_object_iter \- Iterate through objects in the Configuration Database
 .BI "confdb_error_t confdb_object_iter_start(confdb_handle_t " handle ", unsigned int " parent_object_handle " ); "
 .sp
 .BI "confdb_error_t confdb_object_iter(confdb_handle_t " handle ", unsigned int " parent_object_handle ", unsigned int " *object_handle ", void " *object_name ", int " *object_name_len " ); "
+.sp
+.BI "confdb_error_t confdb_object_iter_destroy(confdb_handle_t " handle ", unsigned int " parent_object_handle " ); "
 
 .SH DESCRIPTION
 The
@@ -50,6 +52,10 @@ first. This establishes a context for the parent object so that it knows where y
 .B confdb_object_iter
 will return the handle of the first object in the list. Subsequent calls will return any remaining objects. The function returns CONFDB_ERR_ACCESS when the all of the matching objects have been seen. The function returns the name and length of the object as well
 as its handle.
+.BR
+.B When you have finished searching for objects, call the 
+.B confdb_object_iter_destroy
+library call to free up memory associated with the search context.
 .BR
 .BR
 .SH RETURN VALUE

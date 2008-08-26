@@ -57,7 +57,8 @@
 struct iter_context {
 	struct list_head list;
 	uint32_t parent_object_handle;
-	uint32_t context;
+	uint32_t find_handle;
+	uint32_t next_entry;
 };
 
 struct confdb_inst {
@@ -84,8 +85,12 @@ static struct saHandleDatabase confdb_handle_t_db = {
 	.handleInstanceDestructor	= confdb_instance_destructor
 };
 
+
+static confdb_error_t do_find_destroy(struct confdb_inst *confdb_inst, unsigned int find_handle);
+
+
 /* Safely tidy one iterator context list */
-static void free_context_list(struct list_head *list)
+static void free_context_list(struct confdb_inst *confdb_inst, struct list_head *list)
 {
 	struct iter_context *context;
 	struct list_head *iter, *tmp;
@@ -94,6 +99,7 @@ static void free_context_list(struct list_head *list)
 	     iter != list; iter = tmp, tmp = iter->next) {
 
 		context = list_entry (iter, struct iter_context, list);
+		do_find_destroy(confdb_inst, context->find_handle);
 		free(context);
 	}
 }
@@ -210,9 +216,9 @@ confdb_error_t confdb_finalize (
 	saHandleDestroy (&confdb_handle_t_db, handle);
 
 	/* Free saved context handles */
-	free_context_list(&confdb_inst->object_find_head);
-	free_context_list(&confdb_inst->object_iter_head);
-	free_context_list(&confdb_inst->key_iter_head);
+	free_context_list(confdb_inst, &confdb_inst->object_find_head);
+	free_context_list(confdb_inst, &confdb_inst->object_iter_head);
+	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
 	if (!confdb_inst->standalone) {
 		/*
@@ -623,6 +629,99 @@ error_exit:
 	return (error);
 }
 
+static confdb_error_t do_find_destroy(
+	struct confdb_inst *confdb_inst,
+	unsigned int find_handle)
+{
+	confdb_error_t error;
+	struct iovec iov[2];
+	struct req_lib_confdb_object_find_destroy req_lib_confdb_object_find_destroy;
+	mar_res_header_t res;
+
+	if (!find_handle)
+		return SA_AIS_OK;
+
+	if (confdb_inst->standalone) {
+		error = SA_AIS_OK;
+
+		if (confdb_sa_find_destroy(find_handle))
+			error = SA_AIS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req_lib_confdb_object_find_destroy.header.size = sizeof (struct req_lib_confdb_object_find_destroy);
+	req_lib_confdb_object_find_destroy.header.id = MESSAGE_REQ_CONFDB_OBJECT_FIND_DESTROY;
+	req_lib_confdb_object_find_destroy.find_handle = find_handle;
+
+	iov[0].iov_base = (char *)&req_lib_confdb_object_find_destroy;
+	iov[0].iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
+
+	pthread_mutex_lock (&confdb_inst->response_mutex);
+
+	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
+		&res, sizeof (mar_res_header_t));
+
+	pthread_mutex_unlock (&confdb_inst->response_mutex);
+	if (error != SA_AIS_OK) {
+		goto error_exit;
+	}
+
+	error = res.error;
+
+error_exit:
+
+	return (error);
+}
+
+confdb_error_t object_find_destroy(
+	confdb_handle_t handle,
+	unsigned int parent_object_handle)
+{
+	struct iter_context *context;
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	context = find_iter_context(&confdb_inst->object_find_head, parent_object_handle);
+	error = do_find_destroy(confdb_inst, context->find_handle);
+	if (error == SA_AIS_OK) {
+		list_del(&context->list);
+		free(context);
+	}
+
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+	return error;
+}
+
+confdb_error_t object_iter_destroy(
+	confdb_handle_t handle,
+	unsigned int parent_object_handle)
+{
+	struct iter_context *context;
+	confdb_error_t error;
+	struct confdb_inst *confdb_inst;
+
+	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	context = find_iter_context(&confdb_inst->object_iter_head, parent_object_handle);
+	error = do_find_destroy(confdb_inst, context->find_handle);
+	if (error == SA_AIS_OK) {
+		list_del(&context->list);
+		free(context);
+	}
+
+	saHandleInstancePut (&confdb_handle_t_db, handle);
+	return error;
+}
+
+
 confdb_error_t confdb_key_create (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
@@ -883,10 +982,15 @@ confdb_error_t confdb_object_iter_start (
 			goto ret;
 		}
 		context->parent_object_handle = object_handle;
+		context->find_handle = 0;
 		list_add(&context->list, &confdb_inst->object_iter_head);
 	}
 
-	context->context = 0;
+	/* Start a new find context */
+	if (context->find_handle) {
+		do_find_destroy(confdb_inst, context->find_handle);
+		context->find_handle = 0;
+	}
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -918,7 +1022,8 @@ confdb_error_t confdb_key_iter_start (
 		list_add(&context->list, &confdb_inst->key_iter_head);
 	}
 
-	context->context = 0;
+	context->find_handle = 0;
+	context->next_entry = 0;
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -946,11 +1051,15 @@ confdb_error_t confdb_object_find_start (
 			error = CONFDB_ERR_NO_MEMORY;
 			goto ret;
 		}
+		context->find_handle = 0;
 		context->parent_object_handle = parent_object_handle;
 		list_add(&context->list, &confdb_inst->object_find_head);
 	}
-
-	context->context = 0;
+	/* Start a new find context */
+	if (context->find_handle) {
+		do_find_destroy(confdb_inst, context->find_handle);
+		context->find_handle = 0;
+	}
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -988,10 +1097,10 @@ confdb_error_t confdb_object_find (
 		error = SA_AIS_OK;
 
 		if (confdb_sa_object_find(parent_object_handle,
-					  context->context,
-					  object_name, object_name_len,
+					  &context->find_handle,
 					  object_handle,
-					  &context->context))
+					  object_name, &object_name_len,
+					  0))
 			error = SA_AIS_ERR_ACCESS;
 		goto error_exit;
 	}
@@ -999,7 +1108,7 @@ confdb_error_t confdb_object_find (
 	req_lib_confdb_object_find.header.size = sizeof (struct req_lib_confdb_object_find);
 	req_lib_confdb_object_find.header.id = MESSAGE_REQ_CONFDB_OBJECT_FIND;
 	req_lib_confdb_object_find.parent_object_handle = parent_object_handle;
-	req_lib_confdb_object_find.next_entry = context->context;
+	req_lib_confdb_object_find.find_handle = context->find_handle;
 	memcpy(req_lib_confdb_object_find.object_name.value, object_name, object_name_len);
 	req_lib_confdb_object_find.object_name.length = object_name_len;
 
@@ -1018,7 +1127,7 @@ confdb_error_t confdb_object_find (
 
 	error = res_lib_confdb_object_find.header.error;
 	*object_handle = res_lib_confdb_object_find.object_handle;
-	context->context = res_lib_confdb_object_find.next_entry;
+	context->find_handle = res_lib_confdb_object_find.find_handle;
 
 error_exit:
 	saHandleInstancePut (&confdb_handle_t_db, handle);
@@ -1056,10 +1165,12 @@ confdb_error_t confdb_object_iter (
 	if (confdb_inst->standalone) {
 		error = SA_AIS_OK;
 
-		if (confdb_sa_object_iter(parent_object_handle,
-					  context->context,
+		*object_name_len = 0;
+		if (confdb_sa_object_find(parent_object_handle,
+					  &context->find_handle,
 					  object_handle,
-					  object_name, object_name_len))
+					  object_name, object_name_len,
+					  1))
 			error = SA_AIS_ERR_ACCESS;
 		goto sa_exit;
 	}
@@ -1067,7 +1178,7 @@ confdb_error_t confdb_object_iter (
 	req_lib_confdb_object_iter.header.size = sizeof (struct req_lib_confdb_object_iter);
 	req_lib_confdb_object_iter.header.id = MESSAGE_REQ_CONFDB_OBJECT_ITER;
 	req_lib_confdb_object_iter.parent_object_handle = parent_object_handle;
-	req_lib_confdb_object_iter.next_entry = context->context;
+	req_lib_confdb_object_iter.find_handle = context->find_handle;
 
 	iov[0].iov_base = (char *)&req_lib_confdb_object_iter;
 	iov[0].iov_len = sizeof (struct req_lib_confdb_object_iter);
@@ -1087,9 +1198,9 @@ confdb_error_t confdb_object_iter (
 		*object_name_len = res_lib_confdb_object_iter.object_name.length;
 		memcpy(object_name, res_lib_confdb_object_iter.object_name.value, *object_name_len);
 		*object_handle = res_lib_confdb_object_iter.object_handle;
+		context->find_handle = res_lib_confdb_object_iter.find_handle;
 	}
 sa_exit:
-	context->context++;
 
 error_exit:
 	saHandleInstancePut (&confdb_handle_t_db, handle);
@@ -1128,7 +1239,7 @@ confdb_error_t confdb_key_iter (
 		error = SA_AIS_OK;
 
 		if (confdb_sa_key_iter(parent_object_handle,
-				       context->context,
+				       context->next_entry,
 				       key_name, key_name_len,
 				       value, value_len))
 			error = SA_AIS_ERR_ACCESS;
@@ -1138,7 +1249,7 @@ confdb_error_t confdb_key_iter (
 	req_lib_confdb_key_iter.header.size = sizeof (struct req_lib_confdb_key_iter);
 	req_lib_confdb_key_iter.header.id = MESSAGE_REQ_CONFDB_KEY_ITER;
 	req_lib_confdb_key_iter.parent_object_handle = parent_object_handle;
-	req_lib_confdb_key_iter.next_entry = context->context;
+	req_lib_confdb_key_iter.next_entry= context->next_entry;
 
 	iov[0].iov_base = (char *)&req_lib_confdb_key_iter;
 	iov[0].iov_len = sizeof (struct req_lib_confdb_key_iter);
@@ -1162,7 +1273,7 @@ confdb_error_t confdb_key_iter (
 	}
 
 sa_exit:
-	context->context++;
+	context->next_entry++;
 
 error_exit:
 	saHandleInstancePut (&confdb_handle_t_db, handle);

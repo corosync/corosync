@@ -240,6 +240,10 @@ confdb_error_t confdb_object_find (
 	int object_name_len,
 	unsigned int *object_handle);
 
+confdb_error_t confdb_object_find_destroy(
+	confdb_handle_t handle,
+	unsigned int parent_object_handle);
+
 confdb_error_t confdb_object_iter_start (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle);
@@ -250,6 +254,10 @@ confdb_error_t confdb_object_iter (
 	unsigned int *object_handle,
 	void *object_name,
 	int *object_name_len);
+
+confdb_error_t confdb_object_iter_destroy(
+	confdb_handle_t handle,
+	unsigned int parent_object_handle);
 
 /*
  * Key iterator

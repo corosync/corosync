@@ -696,12 +696,13 @@ static int object_find_next (
                 object_instance = list_entry (list, struct object_instance,
 			child_list);
 
-		if ((object_instance->object_name_len ==
-			object_find_instance->object_len) &&
+		if (object_find_instance->object_len == 0 ||
+		    ((object_instance->object_name_len ==
+		      object_find_instance->object_len) &&
 
-			(memcmp (object_instance->object_name,
-				object_find_instance->object_name,
-				object_find_instance->object_len) == 0)) {
+		     (memcmp (object_instance->object_name,
+			      object_find_instance->object_name,
+			      object_find_instance->object_len) == 0))) {
 
 			found = 1;
 			break;
@@ -1001,25 +1002,6 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 }
 
 
-static int object_key_iter_reset(unsigned int object_handle)
-{
-	unsigned int res;
-	struct object_instance *instance;
-
-	res = hdb_handle_get (&object_instance_database,
-		object_handle, (void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-	instance->iter_key_list = &instance->key_head;
-
-	hdb_handle_put (&object_instance_database, object_handle);
-	return (0);
-
-error_exit:
-	return (-1);
-}
-
 static int object_key_iter(unsigned int parent_object_handle,
 			   void **key_name,
 			   int *key_len,
@@ -1058,163 +1040,6 @@ static int object_key_iter(unsigned int parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
-	return (res);
-
-error_exit:
-	return (-1);
-}
-
-static int object_iter_reset(unsigned int parent_object_handle)
-{
-	unsigned int res;
-	struct object_instance *instance;
-
-	res = hdb_handle_get (&object_instance_database,
-		parent_object_handle, (void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-	instance->iter_list = &instance->child_head;
-
-	hdb_handle_put (&object_instance_database, parent_object_handle);
-	return (0);
-
-error_exit:
-	return (-1);
-}
-
-static int object_iter(unsigned int parent_object_handle,
-		       void **object_name,
-		       int *name_len,
-		       unsigned int *object_handle)
-{
-	unsigned int res;
-	struct object_instance *instance;
-	struct object_instance *find_instance = NULL;
-	struct list_head *list;
-	unsigned int found = 0;
-
-	res = hdb_handle_get (&object_instance_database,
-		parent_object_handle, (void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = -ENOENT;
-	list = instance->iter_list->next;
-	if (list != &instance->child_head) {
-
-                find_instance = list_entry (list, struct object_instance,
-					    child_list);
-		found = 1;
-	}
-	instance->iter_list = list;
-
-	if (found) {
-		*object_handle = find_instance->object_handle;
-		*object_name = find_instance->object_name;
-		*name_len = find_instance->object_name_len;
-		res = 0;
-	}
-	else {
-		res = -1;
-	}
-
-	return (res);
-
-error_exit:
-	return (-1);
-}
-
-
-static int object_find_from(unsigned int parent_object_handle,
-			    unsigned int start_pos,
-			    void *object_name,
-			    int object_name_len,
-			    unsigned int *object_handle,
-			    unsigned int *next_pos)
-{
-	unsigned int res;
-	unsigned int pos = 0;
-	struct object_instance *instance;
-	struct object_instance *find_instance = NULL;
-	struct list_head *list;
-	unsigned int found = 0;
-
-	res = hdb_handle_get (&object_instance_database,
-		parent_object_handle, (void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = -ENOENT;
-	for (list = instance->child_head.next;
-		list != &instance->child_head; list = list->next) {
-
-                find_instance = list_entry (list, struct object_instance,
-			child_list);
-
-		if ((find_instance->object_name_len == object_name_len) &&
-			(memcmp (find_instance->object_name, object_name,
-			object_name_len) == 0)) {
-			if (pos++ == start_pos) {
-				found = 1;
-				break;
-			}
-		}
-	}
-
-	hdb_handle_put (&object_instance_database, parent_object_handle);
-	if (found) {
-		*object_handle = find_instance->object_handle;
-		res = 0;
-	}
-	*next_pos = pos;
-	return (res);
-
-error_exit:
-	return (-1);
-}
-
-static int object_iter_from(unsigned int parent_object_handle,
-			    unsigned int start_pos,
-			    void **object_name,
-			    int *name_len,
-			    unsigned int *object_handle)
-{
-	unsigned int res;
-	unsigned int pos = 0;
-	struct object_instance *instance;
-	struct object_instance *find_instance = NULL;
-	struct list_head *list;
-	unsigned int found = 0;
-
-	res = hdb_handle_get (&object_instance_database,
-		parent_object_handle, (void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = -ENOENT;
-
-	for (list = instance->child_head.next;
-		list != &instance->child_head; list = list->next) {
-
-                find_instance = list_entry (list, struct object_instance,
-					    child_list);
-		if (pos++ == start_pos) {
-			found = 1;
-			break;
-		}
-	}
-
-	if (found) {
-		*object_handle = find_instance->object_handle;
-		*object_name = find_instance->object_name;
-		*name_len = find_instance->object_name_len;
-		res = 0;
-	}
-	else {
-		res = -1;
-	}
-
 	return (res);
 
 error_exit:
@@ -1290,6 +1115,27 @@ static int object_parent_get(unsigned int object_handle,
 		*parent_handle = 0;
 	else
 		*parent_handle = instance->parent_handle;
+
+	hdb_handle_put (&object_instance_database, object_handle);
+
+	return (0);
+}
+
+static int object_name_get(unsigned int object_handle,
+			   char *object_name,
+			   int *object_name_len)
+{
+	struct object_instance *instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+			      object_handle, (void *)&instance);
+	if (res != 0) {
+		return (res);
+	}
+
+	memcpy(object_name, instance->object_name, instance->object_name_len);
+	*object_name_len = instance->object_name_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
@@ -1449,16 +1295,12 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_find_create	= object_find_create,
 	.object_find_next	= object_find_next,
 	.object_find_destroy	= object_find_destroy,
-	.object_find_from	= object_find_from,
 	.object_key_get		= object_key_get,
 	.object_key_iter	= object_key_iter,
-	.object_key_iter_reset	= object_key_iter_reset,
 	.object_key_iter_from	= object_key_iter_from,
-	.object_iter	        = object_iter,
-	.object_iter_reset	= object_iter_reset,
-	.object_iter_from	= object_iter_from,
 	.object_priv_get	= object_priv_get,
 	.object_parent_get	= object_parent_get,
+	.object_name_get	= object_name_get,
 	.object_track_start	= object_track_start,
 	.object_track_stop	= object_track_stop,
 	.object_dump	        = object_dump,
