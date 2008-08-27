@@ -673,7 +673,7 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t object_find_destroy(
+confdb_error_t confdb_object_find_destroy(
 	confdb_handle_t handle,
 	unsigned int parent_object_handle)
 {
@@ -697,7 +697,7 @@ confdb_error_t object_find_destroy(
 	return error;
 }
 
-confdb_error_t object_iter_destroy(
+confdb_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
 	unsigned int parent_object_handle)
 {
