@@ -66,7 +66,7 @@ endif
 	LDFLAGS += 
 endif
 ifeq (${COROSYNC_BUILD}, DEBUG) 
-	CFLAGS += -O0 -g -Wall -DDEBUG
+	CFLAGS += -O0 -g -Wall -DDEBUG --time
 	LDFLAGS += -g
 	ifeq (${COROSYNC_COMPAT}, SOLARIS)
 		CFLAGS += -Werror -DTS_CLASS

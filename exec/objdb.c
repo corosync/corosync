@@ -772,6 +772,92 @@ error_exit:
 	return (-1);
 }
 
+static int object_key_increment (
+	unsigned int object_handle,
+	void *key_name,
+	int key_len,
+	unsigned int *value)
+{
+	unsigned int res = 0;
+	struct object_instance *instance;
+	struct object_key *object_key = NULL;
+	struct list_head *list;
+	int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+			(memcmp (object_key->key_name, key_name, key_len) == 0)) {
+			found = 1;
+			break;
+		}
+	}
+	if (found && object_key->value_len == sizeof(int)) {
+		(*(int *)object_key->value)++;
+		*value = *(int *)object_key->value;
+	}
+	else {
+		res = -1;
+	}
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
+static int object_key_decrement (
+	unsigned int object_handle,
+	void *key_name,
+	int key_len,
+	unsigned int *value)
+{
+	unsigned int res = 0;
+	struct object_instance *instance;
+	struct object_key *object_key = NULL;
+	struct list_head *list;
+	int found = 0;
+
+	res = hdb_handle_get (&object_instance_database,
+		object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+			(memcmp (object_key->key_name, key_name, key_len) == 0)) {
+			found = 1;
+			break;
+		}
+	}
+	if (found && object_key->value_len == sizeof(int)) {
+		(*(int *)object_key->value)--;
+		*value = *(int *)object_key->value;
+	}
+	else {
+		res = -1;
+	}
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (res);
+
+error_exit:
+	return (-1);
+}
+
 static int object_key_delete (
 	unsigned int object_handle,
 	void *key_name,
@@ -1306,6 +1392,8 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_dump	        = object_dump,
 	.object_write_config    = object_write_config,
 	.object_reload_config   = object_reload_config,
+	.object_key_increment   = object_key_increment,
+	.object_key_decrement   = object_key_decrement,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {

@@ -69,6 +69,9 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 static void message_handler_req_lib_confdb_key_delete (void *conn, void *message);
 static void message_handler_req_lib_confdb_key_iter (void *conn, void *message);
 
+static void message_handler_req_lib_confdb_key_increment (void *conn, void *message);
+static void message_handler_req_lib_confdb_key_decrement (void *conn, void *message);
+
 static void message_handler_req_lib_confdb_object_iter (void *conn, void *message);
 static void message_handler_req_lib_confdb_object_find (void *conn, void *message);
 
@@ -187,6 +190,18 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find_destroy,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY,
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 15 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_key_increment,
+		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
+		.response_id				= MESSAGE_RES_CONFDB_KEY_INCREMENT,
+		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 16 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_key_decrement,
+		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
+		.response_id				= MESSAGE_RES_CONFDB_KEY_DECREMENT,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
@@ -363,6 +378,46 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	res_lib_confdb_key_get.header.id = MESSAGE_RES_CONFDB_KEY_GET;
 	res_lib_confdb_key_get.header.error = ret;
 	api->ipc_conn_send_response(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
+}
+
+static void message_handler_req_lib_confdb_key_increment (void *conn, void *message)
+{
+	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
+	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
+	int value_len;
+	void *value;
+	int ret = SA_AIS_OK;
+
+	if (api->object_key_increment(req_lib_confdb_key_get->parent_object_handle,
+				      req_lib_confdb_key_get->key_name.value,
+				      req_lib_confdb_key_get->key_name.length,
+				      &res_lib_confdb_key_incdec.value))
+		ret = SA_AIS_ERR_ACCESS;
+
+	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
+	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_INCREMENT;
+	res_lib_confdb_key_incdec.header.error = ret;
+	api->ipc_conn_send_response(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
+}
+
+static void message_handler_req_lib_confdb_key_decrement (void *conn, void *message)
+{
+	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
+	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
+	int value_len;
+	void *value;
+	int ret = SA_AIS_OK;
+
+	if (api->object_key_decrement(req_lib_confdb_key_get->parent_object_handle,
+				      req_lib_confdb_key_get->key_name.value,
+				      req_lib_confdb_key_get->key_name.length,
+				      &res_lib_confdb_key_incdec.value))
+		ret = SA_AIS_ERR_ACCESS;
+
+	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
+	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_DECREMENT;
+	res_lib_confdb_key_incdec.header.error = ret;
+	api->ipc_conn_send_response(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
 }
 
 static void message_handler_req_lib_confdb_key_replace (void *conn, void *message)

@@ -250,6 +250,34 @@ int confdb_sa_key_get (
 	return res;
 }
 
+int confdb_sa_key_increment (
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	unsigned int *value)
+{
+	int res;
+
+	res = objdb->object_key_increment(parent_object_handle,
+					  key_name, key_name_len,
+					  value);
+	return res;
+}
+
+int confdb_sa_key_decrement (
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	unsigned int *value)
+{
+	int res;
+
+	res = objdb->object_key_decrement(parent_object_handle,
+					  key_name, key_name_len,
+					  value);
+	return res;
+}
+
 
 int confdb_sa_key_replace (
 	unsigned int parent_object_handle,

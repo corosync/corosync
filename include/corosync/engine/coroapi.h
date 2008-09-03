@@ -281,6 +281,18 @@ struct corosync_api_v1 {
 	int (*object_reload_config) (int flush,
 				     char **error_string);
 
+	int (*object_key_increment) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		unsigned int *value);
+
+	int (*object_key_decrement) (
+		unsigned int object_handle,
+		void *key_name,
+		int key_len,
+		unsigned int *value);
+
 	/*
 	 * Time and timer APIs
 	 */

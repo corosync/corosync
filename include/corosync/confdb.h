@@ -223,6 +223,20 @@ confdb_error_t confdb_key_replace (
 	void *new_value,
 	int new_value_len);
 
+confdb_error_t confdb_key_increment (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	unsigned int *value);
+
+confdb_error_t confdb_key_decrement (
+	confdb_handle_t handle,
+	unsigned int parent_object_handle,
+	void *key_name,
+	int key_name_len,
+	unsigned int *value);
+
 /*
  * Object queries
  * "find" loops through all objects of a given name and is also

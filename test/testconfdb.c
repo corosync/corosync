@@ -44,6 +44,7 @@
 #include <corosync/saAis.h>
 #include <corosync/confdb.h>
 
+#define INCDEC_VALUE 45
 
 /* Callbacks are not supported yet */
 confdb_callbacks_t callbacks = {
@@ -109,6 +110,7 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 static void do_write_tests(confdb_handle_t handle)
 {
 	int res;
+	unsigned int incdec_value;
 	unsigned int object_handle;
 	char error_string[1024];
 
@@ -147,6 +149,33 @@ static void do_write_tests(confdb_handle_t handle)
 
 	/* Print it for verification */
 	print_config_tree(handle, object_handle, 0);
+
+	incdec_value = INCDEC_VALUE;
+	res = confdb_key_create(handle, object_handle, "incdec", strlen("incdec"), &incdec_value, sizeof(incdec_value));
+	if (res != SA_AIS_OK) {
+		printf( "error creating 'testconfdb' key 4: %d\n", res);
+		return;
+	}
+	res = confdb_key_increment(handle, object_handle, "incdec", strlen("incdec"), &incdec_value);
+	if (res != SA_AIS_OK) {
+		printf( "error incrementing 'testconfdb' key 4: %d\n", res);
+		return;
+	}
+	if (incdec_value == INCDEC_VALUE+1)
+		printf("incremented value = %d\n", incdec_value);
+	else
+		printf("ERROR: incremented value = %d (should be %d)\n", incdec_value, INCDEC_VALUE+1);
+
+	res = confdb_key_decrement(handle, object_handle, "incdec", strlen("incdec"), &incdec_value);
+	if (res != SA_AIS_OK) {
+		printf( "error decrementing 'testconfdb' key 4: %d\n", res);
+		return;
+	}
+	if (incdec_value == INCDEC_VALUE)
+		printf("decremented value = %d\n", incdec_value);
+	else
+		printf("ERROR: decremented value = %d (should be %d)\n", incdec_value, INCDEC_VALUE);
+
 	printf("-------------------------\n");
 
 	/* Remove it.

@@ -98,11 +98,11 @@ help:
 	@echo "  doxygen - doxygen html docs"
 	@echo 
 	@echo "Options: (* - default)"
-	@echo "  OPENCOROSYNC         [DEBUG/RELEASE*] - Enable/Disable debug symbols"
-	@echo "  DESTDIR         [directory]      - Install prefix."
-	@echo "  O               [directory]      - Locate all output files in \"dir\"."
-	@echo "  BUILD_DYNAMIC   [1*/0]           - Enable/disable dynamic loading of service handler modules"
-	@echo "  OPENCOROSYNC_PROFILE [1/0*]           - Enable profiling"
+	@echo "  COROSYNC_BUILD   [DEBUG/RELEASE*] - Enable/Disable debug symbols"
+	@echo "  DESTDIR          [directory]      - Install prefix."
+	@echo "  O                [directory]      - Locate all output files in \"dir\"."
+	@echo "  BUILD_DYNAMIC    [1*/0]           - Enable/disable dynamic loading of service handler modules"
+	@echo "  COROSYNC_PROFILE [1/0*]           - Enable profiling"
 	@echo 
  
 
