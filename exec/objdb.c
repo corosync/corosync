@@ -1087,6 +1087,25 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 	return 0;
 }
 
+static int object_key_iter_reset(unsigned int object_handle)
+{
+	unsigned int res;
+	struct object_instance *instance;
+
+	res = hdb_handle_get (&object_instance_database,
+			      object_handle, (void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	instance->iter_key_list = &instance->key_head;
+
+	hdb_handle_put (&object_instance_database, object_handle);
+	return (0);
+
+error_exit:
+	return (-1);
+}
+
 
 static int object_key_iter(unsigned int parent_object_handle,
 			   void **key_name,
@@ -1382,6 +1401,7 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_find_next	= object_find_next,
 	.object_find_destroy	= object_find_destroy,
 	.object_key_get		= object_key_get,
+	.object_key_iter_reset	= object_key_iter_reset,
 	.object_key_iter	= object_key_iter,
 	.object_key_iter_from	= object_key_iter_from,
 	.object_priv_get	= object_priv_get,
