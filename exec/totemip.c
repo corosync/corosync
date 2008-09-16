@@ -46,6 +46,8 @@
 #include <net/if.h>
 #include <net/if_var.h>
 #include <netinet/in_var.h>
+#include <netinet/in.h>
+#include <ifaddrs.h>
 #endif
 #include <string.h>
 #include <stdio.h>
@@ -317,15 +319,11 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
 
 	struct sockaddr_in *intf_addr_mask;
-	struct sockaddr_storage bindnet_ss, intf_addr_ss;
-	struct sockaddr_in *intf_addr_sin = (struct sockaddr_in *)&intf_addr_ss;
+	struct sockaddr_storage bindnet_ss;
+	struct sockaddr_in *intf_addr_sin;
 	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
-	struct ifreq *ifr, *lifr;
-	int id_fd;
-	struct ifconf ifc;
-	struct ifreq ifrb;
-	int numreqs = 0;
-	int res;
+	struct ifaddrs *ifap, *ifa;
+	int res = -1;
 	int addrlen;
 
 	*interface_up = 0;
@@ -334,76 +332,33 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	totemip_totemip_to_sockaddr_convert(bindnet,
 		0, &bindnet_ss, &addrlen);
 
-	/*
-	 * Generate list of local interfaces in ifc.ifc_req structure
-	 */
-	id_fd = socket (AF_INET, SOCK_DGRAM, 0);
-	ifc.ifc_buf = 0;
-	do {
-		numreqs += 32;
-		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
-		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
-		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
-		if (res < 0) {
-			close (id_fd);
-			return -1;
-		}
-	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
-	res = -1;
+	if (getifaddrs(&ifap) != 0)
+		return -1;
 
-	/*
-	 * Find interface address to bind to
-	 */
-	lifr = (struct ifreq *)ifc.ifc_buf + (ifc.ifc_len / sizeof(*lifr));
+	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+		intf_addr_sin	= (struct sockaddr_in *)ifa->ifa_addr;
+		intf_addr_mask	= (struct sockaddr_in *)ifa->ifa_netmask;
 
-	for (ifr = ifc.ifc_req; ifr < lifr; ifr = NEXT_IFR(ifr)) {
-		strcpy(ifrb.ifr_name, ifr->ifr_name);
-
-		/* Skip if no address set
-		 */
-		if (ioctl(id_fd, SIOCGIFADDR, &ifrb) < 0)
+		if (intf_addr_sin->sin_family != AF_INET)
 			continue;
 
-		memcpy(&intf_addr_ss, &ifrb.ifr_addr, sizeof(intf_addr_ss));
-		if (intf_addr_sin->sin_family == AF_INET) {
-			/* Retrieve mask
+		if ( bindnet_sin->sin_family == AF_INET &&
+			 (intf_addr_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr) ==
+			 (bindnet_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr)) {
+
+			totemip_copy(boundto, bindnet);
+			memcpy(boundto->addr, &intf_addr_sin->sin_addr, sizeof(intf_addr_sin->sin_addr));
+
+			/* Get interface infos
 			 */
-			if (ioctl(id_fd, SIOCGIFNETMASK, &ifrb) < 0) {
-				break;
-			}
-			intf_addr_mask = (struct sockaddr_in *)&ifrb.ifr_addr;
-
-			if ( bindnet_sin->sin_family == AF_INET &&
-				 (intf_addr_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr) ==
-			     (bindnet_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr)) {
-
-				totemip_copy(boundto, bindnet);
-				memcpy(boundto->addr, &intf_addr_sin->sin_addr, sizeof(intf_addr_sin->sin_addr));
-
-				/* Get inteface state
-				 */
-				if (ioctl(id_fd, SIOCGIFFLAGS, &ifrb) < 0) {
-					break;
-				}
-				*interface_up = ifrb.ifr_flags & IFF_UP;
-
-				/* Get interface index
-				 */
-#ifdef SIOCGIFINDEX
-				if (ioctl(id_fd, SIOCGIFINDEX, &ifrb) < 0) {
-					break;
-				}
-				*interface_num = ifrb.ifr_index;
-#else
-				*interface_num = if_nametoindex(ifrb.ifr_name);
-#endif
-				res = 0;
-				break; /* for */
-			}
+			*interface_up = ifa->ifa_flags & IFF_UP;
+			*interface_num = if_nametoindex(ifa->ifa_name);
+			res = 0;
+			break; /* for */
 		}
 	}
-	free (ifc.ifc_buf);
-	close (id_fd);
+
+	freeifaddrs(ifap);
 
 	return (res);
 }
