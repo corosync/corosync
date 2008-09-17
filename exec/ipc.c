@@ -111,6 +111,8 @@ LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
 static unsigned int g_gid_valid = 0;
 
+static unsigned int dont_call_flow_control = 0;
+
 static totempg_groups_handle ipc_handle;
 
 DECLARE_LIST_INIT (conn_info_list_head);
@@ -1125,6 +1127,17 @@ void *corosync_conn_partner_get (void *conn)
 	}
 }
 
+int corosync_conn_send_response_no_fcc (
+	void *conn,
+	void *msg,
+	int mlen)
+{
+	dont_call_flow_control = 1;
+	corosync_conn_send_response (
+		conn, msg, mlen);
+	dont_call_flow_control = 0;
+}
+
 int corosync_conn_send_response (
 	void *conn,
 	void *msg,
@@ -1149,7 +1162,9 @@ int corosync_conn_send_response (
 		return (-1);
 	}
 
-	ipc_flow_control (conn_info);
+	if (dont_call_flow_control == 0) {
+		ipc_flow_control (conn_info);
+	}
 
 	outq = &conn_info->outq;
 

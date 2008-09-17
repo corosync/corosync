@@ -52,6 +52,8 @@ extern void *corosync_conn_private_data_get (void *conn);
 
 extern int corosync_conn_send_response (void *conn, void *msg, int mlen);
 
+extern int corosync_conn_send_response_no_fcc (void *conn, void *msg,int mlen);
+
 extern void corosync_ipc_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void),

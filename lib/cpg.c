@@ -248,6 +248,7 @@ cpg_error_t cpg_dispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct cpg_inst *cpg_inst;
+	struct res_lib_cpg_flowcontrol_callback *res_cpg_flowcontrol_callback;
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	struct res_lib_cpg_groups_get_callback *res_lib_cpg_groups_get_callback;
@@ -397,6 +398,7 @@ cpg_error_t cpg_dispatch (
 				joined_list,
 				res_cpg_confchg_callback->joined_list_entries);
 			break;
+
 		case MESSAGE_RES_CPG_GROUPS_CALLBACK:
 			res_lib_cpg_groups_get_callback = (struct res_lib_cpg_groups_get_callback *)&dispatch_data;
 			marshall_from_mar_cpg_name_t (
@@ -413,6 +415,12 @@ cpg_error_t cpg_dispatch (
 						    &group_name,
 						    member_list,
 						    res_lib_cpg_groups_get_callback->num_members);
+
+			break;
+
+		case MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK:
+			res_cpg_flowcontrol_callback = (struct res_lib_cpg_flowcontrol_callback *)&dispatch_data;
+			cpg_inst->flow_control_state = res_cpg_flowcontrol_callback->flow_control_state;
 			break;
 
 		default:
@@ -598,9 +606,14 @@ cpg_error_t cpg_mcast_joined (
 		goto error_exit;
 	}
 
-	cpg_inst->flow_control_state = res_lib_cpg_mcast.flow_control_state;
-	if (res_lib_cpg_mcast.header.error == CPG_ERR_TRY_AGAIN) {
-		cpg_inst->flow_control_state = CPG_FLOW_CONTROL_ENABLED;
+/*	Only update the flow control state when the return value is OK.
+ *	Otherwise the flow control state is not guaranteed to be valid in the
+ *	return message.
+ *	Also, don't set to ENABLED if the return value is TRY_AGAIN as this can lead
+ *	to Flow Control State sync issues between AIS LIB and EXEC.
+ */
+	if (res_lib_cpg_mcast.header.error == CPG_OK) {
+		cpg_inst->flow_control_state = res_lib_cpg_mcast.flow_control_state;
 	}
 	error = res_lib_cpg_mcast.header.error;
 

@@ -738,9 +738,28 @@ static void cpg_flow_control_state_set_fn (
 	void *context,
 	enum corosync_flow_control_state flow_control_state)
 {
+	struct res_lib_cpg_flowcontrol_callback res_lib_cpg_flowcontrol_callback;
 	struct process_info *process_info = (struct process_info *)context;
 
 	process_info->flow_control_state = flow_control_state;
+	/*
+	 * Send disabled flow control if a disabled occurs.  This prevents
+	 * the condition where a disabled occurs after all messages have been
+	 * delivered and then there is no valid way to retrieve the flow
+	 * control state
+	 */
+	if (flow_control_state == CPG_FLOW_CONTROL_DISABLED) {
+		res_lib_cpg_flowcontrol_callback.header.id = MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK;
+		res_lib_cpg_flowcontrol_callback.header.size = sizeof (struct res_lib_cpg_flowcontrol_callback);
+		res_lib_cpg_flowcontrol_callback.flow_control_state = flow_control_state;
+
+		if (process_info->trackerconn) {
+			api->ipc_response_no_fcc (
+				process_info->trackerconn,
+				&res_lib_cpg_flowcontrol_callback,
+				sizeof (struct res_lib_cpg_flowcontrol_callback));
+		}
+	}
 }
 
 /* Can byteswap join & leave messages */
@@ -965,7 +984,6 @@ static void message_handler_req_exec_cpg_mcast (
 {
 	struct req_exec_cpg_mcast *req_exec_cpg_mcast = (struct req_exec_cpg_mcast *)message;
 	struct res_lib_cpg_deliver_callback *res_lib_cpg_mcast;
-	struct process_info *process_info;
 	int msglen = req_exec_cpg_mcast->msglen;
 	char buf[sizeof(*res_lib_cpg_mcast) + msglen];
 	struct group_info *gi;
@@ -986,8 +1004,6 @@ static void message_handler_req_exec_cpg_mcast (
 	res_lib_cpg_mcast->flow_control_state = CPG_FLOW_CONTROL_DISABLED;
 	if (api->ipc_source_is_local (&req_exec_cpg_mcast->source)) {
 		api->ipc_refcnt_dec (req_exec_cpg_mcast->source.conn);
-		process_info = (struct process_info *)api->ipc_private_data_get (req_exec_cpg_mcast->source.conn);
-		res_lib_cpg_mcast->flow_control_state = process_info->flow_control_state;
 	}
 	memcpy(&res_lib_cpg_mcast->group_name, &gi->group_name,
 		sizeof(mar_cpg_name_t));
@@ -998,6 +1014,7 @@ static void message_handler_req_exec_cpg_mcast (
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
 		if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
+			res_lib_cpg_mcast->flow_control_state = pi->flow_control_state;
 			api->ipc_conn_send_response(
 				pi->trackerconn,
 				buf,

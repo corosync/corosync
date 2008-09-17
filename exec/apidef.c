@@ -70,6 +70,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.ipc_source_is_local = message_source_is_local,
 	.ipc_private_data_get = corosync_conn_private_data_get,
 	.ipc_response_send = NULL,
+	.ipc_response_no_fcc = corosync_conn_send_response_no_fcc,
 	.ipc_dispatch_send = NULL,
 	.ipc_conn_send_response = corosync_conn_send_response,
 	.ipc_conn_partner_get = corosync_conn_partner_get,

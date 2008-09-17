@@ -336,6 +336,8 @@ struct corosync_api_v1 {
 
 	int (*ipc_response_send) (void *conn, void *msg, int mlen);
 
+	int (*ipc_response_no_fcc) (void *conn, void *msg, int mlen);
+
 	int (*ipc_dispatch_send) (void *conn, void *msg, int mlen);
 
 	/*

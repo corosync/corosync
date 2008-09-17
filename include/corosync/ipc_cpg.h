@@ -62,7 +62,8 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8,
 	MESSAGE_RES_CPG_LOCAL_GET = 9,
 	MESSAGE_RES_CPG_GROUPS_GET = 10,
-	MESSAGE_RES_CPG_GROUPS_CALLBACK = 11
+	MESSAGE_RES_CPG_GROUPS_CALLBACK = 11,
+	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 12
 };
 
 enum lib_cpg_confchg_reason {
@@ -133,6 +134,11 @@ struct res_lib_cpg_deliver_callback {
 	mar_uint32_t pid __attribute__((aligned(8)));
 	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_flowcontrol_callback {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_membership {
