@@ -274,6 +274,10 @@ static void log_printf_worker_fn (void *thread_data, void *work_item)
 		fflush (stdout);
 	}
 
+       /* release mutex here in case syslog blocks */
+       if (logsys_wthread_active)
+               pthread_mutex_unlock (&logsys_config_mutex);
+
 	if ((logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED) &&
 		(!((logsys_mode & LOG_MODE_FILTER_DEBUG_FROM_SYSLOG) &&
 		   (log_data->priority == LOG_LEVEL_DEBUG)))) {
@@ -281,8 +285,6 @@ static void log_printf_worker_fn (void *thread_data, void *work_item)
 			&log_data->log_string[log_data->syslog_pos]);
 	}
 	free (log_data->log_string);
-	if (logsys_wthread_active)
-		pthread_mutex_unlock (&logsys_config_mutex);
 }
 
 static void _log_printf (
