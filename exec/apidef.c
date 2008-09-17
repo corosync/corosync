@@ -45,6 +45,7 @@
 #include <corosync/totem/totemip.h>
 #include "main.h"
 #include "ipc.h"
+#include "sync.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 #include <corosync/lcr/lcr_ifact.h>
@@ -92,11 +93,13 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.tpg_joined_send_ok = totempg_groups_send_ok_joined,
 	.tpg_groups_mcast = (typedef_tpg_groups_mcast)totempg_groups_mcast_groups,
 	.tpg_groups_send_ok = (typedef_tpg_groups_send_ok)totempg_groups_send_ok_groups,
+	.sync_request = sync_request,
 	.service_link_and_init = corosync_service_link_and_init,
 	.service_unlink_and_exit = corosync_service_unlink_and_exit,
 	.plugin_interface_reference = lcr_ifact_reference,
 	.plugin_interface_release = lcr_ifact_release,
-	.error_memory_failure = NULL
+	.error_memory_failure = _corosync_out_of_memory_error,
+	.fatal_error = _corosync_exit_error
 };
 
 void apidef_init (struct objdb_iface_ver0 *objdb) {

@@ -64,6 +64,8 @@ struct corosync_tpg_group {
 #define TOTEM_AGREED	0
 #define TOTEM_SAFE	1
 
+#define MILLI_2_NANO_SECONDS 1000000ULL
+
 #if !defined(TOTEM_IP_ADDRESS)
 struct totem_ip_address {
 	unsigned int   nodeid;
@@ -98,6 +100,16 @@ enum corosync_flow_control_state {
 };
 #endif
 
+typedef enum {
+	COROSYNC_FATAL_ERROR_EXIT = -1,
+	COROSYNC_LIBAIS_SOCKET = -6,
+	COROSYNC_LIBAIS_BIND = -7,
+	COROSYNC_READKEY = -8,
+	COROSYNC_INVALID_CONFIG = -9,
+	COROSYNC_DYNAMICLOAD = -12,
+	COROSYNC_OUT_OF_MEMORY = -15,
+	COROSYNC_FATAL_ERR = -16
+} corosync_fatal_error_t;
 
 #ifndef OBJECT_PARENT_HANDLE
 
@@ -438,6 +450,9 @@ struct corosync_api_v1 {
 		struct iovec *iovec,
 		int iov_len);
 
+	int (*sync_request) (
+		char *service_name);
+
 	/*
 	 * Plugin loading and unloading
 	 */
@@ -467,6 +482,8 @@ struct corosync_api_v1 {
 	 * Error handling APIs
 	 */
 	void (*error_memory_failure) (void);
+#define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
+	void (*fatal_error) (corosync_fatal_error_t err, const char *file, unsigned int line);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

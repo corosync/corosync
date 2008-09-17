@@ -71,6 +71,7 @@ extern int mar_name_match(mar_name_t *name1, mar_name_t *name2);
 #define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
 extern void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line);
+void _corosync_out_of_memory_error (void);
 extern char *getSaNameT (SaNameT *name);
 extern char *strstr_rs (const char *haystack, const char *needle);
 extern void setSaNameT (SaNameT *name, char *str);
