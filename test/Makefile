@@ -31,7 +31,12 @@
 
 # Include configuration
 #
-include ../Makefile.inc
+srcdir ?= $(CURDIR)/../
+subdir ?= test/
+
+include $(srcdir)Makefile.inc
+
+override LDFLAGS += -L./ ${DYFLAGS}
 
 ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
@@ -39,9 +44,9 @@ endif
 
 LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
 LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench testcpg testcpg2 cpgbench testconfdb
+BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb
 
-#override CFLAGS += -I../include
+override CFLAGS += -I../include
 override LDFLAGS += -L../lib
 
 EXTRA_CFLAGS = -I$(srcdir)include
@@ -60,6 +65,9 @@ testevsth: testevsth.o $(LIBS)
 
 evsbench: evsbench.o $(LIBS)
 	$(CC) $(LDFLAGS) -o evsbench evsbench.o $(LIBS)
+
+evsverify: evsverify.o $(LIBS) ../exec/crypto.o
+	$(CC) $(LDFLAGS) -o evsverify evsverify.o $(LIBS) ../exec/crypto.o
 
 testcpg: testcpg.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg testcpg.o $(LIBS)
