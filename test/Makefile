@@ -32,7 +32,7 @@
 # Include configuration
 #
 srcdir ?= $(CURDIR)/../
-subdir ?= exec/
+subdir ?= test/
 
 include $(srcdir)Makefile.inc
 
