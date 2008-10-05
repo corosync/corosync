@@ -38,10 +38,8 @@ endif
 # COROSYNC_BUILD can be defined as RELEASE or DEBUG
 #
 ifndef COROSYNC_BUILD
-	COROSYNC_BUILD=DEBUG
+	COROSYNC_BUILD=RELEASE
 endif
-
-# COROSYNC_PROFILE
 
 # default CFLAGS, LDFLAGS
 #
@@ -58,29 +56,20 @@ override CFLAGS += -DLCRSODIR='"$(LCRSODIR)"'
 # build CFLAGS, LDFLAGS
 #
 ifeq (${COROSYNC_BUILD}, RELEASE) 
-	CFLAGS += -O3 -Wall
-# -Wstrict-aliasing=2 TODO sameday fix all of these
-ifndef COROSYNC_PROFILE
-	CFLAGS += -fomit-frame-pointer
-endif
-	LDFLAGS += 
+	override CFLAGS += -O3 -Wall
+	override LDFLAGS += 
 endif
 ifeq (${COROSYNC_BUILD}, DEBUG) 
-	CFLAGS += -O0 -g -Wall -DDEBUG --time
-	LDFLAGS += -g
+	override CFLAGS += -O0 -g -Wall
+	override LDFLAGS += -g
 	ifeq (${COROSYNC_COMPAT}, SOLARIS)
 		CFLAGS += -Werror -DTS_CLASS
 	endif
 endif
 ifeq (${COROSYNC_BUILD}, COVERAGE)
-	CFLAGS += -O0 -g -ftest-coverage -fprofile-arcs
-	LDFLAGS += -g -ftest-coverage -fprofile-arcs
+	override CFLAGS += -O0 -g -ftest-coverage -fprofile-arcs
+	override LDFLAGS += -g -ftest-coverage -fprofile-arcs
 	BUILD_DYNAMIC=0
-endif
-
-ifdef COROSYNC_PROFILE
-	CFLAGS += -pg
-	LDFLAGS += -pg
 endif
 
 # platform specific CFLAGS, LDFLAGS
