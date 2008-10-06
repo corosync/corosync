@@ -59,6 +59,7 @@ struct object_tracker {
 	object_key_change_notify_fn_t key_change_notify_fn;
 	object_create_notify_fn_t object_create_notify_fn;
 	object_destroy_notify_fn_t object_destroy_notify_fn;
+	object_reload_notify_fn_t object_reload_notify_fn;
 	struct list_head tracker_list;
 	struct list_head object_list;
 };
@@ -91,6 +92,9 @@ struct object_find_instance {
 
 struct objdb_iface_ver0 objdb_iface;
 struct list_head objdb_trackers_head;
+static pthread_rwlock_t reload_lock;
+static pthread_t lock_thread;
+static pthread_mutex_t meta_lock;
 
 static struct hdb_handle_database object_instance_database = {
 	.handle_count	= 0,
@@ -106,6 +110,38 @@ static struct hdb_handle_database object_find_instance_database = {
 	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
+
+static void objdb_wrlock()
+{
+	pthread_mutex_lock(&meta_lock);
+	pthread_rwlock_wrlock(&reload_lock);
+	lock_thread = pthread_self();
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_rdlock()
+{
+	pthread_mutex_lock(&meta_lock);
+	if (lock_thread != pthread_self())
+		pthread_rwlock_rdlock(&reload_lock);
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_rdunlock()
+{
+	pthread_mutex_lock(&meta_lock);
+	if (lock_thread != pthread_self())
+		pthread_rwlock_unlock(&reload_lock);
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_wrunlock()
+{
+	pthread_mutex_lock(&meta_lock);
+	pthread_rwlock_unlock(&reload_lock);
+	lock_thread = 0;
+	pthread_mutex_unlock(&meta_lock);
+}
 
 static int objdb_init (void)
 {
@@ -135,6 +171,8 @@ static int objdb_init (void)
 	list_init (&instance->child_list);
 	list_init (&instance->track_head);
 	list_init (&objdb_trackers_head);
+	pthread_rwlock_init(&reload_lock, NULL);
+	pthread_mutex_init(&meta_lock, NULL);
 
 	hdb_handle_put (&object_instance_database, handle);
 	return (0);
@@ -293,6 +331,30 @@ static void object_key_changed_notification(unsigned int object_handle,
 	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
 }
 
+static void object_reload_notification(int startstop, int flush)
+{
+	struct list_head * list;
+	struct object_instance * obj_pt;
+	struct object_tracker * tracker_pt;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+			      OBJECT_PARENT_HANDLE, (void *)&obj_pt);
+
+	for (list = obj_pt->track_head.next;
+	     list != &obj_pt->track_head; list = list->next) {
+
+		tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+		if (tracker_pt->object_reload_notify_fn != NULL) {
+		        tracker_pt->object_reload_notify_fn(startstop, flush,
+							    tracker_pt->data_pt);
+		}
+	}
+	hdb_handle_put (&object_instance_database, OBJECT_PARENT_HANDLE);
+}
+
+
 /*
  * object db create/destroy/set
  */
@@ -308,6 +370,7 @@ static int object_create (
 	int found = 0;
 	int i;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&parent_instance);
 	if (res != 0) {
@@ -380,7 +443,7 @@ static int object_create (
 								object_instance->parent_handle,
 								object_instance->object_name,
 								object_instance->object_name_len);
-
+	objdb_rdunlock();
 	return (0);
 
 error_put_destroy:
@@ -393,6 +456,7 @@ error_object_put:
 	hdb_handle_put (&object_instance_database, parent_object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -403,6 +467,8 @@ static int object_priv_set (
 	int res;
 	struct object_instance *object_instance;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -412,9 +478,11 @@ static int object_priv_set (
 	object_instance->priv = priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -431,6 +499,8 @@ static int object_key_create (
 	int found = 0;
 	int i;
 	unsigned int val;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -493,7 +563,7 @@ static int object_key_create (
 	list_add_tail (&object_key->list, &instance->key_head);
 	object_key_changed_notification(object_handle, key_name, key_len,
 								value, value_len, OBJECT_KEY_CREATED);
-
+	objdb_rdunlock();
 	return (0);
 
 error_put_key:
@@ -506,6 +576,7 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -554,9 +625,12 @@ static int object_destroy (
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -572,6 +646,7 @@ static int object_destroy (
 	free(instance->object_name);
 	free(instance);
 
+	objdb_rdunlock();
 	return (res);
 }
 
@@ -583,6 +658,7 @@ static int object_valid_set (
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -594,9 +670,11 @@ static int object_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -608,6 +686,7 @@ static int object_key_valid_set (
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -619,9 +698,11 @@ static int object_key_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -638,6 +719,7 @@ static int object_find_create (
 	struct object_instance *object_instance;
 	struct object_find_instance *object_find_instance;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -662,6 +744,8 @@ static int object_find_create (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 	hdb_handle_put (&object_find_instance_database, *object_find_handle);
+
+	objdb_rdunlock();
 	return (0);
 
 error_destroy:
@@ -671,6 +755,7 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -684,6 +769,7 @@ static int object_find_next (
 	struct list_head *list;
 	unsigned int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_find_instance_database,
 		object_find_handle, (void *)&object_find_instance);
 	if (res != 0) {
@@ -714,9 +800,11 @@ static int object_find_next (
 		*object_handle = object_instance->object_handle;
 		res = 0;
 	}
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -739,6 +827,7 @@ static int object_key_get (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -766,9 +855,11 @@ static int object_key_get (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -784,6 +875,7 @@ static int object_key_increment (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -809,9 +901,11 @@ static int object_key_increment (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -827,6 +921,7 @@ static int object_key_decrement (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -852,9 +947,11 @@ static int object_key_decrement (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -872,6 +969,7 @@ static int object_key_delete (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -906,9 +1004,11 @@ static int object_key_delete (
 	if (ret == 0)
 		object_key_changed_notification(object_handle, key_name, key_len,
 										value, value_len, OBJECT_KEY_DELETED);
+	objdb_rdunlock();
 	return (ret);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -927,6 +1027,8 @@ static int object_key_replace (
 	struct object_key *object_key = NULL;
 	struct list_head *list;
 	int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -1003,11 +1105,13 @@ static int object_key_replace (
 	if (ret == 0)
 		object_key_changed_notification(object_handle, key_name, key_len,
 										new_value, new_value_len, OBJECT_KEY_REPLACED);
+	objdb_rdunlock();
 	return (ret);
 
 error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1018,6 +1122,7 @@ static int object_priv_get (
 	int res;
 	struct object_instance *object_instance;
 
+	objdb_rdunlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -1027,9 +1132,11 @@ static int object_priv_get (
 	*priv = object_instance->priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1092,6 +1199,8 @@ static int object_key_iter_reset(unsigned int object_handle)
 	unsigned int res;
 	struct object_instance *instance;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1100,9 +1209,11 @@ static int object_key_iter_reset(unsigned int object_handle)
 	instance->iter_key_list = &instance->key_head;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1118,6 +1229,8 @@ static int object_key_iter(unsigned int parent_object_handle,
 	struct object_key *find_key = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
@@ -1145,9 +1258,11 @@ static int object_key_iter(unsigned int parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1164,6 +1279,8 @@ static int object_key_iter_from(unsigned int parent_object_handle,
 	struct object_key *find_key = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
@@ -1197,9 +1314,11 @@ static int object_key_iter_from(unsigned int parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1210,9 +1329,12 @@ static int object_parent_get(unsigned int object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1222,6 +1344,7 @@ static int object_parent_get(unsigned int object_handle,
 		*parent_handle = instance->parent_handle;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 
 	return (0);
 }
@@ -1233,9 +1356,11 @@ static int object_name_get(unsigned int object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1243,6 +1368,7 @@ static int object_name_get(unsigned int object_handle,
 	*object_name_len = instance->object_name_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 
 	return (0);
 }
@@ -1253,6 +1379,7 @@ static int object_track_start(unsigned int object_handle,
 							  object_key_change_notify_fn_t key_change_notify_fn,
 							  object_create_notify_fn_t object_create_notify_fn,
 							  object_destroy_notify_fn_t object_destroy_notify_fn,
+			                                  object_reload_notify_fn_t object_reload_notify_fn,
 							  void * priv_data_pt)
 {
 	struct object_instance *instance;
@@ -1271,6 +1398,7 @@ static int object_track_start(unsigned int object_handle,
 	tracker_pt->key_change_notify_fn = key_change_notify_fn;
 	tracker_pt->object_create_notify_fn = object_create_notify_fn;
 	tracker_pt->object_destroy_notify_fn = object_destroy_notify_fn;
+	tracker_pt->object_reload_notify_fn = object_reload_notify_fn;
 	tracker_pt->data_pt = priv_data_pt;
 
 	list_init(&tracker_pt->object_list);
@@ -1287,6 +1415,7 @@ static int object_track_start(unsigned int object_handle,
 static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn,
 							  object_create_notify_fn_t object_create_notify_fn,
 							  object_destroy_notify_fn_t object_destroy_notify_fn,
+			                                  object_reload_notify_fn_t object_reload_notify_fn,
 							  void * priv_data_pt)
 {
 	struct object_instance *instance;
@@ -1305,6 +1434,7 @@ static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn
 		if (tracker_pt && (tracker_pt->data_pt == priv_data_pt) &&
 			(tracker_pt->object_create_notify_fn == object_create_notify_fn) &&
 			(tracker_pt->object_destroy_notify_fn == object_destroy_notify_fn) &&
+		        (tracker_pt->object_reload_notify_fn == object_reload_notify_fn) &&
 			(tracker_pt->key_change_notify_fn == key_change_notify_fn)) {
 
 			/* get the object & take this tracker off of it's list. */
@@ -1337,9 +1467,11 @@ static int object_dump(unsigned int object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1347,6 +1479,7 @@ static int object_dump(unsigned int object_handle,
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (res);
 }
 
@@ -1358,13 +1491,19 @@ static int object_write_config(char **error_string)
 	int res;
 
 	main_get_config_modules(&modules, &num_modules);
+
+	objdb_wrlock();
+
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_writeconfig) {
 			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
-			if (res)
+			if (res) {
+				objdb_wrunlock();
 				return res;
+			}
 		}
 	}
+	objdb_wrunlock();
 	return 0;
 }
 
@@ -1376,14 +1515,21 @@ static int object_reload_config(int flush, char **error_string)
 	int res;
 
 	main_get_config_modules(&modules, &num_modules);
+	object_reload_notification(OBJDB_RELOAD_NOTIFY_START, flush);
+
+	objdb_wrlock();
 
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_reloadconfig) {
 			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
-			if (res)
+			if (res) {
+				objdb_wrunlock();
 				return res;
+			}
 		}
 	}
+	objdb_wrunlock();
+	object_reload_notification(OBJDB_RELOAD_NOTIFY_END, flush);
 	return 0;
 }
 
