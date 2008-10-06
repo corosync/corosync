@@ -384,8 +384,6 @@ static void message_handler_req_lib_confdb_key_increment (void *conn, void *mess
 {
 	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
-	int value_len;
-	void *value;
 	int ret = SA_AIS_OK;
 
 	if (api->object_key_increment(req_lib_confdb_key_get->parent_object_handle,
@@ -404,8 +402,6 @@ static void message_handler_req_lib_confdb_key_decrement (void *conn, void *mess
 {
 	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
-	int value_len;
-	void *value;
 	int ret = SA_AIS_OK;
 
 	if (api->object_key_decrement(req_lib_confdb_key_get->parent_object_handle,
