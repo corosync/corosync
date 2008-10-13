@@ -1,0 +1,27 @@
+# Version and symbol export for libcpg.so
+
+COROSYNC_QUORUM_1.0 {
+	global:
+		quorum_initialize;
+		quorum_finalize;
+		quorum_fd_get;
+		quorum_dispatch;
+		quorum_get_quorate;
+		quorum_context_get;
+		quorum_context_set;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

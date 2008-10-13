@@ -46,7 +46,8 @@ enum service_types {
 	MSG_SERVICE = 6,
 	CFG_SERVICE = 7,
 	CPG_SERVICE = 8,
-	CONFDB_SERVICE = 10
+	CONFDB_SERVICE = 10,
+	QUORUM_SERVICE = 11,
 };
 
 enum req_init_types {

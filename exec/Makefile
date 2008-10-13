@@ -59,8 +59,8 @@ LOGSYS_OBJS = wthread.o logsys.o
 EXEC_LIBS = libtotem_pg.a liblogsys.a
 
 # LCR objects
-LCR_SRC = vsf_ykd.c objdb.c coroparse.c
-LCR_OBJS = vsf_ykd.o objdb.o coroparse.o
+LCR_SRC = vsf_ykd.c objdb.c coroparse.c vsf_quorum.c
+LCR_OBJS = vsf_ykd.o objdb.o coroparse.o vsf_quorum.o
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c apidef.c service.c ipc.c flow.c \
@@ -75,7 +75,7 @@ override CFLAGS += -fPIC
 
 all:libtotem_pg.a libtotem_pg.so.2.0.0 liblogsys.a liblogsys.so.2.0.0 \
 	../lcr/lcr_ifact.o corosync_ \
-	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso
+	objdb.lcrso vsf_ykd.lcrso coroparse.lcrso vsf_quorum.lcrso
 else
 EXEC_OBJS = $(MAIN_OBJS) $(LCR_OBJS)
 all: libtotem_pg.a liblogsys.a corosync
@@ -90,6 +90,9 @@ objdb.lcrso: objdb.o
 vsf_ykd.lcrso: vsf_ykd.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./corosync -bind_at_load vsf_ykd.o -o $@
 
+vsf_quorum.lcrso: vsf_quorum.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ./corosync -bind_at_load vsf_quorum.o -o $@
+
 coroparse.lcrso: coroparse.o
 	$(CC) -bundle -bundle_loader ./corosync -bind_at_load coroparse.o -o $@
 
@@ -97,6 +100,9 @@ else
 
 vsf_ykd.lcrso: vsf_ykd.o
 	$(CC) -shared -Wl,-soname,vsf_ykd.lcrso vsf_ykd.o -o $@
+
+vsf_quorum.lcrso: vsf_quorum.o
+	$(CC) -shared -Wl,-soname,vsf_quorum.lcrso vsf_quorum.o -o $@
 
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
@@ -143,6 +149,9 @@ depend:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DPREFIX='"$(PREFIX)"' -c -o $@ $<
 
 vsf_ykd.o: vsf_ykd.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+vsf_quorum.o: vsf_quorum.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 objdb.o: objdb.c

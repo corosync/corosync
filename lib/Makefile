@@ -41,6 +41,7 @@ all: libcpg.a libcpg.so.2.0.0 \
 	libconfdb.a libconfdb.so.2.0.0 \
 	libevs.a libevs.so.2.0.0 \
 	libcfg.a libcfg.so.2.0.0 \
+	libquorum.a libquorum.so.2.0.0 \
 	libcoroutil.a libcoroutil.so.2.0.0
 
 libcoroutil.a: util.o
@@ -58,14 +59,14 @@ libevs.so.2.0.0: util.o evs.o
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
 
+libquorum.so.2.0.0: util.o quorum.o
+	$(CC) $(DARWIN_OPTS) util.o quorum.o -o $@
+
 libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) $(DARWIN_OPTS) util.o cfg.o -o $@
-
-libcpg.so.2.0.0: util.o cpg.o
-	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
 
 else
 
@@ -77,6 +78,9 @@ libevs.so.2.0.0: util.o evs.o
 
 libcpg.so.2.0.0: util.o cpg.o
 	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
+
+libquorum.so.2.0.0: util.o quorum.o
+	$(CC) -shared -Wl,-soname,libquorum.so.2,-version-script=$(srcdir)$(subdir)libquorum.versions util.o quorum.o -o $@
 
 libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
@@ -92,6 +96,9 @@ libevs.a: util.o evs.o
 libcpg.a: util.o cpg.o
 	$(AR) -rc libcpg.a util.o cpg.o
 
+libquorum.a: util.o quorum.o
+	$(AR) -rc libquorum.a util.o quorum.o
+
 libconfdb.a: util.o confdb.o sa-confdb.o
 	$(AR) -rc libconfdb.a util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 
@@ -101,6 +108,7 @@ libcfg.a: util.o cfg.o
 clean:
 	rm -f *.o libcfg.so* libcoroutil.so* libcoroutil.a \
 		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a libconfdb.so* \
+		libquorum.so* libquorum.a \
 		libconfdb.a libconfdb.a \ *.da *.bb *.bbg
  
 # -fPIC rules required for all libraries

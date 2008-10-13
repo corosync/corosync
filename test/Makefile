@@ -42,9 +42,9 @@ ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a
+LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a ../lib/libquorum.a
 LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb
+BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb testquorum
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
@@ -74,6 +74,9 @@ testcpg: testcpg.o $(LIBRARIES)
 
 testcpg2: testcpg2.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testcpg2 testcpg2.o $(LIBS)
+
+testquorum: testquorum.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testquorum testquorum.o $(LIBS)
 
 cpgbench: cpgbench.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o cpgbench cpgbench.o $(LIBS)

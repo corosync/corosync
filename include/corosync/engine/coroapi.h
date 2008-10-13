@@ -93,6 +93,11 @@ enum corosync_lib_flow_control {
 	COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED = 2
 };
 
+enum corosync_lib_allow_inquorate {
+	COROSYNC_LIB_DISALLOW_INQUORATE = 0, /* default */
+	COROSYNC_LIB_ALLOW_INQUORATE = 1
+};
+
 #if !defined (COROSYNC_FLOW_CONTROL_STATE)
 enum corosync_flow_control_state {
 	COROSYNC_FLOW_CONTROL_STATE_DISABLED,
@@ -513,6 +518,7 @@ struct corosync_service_engine {
 	unsigned short id;
 	unsigned int private_data_size;
 	enum corosync_lib_flow_control flow_control;
+	enum corosync_lib_allow_inquorate allow_inquorate;
 	int (*exec_init_fn) (struct corosync_api_v1 *);
 	int (*exec_exit_fn) (void);
 	void (*exec_dump_fn) (void);

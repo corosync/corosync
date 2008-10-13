@@ -897,11 +897,11 @@ retry_recv:
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
-				(sync_primary_designated() == 1) && (
+				(sync_primary_designated() == 1 || ais_service[service]->allow_inquorate == COROSYNC_LIB_ALLOW_INQUORATE) && (
 				(ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
-				(sync_in_process() == 0)));
+				 (sync_in_process() == 0)));
 
 			if (send_ok) {
 				ais_service[service]->lib_engine[header->id].lib_handler_fn(conn_info, header);
