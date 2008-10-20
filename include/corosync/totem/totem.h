@@ -50,26 +50,6 @@
 #define SEND_THREADS_MAX	16
 #define INTERFACE_MAX		2
 
-/*
- * Array location of various timeouts as
- * specified in corosync.conf.  The last enum
- * specifies the size of the timeouts array and
- * needs to remain the last item in the list.
- */
-enum {
-	TOTEM_RETRANSMITS_BEFORE_LOSS,
-	TOTEM_TOKEN,
-	TOTEM_RETRANSMIT_TOKEN,
-	TOTEM_HOLD_TOKEN,
-	TOTEM_JOIN,
-	TOTEM_CONSENSUS,
-	TOTEM_MERGE,
-	TOTEM_DOWNCHECK,
-	TOTEM_FAIL_RECV_CONST,
-
-	MAX_TOTEM_TIMEOUTS	/* Last item */
-} totem_timeout_types;
-
 struct totem_interface {
 	struct totem_ip_address bindnet;
 	struct totem_ip_address boundto;
