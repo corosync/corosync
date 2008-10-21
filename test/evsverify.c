@@ -112,7 +112,7 @@ struct evs_group groups[3] = {
 
 struct msg msg;
 
-char buffer[200000];
+unsigned char buffer[200000];
 int main (void)
 {
 	evs_handle_t handle;
@@ -121,7 +121,7 @@ int main (void)
 	int fd;
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
-	int member_list_entries = 32;
+	unsigned int member_list_entries = 32;
 	struct msg msg;
 	hash_state sha1_hash;
 	struct iovec iov[2];

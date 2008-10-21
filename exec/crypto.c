@@ -844,7 +844,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        assert ((len & 3) == 0);
     
        for (i = 0; i < len; i += 4) {
-           k = BYTE2WORD((unsigned char *)&buf[i]);
+           k = BYTE2WORD((unsigned char*)&buf[i]);
           ADDKEY(k);
           cycle(c->R);
           XORNL(nltap(c));

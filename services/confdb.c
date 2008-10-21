@@ -279,6 +279,7 @@ static int confdb_lib_exit_fn (void *conn)
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 						   confdb_notify_lib_of_new_object,
 						   confdb_notify_lib_of_destroyed_object,
+						   NULL,
 						   api->ipc_conn_partner_get (conn));
 	return (0);
 }
@@ -682,6 +683,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn, void *messag
 							confdb_notify_lib_of_key_change,
 							confdb_notify_lib_of_new_object,
 							confdb_notify_lib_of_destroyed_object,
+							NULL,
 							api->ipc_conn_partner_get (conn));
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
@@ -696,6 +698,7 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 						   confdb_notify_lib_of_new_object,
 						   confdb_notify_lib_of_destroyed_object,
+						   NULL,
 						   api->ipc_conn_partner_get (conn));
 
 	res.size = sizeof(res);

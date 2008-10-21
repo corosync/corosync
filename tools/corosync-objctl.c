@@ -553,7 +553,7 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 int main (int argc, char *argv[]) {
 	confdb_handle_t handle;
 	confdb_error_t result;
-	char c;
+	int c;
 
 	action = ACTION_READ;
 

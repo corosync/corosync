@@ -60,6 +60,11 @@ typedef int (*typedef_tpg_leave) (corosync_tpg_handle, struct corosync_tpg_group
 typedef int (*typedef_tpg_groups_mcast) (corosync_tpg_handle, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
 typedef int (*typedef_tpg_groups_send_ok) (corosync_tpg_handle, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
 
+static inline void _corosync_public_exit_error (
+	corosync_fatal_error_t err, const char *file, unsigned int line)
+{
+	_corosync_exit_error (err, file, line);
+}
 
 static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_duration = corosync_timer_add_duration,
@@ -100,7 +105,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.plugin_interface_reference = lcr_ifact_reference,
 	.plugin_interface_release = lcr_ifact_release,
 	.error_memory_failure = _corosync_out_of_memory_error,
-	.fatal_error = _corosync_exit_error
+	.fatal_error = _corosync_public_exit_error
 };
 
 void apidef_init (struct objdb_iface_ver0 *objdb) {

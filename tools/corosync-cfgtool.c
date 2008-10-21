@@ -151,8 +151,8 @@ int main (int argc, char *argv[]) {
 	int opt;
 	int service_load = 0;
 	int service_unload = 0;
-	char *service;
-	unsigned int version;
+	char *service = NULL;
+	unsigned int version = 0;
 
 	if (argc == 1) {
 		usage_do ();

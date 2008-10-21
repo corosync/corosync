@@ -276,7 +276,7 @@ static int quorum_lib_exit_fn (void *conn)
 static int send_quorum_notification(void *conn)
 {
 	int size = sizeof(struct res_lib_quorum_notification) + sizeof(unsigned int)*quorum_view_list_entries;
-	char *buf[size];
+	char buf[size];
 	struct res_lib_quorum_notification *res_lib_quorum_notification = (struct res_lib_quorum_notification *)buf;
 	struct list_head *tmp;
 	int i;

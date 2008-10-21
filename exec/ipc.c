@@ -1132,10 +1132,12 @@ int corosync_conn_send_response_no_fcc (
 	void *msg,
 	int mlen)
 {
+	int ret;
 	dont_call_flow_control = 1;
-	corosync_conn_send_response (
+	ret = corosync_conn_send_response (
 		conn, msg, mlen);
 	dont_call_flow_control = 0;
+	return ret;
 }
 
 int corosync_conn_send_response (

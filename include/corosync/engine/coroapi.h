@@ -142,6 +142,11 @@ typedef enum {
 	OBJECT_KEY_DELETED
 } object_change_type_t;
 
+typedef enum {
+        OBJDB_RELOAD_NOTIFY_START,
+        OBJDB_RELOAD_NOTIFY_END
+} objdb_reload_notify_type_t;
+
 typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
 											  unsigned int parent_object_handle,
 											  unsigned int object_handle,
@@ -163,6 +168,10 @@ typedef void (*object_notify_callback_fn_t)(unsigned int object_handle,
 											void *value, int value_len,
 											object_change_type_t type,
 											void * priv_data_pt);
+
+typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
+											void *priv_data_pt);
+
 
 #endif /* OBJECT_PARENT_HANDLE_DEFINED */
 
@@ -285,12 +294,14 @@ struct corosync_api_v1 {
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
 		object_destroy_notify_fn_t object_destroy_notify_fn,
+		object_reload_notify_fn_t object_reload_notify_fn,
 		void * priv_data_pt);
 
 	void (*object_track_stop) (
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
 		object_destroy_notify_fn_t object_destroy_notify_fn,
+		object_reload_notify_fn_t object_reload_notify_fn,
 		void * priv_data_pt);
 
 	int (*object_write_config) (char **error_string);

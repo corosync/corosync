@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <saAis.h>
-#include "../include/corosync/quorum.h"
+#include <corosync/saAis.h>
+#include <corosync/quorum.h>
 
 static quorum_handle_t handle;
 
