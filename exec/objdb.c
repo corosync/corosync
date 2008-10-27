@@ -1523,6 +1523,7 @@ static int object_reload_config(int flush, char **error_string)
 		if (modules[i]->config_reloadconfig) {
 			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
 			if (res) {
+				object_reload_notification(OBJDB_RELOAD_NOTIFY_FAILED, flush);
 				objdb_wrunlock();
 				return res;
 			}

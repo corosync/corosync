@@ -53,7 +53,8 @@ typedef enum {
 
 typedef enum {
         OBJDB_RELOAD_NOTIFY_START,
-        OBJDB_RELOAD_NOTIFY_END
+        OBJDB_RELOAD_NOTIFY_END,
+	OBJDB_RELOAD_NOTIFY_FAILED
 } objdb_reload_notify_type_t;
 
 
