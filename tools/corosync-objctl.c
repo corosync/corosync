@@ -181,11 +181,12 @@ static int print_all(void)
 static int print_help(void)
 {
 	printf("\n");
-	printf ("usage:  corosync-objctl object%ckey ...\n", SEPERATOR);
-	printf ("        corosync-objctl -c object%cchild_obj ...\n", SEPERATOR);
-	printf ("        corosync-objctl -d object%cchild_obj ...\n", SEPERATOR);
-	printf ("        corosync-objctl -w object%cchild_obj.key=value ...\n", SEPERATOR);
-	printf ("        corosync-objctl -a (print all objects)\n");
+	printf ("usage:  corosync-objctl object%ckey ...                    Print an object\n", SEPERATOR);
+	printf ("        corosync-objctl -c object%cchild_obj ...           Create Object\n", SEPERATOR);
+	printf ("        corosync-objctl -d object%cchild_obj ...           Delete object\n", SEPERATOR);
+	printf ("        corosync-objctl -w object%cchild_obj.key=value ... Create a key\n", SEPERATOR);
+	printf ("        corosync-objctl -t object%cchild_obj ...           Track changes\n", SEPERATOR);
+	printf ("        corosync-objctl -a                                Print all objects\n");
 	printf("\n");
 	return 0;
 }
