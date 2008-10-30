@@ -88,6 +88,13 @@ enum totem_configuration_type {
 };
 #endif
 
+#if !defined(TOTEM_CALLBACK_TOKEN_TYPE)
+enum totem_callback_token_type {
+	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
+	TOTEM_CALLBACK_TOKEN_SENT = 2
+};
+#endif
+
 enum corosync_lib_flow_control {
 	COROSYNC_LIB_FLOW_CONTROL_REQUIRED = 1,
 	COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED = 2
@@ -408,6 +415,14 @@ struct corosync_api_v1 {
 	char *(*totem_ifaces_print) (unsigned int nodeid);
 
 	char *(*totem_ip_print) (struct totem_ip_address *addr);
+
+
+	int (*totem_callback_token_create) (
+		void **handle_out,
+		enum totem_callback_token_type type,
+		int delete,
+		int (*callback_fn) (enum totem_callback_token_type type, void *),
+		void *data);
 
 	/*
 	 * Totem open process groups API for those service engines

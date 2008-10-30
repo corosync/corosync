@@ -41,8 +41,8 @@ ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBS = ../lib/libconfdb.a ../lib/libcfg.a
-BINARIES=corosync-objctl corosync-cfgtool corosync-keygen corosync-fplay
+LIBS = ../lib/libconfdb.a ../lib/libcfg.a ../lib/libpload.a
+BINARIES=corosync-objctl corosync-cfgtool corosync-keygen corosync-fplay corosync-pload
 APPS_SRC=$(addsuffix .c,$(BINARIES))
 EXTRA_CFLAGS = -I$(srcdir)include
 
@@ -59,6 +59,9 @@ corosync-keygen: corosync-keygen.o
 
 corosync-fplay: corosync-fplay.o
 	$(CC) $(LDFLAGS) -o $@ $<
+
+corosync-pload: corosync-pload.o
+	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
 clean:
 	rm -f *.o $(BINARIES)

@@ -150,6 +150,7 @@ enum totem_configuration_type {
 	TOTEM_CONFIGURATION_TRANSITIONAL	
 };
 
+#define TOTEM_CALLBACK_TOKEN_TYPE
 enum totem_callback_token_type {
 	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
 	TOTEM_CALLBACK_TOKEN_SENT = 2

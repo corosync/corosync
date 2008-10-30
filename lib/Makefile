@@ -42,6 +42,7 @@ all: libcpg.a libcpg.so.2.0.0 \
 	libevs.a libevs.so.2.0.0 \
 	libcfg.a libcfg.so.2.0.0 \
 	libquorum.a libquorum.so.2.0.0 \
+	libpload.a libpload.so.2.0.0 \
 	libcoroutil.a libcoroutil.so.2.0.0
 
 libcoroutil.a: util.o
@@ -68,6 +69,9 @@ libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) $(DARWIN_OPTS) util.o cfg.o -o $@
 
+libpload.so.2.0.0: util.o pload.o
+	$(CC) $(DARWIN_OPTS) util.o pload.o -o $@
+
 else
 
 libcoroutil.so.2.0.0: util.o
@@ -88,6 +92,9 @@ libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o
 libcfg.so.2.0.0: util.o cfg.o
 	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
 
+libpload.so.2.0.0: util.o pload.o
+	$(CC) -shared -Wl,-soname,libpload.so.2,-version-script=$(srcdir)$(subdir)libpload.versions util.o cfg.o -o $@
+
 endif
 
 libevs.a: util.o evs.o
@@ -104,6 +111,9 @@ libconfdb.a: util.o confdb.o sa-confdb.o
 
 libcfg.a: util.o cfg.o
 	$(AR) -rc libcfg.a util.o cfg.o
+
+libpload.a: util.o pload.o
+	$(AR) -rc libpload.a util.o pload.o
 
 clean:
 	rm -f *.o libcfg.so* libcoroutil.so* libcoroutil.a \

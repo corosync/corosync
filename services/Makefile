@@ -50,12 +50,12 @@ ifeq (${COROSYNC_COMPAT}, SOLARIS)
 endif
 
 # LCR objects
-LCR_SRC = evs.c cfg.c cpg.c confdb.c
-LCR_OBJS = evs.o cfg.o cpg.o confdb.o $(AMF_OBJS)
+LCR_SRC = evs.c cfg.c cpg.c confdb.c pload.c
+LCR_OBJS = evs.o cfg.o cpg.o confdb.o $(AMF_OBJS) pload.o
 
 override CFLAGS += -fPIC
 
-all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso
+all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso
 
 ifeq (${COROSYNC_COMPAT}, DARWIN)
 
@@ -71,6 +71,9 @@ service_confdb.lcrso: confdb.o
 service_cpg.lcrso: cpg.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load cpg.o -o $@
 
+service_pload.lcrso: pload.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load pload.o -o $@
+
 else
 
 service_evs.lcrso: evs.o
@@ -84,6 +87,9 @@ service_confdb.lcrso: confdb.o
 
 service_cpg.lcrso: cpg.o
 	$(CC) -shared -Wl,-soname,service_cpg.lcrso cpg.o -o $@
+
+service_pload.lcrso: pload.o
+	$(CC) -shared -Wl,-soname,service_pload.lcrso pload.o -o $@
 
 endif
 
