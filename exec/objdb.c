@@ -1085,7 +1085,7 @@ static int object_key_replace (
 			}
 		}
 
-		if (new_value_len <= object_key->value_len) {
+		if (new_value_len != object_key->value_len) {
 			void *replacement_value;
 			replacement_value = malloc(new_value_len);
 			if (!replacement_value)
