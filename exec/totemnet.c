@@ -137,7 +137,11 @@ struct totemnet_instance {
 
 	int totemnet_log_level_debug;
 
-	void (*totemnet_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
+	int totemnet_subsys_id;
+
+	void (*totemnet_log_printf) (int subsys, char *function, char *file,
+		int line, unsigned int level, char *format,
+		...)__attribute__((format(printf, 6, 7)));
 
 	totemnet_handle handle;
 
@@ -226,8 +230,12 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 	instance->my_memb_entries = 1;
 }
 
-#define log_printf(level, format, args...) \
-    instance->totemnet_log_printf (__FILE__, __LINE__, level, format, ##args)
+#define log_printf(level, format, args...)				\
+do {									\
+        instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
+                (char *)__FUNCTION__, __FILE__, __LINE__, level,	\
+                format, ##args);					\
+} while (0);
 
 static int authenticate_and_decrypt (
 	struct totemnet_instance *instance,
@@ -1192,6 +1200,7 @@ int totemnet_initialize (
 	instance->totemnet_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
 	instance->totemnet_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemnet_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	instance->totemnet_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemnet_log_printf = totem_config->totem_logging_configuration.log_printf;
 
 	/*

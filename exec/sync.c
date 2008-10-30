@@ -546,7 +546,7 @@ static int sync_request_send (
 	struct iovec iovec[2];
 	int name_len;
 
-	ENTER("'%s'", name);
+	ENTER();
 
 	name_len = strlen (name) + 1;
 	msg.header.size = sizeof (msg) + name_len;
@@ -608,7 +608,7 @@ int sync_request (char *name)
 {
 	assert (name != NULL);
 
-	ENTER("'%s'", name);
+	ENTER();
 
 	if (sync_processing) {
 		return -1;
@@ -618,7 +618,7 @@ int sync_request (char *name)
 		TOTEM_CALLBACK_TOKEN_SENT, 0, /* don't delete after callback */
 		sync_request_send, name);
 
-	LEAVE("");
+	LEAVE();
 
 	return 0;
 }

@@ -42,7 +42,7 @@ ifeq (${COROSYNC_COMPAT}, SOLARIS)
 endif
 
 LIBS = ../lib/libconfdb.a ../lib/libcfg.a
-BINARIES=corosync-objctl corosync-cfgtool corosync-keygen
+BINARIES=corosync-objctl corosync-cfgtool corosync-keygen corosync-fplay
 APPS_SRC=$(addsuffix .c,$(BINARIES))
 EXTRA_CFLAGS = -I$(srcdir)include
 
@@ -55,6 +55,9 @@ corosync-cfgtool: corosync-cfgtool.o $(LIBS)
 	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
 corosync-keygen: corosync-keygen.o
+	$(CC) $(LDFLAGS) -o $@ $<
+
+corosync-fplay: corosync-fplay.o
 	$(CC) $(LDFLAGS) -o $@ $<
 
 clean:

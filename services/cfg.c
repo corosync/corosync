@@ -264,8 +264,8 @@ int cfg_lib_exit_fn (void *conn)
 static int cfg_lib_init_fn (void *conn)
 {
 	
-	ENTER("");
-	LEAVE("");
+	ENTER();
+	LEAVE();
 
         return (0);
 }
@@ -281,7 +281,7 @@ static void message_handler_req_exec_cfg_ringreenable (
 		(struct req_exec_cfg_ringreenable *)message;
 	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
 
-	ENTER("");
+	ENTER();
 	api->totem_ring_reenable ();
         if (api->ipc_source_is_local(&req_exec_cfg_ringreenable->source)) {
 		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
@@ -292,7 +292,7 @@ static void message_handler_req_exec_cfg_ringreenable (
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
 	}
-	LEAVE("");
+	LEAVE();
 }
 
 
@@ -310,7 +310,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	char *totem_ip_string;
 	unsigned int i;
 
-	ENTER("");
+	ENTER();
 
 	res_lib_cfg_ringstatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
 	res_lib_cfg_ringstatusget.header.size = sizeof (struct res_lib_cfg_ringstatusget);
@@ -336,7 +336,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget));
 
-	LEAVE("");
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_ringreenable (
@@ -346,7 +346,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 	struct req_exec_cfg_ringreenable req_exec_cfg_ringreenable;
 	struct iovec iovec;
 
-	ENTER("");
+	ENTER();
 	req_exec_cfg_ringreenable.header.size =
 		sizeof (struct req_exec_cfg_ringreenable);
 	req_exec_cfg_ringreenable.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
@@ -358,7 +358,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 
 	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
 
-	LEAVE("");
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_statetrack (
@@ -367,8 +367,8 @@ static void message_handler_req_lib_cfg_statetrack (
 {
 //	struct req_lib_cfg_statetrack *req_lib_cfg_statetrack = (struct req_lib_cfg_statetrack *)message;
 
-	ENTER("");
-	LEAVE("");
+	ENTER();
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_statetrackstop (
@@ -377,8 +377,8 @@ static void message_handler_req_lib_cfg_statetrackstop (
 {
 //	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
 
-	ENTER("");
-	LEAVE("");
+	ENTER();
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_administrativestateset (
@@ -386,16 +386,16 @@ static void message_handler_req_lib_cfg_administrativestateset (
 	void *msg)
 {
 //	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
-	ENTER("");
-	LEAVE("");
+	ENTER();
+	LEAVE();
 }
 static void message_handler_req_lib_cfg_administrativestateget (
 	void *conn,
 	void *msg)
 {
 //	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
-	ENTER("");
-	LEAVE("");
+	ENTER();
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_serviceload (
@@ -406,7 +406,7 @@ static void message_handler_req_lib_cfg_serviceload (
 		(struct req_lib_cfg_serviceload *)msg;
 	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
 
-	ENTER("");
+	ENTER();
 	api->service_link_and_init (
 		api,
 		(char *)req_lib_cfg_serviceload->service_name,
@@ -419,7 +419,7 @@ static void message_handler_req_lib_cfg_serviceload (
 		conn,
 		&res_lib_cfg_serviceload,
 		sizeof (struct res_lib_cfg_serviceload));
-	LEAVE("");
+	LEAVE();
 }
 
 static void message_handler_req_lib_cfg_serviceunload (
@@ -430,7 +430,7 @@ static void message_handler_req_lib_cfg_serviceunload (
 		(struct req_lib_cfg_serviceunload *)msg;
 	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
 
-	ENTER("");
+	ENTER();
 	api->service_unlink_and_exit (
 		api,
 		(char *)req_lib_cfg_serviceunload->service_name,
@@ -442,5 +442,5 @@ static void message_handler_req_lib_cfg_serviceunload (
 		conn,
 		&res_lib_cfg_serviceunload,
 		sizeof (struct res_lib_cfg_serviceunload));
-	LEAVE("");
+	LEAVE();
 }

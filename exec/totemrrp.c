@@ -194,7 +194,11 @@ struct totemrrp_instance {
 
 	int totemrrp_log_level_debug;
 
-	void (*totemrrp_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
+	int totemrrp_subsys_id;
+
+	void (*totemrrp_log_printf) (int subsys, char *function, char *file,
+		int line, unsigned int level, char *format,
+		...)__attribute__((format(printf, 6, 7)));
 
 	totemrrp_handle handle;
 
@@ -459,8 +463,14 @@ static struct hdb_handle_database totemrrp_instance_database = {
 	.mutex		= PTHREAD_MUTEX_INITIALIZER
 };
 
-#define log_printf(level, format, args...) \
-    rrp_instance->totemrrp_log_printf (__FILE__, __LINE__, level, format, ##args)
+
+#define log_printf(level, format, args...)				\
+do {									\
+	rrp_instance->totemrrp_log_printf (				\
+		rrp_instance->totemrrp_subsys_id,			\
+		(char *)__FUNCTION__, __FILE__, __LINE__, level,	\
+		format, ##args);					\
+} while (0);
 
 /*
  * None Replication Implementation
@@ -1426,6 +1436,7 @@ int totemrrp_initialize (
 	instance->totemrrp_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
 	instance->totemrrp_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemrrp_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	instance->totemrrp_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemrrp_log_printf = totem_config->totem_logging_configuration.log_printf;
 
 	instance->interfaces = totem_config->interfaces;

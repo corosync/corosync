@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
@@ -35,13 +35,17 @@
  */
 #include <assert.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdarg.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <time.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #if defined(COROSYNC_LINUX)
 #include <linux/un.h>
 #endif
@@ -54,14 +58,31 @@
 #include <pthread.h>
 
 #include <corosync/engine/logsys.h>
-#include "wthread.h"
+
+/*
+ * These are not static so they can be read from the core file
+ */
+int *flt_data;
+
+int flt_data_size;
+
+#define SUBSYS_MAX 32
+
+#define COMBINE_BUFFER_SIZE 2048
+
+struct logsys_logger {
+	char subsys[64];
+	unsigned int priority;
+	unsigned int tags;
+	unsigned int mode;
+};
 
 /*
  * Configuration parameters for logging system
  */
 static char *logsys_name = NULL;
 
-static unsigned int logsys_mode = 0;
+static unsigned int logsys_mode = LOG_MODE_NOSUBSYS;
 
 static char *logsys_file = NULL;
 
@@ -69,35 +90,44 @@ static FILE *logsys_file_fp = NULL;
 
 static int logsys_facility = LOG_DAEMON;
 
-static int logsys_wthread_active = 0;
+static char *logsys_format = NULL;
+
+/*
+ * operating global variables
+ */
+static struct logsys_logger logsys_loggers[SUBSYS_MAX];
+
+static int wthread_active = 0;
+
+static int wthread_should_exit = 0;
 
 static pthread_mutex_t logsys_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static pthread_mutex_t logsys_new_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int records_written = 1;
 
-static struct worker_thread_group log_thread_group;
+static pthread_t logsys_thread_id;
 
-static unsigned int dropped_log_entries = 0;
+static pthread_cond_t logsys_cond;
 
-#ifndef MAX_LOGGERS
-#define MAX_LOGGERS 32
-#endif
-struct logsys_logger logsys_loggers[MAX_LOGGERS];
+static pthread_mutex_t logsys_cond_mutex;
 
-int logsys_single_id = 0;
+static pthread_spinlock_t logsys_idx_spinlock;
 
+static unsigned int log_rec_idx;
 
-struct log_entry {
-	char *file;
-	int line;
-	int priority;
-	char str[128];
-	struct log_entry *next;
-};
+static int logsys_buffer_full = 0;
 
-static struct log_entry *head;
+static char *format_buffer="[%6s] %b";
 
-static struct log_entry *tail;
+static int log_requests_pending = 0;
+
+static int log_requests_lost = 0;
+
+void *logsys_rec_end;
+
+#define FDHEAD_INDEX	(flt_data_size)
+
+#define FDTAIL_INDEX 	(flt_data_size + 1)
 
 struct log_data {
 	unsigned int syslog_pos;
@@ -105,23 +135,720 @@ struct log_data {
 	char *log_string;
 };
 
-enum logsys_config_mutex_state {
-	LOGSYS_CONFIG_MUTEX_LOCKED,
-	LOGSYS_CONFIG_MUTEX_UNLOCKED
-};
-
 static void logsys_atexit (void);
 
-#define LEVELMASK 0x07                 /* 3 bits */
-#define LOG_LEVEL(p) ((p) & LEVELMASK)
-#define LOGSYS_IDMASK (0x3f << 3)             /* 6 bits */
-#define LOG_ID(p)  (((p) & LOGSYS_IDMASK) >> 3)
+/*
+ * Helpers for _logsys_log_rec functionality
+ */
+static inline void my_memcpy_32bit (int *dest, int *src, unsigned int words)
+{
+	unsigned int word_idx;
+	for (word_idx = 0; word_idx < words; word_idx++) {
+		dest[word_idx] = src[word_idx];
+	}
+}
 
-static void logsys_buffer_flush (void);
+static inline void my_memcpy_8bit (char *dest, char *src, unsigned int bytes)
+{
+	unsigned int byte_idx;
 
+	for (byte_idx = 0; byte_idx < bytes; byte_idx++) {
+		dest[byte_idx] = src[byte_idx];
+	}
+}
+
+/*
+ * Before any write operation, a reclaim on the buffer area must be executed
+ */
+static inline void records_reclaim (unsigned int idx, unsigned int words)
+{
+	unsigned int should_reclaim;
+
+	should_reclaim = 0;
+
+	if ((idx + words) >= flt_data_size) {
+		logsys_buffer_full = 1;
+	}
+	if (logsys_buffer_full == 0) {
+		return;
+	}
+
+	pthread_spin_lock (&logsys_idx_spinlock);
+	if (flt_data[FDTAIL_INDEX] > flt_data[FDHEAD_INDEX]) {
+		if (idx + words >= flt_data[FDTAIL_INDEX]) {
+			should_reclaim = 1;
+		}
+	} else {
+		if ((idx + words) >= (flt_data[FDTAIL_INDEX] + flt_data_size)) {
+			should_reclaim = 1;
+		}
+	}
+
+	if (should_reclaim) {
+		int words_needed = 0;
+
+		words_needed = words + 1;
+		do {
+			unsigned int old_tail;
+
+			words_needed -= flt_data[flt_data[FDTAIL_INDEX]];
+			old_tail = flt_data[FDTAIL_INDEX];
+			flt_data[FDTAIL_INDEX] = 
+				(flt_data[FDTAIL_INDEX] + 
+				flt_data[flt_data[FDTAIL_INDEX]]) % (flt_data_size);
+			if (log_rec_idx == old_tail) {
+				log_requests_lost += 1;
+				log_rec_idx = flt_data[FDTAIL_INDEX];
+			}
+		} while (words_needed > 0);
+	}
+	pthread_spin_unlock (&logsys_idx_spinlock);
+}
+
+#define idx_word_step(idx)						\
+do {									\
+	if (idx > (flt_data_size - 1)) {				\
+		idx = 0;						\
+	}								\
+} while (0);
+
+#define idx_buffer_step(idx)						\
+do {									\
+	if (idx > (flt_data_size - 1)) {				\
+		idx = ((idx) % (flt_data_size));			\
+	}								\
+} while (0);
+
+/*
+ * Internal threaded logging implementation
+ */
+static inline int strcpy_cutoff (char *dest, char *src, int cutoff)
+{
+	unsigned int len;
+
+	if (cutoff == -1) {
+		strcpy (dest, src);
+		return (strlen (dest));
+	} else {
+		assert (cutoff > 0);
+		strncpy (dest, src, cutoff);
+		len = strlen (dest);
+		if (len != cutoff) {
+			memset (&dest[len], ' ', cutoff - len);
+		}
+	}
+	return (cutoff);
+}
+
+/*
+ * %s SUBSYSTEM
+ * %n FUNCTION NAME
+ * %f FILENAME
+ * %l FILELINE
+ * %p PRIORITY
+ * %t TIMESTAMP
+ * %b BUFFER
+ * 
+ * any number between % and character specify field length to pad or chop
+*/
+static void log_printf_to_logs (
+	char *subsys,
+	char *function_name,
+	char *file_name,
+	int file_line,
+	unsigned int level,
+	char *buffer)
+{
+	char output_buffer[COMBINE_BUFFER_SIZE];
+	char char_time[128];
+	char line_no[30];
+	unsigned int format_buffer_idx = 0;
+	unsigned int output_buffer_idx = 0;
+	struct timeval tv;
+	int cutoff;
+	unsigned int len;
+	
+	while (format_buffer[format_buffer_idx]) {
+		cutoff = -1;
+		if (format_buffer[format_buffer_idx] == '%') {
+			format_buffer_idx += 1;
+			if (isdigit (format_buffer[format_buffer_idx])) {
+				cutoff = atoi (&format_buffer[format_buffer_idx]);
+			}
+			while (isdigit (format_buffer[format_buffer_idx])) {
+				format_buffer_idx += 1;
+			}
+			
+			switch (format_buffer[format_buffer_idx]) {
+				case 's':
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], subsys, cutoff);
+					output_buffer_idx += len;
+					break;
+
+				case 'n':
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], function_name, cutoff);
+					output_buffer_idx += len;
+					break;
+
+				case 'l':
+					sprintf (line_no, "%d", file_line);
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], line_no, cutoff);
+					output_buffer_idx += len;
+					break;
+
+				case 'p':
+					break;
+
+				case 't':
+					gettimeofday (&tv, NULL);
+					strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S", localtime ((time_t *)&tv.tv_sec));
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], char_time, cutoff);
+					output_buffer_idx += len;
+					break;
+
+				case 'b':
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], buffer, cutoff);
+					output_buffer_idx += len;
+					break;
+			}
+			format_buffer_idx += 1;
+		} else {
+			output_buffer[output_buffer_idx++] = format_buffer[format_buffer_idx++];
+		}
+	}
+
+	output_buffer[output_buffer_idx] = '\0';
+
+	/*
+	 * Output to syslog
+	 */	
+	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG) {
+		syslog (level, "%s", output_buffer);
+	}
+
+	/*
+	 * Terminate string with \n \0
+	 */
+	if (logsys_mode & (LOG_MODE_OUTPUT_FILE|LOG_MODE_OUTPUT_STDERR)) {
+		output_buffer[output_buffer_idx++] = '\n';
+		output_buffer[output_buffer_idx] = '\0';
+	}
+
+	/*
+	 * Output to configured file
+	 */	
+	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
+		/*
+		 * Output to a file
+		 */
+		fwrite (output_buffer, strlen (output_buffer), 1, logsys_file_fp);
+		fflush (logsys_file_fp);
+	}
+
+	/*
+	 * Output to stderr
+	 */	
+	if (logsys_mode & LOG_MODE_OUTPUT_STDERR) {
+		write (STDERR_FILENO, output_buffer, strlen (output_buffer));
+	}
+}
+
+static void record_print (char *buf)
+{
+	int *buf_uint32t = (int *)buf;
+	unsigned int rec_size = buf_uint32t[0];
+	unsigned int rec_ident = buf_uint32t[1];
+	unsigned int file_line = buf_uint32t[2];
+	unsigned int level = rec_ident >> 28;
+	unsigned int i;
+	unsigned int words_processed;
+	unsigned int arg_size_idx;
+	void *arguments[64];
+	unsigned int arg_count;
+
+	arg_size_idx = 4;
+	words_processed = 4;
+	arg_count = 0;
+
+	for (i = 0; words_processed < rec_size; i++) {
+		arguments[arg_count++] = &buf_uint32t[arg_size_idx + 1];
+		arg_size_idx += buf_uint32t[arg_size_idx] + 1;
+		words_processed += buf_uint32t[arg_size_idx] + 1;
+	}
+	log_printf_to_logs (
+		(char *)arguments[0],
+		(char *)arguments[1],
+		(char *)arguments[2],
+		file_line,
+		level,
+		(char *)arguments[3]);
+}
+	
+static int record_read (char *buf, int rec_idx, int *log_msg) {
+        unsigned int rec_size;
+        unsigned int rec_ident;
+        int firstcopy, secondcopy;
+
+	rec_size = flt_data[rec_idx];
+	rec_ident = flt_data[(rec_idx + 1) % flt_data_size];
+
+	/*
+	 * Not a log record
+	 */
+	if ((rec_ident & LOGSYS_TAG_LOG) == 0) {
+		*log_msg = 0;
+        	return ((rec_idx + rec_size) % flt_data_size);
+	}
+
+	/*
+	 * A log record
+	 */
+	*log_msg = 1;
+
+        firstcopy = rec_size;
+        secondcopy = 0;
+        if (firstcopy + rec_idx > flt_data_size) {
+                firstcopy = flt_data_size - rec_idx;
+                secondcopy -= firstcopy - rec_size;
+        }
+        memcpy (&buf[0], &flt_data[rec_idx], firstcopy << 2);
+        if (secondcopy) {
+                memcpy (&buf[(firstcopy << 2)], &flt_data[0], secondcopy << 2);
+        }
+        return ((rec_idx + rec_size) % flt_data_size);
+}
+
+static inline void wthread_signal (void)
+{
+	if (wthread_active == 0) {
+		return;
+	}
+	pthread_mutex_lock (&logsys_cond_mutex);
+	pthread_cond_signal (&logsys_cond);
+	pthread_mutex_unlock (&logsys_cond_mutex);
+}
+
+static inline void wthread_wait (void)
+{
+	pthread_mutex_lock (&logsys_cond_mutex);
+	pthread_cond_wait (&logsys_cond, &logsys_cond_mutex);
+	pthread_mutex_unlock (&logsys_cond_mutex);
+}
+
+static void *logsys_worker_thread (void *data)
+{
+	int log_msg;
+	char buf[COMBINE_BUFFER_SIZE];
+
+	/*
+	 * Signal wthread_create that the initialization process may continue
+	 */
+	wthread_signal ();
+	pthread_spin_lock (&logsys_idx_spinlock);
+	log_rec_idx = flt_data[FDTAIL_INDEX];
+	pthread_spin_unlock (&logsys_idx_spinlock);
+
+	for (;;) {
+		wthread_wait ();
+		/*
+		 * Read and copy the logging record index position
+		 * It may have been updated by records_reclaim if
+		 * messages were lost or or log_rec on the first new
+		 * logging record available
+		 */
+		/*
+		 * Process any pending log messages here
+		 */
+		for (;;) {
+			pthread_spin_lock (&logsys_idx_spinlock);
+			if (log_requests_lost > 0) {
+				printf ("lost %d log requests\n", log_requests_lost);
+				log_requests_pending -= log_requests_lost;
+				log_requests_lost = 0;
+			}
+			if (log_requests_pending == 0) {
+				pthread_spin_unlock (&logsys_idx_spinlock);
+				break;
+			}
+			log_rec_idx = record_read (buf, log_rec_idx, &log_msg);
+			if (log_msg) {
+				log_requests_pending -= 1;
+			}
+			pthread_spin_unlock (&logsys_idx_spinlock);
+
+			/*
+			 * print the stored buffer
+			 */
+			if (log_msg) {
+				record_print (buf);
+			}
+		}
+
+		if (wthread_should_exit) {
+			pthread_exit (NULL);
+		}
+	}
+}
+
+static void wthread_create (void)
+{
+	int res;
+
+	if (wthread_active) {
+		return;
+	}
+
+	wthread_active = 1;
+
+	pthread_mutex_init (&logsys_cond_mutex, NULL);
+	pthread_cond_init (&logsys_cond, NULL);
+	res = pthread_create (&logsys_thread_id, NULL,
+		logsys_worker_thread, NULL);
+
+	/*
+	 * Wait for thread to be started
+	 */
+	wthread_wait ();
+}
+
+/*
+ * Internal API - exported
+ */
 void _logsys_nosubsys_set (void)
 {
 	logsys_mode |= LOG_MODE_NOSUBSYS;
+}
+
+unsigned int _logsys_subsys_create (
+	const char *subsys,
+	unsigned int priority)
+{
+	assert (subsys != NULL);
+
+	return logsys_config_subsys_set (
+		subsys,
+		LOGSYS_TAG_LOG,
+		priority);
+}
+
+int _logsys_wthread_create (void)
+{
+	if ((logsys_mode & LOG_MODE_FORK) == 0) {
+		if (logsys_name != NULL) {
+			openlog (logsys_name, LOG_CONS|LOG_PID, logsys_facility);
+		}
+		wthread_create();
+		atexit (logsys_atexit);
+	}
+	return (0);
+}
+
+int _logsys_rec_init (unsigned int size)
+{
+	/*
+	 * First record starts at zero
+	 * Last record ends at zero
+	 */
+	flt_data = malloc ((size + 2) * sizeof (unsigned int));
+	assert (flt_data);
+	flt_data_size = size;
+	assert (flt_data);
+	flt_data[FDHEAD_INDEX] = 0;
+	flt_data[FDTAIL_INDEX] = 0;
+	pthread_spin_init (&logsys_idx_spinlock, 0);
+
+	return (0);
+}
+
+
+/*
+ * u32 RECORD SIZE
+ * u32 record ident
+ * u32 arg count
+ * u32 file line
+ * u32 subsys length
+ * buffer null terminated subsys
+ * u32 filename length
+ * buffer null terminated filename
+ * u32 filename length
+ * buffer null terminated function
+ * u32 arg1 length
+ * buffer arg1
+ * ... repeats length & arg
+ */
+void _logsys_log_rec (
+	int subsys,
+	char *function_name,
+	char *file_name,
+	int file_line,
+	unsigned int rec_ident,
+	...)
+{
+	va_list ap;
+	void *buf_args[64];
+	unsigned int buf_len[64];
+	unsigned int i;
+	unsigned int idx;
+	unsigned int arguments = 0;
+	unsigned int record_reclaim_size;
+	unsigned int index_start;
+	int words_written;
+
+	record_reclaim_size = 0;
+		
+	/*
+	 * Decode VA Args
+	 */
+	va_start (ap, rec_ident);
+	arguments = 3;
+	for (;;) {
+		assert (arguments < 64);
+		buf_args[arguments] = va_arg (ap, void *);
+		if (buf_args[arguments] == LOG_REC_END) {
+			break;
+		}
+		buf_len[arguments] = va_arg (ap, int);
+		record_reclaim_size += ((buf_len[arguments] + 3) >> 2) + 1;
+		arguments++;
+	}
+	va_end (ap);
+
+	/*
+	 * Encode logsys subsystem identity, filename, and function
+	 */
+	buf_args[0] = logsys_loggers[subsys].subsys;
+	buf_len[0] = strlen (logsys_loggers[subsys].subsys) + 1;
+	buf_args[1] = file_name;
+	buf_len[1] = strlen (file_name) + 1;
+	buf_args[2] = function_name;
+	buf_len[2] = strlen (function_name) + 1;
+	for (i = 0; i < 3; i++) {
+		record_reclaim_size += ((buf_len[i] + 3) >> 2) + 1;
+	}
+
+	idx = flt_data[FDHEAD_INDEX];
+	index_start = idx;
+
+	/*
+	 * Reclaim data needed for record including 4 words for the header
+	 */
+	records_reclaim (idx, record_reclaim_size + 4);
+
+	/*
+	 * Write record size of zero and rest of header information
+	 */
+	flt_data[idx++] = 0;
+	idx_word_step(idx);
+
+	flt_data[idx++] = rec_ident;
+	idx_word_step(idx);
+
+	flt_data[idx++] = file_line;
+	idx_word_step(idx);
+
+	flt_data[idx++] = records_written;
+	idx_word_step(idx);
+	/*
+	 * Encode all of the arguments into the log message
+	 */
+	for (i = 0; i < arguments; i++) {
+		unsigned int bytes;
+		unsigned int full_words;
+		unsigned int total_words;
+
+		bytes = buf_len[i];
+		full_words = bytes >> 2;
+		total_words = (bytes + 3) >> 2;
+
+		flt_data[idx++] = total_words;
+		idx_word_step(idx);
+
+		/*
+		 * determine if this is a wrapped write or normal write
+		 */
+		if (idx + total_words < flt_data_size) {
+			/*
+			 * dont need to wrap buffer
+			 */
+			my_memcpy_32bit (&flt_data[idx], buf_args[i], full_words);
+			if (bytes % 4) {
+				my_memcpy_8bit ((char *)&flt_data[idx + full_words],
+					((char *)buf_args[i]) + (full_words << 2), bytes % 4);
+			}
+		} else {
+			/*
+			 * need to wrap buffer
+			 */
+			unsigned int first;
+			unsigned int second;
+
+			first = flt_data_size - idx;
+			if (first > full_words) {
+				first = full_words;
+			}
+			second = full_words - first;
+			my_memcpy_32bit (&flt_data[idx], (int *)buf_args[i], first);
+			my_memcpy_32bit (&flt_data[0],
+				(int *)(((unsigned char *)buf_args[i]) + (first << 2)),
+				second);
+			if (bytes % 4) {
+				my_memcpy_8bit ((char *)&flt_data[0 + second],
+					((char *)buf_args[i]) + (full_words << 2), bytes % 4);
+			}
+		}
+		idx += total_words;
+		idx_buffer_step (idx);
+	}
+	words_written = idx - index_start;
+	if (words_written < 0) {
+		words_written += flt_data_size;
+	}
+
+	/*
+	 * Commit the write of the record size now that the full record
+	 * is in the memory buffer
+	 */
+	flt_data[index_start] = words_written;
+
+	/*
+	 * If the index of the current head equals the current log_rec_idx, 
+	 * and this is not a log_printf operation, set the log_rec_idx to
+	 * the new head position and commit the new head.
+	 */
+	pthread_spin_lock (&logsys_idx_spinlock);
+	if (rec_ident & LOGSYS_TAG_LOG) {
+		log_requests_pending += 1;
+	}
+	if (log_requests_pending == 0) {
+		log_rec_idx = idx;
+	}
+	flt_data[FDHEAD_INDEX] = idx;
+	pthread_spin_unlock (&logsys_idx_spinlock);
+	records_written++;
+}
+
+void _logsys_log_printf (
+        int subsys,
+        char *function_name,
+        char *file_name,
+        int file_line,
+        unsigned int level,
+        char *format,
+        ...)
+{
+	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
+	unsigned int len;
+	va_list ap;
+
+	if (logsys_mode & LOG_MODE_NOSUBSYS) {
+		subsys = 0;
+	}
+	if (level > logsys_loggers[subsys].priority) {
+		return;
+	}
+	va_start (ap, format);
+	len = vsprintf (logsys_print_buffer, format, ap);
+	va_end (ap);
+	if (logsys_print_buffer[len - 1] == '\n') {
+		logsys_print_buffer[len - 1] = '\0';
+		len -= 1;
+	}
+
+	/*
+	 * Create a log record
+	 */
+	_logsys_log_rec (subsys,
+		function_name,
+		file_name,
+		file_line,
+		(level+1) << 28,
+		logsys_print_buffer, len + 1,
+		LOG_REC_END);
+
+	if ((logsys_mode & LOG_MODE_THREADED) == 0) {
+		/*
+		 * Output (and block) if the log mode is not threaded otherwise
+		 * expect the worker thread to output the log data once signaled
+		 */
+		log_printf_to_logs (logsys_loggers[subsys].subsys,
+			function_name, file_name, file_line, level,
+			logsys_print_buffer);
+	} else {
+		/*
+		 * Signal worker thread to display logging output
+		 */
+		wthread_signal ();
+	}
+}
+
+/*
+ * External Configuration and Initialization API
+ */
+void logsys_fork_completed (void)
+{
+	logsys_mode &= ~LOG_MODE_FORK;
+	_logsys_wthread_create ();
+}
+
+void logsys_config_mode_set (unsigned int mode)
+{
+	pthread_mutex_lock (&logsys_config_mutex);
+	logsys_mode = mode;
+	pthread_mutex_unlock (&logsys_config_mutex);
+}
+
+unsigned int logsys_config_mode_get (void)
+{
+	return logsys_mode;
+}
+
+int logsys_config_file_set (char **error_string, char *file)
+{
+	static char error_string_response[512];
+
+	if (file == NULL) {
+		return (0);
+	}
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
+		logsys_file = file;
+		if (logsys_file_fp != NULL) {
+			fclose (logsys_file_fp);
+		}
+		logsys_file_fp = fopen (file, "a+");
+		if (logsys_file_fp == 0) {
+			sprintf (error_string_response,
+				"Can't open logfile '%s' for reason (%s).\n",
+					 file, strerror (errno));
+			*error_string = error_string_response;
+			pthread_mutex_unlock (&logsys_config_mutex);
+			return (-1);
+		}
+	}
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+	return (0);
+}
+
+void logsys_format_set (char *format)
+{
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	logsys_format = format;
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+}
+
+void logsys_config_facility_set (char *name, unsigned int facility)
+{
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	logsys_name = name;
+	logsys_facility = facility;
+
+	pthread_mutex_unlock (&logsys_config_mutex);
 }
 
 int logsys_facility_id_get (const char *name)
@@ -180,7 +907,7 @@ unsigned int logsys_config_subsys_set (
 	int i;
 
 	pthread_mutex_lock (&logsys_config_mutex);
- 	for (i = 0; i < MAX_LOGGERS; i++) {
+ 	for (i = 0; i < SUBSYS_MAX; i++) {
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
 			logsys_loggers[i].tags = tags;
 			logsys_loggers[i].priority = priority;
@@ -189,8 +916,8 @@ unsigned int logsys_config_subsys_set (
 		}
 	}
 
-	if (i == MAX_LOGGERS) {
-		for (i = 0; i < MAX_LOGGERS; i++) {
+	if (i == SUBSYS_MAX) {
+		for (i = 0; i < SUBSYS_MAX; i++) {
 			if (strcmp (logsys_loggers[i].subsys, "") == 0) {
 				strncpy (logsys_loggers[i].subsys, subsys,
 					sizeof(logsys_loggers[i].subsys));
@@ -200,15 +927,10 @@ unsigned int logsys_config_subsys_set (
 			}
 		}
 	}
-	assert(i < MAX_LOGGERS);
+	assert(i < SUBSYS_MAX);
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 	return i;
-}
-
-inline int logsys_mkpri (int priority, int id)
-{
-	return (((id) << 3) | (priority));
 }
 
 int logsys_config_subsys_get (
@@ -220,7 +942,7 @@ int logsys_config_subsys_get (
 
 	pthread_mutex_lock (&logsys_config_mutex);
 
- 	for (i = 0; i < MAX_LOGGERS; i++) {
+ 	for (i = 0; i < SUBSYS_MAX; i++) {
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
 			*tags = logsys_loggers[i].tags;
 			*priority = logsys_loggers[i].priority;
@@ -234,442 +956,83 @@ int logsys_config_subsys_get (
 	return (-1);
 }
 
-static void buffered_log_printf (
-	char *file,
-	int line,
-	int priority,
-	char *format,
-	va_list ap)
+int logsys_log_rec_store (char *filename)
 {
-	struct log_entry *entry = malloc(sizeof(struct log_entry));
+	int fd;
+	int size;
 
-	entry->file = file;
-	entry->line = line;
-	entry->priority = priority;
-	entry->next = NULL;
-	if (head == NULL) {
-		head = tail = entry;
-	} else {
-		tail->next = entry;
-		tail = entry;
-	}
-	vsnprintf(entry->str, sizeof(entry->str), format, ap);
-}
-
-static void log_printf_worker_fn (void *thread_data, void *work_item)
-{
-	struct log_data *log_data = (struct log_data *)work_item;
-
-	if (logsys_wthread_active)
-		pthread_mutex_lock (&logsys_config_mutex);
-	/*
-	 * Output the log data
-	 */
-	if (logsys_mode & LOG_MODE_OUTPUT_FILE && logsys_file_fp != 0) {
-		fprintf (logsys_file_fp, "%s", log_data->log_string);
-		fflush (logsys_file_fp);
-	}
-	if (logsys_mode & LOG_MODE_OUTPUT_STDERR) {
-		fprintf (stderr, "%s", log_data->log_string);
-		fflush (stdout);
+	fd = open (filename, O_CREAT|O_RDWR, 0700);
+	if (fd == -1) {
+		return (-1);
 	}
 
-       /* release mutex here in case syslog blocks */
-       if (logsys_wthread_active)
-               pthread_mutex_unlock (&logsys_config_mutex);
-
-	if ((logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED) &&
-		(!((logsys_mode & LOG_MODE_FILTER_DEBUG_FROM_SYSLOG) &&
-		   (log_data->priority == LOG_LEVEL_DEBUG)))) {
-		syslog (log_data->priority,
-			&log_data->log_string[log_data->syslog_pos]);
+	size = write (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
+	if (size != ((flt_data_size + 2) * sizeof (unsigned int))) {
+		return (-1);
 	}
-	free (log_data->log_string);
-}
-
-static void _log_printf (
-	enum logsys_config_mutex_state config_mutex_state,
-	char *file,
-	int line,
-	int priority,
-	int id,
-	char *format,
-	va_list ap)
-{
-	char newstring[4096];
-	char log_string[4096];
-	char char_time[512];
-	char *p = NULL;
-	struct timeval tv;
-	int i = 0;
-	int len;
-	struct log_data log_data;
-	unsigned int res = 0;
-
-	assert (id < MAX_LOGGERS);
-
-	if (config_mutex_state == LOGSYS_CONFIG_MUTEX_UNLOCKED) {
-		pthread_mutex_lock (&logsys_config_mutex);
-	}
-	pthread_mutex_lock (&logsys_new_log_mutex);
-	/*
-	** Buffer before log has been configured has been called.
-	*/
-	if (logsys_mode & LOG_MODE_BUFFER_BEFORE_CONFIG) {
-		buffered_log_printf(file, line, logsys_mkpri(priority, id), format, ap);
-		pthread_mutex_unlock (&logsys_new_log_mutex);
-		if (config_mutex_state == LOGSYS_CONFIG_MUTEX_UNLOCKED) {
-			pthread_mutex_unlock (&logsys_config_mutex);
-		}
-		return;
-	}
-
-	if (((logsys_mode & LOG_MODE_OUTPUT_FILE) || (logsys_mode & LOG_MODE_OUTPUT_STDERR)) &&
-		(logsys_mode & LOG_MODE_DISPLAY_TIMESTAMP)) {
-		gettimeofday (&tv, NULL);
-		strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S",
-				  localtime ((time_t *)&tv.tv_sec));
-		i = sprintf (newstring, "%s.%06ld ", char_time, (long)tv.tv_usec);
-	}
-
-	if ((priority == LOG_LEVEL_DEBUG) || (logsys_mode & LOG_MODE_DISPLAY_FILELINE)) {
-		if (logsys_mode & LOG_MODE_SHORT_FILELINE) {
-			p = strrchr(file, '/');
-			if (p) 
-				file = ++p;
-		}
-		sprintf (&newstring[i], "[%s:%04u] %s", file, line, format);
-	} else {	
-		if (logsys_mode & LOG_MODE_NOSUBSYS) {
-			sprintf (&newstring[i], "%s", format);
-		} else {
-			sprintf (&newstring[i], "[%-5s] %s", logsys_loggers[id].subsys, format);
-		}
-	}
-	if (dropped_log_entries) {
-		/*
-		 * Get rid of \n if there is one
-		 */
-		if (newstring[strlen (newstring) - 1] == '\n') {
-			newstring[strlen (newstring) - 1] = '\0';
-		}
-		len = sprintf (log_string,
-			"%s - prior to this log entry, corosync logger dropped '%d' messages because of overflow.", newstring, dropped_log_entries + 1);
-	} else {
-		len = vsprintf (log_string, newstring, ap);
-	}
-
-	/*
-	** add line feed if not done yet
-	*/
-	if (log_string[len - 1] != '\n') {
-		log_string[len] = '\n';
-		log_string[len + 1] = '\0';
-	}
-
-	/*
-	 * Create work thread data
-	 */
-	log_data.syslog_pos = i;
-	log_data.priority = priority;
-	log_data.log_string = strdup (log_string);
-	if (log_data.log_string == NULL) {
-		goto drop_log_msg;
-	}
-	
-	if (logsys_wthread_active) {
-		res = worker_thread_group_work_add (&log_thread_group, &log_data);
-		if (res == 0) {
-			dropped_log_entries = 0;
-		} else {
-			dropped_log_entries += 1;
-		}
-	} else {
-		log_printf_worker_fn (NULL, &log_data);	
-	}
-
-	pthread_mutex_unlock (&logsys_new_log_mutex);
-	if (config_mutex_state == LOGSYS_CONFIG_MUTEX_UNLOCKED) {
-		pthread_mutex_unlock (&logsys_config_mutex);
-	}
-	return;
-
-drop_log_msg:
-	dropped_log_entries++;
-	pthread_mutex_unlock (&logsys_new_log_mutex);
-	if (config_mutex_state == LOGSYS_CONFIG_MUTEX_UNLOCKED) {
-		pthread_mutex_unlock (&logsys_config_mutex);
-	}
-}
-
-unsigned int _logsys_subsys_create (
-	const char *subsys,
-	unsigned int priority)
-{
-	assert (subsys != NULL);
-
-	return logsys_config_subsys_set (
-		subsys,
-		LOGSYS_TAG_LOG,
-		priority);
-}
-
-
-void logsys_config_mode_set (unsigned int mode)
-{
-	pthread_mutex_lock (&logsys_config_mutex);
-	logsys_mode = mode;
-	if (mode & LOG_MODE_FLUSH_AFTER_CONFIG) {
-		_logsys_wthread_create ();
-		logsys_buffer_flush ();
-	}
-	pthread_mutex_unlock (&logsys_config_mutex);
-}
-
-unsigned int logsys_config_mode_get (void)
-{
-	return logsys_mode;
-}
-
-int logsys_config_file_set (char **error_string, char *file)
-{
-	static char error_string_response[512];
-
-	if (file == NULL) {
-		return (0);
-	}
-
-	pthread_mutex_lock (&logsys_new_log_mutex);
-	pthread_mutex_lock (&logsys_config_mutex);
-
-	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
-		logsys_file = file;
-		if (logsys_file_fp != NULL) {
-			fclose (logsys_file_fp);
-		}
-		logsys_file_fp = fopen (file, "a+");
-		if (logsys_file_fp == 0) {
-			sprintf (error_string_response,
-				"Can't open logfile '%s' for reason (%s).\n",
-					 file, strerror (errno));
-			*error_string = error_string_response;
-			pthread_mutex_unlock (&logsys_config_mutex);
-			pthread_mutex_unlock (&logsys_new_log_mutex);
-			return (-1);
-		}
-	}
-
-	pthread_mutex_unlock (&logsys_config_mutex);
-	pthread_mutex_unlock (&logsys_new_log_mutex);
 	return (0);
-}
-
-void logsys_config_facility_set (char *name, unsigned int facility)
-{
-	pthread_mutex_lock (&logsys_new_log_mutex);
-	pthread_mutex_lock (&logsys_config_mutex);
-
-	logsys_name = name;
-	logsys_facility = facility;
-
-	pthread_mutex_unlock (&logsys_config_mutex);
-	pthread_mutex_unlock (&logsys_new_log_mutex);
-}
-
-void _logsys_config_priority_set (unsigned int id, unsigned int priority)
-{
-	pthread_mutex_lock (&logsys_new_log_mutex);
-
-	logsys_loggers[id].priority = priority;
-
-	pthread_mutex_unlock (&logsys_new_log_mutex);
-}
-
-static void child_cleanup (void)
-{
-	memset(&log_thread_group, 0, sizeof(log_thread_group));
-	logsys_wthread_active = 0;
-	pthread_mutex_init(&logsys_config_mutex, NULL);
-	pthread_mutex_init(&logsys_new_log_mutex, NULL);
-}
-
-int _logsys_wthread_create (void)
-{
-	worker_thread_group_init (
-		&log_thread_group,
-		1,
-		1024,
-		sizeof (struct log_data),
-		0,
-		NULL,
-		log_printf_worker_fn);
-
-	logsys_flush();
-
-	atexit (logsys_atexit);
-	pthread_atfork(NULL, NULL, child_cleanup);
-
-	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED && logsys_name != NULL) {
-		openlog (logsys_name, LOG_CONS|LOG_PID, logsys_facility);
-	}
-
-	logsys_wthread_active = 1;
-
-	return (0);
-}
-
-void logsys_log_printf (
-	char *file,
-	int line,
-	int priority,
-	char *format,
-	...)
-{
-	int id = LOG_ID(priority);
-	int level = LOG_LEVEL(priority);
-	va_list ap;
-
-	assert (id < MAX_LOGGERS);
-
-	if (LOG_LEVEL(priority) > logsys_loggers[id].priority) {
-		return;
-	}
-
-	va_start (ap, format);
-	_log_printf (LOGSYS_CONFIG_MUTEX_UNLOCKED, file, line, level, id,
-		format, ap);
-	va_end(ap);
-}
-
-static void logsys_log_printf_locked (
-	char *file,
-	int line,
-	int priority,
-	char *format,
-	...)
-{
-	int id = LOG_ID(priority);
-	int level = LOG_LEVEL(priority);
-	va_list ap;
-
-	assert (id < MAX_LOGGERS);
-
-	if (LOG_LEVEL(priority) > logsys_loggers[id].priority) {
-		return;
-	}
-
-	va_start (ap, format);
-	_log_printf (LOGSYS_CONFIG_MUTEX_LOCKED, file, line, level, id,
-		format, ap);
-	va_end(ap);
-}
-
-void _logsys_log_printf2 (
-	char *file,
-	int line,
-	int priority,
-	int id,
-	char *format, ...)
-{
-	va_list ap;
-
-	assert (id < MAX_LOGGERS);
-
-	va_start (ap, format);
-	_log_printf (LOGSYS_CONFIG_MUTEX_UNLOCKED, file, line, priority, id,
-		format, ap);
-	va_end(ap);
-}
-
-void _logsys_trace (char *file, int line, int tag, int id, char *format, ...)
-{
-	assert (id < MAX_LOGGERS);
-
-	pthread_mutex_lock (&logsys_config_mutex);
-
-	if (tag & logsys_loggers[id].tags) {
-		va_list ap;
-
-		va_start (ap, format);
-		_log_printf (LOGSYS_CONFIG_MUTEX_LOCKED, file, line,
-			LOG_LEVEL_DEBUG, id, format, ap);
-		va_end(ap);
-	}
-	pthread_mutex_unlock (&logsys_config_mutex);
 }
 
 static void logsys_atexit (void)
 {
-	if (logsys_wthread_active) {
-		worker_thread_group_wait (&log_thread_group);
-	}
-	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG_THREADED) {
-		closelog ();
+	if (wthread_active) {
+		wthread_should_exit = 1;
+		wthread_signal ();
+		pthread_join (logsys_thread_id, NULL);
 	}
 }
 
-static void logsys_buffer_flush (void)
+void logsys_atsegv (void)
 {
-	struct log_entry *entry = head;
-	struct log_entry *tmp;
-
-	if (logsys_mode & LOG_MODE_FLUSH_AFTER_CONFIG) {
-		logsys_mode &= ~LOG_MODE_FLUSH_AFTER_CONFIG;
-
-		while (entry) {
-			logsys_log_printf_locked (
-				entry->file,
-				entry->line,
-				entry->priority,
-				entry->str);
-			tmp = entry;
-			entry = entry->next;
-			free (tmp);
-		}
+	if (wthread_active) {
+		wthread_should_exit = 1;
+		wthread_signal ();
+		pthread_join (logsys_thread_id, NULL);
 	}
-
-	head = tail = NULL;
 }
 
-void logsys_flush (void)
-{
-	worker_thread_group_wait (&log_thread_group);
-}
-
-int logsys_init (char *name, int mode, int facility, int priority, char *file)
+int logsys_init (
+	char *name,
+	int mode,
+	int facility,
+	int priority,
+	char *file,
+	char *format,
+	int rec_size)
 {
 	char *errstr;
 
-	/* logsys_subsys_id will be 0 */
-	logsys_single_id = 1;
-
+	_logsys_nosubsys_set ();
+	_logsys_subsys_create (name, priority);
 	strncpy (logsys_loggers[0].subsys, name,
 		 sizeof (logsys_loggers[0].subsys));
 	logsys_config_mode_set (mode);
 	logsys_config_facility_set (name, facility);
 	logsys_config_file_set (&errstr, file);
-	_logsys_config_priority_set (0, priority);
-	if ((mode & LOG_MODE_BUFFER_BEFORE_CONFIG) == 0) {
-		_logsys_wthread_create ();
-	}
+	logsys_format_set (format);
+	_logsys_rec_init (rec_size);
+	_logsys_wthread_create ();
 	return (0);
 }
 
-int logsys_conf (char *name, int mode, int facility, int priority, char *file)
+int logsys_conf (
+	char *name,
+	int mode,
+	int facility,
+	int priority,
+	char *file)
 {
 	char *errstr;
 
+	_logsys_rec_init (100000);
 	strncpy (logsys_loggers[0].subsys, name,
 		sizeof (logsys_loggers[0].subsys));
 	logsys_config_mode_set (mode);
 	logsys_config_facility_set (name, facility);
 	logsys_config_file_set (&errstr, file);
-	_logsys_config_priority_set (0, priority);
 	return (0);
 }
 
 void logsys_exit (void)
 {
-	logsys_flush ();
 }
-

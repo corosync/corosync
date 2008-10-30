@@ -109,8 +109,6 @@ int corosync_main_config_read (
 	char *error_reason = error_string_response;
 	unsigned int object_find_handle;
 	unsigned int object_find_logsys_handle;
-	int global_debug = 0;
-
 
 	memset (main_config, 0, sizeof (struct main_config));
 
@@ -120,7 +118,7 @@ int corosync_main_config_read (
 		strlen ("logging"),
 		&object_find_handle);
 
-	main_config->logmode = LOG_MODE_FLUSH_AFTER_CONFIG;
+	main_config->logmode = LOG_MODE_THREADED | LOG_MODE_FORK;
 	if (objdb->object_find_next (
 		object_find_handle,
 		&object_service_handle) == 0) {
@@ -135,10 +133,10 @@ int corosync_main_config_read (
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "to_syslog", &value)) {
 			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_OUTPUT_SYSLOG_THREADED;
+				main_config->logmode |= LOG_MODE_OUTPUT_SYSLOG;
 			} else
 			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_OUTPUT_SYSLOG_THREADED;
+				main_config->logmode &= ~LOG_MODE_OUTPUT_SYSLOG;
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "to_stderr", &value)) {
@@ -149,18 +147,8 @@ int corosync_main_config_read (
 				main_config->logmode &= ~LOG_MODE_OUTPUT_STDERR;
 			}
 		}
-
-		if (!objdb_get_string (objdb,object_service_handle, "debug", &value)) {
-                        if (strcmp (value, "on") == 0) {
-                                global_debug = 1;
-                        } else
-                        if (strcmp (value, "off") == 0) {
-                                global_debug = 0;
-                        } else {
-                                goto parse_error;
-                        }
-                }
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
+/* todo change format string
 			if (strcmp (value, "on") == 0) {
 				main_config->logmode |= LOG_MODE_DISPLAY_TIMESTAMP;
 			} else
@@ -169,12 +157,14 @@ int corosync_main_config_read (
 			} else {
 				goto parse_error;
 			}
+*/
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
 			main_config->logfile = strdup (value);
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
+/* TODO
 			if (strcmp (value, "on") == 0) {
 				main_config->logmode |= LOG_MODE_DISPLAY_FILELINE;
 			} else
@@ -183,6 +173,7 @@ int corosync_main_config_read (
 			} else {
 				goto parse_error;
 			}
+*/
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "syslog_facility", &value)) {

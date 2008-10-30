@@ -44,7 +44,7 @@ endif
 
 LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a ../lib/libquorum.a
 LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb testquorum
+BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb logsysbench logsysrec testquorum
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
@@ -83,6 +83,12 @@ cpgbench: cpgbench.o $(LIBRARIES)
 
 testconfdb: testconfdb.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testconfdb testconfdb.o $(LIBS) -rdynamic
+
+logsysbench: logsysbench.o ../exec/liblogsys.a
+	$(CC) -o logsysbench logsysbench.o ../exec/liblogsys.a $(LDFLAGS)
+
+logsysrec: logsysrec.o ../exec/liblogsys.a
+	$(CC) -o logsysrec logsysrec.o ../exec/liblogsys.a $(LDFLAGS)
 
 logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
 	$(CC) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a $(LDFLAGS)

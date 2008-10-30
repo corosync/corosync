@@ -36,9 +36,11 @@
 #include "../exec/logsys.h"
 
 LOGSYS_DECLARE_SYSTEM ("logtest_t2",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_BUFFER_BEFORE_CONFIG,
+	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED,
 	NULL,
-	LOG_DAEMON);
+	LOG_DAEMON,
+	"[%6s] %b"
+	100000);
 
 LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
 
@@ -48,7 +50,7 @@ main(int argc, char **argv)
 	/*
 	 * fork could occur here and the file to output to could be set
 	 */
-	logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_FLUSH_AFTER_CONFIG);
+	logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED);
 
 	log_printf(LOG_NOTICE, "Hello, world!\n");
 	log_printf(LOG_DEBUG, "If you see this, the logger's busted\n");

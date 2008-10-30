@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2008 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,21 +32,31 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include <syslog.h>
-#include "../exec/logsys.h"
+#include <stdint.h>
+#include <corosync/engine/logsys.h>
 
-LOGSYS_DECLARE_SYSTEM ("logsystestsubsystems",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED, 
+LOGSYS_DECLARE_SYSTEM ("logtest_rec",
+	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED,
 	NULL,
 	LOG_DAEMON,
-	"[%8s] %b",
+	"[%6s] %b",
 	100000);
 
-extern void logsys_s1_print (void);
-extern void logsys_s2_print (void);
+LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
 
-int main (void) {
-	logsys_s1_print();
-	logsys_s2_print();
-	return (0);
+#define LOGREC_ID_CHECKPOINT_CREATE 2
+#define LOGREC_ARGS_CHECKPOINT_CREATE 2
+
+int main(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		log_printf (LOG_LEVEL_NOTICE, "This is a test of %s\n", "stringparse");
+
+		log_rec (LOGREC_ID_CHECKPOINT_CREATE, "record1", 8, "record22", 9, "record333", 10, "record444", 11, LOG_REC_END);
+	}
+	logsys_log_rec_store ("fdata");
+
+	return 0;
 }

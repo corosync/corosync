@@ -83,9 +83,11 @@
 #include "version.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_BUFFER_BEFORE_CONFIG,
+	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED | LOG_MODE_FORK,
 	NULL,
-	LOG_DAEMON);
+	LOG_DAEMON,
+	"[%5s] %b",
+	1000000);
 
 LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
@@ -145,7 +147,6 @@ static void *aisexec_exit (void *arg)
 #endif
 
 	totempg_finalize ();
-	logsys_flush ();
 
 	corosync_exit_error (AIS_DONE_EXIT);
 
@@ -171,14 +172,16 @@ static void sigquit_handler (int num)
 static void sigsegv_handler (int num)
 {
 	signal (SIGSEGV, SIG_DFL);
-	logsys_flush ();
+	logsys_atsegv();
+	logsys_log_rec_store ("/var/lib/corosync/fdata");
 	raise (SIGSEGV);
 }
 
 static void sigabrt_handler (int num)
 {
 	signal (SIGABRT, SIG_DFL);
-	logsys_flush ();
+	logsys_atsegv();
+	logsys_log_rec_store ("/var/lib/corosync/fdata");
 	raise (SIGABRT);
 }
 
@@ -494,7 +497,6 @@ int main (int argc, char **argv)
 	char *iface;
 	int res, ch;
 	int background, setprio;
- 	int totem_log_service;
 
  	/* default configuration
 	 */
@@ -506,7 +508,7 @@ int main (int argc, char **argv)
 		switch (ch) {
 			case 'f':
 				background = 0;
-				logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR|LOG_MODE_FLUSH_AFTER_CONFIG);
+				logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR|LOG_MODE_THREADED|LOG_MODE_FORK);
 				break;
 			case 'p':
 				setprio = 0;
@@ -639,6 +641,8 @@ int main (int argc, char **argv)
 	logsys_config_mode_set (main_config.logmode);
 	logsys_config_file_set (&error_string, main_config.logfile);
 
+	logsys_fork_completed ();
+
 	aisexec_uid_determine (&main_config);
 
 	aisexec_gid_determine (&main_config);
@@ -654,13 +658,14 @@ int main (int argc, char **argv)
 	aisexec_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_log_service = _logsys_subsys_create ("TOTEM", LOG_INFO);
-  	totem_config.totem_logging_configuration.log_level_security = logsys_mkpri (LOG_LEVEL_SECURITY, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_error = logsys_mkpri (LOG_LEVEL_ERROR, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_warning = logsys_mkpri (LOG_LEVEL_WARNING, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_notice = logsys_mkpri (LOG_LEVEL_NOTICE, totem_log_service);
-	totem_config.totem_logging_configuration.log_level_debug = logsys_mkpri (LOG_LEVEL_DEBUG, totem_log_service);
-	totem_config.totem_logging_configuration.log_printf = logsys_log_printf;
+	totem_config.totem_logging_configuration.log_subsys_id =
+		_logsys_subsys_create ("TOTEM", LOG_INFO);
+  	totem_config.totem_logging_configuration.log_level_security = LOG_LEVEL_SECURITY;
+	totem_config.totem_logging_configuration.log_level_error = LOG_LEVEL_ERROR;
+	totem_config.totem_logging_configuration.log_level_warning = LOG_LEVEL_WARNING;
+	totem_config.totem_logging_configuration.log_level_notice = LOG_LEVEL_NOTICE;
+	totem_config.totem_logging_configuration.log_level_debug = LOG_LEVEL_DEBUG;
+	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster

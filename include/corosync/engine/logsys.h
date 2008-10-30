@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
@@ -41,21 +41,14 @@
 #include <assert.h>
 
 /*
- * MODE_OUTPUT_SYSLOG_* modes are mutually exclusive
+ * All of the LOG_MODE's can be ORed together for combined behavior
  */
 #define LOG_MODE_OUTPUT_FILE		(1<<0)
 #define LOG_MODE_OUTPUT_STDERR		(1<<1)
-#define LOG_MODE_OUTPUT_SYSLOG_THREADED	(1<<2)
-#define LOG_MODE_OUTPUT_SYSLOG_LOSSY	(1<<3)
-#define LOG_MODE_OUTPUT_SYSLOG_BLOCKING	(1<<4)
-#define LOG_MODE_DISPLAY_PRIORITY	(1<<5)
-#define LOG_MODE_DISPLAY_FILELINE	(1<<6)
-#define LOG_MODE_DISPLAY_TIMESTAMP	(1<<7)
-#define LOG_MODE_BUFFER_BEFORE_CONFIG	(1<<8)
-#define LOG_MODE_FLUSH_AFTER_CONFIG	(1<<9)
-#define LOG_MODE_SHORT_FILELINE		(1<<10)
-#define LOG_MODE_NOSUBSYS		(1<<11)
-#define LOG_MODE_FILTER_DEBUG_FROM_SYSLOG	(1<<12)
+#define LOG_MODE_OUTPUT_SYSLOG		(1<<3)
+#define LOG_MODE_NOSUBSYS		(1<<4)
+#define LOG_MODE_FORK			(1<<5)
+#define LOG_MODE_THREADED		(1<<6)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
@@ -71,37 +64,23 @@
 #define LOG_LEVEL_DEBUG			LOG_DEBUG
 
 /*
-** Log tags, used by _logsys_trace macros, uses 32 bits => 32 different tags
-*/	
-#define LOGSYS_TAG_LOG	    		(1<<0)
-#define LOGSYS_TAG_ENTER		(1<<1)
-#define LOGSYS_TAG_LEAVE		(1<<2)
-#define LOGSYS_TAG_TRACE1		(1<<3)
-#define LOGSYS_TAG_TRACE2		(1<<4)
-#define LOGSYS_TAG_TRACE3		(1<<5)
-#define LOGSYS_TAG_TRACE4		(1<<6)
-#define LOGSYS_TAG_TRACE5		(1<<7)
-#define LOGSYS_TAG_TRACE6		(1<<8)
-#define LOGSYS_TAG_TRACE7		(1<<9)
-#define LOGSYS_TAG_TRACE8		(1<<10)
+ * The tag masks are all mutually exclusive
+ */	
+#define LOGSYS_TAG_LOG			(0xff<<28)
+#define LOGSYS_TAG_ENTER		(1<<27)
+#define LOGSYS_TAG_LEAVE		(1<<26)
+#define LOGSYS_TAG_TRACE1		(1<<25)
+#define LOGSYS_TAG_TRACE2		(1<<24)
+#define LOGSYS_TAG_TRACE3		(1<<23)
+#define LOGSYS_TAG_TRACE4		(1<<22)
+#define LOGSYS_TAG_TRACE5		(1<<21)
+#define LOGSYS_TAG_TRACE6		(1<<20)
+#define LOGSYS_TAG_TRACE7		(1<<19)
+#define LOGSYS_TAG_TRACE8		(1<<18)
 
 /*
  * External API
  */
-
-struct logsys_logger {
-	char subsys[6];
-	unsigned int priority;
-	unsigned int tags;
-	unsigned int mode;
-};
-
-extern struct logsys_logger logsys_loggers[];
-
-extern int logsys_single_id;
-
-extern inline int logsys_mkpri (int priority, int id);
-
 extern void logsys_config_mode_set (
 	unsigned int mode);
 
@@ -114,6 +93,9 @@ extern int logsys_config_file_set (
 extern void logsys_config_facility_set (
 	char *name,
 	unsigned int facility);
+
+extern void logsys_format_set (
+	char *format);
 
 extern unsigned int logsys_config_subsys_set (
 	const char *subsys,
@@ -137,33 +119,54 @@ extern int logsys_priority_id_get (
 extern const char *logsys_priority_name_get (
 	unsigned int priority);
 
+extern void logsys_fork_completed (void);
+
 extern void logsys_flush (void);
 
 extern void logsys_atsegv (void);
 
+extern int logsys_log_rec_store (char *filename);
+
 /*
  * Internal APIs that must be globally exported
  */
-extern unsigned int _logsys_subsys_create (const char *ident,
+extern unsigned int _logsys_subsys_create (
+	const char *ident,
 	unsigned int priority);
 
 extern void _logsys_nosubsys_set (void);
 
+extern int _logsys_rec_init (unsigned int size);
+
+extern void _logsys_log_printf (
+	int subsys,
+	char *function_name,
+	char *file_name,
+	int file_line,
+	unsigned int level,
+	char *format,
+	...) __attribute__((format(printf, 6, 7)));
+
+extern void _logsys_log_rec (
+	int subsys,
+	char *function_name,
+	char *file_name,
+	int file_line,
+	unsigned int rec_ident,
+	...);
+
 extern int _logsys_wthread_create (void);
 
-extern void logsys_log_printf (char *file, int line, int priority,
-	char *format, ...) __attribute__((format(printf, 4, 5)));
-
-extern void _logsys_log_printf2 (char *file, int line, int priority,
-	int id, char *format, ...) __attribute__((format(printf, 5, 6)));
-
-extern void _logsys_trace (char *file, int line, int tag, int id,
-	char *format, ...) __attribute__((format(printf, 5, 6)));
-
+static unsigned int logsys_subsys_id __attribute__((unused)) = -1;
+									
 /*
  * External definitions
  */
-#define LOGSYS_DECLARE_SYSTEM(name,mode,file,facility)			\
+extern void *logsys_rec_end;
+
+#define LOG_REC_END (&logsys_rec_end)
+
+#define LOGSYS_DECLARE_SYSTEM(name,mode,file,facility,format,rec_size)	\
 __attribute__ ((constructor)) static void logsys_system_init (void)	\
 {									\
 	char *error_string;						\
@@ -171,12 +174,10 @@ __attribute__ ((constructor)) static void logsys_system_init (void)	\
 	logsys_config_mode_set (mode);					\
 	logsys_config_file_set (&error_string, (file));			\
 	logsys_config_facility_set (name, (facility));			\
-        if (((mode) & LOG_MODE_BUFFER_BEFORE_CONFIG) == 0) {		\
-		_logsys_wthread_create ();				\
-	}								\
+	logsys_format_set (format);					\
+	_logsys_rec_init (rec_size);					\
+	_logsys_wthread_create();					\
 }
-
-static unsigned int logsys_subsys_id __attribute__((unused)) = -1;	\
 
 #define LOGSYS_DECLARE_NOSUBSYS(priority)				\
 __attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
@@ -206,161 +207,88 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 			_logsys_subsys_create ((subsys), (priority));	\
 }
 
-#define log_printf(lvl, format, args...) do {				\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if ((lvl) <= logsys_loggers[logsys_subsys_id].priority)	{	\
-		_logsys_log_printf2 (__FILE__, __LINE__, lvl,		\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+#define log_rec(rec_ident, args...)					\
+do {									\
+	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, rec_ident, ##args);		\
 } while(0)
 
-#define dprintf(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_log_printf2 (__FILE__, __LINE__, LOG_DEBUG,	\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+#define log_printf(lvl, format, args...)				\
+ do {									\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__, __LINE__, lvl, format, ##args);		\
 } while(0)
 
-#define ENTER_VOID() do {						\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
-			logsys_subsys_id, ">%s\n", __FUNCTION__);	\
-	}								\
+#define ENTER() do {							\
+	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_ENTER, LOG_REC_END);	\
 } while(0)
 
-#define ENTER(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_ENTER,	\
-			logsys_subsys_id, ">%s: " format, __FUNCTION__,	\
-			##args);					\
-	}								\
-} while(0)
-
-#define LEAVE_VOID() do {						\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
-			logsys_subsys_id, "<%s\n", __FUNCTION__);	\
-	}								\
-} while(0)
-
-#define LEAVE(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_LEAVE,	\
-			logsys_subsys_id, "<%s: " format,		\
-			__FUNCTION__, ##args);				\
-	}								\
+#define LEAVE() do {							\
+	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_LEAVE, LOG_REC_END);	\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE1,	\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE1, format, ##args);\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE2,	\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE2, format, ##args);\
 } while(0)
 
-#define TRACE3(format, args...) do { \
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE3,	\
-			logsys_subsys_id, (format), ##args);		\
-    }									\
+#define TRACE3(format, args...) do {					\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE3, format, ##args);\
 } while(0)
 
-#define TRACE4(format, args...) do { \
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE4,	\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+#define TRACE4(format, args...) do {					\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE4, format, ##args);\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE5,	\
-		logsys_subsys_id, (format), ##args);			\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE5, format, ##args);\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE6,	\
-			logsys_subsys_id, (format), ##args);		\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE6, format, ##args);\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-		_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE7,	\
-			 logsys_subsys_id, (format), ##args);		\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE7, format, ##args);\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	if (LOG_LEVEL_DEBUG <= logsys_loggers[logsys_subsys_id].priority) { \
-	_logsys_trace (__FILE__, __LINE__, LOGSYS_TAG_TRACE8,		\
-	 logsys_subsys_id, (format), ##args);				\
-	}								\
+	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+		__FILE__,  __LINE__, LOGSYS_TAG_TRACE8, format, ##args);\
 } while(0)
 
-extern void _logsys_config_priority_set (unsigned int id, unsigned int priority);
+/*
+ * For one-time programmatic initialization and configuration of logsys
+ * instead of using the DECLARE macros.  These APIs do not allow subsystems
+ */
+int logsys_init (
+	char *name,
+	int mode,
+	int facility,
+	int priority,
+	char *file,
+	char *format,
+	int rec_size);
 
-#define logsys_config_priority_set(priority) do {		        \
-	if (logsys_single_id)						\
-		logsys_subsys_id = 0;					\
-	assert (logsys_subsys_id != -1);				\
-	_logsys_config_priority_set (logsys_subsys_id, priority);       \
-} while(0)
+int logsys_conf (
+	char *name,
+	int mode,
+	int facility,
+	int priority,
+	char *file);
 
-/* simple, function-based api */
-
-int logsys_init (char *name, int mode, int facility, int priority, char *file);
-int logsys_conf (char *name, int mode, int facility, int priority, char *file);
 void logsys_exit (void);
 
 #endif /* LOGSYS_H_DEFINED */

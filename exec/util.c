@@ -87,7 +87,6 @@ void _corosync_exit_error (
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "
 		"with status %d at %s:%u.\n", err, file, line);
-	logsys_flush();
 	exit (EXIT_FAILURE);
 }
 

@@ -429,7 +429,11 @@ struct totemsrp_instance {
 
 	int totemsrp_log_level_debug;
 
-	void (*totemsrp_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
+	int totemsrp_subsys_id;
+
+	void (*totemsrp_log_printf) (int subsys, char *function, char *file,
+		int line, unsigned int level, char *format,
+		...)__attribute__((format(printf, 6, 7)));;
 
 	enum memb_state memb_state;
 
@@ -607,8 +611,12 @@ struct message_handlers totemsrp_message_handlers = {
 
 static char *rundir = NULL;
 
-#define log_printf(level, format, args...) \
-    instance->totemsrp_log_printf (__FILE__, __LINE__, level, format, ##args)
+#define log_printf(level, format, args...)				\
+do {									\
+	instance->totemsrp_log_printf (instance->totemsrp_subsys_id,	\
+		(char *)__FUNCTION__, __FILE__, __LINE__, level,	\
+		format, ##args);					\
+} while (0);
 
 void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
@@ -709,6 +717,7 @@ int totemsrp_initialize (
 	instance->totemsrp_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
 	instance->totemsrp_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemsrp_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	instance->totemsrp_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemsrp_log_printf = totem_config->totem_logging_configuration.log_printf;
 
 	/*

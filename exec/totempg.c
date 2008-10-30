@@ -153,7 +153,10 @@ static int totempg_log_level_error;
 static int totempg_log_level_warning;
 static int totempg_log_level_notice;
 static int totempg_log_level_debug;
-static void (*totempg_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5))) = NULL;
+static int totempg_subsys_id;
+static void (*totempg_log_printf) (int subsys_id, char *function, char *file,
+        int line, unsigned int level, char *format,
+        ...) __attribute__((format(printf, 6, 7)));
 
 struct totem_config *totempg_totem_config;
 
@@ -225,8 +228,11 @@ static pthread_mutex_t callback_token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define log_printf(level, format, args...) \
-    totempg_log_printf (__FILE__, __LINE__, level, format, ##args)
+#define log_printf(level, format, args...)				\
+do {									\
+        totempg_log_printf (totempg_subsys_id, (char *)__FUNCTION__,	\
+		__FILE__, __LINE__, level, format, ##args);		\
+} while (0);
 
 static struct assembly *assembly_ref (unsigned int nodeid)
 {
@@ -686,6 +692,7 @@ int totempg_initialize (
 	totempg_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	totempg_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
 	totempg_log_printf = totem_config->totem_logging_configuration.log_printf;
+	totempg_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 
 	fragmentation_data = malloc (TOTEMPG_PACKET_SIZE);
 	if (fragmentation_data == 0) {
