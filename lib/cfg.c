@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -115,7 +115,7 @@ corosync_cfg_initialize (
 	cfg_instance->response_fd = -1;
 
 	cfg_instance->dispatch_fd = -1;
-	
+
 	error = saServiceConnect (&cfg_instance->response_fd,
 		&cfg_instance->dispatch_fd, CFG_SERVICE);
 	if (error != SA_AIS_OK) {
@@ -172,6 +172,7 @@ corosync_cfg_dispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct cfg_instance *cfg_instance;
+	struct res_lib_cfg_testshutdown *res_lib_cfg_testshutdown;
 #ifdef COMPILE_OUT
 	struct res_lib_corosync_healthcheckcallback *res_lib_corosync_healthcheckcallback;
 	struct res_lib_corosync_readinessstatesetcallback *res_lib_corosync_readinessstatesetcallback;
@@ -267,9 +268,14 @@ corosync_cfg_dispatch (
 		 * Dispatch incoming response
 		 */
 		switch (dispatch_data.header.id) {
-
+		case MESSAGE_RES_CFG_TESTSHUTDOWN:
+			if (callbacks.corosyncCfgShutdownCallback) {
+				res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)&dispatch_data;
+				callbacks.corosyncCfgShutdownCallback(cfg_handle, res_lib_cfg_testshutdown->flags);
+			}
+			break;
 		default:
-			error = SA_AIS_ERR_LIBRARY;	
+			error = SA_AIS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
@@ -416,10 +422,10 @@ error_free_contents:
 	}
 
 	free (*status);
-	
+
 error_free_interface_names:
 	free (*interface_names);
-	
+
 no_error:
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
@@ -673,4 +679,106 @@ corosync_cfg_admin_state_set (
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == SA_AIS_OK ? res_lib_cfg_administrativestateset.header.error : error);
+}
+
+SaAisErrorT
+corosync_cfg_kill_node (
+	corosync_cfg_handle_t cfg_handle,
+	unsigned int nodeid,
+	char *reason)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_killnode req_lib_cfg_killnode;
+	struct res_lib_cfg_killnode res_lib_cfg_killnode;
+	SaAisErrorT error;
+
+	if (strlen(reason) >= SA_MAX_NAME_LENGTH)
+		return SA_AIS_ERR_NAME_TOO_LONG;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_killnode.header.id = MESSAGE_REQ_CFG_KILLNODE;
+	req_lib_cfg_killnode.header.size = sizeof (struct req_lib_cfg_killnode);
+	req_lib_cfg_killnode.nodeid = nodeid;
+	strcpy((char *)req_lib_cfg_killnode.reason.value, reason);
+	req_lib_cfg_killnode.reason.length = strlen(reason)+1;
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_killnode,
+		sizeof (struct req_lib_cfg_killnode),
+		&res_lib_cfg_killnode,
+		sizeof (struct res_lib_cfg_killnode));
+
+	error = res_lib_cfg_killnode.header.error;
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+        return (error == SA_AIS_OK ? res_lib_cfg_killnode.header.error : error);
+}
+
+SaAisErrorT
+corosync_cfg_try_shutdown (
+	corosync_cfg_handle_t cfg_handle,
+	CorosyncCfgShutdownFlagsT flags)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_tryshutdown req_lib_cfg_tryshutdown;
+	struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_tryshutdown.header.id = MESSAGE_REQ_CFG_TRYSHUTDOWN;
+	req_lib_cfg_tryshutdown.header.size = sizeof (struct req_lib_cfg_tryshutdown);
+	req_lib_cfg_tryshutdown.flags = flags;
+
+	error = saSendReceiveReply (cfg_instance->response_fd,
+		&req_lib_cfg_tryshutdown,
+		sizeof (struct req_lib_cfg_tryshutdown),
+		&res_lib_cfg_tryshutdown,
+		sizeof (struct res_lib_cfg_tryshutdown));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	saHandleInstancePut (&cfg_hdb, cfg_handle);
+
+        return (error == SA_AIS_OK ? res_lib_cfg_tryshutdown.header.error : error);
+}
+
+SaAisErrorT
+corosync_cfg_replyto_shutdown (
+	corosync_cfg_handle_t cfg_handle,
+	CorosyncCfgShutdownReplyFlagsT response)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_replytoshutdown req_lib_cfg_replytoshutdown;
+	struct iovec iov;
+	SaAisErrorT error;
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != SA_AIS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_replytoshutdown.header.id = MESSAGE_REQ_CFG_REPLYTOSHUTDOWN;
+	req_lib_cfg_replytoshutdown.header.size = sizeof (struct req_lib_cfg_replytoshutdown);
+	req_lib_cfg_replytoshutdown.response = response;
+
+	iov.iov_base = &req_lib_cfg_replytoshutdown;
+	iov.iov_len = sizeof (struct req_lib_cfg_replytoshutdown);
+	error = saSendMsgRetry (cfg_instance->response_fd,
+				&iov, 1);
+
+        return (error);
 }

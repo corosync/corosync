@@ -82,6 +82,22 @@ typedef enum {
 	COROSYNC_CFG_STATETYPE_PRESENCE = 4
 } CorosyncCfgStateTypeT;
 
+/* Shutdown types.
+   REQUEST is the normal shutdown. other daemons will be consulted
+   REGARDLESS will tell other daemons but ignore their opinions
+   IMMEDIATE will shut down straight away (but still tell other nodes)
+*/
+typedef enum {
+	COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST = 0,
+	COROSYNC_CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
+	COROSYNC_CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
+} CorosyncCfgShutdownFlagsT;
+
+typedef enum {
+	COROSYNC_CFG_SHUTDOWN_FLAG_NO = 0,
+	COROSYNC_CFG_SHUTDOWN_FLAG_YES = 1,
+} CorosyncCfgShutdownReplyFlagsT;
+
 typedef struct {
 	SaNameT name;
 	CorosyncCfgStateTypeT stateType;
@@ -97,9 +113,15 @@ typedef void (*CorosyncCfgStateTrackCallbackT) (
 	CorosyncCfgStateNotificationBufferT *notificationBuffer,
 	SaAisErrorT error);
 
+typedef void (*CorosyncCfgShutdownCallbackT) (
+	corosync_cfg_handle_t cfg_handle,
+	CorosyncCfgShutdownFlagsT flags);
+
 typedef struct {
 	CorosyncCfgStateTrackCallbackT
 		corosyncCfgStateTrackCallback;
+	CorosyncCfgShutdownCallbackT
+		corosyncCfgShutdownCallback;
 } CorosyncCfgCallbacksT;
 
 /*
@@ -162,6 +184,23 @@ corosync_cfg_administrative_state_set (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgAdministrativeTargetT administrativeTarget,
 	CorosyncCfgAdministrativeStateT administrativeState);
+
+SaAisErrorT
+corosync_cfg_kill_node (
+	corosync_cfg_handle_t cfg_handle,
+	unsigned int nodeid,
+	char *reason);
+
+SaAisErrorT
+corosync_cfg_try_shutdown (
+	corosync_cfg_handle_t cfg_handle,
+	CorosyncCfgShutdownFlagsT flags);
+
+
+SaAisErrorT
+corosync_cfg_replyto_shutdown (
+	corosync_cfg_handle_t cfg_handle,
+	CorosyncCfgShutdownReplyFlagsT flags);
 
 SaAisErrorT
 corosync_cfg_state_track (

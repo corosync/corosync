@@ -47,7 +47,10 @@ enum req_lib_cfg_types {
         MESSAGE_REQ_CFG_ADMINISTRATIVESTATESET = 4,
         MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET = 5,
         MESSAGE_REQ_CFG_SERVICELOAD = 6,
-        MESSAGE_REQ_CFG_SERVICEUNLOAD = 7
+        MESSAGE_REQ_CFG_SERVICEUNLOAD = 7,
+	MESSAGE_REQ_CFG_KILLNODE = 8,
+	MESSAGE_REQ_CFG_TRYSHUTDOWN = 9,
+	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 10
 };
 
 enum res_lib_cfg_types {
@@ -58,7 +61,10 @@ enum res_lib_cfg_types {
         MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 4,
         MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 5,
         MESSAGE_RES_CFG_SERVICELOAD = 6,
-        MESSAGE_RES_CFG_SERVICEUNLOAD = 7
+        MESSAGE_RES_CFG_SERVICEUNLOAD = 7,
+	MESSAGE_RES_CFG_KILLNODE = 8,
+	MESSAGE_RES_CFG_TRYSHUTDOWN = 9,
+	MESSAGE_RES_CFG_TESTSHUTDOWN = 10
 };
 
 struct req_lib_cfg_statetrack {
@@ -140,6 +146,35 @@ struct res_lib_cfg_serviceunload {
 	mar_res_header_t header __attribute__((aligned(8)));
 };
 
+struct req_lib_cfg_killnode {
+	mar_req_header_t header __attribute__((aligned(8)));
+	unsigned int nodeid __attribute__((aligned(8)));
+	SaNameT reason __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_killnode {
+	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_tryshutdown {
+	mar_req_header_t header __attribute__((aligned(8)));
+	unsigned int flags;
+};
+
+struct res_lib_cfg_tryshutdown {
+	mar_res_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_replytoshutdown {
+	mar_res_header_t header __attribute__((aligned(8)));
+	unsigned int response;
+};
+
+struct res_lib_cfg_testshutdown {
+	mar_res_header_t header __attribute__((aligned(8)));
+	unsigned int flags;
+};
+
 typedef enum {
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
@@ -152,5 +187,12 @@ typedef enum {
 	AIS_AMF_ADMINISTRATIVESTATE_LOCKED = 1,
 	AIS_AMF_ADMINISTRATIVESTATE_STOPPING = 2
 } corosyncAdministrativeState;
+
+typedef enum {
+	CFG_SHUTDOWN_FLAG_REQUEST = 0,
+	CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
+	CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
+} CorosyncShutdownFlagsT;
+
 
 #endif /* AIS_IPC_CFG_H_DEFINED */

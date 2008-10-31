@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -134,9 +135,83 @@ void service_unload_do (char *service, unsigned int version)
 	corosync_cfg_finalize (handle);
 }
 
+void shutdown_callback (corosync_cfg_handle_t cfg_handle, CorosyncCfgShutdownFlagsT flags)
+{
+	printf("shutdown callback called, flags = %d\n",flags);
+
+	corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
+}
+
+void *shutdown_dispatch_thread(void *arg)
+{
+	int res = SA_AIS_OK;
+	corosync_cfg_handle_t *handle = arg;
+
+	while (res == SA_AIS_OK) {
+		res = corosync_cfg_dispatch(*handle, SA_DISPATCH_ALL);
+		if (res != SA_AIS_OK)
+			printf ("Could not dispatch cfg messages: %d\n", res);
+	}
+	return NULL;
+}
+
+void shutdown_do()
+{
+	SaAisErrorT result;
+	corosync_cfg_handle_t handle;
+	CorosyncCfgCallbacksT callbacks;
+	CorosyncCfgStateNotificationT notificationBuffer;
+	pthread_t dispatch_thread;
+
+	printf ("Shutting down corosync\n");
+	callbacks.corosyncCfgShutdownCallback = shutdown_callback;
+
+	result = corosync_cfg_initialize (&handle, &callbacks);
+	if (result != SA_AIS_OK) {
+		printf ("Could not initialize corosync configuration API error %d\n", result);
+		exit (1);
+	}
+
+	pthread_create(&dispatch_thread, NULL, shutdown_dispatch_thread, &handle);
+
+	result = corosync_cfg_state_track (handle,
+					   0,
+					   &notificationBuffer);
+	if (result != SA_AIS_OK) {
+		printf ("Could not start corosync cfg tracking error %d\n", result);
+		exit (1);
+	}
+
+	result = corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
+	if (result != SA_AIS_OK) {
+		printf ("Could not shutdown (error = %d)\n", result);
+	}
+
+	corosync_cfg_finalize (handle);
+}
+
+void killnode_do(unsigned int nodeid)
+{
+	SaAisErrorT result;
+	corosync_cfg_handle_t handle;
+
+	printf ("Killing node %d\n", nodeid);
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != SA_AIS_OK) {
+		printf ("Could not initialize corosync configuration API error %d\n", result);
+		exit (1);
+	}
+	result = corosync_cfg_kill_node (handle, nodeid, "Killed by corosync-cfgtool");
+	if (result != SA_AIS_OK) {
+		printf ("Could not kill node (error = %d)\n", result);
+	}
+	corosync_cfg_finalize (handle);
+}
+
+
 void usage_do (void)
 {
-	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version]\n\n");
+	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version] [-k] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
@@ -144,12 +219,15 @@ void usage_do (void)
 	printf ("\t\tre-enable redundant ring operation.\n");
 	printf ("\t-l\tLoad a service identified by name.\n");
 	printf ("\t-u\tUnload a service identified by name.\n");
+	printf ("\t-k\tKill a node identified by node id.\n");
+	printf ("\t-h\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "srl:u:v:";
+	const char *options = "srl:u:v:k:h";
 	int opt;
 	int service_load = 0;
+	unsigned int nodeid;
 	int service_unload = 0;
 	char *service = NULL;
 	unsigned int version = 0;
@@ -173,17 +251,25 @@ int main (int argc, char *argv[]) {
 			service_unload = 1;
 			service = strdup (optarg);
 			break;
+		case 'k':
+			nodeid = atoi (optarg);
+			killnode_do(nodeid);
+			break;
+		case 'h':
+			shutdown_do();
+			break;
 		case 'v':
 			version = atoi (optarg);
+			break;
 		}
 	}
 
 	if (service_load) {
 		service_load_do (service, version);
-	} else 
+	} else
 	if (service_unload) {
 		service_unload_do (service, version);
 	}
-		
+
 	return (0);
 }
