@@ -43,7 +43,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <openais/saAis.h>
+#include <corosync/saAis.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/ais_util.h>
