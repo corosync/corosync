@@ -115,6 +115,13 @@ clean:
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
 	rm -rf $(builddir)doc/api
 
+lint:
+	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,lint));
+	(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,lint));
+	(cd $(builddir)lcr; echo ==== `pwd` ===; $(call sub_make,lcr,lint));
+	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,lint));
+	(cd $(builddir)tools; echo ==== `pwd` ===; $(call sub_make,tools,lint));
+
 COROSYNC_LIBS	= evs cpg cfg coroutil confdb
 
 COROSYNC_HEADERS	= cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h \

@@ -137,6 +137,9 @@ liblogsys.so.2.0.0: $(LIBLOGSYS_OBJS)
 
 endif
 
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
 clean:
 	rm -f corosync $(OBJS) *.o *.lcrso libtotem_pg.so* libtotem_pg.a gmon.out 
 	rm -f *.da *.bb *.bbg liblogsys.so* liblogsys.a

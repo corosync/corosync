@@ -96,6 +96,9 @@ endif
 clean:
 	rm -f *.o *.lcrso 
 
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
 depend:
 	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(EXEC_SRC) $(TOTEM_SRC) $(LOGSYS_SRC) $(LCR_SRC) > /dev/null 2>&1
 

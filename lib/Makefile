@@ -121,6 +121,9 @@ clean:
 		libquorum.so* libquorum.a \
 		libconfdb.a libconfdb.a \ *.da *.bb *.bbg
  
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
 # -fPIC rules required for all libraries
 %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<

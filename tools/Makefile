@@ -66,6 +66,9 @@ corosync-pload: corosync-pload.o
 clean:
 	rm -f *.o $(BINARIES)
 
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
 %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
 

@@ -84,3 +84,6 @@ clean:
 	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg \
 	test_static
 
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
