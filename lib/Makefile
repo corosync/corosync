@@ -116,10 +116,7 @@ libpload.a: util.o pload.o
 	$(AR) -rc libpload.a util.o pload.o
 
 clean:
-	rm -f *.o libcfg.so* libcoroutil.so* libcoroutil.a \
-		libevs.so* libevs.a libcpg.so* libcpg.a libcfg.a libconfdb.so* \
-		libquorum.so* libquorum.a \
-		libconfdb.a libconfdb.a \ *.da *.bb *.bbg
+	rm -f *.o *.a *.so* *.da *.bb *.bbg
  
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
