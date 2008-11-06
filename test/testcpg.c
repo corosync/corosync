@@ -45,7 +45,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 static int quit = 0;
@@ -206,25 +206,25 @@ int main (int argc, char *argv[]) {
 	}
 
 	result = cpg_initialize (&handle, &callbacks);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
 	result = cpg_local_get (handle, &nodeid);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not get local node id\n");
 		exit (1);
 	}
 
 	printf ("Local node id is %x\n", nodeid);
 	result = cpg_join(handle, &group_name);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
 
 	cpg_groups_get(handle, &num_groups);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not get list of groups, error %d\n", result);
 		exit (1);
 	}
@@ -255,7 +255,7 @@ int main (int argc, char *argv[]) {
 			}
 		}
 		if (FD_ISSET (select_fd, &read_fds)) {
-			if (cpg_dispatch (handle, CPG_DISPATCH_ALL) != SA_AIS_OK)
+			if (cpg_dispatch (handle, CS_DISPATCH_ALL) != CS_OK)
 				exit(1);
 		}
 	} while (result && !quit);

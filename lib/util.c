@@ -53,7 +53,7 @@
 #include <netinet/in.h>
 #include <assert.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/ais_util.h>
 
@@ -96,7 +96,7 @@ void socket_nosigpipe(int s)
 }
 #endif 
 
-SaAisErrorT
+cs_error_t
 saServiceConnect (
 	int *responseOut,
 	int *callbackOut,
@@ -110,7 +110,7 @@ saServiceConnect (
 	mar_res_lib_response_init_t res_lib_response_init;
 	mar_req_lib_dispatch_init_t req_lib_dispatch_init;
 	mar_res_lib_dispatch_init_t res_lib_dispatch_init;
-	SaAisErrorT error;
+	cs_error_t error;
 	gid_t egid;
 
 	/*
@@ -131,7 +131,7 @@ saServiceConnect (
 #endif
 	responseFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (responseFD == -1) {
-		return (SA_AIS_ERR_NO_RESOURCES);
+		return (CS_ERR_NO_RESOURCES);
 	}
 
 	socket_nosigpipe (responseFD);
@@ -139,7 +139,7 @@ saServiceConnect (
 	result = connect (responseFD, (struct sockaddr *)&address, AIS_SUN_LEN(&address));
 	if (result == -1) {
 		close (responseFD);
-		return (SA_AIS_ERR_TRY_AGAIN);
+		return (CS_ERR_TRY_AGAIN);
 	}
 
 	req_lib_response_init.resdis_header.size = sizeof (req_lib_response_init);
@@ -148,19 +148,19 @@ saServiceConnect (
 
 	error = saSendRetry (responseFD, &req_lib_response_init,
 		sizeof (mar_req_lib_response_init_t));
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 	error = saRecvRetry (responseFD, &res_lib_response_init,
 		sizeof (mar_res_lib_response_init_t));
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_response_init.header.error != SA_AIS_OK) {
+	if (res_lib_response_init.header.error != CS_OK) {
 		error = res_lib_response_init.header.error;
 		goto error_exit;
 	}
@@ -171,7 +171,7 @@ saServiceConnect (
 	callbackFD = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (callbackFD == -1) {
 		close (responseFD);
-		return (SA_AIS_ERR_NO_RESOURCES);
+		return (CS_ERR_NO_RESOURCES);
 	}
 
 	socket_nosigpipe (callbackFD);
@@ -180,7 +180,7 @@ saServiceConnect (
 	if (result == -1) {
 		close (callbackFD);
 		close (responseFD);
-		return (SA_AIS_ERR_TRY_AGAIN);
+		return (CS_ERR_TRY_AGAIN);
 	}
 
 	req_lib_dispatch_init.resdis_header.size = sizeof (req_lib_dispatch_init);
@@ -191,25 +191,25 @@ saServiceConnect (
 
 	error = saSendRetry (callbackFD, &req_lib_dispatch_init,
 		sizeof (mar_req_lib_dispatch_init_t));
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit_two;
 	}
 	error = saRecvRetry (callbackFD, &res_lib_dispatch_init,
 		sizeof (mar_res_lib_dispatch_init_t));
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit_two;
 	}
 
 	/*
 	 * Check for security errors
 	 */
-	if (res_lib_dispatch_init.header.error != SA_AIS_OK) {
+	if (res_lib_dispatch_init.header.error != CS_OK) {
 		error = res_lib_dispatch_init.header.error;
 		goto error_exit;
 	}
 
 	*callbackOut = callbackFD;
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_exit_two:
 	close (callbackFD);
@@ -218,13 +218,13 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 saRecvRetry (
 	int s,
 	void *msg,
 	size_t len)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
@@ -260,12 +260,12 @@ retry_recv:
 	 * EOF is detected when recvmsg return 0.
 	 */
 	if (result == 0) {
-		error = SA_AIS_ERR_LIBRARY;
+		error = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 #endif
 	if (result == -1 || result == 0) {
-		error = SA_AIS_ERR_LIBRARY;
+		error = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 	processed += result;
@@ -277,13 +277,13 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 saSendRetry (
 	int s,
 	const void *msg,
 	size_t len)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	int result;
 	struct msghdr msg_send;
 	struct iovec iov_send;
@@ -315,15 +315,15 @@ retry_send:
 	 */
 	if (result == -1 && processed == 0) {
 		if (errno == EINTR) {
-			error = SA_AIS_ERR_TRY_AGAIN;
+			error = CS_ERR_TRY_AGAIN;
 			goto error_exit;
 		}
 		if (errno == EAGAIN) {
-			error = SA_AIS_ERR_TRY_AGAIN;
+			error = CS_ERR_TRY_AGAIN;
 			goto error_exit;
 		}
 		if (errno == EFAULT) {
-			error = SA_AIS_ERR_INVALID_PARAM;
+			error = CS_ERR_INVALID_PARAM;
 			goto error_exit;
 		}
 	}
@@ -340,7 +340,7 @@ retry_send:
 			goto retry_send;
 		}
 		if (errno == EFAULT) {
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_exit;
 		}
 	}
@@ -349,7 +349,7 @@ retry_send:
 	 * return ERR_LIBRARY on any other syscall error
 	 */
 	if (result == -1) {
-		error = SA_AIS_ERR_LIBRARY;
+		error = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 
@@ -362,12 +362,12 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT saSendMsgRetry (
+cs_error_t saSendMsgRetry (
         int s,
         struct iovec *iov,
         int iov_len)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	int result;
 	int total_size = 0;
 	int i;
@@ -404,15 +404,15 @@ retry_sendmsg:
 	 */
 	if (result == -1 && iovec_saved_position == -1) {
 		if (errno == EINTR) {
-			error = SA_AIS_ERR_TRY_AGAIN;
+			error = CS_ERR_TRY_AGAIN;
 			goto error_exit;
 		}
 		if (errno == EAGAIN) {
-			error = SA_AIS_ERR_TRY_AGAIN;
+			error = CS_ERR_TRY_AGAIN;
 			goto error_exit;
 		}
 		if (errno == EFAULT) {
-			error = SA_AIS_ERR_INVALID_PARAM;
+			error = CS_ERR_INVALID_PARAM;
 			goto error_exit;
 		}
 	}
@@ -428,7 +428,7 @@ retry_sendmsg:
 			goto retry_sendmsg;
 		}
 		if (errno == EFAULT) {
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_exit;
 		}
 	}
@@ -437,7 +437,7 @@ retry_sendmsg:
 	 * ERR_LIBRARY for any other syscall error
 	 */
 	if (result == -1) {
-		error = SA_AIS_ERR_LIBRARY;
+		error = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 
@@ -470,22 +470,22 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT saSendMsgReceiveReply (
+cs_error_t saSendMsgReceiveReply (
         int s,
         struct iovec *iov,
         int iov_len,
         void *responseMessage,
         int responseLen)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 
 	error = saSendMsgRetry (s, iov, iov_len);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 	
 	error = saRecvRetry (s, responseMessage, responseLen);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -493,22 +493,22 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT saSendReceiveReply (
+cs_error_t saSendReceiveReply (
         int s,
         void *requestMessage,
         int requestLen,
         void *responseMessage,
         int responseLen)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 
 	error = saSendRetry (s, requestMessage, requestLen);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 	
 	error = saRecvRetry (s, responseMessage, responseLen);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -516,13 +516,13 @@ error_exit:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 saPollRetry (
         struct pollfd *ufds,
         unsigned int nfds,
         int timeout) 
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	int result;
 
 retry_poll:
@@ -531,18 +531,18 @@ retry_poll:
 		goto retry_poll;
 	}
 	if (result == -1) {
-		error = SA_AIS_ERR_LIBRARY;
+		error = CS_ERR_LIBRARY;
 	}
 
 	return (error);
 }
 
 
-SaAisErrorT
+cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	SaUint64T *handleOut)
+	uint64_t *handleOut)
 {
 	uint32_t handle;
 	uint32_t check;
@@ -566,7 +566,7 @@ saHandleCreate (
 			sizeof (struct saHandle) * handleDatabase->handleCount);
 		if (newHandles == NULL) {
 			pthread_mutex_unlock (&handleDatabase->mutex);
-			return (SA_AIS_ERR_NO_MEMORY);
+			return (CS_ERR_NO_MEMORY);
 		}
 		handleDatabase->handles = newHandles;
 	}
@@ -575,7 +575,7 @@ saHandleCreate (
 	if (instance == 0) {
 		free (newHandles);
 		pthread_mutex_unlock (&handleDatabase->mutex);
-		return (SA_AIS_ERR_NO_MEMORY);
+		return (CS_ERR_NO_MEMORY);
 	}
 
 
@@ -601,20 +601,20 @@ saHandleCreate (
 
 	handleDatabase->handles[handle].check = check;
 
-	*handleOut = (SaUint64T)((uint64_t)check << 32 | handle);
+	*handleOut = (uint64_t)((uint64_t)check << 32 | handle);
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 
-SaAisErrorT
+cs_error_t
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T inHandle)
+	uint64_t inHandle)
 {
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
@@ -622,7 +622,7 @@ saHandleDestroy (
 
 	if (check != handleDatabase->handles[handle].check) {
 		pthread_mutex_unlock (&handleDatabase->mutex);
-		error = SA_AIS_ERR_BAD_HANDLE;
+		error = CS_ERR_BAD_HANDLE;
 		return (error);
 	}
 
@@ -636,28 +636,28 @@ saHandleDestroy (
 }
 
 
-SaAisErrorT
+cs_error_t
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T inHandle,
+	uint64_t inHandle,
 	void **instance)
 { 
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	pthread_mutex_lock (&handleDatabase->mutex);
 
-	if (handle >= (SaUint64T)handleDatabase->handleCount) {
-		error = SA_AIS_ERR_BAD_HANDLE;
+	if (handle >= (uint64_t)handleDatabase->handleCount) {
+		error = CS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 	if (handleDatabase->handles[handle].state != SA_HANDLE_STATE_ACTIVE) {
-		error = SA_AIS_ERR_BAD_HANDLE;
+		error = CS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 	if (check != handleDatabase->handles[handle].check) {
-		error = SA_AIS_ERR_BAD_HANDLE;
+		error = CS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 
@@ -673,20 +673,20 @@ error_exit:
 }
 
 
-SaAisErrorT
+cs_error_t
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T inHandle)
+	uint64_t inHandle)
 {
 	void *instance;
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
 	pthread_mutex_lock (&handleDatabase->mutex);
 
 	if (check != handleDatabase->handles[handle].check) {
-		error = SA_AIS_ERR_BAD_HANDLE;
+		error = CS_ERR_BAD_HANDLE;
 		goto error_exit;
 	}
 
@@ -707,16 +707,16 @@ error_exit:
 }
 
 
-SaAisErrorT
+cs_error_t
 saVersionVerify (
     struct saVersionDatabase *versionDatabase,
-	SaVersionT *version)
+	cs_version_t *version)
 {
 	int i;
-	SaAisErrorT error = SA_AIS_ERR_VERSION;
+	cs_error_t error = CS_ERR_VERSION;
 
 	if (version == 0) {
-		return (SA_AIS_ERR_INVALID_PARAM);
+		return (CS_ERR_INVALID_PARAM);
 	}
 
 	/*
@@ -742,7 +742,7 @@ saVersionVerify (
 			 * Check if we can support the major version requested.
 			 */
 			if (versionDatabase->versionsSupported[i].majorVersion >= version->majorVersion) {
-				error = SA_AIS_OK;
+				error = CS_OK;
 				break;
 			} 
 
@@ -771,17 +771,17 @@ saVersionVerify (
 /*
  * Get the time of day and convert to nanoseconds
  */
-SaTimeT clustTimeNow(void)
+cs_time_t clustTimeNow(void)
 {
 	struct timeval tv;
-	SaTimeT time_now;
+	cs_time_t time_now;
 
 	if (gettimeofday(&tv, 0)) {
 		return 0ULL;
 	}
 
-	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
-	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+	time_now = (cs_time_t)(tv.tv_sec) * 1000000000ULL;
+	time_now += (cs_time_t)(tv.tv_usec) * 1000ULL;
 
 	return time_now;
 }

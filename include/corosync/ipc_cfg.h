@@ -35,8 +35,8 @@
 #define AIS_IPC_CFG_H_DEFINED
 
 #include <netinet/in.h>
+#include <corosync/corotypes.h>
 #include "ipc_gen.h"
-#include "saAis.h"
 #include "cfg.h"
 
 enum req_lib_cfg_types {
@@ -69,7 +69,7 @@ enum res_lib_cfg_types {
 
 struct req_lib_cfg_statetrack {
 	mar_req_header_t header;
-	SaUint8T trackFlags;
+	uint8_t trackFlags;
 	CorosyncCfgStateNotificationT *notificationBufferAddress;
 };
 
@@ -87,7 +87,7 @@ struct res_lib_cfg_statetrackstop {
 
 struct req_lib_cfg_administrativestateset {
 	mar_req_header_t header;
-	SaNameT compName;
+	cs_name_t compName;
 	CorosyncCfgAdministrativeTargetT administrativeTarget;
 	CorosyncCfgAdministrativeStateT administrativeState;
 };
@@ -98,7 +98,7 @@ struct res_lib_cfg_administrativestateset {
 
 struct req_lib_cfg_administrativestateget {
 	mar_req_header_t header;
-	SaNameT compName;
+	cs_name_t compName;
 	CorosyncCfgAdministrativeTargetT administrativeTarget;
 	CorosyncCfgAdministrativeStateT administrativeState;
 };
@@ -149,7 +149,7 @@ struct res_lib_cfg_serviceunload {
 struct req_lib_cfg_killnode {
 	mar_req_header_t header __attribute__((aligned(8)));
 	unsigned int nodeid __attribute__((aligned(8)));
-	SaNameT reason __attribute__((aligned(8)));
+	cs_name_t reason __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_killnode {

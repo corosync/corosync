@@ -34,8 +34,7 @@
 #ifndef IPC_EVS_H_DEFINED
 #define IPC_EVS_H_DEFINED
 
-//#include <netinet/in6.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 #include "evs.h"
 #include "ipc_gen.h"
 

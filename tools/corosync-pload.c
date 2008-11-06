@@ -48,7 +48,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/pload.h>
 
 #define timersub(a, b, result)						\

@@ -34,7 +34,7 @@
 #ifndef IPC_PLOAD_H_DEFINED
 #define IPC_PLOAD_H_DEFINED
 
-#include "saAis.h"
+#include <corosync/corotypes.h>
 #include "pload.h"
 #include "ipc_gen.h"
 

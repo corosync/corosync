@@ -38,7 +38,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
@@ -106,103 +106,103 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_create,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_CREATE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_destroy,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_DESTROY,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find,
 		.response_size				= sizeof (struct res_lib_confdb_object_find),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_create,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_CREATE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_get,
 		.response_size				= sizeof (struct res_lib_confdb_key_get),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_GET,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_replace,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_REPLACE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_delete,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_DELETE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_iter,
 		.response_size				= sizeof (struct res_lib_confdb_object_iter),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_ITER,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_parent_get,
 		.response_size				= sizeof (struct res_lib_confdb_object_parent_get),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_PARENT_GET,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter,
 		.response_size				= sizeof (struct res_lib_confdb_key_iter),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_ITER,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_start,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_STOP,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 12 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_write,
 		.response_size				= sizeof (struct res_lib_confdb_write),
 		.response_id				= MESSAGE_RES_CONFDB_WRITE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 13 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_reload,
 		.response_size				= sizeof (struct res_lib_confdb_reload),
 		.response_id				= MESSAGE_RES_CONFDB_RELOAD,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 14 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find_destroy,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 15 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_increment,
 		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_INCREMENT,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 16 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_decrement,
 		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_DECREMENT,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
 
@@ -211,7 +211,7 @@ struct corosync_service_engine confdb_service_engine = {
 	.name				        = "corosync cluster config database access v1.01",
 	.id					= CONFDB_SERVICE,
 	.private_data_size			= 0,
-	.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED,
+	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
 	.lib_init_fn				= confdb_lib_init_fn,
 	.lib_exit_fn				= confdb_lib_exit_fn,
 	.lib_engine				= confdb_lib_engine,
@@ -289,13 +289,13 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 	struct req_lib_confdb_object_create *req_lib_confdb_object_create = (struct req_lib_confdb_object_create *)message;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
 	unsigned int object_handle;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_create(req_lib_confdb_object_create->parent_object_handle,
 					&object_handle,
 					req_lib_confdb_object_create->object_name.value,
 					req_lib_confdb_object_create->object_name.length))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_object_create.object_handle = object_handle;
 	res_lib_confdb_object_create.header.size = sizeof(res_lib_confdb_object_create);
@@ -308,10 +308,10 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 {
 	struct req_lib_confdb_object_destroy *req_lib_confdb_object_destroy = (struct req_lib_confdb_object_destroy *)message;
 	mar_res_header_t res;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_destroy(req_lib_confdb_object_destroy->object_handle))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_OBJECT_DESTROY;
@@ -323,12 +323,12 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void
 {
 	struct req_lib_confdb_object_find_destroy *req_lib_confdb_object_find_destroy = (struct req_lib_confdb_object_find_destroy *)message;
 	mar_res_header_t res;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	log_printf(LOG_LEVEL_DEBUG, "object_find_destroy for conn=%p, %d\n", conn, req_lib_confdb_object_find_destroy->find_handle);
 
 	if (api->object_find_destroy(req_lib_confdb_object_find_destroy->find_handle))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY;
@@ -341,14 +341,14 @@ static void message_handler_req_lib_confdb_key_create (void *conn, void *message
 {
 	struct req_lib_confdb_key_create *req_lib_confdb_key_create = (struct req_lib_confdb_key_create *)message;
 	mar_res_header_t res;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_create(req_lib_confdb_key_create->object_handle,
 					    req_lib_confdb_key_create->key_name.value,
 					    req_lib_confdb_key_create->key_name.length,
 					    req_lib_confdb_key_create->value.value,
 					    req_lib_confdb_key_create->value.length))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_CREATE;
@@ -362,14 +362,14 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	struct res_lib_confdb_key_get res_lib_confdb_key_get;
 	int value_len;
 	void *value;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_get(req_lib_confdb_key_get->parent_object_handle,
 					 req_lib_confdb_key_get->key_name.value,
 					 req_lib_confdb_key_get->key_name.length,
 					 &value,
 					 &value_len))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 	else {
 		memcpy(res_lib_confdb_key_get.value.value, value, value_len);
 		res_lib_confdb_key_get.value.length = value_len;
@@ -385,13 +385,13 @@ static void message_handler_req_lib_confdb_key_increment (void *conn, void *mess
 {
 	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_increment(req_lib_confdb_key_get->parent_object_handle,
 				      req_lib_confdb_key_get->key_name.value,
 				      req_lib_confdb_key_get->key_name.length,
 				      &res_lib_confdb_key_incdec.value))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
 	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_INCREMENT;
@@ -403,13 +403,13 @@ static void message_handler_req_lib_confdb_key_decrement (void *conn, void *mess
 {
 	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_decrement(req_lib_confdb_key_get->parent_object_handle,
 				      req_lib_confdb_key_get->key_name.value,
 				      req_lib_confdb_key_get->key_name.length,
 				      &res_lib_confdb_key_incdec.value))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
 	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_DECREMENT;
@@ -421,7 +421,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 {
 	struct req_lib_confdb_key_replace *req_lib_confdb_key_replace = (struct req_lib_confdb_key_replace *)message;
 	mar_res_header_t res;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_replace(req_lib_confdb_key_replace->object_handle,
 					     req_lib_confdb_key_replace->key_name.value,
@@ -430,7 +430,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 					     req_lib_confdb_key_replace->old_value.length,
 					     req_lib_confdb_key_replace->new_value.value,
 					     req_lib_confdb_key_replace->new_value.length))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_REPLACE;
@@ -442,14 +442,14 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 {
 	struct req_lib_confdb_key_delete *req_lib_confdb_key_delete = (struct req_lib_confdb_key_delete *)message;
 	mar_res_header_t res;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_delete(req_lib_confdb_key_delete->object_handle,
 					    req_lib_confdb_key_delete->key_name.value,
 					    req_lib_confdb_key_delete->key_name.length,
 					    req_lib_confdb_key_delete->value.value,
 					    req_lib_confdb_key_delete->value.length))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_DELETE;
@@ -462,11 +462,11 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 	struct req_lib_confdb_object_parent_get *req_lib_confdb_object_parent_get = (struct req_lib_confdb_object_parent_get *)message;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
 	unsigned int object_handle;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_parent_get(req_lib_confdb_object_parent_get->object_handle,
 					    &object_handle))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_object_parent_get.parent_object_handle = object_handle;
 	res_lib_confdb_object_parent_get.header.size = sizeof(res_lib_confdb_object_parent_get);
@@ -484,7 +484,7 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 	int key_name_len;
 	void *value;
 	int value_len;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (api->object_key_iter_from(req_lib_confdb_key_iter->parent_object_handle,
 					       req_lib_confdb_key_iter->next_entry,
@@ -492,7 +492,7 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 					       &key_name_len,
 					       &value,
 					       &value_len))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 	else {
 		memcpy(res_lib_confdb_key_iter.key_name.value, key_name, key_name_len);
 		memcpy(res_lib_confdb_key_iter.value.value, value, value_len);
@@ -511,7 +511,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 	struct req_lib_confdb_object_iter *req_lib_confdb_object_iter = (struct req_lib_confdb_object_iter *)message;
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
 	int object_name_len;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_iter->find_handle) {
 		api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
@@ -523,7 +523,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 
 	if (api->object_find_next(res_lib_confdb_object_iter.find_handle,
 				  &res_lib_confdb_object_iter.object_handle))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 	else {
 		api->object_name_get(res_lib_confdb_object_iter.object_handle,
 				     (char *)res_lib_confdb_object_iter.object_name.value,
@@ -542,7 +542,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 {
 	struct req_lib_confdb_object_find *req_lib_confdb_object_find = (struct req_lib_confdb_object_find *)message;
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_find->find_handle) {
 		api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
@@ -555,7 +555,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 
 	if (api->object_find_next(res_lib_confdb_object_find.find_handle,
 				  &res_lib_confdb_object_find.object_handle))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_object_find.header.size = sizeof(res_lib_confdb_object_find);
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;
@@ -568,11 +568,11 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 static void message_handler_req_lib_confdb_write (void *conn, void *message)
 {
 	struct res_lib_confdb_write res_lib_confdb_write;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 	char *error_string = NULL;
 
 	if (api->object_write_config(&error_string))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_write.header.size = sizeof(res_lib_confdb_write);
 	res_lib_confdb_write.header.id = MESSAGE_RES_CONFDB_WRITE;
@@ -590,11 +590,11 @@ static void message_handler_req_lib_confdb_reload (void *conn, void *message)
 {
 	struct req_lib_confdb_reload *req_lib_confdb_reload = (struct req_lib_confdb_reload *)message;
 	struct res_lib_confdb_reload res_lib_confdb_reload;
-	int ret = SA_AIS_OK;
+	int ret = CS_OK;
 	char *error_string = NULL;
 
 	if (api->object_reload_config(req_lib_confdb_reload->flush, &error_string))
-		ret = SA_AIS_ERR_ACCESS;
+		ret = CS_ERR_ACCESS;
 
 	res_lib_confdb_reload.header.size = sizeof(res_lib_confdb_reload);
 	res_lib_confdb_reload.header.id = MESSAGE_RES_CONFDB_RELOAD;
@@ -621,7 +621,7 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 
 	res.header.size = sizeof(res);
 	res.header.id = MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK;
-	res.header.error = SA_AIS_OK;
+	res.header.error = CS_OK;
 // handle & type
 	res.change_type = change_type;
 	res.parent_object_handle = parent_object_handle;
@@ -648,7 +648,7 @@ static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
 
 	res.header.size = sizeof(res);
 	res.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK;
-	res.header.error = SA_AIS_OK;
+	res.header.error = CS_OK;
 	res.parent_object_handle = parent_object_handle;
 	res.object_handle = object_handle;
 	memcpy(res.name.value, name_pt, name_len);
@@ -665,7 +665,7 @@ static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_han
 
 	res.header.size = sizeof(res);
 	res.header.id = MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK;
-	res.header.error = SA_AIS_OK;
+	res.header.error = CS_OK;
 	res.parent_object_handle = parent_object_handle;
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
@@ -687,7 +687,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn, void *messag
 							api->ipc_conn_partner_get (conn));
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
-	res.error = SA_AIS_OK;
+	res.error = CS_OK;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 
@@ -703,7 +703,7 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_STOP;
-	res.error = SA_AIS_OK;
+	res.error = CS_OK;
 	api->ipc_conn_send_response(conn, &res, sizeof(res));
 }
 

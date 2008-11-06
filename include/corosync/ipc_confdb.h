@@ -35,7 +35,7 @@
 #define IPC_CONFDB_H_DEFINED
 
 #include <netinet/in.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 #include "ipc_gen.h"
 
 enum req_confdb_types {

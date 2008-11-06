@@ -62,7 +62,7 @@
 #endif
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>
@@ -153,7 +153,7 @@ struct conn_info {
 	unsigned int flow_control_handle;	/* flow control identifier */
 	unsigned int flow_control_enabled;	/* flow control enabled bit */
 	unsigned int flow_control_local_count;	/* flow control local count */
-	enum corosync_lib_flow_control flow_control;	/* Does this service use IPC flow control */
+	enum cs_lib_flow_control flow_control;	/* Does this service use IPC flow control */
 	pthread_mutex_t flow_control_mutex;
         int (*lib_exit_fn) (void *conn);
 	struct timerlist timerlist;
@@ -193,26 +193,26 @@ static int response_init_send_response (
 	struct conn_info *conn_info,
 	void *message)
 {
-	SaAisErrorT error = SA_AIS_ERR_ACCESS;
+	cs_error_t error = CS_ERR_ACCESS;
 	uintptr_t cinfo = (uintptr_t)conn_info;
 	mar_req_lib_response_init_t *req_lib_response_init = (mar_req_lib_response_init_t *)message;
 	mar_res_lib_response_init_t res_lib_response_init;
 
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_response_init->resdis_header.service;
-		error = SA_AIS_OK;
+		error = CS_OK;
 	}
 	res_lib_response_init.header.size = sizeof (mar_res_lib_response_init_t);
 	res_lib_response_init.header.id = MESSAGE_RES_INIT;
 	res_lib_response_init.header.error = error;
 	res_lib_response_init.conn_info = (mar_uint64_t)cinfo;
 
-	corosync_conn_send_response (
+	cs_conn_send_response (
 		conn_info,
 		&res_lib_response_init,
 		sizeof (res_lib_response_init));
 
-	if (error == SA_AIS_ERR_ACCESS) {
+	if (error == CS_ERR_ACCESS) {
 		libais_disconnect_security (conn_info);
 		return (-1);
 	}
@@ -223,7 +223,7 @@ static int dispatch_init_send_response (
 	struct conn_info *conn_info,
 	void *message)
 {
-	SaAisErrorT error = SA_AIS_ERR_ACCESS;
+	cs_error_t error = CS_ERR_ACCESS;
 	uintptr_t cinfo;
 	mar_req_lib_dispatch_init_t *req_lib_dispatch_init = (mar_req_lib_dispatch_init_t *)message;
 	mar_res_lib_dispatch_init_t res_lib_dispatch_init;
@@ -232,9 +232,9 @@ static int dispatch_init_send_response (
 	if (conn_info->authenticated) {
 		conn_info->service = req_lib_dispatch_init->resdis_header.service;
 		if (!ais_service[req_lib_dispatch_init->resdis_header.service])
-			error = SA_AIS_ERR_NOT_SUPPORTED;
+			error = CS_ERR_NOT_SUPPORTED;
 		else
-			error = SA_AIS_OK;
+			error = CS_OK;
 
 		cinfo = (uintptr_t)req_lib_dispatch_init->conn_info;
 		conn_info->conn_info_partner = (struct conn_info *)cinfo;
@@ -252,7 +252,7 @@ static int dispatch_init_send_response (
 		msg_conn_info = (struct conn_info *)cinfo;
 		msg_conn_info->conn_info_partner = conn_info;
 
-		if (error == SA_AIS_OK) {
+		if (error == CS_OK) {
 			int private_data_size;
 
 			private_data_size = ais_service[req_lib_dispatch_init->resdis_header.service]->private_data_size;
@@ -261,7 +261,7 @@ static int dispatch_init_send_response (
 
 				conn_info->conn_info_partner->private_data = conn_info->private_data;
 				if (conn_info->private_data == NULL) {
-					error = SA_AIS_ERR_NO_MEMORY;
+					error = CS_ERR_NO_MEMORY;
 				} else {
 					memset (conn_info->private_data, 0, private_data_size);
 				}
@@ -276,16 +276,16 @@ static int dispatch_init_send_response (
 	res_lib_dispatch_init.header.id = MESSAGE_RES_INIT;
 	res_lib_dispatch_init.header.error = error;
 
-	corosync_conn_send_response (
+	cs_conn_send_response (
 		conn_info,
 		&res_lib_dispatch_init,
 		sizeof (res_lib_dispatch_init));
 
-	if (error == SA_AIS_ERR_ACCESS) {
+	if (error == CS_ERR_ACCESS) {
 		libais_disconnect_security (conn_info);
 		return (-1);
 	}
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (-1);
 	}
 
@@ -296,8 +296,8 @@ static int dispatch_init_send_response (
 
 	conn_info->flow_control = ais_service[conn_info->service]->flow_control;
 	conn_info->conn_info_partner->flow_control = ais_service[conn_info->service]->flow_control;
-	if (ais_service[conn_info->service]->flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) {
-		corosync_flow_control_ipc_init (
+	if (ais_service[conn_info->service]->flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) {
+		cs_flow_control_ipc_init (
 			&conn_info->flow_control_handle,
 			conn_info->service);
 
@@ -448,7 +448,7 @@ static int libais_disconnect (struct conn_info *conn_info)
 	conn_info->state = CONN_STATE_DISCONNECTED;
 	conn_info->conn_info_partner->state = CONN_STATE_DISCONNECTED;
 	if (conn_info->flow_control_enabled == 1) {
-		corosync_flow_control_disable (conn_info->flow_control_handle);
+		cs_flow_control_disable (conn_info->flow_control_handle);
 	}
 	return (0);
 }
@@ -633,14 +633,14 @@ static void ipc_flow_control (struct conn_info *conn_info)
 	/*
 	 * IPC group-wide flow control
 	 */
-	if (conn_info->flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) {
+	if (conn_info->flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) {
 		if (conn_info->flow_control_enabled == 0 &&
 			((fcc + FLOW_CONTROL_ENTRIES_ENABLE) > SIZEQUEUE)) {
 
 			log_printf (LOG_LEVEL_NOTICE, "Enabling flow control [%d/%d] - [%d].\n",
 				entries_usedhw, SIZEQUEUE,
 				flow_control_local_count);
-			corosync_flow_control_enable (conn_info->flow_control_handle);
+			cs_flow_control_enable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 1;
 			conn_info->conn_info_partner->flow_control_enabled = 1;
 		}
@@ -651,7 +651,7 @@ static void ipc_flow_control (struct conn_info *conn_info)
 			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control [%d/%d] - [%d].\n",
 				entries_usedhw, SIZEQUEUE,
 				flow_control_local_count);
-			corosync_flow_control_disable (conn_info->flow_control_handle);
+			cs_flow_control_disable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 0;
 			conn_info->conn_info_partner->flow_control_enabled = 0;
 		}
@@ -897,9 +897,9 @@ retry_recv:
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
-				(sync_primary_designated() == 1 || ais_service[service]->allow_inquorate == COROSYNC_LIB_ALLOW_INQUORATE) && (
-				(ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
-				((ais_service[service]->lib_engine[header->id].flow_control == COROSYNC_LIB_FLOW_CONTROL_REQUIRED) &&
+				(sync_primary_designated() == 1 || ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) && (
+				(ais_service[service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
+				((ais_service[service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&
 				 (sync_in_process() == 0)));
 
@@ -914,8 +914,8 @@ retry_recv:
 					ais_service[service]->lib_engine[header->id].response_size;
 				res_overlay.header.id =
 					ais_service[service]->lib_engine[header->id].response_id;
-				res_overlay.header.error = SA_AIS_ERR_TRY_AGAIN;
-				corosync_conn_send_response (
+				res_overlay.header.error = CS_ERR_TRY_AGAIN;
+				cs_conn_send_response (
 					conn_info,
 					&res_overlay,
 					res_overlay.header.size);
@@ -1030,7 +1030,7 @@ static void ipc_confchg_fn (
 {
 }
 
-void corosync_ipc_init (
+void cs_ipc_init (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid)
@@ -1102,7 +1102,7 @@ void corosync_ipc_init (
 /*
  * Get the conn info private data
  */
-void *corosync_conn_private_data_get (void *conn)
+void *cs_conn_private_data_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1116,7 +1116,7 @@ void *corosync_conn_private_data_get (void *conn)
 /*
  * Get the conn info partner connection
  */
-void *corosync_conn_partner_get (void *conn)
+void *cs_conn_partner_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1127,20 +1127,20 @@ void *corosync_conn_partner_get (void *conn)
 	}
 }
 
-int corosync_conn_send_response_no_fcc (
+int cs_conn_send_response_no_fcc (
 	void *conn,
 	void *msg,
 	int mlen)
 {
 	int ret;
 	dont_call_flow_control = 1;
-	ret = corosync_conn_send_response (
+	ret = cs_conn_send_response (
 		conn, msg, mlen);
 	dont_call_flow_control = 0;
 	return ret;
 }
 
-int corosync_conn_send_response (
+int cs_conn_send_response (
 	void *conn,
 	void *msg,
 	int mlen)
@@ -1284,17 +1284,17 @@ retry_sendmsg_two:
 	return (0);
 }
 
-void corosync_ipc_flow_control_create (
+void cs_ipc_flow_control_create (
 	void *conn,
 	unsigned int service,
 	char *id,
 	int id_len,
-	void (*flow_control_state_set_fn) (void *conn, enum corosync_flow_control_state),
+	void (*flow_control_state_set_fn) (void *conn, enum cs_flow_control_state),
 	void *context)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	corosync_flow_control_create (
+	cs_flow_control_create (
 		conn_info->flow_control_handle,
 		service,
 		id,
@@ -1304,7 +1304,7 @@ void corosync_ipc_flow_control_create (
 	conn_info->conn_info_partner->flow_control_handle = conn_info->flow_control_handle;
 }
 
-void corosync_ipc_flow_control_destroy (
+void cs_ipc_flow_control_destroy (
 	void *conn,
 	unsigned int service,
 	unsigned char *id,
@@ -1312,14 +1312,14 @@ void corosync_ipc_flow_control_destroy (
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
-	corosync_flow_control_destroy (
+	cs_flow_control_destroy (
 		conn_info->flow_control_handle,
 		service,
 		id,
 		id_len);
 }
 
-void corosync_ipc_flow_control_local_increment (
+void cs_ipc_flow_control_local_increment (
         void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
@@ -1331,7 +1331,7 @@ void corosync_ipc_flow_control_local_increment (
 	pthread_mutex_unlock (&conn_info->flow_control_mutex);
 }
 
-void corosync_ipc_flow_control_local_decrement (
+void cs_ipc_flow_control_local_decrement (
         void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;

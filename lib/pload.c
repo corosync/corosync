@@ -41,7 +41,7 @@
 
 #include <corosync/swab.h>
 #include <corosync/totem/totem.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ipc_pload.h>
 #include <corosync/pload.h>
 #include <corosync/ais_util.h>
@@ -91,23 +91,23 @@ unsigned int pload_initialize (
 	pload_handle_t *handle,
 	pload_callbacks_t *callbacks)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct pload_inst *pload_inst;
 
 	error = saHandleCreate (&pload_handle_t_db, sizeof (struct pload_inst), handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&pload_handle_t_db, *handle, (void *)&pload_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
 	error = saServiceConnect (&pload_inst->response_fd,
 		&pload_inst->dispatch_fd,
 		PLOAD_SERVICE);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -117,7 +117,7 @@ unsigned int pload_initialize (
 
 	saHandleInstancePut (&pload_handle_t_db, *handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&pload_handle_t_db, *handle);
@@ -131,10 +131,10 @@ unsigned int pload_finalize (
 	pload_handle_t handle)
 {
 	struct pload_inst *pload_inst;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 //	  TODO is the locking right here
@@ -175,11 +175,11 @@ unsigned int pload_fd_get (
 	pload_handle_t handle,
 	int *fd)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct pload_inst *pload_inst;
 
 	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -187,7 +187,7 @@ unsigned int pload_fd_get (
 
 	saHandleInstancePut (&pload_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 unsigned int pload_start (
@@ -203,7 +203,7 @@ unsigned int pload_start (
 	struct res_lib_pload_start res_lib_pload_start;
 
 	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -223,7 +223,7 @@ unsigned int pload_start (
 
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 

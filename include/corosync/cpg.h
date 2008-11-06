@@ -35,6 +35,7 @@
 #define COROSYNC_CPG_H_DEFINED
 
 #include <netinet/in.h>
+#include <corosync/corotypes.h>
 
 /**
  * @addtogroup cpg_corosync
@@ -42,12 +43,6 @@
  * @{
  */
 typedef uint64_t cpg_handle_t;
-
-typedef enum {
-	CPG_DISPATCH_ONE,
-	CPG_DISPATCH_ALL,
-	CPG_DISPATCH_BLOCKING
-} cpg_dispatch_t;
 
 typedef enum {
 	CPG_TYPE_UNORDERED, /* not implemented */
@@ -61,21 +56,6 @@ typedef enum {
 	CPG_FLOW_CONTROL_ENABLED	/* flow control is enabled - new messages should not be sent */
 } cpg_flow_control_state_t;
 
-typedef enum {
-	CPG_OK = 1,
-	CPG_ERR_LIBRARY = 2,
-	CPG_ERR_TIMEOUT = 5,
-	CPG_ERR_TRY_AGAIN = 6,
-	CPG_ERR_INVALID_PARAM = 7,
-	CPG_ERR_NO_MEMORY = 8,
-	CPG_ERR_BAD_HANDLE = 9,
-	CPG_ERR_ACCESS = 11,
-	CPG_ERR_NOT_EXIST = 12,
-	CPG_ERR_EXIST = 14,
-	CPG_ERR_NOT_SUPPORTED = 20,
-	CPG_ERR_SECURITY = 29,
-	CPG_ERR_TOO_MANY_GROUPS=30
-} cpg_error_t;
 
 typedef enum {
 	CPG_REASON_JOIN = 1,
@@ -132,32 +112,32 @@ typedef struct {
 /*
  * Create a new cpg connection
  */
-cpg_error_t cpg_initialize (
+cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks);
 
 /*
  * Close the cpg handle
  */
-cpg_error_t cpg_finalize (
+cs_error_t cpg_finalize (
 	cpg_handle_t handle);
 
 /*
  * Get a file descriptor on which to poll.  cpg_handle_t is NOT a
  * file descriptor and may not be used directly.
  */
-cpg_error_t cpg_fd_get (
+cs_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd);
 
 /* 
  * Get and set contexts for a CPG handle
  */
-cpg_error_t cpg_context_get (
+cs_error_t cpg_context_get (
 	cpg_handle_t handle,
 	void **context);
 
-cpg_error_t cpg_context_set (
+cs_error_t cpg_context_set (
 	cpg_handle_t handle,
 	void *context);
 
@@ -165,9 +145,9 @@ cpg_error_t cpg_context_set (
 /*
  * Dispatch messages and configuration changes
  */
-cpg_error_t cpg_dispatch (
+cs_error_t cpg_dispatch (
 	cpg_handle_t handle,
-	cpg_dispatch_t dispatch_types);
+	cs_dispatch_flags_t dispatch_types);
 
 /*
  * Join one or more groups.
@@ -175,14 +155,14 @@ cpg_error_t cpg_dispatch (
  * group that has been joined on handle handle.  Any message multicasted
  * to a group that has been previously joined will be delivered in cpg_dispatch
  */
-cpg_error_t cpg_join (
+cs_error_t cpg_join (
 	cpg_handle_t handle,
 	struct cpg_name *group);
 
 /*
  * Leave one or more groups
  */
-cpg_error_t cpg_leave (
+cs_error_t cpg_leave (
 	cpg_handle_t handle,
 	struct cpg_name *group);
 
@@ -191,7 +171,7 @@ cpg_error_t cpg_leave (
  * The iovec described by iovec will be multicasted to all groups joined with
  * the cpg_join interface for handle.
  */
-cpg_error_t cpg_mcast_joined (
+cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
 	struct iovec *iovec,
@@ -200,21 +180,21 @@ cpg_error_t cpg_mcast_joined (
 /*
  * Get membership information from cpg
  */
-cpg_error_t cpg_membership_get (
+cs_error_t cpg_membership_get (
 	cpg_handle_t handle,
 	struct cpg_name *groupName,
 	struct cpg_address *member_list,
 	int *member_list_entries);
 
-cpg_error_t cpg_local_get (
+cs_error_t cpg_local_get (
 	cpg_handle_t handle,
 	unsigned int *local_nodeid);
 
-cpg_error_t cpg_groups_get (
+cs_error_t cpg_groups_get (
 	cpg_handle_t handle,
 	unsigned int *num_groups);
 
-cpg_error_t cpg_flow_control_state_get (
+cs_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_enabled);
 

@@ -43,7 +43,7 @@
 #endif
 #include <string.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/swab.h>
 
 typedef int8_t mar_int8_t;
@@ -98,7 +98,7 @@ static inline void swab_mar_uint64_t (mar_uint64_t *to_swab)
 
 typedef struct {
 	mar_uint16_t length __attribute__((aligned(8)));
-	mar_uint8_t value[SA_MAX_NAME_LENGTH] __attribute__((aligned(8)));
+	mar_uint8_t value[CS_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_name_t;
 
 static inline char *get_mar_name_t (mar_name_t *name) {
@@ -121,19 +121,19 @@ static inline void swab_mar_name_t (mar_name_t *to_swab)
 }
 
 static inline void marshall_from_mar_name_t (
-	SaNameT *dest,
+	cs_name_t *dest,
 	mar_name_t *src)
 {
 	dest->length = src->length;
-	memcpy (dest->value, src->value, SA_MAX_NAME_LENGTH);
+	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
 }
 
 static inline void marshall_to_mar_name_t (
 	mar_name_t *dest,
-	SaNameT *src)
+	cs_name_t *src)
 {
 	dest->length = src->length;
-	memcpy (dest->value, src->value, SA_MAX_NAME_LENGTH);
+	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
 }
 
 typedef enum {
@@ -148,7 +148,7 @@ static inline void swab_mar_time_t (mar_time_t *to_swab)
 	swab_mar_uint64_t (to_swab);
 }
 
-#define MAR_TIME_END ((SaTimeT)0x7fffffffffffffffull)
+#define MAR_TIME_END ((int64_t)0x7fffffffffffffffull)
 #define MAR_TIME_BEGIN            0x0ULL
 #define MAR_TIME_UNKNOWN          0x8000000000000000ULL
 
@@ -158,7 +158,7 @@ static inline void swab_mar_time_t (mar_time_t *to_swab)
 #define MAR_TIME_ONE_MINUTE      60000000000ULL
 #define MAR_TIME_ONE_HOUR        3600000000000ULL
 #define MAR_TIME_ONE_DAY         86400000000000ULL
-#define MAR_TIME_MAX             SA_TIME_END
+#define MAR_TIME_MAX             CS_TIME_END
 
 #define MAR_TRACK_CURRENT 0x01
 #define MAR_TRACK_CHANGES 0x02

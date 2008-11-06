@@ -36,9 +36,9 @@
 #define AIS_COROSYNCCFG_H_DEFINED
 
 #include <netinet/in.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 
-typedef SaUint64T corosync_cfg_handle_t;
+typedef uint64_t corosync_cfg_handle_t;
 
 typedef enum {
 	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
@@ -99,19 +99,19 @@ typedef enum {
 } CorosyncCfgShutdownReplyFlagsT;
 
 typedef struct {
-	SaNameT name;
+	cs_name_t name;
 	CorosyncCfgStateTypeT stateType;
 	CorosyncCfgAdministrativeStateT administrativeState;
 } CorosyncCfgStateNotificationT;
 
 typedef struct {
-        SaUint32T numberOfItems;
+        uint32_t numberOfItems;
         CorosyncCfgStateNotificationT *notification;
 } CorosyncCfgStateNotificationBufferT;
 
 typedef void (*CorosyncCfgStateTrackCallbackT) (
 	CorosyncCfgStateNotificationBufferT *notificationBuffer,
-	SaAisErrorT error);
+	cs_error_t error);
 
 typedef void (*CorosyncCfgShutdownCallbackT) (
 	corosync_cfg_handle_t cfg_handle,
@@ -131,84 +131,84 @@ typedef struct {
 extern "C" {
 #endif
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
 	const CorosyncCfgCallbacksT *cfgCallbacks);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_fd_get (
 	corosync_cfg_handle_t cfg_handle,
-	SaSelectionObjectT *selectionObject);
+	int32_t *selection_fd);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_dispatch (
 	corosync_cfg_handle_t cfg_handle,
-	SaDispatchFlagsT dispatchFlags);
+	cs_dispatch_flags_t dispatchFlags);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_finalize (
 	corosync_cfg_handle_t cfg_handle);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_status_get (
 	corosync_cfg_handle_t cfg_handle,
 	char ***interface_names,
 	char ***status,
 	unsigned int *interface_count);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_reenable (
 	corosync_cfg_handle_t cfg_handle);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_load (
 	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_unload (
 	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
 	unsigned int service_ver);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_administrative_state_get (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgAdministrativeTargetT administrativeTarget,
 	CorosyncCfgAdministrativeStateT *administrativeState);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_administrative_state_set (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgAdministrativeTargetT administrativeTarget,
 	CorosyncCfgAdministrativeStateT administrativeState);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
 	char *reason);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_try_shutdown (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgShutdownFlagsT flags);
 
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_replyto_shutdown (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgShutdownReplyFlagsT flags);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_state_track (
         corosync_cfg_handle_t cfg_handle,
-        SaUint8T trackFlags,
+        uint8_t trackFlags,
         const CorosyncCfgStateNotificationT *notificationBuffer);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_state_track_stop (
         corosync_cfg_handle_t cfg_handle);
 

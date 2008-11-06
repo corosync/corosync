@@ -49,7 +49,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totem.h>

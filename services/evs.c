@@ -49,7 +49,7 @@
 #include <arpa/inet.h>
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
@@ -104,31 +104,31 @@ static struct corosync_lib_handler evs_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_evs_join,
 		.response_size				= sizeof (struct res_lib_evs_join),
 		.response_id				= MESSAGE_RES_EVS_JOIN,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_evs_leave,
 		.response_size				= sizeof (struct res_lib_evs_leave),
 		.response_id				= MESSAGE_RES_EVS_LEAVE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_evs_mcast_joined,
 		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
 		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_evs_mcast_groups,
 		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
 		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_evs_membership_get,
 		.response_size				= sizeof (struct res_lib_evs_membership_get),
 		.response_id				= MESSAGE_RES_EVS_MEMBERSHIP_GET,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -144,7 +144,7 @@ struct corosync_service_engine evs_service_engine = {
 	.name			= "corosync extended virtual synchrony service",
 	.id			= EVS_SERVICE,
 	.private_data_size	= sizeof (struct evs_pd),
-	.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED, 
+	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED, 
 	.lib_init_fn		= evs_lib_init_fn,
 	.lib_exit_fn		= evs_lib_exit_fn,
 	.lib_engine		= evs_lib_engine,
@@ -223,7 +223,7 @@ static void evs_confchg_fn (
 	 */
 	res_evs_confchg_callback.header.size = sizeof (struct res_evs_confchg_callback);
 	res_evs_confchg_callback.header.id = MESSAGE_RES_EVS_CONFCHG_CALLBACK;
-	res_evs_confchg_callback.header.error = SA_AIS_OK;
+	res_evs_confchg_callback.header.error = CS_OK;
 
 	memcpy (res_evs_confchg_callback.member_list,
 		member_list, member_list_entries * sizeof(*member_list));
@@ -276,21 +276,21 @@ static int evs_lib_exit_fn (void *conn)
 
 static void message_handler_req_evs_join (void *conn, void *msg)
 {
-	evs_error_t error = EVS_OK;
+	cs_error_t error = CS_OK;
 	struct req_lib_evs_join *req_lib_evs_join = (struct req_lib_evs_join *)msg;
 	struct res_lib_evs_join res_lib_evs_join;
 	void *addr;
 	struct evs_pd *evs_pd = (struct evs_pd *)api->ipc_private_data_get (conn);
 
 	if (req_lib_evs_join->group_entries > 50) {
-		error = EVS_ERR_TOO_MANY_GROUPS;
+		error = CS_ERR_TOO_MANY_GROUPS;
 		goto exit_error;
 	}
 
 	addr = realloc (evs_pd->groups, sizeof (struct evs_group) * 
 		(evs_pd->group_entries + req_lib_evs_join->group_entries));
 	if (addr == NULL) {
-		error = SA_AIS_ERR_NO_MEMORY;
+		error = CS_ERR_NO_MEMORY;
 		goto exit_error;
 	}
 	evs_pd->groups = addr;
@@ -314,7 +314,7 @@ static void message_handler_req_evs_leave (void *conn, void *msg)
 {
 	struct req_lib_evs_leave *req_lib_evs_leave = (struct req_lib_evs_leave *)msg;
 	struct res_lib_evs_leave res_lib_evs_leave;
-	evs_error_t error = EVS_OK;
+	cs_error_t error = CS_OK;
 	int error_index;
 	int i, j;
 	int found;
@@ -342,7 +342,7 @@ static void message_handler_req_evs_leave (void *conn, void *msg)
 			}
 		}
 		if (found == 0) {
-			error = EVS_ERR_NOT_EXIST;
+			error = CS_ERR_NOT_EXIST;
 			error_index = i;
 			break;
 		}
@@ -358,7 +358,7 @@ static void message_handler_req_evs_leave (void *conn, void *msg)
 
 static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 {
-	evs_error_t error = EVS_ERR_TRY_AGAIN;
+	cs_error_t error = CS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_joined *req_lib_evs_mcast_joined = (struct req_lib_evs_mcast_joined *)msg;
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
 	struct iovec req_exec_evs_mcast_iovec[3];
@@ -388,7 +388,7 @@ static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 	res = api->totem_mcast (req_exec_evs_mcast_iovec, 3, TOTEM_AGREED);
 		// TODO
 	if (res == 0) {
-		error = EVS_OK;
+		error = CS_OK;
 	}
 
 	res_lib_evs_mcast_joined.header.size = sizeof (struct res_lib_evs_mcast_joined);
@@ -401,7 +401,7 @@ static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 
 static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 {
-	evs_error_t error = EVS_ERR_TRY_AGAIN;
+	cs_error_t error = CS_ERR_TRY_AGAIN;
 	struct req_lib_evs_mcast_groups *req_lib_evs_mcast_groups = (struct req_lib_evs_mcast_groups *)msg;
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	struct iovec req_exec_evs_mcast_iovec[3];
@@ -434,7 +434,7 @@ static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 	send_ok = api->totem_send_ok (req_exec_evs_mcast_iovec, 3);
 	res = api->totem_mcast (req_exec_evs_mcast_iovec, 3, TOTEM_AGREED);
 	if (res == 0) {
-		error = EVS_OK;
+		error = CS_OK;
 	}
 
 	res_lib_evs_mcast_groups.header.size = sizeof (struct res_lib_evs_mcast_groups);
@@ -451,7 +451,7 @@ static void message_handler_req_evs_membership_get (void *conn, void *msg)
 
 	res_lib_evs_membership_get.header.size = sizeof (struct res_lib_evs_membership_get);
 	res_lib_evs_membership_get.header.id = MESSAGE_RES_EVS_MEMBERSHIP_GET;
-	res_lib_evs_membership_get.header.error = EVS_OK;
+	res_lib_evs_membership_get.header.error = CS_OK;
 	res_lib_evs_membership_get.local_nodeid = api->totem_nodeid_get ();
 	memcpy (&res_lib_evs_membership_get.member_list,
 		&res_evs_confchg_callback.member_list,
@@ -488,7 +488,7 @@ static void message_handler_req_exec_mcast (
 	res_evs_deliver_callback.header.size = sizeof (struct res_evs_deliver_callback) +
 		req_exec_evs_mcast->msg_len;
 	res_evs_deliver_callback.header.id = MESSAGE_RES_EVS_DELIVER_CALLBACK;
-	res_evs_deliver_callback.header.error = SA_AIS_OK;
+	res_evs_deliver_callback.header.error = CS_OK;
 	res_evs_deliver_callback.msglen = req_exec_evs_mcast->msg_len;
 
 	msg_addr = (char *)req_exec_evs_mcast + sizeof (struct req_exec_evs_mcast) + 

@@ -35,7 +35,7 @@
 #define IPC_CPG_H_DEFINED
 
 #include <netinet/in.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 #include "ipc_gen.h"
 #include "mar_cpg.h"
 

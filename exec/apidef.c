@@ -55,13 +55,13 @@ LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 /*
  * Remove compile warnings about type name changes
  */
-typedef int (*typedef_tpg_join) (corosync_tpg_handle, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_leave) (corosync_tpg_handle, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_groups_mcast) (corosync_tpg_handle, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
-typedef int (*typedef_tpg_groups_send_ok) (corosync_tpg_handle, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+typedef int (*typedef_tpg_join) (cs_tpg_handle, struct corosync_tpg_group *, int);
+typedef int (*typedef_tpg_leave) (cs_tpg_handle, struct corosync_tpg_group *, int);
+typedef int (*typedef_tpg_groups_mcast) (cs_tpg_handle, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+typedef int (*typedef_tpg_groups_send_ok) (cs_tpg_handle, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
 
 static inline void _corosync_public_exit_error (
-	corosync_fatal_error_t err, const char *file, unsigned int line)
+	cs_fatal_error_t err, const char *file, unsigned int line)
 {
 	_corosync_exit_error (err, file, line);
 }
@@ -73,16 +73,16 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_time_get = NULL,
 	.ipc_source_set = message_source_set,
 	.ipc_source_is_local = message_source_is_local,
-	.ipc_private_data_get = corosync_conn_private_data_get,
+	.ipc_private_data_get = cs_conn_private_data_get,
 	.ipc_response_send = NULL,
-	.ipc_response_no_fcc = corosync_conn_send_response_no_fcc,
+	.ipc_response_no_fcc = cs_conn_send_response_no_fcc,
 	.ipc_dispatch_send = NULL,
-	.ipc_conn_send_response = corosync_conn_send_response,
-	.ipc_conn_partner_get = corosync_conn_partner_get,
-	.ipc_refcnt_inc =  corosync_ipc_flow_control_local_increment,
-	.ipc_refcnt_dec = corosync_ipc_flow_control_local_decrement,
-	.ipc_fc_create = corosync_ipc_flow_control_create,
-	.ipc_fc_destroy = corosync_ipc_flow_control_destroy,
+	.ipc_conn_send_response = cs_conn_send_response,
+	.ipc_conn_partner_get = cs_conn_partner_get,
+	.ipc_refcnt_inc =  cs_ipc_flow_control_local_increment,
+	.ipc_refcnt_dec = cs_ipc_flow_control_local_decrement,
+	.ipc_fc_create = cs_ipc_flow_control_create,
+	.ipc_fc_destroy = cs_ipc_flow_control_destroy,
 	.totem_nodeid_get = totempg_my_nodeid_get,
 	.totem_family_get = totempg_my_family_get,
 	.totem_ring_reenable = totempg_ring_reenable,

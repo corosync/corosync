@@ -37,7 +37,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>

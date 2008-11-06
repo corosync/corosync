@@ -42,7 +42,7 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
 #include <corosync/mar_gen.h>
@@ -86,7 +86,7 @@ static struct saHandleDatabase confdb_handle_t_db = {
 };
 
 
-static confdb_error_t do_find_destroy(struct confdb_inst *confdb_inst, unsigned int find_handle);
+static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, unsigned int find_handle);
 
 
 /* Safely tidy one iterator context list */
@@ -137,20 +137,20 @@ static struct iter_context *find_iter_context(struct list_head *list, unsigned i
  * @{
  */
 
-confdb_error_t confdb_initialize (
+cs_error_t confdb_initialize (
 	confdb_handle_t *handle,
 	confdb_callbacks_t *callbacks)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleCreate (&confdb_handle_t_db, sizeof (struct confdb_inst), handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, *handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
@@ -163,7 +163,7 @@ confdb_error_t confdb_initialize (
 					  &confdb_inst->response_fd,
 					  CONFDB_SERVICE);
 	}
-	if (error != SA_AIS_OK)
+	if (error != CS_OK)
 		goto error_put_destroy;
 
 	memcpy (&confdb_inst->callbacks, callbacks, sizeof (confdb_callbacks_t));
@@ -177,7 +177,7 @@ confdb_error_t confdb_initialize (
 
 	saHandleInstancePut (&confdb_handle_t_db, *handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&confdb_handle_t_db, *handle);
@@ -187,14 +187,14 @@ error_no_destroy:
 	return (error);
 }
 
-confdb_error_t confdb_finalize (
+cs_error_t confdb_finalize (
 	confdb_handle_t handle)
 {
 	struct confdb_inst *confdb_inst;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -206,7 +206,7 @@ confdb_error_t confdb_finalize (
 	if (confdb_inst->finalize) {
 		pthread_mutex_unlock (&confdb_inst->response_mutex);
 		saHandleInstancePut (&confdb_handle_t_db, handle);
-		return (CONFDB_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	confdb_inst->finalize = 1;
@@ -235,18 +235,18 @@ confdb_error_t confdb_finalize (
 	}
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
-	return (CONFDB_OK);
+	return (CS_OK);
 }
 
-confdb_error_t confdb_fd_get (
+cs_error_t confdb_fd_get (
 	confdb_handle_t handle,
 	int *fd)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -254,18 +254,18 @@ confdb_error_t confdb_fd_get (
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-confdb_error_t confdb_context_get (
+cs_error_t confdb_context_get (
 	confdb_handle_t handle,
 	void **context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -273,18 +273,18 @@ confdb_error_t confdb_context_get (
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-confdb_error_t confdb_context_set (
+cs_error_t confdb_context_set (
 	confdb_handle_t handle,
 	void *context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -292,7 +292,7 @@ confdb_error_t confdb_context_set (
 
 	saHandleInstancePut (&confdb_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 struct res_overlay {
@@ -300,13 +300,13 @@ struct res_overlay {
 	char data[512000];
 };
 
-confdb_error_t confdb_dispatch (
+cs_error_t confdb_dispatch (
 	confdb_handle_t handle,
-	confdb_dispatch_t dispatch_types)
+	cs_dispatch_flags_t dispatch_types)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaAisErrorT error;
+	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct confdb_inst *confdb_inst;
@@ -318,12 +318,12 @@ confdb_error_t confdb_dispatch (
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = CONFDB_ERR_NOT_SUPPORTED;
+		error = CS_ERR_NOT_SUPPORTED;
 		goto error_unlock;
 	}
 
@@ -341,7 +341,7 @@ confdb_error_t confdb_dispatch (
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -351,7 +351,7 @@ confdb_error_t confdb_dispatch (
 		 * Regather poll data in case ufds has changed since taking lock
 		 */
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -359,7 +359,7 @@ confdb_error_t confdb_dispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (confdb_inst->finalize == 1) {
-			error = CONFDB_OK;
+			error = CS_OK;
 			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 			goto error_unlock;
 		}
@@ -380,14 +380,14 @@ confdb_error_t confdb_dispatch (
 			 */
 			error = saRecvRetry (confdb_inst->dispatch_fd, &dispatch_data.header,
 				sizeof (mar_res_header_t));
-			if (error != SA_AIS_OK) {
+			if (error != CS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (confdb_inst->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (mar_res_header_t));
 
-				if (error != SA_AIS_OK) {
+				if (error != CS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -443,7 +443,7 @@ confdb_error_t confdb_dispatch (
 				break;
 
 			default:
-				error = SA_AIS_ERR_LIBRARY;
+				error = CS_ERR_LIBRARY;
 				goto error_nounlock;
 				break;
 		}
@@ -475,31 +475,31 @@ error_nounlock:
 	return (error);
 }
 
-confdb_error_t confdb_object_create (
+cs_error_t confdb_object_create (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *object_name,
 	int object_name_len,
 	unsigned int *object_handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_object_create req_lib_confdb_object_create;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_object_create(parent_object_handle,
 					    object_name, object_name_len,
 					    object_handle))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -518,7 +518,7 @@ confdb_error_t confdb_object_create (
 		&res_lib_confdb_object_create, sizeof (struct res_lib_confdb_object_create));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -531,26 +531,26 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_object_destroy (
+cs_error_t confdb_object_destroy (
 	confdb_handle_t handle,
 	unsigned int object_handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_object_destroy req_lib_confdb_object_destroy;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_object_destroy(object_handle))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -567,7 +567,7 @@ confdb_error_t confdb_object_destroy (
 		&res, sizeof ( mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -579,27 +579,27 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_object_parent_get (
+cs_error_t confdb_object_parent_get (
 	confdb_handle_t handle,
 	unsigned int object_handle,
 	unsigned int *parent_object_handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_object_parent_get req_lib_confdb_object_parent_get;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_object_parent_get(object_handle, parent_object_handle))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -616,7 +616,7 @@ confdb_error_t confdb_object_parent_get (
 		&res_lib_confdb_object_parent_get, sizeof (struct res_lib_confdb_object_parent_get));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -629,23 +629,23 @@ error_exit:
 	return (error);
 }
 
-static confdb_error_t do_find_destroy(
+static cs_error_t do_find_destroy(
 	struct confdb_inst *confdb_inst,
 	unsigned int find_handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct iovec iov[2];
 	struct req_lib_confdb_object_find_destroy req_lib_confdb_object_find_destroy;
 	mar_res_header_t res;
 
 	if (!find_handle)
-		return SA_AIS_OK;
+		return CS_OK;
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_find_destroy(find_handle))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -662,7 +662,7 @@ static confdb_error_t do_find_destroy(
 		&res, sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -673,22 +673,22 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_object_find_destroy(
+cs_error_t confdb_object_find_destroy(
 	confdb_handle_t handle,
 	unsigned int parent_object_handle)
 {
 	struct iter_context *context;
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	context = find_iter_context(&confdb_inst->object_find_head, parent_object_handle);
 	error = do_find_destroy(confdb_inst, context->find_handle);
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		list_del(&context->list);
 		free(context);
 	}
@@ -697,22 +697,22 @@ confdb_error_t confdb_object_find_destroy(
 	return error;
 }
 
-confdb_error_t confdb_object_iter_destroy(
+cs_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
 	unsigned int parent_object_handle)
 {
 	struct iter_context *context;
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	context = find_iter_context(&confdb_inst->object_iter_head, parent_object_handle);
 	error = do_find_destroy(confdb_inst, context->find_handle);
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		list_del(&context->list);
 		free(context);
 	}
@@ -722,7 +722,7 @@ confdb_error_t confdb_object_iter_destroy(
 }
 
 
-confdb_error_t confdb_key_create (
+cs_error_t confdb_key_create (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
@@ -730,24 +730,24 @@ confdb_error_t confdb_key_create (
 	void *value,
 	int value_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_create req_lib_confdb_key_create;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_create(parent_object_handle,
 					 key_name, key_name_len,
 					 value, value_len))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -768,7 +768,7 @@ confdb_error_t confdb_key_create (
 		&res, sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -780,7 +780,7 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_delete (
+cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
@@ -788,24 +788,24 @@ confdb_error_t confdb_key_delete (
 	void *value,
 	int value_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_delete(parent_object_handle,
 					 key_name, key_name_len,
 					 value, value_len))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -826,7 +826,7 @@ confdb_error_t confdb_key_delete (
 		&res, sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -838,7 +838,7 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_get (
+cs_error_t confdb_key_get (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
@@ -846,24 +846,24 @@ confdb_error_t confdb_key_get (
 	void *value,
 	int *value_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_get res_lib_confdb_key_get;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_get(parent_object_handle,
 				      key_name, key_name_len,
 				      value, value_len))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -882,12 +882,12 @@ confdb_error_t confdb_key_get (
 		&res_lib_confdb_key_get, sizeof (struct res_lib_confdb_key_get));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_key_get.header.error;
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		*value_len = res_lib_confdb_key_get.value.length;
 		memcpy(value, res_lib_confdb_key_get.value.value, *value_len);
 	}
@@ -898,31 +898,31 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_increment (
+cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_increment(parent_object_handle,
 					    key_name, key_name_len,
 					    value))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -941,12 +941,12 @@ confdb_error_t confdb_key_increment (
 		&res_lib_confdb_key_incdec, sizeof (struct res_lib_confdb_key_incdec));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_key_incdec.header.error;
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		*value = res_lib_confdb_key_incdec.value;
 	}
 
@@ -956,31 +956,31 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_decrement (
+cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_decrement(parent_object_handle,
 					    key_name, key_name_len,
 					    value))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -999,12 +999,12 @@ confdb_error_t confdb_key_decrement (
 		&res_lib_confdb_key_incdec, sizeof (struct res_lib_confdb_key_incdec));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_key_incdec.header.error;
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		*value = res_lib_confdb_key_incdec.value;
 	}
 
@@ -1014,7 +1014,7 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_replace (
+cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
@@ -1024,25 +1024,25 @@ confdb_error_t confdb_key_replace (
 	void *new_value,
 	int new_value_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_replace(parent_object_handle,
 					  key_name, key_name_len,
 					  old_value, old_value_len,
 					  new_value, new_value_len))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 	req_lib_confdb_key_replace.header.size = sizeof (struct req_lib_confdb_key_replace);
@@ -1064,7 +1064,7 @@ confdb_error_t confdb_key_replace (
 		&res, sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -1076,16 +1076,16 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_object_iter_start (
+cs_error_t confdb_object_iter_start (
 	confdb_handle_t handle,
 	unsigned int object_handle)
 {
 	struct confdb_inst *confdb_inst;
-	confdb_error_t error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -1093,7 +1093,7 @@ confdb_error_t confdb_object_iter_start (
 	if (!context) {
 		context = malloc(sizeof(struct iter_context));
 		if (!context) {
-			error = CONFDB_ERR_NO_MEMORY;
+			error = CS_ERR_NO_MEMORY;
 			goto ret;
 		}
 		context->parent_object_handle = object_handle;
@@ -1113,16 +1113,16 @@ ret:
 	return error;
 }
 
-confdb_error_t confdb_key_iter_start (
+cs_error_t confdb_key_iter_start (
 	confdb_handle_t handle,
 	unsigned int object_handle)
 {
 	struct confdb_inst *confdb_inst;
-	confdb_error_t error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -1130,7 +1130,7 @@ confdb_error_t confdb_key_iter_start (
 	if (!context) {
 		context = malloc(sizeof(struct iter_context));
 		if (!context) {
-			error = CONFDB_ERR_NO_MEMORY;
+			error = CS_ERR_NO_MEMORY;
 			goto ret;
 		}
 		context->parent_object_handle = object_handle;
@@ -1146,16 +1146,16 @@ ret:
 	return error;
 }
 
-confdb_error_t confdb_object_find_start (
+cs_error_t confdb_object_find_start (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle)
 {
 	struct confdb_inst *confdb_inst;
-	confdb_error_t error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -1163,7 +1163,7 @@ confdb_error_t confdb_object_find_start (
 	if (!context) {
 		context = malloc(sizeof(struct iter_context));
 		if (!context) {
-			error = CONFDB_ERR_NO_MEMORY;
+			error = CS_ERR_NO_MEMORY;
 			goto ret;
 		}
 		context->find_handle = 0;
@@ -1182,14 +1182,14 @@ ret:
 	return error;
 }
 
-confdb_error_t confdb_object_find (
+cs_error_t confdb_object_find (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *object_name,
 	int object_name_len,
 	unsigned int *object_handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct iter_context *context;
@@ -1197,26 +1197,26 @@ confdb_error_t confdb_object_find (
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	/* You MUST call confdb_object_find_start first */
 	context = find_iter_context(&confdb_inst->object_find_head, parent_object_handle);
 	if (!context) {
-		error =	CONFDB_ERR_CONTEXT_NOT_FOUND;
+		error =	CS_ERR_CONTEXT_NOT_FOUND;
 		goto error_exit;
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_object_find(parent_object_handle,
 					  &context->find_handle,
 					  object_handle,
 					  object_name, &object_name_len,
 					  0))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -1236,7 +1236,7 @@ confdb_error_t confdb_object_find (
 		&res_lib_confdb_object_find, sizeof (struct res_lib_confdb_object_find));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -1251,14 +1251,14 @@ error_exit:
 }
 
 
-confdb_error_t confdb_object_iter (
+cs_error_t confdb_object_iter (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	unsigned int *object_handle,
 	void *object_name,
 	int *object_name_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct iter_context *context;
@@ -1266,19 +1266,19 @@ confdb_error_t confdb_object_iter (
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	/* You MUST call confdb_object_iter_start first */
 	context = find_iter_context(&confdb_inst->object_iter_head, parent_object_handle);
 	if (!context) {
-		error =	CONFDB_ERR_CONTEXT_NOT_FOUND;
+		error =	CS_ERR_CONTEXT_NOT_FOUND;
 		goto error_exit;
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		*object_name_len = 0;
 		if (confdb_sa_object_find(parent_object_handle,
@@ -1286,7 +1286,7 @@ confdb_error_t confdb_object_iter (
 					  object_handle,
 					  object_name, object_name_len,
 					  1))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto sa_exit;
 	}
 
@@ -1304,12 +1304,12 @@ confdb_error_t confdb_object_iter (
 		&res_lib_confdb_object_iter, sizeof (struct res_lib_confdb_object_iter));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_object_iter.header.error;
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		*object_name_len = res_lib_confdb_object_iter.object_name.length;
 		memcpy(object_name, res_lib_confdb_object_iter.object_name.value, *object_name_len);
 		*object_handle = res_lib_confdb_object_iter.object_handle;
@@ -1323,7 +1323,7 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_key_iter (
+cs_error_t confdb_key_iter (
 	confdb_handle_t handle,
 	unsigned int parent_object_handle,
 	void *key_name,
@@ -1331,7 +1331,7 @@ confdb_error_t confdb_key_iter (
 	void *value,
 	int *value_len)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct iter_context *context;
@@ -1339,25 +1339,25 @@ confdb_error_t confdb_key_iter (
 	struct res_lib_confdb_key_iter res_lib_confdb_key_iter;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	/* You MUST call confdb_key_iter_start first */
 	context = find_iter_context(&confdb_inst->key_iter_head, parent_object_handle);
 	if (!context) {
-		error =	CONFDB_ERR_CONTEXT_NOT_FOUND;
+		error =	CS_ERR_CONTEXT_NOT_FOUND;
 		goto error_exit;
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_key_iter(parent_object_handle,
 				       context->next_entry,
 				       key_name, key_name_len,
 				       value, value_len))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto sa_exit;
 	}
 
@@ -1375,12 +1375,12 @@ confdb_error_t confdb_key_iter (
 		&res_lib_confdb_key_iter, sizeof (struct res_lib_confdb_key_iter));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_key_iter.header.error;
-	if (error == SA_AIS_OK) {
+	if (error == CS_OK) {
 		*key_name_len = res_lib_confdb_key_iter.key_name.length;
 		memcpy(key_name, res_lib_confdb_key_iter.key_name.value, *key_name_len);
 		*value_len = res_lib_confdb_key_iter.value.length;
@@ -1396,26 +1396,26 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_write (
+cs_error_t confdb_write (
 	confdb_handle_t handle,
 	char *error_text)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	mar_req_header_t req;
 	struct res_lib_confdb_write res_lib_confdb_write;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_write(error_text))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -1431,7 +1431,7 @@ confdb_error_t confdb_write (
 				       &res_lib_confdb_write, sizeof ( struct res_lib_confdb_write));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -1445,27 +1445,27 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_reload (
+cs_error_t confdb_reload (
 	confdb_handle_t handle,
 	int flush,
 	char *error_text)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct res_lib_confdb_reload res_lib_confdb_reload;
 	struct req_lib_confdb_reload req_lib_confdb_reload;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = SA_AIS_OK;
+		error = CS_OK;
 
 		if (confdb_sa_reload(flush, error_text))
-			error = SA_AIS_ERR_ACCESS;
+			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
 
@@ -1483,7 +1483,7 @@ confdb_error_t confdb_reload (
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -1497,24 +1497,24 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_track_changes (
+cs_error_t confdb_track_changes (
 	confdb_handle_t handle,
 	unsigned int object_handle,
 	unsigned int flags)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	struct req_lib_confdb_object_track_start req;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = CONFDB_ERR_NOT_SUPPORTED;
+		error = CS_ERR_NOT_SUPPORTED;
 		goto error_exit;
 	}
 
@@ -1532,7 +1532,7 @@ confdb_error_t confdb_track_changes (
 		&res, sizeof ( mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -1544,21 +1544,21 @@ error_exit:
 	return (error);
 }
 
-confdb_error_t confdb_stop_track_changes (confdb_handle_t handle)
+cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 {
-	confdb_error_t error;
+	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov[2];
 	mar_req_header_t req;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
-		error = CONFDB_ERR_NOT_SUPPORTED;
+		error = CS_ERR_NOT_SUPPORTED;
 		goto error_exit;
 	}
 
@@ -1574,7 +1574,7 @@ confdb_error_t confdb_stop_track_changes (confdb_handle_t handle)
 		&res, sizeof ( mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 

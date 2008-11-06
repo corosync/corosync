@@ -43,7 +43,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/ais_util.h>
@@ -79,27 +79,27 @@ static void quorum_instance_destructor (void *instance)
 	pthread_mutex_destroy (&quorum_inst->response_mutex);
 }
 
-quorum_error_t quorum_initialize (
+cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
 	quorum_callbacks_t *callbacks)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
 	error = saHandleCreate (&quorum_handle_t_db, sizeof (struct quorum_inst), handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, *handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
 	error = saServiceConnect (&quorum_inst->dispatch_fd,
 				  &quorum_inst->response_fd,
 				  QUORUM_SERVICE);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -112,7 +112,7 @@ quorum_error_t quorum_initialize (
 
 	saHandleInstancePut (&quorum_handle_t_db, *handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&quorum_handle_t_db, *handle);
@@ -122,14 +122,14 @@ error_no_destroy:
 	return (error);
 }
 
-quorum_error_t quorum_finalize (
+cs_error_t quorum_finalize (
 	quorum_handle_t handle)
 {
 	struct quorum_inst *quorum_inst;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -141,7 +141,7 @@ quorum_error_t quorum_finalize (
 	if (quorum_inst->finalize) {
 		pthread_mutex_unlock (&quorum_inst->response_mutex);
 		saHandleInstancePut (&quorum_handle_t_db, handle);
-		return (QUORUM_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	quorum_inst->finalize = 1;
@@ -159,21 +159,21 @@ quorum_error_t quorum_finalize (
 	}
 	saHandleInstancePut (&quorum_handle_t_db, handle);
 
-	return (QUORUM_OK);
+	return (CS_OK);
 }
 
-quorum_error_t quorum_getquorate (
+cs_error_t quorum_getquorate (
 	quorum_handle_t handle,
 	int *quorate)
 {
-	quorum_error_t error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov[2];
 	mar_req_header_t req;
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -190,7 +190,7 @@ quorum_error_t quorum_getquorate (
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -204,15 +204,15 @@ error_exit:
 	return (error);
 }
 
-quorum_error_t quorum_fd_get (
+cs_error_t quorum_fd_get (
 	quorum_handle_t handle,
 	int *fd)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -220,19 +220,19 @@ quorum_error_t quorum_fd_get (
 
 	saHandleInstancePut (&quorum_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 
-quorum_error_t quorum_context_get (
+cs_error_t quorum_context_get (
 	quorum_handle_t handle,
 	void **context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -240,18 +240,18 @@ quorum_error_t quorum_context_get (
 
 	saHandleInstancePut (&quorum_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-quorum_error_t quorum_context_set (
+cs_error_t quorum_context_set (
 	quorum_handle_t handle,
 	void *context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -259,22 +259,22 @@ quorum_error_t quorum_context_set (
 
 	saHandleInstancePut (&quorum_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 
-quorum_error_t quorum_trackstart (
+cs_error_t quorum_trackstart (
 	quorum_handle_t handle,
 	unsigned int flags )
 {
-	quorum_error_t error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov[2];
 	struct req_lib_quorum_trackstart req_lib_quorum_trackstart;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -292,7 +292,7 @@ quorum_error_t quorum_trackstart (
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -304,17 +304,17 @@ error_exit:
 	return (error);
 }
 
-quorum_error_t quorum_trackstop (
+cs_error_t quorum_trackstop (
 	quorum_handle_t handle)
 {
-	quorum_error_t error;
+	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov[2];
 	mar_req_header_t req;
 	mar_res_header_t res;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -331,7 +331,7 @@ quorum_error_t quorum_trackstop (
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -348,13 +348,13 @@ struct res_overlay {
 	char data[512000];
 };
 
-quorum_error_t quorum_dispatch (
+cs_error_t quorum_dispatch (
 	quorum_handle_t handle,
-	quorum_dispatch_t dispatch_types)
+	cs_dispatch_flags_t dispatch_types)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaAisErrorT error;
+	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct quorum_inst *quorum_inst;
@@ -362,24 +362,24 @@ quorum_error_t quorum_dispatch (
 	struct res_overlay dispatch_data;
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
 
-	if (dispatch_types != SA_DISPATCH_ONE &&
-		dispatch_types != SA_DISPATCH_ALL &&
-		dispatch_types != SA_DISPATCH_BLOCKING) {
+	if (dispatch_types != CS_DISPATCH_ONE &&
+		dispatch_types != CS_DISPATCH_ALL &&
+		dispatch_types != CS_DISPATCH_BLOCKING) {
 
-		return (SA_AIS_ERR_INVALID_PARAM);
+		return (CS_ERR_INVALID_PARAM);
 	}
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle,
 		(void *)&quorum_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	/*
-	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
-	 * wait indefinately for SA_DISPATCH_BLOCKING
+	 * Timeout instantly for CS_DISPATCH_ONE or SA_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == SA_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -391,7 +391,7 @@ quorum_error_t quorum_dispatch (
 		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_unlock;
 		}
 
@@ -399,17 +399,17 @@ quorum_error_t quorum_dispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (quorum_inst->finalize == 1) {
-			error = SA_AIS_OK;
+			error = CS_OK;
 			goto error_unlock;
 		}
 
 		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
-			error = SA_AIS_ERR_BAD_HANDLE;
+			error = CS_ERR_BAD_HANDLE;
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatch_types == SA_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -421,13 +421,13 @@ quorum_error_t quorum_dispatch (
 		if (ufds.revents & POLLIN) {
 			error = saRecvRetry (quorum_inst->dispatch_fd, &dispatch_data.header,
 				sizeof (mar_res_header_t));
-			if (error != SA_AIS_OK) {
+			if (error != CS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (quorum_inst->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (mar_res_header_t));
-				if (error != SA_AIS_OK) {
+				if (error != CS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -463,7 +463,7 @@ quorum_error_t quorum_dispatch (
 			break;
 
 		default:
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
@@ -472,12 +472,12 @@ quorum_error_t quorum_dispatch (
 		 * Determine if more messages should be processed
 		 * */
 		switch (dispatch_types) {
-		case QUORUM_DISPATCH_ONE:
+		case CS_DISPATCH_ONE:
 			cont = 0;
 			break;
-		case QUORUM_DISPATCH_ALL:
+		case CS_DISPATCH_ALL:
 			break;
-		case QUORUM_DISPATCH_BLOCKING:
+		case CS_DISPATCH_BLOCKING:
 			break;
 		}
 	} while (cont);

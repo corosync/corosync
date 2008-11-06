@@ -35,7 +35,7 @@
 #define IPC_QUORUM_H_DEFINED
 
 #include <netinet/in.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 #include "corosync/ipc_gen.h"
 
 enum req_quorum_types {

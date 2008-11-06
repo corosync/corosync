@@ -46,7 +46,7 @@
 #include <signal.h>
 #include <string.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
@@ -169,67 +169,67 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringstatusget,
 		.response_size		= sizeof (struct res_lib_cfg_ringstatusget),
 		.response_id		= MESSAGE_RES_CFG_RINGSTATUSGET,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringreenable,
 		.response_size		= sizeof (struct res_lib_cfg_ringreenable),
 		.response_id		= MESSAGE_RES_CFG_RINGREENABLE,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
 		.response_size		= sizeof (struct res_lib_cfg_statetrack),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
 		.response_size		= sizeof (struct res_lib_cfg_statetrackstop),
 		.response_id		= MESSAGE_RES_CFG_STATETRACKSTOP,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateset),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATESET,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
 		.response_size		= sizeof (struct res_lib_cfg_administrativestateget),
 		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceload,
 		.response_size		= sizeof (struct res_lib_cfg_serviceload),
 		.response_id		= MESSAGE_RES_CFG_SERVICELOAD,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceunload,
 		.response_size		= sizeof (struct res_lib_cfg_serviceunload),
 		.response_id		= MESSAGE_RES_CFG_SERVICEUNLOAD,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_killnode,
 		.response_size		= sizeof (struct res_lib_cfg_killnode),
 		.response_id		= MESSAGE_RES_CFG_KILLNODE,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_tryshutdown,
 		.response_size		= sizeof (struct res_lib_cfg_tryshutdown),
 		.response_id		= MESSAGE_RES_CFG_TRYSHUTDOWN,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
 		.response_size		= 0,
 		.response_id		= 0,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -254,8 +254,8 @@ struct corosync_service_engine cfg_service_engine = {
 	.name					= "corosync configuration service",
 	.id					= CFG_SERVICE,
 	.private_data_size			= sizeof(struct cfg_info),
-	.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED,
-	.allow_inquorate			= COROSYNC_LIB_ALLOW_INQUORATE,
+	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
+	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
 	.lib_init_fn				= cfg_lib_init_fn,
 	.lib_exit_fn				= cfg_lib_exit_fn,
 	.lib_engine				= cfg_lib_engine,
@@ -421,7 +421,7 @@ static void check_shutdown_status()
 
 			res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 			res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-			res_lib_cfg_tryshutdown.header.error = SA_AIS_OK;
+			res_lib_cfg_tryshutdown.header.error = CS_OK;
 
 			/*
 			 * Tell originator that shutdown was confirmed
@@ -435,7 +435,7 @@ static void check_shutdown_status()
 			TRACE1("shutdown cancelled");
 			res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 			res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-			res_lib_cfg_tryshutdown.header.error = SA_AIS_ERR_BUSY;
+			res_lib_cfg_tryshutdown.header.error = CS_ERR_BUSY;
 
 			/*
 			 * Tell originator that shutdown was cancelled
@@ -464,7 +464,7 @@ static void shutdown_timer_fn(void *arg)
 	shutdown_no = shutdown_expected;
 	check_shutdown_status();
 
-	send_test_shutdown(NULL, SA_AIS_ERR_TIMEOUT);
+	send_test_shutdown(NULL, CS_ERR_TIMEOUT);
 	LEAVE();
 }
 
@@ -547,7 +547,7 @@ static void message_handler_req_exec_cfg_ringreenable (
         if (api->ipc_source_is_local(&req_exec_cfg_ringreenable->source)) {
 		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
 		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
-		res_lib_cfg_ringreenable.header.error = SA_AIS_OK;
+		res_lib_cfg_ringreenable.header.error = CS_OK;
 		api->ipc_conn_send_response (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
@@ -573,7 +573,7 @@ static void message_handler_req_exec_cfg_killnode (
 {
 	struct req_exec_cfg_killnode *req_exec_cfg_killnode =
 		(struct req_exec_cfg_killnode *)message;
-	SaNameT reason;
+	cs_name_t reason;
 
 	ENTER();
 	log_printf(LOG_DEBUG, "request to kill node %d(us=%d): %s\n",  req_exec_cfg_killnode->nodeid, api->totem_nodeid_get(), reason.value);
@@ -621,7 +621,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 
 	res_lib_cfg_ringstatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
 	res_lib_cfg_ringstatusget.header.size = sizeof (struct res_lib_cfg_ringstatusget);
-	res_lib_cfg_ringstatusget.header.error = SA_AIS_OK;
+	res_lib_cfg_ringstatusget.header.error = CS_OK;
 
 	api->totem_ifaces_get (
 		api->totem_nodeid_get(),
@@ -691,13 +691,13 @@ static void message_handler_req_lib_cfg_statetrack (
 			 */
 			ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
 			shutdown_expected++;
-			send_test_shutdown(ci->tracker_conn, SA_AIS_OK);
+			send_test_shutdown(ci->tracker_conn, CS_OK);
 		}
 	}
 
 	res_lib_cfg_statetrack.header.size = sizeof(struct res_lib_cfg_statetrack);
 	res_lib_cfg_statetrack.header.id = MESSAGE_RES_CFG_STATETRACKSTART;
-	res_lib_cfg_statetrack.header.error = SA_AIS_OK;
+	res_lib_cfg_statetrack.header.error = CS_OK;
 
 	api->ipc_conn_send_response(conn, &res_lib_cfg_statetrack,
 				    sizeof(res_lib_cfg_statetrack));
@@ -751,7 +751,7 @@ static void message_handler_req_lib_cfg_serviceload (
 
 	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
-	res_lib_cfg_serviceload.header.error = SA_AIS_OK;
+	res_lib_cfg_serviceload.header.error = CS_OK;
 	api->ipc_conn_send_response (
 		conn,
 		&res_lib_cfg_serviceload,
@@ -774,7 +774,7 @@ static void message_handler_req_lib_cfg_serviceunload (
 		req_lib_cfg_serviceunload->service_ver);
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
-	res_lib_cfg_serviceunload.header.error = SA_AIS_OK;
+	res_lib_cfg_serviceunload.header.error = CS_OK;
 	api->ipc_conn_send_response (
 		conn,
 		&res_lib_cfg_serviceunload,
@@ -808,7 +808,7 @@ static void message_handler_req_lib_cfg_killnode (
 
 	res_lib_cfg_killnode.header.size = sizeof(struct res_lib_cfg_killnode);
 	res_lib_cfg_killnode.header.id = MESSAGE_RES_CFG_KILLNODE;
-	res_lib_cfg_killnode.header.error = SA_AIS_OK;
+	res_lib_cfg_killnode.header.error = CS_OK;
 
 	api->ipc_conn_send_response(conn, &res_lib_cfg_killnode,
 				    sizeof(res_lib_cfg_killnode));
@@ -837,7 +837,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-		res_lib_cfg_tryshutdown.header.error = SA_AIS_OK;
+		res_lib_cfg_tryshutdown.header.error = CS_OK;
 		api->ipc_conn_send_response(conn, &res_lib_cfg_tryshutdown,
 					    sizeof(res_lib_cfg_tryshutdown));
 
@@ -853,7 +853,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-		res_lib_cfg_tryshutdown.header.error = SA_AIS_ERR_EXIST;
+		res_lib_cfg_tryshutdown.header.error = CS_ERR_EXIST;
 
 		api->ipc_conn_send_response(conn, &res_lib_cfg_tryshutdown,
 					    sizeof(res_lib_cfg_tryshutdown));
@@ -922,7 +922,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		/*
 		 * Tell the users we would like to shut down
 		 */
-		send_test_shutdown(NULL, SA_AIS_OK);
+		send_test_shutdown(NULL, CS_OK);
 	}
 
 	/*

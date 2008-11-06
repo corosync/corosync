@@ -34,35 +34,14 @@
 #ifndef COROSYNC_QUORUM_H_DEFINED
 #define COROSYNC_QUORUM_H_DEFINED
 
+#include <corosync/corotypes.h>
+
 typedef uint64_t quorum_handle_t;
-
-
-typedef enum {
-	QUORUM_OK = 1,
-	QUORUM_ERR_LIBRARY = 2,
-	QUORUM_ERR_TIMEOUT = 5,
-	QUORUM_ERR_TRY_AGAIN = 6,
-	QUORUM_ERR_INVALID_PARAM = 7,
-	QUORUM_ERR_NO_MEMORY = 8,
-	QUORUM_ERR_BAD_HANDLE = 9,
-	QUORUM_ERR_ACCESS = 11,
-	QUORUM_ERR_NOT_EXIST = 12,
-	QUORUM_ERR_EXIST = 14,
-	QUORUM_ERR_NOT_SUPPORTED = 20,
-	QUORUM_ERR_SECURITY = 29
-} quorum_error_t;
-
-typedef enum {
-	QUORUM_DISPATCH_ONE,
-	QUORUM_DISPATCH_ALL,
-	QUORUM_DISPATCH_BLOCKING
-} quorum_dispatch_t;
 
 typedef struct {
 	uint32_t nodeid;
 	uint32_t state;
 } quorum_node_t;
-
 
 typedef void (*quorum_notification_fn_t) (
 	quorum_handle_t handle,
@@ -80,38 +59,38 @@ typedef struct {
 /*
  * Create a new quorum connection
  */
-quorum_error_t quorum_initialize (
+cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
 	quorum_callbacks_t *callbacks);
 
 /*
  * Close the quorum handle
  */
-quorum_error_t quorum_finalize (
+cs_error_t quorum_finalize (
 	quorum_handle_t handle);
 
 
 /*
  * Dispatch messages and configuration changes
  */
-quorum_error_t quorum_dispatch (
+cs_error_t quorum_dispatch (
 	quorum_handle_t handle,
-	quorum_dispatch_t dispatch_types);
+	cs_dispatch_flags_t dispatch_types);
 
 
 /*
  * Get quorum information.
  */
-quorum_error_t quorum_getquorate (
+cs_error_t quorum_getquorate (
 	quorum_handle_t handle,
 	int *quorate);
 
 /* Track node and quorum changes */
-quorum_error_t quorum_trackstart (
+cs_error_t quorum_trackstart (
 	quorum_handle_t handle,
 	unsigned int flags );
 
-quorum_error_t quorum_trackstop (
+cs_error_t quorum_trackstop (
 	quorum_handle_t handle);
 
 

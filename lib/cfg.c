@@ -45,7 +45,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cfg.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
@@ -64,7 +64,7 @@ struct cfg_instance {
 	int response_fd;
 	int dispatch_fd;
 	CorosyncCfgCallbacksT callbacks;
-	SaNameT compName;
+	cs_name_t compName;
 	int compRegistered;
 	int finalize;
 	pthread_mutex_t response_mutex;
@@ -94,21 +94,21 @@ void cfg_handleInstanceDestructor (void *instance)
 	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
 	const CorosyncCfgCallbacksT *cfgCallbacks)
 {
 	struct cfg_instance *cfg_instance;
-	SaAisErrorT error = SA_AIS_OK;
+	cs_error_t error = CS_OK;
 
 	error = saHandleCreate (&cfg_hdb, sizeof (struct cfg_instance), cfg_handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&cfg_hdb, *cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
@@ -118,7 +118,7 @@ corosync_cfg_initialize (
 
 	error = saServiceConnect (&cfg_instance->response_fd,
 		&cfg_instance->dispatch_fd, CFG_SERVICE);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -132,7 +132,7 @@ corosync_cfg_initialize (
 
 	saHandleInstancePut (&cfg_hdb, *cfg_handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&cfg_hdb, *cfg_handle);
@@ -142,33 +142,33 @@ error_no_destroy:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_fd_get (
 	corosync_cfg_handle_t cfg_handle,
-	SaSelectionObjectT *selectionObject)
+	int32_t *selection_fd)
 {
 	struct cfg_instance *cfg_instance;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
-	*selectionObject = cfg_instance->dispatch_fd;
+	*selection_fd = cfg_instance->dispatch_fd;
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_dispatch (
 	corosync_cfg_handle_t cfg_handle,
-	SaDispatchFlagsT dispatchFlags)
+	cs_dispatch_flags_t dispatchFlags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaAisErrorT error;
+	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct cfg_instance *cfg_instance;
@@ -185,14 +185,14 @@ corosync_cfg_dispatch (
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
 	/*
-	 * Timeout instantly for SA_DISPATCH_ALL
+	 * Timeout instantly for CS_DISPATCH_ALL
 	 */
-	if (dispatchFlags == SA_DISPATCH_ALL) {
+	if (dispatchFlags == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -205,14 +205,14 @@ corosync_cfg_dispatch (
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
 		pthread_mutex_lock (&cfg_instance->dispatch_mutex);
 
 		error = saPollRetry (&ufds, 1, 0);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -220,13 +220,13 @@ corosync_cfg_dispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (cfg_instance->finalize == 1) {
-			error = SA_AIS_OK;
+			error = CS_OK;
 			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatchFlags == SA_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatchFlags == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -241,13 +241,13 @@ corosync_cfg_dispatch (
 			 */
 			error = saRecvRetry (cfg_instance->dispatch_fd, &dispatch_data.header,
 				sizeof (mar_res_header_t));
-			if (error != SA_AIS_OK) {
+			if (error != CS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (cfg_instance->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (mar_res_header_t));
-				if (error != SA_AIS_OK) {
+				if (error != CS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -275,7 +275,7 @@ corosync_cfg_dispatch (
 			}
 			break;
 		default:
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
@@ -284,12 +284,12 @@ corosync_cfg_dispatch (
 		 * Determine if more messages should be processed
 		 */
 		switch (dispatchFlags) {
-		case SA_DISPATCH_ONE:
+		case CS_DISPATCH_ONE:
 			cont = 0;
 			break;
-		case SA_DISPATCH_ALL:
+		case CS_DISPATCH_ALL:
 			break;
-		case SA_DISPATCH_BLOCKING:
+		case CS_DISPATCH_BLOCKING:
 			break;
 		}
 	} while (cont);
@@ -300,15 +300,15 @@ error_nounlock:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_finalize (
 	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -323,7 +323,7 @@ corosync_cfg_finalize (
 		pthread_mutex_unlock (&cfg_instance->response_mutex);
 		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 		saHandleInstancePut (&cfg_hdb, cfg_handle);
-		return (SA_AIS_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	cfg_instance->finalize = 1;
@@ -352,7 +352,7 @@ corosync_cfg_finalize (
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_status_get (
 	corosync_cfg_handle_t cfg_handle,
 	char ***interface_names,
@@ -363,10 +363,10 @@ corosync_cfg_ring_status_get (
 	struct req_lib_cfg_ringstatusget req_lib_cfg_ringstatusget;
 	struct res_lib_cfg_ringstatusget res_lib_cfg_ringstatusget;
 	unsigned int i;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -386,13 +386,13 @@ corosync_cfg_ring_status_get (
 	*interface_count = res_lib_cfg_ringstatusget.interface_count;
 	*interface_names = malloc (sizeof (char *) * *interface_count);
 	if (*interface_names == NULL) {
-		return (SA_AIS_ERR_NO_MEMORY);
+		return (CS_ERR_NO_MEMORY);
 	}
 	memset (*interface_names, 0, sizeof (char *) * *interface_count);
 
 	*status = malloc (sizeof (char *) * *interface_count);
 	if (*status == NULL) {
-		error = SA_AIS_ERR_NO_MEMORY;
+		error = CS_ERR_NO_MEMORY;
 		goto error_free_interface_names;
 	}
 	memset (*status, 0, sizeof (char *) * *interface_count);
@@ -400,12 +400,12 @@ corosync_cfg_ring_status_get (
 	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
 		(*(interface_names))[i] = strdup (res_lib_cfg_ringstatusget.interface_name[i]);
 		if ((*(interface_names))[i] == NULL) {
-			error = SA_AIS_ERR_NO_MEMORY;
+			error = CS_ERR_NO_MEMORY;
 			goto error_free_contents;
 		}
 		(*(status))[i] = strdup (res_lib_cfg_ringstatusget.interface_status[i]);
 		if ((*(status))[i] == NULL) {
-			error = SA_AIS_ERR_NO_MEMORY;
+			error = CS_ERR_NO_MEMORY;
 			goto error_free_contents;
 		}
 	}
@@ -432,17 +432,17 @@ no_error:
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_reenable (
 	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_ringreenable req_lib_cfg_ringreenable;
 	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -463,7 +463,7 @@ corosync_cfg_ring_reenable (
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_load (
 	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
@@ -472,10 +472,10 @@ corosync_cfg_service_load (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_serviceload req_lib_cfg_serviceload;
 	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -501,7 +501,7 @@ corosync_cfg_service_load (
 	return (error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_unload (
 	corosync_cfg_handle_t cfg_handle,
 	char *service_name,
@@ -510,10 +510,10 @@ corosync_cfg_service_unload (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_serviceunload req_lib_cfg_serviceunload;
 	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -538,16 +538,16 @@ corosync_cfg_service_unload (
 
 	return (error);
 }
-SaAisErrorT
+cs_error_t
 corosync_cfg_state_track (
 	corosync_cfg_handle_t cfg_handle,
-	SaUint8T trackFlags,
+	uint8_t trackFlags,
 	const CorosyncCfgStateNotificationT *notificationBuffer)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrack req_lib_cfg_statetrack;
 	struct res_lib_cfg_statetrack res_lib_cfg_statetrack;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	req_lib_cfg_statetrack.header.size = sizeof (struct req_lib_cfg_statetrack);
 	req_lib_cfg_statetrack.header.id = MESSAGE_REQ_CFG_STATETRACKSTART;
@@ -556,7 +556,7 @@ corosync_cfg_state_track (
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -572,21 +572,21 @@ corosync_cfg_state_track (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_statetrack.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_statetrack.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_state_track_stop (
 	corosync_cfg_handle_t cfg_handle)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrackstop req_lib_cfg_statetrackstop;
 	struct res_lib_cfg_statetrackstop res_lib_cfg_statetrackstop;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -605,10 +605,10 @@ corosync_cfg_state_track_stop (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_statetrackstop.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_statetrackstop.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_admin_state_get (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgAdministrativeTargetT administrativeTarget,
@@ -617,11 +617,11 @@ corosync_cfg_admin_state_get (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateget req_lib_cfg_administrativestateget;
 	struct res_lib_cfg_administrativestateget res_lib_cfg_administrativestateget;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -641,10 +641,10 @@ corosync_cfg_admin_state_get (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_administrativestateget.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_administrativestateget.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_admin_state_set (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgAdministrativeTargetT administrativeTarget,
@@ -653,11 +653,11 @@ corosync_cfg_admin_state_set (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateset req_lib_cfg_administrativestateset;
 	struct res_lib_cfg_administrativestateset res_lib_cfg_administrativestateset;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -678,10 +678,10 @@ corosync_cfg_admin_state_set (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_administrativestateset.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_administrativestateset.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
@@ -690,14 +690,14 @@ corosync_cfg_kill_node (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_killnode req_lib_cfg_killnode;
 	struct res_lib_cfg_killnode res_lib_cfg_killnode;
-	SaAisErrorT error;
+	cs_error_t error;
 
-	if (strlen(reason) >= SA_MAX_NAME_LENGTH)
-		return SA_AIS_ERR_NAME_TOO_LONG;
+	if (strlen(reason) >= CS_MAX_NAME_LENGTH)
+		return CS_ERR_NAME_TOO_LONG;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -719,10 +719,10 @@ corosync_cfg_kill_node (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_killnode.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_try_shutdown (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgShutdownFlagsT flags)
@@ -730,11 +730,11 @@ corosync_cfg_try_shutdown (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_tryshutdown req_lib_cfg_tryshutdown;
 	struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -752,10 +752,10 @@ corosync_cfg_try_shutdown (
 
 	saHandleInstancePut (&cfg_hdb, cfg_handle);
 
-        return (error == SA_AIS_OK ? res_lib_cfg_tryshutdown.header.error : error);
+        return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_replyto_shutdown (
 	corosync_cfg_handle_t cfg_handle,
 	CorosyncCfgShutdownReplyFlagsT response)
@@ -763,11 +763,11 @@ corosync_cfg_replyto_shutdown (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_replytoshutdown req_lib_cfg_replytoshutdown;
 	struct iovec iov;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 

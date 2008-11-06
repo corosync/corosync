@@ -72,72 +72,72 @@ struct saVersionDatabase {
 	SaVersionT *versionsSupported;
 };
 
-SaAisErrorT
+cs_error_t
 saServiceConnect (
         int *responseOut,
         int *callbackOut,
         enum service_types service);
 
-SaAisErrorT
+cs_error_t
 saRecvRetry (
 	int s,
 	void *msg,
 	size_t len);
 
-SaAisErrorT
+cs_error_t
 saSendRetry (
 	int s,
 	const void *msg,
 	size_t len);
 
-SaAisErrorT saSendMsgRetry (
+cs_error_t saSendMsgRetry (
 	int s,
 	struct iovec *iov,
 	int iov_len);
 
-SaAisErrorT saSendMsgReceiveReply (
+cs_error_t saSendMsgReceiveReply (
 	int s,
 	struct iovec *iov,
 	int iov_len,
 	void *responseMessage,
 	int responseLen);
 
-SaAisErrorT saSendReceiveReply (
+cs_error_t saSendReceiveReply (
 	int s,
 	void *requestMessage,
 	int requestLen,
 	void *responseMessage,
 	int responseLen);
 
-SaAisErrorT
+cs_error_t
 saPollRetry (
 	struct pollfd *ufds,
 	unsigned int nfds,
 	int timeout);
 
-SaAisErrorT
+cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
 	SaUint64T *handleOut);
 
-SaAisErrorT
+cs_error_t
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle);
 
-SaAisErrorT
+cs_error_t
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle,
 	void **instance);
 
-SaAisErrorT
+cs_error_t
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	SaUint64T handle);
 
-SaAisErrorT
+cs_error_t
 saVersionVerify (
 	struct saVersionDatabase *versionDatabase,
 	SaVersionT *version);

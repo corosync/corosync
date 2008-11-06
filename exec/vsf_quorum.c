@@ -152,19 +152,19 @@ static struct corosync_lib_handler quorum_lib_service[] =
 		.lib_handler_fn				= message_handler_req_lib_quorum_getquorate,
 		.response_size				= sizeof (struct res_lib_quorum_getquorate),
 		.response_id				= MESSAGE_RES_QUORUM_GETQUORATE,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_trackstart,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_QUORUM_NOTIFICATION,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_trackstop,
 		.response_size				= sizeof (mar_res_header_t),
 		.response_id				= MESSAGE_RES_QUORUM_TRACKSTOP,
-		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -172,8 +172,8 @@ static struct corosync_service_engine quorum_service_handler = {
 	.name				        = "corosync cluster quorum service v0.1",
 	.id					= QUORUM_SERVICE,
 	.private_data_size			= sizeof (struct quorum_pd),
-	.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED,
-	.allow_inquorate			= COROSYNC_LIB_ALLOW_INQUORATE,
+	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
+	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
 	.lib_init_fn				= quorum_lib_init_fn,
 	.lib_exit_fn				= quorum_lib_exit_fn,
 	.lib_engine				= quorum_lib_service,
@@ -292,7 +292,7 @@ static int send_quorum_notification(void *conn)
 
 	res_lib_quorum_notification->header.id = MESSAGE_RES_QUORUM_NOTIFICATION;
 	res_lib_quorum_notification->header.size = size;
-	res_lib_quorum_notification->header.error = SA_AIS_OK;
+	res_lib_quorum_notification->header.error = CS_OK;
 
 	/* Send it to all interested parties */
 	if (conn) {
@@ -322,7 +322,7 @@ static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg)
 	res_lib_quorum_getquorate.quorate = primary_designated;
 	res_lib_quorum_getquorate.header.size = sizeof(res_lib_quorum_getquorate);
 	res_lib_quorum_getquorate.header.id = MESSAGE_RES_QUORUM_GETQUORATE;
-	res_lib_quorum_getquorate.header.error = SA_AIS_OK;
+	res_lib_quorum_getquorate.header.error = CS_OK;
 	corosync_api->ipc_conn_send_response(conn, &res_lib_quorum_getquorate, sizeof(res_lib_quorum_getquorate));
 }
 
@@ -339,8 +339,8 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	 * If an immediate listing of the current cluster membership
 	 * is requested, generate membership list
 	 */
-	if (req_lib_quorum_trackstart->track_flags & SA_TRACK_CURRENT ||
-	    req_lib_quorum_trackstart->track_flags & SA_TRACK_CHANGES) {
+	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
+	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOG_LEVEL_DEBUG, "sending initial status to %p\n", conn);
 		send_quorum_notification(corosync_api->ipc_conn_partner_get (conn));
 	}
@@ -348,8 +348,8 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	/*
 	 * Record requests for tracking
 	 */
-	if (req_lib_quorum_trackstart->track_flags & SA_TRACK_CHANGES ||
-	    req_lib_quorum_trackstart->track_flags & SA_TRACK_CHANGES_ONLY) {
+	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES ||
+	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES_ONLY) {
 
 		quorum_pd->track_flags = req_lib_quorum_trackstart->track_flags;
 		quorum_pd->tracking_enabled = 1;
@@ -360,7 +360,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	/* send status */
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTART;
-	res.error = SA_AIS_OK;
+	res.error = CS_OK;
 	corosync_api->ipc_conn_send_response(conn, &res, sizeof(mar_res_header_t));
 }
 
@@ -372,18 +372,18 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg)
 	log_printf(LOG_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
 
 	if (quorum_pd->tracking_enabled) {
-		res.error = SA_AIS_OK;
+		res.error = CS_OK;
 		quorum_pd->tracking_enabled = 0;
 		list_del (&quorum_pd->list);
 		list_init (&quorum_pd->list);
 	} else {
-		res.error = SA_AIS_ERR_NOT_EXIST;
+		res.error = CS_ERR_NOT_EXIST;
 	}
 
 	/* send status */
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTOP;
-	res.error = SA_AIS_OK;
+	res.error = CS_OK;
 	corosync_api->ipc_conn_send_response(conn, &res, sizeof(mar_res_header_t));
 }
 

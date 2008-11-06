@@ -36,6 +36,7 @@
 
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <corosync/corotypes.h>
 
 /**
  * @defgroup corosync Other API services provided by corosync
@@ -49,33 +50,11 @@
 typedef uint64_t evs_handle_t;
 
 typedef enum {
-	EVS_DISPATCH_ONE,
-	EVS_DISPATCH_ALL,
-	EVS_DISPATCH_BLOCKING
-} evs_dispatch_t;
-
-typedef enum {
 	EVS_TYPE_UNORDERED, /* not implemented */
 	EVS_TYPE_FIFO,		/* same as agreed */
 	EVS_TYPE_AGREED,
 	EVS_TYPE_SAFE		/* not implemented */
 } evs_guarantee_t;
-
-typedef enum {
-	EVS_OK = 1,
-	EVS_ERR_LIBRARY = 2,
-	EVS_ERR_TIMEOUT = 5,
-	EVS_ERR_TRY_AGAIN = 6,
-	EVS_ERR_INVALID_PARAM = 7,
-	EVS_ERR_NO_MEMORY = 8,
-	EVS_ERR_BAD_HANDLE = 9,
-	EVS_ERR_ACCESS = 11,
-	EVS_ERR_NOT_EXIST = 12,
-	EVS_ERR_EXIST = 14,
-	EVS_ERR_NOT_SUPPORTED = 20,
-	EVS_ERR_SECURITY = 29,
-	EVS_ERR_TOO_MANY_GROUPS=30
-} evs_error_t;
 
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
@@ -110,30 +89,30 @@ typedef struct {
 /*
  * Create a new evs connection
  */
-evs_error_t evs_initialize (
+cs_error_t evs_initialize (
 	evs_handle_t *handle,
 	evs_callbacks_t *callbacks);
 
 /*
  * Close the evs handle
  */
-evs_error_t evs_finalize (
+cs_error_t evs_finalize (
 	evs_handle_t handle);
 
 /*
  * Get a file descriptor on which to poll.  evs_handle_t is NOT a
  * file descriptor and may not be used directly.
  */
-evs_error_t evs_fd_get (
+cs_error_t evs_fd_get (
 	evs_handle_t handle,
 	int *fd);
 
 /*
  * Dispatch messages and configuration changes
  */
-evs_error_t evs_dispatch (
+cs_error_t evs_dispatch (
 	evs_handle_t handle,
-	evs_dispatch_t dispatch_types);
+	cs_dispatch_flags_t dispatch_types);
 
 /*
  * Join one or more groups.
@@ -141,7 +120,7 @@ evs_error_t evs_dispatch (
  * group that has been joined on handle handle.  Any message multicasted
  * to a group that has been previously joined will be delivered in evs_dispatch
  */
-evs_error_t evs_join (
+cs_error_t evs_join (
 	evs_handle_t handle,
 	struct evs_group *groups,
 	int group_cnt);
@@ -149,7 +128,7 @@ evs_error_t evs_join (
 /*
  * Leave one or more groups
  */
-evs_error_t evs_leave (
+cs_error_t evs_leave (
 	evs_handle_t handle,
 	struct evs_group *groups,
 	int group_cnt);
@@ -159,7 +138,7 @@ evs_error_t evs_leave (
  * The iovec described by iovec will be multicasted to all groups joined with
  * the evs_join interface for handle.
  */
-evs_error_t evs_mcast_joined (
+cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct iovec *iovec,
@@ -170,7 +149,7 @@ evs_error_t evs_mcast_joined (
  * Messages will be multicast to groups specified in the api call and not those
  * that have been joined (unless they are in the groups parameter).
  */
-evs_error_t evs_mcast_groups (
+cs_error_t evs_mcast_groups (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct evs_group *groups,
@@ -181,7 +160,7 @@ evs_error_t evs_mcast_groups (
 /*
  * Get membership information from evs
  */
-evs_error_t evs_membership_get (
+cs_error_t evs_membership_get (
 	evs_handle_t handle,
 	unsigned int *local_nodeid,
 	unsigned int *member_list,

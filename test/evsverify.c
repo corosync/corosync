@@ -39,6 +39,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 #include "../exec/crypto.h"
 
@@ -116,7 +117,7 @@ unsigned char buffer[200000];
 int main (void)
 {
 	evs_handle_t handle;
-	evs_error_t result;
+	cs_error_t result;
 	unsigned int i = 0, j;
 	int fd;
 	unsigned int member_list[32];
@@ -127,7 +128,7 @@ int main (void)
 	struct iovec iov[2];
 
 	result = evs_initialize (&handle, &callbacks);
-	if (result != EVS_OK) {
+	if (result != CS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
@@ -169,10 +170,10 @@ int main (void)
 try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			iov, 2);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 
 	evs_fd_get (handle, &fd);

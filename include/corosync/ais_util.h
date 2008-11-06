@@ -67,71 +67,71 @@ struct saHandleDatabase {
 
 struct saVersionDatabase {
 	int versionCount;
-	SaVersionT *versionsSupported;
+	cs_version_t *versionsSupported;
 };
 
-SaAisErrorT saSendMsgRetry (
+cs_error_t saSendMsgRetry (
 	int s,
 	struct iovec *iov,
 	int iov_len);
 
-SaAisErrorT saSendMsgReceiveReply (
+cs_error_t saSendMsgReceiveReply (
 	int s,
 	struct iovec *iov,
 	int iov_len,
 	void *responseMessage,
 	int responseLen);
 
-SaAisErrorT saSendReceiveReply (
+cs_error_t saSendReceiveReply (
 	int s,
 	void *requestMessage,
 	int requestLen,
 	void *responseMessage,
 	int responseLen);
 
-SaAisErrorT
+cs_error_t
 saPollRetry (
 	struct pollfd *ufds,
 	unsigned int nfds,
 	int timeout);
 
-SaAisErrorT
+cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
-	SaUint64T *handleOut);
+	uint64_t *handleOut);
 
-SaAisErrorT
+cs_error_t
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
+	uint64_t handle);
 
-SaAisErrorT
+cs_error_t
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle,
+	uint64_t handle,
 	void **instance);
 
-SaAisErrorT
+cs_error_t
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
+	uint64_t handle);
 
-SaAisErrorT
+cs_error_t
 saVersionVerify (
 	struct saVersionDatabase *versionDatabase,
-	SaVersionT *version);
+	cs_version_t *version);
 
 #define offset_of(type,member) (int)(&(((type *)0)->member))
 
-SaTimeT
+cs_time_t
 clustTimeNow(void);
 
-extern SaAisErrorT saServiceConnect (
+extern cs_error_t saServiceConnect (
     int *responseOut, int *callbackOut, enum service_types service);
 
-extern SaAisErrorT saRecvRetry (int s, void *msg, size_t len);
+extern cs_error_t saRecvRetry (int s, void *msg, size_t len);
 
-extern SaAisErrorT saSendRetry (int s, const void *msg, size_t len);
+extern cs_error_t saSendRetry (int s, const void *msg, size_t len);
 
 #endif /* AIS_UTIL_H_DEFINED */

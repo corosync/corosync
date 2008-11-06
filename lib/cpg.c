@@ -45,7 +45,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
 #include <corosync/mar_cpg.h>
@@ -90,27 +90,27 @@ static void cpg_instance_destructor (void *instance)
  * @{
  */
 
-cpg_error_t cpg_initialize (
+cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
 	error = saHandleCreate (&cpg_handle_t_db, sizeof (struct cpg_inst), handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, *handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
 	error = saServiceConnect (&cpg_inst->dispatch_fd,
 				     &cpg_inst->response_fd,
 		CPG_SERVICE);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -122,7 +122,7 @@ cpg_error_t cpg_initialize (
 
 	saHandleInstancePut (&cpg_handle_t_db, *handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&cpg_handle_t_db, *handle);
@@ -132,14 +132,14 @@ error_no_destroy:
 	return (error);
 }
 
-cpg_error_t cpg_finalize (
+cs_error_t cpg_finalize (
 	cpg_handle_t handle)
 {
 	struct cpg_inst *cpg_inst;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -151,7 +151,7 @@ cpg_error_t cpg_finalize (
 	if (cpg_inst->finalize) {
 		pthread_mutex_unlock (&cpg_inst->response_mutex);
 		saHandleInstancePut (&cpg_handle_t_db, handle);
-		return (CPG_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	cpg_inst->finalize = 1;
@@ -173,18 +173,18 @@ cpg_error_t cpg_finalize (
 	}
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
-	return (CPG_OK);
+	return (CS_OK);
 }
 
-cpg_error_t cpg_fd_get (
+cs_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -192,18 +192,18 @@ cpg_error_t cpg_fd_get (
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-cpg_error_t cpg_context_get (
+cs_error_t cpg_context_get (
 	cpg_handle_t handle,
 	void **context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -211,18 +211,18 @@ cpg_error_t cpg_context_get (
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-cpg_error_t cpg_context_set (
+cs_error_t cpg_context_set (
 	cpg_handle_t handle,
 	void *context)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -230,7 +230,7 @@ cpg_error_t cpg_context_set (
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
 struct res_overlay {
@@ -238,13 +238,13 @@ struct res_overlay {
 	char data[512000];
 };
 
-cpg_error_t cpg_dispatch (
+cs_error_t cpg_dispatch (
 	cpg_handle_t handle,
-	cpg_dispatch_t dispatch_types)
+	cs_dispatch_flags_t dispatch_types)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaAisErrorT error;
+	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct cpg_inst *cpg_inst;
@@ -264,7 +264,7 @@ cpg_error_t cpg_dispatch (
 	unsigned int i;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -272,7 +272,7 @@ cpg_error_t cpg_dispatch (
 	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
 	 * wait indefinately for SA_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == CPG_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -282,7 +282,7 @@ cpg_error_t cpg_dispatch (
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -292,7 +292,7 @@ cpg_error_t cpg_dispatch (
 		 * Regather poll data in case ufds has changed since taking lock
 		 */
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -300,13 +300,13 @@ cpg_error_t cpg_dispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (cpg_inst->finalize == 1) {
-			error = CPG_OK;
+			error = CS_OK;
 			pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatch_types == CPG_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -321,14 +321,14 @@ cpg_error_t cpg_dispatch (
 			 */
 			error = saRecvRetry (cpg_inst->dispatch_fd, &dispatch_data.header,
 				sizeof (mar_res_header_t));
-			if (error != SA_AIS_OK) {
+			if (error != CS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (cpg_inst->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (mar_res_header_t));
 
-				if (error != SA_AIS_OK) {
+				if (error != CS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -424,7 +424,7 @@ cpg_error_t cpg_dispatch (
 			break;
 
 		default:
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
@@ -433,19 +433,19 @@ cpg_error_t cpg_dispatch (
 		 * Determine if more messages should be processed
 		 * */
 		switch (dispatch_types) {
-		case CPG_DISPATCH_ONE:
+		case CS_DISPATCH_ONE:
 			if (ignore_dispatch) {
 				ignore_dispatch = 0;
 			} else {
 				cont = 0;
 			}
 			break;
-		case CPG_DISPATCH_ALL:
+		case CS_DISPATCH_ALL:
 			if (ignore_dispatch) {
 				ignore_dispatch = 0;
 			}
 			break;
-		case CPG_DISPATCH_BLOCKING:
+		case CS_DISPATCH_BLOCKING:
 			break;
 		}
 	} while (cont);
@@ -456,11 +456,11 @@ error_nounlock:
 	return (error);
 }
 
-cpg_error_t cpg_join (
+cs_error_t cpg_join (
     cpg_handle_t handle,
     struct cpg_name *group)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[2];
 	struct req_lib_cpg_join req_lib_cpg_join;
@@ -469,7 +469,7 @@ cpg_error_t cpg_join (
 	struct res_lib_cpg_trackstart res_lib_cpg_trackstart;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -487,7 +487,7 @@ cpg_error_t cpg_join (
 	error = saSendMsgReceiveReply (cpg_inst->dispatch_fd, iov, 1,
 		&res_lib_cpg_trackstart, sizeof (struct res_lib_cpg_trackstart));
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		pthread_mutex_unlock (&cpg_inst->response_mutex);
 		goto error_exit;
 	}
@@ -507,7 +507,7 @@ cpg_error_t cpg_join (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -519,18 +519,18 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_leave (
+cs_error_t cpg_leave (
     cpg_handle_t handle,
     struct cpg_name *group)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[2];
 	struct req_lib_cpg_leave req_lib_cpg_leave;
 	struct res_lib_cpg_leave res_lib_cpg_leave;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -549,7 +549,7 @@ cpg_error_t cpg_leave (
 		&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -561,14 +561,14 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_mcast_joined (
+cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
 	struct iovec *iovec,
 	int iov_len)
 {
 	int i;
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
@@ -576,7 +576,7 @@ cpg_error_t cpg_mcast_joined (
 	int msg_len = 0;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -602,7 +602,7 @@ cpg_error_t cpg_mcast_joined (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -612,7 +612,7 @@ cpg_error_t cpg_mcast_joined (
  *	Also, don't set to ENABLED if the return value is TRY_AGAIN as this can lead
  *	to Flow Control State sync issues between AIS LIB and EXEC.
  */
-	if (res_lib_cpg_mcast.header.error == CPG_OK) {
+	if (res_lib_cpg_mcast.header.error == CS_OK) {
 		cpg_inst->flow_control_state = res_lib_cpg_mcast.flow_control_state;
 	}
 	error = res_lib_cpg_mcast.header.error;
@@ -623,13 +623,13 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_membership_get (
+cs_error_t cpg_membership_get (
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
 	struct cpg_address *member_list,
 	int *member_list_entries)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov;
 	struct req_lib_cpg_membership req_lib_cpg_membership_get;
@@ -637,7 +637,7 @@ cpg_error_t cpg_membership_get (
 	unsigned int i;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -656,7 +656,7 @@ cpg_error_t cpg_membership_get (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -679,18 +679,18 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_local_get (
+cs_error_t cpg_local_get (
 	cpg_handle_t handle,
 	unsigned int *local_nodeid)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov;
 	struct req_lib_cpg_local_get req_lib_cpg_local_get;
 	struct res_lib_cpg_local_get res_lib_cpg_local_get;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -707,7 +707,7 @@ cpg_error_t cpg_local_get (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -721,18 +721,18 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_groups_get (
+cs_error_t cpg_groups_get (
 	cpg_handle_t handle,
 	unsigned int *num_groups)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov;
 	struct req_lib_cpg_groups_get req_lib_cpg_groups_get;
 	struct res_lib_cpg_groups_get res_lib_cpg_groups_get;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -749,7 +749,7 @@ cpg_error_t cpg_groups_get (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -763,15 +763,15 @@ error_exit:
 	return (error);
 }
 
-cpg_error_t cpg_flow_control_state_get (
+cs_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_state)
 {
-	cpg_error_t error;
+	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 

@@ -50,7 +50,7 @@
 #include <string.h>
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
@@ -126,7 +126,7 @@ static struct corosync_lib_handler pload_lib_engine[] =
 		.lib_handler_fn		= message_handler_req_pload_start,
 		.response_size		= sizeof (struct res_lib_pload_start),
 		.response_id		= MESSAGE_RES_PLOAD_START,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -146,7 +146,7 @@ struct corosync_service_engine pload_service_engine = {
 	.name			= "corosync profile loading service",
 	.id			= PLOAD_SERVICE,
 	.private_data_size	= 0,
-	.flow_control		= COROSYNC_LIB_FLOW_CONTROL_REQUIRED, 
+	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED, 
 	.lib_init_fn		= pload_lib_init_fn,
 	.lib_exit_fn		= pload_lib_exit_fn,
 	.lib_engine		= pload_lib_engine,

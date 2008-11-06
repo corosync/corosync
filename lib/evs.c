@@ -48,7 +48,7 @@
 
 #include <corosync/swab.h>
 #include <corosync/totem/totem.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 #include <corosync/ipc_evs.h>
 #include <corosync/ais_util.h>
@@ -98,29 +98,29 @@ static void evs_instance_destructor (void *instance)
  * test
  * @param handle The handle of evs initialize
  * @param callbacks The callbacks for evs_initialize
- * @returns EVS_OK
+ * @returns CS_OK
  */
-evs_error_t evs_initialize (
+cs_error_t evs_initialize (
 	evs_handle_t *handle,
 	evs_callbacks_t *callbacks)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 
 	error = saHandleCreate (&evs_handle_t_db, sizeof (struct evs_inst), handle);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
 	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_destroy;
 	}
 
 	error = saServiceConnect (&evs_inst->response_fd,
 		&evs_inst->dispatch_fd,
 		EVS_SERVICE);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
@@ -132,7 +132,7 @@ evs_error_t evs_initialize (
 
 	saHandleInstancePut (&evs_handle_t_db, *handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 
 error_put_destroy:
 	saHandleInstancePut (&evs_handle_t_db, *handle);
@@ -142,14 +142,14 @@ error_no_destroy:
 	return (error);
 }
 
-evs_error_t evs_finalize (
+cs_error_t evs_finalize (
 	evs_handle_t handle)
 {
 	struct evs_inst *evs_inst;
-	SaAisErrorT error;
+	cs_error_t error;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 //	  TODO is the locking right here
@@ -161,7 +161,7 @@ evs_error_t evs_finalize (
 	if (evs_inst->finalize) {
 		pthread_mutex_unlock (&evs_inst->response_mutex);
 		saHandleInstancePut (&evs_handle_t_db, handle);
-		return (EVS_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	evs_inst->finalize = 1;
@@ -183,18 +183,18 @@ evs_error_t evs_finalize (
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
 
-	return (EVS_OK);
+	return (CS_OK);
 }
 
-evs_error_t evs_fd_get (
+cs_error_t evs_fd_get (
 	evs_handle_t handle,
 	int *fd)
 {
-	SaAisErrorT error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -202,16 +202,16 @@ evs_error_t evs_fd_get (
 
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
-	return (SA_AIS_OK);
+	return (CS_OK);
 }
 
-evs_error_t evs_dispatch (
+cs_error_t evs_dispatch (
 	evs_handle_t handle,
-	evs_dispatch_t dispatch_types)
+	cs_dispatch_flags_t dispatch_types)
 {
 	struct pollfd ufds;
 	int timeout = -1;
-	SaAisErrorT error;
+	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	int dispatch_avail;
 	struct evs_inst *evs_inst;
@@ -222,7 +222,7 @@ evs_error_t evs_dispatch (
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -230,7 +230,7 @@ evs_error_t evs_dispatch (
 	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
 	 * wait indefinately for SA_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == EVS_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -240,7 +240,7 @@ evs_error_t evs_dispatch (
 		ufds.revents = 0;
 
 		error = saPollRetry (&ufds, 1, timeout);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -250,7 +250,7 @@ evs_error_t evs_dispatch (
 		 * Regather poll data in case ufds has changed since taking lock
 		 */
 		error = saPollRetry (&ufds, 1, 0);
-		if (error != SA_AIS_OK) {
+		if (error != CS_OK) {
 			goto error_nounlock;
 		}
 
@@ -258,13 +258,13 @@ evs_error_t evs_dispatch (
 		 * Handle has been finalized in another thread
 		 */
 		if (evs_inst->finalize == 1) {
-			error = EVS_OK;
+			error = CS_OK;
 			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			goto error_unlock;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatch_types == EVS_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else 
@@ -279,14 +279,14 @@ evs_error_t evs_dispatch (
 			 */
 			error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.header,
 				sizeof (mar_res_header_t));
-			if (error != SA_AIS_OK) {
+			if (error != CS_OK) {
 				goto error_unlock;
 			}
 			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
 				error = saRecvRetry (evs_inst->dispatch_fd, &dispatch_data.data,
 					dispatch_data.header.size - sizeof (mar_res_header_t));
 
-				if (error != SA_AIS_OK) {
+				if (error != CS_OK) {
 					goto error_unlock;
 				}
 			}
@@ -327,7 +327,7 @@ evs_error_t evs_dispatch (
 			break;
 
 		default:
-			error = SA_AIS_ERR_LIBRARY;
+			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
@@ -336,19 +336,19 @@ evs_error_t evs_dispatch (
 		 * Determine if more messages should be processed
 		 * */
 		switch (dispatch_types) {
-		case EVS_DISPATCH_ONE:
+		case CS_DISPATCH_ONE:
 			if (ignore_dispatch) {
 				ignore_dispatch = 0;
 			} else {
 				cont = 0;
 			}
 			break;
-		case EVS_DISPATCH_ALL:
+		case CS_DISPATCH_ALL:
 			if (ignore_dispatch) {
 				ignore_dispatch = 0;
 			}
 			break;
-		case EVS_DISPATCH_BLOCKING:
+		case CS_DISPATCH_BLOCKING:
 			break;
 		}
 	} while (cont);
@@ -359,19 +359,19 @@ error_nounlock:
 	return (error);
 }
 
-evs_error_t evs_join (
+cs_error_t evs_join (
     evs_handle_t handle,
     struct evs_group *groups,
 	int group_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[2];
 	struct req_lib_evs_join req_lib_evs_join;
 	struct res_lib_evs_join res_lib_evs_join;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -392,7 +392,7 @@ evs_error_t evs_join (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -404,19 +404,19 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_leave (
+cs_error_t evs_leave (
     evs_handle_t handle,
     struct evs_group *groups,
 	int group_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[2];
 	struct req_lib_evs_leave req_lib_evs_leave;
 	struct res_lib_evs_leave res_lib_evs_leave;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -437,7 +437,7 @@ evs_error_t evs_leave (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -449,14 +449,14 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_mcast_joined (
+cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct iovec *iovec,
 	int iov_len)
 {
 	int i;
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[64];
 	struct req_lib_evs_mcast_joined req_lib_evs_mcast_joined;
@@ -464,7 +464,7 @@ evs_error_t evs_mcast_joined (
 	int msg_len = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -490,7 +490,7 @@ evs_error_t evs_mcast_joined (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -502,7 +502,7 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_mcast_groups (
+cs_error_t evs_mcast_groups (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	struct evs_group *groups,
@@ -511,7 +511,7 @@ evs_error_t evs_mcast_groups (
 	int iov_len)
 {
 	int i;
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[64];
 	struct req_lib_evs_mcast_groups req_lib_evs_mcast_groups;
@@ -519,7 +519,7 @@ evs_error_t evs_mcast_groups (
 	int msg_len = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 	for (i = 0; i < iov_len; i++) {
@@ -544,7 +544,7 @@ evs_error_t evs_mcast_groups (
 		&res_lib_evs_mcast_groups, sizeof (struct res_lib_evs_mcast_groups));
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 
@@ -556,20 +556,20 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_membership_get (
+cs_error_t evs_membership_get (
 	evs_handle_t handle,
 	unsigned int *local_nodeid,
 	unsigned int *member_list,
 	unsigned int *member_list_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov;
 	struct req_lib_evs_membership_get req_lib_evs_membership_get;
 	struct res_lib_evs_membership_get res_lib_evs_membership_get;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -586,7 +586,7 @@ evs_error_t evs_membership_get (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	if (error != SA_AIS_OK) {
+	if (error != CS_OK) {
 		goto error_exit;
 	}
 

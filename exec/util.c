@@ -39,7 +39,7 @@
 #include <errno.h>
 #include <sys/time.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 #include "util.h"
@@ -49,7 +49,7 @@ LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 /*
  * Compare two names.  returns non-zero on match.
  */
-int name_match(SaNameT *name1, SaNameT *name2) 
+int name_match(cs_name_t *name1, cs_name_t *name2) 
 {
 	if (name1->length == name2->length) {
 		return ((strncmp ((char *)name1->value, (char *)name2->value,
@@ -61,17 +61,17 @@ int name_match(SaNameT *name1, SaNameT *name2)
 /*
  * Get the time of day and convert to nanoseconds
  */
-SaTimeT clust_time_now(void)
+cs_time_t clust_time_now(void)
 {
 	struct timeval tv;
-	SaTimeT time_now;
+	cs_time_t time_now;
 
 	if (gettimeofday(&tv, 0)) {
 		return 0ULL;
 	}
 
-	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
-	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+	time_now = (cs_time_t)(tv.tv_sec) * 1000000000ULL;
+	time_now += (cs_time_t)(tv.tv_usec) * 1000ULL;
 
 	return time_now;
 }
@@ -92,14 +92,14 @@ void _corosync_exit_error (
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-char *getSaNameT (SaNameT *name)
+char *getcs_name_t (cs_name_t *name)
 {
-	static char ret_name[SA_MAX_NAME_LENGTH];
+	static char ret_name[CS_MAX_NAME_LENGTH];
 
 	/* if string is corrupt (non-terminated), ensure it's displayed safely */
-	if (name->length >= SA_MAX_NAME_LENGTH || name->value[name->length] != '\0') {
+	if (name->length >= CS_MAX_NAME_LENGTH || name->value[name->length] != '\0') {
 		memset (ret_name, 0, sizeof (ret_name));
-		memcpy (ret_name, name->value, min(name->length, SA_MAX_NAME_LENGTH -1));
+		memcpy (ret_name, name->value, min(name->length, CS_MAX_NAME_LENGTH -1));
 		return (ret_name);
 	}
 	return ((char *)name->value);
@@ -133,16 +133,16 @@ char *strstr_rs (const char *haystack, const char *needle)
 	return (end_address);
 }
 
-void setSaNameT (SaNameT *name, char *str) {
-	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
-	if (strlen ((char *)name->value) > SA_MAX_NAME_LENGTH) {
-		name->length = SA_MAX_NAME_LENGTH;
+void setcs_name_t (cs_name_t *name, char *str) {
+	strncpy ((char *)name->value, str, CS_MAX_NAME_LENGTH);
+	if (strlen ((char *)name->value) > CS_MAX_NAME_LENGTH) {
+		name->length = CS_MAX_NAME_LENGTH;
 	} else {
 		name->length = strlen (str);
 	}
 }
 
-int SaNameTisEqual (SaNameT *str1, char *str2) {
+int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 	if (str1->length == strlen (str2)) {
 		return ((strncmp ((char *)str1->value, (char *)str2,
 			str1->length)) == 0);

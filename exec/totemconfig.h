@@ -36,7 +36,7 @@
 #define TOTEMCONFIG_H_DEFINED
 
 #include <netinet/in.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>

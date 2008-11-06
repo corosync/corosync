@@ -37,38 +37,38 @@
 #define FLOW_H_DEFINED
 
 #define COROSYNC_FLOW_CONTROL_STATE
-enum corosync_flow_control_state {
-	COROSYNC_FLOW_CONTROL_STATE_DISABLED,
-	COROSYNC_FLOW_CONTROL_STATE_ENABLED
+enum cs_flow_control_state {
+	CS_FLOW_CONTROL_STATE_DISABLED,
+	CS_FLOW_CONTROL_STATE_ENABLED
 };
 
-unsigned int corosync_flow_control_initialize (void);
+unsigned int cs_flow_control_initialize (void);
 
-unsigned int corosync_flow_control_ipc_init (
+unsigned int cs_flow_control_ipc_init (
 	unsigned int *flow_control_identifier,
 	unsigned int service);
 
-unsigned int corosync_flow_control_ipc_exit (
+unsigned int cs_flow_control_ipc_exit (
 	unsigned int flow_control_identifier);
 
-unsigned int corosync_flow_control_create (
+unsigned int cs_flow_control_create (
 	unsigned int flow_control_handle,
 	unsigned int service,
 	void *id,
 	unsigned int id_len,
-	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state),
+	void (*flow_control_state_set_fn) (void *context, enum cs_flow_control_state flow_control_state),
 	void *context);
 
-unsigned int corosync_flow_control_destroy (
+unsigned int cs_flow_control_destroy (
 	unsigned int flow_control_identifier,
 	unsigned int service,
 	unsigned char *id,
 	unsigned int id_len);
 
-unsigned int corosync_flow_control_disable (
+unsigned int cs_flow_control_disable (
 	unsigned int flow_control_identifier);
 
-unsigned int corosync_flow_control_enable (
+unsigned int cs_flow_control_enable (
 	unsigned int flow_control_identifier);
 
 #endif /* FLOW_H_DEFINED */

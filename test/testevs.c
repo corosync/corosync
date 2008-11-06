@@ -38,6 +38,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
 char *delivery_string;
@@ -99,7 +100,7 @@ struct iovec iov = {
 int main (void)
 {
 	evs_handle_t handle;
-	evs_error_t result;
+	cs_error_t result;
 	int i = 0;
 	int fd;
 	unsigned int member_list[32];
@@ -107,7 +108,7 @@ int main (void)
 	unsigned int member_list_entries = 32;
 
 	result = evs_initialize (&handle, &callbacks);
-	if (result != EVS_OK) {
+	if (result != CS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
@@ -142,15 +143,15 @@ int main (void)
 try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			&iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 //printf ("try again\n");
 			goto try_again_one;
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 
 	do {
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (deliveries < 20);
 	/*
 	 * Demonstrate evs_mcast_joined
@@ -161,17 +162,17 @@ try_again_one:
 try_again_two:
 		result = evs_mcast_groups (handle, EVS_TYPE_AGREED,
 			 &groups[1], 1, &iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_two;
 		}
 	
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 	/*
 	 * Flush any pending callbacks
 	 */
 	do {
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (deliveries < 500);
 
 	evs_fd_get (handle, &fd);

@@ -41,7 +41,7 @@
 
 typedef void * corosync_timer_handle_t;
 
-typedef unsigned int corosync_tpg_handle;
+typedef unsigned int cs_tpg_handle;
 
 struct corosync_tpg_group {
 	void *group;
@@ -95,22 +95,29 @@ enum totem_callback_token_type {
 };
 #endif
 
-enum corosync_lib_flow_control {
-	COROSYNC_LIB_FLOW_CONTROL_REQUIRED = 1,
-	COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED = 2
+enum cs_lib_flow_control {
+	CS_LIB_FLOW_CONTROL_REQUIRED = 1,
+	CS_LIB_FLOW_CONTROL_NOT_REQUIRED = 2
 };
+#define corosync_lib_flow_control cs_lib_flow_control
+#define COROSYNC_LIB_FLOW_CONTROL_REQUIRED CS_LIB_FLOW_CONTROL_REQUIRED
+#define COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 
-enum corosync_lib_allow_inquorate {
-	COROSYNC_LIB_DISALLOW_INQUORATE = 0, /* default */
-	COROSYNC_LIB_ALLOW_INQUORATE = 1
+enum cs_lib_allow_inquorate {
+	CS_LIB_DISALLOW_INQUORATE = 0, /* default */
+	CS_LIB_ALLOW_INQUORATE = 1
 };
 
 #if !defined (COROSYNC_FLOW_CONTROL_STATE)
-enum corosync_flow_control_state {
-	COROSYNC_FLOW_CONTROL_STATE_DISABLED,
-	COROSYNC_FLOW_CONTROL_STATE_ENABLED
+enum cs_flow_control_state {
+	CS_FLOW_CONTROL_STATE_DISABLED,
+	CS_FLOW_CONTROL_STATE_ENABLED
 };
-#endif
+#define corosync_flow_control_state cs_flow_control_state
+#define CS_FLOW_CONTROL_STATE_DISABLED CS_FLOW_CONTROL_STATE_DISABLED
+#define CS_FLOW_CONTROL_STATE_ENABLED CS_FLOW_CONTROL_STATE_ENABLED
+
+#endif /* COROSYNC_FLOW_CONTROL_STATE */
 
 typedef enum {
 	COROSYNC_FATAL_ERROR_EXIT = -1,
@@ -121,7 +128,8 @@ typedef enum {
 	COROSYNC_DYNAMICLOAD = -12,
 	COROSYNC_OUT_OF_MEMORY = -15,
 	COROSYNC_FATAL_ERR = -16
-} corosync_fatal_error_t;
+} cs_fatal_error_t;
+#define corosync_fatal_error_t cs_fatal_error_t;
 
 #ifndef OBJECT_PARENT_HANDLE
 
@@ -137,6 +145,7 @@ struct object_key_valid {
 	int key_len;
 	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
 };
+/* deprecated */
 
 typedef enum {
 	OBJECT_TRACK_DEPTH_ONE,
@@ -380,7 +389,7 @@ struct corosync_api_v1 {
 		int id_len,
 		void (*flow_control_state_set_fn)
 			(void *context,
-				enum corosync_flow_control_state flow_control_state_set),
+				enum cs_flow_control_state flow_control_state_set),
 		void *context);
 
 	void (*ipc_fc_destroy) (
@@ -429,7 +438,7 @@ struct corosync_api_v1 {
 	 * wanting their own groups
 	 */
 	int (*tpg_init) (
-		corosync_tpg_handle *handle,
+		cs_tpg_handle *handle,
 
 		void (*deliver_fn) (
 			unsigned int nodeid,
@@ -445,31 +454,31 @@ struct corosync_api_v1 {
 			struct memb_ring_id *ring_id));
 
 	int (*tpg_exit) (
-       		corosync_tpg_handle handle);
+       		cs_tpg_handle handle);
 
 	int (*tpg_join) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		struct corosync_tpg_group *groups,
 		int gruop_cnt);
 
 	int (*tpg_leave) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		struct corosync_tpg_group *groups,
 		int gruop_cnt);
 
 	int (*tpg_joined_mcast) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		struct iovec *iovec,
 		int iov_len,
 		int guarantee);
 
 	int (*tpg_joined_send_ok) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		struct iovec *iovec,
 		int iov_len);
 
 	int (*tpg_groups_mcast) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		int guarantee,
 		struct corosync_tpg_group *groups,
 		int groups_cnt,
@@ -477,7 +486,7 @@ struct corosync_api_v1 {
 		int iov_len);
 
 	int (*tpg_groups_send_ok) (
-		corosync_tpg_handle handle,
+		cs_tpg_handle handle,
 		struct corosync_tpg_group *groups,
 		int groups_cnt,
 		struct iovec *iovec,
@@ -516,7 +525,7 @@ struct corosync_api_v1 {
 	 */
 	void (*error_memory_failure) (void);
 #define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
-	void (*fatal_error) (corosync_fatal_error_t err, const char *file, unsigned int line);
+	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
@@ -527,7 +536,7 @@ struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, void *msg);
 	int response_size;
 	int response_id;
-	enum corosync_lib_flow_control flow_control;
+	enum cs_lib_flow_control flow_control;
 };
 
 struct corosync_exec_handler {
@@ -543,8 +552,8 @@ struct corosync_service_engine {
 	char *name;
 	unsigned short id;
 	unsigned int private_data_size;
-	enum corosync_lib_flow_control flow_control;
-	enum corosync_lib_allow_inquorate allow_inquorate;
+	enum cs_lib_flow_control flow_control;
+	enum cs_lib_allow_inquorate allow_inquorate;
 	int (*exec_init_fn) (struct corosync_api_v1 *);
 	int (*exec_exit_fn) (void);
 	void (*exec_dump_fn) (void);

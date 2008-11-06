@@ -6,39 +6,39 @@
 
 const char *sa_error_list[] = {
 	"OUT_OF_RANGE",
-	"SA_AIS_OK",
-	"SA_AIS_ERR_LIBRARY",
-	"SA_AIS_ERR_VERSION",
-	"SA_AIS_ERR_INIT",
-	"SA_AIS_ERR_TIMEOUT",
-	"SA_AIS_ERR_TRY_AGAIN",
-	"SA_AIS_ERR_INVALID_PARAM",
-	"SA_AIS_ERR_NO_MEMORY",
-	"SA_AIS_ERR_BAD_HANDLE",
-	"SA_AIS_ERR_BUSY",
-	"SA_AIS_ERR_ACCESS",
-	"SA_AIS_ERR_NOT_EXIST",
-	"SA_AIS_ERR_NAME_TOO_LONG",
-	"SA_AIS_ERR_EXIST",
-	"SA_AIS_ERR_NO_SPACE",
-	"SA_AIS_ERR_INTERRUPT",
-	"SA_AIS_ERR_NAME_NOT_FOUND",
-	"SA_AIS_ERR_NO_RESOURCES",
-	"SA_AIS_ERR_NOT_SUPPORTED",
-	"SA_AIS_ERR_BAD_OPERATION",
-	"SA_AIS_ERR_FAILED_OPERATION",
-	"SA_AIS_ERR_MESSAGE_ERROR",
-	"SA_AIS_ERR_QUEUE_FULL",
-	"SA_AIS_ERR_QUEUE_NOT_AVAILABLE",
-	"SA_AIS_ERR_BAD_CHECKPOINT",
-	"SA_AIS_ERR_BAD_FLAGS",
-	"SA_AIS_ERR_NO_SECTIONS",
+	"CS_OK",
+	"CS_ERR_LIBRARY",
+	"CS_ERR_VERSION",
+	"CS_ERR_INIT",
+	"CS_ERR_TIMEOUT",
+	"CS_ERR_TRY_AGAIN",
+	"CS_ERR_INVALID_PARAM",
+	"CS_ERR_NO_MEMORY",
+	"CS_ERR_BAD_HANDLE",
+	"CS_ERR_BUSY",
+	"CS_ERR_ACCESS",
+	"CS_ERR_NOT_EXIST",
+	"CS_ERR_NAME_TOO_LONG",
+	"CS_ERR_EXIST",
+	"CS_ERR_NO_SPACE",
+	"CS_ERR_INTERRUPT",
+	"CS_ERR_NAME_NOT_FOUND",
+	"CS_ERR_NO_RESOURCES",
+	"CS_ERR_NOT_SUPPORTED",
+	"CS_ERR_BAD_OPERATION",
+	"CS_ERR_FAILED_OPERATION",
+	"CS_ERR_MESSAGE_ERROR",
+	"CS_ERR_QUEUE_FULL",
+	"CS_ERR_QUEUE_NOT_AVAILABLE",
+	"CS_ERR_BAD_CHECKPOINT",
+	"CS_ERR_BAD_FLAGS",
+	"CS_ERR_NO_SECTIONS",
 };
 
-int get_sa_error(SaAisErrorT error, char *str, int len)
+int get_sa_error(cs_error_t error, char *str, int len)
 {
-	if (error < SA_AIS_OK || 
-			error > SA_AIS_ERR_NO_SECTIONS || 
+	if (error < CS_OK || 
+			error > CS_ERR_NO_SECTIONS || 
 					len < strlen(sa_error_list[error])) {
 			errno = EINVAL;
 		return -1;
@@ -47,11 +47,11 @@ int get_sa_error(SaAisErrorT error, char *str, int len)
 	return 0;
 }
 
-char *get_sa_error_b (SaAisErrorT error) {
+char *get_sa_error_b (cs_error_t error) {
 	return ((char *)sa_error_list[error]);
 }
 
-char *get_test_output (SaAisErrorT result, SaAisErrorT expected) {
+char *get_test_output (cs_error_t result, cs_error_t expected) {
 static char test_result[256];
 
         if (result == expected) {

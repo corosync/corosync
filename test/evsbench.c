@@ -49,7 +49,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
 #ifdef COROSYNC_SOLARIS
@@ -124,7 +124,7 @@ void evs_benchmark (evs_handle_t handle,
 	int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
-	evs_error_t result;
+	cs_error_t result;
 	int write_count = 0;
 
 	/*
@@ -139,12 +139,12 @@ void evs_benchmark (evs_handle_t handle,
 		if (outstanding < 10) {
 			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
 
-			if (result != EVS_ERR_TRY_AGAIN) {
+			if (result != CS_ERR_TRY_AGAIN) {
 				write_count += 1;
 				outstanding++;
 			}
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (alarm_notice == 0);
 	gettimeofday (&tv2, NULL);
 	timersub (&tv2, &tv1, &tv_elapsed);
@@ -174,7 +174,7 @@ void sigintr_handler (int num)
 int main (void) {
 	int size;
 	int i;
-	evs_error_t result;
+	cs_error_t result;
 	evs_handle_t handle;
 
 	signal (SIGALRM, sigalrm_handler);

@@ -37,12 +37,12 @@
 
 #include <sys/time.h>
 #include <corosync/mar_gen.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 
 /*
  * Get the time of day and convert to nanoseconds
  */
-extern SaTimeT clust_time_now(void);
+extern cs_time_t clust_time_now(void);
 
 enum e_ais_done {
 	AIS_DONE_EXIT = -1,
@@ -66,15 +66,15 @@ enum e_ais_done {
 /*
  * Compare two names.  returns non-zero on match.
  */
-extern int name_match(SaNameT *name1, SaNameT *name2);
+extern int name_match(cs_name_t *name1, cs_name_t *name2);
 extern int mar_name_match(mar_name_t *name1, mar_name_t *name2);
 #define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
 extern void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line);
 void _corosync_out_of_memory_error (void);
-extern char *getSaNameT (SaNameT *name);
+extern char *getcs_name_t (cs_name_t *name);
 extern char *strstr_rs (const char *haystack, const char *needle);
-extern void setSaNameT (SaNameT *name, char *str);
+extern void setcs_name_t (cs_name_t *name, char *str);
 char *get_mar_name_t (mar_name_t *name);
-extern int SaNameTisEqual (SaNameT *str1, char *str2);
+extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
 #endif /* UTIL_H_DEFINED */

@@ -46,12 +46,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cfg.h>
 
 static void ringstatusget_do (void)
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	unsigned int interface_count;
 	char **interface_names;
@@ -60,7 +60,7 @@ static void ringstatusget_do (void)
 
 	printf ("Printing ring status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
@@ -81,18 +81,18 @@ static void ringstatusget_do (void)
 
 static void ringreenable_do (void)
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 
 	printf ("Re-enabling all failed rings.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 
 	result = corosync_cfg_ring_reenable (handle);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not reenable ring error %d\n", result);
 	}
 
@@ -101,17 +101,17 @@ static void ringreenable_do (void)
 
 void service_load_do (char *service, unsigned int version)
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 
 	printf ("Loading service '%s' version '%d'\n", service, version);
 	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 	result = corosync_cfg_service_load (handle, service, version);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not load service (error = %d)\n", result);
 	}
 	corosync_cfg_finalize (handle);
@@ -119,17 +119,17 @@ void service_load_do (char *service, unsigned int version)
 
 void service_unload_do (char *service, unsigned int version)
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 
 	printf ("Unloading service '%s' version '%d'\n", service, version);
 	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 	result = corosync_cfg_service_unload (handle, service, version);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not unload service (error = %d)\n", result);
 	}
 	corosync_cfg_finalize (handle);
@@ -144,12 +144,12 @@ void shutdown_callback (corosync_cfg_handle_t cfg_handle, CorosyncCfgShutdownFla
 
 void *shutdown_dispatch_thread(void *arg)
 {
-	int res = SA_AIS_OK;
+	int res = CS_OK;
 	corosync_cfg_handle_t *handle = arg;
 
-	while (res == SA_AIS_OK) {
-		res = corosync_cfg_dispatch(*handle, SA_DISPATCH_ALL);
-		if (res != SA_AIS_OK)
+	while (res == CS_OK) {
+		res = corosync_cfg_dispatch(*handle, CS_DISPATCH_ALL);
+		if (res != CS_OK)
 			printf ("Could not dispatch cfg messages: %d\n", res);
 	}
 	return NULL;
@@ -157,7 +157,7 @@ void *shutdown_dispatch_thread(void *arg)
 
 void shutdown_do()
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	CorosyncCfgCallbacksT callbacks;
 	CorosyncCfgStateNotificationT notificationBuffer;
@@ -167,7 +167,7 @@ void shutdown_do()
 	callbacks.corosyncCfgShutdownCallback = shutdown_callback;
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
@@ -177,13 +177,13 @@ void shutdown_do()
 	result = corosync_cfg_state_track (handle,
 					   0,
 					   &notificationBuffer);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not start corosync cfg tracking error %d\n", result);
 		exit (1);
 	}
 
 	result = corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not shutdown (error = %d)\n", result);
 	}
 
@@ -192,17 +192,17 @@ void shutdown_do()
 
 void killnode_do(unsigned int nodeid)
 {
-	SaAisErrorT result;
+	cs_error_t result;
 	corosync_cfg_handle_t handle;
 
 	printf ("Killing node %d\n", nodeid);
 	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
 	result = corosync_cfg_kill_node (handle, nodeid, "Killed by corosync-cfgtool");
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not kill node (error = %d)\n", result);
 	}
 	corosync_cfg_finalize (handle);

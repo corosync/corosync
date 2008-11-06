@@ -41,7 +41,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/totem/totem.h>
 #include <corosync/engine/logsys.h>

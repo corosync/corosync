@@ -43,7 +43,7 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/ais_util.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
@@ -80,7 +80,7 @@ static int load_objdb()
 	objdb = (struct objdb_iface_ver0 *)objdb_p;
 
 	objdb->objdb_init ();
-	return SA_AIS_OK;
+	return CS_OK;
 }
 
 static int load_config()
@@ -130,7 +130,7 @@ static int load_config()
 	if (config_iface)
 		free(config_iface);
 
-	return SA_AIS_OK;
+	return CS_OK;
 }
 
 /* Needed by objdb when it writes back the configuration */
@@ -174,7 +174,7 @@ int confdb_sa_init (void)
 	int res;
 
 	res = load_objdb();
-	if (res != SA_AIS_OK)
+	if (res != CS_OK)
 		return res;
 
 	res = load_config();

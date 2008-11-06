@@ -46,52 +46,52 @@ extern void message_source_set (mar_message_source_t *source, void *conn);
 
 extern int message_source_is_local (mar_message_source_t *source);
 
-extern void *corosync_conn_partner_get (void *conn);
+extern void *cs_conn_partner_get (void *conn);
 
-extern void *corosync_conn_private_data_get (void *conn);
+extern void *cs_conn_private_data_get (void *conn);
 
-extern int corosync_conn_send_response (void *conn, void *msg, int mlen);
+extern int cs_conn_send_response (void *conn, void *msg, int mlen);
 
-extern int corosync_conn_send_response_no_fcc (void *conn, void *msg,int mlen);
+extern int cs_conn_send_response_no_fcc (void *conn, void *msg,int mlen);
 
-extern void corosync_ipc_init (
+extern void cs_ipc_init (
         void (*serialize_lock_fn) (void),
         void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid);
 
-extern int corosync_ipc_timer_add (
+extern int cs_ipc_timer_add (
 	void *conn,
 	void (*timer_fn) (void *data),
 	void *data,
 	unsigned int msec_in_future,
 	timer_handle *handle);
 
-extern void corosync_ipc_timer_del (
+extern void cs_ipc_timer_del (
 	void *conn,
 	timer_handle timer_handle);
 
-extern void corosync_ipc_timer_del_data (
+extern void cs_ipc_timer_del_data (
 	void *conn,
 	timer_handle timer_handle);
 
-extern void corosync_ipc_flow_control_create (
+extern void cs_ipc_flow_control_create (
 	void *conn,
 	unsigned int service,
 	char *id,
 	int id_len,
-	void (*flow_control_state_set_fn) (void *context, enum corosync_flow_control_state flow_control_state_set),
+	void (*flow_control_state_set_fn) (void *context, enum cs_flow_control_state flow_control_state_set),
 	void *context);
 	
-extern void corosync_ipc_flow_control_destroy (
+extern void cs_ipc_flow_control_destroy (
 	void *conn,
 	unsigned int service,
 	unsigned char *id,
 	int id_len);
 
-extern void corosync_ipc_flow_control_local_increment (
+extern void cs_ipc_flow_control_local_increment (
 	void *conn);
 
-extern void corosync_ipc_flow_control_local_decrement (
+extern void cs_ipc_flow_control_local_decrement (
 	void *conn);
 
 #endif /* IPC_H_DEFINED */

@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 void deliver(
@@ -70,17 +71,17 @@ int main(int argc, char** argv) {
 	int fd;
 
 	printf ("All of the nodeids should match on a single node configuration\n for the test to pass.");
-	assert(CPG_OK==cpg_initialize(&handle, &cb));
-	assert(CPG_OK==cpg_local_get(handle,&nodeid));
+	assert(CS_OK==cpg_initialize(&handle, &cb));
+	assert(CS_OK==cpg_local_get(handle,&nodeid));
 	printf("local_get: %x\n", nodeid);
-	assert(CPG_OK==cpg_join(handle, &group));
+	assert(CS_OK==cpg_join(handle, &group));
 	struct iovec msg={"hello", 5};
-	assert(CPG_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
+	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
 	cpg_fd_get (handle, &fd);
 	pfd.fd = fd;
 	pfd.events = POLLIN;
 		
 	poll (&pfd, 1, 1000);
-	cpg_dispatch(handle, CPG_DISPATCH_ALL);
+	cpg_dispatch(handle, CS_DISPATCH_ALL);
 	return (0);
 }

@@ -56,7 +56,7 @@
 #include <time.h>
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>

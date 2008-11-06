@@ -41,7 +41,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/confdb.h>
 
 #define INCDEC_VALUE 45
@@ -68,13 +68,13 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error resetting key iterator for object %d: %d\n", parent_object_handle, res);
 		return;
 	}
 
 	while ( (res = confdb_key_iter(handle, parent_object_handle, key_name, &key_name_len,
-				       key_value, &key_value_len)) == SA_AIS_OK) {
+				       key_value, &key_value_len)) == CS_OK) {
 		key_name[key_name_len] = '\0';
 		key_value[key_value_len] = '\0';
 		for (i=0; i<depth; i++)	printf("  ");
@@ -83,16 +83,16 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error resetting object iterator for object %d: %d\n", parent_object_handle, res);
 		return;
 	}
 
-	while ( (res = confdb_object_iter(handle, parent_object_handle, &object_handle, object_name, &object_name_len)) == SA_AIS_OK)	{
+	while ( (res = confdb_object_iter(handle, parent_object_handle, &object_handle, object_name, &object_name_len)) == CS_OK)	{
 		unsigned int parent;
 
 		res = confdb_object_parent_get(handle, object_handle, &parent);
-		if (res != SA_AIS_OK) {
+		if (res != CS_OK) {
 			printf( "error getting parent for object %d: %d\n", object_handle, res);
 			return;
 		}
@@ -116,25 +116,25 @@ static void do_write_tests(confdb_handle_t handle)
 
 	/* Add a scratch object and put some keys into it */
 	res = confdb_object_create(handle, OBJECT_PARENT_HANDLE, (void *)"testconfdb", strlen("testconfdb"), &object_handle);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' object: %d\n", res);
 		return;
 	}
 
 	res = confdb_key_create(handle, object_handle, "testkey", strlen("testkey"), "one", strlen("one"));
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' key 1: %d\n", res);
 		return;
 	}
 
 	res = confdb_key_create(handle, object_handle, "testkey", strlen("testkey"), "two", strlen("two"));
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' key 2: %d\n", res);
 		return;
 	}
 
 	res = confdb_key_create(handle, object_handle, "grot", strlen("grot"), "perrins", strlen("perrins"));
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' key 3: %d\n", res);
 		return;
 	}
@@ -142,7 +142,7 @@ static void do_write_tests(confdb_handle_t handle)
 	res = confdb_key_replace(handle, object_handle, "testkey", strlen("testkey"), "two", strlen("two"),
 				 "newtwo", strlen("newtwo"));
 
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error replace 'testconfdb' key 2: %d\n", res);
 		return;
 	}
@@ -152,12 +152,12 @@ static void do_write_tests(confdb_handle_t handle)
 
 	incdec_value = INCDEC_VALUE;
 	res = confdb_key_create(handle, object_handle, "incdec", strlen("incdec"), &incdec_value, sizeof(incdec_value));
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' key 4: %d\n", res);
 		return;
 	}
 	res = confdb_key_increment(handle, object_handle, "incdec", strlen("incdec"), &incdec_value);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error incrementing 'testconfdb' key 4: %d\n", res);
 		return;
 	}
@@ -167,7 +167,7 @@ static void do_write_tests(confdb_handle_t handle)
 		printf("ERROR: incremented value = %d (should be %d)\n", incdec_value, INCDEC_VALUE+1);
 
 	res = confdb_key_decrement(handle, object_handle, "incdec", strlen("incdec"), &incdec_value);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error decrementing 'testconfdb' key 4: %d\n", res);
 		return;
 	}
@@ -181,7 +181,7 @@ static void do_write_tests(confdb_handle_t handle)
 	/* Remove it.
 	   Check that it doesn't exist when the full tree dump runs next */
 	res = confdb_object_destroy(handle, object_handle);
-	if (res != SA_AIS_OK) {
+	if (res != CS_OK) {
 		printf( "error destroying 'testconfdb' object: %d\n", res);
 		return;
 	}
@@ -199,7 +199,7 @@ int main (int argc, char *argv[]) {
 	int value_len;
 
 	result = confdb_initialize (&handle, &callbacks);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Configuration Database API instance error %d\n", result);
 		exit (1);
 	}
@@ -221,19 +221,19 @@ int main (int argc, char *argv[]) {
 
 	/* Find "totem" and dump bits of it again, to test the direct APIs */
 	result = confdb_object_find_start(handle, OBJECT_PARENT_HANDLE);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not start object_find %d\n", result);
 		exit (1);
 	}
 
 	result = confdb_object_find(handle, OBJECT_PARENT_HANDLE, "totem", strlen("totem"), &totem_handle);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not object_find \"totem\": %d\n", result);
 		exit (1);
 	}
 
 	result = confdb_key_get(handle, totem_handle, "version", strlen("version"), key_value, &value_len);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not get \"version\" key: %d\n", result);
 		exit (1);
 	}
@@ -241,7 +241,7 @@ int main (int argc, char *argv[]) {
 	printf("totem/version = '%s'\n", key_value);
 
 	result = confdb_key_get(handle, totem_handle, "secauth", strlen("secauth"), key_value, &value_len);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not get \"secauth\" key: %d\n", result);
 		exit (1);
 	}

@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 #ifdef COROSYNC_SOLARIS
@@ -121,12 +121,12 @@ void cpg_benchmark (
 		if (flow_control_state == CPG_FLOW_CONTROL_DISABLED) {
 retry:
 			res = cpg_mcast_joined (handle, CPG_TYPE_AGREED, &iov, 1);
-			if (res == CPG_ERR_TRY_AGAIN) {
+			if (res == CS_ERR_TRY_AGAIN) {
 				goto retry;
 			}
 		}
-		res = cpg_dispatch (handle, CPG_DISPATCH_ALL);
-		if (res != CPG_OK) {
+		res = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		if (res != CS_OK) {
 			printf ("cpg dispatch returned error %d\n", res);
 			exit (1);
 		}
@@ -162,13 +162,13 @@ int main (void) {
 	
 	signal (SIGALRM, sigalrm_handler);
 	res = cpg_initialize (&handle, &callbacks);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_initialize failed with result %d\n", res);
 		exit (1);
 	}
 	
 	res = cpg_join (handle, &group_name);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_join failed with result %d\n", res);
 		exit (1);
 	}
@@ -179,7 +179,7 @@ int main (void) {
 	}
 
 	res = cpg_finalize (handle);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_join failed with result %d\n", res);
 		exit (1);
 	}

@@ -56,7 +56,7 @@
 #include <time.h>
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>
@@ -713,7 +713,7 @@ int main (int argc, char **argv)
 		totem_config.vsf_type);
 
 
-	res = corosync_flow_control_initialize ();
+	res = cs_flow_control_initialize ();
 
 	/*
 	 * Drop root privleges to user 'ais'
@@ -727,7 +727,7 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	corosync_ipc_init (
+	cs_ipc_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock,
 		gid_valid);
