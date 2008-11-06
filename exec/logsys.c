@@ -232,6 +232,7 @@ static inline int strcpy_cutoff (char *dest, char *src, int cutoff)
 	} else {
 		assert (cutoff > 0);
 		strncpy (dest, src, cutoff);
+		dest[cutoff] = '\0';
 		len = strlen (dest);
 		if (len != cutoff) {
 			memset (&dest[len], ' ', cutoff - len);
