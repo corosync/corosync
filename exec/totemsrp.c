@@ -626,7 +626,7 @@ void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 
 	list_init (&instance->token_callback_sent_listhead);
 
-	instance->my_received_flg = 0;
+	instance->my_received_flg = 1;
 
 	instance->my_token_seq = SEQNO_START_TOKEN - 1;
 
@@ -1695,7 +1695,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		"entering OPERATIONAL state.\n");
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
-	instance->my_received_flg = 0;
+	instance->my_received_flg = 1;
 
 	return;
 }
@@ -2643,6 +2643,8 @@ static void memb_state_commit_token_update (
 {
 	struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
+	unsigned int high_aru;
+	unsigned int i;
 
 	addr = (struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
@@ -2664,8 +2666,39 @@ static void memb_state_commit_token_update (
 	instance->my_received_flg =
 		(instance->my_aru == instance->my_high_seq_received);
 
-	memb_list[commit_token->memb_index].high_delivered = instance->my_high_delivered;
 	memb_list[commit_token->memb_index].received_flg = instance->my_received_flg;
+
+	memb_list[commit_token->memb_index].high_delivered = instance->my_high_delivered;
+	/*
+	 * find high aru up to current memb_index for all matching ring ids
+	 * if any ring id matching memb_index has aru less then high aru set
+	 * received flag for that entry to false
+	 */
+	high_aru = memb_list[commit_token->memb_index].aru;
+	for (i = 0; i <= commit_token->memb_index; i++) {
+		if (memcmp (&memb_list[commit_token->memb_index].ring_id,
+			&memb_list[i].ring_id,
+			sizeof (struct memb_ring_id)) == 0) {
+
+			if (sq_lt_compare (high_aru, memb_list[i].aru)) {
+				high_aru = memb_list[i].aru;
+			}
+		}
+	}
+
+	for (i = 0; i <= commit_token->memb_index; i++) {
+		if (memcmp (&memb_list[commit_token->memb_index].ring_id,
+			&memb_list[i].ring_id,
+			sizeof (struct memb_ring_id)) == 0) {
+
+			if (sq_lt_compare (memb_list[i].aru, high_aru)) {
+				memb_list[i].received_flg = 0;
+				if (i == commit_token->memb_index) {
+					instance->my_received_flg = 0;
+				}
+			}
+		}
+	}
 
 	commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	commit_token->memb_index += 1;
