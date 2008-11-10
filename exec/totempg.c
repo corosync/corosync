@@ -728,14 +728,16 @@ void totempg_finalize (void)
  * Multicast a message
  */
 static int mcast_msg (
-	struct iovec *iovec,
+	struct iovec *iovec_in,
 	int iov_len,
 	int guarantee)
 {
 	int res = 0;
 	struct totempg_mcast mcast;
 	struct iovec iovecs[3];
+	struct iovec iovec[64];
 	int i;
+	int dest, src;
 	int max_packet_size = 0;
 	int copy_len = 0; 
 	int copy_base = 0;
@@ -743,6 +745,18 @@ static int mcast_msg (
 
 	pthread_mutex_lock (&mcast_msg_mutex);
 	totemmrp_new_msg_signal ();
+
+	/*
+	 * Remove zero length iovectors from the list
+	 */
+	assert (iov_len < 64);
+	for (dest = 0, src = 0; src < iov_len; src++) {
+		if (iovec_in[src].iov_len) {
+			memcpy (&iovec[dest++], &iovec_in[src],
+				sizeof (struct iovec));
+		}
+	}
+	iov_len = dest;
 
 	max_packet_size = TOTEMPG_PACKET_SIZE -
 		(sizeof (unsigned short) * (mcast_packed_msg_count + 1));
