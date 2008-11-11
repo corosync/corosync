@@ -453,10 +453,16 @@ int main (void)
 	int rec_idx;
 	int end_rec;
 	int record_count = 1;
+	int size_read;
 
 	flt_data = malloc ((flt_data_size + 2) * sizeof (unsigned int));
 	fd = open ("/var/lib/corosync/fdata", O_RDONLY);
-	read (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
+	size_read = (int)read (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
+
+	if (size_read != (flt_data_size + 2) * sizeof (unsigned int)) {
+		printf ("Warning: read %d bytes, but expected %d\n",
+				size_read, (flt_data_size + 2) * sizeof (unsigned int));
+	}
 
 	rec_idx = flt_data[FDTAIL_INDEX];
 	end_rec = flt_data[FDHEAD_INDEX];

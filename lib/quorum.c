@@ -110,14 +110,14 @@ cs_error_t quorum_initialize (
 	else
 		memset(&quorum_inst->callbacks, 0, sizeof (callbacks));
 
-	saHandleInstancePut (&quorum_handle_t_db, *handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&quorum_handle_t_db, *handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&quorum_handle_t_db, *handle);
+	(void)saHandleDestroy (&quorum_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -140,7 +140,7 @@ cs_error_t quorum_finalize (
 	 */
 	if (quorum_inst->finalize) {
 		pthread_mutex_unlock (&quorum_inst->response_mutex);
-		saHandleInstancePut (&quorum_handle_t_db, handle);
+		(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -148,7 +148,7 @@ cs_error_t quorum_finalize (
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
-	saHandleDestroy (&quorum_handle_t_db, handle);
+	(void)saHandleDestroy (&quorum_handle_t_db, handle);
 
 	/*
 	 * Disconnect from the server
@@ -157,7 +157,7 @@ cs_error_t quorum_finalize (
 		shutdown(quorum_inst->response_fd, 0);
 		close(quorum_inst->response_fd);
 	}
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -199,7 +199,7 @@ cs_error_t quorum_getquorate (
 	*quorate = res_lib_quorum_getquorate.quorate;
 
 error_exit:
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -218,7 +218,7 @@ cs_error_t quorum_fd_get (
 
 	*fd = quorum_inst->dispatch_fd;
 
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -238,7 +238,7 @@ cs_error_t quorum_context_get (
 
 	*context = quorum_inst->context;
 
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -257,7 +257,7 @@ cs_error_t quorum_context_set (
 
 	quorum_inst->context = context;
 
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -299,7 +299,7 @@ cs_error_t quorum_trackstart (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -338,7 +338,7 @@ cs_error_t quorum_trackstop (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -488,6 +488,6 @@ error_unlock:
 	pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 
 error_put:
-	saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 	return (error);
 }

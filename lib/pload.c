@@ -115,14 +115,14 @@ unsigned int pload_initialize (
 
 	pthread_mutex_init (&pload_inst->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&pload_handle_t_db, *handle);
+	(void)saHandleInstancePut (&pload_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&pload_handle_t_db, *handle);
+	(void)saHandleInstancePut (&pload_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&pload_handle_t_db, *handle);
+	(void)saHandleDestroy (&pload_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -145,7 +145,7 @@ unsigned int pload_finalize (
 	 */
 	if (pload_inst->finalize) {
 		pthread_mutex_unlock (&pload_inst->response_mutex);
-		saHandleInstancePut (&pload_handle_t_db, handle);
+		(void)saHandleInstancePut (&pload_handle_t_db, handle);
 		return (PLOAD_ERR_BAD_HANDLE);
 	}
 
@@ -153,7 +153,7 @@ unsigned int pload_finalize (
 
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 
-	saHandleDestroy (&pload_handle_t_db, handle);
+	(void)saHandleDestroy (&pload_handle_t_db, handle);
     /*
      * Disconnect from the server
      */
@@ -165,7 +165,7 @@ unsigned int pload_finalize (
         shutdown(pload_inst->dispatch_fd, 0);
         close(pload_inst->dispatch_fd);
     }
-	saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
 
 	return (PLOAD_OK);
@@ -185,7 +185,7 @@ unsigned int pload_fd_get (
 
 	*fd = pload_inst->dispatch_fd; 
 
-	saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -230,7 +230,7 @@ unsigned int pload_start (
 	error = res_lib_pload_start.header.error;
 
 error_exit:
-	saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
 	return (error);
 }

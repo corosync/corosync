@@ -65,18 +65,20 @@ static void ringstatusget_do (void)
 		exit (1);
 	}
 
-	corosync_cfg_ring_status_get (handle,
-		&interface_names,
-		&interface_status,
-		&interface_count);
-
-	for (i = 0; i < interface_count; i++) {
-		printf ("RING ID %d\n", i);
-		printf ("\tid\t= %s\n", interface_names[i]);
-		printf ("\tstatus\t= %s\n", interface_status[i]);
+	result = corosync_cfg_ring_status_get (handle,
+				&interface_names,
+				&interface_status,
+				&interface_count);
+	if (result != CS_OK) {
+		printf ("Could not get the ring status, the error is: %d\n", result);
+	} else {
+		for (i = 0; i < interface_count; i++) {
+			printf ("RING ID %d\n", i);
+			printf ("\tid\t= %s\n", interface_names[i]);
+			printf ("\tstatus\t= %s\n", interface_status[i]);
+		}
 	}
-
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 static void ringreenable_do (void)
@@ -96,7 +98,7 @@ static void ringreenable_do (void)
 		printf ("Could not reenable ring error %d\n", result);
 	}
 
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 void service_load_do (char *service, unsigned int version)
@@ -114,7 +116,7 @@ void service_load_do (char *service, unsigned int version)
 	if (result != CS_OK) {
 		printf ("Could not load service (error = %d)\n", result);
 	}
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 void service_unload_do (char *service, unsigned int version)
@@ -132,14 +134,14 @@ void service_unload_do (char *service, unsigned int version)
 	if (result != CS_OK) {
 		printf ("Could not unload service (error = %d)\n", result);
 	}
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 void shutdown_callback (corosync_cfg_handle_t cfg_handle, CorosyncCfgShutdownFlagsT flags)
 {
 	printf("shutdown callback called, flags = %d\n",flags);
 
-	corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
+	(void)corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
 }
 
 void *shutdown_dispatch_thread(void *arg)
@@ -187,7 +189,7 @@ void shutdown_do()
 		printf ("Could not shutdown (error = %d)\n", result);
 	}
 
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 void killnode_do(unsigned int nodeid)
@@ -205,7 +207,7 @@ void killnode_do(unsigned int nodeid)
 	if (result != CS_OK) {
 		printf ("Could not kill node (error = %d)\n", result);
 	}
-	corosync_cfg_finalize (handle);
+	(void)corosync_cfg_finalize (handle);
 }
 
 

@@ -130,14 +130,14 @@ cs_error_t evs_initialize (
 
 	pthread_mutex_init (&evs_inst->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&evs_handle_t_db, *handle);
+	(void)saHandleDestroy (&evs_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -160,7 +160,7 @@ cs_error_t evs_finalize (
 	 */
 	if (evs_inst->finalize) {
 		pthread_mutex_unlock (&evs_inst->response_mutex);
-		saHandleInstancePut (&evs_handle_t_db, handle);
+		(void)saHandleInstancePut (&evs_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -168,7 +168,7 @@ cs_error_t evs_finalize (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	saHandleDestroy (&evs_handle_t_db, handle);
+	(void)saHandleDestroy (&evs_handle_t_db, handle);
     /*
      * Disconnect from the server
      */
@@ -180,7 +180,7 @@ cs_error_t evs_finalize (
         shutdown(evs_inst->dispatch_fd, 0);
         close(evs_inst->dispatch_fd);
     }
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 
 	return (CS_OK);
@@ -200,7 +200,7 @@ cs_error_t evs_fd_get (
 
 	*fd = evs_inst->dispatch_fd; 
 
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -354,7 +354,7 @@ cs_error_t evs_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 error_nounlock:
 	return (error);
 }
@@ -399,7 +399,7 @@ cs_error_t evs_join (
 	error = res_lib_evs_join.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -444,7 +444,7 @@ cs_error_t evs_leave (
 	error = res_lib_evs_leave.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -497,7 +497,7 @@ cs_error_t evs_mcast_joined (
 	error = res_lib_evs_mcast_joined.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -551,7 +551,7 @@ cs_error_t evs_mcast_groups (
 	error = res_lib_evs_mcast_groups.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -606,7 +606,7 @@ cs_error_t evs_membership_get (
 	}
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	(void)saHandleInstancePut (&evs_handle_t_db, handle);
 
 	return (error);
 }

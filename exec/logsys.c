@@ -302,7 +302,7 @@ static void log_printf_to_logs (
 
 				case 't':
 					gettimeofday (&tv, NULL);
-					strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S", localtime ((time_t *)&tv.tv_sec));
+					(void)strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S", localtime ((time_t *)&tv.tv_sec));
 					len = strcpy_cutoff (&output_buffer[output_buffer_idx], char_time, cutoff);
 					output_buffer_idx += len;
 					break;
@@ -342,7 +342,7 @@ static void log_printf_to_logs (
 		/*
 		 * Output to a file
 		 */
-		fwrite (output_buffer, strlen (output_buffer), 1, logsys_file_fp);
+		(void)fwrite (output_buffer, strlen (output_buffer), 1, logsys_file_fp);
 		fflush (logsys_file_fp);
 	}
 
@@ -350,7 +350,7 @@ static void log_printf_to_logs (
 	 * Output to stderr
 	 */	
 	if (logsys_mode & LOG_MODE_OUTPUT_STDERR) {
-		write (STDERR_FILENO, output_buffer, strlen (output_buffer));
+		(void)write (STDERR_FILENO, output_buffer, strlen (output_buffer));
 	}
 }
 

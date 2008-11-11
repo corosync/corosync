@@ -453,7 +453,10 @@ static void listen_for_object_changes(confdb_handle_t handle)
 	int quit = CS_FALSE;
 
 	FD_ZERO (&read_fds);
-	confdb_fd_get(handle, &select_fd);
+	if (confdb_fd_get (handle, &select_fd) != CS_OK) {
+		printf ("can't get the confdb selector object.\n");
+		return;
+	}
 	printf ("Type \"q\" to finish\n");
 	do {
 		FD_SET (select_fd, &read_fds);
@@ -465,8 +468,9 @@ static void listen_for_object_changes(confdb_handle_t handle)
 		if (FD_ISSET (STDIN_FILENO, &read_fds)) {
 			char inbuf[3];
 
-			fgets(inbuf, sizeof(inbuf), stdin);
-			if (strncmp(inbuf, "q", 1) == 0)
+			if (fgets(inbuf, sizeof(inbuf), stdin) == NULL)
+				quit = CS_TRUE;
+			else if (strncmp(inbuf, "q", 1) == 0)
 				quit = CS_TRUE;
 		}
 		if (FD_ISSET (select_fd, &read_fds)) {
@@ -475,7 +479,7 @@ static void listen_for_object_changes(confdb_handle_t handle)
 		}
 	} while (result && quit == CS_FALSE);
 
-	confdb_stop_track_changes(handle);
+	(void)confdb_stop_track_changes(handle);
 
 }
 

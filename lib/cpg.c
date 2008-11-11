@@ -120,14 +120,14 @@ cs_error_t cpg_initialize (
 
 	pthread_mutex_init (&cpg_inst->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&cpg_handle_t_db, *handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&cpg_handle_t_db, *handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&cpg_handle_t_db, *handle);
+	(void)saHandleDestroy (&cpg_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -150,7 +150,7 @@ cs_error_t cpg_finalize (
 	 */
 	if (cpg_inst->finalize) {
 		pthread_mutex_unlock (&cpg_inst->response_mutex);
-		saHandleInstancePut (&cpg_handle_t_db, handle);
+		(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -158,7 +158,7 @@ cs_error_t cpg_finalize (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	saHandleDestroy (&cpg_handle_t_db, handle);
+	(void)saHandleDestroy (&cpg_handle_t_db, handle);
 
 	/*
 	 * Disconnect from the server
@@ -171,7 +171,7 @@ cs_error_t cpg_finalize (
 		shutdown(cpg_inst->dispatch_fd, 0);
 		close(cpg_inst->dispatch_fd);
 	}
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -190,7 +190,7 @@ cs_error_t cpg_fd_get (
 
 	*fd = cpg_inst->dispatch_fd;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -209,7 +209,7 @@ cs_error_t cpg_context_get (
 
 	*context = cpg_inst->context;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -228,7 +228,7 @@ cs_error_t cpg_context_set (
 
 	cpg_inst->context = context;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -451,7 +451,7 @@ cs_error_t cpg_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 error_nounlock:
 	return (error);
 }
@@ -514,7 +514,7 @@ cs_error_t cpg_join (
 	error = res_lib_cpg_join.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -556,7 +556,7 @@ cs_error_t cpg_leave (
 	error = res_lib_cpg_leave.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -618,7 +618,7 @@ cs_error_t cpg_mcast_joined (
 	error = res_lib_cpg_mcast.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -674,7 +674,7 @@ cs_error_t cpg_membership_get (
 	}
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -716,7 +716,7 @@ cs_error_t cpg_local_get (
 	*local_nodeid = res_lib_cpg_local_get.local_nodeid;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -758,7 +758,7 @@ cs_error_t cpg_groups_get (
 
 	/* Real output is delivered via a callback */
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -777,7 +777,7 @@ cs_error_t cpg_flow_control_state_get (
 
 	*flow_control_state = cpg_inst->flow_control_state;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
 }

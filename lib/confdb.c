@@ -99,7 +99,7 @@ static void free_context_list(struct confdb_inst *confdb_inst, struct list_head 
 	     iter != list; iter = tmp, tmp = iter->next) {
 
 		context = list_entry (iter, struct iter_context, list);
-		do_find_destroy(confdb_inst, context->find_handle);
+		(void)do_find_destroy(confdb_inst, context->find_handle);
 		free(context);
 	}
 }
@@ -175,14 +175,14 @@ cs_error_t confdb_initialize (
 	list_init (&confdb_inst->object_iter_head);
 	list_init (&confdb_inst->key_iter_head);
 
-	saHandleInstancePut (&confdb_handle_t_db, *handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&confdb_handle_t_db, *handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&confdb_handle_t_db, *handle);
+	(void)saHandleDestroy (&confdb_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -205,7 +205,7 @@ cs_error_t confdb_finalize (
 	 */
 	if (confdb_inst->finalize) {
 		pthread_mutex_unlock (&confdb_inst->response_mutex);
-		saHandleInstancePut (&confdb_handle_t_db, handle);
+		(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -213,7 +213,7 @@ cs_error_t confdb_finalize (
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
-	saHandleDestroy (&confdb_handle_t_db, handle);
+	(void)saHandleDestroy (&confdb_handle_t_db, handle);
 
 	/* Free saved context handles */
 	free_context_list(confdb_inst, &confdb_inst->object_find_head);
@@ -233,7 +233,7 @@ cs_error_t confdb_finalize (
 			close(confdb_inst->dispatch_fd);
 		}
 	}
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -252,7 +252,7 @@ cs_error_t confdb_fd_get (
 
 	*fd = confdb_inst->dispatch_fd;
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -271,7 +271,7 @@ cs_error_t confdb_context_get (
 
 	*context = confdb_inst->context;
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -290,7 +290,7 @@ cs_error_t confdb_context_set (
 
 	confdb_inst->context = context;
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -470,7 +470,7 @@ cs_error_t confdb_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 error_nounlock:
 	return (error);
 }
@@ -526,7 +526,7 @@ cs_error_t confdb_object_create (
 	*object_handle = res_lib_confdb_object_create.object_handle;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -574,7 +574,7 @@ cs_error_t confdb_object_destroy (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -624,7 +624,7 @@ cs_error_t confdb_object_parent_get (
 	*parent_object_handle = res_lib_confdb_object_parent_get.parent_object_handle;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -693,7 +693,7 @@ cs_error_t confdb_object_find_destroy(
 		free(context);
 	}
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 	return error;
 }
 
@@ -717,7 +717,7 @@ cs_error_t confdb_object_iter_destroy(
 		free(context);
 	}
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 	return error;
 }
 
@@ -775,7 +775,7 @@ cs_error_t confdb_key_create (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -833,7 +833,7 @@ cs_error_t confdb_key_delete (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -893,7 +893,7 @@ cs_error_t confdb_key_get (
 	}
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -951,7 +951,7 @@ cs_error_t confdb_key_increment (
 	}
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1009,7 +1009,7 @@ cs_error_t confdb_key_decrement (
 	}
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1071,7 +1071,7 @@ cs_error_t confdb_key_replace (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1103,11 +1103,11 @@ cs_error_t confdb_object_iter_start (
 
 	/* Start a new find context */
 	if (context->find_handle) {
-		do_find_destroy(confdb_inst, context->find_handle);
+		(void)do_find_destroy(confdb_inst, context->find_handle);
 		context->find_handle = 0;
 	}
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1140,7 +1140,7 @@ cs_error_t confdb_key_iter_start (
 	context->find_handle = 0;
 	context->next_entry = 0;
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1172,11 +1172,11 @@ cs_error_t confdb_object_find_start (
 	}
 	/* Start a new find context */
 	if (context->find_handle) {
-		do_find_destroy(confdb_inst, context->find_handle);
+		(void)do_find_destroy(confdb_inst, context->find_handle);
 		context->find_handle = 0;
 	}
 
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1245,7 +1245,7 @@ cs_error_t confdb_object_find (
 	context->find_handle = res_lib_confdb_object_find.find_handle;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1318,7 +1318,7 @@ cs_error_t confdb_object_iter (
 sa_exit:
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1391,7 +1391,7 @@ sa_exit:
 	context->next_entry++;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1440,7 +1440,7 @@ cs_error_t confdb_write (
 		memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1492,7 +1492,7 @@ cs_error_t confdb_reload (
 		memcpy(error_text, res_lib_confdb_reload.error.value, res_lib_confdb_reload.error.length);
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1539,7 +1539,7 @@ cs_error_t confdb_track_changes (
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1581,7 +1581,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	error = res.error;
 
 error_exit:
-	saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (error);
 }

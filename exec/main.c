@@ -171,7 +171,7 @@ static void sigquit_handler (int num)
 
 static void sigsegv_handler (int num)
 {
-	signal (SIGSEGV, SIG_DFL);
+	(void)signal (SIGSEGV, SIG_DFL);
 	logsys_atsegv();
 	logsys_log_rec_store ("/var/lib/corosync/fdata");
 	raise (SIGSEGV);
@@ -179,7 +179,7 @@ static void sigsegv_handler (int num)
 
 static void sigabrt_handler (int num)
 {
-	signal (SIGABRT, SIG_DFL);
+	(void)signal (SIGABRT, SIG_DFL);
 	logsys_atsegv();
 	logsys_log_rec_store ("/var/lib/corosync/fdata");
 	raise (SIGABRT);
@@ -344,7 +344,7 @@ static void aisexec_tty_detach (void)
 	}
 
 	/* Create new session */
-	setsid();
+	(void)setsid();
 
 	/* 
 	 * Map stdin/out/err to /dev/null.
@@ -529,11 +529,11 @@ int main (int argc, char **argv)
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
 
-	signal (SIGINT, sigintr_handler);
-	signal (SIGUSR2, sigusr2_handler);
-	signal (SIGSEGV, sigsegv_handler);
-	signal (SIGABRT, sigabrt_handler);
-	signal (SIGQUIT, sigquit_handler);
+	(void)signal (SIGINT, sigintr_handler);
+	(void)signal (SIGUSR2, sigusr2_handler);
+	(void)signal (SIGSEGV, sigsegv_handler);
+	(void)signal (SIGABRT, sigabrt_handler);
+	(void)signal (SIGQUIT, sigquit_handler);
 	
 	corosync_timer_init (
 		serialize_mutex_lock,

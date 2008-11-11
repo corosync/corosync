@@ -130,14 +130,14 @@ corosync_cfg_initialize (
 
 	pthread_mutex_init (&cfg_instance->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&cfg_hdb, *cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, *cfg_handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&cfg_hdb, *cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, *cfg_handle);
 error_destroy:
-	saHandleDestroy (&cfg_hdb, *cfg_handle);
+	(void)saHandleDestroy (&cfg_hdb, *cfg_handle);
 error_no_destroy:
 	return (error);
 }
@@ -157,7 +157,7 @@ corosync_cfg_fd_get (
 
 	*selection_fd = cfg_instance->dispatch_fd;
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 	return (CS_OK);
 }
 
@@ -295,7 +295,7 @@ corosync_cfg_dispatch (
 	} while (cont);
 
 error_unlock:
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 error_nounlock:
 	return (error);
 }
@@ -322,7 +322,7 @@ corosync_cfg_finalize (
 	if (cfg_instance->finalize) {
 		pthread_mutex_unlock (&cfg_instance->response_mutex);
 		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-		saHandleInstancePut (&cfg_hdb, cfg_handle);
+		(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -336,7 +336,7 @@ corosync_cfg_finalize (
 
 	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
 
-	saHandleDestroy (&cfg_hdb, cfg_handle);
+	(void)saHandleDestroy (&cfg_hdb, cfg_handle);
 
 	if (cfg_instance->response_fd != -1) {
 		shutdown (cfg_instance->response_fd, 0);
@@ -347,7 +347,7 @@ corosync_cfg_finalize (
 		close (cfg_instance->dispatch_fd);
 	}
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -427,7 +427,7 @@ error_free_interface_names:
 	free (*interface_names);
 
 no_error:
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -458,7 +458,7 @@ corosync_cfg_ring_reenable (
 		sizeof (struct res_lib_cfg_ringreenable));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -496,7 +496,7 @@ corosync_cfg_service_load (
 		sizeof (struct res_lib_cfg_serviceload));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -534,7 +534,7 @@ corosync_cfg_service_unload (
 		sizeof (struct res_lib_cfg_serviceunload));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -570,7 +570,7 @@ corosync_cfg_state_track (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_statetrack.header.error : error);
 }
@@ -603,7 +603,7 @@ corosync_cfg_state_track_stop (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_statetrackstop.header.error : error);
 }
@@ -639,7 +639,7 @@ corosync_cfg_admin_state_get (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_administrativestateget.header.error : error);
 }
@@ -676,7 +676,7 @@ corosync_cfg_admin_state_set (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_administrativestateset.header.error : error);
 }
@@ -717,7 +717,7 @@ corosync_cfg_kill_node (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
@@ -750,7 +750,7 @@ corosync_cfg_try_shutdown (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }

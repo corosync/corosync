@@ -630,7 +630,7 @@ saHandleDestroy (
 
 	pthread_mutex_unlock (&handleDatabase->mutex);
 
-	saHandleInstancePut (handleDatabase, inHandle);
+	(void)saHandleInstancePut (handleDatabase, inHandle);
 
 	return (error);
 }
