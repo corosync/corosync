@@ -46,7 +46,7 @@ endif
 CFLAGS =
 LDFLAGS =
 DYFLAGS =
-LINT_FLAGS = -weak +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)= 
+LINT_FLAGS = -weak -unrecog +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)= 
 
 override CFLAGS += -DLCRSODIR='"$(LCRSODIR)"'
 

@@ -67,7 +67,11 @@ clean:
 	rm -f *.o $(BINARIES)
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(LINT_FLAGS) $(CFLAGS) corosync-objctl.c
+	-splint $(LINT_FLAGS) $(CFLAGS) corosync-cfgtool.c
+	-splint $(LINT_FLAGS) $(CFLAGS) corosync-keygen.c
+	-splint $(LINT_FLAGS) $(CFLAGS) corosync-fplay.c
+	-splint $(LINT_FLAGS) $(CFLAGS) corosync-pload.c
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
