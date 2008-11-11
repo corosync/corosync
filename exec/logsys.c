@@ -551,9 +551,9 @@ int _logsys_rec_init (unsigned int size)
 	 * Last record ends at zero
 	 */
 	flt_data = malloc ((size + 2) * sizeof (unsigned int));
-	assert (flt_data);
+	assert (flt_data != NULL);
 	flt_data_size = size;
-	assert (flt_data);
+	assert (flt_data != NULL);
 	flt_data[FDHEAD_INDEX] = 0;
 	flt_data[FDTAIL_INDEX] = 0;
 	pthread_spin_init (&logsys_idx_spinlock, 0);
@@ -960,15 +960,18 @@ int logsys_config_subsys_get (
 int logsys_log_rec_store (char *filename)
 {
 	int fd;
-	int size;
+	ssize_t written_size;
+	size_t size_to_write = (flt_data_size + 2) * sizeof (unsigned int);
 
 	fd = open (filename, O_CREAT|O_RDWR, 0700);
 	if (fd == -1) {
 		return (-1);
 	}
 
-	size = write (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
-	if (size != ((flt_data_size + 2) * sizeof (unsigned int))) {
+	written_size = write (fd, flt_data, size_to_write);
+	if (written_size < 0) {
+		return (-1);
+	} else if ((size_t)written_size != size_to_write) {
 		return (-1);
 	}
 	return (0);

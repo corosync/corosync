@@ -225,7 +225,7 @@ saRecvRetry (
 	size_t len)
 {
 	cs_error_t error = CS_OK;
-	int result;
+	ssize_t result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
 	char *rbuf = (char *)msg;
@@ -284,7 +284,7 @@ saSendRetry (
 	size_t len)
 {
 	cs_error_t error = CS_OK;
-	int result;
+	ssize_t result;
 	struct msghdr msg_send;
 	struct iovec iov_send;
 	char *rbuf = (char *)msg;
@@ -368,7 +368,7 @@ cs_error_t saSendMsgRetry (
         int iov_len)
 {
 	cs_error_t error = CS_OK;
-	int result;
+	ssize_t result;
 	int total_size = 0;
 	int i;
 	int csize;

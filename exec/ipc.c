@@ -660,7 +660,7 @@ static void ipc_flow_control (struct conn_info *conn_info)
 
 static int conn_info_outq_flush (struct conn_info *conn_info) {
 	struct queue *outq;
-	int res = 0;
+	ssize_t res = 0;
 	struct outq_item *queue_item;
 	struct msghdr msg_send;
 	struct iovec iov_send;
@@ -738,7 +738,8 @@ struct ipc_res_overlay {
 
 static void libais_deliver (struct conn_info *conn_info)
 {
-	int res;
+	ssize_t res;
+	int dispatch_res;
 	mar_req_header_t *header;
 	int service;
 	struct msghdr msg_recv;
@@ -841,7 +842,7 @@ retry_recv:
 #ifdef COROSYNC_LINUX
 	if (conn_info->authenticated == 0) {
 		cmsg = CMSG_FIRSTHDR (&msg_recv);
-		assert (cmsg);
+		assert (cmsg != NULL);
 		cred = (struct ucred *)CMSG_DATA (cmsg);
 		if (cred) {
 			if (cred->uid == 0 || cred->gid == g_gid_valid) {
@@ -861,7 +862,8 @@ retry_recv:
 	conn_info->inb_inuse += res;
 	conn_info->inb_start += res;
 
-	while (conn_info->inb_inuse >= sizeof (mar_req_header_t) && res != -1) {
+	dispatch_res = 0;
+	while (conn_info->inb_inuse >= sizeof (mar_req_header_t) && dispatch_res != -1) {
 		header = (mar_req_header_t *)&conn_info->inb[conn_info->inb_start - conn_info->inb_inuse];
 
 		if (header->size > conn_info->inb_inuse) {
@@ -874,7 +876,7 @@ retry_recv:
 		 * else handle message using service service
 		 */
 		if (service == SOCKET_SERVICE_INIT) {
-			res = ais_init_service[header->id] (conn_info, header);
+			dispatch_res = ais_init_service[header->id] (conn_info, header);
 		} else  {
 			/*
 			 * Not an init service, but a standard service
@@ -1147,7 +1149,7 @@ int cs_conn_send_response (
 {
 	struct queue *outq;
 	char *cmsg;
-	int res = 0;
+	ssize_t res = 0;
 	int queue_empty;
 	struct outq_item *queue_item;
 	struct outq_item queue_item_out;

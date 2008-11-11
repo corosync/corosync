@@ -98,6 +98,7 @@ int uic_msg_send (int fd, char *msg)
 	struct msghdr msg_send;
 	struct iovec iov_send[2];
 	struct uic_req_msg req_msg;
+	ssize_t send_res;
 	int res;
 
 	req_msg.len = strlen (msg) + 1;
@@ -120,12 +121,14 @@ int uic_msg_send (int fd, char *msg)
 #endif
 
 	retry_send:
-	res = sendmsg (fd, &msg_send, 0);
-	if (res == -1 && errno == EINTR) {
+	send_res = sendmsg (fd, &msg_send, 0);
+	if (send_res == -1 && errno == EINTR) {
                 goto retry_send;
         }
-	if (res == -1) {
+	if (send_res == -1) {
 		res = -errno;
+	} else {
+		res = (int)send_res;
 	}
 	return (res);
 

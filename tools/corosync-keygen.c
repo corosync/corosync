@@ -44,7 +44,7 @@ int main (void) {
 	int authkey_fd;
 	int random_fd;
 	unsigned char key[128];
-	int res;
+	ssize_t res;
 	
 	printf ("Corosync Cluster Engine Authentication key generator.\n");
 	if (geteuid() != 0) {
@@ -80,7 +80,7 @@ int main (void) {
 	/*
 	 * Set security of authorization key to uid = 0 uid = 0 mode = 0400
 	 */
-	res = fchown (authkey_fd, 0, 0);
+	fchown (authkey_fd, 0, 0);
 	fchmod (authkey_fd, 0400);
 
 	printf ("Writing corosync key to /etc/ais/authkey.\n");
