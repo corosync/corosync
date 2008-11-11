@@ -343,7 +343,7 @@ error_exit:
 	return (error);
 }
 
-struct res_overlay {
+struct quorum_res_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
@@ -359,7 +359,7 @@ cs_error_t quorum_dispatch (
 	int dispatch_avail;
 	struct quorum_inst *quorum_inst;
 	quorum_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	struct quorum_res_overlay dispatch_data;
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&

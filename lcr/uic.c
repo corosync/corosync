@@ -88,7 +88,7 @@ int uic_connect (int *fd)
 	return 0;
 }
 
-struct req_msg {
+struct uic_req_msg {
 	int len;
 	char msg[0];
 };
@@ -97,12 +97,12 @@ int uic_msg_send (int fd, char *msg)
 {
 	struct msghdr msg_send;
 	struct iovec iov_send[2];
-	struct req_msg req_msg;
+	struct uic_req_msg req_msg;
 	int res;
 
 	req_msg.len = strlen (msg) + 1;
 	iov_send[0].iov_base = (void *)&req_msg;
-	iov_send[0].iov_len = sizeof (struct req_msg);
+	iov_send[0].iov_len = sizeof (struct uic_req_msg);
 	iov_send[1].iov_base = (void *)msg;
 	iov_send[1].iov_len = req_msg.len;
 

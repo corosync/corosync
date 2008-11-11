@@ -52,7 +52,7 @@
 #include <corosync/ipc_cfg.h>
 #include <corosync/ais_util.h>
 
-struct res_overlay {
+struct cfg_res_overlay {
 	mar_res_header_t header;
 	char data[4096];
 };
@@ -181,7 +181,7 @@ corosync_cfg_dispatch (
 	struct res_lib_cfg_statetrackcallback *res_lib_cfg_statetrackcallback;
 #endif
 	CorosyncCfgCallbacksT callbacks;
-	struct res_overlay dispatch_data;
+	struct cfg_res_overlay dispatch_data;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);

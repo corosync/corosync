@@ -295,7 +295,7 @@ cs_error_t confdb_context_set (
 	return (CS_OK);
 }
 
-struct res_overlay {
+struct confdb_res_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
@@ -314,7 +314,7 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
-	struct res_overlay dispatch_data;
+	struct confdb_res_overlay dispatch_data;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);

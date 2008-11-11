@@ -62,7 +62,7 @@ struct evs_inst {
 	pthread_mutex_t dispatch_mutex;
 };
 
-struct res_overlay {
+struct evs_res_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
@@ -218,7 +218,7 @@ cs_error_t evs_dispatch (
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	struct evs_res_overlay dispatch_data;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);

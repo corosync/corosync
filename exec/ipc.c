@@ -731,7 +731,7 @@ retry_sendmsg:
 
 
 
-struct res_overlay {
+struct ipc_res_overlay {
 	mar_res_header_t header __attribute((aligned(8)));
 	char buf[4096];
 };
@@ -752,7 +752,7 @@ static void libais_deliver (struct conn_info *conn_info)
 	int send_ok = 0;
 	int send_ok_joined = 0;
 	struct iovec send_ok_joined_iovec;
-	struct res_overlay res_overlay;
+	struct ipc_res_overlay res_overlay;
 
 	msg_recv.msg_iov = &iov_recv;
 	msg_recv.msg_iovlen = 1;

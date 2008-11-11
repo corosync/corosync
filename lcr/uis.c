@@ -115,14 +115,14 @@ struct uis_commands uis_commands[] = {
 	}
 };
 
-struct req_msg {
+struct uis_req_msg {
         int len;
         char msg[0];
 };
 
 static void lcr_uis_dispatch (int fd)
 {
-	struct req_msg header;
+	struct uis_req_msg header;
 	char msg_contents[512];
 	ssize_t readsize;
 

@@ -85,5 +85,5 @@ clean:
 	test_static
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(LINT_FLAGS) $(CFLAGS) lcr_ifact.c uic.c uis.c
 

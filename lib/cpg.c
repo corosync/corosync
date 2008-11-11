@@ -233,7 +233,7 @@ cs_error_t cpg_context_set (
 	return (CS_OK);
 }
 
-struct res_overlay {
+struct cpg_res_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];
 };
@@ -253,7 +253,7 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	struct res_lib_cpg_groups_get_callback *res_lib_cpg_groups_get_callback;
 	cpg_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	struct cpg_res_overlay dispatch_data;
 	int ignore_dispatch = 0;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
