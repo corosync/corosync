@@ -295,7 +295,6 @@ int confdb_sa_key_replace (
 }
 
 int confdb_sa_write (
-	unsigned int parent_object_handle,
 	char *error_text)
 {
 	char *errtext;
@@ -309,7 +308,6 @@ int confdb_sa_write (
 }
 
 int confdb_sa_reload (
-	unsigned int parent_object_handle,
 	int flush,
 	char *error_text)
 {
