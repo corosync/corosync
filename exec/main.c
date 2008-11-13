@@ -451,6 +451,8 @@ static void deliver_fn (
 	 */
 	service = header->id >> 16;
 	fn_id = header->id & 0xffff;
+	if (!ais_service[service])
+		return;
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
 		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
