@@ -694,7 +694,7 @@ static void cpg_confchg_fn (
 	struct memb_ring_id *ring_id)
 {
 	int i;
-	uint32_t lowest_nodeid = 0xffffff;
+	uint32_t lowest_nodeid = 0xffffffff;
 	struct iovec req_exec_cpg_iovec;
 
 	/* We don't send the library joinlist in here because it can end up
