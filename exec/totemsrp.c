@@ -913,11 +913,11 @@ error_exit:
 	return (res);
 }
 
-int totemsrp_my_nodeid_get (
+unsigned int totemsrp_my_nodeid_get (
 	totemsrp_handle handle)
 {
 	struct totemsrp_instance *instance;
-	int res;
+	unsigned int res;
 
 	res = hdb_handle_get (&totemsrp_instance_database, handle,
 		(void *)&instance);

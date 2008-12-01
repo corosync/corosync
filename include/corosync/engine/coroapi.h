@@ -405,7 +405,7 @@ struct corosync_api_v1 {
 	/*
 	 * Totem APIs
 	 */
-	int (*totem_nodeid_get) (void);
+	unsigned int (*totem_nodeid_get) (void);
 
 	int (*totem_family_get) (void);
 

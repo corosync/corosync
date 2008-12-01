@@ -192,7 +192,7 @@ int totemmrp_ifaces_get (
 	return (res);
 }
 
-int totemmrp_my_nodeid_get (void)
+unsigned int totemmrp_my_nodeid_get (void)
 {
 	return (totemsrp_my_nodeid_get (totemsrp_handle_in));
 }

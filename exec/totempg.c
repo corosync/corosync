@@ -1264,7 +1264,7 @@ char *totempg_ifaces_print (unsigned int nodeid)
 	return (iface_string);
 }
 
-int totempg_my_nodeid_get (void)
+unsigned int totempg_my_nodeid_get (void)
 {
 	return (totemmrp_my_nodeid_get());
 }
