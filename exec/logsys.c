@@ -436,6 +436,12 @@ static inline void wthread_wait (void)
 	pthread_mutex_unlock (&logsys_cond_mutex);
 }
 
+static inline void wthread_wait_locked (void)
+{
+	pthread_cond_wait (&logsys_cond, &logsys_cond_mutex);
+	pthread_mutex_unlock (&logsys_cond_mutex);
+}
+
 static void *logsys_worker_thread (void *data)
 {
 	int log_msg;
@@ -503,13 +509,15 @@ static void wthread_create (void)
 
 	pthread_mutex_init (&logsys_cond_mutex, NULL);
 	pthread_cond_init (&logsys_cond, NULL);
+	pthread_mutex_lock (&logsys_cond_mutex);
 	res = pthread_create (&logsys_thread_id, NULL,
 		logsys_worker_thread, NULL);
+
 
 	/*
 	 * Wait for thread to be started
 	 */
-	wthread_wait ();
+	wthread_wait_locked ();
 }
 
 /*
