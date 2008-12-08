@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>

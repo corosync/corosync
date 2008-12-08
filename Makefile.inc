@@ -76,7 +76,7 @@ endif
 # platform specific CFLAGS, LDFLAGS
 #
 ifeq (${COROSYNC_COMPAT}, LINUX) 
-	override CFLAGS += -DCOROSYNC_LINUX
+	override CFLAGS += -DCOROSYNC_LINUX -D_XOPEN_SOURCE=600
 	override LDFLAGS += -ldl -lpthread
 	override DYFLAGS += -rdynamic
 endif
