@@ -46,6 +46,7 @@
 #include "main.h"
 #include "ipc.h"
 #include "sync.h"
+#include "quorum.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 #include <corosync/lcr/lcr_ifact.h>
@@ -101,6 +102,10 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.tpg_groups_mcast = (typedef_tpg_groups_mcast)totempg_groups_mcast_groups,
 	.tpg_groups_send_ok = (typedef_tpg_groups_send_ok)totempg_groups_send_ok_groups,
 	.sync_request = sync_request,
+	.quorum_is_quorate = corosync_quorum_is_quorate,
+	.quorum_register_callback = corosync_quorum_register_callback,
+	.quorum_unregister_callback = corosync_quorum_unregister_callback,
+	.quorum_initialize = corosync_quorum_initialize,
 	.service_link_and_init = corosync_service_link_and_init,
 	.service_unlink_and_exit = corosync_service_unlink_and_exit,
 	.plugin_interface_reference = lcr_ifact_reference,

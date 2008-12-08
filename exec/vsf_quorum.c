@@ -15,7 +15,7 @@
  * - Redistributions in binary form must reproduce the above copyright notice,
  *   this list of conditions and the following disclaimer in the documentation
  *   and/or other materials provided with the distribution.
- * - Neither the name of the MontaVista Software, Inc. nor the names of its
+ * - Neither the name of Red Hat Inc. nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -60,10 +60,9 @@
 #include <corosync/ipc_gen.h>
 #include <corosync/ipc_quorum.h>
 #include <corosync/lcr/lcr_comp.h>
+#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/engine/coroapi.h>
-
-#include "vsf.h"
-#include "quorum.h"
+#include <corosync/engine/quorum.h>
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM", LOG_INFO);
 
@@ -74,22 +73,31 @@ struct quorum_pd {
 	void *conn;
 };
 
+struct internal_callback_pd {
+	struct list_head list;
+	quorum_callback_fn_t callback;
+	void *context;
+};
+
 static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg);
 static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg);
 static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg);
-static int send_quorum_notification(void *conn);
+static void send_library_notification(void *conn);
+static void send_internal_notification(void);
 static int quorum_exec_init_fn (struct corosync_api_v1 *api);
 static int quorum_lib_init_fn (void *conn);
 static int quorum_lib_exit_fn (void *conn);
 
 static int primary_designated = 0;
 static struct corosync_api_v1 *corosync_api;
-static struct list_head trackers_list;
+static struct list_head lib_trackers_list;
+static struct list_head internal_trackers_list;
 static struct memb_ring_id quorum_ring_id;
 static int quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
+struct quorum_services_api_ver1 *quorum_iface = NULL;
 
-static void (*quorum_primary_callback_fn) (
+static void (*sync_primary_callback_fn) (
 	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
@@ -101,50 +109,28 @@ static void quorum_api_set_quorum(unsigned int *view_list,
 				  int quorum, struct memb_ring_id *ring_id)
 {
 	primary_designated = quorum;
-	memcpy(&quorum_ring_id, &ring_id, sizeof (quorum_ring_id));
+
+	if (primary_designated) {
+		log_printf (LOG_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
+	} else {
+		log_printf (LOG_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
+	}
+
+	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 
 	quorum_view_list_entries = view_list_entries;
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
 	/* Tell sync() */
-	quorum_primary_callback_fn(view_list, view_list_entries,
-				   primary_designated, &quorum_ring_id);
+	sync_primary_callback_fn(view_list, view_list_entries,
+				 primary_designated, &quorum_ring_id);
+
+	/* Tell internal listeners */
+	send_internal_notification();
 
 	/* Tell IPC listeners */
-	send_quorum_notification(NULL);
+	send_library_notification(NULL);
 }
-
-static int quorum_init (
-	void (*primary_callback_fn) (
-		unsigned int *view_list,
-		int view_list_entries,
-		int primary_designated,
-		struct memb_ring_id *ring_id))
-{
-	quorum_primary_callback_fn = primary_callback_fn;
-
-	return (0);
-}
-
-/*
- * Returns 1 if this processor is in the primary (has quorum)
- */
-static int quorum_primary (void)
-{
-	return (primary_designated);
-}
-
-/*
- * lcrso object definition
- */
-static struct corosync_vsf_iface_ver0 vsf_quorum_iface_ver0 = {
-	.init				= quorum_init,
-	.primary			= quorum_primary
-};
-
-static struct quorum_services_api_ver1 quorum_service_api_v1 = {
-	.quorum_api_set_quorum = quorum_api_set_quorum
-};
 
 static struct corosync_lib_handler quorum_lib_service[] =
 {
@@ -181,30 +167,8 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
 };
 
-static struct lcr_iface corosync_vsf_quorum_ver0[3] = {
-	{ /* the VSF handler */
-		.name			= "corosync_vsf_quorum",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count	= 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&vsf_quorum_iface_ver0,
-	},
-	{ /* API for quorum users to call */
-		.name                   = "corosync_quorum_api",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count = 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= NULL
-	},
-	{ /* Library calls */
+static struct lcr_iface corosync_quorum_ver0[1] = {
+	{
 		.name			= "corosync_quorum",
 		.version		= 0,
 		.versions_replace	= 0,
@@ -215,7 +179,6 @@ static struct lcr_iface corosync_vsf_quorum_ver0[3] = {
 		.destructor		= NULL,
 		.interfaces		= NULL,
 	},
-
 };
 
 static struct corosync_service_engine *quorum_get_service_handler_ver0 (void)
@@ -223,28 +186,124 @@ static struct corosync_service_engine *quorum_get_service_handler_ver0 (void)
 	return (&quorum_service_handler);
 }
 
-static struct lcr_comp vsf_quorum_comp_ver0 = {
-	.iface_count			= 3,
-	.ifaces				= corosync_vsf_quorum_ver0
+static struct lcr_comp quorum_comp_ver0 = {
+	.iface_count			= 1,
+	.ifaces				= corosync_quorum_ver0
 };
 
 static struct corosync_service_engine_iface_ver0 quorum_service_handler_iface = {
 	.corosync_get_service_engine_ver0 = quorum_get_service_handler_ver0
 };
 
-__attribute__ ((constructor)) static void vsf_quorum_comp_register (void) {
-	lcr_component_register (&vsf_quorum_comp_ver0);
-	lcr_interfaces_set (&corosync_vsf_quorum_ver0[0], &vsf_quorum_iface_ver0);
-	lcr_interfaces_set (&corosync_vsf_quorum_ver0[1], &quorum_service_api_v1);
-	lcr_interfaces_set (&corosync_vsf_quorum_ver0[2], &quorum_service_handler_iface);
+__attribute__ ((constructor)) static void quorum_comp_register (void) {
+	lcr_component_register (&quorum_comp_ver0);
+	lcr_interfaces_set (&corosync_quorum_ver0[0], &quorum_service_handler_iface);
 }
 
 /* -------------------------------------------------- */
 
+
+/*
+ * Internal API functions for corosync
+ */
+
+static int quorum_quorate(void)
+{
+	return primary_designated;
+}
+
+
+static int quorum_register_callback(quorum_callback_fn_t function, void *context)
+{
+	struct internal_callback_pd *pd = malloc(sizeof(struct internal_callback_pd));
+	if (!pd)
+		return -1;
+
+	pd->context  = context;
+	pd->callback = function;
+	list_add (&pd->list, &internal_trackers_list);
+
+	return 0;
+}
+
+static int quorum_unregister_callback(quorum_callback_fn_t function, void *context)
+{
+	struct internal_callback_pd *pd;
+	struct list_head *tmp;
+
+	for (tmp = internal_trackers_list.next; tmp != &internal_trackers_list; tmp = tmp->next) {
+
+		pd = list_entry(tmp, struct internal_callback_pd, list);
+		if (pd->callback == function && pd->context == context) {
+			list_del(&pd->list);
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static struct quorum_callin_functions callins = {
+	.quorate = quorum_quorate,
+	.register_callback = quorum_register_callback,
+	.unregister_callback = quorum_unregister_callback
+};
+
+/* --------------------------------------------------------------------- */
+
 static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
+	unsigned int find_handle;
+	unsigned int quorum_handle = 0;
+	unsigned int q_handle;
+	char *quorum_module;
+	int res;
+	void *quorum_iface_p;
+
 	corosync_api = api;
-	list_init (&trackers_list);
+	list_init (&lib_trackers_list);
+	list_init (&internal_trackers_list);
+
+	/*
+	 * Tell corosync we have a quorum engine.
+	 */
+	api->quorum_initialize(&callins, &sync_primary_callback_fn);
+
+	/*
+	 * Look for a quorum provider
+	 */
+	api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
+        api->object_find_next(find_handle, &quorum_handle);
+	api->object_find_destroy(find_handle);
+
+	if (quorum_handle) {
+		if ( !(res = api->object_key_get(quorum_handle,
+						 "provider",
+						 strlen("provider"),
+						 (void *)&quorum_module,
+						 NULL))) {
+
+			res = lcr_ifact_reference (
+				&q_handle,
+				quorum_module,
+				0,
+				&quorum_iface_p,
+				0);
+
+			if (res == -1) {
+				log_printf (LOG_LEVEL_NOTICE,
+					    "Couldn't load quorum provider %s\n",
+					    quorum_module);
+				return (-1);
+			}
+
+			log_printf (LOG_LEVEL_NOTICE,
+				    "Using quorum provider %s\n", quorum_module);
+
+			quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
+			quorum_iface->init (api, quorum_api_set_quorum);
+		}
+	}
+
 	return (0);
 }
 
@@ -273,7 +332,21 @@ static int quorum_lib_exit_fn (void *conn)
 	return (0);
 }
 
-static int send_quorum_notification(void *conn)
+
+static void send_internal_notification(void)
+{
+	struct list_head *tmp;
+	struct internal_callback_pd *pd;
+
+	for (tmp = internal_trackers_list.next; tmp != &internal_trackers_list; tmp = tmp->next) {
+
+		pd = list_entry(tmp, struct internal_callback_pd, list);
+
+		pd->callback(primary_designated, pd->context);
+	}
+}
+
+static void send_library_notification(void *conn)
 {
 	int size = sizeof(struct res_lib_quorum_notification) + sizeof(unsigned int)*quorum_view_list_entries;
 	char buf[size];
@@ -296,12 +369,12 @@ static int send_quorum_notification(void *conn)
 
 	/* Send it to all interested parties */
 	if (conn) {
-		return corosync_api->ipc_conn_send_response(conn, res_lib_quorum_notification, size);
+		corosync_api->ipc_conn_send_response(conn, res_lib_quorum_notification, size);
 	}
 	else {
 		struct quorum_pd *qpd;
 
-		for (tmp = trackers_list.next; tmp != &trackers_list; tmp = tmp->next) {
+		for (tmp = lib_trackers_list.next; tmp != &lib_trackers_list; tmp = tmp->next) {
 
 			qpd = list_entry(tmp, struct quorum_pd, list);
 
@@ -309,7 +382,7 @@ static int send_quorum_notification(void *conn)
 							     res_lib_quorum_notification, size);
 		}
 	}
-	return (0);
+	return;
 }
 
 static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg)
@@ -342,7 +415,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOG_LEVEL_DEBUG, "sending initial status to %p\n", conn);
-		send_quorum_notification(corosync_api->ipc_conn_partner_get (conn));
+		send_library_notification(corosync_api->ipc_conn_partner_get (conn));
 	}
 
 	/*
@@ -354,7 +427,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 		quorum_pd->track_flags = req_lib_quorum_trackstart->track_flags;
 		quorum_pd->tracking_enabled = 1;
 
-		list_add (&quorum_pd->list, &trackers_list);
+		list_add (&quorum_pd->list, &lib_trackers_list);
 	}
 
 	/* send status */

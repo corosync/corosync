@@ -188,8 +188,26 @@ typedef void (*object_notify_callback_fn_t)(unsigned int object_handle,
 typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
 											void *priv_data_pt);
 
-
 #endif /* OBJECT_PARENT_HANDLE_DEFINED */
+
+#ifndef QUORUM_H_DEFINED
+typedef void (*quorum_callback_fn_t) (int quorate, void *context);
+
+struct quorum_callin_functions
+{
+	int (*quorate) (void);
+	int (*register_callback) (quorum_callback_fn_t callback_fn, void *context);
+	int (*unregister_callback) (quorum_callback_fn_t callback_fn, void *context);
+};
+
+typedef void (*sync_callback_fn_t) (
+	unsigned int *view_list,
+	int view_list_entries,
+	int primary_designated,
+	struct memb_ring_id *ring_id);
+
+#endif /* QUORUM_H_DEFINED */
+
 
 struct corosync_api_v1 {
 	/*
@@ -494,6 +512,19 @@ struct corosync_api_v1 {
 
 	int (*sync_request) (
 		char *service_name);
+
+	/*
+	 * User plugin-callable functions for quorum
+	 */
+	int (*quorum_is_quorate) (void);
+	int (*quorum_register_callback) (quorum_callback_fn_t callback_fn, void *context);
+	int (*quorum_unregister_callback) (quorum_callback_fn_t callback_fn, void *context);
+
+	/*
+	 * This one is for the quorum management plugin's use
+	 */
+	int (*quorum_initialize)(struct quorum_callin_functions *fns,
+				 sync_callback_fn_t *sync_callback_fn);
 
 	/*
 	 * Plugin loading and unloading

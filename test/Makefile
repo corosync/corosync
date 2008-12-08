@@ -90,6 +90,11 @@ logsysbench: logsysbench.o ../exec/liblogsys.a
 logsysrec: logsysrec.o ../exec/liblogsys.a
 	$(CC) -o logsysrec logsysrec.o ../exec/liblogsys.a $(LDFLAGS)
 
+testquorum1: testquorum1.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testquorum1 testquorum1.o $(LIBS)
+testquorum2: testquorum2.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testquorum2 testquorum2.o $(LIBS)
+
 logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
 	$(CC) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a $(LDFLAGS)
 

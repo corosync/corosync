@@ -212,6 +212,7 @@ struct corosync_service_engine confdb_service_engine = {
 	.id					= CONFDB_SERVICE,
 	.private_data_size			= 0,
 	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
+	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
 	.lib_init_fn				= confdb_lib_init_fn,
 	.lib_exit_fn				= confdb_lib_exit_fn,
 	.lib_engine				= confdb_lib_engine,

@@ -55,7 +55,7 @@ LCR_OBJS = evs.o cfg.o cpg.o confdb.o $(AMF_OBJS) pload.o
 
 override CFLAGS += -fPIC
 
-all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso
+all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso testquorum.lcrso
 
 ifeq (${COROSYNC_COMPAT}, DARWIN)
 
@@ -91,6 +91,9 @@ service_cpg.lcrso: cpg.o
 service_pload.lcrso: pload.o
 	$(CC) -shared -Wl,-soname,service_pload.lcrso pload.o -o $@
 
+testquorum.lcrso: testquorum.o
+	$(CC) -shared -Wl,-soname,testquorum.lcrso testquorum.o -o $@
+
 endif
 
 clean:
@@ -112,4 +115,7 @@ confdb.o: confdb.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 cpg.o: cpg.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+testquorum.o: testquorum.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<

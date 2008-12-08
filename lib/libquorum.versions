@@ -1,3 +1,35 @@
+# Version and symbol export for libquorum.so
+
+OPENAIS_QUORUM_1.0 {
+	global:	   
+		quorum_initialize;
+		quorum_finalize;
+		quorum_getinfo;
+		quorum_setexpected;
+		quorum_setvotes;
+		quorum_qdisk_register;
+		quorum_qdisk_unregister;
+		quorum_qdisk_poll;
+		quorum_qdisk_getinfo;
+		quorum_setdirty;
+		quorum_killnode;
+		quorum_leaving;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};
 # Version and symbol export for libcpg.so
 
 COROSYNC_QUORUM_1.0 {

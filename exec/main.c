@@ -66,6 +66,7 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
 
+#include "quorum.h"
 #include "totemsrp.h"
 #include "mempool.h"
 #include "mainconfig.h"
@@ -411,7 +412,6 @@ static void aisexec_mlockall (void)
 #endif
 }
 
-
 static void deliver_fn (
 	unsigned int nodeid,
 	struct iovec *iovec,
@@ -711,9 +711,7 @@ int main (int argc, char **argv)
 	}
 
 
-	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed,
-		totem_config.vsf_type);
-
+	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed);
 
 	res = cs_flow_control_initialize ();
 

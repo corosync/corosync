@@ -34,12 +34,14 @@
 #ifndef VSF_H_DEFINED
 #define VSF_H_DEFINED
 
+struct corosync_api_v1;
 struct corosync_vsf_iface_ver0 {
 
 	/*
 	 * Executes a callback whenever component changes
 	 */
 	int (*init) (
+	    struct corosync_api_v1 *api,
 	    void (*primary_callback_fn) (
 		unsigned int *view_list,
 		int view_list_entries,

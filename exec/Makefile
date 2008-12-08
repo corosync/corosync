@@ -64,9 +64,9 @@ LCR_OBJS = vsf_ykd.o objdb.o coroparse.o vsf_quorum.o
 
 # main executive objects
 MAIN_SRC = main.c mempool.c util.c sync.c apidef.c service.c ipc.c flow.c \
-	timer.c totemconfig.c mainconfig.c
+	quorum.c timer.c totemconfig.c mainconfig.c
 MAIN_OBJS = main.o mempool.o util.o sync.o apidef.o service.o ipc.o flow.o \
-	timer.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
+	quorum.o timer.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 
 #EXEC_OBJS = $(TOTEM_OBJS) $(LOGSYS_OBJS) $(MAIN_OBJS)
@@ -106,6 +106,9 @@ vsf_quorum.lcrso: vsf_quorum.o
 
 objdb.lcrso: objdb.o
 	$(CC) -shared -Wl,-soname,objdb.lcrso objdb.o -o $@
+
+testquorum.lcrso: testquorum.o
+	$(CC) -shared -Wl,-soname,testquorum.lcrso objdb.o -o $@
 
 coroparse.lcrso: coroparse.o
 	$(CC) -shared -Wl,-soname,coroparse.lcrso coroparse.o -o $@
@@ -158,6 +161,9 @@ vsf_quorum.o: vsf_quorum.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 objdb.o: objdb.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+testquorum.o: testquorum.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 coroparse.o: coroparse.c

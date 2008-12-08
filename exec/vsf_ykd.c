@@ -56,11 +56,11 @@
 #include <time.h>
 
 #include <corosync/engine/logsys.h>
+#include <corosync/ipc_gen.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
 #include <corosync/lcr/lcr_comp.h>
-
-#include "main.h"
-#include "vsf.h"
 
 LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
 
@@ -108,7 +108,7 @@ struct state_received {
 
 struct ykd_state ykd_state;
 
-static totempg_groups_handle ykd_group_handle;
+static cs_tpg_handle ykd_group_handle;
 
 static struct state_received state_received_confchg[YKD_PROCESSOR_COUNT_MAX];
 
@@ -140,6 +140,8 @@ static void *ykd_attempt_send_callback_token_handle = 0;
 
 static void *ykd_state_send_callback_token_handle = 0;
 
+static struct corosync_api_v1 *api;
+
 static void (*ykd_primary_callback_fn) (
 	unsigned int *view_list,
 	int view_list_entries,
@@ -168,15 +170,15 @@ static int ykd_state_send_msg (enum totem_callback_token_type type, void *contex
 	iovec[1].iov_base = (char *)&ykd_state;
 	iovec[1].iov_len = sizeof (struct ykd_state);
 
-	res = totempg_groups_mcast_joined (ykd_group_handle, iovec, 2,
-		TOTEMPG_AGREED);
+	res = api->tpg_joined_mcast (ykd_group_handle, iovec, 2,
+		TOTEM_AGREED);
 
 	return (res);
 }
 
 static void ykd_state_send (void)
 {
-        totempg_callback_token_create (
+        api->totem_callback_token_create (
                 &ykd_state_send_callback_token_handle,
                 TOTEM_CALLBACK_TOKEN_SENT,
                 1, /* delete after callback */
@@ -195,15 +197,15 @@ static int ykd_attempt_send_msg (enum totem_callback_token_type type, void *cont
 	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
-	res = totempg_groups_mcast_joined (ykd_group_handle, &iovec, 1,
-		TOTEMPG_AGREED);
+	res = api->tpg_joined_mcast (ykd_group_handle, &iovec, 1,
+		TOTEM_AGREED);
 
 	return (res);
 }
 
 static void ykd_attempt_send (void)
 {
-        totempg_callback_token_create (
+        api->totem_callback_token_create (
                 &ykd_attempt_send_callback_token_handle,
                 TOTEM_CALLBACK_TOKEN_SENT,
                 1, /* delete after callback */
@@ -460,7 +462,7 @@ static void ykd_confchg_fn (
 	memcpy (&ykd_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	if (first_run) {
-		ykd_state.last_primary.member_list[0] = totempg_my_nodeid_get();
+		ykd_state.last_primary.member_list[0] = api->totem_nodeid_get();
 		ykd_state.last_primary.member_list_entries = 1;
 		ykd_state.last_primary.session_id = 0;
 		first_run = 0;
@@ -493,53 +495,41 @@ static void ykd_confchg_fn (
 	ykd_state_send ();
 }
 
-struct totempg_group ykd_group = {
+struct corosync_tpg_group ykd_group = {
 	.group		= "ykd",
 	.group_len	= 3
 };
 
-static int ykd_init (
-	void (*primary_callback_fn) (
-		unsigned int *view_list,
-		int view_list_entries,
-		int primary_designated,
-		struct memb_ring_id *ring_id))
+static void ykd_init (
+	struct corosync_api_v1 *corosync_api,
+	quorum_set_quorate_fn_t set_primary)
 {
-	ykd_primary_callback_fn = primary_callback_fn;
+	ykd_primary_callback_fn = set_primary;
+	api = corosync_api;
 
-	totempg_groups_initialize (
+	api->tpg_init (
 		&ykd_group_handle,
 		ykd_deliver_fn,
 		ykd_confchg_fn);
 
-	totempg_groups_join (
+	api->tpg_join (
 		ykd_group_handle,
 		&ykd_group,
 		1);
 
 	ykd_state_init ();
-
-	return (0);
-}
-
-/*
- * Returns 1 if this processor is in the primary 
- */
-static int ykd_primary (void) {
-	return (primary_designated);
 }
 
 /*
  * lcrso object definition
  */
-static struct corosync_vsf_iface_ver0 vsf_ykd_iface_ver0 = {
+static struct quorum_services_api_ver1 vsf_ykd_iface_ver0 = {
 	.init				= ykd_init,
-	.primary			= ykd_primary
 };
 
 static struct lcr_iface corosync_vsf_ykd_ver0[1] = {
 	{
-		.name			= "corosync_vsf_ykd",
+		.name			= "corosync_quorum_ykd",
 		.version		= 0,
 		.versions_replace	= 0,
 		.versions_replace_count	= 0,

@@ -72,6 +72,7 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
 
+#include "quorum.h"
 #include "poll.h"
 #include "totemsrp.h"
 #include "mempool.h"
@@ -899,7 +900,7 @@ retry_recv:
 				&send_ok_joined_iovec, 1);
 
 			send_ok =
-				(sync_primary_designated() == 1 || ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) && (
+				(corosync_quorum_is_quorate() == 1 || ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) && (
 				(ais_service[service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
 				((ais_service[service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 				(send_ok_joined) &&

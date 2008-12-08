@@ -55,10 +55,11 @@
 #include <corosync/totem/totem.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/engine/logsys.h>
+#include "quorum.h"
 
 #include "main.h"
 #include "sync.h"
-#include "vsf.h"
+
 
 LOGSYS_DECLARE_SUBSYS ("SYNC", LOG_INFO);
 
@@ -71,8 +72,6 @@ struct barrier_data {
 };
 
 static struct memb_ring_id *sync_ring_id;
-
-static int vsf_none = 0;
 
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
@@ -93,8 +92,6 @@ static int barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
-static struct corosync_vsf_iface_ver0 *vsf_iface;
-
 static int sync_barrier_send (struct memb_ring_id *ring_id);
 
 static int sync_start_process (enum totem_callback_token_type type, void *data);
@@ -114,12 +111,6 @@ static void sync_confchg_fn (
 	unsigned int *member_list, int member_list_entries,
 	unsigned int *left_list, int left_list_entries,
 	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id);
-
-static void sync_primary_callback_fn (
-	unsigned int *view_list,
-	int view_list_entries,
-	int primary_designated,
 	struct memb_ring_id *ring_id);
 
 static struct totempg_group sync_group = {
@@ -266,13 +257,10 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 
 int sync_register (
 	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
-	void (*synchronization_completed) (void),
-	char *vsf_type)
+	void (*synchronization_completed) (void))
+
 {
 	unsigned int res;
-	unsigned int vsf_handle;
-	void *vsf_iface_p;
-	char corosync_vsf_type[1024];
 
 	res = totempg_groups_initialize (
 		&sync_group_handle,
@@ -292,55 +280,19 @@ int sync_register (
 		log_printf (LOG_LEVEL_ERROR, "Couldn't join group.\n");
 		return (-1);
 	}
-		
-	if (strcmp (vsf_type, "none") == 0) {
-		log_printf (LOG_LEVEL_NOTICE,
-			"Not using a virtual synchrony filter.\n");
-		vsf_none = 1;
-	} else {
-		vsf_none = 0;
-
-		sprintf (corosync_vsf_type, "corosync_vsf_%s", vsf_type);
-		res = lcr_ifact_reference (
-			&vsf_handle,
-			corosync_vsf_type,
-			0,
-			&vsf_iface_p,
-			0);
-
-		if (res == -1) {
-			log_printf (LOG_LEVEL_NOTICE,
-				"Couldn't load virtual synchrony filter %s\n",
-				vsf_type);
-			return (-1);
-		}
-
-		log_printf (LOG_LEVEL_NOTICE,
-			"Using virtual synchrony filter %s\n", corosync_vsf_type);
-
-		vsf_iface = (struct corosync_vsf_iface_ver0 *)vsf_iface_p;
-		vsf_iface->init (sync_primary_callback_fn);
-	}
 
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
 	return (0);
 }
 
-static void sync_primary_callback_fn (
+void sync_primary_callback_fn (
 	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id)
 {
 	int i;
-
-	if (primary_designated) {
-		log_printf (LOG_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
-	} else {
-		log_printf (LOG_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
-		return;
-	}
 
 	/*
 	 * Execute configuration change for synchronization service
@@ -521,7 +473,7 @@ static void sync_confchg_fn (
 	 * If no virtual synchrony filter configured, then start
 	 * synchronization process
 	 */
-	if (vsf_none == 1) {
+	if (quorum_none() == 1) {
 		sync_primary_callback_fn (
 			member_list,
 			member_list_entries,
@@ -587,15 +539,6 @@ static int sync_request_send (
 int sync_in_process (void)
 {
 	return (sync_processing);
-}
-
-int sync_primary_designated (void)
-{
-	if (vsf_none == 1) {
-		return (1);
-	} else {
-		return (vsf_iface->primary());
-	}
 }
 
 /**

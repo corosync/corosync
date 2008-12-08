@@ -47,10 +47,10 @@ struct sync_callbacks {
 	char *name;
 };
 
+struct corosync_api_v1;
 int sync_register (
 	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void),
-	char *vsf_type);
+	void (*synchronization_completed) (void));
 
 int sync_in_process (void);
 
@@ -63,5 +63,12 @@ int sync_primary_designated (void);
  * @return int 0 OK, error code otherwise
  */
 extern int sync_request (char *name);
+
+extern void sync_primary_callback_fn (
+	unsigned int *view_list,
+	int view_list_entries,
+	int primary_designated,
+	struct memb_ring_id *ring_id);
+
 
 #endif /* SYNC_H_DEFINED */

@@ -82,6 +82,10 @@ static struct default_service default_services[] = {
 		.name			 = "corosync_pload",
 		.ver			 = 0,
 	},
+	{
+		.name			 = "corosync_quorum",
+		.ver			 = 0,
+	},
 };
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];

@@ -15,7 +15,7 @@
  * - Redistributions in binary form must reproduce the above copyright notice,
  *   this list of conditions and the following disclaimer in the documentation
  *   and/or other materials provided with the distribution.
- * - Neither the name of the MontaVista Software, Inc. nor the names of its
+ * - Neither the name of the Red Hat, Inc. nor the names of its
  *   contributors may be used to endorse or promote products derived from this
  *   software without specific prior written permission.
  *
@@ -35,41 +35,34 @@
 #ifndef QUORUM_H_DEFINED
 #define QUORUM_H_DEFINED
 
-struct quorum_services_api_ver1 {
-	void (*quorum_api_set_quorum) (unsigned int *,int,
-				       int,  struct memb_ring_id *);
-		};
+struct memb_ring_id;
 
-static inline struct quorum_services_api_ver1 *
-quorum_services_api_reference (
-	struct corosync_api_v1 *coroapi,
-	unsigned int *handle)
+typedef void (*quorum_callback_fn_t) (int quorate, void *context);
+
+typedef void (*sync_callback_fn_t) (
+	unsigned int *view_list,
+	int view_list_entries,
+	int primary_designated,
+	struct memb_ring_id *ring_id);
+
+struct quorum_callin_functions
 {
-	static void *quorum_services_api_p;
-	struct quorum_services_api_ver1 *return_api;
-	unsigned int res;
+	int (*quorate) (void);
+	int (*register_callback) (quorum_callback_fn_t, void*);
+	int (*unregister_callback) (quorum_callback_fn_t, void*);
+};
 
-	res = coroapi->plugin_interface_reference (
-		handle,
-		"quorum_services_api",
-		0,
-		&quorum_services_api_p,
-		0);
-	if (res == -1) {
-		return (NULL);
-	}
-	return_api = (struct quorum_services_api_ver1 *)quorum_services_api_p;
-	return (return_api);
-}
+extern int corosync_quorum_is_quorate (void);
 
-static int inline quorum_services_api_release (
-	struct corosync_api_v1 *coroapi,
-	unsigned int handle)
-{
-	unsigned int res;
+extern int corosync_quorum_register_callback (quorum_callback_fn_t fn, void *context);
 
-	res = coroapi->plugin_interface_release (handle);
-	return (res);
-}
+extern int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context);
+
+extern int corosync_quorum_initialize (struct quorum_callin_functions *fns,
+				       sync_callback_fn_t *sync_callback_fn);
+
+
+extern int quorum_none(void);
+
 
 #endif /* QUORUM_H_DEFINED */
