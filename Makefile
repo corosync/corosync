@@ -203,6 +203,7 @@ install: all
 	install -m 644 $(srcdir)include/corosync/engine/coroapi.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)include/corosync/engine/objdb.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)include/corosync/engine/logsys.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
+	install -m 644 $(srcdir)include/corosync/engine/quorum.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)include/corosync/engine/config.h $(DESTDIR)$(INCLUDEDIR_ENGINE)
 	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5

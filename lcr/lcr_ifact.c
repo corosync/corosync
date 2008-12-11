@@ -522,6 +522,8 @@ void lcr_component_register (struct lcr_comp *comp)
 	instance->comp_handle = comp_handle;
 	instance->dl_handle = NULL;
 
+	fprintf(stderr, "CC: lcr_component_register instance:%p ifaces:%p name: %s\n", instance, instance->ifaces, instance->ifaces->name);
+
 	hdb_handle_put (&lcr_component_instance_database,
 		comp_handle);
 
