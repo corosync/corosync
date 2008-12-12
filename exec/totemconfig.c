@@ -76,6 +76,13 @@
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
 
 static char error_string_response[512];
+static struct objdb_iface_ver0 *global_objdb;
+
+static void add_totem_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	unsigned int totem_object_handle);
+
 
 /* These just makes the code below a little neater */
 static inline int objdb_get_string (
@@ -163,6 +170,50 @@ static unsigned int totem_handle_find (
 	return (0);
 }
 
+static void totem_volatile_config_read (
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	unsigned int object_totem_handle)
+{
+	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
+
+	objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
+	objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
+
+	objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
+
+	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
+
+	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
+
+	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
+	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
+
+	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+
+}
+
+
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
@@ -222,41 +273,10 @@ printf ("couldn't find totem handle\n");
 
 	objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
 
-	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
-
-	objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
-	objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
-
-	objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
-
-	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
-
-	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
-
-	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
-	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
-
-	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+	/*
+	 * Get things that might change in the future
+	 */
+	totem_volatile_config_read (objdb, totem_config, object_totem_handle);
 
 	objdb->object_find_create (
 		object_totem_handle,
@@ -297,6 +317,8 @@ printf ("couldn't find totem handle\n");
 
 	objdb->object_find_destroy (object_find_interface_handle);
 
+	add_totem_config_notification(objdb, totem_config, object_totem_handle);
+
 	return 0;
 }
 
@@ -323,7 +345,7 @@ int totem_config_validate (
 			error_reason = "No multicast address specified";
 			goto parse_error;
 		}
-	
+
 		if (totem_config->interfaces[i].ip_port == 0) {
 			error_reason = "No multicast port specified";
 			goto parse_error;
@@ -331,7 +353,7 @@ int totem_config_validate (
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
 			totem_config->node_id == 0) {
-	
+
 			error_reason = "An IPV6 network requires that a node ID be specified.";
 			goto parse_error;
 		}
@@ -498,7 +520,7 @@ int totem_config_validate (
 		totem_config->rrp_token_expired_timeout =
 			totem_config->token_retransmit_timeout;
 	}
-		
+
 	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
 		sprintf (local_error_reason, "The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
@@ -656,5 +678,94 @@ int totem_config_keyread (
 	*error_string = error_string_response;
 key_error:
 	return (-1);
+
+}
+
+static void totem_key_change_notify(object_change_type_t change_type,
+			      unsigned int parent_object_handle,
+			      unsigned int object_handle,
+			      void *object_name_pt, int object_name_len,
+			      void *key_name_pt, int key_len,
+			      void *key_value_pt, int key_value_len,
+			      void *priv_data_pt)
+{
+	struct totem_config *totem_config = priv_data_pt;
+
+	if (memcmp(object_name_pt, "totem", object_name_len) == 0)
+		totem_volatile_config_read(global_objdb,
+					   totem_config,
+					   object_handle); // CHECK
+}
+
+static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
+				      void *priv_data_pt)
+{
+	struct totem_config *totem_config = priv_data_pt;
+	unsigned int totem_object_handle;
+
+	/*
+	 * A new totem {} key might exist, cancel the
+	 * existing notification at the start of reload,
+	 * and start a new one on the new object when
+	 * it's all settled.
+	 */
+
+	if (type == OBJDB_RELOAD_NOTIFY_START) {
+		global_objdb->object_track_stop(
+			totem_key_change_notify,
+			NULL,
+			NULL,
+			NULL,
+			NULL);
+	}
+
+	if (type == OBJDB_RELOAD_NOTIFY_END ||
+	    type == OBJDB_RELOAD_NOTIFY_FAILED) {
+
+
+		if (!totem_handle_find(global_objdb,
+				      &totem_object_handle)) {
+			add_totem_config_notification(global_objdb, totem_config, totem_object_handle);
+
+			/*
+			 * Reload the configuration
+			 */
+			totem_volatile_config_read(global_objdb,
+						   totem_config,
+						   totem_object_handle);
+
+		}
+		else {
+			log_printf(LOG_LEVEL_ERROR, "totem objdb tracking stopped, cannot find totem{} handle on objdb\n");
+		}
+	}
+}
+
+
+static void add_totem_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	unsigned int totem_object_handle)
+{
+
+	global_objdb = objdb;
+	objdb->object_track_start(totem_object_handle,
+				  1,
+				  totem_key_change_notify,
+				  NULL, // object_create_notify,
+				  NULL, // object_destroy_notify,
+				  NULL, // object_reload_notify
+				  totem_config); // priv_data
+
+	/*
+	 * Reload notify must be on the parent object
+	 */
+	objdb->object_track_start(OBJECT_PARENT_HANDLE,
+				  1,
+				  NULL, // key_change_notify,
+				  NULL, // object_create_notify,
+				  NULL, // object_destroy_notify,
+				  totem_objdb_reload_notify, // object_reload_notify
+				  totem_config); // priv_data
 
 }
