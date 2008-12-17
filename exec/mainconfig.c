@@ -51,6 +51,12 @@
 #include "mempool.h"
 
 static char error_string_response[512];
+static struct objdb_iface_ver0 *global_objdb;
+
+static void add_logsys_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct main_config *main_config);
+
 
 /* This just makes the code below a little neater */
 static inline int objdb_get_string (
@@ -98,7 +104,10 @@ static struct logsys_config_struct {
 	unsigned int tags;
 } logsys_logger;
 
-int corosync_main_config_read (
+
+
+
+int corosync_main_config_read_logging (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config)
@@ -109,8 +118,6 @@ int corosync_main_config_read (
 	char *error_reason = error_string_response;
 	unsigned int object_find_handle;
 	unsigned int object_find_logsys_handle;
-
-	memset (main_config, 0, sizeof (struct main_config));
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -286,6 +293,31 @@ int corosync_main_config_read (
 
 	objdb->object_find_destroy (object_find_handle);
 
+	return 0;
+
+parse_error:
+	sprintf (error_string_response,
+		 "parse error in config: %s.\n",
+		 error_reason);
+
+	*error_string = error_string_response;
+	return (-1);
+}
+
+int corosync_main_config_read (
+	struct objdb_iface_ver0 *objdb,
+	char **error_string,
+	struct main_config *main_config)
+{
+	unsigned int object_service_handle;
+	char *value;
+	char *error_reason = error_string_response;
+	unsigned int object_find_handle;
+
+	memset (main_config, 0, sizeof (struct main_config));
+
+	corosync_main_config_read_logging(objdb, error_string, main_config);
+
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
 		"aisexec",
@@ -322,6 +354,8 @@ int corosync_main_config_read (
 	if (main_config->syslog_facility == 0)
 		main_config->syslog_facility = LOG_DAEMON;
 
+	add_logsys_config_notification(objdb, main_config);
+
 	return 0;
 
 parse_error:
@@ -331,4 +365,39 @@ parse_error:
 
 	*error_string = error_string_response;
 	return (-1);
+}
+
+
+static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
+				     void *priv_data_pt)
+{
+	struct main_config *main_config = priv_data_pt;
+	char *error_string;
+
+	if (type == OBJDB_RELOAD_NOTIFY_END) {
+
+		/*
+		 * Reload the logsys configuration
+		 */
+		corosync_main_config_read_logging(global_objdb,
+						  &error_string,
+						  main_config);
+	}
+}
+
+static void add_logsys_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct main_config *main_config)
+{
+
+	global_objdb = objdb;
+
+	objdb->object_track_start(OBJECT_PARENT_HANDLE,
+				  1,
+				  NULL,
+				  NULL,
+				  NULL,
+				  main_objdb_reload_notify,
+				  main_config);
+
 }
