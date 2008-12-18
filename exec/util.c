@@ -87,7 +87,7 @@ void _corosync_exit_error (
 {
 	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "
 		"with status %d at %s:%u.\n", err, file, line);
-	exit (EXIT_FAILURE);
+	exit (err);
 }
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
