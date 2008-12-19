@@ -303,6 +303,12 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 			quorum_iface->init (api, quorum_api_set_quorum);
 		}
 	}
+	else {
+		/*
+                 * With no quorum provider, we are always quorate 
+                 */
+		primary_designated = 1;
+	}
 
 	return (0);
 }
