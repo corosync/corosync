@@ -291,16 +291,16 @@ int poll_timer_add (
 	struct poll_instance *poll_instance;
 	int res = 0;
 
+	if (timer_handle_out == NULL) {
+		res -ENOENT;
+		goto error_exit;
+	}
+
 	res = hdb_handle_get (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (res != 0) {
 		res = -ENOENT;
-		
 		goto error_exit;
-	}
-
-	if (timer_handle_out == 0) {
-		res = -ENOENT;
 	}
 
 	timerlist_add_duration (&poll_instance->timerlist,
