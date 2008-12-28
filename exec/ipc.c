@@ -525,7 +525,7 @@ retry_poll:
 
 		case CONN_STATE_DISCONNECTED:
 			rel_mutex = conn_info->shared_mutex;
-			rel2_mutex = conn_info->mutex;
+			rel2_mutex = &conn_info->mutex;
 			private_data = conn_info->private_data;
 			cinfo_partner = conn_info->conn_info_partner;
 			conn_info_destroy (conn);

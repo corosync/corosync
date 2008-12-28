@@ -219,7 +219,6 @@ cs_error_t evs_dispatch (
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
 	struct evs_res_overlay dispatch_data;
-	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != CS_OK) {
@@ -337,16 +336,9 @@ cs_error_t evs_dispatch (
 		 * */
 		switch (dispatch_types) {
 		case CS_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
+			cont = 0;
 			break;
 		case CS_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
 			break;
 		case CS_DISPATCH_BLOCKING:
 			break;

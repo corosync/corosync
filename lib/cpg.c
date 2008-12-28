@@ -254,7 +254,6 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_groups_get_callback *res_lib_cpg_groups_get_callback;
 	cpg_callbacks_t callbacks;
 	struct cpg_res_overlay dispatch_data;
-	int ignore_dispatch = 0;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
 	struct cpg_address joined_list[CPG_MEMBERS_MAX];
@@ -434,16 +433,9 @@ cs_error_t cpg_dispatch (
 		 * */
 		switch (dispatch_types) {
 		case CS_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
+			cont = 0;
 			break;
 		case CS_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
 			break;
 		case CS_DISPATCH_BLOCKING:
 			break;

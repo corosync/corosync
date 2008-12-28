@@ -315,7 +315,6 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
 	struct confdb_res_overlay dispatch_data;
-	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -453,16 +452,9 @@ cs_error_t confdb_dispatch (
 		 * */
 		switch (dispatch_types) {
 		case CONFDB_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
+			cont = 0;
 			break;
 		case CONFDB_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
 			break;
 		case CONFDB_DISPATCH_BLOCKING:
 			break;
