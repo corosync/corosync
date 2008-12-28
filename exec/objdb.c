@@ -1052,6 +1052,7 @@ static int object_key_replace (
 
 	if (found) {
 		int i;
+		int found_validator = 0;
 
 		/*
 		 * Do validation check if validation is configured for the parent object
@@ -1064,7 +1065,7 @@ static int object_key_replace (
 					     instance->object_key_valid_list[i].key_name,
 					     key_len) == 0)) {
 
-					found = 1;
+					found_validator = 1;
 					break;
 				}
 			}
@@ -1072,7 +1073,7 @@ static int object_key_replace (
 			/*
 			 * Item not found in validation list
 			 */
-			if (found == 0) {
+			if (found_validator == 0) {
 				goto error_put;
 			} else {
 				if (instance->object_key_valid_list[i].validate_callback) {
