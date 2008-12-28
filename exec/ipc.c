@@ -487,6 +487,7 @@ static void *prioritized_poll_thread (void *conn)
 	struct sched_param sched_param;
 	int res;
 	pthread_mutex_t *rel_mutex;
+	pthread_mutex_t *rel2_mutex;
 	unsigned int service;
 	struct conn_info *cinfo_partner;
 	void *private_data;
@@ -524,11 +525,12 @@ retry_poll:
 
 		case CONN_STATE_DISCONNECTED:
 			rel_mutex = conn_info->shared_mutex;
+			rel2_mutex = conn_info->mutex;
 			private_data = conn_info->private_data;
 			cinfo_partner = conn_info->conn_info_partner;
 			conn_info_destroy (conn);
 			if (service == SOCKET_SERVICE_INIT) {
-				pthread_mutex_unlock (&conn_info->mutex);
+				pthread_mutex_unlock (rel2_mutex);
 			} else {
 				pthread_mutex_unlock (rel_mutex);
 			}
@@ -643,10 +645,11 @@ static void ipc_flow_control (struct conn_info *conn_info)
 				flow_control_local_count);
 			cs_flow_control_enable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 1;
-			conn_info->conn_info_partner->flow_control_enabled = 1;
+			if (conn_info->conn_info_partner) {
+				conn_info->conn_info_partner->flow_control_enabled = 1;
+			}
 		}
 		if (conn_info->flow_control_enabled == 1 &&
-
 			fcc <= FLOW_CONTROL_ENTRIES_DISABLE) {
 
 			log_printf (LOG_LEVEL_NOTICE, "Disabling flow control [%d/%d] - [%d].\n",
@@ -654,7 +657,9 @@ static void ipc_flow_control (struct conn_info *conn_info)
 				flow_control_local_count);
 			cs_flow_control_disable (conn_info->flow_control_handle);
 			conn_info->flow_control_enabled = 0;
-			conn_info->conn_info_partner->flow_control_enabled = 0;
+			if (conn_info->conn_info_partner) {
+				conn_info->conn_info_partner->flow_control_enabled = 0;
+			}
 		}
 	}
 }
