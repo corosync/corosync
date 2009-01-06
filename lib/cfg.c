@@ -483,7 +483,7 @@ corosync_cfg_service_load (
 	req_lib_cfg_serviceload.header.id = MESSAGE_REQ_CFG_SERVICELOAD;
 	memset (&req_lib_cfg_serviceload.service_name, 0,
 		sizeof (req_lib_cfg_serviceload.service_name));
-	strncpy ((char *)req_lib_cfg_serviceload.service_name, service_name,
+	strncpy (req_lib_cfg_serviceload.service_name, service_name,
 		sizeof (req_lib_cfg_serviceload.service_name) - 1);
 	req_lib_cfg_serviceload.service_ver = service_ver;
 
@@ -521,7 +521,7 @@ corosync_cfg_service_unload (
 	req_lib_cfg_serviceunload.header.id = MESSAGE_REQ_CFG_SERVICEUNLOAD;
 	memset (&req_lib_cfg_serviceunload.service_name, 0,
 		sizeof (req_lib_cfg_serviceunload.service_name));
-	strncpy ((char *)req_lib_cfg_serviceunload.service_name, service_name,
+	strncpy (req_lib_cfg_serviceunload.service_name, service_name,
 		sizeof (req_lib_cfg_serviceunload.service_name) - 1);
 	req_lib_cfg_serviceunload.service_ver = service_ver;
 

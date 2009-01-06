@@ -128,7 +128,7 @@ struct res_lib_cfg_ringreenable {
 
 struct req_lib_cfg_serviceload {
 	mar_res_header_t header __attribute__((aligned(8)));
-	char *service_name[256] __attribute__((aligned(8)));
+	char service_name[256] __attribute__((aligned(8)));
 	unsigned int service_ver;
 };
 
@@ -138,7 +138,7 @@ struct res_lib_cfg_serviceload {
 
 struct req_lib_cfg_serviceunload {
 	mar_res_header_t header __attribute__((aligned(8)));
-	char *service_name[256] __attribute__((aligned(8)));
+	char service_name[256] __attribute__((aligned(8)));
 	unsigned int service_ver;
 };
 
