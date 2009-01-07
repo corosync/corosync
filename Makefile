@@ -152,7 +152,7 @@ install: all
 	    install -m 755 exec/lib$$eLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
 		install -m 755 exec/lib$$eLib.a $(DESTDIR)$(LIBDIR);	\
-		if [ ${OPENCOROSYNC_COMPAT} = "DARWIN" ]; then		\
+		if [ ${COROSYNC_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$eLib.a;		\
 		fi							\
 	    fi								\
@@ -168,7 +168,7 @@ install: all
 	    install -m 755 lib/lib$$aLib.so.2.* $(DESTDIR)$(LIBDIR);	\
 	    if [ "xYES" = "x$(STATICLIBS)" ]; then			\
 	        install -m 755 lib/lib$$aLib.a $(DESTDIR)$(LIBDIR);	\
-		if [ ${OPENCOROSYNC_COMPAT} = "DARWIN" ]; then		\
+		if [ ${COROSYNC_COMPAT} = "DARWIN" ]; then		\
 		    ranlib $(DESTDIR)$(LIBDIR)/lib$$aLib.a;		\
 	        fi							\
 	    fi								\
