@@ -571,6 +571,8 @@ static void send_group_list_callbacks(int num_groups, void *conn)
 					return;
 				}
 			}
+			if (!buf)
+				continue;
 
 			res = (struct res_lib_cpg_groups_get_callback *)buf;
 			retgi = res->member_list;
