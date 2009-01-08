@@ -184,7 +184,7 @@ install: all
 	install -m 755 $(builddir)tools/corosync-cfgtool $(DESTDIR)$(SBINDIR)
 	install -m 755 $(builddir)tools/corosync-keygen $(DESTDIR)$(SBINDIR)
 
-	if [ ! -f $(DESTDIR)$(ETCDIR)/penais.conf ] ; then 	   \
+	if [ ! -f $(DESTDIR)$(ETCDIR)/corosync.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
 
