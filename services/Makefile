@@ -74,6 +74,9 @@ service_cpg.lcrso: cpg.o
 service_pload.lcrso: pload.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load pload.o -o $@
 
+testquorum.lcrso: testquorum.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load testquorum.o -o $@
+
 else
 
 service_evs.lcrso: evs.o
