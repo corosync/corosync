@@ -404,6 +404,7 @@ static int notify_lib_joinlist(
 
 	res->header.size = size;
 	res->header.id = id;
+	res->header.error = CS_OK;
 	memcpy(&res->group_name, &gi->group_name, sizeof(mar_cpg_name_t));
 
 	/* Build up the message */

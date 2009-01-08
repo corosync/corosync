@@ -625,47 +625,70 @@ cs_error_t cpg_membership_get (
 	struct cpg_inst *cpg_inst;
 	struct iovec iov;
 	struct req_lib_cpg_membership req_lib_cpg_membership_get;
-	struct res_lib_cpg_confchg_callback res_lib_cpg_membership_get;
-	unsigned int i;
+	struct res_lib_cpg_confchg_callback *res_lib_cpg_membership_get;
+	mar_res_header_t header;
+	unsigned int i, bytesleft;
+	char *buffer = NULL;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
 	if (error != CS_OK) {
 		return (error);
 	}
 
-	req_lib_cpg_membership_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cpg_membership_get.header.size = sizeof (req_lib_cpg_membership_get);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
-	marshall_to_mar_cpg_name_t (&req_lib_cpg_membership_get.group_name,
-		group_name);
 
 	iov.iov_base = (char *)&req_lib_cpg_membership_get;
-	iov.iov_len = sizeof (mar_req_header_t);
+	iov.iov_len = sizeof (req_lib_cpg_membership_get);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
 	error = saSendMsgReceiveReply (cpg_inst->response_fd, &iov, 1,
-		&res_lib_cpg_membership_get, sizeof (mar_res_header_t));
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
-
+		&header, sizeof (header));
 	if (error != CS_OK) {
 		goto error_exit;
 	}
 
-	error = res_lib_cpg_membership_get.header.error;
+	buffer = malloc(header.size);
+	if (buffer == NULL) {
+		error = CS_ERR_NO_MEMORY;
+		goto error_exit;
+	}
+
+	memcpy (buffer, &header, sizeof (header));
+	bytesleft = header.size - sizeof (header);
+
+	error = saRecvRetry (cpg_inst->response_fd,
+		buffer + sizeof (header), bytesleft);
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = header.error;
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	res_lib_cpg_membership_get = (struct res_lib_cpg_confchg_callback *) buffer;
 
 	/*
 	 * Copy results to caller
 	 */
-	*member_list_entries = res_lib_cpg_membership_get.member_list_entries;
+	*member_list_entries = res_lib_cpg_membership_get->member_list_entries;
 	if (member_list) {
-		for (i = 0; i < res_lib_cpg_membership_get.member_list_entries; i++) {
+		for (i = 0; i < res_lib_cpg_membership_get->member_list_entries; i++) {
 			marshall_from_mar_cpg_address_t (&member_list[i],
-				&res_lib_cpg_membership_get.member_list[i]);
+				&res_lib_cpg_membership_get->member_list[i]);
 		}
 	}
 
 error_exit:
+
+	if (buffer != NULL)
+		free(buffer);
+
+	pthread_mutex_unlock (&cpg_inst->response_mutex);
+
 	(void)saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);
