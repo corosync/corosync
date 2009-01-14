@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
@@ -338,7 +338,7 @@ static void log_printf_to_logs (
 	/*
 	 * Output to configured file
 	 */	
-	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
+	if ((logsys_mode & LOG_MODE_OUTPUT_FILE) && logsys_file_fp) {
 		/*
 		 * Output to a file
 		 */
