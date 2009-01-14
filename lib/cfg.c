@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <pthread.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -47,6 +48,7 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/cfg.h>
+#include <corosync/totem/totemip.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/ipc_cfg.h>
@@ -792,5 +794,79 @@ corosync_cfg_replyto_shutdown (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
+	return (error);
+}
+
+cs_error_t corosync_cfg_get_node_addrs (
+	corosync_cfg_handle_t cfg_handle,
+	int nodeid,
+	int max_addrs,
+	int *num_addrs,
+	CorosyncCfgNodeAddressT *addrs)
+{
+	cs_error_t error;
+	char buf[PIPE_BUF];
+	struct req_lib_cfg_get_node_addrs req_lib_cfg_get_node_addrs;
+	struct res_lib_cfg_get_node_addrs * res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
+	struct cfg_instance *cfg_instance;
+	int addrlen;
+	int i;
+	struct iovec iov[2];
+
+	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance);
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	req_lib_cfg_get_node_addrs.header.size = sizeof (req_lib_cfg_get_node_addrs);
+	req_lib_cfg_get_node_addrs.header.id = MESSAGE_REQ_CFG_GET_NODE_ADDRS;
+	req_lib_cfg_get_node_addrs.nodeid = nodeid;
+
+	iov[0].iov_base = (char *)&req_lib_cfg_get_node_addrs;
+	iov[0].iov_len = sizeof (req_lib_cfg_get_node_addrs);
+
+	error = saSendMsgReceiveReply (cfg_instance->response_fd, iov, 1,
+				       res_lib_cfg_get_node_addrs, sizeof (mar_res_header_t));
+
+	if (error == CS_OK && res_lib_cfg_get_node_addrs->header.size > sizeof(mar_res_header_t)) {
+		error = saRecvRetry (cfg_instance->response_fd, (char *)res_lib_cfg_get_node_addrs + sizeof (mar_res_header_t),
+				     res_lib_cfg_get_node_addrs->header.size - sizeof (mar_res_header_t));
+	}
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	if (res_lib_cfg_get_node_addrs->family == AF_INET)
+		addrlen = sizeof(struct sockaddr_in);
+	if (res_lib_cfg_get_node_addrs->family == AF_INET6)
+		addrlen = sizeof(struct sockaddr_in6);
+
+	for (i=0; i<max_addrs && i<res_lib_cfg_get_node_addrs->num_addrs; i++) {
+		addrs[i].addressLength = addrlen;
+		struct sockaddr_in *in;
+		struct sockaddr_in6 *in6;
+
+		if (res_lib_cfg_get_node_addrs->family == AF_INET) {
+			in = (struct sockaddr_in *)addrs[i].address;
+			in->sin_family = AF_INET;
+			memcpy(&in->sin_addr, &res_lib_cfg_get_node_addrs->addrs[i][0], sizeof(struct in_addr));
+		}
+		if (res_lib_cfg_get_node_addrs->family == AF_INET6) {
+			in6 = (struct sockaddr_in6 *)addrs[i].address;
+			in6->sin6_family = AF_INET6;
+			memcpy(&in6->sin6_addr, &res_lib_cfg_get_node_addrs->addrs[i][0], sizeof(struct in6_addr));
+		}
+	}
+	*num_addrs = res_lib_cfg_get_node_addrs->num_addrs;
+	errno = error = res_lib_cfg_get_node_addrs->header.error;
+
+error_exit:
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
 	return (error);
 }

@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -52,6 +53,7 @@
 #include <corosync/queue.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
+#include <corosync/totem/totemip.h>
 #include <corosync/ipc_cfg.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
@@ -160,6 +162,10 @@ static void message_handler_req_lib_cfg_replytoshutdown (
 	void *conn,
 	void *msg);
 
+static void message_handler_req_lib_cfg_get_node_addrs (
+	void *conn,
+	void *msg);
+
 /*
  * Service Handler Definition
  */
@@ -229,6 +235,12 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
 		.response_size		= 0,
 		.response_id		= 0,
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 11 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_get_node_addrs,
+		.response_size		= sizeof (struct res_lib_cfg_get_node_addrs),
+		.response_id		= MESSAGE_RES_CFG_GET_NODE_ADDRS,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -956,4 +968,36 @@ static void message_handler_req_lib_cfg_replytoshutdown (
 	}
 	check_shutdown_status();
 	LEAVE();
+}
+
+static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
+{
+	struct totem_ip_address node_ifs[INTERFACE_MAX];
+	char buf[PIPE_BUF];
+	char **status;
+	unsigned int num_interfaces = 0;
+	int ret = 0;
+	int i;
+	struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = (struct req_lib_cfg_get_node_addrs *)msg;
+	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
+
+	if (req_lib_cfg_get_node_addrs->nodeid == 0)
+		req_lib_cfg_get_node_addrs->nodeid = api->totem_nodeid_get();
+
+	api->totem_ifaces_get(req_lib_cfg_get_node_addrs->nodeid, node_ifs, &status, &num_interfaces);
+
+	res_lib_cfg_get_node_addrs->header.size = sizeof(struct res_lib_cfg_get_node_addrs) + (num_interfaces * TOTEMIP_ADDRLEN);
+	res_lib_cfg_get_node_addrs->header.id = MESSAGE_RES_CFG_GET_NODE_ADDRS;
+	res_lib_cfg_get_node_addrs->header.error = ret;
+	res_lib_cfg_get_node_addrs->num_addrs = num_interfaces;
+	if (num_interfaces) {
+		res_lib_cfg_get_node_addrs->family = node_ifs[0].family;
+		for (i = 0; i<num_interfaces; i++) {
+			memcpy(&res_lib_cfg_get_node_addrs->addrs[i][0], node_ifs[i].addr, TOTEMIP_ADDRLEN);
+		}
+	}
+	else {
+		res_lib_cfg_get_node_addrs->header.error = CS_ERR_NOT_EXIST;
+	}
+	api->ipc_conn_send_response(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
 }

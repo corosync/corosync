@@ -125,6 +125,22 @@ typedef struct {
 } CorosyncCfgCallbacksT;
 
 /*
+ * A node address. This is a complete sockaddr_in[6]
+ * To explain:
+ *  If you cast cna_address to a 'struct sockaddr', the sa_family field
+ *  will be AF_INET or AF_INET6. Armed with that knowledge you can then
+ *  cast it to a sockaddr_in or sockaddr_in6 and pull out the address.
+ *  No other sockaddr fields are valid.
+ *  Also, you must ignore any part of the sockaddr beyond the length supplied
+ */
+typedef struct
+{
+	int  addressLength;
+	char address[sizeof(struct sockaddr_in6)];
+} CorosyncCfgNodeAddressT;
+
+
+/*
  * Interfaces
  */
 #ifdef __cplusplus
@@ -211,6 +227,16 @@ corosync_cfg_state_track (
 cs_error_t
 corosync_cfg_state_track_stop (
         corosync_cfg_handle_t cfg_handle);
+
+
+cs_error_t
+corosync_cfg_get_node_addrs (
+	corosync_cfg_handle_t cfg_handle,
+	int nodeid,
+	int max_addrs,
+	int *num_addrs,
+	CorosyncCfgNodeAddressT *addrs);
+
 
 #ifdef __cplusplus
 }

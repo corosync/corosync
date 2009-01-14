@@ -47,6 +47,7 @@
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>
+#include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
 
 static void ringstatusget_do (void)
@@ -192,6 +193,45 @@ void shutdown_do()
 	(void)corosync_cfg_finalize (handle);
 }
 
+void showaddrs_do(int nodeid)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+	CorosyncCfgCallbacksT callbacks;
+	int numaddrs;
+	int i;
+	CorosyncCfgNodeAddressT addrs[INTERFACE_MAX];
+
+
+	result = corosync_cfg_initialize (&handle, &callbacks);
+	if (result != CS_OK) {
+		printf ("Could not initialize corosync configuration API error %d\n", result);
+		exit (1);
+	}
+
+	if (!corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
+		for (i=0; i<numaddrs; i++) {
+			char buf[INET6_ADDRSTRLEN];
+			struct sockaddr_storage *ss = (struct sockaddr_storage *)addrs[i].address;
+			struct sockaddr_in *sin = (struct sockaddr_in *)addrs[i].address;
+			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addrs[i].address;
+			void *saddr;
+
+			if (ss->ss_family == AF_INET6)
+				saddr = &sin6->sin6_addr;
+			else
+				saddr = &sin->sin_addr;
+
+			inet_ntop(ss->ss_family, saddr, buf, sizeof(buf));
+			printf("%s", buf);
+		}
+		printf("\n");
+	}
+
+
+	(void)corosync_cfg_finalize (handle);
+}
+
 void killnode_do(unsigned int nodeid)
 {
 	cs_error_t result;
@@ -213,7 +253,7 @@ void killnode_do(unsigned int nodeid)
 
 void usage_do (void)
 {
-	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version] [-k] [nodeid]\n\n");
+	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
@@ -221,12 +261,13 @@ void usage_do (void)
 	printf ("\t\tre-enable redundant ring operation.\n");
 	printf ("\t-l\tLoad a service identified by name.\n");
 	printf ("\t-u\tUnload a service identified by name.\n");
+	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-h\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "srl:u:v:k:h";
+	const char *options = "srl:u:v:k:a:h";
 	int opt;
 	int service_load = 0;
 	unsigned int nodeid;
@@ -259,6 +300,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'h':
 			shutdown_do();
+			break;
+		case 'a':
+			showaddrs_do( atoi(optarg) );
 			break;
 		case 'v':
 			version = atoi (optarg);
