@@ -629,6 +629,8 @@ corosync_cfg_admin_state_get (
 	req_lib_cfg_administrativestateget.header.size = sizeof (struct req_lib_cfg_administrativestateget);
 	req_lib_cfg_administrativestateget.administrativeTarget = administrativeTarget;
 
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
 	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_administrativestateget,
 		sizeof (struct req_lib_cfg_administrativestateget),
@@ -665,6 +667,8 @@ corosync_cfg_admin_state_set (
 	req_lib_cfg_administrativestateset.header.size = sizeof (struct req_lib_cfg_administrativestateset);
 	req_lib_cfg_administrativestateset.administrativeTarget = administrativeTarget;
 	req_lib_cfg_administrativestateset.administrativeState = administrativeState;
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 
 	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_administrativestateset,
@@ -707,6 +711,8 @@ corosync_cfg_kill_node (
 	strcpy((char *)req_lib_cfg_killnode.reason.value, reason);
 	req_lib_cfg_killnode.reason.length = strlen(reason)+1;
 
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
 	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_killnode,
 		sizeof (struct req_lib_cfg_killnode),
@@ -741,6 +747,8 @@ corosync_cfg_try_shutdown (
 	req_lib_cfg_tryshutdown.header.id = MESSAGE_REQ_CFG_TRYSHUTDOWN;
 	req_lib_cfg_tryshutdown.header.size = sizeof (struct req_lib_cfg_tryshutdown);
 	req_lib_cfg_tryshutdown.flags = flags;
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 
 	error = saSendReceiveReply (cfg_instance->response_fd,
 		&req_lib_cfg_tryshutdown,
@@ -777,8 +785,12 @@ corosync_cfg_replyto_shutdown (
 
 	iov.iov_base = &req_lib_cfg_replytoshutdown;
 	iov.iov_len = sizeof (struct req_lib_cfg_replytoshutdown);
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
 	error = saSendMsgRetry (cfg_instance->response_fd,
 				&iov, 1);
 
-        return (error);
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	return (error);
 }
