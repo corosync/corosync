@@ -190,33 +190,8 @@ int corosync_main_config_read_logging (
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "syslog_facility", &value)) {
-			if (strcmp (value, "daemon") == 0) {
-				main_config->syslog_facility = LOG_DAEMON;
-			} else
-			if (strcmp (value, "local0") == 0) {
-				main_config->syslog_facility = LOG_LOCAL0;
-			} else
-			if (strcmp (value, "local1") == 0) {
-				main_config->syslog_facility = LOG_LOCAL1;
-			} else
-			if (strcmp (value, "local2") == 0) {
-				main_config->syslog_facility = LOG_LOCAL2;
-			} else
-			if (strcmp (value, "local3") == 0) {
-				main_config->syslog_facility = LOG_LOCAL3;
-			} else
-			if (strcmp (value, "local4") == 0) {
-				main_config->syslog_facility = LOG_LOCAL4;
-			} else
-			if (strcmp (value, "local5") == 0) {
-				main_config->syslog_facility = LOG_LOCAL5;
-			} else
-			if (strcmp (value, "local6") == 0) {
-				main_config->syslog_facility = LOG_LOCAL6;
-			} else
-			if (strcmp (value, "local7") == 0) {
-				main_config->syslog_facility = LOG_LOCAL7;
-			} else {
+			main_config->syslog_facility = logsys_facility_id_get(value);
+			if (main_config->syslog_facility < 0) {
 				error_reason = "unknown syslog facility specified";
 				goto parse_error;
 			}
