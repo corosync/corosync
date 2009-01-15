@@ -166,6 +166,12 @@ int corosync_main_config_read_logging (
 			}
 */
 		}
+
+		/* free old string on reload */
+		if (main_config->logfile) {
+			free(main_config->logfile);
+			main_config->logfile = NULL;
+		}
 		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
 			main_config->logfile = strdup (value);
 		}
