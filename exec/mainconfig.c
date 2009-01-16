@@ -218,6 +218,13 @@ int corosync_main_config_read_logging (
 				error_reason = "subsys required for logger directive";
 				goto parse_error;
 			}
+			if (!objdb_get_string (objdb, object_logger_subsys_handle, "syslog_level", &value)) {
+				logsys_logger.priority = logsys_priority_id_get(value);
+				if (logsys_logger.priority < 0) {
+					error_reason = "unknown syslog priority specified";
+					goto parse_error;
+				}
+			}
 			if (!objdb_get_string (objdb, object_logger_subsys_handle, "debug", &value)) {
 				if (strcmp (value, "on") == 0) {
 					logsys_logger.priority = LOG_LEVEL_DEBUG;
