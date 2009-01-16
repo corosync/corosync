@@ -239,31 +239,14 @@ int corosync_main_config_read_logging (
 				char *token = strtok (value, "|");
 
 				while (token != NULL) {
-					if (strcmp (token, "enter") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_ENTER;
-					} else if (strcmp (token, "leave") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_LEAVE;
-					} else if (strcmp (token, "trace1") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE1;
-					} else if (strcmp (token, "trace2") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE2;
-					} else if (strcmp (token, "trace3") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE3;
-					} else if (strcmp (token, "trace4") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE4;
-					} else if (strcmp (token, "trace5") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE5;
-					} else if (strcmp (token, "trace6") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE6;
-					} else if (strcmp (token, "trace7") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE7;
-					} else if (strcmp (token, "trace8") == 0) {
-						logsys_logger.tags |= LOGSYS_TAG_TRACE8;
-					} else {
+					int val;
+
+					val = logsys_tag_id_get(token);
+					if (val < 0) {
 						error_reason = "bad tags value";
 						goto parse_error;
 					}
-
+					logsys_logger.tags |= val;
 					token = strtok(NULL, "|");
 				}
 			}

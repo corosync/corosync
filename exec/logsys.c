@@ -59,6 +59,28 @@
 
 #include <corosync/engine/logsys.h>
 
+/* similar to syslog facilities/priorities tables,
+ * make a tag table for internal use
+ */
+
+#ifdef SYSLOG_NAMES
+CODE tagnames[] =
+  {
+    { "log", LOGSYS_TAG_LOG },
+    { "enter", LOGSYS_TAG_ENTER },
+    { "leave", LOGSYS_TAG_LEAVE },
+    { "trace1", LOGSYS_TAG_TRACE1 },
+    { "trace2", LOGSYS_TAG_TRACE2 },
+    { "trace3", LOGSYS_TAG_TRACE3 },
+    { "trace4", LOGSYS_TAG_TRACE4 },
+    { "trace5", LOGSYS_TAG_TRACE5 },
+    { "trace6", LOGSYS_TAG_TRACE6 },
+    { "trace7", LOGSYS_TAG_TRACE7 },
+    { "trace8", LOGSYS_TAG_TRACE8 },
+    { NULL, -1 }
+  };
+#endif
+
 /*
  * These are not static so they can be read from the core file
  */
@@ -903,6 +925,30 @@ const char *logsys_priority_name_get (unsigned int priority)
 	for (i = 0; prioritynames[i].c_name != NULL; i++) {
 		if (priority == prioritynames[i].c_val) {
 			return (prioritynames[i].c_name);
+		}
+	}
+	return (NULL);
+}
+
+int logsys_tag_id_get (const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; tagnames[i].c_name != NULL; i++) {
+		if (strcasecmp(name, tagnames[i].c_name) == 0) {
+			return (tagnames[i].c_val);
+		}
+	}
+	return (-1);
+}
+
+const char *logsys_tag_name_get (unsigned int tag)
+{
+	unsigned int i;
+
+	for (i = 0; tagnames[i].c_name != NULL; i++) {
+		if (tag == tagnames[i].c_val) {
+			return (tagnames[i].c_name);
 		}
 	}
 	return (NULL);

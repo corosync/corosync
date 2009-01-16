@@ -119,6 +119,12 @@ extern int logsys_priority_id_get (
 extern const char *logsys_priority_name_get (
 	unsigned int priority);
 
+extern int logsys_tag_id_get (
+	const char *name);
+
+extern const char *logsys_tag_name_get (
+	unsigned int tag);
+
 extern void logsys_fork_completed (void);
 
 extern void logsys_flush (void);
