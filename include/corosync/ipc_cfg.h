@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
+ * Copyright (c) 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,8 +72,8 @@ enum res_lib_cfg_types {
 
 struct req_lib_cfg_statetrack {
 	mar_req_header_t header;
-	uint8_t trackFlags;
-	CorosyncCfgStateNotificationT *notificationBufferAddress;
+	uint8_t track_flags;
+	corosync_cfg_state_notification_t *notification_buffer_address;
 };
 
 struct res_lib_cfg_statetrack {
@@ -89,9 +90,9 @@ struct res_lib_cfg_statetrackstop {
 
 struct req_lib_cfg_administrativestateset {
 	mar_req_header_t header;
-	cs_name_t compName;
-	CorosyncCfgAdministrativeTargetT administrativeTarget;
-	CorosyncCfgAdministrativeStateT administrativeState;
+	cs_name_t comp_name;
+	corosync_cfg_administrative_target_t administrative_target;
+	corosync_cfg_administrative_state_t administrative_state;
 };
 
 struct res_lib_cfg_administrativestateset {
@@ -100,9 +101,9 @@ struct res_lib_cfg_administrativestateset {
 
 struct req_lib_cfg_administrativestateget {
 	mar_req_header_t header;
-	cs_name_t compName;
-	CorosyncCfgAdministrativeTargetT administrativeTarget;
-	CorosyncCfgAdministrativeStateT administrativeState;
+	cs_name_t comp_name;
+	corosync_cfg_administrative_target_t administrative_target;
+	corosync_cfg_administrative_state_t administrative_state;
 };
 
 struct res_lib_cfg_administrativestateget {
@@ -194,19 +195,19 @@ typedef enum {
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
 	AIS_AMF_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
 	AIS_AMF_ADMINISTRATIVETARGET_NODE = 3
-} corosyncAdministrativeTarget;
+} corosync_administrative_target_t;
 
 typedef enum {
 	AIS_AMF_ADMINISTRATIVESTATE_UNLOCKED = 0,
 	AIS_AMF_ADMINISTRATIVESTATE_LOCKED = 1,
 	AIS_AMF_ADMINISTRATIVESTATE_STOPPING = 2
-} corosyncAdministrativeState;
+} corosync_administrative_state_t;
 
 typedef enum {
 	CFG_SHUTDOWN_FLAG_REQUEST = 0,
 	CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
 	CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
-} CorosyncShutdownFlagsT;
+} corosync_shutdown_flags_t;
 
 
 #endif /* AIS_IPC_CFG_H_DEFINED */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -65,15 +65,15 @@ struct cfg_res_overlay {
 struct cfg_instance {
 	int response_fd;
 	int dispatch_fd;
-	CorosyncCfgCallbacksT callbacks;
-	cs_name_t compName;
-	int compRegistered;
+	corosync_cfg_callbacks_t callbacks;
+	cs_name_t comp_name;
+	int comp_registered;
 	int finalize;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
 };
 
-static void cfg_handleInstanceDestructor (void *);
+static void cfg_handle_instance_destructor (void *);
 
 /*
  * All instances in one database
@@ -82,13 +82,13 @@ static struct saHandleDatabase cfg_hdb = {
 	.handleCount			= 0,
 	.handles			= 0,
 	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= cfg_handleInstanceDestructor
+	.handleInstanceDestructor	= cfg_handle_instance_destructor
 };
 
 /*
  * Implementation
  */
-void cfg_handleInstanceDestructor (void *instance)
+void cfg_handle_instance_destructor (void *instance)
 {
 	struct cfg_instance *cfg_instance = instance;
 
@@ -99,7 +99,7 @@ void cfg_handleInstanceDestructor (void *instance)
 cs_error_t
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
-	const CorosyncCfgCallbacksT *cfgCallbacks)
+	const corosync_cfg_callbacks_t *cfg_callbacks)
 {
 	struct cfg_instance *cfg_instance;
 	cs_error_t error = CS_OK;
@@ -124,8 +124,8 @@ corosync_cfg_initialize (
 		goto error_put_destroy;
 	}
 
-	if (cfgCallbacks) {
-	memcpy (&cfg_instance->callbacks, cfgCallbacks, sizeof (CorosyncCfgCallbacksT));
+	if (cfg_callbacks) {
+	memcpy (&cfg_instance->callbacks, cfg_callbacks, sizeof (corosync_cfg_callbacks_t));
 	}
 
 	pthread_mutex_init (&cfg_instance->response_mutex, NULL);
@@ -166,7 +166,7 @@ corosync_cfg_fd_get (
 cs_error_t
 corosync_cfg_dispatch (
 	corosync_cfg_handle_t cfg_handle,
-	cs_dispatch_flags_t dispatchFlags)
+	cs_dispatch_flags_t dispatch_flags)
 {
 	struct pollfd ufds;
 	int timeout = -1;
@@ -182,7 +182,7 @@ corosync_cfg_dispatch (
 	struct res_lib_corosync_csiremovecallback *res_lib_corosync_csiremovecallback;
 	struct res_lib_cfg_statetrackcallback *res_lib_cfg_statetrackcallback;
 #endif
-	CorosyncCfgCallbacksT callbacks;
+	corosync_cfg_callbacks_t callbacks;
 	struct cfg_res_overlay dispatch_data;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
@@ -194,7 +194,7 @@ corosync_cfg_dispatch (
 	/*
 	 * Timeout instantly for CS_DISPATCH_ALL
 	 */
-	if (dispatchFlags == CS_DISPATCH_ALL) {
+	if (dispatch_flags == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -228,7 +228,7 @@ corosync_cfg_dispatch (
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
-		if (dispatch_avail == 0 && dispatchFlags == CS_DISPATCH_ALL) {
+		if (dispatch_avail == 0 && dispatch_flags == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -263,7 +263,7 @@ corosync_cfg_dispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that cfgFinalize has been called in another thread.
 		 */
-		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (CorosyncCfgCallbacksT));
+		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (corosync_cfg_callbacks_t));
 		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
 		/*
@@ -271,9 +271,9 @@ corosync_cfg_dispatch (
 		 */
 		switch (dispatch_data.header.id) {
 		case MESSAGE_RES_CFG_TESTSHUTDOWN:
-			if (callbacks.corosyncCfgShutdownCallback) {
+			if (callbacks.corosync_cfg_shutdown_callback) {
 				res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)&dispatch_data;
-				callbacks.corosyncCfgShutdownCallback(cfg_handle, res_lib_cfg_testshutdown->flags);
+				callbacks.corosync_cfg_shutdown_callback(cfg_handle, res_lib_cfg_testshutdown->flags);
 			}
 			break;
 		default:
@@ -285,7 +285,7 @@ corosync_cfg_dispatch (
 		/*
 		 * Determine if more messages should be processed
 		 */
-		switch (dispatchFlags) {
+		switch (dispatch_flags) {
 		case CS_DISPATCH_ONE:
 			cont = 0;
 			break;
@@ -543,8 +543,8 @@ corosync_cfg_service_unload (
 cs_error_t
 corosync_cfg_state_track (
 	corosync_cfg_handle_t cfg_handle,
-	uint8_t trackFlags,
-	const CorosyncCfgStateNotificationT *notificationBuffer)
+	uint8_t track_flags,
+	const corosync_cfg_state_notification_t *notification_buffer)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_statetrack req_lib_cfg_statetrack;
@@ -553,8 +553,8 @@ corosync_cfg_state_track (
 
 	req_lib_cfg_statetrack.header.size = sizeof (struct req_lib_cfg_statetrack);
 	req_lib_cfg_statetrack.header.id = MESSAGE_REQ_CFG_STATETRACKSTART;
-	req_lib_cfg_statetrack.trackFlags = trackFlags;
-	req_lib_cfg_statetrack.notificationBufferAddress = (CorosyncCfgStateNotificationT *)notificationBuffer;
+	req_lib_cfg_statetrack.track_flags = track_flags;
+	req_lib_cfg_statetrack.notification_buffer_address = (corosync_cfg_state_notification_t *)notification_buffer;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
@@ -613,8 +613,8 @@ corosync_cfg_state_track_stop (
 cs_error_t
 corosync_cfg_admin_state_get (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgAdministrativeTargetT administrativeTarget,
-	CorosyncCfgAdministrativeStateT *administrativeState)
+	corosync_cfg_administrative_target_t administrative_target,
+	corosync_cfg_administrative_state_t *administrative_state)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateget req_lib_cfg_administrativestateget;
@@ -629,7 +629,7 @@ corosync_cfg_admin_state_get (
 
 	req_lib_cfg_administrativestateget.header.id = MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET;
 	req_lib_cfg_administrativestateget.header.size = sizeof (struct req_lib_cfg_administrativestateget);
-	req_lib_cfg_administrativestateget.administrativeTarget = administrativeTarget;
+	req_lib_cfg_administrativestateget.administrative_target = administrative_target;
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
@@ -651,8 +651,8 @@ corosync_cfg_admin_state_get (
 cs_error_t
 corosync_cfg_admin_state_set (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgAdministrativeTargetT administrativeTarget,
-	CorosyncCfgAdministrativeStateT administrativeState)
+	corosync_cfg_administrative_target_t administrative_target,
+	corosync_cfg_administrative_state_t administrative_state)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_administrativestateset req_lib_cfg_administrativestateset;
@@ -667,8 +667,8 @@ corosync_cfg_admin_state_set (
 
 	req_lib_cfg_administrativestateset.header.id = MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET;
 	req_lib_cfg_administrativestateset.header.size = sizeof (struct req_lib_cfg_administrativestateset);
-	req_lib_cfg_administrativestateset.administrativeTarget = administrativeTarget;
-	req_lib_cfg_administrativestateset.administrativeState = administrativeState;
+	req_lib_cfg_administrativestateset.administrative_target = administrative_target;
+	req_lib_cfg_administrativestateset.administrative_state = administrative_state;
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
@@ -733,7 +733,7 @@ corosync_cfg_kill_node (
 cs_error_t
 corosync_cfg_try_shutdown (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgShutdownFlagsT flags)
+	corosync_cfg_shutdown_flags_t flags)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_tryshutdown req_lib_cfg_tryshutdown;
@@ -768,7 +768,7 @@ corosync_cfg_try_shutdown (
 cs_error_t
 corosync_cfg_replyto_shutdown (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgShutdownReplyFlagsT response)
+	corosync_cfg_shutdown_reply_flags_t response)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_replytoshutdown req_lib_cfg_replytoshutdown;
@@ -802,7 +802,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 	int nodeid,
 	int max_addrs,
 	int *num_addrs,
-	CorosyncCfgNodeAddressT *addrs)
+	corosync_cfg_node_address_t *addrs)
 {
 	cs_error_t error;
 	char buf[PIPE_BUF];

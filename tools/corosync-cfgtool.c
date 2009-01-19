@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -138,7 +138,7 @@ void service_unload_do (char *service, unsigned int version)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void shutdown_callback (corosync_cfg_handle_t cfg_handle, CorosyncCfgShutdownFlagsT flags)
+void shutdown_callback (corosync_cfg_handle_t cfg_handle, corosync_cfg_shutdown_flags_t flags)
 {
 	printf("shutdown callback called, flags = %d\n",flags);
 
@@ -162,12 +162,12 @@ void shutdown_do()
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
-	CorosyncCfgCallbacksT callbacks;
-	CorosyncCfgStateNotificationT notificationBuffer;
+	corosync_cfg_callbacks_t callbacks;
+	corosync_cfg_state_notification_t notification_buffer;
 	pthread_t dispatch_thread;
 
 	printf ("Shutting down corosync\n");
-	callbacks.corosyncCfgShutdownCallback = shutdown_callback;
+	callbacks.corosync_cfg_shutdown_callback = shutdown_callback;
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
@@ -179,7 +179,7 @@ void shutdown_do()
 
 	result = corosync_cfg_state_track (handle,
 					   0,
-					   &notificationBuffer);
+					   &notification_buffer);
 	if (result != CS_OK) {
 		printf ("Could not start corosync cfg tracking error %d\n", result);
 		exit (1);
@@ -197,10 +197,10 @@ void showaddrs_do(int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
-	CorosyncCfgCallbacksT callbacks;
+	corosync_cfg_callbacks_t callbacks;
 	int numaddrs;
 	int i;
-	CorosyncCfgNodeAddressT addrs[INTERFACE_MAX];
+	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
 
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
