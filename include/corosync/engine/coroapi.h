@@ -160,7 +160,8 @@ typedef enum {
 
 typedef enum {
         OBJDB_RELOAD_NOTIFY_START,
-        OBJDB_RELOAD_NOTIFY_END
+        OBJDB_RELOAD_NOTIFY_END,
+	OBJDB_RELOAD_NOTIFY_FAILED
 } objdb_reload_notify_type_t;
 
 typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
