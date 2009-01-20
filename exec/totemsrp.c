@@ -2986,6 +2986,8 @@ int totemsrp_callback_token_create (
 		goto error_exit;
 	}
 
+	token_hold_cancel_send (instance);
+
 	callback_handle = (struct token_callback_instance *)malloc (sizeof (struct token_callback_instance));
 	if (callback_handle == 0) {
 		return (-1);
