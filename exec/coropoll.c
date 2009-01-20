@@ -59,6 +59,7 @@ struct poll_instance {
 	struct timerlist timerlist;
 	void (*serialize_lock_fn) (void);
 	void (*serialize_unlock_fn) (void);
+	int stop_requested;
 };
 
 /*
@@ -92,6 +93,7 @@ poll_handle poll_create (
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
+	poll_instance->stop_requested = 0;
 	poll_instance->serialize_lock_fn = serialize_lock_fn;
 	poll_instance->serialize_unlock_fn = serialize_unlock_fn;
 	timerlist_init (&poll_instance->timerlist);
@@ -336,6 +338,27 @@ error_exit:
 	return (res);
 }
 
+int poll_stop (
+	poll_handle handle)
+{
+	struct poll_instance *poll_instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (res != 0) {
+		res = -ENOENT;
+		goto error_exit;
+	}
+	
+	poll_instance->stop_requested = 1;
+
+	hdb_handle_put (&poll_instance_database, handle);
+error_exit:
+	return (res);
+}
+
+
 int poll_run (
 	poll_handle handle)
 {
@@ -366,6 +389,10 @@ int poll_run (
 retry_poll:
 		res = poll (poll_instance->ufds,
 			poll_instance->poll_entry_count, expire_timeout_msec);
+		if (poll_instance->stop_requested) {
+			printf ("poll should stop\n");
+			return (0);
+		}
 		if (errno == EINTR && res == -1) {
 			goto retry_poll;
 		} else
@@ -402,9 +429,6 @@ retry_poll:
 error_exit:
 	return (-1);
 }
-
-int poll_stop (
-	poll_handle handle);
 
 #ifdef COMPILE_OUT
 void poll_print_state (
