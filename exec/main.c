@@ -639,12 +639,6 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	logsys_config_facility_set ("corosync", main_config.syslog_facility);
-	logsys_config_mode_set (main_config.logmode);
-	logsys_config_file_set (&error_string, main_config.logfile);
-
-	logsys_fork_completed ();
-
 	aisexec_uid_determine (&main_config);
 
 	aisexec_gid_determine (&main_config);

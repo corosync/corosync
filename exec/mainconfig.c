@@ -197,6 +197,10 @@ int corosync_main_config_read_logging (
 			}
 		}
 
+		logsys_config_facility_set ("corosync", main_config->syslog_facility);
+		logsys_config_mode_set (main_config->logmode);
+		logsys_config_file_set (error_string, main_config->logfile);
+
 		objdb->object_find_create (
 			object_service_handle,
 			"logger_subsys",
@@ -326,6 +330,8 @@ int corosync_main_config_read (
 		main_config->syslog_facility = LOG_DAEMON;
 
 	add_logsys_config_notification(objdb, main_config);
+
+	logsys_fork_completed ();
 
 	return 0;
 
