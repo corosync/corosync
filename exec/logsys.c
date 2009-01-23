@@ -833,11 +833,20 @@ unsigned int logsys_config_mode_get (void)
 	return logsys_mode;
 }
 
+static void logsys_close_logfile()
+{
+	if (logsys_file_fp != NULL) {
+		fclose (logsys_file_fp);
+		logsys_file_fp = NULL;
+	}
+}
+
 int logsys_config_file_set (char **error_string, char *file)
 {
 	static char error_string_response[512];
 
 	if (file == NULL) {
+		logsys_close_logfile();
 		return (0);
 	}
 
@@ -845,9 +854,7 @@ int logsys_config_file_set (char **error_string, char *file)
 
 	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
 		logsys_file = file;
-		if (logsys_file_fp != NULL) {
-			fclose (logsys_file_fp);
-		}
+		logsys_close_logfile();
 		logsys_file_fp = fopen (file, "a+");
 		if (logsys_file_fp == 0) {
 			sprintf (error_string_response,
@@ -857,7 +864,8 @@ int logsys_config_file_set (char **error_string, char *file)
 			pthread_mutex_unlock (&logsys_config_mutex);
 			return (-1);
 		}
-	}
+	} else
+		logsys_close_logfile();
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 	return (0);
