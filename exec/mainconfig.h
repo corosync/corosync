@@ -61,13 +61,13 @@ struct main_config {
 	/*
 	 * user/group to run as
 	 */
-	char *user;
-	char *group;
+	int uid;
+	int gid;
 };
 
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
 	struct main_config *main_config);
-	
+
 #endif /* MAINCONFIG_H_DEFINED */

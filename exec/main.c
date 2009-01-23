@@ -34,8 +34,6 @@
  */
 #include <pthread.h>
 #include <assert.h>
-#include <pwd.h>
-#include <grp.h>
 #include <sys/types.h>
 #include <sys/poll.h>
 #include <sys/uio.h>
@@ -93,10 +91,6 @@ LOGSYS_DECLARE_SYSTEM ("corosync",
 LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
 #define SERVER_BACKLOG 5
-
-static int ais_uid = 0;
-
-static int gid_valid = 0;
 
 static unsigned int service_count = 32;
 
@@ -275,36 +269,11 @@ static void confchg_fn (
 	}
 }
 
-static void aisexec_uid_determine (struct main_config *main_config)
+static void priv_drop (struct main_config *main_config)
 {
-	struct passwd *passwd;
-
-	passwd = getpwnam(main_config->user);
-	if (passwd == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", main_config->user);
-		corosync_exit_error (AIS_DONE_UID_DETERMINE);
-	}
-	ais_uid = passwd->pw_uid;
-	endpwent ();
-}
-
-static void aisexec_gid_determine (struct main_config *main_config)
-{
-	struct group *group;
-	group = getgrnam (main_config->group);
-	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", main_config->group);
-		corosync_exit_error (AIS_DONE_GID_DETERMINE);
-	}
-	gid_valid = group->gr_gid;
-	endgrent ();
-}
-
-static void aisexec_priv_drop (void)
-{
-return;
-	setuid (ais_uid);
-	setegid (ais_uid);
+return; /* TODO: we are still not dropping privs */
+	setuid (main_config->uid);
+	setegid (main_config->gid);
 }
 
 static void aisexec_mempool_init (void)
@@ -639,10 +608,6 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	aisexec_uid_determine (&main_config);
-
-	aisexec_gid_determine (&main_config);
-
 	/*
 	 * Set round robin realtime scheduling with priority 99
 	 * Lock all memory to avoid page faults which may interrupt
@@ -717,14 +682,14 @@ int main (int argc, char **argv)
 	 * CAP_SYS_NICE (setscheduler)
 	 * CAP_IPC_LOCK (mlockall)
 	 */
-	aisexec_priv_drop ();
+	priv_drop (&main_config);
 
 	aisexec_mempool_init ();
 
 	cs_ipc_init (
 		serialize_mutex_lock,
 		serialize_mutex_unlock,
-		gid_valid);
+		main_config.gid);
 
 	/*
 	 * Start main processing loop

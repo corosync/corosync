@@ -40,6 +40,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
@@ -279,6 +281,36 @@ parse_error:
 	return (-1);
 }
 
+static int uid_determine (char *req_user)
+{
+	struct passwd *passwd;
+	int ais_uid = 0;
+
+	passwd = getpwnam(req_user);
+	if (passwd == 0) {
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", req_user);
+		corosync_exit_error (AIS_DONE_UID_DETERMINE);
+	}
+	ais_uid = passwd->pw_uid;
+	endpwent ();
+	return ais_uid;
+}
+
+static int gid_determine (char *req_group)
+{
+	struct group *group;
+	int ais_gid = 0;
+
+	group = getgrnam (req_group);
+	if (group == 0) {
+		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", req_group);
+		corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	}
+	ais_gid = group->gr_gid;
+	endgrent ();
+	return ais_gid;
+}
+
 int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	char **error_string,
@@ -304,21 +336,17 @@ int corosync_main_config_read (
 		&object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
-			main_config->user = strdup(value);
-		}
+			main_config->uid = uid_determine(value);
+		} else
+			main_config->uid = uid_determine("ais");
+
 		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
-			main_config->group = strdup(value);
-		}
+			main_config->gid = gid_determine(value);
+		} else
+			main_config->gid = gid_determine("ais");
 	}
 
 	objdb->object_find_destroy (object_find_handle);
-
-	/* Default user/group */
-	if (!main_config->user)
-		main_config->user = "ais";
-
-	if (!main_config->group)
-		main_config->group = "ais";
 
 	if ((main_config->logmode & LOG_MODE_OUTPUT_FILE) &&
 		(main_config->logfile == NULL)) {
