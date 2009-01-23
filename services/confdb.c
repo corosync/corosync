@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -326,8 +326,6 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void
 	mar_res_header_t res;
 	int ret = CS_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "object_find_destroy for conn=%p, %d\n", conn, req_lib_confdb_object_find_destroy->find_handle);
-
 	if (api->object_find_destroy(req_lib_confdb_object_find_destroy->find_handle))
 		ret = CS_ERR_ACCESS;
 
@@ -523,8 +521,10 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 		res_lib_confdb_object_iter.find_handle = req_lib_confdb_object_iter->find_handle;
 
 	if (api->object_find_next(res_lib_confdb_object_iter.find_handle,
-				  &res_lib_confdb_object_iter.object_handle))
+				  &res_lib_confdb_object_iter.object_handle)) {
 		ret = CS_ERR_ACCESS;
+		api->object_find_destroy(res_lib_confdb_object_iter.find_handle);
+	}
 	else {
 		api->object_name_get(res_lib_confdb_object_iter.object_handle,
 				     (char *)res_lib_confdb_object_iter.object_name.value,
@@ -555,8 +555,10 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 		res_lib_confdb_object_find.find_handle = req_lib_confdb_object_find->find_handle;
 
 	if (api->object_find_next(res_lib_confdb_object_find.find_handle,
-				  &res_lib_confdb_object_find.object_handle))
+				  &res_lib_confdb_object_find.object_handle)) {
 		ret = CS_ERR_ACCESS;
+		api->object_find_destroy(res_lib_confdb_object_find.find_handle);
+	}
 
 	res_lib_confdb_object_find.header.size = sizeof(res_lib_confdb_object_find);
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;

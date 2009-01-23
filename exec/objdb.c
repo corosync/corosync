@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2007-2008 Red Hat, Inc.
+ * Copyright (c) 2007-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -811,7 +811,24 @@ error_exit:
 static int object_find_destroy (
 	unsigned int object_find_handle)
 {
+	struct object_find_instance *object_find_instance;
+	unsigned int res;
+
+	objdb_rdlock();
+	res = hdb_handle_get (&object_find_instance_database,
+		object_find_handle, (void *)&object_find_instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	hdb_handle_put(&object_find_instance_database, object_find_handle);
+	hdb_handle_destroy(&object_find_instance_database, object_find_handle);
+
+	objdb_rdunlock();
 	return (0);
+
+error_exit:
+	objdb_rdunlock();
+	return (-1);
 }
 
 static int object_key_get (
