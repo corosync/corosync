@@ -168,6 +168,13 @@ struct assembly {
 	struct list_head list;
 };
 
+enum throw_away_mode_t {
+	THROW_AWAY_INACTIVE,
+	THROW_AWAY_ACTIVE
+};
+
+static enum throw_away_mode_t throw_away_mode = THROW_AWAY_INACTIVE;
+
 DECLARE_LIST_INIT(assembly_list_inuse);
 
 DECLARE_LIST_INIT(assembly_list_free);
@@ -564,43 +571,32 @@ static void totempg_deliver_fn (
 	 * the continued message.
 	 */
 	start = 0;
-	if (continuation) {
 
-		if (continuation != assembly->last_frag_num) {
-			log_printf (totempg_log_level_error,
-				"Message continuation doesn't match previous frag e: %u - a: %u\n",
-				assembly->last_frag_num, continuation);
-			continuation = 0;
-		}
+	if (throw_away_mode == THROW_AWAY_ACTIVE) {
+		 /* Throw away the first msg block */
+		if (mcast->fragmented == 0 || mcast->fragmented == 1) {
+			throw_away_mode = THROW_AWAY_INACTIVE;
 
-		if ((assembly->index == 0) ||
-							(!continuation && assembly->index)) {
-			log_printf (totempg_log_level_error,
-				"Throwing away broken message: continuation %u, index %u\n",
-				continuation, assembly->index);
-			continuation = 0;
-		}
-		
-		/* 
-		 * we decided to throw away the first continued message
-		 * in this buffer, if continuation was set to zero.
-		 */
-		if (!continuation) {
 			assembly->index += msg_lens[0];
 			iov_delv.iov_base = &assembly->data[assembly->index];
 			iov_delv.iov_len = msg_lens[1];
 			start = 1;
 		}
-			
-	}
-
-	for  (i = start; i < msg_count; i++) {
-		app_deliver_fn(nodeid, &iov_delv, 1,
-			endian_conversion_required);
-		assembly->index += msg_lens[i];
-		iov_delv.iov_base = &assembly->data[assembly->index];
-		if (i < (msg_count - 1)) {
-			iov_delv.iov_len = msg_lens[i + 1];
+	} else 
+	if (throw_away_mode == THROW_AWAY_INACTIVE) {
+		if (continuation == assembly->last_frag_num) {
+			assembly->last_frag_num = mcast->fragmented;
+			for  (i = start; i < msg_count; i++) {
+				app_deliver_fn(nodeid, &iov_delv, 1,
+					endian_conversion_required);
+				assembly->index += msg_lens[i];
+				iov_delv.iov_base = &assembly->data[assembly->index];
+				if (i < (msg_count - 1)) {
+					iov_delv.iov_len = msg_lens[i + 1];
+				}
+			}
+		} else {
+			throw_away_mode = THROW_AWAY_ACTIVE;
 		}
 	}
 
@@ -615,7 +611,6 @@ static void totempg_deliver_fn (
 		/*
 		 * Message is fragmented, keep around assembly list
 		 */
-		assembly->last_frag_num = mcast->fragmented;
 		if (mcast->msg_count > 1) {
 			memmove (&assembly->data[0],
 				&assembly->data[assembly->index],
@@ -795,6 +790,7 @@ static int mcast_msg (
 				iovec[i].iov_base + copy_base, copy_len);
 			fragment_size += copy_len;
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
+			next_fragment = 1;
 			copy_len = 0;
 			copy_base = 0;
 			i++;
