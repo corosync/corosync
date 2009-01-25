@@ -376,7 +376,8 @@ static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int l
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
-			int *interface_num)
+			int *interface_num,
+			int mask_high_bit)
 {
 	int fd;
 	struct {
@@ -514,6 +515,18 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		}
 	}
 finished:
+	/*
+	 * Mask 32nd bit off to workaround bugs in other poeples code
+	 * if configuration requests it.
+	 */
+	if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
+                unsigned int nodeid = 0;
+                memcpy (&nodeid, ipaddr.addr, sizeof (int));
+		if ((nodeid & 0x7FFFFFFF) && mask_high_bit) {
+                        nodeid &= 0x7FFFFFFF;
+		}
+                ipaddr.nodeid = nodeid;
+        }
 	totemip_copy (boundto, &ipaddr);
 	close(fd);
 	return 0;

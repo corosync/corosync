@@ -72,7 +72,7 @@ extern int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, s
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
 extern int totemip_parse(struct totem_ip_address *totemip, char *addr, int family);
-extern int totemip_iface_check(struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up, int *interface_num);
+extern int totemip_iface_check(struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up, int *interface_num, int mask_high_bit);
 
 /* These two simulate a zero in_addr by clearing the family field */
 static inline void totemip_zero_set(struct totem_ip_address *addr)
