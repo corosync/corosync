@@ -522,7 +522,7 @@ finished:
 	if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
                 unsigned int nodeid = 0;
                 memcpy (&nodeid, ipaddr.addr, sizeof (int));
-		if ((nodeid & 0x7FFFFFFF) && mask_high_bit) {
+		if (mask_high_bit) {
                         nodeid &= 0x7FFFFFFF;
 		}
                 ipaddr.nodeid = nodeid;
