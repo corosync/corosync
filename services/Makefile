@@ -55,7 +55,7 @@ LCR_OBJS = evs.o cfg.o cpg.o confdb.o $(AMF_OBJS) pload.o
 
 override CFLAGS += -fPIC
 
-all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso testquorum.lcrso
+all: service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso testquorum.lcrso service_votequorum.lcrso
 
 ifeq (${COROSYNC_COMPAT}, DARWIN)
 
@@ -73,6 +73,9 @@ service_cpg.lcrso: cpg.o
 
 service_pload.lcrso: pload.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load pload.o -o $@
+
+service_votequorum.lcrso: votequorum.o
+	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load votequorum.o -o $@
 
 testquorum.lcrso: testquorum.o
 	$(CC) $(LDFLAGS) -bundle $(LDFLAGS) -bundle_loader ../exec/corosync -bind_at_load testquorum.o -o $@
@@ -93,6 +96,9 @@ service_cpg.lcrso: cpg.o
 
 service_pload.lcrso: pload.o
 	$(CC) -shared -Wl,-soname,service_pload.lcrso pload.o -o $@
+
+service_votequorum.lcrso: votequorum.o
+	$(CC) -shared -Wl,-soname,service_votequorum.lcrso votequorum.o -o $@
 
 testquorum.lcrso: testquorum.o
 	$(CC) -shared -Wl,-soname,testquorum.lcrso testquorum.o -o $@

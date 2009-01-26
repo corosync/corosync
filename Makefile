@@ -122,10 +122,10 @@ lint:
 	(cd $(builddir)lib; echo ==== `pwd` ===; $(call sub_make,lib,lint));
 	(cd $(builddir)tools; echo ==== `pwd` ===; $(call sub_make,tools,lint));
 
-COROSYNC_LIBS	= evs cpg cfg coroutil confdb quorum
+COROSYNC_LIBS	= evs cpg cfg coroutil confdb quorum votequorum
 
 COROSYNC_HEADERS	= cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h \
-		  ais_util.h confdb.h quorum.h list.h corotypes.h
+		  ais_util.h confdb.h quorum.h list.h corotypes.h votequorum.h
 
 EXEC_LIBS	= totem_pg logsys
 

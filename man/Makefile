@@ -74,6 +74,19 @@ html:
 	groff -mandoc -Thtml confdb_object_parent_get.3 > html/confdb_object_parent_get.html
 	groff -mandoc -Thtml confdb_overview.8 > html/confdb_overview.html
 
+	groff -mandoc -Thtml votequorum_overview.8 > html/votequorum_overview.html
+	groff -mandoc -Thtml votequorum_initialize.3 > html/votequorum_initialize.html
+	groff -mandoc -Thtml votequorum_finalize.3 > html/votequorum_finalize.html
+	groff -mandoc -Thtml votequorum_fd_get.3 > html/votequorum_fd_get.html
+	groff -mandoc -Thtml votequorum_dispatch.3 > html/votequorum_dispatch.html
+	groff -mandoc -Thtml votequorum_getinfo.3 > html/votequorum_getinfo.html
+	groff -mandoc -Thtml votequorum_leaving.3 > html/votequorum_leaving.html
+	groff -mandoc -Thtml votequorum_setexpected.3 > html/votequorum_setexpected.html
+	groff -mandoc -Thtml votequorum_setvotes.3 > html/votequorum_setvotes.html
+	groff -mandoc -Thtml votequorum_qdisk_register.3 > html/votequorum_qdisk_register.html
+	groff -mandoc -Thtml votequorum_qdisk_unregister.3 > html/votequorum_qdisk_unregister.html
+	groff -mandoc -Thtml votequorum_qdisk_poll.3 > html/votequorum_poll.html
+	groff -mandoc -Thtml votequorum_qdisk_getinfo.3 > html/votequorum_qdisk_getinfo.html
 	cp index.html html
 
 clean:

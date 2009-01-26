@@ -1,0 +1,71 @@
+# Version and symbol export for libvotequorum.so
+
+OPENAIS_VOTEQUORUM_1.0 {
+	global:	   
+		votequorum_initialize;
+		votequorum_finalize;
+		votequorum_getinfo;
+		votequorum_setexpected;
+		votequorum_setvotes;
+		votequorum_qdisk_register;
+		votequorum_qdisk_unregister;
+		votequorum_qdisk_poll;
+		votequorum_qdisk_getinfo;
+		votequorum_setstate;
+		votequorum_leaving;
+		votequorum_trackstart;
+		votequorum_trackstop;
+		votequorum_context_get;
+		votequorum_context_set;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};
+# Version and symbol export for libvotequorum.so
+
+COROSYNC_VOTEQUORUM_1.0 {
+	global:
+		votequorum_initialize;
+		votequorum_finalize;
+		votequorum_getinfo;
+		votequorum_setexpected;
+		votequorum_setvotes;
+		votequorum_qdisk_register;
+		votequorum_qdisk_unregister;
+		votequorum_qdisk_poll;
+		votequorum_qdisk_getinfo;
+		votequorum_setdirty;
+		votequorum_killnode;
+		votequorum_leaving;
+		votequorum_trackstart;
+		votequorum_trackstop;
+		votequorum_context_get;
+		votequorum_context_set;
+
+	local:
+		saHandleCreate;
+		saHandleDestroy;
+		saHandleInstanceGet;
+		saHandleInstancePut;
+		saRecvRetry;
+		saSelectRetry;
+		saSendMsgReceiveReply;
+		saSendMsgRetry;
+		saSendReceiveReply;
+		saSendRetry;
+		saServiceConnect;
+		saVersionVerify;
+		clustTimeNow;
+};

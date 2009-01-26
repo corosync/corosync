@@ -31,47 +31,52 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CONFDB_OVERVIEW 8 2006-03-06 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM_OVERVIEW 8 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH OVERVIEW
-The CONFDB library is delivered with the corosync project.  This library is used
-to examine manipulate the configuration database used by corosync.
+The votequuorum library is delivered with the corosync project. It is the external interface to 
+the vote-based quorum service. This service is optionally loaded into all ndes in a corosync cluster
+to avoid split-brain situations. It does this by having a number of votes assigned to each system
+in the cluster and ensuring that only when a majority of the votes are present, cluster operations are
+allowed to proceed.
 .PP
 The library provides a mechanism to:
+* Query the quorum status
 .PP
-* Create new objects
+* Get a list of nodes known to the quorum service
 .PP
-* Create new key/value pairs within those objects
+* Receive notifications of quorum state changes
 .PP
-* Remove existing keys
+* Change the number of votes assigned to a node
 .PP
-* Remove an existing object and all it sub-objects and keys
+* Change the number of expected votes for a cluster to be quorate
 .PP
-* Read keys and values
+* Connect an additional quorum device to allow small clusters to remain quorate during node outages.
 .PP
-* Iterate keys within an object
+.B votequorum 
+reads its configuration from the objdb. The following keys are read when it starts up:
 .PP
-* Iterate subobjects within a parent object
+* quorum.expected_votes
+.br
+* quorum.votes
+.br
+* quorum.quorumdev_poll
+.br
+* quorum.disallowed
+.br
+* quorum.two_node
 .PP
-* Find a named object
+Most of those values can be changed while corosync is running with the following exceptions:
+.B quorum.disallowed 
+cannot be changed, and
+.B two_node
+cannot be set on-the-fly, though it can be cleared. ie you can start with two nodes in the cluster
+and add a third without rebooting all the nodes.
 .PP
 .SH BUGS
 This software is not yet production, so there may still be some bugs.
 .SH "SEE ALSO"
-.BR confdb_initialize (3),
-.BR confdb_finalize (3),
-.BR confdb_fd_get (3),
-.BR confdb_dispatch (3),
-.BR confdb_object_create (3),
-.BR confdb_object_destroy (3),
-.BR confdb_object_parent_get (3),
-.BR confdb_key_create (3),	
-.BR confdb_key_delete (3),	
-.BR confdb_key_get (3),
-.BR confdb_key_replace (3),
-.BR confdb_object_find_start (3),
-.BR confdb_object_find (3),
-.BR confdb_object_iter_start (3),	
-.BR confdb_object_iter (3),	
-.BR confdb_key_iter_start (3),	
-.BR confdb_key_iter (3),	
+.BR votequorum_initialize (3),
+.BR votequorum_finalize (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
 .PP

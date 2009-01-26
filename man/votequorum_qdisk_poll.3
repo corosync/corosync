@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" * Copyright (c) 2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,47 +31,39 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CONFDB_OVERVIEW 8 2006-03-06 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
-.SH OVERVIEW
-The CONFDB library is delivered with the corosync project.  This library is used
-to examine manipulate the configuration database used by corosync.
+.TH VOTEQUORUM_QDISK_POLL 3 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+votequorum_qdisk_poll \- Tells votequorum the result of the quorum device poll
+.SH SYNOPSIS
+.B #include <corosync/votequorum.h>
+.sp
+.BI "int votequorum_qdisk_poll(votequorum_handle_t " handle ", unsigned int " state ");"
+.SH DESCRIPTION
+The
+.B votequorum_qdisk_poll
+is called by the quorum device subsyetem (not provided as part of votequorum) to tell
+the voting system if the qurum device is present/active or not. If 
+.B state
+is 1 then the votes for the device are included in the quorum calculation, otherwise not.
+This routine should be called at regular intervals to ensure that the device status
+is always known to votequorum. If 
+.B votequorum_qdisk_poll
+is not called after (default) 10 seconds then the device will be deeded to be dead and 
+its votes removed from the cluster. This does not unregister the device.
+The default poll time can be changed by setting the object database variable
+quorum.quorumdev_poll.
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
-The library provides a mechanism to:
-.PP
-* Create new objects
-.PP
-* Create new key/value pairs within those objects
-.PP
-* Remove existing keys
-.PP
-* Remove an existing object and all it sub-objects and keys
-.PP
-* Read keys and values
-.PP
-* Iterate keys within an object
-.PP
-* Iterate subobjects within a parent object
-.PP
-* Find a named object
-.PP
-.SH BUGS
-This software is not yet production, so there may still be some bugs.
+.SH ERRORS
+The errors are undocumented.
 .SH "SEE ALSO"
-.BR confdb_initialize (3),
-.BR confdb_finalize (3),
-.BR confdb_fd_get (3),
-.BR confdb_dispatch (3),
-.BR confdb_object_create (3),
-.BR confdb_object_destroy (3),
-.BR confdb_object_parent_get (3),
-.BR confdb_key_create (3),	
-.BR confdb_key_delete (3),	
-.BR confdb_key_get (3),
-.BR confdb_key_replace (3),
-.BR confdb_object_find_start (3),
-.BR confdb_object_find (3),
-.BR confdb_object_iter_start (3),	
-.BR confdb_object_iter (3),	
-.BR confdb_key_iter_start (3),	
-.BR confdb_key_iter (3),	
+.BR votequorum_overview (8),
+.BR votequorum_initialize (3),
+.BR votequorum_finalize (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_qdisk_poll (3),
+.BR votequorum_qdisk_unregister (3),
+.BR votequorum_qdisk_getinfo (3),
 .PP

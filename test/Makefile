@@ -42,9 +42,10 @@ ifeq (${COROSYNC_COMPAT}, SOLARIS)
 	override LDFLAGS += -lnsl -lsocket -lrt
 endif
 
-LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a ../lib/libquorum.a
+LIBRARIES= ../lib/libevs.a ../lib/libcpg.a ../lib/libcfg.a ../lib/libconfdb.a ../lib/libquorum.a ../lib/libvotequorum.a
 LIBS = $(LIBRARIES) 
-BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb logsysbench logsysrec testquorum
+BINARIES= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb logsysbench logsysrec testquorum \
+	testvotequorum1 testvotequorum2
 
 override CFLAGS += -I../include
 override LDFLAGS += -L../lib
@@ -92,8 +93,15 @@ logsysrec: logsysrec.o ../exec/liblogsys.a
 
 testquorum1: testquorum1.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testquorum1 testquorum1.o $(LIBS)
+
 testquorum2: testquorum2.o $(LIBRARIES)
 	$(CC) $(LDFLAGS) -o testquorum2 testquorum2.o $(LIBS)
+
+testvotequorum1: testvotequorum1.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testvotequorum1 testvotequorum1.o $(LIBS)
+
+testvotequorum2: testvotequorum2.o $(LIBRARIES)
+	$(CC) $(LDFLAGS) -o testvotequorum2 testvotequorum2.o $(LIBS)
 
 logsys_s: logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a
 	$(CC) -o logsys_s logsys_s.o logsys_s1.o logsys_s2.o ../exec/liblogsys.a $(LDFLAGS)

@@ -43,7 +43,8 @@ all: libcpg.a libcpg.so.2.0.0 \
 	libcfg.a libcfg.so.2.0.0 \
 	libquorum.a libquorum.so.2.0.0 \
 	libpload.a libpload.so.2.0.0 \
-	libcoroutil.a libcoroutil.so.2.0.0
+	libcoroutil.a libcoroutil.so.2.0.0 \
+	libvotequorum.a libvotequorum.so.2.0.0
 
 libcoroutil.a: util.o
 	$(AR) -rc libcoroutil.a util.o
@@ -62,6 +63,9 @@ libcpg.so.2.0.0: util.o cpg.o
 
 libquorum.so.2.0.0: util.o quorum.o
 	$(CC) $(DARWIN_OPTS) util.o quorum.o -o $@
+
+libvotequorum.so.2.0.0: util.o votequorum.o
+	$(CC) $(DARWIN_OPTS) util.o votequorum.o -o $@
 
 libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
@@ -86,6 +90,9 @@ libcpg.so.2.0.0: util.o cpg.o
 libquorum.so.2.0.0: util.o quorum.o
 	$(CC) -shared -Wl,-soname,libquorum.so.2,-version-script=$(srcdir)$(subdir)libquorum.versions util.o quorum.o -o $@
 
+libvotequorum.so.2.0.0: util.o votequorum.o
+	$(CC) -shared -Wl,-soname,libvotequorum.so.2,-version-script=$(srcdir)$(subdir)libvotequorum.versions util.o votequorum.o -o $@
+
 libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
@@ -105,6 +112,9 @@ libcpg.a: util.o cpg.o
 
 libquorum.a: util.o quorum.o
 	$(AR) -rc libquorum.a util.o quorum.o
+
+libvotequorum.a: util.o votequorum.o
+	$(AR) -rc libvotequorum.a util.o votequorum.o
 
 libconfdb.a: util.o confdb.o sa-confdb.o
 	$(AR) -rc libconfdb.a util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o

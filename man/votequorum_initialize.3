@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" * Copyright (c) 2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,47 +31,76 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CONFDB_OVERVIEW 8 2006-03-06 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
-.SH OVERVIEW
-The CONFDB library is delivered with the corosync project.  This library is used
-to examine manipulate the configuration database used by corosync.
+.TH VOTEQUORUM_INITIALIZE 3 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+votequorum_initialize \- Create a new connection to the VoteQuorum service
+.SH SYNOPSIS
+.B #include <corosync/votequorum.h>
+.sp
+.BI "int votequorum_initialize(votequorum_handle_t *" handle ", votequorum_callbacks_t *" callbacks ");
+.SH DESCRIPTION
+The
+.B votequorum_initialize
+function is used to initialize a connection to the vote-based quorum database API.
 .PP
-The library provides a mechanism to:
+Each application may have several connections to the votequorum API.  Each application
+uses the 
+.I handle
+argument to uniquely identify the connection.  The
+.I handle
+argument is then used in other function calls to identify the connection to be used
+for communication with the votequorum service.
 .PP
-* Create new objects
+Every time the voting configuraton changes (eg a node joins or leave the cluster), the callback is called.
+The callback function is described by the following type definitions:
+
+typedef void (*votequorum_notification_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t quorate,
+	uint32_t node_list_entries,
+	votequorum_node_t node_list[]
+	);
+
+.ta
+.fi
+.RE
+.IP
 .PP
-* Create new key/value pairs within those objects
 .PP
-* Remove existing keys
+The
+.I callbacks
+argument is of the type:
+.IP
+.RS
+.ne 18
+.nf
 .PP
-* Remove an existing object and all it sub-objects and keys
+typedef struct {
+	votequorum_notification_fn_t votequorum_notify_fn;
+} votequorum_callbacks_t;
+
+.ta
+.fi
+.RE
+.IP
 .PP
-* Read keys and values
+When a configuration change occurs, the callback
+is called from the
+.B votequorum_dispatch()
+function. 
 .PP
-* Iterate keys within an object
-.PP
-* Iterate subobjects within a parent object
-.PP
-* Find a named object
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
 .SH BUGS
-This software is not yet production, so there may still be some bugs.
+Callbacks are not support at the moment.
+.PP
+.SH ERRORS
+The errors are undocumented.
 .SH "SEE ALSO"
-.BR confdb_initialize (3),
-.BR confdb_finalize (3),
-.BR confdb_fd_get (3),
-.BR confdb_dispatch (3),
-.BR confdb_object_create (3),
-.BR confdb_object_destroy (3),
-.BR confdb_object_parent_get (3),
-.BR confdb_key_create (3),	
-.BR confdb_key_delete (3),	
-.BR confdb_key_get (3),
-.BR confdb_key_replace (3),
-.BR confdb_object_find_start (3),
-.BR confdb_object_find (3),
-.BR confdb_object_iter_start (3),	
-.BR confdb_object_iter (3),	
-.BR confdb_key_iter_start (3),	
-.BR confdb_key_iter (3),	
+.BR votequorum_overview (8),
+.BR votequorum_finalize (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
 .PP

@@ -4,16 +4,10 @@ OPENAIS_QUORUM_1.0 {
 	global:	   
 		quorum_initialize;
 		quorum_finalize;
-		quorum_getinfo;
-		quorum_setexpected;
-		quorum_setvotes;
-		quorum_qdisk_register;
-		quorum_qdisk_unregister;
-		quorum_qdisk_poll;
-		quorum_qdisk_getinfo;
-		quorum_setdirty;
-		quorum_killnode;
-		quorum_leaving;
+		quorum_getquorate;
+		quorum_initialize;
+		quorum_finalize;
+		quorum_dispatch;
 
 	local:
 		saHandleCreate;
@@ -30,17 +24,14 @@ OPENAIS_QUORUM_1.0 {
 		saVersionVerify;
 		clustTimeNow;
 };
-# Version and symbol export for libcpg.so
+# Version and symbol export for libquorum.so
 
 COROSYNC_QUORUM_1.0 {
 	global:
 		quorum_initialize;
 		quorum_finalize;
-		quorum_fd_get;
+		quorum_getquorate;
 		quorum_dispatch;
-		quorum_get_quorate;
-		quorum_context_get;
-		quorum_context_set;
 
 	local:
 		saHandleCreate;
