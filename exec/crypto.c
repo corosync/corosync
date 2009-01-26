@@ -20,13 +20,14 @@
 #endif
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include "crypto.h"
 
 #define CONST64(n) n ## ULL
 
-typedef unsigned long ulong32;
-typedef unsigned long long ulong64;
+typedef uint32_t ulong32;
+typedef uint64_t ulong64;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define ENDIAN_LITTLE
@@ -41,10 +42,10 @@ typedef unsigned long long ulong64;
 #endif
 
 #if defined(COROSYNC_LINUX)
-#if __WORDIZE == 64
+#if __WORDSIZE == 64
 #define ENDIAN_64BITWORD
 #endif
-#if __WORDIZE == 32
+#if __WORDSIZE == 32
 #define ENDIAN_32BITWORD
 #endif
 #else

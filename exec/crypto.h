@@ -1,6 +1,8 @@
 #ifndef CRYPTO_H_DEFINED
 #define CRYPTO_H_DEFINED
 
+#include <stdint.h>
+
 #define DIGEST_SHA1     0
 #define PRNG_SOBER      0
 
@@ -88,7 +90,7 @@ int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
                        unsigned char *dst, unsigned long *dstlen);
 
 struct sober128_prng {
-    unsigned long      R[17],          /* Working storage for the shift register */
+    uint32_t      R[17],          /* Working storage for the shift register */
                  initR[17],      /* saved register contents */ 
                  konst,          /* key dependent constant */
                  sbuf;           /* partial word encryption buffer */
