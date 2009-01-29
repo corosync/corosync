@@ -133,7 +133,7 @@ typedef struct {
  */
 typedef struct
 {
-	int  addressLength;
+	int  address_length;
 	char address[sizeof(struct sockaddr_in6)];
 } corosync_cfg_node_address_t;
 

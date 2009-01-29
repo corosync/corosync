@@ -847,7 +847,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 		addrlen = sizeof(struct sockaddr_in6);
 
 	for (i=0; i<max_addrs && i<res_lib_cfg_get_node_addrs->num_addrs; i++) {
-		addrs[i].addressLength = addrlen;
+		addrs[i].address_length = addrlen;
 		struct sockaddr_in *in;
 		struct sockaddr_in6 *in6;
 
