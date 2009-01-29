@@ -1128,10 +1128,10 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, void *messag
 		list_iterate(nodelist, &cluster_members_list) {
 			iternode = list_entry(nodelist, struct cluster_node, list);
 
-			if (node->state == NODESTATE_MEMBER) {
+			if (iternode->state == NODESTATE_MEMBER) {
 				highest_expected =
-					max(highest_expected, node->expected_votes);
-				total_votes += node->votes;
+					max(highest_expected, iternode->expected_votes);
+				total_votes += iternode->votes;
 			}
 		}
 
