@@ -46,22 +46,6 @@ INCLUDEDIR_LCR=$(PREFIX)/include/corosync/lcr
 INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/engine
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
-ARCH=$(shell uname -p)
-
-ifeq (,$(findstring 64,$(ARCH)))
-LIBDIR=$(PREFIX)/lib/corosync
-else
-LIBDIR=$(PREFIX)/lib64/corosync
-endif
-ifeq (s390,$(ARCH))
-LIBDIR=$(PREFIX)/lib/corosync
-endif
-ifeq (s390x,$(ARCH))
-LIBDIR=$(PREFIX)/lib64/corosync
-endif
-ifeq (ia64,$(ARCH))
-LIBDIR=$(PREFIX)/lib/corosync
-endif
 
 SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)tools $(builddir)exec $(builddir)test $(builddir)services
 sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
@@ -73,6 +57,7 @@ all: $(SUBDIRS)
 	@(cd $(builddir)tools; echo ==== `pwd` ===;  $(call sub_make,tools,all));
 	@(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,all));
 	@(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,all));
+	@(cd $(builddir)pkgconfig; echo ==== `pwd` ===; $(call sub_make,pkgconfig,all));
 
 # subdirs are not phony
 .PHONY: all clean install doxygen
@@ -113,6 +98,8 @@ clean:
 	(cd $(builddir)exec; echo ==== `pwd` ===; $(call sub_make,exec,clean));
 	(cd $(builddir)services; echo ==== `pwd` ===; $(call sub_make,services,clean));
 	(cd $(builddir)test; echo ==== `pwd` ===; $(call sub_make,test,clean));
+	(cd $(builddir)pkgconfig; echo ==== `pwd` ===; $(call sub_make,pkgconfig,clean));
+
 	rm -rf $(builddir)doc/api
 
 lint:
@@ -141,6 +128,7 @@ install: all
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man8
 	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
+	mkdir -p $(DESTDIR)$(PKGCONFIGDIR)
 
 
 	for eLib in $(EXEC_LIBS); do					\
@@ -208,6 +196,8 @@ install: all
 	install -m 644 $(srcdir)man/*.3 $(DESTDIR)$(MANDIR)/man3
 	install -m 644 $(srcdir)man/*.5 $(DESTDIR)$(MANDIR)/man5
 	install -m 644 $(srcdir)man/*.8 $(DESTDIR)$(MANDIR)/man8
+
+	install -m 644 $(builddir)/pkgconfig/*.pc $(DESTDIR)$(PKGCONFIGDIR)
 
 doxygen:
 	mkdir -p doc/api && doxygen

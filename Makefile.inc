@@ -3,6 +3,25 @@ PREFIX=/usr
 DESTDIR=
 LCRSODIR=$(PREFIX)/libexec/lcrso
 
+ARCH=$(shell uname -p)
+ifeq (,$(findstring 64,$(ARCH)))
+PRELIBDIR=$(PREFIX)/lib
+else
+PRELIBDIR=$(PREFIX)/lib64
+endif
+ifeq (s390,$(ARCH))
+PRELIBDIR=$(PREFIX)/lib
+endif
+ifeq (s390x,$(ARCH))
+PRELIBDIR=$(PREFIX)/lib64
+endif
+ifeq (ia64,$(ARCH))
+PRELIBDIR=$(PREFIX)/lib
+endif
+
+LIBDIR=$(PRELIBDIR)/corosync
+PKGCONFIGDIR=$(PRELIBDIR)/pkgconfig
+
 # Do not modify below this line
 
 # Basic OS detection

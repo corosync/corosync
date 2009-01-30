@@ -1,0 +1,11 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=@LIBDIR@
+includedir=${prefix}/include
+
+Name: @LIB@
+Version: trunk
+Description: @LIB@
+Requires:
+Libs: -L${libdir} -l@LIB@
+Cflags: -I${includedir}
