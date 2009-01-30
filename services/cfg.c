@@ -976,7 +976,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
 	char buf[PIPE_BUF];
 	char **status;
 	unsigned int num_interfaces = 0;
-	int ret = 0;
+	int ret = CS_OK;
 	int i;
 	struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = (struct req_lib_cfg_get_node_addrs *)msg;
 	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
