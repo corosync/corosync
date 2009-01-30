@@ -47,7 +47,7 @@ INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/engine
 MANDIR=$(PREFIX)/share/man
 ETCDIR=/etc
 
-SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)tools $(builddir)exec $(builddir)test $(builddir)services
+SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)tools $(builddir)exec $(builddir)test $(builddir)services $(builddir)pkgconfig
 sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
 
 all: $(SUBDIRS)
