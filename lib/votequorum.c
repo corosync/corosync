@@ -670,6 +670,26 @@ cs_error_t votequorum_context_set (
 }
 
 
+cs_error_t votequorum_fd_get (
+        votequorum_handle_t handle,
+        int *fd)
+{
+	cs_error_t error;
+        struct votequorum_inst *votequorum_inst;
+
+        error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+        if (error != CS_OK) {
+                return (error);
+        }
+
+	*fd = votequorum_inst->dispatch_fd;
+
+	(void)saHandleInstancePut (&votequorum_handle_t_db, handle);
+
+	return (CS_OK);
+}
+
+
 struct res_overlay {
 	mar_res_header_t header __attribute__((aligned(8)));
 	char data[512000];

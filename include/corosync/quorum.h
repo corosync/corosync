@@ -71,6 +71,14 @@ cs_error_t quorum_finalize (
 
 
 /*
+ * Get a file descriptor on which to poll. quorum_handle_t is NOT a
+ * file descriptor and may not be used directly.
+ */
+cs_error_t quorum_fd_get (
+	quorum_handle_t handle,
+	int *fd);
+
+/*
  * Dispatch messages and configuration changes
  */
 cs_error_t quorum_dispatch (

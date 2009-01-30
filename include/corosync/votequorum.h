@@ -110,6 +110,13 @@ cs_error_t votequorum_dispatch (
 	votequorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types);
 
+/*
+ * Get a file descriptor on which to poll. votequorum_handle_t is NOT a
+ * file descriptor and may not be used directly.
+ */
+cs_error_t votequorum_fd_get (
+	votequorum_handle_t handle,
+	int *fd);
 
 /*
  * Get quorum information.
