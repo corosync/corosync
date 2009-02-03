@@ -71,6 +71,7 @@
  /* Silly default to prevent accidents! */
 #define DEFAULT_EXPECTED   1024
 #define DEFAULT_QDEV_POLL 10000
+#define DEFAULT_LEAVE_TMO 10000
 
 LOGSYS_DECLARE_SUBSYS ("VOTEQ", LOG_INFO);
 
@@ -125,11 +126,13 @@ static int quorum;
 static int cluster_is_quorate;
 static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
+static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
 
 static struct cluster_node *us;
 static struct cluster_node *quorum_device = NULL;
 static char quorum_device_name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
 static corosync_timer_handle_t quorum_device_timer;
+static corosync_timer_handle_t leaving_timer;
 static struct list_head cluster_members_list;
 static struct corosync_api_v1 *corosync_api;
 static struct list_head trackers_list;
@@ -484,6 +487,7 @@ static void read_quorum_config(unsigned int quorum_handle)
 	objdb_get_int(corosync_api, quorum_handle, "expected_votes", &us->expected_votes, DEFAULT_EXPECTED);
 	objdb_get_int(corosync_api, quorum_handle, "votes", &us->votes, 1);
 	objdb_get_int(corosync_api, quorum_handle, "quorumdev_poll", &quorumdev_poll, DEFAULT_QDEV_POLL);
+	objdb_get_int(corosync_api, quorum_handle, "leaving_timeout", &leaving_timeout, DEFAULT_LEAVE_TMO);
 	objdb_get_int(corosync_api, quorum_handle, "disallowed", &value, 0);
 	if (value)
 		quorum_flags |= VOTEQUORUM_FLAG_FEATURE_DISALLOWED;
@@ -667,7 +671,6 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 	unsigned int highest_expected = 0;
 	unsigned int newquorum, q1, q2;
 	unsigned int total_nodes = 0;
-	unsigned int leaving = 0;
 
 	ENTER();
 	list_iterate(nodelist, &cluster_members_list) {
@@ -683,9 +686,6 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 				highest_expected = max(highest_expected, node->expected_votes);
 			total_votes += node->votes;
 			total_nodes++;
-		}
-		if (node->state == NODESTATE_LEAVING) {
-			leaving = 1;
 		}
 	}
 
@@ -723,12 +723,26 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 }
 
 /* Recalculate cluster quorum, set quorate and notify changes */
-static void recalculate_quorum(int allow_decrease)
+static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 {
 	unsigned int total_votes;
+	int cluster_members = 0;
+	struct list_head *nodelist;
+	struct cluster_node *node;
 
 	ENTER();
-	quorum = calculate_quorum(allow_decrease, 0, &total_votes);
+
+	if (by_current_nodes) {
+		list_iterate(nodelist, &cluster_members_list) {
+			node = list_entry(nodelist, struct cluster_node, list);
+
+			if (node->state == NODESTATE_MEMBER) {
+				cluster_members++;
+			}
+		}
+	}
+
+	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
 	set_quorate(total_votes);
 	send_quorum_notification(NULL, 0L);
 	LEAVE();
@@ -881,7 +895,7 @@ static void quorum_confchg_fn (
 				node->flags |= NODE_FLAGS_BEENDOWN;
 			}
 		}
-		recalculate_quorum(leaving);
+		recalculate_quorum(leaving, leaving);
 	}
 
 	if (member_list_entries) {
@@ -1031,7 +1045,7 @@ static void message_handler_req_exec_quorum_nodeinfo (
 	node->flags &= ~NODE_FLAGS_BEENDOWN;
 
 	if (new_node || old_votes != node->votes || old_expected != node->expected_votes || old_state != node->state)
-		recalculate_quorum(0);
+		recalculate_quorum(0, 0);
 	LEAVE();
 }
 
@@ -1075,16 +1089,19 @@ static void message_handler_req_exec_quorum_reconfigure (
 				node->expected_votes = req_exec_quorum_reconfigure->value;
 			}
 		}
-		recalculate_quorum(1);  /* Allow decrease */
+		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
 	case RECONFIG_PARAM_NODE_VOTES:
 		node->votes = req_exec_quorum_reconfigure->value;
-		recalculate_quorum(1);  /* Allow decrease */
+		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
 	case RECONFIG_PARAM_LEAVING:
-		node->state = NODESTATE_LEAVING;
+		if (req_exec_quorum_reconfigure->value == 1 && node->state == NODESTATE_MEMBER)
+			node->state = NODESTATE_LEAVING;
+		if (req_exec_quorum_reconfigure->value == 0 && node->state == NODESTATE_LEAVING)
+			node->state = NODESTATE_MEMBER;
 		break;
 	}
 }
@@ -1100,6 +1117,22 @@ static int quorum_lib_init_fn (void *conn)
 
 	LEAVE();
 	return (0);
+}
+
+/*
+ * Someone called votequorum_leave AGES ago!
+ * Assume they forgot to shut down the node.
+ */
+static void leaving_timer_fn(void *arg)
+{
+	ENTER();
+
+	if (us->state == NODESTATE_LEAVING)
+		us->state = NODESTATE_MEMBER;
+
+	/* Tell everyone else we made a mistake */
+	quorum_exec_send_reconfigure(RECONFIG_PARAM_LEAVING, us->node_id, 0);
+	LEAVE();
 }
 
 /* Message from the library */
@@ -1259,7 +1292,16 @@ static void message_handler_req_lib_votequorum_leaving (void *conn, void *messag
 
 	ENTER();
 
-	quorum_exec_send_reconfigure(RECONFIG_PARAM_LEAVING, us->node_id, 0);
+	quorum_exec_send_reconfigure(RECONFIG_PARAM_LEAVING, us->node_id, 1);
+
+	/*
+	 * If we don't shut down in a sensible amount of time then cancel the
+	 * leave status.
+	 */
+	if (leaving_timeout)
+		corosync_api->timer_add_duration((unsigned long long)leaving_timeout*1000000, NULL,
+						 leaving_timer_fn, &leaving_timer);
+
 
 	/* send status */
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
@@ -1280,7 +1322,7 @@ static void quorum_device_timer_fn(void *arg)
 	if (quorum_device->last_hello.tv_sec + quorumdev_poll/1000 < now.tv_sec) {
 		quorum_device->state = NODESTATE_DEAD;
 		log_printf(LOG_INFO, "lost contact with quorum device\n");
-		recalculate_quorum(0);
+		recalculate_quorum(0, 0);
 	}
 	else {
 		corosync_api->timer_add_duration((unsigned long long)quorumdev_poll*1000000, quorum_device,
@@ -1330,7 +1372,7 @@ static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn, voi
 		quorum_device = NULL;
 		list_del(&node->list);
 		free(node);
-		recalculate_quorum(0);
+		recalculate_quorum(0, 0);
 	}
 	else {
 		error = CS_ERR_NOT_EXIST;
@@ -1357,7 +1399,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *mes
 			gettimeofday(&quorum_device->last_hello, NULL);
 			if (quorum_device->state == NODESTATE_DEAD) {
 				quorum_device->state = NODESTATE_MEMBER;
-				recalculate_quorum(0);
+				recalculate_quorum(0, 0);
 
 				corosync_api->timer_add_duration((unsigned long long)quorumdev_poll*1000000, quorum_device,
 								 quorum_device_timer_fn, &quorum_device_timer);
@@ -1366,7 +1408,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *mes
 		else {
 			if (quorum_device->state == NODESTATE_MEMBER) {
 				quorum_device->state = NODESTATE_DEAD;
-				recalculate_quorum(0);
+				recalculate_quorum(0, 0);
 				corosync_api->timer_delete(quorum_device_timer);
 			}
 		}
