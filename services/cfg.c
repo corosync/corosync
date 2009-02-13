@@ -166,6 +166,10 @@ static void message_handler_req_lib_cfg_get_node_addrs (
 	void *conn,
 	void *msg);
 
+static void message_handler_req_lib_cfg_local_get (
+	void *conn,
+	void *msg);
+
 /*
  * Service Handler Definition
  */
@@ -241,6 +245,12 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 		.lib_handler_fn		= message_handler_req_lib_cfg_get_node_addrs,
 		.response_size		= sizeof (struct res_lib_cfg_get_node_addrs),
 		.response_id		= MESSAGE_RES_CFG_GET_NODE_ADDRS,
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 12 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_local_get,
+		.response_size		= sizeof (struct res_lib_cfg_local_get),
+		.response_id		= MESSAGE_RES_CFG_LOCAL_GET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -1000,4 +1010,17 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
 		res_lib_cfg_get_node_addrs->header.error = CS_ERR_NOT_EXIST;
 	}
 	api->ipc_conn_send_response(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
+}
+
+static void message_handler_req_lib_cfg_local_get (void *conn, void *message)
+{
+	struct res_lib_cfg_local_get res_lib_cfg_local_get;
+
+	res_lib_cfg_local_get.header.size = sizeof(res_lib_cfg_local_get);
+	res_lib_cfg_local_get.header.id = MESSAGE_RES_CFG_LOCAL_GET;
+	res_lib_cfg_local_get.header.error = CS_OK;
+	res_lib_cfg_local_get.local_nodeid = api->totem_nodeid_get ();
+
+	api->ipc_conn_send_response(conn, &res_lib_cfg_local_get,
+		sizeof(res_lib_cfg_local_get));
 }

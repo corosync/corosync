@@ -58,12 +58,21 @@ static void ringstatusget_do (void)
 	char **interface_names;
 	char **interface_status;
 	unsigned int i;
+	unsigned int nodeid;
 
 	printf ("Printing ring status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
+	}
+
+	result = corosync_cfg_local_get(handle, &nodeid);
+	if (result != CS_OK) {
+		printf ("Could not get the local node id, the error is: %d\n", result);
+	}
+	else {
+		printf ("Local node ID %d\n", nodeid);
 	}
 
 	result = corosync_cfg_ring_status_get (handle,

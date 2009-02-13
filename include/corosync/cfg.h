@@ -235,6 +235,10 @@ corosync_cfg_get_node_addrs (
 	int *num_addrs,
 	corosync_cfg_node_address_t *addrs);
 
+cs_error_t
+corosync_cfg_local_get (
+	corosync_cfg_handle_t handle,
+	unsigned int *local_nodeid);
 
 #ifdef __cplusplus
 }

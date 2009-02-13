@@ -52,7 +52,8 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_KILLNODE = 8,
 	MESSAGE_REQ_CFG_TRYSHUTDOWN = 9,
 	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 10,
-	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 11
+	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 11,
+	MESSAGE_REQ_CFG_LOCAL_GET = 12
 };
 
 enum res_lib_cfg_types {
@@ -67,7 +68,8 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_KILLNODE = 8,
 	MESSAGE_RES_CFG_TRYSHUTDOWN = 9,
 	MESSAGE_RES_CFG_TESTSHUTDOWN = 10,
-	MESSAGE_RES_CFG_GET_NODE_ADDRS = 11
+	MESSAGE_RES_CFG_GET_NODE_ADDRS = 11,
+	MESSAGE_RES_CFG_LOCAL_GET = 12
 };
 
 struct req_lib_cfg_statetrack {
@@ -188,6 +190,15 @@ struct res_lib_cfg_get_node_addrs {
 	unsigned int family;
 	unsigned int num_addrs;
 	char addrs[TOTEMIP_ADDRLEN][0];
+};
+
+struct req_lib_cfg_local_get {
+	mar_req_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_local_get {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
 typedef enum {
