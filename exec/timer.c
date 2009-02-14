@@ -262,3 +262,8 @@ void corosync_timer_unlock (void)
 {
 	pthread_mutex_unlock (&timer_mutex);
 }
+
+unsigned long long corosync_timer_time_get (void)
+{
+	return (timerlist_nano_from_epoch());
+}
