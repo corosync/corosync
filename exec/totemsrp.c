@@ -2608,7 +2608,6 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	orf_token.header.encapsulated = 0;
 	orf_token.header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (orf_token.header.nodeid);
-	orf_token.seq = 0;
 	orf_token.seq = SEQNO_START_MSG;
 	orf_token.token_seq = SEQNO_START_TOKEN;
 	orf_token.retrans_flg = 1;
