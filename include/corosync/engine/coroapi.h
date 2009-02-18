@@ -376,6 +376,9 @@ struct corosync_api_v1 {
 
 	unsigned long long (*timer_time_get) (void);
 
+	unsigned long long (*timer_expire_time_get) (
+		corosync_timer_handle_t timer_handle);
+
 	/*
 	 * IPC APIs
 	 */

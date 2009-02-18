@@ -172,6 +172,13 @@ static inline void timerlist_del (struct timerlist *timerlist, timer_handle time
 	free (timer);
 }
 
+static inline unsigned long long timerlist_expire_time (struct timerlist *timerlist, timer_handle timer_handle)
+{
+	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+
+	return (timer->nano_from_epoch);
+}
+
 static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
 {
 	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
@@ -215,7 +222,6 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 	if (timer_from_list->nano_from_epoch < nano_from_epoch) {
 		return (0);
 	}
-
 	
 	msec_duration_to_expire = ((timer_from_list->nano_from_epoch - nano_from_epoch) / 1000000ULL) +
 		(1000 / HZ);

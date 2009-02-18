@@ -63,4 +63,6 @@ extern void corosync_timer_unlock (void);
 
 extern unsigned long long corosync_timer_time_get (void);
 
+extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle timer_handle);
+
 #endif /* TIMER_H_DEFINED */

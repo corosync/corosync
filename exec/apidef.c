@@ -72,6 +72,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_absolute = corosync_timer_add_absolute,
 	.timer_delete = corosync_timer_delete,
 	.timer_time_get = corosync_timer_time_get,
+	.timer_expire_time_get = corosync_timer_expire_time_get,
 	.ipc_source_set = message_source_set,
 	.ipc_source_is_local = message_source_is_local,
 	.ipc_private_data_get = cs_conn_private_data_get,

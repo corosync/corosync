@@ -267,3 +267,29 @@ unsigned long long corosync_timer_time_get (void)
 {
 	return (timerlist_nano_from_epoch());
 }
+
+unsigned long long corosync_timer_expire_time_get (
+	timer_handle timer_handle)
+{
+	int unlock;
+	unsigned long long expire;
+
+	if (timer_handle == 0) {
+		return (0);
+	}
+
+	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
+
+	expire = timerlist_expire_time (&timers_timerlist, timer_handle);
+
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
+
+	return (expire);
+}
