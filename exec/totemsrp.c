@@ -1534,7 +1534,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 				sizeof (struct iovec) * recovery_message_item->iov_len);
 		} else {
 			mcast = recovery_message_item->iovec[0].iov_base;
-			if (mcast->header.encapsulated == 1) {
+			if (mcast->header.encapsulated == MESSAGE_ENCAPSULATED) {
 				/*
 				 * Message is a recovery message encapsulated
 				 * in a new ring message
