@@ -216,7 +216,7 @@ cs_error_t confdb_finalize (
 	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
 	if (!confdb_inst->standalone) {
-		cslib_service_disconnect (&confdb_inst->ipc_ctx);
+		cslib_service_disconnect (confdb_inst->ipc_ctx);
 	}
 
 	(void)saHandleDestroy (&confdb_handle_t_db, handle);
