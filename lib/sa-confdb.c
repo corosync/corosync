@@ -44,7 +44,7 @@
 #include <errno.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/ais_util.h>
+#include <corosync/coroipc.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>

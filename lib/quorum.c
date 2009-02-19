@@ -46,13 +46,12 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
-#include <corosync/ais_util.h>
+#include <corosync/coroipc.h>
 #include "corosync/quorum.h"
 #include "corosync/ipc_quorum.h"
 
 struct quorum_inst {
-	int response_fd;
-	int dispatch_fd;
+	void *ipc_ctx;
 	int finalize;
 	void *context;
 	quorum_callbacks_t callbacks;
@@ -96,9 +95,7 @@ cs_error_t quorum_initialize (
 		goto error_destroy;
 	}
 
-	error = saServiceConnect (&quorum_inst->dispatch_fd,
-				  &quorum_inst->response_fd,
-				  QUORUM_SERVICE);
+	error = cslib_service_connect (QUORUM_SERVICE, quorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -146,17 +143,12 @@ cs_error_t quorum_finalize (
 
 	quorum_inst->finalize = 1;
 
+	cslib_service_disconnect (quorum_inst->ipc_ctx);
+
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
 	(void)saHandleDestroy (&quorum_handle_t_db, handle);
 
-	/*
-	 * Disconnect from the server
-	 */
-	if (quorum_inst->response_fd != -1) {
-		shutdown(quorum_inst->response_fd, 0);
-		close(quorum_inst->response_fd);
-	}
 	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
@@ -168,7 +160,7 @@ cs_error_t quorum_getquorate (
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	mar_req_header_t req;
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
@@ -182,11 +174,15 @@ cs_error_t quorum_getquorate (
 	req.size = sizeof (req);
 	req.id = MESSAGE_REQ_QUORUM_GETQUORATE;
 
-	iov[0].iov_base = (char *)&req;
-	iov[0].iov_len = sizeof (req);
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (req);
 
-	error = saSendMsgReceiveReply (quorum_inst->response_fd, iov, 1,
-		&res_lib_quorum_getquorate, sizeof (struct res_lib_quorum_getquorate));
+       error = cslib_msg_send_reply_receive (
+		quorum_inst->ipc_ctx,
+		&iov,
+		1,
+		&res_lib_quorum_getquorate,
+		sizeof (struct res_lib_quorum_getquorate));
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
@@ -216,7 +212,7 @@ cs_error_t quorum_fd_get (
 		return (error);
 	}
 
-	*fd = quorum_inst->dispatch_fd;
+	*fd = cslib_fd_get (quorum_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
@@ -269,7 +265,7 @@ cs_error_t quorum_trackstart (
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_quorum_trackstart req_lib_quorum_trackstart;
 	mar_res_header_t res;
 
@@ -284,11 +280,15 @@ cs_error_t quorum_trackstart (
 	req_lib_quorum_trackstart.header.id = MESSAGE_REQ_QUORUM_TRACKSTART;
 	req_lib_quorum_trackstart.track_flags = flags;
 
-	iov[0].iov_base = (char *)&req_lib_quorum_trackstart;
-	iov[0].iov_len = sizeof (struct req_lib_quorum_trackstart);
+	iov.iov_base = (char *)&req_lib_quorum_trackstart;
+	iov.iov_len = sizeof (struct req_lib_quorum_trackstart);
 
-	error = saSendMsgReceiveReply (quorum_inst->response_fd, iov, 1,
-		&res, sizeof (res));
+       error = cslib_msg_send_reply_receive (
+		quorum_inst->ipc_ctx,
+                &iov,
+                1,
+                &res,
+                sizeof (res));
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
@@ -309,7 +309,7 @@ cs_error_t quorum_trackstop (
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	mar_req_header_t req;
 	mar_res_header_t res;
 
@@ -323,11 +323,15 @@ cs_error_t quorum_trackstop (
 	req.size = sizeof (req);
 	req.id = MESSAGE_REQ_QUORUM_TRACKSTOP;
 
-	iov[0].iov_base = (char *)&req;
-	iov[0].iov_len = sizeof (req);
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (req);
 
-	error = saSendMsgReceiveReply (quorum_inst->response_fd, iov, 1,
-		&res, sizeof (res));
+       error = cslib_msg_send_reply_receive (
+		quorum_inst->ipc_ctx,
+                &iov,
+                1,
+                &res,
+                sizeof (res));
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
@@ -352,7 +356,6 @@ cs_error_t quorum_dispatch (
 	quorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
 {
-	struct pollfd ufds;
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
@@ -384,16 +387,10 @@ cs_error_t quorum_dispatch (
 	}
 
 	do {
-		ufds.fd = quorum_inst->dispatch_fd;
-		ufds.events = POLLIN;
-		ufds.revents = 0;
-
 		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
 
-		error = saPollRetry (&ufds, 1, timeout);
-		if (error != CS_OK) {
-			goto error_unlock;
-		}
+		dispatch_avail = cslib_dispatch_recv (quorum_inst->ipc_ctx,
+			(void *)&dispatch_data, timeout);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -403,12 +400,6 @@ cs_error_t quorum_dispatch (
 			goto error_unlock;
 		}
 
-		if ((ufds.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
-			error = CS_ERR_BAD_HANDLE;
-			goto error_unlock;
-		}
-
-		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
 			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
@@ -416,24 +407,6 @@ cs_error_t quorum_dispatch (
 		if (dispatch_avail == 0) {
 			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 			continue; /* next poll */
-		}
-
-		if (ufds.revents & POLLIN) {
-			error = saRecvRetry (quorum_inst->dispatch_fd, &dispatch_data.header,
-				sizeof (mar_res_header_t));
-			if (error != CS_OK) {
-				goto error_unlock;
-			}
-			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
-				error = saRecvRetry (quorum_inst->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (mar_res_header_t));
-				if (error != CS_OK) {
-					goto error_unlock;
-				}
-			}
-		} else {
-			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
-			continue;
 		}
 
 		/*
@@ -456,10 +429,10 @@ cs_error_t quorum_dispatch (
 			res_lib_quorum_notification = (struct res_lib_quorum_notification *)&dispatch_data;
 
 			callbacks.quorum_notify_fn ( handle,
-						     res_lib_quorum_notification->quorate,
-						     res_lib_quorum_notification->ring_seq,
-						     res_lib_quorum_notification->view_list_entries,
-						     res_lib_quorum_notification->view_list);
+				res_lib_quorum_notification->quorate,
+				res_lib_quorum_notification->ring_seq,
+				res_lib_quorum_notification->view_list_entries,
+				res_lib_quorum_notification->view_list);
 			break;
 
 		default:

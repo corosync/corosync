@@ -51,8 +51,6 @@ void evs_deliver_fn (
 {
 	char *buf = msg;
 
-//	buf += 100000;
-//	printf ("Delivery callback\n");
 	printf ("API '%s' msg '%s'\n", delivery_string, buf);
 	deliveries++;
 }
@@ -91,7 +89,7 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[200000];
+char buffer[2000];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)

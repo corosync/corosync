@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -57,6 +58,21 @@ enum req_init_types {
 	MESSAGE_REQ_DISPATCH_INIT = 1
 };
 
+#define MESSAGE_REQ_CHANGE_EUID		1
+#define MESSAGE_REQ_OUTQ_FLUSH		2
+
+#define REQ_SIZE			1000000
+#define RES_SIZE			1000000
+#define DISPATCH_SIZE			1000000
+
+struct shared_memory {
+	unsigned char req_buffer[REQ_SIZE];
+	unsigned char res_buffer[RES_SIZE];
+	unsigned char dispatch_buffer[DISPATCH_SIZE];
+	unsigned int read;
+	unsigned int write;
+};
+
 enum res_init_types {
 	MESSAGE_RES_INIT
 };
@@ -65,6 +81,16 @@ typedef struct {
 	int size __attribute__((aligned(8)));
 	int id __attribute__((aligned(8)));
 } mar_req_header_t __attribute__((aligned(8)));
+
+typedef struct {
+	int service __attribute__((aligned(8)));
+	unsigned long long shmkey __attribute__((aligned(8)));
+	unsigned long long semkey __attribute__((aligned(8)));
+} mar_req_setup_t __attribute__((aligned(8)));
+
+typedef struct {
+	int error __attribute__((aligned(8)));
+} mar_res_setup_t __attribute__((aligned(8)));
 
 static inline void swab_mar_req_header_t (mar_req_header_t *to_swab)
 {
@@ -79,19 +105,9 @@ typedef struct {
 } mar_res_header_t __attribute__((aligned(8)));
 
 typedef struct {
-	int size __attribute__((aligned(8)));
-	int id __attribute__((aligned(8)));
-	int service __attribute__((aligned(8)));
-} mar_req_lib_resdis_init_t __attribute__((aligned(8)));
-
-typedef struct {
-	mar_req_lib_resdis_init_t resdis_header __attribute__((aligned(8)));
-} mar_req_lib_response_init_t __attribute__((aligned(8)));
-
-typedef struct {
-	mar_req_lib_resdis_init_t resdis_header __attribute__((aligned(8)));
-	mar_uint64_t conn_info __attribute__((aligned(8)));
-} mar_req_lib_dispatch_init_t __attribute__((aligned(8)));
+        uid_t euid __attribute__((aligned(8)));
+        gid_t egid __attribute__((aligned(8)));
+} mar_req_priv_change __attribute__((aligned(8)));
 
 typedef struct {
 	mar_res_header_t header __attribute__((aligned(8)));

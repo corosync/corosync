@@ -1,4 +1,4 @@
-#define _BSD_SOURCE
+#include <assert.h>
 /*
  * Copyright (c) 2006 Red Hat, Inc.
  *
@@ -156,10 +156,11 @@ static struct cpg_name group_name = {
 
 int main (void) {
 	cpg_handle_t handle;
-	unsigned int size = 1;
+	unsigned int size;
 	int i;
 	unsigned int res;
 	
+	size = 1000;
 	signal (SIGALRM, sigalrm_handler);
 	res = cpg_initialize (&handle, &callbacks);
 	if (res != CS_OK) {

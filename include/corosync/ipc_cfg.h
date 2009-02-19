@@ -171,8 +171,12 @@ struct res_lib_cfg_tryshutdown {
 };
 
 struct req_lib_cfg_replytoshutdown {
-	mar_res_header_t header __attribute__((aligned(8)));
+	mar_req_header_t header __attribute__((aligned(8)));
 	unsigned int response;
+};
+
+struct res_lib_cfg_replytoshutdown {
+	mar_res_header_t header __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_testshutdown {

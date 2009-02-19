@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -242,7 +242,7 @@ static void evs_confchg_fn (
 	 */
 	for (list = confchg_notify.next; list != &confchg_notify; list = list->next) {
 		evs_pd = list_entry (list, struct evs_pd, list);
-		api->ipc_conn_send_response (evs_pd->conn,
+		api->ipc_response_send (evs_pd->conn,
 			&res_evs_confchg_callback,
 			sizeof (res_evs_confchg_callback));
 	}
@@ -260,7 +260,7 @@ static int evs_lib_init_fn (void *conn)
 	list_init (&evs_pd->list);
 	list_add (&evs_pd->list, &confchg_notify);
 
-	api->ipc_conn_send_response (conn, &res_evs_confchg_callback,
+	api->ipc_response_send (conn, &res_evs_confchg_callback,
 		sizeof (res_evs_confchg_callback));
 
 	return (0);
@@ -306,7 +306,7 @@ exit_error:
 	res_lib_evs_join.header.id = MESSAGE_RES_EVS_JOIN;
 	res_lib_evs_join.header.error = error;
 
-	api->ipc_conn_send_response (conn, &res_lib_evs_join,
+	api->ipc_response_send (conn, &res_lib_evs_join,
 		sizeof (struct res_lib_evs_join));
 }
 
@@ -352,7 +352,7 @@ static void message_handler_req_evs_leave (void *conn, void *msg)
 	res_lib_evs_leave.header.id = MESSAGE_RES_EVS_LEAVE;
 	res_lib_evs_leave.header.error = error;
 
-	api->ipc_conn_send_response (conn, &res_lib_evs_leave,
+	api->ipc_response_send (conn, &res_lib_evs_leave,
 		sizeof (struct res_lib_evs_leave));
 }
 
@@ -395,7 +395,7 @@ static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 	res_lib_evs_mcast_joined.header.id = MESSAGE_RES_EVS_MCAST_JOINED;
 	res_lib_evs_mcast_joined.header.error = error;
 
-	api->ipc_conn_send_response (conn, &res_lib_evs_mcast_joined,
+	api->ipc_response_send (conn, &res_lib_evs_mcast_joined,
 		sizeof (struct res_lib_evs_mcast_joined));
 }
 
@@ -441,7 +441,7 @@ static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 	res_lib_evs_mcast_groups.header.id = MESSAGE_RES_EVS_MCAST_GROUPS;
 	res_lib_evs_mcast_groups.header.error = error;
 
-	api->ipc_conn_send_response (conn, &res_lib_evs_mcast_groups,
+	api->ipc_response_send (conn, &res_lib_evs_mcast_groups,
 		sizeof (struct res_lib_evs_mcast_groups));
 }
 
@@ -460,7 +460,7 @@ static void message_handler_req_evs_membership_get (void *conn, void *msg)
 	res_lib_evs_membership_get.member_list_entries =
 		res_evs_confchg_callback.member_list_entries;
 
-	api->ipc_conn_send_response (conn, &res_lib_evs_membership_get,
+	api->ipc_response_send (conn, &res_lib_evs_membership_get,
 		sizeof (struct res_lib_evs_membership_get));
 }
 
@@ -484,6 +484,7 @@ static void message_handler_req_exec_mcast (
 	int found = 0;
 	int i, j;
 	struct evs_pd *evs_pd;
+	struct iovec iov[2];
 
 	res_evs_deliver_callback.header.size = sizeof (struct res_evs_deliver_callback) +
 		req_exec_evs_mcast->msg_len;
@@ -515,10 +516,15 @@ static void message_handler_req_exec_mcast (
 
 		if (found) {
 			res_evs_deliver_callback.local_nodeid = nodeid;
-			api->ipc_conn_send_response (evs_pd->conn, &res_evs_deliver_callback,
-				sizeof (struct res_evs_deliver_callback));
-			api->ipc_conn_send_response (evs_pd->conn, msg_addr,
-				req_exec_evs_mcast->msg_len);
+			iov[0].iov_base = &res_evs_deliver_callback;
+			iov[0].iov_len = sizeof (struct res_evs_deliver_callback);
+			iov[1].iov_base = msg_addr;
+			iov[1].iov_len = req_exec_evs_mcast->msg_len;
+
+			api->ipc_dispatch_iov_send (
+				evs_pd->conn,
+				iov,
+				2);
 		}
 	}
 }

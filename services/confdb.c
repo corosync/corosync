@@ -278,10 +278,10 @@ static int confdb_lib_exit_fn (void *conn)
 	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 	/* cleanup the object trackers for this client. */
 	api->object_track_stop(confdb_notify_lib_of_key_change,
-						   confdb_notify_lib_of_new_object,
-						   confdb_notify_lib_of_destroyed_object,
-						   NULL,
-						   api->ipc_conn_partner_get (conn));
+		confdb_notify_lib_of_new_object,
+		confdb_notify_lib_of_destroyed_object,
+		NULL,
+		conn);
 	return (0);
 }
 
@@ -302,7 +302,7 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 	res_lib_confdb_object_create.header.size = sizeof(res_lib_confdb_object_create);
 	res_lib_confdb_object_create.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
 	res_lib_confdb_object_create.header.error = ret;
-	api->ipc_conn_send_response(conn, &res_lib_confdb_object_create, sizeof(res_lib_confdb_object_create));
+	api->ipc_response_send(conn, &res_lib_confdb_object_create, sizeof(res_lib_confdb_object_create));
 }
 
 static void message_handler_req_lib_confdb_object_destroy (void *conn, void *message)
@@ -317,7 +317,7 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_OBJECT_DESTROY;
 	res.error = ret;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void *message)
@@ -332,7 +332,7 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY;
 	res.error = ret;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 
@@ -352,7 +352,7 @@ static void message_handler_req_lib_confdb_key_create (void *conn, void *message
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_CREATE;
 	res.error = ret;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
@@ -377,7 +377,7 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	res_lib_confdb_key_get.header.size = sizeof(res_lib_confdb_key_get);
 	res_lib_confdb_key_get.header.id = MESSAGE_RES_CONFDB_KEY_GET;
 	res_lib_confdb_key_get.header.error = ret;
-	api->ipc_conn_send_response(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
+	api->ipc_response_send(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
 }
 
 static void message_handler_req_lib_confdb_key_increment (void *conn, void *message)
@@ -395,7 +395,7 @@ static void message_handler_req_lib_confdb_key_increment (void *conn, void *mess
 	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
 	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_INCREMENT;
 	res_lib_confdb_key_incdec.header.error = ret;
-	api->ipc_conn_send_response(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
+	api->ipc_response_send(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
 }
 
 static void message_handler_req_lib_confdb_key_decrement (void *conn, void *message)
@@ -413,7 +413,7 @@ static void message_handler_req_lib_confdb_key_decrement (void *conn, void *mess
 	res_lib_confdb_key_incdec.header.size = sizeof(res_lib_confdb_key_incdec);
 	res_lib_confdb_key_incdec.header.id = MESSAGE_RES_CONFDB_KEY_DECREMENT;
 	res_lib_confdb_key_incdec.header.error = ret;
-	api->ipc_conn_send_response(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
+	api->ipc_response_send(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
 }
 
 static void message_handler_req_lib_confdb_key_replace (void *conn, void *message)
@@ -434,7 +434,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_REPLACE;
 	res.error = ret;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_key_delete (void *conn, void *message)
@@ -453,7 +453,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_KEY_DELETE;
 	res.error = ret;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message)
@@ -471,7 +471,7 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 	res_lib_confdb_object_parent_get.header.size = sizeof(res_lib_confdb_object_parent_get);
 	res_lib_confdb_object_parent_get.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
 	res_lib_confdb_object_parent_get.header.error = ret;
-	api->ipc_conn_send_response(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
+	api->ipc_response_send(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
 }
 
 
@@ -502,7 +502,7 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 	res_lib_confdb_key_iter.header.id = MESSAGE_RES_CONFDB_KEY_ITER;
 	res_lib_confdb_key_iter.header.error = ret;
 
-	api->ipc_conn_send_response(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
+	api->ipc_response_send(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
 }
 
 static void message_handler_req_lib_confdb_object_iter (void *conn, void *message)
@@ -536,7 +536,7 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 	res_lib_confdb_object_iter.header.id = MESSAGE_RES_CONFDB_OBJECT_ITER;
 	res_lib_confdb_object_iter.header.error = ret;
 
-	api->ipc_conn_send_response(conn, &res_lib_confdb_object_iter, sizeof(res_lib_confdb_object_iter));
+	api->ipc_response_send(conn, &res_lib_confdb_object_iter, sizeof(res_lib_confdb_object_iter));
 }
 
 static void message_handler_req_lib_confdb_object_find (void *conn, void *message)
@@ -565,7 +565,7 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	res_lib_confdb_object_find.header.error = ret;
 
 
-	api->ipc_conn_send_response(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
+	api->ipc_response_send(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
 }
 
 static void message_handler_req_lib_confdb_write (void *conn, void *message)
@@ -586,7 +586,7 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	} else
 		res_lib_confdb_write.error.length = 0;
 
-	api->ipc_conn_send_response(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
+	api->ipc_response_send(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
 }
 
 static void message_handler_req_lib_confdb_reload (void *conn, void *message)
@@ -609,7 +609,7 @@ static void message_handler_req_lib_confdb_reload (void *conn, void *message)
 	} else
 		res_lib_confdb_reload.error.length = 0;
 
-	api->ipc_conn_send_response(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
+	api->ipc_response_send(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
@@ -639,7 +639,7 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	memcpy(res.key_value.value, key_value_pt, key_value_len);
 	res.key_value.length = key_value_len;
 
-	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
@@ -657,7 +657,7 @@ static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_handle,
@@ -673,7 +673,7 @@ static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_han
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_conn_send_response(priv_data_pt, &res, sizeof(res));
+	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
 
@@ -682,16 +682,17 @@ static void message_handler_req_lib_confdb_track_start (void *conn, void *messag
 	struct req_lib_confdb_object_track_start *req = (struct req_lib_confdb_object_track_start *)message;
 	mar_res_header_t res;
 
-	api->object_track_start(req->object_handle,	req->flags,
-							confdb_notify_lib_of_key_change,
-							confdb_notify_lib_of_new_object,
-							confdb_notify_lib_of_destroyed_object,
-							NULL,
-							api->ipc_conn_partner_get (conn));
+	api->object_track_start(req->object_handle,
+		req->flags,
+		confdb_notify_lib_of_key_change,
+		confdb_notify_lib_of_new_object,
+		confdb_notify_lib_of_destroyed_object,
+		NULL,
+		conn);
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
 	res.error = CS_OK;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message)
@@ -699,15 +700,15 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	mar_res_header_t res;
 
 	api->object_track_stop(confdb_notify_lib_of_key_change,
-						   confdb_notify_lib_of_new_object,
-						   confdb_notify_lib_of_destroyed_object,
-						   NULL,
-						   api->ipc_conn_partner_get (conn));
+		confdb_notify_lib_of_new_object,
+		confdb_notify_lib_of_destroyed_object,
+		NULL,
+		conn);
 
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_STOP;
 	res.error = CS_OK;
-	api->ipc_conn_send_response(conn, &res, sizeof(res));
+	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
 

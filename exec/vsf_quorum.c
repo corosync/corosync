@@ -375,7 +375,7 @@ static void send_library_notification(void *conn)
 
 	/* Send it to all interested parties */
 	if (conn) {
-		corosync_api->ipc_conn_send_response(conn, res_lib_quorum_notification, size);
+		corosync_api->ipc_response_send(conn, res_lib_quorum_notification, size);
 	}
 	else {
 		struct quorum_pd *qpd;
@@ -384,8 +384,8 @@ static void send_library_notification(void *conn)
 
 			qpd = list_entry(tmp, struct quorum_pd, list);
 
-			corosync_api->ipc_conn_send_response(corosync_api->ipc_conn_partner_get(qpd->conn),
-							     res_lib_quorum_notification, size);
+			corosync_api->ipc_dispatch_send(qpd->conn,
+			     res_lib_quorum_notification, size);
 		}
 	}
 	return;
@@ -402,7 +402,7 @@ static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg)
 	res_lib_quorum_getquorate.header.size = sizeof(res_lib_quorum_getquorate);
 	res_lib_quorum_getquorate.header.id = MESSAGE_RES_QUORUM_GETQUORATE;
 	res_lib_quorum_getquorate.header.error = CS_OK;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_quorum_getquorate, sizeof(res_lib_quorum_getquorate));
+	corosync_api->ipc_response_send(conn, &res_lib_quorum_getquorate, sizeof(res_lib_quorum_getquorate));
 }
 
 
@@ -421,7 +421,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOG_LEVEL_DEBUG, "sending initial status to %p\n", conn);
-		send_library_notification(corosync_api->ipc_conn_partner_get (conn));
+		send_library_notification(conn);
 	}
 
 	/*
@@ -440,7 +440,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTART;
 	res.error = CS_OK;
-	corosync_api->ipc_conn_send_response(conn, &res, sizeof(mar_res_header_t));
+	corosync_api->ipc_response_send(conn, &res, sizeof(mar_res_header_t));
 }
 
 static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg)
@@ -463,6 +463,6 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg)
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTOP;
 	res.error = CS_OK;
-	corosync_api->ipc_conn_send_response(conn, &res, sizeof(mar_res_header_t));
+	corosync_api->ipc_response_send(conn, &res, sizeof(mar_res_header_t));
 }
 

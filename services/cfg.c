@@ -398,14 +398,14 @@ static void send_test_shutdown(void * conn, int status)
 
 	if (conn) {
 		TRACE1("sending testshutdown to %p", conn);
-		api->ipc_conn_send_response(conn, &res_lib_cfg_testshutdown,
+		api->ipc_response_send(conn, &res_lib_cfg_testshutdown,
 					    sizeof(res_lib_cfg_testshutdown));
 	} else {
 		for (iter = trackers_list.next; iter != &trackers_list; iter = iter->next) {
 			struct cfg_info *ci = list_entry(iter, struct cfg_info, list);
 
 			TRACE1("sending testshutdown to %p", ci->tracker_conn);
-			api->ipc_conn_send_response(ci->tracker_conn, &res_lib_cfg_testshutdown,
+			api->ipc_dispatch_send(ci->tracker_conn, &res_lib_cfg_testshutdown,
 						    sizeof(res_lib_cfg_testshutdown));
 		}
 	}
@@ -448,7 +448,7 @@ static void check_shutdown_status()
 			/*
 			 * Tell originator that shutdown was confirmed
 			 */
-			api->ipc_conn_send_response(shutdown_con->conn, &res_lib_cfg_tryshutdown,
+			api->ipc_response_send(shutdown_con->conn, &res_lib_cfg_tryshutdown,
 						    sizeof(res_lib_cfg_tryshutdown));
 			shutdown_con = NULL;
 		}
@@ -462,7 +462,7 @@ static void check_shutdown_status()
 			/*
 			 * Tell originator that shutdown was cancelled
 			 */
-			api->ipc_conn_send_response(shutdown_con->conn, &res_lib_cfg_tryshutdown,
+			api->ipc_response_send(shutdown_con->conn, &res_lib_cfg_tryshutdown,
 						    sizeof(res_lib_cfg_tryshutdown));
 			shutdown_con = NULL;
 		}
@@ -570,7 +570,7 @@ static void message_handler_req_exec_cfg_ringreenable (
 		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
 		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
 		res_lib_cfg_ringreenable.header.error = CS_OK;
-		api->ipc_conn_send_response (
+		api->ipc_response_send (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
@@ -660,7 +660,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
 			totem_ip_string);
 	}
-	api->ipc_conn_send_response (
+	api->ipc_response_send (
 		conn,
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget));
@@ -705,7 +705,7 @@ static void message_handler_req_lib_cfg_statetrack (
 	 */
 	if (list_empty(&ci->list)) {
 		list_add(&ci->list, &trackers_list);
-		ci->tracker_conn = api->ipc_conn_partner_get (conn);
+		ci->tracker_conn = conn;
 
 		if (shutdown_con) {
 			/*
@@ -713,7 +713,7 @@ static void message_handler_req_lib_cfg_statetrack (
 			 */
 			ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
 			shutdown_expected++;
-			send_test_shutdown(ci->tracker_conn, CS_OK);
+			send_test_shutdown(conn, CS_OK);
 		}
 	}
 
@@ -721,7 +721,7 @@ static void message_handler_req_lib_cfg_statetrack (
 	res_lib_cfg_statetrack.header.id = MESSAGE_RES_CFG_STATETRACKSTART;
 	res_lib_cfg_statetrack.header.error = CS_OK;
 
-	api->ipc_conn_send_response(conn, &res_lib_cfg_statetrack,
+	api->ipc_response_send(conn, &res_lib_cfg_statetrack,
 				    sizeof(res_lib_cfg_statetrack));
 
 	LEAVE();
@@ -774,7 +774,7 @@ static void message_handler_req_lib_cfg_serviceload (
 	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
 	res_lib_cfg_serviceload.header.error = CS_OK;
-	api->ipc_conn_send_response (
+	api->ipc_response_send (
 		conn,
 		&res_lib_cfg_serviceload,
 		sizeof (struct res_lib_cfg_serviceload));
@@ -797,7 +797,7 @@ static void message_handler_req_lib_cfg_serviceunload (
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
 	res_lib_cfg_serviceunload.header.error = CS_OK;
-	api->ipc_conn_send_response (
+	api->ipc_response_send (
 		conn,
 		&res_lib_cfg_serviceunload,
 		sizeof (struct res_lib_cfg_serviceunload));
@@ -832,7 +832,7 @@ static void message_handler_req_lib_cfg_killnode (
 	res_lib_cfg_killnode.header.id = MESSAGE_RES_CFG_KILLNODE;
 	res_lib_cfg_killnode.header.error = CS_OK;
 
-	api->ipc_conn_send_response(conn, &res_lib_cfg_killnode,
+	api->ipc_response_send(conn, &res_lib_cfg_killnode,
 				    sizeof(res_lib_cfg_killnode));
 
 	LEAVE();
@@ -860,7 +860,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
 		res_lib_cfg_tryshutdown.header.error = CS_OK;
-		api->ipc_conn_send_response(conn, &res_lib_cfg_tryshutdown,
+		api->ipc_response_send(conn, &res_lib_cfg_tryshutdown,
 					    sizeof(res_lib_cfg_tryshutdown));
 
 		LEAVE();
@@ -877,7 +877,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
 		res_lib_cfg_tryshutdown.header.error = CS_ERR_EXIST;
 
-		api->ipc_conn_send_response(conn, &res_lib_cfg_tryshutdown,
+		api->ipc_response_send(conn, &res_lib_cfg_tryshutdown,
 					    sizeof(res_lib_cfg_tryshutdown));
 
 
@@ -1009,7 +1009,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
 	else {
 		res_lib_cfg_get_node_addrs->header.error = CS_ERR_NOT_EXIST;
 	}
-	api->ipc_conn_send_response(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
+	api->ipc_response_send(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
 }
 
 static void message_handler_req_lib_cfg_local_get (void *conn, void *message)
@@ -1021,6 +1021,6 @@ static void message_handler_req_lib_cfg_local_get (void *conn, void *message)
 	res_lib_cfg_local_get.header.error = CS_OK;
 	res_lib_cfg_local_get.local_nodeid = api->totem_nodeid_get ();
 
-	api->ipc_conn_send_response(conn, &res_lib_cfg_local_get,
+	api->ipc_response_send(conn, &res_lib_cfg_local_get,
 		sizeof(res_lib_cfg_local_get));
 }

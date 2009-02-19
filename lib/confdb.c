@@ -46,7 +46,7 @@
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
 #include <corosync/mar_gen.h>
-#include <corosync/ais_util.h>
+#include <corosync/coroipc.h>
 #include <corosync/list.h>
 
 #include "sa-confdb.h"
@@ -62,8 +62,7 @@ struct iter_context {
 };
 
 struct confdb_inst {
-	int response_fd;
-	int dispatch_fd;
+	void *ipc_ctx;
 	int finalize;
 	int standalone;
 	confdb_callbacks_t callbacks;
@@ -159,9 +158,7 @@ cs_error_t confdb_initialize (
 		confdb_inst->standalone = 1;
 	}
 	else {
-		error = saServiceConnect (&confdb_inst->dispatch_fd,
-					  &confdb_inst->response_fd,
-					  CONFDB_SERVICE);
+		error = cslib_service_connect (CONFDB_SERVICE, &confdb_inst->ipc_ctx);
 	}
 	if (error != CS_OK)
 		goto error_put_destroy;
@@ -213,6 +210,10 @@ cs_error_t confdb_finalize (
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
+	if (!confdb_inst->standalone) {
+		cslib_service_disconnect (&confdb_inst->ipc_ctx);
+	}
+
 	(void)saHandleDestroy (&confdb_handle_t_db, handle);
 
 	/* Free saved context handles */
@@ -220,19 +221,6 @@ cs_error_t confdb_finalize (
 	free_context_list(confdb_inst, &confdb_inst->object_iter_head);
 	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
-	if (!confdb_inst->standalone) {
-		/*
-		 * Disconnect from the server
-		 */
-		if (confdb_inst->response_fd != -1) {
-			shutdown(confdb_inst->response_fd, 0);
-			close(confdb_inst->response_fd);
-		}
-		if (confdb_inst->dispatch_fd != -1) {
-			shutdown(confdb_inst->dispatch_fd, 0);
-			close(confdb_inst->dispatch_fd);
-		}
-	}
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
@@ -250,7 +238,7 @@ cs_error_t confdb_fd_get (
 		return (error);
 	}
 
-	*fd = confdb_inst->dispatch_fd;
+	*fd = cslib_fd_get (confdb_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -323,7 +311,7 @@ cs_error_t confdb_dispatch (
 
 	if (confdb_inst->standalone) {
 		error = CS_ERR_NOT_SUPPORTED;
-		goto error_unlock;
+		goto error_put;
 	}
 
 	/*
@@ -335,24 +323,11 @@ cs_error_t confdb_dispatch (
 	}
 
 	do {
-		ufds.fd = confdb_inst->dispatch_fd;
-		ufds.events = POLLIN;
-		ufds.revents = 0;
-
-		error = saPollRetry (&ufds, 1, timeout);
-		if (error != CS_OK) {
-			goto error_nounlock;
-		}
-
 		pthread_mutex_lock (&confdb_inst->dispatch_mutex);
 
-		/*
-		 * Regather poll data in case ufds has changed since taking lock
-		 */
-		error = saPollRetry (&ufds, 1, timeout);
-		if (error != CS_OK) {
-			goto error_nounlock;
-		}
+		dispatch_avail = cslib_dispatch_recv (confdb_inst->ipc_ctx,
+			(void *)&dispatch_data, timeout);
+
 
 		/*
 		 * Handle has been finalized in another thread
@@ -360,39 +335,15 @@ cs_error_t confdb_dispatch (
 		if (confdb_inst->finalize == 1) {
 			error = CS_OK;
 			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
-			goto error_unlock;
+			goto error_put;
 		}
 
 		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatch_types == CONFDB_DISPATCH_ALL) {
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 			continue; /* next poll */
-		}
-
-		if (ufds.revents & POLLIN) {
-			/*
-			 * Queue empty, read response from socket
-			 */
-			error = saRecvRetry (confdb_inst->dispatch_fd, &dispatch_data.header,
-				sizeof (mar_res_header_t));
-			if (error != CS_OK) {
-				goto error_unlock;
-			}
-			if (dispatch_data.header.size > sizeof (mar_res_header_t)) {
-				error = saRecvRetry (confdb_inst->dispatch_fd, &dispatch_data.data,
-					dispatch_data.header.size - sizeof (mar_res_header_t));
-
-				if (error != CS_OK) {
-					goto error_unlock;
-				}
-			}
-		} else {
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
-			continue;
 		}
 
 		/*
@@ -403,6 +354,7 @@ cs_error_t confdb_dispatch (
 		memcpy (&callbacks, &confdb_inst->callbacks, sizeof (confdb_callbacks_t));
 
 		pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
+
 		/*
 		 * Dispatch incoming message
 		 */
@@ -443,7 +395,7 @@ cs_error_t confdb_dispatch (
 
 			default:
 				error = CS_ERR_LIBRARY;
-				goto error_nounlock;
+				goto error_noput;
 				break;
 		}
 
@@ -461,9 +413,9 @@ cs_error_t confdb_dispatch (
 		}
 	} while (cont);
 
-error_unlock:
+error_put:
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
-error_nounlock:
+error_noput:
 	return (error);
 }
 
@@ -476,7 +428,7 @@ cs_error_t confdb_object_create (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_object_create req_lib_confdb_object_create;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
 
@@ -501,13 +453,17 @@ cs_error_t confdb_object_create (
 	memcpy(req_lib_confdb_object_create.object_name.value, object_name, object_name_len);
 	req_lib_confdb_object_create.object_name.length = object_name_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_create;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_create);
+	iov.iov_base = (char *)&req_lib_confdb_object_create;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_create);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_object_create, sizeof (struct res_lib_confdb_object_create));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_object_create,
+		sizeof (struct res_lib_confdb_object_create));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -529,7 +485,7 @@ cs_error_t confdb_object_destroy (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_object_destroy req_lib_confdb_object_destroy;
 	mar_res_header_t res;
 
@@ -550,13 +506,17 @@ cs_error_t confdb_object_destroy (
 	req_lib_confdb_object_destroy.header.id = MESSAGE_REQ_CONFDB_OBJECT_DESTROY;
 	req_lib_confdb_object_destroy.object_handle = object_handle;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_destroy;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_destroy);
+	iov.iov_base = (char *)&req_lib_confdb_object_destroy;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_destroy);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof ( mar_res_header_t));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -578,7 +538,7 @@ cs_error_t confdb_object_parent_get (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_object_parent_get req_lib_confdb_object_parent_get;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
 
@@ -599,13 +559,17 @@ cs_error_t confdb_object_parent_get (
 	req_lib_confdb_object_parent_get.header.id = MESSAGE_REQ_CONFDB_OBJECT_PARENT_GET;
 	req_lib_confdb_object_parent_get.object_handle = object_handle;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_parent_get;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_parent_get);
+	iov.iov_base = (char *)&req_lib_confdb_object_parent_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_parent_get);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_object_parent_get, sizeof (struct res_lib_confdb_object_parent_get));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_object_parent_get,
+		sizeof (struct res_lib_confdb_object_parent_get));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -626,7 +590,7 @@ static cs_error_t do_find_destroy(
 	unsigned int find_handle)
 {
 	cs_error_t error;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_object_find_destroy req_lib_confdb_object_find_destroy;
 	mar_res_header_t res;
 
@@ -645,13 +609,17 @@ static cs_error_t do_find_destroy(
 	req_lib_confdb_object_find_destroy.header.id = MESSAGE_REQ_CONFDB_OBJECT_FIND_DESTROY;
 	req_lib_confdb_object_find_destroy.find_handle = find_handle;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_find_destroy;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
+	iov.iov_base = (char *)&req_lib_confdb_object_find_destroy;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof (mar_res_header_t));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -724,7 +692,7 @@ cs_error_t confdb_key_create (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_create req_lib_confdb_key_create;
 	mar_res_header_t res;
 
@@ -751,13 +719,17 @@ cs_error_t confdb_key_create (
 	memcpy(req_lib_confdb_key_create.value.value, value, value_len);
 	req_lib_confdb_key_create.value.length = value_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_create;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_create);
+	iov.iov_base = (char *)&req_lib_confdb_key_create;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_create);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof (res));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -782,7 +754,7 @@ cs_error_t confdb_key_delete (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
 	mar_res_header_t res;
 
@@ -809,13 +781,17 @@ cs_error_t confdb_key_delete (
 	memcpy(req_lib_confdb_key_delete.value.value, value, value_len);
 	req_lib_confdb_key_delete.value.length = value_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_delete;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_delete);
+	iov.iov_base = (char *)&req_lib_confdb_key_delete;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_delete);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof (res));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -840,7 +816,7 @@ cs_error_t confdb_key_get (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_get res_lib_confdb_key_get;
 
@@ -865,13 +841,17 @@ cs_error_t confdb_key_get (
 	memcpy(req_lib_confdb_key_get.key_name.value, key_name, key_name_len);
 	req_lib_confdb_key_get.key_name.length = key_name_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_get;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_get);
+	iov.iov_base = (char *)&req_lib_confdb_key_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_key_get, sizeof (struct res_lib_confdb_key_get));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_key_get,
+		sizeof (struct res_lib_confdb_key_get));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -899,7 +879,7 @@ cs_error_t confdb_key_increment (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
@@ -924,13 +904,17 @@ cs_error_t confdb_key_increment (
 	memcpy(req_lib_confdb_key_get.key_name.value, key_name, key_name_len);
 	req_lib_confdb_key_get.key_name.length = key_name_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_get;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_get);
+	iov.iov_base = (char *)&req_lib_confdb_key_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_key_incdec, sizeof (struct res_lib_confdb_key_incdec));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_key_incdec,
+		sizeof (struct res_lib_confdb_key_incdec));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -957,7 +941,7 @@ cs_error_t confdb_key_decrement (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
@@ -982,13 +966,17 @@ cs_error_t confdb_key_decrement (
 	memcpy(req_lib_confdb_key_get.key_name.value, key_name, key_name_len);
 	req_lib_confdb_key_get.key_name.length = key_name_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_get;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_get);
+	iov.iov_base = (char *)&req_lib_confdb_key_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_key_incdec, sizeof (struct res_lib_confdb_key_incdec));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_key_incdec,
+		sizeof (struct res_lib_confdb_key_incdec));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1018,7 +1006,7 @@ cs_error_t confdb_key_replace (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
 	mar_res_header_t res;
 
@@ -1047,13 +1035,17 @@ cs_error_t confdb_key_replace (
 	memcpy(req_lib_confdb_key_replace.new_value.value, new_value, new_value_len);
 	req_lib_confdb_key_replace.new_value.length = new_value_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_replace;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_replace);
+	iov.iov_base = (char *)&req_lib_confdb_key_replace;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_replace);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof (res));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (res));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1183,7 +1175,7 @@ cs_error_t confdb_object_find (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct iter_context *context;
 	struct req_lib_confdb_object_find req_lib_confdb_object_find;
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
@@ -1219,13 +1211,17 @@ cs_error_t confdb_object_find (
 	memcpy(req_lib_confdb_object_find.object_name.value, object_name, object_name_len);
 	req_lib_confdb_object_find.object_name.length = object_name_len;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_find;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_find);
+	iov.iov_base = (char *)&req_lib_confdb_object_find;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_find);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_object_find, sizeof (struct res_lib_confdb_object_find));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_object_find,
+		sizeof (struct res_lib_confdb_object_find));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1252,7 +1248,7 @@ cs_error_t confdb_object_iter (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct iter_context *context;
 	struct req_lib_confdb_object_iter req_lib_confdb_object_iter;
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
@@ -1287,13 +1283,17 @@ cs_error_t confdb_object_iter (
 	req_lib_confdb_object_iter.parent_object_handle = parent_object_handle;
 	req_lib_confdb_object_iter.find_handle = context->find_handle;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_object_iter;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_iter);
+	iov.iov_base = (char *)&req_lib_confdb_object_iter;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_iter);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_object_iter, sizeof (struct res_lib_confdb_object_iter));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_object_iter,
+		sizeof (struct res_lib_confdb_object_iter));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1325,7 +1325,7 @@ cs_error_t confdb_key_iter (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct iter_context *context;
 	struct req_lib_confdb_key_iter req_lib_confdb_key_iter;
 	struct res_lib_confdb_key_iter res_lib_confdb_key_iter;
@@ -1358,13 +1358,17 @@ cs_error_t confdb_key_iter (
 	req_lib_confdb_key_iter.parent_object_handle = parent_object_handle;
 	req_lib_confdb_key_iter.next_entry= context->next_entry;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_key_iter;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_key_iter);
+	iov.iov_base = (char *)&req_lib_confdb_key_iter;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res_lib_confdb_key_iter, sizeof (struct res_lib_confdb_key_iter));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_key_iter,
+		sizeof (struct res_lib_confdb_key_iter));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1394,7 +1398,7 @@ cs_error_t confdb_write (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	mar_req_header_t req;
 	struct res_lib_confdb_write res_lib_confdb_write;
 
@@ -1414,13 +1418,17 @@ cs_error_t confdb_write (
 	req.size = sizeof (mar_req_header_t);
 	req.id = MESSAGE_REQ_CONFDB_WRITE;
 
-	iov[0].iov_base = (char *)&req;
-	iov[0].iov_len = sizeof (mar_req_header_t);
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (mar_req_header_t);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-				       &res_lib_confdb_write, sizeof ( struct res_lib_confdb_write));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_write,
+		sizeof (struct res_lib_confdb_write));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1444,7 +1452,7 @@ cs_error_t confdb_reload (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct res_lib_confdb_reload res_lib_confdb_reload;
 	struct req_lib_confdb_reload req_lib_confdb_reload;
 
@@ -1465,13 +1473,17 @@ cs_error_t confdb_reload (
 	req_lib_confdb_reload.header.id = MESSAGE_REQ_CONFDB_RELOAD;
 	req_lib_confdb_reload.flush = flush;
 
-	iov[0].iov_base = (char *)&req_lib_confdb_reload;
-	iov[0].iov_len = sizeof (req_lib_confdb_reload);
+	iov.iov_base = (char *)&req_lib_confdb_reload;
+	iov.iov_len = sizeof (req_lib_confdb_reload);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-				       &res_lib_confdb_reload, sizeof (struct res_lib_confdb_reload));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res_lib_confdb_reload,
+		sizeof (struct res_lib_confdb_reload));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
@@ -1496,7 +1508,7 @@ cs_error_t confdb_track_changes (
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	struct req_lib_confdb_object_track_start req;
 	mar_res_header_t res;
 
@@ -1515,13 +1527,17 @@ cs_error_t confdb_track_changes (
 	req.object_handle = object_handle;
 	req.flags = flags;
 
-	iov[0].iov_base = (char *)&req;
-	iov[0].iov_len = sizeof (struct req_lib_confdb_object_track_start);
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (struct req_lib_confdb_object_track_start);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof ( mar_res_header_t));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1540,7 +1556,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
-	struct iovec iov[2];
+	struct iovec iov;
 	mar_req_header_t req;
 	mar_res_header_t res;
 
@@ -1557,13 +1573,17 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	req.size = sizeof (mar_req_header_t);
 	req.id = MESSAGE_REQ_CONFDB_TRACK_STOP;
 
-	iov[0].iov_base = (char *)&req;
-	iov[0].iov_len = sizeof (mar_req_header_t);
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (mar_req_header_t);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (confdb_inst->response_fd, iov, 1,
-		&res, sizeof ( mar_res_header_t));
+        error = cslib_msg_send_reply_receive (
+		confdb_inst->ipc_ctx,
+		&iov,
+		1,
+                &res,
+		sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {

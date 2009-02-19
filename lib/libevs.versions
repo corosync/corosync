@@ -13,17 +13,15 @@ COROSYNC_EVS_2.0 {
 		evs_membership_get;
 
 	local:
+		cslib_service_connect;
+		cslib_service_disconnect;
+		cslib_dispatch_flow_control_get;
+		cslib_fd_get;
+		cslib_dispatch_recv;
+		cslib_msg_send_reply_receive;
+		cslib_msg_send_reply_receive_in_buf;
 		saHandleCreate;
 		saHandleDestroy;
 		saHandleInstanceGet;
 		saHandleInstancePut;
-		saRecvRetry;
-		saSelectRetry;
-		saSendMsgReceiveReply;
-		saSendMsgRetry;
-		saSendReceiveReply;
-		saSendRetry;
-		saServiceConnect;
-		saVersionVerify;
-		clustTimeNow;
 };

@@ -122,7 +122,6 @@ struct req_lib_cpg_mcast {
 
 struct res_lib_cpg_mcast {
 	mar_res_header_t header __attribute__((aligned(8)));
-	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 };
 
 /* Message from another node */
@@ -132,7 +131,6 @@ struct res_lib_cpg_deliver_callback {
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
-	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 

@@ -612,7 +612,7 @@ static int send_quorum_notification(void *conn, uint64_t context)
 
 	/* Send it to all interested parties */
 	if (conn) {
-		int ret = corosync_api->ipc_conn_send_response(conn, buf, size);
+		int ret = corosync_api->ipc_dispatch_send(conn, buf, size);
 		LEAVE();
 		return ret;
 	}
@@ -622,7 +622,7 @@ static int send_quorum_notification(void *conn, uint64_t context)
 		list_iterate(tmp, &trackers_list) {
 			qpd = list_entry(tmp, struct quorum_pd, list);
 			res_lib_votequorum_notification->context = qpd->tracking_context;
-			corosync_api->ipc_conn_send_response(corosync_api->ipc_conn_partner_get(qpd->conn), buf, size);
+			corosync_api->ipc_dispatch_send(qpd->conn, buf, size);
 		}
 	}
 	LEAVE();
@@ -1197,7 +1197,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, void *messag
 	res_lib_votequorum_getinfo.header.size = sizeof(res_lib_votequorum_getinfo);
 	res_lib_votequorum_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
 	res_lib_votequorum_getinfo.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_getinfo, sizeof(res_lib_votequorum_getinfo));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_getinfo, sizeof(res_lib_votequorum_getinfo));
 	log_printf(LOG_LEVEL_DEBUG, "getinfo response error: %d\n", error);
 }
 
@@ -1236,7 +1236,7 @@ error_exit:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 	LEAVE();
 }
 
@@ -1281,7 +1281,7 @@ error_exit:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 	LEAVE();
 }
 
@@ -1307,7 +1307,7 @@ static void message_handler_req_lib_votequorum_leaving (void *conn, void *messag
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 	LEAVE();
 }
 
@@ -1355,7 +1355,7 @@ static void message_handler_req_lib_votequorum_qdisk_register (void *conn, void 
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 	LEAVE();
 }
 
@@ -1382,7 +1382,7 @@ static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn, voi
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 	LEAVE();
 }
 
@@ -1421,7 +1421,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *mes
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
 }
@@ -1450,7 +1450,7 @@ static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn, void *
 	res_lib_votequorum_qdisk_getinfo.header.size = sizeof(res_lib_votequorum_qdisk_getinfo);
 	res_lib_votequorum_qdisk_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
 	res_lib_votequorum_qdisk_getinfo.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_qdisk_getinfo, sizeof(res_lib_votequorum_qdisk_getinfo));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_qdisk_getinfo, sizeof(res_lib_votequorum_qdisk_getinfo));
 
 	LEAVE();
 }
@@ -1468,7 +1468,7 @@ static void message_handler_req_lib_votequorum_setstate (void *conn, void *messa
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
 }
@@ -1487,7 +1487,7 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn, void *msg
 	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOG_LEVEL_DEBUG, "sending initial status to %p\n", conn);
-		send_quorum_notification(corosync_api->ipc_conn_partner_get (conn), req_lib_votequorum_trackstart->context);
+		send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
 	}
 
 	/*
@@ -1507,7 +1507,7 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn, void *msg
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = CS_OK;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
 }
@@ -1533,7 +1533,7 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn, void *msg)
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_conn_send_response(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
 }

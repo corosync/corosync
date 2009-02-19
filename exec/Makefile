@@ -63,9 +63,9 @@ LCR_SRC = vsf_ykd.c objdb.c coroparse.c vsf_quorum.c
 LCR_OBJS = vsf_ykd.o objdb.o coroparse.o vsf_quorum.o
 
 # main executive objects
-MAIN_SRC = main.c mempool.c util.c sync.c apidef.c service.c ipc.c flow.c \
+MAIN_SRC = main.c mempool.c util.c sync.c apidef.c service.c ipc.c \
 	quorum.c timer.c totemconfig.c mainconfig.c
-MAIN_OBJS = main.o mempool.o util.o sync.o apidef.o service.o ipc.o flow.o \
+MAIN_OBJS = main.o mempool.o util.o sync.o apidef.o service.o ipc.o \
 	quorum.o timer.o totemconfig.o mainconfig.o ../lcr/lcr_ifact.o
 
 ifeq (${BUILD_DYNAMIC}, 1) 

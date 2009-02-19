@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,13 +44,12 @@
 #include <corosync/corotypes.h>
 #include <corosync/ipc_pload.h>
 #include <corosync/pload.h>
-#include <corosync/ais_util.h>
+#include <corosync/coroipc.h>
 
 static void pload_instance_destructor (void *instance);
 
 struct pload_inst {
-	int dispatch_fd;
-	int response_fd;
+	void *ipc_ctx;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
 	unsigned int finalize;
@@ -104,9 +103,7 @@ unsigned int pload_initialize (
 		goto error_destroy;
 	}
 
-	error = saServiceConnect (&pload_inst->response_fd,
-		&pload_inst->dispatch_fd,
-		PLOAD_SERVICE);
+	error = cslib_service_connect (PLOAD_SERVICE, pload_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -137,7 +134,7 @@ unsigned int pload_finalize (
 	if (error != CS_OK) {
 		return (error);
 	}
-//	  TODO is the locking right here
+
 	pthread_mutex_lock (&pload_inst->response_mutex);
 
 	/*
@@ -151,22 +148,13 @@ unsigned int pload_finalize (
 
 	pload_inst->finalize = 1;
 
+	cslib_service_disconnect(pload_inst->ipc_ctx);
+
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 
 	(void)saHandleDestroy (&pload_handle_t_db, handle);
-    /*
-     * Disconnect from the server
-     */
-    if (pload_inst->response_fd != -1) {
-        shutdown(pload_inst->response_fd, 0);
-        close(pload_inst->response_fd);
-    }
-    if (pload_inst->dispatch_fd != -1) {
-        shutdown(pload_inst->dispatch_fd, 0);
-        close(pload_inst->dispatch_fd);
-    }
-	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
+	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
 	return (PLOAD_OK);
 }
@@ -183,7 +171,7 @@ unsigned int pload_fd_get (
 		return (error);
 	}
 
-	*fd = pload_inst->dispatch_fd; 
+	*fd = cslib_fd_get (pload_inst->ipc_ctx); 
 
 	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
@@ -218,8 +206,11 @@ unsigned int pload_start (
 	
 	pthread_mutex_lock (&pload_inst->response_mutex);
 
-	error = saSendMsgReceiveReply (pload_inst->response_fd, &iov, 1,
-		&res_lib_pload_start, sizeof (struct res_lib_pload_start));
+	error = cslib_msg_send_reply_receive(pload_inst->ipc_ctx,
+		&iov,
+		1,
+		&res_lib_pload_start,
+		sizeof (struct res_lib_pload_start));
 
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 

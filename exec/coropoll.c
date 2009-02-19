@@ -294,7 +294,7 @@ int poll_timer_add (
 	int res = 0;
 
 	if (timer_handle_out == NULL) {
-		res -ENOENT;
+		res = -ENOENT;
 		goto error_exit;
 	}
 

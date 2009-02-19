@@ -99,7 +99,6 @@ struct process_info {
 	void *conn;
 	void *trackerconn;
 	struct group_info *group;
-	enum cs_flow_control_state flow_control_state;
 	struct list_head list; /* on the group_info members list */
 };
 
@@ -440,14 +439,14 @@ static int notify_lib_joinlist(
 	}
 
 	if (conn) {
-		api->ipc_conn_send_response(conn, buf, size);
+		api->ipc_response_send(conn, buf, size);
 	}
 	else {
 		/* Send it to all listeners */
 		for (iter = gi->members.next, tmp=iter->next; iter != &gi->members; iter = tmp, tmp=iter->next) {
 			struct process_info *pi = list_entry(iter, struct process_info, list);
 			if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
-				if (api->ipc_conn_send_response(pi->trackerconn, buf, size) == -1) {
+				if (api->ipc_response_send(pi->trackerconn, buf, size) == -1) {
 					// Error ??
 				}
 			}
@@ -535,72 +534,6 @@ static struct group_info *get_group(mar_cpg_name_t *name)
 		list_add(&gi->list, &group_lists[hash]);
 	}
 	return gi;
-}
-
-static void send_group_list_callbacks(int num_groups, void *conn)
-{
-	struct list_head *iter, *piter;
-	struct group_info *gi;
-	uint32_t hash;
-	int max_proc_count=0;
-	int size = 0;
-	int group_counter = 0;
-	char *buf = NULL;
-	struct res_lib_cpg_groups_get_callback *res;
-	mar_cpg_address_t *retgi;
-
-	for (hash=0; hash < GROUP_HASH_SIZE; hash++) {
-		for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
-			gi = list_entry(iter, struct group_info, list);
-			int proc_count = 0;
-
-			/* First, we need to know how many processes are in the list */
-			for (piter = gi->members.next; piter != &gi->members; piter = piter->next) {
-				struct process_info *pi = list_entry(piter, struct process_info, list);
-				if (pi->pid)
-					proc_count++;
-			}
-
-			/* Make sure we have adequate buffer space */
-			if (proc_count > max_proc_count) {
-				max_proc_count = proc_count+10;
-				size = max_proc_count*sizeof(mar_cpg_address_t) +
-					sizeof(struct res_lib_cpg_groups_get_callback);
-				buf = realloc(buf, size);
-				if (!buf) {
-					log_printf(LOG_LEVEL_WARNING, "Unable to allocate group_list struct");
-					return;
-				}
-			}
-			if (!buf)
-				continue;
-
-			res = (struct res_lib_cpg_groups_get_callback *)buf;
-			retgi = res->member_list;
-
-			res->header.size = size;
-			res->header.id = MESSAGE_RES_CPG_GROUPS_CALLBACK;
-
-
-			memcpy(&res->group_name, &gi->group_name, sizeof(mar_cpg_name_t));
-			res->num_members = proc_count;
-			res->group_num = ++group_counter;
-			res->total_groups = num_groups;
-
-			for (piter = gi->members.next; piter != &gi->members; piter = piter->next) {
-				struct process_info *pi = list_entry(piter, struct process_info, list);
-				if (pi->pid) {
-					retgi->nodeid = pi->nodeid;
-					retgi->pid = pi->pid;
-					retgi->reason = 0;
-					retgi++;
-				}
-			}
-			api->ipc_conn_send_response(conn, buf, size);
-		}
-	}
-	if (buf)
-		free(buf);
 }
 
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason)
@@ -734,34 +667,6 @@ static void cpg_confchg_fn (
 		api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
 		req_exec_cpg_downlist.left_nodes = 0;
 		log_printf(LOG_LEVEL_DEBUG, "confchg, sent downlist\n");
-	}
-}
-
-static void cpg_flow_control_state_set_fn (
-	void *context,
-	enum cs_flow_control_state flow_control_state)
-{
-	struct res_lib_cpg_flowcontrol_callback res_lib_cpg_flowcontrol_callback;
-	struct process_info *process_info = (struct process_info *)context;
-
-	process_info->flow_control_state = flow_control_state;
-	/*
-	 * Send disabled flow control if a disabled occurs.  This prevents
-	 * the condition where a disabled occurs after all messages have been
-	 * delivered and then there is no valid way to retrieve the flow
-	 * control state
-	 */
-	if (flow_control_state == CPG_FLOW_CONTROL_DISABLED) {
-		res_lib_cpg_flowcontrol_callback.header.id = MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK;
-		res_lib_cpg_flowcontrol_callback.header.size = sizeof (struct res_lib_cpg_flowcontrol_callback);
-		res_lib_cpg_flowcontrol_callback.flow_control_state = flow_control_state;
-
-		if (process_info->trackerconn) {
-			api->ipc_response_no_fcc (
-				process_info->trackerconn,
-				&res_lib_cpg_flowcontrol_callback,
-				sizeof (struct res_lib_cpg_flowcontrol_callback));
-		}
 	}
 }
 
@@ -1004,7 +909,6 @@ static void message_handler_req_exec_cpg_mcast (
 	res_lib_cpg_mcast->msglen = msglen;
 	res_lib_cpg_mcast->pid = req_exec_cpg_mcast->pid;
 	res_lib_cpg_mcast->nodeid = nodeid;
-	res_lib_cpg_mcast->flow_control_state = CPG_FLOW_CONTROL_DISABLED;
 	if (api->ipc_source_is_local (&req_exec_cpg_mcast->source)) {
 		api->ipc_refcnt_dec (req_exec_cpg_mcast->source.conn);
 	}
@@ -1017,8 +921,7 @@ static void message_handler_req_exec_cpg_mcast (
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
 		if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
-			res_lib_cpg_mcast->flow_control_state = pi->flow_control_state;
-			api->ipc_conn_send_response(
+			api->ipc_dispatch_send(
 				pi->trackerconn,
 				buf,
 				res_lib_cpg_mcast->header.size);
@@ -1124,14 +1027,6 @@ static void message_handler_req_lib_cpg_join (void *conn, void *message)
 		goto join_err;
 	}
 
-	api->ipc_fc_create (
-		conn,
-		CPG_SERVICE,
-		req_lib_cpg_join->group_name.value,
-		req_lib_cpg_join->group_name.length,
-		cpg_flow_control_state_set_fn,
-		pi);
-
 	/* Add a node entry for us */
 	pi->nodeid = api->totem_nodeid_get();
 	pi->pid = req_lib_cpg_join->pid;
@@ -1145,7 +1040,7 @@ join_err:
 	res_lib_cpg_join.header.size = sizeof(res_lib_cpg_join);
 	res_lib_cpg_join.header.id = MESSAGE_RES_CPG_JOIN;
 	res_lib_cpg_join.header.error = error;
-	api->ipc_conn_send_response(conn, &res_lib_cpg_join, sizeof(res_lib_cpg_join));
+	api->ipc_response_send(conn, &res_lib_cpg_join, sizeof(res_lib_cpg_join));
 }
 
 /* Leave message from the library */
@@ -1169,18 +1064,12 @@ static void message_handler_req_lib_cpg_leave (void *conn, void *message)
 	cpg_node_joinleave_send(gi, pi, MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_LEAVE);
 	pi->group = NULL;
 
-	api->ipc_fc_destroy (
-		conn,
-		CPG_SERVICE,
-		(unsigned char *)gi->group_name.value,
-		(unsigned int)gi->group_name.length);
-
 leave_ret:
 	/* send return */
 	res_lib_cpg_leave.header.size = sizeof(res_lib_cpg_leave);
 	res_lib_cpg_leave.header.id = MESSAGE_RES_CPG_LEAVE;
 	res_lib_cpg_leave.header.error = error;
-	api->ipc_conn_send_response(conn, &res_lib_cpg_leave, sizeof(res_lib_cpg_leave));
+	api->ipc_response_send(conn, &res_lib_cpg_leave, sizeof(res_lib_cpg_leave));
 }
 
 /* Mcast message from the library */
@@ -1202,8 +1091,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 		res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
 		res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
 		res_lib_cpg_mcast.header.error = CS_ERR_ACCESS; /* TODO Better error code ?? */
-		res_lib_cpg_mcast.flow_control_state = CPG_FLOW_CONTROL_DISABLED;
-		api->ipc_conn_send_response(conn, &res_lib_cpg_mcast,
+		api->ipc_response_send(conn, &res_lib_cpg_mcast,
 			sizeof(res_lib_cpg_mcast));
 		return;
 	}
@@ -1229,8 +1117,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
 	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
 	res_lib_cpg_mcast.header.error = CS_OK;
-	res_lib_cpg_mcast.flow_control_state = pi->flow_control_state;
-	api->ipc_conn_send_response(conn, &res_lib_cpg_mcast,
+	api->ipc_response_send(conn, &res_lib_cpg_mcast,
 		sizeof(res_lib_cpg_mcast));
 }
 
@@ -1244,7 +1131,7 @@ static void message_handler_req_lib_cpg_membership (void *conn, void *message)
 		res.size = sizeof(res);
 		res.id = MESSAGE_RES_CPG_MEMBERSHIP;
 		res.error = CS_ERR_ACCESS; /* TODO Better error code */
-		api->ipc_conn_send_response(conn, &res, sizeof(res));
+		api->ipc_response_send(conn, &res, sizeof(res));
 		return;
 	}
 
@@ -1258,7 +1145,6 @@ static void message_handler_req_lib_cpg_trackstart (void *conn, void *message)
 	struct res_lib_cpg_trackstart res_lib_cpg_trackstart;
 	struct group_info *gi;
 	struct process_info *otherpi;
-	void *otherconn;
 	cs_error_t error = CS_OK;
 
 	log_printf(LOG_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
@@ -1270,7 +1156,6 @@ static void message_handler_req_lib_cpg_trackstart (void *conn, void *message)
 	}
 
 	/* Find the partner connection and add us to it's process_info struct */
-	otherconn = api->ipc_conn_partner_get (conn);
 	otherpi = (struct process_info *)api->ipc_private_data_get (conn);
 	otherpi->trackerconn = conn;
 
@@ -1278,7 +1163,7 @@ tstart_ret:
 	res_lib_cpg_trackstart.header.size = sizeof(res_lib_cpg_trackstart);
 	res_lib_cpg_trackstart.header.id = MESSAGE_RES_CPG_TRACKSTART;
 	res_lib_cpg_trackstart.header.error = CS_OK;
-	api->ipc_conn_send_response(conn, &res_lib_cpg_trackstart, sizeof(res_lib_cpg_trackstart));
+	api->ipc_response_send(conn, &res_lib_cpg_trackstart, sizeof(res_lib_cpg_trackstart));
 }
 
 static void message_handler_req_lib_cpg_trackstop (void *conn, void *message)
@@ -1286,7 +1171,6 @@ static void message_handler_req_lib_cpg_trackstop (void *conn, void *message)
 	struct req_lib_cpg_trackstop *req_lib_cpg_trackstop = (struct req_lib_cpg_trackstop *)message;
 	struct res_lib_cpg_trackstop res_lib_cpg_trackstop;
 	struct process_info *otherpi;
-	void *otherconn;
 	struct group_info *gi;
 	cs_error_t error = CS_OK;
 
@@ -1299,7 +1183,6 @@ static void message_handler_req_lib_cpg_trackstop (void *conn, void *message)
 	}
 
 	/* Find the partner connection and add us to it's process_info struct */
-	otherconn = api->ipc_conn_partner_get (conn);
 	otherpi = (struct process_info *)api->ipc_private_data_get (conn);
 	otherpi->trackerconn = NULL;
 
@@ -1307,7 +1190,7 @@ tstop_ret:
 	res_lib_cpg_trackstop.header.size = sizeof(res_lib_cpg_trackstop);
 	res_lib_cpg_trackstop.header.id = MESSAGE_RES_CPG_TRACKSTOP;
 	res_lib_cpg_trackstop.header.error = CS_OK;
-	api->ipc_conn_send_response(conn, &res_lib_cpg_trackstop.header, sizeof(res_lib_cpg_trackstop));
+	api->ipc_response_send(conn, &res_lib_cpg_trackstop.header, sizeof(res_lib_cpg_trackstop));
 }
 
 static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
@@ -1319,7 +1202,7 @@ static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
 	res_lib_cpg_local_get.header.error = CS_OK;
 	res_lib_cpg_local_get.local_nodeid = api->totem_nodeid_get ();
 
-	api->ipc_conn_send_response(conn, &res_lib_cpg_local_get,
+	api->ipc_response_send(conn, &res_lib_cpg_local_get,
 		sizeof(res_lib_cpg_local_get));
 }
 
@@ -1332,11 +1215,7 @@ static void message_handler_req_lib_cpg_groups_get (void *conn, void *message)
 	res_lib_cpg_groups_get.header.error = CS_OK;
 	res_lib_cpg_groups_get.num_groups = count_groups();
 
-	api->ipc_conn_send_response(conn, &res_lib_cpg_groups_get,
+	api->ipc_response_send(conn, &res_lib_cpg_groups_get,
 		sizeof(res_lib_cpg_groups_get));
-
-	/* Now do the callbacks for each group */
-	send_group_list_callbacks(res_lib_cpg_groups_get.num_groups,
-		api->ipc_conn_partner_get (conn));
 }
 

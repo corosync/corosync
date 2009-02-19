@@ -1,10 +1,7 @@
-# Version and symbol export for libSaClm.so
+# Version and symbol export for libipcutil.so
 
-COROSYNC_PLOAD_1.0 {
+COROSYNC_IPCUTIL_2.0 {
 	global:
-		pload_start;
-
-	local:
 		cslib_service_connect;
 		cslib_service_disconnect;
 		cslib_dispatch_flow_control_get;

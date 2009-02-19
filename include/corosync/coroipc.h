@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
+ * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2006-2007 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -31,13 +32,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_UTIL_H_DEFINED
-#define AIS_UTIL_H_DEFINED
+
+#ifndef COROIPC_H_DEFINED
+#define COROIPC_H_DEFINED
 
 #include <pthread.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
-
+#include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 
 /* Debug macro
@@ -65,35 +67,43 @@ struct saHandleDatabase {
 };
 
 
-struct saVersionDatabase {
-	int versionCount;
-	cs_version_t *versionsSupported;
-};
-
-cs_error_t saSendMsgRetry (
-	int s,
-	struct iovec *iov,
-	int iov_len);
-
-cs_error_t saSendMsgReceiveReply (
-	int s,
-	struct iovec *iov,
-	int iov_len,
-	void *responseMessage,
-	int responseLen);
-
-cs_error_t saSendReceiveReply (
-	int s,
-	void *requestMessage,
-	int requestLen,
-	void *responseMessage,
-	int responseLen);
+cs_error_t
+cslib_service_connect (
+	enum service_types service,
+	void **ipc_context);
 
 cs_error_t
-saPollRetry (
-	struct pollfd *ufds,
-	unsigned int nfds,
+cslib_service_disconnect (
+	void *ipc_context);
+
+int
+cslib_fd_get (
+	void *ipc_context);
+
+int
+cslib_dispatch_recv (
+	void *ipc_context,
+	void *buf,
 	int timeout);
+
+int
+cslib_dispatch_flow_control_get (
+	void *ipc_context);
+
+cs_error_t
+cslib_msg_send_reply_receive (
+	void *ipc_context,
+	struct iovec *iov,
+	int iov_len,
+	void *res_msg,
+	int res_len);
+
+cs_error_t
+cslib_msg_send_reply_receive_in_buf (
+	void *ipc_context,
+	struct iovec *iov,
+	int iov_len,
+	void **res_msg);
 
 cs_error_t
 saHandleCreate (
@@ -117,21 +127,7 @@ saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t handle);
 
-cs_error_t
-saVersionVerify (
-	struct saVersionDatabase *versionDatabase,
-	cs_version_t *version);
-
 #define offset_of(type,member) (int)(&(((type *)0)->member))
 
-cs_time_t
-clustTimeNow(void);
+#endif /* COROIPC_H_DEFINED */
 
-extern cs_error_t saServiceConnect (
-    int *responseOut, int *callbackOut, enum service_types service);
-
-extern cs_error_t saRecvRetry (int s, void *msg, size_t len);
-
-extern cs_error_t saSendRetry (int s, const void *msg, size_t len);
-
-#endif /* AIS_UTIL_H_DEFINED */

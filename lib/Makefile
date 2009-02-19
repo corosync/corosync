@@ -43,87 +43,87 @@ all: libcpg.a libcpg.so.2.0.0 \
 	libcfg.a libcfg.so.2.0.0 \
 	libquorum.a libquorum.so.2.0.0 \
 	libpload.a libpload.so.2.0.0 \
-	libcoroutil.a libcoroutil.so.2.0.0 \
+	libcoroipc.a libcoroipc.so.2.0.0 \
 	libvotequorum.a libvotequorum.so.2.0.0
 
-libcoroutil.a: util.o
-	$(AR) -rc libcoroutil.a util.o
+libcoroipc.a: coroipc.o
+	$(AR) -rc libcoroipc.a coroipc.o
 
 ifeq (${COROSYNC_COMPAT}, DARWIN)
 
 DARWIN_OPTS=-dynamiclib -bind_at_load -current_version 2.0.0 -compatibility_version 2.0.0
-libcoroutil.so.2.0.0: util.o
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o -o $@
+libcoroipc.so.2.0.0: coroipc.o
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o -o $@
 
-libevs.so.2.0.0: util.o evs.o
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o evs.o -o $@
+libevs.so.2.0.0: coroipc.o evs.o
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o evs.o -o $@
 
-libcpg.so.2.0.0: util.o cpg.o
-	$(CC) $(DARWIN_OPTS) util.o cpg.o -o $@
+libcpg.so.2.0.0: coroipc.o cpg.o
+	$(CC) $(DARWIN_OPTS) coroipc.o cpg.o -o $@
 
-libquorum.so.2.0.0: util.o quorum.o
-	$(CC) $(DARWIN_OPTS) util.o quorum.o -o $@
+libquorum.so.2.0.0: coroipc.o quorum.o
+	$(CC) $(DARWIN_OPTS) coroipc.o quorum.o -o $@
 
-libvotequorum.so.2.0.0: util.o votequorum.o
-	$(CC) $(DARWIN_OPTS) util.o votequorum.o -o $@
+libvotequorum.so.2.0.0: coroipc.o votequorum.o
+	$(CC) $(DARWIN_OPTS) coroipc.o votequorum.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+libconfdb.so.2.0.0: coroipc.o confdb.o sa-confdb.o 
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
-libcfg.so.2.0.0: util.o cfg.o
-	$(CC) $(DARWIN_OPTS) util.o cfg.o -o $@
+libcfg.so.2.0.0: coroipc.o cfg.o
+	$(CC) $(DARWIN_OPTS) coroipc.o cfg.o -o $@
 
-libpload.so.2.0.0: util.o pload.o
-	$(CC) $(DARWIN_OPTS) util.o pload.o -o $@
+libpload.so.2.0.0: coroipc.o pload.o
+	$(CC) $(DARWIN_OPTS) coroipc.o pload.o -o $@
 
 else
 
-libcoroutil.so.2.0.0: util.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroutil.so.2,-version-script=$(srcdir)$(subdir)libcoroutil.versions util.o -o $@
+libcoroipc.so.2.0.0: coroipc.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroipc.so.2,-version-script=$(srcdir)$(subdir)libcoroipc.versions coroipc.o -o $@
 
-libevs.so.2.0.0: util.o evs.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=$(srcdir)$(subdir)libevs.versions util.o evs.o -o $@
+libevs.so.2.0.0: coroipc.o evs.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libevs.so.2,-version-script=$(srcdir)$(subdir)libevs.versions coroipc.o evs.o -o $@
 
-libcpg.so.2.0.0: util.o cpg.o
-	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions util.o cpg.o -o $@
+libcpg.so.2.0.0: coroipc.o cpg.o
+	$(CC) -shared -Wl,-soname,libcpg.so.2,-version-script=$(srcdir)$(subdir)libcpg.versions coroipc.o cpg.o -o $@
 
-libquorum.so.2.0.0: util.o quorum.o
-	$(CC) -shared -Wl,-soname,libquorum.so.2,-version-script=$(srcdir)$(subdir)libquorum.versions util.o quorum.o -o $@
+libquorum.so.2.0.0: coroipc.o quorum.o
+	$(CC) -shared -Wl,-soname,libquorum.so.2,-version-script=$(srcdir)$(subdir)libquorum.versions coroipc.o quorum.o -o $@
 
-libvotequorum.so.2.0.0: util.o votequorum.o
-	$(CC) -shared -Wl,-soname,libvotequorum.so.2,-version-script=$(srcdir)$(subdir)libvotequorum.versions util.o votequorum.o -o $@
+libvotequorum.so.2.0.0: coroipc.o votequorum.o
+	$(CC) -shared -Wl,-soname,libvotequorum.so.2,-version-script=$(srcdir)$(subdir)libvotequorum.versions coroipc.o votequorum.o -o $@
 
-libconfdb.so.2.0.0: util.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+libconfdb.so.2.0.0: coroipc.o confdb.o sa-confdb.o 
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)$(subdir)libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
-libcfg.so.2.0.0: util.o cfg.o
-	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions util.o cfg.o -o $@
+libcfg.so.2.0.0: coroipc.o cfg.o
+	$(CC) -shared -Wl,-soname,libcfg.so.2,-version-script=$(srcdir)$(subdir)libcfg.versions coroipc.o cfg.o -o $@
 
-libpload.so.2.0.0: util.o pload.o
-	$(CC) -shared -Wl,-soname,libpload.so.2,-version-script=$(srcdir)$(subdir)libpload.versions util.o cfg.o -o $@
+libpload.so.2.0.0: coroipc.o pload.o
+	$(CC) -shared -Wl,-soname,libpload.so.2,-version-script=$(srcdir)$(subdir)libpload.versions coroipc.o cfg.o -o $@
 
 endif
 
-libevs.a: util.o evs.o
-	$(AR) -rc libevs.a util.o evs.o
+libevs.a: coroipc.o evs.o
+	$(AR) -rc libevs.a coroipc.o evs.o
 
-libcpg.a: util.o cpg.o
-	$(AR) -rc libcpg.a util.o cpg.o
+libcpg.a: coroipc.o cpg.o
+	$(AR) -rc libcpg.a coroipc.o cpg.o
 
-libquorum.a: util.o quorum.o
-	$(AR) -rc libquorum.a util.o quorum.o
+libquorum.a: coroipc.o quorum.o
+	$(AR) -rc libquorum.a coroipc.o quorum.o
 
-libvotequorum.a: util.o votequorum.o
-	$(AR) -rc libvotequorum.a util.o votequorum.o
+libvotequorum.a: coroipc.o votequorum.o
+	$(AR) -rc libvotequorum.a coroipc.o votequorum.o
 
-libconfdb.a: util.o confdb.o sa-confdb.o
-	$(AR) -rc libconfdb.a util.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+libconfdb.a: coroipc.o confdb.o sa-confdb.o
+	$(AR) -rc libconfdb.a coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 
-libcfg.a: util.o cfg.o
-	$(AR) -rc libcfg.a util.o cfg.o
+libcfg.a: coroipc.o cfg.o
+	$(AR) -rc libcfg.a coroipc.o cfg.o
 
-libpload.a: util.o pload.o
-	$(AR) -rc libpload.a util.o pload.o
+libpload.a: coroipc.o pload.o
+	$(AR) -rc libpload.a coroipc.o pload.o
 
 clean:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg

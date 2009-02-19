@@ -72,11 +72,9 @@
 #include "main.h"
 #include "sync.h"
 #include "tlist.h"
-#include "flow.h"
 #include "ipc.h"
 #include "timer.h"
 #include "util.h"
-#include "flow.h"
 #include "apidef.h"
 #include "service.h"
 #include "version.h"
@@ -141,8 +139,9 @@ static void *aisexec_exit (void *arg)
 	}
 #endif
 
+	poll_stop (0);
 	totempg_finalize ();
-
+	cs_ipc_exit ();
 	corosync_exit_error (AIS_DONE_EXIT);
 
 	/* never reached */
@@ -303,10 +302,11 @@ static void aisexec_tty_detach (void)
 			/*
 			 * child which is disconnected, run this process
 			 */
-/* 			setset(); */
+/* 			setset();
 			close (0);
 			close (1);
 			close (2);
+*/
 			break;
 		default:
 			exit (0);
@@ -672,8 +672,6 @@ int main (int argc, char **argv)
 
 	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed);
 
-	res = cs_flow_control_initialize ();
-
 	/*
 	 * Drop root privleges to user 'ais'
 	 * TODO: Don't really need full root capabilities;
@@ -686,10 +684,7 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	cs_ipc_init (
-		serialize_mutex_lock,
-		serialize_mutex_unlock,
-		main_config.gid);
+	cs_ipc_init (serialize_mutex_lock, serialize_mutex_unlock, main_config.gid);
 
 	/*
 	 * Start main processing loop

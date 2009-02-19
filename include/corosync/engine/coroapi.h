@@ -390,35 +390,11 @@ struct corosync_api_v1 {
 
 	int (*ipc_response_send) (void *conn, void *msg, int mlen);
 
-	int (*ipc_response_no_fcc) (void *conn, void *msg, int mlen);
+	int (*ipc_response_iov_send) (void *conn, struct iovec *iov, int iov_len);
 
 	int (*ipc_dispatch_send) (void *conn, void *msg, int mlen);
 
-	/*
-	 * DEPRECATED
-	 */
-	int (*ipc_conn_send_response) (void *conn, void *msg, int mlen);
-
-	/*
-	 * DEPRECATED
-	 */
-	void *(*ipc_conn_partner_get) (void *conn);
-
-	void (*ipc_fc_create) (
-		void *conn,
-		unsigned int service,
-		char *id,
-		int id_len,
-		void (*flow_control_state_set_fn)
-			(void *context,
-				enum cs_flow_control_state flow_control_state_set),
-		void *context);
-
-	void (*ipc_fc_destroy) (
-		void *conn,
-		unsigned int service,
-		unsigned char *id,
-		int id_len);
+	int (*ipc_dispatch_iov_send) (void *conn, struct iovec *iov, int iov_len);
 
 	void (*ipc_refcnt_inc) (void *conn);
 

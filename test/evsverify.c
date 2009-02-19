@@ -44,7 +44,7 @@
 #include "../exec/crypto.h"
 
 char *delivery_string;
-struct msg {
+struct my_msg {
 	unsigned int msg_size;
 	unsigned char sha1[20];
 	unsigned char buffer[0];
@@ -56,7 +56,7 @@ void evs_deliver_fn (
 	void *m,
 	int msg_len)
 {
-	struct msg *msg2 = (struct msg *)m;
+	struct my_msg *msg2 = (struct my_msg *)m;
 	unsigned char sha1_compare[20];
 	hash_state sha1_hash;
 	unsigned int i;
@@ -111,7 +111,7 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-struct msg msg;
+struct my_msg msg;
 
 unsigned char buffer[200000];
 int main (void)
@@ -123,7 +123,7 @@ int main (void)
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
 	unsigned int member_list_entries = 32;
-	struct msg msg;
+	struct my_msg msg;
 	hash_state sha1_hash;
 	struct iovec iov[2];
 
@@ -150,7 +150,7 @@ int main (void)
 	delivery_string = "evs_mcast_joined";
 
 	iov[0].iov_base = &msg;
-	iov[0].iov_len = sizeof (struct msg);
+	iov[0].iov_len = sizeof (struct my_msg);
 	iov[1].iov_base = buffer;
 
 	/*

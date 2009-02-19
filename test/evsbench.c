@@ -66,17 +66,12 @@
 
 volatile static int alarm_notice = 0;
 
-int outstanding = 0;
-
-
-
 void evs_deliver_fn (
 	unsigned int nodeid,
 	void *msg,
 	int msg_len)
 {
-	outstanding--;
-// printf ("Delivering message %s\n", msg);
+ printf ("Delivering message %s\n", msg);
 }
 
 void evs_confchg_fn (
@@ -136,13 +131,10 @@ void evs_benchmark (evs_handle_t handle,
 	iov.iov_len = write_size;
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
-		if (outstanding < 10) {
-			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
+		result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
 
-			if (result != CS_ERR_TRY_AGAIN) {
-				write_count += 1;
-				outstanding++;
-			}
+		if (result != CS_ERR_TRY_AGAIN) {
+			write_count += 1;
 		}
 		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (alarm_notice == 0);
@@ -185,8 +177,6 @@ int main (void) {
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (handle, &groups[0], 1);
-	printf ("Leave result %d\n", result);
 
 	size = 1;
 
