@@ -95,7 +95,7 @@ cs_error_t quorum_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (QUORUM_SERVICE, quorum_inst->ipc_ctx);
+	error = cslib_service_connect (QUORUM_SERVICE, &quorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}

@@ -95,7 +95,7 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (VOTEQUORUM_SERVICE, votequorum_inst->ipc_ctx);
+	error = cslib_service_connect (VOTEQUORUM_SERVICE, &votequorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
