@@ -448,6 +448,13 @@ static int poll_handler_connection (
 	}
 
 	/*
+	 * Is the service registered ?
+	 */
+	if (!ais_service[conn_info->service]) {
+		return poll_handler_connection_destroy (conn_info);
+	}
+
+	    /*
 	 * Read the header and process it
 	 */
 	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
