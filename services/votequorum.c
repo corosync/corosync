@@ -1028,7 +1028,7 @@ static void message_handler_req_exec_quorum_nodeinfo (
 	/* Check flags for disallowed (if enabled) */
 	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_DISALLOWED) {
 		if ((req_exec_quorum_nodeinfo->flags & NODE_FLAGS_HASSTATE && node->flags & NODE_FLAGS_BEENDOWN) ||
-		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_HASSTATE && req_exec_quorum_nodeinfo->first_trans && !(node->flags & NODE_FLAGS_US))) {
+		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_HASSTATE && req_exec_quorum_nodeinfo->first_trans && !(node->flags & NODE_FLAGS_US) && (us->flags & NODE_FLAGS_HASSTATE))) {
 			if (node->state != NODESTATE_DISALLOWED) {
 				if (cluster_is_quorate) {
 					log_printf(LOG_CRIT, "Killing node %d because it has rejoined the cluster with existing state", node->node_id);
