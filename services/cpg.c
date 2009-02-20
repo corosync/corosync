@@ -263,6 +263,7 @@ struct corosync_service_engine cpg_service_engine = {
 	.id					= CPG_SERVICE,
 	.private_data_size			= sizeof (struct process_info),
 	.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED,
+	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
 	.lib_init_fn				= cpg_lib_init_fn,
 	.lib_exit_fn				= cpg_lib_exit_fn,
 	.lib_engine				= cpg_lib_engine,
