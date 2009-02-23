@@ -37,11 +37,7 @@
 #include "corosync/corotypes.h"
 #include "corosync/ipc_gen.h"
 
-// ILLEGAL value!!
-#define VOTEQUORUM_SERVICE 15
-
 #define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
-
 
 enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_GETINFO = 0,

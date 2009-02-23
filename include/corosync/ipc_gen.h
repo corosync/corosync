@@ -51,6 +51,7 @@ enum service_types {
 	QUORUM_SERVICE = 11,
 	PLOAD_SERVICE = 12,
 	TMR_SERVICE = 13,
+	VOTEQUORUM_SERVICE = 14,
 };
 
 enum req_init_types {
