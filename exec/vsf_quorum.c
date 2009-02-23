@@ -119,11 +119,13 @@ static void quorum_api_set_quorum(unsigned int *view_list,
 	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 
 	quorum_view_list_entries = view_list_entries;
-	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
-	/* Tell sync() */
-	sync_primary_callback_fn(view_list, view_list_entries,
-				 primary_designated, &quorum_ring_id);
+	/* Tell sync() only if there is a new ring_id (ie this is not a 'fake' quorum event) */
+	if (memcmp(&quorum_ring_id, ring_id, sizeof (quorum_ring_id))) {
+		sync_primary_callback_fn(view_list, view_list_entries,
+					 primary_designated, ring_id);
+	}
+	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
 	/* Tell internal listeners */
 	send_internal_notification();
