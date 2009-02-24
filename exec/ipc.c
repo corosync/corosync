@@ -448,13 +448,6 @@ static int poll_handler_connection (
 	}
 
 	/*
-	 * Is the service registered ?
-	 */
-	if (!ais_service[conn_info->service]) {
-		return poll_handler_connection_destroy (conn_info);
-	}
-
-	    /*
 	 * Read the header and process it
 	 */
 	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
@@ -471,9 +464,16 @@ static int poll_handler_connection (
 			return (0);
 		}
 		req_setup_send (conn_info, CS_OK);
+		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
+
+		/*
+		 * Is the service registered ?
+		 */
+		if (!ais_service[req_setup->service]) {
+			return poll_handler_connection_destroy (conn_info);
+		}
 
 		pthread_mutex_init (&conn_info->mutex, NULL);
-		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
 		conn_info->shmkey = req_setup->shmkey;
 		conn_info->semkey = req_setup->semkey;
 		conn_info->service = req_setup->service;
