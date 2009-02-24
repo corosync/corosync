@@ -162,7 +162,6 @@ install: all
 	    fi								\
 	    ) \
 	done
-	install -m 755 lib/libcoroipc.a $(DESTDIR)$(LIBDIR)
 
 	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/corosync-$(ARCH).conf"
 
