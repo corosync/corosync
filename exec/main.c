@@ -684,7 +684,7 @@ int main (int argc, char **argv)
 
 	aisexec_mempool_init ();
 
-	cs_ipc_init (serialize_mutex_lock, serialize_mutex_unlock, main_config.gid);
+	cs_ipc_init (main_config.gid);
 
 	/*
 	 * Start main processing loop

@@ -102,10 +102,6 @@ LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
 static unsigned int g_gid_valid = 0;
 
-static void (*ipc_serialize_lock_fn) (void);
-
-static void (*ipc_serialize_unlock_fn) (void);
-
 DECLARE_LIST_INIT (conn_info_list_head);
 
 struct outq_item {
@@ -155,11 +151,25 @@ static int priv_change (struct conn_info *conn_info);
 
 static void ipc_disconnect (struct conn_info *conn_info);
 
+static int ipc_conn_exiting (void *conn)
+{
+	struct conn_info *conn_info = (struct conn_info *)conn;
+
+	pthread_mutex_lock (&conn_info->mutex);
+	if (conn_info->destroyed || conn_info->disconnect_requested) {
+		pthread_mutex_unlock (&conn_info->mutex);
+		return (1);
+	}
+	pthread_mutex_unlock (&conn_info->mutex);
+	return (0);
+}
+
+
 static inline int conn_info_destroy (struct conn_info *conn_info)
 {
-	unsigned int res;
+unsigned int res;
 
-	list_del (&conn_info->list);
+list_del (&conn_info->list);
 	list_init (&conn_info->list);
 
 	if (conn_info->service == SOCKET_SERVICE_INIT) {
@@ -168,15 +178,9 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		free (conn_info);
 		return (0);
 	}
-	/*
-	 * Destroy shared memory segment and semaphore
-	 */
 	if (conn_info->destroyed == 0) {
-		cs_conn_refcount_dec (conn_info);
-		shmdt (conn_info->mem);
-		res = shmctl (conn_info->shmid, IPC_RMID, NULL);
-		semctl (conn_info->semid, 0, IPC_RMID);
 		conn_info->destroyed = 1;
+		cs_conn_refcount_dec (conn_info);
 	}
 
 	pthread_mutex_lock (&conn_info->mutex);
@@ -193,6 +197,13 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	if (res == -1) {
 		return (-1);
 	}
+
+	/*
+	 * Destroy shared memory segment and semaphore
+	 */
+	shmdt (conn_info->mem);
+	res = shmctl (conn_info->shmid, IPC_RMID, NULL);
+	semctl (conn_info->semid, 0, IPC_RMID);
 
 	/*
 	 * Free allocated data needed to retry exiting library IPC connection
@@ -227,21 +238,18 @@ static void *pthread_ipc_consumer (void *conn)
 		sop.sem_op = -1;
 		sop.sem_flg = 0;
 retry_semop:
+		if (ipc_conn_exiting (conn_info)) {
+			pthread_exit (0);
+		}
 		res = semop (conn_info->semid, &sop, 1);
 		if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
 			goto retry_semop;
 		} else
 		if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
-			cs_conn_refcount_dec (conn);
-			return (0);
-		}
-		if (conn_info->destroyed || conn_info->disconnect_requested) {
-			break;
+			pthread_exit (0);
 		}
 
 		header = (mar_req_header_t *)conn_info->mem->req_buffer;
-
-		ipc_serialize_lock_fn ();
 
 		send_ok_joined_iovec.iov_base = (char *)header;
 		send_ok_joined_iovec.iov_len = header->size;
@@ -269,8 +277,6 @@ retry_semop:
 			cs_response_send (conn_info, &res_overlay, 
 				res_overlay.header.size);
 		}
-
-		ipc_serialize_unlock_fn ();
 	}
 	cs_conn_refcount_dec (conn);
 	return (NULL);
@@ -443,7 +449,7 @@ static int poll_handler_connection (
 	/*
 	 * If an error occurs, try to exit if possible
 	 */
-	if ((conn_info->disconnect_requested) || (revent & (POLLERR|POLLHUP))) {
+	if (ipc_conn_exiting (conn_info) || (revent & (POLLERR|POLLHUP))) {
 		return poll_handler_connection_destroy (conn_info);
 	}
 
@@ -489,7 +495,6 @@ static int poll_handler_connection (
 		conn_info->semid = semget (conn_info->semkey, 3, 0600);
 		conn_info->pending_semops = 0;
 		conn_info->refcount = 1;
-		cs_conn_refcount_inc (conn_info);
 
 		conn_info->private_data = malloc (ais_service[conn_info->service]->private_data_size);
 		memset (conn_info->private_data, 0,
@@ -522,6 +527,7 @@ static int poll_handler_connection (
 		}
 	} else
 	if (revent & POLLIN) {
+		cs_conn_refcount_inc (conn_info);
 		res = recv (fd, &buf, 1, MSG_NOSIGNAL);
 		if (res == 1) {
 			switch (buf) {
@@ -545,9 +551,11 @@ static int poll_handler_connection (
 		if (res == 0) {
 			return poll_handler_connection_destroy (conn_info);
 		}
+		cs_conn_refcount_dec (conn_info);
 #endif
 	}
 
+	cs_conn_refcount_inc (conn_info);
 	pthread_mutex_lock (&conn_info->mutex);
 	if ((conn_info->disconnect_requested == 0) && (revent & POLLOUT)) {
 		buf = !list_empty (&conn_info->outq_head);
@@ -575,8 +583,7 @@ static int poll_handler_connection (
 		}
 	}
 	pthread_mutex_unlock (&conn_info->mutex);
-
-	return (0);
+	cs_conn_refcount_dec (conn_info);
 }
 
 static void ipc_disconnect (struct conn_info *conn_info)
@@ -706,17 +713,11 @@ void message_source_set (
 }
 
 extern void cs_ipc_init (
-	void (*serialize_lock_fn) (void),
-	void (*serialize_unlock_fn) (void),
 	unsigned int gid_valid)
 {
 	int libais_server_fd;
 	struct sockaddr_un un_addr;
 	int res;
-
-	ipc_serialize_lock_fn = serialize_lock_fn;
-	ipc_serialize_unlock_fn = serialize_unlock_fn;
-
 
 	/*
 	 * Create socket for libais clients, name socket, listen for connections
@@ -1014,12 +1015,9 @@ static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
 	/*
 	 * Exit transmission if the connection is dead
 	 */
-	pthread_mutex_lock (&conn_info->mutex);
-	if (conn_info->destroyed || conn_info->disconnect_requested) {
-		pthread_mutex_unlock (&conn_info->mutex);
+	if (ipc_conn_exiting (conn)) {
 		return;
 	}
-	pthread_mutex_unlock (&conn_info->mutex);
 
 	bytes_left = shared_mem_dispatch_bytes_left (conn_info);
 	for (i = 0; i < iov_len; i++) {
