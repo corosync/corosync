@@ -440,14 +440,14 @@ static int notify_lib_joinlist(
 	}
 
 	if (conn) {
-		api->ipc_response_send(conn, buf, size);
+		api->ipc_dispatch_send(conn, buf, size);
 	}
 	else {
 		/* Send it to all listeners */
 		for (iter = gi->members.next, tmp=iter->next; iter != &gi->members; iter = tmp, tmp=iter->next) {
 			struct process_info *pi = list_entry(iter, struct process_info, list);
 			if (pi->trackerconn && (pi->flags & PI_FLAG_MEMBER)) {
-				if (api->ipc_response_send(pi->trackerconn, buf, size) == -1) {
+				if (api->ipc_dispatch_send(pi->trackerconn, buf, size) == -1) {
 					// Error ??
 				}
 			}
