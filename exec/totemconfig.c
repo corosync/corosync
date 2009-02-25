@@ -81,13 +81,13 @@ static struct objdb_iface_ver0 *global_objdb;
 static void add_totem_config_notification(
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	unsigned int totem_object_handle);
+	hdb_handle_t totem_object_handle);
 
 
 /* These just makes the code below a little neater */
 static inline int objdb_get_string (
 	struct objdb_iface_ver0 *objdb,
-	unsigned int object_service_handle,
+	hdb_handle_t object_service_handle,
 	char *key, char **value)
 {
 	int res;
@@ -126,9 +126,9 @@ static inline void objdb_get_int (
 
 static unsigned int totem_handle_find (
 	struct objdb_iface_ver0 *objdb,
-	unsigned int *totem_find_handle)  {
+	hdb_handle_t *totem_find_handle)  {
 
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
 	unsigned int res;
 
 	/*
@@ -173,7 +173,7 @@ static unsigned int totem_handle_find (
 static void totem_volatile_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	unsigned int object_totem_handle)
+	hdb_handle_t object_totem_handle)
 {
 	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
 
@@ -220,11 +220,11 @@ extern int totem_config_read (
 	char **error_string)
 {
 	int res = 0;
-	unsigned int object_totem_handle;
-	unsigned int object_interface_handle;
+	hdb_handle_t object_totem_handle;
+	hdb_handle_t object_interface_handle;
 	char *str;
 	unsigned int ringnumber = 0;
-	unsigned int object_find_interface_handle;
+	hdb_handle_t object_find_interface_handle;
 
 	res = totem_handle_find (objdb, &object_totem_handle);
 	if (res == -1) {
@@ -624,7 +624,7 @@ int totem_config_keyread (
 {
 	int got_key = 0;
 	char *key_location = NULL;
-	unsigned int object_totem_handle;
+	hdb_handle_t object_totem_handle;
 	int res;
 
 	memset (totem_config->private_key, 0, 128);
@@ -682,8 +682,8 @@ key_error:
 }
 
 static void totem_key_change_notify(object_change_type_t change_type,
-			      unsigned int parent_object_handle,
-			      unsigned int object_handle,
+			      hdb_handle_t parent_object_handle,
+			      hdb_handle_t object_handle,
 			      void *object_name_pt, int object_name_len,
 			      void *key_name_pt, int key_len,
 			      void *key_value_pt, int key_value_len,
@@ -701,7 +701,7 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 				      void *priv_data_pt)
 {
 	struct totem_config *totem_config = priv_data_pt;
-	unsigned int totem_object_handle;
+	hdb_handle_t totem_object_handle;
 
 	/*
 	 * A new totem {} key might exist, cancel the
@@ -745,7 +745,7 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 static void add_totem_config_notification(
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	unsigned int totem_object_handle)
+	hdb_handle_t totem_object_handle)
 {
 
 	global_objdb = objdb;

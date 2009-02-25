@@ -435,7 +435,7 @@ static int poll_handler_connection_destroy(
 }
 
 static int poll_handler_connection (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *data)
@@ -577,7 +577,7 @@ static int poll_handler_connection (
 		if (conn_info->notify_flow_control_enabled == 0 &&
 			conn_info->pending_semops == 0) {
 
-			poll_dispatch_modify (aisexec_poll_handle,
+			poll_dispatch_modify (corosync_poll_handle,
 				conn_info->fd, POLLIN|POLLNVAL,
 				poll_handler_connection);
 		}
@@ -592,7 +592,7 @@ static void ipc_disconnect (struct conn_info *conn_info)
 	conn_info->disconnect_requested = 1;
 	pthread_mutex_unlock (&conn_info->mutex);
 
-	poll_dispatch_modify (aisexec_poll_handle,
+	poll_dispatch_modify (corosync_poll_handle,
 		conn_info->fd, POLLOUT|POLLNVAL,
 		poll_handler_connection);
 }
@@ -613,7 +613,7 @@ static int conn_info_create (int fd)
 	list_init (&conn_info->list);
 	list_add (&conn_info->list, &conn_info_list_head);
 
-        poll_dispatch_add (aisexec_poll_handle, fd, POLLIN|POLLNVAL,
+        poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL,
 		conn_info, poll_handler_connection);
 	return (0);
 }
@@ -633,7 +633,7 @@ char *socketname = "/var/run/libais.socket";
 #endif
 
 static int poll_handler_accept (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *data)
@@ -759,7 +759,7 @@ extern void cs_ipc_init (
         /*
          * Setup libais connection dispatch routine
          */
-        poll_dispatch_add (aisexec_poll_handle, libais_server_fd,
+        poll_dispatch_add (corosync_poll_handle, libais_server_fd,
                 POLLIN|POLLNVAL, 0, poll_handler_accept);
 
 	g_gid_valid = gid_valid;
@@ -904,7 +904,7 @@ void msg_send (void *conn, struct iovec *iov, int iov_len, int locked)
 		if (locked == 0) {
 			pthread_mutex_unlock (&conn_info->mutex);
 		}
-        	poll_dispatch_modify (aisexec_poll_handle, conn_info->fd,
+        	poll_dispatch_modify (corosync_poll_handle, conn_info->fd,
 			POLLIN|POLLOUT|POLLNVAL, poll_handler_connection);
 	} else
 	if (res == -1) {
@@ -1046,7 +1046,7 @@ static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
 		pthread_mutex_lock (&conn_info->mutex);
 		if (list_empty (&conn_info->outq_head)) {
 			conn_info->notify_flow_control_enabled = 1;
-			poll_dispatch_modify (aisexec_poll_handle,
+			poll_dispatch_modify (corosync_poll_handle,
 				conn_info->fd, POLLOUT|POLLIN|POLLNVAL,
 				poll_handler_connection);
 		}

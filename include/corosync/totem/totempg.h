@@ -39,8 +39,7 @@
 #include <netinet/in.h>
 #include "totem.h"
 #include "coropoll.h"
-
-typedef unsigned int totempg_groups_handle;
+#include <corosync/hdb.h>
 
 struct totempg_group {
 	void *group;
@@ -59,7 +58,7 @@ struct totempg_group {
  * Initialize the totem process groups abstraction
  */
 extern int totempg_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config
 );
 
@@ -77,7 +76,7 @@ extern void totempg_callback_token_destroy (void *handle);
  * Initialize a groups instance
  */
 extern int totempg_groups_initialize (
-	totempg_groups_handle *handle,
+	hdb_handle_t *handle,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -93,31 +92,31 @@ extern int totempg_groups_initialize (
 		struct memb_ring_id *ring_id));
 
 extern int totempg_groups_finalize (
-	totempg_groups_handle handle);
+	hdb_handle_t handle);
 
 extern int totempg_groups_join (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int gruop_cnt);
 
 extern int totempg_groups_leave (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int gruop_cnt);
 
 extern int totempg_groups_mcast_joined (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee);
 
 extern int totempg_groups_send_ok_joined (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len);
 	
 extern int totempg_groups_mcast_groups (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	int guarantee,
 	struct totempg_group *groups,
 	int groups_cnt,
@@ -125,7 +124,7 @@ extern int totempg_groups_mcast_groups (
 	int iov_len);
 
 extern int totempg_groups_send_ok_groups (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int groups_cnt,
 	struct iovec *iovec,

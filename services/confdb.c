@@ -82,21 +82,26 @@ static void message_handler_req_lib_confdb_reload (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_start (void *conn, void *message);
 static void message_handler_req_lib_confdb_track_stop (void *conn, void *message);
 
-static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
-											unsigned int parent_object_handle,
-											unsigned int object_handle,
-											void *object_name_pt, int object_name_len,
-											void *key_name_pt, int key_name_len,
-											void *key_value_pt, int key_value_len,
-											void *priv_data_pt);
+static void confdb_notify_lib_of_key_change(
+	object_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	void *object_name_pt, int object_name_len,
+	void *key_name_pt, int key_name_len,
+	void *key_value_pt, int key_value_len,
+	void *priv_data_pt);
 
-static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
-											unsigned int object_handle,
-											uint8_t *name_pt, int name_len,
-											void *priv_data_pt);
-static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_handle,
-												  uint8_t *name_pt, int name_len,
-												  void *priv_data_pt);
+static void confdb_notify_lib_of_new_object(
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	uint8_t *name_pt, int name_len,
+	void *priv_data_pt);
+
+static void confdb_notify_lib_of_destroyed_object(
+	hdb_handle_t parent_object_handle,
+	uint8_t *name_pt, int name_len,
+	void *priv_data_pt);
+
 /*
  * Library Handler Definition
  */
@@ -289,7 +294,7 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 {
 	struct req_lib_confdb_object_create *req_lib_confdb_object_create = (struct req_lib_confdb_object_create *)message;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	int ret = CS_OK;
 
 	if (api->object_create(req_lib_confdb_object_create->parent_object_handle,
@@ -460,7 +465,7 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 {
 	struct req_lib_confdb_object_parent_get *req_lib_confdb_object_parent_get = (struct req_lib_confdb_object_parent_get *)message;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	int ret = CS_OK;
 
 	if (api->object_parent_get(req_lib_confdb_object_parent_get->object_handle,
@@ -613,8 +618,8 @@ static void message_handler_req_lib_confdb_reload (void *conn, void *message)
 }
 
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
-											  unsigned int parent_object_handle,
-											  unsigned int object_handle,
+											  hdb_handle_t parent_object_handle,
+											  hdb_handle_t object_handle,
 											  void *object_name_pt, int object_name_len,
 											  void *key_name_pt, int key_name_len,
 											  void *key_value_pt, int key_value_len,
@@ -642,8 +647,8 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
-static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
-										   unsigned int object_handle,
+static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
+										   hdb_handle_t object_handle,
 										   uint8_t *name_pt, int name_len,
 										   void *priv_data_pt)
 {
@@ -660,7 +665,7 @@ static void confdb_notify_lib_of_new_object(unsigned int parent_object_handle,
 	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
-static void confdb_notify_lib_of_destroyed_object(unsigned int parent_object_handle,
+static void confdb_notify_lib_of_destroyed_object(hdb_handle_t parent_object_handle,
 											uint8_t *name_pt, int name_len,
 											void *priv_data_pt)
 {

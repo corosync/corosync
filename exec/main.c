@@ -108,6 +108,8 @@ static struct corosync_api_v1 *api = NULL;
 
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
+hdb_handle_t corosync_poll_handle;
+
 static void sigusr2_handler (int num)
 {
 	int i;
@@ -119,7 +121,7 @@ static void sigusr2_handler (int num)
 	}
 }
 
-static void *aisexec_exit (void *arg)
+static void *corosync_exit (void *arg)
 {
 	if (api) {
 		corosync_service_unlink_all (api);
@@ -148,10 +150,10 @@ static void *aisexec_exit (void *arg)
 	return NULL;
 }
 
-pthread_t aisexec_exit_thread;
+pthread_t corosync_exit_thread;
 static void init_shutdown(void *data) 
 {
-	pthread_create (&aisexec_exit_thread, NULL, aisexec_exit, NULL);
+	pthread_create (&corosync_exit_thread, NULL, corosync_exit, NULL);
 }
 
 
@@ -159,7 +161,7 @@ static poll_timer_handle shutdown_handle;
 static void sigquit_handler (int num)
 {
 	/* avoid creating threads from within the interrupt context */
-	poll_timer_add (aisexec_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
+	poll_timer_add (corosync_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
 }
 
 
@@ -181,7 +183,7 @@ static void sigabrt_handler (int num)
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
-totempg_groups_handle corosync_group_handle;
+hdb_handle_t corosync_group_handle;
 
 struct totempg_group corosync_group = {
 	.group		= "a",
@@ -190,7 +192,7 @@ struct totempg_group corosync_group = {
 
 void sigintr_handler (int signum)
 {
-	poll_timer_add (aisexec_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
+	poll_timer_add (corosync_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
 }
 
 
@@ -242,7 +244,7 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 	return (0);
 }
 
-static struct memb_ring_id aisexec_ring_id;
+static struct memb_ring_id corosync_ring_id;
 
 static void confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -253,7 +255,7 @@ static void confchg_fn (
 {
 	int i;
 
-	memcpy (&aisexec_ring_id, ring_id, sizeof (struct memb_ring_id));
+	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	/*
 	 * Call configuration change for all services
@@ -275,7 +277,7 @@ return; /* TODO: we are still not dropping privs */
 	setegid (main_config->gid);
 }
 
-static void aisexec_mempool_init (void)
+static void corosync_mempool_init (void)
 {
 	int res;
 
@@ -286,7 +288,7 @@ static void aisexec_mempool_init (void)
 	}
 }
 
-static void aisexec_tty_detach (void)
+static void corosync_tty_detach (void)
 {
 	int fd;
 
@@ -332,7 +334,7 @@ static void aisexec_tty_detach (void)
 	}
 }
 
-static void aisexec_setscheduler (void)
+static void corosync_setscheduler (void)
 {
 #if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
 	struct sched_param sched_param;
@@ -353,7 +355,7 @@ static void aisexec_setscheduler (void)
 #endif
 }
 
-static void aisexec_mlockall (void)
+static void corosync_mlockall (void)
 {
 #if !defined(COROSYNC_BSD)
 	int res;
@@ -458,8 +460,8 @@ int main (int argc, char **argv)
 	char *error_string;
 	struct main_config main_config;
 	struct totem_config totem_config;
-	unsigned int objdb_handle;
-	unsigned int config_handle;
+	hdb_handle_t objdb_handle;
+	hdb_handle_t config_handle;
 	unsigned int config_version = 0;
 	void *objdb_p;
 	struct config_iface_ver0 *config;
@@ -494,7 +496,7 @@ int main (int argc, char **argv)
 	}	
 
 	if (background)
-		aisexec_tty_detach ();
+		corosync_tty_detach ();
 
 	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
@@ -512,7 +514,7 @@ int main (int argc, char **argv)
 
 	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
-	aisexec_poll_handle = poll_create (
+	corosync_poll_handle = poll_create (
 		serialize_mutex_lock,
 		serialize_mutex_unlock);
 
@@ -614,9 +616,9 @@ int main (int argc, char **argv)
 	 * application healthchecking
 	 */
 	if (setprio)
-		aisexec_setscheduler ();
+		corosync_setscheduler ();
 
-	aisexec_mlockall ();
+	corosync_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id =
@@ -631,7 +633,7 @@ int main (int argc, char **argv)
 	/*
 	 * Sleep for a while to let other nodes in the cluster
 	 * understand that this node has been away (if it was
-	 * an aisexec restart).
+	 * an corosync restart).
 	 */
 
 // TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
@@ -647,7 +649,7 @@ int main (int argc, char **argv)
 	 *  and configuration change functions
 	 */
 	totempg_initialize (
-		aisexec_poll_handle,
+		corosync_poll_handle,
 		&totem_config);
 
 	totempg_groups_initialize (
@@ -682,14 +684,14 @@ int main (int argc, char **argv)
 	 */
 	priv_drop (&main_config);
 
-	aisexec_mempool_init ();
+	corosync_mempool_init ();
 
 	cs_ipc_init (main_config.gid);
 
 	/*
 	 * Start main processing loop
 	 */
-	poll_run (aisexec_poll_handle);
+	poll_run (corosync_poll_handle);
 
 	return EXIT_SUCCESS;
 }

@@ -56,7 +56,7 @@ confdb_callbacks_t callbacks = {
 /* Recursively dump the object tree */
 static void print_config_tree(confdb_handle_t handle, unsigned int parent_object_handle, int depth)
 {
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	char object_name[1024];
 	int object_name_len;
 	char key_name[1024];
@@ -89,18 +89,18 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 	}
 
 	while ( (res = confdb_object_iter(handle, parent_object_handle, &object_handle, object_name, &object_name_len)) == CS_OK)	{
-		unsigned int parent;
+		hdb_handle_t parent;
 
 		res = confdb_object_parent_get(handle, object_handle, &parent);
 		if (res != CS_OK) {
-			printf( "error getting parent for object %d: %d\n", object_handle, res);
+			printf( "error getting parent for object %lld: %d\n", object_handle, res);
 			return;
 		}
 
 		for (i=0; i<depth; i++)	printf("  ");
 
 		object_name[object_name_len] = '\0';
-		printf("OBJECT: %s (%u, parent: %u)\n", object_name, object_handle, parent);
+		printf("OBJECT: %s (%llu, parent: %llu)\n", object_name, object_handle, parent);
 
 		/* Down we go ... */
 		print_config_tree(handle, object_handle, depth+1);
@@ -111,7 +111,7 @@ static void do_write_tests(confdb_handle_t handle)
 {
 	int res;
 	unsigned int incdec_value;
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	char error_string[1024];
 
 	/* Add a scratch object and put some keys into it */
@@ -194,7 +194,7 @@ static void do_write_tests(confdb_handle_t handle)
 int main (int argc, char *argv[]) {
 	confdb_handle_t handle;
 	int result;
-	unsigned int totem_handle;
+	hdb_handle_t totem_handle;
 	char key_value[256];
 	int value_len;
 

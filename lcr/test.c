@@ -29,6 +29,7 @@
  */
 #include <assert.h>
 #include <unistd.h>
+#include <corosync/hdb.h>
 #include <corosync/lcr/lcr_ifact.h>
 
 struct iface {
@@ -38,15 +39,15 @@ struct iface {
 };
 
 int main (void) {
-	unsigned int a_ifact_handle_ver0;
-	unsigned int b_ifact_handle_ver0;
+	hdb_handle_t a_ifact_handle_ver0;
+	hdb_handle_t b_ifact_handle_ver0;
 	struct iface *a_iface_ver0;
 	struct iface *a_iface_ver1;
 	void *a_iface_ver0_p;
 	void *a_iface_ver1_p;
 
-	unsigned int a_ifact_handle_ver1;
-	unsigned int b_ifact_handle_ver1;
+	hdb_handle_t a_ifact_handle_ver1;
+	hdb_handle_t b_ifact_handle_ver1;
 	struct iface *b_iface_ver0;
 	struct iface *b_iface_ver1;
 	void *b_iface_ver0_p;

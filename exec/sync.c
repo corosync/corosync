@@ -118,7 +118,7 @@ static struct totempg_group sync_group = {
     .group_len  = 4
 };
 
-static totempg_groups_handle sync_group_handle;
+static hdb_handle_t sync_group_handle;
 static char *service_name;
 static unsigned int current_members[PROCESSOR_COUNT_MAX];
 static unsigned int current_members_cnt;

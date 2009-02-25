@@ -254,9 +254,9 @@ static struct quorum_callin_functions callins = {
 
 static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
-	unsigned int find_handle;
-	unsigned int quorum_handle = 0;
-	unsigned int q_handle;
+	hdb_handle_t find_handle;
+	hdb_handle_t quorum_handle = 0;
+	hdb_handle_t q_handle;
 	char *quorum_module;
 	int res;
 	void *quorum_iface_p;

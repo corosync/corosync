@@ -139,7 +139,7 @@ static struct list_head trackers_list;
 static unsigned int quorum_members[PROCESSOR_COUNT_MAX+1];
 static int quorum_members_entries = 0;
 static struct memb_ring_id quorum_ringid;
-static cs_tpg_handle group_handle;
+static hdb_handle_t group_handle;
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 static struct cluster_node *find_node_by_nodeid(int nodeid);
@@ -221,7 +221,7 @@ static int quorum_exec_send_nodeinfo(void);
 static int quorum_exec_send_reconfigure(int param, int nodeid, int value);
 static int quorum_exec_send_killnode(int nodeid, unsigned int reason);
 
-static void add_votequorum_config_notification(unsigned int quorum_object_handle);
+static void add_votequorum_config_notification(hdb_handle_t quorum_object_handle);
 
 
 /*
@@ -516,8 +516,8 @@ static void read_quorum_config(unsigned int quorum_handle)
 
 static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
-	unsigned int object_handle;
-	unsigned int find_handle;
+	hdb_handle_t object_handle;
+	hdb_handle_t find_handle;
 
 	ENTER();
 
@@ -1560,7 +1560,7 @@ static char *kill_reason(int reason)
 	}
 }
 
-static void reread_config(unsigned int object_handle)
+static void reread_config(hdb_handle_t object_handle)
 {
 	unsigned int old_votes;
 	unsigned int old_expected;
@@ -1585,8 +1585,8 @@ static void reread_config(unsigned int object_handle)
 }
 
 static void quorum_key_change_notify(object_change_type_t change_type,
-				     unsigned int parent_object_handle,
-				     unsigned int object_handle,
+				     hdb_handle_t parent_object_handle,
+				     hdb_handle_t object_handle,
 				     void *object_name_pt, int object_name_len,
 				     void *key_name_pt, int key_len,
 				     void *key_value_pt, int key_value_len,
@@ -1620,8 +1620,8 @@ static void votequorum_objdb_reload_notify(
 
 	if (type == OBJDB_RELOAD_NOTIFY_END ||
 	    type == OBJDB_RELOAD_NOTIFY_FAILED) {
-		unsigned int find_handle;
-		unsigned int object_handle;
+		hdb_handle_t find_handle;
+		hdb_handle_t object_handle;
 
 		corosync_api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
 		if (corosync_api->object_find_next(find_handle, &object_handle) == 0) {
@@ -1637,7 +1637,7 @@ static void votequorum_objdb_reload_notify(
 
 
 static void add_votequorum_config_notification(
-	unsigned int quorum_object_handle)
+	hdb_handle_t quorum_object_handle)
 {
 
 	corosync_api->object_track_start(quorum_object_handle,

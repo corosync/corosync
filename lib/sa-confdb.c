@@ -60,7 +60,7 @@ static struct config_iface_ver0 *config_modules[128];
 
 static int load_objdb()
 {
-	unsigned int objdb_handle;
+	hdb_handle_t objdb_handle;
 	void *objdb_p;
 	int res;
 
@@ -88,8 +88,8 @@ static int load_config()
 	char *config_iface;
 	char *iface;
 	int res;
-	unsigned int config_handle;
-	unsigned int config_version = 0;
+	hdb_handle_t config_handle;
+	hdb_handle_t config_version = 0;
 	void *config_p;
 	struct config_iface_ver0 *config;
 	char *error_string;
@@ -184,10 +184,10 @@ int confdb_sa_init (void)
 
 
 int confdb_sa_object_create (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *object_name,
 	int object_name_len,
-	unsigned int *object_handle)
+	hdb_handle_t *object_handle)
 {
 	return objdb->object_create(parent_object_handle,
 				    object_handle,
@@ -195,20 +195,20 @@ int confdb_sa_object_create (
 }
 
 int confdb_sa_object_destroy (
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	return objdb->object_destroy(object_handle);
 }
 
 int confdb_sa_object_parent_get (
-	unsigned int object_handle,
-	unsigned int *parent_object_handle)
+	hdb_handle_t object_handle,
+	hdb_handle_t *parent_object_handle)
 {
 	return objdb->object_parent_get(object_handle, parent_object_handle);
 }
 
 int confdb_sa_key_create (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -220,7 +220,7 @@ int confdb_sa_key_create (
 }
 
 int confdb_sa_key_delete (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -232,7 +232,7 @@ int confdb_sa_key_delete (
 }
 
 int confdb_sa_key_get (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -251,7 +251,7 @@ int confdb_sa_key_get (
 }
 
 int confdb_sa_key_increment (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
@@ -265,7 +265,7 @@ int confdb_sa_key_increment (
 }
 
 int confdb_sa_key_decrement (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
@@ -280,7 +280,7 @@ int confdb_sa_key_decrement (
 
 
 int confdb_sa_key_replace (
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *old_value,
@@ -322,9 +322,9 @@ int confdb_sa_reload (
 }
 
 int confdb_sa_object_find (
-	unsigned int parent_object_handle,
-	unsigned int *find_handle,
-	unsigned int *object_handle,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *find_handle,
+	hdb_handle_t *object_handle,
 	void *object_name,
 	int *object_name_len,
 	int copy_name)
@@ -348,8 +348,8 @@ int confdb_sa_object_find (
 }
 
 int confdb_sa_key_iter (
-	unsigned int parent_object_handle,
-	unsigned int start_pos,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t start_pos,
 	void *key_name,
 	int *key_name_len,
 	void *value,
@@ -370,7 +370,7 @@ int confdb_sa_key_iter (
 	return res;
 }
 
-int confdb_sa_find_destroy(unsigned int find_handle)
+int confdb_sa_find_destroy(hdb_handle_t find_handle)
 {
 	return objdb->object_find_destroy(find_handle);
 }

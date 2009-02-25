@@ -86,13 +86,13 @@ static struct default_service default_services[] = {
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
-static unsigned int object_internal_configuration_handle;
+static hdb_handle_t object_internal_configuration_handle;
 
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
-	unsigned int object_service_handle;
-	unsigned int object_find_handle;
+	hdb_handle_t object_service_handle;
+	hdb_handle_t object_find_handle;
 	char *value;
 
 	/*
@@ -132,10 +132,10 @@ unsigned int corosync_service_link_and_init (
 {
 	struct corosync_service_engine_iface_ver0 *iface_ver0;
 	void *iface_ver0_p;
-	unsigned int handle;
+	hdb_handle_t handle;
 	struct corosync_service_engine *service;
 	unsigned int res;
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 
 	/*
 	 * reference the service interface
@@ -208,7 +208,7 @@ unsigned int corosync_service_link_and_init (
 
 static int corosync_service_unlink_common (
 	struct corosync_api_v1 *corosync_api,
-	unsigned int object_service_handle,
+	hdb_handle_t object_service_handle,
 	const char *service_name,
 	unsigned int service_version) 
 {
@@ -245,10 +245,10 @@ extern unsigned int corosync_service_unlink_and_exit (
 	unsigned int service_ver)
 {
 	unsigned int res;
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 	char *found_service_name;
 	unsigned int *found_service_ver;
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
 
 	corosync_api->object_find_create (
 		object_internal_configuration_handle,
@@ -297,8 +297,8 @@ extern unsigned int corosync_service_unlink_all (
 {
 	char *service_name;
 	unsigned int *service_ver;
-	unsigned int object_service_handle;
-	unsigned int object_find_handle;
+	hdb_handle_t object_service_handle;
+	hdb_handle_t object_find_handle;
 	int found; 
 
 	log_printf(LOG_LEVEL_NOTICE, "Unloading all corosync components\n");
@@ -359,11 +359,11 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 {
 	unsigned int i;
 
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 	char *found_service_name;
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
  
 	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,

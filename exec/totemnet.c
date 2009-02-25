@@ -103,7 +103,7 @@ struct totemnet_instance {
 
 	unsigned int totemnet_private_key_len;
 
-	poll_handle totemnet_poll_handle;
+	hdb_handle_t totemnet_poll_handle;
 
 	struct totem_interface *totem_interface;
 
@@ -143,7 +143,7 @@ struct totemnet_instance {
 		int line, unsigned int level, char *format,
 		...)__attribute__((format(printf, 6, 7)));
 
-	totemnet_handle handle;
+	hdb_handle_t handle;
 
 	char iov_buffer[FRAME_SIZE_MAX];
 
@@ -583,7 +583,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 }
 
 int totemnet_finalize (
-	totemnet_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -608,7 +608,7 @@ error_exit:
  */
 
 static int net_deliver_fn (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int revents,
 	void *data)
@@ -1151,8 +1151,8 @@ static int totemnet_build_sockets (
  * Create an instance
  */
 int totemnet_initialize (
-	poll_handle poll_handle,
-	totemnet_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -1251,7 +1251,7 @@ error_destroy:
 }
 
 int totemnet_processor_count_set (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	int processor_count)
 {
 	struct totemnet_instance *instance;
@@ -1280,7 +1280,7 @@ error_exit:
 	return (res);
 }
 
-int totemnet_recv_flush (totemnet_handle handle)
+int totemnet_recv_flush (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	struct pollfd ufd;
@@ -1314,7 +1314,7 @@ error_exit:
 	return (res);
 }
 
-int totemnet_send_flush (totemnet_handle handle)
+int totemnet_send_flush (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1335,7 +1335,7 @@ error_exit:
 }
 
 int totemnet_token_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len)
 {
@@ -1357,7 +1357,7 @@ error_exit:
 	return (res);
 }
 int totemnet_mcast_flush_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len)
 {
@@ -1380,7 +1380,7 @@ error_exit:
 }
 
 int totemnet_mcast_noflush_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len)
 {
@@ -1411,7 +1411,7 @@ error_exit:
 	return (res);
 }
 
-extern int totemnet_iface_check (totemnet_handle handle)
+extern int totemnet_iface_check (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1441,7 +1441,7 @@ extern void totemnet_net_mtu_adjust (struct totem_config *totem_config)
 	}
 }
 
-char *totemnet_iface_print (totemnet_handle handle)  {
+char *totemnet_iface_print (hdb_handle_t handle)  {
 	struct totemnet_instance *instance;
 	int res = 0;
 	char *ret_char;
@@ -1461,7 +1461,7 @@ error_exit:
 }
 
 int totemnet_iface_get (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *addr)
 {
 	struct totemnet_instance *instance;
@@ -1482,7 +1482,7 @@ error_exit:
 }
 
 int totemnet_token_target_set (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *token_target)
 {
 	struct totemnet_instance *instance;

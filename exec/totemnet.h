@@ -40,8 +40,6 @@
 
 #include <corosync/totem/totem.h>
 
-typedef unsigned int totemnet_handle;
-
 #define TOTEMNET_NOFLUSH	0
 #define TOTEMNET_FLUSH		1
 /*
@@ -53,8 +51,8 @@ typedef unsigned int totemnet_handle;
  * Create an instance
  */
 extern int totemnet_initialize (
-	poll_handle poll_handle,
-	totemnet_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -69,42 +67,42 @@ extern int totemnet_initialize (
 		struct totem_ip_address *iface_address));
 
 extern int totemnet_processor_count_set (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	int processor_count);
 
 extern int totemnet_token_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len);
 
 extern int totemnet_mcast_flush_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemnet_mcast_noflush_send (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-extern int totemnet_recv_flush (totemnet_handle handle);
+extern int totemnet_recv_flush (hdb_handle_t handle);
 
-extern int totemnet_send_flush (totemnet_handle handle);
+extern int totemnet_send_flush (hdb_handle_t handle);
 
-extern int totemnet_iface_check (totemnet_handle handle);
+extern int totemnet_iface_check (hdb_handle_t handle);
 
-extern int totemnet_finalize (totemnet_handle handle);
+extern int totemnet_finalize (hdb_handle_t handle);
 
 extern void totemnet_net_mtu_adjust (struct totem_config *totem_config);
 
-extern char *totemnet_iface_print (totemnet_handle handle);
+extern char *totemnet_iface_print (hdb_handle_t handle);
 
 extern int totemnet_iface_get (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *addr);
 
 extern int totemnet_token_target_set (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *token_target);
 
 #endif /* TOTEMNET_H_DEFINED */

@@ -39,6 +39,7 @@
 #define OBJECT_PARENT_HANDLE 0
 
 #include <stdio.h>
+#include <corosync/hdb.h>
 
 typedef enum {
 	OBJECT_TRACK_DEPTH_ONE,
@@ -58,18 +59,19 @@ typedef enum {
 } objdb_reload_notify_type_t;
 
 
-typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
-											  unsigned int parent_object_handle,
-											  unsigned int object_handle,
-											  void *object_name_pt, int object_name_len,
-											  void *key_name_pt, int key_len,
-											  void *key_value_pt, int key_value_len,
-											  void *priv_data_pt);
+typedef void (*object_key_change_notify_fn_t)(
+	object_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	void *object_name_pt, int object_name_len,
+	void *key_name_pt, int key_len,
+	void *key_value_pt, int key_value_len,
+void *priv_data_pt);
 
 typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
-										   unsigned int object_handle,
-										   void *name_pt, int name_len,
-										   void *priv_data_pt);
+hdb_handle_t object_handle,
+void *name_pt, int name_len,
+void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
 											void *name_pt, int name_len,
@@ -93,61 +95,61 @@ struct objdb_iface_ver0 {
 	int (*objdb_init) (void);
 
 	int (*object_create) (
-		unsigned int parent_object_handle,
-		unsigned int *object_handle,
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t *object_handle,
 		void *object_name,
 		unsigned int object_name_len);
 
 	int (*object_priv_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *priv);
 
 	int (*object_key_create) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *value,
 		int value_len);
 
 	int (*object_destroy) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_valid *object_valid_list,
 		unsigned int object_valid_list_entries);
 
 	int (*object_key_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
 		unsigned int object_key_valid_list_entries);
 
 	int (*object_find_create) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void *object_name,
 		int object_name_len,
-		unsigned int *object_find_handle);
+		hdb_handle_t *object_find_handle);
 
 	int (*object_find_next) (
-		unsigned int object_find_handle,
-		unsigned int *object_handle);
+		hdb_handle_t object_find_handle,
+		hdb_handle_t *object_handle);
 
 	int (*object_find_destroy) (
-		unsigned int object_find_handle);
+		hdb_handle_t object_find_handle);
 
 	int (*object_key_get) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_priv_get) (
-		unsigned int jobject_handle,
+		hdb_handle_t jobject_handle,
 		void **priv);
 
 	int (*object_key_replace) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *old_value,
@@ -156,54 +158,54 @@ struct objdb_iface_ver0 {
 		int new_value_len);
 
 	int (*object_key_delete) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *value,
 		int value_len);
 
 	int (*object_iter_reset) (
-		unsigned int parent_object_handle);
+		hdb_handle_t parent_object_handle);
 
 	int (*object_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **object_name,
 		int *name_len,
-		unsigned int *object_handle);
+		hdb_handle_t *object_handle);
 
 	int (*object_key_iter_reset) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_key_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **key_name,
 		int *key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_parent_get) (
-		unsigned int object_handle,
-		unsigned int *parent_handle);
+		hdb_handle_t object_handle,
+		hdb_handle_t *parent_handle);
 
 	int (*object_name_get) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		char *object_name,
 		int *object_name_len);
 
 	int (*object_dump) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		FILE *file);
 
 	int (*object_key_iter_from) (
-		unsigned int parent_object_handle,
-		unsigned int start_pos,
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t start_pos,
 		void **key_name,
 		int *key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_track_start) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		object_track_depth_t depth,
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
@@ -225,13 +227,13 @@ struct objdb_iface_ver0 {
 		char **error_string);
 
 	int (*object_key_increment) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		unsigned int *value);

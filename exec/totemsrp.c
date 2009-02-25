@@ -443,7 +443,7 @@ struct totemsrp_instance {
 
 	struct iovec totemsrp_iov_recv;
 
-	poll_handle totemsrp_poll_handle;
+	hdb_handle_t totemsrp_poll_handle;
 
 	/*
 	 * Function called when new message received
@@ -487,7 +487,7 @@ struct totemsrp_instance {
 
 	struct timeval tv_old;
 
-	totemrrp_handle totemrrp_handle;
+	hdb_handle_t totemrrp_handle;
 
 	struct totem_config *totem_config;
 
@@ -666,8 +666,8 @@ unsigned int main_msgs_missing (void)
  * Exported interfaces
  */
 int totemsrp_initialize (
-	poll_handle poll_handle,
-	totemsrp_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -844,7 +844,7 @@ error_exit:
 }
 
 void totemsrp_finalize (
-	totemsrp_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -859,7 +859,7 @@ void totemsrp_finalize (
 }
 
 int totemsrp_ifaces_get (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
 	char ***status,
@@ -914,7 +914,7 @@ error_exit:
 }
 
 unsigned int totemsrp_my_nodeid_get (
-	totemsrp_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -932,7 +932,7 @@ unsigned int totemsrp_my_nodeid_get (
 }
 
 int totemsrp_my_family_get (
-	totemsrp_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemsrp_instance *instance;
 	int res;
@@ -951,7 +951,7 @@ int totemsrp_my_family_get (
 
 
 int totemsrp_ring_reenable (
-        totemsrp_handle handle)
+        hdb_handle_t handle)
 {
 	struct totemsrp_instance *instance;
 	int res;
@@ -1981,7 +1981,7 @@ originated:
 	return;
 }
 
-int totemsrp_new_msg_signal (totemsrp_handle handle)
+int totemsrp_new_msg_signal (hdb_handle_t handle)
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -2001,7 +2001,7 @@ error_exit:
 }
 
 int totemsrp_mcast (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee)
@@ -2088,7 +2088,7 @@ error_exit:
 /*
  * Determine if there is room to queue a new message
  */
-int totemsrp_avail (totemsrp_handle handle)
+int totemsrp_avail (hdb_handle_t handle)
 {
 	int avail;
 	struct totemsrp_instance *instance;
@@ -2968,7 +2968,7 @@ static void memb_ring_id_set_and_store (
 }
 
 int totemsrp_callback_token_create (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
@@ -3012,7 +3012,7 @@ error_exit:
 	return (0);
 }
 
-void totemsrp_callback_token_destroy (totemsrp_handle handle, void **handle_out)
+void totemsrp_callback_token_destroy (hdb_handle_t handle, void **handle_out)
 {
 	struct token_callback_instance *h;
 

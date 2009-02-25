@@ -83,7 +83,7 @@ static char *remove_whitespace(char *string)
 
 static int parse_section(FILE *fp,
 			 struct objdb_iface_ver0 *objdb,
-			 unsigned int parent_handle,
+			 hdb_handle_t parent_handle,
 			 char **error_string)
 {
 	char line[512];
@@ -111,7 +111,7 @@ static int parse_section(FILE *fp,
 
 		/* New section ? */
 		if ((loc = strstr_rs (line, "{"))) {
-			unsigned int new_parent;
+			hdb_handle_t new_parent;
 			char *section = remove_whitespace(line);
 
 			loc--;

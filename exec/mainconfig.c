@@ -63,7 +63,7 @@ static void add_logsys_config_notification(
 /* This just makes the code below a little neater */
 static inline int objdb_get_string (
 	struct objdb_iface_ver0 *objdb,
-	unsigned int object_service_handle,
+	hdb_handle_t object_service_handle,
 	char *key, char **value)
 {
 	int res;
@@ -83,7 +83,8 @@ static inline int objdb_get_string (
 }
 
 static inline void objdb_get_int (
-	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_service_handle,
 	char *key, unsigned int *intvalue)
 {
 	char *value = NULL;
@@ -114,12 +115,12 @@ int corosync_main_config_read_logging (
 	char **error_string,
 	struct main_config *main_config)
 {
-	unsigned int object_service_handle;
-	unsigned int object_logger_subsys_handle;
+	hdb_handle_t object_service_handle;
+	hdb_handle_t object_logger_subsys_handle;
 	char *value;
 	char *error_reason = error_string_response;
-	unsigned int object_find_handle;
-	unsigned int object_find_logsys_handle;
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_find_logsys_handle;
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -316,10 +317,10 @@ int corosync_main_config_read (
 	char **error_string,
 	struct main_config *main_config)
 {
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 	char *value;
 	char *error_reason = error_string_response;
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
 
 	memset (main_config, 0, sizeof (struct main_config));
 

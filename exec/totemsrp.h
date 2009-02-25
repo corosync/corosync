@@ -38,8 +38,6 @@
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
 
-typedef unsigned int totemsrp_handle;
-
 /*
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
@@ -49,8 +47,8 @@ typedef unsigned int totemsrp_handle;
  * Create a protocol instance
  */
 int totemsrp_initialize (
-	poll_handle poll_handle,
-	totemsrp_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -65,13 +63,13 @@ int totemsrp_initialize (
 		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-void totemsrp_finalize (totemsrp_handle handle);
+void totemsrp_finalize (hdb_handle_t handle);
 
 /*
  * Multicast a message
  */
 int totemsrp_mcast (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len,
 	int priority);
@@ -79,10 +77,10 @@ int totemsrp_mcast (
 /*
  * Return number of available messages that can be queued
  */
-int totemsrp_avail (totemsrp_handle handle);
+int totemsrp_avail (hdb_handle_t handle);
 
 int totemsrp_callback_token_create (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
@@ -90,27 +88,27 @@ int totemsrp_callback_token_create (
 	void *data);
 
 void totemsrp_callback_token_destroy (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	void **handle_out);
 
-int totemsrp_new_msg_signal (totemsrp_handle handle);
+int totemsrp_new_msg_signal (hdb_handle_t handle);
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
 extern int totemsrp_ifaces_get (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
 	char ***status,
 	unsigned int *iface_count);
 
 extern unsigned int totemsrp_my_nodeid_get (
-	totemsrp_handle handle);
+	hdb_handle_t handle);
 
 extern int totemsrp_my_family_get (
-	totemsrp_handle handle);
+	hdb_handle_t handle);
 
 extern int totemsrp_ring_reenable (
-	totemsrp_handle handle);
+	hdb_handle_t handle);
 
 #endif /* TOTEMSRP_H_DEFINED */

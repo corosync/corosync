@@ -38,6 +38,7 @@
 #ifdef COROSYNC_SOLARIS
 #include <iso/limits_iso.h>
 #endif
+#include <corosync/hdb.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/hdb.h>
@@ -46,14 +47,14 @@
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;
 	int iface_count;
-	unsigned int comp_handle;
+	hdb_handle_t comp_handle;
 	void *dl_handle;
 	int refcount;
 	char library_name[256];
 };
 
 struct lcr_iface_instance {
-	unsigned int component_handle;
+	hdb_handle_t component_handle;
 	void *context;
 	void (*destructor) (void *context);
 };
@@ -112,7 +113,7 @@ static inline struct lcr_component_instance *lcr_comp_find (
 {
 	struct lcr_component_instance *instance;
 	void *instance_p = NULL;
-	unsigned int component_handle = 0;
+	hdb_handle_t component_handle = 0;
 	int i;
 
 	/*
@@ -143,7 +144,7 @@ static inline int lcr_lib_loaded (
 {
 	struct lcr_component_instance *instance;
 	void *instance_p = NULL;
-	unsigned int component_handle = 0;
+	hdb_handle_t component_handle = 0;
 
 	/*
 	 * Try to find interface in already loaded component
@@ -420,7 +421,7 @@ found:
 static unsigned int lcr_initialized = 0;
 
 int lcr_ifact_reference (
-	unsigned int *iface_handle,
+	hdb_handle_t *iface_handle,
 	char *iface_name,
 	int version,
 	void **iface,
@@ -486,7 +487,7 @@ found:
 	return (0);
 }
 
-int lcr_ifact_release (unsigned int handle)
+int lcr_ifact_release (hdb_handle_t handle)
 {
 	struct lcr_iface_instance *iface_instance;
 	int res = 0;
@@ -509,7 +510,7 @@ int lcr_ifact_release (unsigned int handle)
 void lcr_component_register (struct lcr_comp *comp)
 {
 	struct lcr_component_instance *instance;
-	static unsigned int comp_handle;
+	static hdb_handle_t comp_handle;
 
 	hdb_handle_create (&lcr_component_instance_database,
 		sizeof (struct lcr_component_instance),

@@ -32,35 +32,26 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_EXEC_H_DEFINED
-#define AIS_EXEC_H_DEFINED
+#ifndef MAIN_H_DEFINED
+#define MAIN_H_DEFINED
 
 #define TRUE 1
 #define FALSE 0
 #include <corosync/corotypes.h>
+#include <corosync/hdb.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 
-/*
- * Size of the queue (entries) for I/O's to the API over socket IPC.
- */
-
-#ifndef SIZEQUEUE
-#define SIZEQUEUE 800
-#endif /* SIZEQUEUE */
-
 #define SOCKET_SERVICE_INIT 254
-
-#define SIZEINB MESSAGE_SIZE_MAX
 
 extern struct totempg_group corosync_group;
 
-extern totempg_groups_handle corosync_group_handle;
+extern hdb_handle_t corosync_group_handle;
 
-poll_handle aisexec_poll_handle;
+extern hdb_handle_t corosync_poll_handle;
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
@@ -75,4 +66,4 @@ extern int main_send_ok (
         struct iovec *iovec,
         int iov_len);
 
-#endif /* AIS_EXEC_H_DEFINED */
+#endif /* MAIN_H_DEFINED */

@@ -39,12 +39,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/list.h>
-#include <corosync/hdb.h>
 #include "tlist.h"
 
-typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);
+typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle_t, int fd, int revents, void *data);
 
 struct poll_entry {
 	struct pollfd ufd;
@@ -71,11 +71,11 @@ static struct hdb_handle_database poll_instance_database = {
 	.iterator	= 0
 };
 
-poll_handle poll_create (
+hdb_handle_t poll_create (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void))
 {
-	poll_handle handle;
+	hdb_handle_t handle;
 	struct poll_instance *poll_instance;
 	unsigned int res;
 
@@ -107,7 +107,7 @@ error_exit:
 	return (-1);
 }
 
-int poll_destroy (poll_handle handle)
+int poll_destroy (hdb_handle_t handle)
 {
 	struct poll_instance *poll_instance;
 	int res = 0;
@@ -135,12 +135,12 @@ error_exit:
 }
 
 int poll_dispatch_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 	void *data,
 	int (*dispatch_fn) (
-		poll_handle poll_handle,
+		hdb_handle_t hdb_handle_t,
 		int fd,
 		int revents,
 		void *data))
@@ -209,11 +209,11 @@ error_exit:
 }
 
 int poll_dispatch_modify (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 	int (*dispatch_fn) (
-		poll_handle poll_handle,
+		hdb_handle_t hdb_handle_t,
 		int fd,
 		int revents,
 		void *data))
@@ -251,7 +251,7 @@ error_exit:
 }
 
 int poll_dispatch_delete (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd)
 {
 	struct poll_instance *poll_instance;
@@ -285,7 +285,7 @@ error_exit:
 }
 
 int poll_timer_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int msec_duration, void *data,
 	void (*timer_fn) (void *data),
 	poll_timer_handle *timer_handle_out)
@@ -314,7 +314,7 @@ error_exit:
 }
 
 int poll_timer_delete (
-	poll_handle handle,
+	hdb_handle_t handle,
 	poll_timer_handle timer_handle)
 {
 	struct poll_instance *poll_instance;
@@ -339,7 +339,7 @@ error_exit:
 }
 
 int poll_stop (
-	poll_handle handle)
+	hdb_handle_t handle)
 {
 	struct poll_instance *poll_instance;
 	unsigned int res;
@@ -360,7 +360,7 @@ error_exit:
 
 
 int poll_run (
-	poll_handle handle)
+	hdb_handle_t handle)
 {
 	struct poll_instance *poll_instance;
 	int i;
@@ -432,7 +432,7 @@ error_exit:
 
 #ifdef COMPILE_OUT
 void poll_print_state (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd)
 {
 	struct poll_instance *poll_instance;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,6 +40,8 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+
+typedef unsigned long long hdb_handle_t;
 
 enum HDB_HANDLE_STATE {
 	HDB_HANDLE_STATE_EMPTY,
@@ -81,7 +83,7 @@ static inline void hdb_destroy (
 static inline int hdb_handle_create (
 	struct hdb_handle_database *handle_database,
 	int instance_size,
-	unsigned int *handle_id_out)
+	hdb_handle_t *handle_id_out)
 {
 	int handle;
 	void *new_handles;
@@ -129,7 +131,7 @@ static inline int hdb_handle_create (
 
 static inline int hdb_handle_get (
 	struct hdb_handle_database *handle_database,
-	unsigned int handle,
+	hdb_handle_t handle,
 	void **instance)
 {
 	pthread_mutex_lock (&handle_database->mutex);
@@ -155,7 +157,7 @@ static inline int hdb_handle_get (
 
 static inline void hdb_handle_put (
 	struct hdb_handle_database *handle_database,
-	unsigned int handle)
+	hdb_handle_t handle)
 {
 	pthread_mutex_lock (&handle_database->mutex);
 	handle_database->handles[handle].ref_count -= 1;
@@ -188,7 +190,7 @@ static inline void hdb_iterator_reset (
 static inline int hdb_iterator_next (
 	struct hdb_handle_database *handle_database,
 	void **instance,
-	unsigned int *handle)
+	hdb_handle_t *handle)
 {
 	int res = -1;
 

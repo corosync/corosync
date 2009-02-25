@@ -56,10 +56,11 @@
 
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
+#include <corosync/hdb.h>
 
 #include "totemsrp.h"
 
-totemsrp_handle totemsrp_handle_in;
+hdb_handle_t totemsrp_handle_in;
 
 void (*pg_deliver_fn) (
 	unsigned int nodeid,
@@ -101,7 +102,7 @@ void totemmrp_confchg_fn (
  * Initialize the totem multiple ring protocol
  */
 int totemmrp_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (

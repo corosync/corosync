@@ -38,10 +38,9 @@
 #ifdef COROSYNC_BSD
 #include <sys/uio.h>
 #endif
+#include <corosync/hdb.h>
 
 typedef void * corosync_timer_handle_t;
-
-typedef unsigned int cs_tpg_handle;
 
 struct corosync_tpg_group {
 	void *group;
@@ -164,30 +163,37 @@ typedef enum {
 	OBJDB_RELOAD_NOTIFY_FAILED
 } objdb_reload_notify_type_t;
 
-typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
-											  unsigned int parent_object_handle,
-											  unsigned int object_handle,
-											  void *object_name_pt, int object_name_len,
-											  void *key_name_pt, int key_len,
-											  void *key_value_pt, int key_value_len,
-											  void *priv_data_pt);
+typedef void (*object_key_change_notify_fn_t)(
+	object_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	void *object_name_pt, int object_name_len,
+	void *key_name_pt, int key_len,
+	void *key_value_pt, int key_value_len,
+	void *priv_data_pt);
 
-typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
-										   unsigned int object_handle,
-										   uint8_t *name_pt, int name_len,
-										   void *priv_data_pt);
+typedef void (*object_create_notify_fn_t) (
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	uint8_t *name_pt, int name_len,
+	void *priv_data_pt);
 
-typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
-											uint8_t *name_pt, int name_len,
-											void *priv_data_pt);
-typedef void (*object_notify_callback_fn_t)(unsigned int object_handle,
-											void *key_name, int key_len,
-											void *value, int value_len,
-											object_change_type_t type,
-											void * priv_data_pt);
+typedef void (*object_destroy_notify_fn_t) (
+	hdb_handle_t parent_object_handle,
+	uint8_t *name_pt, int name_len,
+	void *priv_data_pt);
 
-typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
-											void *priv_data_pt);
+typedef void (*object_notify_callback_fn_t)(
+	hdb_handle_t object_handle,
+	void *key_name, int key_len,
+	void *value, int value_len,
+	object_change_type_t type,
+	void * priv_data_pt);
+
+typedef void (*object_reload_notify_fn_t) (
+	objdb_reload_notify_type_t,
+	int flush,
+	void *priv_data_pt);
 
 #endif /* OBJECT_PARENT_HANDLE_DEFINED */
 
@@ -215,60 +221,60 @@ struct corosync_api_v1 {
 	 * Object and configuration APIs
 	 */
 	int (*object_create) (
-		unsigned int parent_object_handle,
-		unsigned int *object_handle,
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t *object_handle,
 		void *object_name, unsigned int object_name_len);
 
 	int (*object_priv_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *priv);
 
 	int (*object_key_create) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *value,
 		int value_len);
 
 	int (*object_destroy) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_valid *object_valid_list,
 		unsigned int object_valid_list_entries);
 
 	int (*object_key_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
 		unsigned int object_key_valid_list_entries);
 
 	int (*object_find_create) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void *object_name,
 		int object_name_len,
-		unsigned int *object_find_handle);
+		hdb_handle_t *object_find_handle);
 
 	int (*object_find_next) (
-		unsigned int object_find_handle,
-		unsigned int *object_handle);
+		hdb_handle_t object_find_handle,
+		hdb_handle_t *object_handle);
 
 	int (*object_find_destroy) (
-		unsigned int object_find_handle);
+		hdb_handle_t object_find_handle);
 
 	int (*object_key_get) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_priv_get) (
-		unsigned int jobject_handle,
+		hdb_handle_t jobject_handle,
 		void **priv);
 
 	int (*object_key_replace) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *old_value,
@@ -277,54 +283,54 @@ struct corosync_api_v1 {
 		int new_value_len);
 
 	int (*object_key_delete) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		void *value,
 		int value_len);
 
 	int (*object_iter_reset) (
-		unsigned int parent_object_handle);
+		hdb_handle_t parent_object_handle);
 
 	int (*object_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **object_name,
 		int *name_len,
-		unsigned int *object_handle);
+		hdb_handle_t *object_handle);
 
 	int (*object_key_iter_reset) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_key_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **key_name,
 		int *key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_parent_get) (
-		unsigned int object_handle,
-		unsigned int *parent_handle);
+		hdb_handle_t object_handle,
+		hdb_handle_t *parent_handle);
 
 	int (*object_name_get) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		char *object_name,
 		int *object_name_len);
 
 	int (*object_dump) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		FILE *file);
 
 	int (*object_key_iter_from) (
-		unsigned int parent_object_handle,
-		unsigned int start_pos,
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t start_pos,
 		void **key_name,
 		int *key_len,
 		void **value,
 		int *value_len);
 
 	int (*object_track_start) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		object_track_depth_t depth,
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
@@ -345,13 +351,13 @@ struct corosync_api_v1 {
 				     char **error_string);
 
 	int (*object_key_increment) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
 		unsigned int *value);
@@ -436,7 +442,7 @@ struct corosync_api_v1 {
 	 * wanting their own groups
 	 */
 	int (*tpg_init) (
-		cs_tpg_handle *handle,
+		hdb_handle_t *handle,
 
 		void (*deliver_fn) (
 			unsigned int nodeid,
@@ -452,31 +458,31 @@ struct corosync_api_v1 {
 			struct memb_ring_id *ring_id));
 
 	int (*tpg_exit) (
-       		cs_tpg_handle handle);
+       		hdb_handle_t handle);
 
 	int (*tpg_join) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
 		int gruop_cnt);
 
 	int (*tpg_leave) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
 		int gruop_cnt);
 
 	int (*tpg_joined_mcast) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		struct iovec *iovec,
 		int iov_len,
 		int guarantee);
 
 	int (*tpg_joined_send_ok) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		struct iovec *iovec,
 		int iov_len);
 
 	int (*tpg_groups_mcast) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		int guarantee,
 		struct corosync_tpg_group *groups,
 		int groups_cnt,
@@ -484,7 +490,7 @@ struct corosync_api_v1 {
 		int iov_len);
 
 	int (*tpg_groups_send_ok) (
-		cs_tpg_handle handle,
+		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
 		int groups_cnt,
 		struct iovec *iovec,
@@ -510,13 +516,13 @@ struct corosync_api_v1 {
 	 * Plugin loading and unloading
 	 */
 	int (*plugin_interface_reference) (
-		unsigned int *handle, 
+		hdb_handle_t *handle, 
 		char *iface_name,
 		int version,
 		void **interface,
 		void *context);
 
-	int (*plugin_interface_release) (unsigned int handle);
+	int (*plugin_interface_release) (hdb_handle_t handle);
 
 	/*
 	 * Service loading and unloading APIs

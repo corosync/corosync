@@ -34,62 +34,62 @@
 #ifndef POLL_H_DEFINED
 #define POLL_H_DEFINED
 
+#include <corosync/hdb.h>
 #include <pthread.h>
 
 typedef void * poll_timer_handle;
-typedef unsigned int poll_handle;
 
-poll_handle poll_create (
+hdb_handle_t poll_create (
 	void (*serialize_lock) (void),
 	void (*serialize_unlock) (void));
 
-int poll_destroy (poll_handle poll_handle);
+int poll_destroy (hdb_handle_t hdb_handle_t);
 
 int poll_dispatch_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 	void *data,
 
-	int (*dispatch_fn) (poll_handle handle,
+	int (*dispatch_fn) (hdb_handle_t handle,
 		int fd,
 		int revents,
 		void *data));
 
 int poll_dispatch_modify (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 
-	int (*dispatch_fn) (poll_handle poll_handle,
+	int (*dispatch_fn) (hdb_handle_t hdb_handle_t,
 		int fd,
 		int revents,
 		void *data));
 
 
 int poll_dispatch_delete (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd);
 
 int poll_timer_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int msec_in_future, void *data,
 	void (*timer_fn) (void *data),
 	poll_timer_handle *timer_handle_out);
 
 int poll_timer_delete (
-	poll_handle handle,
+	hdb_handle_t handle,
 	poll_timer_handle timer_handle);
 
 int poll_run (
-	poll_handle handle);
+	hdb_handle_t handle);
 
 int poll_stop (
-	poll_handle handle);
+	hdb_handle_t handle);
 
 #ifdef COMPILE_OUT
 void poll_print_state (
-	poll_handle handle, int fd);
+	hdb_handle_t handle, int fd);
 #endif
 
 #endif	/* POLL_H_DEFINED */

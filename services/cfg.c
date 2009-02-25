@@ -912,8 +912,8 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		return;
 	}
 	else {
-		unsigned int cfg_handle;
-		unsigned int find_handle;
+		hdb_handle_t cfg_handle;
+		hdb_handle_t find_handle;
 		char *timeout_str;
 		unsigned int shutdown_timeout = DEFAULT_SHUTDOWN_TIMEOUT;
 

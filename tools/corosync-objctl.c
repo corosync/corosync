@@ -66,26 +66,26 @@ typedef enum {
 } find_object_of_type_t;
 
 static void tail_key_changed(confdb_handle_t handle,
-							   confdb_change_type_t change_type,
-							   unsigned int parent_object_handle,
-							   unsigned int object_handle,
-							   void *object_name,
-							   int  object_name_len,
-							   void *key_name,
-							   int key_name_len,
-							   void *key_value,
-							   int key_value_len);
+	confdb_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	void *object_name,
+	int  object_name_len,
+	void *key_name,
+	int key_name_len,
+	void *key_value,
+	int key_value_len);
 
 static void tail_object_created(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								unsigned int object_handle,
-								uint8_t *name_pt,
-								int  name_len);
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	uint8_t *name_pt,
+	int  name_len);
 
 static void tail_object_deleted(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								uint8_t *name_pt,
-								int  name_len);
+	hdb_handle_t parent_object_handle,
+	uint8_t *name_pt,
+	int  name_len);
 
 confdb_callbacks_t callbacks = {
 	.confdb_key_change_notify_fn = tail_key_changed,
@@ -96,9 +96,9 @@ confdb_callbacks_t callbacks = {
 static int action;
 
 /* Recursively dump the object tree */
-static void print_config_tree(confdb_handle_t handle, unsigned int parent_object_handle, char * parent_name)
+static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object_handle, char * parent_name)
 {
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	char object_name[OBJ_NAME_SIZE];
 	int object_name_len;
 	char key_name[OBJ_NAME_SIZE];
@@ -111,7 +111,7 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting key iterator for object %d: %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting key iterator for object %llu: %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 	children_printed = 0;
@@ -135,15 +135,15 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting object iterator for object %d: %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting object iterator for object %llu: %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 
 	while ( (res = confdb_object_iter(handle,
-									  parent_object_handle,
-									  &object_handle,
-									  object_name,
-									  &object_name_len)) == CS_OK)	{
+		parent_object_handle,
+		&object_handle,
+		object_name,
+		&object_name_len)) == CS_OK)	{
 
 		object_name[object_name_len] = '\0';
 		if (parent_name != NULL) {
@@ -256,11 +256,11 @@ void get_key(char * name_pt, char * key_name, char * key_value)
 static cs_error_t find_object (confdb_handle_t handle,
 			char * name_pt,
 			find_object_of_type_t type,
-			uint32_t * out_handle)
+			hdb_handle_t * out_handle)
 {
 	char * obj_name_pt;
 	char * save_pt;
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	confdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
 	char tmp_name[OBJ_NAME_SIZE];
 	cs_error_t res;
@@ -292,7 +292,7 @@ static cs_error_t find_object (confdb_handle_t handle,
 static void read_object(confdb_handle_t handle, char * name_pt)
 {
 	char parent_name[OBJ_NAME_SIZE];
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	cs_error_t res;
 
 	get_parent_name(name_pt, parent_name);
@@ -304,7 +304,7 @@ static void read_object(confdb_handle_t handle, char * name_pt)
 
 static void write_key(confdb_handle_t handle, char * path_pt)
 {
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	char parent_name[OBJ_NAME_SIZE];
 	char key_name[OBJ_NAME_SIZE];
 	char key_value[OBJ_NAME_SIZE];
@@ -366,8 +366,8 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 {
 	char * obj_name_pt;
 	char * save_pt;
-	uint32_t obj_handle;
-	uint32_t parent_object_handle = OBJECT_PARENT_HANDLE;
+	hdb_handle_t obj_handle;
+	hdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
 	char tmp_name[OBJ_NAME_SIZE];
 	cs_error_t res;
 
@@ -382,7 +382,7 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 		}
 
 		res = confdb_object_find(handle, parent_object_handle,
-								 obj_name_pt, strlen (obj_name_pt), &obj_handle);
+			 obj_name_pt, strlen (obj_name_pt), &obj_handle);
 		if (res != CS_OK) {
 
 			if (validate_name(obj_name_pt) != CS_OK) {
@@ -406,15 +406,15 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 }
 
 static void tail_key_changed(confdb_handle_t handle,
-							   confdb_change_type_t change_type,
-							   unsigned int parent_object_handle,
-							   unsigned int object_handle,
-							   void *object_name_pt,
-							   int  object_name_len,
-							   void *key_name_pt,
-							   int key_name_len,
-							   void *key_value_pt,
-							   int key_value_len)
+	confdb_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	void *object_name_pt,
+	int  object_name_len,
+	void *key_name_pt,
+	int key_name_len,
+	void *key_value_pt,
+	int key_value_len)
 {
 	char * on = (char*)object_name_pt;
 	char * kn = (char*)key_name_pt;
@@ -427,19 +427,19 @@ static void tail_key_changed(confdb_handle_t handle,
 }
 
 static void tail_object_created(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								unsigned int object_handle,
-								uint8_t *name_pt,
-								int  name_len)
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	uint8_t *name_pt,
+	int  name_len)
 {
 	name_pt[name_len] = '\0';
 	printf("object_created> %s\n", name_pt);
 }
 
 static void tail_object_deleted(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								uint8_t *name_pt,
-								int  name_len)
+	hdb_handle_t parent_object_handle,
+	uint8_t *name_pt,
+	int  name_len)
 {
 	name_pt[name_len] = '\0';
 
@@ -487,7 +487,7 @@ static void listen_for_object_changes(confdb_handle_t handle)
 static void track_object(confdb_handle_t handle, char * name_pt)
 {
 	cs_error_t res;
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 
 	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
 
@@ -519,7 +519,7 @@ static void stop_tracking(confdb_handle_t handle)
 static void delete_object(confdb_handle_t handle, char * name_pt)
 {
 	cs_error_t res;
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
 
 	if (res == CS_OK) {

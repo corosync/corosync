@@ -56,9 +56,9 @@
    each object_handle can have its own iterator */
 struct iter_context {
 	struct list_head list;
-	uint32_t parent_object_handle;
-	uint32_t find_handle;
-	uint32_t next_entry;
+	hdb_handle_t parent_object_handle;
+	hdb_handle_t find_handle;
+	hdb_handle_t next_entry;
 };
 
 struct confdb_inst {
@@ -85,7 +85,7 @@ static struct saHandleDatabase confdb_handle_t_db = {
 };
 
 
-static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, unsigned int find_handle);
+static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, hdb_handle_t find_handle);
 
 
 /* Safely tidy one iterator context list */
@@ -114,7 +114,7 @@ static void confdb_instance_destructor (void *instance)
 	pthread_mutex_destroy (&confdb_inst->dispatch_mutex);
 }
 
-static struct iter_context *find_iter_context(struct list_head *list, unsigned int object_handle)
+static struct iter_context *find_iter_context(struct list_head *list, hdb_handle_t object_handle)
 {
 	struct iter_context *context;
 	struct list_head *iter;
@@ -292,7 +292,6 @@ cs_error_t confdb_dispatch (
 	confdb_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
 {
-	struct pollfd ufds;
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
@@ -338,7 +337,6 @@ cs_error_t confdb_dispatch (
 			goto error_put;
 		}
 
-		dispatch_avail = ufds.revents & POLLIN;
 		if (dispatch_avail == 0 && dispatch_types == CONFDB_DISPATCH_ALL) {
 			break; /* exit do while cont is 1 loop */
 		} else
@@ -421,10 +419,10 @@ error_noput:
 
 cs_error_t confdb_object_create (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *object_name,
 	int object_name_len,
-	unsigned int *object_handle)
+	hdb_handle_t *object_handle)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -481,7 +479,7 @@ error_exit:
 
 cs_error_t confdb_object_destroy (
 	confdb_handle_t handle,
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -533,8 +531,8 @@ error_exit:
 
 cs_error_t confdb_object_parent_get (
 	confdb_handle_t handle,
-	unsigned int object_handle,
-	unsigned int *parent_object_handle)
+	hdb_handle_t object_handle,
+	hdb_handle_t *parent_object_handle)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -587,7 +585,7 @@ error_exit:
 
 static cs_error_t do_find_destroy(
 	struct confdb_inst *confdb_inst,
-	unsigned int find_handle)
+	hdb_handle_t find_handle)
 {
 	cs_error_t error;
 	struct iovec iov;
@@ -635,7 +633,7 @@ error_exit:
 
 cs_error_t confdb_object_find_destroy(
 	confdb_handle_t handle,
-	unsigned int parent_object_handle)
+	hdb_handle_t parent_object_handle)
 {
 	struct iter_context *context;
 	cs_error_t error;
@@ -659,7 +657,7 @@ cs_error_t confdb_object_find_destroy(
 
 cs_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
-	unsigned int parent_object_handle)
+	hdb_handle_t parent_object_handle)
 {
 	struct iter_context *context;
 	cs_error_t error;
@@ -684,7 +682,7 @@ cs_error_t confdb_object_iter_destroy(
 
 cs_error_t confdb_key_create (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -746,7 +744,7 @@ error_exit:
 
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -808,7 +806,7 @@ error_exit:
 
 cs_error_t confdb_key_get (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *value,
@@ -872,7 +870,7 @@ error_exit:
 
 cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
@@ -934,7 +932,7 @@ error_exit:
 
 cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	unsigned int *value)
@@ -996,7 +994,7 @@ error_exit:
 
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int key_name_len,
 	void *old_value,
@@ -1062,7 +1060,7 @@ error_exit:
 
 cs_error_t confdb_object_iter_start (
 	confdb_handle_t handle,
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	struct confdb_inst *confdb_inst;
 	cs_error_t error = CS_OK;
@@ -1099,7 +1097,7 @@ ret:
 
 cs_error_t confdb_key_iter_start (
 	confdb_handle_t handle,
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	struct confdb_inst *confdb_inst;
 	cs_error_t error = CS_OK;
@@ -1132,7 +1130,7 @@ ret:
 
 cs_error_t confdb_object_find_start (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle)
+	hdb_handle_t parent_object_handle)
 {
 	struct confdb_inst *confdb_inst;
 	cs_error_t error = CS_OK;
@@ -1168,10 +1166,10 @@ ret:
 
 cs_error_t confdb_object_find (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *object_name,
 	int object_name_len,
-	unsigned int *object_handle)
+	hdb_handle_t *object_handle)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -1241,8 +1239,8 @@ error_exit:
 
 cs_error_t confdb_object_iter (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	unsigned int *object_handle,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *object_handle,
 	void *object_name,
 	int *object_name_len)
 {
@@ -1317,7 +1315,7 @@ error_exit:
 
 cs_error_t confdb_key_iter (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
 	int *key_name_len,
 	void *value,
@@ -1503,7 +1501,7 @@ error_exit:
 
 cs_error_t confdb_track_changes (
 	confdb_handle_t handle,
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	unsigned int flags)
 {
 	cs_error_t error;

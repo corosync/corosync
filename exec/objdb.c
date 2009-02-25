@@ -53,7 +53,7 @@ struct object_key {
 };
 
 struct object_tracker {
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	void * data_pt;
 	object_track_depth_t depth;
 	object_key_change_notify_fn_t key_change_notify_fn;
@@ -67,8 +67,8 @@ struct object_tracker {
 struct object_instance {
 	void *object_name;
 	int object_name_len;
-	unsigned int object_handle;
-	unsigned int parent_handle;
+	hdb_handle_t object_handle;
+	hdb_handle_t parent_handle;
 	struct list_head key_head;
 	struct list_head child_head;
 	struct list_head child_list;
@@ -145,7 +145,7 @@ static void objdb_wrunlock()
 
 static int objdb_init (void)
 {
-	unsigned int handle;
+	hdb_handle_t handle;
 	struct object_instance *instance;
 	unsigned int res;
 
@@ -219,14 +219,15 @@ static int _object_notify_deleted_children(struct object_instance *parent_pt)
 	return 0;
 }
 
-static void object_created_notification(unsigned int object_handle,
-										unsigned int parent_object_handle,
-										void *name_pt, int name_len)
+static void object_created_notification(
+	hdb_handle_t object_handle,
+	hdb_handle_t parent_object_handle,
+	void *name_pt, int name_len)
 {
 	struct list_head * list;
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
@@ -254,7 +255,7 @@ static void object_created_notification(unsigned int object_handle,
 
 }
 
-static void object_pre_deletion_notification(unsigned int object_handle,
+static void object_pre_deletion_notification(hdb_handle_t object_handle,
 											 unsigned int parent_object_handle,
 											 void *name_pt, int name_len)
 {
@@ -292,7 +293,7 @@ static void object_pre_deletion_notification(unsigned int object_handle,
 
 }
 
-static void object_key_changed_notification(unsigned int object_handle,
+static void object_key_changed_notification(hdb_handle_t object_handle,
 											void *name_pt,	int name_len,
 											void *value_pt, int value_len,
 											object_change_type_t type)
@@ -301,7 +302,7 @@ static void object_key_changed_notification(unsigned int object_handle,
 	struct object_instance * obj_pt;
 	struct object_instance * owner_pt = NULL;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
@@ -359,8 +360,8 @@ static void object_reload_notification(int startstop, int flush)
  * object db create/destroy/set
  */
 static int object_create (
-	unsigned int parent_object_handle,
-	unsigned int *object_handle,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *object_handle,
 	void *object_name,
 	unsigned int object_name_len)
 {
@@ -461,7 +462,7 @@ error_exit:
 }
 
 static int object_priv_set (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *priv)
 {
 	int res;
@@ -487,7 +488,7 @@ error_exit:
 }
 
 static int object_key_create (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	void *value,
@@ -620,7 +621,7 @@ static int _clear_object(struct object_instance *instance)
 }
 
 static int object_destroy (
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	struct object_instance *instance;
 	unsigned int res;
@@ -651,7 +652,7 @@ static int object_destroy (
 }
 
 static int object_valid_set (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	struct object_valid *object_valid_list,
 	unsigned int object_valid_list_entries)
 {
@@ -679,7 +680,7 @@ error_exit:
 }
 
 static int object_key_valid_set (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
 		unsigned int object_key_valid_list_entries)
 {
@@ -710,10 +711,10 @@ error_exit:
  * object db reading
  */
 static int object_find_create (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *object_name,
 	int object_len,
-	unsigned int *object_find_handle)
+	hdb_handle_t *object_find_handle)
 {
 	unsigned int res;
 	struct object_instance *object_instance;
@@ -760,8 +761,8 @@ error_exit:
 }
 
 static int object_find_next (
-	unsigned int object_find_handle,
-	unsigned int *object_handle)
+	hdb_handle_t object_find_handle,
+	hdb_handle_t *object_handle)
 {
 	unsigned int res;
 	struct object_find_instance *object_find_instance;
@@ -809,7 +810,7 @@ error_exit:
 }
 
 static int object_find_destroy (
-	unsigned int object_find_handle)
+	hdb_handle_t object_find_handle)
 {
 	struct object_find_instance *object_find_instance;
 	unsigned int res;
@@ -832,7 +833,7 @@ error_exit:
 }
 
 static int object_key_get (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	void **value,
@@ -881,7 +882,7 @@ error_exit:
 }
 
 static int object_key_increment (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	unsigned int *value)
@@ -927,7 +928,7 @@ error_exit:
 }
 
 static int object_key_decrement (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	unsigned int *value)
@@ -973,7 +974,7 @@ error_exit:
 }
 
 static int object_key_delete (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	void *value,
@@ -1030,7 +1031,7 @@ error_exit:
 }
 
 static int object_key_replace (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
 	void *old_value,
@@ -1134,7 +1135,7 @@ error_exit:
 }
 
 static int object_priv_get (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void **priv)
 {
 	int res;
@@ -1212,7 +1213,7 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 	return 0;
 }
 
-static int object_key_iter_reset(unsigned int object_handle)
+static int object_key_iter_reset(hdb_handle_t object_handle)
 {
 	unsigned int res;
 	struct object_instance *instance;
@@ -1236,7 +1237,7 @@ error_exit:
 }
 
 
-static int object_key_iter(unsigned int parent_object_handle,
+static int object_key_iter(hdb_handle_t parent_object_handle,
 			   void **key_name,
 			   int *key_len,
 			   void **value,
@@ -1284,8 +1285,8 @@ error_exit:
 	return (-1);
 }
 
-static int object_key_iter_from(unsigned int parent_object_handle,
-				unsigned int start_pos,
+static int object_key_iter_from(hdb_handle_t parent_object_handle,
+				hdb_handle_t start_pos,
 				void **key_name,
 				int *key_len,
 				void **value,
@@ -1341,8 +1342,8 @@ error_exit:
 }
 
 
-static int object_parent_get(unsigned int object_handle,
-			     unsigned int *parent_handle)
+static int object_parent_get(hdb_handle_t object_handle,
+			     hdb_handle_t *parent_handle)
 {
 	struct object_instance *instance;
 	unsigned int res;
@@ -1367,7 +1368,7 @@ static int object_parent_get(unsigned int object_handle,
 	return (0);
 }
 
-static int object_name_get(unsigned int object_handle,
+static int object_name_get(hdb_handle_t object_handle,
 			   char *object_name,
 			   int *object_name_len)
 {
@@ -1392,7 +1393,7 @@ static int object_name_get(unsigned int object_handle,
 }
 
 
-static int object_track_start(unsigned int object_handle,
+static int object_track_start(hdb_handle_t object_handle,
 							  object_track_depth_t depth,
 							  object_key_change_notify_fn_t key_change_notify_fn,
 							  object_create_notify_fn_t object_create_notify_fn,
@@ -1479,7 +1480,7 @@ static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn
 	}
 }
 
-static int object_dump(unsigned int object_handle,
+static int object_dump(hdb_handle_t object_handle,
 		       FILE *file)
 {
 	struct object_instance *instance;

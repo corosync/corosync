@@ -154,7 +154,7 @@ struct rrp_algo {
 };
 
 struct totemrrp_instance {
-	poll_handle totemrrp_poll_handle;
+	hdb_handle_t totemrrp_poll_handle;
 
 	struct totem_interface *interfaces;
 
@@ -200,15 +200,15 @@ struct totemrrp_instance {
 		int line, unsigned int level, char *format,
 		...)__attribute__((format(printf, 6, 7)));
 
-	totemrrp_handle handle;
+	hdb_handle_t handle;
 
-	totemnet_handle *net_handles;
+	hdb_handle_t *net_handles;
 
 	void *rrp_algo_instance;
 
 	int interface_count;
 
-	int poll_handle;
+	hdb_handle_t poll_handle;
 
 	int processor_count;
 
@@ -1348,7 +1348,7 @@ void rrp_iface_change_fn (
 }
 
 int totemrrp_finalize (
-	totemrrp_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1380,8 +1380,8 @@ error_exit:
  * Create an instance
  */
 int totemrrp_initialize (
-	poll_handle poll_handle,
-	totemrrp_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 	void *context,
 
@@ -1453,7 +1453,7 @@ int totemrrp_initialize (
 
 	instance->interface_count = totem_config->interface_count;
 
-	instance->net_handles = malloc (sizeof (totemnet_handle) * totem_config->interface_count);
+	instance->net_handles = malloc (sizeof (hdb_handle_t) * totem_config->interface_count);
 
 	instance->context = context;
 
@@ -1492,7 +1492,7 @@ error_destroy:
 }
 
 int totemrrp_processor_count_set (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	unsigned int processor_count)
 {
 	struct totemrrp_instance *instance;
@@ -1516,7 +1516,7 @@ error_exit:
 }
 
 int totemrrp_token_target_set (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *addr,
 	unsigned int iface_no)
 {
@@ -1537,7 +1537,7 @@ int totemrrp_token_target_set (
 error_exit:
 	return (res);
 }
-int totemrrp_recv_flush (totemrrp_handle handle)
+int totemrrp_recv_flush (hdb_handle_t handle)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1557,7 +1557,7 @@ error_exit:
 	return (res);
 }
 
-int totemrrp_send_flush (totemrrp_handle handle)
+int totemrrp_send_flush (hdb_handle_t handle)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1578,7 +1578,7 @@ error_exit:
 }
 
 int totemrrp_token_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len)
 {
@@ -1601,7 +1601,7 @@ error_exit:
 }
 
 int totemrrp_mcast_flush_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len)
 {
@@ -1624,7 +1624,7 @@ error_exit:
 }
 
 int totemrrp_mcast_noflush_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len)
 {
@@ -1654,7 +1654,7 @@ error_exit:
 	return (res);
 }
 
-int totemrrp_iface_check (totemrrp_handle handle)
+int totemrrp_iface_check (hdb_handle_t handle)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1674,7 +1674,7 @@ error_exit:
 }
 
 int totemrrp_ifaces_get (
-        totemrrp_handle handle,
+        hdb_handle_t handle,
 	char ***status,
 	unsigned int *iface_count)
 {
@@ -1701,7 +1701,7 @@ error_exit:
 }
 
 int totemrrp_ring_reenable (
-        totemrrp_handle handle)
+        hdb_handle_t handle)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;

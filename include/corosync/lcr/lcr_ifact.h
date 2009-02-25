@@ -31,14 +31,16 @@
 #ifndef LCR_IFACT_H_DEFINED
 #define LCR_IFACT_H_DEFINED
 
+#include <corosync/hdb.h>
+
 int lcr_ifact_reference (
-	unsigned int *handle,
+	hdb_handle_t *handle,
 	char *iface_name,
 	int version,
 	void **interface,
 	void *context);
 
 int lcr_ifact_release (
-	unsigned int handle);
+	hdb_handle_t handle);
 
 #endif /* LCR_IFACT_H_DEFINED */

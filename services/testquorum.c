@@ -101,8 +101,8 @@ __attribute__ ((constructor)) static void test_quorum_comp_register (void) {
 static quorum_set_quorate_fn_t set_quorum;
 
 static void key_change_notify(object_change_type_t change_type,
-			      unsigned int parent_object_handle,
-			      unsigned int object_handle,
+			      hdb_handle_t parent_object_handle,
+			      hdb_handle_t object_handle,
 			      void *object_name_pt, int object_name_len,
 			      void *key_name_pt, int key_len,
 			      void *key_value_pt, int key_value_len,
@@ -128,8 +128,8 @@ static void test_init(struct corosync_api_v1 *api,
 		      quorum_set_quorate_fn_t report)
 {
 
-	unsigned int find_handle;
-	unsigned int quorum_handle = 0;
+	hdb_handle_t find_handle;
+	hdb_handle_t quorum_handle = 0;
 
 	set_quorum = report;
 

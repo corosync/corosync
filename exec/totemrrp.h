@@ -40,8 +40,6 @@
 
 #include <corosync/totem/totem.h>
 
-typedef unsigned int totemrrp_handle;
-
 #define TOTEMRRP_NOFLUSH	0
 #define TOTEMRRP_FLUSH		1
 
@@ -54,8 +52,8 @@ typedef unsigned int totemrrp_handle;
  * Create an instance
  */
 extern int totemrrp_initialize (
-	poll_handle poll_handle,
-	totemrrp_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 	void *context,
 
@@ -78,43 +76,43 @@ extern int totemrrp_initialize (
 
 
 extern int totemrrp_processor_count_set (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	unsigned int processor_count);
 
 extern int totemrrp_token_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemrrp_mcast_noflush_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemrrp_mcast_flush_send (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	unsigned int iov_len);
 
-extern int totemrrp_recv_flush (totemrrp_handle handle);
+extern int totemrrp_recv_flush (hdb_handle_t handle);
 
-extern int totemrrp_send_flush (totemrrp_handle handle);
+extern int totemrrp_send_flush (hdb_handle_t handle);
 
 extern int totemrrp_token_target_set (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *target,
 	unsigned int iface_no);
 
-extern int totemrrp_iface_check (totemrrp_handle handle);
+extern int totemrrp_iface_check (hdb_handle_t handle);
 
-extern int totemrrp_finalize (totemrrp_handle handle);
+extern int totemrrp_finalize (hdb_handle_t handle);
 
 extern int totemrrp_ifaces_get (
-	totemrrp_handle handle,
+	hdb_handle_t handle,
 	char ***status,
 	unsigned int *iface_count);
 
 extern int totemrrp_ring_reenable (
-	totemrrp_handle handle);
+	hdb_handle_t handle);
 
 #endif /* TOTEMRRP_H_DEFINED */

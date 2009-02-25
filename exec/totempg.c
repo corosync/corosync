@@ -675,7 +675,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config)
 {
 	int res;
@@ -935,7 +935,7 @@ void totempg_callback_token_destroy (
  */
 
 int totempg_groups_initialize (
-	totempg_groups_handle *handle,
+	hdb_handle_t *handle,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -989,7 +989,7 @@ error_exit:
 }
 
 int totempg_groups_join (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int group_cnt)
 {
@@ -1024,7 +1024,7 @@ error_exit:
 }
 
 int totempg_groups_leave (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int group_cnt)
 {
@@ -1049,7 +1049,7 @@ error_exit:
 #define MAX_GROUPS_PER_MSG 32
 
 int totempg_groups_mcast_joined (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len,
 	int guarantee)
@@ -1092,7 +1092,7 @@ error_exit:
 }
 
 int totempg_groups_send_ok_joined (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len)
 {
@@ -1127,7 +1127,7 @@ error_exit:
 }
 
 int totempg_groups_mcast_groups (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	int guarantee,
 	struct totempg_group *groups,
 	int groups_cnt,
@@ -1176,7 +1176,7 @@ error_exit:
  * Returns -1 if error, 0 if can't send, 1 if can send the message
  */
 int totempg_groups_send_ok_groups (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	struct totempg_group *groups,
 	int groups_cnt,
 	struct iovec *iovec,
