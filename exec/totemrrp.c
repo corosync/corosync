@@ -1707,6 +1707,7 @@ int totemrrp_ring_reenable (
 	int res = 0;
 	unsigned int i;
 
+printf ("totemrrp ring reenable\n");
 	res = hdb_handle_get (&totemrrp_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
