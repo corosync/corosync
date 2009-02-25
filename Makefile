@@ -171,6 +171,8 @@ install: all
 	install -m 755 $(builddir)tools/corosync-objctl $(DESTDIR)$(SBINDIR)
 	install -m 755 $(builddir)tools/corosync-cfgtool $(DESTDIR)$(SBINDIR)
 	install -m 755 $(builddir)tools/corosync-keygen $(DESTDIR)$(SBINDIR)
+	install -m 755 $(builddir)tools/corosync-fplay $(DESTDIR)$(SBINDIR)
+	install -m 755 $(builddir)tools/corosync-pload $(DESTDIR)$(SBINDIR)
 
 	if [ ! -f $(DESTDIR)$(ETCDIR)/corosync.conf ] ; then 	   \
 		install -m 644 $(srcdir)conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
