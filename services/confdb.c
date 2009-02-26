@@ -430,8 +430,6 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 	if (api->object_key_replace(req_lib_confdb_key_replace->object_handle,
 					     req_lib_confdb_key_replace->key_name.value,
 					     req_lib_confdb_key_replace->key_name.length,
-					     req_lib_confdb_key_replace->old_value.value,
-					     req_lib_confdb_key_replace->old_value.length,
 					     req_lib_confdb_key_replace->new_value.value,
 					     req_lib_confdb_key_replace->new_value.length))
 		ret = CS_ERR_ACCESS;
@@ -450,9 +448,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 
 	if (api->object_key_delete(req_lib_confdb_key_delete->object_handle,
 					    req_lib_confdb_key_delete->key_name.value,
-					    req_lib_confdb_key_delete->key_name.length,
-					    req_lib_confdb_key_delete->value.value,
-					    req_lib_confdb_key_delete->value.length))
+				   req_lib_confdb_key_delete->key_name.length))
 		ret = CS_ERR_ACCESS;
 
 	res.size = sizeof(res);

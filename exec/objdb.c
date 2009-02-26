@@ -497,9 +497,9 @@ static int object_key_create (
 	struct object_instance *instance;
 	struct object_key *object_key;
 	unsigned int res;
+	struct list_head *list;
 	int found = 0;
 	int i;
-	unsigned int val;
 
 	objdb_rdlock();
 
@@ -541,27 +541,45 @@ static int object_key_create (
 		}
 	}
 
-	object_key = malloc (sizeof (struct object_key));
-	if (object_key == 0) {
-		goto error_put;
+	/* See if it already exists */
+	found = 0;
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
+			found = 1;
+			break;
+		}
 	}
-	object_key->key_name = malloc (key_len);
-	if (object_key->key_name == 0) {
-		goto error_put_object;
+
+	if (found) {
+		free(object_key->value);
 	}
-	memcpy (&val, value, 4);
+	else {
+		object_key = malloc (sizeof (struct object_key));
+		if (object_key == 0) {
+			goto error_put;
+		}
+		object_key->key_name = malloc (key_len);
+		if (object_key->key_name == 0) {
+			goto error_put_object;
+		}
+		memcpy (object_key->key_name, key_name, key_len);
+		list_init (&object_key->list);
+		list_add_tail (&object_key->list, &instance->key_head);
+	}
 	object_key->value = malloc (value_len);
 	if (object_key->value == 0) {
 		goto error_put_key;
 	}
-	memcpy (object_key->key_name, key_name, key_len);
 	memcpy (object_key->value, value, value_len);
 
 	object_key->key_len = key_len;
 	object_key->value_len = value_len;
 
-	list_init (&object_key->list);
-	list_add_tail (&object_key->list, &instance->key_head);
 	object_key_changed_notification(object_handle, key_name, key_len,
 								value, value_len, OBJECT_KEY_CREATED);
 	objdb_rdunlock();
@@ -976,9 +994,7 @@ error_exit:
 static int object_key_delete (
 	hdb_handle_t object_handle,
 	void *key_name,
-	int key_len,
-	void *value,
-	int value_len)
+	int key_len)
 {
 	unsigned int res;
 	int ret = 0;
@@ -999,10 +1015,7 @@ static int object_key_delete (
 		object_key = list_entry (list, struct object_key, list);
 
 		if ((object_key->key_len == key_len) &&
-		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
-		    (value == NULL ||
-		     (object_key->value_len == value_len &&
-		      (memcmp (object_key->value, value, value_len) == 0)))) {
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
 			found = 1;
 			break;
 		}
@@ -1021,7 +1034,7 @@ static int object_key_delete (
 	hdb_handle_put (&object_instance_database, object_handle);
 	if (ret == 0)
 		object_key_changed_notification(object_handle, key_name, key_len,
-										value, value_len, OBJECT_KEY_DELETED);
+										NULL, 0, OBJECT_KEY_DELETED);
 	objdb_rdunlock();
 	return (ret);
 
@@ -1034,8 +1047,6 @@ static int object_key_replace (
 	hdb_handle_t object_handle,
 	void *key_name,
 	int key_len,
-	void *old_value,
-	int old_value_len,
 	void *new_value,
 	int new_value_len)
 {
@@ -1059,10 +1070,7 @@ static int object_key_replace (
 		object_key = list_entry (list, struct object_key, list);
 
 		if ((object_key->key_len == key_len) &&
-		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
-		    (old_value == NULL ||
-		     (object_key->value_len == old_value_len &&
-		      (memcmp (object_key->value, old_value, old_value_len) == 0)))) {
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
 			found = 1;
 			break;
 		}

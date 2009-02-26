@@ -277,17 +277,13 @@ struct corosync_api_v1 {
 		hdb_handle_t object_handle,
 		void *key_name,
 		int key_len,
-		void *old_value,
-		int old_value_len,
 		void *new_value,
 		int new_value_len);
 
 	int (*object_key_delete) (
 		hdb_handle_t object_handle,
 		void *key_name,
-		int key_len,
-		void *value,
-		int value_len);
+		int key_len);
 
 	int (*object_iter_reset) (
 		hdb_handle_t parent_object_handle);

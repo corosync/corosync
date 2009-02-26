@@ -227,8 +227,7 @@ int confdb_sa_key_delete (
 	int value_len)
 {
 	return objdb->object_key_delete(parent_object_handle,
-					key_name, key_name_len,
-					value, value_len);
+					key_name, key_name_len);
 }
 
 int confdb_sa_key_get (
@@ -290,7 +289,6 @@ int confdb_sa_key_replace (
 {
 	return objdb->object_key_replace(parent_object_handle,
 					 key_name, key_name_len,
-					 old_value, old_value_len,
 					 new_value, new_value_len);
 }
 
