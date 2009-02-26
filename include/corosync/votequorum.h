@@ -84,8 +84,15 @@ typedef void (*votequorum_notification_fn_t) (
 	votequorum_node_t node_list[]
 	);
 
+typedef void (*votequorum_expectedvotes_notification_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t expected_votes
+	);
+
 typedef struct {
 	votequorum_notification_fn_t votequorum_notify_fn;
+	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
 } votequorum_callbacks_t;
 
 

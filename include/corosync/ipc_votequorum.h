@@ -58,7 +58,8 @@ enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_GETINFO,
 	MESSAGE_RES_VOTEQUORUM_QDISK_GETINFO,
 	MESSAGE_RES_VOTEQUORUM_TRACKSTART,
-	MESSAGE_RES_VOTEQUORUM_NOTIFICATION
+	MESSAGE_RES_VOTEQUORUM_NOTIFICATION,
+	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION
 };
 
 struct req_lib_votequorum_setvotes {
@@ -140,6 +141,12 @@ struct res_lib_votequorum_notification {
 	mar_uint64_t context __attribute__((aligned(8)));
 	mar_uint32_t node_list_entries __attribute__((aligned(8)));
 	struct votequorum_node node_list[] __attribute__((aligned(8)));
+};
+
+struct res_lib_votequorum_expectedvotes_notification {
+	mar_res_header_t header __attribute__((aligned(8)));
+	mar_uint64_t context __attribute__((aligned(8)));
+	mar_uint32_t expected_votes __attribute__((aligned(8)));
 };
 
 #endif

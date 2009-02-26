@@ -223,6 +223,7 @@ static int quorum_exec_send_killnode(int nodeid, unsigned int reason);
 
 static void add_votequorum_config_notification(hdb_handle_t quorum_object_handle);
 
+static void recalculate_quorum(int allow_decrease, int by_current_nodes);
 
 /*
  * Library Handler Definition
@@ -543,6 +544,8 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	if (corosync_api->object_find_next(find_handle, &object_handle) == 0) {
 		read_quorum_config(object_handle);
 	}
+	recalculate_quorum(0, 0);
+
 	/* Listen for changes */
 	add_votequorum_config_notification(object_handle);
 	corosync_api->object_find_destroy(find_handle);
@@ -629,6 +632,27 @@ static int send_quorum_notification(void *conn, uint64_t context)
 	return 0;
 }
 
+static void send_expectedvotes_notification()
+{
+	struct res_lib_votequorum_expectedvotes_notification res_lib_votequorum_expectedvotes_notification;
+	struct quorum_pd *qpd;
+	struct list_head *tmp;
+
+	log_printf(LOG_DEBUG, "Sending expected votes callback\n");
+
+	res_lib_votequorum_expectedvotes_notification.header.id = MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION;
+	res_lib_votequorum_expectedvotes_notification.header.size = sizeof(res_lib_votequorum_expectedvotes_notification);
+	res_lib_votequorum_expectedvotes_notification.header.error = CS_OK;
+	res_lib_votequorum_expectedvotes_notification.expected_votes = us->expected_votes;
+
+	list_iterate(tmp, &trackers_list) {
+		qpd = list_entry(tmp, struct quorum_pd, list);
+		res_lib_votequorum_expectedvotes_notification.context = qpd->tracking_context;
+		corosync_api->ipc_dispatch_send(qpd->conn, &res_lib_votequorum_expectedvotes_notification,
+						sizeof(struct res_lib_votequorum_expectedvotes_notification));
+	}
+}
+
 static void set_quorate(int total_votes)
 {
 	int quorate;
@@ -673,6 +697,7 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 	unsigned int total_nodes = 0;
 
 	ENTER();
+
 	list_iterate(nodelist, &cluster_members_list) {
 		node = list_entry(nodelist, struct cluster_node, list);
 
@@ -725,25 +750,33 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 /* Recalculate cluster quorum, set quorate and notify changes */
 static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 {
-	unsigned int total_votes;
+	unsigned int total_votes = 0;
 	int cluster_members = 0;
 	struct list_head *nodelist;
 	struct cluster_node *node;
 
 	ENTER();
 
-	if (by_current_nodes) {
-		list_iterate(nodelist, &cluster_members_list) {
-			node = list_entry(nodelist, struct cluster_node, list);
+	list_iterate(nodelist, &cluster_members_list) {
+		node = list_entry(nodelist, struct cluster_node, list);
 
-			if (node->state == NODESTATE_MEMBER) {
+		if (node->state == NODESTATE_MEMBER) {
+			if (by_current_nodes)
 				cluster_members++;
-			}
+			total_votes += node->votes;
 		}
+	}
+
+	/* Keep expected_votes at the highest number of votes in the cluster */
+	log_printf(LOG_DEBUG, "total_votes=%d, expected_votes=%d\n", total_votes, us->expected_votes);
+	if (total_votes > us->expected_votes) {
+		us->expected_votes = total_votes;
+		send_expectedvotes_notification();
 	}
 
 	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
 	set_quorate(total_votes);
+
 	send_quorum_notification(NULL, 0L);
 	LEAVE();
 }
@@ -1080,8 +1113,6 @@ static void message_handler_req_exec_quorum_reconfigure (
 	switch(req_exec_quorum_reconfigure->param)
 	{
 	case RECONFIG_PARAM_EXPECTED_VOTES:
-		node->expected_votes = req_exec_quorum_reconfigure->value;
-
 		list_iterate(nodelist, &cluster_members_list) {
 			node = list_entry(nodelist, struct cluster_node, list);
 			if (node->state == NODESTATE_MEMBER &&
@@ -1089,6 +1120,7 @@ static void message_handler_req_exec_quorum_reconfigure (
 				node->expected_votes = req_exec_quorum_reconfigure->value;
 			}
 		}
+		send_expectedvotes_notification();
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 

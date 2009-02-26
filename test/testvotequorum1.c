@@ -66,6 +66,18 @@ static char *node_state(int state)
 	}
 }
 
+
+static void votequorum_expectedvotes_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t expected_votes
+	)
+{
+	printf("votequorum expectedvotes notification called \n");
+	printf("  expected_votes = %d\n", expected_votes);
+}
+
+
 static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -99,6 +111,8 @@ int main(int argc, char *argv[])
 	}
 
 	callbacks.votequorum_notify_fn = votequorum_notification_fn;
+	callbacks.votequorum_expectedvotes_notify_fn = votequorum_expectedvotes_notification_fn;
+
 	if ( (err=votequorum_initialize(&handle, &callbacks)) != CS_OK)
 		fprintf(stderr, "votequorum_initialize FAILED: %d\n", err);
 

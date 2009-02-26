@@ -103,9 +103,9 @@ cs_error_t votequorum_initialize (
 	pthread_mutex_init (&votequorum_inst->response_mutex, NULL);
 	pthread_mutex_init (&votequorum_inst->dispatch_mutex, NULL);
 	if (callbacks)
-		memcpy(&votequorum_inst->callbacks, callbacks, sizeof (callbacks));
+		memcpy(&votequorum_inst->callbacks, callbacks, sizeof (*callbacks));
 	else
-		memset(&votequorum_inst->callbacks, 0, sizeof (callbacks));
+		memset(&votequorum_inst->callbacks, 0, sizeof (*callbacks));
 
 	saHandleInstancePut (&votequorum_handle_t_db, *handle);
 
@@ -748,6 +748,7 @@ cs_error_t votequorum_dispatch (
 	votequorum_callbacks_t callbacks;
 	struct res_overlay dispatch_data;
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
+	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
 		dispatch_types != CS_DISPATCH_ALL &&
@@ -764,7 +765,7 @@ cs_error_t votequorum_dispatch (
 
 	/*
 	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
-	 * wait indefinately for CS_DISPATCH_BLOCKING
+	 * wait indefinitely for CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
@@ -820,6 +821,17 @@ cs_error_t votequorum_dispatch (
 							 res_lib_votequorum_notification->node_list_entries,
 							 (votequorum_node_t *)res_lib_votequorum_notification->node_list );
 				;
+			break;
+
+		case MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION:
+			if (callbacks.votequorum_expectedvotes_notify_fn == NULL) {
+				continue;
+			}
+			res_lib_votequorum_expectedvotes_notification = (struct res_lib_votequorum_expectedvotes_notification *)&dispatch_data;
+
+			callbacks.votequorum_expectedvotes_notify_fn ( handle,
+								       res_lib_votequorum_expectedvotes_notification->context,
+								       res_lib_votequorum_expectedvotes_notification->expected_votes);
 			break;
 
 		default:
