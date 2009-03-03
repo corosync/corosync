@@ -491,6 +491,7 @@ static int cpg_lib_exit_fn (void *conn)
 		cpg_node_joinleave_send(gi, pi, MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_PROCDOWN);
 		list_del(&pi->list);
 	}
+	api->ipc_refcnt_dec (conn);
 	return (0);
 }
 
@@ -999,6 +1000,7 @@ static int cpg_exec_send_joinlist(void)
 static int cpg_lib_init_fn (void *conn)
 {
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
+	api->ipc_refcnt_inc (conn);
 	pi->conn = conn;
 
 	log_printf(LOG_LEVEL_DEBUG, "lib_init_fn: conn=%p, pi=%p\n", conn, pi);
