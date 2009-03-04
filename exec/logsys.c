@@ -112,8 +112,6 @@ static FILE *logsys_file_fp = NULL;
 
 static int logsys_facility = LOG_DAEMON;
 
-static char *logsys_format = NULL;
-
 /*
  * operating global variables
  */
@@ -875,7 +873,7 @@ void logsys_format_set (char *format)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
 
-	logsys_format = format;
+	format_buffer = format;
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
