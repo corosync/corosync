@@ -158,16 +158,14 @@ int corosync_main_config_read_logging (
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
-/* todo change format string
 			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_DISPLAY_TIMESTAMP;
+				logsys_format_set("%t [%6s] %b");
 			} else
 			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_DISPLAY_TIMESTAMP;
+				logsys_format_set("[%6s] %b");
 			} else {
 				goto parse_error;
 			}
-*/
 		}
 
 		/* free old string on reload */
