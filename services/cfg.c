@@ -237,8 +237,8 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	},
 	{ /* 10 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
-		.response_size		= 0,
-		.response_id		= 0,
+		.response_size		= sizeof (struct res_lib_cfg_replytoshutdown),
+		.response_id		= MESSAGE_RES_CFG_REPLYTOSHUTDOWN,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
@@ -385,7 +385,7 @@ static int send_shutdown()
 	return 0;
 }
 
-static void send_test_shutdown(void * conn, int status)
+static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 {
 	struct res_lib_cfg_testshutdown res_lib_cfg_testshutdown;
 	struct list_head *iter;
@@ -396,17 +396,19 @@ static void send_test_shutdown(void * conn, int status)
 	res_lib_cfg_testshutdown.header.error = status;
 	res_lib_cfg_testshutdown.flags = shutdown_flags;
 
-	if (conn) {
-		TRACE1("sending testshutdown to %p", conn);
-		api->ipc_response_send(conn, &res_lib_cfg_testshutdown,
-					    sizeof(res_lib_cfg_testshutdown));
+	if (only_conn) {
+		TRACE1("sending testshutdown to only %p", only_conn);
+		api->ipc_dispatch_send(only_conn, &res_lib_cfg_testshutdown,
+				       sizeof(res_lib_cfg_testshutdown));
 	} else {
 		for (iter = trackers_list.next; iter != &trackers_list; iter = iter->next) {
 			struct cfg_info *ci = list_entry(iter, struct cfg_info, list);
 
-			TRACE1("sending testshutdown to %p", ci->tracker_conn);
-			api->ipc_dispatch_send(ci->tracker_conn, &res_lib_cfg_testshutdown,
-						    sizeof(res_lib_cfg_testshutdown));
+			if (ci->conn != exclude_conn) {
+				TRACE1("sending testshutdown to %p", ci->tracker_conn);
+				api->ipc_dispatch_send(ci->tracker_conn, &res_lib_cfg_testshutdown,
+						       sizeof(res_lib_cfg_testshutdown));
+			}
 		}
 	}
 	LEAVE();
@@ -436,11 +438,6 @@ static void check_shutdown_status()
 		    shutdown_flags == CFG_SHUTDOWN_FLAG_REGARDLESS) {
 			TRACE1("shutdown confirmed");
 
-			/*
-			 * Tell other nodes we are going down
-			 */
-			send_shutdown();
-
 			res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 			res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
 			res_lib_cfg_tryshutdown.header.error = CS_OK;
@@ -451,6 +448,12 @@ static void check_shutdown_status()
 			api->ipc_response_send(shutdown_con->conn, &res_lib_cfg_tryshutdown,
 						    sizeof(res_lib_cfg_tryshutdown));
 			shutdown_con = NULL;
+
+			/*
+			 * Tell other nodes we are going down
+			 */
+			send_shutdown();
+
 		}
 		else {
 
@@ -486,7 +489,7 @@ static void shutdown_timer_fn(void *arg)
 	shutdown_no = shutdown_expected;
 	check_shutdown_status();
 
-	send_test_shutdown(NULL, CS_ERR_TIMEOUT);
+	send_test_shutdown(NULL, NULL, CS_ERR_TIMEOUT);
 	LEAVE();
 }
 
@@ -695,7 +698,6 @@ static void message_handler_req_lib_cfg_statetrack (
 	void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
-//	struct req_lib_cfg_statetrack *req_lib_cfg_statetrack = (struct req_lib_cfg_statetrack *)message;
 	struct res_lib_cfg_statetrack res_lib_cfg_statetrack;
 
 	ENTER();
@@ -713,7 +715,7 @@ static void message_handler_req_lib_cfg_statetrack (
 			 */
 			ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
 			shutdown_expected++;
-			send_test_shutdown(conn, CS_OK);
+			send_test_shutdown(conn, NULL, CS_OK);
 		}
 	}
 
@@ -898,15 +900,32 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	shutdown_expected = 0;
 
 	for (iter = trackers_list.next; iter != &trackers_list; iter = iter->next) {
-		struct cfg_info *ci = list_entry(iter, struct cfg_info, list);
-		ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
-		shutdown_expected++;
+		struct cfg_info *testci = list_entry(iter, struct cfg_info, list);
+		/*
+		 * It is assumed that we will allow shutdown
+		 */
+		if (testci != ci) {
+			testci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
+			shutdown_expected++;
+		}
 	}
 
 	/*
 	 * If no-one is listening for events then we can just go down now
 	 */
 	if (shutdown_expected == 0) {
+		struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
+
+		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
+		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
+		res_lib_cfg_tryshutdown.header.error = CS_OK;
+
+		/*
+		 * Tell originator that shutdown was confirmed
+		 */
+		api->ipc_response_send(conn, &res_lib_cfg_tryshutdown,
+				       sizeof(res_lib_cfg_tryshutdown));
+
 		send_shutdown();
 		LEAVE();
 		return;
@@ -944,7 +963,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		/*
 		 * Tell the users we would like to shut down
 		 */
-		send_test_shutdown(NULL, CS_OK);
+		send_test_shutdown(NULL, conn, CS_OK);
 	}
 
 	/*
@@ -961,11 +980,13 @@ static void message_handler_req_lib_cfg_replytoshutdown (
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 	struct req_lib_cfg_replytoshutdown *req_lib_cfg_replytoshutdown = (struct req_lib_cfg_replytoshutdown *)msg;
+	struct res_lib_cfg_replytoshutdown res_lib_cfg_replytoshutdown;
+	int status = CS_OK;
 
 	ENTER();
 	if (!shutdown_con) {
-		LEAVE();
-		return;
+		status = CS_ERR_ACCESS;
+		goto exit_fn;
 	}
 
 	if (req_lib_cfg_replytoshutdown->response) {
@@ -977,6 +998,15 @@ static void message_handler_req_lib_cfg_replytoshutdown (
 		ci->shutdown_reply = SHUTDOWN_REPLY_NO;
 	}
 	check_shutdown_status();
+
+exit_fn:
+	res_lib_cfg_replytoshutdown.header.error = status;
+	res_lib_cfg_replytoshutdown.header.id = MESSAGE_RES_CFG_REPLYTOSHUTDOWN;
+	res_lib_cfg_replytoshutdown.header.size = sizeof(res_lib_cfg_replytoshutdown);
+
+	api->ipc_response_send(conn, &res_lib_cfg_replytoshutdown,
+			       sizeof(res_lib_cfg_replytoshutdown));
+
 	LEAVE();
 }
 

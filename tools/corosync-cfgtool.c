@@ -147,36 +147,13 @@ void service_unload_do (char *service, unsigned int version)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void shutdown_callback (corosync_cfg_handle_t cfg_handle, corosync_cfg_shutdown_flags_t flags)
-{
-	printf("shutdown callback called, flags = %d\n",flags);
-
-	(void)corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
-}
-
-void *shutdown_dispatch_thread(void *arg)
-{
-	int res = CS_OK;
-	corosync_cfg_handle_t *handle = arg;
-
-	while (res == CS_OK) {
-		res = corosync_cfg_dispatch(*handle, CS_DISPATCH_ALL);
-		if (res != CS_OK)
-			printf ("Could not dispatch cfg messages: %d\n", res);
-	}
-	return NULL;
-}
-
 void shutdown_do()
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	corosync_cfg_callbacks_t callbacks;
-	corosync_cfg_state_notification_t notification_buffer;
-	pthread_t dispatch_thread;
 
-	printf ("Shutting down corosync\n");
-	callbacks.corosync_cfg_shutdown_callback = shutdown_callback;
+	callbacks.corosync_cfg_shutdown_callback = NULL;
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
@@ -184,16 +161,7 @@ void shutdown_do()
 		exit (1);
 	}
 
-	pthread_create(&dispatch_thread, NULL, shutdown_dispatch_thread, &handle);
-
-	result = corosync_cfg_state_track (handle,
-					   0,
-					   &notification_buffer);
-	if (result != CS_OK) {
-		printf ("Could not start corosync cfg tracking error %d\n", result);
-		exit (1);
-	}
-
+	printf ("Shutting down corosync\n");
 	result = corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
 	if (result != CS_OK) {
 		printf ("Could not shutdown (error = %d)\n", result);
@@ -262,7 +230,7 @@ void killnode_do(unsigned int nodeid)
 
 void usage_do (void)
 {
-	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
+	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [-H] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
@@ -272,11 +240,11 @@ void usage_do (void)
 	printf ("\t-u\tUnload a service identified by name.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
-	printf ("\t-h\tShutdown corosync cleanly on this node.\n");
+	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "srl:u:v:k:a:h";
+	const char *options = "srl:u:v:k:a:hH";
 	int opt;
 	int service_load = 0;
 	unsigned int nodeid;
@@ -307,7 +275,7 @@ int main (int argc, char *argv[]) {
 			nodeid = atoi (optarg);
 			killnode_do(nodeid);
 			break;
-		case 'h':
+		case 'H':
 			shutdown_do();
 			break;
 		case 'a':
@@ -315,6 +283,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'v':
 			version = atoi (optarg);
+			break;
+		case 'h':
+			usage_do();
 			break;
 		}
 	}

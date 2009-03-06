@@ -295,8 +295,6 @@ corosync_cfg_finalize (
 
 	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
 
-	cslib_service_disconnect (&cfg_instance->ipc_ctx);
-
 	(void)saHandleDestroy (&cfg_hdb, cfg_handle);
 
 	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
