@@ -110,10 +110,13 @@ extern int totempg_groups_mcast_joined (
 	int iov_len,
 	int guarantee);
 
-extern int totempg_groups_send_ok_joined (
+extern int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
 	struct iovec *iovec,
 	int iov_len);
+
+extern void totempg_groups_joined_release (
+	int msg_count);
 	
 extern int totempg_groups_mcast_groups (
 	hdb_handle_t handle,

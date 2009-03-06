@@ -448,13 +448,6 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
-extern int main_send_ok (
-        struct iovec *iovec,
-        int iov_len)
-{
-	return (totempg_groups_send_ok_joined (corosync_group_handle, iovec, iov_len));
-}
-
 int main (int argc, char **argv)
 {
 	char *error_string;

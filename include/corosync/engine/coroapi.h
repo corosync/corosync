@@ -413,8 +413,6 @@ struct corosync_api_v1 {
 
 	int (*totem_mcast) (struct iovec *iovec, int iov_len, unsigned int guarantee);
 
-	int (*totem_send_ok) (struct iovec *iovec, int iov_len);
-
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,
 		struct totem_ip_address *interfaces,
@@ -472,10 +470,13 @@ struct corosync_api_v1 {
 		int iov_len,
 		int guarantee);
 
-	int (*tpg_joined_send_ok) (
+	int (*tpg_joined_reserve) (
 		hdb_handle_t handle,
 		struct iovec *iovec,
 		int iov_len);
+
+	int (*tpg_joined_release) (
+		int reserved_msgs);
 
 	int (*tpg_groups_mcast) (
 		hdb_handle_t handle,
@@ -485,12 +486,15 @@ struct corosync_api_v1 {
 		struct iovec *iovec,
 		int iov_len);
 
-	int (*tpg_groups_send_ok) (
+	int (*tpg_groups_reserve) (
 		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
 		int groups_cnt,
 		struct iovec *iovec,
 		int iov_len);
+
+	int (*tpg_groups_release) (
+		int reserved_msgs);
 
 	int (*sync_request) (
 		char *service_name);

@@ -270,7 +270,7 @@ static void *pthread_ipc_consumer (void *conn)
 	struct res_overlay res_overlay;
 	struct iovec send_ok_joined_iovec;
 	int send_ok = 0;
-	int send_ok_joined = 0;
+	int reserved_msgs = 0;
 
 	for (;;) {
 		sop.sem_num = 0;
@@ -296,14 +296,16 @@ retry_semop:
 
 		send_ok_joined_iovec.iov_base = (char *)header;
 		send_ok_joined_iovec.iov_len = header->size;
-		send_ok_joined = totempg_groups_send_ok_joined (corosync_group_handle,
+
+		reserved_msgs = totempg_groups_joined_reserve (
+			corosync_group_handle,
 			&send_ok_joined_iovec, 1);
 
 		send_ok =
 			(corosync_quorum_is_quorate() == 1 || ais_service[conn_info->service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) && (
 			(ais_service[conn_info->service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
 			((ais_service[conn_info->service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
-			(send_ok_joined) &&
+			(reserved_msgs) &&
 			(sync_in_process() == 0)));
 
 		if (send_ok) {
@@ -321,6 +323,7 @@ retry_semop:
 				res_overlay.header.size);
 		}
 
+		totempg_groups_joined_release (reserved_msgs);
 		cs_conn_refcount_dec (conn);
 	}
 	pthread_exit (0);
