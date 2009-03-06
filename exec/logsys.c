@@ -137,7 +137,7 @@ static unsigned int log_rec_idx;
 
 static int logsys_buffer_full = 0;
 
-static char *format_buffer="[%6s] %b";
+static char *format_buffer=NULL;
 
 static int log_requests_pending = 0;
 
@@ -873,7 +873,10 @@ void logsys_format_set (char *format)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
 
-	format_buffer = format;
+	if (format)
+		format_buffer = format;
+	else
+		format_buffer = "[%6s] %b";
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
