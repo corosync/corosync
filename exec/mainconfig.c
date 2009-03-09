@@ -162,7 +162,7 @@ int corosync_main_config_read_logging (
 				logsys_format_set("%t [%6s] %b");
 			} else
 			if (strcmp (value, "off") == 0) {
-				logsys_format_set("[%6s] %b");
+				logsys_format_set(NULL);
 			} else {
 				goto parse_error;
 			}
