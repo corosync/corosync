@@ -1977,8 +1977,8 @@ static void memb_state_recovery_enter (
 		"Originated %d messages in RECOVERY.\n", messages_originated);
 	strcat (not_originated, "\n");
 	strcat (is_originated, "\n");
-	log_printf (instance->totemsrp_log_level_notice, is_originated);
-	log_printf (instance->totemsrp_log_level_notice, not_originated);
+	log_printf (instance->totemsrp_log_level_notice, "%s", is_originated);
+	log_printf (instance->totemsrp_log_level_notice, "%s", not_originated);
 	goto originated;
 
 no_originate:
