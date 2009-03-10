@@ -95,7 +95,7 @@ extern int totemnet_finalize (hdb_handle_t handle);
 
 extern void totemnet_net_mtu_adjust (struct totem_config *totem_config);
 
-extern char *totemnet_iface_print (hdb_handle_t handle);
+extern const char *totemnet_iface_print (hdb_handle_t handle);
 
 extern int totemnet_iface_get (
 	hdb_handle_t handle,

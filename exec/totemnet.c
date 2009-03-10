@@ -139,8 +139,11 @@ struct totemnet_instance {
 
 	int totemnet_subsys_id;
 
-	void (*totemnet_log_printf) (int subsys, char *function, char *file,
-		int line, unsigned int level, char *format,
+	void (*totemnet_log_printf) (int subsys,
+		const char *function,
+		const char *file,
+		int line, unsigned int level,
+		const char *format,
 		...)__attribute__((format(printf, 6, 7)));
 
 	hdb_handle_t handle;
@@ -233,8 +236,8 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 #define log_printf(level, format, args...)				\
 do {									\
         instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
-                (char *)__FUNCTION__, __FILE__, __LINE__, level,	\
-                format, ##args);					\
+                __FUNCTION__, __FILE__, __LINE__,			\
+		level, (const char *)format, ##args);			\
 } while (0);
 
 static int authenticate_and_decrypt (
@@ -1441,10 +1444,10 @@ extern void totemnet_net_mtu_adjust (struct totem_config *totem_config)
 	}
 }
 
-char *totemnet_iface_print (hdb_handle_t handle)  {
+const char *totemnet_iface_print (hdb_handle_t handle)  {
 	struct totemnet_instance *instance;
 	int res = 0;
-	char *ret_char;
+	const char *ret_char;
 
 	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
@@ -1453,7 +1456,7 @@ char *totemnet_iface_print (hdb_handle_t handle)  {
 		goto error_exit;
 	}
 	
-	ret_char = (char *)totemip_print (&instance->my_id);
+	ret_char = totemip_print (&instance->my_id);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
