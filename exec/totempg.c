@@ -170,6 +170,11 @@ struct assembly {
 	struct list_head list;
 };
 
+static void assembly_deref (struct assembly *assembly);
+
+static int callback_token_received_fn (enum totem_callback_token_type type,
+	void *data);
+
 enum throw_away_mode_t {
 	THROW_AWAY_INACTIVE,
 	THROW_AWAY_ACTIVE
@@ -291,7 +296,7 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	return (assembly);
 }
 
-void assembly_deref (struct assembly *assembly)
+static void assembly_deref (struct assembly *assembly)
 {
 	list_del (&assembly->list);
 	list_add (&assembly->list, &assembly_list_free);
