@@ -217,18 +217,18 @@ __attribute__ ((constructor)) static void logsys_subsys_init (void)	\
 
 #define log_rec(rec_ident, args...)					\
 do {									\
-	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_rec (logsys_subsys_id,  __FUNCTION__,		\
 		__FILE__,  __LINE__, rec_ident, ##args);		\
 } while(0)
 
 #define log_printf(lvl, format, args...)				\
  do {									\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__, __LINE__, lvl, format, ##args);		\
 } while(0)
 
 #define ENTER() do {							\
-	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_ENTER, LOG_REC_END);	\
 } while(0)
 
