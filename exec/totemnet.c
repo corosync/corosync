@@ -278,7 +278,7 @@ static int authenticate_and_decrypt (
 	hmac_init (&instance->totemnet_hmac_state, DIGEST_SHA1, hmac_key, 16);
 
 	hmac_process (&instance->totemnet_hmac_state, 
-		iov->iov_base + HMAC_HASH_SIZE,
+		(unsigned char *)iov->iov_base + HMAC_HASH_SIZE,
 		iov->iov_len - HMAC_HASH_SIZE);
 
 	len = hash_descriptor[DIGEST_SHA1]->hashsize;
@@ -293,7 +293,8 @@ static int authenticate_and_decrypt (
 	/*
 	 * Decrypt the contents of the message with the cipher key
 	 */
-	sober128_read (iov->iov_base + sizeof (struct security_header),
+	sober128_read ((unsigned char*)iov->iov_base +
+			sizeof (struct security_header),
 		iov->iov_len - sizeof (struct security_header),
 		&stream_prng_state);
 
@@ -672,7 +673,7 @@ static int net_deliver_fn (
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
 		}
-		msg_offset = iovec->iov_base +
+		msg_offset = (unsigned char *)iovec->iov_base +
 			sizeof (struct security_header);
 		size_delv = bytes_received - sizeof (struct security_header);
 	} else {
