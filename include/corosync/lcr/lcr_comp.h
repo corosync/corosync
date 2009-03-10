@@ -35,7 +35,7 @@
  * LCR Interface
  */
 struct lcr_iface {
-	char *name;			/* Name of the interface */
+	const char *name;			/* Name of the interface */
 	int version;			/* Version of this interface */
 	int *versions_replace;		/* Versions that this interface can replace */
 	int versions_replace_count;	/* Count of entries in version_replace */

@@ -423,7 +423,7 @@ static unsigned int lcr_initialized = 0;
 
 int lcr_ifact_reference (
 	hdb_handle_t *iface_handle,
-	char *iface_name,
+	const char *iface_name,
 	int version,
 	void **iface,
 	void *context)

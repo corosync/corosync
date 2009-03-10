@@ -35,7 +35,7 @@
 
 int lcr_ifact_reference (
 	hdb_handle_t *handle,
-	char *iface_name,
+	const char *iface_name,
 	int version,
 	void **interface,
 	void *context);
