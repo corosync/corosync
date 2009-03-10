@@ -42,6 +42,7 @@
 #include <arpa/inet.h>
 #include <pwd.h>
 #include <grp.h>
+#include <limits.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
@@ -155,11 +156,19 @@ int corosync_main_config_read_logging (
 			}
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
+			char new_format_buffer[PATH_MAX];
+
+			memset(&new_format_buffer, 0, sizeof(new_format_buffer));
+
 			if (strcmp (value, "on") == 0) {
-				logsys_format_set("%t [%6s] %b");
+				snprintf(new_format_buffer, PATH_MAX-1, "%%t %s", logsys_format_get());
+				logsys_format_set(new_format_buffer);
 			} else
 			if (strcmp (value, "off") == 0) {
-				logsys_format_set(NULL);
+				if (!strncmp("%t ", logsys_format_get(), 3)) {
+					snprintf(new_format_buffer, PATH_MAX-1, "%s", logsys_format_get() + 3);
+					logsys_format_set(new_format_buffer);
+				}
 			} else {
 				goto parse_error;
 			}
