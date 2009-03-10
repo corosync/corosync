@@ -436,14 +436,14 @@ static inline void app_deliver_fn (
 				/*
 				 * Align data structure for sparc and ia64
 				 */
-				if (iovec->iov_base + adjust_iovec % 4 != 0) {
+				if ((char *)iovec->iov_base + adjust_iovec % 4 != 0) {
 					/*
 					 * Deal with misalignment
 					 */
 					stripped_iovec.iov_base =
 						alloca (stripped_iovec.iov_len);
 					memcpy (stripped_iovec.iov_base,
-						 iovec->iov_base + adjust_iovec,
+						 (char *)iovec->iov_base + adjust_iovec,
 						stripped_iovec.iov_len);
 				}
 
@@ -791,7 +791,7 @@ static int mcast_msg (
 			(max_packet_size - sizeof (unsigned short))) {
 
 			memcpy (&fragmentation_data[fragment_size],
-				iovec[i].iov_base + copy_base, copy_len);
+				(char *)iovec[i].iov_base + copy_base, copy_len);
 			fragment_size += copy_len;
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 			next_fragment = 1;
@@ -808,15 +808,15 @@ static int mcast_msg (
 
 			copy_len = min(copy_len, max_packet_size - fragment_size);
 			if( copy_len == max_packet_size )
-				data_ptr = iovec[i].iov_base + copy_base;
+				data_ptr = (unsigned char *)iovec[i].iov_base + copy_base;
 			else {
 				data_ptr = fragmentation_data;
 				memcpy (&fragmentation_data[fragment_size],
-				iovec[i].iov_base + copy_base, copy_len);
+				(unsigned char *)iovec[i].iov_base + copy_base, copy_len);
 			}
 
 			memcpy (&fragmentation_data[fragment_size],
-				iovec[i].iov_base + copy_base, copy_len);
+				(unsigned char *)iovec[i].iov_base + copy_base, copy_len);
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 
 			/*
