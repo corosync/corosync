@@ -722,7 +722,14 @@ int totemsrp_initialize (
 	}
 	
 	res = mkdir (rundir, 0700);
-	chdir (rundir);
+	if (res == -1) {
+		goto error_put;
+	}
+
+	res = chdir (rundir);
+	if (res == -1) {
+		goto error_put;
+	}
 
 	totemsrp_instance_initialize (instance);
 
@@ -853,7 +860,12 @@ int totemsrp_initialize (
 		MESSAGE_QUEUE_MAX,
 		sizeof (struct message_item));
 
+	hdb_handle_put (&totemsrp_instance_database, *handle);
+
 	return (0);
+
+error_put:
+	hdb_handle_put (&totemsrp_instance_database, *handle);
 
 error_destroy:
 	hdb_handle_destroy (&totemsrp_instance_database, *handle);
