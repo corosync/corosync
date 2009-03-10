@@ -125,8 +125,8 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip
 int totemip_compare(const void *a, const void *b)
 {
 	int i;
-	struct totem_ip_address *totemip_a = (struct totem_ip_address *)a;
-	struct totem_ip_address *totemip_b = (struct totem_ip_address *)b;
+	const struct totem_ip_address *totemip_a = (const struct totem_ip_address *)a;
+	const struct totem_ip_address *totemip_b = (const struct totem_ip_address *)b;
 	struct in_addr ipv4_a1;
 	struct in_addr ipv4_a2;
 	struct in6_addr ipv6_a1;
@@ -176,7 +176,7 @@ int totemip_compare(const void *a, const void *b)
 /* Build a localhost totem_ip_address */
 int totemip_localhost(int family, struct totem_ip_address *localhost)
 {
-	char *addr_text;
+	const char *addr_text;
 
 	memset (localhost, 0, sizeof (struct totem_ip_address));
 
@@ -206,11 +206,11 @@ int totemip_localhost_check(struct totem_ip_address *addr)
 	return totemip_equal(addr, &localhost);
 }
 
-char *totemip_print(struct totem_ip_address *addr)
+const char *totemip_print(struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];
 
-	return ((char *)inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
+	return (inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
 }
 
 /* Make a totem_ip_address into a usable sockaddr_storage */
