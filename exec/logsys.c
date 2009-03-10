@@ -64,7 +64,12 @@
  */
 
 #ifdef SYSLOG_NAMES
-CODE tagnames[] =
+struct syslog_names {
+	const char *c_name;
+	int c_val;
+};
+
+struct syslog_names tagnames[] =
   {
     { "log", LOGSYS_TAG_LOG },
     { "enter", LOGSYS_TAG_ENTER },
