@@ -1541,7 +1541,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 				 * in a new ring message
 				 */
 				regular_message_item.iovec[0].iov_base =
-					recovery_message_item->iovec[0].iov_base + sizeof (struct mcast);
+					(char *)recovery_message_item->iovec[0].iov_base + sizeof (struct mcast);
 				regular_message_item.iovec[0].iov_len =
 				recovery_message_item->iovec[0].iov_len - sizeof (struct mcast);
 				regular_message_item.iov_len = 1;
@@ -3213,7 +3213,7 @@ static int message_handler_orf_token (
 	 */
 	token = (struct orf_token *)token_storage;
 	memcpy (token, msg, sizeof (struct orf_token));
-	memcpy (&token->rtr_list[0], msg + sizeof (struct orf_token),
+	memcpy (&token->rtr_list[0], (char *)msg + sizeof (struct orf_token),
 		sizeof (struct rtr_item) * RETRANSMIT_ENTRIES_MAX);
 
 
@@ -3572,7 +3572,7 @@ static void messages_deliver_to_app (
 				endian_conversion_required);
 		} else {
 			sort_queue_item_p->iovec[0].iov_len -= sizeof (struct mcast);
-			sort_queue_item_p->iovec[0].iov_base += sizeof (struct mcast);
+			sort_queue_item_p->iovec[0].iov_base = (char *)sort_queue_item_p->iovec[0].iov_base + sizeof (struct mcast);
 
 			instance->totemsrp_deliver_fn (
 				mcast_header.header.nodeid,
@@ -3581,7 +3581,7 @@ static void messages_deliver_to_app (
 				endian_conversion_required);
 
 			sort_queue_item_p->iovec[0].iov_len += sizeof (struct mcast);
-			sort_queue_item_p->iovec[0].iov_base -= sizeof (struct mcast);
+			sort_queue_item_p->iovec[0].iov_base = (char *)sort_queue_item_p->iovec[0].iov_base - sizeof (struct mcast);
 		}
 //TODO	instance->stats_delv += 1;
 	}
