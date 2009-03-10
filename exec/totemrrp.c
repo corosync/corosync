@@ -66,6 +66,15 @@
 #include "totemnet.h"
 #include "totemrrp.h"
 
+void rrp_deliver_fn (
+	void *context,
+	void *msg,
+	int msg_len);
+
+void rrp_iface_change_fn (
+	void *context,
+	struct totem_ip_address *iface_addr);
+
 struct totemrrp_instance;
 struct passive_instance {
 	struct totemrrp_instance *rrp_instance;
