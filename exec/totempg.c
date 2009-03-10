@@ -156,9 +156,9 @@ static int totempg_log_level_warning;
 static int totempg_log_level_notice;
 static int totempg_log_level_debug;
 static int totempg_subsys_id;
-static void (*totempg_log_printf) (int subsys_id, char *function, char *file,
-        int line, unsigned int level, char *format,
-        ...) __attribute__((format(printf, 6, 7)));
+static void (*totempg_log_printf) (int subsys_id, const char *function,
+	const char *file, int line, unsigned int level,
+	const char *format, ...) __attribute__((format(printf, 6, 7)));
 
 struct totem_config *totempg_totem_config;
 
@@ -237,7 +237,7 @@ static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define log_printf(level, format, args...)				\
 do {									\
-        totempg_log_printf (totempg_subsys_id, (char *)__FUNCTION__,	\
+        totempg_log_printf (totempg_subsys_id, __FUNCTION__,		\
 		__FILE__, __LINE__, level, format, ##args);		\
 } while (0);
 
@@ -1275,7 +1275,7 @@ int totempg_ring_reenable (void)
 	return (res);
 }
 
-char *totempg_ifaces_print (unsigned int nodeid)
+const char *totempg_ifaces_print (unsigned int nodeid)
 {
 	static char iface_string[256 * INTERFACE_MAX];
 	char one_iface[64];
