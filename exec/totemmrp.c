@@ -58,6 +58,7 @@
 #include <corosync/totem/coropoll.h>
 #include <corosync/hdb.h>
 
+#include "totemmrp.h"
 #include "totemsrp.h"
 
 hdb_handle_t totemsrp_handle_in;

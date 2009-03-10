@@ -71,7 +71,7 @@ extern int totemmrp_initialize (
 		unsigned int *joined_list, int joined_list_entries,
 		struct memb_ring_id *ring_id));
 
-extern int totemmrp_finalize (void);
+extern void totemmrp_finalize (void);
 
 /*
  * Multicast a message
@@ -104,7 +104,7 @@ extern int totemmrp_ifaces_get (
 	char ***status,
 	unsigned int *iface_count);
 
-extern int totemmrp_my_nodeid_get (void);
+extern unsigned int totemmrp_my_nodeid_get (void);
 
 extern int totemmrp_my_family_get (void);
 
