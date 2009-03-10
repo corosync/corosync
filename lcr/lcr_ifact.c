@@ -108,7 +108,7 @@ static int pathlist_select (struct dirent *dirent)
 #endif
 
 static inline struct lcr_component_instance *lcr_comp_find (
-	char *iface_name,
+	const char *iface_name,
 	unsigned int version,
 	unsigned int *iface_number)
 {
@@ -166,7 +166,7 @@ static inline int lcr_lib_loaded (
 	return (0);
 }
 
-char *path_list[128];
+const char *path_list[128];
 unsigned int path_list_entries = 0;
 
 static void defaults_path_build (void)
@@ -207,7 +207,7 @@ static void ld_library_path_build (void)
 	free (my_ld_library_path);
 }
 
-static int ldso_path_build (char *path, char *filename)
+static int ldso_path_build (const char *path, const char *filename)
 {
 #ifndef COROSYNC_SOLARIS
 	FILE *fp;
@@ -344,8 +344,8 @@ static int alphasort (const struct dirent **a, const struct dirent **b)
 #endif
 
 static int interface_find_and_load (
-	char *path,
-	char *iface_name,
+	const char *path,
+	const char *iface_name,
 	int version,
 	struct lcr_component_instance **instance_ret,
 	unsigned int *iface_number)
