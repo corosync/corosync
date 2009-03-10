@@ -57,10 +57,14 @@
 #endif
 
 #ifdef COROSYNC_LINUX
-static char *socketname = "lcr.socket";
+static const char *socketname = "lcr.socket";
 #else
-static char *socketname = "/var/run/lcr.socket";
+static const char *socketname = "/var/run/lcr.socket";
 #endif
+
+static int uic_connect (int *fd);
+
+static int uic_msg_send (int fd, void *msg);
 
 int uic_connect (int *fd)
 {
@@ -93,7 +97,7 @@ struct uic_req_msg {
 	char msg[0];
 };
 
-int uic_msg_send (int fd, char *msg)
+static int uic_msg_send (int fd, void *msg)
 {
 	struct msghdr msg_send;
 	struct iovec iov_send[2];
@@ -104,7 +108,7 @@ int uic_msg_send (int fd, char *msg)
 	req_msg.len = strlen (msg) + 1;
 	iov_send[0].iov_base = (void *)&req_msg;
 	iov_send[0].iov_len = sizeof (struct uic_req_msg);
-	iov_send[1].iov_base = (void *)msg;
+	iov_send[1].iov_base = msg;
 	iov_send[1].iov_len = req_msg.len;
 
 	msg_send.msg_iov = iov_send;
@@ -139,12 +143,13 @@ int main (void)
 {
 	int client_fd;
 	int res;
+	char command[128] = "livereplace ckpt version2";
 
 	res = uic_connect (&client_fd);
 	if (res != 0) {
 		printf ("Couldn't connect to live replacement service\n");
 	}
-	uic_msg_send (client_fd, "livereplace ckpt version 2");
+	uic_msg_send (client_fd, (void *)command);
 
 	return 0;
 }
