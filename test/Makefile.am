@@ -1,7 +1,9 @@
-# Copyright (c) 2002-2004 MontaVista Software, Inc.
+#
+# Copyright (c) 2009 Red Hat, Inc.
 # 
-# All rights reserved.
-# 
+# Authors: Andrew Beekhof
+#	   Steven Dake (sdake@redhat.com)
+#
 # This software licensed under BSD license, the text of which follows:
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -27,37 +29,40 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
-CFLAGS = -c -O2 -I/usr/include/ais
-LDFLAGS = 
 
-all:clean testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6
+MAINTAINERCLEANFILES    = Makefile.in
+INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
-cleanup:
-	rm -f testclm testamf
+noinst_PROGRAMS		= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb	\
+			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2
 
-testclm: testclm.o
-	$(CC) $(LDFLAGS) -o testclm testclm.o -lais
+testevs_LDADD		= -levs
+testevs_LDFLAGS		= -L../lib
+testcpg_LDADD		= -lcpg
+testcpg_LDFLAGS		= -L../lib
+testcpg2_LDADD		= -lcpg
+testcpg2_LDFLAGS	= -L../lib
+testconfdb_LDADD	= -lconfdb ../lcr/liblcr.a
+testconfdb_LDFLAGS	= -L../lib
+testquorum_LDADD	= -lquorum
+testquorum_LDFLAGS	= -L../lib
+testvotequorum1_LDADD	= -lvotequorum
+testvotequorum1_LDFLAGS	= -L../lib
+testvotequorum2_LDADD	= -lvotequorum
+testvotequorum2_LDFLAGS	= -L../lib
+evsverify_LDADD		= -levs -ltotem_pg
+evsverify_LDFLAGS	= -L../lib -L../exec
+evsbench_LDADD		= -levs
+evsbench_LDFLAGS	= -L../lib
+cpgbench_LDADD		= -lcpg
+cpgbench_LDFLAGS	= -L../lib
+logsysbench_LDADD	= -llogsys
+logsysbench_LDFLAGS	= -L../exec
+logsysrec_LDADD		= -llogsys
+logsysrec_LDFLAGS	= -L../exec
 
-testamf: testamf.o 
-	$(CC) $(LDFLAGS) -o testamf testamf.o -lais
+lint:
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
 
-testamf1: testamf1.o libais.a
-	$(CC) $(LDFLAGS) -o testamf1 testamf1.o libais.a
 
-testamf2: testamf2.o libais.a
-	$(CC) $(LDFLAGS) -o testamf2 testamf2.o libais.a
 
-testamf3: testamf3.o libais.a
-	$(CC) $(LDFLAGS) -o testamf3 testamf3.o libais.a
-
-testamf4: testamf4.o libais.a
-	$(CC) $(LDFLAGS) -o testamf4 testamf4.o libais.a
-
-testamf5: testamf5.o libais.a
-	$(CC) $(LDFLAGS) -o testamf5 testamf5.o libais.a
-
-testamf6: testamf6.o libais.a
-	$(CC) $(LDFLAGS) -o testamf6 testamf6.o libais.a
-
-clean:
-	rm -f *.o testclm testamf testamf1 testamf2 testamf3 testamf4 testamf5 testamf6

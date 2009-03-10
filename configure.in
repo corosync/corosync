@@ -1,0 +1,560 @@
+dnl
+dnl autoconf for Pacemaker
+dnl
+dnl License: GNU General Public License (GPL)
+
+dnl ===============================================
+dnl Bootstrap 
+dnl ===============================================
+
+dnl Initialiase, with sanity check of a unique file in the hierarchy
+AC_INIT(configure.in)
+AC_PREREQ(2.53)
+
+AC_CONFIG_AUX_DIR(.)
+AC_CANONICAL_HOST
+AC_MSG_NOTICE(Host: $host)
+AC_MSG_NOTICE(Host OS: $host_os)
+AC_MSG_NOTICE(Host CPU: $host_cpu)
+AC_MSG_NOTICE(Host Vendor: $host_vendor)
+
+dnl Where #defines go (e.g. `AC_CHECK_HEADERS' below)
+dnl
+dnl Internal header: include/corosync/config.h
+dnl   - Contains ALL defines
+dnl   - include/config.h.in is generated automatically by autoheader
+dnl   - NOT to be included in any header files except lha_internal.h
+dnl     (which is also not to be included in any other header files)
+dnl
+dnl External header: include/corosync/cs_config.h
+dnl   - Contains a subset of defines checked here
+dnl   - Manually edit include/corosync/cs_config.h.in to have configure include
+dnl     new defines
+dnl   - Should not include HAVE_* defines
+dnl   - Safe to include anywhere
+AM_CONFIG_HEADER(include/corosync/config.h include/corosync/cs_config.h)
+ALL_LINGUAS="en fr"
+
+AC_ARG_WITH(version,
+    [  --with-version=name     Override package version (if you're a packager needing to pretend) ],
+    [ CS_VERSION="$withval" ],
+    [ CS_VERSION="" ],
+)
+
+DTD_VERSION=1.0
+
+if test -z "$CS_VERSION" ; then
+   CS_VERSION="1.0.0"
+fi
+
+PKG_NAME=corosync
+PKG_FEATURES=""
+AM_INIT_AUTOMAKE($PKG_NAME, $CS_VERSION)
+AC_DEFINE_UNQUOTED(CS_VERSION, "$CS_VERSION", Current pacemaker version)
+AC_SUBST(PKG_NAME)
+
+
+LDD=ldd
+dnl Which C compiler?
+dnl Defaults to GNU C compiler if available.
+dnl Always tries to set the compiler to ANSI C via options (AM)
+dnl Can force other with environment variable "CC".
+AC_PROG_CC
+AC_PROG_CC_STDC
+AM_PROG_CC_C_O
+AC_PROG_RANLIB
+
+dnl ===============================================
+dnl Helpers 
+dnl ===============================================
+cc_supports_flag() {
+	  AC_MSG_CHECKING(whether $CC supports "$@")
+	  Cfile=/tmp/foo${$}
+	  touch ${Cfile}.c
+	  $CC -c "$@" ${Cfile}.c -o ${Cfile}.o >/dev/null 2>&1
+          rc=$?
+	  rm -f ${Cfile}.c ${Cfile}.o
+          case $rc in
+            0) AC_MSG_RESULT(yes);;
+            *) AC_MSG_RESULT(no);;
+          esac
+          return $rc
+}
+
+extract_header_define() {
+	  AC_MSG_CHECKING(for $2 in $1)
+	  Cfile=/tmp/extract_define.$2.${$}
+	  printf "#include <stdio.h>\n" > ${Cfile}.c
+	  printf "#include <%s>\n" $1 >> ${Cfile}.c
+	  printf "int main(int argc, char **argv) { printf(\"%%s\", %s); return 0; }\n" $2 >> ${Cfile}.c
+	  $CC $CFLAGS ${Cfile}.c -o ${Cfile}
+	  value=`${Cfile}`
+	  AC_MSG_RESULT($value)
+	  printf $value
+	  rm -f ${Cfile}.c ${Cfile}
+	}
+
+check_for_type() {
+  type="$1"
+  headers=""
+  shift
+  for arg
+  do
+    headers="${headers}${arg}
+"
+  done
+  program="if ((${type} *) 0)  return 0;
+    if (sizeof(${type}))  return 0; 
+    return 0;"
+  have="HAVE_`echo "$type" | tr ' ' '_' | dd conv=ucase 2>/dev/null`"
+  varhave="heartbeat_cv_$have"
+
+  AC_CACHE_CHECK([for type $type ],$varhave,[
+    AC_TRY_COMPILE([$headers], [$program], eval $varhave=yes, eval $varhave=no
+    , eval $varhave=cross)
+  ])
+  if test x"`eval echo '${'$varhave'}'`" = xyes; then
+    return 0
+  fi
+  return 1
+}
+
+check_for_type_member() {
+  type="$1"
+  member="$2"
+  headers=""
+  shift
+  shift
+  for arg
+  do
+    headers="${headers}${arg}
+"
+  done
+  program="${type} foo;
+    if ((${type} *) 0)  return 0;
+    if (sizeof(${type}))  return 0;
+    if (sizeof(foo))  return 0;
+    (void*)foo.${member};
+    return 0;"
+  have="HAVE_`echo "$type" | tr ' ' '_' | dd conv=ucase 2>/dev/null`"
+  varhave="heartbeat_cv_$have"
+
+  AC_CACHE_CHECK([for type $type ],$varhave,[
+    AC_TRY_COMPILE([$headers], [$program], eval $varhave=yes, eval $varhave=no
+    , eval $varhave=cross)
+  ])
+  if test x"`eval echo '${'$varhave'}'`" = xyes; then
+    return 0
+  fi
+  return 1
+}
+
+dnl ===============================================
+dnl Configure Options
+dnl ===============================================
+
+AC_ARG_ENABLE([ansi],
+[  --enable-ansi force GCC to compile to ANSI/ANSI standard for older compilers.
+     [default=no]])
+
+AC_ARG_ENABLE([fatal-warnings],
+[  --enable-fatal-warnings very pedantic and fatal warnings for gcc
+     [default=no]])
+
+AC_ARG_WITH(lcrso-dir, 
+    [  --with-lcrso-dir=DIR   Corosync lcrso files. ],
+    [ LCRSODIR="$withval" ])
+
+AC_ARG_ENABLE(static, 
+    [  --enable-static   Dont produce dynamic libraries. ],
+    [ default="no" ])
+
+AC_ARG_ENABLE(coverage, 
+    [  --enable-coverage   Coverage analysis of the codebase. ],
+    [ default="no" ])
+
+dnl ===============================================
+dnl General Processing
+dnl ===============================================
+
+CC_IN_CONFIGURE=yes
+export CC_IN_CONFIGURE
+
+AC_MSG_NOTICE(Sanitizing prefix: ${prefix})
+case $prefix in
+  NONE)	prefix=/usr;;
+esac
+
+AC_MSG_NOTICE(Sanitizing exec_prefix: ${exec_prefix})
+case $exec_prefix in
+  dnl For consistency with Heartbeat, map NONE->$prefix
+  NONE)	  exec_prefix=$prefix;;
+  prefix) exec_prefix=$prefix;;
+esac
+
+AC_MSG_NOTICE(Sanitizing ais_prefix: ${AISPREFIX})
+case $AISPREFIX in
+  dnl For consistency with Heartbeat, map NONE->$prefix
+  NONE)	  AISPREFIX=$prefix;;
+  prefix) AISPREFIX=$prefix;;
+esac
+
+AC_MSG_NOTICE(Sanitizing libdir: ${libdir})
+case $libdir in
+  dnl For consistency with Heartbeat, map NONE->$prefix
+  prefix|NONE|*exec_prefix*)
+    AC_MSG_CHECKING(which lib directory to use)
+    for aDir in lib64 lib
+    do
+      trydir="${exec_prefix}/${aDir}"
+      if
+        test -d ${trydir}
+      then
+        libdir=${trydir}
+        break
+      fi
+    done
+    AC_MSG_RESULT($libdir);
+    ;;
+esac
+
+
+dnl Expand autoconf variables so that we dont end up with '${prefix}' 
+dnl in #defines and python scripts
+dnl NOTE: Autoconf deliberately leaves them unexpanded to allow
+dnl    make exec_prefix=/foo install
+dnl No longer being able to do this seems like no great loss to me...
+
+eval prefix="`eval echo ${prefix}`"
+eval exec_prefix="`eval echo ${exec_prefix}`"
+eval bindir="`eval echo ${bindir}`"
+eval sbindir="`eval echo ${sbindir}`"
+eval libexecdir="`eval echo ${libexecdir}`"
+eval datadir="`eval echo ${datadir}`"
+eval sysconfdir="`eval echo ${sysconfdir}`"
+eval sharedstatedir="`eval echo ${sharedstatedir}`"
+eval localstatedir="`eval echo ${localstatedir}`"
+eval libdir="`eval echo ${libdir}`"
+eval includedir="`eval echo ${includedir}`"
+eval oldincludedir="`eval echo ${oldincludedir}`"
+eval infodir="`eval echo ${infodir}`"
+eval mandir="`eval echo ${mandir}`"
+eval docdir="`eval echo ${docdir}`"
+
+for j in prefix exec_prefix bindir sbindir libexecdir datadir sysconfdir \
+    sharedstatedir localstatedir libdir includedir oldincludedir infodir \
+    mandir docdir
+do 
+  dirname=`eval echo '${'${j}'}'`
+  if
+    test ! -d "$dirname"
+  then
+    AC_MSG_WARN([$j directory ($dirname) does not exist!])
+  fi
+done
+
+dnl This OS-based decision-making is poor autotools practice;
+dnl feature-based mechanisms are strongly preferred.
+dnl
+dnl So keep this section to a bare minimum; regard as a "necessary evil". 
+
+ON_DARWIN=0
+DYFLAGS=
+case "$host_os" in
+*bsd*)		LIBS="-L/usr/local/lib"
+		CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+		AC_DEFINE_UNQUOTED(COROSYNC_BSD, 1, Compiling for BSD platform)
+		DYFLAGS="$DYFLAGS -export-dynamic"
+		;;
+*solaris*)
+		AC_DEFINE_UNQUOTED(COROSYNC_SOLARIS, 1, Compiling for Solaris platform)
+		AC_DEFINE_UNQUOTED(TS_CLASS, 1, Prevent being scheduled RR)
+		CFLAGS="$CFLAGS -D_REENTRANT"
+		LDFLAGS="$LDFLAGS -Wl,--export-dynamic -Wl,-rpath-link=/usr/lib"
+		;;
+*linux*)	
+		AC_DEFINE_UNQUOTED(COROSYNC_LINUX, 1, Compiling for Linux platform)
+		DYFLAGS="$DYFLAGS -rdynamic"
+ 		;;
+darwin*)	
+		ON_DARWIN=1
+		AC_DEFINE_UNQUOTED(COROSYNC_DARWIN, 1, Compiling for Darwin platform)
+#  		LIBS="$LIBS -L${prefix}/lib"
+#  		CFLAGS="$CFLAGS -I${prefix}/include"
+		;;
+esac
+AC_SUBST(DYFLAGS)
+
+case "$host_cpu" in
+  ppc64|powerpc64)
+    case $CFLAGS in
+     *powerpc64*)			;;
+     *)	if test "$GCC" = yes; then
+	  CFLAGS="$CFLAGS -m64"
+	fi				;;
+    esac
+esac
+
+AC_MSG_CHECKING(which format is needed to print uint64_t)
+case "$host_cpu" in
+  s390x)U64T="%lu";;
+  *64*) U64T="%lu";;
+  *)    U64T="%llu";;
+esac
+AC_MSG_RESULT($U64T)
+AC_DEFINE_UNQUOTED(U64T, "$U64T", Correct printf format for logging uint64_t)
+
+dnl Variables needed for substitution
+
+case x$LCRSODIR in
+     x) LCRSODIR=$libexecdir/corosync/lcrso;;
+esac
+AC_DEFINE_UNQUOTED(LCRSODIR, "$LCRSODIR", Location of Corosync lcrso plugins)
+AC_SUBST(LCRSODIR)
+
+
+dnl *************************************************************************
+PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/usr/local/bin"
+export PATH
+
+dnl ===============================================
+dnl Program Paths - Most of these need to go away
+dnl ===============================================
+
+
+AC_CHECK_PROGS(MAKE, gmake make)
+AC_PATH_PROGS(PKGCONFIG, pkg-config)
+AC_PATH_PROGS(SSH, ssh, /usr/bin/ssh)
+
+if test x"${MAKE}" = x""; then
+   AC_MSG_ERROR(You need (g)make installed in order to build ${PKG_NAME})
+fi
+
+AC_SUBST(MAKE)
+AC_SUBST(CC)
+
+dnl ===============================================
+dnl Libraries
+dnl ===============================================
+
+AC_CHECK_LIB(dl, dlopen)
+AC_CHECK_LIB(nsl, t_open)
+AC_CHECK_LIB(socket, socket)
+AC_CHECK_LIB(c, getpeereid)
+AC_CHECK_LIB(rt, sched_getscheduler)
+AC_CHECK_LIB(pthread, pthread_create)
+
+dnl if test x"${PKGCONFIG}" = x""; then
+dnl    AC_MSG_ERROR(You need pkgconfig installed in order to build ${PKG_NAME})
+dnl fi
+dnl
+dnl if test $PKGCONFIG --exists $GPKGNAME; then
+dnl 	CFLAGS="$CFLAGS `$GLIBCONFIG --cflags`"
+dnl 	LIBS="$LIBS `$GLIBCONFIG --libs`"
+dnl fi
+
+dnl ===============================================
+dnl Functions
+dnl ===============================================
+AC_CHECK_FUNCS(alphasort)
+AC_CHECK_FUNCS(scandir)
+AC_CHECK_FUNCS(getpeerucred)
+
+dnl ===============================================
+dnl Headers
+dnl ===============================================
+
+AC_HEADER_STDC
+
+AC_CHECK_HEADERS(sys/sockio.h)
+AC_CHECK_HEADERS(sys/types.h)
+AC_CHECK_HEADERS(sys/socket.h)
+AC_CHECK_HEADERS(malloc.h)
+AC_CHECK_HEADERS(getopt.h)
+
+dnl ===============================================
+dnl Typedefs
+dnl ===============================================
+
+dnl Check syslog.h for 'facilitynames' table
+dnl
+AC_CACHE_CHECK([for facilitynames in syslog.h],ac_cv_HAVE_SYSLOG_FACILITYNAMES,[
+AC_TRY_COMPILE([
+#define SYSLOG_NAMES
+#include <stdlib.h>
+#include <syslog.h>
+],
+[ void *fnames; fnames = facilitynames; ],
+ac_cv_HAVE_SYSLOG_FACILITYNAMES=yes,ac_cv_HAVE_SYSLOG_FACILITYNAMES=no,ac_cv_HAVE_SYSLOG_FACILITYNAMES=cross)])
+if test x"$ac_cv_HAVE_SYSLOG_FACILITYNAMES" = x"yes"; then
+    AC_DEFINE(HAVE_SYSLOG_FACILITYNAMES,1,[ ])
+fi
+
+dnl ===============================================
+dnl Compiler Characteristics
+dnl ===============================================
+
+dnl if not known on this system, #define size_t unsigned
+AC_TYPE_SIZE_T
+AC_CHECK_SIZEOF(char)
+AC_CHECK_SIZEOF(short)
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_CHECK_SIZEOF(long long)
+AC_C_STRINGIZE
+
+CC_WARNINGS=""
+
+dnl AC_CHECK_FUNCS(fcntl)
+
+dnl
+dnl Make sure that CFLAGS is not exported. If the user did
+dnl not have CFLAGS in their environment then this should have
+dnl no effect. However if CFLAGS was exported from the user's
+dnl environment, then the new CFLAGS will also be exported
+dnl to sub processes. 
+dnl
+
+if export | fgrep " CFLAGS=" > /dev/null; then
+	export -n CFLAGS || true # We don't want to bomb out if this fails
+fi
+
+if test "$GCC" != yes; then
+        CFLAGS="$CFLAGS -g"
+else
+        CFLAGS="$CFLAGS -ggdb3"
+
+	EXTRA_WARNINGS=""
+	# We had to eliminate -Wnested-externs because of libtool changes
+        WARNLIST="all missing-prototypes 
+		missing-declarations 
+		strict-prototypes 
+		declaration-after-statement
+		pointer-arith 
+		write-strings
+		cast-qual cast-align 
+		bad-function-cast 
+		missing-format-attribute
+		format=2
+		format-security
+		format-nonliteral
+		no-long-long
+    		unsigned-char
+		gnu89-inline
+		no-strict-aliasing"
+
+	for j in $WARNLIST
+	do
+	  if
+	    cc_supports_flag -W$j
+	  then
+	    EXTRA_WARNINGS="$EXTRA_WARNINGS -W$j"
+	  fi
+	done
+
+dnl Add any system specific options here.
+
+	case "$host_os" in
+  	*linux*|*bsd*)
+		if test "${enable_fatal_warnings}" = "unknown"; then
+        		enable_fatal_warnings=yes
+        	fi
+          	;;
+  	*solaris*)
+          	;;
+	esac
+
+	if test "x${enable_coverage}" = xyes && cc_supports_flag -ftest-coverage && cc_supports_flag -fprofile-arcs ; then
+	   echo "Enabling Coverage"
+	   CFLAGS="$CFLAGS -O0 -g -ftest-coverage -fprofile-arcs"
+	   LDFLAGS="$LDFLAGS -g -ftest-coverage -fprofile-arcs"
+	   enable_static=yes
+	   PKG_FEATURES="$PKG_FEATURES coverage"
+	fi
+
+	if test "x${enable_ansi}" = xyes && cc_supports_flag -std=iso9899:199409 ; then
+	  echo "Enabling ANSI Compatibility"
+	  ANSI="-ansi -D_GNU_SOURCE -DANSI_ONLY"
+	  PKG_FEATURES="$PKG_FEATURES ansi"
+	fi
+
+	if test "x${enable_fatal_warnings}" = xyes && cc_supports_flag -Werror ; then
+          echo "Enabling Fatal Warnings (-Werror)"
+    	  FATAL_WARNINGS="-Werror"
+	  PKG_FEATURES="$PKG_FEATURES fatal-warnings"
+        fi
+        
+	CC_WARNINGS="$EXTRA_WARNINGS $FATAL_WARNINGS $ANSI" 
+	NON_FATAL_CC_WARNINGS="$EXTRA_WARNINGS"
+
+fi
+dnl AC_SUBST(CC_WARNINGS)
+
+NON_FATAL_CFLAGS="$CFLAGS $NON_FATAL_CC_WARNINGS"
+AC_SUBST(NON_FATAL_CFLAGS)
+
+dnl
+dnl We reset CFLAGS to include our warnings *after* all function
+dnl checking goes on, so that our warning flags don't keep the
+dnl AC_*FUNCS() calls above from working.  In particular, -Werror will
+dnl *always* cause us troubles if we set it before here.
+dnl
+dnl
+CFLAGS="$CFLAGS $CC_WARNINGS"
+AC_SUBST(CFLAGS)
+
+dnl This is useful for use in Makefiles that need to remove one specific flag
+CFLAGS_COPY="$CFLAGS"
+AC_SUBST(CFLAGS_COPY)
+
+AM_CONDITIONAL(BUILD_DARWIN, test $ON_DARWIN = 1)
+AM_CONDITIONAL(BUILD_DYNAMIC, test "x${enable_static}" != xyes)
+
+if test "x${enable_static}" != xyes; then
+   PKG_FEATURES="$PKG_FEATURES static"
+fi
+
+LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
+AC_SUBST(LINT_FLAGS)
+
+dnl ************************************************************************
+AC_SUBST(LOCALE)
+
+
+dnl The Makefiles and shell scripts we output
+AC_CONFIG_FILES(Makefile				        \
+include/Makefile						\
+lib/Makefile							\
+lcr/Makefile							\
+exec/Makefile							\
+test/Makefile							\
+tools/Makefile							\
+services/Makefile						\
+		)
+
+dnl Now process the entire list of files added by previous 
+dnl  calls to AC_CONFIG_FILES()
+AC_OUTPUT()
+
+dnl *****************
+dnl Configure summary
+dnl *****************
+
+AC_MSG_RESULT([])
+AC_MSG_RESULT([$PACKAGE configuration:])
+AC_MSG_RESULT([  Version                  = ${VERSION}])
+
+AC_MSG_RESULT([  Prefix                   = ${prefix}])
+AC_MSG_RESULT([  Executables              = ${sbindir}])
+AC_MSG_RESULT([  Man pages                = ${mandir}])
+AC_MSG_RESULT([  Libraries                = ${libdir}])
+AC_MSG_RESULT([  Header files             = ${includedir}])
+AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
+AC_MSG_RESULT([  State information        = ${localstatedir}])
+AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
+
+AC_MSG_RESULT([  Features                 =${PKG_FEATURES}])
+
+AC_MSG_RESULT([  CC_WARNINGS              = ${CC_WARNINGS}])
+AC_MSG_RESULT([  Mangled CFLAGS           = ${CFLAGS}])
+AC_MSG_RESULT([  Libraries                = ${LIBS}])

@@ -34,6 +34,7 @@
 
 /* IPv4/6 abstraction */
 
+#include <config.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>

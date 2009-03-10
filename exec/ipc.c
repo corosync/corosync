@@ -87,6 +87,8 @@
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 
+#include "config.h"
+
 LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
 #include "util.h"

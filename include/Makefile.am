@@ -1,9 +1,8 @@
-# Copyright (c) 2008 Allied Telesis Labs NZ.
+# Copyright (c) 2009 Red Hat, Inc.
 # 
-# Author: Angus Salkeld
+# Authors: Andrew Beekhof
+#	   Steven Dake (sdake@redhat.com)
 #
-# All rights reserved.
-# 
 # This software licensed under BSD license, the text of which follows:
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -30,51 +29,25 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# Include configuration
-#
-srcdir ?= $(CURDIR)/../
-subdir ?= apps/
+MAINTAINERCLEANFILES    = Makefile.in
 
-include $(srcdir)Makefile.inc
+CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	\
+		  	coroipc.h confdb.h list.h corotypes.h
 
-ifeq (${COROSYNC_COMPAT}, SOLARIS)
-	override LDFLAGS += -lnsl -lsocket -lrt
-endif
+CS_INTERNAL_H		= ipc_cfg.h ipc_confdb.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
+			jhash.h mar_cpg.h pload.h queue.h quorum.h rmd.h sq.h
 
-LIBS = ../lib/libconfdb.a ../lib/libcfg.a ../lib/libpload.a
-BINARIES=corosync-objctl corosync-cfgtool corosync-keygen corosync-fplay corosync-pload
-APPS_SRC=$(addsuffix .c,$(BINARIES))
-EXTRA_CFLAGS = -I$(srcdir)include
+LCR_H			= lcr_ckpt.h lcr_comp.h	lcr_ifact.h
 
-all: $(BINARIES)
+ENGINE_H		= config.h coroapi.h logsys.h objdb.h
 
-corosync-objctl: corosync-objctl.o $(LIBS)
-	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
+TOTEM_H			= coropoll.h totem.h totemip.h totempg.h
 
-corosync-cfgtool: corosync-cfgtool.o $(LIBS)
-	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
+EXTRA_DIST 		= $(noinst_HEADERS)
 
-corosync-keygen: corosync-keygen.o
-	$(CC) $(LDFLAGS) -o $@ $<
+noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%) 
 
-corosync-fplay: corosync-fplay.o
-	$(CC) $(LDFLAGS) -o $@ $<
+nobase_include_HEADERS	= $(CS_H:%=corosync/%) $(LCR_H:%=corosync/lcr/%) 			\
+			$(ENGINE_H:%=corosync/engine/%) $(TOTEM_H:%=corosync/totem/%)
 
-corosync-pload: corosync-pload.o
-	$(CC) $(LDFLAGS) -o $@ $< $(LIBS)
 
-clean:
-	rm -f *.o $(BINARIES)
-
-lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) corosync-objctl.c
-	-splint $(LINT_FLAGS) $(CFLAGS) corosync-cfgtool.c
-	-splint $(LINT_FLAGS) $(CFLAGS) corosync-keygen.c
-	-splint $(LINT_FLAGS) $(CFLAGS) corosync-fplay.c
-	-splint $(LINT_FLAGS) $(CFLAGS) corosync-pload.c
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
-
-depend:
-	makedepend -Y -- $(CFLAGS) $(CPPFLAGS) $(APPS_SRC) > /dev/null 2>&1

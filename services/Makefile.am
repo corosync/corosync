@@ -1,3 +1,10 @@
+# Copyright (c) 2009 Red Hat, Inc.
+# 
+# Authors: Andrew Beekhof
+#	   Steven Dake (sdake@redhat.com)
+#
+# This software licensed under BSD license, the text of which follows:
+# 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 
@@ -22,68 +29,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# Include configuration
-#
-include ../Makefile.inc
+MAINTAINERCLEANFILES    = Makefile.in
 
-override LDFLAGS += -L./ ${DYFLAGS}
+AM_CFLAGS		= -fPIC
+INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
+LCRSO			= service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso service_votequorum.lcrso service_testquorum.lcrso
 
-ifeq (${COROSYNC_COMPAT}, LINUX) 
-	LDFLAGS += -ldl
-endif
-
-ifeq (${COROSYNC_COMPAT}, SOLARIS)
-	override LDFLAGS += -lnsl -lsocket
-endif
-
-all:liblcr.a test test_static uic libtest_a.lcrso libtest_b.lcrso
-
-liblcr.a: lcr_ifact.o
-	$(AR) -rc liblcr.a lcr_ifact.o
-
-ifeq (${COROSYNC_COMPAT}, DARWIN)
-
-libtest_a.lcrso: libtest_a.o
-	$(CC) $(CFLAGS) -bundle -bundle_loader ./test libtest_a.o -o $@
-
-libtest_b.lcrso: libtest_b.o
-	$(CC) $(CFLAGS) -bundle -bundle_loader ./test libtest_b.o -o $@
-
+if BUILD_DARWIN
+service_%.lcrso: %.o
+	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
 else
-
-libtest_a.lcrso: libtest_a.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_a.o -o $@
-
-libtest_b.lcrso: libtest_b.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname,libtest_b.lcrso libtest_b.o -o $@
-
+service_%.lcrso: %.o
+	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 endif
-	
-test: test.o uis.o lcr_ifact.o
-	$(CC) $(LDFLAGS) -fPIC test.o lcr_ifact.o uis.o -lpthread -o test
 
-test_static: test.o libtest_a.o libtest_b.o uis.o lcr_ifact.o
-	$(CC) $(LDFLAGS) test.o libtest_a.o libtest_b.o lcr_ifact.o -o test_static
-
-uic: uic.o
-	$(CC) $(LDFLAGS) uic.o -o uic
-
-libtest_a.o: libtest_a.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
-
-libtest_b.o: libtest_b.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
-
-lcr_ifact.o: lcr_ifact.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
-
-test.o: test.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c -o $@ $<
-
-clean:
-	rm -f test libtest.so* *.o uic liblcr.so* liblcr.a *.lcrso *.da *.ba *.bb *.bbg \
-	test_static
+%.o: %.c
+	$(CC) $(AM_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -c -o $@ $<
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) lcr_ifact.c uic.c uis.c
+	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
+all-local: $(LCRSO)
+	@echo Built Service Engines
+
+install-exec-local:
+	for lib in $(LCRSO); do	$(INSTALL) -m 644 $$lib $(DESTDIR)/$(LCRSODIR); done
+
+clean-local:
+	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
+
 
