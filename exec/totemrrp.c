@@ -95,7 +95,7 @@ struct active_instance {
 };
 
 struct rrp_algo {
-	char *name;
+	const char *name;
 
 	void * (*initialize) (
 		struct totemrrp_instance *rrp_instance,
@@ -196,9 +196,9 @@ struct totemrrp_instance {
 
 	int totemrrp_subsys_id;
 
-	void (*totemrrp_log_printf) (int subsys, char *function, char *file,
-		int line, unsigned int level, char *format,
-		...)__attribute__((format(printf, 6, 7)));
+	void (*totemrrp_log_printf) (int subsys, const char *function,
+		const char *file, int line, unsigned int level,
+		const char *format, ...)__attribute__((format(printf, 6, 7)));
 
 	hdb_handle_t handle;
 
@@ -468,7 +468,7 @@ static struct hdb_handle_database totemrrp_instance_database = {
 do {									\
 	rrp_instance->totemrrp_log_printf (				\
 		rrp_instance->totemrrp_subsys_id,			\
-		(char *)__FUNCTION__, __FILE__, __LINE__, level,	\
+		__FUNCTION__, __FILE__, __LINE__, level,		\
 		format, ##args);					\
 } while (0);
 
