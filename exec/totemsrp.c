@@ -549,6 +549,24 @@ static int message_handler_token_hold_cancel (
 	int msg_len,
 	int endian_conversion_needed);
 
+static void totemsrp_instance_initialize (struct totemsrp_instance *instance);
+
+static unsigned int main_msgs_missing (void);
+
+static void main_token_seqid_get (
+	void *msg,
+	unsigned int *seqid,
+	unsigned int *token_is);
+
+static void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src);
+
+static void srp_addr_to_nodeid (
+	unsigned int *nodeid_out,
+	struct srp_addr *srp_addr_in,
+	unsigned int entries);
+
+static int srp_addr_equal (struct srp_addr *a, struct srp_addr *b);
+
 static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
 
 static void token_callbacks_execute (struct totemsrp_instance *instance, enum totem_callback_token_type type);
@@ -619,7 +637,7 @@ do {									\
 		format, ##args);					\
 } while (0);
 
-void totemsrp_instance_initialize (struct totemsrp_instance *instance)
+static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemsrp_instance));
 
@@ -642,7 +660,7 @@ void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->my_high_delivered = SEQNO_START_MSG;
 }
 
-void main_token_seqid_get (
+static void main_token_seqid_get (
 	void *msg,
 	unsigned int *seqid,
 	unsigned int *token_is)
@@ -657,7 +675,7 @@ void main_token_seqid_get (
 	}
 }
 
-unsigned int main_msgs_missing (void)
+static unsigned int main_msgs_missing (void)
 {
 // TODO
 	return (0);
@@ -974,7 +992,7 @@ error_exit:
 /*
  * Set operations for use by the membership algorithm
  */
-int srp_addr_equal (struct srp_addr *a, struct srp_addr *b)
+static int srp_addr_equal (struct srp_addr *a, struct srp_addr *b)
 {
 	unsigned int i;
 	unsigned int res;
@@ -988,7 +1006,7 @@ int srp_addr_equal (struct srp_addr *a, struct srp_addr *b)
 	return (1);
 }
 
-void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src)
+static void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src)
 {
 	unsigned int i;
 
@@ -997,7 +1015,7 @@ void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src)
 	}
 }
 
-void srp_addr_to_nodeid (
+static void srp_addr_to_nodeid (
 	unsigned int *nodeid_out,
 	struct srp_addr *srp_addr_in,
 	unsigned int entries)
@@ -3024,14 +3042,6 @@ void totemsrp_callback_token_destroy (hdb_handle_t handle, void **handle_out)
 		h = NULL;
 		*handle_out = 0;
 	}
-}
-
-void totem_callback_token_type (struct totemsrp_instance *instance, void *handle)
-{
-	struct token_callback_instance *token_callback_instance = (struct token_callback_instance *)handle;
-
-	list_del (&token_callback_instance->list);
-	free (token_callback_instance);
 }
 
 static void token_callbacks_execute (
