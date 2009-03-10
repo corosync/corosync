@@ -151,7 +151,7 @@ cs_error_t confdb_stop_track_changes (
 cs_error_t confdb_object_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_name_len,
 	hdb_handle_t *object_handle);
 
@@ -170,17 +170,17 @@ cs_error_t confdb_object_parent_get (
 cs_error_t confdb_key_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len);
 
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len);
 
 /*
@@ -189,7 +189,7 @@ cs_error_t confdb_key_delete (
 cs_error_t confdb_key_get (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	void *value,
 	int *value_len);
@@ -197,24 +197,24 @@ cs_error_t confdb_key_get (
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *old_value,
+	const void *old_value,
 	int old_value_len,
-	void *new_value,
+	const void *new_value,
 	int new_value_len);
 
 cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value);
 
 cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value);
 
@@ -231,7 +231,7 @@ cs_error_t confdb_object_find_start (
 cs_error_t confdb_object_find (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_name_len,
 	hdb_handle_t *object_handle);
 
@@ -269,5 +269,16 @@ cs_error_t confdb_key_iter (
 	void *value,
 	int *value_len);
 
+/*
+ * Get/set context variable
+ */
+
+cs_error_t confdb_context_get (
+	confdb_handle_t handle,
+	const void **context);
+
+cs_error_t confdb_context_set (
+	confdb_handle_t handle,
+	const void *context);
 
 #endif /* COROSYNC_CONFDB_H_DEFINED */

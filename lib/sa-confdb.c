@@ -51,14 +51,18 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/lcr/lcr_ifact.h>
 
+#include "sa-confdb.h"
+
 static struct objdb_iface_ver0 *objdb;
 
 static int num_config_modules;
 
 static struct config_iface_ver0 *config_modules[128];
 
+void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
+char *strstr_rs (const char *haystack, const char *needle);
 
-static int load_objdb()
+static int load_objdb(void)
 {
 	hdb_handle_t objdb_handle;
 	void *objdb_p;
@@ -72,7 +76,7 @@ static int load_objdb()
 		"objdb",
 		0,
 		&objdb_p,
-		0);
+		(void *)0);
 	if (res == -1) {
 		return -1;
 	}
@@ -83,7 +87,7 @@ static int load_objdb()
 	return CS_OK;
 }
 
-static int load_config()
+static int load_config(void)
 {
 	char *config_iface;
 	char *iface;
@@ -97,7 +101,7 @@ static int load_config()
 	/* User's bootstrap config service */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
-		config_iface = "corosync_parser";
+		config_iface = strdup("corosync_parser");
 	}
 
 	/* Make a copy so we can deface it with strtok */
@@ -185,7 +189,7 @@ int confdb_sa_init (void)
 
 int confdb_sa_object_create (
 	hdb_handle_t parent_object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_name_len,
 	hdb_handle_t *object_handle)
 {
@@ -209,9 +213,9 @@ int confdb_sa_object_parent_get (
 
 int confdb_sa_key_create (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len)
 {
 	return objdb->object_key_create(parent_object_handle,
@@ -221,9 +225,9 @@ int confdb_sa_key_create (
 
 int confdb_sa_key_delete (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len)
 {
 	return objdb->object_key_delete(parent_object_handle,
@@ -232,7 +236,7 @@ int confdb_sa_key_delete (
 
 int confdb_sa_key_get (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	void *value,
 	int *value_len)
@@ -251,7 +255,7 @@ int confdb_sa_key_get (
 
 int confdb_sa_key_increment (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
@@ -265,7 +269,7 @@ int confdb_sa_key_increment (
 
 int confdb_sa_key_decrement (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
@@ -280,11 +284,11 @@ int confdb_sa_key_decrement (
 
 int confdb_sa_key_replace (
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *old_value,
+	const void *old_value,
 	int old_value_len,
-	void *new_value,
+	const void *new_value,
 	int new_value_len)
 {
 	return objdb->object_key_replace(parent_object_handle,
@@ -323,24 +327,45 @@ int confdb_sa_object_find (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t *find_handle,
 	hdb_handle_t *object_handle,
-	void *object_name,
-	int *object_name_len,
-	int copy_name)
+	const void *object_name,
+	int object_name_len)
 {
 	int res;
 
 	if (!*find_handle) {
 		objdb->object_find_create(parent_object_handle,
-					  object_name, *object_name_len,
+					  object_name, object_name_len,
+					  find_handle);
+	}
+
+	res = objdb->object_find_next(*find_handle,
+				      object_handle);
+	return res;
+}
+
+int confdb_sa_object_iter (
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *find_handle,
+	hdb_handle_t *object_handle,
+	const void *object_name,
+	int object_name_len,
+	void *found_object_name,
+	int *found_object_name_len)
+{
+	int res;
+
+	if (!*find_handle) {
+		objdb->object_find_create(parent_object_handle,
+					  object_name, object_name_len,
 					  find_handle);
 	}
 
 	res = objdb->object_find_next(*find_handle,
 				      object_handle);
 	/* Return object name if we were called as _iter */
-	if (copy_name && !res) {
+	if (!res) {
 		objdb->object_name_get(*object_handle,
-				       object_name, object_name_len);
+				       found_object_name, found_object_name_len);
 	}
 	return res;
 }

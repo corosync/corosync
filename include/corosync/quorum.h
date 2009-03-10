@@ -101,5 +101,12 @@ cs_error_t quorum_trackstart (
 cs_error_t quorum_trackstop (
 	quorum_handle_t handle);
 
+cs_error_t quorum_context_set (
+	quorum_handle_t handle,
+	const void *context);
+
+cs_error_t quorum_context_get (
+	quorum_handle_t handle,
+	const void **context);
 
 #endif /* COROSYNC_QUORUM_H_DEFINED */

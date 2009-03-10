@@ -66,7 +66,7 @@ struct confdb_inst {
 	int finalize;
 	int standalone;
 	confdb_callbacks_t callbacks;
-	void *context;
+	const void *context;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
 
@@ -247,7 +247,7 @@ cs_error_t confdb_fd_get (
 
 cs_error_t confdb_context_get (
 	confdb_handle_t handle,
-	void **context)
+	const void **context)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -266,7 +266,7 @@ cs_error_t confdb_context_get (
 
 cs_error_t confdb_context_set (
 	confdb_handle_t handle,
-	void *context)
+	const void *context)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -420,7 +420,7 @@ error_noput:
 cs_error_t confdb_object_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_name_len,
 	hdb_handle_t *object_handle)
 {
@@ -683,9 +683,9 @@ cs_error_t confdb_object_iter_destroy(
 cs_error_t confdb_key_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len)
 {
 	cs_error_t error;
@@ -745,9 +745,9 @@ error_exit:
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *value,
+	const void *value,
 	int value_len)
 {
 	cs_error_t error;
@@ -807,7 +807,7 @@ error_exit:
 cs_error_t confdb_key_get (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	void *value,
 	int *value_len)
@@ -871,7 +871,7 @@ error_exit:
 cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
@@ -933,7 +933,7 @@ error_exit:
 cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
 	unsigned int *value)
 {
@@ -995,11 +995,11 @@ error_exit:
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *old_value,
+	const void *old_value,
 	int old_value_len,
-	void *new_value,
+	const void *new_value,
 	int new_value_len)
 {
 	cs_error_t error;
@@ -1167,7 +1167,7 @@ ret:
 cs_error_t confdb_object_find (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_name_len,
 	hdb_handle_t *object_handle)
 {
@@ -1196,8 +1196,7 @@ cs_error_t confdb_object_find (
 		if (confdb_sa_object_find(parent_object_handle,
 					  &context->find_handle,
 					  object_handle,
-					  object_name, &object_name_len,
-					  0))
+					  object_name, object_name_len))
 			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
@@ -1267,11 +1266,11 @@ cs_error_t confdb_object_iter (
 		error = CS_OK;
 
 		*object_name_len = 0;
-		if (confdb_sa_object_find(parent_object_handle,
+		if (confdb_sa_object_iter(parent_object_handle,
 					  &context->find_handle,
 					  object_handle,
-					  object_name, object_name_len,
-					  1))
+					  NULL, 0,
+					  object_name, object_name_len))
 			error = CS_ERR_ACCESS;
 		goto sa_exit;
 	}

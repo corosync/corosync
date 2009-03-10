@@ -53,7 +53,7 @@
 struct quorum_inst {
 	void *ipc_ctx;
 	int finalize;
-	void *context;
+	const void *context;
 	quorum_callbacks_t callbacks;
 	pthread_mutex_t response_mutex;
 	pthread_mutex_t dispatch_mutex;
@@ -222,7 +222,7 @@ cs_error_t quorum_fd_get (
 
 cs_error_t quorum_context_get (
 	quorum_handle_t handle,
-	void **context)
+	const void **context)
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
@@ -241,7 +241,7 @@ cs_error_t quorum_context_get (
 
 cs_error_t quorum_context_set (
 	quorum_handle_t handle,
-	void *context)
+	const void *context)
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;

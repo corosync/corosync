@@ -115,7 +115,7 @@ static void do_write_tests(confdb_handle_t handle)
 	char error_string[1024];
 
 	/* Add a scratch object and put some keys into it */
-	res = confdb_object_create(handle, OBJECT_PARENT_HANDLE, (void *)"testconfdb", strlen("testconfdb"), &object_handle);
+	res = confdb_object_create(handle, OBJECT_PARENT_HANDLE, "testconfdb", strlen("testconfdb"), &object_handle);
 	if (res != CS_OK) {
 		printf( "error creating 'testconfdb' object: %d\n", res);
 		return;
