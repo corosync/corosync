@@ -47,15 +47,15 @@
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string);
+	const char **error_string);
 	
 extern int totem_config_validate (
 	struct totem_config *totem_config,
-	char **error_string);
+	const char **error_string);
 
 int totem_config_keyread (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string);
+	const char **error_string);
 
 #endif /* TOTEMCONFIG_H_DEFINED */

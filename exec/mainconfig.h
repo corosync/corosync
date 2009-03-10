@@ -65,9 +65,14 @@ struct main_config {
 	int gid;
 };
 
+int corosync_main_config_read_logging (
+	struct objdb_iface_ver0 *objdb,
+	const char **error_string,
+	struct main_config *main_config);
+
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
-	char **error_string,
+	const char **error_string,
 	struct main_config *main_config);
 
 #endif /* MAINCONFIG_H_DEFINED */

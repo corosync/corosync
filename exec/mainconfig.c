@@ -107,18 +107,15 @@ static struct logsys_config_struct {
 	unsigned int tags;
 } logsys_logger;
 
-
-
-
 int corosync_main_config_read_logging (
 	struct objdb_iface_ver0 *objdb,
-	char **error_string,
+	const char **error_string,
 	struct main_config *main_config)
 {
 	hdb_handle_t object_service_handle;
 	hdb_handle_t object_logger_subsys_handle;
 	char *value;
-	char *error_reason = error_string_response;
+	const char *error_reason = error_string_response;
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_find_logsys_handle;
 
@@ -312,7 +309,7 @@ static int gid_determine (char *req_group)
 
 int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
-	char **error_string,
+	const char **error_string,
 	struct main_config *main_config)
 {
 	hdb_handle_t object_service_handle;
@@ -376,7 +373,7 @@ static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 				     void *priv_data_pt)
 {
 	struct main_config *main_config = priv_data_pt;
-	char *error_string;
+	const char *error_string;
 
 	if (type == OBJDB_RELOAD_NOTIFY_END) {
 

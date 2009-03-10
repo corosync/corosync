@@ -450,7 +450,7 @@ int main_mcast (
 
 int main (int argc, char **argv)
 {
-	char *error_string;
+	const char *error_string;
 	struct main_config main_config;
 	struct totem_config totem_config;
 	hdb_handle_t objdb_handle;
@@ -459,7 +459,7 @@ int main (int argc, char **argv)
 	void *objdb_p;
 	struct config_iface_ver0 *config;
 	void *config_p;
-	char *config_iface;
+	const char *config_iface;
 	char *iface;
 	int res, ch;
 	int background, setprio;

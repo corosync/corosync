@@ -217,7 +217,7 @@ static void totem_volatile_config_read (
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	int res = 0;
 	hdb_handle_t object_totem_handle;
@@ -324,7 +324,7 @@ printf ("couldn't find totem handle\n");
 
 int totem_config_validate (
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	static char local_error_reason[512];
 	char parse_error[512];
@@ -582,7 +582,7 @@ parse_error:
 static int read_keyfile (
 	char *key_location,
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	int fd;
 	int res;
@@ -620,7 +620,7 @@ parse_error:
 int totem_config_keyread (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	int got_key = 0;
 	char *key_location = NULL;
