@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
@@ -148,17 +148,17 @@ extern int _logsys_rec_init (unsigned int size);
 
 extern void _logsys_log_printf (
 	int subsys,
-	char *function_name,
-	char *file_name,
+	const char *function_name,
+	const char *file_name,
 	int file_line,
 	unsigned int level,
-	char *format,
+	const char *format,
 	...) __attribute__((format(printf, 6, 7)));
 
 extern void _logsys_log_rec (
 	int subsys,
-	char *function_name,
-	char *file_name,
+	const char *function_name,
+	const char *file_name,
 	int file_line,
 	unsigned int rec_ident,
 	...);

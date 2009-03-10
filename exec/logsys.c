@@ -612,8 +612,8 @@ int _logsys_rec_init (unsigned int size)
  */
 void _logsys_log_rec (
 	int subsys,
-	char *function_name,
-	char *file_name,
+	const char *function_name,
+	const char *file_name,
 	int file_line,
 	unsigned int rec_ident,
 	...)
@@ -763,11 +763,11 @@ void _logsys_log_rec (
 
 void _logsys_log_printf (
         int subsys,
-        char *function_name,
-        char *file_name,
+        const char *function_name,
+        const char *file_name,
         int file_line,
         unsigned int level,
-        char *format,
+        const char *format,
         ...)
 {
 	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
