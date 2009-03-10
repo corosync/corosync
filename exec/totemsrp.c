@@ -431,9 +431,10 @@ struct totemsrp_instance {
 
 	int totemsrp_subsys_id;
 
-	void (*totemsrp_log_printf) (int subsys, char *function, char *file,
-		int line, unsigned int level, char *format,
-		...)__attribute__((format(printf, 6, 7)));;
+	void (*totemsrp_log_printf) (int subsys, 
+		const char *function, const char *file,
+		int line, unsigned int level,
+		const char *format, ...)__attribute__((format(printf, 6, 7)));;
 
 	enum memb_state memb_state;
 
@@ -609,12 +610,12 @@ struct message_handlers totemsrp_message_handlers = {
 	}
 };
 
-static char *rundir = NULL;
+static const char *rundir = NULL;
 
 #define log_printf(level, format, args...)				\
 do {									\
 	instance->totemsrp_log_printf (instance->totemsrp_subsys_id,	\
-		(char *)__FUNCTION__, __FILE__, __LINE__, level,	\
+		__FUNCTION__, __FILE__, __LINE__, level,		\
 		format, ##args);					\
 } while (0);
 
@@ -2783,8 +2784,8 @@ static int memb_lowest_in_config (struct totemsrp_instance *instance)
 
 static int srp_addr_compare (const void *a, const void *b)
 {
-	struct srp_addr *srp_a = (struct srp_addr *)a;
-	struct srp_addr *srp_b = (struct srp_addr *)b;
+	const struct srp_addr *srp_a = (const struct srp_addr *)a;
+	const struct srp_addr *srp_b = (const struct srp_addr *)b;
 
 	return (totemip_compare (&srp_a->addr[0], &srp_b->addr[0]));
 }
