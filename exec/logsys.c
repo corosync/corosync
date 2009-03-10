@@ -873,10 +873,16 @@ void logsys_format_set (char *format)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
 
-	if (format)
-		format_buffer = format;
-	else
-		format_buffer = "[%6s] %b";
+	if (format_buffer) {
+		free(format_buffer);
+		format_buffer = NULL;
+	}
+
+	if (format) {
+		format_buffer = strdup(format);
+	} else {
+		format_buffer = strdup("[%6s] %b");
+	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
