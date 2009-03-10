@@ -682,7 +682,7 @@ const struct _prng_descriptor *prng_descriptor[] = {
 
 #define B(x,i) ((unsigned char)(((x) >> (8*i)) & 0xFF))
 
-static ulong32 BYTE2WORD(unsigned char *b)
+static ulong32 BYTE2WORD(const unsigned char *b)
 {
    ulong32 t;
    LOAD32L(t, b);
@@ -845,7 +845,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        assert ((len & 3) == 0);
     
        for (i = 0; i < len; i += 4) {
-           k = BYTE2WORD((unsigned char*)&buf[i]);
+           k = BYTE2WORD(&buf[i]);
           ADDKEY(k);
           cycle(c->R);
           XORNL(nltap(c));
@@ -870,7 +870,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        assert ((len & 3) == 0);
     
        for (i = 0; i < len; i += 4) {
-           k = BYTE2WORD((unsigned char *)&buf[i]);
+           k = BYTE2WORD(&buf[i]);
           ADDKEY(k);
           cycle(c->R);
           XORNL(nltap(c));
@@ -987,7 +987,7 @@ const struct _hash_descriptor sha1_desc =
 #define F2(x,y,z)  ((x & y) | (z & (x | y)))
 #define F3(x,y,z)  (x ^ y ^ z)
 
-static void sha1_compress(hash_state *md, unsigned char *buf)
+static void sha1_compress(hash_state *md, const unsigned char *buf)
 {
     ulong32 a,b,c,d,e,W[80],i;
 

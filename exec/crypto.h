@@ -52,7 +52,7 @@ typedef union Hash_state {
 } hash_state;
 
 struct _hash_descriptor {
-    char *name;
+    const char *name;
     unsigned char ID;
     unsigned long hashsize;       /* digest output size in bytes  */
     unsigned long blocksize;      /* the block size the hash uses */
@@ -106,7 +106,7 @@ typedef union Prng_state {
 } prng_state;
 
 struct _prng_descriptor {
-    char *name;
+    const char *name;
     int  export_size;    /* size in bytes of exported state */
     int (*start)(prng_state *);
     int (*add_entropy)(const unsigned char *, unsigned long, prng_state *);
