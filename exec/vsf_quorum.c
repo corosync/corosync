@@ -116,8 +116,6 @@ static void quorum_api_set_quorum(unsigned int *view_list,
 		log_printf (LOG_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
 	}
 
-	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
-
 	quorum_view_list_entries = view_list_entries;
 
 	/* Tell sync() only if there is a new ring_id (ie this is not a 'fake' quorum event) */
@@ -125,6 +123,7 @@ static void quorum_api_set_quorum(unsigned int *view_list,
 		sync_primary_callback_fn(view_list, view_list_entries,
 					 primary_designated, ring_id);
 	}
+	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
 	/* Tell internal listeners */
