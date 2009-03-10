@@ -568,10 +568,10 @@ int main (int argc, char **argv)
 
 		res = config->config_readconfig(objdb, &error_string);
 		if (res == -1) {
-			log_printf (LOG_LEVEL_ERROR, error_string);
+			log_printf (LOG_LEVEL_ERROR, "%s", error_string);
 			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
-		log_printf (LOG_LEVEL_NOTICE, error_string);
+		log_printf (LOG_LEVEL_NOTICE, "%s", error_string);
 		config_modules[num_config_modules++] = config;
 
 		iface = strtok(NULL, ":");
@@ -581,25 +581,25 @@ int main (int argc, char **argv)
 
 	res = corosync_main_config_read (objdb, &error_string, &main_config);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
+		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
+		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_keyread (objdb, &totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
+		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, error_string);
+		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
