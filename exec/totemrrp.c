@@ -727,6 +727,7 @@ static void passive_mcast_recv (
 				totemnet_iface_print (rrp_instance->net_handles[i]));
 			log_printf (
 				rrp_instance->totemrrp_log_level_error,
+				"%s",
 				rrp_instance->status[i]);
 		}
 	}
@@ -810,6 +811,7 @@ static void passive_token_recv (
 				totemnet_iface_print (rrp_instance->net_handles[i]));
 			log_printf (
 				rrp_instance->totemrrp_log_level_error,
+				"%s",
 				rrp_instance->status[i]);
 		}
 	}
@@ -982,6 +984,7 @@ static void timer_function_active_problem_decrementer (void *context)
 			}
 				log_printf (
 					rrp_instance->totemrrp_log_level_warning,
+					"%s",
 					rrp_instance->status[i]);
 		}
 	}
@@ -1013,6 +1016,7 @@ static void timer_function_active_token_expired (void *context)
 				rrp_instance->totem_config->rrp_problem_count_threshold);
 			log_printf (
 				rrp_instance->totemrrp_log_level_warning,
+				"%s",
 				rrp_instance->status[i]);
 		}
 	}
@@ -1027,6 +1031,7 @@ static void timer_function_active_token_expired (void *context)
 				totemnet_iface_print (rrp_instance->net_handles[i]));
 			log_printf (
 				rrp_instance->totemrrp_log_level_error,
+				"%s",
 				rrp_instance->status[i]);
 			active_timer_problem_decrementer_cancel (active_instance);
 		}
