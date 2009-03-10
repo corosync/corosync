@@ -97,6 +97,8 @@ extern void logsys_config_facility_set (
 extern void logsys_format_set (
 	char *format);
 
+extern char *logsys_format_get (void);
+
 extern unsigned int logsys_config_subsys_set (
 	const char *subsys,
 	unsigned int tags,

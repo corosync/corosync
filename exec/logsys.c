@@ -887,6 +887,11 @@ void logsys_format_set (char *format)
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
 
+char *logsys_format_get (void)
+{
+	return format_buffer;
+}
+
 void logsys_config_facility_set (char *name, unsigned int facility)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
