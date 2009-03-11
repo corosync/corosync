@@ -722,7 +722,7 @@ int totemsrp_initialize (
 	}
 	
 	res = mkdir (rundir, 0700);
-	if (res == -1) {
+	if (res == -1 && errno != EEXIST) {
 		goto error_put;
 	}
 
