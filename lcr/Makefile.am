@@ -65,8 +65,8 @@ all-local: $(LCRSO)
 	@echo Built Live Component Replacement System
 
 install-exec-local:
-	mkdir -p $(DESTDIR)/$(LCRSODIR)
-	for lib in $(LCRSO); do	$(INSTALL) -m 644 $$lib $(DESTDIR)/$(LCRSODIR); done
+	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 644 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso

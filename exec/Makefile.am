@@ -33,7 +33,7 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS	= -fPIC
 INCLUDES       	= -I$(top_builddir)/include  -I$(top_srcdir)/include
-DARWIN_OPTS	= -dynamiclib -bind_at_load -current_version 2.0.0 -compatibility_version 2.0.0
+DARWIN_OPTS	= -dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)
 
 LCRSO		= 
 LCR_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
@@ -50,16 +50,16 @@ liblogsys_a_SOURCES	= $(LOGSYS_SRC)
 corosync_SOURCES = main.c mempool.c util.c sync.c apidef.c service.c ipc.c \
 		timer.c totemconfig.c mainconfig.c quorum.c ../lcr/lcr_ifact.c
 corosync_LDADD	  = -ltotem_pg -llogsys
-corosync_DEPENDENCIES = libtotem_pg.so.2.0.0 liblogsys.so.2.0.0
+corosync_DEPENDENCIES = libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME)
 corosync_LDFLAGS = $(DYFLAGS) -L./
 
 TOTEM_OBJS	= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS	= $(LOGSYS_SRC:%.c=%.o)
 
 if BUILD_DYNAMIC
-SHARED_LIBS	+= $(lib_LIBRARIES:%.a=%.so.2.0.0)
-SHARED_LIBS_SO	= $(SHARED_LIBS:%.so.2.0.0=%.so)
-SHARED_LIBS_SO_TWO = $(SHARED_LIBS:%.so.2.0.0=%.so.2)
+SHARED_LIBS	+= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
+SHARED_LIBS_SO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
+SHARED_LIBS_SO_TWO = $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 LCRSO		+= $(LCR_SRC:%.c=%.lcrso)
 else
 corosync_SOURCES += $(LCR_SRC)
@@ -69,10 +69,10 @@ if BUILD_DARWIN
 %.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
-libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
+libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@
 
-liblogsys.so.2.0.0: $(LOGSYS_OBJS)
+liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@
 
 else
@@ -80,15 +80,15 @@ else
 %.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 
-libtotem_pg.so.2.0.0: $(TOTEM_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.2 $^ -o $@
-	ln -sf libtotem_pg.so.2.0.0 libtotem_pg.so
-	ln -sf libtotem_pg.so.2.0.0 libtotem_pg.so.2
+libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.$(SOMAJOR) $^ -o $@
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
-liblogsys.so.2.0.0: $(LOGSYS_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.2 $^ -o $@
-	ln -sf liblogsys.so.2.0.0 liblogsys.so
-	ln -sf liblogsys.so.2.0.0 liblogsys.so.2
+liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.$(SOMAJOR) $^ -o $@
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 endif
 
 lint:
@@ -98,8 +98,10 @@ all-local: $(LCRSO) $(SHARED_LIBS)
 	@echo Built corosync Executive
 
 install-exec-local:
-	for lib in $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO); do $(INSTALL) -m 644 $$lib $(DESTDIR)/$(libdir); done
-	for lib in $(LCRSO); do	$(INSTALL) -m 644 $$lib $(DESTDIR)/$(LCRSODIR); done
+	$(INSTALL) -d $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 644 $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 644 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*

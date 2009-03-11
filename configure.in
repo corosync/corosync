@@ -1,5 +1,5 @@
 dnl
-dnl autoconf for Pacemaker
+dnl autoconf for Corosync
 dnl
 dnl License: GNU General Public License (GPL)
 
@@ -53,6 +53,15 @@ AM_INIT_AUTOMAKE($PKG_NAME, $CS_VERSION)
 AC_DEFINE_UNQUOTED(CS_VERSION, "$CS_VERSION", Current corosync version)
 AC_SUBST(PKG_NAME)
 
+dnl Project wise library soname handling
+SOMAJOR=3
+SOMINOR=0
+SOMICRO=0
+SONAME=${SOMAJOR}.${SOMINOR}.${SOMICRO}
+AC_SUBST(SOMAJOR)
+AC_SUBST(SOMINOR)
+AC_SUBST(SOMICRO)
+AC_SUBST(SONAME)
 
 LDD=ldd
 dnl Which C compiler?

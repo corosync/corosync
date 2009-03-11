@@ -34,12 +34,12 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
-DARWIN_OPTS		= -dynamiclib -bind_at_load -current_version 2.0.0 -compatibility_version 2.0.0
+DARWIN_OPTS		= -dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)
 
 lib_LIBRARIES	= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a libvotequorum.a libpload.a libcoroipc.a
-SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.2.0.0)
+SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
-SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.2)
+SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
 
 libcpg_a_SOURCES	= coroipc.c cpg.c
 libcfg_a_SOURCES	= coroipc.c cfg.c
@@ -53,31 +53,31 @@ libcoroipc_a_SOURCES	= coroipc.c
 
 if BUILD_DARWIN
 
-libcoroipc.so.2.0.0: coroipc.o
+libcoroipc.so.$(SONAME): coroipc.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o -o $@
 
-libconfdb.so.2.0.0: coroipc.o confdb.o sa-confdb.o 
+libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
 
-lib%.so.2.0.0: coroipc.o %.o
+lib%.so.$(SONAME): coroipc.o %.o
 	$(CC) $(DARWIN_OPTS) $^ -o $@
 
 else
 
-libcoroipc.so.2.0.0: coroipc.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroipc.so.2,-version-script=$(srcdir)/libcoroipc.versions coroipc.o -o $@
-	ln -sf libcoroipc.so.2.0.0 libcoroipc.so
-	ln -sf libcoroipc.so.2.0.0 libcoroipc.so.2
+libcoroipc.so.$(SONAME): coroipc.o
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroipc.so.$(SOMAJOR),-version-script=$(srcdir)/libcoroipc.versions coroipc.o -o $@
+	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so
+	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so.$(SOMAJOR)
 
-libconfdb.so.2.0.0: coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DYFLAGS) -shared -Wl,-soname,libconfdb.so.2,-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
-	ln -sf libconfdb.so.2.0.0 libconfdb.so
-	ln -sf libconfdb.so.2.0.0 libconfdb.so.2
+libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
+	$(CC) $(LDFLAGS) $(DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+	ln -sf libconfdb.so.$(SONAME) libconfdb.so
+	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
-lib%.so.2.0.0: coroipc.o %.o
-	$(CC) -shared -Wl,-soname,lib$*.so.2,-version-script=$(srcdir)/lib$*.versions $^ -o $@
-	ln -sf lib$*.so.2.0.0 lib$*.so
-	ln -sf lib$*.so.2.0.0 lib$*.so.2
+lib%.so.$(SONAME): coroipc.o %.o
+	$(CC) -shared -Wl,-soname,lib$*.so.$(SOMAJOR),-version-script=$(srcdir)/lib$*.versions $^ -o $@
+	ln -sf lib$*.so.$(SONAME) lib$*.so
+	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
 
 endif
 
@@ -85,7 +85,8 @@ all-local: $(SHARED_LIBS)
 	@echo Built shared libs
 
 install-exec-local:
-	for lib in $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO); do $(INSTALL) -m 644 $$lib $(DESTDIR)/$(libdir); done
+	$(INSTALL) -d $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 644 $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg
