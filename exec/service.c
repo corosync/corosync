@@ -214,7 +214,7 @@ static int corosync_service_unlink_common (
 {
 	unsigned int res;
 	unsigned short *service_id;
-	unsigned int *found_service_handle;
+	hdb_handle_t *found_service_handle;
 
 	res = corosync_api->object_key_get (object_service_handle,
 		"handle",
