@@ -163,6 +163,7 @@ static int objdb_init (void)
 	instance->object_name = "parent";
 	instance->object_name_len = strlen ("parent");
 	instance->object_handle = handle;
+	instance->parent_handle = OBJECT_PARENT_HANDLE;
 	instance->priv = NULL;
 	instance->object_valid_list = NULL;
 	instance->object_valid_list_entries = 0;
@@ -232,10 +233,10 @@ static void object_created_notification(
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
 
 		for (list = obj_pt->track_head.next;
-			 list != &obj_pt->track_head; list = list->next) {
+			list != &obj_pt->track_head; list = list->next) {
 
 			tracker_pt = list_entry (list, struct object_tracker, object_list);
 
@@ -250,24 +251,22 @@ static void object_created_notification(
 
 		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
-
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
-
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
 
 static void object_pre_deletion_notification(hdb_handle_t object_handle,
-											 unsigned int parent_object_handle,
-											 void *name_pt, int name_len)
-{
+	hdb_handle_t parent_object_handle,
+	void *name_pt, int name_len)
+	{
 	struct list_head * list;
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
 
 		for (list = obj_pt->track_head.next;
 			 list != &obj_pt->track_head; list = list->next) {
@@ -277,26 +276,25 @@ static void object_pre_deletion_notification(hdb_handle_t object_handle,
 			if (((obj_handle == parent_object_handle) ||
 				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->object_destroy_notify_fn != NULL)) {
-				tracker_pt->object_destroy_notify_fn(parent_object_handle,
-									 name_pt, name_len,
-									 tracker_pt->data_pt);
+				tracker_pt->object_destroy_notify_fn(
+					parent_object_handle,
+					name_pt, name_len,
+					tracker_pt->data_pt);
 			}
 		}
 		/* notify child object listeners */
 		if (obj_handle == object_handle)
 			_object_notify_deleted_children(obj_pt);
 
-		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
-
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
-
+		hdb_handle_put (&object_instance_database, obj_pt->object_handle);
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
 
 static void object_key_changed_notification(hdb_handle_t object_handle,
-											void *name_pt,	int name_len,
-											void *value_pt, int value_len,
-											object_change_type_t type)
+	void *name_pt,	int name_len,
+	void *value_pt, int value_len,
+	object_change_type_t type)
 {
 	struct list_head * list;
 	struct object_instance * obj_pt;
@@ -307,7 +305,8 @@ static void object_key_changed_notification(hdb_handle_t object_handle,
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
+
 		if (owner_pt == NULL)
 			owner_pt = obj_pt;
 
@@ -317,19 +316,19 @@ static void object_key_changed_notification(hdb_handle_t object_handle,
 			tracker_pt = list_entry (list, struct object_tracker, object_list);
 
 			if (((obj_handle == object_handle) ||
-				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
+				(tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->key_change_notify_fn != NULL))
 				tracker_pt->key_change_notify_fn(type, obj_pt->parent_handle, object_handle,
-												 owner_pt->object_name, owner_pt->object_name_len,
-												 name_pt, name_len,
-												 value_pt, value_len,
-												 tracker_pt->data_pt);
+				owner_pt->object_name, owner_pt->object_name_len,
+				name_pt, name_len,
+				value_pt, value_len,
+				tracker_pt->data_pt);
 		}
 
-		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
+		hdb_handle_put (&object_instance_database, obj_pt->object_handle);
 
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
 
 static void object_reload_notification(int startstop, int flush)
@@ -654,9 +653,9 @@ static int object_destroy (
 	}
 
 	object_pre_deletion_notification(object_handle,
-									 instance->parent_handle,
-									 instance->object_name,
-									 instance->object_name_len);
+		instance->parent_handle,
+		instance->object_name,
+		instance->object_name_len);
 
 	/* Recursively clear sub-objects & keys */
 	res = _clear_object(instance);
