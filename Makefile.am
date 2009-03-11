@@ -48,8 +48,6 @@ doxygen:
 	mkdir -p doc/api && doxygen
 
 install-exec-local:
-	mkdir -p $(DESTDIR)$(ETCDIR)/ld.so.conf.d
-	echo $(pkglibdir) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/corosync-$(host_cpu).conf"
 	if [ ! -f $(DESTDIR)$(ETCDIR)/corosync.conf ] ; then 	   \
 		$(INSTALL) -m 644 $(srcdir)/conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
 	fi
