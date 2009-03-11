@@ -89,11 +89,11 @@ struct ipc_segment {
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 
-static char *socketname = "libais.socket";
+static const char *socketname = "libais.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 
-static char *socketname = "/var/run/libais.socket";
+static const char *socketname = "/var/run/libais.socket";
 #endif
 
 #ifdef SO_NOSIGPIPE
@@ -107,7 +107,7 @@ void socket_nosigpipe(int s)
 static int
 cslib_send (
 	int s,
-	const void *msg,
+	void *msg,
 	size_t len)
 {
 	int result;
@@ -125,7 +125,7 @@ cslib_send (
 	msg_send.msg_flags = 0;
 
 retry_send:
-	iov_send.iov_base = (void *)&rbuf[processed];
+	iov_send.iov_base = &rbuf[processed];
 	iov_send.iov_len = len - processed;
 
 	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
@@ -530,7 +530,7 @@ retry_semop:
 			&ipc_segment->shared_memory->read);
 		header = (mar_res_header_t *)data;
 		memcpy_swrap (
-			data + sizeof (mar_res_header_t),
+			(void *)((char *)data + sizeof (mar_res_header_t)),
 			ipc_segment->shared_memory->dispatch_buffer,
 			header->size - sizeof (mar_res_header_t),
 			&ipc_segment->shared_memory->read);
