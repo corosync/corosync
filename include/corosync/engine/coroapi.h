@@ -132,7 +132,7 @@ typedef enum {
 
 #ifndef OBJECT_PARENT_HANDLE
 
-#define OBJECT_PARENT_HANDLE 0
+#define OBJECT_PARENT_HANDLE 0xffffffff00000000ULL
 
 struct object_valid {
 	char *object_name;
