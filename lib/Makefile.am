@@ -57,7 +57,7 @@ libcoroipc.so.$(SONAME): coroipc.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o -o $@
 
 libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
 
 lib%.so.$(SONAME): coroipc.o %.o
 	$(CC) $(DARWIN_OPTS) $^ -o $@
@@ -70,7 +70,7 @@ libcoroipc.so.$(SONAME): coroipc.o
 	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so.$(SOMAJOR)
 
 libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@
+	$(CC) $(LDFLAGS) $(DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 

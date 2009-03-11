@@ -70,10 +70,10 @@ if BUILD_DARWIN
 	$(CC) $(CFLAGS) -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@ -lpthread
 
 else
 
@@ -81,12 +81,12 @@ else
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.$(SOMAJOR) $^ -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.$(SOMAJOR) $^ -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.$(SOMAJOR) $^ -o $@
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.$(SOMAJOR) $^ -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 endif
