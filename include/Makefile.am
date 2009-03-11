@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES    = Makefile.in
+MAINTAINERCLEANFILES    = Makefile.in corosync/config.h.in
 
 CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h ipc_gen.h mar_gen.h swab.h 	\
 		  	coroipc.h confdb.h list.h corotypes.h

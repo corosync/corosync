@@ -32,7 +32,9 @@
 EXTRA_DIST              = autogen.sh
 AUTOMAKE_OPTIONS	= foreign
 
-MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure
+MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
+			  config.guess config.sub missing install-sh \
+			  autoheader automake autoconf
 
 ETCDIR = /etc
 MANDIR = /usr/share/man
