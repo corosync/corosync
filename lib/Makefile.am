@@ -86,7 +86,8 @@ all-local: $(SHARED_LIBS)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 644 $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
+	cp -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg

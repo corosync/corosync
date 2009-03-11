@@ -99,9 +99,10 @@ all-local: $(LCRSO) $(SHARED_LIBS)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 644 $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
+	cp -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 644 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*

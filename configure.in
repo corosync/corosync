@@ -316,7 +316,7 @@ AC_DEFINE_UNQUOTED(U64T, "$U64T", Correct printf format for logging uint64_t)
 dnl Variables needed for substitution
 
 case x$LCRSODIR in
-     x) LCRSODIR=$libexecdir/corosync/lcrso;;
+     x) LCRSODIR=$libexecdir/lcrso;;
 esac
 AC_DEFINE_UNQUOTED(LCRSODIR, "$LCRSODIR", Location of Corosync lcrso plugins)
 AC_SUBST(LCRSODIR)

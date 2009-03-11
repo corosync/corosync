@@ -32,8 +32,9 @@
 MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
-noinst_PROGRAMS		= corosync-pload
-sbin_PROGRAMS		= corosync-fplay corosync-cfgtool corosync-keygen corosync-objctl 
+sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
+			  corosync-keygen corosync-objctl \
+			  corosync-pload
 
 corosync_pload_LDADD	= ../lib/libpload.a
 corosync_objctl_LDADD	= ../lib/libconfdb.a ../lcr/liblcr.a 

@@ -66,7 +66,7 @@ all-local: $(LCRSO)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 644 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso

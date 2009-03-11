@@ -33,12 +33,18 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
-LCRSO			= service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso service_votequorum.lcrso service_testquorum.lcrso
+LCRSO			= service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso quorum_votequorum.lcrso quorum_testquorum.lcrso
 
 if BUILD_DARWIN
+quorum_%.lcrso: %.o
+	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
+
 service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
 else
+quorum_%.lcrso:
+	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
+
 service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 endif
@@ -54,7 +60,7 @@ all-local: $(LCRSO)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 644 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
