@@ -36,7 +36,7 @@
 #ifndef OBJDB_H_DEFINED
 #define OBJDB_H_DEFINED
 
-#define OBJECT_PARENT_HANDLE 0
+#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL 
 
 #include <stdio.h>
 #include <corosync/hdb.h>

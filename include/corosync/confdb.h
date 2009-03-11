@@ -44,7 +44,7 @@
  */
 typedef uint64_t confdb_handle_t;
 
-#define OBJECT_PARENT_HANDLE 0
+#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL
 
 typedef enum {
 	CONFDB_TRACK_DEPTH_ONE,

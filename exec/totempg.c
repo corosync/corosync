@@ -430,7 +430,7 @@ static inline void app_deliver_fn (
 
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
-			i, (void *)&instance);
+			hdb_nocheck_convert (i), (void *)&instance);
 
 		if (res == 0) {
 			assert (iov_len == 1);
@@ -459,7 +459,7 @@ static inline void app_deliver_fn (
 					endian_conversion_required);
 			}
 
-			hdb_handle_put (&totempg_groups_instance_database, i);
+			hdb_handle_put (&totempg_groups_instance_database, hdb_nocheck_convert(i));
 		}
 	}
 }
