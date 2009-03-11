@@ -72,7 +72,7 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 	.iterator	= 0
 };
 
-static unsigned int g_component_handle = 0xFFFFFFFF;
+static hdb_handle_t g_component_handle = 0xFFFFFFFF;
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 static int lcr_select_so (const struct dirent *dirent)
@@ -512,6 +512,7 @@ void lcr_component_register (struct lcr_comp *comp)
 {
 	struct lcr_component_instance *instance;
 	static hdb_handle_t comp_handle;
+	int res;
 
 	hdb_handle_create (&lcr_component_instance_database,
 		sizeof (struct lcr_component_instance),
