@@ -161,6 +161,10 @@ static int priv_change (struct conn_info *conn_info);
 
 static void ipc_disconnect (struct conn_info *conn_info);
 
+static void msg_send (void *conn, struct iovec *iov, int iov_len, int locked);
+
+static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len);
+
 static int ipc_thread_active (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
@@ -337,8 +341,9 @@ req_setup_send (
 	int error)
 {
 	mar_res_setup_t res_setup;
-	res_setup.error = error;
 	unsigned int res;
+
+	res_setup.error = error;
 
 retry_send:
 	res = send (conn_info->fd, &res_setup, sizeof (mar_res_setup_t), MSG_WAITALL);
@@ -682,9 +687,9 @@ static int conn_info_create (int fd)
 #endif
 
 #if defined(COROSYNC_LINUX)
-char *socketname = "libais.socket";
+const char *socketname = "libais.socket";
 #else
-char *socketname = "/var/run/libais.socket";
+const char *socketname = "/var/run/libais.socket";
 #endif
 
 static int poll_handler_accept (
@@ -914,7 +919,7 @@ static int shared_mem_dispatch_bytes_left (struct conn_info *conn_info)
 	return (bytes_left);
 }
 
-int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
+static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
 {
 	char *dest_char = (char *)conn_info->mem->dispatch_buffer;
 	char *src_char = (char *)msg;
@@ -935,7 +940,7 @@ int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
 	return (0);
 }
 
-void msg_send (void *conn, struct iovec *iov, int iov_len, int locked)
+static void msg_send (void *conn, struct iovec *iov, int iov_len, int locked)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
