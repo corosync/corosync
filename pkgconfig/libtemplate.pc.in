@@ -4,7 +4,7 @@ libdir=@LIBDIR@
 includedir=${prefix}/include
 
 Name: @LIB@
-Version: trunk
+Version: @LIBVERSION@
 Description: @LIB@
 Requires:
 Libs: -L${libdir} -l@LIB@

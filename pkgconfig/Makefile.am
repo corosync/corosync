@@ -28,23 +28,28 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# Include configuration
-#
-srcdir ?= $(CURDIR)/../
-subdir ?= pkgconfig
-
-include $(srcdir)/Makefile.inc
+MAINTAINERCLEANFILES	= Makefile.in
 
 LIBS = evs cpg cfg coroutil confdb quorum votequorum totem_pg logsys
 
-all:
-	for i in $(LIBS); do \
-		cat ${srcdir}/pkgconfig/libtemplate.pc.in | sed \
-			-e 's#@PREFIX@#$(PREFIX)#g' \
-			-e 's#@LIBDIR@#$(LIBDIR)#g' \
-			-e 's#@LIB@#'$${i}'#g' \
-		> lib$${i}.pc; \
-	done;
+pkgconf_LIBS = $(LIBS:%=lib%)
 
-clean:
-	rm -f *.pc
+target_LIBS = $(LIBS:%=lib%.pc)
+
+lib%:
+	cat $(srcdir)/libtemplate.pc.in | sed \
+		-e 's#@PREFIX@#$(exec_prefix)#g' \
+		-e 's#@LIBDIR@#$(libdir)#g' \
+		-e 's#@LIBVERSION@#$(VERSION)#g' \
+		-e 's#@LIB@#'$@'#g' \
+	> $@.pc;
+	touch $@
+
+all-local: $(pkgconf_LIBS)
+
+install-exec-local:
+	install -d $(DESTDIR)/$(libdir)/pkgconfig
+	install -m 644 $(target_LIBS) $(DESTDIR)/$(libdir)/pkgconfig
+
+clean-local:
+	rm -f *.pc $(pkgconf_LIBS)

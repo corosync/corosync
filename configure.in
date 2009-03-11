@@ -530,6 +530,7 @@ exec/Makefile							\
 test/Makefile							\
 tools/Makefile							\
 services/Makefile						\
+pkgconfig/Makefile						\
 		)
 
 dnl Now process the entire list of files added by previous 

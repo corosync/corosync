@@ -38,7 +38,7 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 
 ETCDIR = /etc
 MANDIR = /usr/share/man
-SUBDIRS	= include lcr lib exec services tools test 
+SUBDIRS	= include lcr lib exec services tools test pkgconfig
 # man init conf
 
 lint:
