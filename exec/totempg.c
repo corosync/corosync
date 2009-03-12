@@ -315,7 +315,7 @@ static inline void app_confchg_fn (
 
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
-			i, (void *)&instance);
+			hdb_nocheck_convert (i), (void *)&instance);
 
 		if (res == 0) {
 			if (instance->confchg_fn) {
@@ -330,7 +330,8 @@ static inline void app_confchg_fn (
 					ring_id);
 			}
 
-			hdb_handle_put (&totempg_groups_instance_database, i);
+			hdb_handle_put (&totempg_groups_instance_database,
+				hdb_nocheck_convert (i));
 		}
 	}
 }
