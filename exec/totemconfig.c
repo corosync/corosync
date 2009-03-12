@@ -107,7 +107,8 @@ static inline int objdb_get_string (
 }
 
 static inline void objdb_get_int (
-	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_service_handle,
 	char *key, unsigned int *intvalue)
 {
 	char *value = NULL;
