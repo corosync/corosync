@@ -54,7 +54,7 @@ confdb_callbacks_t callbacks = {
 };
 
 /* Recursively dump the object tree */
-static void print_config_tree(confdb_handle_t handle, unsigned int parent_object_handle, int depth)
+static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object_handle, int depth)
 {
 	hdb_handle_t object_handle;
 	char object_name[1024];
@@ -69,7 +69,7 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		printf( "error resetting key iterator for object %d: %d\n", parent_object_handle, res);
+		printf( "error resetting key iterator for object %llu: %d\n", parent_object_handle, res);
 		return;
 	}
 
@@ -84,7 +84,7 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		printf( "error resetting object iterator for object %d: %d\n", parent_object_handle, res);
+		printf( "error resetting object iterator for object %llu: %d\n", parent_object_handle, res);
 		return;
 	}
 
