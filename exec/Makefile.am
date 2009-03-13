@@ -35,10 +35,11 @@ AM_CFLAGS	= -fPIC
 INCLUDES       	= -I$(top_builddir)/include  -I$(top_srcdir)/include
 DARWIN_OPTS	= -dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)
 
-LCRSO		= 
 LCR_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
 TOTEM_SRC	= coropoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
 LOGSYS_SRC	= wthread.c logsys.c
+
+LCRSO		= $(LCR_SRC:%.c=%.lcrso)
 
 lib_LIBRARIES	= libtotem_pg.a liblogsys.a
 sbin_PROGRAMS	= corosync
@@ -55,15 +56,11 @@ corosync_LDFLAGS = $(DYFLAGS) -L./
 
 TOTEM_OBJS	= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS	= $(LOGSYS_SRC:%.c=%.o)
+LCRSO_OBJS	= $(LCR_SRC:%.c=%.o)
 
-if BUILD_DYNAMIC
 SHARED_LIBS	+= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO = $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
-LCRSO		+= $(LCR_SRC:%.c=%.lcrso)
-else
-corosync_SOURCES += $(LCR_SRC)
-endif
 
 if BUILD_DARWIN
 %.lcrso: %.o
@@ -94,7 +91,7 @@ endif
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
 
-all-local: $(LCRSO) $(SHARED_LIBS)
+all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
 	@echo Built corosync Executive
 
 install-exec-local:

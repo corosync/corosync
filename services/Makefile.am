@@ -35,6 +35,8 @@ AM_CFLAGS		= -fPIC
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 LCRSO			= service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso quorum_votequorum.lcrso quorum_testquorum.lcrso
 
+LCRSO_OBJS = $(LCRSO:service_%.lcrso=%.o) $(LCRSO:quorum_%.lcrso=%.o)
+
 if BUILD_DARWIN
 quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
@@ -42,7 +44,7 @@ quorum_%.lcrso: %.o
 service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
 else
-quorum_%.lcrso:
+quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 
 service_%.lcrso: %.o
@@ -55,7 +57,7 @@ endif
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
 
-all-local: $(LCRSO)
+all-local: $(LCRSO_OBJS) $(LCRSO)
 	@echo Built Service Engines
 
 install-exec-local:

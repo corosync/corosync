@@ -174,10 +174,6 @@ AC_ARG_WITH(lcrso-dir,
     [  --with-lcrso-dir=DIR   Corosync lcrso files. ],
     [ LCRSODIR="$withval" ])
 
-AC_ARG_ENABLE(static, 
-    [  --enable-static   Dont produce dynamic libraries. ],
-    [ default="no" ])
-
 AC_ARG_ENABLE(coverage, 
     [  --enable-coverage   Coverage analysis of the codebase. ],
     [ default="no" ])
@@ -477,7 +473,6 @@ dnl Add any system specific options here.
 	   echo "Enabling Coverage"
 	   CFLAGS="$CFLAGS -O0 -g -ftest-coverage -fprofile-arcs"
 	   LDFLAGS="$LDFLAGS -g -ftest-coverage -fprofile-arcs"
-	   enable_static=yes
 	   PKG_FEATURES="$PKG_FEATURES coverage"
 	fi
 
@@ -517,11 +512,6 @@ CFLAGS_COPY="$CFLAGS"
 AC_SUBST(CFLAGS_COPY)
 
 AM_CONDITIONAL(BUILD_DARWIN, test $ON_DARWIN = 1)
-AM_CONDITIONAL(BUILD_DYNAMIC, test "x${enable_static}" != xyes)
-
-if test "x${enable_static}" != xyes; then
-   PKG_FEATURES="$PKG_FEATURES static"
-fi
 
 LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
 AC_SUBST(LINT_FLAGS)
