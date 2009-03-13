@@ -70,7 +70,7 @@ dnl Always tries to set the compiler to ANSI C via options (AM)
 dnl Can force other with environment variable "CC".
 AC_PROG_CC
 AC_PROG_CC_STDC
-AM_PROG_CC_C_O
+AC_PROG_CC_C_O
 AC_PROG_RANLIB
 
 dnl ===============================================
@@ -178,12 +178,13 @@ AC_ARG_ENABLE(coverage,
     [  --enable-coverage   Coverage analysis of the codebase. ],
     [ default="no" ])
 
+AC_ARG_ENABLE(debug, 
+    [  --enable-debug   Enable debug build. ],
+    [ default="no" ])
+
 dnl ===============================================
 dnl General Processing
 dnl ===============================================
-
-CC_IN_CONFIGURE=yes
-export CC_IN_CONFIGURE
 
 AC_MSG_NOTICE(Sanitizing prefix: ${prefix})
 case $prefix in
@@ -195,13 +196,6 @@ case $exec_prefix in
   dnl For consistency with Heartbeat, map NONE->$prefix
   NONE)	  exec_prefix=$prefix;;
   prefix) exec_prefix=$prefix;;
-esac
-
-AC_MSG_NOTICE(Sanitizing ais_prefix: ${AISPREFIX})
-case $AISPREFIX in
-  dnl For consistency with Heartbeat, map NONE->$prefix
-  NONE)	  AISPREFIX=$prefix;;
-  prefix) AISPREFIX=$prefix;;
 esac
 
 AC_MSG_NOTICE(Sanitizing libdir: ${libdir})
@@ -258,6 +252,17 @@ do
   fi
 done
 
+dnl debug build stuff
+if test "x${enable_debug}" = xyes; then
+	echo Enabled Debug Build
+	PKG_FEATURES="$PKG_FEATURES debug"
+	CFLAGS="$CFLAGS -O0"
+	AC_DEFINE_UNQUOTED(DEBUG, 1, Compiling Debugging code)
+else
+	echo Enabled Standard Build
+	CFLAGS="$CFLAGS -O3"
+fi
+
 dnl This OS-based decision-making is poor autotools practice;
 dnl feature-based mechanisms are strongly preferred.
 dnl
@@ -266,9 +271,10 @@ dnl So keep this section to a bare minimum; regard as a "necessary evil".
 ON_DARWIN=0
 DYFLAGS=
 case "$host_os" in
-*bsd*)		LIBS="-L/usr/local/lib"
-		CPPFLAGS="$CPPFLAGS -I/usr/local/include"
+*bsd*)
 		AC_DEFINE_UNQUOTED(COROSYNC_BSD, 1, Compiling for BSD platform)
+		CFLAGS="$CFLAGS -I/usr/local/include"
+		LD_FLAGS="$LD_FLAGS -L/usr/local/lib"
 		DYFLAGS="$DYFLAGS -export-dynamic"
 		;;
 *solaris*)
@@ -277,28 +283,16 @@ case "$host_os" in
 		CFLAGS="$CFLAGS -D_REENTRANT"
 		LDFLAGS="$LDFLAGS -Wl,--export-dynamic -Wl,-rpath-link=/usr/lib"
 		;;
-*linux*)	
+*linux*)
 		AC_DEFINE_UNQUOTED(COROSYNC_LINUX, 1, Compiling for Linux platform)
 		DYFLAGS="$DYFLAGS -rdynamic"
  		;;
-darwin*)	
+darwin*)
 		ON_DARWIN=1
 		AC_DEFINE_UNQUOTED(COROSYNC_DARWIN, 1, Compiling for Darwin platform)
-#  		LIBS="$LIBS -L${prefix}/lib"
-#  		CFLAGS="$CFLAGS -I${prefix}/include"
 		;;
 esac
 AC_SUBST(DYFLAGS)
-
-case "$host_cpu" in
-  ppc64|powerpc64)
-    case $CFLAGS in
-     *powerpc64*)			;;
-     *)	if test "$GCC" = yes; then
-	  CFLAGS="$CFLAGS -m64"
-	fi				;;
-    esac
-esac
 
 AC_MSG_CHECKING(which format is needed to print uint64_t)
 case "$host_cpu" in
@@ -329,7 +323,6 @@ dnl ===============================================
 
 AC_CHECK_PROGS(MAKE, gmake make)
 AC_PATH_PROGS(PKGCONFIG, pkg-config)
-AC_PATH_PROGS(SSH, ssh, /usr/bin/ssh)
 
 if test x"${MAKE}" = x""; then
    AC_MSG_ERROR(You need (g)make installed in order to build ${PKG_NAME})
@@ -424,9 +417,8 @@ if export | fgrep " CFLAGS=" > /dev/null; then
 	export -n CFLAGS || true # We don't want to bomb out if this fails
 fi
 
-if test "$GCC" != yes; then
-        CFLAGS="$CFLAGS -g"
-else
+
+if test "$GCC" == yes; then
         CFLAGS="$CFLAGS -ggdb3"
 
 	EXTRA_WARNINGS=""
@@ -543,7 +535,6 @@ dnl *****************
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE configuration:])
 AC_MSG_RESULT([  Version                  = ${VERSION}])
-
 AC_MSG_RESULT([  Prefix                   = ${prefix}])
 AC_MSG_RESULT([  Executables              = ${sbindir}])
 AC_MSG_RESULT([  Man pages                = ${mandir}])
@@ -552,9 +543,7 @@ AC_MSG_RESULT([  Header files             = ${includedir}])
 AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
-
 AC_MSG_RESULT([  Features                 =${PKG_FEATURES}])
-
-AC_MSG_RESULT([  CC_WARNINGS              = ${CC_WARNINGS}])
+AC_MSG_RESULT([  CC_WARNINGS              =${CC_WARNINGS}])
 AC_MSG_RESULT([  Mangled CFLAGS           = ${CFLAGS}])
 AC_MSG_RESULT([  Libraries                = ${LIBS}])
