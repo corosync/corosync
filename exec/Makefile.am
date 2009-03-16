@@ -33,7 +33,6 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS	= -fPIC
 INCLUDES       	= -I$(top_builddir)/include  -I$(top_srcdir)/include
-DARWIN_OPTS	= -dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)
 
 LCR_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
 TOTEM_SRC	= coropoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
@@ -52,7 +51,7 @@ corosync_SOURCES = main.c mempool.c util.c sync.c apidef.c service.c ipc.c \
 		timer.c totemconfig.c mainconfig.c quorum.c ../lcr/lcr_ifact.c
 corosync_LDADD	  = -ltotem_pg -llogsys
 corosync_DEPENDENCIES = libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME)
-corosync_LDFLAGS = $(DYFLAGS) -L./
+corosync_LDFLAGS = $(OS_DYFLAGS) -L./
 
 TOTEM_OBJS	= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS	= $(LOGSYS_SRC:%.c=%.o)

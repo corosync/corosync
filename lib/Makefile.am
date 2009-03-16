@@ -34,7 +34,6 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
-DARWIN_OPTS		= -dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)
 
 lib_LIBRARIES	= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a libvotequorum.a libpload.a libcoroipc.a
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
@@ -70,7 +69,7 @@ libcoroipc.so.$(SONAME): coroipc.o
 	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so.$(SOMAJOR)
 
 libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
+	$(CC) $(LDFLAGS) $(OS_DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
