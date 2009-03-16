@@ -36,7 +36,6 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
-ETCDIR = /etc
 MANDIR = /usr/share/man
 SUBDIRS	= include lcr lib exec services tools test pkgconfig
 # man init conf
@@ -48,9 +47,9 @@ doxygen:
 	mkdir -p doc/api && doxygen
 
 install-exec-local:
-	$(INSTALL) -d $(DESTDIR)$(ETCDIR)
-	if [ ! -f $(DESTDIR)$(ETCDIR)/corosync.conf ] ; then 	   \
-		$(INSTALL) -m 644 $(srcdir)/conf/corosync.conf $(DESTDIR)$(ETCDIR) ; \
+	$(INSTALL) -d $(DESTDIR)${sysconfdir}
+	if [ ! -f $(DESTDIR)${sysconfdir}/corosync.conf ] ; then 	   \
+		$(INSTALL) -m 644 $(srcdir)/conf/corosync.conf $(DESTDIR)${sysconfdir} ; \
 	fi
 	mkdir -p $(DESTDIR)$(MANDIR)/man3
 	$(INSTALL) -m 644 $(srcdir)/man/*.3 $(DESTDIR)$(MANDIR)/man3

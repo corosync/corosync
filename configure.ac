@@ -122,11 +122,11 @@ SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
 
 # local options
 AC_ARG_ENABLE([ansi],
-	[ --enable-ansi           : force to build with ANSI standards. ],
+	[  --enable-ansi           : force to build with ANSI standards. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([fatal-warnings],
-	[ --enable-fatal-warnings : enable fatal warnings. ],
+	[  --enable-fatal-warnings : enable fatal warnings. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
@@ -134,11 +134,11 @@ AC_ARG_ENABLE([debug],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
-	[ --enable-coverage       : coverage analysis of the codebase. ],
+	[  --enable-coverage       : coverage analysis of the codebase. ],
 	[ default="no" ])
 
 AC_ARG_WITH([lcrso-dir],
-	[ --with-lcrso-dir=DIR    : corosync lcrso files. ],
+	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
 	[ LCRSODIR="$withval" ],
 	[ LCRSODIR="$libexecdir/lcrso" ])
 
@@ -277,7 +277,7 @@ fi
 # final build of *FLAGS
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS -DLCRSODIR=\\\"${LCRSODIR}\\\""
+CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:

@@ -162,7 +162,7 @@ static int read_config_file_into_objdb(
 
 	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
 	if (!filename)
-		filename = "/etc/corosync.conf";
+		filename = SYSCONFDIR "/corosync.conf";
 
 	fp = fopen (filename, "r");
 	if (fp == 0) {

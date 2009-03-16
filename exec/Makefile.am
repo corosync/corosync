@@ -32,6 +32,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS	= -fPIC
+AM_CPPFLAGS	= -DSYSCONFDIR=\"${sysconfdir}\" -DLCRSODIR=\"${LCRSODIR}\"
 INCLUDES       	= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
 LCR_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
