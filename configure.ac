@@ -31,7 +31,6 @@ AC_CHECK_PROGS([GROFF], [groff])
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([pthread], [pthread_create])
-# from OS != linux
 AC_CHECK_LIB([c], [getpeereid])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
@@ -109,10 +108,10 @@ PKG_FEATURES=""
 LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
 
 # libraries SONAME
-SOMAJOR=3
-SOMINOR=0
-SOMICRO=0
-SONAME=${SOMAJOR}.${SOMINOR}.${SOMICRO}
+SOMAJOR="3"
+SOMINOR="0"
+SOMICRO="0"
+SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
 
 # local options
 AC_ARG_ENABLE([ansi],
@@ -194,7 +193,7 @@ else
 fi
 
 # gdb flags
-if test "$GCC" == yes; then
+if test "x${GCC}" = xyes; then
 	GDB_FLAGS="-ggdb3"
 else
 	GDB_FLAGS="-g"
