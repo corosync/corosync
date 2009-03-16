@@ -41,9 +41,10 @@ AC_FUNC_ALLOCA
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h syslog.h unistd.h sys/types.h getopt.h])
-# from OS != linux
-AC_CHECK_HEADERS([sys/sockio.h malloc.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
+		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
+		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
+		  sys/sockio.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -75,7 +76,10 @@ AC_FUNC_SELECT_ARGTYPES
 AC_TYPE_SIGNAL
 AC_FUNC_STRFTIME
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl getcwd getpeerucred gettimeofday inet_ntoa memmove memset mkdir scandir select socket strcasecmp strchr strdup strerror strrchr strspn strstr])
+AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
+		getcwd getpeerucred gettimeofday inet_ntoa memmove memset \
+		mkdir scandir select socket strcasecmp strchr strdup \
+		strerror strrchr strspn strstr])
 
 # add man and init dirs?
 AC_CONFIG_FILES([Makefile
@@ -98,14 +102,17 @@ AC_CONFIG_FILES([Makefile
 cc_supports_flag() {
 	local CFLAGS="$@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_COMPILE_IFELSE([int main(){return 0;}] ,[RC=0; AC_MSG_RESULT([yes])],[RC=1; AC_MSG_RESULT([no])])
+	AC_COMPILE_IFELSE([int main(){return 0;}] ,
+			  [RC=0; AC_MSG_RESULT([yes])],
+			  [RC=1; AC_MSG_RESULT([no])])
 	return $RC
 }
 
 ## local defines
 PKG_FEATURES=""
 
-LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse -badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
+LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse \
+	-badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
 
 # libraries SONAME
 SOMAJOR="3"
@@ -115,11 +122,11 @@ SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
 
 # local options
 AC_ARG_ENABLE([ansi],
-	[ --enable-ansi           : force GCC to compile to ANSI/ANSI standard for older compilers. ],
+	[ --enable-ansi           : force to build with ANSI standards. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([fatal-warnings],
-	[ --enable-fatal-warnings : very pedantic and fatal warnings for gcc. ],
+	[ --enable-fatal-warnings : enable fatal warnings. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
@@ -140,7 +147,8 @@ AC_ARG_WITH([lcrso-dir],
 
 case "$host_os" in
 	*linux*)
-		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1], [Compiling for Linux platform])
+		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
+				   [Compiling for Linux platform])
 		OS_CFLAGS=""
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
@@ -148,24 +156,30 @@ case "$host_os" in
 		DARWIN_OPTS=""
 	;;
 	darwin*)
-		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1], [Compiling for Darwin platform])
+		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
+				   [Compiling for Darwin platform])
 		OS_CFLAGS=""
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
 		OS_DYFLAGS=""
-		DARWIN_OPTS="-dynamiclib -bind_at_load -current_version $(SONAME) -compatibility_version $(SONAME)"
+		DARWIN_OPTS="-dynamiclib -bind_at_load
+			     -current_version $(SONAME)
+			     -compatibility_version $(SONAME)"
 	;;
 	*bsd*)
-		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1], [Compiling for BSD platform])
-		OS_CFLAGS="-I/usr/local/include"
-		OS_CPPFLAGS=""
+		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
+				   [Compiling for BSD platform])
+		OS_CFLAGS=""
+		OS_CPPFLAGS="-I/usr/local/include"
 		OS_LDFLAGS="-L/usr/local/lib"
 		OS_DYFLAGS="-export-dynamic"
 		DARWIN_OPTS=""
 	;;
 	*solaris*)
-		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1], [Compiling for Solaris platform])
-		AC_DEFINE_UNQUOTED([TS_CLASS], [1], [Prevent being scheduled RR])
+		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
+				   [Compiling for Solaris platform])
+		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
+				   [Prevent being scheduled RR])
 		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_REENTRANT"
 		OS_LDFLAGS="-Wl,-rpath-link=/usr/lib"
@@ -173,7 +187,7 @@ case "$host_os" in
 		DARWIN_OPTS=""
 	;;
 	*)
-		AC_MSG_ERROR([Unsupported OS? this is why this section should die an horrible death])
+		AC_MSG_ERROR([Unsupported OS? hmmmm])
 	;;
 esac
 
@@ -261,7 +275,8 @@ else
 fi
 
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS $COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
+CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS \
+	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
