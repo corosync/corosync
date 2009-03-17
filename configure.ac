@@ -142,6 +142,11 @@ AC_ARG_WITH([lcrso-dir],
 	[ LCRSODIR="$withval" ],
 	[ LCRSODIR="$libexecdir/lcrso" ])
 
+AC_ARG_WITH([socket-dir],
+	[  --with-socket-dir=DIR   : corosync socket dir. ],
+	[ SOCKETDIR="$withval" ],
+	[ SOCKETDIR="$localstatedir/run" ])
+
 # OS detection
 # THIS SECTION MUST DIE!
 
@@ -282,6 +287,7 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([LCRSODIR])
+AC_SUBST([SOCKETDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -311,6 +317,7 @@ AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
+AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
 AC_MSG_RESULT([  Features                 =${PKG_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])

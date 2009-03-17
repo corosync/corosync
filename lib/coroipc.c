@@ -93,7 +93,7 @@ static const char *socketname = "libais.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
 
-static const char *socketname = LOCALSTATEDIR "/run/libais.socket";
+static const char *socketname = SOCKETDIR "/libais.socket";
 #endif
 
 #ifdef SO_NOSIGPIPE

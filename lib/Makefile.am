@@ -33,6 +33,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
+AM_CPPFLAGS		= -DLOCALSTATEDIR=\"${localstatedir}\" -DSOCKETDIR=\"${SOCKETDIR}\"
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
 lib_LIBRARIES	= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a libvotequorum.a libpload.a libcoroipc.a

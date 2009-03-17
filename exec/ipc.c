@@ -689,7 +689,7 @@ static int conn_info_create (int fd)
 #if defined(COROSYNC_LINUX)
 const char *socketname = "libais.socket";
 #else
-const char *socketname = LOCALSTATEDIR "/run/libais.socket";
+const char *socketname = SOCKETDIR "/libais.socket";
 #endif
 
 static int poll_handler_accept (

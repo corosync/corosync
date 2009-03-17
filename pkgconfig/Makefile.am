@@ -51,6 +51,7 @@ corosync.pc:
 		-e 's#@LIBDIR@#$(libdir)#g' \
 		-e 's#@LIBVERSION@#$(VERSION)#g' \
 		-e 's#@COROLCRSODIR@#$(LCRSODIR)#g' \
+		-e 's#@COROSOCKETDIR@#$(SOCKETDIR)#g' \
 	> $@
 
 all-local: $(pkgconf_LIBS) corosync.pc
