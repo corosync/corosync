@@ -45,7 +45,15 @@ lib%:
 	> $@.pc;
 	touch $@
 
-all-local: $(pkgconf_LIBS)
+corosync.pc:
+	cat $(srcdir)/$@.in | sed \
+		-e 's#@PREFIX@#$(exec_prefix)#g' \
+		-e 's#@LIBDIR@#$(libdir)#g' \
+		-e 's#@LIBVERSION@#$(VERSION)#g' \
+		-e 's#@COROLCRSODIR@#$(LCRSODIR)#g' \
+	> $@
+
+all-local: $(pkgconf_LIBS) corosync.pc
 
 install-exec-local:
 	install -d $(DESTDIR)/$(libdir)/pkgconfig

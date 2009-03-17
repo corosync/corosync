@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=@LIBDIR@
+includedir=${prefix}/include
+lcrsodir=@COROLCRSODIR@
+
+Name: corosync
+Version: @LIBVERSION@
+Description: corosync
+Requires:
