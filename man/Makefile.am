@@ -93,10 +93,12 @@ if BUILD_HTML_DOCS
 
 HTML_DOCS = $(dist_man_MANS:%=%.html)
 
-doc_DATA = *.html
-
 %.html: %
 	$(GROFF) -mandoc -Thtml $^ > $@
+
+install-data-local:
+	install -d $(DESTDIR)/${docdir}/html
+	install -m644 *.html $(DESTDIR)/${docdir}/html/
 
 all-local: $(HTML_DOCS)
 

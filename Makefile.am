@@ -36,6 +36,9 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
+dist_doc_DATA		= LICENSE QUICKSTART README.devmap \
+			  README.recovery SECURITY TODO
+
 SUBDIRS	= include lcr lib exec services tools test pkgconfig man
 # init conf
 
@@ -45,7 +48,7 @@ lint:
 doxygen:
 	mkdir -p doc/api && doxygen
 
-install-exec-local:
+install-data-local:
 	$(INSTALL) -d $(DESTDIR)${sysconfdir}
 	if [ ! -f $(DESTDIR)${sysconfdir}/corosync.conf ] ; then 	   \
 		$(INSTALL) -m 644 $(srcdir)/conf/corosync.conf $(DESTDIR)${sysconfdir} ; \
