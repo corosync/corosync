@@ -87,6 +87,7 @@ AC_CONFIG_FILES([Makefile
                  include/Makefile
                  lcr/Makefile
                  lib/Makefile
+                 man/Makefile
                  pkgconfig/Makefile
                  services/Makefile
                  test/Makefile

@@ -1,8 +1,11 @@
+# Copyright (c) 2004 MontaVista Software, Inc.
 # Copyright (c) 2009 Red Hat, Inc.
-# 
-# Authors: Andrew Beekhof
-#	   Steven Dake (sdake@redhat.com)
 #
+# Authors: Steven Dake (sdake@redhat.com)
+#          Fabio M. Di Nitto (fdinitto@redhat.com)
+# 
+# All rights reserved.
+# 
 # This software licensed under BSD license, the text of which follows:
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -29,30 +32,75 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST              = autogen.sh
-AUTOMAKE_OPTIONS	= foreign
+MAINTAINERCLEANFILES	= Makefile.in
 
-MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
-			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf
+dist_man_MANS = \
+	corosync.conf.5 \
+	confdb_overview.8 \
+	corosync-objctl.8 \
+	corosync_overview.8 \
+	cpg_overview.8 \
+	evs_overview.8 \
+	logsys_overview.8 \
+	votequorum_overview.8 \
+	confdb_dispatch.3 \
+	confdb_fd_get.3 \
+	confdb_finalize.3 \
+	confdb_initialize.3 \
+	confdb_key_create.3 \
+	confdb_key_delete.3 \
+	confdb_key_iter.3 \
+	confdb_key_replace.3 \
+	confdb_object_create.3 \
+	confdb_object_destroy.3 \
+	confdb_object_find.3 \
+	confdb_object_iter.3 \
+	confdb_object_parent_get.3 \
+	cpg_context_get.3 \
+	cpg_context_set.3 \
+	cpg_dispatch.3 \
+	cpg_fd_get.3 \
+	cpg_finalize.3 \
+	cpg_initialize.3 \
+	cpg_join.3 \
+	cpg_leave.3 \
+	cpg_local_get.3 \
+	cpg_mcast_joined.3 \
+	cpg_membership_get.3 \
+	evs_dispatch.3 \
+	evs_fd_get.3 \
+	evs_finalize.3 \
+	evs_initialize.3 \
+	evs_join.3 \
+	evs_leave.3 \
+	evs_mcast_groups.3 \
+	evs_mcast_joined.3 \
+	evs_membership_get.3 \
+	votequorum_dispatch.3 \
+	votequorum_fd_get.3 \
+	votequorum_finalize.3 \
+	votequorum_getinfo.3 \
+	votequorum_initialize.3 \
+	votequorum_leaving.3 \
+	votequorum_qdisk_getinfo.3 \
+	votequorum_qdisk_poll.3 \
+	votequorum_qdisk_register.3 \
+	votequorum_qdisk_unregister.3 \
+	votequorum_setexpected.3 \
+	votequorum_setvotes.3
 
-SUBDIRS	= include lcr lib exec services tools test pkgconfig man
-# init conf
+if BUILD_HTML_DOCS
 
-lint:
-	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
+HTML_DOCS = $(dist_man_MANS:%=%.html)
 
-doxygen:
-	mkdir -p doc/api && doxygen
+doc_DATA = *.html
 
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)${sysconfdir}
-	if [ ! -f $(DESTDIR)${sysconfdir}/corosync.conf ] ; then 	   \
-		$(INSTALL) -m 644 $(srcdir)/conf/corosync.conf $(DESTDIR)${sysconfdir} ; \
-	fi
+%.html: %
+	$(GROFF) -mandoc -Thtml $^ > $@
 
-dist-clean-local:
-	rm -f autoconf automake autoheader $(TARFILE)
+all-local: $(HTML_DOCS)
 
-clean-generic:
-	rm -rf doc/api
+clean-local:
+	rm -rf $(HTML_DOCS)
+
+endif
