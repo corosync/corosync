@@ -31,7 +31,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
-AM_CPPFLAGS		= -DLCRSODIR=\"${LCRSODIR}\"
+AM_CPPFLAGS		= -DLCRSODIR=\"${LCRSODIR}\" -DLOCALSTATEDIR=\"${localstatedir}\"
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
 LCRSO			= libtest_a.lcrso libtest_b.lcrso

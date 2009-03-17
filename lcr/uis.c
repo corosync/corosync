@@ -61,7 +61,7 @@
 #ifdef COROSYNC_LINUX
 static char *socketname = "lcr.socket";
 #else
-static char *socketname = "/var/run/lcr.socket";
+static char *socketname = LOCALSTATEDIR "/run/lcr.socket";
 #endif
 
 static void uis_lcr_bind (int *server_fd)

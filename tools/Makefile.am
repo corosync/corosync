@@ -32,7 +32,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
-AM_CPPFLAGS		= -DSYSCONFDIR=\"${sysconfdir}\"
+AM_CPPFLAGS		= -DSYSCONFDIR=\"${sysconfdir}\" -DLOCALSTATEDIR=\"${localstatedir}\"
 
 sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 			  corosync-keygen corosync-objctl \

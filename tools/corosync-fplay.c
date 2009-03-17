@@ -456,7 +456,7 @@ int main (void)
 	int size_read;
 
 	flt_data = malloc ((flt_data_size + 2) * sizeof (unsigned int));
-	fd = open ("/var/lib/corosync/fdata", O_RDONLY);
+	fd = open (LOCALSTATEDIR "/lib/corosync/fdata", O_RDONLY);
 	size_read = (int)read (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
 
 	if (size_read != (flt_data_size + 2) * sizeof (unsigned int)) {

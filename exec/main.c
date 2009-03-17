@@ -169,7 +169,7 @@ static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
 	logsys_atsegv();
-	logsys_log_rec_store ("/var/lib/corosync/fdata");
+	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
 	raise (SIGSEGV);
 }
 
@@ -177,7 +177,7 @@ static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
 	logsys_atsegv();
-	logsys_log_rec_store ("/var/lib/corosync/fdata");
+	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
 	raise (SIGABRT);
 }
 

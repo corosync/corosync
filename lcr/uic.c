@@ -59,7 +59,7 @@
 #ifdef COROSYNC_LINUX
 static const char *socketname = "lcr.socket";
 #else
-static const char *socketname = "/var/run/lcr.socket";
+static const char *socketname = LOCALSTATEDIR "/run/lcr.socket";
 #endif
 
 static int uic_connect (int *fd);

@@ -718,7 +718,7 @@ int totemsrp_initialize (
 
 	rundir = getenv ("COROSYNC_RUN_DIR");
 	if (rundir == NULL) {
-		rundir = "/var/lib/corosync";
+		rundir = LOCALSTATEDIR "/lib/corosync";
 	}
 	
 	res = mkdir (rundir, 0700);
