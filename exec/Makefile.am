@@ -34,7 +34,8 @@ MAINTAINERCLEANFILES    = Makefile.in
 AM_CFLAGS	= -fPIC
 AM_CPPFLAGS	= -DSYSCONFDIR=\"${sysconfdir}\" -DLOCALSTATEDIR=\"${localstatedir}\" \
 		  -DLCRSODIR=\"${LCRSODIR}\" -DSOCKETDIR=\"${SOCKETDIR}\"
-INCLUDES       	= -I$(top_builddir)/include  -I$(top_srcdir)/include
+
+INCLUDES	= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 LCR_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
 TOTEM_SRC	= coropoll.c totemip.c totemnet.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
@@ -79,12 +80,16 @@ else
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libtotem_pg.so.$(SOMAJOR) $^ -o $@ -lpthread
+	$(CC) -shared -o $@ \
+		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
+		$^ $(LDFLAGS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,liblogsys.so.$(SOMAJOR) $^ -o $@ -lpthread
+	$(CC) -shared -o $@ \
+		-Wl,-soname=liblogsys_pg.so.$(SOMAJOR) \
+		$^ $(LDFLAGS) -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 endif

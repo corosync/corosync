@@ -32,8 +32,13 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
-INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
-LCRSO			= service_evs.lcrso service_cfg.lcrso service_cpg.lcrso service_confdb.lcrso service_pload.lcrso quorum_votequorum.lcrso quorum_testquorum.lcrso
+
+INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
+
+LCRSO			= service_evs.lcrso service_cfg.lcrso \
+			  service_cpg.lcrso service_confdb.lcrso \
+			  service_pload.lcrso quorum_votequorum.lcrso \
+			  quorum_testquorum.lcrso
 
 LCRSO_OBJS = $(LCRSO:service_%.lcrso=%.o) $(LCRSO:quorum_%.lcrso=%.o)
 

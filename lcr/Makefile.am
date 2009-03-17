@@ -33,9 +33,8 @@ MAINTAINERCLEANFILES    = Makefile.in
 AM_CFLAGS		= -fPIC
 AM_CPPFLAGS		= -DLCRSODIR=\"${LCRSODIR}\" -DLOCALSTATEDIR=\"${localstatedir}\" \
 			  -DSOCKETDIR=\"${SOCKETDIR}\"
-INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
-LCRSO			= libtest_a.lcrso libtest_b.lcrso
+INCLUDES 		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= liblcr.a
 
@@ -63,12 +62,8 @@ endif
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
 
-all-local: $(LCRSO)
+all-local: $(noinst_LCRSO)
 	@echo Built Live Component Replacement System
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso

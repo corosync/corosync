@@ -33,10 +33,13 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
-AM_CPPFLAGS		= -DLOCALSTATEDIR=\"${localstatedir}\" -DSOCKETDIR=\"${SOCKETDIR}\"
-INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
+AM_CPPFLAGS		= -DLOCALSTATEDIR=\"${localstatedir}\" \
+			  -DSOCKETDIR=\"${SOCKETDIR}\"
 
-lib_LIBRARIES	= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a libvotequorum.a libpload.a libcoroipc.a
+INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
+
+lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
+			  libvotequorum.a libpload.a libcoroipc.a
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
@@ -65,17 +68,26 @@ lib%.so.$(SONAME): coroipc.o %.o
 else
 
 libcoroipc.so.$(SONAME): coroipc.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libcoroipc.so.$(SOMAJOR),-version-script=$(srcdir)/libcoroipc.versions coroipc.o -o $@
+	$(CC) -shared -o $@ \
+		-Wl,-soname=libcoroipc.so.$(SOMAJOR) \
+		-Wl,-version-script=$(srcdir)/libcoroipc.versions \
+		$^ $(LDFLAGS) $(AM_LDFLAGS)
 	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so
 	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(OS_DYFLAGS) -shared -Wl,-soname,libconfdb.so.$(SOMAJOR),-version-script=$(srcdir)/libconfdb.versions coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
+libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+	$(CC) -shared -o $@ \
+		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
+		-Wl,-version-script=$(srcdir)/libconfdb.versions \
+		$^ $(LDFLAGS) $(OS_DYFLAGS) -ldl
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
 lib%.so.$(SONAME): coroipc.o %.o
-	$(CC) -shared -Wl,-soname,lib$*.so.$(SOMAJOR),-version-script=$(srcdir)/lib$*.versions $^ -o $@
+	$(CC) -shared -o $@ \
+		-Wl,-soname=lib$*.so.$(SOMAJOR) \
+		-Wl,-version-script=$(srcdir)/lib$*.versions \
+		$^ $(LDFLAGS)
 	ln -sf lib$*.so.$(SONAME) lib$*.so
 	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
 
