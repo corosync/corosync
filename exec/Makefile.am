@@ -71,6 +71,8 @@ noinst_HEADERS		= apidef.h crypto.h ipc.h mainconfig.h main.h mempool.h \
 			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
 			  version.h vsf.h wthread.h
 
+EXTRA_DIST		= $(LCRSO_SRC)
+
 if BUILD_DARWIN
 %.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@

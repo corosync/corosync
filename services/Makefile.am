@@ -42,6 +42,8 @@ LCRSO			= service_evs.lcrso service_cfg.lcrso \
 
 LCRSO_OBJS = $(LCRSO:service_%.lcrso=%.o) $(LCRSO:quorum_%.lcrso=%.o)
 
+EXTRA_DIST = $(LCRSO_OBJS:%.o=%.c)
+
 if BUILD_DARWIN
 quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@

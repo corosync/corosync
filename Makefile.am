@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST              = autogen.sh
+EXTRA_DIST              = autogen.sh conf/corosync.conf
 AUTOMAKE_OPTIONS	= foreign
 
 MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
