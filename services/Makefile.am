@@ -71,6 +71,10 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
 	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
+uninstall-local:
+	cd $(DESTDIR)/$(LCRSODIR) && \
+		rm -f $(LCRSO)
+
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
 

@@ -60,5 +60,9 @@ install-exec-local:
 	install -d $(DESTDIR)/$(libdir)/pkgconfig
 	install -m 644 $(target_LIBS) $(DESTDIR)/$(libdir)/pkgconfig
 
+uninstall-local:
+	cd $(DESTDIR)/$(libdir)/pkgconfig && rm -f $(target_LIBS)
+	rmdir $(DESTDIR)/$(libdir)/pkgconfig 2> /dev/null || :
+
 clean-local:
 	rm -f *.pc $(pkgconf_LIBS)

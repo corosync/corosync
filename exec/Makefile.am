@@ -117,5 +117,11 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
 	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
+uninstall-local:
+	cd $(DESTDIR)/$(libdir) && \
+		rm -f $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO)
+	cd $(DESTDIR)/$(LCRSODIR) && \
+		rm -f $(LCRSO)
+
 clean-local:
 	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*

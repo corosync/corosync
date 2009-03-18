@@ -106,6 +106,10 @@ install-exec-local:
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
 	cp -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 
+uninstall-local:
+	cd $(DESTDIR)/$(libdir)/ && \
+		rm -f $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO)
+
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg
 
