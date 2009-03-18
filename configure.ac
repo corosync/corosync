@@ -168,9 +168,9 @@ case "$host_os" in
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
 		OS_DYFLAGS=""
-		DARWIN_OPTS="-dynamiclib -bind_at_load
-			     -current_version $(SONAME)
-			     -compatibility_version $(SONAME)"
+		DARWIN_OPTS="-dynamiclib -bind_at_load \
+			     -current_version ${SONAME} \
+			     -compatibility_version ${SONAME}"
 	;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
