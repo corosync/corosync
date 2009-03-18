@@ -40,7 +40,10 @@ extern void message_source_set (mar_message_source_t *source, void *conn);
 extern int message_source_is_local (mar_message_source_t *source);
 
 extern void cs_ipc_init (
-	unsigned int gid_valid);
+	unsigned int gid_valid,
+        void (*serialize_lock_fn) (void),
+        void (*serialize_unlock_fn) (void)
+);
 
 extern void *cs_conn_private_data_get (void *conn);
 

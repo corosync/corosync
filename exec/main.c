@@ -679,7 +679,9 @@ int main (int argc, char **argv)
 
 	corosync_mempool_init ();
 
-	cs_ipc_init (main_config.gid);
+	cs_ipc_init (main_config.gid,
+		serialize_mutex_lock,
+		serialize_mutex_unlock);
 
 	/*
 	 * Start main processing loop

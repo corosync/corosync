@@ -104,6 +104,10 @@ LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 
 static unsigned int g_gid_valid = 0;
 
+static void (*ipc_serialize_lock_fn) (void);
+
+static void (*ipc_serialize_unlock_fn) (void);
+
 DECLARE_LIST_INIT (conn_info_list_head);
 
 struct outq_item {
@@ -224,12 +228,14 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		return (0);
 	}
 
+	ipc_serialize_lock_fn();
 	/*
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
 		res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
 		if (res == -1) {
+			ipc_serialize_unlock_fn();
 			return (0);
 		} else {
 			conn_info->state = CONN_STATE_LIB_EXIT_CALLED;
@@ -239,6 +245,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	pthread_mutex_lock (&conn_info->mutex);
 	if (conn_info->refcount > 0) {
 		pthread_mutex_unlock (&conn_info->mutex);
+		ipc_serialize_unlock_fn();
 		return (0);
 	}
 	list_del (&conn_info->list);
@@ -259,6 +266,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	}
 	close (conn_info->fd);
 	free (conn_info);
+	ipc_serialize_unlock_fn();
 	return (-1);
 }
 
@@ -315,7 +323,9 @@ retry_semop:
 			(sync_in_process() == 0)));
 
 		if (send_ok) {
+			ipc_serialize_lock_fn();
 			ais_service[conn_info->service]->lib_engine[header->id].lib_handler_fn (conn_info, header);
+			ipc_serialize_unlock_fn();
 		} else {
 			/*
 			 * Overload, tell library to retry
@@ -772,11 +782,18 @@ void message_source_set (
 	source->conn = conn;
 }
 
-void cs_ipc_init (unsigned int gid_valid)
+void cs_ipc_init (
+	unsigned int gid_valid,
+	void (*serialize_lock_fn) (void),
+	void (*serialize_unlock_fn) (void))
 {
 	int libais_server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+
+	ipc_serialize_lock_fn = serialize_lock_fn;
+
+	ipc_serialize_unlock_fn = serialize_unlock_fn;
 
 	/*
 	 * Create socket for libais clients, name socket, listen for connections
