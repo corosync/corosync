@@ -314,7 +314,8 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
-			int *interface_num)
+			int *interface_num,
+			int mask_high_bit)
 {
 #define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
