@@ -50,10 +50,10 @@ service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
 else
 quorum_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
+	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
+	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 endif
 
 %.o: %.c

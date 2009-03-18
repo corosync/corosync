@@ -53,6 +53,11 @@ libvotequorum_a_SOURCES	= coroipc.c votequorum.c
 libconfdb_a_SOURCES	= coroipc.c confdb.c sa-confdb.c
 libcoroipc_a_SOURCES	= coroipc.c
 
+noinst_HEADERS		= sa-confdb.h util.h \
+			  libcfg.versions libconfdb.versions \
+			  libcoroipc.versions libcpg.versions \
+			  libevs.versions libpload.versions \
+			  libquorum.versions libvotequorum.versions
 
 if BUILD_DARWIN
 
