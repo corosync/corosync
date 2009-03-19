@@ -91,7 +91,8 @@ static int parse_section(FILE *fp,
 	char *loc;
 
 	while (fgets (line, 255, fp)) {
-		line[strlen(line) - 1] = '\0';
+		if (strlen(line) > 0)
+			line[strlen(line) - 1] = '\0';
 		/*
 		 * Clear out white space and tabs
 		 */
