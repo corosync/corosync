@@ -97,7 +97,7 @@ libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) -shared -o $@ \
-		-Wl,-soname=liblogsys_pg.so.$(SOMAJOR) \
+		-Wl,-soname=liblogsys.so.$(SOMAJOR) \
 		$^ $(LDFLAGS) -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
