@@ -36,6 +36,8 @@
  * Provides a quorum API using the corosync executive
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

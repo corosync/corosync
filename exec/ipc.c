@@ -31,6 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -86,8 +89,6 @@
 #include "sync.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
-
-#include "config.h"
 
 LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 

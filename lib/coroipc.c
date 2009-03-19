@@ -35,6 +35,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -58,8 +60,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/coroipc.h>
-
-#include "config.h"
 
 enum SA_HANDLE_STATE {
 	SA_HANDLE_STATE_EMPTY,

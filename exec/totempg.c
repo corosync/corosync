@@ -82,6 +82,8 @@
  *	
  */
 
+#include <config.h>
+
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>

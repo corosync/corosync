@@ -28,6 +28,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -43,7 +45,6 @@
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/hdb.h>
 #include <stdlib.h>
-#include "config.h"
 
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;

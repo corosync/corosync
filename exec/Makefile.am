@@ -32,10 +32,6 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CFLAGS		= -fPIC
-AM_CPPFLAGS		= -DSYSCONFDIR=\"${sysconfdir}\" \
-			  -DLOCALSTATEDIR=\"${localstatedir}\" \
-			  -DLCRSODIR=\"${LCRSODIR}\" \
-			  -DSOCKETDIR=\"${SOCKETDIR}\"
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 

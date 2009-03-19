@@ -32,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>

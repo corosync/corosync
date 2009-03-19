@@ -33,8 +33,6 @@
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
-AM_CPPFLAGS		= -DLOCALSTATEDIR=\"${localstatedir}\" \
-			  -DSOCKETDIR=\"${SOCKETDIR}\"
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
@@ -58,6 +56,9 @@ noinst_HEADERS		= sa-confdb.h util.h \
 			  libcoroipc.versions libcpg.versions \
 			  libevs.versions libpload.versions \
 			  libquorum.versions libvotequorum.versions
+
+../lcr/lcr_ifact.o:
+	$(MAKE) -C ../lcr lcr_ifact.o
 
 if BUILD_DARWIN
 

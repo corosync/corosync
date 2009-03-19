@@ -33,7 +33,9 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 
-INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
+INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include \
+			  -I$(top_builddir)/include/corosync \
+			  -I$(top_srcdir)/include/corosync
 
 LCRSO			= service_evs.lcrso service_cfg.lcrso \
 			  service_cpg.lcrso service_confdb.lcrso \

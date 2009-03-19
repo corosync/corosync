@@ -47,6 +47,8 @@
  *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
  */
 
+#include <config.h>
+
 #include <assert.h>
 #include <sys/mman.h>
 #include <sys/types.h>

@@ -37,6 +37,9 @@
  * Add work to a work group and have threads process the work
  * Provide blocking for all work to complete 
  */
+
+#include <config.h>
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>

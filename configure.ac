@@ -109,6 +109,19 @@ cc_supports_flag() {
 	return $RC
 }
 
+## cleanup
+AC_MSG_NOTICE(Sanitizing prefix: ${prefix})
+case $prefix in
+  NONE) prefix=/usr/local;;
+esac
+
+AC_MSG_NOTICE(Sanitizing exec_prefix: ${exec_prefix})
+case $exec_prefix in
+  dnl For consistency with Heartbeat, map NONE->$prefix
+  NONE)   exec_prefix=$prefix;;
+  prefix) exec_prefix=$prefix;;
+esac
+
 ## local defines
 PKG_FEATURES=""
 
@@ -303,6 +316,11 @@ AC_SUBST([DARWIN_OPTS])
 AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
 AC_SUBST([LINT_FLAGS])
+
+AC_DEFINE_UNQUOTED([LCRSODIR], "$(eval echo ${LCRSODIR})", [LCRSO directory])
+AC_DEFINE_UNQUOTED([SOCKETDIR], "$(eval echo ${SOCKETDIR})", [Socket directory])
+AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
+AC_DEFINE_UNQUOTED([SYSCONFDIR], "$(eval echo ${sysconfdir})", [sysconfig directory])
 
 AC_OUTPUT
 
