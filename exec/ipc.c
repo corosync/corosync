@@ -228,14 +228,12 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		return (0);
 	}
 
-	ipc_serialize_lock_fn();
 	/*
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
 		res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
 		if (res == -1) {
-			ipc_serialize_unlock_fn();
 			return (0);
 		} else {
 			conn_info->state = CONN_STATE_LIB_EXIT_CALLED;
@@ -245,7 +243,6 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	pthread_mutex_lock (&conn_info->mutex);
 	if (conn_info->refcount > 0) {
 		pthread_mutex_unlock (&conn_info->mutex);
-		ipc_serialize_unlock_fn();
 		return (0);
 	}
 	list_del (&conn_info->list);
@@ -266,7 +263,6 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	}
 	close (conn_info->fd);
 	free (conn_info);
-	ipc_serialize_unlock_fn();
 	return (-1);
 }
 
