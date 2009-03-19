@@ -30,7 +30,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-LIBS = evs cpg cfg coroutil confdb quorum votequorum totem_pg logsys
+LIBS = cfg confdb coroipc cpg evs logsys pload quorum totem_pg votequorum
 
 pkgconf_LIBS = $(LIBS:%=lib%)
 
