@@ -176,8 +176,7 @@ static void defaults_path_build (void)
 	char *res;
 
 	res = getcwd (cwd, sizeof (cwd));
-	if (res != NULL) {
-		path_list[0] = strdup (cwd);
+	if (res != NULL && (path_list[0] = strdup (cwd)) != NULL) {
 		path_list_entries++;
 	}
 	
