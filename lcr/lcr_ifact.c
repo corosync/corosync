@@ -243,7 +243,8 @@ static int ldso_path_build (const char *path, const char *filename)
 	}
 
 	while (fgets (string, sizeof (string), fp)) {
-		string[strlen(string) - 1] = '\0';
+		if (strlen(string) > 0)
+			string[strlen(string) - 1] = '\0';
 		if (strncmp (string, "include", strlen ("include")) == 0) {
 			newpath_tmp = string + strlen ("include") + 1;
 			for (j = strlen (string);
