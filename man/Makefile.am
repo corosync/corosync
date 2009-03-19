@@ -36,8 +36,6 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= index.html
 
-index_html		= ${srcdir}/index.html
-
 dist_man_MANS = \
 	corosync.conf.5 \
 	confdb_overview.8 \
@@ -97,15 +95,17 @@ if BUILD_HTML_DOCS
 
 HTML_DOCS = $(dist_man_MANS:%=%.html)
 
+INDEX_HTML = index.html
+
 %.html: %
 	$(GROFF) -mandoc -Thtml $^ > $@
 
 install-data-local:
 	install -d $(DESTDIR)/${docdir}/html
-	install -m644 $(index_html) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
+	install -m644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
 
 uninstall-local:
-	cd $(DESTDIR)/${docdir}/html && rm -f $(EXTRA_DIST) $(HTML_DOCS)
+	cd $(DESTDIR)/${docdir}/html && rm -f $(INDEX_HTML) $(HTML_DOCS)
 	rmdir $(DESTDIR)/${docdir}/html 2> /dev/null || :
 
 all-local: $(HTML_DOCS)
