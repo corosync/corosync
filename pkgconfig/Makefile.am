@@ -36,6 +36,8 @@ pkgconf_LIBS = $(LIBS:%=lib%)
 
 target_LIBS = $(LIBS:%=lib%.pc)
 
+target_PACKAGE = corosync.pc
+
 lib%:
 	cat $(srcdir)/libtemplate.pc.in | sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
@@ -45,7 +47,7 @@ lib%:
 	> $@.pc;
 	touch $@
 
-corosync.pc:
+$(target_PACKAGE):
 	cat $(srcdir)/$@.in | sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
 		-e 's#@LIBDIR@#$(libdir)#g' \
@@ -54,14 +56,14 @@ corosync.pc:
 		-e 's#@COROSOCKETDIR@#$(SOCKETDIR)#g' \
 	> $@
 
-all-local: $(pkgconf_LIBS) corosync.pc
+all-local: $(pkgconf_LIBS) $(target_PACKAGE)
 
 install-exec-local:
 	install -d $(DESTDIR)/$(libdir)/pkgconfig
-	install -m 644 $(target_LIBS) $(DESTDIR)/$(libdir)/pkgconfig
+	install -m 644 $(target_LIBS) $(target_PACKAGE) $(DESTDIR)/$(libdir)/pkgconfig
 
 uninstall-local:
-	cd $(DESTDIR)/$(libdir)/pkgconfig && rm -f $(target_LIBS)
+	cd $(DESTDIR)/$(libdir)/pkgconfig && rm -f $(target_LIBS) $(target_PACKAGE)
 	rmdir $(DESTDIR)/$(libdir)/pkgconfig 2> /dev/null || :
 
 clean-local:
