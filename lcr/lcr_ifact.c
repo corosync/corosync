@@ -200,7 +200,10 @@ static void ld_library_path_build (void)
 
 	p_s = strtok_r (my_ld_library_path, ":", &ptrptr);
 	while (p_s != NULL) {
-		path_list[path_list_entries++] = strdup (p_s);
+		char *p = strdup (p_s);
+		if (p) {
+			path_list[path_list_entries++] = p;
+		}
 		p_s = strtok_r (NULL, ":", &ptrptr);
 	}
 
@@ -243,6 +246,7 @@ static int ldso_path_build (const char *path, const char *filename)
 	}
 
 	while (fgets (string, sizeof (string), fp)) {
+		char *p;
 		if (strlen(string) > 0)
 			string[strlen(string) - 1] = '\0';
 		if (strncmp (string, "include", strlen ("include")) == 0) {
@@ -261,7 +265,10 @@ static int ldso_path_build (const char *path, const char *filename)
 			ldso_path_build (newpath, new_filename);
 			continue;
 		}
-		path_list[path_list_entries++] = strdup (string);
+		p = strdup (string);
+		if (p) {
+			path_list[path_list_entries++] = p;
+		}
 	}
 	fclose(fp);
 #endif
