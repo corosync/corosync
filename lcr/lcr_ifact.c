@@ -167,7 +167,8 @@ static inline int lcr_lib_loaded (
 	return (0);
 }
 
-const char *path_list[128];
+enum { PATH_LIST_SIZE = 128 };
+const char *path_list[PATH_LIST_SIZE];
 unsigned int path_list_entries = 0;
 
 static void defaults_path_build (void)
@@ -201,7 +202,7 @@ static void ld_library_path_build (void)
 	p_s = strtok_r (my_ld_library_path, ":", &ptrptr);
 	while (p_s != NULL) {
 		char *p = strdup (p_s);
-		if (p) {
+		if (p && path_list_entries < PATH_LIST_SIZE) {
 			path_list[path_list_entries++] = p;
 		}
 		p_s = strtok_r (NULL, ":", &ptrptr);
@@ -266,7 +267,7 @@ static int ldso_path_build (const char *path, const char *filename)
 			continue;
 		}
 		p = strdup (string);
-		if (p) {
+		if (p && path_list_entries < PATH_LIST_SIZE) {
 			path_list[path_list_entries++] = p;
 		}
 	}
