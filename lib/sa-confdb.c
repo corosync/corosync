@@ -103,11 +103,15 @@ static int load_config(void)
 	/* User's bootstrap config service */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
-		config_iface = strdup("corosync_parser");
+		if ((config_iface = strdup("corosync_parser")) == NULL) {
+			return -1;
+		}
 	}
 
 	/* Make a copy so we can deface it with strtok */
-	config_iface = strdup(config_iface);
+	if ((config_iface = strdup(config_iface)) == NULL) {
+		return -1;
+	}
 
 	iface = strtok(config_iface, ":");
 	while (iface)
