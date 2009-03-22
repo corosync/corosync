@@ -1,6 +1,6 @@
 # Version and symbol export for libvotequorum.so
 
-OPENAIS_VOTEQUORUM_1.0 {
+COROSYNC_VOTEQUORUM_1.0 {
 	global:	   
 		votequorum_initialize;
 		votequorum_finalize;

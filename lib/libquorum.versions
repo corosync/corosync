@@ -1,6 +1,6 @@
 # Version and symbol export for libquorum.so
 
-OPENAIS_QUORUM_1.0 {
+COROSYNC_QUORUM_1.0 {
 	global:	   
 		quorum_initialize;
 		quorum_finalize;
