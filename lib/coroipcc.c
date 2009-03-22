@@ -208,7 +208,7 @@ retry_recv:
 	if (result == -1 && errno == EAGAIN) {
 		goto retry_recv;
 	}
-#if defined(OPENAIS_SOLARIS) || defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	/* On many OS poll never return POLLHUP or POLLERR.
 	 * EOF is detected when recvmsg return 0.
 	 */
@@ -296,7 +296,7 @@ coroipcc_service_connect (
 	}
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
-#if defined(OPENAIS_BSD) || defined(OPENAIS_DARWIN)
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	address.sun_len = sizeof(struct sockaddr_un);
 #endif
 	address.sun_family = PF_UNIX;
