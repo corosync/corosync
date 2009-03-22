@@ -59,7 +59,7 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 
 enum SA_HANDLE_STATE {
 	SA_HANDLE_STATE_EMPTY,
@@ -88,12 +88,8 @@ struct ipc_segment {
 /* SUN_LEN is broken for abstract namespace 
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
-
-static const char *socketname = "libais.socket";
 #else
 #define AIS_SUN_LEN(a) SUN_LEN(a)
-
-static const char *socketname = SOCKETDIR "/libais.socket";
 #endif
 
 #ifdef SO_NOSIGPIPE
@@ -105,7 +101,7 @@ void socket_nosigpipe(int s)
 #endif 
 
 static int
-cslib_send (
+coroipcc_send (
 	int s,
 	void *msg,
 	size_t len)
@@ -181,7 +177,7 @@ error_exit:
 }
 
 static int
-cslib_recv (
+coroipcc_recv (
 	int s,
 	void *msg,
 	size_t len)
@@ -251,12 +247,12 @@ priv_change_send (struct ipc_segment *ipc_segment)
 	req_priv_change.egid = getegid();
 
 	buf_req = MESSAGE_REQ_CHANGE_EUID;
-	res = cslib_send (ipc_segment->fd, &buf_req, 1);
+	res = coroipcc_send (ipc_segment->fd, &buf_req, 1);
 	if (res == -1) {
 		return (-1);
 	}
 
-	res = cslib_send (ipc_segment->fd, &req_priv_change,
+	res = coroipcc_send (ipc_segment->fd, &req_priv_change,
 		sizeof (req_priv_change));
 	if (res == -1) {
 		return (-1);
@@ -267,7 +263,8 @@ priv_change_send (struct ipc_segment *ipc_segment)
 }
 	
 cs_error_t
-cslib_service_connect (
+coroipcc_service_connect (
+	const char *socket_name,
 	enum service_types service,
 	void **shmseg)
 {
@@ -293,10 +290,11 @@ cslib_service_connect (
 	address.sun_len = sizeof(struct sockaddr_un);
 #endif
 	address.sun_family = PF_UNIX;
+
 #if defined(COROSYNC_LINUX)
-	strcpy (address.sun_path + 1, socketname);
+	sprintf (address.sun_path + 1, "%s", socket_name);
 #else
-	strcpy (address.sun_path, socketname);
+	strcpy (address.sun_path, "%s%s", SOCKETDIR, socket_name);
 #endif
 	res = connect (request_fd, (struct sockaddr *)&address,
 		AIS_SUN_LEN(&address));
@@ -352,11 +350,11 @@ cslib_service_connect (
 	req_setup.semkey = semkey;
 	req_setup.service = service;
 
-	error = cslib_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
+	error = coroipcc_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
 	if (error != 0) {
 		goto error_exit;
 	}
-	error = cslib_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
+	error = coroipcc_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
 	if (error != 0) {
 		goto error_exit;
 	}
@@ -385,7 +383,7 @@ error_exit:
 }
 
 cs_error_t
-cslib_service_disconnect (
+coroipcc_service_disconnect (
 	void *ipc_context)
 {
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
@@ -398,7 +396,7 @@ cslib_service_disconnect (
 }
 
 int
-cslib_dispatch_flow_control_get (
+coroipcc_dispatch_flow_control_get (
         void *ipc_context)
 {
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
@@ -408,7 +406,7 @@ cslib_dispatch_flow_control_get (
 
 
 int
-cslib_fd_get (void *ipc_ctx)
+coroipcc_fd_get (void *ipc_ctx)
 {
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
 
@@ -441,7 +439,7 @@ static void memcpy_swrap (
 int original_flow = -1;
 
 int
-cslib_dispatch_recv (void *ipc_ctx, void *data, int timeout)
+coroipcc_dispatch_recv (void *ipc_ctx, void *data, int timeout)
 {
 	struct pollfd ufds;
 	struct sembuf sop;
@@ -491,7 +489,7 @@ retry_recv:
 	 */
 	if (ipc_segment->flow_control_state) {
 		buf_two = MESSAGE_REQ_OUTQ_FLUSH;
-		res = cslib_send (ipc_segment->fd, &buf_two, 1);
+		res = coroipcc_send (ipc_segment->fd, &buf_two, 1);
 		assert (res == 0); //TODO
 	}
 	/*
@@ -547,7 +545,7 @@ retry_semop:
 }
 
 static cs_error_t
-cslib_msg_send (
+coroipcc_msg_send (
 	void *ipc_context,
 	struct iovec *iov,
 	int iov_len)
@@ -588,7 +586,7 @@ retry_semop:
 }
 
 static cs_error_t
-cslib_reply_receive (
+coroipcc_reply_receive (
 	void *ipc_context,
 	void *res_msg, int res_len)
 {
@@ -622,7 +620,7 @@ retry_semop:
 }
 
 static cs_error_t
-cslib_reply_receive_in_buf (
+coroipcc_reply_receive_in_buf (
 	void *ipc_context,
 	void **res_msg)
 {
@@ -656,7 +654,7 @@ retry_semop:
 }
 
 cs_error_t
-cslib_msg_send_reply_receive (
+coroipcc_msg_send_reply_receive (
 	void *ipc_context,
 	struct iovec *iov,
 	int iov_len,
@@ -665,12 +663,12 @@ cslib_msg_send_reply_receive (
 {
 	cs_error_t res;
 
-	res = cslib_msg_send (ipc_context, iov, iov_len);
+	res = coroipcc_msg_send (ipc_context, iov, iov_len);
 	if (res != CS_OK) {
 		return (res);
 	}
 
-	res = cslib_reply_receive (ipc_context, res_msg, res_len);
+	res = coroipcc_reply_receive (ipc_context, res_msg, res_len);
 	if (res != CS_OK) {
 		return (res);
 	}
@@ -679,7 +677,7 @@ cslib_msg_send_reply_receive (
 }
 
 cs_error_t
-cslib_msg_send_reply_receive_in_buf (
+coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
 	struct iovec *iov,
 	int iov_len,
@@ -687,12 +685,12 @@ cslib_msg_send_reply_receive_in_buf (
 {
 	unsigned int res;
 
-	res = cslib_msg_send (ipc_context, iov, iov_len);
+	res = coroipcc_msg_send (ipc_context, iov, iov_len);
 	if (res != CS_OK) {
 		return (res);
 	}
 
-	res = cslib_reply_receive_in_buf (ipc_context, res_msg);
+	res = coroipcc_reply_receive_in_buf (ipc_context, res_msg);
 	if (res != CS_OK) {
 		return (res);
 	}

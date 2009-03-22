@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides an extended virtual synchrony API using the cslib executive
+ * Provides an extended virtual synchrony API using the corosync executive
  */
 
 #include <config.h>
@@ -52,7 +52,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/evs.h>
 #include <corosync/ipc_evs.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 
 struct evs_inst {
 	void *ipc_ctx;
@@ -89,8 +89,8 @@ static void evs_instance_destructor (void *instance)
 
 
 /**
- * @defgroup evs_cslib The extended virtual synchrony passthrough API
- * @ingroup cslib
+ * @defgroup evs_coroipcc The extended virtual synchrony passthrough API
+ * @ingroup coroipcc
  *
  * @{
  */
@@ -117,7 +117,7 @@ evs_error_t evs_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (EVS_SERVICE, &evs_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, EVS_SERVICE, &evs_inst->ipc_ctx);
 	if (error != EVS_OK) {
 		goto error_put_destroy;
 	}
@@ -163,7 +163,7 @@ evs_error_t evs_finalize (
 
 	evs_inst->finalize = 1;
 
-	cslib_service_disconnect (evs_inst->ipc_ctx);
+	coroipcc_service_disconnect (evs_inst->ipc_ctx);
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
@@ -186,7 +186,7 @@ evs_error_t evs_fd_get (
 		return (error);
 	}
 
-	*fd = cslib_fd_get (evs_inst->ipc_ctx);
+	*fd = coroipcc_fd_get (evs_inst->ipc_ctx);
 
 	saHandleInstancePut (&evs_handle_t_db, handle);
 
@@ -222,7 +222,7 @@ evs_error_t evs_dispatch (
 	}
 
 	do {
-		dispatch_avail = cslib_dispatch_recv (evs_inst->ipc_ctx, (void *)&dispatch_data, timeout);
+		dispatch_avail = coroipcc_dispatch_recv (evs_inst->ipc_ctx, (void *)&dispatch_data, timeout);
 		if (dispatch_avail == -1) {
 			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
@@ -341,7 +341,7 @@ evs_error_t evs_join (
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
+	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
 		&res_lib_evs_join, sizeof (struct res_lib_evs_join));
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
@@ -386,7 +386,7 @@ evs_error_t evs_leave (
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
+	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
 		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave));
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
@@ -439,7 +439,7 @@ evs_error_t evs_mcast_joined (
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
 		iov_len + 1,
 		&res_lib_evs_mcast_joined,
 		sizeof (struct res_lib_evs_mcast_joined));
@@ -496,7 +496,7 @@ evs_error_t evs_mcast_groups (
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
 		iov_len + 2,
 		&res_lib_evs_mcast_groups,
 		sizeof (struct res_lib_evs_mcast_groups));
@@ -539,7 +539,7 @@ evs_error_t evs_membership_get (
 
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (evs_inst->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_evs_membership_get,

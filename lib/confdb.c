@@ -48,7 +48,7 @@
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
 #include <corosync/mar_gen.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 #include <corosync/list.h>
 
 #include "sa-confdb.h"
@@ -160,7 +160,7 @@ cs_error_t confdb_initialize (
 		confdb_inst->standalone = 1;
 	}
 	else {
-		error = cslib_service_connect (CONFDB_SERVICE, &confdb_inst->ipc_ctx);
+		error = coroipcc_service_connect (IPC_SOCKET_NAME, CONFDB_SERVICE, &confdb_inst->ipc_ctx);
 	}
 	if (error != CS_OK)
 		goto error_put_destroy;
@@ -218,7 +218,7 @@ cs_error_t confdb_finalize (
 	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
 	if (!confdb_inst->standalone) {
-		cslib_service_disconnect (confdb_inst->ipc_ctx);
+		coroipcc_service_disconnect (confdb_inst->ipc_ctx);
 	}
 
 	(void)saHandleDestroy (&confdb_handle_t_db, handle);
@@ -240,7 +240,7 @@ cs_error_t confdb_fd_get (
 		return (error);
 	}
 
-	*fd = cslib_fd_get (confdb_inst->ipc_ctx);
+	*fd = coroipcc_fd_get (confdb_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
 
@@ -326,7 +326,7 @@ cs_error_t confdb_dispatch (
 	do {
 		pthread_mutex_lock (&confdb_inst->dispatch_mutex);
 
-		dispatch_avail = cslib_dispatch_recv (confdb_inst->ipc_ctx,
+		dispatch_avail = coroipcc_dispatch_recv (confdb_inst->ipc_ctx,
 			(void *)&dispatch_data, timeout);
 
 
@@ -458,7 +458,7 @@ cs_error_t confdb_object_create (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -511,7 +511,7 @@ cs_error_t confdb_object_destroy (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -564,7 +564,7 @@ cs_error_t confdb_object_parent_get (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -614,7 +614,7 @@ static cs_error_t do_find_destroy(
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -724,7 +724,7 @@ cs_error_t confdb_key_create (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -786,7 +786,7 @@ cs_error_t confdb_key_delete (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -846,7 +846,7 @@ cs_error_t confdb_key_get (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -909,7 +909,7 @@ cs_error_t confdb_key_increment (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -971,7 +971,7 @@ cs_error_t confdb_key_decrement (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1040,7 +1040,7 @@ cs_error_t confdb_key_replace (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1215,7 +1215,7 @@ cs_error_t confdb_object_find (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1287,7 +1287,7 @@ cs_error_t confdb_object_iter (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1362,7 +1362,7 @@ cs_error_t confdb_key_iter (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1422,7 +1422,7 @@ cs_error_t confdb_write (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1477,7 +1477,7 @@ cs_error_t confdb_reload (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1531,7 +1531,7 @@ cs_error_t confdb_track_changes (
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,
@@ -1577,7 +1577,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		confdb_inst->ipc_ctx,
 		&iov,
 		1,

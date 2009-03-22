@@ -17,13 +17,13 @@ COROSYNC_CFG_0.82 {
 		
 		
 	local:
-		cslib_service_connect;
-		cslib_service_disconnect;
-		cslib_dispatch_flow_control_get;
-		cslib_fd_get;
-		cslib_dispatch_recv;
-		cslib_msg_send_reply_receive;
-		cslib_msg_send_reply_receive_in_buf;
+		coroipcc_service_connect;
+		coroipcc_service_disconnect;
+		coroipcc_dispatch_flow_control_get;
+		coroipcc_fd_get;
+		coroipcc_dispatch_recv;
+		coroipcc_msg_send_reply_receive;
+		coroipcc_msg_send_reply_receive_in_buf;
 		saHandleCreate;
 		saHandleDestroy;
 		saHandleInstanceGet;

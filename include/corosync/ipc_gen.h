@@ -54,6 +54,8 @@ enum service_types {
 	VOTEQUORUM_SERVICE = 14,
 };
 
+#define IPC_SOCKET_NAME "corosync.ipc"
+
 enum req_init_types {
 	MESSAGE_REQ_RESPONSE_INIT = 0,
 	MESSAGE_REQ_DISPATCH_INIT = 1

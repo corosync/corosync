@@ -48,7 +48,7 @@
 
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 #include "corosync/votequorum.h"
 #include "corosync/ipc_votequorum.h"
 
@@ -97,7 +97,7 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (VOTEQUORUM_SERVICE, &votequorum_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, VOTEQUORUM_SERVICE, &votequorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -145,7 +145,7 @@ cs_error_t votequorum_finalize (
 
 	votequorum_inst->finalize = 1;
 
-	cslib_service_disconnect (votequorum_inst->ipc_ctx);
+	coroipcc_service_disconnect (votequorum_inst->ipc_ctx);
 
 	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
@@ -182,7 +182,7 @@ cs_error_t votequorum_getinfo (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -236,7 +236,7 @@ cs_error_t votequorum_setexpected (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -283,7 +283,7 @@ cs_error_t votequorum_setvotes (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -334,7 +334,7 @@ cs_error_t votequorum_qdisk_register (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -380,7 +380,7 @@ cs_error_t votequorum_qdisk_poll (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -423,7 +423,7 @@ cs_error_t votequorum_qdisk_unregister (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -470,7 +470,7 @@ cs_error_t votequorum_qdisk_getinfo (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -518,7 +518,7 @@ cs_error_t votequorum_setstate (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -562,7 +562,7 @@ cs_error_t votequorum_leaving (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -609,7 +609,7 @@ cs_error_t votequorum_trackstart (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -652,7 +652,7 @@ cs_error_t votequorum_trackstop (
 
 	pthread_mutex_lock (&votequorum_inst->response_mutex);
 
-        error = cslib_msg_send_reply_receive (
+        error = coroipcc_msg_send_reply_receive (
 		votequorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -725,7 +725,7 @@ cs_error_t votequorum_fd_get (
                 return (error);
         }
 
-	*fd = cslib_fd_get (votequorum_inst->ipc_ctx);
+	*fd = coroipcc_fd_get (votequorum_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&votequorum_handle_t_db, handle);
 
@@ -776,7 +776,7 @@ cs_error_t votequorum_dispatch (
 	do {
 		pthread_mutex_lock (&votequorum_inst->dispatch_mutex);
 
-		dispatch_avail = cslib_dispatch_recv (
+		dispatch_avail = coroipcc_dispatch_recv (
 			votequorum_inst->ipc_ctx,
 			(void *)&dispatch_data, timeout);
 

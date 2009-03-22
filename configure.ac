@@ -7,7 +7,7 @@ AC_PREREQ([2.61])
 AC_INIT([corosync], [0.95], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE
 
-AC_CONFIG_SRCDIR([lib/coroipc.c])
+AC_CONFIG_SRCDIR([lib/coroipcc.c])
 AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
 
 AC_CANONICAL_HOST
@@ -79,7 +79,8 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred gettimeofday inet_ntoa memmove memset \
 		mkdir scandir select socket strcasecmp strchr strdup \
-		strerror strrchr strspn strstr])
+		strerror strrchr strspn strstr pthread_spin_lock \
+		pthread_spin_unlock])
 
 # add man and init dirs?
 AC_CONFIG_FILES([Makefile

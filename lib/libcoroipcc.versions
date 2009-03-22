@@ -1,19 +1,7 @@
-# Version and symbol export for libcpg.so
+# Version and symbol export for libipcutil.so
 
-COROSYNC_CPG_1.0 {
+COROSYNC_IPCUTIL_2.0 {
 	global:
-		cpg_initialize;
-		cpg_finalize;
-		cpg_fd_get;
-		cpg_dispatch;
-		cpg_join;
-		cpg_leave;
-		cpg_mcast_joined;
-		cpg_membership_get;
-		cpg_context_get;
-		cpg_context_set;
-
-	local:
 		coroipcc_service_connect;
 		coroipcc_service_disconnect;
 		coroipcc_dispatch_flow_control_get;

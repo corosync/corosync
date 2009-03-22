@@ -60,8 +60,6 @@ struct poll_instance {
 	struct pollfd *ufds;
 	int poll_entry_count;
 	struct timerlist timerlist;
-	void (*serialize_lock_fn) (void);
-	void (*serialize_unlock_fn) (void);
 	int stop_requested;
 };
 
@@ -74,9 +72,7 @@ static struct hdb_handle_database poll_instance_database = {
 	.iterator	= 0
 };
 
-hdb_handle_t poll_create (
-	void (*serialize_lock_fn) (void),
-	void (*serialize_unlock_fn) (void))
+hdb_handle_t poll_create (void)
 {
 	hdb_handle_t handle;
 	struct poll_instance *poll_instance;
@@ -97,8 +93,6 @@ hdb_handle_t poll_create (
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
 	poll_instance->stop_requested = 0;
-	poll_instance->serialize_lock_fn = serialize_lock_fn;
-	poll_instance->serialize_unlock_fn = serialize_unlock_fn;
 	timerlist_init (&poll_instance->timerlist);
 
 	return (handle);
@@ -408,13 +402,11 @@ retry_poll:
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
 
-				poll_instance->serialize_lock_fn();
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
 					poll_instance->ufds[i].fd, 
 					poll_instance->ufds[i].revents,
 					poll_instance->poll_entries[i].data);
 
-				poll_instance->serialize_unlock_fn();
 				/*
 				 * Remove dispatch functions that return -1
 				 */
@@ -423,9 +415,7 @@ retry_poll:
 				}
 			}
 		}
-		poll_instance->serialize_lock_fn();
 		timerlist_expire (&poll_instance->timerlist);
-		poll_instance->serialize_unlock_fn();
 	} /* for (;;) */
 
 	hdb_handle_put (&poll_instance_database, handle);

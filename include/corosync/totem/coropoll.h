@@ -39,9 +39,7 @@
 
 typedef void * poll_timer_handle;
 
-hdb_handle_t poll_create (
-	void (*serialize_lock) (void),
-	void (*serialize_unlock) (void));
+hdb_handle_t poll_create (void);
 
 int poll_destroy (hdb_handle_t hdb_handle_t);
 

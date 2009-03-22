@@ -38,31 +38,34 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemrrp.c \
 			  totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
 LOGSYS_SRC		= wthread.c logsys.c
+COROIPCS_SRC		= coroipcs.c coroipcs.h
 
 LCRSO_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
 LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
 LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
 
-lib_LIBRARIES		= libtotem_pg.a liblogsys.a
+lib_LIBRARIES		= libtotem_pg.a liblogsys.a libcoroipcs.a
 sbin_PROGRAMS		= corosync
 
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 liblogsys_a_SOURCES	= $(LOGSYS_SRC)
+libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 
-corosync_SOURCES 	= main.c mempool.c util.c sync.c apidef.c service.c ipc.c \
+corosync_SOURCES 	= main.c mempool.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c ../lcr/lcr_ifact.c
-corosync_LDADD	  	= -ltotem_pg -llogsys
-corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME)
+corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs
+corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS		= $(LOGSYS_SRC:%.c=%.o)
+COROIPCS_OBJS		= $(COROIPCS_SRC:%.c=%.o)
 
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
-noinst_HEADERS		= apidef.h crypto.h ipc.h mainconfig.h main.h mempool.h \
+noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h mempool.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
 			  version.h vsf.h wthread.h
@@ -78,6 +81,9 @@ libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@ -lpthread
+
+libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(COROIPCS_OBJS) -o $@ -lpthread
 
 else
 
@@ -97,6 +103,13 @@ liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 		$^ $(LDFLAGS) -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
+
+libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
+	$(CC) -shared -o $@ \
+		-Wl,-soname=libcoroipcs.so.$(SOMAJOR) \
+		$^ $(LDFLAGS) -lpthread
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 endif
 

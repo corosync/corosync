@@ -54,7 +54,7 @@
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
 #include <corosync/ipc_cfg.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 
 struct cfg_res_overlay {
 	mar_res_header_t header;
@@ -115,7 +115,7 @@ corosync_cfg_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (CFG_SERVICE, &cfg_instance->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, CFG_SERVICE, &cfg_instance->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -153,7 +153,7 @@ corosync_cfg_fd_get (
 		return (error);
 	}
 
-	*selection_fd = cslib_fd_get (cfg_instance->ipc_ctx);
+	*selection_fd = coroipcc_fd_get (cfg_instance->ipc_ctx);
 
 	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 	return (CS_OK);
@@ -194,7 +194,7 @@ corosync_cfg_dispatch (
 	}
 
 	do {
-		dispatch_avail = cslib_dispatch_recv (cfg_instance->ipc_ctx,
+		dispatch_avail = coroipcc_dispatch_recv (cfg_instance->ipc_ctx,
 			(void *)&dispatch_data, timeout);
 
 		/*
@@ -287,7 +287,7 @@ corosync_cfg_finalize (
 
 	cfg_instance->finalize = 1;
 
-	cslib_service_disconnect (cfg_instance->ipc_ctx);
+	coroipcc_service_disconnect (cfg_instance->ipc_ctx);
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
@@ -331,7 +331,7 @@ corosync_cfg_ring_status_get (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive(cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive(cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_ringstatusget,
@@ -411,7 +411,7 @@ corosync_cfg_ring_reenable (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_ringreenable,
@@ -453,7 +453,7 @@ corosync_cfg_service_load (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_serviceload,
@@ -495,7 +495,7 @@ corosync_cfg_service_unload (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_serviceunload,
@@ -534,7 +534,7 @@ corosync_cfg_state_track (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_statetrack,
@@ -570,7 +570,7 @@ corosync_cfg_state_track_stop (
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrackstop),
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_statetrackstop,
@@ -612,7 +612,7 @@ corosync_cfg_admin_state_get (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_administrativestateget,
@@ -657,7 +657,7 @@ corosync_cfg_admin_state_set (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_administrativestateset,
@@ -704,7 +704,7 @@ corosync_cfg_kill_node (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_killnode,
@@ -745,7 +745,7 @@ corosync_cfg_try_shutdown (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_tryshutdown,
@@ -784,7 +784,7 @@ corosync_cfg_replyto_shutdown (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_cfg_replytoshutdown,
@@ -826,7 +826,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 
 	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = cslib_msg_send_reply_receive_in_buf (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive_in_buf (cfg_instance->ipc_ctx,
 		&iov,
 		1,
 		&return_address);
@@ -890,7 +890,7 @@ cs_error_t corosync_cfg_local_get (
 
 	pthread_mutex_lock (&cfg_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (
+	error = coroipcc_msg_send_reply_receive (
 		cfg_inst->ipc_ctx,
 		&iov,
 		1,

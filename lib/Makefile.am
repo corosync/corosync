@@ -37,23 +37,23 @@ AM_CFLAGS		= -fPIC
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
-			  libvotequorum.a libpload.a libcoroipc.a
+			  libvotequorum.a libpload.a libcoroipcc.a
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
 
-libcpg_a_SOURCES	= coroipc.c cpg.c
-libcfg_a_SOURCES	= coroipc.c cfg.c
-libevs_a_SOURCES	= coroipc.c evs.c
-libpload_a_SOURCES	= coroipc.c pload.c
-libquorum_a_SOURCES	= coroipc.c quorum.c
-libvotequorum_a_SOURCES	= coroipc.c votequorum.c
-libconfdb_a_SOURCES	= coroipc.c confdb.c sa-confdb.c
-libcoroipc_a_SOURCES	= coroipc.c
+libcpg_a_SOURCES	= coroipcc.c cpg.c
+libcfg_a_SOURCES	= coroipcc.c cfg.c
+libevs_a_SOURCES	= coroipcc.c evs.c
+libpload_a_SOURCES	= coroipcc.c pload.c
+libquorum_a_SOURCES	= coroipcc.c quorum.c
+libvotequorum_a_SOURCES	= coroipcc.c votequorum.c
+libconfdb_a_SOURCES	= coroipcc.c confdb.c sa-confdb.c
+libcoroipcc_a_SOURCES	= coroipcc.c
 
 noinst_HEADERS		= sa-confdb.h util.h \
 			  libcfg.versions libconfdb.versions \
-			  libcoroipc.versions libcpg.versions \
+			  libcoroipcc.versions libcpg.versions \
 			  libevs.versions libpload.versions \
 			  libquorum.versions libvotequorum.versions
 
@@ -62,26 +62,26 @@ noinst_HEADERS		= sa-confdb.h util.h \
 
 if BUILD_DARWIN
 
-libcoroipc.so.$(SONAME): coroipc.o
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o -o $@
+libcoroipcc.so.$(SONAME): coroipcc.o
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@
 
-libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o 
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
+libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o 
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl
 
-lib%.so.$(SONAME): coroipc.o %.o
+lib%.so.$(SONAME): coroipcc.o %.o
 	$(CC) $(DARWIN_OPTS) $^ -o $@
 
 else
 
-libcoroipc.so.$(SONAME): coroipc.o
+libcoroipcc.so.$(SONAME): coroipcc.o
 	$(CC) -shared -o $@ \
-		-Wl,-soname=libcoroipc.so.$(SOMAJOR) \
-		-Wl,-version-script=$(srcdir)/libcoroipc.versions \
+		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
+		-Wl,-version-script=$(srcdir)/libcoroipcc.versions \
 		$^ $(LDFLAGS) $(AM_LDFLAGS)
-	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so
-	ln -sf libcoroipc.so.$(SONAME) libcoroipc.so.$(SOMAJOR)
+	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
+	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libconfdb.versions \
@@ -89,7 +89,7 @@ libconfdb.so.$(SONAME): coroipc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
-lib%.so.$(SONAME): coroipc.o %.o
+lib%.so.$(SONAME): coroipcc.o %.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=lib$*.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \

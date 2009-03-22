@@ -47,7 +47,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/ipc_pload.h>
 #include <corosync/pload.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 
 static void pload_instance_destructor (void *instance);
 
@@ -106,7 +106,7 @@ unsigned int pload_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (PLOAD_SERVICE, pload_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, PLOAD_SERVICE, pload_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -151,7 +151,7 @@ unsigned int pload_finalize (
 
 	pload_inst->finalize = 1;
 
-	cslib_service_disconnect(pload_inst->ipc_ctx);
+	coroipcc_service_disconnect(pload_inst->ipc_ctx);
 
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 
@@ -174,7 +174,7 @@ unsigned int pload_fd_get (
 		return (error);
 	}
 
-	*fd = cslib_fd_get (pload_inst->ipc_ctx); 
+	*fd = coroipcc_fd_get (pload_inst->ipc_ctx); 
 
 	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
@@ -209,7 +209,7 @@ unsigned int pload_start (
 	
 	pthread_mutex_lock (&pload_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive(pload_inst->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive(pload_inst->ipc_ctx,
 		&iov,
 		1,
 		&res_lib_pload_start,

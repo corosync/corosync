@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -75,7 +75,7 @@
 #include "main.h"
 #include "sync.h"
 #include "tlist.h"
-#include "ipc.h"
+#include "coroipcs.h"
 #include "timer.h"
 #include "util.h"
 #include "apidef.h"
@@ -95,7 +95,11 @@ LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
 static unsigned int service_count = 32;
 
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+static pthread_spinlock_t serialize_spin;
+#else
 static pthread_mutex_t serialize_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 static struct totem_logging_configuration totem_logging_configuration;
 
@@ -108,6 +112,8 @@ static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
 static struct objdb_iface_ver0 *objdb = NULL;
 
 static struct corosync_api_v1 *api = NULL;
+
+static struct main_config main_config;
 
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
@@ -146,7 +152,7 @@ static void *corosync_exit (void *arg)
 
 	poll_stop (0);
 	totempg_finalize ();
-	cs_ipc_exit ();
+	coroipcs_ipc_exit ();
 	corosync_exit_error (AIS_DONE_EXIT);
 
 	/* never reached */
@@ -203,15 +209,28 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-void serialize_mutex_lock (void)
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+void serialize_lock (void)
+{
+	pthread_spin_lock (&serialize_spin);
+}
+
+void serialize_unlock (void)
+{
+	pthread_spin_unlock (&serialize_spin);
+}
+#else
+void serialize_lock (void)
 {
 	pthread_mutex_lock (&serialize_mutex);
 }
 
-void serialize_mutex_unlock (void)
+void serialize_unlock (void)
 {
 	pthread_mutex_unlock (&serialize_mutex);
 }
+#endif
+
 
 
 static void corosync_sync_completed (void)
@@ -258,6 +277,7 @@ static void confchg_fn (
 {
 	int i;
 
+	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	/*
@@ -271,13 +291,14 @@ static void confchg_fn (
 				joined_list, joined_list_entries, ring_id);
 		}
 	}
+	serialize_unlock ();
 }
 
-static void priv_drop (struct main_config *main_config)
+static void priv_drop (void)
 {
 return; /* TODO: we are still not dropping privs */
-	setuid (main_config->uid);
-	setegid (main_config->gid);
+	setuid (main_config.uid);
+	setegid (main_config.gid);
 }
 
 static void corosync_mempool_init (void)
@@ -427,6 +448,9 @@ static void deliver_fn (
 	fn_id = header->id & 0xffff;
 	if (!ais_service[service])
 		return;
+
+	serialize_lock();
+
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
 		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
@@ -435,6 +459,8 @@ static void deliver_fn (
 
 	ais_service[service]->exec_engine[fn_id].exec_handler_fn
 		(header, nodeid);
+
+	serialize_unlock();
 }
 
 void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
@@ -451,10 +477,201 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+int message_source_is_local (mar_message_source_t *source)
+{
+	int ret = 0;
+
+	assert (source != NULL);
+	if (source->nodeid == totempg_my_nodeid_get ()) {
+		ret = 1;
+	}
+	return ret;
+}
+
+void message_source_set (
+	mar_message_source_t *source,
+	void *conn)
+{
+	assert ((source != NULL) && (conn != NULL));
+	memset (source, 0, sizeof (mar_message_source_t));
+	source->nodeid = totempg_my_nodeid_get ();
+	source->conn = conn;
+}
+
+/*
+ * Provides the glue from corosync to the IPC Service
+ */
+static int corosync_private_data_size_get (unsigned int service)
+{
+	return (ais_service[service]->private_data_size);
+}
+
+static coroipcs_init_fn_lvalue corosync_init_fn_get (unsigned int service)
+{
+	return (ais_service[service]->lib_init_fn);
+}
+
+static coroipcs_exit_fn_lvalue corosync_exit_fn_get (unsigned int service)
+{
+	return (ais_service[service]->lib_exit_fn);
+}
+
+static coroipcs_handler_fn_lvalue corosync_handler_fn_get (unsigned int service, unsigned int id)
+{
+	return (ais_service[service]->lib_engine[id].lib_handler_fn);
+}
+
+
+static int corosync_security_valid (int euid, int egid)
+{
+	if (euid == 0 || egid == 0) {
+		return (1);
+	}
+	if (euid == main_config.uid || egid == main_config.gid) {
+		return (1);
+	}
+	return (0);
+}
+
+static int corosync_service_available (unsigned int service)
+{
+	return (ais_service[service]);
+}
+
+static int corosync_response_size_get (unsigned int service, unsigned int id)
+{
+	return (ais_service[service]->lib_engine[id].response_size);
+
+}
+
+static int corosync_response_id_get (unsigned int service, unsigned int id)
+{
+	return (ais_service[service]->lib_engine[id].response_id);
+}
+
+
+struct sending_allowed_private_data_struct {
+	int reserved_msgs;
+};
+
+static int corosync_sending_allowed (
+	unsigned int service,
+	unsigned int id, 
+	void *msg,
+	void *sending_allowed_private_data)
+{
+	struct sending_allowed_private_data_struct *pd =
+		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+	struct iovec reserve_iovec;
+	mar_req_header_t *header = (mar_req_header_t *)msg;
+	int sending_allowed;
+
+	reserve_iovec.iov_base = (char *)header;
+	reserve_iovec.iov_len = header->size;
+
+	pd->reserved_msgs = totempg_groups_joined_reserve (
+		corosync_group_handle,
+		&reserve_iovec, 1);
+
+	sending_allowed =
+		(corosync_quorum_is_quorate() == 1 ||
+		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
+		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
+		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
+		(pd->reserved_msgs) &&
+		(sync_in_process() == 0)));
+
+	return (sending_allowed);
+}
+
+static void corosync_sending_allowed_release (void *sending_allowed_private_data)
+{
+	struct sending_allowed_private_data_struct *pd =
+		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+
+	totempg_groups_joined_release (pd->reserved_msgs);
+}
+
+static int ipc_subsys_id = -1;
+
+static void ipc_log_printf (char *format, ...) {
+        va_list ap;
+
+        va_start (ap, format);
+	
+       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
+                __FILE__, __LINE__, LOG_LEVEL_ERROR, format, ap);
+
+        va_end (ap);
+}
+
+static int corosync_poll_handler_accept (
+	hdb_handle_t handle,	
+	int fd,
+	int revent,
+	void *context)
+{
+	return (coroipcs_handler_accept (fd, revent, context));
+}
+
+static int corosync_poll_handler_dispatch (
+	hdb_handle_t handle,	
+	int fd,
+	int revent,
+	void *context)
+{
+	return (coroipcs_handler_dispatch (fd, revent, context));
+}
+
+
+static void corosync_poll_accept_add (
+	int fd)
+{
+	poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL, 0,
+		corosync_poll_handler_accept);
+}
+
+static void corosync_poll_dispatch_add (
+	int fd,
+	void *context)
+{
+	poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL, context,
+		corosync_poll_handler_dispatch);
+}
+
+static void corosync_poll_dispatch_modify (
+	int fd,
+	int events)
+{
+	poll_dispatch_modify (corosync_poll_handle, fd, events,
+		corosync_poll_handler_dispatch);
+}
+
+struct coroipcs_init_state ipc_init_state = {
+	.socket_name			= IPC_SOCKET_NAME,
+	.malloc				= malloc,
+	.free				= free,
+	.log_printf			= ipc_log_printf,
+	.security_valid			= corosync_security_valid,
+	.service_available		= corosync_service_available,
+	.private_data_size_get		= corosync_private_data_size_get,
+	.serialize_lock			= serialize_lock,
+	.serialize_unlock		= serialize_unlock,
+	.sending_allowed		= corosync_sending_allowed,
+	.sending_allowed_release	= corosync_sending_allowed_release,
+	.response_size_get		= corosync_response_size_get,
+	.response_id_get		= corosync_response_id_get,
+	.poll_accept_add		= corosync_poll_accept_add,
+	.poll_dispatch_add		= corosync_poll_dispatch_add,
+	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
+	.init_fn_get			= corosync_init_fn_get,
+	.exit_fn_get			= corosync_exit_fn_get,
+	.handler_fn_get			= corosync_handler_fn_get
+};
+
 int main (int argc, char **argv)
 {
 	const char *error_string;
-	struct main_config main_config;
 	struct totem_config totem_config;
 	hdb_handle_t objdb_handle;
 	hdb_handle_t config_handle;
@@ -466,6 +683,10 @@ int main (int argc, char **argv)
 	char *iface;
 	int res, ch;
 	int background, setprio;
+
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+	pthread_spin_init (&serialize_spin, 0);
+#endif
 
  	/* default configuration
 	 */
@@ -505,14 +726,12 @@ int main (int argc, char **argv)
 	(void)signal (SIGQUIT, sigquit_handler);
 	
 	corosync_timer_init (
-		serialize_mutex_lock,
-		serialize_mutex_unlock);
+		serialize_lock,
+		serialize_unlock);
 
 	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
-	corosync_poll_handle = poll_create (
-		serialize_mutex_lock,
-		serialize_mutex_unlock);
+	corosync_poll_handle = poll_create ();
 
 	/*
 	 * Load the object database interface
@@ -678,13 +897,13 @@ int main (int argc, char **argv)
 	 * CAP_SYS_NICE (setscheduler)
 	 * CAP_IPC_LOCK (mlockall)
 	 */
-	priv_drop (&main_config);
+	priv_drop ();
 
 	corosync_mempool_init ();
 
-	cs_ipc_init (main_config.gid,
-		serialize_mutex_lock,
-		serialize_mutex_unlock);
+	ipc_subsys_id = _logsys_subsys_create ("IPC", LOG_INFO);
+
+	coroipcs_ipc_init (&ipc_init_state);
 
 	/*
 	 * Start main processing loop

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -45,8 +45,6 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 
-#define SOCKET_SERVICE_INIT 254
-
 extern struct totempg_group corosync_group;
 
 extern hdb_handle_t corosync_group_handle;
@@ -61,5 +59,9 @@ extern int main_mcast (
 	struct iovec *iovec,
 	int iov_len,
 	unsigned int guarantee);
+
+extern void message_source_set (mar_message_source_t *source, void *conn);
+
+extern int message_source_is_local (mar_message_source_t *source);
 
 #endif /* MAIN_H_DEFINED */

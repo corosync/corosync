@@ -68,30 +68,31 @@ struct saHandleDatabase {
 
 
 cs_error_t
-cslib_service_connect (
+coroipcc_service_connect (
+	const char *socket_name,
 	enum service_types service,
 	void **ipc_context);
 
 cs_error_t
-cslib_service_disconnect (
+coroipcc_service_disconnect (
 	void *ipc_context);
 
 int
-cslib_fd_get (
+coroipcc_fd_get (
 	void *ipc_context);
 
 int
-cslib_dispatch_recv (
+coroipcc_dispatch_recv (
 	void *ipc_context,
 	void *buf,
 	int timeout);
 
 int
-cslib_dispatch_flow_control_get (
+coroipcc_dispatch_flow_control_get (
 	void *ipc_context);
 
 cs_error_t
-cslib_msg_send_reply_receive (
+coroipcc_msg_send_reply_receive (
 	void *ipc_context,
 	struct iovec *iov,
 	int iov_len,
@@ -99,7 +100,7 @@ cslib_msg_send_reply_receive (
 	int res_len);
 
 cs_error_t
-cslib_msg_send_reply_receive_in_buf (
+coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
 	struct iovec *iov,
 	int iov_len,

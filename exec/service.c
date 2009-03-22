@@ -51,7 +51,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include "main.h"
-#include "ipc.h"
+#include "coroipcs.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 

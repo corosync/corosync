@@ -45,6 +45,7 @@ dist_man_MANS = \
 	evs_overview.8 \
 	logsys_overview.8 \
 	votequorum_overview.8 \
+	coroipc_overview.8 \
 	confdb_dispatch.3 \
 	confdb_fd_get.3 \
 	confdb_finalize.3 \

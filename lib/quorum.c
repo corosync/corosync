@@ -48,7 +48,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_gen.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 #include "corosync/quorum.h"
 #include "corosync/ipc_quorum.h"
 
@@ -97,7 +97,7 @@ cs_error_t quorum_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (QUORUM_SERVICE, &quorum_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, QUORUM_SERVICE, &quorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -145,7 +145,7 @@ cs_error_t quorum_finalize (
 
 	quorum_inst->finalize = 1;
 
-	cslib_service_disconnect (quorum_inst->ipc_ctx);
+	coroipcc_service_disconnect (quorum_inst->ipc_ctx);
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
@@ -179,7 +179,7 @@ cs_error_t quorum_getquorate (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = cslib_msg_send_reply_receive (
+       error = coroipcc_msg_send_reply_receive (
 		quorum_inst->ipc_ctx,
 		&iov,
 		1,
@@ -214,7 +214,7 @@ cs_error_t quorum_fd_get (
 		return (error);
 	}
 
-	*fd = cslib_fd_get (quorum_inst->ipc_ctx);
+	*fd = coroipcc_fd_get (quorum_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
 
@@ -285,7 +285,7 @@ cs_error_t quorum_trackstart (
 	iov.iov_base = (char *)&req_lib_quorum_trackstart;
 	iov.iov_len = sizeof (struct req_lib_quorum_trackstart);
 
-       error = cslib_msg_send_reply_receive (
+       error = coroipcc_msg_send_reply_receive (
 		quorum_inst->ipc_ctx,
                 &iov,
                 1,
@@ -328,7 +328,7 @@ cs_error_t quorum_trackstop (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = cslib_msg_send_reply_receive (
+       error = coroipcc_msg_send_reply_receive (
 		quorum_inst->ipc_ctx,
                 &iov,
                 1,
@@ -391,7 +391,7 @@ cs_error_t quorum_dispatch (
 	do {
 		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
 
-		dispatch_avail = cslib_dispatch_recv (quorum_inst->ipc_ctx,
+		dispatch_avail = coroipcc_dispatch_recv (quorum_inst->ipc_ctx,
 			(void *)&dispatch_data, timeout);
 
 		/*

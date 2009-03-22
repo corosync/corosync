@@ -46,7 +46,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include "main.h"
-#include "ipc.h"
+#include "coroipcs.h"
 #include "sync.h"
 #include "quorum.h"
 #include <corosync/engine/coroapi.h>
@@ -77,13 +77,13 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_expire_time_get = corosync_timer_expire_time_get,
 	.ipc_source_set = message_source_set,
 	.ipc_source_is_local = message_source_is_local,
-	.ipc_private_data_get = cs_conn_private_data_get,
-	.ipc_response_iov_send = cs_response_iov_send,
-	.ipc_response_send = cs_response_send,
-	.ipc_dispatch_send = cs_dispatch_send,
-	.ipc_dispatch_iov_send = cs_dispatch_iov_send,
-	.ipc_refcnt_inc =  cs_conn_refcount_inc,
-	.ipc_refcnt_dec = cs_conn_refcount_dec,
+	.ipc_private_data_get = coroipcs_private_data_get,
+	.ipc_response_iov_send = coroipcs_response_iov_send,
+	.ipc_response_send = coroipcs_response_send,
+	.ipc_dispatch_send = coroipcs_dispatch_send,
+	.ipc_dispatch_iov_send = coroipcs_dispatch_iov_send,
+	.ipc_refcnt_inc =  coroipcs_refcount_inc,
+	.ipc_refcnt_dec = coroipcs_refcount_dec,
 	.totem_nodeid_get = totempg_my_nodeid_get,
 	.totem_family_get = totempg_my_family_get,
 	.totem_ring_reenable = totempg_ring_reenable,

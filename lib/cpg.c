@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*
- * Provides a closed process group API using the cslib executive
+ * Provides a closed process group API using the coroipcc executive
  */
 
 #include <config.h>
@@ -51,7 +51,7 @@
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
 #include <corosync/mar_cpg.h>
-#include <corosync/coroipc.h>
+#include <corosync/coroipcc.h>
 
 struct cpg_inst {
 	void *ipc_ctx;
@@ -84,8 +84,8 @@ static void cpg_instance_destructor (void *instance)
 
 
 /**
- * @defgroup cpg_cslib The closed process group API
- * @ingroup cslib
+ * @defgroup cpg_coroipcc The closed process group API
+ * @ingroup coroipcc
  *
  * @{
  */
@@ -107,7 +107,7 @@ cs_error_t cpg_initialize (
 		goto error_destroy;
 	}
 
-	error = cslib_service_connect (CPG_SERVICE, &cpg_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, CPG_SERVICE, &cpg_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -154,7 +154,7 @@ cs_error_t cpg_finalize (
 
 	cpg_inst->finalize = 1;
 
-	cslib_service_disconnect (cpg_inst->ipc_ctx);
+	coroipcc_service_disconnect (cpg_inst->ipc_ctx);
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
@@ -177,7 +177,7 @@ cs_error_t cpg_fd_get (
 		return (error);
 	}
 
-	*fd = cslib_fd_get (cpg_inst->ipc_ctx);
+	*fd = coroipcc_fd_get (cpg_inst->ipc_ctx);
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
@@ -265,7 +265,7 @@ cs_error_t cpg_dispatch (
 	do {
 		pthread_mutex_lock (&cpg_inst->dispatch_mutex);
 
-		dispatch_avail = cslib_dispatch_recv (cpg_inst->ipc_ctx,
+		dispatch_avail = coroipcc_dispatch_recv (cpg_inst->ipc_ctx,
 			(void *)&dispatch_data, timeout);
 
 		pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
@@ -410,7 +410,7 @@ cs_error_t cpg_join (
 	iov[0].iov_base = &req_lib_cpg_trackstart;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
 		&res_lib_cpg_trackstart, sizeof (struct res_lib_cpg_trackstart));
 
 	if (error != CS_OK) {
@@ -428,7 +428,7 @@ cs_error_t cpg_join (
 	iov[0].iov_base = &req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
 		&res_lib_cpg_join, sizeof (struct res_lib_cpg_join));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
@@ -471,7 +471,7 @@ cs_error_t cpg_leave (
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
 		&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
@@ -523,7 +523,7 @@ cs_error_t cpg_mcast_joined (
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov,
 		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
@@ -566,7 +566,7 @@ cs_error_t cpg_membership_get (
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
 		&res_lib_cpg_membership_get, sizeof (mar_res_header_t));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
@@ -617,7 +617,7 @@ cs_error_t cpg_local_get (
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = cslib_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
 		&res_lib_cpg_local_get, sizeof (res_lib_cpg_local_get));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
@@ -648,7 +648,7 @@ cs_error_t cpg_flow_control_state_get (
 		return (error);
 	}
 	
-	*flow_control_state = cslib_dispatch_flow_control_get (cpg_inst->ipc_ctx);
+	*flow_control_state = coroipcc_dispatch_flow_control_get (cpg_inst->ipc_ctx);
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 

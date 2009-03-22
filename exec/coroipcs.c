@@ -66,33 +66,11 @@
 
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include <corosync/swab.h>
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
-#include <corosync/lcr/lcr_ifact.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
 
-#include "quorum.h"
-#include "poll.h"
-#include "totemsrp.h"
-#include "mempool.h"
-#include "mainconfig.h"
-#include "totemconfig.h"
-#include "main.h"
-#include "tlist.h"
-#include "ipc.h"
-#include "sync.h"
-#include <corosync/engine/coroapi.h>
-#include "service.h"
-
-LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
-
-#include "util.h"
+#include "coroipcs.h"
+#include <corosync/ipc_gen.h>
 
 #ifdef COROSYNC_SOLARIS
 #define MSG_NOSIGNAL 0
@@ -103,11 +81,7 @@ LOGSYS_DECLARE_SUBSYS ("IPC", LOG_INFO);
 #define MSG_SEND_LOCKED		0
 #define MSG_SEND_UNLOCKED	1
 
-static unsigned int g_gid_valid = 0;
-
-static void (*ipc_serialize_lock_fn) (void);
-
-static void (*ipc_serialize_unlock_fn) (void);
+static struct coroipcs_init_state *api;
 
 DECLARE_LIST_INIT (conn_info_list_head);
 
@@ -152,10 +126,10 @@ struct conn_info {
 	struct shared_memory *mem;
 	struct list_head outq_head;
 	void *private_data;
-	int (*lib_exit_fn) (void *conn);
 	struct list_head list;
 	char setup_msg[sizeof (mar_req_setup_t)];
 	unsigned int setup_bytes_read;
+	char *sending_allowed_private_data[64];
 };
 
 static int shared_mem_dispatch_bytes_left (struct conn_info *conn_info);
@@ -220,7 +194,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		conn_info->state == CONN_STATE_DISCONNECT_INACTIVE) {
 		list_del (&conn_info->list);
 		close (conn_info->fd);
-		free (conn_info);
+		api->free (conn_info);
 		return (-1);
 	}
 
@@ -229,12 +203,14 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		return (0);
 	}
 
+	api->serialize_lock ();
 	/*
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
-		res = ais_service[conn_info->service]->lib_exit_fn (conn_info);
+		res = api->exit_fn_get (conn_info->service) (conn_info);
 		if (res == -1) {
+			api->serialize_unlock ();
 			return (0);
 		} else {
 			conn_info->state = CONN_STATE_LIB_EXIT_CALLED;
@@ -244,6 +220,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	pthread_mutex_lock (&conn_info->mutex);
 	if (conn_info->refcount > 0) {
 		pthread_mutex_unlock (&conn_info->mutex);
+		api->serialize_unlock ();
 		return (0);
 	}
 	list_del (&conn_info->list);
@@ -260,10 +237,11 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	 * Free allocated data needed to retry exiting library IPC connection
 	 */
 	if (conn_info->private_data) {
-		free (conn_info->private_data);
+		api->free (conn_info->private_data);
 	}
 	close (conn_info->fd);
-	free (conn_info);
+	api->free (conn_info);
+	api->serialize_unlock ();
 	return (-1);
 }
 
@@ -279,9 +257,7 @@ static void *pthread_ipc_consumer (void *conn)
 	int res;
 	mar_req_header_t *header;
 	struct res_overlay res_overlay;
-	struct iovec send_ok_joined_iovec;
-	int send_ok = 0;
-	int reserved_msgs = 0;
+	int send_ok;
 
 	for (;;) {
 		sop.sem_num = 0;
@@ -289,7 +265,7 @@ static void *pthread_ipc_consumer (void *conn)
 		sop.sem_flg = 0;
 retry_semop:
 		if (ipc_thread_active (conn_info) == 0) {
-			cs_conn_refcount_dec (conn_info);
+			coroipcs_refcount_dec (conn_info);
 			pthread_exit (0);
 		}
 		res = semop (conn_info->semid, &sop, 1);
@@ -297,47 +273,38 @@ retry_semop:
 			goto retry_semop;
 		} else
 		if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
-			cs_conn_refcount_dec (conn_info);
+			coroipcs_refcount_dec (conn_info);
 			pthread_exit (0);
 		}
 
-		cs_conn_refcount_inc (conn_info);
+		coroipcs_refcount_inc (conn_info);
 
-		header = (mar_req_header_t *)conn_info->mem->req_buffer;
+                header = (mar_req_header_t *)conn_info->mem->req_buffer;
 
-		send_ok_joined_iovec.iov_base = (char *)header;
-		send_ok_joined_iovec.iov_len = header->size;
-
-		reserved_msgs = totempg_groups_joined_reserve (
-			corosync_group_handle,
-			&send_ok_joined_iovec, 1);
-
-		send_ok =
-			(corosync_quorum_is_quorate() == 1 || ais_service[conn_info->service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) && (
-			(ais_service[conn_info->service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
-			((ais_service[conn_info->service]->lib_engine[header->id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
-			(reserved_msgs) &&
-			(sync_in_process() == 0)));
-
+		send_ok = api->sending_allowed (conn_info->service,
+			header->id,
+			header,	
+			conn_info->sending_allowed_private_data);
+	
 		if (send_ok) {
-			ipc_serialize_lock_fn();
-			ais_service[conn_info->service]->lib_engine[header->id].lib_handler_fn (conn_info, header);
-			ipc_serialize_unlock_fn();
+			api->serialize_lock();
+			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);
+			api->serialize_unlock();
 		} else {
 			/*
 			 * Overload, tell library to retry
 			 */
 			res_overlay.header.size =
-					ais_service[conn_info->service]->lib_engine[header->id].response_size;
+				api->response_size_get (conn_info->service, header->id);
 			res_overlay.header.id =
-				ais_service[conn_info->service]->lib_engine[header->id].response_id;
+				api->response_id_get (conn_info->service, header->id);
 			res_overlay.header.error = CS_ERR_TRY_AGAIN;
-			cs_response_send (conn_info, &res_overlay, 
+			coroipcs_response_send (conn_info, &res_overlay, 
 				res_overlay.header.size);
 		}
 
-		totempg_groups_joined_release (reserved_msgs);
-		cs_conn_refcount_dec (conn);
+		api->sending_allowed_release (conn_info->sending_allowed_private_data);
+		coroipcs_refcount_dec (conn);
 	}
 	pthread_exit (0);
 }
@@ -396,9 +363,9 @@ req_setup_recv (
 	euid = -1;
 	egid = -1;
 	if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
-	    (euid == 0 || egid == g_gid_valid)) {
+	    (api->security_valid (euid, egid)) {
 		if (conn_info->state == CONN_IO_STATE_INITIALIZING) {
-			log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", egid, g_gid_valid);
+			api->log_printf ("Invalid security authentication\n");
 			return (-1);
 		}
 	}
@@ -414,16 +381,16 @@ req_setup_recv (
 	if (getpeerucred (conn_info->fd, &uc) == 0) {
 		euid = ucred_geteuid (uc);
 		egid = ucred_getegid (uc);
-		if ((euid == 0) || (egid == g_gid_valid)) {
+		if (api->security_valid (euid, egid) {
 			conn_info->authenticated = 1;
 		}
 		ucred_free(uc);
 	}
 	if (conn_info->authenticated == 0) {
-		log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated because gid is %d, expecting %d\n", (int)egid, g_gid_valid);
+		api->log_printf ("Invalid security authentication\n");
  	}
 #else /* HAVE_GETPEERUCRED */
- 	log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated "
+ 	api->log_printf (LOG_LEVEL_SECURITY, "Connection not authenticated "
  		"because platform does not support "
  		"authentication with sockets, continuing "
  		"with a fake authentication\n");
@@ -463,12 +430,10 @@ retry_recv:
 	assert (cmsg);
 	cred = (struct ucred *)CMSG_DATA (cmsg);
 	if (cred) {
-		if (cred->uid == 0 || cred->gid == g_gid_valid) {
+		if (api->security_valid (cred->uid, cred->gid)) {
 		} else {
 			ipc_disconnect (conn_info);
-			log_printf (LOG_LEVEL_SECURITY,
-				"Connection not authenticated because gid is %d, expecting %d\n",
-				cred->gid, g_gid_valid);
+			api->log_printf ("Invalid security authentication\n");
 			return (-1);
 		}
 	}
@@ -480,170 +445,6 @@ retry_recv:
 #endif
 		return (1);
 	}
-	return (0);
-}
-
-static int poll_handler_connection (
-	hdb_handle_t handle,
-	int fd,
-	int revent,
-	void *data)
-{
-	mar_req_setup_t *req_setup;
-	struct conn_info *conn_info = (struct conn_info *)data;
-	int res;
-	char buf;
-
-
-	if (ipc_thread_exiting (conn_info)) {
-		return conn_info_destroy (conn_info);
-	}
-
-	/*
-	 * If an error occurs, request exit
-	 */
-	if (revent & (POLLERR|POLLHUP)) {
-		ipc_disconnect (conn_info);
-		return (0);
-	}
-
-	/*
-	 * Read the header and process it
-	 */
-	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
-		/*
-		 * Receive in a nonblocking fashion the request
-		 * IF security invalid, send TRY_AGAIN, otherwise
-		 * send OK
-		 */
-		res = req_setup_recv (conn_info);
-		if (res == -1) {
-			req_setup_send (conn_info, CS_ERR_TRY_AGAIN);
-		}
-		if (res != 1) {
-			return (0);
-		}
-		req_setup_send (conn_info, CS_OK);
-
-		pthread_mutex_init (&conn_info->mutex, NULL);
-		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
-		/*
-		 * Is the service registered ?
-		 */
-		if (!ais_service[req_setup->service]) {
-			ipc_disconnect (conn_info);
-			return (0);
-		}
-
-		conn_info->shmkey = req_setup->shmkey;
-		conn_info->semkey = req_setup->semkey;
-		conn_info->service = req_setup->service;
-		conn_info->refcount = 0;
-		conn_info->notify_flow_control_enabled = 0;
-		conn_info->setup_bytes_read = 0;
-
-		conn_info->shmid = shmget (conn_info->shmkey,
-			sizeof (struct shared_memory), 0600);
-		conn_info->mem = shmat (conn_info->shmid, NULL, 0);
-		conn_info->semid = semget (conn_info->semkey, 3, 0600);
-		conn_info->pending_semops = 0;
-
-		/*
-		 * ipc thread is the only reference at startup
-		 */
-		conn_info->refcount = 1; 
-		conn_info->state = CONN_STATE_THREAD_ACTIVE;
-
-		conn_info->private_data = malloc (ais_service[conn_info->service]->private_data_size);
-		memset (conn_info->private_data, 0,
-			ais_service[conn_info->service]->private_data_size);
-		ais_service[conn_info->service]->lib_init_fn (conn_info);
-
-
-		pthread_attr_init (&conn_info->thread_attr);
-		/*
-		* IA64 needs more stack space then other arches
-		*/
-		#if defined(__ia64__)
-		pthread_attr_setstacksize (&conn_info->thread_attr, 400000);
-		#else
-		pthread_attr_setstacksize (&conn_info->thread_attr, 200000);
-		#endif
-
-		pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_JOINABLE);
-		res = pthread_create (&conn_info->thread,
-			&conn_info->thread_attr,
-			pthread_ipc_consumer,
-			conn_info);
-
-		/*
-		 * Security check - disallow multiple configurations of
-		 * the ipc connection
-		 */
-		if (conn_info->service == SOCKET_SERVICE_INIT) {
-			conn_info->service = -1;
-		}
-	} else
-	if (revent & POLLIN) {
-		cs_conn_refcount_inc (conn_info);
-		res = recv (fd, &buf, 1, MSG_NOSIGNAL);
-		if (res == 1) {
-			switch (buf) {
-			case MESSAGE_REQ_OUTQ_FLUSH:
-				outq_flush (conn_info);
-				break;
-			case MESSAGE_REQ_CHANGE_EUID:
-				if (priv_change (conn_info) == -1) {
-					ipc_disconnect (conn_info);
-				}
-				break;
-			default:
-				res = 0;
-				break;
-			}
-			cs_conn_refcount_dec (conn_info);
-		}
-#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-		/* On many OS poll never return POLLHUP or POLLERR.
-		 * EOF is detected when recvmsg return 0.
-		 */
-		if (res == 0) {
-			ipc_disconnect (conn_info);
-			return (0);
-		}
-#endif
-	}
-
-	cs_conn_refcount_inc (conn_info);
-	pthread_mutex_lock (&conn_info->mutex);
-	if ((conn_info->state == CONN_STATE_THREAD_ACTIVE) && (revent & POLLOUT)) {
-		buf = !list_empty (&conn_info->outq_head);
-		for (; conn_info->pending_semops;) {
-			res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
-			if (res == 1) {
-				conn_info->pending_semops--;
-			} else {
-				break;
-			}
-		}
-		if (conn_info->notify_flow_control_enabled) {
-			buf = 2;
-			res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
-			if (res == 1) {
-				conn_info->notify_flow_control_enabled = 0;
-			}
-		}
-		if (conn_info->notify_flow_control_enabled == 0 &&
-			conn_info->pending_semops == 0) {
-
-			poll_dispatch_modify (corosync_poll_handle,
-				conn_info->fd, POLLIN|POLLNVAL,
-				poll_handler_connection);
-		}
-	}
-	pthread_mutex_unlock (&conn_info->mutex);
-	cs_conn_refcount_dec (conn_info);
-
 	return (0);
 }
 
@@ -667,7 +468,7 @@ static int conn_info_create (int fd)
 {
 	struct conn_info *conn_info;
 
-	conn_info = malloc (sizeof (struct conn_info));
+	conn_info = api->malloc (sizeof (struct conn_info));
 	if (conn_info == NULL) {
 		return (-1);
 	}
@@ -680,165 +481,74 @@ static int conn_info_create (int fd)
 	list_init (&conn_info->list);
 	list_add (&conn_info->list, &conn_info_list_head);
 
-        poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL,
-		conn_info, poll_handler_connection);
+        api->poll_dispatch_add (fd, conn_info);
+
 	return (0);
 }
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 /* SUN_LEN is broken for abstract namespace
  */
-#define AIS_SUN_LEN(a) sizeof(*(a))
+#define COROSYNC_SUN_LEN(a) sizeof(*(a))
 #else
-#define AIS_SUN_LEN(a) SUN_LEN(a)
+#define COROSYNC_SUN_LEN(a) SUN_LEN(a)
 #endif
 
-#if defined(COROSYNC_LINUX)
-const char *socketname = "libais.socket";
-#else
-const char *socketname = SOCKETDIR "/libais.socket";
-#endif
 
-static int poll_handler_accept (
-	hdb_handle_t handle,
-	int fd,
-	int revent,
-	void *data)
-{
-	socklen_t addrlen;
-	struct sockaddr_un un_addr;
-	int new_fd;
-#ifdef COROSYNC_LINUX
-	int on = 1;
-#endif
-	int res;
-
-	addrlen = sizeof (struct sockaddr_un);
-
-retry_accept:
-	new_fd = accept (fd, (struct sockaddr *)&un_addr, &addrlen);
-	if (new_fd == -1 && errno == EINTR) {
-		goto retry_accept;
-	}
-
-	if (new_fd == -1) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not accept Library connection: %s\n", strerror (errno));
-		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	}
-
-	totemip_nosigpipe(new_fd);
-	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
-	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on library connection: %s\n", strerror (errno));
-		close (new_fd);
-		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	}
-
-	/*
-	 * Valid accept
-	 */
-
-	/*
-	 * Request credentials of sender provided by kernel
-	 */
-#ifdef COROSYNC_LINUX
-	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
-#endif
-
-	log_printf (LOG_LEVEL_DEBUG, "connection received from libais client %d.\n", new_fd);
-
-	res = conn_info_create (new_fd);
-	if (res != 0) {
-		close (new_fd);
-	}
-
-	return (0);
-}
 /*
  * Exported functions
  */
-
-int message_source_is_local(mar_message_source_t *source)
+extern void coroipcs_ipc_init (
+        struct coroipcs_init_state *init_state)
 {
-	int ret = 0;
-
-	assert (source != NULL);
-	if (source->nodeid == totempg_my_nodeid_get ()) {
-		ret = 1;
-	}
-	return ret;
-}
-
-void message_source_set (
-	mar_message_source_t *source,
-	void *conn)
-{
-	assert ((source != NULL) && (conn != NULL));
-	memset (source, 0, sizeof (mar_message_source_t));
-	source->nodeid = totempg_my_nodeid_get ();
-	source->conn = conn;
-}
-
-void cs_ipc_init (
-	unsigned int gid_valid,
-	void (*serialize_lock_fn) (void),
-	void (*serialize_unlock_fn) (void))
-{
-	int libais_server_fd;
+	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
 
-	ipc_serialize_lock_fn = serialize_lock_fn;
-
-	ipc_serialize_unlock_fn = serialize_unlock_fn;
+	api = init_state;
 
 	/*
-	 * Create socket for libais clients, name socket, listen for connections
+	 * Create socket for IPC clients, name socket, listen for connections
 	 */
-	libais_server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
-	if (libais_server_fd == -1) {
-		log_printf (LOG_LEVEL_ERROR ,"Cannot create libais client connections socket.\n");
-		corosync_exit_error (AIS_DONE_LIBAIS_SOCKET);
+	server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
+	if (server_fd == -1) {
+		api->log_printf ("Cannot create client connections socket.\n");
+		api->fatal_error ("Can't create library listen socket");
 	};
 
-	totemip_nosigpipe (libais_server_fd);
-	res = fcntl (libais_server_fd, F_SETFL, O_NONBLOCK);
+	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
-		corosync_exit_error (AIS_DONE_LIBAIS_SOCKET);
+		api->log_printf ("Could not set non-blocking operation on server socket: %s\n", strerror (errno));
+		api->fatal_error ("Could not set non-blocking operation on server socket");
 	}
 
-#if !defined(COROSYNC_LINUX)
-	unlink(socketname);
-#endif
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
 	un_addr.sun_family = AF_UNIX;
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	un_addr.sun_len = sizeof(struct sockaddr_un);
 #endif
+
 #if defined(COROSYNC_LINUX)
-	strcpy (un_addr.sun_path + 1, socketname);
+	sprintf (un_addr.sun_path + 1, "%s", api->socket_name);
 #else
-	strcpy (un_addr.sun_path, socketname);
+	sprintf (un_addr.sun_path, "%s%s", SOCKETDIR, api->socket_name);
+	unlink (un_addr.sun_path);
 #endif
 
-	res = bind (libais_server_fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
+	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: Could not bind AF_UNIX: %s.\n", strerror (errno));
-		corosync_exit_error (AIS_DONE_LIBAIS_BIND);
+		api->log_printf ("Could not bind AF_UNIX: %s.\n", strerror (errno));
+		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
-	listen (libais_server_fd, SERVER_BACKLOG);
+	listen (server_fd, SERVER_BACKLOG);
 
         /*
-         * Setup libais connection dispatch routine
+         * Setup connection dispatch routine
          */
-        poll_dispatch_add (corosync_poll_handle, libais_server_fd,
-                POLLIN|POLLNVAL, 0, poll_handler_accept);
-
-	g_gid_valid = gid_valid;
+        api->poll_accept_add (server_fd);
 }
 
-void cs_ipc_exit (void)
+void coroipcs_ipc_exit (void)
 {
 	struct list_head *list;
 	struct conn_info *conn_info;
@@ -859,14 +569,14 @@ void cs_ipc_exit (void)
 /*
  * Get the conn info private data
  */
-void *cs_conn_private_data_get (void *conn)
+void *coroipcs_private_data_get (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
 	return (conn_info->private_data);
 }
 
-int cs_response_send (void *conn, void *msg, int mlen)
+int coroipcs_response_send (void *conn, void *msg, int mlen)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
@@ -888,7 +598,7 @@ retry_semop:
 	return (0);
 }
 
-int cs_response_iov_send (void *conn, struct iovec *iov, int iov_len)
+int coroipcs_response_iov_send (void *conn, struct iovec *iov, int iov_len)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
@@ -976,8 +686,8 @@ static void msg_send (void *conn, struct iovec *iov, int iov_len, int locked)
 		if (locked == 0) {
 			pthread_mutex_unlock (&conn_info->mutex);
 		}
-        	poll_dispatch_modify (corosync_poll_handle, conn_info->fd,
-			POLLIN|POLLOUT|POLLNVAL, poll_handler_connection);
+		api->poll_dispatch_modify (conn_info->fd,
+			POLLIN|POLLOUT|POLLNVAL);
 	} else
 	if (res == -1) {
 		ipc_disconnect (conn_info);
@@ -1022,8 +732,8 @@ static void outq_flush (struct conn_info *conn_info) {
 			iov.iov_len = outq_item->mlen;
 			msg_send (conn_info, &iov, 1, MSG_SEND_UNLOCKED);
 			list_del (list);
-			free (iov.iov_base);
-			free (outq_item);
+			api->free (iov.iov_base);
+			api->free (outq_item);
 		} else {
 			break;
 		}
@@ -1096,14 +806,14 @@ static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
 		bytes_msg += iov[i].iov_len;
 	}
 	if (bytes_left < bytes_msg || list_empty (&conn_info->outq_head) == 0) {
-		outq_item = malloc (sizeof (struct outq_item));
+		outq_item = api->malloc (sizeof (struct outq_item));
 		if (outq_item == NULL) {
 			ipc_disconnect (conn);
 			return;
 		}
-		outq_item->msg = malloc (bytes_msg);
+		outq_item->msg = api->malloc (bytes_msg);
 		if (outq_item->msg == 0) {
-			free (outq_item);
+			api->free (outq_item);
 			ipc_disconnect (conn);
 			return;
 		}
@@ -1118,9 +828,8 @@ static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
 		pthread_mutex_lock (&conn_info->mutex);
 		if (list_empty (&conn_info->outq_head)) {
 			conn_info->notify_flow_control_enabled = 1;
-			poll_dispatch_modify (corosync_poll_handle,
-				conn_info->fd, POLLOUT|POLLIN|POLLNVAL,
-				poll_handler_connection);
+			api->poll_dispatch_modify (conn_info->fd,
+				POLLIN|POLLOUT|POLLNVAL);
 		}
 		list_add_tail (&outq_item->list, &conn_info->outq_head);
 		pthread_mutex_unlock (&conn_info->mutex);
@@ -1129,7 +838,7 @@ static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
 	msg_send (conn, iov, iov_len, MSG_SEND_LOCKED);
 }
 
-void cs_conn_refcount_inc (void *conn)
+void coroipcs_refcount_inc (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1138,7 +847,7 @@ void cs_conn_refcount_inc (void *conn)
 	pthread_mutex_unlock (&conn_info->mutex);
 }
 
-void cs_conn_refcount_dec (void *conn)
+void coroipcs_refcount_dec (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 
@@ -1147,7 +856,7 @@ void cs_conn_refcount_dec (void *conn)
 	pthread_mutex_unlock (&conn_info->mutex);
 }
 
-int cs_dispatch_send (void *conn, void *msg, int mlen)
+int coroipcs_dispatch_send (void *conn, void *msg, int mlen)
 {
 	struct iovec iov;
 
@@ -1158,8 +867,223 @@ int cs_dispatch_send (void *conn, void *msg, int mlen)
 	return (0);
 }
 
-int cs_dispatch_iov_send (void *conn, struct iovec *iov, int iov_len)
+int coroipcs_dispatch_iov_send (void *conn, struct iovec *iov, int iov_len)
 {
 	msg_send_or_queue (conn, iov, iov_len);
 	return (0);
 }
+
+int coroipcs_handler_accept (
+	int fd,
+	int revent,
+	void *data)
+{
+	socklen_t addrlen;
+	struct sockaddr_un un_addr;
+	int new_fd;
+#ifdef COROSYNC_LINUX
+	int on = 1;
+#endif
+	int res;
+
+	addrlen = sizeof (struct sockaddr_un);
+
+retry_accept:
+	new_fd = accept (fd, (struct sockaddr *)&un_addr, &addrlen);
+	if (new_fd == -1 && errno == EINTR) {
+		goto retry_accept;
+	}
+
+	if (new_fd == -1) {
+		api->log_printf ("Could not accept Library connection: %s\n", strerror (errno));
+		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
+	}
+
+	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
+	if (res == -1) {
+		api->log_printf ("Could not set non-blocking operation on library connection: %s\n", strerror (errno));
+		close (new_fd);
+		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
+	}
+
+	/*
+	 * Valid accept
+	 */
+
+	/*
+	 * Request credentials of sender provided by kernel
+	 */
+#ifdef COROSYNC_LINUX
+	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+#endif
+
+	res = conn_info_create (new_fd);
+	if (res != 0) {
+		close (new_fd);
+	}
+
+	return (0);
+}
+
+int coroipcs_handler_dispatch (
+	int fd,
+	int revent,
+	void *context)
+{
+	mar_req_setup_t *req_setup;
+	struct conn_info *conn_info = (struct conn_info *)context;
+	int res;
+	char buf;
+
+
+	if (ipc_thread_exiting (conn_info)) {
+		return conn_info_destroy (conn_info);
+	}
+
+	/*
+	 * If an error occurs, request exit
+	 */
+	if (revent & (POLLERR|POLLHUP)) {
+		ipc_disconnect (conn_info);
+		return (0);
+	}
+
+	/*
+	 * Read the header and process it
+	 */
+	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
+		/*
+		 * Receive in a nonblocking fashion the request
+		 * IF security invalid, send TRY_AGAIN, otherwise
+		 * send OK
+		 */
+		res = req_setup_recv (conn_info);
+		if (res == -1) {
+			req_setup_send (conn_info, CS_ERR_TRY_AGAIN);
+		}
+		if (res != 1) {
+			return (0);
+		}
+		req_setup_send (conn_info, CS_OK);
+
+		pthread_mutex_init (&conn_info->mutex, NULL);
+		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
+		/*
+		 * Is the service registered ?
+		 */
+		if (api->service_available (req_setup->service) == 0) {
+			ipc_disconnect (conn_info);
+			return (0);
+		}
+
+		conn_info->shmkey = req_setup->shmkey;
+		conn_info->semkey = req_setup->semkey;
+		conn_info->service = req_setup->service;
+		conn_info->refcount = 0;
+		conn_info->notify_flow_control_enabled = 0;
+		conn_info->setup_bytes_read = 0;
+
+		conn_info->shmid = shmget (conn_info->shmkey,
+			sizeof (struct shared_memory), 0600);
+		conn_info->mem = shmat (conn_info->shmid, NULL, 0);
+		conn_info->semid = semget (conn_info->semkey, 3, 0600);
+		conn_info->pending_semops = 0;
+
+		/*
+		 * ipc thread is the only reference at startup
+		 */
+		conn_info->refcount = 1; 
+		conn_info->state = CONN_STATE_THREAD_ACTIVE;
+
+		conn_info->private_data = api->malloc (api->private_data_size_get (conn_info->service));
+		memset (conn_info->private_data, 0,
+			api->private_data_size_get (conn_info->service));
+
+		api->init_fn_get (conn_info->service) (conn_info);
+
+		pthread_attr_init (&conn_info->thread_attr);
+		/*
+		* IA64 needs more stack space then other arches
+		*/
+		#if defined(__ia64__)
+		pthread_attr_setstacksize (&conn_info->thread_attr, 400000);
+		#else
+		pthread_attr_setstacksize (&conn_info->thread_attr, 200000);
+		#endif
+
+		pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_JOINABLE);
+		res = pthread_create (&conn_info->thread,
+			&conn_info->thread_attr,
+			pthread_ipc_consumer,
+			conn_info);
+
+		/*
+		 * Security check - disallow multiple configurations of
+		 * the ipc connection
+		 */
+		if (conn_info->service == SOCKET_SERVICE_INIT) {
+			conn_info->service = -1;
+		}
+	} else
+	if (revent & POLLIN) {
+		coroipcs_refcount_inc (conn_info);
+		res = recv (fd, &buf, 1, MSG_NOSIGNAL);
+		if (res == 1) {
+			switch (buf) {
+			case MESSAGE_REQ_OUTQ_FLUSH:
+				outq_flush (conn_info);
+				break;
+			case MESSAGE_REQ_CHANGE_EUID:
+				if (priv_change (conn_info) == -1) {
+					ipc_disconnect (conn_info);
+				}
+				break;
+			default:
+				res = 0;
+				break;
+			}
+			coroipcs_refcount_dec (conn_info);
+		}
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+		/* On many OS poll never return POLLHUP or POLLERR.
+		 * EOF is detected when recvmsg return 0.
+		 */
+		if (res == 0) {
+			ipc_disconnect (conn_info);
+			return (0);
+		}
+#endif
+	}
+
+	coroipcs_refcount_inc (conn_info);
+	pthread_mutex_lock (&conn_info->mutex);
+	if ((conn_info->state == CONN_STATE_THREAD_ACTIVE) && (revent & POLLOUT)) {
+		buf = !list_empty (&conn_info->outq_head);
+		for (; conn_info->pending_semops;) {
+			res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
+			if (res == 1) {
+				conn_info->pending_semops--;
+			} else {
+				break;
+			}
+		}
+		if (conn_info->notify_flow_control_enabled) {
+			buf = 2;
+			res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
+			if (res == 1) {
+				conn_info->notify_flow_control_enabled = 0;
+			}
+		}
+		if (conn_info->notify_flow_control_enabled == 0 &&
+			conn_info->pending_semops == 0) {
+
+			api->poll_dispatch_modify (conn_info->fd,
+				POLLIN|POLLNVAL);
+		}
+	}
+	pthread_mutex_unlock (&conn_info->mutex);
+	coroipcs_refcount_dec (conn_info);
+
+	return (0);
+}
+
