@@ -343,13 +343,30 @@ static inline void group_endian_convert (
 {
 	unsigned short *group_len;
 	int i;
+	struct iovec iovec_aligned = { NULL, 0 };
+	struct iovec *iovec_swab;
 
-	group_len = (unsigned short *)iovec->iov_base;
+	/*
+	 * Align data structure for sparc and ia64
+	 */
+	if ((size_t)iovec->iov_base % 4 != 0) {
+		iovec_aligned.iov_base = alloca(iovec->iov_len);
+		memcpy(iovec_aligned.iov_base, iovec->iov_base, iovec->iov_len);
+		iovec_aligned.iov_len = iovec->iov_len;
+		iovec_swab = &iovec_aligned;
+	} else {
+		iovec_swab = iovec;
+	}
+
+	group_len = (unsigned short *)iovec_swab->iov_base;
 	group_len[0] = swab16(group_len[0]);
 	for (i = 1; i < group_len[0] + 1; i++) {
 		group_len[i] = swab16(group_len[i]);
 	}
 
+	if (iovec_swab == &iovec_aligned) {
+		memcpy(iovec->iov_base, iovec_aligned.iov_base, iovec->iov_len);
+	}
 }
 
 static inline int group_matches (
@@ -372,7 +389,8 @@ static inline int group_matches (
 	 */
 	if ((size_t)iovec->iov_base % 4 != 0) {
 		iovec_aligned.iov_base = alloca(iovec->iov_len);
-		memcpy(iovec_aligned.iov_base, iovec->iov_base, iovec->iov_len);                iovec_aligned.iov_len = iovec->iov_len;
+		memcpy(iovec_aligned.iov_base, iovec->iov_base, iovec->iov_len);
+		iovec_aligned.iov_len = iovec->iov_len;
 		iovec = &iovec_aligned;
 	}
 
