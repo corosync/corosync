@@ -37,14 +37,17 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include \
 			  -I$(top_builddir)/include/corosync \
 			  -I$(top_srcdir)/include/corosync
 
-LCRSO			= service_evs.lcrso service_cfg.lcrso \
-			  service_cpg.lcrso service_confdb.lcrso \
-			  service_pload.lcrso quorum_votequorum.lcrso \
-			  quorum_testquorum.lcrso
+SERVICE_LCRSO		= evs cfg cpg confdb pload
 
-LCRSO_OBJS = $(LCRSO:service_%.lcrso=%.o) $(LCRSO:quorum_%.lcrso=%.o)
+QUORUM_LCRSO		= votequorum testquorum
 
-EXTRA_DIST = $(LCRSO_OBJS:%.o=%.c)
+SOURCES			= $(SERVICE_LCRSO:%=%.c) $(QUORUM_LCRSO:%=%.c)
+
+EXTRA_DIST		= $(SOURCES)
+
+LCRSO			= $(SERVICE_LCRSO:%=service_%.lcrso) $(QUORUM_LCRSO:%=quorum_%.lcrso)
+
+LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 
 if BUILD_DARWIN
 quorum_%.lcrso: %.o
