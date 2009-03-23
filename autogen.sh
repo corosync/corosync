@@ -77,7 +77,7 @@ do
 done
 
 # Check for automake
-for command in automake automake14 automake-1.4 automake15 automake-1.5 automake17 automake-1.7 automake19 automake-1.9 
+for command in automake19 automake-1.9 automake
 do
   if 
       testProgram $command
