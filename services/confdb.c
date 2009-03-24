@@ -52,7 +52,7 @@
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
 
-LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_DEBUG);
+LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_INFO);
 
 static struct corosync_api_v1 *api;
 
