@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -70,7 +70,7 @@ void bm_start (void)
 {
         gettimeofday (&tv1, NULL);
 }
-void bm_finish (char *operation)
+void bm_finish (const char *operation)
 {
         gettimeofday (&tv2, NULL);
         timersub (&tv2, &tv1, &tv_elapsed);
