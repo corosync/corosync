@@ -323,20 +323,32 @@ coroipcc_service_connect (
 	/*
 	 * Allocate a shared memory segment
 	 */
-	do {
+	while (1) {
 		shmkey = random();
-		ipc_segment->shmid = shmget (shmkey, sizeof (struct shared_memory),
-			IPC_CREAT|IPC_EXCL|0600);
-	} while (ipc_segment->shmid == -1);
+		if ((ipc_segment->shmid
+		     = shmget (shmkey, sizeof (struct shared_memory),
+			       IPC_CREAT|IPC_EXCL|0600)) != -1) {
+			break;
+		}
+		if (errno != EEXIST) {
+			goto error_exit;
+		}
+	}
 
 	/*
 	 * Allocate a semaphore segment
 	 */
-	do {
+	while (1) {
 		semkey = random();
-		ipc_segment->semid = semget (semkey, 3, IPC_CREAT|IPC_EXCL|0600);
 		ipc_segment->euid = geteuid ();
-	} while (ipc_segment->semid == -1);
+		if ((ipc_segment->semid
+		     = semget (semkey, 3, IPC_CREAT|IPC_EXCL|0600)) != -1) {
+		      break;
+		}
+		if (errno != EEXIST) {
+			goto error_exit;
+		}
+	}
 
 	/*
 	 * Attach to shared memory segment
