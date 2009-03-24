@@ -91,7 +91,7 @@ static void add_totem_config_notification(
 static inline int objdb_get_string (
 	struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_service_handle,
-	char *key, char **value)
+	const char *key, char **value)
 {
 	int res;
 
