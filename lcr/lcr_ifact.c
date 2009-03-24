@@ -521,7 +521,6 @@ void lcr_component_register (struct lcr_comp *comp)
 {
 	struct lcr_component_instance *instance;
 	static hdb_handle_t comp_handle;
-	int res;
 
 	hdb_handle_create (&lcr_component_instance_database,
 		sizeof (struct lcr_component_instance),
