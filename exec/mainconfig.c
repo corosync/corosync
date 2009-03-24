@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -68,7 +68,7 @@ static void add_logsys_config_notification(
 static inline int objdb_get_string (
 	struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_service_handle,
-	char *key, char **value)
+	const char *key, char **value)
 {
 	int res;
 
