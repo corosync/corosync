@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -139,7 +139,7 @@ static void message_handler_req_exec_cpg_procleave (
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_joinlist (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_mcast (
@@ -513,7 +513,7 @@ static int count_groups(void)
 	return num_groups;
 }
 
-static struct group_info *get_group(mar_cpg_name_t *name)
+static struct group_info *get_group(const mar_cpg_name_t *name)
 {
 	struct list_head *iter;
 	struct group_info *gi = NULL;
@@ -686,14 +686,15 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 	req_exec_cpg_procjoin->reason = swab32(req_exec_cpg_procjoin->reason);
 }
 
-static void exec_cpg_joinlist_endian_convert (void *msg)
+static void exec_cpg_joinlist_endian_convert (void *msg_v)
 {
+	char *msg = msg_v;
 	mar_res_header_t *res = (mar_res_header_t *)msg;
 	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(mar_res_header_t));
 
 	/* XXX shouldn't mar_res_header be swabbed? */
 
-	while ((void*)jle < msg + res->size) {
+	while ((const char*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
 		swab_mar_cpg_name_t (&jle->group_name);
 		jle++;
@@ -725,7 +726,7 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 }
 
 static void do_proc_join(
-	mar_cpg_name_t *name,
+	const mar_cpg_name_t *name,
 	uint32_t pid,
 	unsigned int nodeid,
 	int reason)
@@ -871,11 +872,12 @@ static void message_handler_req_exec_cpg_procleave (
 
 /* Got a proclist from another node */
 static void message_handler_req_exec_cpg_joinlist (
-	void *message,
+	const void *message_v,
 	unsigned int nodeid)
 {
-	mar_res_header_t *res = (mar_res_header_t *)message;
-	struct join_list_entry *jle = (struct join_list_entry *)(message + sizeof(mar_res_header_t));
+	const char *message = message_v;
+	const mar_res_header_t *res = (const mar_res_header_t *)message;
+	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(mar_res_header_t));
 
 	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %d\n",
 		nodeid);
@@ -885,7 +887,7 @@ static void message_handler_req_exec_cpg_joinlist (
 		return;
 	}
 
-	while ((void*)jle < message + res->size) {
+	while ((const char*)jle < message + res->size) {
 		do_proc_join(&jle->group_name, jle->pid, nodeid,
 			CONFCHG_CPG_REASON_NODEUP);
 		jle++;
@@ -1225,4 +1227,3 @@ static void message_handler_req_lib_cpg_groups_get (void *conn, void *message)
 	api->ipc_response_send(conn, &res_lib_cpg_groups_get,
 		sizeof(res_lib_cpg_groups_get));
 }
-
