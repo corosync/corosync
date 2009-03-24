@@ -445,8 +445,10 @@ static inline int objdb_get_string(struct corosync_api_v1 *corosync, unsigned in
 	return -1;
 }
 
-static inline void objdb_get_int(struct corosync_api_v1 *corosync, unsigned int object_service_handle,
-				 char *key, unsigned int *intvalue, unsigned int default_value)
+static inline void objdb_get_int(struct corosync_api_v1 *corosync,
+				 unsigned int object_service_handle,
+				 const char *key, unsigned int *intvalue,
+				 unsigned int default_value)
 {
 	char *value = NULL;
 
