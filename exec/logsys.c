@@ -139,7 +139,11 @@ static pthread_cond_t logsys_cond;
 
 static pthread_mutex_t logsys_cond_mutex;
 
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
 static pthread_spinlock_t logsys_idx_spinlock;
+#else
+static pthread_mutex_t logsys_idx_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 static unsigned int log_rec_idx;
 
@@ -185,6 +189,27 @@ static inline void my_memcpy_8bit (char *dest, char *src, unsigned int bytes)
 	}
 }
 
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+static void logsys_lock (void)
+{
+	pthread_spin_lock (&logsys_idx_spinlock);
+}
+static void logsys_unlock (void)
+{
+	pthread_spin_unlock (&logsys_idx_spinlock);
+}
+#else
+static void logsys_lock (void)
+{
+	pthread_mutex_lock (&logsys_idx_mutex);
+}
+static void logsys_unlock (void)
+{
+	pthread_mutex_unlock (&logsys_idx_mutex);
+}
+#endif
+
+
 /*
  * Before any write operation, a reclaim on the buffer area must be executed
  */
@@ -201,7 +226,7 @@ static inline void records_reclaim (unsigned int idx, unsigned int words)
 		return;
 	}
 
-	pthread_spin_lock (&logsys_idx_spinlock);
+	logsys_lock();
 	if (flt_data[FDTAIL_INDEX] > flt_data[FDHEAD_INDEX]) {
 		if (idx + words >= flt_data[FDTAIL_INDEX]) {
 			should_reclaim = 1;
@@ -230,7 +255,7 @@ static inline void records_reclaim (unsigned int idx, unsigned int words)
 			}
 		} while (words_needed > 0);
 	}
-	pthread_spin_unlock (&logsys_idx_spinlock);
+	logsys_unlock();
 }
 
 #define idx_word_step(idx)						\
@@ -479,9 +504,9 @@ static void *logsys_worker_thread (void *data)
 	 * Signal wthread_create that the initialization process may continue
 	 */
 	wthread_signal ();
-	pthread_spin_lock (&logsys_idx_spinlock);
+	logsys_lock();
 	log_rec_idx = flt_data[FDTAIL_INDEX];
-	pthread_spin_unlock (&logsys_idx_spinlock);
+	logsys_unlock();
 
 	for (;;) {
 		wthread_wait ();
@@ -495,21 +520,21 @@ static void *logsys_worker_thread (void *data)
 		 * Process any pending log messages here
 		 */
 		for (;;) {
-			pthread_spin_lock (&logsys_idx_spinlock);
+			logsys_lock();
 			if (log_requests_lost > 0) {
 				printf ("lost %d log requests\n", log_requests_lost);
 				log_requests_pending -= log_requests_lost;
 				log_requests_lost = 0;
 			}
 			if (log_requests_pending == 0) {
-				pthread_spin_unlock (&logsys_idx_spinlock);
+				logsys_unlock();
 				break;
 			}
 			log_rec_idx = record_read (buf, log_rec_idx, &log_msg);
 			if (log_msg) {
 				log_requests_pending -= 1;
 			}
-			pthread_spin_unlock (&logsys_idx_spinlock);
+			logsys_unlock();
 
 			/*
 			 * print the stored buffer
@@ -592,7 +617,10 @@ int _logsys_rec_init (unsigned int size)
 	assert (flt_data != NULL);
 	flt_data[FDHEAD_INDEX] = 0;
 	flt_data[FDTAIL_INDEX] = 0;
+
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&logsys_idx_spinlock, 0);
+#endif
 
 	return (0);
 }
@@ -752,7 +780,7 @@ void _logsys_log_rec (
 	 * and this is not a log_printf operation, set the log_rec_idx to
 	 * the new head position and commit the new head.
 	 */
-	pthread_spin_lock (&logsys_idx_spinlock);
+	logsys_lock();
 	if (rec_ident & LOGSYS_TAG_LOG) {
 		log_requests_pending += 1;
 	}
@@ -760,7 +788,7 @@ void _logsys_log_rec (
 		log_rec_idx = idx;
 	}
 	flt_data[FDHEAD_INDEX] = idx;
-	pthread_spin_unlock (&logsys_idx_spinlock);
+	logsys_unlock();
 	records_written++;
 }
 
