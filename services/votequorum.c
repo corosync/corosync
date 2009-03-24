@@ -994,7 +994,7 @@ static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, int iov_
 	if (header->tgtport == 0 &&
 	    (header->tgtid == us->node_id ||
 	     header->tgtid == 0)) {
-		buf = iovec->iov_base + sizeof(struct q_protheader);
+		buf = (char *)(iovec->iov_base) + sizeof(struct q_protheader);
 		switch (*buf) {
 
 		case VOTEQUORUM_MSG_NODEINFO:

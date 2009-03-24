@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -346,7 +346,7 @@ static void ykd_deliver_fn (
 	int all_received = 1;
 	int state_position = 0;
 	int i;
-	char *msg_state = iovec->iov_base + sizeof (struct ykd_header);
+	char *msg_state = (char *)(iovec->iov_base) + sizeof (struct ykd_header);
 	
 	/*
 	 * If this is a localhost address, this node is always primary
