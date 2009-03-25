@@ -72,7 +72,7 @@
 #include "coroipcs.h"
 #include <corosync/ipc_gen.h>
 
-#ifdef COROSYNC_SOLARIS
+#ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
 
@@ -399,9 +399,9 @@ req_setup_recv (
 
 #endif
 
-#ifdef COROSYNC_LINUX
 	iov_recv.iov_base = &conn_info->setup_msg[conn_info->setup_bytes_read];
 	iov_recv.iov_len = sizeof (mar_req_setup_t) - conn_info->setup_bytes_read;
+#ifdef COROSYNC_LINUX
 	setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
 #endif
 
