@@ -45,6 +45,7 @@ typedef void (*coroipcs_handler_fn_lvalue) (void *conn, void *msg);
 
 struct coroipcs_init_state {
 	const char *socket_name;
+	int sched_priority;
 	void *(*malloc) (size_t size);
 	void (*free) (void *ptr);
         void (*log_printf) (

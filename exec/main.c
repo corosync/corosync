@@ -93,6 +93,8 @@ LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
 
 #define SERVER_BACKLOG 5
 
+static int sched_priority = 0;
+
 static unsigned int service_count = 32;
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
@@ -364,16 +366,18 @@ static void corosync_setscheduler (void)
 	struct sched_param sched_param;
 	int res;
 
-	res = sched_get_priority_max (SCHED_RR);
-	if (res != -1) {
-		sched_param.sched_priority = 1;//res;
+	sched_priority = sched_get_priority_max (SCHED_RR);
+	if (sched_priority != -1) {
+		sched_param.sched_priority = sched_priority;
 		res = sched_setscheduler (0, SCHED_RR, &sched_param);
 		if (res == -1) {
 			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				sched_param.sched_priority, strerror (errno));
 		}
-	} else
+	} else {
 		log_printf (LOG_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		sched_priority = 0;
+	}
 #else
 	log_printf(LOG_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
 #endif
@@ -730,7 +734,8 @@ int main (int argc, char **argv)
 	
 	corosync_timer_init (
 		serialize_lock,
-		serialize_unlock);
+		serialize_unlock,
+		sched_priority);
 
 	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
@@ -905,6 +910,8 @@ int main (int argc, char **argv)
 	corosync_mempool_init ();
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC", LOG_INFO);
+
+	ipc_init_state.sched_priority = sched_priority;
 
 	coroipcs_ipc_init (&ipc_init_state);
 

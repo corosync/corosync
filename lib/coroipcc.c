@@ -100,6 +100,10 @@ void socket_nosigpipe(int s)
 }
 #endif 
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 static int
 coroipcc_send (
 	int s,

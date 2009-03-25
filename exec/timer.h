@@ -39,7 +39,8 @@ typedef void * corosync_timer_handle;
 
 extern void corosync_timer_init (
         void (*serialize_lock) (void),
-        void (*serialize_unlock) (void));
+        void (*serialize_unlock) (void),
+	int sched_priority);
 
 extern int corosync_timer_add_duration (
 	unsigned long long nanoseconds_in_future,

@@ -259,6 +259,13 @@ static void *pthread_ipc_consumer (void *conn)
 	struct res_overlay res_overlay;
 	int send_ok;
 
+	if (api->sched_priority != 0) {
+		struct sched_param sched_param;
+
+		sched_param.sched_priority = api->sched_priority;
+		res = pthread_setschedparam (conn_info->thread, SCHED_RR, &sched_param);
+	}
+
 	for (;;) {
 		sop.sem_num = 0;
 		sop.sem_op = -1;

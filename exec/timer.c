@@ -90,6 +90,8 @@ static pthread_attr_t thread_attr;
 
 static struct timerlist timers_timerlist;
 
+static int sched_priority = 0;
+
 static void (*timer_serialize_lock_fn) (void);
 
 static void (*timer_serialize_unlock_fn) (void);
@@ -107,11 +109,14 @@ static void *prioritized_timer_thread (void *data)
 	unsigned long long timeout;
 
 #if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
-	struct sched_param sched_param;
 	int res;
 
-	sched_param.sched_priority = 2;
-	res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+	if (sched_priority != 0) {
+		struct sched_param sched_param;
+
+		sched_param.sched_priority = sched_priority;
+		res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+	}
 #endif
 
 	pthread_mutex_unlock (&timer_mutex);
@@ -148,12 +153,14 @@ static void sigusr1_handler (int num) {
 
 int corosync_timer_init (
         void (*serialize_lock_fn) (void),
-        void (*serialize_unlock_fn) (void))
+        void (*serialize_unlock_fn) (void),
+	int sched_priority_in)
 {
 	int res;
 
 	timer_serialize_lock_fn = serialize_lock_fn;
 	timer_serialize_unlock_fn = serialize_unlock_fn;
+	sched_priority = sched_priority_in;
 
 	timerlist_init (&timers_timerlist);
 
