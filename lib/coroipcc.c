@@ -304,7 +304,7 @@ coroipcc_service_connect (
 #if defined(COROSYNC_LINUX)
 	sprintf (address.sun_path + 1, "%s", socket_name);
 #else
-	sprintf (address.sun_path, "%s%s", SOCKETDIR, socket_name);
+	sprintf (address.sun_path, "%s/%s", SOCKETDIR, socket_name);
 #endif
 	res = connect (request_fd, (struct sockaddr *)&address,
 		AIS_SUN_LEN(&address));

@@ -531,7 +531,7 @@ extern void coroipcs_ipc_init (
 #if defined(COROSYNC_LINUX)
 	sprintf (un_addr.sun_path + 1, "%s", api->socket_name);
 #else
-	sprintf (un_addr.sun_path, "%s%s", SOCKETDIR, api->socket_name);
+	sprintf (un_addr.sun_path, "%s/%s", SOCKETDIR, api->socket_name);
 	unlink (un_addr.sun_path);
 #endif
 
