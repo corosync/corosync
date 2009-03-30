@@ -294,8 +294,8 @@ static void object_pre_deletion_notification(hdb_handle_t object_handle,
 }
 
 static void object_key_changed_notification(hdb_handle_t object_handle,
-	void *name_pt,	int name_len,
-	void *value_pt, int value_len,
+	const void *name_pt, int name_len,
+	const void *value_pt, int value_len,
 	object_change_type_t type)
 {
 	struct list_head * list;
@@ -490,9 +490,9 @@ error_exit:
 
 static int object_key_create (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len,
-	void *value,
+	const void *value,
 	int value_len)
 {
 	struct object_instance *instance;
@@ -582,7 +582,7 @@ static int object_key_create (
 	object_key->value_len = value_len;
 
 	object_key_changed_notification(object_handle, key_name, key_len,
-								value, value_len, OBJECT_KEY_CREATED);
+					value, value_len, OBJECT_KEY_CREATED);
 	objdb_rdunlock();
 	return (0);
 
@@ -731,7 +731,7 @@ error_exit:
  */
 static int object_find_create (
 	hdb_handle_t object_handle,
-	void *object_name,
+	const void *object_name,
 	int object_len,
 	hdb_handle_t *object_find_handle)
 {
@@ -853,7 +853,7 @@ error_exit:
 
 static int object_key_get (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len,
 	void **value,
 	int *value_len)
@@ -902,7 +902,7 @@ error_exit:
 
 static int object_key_increment (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len,
 	unsigned int *value)
 {
@@ -948,7 +948,7 @@ error_exit:
 
 static int object_key_decrement (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len,
 	unsigned int *value)
 {
@@ -994,7 +994,7 @@ error_exit:
 
 static int object_key_delete (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len)
 {
 	unsigned int res;
@@ -1046,9 +1046,9 @@ error_exit:
 
 static int object_key_replace (
 	hdb_handle_t object_handle,
-	void *key_name,
+	const void *key_name,
 	int key_len,
-	void *new_value,
+	const void *new_value,
 	int new_value_len)
 {
 	unsigned int res;
@@ -1511,7 +1511,7 @@ static int object_dump(hdb_handle_t object_handle,
 	return (res);
 }
 
-static int object_write_config(char **error_string)
+static int object_write_config(const char **error_string)
 {
 	struct config_iface_ver0 **modules;
 	int num_modules;
@@ -1535,7 +1535,7 @@ static int object_write_config(char **error_string)
 	return 0;
 }
 
-static int object_reload_config(int flush, char **error_string)
+static int object_reload_config(int flush, const char **error_string)
 {
 	struct config_iface_ver0 **modules;
 	int num_modules;

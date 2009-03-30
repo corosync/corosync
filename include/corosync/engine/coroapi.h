@@ -176,8 +176,8 @@ typedef void (*object_key_change_notify_fn_t)(
 typedef void (*object_create_notify_fn_t) (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	uint8_t *name_pt, int name_len,
-	void *priv_data_pt);
+	const uint8_t *name_pt, int name_len,
+	const void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (
 	hdb_handle_t parent_object_handle,

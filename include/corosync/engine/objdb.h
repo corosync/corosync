@@ -70,8 +70,8 @@ void *priv_data_pt);
 
 typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
 hdb_handle_t object_handle,
-void *name_pt, int name_len,
-void *priv_data_pt);
+const void *name_pt, int name_len,
+const void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
 											void *name_pt, int name_len,
@@ -88,7 +88,8 @@ struct object_valid {
 struct object_key_valid {
 	char *key_name;
 	int key_len;
-	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
+	int (*validate_callback) (const void *key, int key_len,
+				  const void *value, int value_len);
 };
 
 struct objdb_iface_ver0 {
