@@ -154,7 +154,7 @@ cs_error_t votequorum_setvotes (
  */
 cs_error_t votequorum_qdisk_register (
 	votequorum_handle_t handle,
-	char *name,
+	const char *name,
 	unsigned int votes);
 
 /*
