@@ -59,7 +59,7 @@
 LOGSYS_DECLARE_SUBSYS ("SERV", LOG_INFO);
 
 struct default_service {
-	char *name;
+	const char *name;
 	int ver;
 };
 
