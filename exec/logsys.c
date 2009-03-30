@@ -756,7 +756,7 @@ void _logsys_log_rec (
 			my_memcpy_32bit (&flt_data[idx],
 					 (const int *)buf_args[i], first);
 			my_memcpy_32bit (&flt_data[0],
-				(int *)(((const unsigned char *)buf_args[i]) + (first << 2)),
+				(const int *)(((const unsigned char *)buf_args[i]) + (first << 2)),
 				second);
 			if (bytes % 4) {
 				my_memcpy_8bit ((char *)&flt_data[0 + second],
@@ -1119,7 +1119,7 @@ int logsys_init (
 	char *format,
 	int rec_size)
 {
-	char *errstr;
+	const char *errstr;
 
 	_logsys_nosubsys_set ();
 	_logsys_subsys_create (name, priority);
