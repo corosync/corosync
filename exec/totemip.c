@@ -207,7 +207,7 @@ int totemip_localhost_check(struct totem_ip_address *addr)
 	return totemip_equal(addr, &localhost);
 }
 
-const char *totemip_print(struct totem_ip_address *addr)
+const char *totemip_print(const struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];
 
