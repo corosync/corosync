@@ -153,7 +153,6 @@ static void *lcr_uis_server (void *data)
 #ifdef COROSYNC_LINUX
 	int on = 1;
 #endif
-	int res;
 
 	/*
 	 * Main acceptance and dispatch loop
@@ -163,7 +162,11 @@ static void *lcr_uis_server (void *data)
 	ufds[0].events = POLLIN;
 	ufds[1].events = POLLOUT;
 	for (;;) {
-		res = poll (ufds, nfds, -1);
+		int res = poll (ufds, nfds, -1);
+		if (res == 0 || (res < 0 && errno == EINTR))
+			continue;
+		if (res < 0)
+			return NULL;
 		if (nfds == 1 && ufds[0].revents & POLLIN) {
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
@@ -177,9 +180,6 @@ static void *lcr_uis_server (void *data)
 			lcr_uis_dispatch (ufds[1].fd);
 		}
 	}
-
-
-	return 0;
 }
 
 __attribute__ ((constructor)) static int lcr_uis_ctors (void)
