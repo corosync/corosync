@@ -1079,6 +1079,8 @@ int logsys_log_rec_store (char *filename)
 	}
 
 	written_size = write (fd, flt_data, size_to_write);
+	if (close (fd) != 0)
+		return (-1);
 	if (written_size < 0) {
 		return (-1);
 	} else if ((size_t)written_size != size_to_write) {
