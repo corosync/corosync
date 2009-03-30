@@ -584,7 +584,7 @@ parse_error:
 }
 
 static int read_keyfile (
-	char *key_location,
+	const char *key_location,
 	struct totem_config *totem_config,
 	const char **error_string)
 {
