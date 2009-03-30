@@ -75,13 +75,15 @@ extern void coroipcs_ipc_init (
 
 extern void *coroipcs_private_data_get (void *conn);
 
-extern int coroipcs_response_send (void *conn, void *msg, int mlen);
+extern int coroipcs_response_send (void *conn, const void *msg, int mlen);
 
-extern int coroipcs_response_iov_send (void *conn, struct iovec *iov, int iov_len);
+extern int coroipcs_response_iov_send (void *conn,
+				       const struct iovec *iov, int iov_len);
 
-extern int coroipcs_dispatch_send (void *conn, void *msg, int mlen);
+extern int coroipcs_dispatch_send (void *conn, const void *msg, int mlen);
 
-extern int coroipcs_dispatch_iov_send (void *conn, struct iovec *iov, int iov_len);
+extern int coroipcs_dispatch_iov_send (void *conn,
+				       const struct iovec *iov, int iov_len);
 
 extern void coroipcs_refcount_inc (void *conn);
 

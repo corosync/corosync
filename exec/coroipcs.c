@@ -584,7 +584,7 @@ void *coroipcs_private_data_get (void *conn)
 	return (conn_info->private_data);
 }
 
-int coroipcs_response_send (void *conn, void *msg, int mlen)
+int coroipcs_response_send (void *conn, const void *msg, int mlen)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
@@ -606,7 +606,7 @@ retry_semop:
 	return (0);
 }
 
-int coroipcs_response_iov_send (void *conn, struct iovec *iov, int iov_len)
+int coroipcs_response_iov_send (void *conn, const struct iovec *iov, int iov_len)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
@@ -865,7 +865,7 @@ void coroipcs_refcount_dec (void *conn)
 	pthread_mutex_unlock (&conn_info->mutex);
 }
 
-int coroipcs_dispatch_send (void *conn, void *msg, int mlen)
+int coroipcs_dispatch_send (void *conn, const void *msg, int mlen)
 {
 	struct iovec iov;
 
@@ -876,7 +876,7 @@ int coroipcs_dispatch_send (void *conn, void *msg, int mlen)
 	return (0);
 }
 
-int coroipcs_dispatch_iov_send (void *conn, struct iovec *iov, int iov_len)
+int coroipcs_dispatch_iov_send (void *conn, const struct iovec *iov, int iov_len)
 {
 	msg_send_or_queue (conn, iov, iov_len);
 	return (0);
@@ -1095,4 +1095,3 @@ int coroipcs_handler_dispatch (
 
 	return (0);
 }
-
