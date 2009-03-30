@@ -106,7 +106,7 @@ extern int totempg_groups_leave (
 
 extern int totempg_groups_mcast_joined (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	int iov_len,
 	int guarantee);
 
