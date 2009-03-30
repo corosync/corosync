@@ -161,6 +161,7 @@ void sigalrm_handler (int num)
 	alarm_notice = 1;
 }
 
+void sigintr_handler (int num) __attribute__((__noreturn__));
 void sigintr_handler (int num)
 {
 	exit (1);
