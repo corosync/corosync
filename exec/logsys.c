@@ -1142,7 +1142,7 @@ int logsys_conf (
 	int priority,
 	char *file)
 {
-	char *errstr;
+	const char *errstr;
 
 	_logsys_rec_init (100000);
 	strncpy (logsys_loggers[0].subsys, name,
