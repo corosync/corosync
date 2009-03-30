@@ -142,7 +142,8 @@ struct object_valid {
 struct object_key_valid {
 	char *key_name;
 	int key_len;
-	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
+	int (*validate_callback) (const void *key, int key_len,
+				  const void *value, int value_len);
 };
 /* deprecated */
 
@@ -167,9 +168,9 @@ typedef void (*object_key_change_notify_fn_t)(
 	object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	void *object_name_pt, int object_name_len,
-	void *key_name_pt, int key_len,
-	void *key_value_pt, int key_value_len,
+	const void *object_name_pt, int object_name_len,
+	const void *key_name_pt, int key_len,
+	const void *key_value_pt, int key_value_len,
 	void *priv_data_pt);
 
 typedef void (*object_create_notify_fn_t) (
@@ -185,8 +186,8 @@ typedef void (*object_destroy_notify_fn_t) (
 
 typedef void (*object_notify_callback_fn_t)(
 	hdb_handle_t object_handle,
-	void *key_name, int key_len,
-	void *value, int value_len,
+	const void *key_name, int key_len,
+	const void *value, int value_len,
 	object_change_type_t type,
 	void * priv_data_pt);
 
@@ -223,7 +224,7 @@ struct corosync_api_v1 {
 	int (*object_create) (
 		hdb_handle_t parent_object_handle,
 		hdb_handle_t *object_handle,
-		void *object_name, unsigned int object_name_len);
+		const void *object_name, unsigned int object_name_len);
 
 	int (*object_priv_set) (
 		hdb_handle_t object_handle,
@@ -231,9 +232,9 @@ struct corosync_api_v1 {
 
 	int (*object_key_create) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
-		void *value,
+		const void *value,
 		int value_len);
 
 	int (*object_destroy) (
@@ -251,7 +252,7 @@ struct corosync_api_v1 {
 
 	int (*object_find_create) (
 		hdb_handle_t parent_object_handle,
-		void *object_name,
+		const void *object_name,
 		int object_name_len,
 		hdb_handle_t *object_find_handle);
 
@@ -264,7 +265,7 @@ struct corosync_api_v1 {
 
 	int (*object_key_get) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		void **value,
 		int *value_len);
@@ -275,14 +276,14 @@ struct corosync_api_v1 {
 
 	int (*object_key_replace) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
-		void *new_value,
+		const void *new_value,
 		int new_value_len);
 
 	int (*object_key_delete) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len);
 
 	int (*object_iter_reset) (
@@ -348,13 +349,13 @@ struct corosync_api_v1 {
 
 	int (*object_key_increment) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		unsigned int *value);
 
@@ -390,13 +391,15 @@ struct corosync_api_v1 {
 
 	void *(*ipc_private_data_get) (void *conn);
 
-	int (*ipc_response_send) (void *conn, void *msg, int mlen);
+	int (*ipc_response_send) (void *conn, const void *msg, int mlen);
 
-	int (*ipc_response_iov_send) (void *conn, struct iovec *iov, int iov_len);
+	int (*ipc_response_iov_send) (void *conn,
+				      const struct iovec *iov, int iov_len);
 
-	int (*ipc_dispatch_send) (void *conn, void *msg, int mlen);
+	int (*ipc_dispatch_send) (void *conn, const void *msg, int mlen);
 
-	int (*ipc_dispatch_iov_send) (void *conn, struct iovec *iov, int iov_len);
+	int (*ipc_dispatch_iov_send) (void *conn,
+				      const struct iovec *iov, int iov_len);
 
 	void (*ipc_refcnt_inc) (void *conn);
 
@@ -466,13 +469,13 @@ struct corosync_api_v1 {
 
 	int (*tpg_joined_mcast) (
 		hdb_handle_t handle,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		int iov_len,
 		int guarantee);
 
 	int (*tpg_joined_reserve) (
 		hdb_handle_t handle,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		int iov_len);
 
 	int (*tpg_joined_release) (
@@ -481,16 +484,16 @@ struct corosync_api_v1 {
 	int (*tpg_groups_mcast) (
 		hdb_handle_t handle,
 		int guarantee,
-		struct corosync_tpg_group *groups,
+		const struct corosync_tpg_group *groups,
 		int groups_cnt,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		int iov_len);
 
 	int (*tpg_groups_reserve) (
 		hdb_handle_t handle,
-		struct corosync_tpg_group *groups,
+		const struct corosync_tpg_group *groups,
 		int groups_cnt,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		int iov_len);
 
 	int (*tpg_groups_release) (
@@ -517,7 +520,7 @@ struct corosync_api_v1 {
 	 */
 	int (*plugin_interface_reference) (
 		hdb_handle_t *handle, 
-		char *iface_name,
+		const char *iface_name,
 		int version,
 		void **interface,
 		void *context);
@@ -529,12 +532,12 @@ struct corosync_api_v1 {
 	*/
 	unsigned int (*service_link_and_init) (
 		struct corosync_api_v1 *corosync_api_v1,
-		char *service_name,
+		const char *service_name,
 		unsigned int service_ver);
 
 	unsigned int (*service_unlink_and_exit) (
 		struct corosync_api_v1 *corosync_api_v1,
-		char *service_name,
+		const char *service_name,
 		unsigned int service_ver);
 
 	/*

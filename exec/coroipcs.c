@@ -140,7 +140,8 @@ static int priv_change (struct conn_info *conn_info);
 
 static void ipc_disconnect (struct conn_info *conn_info);
 
-static void msg_send (void *conn, struct iovec *iov, int iov_len, int locked);
+static void msg_send (void *conn, const struct iovec *iov, int iov_len,
+		      int locked);
 
 static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len);
 
@@ -671,7 +672,8 @@ static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
 	return (0);
 }
 
-static void msg_send (void *conn, struct iovec *iov, int iov_len, int locked)
+static void msg_send (void *conn, const struct iovec *iov, int iov_len,
+		      int locked)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
@@ -792,7 +794,7 @@ retry_recv:
 	return (0);
 }
 
-static void msg_send_or_queue (void *conn, struct iovec *iov, int iov_len)
+static void msg_send_or_queue (void *conn, const struct iovec *iov, int iov_len)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	unsigned int bytes_left;

@@ -233,47 +233,47 @@ do {									\
 } while(0)
 
 #define LEAVE() do {							\
-	_logsys_log_rec (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_LEAVE, LOG_REC_END);	\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE1, format, ##args);\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE2, format, ##args);\
 } while(0)
 
 #define TRACE3(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE3, format, ##args);\
 } while(0)
 
 #define TRACE4(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE4, format, ##args);\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE5, format, ##args);\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE6, format, ##args);\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE7, format, ##args);\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, (char *) __FUNCTION__,	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE8, format, ##args);\
 } while(0)
 
