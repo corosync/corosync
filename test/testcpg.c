@@ -148,6 +148,7 @@ cpg_callbacks_t callbacks = {
 	.cpg_confchg_fn =            ConfchgCallback,
 };
 
+void sigintr_handler (int signum) __attribute__((__noreturn__));
 void sigintr_handler (int signum) {
 	exit (0);
 }
