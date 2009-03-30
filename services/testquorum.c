@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -105,9 +105,9 @@ static quorum_set_quorate_fn_t set_quorum;
 static void key_change_notify(object_change_type_t change_type,
 			      hdb_handle_t parent_object_handle,
 			      hdb_handle_t object_handle,
-			      void *object_name_pt, int object_name_len,
-			      void *key_name_pt, int key_len,
-			      void *key_value_pt, int key_value_len,
+			      const void *object_name_pt, int object_name_len,
+			      const void *key_name_pt, int key_len,
+			      const void *key_value_pt, int key_value_len,
 			      void *priv_data_pt)
 {
 	unsigned int members[1];
