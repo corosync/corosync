@@ -42,7 +42,7 @@
 #include <corosync/hdb.h>
 
 struct totempg_group {
-	void *group;
+	const void *group;
 	int group_len;
 };
 
