@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2008 Red Hat Inc
+ * Copyright (c) 2006-2009 Red Hat Inc
  *
  * All rights reserved.
  *
@@ -161,7 +161,6 @@ int main (int argc, char *argv[]) {
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
-	unsigned int num_groups;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
