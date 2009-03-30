@@ -44,7 +44,7 @@ lib%:
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
 		-e 's#@LIBDIR@#$(libdir)#g' \
 		-e 's#@LIBVERSION@#$(VERSION)#g' \
-		-e 's#@LIB@#'$@'#g' \
+		-e 's#@LIB@#'$(@:lib%=%)'#g' \
 	> $@.pc;
 	touch $@
 
