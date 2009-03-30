@@ -89,9 +89,9 @@ static void confdb_notify_lib_of_key_change(
 	object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	void *object_name_pt, int object_name_len,
-	void *key_name_pt, int key_name_len,
-	void *key_value_pt, int key_value_len,
+	const void *object_name_pt, int object_name_len,
+	const void *key_name_pt, int key_name_len,
+	const void *key_value_pt, int key_value_len,
 	void *priv_data_pt);
 
 static void confdb_notify_lib_of_new_object(
@@ -617,12 +617,12 @@ static void message_handler_req_lib_confdb_reload (void *conn, void *message)
 }
 
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
-											  hdb_handle_t parent_object_handle,
-											  hdb_handle_t object_handle,
-											  void *object_name_pt, int object_name_len,
-											  void *key_name_pt, int key_name_len,
-											  void *key_value_pt, int key_value_len,
-											  void *priv_data_pt)
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name_pt, int object_name_len,
+	const void *key_name_pt, int key_name_len,
+	const void *key_value_pt, int key_value_len,
+	void *priv_data_pt)
 {
 	struct res_lib_confdb_key_change_callback res;
 
