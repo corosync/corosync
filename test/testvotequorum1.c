@@ -45,7 +45,7 @@
 
 static votequorum_handle_t handle;
 
-static char *node_state(int state)
+static const char *node_state(int state)
 {
 	switch (state) {
 	case NODESTATE_JOINING:
