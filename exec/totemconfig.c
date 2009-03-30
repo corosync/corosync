@@ -614,6 +614,7 @@ static int read_keyfile (
 			 res * 8, key_location);
 		goto parse_error;
 	}
+	close (fd);
 	return 0;
 
 parse_error:
