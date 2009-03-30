@@ -39,6 +39,8 @@
 
 #define SOCKET_SERVICE_INIT 0xFFFFFFFF
 
+struct iovec;
+
 typedef int (*coroipcs_init_fn_lvalue) (void *conn);
 typedef int (*coroipcs_exit_fn_lvalue) (void *conn);
 typedef void (*coroipcs_handler_fn_lvalue) (void *conn, void *msg);
