@@ -576,7 +576,7 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 {
 	struct res_lib_confdb_write res_lib_confdb_write;
 	int ret = CS_OK;
-	char *error_string = NULL;
+	const char *error_string = NULL;
 
 	if (api->object_write_config(&error_string))
 		ret = CS_ERR_ACCESS;
@@ -714,8 +714,3 @@ static void message_handler_req_lib_confdb_track_stop (void *conn, void *message
 	res.error = CS_OK;
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
-
-
-
-
-

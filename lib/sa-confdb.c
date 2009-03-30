@@ -305,7 +305,7 @@ int confdb_sa_key_replace (
 int confdb_sa_write (
 	char *error_text)
 {
-	char *errtext;
+	const char *errtext;
 	int ret;
 
 	ret = objdb->object_write_config(&errtext);

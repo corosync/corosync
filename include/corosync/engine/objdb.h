@@ -217,7 +217,7 @@ struct objdb_iface_ver0 {
 		object_reload_notify_fn_t object_reload_notify_fn,
 		void * priv_data_pt);
 
-	int (*object_write_config) (char **error_string);
+	int (*object_write_config) (const char **error_string);
 
 	int (*object_reload_config) (
 		int flush,
