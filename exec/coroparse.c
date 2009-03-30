@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -57,11 +57,12 @@
 
 static int read_config_file_into_objdb(
 	struct objdb_iface_ver0 *objdb,
-	char **error_string);
+	const char **error_string);
 static char error_string_response[512];
 
 
-static int aisparser_readconfig (struct objdb_iface_ver0 *objdb, char **error_string)
+static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
+				 const char **error_string)
 {
 	if (read_config_file_into_objdb(objdb, error_string)) {
 		return -1;
@@ -87,7 +88,7 @@ static char *remove_whitespace(char *string)
 static int parse_section(FILE *fp,
 			 struct objdb_iface_ver0 *objdb,
 			 hdb_handle_t parent_handle,
-			 char **error_string)
+			 const char **error_string)
 {
 	char line[512];
 	int i;
@@ -157,10 +158,10 @@ static int parse_section(FILE *fp,
 /* Read config file and load into objdb */
 static int read_config_file_into_objdb(
 	struct objdb_iface_ver0 *objdb,
-	char **error_string)
+	const char **error_string)
 {
 	FILE *fp;
-	char *filename;
+	const char *filename;
 	char *error_reason = error_string_response;
 	int res;
 
@@ -169,7 +170,7 @@ static int read_config_file_into_objdb(
 		filename = SYSCONFDIR "/corosync.conf";
 
 	fp = fopen (filename, "r");
-	if (fp == 0) {
+	if (fp == NULL) {
 		sprintf (error_reason, "Can't read file %s reason = (%s)\n",
 			 filename, strerror (errno));
 		*error_string = error_reason;
@@ -220,5 +221,3 @@ __attribute__ ((constructor)) static void aisparser_comp_register (void) {
         lcr_interfaces_set (&corosync_aisparser_ver0[0], &aisparser_iface_ver0);
 	lcr_component_register (&aisparser_comp_ver0);
 }
-
-
