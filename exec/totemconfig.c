@@ -628,7 +628,7 @@ int totem_config_keyread (
 	const char **error_string)
 {
 	int got_key = 0;
-	char *key_location = NULL;
+	const char *key_location = NULL;
 	hdb_handle_t object_totem_handle;
 	int res;
 
