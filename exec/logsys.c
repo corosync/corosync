@@ -496,6 +496,7 @@ static inline void wthread_wait_locked (void)
 	pthread_mutex_unlock (&logsys_cond_mutex);
 }
 
+static void *logsys_worker_thread (void *data) __attribute__((__noreturn__));
 static void *logsys_worker_thread (void *data)
 {
 	int log_msg;
