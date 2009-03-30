@@ -73,7 +73,8 @@ void evs_deliver_fn (
 	void *msg,
 	int msg_len)
 {
- printf ("Delivering message %s\n", msg);
+  char *m = msg;
+  printf ("Delivering message %s\n", m);
 }
 
 void evs_confchg_fn (
