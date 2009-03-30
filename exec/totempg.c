@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
  * Copyright (c) 2005 OSDL.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -1144,7 +1144,7 @@ error_exit:
 
 int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	int iov_len)
 {
 	struct totempg_group_instance *instance;

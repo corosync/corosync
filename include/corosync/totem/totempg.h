@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -112,7 +112,7 @@ extern int totempg_groups_mcast_joined (
 
 extern int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	int iov_len);
 
 extern void totempg_groups_joined_release (
