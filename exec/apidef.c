@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -63,6 +63,10 @@ typedef int (*typedef_tpg_leave) (hdb_handle_t, struct corosync_tpg_group *, int
 typedef int (*typedef_tpg_groups_mcast) (hdb_handle_t, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
 typedef int (*typedef_tpg_groups_send_ok) (hdb_handle_t, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
 
+static inline void _corosync_public_exit_error (cs_fatal_error_t err,
+						const char *file,
+						unsigned int line)
+  __attribute__((__noreturn__));
 static inline void _corosync_public_exit_error (
 	cs_fatal_error_t err, const char *file, unsigned int line)
 {
