@@ -598,7 +598,7 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 
 static int ipc_subsys_id = -1;
 
-static void ipc_log_printf (char *format, ...) {
+static void ipc_log_printf (const char *format, ...) {
         va_list ap;
 
         va_start (ap, format);
@@ -683,7 +683,8 @@ int main (int argc, char **argv)
 	void *objdb_p;
 	struct config_iface_ver0 *config;
 	void *config_p;
-	const char *config_iface;
+	const char *config_iface_init;
+	char *config_iface;
 	char *iface;
 	int res, ch;
 	int background, setprio;
@@ -772,13 +773,13 @@ int main (int argc, char **argv)
 	 * the corosync default built in parser if the configuration parser
 	 * isn't overridden
 	 */
-	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
-	if (!config_iface) {
-		config_iface = "corosync_parser";
+	config_iface_init = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
+	if (!config_iface_init) {
+		config_iface_init = "corosync_parser";
 	}
 
 	/* Make a copy so we can deface it with strtok */
-	config_iface = strdup(config_iface);
+	config_iface = strdup(config_iface_init);
 
 	iface = strtok(config_iface, ":");
 	while (iface)
