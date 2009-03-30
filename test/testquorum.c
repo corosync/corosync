@@ -20,9 +20,9 @@ static void quorum_notification_fn(
 	int i;
 
 	printf("quorum notification called \n");
-	printf("  quorate   = %d\n", quorate);
-	printf("  ring id   = %lld\n", ring_id);
-	printf("  num nodes = %d ", view_list_entries);
+	printf("  quorate   = %lu\n", (long unsigned int) quorate);
+	printf("  ring id   = %llu\n", (long long unsigned int) ring_id);
+	printf("  num nodes = %lu ", (long unsigned int) view_list_entries);
 
 	for (i=0; i<view_list_entries; i++) {
 		printf(" %d ", view_list[i]);
