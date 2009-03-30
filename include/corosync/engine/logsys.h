@@ -133,7 +133,7 @@ extern void logsys_flush (void);
 
 extern void logsys_atsegv (void);
 
-extern int logsys_log_rec_store (char *filename);
+extern int logsys_log_rec_store (const char *filename);
 
 /*
  * Internal APIs that must be globally exported
@@ -177,7 +177,7 @@ extern void *logsys_rec_end;
 #define LOGSYS_DECLARE_SYSTEM(name,mode,file,facility,format,rec_size)	\
 __attribute__ ((constructor)) static void logsys_system_init (void)	\
 {									\
-	char *error_string;						\
+	const char *error_string;						\
 									\
 	logsys_config_mode_set (mode);					\
 	logsys_config_file_set (&error_string, (file));			\
