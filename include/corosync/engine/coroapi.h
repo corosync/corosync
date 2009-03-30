@@ -569,7 +569,7 @@ struct corosync_service_engine_iface_ver0 {
 };
 
 struct corosync_service_engine {
-	char *name;
+	const char *name;
 	unsigned short id;
 	unsigned int private_data_size;
 	enum cs_lib_flow_control flow_control;

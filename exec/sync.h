@@ -44,7 +44,7 @@ struct sync_callbacks {
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
-	char *name;
+	const char *name;
 };
 
 struct corosync_api_v1;
