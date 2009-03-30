@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -113,7 +114,7 @@ void sync_printer_section_transmit (void **record)
 	unsigned int *xmit_id = record[3];
 	unsigned char *section_name = record[4];
 	uint16_t *section_name_len = record[5];
-	
+
 	printf ("xmit_id=[%d] Section transmit checkpoint name=[%s] id=[%d] ",
 		*xmit_id, print_string_len (ckpt_name, *name_len),
 		*ckpt_id);
@@ -126,7 +127,7 @@ void sync_printer_checkpoint_receive (void **record)
 	uint16_t *name_len = record[1];
 	unsigned int *ckpt_id = record[2];
 	unsigned int *xmit_id = record[3];
-	
+
 	printf ("xmit_id=[%d] Checkpoint receive checkpoint name=[%s] id=[%d]\n",
 		*xmit_id, print_string_len (ckpt_name, *name_len), *ckpt_id);
 }
@@ -219,7 +220,7 @@ struct printer_subsys_record_print {
 };
 
 struct printer_subsys {
-	char *subsys;
+	const char *subsys;
 	struct printer_subsys_record_print *record_printers;
 	int record_printers_count;
 };
@@ -343,7 +344,7 @@ struct printer_subsys printer_subsystems[] = {
 };
 
 unsigned int printer_subsys_count = sizeof (printer_subsystems) / sizeof (struct printer_subsys);
-	
+
 unsigned int records_printed = 1;
 
 unsigned int record[10000];
@@ -360,7 +361,7 @@ int logsys_rec_get (int rec_idx) {
 	firstcopy = rec_size;
 	secondcopy = 0;
 	if (firstcopy + rec_idx > flt_data_size) {
-		firstcopy = flt_data_size - rec_idx; 
+		firstcopy = flt_data_size - rec_idx;
 		secondcopy -= firstcopy - rec_size;
 	}
 	memcpy (&record[0], &flt_data[rec_idx], firstcopy<<2);
@@ -398,7 +399,7 @@ printf ("rec=[%d] ", record_number);
 		arguments[arg_count++] = &buf_uint32t[arg_size_idx + 1];
 		words_processed += buf_uint32t[arg_size_idx] + 1;
 		arg_size_idx += buf_uint32t[arg_size_idx] + 1;
-		
+
 	}
 
 	found = 0;
@@ -410,7 +411,7 @@ printf ("rec=[%d] ", record_number);
 					found = 1;
 				}
 			}
-		}	
+		}
 	}
 	if (rec_ident & LOGSYS_TAG_LOG) {
 		printf ("Log Message=%s\n", (char *)arguments[3]);
@@ -442,7 +443,7 @@ printf ("rec=[%d] ", record_number);
 		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
 			(char *)arguments[0], rec_ident);
 	}
-		
+
 
 #ifdef COMPILE_OUT
 printf ("\n");
@@ -455,15 +456,31 @@ int main (void)
 	int rec_idx;
 	int end_rec;
 	int record_count = 1;
-	int size_read;
+	ssize_t n_read;
+	const char *data_file = LOCALSTATEDIR "/lib/corosync/fdata";
 
-	flt_data = malloc ((flt_data_size + 2) * sizeof (unsigned int));
-	fd = open (LOCALSTATEDIR "/lib/corosync/fdata", O_RDONLY);
-	size_read = (int)read (fd, flt_data, (flt_data_size + 2) * sizeof (unsigned int));
+	size_t n_required = (flt_data_size + 2) * sizeof (unsigned int);
+	if ((fd = open (data_file, O_RDONLY)) < 0) {
+		fprintf (stderr, "failed to open %s: %s\n",
+			 data_file, strerror (errno));
+		return EXIT_FAILURE;
+	}
 
-	if (size_read != (flt_data_size + 2) * sizeof (unsigned int)) {
-		printf ("Warning: read %d bytes, but expected %d\n",
-				size_read, (flt_data_size + 2) * sizeof (unsigned int));
+	if ((flt_data = malloc (n_required)) == NULL) {
+		fprintf (stderr, "exhausted virtual memory\n");
+		return EXIT_FAILURE;
+	}
+	n_read = read (fd, flt_data, n_required);
+	close (fd);
+	if (n_read < 0) {
+		fprintf (stderr, "reading %s failed: %s\n",
+			 data_file, strerror (errno));
+		return EXIT_FAILURE;
+	}
+
+	if (n_read != n_required) {
+		printf ("Warning: read %lu bytes, but expected %lu\n",
+			(unsigned long) n_read, (unsigned long) n_required);
 	}
 
 	rec_idx = flt_data[FDTAIL_INDEX];
