@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
@@ -141,7 +141,7 @@ struct totem_config {
 
 	unsigned int max_messages;
 
-	char *vsf_type;
+	const char *vsf_type;
 };
 
 #define TOTEM_CONFIGURATION_TYPE
