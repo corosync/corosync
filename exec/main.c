@@ -132,6 +132,7 @@ static void sigusr2_handler (int num)
 	}
 }
 
+static void *corosync_exit (void *arg) __attribute__((__noreturn__));
 static void *corosync_exit (void *arg)
 {
 	if (api) {
@@ -156,9 +157,6 @@ static void *corosync_exit (void *arg)
 	totempg_finalize ();
 	coroipcs_ipc_exit ();
 	corosync_exit_error (AIS_DONE_EXIT);
-
-	/* never reached */
-	return NULL;
 }
 
 pthread_t corosync_exit_thread;
