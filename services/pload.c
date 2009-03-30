@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -81,9 +81,11 @@ static void pload_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static void message_handler_req_exec_pload_start (void *msg, unsigned int nodeid);
+static void message_handler_req_exec_pload_start (const void *msg,
+						  unsigned int nodeid);
 
-static void message_handler_req_exec_pload_mcast (void *msg, unsigned int nodeid);
+static void message_handler_req_exec_pload_mcast (const void *msg,
+						  unsigned int nodeid);
 
 static void req_exec_pload_start_endian_convert (void *msg);
 
@@ -256,8 +258,6 @@ static void req_exec_pload_mcast_endian_convert (void *msg)
 {
 }
 
-static int msg_no = 0;
-
 int send_message (enum totem_callback_token_type type, void *arg)
 {
 	struct req_exec_pload_mcast req_exec_pload_mcast;
@@ -305,10 +305,10 @@ void start_mcasting (void)
 } 
 
 static void message_handler_req_exec_pload_start (
-	void *msg,
+	const void *msg,
 	unsigned int nodeid)
 {
-	struct req_exec_pload_start *req_exec_pload_start = (struct req_exec_pload_start *)msg;
+	const struct req_exec_pload_start *req_exec_pload_start = msg;
 
 	msgs_wanted = req_exec_pload_start->msg_count;
 	msg_size = req_exec_pload_start->msg_size;
@@ -333,10 +333,10 @@ struct timeval tv_elapsed;
 int last_msg_no = 0;
 
 static void message_handler_req_exec_pload_mcast (
-	void *msg,
+	const void *msg,
 	unsigned int nodeid)
 {
-	struct req_exec_pload_mcast *pload_mcast = (struct req_exec_pload_mcast *)msg;
+	const struct req_exec_pload_mcast *pload_mcast = msg;
 
 	assert (pload_mcast->msg_code - 1 == last_msg_no);
 	last_msg_no = pload_mcast->msg_code;
