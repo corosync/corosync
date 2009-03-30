@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
-char *delivery_string;
+static const char *delivery_string;
 
 int deliveries = 0;
 void evs_deliver_fn (
