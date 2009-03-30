@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -322,7 +322,7 @@ int confdb_sa_reload (
 	char *errtext;
 	int ret;
 
-	ret = objdb->object_reload_config(flush, &errtext);
+	ret = objdb->object_reload_config(flush, (const char **) &errtext);
 	if (!ret)
 		strcpy(error_text, errtext);
 

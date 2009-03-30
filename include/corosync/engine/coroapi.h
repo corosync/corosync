@@ -345,7 +345,7 @@ struct corosync_api_v1 {
 	int (*object_write_config) (char **error_string);
 
 	int (*object_reload_config) (int flush,
-				     char **error_string);
+				     const char **error_string);
 
 	int (*object_key_increment) (
 		hdb_handle_t object_handle,
