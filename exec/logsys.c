@@ -114,7 +114,7 @@ static const char *logsys_name = NULL;
 
 static unsigned int logsys_mode = LOG_MODE_NOSUBSYS;
 
-static char *logsys_file = NULL;
+static const char *logsys_file = NULL;
 
 static FILE *logsys_file_fp = NULL;
 
@@ -172,7 +172,7 @@ static void logsys_atexit (void);
 /*
  * Helpers for _logsys_log_rec functionality
  */
-static inline void my_memcpy_32bit (int *dest, int *src, unsigned int words)
+static inline void my_memcpy_32bit (int *dest, const int *src, unsigned int words)
 {
 	unsigned int word_idx;
 	for (word_idx = 0; word_idx < words; word_idx++) {
@@ -180,7 +180,8 @@ static inline void my_memcpy_32bit (int *dest, int *src, unsigned int words)
 	}
 }
 
-static inline void my_memcpy_8bit (char *dest, char *src, unsigned int bytes)
+static inline void my_memcpy_8bit (char *dest, const char *src,
+				   unsigned int bytes)
 {
 	unsigned int byte_idx;
 
@@ -275,7 +276,7 @@ do {									\
 /*
  * Internal threaded logging implementation
  */
-static inline int strcpy_cutoff (char *dest, char *src, int cutoff)
+static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
 {
 	unsigned int len;
 
@@ -306,9 +307,9 @@ static inline int strcpy_cutoff (char *dest, char *src, int cutoff)
  * any number between % and character specify field length to pad or chop
 */
 static void log_printf_to_logs (
-	char *subsys,
-	char *function_name,
-	char *file_name,
+	const char *subsys,
+	const char *function_name,
+	const char *file_name,
 	int file_line,
 	unsigned int level,
 	char *buffer)
@@ -650,7 +651,7 @@ void _logsys_log_rec (
 	...)
 {
 	va_list ap;
-	void *buf_args[64];
+	const void *buf_args[64];
 	unsigned int buf_len[64];
 	unsigned int i;
 	unsigned int idx;
@@ -738,7 +739,7 @@ void _logsys_log_rec (
 			my_memcpy_32bit (&flt_data[idx], buf_args[i], full_words);
 			if (bytes % 4) {
 				my_memcpy_8bit ((char *)&flt_data[idx + full_words],
-					((char *)buf_args[i]) + (full_words << 2), bytes % 4);
+					((const char *)buf_args[i]) + (full_words << 2), bytes % 4);
 			}
 		} else {
 			/*
@@ -752,13 +753,14 @@ void _logsys_log_rec (
 				first = full_words;
 			}
 			second = full_words - first;
-			my_memcpy_32bit (&flt_data[idx], (int *)buf_args[i], first);
+			my_memcpy_32bit (&flt_data[idx],
+					 (const int *)buf_args[i], first);
 			my_memcpy_32bit (&flt_data[0],
-				(int *)(((unsigned char *)buf_args[i]) + (first << 2)),
+				(int *)(((const unsigned char *)buf_args[i]) + (first << 2)),
 				second);
 			if (bytes % 4) {
 				my_memcpy_8bit ((char *)&flt_data[0 + second],
-					((char *)buf_args[i]) + (full_words << 2), bytes % 4);
+					((const char *)buf_args[i]) + (full_words << 2), bytes % 4);
 			}
 		}
 		idx += total_words;
@@ -875,7 +877,7 @@ static void logsys_close_logfile()
 	}
 }
 
-int logsys_config_file_set (char **error_string, char *file)
+int logsys_config_file_set (const char **error_string, const char *file)
 {
 	static char error_string_response[512];
 
@@ -1067,7 +1069,7 @@ int logsys_config_subsys_get (
 	return (-1);
 }
 
-int logsys_log_rec_store (char *filename)
+int logsys_log_rec_store (const char *filename)
 {
 	int fd;
 	ssize_t written_size;
@@ -1086,6 +1088,7 @@ int logsys_log_rec_store (char *filename)
 	} else if ((size_t)written_size != size_to_write) {
 		return (-1);
 	}
+
 	return (0);
 }
 
@@ -1108,11 +1111,11 @@ void logsys_atsegv (void)
 }
 
 int logsys_init (
-	char *name,
+	const char *name,
 	int mode,
 	int facility,
 	int priority,
-	char *file,
+	const char *file,
 	char *format,
 	int rec_size)
 {

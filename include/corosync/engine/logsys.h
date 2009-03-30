@@ -87,8 +87,8 @@ extern void logsys_config_mode_set (
 extern unsigned int logsys_config_mode_get (void);
 
 extern int logsys_config_file_set (
-	char **error_string,
-	char *file);
+	const char **error_string,
+	const char *file);
 
 extern void logsys_config_facility_set (
 	const char *name,
@@ -282,11 +282,11 @@ do {									\
  * instead of using the DECLARE macros.  These APIs do not allow subsystems
  */
 int logsys_init (
-	char *name,
+	const char *name,
 	int mode,
 	int facility,
 	int priority,
-	char *file,
+	const char *file,
 	char *format,
 	int rec_size);
 
