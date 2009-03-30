@@ -332,7 +332,7 @@ int totem_config_validate (
 {
 	static char local_error_reason[512];
 	char parse_error[512];
-	char *error_reason = local_error_reason;
+	const char *error_reason = local_error_reason;
 	int i;
 	unsigned int interface_max = INTERFACE_MAX;
 
@@ -669,7 +669,7 @@ int totem_config_keyread (
 
 	/* In desperation we read the default filename */
 	if (!got_key) {
-		char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
+		const char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
 		if (!filename)
 			filename = SYSCONFDIR "/ais/authkey";
 		res = read_keyfile(filename, totem_config, error_string);
