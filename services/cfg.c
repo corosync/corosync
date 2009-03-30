@@ -112,7 +112,7 @@ static void message_handler_req_exec_cfg_ringreenable (
         unsigned int nodeid);
 
 static void message_handler_req_exec_cfg_killnode (
-        void *message,
+        const void *message,
         unsigned int nodeid);
 
 static void message_handler_req_exec_cfg_shutdown (
@@ -596,10 +596,10 @@ static void exec_cfg_killnode_endian_convert (void *msg)
 
 
 static void message_handler_req_exec_cfg_killnode (
-        void *message,
+        const void *message,
         unsigned int nodeid)
 {
-	struct req_exec_cfg_killnode *req_exec_cfg_killnode = message;
+	const struct req_exec_cfg_killnode *req_exec_cfg_killnode = message;
 	cs_name_t reason;
 
 	ENTER();

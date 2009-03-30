@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Red Hat, Inc.
+ * Copyright (C) 2006, 2009 Red Hat, Inc.
  * Copyright (c) 2006-2008 Red Hat, Inc.
  *
  * All rights reserved.
@@ -122,7 +122,7 @@ static inline void swab_mar_name_t (mar_name_t *to_swab)
 
 static inline void marshall_from_mar_name_t (
 	cs_name_t *dest,
-	mar_name_t *src)
+	const mar_name_t *src)
 {
 	dest->length = src->length;
 	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
@@ -130,7 +130,7 @@ static inline void marshall_from_mar_name_t (
 
 static inline void marshall_to_mar_name_t (
 	mar_name_t *dest,
-	cs_name_t *src)
+	const cs_name_t *src)
 {
 	dest->length = src->length;
 	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
