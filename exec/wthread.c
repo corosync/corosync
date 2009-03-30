@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -65,6 +65,7 @@ struct worker_thread {
 	struct thread_data thread_data;
 };
 
+void *worker_thread (void *thread_data_in) __attribute__((__noreturn__));
 void *worker_thread (void *thread_data_in) {
 	struct thread_data *thread_data = (struct thread_data *)thread_data_in;
 	struct worker_thread *worker_thread =
@@ -95,7 +96,6 @@ void *worker_thread (void *thread_data_in) {
 		}
 		pthread_mutex_unlock (&worker_thread->done_work_mutex);
 	}
-	return (0);
 }
 
 int worker_thread_group_init (
