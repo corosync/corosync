@@ -71,7 +71,7 @@ void *priv_data_pt);
 typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
 hdb_handle_t object_handle,
 const void *name_pt, int name_len,
-const void *priv_data_pt);
+void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
 											void *name_pt, int name_len,
