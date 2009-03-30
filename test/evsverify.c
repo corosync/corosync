@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,7 +46,7 @@
 #include <corosync/evs.h>
 #include "../exec/crypto.h"
 
-char *delivery_string;
+const char *delivery_string;
 struct my_msg {
 	unsigned int msg_size;
 	unsigned char sha1[20];
