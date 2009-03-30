@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2007 Red Hat, Inc.
+ * Copyright (c) 2005-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,7 +71,8 @@ extern const char *totemip_print(struct totem_ip_address *addr);
 extern int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr);
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
-extern int totemip_parse(struct totem_ip_address *totemip, char *addr, int family);
+extern int totemip_parse(struct totem_ip_address *totemip, const char *addr,
+			 int family);
 extern int totemip_iface_check(struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up, int *interface_num, int mask_high_bit);
 
 /* These two simulate a zero in_addr by clearing the family field */

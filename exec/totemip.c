@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2007 Red Hat, Inc.
+ * Copyright (c) 2005-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -256,7 +256,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 /* Converts an address string string into a totem_ip_address.
    family can be AF_INET, AF_INET6 or 0 ("for "don't care")
 */
-int totemip_parse(struct totem_ip_address *totemip, char *addr, int family)
+int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family)
 {
 	struct addrinfo *ainfo;
 	struct addrinfo ahints;
@@ -536,5 +536,3 @@ finished:
 	return 0;
 }
 #endif /* COROSYNC_LINUX */
-
-
