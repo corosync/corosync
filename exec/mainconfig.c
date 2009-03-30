@@ -289,7 +289,7 @@ parse_error:
 	return (-1);
 }
 
-static int uid_determine (char *req_user)
+static int uid_determine (const char *req_user)
 {
 	struct passwd *passwd;
 	int ais_uid = 0;
@@ -304,7 +304,7 @@ static int uid_determine (char *req_user)
 	return ais_uid;
 }
 
-static int gid_determine (char *req_group)
+static int gid_determine (const char *req_group)
 {
 	struct group *group;
 	int ais_gid = 0;
