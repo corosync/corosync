@@ -110,7 +110,7 @@ struct logsys_logger {
 /*
  * Configuration parameters for logging system
  */
-static char *logsys_name = NULL;
+static const char *logsys_name = NULL;
 
 static unsigned int logsys_mode = LOG_MODE_NOSUBSYS;
 
@@ -928,7 +928,7 @@ char *logsys_format_get (void)
 	return format_buffer;
 }
 
-void logsys_config_facility_set (char *name, unsigned int facility)
+void logsys_config_facility_set (const char *name, unsigned int facility)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
 

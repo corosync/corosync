@@ -91,7 +91,7 @@ extern int logsys_config_file_set (
 	char *file);
 
 extern void logsys_config_facility_set (
-	char *name,
+	const char *name,
 	unsigned int facility);
 
 extern void logsys_format_set (
