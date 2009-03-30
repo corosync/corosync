@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2007-2008 Red Hat, Inc.
+ * Copyright (c) 2007-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -97,7 +97,7 @@ struct objdb_iface_ver0 {
 	int (*object_create) (
 		hdb_handle_t parent_object_handle,
 		hdb_handle_t *object_handle,
-		void *object_name,
+		const void *object_name,
 		unsigned int object_name_len);
 
 	int (*object_priv_set) (
@@ -106,9 +106,9 @@ struct objdb_iface_ver0 {
 
 	int (*object_key_create) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
-		void *value,
+		const void *value,
 		int value_len);
 
 	int (*object_destroy) (
@@ -126,7 +126,7 @@ struct objdb_iface_ver0 {
 
 	int (*object_find_create) (
 		hdb_handle_t parent_object_handle,
-		void *object_name,
+		const void *object_name,
 		int object_name_len,
 		hdb_handle_t *object_find_handle);
 
@@ -139,7 +139,7 @@ struct objdb_iface_ver0 {
 
 	int (*object_key_get) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		void **value,
 		int *value_len);
@@ -150,14 +150,14 @@ struct objdb_iface_ver0 {
 
 	int (*object_key_replace) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
-		void *new_value,
+		const void *new_value,
 		int new_value_len);
 
 	int (*object_key_delete) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len);
 
 	int (*object_iter_reset) (
@@ -224,13 +224,13 @@ struct objdb_iface_ver0 {
 
 	int (*object_key_increment) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
 		hdb_handle_t object_handle,
-		void *key_name,
+		const void *key_name,
 		int key_len,
 		unsigned int *value);
 };
