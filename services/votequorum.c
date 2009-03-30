@@ -147,7 +147,7 @@ static hdb_handle_t group_handle;
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 static struct cluster_node *find_node_by_nodeid(int nodeid);
 static struct cluster_node *allocate_node(int nodeid);
-static char *kill_reason(int reason);
+static const char *kill_reason(int reason);
 
 static struct corosync_tpg_group quorum_group[1] = {
         { .group          = "VOTEQ", .group_len      = 5},
@@ -1576,7 +1576,7 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn, void *msg)
 }
 
 
-static char *kill_reason(int reason)
+static const char *kill_reason(int reason)
 {
 	static char msg[1024];
 
