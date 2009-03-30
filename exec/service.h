@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@
  */
 extern unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
 
 /*
@@ -48,7 +48,7 @@ extern unsigned int corosync_service_link_and_init (
  */
 extern unsigned int corosync_service_unlink_and_exit (
     struct corosync_api_v1 *objdb,
-    char *service_name,
+    const char *service_name,
     unsigned int service_ver);
 
 /*

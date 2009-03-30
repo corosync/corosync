@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -129,7 +129,7 @@ static unsigned int default_services_requested (struct corosync_api_v1 *corosync
 
 unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver)
 {
 	struct corosync_service_engine_iface_ver0 *iface_ver0;
@@ -243,7 +243,7 @@ static int corosync_service_unlink_common (
 
 extern unsigned int corosync_service_unlink_and_exit (
 	struct corosync_api_v1 *corosync_api,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver)
 {
 	unsigned int res;
