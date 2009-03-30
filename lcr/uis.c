@@ -62,9 +62,9 @@
 #endif
 
 #ifdef COROSYNC_LINUX
-static char *socketname = "lcr.socket";
+static const char *socketname = "lcr.socket";
 #else
-static char *socketname = SOCKETDIR "/lcr.socket";
+static const char *socketname = SOCKETDIR "/lcr.socket";
 #endif
 
 static void uis_lcr_bind (int *server_fd)
@@ -104,7 +104,7 @@ static void uis_lcr_bind (int *server_fd)
 }
 
 struct uis_commands {
-	char *command;
+	const char *command;
 	void (*cmd_handler) (char *);
 };
 
@@ -190,4 +190,3 @@ __attribute__ ((constructor)) static int lcr_uis_ctors (void)
 
 	return (0);
 }
-
