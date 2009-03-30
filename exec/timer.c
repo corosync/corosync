@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -109,19 +109,16 @@ static void *prioritized_timer_thread (void *data)
 	unsigned long long timeout;
 
 #if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
-	int res;
-
 	if (sched_priority != 0) {
 		struct sched_param sched_param;
 
 		sched_param.sched_priority = sched_priority;
-		res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+		pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
 	}
 #endif
 
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
-retry_poll:
 		timer_serialize_lock_fn ();
 		timeout = timerlist_msec_duration_to_expire (&timers_timerlist);
 		if (timeout != -1 && timeout > 0xFFFFFFFF) {
@@ -129,19 +126,20 @@ retry_poll:
 		}
 		timer_serialize_unlock_fn ();
 		fds = poll (NULL, 0, timeout);
-		if (fds == -1) {
-			goto retry_poll;
+		if (fds == 0 || (fds < 0 && errno == EINTR)) {
+			continue;
+		}
+		if (fds < 0) {
+			return NULL;
 		}
 		pthread_mutex_lock (&timer_mutex);
 		timer_serialize_lock_fn ();
 
 		timerlist_expire (&timers_timerlist);
-		
+
 		timer_serialize_unlock_fn ();
 		pthread_mutex_unlock (&timer_mutex);
 	}
-
-	pthread_exit (0);
 }
 
 static void sigusr1_handler (int num) {
