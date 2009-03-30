@@ -43,7 +43,7 @@
 typedef void * corosync_timer_handle_t;
 
 struct corosync_tpg_group {
-	void *group;
+	const void *group;
 	int group_len;
 };
 
