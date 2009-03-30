@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -78,12 +78,12 @@ int main(int argc, char** argv) {
 	assert(CS_OK==cpg_local_get(handle,&nodeid));
 	printf("local_get: %x\n", nodeid);
 	assert(CS_OK==cpg_join(handle, &group));
-	struct iovec msg={"hello", 5};
+	struct iovec msg={(void *)"hello", 5}; /* discard const */
 	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
 	cpg_fd_get (handle, &fd);
 	pfd.fd = fd;
 	pfd.events = POLLIN;
-		
+
 	poll (&pfd, 1, 1000);
 	cpg_dispatch(handle, CS_DISPATCH_ALL);
 	return (0);
