@@ -481,7 +481,7 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
-int message_source_is_local (mar_message_source_t *source)
+int message_source_is_local (const mar_message_source_t *source)
 {
 	int ret = 0;
 

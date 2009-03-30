@@ -131,11 +131,11 @@ static int cpg_lib_init_fn (void *conn);
 static int cpg_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_cpg_procjoin (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_procleave (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_joinlist (
@@ -143,11 +143,11 @@ static void message_handler_req_exec_cpg_joinlist (
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_mcast (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_cpg_downlist (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void exec_cpg_procjoin_endian_convert (void *msg);
@@ -780,10 +780,10 @@ local_join:
 }
 
 static void message_handler_req_exec_cpg_downlist (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_cpg_downlist *req_exec_cpg_downlist = (struct req_exec_cpg_downlist *)message;
+	const struct req_exec_cpg_downlist *req_exec_cpg_downlist = message;
 	int i;
 	struct list_head removed_list;
 
@@ -813,10 +813,10 @@ static void message_handler_req_exec_cpg_downlist (
 }
 
 static void message_handler_req_exec_cpg_procjoin (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)message;
+	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
 	log_printf(LOG_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
 
@@ -826,10 +826,10 @@ static void message_handler_req_exec_cpg_procjoin (
 }
 
 static void message_handler_req_exec_cpg_procleave (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)message;
+	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 	struct group_info *gi;
 	struct process_info *pi;
 	struct list_head *iter;
@@ -895,10 +895,10 @@ static void message_handler_req_exec_cpg_joinlist (
 }
 
 static void message_handler_req_exec_cpg_mcast (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_cpg_mcast *req_exec_cpg_mcast = (struct req_exec_cpg_mcast *)message;
+	const struct req_exec_cpg_mcast *req_exec_cpg_mcast = message;
 	struct res_lib_cpg_deliver_callback *res_lib_cpg_mcast;
 	int msglen = req_exec_cpg_mcast->msglen;
 	char buf[sizeof(*res_lib_cpg_mcast) + msglen];
@@ -922,8 +922,8 @@ static void message_handler_req_exec_cpg_mcast (
 	}
 	memcpy(&res_lib_cpg_mcast->group_name, &gi->group_name,
 		sizeof(mar_cpg_name_t));
-	memcpy(&res_lib_cpg_mcast->message, (char*)message+sizeof(*req_exec_cpg_mcast),
-		msglen);
+	memcpy(&res_lib_cpg_mcast->message,
+	       (const char*)message+sizeof(*req_exec_cpg_mcast), msglen);
 
 	/* Send to all interested members */
 	for (iter = gi->members.next; iter != &gi->members; iter = iter->next) {

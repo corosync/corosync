@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -386,7 +386,7 @@ struct corosync_api_v1 {
 	 */
 	void (*ipc_source_set) (mar_message_source_t *source, void *conn);
 
-	int (*ipc_source_is_local) (mar_message_source_t *source);
+	int (*ipc_source_is_local) (const mar_message_source_t *source);
 
 	void *(*ipc_private_data_get) (void *conn);
 
@@ -557,7 +557,7 @@ struct corosync_lib_handler {
 };
 
 struct corosync_exec_handler {
-	void (*exec_handler_fn) (void *msg, unsigned int nodeid);
+	void (*exec_handler_fn) (const void *msg, unsigned int nodeid);
 	void (*exec_endian_convert_fn) (void *msg);
 };
 

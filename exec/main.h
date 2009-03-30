@@ -62,6 +62,6 @@ extern int main_mcast (
 
 extern void message_source_set (mar_message_source_t *source, void *conn);
 
-extern int message_source_is_local (mar_message_source_t *source);
+extern int message_source_is_local (const mar_message_source_t *source);
 
 #endif /* MAIN_H_DEFINED */
