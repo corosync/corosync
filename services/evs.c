@@ -79,7 +79,7 @@ static void evs_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
-static void message_handler_req_exec_mcast (void *msg, unsigned int nodeid);
+static void message_handler_req_exec_mcast (const void *msg, unsigned int nodeid);
 
 static void req_exec_mcast_endian_convert (void *msg);
 
@@ -471,12 +471,12 @@ static void req_exec_mcast_endian_convert (void *msg)
 }
 
 static void message_handler_req_exec_mcast (
-	void *msg,
+	const void *msg,
 	unsigned int nodeid)
 {
-	struct req_exec_evs_mcast *req_exec_evs_mcast = (struct req_exec_evs_mcast *)msg;
+	const struct req_exec_evs_mcast *req_exec_evs_mcast = msg;
 	struct res_evs_deliver_callback res_evs_deliver_callback;
-	char *msg_addr;
+	const char *msg_addr;
 	struct list_head *list;
 	int found = 0;
 	int i, j;
@@ -489,7 +489,7 @@ static void message_handler_req_exec_mcast (
 	res_evs_deliver_callback.header.error = CS_OK;
 	res_evs_deliver_callback.msglen = req_exec_evs_mcast->msg_len;
 
-	msg_addr = (char *)req_exec_evs_mcast + sizeof (struct req_exec_evs_mcast) + 
+	msg_addr = (const char *)req_exec_evs_mcast + sizeof (struct req_exec_evs_mcast) +
 		(sizeof (struct evs_group) * req_exec_evs_mcast->group_entries);
 
 	for (list = confchg_notify.next; list != &confchg_notify; list = list->next) {
@@ -515,7 +515,7 @@ static void message_handler_req_exec_mcast (
 			res_evs_deliver_callback.local_nodeid = nodeid;
 			iov[0].iov_base = &res_evs_deliver_callback;
 			iov[0].iov_len = sizeof (struct res_evs_deliver_callback);
-			iov[1].iov_base = msg_addr;
+			iov[1].iov_base = (void *) msg_addr; /* discard const */
 			iov[1].iov_len = req_exec_evs_mcast->msg_len;
 
 			api->ipc_dispatch_iov_send (
@@ -525,4 +525,3 @@ static void message_handler_req_exec_mcast (
 		}
 	}
 }
-
