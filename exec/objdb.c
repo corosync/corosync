@@ -363,7 +363,7 @@ static void object_reload_notification(int startstop, int flush)
 static int object_create (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t *object_handle,
-	void *object_name,
+	const void *object_name,
 	unsigned int object_name_len)
 {
 	struct object_instance *object_instance;
