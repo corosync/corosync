@@ -368,7 +368,7 @@ static void cfg_confchg_fn (
 /*
  * Tell other nodes we are shutting down
  */
-static int send_shutdown()
+static int send_shutdown(void)
 {
 	struct req_exec_cfg_shutdown req_exec_cfg_shutdown;
 	struct iovec iovec;
@@ -417,7 +417,7 @@ static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 	LEAVE();
 }
 
-static void check_shutdown_status()
+static void check_shutdown_status(void)
 {
 	ENTER();
 

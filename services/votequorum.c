@@ -637,7 +637,7 @@ static int send_quorum_notification(void *conn, uint64_t context)
 	return 0;
 }
 
-static void send_expectedvotes_notification()
+static void send_expectedvotes_notification(void)
 {
 	struct res_lib_votequorum_expectedvotes_notification res_lib_votequorum_expectedvotes_notification;
 	struct quorum_pd *qpd;

@@ -149,7 +149,7 @@ void service_unload_do (char *service, unsigned int version)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void shutdown_do()
+void shutdown_do(void)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;

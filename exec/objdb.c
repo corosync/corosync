@@ -113,7 +113,7 @@ static struct hdb_handle_database object_find_instance_database = {
 };
 
 
-static void objdb_wrlock()
+static void objdb_wrlock(void)
 {
 	pthread_mutex_lock(&meta_lock);
 	pthread_rwlock_wrlock(&reload_lock);
@@ -121,7 +121,7 @@ static void objdb_wrlock()
 	pthread_mutex_unlock(&meta_lock);
 }
 
-static void objdb_rdlock()
+static void objdb_rdlock(void)
 {
 	pthread_mutex_lock(&meta_lock);
 	if (lock_thread != pthread_self())
@@ -129,7 +129,7 @@ static void objdb_rdlock()
 	pthread_mutex_unlock(&meta_lock);
 }
 
-static void objdb_rdunlock()
+static void objdb_rdunlock(void)
 {
 	pthread_mutex_lock(&meta_lock);
 	if (lock_thread != pthread_self())
@@ -137,7 +137,7 @@ static void objdb_rdunlock()
 	pthread_mutex_unlock(&meta_lock);
 }
 
-static void objdb_wrunlock()
+static void objdb_wrunlock(void)
 {
 	pthread_mutex_lock(&meta_lock);
 	pthread_rwlock_unlock(&reload_lock);
