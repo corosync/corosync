@@ -326,7 +326,7 @@ int corosync_main_config_read (
 {
 	hdb_handle_t object_service_handle;
 	char *value;
-	char *error_reason = error_string_response;
+	const char *error_reason = error_string_response;
 	hdb_handle_t object_find_handle;
 
 	memset (main_config, 0, sizeof (struct main_config));
