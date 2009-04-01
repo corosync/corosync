@@ -203,7 +203,7 @@ static cs_error_t validate_name(char * obj_name_pt)
 		return CS_ERR_INVALID_PARAM;
 }
 
-void get_child_name(char * name_pt, char * child_name)
+static void get_child_name(const char * name_pt, char * child_name)
 {
 	char * tmp;
 	char str_copy[OBJ_NAME_SIZE];
@@ -220,7 +220,7 @@ void get_child_name(char * name_pt, char * child_name)
 	strcpy(child_name, tmp+1);
 }
 
-void get_parent_name(char * name_pt, char * parent_name)
+static void get_parent_name(const char * name_pt, char * parent_name)
 {
 	char * tmp;
 	strcpy(parent_name, name_pt);
@@ -234,7 +234,7 @@ void get_parent_name(char * name_pt, char * parent_name)
 	if (tmp != NULL) *tmp = '\0';
 }
 
-void get_key(char * name_pt, char * key_name, char * key_value)
+static void get_key(const char * name_pt, const char * key_name, char * key_value)
 {
 	char * tmp;
 	char str_copy[OBJ_NAME_SIZE];
@@ -648,4 +648,3 @@ int main (int argc, char *argv[]) {
 
 	return 0;
 }
-

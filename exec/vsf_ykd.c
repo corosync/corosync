@@ -150,7 +150,7 @@ static void (*ykd_primary_callback_fn) (
 	int primary_designated,
 	struct memb_ring_id *ring_id) = NULL;
 
-void ykd_state_init (void)
+static void ykd_state_init (void)
 {
 	ykd_state.session_id = 0;
 	ykd_state.last_formed_entries = 0;

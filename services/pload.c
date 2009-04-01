@@ -258,7 +258,7 @@ static void req_exec_pload_mcast_endian_convert (void *msg)
 {
 }
 
-int send_message (enum totem_callback_token_type type, void *arg)
+static int send_message (enum totem_callback_token_type type, void *arg)
 {
 	struct req_exec_pload_mcast req_exec_pload_mcast;
 	struct iovec iov[2];
@@ -293,8 +293,8 @@ int send_message (enum totem_callback_token_type type, void *arg)
 	}
 }
 
-void *token_callback;
-void start_mcasting (void)
+static void *token_callback;
+static void start_mcasting (void)
 {
 	api->totem_callback_token_create (
 		&token_callback,

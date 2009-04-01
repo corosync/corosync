@@ -38,14 +38,14 @@ struct memb_ring_id {
         unsigned long long seq;
 } __attribute__((packed));
 
-const char *totemip_print(struct totem_ip_address *addr)
+static const char *totemip_print(const struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];
 
 	return inet_ntop(addr->family, addr->addr, buf, sizeof(buf));
 }
 
-char *print_string_len (unsigned char *str, unsigned int len)
+static char *print_string_len (const unsigned char *str, unsigned int len)
 {
 	unsigned int i;
 	static char buf[1024];
@@ -56,31 +56,31 @@ char *print_string_len (unsigned char *str, unsigned int len)
 	return (buf);
 }
 
-void sync_printer_confchg_set_sync (void **record)
+static void sync_printer_confchg_set_sync (void **record)
 {
 	unsigned int *my_should_sync = record[0];
 	printf ("Setting my_should_sync to %d\n", *my_should_sync);
 }
 
-void sync_printer_set_sync_state (void **record)
+static void sync_printer_set_sync_state (void **record)
 {
 	unsigned int *my_sync_state = record[0];
 	printf ("Setting my_sync_state to %d\n", *my_sync_state);
 }
 
-void sync_printer_process_currentstate (void **record)
+static void sync_printer_process_currentstate (void **record)
 {
 	unsigned int *my_sync_state = record[0];
 	printf ("Retrieving my_sync_state %d\n", *my_sync_state);
 }
 
-void sync_printer_process_get_shouldsync (void **record)
+static void sync_printer_process_get_shouldsync (void **record)
 {
 	unsigned int *my_should_sync = record[0];
 	printf ("Getting my_should_sync %d\n", *my_should_sync);
 }
 
-void sync_printer_checkpoint_release (void **record)
+static void sync_printer_checkpoint_release (void **record)
 {
 	unsigned char *name = record[0];
 	uint16_t *name_len = record[1];
@@ -94,7 +94,7 @@ void sync_printer_checkpoint_release (void **record)
 		*name_len);
 }
 
-void sync_printer_checkpoint_transmit (void **record)
+static void sync_printer_checkpoint_transmit (void **record)
 {
 	unsigned char *name = record[0];
 	uint16_t *name_len = record[1];
@@ -106,7 +106,7 @@ void sync_printer_checkpoint_transmit (void **record)
 		*ckpt_id);
 }
 
-void sync_printer_section_transmit (void **record)
+static void sync_printer_section_transmit (void **record)
 {
 	unsigned char *ckpt_name = record[0];
 	uint16_t *name_len = record[1];
@@ -121,7 +121,7 @@ void sync_printer_section_transmit (void **record)
 	printf ("section=[%s]\n",
 		print_string_len (section_name, *section_name_len));
 }
-void sync_printer_checkpoint_receive (void **record)
+static void sync_printer_checkpoint_receive (void **record)
 {
 	unsigned char *ckpt_name = record[0];
 	uint16_t *name_len = record[1];
@@ -132,7 +132,7 @@ void sync_printer_checkpoint_receive (void **record)
 		*xmit_id, print_string_len (ckpt_name, *name_len), *ckpt_id);
 }
 
-void sync_printer_section_receive (void **record)
+static void sync_printer_section_receive (void **record)
 {
 	unsigned char *ckpt_name = record[0];
 	uint16_t *name_len = record[1];
@@ -149,11 +149,11 @@ void sync_printer_section_receive (void **record)
 		print_string_len (section_name, *section_name_len));
 }
 
-void sync_printer_nada (void **record)
+static void sync_printer_nada (void **record)
 {
-printf ("nada\n");
+	printf ("nada\n");
 }
-void sync_printer_confchg_fn (void **record)
+static void sync_printer_confchg_fn (void **record)
 {
 	unsigned int i;
 
@@ -172,21 +172,21 @@ void sync_printer_confchg_fn (void **record)
 	}
 }
 
-void printer_totemsrp_mcast (void **record)
+static void printer_totemsrp_mcast (void **record)
 {
 	unsigned int *msgid = record[0];
 
 	printf ("totemsrp_mcast %d\n", *msgid);
 }
 
-void printer_totemsrp_delv (void **record)
+static void printer_totemsrp_delv (void **record)
 {
 	unsigned int *msgid = record[0];
 
 	printf ("totemsrp_delv %d\n", *msgid);
 }
 
-void printer_totempg_mcast_fits (void **record)
+static void printer_totempg_mcast_fits (void **record)
 {
 	unsigned int *index = record[0];
 	unsigned int *iov_len = record[1];
@@ -200,7 +200,7 @@ void printer_totempg_mcast_fits (void **record)
 	*index, *iov_len, *copy_len, *fragment_size, *max_packet_size, *copy_base, *next_fragment);
 }
 
-void sync_printer_service_process (void **record)
+static void sync_printer_service_process (void **record)
 {
 	struct memb_ring_id *ring_id = record[0];
 	struct memb_ring_id *sync_ring_id = record[1];

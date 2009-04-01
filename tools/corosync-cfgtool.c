@@ -113,7 +113,7 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void service_load_do (char *service, unsigned int version)
+static void service_load_do (const char *service, unsigned int version)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -131,7 +131,7 @@ void service_load_do (char *service, unsigned int version)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void service_unload_do (char *service, unsigned int version)
+static void service_unload_do (const char *service, unsigned int version)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -149,7 +149,7 @@ void service_unload_do (char *service, unsigned int version)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void shutdown_do(void)
+static void shutdown_do(void)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -172,7 +172,7 @@ void shutdown_do(void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void showaddrs_do(int nodeid)
+static void showaddrs_do(int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -211,7 +211,7 @@ void showaddrs_do(int nodeid)
 	(void)corosync_cfg_finalize (handle);
 }
 
-void killnode_do(unsigned int nodeid)
+static void killnode_do(unsigned int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -230,7 +230,7 @@ void killnode_do(unsigned int nodeid)
 }
 
 
-void usage_do (void)
+static void usage_do (void)
 {
 	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [-H] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");

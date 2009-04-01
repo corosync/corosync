@@ -199,9 +199,10 @@ struct totempg_group corosync_group = {
 	.group_len	= 1
 };
 
-void sigintr_handler (int signum)
+static void sigintr_handler (int signum)
 {
-	poll_timer_add (corosync_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
+	poll_timer_add (corosync_poll_handle, 500, NULL,
+			init_shutdown, &shutdown_handle);
 }
 
 
@@ -210,22 +211,22 @@ static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
 					1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
-void serialize_lock (void)
+static void serialize_lock (void)
 {
 	pthread_spin_lock (&serialize_spin);
 }
 
-void serialize_unlock (void)
+static void serialize_unlock (void)
 {
 	pthread_spin_unlock (&serialize_spin);
 }
 #else
-void serialize_lock (void)
+static void serialize_lock (void)
 {
 	pthread_mutex_lock (&serialize_mutex);
 }
 
-void serialize_unlock (void)
+static void serialize_unlock (void)
 {
 	pthread_mutex_unlock (&serialize_mutex);
 }

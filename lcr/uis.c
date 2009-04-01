@@ -108,7 +108,7 @@ struct uis_commands {
 	void (*cmd_handler) (char *);
 };
 
-void cmd1 (char *cmd) {
+static void cmd1 (char *cmd) {
 	printf ("cmd1 executed with cmd line %s\n", cmd);
 }
 

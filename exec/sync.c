@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -166,7 +166,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 	return (res);
 }
 
-void sync_start_init (struct memb_ring_id *ring_id)
+static void sync_start_init (struct memb_ring_id *ring_id)
 {
 	totempg_callback_token_create (
 		&sync_callback_token_handle,
@@ -207,7 +207,7 @@ static int sync_start_process (enum totem_callback_token_type type, void *data)
 	return (0);
 }
 
-void sync_callbacks_load (void)
+static void sync_callbacks_load (void)
 {
 	int res;
 
