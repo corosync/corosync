@@ -308,8 +308,8 @@ static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
 */
 static void log_printf_to_logs (
 	const char *subsys,
-	const char *function_name,
 	const char *file_name,
+	const char *function_name,
 	int file_line,
 	unsigned int level,
 	char *buffer)
@@ -342,6 +342,11 @@ static void log_printf_to_logs (
 
 				case 'n':
 					len = strcpy_cutoff (&output_buffer[output_buffer_idx], function_name, cutoff);
+					output_buffer_idx += len;
+					break;
+
+				case 'f':
+					len = strcpy_cutoff (&output_buffer[output_buffer_idx], file_name, cutoff);
 					output_buffer_idx += len;
 					break;
 
@@ -430,6 +435,14 @@ static void record_print (char *buf)
 		arg_size_idx += buf_uint32t[arg_size_idx] + 1;
 		words_processed += buf_uint32t[arg_size_idx] + 1;
 	}
+
+	/*
+	 * (char *)arguments[0] -> subsystem
+	 * (char *)arguments[1] -> file_name
+	 * (char *)arguments[2] -> function_name
+	 * (char *)arguments[3] -> message
+	 */
+
 	log_printf_to_logs (
 		(char *)arguments[0],
 		(char *)arguments[1],
@@ -839,7 +852,7 @@ void _logsys_log_printf (
 		 * expect the worker thread to output the log data once signaled
 		 */
 		log_printf_to_logs (logsys_loggers[subsys].subsys,
-			function_name, file_name, file_line, level,
+			file_name, function_name, file_line, level,
 			logsys_print_buffer);
 	} else {
 		/*
