@@ -433,19 +433,20 @@ int corosync_main_config_read (
 		strlen ("aisexec"),
 		&object_find_handle);
 
+	main_config->uid = uid_determine("ais");
+	main_config->gid = gid_determine("ais");
+
 	if (objdb->object_find_next (
 		object_find_handle,
 		&object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
 			main_config->uid = uid_determine(value);
-		} else
-			main_config->uid = uid_determine("ais");
+		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
 			main_config->gid = gid_determine(value);
-		} else
-			main_config->gid = gid_determine("ais");
+		}
 	}
 
 	objdb->object_find_destroy (object_find_handle);
