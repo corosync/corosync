@@ -870,7 +870,7 @@ unsigned int logsys_config_mode_get (void)
 	return logsys_mode;
 }
 
-static void logsys_close_logfile()
+static void logsys_close_logfile (void)
 {
 	if (logsys_file_fp != NULL) {
 		fclose (logsys_file_fp);
