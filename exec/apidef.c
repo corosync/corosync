@@ -52,6 +52,7 @@
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 #include <corosync/lcr/lcr_ifact.h>
+#include "apidef.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 
