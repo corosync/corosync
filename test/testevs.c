@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -46,8 +46,8 @@
 
 static const char *delivery_string;
 
-int deliveries = 0;
-void evs_deliver_fn (
+static int deliveries = 0;
+static void evs_deliver_fn (
 	unsigned int nodeid,
 	void *msg,
 	int msg_len)
@@ -58,7 +58,7 @@ void evs_deliver_fn (
 	deliveries++;
 }
 
-void evs_confchg_fn (
+static void evs_confchg_fn (
 	unsigned int *member_list, int member_list_entries,
 	unsigned int *left_list, int left_list_entries,
 	unsigned int *joined_list, int joined_list_entries)
@@ -81,18 +81,18 @@ void evs_confchg_fn (
 	}
 }
 
-evs_callbacks_t callbacks = {
+static evs_callbacks_t callbacks = {
 	evs_deliver_fn,
 	evs_confchg_fn
 };
 
-struct evs_group groups[3] = {
+static struct evs_group groups[3] = {
 	{ "key1" },
 	{ "key2" },
 	{ "key3" }
 };
 
-char buffer[2000];
+static char buffer[2000];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
@@ -113,7 +113,7 @@ int main (void)
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
-	
+
 	result = evs_membership_get (handle, &local_nodeid,
 		member_list, &member_list_entries);
 	printf ("Current membership from evs_membership_get entries %d\n",
@@ -166,7 +166,7 @@ try_again_two:
 		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_two;
 		}
-	
+
 		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 	/*
@@ -177,7 +177,7 @@ try_again_two:
 	} while (deliveries < 500);
 
 	evs_fd_get (handle, &fd);
-	
+
 	evs_finalize (handle);
 
 	return (0);
