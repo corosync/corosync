@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -54,7 +54,7 @@ LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
 #define LOGREC_ARGS_CHECKPOINT_CREATE 2
 #define ITERATIONS 1000000
 
-struct timeval tv1, tv2, tv_elapsed;
+static struct timeval tv1, tv2, tv_elapsed;
 
 #define timersub(a, b, result)					\
 do {								\
@@ -66,11 +66,11 @@ do {								\
 	}							\
 } while (0)
 
-void bm_start (void)
+static void bm_start (void)
 {
         gettimeofday (&tv1, NULL);
 }
-void bm_finish (const char *operation)
+static void bm_finish (const char *operation)
 {
         gettimeofday (&tv2, NULL);
         timersub (&tv2, &tv1, &tv_elapsed);
@@ -84,7 +84,7 @@ void bm_finish (const char *operation)
                 ((float)ITERATIONS) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 }
 
-char buffer[256];
+static char buffer[256];
 int main (void)
 {
 	int i;

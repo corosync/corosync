@@ -53,7 +53,7 @@
 static int quit = 0;
 static int show_ip = 0;
 
-void print_cpgname (struct cpg_name *name)
+static void print_cpgname (struct cpg_name *name)
 {
 	int i;
 
@@ -62,7 +62,7 @@ void print_cpgname (struct cpg_name *name)
 	}
 }
 
-void DeliverCallback (
+static void DeliverCallback (
 	cpg_handle_t handle,
 	struct cpg_name *groupName,
 	uint32_t nodeid,
@@ -81,7 +81,7 @@ void DeliverCallback (
 	}
 }
 
-void ConfchgCallback (
+static void ConfchgCallback (
 	cpg_handle_t handle,
 	struct cpg_name *groupName,
 	struct cpg_address *member_list, int member_list_entries,
@@ -143,13 +143,13 @@ void ConfchgCallback (
 	}
 }
 
-cpg_callbacks_t callbacks = {
+static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
 };
 
-void sigintr_handler (int signum) __attribute__((__noreturn__));
-void sigintr_handler (int signum) {
+static void sigintr_handler (int signum) __attribute__((__noreturn__));
+static void sigintr_handler (int signum) {
 	exit (0);
 }
 static struct cpg_name group_name;

@@ -43,7 +43,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
-void deliver(
+static void deliver(
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
 	uint32_t nodeid,
@@ -54,7 +54,7 @@ void deliver(
     printf("self delivered nodeid: %x\n", nodeid);
 }
 
-void confch(
+static void confch(
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
 	struct cpg_address *member_list, int member_list_entries,

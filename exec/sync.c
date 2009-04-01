@@ -318,7 +318,8 @@ void sync_primary_callback_fn (
 
 static struct memb_ring_id deliver_ring_id;
 
-void sync_endian_convert (struct req_exec_sync_barrier_start *req_exec_sync_barrier_start)
+static void sync_endian_convert (struct req_exec_sync_barrier_start
+				 *req_exec_sync_barrier_start)
 {
 	totemip_copy_endian_convert(&req_exec_sync_barrier_start->ring_id.rep,
 		&req_exec_sync_barrier_start->ring_id.rep);

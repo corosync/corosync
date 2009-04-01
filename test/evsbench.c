@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -68,7 +68,7 @@
 
 volatile static int alarm_notice = 0;
 
-void evs_deliver_fn (
+static void evs_deliver_fn (
 	unsigned int nodeid,
 	void *msg,
 	int msg_len)
@@ -77,7 +77,7 @@ void evs_deliver_fn (
   printf ("Delivering message %s\n", m);
 }
 
-void evs_confchg_fn (
+static void evs_confchg_fn (
 	unsigned int *member_list, int member_list_entries,
 	unsigned int *left_list, int left_list_entries,
 	unsigned int *joined_list, int joined_list_entries)
@@ -100,7 +100,7 @@ void evs_confchg_fn (
 	}
 }
 
-evs_callbacks_t callbacks = {
+static evs_callbacks_t callbacks = {
 	evs_deliver_fn,
 	evs_confchg_fn
 };
@@ -111,14 +111,14 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[200000];
+static char buffer[200000];
 
-struct iovec iov = {
+static struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
 };
 
-void evs_benchmark (evs_handle_t handle,
+static void evs_benchmark (evs_handle_t handle,
 	int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
@@ -146,23 +146,23 @@ void evs_benchmark (evs_handle_t handle,
 
 	printf ("%5d Writes ", write_count);
 	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ", 
+	printf ("%7.3f Seconds runtime ",
 		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 	printf ("%9.3f TP/s ",
 		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n", 
+	printf ("%7.3f MB/s.\n",
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 
 	alarm_notice = 0;
 }
 
-void sigalrm_handler (int num)
+static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
 
-void sigintr_handler (int num) __attribute__((__noreturn__));
-void sigintr_handler (int num)
+static void sigintr_handler (int num) __attribute__((__noreturn__));
+static void sigintr_handler (int num)
 {
 	exit (1);
 }
