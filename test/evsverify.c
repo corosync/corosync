@@ -114,8 +114,6 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-static struct my_msg msg;
-
 static unsigned char buffer[200000];
 int main (void)
 {

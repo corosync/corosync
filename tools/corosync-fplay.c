@@ -149,10 +149,6 @@ static void sync_printer_section_receive (void **record)
 		print_string_len (section_name, *section_name_len));
 }
 
-static void sync_printer_nada (void **record)
-{
-	printf ("nada\n");
-}
 static void sync_printer_confchg_fn (void **record)
 {
 	unsigned int i;

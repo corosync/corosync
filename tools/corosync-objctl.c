@@ -203,23 +203,6 @@ static cs_error_t validate_name(char * obj_name_pt)
 		return CS_ERR_INVALID_PARAM;
 }
 
-static void get_child_name(const char * name_pt, char * child_name)
-{
-	char * tmp;
-	char str_copy[OBJ_NAME_SIZE];
-
-	strcpy(str_copy, name_pt);
-
-	/* first remove the value (it could be a file path */
-	tmp = strchr(str_copy, '=');
-	if (tmp != NULL) *tmp = '\0';
-
-	/* truncate the  */
-	tmp = strrchr(str_copy, SEPERATOR);
-	if (tmp == NULL) tmp = str_copy;
-	strcpy(child_name, tmp+1);
-}
-
 static void get_parent_name(const char * name_pt, char * parent_name)
 {
 	char * tmp;
