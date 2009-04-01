@@ -56,36 +56,36 @@ static char *print_string_len (const unsigned char *str, unsigned int len)
 	return (buf);
 }
 
-static void sync_printer_confchg_set_sync (void **record)
+static void sync_printer_confchg_set_sync (const void **record)
 {
-	unsigned int *my_should_sync = record[0];
+	const unsigned int *my_should_sync = record[0];
 	printf ("Setting my_should_sync to %d\n", *my_should_sync);
 }
 
-static void sync_printer_set_sync_state (void **record)
+static void sync_printer_set_sync_state (const void **record)
 {
-	unsigned int *my_sync_state = record[0];
+	const unsigned int *my_sync_state = record[0];
 	printf ("Setting my_sync_state to %d\n", *my_sync_state);
 }
 
-static void sync_printer_process_currentstate (void **record)
+static void sync_printer_process_currentstate (const void **record)
 {
-	unsigned int *my_sync_state = record[0];
+	const unsigned int *my_sync_state = record[0];
 	printf ("Retrieving my_sync_state %d\n", *my_sync_state);
 }
 
-static void sync_printer_process_get_shouldsync (void **record)
+static void sync_printer_process_get_shouldsync (const void **record)
 {
-	unsigned int *my_should_sync = record[0];
+	const unsigned int *my_should_sync = record[0];
 	printf ("Getting my_should_sync %d\n", *my_should_sync);
 }
 
-static void sync_printer_checkpoint_release (void **record)
+static void sync_printer_checkpoint_release (const void **record)
 {
-	unsigned char *name = record[0];
-	uint16_t *name_len = record[1];
-	unsigned int *ckpt_id = record[2];
-	unsigned int *from = record[3];
+	const unsigned char *name = record[0];
+	const uint16_t *name_len = record[1];
+	const unsigned int *ckpt_id = record[2];
+	const unsigned int *from = record[3];
 
 	printf ("Checkpoint release name=[%s] id=[%d] from=[%d] len=[%d]\n",
 		print_string_len (name, *name_len),
@@ -94,26 +94,26 @@ static void sync_printer_checkpoint_release (void **record)
 		*name_len);
 }
 
-static void sync_printer_checkpoint_transmit (void **record)
+static void sync_printer_checkpoint_transmit (const void **record)
 {
-	unsigned char *name = record[0];
-	uint16_t *name_len = record[1];
-	unsigned int *ckpt_id = record[2];
-	unsigned int *xmit_id = record[3];
+	const unsigned char *name = record[0];
+	const uint16_t *name_len = record[1];
+	const unsigned int *ckpt_id = record[2];
+	const unsigned int *xmit_id = record[3];
 
 	printf ("xmit_id=[%d] Checkpoint transmit name=[%s] id=[%d]\n",
 		*xmit_id, print_string_len (name, *name_len),
 		*ckpt_id);
 }
 
-static void sync_printer_section_transmit (void **record)
+static void sync_printer_section_transmit (const void **record)
 {
-	unsigned char *ckpt_name = record[0];
-	uint16_t *name_len = record[1];
-	unsigned int *ckpt_id = record[2];
-	unsigned int *xmit_id = record[3];
-	unsigned char *section_name = record[4];
-	uint16_t *section_name_len = record[5];
+	const unsigned char *ckpt_name = record[0];
+	const uint16_t *name_len = record[1];
+	const unsigned int *ckpt_id = record[2];
+	const unsigned int *xmit_id = record[3];
+	const unsigned char *section_name = record[4];
+	const uint16_t *section_name_len = record[5];
 
 	printf ("xmit_id=[%d] Section transmit checkpoint name=[%s] id=[%d] ",
 		*xmit_id, print_string_len (ckpt_name, *name_len),
@@ -121,25 +121,25 @@ static void sync_printer_section_transmit (void **record)
 	printf ("section=[%s]\n",
 		print_string_len (section_name, *section_name_len));
 }
-static void sync_printer_checkpoint_receive (void **record)
+static void sync_printer_checkpoint_receive (const void **record)
 {
-	unsigned char *ckpt_name = record[0];
-	uint16_t *name_len = record[1];
-	unsigned int *ckpt_id = record[2];
-	unsigned int *xmit_id = record[3];
+	const unsigned char *ckpt_name = record[0];
+	const uint16_t *name_len = record[1];
+	const unsigned int *ckpt_id = record[2];
+	const unsigned int *xmit_id = record[3];
 
 	printf ("xmit_id=[%d] Checkpoint receive checkpoint name=[%s] id=[%d]\n",
 		*xmit_id, print_string_len (ckpt_name, *name_len), *ckpt_id);
 }
 
-static void sync_printer_section_receive (void **record)
+static void sync_printer_section_receive (const void **record)
 {
-	unsigned char *ckpt_name = record[0];
-	uint16_t *name_len = record[1];
-	unsigned int *ckpt_id = record[2];
-	unsigned int *xmit_id = record[3];
-	unsigned char *section_name = record[4];
-	unsigned int *section_name_len = record[5];
+	const unsigned char *ckpt_name = record[0];
+	const uint16_t *name_len = record[1];
+	const unsigned int *ckpt_id = record[2];
+	const unsigned int *xmit_id = record[3];
+	const unsigned char *section_name = record[4];
+	const unsigned int *section_name_len = record[5];
 
 	printf ("xmit_id=[%d] Section receive checkpoint name=[%s] id=[%d] ",
 		*xmit_id, print_string_len (ckpt_name, *name_len),
@@ -149,13 +149,13 @@ static void sync_printer_section_receive (void **record)
 		print_string_len (section_name, *section_name_len));
 }
 
-static void sync_printer_confchg_fn (void **record)
+static void sync_printer_confchg_fn (const void **record)
 {
 	unsigned int i;
 
-	unsigned int *members = record[0];
-	unsigned int *member_count = record[1];
-	struct memb_ring_id *ring_id = record[2];
+	const unsigned int *members = record[0];
+	const unsigned int *member_count = record[1];
+	const struct memb_ring_id *ring_id = record[2];
 	struct in_addr addr;
 
 	printf ("sync confchg fn ringid [ip=%s seq=%lld]\n",
@@ -168,38 +168,38 @@ static void sync_printer_confchg_fn (void **record)
 	}
 }
 
-static void printer_totemsrp_mcast (void **record)
+static void printer_totemsrp_mcast (const void **record)
 {
-	unsigned int *msgid = record[0];
+	const unsigned int *msgid = record[0];
 
 	printf ("totemsrp_mcast %d\n", *msgid);
 }
 
-static void printer_totemsrp_delv (void **record)
+static void printer_totemsrp_delv (const void **record)
 {
-	unsigned int *msgid = record[0];
+	const unsigned int *msgid = record[0];
 
 	printf ("totemsrp_delv %d\n", *msgid);
 }
 
-static void printer_totempg_mcast_fits (void **record)
+static void printer_totempg_mcast_fits (const void **record)
 {
-	unsigned int *index = record[0];
-	unsigned int *iov_len = record[1];
-	unsigned int *copy_len = record[2];
-	unsigned int *fragment_size = record[3];
-	unsigned int *max_packet_size = record[4];
-	unsigned int *copy_base = record[5];
-	unsigned char *next_fragment = record[6];
+	const unsigned int *index = record[0];
+	const unsigned int *iov_len = record[1];
+	const unsigned int *copy_len = record[2];
+	const unsigned int *fragment_size = record[3];
+	const unsigned int *max_packet_size = record[4];
+	const unsigned int *copy_base = record[5];
+	const unsigned char *next_fragment = record[6];
 
 	printf ("totempg_mcast index=[%d] iov_len=[%d] copy_len=[%d] fragment_size=[%d] max_packet_size=[%d] copy_base=[%d] next_fragment[%d]\n",
 	*index, *iov_len, *copy_len, *fragment_size, *max_packet_size, *copy_base, *next_fragment);
 }
 
-static void sync_printer_service_process (void **record)
+static void sync_printer_service_process (const void **record)
 {
-	struct memb_ring_id *ring_id = record[0];
-	struct memb_ring_id *sync_ring_id = record[1];
+	const struct memb_ring_id *ring_id = record[0];
+	const struct memb_ring_id *sync_ring_id = record[1];
 
 	printf ("sync service process callback ringid [ip=%s seq=%lld] ",
 		totemip_print (&ring_id->rep),
@@ -211,7 +211,7 @@ static void sync_printer_service_process (void **record)
 
 struct printer_subsys_record_print {
 	int ident;
-	void (*print_fn)(void **record);
+	void (*print_fn)(const void **record);
 	int record_length;
 };
 
@@ -242,7 +242,7 @@ struct printer_subsys {
 #define LOGREC_ID_TOTEMPG_MCAST_FITS 2
 
 
-struct printer_subsys_record_print record_print_sync[] = {
+static struct printer_subsys_record_print record_print_sync[] = {
 	{
 		.ident				= LOGREC_ID_SYNC_CONFCHG_FN,
 		.print_fn			= sync_printer_confchg_fn,
@@ -255,7 +255,7 @@ struct printer_subsys_record_print record_print_sync[] = {
 	}
 };
 
-struct printer_subsys_record_print record_print_ckpt[] = {
+static struct printer_subsys_record_print record_print_ckpt[] = {
 	{
 		.ident				= LOGREC_ID_CONFCHG_SETSYNC,
 		.print_fn			= sync_printer_confchg_set_sync,
@@ -303,7 +303,7 @@ struct printer_subsys_record_print record_print_ckpt[] = {
 	}
 
 };
-struct printer_subsys_record_print record_print_totem[] = {
+static struct printer_subsys_record_print record_print_totem[] = {
 	{
 		.ident				= LOGREC_ID_TOTEMSRP_MCAST,
 		.print_fn			= printer_totemsrp_mcast,
@@ -321,7 +321,7 @@ struct printer_subsys_record_print record_print_totem[] = {
 	}
 };
 
-struct printer_subsys printer_subsystems[] = {
+static struct printer_subsys printer_subsystems[] = {
 	{
 		.subsys =			"SYNC",
 		.record_printers = 		record_print_sync,
@@ -339,16 +339,17 @@ struct printer_subsys printer_subsystems[] = {
 	}
 };
 
-unsigned int printer_subsys_count = sizeof (printer_subsystems) / sizeof (struct printer_subsys);
+static unsigned int printer_subsys_count =
+  sizeof (printer_subsystems) / sizeof (struct printer_subsys);
 
-unsigned int records_printed = 1;
+static unsigned int records_printed = 1;
 
-unsigned int record[10000];
+static unsigned int record[10000];
 
 /*
  * Copy record, dealing with wrapping
  */
-int logsys_rec_get (int rec_idx) {
+static int logsys_rec_get (int rec_idx) {
 	unsigned int rec_size;
 	int firstcopy, secondcopy;
 
@@ -367,9 +368,9 @@ int logsys_rec_get (int rec_idx) {
 	return ((rec_idx + rec_size) % flt_data_size);
 }
 
-void logsys_rec_print (void *record)
+static void logsys_rec_print (const void *record)
 {
-	unsigned int *buf_uint32t = (unsigned int *)record;
+	const unsigned int *buf_uint32t = record;
 	unsigned int rec_size;
 	unsigned int rec_ident;
 	unsigned int line;
@@ -380,7 +381,7 @@ void logsys_rec_print (void *record)
 	unsigned int record_number;
 	unsigned int words_processed;
 	unsigned int found;
-	void *arguments[64];
+	const char *arguments[64];
 	int arg_count = 0;
 
 	rec_size = buf_uint32t[rec_idx];
@@ -392,7 +393,8 @@ printf ("rec=[%d] ", record_number);
 	arg_size_idx = rec_idx + 4;
 	words_processed = 4;
 	for (i = 0; words_processed < rec_size; i++) {
-		arguments[arg_count++] = &buf_uint32t[arg_size_idx + 1];
+		arguments[arg_count++] =
+		  (const char *)&buf_uint32t[arg_size_idx + 1];
 		words_processed += buf_uint32t[arg_size_idx] + 1;
 		arg_size_idx += buf_uint32t[arg_size_idx] + 1;
 
@@ -400,44 +402,44 @@ printf ("rec=[%d] ", record_number);
 
 	found = 0;
 	for (i = 0; i < printer_subsys_count; i++) {
-		if (strcmp ((char *)arguments[0], printer_subsystems[i].subsys) == 0) {
+		if (strcmp (arguments[0], printer_subsystems[i].subsys) == 0) {
 			for (j = 0; j < printer_subsystems[i].record_printers_count; j++) {
 				if (rec_ident == printer_subsystems[i].record_printers[j].ident) {
-					printer_subsystems[i].record_printers[j].print_fn (&arguments[3]);
+				  printer_subsystems[i].record_printers[j].print_fn ((const void **)&arguments[3]);
 					found = 1;
 				}
 			}
 		}
 	}
 	if (rec_ident & LOGSYS_TAG_LOG) {
-		printf ("Log Message=%s\n", (char *)arguments[3]);
+		printf ("Log Message=%s\n", arguments[3]);
 		found = 1;
 	}
 	if (rec_ident & LOGSYS_TAG_ENTER) {
-		printf ("ENTERING function [%s] line [%d]\n", (char *)arguments[2], line);
+		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
 		found = 1;
 	}
 	if (rec_ident & LOGSYS_TAG_LEAVE) {
-		printf ("LEAVING function [%s] line [%d]\n", (char *)arguments[2], line);
+		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
 		found = 1;
 	}
 	if (found == 0) {
 		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
-		(char *)arguments[0], rec_ident);
+			arguments[0], rec_ident);
 	}
 
 
 	if (rec_ident == 999) {
-		printf ("ENTERING function [%s] line [%d]\n", (char *)arguments[2], line);
+		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
 		found = 1;
 	}
 	if (rec_ident == 1000) {
-		printf ("LEAVING function [%s] line [%d]\n", (char *)arguments[2], line);
+		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
 		found = 1;
 	}
 	if (found == 0) {
 		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
-			(char *)arguments[0], rec_ident);
+			arguments[0], rec_ident);
 	}
 
 
