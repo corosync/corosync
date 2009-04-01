@@ -217,7 +217,7 @@ static void get_parent_name(const char * name_pt, char * parent_name)
 	if (tmp != NULL) *tmp = '\0';
 }
 
-static void get_key(const char * name_pt, const char * key_name, char * key_value)
+static void get_key(const char * name_pt, char * key_name, char * key_value)
 {
 	char * tmp;
 	char str_copy[OBJ_NAME_SIZE];
