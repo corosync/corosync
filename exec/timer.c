@@ -79,6 +79,7 @@
 #include "sync.h"
 #include "tlist.h"
 #include "util.h"
+#include "timer.h"
 
 #define SERVER_BACKLOG 5
 

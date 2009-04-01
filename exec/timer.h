@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -37,7 +37,7 @@
 
 typedef void * corosync_timer_handle;
 
-extern void corosync_timer_init (
+extern int corosync_timer_init (
         void (*serialize_lock) (void),
         void (*serialize_unlock) (void),
 	int sched_priority);
