@@ -342,8 +342,6 @@ static struct printer_subsys printer_subsystems[] = {
 static unsigned int printer_subsys_count =
   sizeof (printer_subsystems) / sizeof (struct printer_subsys);
 
-static unsigned int records_printed = 1;
-
 static unsigned int record[10000];
 
 /*
