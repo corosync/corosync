@@ -105,6 +105,78 @@ static inline void objdb_get_int (
 	}
 }
 
+
+/**
+ * insert_into_buffer
+ * @target_buffer: a buffer where to write results
+ * @bufferlen: tell us the size of the buffer to avoid overflows
+ * @entry: entry that needs to be added to the buffer
+ * @after: can either be NULL or set to a string.
+ *         if NULL, @entry is prependend to logsys_format_get buffer.
+ *         if set, @entry is added immediately after @after.
+ *
+ * Since the function is specific to logsys_format_get handling, it is implicit
+ * that source is logsys_format_get();
+ *
+ * In case of failure, target_buffer could be left dirty. So don't trust
+ * any data leftover in it.
+ *
+ * Searching for "after" assumes that there is only entry of "after"
+ * in the source. Afterall we control the string here and for logging format
+ * it makes little to no sense to have duplicate format entries.
+ *
+ * Returns: 0 on success, -1 on failure
+ **/
+static int insert_into_buffer(
+	char *target_buffer,
+	size_t bufferlen,
+	const char *entry,
+	const char *after)
+{
+	const char *current_format = NULL;
+
+	current_format = logsys_format_get();
+
+	/* if the entry is already in the format we don't add it again */
+	if (strstr(current_format, entry) != NULL) {
+		return -1;
+	}
+
+	/* if there is no "after", simply prepend the requested entry
+	 * otherwise go for beautiful string manipulation.... </sarcasm> */
+	if (!after) {
+		if (snprintf(target_buffer, bufferlen - 1, "%s%s",
+				entry,
+				current_format) >= bufferlen - 1) {
+			return -1;
+		}
+	} else {
+		const char *afterpos;
+		size_t afterlen;
+		size_t templen;
+
+		/* check if after is contained in the format
+		 * and afterlen has a meaning or return an error */
+		afterpos = strstr(current_format, after);
+		afterlen = strlen(after);
+		if ((!afterpos) || (!afterlen)) {
+			return -1;
+		}
+
+		templen = afterpos - current_format + afterlen;
+		if (snprintf(target_buffer, templen + 1, "%s", current_format)
+				>= bufferlen - 1) {
+			return -1;
+		}
+		if (snprintf(target_buffer + templen, bufferlen - ( templen + 1 ),
+				"%s%s", entry, current_format + templen)
+				>= bufferlen - ( templen + 1 )) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static struct logsys_config_struct {
 	char subsys[6];
 	unsigned int priority;
@@ -122,6 +194,7 @@ int corosync_main_config_read_logging (
 	const char *error_reason = error_string_response;
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_find_logsys_handle;
+	char new_format_buffer[PATH_MAX];
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -158,20 +231,54 @@ int corosync_main_config_read_logging (
 				main_config->logmode &= ~LOG_MODE_OUTPUT_STDERR;
 			}
 		}
-		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
-			char new_format_buffer[PATH_MAX];
-
-			memset(&new_format_buffer, 0, sizeof(new_format_buffer));
-
+		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
 			if (strcmp (value, "on") == 0) {
-				snprintf(new_format_buffer, PATH_MAX-1, "%%t %s", logsys_format_get());
-				logsys_format_set(new_format_buffer);
-			} else
-			if (strcmp (value, "off") == 0) {
-				if (!strncmp("%t ", logsys_format_get(), 3)) {
-					snprintf(new_format_buffer, PATH_MAX-1, "%s", logsys_format_get() + 3);
+				if (!insert_into_buffer(new_format_buffer,
+						sizeof(new_format_buffer),
+						" %f:%l", "s]")) {
+					logsys_format_set(new_format_buffer);
+				} else
+				if (!insert_into_buffer(new_format_buffer,
+						sizeof(new_format_buffer),
+						"%f:%l", NULL)) {
 					logsys_format_set(new_format_buffer);
 				}
+			} else
+			if (strcmp (value, "off") == 0) {
+				/* nothing to do here */
+			} else {
+				goto parse_error;
+			}
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "function_name", &value)) {
+			if (strcmp (value, "on") == 0) {
+				if (!insert_into_buffer(new_format_buffer,
+						sizeof(new_format_buffer),
+						"%n:", "f:")) {
+					logsys_format_set(new_format_buffer);
+				} else
+				if (!insert_into_buffer(new_format_buffer,
+						sizeof(new_format_buffer),
+						" %n", "s]")) {
+					logsys_format_set(new_format_buffer);
+				}
+			} else
+			if (strcmp (value, "off") == 0) {
+				/* nothing to do here */
+			} else {
+				goto parse_error;
+			}
+		}
+		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
+			if (strcmp (value, "on") == 0) {
+				if(!insert_into_buffer(new_format_buffer,
+						sizeof(new_format_buffer),
+						"%t ", NULL)) {
+					logsys_format_set(new_format_buffer);
+				}
+			} else
+			if (strcmp (value, "off") == 0) {
+				/* nothing to do here */
 			} else {
 				goto parse_error;
 			}
@@ -184,19 +291,6 @@ int corosync_main_config_read_logging (
 		}
 		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
 			main_config->logfile = strdup (value);
-		}
-
-		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
-/* TODO
-			if (strcmp (value, "on") == 0) {
-				main_config->logmode |= LOG_MODE_DISPLAY_FILELINE;
-			} else
-			if (strcmp (value, "off") == 0) {
-				main_config->logmode &= ~LOG_MODE_DISPLAY_FILELINE;
-			} else {
-				goto parse_error;
-			}
-*/
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "syslog_facility", &value)) {
@@ -392,6 +486,7 @@ static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 		/*
 		 * Reload the logsys configuration
 		 */
+		logsys_format_set(NULL);
 		corosync_main_config_read_logging(global_objdb,
 						  &error_string,
 						  main_config);
