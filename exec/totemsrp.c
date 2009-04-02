@@ -2939,7 +2939,7 @@ static void memb_ring_id_create_or_load (
 	int res;
 	char filename[256];
 
-	sprintf (filename, "%s/ringid_%s",
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
 	fd = open (filename, O_RDONLY, 0700);
 	if (fd > 0) {
@@ -2978,7 +2978,7 @@ static void memb_ring_id_set_and_store (
 
 	memcpy (&instance->my_ring_id, ring_id, sizeof (struct memb_ring_id));
 
-	sprintf (filename, "%s/ringid_%s",
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
 
 	fd = open (filename, O_WRONLY, 0777);

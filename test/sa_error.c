@@ -59,7 +59,7 @@ static char test_result[256];
         if (result == expected) {
                 return ("PASSED");
         } else {
-                sprintf (test_result,
+                snprintf (test_result, sizeof(test_result),
                         "FAILED expected %s got %s",
 			get_sa_error_b(expected), get_sa_error_b(result));
                 return (test_result);

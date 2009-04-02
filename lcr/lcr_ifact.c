@@ -224,7 +224,7 @@ static int ldso_path_build (const char *path, const char *filename)
 	struct dirent **scandir_list;
 	unsigned int scandir_entries;
 
-	sprintf (filename_cat, "%s/%s", path, filename);
+	snprintf (filename_cat, sizeof(filename_cat), "%s/%s", path, filename);
 	if (filename[0] == '*') {
 		scandir_entries = scandir (
 			path,
@@ -375,7 +375,8 @@ static int interface_find_and_load (
 		/*
 		 * Load objects, scan them, unload them if they are not a match
 		 */
-		sprintf (dl_name, "%s/%s", path, scandir_list[libs_to_scan]->d_name);
+		snprintf (dl_name, sizeof(dl_name), "%s/%s",
+			path, scandir_list[libs_to_scan]->d_name);
 		/*
 	 	 * Don't reload already loaded libraries
 		 */

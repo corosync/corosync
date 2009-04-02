@@ -131,11 +131,11 @@ int main (void)
 	 */
 	printf ("heating up cache with sprintf functionality\n");
 	for (i = 0; i < ITERATIONS; i++) {
-		sprintf (buf, "Some logging information %s", "recordA");
+		snprintf (buf, sizeof(buf), "Some logging information %s", "recordA");
 	}
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
-		sprintf (buf, "Some logging information %s", "recordA");
+		snprintf (buf, sizeof(buf), "Some logging information %s", "recordA");
 	}
 	bm_finish ("sprintf 1 argument:");
 	bm_start();

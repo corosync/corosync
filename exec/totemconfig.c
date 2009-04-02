@@ -410,7 +410,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
 			totem_config->max_network_delay, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -424,7 +425,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -440,7 +442,8 @@ int totem_config_validate (
 			(1000/HZ));
 	}
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -450,7 +453,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -460,7 +464,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The join timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The join timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->join_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -470,7 +475,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -480,7 +486,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The merge timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->merge_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -490,7 +497,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -501,14 +509,16 @@ int totem_config_validate (
 	if (strcmp (totem_config->rrp_mode, "none") &&
 		strcmp (totem_config->rrp_mode, "active") &&
 		strcmp (totem_config->rrp_mode, "passive")) {
-		sprintf (local_error_reason, "The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
 		goto parse_error;
 	}
 	if (totem_config->rrp_problem_count_timeout == 0) {
 		totem_config->rrp_problem_count_timeout = RRP_PROBLEM_COUNT_TIMEOUT;
 	}
 	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -516,7 +526,8 @@ int totem_config_validate (
 		totem_config->rrp_problem_count_threshold = RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT;
 	}
 	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		sprintf (local_error_reason, "The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
 			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
@@ -526,7 +537,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -535,7 +547,7 @@ int totem_config_validate (
 		interface_max = 1;
 	}
 	if (interface_max < totem_config->interface_count) {
-		sprintf (parse_error,
+		snprintf (parse_error, sizeof(parse_error),
 			"%d is too many configured interfaces for the rrp_mode setting %s.",
 			totem_config->interface_count,
 			totem_config->rrp_mode);
@@ -555,7 +567,8 @@ int totem_config_validate (
 	}
 
 	if ((MESSAGE_QUEUE_MAX) < totem_config->max_messages) {
-		sprintf (local_error_reason, "The max_messages parameter (%d messages) may not be greater then (%d messages).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The max_messages parameter (%d messages) may not be greater then (%d messages).",
 			totem_config->max_messages, MESSAGE_QUEUE_MAX);
 		goto parse_error;
 	}
@@ -577,7 +590,7 @@ int totem_config_validate (
 	return (0);
 
 parse_error:
-	sprintf (error_string_response,
+	snprintf (error_string_response, sizeof(error_string_response),
 		 "parse error in config: %s\n", error_reason);
 	*error_string = error_string_response;
 	return (-1);
@@ -593,7 +606,8 @@ static int read_keyfile (
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
-		sprintf (error_string_response, "Could not open %s: %s\n",
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could not open %s: %s\n",
 			 key_location, strerror (errno));
 		goto parse_error;
 	}
@@ -601,7 +615,8 @@ static int read_keyfile (
 	res = read (fd, totem_config->private_key, 128);
 	if (res == -1) {
 		close (fd);
-		sprintf (error_string_response, "Could not read %s: %s\n",
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could not read %s: %s\n",
 			 key_location, strerror (errno));
 		goto parse_error;
 	}
@@ -610,7 +625,8 @@ static int read_keyfile (
 
 	if (res != 128) {
 		close (fd);
-		sprintf (error_string_response, "Could only read %d bits of 1024 bits from %s.\n",
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could only read %d bits of 1024 bits from %s.\n",
 			 res * 8, key_location);
 		goto parse_error;
 	}

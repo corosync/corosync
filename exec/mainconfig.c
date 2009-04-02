@@ -375,7 +375,7 @@ int corosync_main_config_read_logging (
 	return 0;
 
 parse_error:
-	sprintf (error_string_response,
+	snprintf (error_string_response, sizeof(error_string_response),
 		 "parse error in config: %s.\n",
 		 error_reason);
 
@@ -467,7 +467,7 @@ int corosync_main_config_read (
 	return 0;
 
 parse_error:
-	sprintf (error_string_response,
+	snprintf (error_string_response, sizeof(error_string_response),
 		 "parse error in config: %s.\n",
 		 error_reason);
 

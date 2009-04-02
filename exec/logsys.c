@@ -907,7 +907,8 @@ int logsys_config_file_set (const char **error_string, const char *file)
 		logsys_close_logfile();
 		logsys_file_fp = fopen (file, "a+");
 		if (logsys_file_fp == 0) {
-			sprintf (error_string_response,
+			snprintf (error_string_response,
+				sizeof(error_string_response),
 				"Can't open logfile '%s' for reason (%s).\n",
 					 file, strerror (errno));
 			*error_string = error_string_response;

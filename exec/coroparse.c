@@ -171,7 +171,8 @@ static int read_config_file_into_objdb(
 
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
-		sprintf (error_reason, "Can't read file %s reason = (%s)\n",
+		snprintf (error_reason, sizeof(error_string_response),
+			"Can't read file %s reason = (%s)\n",
 			 filename, strerror (errno));
 		*error_string = error_reason;
 		return -1;
@@ -181,7 +182,8 @@ static int read_config_file_into_objdb(
 
 	fclose(fp);
 
-	sprintf (error_reason, "Successfully read main configuration file '%s'.\n", filename);
+	snprintf (error_reason, sizeof(error_string_response),
+			"Successfully read main configuration file '%s'.\n", filename);
 	*error_string = error_reason;
 
 	return res;
