@@ -776,10 +776,10 @@ cs_error_t votequorum_dispatch (
 	do {
 		pthread_mutex_lock (&votequorum_inst->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_recv (
-			votequorum_inst->ipc_ctx,
-			(void *)&dispatch_data, timeout);
-
+		dispatch_avail = coroipcc_dispatch_recv (votequorum_inst->ipc_ctx,
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 
 		/*
 		 * Handle has been finalized in another thread

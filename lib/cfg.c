@@ -195,7 +195,9 @@ corosync_cfg_dispatch (
 
 	do {
 		dispatch_avail = coroipcc_dispatch_recv (cfg_instance->ipc_ctx,
-			(void *)&dispatch_data, timeout);
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 
 		/*
 		 * Handle has been finalized in another thread

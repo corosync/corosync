@@ -2,7 +2,7 @@
  * vi: set autoindent tabstop=4 shiftwidth=4 :
 
  * Copyright (c) 2004-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -222,7 +222,10 @@ evs_error_t evs_dispatch (
 	}
 
 	do {
-		dispatch_avail = coroipcc_dispatch_recv (evs_inst->ipc_ctx, (void *)&dispatch_data, timeout);
+		dispatch_avail = coroipcc_dispatch_recv (evs_inst->ipc_ctx,
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 		if (dispatch_avail == -1) {
 			error = CS_ERR_LIBRARY;
 			goto error_nounlock;

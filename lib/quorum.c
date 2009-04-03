@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -392,7 +392,9 @@ cs_error_t quorum_dispatch (
 		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
 
 		dispatch_avail = coroipcc_dispatch_recv (quorum_inst->ipc_ctx,
-			(void *)&dispatch_data, timeout);
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 
 		/*
 		 * Handle has been finalized in another thread

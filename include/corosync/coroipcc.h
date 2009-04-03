@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2003 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -85,6 +85,7 @@ int
 coroipcc_dispatch_recv (
 	void *ipc_context,
 	void *buf,
+	size_t buflen,
 	int timeout);
 
 int

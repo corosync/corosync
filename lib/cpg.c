@@ -266,7 +266,9 @@ cs_error_t cpg_dispatch (
 		pthread_mutex_lock (&cpg_inst->dispatch_mutex);
 
 		dispatch_avail = coroipcc_dispatch_recv (cpg_inst->ipc_ctx,
-			(void *)&dispatch_data, timeout);
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 
 		pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
 
@@ -647,7 +649,7 @@ cs_error_t cpg_flow_control_state_get (
 	if (error != CS_OK) {
 		return (error);
 	}
-	
+
 	*flow_control_state = coroipcc_dispatch_flow_control_get (cpg_inst->ipc_ctx);
 
 	saHandleInstancePut (&cpg_handle_t_db, handle);

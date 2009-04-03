@@ -327,7 +327,9 @@ cs_error_t confdb_dispatch (
 		pthread_mutex_lock (&confdb_inst->dispatch_mutex);
 
 		dispatch_avail = coroipcc_dispatch_recv (confdb_inst->ipc_ctx,
-			(void *)&dispatch_data, timeout);
+							 (void *)&dispatch_data,
+							 sizeof (dispatch_data),
+							 timeout);
 
 
 		/*

@@ -440,8 +440,8 @@ coroipcc_fd_get (void *ipc_ctx)
 	return (ipc_segment->fd);
 }
 
-static void memcpy_swrap (
-	void *dest, void *src, int len, unsigned int *read)
+static void memcpy_swrap (void *dest, size_t dest_len,
+			  void *src, int len, unsigned int *read)
 {
 	char *dest_chr = (char *)dest;
 	char *src_chr = (char *)src;
@@ -466,7 +466,7 @@ static void memcpy_swrap (
 int original_flow = -1;
 
 int
-coroipcc_dispatch_recv (void *ipc_ctx, void *data, int timeout)
+coroipcc_dispatch_recv (void *ipc_ctx, void *data, size_t buflen, int timeout)
 {
 	struct pollfd ufds;
 	struct sembuf sop;
@@ -546,23 +546,28 @@ retry_semop:
 	if (res == -1) {
 		return (-1);
 	}
-	
+
+	if (buflen < DISPATCH_SIZE) {
+		return -1;
+	}
+
 	if (ipc_segment->shared_memory->read + sizeof (mar_res_header_t) >= DISPATCH_SIZE) {
 		my_read = ipc_segment->shared_memory->read;
-		memcpy_swrap (data,
+		memcpy_swrap (data, DISPATCH_SIZE,
 			ipc_segment->shared_memory->dispatch_buffer,
 			sizeof (mar_res_header_t),
 			&ipc_segment->shared_memory->read);
 		header = (mar_res_header_t *)data;
 		memcpy_swrap (
 			(void *)((char *)data + sizeof (mar_res_header_t)),
+			DISPATCH_SIZE,
 			ipc_segment->shared_memory->dispatch_buffer,
 			header->size - sizeof (mar_res_header_t),
 			&ipc_segment->shared_memory->read);
 	} else {
 		header = (mar_res_header_t *)&ipc_segment->shared_memory->dispatch_buffer[ipc_segment->shared_memory->read];
 		memcpy_swrap (
-			data,
+			data, DISPATCH_SIZE,
 			ipc_segment->shared_memory->dispatch_buffer,
 			header->size,
 			&ipc_segment->shared_memory->read);
