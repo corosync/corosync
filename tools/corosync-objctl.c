@@ -82,13 +82,13 @@ static void tail_key_changed(confdb_handle_t handle,
 static void tail_object_created(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	const void *name_pt,
+	size_t name_len);
 
 static void tail_object_deleted(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	const void *name_pt,
+	size_t name_len);
 
 static confdb_callbacks_t callbacks = {
 	.confdb_key_change_notify_fn = tail_key_changed,
@@ -429,21 +429,22 @@ static void tail_key_changed(confdb_handle_t handle,
 static void tail_object_created(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	uint8_t *name_pt,
-	int  name_len)
+	const void *name_pt,
+	size_t name_len)
 {
-	name_pt[name_len] = '\0';
-	printf("object_created> %s\n", name_pt);
+	fputs("object_created>", stdout);
+	print_name(stdout, name_pt, name_len);
+	fputs("\n", stdout);
 }
 
 static void tail_object_deleted(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	uint8_t *name_pt,
-	int  name_len)
+	const void *name_pt,
+	size_t name_len)
 {
-	name_pt[name_len] = '\0';
-
-	printf("object_deleted> %s\n", name_pt);
+	fputs("object_deleted>", stdout);
+	print_name(stdout, name_pt, name_len);
+	fputs("\n", stdout);
 }
 
 static void listen_for_object_changes(confdb_handle_t handle)

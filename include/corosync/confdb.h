@@ -73,14 +73,14 @@ typedef void (*confdb_object_create_notify_fn_t) (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	const void *name_pt,
+	size_t name_len);
 
 typedef void (*confdb_object_delete_notify_fn_t) (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	const void *name_pt,
+	size_t name_len);
 
 typedef struct {
 	confdb_object_create_notify_fn_t confdb_object_create_change_notify_fn;
