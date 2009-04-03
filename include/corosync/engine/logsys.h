@@ -175,7 +175,7 @@ extern void *logsys_rec_end;
 #define LOG_REC_END (&logsys_rec_end)
 
 #define LOGSYS_DECLARE_SYSTEM(name,mode,file,facility,format,rec_size)	\
-__attribute__ ((constructor)) static void logsys_system_init (void)	\
+__attribute__ ((constructor (101))) static void logsys_system_init (void)	\
 {									\
 	const char *error_string;						\
 									\
@@ -188,7 +188,7 @@ __attribute__ ((constructor)) static void logsys_system_init (void)	\
 }
 
 #define LOGSYS_DECLARE_NOSUBSYS(priority)				\
-__attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
+__attribute__ ((constructor (102))) static void logsys_nosubsys_init (void)	\
 {									\
 	unsigned int pri, tags;						\
 									\
@@ -203,7 +203,7 @@ __attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
 }
 
 #define LOGSYS_DECLARE_SUBSYS(subsys,priority)				\
-__attribute__ ((constructor)) static void logsys_subsys_init (void)	\
+__attribute__ ((constructor (102))) static void logsys_subsys_init (void)	\
 {									\
 	unsigned int pri, tags;						\
 									\
