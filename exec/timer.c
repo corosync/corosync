@@ -127,7 +127,7 @@ static void *prioritized_timer_thread (void *data)
 		}
 		timer_serialize_unlock_fn ();
 		fds = poll (NULL, 0, timeout);
-		if (fds == 0 || (fds < 0 && errno == EINTR)) {
+		if (fds < 0 && errno == EINTR) {
 			continue;
 		}
 		if (fds < 0) {
