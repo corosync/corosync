@@ -203,7 +203,7 @@ cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
-	char *reason);
+	const char *reason);
 
 cs_error_t
 corosync_cfg_try_shutdown (
@@ -231,7 +231,7 @@ cs_error_t
 corosync_cfg_get_node_addrs (
 	corosync_cfg_handle_t cfg_handle,
 	int nodeid,
-	int max_addrs,
+	size_t max_addrs,
 	int *num_addrs,
 	corosync_cfg_node_address_t *addrs);
 

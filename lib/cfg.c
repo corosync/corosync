@@ -678,7 +678,7 @@ cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
-	char *reason)
+	const char *reason)
 {
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_killnode req_lib_cfg_killnode;
@@ -800,7 +800,7 @@ corosync_cfg_replyto_shutdown (
 cs_error_t corosync_cfg_get_node_addrs (
 	corosync_cfg_handle_t cfg_handle,
 	int nodeid,
-	int max_addrs,
+	size_t max_addrs,
 	int *num_addrs,
 	corosync_cfg_node_address_t *addrs)
 {
