@@ -109,7 +109,8 @@ cs_error_t confdb_finalize (
  */
 cs_error_t confdb_write (
 	confdb_handle_t handle,
-	char *error_text);
+	char *error_text,
+	size_t errbuf_len);
 
 /*
  * Reload the configuration

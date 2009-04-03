@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat Inc
+ * Copyright (c) 2008, 2009 Red Hat Inc
  *
  * All rights reserved.
  *
@@ -188,7 +188,7 @@ static void do_write_tests(confdb_handle_t handle)
 		return;
 	}
 
-	res = confdb_write(handle, error_string);
+	res = confdb_write(handle, error_string, sizeof error_string);
 	printf("confdb_write returned %d: %s\n", res, error_string);
 }
 

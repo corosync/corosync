@@ -53,6 +53,9 @@
 
 #include "sa-confdb.h"
 
+#undef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+
 /* Hold the information for iterators so that
    callers can do recursive tree traversals.
    each object_handle can have its own iterator */
@@ -1397,7 +1400,8 @@ error_exit:
 
 cs_error_t confdb_write (
 	confdb_handle_t handle,
-	char *error_text)
+	char *error_text,
+	size_t errbuf_len)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -1407,13 +1411,14 @@ cs_error_t confdb_write (
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
+		/* FIXME: set error_text */
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
 		error = CS_OK;
 
-		if (confdb_sa_write(error_text))
+		if (confdb_sa_write(error_text, errbuf_len))
 			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
@@ -1435,12 +1440,16 @@ cs_error_t confdb_write (
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
+		/* FIXME: set error_text */
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_write.header.error;
-	if (res_lib_confdb_write.error.length)
-		memcpy(error_text, res_lib_confdb_write.error.value, res_lib_confdb_write.error.length);
+	if (res_lib_confdb_write.error.length) {
+		memcpy(error_text, res_lib_confdb_write.error.value,
+		       MIN(res_lib_confdb_write.error.length,errbuf_len));
+		error_text[errbuf_len-1] = '\0';
+	}
 
 error_exit:
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
@@ -1600,4 +1609,3 @@ error_exit:
 
 	return (error);
 }
-
