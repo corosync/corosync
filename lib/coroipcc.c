@@ -574,7 +574,7 @@ retry_semop:
 static cs_error_t
 coroipcc_msg_send (
 	void *ipc_context,
-	struct iovec *iov,
+	const struct iovec *iov,
 	int iov_len)
 {
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
@@ -683,7 +683,7 @@ retry_semop:
 cs_error_t
 coroipcc_msg_send_reply_receive (
 	void *ipc_context,
-	struct iovec *iov,
+	const struct iovec *iov,
 	int iov_len,
 	void *res_msg,
 	int res_len)
@@ -706,7 +706,7 @@ coroipcc_msg_send_reply_receive (
 cs_error_t
 coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
-	struct iovec *iov,
+	const struct iovec *iov,
 	int iov_len,
 	void **res_msg)
 {

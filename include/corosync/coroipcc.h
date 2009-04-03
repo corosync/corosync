@@ -94,7 +94,7 @@ coroipcc_dispatch_flow_control_get (
 cs_error_t
 coroipcc_msg_send_reply_receive (
 	void *ipc_context,
-	struct iovec *iov,
+	const struct iovec *iov,
 	int iov_len,
 	void *res_msg,
 	int res_len);
@@ -102,7 +102,7 @@ coroipcc_msg_send_reply_receive (
 cs_error_t
 coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
-	struct iovec *iov,
+	const struct iovec *iov,
 	int iov_len,
 	void **res_msg);
 
@@ -131,4 +131,3 @@ saHandleInstancePut (
 #define offset_of(type,member) (int)(&(((type *)0)->member))
 
 #endif /* COROIPC_H_DEFINED */
-
