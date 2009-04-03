@@ -654,7 +654,7 @@ static int shared_mem_dispatch_bytes_left (struct conn_info *conn_info)
 static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
 {
 	char *dest_char = (char *)conn_info->mem->dispatch_buffer;
-	char *src_char = (char *)msg;
+	char *src_char = msg;
 	unsigned int first_write;
 	unsigned int second_write;
 

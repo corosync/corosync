@@ -113,7 +113,7 @@ coroipcc_send (
 	int result;
 	struct msghdr msg_send;
 	struct iovec iov_send;
-	char *rbuf = (char *)msg;
+	char *rbuf = msg;
 	int processed = 0;
 
 	msg_send.msg_iov = &iov_send;
@@ -190,7 +190,7 @@ coroipcc_recv (
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
-	char *rbuf = (char *)msg;
+	char *rbuf = msg;
 	int processed = 0;
 
 	msg_recv.msg_iov = &iov_recv;
