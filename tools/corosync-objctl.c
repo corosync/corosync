@@ -71,11 +71,11 @@ static void tail_key_changed(confdb_handle_t handle,
 	confdb_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	void *object_name,
+	const void *object_name,
 	int  object_name_len,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *key_value,
+	const void *key_value,
 	int key_value_len);
 
 static void tail_object_created(confdb_handle_t handle,
@@ -89,7 +89,7 @@ static void tail_object_deleted(confdb_handle_t handle,
 	uint8_t *name_pt,
 	int  name_len);
 
-confdb_callbacks_t callbacks = {
+static confdb_callbacks_t callbacks = {
 	.confdb_key_change_notify_fn = tail_key_changed,
 	.confdb_object_create_change_notify_fn = tail_object_created,
 	.confdb_object_delete_change_notify_fn = tail_object_deleted,
@@ -394,21 +394,17 @@ static void tail_key_changed(confdb_handle_t handle,
 	confdb_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	void *object_name_pt,
+	const void *object_name_pt,
 	int  object_name_len,
-	void *key_name_pt,
+	const void *key_name_pt,
 	int key_name_len,
-	void *key_value_pt,
+	const void *key_value_pt,
 	int key_value_len)
 {
-	char * on = (char*)object_name_pt;
-	char * kn = (char*)key_name_pt;
-	char * kv = (char*)key_value_pt;
-
-	on[object_name_len] = '\0';
-	kv[key_value_len] = '\0';
-	kn[key_name_len] = '\0';
-	printf("key_changed> %s.%s=%s\n", on, kn, kv);
+	printf("key_changed> %.*s.%.*s=%.*s\n",
+	       object_name_len, (const char *)object_name_pt,
+	       key_name_len, (const char *)key_value_pt,
+	       key_value_len, (const char *)key_value_pt);
 }
 
 static void tail_object_created(confdb_handle_t handle,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -62,11 +62,11 @@ typedef void (*confdb_key_change_notify_fn_t) (
 	confdb_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	void *object_name,
+	const void *object_name,
 	int  object_name_len,
-	void *key_name,
+	const void *key_name,
 	int key_name_len,
-	void *key_value,
+	const void *key_value,
 	int key_value_len);
 
 typedef void (*confdb_object_create_notify_fn_t) (
