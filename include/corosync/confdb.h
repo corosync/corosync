@@ -118,7 +118,8 @@ cs_error_t confdb_write (
 cs_error_t confdb_reload (
 	confdb_handle_t handle,
 	int flush,
-	char *error_text);
+	char *error_text,
+	size_t errbuf_len);
 
 /*
  * Get a file descriptor on which to poll.  confdb_handle_t is NOT a

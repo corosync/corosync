@@ -1460,7 +1460,8 @@ error_exit:
 cs_error_t confdb_reload (
 	confdb_handle_t handle,
 	int flush,
-	char *error_text)
+	char *error_text,
+	size_t errbuf_len)
 {
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
@@ -1470,13 +1471,14 @@ cs_error_t confdb_reload (
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
+		/* FIXME: set error_text */
 		return (error);
 	}
 
 	if (confdb_inst->standalone) {
 		error = CS_OK;
 
-		if (confdb_sa_reload(flush, error_text))
+		if (confdb_sa_reload(flush, error_text, errbuf_len))
 			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
@@ -1500,12 +1502,16 @@ cs_error_t confdb_reload (
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
 	if (error != CS_OK) {
+		/* FIXME: set error_text */
 		goto error_exit;
 	}
 
 	error = res_lib_confdb_reload.header.error;
-	if(res_lib_confdb_reload.error.length)
-		memcpy(error_text, res_lib_confdb_reload.error.value, res_lib_confdb_reload.error.length);
+	if(res_lib_confdb_reload.error.length) {
+		memcpy(error_text, res_lib_confdb_reload.error.value,
+		       MIN(res_lib_confdb_reload.error.length,errbuf_len));
+		error_text[errbuf_len-1] = '\0';
+	}
 
 error_exit:
 	(void)saHandleInstancePut (&confdb_handle_t_db, handle);

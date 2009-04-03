@@ -47,4 +47,4 @@ extern int confdb_sa_key_increment(hdb_handle_t parent_object_handle, const void
 extern int confdb_sa_key_decrement(hdb_handle_t parent_object_handle, const void *key_name, int key_name_len, unsigned int *value);
 extern int confdb_sa_find_destroy(hdb_handle_t find_handle);
 extern int confdb_sa_write(char *error_text, size_t errbuf_len);
-extern int confdb_sa_reload(int flush, char *error_text);
+extern int confdb_sa_reload(int flush, char *error_text, size_t errbuf_len);
