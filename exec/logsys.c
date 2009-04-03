@@ -161,12 +161,6 @@ void *logsys_rec_end;
 
 #define FDTAIL_INDEX 	(flt_data_size + 1)
 
-struct log_data {
-	unsigned int syslog_pos;
-	unsigned int priority;
-	char *log_string;
-};
-
 static void logsys_atexit (void);
 
 /*
