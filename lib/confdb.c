@@ -340,9 +340,11 @@ cs_error_t confdb_dispatch (
 		}
 
 		if (dispatch_avail == 0 && dispatch_types == CONFDB_DISPATCH_ALL) {
+			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else
 		if (dispatch_avail == 0) {
+			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 			continue; /* next poll */
 		}
 
