@@ -178,13 +178,13 @@ corosync_cfg_ring_reenable (
 cs_error_t
 corosync_cfg_service_load (
 	corosync_cfg_handle_t cfg_handle,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
 
 cs_error_t
 corosync_cfg_service_unload (
 	corosync_cfg_handle_t cfg_handle,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
 
 cs_error_t
