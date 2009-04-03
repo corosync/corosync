@@ -41,6 +41,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
@@ -72,11 +73,11 @@ static void tail_key_changed(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
 	const void *object_name,
-	int  object_name_len,
+	size_t  object_name_len,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *key_value,
-	int key_value_len);
+	size_t key_value_len);
 
 static void tail_object_created(confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
@@ -390,21 +391,39 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	}
 }
 
+/* Print "?" in place of any non-printable byte of OBJ. */
+static void print_name (FILE *fp, const void *obj, size_t obj_len)
+{
+	const char *p = obj;
+	size_t i;
+	for (i = 0; i < obj_len; i++) {
+		int c = *p++;
+		if (!isprint (c)) {
+			c = '?';
+		}
+		fputc (c, fp);
+	}
+}
+
 static void tail_key_changed(confdb_handle_t handle,
 	confdb_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
 	const void *object_name_pt,
-	int  object_name_len,
+	size_t  object_name_len,
 	const void *key_name_pt,
-	int key_name_len,
+	size_t key_name_len,
 	const void *key_value_pt,
-	int key_value_len)
+	size_t key_value_len)
 {
-	printf("key_changed> %.*s.%.*s=%.*s\n",
-	       object_name_len, (const char *)object_name_pt,
-	       key_name_len, (const char *)key_value_pt,
-	       key_value_len, (const char *)key_value_pt);
+	/* printf("key_changed> %.*s.%.*s=%.*s\n", */
+	fputs("key_changed> ", stdout);
+	print_name (stdout, object_name_pt, object_name_len);
+	fputs(".", stdout);
+	print_name (stdout, key_name_pt, key_name_len);
+	fputs("=", stdout);
+	print_name (stdout, key_value_pt, key_value_len);
+	fputs("\n", stdout);
 }
 
 static void tail_object_created(confdb_handle_t handle,

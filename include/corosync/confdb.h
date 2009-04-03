@@ -63,11 +63,11 @@ typedef void (*confdb_key_change_notify_fn_t) (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
 	const void *object_name,
-	int  object_name_len,
+	size_t  object_name_len,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *key_value,
-	int key_value_len);
+	size_t key_value_len);
 
 typedef void (*confdb_object_create_notify_fn_t) (
 	confdb_handle_t handle,
