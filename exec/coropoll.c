@@ -387,7 +387,6 @@ retry_poll:
 		res = poll (poll_instance->ufds,
 			poll_instance->poll_entry_count, expire_timeout_msec);
 		if (poll_instance->stop_requested) {
-			printf ("poll should stop\n");
 			return (0);
 		}
 		if (errno == EINTR && res == -1) {
