@@ -302,15 +302,17 @@ int confdb_sa_key_replace (
 					 new_value, new_value_len);
 }
 
-int confdb_sa_write (
-	char *error_text)
+int confdb_sa_write (char *error_text, size_t errbuf_len)
 {
 	const char *errtext;
 	int ret;
 
 	ret = objdb->object_write_config(&errtext);
-	if (!ret)
-		strcpy(error_text, errtext);
+	if (!ret) {
+		strncpy(error_text, errtext, errbuf_len);
+		if (errbuf_len > 0)
+			error_text[errbuf_len-1] = '\0';
+	}
 
 	return ret;
 }
