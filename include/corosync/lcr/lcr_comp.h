@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -40,7 +40,7 @@ struct lcr_iface {
 	int *versions_replace;		/* Versions that this interface can replace */
 	int versions_replace_count;	/* Count of entries in version_replace */
 	char **dependencies;		/* Dependent interfaces */
-	int dependency_count;		/* Count of entires in dependencies */
+	size_t dependency_count;	/* Count of entires in dependencies */
 	int (*constructor) (void *context);	/* Constructor for this interface */
 	void (*destructor) (void *context);	/* Constructor for this interface */
 	void **interfaces;		/* List of functions in interface */
@@ -51,7 +51,7 @@ struct lcr_iface {
  */
 struct lcr_comp {
 	struct lcr_iface *ifaces;	/* List of interfaces in this component */
-	int iface_count;		/* size of ifaces list */
+	size_t iface_count;		/* size of ifaces list */
 };
 
 extern void lcr_component_register (struct lcr_comp *comp);
