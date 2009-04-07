@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * All rights reserved.
@@ -48,7 +48,7 @@ static inline void swab_mar_cpg_name_t (mar_cpg_name_t *to_swab)
 
 static inline void marshall_from_mar_cpg_name_t (
 	struct cpg_name *dest,
-	mar_cpg_name_t *src)
+	const mar_cpg_name_t *src)
 {
 	dest->length = src->length;
 	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
@@ -56,12 +56,12 @@ static inline void marshall_from_mar_cpg_name_t (
 
 static inline void marshall_to_mar_cpg_name_t (
 	mar_cpg_name_t *dest,
-	struct cpg_name *src)
+	const struct cpg_name *src)
 {
 	dest->length = src->length;
 	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
 }
-		
+
 typedef struct {
         mar_uint32_t nodeid __attribute__((aligned(8)));
         mar_uint32_t pid __attribute__((aligned(8)));
@@ -70,7 +70,7 @@ typedef struct {
 
 static inline void marshall_from_mar_cpg_address_t (
 	struct cpg_address *dest,
-	mar_cpg_address_t *src)
+	const mar_cpg_address_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->pid = src->pid;
@@ -79,7 +79,7 @@ static inline void marshall_from_mar_cpg_address_t (
 
 static inline void marshall_to_mar_cpg_address_t (
 	mar_cpg_address_t *dest,
-	struct cpg_address *src)
+	const struct cpg_address *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->pid = src->pid;
