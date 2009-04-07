@@ -6,7 +6,7 @@
  * Author: Patrick Caulfield (pcaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -61,26 +61,34 @@ struct totem_ip_address
 } __attribute__((packed));
 
 
-extern int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
+extern int totemip_equal(const struct totem_ip_address *addr1,
+			 const struct totem_ip_address *addr2);
 extern int totemip_compare(const void *a, const void *b);
-extern void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
-extern void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip_address *addr2);
+extern void totemip_copy(struct totem_ip_address *addr1,
+			 const struct totem_ip_address *addr2);
+extern void totemip_copy_endian_convert(struct totem_ip_address *addr1,
+					const struct totem_ip_address *addr2);
 int totemip_localhost(int family, struct totem_ip_address *localhost);
-extern int totemip_localhost_check(struct totem_ip_address *addr);
+extern int totemip_localhost_check(const struct totem_ip_address *addr);
 extern const char *totemip_print(const struct totem_ip_address *addr);
-extern int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr);
+extern int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
+					       struct totem_ip_address *ip_addr);
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
 extern int totemip_parse(struct totem_ip_address *totemip, const char *addr,
 			 int family);
-extern int totemip_iface_check(struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up, int *interface_num, int mask_high_bit);
+extern int totemip_iface_check(struct totem_ip_address *bindnet,
+			       struct totem_ip_address *boundto,
+			       int *interface_up,
+			       int *interface_num,
+			       int mask_high_bit);
 
 /* These two simulate a zero in_addr by clearing the family field */
 static inline void totemip_zero_set(struct totem_ip_address *addr)
 {
 	addr->family = 0;
 }
-static inline int totemip_zero_check(struct totem_ip_address *addr)
+static inline int totemip_zero_check(const struct totem_ip_address *addr)
 {
 	return (addr->family == 0);
 }

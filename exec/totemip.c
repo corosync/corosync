@@ -87,7 +87,8 @@ void totemip_nosigpipe(int s)
 #endif
 
 /* Compare two addresses */
-int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
+int totemip_equal(const struct totem_ip_address *addr1,
+		  const struct totem_ip_address *addr2)
 {
 	int addrlen = 0;
 
@@ -110,12 +111,14 @@ int totemip_equal(struct totem_ip_address *addr1, struct totem_ip_address *addr2
 }
 
 /* Copy a totem_ip_address */
-void totemip_copy(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
+void totemip_copy(struct totem_ip_address *addr1,
+		  const struct totem_ip_address *addr2)
 {
 	memcpy(addr1, addr2, sizeof(struct totem_ip_address));
 }
 
-void totemip_copy_endian_convert(struct totem_ip_address *addr1, struct totem_ip_address *addr2)
+void totemip_copy_endian_convert(struct totem_ip_address *addr1,
+				 const struct totem_ip_address *addr2)
 {
 	addr1->nodeid = swab32(addr2->nodeid);
 	addr1->family = swab16(addr2->family);
@@ -198,7 +201,7 @@ int totemip_localhost(int family, struct totem_ip_address *localhost)
 	return 0;
 }
 
-int totemip_localhost_check(struct totem_ip_address *addr)
+int totemip_localhost_check(const struct totem_ip_address *addr)
 {
 	struct totem_ip_address localhost;
 
@@ -287,7 +290,8 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 }
 
 /* Make a sockaddr_* into a totem_ip_address */
-int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr)
+int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
+					struct totem_ip_address *ip_addr)
 {
 	int ret = -1;
 
@@ -295,14 +299,15 @@ int totemip_sockaddr_to_totemip_convert(struct sockaddr_storage *saddr, struct t
 	ip_addr->nodeid = 0;
 
 	if (saddr->ss_family == AF_INET) {
-		struct sockaddr_in *sin = (struct sockaddr_in *)saddr;
+		const struct sockaddr_in *sin = (const struct sockaddr_in *)saddr;
 
 		memcpy(ip_addr->addr, &sin->sin_addr, sizeof(struct in_addr));
 		ret = 0;
 	}
 
 	if (saddr->ss_family == AF_INET6) {
-		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)saddr;
+		const struct sockaddr_in6 *sin
+		  = (const struct sockaddr_in6 *)saddr;
 
 		memcpy(ip_addr->addr, &sin->sin6_addr, sizeof(struct in6_addr));
 
