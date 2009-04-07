@@ -472,7 +472,7 @@ evs_error_t evs_mcast_groups (
 	int i;
 	evs_error_t error;
 	struct evs_inst *evs_inst;
-	struct iovec iov[64];
+	struct iovec iov[64]; /* FIXME: what if iov_len > 62 ?  use malloc */
 	struct req_lib_evs_mcast_groups req_lib_evs_mcast_groups;
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	int msg_len = 0;

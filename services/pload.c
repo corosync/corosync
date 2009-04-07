@@ -263,7 +263,7 @@ static int send_message (enum totem_callback_token_type type, void *arg)
 	struct req_exec_pload_mcast req_exec_pload_mcast;
 	struct iovec iov[2];
 	unsigned int res;
-	int iov_len = 2;
+	int iov_len = 1;
 
 	req_exec_pload_mcast.header.id =
 		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
@@ -271,10 +271,10 @@ static int send_message (enum totem_callback_token_type type, void *arg)
 
 	iov[0].iov_base = &req_exec_pload_mcast;
 	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
-	iov[1].iov_base = buffer;
-	iov[1].iov_len = msg_size - sizeof (struct req_exec_pload_mcast);
-	if (iov[1].iov_len < 0) {
-		iov_len = 1;
+	if (msg_size > sizeof (req_exec_pload_mcast)) {
+		iov[1].iov_base = buffer;
+		iov[1].iov_len = msg_size - sizeof (req_exec_pload_mcast);
+		iov_len = 2;
 	}
 
 	do {
