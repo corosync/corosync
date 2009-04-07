@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -38,8 +38,9 @@
 #include <pthread.h>
 #include "assert.h"
 
-#ifdef COROSYNC_SOLARIS
+#ifdef queue
 /* struct queue is already defined in sys/stream.h on Solaris */
+#undef queue
 #define	queue _queue
 #endif
 struct queue {
@@ -144,7 +145,7 @@ static inline void *queue_item_get (struct queue *queue)
 static inline void queue_item_remove (struct queue *queue) {
 	pthread_mutex_lock (&queue->mutex);
 	queue->tail = (queue->tail + 1) % queue->size;
-	
+
 	assert (queue->tail != queue->head);
 
 	queue->used--;
@@ -156,7 +157,7 @@ static inline void queue_items_remove (struct queue *queue, int rel_count)
 {
 	pthread_mutex_lock (&queue->mutex);
 	queue->tail = (queue->tail + rel_count) % queue->size;
-	
+
 	assert (queue->tail != queue->head);
 
 	queue->used -= rel_count;
