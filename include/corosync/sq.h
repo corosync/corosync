@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -101,13 +101,16 @@ static inline int sq_init (
 	sq->item_count = item_count;
 	sq->pos_max = 0;
 
-	sq->items = (void *)malloc (item_count * size_per_item);
-	if (sq->items == 0) {
+	sq->items = malloc (item_count * size_per_item);
+	if (sq->items == NULL) {
 		return (-ENOMEM);
 	}
 	memset (sq->items, 0, item_count * size_per_item);
 
-	sq->items_inuse = (void *)malloc (item_count * sizeof (unsigned int));
+	if ((sq->items_inuse = malloc (item_count * sizeof (unsigned int)))
+	    == NULL) {
+		return (-ENOMEM);
+	}
 	memset (sq->items_inuse, 0, item_count * sizeof (unsigned int));
 	return (0);
 }
@@ -122,7 +125,7 @@ static inline void sq_reinit (struct sq *sq, unsigned int head_seqid)
 	memset (sq->items_inuse, 0, sq->item_count * sizeof (unsigned int));
 }
 
-static inline void sq_assert (struct sq *sq, unsigned int pos)
+static inline void sq_assert (const struct sq *sq, unsigned int pos)
 {
 	unsigned int i;
 
@@ -132,7 +135,7 @@ static inline void sq_assert (struct sq *sq, unsigned int pos)
 		assert (sq->items_inuse[i] == 0);
 	}
 }
-static inline void sq_copy (struct sq *sq_dest, struct sq *sq_src)
+static inline void sq_copy (struct sq *sq_dest, const struct sq *sq_src)
 {
 	sq_assert (sq_src, 20);
 	sq_dest->head = sq_src->head;
@@ -179,19 +182,19 @@ static inline void *sq_item_add (
 }
 
 static inline unsigned int sq_item_inuse (
-	struct sq *sq,
+	const struct sq *sq,
 	unsigned int seq_id) {
 
 	unsigned int sq_position;
 
 	/*
-	 * We need to say that the seqid is in use if it shouldn't 
+	 * We need to say that the seqid is in use if it shouldn't
 	 * be here in the first place.
 	 * To keep old messages from being inserted.
 	 */
 #ifdef COMPILE_OUT
 	if (seq_id < sq->head_seqid) {
-		fprintf(stderr, "sq_item_inuse: seqid %d, head %d\n", 
+		fprintf(stderr, "sq_item_inuse: seqid %d, head %d\n",
 						seq_id, sq->head_seqid);
 		return 1;
 	}
@@ -201,13 +204,13 @@ static inline unsigned int sq_item_inuse (
 }
 
 static inline unsigned int sq_size_get (
-	struct sq *sq)
+	const struct sq *sq)
 {
 	return sq->size;
 }
 
 static inline unsigned int sq_in_range (
-	struct sq *sq,
+	const struct sq *sq,
 	unsigned int seq_id)
 {
 	int res = 1;
@@ -236,7 +239,7 @@ static inline unsigned int sq_in_range (
 }
 
 static inline unsigned int sq_item_get (
-	struct sq *sq,
+	const struct sq *sq,
 	unsigned int seq_id,
 	void **sq_item_out)
 {
