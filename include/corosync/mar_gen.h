@@ -1,13 +1,12 @@
 /*
- * Copyright (C) 2006, 2009 Red Hat, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -101,14 +100,15 @@ typedef struct {
 	mar_uint8_t value[CS_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_name_t;
 
-static inline char *get_mar_name_t (mar_name_t *name) {
-        return ((char *)name->value);
+static inline const char *get_mar_name_t (const mar_name_t *name) {
+        return ((const char *)name->value);
 }
 
-static inline int mar_name_match(mar_name_t *name1, mar_name_t *name2)
+static inline int mar_name_match(const mar_name_t *name1, const mar_name_t *name2)
 {
         if (name1->length == name2->length) {
-                return ((strncmp ((char *)name1->value, (char *)name2->value,
+                return ((strncmp ((const char *)name1->value,
+				  (const char *)name2->value,
                         name1->length)) == 0);
         }
         return 0;
