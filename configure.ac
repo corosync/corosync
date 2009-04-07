@@ -118,7 +118,7 @@ esac
 
 AC_MSG_NOTICE(Sanitizing exec_prefix: ${exec_prefix})
 case $exec_prefix in
-  dnl For consistency with Heartbeat, map NONE->$prefix
+  dnl For consistency with Corosync, map NONE->$prefix
   NONE)   exec_prefix=$prefix;;
   prefix) exec_prefix=$prefix;;
 esac
