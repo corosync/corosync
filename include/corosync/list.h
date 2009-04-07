@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -79,7 +79,7 @@ static void inline list_del (struct list_head *remove)
 #define list_entry(ptr,type,member)\
 	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
 
-static inline int list_empty(struct list_head *l)
+static inline int list_empty(const struct list_head *l)
 {
 	return l->next == l;
 }
