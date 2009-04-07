@@ -269,7 +269,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	/*
 	 * Tell corosync we have a quorum engine.
 	 */
-	api->quorum_initialize(&callins, &sync_primary_callback_fn);
+	api->quorum_initialize(&callins);
 
 	/*
 	 * Look for a quorum provider

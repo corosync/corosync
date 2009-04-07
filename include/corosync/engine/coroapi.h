@@ -512,8 +512,7 @@ struct corosync_api_v1 {
 	/*
 	 * This one is for the quorum management plugin's use
 	 */
-	int (*quorum_initialize)(struct quorum_callin_functions *fns,
-				 sync_callback_fn_t *sync_callback_fn);
+	int (*quorum_initialize)(struct quorum_callin_functions *fns);
 
 	/*
 	 * Plugin loading and unloading

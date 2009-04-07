@@ -64,11 +64,4 @@ int sync_primary_designated (void);
  */
 extern int sync_request (char *name);
 
-extern void sync_primary_callback_fn (
-	unsigned int *view_list,
-	int view_list_entries,
-	int primary_designated,
-	struct memb_ring_id *ring_id);
-
-
 #endif /* SYNC_H_DEFINED */

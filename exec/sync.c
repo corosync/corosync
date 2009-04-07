@@ -32,9 +32,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <config.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -52,22 +49,21 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <config.h>
+ 
 #include <corosync/corotypes.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totem.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/ipc_gen.h>
 #include "quorum.h"
-
-#include "main.h"
 #include "sync.h"
-
 
 LOGSYS_DECLARE_SUBSYS ("SYNC", LOG_INFO);
 
 #define MESSAGE_REQ_SYNC_BARRIER 0
-#define MESSAGE_REQ_SYNC_REQUEST 1
 
 struct barrier_data {
 	unsigned int nodeid;
@@ -75,6 +71,8 @@ struct barrier_data {
 };
 
 static struct memb_ring_id *sync_ring_id;
+
+static int vsf_none = 0;
 
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
@@ -87,13 +85,14 @@ static void (*sync_synchronization_completed) (void);
 static int sync_recovery_index = 0;
 
 static void *sync_callback_token_handle = 0;
-static void *sync_request_token_handle;
 
 static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
 
 static int barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
+
+static struct openais_vsf_iface_ver0 *vsf_iface;
 
 static int sync_barrier_send (struct memb_ring_id *ring_id);
 
@@ -116,32 +115,24 @@ static void sync_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id);
 
+static void sync_primary_callback_fn (
+        unsigned int *view_list,
+        int view_list_entries,
+        int primary_designated,
+        struct memb_ring_id *ring_id);
+
+
 static struct totempg_group sync_group = {
     .group      = "sync",
     .group_len  = 4
 };
 
 static hdb_handle_t sync_group_handle;
-static char *service_name;
-static unsigned int current_members[PROCESSOR_COUNT_MAX];
-static unsigned int current_members_cnt;
 
 struct req_exec_sync_barrier_start {
 	mar_req_header_t header;
 	struct memb_ring_id ring_id;
 };
-
-struct sync_request {
-	uint32_t name_len;
-	char name[0] __attribute__((aligned(8)));
-};
-
-typedef struct sync_msg {
-	mar_req_header_t header;
-	struct memb_ring_id ring_id;
-	struct sync_request sync_request;
-} sync_msg_t;
-
 
 /*
  * Send a barrier data structure
@@ -261,7 +252,6 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 int sync_register (
 	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
 	void (*synchronization_completed) (void))
-
 {
 	unsigned int res;
 
@@ -283,19 +273,27 @@ int sync_register (
 		log_printf (LOG_LEVEL_ERROR, "Couldn't join group.\n");
 		return (-1);
 	}
-
+		
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
 	return (0);
 }
 
-void sync_primary_callback_fn (
+
+static void sync_primary_callback_fn (
 	unsigned int *view_list,
 	int view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id)
 {
 	int i;
+
+	if (primary_designated) {
+		log_printf (LOG_LEVEL_DEBUG, "This node is within the primary component and will provide service.\n");
+	} else {
+		log_printf (LOG_LEVEL_DEBUG, "This node is within the non-primary component and will NOT provide any services.\n");
+		return;
+	}
 
 	/*
 	 * Execute configuration change for synchronization service
@@ -335,15 +333,15 @@ static void sync_deliver_fn (
 {
 	struct req_exec_sync_barrier_start *req_exec_sync_barrier_start =
 		(struct req_exec_sync_barrier_start *)iovec[0].iov_base;
-	sync_msg_t *msg = (sync_msg_t *)iovec[0].iov_base;
-
+	unsigned int barrier_completed;
 	int i;
 
+log_printf (LOG_LEVEL_DEBUG, "confchg entries %d\n", barrier_data_confchg_entries);
 	if (endian_conversion_required) {
 		sync_endian_convert (req_exec_sync_barrier_start);
 	}
 
-	int barrier_completed = 1;
+	barrier_completed = 1;
 
 	memcpy (&deliver_ring_id, &req_exec_sync_barrier_start->ring_id,
 		sizeof (struct memb_ring_id));
@@ -353,36 +351,6 @@ static void sync_deliver_fn (
 	 */
 	if (memcmp (&req_exec_sync_barrier_start->ring_id, sync_ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
-		return;
-	}
-
-	if (msg->header.id == MESSAGE_REQ_SYNC_REQUEST) {
-		if (endian_conversion_required) {
-			swab_mar_uint32_t (&msg->sync_request.name_len);
-		}	
-		/*
-		 * If there is an ongoing sync, abort it. A requested sync is
-		 * only allowed to abort other requested synchronizations,
-		 * not full synchronizations.
-		 */
-		if (sync_processing && sync_callbacks.sync_abort) {
-			sync_callbacks.sync_abort();
-			sync_callbacks.sync_activate = NULL;
-			sync_processing = 0;
-			assert (service_name != NULL);
-			free (service_name);
-			service_name = NULL;
-		}
-
-		service_name = malloc (msg->sync_request.name_len);
-		strcpy (service_name, msg->sync_request.name);
-
-		/*
-		 * Start requested synchronization
-		 */
-		sync_primary_callback_fn (current_members, current_members_cnt,	1,
-			sync_ring_id);
-
 		return;
 	}
 
@@ -455,7 +423,6 @@ static void sync_confchg_fn (
 	unsigned int *joined_list, int joined_list_entries,
 	struct memb_ring_id *ring_id)
 {
-	int i;
 	sync_ring_id = ring_id;
 
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
@@ -465,79 +432,12 @@ static void sync_confchg_fn (
 		sync_callbacks.sync_abort ();
 		sync_callbacks.sync_activate = NULL;
 	}
-	/*
-	 * Save current members and ring ID for later use
-	 */
-	for (i = 0; i < member_list_entries; i++) {
-		current_members[i] = member_list[i];
-	}
-	current_members_cnt = member_list_entries;
 
-	/*
-	 * If no virtual synchrony filter configured, then start
-	 * synchronization process
-	 */
-	if (quorum_none() == 1) {
-		sync_primary_callback_fn (
-			member_list,
-			member_list_entries,
-			1,
-			ring_id);
-	}
-}
-/**
- * TOTEM callback function used to multicast a sync_request
- * message
- * @param type
- * @param _name
- *
- * @return int
- */
-static int sync_request_send (
-	enum totem_callback_token_type type, void *_name)
-{
-	int res;
-	char *name = _name;
-	sync_msg_t msg;
-	struct iovec iovec[2];
-	int name_len;
-
-	ENTER();
-
-	name_len = strlen (name) + 1;
-	msg.header.size = sizeof (msg) + name_len;
-	msg.header.id = MESSAGE_REQ_SYNC_REQUEST;
-
-	if (sync_ring_id == NULL) {
-		log_printf (LOG_LEVEL_ERROR,
-			"%s sync_ring_id is NULL.\n", __func__);
-		return 1;
-	}
-	memcpy (&msg.ring_id, sync_ring_id,	sizeof (struct memb_ring_id));
-	msg.sync_request.name_len = name_len;
-
-	iovec[0].iov_base = (char *)&msg;
-	iovec[0].iov_len = sizeof (msg);
-	iovec[1].iov_base = _name;
-	iovec[1].iov_len = name_len;
-
-	res = totempg_groups_mcast_joined (
-		sync_group_handle, iovec, 2, TOTEMPG_AGREED);
-
-	if (res == 0) {
-		/*
-		 * We managed to multicast the message so delete the token callback
-		 * for the sync request.
-		 */
-		totempg_callback_token_destroy (&sync_request_token_handle);
-	}
-
-	/*
-	 * if we failed to multicast the message, this function will be called
-	 * again.
-	 */
-
-	return (0);
+	sync_primary_callback_fn (
+		member_list,
+		member_list_entries,
+		1,
+		ring_id);
 }
 
 int sync_in_process (void)
@@ -545,27 +445,7 @@ int sync_in_process (void)
 	return (sync_processing);
 }
 
-/**
- * Execute synchronization upon request for the named service
- * @param name
- *
- * @return int
- */
-int sync_request (char *name)
+int sync_primary_designated (void)
 {
-	assert (name != NULL);
-
-	ENTER();
-
-	if (sync_processing) {
-		return -1;
-	}
-
-	totempg_callback_token_create (&sync_request_token_handle,
-		TOTEM_CALLBACK_TOKEN_SENT, 0, /* don't delete after callback */
-		sync_request_send, name);
-
-	LEAVE();
-
-	return 0;
+	return (1);
 }

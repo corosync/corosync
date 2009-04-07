@@ -65,7 +65,6 @@
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM", LOG_INFO);
 
-
 static struct quorum_callin_functions *corosync_quorum_fns = NULL;
 
 int corosync_quorum_is_quorate (void)
@@ -98,14 +97,12 @@ int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context)
 	}
 }
 
-int corosync_quorum_initialize (struct quorum_callin_functions *fns,
-				sync_callback_fn_t *sync_callback_fn)
+int corosync_quorum_initialize (struct quorum_callin_functions *fns)
 {
 	if (corosync_quorum_fns)
 		return -1;
 
 	corosync_quorum_fns = fns;
-	*sync_callback_fn = sync_primary_callback_fn;
 	return 0;
 }
 
