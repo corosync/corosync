@@ -195,6 +195,7 @@ int corosync_main_config_read_logging (
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_find_logsys_handle;
 	char new_format_buffer[PATH_MAX];
+	int err = 0;
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -236,12 +237,12 @@ int corosync_main_config_read_logging (
 				if (!insert_into_buffer(new_format_buffer,
 						sizeof(new_format_buffer),
 						" %f:%l", "s]")) {
-					logsys_format_set(new_format_buffer);
+					err = logsys_format_set(new_format_buffer);
 				} else
 				if (!insert_into_buffer(new_format_buffer,
 						sizeof(new_format_buffer),
 						"%f:%l", NULL)) {
-					logsys_format_set(new_format_buffer);
+					err = logsys_format_set(new_format_buffer);
 				}
 			} else
 			if (strcmp (value, "off") == 0) {
@@ -255,12 +256,12 @@ int corosync_main_config_read_logging (
 				if (!insert_into_buffer(new_format_buffer,
 						sizeof(new_format_buffer),
 						"%n:", "f:")) {
-					logsys_format_set(new_format_buffer);
+					err = logsys_format_set(new_format_buffer);
 				} else
 				if (!insert_into_buffer(new_format_buffer,
 						sizeof(new_format_buffer),
 						" %n", "s]")) {
-					logsys_format_set(new_format_buffer);
+					err = logsys_format_set(new_format_buffer);
 				}
 			} else
 			if (strcmp (value, "off") == 0) {
@@ -274,7 +275,7 @@ int corosync_main_config_read_logging (
 				if(!insert_into_buffer(new_format_buffer,
 						sizeof(new_format_buffer),
 						"%t ", NULL)) {
-					logsys_format_set(new_format_buffer);
+					err = logsys_format_set(new_format_buffer);
 				}
 			} else
 			if (strcmp (value, "off") == 0) {
@@ -282,6 +283,10 @@ int corosync_main_config_read_logging (
 			} else {
 				goto parse_error;
 			}
+		}
+		if (err) {
+			error_reason = "exhausted virtual memory";
+			goto parse_error;
 		}
 
 		/* free old string on reload */
@@ -365,7 +370,7 @@ int corosync_main_config_read_logging (
 				logsys_logger.subsys,
 				logsys_logger.tags,
 				logsys_logger.priority);
-			
+
 		}
 		objdb->object_find_destroy (object_find_logsys_handle);
 	}

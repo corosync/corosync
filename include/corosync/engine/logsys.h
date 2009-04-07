@@ -94,8 +94,8 @@ extern void logsys_config_facility_set (
 	const char *name,
 	unsigned int facility);
 
-extern void logsys_format_set (
-	char *format);
+extern int logsys_format_set (
+	const char *format);
 
 extern char *logsys_format_get (void);
 
@@ -182,7 +182,7 @@ __attribute__ ((constructor)) static void logsys_system_init (void)	\
 	logsys_config_mode_set (mode);					\
 	logsys_config_file_set (&error_string, (file));			\
 	logsys_config_facility_set (name, (facility));			\
-	logsys_format_set (format);					\
+	logsys_format_set (format); /* FIXME: assert success? */	\
 	_logsys_rec_init (rec_size);					\
 	_logsys_wthread_create();					\
 }

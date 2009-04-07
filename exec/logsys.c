@@ -916,7 +916,7 @@ int logsys_config_file_set (const char **error_string, const char *file)
 	return (0);
 }
 
-void logsys_format_set (char *format)
+int logsys_format_set (const char *format)
 {
 	pthread_mutex_lock (&logsys_config_mutex);
 
@@ -930,8 +930,12 @@ void logsys_format_set (char *format)
 	} else {
 		format_buffer = strdup("[%6s] %b");
 	}
+	if (format_buffer == NULL) {
+		return -1;
+	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
+	return 0;
 }
 
 char *logsys_format_get (void)
@@ -1137,7 +1141,8 @@ int logsys_init (
 	logsys_config_mode_set (mode);
 	logsys_config_facility_set (name, facility);
 	logsys_config_file_set (&errstr, file);
-	logsys_format_set (format);
+	if (logsys_format_set (format))
+		return -1;
 	_logsys_rec_init (rec_size);
 	_logsys_wthread_create ();
 	return (0);
