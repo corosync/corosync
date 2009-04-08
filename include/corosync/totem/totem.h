@@ -75,6 +75,9 @@ struct totem_logging_configuration {
 	int log_subsys_id;
 };
 
+enum { TOTEM_PRIVATE_KEY_LEN = 128 };
+enum { TOTEM_RRP_MODE_BYTES = 64 };
+
 struct totem_config {
 	int version;
 
@@ -88,7 +91,7 @@ struct totem_config {
 	/*
 	 * key information
 	 */
-	unsigned char private_key[128];
+	unsigned char private_key[TOTEM_PRIVATE_KEY_LEN];
 
 	unsigned int private_key_len;
 
@@ -123,7 +126,7 @@ struct totem_config {
 
 	unsigned int rrp_problem_count_threshold;
 
-	char rrp_mode[64];
+	char rrp_mode[TOTEM_RRP_MODE_BYTES];
 
 	struct totem_logging_configuration totem_logging_configuration;
 
