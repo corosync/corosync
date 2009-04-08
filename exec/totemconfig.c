@@ -677,6 +677,9 @@ int totem_config_keyread (
 			&key_len);
 
 		if (res == 0 && key) {
+			if (key_len > sizeof (totem_config->private_key)) {
+				goto key_error;
+			}
 			memcpy(totem_config->private_key, key, key_len);
 			totem_config->private_key_len = key_len;
 			got_key = 1;
