@@ -336,7 +336,8 @@ static void sync_deliver_fn (
 	unsigned int barrier_completed;
 	int i;
 
-log_printf (LOG_LEVEL_DEBUG, "confchg entries %d\n", barrier_data_confchg_entries);
+	log_printf (LOG_LEVEL_DEBUG, "confchg entries %lu\n",
+		    (unsigned long int) barrier_data_confchg_entries);
 	if (endian_conversion_required) {
 		sync_endian_convert (req_exec_sync_barrier_start);
 	}
