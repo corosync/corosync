@@ -98,7 +98,7 @@ coroipcc_msg_send_reply_receive (
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void *res_msg,
-	int res_len);
+	size_t res_len);
 
 cs_error_t
 coroipcc_msg_send_reply_receive_in_buf (

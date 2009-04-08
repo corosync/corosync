@@ -620,7 +620,7 @@ retry_semop:
 static cs_error_t
 coroipcc_reply_receive (
 	void *ipc_context,
-	void *res_msg, int res_len)
+	void *res_msg, size_t res_len)
 {
 	struct sembuf sop;
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
@@ -691,7 +691,7 @@ coroipcc_msg_send_reply_receive (
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void *res_msg,
-	int res_len)
+	size_t res_len)
 {
 	cs_error_t res;
 
