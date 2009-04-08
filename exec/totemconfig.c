@@ -603,6 +603,8 @@ static int read_keyfile (
 {
 	int fd;
 	int res;
+	ssize_t expected_key_len = sizeof (totem_config->private_key);
+	int saved_errno;
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
@@ -612,25 +614,26 @@ static int read_keyfile (
 		goto parse_error;
 	}
 
-	res = read (fd, totem_config->private_key, 128);
+	res = read (fd, totem_config->private_key, expected_key_len);
+	saved_errno = errno;
+	close (fd);
+
 	if (res == -1) {
-		close (fd);
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not read %s: %s\n",
-			 key_location, strerror (errno));
+			 key_location, strerror (saved_errno));
 		goto parse_error;
 	}
 
-	totem_config->private_key_len = 128;
+	totem_config->private_key_len = expected_key_len;
 
-	if (res != 128) {
-		close (fd);
+	if (res != expected_key_len) {
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could only read %d bits of 1024 bits from %s.\n",
 			 res * 8, key_location);
 		goto parse_error;
 	}
-	close (fd);
+
 	return 0;
 
 parse_error:
