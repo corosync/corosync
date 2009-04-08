@@ -63,18 +63,18 @@ typedef void (*object_key_change_notify_fn_t)(
 	object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const void *object_name_pt, int object_name_len,
-	const void *key_name_pt, int key_len,
-	const void *key_value_pt, int key_value_len,
-void *priv_data_pt);
+	const void *object_name_pt, size_t object_name_len,
+	const void *key_name_pt, size_t key_len,
+	const void *key_value_pt, size_t key_value_len,
+	const void *priv_data_pt);
 
 typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
 hdb_handle_t object_handle,
-const void *name_pt, int name_len,
+const void *name_pt, size_t name_len,
 void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
-											void *name_pt, int name_len,
+					    void *name_pt, size_t name_len,
 											void *priv_data_pt);
 
 typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
@@ -82,14 +82,14 @@ typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush
 
 struct object_valid {
 	char *object_name;
-	int object_len;
+	size_t object_len;
 };
 
 struct object_key_valid {
 	char *key_name;
-	int key_len;
-	int (*validate_callback) (const void *key, int key_len,
-				  const void *value, int value_len);
+	size_t key_len;
+	int (*validate_callback) (const void *key, size_t key_len,
+				  const void *value, size_t value_len);
 };
 
 struct objdb_iface_ver0 {
@@ -99,7 +99,7 @@ struct objdb_iface_ver0 {
 		hdb_handle_t parent_object_handle,
 		hdb_handle_t *object_handle,
 		const void *object_name,
-		unsigned int object_name_len);
+		size_t object_name_len);
 
 	int (*object_priv_set) (
 		hdb_handle_t object_handle,
@@ -108,9 +108,9 @@ struct objdb_iface_ver0 {
 	int (*object_key_create) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len,
+		size_t key_len,
 		const void *value,
-		int value_len);
+		size_t value_len);
 
 	int (*object_destroy) (
 		hdb_handle_t object_handle);
@@ -128,7 +128,7 @@ struct objdb_iface_ver0 {
 	int (*object_find_create) (
 		hdb_handle_t parent_object_handle,
 		const void *object_name,
-		int object_name_len,
+		size_t object_name_len,
 		hdb_handle_t *object_find_handle);
 
 	int (*object_find_next) (
@@ -141,9 +141,9 @@ struct objdb_iface_ver0 {
 	int (*object_key_get) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len,
+		size_t key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_priv_get) (
 		hdb_handle_t jobject_handle,
@@ -152,14 +152,14 @@ struct objdb_iface_ver0 {
 	int (*object_key_replace) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len,
+		size_t key_len,
 		const void *new_value,
-		int new_value_len);
+		size_t new_value_len);
 
 	int (*object_key_delete) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len);
+		size_t key_len);
 
 	int (*object_iter_reset) (
 		hdb_handle_t parent_object_handle);
@@ -167,7 +167,7 @@ struct objdb_iface_ver0 {
 	int (*object_iter) (
 		hdb_handle_t parent_object_handle,
 		void **object_name,
-		int *name_len,
+		size_t *name_len,
 		hdb_handle_t *object_handle);
 
 	int (*object_key_iter_reset) (
@@ -176,9 +176,9 @@ struct objdb_iface_ver0 {
 	int (*object_key_iter) (
 		hdb_handle_t parent_object_handle,
 		void **key_name,
-		int *key_len,
+		size_t *key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_parent_get) (
 		hdb_handle_t object_handle,
@@ -187,7 +187,7 @@ struct objdb_iface_ver0 {
 	int (*object_name_get) (
 		hdb_handle_t object_handle,
 		char *object_name,
-		int *object_name_len);
+		size_t *object_name_len);
 
 	int (*object_dump) (
 		hdb_handle_t object_handle,
@@ -197,9 +197,9 @@ struct objdb_iface_ver0 {
 		hdb_handle_t parent_object_handle,
 		hdb_handle_t start_pos,
 		void **key_name,
-		int *key_len,
+		size_t *key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_track_start) (
 		hdb_handle_t object_handle,
@@ -226,13 +226,13 @@ struct objdb_iface_ver0 {
 	int (*object_key_increment) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len,
+		size_t key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
 		hdb_handle_t object_handle,
 		const void *key_name,
-		int key_len,
+		size_t key_len,
 		unsigned int *value);
 };
 

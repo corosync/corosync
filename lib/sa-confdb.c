@@ -196,7 +196,7 @@ int confdb_sa_init (void)
 int confdb_sa_object_create (
 	hdb_handle_t parent_object_handle,
 	const void *object_name,
-	int object_name_len,
+	size_t object_name_len,
 	hdb_handle_t *object_handle)
 {
 	return objdb->object_create(parent_object_handle,
@@ -220,9 +220,9 @@ int confdb_sa_object_parent_get (
 int confdb_sa_key_create (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *value,
-	int value_len)
+	size_t value_len)
 {
 	return objdb->object_key_create(parent_object_handle,
 					key_name, key_name_len,
@@ -232,9 +232,9 @@ int confdb_sa_key_create (
 int confdb_sa_key_delete (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *value,
-	int value_len)
+	size_t value_len)
 {
 	return objdb->object_key_delete(parent_object_handle,
 					key_name, key_name_len);
@@ -243,9 +243,9 @@ int confdb_sa_key_delete (
 int confdb_sa_key_get (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	void *value,
-	int *value_len)
+	size_t *value_len)
 {
 	int res;
 	void *kvalue;
@@ -262,7 +262,7 @@ int confdb_sa_key_get (
 int confdb_sa_key_increment (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	unsigned int *value)
 {
 	int res;
@@ -276,7 +276,7 @@ int confdb_sa_key_increment (
 int confdb_sa_key_decrement (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	unsigned int *value)
 {
 	int res;
@@ -291,11 +291,11 @@ int confdb_sa_key_decrement (
 int confdb_sa_key_replace (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *old_value,
-	int old_value_len,
+	size_t old_value_len,
 	const void *new_value,
-	int new_value_len)
+	size_t new_value_len)
 {
 	return objdb->object_key_replace(parent_object_handle,
 					 key_name, key_name_len,
@@ -340,7 +340,7 @@ int confdb_sa_object_find (
 	hdb_handle_t *find_handle,
 	hdb_handle_t *object_handle,
 	const void *object_name,
-	int object_name_len)
+	size_t object_name_len)
 {
 	int res;
 
@@ -360,9 +360,9 @@ int confdb_sa_object_iter (
 	hdb_handle_t *find_handle,
 	hdb_handle_t *object_handle,
 	const void *object_name,
-	int object_name_len,
+	size_t object_name_len,
 	void *found_object_name,
-	int *found_object_name_len)
+	size_t *found_object_name_len)
 {
 	int res;
 
@@ -386,9 +386,9 @@ int confdb_sa_key_iter (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t start_pos,
 	void *key_name,
-	int *key_name_len,
+	size_t *key_name_len,
 	void *value,
-	int *value_len)
+	size_t *value_len)
 {
 	int res;
 	void *kname, *kvalue;

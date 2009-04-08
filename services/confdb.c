@@ -426,7 +426,8 @@ static void message_handler_req_lib_confdb_key_decrement (void *conn, void *mess
 
 static void message_handler_req_lib_confdb_key_replace (void *conn, void *message)
 {
-	struct req_lib_confdb_key_replace *req_lib_confdb_key_replace = (struct req_lib_confdb_key_replace *)message;
+	const struct req_lib_confdb_key_replace *req_lib_confdb_key_replace
+	  = message;
 	mar_res_header_t res;
 	int ret = CS_OK;
 

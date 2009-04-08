@@ -428,7 +428,8 @@ struct req_exec_quorum_killnode {
 };
 
 /* These just make the access a little neater */
-static inline int objdb_get_string(struct corosync_api_v1 *corosync, unsigned int object_service_handle,
+static inline int objdb_get_string(const struct corosync_api_v1 *corosync,
+				   unsigned int object_service_handle,
 				   char *key, char **value)
 {
 	int res;
@@ -445,7 +446,7 @@ static inline int objdb_get_string(struct corosync_api_v1 *corosync, unsigned in
 	return -1;
 }
 
-static inline void objdb_get_int(struct corosync_api_v1 *corosync,
+static inline void objdb_get_int(const struct corosync_api_v1 *corosync,
 				 unsigned int object_service_handle,
 				 const char *key, unsigned int *intvalue,
 				 unsigned int default_value)
@@ -1625,10 +1626,10 @@ static void quorum_key_change_notify(object_change_type_t change_type,
 				     hdb_handle_t parent_object_handle,
 				     hdb_handle_t object_handle,
 				     const void *object_name_pt,
-				     int object_name_len,
-				     const void *key_name_pt, int key_len,
-				     const void *key_value_pt, int key_value_len,
-				     void *priv_data_pt)
+				     size_t object_name_len,
+				     const void *key_name_pt, size_t key_len,
+				     const void *key_value_pt, size_t key_value_len,
+				     const void *priv_data_pt)
 {
 	if (memcmp(object_name_pt, "quorum", object_name_len) == 0)
 		reread_config(object_handle);
@@ -1638,7 +1639,7 @@ static void quorum_key_change_notify(object_change_type_t change_type,
 /* Called when the objdb is reloaded */
 static void votequorum_objdb_reload_notify(
 	objdb_reload_notify_type_t type, int flush,
-	void *priv_data_pt)
+	const void *priv_data_pt)
 {
 	/*
 	 * A new quorum {} key might exist, cancel the

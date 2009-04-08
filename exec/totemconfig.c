@@ -89,7 +89,7 @@ static void add_totem_config_notification(
 
 /* These just makes the code below a little neater */
 static inline int objdb_get_string (
-	struct objdb_iface_ver0 *objdb,
+	const struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_service_handle,
 	const char *key, const char **value)
 {
@@ -110,7 +110,7 @@ static inline int objdb_get_string (
 }
 
 static inline void objdb_get_int (
-	struct objdb_iface_ver0 *objdb,
+	const struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_service_handle,
 	const char *key, unsigned int *intvalue)
 {
@@ -672,7 +672,7 @@ int totem_config_keyread (
 		got_key = 1;
 	} else { /* Or the key itself may be in the objdb */
 		char *key = NULL;
-		int key_len;
+		size_t key_len;
 		res = objdb->object_key_get (object_totem_handle,
 			"key",
 			strlen ("key"),
@@ -711,9 +711,9 @@ key_error:
 static void totem_key_change_notify(object_change_type_t change_type,
 			      hdb_handle_t parent_object_handle,
 			      hdb_handle_t object_handle,
-			      const void *object_name_pt, int object_name_len,
-			      const void *key_name_pt, int key_len,
-			      const void *key_value_pt, int key_value_len,
+			      const void *object_name_pt, size_t object_name_len,
+			      const void *key_name_pt, size_t key_len,
+			      const void *key_value_pt, size_t key_value_len,
 			      void *priv_data_pt)
 {
 	struct totem_config *totem_config = priv_data_pt;

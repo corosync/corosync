@@ -154,7 +154,7 @@ cs_error_t confdb_object_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *object_name,
-	int object_name_len,
+	size_t object_name_len,
 	hdb_handle_t *object_handle);
 
 cs_error_t confdb_object_destroy (
@@ -173,17 +173,17 @@ cs_error_t confdb_key_create (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *value,
-	int value_len);
+	size_t value_len);
 
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *value,
-	int value_len);
+	size_t value_len);
 
 /*
  * Key queries
@@ -192,32 +192,32 @@ cs_error_t confdb_key_get (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	void *value,
-	int *value_len);
+	size_t *value_len);
 
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	const void *old_value,
-	int old_value_len,
+	size_t old_value_len,
 	const void *new_value,
-	int new_value_len);
+	size_t new_value_len);
 
 cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	unsigned int *value);
 
 cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
-	int key_name_len,
+	size_t key_name_len,
 	unsigned int *value);
 
 /*
@@ -234,7 +234,7 @@ cs_error_t confdb_object_find (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	const void *object_name,
-	int object_name_len,
+	size_t object_name_len,
 	hdb_handle_t *object_handle);
 
 cs_error_t confdb_object_find_destroy(
@@ -250,7 +250,7 @@ cs_error_t confdb_object_iter (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t *object_handle,
 	void *object_name,
-	int *object_name_len);
+	size_t *object_name_len);
 
 cs_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
@@ -267,9 +267,9 @@ cs_error_t confdb_key_iter (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
 	void *key_name,
-	int *key_name_len,
+	size_t *key_name_len,
 	void *value,
-	int *value_len);
+	size_t *value_len);
 
 /*
  * Get/set context variable
