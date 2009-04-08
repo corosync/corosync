@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -63,8 +63,8 @@ typedef enum {
  */
 typedef void (*rmd_read_synchronized_t) (
 	rmd_invocation_t invocation,
-	void *key, void key_len,
-	void *data_conents, int data_len, int data_start);
+	const void *key, size_t key_len,
+	void *data_contents, size_t data_len, size_t data_start);
 
 /*
  * This callback occurs when a commit is completed after
@@ -123,7 +123,7 @@ rmd_error_t rmd_commit (
 /*
  * Commit all updates for the transaction to the cluster.  Call returns
  * immediately and response of commitment complete (or error) comes in
- * callback 
+ * callback
  */
 rmd_error_t rmd_commit_async (
 	rmd_handle_t *handle,
@@ -132,7 +132,7 @@ rmd_error_t rmd_commit_async (
 /*
  * Read the value for a key without synchronizing within the
  * transaction.  This offers optimal performance.  If rmd_commit has not
- * been called for write operations, rmd_read will only return committed 
+ * been called for write operations, rmd_read will only return committed
  * data.
  */
 rmd_error_t rmd_read (
@@ -149,7 +149,7 @@ rmd_error_t rmd_write (
 	rmd_handle_t *handle,
 	void *key_name, int key_len,
 	void *data_contents, int data_len, int data_start);
-	
+
 /*
  * Read the value for a key and synchronize the read within the
  * transaction.  The read data is deliver by callback.  Callbacks
@@ -158,8 +158,8 @@ rmd_error_t rmd_write (
 rmd_error_t rmd_read_synchronized (
 	rmd_handle_t *handle,
 	rmd_invocation_t *invocation,
-	void *key_name, int key_len,
-	void *data_contents, int data_contents_size, int data_start,
+	const void *key_name, size_t key_len,
+	void *data_contents, size_t data_contents_size, size_t data_start,
 	int *data_len);
 
 /*
