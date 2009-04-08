@@ -137,9 +137,9 @@ rmd_error_t rmd_commit_async (
  */
 rmd_error_t rmd_read (
 	rmd_handle_t *handle,
-	void *key_name, int key_len,
-	void *data_contents, int data_contents_size, int data_start,
-	int *data_len);
+	const void *key_name, size_t key_len,
+	void *data_contents, size_t data_contents_size,
+	size_t data_start, size_t *data_len);
 
 /*
  * Write a key/value pair to the cluster, but only when the trasaction
@@ -147,8 +147,8 @@ rmd_error_t rmd_read (
  */
 rmd_error_t rmd_write (
 	rmd_handle_t *handle,
-	void *key_name, int key_len,
-	void *data_contents, int data_len, int data_start);
+	const void *key_name, size_t key_len,
+	const void *data_contents, size_t data_len, size_t data_start);
 
 /*
  * Read the value for a key and synchronize the read within the
@@ -160,13 +160,13 @@ rmd_error_t rmd_read_synchronized (
 	rmd_invocation_t *invocation,
 	const void *key_name, size_t key_len,
 	void *data_contents, size_t data_contents_size, size_t data_start,
-	int *data_len);
+	size_t *data_len);
 
 /*
  * Delete a key and value pair.  Operation occurs immediately.
  */
 rmd_error_t rmd_delete (
 	rmd_handle_t *handle,
-	void *key_name, int key_len);
+	const void *key_name, size_t key_len);
 
 #endif /* COROSYNC_RMD_H_DEFINED */
