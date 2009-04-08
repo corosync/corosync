@@ -49,19 +49,19 @@ static const char *delivery_string;
 static int deliveries = 0;
 static void evs_deliver_fn (
 	unsigned int nodeid,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
-	char *buf = msg;
+	const char *buf = msg;
 
 	printf ("API '%s' msg '%s'\n", delivery_string, buf);
 	deliveries++;
 }
 
 static void evs_confchg_fn (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries)
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
@@ -106,7 +106,7 @@ int main (void)
 	int fd;
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
-	unsigned int member_list_entries = 32;
+	size_t member_list_entries = 32;
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
@@ -116,8 +116,8 @@ int main (void)
 
 	result = evs_membership_get (handle, &local_nodeid,
 		member_list, &member_list_entries);
-	printf ("Current membership from evs_membership_get entries %d\n",
-		member_list_entries);
+	printf ("Current membership from evs_membership_get entries %lu\n",
+		(unsigned long int) member_list_entries);
 	for (i = 0; i < member_list_entries; i++) {
 		printf ("member [%d] is %x\n", i, member_list[i]);
 	}

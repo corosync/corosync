@@ -9,7 +9,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -53,6 +53,9 @@
 #include <corosync/evs.h>
 #include <corosync/ipc_evs.h>
 #include <corosync/coroipcc.h>
+
+#undef MIN
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 struct evs_inst {
 	void *ipc_ctx;
@@ -318,8 +321,8 @@ error_nounlock:
 
 evs_error_t evs_join (
     evs_handle_t handle,
-    struct evs_group *groups,
-	int group_entries)
+    const struct evs_group *groups,
+    size_t group_entries)
 {
 	evs_error_t error;
 	struct evs_inst *evs_inst;
@@ -339,7 +342,7 @@ evs_error_t evs_join (
 
 	iov[0].iov_base = &req_lib_evs_join;
 	iov[0].iov_len = sizeof (struct req_lib_evs_join);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
@@ -363,8 +366,8 @@ error_exit:
 
 evs_error_t evs_leave (
     evs_handle_t handle,
-    struct evs_group *groups,
-	int group_entries)
+    const struct evs_group *groups,
+    size_t group_entries)
 {
 	evs_error_t error;
 	struct evs_inst *evs_inst;
@@ -384,7 +387,7 @@ evs_error_t evs_leave (
 
 	iov[0].iov_base = &req_lib_evs_leave;
 	iov[0].iov_len = sizeof (struct req_lib_evs_leave);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	
 	pthread_mutex_lock (&evs_inst->response_mutex);
@@ -409,8 +412,8 @@ error_exit:
 evs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
-	struct iovec *iovec,
-	int iov_len)
+	const struct iovec *iovec,
+	size_t iov_len)
 {
 	int i;
 	evs_error_t error;
@@ -464,10 +467,10 @@ error_exit:
 evs_error_t evs_mcast_groups (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
-	struct evs_group *groups,
-	int group_entries,
-	struct iovec *iovec,
-	int iov_len)
+	const struct evs_group *groups,
+	size_t group_entries,
+	const struct iovec *iovec,
+	size_t iov_len)
 {
 	int i;
 	evs_error_t error;
@@ -493,7 +496,7 @@ evs_error_t evs_mcast_groups (
 
 	iov[0].iov_base = &req_lib_evs_mcast_groups;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_groups);
-	iov[1].iov_base = groups;
+	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 	
@@ -521,7 +524,7 @@ evs_error_t evs_membership_get (
 	evs_handle_t handle,
 	unsigned int *local_nodeid,
 	unsigned int *member_list,
-	unsigned int *member_list_entries)
+	size_t *member_list_entries)
 {
 	evs_error_t error;
 	struct evs_inst *evs_inst;
@@ -562,8 +565,8 @@ evs_error_t evs_membership_get (
 	if (local_nodeid) {
 		*local_nodeid = res_lib_evs_membership_get.local_nodeid;
  	}
-	*member_list_entries = *member_list_entries < res_lib_evs_membership_get.member_list_entries ?
-		*member_list_entries : res_lib_evs_membership_get.member_list_entries;
+	*member_list_entries = MIN (*member_list_entries,
+				    res_lib_evs_membership_get.member_list_entries);
 	if (member_list) {
 		memcpy (member_list, &res_lib_evs_membership_get.member_list, 
 			*member_list_entries * sizeof (struct in_addr));

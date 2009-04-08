@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -71,13 +71,13 @@ struct evs_group {
 
 typedef void (*evs_deliver_fn_t) (
 	unsigned int nodeid,
-	void *msg,
-	int msg_len);
+	const void *msg,
+	size_t msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries);
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
@@ -122,16 +122,16 @@ cs_error_t evs_dispatch (
  */
 cs_error_t evs_join (
 	evs_handle_t handle,
-	struct evs_group *groups,
-	int group_cnt);
+	const struct evs_group *groups,
+	size_t group_cnt);
 
 /*
  * Leave one or more groups
  */
 cs_error_t evs_leave (
 	evs_handle_t handle,
-	struct evs_group *groups,
-	int group_cnt);
+	const struct evs_group *groups,
+	size_t group_cnt);
 
 /*
  * Multicast to groups joined with evs_join.
@@ -141,8 +141,8 @@ cs_error_t evs_leave (
 cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
-	struct iovec *iovec,
-	int iov_len);
+	const struct iovec *iovec,
+	size_t iov_len);
 
 /*
  * Multicast to specified groups.
@@ -152,10 +152,10 @@ cs_error_t evs_mcast_joined (
 cs_error_t evs_mcast_groups (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
-	struct evs_group *groups,
-	int group_cnt,
-	struct iovec *iovec,
-	int iov_len);
+	const struct evs_group *groups,
+	size_t group_cnt,
+	const struct iovec *iovec,
+	size_t iov_len);
 
 /*
  * Get membership information from evs
@@ -164,6 +164,6 @@ cs_error_t evs_membership_get (
 	evs_handle_t handle,
 	unsigned int *local_nodeid,
 	unsigned int *member_list,
-	unsigned int *member_list_entries);
+	size_t *member_list_entries);
 
 #endif /* COROSYNC_EVS_H_DEFINED */

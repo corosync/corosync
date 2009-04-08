@@ -88,7 +88,7 @@ static void *sync_callback_token_handle = 0;
 
 static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
 
-static int barrier_data_confchg_entries;
+static size_t barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 

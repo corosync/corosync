@@ -70,17 +70,17 @@ volatile static int alarm_notice = 0;
 
 static void evs_deliver_fn (
 	unsigned int nodeid,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
-  char *m = msg;
+  const char *m = msg;
   printf ("Delivering message %s\n", m);
 }
 
 static void evs_confchg_fn (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries)
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
