@@ -59,15 +59,15 @@ enum res_lib_evs_types {
 struct res_evs_deliver_callback {
 	mar_res_header_t header;
 	unsigned int local_nodeid;
-	int msglen;
+	size_t msglen;
 	char msg[0];
 };
 
 struct res_evs_confchg_callback {
 	mar_res_header_t header;
-	int member_list_entries;
-	int left_list_entries;
-	int joined_list_entries;
+	size_t member_list_entries;
+	size_t left_list_entries;
+	size_t joined_list_entries;
 	unsigned int member_list[PROCESSOR_COUNT_MAX];
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
 	unsigned int joined_list[PROCESSOR_COUNT_MAX];
@@ -75,7 +75,7 @@ struct res_evs_confchg_callback {
 
 struct req_lib_evs_join {
 	mar_res_header_t header;
-	int group_entries;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
@@ -85,7 +85,7 @@ struct res_lib_evs_join {
 
 struct req_lib_evs_leave {
 	mar_res_header_t header;
-	int group_entries;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
@@ -96,7 +96,7 @@ struct res_lib_evs_leave {
 struct req_lib_evs_mcast_joined {
 	mar_res_header_t header;
 	evs_guarantee_t guarantee;
-	int msg_len;
+	size_t msg_len;
 	char msg[0];
 };
 
@@ -107,8 +107,8 @@ struct res_lib_evs_mcast_joined {
 struct req_lib_evs_mcast_groups {
 	mar_res_header_t header;
 	evs_guarantee_t guarantee;
-	int msg_len;
-	int group_entries;
+	size_t msg_len;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
@@ -119,8 +119,8 @@ struct res_lib_evs_mcast_groups {
 
 struct req_exec_evs_mcast {
 	mar_req_header_t header;
-	int group_entries;
-	int msg_len;
+	size_t group_entries;
+	size_t msg_len;
 	struct evs_group groups[0];
 	/* data goes here */
 };
@@ -133,6 +133,6 @@ struct res_lib_evs_membership_get {
 	mar_res_header_t header;
 	unsigned int local_nodeid;
 	unsigned int member_list[PROCESSOR_COUNT_MAX];
-	int member_list_entries;
+	size_t member_list_entries;
 };
 #endif /* IPC_EVS_H_DEFINED */
