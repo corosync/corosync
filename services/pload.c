@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -109,7 +109,7 @@ static unsigned int msg_code = 1;
 
 static unsigned int msgs_sent = 0;
 
-	
+
 static struct corosync_api_v1 *api;
 
 struct req_exec_pload_start {
@@ -151,7 +151,7 @@ struct corosync_service_engine pload_service_engine = {
 	.name			= "corosync profile loading service",
 	.id			= PLOAD_SERVICE,
 	.private_data_size	= 0,
-	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED, 
+	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
 	.lib_init_fn		= pload_lib_init_fn,
 	.lib_exit_fn		= pload_lib_exit_fn,
 	.lib_engine		= pload_lib_engine,
@@ -258,7 +258,7 @@ static void req_exec_pload_mcast_endian_convert (void *msg)
 {
 }
 
-static int send_message (enum totem_callback_token_type type, void *arg)
+static int send_message (enum totem_callback_token_type type, const void *arg)
 {
 	struct req_exec_pload_mcast req_exec_pload_mcast;
 	struct iovec iov[2];
@@ -300,9 +300,9 @@ static void start_mcasting (void)
 		&token_callback,
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
 		1,
-		send_message,	
+		send_message,
 		&token_callback);
-} 
+}
 
 static void message_handler_req_exec_pload_start (
 	const void *msg,

@@ -94,13 +94,15 @@ static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
 static struct openais_vsf_iface_ver0 *vsf_iface;
 
-static int sync_barrier_send (struct memb_ring_id *ring_id);
+static int sync_barrier_send (const struct memb_ring_id *ring_id);
 
-static int sync_start_process (enum totem_callback_token_type type, void *data);
+static int sync_start_process (enum totem_callback_token_type type,
+			       const void *data);
 
 static void sync_service_init (struct memb_ring_id *ring_id);
 
-static int sync_service_process (enum totem_callback_token_type type, void *data);
+static int sync_service_process (enum totem_callback_token_type type,
+				 const void *data);
 
 static void sync_deliver_fn (
 	unsigned int nodeid,
@@ -137,7 +139,7 @@ struct req_exec_sync_barrier_start {
 /*
  * Send a barrier data structure
  */
-static int sync_barrier_send (struct memb_ring_id *ring_id)
+static int sync_barrier_send (const struct memb_ring_id *ring_id)
 {
 	struct req_exec_sync_barrier_start req_exec_sync_barrier_start;
 	struct iovec iovec;
@@ -164,7 +166,7 @@ static void sync_start_init (const struct memb_ring_id *ring_id)
 		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
 		sync_start_process,
-		(void *)ring_id);
+		ring_id);
 }
 
 static void sync_service_init (struct memb_ring_id *ring_id)
@@ -180,13 +182,14 @@ static void sync_service_init (struct memb_ring_id *ring_id)
 		TOTEM_CALLBACK_TOKEN_SENT,
 		0, /* don't delete after callback */
 		sync_service_process,
-		(void *)ring_id);
+		ring_id);
 }
 
-static int sync_start_process (enum totem_callback_token_type type, void *data)
+static int sync_start_process (enum totem_callback_token_type type,
+			       const void *data)
 {
 	int res;
-	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
+	const struct memb_ring_id *ring_id = data;
 
 	res = sync_barrier_send (ring_id);
 	if (res == 0) {
@@ -220,10 +223,11 @@ static void sync_callbacks_load (void)
 	}
 }
 
-static int sync_service_process (enum totem_callback_token_type type, void *data)
+static int sync_service_process (enum totem_callback_token_type type,
+				 const void *data)
 {
 	int res;
-	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
+	const struct memb_ring_id *ring_id = data;
 
 
 	/*

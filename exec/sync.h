@@ -62,6 +62,6 @@ int sync_primary_designated (void);
  *
  * @return int 0 OK, error code otherwise
  */
-extern int sync_request (char *name);
+extern int sync_request (const char *name);
 
 #endif /* SYNC_H_DEFINED */

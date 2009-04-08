@@ -175,7 +175,7 @@ struct assembly {
 static void assembly_deref (struct assembly *assembly);
 
 static int callback_token_received_fn (enum totem_callback_token_type type,
-	void *data);
+	const void *data);
 
 enum throw_away_mode_t {
 	THROW_AWAY_INACTIVE,
@@ -306,10 +306,10 @@ static void assembly_deref (struct assembly *assembly)
 
 static inline void app_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	int i;
 	struct totempg_group_instance *instance;
@@ -660,7 +660,7 @@ static void totempg_deliver_fn (
 void *callback_token_received_handle;
 
 int callback_token_received_fn (enum totem_callback_token_type type,
-	void *data)
+				const void *data)
 {
 	struct totempg_mcast mcast;
 	struct iovec iovecs[3];
@@ -962,8 +962,8 @@ int totempg_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data)
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data)
 {
 	unsigned int res;
 	pthread_mutex_lock (&callback_token_mutex);
@@ -1125,7 +1125,7 @@ int totempg_groups_mcast_joined (
 	for (i = 0; i < instance->groups_cnt; i++) {
 		group_len[i + 1] = instance->groups[i].group_len;
 		iovec_mcast[i + 1].iov_len = instance->groups[i].group_len;
-		iovec_mcast[i + 1].iov_base = instance->groups[i].group;
+		iovec_mcast[i + 1].iov_base = (void *) instance->groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (instance->groups_cnt + 1) * sizeof (unsigned short);
 	iovec_mcast[0].iov_base = group_len;
@@ -1183,13 +1183,14 @@ error_exit:
 }
 
 
-void totempg_groups_joined_release (int msg_count)
+int totempg_groups_joined_release (int msg_count)
 {
 	pthread_mutex_lock (&totempg_mutex);
 	pthread_mutex_lock (&mcast_msg_mutex);
 	send_release (msg_count);
 	pthread_mutex_unlock (&mcast_msg_mutex);
 	pthread_mutex_unlock (&totempg_mutex);
+	return 0;
 }
 
 int totempg_groups_mcast_groups (
@@ -1220,7 +1221,7 @@ int totempg_groups_mcast_groups (
 	for (i = 0; i < groups_cnt; i++) {
 		group_len[i + 1] = groups[i].group_len;
 		iovec_mcast[i + 1].iov_len = groups[i].group_len;
-		iovec_mcast[i + 1].iov_base = groups[i].group;
+		iovec_mcast[i + 1].iov_base = (void *) groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (groups_cnt + 1) * sizeof (unsigned short);
 	iovec_mcast[0].iov_base = group_len;

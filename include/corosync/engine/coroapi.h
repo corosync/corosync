@@ -373,7 +373,7 @@ struct corosync_api_v1 {
 		void *data,
 		void (*timer_fn) (void *data),
 		corosync_timer_handle_t *handle);
-	
+
 	void (*timer_delete) (
 		corosync_timer_handle_t timer_handle);
 
@@ -422,17 +422,18 @@ struct corosync_api_v1 {
 		char ***status,
 		unsigned int *iface_count);
 
-	char *(*totem_ifaces_print) (unsigned int nodeid);
+	const char *(*totem_ifaces_print) (unsigned int nodeid);
 
-	char *(*totem_ip_print) (struct totem_ip_address *addr);
+	const char *(*totem_ip_print) (const struct totem_ip_address *addr);
 
 
 	int (*totem_callback_token_create) (
 		void **handle_out,
 		enum totem_callback_token_type type,
 		int delete,
-		int (*callback_fn) (enum totem_callback_token_type type, void *),
-		void *data);
+		int (*callback_fn) (enum totem_callback_token_type type,
+				    const void *),
+		const void *data);
 
 	/*
 	 * Totem open process groups API for those service engines
@@ -503,7 +504,7 @@ struct corosync_api_v1 {
 		int reserved_msgs);
 
 	int (*sync_request) (
-		char *service_name);
+		const char *service_name);
 
 	/*
 	 * User plugin-callable functions for quorum
@@ -521,7 +522,7 @@ struct corosync_api_v1 {
 	 * Plugin loading and unloading
 	 */
 	int (*plugin_interface_reference) (
-		hdb_handle_t *handle, 
+		hdb_handle_t *handle,
 		const char *iface_name,
 		int version,
 		void **interface,

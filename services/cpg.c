@@ -661,7 +661,9 @@ static void cpg_confchg_fn (
 			for (i = 0; i < left_list_entries; i++) {
 				req_exec_cpg_downlist.nodeids[i] = left_list[i];
 			}
-			log_printf(LOG_LEVEL_DEBUG, "confchg, build downlist: %d nodes\n", left_list_entries);
+			log_printf(LOG_LEVEL_DEBUG,
+				   "confchg, build downlist: %lu nodes\n",
+				   (long unsigned int) left_list_entries);
 		}
 	}
 

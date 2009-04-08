@@ -159,7 +159,8 @@ static void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-static int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_state_send_msg (enum totem_callback_token_type type,
+			       const void *context)
 {
 	struct iovec iovec[2];
 	struct ykd_header header;
@@ -188,7 +189,8 @@ static void ykd_state_send (void)
                 NULL);
 }
 
-static int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_attempt_send_msg (enum totem_callback_token_type type,
+				 const void *context)
 {
 	struct iovec iovec;
 	struct ykd_header header;
@@ -450,10 +452,10 @@ static void ykd_deliver_fn (
 int first_run = 1;
 static void ykd_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	int i;
 

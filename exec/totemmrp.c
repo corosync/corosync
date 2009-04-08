@@ -176,8 +176,8 @@ int totemmrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data)
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data)
 {
 	return totemsrp_callback_token_create (totemsrp_handle_in, handle_out, type, delete, callback_fn, data);
 }

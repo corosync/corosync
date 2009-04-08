@@ -59,10 +59,18 @@ LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 /*
  * Remove compile warnings about type name changes
  */
-typedef int (*typedef_tpg_join) (hdb_handle_t, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_leave) (hdb_handle_t, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_groups_mcast) (hdb_handle_t, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
-typedef int (*typedef_tpg_groups_send_ok) (hdb_handle_t, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+typedef int (*typedef_tpg_join) (hdb_handle_t,
+				 const struct corosync_tpg_group *, size_t);
+typedef int (*typedef_tpg_leave) (hdb_handle_t,
+				  const struct corosync_tpg_group *, size_t);
+typedef int (*typedef_tpg_groups_mcast) (hdb_handle_t, int,
+					 const struct corosync_tpg_group *,
+					 size_t groups_cnt,
+					 struct iovec *, int);
+typedef int (*typedef_tpg_groups_send_ok) (hdb_handle_t,
+					   const struct corosync_tpg_group *,
+					   size_t groups_cnt,
+					   struct iovec *, int);
 
 static inline void _corosync_public_exit_error (cs_fatal_error_t err,
 						const char *file,

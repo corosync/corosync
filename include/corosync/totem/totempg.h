@@ -67,8 +67,8 @@ extern void totempg_finalize (void);
 extern int totempg_callback_token_create (void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data);
 
 extern void totempg_callback_token_destroy (void *handle);
 
@@ -115,7 +115,7 @@ extern int totempg_groups_joined_reserve (
 	const struct iovec *iovec,
 	int iov_len);
 
-extern void totempg_groups_joined_release (
+extern int totempg_groups_joined_release (
 	int msg_count);
 	
 extern int totempg_groups_mcast_groups (

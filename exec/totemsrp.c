@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -160,7 +160,7 @@ struct consensus_list_item {
 
 struct token_callback_instance {
 	struct list_head list;
-	int (*callback_fn) (enum totem_callback_token_type type, void *);
+	int (*callback_fn) (enum totem_callback_token_type type, const void *);
 	enum totem_callback_token_type callback_type;
 	int delete;
 	void *data;
@@ -463,10 +463,10 @@ struct totemsrp_instance {
 
 	void (*totemsrp_confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id);
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id);
 
 	int global_seqno;
 
@@ -699,10 +699,10 @@ int totemsrp_initialize (
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id))
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -3005,8 +3005,8 @@ int totemsrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data)
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data)
 {
 	struct token_callback_instance *callback_handle;
 	struct totemsrp_instance *instance;
@@ -3020,14 +3020,14 @@ int totemsrp_callback_token_create (
 
 	token_hold_cancel_send (instance);
 
-	callback_handle = (struct token_callback_instance *)malloc (sizeof (struct token_callback_instance));
+	callback_handle = malloc (sizeof (struct token_callback_instance));
 	if (callback_handle == 0) {
 		return (-1);
 	}
 	*handle_out = (void *)callback_handle;
 	list_init (&callback_handle->list);
 	callback_handle->callback_fn = callback_fn;
-	callback_handle->data = data;
+	callback_handle->data = (void *) data;
 	callback_handle->callback_type = type;
 	callback_handle->delete = delete;
 	switch (type) {
@@ -4208,6 +4208,3 @@ void main_iface_change_fn (
 void totemsrp_net_mtu_adjust (struct totem_config *totem_config) {
 	totem_config->net_mtu -= sizeof (struct mcast);
 }
-
-
-
