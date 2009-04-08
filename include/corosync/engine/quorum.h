@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,7 +35,8 @@
 #ifndef QUORUM_H_DEFINED
 #define QUORUM_H_DEFINED
 
-typedef void (*quorum_set_quorate_fn_t) (unsigned int *view_list, int view_list_entries,
+typedef void (*quorum_set_quorate_fn_t) (unsigned int *view_list,
+					 size_t view_list_entries,
 					 int quorate, struct memb_ring_id *);
 
 struct quorum_services_api_ver1 {

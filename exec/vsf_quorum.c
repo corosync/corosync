@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -95,7 +95,7 @@ static struct corosync_api_v1 *corosync_api;
 static struct list_head lib_trackers_list;
 static struct list_head internal_trackers_list;
 static struct memb_ring_id quorum_ring_id;
-static int quorum_view_list_entries = 0;
+static size_t quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
 
@@ -107,7 +107,7 @@ static void (*sync_primary_callback_fn) (
 
 /* Internal quorum API function */
 static void quorum_api_set_quorum(unsigned int *view_list,
-				  int view_list_entries,
+				  size_t view_list_entries,
 				  int quorum, struct memb_ring_id *ring_id)
 {
 	primary_designated = quorum;
@@ -308,7 +308,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	}
 	if (!quorum_iface) {
 		/*
-                 * With no quorum provider, we are always quorate 
+                 * With no quorum provider, we are always quorate
                  */
 		primary_designated = 1;
 	}
@@ -468,4 +468,3 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg)
 	res.error = CS_OK;
 	corosync_api->ipc_response_send(conn, &res, sizeof(mar_res_header_t));
 }
-
