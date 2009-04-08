@@ -392,12 +392,12 @@ struct corosync_api_v1 {
 
 	void *(*ipc_private_data_get) (void *conn);
 
-	int (*ipc_response_send) (void *conn, const void *msg, int mlen);
+	int (*ipc_response_send) (void *conn, const void *msg, size_t mlen);
 
 	int (*ipc_response_iov_send) (void *conn,
 				      const struct iovec *iov, unsigned int iov_len);
 
-	int (*ipc_dispatch_send) (void *conn, const void *msg, int mlen);
+	int (*ipc_dispatch_send) (void *conn, const void *msg, size_t mlen);
 
 	int (*ipc_dispatch_iov_send) (void *conn,
 				      const struct iovec *iov, unsigned int iov_len);
@@ -465,12 +465,12 @@ struct corosync_api_v1 {
 	int (*tpg_join) (
 		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
-		int group_cnt);
+		size_t group_cnt);
 
 	int (*tpg_leave) (
 		hdb_handle_t handle,
 		struct corosync_tpg_group *groups,
-		int group_cnt);
+		size_t group_cnt);
 
 	int (*tpg_joined_mcast) (
 		hdb_handle_t handle,
@@ -490,14 +490,14 @@ struct corosync_api_v1 {
 		hdb_handle_t handle,
 		int guarantee,
 		const struct corosync_tpg_group *groups,
-		int groups_cnt,
+		size_t groups_cnt,
 		const struct iovec *iovec,
 		unsigned int iov_len);
 
 	int (*tpg_groups_reserve) (
 		hdb_handle_t handle,
 		const struct corosync_tpg_group *groups,
-		int groups_cnt,
+		size_t groups_cnt,
 		const struct iovec *iovec,
 		unsigned int iov_len);
 

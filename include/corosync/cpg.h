@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -84,22 +84,22 @@ typedef void (*cpg_deliver_fn_t) (
 	struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
-	void *msg,
-	int msg_len);
+	const void *msg,
+	size_t msg_len);
 
 typedef void (*cpg_confchg_fn_t) (
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries);
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries);
 
 typedef void (*cpg_groups_get_fn_t) (
 	cpg_handle_t handle,
 	uint32_t group_num,
 	uint32_t group_total,
-	struct cpg_name *group_name,
-	struct cpg_address *member_list, int member_list_entries);
+	const struct cpg_name *group_name,
+	const struct cpg_address *member_list, size_t member_list_entries);
 
 typedef struct {
 	cpg_deliver_fn_t cpg_deliver_fn;
