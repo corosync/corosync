@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -34,13 +34,15 @@
 /*
  * Write data of length data_len into the section name for ckpt_handle
  */
-int lcr_ckpt_section_write (void *ckpt_handle, char *name, void *data, int data_len);
+int lcr_ckpt_section_write (void *ckpt_handle, const char *name,
+			    const void *data, size_t data_len);
 
 /*
- * Read the section name into data with data len.  Returned in data_len is the 
+ * Read the section name into data with data len.  Returned in data_len is the
  * actual data read from ckpt_handle.
  */
-int lcr_ckpt_section_read (void *ckpt_handle, char *name, void *data, int *data_len);
+int lcr_ckpt_section_read (void *ckpt_handle, const char *name,
+			   void *data, size_t *data_len);
 
 /*
  * Initialize the section iterator to the first section
