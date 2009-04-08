@@ -263,7 +263,7 @@ static int send_message (enum totem_callback_token_type type, const void *arg)
 	struct req_exec_pload_mcast req_exec_pload_mcast;
 	struct iovec iov[2];
 	unsigned int res;
-	int iov_len = 1;
+	unsigned int iov_len = 1;
 
 	req_exec_pload_mcast.header.id =
 		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);

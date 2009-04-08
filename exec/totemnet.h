@@ -73,7 +73,7 @@ extern int totemnet_processor_count_set (
 extern int totemnet_token_send (
 	hdb_handle_t handle,
 	struct iovec *iovec,
-	int iov_len);
+	unsigned int iov_len);
 
 extern int totemnet_mcast_flush_send (
 	hdb_handle_t handle,

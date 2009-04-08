@@ -413,7 +413,7 @@ static void corosync_mlockall (void)
 static void deliver_fn (
 	unsigned int nodeid,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int endian_conversion_required)
 {
 	mar_req_header_t *header;
@@ -474,7 +474,7 @@ void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
 
 int main_mcast (
         struct iovec *iovec,
-        int iov_len,
+        unsigned int iov_len,
         unsigned int guarantee)
 {
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));

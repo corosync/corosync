@@ -54,7 +54,7 @@ int totemsrp_initialize (
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
@@ -71,7 +71,7 @@ void totemsrp_finalize (hdb_handle_t handle);
 int totemsrp_mcast (
 	hdb_handle_t handle,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int priority);
 
 /*

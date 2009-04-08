@@ -702,7 +702,7 @@ Messages are sent and received from the executive with the following functions:
 SaAisErrorT saSendMsgRetry (
 	int s,
 	struct iovec *iov,
-	int iov_len);
+	unsigned int iov_len);
 
 the s member is the socket to use retrieved with saServiceConnect
 The iov is the iovector used to send a message.
@@ -743,7 +743,7 @@ A message may be send and a reply waited for with the following function:
 SaAisErrorT saSendMsgReceiveReply (
         int s,
         struct iovec *iov,
-        int iov_len,
+        unsigned int iov_len,
         void *responseMessage,
         int responseLen)
 

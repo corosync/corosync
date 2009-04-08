@@ -57,7 +57,7 @@ extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *nu
 
 extern int main_mcast (
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	unsigned int guarantee);
 
 extern void message_source_set (mar_message_source_t *source, void *conn);

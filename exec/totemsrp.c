@@ -277,12 +277,12 @@ struct memb_commit_token {
 struct message_item {
 	struct mcast *mcast;
 	struct iovec iovec[MAXIOVS];
-	int iov_len;
+	unsigned int iov_len;
 };
 
 struct sort_queue_item {
 	struct iovec iovec[MAXIOVS];
-	int iov_len;
+	unsigned int iov_len;
 };
 
 struct orf_token_mcast_thread_state {
@@ -451,14 +451,14 @@ struct totemsrp_instance {
 	/*
 	 * Function called when new message received
 	 */
-	int (*totemsrp_recv) (char *group, struct iovec *iovec, int iov_len);
+	int (*totemsrp_recv) (char *group, struct iovec *iovec, unsigned int iov_len);
 
 	struct totem_ip_address mcast_address;
 
 	void (*totemsrp_deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required);
 
 	void (*totemsrp_confchg_fn) (
@@ -694,7 +694,7 @@ int totemsrp_initialize (
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
@@ -2036,7 +2036,7 @@ error_exit:
 int totemsrp_mcast (
 	hdb_handle_t handle,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int guarantee)
 {
 	int i;
@@ -2576,7 +2576,7 @@ static int token_send (
 {
 	struct iovec iovec;
 	int res = 0;
-	int iov_len = sizeof (struct orf_token) +
+	unsigned int iov_len = sizeof (struct orf_token) +
 		(orf_token->rtr_list_entries * sizeof (struct rtr_item));
 
 	memcpy (instance->orf_token_retransmit, orf_token, iov_len);

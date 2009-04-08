@@ -81,7 +81,7 @@ extern int totempg_groups_initialize (
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
@@ -107,13 +107,13 @@ extern int totempg_groups_leave (
 extern int totempg_groups_mcast_joined (
 	hdb_handle_t handle,
 	const struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int guarantee);
 
 extern int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
 	const struct iovec *iovec,
-	int iov_len);
+	unsigned int iov_len);
 
 extern int totempg_groups_joined_release (
 	int msg_count);

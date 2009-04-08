@@ -580,7 +580,7 @@ static cs_error_t
 coroipcc_msg_send (
 	void *ipc_context,
 	const struct iovec *iov,
-	int iov_len)
+	unsigned int iov_len)
 {
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
 	struct sembuf sop;
@@ -689,7 +689,7 @@ cs_error_t
 coroipcc_msg_send_reply_receive (
 	void *ipc_context,
 	const struct iovec *iov,
-	int iov_len,
+	unsigned int iov_len,
 	void *res_msg,
 	int res_len)
 {
@@ -712,7 +712,7 @@ cs_error_t
 coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
 	const struct iovec *iov,
-	int iov_len,
+	unsigned int iov_len,
 	void **res_msg)
 {
 	unsigned int res;

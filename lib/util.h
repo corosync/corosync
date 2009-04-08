@@ -93,12 +93,12 @@ saSendRetry (
 cs_error_t saSendMsgRetry (
 	int s,
 	struct iovec *iov,
-	int iov_len);
+	unsigned int iov_len);
 
 cs_error_t saSendMsgReceiveReply (
 	int s,
 	struct iovec *iov,
-	int iov_len,
+	unsigned int iov_len,
 	void *responseMessage,
 	int responseLen);
 

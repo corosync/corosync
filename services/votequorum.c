@@ -178,7 +178,7 @@ static void quorum_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, int iov_len,
+static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, unsigned int iov_len,
 			      int endian_conversion_required);
 
 static int votequorum_exec_init_fn (struct corosync_api_v1 *corosync_api);
@@ -976,7 +976,7 @@ static void exec_quorum_killnode_endian_convert (void *msg)
 	killnode->nodeid = swab32(killnode->nodeid);
 }
 
-static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, int iov_len,
+static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, unsigned int iov_len,
 			      int endian_conversion_required)
 {
 	struct q_protheader *header = iovec->iov_base;

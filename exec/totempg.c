@@ -212,7 +212,7 @@ struct totempg_group_instance {
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required);
 
 	void (*confchg_fn) (
@@ -503,7 +503,7 @@ static void totempg_confchg_fn (
 static void totempg_deliver_fn (
 	unsigned int nodeid,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int endian_conversion_required)
 {
 	struct totempg_mcast *mcast;
@@ -754,7 +754,7 @@ void totempg_finalize (void)
  */
 static int mcast_msg (
 	struct iovec *iovec_in,
-	int iov_len,
+	unsigned int iov_len,
 	int guarantee)
 {
 	int res = 0;
@@ -991,7 +991,7 @@ int totempg_groups_initialize (
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
@@ -1102,7 +1102,7 @@ error_exit:
 int totempg_groups_mcast_joined (
 	hdb_handle_t handle,
 	const struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int guarantee)
 {
 	struct totempg_group_instance *instance;
@@ -1145,7 +1145,7 @@ error_exit:
 int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
 	const struct iovec *iovec,
-	int iov_len)
+	unsigned int iov_len)
 {
 	struct totempg_group_instance *instance;
 	unsigned int size = 0;

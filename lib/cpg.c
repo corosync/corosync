@@ -493,7 +493,7 @@ cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
 	struct iovec *iovec,
-	int iov_len)
+	unsigned int iov_len)
 {
 	int i;
 	cs_error_t error;

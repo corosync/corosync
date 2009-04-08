@@ -394,12 +394,12 @@ struct corosync_api_v1 {
 	int (*ipc_response_send) (void *conn, const void *msg, int mlen);
 
 	int (*ipc_response_iov_send) (void *conn,
-				      const struct iovec *iov, int iov_len);
+				      const struct iovec *iov, unsigned int iov_len);
 
 	int (*ipc_dispatch_send) (void *conn, const void *msg, int mlen);
 
 	int (*ipc_dispatch_iov_send) (void *conn,
-				      const struct iovec *iov, int iov_len);
+				      const struct iovec *iov, unsigned int iov_len);
 
 	void (*ipc_refcnt_inc) (void *conn);
 
@@ -414,7 +414,7 @@ struct corosync_api_v1 {
 
 	int (*totem_ring_reenable) (void);
 
-	int (*totem_mcast) (struct iovec *iovec, int iov_len, unsigned int guarantee);
+	int (*totem_mcast) (struct iovec *iovec, unsigned int iov_len, unsigned int guarantee);
 
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,
@@ -445,7 +445,7 @@ struct corosync_api_v1 {
 		void (*deliver_fn) (
 			unsigned int nodeid,
 			struct iovec *iovec,
-			int iov_len,
+			unsigned int iov_len,
 			int endian_conversion_required),
 
 		void (*confchg_fn) (
@@ -474,13 +474,13 @@ struct corosync_api_v1 {
 	int (*tpg_joined_mcast) (
 		hdb_handle_t handle,
 		const struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int guarantee);
 
 	int (*tpg_joined_reserve) (
 		hdb_handle_t handle,
 		const struct iovec *iovec,
-		int iov_len);
+		unsigned int iov_len);
 
 	int (*tpg_joined_release) (
 		int reserved_msgs);
@@ -491,14 +491,14 @@ struct corosync_api_v1 {
 		const struct corosync_tpg_group *groups,
 		int groups_cnt,
 		const struct iovec *iovec,
-		int iov_len);
+		unsigned int iov_len);
 
 	int (*tpg_groups_reserve) (
 		hdb_handle_t handle,
 		const struct corosync_tpg_group *groups,
 		int groups_cnt,
 		const struct iovec *iovec,
-		int iov_len);
+		unsigned int iov_len);
 
 	int (*tpg_groups_release) (
 		int reserved_msgs);

@@ -62,7 +62,7 @@ extern int totemmrp_initialize (
 	void (*deliver_fn) (
 		unsigned int nodeid,
 		struct iovec *iovec,
-		int iov_len,
+		unsigned int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
@@ -78,7 +78,7 @@ extern void totemmrp_finalize (void);
  */
 extern int totemmrp_mcast (
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int priority);
 
 /*

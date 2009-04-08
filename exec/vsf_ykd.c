@@ -342,7 +342,7 @@ static void ykd_state_endian_convert (struct ykd_state *ykd_state)
 static void ykd_deliver_fn (
 	unsigned int nodeid,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int endian_conversion_required)
 {
 	int all_received = 1;

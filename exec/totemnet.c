@@ -191,7 +191,7 @@ struct totemnet_instance {
 
 struct work_item {
 	struct iovec iovec[20];
-	int iov_len;
+	unsigned int iov_len;
 	struct totemnet_instance *instance;
 };
 
@@ -307,7 +307,7 @@ static void encrypt_and_sign_worker (
 	unsigned char *buf,
 	int *buf_len,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	prng_state *prng_state_in)
 {
 	int i;
@@ -388,7 +388,7 @@ static inline void ucast_sendmsg (
 	struct totemnet_instance *instance,
 	struct totem_ip_address *system_to,
 	struct iovec *iovec_in,
-	int iov_len_in)
+	unsigned int iov_len_in)
 {
 	struct msghdr msg_ucast;
 	int res = 0;
@@ -398,7 +398,7 @@ static inline void ucast_sendmsg (
 	struct iovec iovec_encrypt[20];
 	struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
-	int iov_len;
+	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
@@ -452,7 +452,7 @@ static inline void ucast_sendmsg (
 static inline void mcast_sendmsg (
 	struct totemnet_instance *instance,
 	struct iovec *iovec_in,
-	int iov_len_in)
+	unsigned int iov_len_in)
 {
 	struct msghdr msg_mcast;
 	int res = 0;
@@ -462,7 +462,7 @@ static inline void mcast_sendmsg (
 	struct iovec iovec_encrypt[20];
 	struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
-	int iov_len;
+	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
@@ -1343,7 +1343,7 @@ error_exit:
 int totemnet_token_send (
 	hdb_handle_t handle,
 	struct iovec *iovec,
-	int iov_len)
+	unsigned int iov_len)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
