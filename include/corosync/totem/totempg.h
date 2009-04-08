@@ -96,13 +96,13 @@ extern int totempg_groups_finalize (
 
 extern int totempg_groups_join (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int gruop_cnt);
+	const struct totempg_group *groups,
+	size_t group_cnt);
 
 extern int totempg_groups_leave (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int gruop_cnt);
+	const struct totempg_group *groups,
+	size_t group_cnt);
 
 extern int totempg_groups_mcast_joined (
 	hdb_handle_t handle,
@@ -121,17 +121,17 @@ extern void totempg_groups_joined_release (
 extern int totempg_groups_mcast_groups (
 	hdb_handle_t handle,
 	int guarantee,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len);
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	size_t iov_len);
 
 extern int totempg_groups_send_ok_groups (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len);
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	size_t iov_len);
 	
 extern int totempg_ifaces_get (
 	unsigned int nodeid,

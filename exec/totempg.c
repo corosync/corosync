@@ -1041,8 +1041,8 @@ error_exit:
 
 int totempg_groups_join (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int group_cnt)
+	const struct totempg_group *groups,
+	size_t group_cnt)
 {
 	struct totempg_group_instance *instance;
 	struct totempg_group *new_groups;
@@ -1076,8 +1076,8 @@ error_exit:
 
 int totempg_groups_leave (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int group_cnt)
+	const struct totempg_group *groups,
+	size_t group_cnt)
 {
 	struct totempg_group_instance *instance;
 	unsigned int res;
@@ -1195,10 +1195,10 @@ void totempg_groups_joined_release (int msg_count)
 int totempg_groups_mcast_groups (
 	hdb_handle_t handle,
 	int guarantee,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len)
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	size_t iov_len)
 {
 	struct totempg_group_instance *instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
@@ -1243,10 +1243,10 @@ error_exit:
  */
 int totempg_groups_send_ok_groups (
 	hdb_handle_t handle,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len)
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	size_t iov_len)
 {
 	struct totempg_group_instance *instance;
 	unsigned int size = 0;

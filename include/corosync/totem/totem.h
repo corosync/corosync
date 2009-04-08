@@ -7,7 +7,7 @@
  * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -82,7 +82,7 @@ struct totem_config {
 	 * network
 	 */
 	struct totem_interface *interfaces;
-	int interface_count;
+	unsigned int interface_count;
 	unsigned int node_id;
 
 	/*
@@ -90,7 +90,7 @@ struct totem_config {
 	 */
 	unsigned char private_key[128];
 
-	int private_key_len;
+	unsigned int private_key_len;
 
 	/*
 	 * Totem configuration parameters
@@ -132,9 +132,9 @@ struct totem_config {
 	unsigned int net_mtu;
 
 	unsigned int threads;
-	
+
 	unsigned int heartbeat_failures_allowed;
-	
+
 	unsigned int max_network_delay;
 
 	unsigned int window_size;
@@ -147,7 +147,7 @@ struct totem_config {
 #define TOTEM_CONFIGURATION_TYPE
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,
-	TOTEM_CONFIGURATION_TRANSITIONAL	
+	TOTEM_CONFIGURATION_TRANSITIONAL
 };
 
 #define TOTEM_CALLBACK_TOKEN_TYPE
