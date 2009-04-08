@@ -81,7 +81,7 @@ struct cpg_name {
 
 typedef void (*cpg_deliver_fn_t) (
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
+	const struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
 	const void *msg,
@@ -89,7 +89,7 @@ typedef void (*cpg_deliver_fn_t) (
 
 typedef void (*cpg_confchg_fn_t) (
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
+	const struct cpg_name *group_name,
 	const struct cpg_address *member_list, size_t member_list_entries,
 	const struct cpg_address *left_list, size_t left_list_entries,
 	const struct cpg_address *joined_list, size_t joined_list_entries);

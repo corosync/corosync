@@ -71,10 +71,10 @@ static int alarm_notice;
 
 static void cpg_bm_confchg_fn (
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries)
+	const struct cpg_name *group_name,
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
@@ -82,11 +82,11 @@ static unsigned int write_count;
 
 static void cpg_bm_deliver_fn (
         cpg_handle_t handle,
-        struct cpg_name *group_name,
+        const struct cpg_name *group_name,
         uint32_t nodeid,
         uint32_t pid,
-        void *msg,
-        int msg_len)
+        const void *msg,
+        size_t msg_len)
 {
 	write_count++;
 }

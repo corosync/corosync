@@ -53,7 +53,7 @@
 static int quit = 0;
 static int show_ip = 0;
 
-static void print_cpgname (struct cpg_name *name)
+static void print_cpgname (const struct cpg_name *name)
 {
 	int i;
 
@@ -64,29 +64,32 @@ static void print_cpgname (struct cpg_name *name)
 
 static void DeliverCallback (
 	cpg_handle_t handle,
-	struct cpg_name *groupName,
+	const struct cpg_name *groupName,
 	uint32_t nodeid,
 	uint32_t pid,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
 	if (show_ip) {
 		struct in_addr saddr;
 		saddr.s_addr = nodeid;
-		printf("DeliverCallback: message (len=%d)from node/pid %s/%d: '%s'\n",
-		       msg_len, inet_ntoa(saddr), pid, (char *)msg);
+		printf("DeliverCallback: message (len=%lu)from node/pid %s/%d: '%s'\n",
+		       (unsigned long int) msg_len,
+		       inet_ntoa(saddr), pid, (const char *)msg);
 	}
 	else {
-		printf("DeliverCallback: message (len=%d)from node/pid %d/%d: '%s'\n", msg_len, nodeid, pid, (char *)msg);
+		printf("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n",
+		       (unsigned long int) msg_len, nodeid, pid,
+		       (const char *)msg);
 	}
 }
 
 static void ConfchgCallback (
 	cpg_handle_t handle,
-	struct cpg_name *groupName,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries)
+	const struct cpg_name *groupName,
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 	int i;
 	struct in_addr saddr;
@@ -122,7 +125,8 @@ static void ConfchgCallback (
 		}
 	}
 
-	printf("nodes in group now %d\n", member_list_entries);
+	printf("nodes in group now %lu\n",
+	       (unsigned long int) member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = member_list[i].nodeid;

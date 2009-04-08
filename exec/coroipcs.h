@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -77,12 +77,12 @@ extern void coroipcs_ipc_init (
 
 extern void *coroipcs_private_data_get (void *conn);
 
-extern int coroipcs_response_send (void *conn, const void *msg, int mlen);
+extern int coroipcs_response_send (void *conn, const void *msg, size_t mlen);
 
 extern int coroipcs_response_iov_send (void *conn,
 				       const struct iovec *iov, unsigned int iov_len);
 
-extern int coroipcs_dispatch_send (void *conn, const void *msg, int mlen);
+extern int coroipcs_dispatch_send (void *conn, const void *msg, size_t mlen);
 
 extern int coroipcs_dispatch_iov_send (void *conn,
 				       const struct iovec *iov, unsigned int iov_len);
