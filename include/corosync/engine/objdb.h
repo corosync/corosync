@@ -74,7 +74,8 @@ const void *name_pt, size_t name_len,
 void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
-					    void *name_pt, size_t name_len,
+					    const void *name_pt,
+					    size_t name_len,
 											void *priv_data_pt);
 
 typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,

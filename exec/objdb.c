@@ -48,9 +48,9 @@
 
 struct object_key {
 	void *key_name;
-	int key_len;
+	size_t key_len;
 	void *value;
-	int value_len;
+	size_t value_len;
 	struct list_head list;
 };
 
@@ -68,7 +68,7 @@ struct object_tracker {
 
 struct object_instance {
 	void *object_name;
-	int object_name_len;
+	size_t object_name_len;
 	hdb_handle_t object_handle;
 	hdb_handle_t parent_handle;
 	struct list_head key_head;
@@ -89,7 +89,7 @@ struct object_find_instance {
 	struct list_head *find_child_list;
 	struct list_head *child_head;
 	void *object_name;
-	int object_len;
+	size_t object_len;
 };
 
 struct objdb_iface_ver0 objdb_iface;
@@ -225,7 +225,7 @@ static int _object_notify_deleted_children(struct object_instance *parent_pt)
 static void object_created_notification(
 	hdb_handle_t object_handle,
 	hdb_handle_t parent_object_handle,
-	void *name_pt, int name_len)
+	const void *name_pt, size_t name_len)
 {
 	struct list_head * list;
 	struct object_instance * obj_pt;
@@ -258,7 +258,7 @@ static void object_created_notification(
 
 static void object_pre_deletion_notification(hdb_handle_t object_handle,
 	hdb_handle_t parent_object_handle,
-	void *name_pt, int name_len)
+	const void *name_pt, size_t name_len)
 	{
 	struct list_head * list;
 	struct object_instance * obj_pt;
@@ -294,8 +294,8 @@ static void object_pre_deletion_notification(hdb_handle_t object_handle,
 }
 
 static void object_key_changed_notification(hdb_handle_t object_handle,
-	const void *name_pt, int name_len,
-	const void *value_pt, int value_len,
+	const void *name_pt, size_t name_len,
+	const void *value_pt, size_t value_len,
 	object_change_type_t type)
 {
 	struct list_head * list;
@@ -364,7 +364,7 @@ static int object_create (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t *object_handle,
 	const void *object_name,
-	unsigned int object_name_len)
+	size_t object_name_len)
 {
 	struct object_instance *object_instance;
 	struct object_instance *parent_instance;
@@ -491,9 +491,9 @@ error_exit:
 static int object_key_create (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len,
+	size_t key_len,
 	const void *value,
-	int value_len)
+	size_t value_len)
 {
 	struct object_instance *instance;
 	struct object_key *object_key;
@@ -732,7 +732,7 @@ error_exit:
 static int object_find_create (
 	hdb_handle_t object_handle,
 	const void *object_name,
-	int object_len,
+	size_t object_len,
 	hdb_handle_t *object_find_handle)
 {
 	unsigned int res;
@@ -854,9 +854,9 @@ error_exit:
 static int object_key_get (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len,
+	size_t key_len,
 	void **value,
-	int *value_len)
+	size_t *value_len)
 {
 	unsigned int res = 0;
 	struct object_instance *instance;
@@ -903,7 +903,7 @@ error_exit:
 static int object_key_increment (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len,
+	size_t key_len,
 	unsigned int *value)
 {
 	unsigned int res = 0;
@@ -949,7 +949,7 @@ error_exit:
 static int object_key_decrement (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len,
+	size_t key_len,
 	unsigned int *value)
 {
 	unsigned int res = 0;
@@ -995,7 +995,7 @@ error_exit:
 static int object_key_delete (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len)
+	size_t key_len)
 {
 	unsigned int res;
 	int ret = 0;
@@ -1047,9 +1047,9 @@ error_exit:
 static int object_key_replace (
 	hdb_handle_t object_handle,
 	const void *key_name,
-	int key_len,
+	size_t key_len,
 	const void *new_value,
-	int new_value_len)
+	size_t new_value_len)
 {
 	unsigned int res;
 	int ret = 0;
@@ -1248,9 +1248,9 @@ error_exit:
 
 static int object_key_iter(hdb_handle_t parent_object_handle,
 			   void **key_name,
-			   int *key_len,
+			   size_t *key_len,
 			   void **value,
-			   int *value_len)
+			   size_t *value_len)
 {
 	unsigned int res;
 	struct object_instance *instance;
@@ -1297,9 +1297,9 @@ error_exit:
 static int object_key_iter_from(hdb_handle_t parent_object_handle,
 				hdb_handle_t start_pos,
 				void **key_name,
-				int *key_len,
+				size_t *key_len,
 				void **value,
-				int *value_len)
+				size_t *value_len)
 {
 	unsigned int pos = 0;
 	unsigned int res;
@@ -1379,7 +1379,7 @@ static int object_parent_get(hdb_handle_t object_handle,
 
 static int object_name_get(hdb_handle_t object_handle,
 			   char *object_name,
-			   int *object_name_len)
+			   size_t *object_name_len)
 {
 	struct object_instance *instance;
 	unsigned int res;

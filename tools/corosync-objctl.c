@@ -103,11 +103,11 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 {
 	hdb_handle_t object_handle;
 	char object_name[OBJ_NAME_SIZE];
-	int object_name_len;
+	size_t object_name_len;
 	char key_name[OBJ_NAME_SIZE];
-	int key_name_len;
+	size_t key_name_len;
 	char key_value[OBJ_NAME_SIZE];
-	int key_value_len;
+	size_t key_value_len;
 	cs_error_t res;
 	int children_printed;
 
@@ -295,7 +295,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	char key_name[OBJ_NAME_SIZE];
 	char key_value[OBJ_NAME_SIZE];
 	char old_key_value[OBJ_NAME_SIZE];
-	int old_key_value_len;
+	size_t old_key_value_len;
 	cs_error_t res;
 
 	/* find the parent object */

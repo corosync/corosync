@@ -98,7 +98,7 @@ static int load_config(void)
 	hdb_handle_t config_version = 0;
 	void *config_p;
 	struct config_iface_ver0 *config;
-	char *error_string;
+	const char *error_string;
 
 	/* User's bootstrap config service */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
