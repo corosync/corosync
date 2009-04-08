@@ -1629,7 +1629,7 @@ static void quorum_key_change_notify(object_change_type_t change_type,
 				     size_t object_name_len,
 				     const void *key_name_pt, size_t key_len,
 				     const void *key_value_pt, size_t key_value_len,
-				     const void *priv_data_pt)
+				     void *priv_data_pt)
 {
 	if (memcmp(object_name_pt, "quorum", object_name_len) == 0)
 		reread_config(object_handle);
@@ -1639,7 +1639,7 @@ static void quorum_key_change_notify(object_change_type_t change_type,
 /* Called when the objdb is reloaded */
 static void votequorum_objdb_reload_notify(
 	objdb_reload_notify_type_t type, int flush,
-	const void *priv_data_pt)
+	void *priv_data_pt)
 {
 	/*
 	 * A new quorum {} key might exist, cancel the
