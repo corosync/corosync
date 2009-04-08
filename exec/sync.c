@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -70,7 +70,7 @@ struct barrier_data {
 	int completed;
 };
 
-static struct memb_ring_id *sync_ring_id;
+static const struct memb_ring_id *sync_ring_id;
 
 static int vsf_none = 0;
 
@@ -110,16 +110,16 @@ static void sync_deliver_fn (
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id);
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static void sync_primary_callback_fn (
-        unsigned int *view_list,
-        int view_list_entries,
+        const unsigned int *view_list,
+        size_t view_list_entries,
         int primary_designated,
-        struct memb_ring_id *ring_id);
+        const struct memb_ring_id *ring_id);
 
 
 static struct totempg_group sync_group = {
@@ -157,7 +157,7 @@ static int sync_barrier_send (struct memb_ring_id *ring_id)
 	return (res);
 }
 
-static void sync_start_init (struct memb_ring_id *ring_id)
+static void sync_start_init (const struct memb_ring_id *ring_id)
 {
 	totempg_callback_token_create (
 		&sync_callback_token_handle,
@@ -225,7 +225,7 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	int res;
 	struct memb_ring_id *ring_id = (struct memb_ring_id *)data;
 
-	
+
 	/*
 	 * If process operation not from this ring id, then ignore it and stop
 	 * processing
@@ -233,7 +233,7 @@ static int sync_service_process (enum totem_callback_token_type type, void *data
 	if (memcmp (ring_id, sync_ring_id, sizeof (struct memb_ring_id)) != 0) {
 		return (0);
 	}
-	
+
 	/*
 	 * If process returns 0, then its time to activate
 	 * and start the next service's synchronization
@@ -284,7 +284,7 @@ static void sync_primary_callback_fn (
 	const unsigned int *view_list,
 	size_t view_list_entries,
 	int primary_designated,
-	struct memb_ring_id *ring_id)
+	const struct memb_ring_id *ring_id)
 {
 	int i;
 
@@ -372,7 +372,7 @@ log_printf (LOG_LEVEL_DEBUG, "confchg entries %d\n", barrier_data_confchg_entrie
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
 		log_printf (LOG_LEVEL_DEBUG,
-			"Barrier completion status for nodeid %d = %d. \n", 
+			"Barrier completion status for nodeid %d = %d. \n",
 			barrier_data_process[i].nodeid,
 			barrier_data_process[i].completed);
 		if (barrier_data_process[i].completed == 0) {
@@ -388,7 +388,7 @@ log_printf (LOG_LEVEL_DEBUG, "confchg entries %d\n", barrier_data_confchg_entrie
 	 */
 	if (barrier_completed && sync_callbacks.sync_activate) {
 		sync_callbacks.sync_activate ();
-	
+
 		log_printf (LOG_LEVEL_DEBUG,
 			"Committing synchronization for (%s)\n",
 			sync_callbacks.name);
@@ -418,10 +418,10 @@ log_printf (LOG_LEVEL_DEBUG, "confchg entries %d\n", barrier_data_confchg_entrie
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	sync_ring_id = ring_id;
 

@@ -94,10 +94,10 @@ struct cfg_info
 
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id);
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static int cfg_exec_init_fn (struct corosync_api_v1 *corosync_api_v1);
 
@@ -358,10 +358,10 @@ static int cfg_exec_init_fn (
 
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 }
 
@@ -566,8 +566,8 @@ static void message_handler_req_exec_cfg_ringreenable (
         const void *message,
         unsigned int nodeid)
 {
-	struct req_exec_cfg_ringreenable *req_exec_cfg_ringreenable =
-		(struct req_exec_cfg_ringreenable *)message;
+	const struct req_exec_cfg_ringreenable *req_exec_cfg_ringreenable
+	  = message;
 	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
 
 	ENTER();

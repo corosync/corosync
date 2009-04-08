@@ -9,7 +9,7 @@
  * Author: Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -217,10 +217,10 @@ struct totempg_group_instance {
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id);
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id);
 
 	struct totempg_group *groups;
 
@@ -487,10 +487,10 @@ static inline void app_deliver_fn (
 
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 // TODO optimize this
 	app_confchg_fn (configuration_type,
@@ -996,10 +996,10 @@ int totempg_groups_initialize (
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id))
 {
 	struct totempg_group_instance *instance;
 	unsigned int res;

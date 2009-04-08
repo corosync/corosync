@@ -449,10 +449,13 @@ struct corosync_api_v1 {
 
 		void (*confchg_fn) (
 			enum totem_configuration_type configuration_type,
-			unsigned int *member_list, int member_list_entries,
-			unsigned int *left_list, int left_list_entries,
-			unsigned int *joined_list, int joined_list_entries,
-			struct memb_ring_id *ring_id));
+			const unsigned int *member_list,
+			size_t member_list_entries,
+			const unsigned int *left_list,
+			size_t left_list_entries,
+			const unsigned int *joined_list,
+			size_t joined_list_entries,
+			const struct memb_ring_id *ring_id));
 
 	int (*tpg_exit) (
        		hdb_handle_t handle);
@@ -585,10 +588,10 @@ struct corosync_service_engine {
 	int (*config_init_fn) (struct corosync_api_v1 *);
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id);
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id);
 	void (*sync_init) (void);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
@@ -596,4 +599,3 @@ struct corosync_service_engine {
 };
 
 #endif /* COROAPI_H_DEFINED */
-	
