@@ -72,8 +72,6 @@ struct barrier_data {
 
 static const struct memb_ring_id *sync_ring_id;
 
-static int vsf_none = 0;
-
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
 static struct sync_callbacks sync_callbacks;
@@ -91,8 +89,6 @@ static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
 static size_t barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
-
-static struct openais_vsf_iface_ver0 *vsf_iface;
 
 static int sync_barrier_send (const struct memb_ring_id *ring_id);
 
