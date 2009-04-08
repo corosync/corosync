@@ -43,7 +43,7 @@
 
 struct totempg_group {
 	const void *group;
-	int group_len;
+	size_t group_len;
 };
 
 #define TOTEMPG_AGREED			0
