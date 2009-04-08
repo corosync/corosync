@@ -1199,7 +1199,7 @@ int totempg_groups_mcast_groups (
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
-	size_t iov_len)
+	unsigned int iov_len)
 {
 	struct totempg_group_instance *instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
@@ -1247,7 +1247,7 @@ int totempg_groups_send_ok_groups (
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
-	size_t iov_len)
+	unsigned int iov_len)
 {
 	struct totempg_group_instance *instance;
 	unsigned int size = 0;

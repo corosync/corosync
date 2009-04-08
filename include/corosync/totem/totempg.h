@@ -124,14 +124,14 @@ extern int totempg_groups_mcast_groups (
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
-	size_t iov_len);
+	unsigned int iov_len);
 
 extern int totempg_groups_send_ok_groups (
 	hdb_handle_t handle,
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
-	size_t iov_len);
+	unsigned int iov_len);
 	
 extern int totempg_ifaces_get (
 	unsigned int nodeid,

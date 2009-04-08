@@ -142,7 +142,7 @@ cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	const struct iovec *iovec,
-	size_t iov_len);
+	unsigned int iov_len);
 
 /*
  * Multicast to specified groups.
@@ -155,7 +155,7 @@ cs_error_t evs_mcast_groups (
 	const struct evs_group *groups,
 	size_t group_cnt,
 	const struct iovec *iovec,
-	size_t iov_len);
+	unsigned int iov_len);
 
 /*
  * Get membership information from evs

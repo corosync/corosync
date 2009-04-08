@@ -102,7 +102,7 @@ is a standard socket structure described by:
 struct iovec
 {
         void *iov_base;     /* Pointer to data.  */
-        size_t iov_len;     /* Length of data.  */
+        unsigned int iov_len;     /* Length of data.  */
 };
 .ta
 .fi
