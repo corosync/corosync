@@ -145,7 +145,7 @@ static void *ykd_state_send_callback_token_handle = 0;
 static struct corosync_api_v1 *api;
 
 static void (*ykd_primary_callback_fn) (
-	unsigned int *view_list,
+	const unsigned int *view_list,
 	size_t view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id) = NULL;

@@ -100,13 +100,13 @@ static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
 
 static void (*sync_primary_callback_fn) (
-	unsigned int *view_list,
-	int view_list_entries,
+	const unsigned int *view_list,
+	size_t view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id);
 
 /* Internal quorum API function */
-static void quorum_api_set_quorum(unsigned int *view_list,
+static void quorum_api_set_quorum(const unsigned int *view_list,
 				  size_t view_list_entries,
 				  int quorum, struct memb_ring_id *ring_id)
 {

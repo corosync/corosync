@@ -35,7 +35,7 @@
 #ifndef QUORUM_H_DEFINED
 #define QUORUM_H_DEFINED
 
-typedef void (*quorum_set_quorate_fn_t) (unsigned int *view_list,
+typedef void (*quorum_set_quorate_fn_t) (const unsigned int *view_list,
 					 size_t view_list_entries,
 					 int quorate, struct memb_ring_id *);
 
