@@ -158,21 +158,26 @@ static void exec_cpg_mcast_endian_convert (void *msg);
 
 static void exec_cpg_downlist_endian_convert (void *msg);
 
-static void message_handler_req_lib_cpg_join (void *conn, void *message);
+static void message_handler_req_lib_cpg_join (void *conn, const void *message);
 
-static void message_handler_req_lib_cpg_leave (void *conn, void *message);
+static void message_handler_req_lib_cpg_leave (void *conn, const void *message);
 
-static void message_handler_req_lib_cpg_mcast (void *conn, void *message);
+static void message_handler_req_lib_cpg_mcast (void *conn, const void *message);
 
-static void message_handler_req_lib_cpg_membership (void *conn, void *message);
+static void message_handler_req_lib_cpg_membership (void *conn,
+						    const void *message);
 
-static void message_handler_req_lib_cpg_trackstart (void *conn, void *message);
+static void message_handler_req_lib_cpg_trackstart (void *conn,
+						    const void *message);
 
-static void message_handler_req_lib_cpg_trackstop (void *conn, void *message);
+static void message_handler_req_lib_cpg_trackstop (void *conn,
+						   const void *message);
 
-static void message_handler_req_lib_cpg_local_get (void *conn, void *message);
+static void message_handler_req_lib_cpg_local_get (void *conn,
+						   const void *message);
 
-static void message_handler_req_lib_cpg_groups_get (void *conn, void *message);
+static void message_handler_req_lib_cpg_groups_get (void *conn,
+						    const void *message);
 
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason);
 
@@ -681,7 +686,7 @@ static void cpg_confchg_fn (
 /* Can byteswap join & leave messages */
 static void exec_cpg_procjoin_endian_convert (void *msg)
 {
-	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = (struct req_exec_cpg_procjoin *)msg;
+	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = msg;
 
 	req_exec_cpg_procjoin->pid = swab32(req_exec_cpg_procjoin->pid);
 	swab_mar_cpg_name_t (&req_exec_cpg_procjoin->group_name);
@@ -705,7 +710,7 @@ static void exec_cpg_joinlist_endian_convert (void *msg_v)
 
 static void exec_cpg_downlist_endian_convert (void *msg)
 {
-	struct req_exec_cpg_downlist *req_exec_cpg_downlist = (struct req_exec_cpg_downlist *)msg;
+	struct req_exec_cpg_downlist *req_exec_cpg_downlist = msg;
 	unsigned int i;
 
 	req_exec_cpg_downlist->left_nodes = swab32(req_exec_cpg_downlist->left_nodes);
@@ -718,7 +723,7 @@ static void exec_cpg_downlist_endian_convert (void *msg)
 
 static void exec_cpg_mcast_endian_convert (void *msg)
 {
-	struct req_exec_cpg_mcast *req_exec_cpg_mcast = (struct req_exec_cpg_mcast *)msg;
+	struct req_exec_cpg_mcast *req_exec_cpg_mcast = msg;
 
 	swab_mar_req_header_t (&req_exec_cpg_mcast->header);
 	swab_mar_cpg_name_t (&req_exec_cpg_mcast->group_name);
@@ -1016,9 +1021,9 @@ static int cpg_lib_init_fn (void *conn)
 }
 
 /* Join message from the library */
-static void message_handler_req_lib_cpg_join (void *conn, void *message)
+static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 {
-	struct req_lib_cpg_join *req_lib_cpg_join = (struct req_lib_cpg_join *)message;
+	const struct req_lib_cpg_join *req_lib_cpg_join = message;
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_join res_lib_cpg_join;
 	struct group_info *gi;
@@ -1055,7 +1060,7 @@ join_err:
 }
 
 /* Leave message from the library */
-static void message_handler_req_lib_cpg_leave (void *conn, void *message)
+static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 {
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_leave res_lib_cpg_leave;
@@ -1084,9 +1089,9 @@ leave_ret:
 }
 
 /* Mcast message from the library */
-static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
+static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 {
-	struct req_lib_cpg_mcast *req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)message;
+	const struct req_lib_cpg_mcast *req_lib_cpg_mcast = message;
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
 	struct group_info *gi = pi->group;
 	struct iovec req_exec_cpg_iovec[2];
@@ -1132,7 +1137,8 @@ static void message_handler_req_lib_cpg_mcast (void *conn, void *message)
 		sizeof(res_lib_cpg_mcast));
 }
 
-static void message_handler_req_lib_cpg_membership (void *conn, void *message)
+static void message_handler_req_lib_cpg_membership (void *conn,
+						    const void *message)
 {
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
 
@@ -1150,9 +1156,10 @@ static void message_handler_req_lib_cpg_membership (void *conn, void *message)
 }
 
 
-static void message_handler_req_lib_cpg_trackstart (void *conn, void *message)
+static void message_handler_req_lib_cpg_trackstart (void *conn,
+						    const void *message)
 {
-	struct req_lib_cpg_trackstart *req_lib_cpg_trackstart = (struct req_lib_cpg_trackstart *)message;
+	const struct req_lib_cpg_trackstart *req_lib_cpg_trackstart = message;
 	struct res_lib_cpg_trackstart res_lib_cpg_trackstart;
 	struct group_info *gi;
 	struct process_info *otherpi;
@@ -1177,9 +1184,10 @@ tstart_ret:
 	api->ipc_response_send(conn, &res_lib_cpg_trackstart, sizeof(res_lib_cpg_trackstart));
 }
 
-static void message_handler_req_lib_cpg_trackstop (void *conn, void *message)
+static void message_handler_req_lib_cpg_trackstop (void *conn,
+						   const void *message)
 {
-	struct req_lib_cpg_trackstop *req_lib_cpg_trackstop = (struct req_lib_cpg_trackstop *)message;
+	const struct req_lib_cpg_trackstop *req_lib_cpg_trackstop = message;
 	struct res_lib_cpg_trackstop res_lib_cpg_trackstop;
 	struct process_info *otherpi;
 	struct group_info *gi;
@@ -1204,7 +1212,8 @@ tstop_ret:
 	api->ipc_response_send(conn, &res_lib_cpg_trackstop.header, sizeof(res_lib_cpg_trackstop));
 }
 
-static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
+static void message_handler_req_lib_cpg_local_get (void *conn,
+						   const void *message)
 {
 	struct res_lib_cpg_local_get res_lib_cpg_local_get;
 
@@ -1217,7 +1226,8 @@ static void message_handler_req_lib_cpg_local_get (void *conn, void *message)
 		sizeof(res_lib_cpg_local_get));
 }
 
-static void message_handler_req_lib_cpg_groups_get (void *conn, void *message)
+static void message_handler_req_lib_cpg_groups_get (void *conn,
+						    const void *message)
 {
 	struct res_lib_cpg_groups_get res_lib_cpg_groups_get;
 

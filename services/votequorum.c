@@ -188,37 +188,48 @@ static int quorum_lib_init_fn (void *conn);
 static int quorum_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_quorum_nodeinfo (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_quorum_reconfigure (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 static void message_handler_req_exec_quorum_killnode (
-	void *message,
+	const void *message,
 	unsigned int nodeid);
 
 
-static void message_handler_req_lib_votequorum_getinfo (void *conn, void *message);
+static void message_handler_req_lib_votequorum_getinfo (void *conn,
+							const void *message);
 
-static void message_handler_req_lib_votequorum_setexpected (void *conn, void *message);
+static void message_handler_req_lib_votequorum_setexpected (void *conn,
+							    const void *message);
 
-static void message_handler_req_lib_votequorum_setvotes (void *conn, void *message);
+static void message_handler_req_lib_votequorum_setvotes (void *conn,
+							 const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_register (void *conn, void *message);
+static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
+							       const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn, void *message);
+static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn,
+								 const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *message);
+static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
+							   const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn, void *message);
+static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
+							      const void *message);
 
-static void message_handler_req_lib_votequorum_setstate (void *conn, void *message);
+static void message_handler_req_lib_votequorum_setstate (void *conn,
+							 const void *message);
 
-static void message_handler_req_lib_votequorum_leaving (void *conn, void *message);
-static void message_handler_req_lib_votequorum_trackstart (void *conn, void *msg);
-static void message_handler_req_lib_votequorum_trackstop (void *conn, void *msg);
+static void message_handler_req_lib_votequorum_leaving (void *conn,
+							const void *message);
+static void message_handler_req_lib_votequorum_trackstart (void *conn,
+							   const void *msg);
+static void message_handler_req_lib_votequorum_trackstop (void *conn,
+							  const void *msg);
 
 static int quorum_exec_send_nodeinfo(void);
 static int quorum_exec_send_reconfigure(int param, int nodeid, int value);
@@ -463,7 +474,7 @@ static inline void objdb_get_int(const struct corosync_api_v1 *corosync,
 	}
 }
 
-static int votequorum_send_message(void *message, int len)
+static int votequorum_send_message(const void *message, size_t len)
 {
 	struct iovec iov[2];
 	struct q_protheader header;
@@ -476,7 +487,7 @@ static int votequorum_send_message(void *message, int len)
 
 	iov[0].iov_base = &header;
 	iov[0].iov_len  = sizeof(header);
-	iov[1].iov_base = message;
+	iov[1].iov_base = (void *) message;
 	iov[1].iov_len  = len;
 
 	return corosync_api->tpg_joined_mcast(group_handle, iov, 2, TOTEM_AGREED);
@@ -952,7 +963,7 @@ static void quorum_confchg_fn (
 
 static void exec_quorum_nodeinfo_endian_convert (void *msg)
 {
-	struct req_exec_quorum_nodeinfo *nodeinfo = (struct req_exec_quorum_nodeinfo *)msg;
+	struct req_exec_quorum_nodeinfo *nodeinfo = msg;
 
 	nodeinfo->votes = swab32(nodeinfo->votes);
 	nodeinfo->expected_votes = swab32(nodeinfo->expected_votes);
@@ -965,14 +976,14 @@ static void exec_quorum_nodeinfo_endian_convert (void *msg)
 
 static void exec_quorum_reconfigure_endian_convert (void *msg)
 {
-	struct req_exec_quorum_reconfigure *reconfigure = (struct req_exec_quorum_reconfigure *)msg;
+	struct req_exec_quorum_reconfigure *reconfigure = msg;
 	reconfigure->nodeid = swab32(reconfigure->nodeid);
 	reconfigure->value = swab32(reconfigure->value);
 }
 
 static void exec_quorum_killnode_endian_convert (void *msg)
 {
-	struct req_exec_quorum_killnode *killnode = (struct req_exec_quorum_killnode *)msg;
+	struct req_exec_quorum_killnode *killnode = msg;
 	killnode->reason = swab16(killnode->reason);
 	killnode->nodeid = swab32(killnode->nodeid);
 }
@@ -1021,10 +1032,10 @@ static void quorum_deliver_fn(unsigned int nodeid, struct iovec *iovec, unsigned
 }
 
 static void message_handler_req_exec_quorum_nodeinfo (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_quorum_nodeinfo *req_exec_quorum_nodeinfo = (struct req_exec_quorum_nodeinfo *)message;
+	const struct req_exec_quorum_nodeinfo *req_exec_quorum_nodeinfo = message;
 	struct cluster_node *node;
 	int old_votes;
 	int old_expected;
@@ -1089,10 +1100,10 @@ static void message_handler_req_exec_quorum_nodeinfo (
 }
 
 static void message_handler_req_exec_quorum_killnode (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_quorum_killnode *req_exec_quorum_killnode = (struct req_exec_quorum_killnode *)message;
+	const struct req_exec_quorum_killnode *req_exec_quorum_killnode = message;
 
 	if (req_exec_quorum_killnode->nodeid == corosync_api->totem_nodeid_get()) {
 		log_printf(LOG_CRIT, "Killed by node %d: %s\n", nodeid, kill_reason(req_exec_quorum_killnode->reason));
@@ -1103,10 +1114,10 @@ static void message_handler_req_exec_quorum_killnode (
 }
 
 static void message_handler_req_exec_quorum_reconfigure (
-	void *message,
+	const void *message,
 	unsigned int nodeid)
 {
-	struct req_exec_quorum_reconfigure *req_exec_quorum_reconfigure = (struct req_exec_quorum_reconfigure *)message;
+	const struct req_exec_quorum_reconfigure *req_exec_quorum_reconfigure = message;
 	struct cluster_node *node;
 	struct list_head *nodelist;
 
@@ -1174,9 +1185,9 @@ static void leaving_timer_fn(void *arg)
 }
 
 /* Message from the library */
-static void message_handler_req_lib_votequorum_getinfo (void *conn, void *message)
+static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *message)
 {
-	struct req_lib_votequorum_getinfo *req_lib_votequorum_getinfo = (struct req_lib_votequorum_getinfo *)message;
+	const struct req_lib_votequorum_getinfo *req_lib_votequorum_getinfo = message;
 	struct res_lib_votequorum_getinfo res_lib_votequorum_getinfo;
 	struct cluster_node *node;
 	unsigned int highest_expected = 0;
@@ -1240,9 +1251,9 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, void *messag
 }
 
 /* Message from the library */
-static void message_handler_req_lib_votequorum_setexpected (void *conn, void *message)
+static void message_handler_req_lib_votequorum_setexpected (void *conn, const void *message)
 {
-	struct req_lib_votequorum_setexpected *req_lib_votequorum_setexpected = (struct req_lib_votequorum_setexpected *)message;
+	const struct req_lib_votequorum_setexpected *req_lib_votequorum_setexpected = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
 	unsigned int newquorum;
@@ -1279,19 +1290,21 @@ error_exit:
 }
 
 /* Message from the library */
-static void message_handler_req_lib_votequorum_setvotes (void *conn, void *message)
+static void message_handler_req_lib_votequorum_setvotes (void *conn, const void *message)
 {
-	struct req_lib_votequorum_setvotes *req_lib_votequorum_setvotes = (struct req_lib_votequorum_setvotes *)message;
+	const struct req_lib_votequorum_setvotes *req_lib_votequorum_setvotes = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	struct cluster_node *node;
 	unsigned int newquorum;
 	unsigned int total_votes;
 	unsigned int saved_votes;
 	cs_error_t error = CS_OK;
+	unsigned int nodeid;
 
 	ENTER();
 
-	node = find_node_by_nodeid(req_lib_votequorum_setvotes->nodeid);
+	nodeid = req_lib_votequorum_setvotes->nodeid;
+	node = find_node_by_nodeid(nodeid);
 	if (!node) {
 		error = CS_ERR_NAME_NOT_FOUND;
 		goto error_exit;
@@ -1309,10 +1322,11 @@ static void message_handler_req_lib_votequorum_setvotes (void *conn, void *messa
 		goto error_exit;
 	}
 
-	if (!req_lib_votequorum_setvotes->nodeid)
-		req_lib_votequorum_setvotes->nodeid = corosync_api->totem_nodeid_get();
+	if (!nodeid)
+		nodeid = corosync_api->totem_nodeid_get();
 
-	quorum_exec_send_reconfigure(RECONFIG_PARAM_NODE_VOTES, req_lib_votequorum_setvotes->nodeid, req_lib_votequorum_setvotes->votes);
+	quorum_exec_send_reconfigure(RECONFIG_PARAM_NODE_VOTES, nodeid,
+				     req_lib_votequorum_setvotes->votes);
 
 error_exit:
 	/* send status */
@@ -1323,7 +1337,7 @@ error_exit:
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_leaving (void *conn, void *message)
+static void message_handler_req_lib_votequorum_leaving (void *conn, const void *message)
 {
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
@@ -1370,9 +1384,11 @@ static void quorum_device_timer_fn(void *arg)
 }
 
 
-static void message_handler_req_lib_votequorum_qdisk_register (void *conn, void *message)
+static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
+							       const void *message)
 {
-	struct req_lib_votequorum_qdisk_register *req_lib_votequorum_qdisk_register = (struct req_lib_votequorum_qdisk_register *)message;
+	const struct req_lib_votequorum_qdisk_register
+	  *req_lib_votequorum_qdisk_register = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
 
@@ -1397,7 +1413,8 @@ static void message_handler_req_lib_votequorum_qdisk_register (void *conn, void 
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn, void *message)
+static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn,
+								 const void *message)
 {
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
@@ -1424,9 +1441,11 @@ static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn, voi
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *message)
+static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
+							   const void *message)
 {
-	struct req_lib_votequorum_qdisk_poll *req_lib_votequorum_qdisk_poll = (struct req_lib_votequorum_qdisk_poll *)message;
+	const struct req_lib_votequorum_qdisk_poll
+	  *req_lib_votequorum_qdisk_poll = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
 
@@ -1464,7 +1483,8 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn, void *mes
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn, void *message)
+static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
+							      const void *message)
 {
 	struct res_lib_votequorum_qdisk_getinfo res_lib_votequorum_qdisk_getinfo;
 	cs_error_t error = CS_OK;
@@ -1493,7 +1513,8 @@ static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn, void *
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_setstate (void *conn, void *message)
+static void message_handler_req_lib_votequorum_setstate (void *conn,
+							 const void *message)
 {
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
@@ -1511,9 +1532,11 @@ static void message_handler_req_lib_votequorum_setstate (void *conn, void *messa
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_trackstart (void *conn, void *msg)
+static void message_handler_req_lib_votequorum_trackstart (void *conn,
+							   const void *msg)
 {
-	struct req_lib_votequorum_trackstart *req_lib_votequorum_trackstart = (struct req_lib_votequorum_trackstart *)msg;
+	const struct req_lib_votequorum_trackstart
+	  *req_lib_votequorum_trackstart = msg;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -1550,7 +1573,8 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn, void *msg
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_trackstop (void *conn, void *msg)
+static void message_handler_req_lib_votequorum_trackstop (void *conn,
+							  const void *msg)
 {
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);

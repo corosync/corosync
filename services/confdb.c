@@ -62,28 +62,45 @@ static int confdb_exec_init_fn (
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);
 
-static void message_handler_req_lib_confdb_object_create (void *conn, void *message);
-static void message_handler_req_lib_confdb_object_destroy (void *conn, void *message);
-static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void *message);
+static void message_handler_req_lib_confdb_object_create (void *conn,
+							  const void *message);
+static void message_handler_req_lib_confdb_object_destroy (void *conn,
+							   const void *message);
+static void message_handler_req_lib_confdb_object_find_destroy (void *conn,
+								const void *message);
 
-static void message_handler_req_lib_confdb_key_create (void *conn, void *message);
-static void message_handler_req_lib_confdb_key_get (void *conn, void *message);
-static void message_handler_req_lib_confdb_key_replace (void *conn, void *message);
-static void message_handler_req_lib_confdb_key_delete (void *conn, void *message);
-static void message_handler_req_lib_confdb_key_iter (void *conn, void *message);
+static void message_handler_req_lib_confdb_key_create (void *conn,
+						       const void *message);
+static void message_handler_req_lib_confdb_key_get (void *conn,
+						    const void *message);
+static void message_handler_req_lib_confdb_key_replace (void *conn,
+							const void *message);
+static void message_handler_req_lib_confdb_key_delete (void *conn,
+						       const void *message);
+static void message_handler_req_lib_confdb_key_iter (void *conn,
+						     const void *message);
 
-static void message_handler_req_lib_confdb_key_increment (void *conn, void *message);
-static void message_handler_req_lib_confdb_key_decrement (void *conn, void *message);
+static void message_handler_req_lib_confdb_key_increment (void *conn,
+							  const void *message);
+static void message_handler_req_lib_confdb_key_decrement (void *conn,
+							  const void *message);
 
-static void message_handler_req_lib_confdb_object_iter (void *conn, void *message);
-static void message_handler_req_lib_confdb_object_find (void *conn, void *message);
+static void message_handler_req_lib_confdb_object_iter (void *conn,
+							const void *message);
+static void message_handler_req_lib_confdb_object_find (void *conn,
+							const void *message);
 
-static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message);
-static void message_handler_req_lib_confdb_write (void *conn, void *message);
-static void message_handler_req_lib_confdb_reload (void *conn, void *message);
+static void message_handler_req_lib_confdb_object_parent_get (void *conn,
+							      const void *message);
+static void message_handler_req_lib_confdb_write (void *conn,
+						  const void *message);
+static void message_handler_req_lib_confdb_reload (void *conn,
+						   const void *message);
 
-static void message_handler_req_lib_confdb_track_start (void *conn, void *message);
-static void message_handler_req_lib_confdb_track_stop (void *conn, void *message);
+static void message_handler_req_lib_confdb_track_start (void *conn,
+							const void *message);
+static void message_handler_req_lib_confdb_track_stop (void *conn,
+						       const void *message);
 
 static void confdb_notify_lib_of_key_change(
 	object_change_type_t change_type,
@@ -293,9 +310,11 @@ static int confdb_lib_exit_fn (void *conn)
 	return (0);
 }
 
-static void message_handler_req_lib_confdb_object_create (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_create (void *conn,
+							  const void *message)
 {
-	struct req_lib_confdb_object_create *req_lib_confdb_object_create = (struct req_lib_confdb_object_create *)message;
+	const struct req_lib_confdb_object_create *req_lib_confdb_object_create
+	  = message;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
 	hdb_handle_t object_handle;
 	int ret = CS_OK;
@@ -313,9 +332,11 @@ static void message_handler_req_lib_confdb_object_create (void *conn, void *mess
 	api->ipc_response_send(conn, &res_lib_confdb_object_create, sizeof(res_lib_confdb_object_create));
 }
 
-static void message_handler_req_lib_confdb_object_destroy (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_destroy (void *conn,
+							   const void *message)
 {
-	struct req_lib_confdb_object_destroy *req_lib_confdb_object_destroy = (struct req_lib_confdb_object_destroy *)message;
+	const struct req_lib_confdb_object_destroy *req_lib_confdb_object_destroy
+	  = message;
 	mar_res_header_t res;
 	int ret = CS_OK;
 
@@ -328,9 +349,11 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn, void *mes
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
-static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_find_destroy (void *conn,
+								const void *message)
 {
-	struct req_lib_confdb_object_find_destroy *req_lib_confdb_object_find_destroy = (struct req_lib_confdb_object_find_destroy *)message;
+	const struct req_lib_confdb_object_find_destroy
+	  *req_lib_confdb_object_find_destroy = message;
 	mar_res_header_t res;
 	int ret = CS_OK;
 
@@ -344,9 +367,11 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn, void
 }
 
 
-static void message_handler_req_lib_confdb_key_create (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_create (void *conn,
+						       const void *message)
 {
-	struct req_lib_confdb_key_create *req_lib_confdb_key_create = (struct req_lib_confdb_key_create *)message;
+	const struct req_lib_confdb_key_create *req_lib_confdb_key_create
+	  = message;
 	mar_res_header_t res;
 	int ret = CS_OK;
 
@@ -363,9 +388,10 @@ static void message_handler_req_lib_confdb_key_create (void *conn, void *message
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
-static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_get (void *conn,
+						    const void *message)
 {
-	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
+	const struct req_lib_confdb_key_get *req_lib_confdb_key_get = message;
 	struct res_lib_confdb_key_get res_lib_confdb_key_get;
 	size_t value_len;
 	void *value;
@@ -388,9 +414,10 @@ static void message_handler_req_lib_confdb_key_get (void *conn, void *message)
 	api->ipc_response_send(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
 }
 
-static void message_handler_req_lib_confdb_key_increment (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_increment (void *conn,
+							  const void *message)
 {
-	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
+	const struct req_lib_confdb_key_get *req_lib_confdb_key_get = message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 	int ret = CS_OK;
 
@@ -406,9 +433,10 @@ static void message_handler_req_lib_confdb_key_increment (void *conn, void *mess
 	api->ipc_response_send(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
 }
 
-static void message_handler_req_lib_confdb_key_decrement (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_decrement (void *conn,
+							  const void *message)
 {
-	struct req_lib_confdb_key_get *req_lib_confdb_key_get = (struct req_lib_confdb_key_get *)message;
+	const struct req_lib_confdb_key_get *req_lib_confdb_key_get = message;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 	int ret = CS_OK;
 
@@ -424,7 +452,8 @@ static void message_handler_req_lib_confdb_key_decrement (void *conn, void *mess
 	api->ipc_response_send(conn, &res_lib_confdb_key_incdec, sizeof(res_lib_confdb_key_incdec));
 }
 
-static void message_handler_req_lib_confdb_key_replace (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_replace (void *conn,
+							const void *message)
 {
 	const struct req_lib_confdb_key_replace *req_lib_confdb_key_replace
 	  = message;
@@ -444,9 +473,11 @@ static void message_handler_req_lib_confdb_key_replace (void *conn, void *messag
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
-static void message_handler_req_lib_confdb_key_delete (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_delete (void *conn,
+						       const void *message)
 {
-	struct req_lib_confdb_key_delete *req_lib_confdb_key_delete = (struct req_lib_confdb_key_delete *)message;
+	const struct req_lib_confdb_key_delete *req_lib_confdb_key_delete
+	  = message;
 	mar_res_header_t res;
 	int ret = CS_OK;
 
@@ -461,9 +492,11 @@ static void message_handler_req_lib_confdb_key_delete (void *conn, void *message
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
-static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_parent_get (void *conn,
+							      const void *message)
 {
-	struct req_lib_confdb_object_parent_get *req_lib_confdb_object_parent_get = (struct req_lib_confdb_object_parent_get *)message;
+	const struct req_lib_confdb_object_parent_get
+	  *req_lib_confdb_object_parent_get = message;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
 	hdb_handle_t object_handle;
 	int ret = CS_OK;
@@ -480,9 +513,10 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn, void *
 }
 
 
-static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
+static void message_handler_req_lib_confdb_key_iter (void *conn,
+						     const void *message)
 {
-	struct req_lib_confdb_key_iter *req_lib_confdb_key_iter = (struct req_lib_confdb_key_iter *)message;
+	const struct req_lib_confdb_key_iter *req_lib_confdb_key_iter = message;
 	struct res_lib_confdb_key_iter res_lib_confdb_key_iter;
 	void *key_name;
 	size_t key_name_len;
@@ -510,9 +544,11 @@ static void message_handler_req_lib_confdb_key_iter (void *conn, void *message)
 	api->ipc_response_send(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
 }
 
-static void message_handler_req_lib_confdb_object_iter (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_iter (void *conn,
+							const void *message)
 {
-	struct req_lib_confdb_object_iter *req_lib_confdb_object_iter = (struct req_lib_confdb_object_iter *)message;
+	const struct req_lib_confdb_object_iter *req_lib_confdb_object_iter
+	  = message;
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
 	size_t object_name_len;
 	int ret = CS_OK;
@@ -544,9 +580,11 @@ static void message_handler_req_lib_confdb_object_iter (void *conn, void *messag
 	api->ipc_response_send(conn, &res_lib_confdb_object_iter, sizeof(res_lib_confdb_object_iter));
 }
 
-static void message_handler_req_lib_confdb_object_find (void *conn, void *message)
+static void message_handler_req_lib_confdb_object_find (void *conn,
+							const void *message)
 {
-	struct req_lib_confdb_object_find *req_lib_confdb_object_find = (struct req_lib_confdb_object_find *)message;
+	const struct req_lib_confdb_object_find *req_lib_confdb_object_find
+	  = message;
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
 	int ret = CS_OK;
 
@@ -573,7 +611,8 @@ static void message_handler_req_lib_confdb_object_find (void *conn, void *messag
 	api->ipc_response_send(conn, &res_lib_confdb_object_find, sizeof(res_lib_confdb_object_find));
 }
 
-static void message_handler_req_lib_confdb_write (void *conn, void *message)
+static void message_handler_req_lib_confdb_write (void *conn,
+						  const void *message)
 {
 	struct res_lib_confdb_write res_lib_confdb_write;
 	int ret = CS_OK;
@@ -594,9 +633,10 @@ static void message_handler_req_lib_confdb_write (void *conn, void *message)
 	api->ipc_response_send(conn, &res_lib_confdb_write, sizeof(res_lib_confdb_write));
 }
 
-static void message_handler_req_lib_confdb_reload (void *conn, void *message)
+static void message_handler_req_lib_confdb_reload (void *conn,
+						   const void *message)
 {
-	struct req_lib_confdb_reload *req_lib_confdb_reload = (struct req_lib_confdb_reload *)message;
+	const struct req_lib_confdb_reload *req_lib_confdb_reload = message;
 	struct res_lib_confdb_reload res_lib_confdb_reload;
 	int ret = CS_OK;
 	const char *error_string = NULL;
@@ -683,9 +723,10 @@ static void confdb_notify_lib_of_destroyed_object(
 }
 
 
-static void message_handler_req_lib_confdb_track_start (void *conn, void *message)
+static void message_handler_req_lib_confdb_track_start (void *conn,
+							const void *message)
 {
-	struct req_lib_confdb_object_track_start *req = (struct req_lib_confdb_object_track_start *)message;
+	const struct req_lib_confdb_object_track_start *req = message;
 	mar_res_header_t res;
 
 	api->object_track_start(req->object_handle,
@@ -701,7 +742,8 @@ static void message_handler_req_lib_confdb_track_start (void *conn, void *messag
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
-static void message_handler_req_lib_confdb_track_stop (void *conn, void *message)
+static void message_handler_req_lib_confdb_track_stop (void *conn,
+						       const void *message)
 {
 	mar_res_header_t res;
 

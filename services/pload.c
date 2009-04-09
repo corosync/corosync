@@ -91,7 +91,7 @@ static void req_exec_pload_start_endian_convert (void *msg);
 
 static void req_exec_pload_mcast_endian_convert (void *msg);
 
-static void message_handler_req_pload_start (void *conn, void *msg);
+static void message_handler_req_pload_start (void *conn, const void *msg);
 
 static int pload_lib_init_fn (void *conn);
 
@@ -232,9 +232,9 @@ static int pload_lib_exit_fn (void *conn)
 	return (0);
 }
 
-static void message_handler_req_pload_start (void *conn, void *msg)
+static void message_handler_req_pload_start (void *conn, const void *msg)
 {
-	struct req_lib_pload_start *req_lib_pload_start = (struct req_lib_pload_start *)msg;
+	const struct req_lib_pload_start *req_lib_pload_start = msg;
 	struct req_exec_pload_start req_exec_pload_start;
 	struct iovec iov;
 

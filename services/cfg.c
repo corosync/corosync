@@ -123,55 +123,55 @@ static void exec_cfg_killnode_endian_convert (void *msg);
 
 static void message_handler_req_lib_cfg_ringstatusget (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_statetrack (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_statetrackstop (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_administrativestateset (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_administrativestateget (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_serviceload (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_serviceunload (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_killnode (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_tryshutdown (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_replytoshutdown (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_get_node_addrs (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 static void message_handler_req_lib_cfg_local_get (
 	void *conn,
-	void *msg);
+	const void *msg);
 
 /*
  * Service Handler Definition
@@ -635,13 +635,13 @@ static void message_handler_req_exec_cfg_shutdown (
  */
 static void message_handler_req_lib_cfg_ringstatusget (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct res_lib_cfg_ringstatusget res_lib_cfg_ringstatusget;
 	struct totem_ip_address interfaces[INTERFACE_MAX];
 	unsigned int iface_count;
 	char **status;
-	char *totem_ip_string;
+	const char *totem_ip_string;
 	unsigned int i;
 
 	ENTER();
@@ -659,7 +659,8 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	res_lib_cfg_ringstatusget.interface_count = iface_count;
 
 	for (i = 0; i < iface_count; i++) {
-		totem_ip_string = (char *)api->totem_ip_print (&interfaces[i]);
+		totem_ip_string
+		  = (const char *)api->totem_ip_print (&interfaces[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_status[i],
 			status[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
@@ -675,7 +676,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct req_exec_cfg_ringreenable req_exec_cfg_ringreenable;
 	struct iovec iovec;
@@ -697,7 +698,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 
 static void message_handler_req_lib_cfg_statetrack (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 	struct res_lib_cfg_statetrack res_lib_cfg_statetrack;
@@ -733,7 +734,7 @@ static void message_handler_req_lib_cfg_statetrack (
 
 static void message_handler_req_lib_cfg_statetrackstop (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 //	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
@@ -745,7 +746,7 @@ static void message_handler_req_lib_cfg_statetrackstop (
 
 static void message_handler_req_lib_cfg_administrativestateset (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 //	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
 
@@ -754,7 +755,7 @@ static void message_handler_req_lib_cfg_administrativestateset (
 }
 static void message_handler_req_lib_cfg_administrativestateget (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 //	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
 	ENTER();
@@ -763,16 +764,15 @@ static void message_handler_req_lib_cfg_administrativestateget (
 
 static void message_handler_req_lib_cfg_serviceload (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
-	struct req_lib_cfg_serviceload *req_lib_cfg_serviceload =
-		(struct req_lib_cfg_serviceload *)msg;
+	const struct req_lib_cfg_serviceload *req_lib_cfg_serviceload = msg;
 	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
 
 	ENTER();
 	api->service_link_and_init (
 		api,
-		(char *)req_lib_cfg_serviceload->service_name,
+		(const char *)req_lib_cfg_serviceload->service_name,
 		req_lib_cfg_serviceload->service_ver);
 
 	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
@@ -787,16 +787,15 @@ static void message_handler_req_lib_cfg_serviceload (
 
 static void message_handler_req_lib_cfg_serviceunload (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
-	struct req_lib_cfg_serviceunload *req_lib_cfg_serviceunload =
-		(struct req_lib_cfg_serviceunload *)msg;
+	const struct req_lib_cfg_serviceunload *req_lib_cfg_serviceunload = msg;
 	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
 
 	ENTER();
 	api->service_unlink_and_exit (
 		api,
-		(char *)req_lib_cfg_serviceunload->service_name,
+		(const char *)req_lib_cfg_serviceunload->service_name,
 		req_lib_cfg_serviceunload->service_ver);
 	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
 	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
@@ -811,9 +810,9 @@ static void message_handler_req_lib_cfg_serviceunload (
 
 static void message_handler_req_lib_cfg_killnode (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
-	struct req_lib_cfg_killnode *req_lib_cfg_killnode = (struct req_lib_cfg_killnode *)msg;
+	const struct req_lib_cfg_killnode *req_lib_cfg_killnode = msg;
 	struct res_lib_cfg_killnode res_lib_cfg_killnode;
 	struct req_exec_cfg_killnode req_exec_cfg_killnode;
 	struct iovec iovec;
@@ -845,10 +844,10 @@ static void message_handler_req_lib_cfg_killnode (
 
 static void message_handler_req_lib_cfg_tryshutdown (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
-	struct req_lib_cfg_tryshutdown *req_lib_cfg_tryshutdown = (struct req_lib_cfg_tryshutdown *)msg;
+	const struct req_lib_cfg_tryshutdown *req_lib_cfg_tryshutdown = msg;
 	struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
 	struct list_head *iter;
 
@@ -978,10 +977,10 @@ static void message_handler_req_lib_cfg_tryshutdown (
 
 static void message_handler_req_lib_cfg_replytoshutdown (
 	void *conn,
-	void *msg)
+	const void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
-	struct req_lib_cfg_replytoshutdown *req_lib_cfg_replytoshutdown = (struct req_lib_cfg_replytoshutdown *)msg;
+	const struct req_lib_cfg_replytoshutdown *req_lib_cfg_replytoshutdown = msg;
 	struct res_lib_cfg_replytoshutdown res_lib_cfg_replytoshutdown;
 	int status = CS_OK;
 
@@ -1012,7 +1011,8 @@ exit_fn:
 	LEAVE();
 }
 
-static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
+static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
+							const void *msg)
 {
 	struct totem_ip_address node_ifs[INTERFACE_MAX];
 	char buf[PIPE_BUF];
@@ -1020,13 +1020,14 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
 	unsigned int num_interfaces = 0;
 	int ret = CS_OK;
 	int i;
-	struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = (struct req_lib_cfg_get_node_addrs *)msg;
+	const struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = msg;
 	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
+	unsigned int nodeid = req_lib_cfg_get_node_addrs->nodeid;
 
-	if (req_lib_cfg_get_node_addrs->nodeid == 0)
-		req_lib_cfg_get_node_addrs->nodeid = api->totem_nodeid_get();
+	if (nodeid == 0)
+		nodeid = api->totem_nodeid_get();
 
-	api->totem_ifaces_get(req_lib_cfg_get_node_addrs->nodeid, node_ifs, &status, &num_interfaces);
+	api->totem_ifaces_get(nodeid, node_ifs, &status, &num_interfaces);
 
 	res_lib_cfg_get_node_addrs->header.size = sizeof(struct res_lib_cfg_get_node_addrs) + (num_interfaces * TOTEMIP_ADDRLEN);
 	res_lib_cfg_get_node_addrs->header.id = MESSAGE_RES_CFG_GET_NODE_ADDRS;
@@ -1044,7 +1045,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn, void *msg)
 	api->ipc_response_send(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
 }
 
-static void message_handler_req_lib_cfg_local_get (void *conn, void *message)
+static void message_handler_req_lib_cfg_local_get (void *conn, const void *msg)
 {
 	struct res_lib_cfg_local_get res_lib_cfg_local_get;
 

@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -83,11 +83,11 @@ static void message_handler_req_exec_mcast (const void *msg, unsigned int nodeid
 
 static void req_exec_mcast_endian_convert (void *msg);
 
-static void message_handler_req_evs_join (void *conn, void *msg);
-static void message_handler_req_evs_leave (void *conn, void *msg);
-static void message_handler_req_evs_mcast_joined (void *conn, void *msg);
-static void message_handler_req_evs_mcast_groups (void *conn, void *msg);
-static void message_handler_req_evs_membership_get (void *conn, void *msg);
+static void message_handler_req_evs_join (void *conn, const void *msg);
+static void message_handler_req_evs_leave (void *conn, const void *msg);
+static void message_handler_req_evs_mcast_joined (void *conn, const void *msg);
+static void message_handler_req_evs_mcast_groups (void *conn, const void *msg);
+static void message_handler_req_evs_membership_get (void *conn, const void *msg);
 
 static int evs_lib_init_fn (void *conn);
 static int evs_lib_exit_fn (void *conn);
@@ -98,7 +98,7 @@ struct evs_pd {
 	struct list_head list;
 	void *conn;
 };
-	
+
 static struct corosync_api_v1 *api;
 
 static struct corosync_lib_handler evs_lib_engine[] =
@@ -147,7 +147,7 @@ struct corosync_service_engine evs_service_engine = {
 	.name			= "corosync extended virtual synchrony service",
 	.id			= EVS_SERVICE,
 	.private_data_size	= sizeof (struct evs_pd),
-	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED, 
+	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
 	.lib_init_fn		= evs_lib_init_fn,
 	.lib_exit_fn		= evs_lib_exit_fn,
 	.lib_engine		= evs_lib_engine,
@@ -277,10 +277,10 @@ static int evs_lib_exit_fn (void *conn)
 	return (0);
 }
 
-static void message_handler_req_evs_join (void *conn, void *msg)
+static void message_handler_req_evs_join (void *conn, const void *msg)
 {
 	cs_error_t error = CS_OK;
-	struct req_lib_evs_join *req_lib_evs_join = (struct req_lib_evs_join *)msg;
+	const struct req_lib_evs_join *req_lib_evs_join = msg;
 	struct res_lib_evs_join res_lib_evs_join;
 	void *addr;
 	struct evs_pd *evs_pd = (struct evs_pd *)api->ipc_private_data_get (conn);
@@ -290,7 +290,7 @@ static void message_handler_req_evs_join (void *conn, void *msg)
 		goto exit_error;
 	}
 
-	addr = realloc (evs_pd->groups, sizeof (struct evs_group) * 
+	addr = realloc (evs_pd->groups, sizeof (struct evs_group) *
 		(evs_pd->group_entries + req_lib_evs_join->group_entries));
 	if (addr == NULL) {
 		error = CS_ERR_NO_MEMORY;
@@ -313,9 +313,9 @@ exit_error:
 		sizeof (struct res_lib_evs_join));
 }
 
-static void message_handler_req_evs_leave (void *conn, void *msg)
+static void message_handler_req_evs_leave (void *conn, const void *msg)
 {
-	struct req_lib_evs_leave *req_lib_evs_leave = (struct req_lib_evs_leave *)msg;
+	const struct req_lib_evs_leave *req_lib_evs_leave = msg;
 	struct res_lib_evs_leave res_lib_evs_leave;
 	cs_error_t error = CS_OK;
 	int error_index;
@@ -359,10 +359,10 @@ static void message_handler_req_evs_leave (void *conn, void *msg)
 		sizeof (struct res_lib_evs_leave));
 }
 
-static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
+static void message_handler_req_evs_mcast_joined (void *conn, const void *msg)
 {
 	cs_error_t error = CS_ERR_TRY_AGAIN;
-	struct req_lib_evs_mcast_joined *req_lib_evs_mcast_joined = (struct req_lib_evs_mcast_joined *)msg;
+	const struct req_lib_evs_mcast_joined *req_lib_evs_mcast_joined = msg;
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
 	struct iovec req_exec_evs_mcast_iovec[3];
 	struct req_exec_evs_mcast req_exec_evs_mcast;
@@ -399,14 +399,14 @@ static void message_handler_req_evs_mcast_joined (void *conn, void *msg)
 		sizeof (struct res_lib_evs_mcast_joined));
 }
 
-static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
+static void message_handler_req_evs_mcast_groups (void *conn, const void *msg)
 {
 	cs_error_t error = CS_ERR_TRY_AGAIN;
-	struct req_lib_evs_mcast_groups *req_lib_evs_mcast_groups = (struct req_lib_evs_mcast_groups *)msg;
+	const struct req_lib_evs_mcast_groups *req_lib_evs_mcast_groups = msg;
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	struct iovec req_exec_evs_mcast_iovec[3];
 	struct req_exec_evs_mcast req_exec_evs_mcast;
-	char *msg_addr;
+	const char *msg_addr;
 	int res;
 
 	req_exec_evs_mcast.header.size = sizeof (struct req_exec_evs_mcast) +
@@ -418,17 +418,17 @@ static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 	req_exec_evs_mcast.msg_len = req_lib_evs_mcast_groups->msg_len;
 	req_exec_evs_mcast.group_entries = req_lib_evs_mcast_groups->group_entries;
 
-	msg_addr = (char *)req_lib_evs_mcast_groups +
-		sizeof (struct req_lib_evs_mcast_groups) + 
+	msg_addr = (const char *)req_lib_evs_mcast_groups +
+		sizeof (struct req_lib_evs_mcast_groups) +
 		(sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries);
 
 	req_exec_evs_mcast_iovec[0].iov_base = (char *)&req_exec_evs_mcast;
 	req_exec_evs_mcast_iovec[0].iov_len = sizeof (req_exec_evs_mcast);
 	req_exec_evs_mcast_iovec[1].iov_base = (char *)&req_lib_evs_mcast_groups->groups;
 	req_exec_evs_mcast_iovec[1].iov_len = sizeof (struct evs_group) * req_lib_evs_mcast_groups->group_entries;
-	req_exec_evs_mcast_iovec[2].iov_base = msg_addr;
+	req_exec_evs_mcast_iovec[2].iov_base = (void *) msg_addr; /* discard const */
 	req_exec_evs_mcast_iovec[2].iov_len = req_lib_evs_mcast_groups->msg_len;
-	
+
 	res = api->totem_mcast (req_exec_evs_mcast_iovec, 3, TOTEM_AGREED);
 	if (res == 0) {
 		error = CS_OK;
@@ -442,7 +442,7 @@ static void message_handler_req_evs_mcast_groups (void *conn, void *msg)
 		sizeof (struct res_lib_evs_mcast_groups));
 }
 
-static void message_handler_req_evs_membership_get (void *conn, void *msg)
+static void message_handler_req_evs_membership_get (void *conn, const void *msg)
 {
 	struct res_lib_evs_membership_get res_lib_evs_membership_get;
 

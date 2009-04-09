@@ -81,9 +81,12 @@ struct internal_callback_pd {
 	void *context;
 };
 
-static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg);
-static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg);
-static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg);
+static void message_handler_req_lib_quorum_getquorate (void *conn,
+						       const void *msg);
+static void message_handler_req_lib_quorum_trackstart (void *conn,
+						       const void *msg);
+static void message_handler_req_lib_quorum_trackstop (void *conn,
+						      const void *msg);
 static void send_library_notification(void *conn);
 static void send_internal_notification(void);
 static int quorum_exec_init_fn (struct corosync_api_v1 *api);
@@ -394,7 +397,8 @@ static void send_library_notification(void *conn)
 	return;
 }
 
-static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg)
+static void message_handler_req_lib_quorum_getquorate (void *conn,
+						       const void *msg)
 {
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
@@ -409,9 +413,10 @@ static void message_handler_req_lib_quorum_getquorate (void *conn, void *msg)
 }
 
 
-static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
+static void message_handler_req_lib_quorum_trackstart (void *conn,
+						       const void *msg)
 {
-	struct req_lib_quorum_trackstart *req_lib_quorum_trackstart = (struct req_lib_quorum_trackstart *)msg;
+	const struct req_lib_quorum_trackstart *req_lib_quorum_trackstart = msg;
 	mar_res_header_t res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -446,7 +451,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn, void *msg)
 	corosync_api->ipc_response_send(conn, &res, sizeof(mar_res_header_t));
 }
 
-static void message_handler_req_lib_quorum_trackstop (void *conn, void *msg)
+static void message_handler_req_lib_quorum_trackstop (void *conn, const void *msg)
 {
 	mar_res_header_t res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);

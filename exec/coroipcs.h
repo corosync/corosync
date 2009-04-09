@@ -43,7 +43,7 @@ struct iovec;
 
 typedef int (*coroipcs_init_fn_lvalue) (void *conn);
 typedef int (*coroipcs_exit_fn_lvalue) (void *conn);
-typedef void (*coroipcs_handler_fn_lvalue) (void *conn, void *msg);
+typedef void (*coroipcs_handler_fn_lvalue) (void *conn, const void *msg);
 
 struct coroipcs_init_state {
 	const char *socket_name;
