@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -386,7 +386,7 @@ error_put:
 
 cs_error_t cpg_join (
     cpg_handle_t handle,
-    struct cpg_name *group)
+    const struct cpg_name *group)
 {
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
@@ -449,7 +449,7 @@ error_exit:
 
 cs_error_t cpg_leave (
     cpg_handle_t handle,
-    struct cpg_name *group)
+    const struct cpg_name *group)
 {
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
@@ -492,7 +492,7 @@ error_exit:
 cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len)
 {
 	int i;

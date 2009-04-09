@@ -673,7 +673,7 @@ static int object_destroy (
 static int object_valid_set (
 	hdb_handle_t object_handle,
 	struct object_valid *object_valid_list,
-	unsigned int object_valid_list_entries)
+	size_t object_valid_list_entries)
 {
 	struct object_instance *instance;
 	unsigned int res;
@@ -701,7 +701,7 @@ error_exit:
 static int object_key_valid_set (
 		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
-		unsigned int object_key_valid_list_entries)
+		size_t object_key_valid_list_entries)
 {
 	struct object_instance *instance;
 	unsigned int res;

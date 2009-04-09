@@ -130,7 +130,7 @@ cs_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd);
 
-/* 
+/*
  * Get and set contexts for a CPG handle
  */
 cs_error_t cpg_context_get (
@@ -157,14 +157,14 @@ cs_error_t cpg_dispatch (
  */
 cs_error_t cpg_join (
 	cpg_handle_t handle,
-	struct cpg_name *group);
+	const struct cpg_name *group);
 
 /*
  * Leave one or more groups
  */
 cs_error_t cpg_leave (
 	cpg_handle_t handle,
-	struct cpg_name *group);
+	const struct cpg_name *group);
 
 /*
  * Multicast to groups joined with cpg_join.
@@ -174,7 +174,7 @@ cs_error_t cpg_leave (
 cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 /*

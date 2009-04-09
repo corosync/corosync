@@ -119,12 +119,12 @@ struct objdb_iface_ver0 {
 	int (*object_valid_set) (
 		hdb_handle_t object_handle,
 		struct object_valid *object_valid_list,
-		unsigned int object_valid_list_entries);
+		size_t object_valid_list_entries);
 
 	int (*object_key_valid_set) (
 		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
-		unsigned int object_key_valid_list_entries);
+		size_t object_key_valid_list_entries);
 
 	int (*object_find_create) (
 		hdb_handle_t parent_object_handle,

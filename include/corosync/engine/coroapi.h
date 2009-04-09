@@ -244,12 +244,12 @@ struct corosync_api_v1 {
 	int (*object_valid_set) (
 		hdb_handle_t object_handle,
 		struct object_valid *object_valid_list,
-		unsigned int object_valid_list_entries);
+		size_t object_valid_list_entries);
 
 	int (*object_key_valid_set) (
 		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
-		unsigned int object_key_valid_list_entries);
+		size_t object_key_valid_list_entries);
 
 	int (*object_find_create) (
 		hdb_handle_t parent_object_handle,
@@ -415,6 +415,7 @@ struct corosync_api_v1 {
 
 	int (*totem_ring_reenable) (void);
 
+	/* FIXME: const iovec? */
 	int (*totem_mcast) (struct iovec *iovec, unsigned int iov_len, unsigned int guarantee);
 
 	int (*totem_ifaces_get) (
