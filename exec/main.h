@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -56,7 +56,7 @@ extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
 extern int main_mcast (
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len,
 	unsigned int guarantee);
 

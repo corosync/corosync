@@ -415,8 +415,8 @@ struct corosync_api_v1 {
 
 	int (*totem_ring_reenable) (void);
 
-	/* FIXME: const iovec? */
-	int (*totem_mcast) (struct iovec *iovec, unsigned int iov_len, unsigned int guarantee);
+	int (*totem_mcast) (const struct iovec *iovec,
+			    unsigned int iov_len, unsigned int guarantee);
 
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,

@@ -473,7 +473,7 @@ void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
 }
 
 int main_mcast (
-        struct iovec *iovec,
+        const struct iovec *iovec,
         unsigned int iov_len,
         unsigned int guarantee)
 {
