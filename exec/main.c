@@ -538,7 +538,7 @@ static int corosync_security_valid (int euid, int egid)
 
 static int corosync_service_available (unsigned int service)
 {
-	return (ais_service[service]);
+	return (ais_service[service] != NULL);
 }
 
 static int corosync_response_size_get (unsigned int service, unsigned int id)
