@@ -869,7 +869,7 @@ int coroipcs_dispatch_send (void *conn, const void *msg, size_t mlen)
 {
 	struct iovec iov;
 
-	iov.iov_base = msg;
+	iov.iov_base = (void *)msg;
 	iov.iov_len = mlen;
 
 	msg_send_or_queue (conn, &iov, 1);
