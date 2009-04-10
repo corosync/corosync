@@ -83,9 +83,13 @@ int main (void) {
 		exit (1);
 	}
 	/*
-	 * Set security of authorization key to uid = 0 uid = 0 mode = 0400
+	 * Set security of authorization key to uid = 0 gid = 0 mode = 0400
 	 */
-	fchown (authkey_fd, 0, 0);
+	res = fchown (authkey_fd, 0, 0);
+	if (res == -1) {
+		perror ("Could not fchown key to uid 0 and gid 0\n");
+		exit (1);
+	}
 	fchmod (authkey_fd, 0400);
 
 	printf ("Writing corosync key to " KEYFILE ".\n");
