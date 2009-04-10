@@ -98,20 +98,9 @@ static pthread_rwlock_t reload_lock;
 static pthread_t lock_thread;
 static pthread_mutex_t meta_lock;
 
-static struct hdb_handle_database object_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (object_instance_database);
 
-static struct hdb_handle_database object_find_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
-
+DECLARE_HDB_DATABASE (object_find_instance_database);
 
 static void objdb_wrlock(void)
 {

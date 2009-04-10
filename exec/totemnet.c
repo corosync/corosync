@@ -206,15 +206,7 @@ static int totemnet_build_sockets (
 
 static struct totem_ip_address localhost;
 
-/*
- * All instances in one database
- */
-static struct hdb_handle_database totemnet_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (totemnet_instance_database);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {

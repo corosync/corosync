@@ -612,12 +612,8 @@ void main_iface_change_fn (
 /*
  * All instances in one database
  */
-static struct hdb_handle_database totemsrp_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (totemsrp_instance_database);
+
 struct message_handlers totemsrp_message_handlers = {
 	6,
 	{

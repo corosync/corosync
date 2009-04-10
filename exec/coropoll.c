@@ -63,14 +63,7 @@ struct poll_instance {
 	int stop_requested;
 };
 
-/*
- * All instances in one database
- */
-static struct hdb_handle_database poll_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0
-};
+DECLARE_HDB_DATABASE (poll_instance_database);
 
 hdb_handle_t poll_create (void)
 {

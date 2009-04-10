@@ -227,12 +227,7 @@ struct totempg_group_instance {
 	int groups_cnt;
 };
 
-static struct hdb_handle_database totempg_groups_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (totempg_groups_instance_database);
 
 static unsigned char next_fragment = 1;
 

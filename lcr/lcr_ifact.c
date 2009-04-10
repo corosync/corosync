@@ -61,6 +61,11 @@ struct lcr_iface_instance {
 	void (*destructor) (void *context);
 };
 	
+DECLARE_HDB_DATABASE_FIRSTRUN (lcr_component_instance_database);
+
+DECLARE_HDB_DATABASE_FIRSTRUN (lcr_iface_instance_database);
+
+/*
 static struct hdb_handle_database lcr_component_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
@@ -72,6 +77,7 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 	.handles	= 0,
 	.iterator	= 0
 };
+*/
 
 static hdb_handle_t g_component_handle = 0xFFFFFFFF;
 
