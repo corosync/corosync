@@ -586,95 +586,6 @@ corosync_cfg_state_track_stop (
 }
 
 cs_error_t
-corosync_cfg_admin_state_get (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_administrative_target_t administrative_target,
-	corosync_cfg_administrative_state_t *administrative_state)
-{
-	struct cfg_instance *cfg_instance;
-	struct req_lib_cfg_administrativestateget req_lib_cfg_administrativestateget;
-	struct res_lib_cfg_administrativestateget res_lib_cfg_administrativestateget;
-	cs_error_t error;
-	struct iovec iov;
-
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_cfg_administrativestateget.header.id = MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET;
-	req_lib_cfg_administrativestateget.header.size = sizeof (struct req_lib_cfg_administrativestateget);
-	req_lib_cfg_administrativestateget.administrative_target = administrative_target;
-
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	iov.iov_base = &req_lib_cfg_administrativestateget,
-	iov.iov_len = sizeof (struct req_lib_cfg_administrativestateget),
-
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
-		&iov,
-		1,
-		&res_lib_cfg_administrativestateget,
-		sizeof (struct res_lib_cfg_administrativestateget));
-
-	error = res_lib_cfg_administrativestateget.header.error;
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
-
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
-
-        return (error == CS_OK ? res_lib_cfg_administrativestateget.header.error : error);
-}
-
-cs_error_t
-corosync_cfg_admin_state_set (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_administrative_target_t administrative_target,
-	corosync_cfg_administrative_state_t administrative_state)
-{
-	struct cfg_instance *cfg_instance;
-	struct req_lib_cfg_administrativestateset req_lib_cfg_administrativestateset;
-	struct res_lib_cfg_administrativestateset res_lib_cfg_administrativestateset;
-	cs_error_t error;
-	struct iovec iov;
-
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_cfg_administrativestateset.header.id = MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET;
-	req_lib_cfg_administrativestateset.header.size = sizeof (struct req_lib_cfg_administrativestateset);
-	req_lib_cfg_administrativestateset.administrative_target = administrative_target;
-	req_lib_cfg_administrativestateset.administrative_state = administrative_state;
-
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	iov.iov_base = &req_lib_cfg_administrativestateset,
-	iov.iov_len = sizeof (struct req_lib_cfg_administrativestateset),
-
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
-		&iov,
-		1,
-		&res_lib_cfg_administrativestateset,
-		sizeof (struct res_lib_cfg_administrativestateset));
-
-	error = res_lib_cfg_administrativestateset.header.error;
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
-
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
-
-        return (error == CS_OK ? res_lib_cfg_administrativestateset.header.error : error);
-}
-
-cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
@@ -846,9 +757,10 @@ cs_error_t corosync_cfg_get_node_addrs (
 		addrlen = sizeof(struct sockaddr_in6);
 
 	for (i=0; i<max_addrs && i<res_lib_cfg_get_node_addrs->num_addrs; i++) {
-		addrs[i].address_length = addrlen;
 		struct sockaddr_in *in;
 		struct sockaddr_in6 *in6;
+
+		addrs[i].address_length = addrlen;
 
 		if (res_lib_cfg_get_node_addrs->family == AF_INET) {
 			in = (struct sockaddr_in *)addrs[i].address;

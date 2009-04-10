@@ -188,18 +188,6 @@ corosync_cfg_service_unload (
 	unsigned int service_ver);
 
 cs_error_t
-corosync_cfg_administrative_state_get (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_administrative_target_t administrative_target,
-	corosync_cfg_administrative_state_t *administrative_state);
-
-cs_error_t
-corosync_cfg_administrative_state_set (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_administrative_target_t administrative_target,
-	corosync_cfg_administrative_state_t administrative_state);
-
-cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
