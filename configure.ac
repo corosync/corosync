@@ -244,7 +244,6 @@ WARNLIST="
 	declaration-after-statement
 	pointer-arith
 	write-strings
-	cast-qual
 	cast-align
 	bad-function-cast
 	missing-format-attribute
