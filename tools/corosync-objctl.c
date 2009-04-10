@@ -249,7 +249,7 @@ static cs_error_t find_object (confdb_handle_t handle,
 	hdb_handle_t obj_handle;
 	confdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
 	char tmp_name[OBJ_NAME_SIZE];
-	cs_error_t res;
+	cs_error_t res = CS_OK;
 
 	strncpy (tmp_name, name_pt, OBJ_NAME_SIZE);
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
