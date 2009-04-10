@@ -65,8 +65,7 @@ struct worker_thread {
 	struct thread_data thread_data;
 };
 
-void *worker_thread (void *thread_data_in) __attribute__((__noreturn__));
-void *worker_thread (void *thread_data_in) {
+static void *worker_thread (void *thread_data_in) {
 	struct thread_data *thread_data = (struct thread_data *)thread_data_in;
 	struct worker_thread *worker_thread =
 		(struct worker_thread *)thread_data->data;
@@ -96,6 +95,7 @@ void *worker_thread (void *thread_data_in) {
 		}
 		pthread_mutex_unlock (&worker_thread->done_work_mutex);
 	}
+	return (NULL);
 }
 
 int worker_thread_group_init (
