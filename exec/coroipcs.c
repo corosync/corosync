@@ -132,7 +132,7 @@ struct conn_info {
 	char *sending_allowed_private_data[64];
 };
 
-static int shared_mem_dispatch_bytes_left (struct conn_info *conn_info);
+static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info);
 
 static void outq_flush (struct conn_info *conn_info);
 
@@ -634,19 +634,19 @@ retry_semop:
 	return (0);
 }
 
-static int shared_mem_dispatch_bytes_left (struct conn_info *conn_info)
+static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 {
-	unsigned int read;
-	unsigned int write;
+	unsigned int n_read;
+	unsigned int n_write;
 	unsigned int bytes_left;
 
-	read = conn_info->mem->read;
-	write = conn_info->mem->write;
+	n_read = conn_info->mem->read;
+	n_write = conn_info->mem->write;
 
-	if (read <= write) {
-		bytes_left = DISPATCH_SIZE - write + read;
+	if (n_read <= n_write) {
+		bytes_left = DISPATCH_SIZE - n_write + n_read;
 	} else {
-		bytes_left = read - write;
+		bytes_left = n_read - n_write;
 	}
 	return (bytes_left);
 }
