@@ -421,7 +421,7 @@ evs_error_t evs_mcast_joined (
 	struct iovec iov[64];
 	struct req_lib_evs_mcast_joined req_lib_evs_mcast_joined;
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
-	int msg_len = 0;
+	size_t msg_len = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != CS_OK) {
@@ -478,7 +478,7 @@ evs_error_t evs_mcast_groups (
 	struct iovec iov[64]; /* FIXME: what if iov_len > 62 ?  use malloc */
 	struct req_lib_evs_mcast_groups req_lib_evs_mcast_groups;
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
-	int msg_len = 0;
+	size_t msg_len = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
 	if (error != CS_OK) {

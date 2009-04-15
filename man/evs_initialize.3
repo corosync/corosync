@@ -62,13 +62,13 @@ is called.  The callback functions are described by the following type definitio
 .ta 4n 20n 32n
 typedef void (*evs_deliver_fn_t) (
         struct evs_address source_addr,
-        void *msg,
-        int msg_len);
+        const void *msg,
+        size_t msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-        struct evs_address *member_list, int member_list_entries,
-        struct evs_address *left_list, int left_list_entries,
-        struct evs_address *joined_list, int joined_list_entries);
+        const struct evs_address *member_list, size_t member_list_entries,
+        const struct evs_address *left_list, size_t left_list_entries,
+        const struct evs_address *joined_list, size_t joined_list_entries);
 .ta
 .fi
 .RE

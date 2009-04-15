@@ -501,7 +501,7 @@ cs_error_t cpg_mcast_joined (
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
-	int msg_len = 0;
+	size_t msg_len = 0;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
 	if (error != CS_OK) {
