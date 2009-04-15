@@ -43,7 +43,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 
-static votequorum_handle_t handle;
+static votequorum_handle_t g_handle;
 
 static const char *node_state(int state)
 {
@@ -116,13 +116,13 @@ int main(int argc, char *argv[])
 	callbacks.votequorum_notify_fn = votequorum_notification_fn;
 	callbacks.votequorum_expectedvotes_notify_fn = votequorum_expectedvotes_notification_fn;
 
-	if ( (err=votequorum_initialize(&handle, &callbacks)) != CS_OK)
+	if ( (err=votequorum_initialize(&g_handle, &callbacks)) != CS_OK)
 		fprintf(stderr, "votequorum_initialize FAILED: %d\n", err);
 
-	if ( (err = votequorum_trackstart(handle, handle, CS_TRACK_CHANGES)) != CS_OK)
+	if ( (err = votequorum_trackstart(g_handle, g_handle, CS_TRACK_CHANGES)) != CS_OK)
 		fprintf(stderr, "votequorum_trackstart FAILED: %d\n", err);
 
-	if ( (err=votequorum_getinfo(handle, 0, &info)) != CS_OK)
+	if ( (err=votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
 		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
 	else {
 		printf("node votes       %d\n", info.node_votes);
@@ -139,16 +139,16 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc >= 2 && atoi(argv[1])) {
-		if ( (err=votequorum_setexpected(handle, atoi(argv[1]))) != CS_OK)
+		if ( (err=votequorum_setexpected(g_handle, atoi(argv[1]))) != CS_OK)
 			fprintf(stderr, "set expected votes FAILED: %d\n", err);
 	}
 	if (argc >= 3 && atoi(argv[2])) {
-		if ( (err=votequorum_setvotes(handle, 0, atoi(argv[2]))) != CS_OK)
+		if ( (err=votequorum_setvotes(g_handle, 0, atoi(argv[2]))) != CS_OK)
 			fprintf(stderr, "set votes FAILED: %d\n", err);
 	}
 
 	if (argc >= 2) {
-		if ( (err=votequorum_getinfo(handle, 0, &info)) != CS_OK)
+		if ( (err=votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
 			fprintf(stderr, "votequorum_getinfo2 FAILED: %d\n", err);
 		else {
 			printf("-------------------\n");
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	printf("-------------------\n");
 
 	while (1)
-		votequorum_dispatch(handle, CS_DISPATCH_ALL);
+		votequorum_dispatch(g_handle, CS_DISPATCH_ALL);
 
 	return 0;
 }
