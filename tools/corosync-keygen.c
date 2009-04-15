@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -50,13 +50,16 @@ int main (void) {
 	int random_fd;
 	unsigned char key[128];
 	ssize_t res;
-	
+
 	printf ("Corosync Cluster Engine Authentication key generator.\n");
 	if (geteuid() != 0) {
 		printf ("Error: Authorization key must be generated as root user.\n");
 		exit (1);
 	}
-	mkdir (SYSCONFDIR "/ais", 0700);
+	if (mkdir (SYSCONFDIR "/ais", 0700)) {
+		perror ("Failed to create directory: " SYSCONFDIR "/ais");
+		exit (1);
+	}
 
 	printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
 	random_fd = open ("/dev/random", O_RDONLY);
@@ -69,10 +72,11 @@ int main (void) {
 	 * Read random data
 	 */
 	res = read (random_fd, key, sizeof (key));
-	if (res == -1) {
+	if (res != sizeof (key)) {
 		perror ("Could not read /dev/random");
 		exit (1);
 	}
+	close (random_fd);
 
 	/*
 	 * Open key
@@ -90,7 +94,10 @@ int main (void) {
 		perror ("Could not fchown key to uid 0 and gid 0\n");
 		exit (1);
 	}
-	fchmod (authkey_fd, 0400);
+	if (fchmod (authkey_fd, 0400)) {
+		perror ("Failed to set key file permissions to 0400\n");
+		exit (1);
+	}
 
 	printf ("Writing corosync key to " KEYFILE ".\n");
 
@@ -98,10 +105,15 @@ int main (void) {
 	 * Write key
 	 */
 	res = write (authkey_fd, key, sizeof (key));
-	if (res == -1) {
+	if (res != sizeof (key)) {
 		perror ("Could not write " KEYFILE);
 		exit (1);
 	}
-	
+
+	if (close (authkey_fd)) {
+		perror ("Could not write " KEYFILE);
+		exit (1);
+	}
+
 	return (0);
 }
