@@ -848,12 +848,12 @@ static void message_handler_req_lib_cfg_tryshutdown (
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 	const struct req_lib_cfg_tryshutdown *req_lib_cfg_tryshutdown = msg;
-	struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
 	struct list_head *iter;
 
 	ENTER();
 
 	if (req_lib_cfg_tryshutdown->flags == CFG_SHUTDOWN_FLAG_IMMEDIATE) {
+		struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
 
 		/*
 		 * Tell other nodes
