@@ -311,7 +311,7 @@ static void encrypt_and_sign_worker (
 	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
 	size_t outlen = 0;
-	hmac_state hmac_state;
+	hmac_state hmac_st;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
 
@@ -358,20 +358,20 @@ static void encrypt_and_sign_worker (
 		outlen - sizeof (struct security_header),
 		&stream_prng_state);
 
-	memset (&hmac_state, 0, sizeof (hmac_state));
+	memset (&hmac_st, 0, sizeof (hmac_st));
 
 	/*
 	 * Sign the contents of the message with the hmac key and store signature in message
 	 */
-	hmac_init (&hmac_state, DIGEST_SHA1, hmac_key, 16);
+	hmac_init (&hmac_st, DIGEST_SHA1, hmac_key, 16);
 
-	hmac_process (&hmac_state, 
+	hmac_process (&hmac_st, 
 		buf + HMAC_HASH_SIZE,
 		outlen - HMAC_HASH_SIZE);
 
 	len = hash_descriptor[DIGEST_SHA1]->hashsize;
 
-	hmac_done (&hmac_state, header->hash_digest, &len);
+	hmac_done (&hmac_st, header->hash_digest, &len);
 
 	*buf_len = outlen;
 }
