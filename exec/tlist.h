@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -154,9 +154,10 @@ static inline int timerlist_add_duration (struct timerlist *timerlist,
 	return (0);
 }
 
-static inline void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
+static inline void timerlist_del (struct timerlist *timerlist,
+				  timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	memset (timer->handle_addr, 0, sizeof (struct timerlist_timer *));
 	/*
@@ -172,25 +173,25 @@ static inline void timerlist_del (struct timerlist *timerlist, timer_handle time
 	free (timer);
 }
 
-static inline unsigned long long timerlist_expire_time (struct timerlist *timerlist, timer_handle timer_handle)
+static inline unsigned long long timerlist_expire_time (struct timerlist *timerlist, timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	return (timer->nano_from_epoch);
 }
 
-static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	memset (timer->handle_addr, 0, sizeof (struct timerlist_timer *));
 	list_del (&timer->list);
 	list_init (&timer->list);
 }
 
-static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	free (timer);
 }

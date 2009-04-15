@@ -240,11 +240,11 @@ int corosync_timer_add_duration (
 }
 
 void corosync_timer_delete (
-	timer_handle timer_handle)
+	timer_handle th)
 {
 	int unlock;
 
-	if (timer_handle == 0) {
+	if (th == 0) {
 		return;
 	}
 
@@ -255,7 +255,7 @@ void corosync_timer_delete (
 		pthread_mutex_lock (&timer_mutex);
 	}
 
-	timerlist_del (&timers_timerlist, timer_handle);
+	timerlist_del (&timers_timerlist, th);
 
 	if (unlock) {
 		pthread_mutex_unlock (&timer_mutex);
@@ -278,12 +278,12 @@ unsigned long long corosync_timer_time_get (void)
 }
 
 unsigned long long corosync_timer_expire_time_get (
-	timer_handle timer_handle)
+	timer_handle th)
 {
 	int unlock;
 	unsigned long long expire;
 
-	if (timer_handle == 0) {
+	if (th == 0) {
 		return (0);
 	}
 
@@ -294,7 +294,7 @@ unsigned long long corosync_timer_expire_time_get (
 		pthread_mutex_lock (&timer_mutex);
 	}
 
-	expire = timerlist_expire_time (&timers_timerlist, timer_handle);
+	expire = timerlist_expire_time (&timers_timerlist, th);
 
 	if (unlock) {
 		pthread_mutex_unlock (&timer_mutex);

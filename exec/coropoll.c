@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -305,12 +305,12 @@ error_exit:
 
 int poll_timer_delete (
 	hdb_handle_t handle,
-	poll_timer_handle timer_handle)
+	poll_timer_handle th)
 {
 	struct poll_instance *poll_instance;
 	int res = 0;
 
-	if (timer_handle == 0) {
+	if (th == 0) {
 		return (0);
 	}
 	res = hdb_handle_get (&poll_instance_database, handle,
@@ -320,7 +320,7 @@ int poll_timer_delete (
 		goto error_exit;
 	}
 
-	timerlist_del (&poll_instance->timerlist, (void *)timer_handle);
+	timerlist_del (&poll_instance->timerlist, (void *)th);
 
 	hdb_handle_put (&poll_instance_database, handle);
 
