@@ -349,7 +349,7 @@ struct req_exec_cpg_downlist {
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
 };
 
-static struct req_exec_cpg_downlist req_exec_cpg_downlist;
+static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
 static void cpg_sync_init (void)
 {
@@ -659,12 +659,12 @@ static void cpg_confchg_fn (
 		log_printf(LOG_LEVEL_DEBUG, "confchg, low nodeid=%d, us = %d\n", lowest_nodeid, api->totem_nodeid_get());
 		if (lowest_nodeid == api->totem_nodeid_get()) {
 
-			req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
-			req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
+			g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
+			g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
 
-			req_exec_cpg_downlist.left_nodes = left_list_entries;
+			g_req_exec_cpg_downlist.left_nodes = left_list_entries;
 			for (i = 0; i < left_list_entries; i++) {
-				req_exec_cpg_downlist.nodeids[i] = left_list[i];
+				g_req_exec_cpg_downlist.nodeids[i] = left_list[i];
 			}
 			log_printf(LOG_LEVEL_DEBUG,
 				   "confchg, build downlist: %lu nodes\n",
@@ -673,12 +673,12 @@ static void cpg_confchg_fn (
 	}
 
 	/* Don't send this message until we get the final configuration message */
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR && req_exec_cpg_downlist.left_nodes) {
-		req_exec_cpg_iovec.iov_base = (char *)&req_exec_cpg_downlist;
-		req_exec_cpg_iovec.iov_len = req_exec_cpg_downlist.header.size;
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR && g_req_exec_cpg_downlist.left_nodes) {
+		req_exec_cpg_iovec.iov_base = (char *)&g_req_exec_cpg_downlist;
+		req_exec_cpg_iovec.iov_len = g_req_exec_cpg_downlist.header.size;
 
 		api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
-		req_exec_cpg_downlist.left_nodes = 0;
+		g_req_exec_cpg_downlist.left_nodes = 0;
 		log_printf(LOG_LEVEL_DEBUG, "confchg, sent downlist\n");
 	}
 }
