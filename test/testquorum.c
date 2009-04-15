@@ -8,7 +8,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/quorum.h>
 
-static quorum_handle_t handle;
+static quorum_handle_t g_handle;
 
 static void quorum_notification_fn(
 	quorum_handle_t handle,
@@ -38,13 +38,13 @@ int main(int argc, char *argv[])
 	int err;
 
 	callbacks.quorum_notify_fn = quorum_notification_fn;
-	if ( (err=quorum_initialize(&handle, &callbacks)) != CS_OK)
+	if ( (err=quorum_initialize(&g_handle, &callbacks)) != CS_OK)
 		fprintf(stderr, "quorum_initialize FAILED: %d\n", err);
 
-	if ( (err=quorum_trackstart(handle, CS_TRACK_CHANGES)) != CS_OK)
+	if ( (err=quorum_trackstart(g_handle, CS_TRACK_CHANGES)) != CS_OK)
 		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
 
-	if ( (err=quorum_getquorate(handle, &quorate)) != CS_OK)
+	if ( (err=quorum_getquorate(g_handle, &quorate)) != CS_OK)
 		fprintf(stderr, "quorum_getquorate FAILED: %d\n", err);
 	else {
 		printf("quorate   %d\n", quorate);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	printf("-------------------\n");
 
 	while (1)
-		quorum_dispatch(handle, CS_DISPATCH_ALL);
+		quorum_dispatch(g_handle, CS_DISPATCH_ALL);
 
 	return 0;
 }
