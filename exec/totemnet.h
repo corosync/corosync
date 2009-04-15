@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -59,12 +59,12 @@ extern int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len),
+		const void *msg,
+		size_t msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_address));
+		const struct totem_ip_address *iface_address));
 
 extern int totemnet_processor_count_set (
 	hdb_handle_t handle,
@@ -72,17 +72,17 @@ extern int totemnet_processor_count_set (
 
 extern int totemnet_token_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemnet_mcast_flush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemnet_mcast_noflush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemnet_recv_flush (hdb_handle_t handle);
@@ -103,6 +103,6 @@ extern int totemnet_iface_get (
 
 extern int totemnet_token_target_set (
 	hdb_handle_t handle,
-	struct totem_ip_address *token_target);
+	const struct totem_ip_address *token_target);
 
 #endif /* TOTEMNET_H_DEFINED */

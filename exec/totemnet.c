@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
 
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -119,12 +119,12 @@ struct totemnet_instance {
 
 	void (*totemnet_deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len);
+		const void *msg,
+		size_t msg_len);
 
 	void (*totemnet_iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_address);
+		const struct totem_ip_address *iface_address);
 
 	/*
 	 * Function and data used to log messages
@@ -297,9 +297,9 @@ static int authenticate_and_decrypt (
 static void encrypt_and_sign_worker (
 	struct totemnet_instance *instance,
 	unsigned char *buf,
-	int *buf_len,
-	struct iovec *iovec,
-	unsigned int iov_len,
+	size_t *buf_len,
+	const struct iovec *iovec,
+	size_t iov_len,
 	prng_state *prng_state_in)
 {
 	int i;
@@ -310,7 +310,7 @@ static void encrypt_and_sign_worker (
 	unsigned char *cipher_key = &keys[16];
 	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
-	int outlen = 0;
+	size_t outlen = 0;
 	hmac_state hmac_state;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
@@ -379,16 +379,16 @@ static void encrypt_and_sign_worker (
 static inline void ucast_sendmsg (
 	struct totemnet_instance *instance,
 	struct totem_ip_address *system_to,
-	struct iovec *iovec_in,
-	unsigned int iov_len_in)
+	const struct iovec *iovec_in,
+	size_t iov_len_in)
 {
 	struct msghdr msg_ucast;
 	int res = 0;
-	int buf_len;
+	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec_encrypt[20];
-	struct iovec *iovec_sendmsg;
+	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
 	unsigned int iov_len;
 	int addrlen;
@@ -427,7 +427,7 @@ static inline void ucast_sendmsg (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
-	msg_ucast.msg_iov = iovec_sendmsg;
+	msg_ucast.msg_iov = (void *) iovec_sendmsg;
 	msg_ucast.msg_iovlen = iov_len;
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
@@ -443,16 +443,16 @@ static inline void ucast_sendmsg (
 
 static inline void mcast_sendmsg (
 	struct totemnet_instance *instance,
-	struct iovec *iovec_in,
-	unsigned int iov_len_in)
+	const struct iovec *iovec_in,
+	size_t iov_len_in)
 {
 	struct msghdr msg_mcast;
 	int res = 0;
-	int buf_len;
+	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec_encrypt[20];
-	struct iovec *iovec_sendmsg;
+	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
 	unsigned int iov_len;
 	int addrlen;
@@ -491,7 +491,7 @@ static inline void mcast_sendmsg (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
-	msg_mcast.msg_iov = iovec_sendmsg;
+	msg_mcast.msg_iov = (void *) iovec_sendmsg;
 	msg_mcast.msg_iovlen = iov_len;
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
@@ -527,7 +527,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	struct msghdr msg_mcast;
 	unsigned char sheader[sizeof (struct security_header)];
 	int res = 0;
-	int buf_len;
+	size_t buf_len;
 	struct iovec iovec_encrypted;
 	struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
@@ -1157,12 +1157,12 @@ int totemnet_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len),
+		const void *msg,
+		size_t msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_address))
+		const struct totem_ip_address *iface_address))
 {
 	struct totemnet_instance *instance;
 	unsigned int res;
@@ -1334,7 +1334,7 @@ error_exit:
 
 int totemnet_token_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len)
 {
 	struct totemnet_instance *instance;
@@ -1356,7 +1356,7 @@ error_exit:
 }
 int totemnet_mcast_flush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len)
 {
 	struct totemnet_instance *instance;
@@ -1379,7 +1379,7 @@ error_exit:
 
 int totemnet_mcast_noflush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len)
 {
 	struct totemnet_instance *instance;
@@ -1481,7 +1481,7 @@ error_exit:
 
 int totemnet_token_target_set (
 	hdb_handle_t handle,
-	struct totem_ip_address *token_target)
+	const struct totem_ip_address *token_target)
 {
 	struct totemnet_instance *instance;
 	unsigned int res;
@@ -1500,5 +1500,3 @@ int totemnet_token_target_set (
 error_exit:
 	return (res);
 }
-
-

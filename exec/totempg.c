@@ -66,7 +66,7 @@
 
 /*
  * ASSEMBLY AND UNPACKING ALGORITHM:
- * 
+ *
  * copy incoming packet into assembly data buffer indexed by current
  * location of end of fragment
  *
@@ -79,7 +79,7 @@
  * else
  * if msg_count = 1 and fragmented
  *	do nothing
- *	
+ *
  */
 
 #include <config.h>
@@ -211,7 +211,7 @@ static unsigned int totempg_max_handle = 0;
 struct totempg_group_instance {
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required);
 
@@ -497,7 +497,7 @@ static void totempg_confchg_fn (
 
 static void totempg_deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len,
 	int endian_conversion_required)
 {
@@ -985,7 +985,7 @@ int totempg_groups_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required),
 

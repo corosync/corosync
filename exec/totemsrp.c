@@ -457,7 +457,7 @@ struct totemsrp_instance {
 
 	void (*totemsrp_deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required);
 
@@ -507,8 +507,8 @@ struct message_handlers {
 	int count;
 	int (*handler_functions[6]) (
 		struct totemsrp_instance *instance,
-		void *msg,
-		int msg_len,
+		const void *msg,
+		size_t msg_len,
 		int endian_conversion_needed);
 };
 
@@ -517,38 +517,38 @@ struct message_handlers {
  */
 static int message_handler_orf_token (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static int message_handler_mcast (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static int message_handler_memb_merge_detect (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static int message_handler_memb_join (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static int message_handler_memb_commit_token (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static int message_handler_token_hold_cancel (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed);
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance);
@@ -556,7 +556,7 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance);
 static unsigned int main_msgs_missing (void);
 
 static void main_token_seqid_get (
-	void *msg,
+	const void *msg,
 	unsigned int *seqid,
 	unsigned int *token_is);
 
@@ -585,14 +585,14 @@ static void memb_state_commit_token_target_set (struct totemsrp_instance *instan
 static int memb_state_commit_token_send (struct totemsrp_instance *instance, struct memb_commit_token *memb_commit_token);
 static void memb_state_commit_token_create (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
 static int token_hold_cancel_send (struct totemsrp_instance *instance);
-static void orf_token_endian_convert (struct orf_token *in, struct orf_token *out);
-static void memb_commit_token_endian_convert (struct memb_commit_token *in, struct memb_commit_token *out);
-static void memb_join_endian_convert (struct memb_join *in, struct memb_join *out);
-static void mcast_endian_convert (struct mcast *in, struct mcast *out);
+static void orf_token_endian_convert (const struct orf_token *in, struct orf_token *out);
+static void memb_commit_token_endian_convert (const struct memb_commit_token *in, struct memb_commit_token *out);
+static void memb_join_endian_convert (const struct memb_join *in, struct memb_join *out);
+static void mcast_endian_convert (const struct mcast *in, struct mcast *out);
 static void memb_merge_detect_endian_convert (
-	struct memb_merge_detect *in,
+	const struct memb_merge_detect *in,
 	struct memb_merge_detect *out);
-static void srp_addr_copy_endian_convert (struct srp_addr *out, struct srp_addr *in);
+static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in);
 static void timer_function_orf_token_timeout (void *data);
 static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
@@ -601,12 +601,12 @@ static void timer_function_merge_detect_timeout (void *data);
 
 void main_deliver_fn (
 	void *context,
-	void *msg,
-	int msg_len);
+	const void *msg,
+	size_t msg_len);
 
 void main_iface_change_fn (
 	void *context,
-	struct totem_ip_address *iface_address,
+	const struct totem_ip_address *iface_address,
 	unsigned int iface_no);
 
 /*
@@ -659,7 +659,7 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 }
 
 static void main_token_seqid_get (
-	void *msg,
+	const void *msg,
 	unsigned int *seqid,
 	unsigned int *token_is)
 {
@@ -689,7 +689,7 @@ int totemsrp_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required),
 
@@ -1037,7 +1037,7 @@ static void srp_addr_to_nodeid (
 	}
 }
 
-static void srp_addr_copy_endian_convert (struct srp_addr *out, struct srp_addr *in)
+static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in)
 {
 	int i;
 
@@ -3188,8 +3188,8 @@ struct timeval tv_old;
  */
 static int message_handler_orf_token (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	char token_storage[1500];
@@ -3612,8 +3612,8 @@ static void messages_deliver_to_app (
  */
 static int message_handler_mcast (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	struct sort_queue_item sort_queue_item;
@@ -3734,8 +3734,8 @@ static int message_handler_mcast (
 
 static int message_handler_memb_merge_detect (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	struct memb_merge_detect *memb_merge_detect = (struct memb_merge_detect *)msg;
@@ -3862,7 +3862,7 @@ static int memb_join_process (
 	return (0); /* gather not entered */
 }
 
-static void memb_join_endian_convert (struct memb_join *in, struct memb_join *out)
+static void memb_join_endian_convert (const struct memb_join *in, struct memb_join *out)
 {
 	int i;
 	struct srp_addr *in_proc_list;
@@ -3891,7 +3891,7 @@ static void memb_join_endian_convert (struct memb_join *in, struct memb_join *ou
 	}
 }
 
-static void memb_commit_token_endian_convert (struct memb_commit_token *in, struct memb_commit_token *out)
+static void memb_commit_token_endian_convert (const struct memb_commit_token *in, struct memb_commit_token *out)
 {
 	int i;
 	struct srp_addr *in_addr = (struct srp_addr *)in->end_of_commit_token;
@@ -3930,7 +3930,7 @@ static void memb_commit_token_endian_convert (struct memb_commit_token *in, stru
 	}
 }
 
-static void orf_token_endian_convert (struct orf_token *in, struct orf_token *out)
+static void orf_token_endian_convert (const struct orf_token *in, struct orf_token *out)
 {
 	int i;
 
@@ -3954,7 +3954,7 @@ static void orf_token_endian_convert (struct orf_token *in, struct orf_token *ou
 	}
 }
 
-static void mcast_endian_convert (struct mcast *in, struct mcast *out)
+static void mcast_endian_convert (const struct mcast *in, struct mcast *out)
 {
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
@@ -3971,7 +3971,7 @@ static void mcast_endian_convert (struct mcast *in, struct mcast *out)
 }
 
 static void memb_merge_detect_endian_convert (
-	struct memb_merge_detect *in,
+	const struct memb_merge_detect *in,
 	struct memb_merge_detect *out)
 {
 	out->header.type = in->header.type;
@@ -3984,8 +3984,8 @@ static void memb_merge_detect_endian_convert (
 
 static int message_handler_memb_join (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	struct memb_join *memb_join;
@@ -4049,8 +4049,8 @@ static int message_handler_memb_join (
 
 static int message_handler_memb_commit_token (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	struct memb_commit_token *memb_commit_token_convert = alloca (msg_len);
@@ -4130,8 +4130,8 @@ static int message_handler_memb_commit_token (
 
 static int message_handler_token_hold_cancel (
 	struct totemsrp_instance *instance,
-	void *msg,
-	int msg_len,
+	const void *msg,
+	size_t msg_len,
 	int endian_conversion_needed)
 {
 	struct token_hold_cancel *token_hold_cancel = (struct token_hold_cancel *)msg;
@@ -4149,14 +4149,16 @@ static int message_handler_token_hold_cancel (
 
 void main_deliver_fn (
 	void *context,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	struct message_header *message_header = (struct message_header *)msg;
 
 	if (msg_len < sizeof (struct message_header)) {
-		log_printf (instance->totemsrp_log_level_security, "Received message is too short...  ignoring %d.\n", msg_len);
+		log_printf (instance->totemsrp_log_level_security,
+			    "Received message is too short...  ignoring %u.\n",
+			    (unsigned int)msg_len);
 		return;
 	}
 	
@@ -4177,7 +4179,7 @@ void main_deliver_fn (
 
 void main_iface_change_fn (
 	void *context,
-	struct totem_ip_address *iface_addr,
+	const struct totem_ip_address *iface_addr,
 	unsigned int iface_no)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;

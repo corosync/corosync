@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -80,7 +80,7 @@ extern int totempg_groups_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required),
 
@@ -117,7 +117,7 @@ extern int totempg_groups_joined_reserve (
 
 extern int totempg_groups_joined_release (
 	int msg_count);
-	
+
 extern int totempg_groups_mcast_groups (
 	hdb_handle_t handle,
 	int guarantee,
@@ -132,7 +132,7 @@ extern int totempg_groups_send_ok_groups (
 	size_t groups_cnt,
 	const struct iovec *iovec,
 	unsigned int iov_len);
-	
+
 extern int totempg_ifaces_get (
 	unsigned int nodeid,
         struct totem_ip_address *interfaces,
@@ -146,5 +146,5 @@ extern unsigned int totempg_my_nodeid_get (void);
 extern int totempg_my_family_get (void);
 
 extern int totempg_ring_reenable (void);
-	
+
 #endif /* TOTEMPG_H_DEFINED */

@@ -102,7 +102,7 @@ static int sync_service_process (enum totem_callback_token_type type,
 
 static void sync_deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len,
 	int endian_conversion_required);
 
@@ -327,7 +327,7 @@ static void sync_endian_convert (struct req_exec_sync_barrier_start
 
 static void sync_deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len,
 	int endian_conversion_required)
 {

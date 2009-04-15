@@ -412,7 +412,7 @@ static void corosync_mlockall (void)
 
 static void deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len,
 	int endian_conversion_required)
 {

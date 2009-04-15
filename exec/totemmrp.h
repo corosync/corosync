@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -61,7 +61,7 @@ extern int totemmrp_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
+		const struct iovec *iovec,
 		unsigned int iov_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (

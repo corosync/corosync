@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -59,16 +59,16 @@ extern int totemrrp_initialize (
 
 	void (*deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len),
+		const void *msg,
+		size_t msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_addr,
+		const struct totem_ip_address *iface_addr,
 		unsigned int iface_no),
 
 	void (*token_seqid_get) (
-		void *msg,
+		const void *msg,
 		unsigned int *seqid,
 		unsigned int *token_is),
 
@@ -81,17 +81,17 @@ extern int totemrrp_processor_count_set (
 
 extern int totemrrp_token_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemrrp_mcast_noflush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemrrp_mcast_flush_send (
 	hdb_handle_t handle,
-	struct iovec *iovec,
+	const struct iovec *iovec,
 	unsigned int iov_len);
 
 extern int totemrrp_recv_flush (hdb_handle_t handle);
