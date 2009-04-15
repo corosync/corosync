@@ -441,7 +441,7 @@ coroipcc_fd_get (void *ipc_ctx)
 }
 
 static void memcpy_swrap (void *dest, size_t dest_len,
-			  void *src, int len, unsigned int *read)
+			  void *src, int len, unsigned int *n_read)
 {
 	char *dest_chr = (char *)dest;
 	char *src_chr = (char *)src;
@@ -452,16 +452,16 @@ static void memcpy_swrap (void *dest, size_t dest_len,
 	first_read = len;
 	second_read = 0;
 
-	if (len + *read >= DISPATCH_SIZE) {
-		first_read = DISPATCH_SIZE - *read;
-		second_read = (len + *read) % DISPATCH_SIZE;
+	if (len + *n_read >= DISPATCH_SIZE) {
+		first_read = DISPATCH_SIZE - *n_read;
+		second_read = (len + *n_read) % DISPATCH_SIZE;
 	}
-	memcpy (dest_chr, &src_chr[*read], first_read);
+	memcpy (dest_chr, &src_chr[*n_read], first_read);
 	if (second_read) {
 		memcpy (&dest_chr[first_read], src_chr,
 			second_read);
 	}
-	*read = (*read + len) % (DISPATCH_SIZE);
+	*n_read = (*n_read + len) % (DISPATCH_SIZE);
 }
 int original_flow = -1;
 
