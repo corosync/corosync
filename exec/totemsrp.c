@@ -560,14 +560,14 @@ static void main_token_seqid_get (
 	unsigned int *seqid,
 	unsigned int *token_is);
 
-static void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src);
+static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src);
 
 static void srp_addr_to_nodeid (
 	unsigned int *nodeid_out,
 	struct srp_addr *srp_addr_in,
 	unsigned int entries);
 
-static int srp_addr_equal (struct srp_addr *a, struct srp_addr *b);
+static int srp_addr_equal (const struct srp_addr *a, const struct srp_addr *b);
 
 static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
 
@@ -579,7 +579,7 @@ static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token
 static void messages_free (struct totemsrp_instance *instance, unsigned int token_aru);
 
 static void memb_ring_id_set_and_store (struct totemsrp_instance *instance,
-	struct memb_ring_id *ring_id);
+	const struct memb_ring_id *ring_id);
 static void memb_state_commit_token_update (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
 static void memb_state_commit_token_target_set (struct totemsrp_instance *instance, struct memb_commit_token *commit_token);
 static int memb_state_commit_token_send (struct totemsrp_instance *instance, struct memb_commit_token *memb_commit_token);
@@ -663,7 +663,7 @@ static void main_token_seqid_get (
 	unsigned int *seqid,
 	unsigned int *token_is)
 {
-	struct orf_token *token = (struct orf_token *)msg;
+	const struct orf_token *token = msg;
 
 	*seqid = 0;
 	*token_is = 0;
@@ -1002,7 +1002,7 @@ error_exit:
 /*
  * Set operations for use by the membership algorithm
  */
-static int srp_addr_equal (struct srp_addr *a, struct srp_addr *b)
+static int srp_addr_equal (const struct srp_addr *a, const struct srp_addr *b)
 {
 	unsigned int i;
 	unsigned int res;
@@ -1016,7 +1016,7 @@ static int srp_addr_equal (struct srp_addr *a, struct srp_addr *b)
 	return (1);
 }
 
-static void srp_addr_copy (struct srp_addr *dest, struct srp_addr *src)
+static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src)
 {
 	unsigned int i;
 
@@ -1082,7 +1082,7 @@ static void memb_set_subtract (
  */
 static void memb_consensus_set (
 	struct totemsrp_instance *instance,
-	struct srp_addr *addr)
+	const struct srp_addr *addr)
 {
 	int found = 0;
 	int i;
@@ -1106,7 +1106,7 @@ static void memb_consensus_set (
  */
 static int memb_consensus_isset (
 	struct totemsrp_instance *instance,
-	struct srp_addr *addr)
+	const struct srp_addr *addr)
 {
 	int i;
 
@@ -1197,8 +1197,8 @@ static int memb_set_equal (
  * Is subset fully contained in fullset
  */
 static int memb_set_subset (
-	struct srp_addr *subset, int subset_entries,
-	struct srp_addr *fullset, int fullset_entries)
+	const struct srp_addr *subset, int subset_entries,
+	const struct srp_addr *fullset, int fullset_entries)
 {
 	int i;
 	int j;
@@ -1224,7 +1224,7 @@ static int memb_set_subset (
  * merge subset into fullset taking care not to add duplicates
  */
 static void memb_set_merge (
-	struct srp_addr *subset, int subset_entries,
+	const struct srp_addr *subset, int subset_entries,
 	struct srp_addr *fullset, int *fullset_entries)
 {
 	int found = 0;
@@ -1454,7 +1454,7 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance);
  */
 static void timer_function_orf_token_timeout (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
@@ -1488,7 +1488,7 @@ static void timer_function_orf_token_timeout (void *data)
 
 static void timer_function_heartbeat_timeout (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 	log_printf (instance->totemsrp_log_level_notice,
 		"HeartBeat Timer expired Invoking token loss mechanism in state %d \n", instance->memb_state);
 	timer_function_orf_token_timeout(data);
@@ -1496,7 +1496,7 @@ static void timer_function_heartbeat_timeout (void *data)
 
 static void memb_timer_function_state_gather (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 
 	switch (instance->memb_state) {
 	case MEMB_STATE_OPERATIONAL:
@@ -1523,7 +1523,7 @@ static void memb_timer_function_state_gather (void *data)
 
 static void memb_timer_function_gather_consensus_timeout (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 	memb_state_consensus_timeout_expired (instance);
 }
 
@@ -1551,7 +1551,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 		if (res != 0) {
 			continue;
 		}
-		recovery_message_item = (struct sort_queue_item *)ptr;
+		recovery_message_item = ptr;
 
 		/*
 		 * Convert recovery message into regular message
@@ -1839,10 +1839,10 @@ static void memb_state_recovery_enter (
 	char is_originated[4096];
 	char not_originated[4096];
 	char seqno_string_hex[10];
-	struct srp_addr *addr;
+	const struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
 
-	addr = (struct srp_addr *)commit_token->end_of_commit_token;
+	addr = (const struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	log_printf (instance->totemsrp_log_level_notice,
@@ -2513,7 +2513,7 @@ static void token_retransmit (struct totemsrp_instance *instance)
  */
 static void timer_function_token_retransmit_timeout (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 
 	switch (instance->memb_state) {
 	case MEMB_STATE_GATHER:
@@ -2529,7 +2529,7 @@ static void timer_function_token_retransmit_timeout (void *data)
 
 static void timer_function_token_hold_retransmit_timeout (void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 
 	switch (instance->memb_state) {
 	case MEMB_STATE_GATHER:
@@ -2545,7 +2545,7 @@ static void timer_function_token_hold_retransmit_timeout (void *data)
 
 static void timer_function_merge_detect_timeout(void *data)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)data;
+	struct totemsrp_instance *instance = data;
 
 	instance->my_merge_detect_timeout_outstanding = 0;
 
@@ -2966,7 +2966,7 @@ static void memb_ring_id_create_or_load (
 
 static void memb_ring_id_set_and_store (
 	struct totemsrp_instance *instance,
-	struct memb_ring_id *ring_id)
+	const struct memb_ring_id *ring_id)
 {
 	char filename[256];
 	int fd;
@@ -3794,7 +3794,7 @@ static int message_handler_memb_merge_detect (
 
 static int memb_join_process (
 	struct totemsrp_instance *instance,
-	struct memb_join *memb_join)
+	const struct memb_join *memb_join)
 {
 	unsigned char *commit_token_storage[TOKEN_SIZE_MAX];
 	struct memb_commit_token *my_commit_token =
@@ -3992,7 +3992,7 @@ static int message_handler_memb_join (
 	size_t msg_len,
 	int endian_conversion_needed)
 {
-	struct memb_join *memb_join;
+	const struct memb_join *memb_join;
 	struct memb_join *memb_join_convert = alloca (msg_len);
 	int gather_entered;
 
@@ -4001,7 +4001,7 @@ static int message_handler_memb_join (
 		memb_join_endian_convert (msg, memb_join_convert);
 
 	} else {
-		memb_join = (struct memb_join *)msg;
+		memb_join = msg;
 	}
 
 	if (instance->token_ring_id_seq < memb_join->ring_seq) {
@@ -4069,11 +4069,11 @@ static int message_handler_memb_commit_token (
 		"got commit token\n");
 
 	if (endian_conversion_needed) {
-		memb_commit_token = memb_commit_token_convert;
-		memb_commit_token_endian_convert (msg, memb_commit_token);
+		memb_commit_token_endian_convert (msg, memb_commit_token_convert);
 	} else {
-		memb_commit_token = (struct memb_commit_token *)msg;
+		memcpy (memb_commit_token_convert, msg, msg_len);
 	}
+	memb_commit_token = memb_commit_token_convert;
 	addr = (struct srp_addr *)memb_commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + memb_commit_token->addr_entries);
 
@@ -4138,7 +4138,7 @@ static int message_handler_token_hold_cancel (
 	size_t msg_len,
 	int endian_conversion_needed)
 {
-	struct token_hold_cancel *token_hold_cancel = (struct token_hold_cancel *)msg;
+	const struct token_hold_cancel *token_hold_cancel = msg;
 
 	if (memcmp (&token_hold_cancel->ring_id, &instance->my_ring_id,
 		sizeof (struct memb_ring_id)) == 0) {
@@ -4156,8 +4156,8 @@ void main_deliver_fn (
 	const void *msg,
 	size_t msg_len)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
-	struct message_header *message_header = (struct message_header *)msg;
+	struct totemsrp_instance *instance = context;
+	const struct message_header *message_header = msg;
 
 	if (msg_len < sizeof (struct message_header)) {
 		log_printf (instance->totemsrp_log_level_security,
@@ -4186,7 +4186,7 @@ void main_iface_change_fn (
 	const struct totem_ip_address *iface_addr,
 	unsigned int iface_no)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	struct totemsrp_instance *instance = context;
 
 	totemip_copy (&instance->my_id.addr[iface_no], iface_addr);
 	assert (instance->my_id.addr[iface_no].nodeid);
