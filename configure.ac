@@ -262,6 +262,7 @@ EXTRA_WARNINGS=""
 
 WARNLIST="
 	all
+	shadow
 	missing-prototypes
 	missing-declarations
 	strict-prototypes
