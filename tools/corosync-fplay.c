@@ -342,7 +342,7 @@ static struct printer_subsys printer_subsystems[] = {
 static unsigned int printer_subsys_count =
   sizeof (printer_subsystems) / sizeof (struct printer_subsys);
 
-static unsigned int record[10000];
+static unsigned int g_record[10000];
 
 /*
  * Copy record, dealing with wrapping
@@ -359,9 +359,9 @@ static int logsys_rec_get (int rec_idx) {
 		firstcopy = flt_data_size - rec_idx;
 		secondcopy -= firstcopy - rec_size;
 	}
-	memcpy (&record[0], &flt_data[rec_idx], firstcopy<<2);
+	memcpy (&g_record[0], &flt_data[rec_idx], firstcopy<<2);
 	if (secondcopy) {
-		memcpy (&record[firstcopy], &flt_data[0], secondcopy<<2);
+		memcpy (&g_record[firstcopy], &flt_data[0], secondcopy<<2);
 	}
 	return ((rec_idx + rec_size) % flt_data_size);
 }
@@ -488,7 +488,7 @@ int main (void)
 
 	for (;;) {
 		rec_idx = logsys_rec_get (rec_idx);
-		logsys_rec_print (record);
+		logsys_rec_print (g_record);
 		if (rec_idx == end_rec) {
 			break;
 		}
