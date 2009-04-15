@@ -321,21 +321,21 @@ static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 	}
 }
 
-static void ykd_state_endian_convert (struct ykd_state *ykd_state)
+static void ykd_state_endian_convert (struct ykd_state *state)
 {
 	int i;
 
-	ykd_session_endian_convert (&ykd_state->last_primary);
-	ykd_state->last_formed_entries = swab32 (ykd_state->last_formed_entries);
-	ykd_state->ambiguous_sessions_entries = swab32 (ykd_state->ambiguous_sessions_entries);
-	ykd_state->session_id = swab32 (ykd_state->session_id);
+	ykd_session_endian_convert (&state->last_primary);
+	state->last_formed_entries = swab32 (state->last_formed_entries);
+	state->ambiguous_sessions_entries = swab32 (state->ambiguous_sessions_entries);
+	state->session_id = swab32 (state->session_id);
 
-	for (i = 0; i < ykd_state->last_formed_entries; i++) {
-		ykd_session_endian_convert (&ykd_state->last_formed[i]);
+	for (i = 0; i < state->last_formed_entries; i++) {
+		ykd_session_endian_convert (&state->last_formed[i]);
 	}
 	
-	for (i = 0; i < ykd_state->ambiguous_sessions_entries; i++) {
-		ykd_session_endian_convert (&ykd_state->ambiguous_sessions[i]);
+	for (i = 0; i < state->ambiguous_sessions_entries; i++) {
+		ykd_session_endian_convert (&state->ambiguous_sessions[i]);
 	}
 }
 
