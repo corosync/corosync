@@ -3738,16 +3738,20 @@ static int message_handler_memb_merge_detect (
 	size_t msg_len,
 	int endian_conversion_needed)
 {
-	struct memb_merge_detect *memb_merge_detect = (struct memb_merge_detect *)msg;
+	struct memb_merge_detect memb_merge_detect;
+
 
 	if (endian_conversion_needed) {
-		memb_merge_detect_endian_convert (msg, msg);
+		memb_merge_detect_endian_convert (msg, &memb_merge_detect);
+	} else {
+		memcpy (&memb_merge_detect, msg,
+			sizeof (struct memb_merge_detect));
 	}
 
 	/*
 	 * do nothing if this is a merge detect from this configuration
 	 */
-	if (memcmp (&instance->my_ring_id, &memb_merge_detect->ring_id,
+	if (memcmp (&instance->my_ring_id, &memb_merge_detect.ring_id,
 		sizeof (struct memb_ring_id)) == 0) {
 
 		return (0);
@@ -3758,19 +3762,19 @@ static int message_handler_memb_merge_detect (
 	 */
 	switch (instance->memb_state) {
 	case MEMB_STATE_OPERATIONAL:
-		memb_set_merge (&memb_merge_detect->system_from, 1,
+		memb_set_merge (&memb_merge_detect.system_from, 1,
 			instance->my_proc_list, &instance->my_proc_list_entries);
 		memb_state_gather_enter (instance, 9);
 		break;
 
 	case MEMB_STATE_GATHER:
 		if (!memb_set_subset (
-			&memb_merge_detect->system_from,
+			&memb_merge_detect.system_from,
 			1,
 			instance->my_proc_list,
 			instance->my_proc_list_entries)) {
 
-			memb_set_merge (&memb_merge_detect->system_from, 1,
+			memb_set_merge (&memb_merge_detect.system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
 			memb_state_gather_enter (instance, 10);
 			return (0);
