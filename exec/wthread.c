@@ -52,7 +52,7 @@ struct thread_data {
 	void *data;
 };
 
-struct worker_thread {
+struct worker_thread_t {
 	struct worker_thread_group *worker_thread_group;
 	pthread_mutex_t new_work_mutex;
 	pthread_cond_t new_work_cond;
@@ -65,10 +65,10 @@ struct worker_thread {
 	struct thread_data thread_data;
 };
 
-static void *worker_thread (void *thread_data_in) {
+static void *start_worker_thread (void *thread_data_in) {
 	struct thread_data *thread_data = (struct thread_data *)thread_data_in;
-	struct worker_thread *worker_thread =
-		(struct worker_thread *)thread_data->data;
+	struct worker_thread_t *worker_thread =
+		(struct worker_thread_t *)thread_data->data;
 	void *data_for_worker_fn;
 
 	for (;;) {
@@ -112,7 +112,7 @@ int worker_thread_group_init (
 	worker_thread_group->threadcount = threads;
 	worker_thread_group->last_scheduled = 0;
 	worker_thread_group->worker_fn = worker_fn;
-	worker_thread_group->threads = malloc (sizeof (struct worker_thread) *
+	worker_thread_group->threads = malloc (sizeof (struct worker_thread_t) *
 		threads);
 	if (worker_thread_group->threads == 0) {
 		return (-1);
@@ -139,7 +139,7 @@ int worker_thread_group_init (
 			worker_thread_group->threads[i].thread_state;
 		worker_thread_group->threads[i].thread_data.data = &worker_thread_group->threads[i];
 		pthread_create (&worker_thread_group->threads[i].thread_id,
-			NULL, worker_thread, &worker_thread_group->threads[i].thread_data);
+			NULL, start_worker_thread, &worker_thread_group->threads[i].thread_data);
 	}
 	return (0);
 }
@@ -201,7 +201,7 @@ void worker_thread_group_atsegv (
 	struct worker_thread_group *worker_thread_group)
 {
 	void *data_for_worker_fn;
-	struct worker_thread *worker_thread;
+	struct worker_thread_t *worker_thread;
 	unsigned int i;
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {

@@ -38,7 +38,7 @@
 struct worker_thread_group {
 	int threadcount;
 	int last_scheduled;
-	struct worker_thread *threads;
+	struct worker_thread_t *threads;
 	void (*worker_fn) (void *thread_state, void *work_item);
 };
 
