@@ -184,7 +184,7 @@ static void printer_totemsrp_delv (const void **record)
 
 static void printer_totempg_mcast_fits (const void **record)
 {
-	const unsigned int *index = record[0];
+	const unsigned int *idx = record[0];
 	const unsigned int *iov_len = record[1];
 	const unsigned int *copy_len = record[2];
 	const unsigned int *fragment_size = record[3];
@@ -193,7 +193,7 @@ static void printer_totempg_mcast_fits (const void **record)
 	const unsigned char *next_fragment = record[6];
 
 	printf ("totempg_mcast index=[%d] iov_len=[%d] copy_len=[%d] fragment_size=[%d] max_packet_size=[%d] copy_base=[%d] next_fragment[%d]\n",
-	*index, *iov_len, *copy_len, *fragment_size, *max_packet_size, *copy_base, *next_fragment);
+	*idx, *iov_len, *copy_len, *fragment_size, *max_packet_size, *copy_base, *next_fragment);
 }
 
 static void sync_printer_service_process (const void **record)
