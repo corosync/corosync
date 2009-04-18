@@ -73,7 +73,6 @@ static void evs_deliver_fn (
 	const void *msg,
 	size_t msg_len)
 {
-  const char *m = msg;
 }
 
 static void evs_confchg_fn (
