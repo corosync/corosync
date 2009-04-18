@@ -69,6 +69,7 @@ int main(int argc, char** argv) {
 	cpg_callbacks_t cb={&deliver,&confch};
 	unsigned int nodeid=0;
 	struct cpg_name group={3,"foo"};
+	struct iovec msg={(void *)"hello", 5}; /* discard const */
 
 	struct pollfd pfd;
 	int fd;
@@ -78,7 +79,6 @@ int main(int argc, char** argv) {
 	assert(CS_OK==cpg_local_get(handle,&nodeid));
 	printf("local_get: %x\n", nodeid);
 	assert(CS_OK==cpg_join(handle, &group));
-	struct iovec msg={(void *)"hello", 5}; /* discard const */
 	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
 	cpg_fd_get (handle, &fd);
 	pfd.fd = fd;
