@@ -37,7 +37,7 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 			  autoheader automake autoconf
 
 dist_doc_DATA		= LICENSE QUICKSTART README.devmap \
-			  README.recovery SECURITY TODO
+			  README.recovery SECURITY TODO AUTHORS
 
 sysconf_DATA		= conf/corosync.conf
 

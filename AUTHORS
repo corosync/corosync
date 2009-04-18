@@ -1,0 +1,21 @@
+Last Updated April 2009
+
+Main Developers
+---------------
+Steven Dake		Maintainer, totem implementation, evs, cfg,
+			logsys, service engine architecture, ipc system
+			poll, timers, objdb, hdb, sync, coroapi
+Christine Caulfield	cpg, cfg, quorum, confdb, totem ipv6 support
+Fabien Thomas		OS portability, BSD port
+Hans Feldt		logging inspiration
+Angus Salkeld		objdb, static code analysis cleanup
+Lon Hohberger		logsys
+Fabio Di Nitto		automake, pkgconfig, logsys, config, distro release
+Jim Meyering		automake, sanitizing APIs, warnings removal
+Andrew Beekhof		automake, integration with Pacemaker
+Dave Teigland		cpg specification, integration with cluster3
+
+Significant credit belongs in our large vibrant community members, who are
+unfortunately too numerous to list.  Your tireless effort in testing, deploying,
+and providing bug reports of our community driven software model shows that
+open source can make a difference and produces better software.
