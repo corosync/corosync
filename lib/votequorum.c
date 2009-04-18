@@ -732,12 +732,6 @@ cs_error_t votequorum_fd_get (
 	return (CS_OK);
 }
 
-
-struct res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
-	char data[512000];
-};
-
 cs_error_t votequorum_dispatch (
 	votequorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -748,7 +742,7 @@ cs_error_t votequorum_dispatch (
 	int dispatch_avail;
 	struct votequorum_inst *votequorum_inst;
 	votequorum_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
 
@@ -776,10 +770,10 @@ cs_error_t votequorum_dispatch (
 	do {
 		pthread_mutex_lock (&votequorum_inst->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_recv (votequorum_inst->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
+		dispatch_avail = coroipcc_dispatch_get (
+			votequorum_inst->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -809,13 +803,13 @@ cs_error_t votequorum_dispatch (
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 
 		case MESSAGE_RES_VOTEQUORUM_NOTIFICATION:
 			if (callbacks.votequorum_notify_fn == NULL) {
 				continue;
 			}
-			res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)&dispatch_data;
+			res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)dispatch_data;
 
 			callbacks.votequorum_notify_fn ( handle,
 							 res_lib_votequorum_notification->context,
@@ -829,7 +823,7 @@ cs_error_t votequorum_dispatch (
 			if (callbacks.votequorum_expectedvotes_notify_fn == NULL) {
 				continue;
 			}
-			res_lib_votequorum_expectedvotes_notification = (struct res_lib_votequorum_expectedvotes_notification *)&dispatch_data;
+			res_lib_votequorum_expectedvotes_notification = (struct res_lib_votequorum_expectedvotes_notification *)dispatch_data;
 
 			callbacks.votequorum_expectedvotes_notify_fn ( handle,
 								       res_lib_votequorum_expectedvotes_notification->context,
@@ -837,10 +831,12 @@ cs_error_t votequorum_dispatch (
 			break;
 
 		default:
+			coroipcc_dispatch_put (votequorum_inst->ipc_ctx);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
+		coroipcc_dispatch_put (votequorum_inst->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed

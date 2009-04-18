@@ -74,7 +74,6 @@ static void evs_deliver_fn (
 	size_t msg_len)
 {
   const char *m = msg;
-  printf ("Delivering message %s\n", m);
 }
 
 static void evs_confchg_fn (

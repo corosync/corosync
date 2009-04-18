@@ -222,11 +222,6 @@ cs_error_t cpg_context_set (
 	return (CS_OK);
 }
 
-struct res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
-	char data[512000];
-};
-
 cs_error_t cpg_dispatch (
 	cpg_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -239,7 +234,7 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	cpg_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 	int ignore_dispatch = 0;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
@@ -265,16 +260,12 @@ cs_error_t cpg_dispatch (
 	do {
 		pthread_mutex_lock (&cpg_inst->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_recv (cpg_inst->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
+		dispatch_avail = coroipcc_dispatch_get (
+			cpg_inst->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
 
 		pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
-
-		if (error != CS_OK) {
-			goto error_put;
-		}
 
 		if (dispatch_avail == 0 && dispatch_types == CPG_DISPATCH_ALL) {
 			pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
@@ -302,9 +293,9 @@ cs_error_t cpg_dispatch (
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
-			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)&dispatch_data;
+			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)dispatch_data;
 
 			marshall_from_mar_cpg_name_t (
 				&group_name,
@@ -319,7 +310,7 @@ cs_error_t cpg_dispatch (
 			break;
 
 		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
-			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)&dispatch_data;
+			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)dispatch_data;
 
 			for (i = 0; i < res_cpg_confchg_callback->member_list_entries; i++) {
 				marshall_from_mar_cpg_address_t (&member_list[i],
@@ -353,10 +344,12 @@ cs_error_t cpg_dispatch (
 			break;
 
 		default:
+			coroipcc_dispatch_put (cpg_inst->ipc_ctx);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
+		coroipcc_dispatch_put (cpg_inst->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed

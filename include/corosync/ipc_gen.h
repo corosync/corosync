@@ -66,12 +66,11 @@ enum req_init_types {
 
 #define REQ_SIZE			1000000
 #define RES_SIZE			1000000
-#define DISPATCH_SIZE			1000000
+#define DISPATCH_SIZE			8192*128
 
 struct shared_memory {
 	unsigned char req_buffer[REQ_SIZE];
 	unsigned char res_buffer[RES_SIZE];
-	unsigned char dispatch_buffer[DISPATCH_SIZE];
 	unsigned int read;
 	unsigned int write;
 };
@@ -89,6 +88,7 @@ typedef struct {
 	int service __attribute__((aligned(8)));
 	unsigned long long shmkey __attribute__((aligned(8)));
 	unsigned long long semkey __attribute__((aligned(8)));
+	char dispatch_file[64]__attribute__((aligned(8)));
 } mar_req_setup_t __attribute__((aligned(8)));
 
 typedef struct {

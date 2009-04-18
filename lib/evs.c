@@ -65,11 +65,6 @@ struct evs_inst {
 	pthread_mutex_t dispatch_mutex;
 };
 
-struct res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
-	char data[512000];
-};
-
 static void evs_instance_destructor (void *instance);
 
 static struct saHandleDatabase evs_handle_t_db = {
@@ -208,7 +203,7 @@ evs_error_t evs_dispatch (
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
-	struct res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
@@ -225,34 +220,28 @@ evs_error_t evs_dispatch (
 	}
 
 	do {
-		dispatch_avail = coroipcc_dispatch_recv (evs_inst->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
-		if (dispatch_avail == -1) {
-			error = CS_ERR_LIBRARY;
-			goto error_nounlock;
-		}
-			
-
 		pthread_mutex_lock (&evs_inst->dispatch_mutex);
 
-		/*
-		 * Handle has been finalized in another thread
-		 */
-		if (evs_inst->finalize == 1) {
-			error = EVS_OK;
-			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
-			goto error_unlock;
-		}
+		dispatch_avail = coroipcc_dispatch_get (
+			evs_inst->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
+
+		pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 
 		if (dispatch_avail == 0 && dispatch_types == EVS_DISPATCH_ALL) {
-			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			break; /* exit do while cont is 1 loop */
 		} else 
 		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 			continue; /* next dispatch event */
+		}
+		if (dispatch_avail == -1) {
+			if (evs_inst->finalize == 1) {
+				error = CS_OK;
+			} else {
+				error = CS_ERR_LIBRARY;
+			}
+			goto error_put;
 		}
 
 		/*
@@ -262,13 +251,12 @@ evs_error_t evs_dispatch (
 		*/
 		memcpy (&callbacks, &evs_inst->callbacks, sizeof (evs_callbacks_t));
 
-		pthread_mutex_unlock (&evs_inst->dispatch_mutex);
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
-			res_evs_deliver_callback = (struct res_evs_deliver_callback *)&dispatch_data;
+			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
 			callbacks.evs_deliver_fn (
 				res_evs_deliver_callback->local_nodeid,
 				&res_evs_deliver_callback->msg,
@@ -276,7 +264,7 @@ evs_error_t evs_dispatch (
 			break;
 
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
-			res_evs_confchg_callback = (struct res_evs_confchg_callback *)&dispatch_data;
+			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
 			callbacks.evs_confchg_fn (
 				res_evs_confchg_callback->member_list,
 				res_evs_confchg_callback->member_list_entries,
@@ -287,10 +275,12 @@ evs_error_t evs_dispatch (
 			break;
 
 		default:
+			coroipcc_dispatch_put (evs_inst->ipc_ctx);
 			error = CS_ERR_LIBRARY;
-			goto error_nounlock;
+			goto error_put;
 			break;
 		}
+		coroipcc_dispatch_put (evs_inst->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed
@@ -313,9 +303,8 @@ evs_error_t evs_dispatch (
 		}
 	} while (cont);
 
-error_unlock:
+error_put:
 	saHandleInstancePut (&evs_handle_t_db, handle);
-error_nounlock:
 	return (error);
 }
 

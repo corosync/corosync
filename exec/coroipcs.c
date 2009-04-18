@@ -124,6 +124,7 @@ struct conn_info {
 	unsigned int pending_semops;
 	pthread_mutex_t mutex;
 	struct shared_memory *mem;
+	char *dispatch_buffer;
 	struct list_head outq_head;
 	void *private_data;
 	struct list_head list;
@@ -142,8 +143,6 @@ static void ipc_disconnect (struct conn_info *conn_info);
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
-
-static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len);
 
 static int ipc_thread_active (void *conn)
 {
@@ -241,6 +240,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		api->free (conn_info->private_data);
 	}
 	close (conn_info->fd);
+	munmap (conn_info->dispatch_buffer, (DISPATCH_SIZE));
 	api->free (conn_info);
 	api->serialize_unlock ();
 	return (-1);
@@ -651,25 +651,14 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 	return (bytes_left);
 }
 
-static int memcpy_dwrap (struct conn_info *conn_info, void *msg, int len)
+static void memcpy_dwrap (struct conn_info *conn_info, void *msg, unsigned int len)
 {
-	char *dest_char = (char *)conn_info->mem->dispatch_buffer;
-	char *src_char = msg;
-	unsigned int first_write;
-	unsigned int second_write;
+	unsigned int write_idx;
 
-	first_write = len;
-	second_write = 0;
-	if (len + conn_info->mem->write >= DISPATCH_SIZE) {
-		first_write = DISPATCH_SIZE - conn_info->mem->write;
-		second_write = len - first_write;
-	}
-	memcpy (&dest_char[conn_info->mem->write], src_char, first_write);
-	if (second_write) {
-		memcpy (dest_char, &src_char[first_write], second_write);
-	}
-	conn_info->mem->write = (conn_info->mem->write + len) % DISPATCH_SIZE;
-	return (0);
+	write_idx = conn_info->mem->write;
+
+	memcpy (&conn_info->dispatch_buffer[write_idx], msg, len);
+	conn_info->mem->write = (write_idx + len) % (DISPATCH_SIZE);
 }
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
@@ -934,6 +923,46 @@ retry_accept:
 	return (0);
 }
 
+static int
+coroipcs_memory_map (char *path, void **buf, size_t bytes)
+{
+	int fd;
+	void *addr_orig;
+	void *addr;
+	int res;
+ 
+	fd = open (path, O_RDWR, 0600);
+
+	unlink (path);
+
+	res = ftruncate (fd, bytes);
+
+	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+ 
+	if (addr_orig == MAP_FAILED) {
+		return (-1);
+	}
+ 
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	if (addr != addr_orig) {
+		return (-1);
+	}
+ 
+	addr = mmap (((char *)addr_orig) + bytes,
+                  bytes, PROT_READ | PROT_WRITE,
+                  MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+	return (0);
+}
+
 int coroipcs_handler_dispatch (
 	int fd,
 	int revent,
@@ -987,6 +1016,11 @@ int coroipcs_handler_dispatch (
 
 		conn_info->shmkey = req_setup->shmkey;
 		conn_info->semkey = req_setup->semkey;
+		res = coroipcs_memory_map (
+			req_setup->dispatch_file,
+			(void *)&conn_info->dispatch_buffer,
+			DISPATCH_SIZE);
+
 		conn_info->service = req_setup->service;
 		conn_info->refcount = 0;
 		conn_info->notify_flow_control_enabled = 0;

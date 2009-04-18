@@ -126,8 +126,6 @@ int main (void)
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (handle, &groups[0], 1);
-	printf ("Leave result %d\n", result);
 	delivery_string = "evs_mcast_joined";
 
 	/*
@@ -145,7 +143,6 @@ try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			&iov, 1);
 		if (result == CS_ERR_TRY_AGAIN) {
-//printf ("try again\n");
 			goto try_again_one;
 		}
 		result = evs_dispatch (handle, CS_DISPATCH_ALL);

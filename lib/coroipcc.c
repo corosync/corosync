@@ -56,6 +56,7 @@
 #include <assert.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <sys/mman.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
@@ -80,6 +81,7 @@ struct ipc_segment {
 	int semid;
 	int flow_control_state;
 	struct shared_memory *shared_memory;
+	void *dispatch_buffer;
 	uid_t euid;
 };
 
@@ -275,6 +277,61 @@ union semun {
 };
 #endif
 	
+static int
+coroipcc_memory_map (char *path, const char *file, void **buf, size_t bytes)
+{
+	int fd;
+	void *addr_orig;
+	void *addr;
+	int res;
+
+	sprintf (path, "/dev/shm/%s", file);
+ 
+	fd = mkstemp (path);
+	if (fd == -1) {
+		sprintf (path, "/var/run/%s", file);
+		fd = mkstemp (path);
+		if (fd == -1) {
+			return (-1);
+		}
+	}
+
+	res = ftruncate (fd, bytes);
+
+	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+ 
+	if (addr_orig == MAP_FAILED) {
+		return (-1);
+	}
+ 
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	if (addr != addr_orig) {
+		return (-1);
+	}
+ 
+	addr = mmap (((char *)addr_orig) + bytes,
+                  bytes, PROT_READ | PROT_WRITE,
+                  MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+	return (0);
+}
+ 
+static void
+coroipcc_memory_unmap (void *addr, size_t bytes)
+{
+	int res;
+ 
+	res = munmap (addr, bytes);
+}
+
 cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
@@ -291,6 +348,7 @@ coroipcc_service_connect (
 	mar_req_setup_t req_setup;
 	mar_res_setup_t res_setup;
 	union semun semun;
+	char dispatch_map_path[128];
 
 	res_setup.error = CS_ERR_LIBRARY;
 
@@ -373,8 +431,13 @@ coroipcc_service_connect (
 		goto error_exit;
 	}
 
+	res = coroipcc_memory_map (dispatch_map_path,
+		"dispatch_bufer-XXXXXX",
+		&ipc_segment->dispatch_buffer, DISPATCH_SIZE);
+	strcpy (req_setup.dispatch_file, dispatch_map_path);
 	req_setup.shmkey = shmkey;
 	req_setup.semkey = semkey;
+
 	req_setup.service = service;
 
 	error = coroipcc_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
@@ -418,6 +481,7 @@ coroipcc_service_disconnect (
 	shutdown (ipc_segment->fd, SHUT_RDWR);
 	close (ipc_segment->fd);
 	shmdt (ipc_segment->shared_memory);
+	coroipcc_memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE));
 	free (ipc_segment);
 	return (CS_OK);
 }
@@ -431,7 +495,6 @@ coroipcc_dispatch_flow_control_get (
 	return (ipc_segment->flow_control_state);
 }
 
-
 int
 coroipcc_fd_get (void *ipc_ctx)
 {
@@ -440,43 +503,16 @@ coroipcc_fd_get (void *ipc_ctx)
 	return (ipc_segment->fd);
 }
 
-static void memcpy_swrap (void *dest, size_t dest_len,
-			  void *src, int len, unsigned int *n_read)
-{
-	char *dest_chr = (char *)dest;
-	char *src_chr = (char *)src;
-
-	unsigned int first_read;
-	unsigned int second_read;
-
-	first_read = len;
-	second_read = 0;
-
-	if (len + *n_read >= DISPATCH_SIZE) {
-		first_read = DISPATCH_SIZE - *n_read;
-		second_read = (len + *n_read) % DISPATCH_SIZE;
-	}
-	memcpy (dest_chr, &src_chr[*n_read], first_read);
-	if (second_read) {
-		memcpy (&dest_chr[first_read], src_chr,
-			second_read);
-	}
-	*n_read = (*n_read + len) % (DISPATCH_SIZE);
-}
-int original_flow = -1;
-
 int
-coroipcc_dispatch_recv (void *ipc_ctx, void *data, size_t buflen, int timeout)
+coroipcc_dispatch_get (void *ipc_ctx, void **data, int timeout)
 {
 	struct pollfd ufds;
-	struct sembuf sop;
 	int poll_events;
-	mar_res_header_t *header;
 	char buf;
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
 	int res;
-	unsigned int my_read;
 	char buf_two = 1;
+	char *data_addr;
 
 	ufds.fd = ipc_segment->fd;
 	ufds.events = POLLIN;
@@ -530,10 +566,27 @@ retry_recv:
 		return (0);
 	}
 
+	data_addr = ipc_segment->dispatch_buffer;
+
+	data_addr = &data_addr[ipc_segment->shared_memory->read];
+
+	*data = (void *)data_addr;
+	return (1);
+}
+
+int
+coroipcc_dispatch_put (void *ipc_ctx)
+{
+	struct sembuf sop;
+	mar_res_header_t *header;
+	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
+	int res;
+	char *addr;
+	unsigned int read_idx;
+
 	sop.sem_num = 2;
 	sop.sem_op = -1;
 	sop.sem_flg = 0;
-
 retry_semop:
 	res = semop (ipc_segment->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
@@ -547,33 +600,13 @@ retry_semop:
 		return (-1);
 	}
 
-	if (buflen < DISPATCH_SIZE) {
-		return -1;
-	}
+	addr = ipc_segment->dispatch_buffer;
 
-	if (ipc_segment->shared_memory->read + sizeof (mar_res_header_t) >= DISPATCH_SIZE) {
-		my_read = ipc_segment->shared_memory->read;
-		memcpy_swrap (data, DISPATCH_SIZE,
-			ipc_segment->shared_memory->dispatch_buffer,
-			sizeof (mar_res_header_t),
-			&ipc_segment->shared_memory->read);
-		header = (mar_res_header_t *)data;
-		memcpy_swrap (
-			(void *)((char *)data + sizeof (mar_res_header_t)),
-			DISPATCH_SIZE,
-			ipc_segment->shared_memory->dispatch_buffer,
-			header->size - sizeof (mar_res_header_t),
-			&ipc_segment->shared_memory->read);
-	} else {
-		header = (mar_res_header_t *)&ipc_segment->shared_memory->dispatch_buffer[ipc_segment->shared_memory->read];
-		memcpy_swrap (
-			data, DISPATCH_SIZE,
-			ipc_segment->shared_memory->dispatch_buffer,
-			header->size,
-			&ipc_segment->shared_memory->read);
-	}
-
-	return (1);
+	read_idx = ipc_segment->shared_memory->read;
+	header = (mar_res_header_t *) &addr[read_idx];
+	ipc_segment->shared_memory->read =
+		(read_idx + header->size) % (DISPATCH_SIZE);
+	return (0);
 }
 
 static cs_error_t

@@ -67,32 +67,35 @@ struct saHandleDatabase {
 };
 
 
-cs_error_t
+extern cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
 	enum service_types service,
 	void **ipc_context);
 
-cs_error_t
+extern cs_error_t
 coroipcc_service_disconnect (
 	void *ipc_context);
 
-int
+extern int
 coroipcc_fd_get (
 	void *ipc_context);
 
-int
-coroipcc_dispatch_recv (
+extern int
+coroipcc_dispatch_get (
 	void *ipc_context,
-	void *buf,
-	size_t buflen,
+	void **buf,
 	int timeout);
 
-int
+extern int
+coroipcc_dispatch_put (
+	void *ipc_context);
+
+extern int
 coroipcc_dispatch_flow_control_get (
 	void *ipc_context);
 
-cs_error_t
+extern cs_error_t
 coroipcc_msg_send_reply_receive (
 	void *ipc_context,
 	const struct iovec *iov,
@@ -100,35 +103,33 @@ coroipcc_msg_send_reply_receive (
 	void *res_msg,
 	size_t res_len);
 
-cs_error_t
+extern cs_error_t
 coroipcc_msg_send_reply_receive_in_buf (
 	void *ipc_context,
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void **res_msg);
 
-cs_error_t
+extern cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
 	int instanceSize,
 	uint64_t *handleOut);
 
-cs_error_t
+extern cs_error_t
 saHandleDestroy (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t handle);
 
-cs_error_t
+extern cs_error_t
 saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t handle,
 	void **instance);
 
-cs_error_t
+extern cs_error_t
 saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t handle);
-
-#define offset_of(type,member) (int)(&(((type *)0)->member))
 
 #endif /* COROIPC_H_DEFINED */

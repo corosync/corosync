@@ -288,11 +288,6 @@ cs_error_t confdb_context_set (
 	return (CS_OK);
 }
 
-struct confdb_res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
-	char data[512000];
-};
-
 cs_error_t confdb_dispatch (
 	confdb_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -306,7 +301,7 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
-	struct confdb_res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -329,11 +324,10 @@ cs_error_t confdb_dispatch (
 	do {
 		pthread_mutex_lock (&confdb_inst->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_recv (confdb_inst->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
-
+		dispatch_avail = coroipcc_dispatch_get (
+			confdb_inst->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -365,9 +359,9 @@ cs_error_t confdb_dispatch (
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 			case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK:
-				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)&dispatch_data;
+				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)dispatch_data;
 
 				callbacks.confdb_key_change_notify_fn(handle,
 					res_key_changed_pt->change_type,
@@ -382,7 +376,7 @@ cs_error_t confdb_dispatch (
 				break;
 
 			case MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK:
-				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)&dispatch_data;
+				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)dispatch_data;
 
 				callbacks.confdb_object_create_change_notify_fn(handle,
 					res_object_created_pt->object_handle,
@@ -392,7 +386,7 @@ cs_error_t confdb_dispatch (
 				break;
 
 			case MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK:
-				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)&dispatch_data;
+				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)dispatch_data;
 
 				callbacks.confdb_object_delete_change_notify_fn(handle,
 					res_object_destroyed_pt->parent_object_handle,
@@ -401,10 +395,12 @@ cs_error_t confdb_dispatch (
 				break;
 
 			default:
+				coroipcc_dispatch_put (confdb_inst->ipc_ctx);
 				error = CS_ERR_LIBRARY;
 				goto error_noput;
 				break;
 		}
+		coroipcc_dispatch_put (confdb_inst->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed

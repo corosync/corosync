@@ -349,11 +349,6 @@ error_exit:
 	return (error);
 }
 
-struct quorum_res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
-	char data[512000];
-};
-
 cs_error_t quorum_dispatch (
 	quorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -364,7 +359,7 @@ cs_error_t quorum_dispatch (
 	int dispatch_avail;
 	struct quorum_inst *quorum_inst;
 	quorum_callbacks_t callbacks;
-	struct quorum_res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
@@ -391,10 +386,10 @@ cs_error_t quorum_dispatch (
 	do {
 		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_recv (quorum_inst->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
+		dispatch_avail = coroipcc_dispatch_get (
+			quorum_inst->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -424,13 +419,13 @@ cs_error_t quorum_dispatch (
 		/*
 		 * Dispatch incoming message
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 
 		case MESSAGE_RES_QUORUM_NOTIFICATION:
 			if (callbacks.quorum_notify_fn == NULL) {
 				continue;
 			}
-			res_lib_quorum_notification = (struct res_lib_quorum_notification *)&dispatch_data;
+			res_lib_quorum_notification = (struct res_lib_quorum_notification *)dispatch_data;
 
 			callbacks.quorum_notify_fn ( handle,
 				res_lib_quorum_notification->quorate,
@@ -440,10 +435,12 @@ cs_error_t quorum_dispatch (
 			break;
 
 		default:
+			coroipcc_dispatch_put (quorum_inst->ipc_ctx);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
+		coroipcc_dispatch_put (quorum_inst->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed

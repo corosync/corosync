@@ -56,11 +56,6 @@
 #include <corosync/ipc_cfg.h>
 #include <corosync/coroipcc.h>
 
-struct cfg_res_overlay {
-	mar_res_header_t header;
-	char data[4096];
-};
-
 /*
  * Data structure for instance data
  */
@@ -170,15 +165,8 @@ corosync_cfg_dispatch (
 	int dispatch_avail;
 	struct cfg_instance *cfg_instance;
 	struct res_lib_cfg_testshutdown *res_lib_cfg_testshutdown;
-#ifdef COMPILE_OUT
-	struct res_lib_corosync_healthcheckcallback *res_lib_corosync_healthcheckcallback;
-	struct res_lib_corosync_readinessstatesetcallback *res_lib_corosync_readinessstatesetcallback;
-	struct res_lib_corosync_csisetcallback *res_lib_corosync_csisetcallback;
-	struct res_lib_corosync_csiremovecallback *res_lib_corosync_csiremovecallback;
-	struct res_lib_cfg_statetrackcallback *res_lib_cfg_statetrackcallback;
-#endif
 	corosync_cfg_callbacks_t callbacks;
-	struct cfg_res_overlay dispatch_data;
+	mar_res_header_t *dispatch_data;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
@@ -194,10 +182,12 @@ corosync_cfg_dispatch (
 	}
 
 	do {
-		dispatch_avail = coroipcc_dispatch_recv (cfg_instance->ipc_ctx,
-							 (void *)&dispatch_data,
-							 sizeof (dispatch_data),
-							 timeout);
+		pthread_mutex_lock (&cfg_instance->dispatch_mutex);
+
+		dispatch_avail = coroipcc_dispatch_get (
+			cfg_instance->ipc_ctx,
+			(void **)&dispatch_data,
+			timeout);
 
 		/*
 		 * Handle has been finalized in another thread
@@ -205,7 +195,7 @@ corosync_cfg_dispatch (
 		if (cfg_instance->finalize == 1) {
 			error = CS_OK;
 			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-			goto error_unlock;
+			goto error_put;
 		}
 
 		if (dispatch_avail == 0 && dispatch_flags == CS_DISPATCH_ALL) {
@@ -228,18 +218,20 @@ corosync_cfg_dispatch (
 		/*
 		 * Dispatch incoming response
 		 */
-		switch (dispatch_data.header.id) {
+		switch (dispatch_data->id) {
 		case MESSAGE_RES_CFG_TESTSHUTDOWN:
 			if (callbacks.corosync_cfg_shutdown_callback) {
-				res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)&dispatch_data;
+				res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)dispatch_data;
 				callbacks.corosync_cfg_shutdown_callback(cfg_handle, res_lib_cfg_testshutdown->flags);
 			}
 			break;
 		default:
+			coroipcc_dispatch_put (cfg_instance->ipc_ctx);
 			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
+		coroipcc_dispatch_put (cfg_instance->ipc_ctx);
 
 		/*
 		 * Determine if more messages should be processed
@@ -255,7 +247,7 @@ corosync_cfg_dispatch (
 		}
 	} while (cont);
 
-error_unlock:
+error_put:
 	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
 error_nounlock:
 	return (error);
