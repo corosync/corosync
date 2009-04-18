@@ -36,7 +36,7 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
-dist_doc_DATA		= LICENSE QUICKSTART README.devmap \
+dist_doc_DATA		= LICENSE INSTALL README.devmap \
 			  README.recovery SECURITY TODO AUTHORS
 
 sysconf_DATA		= conf/corosync.conf

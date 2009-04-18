@@ -1,0 +1,173 @@
+----------------------------------------------
+The Corosync Cluster Engine Installation Guide
+----------------------------------------------
+Please read LICENSE for a description of the licensing of this software.
+
+All cryptographic software in this package is subject to the following legal
+notice:
+This package includes publicly available encryption source code which,
+together with object code resulting from the compiling of publicly
+available source code, may be exported from the United States under License
+Exception TSU prsuant to 15 C.F.R Section 740.13(e).
+
+----------------------------
+* Building from subversion *
+----------------------------
+When building and installing from subversion, automake 2.61 or later is
+required.  Prior versions will result in build failures.
+
+Step 1: check out a read only copy of the repository
+svn checkout http://svn.fedoraprojects.org/svn/corosync
+
+Find the version you want to build.  Usually this will be the "trunk" version
+located in the trunk directory.  If you want to build a specific released
+version check in the tags directory.
+
+Step 2: Generate the makefiles
+balance:~/corosync/trunk% ./autogen.sh
+
+Step 3: Run the configure script
+balance:~/corosync/trunk% ./configure
+
+Step 4: Install the binaries
+balance:~/corosync/trunk% su
+balance:~/corosync/trunk# make install
+
+-------------------------
+* Building from tarball *
+-------------------------
+The tarball is distributed with pregenerated makefiles.  There is no need
+to run the autogen.sh script in this case.
+
+Step 1: Run the configure script
+balance:~/corosync/trunk% ./configure
+
+Step 2: Install the binaries
+balance:~/corosync/trunk% su
+balance:~/corosync/trunk# make install
+
+------------------------
+* Configuring Corosync *
+------------------------
+The corosync executive will automatically determine cluster membership by
+communicating on a specified multicast address and port.
+
+The directory conf contains the file corosync.conf
+
+# Please read the corosync.conf.5 manual page
+totem {
+	version: 2
+	secauth: off
+	threads: 0
+	interface {
+		ringnumber: 0
+		bindnetaddr: 192.168.1.1
+		mcastaddr: 226.94.1.1
+		mcastport: 5405
+	}
+}
+
+logging {
+	fileline: off
+	to_stderr: yes
+	to_file: yes
+	to_syslog: yes
+	logfile: /tmp/corosync.log
+	debug: off
+	timestamp: on
+}
+
+The totem section contains three values.  All three values must be set
+or the corosync executive wll exit with an error.
+
+bindnetaddr specifies the address which the corosync Executive should bind to.
+This address should always end in zero.  If the local interface taffic
+should routed over is 192.168.5.92, set bindnetaddr to 192.168.5.0.
+
+mcastaddr is a multicast address.  The default should work but you may have
+a different network configuration.  Avoid 224.x.x.x because this is a "config"
+multicast address.
+
+mcastport specifies the UDP port number.  It is possible to use the same
+multicast address on a network with the corosync services configured for
+different UDP ports.
+
+The timeout section contains seven values.  This section is not normally used,
+but rather used to override the program defaults for the purposes of fine
+tuning for a given networking/processor combination or for debugging purposes.
+Be careful to use the same timeout values on each of the nodes in the cluster
+or unpredictable results may occur.
+
+Do not use DOS style termination.  This breaks the parser.
+
+Configure Host
+--------------
+For security reasons, corosync only allows a process that had the EGID/GID
+of "ais" to connect to it.  To make development easier, it is recommended to
+create an "ais" user with the "ais" group.
+
+[root@balance root]# adduser ais -g ais
+
+Set the ais user's password:
+
+[root@balance root]# passwd ais
+Changing password for user ais.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+
+Generate a private key
+----------------------
+corosync uses cryptographic techniques to ensure authenticity and privacy of
+messages.  A private key must be generated and shared by all processors for
+correct operation.
+
+First generate the key on one of the nodes:
+
+unix# exec/keygen
+Corosync Authentication key generator.
+Gathering 1024 bits for key from /dev/random.
+Writing corosync key to /etc/ais/authkey.
+
+After this is complete, a private key will be in the file /etc/ais/authkey.
+This private key must be copied to every processor that will be a member of
+the cluster.  If the private key isn't the same for every node, those nodes
+with nonmatching private keys will not be able to join the same configuration.
+
+Copy the key to some transportable storage or use ssh to transmit the key
+from node to node.  Then install the key with the command:
+
+unix# install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
+
+If the message invalid digest appears, the keys are not the same on each node.
+
+Run the corosync executive
+-------------------------
+Get one or more nodes and run the corosync executive on each node.  A list of
+node IPs should be logged when the nodes join a configuration.  Run the
+corosync daemon after following the previous directions.  The daemon must be
+run as UID 0(root).
+
+please read SECURITY to understand the threat model assumed by corosync
+and the techniques corosync use to overcome these threats.
+
+Before running any of the test programs
+---------------------------------------
+The corosync executive will ensure security by only allowing the ais group (or
+uid root) to connect to the service.  Switch to the ais group before
+running any applications linked to the ais apis, or the applications will
+not be authenticated and won't be able to access services.
+
+[sdake@balance sdake]$ su ais
+Password:
+[ais@balance sdake]$ id
+uid=501(ais) gid=502(ais) groups=502(ais)
+
+Try out the corosync cpg functionality
+--------------------------------------
+After corosync is running
+
+su to ais user
+
+Run test/testcpg on multiple nodes or on the same node.  Messages can be typed
+which will then be sent to other testcpg applications in the cluster.
