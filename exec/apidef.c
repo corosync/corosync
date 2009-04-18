@@ -57,20 +57,30 @@
 LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
 
 /*
- * Remove compile warnings about type name changes
+ * Remove compile warnings about type name changes in corosync_tpg_group
  */
-typedef int (*typedef_tpg_join) (hdb_handle_t,
-				 const struct corosync_tpg_group *, size_t);
+typedef int (*typedef_tpg_join) (
+	hdb_handle_t,
+	const struct corosync_tpg_group *,
+	size_t);
+
 typedef int (*typedef_tpg_leave) (hdb_handle_t,
-				  const struct corosync_tpg_group *, size_t);
-typedef int (*typedef_tpg_groups_mcast) (hdb_handle_t, int,
-					 const struct corosync_tpg_group *,
-					 size_t groups_cnt,
-					 struct iovec *, int);
-typedef int (*typedef_tpg_groups_send_ok) (hdb_handle_t,
-					   const struct corosync_tpg_group *,
-					   size_t groups_cnt,
-					   struct iovec *, int);
+	const struct corosync_tpg_group *,
+	size_t);
+
+typedef int (*typedef_tpg_groups_mcast_groups) (
+	hdb_handle_t, int,
+	const struct corosync_tpg_group *,
+	size_t groups_cnt,
+	const struct iovec *,
+	unsigned int);
+
+typedef int (*typedef_tpg_groups_send_ok) (
+	hdb_handle_t,
+	const struct corosync_tpg_group *,
+	size_t groups_cnt,
+	struct iovec *,
+	int);
 
 static inline void _corosync_public_exit_error (cs_fatal_error_t err,
 						const char *file,
@@ -112,7 +122,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.tpg_joined_mcast = totempg_groups_mcast_joined,
 	.tpg_joined_reserve = totempg_groups_joined_reserve,
 	.tpg_joined_release = totempg_groups_joined_release,
-	.tpg_groups_mcast = (typedef_tpg_groups_mcast)totempg_groups_mcast_groups,
+	.tpg_groups_mcast = (typedef_tpg_groups_mcast_groups)totempg_groups_mcast_groups,
 	.tpg_groups_reserve = NULL,
 	.tpg_groups_release = NULL,
 	.sync_request = NULL, //sync_request,

@@ -465,12 +465,12 @@ struct corosync_api_v1 {
 
 	int (*tpg_join) (
 		hdb_handle_t handle,
-		struct corosync_tpg_group *groups,
+		const struct corosync_tpg_group *groups,
 		size_t group_cnt);
 
 	int (*tpg_leave) (
 		hdb_handle_t handle,
-		struct corosync_tpg_group *groups,
+		const struct corosync_tpg_group *groups,
 		size_t group_cnt);
 
 	int (*tpg_joined_mcast) (
