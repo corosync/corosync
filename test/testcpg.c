@@ -166,6 +166,7 @@ int main (int argc, char *argv[]) {
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
+	char *fgets_res;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -216,7 +217,10 @@ int main (int argc, char *argv[]) {
 			char inbuf[132];
 			struct iovec iov;
 
-			fgets(inbuf, sizeof(inbuf), stdin);
+			fgets_res = fgets(inbuf, sizeof(inbuf), stdin);
+			if (fgets_res == NULL) {
+				cpg_leave(handle, &group_name);
+			}
 			if (strncmp(inbuf, "EXIT", 4) == 0) {
 				cpg_leave(handle, &group_name);
 			}
