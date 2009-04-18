@@ -106,7 +106,7 @@ unsigned int pload_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, PLOAD_SERVICE, pload_inst->ipc_ctx);
+	error = coroipcc_service_connect (IPC_SOCKET_NAME, PLOAD_SERVICE, &pload_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
