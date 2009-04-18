@@ -505,6 +505,13 @@ struct corosync_api_v1 {
 	int (*tpg_groups_release) (
 		int reserved_msgs);
 
+	int (*schedwrk_create) (
+		hdb_handle_t *handle,
+		int (schedwrk_fn) (const void *),
+		const void *context);
+
+	void (*schedwrk_destroy) (hdb_handle_t handle);
+
 	int (*sync_request) (
 		const char *service_name);
 

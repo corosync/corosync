@@ -138,9 +138,9 @@ static int primary_designated = 0;
 
 static struct memb_ring_id ykd_ring_id;
 
-static void *ykd_attempt_send_callback_token_handle = 0;
+hdb_handle_t schedwrk_attempt_send_callback_handle;
 
-static void *ykd_state_send_callback_token_handle = 0;
+hdb_handle_t schedwrk_state_send_callback_handle;
 
 static struct corosync_api_v1 *api;
 
@@ -159,8 +159,7 @@ static void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-static int ykd_state_send_msg (enum totem_callback_token_type type,
-			       const void *context)
+static int ykd_state_send_msg (const void *context)
 {
 	struct iovec iovec[2];
 	struct ykd_header header;
@@ -181,16 +180,13 @@ static int ykd_state_send_msg (enum totem_callback_token_type type,
 
 static void ykd_state_send (void)
 {
-        api->totem_callback_token_create (
-                &ykd_state_send_callback_token_handle,
-                TOTEM_CALLBACK_TOKEN_SENT,
-                1, /* delete after callback */
+	api->schedwrk_create (
+		&schedwrk_state_send_callback_handle,
                 ykd_state_send_msg,
                 NULL);
 }
 
-static int ykd_attempt_send_msg (enum totem_callback_token_type type,
-				 const void *context)
+static int ykd_attempt_send_msg (const void *context)
 {
 	struct iovec iovec;
 	struct ykd_header header;
@@ -209,10 +205,8 @@ static int ykd_attempt_send_msg (enum totem_callback_token_type type,
 
 static void ykd_attempt_send (void)
 {
-        api->totem_callback_token_create (
-                &ykd_attempt_send_callback_token_handle,
-                TOTEM_CALLBACK_TOKEN_SENT,
-                1, /* delete after callback */
+	api->schedwrk_create (
+		&schedwrk_attempt_send_callback_handle,
                 ykd_attempt_send_msg,
                 NULL);
 }

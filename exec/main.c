@@ -80,6 +80,7 @@
 #include "util.h"
 #include "apidef.h"
 #include "service.h"
+#include "schedwrk.h"
 #include "version.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
@@ -915,6 +916,10 @@ int main (int argc, char **argv)
 	priv_drop ();
 
 	corosync_mempool_init ();
+
+ 	schedwrk_init (
+ 		serialize_lock,
+ 		serialize_unlock);
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC", LOG_INFO);
 

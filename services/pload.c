@@ -247,6 +247,12 @@ static void message_handler_req_pload_start (void *conn, const void *msg)
 	iov.iov_base = &req_exec_pload_start;
 	iov.iov_len = sizeof (struct req_exec_pload_start);
 
+	msgs_delivered = 0;
+
+	msgs_wanted = 0;
+
+	msgs_sent = 0;
+
 	api->totem_mcast (&iov, 1, TOTEM_AGREED);
 }
 
@@ -258,7 +264,7 @@ static void req_exec_pload_mcast_endian_convert (void *msg)
 {
 }
 
-static int send_message (enum totem_callback_token_type type, const void *arg)
+static int send_message (const void *arg)
 {
 	struct req_exec_pload_mcast req_exec_pload_mcast;
 	struct iovec iov[2];
@@ -285,7 +291,7 @@ static int send_message (enum totem_callback_token_type type, const void *arg)
 			msgs_sent++;
 			msg_code++;
 		}
-	} while (msgs_sent <= msgs_wanted);
+	} while (msgs_sent < msgs_wanted);
 	if (msgs_sent == msgs_wanted) {
 		return (0);
 	} else {
@@ -293,15 +299,14 @@ static int send_message (enum totem_callback_token_type type, const void *arg)
 	}
 }
 
-static void *token_callback;
+hdb_handle_t start_mcasting_handle;
+
 static void start_mcasting (void)
 {
-	api->totem_callback_token_create (
-		&token_callback,
-		TOTEM_CALLBACK_TOKEN_RECEIVED,
-		1,
+	api->schedwrk_create (
+		&start_mcasting_handle,
 		send_message,
-		&token_callback);
+		&start_mcasting_handle);
 }
 
 static void message_handler_req_exec_pload_start (
@@ -338,7 +343,6 @@ static void message_handler_req_exec_pload_mcast (
 {
 	const struct req_exec_pload_mcast *pload_mcast = msg;
 
-	assert (pload_mcast->msg_code - 1 == last_msg_no);
 	last_msg_no = pload_mcast->msg_code;
 	if (msgs_delivered == 0) {
 		gettimeofday (&tv1, NULL);

@@ -51,6 +51,7 @@
 #include "quorum.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
+#include "schedwrk.h"
 #include <corosync/lcr/lcr_ifact.h>
 #include "apidef.h"
 
@@ -125,6 +126,8 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.tpg_groups_mcast = (typedef_tpg_groups_mcast_groups)totempg_groups_mcast_groups,
 	.tpg_groups_reserve = NULL,
 	.tpg_groups_release = NULL,
+	.schedwrk_create = schedwrk_create,
+	.schedwrk_destroy = schedwrk_destroy,
 	.sync_request = NULL, //sync_request,
 	.quorum_is_quorate = corosync_quorum_is_quorate,
 	.quorum_register_callback = corosync_quorum_register_callback,
