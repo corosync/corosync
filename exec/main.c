@@ -608,6 +608,12 @@ static void ipc_log_printf (const char *format, ...) {
         va_end (ap);
 }
 
+static void ipc_fatal_error(const char *error_msg) {
+       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
+                __FILE__, __LINE__, LOG_LEVEL_ERROR, "%s", error_msg);
+	exit(EXIT_FAILURE);
+}
+
 static int corosync_poll_handler_accept (
 	hdb_handle_t handle,	
 	int fd,
@@ -655,6 +661,7 @@ struct coroipcs_init_state ipc_init_state = {
 	.malloc				= malloc,
 	.free				= free,
 	.log_printf			= ipc_log_printf,
+	.fatal_error			= ipc_fatal_error,
 	.security_valid			= corosync_security_valid,
 	.service_available		= corosync_service_available,
 	.private_data_size_get		= corosync_private_data_size_get,
