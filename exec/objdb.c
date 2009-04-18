@@ -151,7 +151,7 @@ static int objdb_init (void)
 		goto error_destroy;
 	}
 	instance->find_child_list = &instance->child_head;
-	instance->object_name = "parent";
+	instance->object_name = (char *)"parent";
 	instance->object_name_len = strlen ("parent");
 	instance->object_handle = handle;
 	instance->parent_handle = OBJECT_PARENT_HANDLE;
@@ -748,7 +748,7 @@ static int object_find_create (
 
 	object_find_instance->find_child_list = &object_instance->child_head;
 	object_find_instance->child_head = &object_instance->child_head;
-	object_find_instance->object_name = object_name;
+	object_find_instance->object_name = (char *)object_name;
 	object_find_instance->object_len = object_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
