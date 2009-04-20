@@ -65,7 +65,7 @@
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
 
-LOGSYS_DECLARE_SUBSYS ("CPG", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("CPG");
 
 #define GROUP_HASH_SIZE 32
 
@@ -397,7 +397,7 @@ static int notify_lib_joinlist(
 			count++;
 	}
 
-	log_printf(LOG_LEVEL_DEBUG, "Sending new joinlist (%d elements) to clients\n", count);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Sending new joinlist (%d elements) to clients\n", count);
 
 	size = sizeof(struct res_lib_cpg_confchg_callback) +
 		sizeof(mar_cpg_address_t) * (count + left_list_entries + joined_list_entries);
@@ -490,7 +490,7 @@ static int cpg_lib_exit_fn (void *conn)
 	struct group_info *gi = pi->group;
 	mar_cpg_address_t notify_info;
 
-	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 
 	if (gi) {
 		notify_info.pid = pi->pid;
@@ -536,7 +536,7 @@ static struct group_info *get_group(const mar_cpg_name_t *name)
 	if (!gi) {
 		gi = malloc(sizeof(struct group_info));
 		if (!gi) {
-			log_printf(LOG_LEVEL_WARNING, "Unable to allocate group_info struct");
+			log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate group_info struct");
 			return NULL;
 		}
 		memcpy(&gi->group_name, name, sizeof(mar_cpg_name_t));
@@ -595,7 +595,7 @@ static void remove_node_from_groups(
 							gi->rg->left_list_size = PROCESSOR_COUNT_MAX;
 						}
 						else {
-							log_printf(LOG_LEVEL_CRIT, "Unable to allocate removed group struct. CPG callbacks will be junk.");
+							log_printf(LOGSYS_LEVEL_CRIT, "Unable to allocate removed group struct. CPG callbacks will be junk.");
 							return;
 						}
 					}
@@ -611,7 +611,7 @@ static void remove_node_from_groups(
 						newsize = gi->rg->left_list_size * 2;
 						newrg = realloc(gi->rg, sizeof(struct removed_group) + newsize*sizeof(mar_cpg_address_t));
 						if (!newrg) {
-							log_printf(LOG_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
+							log_printf(LOGSYS_LEVEL_CRIT, "Unable to realloc removed group struct. CPG callbacks will be junk.");
 							return;
 						}
 						newrg->left_list_size = newsize+PROCESSOR_COUNT_MAX;
@@ -656,7 +656,7 @@ static void cpg_confchg_fn (
 				lowest_nodeid = member_list[i];
 		}
 
-		log_printf(LOG_LEVEL_DEBUG, "confchg, low nodeid=%d, us = %d\n", lowest_nodeid, api->totem_nodeid_get());
+		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, low nodeid=%d, us = %d\n", lowest_nodeid, api->totem_nodeid_get());
 		if (lowest_nodeid == api->totem_nodeid_get()) {
 
 			g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
@@ -666,7 +666,7 @@ static void cpg_confchg_fn (
 			for (i = 0; i < left_list_entries; i++) {
 				g_req_exec_cpg_downlist.nodeids[i] = left_list[i];
 			}
-			log_printf(LOG_LEVEL_DEBUG,
+			log_printf(LOGSYS_LEVEL_DEBUG,
 				   "confchg, build downlist: %lu nodes\n",
 				   (long unsigned int) left_list_entries);
 		}
@@ -679,7 +679,7 @@ static void cpg_confchg_fn (
 
 		api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
 		g_req_exec_cpg_downlist.left_nodes = 0;
-		log_printf(LOG_LEVEL_DEBUG, "confchg, sent downlist\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, sent downlist\n");
 	}
 }
 
@@ -763,7 +763,7 @@ static void do_proc_join(
 
 	pi = malloc(sizeof(struct process_info));
 	if (!pi) {
-		log_printf(LOG_LEVEL_WARNING, "Unable to allocate process_info struct");
+		log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate process_info struct");
 		return;
 	}
 	pi->nodeid = nodeid;
@@ -794,7 +794,7 @@ static void message_handler_req_exec_cpg_downlist (
 	int i;
 	struct list_head removed_list;
 
-	log_printf(LOG_LEVEL_DEBUG, "downlist left_list: %d\n", req_exec_cpg_downlist->left_nodes);
+	log_printf(LOGSYS_LEVEL_DEBUG, "downlist left_list: %d\n", req_exec_cpg_downlist->left_nodes);
 
 	list_init(&removed_list);
 
@@ -825,7 +825,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOG_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
 
 	do_proc_join(&req_exec_cpg_procjoin->group_name,
 		req_exec_cpg_procjoin->pid, nodeid,
@@ -842,7 +842,7 @@ static void message_handler_req_exec_cpg_procleave (
 	struct list_head *iter;
 	mar_cpg_address_t notify_info;
 
-	log_printf(LOG_LEVEL_DEBUG, "got procleave message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %d\n", nodeid);
 
 	gi = get_group(&req_exec_cpg_procjoin->group_name); /* this will always succeed ! */
 	assert(gi);
@@ -886,7 +886,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const mar_res_header_t *res = (const mar_res_header_t *)message;
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(mar_res_header_t));
 
-	log_printf(LOG_LEVEL_NOTICE, "got joinlist message from node %d\n",
+	log_printf(LOGSYS_LEVEL_NOTICE, "got joinlist message from node %d\n",
 		nodeid);
 
 	/* Ignore our own messages */
@@ -957,7 +957,7 @@ static int cpg_exec_send_joinlist(void)
 	struct join_list_entry *jle;
 	struct iovec req_exec_cpg_iovec;
 
-	log_printf(LOG_LEVEL_DEBUG, "sending joinlist to cluster\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "sending joinlist to cluster\n");
 
 	/* Count the number of groups we are a member of */
 	for (i=0; i<GROUP_HASH_SIZE; i++) {
@@ -978,7 +978,7 @@ static int cpg_exec_send_joinlist(void)
 
 	buf = alloca(sizeof(mar_res_header_t) + sizeof(struct join_list_entry) * count);
 	if (!buf) {
-		log_printf(LOG_LEVEL_WARNING, "Unable to allocate joinlist buffer");
+		log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate joinlist buffer");
 		return -1;
 	}
 
@@ -1016,7 +1016,7 @@ static int cpg_lib_init_fn (void *conn)
 	api->ipc_refcnt_inc (conn);
 	pi->conn = conn;
 
-	log_printf(LOG_LEVEL_DEBUG, "lib_init_fn: conn=%p, pi=%p\n", conn, pi);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, pi=%p\n", conn, pi);
 	return (0);
 }
 
@@ -1029,7 +1029,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	struct group_info *gi;
 	cs_error_t error = CS_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "got join request on %p, pi=%p, pi->pid=%d\n", conn, pi, pi->pid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got join request on %p, pi=%p, pi->pid=%d\n", conn, pi, pi->pid);
 
 	/* Already joined on this conn */
 	if (pi->pid) {
@@ -1067,7 +1067,7 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	struct group_info *gi;
 	cs_error_t error = CS_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "got leave request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got leave request on %p\n", conn);
 
 	if (!pi || !pi->pid || !pi->group) {
 		error = CS_ERR_INVALID_PARAM;
@@ -1100,7 +1100,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	int msglen = req_lib_cpg_mcast->msglen;
 	int result;
 
-	log_printf(LOG_LEVEL_DEBUG, "got mcast request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p\n", conn);
 
 	/* Can't send if we're not joined */
 	if (!gi) {
@@ -1142,7 +1142,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 {
 	struct process_info *pi = (struct process_info *)api->ipc_private_data_get (conn);
 
-	log_printf(LOG_LEVEL_DEBUG, "got membership request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got membership request on %p\n", conn);
 	if (!pi->group) {
 		mar_res_header_t res;
 		res.size = sizeof(res);
@@ -1165,7 +1165,7 @@ static void message_handler_req_lib_cpg_trackstart (void *conn,
 	struct process_info *otherpi;
 	cs_error_t error = CS_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
 
 	gi = get_group(&req_lib_cpg_trackstart->group_name);
 	if (!gi) {
@@ -1193,7 +1193,7 @@ static void message_handler_req_lib_cpg_trackstop (void *conn,
 	struct group_info *gi;
 	cs_error_t error = CS_OK;
 
-	log_printf(LOG_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
 
 	gi = get_group(&req_lib_cpg_trackstop->group_name);
 	if (!gi) {

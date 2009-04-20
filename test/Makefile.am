@@ -34,7 +34,8 @@ MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 noinst_PROGRAMS		= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb	\
-			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2
+			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2	\
+			logsys_s logsys_t1 logsys_t2
 
 testevs_LDADD		= -levs
 testevs_LDFLAGS		= -L../lib
@@ -60,9 +61,13 @@ logsysbench_LDADD	= -llogsys
 logsysbench_LDFLAGS	= -L../exec
 logsysrec_LDADD		= -llogsys
 logsysrec_LDFLAGS	= -L../exec
+logsys_s_SOURCES	= logsys_s.c logsys_s1.c logsys_s2.c
+logsys_s_LDADD		= -llogsys
+logsys_s_LDFLAGS	= -L../exec
+logsys_t1_LDADD		= -llogsys
+logsys_t1_LDFLAGS	= -L../exec
+logsys_t2_LDADD		= -llogsys
+logsys_t2_LDFLAGS	= -L../exec
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
-
-
-

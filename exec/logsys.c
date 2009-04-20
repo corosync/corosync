@@ -4,6 +4,7 @@
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
+ * Author: Fabio M. Di Nitto (fdinitto@redhat.com)
  *
  * All rights reserved.
  *
@@ -62,7 +63,8 @@
 
 #include <corosync/engine/logsys.h>
 
-/* similar to syslog facilities/priorities tables,
+/*
+ * similar to syslog facilities/priorities tables,
  * make a tag table for internal use
  */
 
@@ -73,20 +75,20 @@ struct syslog_names {
 };
 
 struct syslog_names tagnames[] =
-  {
-    { "log", LOGSYS_TAG_LOG },
-    { "enter", LOGSYS_TAG_ENTER },
-    { "leave", LOGSYS_TAG_LEAVE },
-    { "trace1", LOGSYS_TAG_TRACE1 },
-    { "trace2", LOGSYS_TAG_TRACE2 },
-    { "trace3", LOGSYS_TAG_TRACE3 },
-    { "trace4", LOGSYS_TAG_TRACE4 },
-    { "trace5", LOGSYS_TAG_TRACE5 },
-    { "trace6", LOGSYS_TAG_TRACE6 },
-    { "trace7", LOGSYS_TAG_TRACE7 },
-    { "trace8", LOGSYS_TAG_TRACE8 },
-    { NULL, -1 }
-  };
+{
+	{ "log", LOGSYS_TAG_LOG },
+	{ "enter", LOGSYS_TAG_ENTER },
+	{ "leave", LOGSYS_TAG_LEAVE },
+	{ "trace1", LOGSYS_TAG_TRACE1 },
+	{ "trace2", LOGSYS_TAG_TRACE2 },
+	{ "trace3", LOGSYS_TAG_TRACE3 },
+	{ "trace4", LOGSYS_TAG_TRACE4 },
+	{ "trace5", LOGSYS_TAG_TRACE5 },
+	{ "trace6", LOGSYS_TAG_TRACE6 },
+	{ "trace7", LOGSYS_TAG_TRACE7 },
+	{ "trace8", LOGSYS_TAG_TRACE8 },
+	{ NULL, -1 }
+};
 #endif
 
 /*
@@ -96,34 +98,36 @@ int *flt_data;
 
 int flt_data_size;
 
-#define SUBSYS_MAX 32
-
 #define COMBINE_BUFFER_SIZE 2048
 
-struct logsys_logger {
-	char subsys[64];
-	unsigned int priority;
-	unsigned int tags;
-	unsigned int mode;
-};
+/* values for logsys_logger init_status */
+#define LOGSYS_LOGGER_INIT_DONE		0
+#define LOGSYS_LOGGER_NEEDS_INIT	1
+
+static int logsys_system_needs_init = LOGSYS_LOGGER_NEEDS_INIT;
 
 /*
- * Configuration parameters for logging system
+ * need unlogical order to preserve 64bit alignment
  */
-static const char *logsys_name = NULL;
-
-static unsigned int logsys_mode = LOG_MODE_NOSUBSYS;
-
-static const char *logsys_file = NULL;
-
-static FILE *logsys_file_fp = NULL;
-
-static int logsys_facility = LOG_DAEMON;
+struct logsys_logger {
+	char subsys[LOGSYS_MAX_SUBSYS_NAMELEN];	/* subsystem name */
+	char *logfile;				/* log to file */
+	FILE *logfile_fp;			/* track file descriptor */
+	unsigned int mode;			/* subsystem mode */
+	unsigned int debug;			/* debug on|off */
+	unsigned int tags;			/* trace tags */
+	int syslog_facility;			/* facility */
+	int syslog_priority;			/* priority */
+	int logfile_priority;			/* priority to file */
+	int init_status;			/* internal field to handle init queues
+						   for subsystems */
+};
 
 /*
  * operating global variables
  */
-static struct logsys_logger logsys_loggers[SUBSYS_MAX];
+
+static struct logsys_logger logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT + 1];
 
 static int wthread_active = 0;
 
@@ -161,7 +165,8 @@ void *logsys_rec_end;
 
 #define FDTAIL_INDEX 	(flt_data_size + 1)
 
-static void logsys_atexit (void);
+/* forward declarations */
+static void logsys_close_logfile(int subsysid);
 
 /*
  * Helpers for _logsys_log_rec functionality
@@ -203,7 +208,6 @@ static void logsys_unlock (void)
 	pthread_mutex_unlock (&logsys_idx_mutex);
 }
 #endif
-
 
 /*
  * Before any write operation, a reclaim on the buffer area must be executed
@@ -306,7 +310,7 @@ static void log_printf_to_logs (
 	const char *function_name,
 	int file_line,
 	unsigned int level,
-	char *buffer)
+	const char *buffer)
 {
 	char output_buffer[COMBINE_BUFFER_SIZE];
 	char char_time[128];
@@ -316,7 +320,13 @@ static void log_printf_to_logs (
 	struct timeval tv;
 	int cutoff;
 	unsigned int len;
-	
+	int subsysid;
+
+	subsysid = _logsys_config_subsys_get(subsys);
+	if (subsysid <= - 1) {
+		return;
+	}
+
 	while (format_buffer[format_buffer_idx]) {
 		cutoff = -1;
 		if (format_buffer[format_buffer_idx] == '%') {
@@ -375,41 +385,83 @@ static void log_printf_to_logs (
 
 	/*
 	 * Output to syslog
-	 */	
-	if (logsys_mode & LOG_MODE_OUTPUT_SYSLOG) {
-		syslog (level, "%s", output_buffer);
+	 */
+	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
+	     (level <= logsys_loggers[subsysid].syslog_priority)) || 
+	     (logsys_loggers[subsysid].debug != 0)) {
+		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", output_buffer);
 	}
 
 	/*
 	 * Terminate string with \n \0
 	 */
-	if (logsys_mode & (LOG_MODE_OUTPUT_FILE|LOG_MODE_OUTPUT_STDERR)) {
+	if (logsys_loggers[subsysid].mode & (LOGSYS_MODE_OUTPUT_FILE|LOGSYS_MODE_OUTPUT_STDERR)) {
 		output_buffer[output_buffer_idx++] = '\n';
 		output_buffer[output_buffer_idx] = '\0';
 	}
 
 	/*
 	 * Output to configured file
-	 */	
-	if ((logsys_mode & LOG_MODE_OUTPUT_FILE) && logsys_file_fp) {
+	 */
+	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE) &&
+	      logsys_loggers[subsysid].logfile_fp &&
+	     (level <= logsys_loggers[subsysid].logfile_priority)) ||
+	     (logsys_loggers[subsysid].debug != 0)) {
 		/*
 		 * Output to a file
 		 */
-		(void)fwrite (output_buffer, strlen (output_buffer), 1, logsys_file_fp);
-		fflush (logsys_file_fp);
+		if ((fwrite (output_buffer, strlen (output_buffer), 1,
+			    logsys_loggers[subsysid].logfile_fp) < 1) ||
+		    (fflush (logsys_loggers[subsysid].logfile_fp) == EOF)) {
+			char tmpbuffer[1024];
+			/*
+			 * if we are here, it's bad.. it's really really bad.
+			 * Best thing would be to light a candle in a church
+			 * and pray.
+			 */
+			snprintf(tmpbuffer, sizeof(tmpbuffer),
+				"LOGSYS EMERGENCY: %s Unable to write to %s.",
+				logsys_loggers[subsysid].subsys,
+				logsys_loggers[subsysid].logfile);
+			pthread_mutex_lock (&logsys_config_mutex);
+			logsys_close_logfile(subsysid);
+			logsys_loggers[subsysid].mode &= ~LOGSYS_MODE_OUTPUT_FILE;
+			pthread_mutex_unlock (&logsys_config_mutex);
+			log_printf_to_logs(logsys_loggers[subsysid].subsys,
+					   __FILE__, __FUNCTION__, __LINE__,
+					   LOGSYS_LEVEL_EMERG, tmpbuffer);
+		}
 	}
 
 	/*
 	 * Output to stderr
-	 */	
-	if (logsys_mode & LOG_MODE_OUTPUT_STDERR) {
-		(void)write (STDERR_FILENO, output_buffer, strlen (output_buffer));
+	 */
+	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR) &&
+	     (level <= logsys_loggers[subsysid].logfile_priority)) ||
+	     (logsys_loggers[subsysid].debug != 0)) {
+		if (write (STDERR_FILENO, output_buffer, strlen (output_buffer)) < 0) {
+			char tmpbuffer[1024];
+			/*
+			 * if we are here, it's bad.. it's really really bad.
+			 * Best thing would be to light 20 candles for each saint
+			 * in the calendar and pray a lot...
+			 */
+			pthread_mutex_lock (&logsys_config_mutex);
+			logsys_loggers[subsysid].mode &= ~LOGSYS_MODE_OUTPUT_STDERR;
+			pthread_mutex_unlock (&logsys_config_mutex);
+			snprintf(tmpbuffer, sizeof(tmpbuffer),
+				"LOGSYS EMERGENCY: %s Unable to write to STDERR.",
+				logsys_loggers[subsysid].subsys);
+			log_printf_to_logs(logsys_loggers[subsysid].subsys,
+				__FILE__, __FUNCTION__, __LINE__,
+				LOGSYS_LEVEL_EMERG, tmpbuffer);
+		}
 	}
 }
 
-static void record_print (char *buf)
+static void record_print (const char *buf)
 {
-	int *buf_uint32t = (int *)buf;
+	const int *buf_uint32t = (const int *)buf;
 	unsigned int rec_size = buf_uint32t[0];
 	unsigned int rec_ident = buf_uint32t[1];
 	unsigned int file_line = buf_uint32t[2];
@@ -417,7 +469,7 @@ static void record_print (char *buf)
 	unsigned int i;
 	unsigned int words_processed;
 	unsigned int arg_size_idx;
-	void *arguments[64];
+	const void *arguments[64];
 	unsigned int arg_count;
 
 	arg_size_idx = 4;
@@ -442,10 +494,10 @@ static void record_print (char *buf)
 		(char *)arguments[1],
 		(char *)arguments[2],
 		file_line,
-		level,
+		(level-1),
 		(char *)arguments[3]);
 }
-	
+
 static int record_read (char *buf, int rec_idx, int *log_msg) {
         unsigned int rec_size;
         unsigned int rec_ident;
@@ -582,32 +634,237 @@ static void wthread_create (void)
 	wthread_wait_locked ();
 }
 
+static int _logsys_config_subsys_get_unlocked (const char *subsys)
+{
+	unsigned int i;
+
+	if (!subsys) {
+		return LOGSYS_MAX_SUBSYS_COUNT;
+	}
+
+ 	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
+			pthread_mutex_unlock (&logsys_config_mutex);
+			return i;
+		}
+	}
+
+	return (-1);
+}
+
+static void syslog_facility_reconf (void)
+{
+	closelog();
+	openlog(logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].subsys,
+		LOG_CONS|LOG_PID,
+		logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].syslog_facility);
+}
+
+/*
+ * this is always invoked within the mutex, so it's safe to parse the
+ * whole thing as we need.
+ */
+static void logsys_close_logfile (
+	int subsysid)
+{
+	int i;
+
+	if ((logsys_loggers[subsysid].logfile_fp == NULL) &&
+	    (logsys_loggers[subsysid].logfile == NULL)) {
+		return;
+	}
+
+	/*
+	 * if there is another subsystem or system using the same fp,
+	 * then we clean our own structs, but we can't close the file
+	 * as it is in use by somebody else.
+	 * Only the last users will be allowed to perform the fclose.
+	 */
+ 	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if ((logsys_loggers[i].logfile_fp == logsys_loggers[subsysid].logfile_fp) &&
+		    (i != subsysid)) {
+			logsys_loggers[subsysid].logfile = NULL;
+			logsys_loggers[subsysid].logfile_fp = NULL;
+			return;
+		}
+	}
+
+	/*
+	 * if we are here, we are the last users of that fp, so we can safely
+	 * close it.
+	 */
+	fclose (logsys_loggers[subsysid].logfile_fp);
+	logsys_loggers[subsysid].logfile_fp = NULL;
+	free (logsys_loggers[subsysid].logfile);
+	logsys_loggers[subsysid].logfile = NULL;
+}
+
+/*
+ * we need a version that can work when somebody else is already
+ * holding a config mutex lock or we will never get out of here
+ */
+static int logsys_config_file_set_unlocked (
+		int subsysid,
+		const char **error_string,
+		const char *file)
+{
+	static char error_string_response[512];
+	int i;
+
+	logsys_close_logfile(subsysid);
+
+	if ((file == NULL) ||
+	    (strcmp(logsys_loggers[subsysid].subsys, "") == 0)) {
+		return (0);
+	}
+
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if ((logsys_loggers[i].logfile != NULL) &&
+			(strcmp (logsys_loggers[i].logfile, file) == 0) &&
+			(i != subsysid)) {
+				logsys_loggers[subsysid].logfile =
+					logsys_loggers[i].logfile;
+				logsys_loggers[subsysid].logfile_fp =
+					logsys_loggers[i].logfile_fp;
+				return (0);
+		}
+	}
+
+	logsys_loggers[subsysid].logfile = strdup(file);
+	if (logsys_loggers[subsysid].logfile == NULL) {
+		snprintf (error_string_response,
+			sizeof(error_string_response),
+			"Unable to allocate memory for logfile '%s'\n",
+			file);
+		*error_string = error_string_response;
+		return (-1);
+	}
+
+	logsys_loggers[subsysid].logfile_fp = fopen (file, "a+");
+	if (logsys_loggers[subsysid].logfile_fp == NULL) {
+		free(logsys_loggers[subsysid].logfile);
+		logsys_loggers[subsysid].logfile = NULL;
+		snprintf (error_string_response,
+			sizeof(error_string_response),
+			"Can't open logfile '%s' for reason (%s).\n",
+				 file, strerror (errno));
+		*error_string = error_string_response;
+		return (-1);
+	}
+
+	return (0);
+}
+
+static void logsys_subsys_init (
+		const char *subsys,
+		int subsysid)
+{
+	if (logsys_system_needs_init == LOGSYS_LOGGER_NEEDS_INIT) {
+		logsys_loggers[subsysid].init_status =
+			LOGSYS_LOGGER_NEEDS_INIT;
+	} else {
+		memcpy(&logsys_loggers[subsysid],
+		       &logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT],
+		       sizeof(logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT]));
+		logsys_loggers[subsysid].tags = LOGSYS_TAG_LOG;
+		logsys_loggers[subsysid].init_status = 
+			LOGSYS_LOGGER_INIT_DONE;
+	}
+	strncpy (logsys_loggers[subsysid].subsys, subsys,
+		LOGSYS_MAX_SUBSYS_NAMELEN);
+}
+
 /*
  * Internal API - exported
  */
-void _logsys_nosubsys_set (void)
+
+int _logsys_system_setup(
+	const char *mainsystem,
+	unsigned int mode,
+	unsigned int debug,
+	const char *logfile,
+	int logfile_priority,
+	int syslog_facility,
+	int syslog_priority,
+	unsigned int tags)
 {
-	logsys_mode |= LOG_MODE_NOSUBSYS;
+	int i;
+	const char *errstr;
+	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
+
+	i = LOGSYS_MAX_SUBSYS_COUNT;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	snprintf(logsys_loggers[i].subsys,
+		 LOGSYS_MAX_SUBSYS_NAMELEN,
+		"%s", mainsystem);
+
+	logsys_loggers[i].mode = mode;
+
+	logsys_loggers[i].debug = debug;
+
+	if ((logfile) && strlen(logfile) > 0) {
+		logsys_config_file_set_unlocked (i, &errstr, logfile);
+	}
+	logsys_loggers[i].logfile_priority = logfile_priority;
+
+	logsys_loggers[i].syslog_facility = syslog_facility;
+	logsys_loggers[i].syslog_priority = syslog_priority;
+	syslog_facility_reconf();
+
+	logsys_loggers[i].tags = tags;
+
+	logsys_loggers[i].init_status = LOGSYS_LOGGER_INIT_DONE;
+
+	logsys_system_needs_init = LOGSYS_LOGGER_INIT_DONE;
+
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if ((strcmp (logsys_loggers[i].subsys, "") != 0) &&
+			(logsys_loggers[i].init_status ==
+			 LOGSYS_LOGGER_NEEDS_INIT)) {
+				strncpy (tempsubsys, logsys_loggers[i].subsys,
+					LOGSYS_MAX_SUBSYS_NAMELEN);
+				logsys_subsys_init(tempsubsys, i);
+		}
+	}
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return (0);
 }
 
-unsigned int _logsys_subsys_create (
-	const char *subsys,
-	unsigned int priority)
+unsigned int _logsys_subsys_create (const char *subsys)
 {
+	int i;
+
 	assert (subsys != NULL);
 
-	return logsys_config_subsys_set (
-		subsys,
-		LOGSYS_TAG_LOG,
-		priority);
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	i = _logsys_config_subsys_get_unlocked (subsys);
+	if ((i > -1) && (i < LOGSYS_MAX_SUBSYS_COUNT)) {
+		pthread_mutex_unlock (&logsys_config_mutex);
+		return i;
+	}
+
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (strcmp (logsys_loggers[i].subsys, "") == 0) {
+			logsys_subsys_init(subsys, i);			
+			break;
+		}
+	}
+
+	assert(i < LOGSYS_MAX_SUBSYS_COUNT);
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+	return i;
 }
 
 int _logsys_wthread_create (void)
 {
-	if ((logsys_mode & LOG_MODE_FORK) == 0) {
-		if (logsys_name != NULL) {
-			openlog (logsys_name, LOG_CONS|LOG_PID, logsys_facility);
-		}
+	if (((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_FORK) == 0) && 
+		((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) != 0)) {
 		wthread_create();
 		atexit (logsys_atexit);
 	}
@@ -621,9 +878,10 @@ int _logsys_rec_init (unsigned int size)
 	 * Last record ends at zero
 	 */
 	flt_data = malloc ((size + 2) * sizeof (unsigned int));
-	assert (flt_data != NULL);
+	if (flt_data == NULL) {
+		return (-1);
+	}
 	flt_data_size = size;
-	assert (flt_data != NULL);
 	flt_data[FDHEAD_INDEX] = 0;
 	flt_data[FDTAIL_INDEX] = 0;
 
@@ -651,7 +909,7 @@ int _logsys_rec_init (unsigned int size)
  * ... repeats length & arg
  */
 void _logsys_log_rec (
-	int subsys,
+	int subsysid,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
@@ -678,7 +936,7 @@ void _logsys_log_rec (
 	for (;;) {
 		assert (arguments < 64);
 		buf_args[arguments] = va_arg (ap, void *);
-		if (buf_args[arguments] == LOG_REC_END) {
+		if (buf_args[arguments] == LOGSYS_REC_END) {
 			break;
 		}
 		buf_len[arguments] = va_arg (ap, int);
@@ -690,8 +948,8 @@ void _logsys_log_rec (
 	/*
 	 * Encode logsys subsystem identity, filename, and function
 	 */
-	buf_args[0] = logsys_loggers[subsys].subsys;
-	buf_len[0] = strlen (logsys_loggers[subsys].subsys) + 1;
+	buf_args[0] = logsys_loggers[subsysid].subsys;
+	buf_len[0] = strlen (logsys_loggers[subsysid].subsys) + 1;
 	buf_args[1] = file_name;
 	buf_len[1] = strlen (file_name) + 1;
 	buf_args[2] = function_name;
@@ -803,7 +1061,7 @@ void _logsys_log_rec (
 }
 
 void _logsys_log_printf (
-        int subsys,
+        int subsysid,
         const char *function_name,
         const char *file_name,
         int file_line,
@@ -815,12 +1073,10 @@ void _logsys_log_printf (
 	unsigned int len;
 	va_list ap;
 
-	if (logsys_mode & LOG_MODE_NOSUBSYS) {
-		subsys = 0;
+	if (subsysid <= -1) {
+		subsysid = LOGSYS_MAX_SUBSYS_COUNT;
 	}
-	if (level > logsys_loggers[subsys].priority) {
-		return;
-	}
+
 	va_start (ap, format);
 	len = vsprintf (logsys_print_buffer, format, ap);
 	va_end (ap);
@@ -832,20 +1088,20 @@ void _logsys_log_printf (
 	/*
 	 * Create a log record
 	 */
-	_logsys_log_rec (subsys,
+	_logsys_log_rec (subsysid,
 		function_name,
 		file_name,
 		file_line,
 		(level+1) << 28,
 		logsys_print_buffer, len + 1,
-		LOG_REC_END);
+		LOGSYS_REC_END);
 
-	if ((logsys_mode & LOG_MODE_THREADED) == 0) {
+	if ((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) == 0) {
 		/*
 		 * Output (and block) if the log mode is not threaded otherwise
 		 * expect the worker thread to output the log data once signaled
 		 */
-		log_printf_to_logs (logsys_loggers[subsys].subsys,
+		log_printf_to_logs (logsys_loggers[subsysid].subsys,
 			file_name, function_name, file_line, level,
 			logsys_print_buffer);
 	} else {
@@ -856,68 +1112,128 @@ void _logsys_log_printf (
 	}
 }
 
+int _logsys_config_subsys_get (const char *subsys)
+{
+	unsigned int i;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	i = _logsys_config_subsys_get_unlocked (subsys);
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
 /*
  * External Configuration and Initialization API
  */
 void logsys_fork_completed (void)
 {
-	logsys_mode &= ~LOG_MODE_FORK;
+	logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode &= ~LOGSYS_MODE_FORK;
 	_logsys_wthread_create ();
 }
 
-void logsys_config_mode_set (unsigned int mode)
+unsigned int logsys_config_mode_set (const char *subsys, unsigned int mode)
 {
-	pthread_mutex_lock (&logsys_config_mutex);
-	logsys_mode = mode;
-	pthread_mutex_unlock (&logsys_config_mutex);
-}
-
-unsigned int logsys_config_mode_get (void)
-{
-	return logsys_mode;
-}
-
-static void logsys_close_logfile (void)
-{
-	if (logsys_file_fp != NULL) {
-		fclose (logsys_file_fp);
-		logsys_file_fp = NULL;
-	}
-}
-
-int logsys_config_file_set (const char **error_string, const char *file)
-{
-	static char error_string_response[512];
-
-	if (file == NULL) {
-		logsys_close_logfile();
-		return (0);
-	}
+	int i;
 
 	pthread_mutex_lock (&logsys_config_mutex);
-
-	if (logsys_mode & LOG_MODE_OUTPUT_FILE) {
-		logsys_file = file;
-		logsys_close_logfile();
-		logsys_file_fp = fopen (file, "a+");
-		if (logsys_file_fp == 0) {
-			snprintf (error_string_response,
-				sizeof(error_string_response),
-				"Can't open logfile '%s' for reason (%s).\n",
-					 file, strerror (errno));
-			*error_string = error_string_response;
-			pthread_mutex_unlock (&logsys_config_mutex);
-			return (-1);
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].mode = mode;
+			i = 0;
 		}
-	} else
-		logsys_close_logfile();
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].mode = mode;
+		}
+		i = 0;
+	}
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
+unsigned int logsys_config_mode_get (const char *subsys)
+{
+	int i;
+
+	i = _logsys_config_subsys_get (subsys);
+	if (i < 0) {
+		return i;
+	}
+
+	return logsys_loggers[i].mode;
+}
+
+unsigned int logsys_config_tags_set (const char *subsys, unsigned int tags)
+{
+	int i;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].tags = tags;
+			i = 0;
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].tags = tags;
+		}
+		i = 0;
+	}
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
+unsigned int logsys_config_tags_get (const char *subsys)
+{
+	int i;
+
+	i = _logsys_config_subsys_get (subsys);
+	if (i < 0) {
+		return i;
+	}
+
+	return logsys_loggers[i].tags;
+}
+
+int logsys_config_file_set (
+		const char *subsys,
+		const char **error_string,
+		const char *file)
+{
+	int i;
+	int res;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i < 0) {
+			res = i;
+		} else {
+			res = logsys_config_file_set_unlocked(i, error_string, file);
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_config_file_set_unlocked(i, error_string, file);
+		}
+		res = 0;
+	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
-	return (0);
+	return res;
 }
 
 int logsys_format_set (const char *format)
 {
+	int ret = 0;
+
 	pthread_mutex_lock (&logsys_config_mutex);
 
 	if (format_buffer) {
@@ -927,15 +1243,15 @@ int logsys_format_set (const char *format)
 
 	if (format) {
 		format_buffer = strdup(format);
+		if (format_buffer == NULL) {
+			ret = -1;
+		}
 	} else {
 		format_buffer = strdup("[%6s] %b");
 	}
-	if (format_buffer == NULL) {
-		return -1;
-	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
-	return 0;
+	return ret;
 }
 
 char *logsys_format_get (void)
@@ -943,14 +1259,104 @@ char *logsys_format_get (void)
 	return format_buffer;
 }
 
-void logsys_config_facility_set (const char *name, unsigned int facility)
+unsigned int logsys_config_syslog_facility_set (
+	const char *subsys,
+	unsigned int facility)
 {
+	int i;
+
 	pthread_mutex_lock (&logsys_config_mutex);
-
-	logsys_name = name;
-	logsys_facility = facility;
-
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].syslog_facility = facility;
+			if (i == LOGSYS_MAX_SUBSYS_COUNT) {
+				syslog_facility_reconf();
+			}
+			i = 0;
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].syslog_facility = facility;
+		}
+		syslog_facility_reconf();
+		i = 0;
+	}
 	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
+unsigned int logsys_config_syslog_priority_set (
+	const char *subsys,
+	unsigned int priority)
+{
+	int i;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].syslog_priority = priority;
+			i = 0;
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].syslog_priority = priority;
+		}
+		i = 0;
+	}
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
+unsigned int logsys_config_logfile_priority_set (
+	const char *subsys,
+	unsigned int priority)
+{
+	int i;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].logfile_priority = priority;
+			i = 0;
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].logfile_priority = priority;
+		}
+		i = 0;
+	}
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
+}
+
+unsigned int logsys_config_debug_set (
+	const char *subsys,
+	unsigned int debug)
+{
+	int i;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+	if (subsys != NULL) {
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			logsys_loggers[i].debug = debug;
+			i = 0;
+		}
+	} else {
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			logsys_loggers[i].debug = debug;
+		}
+		i = 0;
+	}
+	pthread_mutex_unlock (&logsys_config_mutex);
+
+	return i;
 }
 
 int logsys_facility_id_get (const char *name)
@@ -1025,63 +1431,6 @@ const char *logsys_tag_name_get (unsigned int tag)
 	return (NULL);
 }
 
-unsigned int logsys_config_subsys_set (
-	const char *subsys,
-	unsigned int tags,
-	unsigned int priority)
-{
-	int i;
-
-	pthread_mutex_lock (&logsys_config_mutex);
- 	for (i = 0; i < SUBSYS_MAX; i++) {
-		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
-			logsys_loggers[i].tags = tags;
-			logsys_loggers[i].priority = priority;
-
-			break;
-		}
-	}
-
-	if (i == SUBSYS_MAX) {
-		for (i = 0; i < SUBSYS_MAX; i++) {
-			if (strcmp (logsys_loggers[i].subsys, "") == 0) {
-				strncpy (logsys_loggers[i].subsys, subsys,
-					sizeof(logsys_loggers[i].subsys));
-				logsys_loggers[i].tags = tags;
-				logsys_loggers[i].priority = priority;
-				break;
-			}
-		}
-	}
-	assert(i < SUBSYS_MAX);
-
-	pthread_mutex_unlock (&logsys_config_mutex);
-	return i;
-}
-
-int logsys_config_subsys_get (
-	const char *subsys,
-	unsigned int *tags,
-	unsigned int *priority)
-{
-	unsigned int i;
-
-	pthread_mutex_lock (&logsys_config_mutex);
-
- 	for (i = 0; i < SUBSYS_MAX; i++) {
-		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
-			*tags = logsys_loggers[i].tags;
-			*priority = logsys_loggers[i].priority;
-			pthread_mutex_unlock (&logsys_config_mutex);
-			return i;
-		}
-	}
-
-	pthread_mutex_unlock (&logsys_config_mutex);
-
-	return (-1);
-}
-
 int logsys_log_rec_store (const char *filename)
 {
 	int fd;
@@ -1089,7 +1438,7 @@ int logsys_log_rec_store (const char *filename)
 	size_t size_to_write = (flt_data_size + 2) * sizeof (unsigned int);
 
 	fd = open (filename, O_CREAT|O_RDWR, 0700);
-	if (fd == -1) {
+	if (fd < 0) {
 		return (-1);
 	}
 
@@ -1105,67 +1454,11 @@ int logsys_log_rec_store (const char *filename)
 	return (0);
 }
 
-static void logsys_atexit (void)
+void logsys_atexit (void)
 {
 	if (wthread_active) {
 		wthread_should_exit = 1;
 		wthread_signal ();
 		pthread_join (logsys_thread_id, NULL);
 	}
-}
-
-void logsys_atsegv (void)
-{
-	if (wthread_active) {
-		wthread_should_exit = 1;
-		wthread_signal ();
-		pthread_join (logsys_thread_id, NULL);
-	}
-}
-
-int logsys_init (
-	const char *name,
-	int mode,
-	int facility,
-	int priority,
-	const char *file,
-	char *format,
-	int rec_size)
-{
-	const char *errstr;
-
-	_logsys_nosubsys_set ();
-	_logsys_subsys_create (name, priority);
-	strncpy (logsys_loggers[0].subsys, name,
-		 sizeof (logsys_loggers[0].subsys));
-	logsys_config_mode_set (mode);
-	logsys_config_facility_set (name, facility);
-	logsys_config_file_set (&errstr, file);
-	if (logsys_format_set (format))
-		return -1;
-	_logsys_rec_init (rec_size);
-	_logsys_wthread_create ();
-	return (0);
-}
-
-int logsys_conf (
-	char *name,
-	int mode,
-	int facility,
-	int priority,
-	char *file)
-{
-	const char *errstr;
-
-	_logsys_rec_init (100000);
-	strncpy (logsys_loggers[0].subsys, name,
-		sizeof (logsys_loggers[0].subsys));
-	logsys_config_mode_set (mode);
-	logsys_config_facility_set (name, facility);
-	logsys_config_file_set (&errstr, file);
-	return (0);
-}
-
-void logsys_exit (void)
-{
 }

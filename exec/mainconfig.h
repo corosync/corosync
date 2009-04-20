@@ -49,15 +49,7 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-struct main_config {
-	/*
-	 * logging configuration
-	 */
-	char *logfile;
-	unsigned int logmode;
-	unsigned int syslog_facility;
-	unsigned int minimum_priority;
-
+struct ug_config {
 	/*
 	 * user/group to run as
 	 */
@@ -65,14 +57,9 @@ struct main_config {
 	int gid;
 };
 
-int corosync_main_config_read_logging (
-	struct objdb_iface_ver0 *objdb,
-	const char **error_string,
-	struct main_config *main_config);
-
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string,
-	struct main_config *main_config);
+	struct ug_config *ug_config);
 
 #endif /* MAINCONFIG_H_DEFINED */

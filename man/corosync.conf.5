@@ -37,7 +37,7 @@
 corosync.conf - corosync executive configuration file
 
 .SH SYNOPSIS
-/etc/ais/corosync.conf
+/etc/corosync.conf
 
 .SH DESCRIPTION
 The corosync.conf instructs the corosync executive about various parameters
@@ -411,31 +411,10 @@ The default is 47 milliseconds.
 .PP
 Within the 
 .B logging
-directive, there are seven configuration options which are all optional:
-.TP
-to_stderr
-.TP
-to_file
-.TP
-to_syslog
-These specify the destination of logging output. Any combination of
-these options may be specified. Valid options are
-.B yes
-and
-.B no.
+directive, there are several configuration options which are all optional.
 
-The default is syslog and stderr.
-
-
-.TP
-logfile
-If the 
-.B to_file
-directive is set to
-.B yes
-, this option specifies the pathname of the log file.
-
-No default.
+.PP
+The following 3 options are valid only for the top level logging directive:
 
 .TP
 timestamp
@@ -455,6 +434,41 @@ This specifies that the code function name should be printed.
 
 The default is off.
 
+.PP
+The following options are valid both for top level logging directive
+and they can be overriden in logger_subsys entries.
+
+.TP
+to_stderr
+.TP
+to_logfile
+.TP
+to_syslog
+These specify the destination of logging output. Any combination of
+these options may be specified. Valid options are
+.B yes
+and
+.B no.
+
+The default is syslog and stderr.
+
+.TP
+logfile
+If the 
+.B to_logfile
+directive is set to
+.B yes
+, this option specifies the pathname of the log file.
+
+No default.
+
+.TP
+logfile_priority
+This specifies the logfile priority for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
+
+The default is: info.
+
 .TP 
 syslog_facility
 This specifies the syslog facility type that will be used for any messages
@@ -463,35 +477,18 @@ local5, local6 & local7.
 
 The default is daemon.
 
-.PP
-.PP
-Within the 
-.B logging
-directive, logger directives are optional.
-.PP
-.PP
-Within the 
-.B logger_subsys
-sub-directive of logging there are three configuration options:
-
 .TP
-subsys
-This specifies the subsystem identity (name) for which logging is specified. This is the
-name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
-required.
+syslog_priority
+This specifies the syslog level for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
+
+The default is: info.
 
 .TP
 debug
 This specifies whether debug output is logged for this particular logger.
 
 The default is off.
-
-.TP
-syslog_level
-This specifies the syslog level for this particular subsystem. Ignored if debug is on.
-Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
-
-The default is: info.
 
 .TP
 tags
@@ -504,6 +501,24 @@ Values are specified using a vertical bar as a logical OR separator:
 enter|leave|trace1|trace2|trace3|...
 
 The default is none.
+
+.PP
+Within the 
+.B logging
+directive, logger_subsys directives are optional.
+
+.PP
+Within the 
+.B logger_subsys
+sub-directive, all of the above logging configuration options are valid and
+can be used to override the default settings.
+The subsys entry, described below, is mandatory to identify the subsystem.
+
+.TP
+subsys
+This specifies the subsystem identity (name) for which logging is specified. This is the
+name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+required.
 
 .PP
 Within the

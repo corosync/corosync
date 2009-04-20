@@ -63,7 +63,7 @@
 
 #include <corosync/engine/quorum.h>
 
-LOGSYS_DECLARE_SUBSYS ("TEST", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("TEST");
 
 static void test_init(struct corosync_api_v1 *api, quorum_set_quorate_fn_t report);
 
@@ -123,7 +123,7 @@ static void key_change_notify(object_change_type_t change_type,
 
 static void quorum_callback(int quorate, void *context)
 {
-	log_printf(LOG_LEVEL_DEBUG, "quorum callback: quorate = %d\n", quorate);
+	log_printf(LOGSYS_LEVEL_DEBUG, "quorum callback: quorate = %d\n", quorate);
 }
 
 static void test_init(struct corosync_api_v1 *api,

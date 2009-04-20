@@ -52,7 +52,7 @@
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
 
-LOGSYS_DECLARE_SUBSYS ("CONFDB", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("CONFDB");
 
 static struct corosync_api_v1 *api;
 
@@ -294,13 +294,13 @@ static int confdb_exec_init_fn (
 
 static int confdb_lib_init_fn (void *conn)
 {
-	log_printf(LOG_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
 	return (0);
 }
 
 static int confdb_lib_exit_fn (void *conn)
 {
-	log_printf(LOG_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 	/* cleanup the object trackers for this client. */
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,

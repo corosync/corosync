@@ -36,12 +36,16 @@
 
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
 
-LOGSYS_DECLARE_SUBSYS ("SYS2", LOG_DEBUG)
+#include <corosync/engine/logsys.h>
+
+void logsys_s2_print (void);
+
+LOGSYS_DECLARE_SUBSYS ("SYS2");
 
 void logsys_s2_print (void) {
-	log_printf (LOG_ALERT, "This is an alert log message\n");
-	log_printf (LOG_WARNING, "This is a warning log message\n");
-	log_printf (LOG_DEBUG, "This is a debug log message\n");
+	logsys_config_logfile_priority_set("SYS2", LOGSYS_LEVEL_DEBUG);
+	log_printf (LOGSYS_LEVEL_ALERT, "This is an alert log message\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "This is a warning log message\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "This is a debug log message\n");
 }

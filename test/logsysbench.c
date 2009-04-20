@@ -42,13 +42,15 @@
 #include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logtest_rec",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED,
+	0,                /* debug */
 	NULL,
-	LOG_DAEMON,
-	NULL,
-	100000);
-
-LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
+	LOGSYS_LEVEL_INFO,   /* logfile_priority */
+	LOG_DAEMON,       /* syslog facility */
+	LOGSYS_LEVEL_INFO,   /* syslog level */
+	0,                /* tags */
+	NULL,             /* use default format */
+	1000000);         /* flight recorder size */
 
 #define LOGREC_ID_CHECKPOINT_CREATE 2
 #define LOGREC_ARGS_CHECKPOINT_CREATE 2
@@ -94,35 +96,35 @@ int main (void)
 	printf ("heating up cache with logrec functionality\n");
 	for (i = 0; i < ITERATIONS; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		"recordA", 8, "recordB", 8, LOG_REC_END);
+		"recordA", 8, "recordB", 8, LOGSYS_REC_END);
 	}
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		buffer, 7, LOG_REC_END);
+		buffer, 7, LOGSYS_REC_END);
 	}
 	bm_finish ("log_rec 1 arguments:");
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		"recordA", 8, LOG_REC_END);
+		"recordA", 8, LOGSYS_REC_END);
 	}
 	bm_finish ("log_rec 2 arguments:");
 	bm_start();
 	for (i = 0; i < 10; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		"recordA", 8, "recordB", 8, LOG_REC_END);
+		"recordA", 8, "recordB", 8, LOGSYS_REC_END);
 	}
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		"recordA", 8, "recordB", 8, "recordC", 8, LOG_REC_END);
+		"recordA", 8, "recordB", 8, "recordC", 8, LOGSYS_REC_END);
 	}
 	bm_finish ("log_rec 3 arguments:");
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
 	log_rec (LOGREC_ID_CHECKPOINT_CREATE,
-		"recordA", 8, "recordB", 8, "recordC", 8, "recordD", 8, LOG_REC_END);
+		"recordA", 8, "recordB", 8, "recordC", 8, "recordD", 8, LOGSYS_REC_END);
 	}
 	bm_finish ("log_rec 4 arguments:");
 
@@ -165,7 +167,7 @@ int main (void)
 
 	bm_start();
 	for (i = 0; i < ITERATIONS; i++) {
-	log_printf (LOG_LEVEL_NOTICE, "test %d", i);
+	log_printf (LOGSYS_LEVEL_NOTICE, "test %d", i);
 	}
 	bm_finish("log_printf");
 */

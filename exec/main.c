@@ -84,13 +84,17 @@
 #include "version.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED | LOG_MODE_FORK,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
+	0,
 	NULL,
+	LOG_INFO,
 	LOG_DAEMON,
+	LOG_INFO,
+	0,
 	NULL,
 	1000000);
 
-LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("MAIN");
 
 #define SERVER_BACKLOG 5
 
@@ -116,7 +120,7 @@ static struct objdb_iface_ver0 *objdb = NULL;
 
 static struct corosync_api_v1 *api = NULL;
 
-static struct main_config main_config;
+static struct ug_config ug_config;
 
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
@@ -147,9 +151,9 @@ static void *corosync_exit (void *arg)
 	int i;
 
 	mempool_getstats (stats_inuse, stats_avail, stats_memoryused);
-	log_printf (LOG_LEVEL_DEBUG, "Memory pools:\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "Memory pools:\n");
 	for (i = 0; i < MEMPOOL_GROUP_SIZE; i++) {
-	log_printf (LOG_LEVEL_DEBUG, "order %d size %d inuse %d avail %d memory used %d\n",
+	log_printf (LOGSYS_LEVEL_DEBUG, "order %d size %d inuse %d avail %d memory used %d\n",
 		i, 1<<i, stats_inuse[i], stats_avail[i], stats_memoryused[i]);
 	}
 #endif
@@ -178,7 +182,7 @@ static void sigquit_handler (int num)
 static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
-	logsys_atsegv();
+	logsys_atexit();
 	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
 	raise (SIGSEGV);
 }
@@ -186,7 +190,7 @@ static void sigsegv_handler (int num)
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
-	logsys_atsegv();
+	logsys_atexit();
 	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
 	raise (SIGABRT);
 }
@@ -299,8 +303,8 @@ static void confchg_fn (
 static void priv_drop (void)
 {
 return; /* TODO: we are still not dropping privs */
-	setuid (main_config.uid);
-	setegid (main_config.gid);
+	setuid (ug_config.uid);
+	setegid (ug_config.gid);
 }
 
 static void corosync_mempool_init (void)
@@ -309,7 +313,7 @@ static void corosync_mempool_init (void)
 
 	res = mempool_init (pool_sizes);
 	if (res == ENOMEM) {
-		log_printf (LOG_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
+		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
 		corosync_exit_error (AIS_DONE_MEMPOOL_INIT);
 	}
 }
@@ -371,15 +375,15 @@ static void corosync_setscheduler (void)
 		sched_param.sched_priority = sched_priority;
 		res = sched_setscheduler (0, SCHED_RR, &sched_param);
 		if (res == -1) {
-			log_printf (LOG_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
+			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				sched_param.sched_priority, strerror (errno));
 		}
 	} else {
-		log_printf (LOG_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
 		sched_priority = 0;
 	}
 #else
-	log_printf(LOG_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
+	log_printf(LOGSYS_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
 #endif
 }
 
@@ -402,11 +406,11 @@ static void corosync_mlockall (void)
 	/* under FreeBSD a process with locked page cannot call dlopen
 	 * code disabled until FreeBSD bug i386/93396 was solved
 	 */
-	log_printf (LOG_LEVEL_WARNING, "Could not lock memory of service to avoid page faults\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults\n");
 #else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
+		log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
 	};
 #endif
 }
@@ -531,7 +535,7 @@ static int corosync_security_valid (int euid, int egid)
 	if (euid == 0 || egid == 0) {
 		return (1);
 	}
-	if (euid == main_config.uid || egid == main_config.gid) {
+	if (euid == ug_config.uid || egid == ug_config.gid) {
 		return (1);
 	}
 	return (0);
@@ -602,16 +606,16 @@ static void ipc_log_printf (const char *format, ...) {
         va_list ap;
 
         va_start (ap, format);
-	
-       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
-                __FILE__, __LINE__, LOG_LEVEL_ERROR, format, ap);
 
-        va_end (ap);
+	_logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
+		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, format, ap);
+
+	va_end (ap);
 }
 
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
-                __FILE__, __LINE__, LOG_LEVEL_ERROR, "%s", error_msg);
+                __FILE__, __LINE__, LOGSYS_LEVEL_ERROR, "%s", error_msg);
 	exit(EXIT_FAILURE);
 }
 
@@ -710,7 +714,7 @@ int main (int argc, char **argv)
 		switch (ch) {
 			case 'f':
 				background = 0;
-				logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR|LOG_MODE_THREADED|LOG_MODE_FORK);
+				logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR|LOGSYS_MODE_THREADED|LOGSYS_MODE_FORK);
 				break;
 			case 'p':
 				setprio = 0;
@@ -727,9 +731,9 @@ int main (int argc, char **argv)
 	if (background)
 		corosync_tty_detach ();
 
-	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
-	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOG_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -745,7 +749,7 @@ int main (int argc, char **argv)
 		serialize_unlock,
 		sched_priority);
 
-	log_printf (LOG_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
 	corosync_poll_handle = poll_create ();
 
@@ -759,7 +763,7 @@ int main (int argc, char **argv)
 		&objdb_p,
 		0);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration object database component.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't open configuration object database component.\n");
 		corosync_exit_error (AIS_DONE_OBJDB);
 	}
 
@@ -800,16 +804,16 @@ int main (int argc, char **argv)
 
 		config = (struct config_iface_ver0 *)config_p;
 		if (res == -1) {
-			log_printf (LOG_LEVEL_ERROR, "Corosync Executive couldn't open configuration component '%s'\n", iface);
+			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't open configuration component '%s'\n", iface);
 			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 
 		res = config->config_readconfig(objdb, &error_string);
 		if (res == -1) {
-			log_printf (LOG_LEVEL_ERROR, "%s", error_string);
+			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
-		log_printf (LOG_LEVEL_NOTICE, "%s", error_string);
+		log_printf (LOGSYS_LEVEL_NOTICE, "%s", error_string);
 		config_modules[num_config_modules++] = config;
 
 		iface = strtok(NULL, ":");
@@ -817,27 +821,37 @@ int main (int argc, char **argv)
 	if (config_iface)
 		free(config_iface);
 
-	res = corosync_main_config_read (objdb, &error_string, &main_config);
+	res = corosync_main_config_read (objdb, &error_string, &ug_config);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
+		/*
+		 * if we are here, we _must_ flush the logsys queue
+		 * and try to inform that we couldn't read the config.
+		 * this is a desperate attempt before certain death
+		 * and there is no guarantee that we can print to stderr
+		 * nor that logsys is sending the messages where we expect.
+		 */
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		logsys_fork_completed ();
+		fprintf(stderr, "%s", error_string);
+		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_keyread (objdb, &totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "%s", error_string);
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
@@ -853,12 +867,12 @@ int main (int argc, char **argv)
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id =
-		_logsys_subsys_create ("TOTEM", LOG_INFO);
-  	totem_config.totem_logging_configuration.log_level_security = LOG_LEVEL_SECURITY;
-	totem_config.totem_logging_configuration.log_level_error = LOG_LEVEL_ERROR;
-	totem_config.totem_logging_configuration.log_level_warning = LOG_LEVEL_WARNING;
-	totem_config.totem_logging_configuration.log_level_notice = LOG_LEVEL_NOTICE;
-	totem_config.totem_logging_configuration.log_level_debug = LOG_LEVEL_DEBUG;
+		_logsys_subsys_create ("TOTEM");
+  	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_SECURITY;
+	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
+	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
+	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
+	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 
 	/*
@@ -898,7 +912,7 @@ int main (int argc, char **argv)
 	 */
 	res = corosync_service_defaults_link_and_init (api);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Could not initialize default services\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 
@@ -921,7 +935,7 @@ int main (int argc, char **argv)
  		serialize_lock,
  		serialize_unlock);
 
-	ipc_subsys_id = _logsys_subsys_create ("IPC", LOG_INFO);
+	ipc_subsys_id = _logsys_subsys_create ("IPC");
 
 	ipc_init_state.sched_priority = sched_priority;
 

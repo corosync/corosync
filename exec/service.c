@@ -55,8 +55,7 @@
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 
-
-LOGSYS_DECLARE_SUBSYS ("SERV", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("SERV");
 
 struct default_service {
 	const char *name;
@@ -153,7 +152,7 @@ unsigned int corosync_service_link_and_init (
 	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
 
 	if (iface_ver0 == 0) {
-		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
+		log_printf(LOGSYS_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
 		return (-1);
 	}
 
@@ -204,7 +203,7 @@ unsigned int corosync_service_link_and_init (
 		&service->id,
 		sizeof (service->id));
 
-	log_printf (LOG_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
 	return (res);
 }
 
@@ -230,7 +229,7 @@ static int corosync_service_unlink_common (
 		(void *)&service_id,
 		NULL);
 	
-	log_printf(LOG_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
+	log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
 		service_name, service_version);
 
 	if (ais_service[*service_id]->exec_exit_fn) {
@@ -303,7 +302,7 @@ extern unsigned int corosync_service_unlink_all (
 	hdb_handle_t object_find_handle;
 	int found; 
 
-	log_printf(LOG_LEVEL_NOTICE, "Unloading all corosync components\n");
+	log_printf(LOGSYS_LEVEL_NOTICE, "Unloading all corosync components\n");
 
 	/*
 	 * TODO

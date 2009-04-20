@@ -4,6 +4,7 @@
  *
  * Author: Steven Dake (sdake@redhat.com)
  * Author: Lon Hohberger (lhh@redhat.com)
+ * Author: Fabio M. Di Nitto (fdinitto@redhat.com)
  *
  * All rights reserved.
  *
@@ -41,31 +42,35 @@
 #include <assert.h>
 
 /*
- * All of the LOG_MODE's can be ORed together for combined behavior
+ * All of the LOGSYS_MODE's can be ORed together for combined behavior
+ *
+ * FORK and THREADED are ignored for SUBSYSTEMS
  */
-#define LOG_MODE_OUTPUT_FILE		(1<<0)
-#define LOG_MODE_OUTPUT_STDERR		(1<<1)
-#define LOG_MODE_OUTPUT_SYSLOG		(1<<3)
-#define LOG_MODE_NOSUBSYS		(1<<4)
-#define LOG_MODE_FORK			(1<<5)
-#define LOG_MODE_THREADED		(1<<6)
+#define LOGSYS_MODE_OUTPUT_FILE		(1<<0)
+#define LOGSYS_MODE_OUTPUT_STDERR	(1<<1)
+#define LOGSYS_MODE_OUTPUT_SYSLOG	(1<<2)
+#define LOGSYS_MODE_FORK		(1<<3)
+#define LOGSYS_MODE_THREADED		(1<<4)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
  */
-#define LOG_LEVEL_EMERG	    		LOG_EMERG
-#define LOG_LEVEL_ALERT			LOG_ALERT
-#define LOG_LEVEL_CRIT			LOG_CRIT
-#define LOG_LEVEL_ERROR			LOG_ERR
-#define LOG_LEVEL_WARNING		LOG_WARNING
-#define LOG_LEVEL_SECURITY		LOG_WARNING // corosync specific
-#define LOG_LEVEL_NOTICE		LOG_NOTICE
-#define LOG_LEVEL_INFO	    		LOG_INFO
-#define LOG_LEVEL_DEBUG			LOG_DEBUG
+#define LOGSYS_LEVEL_EMERG	    		LOG_EMERG
+#define LOGSYS_LEVEL_ALERT			LOG_ALERT
+#define LOGSYS_LEVEL_CRIT			LOG_CRIT
+#define LOGSYS_LEVEL_ERROR			LOG_ERR
+#define LOGSYS_LEVEL_WARNING		LOG_WARNING
+#define LOGSYS_LEVEL_SECURITY		LOG_WARNING // corosync specific
+#define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
+#define LOGSYS_LEVEL_INFO	    		LOG_INFO
+#define LOGSYS_LEVEL_DEBUG			LOG_DEBUG
 
 /*
  * The tag masks are all mutually exclusive
- */	
+ *
+ * LOG is mandatory, but enforced, for subsystems.
+ * Be careful if/when changing tags at runtime.
+ */
 #define LOGSYS_TAG_LOG			(0xff<<28)
 #define LOGSYS_TAG_ENTER		(1<<27)
 #define LOGSYS_TAG_LEAVE		(1<<26)
@@ -79,36 +84,144 @@
 #define LOGSYS_TAG_TRACE8		(1<<18)
 
 /*
- * External API
+ * Internal APIs that must be globally exported
+ * (External API below)
  */
-extern void logsys_config_mode_set (
-	unsigned int mode);
 
-extern unsigned int logsys_config_mode_get (void);
+/*
+ * logsys_logger bits
+ *
+ * SUBSYS_COUNT defines the maximum number of subsystems
+ * SUBSYS_NAMELEN defines the maximum len of a subsystem name
+ */
+#define LOGSYS_MAX_SUBSYS_COUNT		64
+#define LOGSYS_MAX_SUBSYS_NAMELEN	64
 
-extern int logsys_config_file_set (
-	const char **error_string,
-	const char *file);
+extern int _logsys_system_setup(
+	const char *mainsystem,
+	unsigned int mode,
+	unsigned int debug,
+	const char *logfile,
+	int logfile_priority,
+	int syslog_facility,
+	int syslog_priority,
+	unsigned int tags);
 
-extern void logsys_config_facility_set (
-	const char *name,
-	unsigned int facility);
+extern int _logsys_config_subsys_get (
+	const char *subsys);
 
+extern unsigned int _logsys_subsys_create (const char *subsys);
+
+extern int _logsys_rec_init (unsigned int size);
+
+extern void _logsys_log_printf (
+	int subsysid,
+	const char *function_name,
+	const char *file_name,
+	int file_line,
+	unsigned int level,
+	const char *format,
+	...) __attribute__((format(printf, 6, 7)));
+
+extern void _logsys_log_rec (
+	int subsysid,
+	const char *function_name,
+	const char *file_name,
+	int file_line,
+	unsigned int rec_ident,
+	...);
+
+extern int _logsys_wthread_create (void);
+
+static unsigned int logsys_subsys_id __attribute__((unused)) = -1;
+
+/*
+ * External API - init
+ * See below:
+ *
+ * LOGSYS_DECLARE_SYSTEM
+ * LOGSYS_DECLARE_SUBSYS
+ *
+ */
+extern void logsys_fork_completed (void);
+
+extern void logsys_atexit (void);
+
+/*
+ * External API - misc
+ */
+extern int logsys_log_rec_store (const char *filename);
+
+/*
+ * External API - configuration
+ */
+
+/*
+ * configuration bits that can only be done for the whole system
+ */
 extern int logsys_format_set (
 	const char *format);
 
 extern char *logsys_format_get (void);
 
-extern unsigned int logsys_config_subsys_set (
+/*
+ * per system/subsystem settings.
+ *
+ * NOTE: once a subsystem is created and configured, changing
+ * the default does NOT affect the subsystems.
+ *
+ * Pass a NULL subsystem to change them all
+ */
+extern unsigned int logsys_config_syslog_facility_set (
 	const char *subsys,
-	unsigned int tags,
+	unsigned int facility);
+
+extern unsigned int logsys_config_syslog_priority_set (
+	const char *subsys,
 	unsigned int priority);
 
-extern int logsys_config_subsys_get (
+extern unsigned int logsys_config_mode_set (
 	const char *subsys,
-	unsigned int *tags,
-	unsigned int *priority);
+	unsigned int mode);
 
+extern unsigned int logsys_config_mode_get (
+	const char *subsys);
+
+extern unsigned int logsys_config_tags_set (
+	const char *subsys,
+	unsigned int tags);
+
+extern unsigned int logsys_config_tags_get (
+	const char *subsys);
+
+/*
+ * to close a logfile, just invoke this function with a NULL
+ * file or if you want to change logfile, the old one will
+ * be closed for you.
+ */
+extern int logsys_config_file_set (
+	const char *subsys,
+	const char **error_string,
+	const char *file);
+
+extern unsigned int logsys_config_logfile_priority_set (
+	const char *subsys,
+	unsigned int priority);
+
+/*
+ * enabling debug, disable message priority filtering.
+ * everything is sent everywhere. priority values
+ * for file and syslog are not overwritten.
+ */
+extern unsigned int logsys_config_debug_set (
+	const char *subsys,
+	unsigned int value);
+
+/*
+ * External API - helpers
+ *
+ * convert facility/priority/tag to/from name/values
+ */
 extern int logsys_facility_id_get (
 	const char *name);
 
@@ -127,92 +240,42 @@ extern int logsys_tag_id_get (
 extern const char *logsys_tag_name_get (
 	unsigned int tag);
 
-extern void logsys_fork_completed (void);
-
-extern void logsys_flush (void);
-
-extern void logsys_atsegv (void);
-
-extern int logsys_log_rec_store (const char *filename);
-
-/*
- * Internal APIs that must be globally exported
- */
-extern unsigned int _logsys_subsys_create (
-	const char *ident,
-	unsigned int priority);
-
-extern void _logsys_nosubsys_set (void);
-
-extern int _logsys_rec_init (unsigned int size);
-
-extern void _logsys_log_printf (
-	int subsys,
-	const char *function_name,
-	const char *file_name,
-	int file_line,
-	unsigned int level,
-	const char *format,
-	...) __attribute__((format(printf, 6, 7)));
-
-extern void _logsys_log_rec (
-	int subsys,
-	const char *function_name,
-	const char *file_name,
-	int file_line,
-	unsigned int rec_ident,
-	...);
-
-extern int _logsys_wthread_create (void);
-
-static unsigned int logsys_subsys_id __attribute__((unused)) = -1;
-									
 /*
  * External definitions
  */
 extern void *logsys_rec_end;
 
-#define LOG_REC_END (&logsys_rec_end)
+#define LOGSYS_REC_END (&logsys_rec_end)
 
-#define LOGSYS_DECLARE_SYSTEM(name,mode,file,facility,format,rec_size)	\
-__attribute__ ((constructor)) static void logsys_system_init (void)	\
+#define LOGSYS_DECLARE_SYSTEM(name,mode,debug,file,file_priority,	\
+		syslog_facility,syslog_priority,tags,format,rec_size)	\
+__attribute__ ((constructor))						\
+static void logsys_system_init (void)					\
 {									\
-	const char *error_string;						\
+	int err;							\
 									\
-	logsys_config_mode_set (mode);					\
-	logsys_config_file_set (&error_string, (file));			\
-	logsys_config_facility_set (name, (facility));			\
-	logsys_format_set (format); /* FIXME: assert success? */	\
-	_logsys_rec_init (rec_size);					\
-	_logsys_wthread_create();					\
+	err = _logsys_system_setup (name,mode,debug,file,file_priority,	\
+				syslog_facility,syslog_priority,tags);	\
+	assert (err == 0 && "_logsys_system_setup failed");		\
+									\
+	err = logsys_format_set (format);				\
+	assert (err == 0 && "logsys_format_set failed");		\
+									\
+	err = _logsys_rec_init (rec_size);				\
+	assert (err == 0 && "_logsys_rec_init failed");			\
+									\
+	err = _logsys_wthread_create();					\
+	assert (err == 0 && "_logsys_wthread_create failed");		\
 }
 
-#define LOGSYS_DECLARE_NOSUBSYS(priority)				\
-__attribute__ ((constructor)) static void logsys_nosubsys_init (void)	\
+#define LOGSYS_DECLARE_SUBSYS(subsys)					\
+__attribute__ ((constructor))						\
+static void logsys_subsys_init (void)					\
 {									\
-	unsigned int pri, tags;						\
-									\
 	logsys_subsys_id =						\
-		logsys_config_subsys_get("MAIN", &tags, &pri);		\
-									\
-	if (logsys_subsys_id == -1) {					\
-		_logsys_nosubsys_set();					\
-		logsys_subsys_id =					\
-			_logsys_subsys_create ("MAIN", (priority));	\
-	}								\
-}
-
-#define LOGSYS_DECLARE_SUBSYS(subsys,priority)				\
-__attribute__ ((constructor)) static void logsys_subsys_init (void)	\
-{									\
-	unsigned int pri, tags;						\
-									\
-	logsys_subsys_id =						\
-		logsys_config_subsys_get((subsys), &tags, &pri);	\
-									\
-	if (logsys_subsys_id == -1)					\
-		logsys_subsys_id =					\
-			_logsys_subsys_create ((subsys), (priority));	\
+		_logsys_subsys_create ((subsys));			\
+	assert (logsys_subsys_id < LOGSYS_MAX_SUBSYS_COUNT && 		\
+		"_logsys_subsys_create failed");			\
 }
 
 #define log_rec(rec_ident, args...)					\
@@ -229,12 +292,12 @@ do {									\
 
 #define ENTER() do {							\
 	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_ENTER, LOG_REC_END);	\
+		__FILE__,  __LINE__, LOGSYS_TAG_ENTER, LOGSYS_REC_END);	\
 } while(0)
 
 #define LEAVE() do {							\
 	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_LEAVE, LOG_REC_END);	\
+		__FILE__,  __LINE__, LOGSYS_TAG_LEAVE, LOGSYS_REC_END);	\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
@@ -276,27 +339,5 @@ do {									\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE8, format, ##args);\
 } while(0)
-
-/*
- * For one-time programmatic initialization and configuration of logsys
- * instead of using the DECLARE macros.  These APIs do not allow subsystems
- */
-int logsys_init (
-	const char *name,
-	int mode,
-	int facility,
-	int priority,
-	const char *file,
-	char *format,
-	int rec_size);
-
-int logsys_conf (
-	char *name,
-	int mode,
-	int facility,
-	int priority,
-	char *file);
-
-void logsys_exit (void);
 
 #endif /* LOGSYS_H_DEFINED */

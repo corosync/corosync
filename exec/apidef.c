@@ -55,7 +55,7 @@
 #include <corosync/lcr/lcr_ifact.h>
 #include "apidef.h"
 
-LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("APIDEF");
 
 /*
  * Remove compile warnings about type name changes in corosync_tpg_group

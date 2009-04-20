@@ -64,7 +64,7 @@
 #include <corosync/swab.h>
 #include <corosync/lcr/lcr_comp.h>
 
-LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("YKD");
 
 #define YKD_PROCESSOR_COUNT_MAX 32
 
@@ -349,7 +349,7 @@ static void ykd_deliver_fn (
 	 */
 #ifdef TODO
 	if (totemip_localhost_check (source_addr)) {
-		log_printf (LOG_LEVEL_NOTICE,
+		log_printf (LOGSYS_LEVEL_NOTICE,
 			"This processor is within the primary component.\n");
 			primary_designated = 1;
 
@@ -424,7 +424,7 @@ static void ykd_deliver_fn (
 
 		case YKD_MODE_ATTEMPT:
 			if (all_received) {
-				log_printf (LOG_LEVEL_NOTICE,
+				log_printf (LOGSYS_LEVEL_NOTICE,
 					"This processor is within the primary component.\n");
 				primary_designated = 1;
 

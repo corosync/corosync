@@ -61,7 +61,7 @@
 #include "quorum.h"
 #include "sync.h"
 
-LOGSYS_DECLARE_SUBSYS ("SYNC", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("SYNC");
 
 #define MESSAGE_REQ_SYNC_BARRIER 0
 
@@ -260,7 +260,7 @@ int sync_register (
 		sync_deliver_fn,
 		sync_confchg_fn);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR,
+		log_printf (LOGSYS_LEVEL_ERROR,
 			"Couldn't initialize groups interface.\n");
 		return (-1);
 	}
@@ -270,7 +270,7 @@ int sync_register (
 		&sync_group,
 		1);
 	if (res == -1) {
-		log_printf (LOG_LEVEL_ERROR, "Couldn't join group.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't join group.\n");
 		return (-1);
 	}
 		
@@ -289,9 +289,9 @@ static void sync_primary_callback_fn (
 	int i;
 
 	if (primary_designated) {
-		log_printf (LOG_LEVEL_DEBUG, "This node is within the primary component and will provide service.\n");
+		log_printf (LOGSYS_LEVEL_DEBUG, "This node is within the primary component and will provide service.\n");
 	} else {
-		log_printf (LOG_LEVEL_DEBUG, "This node is within the non-primary component and will NOT provide any services.\n");
+		log_printf (LOGSYS_LEVEL_DEBUG, "This node is within the non-primary component and will NOT provide any services.\n");
 		return;
 	}
 
@@ -336,7 +336,7 @@ static void sync_deliver_fn (
 	unsigned int barrier_completed;
 	int i;
 
-	log_printf (LOG_LEVEL_DEBUG, "confchg entries %lu\n",
+	log_printf (LOGSYS_LEVEL_DEBUG, "confchg entries %lu\n",
 		    (unsigned long int) barrier_data_confchg_entries);
 	if (endian_conversion_required) {
 		sync_endian_convert (req_exec_sync_barrier_start);
@@ -361,7 +361,7 @@ static void sync_deliver_fn (
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
 		if (nodeid == barrier_data_process[i].nodeid) {
 			barrier_data_process[i].completed = 1;
-			log_printf (LOG_LEVEL_DEBUG,
+			log_printf (LOGSYS_LEVEL_DEBUG,
 				"Barrier Start Recieved From %d\n",
 				barrier_data_process[i].nodeid);
 			break;
@@ -372,7 +372,7 @@ static void sync_deliver_fn (
 	 * Test if barrier is complete
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		log_printf (LOG_LEVEL_DEBUG,
+		log_printf (LOGSYS_LEVEL_DEBUG,
 			"Barrier completion status for nodeid %d = %d. \n",
 			barrier_data_process[i].nodeid,
 			barrier_data_process[i].completed);
@@ -381,7 +381,7 @@ static void sync_deliver_fn (
 		}
 	}
 	if (barrier_completed) {
-		log_printf (LOG_LEVEL_DEBUG,
+		log_printf (LOGSYS_LEVEL_DEBUG,
 			"Synchronization barrier completed\n");
 	}
 	/*
@@ -390,7 +390,7 @@ static void sync_deliver_fn (
 	if (barrier_completed && sync_callbacks.sync_activate) {
 		sync_callbacks.sync_activate ();
 
-		log_printf (LOG_LEVEL_DEBUG,
+		log_printf (LOGSYS_LEVEL_DEBUG,
 			"Committing synchronization for (%s)\n",
 			sync_callbacks.name);
 	}
@@ -408,7 +408,7 @@ static void sync_deliver_fn (
 		 * if sync service found, execute it
 		 */
 		if (sync_processing && sync_callbacks.sync_init) {
-			log_printf (LOG_LEVEL_DEBUG,
+			log_printf (LOGSYS_LEVEL_DEBUG,
 				"Synchronization actions starting for (%s)\n",
 				sync_callbacks.name);
 			sync_service_init (&deliver_ring_id);

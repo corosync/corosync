@@ -36,20 +36,23 @@
 
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
+
+#include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logsystestNOsubsystems",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED, 
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG, 
+	0,
 	NULL,
+	LOGSYS_LEVEL_DEBUG,
 	LOG_DAEMON,
-	"%6s %b",
-	100000);
-
-LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_DEBUG);
+	LOGSYS_LEVEL_DEBUG,
+	0,
+	NULL,
+	1000000);
 
 int main (void) {
-	log_printf (LOG_ALERT, "This is an alert log message\n");
-	log_printf (LOG_WARNING, "This is a warning log message\n");
-	log_printf (LOG_DEBUG, "This is a debug log message\n");
+	log_printf (LOGSYS_LEVEL_ALERT, "This is an alert log message\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "This is a warning log message\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "This is a debug log message\n");
 	return (0);
 }

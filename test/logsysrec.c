@@ -39,13 +39,15 @@
 #include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logtest_rec",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_THREADED,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED,
+	0,
 	NULL,
+	LOG_INFO,
 	LOG_DAEMON,
+	LOG_INFO,
+	0,
 	NULL,
 	100000);
-
-LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
 
 #define LOGREC_ID_CHECKPOINT_CREATE 2
 #define LOGREC_ARGS_CHECKPOINT_CREATE 2
@@ -55,9 +57,9 @@ int main(int argc, char **argv)
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		log_printf (LOG_LEVEL_NOTICE, "This is a test of %s\n", "stringparse");
+		log_printf (LOGSYS_LEVEL_NOTICE, "This is a test of %s\n", "stringparse");
 
-		log_rec (LOGREC_ID_CHECKPOINT_CREATE, "record1", 8, "record22", 9, "record333", 10, "record444", 11, LOG_REC_END);
+		log_rec (LOGREC_ID_CHECKPOINT_CREATE, "record1", 8, "record22", 9, "record333", 10, "record444", 11, LOGSYS_REC_END);
 	}
 	logsys_log_rec_store ("fdata");
 

@@ -36,11 +36,14 @@
 
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
 
-LOGSYS_DECLARE_SUBSYS ("SYS1", LOG_ALERT)
+#include <corosync/engine/logsys.h>
+
+void logsys_s1_print (void);
+
+LOGSYS_DECLARE_SUBSYS ("SYS1");
 
 void logsys_s1_print (void) {
-	log_printf (LOG_ALERT, "This is an alert log message\n");
-	log_printf (LOG_WARNING, "This is a warning log message\n");
+	log_printf (LOGSYS_LEVEL_ALERT, "This is an alert log message\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "This is a warning log message\n");
 }

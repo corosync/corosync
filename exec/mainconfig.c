@@ -59,11 +59,6 @@
 static char error_string_response[512];
 static struct objdb_iface_ver0 *global_objdb;
 
-static void add_logsys_config_notification(
-	struct objdb_iface_ver0 *objdb,
-	struct main_config *main_config);
-
-
 /* This just makes the code below a little neater */
 static inline int objdb_get_string (
 	const struct objdb_iface_ver0 *objdb,
@@ -104,7 +99,6 @@ static inline void objdb_get_int (
 		}
 	}
 }
-
 
 /**
  * insert_into_buffer
@@ -177,25 +171,297 @@ static int insert_into_buffer(
 	return 0;
 }
 
-static struct logsys_config_struct {
-	char subsys[6];
-	unsigned int priority;
-	unsigned int tags;
-} logsys_logger;
-
-int corosync_main_config_read_logging (
+/*
+ * format set is the only global specific option that
+ * doesn't apply at system/subsystem level.
+ */
+static int corosync_main_config_format_set (
 	struct objdb_iface_ver0 *objdb,
-	const char **error_string,
-	struct main_config *main_config)
+	hdb_handle_t object_handle,
+	const char **error_string)
+{
+	const char *error_reason;
+	char new_format_buffer[PATH_MAX];
+	char *value;
+	int err = 0;
+
+	if (!objdb_get_string (objdb,object_handle, "fileline", &value)) {
+		if (strcmp (value, "on") == 0) {
+			if (!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					" %f:%l", "s]")) {
+				err = logsys_format_set(new_format_buffer);
+			} else
+			if (!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					"%f:%l", NULL)) {
+				err = logsys_format_set(new_format_buffer);
+			}
+		} else
+		if (strcmp (value, "off") == 0) {
+			/* nothing to do here */
+		} else {
+			error_reason = "unknown value for fileline";
+			goto parse_error;
+		}
+	}
+	if (!objdb_get_string (objdb,object_handle, "function_name", &value)) {
+		if (strcmp (value, "on") == 0) {
+			if (!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					"%n:", "f:")) {
+				err = logsys_format_set(new_format_buffer);
+			} else
+			if (!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					" %n", "s]")) {
+				err = logsys_format_set(new_format_buffer);
+			}
+		} else
+		if (strcmp (value, "off") == 0) {
+			/* nothing to do here */
+		} else {
+			error_reason = "unknown value for function_name";
+			goto parse_error;
+		}
+	}
+	if (!objdb_get_string (objdb,object_handle, "timestamp", &value)) {
+		if (strcmp (value, "on") == 0) {
+			if(!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					"%t ", NULL)) {
+				err = logsys_format_set(new_format_buffer);
+			}
+		} else
+		if (strcmp (value, "off") == 0) {
+			/* nothing to do here */
+		} else {
+			error_reason = "unknown value for timestamp";
+			goto parse_error;
+		}
+	}
+	if (err) {
+		error_reason = "exhausted virtual memory";
+		goto parse_error;
+	}
+
+	return (0);
+
+parse_error:
+	*error_string = error_reason;
+
+	return (-1);
+}
+
+static int corosync_main_config_set (
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_handle,
+	const char *subsys,
+	const char **error_string)
+{
+	const char *error_reason = error_string_response;
+	char *value;
+	unsigned int mode;
+
+	/*
+	 * this bit abuses the internal logsys exported API
+	 * to guarantee that all configured subsystems are
+	 * initialized too.
+	 *
+	 * using this approach avoids some headaches caused
+	 * by IPC and TOTEM that have a special logging
+	 * handling requirements
+	 */
+	if (subsys != NULL) {
+		if (_logsys_subsys_create(subsys) < 0) {
+			error_reason = "unable to create new logging subsystem";
+			goto parse_error;
+		}
+	}
+
+	mode = logsys_config_mode_get(subsys);
+	if (mode < 0) {
+		error_reason = "unable to get mode";
+		goto parse_error;
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "to_logfile", &value)) {
+		if (strcmp (value, "yes") == 0) {
+			mode |= LOGSYS_MODE_OUTPUT_FILE;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to set mode to_logfile";
+				goto parse_error;
+			}
+		} else
+		if (strcmp (value, "no") == 0) {
+			mode &= ~LOGSYS_MODE_OUTPUT_FILE;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to unset mode to_logfile";
+				goto parse_error;
+			}
+		} else {
+			error_reason = "unknown value for to_file";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "to_syslog", &value)) {
+		if (strcmp (value, "yes") == 0) {
+			mode |= LOGSYS_MODE_OUTPUT_SYSLOG;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to set mode to_syslog";
+				goto parse_error;
+			}
+		} else
+		if (strcmp (value, "no") == 0) {
+			mode &= ~LOGSYS_MODE_OUTPUT_SYSLOG;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to unset mode to_syslog";
+				goto parse_error;
+			}
+		} else {
+			error_reason = "unknown value for to_syslog";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "to_stderr", &value)) {
+		if (strcmp (value, "yes") == 0) {
+			mode |= LOGSYS_MODE_OUTPUT_STDERR;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to set mode to_stderr";
+				goto parse_error;
+			}
+		} else
+		if (strcmp (value, "no") == 0) {
+			mode &= ~LOGSYS_MODE_OUTPUT_STDERR;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to unset mode to_stderr";
+				goto parse_error;
+			}
+		} else {
+			error_reason = "unknown value for to_syslog";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "syslog_facility", &value)) {
+		int syslog_facility;
+
+		syslog_facility = logsys_facility_id_get(value);
+		if (syslog_facility < 0) {
+			error_reason = "unknown syslog facility specified";
+			goto parse_error;
+		}
+		if (logsys_config_syslog_facility_set(subsys,
+						syslog_facility) < 0) {
+			error_reason = "unable to set syslog facility";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "syslog_priority", &value)) {
+		int syslog_priority;
+
+		syslog_priority = logsys_priority_id_get(value);
+		if (syslog_priority < 0) {
+			error_reason = "unknown syslog priority specified";
+			goto parse_error;
+		}
+		if (logsys_config_syslog_priority_set(subsys,
+						syslog_priority) < 0) {
+			error_reason = "unable to set syslog priority";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "logfile", &value)) {
+		if (logsys_config_file_set (subsys, error_string, value) < 0) {
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "logfile_priority", &value)) {
+		int logfile_priority;
+
+		logfile_priority = logsys_priority_id_get(value);
+		if (logfile_priority < 0) {
+			error_reason = "unknown logfile priority specified";
+			goto parse_error;
+		}
+		if (logsys_config_logfile_priority_set(subsys,
+						logfile_priority) < 0) {
+			error_reason = "unable to set logfile priority";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb, object_handle, "debug", &value)) {
+		if (strcmp (value, "on") == 0) {
+			if (logsys_config_debug_set (subsys, 1) < 0) {
+				error_reason = "unable to set debug on";
+				goto parse_error;
+			}
+		} else
+		if (strcmp (value, "off") == 0) {
+			if (logsys_config_debug_set (subsys, 0) < 0) {
+				error_reason = "unable to set debug off";
+				goto parse_error;
+			}
+		} else {
+			error_reason = "unknown value for debug";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb, object_handle, "tags", &value)) {
+		char *temp, *token;
+		unsigned int tags = 0;
+
+		temp = strdup(value);
+		if (temp == NULL) {
+			error_reason = "exhausted virtual memory";
+			goto parse_error;
+		}
+
+		while ((token = strsep(&temp, "|")) != NULL) {
+			int val;
+
+			val = logsys_tag_id_get(token);
+			if (val < 0) {
+				error_reason = "bad tags value";
+				goto parse_error;
+			}
+			tags |= val;
+		}
+		free(temp);
+
+		tags |= LOGSYS_TAG_LOG;
+
+		if (logsys_config_tags_set (subsys, tags) < 0) {
+			error_reason = "unable to set tags";
+			goto parse_error;
+		}
+	}
+
+	return (0);
+
+parse_error:
+	*error_string = error_reason;
+
+	return (-1);
+}
+
+static int corosync_main_config_read_logging (
+	struct objdb_iface_ver0 *objdb,
+	const char **error_string)
 {
 	hdb_handle_t object_service_handle;
 	hdb_handle_t object_logger_subsys_handle;
-	char *value;
-	const char *error_reason = error_string_response;
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_find_logsys_handle;
-	char new_format_buffer[PATH_MAX];
-	int err = 0;
+	const char *error_reason;
+	char *value;
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -203,112 +469,26 @@ int corosync_main_config_read_logging (
 		strlen ("logging"),
 		&object_find_handle);
 
-	main_config->logmode = LOG_MODE_THREADED | LOG_MODE_FORK;
 	if (objdb->object_find_next (
 		object_find_handle,
 		&object_service_handle) == 0) {
 
-		if (!objdb_get_string (objdb,object_service_handle, "to_file", &value)) {
-			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_OUTPUT_FILE;
-			} else
-			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_OUTPUT_FILE;
-			}
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "to_syslog", &value)) {
-			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_OUTPUT_SYSLOG;
-			} else
-			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_OUTPUT_SYSLOG;
-			}
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "to_stderr", &value)) {
-			if (strcmp (value, "yes") == 0) {
-				main_config->logmode |= LOG_MODE_OUTPUT_STDERR;
-			} else
-			if (strcmp (value, "no") == 0) {
-				main_config->logmode &= ~LOG_MODE_OUTPUT_STDERR;
-			}
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "fileline", &value)) {
-			if (strcmp (value, "on") == 0) {
-				if (!insert_into_buffer(new_format_buffer,
-						sizeof(new_format_buffer),
-						" %f:%l", "s]")) {
-					err = logsys_format_set(new_format_buffer);
-				} else
-				if (!insert_into_buffer(new_format_buffer,
-						sizeof(new_format_buffer),
-						"%f:%l", NULL)) {
-					err = logsys_format_set(new_format_buffer);
-				}
-			} else
-			if (strcmp (value, "off") == 0) {
-				/* nothing to do here */
-			} else {
-				goto parse_error;
-			}
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "function_name", &value)) {
-			if (strcmp (value, "on") == 0) {
-				if (!insert_into_buffer(new_format_buffer,
-						sizeof(new_format_buffer),
-						"%n:", "f:")) {
-					err = logsys_format_set(new_format_buffer);
-				} else
-				if (!insert_into_buffer(new_format_buffer,
-						sizeof(new_format_buffer),
-						" %n", "s]")) {
-					err = logsys_format_set(new_format_buffer);
-				}
-			} else
-			if (strcmp (value, "off") == 0) {
-				/* nothing to do here */
-			} else {
-				goto parse_error;
-			}
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "timestamp", &value)) {
-			if (strcmp (value, "on") == 0) {
-				if(!insert_into_buffer(new_format_buffer,
-						sizeof(new_format_buffer),
-						"%t ", NULL)) {
-					err = logsys_format_set(new_format_buffer);
-				}
-			} else
-			if (strcmp (value, "off") == 0) {
-				/* nothing to do here */
-			} else {
-				goto parse_error;
-			}
-		}
-		if (err) {
-			error_reason = "exhausted virtual memory";
+		/* format set is supported only for toplevel */
+		if (corosync_main_config_format_set (objdb,
+						       object_service_handle,
+						       &error_reason) < 0) {
 			goto parse_error;
 		}
 
-		/* free old string on reload */
-		if (main_config->logfile) {
-			free(main_config->logfile);
-			main_config->logfile = NULL;
-		}
-		if (!objdb_get_string (objdb,object_service_handle, "logfile", &value)) {
-			main_config->logfile = strdup (value);
+		if (corosync_main_config_set (objdb,
+						object_service_handle,
+						NULL,
+						&error_reason) < 0) {
+			goto parse_error;
 		}
 
-		if (!objdb_get_string (objdb,object_service_handle, "syslog_facility", &value)) {
-			main_config->syslog_facility = logsys_facility_id_get(value);
-			if (main_config->syslog_facility < 0) {
-				error_reason = "unknown syslog facility specified";
-				goto parse_error;
-			}
-		}
-
-		logsys_config_facility_set ("corosync", main_config->syslog_facility);
-		logsys_config_mode_set (main_config->logmode);
-		logsys_config_file_set (error_string, main_config->logfile);
+		/* we will need 2 of these to compensate for new logging
+		 * config format */
 
 		objdb->object_find_create (
 			object_service_handle,
@@ -324,67 +504,65 @@ int corosync_main_config_read_logging (
 				object_logger_subsys_handle,
 				"subsys", &value)) {
 
-				strncpy (logsys_logger.subsys, value,
-					sizeof (logsys_logger.subsys));
+				if (corosync_main_config_set (objdb,
+						object_logger_subsys_handle,
+						value,
+						&error_reason) < 0) {
+					goto parse_error;
+				}
 			}
 			else {
 				error_reason = "subsys required for logger directive";
 				goto parse_error;
 			}
-			if (!objdb_get_string (objdb, object_logger_subsys_handle, "syslog_level", &value)) {
-				logsys_logger.priority = logsys_priority_id_get(value);
-				if (logsys_logger.priority < 0) {
-					error_reason = "unknown syslog priority specified";
-					goto parse_error;
-				}
-			}
-			if (!objdb_get_string (objdb, object_logger_subsys_handle, "debug", &value)) {
-				if (strcmp (value, "on") == 0) {
-					logsys_logger.priority = LOG_LEVEL_DEBUG;
-				} else
-				if (strcmp (value, "off") == 0) {
-					logsys_logger.priority &= ~LOG_LEVEL_DEBUG;
-				} else {
-					goto parse_error;
-				}
-			}
-			if (!objdb_get_string (objdb, object_logger_subsys_handle, "tags", &value)) {
-				char *token = strtok (value, "|");
+		}
+		objdb->object_find_destroy (object_find_logsys_handle);
 
-				while (token != NULL) {
-					int val;
+		objdb->object_find_create (
+			object_service_handle,
+			"logging_daemon",
+			strlen ("logging_daemon"),
+			&object_find_logsys_handle);
 
-					val = logsys_tag_id_get(token);
-					if (val < 0) {
-						error_reason = "bad tags value";
+		while (objdb->object_find_next (
+			object_find_logsys_handle,
+			&object_logger_subsys_handle) == 0) {
+
+			if (!objdb_get_string (objdb,
+				object_logger_subsys_handle,
+				"name", &value)) {
+
+				if ((strcmp(value, "corosync") == 0) &&
+				   (!objdb_get_string (objdb,
+					object_logger_subsys_handle,
+					"subsys", &value))) {
+
+					if (corosync_main_config_set (objdb,
+							object_logger_subsys_handle,
+							value,
+							&error_reason) < 0) {
 						goto parse_error;
 					}
-					logsys_logger.tags |= val;
-					token = strtok(NULL, "|");
+				}
+				else {
+					error_reason = "subsys required for logging_daemon directive";
+					goto parse_error;
 				}
 			}
-			/*
-			 * set individual logger configurations
-			 */
-			logsys_config_subsys_set (
-				logsys_logger.subsys,
-				logsys_logger.tags,
-				logsys_logger.priority);
-
+			else {
+				error_reason = "name required for logging_daemon directive";
+				goto parse_error;
+			}
 		}
 		objdb->object_find_destroy (object_find_logsys_handle);
 	}
-
 	objdb->object_find_destroy (object_find_handle);
 
 	return 0;
 
 parse_error:
-	snprintf (error_string_response, sizeof(error_string_response),
-		 "parse error in config: %s.\n",
-		 error_reason);
+	*error_string = error_reason;
 
-	*error_string = error_string_response;
 	return (-1);
 }
 
@@ -395,7 +573,7 @@ static int uid_determine (const char *req_user)
 
 	passwd = getpwnam(req_user);
 	if (passwd == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", req_user);
+		log_printf (LOGSYS_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", req_user);
 		corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	ais_uid = passwd->pw_uid;
@@ -410,7 +588,7 @@ static int gid_determine (const char *req_group)
 
 	group = getgrnam (req_group);
 	if (group == 0) {
-		log_printf (LOG_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", req_group);
+		log_printf (LOGSYS_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", req_group);
 		corosync_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	ais_gid = group->gr_gid;
@@ -418,19 +596,54 @@ static int gid_determine (const char *req_group)
 	return ais_gid;
 }
 
+static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
+				     void *priv_data_pt)
+{
+	const char *error_string;
+
+	if (type == OBJDB_RELOAD_NOTIFY_END) {
+
+		/*
+		 * Reload the logsys configuration
+		 */
+		logsys_format_set(NULL);
+		corosync_main_config_read_logging(global_objdb,
+						  &error_string);
+	}
+}
+
+static void add_logsys_config_notification(
+	struct objdb_iface_ver0 *objdb)
+{
+
+	global_objdb = objdb;
+
+	objdb->object_track_start(OBJECT_PARENT_HANDLE,
+				  1,
+				  NULL,
+				  NULL,
+				  NULL,
+				  main_objdb_reload_notify,
+				  NULL);
+
+}
+
 int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string,
-	struct main_config *main_config)
+	struct ug_config *ug_config)
 {
 	hdb_handle_t object_service_handle;
 	char *value;
 	const char *error_reason = error_string_response;
 	hdb_handle_t object_find_handle;
 
-	memset (main_config, 0, sizeof (struct main_config));
+	memset (ug_config, 0, sizeof (struct ug_config));
 
-	corosync_main_config_read_logging(objdb, error_string, main_config);
+	if (corosync_main_config_read_logging(objdb, error_string) < 0) {
+		error_reason = *error_string;
+		goto parse_error;
+	}
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -438,34 +651,25 @@ int corosync_main_config_read (
 		strlen ("aisexec"),
 		&object_find_handle);
 
-	main_config->uid = uid_determine("ais");
-	main_config->gid = gid_determine("ais");
+	ug_config->uid = uid_determine("ais");
+	ug_config->gid = gid_determine("ais");
 
 	if (objdb->object_find_next (
 		object_find_handle,
 		&object_service_handle) == 0) {
 
 		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
-			main_config->uid = uid_determine(value);
+			ug_config->uid = uid_determine(value);
 		}
 
 		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
-			main_config->gid = gid_determine(value);
+			ug_config->gid = gid_determine(value);
 		}
 	}
 
 	objdb->object_find_destroy (object_find_handle);
 
-	if ((main_config->logmode & LOG_MODE_OUTPUT_FILE) &&
-		(main_config->logfile == NULL)) {
-		error_reason = "logmode set to 'file' but no logfile specified";
-		goto parse_error;
-	}
-
-	if (main_config->syslog_facility == 0)
-		main_config->syslog_facility = LOG_DAEMON;
-
-	add_logsys_config_notification(objdb, main_config);
+	add_logsys_config_notification(objdb);
 
 	logsys_fork_completed ();
 
@@ -478,40 +682,4 @@ parse_error:
 
 	*error_string = error_string_response;
 	return (-1);
-}
-
-
-static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
-				     void *priv_data_pt)
-{
-	struct main_config *main_config = priv_data_pt;
-	const char *error_string;
-
-	if (type == OBJDB_RELOAD_NOTIFY_END) {
-
-		/*
-		 * Reload the logsys configuration
-		 */
-		logsys_format_set(NULL);
-		corosync_main_config_read_logging(global_objdb,
-						  &error_string,
-						  main_config);
-	}
-}
-
-static void add_logsys_config_notification(
-	struct objdb_iface_ver0 *objdb,
-	struct main_config *main_config)
-{
-
-	global_objdb = objdb;
-
-	objdb->object_track_start(OBJECT_PARENT_HANDLE,
-				  1,
-				  NULL,
-				  NULL,
-				  NULL,
-				  main_objdb_reload_notify,
-				  main_config);
-
 }

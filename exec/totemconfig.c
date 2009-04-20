@@ -763,7 +763,7 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 
 		}
 		else {
-			log_printf(LOG_LEVEL_ERROR, "totem objdb tracking stopped, cannot find totem{} handle on objdb\n");
+			log_printf(LOGSYS_LEVEL_ERROR, "totem objdb tracking stopped, cannot find totem{} handle on objdb\n");
 		}
 	}
 }

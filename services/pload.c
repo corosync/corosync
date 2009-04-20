@@ -61,7 +61,7 @@
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 
-LOGSYS_DECLARE_SUBSYS ("PLOAD", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("PLOAD");
 
 enum pload_exec_message_req_types {
 	MESSAGE_REQ_EXEC_PLOAD_START = 0,

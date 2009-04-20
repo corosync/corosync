@@ -63,7 +63,7 @@
 #include "sync.h"
 #include "vsf.h"
 
-LOGSYS_DECLARE_SUBSYS ("QUORUM", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
 static struct quorum_callin_functions *corosync_quorum_fns = NULL;
 

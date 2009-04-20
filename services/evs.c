@@ -60,7 +60,7 @@
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 
-LOGSYS_DECLARE_SUBSYS ("EVS", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("EVS");
 
 enum evs_exec_message_req_types {
 	MESSAGE_REQ_EXEC_EVS_MCAST = 0
@@ -255,7 +255,7 @@ static int evs_lib_init_fn (void *conn)
 {
 	struct evs_pd *evs_pd = (struct evs_pd *)api->ipc_private_data_get (conn);
 
-	log_printf (LOG_LEVEL_DEBUG, "Got request to initalize evs service.\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "Got request to initalize evs service.\n");
 
 	evs_pd->groups = NULL;
 	evs_pd->group_entries = 0;

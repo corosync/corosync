@@ -66,7 +66,7 @@
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>
 
-LOGSYS_DECLARE_SUBSYS ("QUORUM", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
 struct quorum_pd {
 	unsigned char track_flags;
@@ -116,9 +116,9 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	primary_designated = quorum;
 
 	if (primary_designated) {
-		log_printf (LOG_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
 	} else {
-		log_printf (LOG_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
 	}
 
 	quorum_view_list_entries = view_list_entries;
@@ -296,13 +296,13 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 				0);
 
 			if (res == -1) {
-				log_printf (LOG_LEVEL_NOTICE,
+				log_printf (LOGSYS_LEVEL_NOTICE,
 					    "Couldn't load quorum provider %s\n",
 					    quorum_module);
 				return (-1);
 			}
 
-			log_printf (LOG_LEVEL_NOTICE,
+			log_printf (LOGSYS_LEVEL_NOTICE,
 				    "Using quorum provider %s\n", quorum_module);
 
 			quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
@@ -323,7 +323,7 @@ static int quorum_lib_init_fn (void *conn)
 {
 	struct quorum_pd *pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOG_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
 
 	list_init (&pd->list);
 	pd->conn = conn;
@@ -335,7 +335,7 @@ static int quorum_lib_exit_fn (void *conn)
 {
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOG_LEVEL_DEBUG, "lib_exit_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_exit_fn: conn=%p\n", conn);
 
 	if (quorum_pd->tracking_enabled) {
 		list_del (&quorum_pd->list);
@@ -366,7 +366,7 @@ static void send_library_notification(void *conn)
 	struct list_head *tmp;
 	int i;
 
-	log_printf(LOG_LEVEL_DEBUG, "sending quorum notification to %p, length = %d\n", conn, size);
+	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %d\n", conn, size);
 
 	res_lib_quorum_notification->quorate = primary_designated;
 	res_lib_quorum_notification->ring_seq = quorum_ring_id.seq;
@@ -402,7 +402,7 @@ static void message_handler_req_lib_quorum_getquorate (void *conn,
 {
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
-	log_printf(LOG_LEVEL_DEBUG, "got quorate request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got quorate request on %p\n", conn);
 
 	/* send status */
 	res_lib_quorum_getquorate.quorate = primary_designated;
@@ -420,7 +420,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	mar_res_header_t res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOG_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
 
 	/*
 	 * If an immediate listing of the current cluster membership
@@ -428,7 +428,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	 */
 	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
-		log_printf(LOG_LEVEL_DEBUG, "sending initial status to %p\n", conn);
+		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p\n", conn);
 		send_library_notification(conn);
 	}
 
@@ -456,7 +456,7 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, const void *ms
 	mar_res_header_t res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOG_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
 
 	if (quorum_pd->tracking_enabled) {
 		res.error = CS_OK;

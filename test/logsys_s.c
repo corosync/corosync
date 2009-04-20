@@ -36,19 +36,25 @@
 
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
+
+#include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logsystestsubsystems",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED, 
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
+	0,
 	NULL,
+	LOGSYS_LEVEL_INFO,
 	LOG_DAEMON,
-	"[%8s] %b",
-	100000);
+	LOGSYS_LEVEL_INFO,
+	0,
+	NULL,
+	1000000);
 
 extern void logsys_s1_print (void);
 extern void logsys_s2_print (void);
 
 int main (void) {
+	logsys_fork_completed();
 	logsys_s1_print();
 	logsys_s2_print();
 	return (0);
