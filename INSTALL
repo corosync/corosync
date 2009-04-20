@@ -52,7 +52,7 @@ balance:~/corosync/trunk# make install
 The corosync executive will automatically determine cluster membership by
 communicating on a specified multicast address and port.
 
-The directory conf contains the file corosync.conf
+The directory conf contains the file corosync.conf.example
 
 # Please read the corosync.conf.5 manual page
 totem {
