@@ -245,6 +245,17 @@ static void usage_do (void)
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
+static char *
+xstrdup (char const *s)
+{
+	char *p = strdup (s);
+	if (p)
+		return (char *) p;
+
+	printf ("exhausted virtual memory\n");
+	exit (1);
+}
+
 int main (int argc, char *argv[]) {
 	const char *options = "srl:u:v:k:a:hH";
 	int opt;
@@ -267,11 +278,11 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'l':
 			service_load = 1;
-			service = strdup (optarg);
+			service = xstrdup (optarg);
 			break;
 		case 'u':
 			service_unload = 1;
-			service = strdup (optarg);
+			service = xstrdup (optarg);
 			break;
 		case 'k':
 			nodeid = atoi (optarg);
