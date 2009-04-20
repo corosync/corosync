@@ -805,7 +805,10 @@ int _logsys_system_setup(
 	logsys_loggers[i].debug = debug;
 
 	if ((logfile) && strlen(logfile) > 0) {
-		logsys_config_file_set_unlocked (i, &errstr, logfile);
+		if (logsys_config_file_set_unlocked (i, &errstr, logfile) < 0) {
+			pthread_mutex_unlock (&logsys_config_mutex);
+			return (-1);
+		}
 	}
 	logsys_loggers[i].logfile_priority = logfile_priority;
 
@@ -1226,9 +1229,11 @@ int logsys_config_file_set (
 		}
 	} else {
 		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
-			logsys_config_file_set_unlocked(i, error_string, file);
+			res = logsys_config_file_set_unlocked(i, error_string, file);
+			if (res < 0) {
+				break;
+			}
 		}
-		res = 0;
 	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
@@ -1246,13 +1251,9 @@ int logsys_format_set (const char *format)
 		format_buffer = NULL;
 	}
 
-	if (format) {
-		format_buffer = strdup(format);
-		if (format_buffer == NULL) {
-			ret = -1;
-		}
-	} else {
-		format_buffer = strdup("[%6s] %b");
+	format_buffer = strdup(format ? format : "[%6s] %b");
+	if (format_buffer == NULL) {
+		ret = -1;
 	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
