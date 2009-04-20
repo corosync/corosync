@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST              = autogen.sh conf/corosync.conf
+EXTRA_DIST              = autogen.sh conf/corosync.conf.example
 AUTOMAKE_OPTIONS	= foreign
 
 MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
@@ -39,7 +39,7 @@ MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
 dist_doc_DATA		= LICENSE INSTALL README.devmap \
 			  README.recovery SECURITY TODO AUTHORS
 
-sysconf_DATA		= conf/corosync.conf
+sysconf_DATA		= conf/corosync.conf.example
 
 SUBDIRS	= include lcr lib exec services tools test pkgconfig man
 # init
