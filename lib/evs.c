@@ -67,12 +67,7 @@ struct evs_inst {
 
 static void evs_instance_destructor (void *instance);
 
-static struct saHandleDatabase evs_handle_t_db = {
-	.handleCount				= 0,
-	.handles					= 0,
-	.mutex						= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= evs_instance_destructor
-};
+DECLARE_SAHDB_DATABASE (evs_handle_t_db, evs_instance_destructor);
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle

@@ -82,13 +82,7 @@ struct confdb_inst {
 
 static void confdb_instance_destructor (void *instance);
 
-static struct saHandleDatabase confdb_handle_t_db = {
-	.handleCount		        = 0,
-	.handles			= 0,
-	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= confdb_instance_destructor
-};
-
+DECLARE_SAHDB_DATABASE(confdb_handle_t_db,confdb_instance_destructor);
 
 static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, hdb_handle_t find_handle);
 

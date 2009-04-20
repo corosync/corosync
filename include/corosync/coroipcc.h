@@ -36,36 +36,13 @@
 #ifndef COROIPC_H_DEFINED
 #define COROIPC_H_DEFINED
 
+#include <config.h>
+
 #include <pthread.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <corosync/corotypes.h>
 #include <corosync/ipc_gen.h>
-
-/* Debug macro
- */
-#ifdef DEBUG
-	#define DPRINT(s) printf s
-#else
-	#define DPRINT(s)
-#endif
-		
-#ifdef SO_NOSIGPIPE
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-#endif
-void socket_nosigpipe(int s);
-#else
-#define socket_nosigpipe(s)
-#endif
-
-struct saHandleDatabase {
-	unsigned int handleCount;
-	struct saHandle *handles;
-	pthread_mutex_t mutex;
-	void (*handleInstanceDestructor) (void *);
-};
-
 
 extern cs_error_t
 coroipcc_service_connect (
@@ -109,6 +86,35 @@ coroipcc_msg_send_reply_receive_in_buf (
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void **res_msg);
+
+/*
+ * This needs to be removed
+ */
+struct saHandleDatabase {
+	unsigned int handleCount;
+	struct saHandle *handles;
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+	pthread_spinlock_t lock;
+#else
+	pthread_mutex_t lock;
+#endif
+	void (*handleInstanceDestructor) (void *);
+};
+
+extern void saHandleDatabaseLock_init (struct saHandleDatabase *hdb);
+
+#define DECLARE_SAHDB_DATABASE(database_name,destructor)		\
+static struct saHandleDatabase (database_name) = {			\
+	.handleInstanceDestructor	= destructor,			\
+	.handleCount			= 0,				\
+	.handles			= NULL,				\
+};									\
+static void database_name##_init(void)__attribute__((constructor));	\
+static void database_name##_init(void)					\
+{									\
+        saHandleDatabaseLock_init (&(database_name));			\
+}
+
 
 extern cs_error_t
 saHandleCreate (

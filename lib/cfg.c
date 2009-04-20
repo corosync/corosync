@@ -74,12 +74,7 @@ static void cfg_handle_instance_destructor (void *);
 /*
  * All instances in one database
  */
-static struct saHandleDatabase cfg_hdb = {
-	.handleCount			= 0,
-	.handles			= 0,
-	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= cfg_handle_instance_destructor
-};
+DECLARE_SAHDB_DATABASE (cfg_hdb,cfg_handle_instance_destructor);
 
 /*
  * Implementation

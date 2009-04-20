@@ -64,12 +64,7 @@ struct cpg_inst {
 
 static void cpg_instance_destructor (void *instance);
 
-static struct saHandleDatabase cpg_handle_t_db = {
-	.handleCount		        = 0,
-	.handles			= 0,
-	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= cpg_instance_destructor
-};
+DECLARE_SAHDB_DATABASE(cpg_handle_t_db,cpg_instance_destructor);
 
 /*
  * Clean up function for a cpg instance (cpg_nitialize) handle

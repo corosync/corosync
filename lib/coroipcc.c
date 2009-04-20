@@ -763,6 +763,39 @@ coroipcc_msg_send_reply_receive_in_buf (
 	return (CS_OK);
 }
 
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+static void hdb_lock (struct saHandleDatabase *hdb)
+{
+	pthread_spin_lock (&hdb->lock);
+}
+
+static void hdb_unlock (struct saHandleDatabase *hdb)
+{
+	pthread_spin_unlock (&hdb->lock);
+}
+
+void saHandleDatabaseLock_init (struct saHandleDatabase *hdb)
+{
+	pthread_spin_init (&hdb->lock, 0);
+}
+#else
+static void hdb_lock (struct saHandleDatabase *hdb)
+{
+	pthread_mutex_lock (&hdb->lock);
+}
+
+static void hdb_unlock (struct saHandleDatabase *hdb)
+{
+	pthread_mutex_unlock (&hdb->lock);
+}
+
+void saHandleDatabaseLock_init (struct saHandleDatabase *hdb)
+{
+	pthread_mutex_init (&hdb->lock, NULL);
+}
+#endif
+
+
 cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
@@ -776,7 +809,7 @@ saHandleCreate (
 	void *instance;
 	int i;
 
-	pthread_mutex_lock (&handleDatabase->mutex);
+	hdb_lock (handleDatabase);
 
 	for (handle = 0; handle < handleDatabase->handleCount; handle++) {
 		if (handleDatabase->handles[handle].state == SA_HANDLE_STATE_EMPTY) {
@@ -790,7 +823,7 @@ saHandleCreate (
 		newHandles = (struct saHandle *)realloc (handleDatabase->handles,
 			sizeof (struct saHandle) * handleDatabase->handleCount);
 		if (newHandles == NULL) {
-			pthread_mutex_unlock (&handleDatabase->mutex);
+			hdb_unlock (handleDatabase);
 			return (CS_ERR_NO_MEMORY);
 		}
 		handleDatabase->handles = newHandles;
@@ -799,7 +832,7 @@ saHandleCreate (
 	instance = malloc (instanceSize);
 	if (instance == 0) {
 		free (newHandles);
-		pthread_mutex_unlock (&handleDatabase->mutex);
+		hdb_unlock (handleDatabase);
 		return (CS_ERR_NO_MEMORY);
 	}
 
@@ -828,7 +861,7 @@ saHandleCreate (
 
 	*handleOut = (uint64_t)((uint64_t)check << 32 | handle);
 
-	pthread_mutex_unlock (&handleDatabase->mutex);
+	hdb_unlock (handleDatabase);
 
 	return (CS_OK);
 }
@@ -843,17 +876,17 @@ saHandleDestroy (
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
-	pthread_mutex_lock (&handleDatabase->mutex);
+	hdb_lock (handleDatabase);
 
 	if (check != handleDatabase->handles[handle].check) {
-		pthread_mutex_unlock (&handleDatabase->mutex);
+		hdb_unlock (handleDatabase);
 		error = CS_ERR_BAD_HANDLE;
 		return (error);
 	}
 
 	handleDatabase->handles[handle].state = SA_HANDLE_STATE_PENDINGREMOVAL;
 
-	pthread_mutex_unlock (&handleDatabase->mutex);
+	hdb_unlock (handleDatabase);
 
 	saHandleInstancePut (handleDatabase, inHandle);
 
@@ -871,7 +904,7 @@ saHandleInstanceGet (
 	uint32_t handle = inHandle & 0xffffffff;
 
 	cs_error_t error = CS_OK;
-	pthread_mutex_lock (&handleDatabase->mutex);
+	hdb_lock (handleDatabase);
 
 	if (handle >= (uint64_t)handleDatabase->handleCount) {
 		error = CS_ERR_BAD_HANDLE;
@@ -892,7 +925,7 @@ saHandleInstanceGet (
 	handleDatabase->handles[handle].refCount += 1;
 
 error_exit:
-	pthread_mutex_unlock (&handleDatabase->mutex);
+	hdb_unlock (handleDatabase);
 
 	return (error);
 }
@@ -908,7 +941,7 @@ saHandleInstancePut (
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 
-	pthread_mutex_lock (&handleDatabase->mutex);
+	hdb_lock (handleDatabase);
 
 	if (check != handleDatabase->handles[handle].check) {
 		error = CS_ERR_BAD_HANDLE;
@@ -926,7 +959,7 @@ saHandleInstancePut (
 	}
 
 error_exit:
-	pthread_mutex_unlock (&handleDatabase->mutex);
+	hdb_unlock (handleDatabase);
 
 	return (error);
 }

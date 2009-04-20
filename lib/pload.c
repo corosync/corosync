@@ -58,12 +58,7 @@ struct pload_inst {
 	unsigned int finalize;
 };
 
-static struct saHandleDatabase pload_handle_t_db = {
-	.handleCount			= 0,
-	.handles			= 0,
-	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= pload_instance_destructor
-};
+DECLARE_SAHDB_DATABASE(pload_handle_t_db,pload_instance_destructor);
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle

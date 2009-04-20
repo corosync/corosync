@@ -63,12 +63,7 @@ struct votequorum_inst {
 
 static void votequorum_instance_destructor (void *instance);
 
-static struct saHandleDatabase votequorum_handle_t_db = {
-	.handleCount		        = 0,
-	.handles			= 0,
-	.mutex				= PTHREAD_MUTEX_INITIALIZER,
-	.handleInstanceDestructor	= votequorum_instance_destructor
-};
+DECLARE_SAHDB_DATABASE(votequorum_handle_t_db,votequorum_instance_destructor);
 
 /*
  * Clean up function for a quorum instance (votequorum_initialize) handle
