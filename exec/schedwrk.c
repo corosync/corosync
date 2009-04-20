@@ -47,9 +47,18 @@ struct schedwrk_instance {
 	void *callback_handle;
 };
 
+union u {
+  hdb_handle_t h;
+  const void *v;
+};
+static hdb_handle_t
+void2handle (const void *v) { union u u; u.v = v; return u.h; }
+static const void *
+handle2void (hdb_handle_t h) { union u u; u.h = h; return u.v; }
+
 static int schedwrk_do (enum totem_callback_token_type type, const void *context)
 {
-	hdb_handle_t handle = (hdb_handle_t)(unsigned int)context;
+	hdb_handle_t handle = void2handle (context);
 	struct schedwrk_instance *instance;
 	int res;
 
@@ -74,7 +83,7 @@ static int schedwrk_do (enum totem_callback_token_type type, const void *context
 error_exit:
 	return (-1);
 }
-	
+
 void schedwrk_init (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void))
@@ -107,7 +116,7 @@ int schedwrk_create (
 		TOTEM_CALLBACK_TOKEN_SENT,
 		1,
 		schedwrk_do,
-		(void *)(unsigned int)*handle);
+		handle2void (*handle));
 
 	instance->schedwrk_fn = schedwrk_fn;
 	instance->context = context;
