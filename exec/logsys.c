@@ -1077,6 +1077,11 @@ void _logsys_log_printf (
 		subsysid = LOGSYS_MAX_SUBSYS_COUNT;
 	}
 
+	if ((level > logsys_loggers[subsysid].syslog_priority) &&
+	    (level > logsys_loggers[subsysid].logfile_priority)) {
+		return;
+	}
+
 	va_start (ap, format);
 	len = vsprintf (logsys_print_buffer, format, ap);
 	va_end (ap);
