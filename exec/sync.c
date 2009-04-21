@@ -32,6 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <config.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -49,8 +51,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <config.h>
- 
 #include <corosync/corotypes.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totempg.h>
