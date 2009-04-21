@@ -144,6 +144,16 @@ static void ipc_disconnect (struct conn_info *conn_info);
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
 
+static inline int
+coroipcs_circular_memory_unmap (void *buf, size_t bytes)
+{
+	int res;
+
+	res = munmap (buf, bytes << 1);
+
+	return (res);
+}
+
 static int ipc_thread_active (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
@@ -240,7 +250,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		api->free (conn_info->private_data);
 	}
 	close (conn_info->fd);
-	munmap (conn_info->dispatch_buffer, (DISPATCH_SIZE));
+	res = coroipcs_circular_memory_unmap (conn_info->dispatch_buffer, DISPATCH_SIZE);
 	api->free (conn_info);
 	api->serialize_unlock ();
 	return (-1);

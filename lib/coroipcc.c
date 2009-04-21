@@ -481,7 +481,7 @@ coroipcc_service_disconnect (
 	shutdown (ipc_segment->fd, SHUT_RDWR);
 	close (ipc_segment->fd);
 	shmdt (ipc_segment->shared_memory);
-	coroipcc_memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE));
+	coroipcc_memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE) << 1);
 	free (ipc_segment);
 	return (CS_OK);
 }
