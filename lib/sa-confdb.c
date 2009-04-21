@@ -62,7 +62,6 @@ static int num_config_modules;
 static struct config_iface_ver0 *config_modules[128];
 
 void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
-char *strstr_rs (const char *haystack, const char *needle);
 
 static int load_objdb(void)
 {
@@ -147,35 +146,6 @@ void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
 {
 	*modules = config_modules;
 	*num = num_config_modules;
-}
-
-/* Needed by some modules ... */
-char *strstr_rs (const char *haystack, const char *needle)
-{
-	char *end_address;
-	char *new_needle;
-
-	new_needle = (char *)strdup (needle);
-	new_needle[strlen (new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
-	}
-
-	free (new_needle);
-	return (end_address);
 }
 
 int confdb_sa_init (void)

@@ -110,32 +110,15 @@ char *getcs_name_t (cs_name_t *name)
 	return ((char *)name->value);
 }
 
-char *strstr_rs (const char *haystack, const char *needle)
+char *strstr_rs (const char *haystack, int byte)
 {
-	char *end_address;
-	char *new_needle;
-
-	new_needle = (char *)strdup (needle);
-	new_needle[strlen (new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
+	const char *end_address = strchr (haystack, byte);
 	if (end_address) {
 		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
+		end_address += strspn (end_address, " \t");
 	}
 
-	free (new_needle);
-	return (end_address);
+	return ((char *) end_address);
 }
 
 void setcs_name_t (cs_name_t *name, char *str) {

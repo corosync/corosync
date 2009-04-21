@@ -115,7 +115,7 @@ static int parse_section(FILE *fp,
 		}
 
 		/* New section ? */
-		if ((loc = strstr_rs (line, "{"))) {
+		if ((loc = strstr_rs (line, '{'))) {
 			hdb_handle_t new_parent;
 			char *section = remove_whitespace(line);
 
@@ -128,7 +128,7 @@ static int parse_section(FILE *fp,
 		}
 
 		/* New key/value */
-		if ((loc = strstr_rs (line, ":"))) {
+		if ((loc = strstr_rs (line, ':'))) {
 			char *key;
 			char *value;
 
@@ -140,7 +140,7 @@ static int parse_section(FILE *fp,
 				value, strlen (value) + 1);
 		}
 
-		if ((loc = strstr_rs (line, "}"))) {
+		if ((loc = strstr_rs (line, '}'))) {
 			return 0;
 		}
 	}
