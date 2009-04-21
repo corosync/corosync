@@ -831,7 +831,6 @@ int main (int argc, char **argv)
 		 * nor that logsys is sending the messages where we expect.
 		 */
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		logsys_fork_completed ();
 		fprintf(stderr, "%s", error_string);
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
