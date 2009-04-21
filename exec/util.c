@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  * Copyright (c) 2004 Open Source Development Lab
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -110,7 +110,7 @@ char *getcs_name_t (cs_name_t *name)
 	return ((char *)name->value);
 }
 
-char *strstr_rs (const char *haystack, int byte)
+char *strchr_rs (const char *haystack, int byte)
 {
 	const char *end_address = strchr (haystack, byte);
 	if (end_address) {
@@ -138,4 +138,3 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 		return 0;
 	}
 }
-
