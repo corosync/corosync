@@ -34,6 +34,8 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 
+AM_LDFLAGS		= -lpthread
+
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
@@ -63,11 +65,11 @@ noinst_HEADERS		= sa-confdb.h util.h \
 if BUILD_DARWIN
 
 libcoroipcc.so.$(SONAME): coroipcc.o
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@ $(AM_LDFLAGS)
 
 libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o 
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o \
-		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl -lpthread
+		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
 
 lib%.so.$(SONAME): coroipcc.o %.o
 	$(CC) $(DARWIN_OPTS) $^ -o $@
@@ -86,7 +88,7 @@ libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libconfdb.versions \
-		$^ $(LDFLAGS) $(OS_DYFLAGS) -ldl -lpthread
+		$^ $(LDFLAGS) $(OS_DYFLAGS) -ldl $(AM_LDFLAGS)
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
@@ -94,7 +96,7 @@ lib%.so.$(SONAME): coroipcc.o %.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=lib$*.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		$^ $(LDFLAGS)
+		$^ $(LDFLAGS) $(AM_LDFLAGS)
 	ln -sf lib$*.so.$(SONAME) lib$*.so
 	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
 
