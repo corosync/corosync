@@ -386,27 +386,25 @@ static void log_printf_to_logs (
 	/*
 	 * Output to syslog
 	 */
-	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
-	     (level <= logsys_loggers[subsysid].syslog_priority)) || 
-	     (logsys_loggers[subsysid].debug != 0)) {
+	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
+	     ((level <= logsys_loggers[subsysid].syslog_priority) || 
+	     (logsys_loggers[subsysid].debug != 0))) {
 		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", output_buffer);
 	}
 
 	/*
 	 * Terminate string with \n \0
 	 */
-	if (logsys_loggers[subsysid].mode & (LOGSYS_MODE_OUTPUT_FILE|LOGSYS_MODE_OUTPUT_STDERR)) {
-		output_buffer[output_buffer_idx++] = '\n';
-		output_buffer[output_buffer_idx] = '\0';
-	}
+	output_buffer[output_buffer_idx++] = '\n';
+	output_buffer[output_buffer_idx] = '\0';
 
 	/*
 	 * Output to configured file
 	 */
 	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE) &&
-	      logsys_loggers[subsysid].logfile_fp &&
-	     (level <= logsys_loggers[subsysid].logfile_priority)) ||
-	     (logsys_loggers[subsysid].debug != 0)) {
+	     (logsys_loggers[subsysid].logfile_fp != NULL)) &&
+	    ((level <= logsys_loggers[subsysid].logfile_priority) ||
+	     (logsys_loggers[subsysid].debug != 0))) {
 		/*
 		 * Output to a file
 		 */
@@ -436,9 +434,9 @@ static void log_printf_to_logs (
 	/*
 	 * Output to stderr
 	 */
-	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR) &&
-	     (level <= logsys_loggers[subsysid].logfile_priority)) ||
-	     (logsys_loggers[subsysid].debug != 0)) {
+	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR) &&
+	     ((level <= logsys_loggers[subsysid].logfile_priority) ||
+	     (logsys_loggers[subsysid].debug != 0))) {
 		if (write (STDERR_FILENO, output_buffer, strlen (output_buffer)) < 0) {
 			char tmpbuffer[1024];
 			/*
