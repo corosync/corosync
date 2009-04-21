@@ -137,8 +137,7 @@ static int load_config(void)
 
 		iface = strtok(NULL, ":");
 	}
-	if (config_iface)
-		free(config_iface);
+	free(config_iface);
 
 	return CS_OK;
 }

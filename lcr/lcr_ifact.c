@@ -341,9 +341,7 @@ fail:
 		namelist_items--;
 		free (*namelist[namelist_items]);
 	}
-	if (names != NULL) {
-		free (names);
-	}
+	free (names);
 	*namelist = NULL;
 	errno = err;
 	return -1;

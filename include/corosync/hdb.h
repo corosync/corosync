@@ -139,9 +139,7 @@ static inline void hdb_create (
 static inline void hdb_destroy (
 	struct hdb_handle_database *handle_database)
 {
-	if (handle_database->handles) {
-		free (handle_database->handles);
-	}
+	free (handle_database->handles);
 	hdb_database_lock_destroy (&handle_database->lock);
 	memset (handle_database, 0, sizeof (struct hdb_handle_database));
 }

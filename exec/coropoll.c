@@ -109,12 +109,8 @@ int poll_destroy (hdb_handle_t handle)
 		goto error_exit;
 	}
 
-	if (poll_instance->poll_entries) {
-		free (poll_instance->poll_entries);
-	}
-	if (poll_instance->ufds) {
-		free (poll_instance->ufds);
-	}
+	free (poll_instance->poll_entries);
+	free (poll_instance->ufds);
 
 	hdb_handle_destroy (&poll_instance_database, handle);
 

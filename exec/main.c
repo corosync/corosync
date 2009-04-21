@@ -818,8 +818,7 @@ int main (int argc, char **argv)
 
 		iface = strtok(NULL, ":");
 	}
-	if (config_iface)
-		free(config_iface);
+	free(config_iface);
 
 	res = corosync_main_config_read (objdb, &error_string, &ug_config);
 	if (res == -1) {
