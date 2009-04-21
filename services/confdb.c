@@ -54,6 +54,15 @@
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB");
 
+static hdb_handle_t *
+m2h (mar_uint64_t *m)
+{
+	/* FIXME enable the following when/if we use gnulib:
+	   (it's a compile-time assertion; i.e., zero run-time cost)
+	   verify (sizeof (*m) == sizeof (hdb_handle_t)); */
+	return (void *) m;
+}
+
 static struct corosync_api_v1 *api;
 
 static int confdb_exec_init_fn (
@@ -556,13 +565,13 @@ static void message_handler_req_lib_confdb_object_iter (void *conn,
 	if (!req_lib_confdb_object_iter->find_handle) {
 		api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
 					NULL, 0,
-					&res_lib_confdb_object_iter.find_handle);
+					m2h(&res_lib_confdb_object_iter.find_handle));
 	}
 	else
 		res_lib_confdb_object_iter.find_handle = req_lib_confdb_object_iter->find_handle;
 
 	if (api->object_find_next(res_lib_confdb_object_iter.find_handle,
-				  &res_lib_confdb_object_iter.object_handle)) {
+				  m2h(&res_lib_confdb_object_iter.object_handle))) {
 		ret = CS_ERR_ACCESS;
 		api->object_find_destroy(res_lib_confdb_object_iter.find_handle);
 	}
@@ -592,13 +601,13 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 		api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
 					req_lib_confdb_object_find->object_name.value,
 					req_lib_confdb_object_find->object_name.length,
-					&res_lib_confdb_object_find.find_handle);
+					m2h(&res_lib_confdb_object_find.find_handle));
 	}
 	else
 		res_lib_confdb_object_find.find_handle = req_lib_confdb_object_find->find_handle;
 
 	if (api->object_find_next(res_lib_confdb_object_find.find_handle,
-				  &res_lib_confdb_object_find.object_handle)) {
+				  m2h(&res_lib_confdb_object_find.object_handle))) {
 		ret = CS_ERR_ACCESS;
 		api->object_find_destroy(res_lib_confdb_object_find.find_handle);
 	}
