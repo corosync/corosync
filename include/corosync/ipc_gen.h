@@ -126,6 +126,27 @@ typedef struct {
 	void *conn __attribute__((aligned(8)));
 } mar_message_source_t __attribute__((aligned(8)));
 
+typedef struct {
+        mar_req_header_t header __attribute__((aligned(8)));
+        size_t map_size __attribute__((aligned(8)));
+        char path_to_file[128] __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
+
+typedef struct {
+        mar_req_header_t header __attribute__((aligned(8)));
+        size_t map_size __attribute__((aligned(8)));
+	uint64_t server_address __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_free_t __attribute__((aligned(8)));
+
+typedef struct {
+        mar_req_header_t header __attribute__((aligned(8)));
+	uint64_t server_address __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_execute_t __attribute__((aligned(8)));
+
+struct coroipcs_zc_header {
+	int map_size;
+	uint64_t server_address;
+};
 static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 {
 	swab_mar_uint32_t (&to_swab->nodeid);
@@ -136,5 +157,9 @@ static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 	 */
 	to_swab->conn = NULL;
 }
+
+#define ZC_ALLOC_HEADER		0xFFFFFFFF
+#define ZC_FREE_HEADER		0xFFFFFFFE
+#define ZC_EXECUTE_HEADER	0xFFFFFFFD
 
 #endif /* IPC_GEN_H_DEFINED */

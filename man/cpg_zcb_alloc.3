@@ -1,9 +1,9 @@
 .\"/*
-.\" * Copyright (c) 2006-2009 Red Hat, Inc.
+.\" * Copyright (c) 2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" * Author: Steven Dake <sdake@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" * 
@@ -31,36 +31,50 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_OVERVIEW 8 2009-4-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
-.SH OVERVIEW
-The CPG library is delivered with the corosync project.  This library is used
-to create distributed applications that operate properly during partitions, merges,
-and faults.
-.PP
-The library provides a mechanism to:
-* handle abstraction for multiple instances of an CPG library in one application
-* join one or more groups
-* leave one or more groups
-* Deliver messages to members of that group
-* Deliver configuration changes
-.PP
-.SH SECURITY
-If encryption is enabled in corosync.conf, the CPG library will encrypt and
-authenticate message contents.  Applications must run as the ais user to be
-validated by corosync on IPC connection, otherwise they will be unable to
-access the corosync services.
+.TH CPG_ZCB_ALLOC 2009-04-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+cpg_zcb_alloc \- Allocates a zero copy buffer
+.B #include <corosync/cpg.h>
+.sp
+.BI "int cpg_zcb_alloc(cpg_handle_t " handle ", size_t " size ", void **" buffer ");
+.SH DESCRIPTION
+The
+.B cpg_zcb_alloc
+function will allocate a zero copy buffer for use with the
+.B cpg_zcb_mcast_joined(3)
+funtion.  This buffer should not be used in another thread while a
+cpg_zcb_mcast_joined operation is taking place on the buffer.  The buffer is
+allocated via operating system mechanisms to avoid copying in the IPC layer.
 
+.PP
+The argument
+.I handle
+describes the handle on which the buffer will be allocated.
+.PP
+The argument
+.I size
+requests a buffer of size be allocated.
+.PP
+The
+.I buffer
+argument is set to the buffer address that is allocated by this operatoin.
+
+.SH RETURN VALUE
+This call returns the CPG_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+The errors are undocumented.
 .SH "SEE ALSO"
+.BR cpg_overview (8),
 .BR cpg_initialize (3),
 .BR cpg_finalize (3),
 .BR cpg_fd_get (3),
 .BR cpg_dispatch (3),
-.BR cpg_join (3),
 .BR cpg_leave (3),
-.BR cpg_mcast_joined (3),
-.BR cpg_membership_get (3)
-.BR cpg_zcb_alloc (3)
-.BR cpg_zcb_free (3)
+.BR cpg_join (3),
+.BR cpg_membership_get (3),
+.BR cpg_zcb_alloc (3),
+.BR cpg_zcb_free (3),
 .BR cpg_zcb_mcast_joined (3)
 
 .PP

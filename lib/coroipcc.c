@@ -278,7 +278,7 @@ union semun {
 #endif
 	
 static int
-coroipcc_memory_map (char *path, const char *file, void **buf, size_t bytes)
+circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
 	int fd;
 	void *addr_orig;
@@ -325,13 +325,56 @@ coroipcc_memory_map (char *path, const char *file, void **buf, size_t bytes)
 }
  
 static void
-coroipcc_memory_unmap (void *addr, size_t bytes)
+memory_unmap (void *addr, size_t bytes)
 {
 	int res;
  
 	res = munmap (addr, bytes);
 }
 
+static int
+memory_map (char *path, const char *file, void **buf, size_t bytes)
+{
+	int fd;
+	void *addr_orig;
+	void *addr;
+	int res;
+
+	sprintf (path, "/dev/shm/%s", file);
+ 
+	fd = mkstemp (path);
+	if (fd == -1) {
+		sprintf (path, "/var/run/%s", file);
+		fd = mkstemp (path);
+		if (fd == -1) {
+			return (-1);
+		}
+	}
+
+	res = ftruncate (fd, bytes);
+
+	addr_orig = mmap (NULL, bytes, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+ 
+	if (addr_orig == MAP_FAILED) {
+		return (-1);
+	}
+ 
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	if (addr != addr_orig) {
+		return (-1);
+	}
+ 
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+	return (0);
+}
+ 
 cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
@@ -431,7 +474,7 @@ coroipcc_service_connect (
 		goto error_exit;
 	}
 
-	res = coroipcc_memory_map (dispatch_map_path,
+	res = circular_memory_map (dispatch_map_path,
 		"dispatch_bufer-XXXXXX",
 		&ipc_segment->dispatch_buffer, DISPATCH_SIZE);
 	strcpy (req_setup.dispatch_file, dispatch_map_path);
@@ -481,7 +524,10 @@ coroipcc_service_disconnect (
 	shutdown (ipc_segment->fd, SHUT_RDWR);
 	close (ipc_segment->fd);
 	shmdt (ipc_segment->shared_memory);
-	coroipcc_memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE) << 1);
+	/*
+	 * << 1 (or multiplied by 2) because this is a wrapped memory buffer
+	 */
+	memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE) << 1);
 	free (ipc_segment);
 	return (CS_OK);
 }
@@ -796,6 +842,111 @@ void saHandleDatabaseLock_init (struct saHandleDatabase *hdb)
 #endif
 
 
+cs_error_t
+coroipcc_zcb_alloc (
+	void *ipc_context,
+	void **buffer,
+	size_t size,
+	size_t header_size)
+{
+	void *buf = NULL;
+	char path[128];
+	unsigned int res;
+	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
+	mar_res_header_t res_coroipcs_zc_alloc;
+	size_t map_size;
+	struct iovec iovec;
+	struct coroipcs_zc_header *hdr;
+
+	map_size = size + header_size + sizeof (struct coroipcs_zc_header);
+	res = memory_map (path, "cpg_zc-XXXXXX", &buf, size);
+	assert (res != -1);
+
+	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
+	req_coroipcc_zc_alloc.header.id = ZC_ALLOC_HEADER;
+	req_coroipcc_zc_alloc.map_size = map_size;
+	strcpy (req_coroipcc_zc_alloc.path_to_file, path);
+
+
+	iovec.iov_base = &req_coroipcc_zc_alloc;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_alloc_t);
+
+	res = coroipcc_msg_send_reply_receive (
+		ipc_context,
+		&iovec,
+		1,
+		&res_coroipcs_zc_alloc,
+		sizeof (mar_res_header_t));
+
+	hdr = (struct coroipcs_zc_header *)buf;
+	hdr->map_size = map_size;
+	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header);
+	return (CS_OK);
+}
+
+cs_error_t
+coroipcc_zcb_free (
+	void *ipc_context,
+	void *buffer)
+{
+	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
+	mar_res_header_t res_coroipcs_zc_free;
+	struct iovec iovec;
+	unsigned int res;
+
+	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header));
+
+	req_coroipcc_zc_free.header.size = sizeof (mar_req_coroipcc_zc_free_t);
+	req_coroipcc_zc_free.header.id = ZC_FREE_HEADER;
+	req_coroipcc_zc_free.map_size = header->map_size;
+	req_coroipcc_zc_free.server_address = header->server_address;
+
+	iovec.iov_base = &req_coroipcc_zc_free;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_free_t);
+
+	res = coroipcc_msg_send_reply_receive (
+		ipc_context,
+		&iovec,
+		1,
+		&res_coroipcs_zc_free,
+		sizeof (mar_res_header_t));
+
+	munmap (header, header->map_size);
+
+	return (CS_OK);
+}
+
+cs_error_t
+coroipcc_zcb_msg_send_reply_receive (
+        void *ipc_context,
+        void *msg,
+        void *res_msg,
+        size_t res_len)
+{
+	mar_req_coroipcc_zc_execute_t req_coroipcc_zc_execute;
+	struct coroipcs_zc_header *hdr;
+	struct iovec iovec;
+	cs_error_t res;
+
+	hdr = (struct coroipcs_zc_header *)(((char *)msg) - sizeof (struct coroipcs_zc_header));
+
+	req_coroipcc_zc_execute.header.size = sizeof (mar_req_coroipcc_zc_execute_t);
+	req_coroipcc_zc_execute.header.id = ZC_EXECUTE_HEADER;
+	req_coroipcc_zc_execute.server_address = hdr->server_address;
+
+	iovec.iov_base = &req_coroipcc_zc_execute;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_execute_t);
+
+	res = coroipcc_msg_send_reply_receive (
+		ipc_context,
+		&iovec,
+		1,
+		res_msg,
+		res_len);
+
+	return (res);
+}
+		
 cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,

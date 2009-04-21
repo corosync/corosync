@@ -198,4 +198,19 @@ cs_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_enabled);
 
+cs_error_t cpg_zcb_alloc (
+	cpg_handle_t handle,
+	size_t size,
+	void **buffer);
+
+cs_error_t cpg_zcb_free (
+	cpg_handle_t handle,
+	void *buffer);
+
+cs_error_t cpg_zcb_mcast_joined (
+	cpg_handle_t handle,
+	cpg_guarantee_t guarantee,
+	void *msg,
+	size_t msg_len);
+
 #endif /* COROSYNC_CPG_H_DEFINED */

@@ -1,9 +1,9 @@
 .\"/*
-.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" * Copyright (c) 2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" * Author: Steven Dake <sdake@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" * 
@@ -31,18 +31,19 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_MCAST_JOINED 3 3004-08-31 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH CPG_ZCB_MCAST_JOINED 3 3004-08-31 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-cpg_mcast_joined \- Multicasts to all groups joined to a handle
+cpg_mcast_joined \- Multicasts a zero copy buffer to all groups joined to a handle
 .SH SYNOPSIS
 .B #include <sys/uio.h>
 .B #include <corosync/cpg.h>
 .sp
-.BI "int cpg_mcast_joined(cpg_handle_t " handle ", cpg_gurantee_t " guarantee ", struct iovec *" iovec ", int " iov_len ");
+.BI "int cpg_zcb_mcast_joined(cpg_handle_t " handle ", cpg_gurantee_t " guarantee ", const void *" buffer "", int " msg_len ");
 .SH DESCRIPTION
 The
-.B cpg_mcast_joined
-function will multicast a message to all the processes that have been joined with the
+.B cpg_zcb_mcast_joined
+function will multicast a zero copy buffer message to all the processes that
+have been joined with the
 .B cpg_join(3)
 funtion for the same group name.
 Messages that are sent to any of the groups joined to the parameter
@@ -91,30 +92,15 @@ must have a copy of the message before any delivery takes place.  This mode is
 unimplemented in the CPG library.
 .PP
 The
-.I iovec
-argument describes the scatter/gather list which is used to transmit a message.  This
-is a standard socket structure described by:
-.IP
-.RS
-.ne 18
-.nf
-.ta 4n 30n 33n
-struct iovec
-{
-        void *iov_base;     /* Pointer to data.  */
-        unsigned int iov_len;     /* Length of data.  */
-};
-.ta
-.fi
-.RE
-.IP
-.PP
+.I msg
+argument describes the zero copy buffer which is used to transmit a message.
+this buffer must be allocated by 
+.B cpg_zcb_alloc(3).
+
 .PP
 The
-.I iov_len
-argument describes the number of entires in the
-.I iovec
-argument.  
+.I msg_len
+argument describes the number of bytes to be transmitted in the zero copy buffer.
 
 .SH RETURN VALUE
 This call returns the CPG_OK value if successful, otherwise an error is returned.
@@ -129,9 +115,7 @@ The errors are undocumented.
 .BR cpg_dispatch (3),
 .BR cpg_leave (3),
 .BR cpg_join (3),
-.BR cpg_membership_get (3),
-.BR cpg_zcb_alloc (3),
-.BR cpg_zcb_free (3),
-.BR cpg_zcb_mcast_joined (3)
-
+.BR cpg_membership_get (3)
+.BR cpg_zcb_alloc (3)
+.BR cpg_zcb_free (3)
 .PP

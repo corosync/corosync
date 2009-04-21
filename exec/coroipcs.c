@@ -91,6 +91,12 @@ struct outq_item {
 	struct list_head list;
 };
 
+struct zcb_mapped {
+	struct list_head list;
+	void *addr;
+	size_t size;
+};
+
 #if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
 	int val;
@@ -130,6 +136,7 @@ struct conn_info {
 	struct list_head list;
 	char setup_msg[sizeof (mar_req_setup_t)];
 	unsigned int setup_bytes_read;
+	struct list_head zcb_mapped_list_head;
 	char *sending_allowed_private_data[64];
 };
 
@@ -144,14 +151,167 @@ static void ipc_disconnect (struct conn_info *conn_info);
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
 
+static int
+memory_map (const char *path, void **buf, size_t bytes)
+{
+	int fd;
+	void *addr_orig;
+	void *addr;
+	int res;
+ 
+	fd = open (path, O_RDWR, 0600);
+
+	unlink (path);
+
+	res = ftruncate (fd, bytes);
+
+	addr_orig = mmap (NULL, bytes, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+ 
+	if (addr_orig == MAP_FAILED) {
+		return (-1);
+	}
+ 
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	if (addr != addr_orig) {
+		return (-1);
+	}
+ 
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+	return (0);
+}
+
+static int
+circular_memory_map (const char *path, void **buf, size_t bytes)
+{
+	int fd;
+	void *addr_orig;
+	void *addr;
+	int res;
+ 
+	fd = open (path, O_RDWR, 0600);
+
+	unlink (path);
+
+	res = ftruncate (fd, bytes);
+
+	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+ 
+	if (addr_orig == MAP_FAILED) {
+		return (-1);
+	}
+ 
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	if (addr != addr_orig) {
+		return (-1);
+	}
+ 
+	addr = mmap (((char *)addr_orig) + bytes,
+                  bytes, PROT_READ | PROT_WRITE,
+                  MAP_FIXED | MAP_SHARED, fd, 0);
+ 
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+	return (0);
+}
+
 static inline int
-coroipcs_circular_memory_unmap (void *buf, size_t bytes)
+circular_memory_unmap (void *buf, size_t bytes)
 {
 	int res;
 
 	res = munmap (buf, bytes << 1);
 
 	return (res);
+}
+
+static inline int zcb_free (struct zcb_mapped *zcb_mapped)
+{
+	unsigned int res;
+
+	res = munmap (zcb_mapped->addr, zcb_mapped->size);
+	list_del (&zcb_mapped->list);
+	free (zcb_mapped);
+	return (res);
+}
+
+static inline int zcb_by_addr_free (struct conn_info *conn_info, void *addr)
+{
+	struct list_head *list;
+	struct zcb_mapped *zcb_mapped;
+	unsigned int res = 0;
+
+	for (list = conn_info->zcb_mapped_list_head.next;
+		list != &conn_info->zcb_mapped_list_head; list = list->next) {
+
+		zcb_mapped = list_entry (list, struct zcb_mapped, list);
+
+		if (zcb_mapped->addr == addr) {
+			res = zcb_free (zcb_mapped);
+			break;
+		}
+
+	}
+	return (res);
+}
+
+static inline int zcb_all_free (
+	struct conn_info *conn_info)
+{
+	struct list_head *list;
+	struct zcb_mapped *zcb_mapped;
+
+	for (list = conn_info->zcb_mapped_list_head.next;
+		list != &conn_info->zcb_mapped_list_head;) {
+
+		zcb_mapped = list_entry (list, struct zcb_mapped, list);
+
+		list = list->next;
+
+		zcb_free (zcb_mapped);
+	}
+	return (0);
+}
+
+static inline int zcb_alloc (
+	struct conn_info *conn_info,
+	const char *path_to_file,
+	size_t size,
+	void **addr)
+{
+	struct zcb_mapped *zcb_mapped;
+	unsigned int res;
+
+	zcb_mapped = malloc (sizeof (struct zcb_mapped));
+	if (zcb_mapped == NULL) {
+		return (-1);
+	}
+
+	res = memory_map (
+		path_to_file,
+		addr,
+		size);
+	if (res == -1) {
+		return (-1);
+	}
+
+	list_init (&zcb_mapped->list);
+	zcb_mapped->addr = *addr;
+	zcb_mapped->size = size;
+	list_add_tail (&zcb_mapped->list, &conn_info->zcb_mapped_list_head);
+	return (0);
 }
 
 static int ipc_thread_active (void *conn)
@@ -250,7 +410,8 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		api->free (conn_info->private_data);
 	}
 	close (conn_info->fd);
-	res = coroipcs_circular_memory_unmap (conn_info->dispatch_buffer, DISPATCH_SIZE);
+	res = circular_memory_unmap (conn_info->dispatch_buffer, DISPATCH_SIZE);
+	zcb_all_free (conn_info);
 	api->free (conn_info);
 	api->serialize_unlock ();
 	return (-1);
@@ -261,6 +422,83 @@ struct res_overlay {
 	char buf[4096];
 };
 
+union u {
+	uint64_t server_addr;
+	void *server_ptr;
+};
+
+static uint64_t void2serveraddr (void *server_ptr)
+{
+	union u u;
+
+	u.server_ptr = server_ptr;
+	return (u.server_addr);
+}
+
+static void *serveraddr2void (uint64_t server_addr)
+{
+	union u u;
+
+	u.server_addr = server_addr;
+	return (u.server_ptr);
+}; 
+
+static inline void zerocopy_operations_process (
+	struct conn_info *conn_info,
+	mar_req_header_t **header_out,
+	unsigned int *new_message)
+{
+	mar_req_header_t *header;
+
+	header = (mar_req_header_t *)conn_info->mem->req_buffer;
+	if (header->id == ZC_ALLOC_HEADER) {
+		mar_req_coroipcc_zc_alloc_t *hdr = (mar_req_coroipcc_zc_alloc_t *)header;
+		mar_res_header_t res_header;
+		void *addr = NULL;
+		struct coroipcs_zc_header *zc_header;
+		unsigned int res;
+
+		res = zcb_alloc (conn_info, hdr->path_to_file, hdr->map_size,
+			&addr);
+
+		zc_header = (struct coroipcs_zc_header *)addr;
+		zc_header->server_address = void2serveraddr(addr);
+
+		res_header.size = sizeof (mar_res_header_t);
+		res_header.id = 0;
+		coroipcs_response_send (
+			conn_info, &res_header, 
+			res_header.size);
+		*new_message = 0;
+		return;
+	} else 
+	if (header->id == ZC_FREE_HEADER) {
+		mar_req_coroipcc_zc_free_t *hdr = (mar_req_coroipcc_zc_free_t *)header;
+		mar_res_header_t res_header;
+		void *addr = NULL;
+
+		addr = serveraddr2void (hdr->server_address);
+
+		zcb_by_addr_free (conn_info, addr);
+
+		res_header.size = sizeof (mar_res_header_t);
+		res_header.id = 0;
+		coroipcs_response_send (
+			conn_info, &res_header, 
+			res_header.size);
+
+		*new_message = 0;
+		return;
+	} else 
+	if (header->id == ZC_EXECUTE_HEADER) {
+		mar_req_coroipcc_zc_execute_t *hdr = (mar_req_coroipcc_zc_execute_t *)header;
+		
+		header = (mar_req_header_t *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
+	}
+	*header_out = header;
+	*new_message = 1;
+}
+
 static void *pthread_ipc_consumer (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
@@ -269,6 +507,7 @@ static void *pthread_ipc_consumer (void *conn)
 	mar_req_header_t *header;
 	struct res_overlay res_overlay;
 	int send_ok;
+	unsigned int new_message;
 
 	if (api->sched_priority != 0) {
 		struct sched_param sched_param;
@@ -295,9 +534,15 @@ retry_semop:
 			pthread_exit (0);
 		}
 
-		coroipcs_refcount_inc (conn_info);
+		zerocopy_operations_process (conn_info, &header, &new_message);
+		/*
+		 * There is no new message to process, continue for loop
+		 */
+		if (new_message == 0) {
+			continue;
+		}
 
-                header = (mar_req_header_t *)conn_info->mem->req_buffer;
+		coroipcs_refcount_inc (conn);
 
 		send_ok = api->sending_allowed (conn_info->service,
 			header->id,
@@ -497,6 +742,7 @@ static int conn_info_create (int fd)
 	conn_info->state = CONN_STATE_THREAD_INACTIVE;
 	list_init (&conn_info->outq_head);
 	list_init (&conn_info->list);
+	list_init (&conn_info->zcb_mapped_list_head);
 	list_add (&conn_info->list, &conn_info_list_head);
 
         api->poll_dispatch_add (fd, conn_info);
@@ -933,46 +1179,6 @@ retry_accept:
 	return (0);
 }
 
-static int
-coroipcs_memory_map (char *path, void **buf, size_t bytes)
-{
-	int fd;
-	void *addr_orig;
-	void *addr;
-	int res;
- 
-	fd = open (path, O_RDWR, 0600);
-
-	unlink (path);
-
-	res = ftruncate (fd, bytes);
-
-	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
-		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
- 
-	if (addr_orig == MAP_FAILED) {
-		return (-1);
-	}
- 
-	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
-		MAP_FIXED | MAP_SHARED, fd, 0);
- 
-	if (addr != addr_orig) {
-		return (-1);
-	}
- 
-	addr = mmap (((char *)addr_orig) + bytes,
-                  bytes, PROT_READ | PROT_WRITE,
-                  MAP_FIXED | MAP_SHARED, fd, 0);
- 
-	res = close (fd);
-	if (res) {
-		return (-1);
-	}
-	*buf = addr_orig;
-	return (0);
-}
-
 int coroipcs_handler_dispatch (
 	int fd,
 	int revent,
@@ -1026,7 +1232,7 @@ int coroipcs_handler_dispatch (
 
 		conn_info->shmkey = req_setup->shmkey;
 		conn_info->semkey = req_setup->semkey;
-		res = coroipcs_memory_map (
+		res = circular_memory_map (
 			req_setup->dispatch_file,
 			(void *)&conn_info->dispatch_buffer,
 			DISPATCH_SIZE);

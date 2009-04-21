@@ -69,6 +69,9 @@ dist_man_MANS = \
 	cpg_leave.3 \
 	cpg_local_get.3 \
 	cpg_mcast_joined.3 \
+	cpg_zcb_mcast_joined.3 \
+	cpg_zcb_alloc.3 \
+	cpg_zcb_free.3 \
 	cpg_membership_get.3 \
 	evs_dispatch.3 \
 	evs_fd_get.3 \

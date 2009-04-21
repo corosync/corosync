@@ -477,59 +477,6 @@ error_exit:
 	return (error);
 }
 
-cs_error_t cpg_mcast_joined (
-	cpg_handle_t handle,
-	cpg_guarantee_t guarantee,
-	const struct iovec *iovec,
-	unsigned int iov_len)
-{
-	int i;
-	cs_error_t error;
-	struct cpg_inst *cpg_inst;
-	struct iovec iov[64];
-	struct req_lib_cpg_mcast req_lib_cpg_mcast;
-	struct res_lib_cpg_mcast res_lib_cpg_mcast;
-	size_t msg_len = 0;
-
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	for (i = 0; i < iov_len; i++ ) {
-		msg_len += iovec[i].iov_len;
-	}
-
-	req_lib_cpg_mcast.header.size = sizeof (struct req_lib_cpg_mcast) +
-		msg_len;
-
-	req_lib_cpg_mcast.header.id = MESSAGE_REQ_CPG_MCAST;
-	req_lib_cpg_mcast.guarantee = guarantee;
-	req_lib_cpg_mcast.msglen = msg_len;
-
-	iov[0].iov_base = &req_lib_cpg_mcast;
-	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
-	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
-
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov,
-		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_cpg_mcast.header.error;
-
-error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
-
-	return (error);
-}
-
 cs_error_t cpg_membership_get (
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
@@ -640,6 +587,148 @@ cs_error_t cpg_flow_control_state_get (
 
 	*flow_control_state = coroipcc_dispatch_flow_control_get (cpg_inst->ipc_ctx);
 
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t cpg_zcb_alloc (
+	cpg_handle_t handle,
+	size_t size,
+	void **buffer)
+{
+	cs_error_t error;
+	struct cpg_inst *cpg_inst;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	error = coroipcc_zcb_alloc (cpg_inst->ipc_ctx,
+		buffer,
+		size,
+		sizeof (struct req_lib_cpg_mcast));
+
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+	*buffer = ((char *)*buffer) + sizeof (struct req_lib_cpg_mcast);
+
+	return (error);
+}
+
+cs_error_t cpg_zcb_free (
+	cpg_handle_t handle,
+	void *buffer)
+{
+	cs_error_t error;
+	struct cpg_inst *cpg_inst;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	coroipcc_zcb_free (cpg_inst->ipc_ctx, ((char *)buffer) - sizeof (struct req_lib_cpg_mcast));
+
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t cpg_zcb_mcast_joined (
+	cpg_handle_t handle,
+	cpg_guarantee_t guarantee,
+	void *msg,
+	size_t msg_len)
+{
+	cs_error_t error;
+	struct cpg_inst *cpg_inst;
+	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
+	struct res_lib_cpg_mcast res_lib_cpg_mcast;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)(((char *)msg) - sizeof (struct req_lib_cpg_mcast));
+	req_lib_cpg_mcast->header.size = sizeof (struct req_lib_cpg_mcast) +
+		msg_len;
+
+	req_lib_cpg_mcast->header.id = MESSAGE_REQ_CPG_MCAST;
+	req_lib_cpg_mcast->guarantee = guarantee;
+	req_lib_cpg_mcast->msglen = msg_len;
+
+	pthread_mutex_lock (&cpg_inst->response_mutex);
+
+	error = coroipcc_zcb_msg_send_reply_receive (
+		cpg_inst->ipc_ctx,
+		req_lib_cpg_mcast,
+		&res_lib_cpg_mcast,
+		sizeof (res_lib_cpg_mcast));
+
+	pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_cpg_mcast.header.error;
+
+error_exit:
+	saHandleInstancePut (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t cpg_mcast_joined (
+	cpg_handle_t handle,
+	cpg_guarantee_t guarantee,
+	const struct iovec *iovec,
+	unsigned int iov_len)
+{
+	int i;
+	cs_error_t error;
+	struct cpg_inst *cpg_inst;
+	struct iovec iov[64];
+	struct req_lib_cpg_mcast req_lib_cpg_mcast;
+	struct res_lib_cpg_mcast res_lib_cpg_mcast;
+	size_t msg_len = 0;
+
+	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	for (i = 0; i < iov_len; i++ ) {
+		msg_len += iovec[i].iov_len;
+	}
+
+	req_lib_cpg_mcast.header.size = sizeof (struct req_lib_cpg_mcast) +
+		msg_len;
+
+	req_lib_cpg_mcast.header.id = MESSAGE_REQ_CPG_MCAST;
+	req_lib_cpg_mcast.guarantee = guarantee;
+	req_lib_cpg_mcast.msglen = msg_len;
+
+	iov[0].iov_base = &req_lib_cpg_mcast;
+	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
+	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
+
+	pthread_mutex_lock (&cpg_inst->response_mutex);
+
+	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov,
+		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
+
+	pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_cpg_mcast.header.error;
+
+error_exit:
 	saHandleInstancePut (&cpg_handle_t_db, handle);
 
 	return (error);

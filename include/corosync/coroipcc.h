@@ -87,8 +87,27 @@ coroipcc_msg_send_reply_receive_in_buf (
 	unsigned int iov_len,
 	void **res_msg);
 
+extern cs_error_t
+coroipcc_zcb_alloc (
+	void *ipc_context,
+	void **buffer,
+	size_t size,
+        size_t header_size);
+
+extern cs_error_t
+coroipcc_zcb_free (
+	void *ipc_context,
+	void *buffer);
+
+extern cs_error_t
+coroipcc_zcb_msg_send_reply_receive (
+	void *ipc_context,
+	void *msg,
+	void *res_msg,
+	size_t res_len);
+
 /*
- * This needs to be removed
+ * TODO This needs to be removed
  */
 struct saHandleDatabase {
 	unsigned int handleCount;
@@ -114,7 +133,6 @@ static void database_name##_init(void)					\
 {									\
         saHandleDatabaseLock_init (&(database_name));			\
 }
-
 
 extern cs_error_t
 saHandleCreate (

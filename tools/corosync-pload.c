@@ -72,7 +72,7 @@ int main (void) {
 	result = pload_start (
 		handle,
 		0, /* code */
-		150000, /* count */
+		1500000, /* count */
 		300); /* size */
 	return (0);
 }
