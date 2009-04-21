@@ -150,6 +150,8 @@ extern void logsys_atexit (void);
 /*
  * External API - misc
  */
+extern void logsys_flush (void);
+
 extern int logsys_log_rec_store (const char *filename);
 
 /*

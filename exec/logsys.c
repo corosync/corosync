@@ -1466,3 +1466,8 @@ void logsys_atexit (void)
 		pthread_join (logsys_thread_id, NULL);
 	}
 }
+
+void logsys_flush (void)
+{
+	wthread_signal ();
+}
