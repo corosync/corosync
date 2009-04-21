@@ -285,6 +285,31 @@ static int corosync_main_config_set (
 		goto parse_error;
 	}
 
+	if (!objdb_get_string (objdb,object_handle, "to_file", &value)) {
+
+		log_printf(LOGSYS_LEVEL_WARNING,
+		 "Warning: the to_file config paramater has been obsoleted."
+		 " See corosync.conf man page to_logfile directive.");
+
+		if (strcmp (value, "yes") == 0) {
+			mode |= LOGSYS_MODE_OUTPUT_FILE;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to set mode to_file";
+				goto parse_error;
+			}
+		} else
+		if (strcmp (value, "no") == 0) {
+			mode &= ~LOGSYS_MODE_OUTPUT_FILE;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				error_reason = "unable to unset mode to_file";
+				goto parse_error;
+			}
+		} else {
+			error_reason = "unknown value for to_file";
+			goto parse_error;
+		}
+	}
+
 	if (!objdb_get_string (objdb,object_handle, "to_logfile", &value)) {
 		if (strcmp (value, "yes") == 0) {
 			mode |= LOGSYS_MODE_OUTPUT_FILE;
@@ -300,7 +325,7 @@ static int corosync_main_config_set (
 				goto parse_error;
 			}
 		} else {
-			error_reason = "unknown value for to_file";
+			error_reason = "unknown value for to_logfile";
 			goto parse_error;
 		}
 	}
@@ -356,6 +381,25 @@ static int corosync_main_config_set (
 		if (logsys_config_syslog_facility_set(subsys,
 						syslog_facility) < 0) {
 			error_reason = "unable to set syslog facility";
+			goto parse_error;
+		}
+	}
+
+	if (!objdb_get_string (objdb,object_handle, "syslog_level", &value)) {
+		int syslog_priority;
+
+		log_printf(LOGSYS_LEVEL_WARNING,
+		 "Warning: the syslog_level config paramater has been obsoleted."
+		 " See corosync.conf man page syslog_priority directive.");
+
+		syslog_priority = logsys_priority_id_get(value);
+		if (syslog_priority < 0) {
+			error_reason = "unknown syslog level specified";
+			goto parse_error;
+		}
+		if (logsys_config_syslog_priority_set(subsys,
+						syslog_priority) < 0) {
+			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
 	}
