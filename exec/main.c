@@ -790,7 +790,10 @@ int main (int argc, char **argv)
 	}
 
 	/* Make a copy so we can deface it with strtok */
-	config_iface = strdup(config_iface_init);
+	if ((config_iface = strdup(config_iface_init)) == NULL) {
+		log_printf (LOGSYS_LEVEL_ERROR, "exhausted virtual memory");
+		corosync_exit_error (AIS_DONE_OBJDB);
+	}
 
 	iface = strtok(config_iface, ":");
 	while (iface)
