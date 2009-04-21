@@ -689,14 +689,14 @@ int corosync_main_config_read (
 		goto parse_error;
 	}
 
+	ug_config->uid = -1;
+	ug_config->gid = -1;
+
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
 		"aisexec",
 		strlen ("aisexec"),
 		&object_find_handle);
-
-	ug_config->uid = uid_determine("ais");
-	ug_config->gid = gid_determine("ais");
 
 	if (objdb->object_find_next (
 		object_find_handle,
@@ -712,6 +712,13 @@ int corosync_main_config_read (
 	}
 
 	objdb->object_find_destroy (object_find_handle);
+
+	if (ug_config->uid < 0) {
+		ug_config->uid = uid_determine("ais");
+	}
+	if (ug_config->gid < 0) {
+		ug_config->gid = gid_determine("ais");
+	}
 
 	add_logsys_config_notification(objdb);
 
