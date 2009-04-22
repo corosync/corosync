@@ -37,7 +37,6 @@
 
 #include <config.h>
 
-#include <assert.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -278,11 +277,10 @@ static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
 {
 	unsigned int len;
 
-	if (cutoff == -1) {
+	if (cutoff <= 0) {
 		strcpy (dest, src);
 		return (strlen (dest));
 	} else {
-		assert (cutoff > 0);
 		strncpy (dest, src, cutoff);
 		dest[cutoff] = '\0';
 		len = strlen (dest);
@@ -839,7 +837,9 @@ unsigned int _logsys_subsys_create (const char *subsys)
 {
 	int i;
 
-	assert (subsys != NULL);
+	if (subsys == NULL) {
+		return -1;
+	}
 
 	pthread_mutex_lock (&logsys_config_mutex);
 
@@ -856,7 +856,9 @@ unsigned int _logsys_subsys_create (const char *subsys)
 		}
 	}
 
-	assert(i < LOGSYS_MAX_SUBSYS_COUNT);
+	if (i >= LOGSYS_MAX_SUBSYS_COUNT) {
+		i = -1;
+	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 	return i;
@@ -935,7 +937,6 @@ void _logsys_log_rec (
 	va_start (ap, rec_ident);
 	arguments = 3;
 	for (;;) {
-		assert (arguments < 64);
 		buf_args[arguments] = va_arg (ap, void *);
 		if (buf_args[arguments] == LOGSYS_REC_END) {
 			break;
@@ -943,6 +944,9 @@ void _logsys_log_rec (
 		buf_len[arguments] = va_arg (ap, int);
 		record_reclaim_size += ((buf_len[arguments] + 3) >> 2) + 1;
 		arguments++;
+		if (arguments >= 64) {
+			break;
+		}
 	}
 	va_end (ap);
 

@@ -871,6 +871,13 @@ int main (int argc, char **argv)
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id =
 		_logsys_subsys_create ("TOTEM");
+
+	if (totem_config.totem_logging_configuration.log_subsys_id < 0) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"Unable to initialize TOTEM logging subsystem\n");
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
   	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_SECURITY;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
@@ -939,6 +946,11 @@ int main (int argc, char **argv)
  		serialize_unlock);
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC");
+	if (ipc_subsys_id < 0) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"Could not initialize IPC logging subsystem\n");
+		corosync_exit_error (AIS_DONE_INIT_SERVICES);
+	}
 
 	ipc_init_state.sched_priority = sched_priority;
 

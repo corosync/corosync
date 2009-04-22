@@ -38,8 +38,8 @@
 #define LOGSYS_H_DEFINED
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <syslog.h>
-#include <assert.h>
 
 /*
  * All of the LOGSYS_MODE's can be ORed together for combined behavior
@@ -254,20 +254,30 @@ extern void *logsys_rec_end;
 __attribute__ ((constructor))						\
 static void logsys_system_init (void)					\
 {									\
-	int err;							\
+	if (_logsys_system_setup (name,mode,debug,file,file_priority,	\
+			syslog_facility,syslog_priority,tags) < 0) {	\
+		fprintf (stderr,					\
+			"Unable to setup logging system: %s.\n", name);	\
+		exit (-1);						\
+	}								\
 									\
-	err = _logsys_system_setup (name,mode,debug,file,file_priority,	\
-				syslog_facility,syslog_priority,tags);	\
-	assert (err == 0 && "_logsys_system_setup failed");		\
+	if (logsys_format_set (format) < 0) {				\
+		fprintf (stderr,					\
+			"Unable to setup logging format.\n");		\
+		exit (-1);						\
+	}								\
 									\
-	err = logsys_format_set (format);				\
-	assert (err == 0 && "logsys_format_set failed");		\
+	if (_logsys_rec_init (rec_size) < 0) {				\
+		fprintf (stderr,					\
+			"Unable to initialize log flight recorder.\n");	\
+		exit (-1);						\
+	}								\
 									\
-	err = _logsys_rec_init (rec_size);				\
-	assert (err == 0 && "_logsys_rec_init failed");			\
-									\
-	err = _logsys_wthread_create();					\
-	assert (err == 0 && "_logsys_wthread_create failed");		\
+	if (_logsys_wthread_create() < 0) {				\
+		fprintf (stderr,					\
+			"Unable to initialize logging thread.\n");	\
+		exit (-1);						\
+	}								\
 }
 
 #define LOGSYS_DECLARE_SUBSYS(subsys)					\
@@ -276,8 +286,11 @@ static void logsys_subsys_init (void)					\
 {									\
 	logsys_subsys_id =						\
 		_logsys_subsys_create ((subsys));			\
-	assert (logsys_subsys_id < LOGSYS_MAX_SUBSYS_COUNT && 		\
-		"_logsys_subsys_create failed");			\
+	if (logsys_subsys_id == -1) {					\
+		fprintf (stderr,					\
+		"Unable to create logging subsystem: %s.\n", subsys);	\
+		exit (-1);						\
+	}								\
 }
 
 #define log_rec(rec_ident, args...)					\

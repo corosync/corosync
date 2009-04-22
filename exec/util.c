@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
