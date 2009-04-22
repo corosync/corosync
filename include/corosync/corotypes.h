@@ -177,4 +177,3 @@ typedef enum {
 #define quorum_error_t cs_error_t
 
 #endif
-

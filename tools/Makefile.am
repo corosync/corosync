@@ -42,6 +42,3 @@ corosync_cfgtool_LDADD	= ../lib/libcfg.a
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
-
-
-

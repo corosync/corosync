@@ -49,5 +49,3 @@ noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%)
 
 nobase_include_HEADERS	= $(CS_H:%=corosync/%) $(LCR_H:%=corosync/lcr/%) 			\
 			$(ENGINE_H:%=corosync/engine/%) $(TOTEM_H:%=corosync/totem/%)
-
-

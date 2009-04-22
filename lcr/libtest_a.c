@@ -164,4 +164,3 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 	lcr_interfaces_set (&iface1[1], &iface_ver1_list);
 	lcr_component_register (&test_comp);
 }
-

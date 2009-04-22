@@ -148,4 +148,3 @@ SaTimeT
 clustTimeNow(void);
 
 #endif /* AIS_UTIL_H_DEFINED */
-

@@ -82,5 +82,3 @@ uninstall-local:
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
-
-

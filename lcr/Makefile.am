@@ -65,5 +65,3 @@ all-local: $(noinst_LCRSO)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
-
-
