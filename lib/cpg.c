@@ -391,31 +391,10 @@ cs_error_t cpg_join (
 	struct iovec iov[2];
 	struct req_lib_cpg_join req_lib_cpg_join;
 	struct res_lib_cpg_join res_lib_cpg_join;
-	struct req_lib_cpg_trackstart req_lib_cpg_trackstart;
-	struct res_lib_cpg_trackstart res_lib_cpg_trackstart;
 
 	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
 	if (error != CS_OK) {
 		return (error);
-	}
-
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
-	/* Automatically add a tracker */
-	req_lib_cpg_trackstart.header.size = sizeof (struct req_lib_cpg_trackstart);
-	req_lib_cpg_trackstart.header.id = MESSAGE_REQ_CPG_TRACKSTART;
-	marshall_to_mar_cpg_name_t (&req_lib_cpg_trackstart.group_name,
-		group);
-
-	iov[0].iov_base = &req_lib_cpg_trackstart;
-	iov[0].iov_len = sizeof (struct req_lib_cpg_trackstart);
-
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
-		&res_lib_cpg_trackstart, sizeof (struct res_lib_cpg_trackstart));
-
-	if (error != CS_OK) {
-		pthread_mutex_unlock (&cpg_inst->response_mutex);
-		goto error_exit;
 	}
 
 	/* Now join */
@@ -428,14 +407,18 @@ cs_error_t cpg_join (
 	iov[0].iov_base = &req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
-		&res_lib_cpg_join, sizeof (struct res_lib_cpg_join));
+	do {
+		pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
+		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+			&res_lib_cpg_join, sizeof (struct res_lib_cpg_join));
 
-	if (error != CS_OK) {
-		goto error_exit;
-	}
+		pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+		if (error != CS_OK) {
+			goto error_exit;
+		}
+	} while (res_lib_cpg_join.header.error == CPG_ERR_BUSY);
 
 	error = res_lib_cpg_join.header.error;
 
@@ -469,15 +452,18 @@ cs_error_t cpg_leave (
 	iov[0].iov_base = &req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
+	do {
+		pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
-		&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
+		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+			&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
 
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
-	if (error != CS_OK) {
-		goto error_exit;
-	}
+		pthread_mutex_unlock (&cpg_inst->response_mutex);
+
+		if (error != CS_OK) {
+			goto error_exit;
+		}
+	} while (res_lib_cpg_leave.header.error == CPG_ERR_BUSY);
 
 	error = res_lib_cpg_leave.header.error;
 
@@ -511,16 +497,18 @@ cs_error_t cpg_membership_get (
 	iov.iov_base = &req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
+	do {
+		pthread_mutex_lock (&cpg_inst->response_mutex);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
-		&res_lib_cpg_membership_get, sizeof (coroipc_response_header_t));
+		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
+			&res_lib_cpg_membership_get, sizeof (coroipc_response_header_t));
 
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
+		pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	if (error != CS_OK) {
-		goto error_exit;
-	}
+ 		if (error != CS_OK) {
+ 			goto error_exit;
+		}
+	} while (res_lib_cpg_membership_get.header.error == CPG_ERR_BUSY);
 
 	error = res_lib_cpg_membership_get.header.error;
 

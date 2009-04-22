@@ -86,4 +86,13 @@ static inline void marshall_to_mar_cpg_address_t (
 	dest->reason = src->reason;
 }
 
+static inline int mar_name_compare (
+		const mar_cpg_name_t *g1,
+		const mar_cpg_name_t *g2)
+{
+	return (g1->length == g2->length?
+		memcmp (g1->value, g2->value, g1->length):
+		g1->length - g2->length);
+}
+
 #endif /* MAR_CPG_H_DEFINED */

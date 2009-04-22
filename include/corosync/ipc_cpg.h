@@ -4,6 +4,7 @@
  * All rights reserved.
  *
  * Author: Christine Caulfield (ccaulfie@redhat.com)
+ * Author: Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -42,9 +43,7 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_LEAVE = 1,
 	MESSAGE_REQ_CPG_MCAST = 2,
 	MESSAGE_REQ_CPG_MEMBERSHIP = 3,
-	MESSAGE_REQ_CPG_TRACKSTART = 4,
-	MESSAGE_REQ_CPG_TRACKSTOP = 5,
-	MESSAGE_REQ_CPG_LOCAL_GET = 6
+	MESSAGE_REQ_CPG_LOCAL_GET = 4,
 };
 
 enum res_cpg_types {
@@ -54,11 +53,9 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_MEMBERSHIP = 3,
 	MESSAGE_RES_CPG_CONFCHG_CALLBACK = 4,
 	MESSAGE_RES_CPG_DELIVER_CALLBACK = 5,
-	MESSAGE_RES_CPG_TRACKSTART = 6,
-	MESSAGE_RES_CPG_TRACKSTOP = 7,
-	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8,
-	MESSAGE_RES_CPG_LOCAL_GET = 9,
-	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 10
+	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 6,
+	MESSAGE_RES_CPG_LOCAL_GET = 7,
+	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 8
 };
 
 enum lib_cpg_confchg_reason {
