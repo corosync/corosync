@@ -178,9 +178,6 @@ static void message_handler_req_lib_cpg_trackstop (void *conn,
 static void message_handler_req_lib_cpg_local_get (void *conn,
 						   const void *message);
 
-static void message_handler_req_lib_cpg_groups_get (void *conn,
-						    const void *message);
-
 static int cpg_node_joinleave_send (struct group_info *gi, struct process_info *pi, int fn, int reason);
 
 static int cpg_exec_send_joinlist(void);
@@ -234,12 +231,6 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
 		.response_size				= sizeof (struct res_lib_cpg_local_get),
 		.response_id				= MESSAGE_RES_CPG_LOCAL_GET,
-		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 7 */
-		.lib_handler_fn				= message_handler_req_lib_cpg_groups_get,
-		.response_size				= sizeof (struct res_lib_cpg_groups_get),
-		.response_id				= MESSAGE_RES_CPG_GROUPS_GET,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -504,20 +495,6 @@ static int cpg_lib_exit_fn (void *conn)
 		list_del(&pi->list);
 	api->ipc_refcnt_dec (conn);
 	return (0);
-}
-
-static int count_groups(void)
-{
-	struct list_head *iter;
-	int num_groups = 0;
-	uint32_t hash;
-
-	for (hash=0 ; hash < GROUP_HASH_SIZE; hash++) {
-		for (iter = group_lists[hash].next; iter != &group_lists[hash]; iter = iter->next) {
-			num_groups++;
-		}
-	}
-	return num_groups;
 }
 
 static struct group_info *get_group(const mar_cpg_name_t *name)
@@ -1226,18 +1203,4 @@ static void message_handler_req_lib_cpg_local_get (void *conn,
 
 	api->ipc_response_send(conn, &res_lib_cpg_local_get,
 		sizeof(res_lib_cpg_local_get));
-}
-
-static void message_handler_req_lib_cpg_groups_get (void *conn,
-						    const void *message)
-{
-	struct res_lib_cpg_groups_get res_lib_cpg_groups_get;
-
-	res_lib_cpg_groups_get.header.size = sizeof(res_lib_cpg_groups_get);
-	res_lib_cpg_groups_get.header.id = MESSAGE_RES_CPG_GROUPS_GET;
-	res_lib_cpg_groups_get.header.error = CS_OK;
-	res_lib_cpg_groups_get.num_groups = count_groups();
-
-	api->ipc_response_send(conn, &res_lib_cpg_groups_get,
-		sizeof(res_lib_cpg_groups_get));
 }

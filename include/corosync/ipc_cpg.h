@@ -44,8 +44,7 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_MEMBERSHIP = 3,
 	MESSAGE_REQ_CPG_TRACKSTART = 4,
 	MESSAGE_REQ_CPG_TRACKSTOP = 5,
-	MESSAGE_REQ_CPG_LOCAL_GET = 6,
-	MESSAGE_REQ_CPG_GROUPS_GET = 7
+	MESSAGE_REQ_CPG_LOCAL_GET = 6
 };
 
 enum res_cpg_types {
@@ -59,9 +58,7 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_TRACKSTOP = 7,
 	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 8,
 	MESSAGE_RES_CPG_LOCAL_GET = 9,
-	MESSAGE_RES_CPG_GROUPS_GET = 10,
-	MESSAGE_RES_CPG_GROUPS_CALLBACK = 11,
-	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 12
+	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 10
 };
 
 enum lib_cpg_confchg_reason {
@@ -161,24 +158,6 @@ struct req_lib_cpg_leave {
 
 struct res_lib_cpg_leave {
 	coroipc_response_header_t header __attribute__((aligned(8)));
-};
-
-struct req_lib_cpg_groups_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
-};
-
-struct res_lib_cpg_groups_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
-	mar_uint32_t num_groups __attribute__((aligned(8)));
-};
-
-struct res_lib_cpg_groups_get_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
-	mar_uint32_t group_num  __attribute__((aligned(8)));
-	mar_uint32_t total_groups  __attribute__((aligned(8)));
-	mar_cpg_name_t group_name __attribute__((aligned(8)));
-	mar_uint32_t num_members __attribute__((aligned(8)));
-	mar_cpg_address_t member_list[];
 };
 
 #endif /* IPC_CPG_H_DEFINED */

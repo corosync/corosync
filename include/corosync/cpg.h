@@ -94,17 +94,9 @@ typedef void (*cpg_confchg_fn_t) (
 	const struct cpg_address *left_list, size_t left_list_entries,
 	const struct cpg_address *joined_list, size_t joined_list_entries);
 
-typedef void (*cpg_groups_get_fn_t) (
-	cpg_handle_t handle,
-	uint32_t group_num,
-	uint32_t group_total,
-	const struct cpg_name *group_name,
-	const struct cpg_address *member_list, size_t member_list_entries);
-
 typedef struct {
 	cpg_deliver_fn_t cpg_deliver_fn;
 	cpg_confchg_fn_t cpg_confchg_fn;
-	cpg_groups_get_fn_t cpg_groups_get_fn;
 } cpg_callbacks_t;
 
 /** @} */
@@ -189,10 +181,6 @@ cs_error_t cpg_membership_get (
 cs_error_t cpg_local_get (
 	cpg_handle_t handle,
 	unsigned int *local_nodeid);
-
-cs_error_t cpg_groups_get (
-	cpg_handle_t handle,
-	unsigned int *num_groups);
 
 cs_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,

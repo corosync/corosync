@@ -78,13 +78,6 @@ typedef void (*cpg_confchg_fn_t) (
         const struct cpg_address *left_list, size_t left_list_entries,
         const struct cpg_address *joined_list, size_t joined_list_entries);
 
-typedef void (*cpg_groups_get_fn_t) (
-	cpg_handle_t handle,
-	uint32_t group_num,
-	uint32_t group_total,
-	const struct cpg_name *group_name,
-	struct cpg_address *member_list, size_t member_list_entries);
-
 .ta
 .fi
 .RE
@@ -102,7 +95,6 @@ argument is of the type:
 typedef struct {
         cpg_deliver_fn_t cpg_deliver_fn;
         cpg_confchg_fn_t cpg_confchg_fn;
-	cpg_groups_get_fn_t cpg_groups_get_fn;
 } cpg_callbacks_t;
 .ta
 .fi
