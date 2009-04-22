@@ -64,13 +64,11 @@ enum req_init_types {
 #define MESSAGE_REQ_CHANGE_EUID		1
 #define MESSAGE_REQ_OUTQ_FLUSH		2
 
-#define REQ_SIZE			1000000
-#define RES_SIZE			1000000
-#define DISPATCH_SIZE			8192*128
+#define IPC_REQUEST_SIZE		8192*128
+#define IPC_RESPONSE_SIZE		8192*128
+#define IPC_DISPATCH_SIZE		8192*128
 
-struct shared_memory {
-	unsigned char req_buffer[REQ_SIZE];
-	unsigned char res_buffer[RES_SIZE];
+struct control_buffer {
 	unsigned int read;
 	unsigned int write;
 };
@@ -86,9 +84,15 @@ typedef struct {
 
 typedef struct {
 	int service __attribute__((aligned(8)));
-	unsigned long long shmkey __attribute__((aligned(8)));
 	unsigned long long semkey __attribute__((aligned(8)));
-	char dispatch_file[64]__attribute__((aligned(8)));
+	char control_file[64] __attribute__((aligned(8)));
+	char request_file[64] __attribute__((aligned(8)));
+	char response_file[64] __attribute__((aligned(8)));
+	char dispatch_file[64] __attribute__((aligned(8)));
+	size_t control_size __attribute__((aligned(8)));
+	size_t request_size __attribute__((aligned(8)));
+	size_t response_size __attribute__((aligned(8)));
+	size_t dispatch_size __attribute__((aligned(8)));
 } mar_req_setup_t __attribute__((aligned(8)));
 
 typedef struct {

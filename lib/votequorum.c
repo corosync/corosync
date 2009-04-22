@@ -92,7 +92,13 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, VOTEQUORUM_SERVICE, &votequorum_inst->ipc_ctx);
+	error = coroipcc_service_connect (
+		IPC_SOCKET_NAME,
+		VOTEQUORUM_SERVICE,
+		IPC_REQUEST_SIZE,
+		IPC_RESPONSE_SIZE,
+		IPC_DISPATCH_SIZE,
+		 &votequorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}

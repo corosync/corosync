@@ -157,7 +157,13 @@ cs_error_t confdb_initialize (
 		confdb_inst->standalone = 1;
 	}
 	else {
-		error = coroipcc_service_connect (IPC_SOCKET_NAME, CONFDB_SERVICE, &confdb_inst->ipc_ctx);
+		error = coroipcc_service_connect (
+			IPC_SOCKET_NAME,
+			CONFDB_SERVICE,
+			IPC_REQUEST_SIZE,
+			IPC_RESPONSE_SIZE,
+			IPC_DISPATCH_SIZE,
+			&confdb_inst->ipc_ctx);
 	}
 	if (error != CS_OK)
 		goto error_put_destroy;

@@ -47,7 +47,10 @@
 extern cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
-	enum service_types service,
+	unsigned int service,
+	size_t request_size,
+	size_t respnse__size,
+	size_t dispatch_size,
 	void **ipc_context);
 
 extern cs_error_t

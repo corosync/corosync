@@ -105,7 +105,13 @@ corosync_cfg_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, CFG_SERVICE, &cfg_instance->ipc_ctx);
+	error = coroipcc_service_connect (
+		IPC_SOCKET_NAME,
+		CFG_SERVICE,
+		IPC_REQUEST_SIZE,
+		IPC_RESPONSE_SIZE,
+		IPC_DISPATCH_SIZE,
+		&cfg_instance->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}

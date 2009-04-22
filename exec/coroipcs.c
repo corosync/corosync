@@ -125,12 +125,17 @@ struct conn_info {
 	int refcount;
 	key_t shmkey;
 	key_t semkey;
-	int shmid;
 	int semid;
 	unsigned int pending_semops;
 	pthread_mutex_t mutex;
-	struct shared_memory *mem;
+	struct control_buffer *control_buffer;
+	char *request_buffer;
+	char *response_buffer;
 	char *dispatch_buffer;
+	size_t control_size;
+	size_t request_size;
+	size_t response_size;
+	size_t dispatch_size;
 	struct list_head outq_head;
 	void *private_data;
 	struct list_head list;
@@ -152,7 +157,10 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
 
 static int
-memory_map (const char *path, void **buf, size_t bytes)
+memory_map (
+	const char *path,
+	size_t bytes,
+	void **buf)
 {
 	int fd;
 	void *addr_orig;
@@ -188,7 +196,10 @@ memory_map (const char *path, void **buf, size_t bytes)
 }
 
 static int
-circular_memory_map (const char *path, void **buf, size_t bytes)
+circular_memory_map (
+	const char *path,
+	size_t bytes,
+	void **buf)
 {
 	int fd;
 	void *addr_orig;
@@ -301,8 +312,8 @@ static inline int zcb_alloc (
 
 	res = memory_map (
 		path_to_file,
-		addr,
-		size);
+		size,
+		addr);
 	if (res == -1) {
 		return (-1);
 	}
@@ -399,8 +410,9 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	/*
 	 * Destroy shared memory segment and semaphore
 	 */
-	shmdt (conn_info->mem);
-	res = shmctl (conn_info->shmid, IPC_RMID, NULL);
+	res = munmap (conn_info->control_buffer, conn_info->control_size);
+	res = munmap (conn_info->request_buffer, conn_info->request_size);
+	res = munmap (conn_info->response_buffer, conn_info->response_size);
 	semctl (conn_info->semid, 0, IPC_RMID);
 
 	/*
@@ -410,7 +422,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		api->free (conn_info->private_data);
 	}
 	close (conn_info->fd);
-	res = circular_memory_unmap (conn_info->dispatch_buffer, DISPATCH_SIZE);
+	res = circular_memory_unmap (conn_info->dispatch_buffer, conn_info->dispatch_size);
 	zcb_all_free (conn_info);
 	api->free (conn_info);
 	api->serialize_unlock ();
@@ -450,7 +462,7 @@ static inline void zerocopy_operations_process (
 {
 	mar_req_header_t *header;
 
-	header = (mar_req_header_t *)conn_info->mem->req_buffer;
+	header = (mar_req_header_t *)conn_info->request_buffer;
 	if (header->id == ZC_ALLOC_HEADER) {
 		mar_req_coroipcc_zc_alloc_t *hdr = (mar_req_coroipcc_zc_alloc_t *)header;
 		mar_res_header_t res_header;
@@ -816,14 +828,25 @@ void coroipcs_ipc_exit (void)
 {
 	struct list_head *list;
 	struct conn_info *conn_info;
+	unsigned int res;
 
 	for (list = conn_info_list_head.next; list != &conn_info_list_head;
 		list = list->next) {
 
 		conn_info = list_entry (list, struct conn_info, list);
 
-		shmdt (conn_info->mem);
-		shmctl (conn_info->shmid, IPC_RMID, NULL);
+		/*
+		 * Unmap memory segments
+		 */
+		res = munmap (conn_info->control_buffer,
+			conn_info->control_size);
+		res = munmap (conn_info->request_buffer,
+			conn_info->request_size);
+		res = munmap (conn_info->response_buffer,
+			conn_info->response_size);
+		res = circular_memory_unmap (conn_info->dispatch_buffer,
+			conn_info->dispatch_size);
+
 		semctl (conn_info->semid, 0, IPC_RMID);
 	
 		pthread_kill (conn_info->thread, SIGUSR1);
@@ -846,7 +869,7 @@ int coroipcs_response_send (void *conn, const void *msg, size_t mlen)
 	struct sembuf sop;
 	int res;
 
-	memcpy (conn_info->mem->res_buffer, msg, mlen);
+	memcpy (conn_info->response_buffer, msg, mlen);
 	sop.sem_num = 1;
 	sop.sem_op = 1;
 	sop.sem_flg = 0;
@@ -871,7 +894,8 @@ int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned in
 	int i;
 
 	for (i = 0; i < iov_len; i++) {
-		memcpy (&conn_info->mem->res_buffer[write_idx], iov[i].iov_base, iov[i].iov_len);
+		memcpy (&conn_info->response_buffer[write_idx],
+			iov[i].iov_base, iov[i].iov_len);
 		write_idx += iov[i].iov_len;
 	}
 
@@ -896,11 +920,11 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 	unsigned int n_write;
 	unsigned int bytes_left;
 
-	n_read = conn_info->mem->read;
-	n_write = conn_info->mem->write;
+	n_read = conn_info->control_buffer->read;
+	n_write = conn_info->control_buffer->write;
 
 	if (n_read <= n_write) {
-		bytes_left = DISPATCH_SIZE - n_write + n_read;
+		bytes_left = conn_info->dispatch_size - n_write + n_read;
 	} else {
 		bytes_left = n_read - n_write;
 	}
@@ -911,10 +935,10 @@ static void memcpy_dwrap (struct conn_info *conn_info, void *msg, unsigned int l
 {
 	unsigned int write_idx;
 
-	write_idx = conn_info->mem->write;
+	write_idx = conn_info->control_buffer->write;
 
 	memcpy (&conn_info->dispatch_buffer[write_idx], msg, len);
-	conn_info->mem->write = (write_idx + len) % (DISPATCH_SIZE);
+	conn_info->control_buffer->write = (write_idx + len) % conn_info->dispatch_size;
 }
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
@@ -1230,21 +1254,36 @@ int coroipcs_handler_dispatch (
 			return (0);
 		}
 
-		conn_info->shmkey = req_setup->shmkey;
 		conn_info->semkey = req_setup->semkey;
+		res = memory_map (
+			req_setup->control_file,
+			req_setup->control_size,
+			(void *)&conn_info->control_buffer);
+		conn_info->control_size = req_setup->control_size;
+
+		res = memory_map (
+			req_setup->request_file,
+			req_setup->request_size,
+			(void *)&conn_info->request_buffer);
+		conn_info->request_size = req_setup->request_size;
+
+		res = memory_map (
+			req_setup->response_file,
+			req_setup->response_size,
+			(void *)&conn_info->response_buffer);
+		conn_info->response_size = req_setup->response_size;
+
 		res = circular_memory_map (
 			req_setup->dispatch_file,
-			(void *)&conn_info->dispatch_buffer,
-			DISPATCH_SIZE);
+			req_setup->dispatch_size,
+			(void *)&conn_info->dispatch_buffer);
+		conn_info->dispatch_size = req_setup->dispatch_size;
 
 		conn_info->service = req_setup->service;
 		conn_info->refcount = 0;
 		conn_info->notify_flow_control_enabled = 0;
 		conn_info->setup_bytes_read = 0;
 
-		conn_info->shmid = shmget (conn_info->shmkey,
-			sizeof (struct shared_memory), 0600);
-		conn_info->mem = shmat (conn_info->shmid, NULL, 0);
 		conn_info->semid = semget (conn_info->semkey, 3, 0600);
 		conn_info->pending_semops = 0;
 

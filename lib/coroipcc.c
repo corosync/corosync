@@ -80,8 +80,14 @@ struct ipc_segment {
 	int shmid;
 	int semid;
 	int flow_control_state;
-	struct shared_memory *shared_memory;
-	void *dispatch_buffer;
+	struct control_buffer *control_buffer;
+	char *request_buffer;
+	char *response_buffer;
+	char *dispatch_buffer;
+	size_t control_size;
+	size_t request_size;
+	size_t response_size;
+	size_t dispatch_size;
 	uid_t euid;
 };
 
@@ -375,22 +381,28 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	return (0);
 }
  
-cs_error_t
+extern cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
-	enum service_types service,
-	void **shmseg)
+	unsigned int service,
+	size_t request_size,
+	size_t response_size,
+	size_t dispatch_size,
+	void **ipc_context)
+
 {
 	int request_fd;
 	struct sockaddr_un address;
 	cs_error_t error;
 	struct ipc_segment *ipc_segment;
-	key_t shmkey = 0;
 	key_t semkey = 0;
 	int res;
 	mar_req_setup_t req_setup;
 	mar_res_setup_t res_setup;
 	union semun semun;
+	char control_map_path[128];
+	char request_map_path[128];
+	char response_map_path[128];
 	char dispatch_map_path[128];
 
 	res_setup.error = CS_ERR_LIBRARY;
@@ -426,21 +438,6 @@ coroipcc_service_connect (
 	bzero (ipc_segment, sizeof (struct ipc_segment));
 
 	/*
-	 * Allocate a shared memory segment
-	 */
-	while (1) {
-		shmkey = random();
-		if ((ipc_segment->shmid
-		     = shmget (shmkey, sizeof (struct shared_memory),
-			       IPC_CREAT|IPC_EXCL|0600)) != -1) {
-			break;
-		}
-		if (errno != EEXIST) {
-			goto error_exit;
-		}
-	}
-
-	/*
 	 * Allocate a semaphore segment
 	 */
 	while (1) {
@@ -455,14 +452,6 @@ coroipcc_service_connect (
 		}
 	}
 
-	/*
-	 * Attach to shared memory segment
-	 */
-	ipc_segment->shared_memory = shmat (ipc_segment->shmid, NULL, 0);
-	if (ipc_segment->shared_memory == (void *)-1) {
-		goto error_exit;
-	}
-	
 	semun.val = 0;
 	res = semctl (ipc_segment->semid, 0, SETVAL, semun);
 	if (res != 0) {
@@ -474,14 +463,43 @@ coroipcc_service_connect (
 		goto error_exit;
 	}
 
-	res = circular_memory_map (dispatch_map_path,
-		"dispatch_bufer-XXXXXX",
-		&ipc_segment->dispatch_buffer, DISPATCH_SIZE);
-	strcpy (req_setup.dispatch_file, dispatch_map_path);
-	req_setup.shmkey = shmkey;
-	req_setup.semkey = semkey;
+	res = memory_map (
+		control_map_path,
+		"control_buffer-XXXXXX",
+		(void *)&ipc_segment->control_buffer,
+		8192);
 
+	res = memory_map (
+		request_map_path,
+		"request_buffer-XXXXXX",
+		(void *)&ipc_segment->request_buffer,
+		request_size);
+
+	res = memory_map (
+		response_map_path,
+		"response_buffer-XXXXXX",
+		(void *)&ipc_segment->response_buffer,
+		response_size);
+
+	res = circular_memory_map (
+		dispatch_map_path,
+		"dispatch_buffer-XXXXXX",
+		(void *)&ipc_segment->dispatch_buffer,
+		dispatch_size);
+
+	/*
+	 * Initialize IPC setup message
+	 */
 	req_setup.service = service;
+	strcpy (req_setup.control_file, control_map_path);
+	strcpy (req_setup.request_file, request_map_path);
+	strcpy (req_setup.response_file, response_map_path);
+	strcpy (req_setup.dispatch_file, dispatch_map_path);
+	req_setup.control_size = 8192;
+	req_setup.request_size = request_size;
+	req_setup.response_size = response_size;
+	req_setup.dispatch_size = dispatch_size;
+	req_setup.semkey = semkey;
 
 	error = coroipcc_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
 	if (error != 0) {
@@ -494,22 +512,21 @@ coroipcc_service_connect (
 
 	ipc_segment->fd = request_fd;
 	ipc_segment->flow_control_state = 0;
-	*shmseg = ipc_segment;
 
-	/*
-	 * Something go wrong with server
-	 * Cleanup all
-	 */
 	if (res_setup.error == CS_ERR_TRY_AGAIN) {
 		goto error_exit;
 	}
 
+	ipc_segment->control_size = 8192;
+	ipc_segment->request_size = request_size;
+	ipc_segment->response_size = response_size;
+	ipc_segment->dispatch_size = dispatch_size;
+
+	*ipc_context = ipc_segment;
 	return (res_setup.error);
 
 error_exit:
 	close (request_fd);
-	if (ipc_segment->shmid > 0)
-		shmctl (ipc_segment->shmid, IPC_RMID, NULL);
 	if (ipc_segment->semid > 0)
 		semctl (ipc_segment->semid, 0, IPC_RMID);
 	return (res_setup.error);
@@ -523,11 +540,13 @@ coroipcc_service_disconnect (
 
 	shutdown (ipc_segment->fd, SHUT_RDWR);
 	close (ipc_segment->fd);
-	shmdt (ipc_segment->shared_memory);
 	/*
 	 * << 1 (or multiplied by 2) because this is a wrapped memory buffer
 	 */
-	memory_unmap (ipc_segment->dispatch_buffer, (DISPATCH_SIZE) << 1);
+	memory_unmap (ipc_segment->control_buffer, ipc_segment->control_size);
+	memory_unmap (ipc_segment->request_buffer, ipc_segment->request_size);
+	memory_unmap (ipc_segment->response_buffer, ipc_segment->response_size);
+	memory_unmap (ipc_segment->dispatch_buffer, (ipc_segment->dispatch_size) << 1);
 	free (ipc_segment);
 	return (CS_OK);
 }
@@ -614,7 +633,7 @@ retry_recv:
 
 	data_addr = ipc_segment->dispatch_buffer;
 
-	data_addr = &data_addr[ipc_segment->shared_memory->read];
+	data_addr = &data_addr[ipc_segment->control_buffer->read];
 
 	*data = (void *)data_addr;
 	return (1);
@@ -648,10 +667,10 @@ retry_semop:
 
 	addr = ipc_segment->dispatch_buffer;
 
-	read_idx = ipc_segment->shared_memory->read;
+	read_idx = ipc_segment->control_buffer->read;
 	header = (mar_res_header_t *) &addr[read_idx];
-	ipc_segment->shared_memory->read =
-		(read_idx + header->size) % (DISPATCH_SIZE);
+	ipc_segment->control_buffer->read =
+		(read_idx + header->size) % ipc_segment->dispatch_size;
 	return (0);
 }
 
@@ -668,7 +687,7 @@ coroipcc_msg_send (
 	int req_buffer_idx = 0;
 
 	for (i = 0; i < iov_len; i++) {
-		memcpy (&ipc_segment->shared_memory->req_buffer[req_buffer_idx],
+		memcpy (&ipc_segment->request_buffer[req_buffer_idx],
 			iov[i].iov_base,
 			iov[i].iov_len);
 		req_buffer_idx += iov[i].iov_len;
@@ -726,7 +745,7 @@ retry_semop:
 		return (CS_ERR_LIBRARY);
 	}
 
-	memcpy (res_msg, ipc_segment->shared_memory->res_buffer, res_len);
+	memcpy (res_msg, ipc_segment->response_buffer, res_len);
 	return (CS_OK);
 }
 
@@ -760,7 +779,7 @@ retry_semop:
 		return (CS_ERR_LIBRARY);
 	}
 
-	*res_msg = (char *)ipc_segment->shared_memory->res_buffer;
+	*res_msg = (char *)ipc_segment->response_buffer;
 	return (CS_OK);
 }
 

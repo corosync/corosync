@@ -102,7 +102,13 @@ cs_error_t cpg_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, CPG_SERVICE, &cpg_inst->ipc_ctx);
+	error = coroipcc_service_connect (
+		IPC_SOCKET_NAME,
+		CPG_SERVICE,
+		IPC_REQUEST_SIZE,
+		IPC_RESPONSE_SIZE,
+		IPC_DISPATCH_SIZE,
+		&cpg_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}

@@ -110,7 +110,13 @@ evs_error_t evs_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, EVS_SERVICE, &evs_inst->ipc_ctx);
+	error = coroipcc_service_connect (
+		IPC_SOCKET_NAME,
+		EVS_SERVICE,
+		IPC_REQUEST_SIZE,
+		IPC_RESPONSE_SIZE,
+		IPC_DISPATCH_SIZE,
+		&evs_inst->ipc_ctx);
 	if (error != EVS_OK) {
 		goto error_put_destroy;
 	}

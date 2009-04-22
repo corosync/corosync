@@ -92,7 +92,13 @@ cs_error_t quorum_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (IPC_SOCKET_NAME, QUORUM_SERVICE, &quorum_inst->ipc_ctx);
+	error = coroipcc_service_connect (
+		IPC_SOCKET_NAME,
+		QUORUM_SERVICE,
+		IPC_REQUEST_SIZE,
+		IPC_RESPONSE_SIZE,
+		IPC_DISPATCH_SIZE,
+		&quorum_inst->ipc_ctx);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
