@@ -283,12 +283,12 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	 * Nothing available in inuse or free list, so allocate a new one
 	 */
 	assembly = malloc (sizeof (struct assembly));
-	memset (assembly, 0, sizeof (struct assembly));
 	/*
 	 * TODO handle memory allocation failure here
 	 */
 	assert (assembly);
 	assembly->nodeid = nodeid;
+	assembly->data[0] = 0;
 	assembly->index = 0;
 	assembly->last_frag_num = 0;
 	assembly->throw_away_mode = THROW_AWAY_INACTIVE;
