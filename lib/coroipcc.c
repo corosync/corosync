@@ -296,7 +296,7 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	fd = mkstemp (path);
 	if (fd == -1) {
-		sprintf (path, "/var/run/%s", file);
+		sprintf (path, LOCALSTATEDIR "/run/%s", file);
 		fd = mkstemp (path);
 		if (fd == -1) {
 			return (-1);
@@ -351,7 +351,7 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	fd = mkstemp (path);
 	if (fd == -1) {
-		sprintf (path, "/var/run/%s", file);
+		sprintf (path, LOCALSTATEDIR "/run/%s", file);
 		fd = mkstemp (path);
 		if (fd == -1) {
 			return (-1);
