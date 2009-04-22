@@ -8,7 +8,7 @@
  * Author: Steven Dake (sdake@redhat.com), Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -52,12 +52,12 @@ LOGSYS_DECLARE_SUBSYS ("MAIN");
 /*
  * Compare two names.  returns non-zero on match.
  */
-int name_match(cs_name_t *name1, cs_name_t *name2) 
+int name_match(cs_name_t *name1, cs_name_t *name2)
 {
 	if (name1->length == name2->length) {
 		return ((strncmp ((char *)name1->value, (char *)name2->value,
 			name1->length)) == 0);
-	} 
+	}
 	return 0;
 }
 

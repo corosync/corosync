@@ -14,8 +14,8 @@ COROSYNC_CFG_0.82 {
 		corosync_cfg_ring_reenable;
 		corosync_cfg_service_load;
 		corosync_cfg_service_unload;
-		
-		
+
+
 	local:
 		coroipcc_service_connect;
 		coroipcc_service_disconnect;

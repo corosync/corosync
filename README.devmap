@@ -405,7 +405,7 @@ are provided:
  * get a reference to a handle instance
  * release a reference to a handle instance
 
-When a library connects, it sends via a message, the service type.  The 
+When a library connects, it sends via a message, the service type.  The
 service type is stored and used later to reference the message handlers
 for both the library message handlers and executive message handlers.
 Every message sent contains an integer identifier, which is used to index
@@ -427,7 +427,7 @@ virtual synchrony model.  The group messaging interface also delivers the
 message according to the extended virtual synchrony model.  This has several
 advantages which are described in the virtual synchrony section.  One
 advantage that must be described now is that messages are self-delivered;
-if a node sends a message, that same message is delivered back to that 
+if a node sends a message, that same message is delivered back to that
 node.
 
 When the executive message is delivered, it is processed by the executive
@@ -509,7 +509,7 @@ Certain guarantees are required by virtual synchrony.  If a message is sent,
 it must be delivered by every processor unless that processor fails.  If a
 particular processor fails, a configuration change occurs creating a new
 configuration under which a new set of decisions may be made.  This implies
-that even unreliable networks must reliably deliver messages.   The 
+that even unreliable networks must reliably deliver messages.   The
 mplementation in corosync works on unreliable as well as reliable networks.
 
 Every message sent must be delivered, unless a configuration change occurs.
@@ -788,7 +788,7 @@ enum service_types {
 
 These are the request CLM message identifiers:
 
-Each library should have an ipc_APINAME.h file in include.  It should define 
+Each library should have an ipc_APINAME.h file in include.  It should define
 request types and response types.
 
 enum req_clm_types {
@@ -845,7 +845,7 @@ struct req_clm_trackstart {
 	SaUint32T numberOfItems;
 };
 
-The saClmClusterTrackStart api should create this message and send it to the 
+The saClmClusterTrackStart api should create this message and send it to the
 executive.
 
 responses should be of:
@@ -855,12 +855,12 @@ struct res_clm_trackstart
 ------------
  some notes
 ------------
-* Avoid doing anything tricky in the library itself.  Let the executive 
+* Avoid doing anything tricky in the library itself.  Let the executive
   handler do all of the work of the system.  minimize what the API does.
 * Once an api is developed, it must be added to the makefile.  Just add
   a line for the file to EXECOBJS build line.
 * protect I/O send/recv with a mutex.
-* always look at other libraries when there is a question about how to 
+* always look at other libraries when there is a question about how to
   do something.  It has likely been thought out in another library.
 
 -------------------------------------------------------------------------------
@@ -998,7 +998,7 @@ used in the handler function.
 ------------------------------------------------
 
 The service handler needs some special magic to dynamically be linked into
-corosync.  
+corosync.
 
 /*
  * Dynamic loader definition
@@ -1047,7 +1047,7 @@ creating an external plugin, there are configuration parameters which may
 be used to add your plugin into the corosync scanning of plugins.
 
 ---------------------------------
- Connection specific information 
+ Connection specific information
 ---------------------------------
 Every connection may have specific connection information if private data
 is greater then zero for the service handler.  This is used to allow each
@@ -1194,7 +1194,7 @@ so expect it in the code.
 ----------------
  the confchg_fn
 ----------------
-This function is called whenever a configuration change occurs.  Some 
+This function is called whenever a configuration change occurs.  Some
 services may not need this function, while others may.  This is a good way
 to sync up joining nodes with the current state of the information stored
 on a particular processor.
@@ -1206,7 +1206,7 @@ GDB is your friend, especially the "where" command.  But it stops execution.
 This has a nasty side effect of killing the current configuration.  In this
 case GDB may become your enemy.
 
-printf is your friend when GDB is your enemy.  
+printf is your friend when GDB is your enemy.
 
 If stuck, ask on the mailing list, send your patches.  Alot of time has been
 spent designing corosync, and even more time debugging it.  There are people

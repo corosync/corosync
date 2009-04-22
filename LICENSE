@@ -7,7 +7,7 @@ available source code, may be exported from the United States under License
 Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 ***
 -----------------------------------------------------------------------------
-The following license applies to every file in this package except for 
+The following license applies to every file in this package except for
 the files exec/crypto.c and exec/crypto.h.  The license for these files is
 described later in this document.  Some files are contributed by other authors
 and hence not copyright MontaVista Software.  In this case, the license is

@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -40,7 +40,7 @@
 #include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logsystestNOsubsystems",
-	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG, 
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
 	0,
 	NULL,
 	LOGSYS_LEVEL_DEBUG,

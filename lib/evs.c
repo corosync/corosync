@@ -232,7 +232,7 @@ evs_error_t evs_dispatch (
 
 		if (dispatch_avail == 0 && dispatch_types == EVS_DISPATCH_ALL) {
 			break; /* exit do while cont is 1 loop */
-		} else 
+		} else
 		if (dispatch_avail == 0) {
 			continue; /* next dispatch event */
 		}
@@ -325,7 +325,7 @@ evs_error_t evs_join (
 		return (error);
 	}
 
-	req_lib_evs_join.header.size = sizeof (struct req_lib_evs_join) + 
+	req_lib_evs_join.header.size = sizeof (struct req_lib_evs_join) +
 		(group_entries * sizeof (struct evs_group));
 	req_lib_evs_join.header.id = MESSAGE_REQ_EVS_JOIN;
 	req_lib_evs_join.group_entries = group_entries;
@@ -334,7 +334,7 @@ evs_error_t evs_join (
 	iov[0].iov_len = sizeof (struct req_lib_evs_join);
 	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
-	
+
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
@@ -370,7 +370,7 @@ evs_error_t evs_leave (
 		return (error);
 	}
 
-	req_lib_evs_leave.header.size = sizeof (struct req_lib_evs_leave) + 
+	req_lib_evs_leave.header.size = sizeof (struct req_lib_evs_leave) +
 		(group_entries * sizeof (struct evs_group));
 	req_lib_evs_leave.header.id = MESSAGE_REQ_EVS_LEAVE;
 	req_lib_evs_leave.group_entries = group_entries;
@@ -379,7 +379,7 @@ evs_error_t evs_leave (
 	iov[0].iov_len = sizeof (struct req_lib_evs_leave);
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
-	
+
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
@@ -432,7 +432,7 @@ evs_error_t evs_mcast_joined (
 	iov[0].iov_base = &req_lib_evs_mcast_joined;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
-	
+
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
@@ -477,7 +477,7 @@ evs_error_t evs_mcast_groups (
 	for (i = 0; i < iov_len; i++) {
 		msg_len += iovec[i].iov_len;
 	}
-	req_lib_evs_mcast_groups.header.size = sizeof (struct req_lib_evs_mcast_groups) + 
+	req_lib_evs_mcast_groups.header.size = sizeof (struct req_lib_evs_mcast_groups) +
 		(group_entries * sizeof (struct evs_group)) + msg_len;
 	req_lib_evs_mcast_groups.header.id = MESSAGE_REQ_EVS_MCAST_GROUPS;
 	req_lib_evs_mcast_groups.guarantee = guarantee;
@@ -489,7 +489,7 @@ evs_error_t evs_mcast_groups (
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
-	
+
 	pthread_mutex_lock (&evs_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
@@ -558,7 +558,7 @@ evs_error_t evs_membership_get (
 	*member_list_entries = MIN (*member_list_entries,
 				    res_lib_evs_membership_get.member_list_entries);
 	if (member_list) {
-		memcpy (member_list, &res_lib_evs_membership_get.member_list, 
+		memcpy (member_list, &res_lib_evs_membership_get.member_list,
 			*member_list_entries * sizeof (struct in_addr));
 	}
 

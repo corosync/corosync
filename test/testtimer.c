@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -44,7 +44,7 @@
 void timer_function (void *data)
 {
 	printf ("timer %p\n", data);
-}	
+}
 
 int main (void)
 {

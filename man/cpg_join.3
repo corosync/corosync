@@ -6,7 +6,7 @@
 .\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -44,7 +44,7 @@ The
 function is used to join one group.  When a group is joined, using the
 .B cpg_mcast_joined(3)
 function will multicast to the groups joined in the argument
-.I handle. 
+.I handle.
 The process will also get notifications of other processes joining
 and leaving the group.
 Messages that are sent to any of the groups joined to the parameter
@@ -57,14 +57,14 @@ the process will start to receive callbacks relating to messages send from membe
 of the group or notifications of process joining/leaving the group.
 .PP
 Note that more than one process can join a CPG group and each will receive its
-own copy of any messages sent using 
+own copy of any messages sent using
 .I cpg_mcast_joined()
 and its own confchg callback.
 .PP
 
 The argument
 .I group
-is used to specify the group to join.  
+is used to specify the group to join.
 
 
 The

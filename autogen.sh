@@ -25,17 +25,17 @@ testProgram()
   fi
 
   # The GNU standard is --version
-  if 
+  if
       $cmd --version </dev/null >/dev/null 2>&1
   then
-      return 0 
+      return 0
   fi
 
   # Maybe it suppports -V instead
-  if 
+  if
       $cmd -V </dev/null >/dev/null 2>&1
   then
-      return 0 
+      return 0
   fi
 
   # Nope, the program seems broken
@@ -61,7 +61,7 @@ RC=0
 gnu="ftp://ftp.gnu.org/pub/gnu"
 
 # Check for Autoconf
-for command in autoconf autoconf213 autoconf253 autoconf259 
+for command in autoconf autoconf213 autoconf253 autoconf259
 do
   if
       testProgram $command == 1
@@ -79,7 +79,7 @@ done
 # Check for automake
 for command in automake19 automake-1.9 automake
 do
-  if 
+  if
       testProgram $command
   then
     automake=$command
@@ -88,13 +88,13 @@ do
   fi
 done
 
-if [ -z $autoconf ]; then 
+if [ -z $autoconf ]; then
     echo You must have autoconf installed to compile the corosync package.
     echo Download the appropriate package for your system,
     echo or get the source tarball at: $gnu/autoconf/
     exit 1
 
-elif [ -z $automake ]; then 
+elif [ -z $automake ]; then
     echo You must have automake installed to compile the corosync package.
     echo Download the appropriate package for your system,
     echo or get the source tarball at: $gnu/automake/
@@ -108,7 +108,7 @@ ln -s `which $automake` ./automake
 ln -s `which $autoheader` ./autoheader
 
 printf "$autoconf:\t"
-$autoconf --version | head -n 1 
+$autoconf --version | head -n 1
 
 printf "$automake:\t"
 $automake --version | head -n 1

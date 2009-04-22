@@ -7,7 +7,7 @@
 .\" * Author: Steven Dake (sdake@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -61,13 +61,13 @@ This top level directive contains configuration options for user privilegies.
 
 .PP
 .PP
-Within the 
+Within the
 .B totem
 directive, an interface directive is required.  There is also one configuration
 option which is required:
 .PP
 .PP
-Within the 
+Within the
 .B interface
 sub-directive of totem there are four parameters which are required:
 
@@ -108,8 +108,8 @@ UDP ports.
 
 .PP
 .PP
-Within the 
-.B totem 
+Within the
+.B totem
 directive, there are seven configuration options of which one is required,
 five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
@@ -184,13 +184,13 @@ Please note while some NICs or switches claim large frame support, they support
 9000 MTU as the maximum frame size including the IP header.  Setting the netmtu
 and host MTUs to 9000 will cause totem to use the full 9000 bytes of the frame.
 Then Linux will add a 18 byte header moving the full frame size to 9018.  As a
-result some hardware will not operate properly with this size of data.  A netmtu 
+result some hardware will not operate properly with this size of data.  A netmtu
 of 8982 seems to work for the few large frame devices that have been tested.
 Some manufacturers claim large frame support when in fact they support frame
 sizes of 4500 bytes.
 
 Increasing the MTU from 1500 to 8982 doubles throughput performance from 30MB/sec
-to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth 
+to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth
 directive set to off.
 
 When sending multicast traffic, if the network frequently reconfigures, chances are
@@ -208,7 +208,7 @@ If secauth is on, this directive allows systems to be configured to use
 multiple threads to encrypt and send multicast messages.
 
 A thread directive of 0 indicates that no threaded send should be used.  This
-mode offers best performance for non-SMP systems. 
+mode offers best performance for non-SMP systems.
 
 The default is 0.
 
@@ -217,15 +217,15 @@ vsftype
 This directive controls the virtual synchrony filter type used to identify
 a primary component.  The preferred choice is YKD dynamic linear voting,
 however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
-large scale clusters that are created by changing the MAX_PROCESSORS_COUNT 
+large scale clusters that are created by changing the MAX_PROCESSORS_COUNT
 #define in the C code totem.h file, the virtual synchrony filter "none" is
 recommended but then AMF and DLCK services (which are currently experimental)
 are not safe for use.
 
 The default is ykd.  The vsftype can also be set to none.
 
-Within the 
-.B totem 
+Within the
+.B totem
 directive, there are several configuration options which are used to control
 the operation of the protocol.  It is generally not recommended to change any
 of these values without proper guidance and sufficient testing.  Some networks
@@ -269,7 +269,7 @@ The default is 4 retransmissions.
 
 .TP
 join
-This timeout specifies in milliseconds how long to wait for join messages in 
+This timeout specifies in milliseconds how long to wait for join messages in
 the membership protocol.
 
 The default is 100 milliseconds.
@@ -328,10 +328,10 @@ The default is 30 rotations.
 heartbeat_failures_allowed
 [HeartBeating mechanism]
 Configures the optional HeartBeating mechanism for faster failure detection. Keep in
-mind that engaging this mechanism in lossy networks could cause faulty loss declaration 
-as the mechanism relies on the network for heartbeating. 
+mind that engaging this mechanism in lossy networks could cause faulty loss declaration
+as the mechanism relies on the network for heartbeating.
 
-So as a rule of thumb use this mechanism if you require improved failure in low to 
+So as a rule of thumb use this mechanism if you require improved failure in low to
 medium utilized networks.
 
 This constant specifies the number of heartbeat failures the system should tolerate
@@ -409,7 +409,7 @@ override this value without guidance from the corosync community.
 The default is 47 milliseconds.
 
 .PP
-Within the 
+Within the
 .B logging
 directive, there are several configuration options which are all optional.
 
@@ -454,7 +454,7 @@ The default is syslog and stderr.
 
 .TP
 logfile
-If the 
+If the
 .B to_logfile
 directive is set to
 .B yes
@@ -469,11 +469,11 @@ Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, 
 
 The default is: info.
 
-.TP 
+.TP
 syslog_facility
 This specifies the syslog facility type that will be used for any messages
-sent to syslog. options are daemon, local0, local1, local2, local3, local4, 
-local5, local6 & local7. 
+sent to syslog. options are daemon, local0, local1, local2, local3, local4,
+local5, local6 & local7.
 
 The default is daemon.
 
@@ -503,12 +503,12 @@ enter|leave|trace1|trace2|trace3|...
 The default is none.
 
 .PP
-Within the 
+Within the
 .B logging
 directive, logger_subsys directives are optional.
 
 .PP
-Within the 
+Within the
 .B logger_subsys
 sub-directive, all of the above logging configuration options are valid and
 can be used to override the default settings.

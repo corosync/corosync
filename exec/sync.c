@@ -273,7 +273,7 @@ int sync_register (
 		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't join group.\n");
 		return (-1);
 	}
-		
+
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_synchronization_completed = synchronization_completed;
 	return (0);

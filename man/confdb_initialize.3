@@ -6,7 +6,7 @@
 .\" * Author: Christine Caulfield <ccaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -44,7 +44,7 @@ The
 function is used to initialize a connection to the configuration database API.
 .PP
 Each application may have several connections to the CONFDB API.  Each  application
-uses the 
+uses the
 .I handle
 argument to uniquely identify the connection.  The
 .I handle
@@ -97,7 +97,7 @@ typedef struct {
 When a configuration change occurs, the callback
 is called from the
 .B confdb_dispatch()
-function. 
+function.
 .PP
 .SH RETURN VALUE
 This call returns the CONFDB_OK value if successful, otherwise an error is returned.

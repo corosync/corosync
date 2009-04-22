@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -166,7 +166,7 @@ static int ykd_state_send_msg (const void *context)
 	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
-	
+
 	iovec[0].iov_base = (char *)&header;
 	iovec[0].iov_len = sizeof (struct ykd_header);
 	iovec[1].iov_base = (char *)&ykd_state;
@@ -193,7 +193,7 @@ static int ykd_attempt_send_msg (const void *context)
 	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
-	
+
 	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
@@ -297,7 +297,7 @@ static int decide (void)
 		if (subquorum (view_list, view_list_entries, &ambiguous_sessions_max[i]) == 0) {
 			return (0);
 		}
-		
+
 	}
 	return (1);
 }
@@ -327,7 +327,7 @@ static void ykd_state_endian_convert (struct ykd_state *state)
 	for (i = 0; i < state->last_formed_entries; i++) {
 		ykd_session_endian_convert (&state->last_formed[i]);
 	}
-	
+
 	for (i = 0; i < state->ambiguous_sessions_entries; i++) {
 		ykd_session_endian_convert (&state->ambiguous_sessions[i]);
 	}
@@ -343,7 +343,7 @@ static void ykd_deliver_fn (
 	int state_position = 0;
 	int i;
 	char *msg_state = (char *)(iovec->iov_base) + sizeof (struct ykd_header);
-	
+
 	/*
 	 * If this is a localhost address, this node is always primary
 	 */

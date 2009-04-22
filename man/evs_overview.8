@@ -6,7 +6,7 @@
 .\" * Author: Steven Dake (sdake@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -105,7 +105,7 @@ transmission media.  This allows optimiziations when every processor must receiv
 of the message for replication.
 .PP
 All messages are ordered according to agreed ordering.  This mechanism allows the avoidance
-of race conditions.  Consider a lock service implemented over several processors.  Two 
+of race conditions.  Consider a lock service implemented over several processors.  Two
 requests occur at the same time on two seperate processors.  The requests are ordered for
 every processor in the same order and delivered to the processors.  Then all processors
 will get request A before request B and can reject request B.  Any type of creation or

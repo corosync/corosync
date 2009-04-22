@@ -45,7 +45,7 @@ Group Messaging Interface
 Group messaging uses UDP/IP to communicate with other corosync executives using
 messages.  It is possible without authentication of every packet that an
 attacker could forge messages.  These forged messages could fault the corosync
-executive distributed state machines.  It would also be possible to corrupt 
+executive distributed state machines.  It would also be possible to corrupt
 end applications by forging changes.
 
 Since messages are sent using UDP/IP it would be possible to snoop those
@@ -62,7 +62,7 @@ wants to receive a message from the network, it uses
 authenticate_and_decrypt to verify the message is valid and decrypt it.
 
 These two functions utilize the following algorithms:
-sha1 - hash algorithm secure for using with hmac 
+sha1 - hash algorithm secure for using with hmac
 hmac - produces a 16 byte digest from any length input
 sober - pseudo random number generator and stream cipher
 
@@ -76,7 +76,7 @@ sober algorithm to generate the three required keys.
 Every message starts with a
 struct security {
 	unsigned char digest[20]; A one way hash digest
-	unsigned char salt[16]; A securely generated random number 
+	unsigned char salt[16]; A securely generated random number
 }
 
 When a message is sent (encrypt_and_sign):
@@ -96,7 +96,7 @@ When a message is sent (encrypt_and_sign):
 7. The message, except for the security header, is hmaced to produce a digest
    using the sha1 algorithm.
 8. The digest is stored in the outgoing message.
-9. The message is transmitted. 
+9. The message is transmitted.
 
 
 When a message is received (decrypt_and_authenticate):

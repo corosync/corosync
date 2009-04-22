@@ -2,7 +2,7 @@
  * Copyright (c) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -54,7 +54,7 @@
 #define SERVER_BACKLOG 5
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 #else
@@ -170,11 +170,11 @@ static void *lcr_uis_server (void *data)
 		if (nfds == 1 && ufds[0].revents & POLLIN) {
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
-#ifdef COROSYNC_LINUX			
+#ifdef COROSYNC_LINUX
 			setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
 				&on, sizeof (on));
 #endif
-			nfds = 2;		
+			nfds = 2;
 		}
 		if (ufds[0].revents & POLLIN) {
 			lcr_uis_dispatch (ufds[1].fd);

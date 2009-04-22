@@ -123,16 +123,16 @@ struct totempg_mcast_header {
  */
 struct totempg_mcast {
 	struct totempg_mcast_header header;
-	unsigned char fragmented; 
-	unsigned char continuation; 
+	unsigned char fragmented;
+	unsigned char continuation;
 	unsigned short msg_count;
 	/*
 	 * short msg_len[msg_count];
-	 */ 
-	/* 
+	 */
+	/*
 	 * data for messages
 	 */
-}; 
+};
 
 /*
  * Maximum packet size for totem pg messages
@@ -189,12 +189,12 @@ DECLARE_LIST_INIT(assembly_list_free);
 
 /*
  * Staging buffer for packed messages.  Messages are staged in this buffer
- * before sending.  Multiple messages may fit which cuts down on the 
- * number of mcasts sent.  If a message doesn't completely fit, then 
- * the mcast header has a fragment bit set that says that there are more 
+ * before sending.  Multiple messages may fit which cuts down on the
+ * number of mcasts sent.  If a message doesn't completely fit, then
+ * the mcast header has a fragment bit set that says that there are more
  * data to follow.  fragment_size is an index into the buffer.  It indicates
- * the size of message data and where to place new message data.  
- * fragment_contuation indicates whether the first packed message in 
+ * the size of message data and where to place new message data.
+ * fragment_contuation indicates whether the first packed message in
  * the buffer is a continuation of a previously packed fragment.
  */
 static unsigned char *fragmentation_data;
@@ -256,7 +256,7 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	 */
 	for (list = assembly_list_inuse.next;
 		list != &assembly_list_inuse;
-		list = list->next) { 
+		list = list->next) {
 
 		assembly = list_entry (list, struct assembly, list);
 
@@ -381,7 +381,7 @@ static inline int group_matches (
 	int i;
 	int j;
         struct iovec iovec_aligned = { NULL, 0 };
-	
+
 	assert (iov_len == 1);
 
 	/*
@@ -422,7 +422,7 @@ static inline int group_matches (
 	}
 	return (0);
 }
-	
+
 
 static inline void app_deliver_fn (
 	unsigned int nodeid,
@@ -525,8 +525,8 @@ static void totempg_deliver_fn (
 	 * assemble the packet contents into one block of data to simplify delivery
 	 */
 	if (iov_len == 1) {
-		/* 
-		 * This message originated from external processor 
+		/*
+		 * This message originated from external processor
 		 * because there is only one iovec for the full msg.
 		 */
 		char *data;
@@ -540,7 +540,7 @@ static void totempg_deliver_fn (
 		msg_count = mcast->msg_count;
 		datasize = sizeof (struct totempg_mcast) +
 			msg_count * sizeof (unsigned short);
-		
+
 		memcpy (header, iovec[0].iov_base, datasize);
 		assert(iovec);
 		data = iovec[0].iov_base;
@@ -555,8 +555,8 @@ static void totempg_deliver_fn (
 		memcpy (&assembly->data[assembly->index], &data[datasize],
 			iovec[0].iov_len - datasize);
 	} else {
-		/* 
-		 * The message originated from local processor  
+		/*
+		 * The message originated from local processor
 		 * becasue there is greater than one iovec for then full msg.
 		 */
 		h_index = 0;
@@ -582,7 +582,7 @@ static void totempg_deliver_fn (
 	/*
 	 * If the last message in the buffer is a fragment, then we
 	 * can't deliver it.  We'll first deliver the full messages
-	 * then adjust the assembly buffer so we can add the rest of the 
+	 * then adjust the assembly buffer so we can add the rest of the
 	 * fragment when it arrives.
 	 */
 	msg_count = mcast->fragmented ? mcast->msg_count - 1 : mcast->msg_count;
@@ -596,7 +596,7 @@ static void totempg_deliver_fn (
 	 * Also, if the first packed message is a continuation
 	 * of a previous message, but the assembly buffer
 	 * is empty, then we need to discard it since we can't
-	 * assemble a complete message. Likewise, if this message isn't a 
+	 * assemble a complete message. Likewise, if this message isn't a
 	 * continuation and the assembly buffer is empty, we have to discard
 	 * the continued message.
 	 */
@@ -612,7 +612,7 @@ static void totempg_deliver_fn (
 			iov_delv.iov_len = msg_lens[1];
 			start = 1;
 		}
-	} else 
+	} else
 	if (assembly->throw_away_mode == THROW_AWAY_INACTIVE) {
 		if (continuation == assembly->last_frag_num) {
 			assembly->last_frag_num = mcast->fragmented;
@@ -731,7 +731,7 @@ int totempg_initialize (
 		totempg_confchg_fn);
 
 	totemmrp_callback_token_create (
-		&callback_token_received_handle, 
+		&callback_token_received_handle,
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
 		0,
 		callback_token_received_fn,
@@ -764,7 +764,7 @@ static int mcast_msg (
 	int i;
 	int dest, src;
 	int max_packet_size = 0;
-	int copy_len = 0; 
+	int copy_len = 0;
 	int copy_base = 0;
 	int total_size = 0;
 
@@ -813,7 +813,7 @@ static int mcast_msg (
 		 * fragment_buffer on exit so that max_packet_size + fragment_size
 		 * doesn't exceed the size of the fragment_buffer on the next call.
 		 */
-		if ((copy_len + fragment_size) < 
+		if ((copy_len + fragment_size) <
 			(max_packet_size - sizeof (unsigned short))) {
 
 			memcpy (&fragmentation_data[fragment_size],
@@ -850,7 +850,7 @@ static int mcast_msg (
 			 * fit, then indicate a fragment. This also means that the next
 			 * message will have the continuation of this one.
 			 */
-			if ((i < (iov_len - 1)) || 
+			if ((i < (iov_len - 1)) ||
 					((copy_base + copy_len) < iovec[i].iov_len)) {
 				if (!next_fragment) {
 					next_fragment++;
@@ -870,7 +870,7 @@ static int mcast_msg (
 			iovecs[0].iov_base = &mcast;
 			iovecs[0].iov_len = sizeof(struct totempg_mcast);
 			iovecs[1].iov_base = mcast_packed_msg_lens;
-			iovecs[1].iov_len = mcast_packed_msg_count * 
+			iovecs[1].iov_len = mcast_packed_msg_count *
 				sizeof(unsigned short);
 			iovecs[2].iov_base = data_ptr;
 			iovecs[2].iov_len = max_packet_size;
@@ -892,7 +892,7 @@ static int mcast_msg (
 				copy_len = 0;
 				copy_base = 0;
 				i++;
-			
+
 			/*
 			 * Continue with the rest of the current iovec.
 			 */
@@ -924,7 +924,7 @@ static int msg_count_send_ok (
 	int avail = 0;
 
 	avail = totemmrp_avail () - totempg_reserved - 1;
-	
+
 	return (avail > msg_count);
 }
 
@@ -936,7 +936,7 @@ static int byte_count_send_ok (
 
 	avail = totemmrp_avail () - 1;
 
-	msg_count = (byte_count / (totempg_totem_config->net_mtu - 25)) + 1; 
+	msg_count = (byte_count / (totempg_totem_config->net_mtu - 25)) + 1;
 
 	return (avail > msg_count);
 }
@@ -946,7 +946,7 @@ static int send_reserve (
 {
 	unsigned int msg_count = 0;
 
-	msg_count = (msg_size / (totempg_totem_config->net_mtu - 25)) + 1; 
+	msg_count = (msg_size / (totempg_totem_config->net_mtu - 25)) + 1;
 	totempg_reserved += msg_count;
 
 	return (msg_count);
@@ -1062,7 +1062,7 @@ int totempg_groups_join (
 		res = ENOMEM;
 		goto error_exit;
 	}
-	memcpy (&new_groups[instance->groups_cnt], 
+	memcpy (&new_groups[instance->groups_cnt],
 		groups, group_cnt * sizeof (struct totempg_group));
 	instance->groups = new_groups;
 	instance->groups_cnt = instance->groups_cnt = group_cnt;
@@ -1269,7 +1269,7 @@ int totempg_groups_send_ok_groups (
 	}
 
 	res = msg_count_send_ok (size);
-	 
+
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 error_exit:
 	pthread_mutex_unlock (&totempg_mutex);

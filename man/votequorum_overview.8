@@ -6,7 +6,7 @@
 .\" * Author: Christine Caulfield <ccaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -33,7 +33,7 @@
 .\" */
 .TH VOTEQUORUM_OVERVIEW 8 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH OVERVIEW
-The votequuorum library is delivered with the corosync project. It is the external interface to 
+The votequuorum library is delivered with the corosync project. It is the external interface to
 the vote-based quorum service. This service is optionally loaded into all ndes in a corosync cluster
 to avoid split-brain situations. It does this by having a number of votes assigned to each system
 in the cluster and ensuring that only when a majority of the votes are present, cluster operations are
@@ -52,7 +52,7 @@ The library provides a mechanism to:
 .PP
 * Connect an additional quorum device to allow small clusters to remain quorate during node outages.
 .PP
-.B votequorum 
+.B votequorum
 reads its configuration from the objdb. The following keys are read when it starts up:
 .PP
 * quorum.expected_votes
@@ -66,7 +66,7 @@ reads its configuration from the objdb. The following keys are read when it star
 * quorum.two_node
 .PP
 Most of those values can be changed while corosync is running with the following exceptions:
-.B quorum.disallowed 
+.B quorum.disallowed
 cannot be changed, and
 .B two_node
 cannot be set on-the-fly, though it can be cleared. ie you can start with two nodes in the cluster

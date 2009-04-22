@@ -165,7 +165,7 @@ static void *corosync_exit (void *arg)
 }
 
 pthread_t corosync_exit_thread;
-static void init_shutdown(void *data) 
+static void init_shutdown(void *data)
 {
 	pthread_create (&corosync_exit_thread, NULL, corosync_exit, NULL);
 }
@@ -248,7 +248,7 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 {
 	unsigned int ais_service_index;
 	unsigned int ais_services_found = 0;
-	
+
 	for (ais_service_index = 0;
 		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
 		ais_service_index++) {
@@ -348,7 +348,7 @@ static void corosync_tty_detach (void)
 	/* Create new session */
 	(void)setsid();
 
-	/* 
+	/*
 	 * Map stdin/out/err to /dev/null.
 	 */
 	fd = open("/dev/null", O_RDWR);
@@ -359,7 +359,7 @@ static void corosync_tty_detach (void)
 		dup2(fd, STDERR_FILENO); /* 2 */
 
 		/* Should be 0, but just in case it isn't... */
-		if (fd > 2) 
+		if (fd > 2)
 			close(fd);
 	}
 }
@@ -564,7 +564,7 @@ struct sending_allowed_private_data_struct {
 
 static int corosync_sending_allowed (
 	unsigned int service,
-	unsigned int id, 
+	unsigned int id,
 	void *msg,
 	void *sending_allowed_private_data)
 {
@@ -607,20 +607,20 @@ static void ipc_log_printf (const char *format, ...) {
 
         va_start (ap, format);
 
-	_logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
+	_logsys_log_printf (ipc_subsys_id, __FUNCTION__,
 		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, format, ap);
 
 	va_end (ap);
 }
 
 static void ipc_fatal_error(const char *error_msg) {
-       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,	
+       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,
                 __FILE__, __LINE__, LOGSYS_LEVEL_ERROR, "%s", error_msg);
 	exit(EXIT_FAILURE);
 }
 
 static int corosync_poll_handler_accept (
-	hdb_handle_t handle,	
+	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *context)
@@ -629,7 +629,7 @@ static int corosync_poll_handler_accept (
 }
 
 static int corosync_poll_handler_dispatch (
-	hdb_handle_t handle,	
+	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *context)
@@ -708,9 +708,9 @@ int main (int argc, char **argv)
 	 */
 	background = 1;
 	setprio = 1;
- 	
+
  	while ((ch = getopt (argc, argv, "fp")) != EOF) {
- 	
+
 		switch (ch) {
 			case 'f':
 				background = 0;
@@ -726,7 +726,7 @@ int main (int argc, char **argv)
 					"        -p     : Do not set process priority.    \n");
 				return EXIT_FAILURE;
 		}
-	}	
+	}
 
 	if (background)
 		corosync_tty_detach ();
@@ -743,7 +743,7 @@ int main (int argc, char **argv)
 #if MSG_NOSIGNAL == 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
-	
+
 	corosync_timer_init (
 		serialize_lock,
 		serialize_unlock,

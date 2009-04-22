@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -60,7 +60,7 @@ struct lcr_iface_instance {
 	void *context;
 	void (*destructor) (void *context);
 };
-	
+
 DECLARE_HDB_DATABASE_FIRSTRUN (lcr_component_instance_database);
 
 DECLARE_HDB_DATABASE_FIRSTRUN (lcr_iface_instance_database);
@@ -186,7 +186,7 @@ static void defaults_path_build (void)
 	if (res != NULL && (path_list[0] = strdup (cwd)) != NULL) {
 		path_list_entries++;
 	}
-	
+
 	path_list[path_list_entries++] = LCRSODIR;
 }
 

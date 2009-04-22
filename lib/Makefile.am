@@ -1,14 +1,14 @@
 #
 # Copyright (c) 2009 Red Hat, Inc.
-# 
+#
 # Authors: Andrew Beekhof
 #	   Steven Dake (sdake@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright notice,
 #   this list of conditions and the following disclaimer.
 # - Redistributions in binary form must reproduce the above copyright notice,
@@ -67,7 +67,7 @@ if BUILD_DARWIN
 libcoroipcc.so.$(SONAME): coroipcc.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@ $(AM_LDFLAGS)
 
-libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o 
+libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o \
 		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
 

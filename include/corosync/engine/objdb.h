@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,7 +36,7 @@
 #ifndef OBJDB_H_DEFINED
 #define OBJDB_H_DEFINED
 
-#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL 
+#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL
 
 #include <stdio.h>
 #include <corosync/hdb.h>

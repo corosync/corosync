@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *

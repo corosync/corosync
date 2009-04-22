@@ -7,7 +7,7 @@
 .\" * Author: Fabio M. Di Nitto (fdinitto@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -85,7 +85,7 @@ If this flag is not specified, the logging operations are blocking.
 The debug parameter, if enabled, turns off all messages priority filtering, recording
 everything everywhere.
 
-The file parameter specifies the filename that should be used to log messages. 
+The file parameter specifies the filename that should be used to log messages.
 This parameter may be NULL and no log file will be created.
 
 The file_priority parameter specifies the message priority that should be logged to file.
@@ -136,7 +136,7 @@ An example:
 
 LOGSYS_DECLARE_SUBSYS ("subsystest");
 
-It is possible to use the same subsystem name in separate object files. 
+It is possible to use the same subsystem name in separate object files.
 In this case, the individual logging parameters for those subsystem identifier
 will be used.
 
@@ -172,7 +172,7 @@ ENTER_VOID();
 LEAVE_VOID();
 }
 
-An example of using ENTER is 
+An example of using ENTER is
 void function (char *name) {
 ENTER ("The name is %s\n", name);
 ... function contents ...

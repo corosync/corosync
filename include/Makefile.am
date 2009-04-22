@@ -1,13 +1,13 @@
 # Copyright (c) 2009 Red Hat, Inc.
-# 
+#
 # Authors: Andrew Beekhof
 #	   Steven Dake (sdake@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright notice,
 #   this list of conditions and the following disclaimer.
 # - Redistributions in binary form must reproduce the above copyright notice,
@@ -45,7 +45,7 @@ TOTEM_H			= coropoll.h totem.h totemip.h totempg.h
 
 EXTRA_DIST 		= $(noinst_HEADERS)
 
-noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%) 
+noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%)
 
 nobase_include_HEADERS	= $(CS_H:%=corosync/%) $(LCR_H:%=corosync/lcr/%) 			\
 			$(ENGINE_H:%=corosync/engine/%) $(TOTEM_H:%=corosync/totem/%)

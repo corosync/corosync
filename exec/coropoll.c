@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -81,7 +81,7 @@ hdb_handle_t poll_create (void)
 	if (res != 0) {
 		goto error_destroy;
 	}
-	
+
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
@@ -92,7 +92,7 @@ hdb_handle_t poll_create (void)
 
 error_destroy:
 	hdb_handle_destroy (&poll_instance_database, handle);
-	
+
 error_exit:
 	return (-1);
 }
@@ -164,7 +164,7 @@ int poll_dispatch_add (
 			goto error_put;
 		}
 		poll_instance->poll_entries = poll_entries;
-	
+
 		ufds = (struct pollfd *)realloc (poll_instance->ufds,
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct pollfd));
@@ -177,7 +177,7 @@ int poll_dispatch_add (
 		poll_instance->poll_entry_count += 1;
 		install_pos = poll_instance->poll_entry_count - 1;
 	}
-	
+
 	/*
 	 * Install new dispatch handler
 	 */
@@ -222,7 +222,7 @@ int poll_dispatch_modify (
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
-			
+
 			goto error_put;
 		}
 	}
@@ -336,7 +336,7 @@ int poll_stop (
 		res = -ENOENT;
 		goto error_exit;
 	}
-	
+
 	poll_instance->stop_requested = 1;
 
 	hdb_handle_put (&poll_instance_database, handle);
@@ -391,7 +391,7 @@ retry_poll:
 				poll_instance->ufds[i].revents) {
 
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
-					poll_instance->ufds[i].fd, 
+					poll_instance->ufds[i].fd,
 					poll_instance->ufds[i].revents,
 					poll_instance->poll_entries[i].data);
 
@@ -434,5 +434,5 @@ void poll_print_state (
 		}
 	}
 }
-	
+
 #endif

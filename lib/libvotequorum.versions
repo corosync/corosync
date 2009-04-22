@@ -1,7 +1,7 @@
 # Version and symbol export for libvotequorum.so
 
 COROSYNC_VOTEQUORUM_1.0 {
-	global:	   
+	global:
 		votequorum_initialize;
 		votequorum_finalize;
 		votequorum_getinfo;

@@ -91,7 +91,7 @@ pseudocode executed on event receipt of checkpoint update
 	else
 		create checkpoint
 		reset checkpoint refcount array
-	
+
 pseudocode executed on event receipt of checkpoint section update
 	if checkpoint section exists in temporary storage
 		ignore message

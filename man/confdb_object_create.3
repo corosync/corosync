@@ -6,7 +6,7 @@
 .\" * Author: Christine Caulfield <ccaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -53,11 +53,11 @@ On success the handle of the new object is returned in
 This value should be used to refer to the object in future, eg when retrieving sub-keys or if the
 object is destroyed.
 .B parent_object_handle
-is the handle of the object that is the parent of the new object. This can be 
+is the handle of the object that is the parent of the new object. This can be
 .B OBJECT_PARENT_HANDLE
 if the new object is to be a child of the top-level object.
 .BR
-Object names are not required to be unique in the database. If you call 
+Object names are not required to be unique in the database. If you call
 .B confdb_object_create
 twice with the same parameters you will create two different objects with the same name
 but distinct object handles. You can iterate through similarly name objects using the
@@ -76,14 +76,14 @@ The errors are undocumented.
 .BR confdb_object_create (3),
 .BR confdb_object_destroy (3),
 .BR confdb_object_parent_get (3),
-.BR confdb_key_create (3),	
-.BR confdb_key_delete (3),	
+.BR confdb_key_create (3),
+.BR confdb_key_delete (3),
 .BR confdb_key_get (3),
 .BR confdb_key_replace (3),
 .BR confdb_object_find_start (3),
 .BR confdb_object_find (3),
-.BR confdb_object_iter_start (3),	
-.BR confdb_object_iter (3),	
-.BR confdb_key_iter_start (3),	
-.BR confdb_key_iter (3),	
+.BR confdb_object_iter_start (3),
+.BR confdb_object_iter (3),
+.BR confdb_key_iter_start (3),
+.BR confdb_key_iter (3),
 .PP

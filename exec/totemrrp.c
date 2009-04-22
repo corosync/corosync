@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -140,7 +140,7 @@ struct rrp_algo {
 	void (*token_send) (
 		struct totemrrp_instance *instance,
 		const struct iovec *iovec,
-		unsigned int iov_len);	
+		unsigned int iov_len);
 
 	void (*recv_flush) (
 		struct totemrrp_instance *instance);
@@ -172,7 +172,7 @@ struct totemrrp_instance {
 	struct rrp_algo *rrp_algo;
 
 	void *context;
-	
+
 	char *status[INTERFACE_MAX];
 
 	void (*totemrrp_deliver_fn) (
@@ -257,7 +257,7 @@ static void none_token_recv (
 static void none_token_send (
 	struct totemrrp_instance *instance,
 	const struct iovec *iovec,
-	unsigned int iov_len);	
+	unsigned int iov_len);
 
 static void none_recv_flush (
 	struct totemrrp_instance *instance);
@@ -315,7 +315,7 @@ static void passive_token_recv (
 static void passive_token_send (
 	struct totemrrp_instance *instance,
 	const struct iovec *iovec,
-	unsigned int iov_len);	
+	unsigned int iov_len);
 
 static void passive_recv_flush (
 	struct totemrrp_instance *instance);
@@ -373,7 +373,7 @@ static void active_token_recv (
 static void active_token_send (
 	struct totemrrp_instance *instance,
 	const struct iovec *iovec,
-	unsigned int iov_len);	
+	unsigned int iov_len);
 
 static void active_recv_flush (
 	struct totemrrp_instance *instance);
@@ -723,10 +723,10 @@ static void passive_mcast_recv (
 
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if ((passive_instance->faulty[i] == 0) &&
-			(max - passive_instance->mcast_recv_count[i] > 
+			(max - passive_instance->mcast_recv_count[i] >
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
-			sprintf (rrp_instance->status[i], 
+			sprintf (rrp_instance->status[i],
 				"Marking ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -748,7 +748,7 @@ static void passive_mcast_flush_send (
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
 	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
-	
+
 	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], iovec, iov_len);
 }
 
@@ -762,8 +762,8 @@ static void passive_mcast_noflush_send (
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
 	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
-	
-	
+
+
 	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], iovec, iov_len);
 }
 
@@ -806,10 +806,10 @@ static void passive_token_recv (
 
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if ((passive_instance->faulty[i] == 0) &&
-			(max - passive_instance->token_recv_count[i] > 
+			(max - passive_instance->token_recv_count[i] >
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
-			sprintf (rrp_instance->status[i], 
+			sprintf (rrp_instance->status[i],
 				"Marking seqid %d ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				token_seq,
 				i,
@@ -832,7 +832,7 @@ static void passive_token_send (
 	do {
 		passive_instance->token_xmit_iface = (passive_instance->token_xmit_iface + 1) % instance->interface_count;
 	} while (passive_instance->faulty[passive_instance->token_xmit_iface] == 1);
-	
+
 	totemnet_token_send (
 		instance->net_handles[passive_instance->token_xmit_iface],
 		iovec, iov_len);
@@ -972,16 +972,16 @@ static void timer_function_active_problem_decrementer (void *context)
 	struct totemrrp_instance *rrp_instance = active_instance->rrp_instance;
 	unsigned int problem_found = 0;
 	unsigned int i;
-	
+
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if (active_instance->counter_problems[i] > 0) {
 			problem_found = 1;
 			active_instance->counter_problems[i] -= 1;
 			if (active_instance->counter_problems[i] == 0) {
-				sprintf (rrp_instance->status[i], 
+				sprintf (rrp_instance->status[i],
 					"ring %d active with no faults", i);
 			} else {
-				sprintf (rrp_instance->status[i], 
+				sprintf (rrp_instance->status[i],
 					"Decrementing problem counter for iface %s to [%d of %d]",
 					totemnet_iface_print (rrp_instance->net_handles[i]),
 					active_instance->counter_problems[i],
@@ -1013,7 +1013,7 @@ static void timer_function_active_token_expired (void *context)
 			if (active_instance->timer_problem_decrementer == 0) {
 				active_timer_problem_decrementer_start (active_instance);
 			}
-			sprintf (rrp_instance->status[i], 
+			sprintf (rrp_instance->status[i],
 				"Incrementing problem counter for seqid %d iface %s to [%d of %d]",
 				active_instance->last_token_seq,
 				totemnet_iface_print (rrp_instance->net_handles[i]),
@@ -1029,7 +1029,7 @@ static void timer_function_active_token_expired (void *context)
 		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold)
 		{
 			active_instance->faulty[i] = 1;
-			sprintf (rrp_instance->status[i], 
+			sprintf (rrp_instance->status[i],
 				"Marking seqid %d ringid %u interface %s FAULTY - adminisrtative intervention required.",
 				active_instance->last_token_seq,
 				i,
@@ -1323,7 +1323,7 @@ void rrp_deliver_fn (
 
 	if (token_is) {
 		/*
-		 * Deliver to the token receiver for this rrp algorithm 
+		 * Deliver to the token receiver for this rrp algorithm
 		 */
 		deliver_fn_context->instance->rrp_algo->token_recv (
 			deliver_fn_context->instance,
@@ -1334,7 +1334,7 @@ void rrp_deliver_fn (
 			token_seqid);
 	} else {
 		/*
-		 * Deliver to the mcast receiver for this rrp algorithm 
+		 * Deliver to the mcast receiver for this rrp algorithm
 		 */
 		deliver_fn_context->instance->rrp_algo->mcast_recv (
 			deliver_fn_context->instance,
@@ -1578,7 +1578,7 @@ int totemrrp_send_flush (hdb_handle_t handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	instance->rrp_algo->send_flush (instance);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
@@ -1624,7 +1624,7 @@ int totemrrp_mcast_flush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 // TODO this needs to return the result
 	instance->rrp_algo->mcast_flush_send (instance, iovec, iov_len);
 
@@ -1647,7 +1647,7 @@ int totemrrp_mcast_noflush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	/*
 	 * merge detects go out through mcast_flush_send so it is safe to
 	 * flush these messages if we are only one processor.  This avoids
@@ -1675,7 +1675,7 @@ int totemrrp_iface_check (hdb_handle_t handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	instance->rrp_algo->iface_check (instance);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
@@ -1697,9 +1697,9 @@ int totemrrp_ifaces_get (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	*status = instance->status;
-	
+
 	if (iface_count) {
 		*iface_count = instance->interface_count;
 	}
@@ -1724,7 +1724,7 @@ printf ("totemrrp ring reenable\n");
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	instance->rrp_algo->ring_reenable (instance);
 
 	for (i = 0; i < instance->interface_count; i++) {

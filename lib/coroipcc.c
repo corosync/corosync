@@ -9,7 +9,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -93,7 +93,7 @@ struct ipc_segment {
 
 
 #if defined(COROSYNC_LINUX)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 #else
@@ -106,7 +106,7 @@ void socket_nosigpipe(int s)
 	int on = 1;
 	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
 }
-#endif 
+#endif
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -242,13 +242,13 @@ error_exit:
 	return (0);
 }
 
-static int 
+static int
 priv_change_send (struct ipc_segment *ipc_segment)
 {
 	char buf_req;
 	mar_req_priv_change req_priv_change;
 	unsigned int res;
-	
+
 	req_priv_change.euid = geteuid();
 	/*
 	 * Don't resend request unless euid has changed
@@ -282,7 +282,7 @@ union semun {
         struct seminfo *__buf;
 };
 #endif
-	
+
 static int
 circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
@@ -292,7 +292,7 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	int res;
 
 	sprintf (path, "/dev/shm/%s", file);
- 
+
 	fd = mkstemp (path);
 	if (fd == -1) {
 		sprintf (path, "/var/run/%s", file);
@@ -306,22 +306,22 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
- 
+
 	if (addr_orig == MAP_FAILED) {
 		return (-1);
 	}
- 
+
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	if (addr != addr_orig) {
 		return (-1);
 	}
- 
+
 	addr = mmap (((char *)addr_orig) + bytes,
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	res = close (fd);
 	if (res) {
 		return (-1);
@@ -329,12 +329,12 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	*buf = addr_orig;
 	return (0);
 }
- 
+
 static void
 memory_unmap (void *addr, size_t bytes)
 {
 	int res;
- 
+
 	res = munmap (addr, bytes);
 }
 
@@ -347,7 +347,7 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	int res;
 
 	sprintf (path, "/dev/shm/%s", file);
- 
+
 	fd = mkstemp (path);
 	if (fd == -1) {
 		sprintf (path, "/var/run/%s", file);
@@ -361,18 +361,18 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
- 
+
 	if (addr_orig == MAP_FAILED) {
 		return (-1);
 	}
- 
+
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	if (addr != addr_orig) {
 		return (-1);
 	}
- 
+
 	res = close (fd);
 	if (res) {
 		return (-1);
@@ -380,7 +380,7 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	*buf = addr_orig;
 	return (0);
 }
- 
+
 extern cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
@@ -587,7 +587,7 @@ retry_poll:
 	poll_events = poll (&ufds, 1, timeout);
 	if (poll_events == -1 && errno == EINTR) {
 		goto retry_poll;
-	} else 
+	} else
 	if (poll_events == -1) {
 		return (-1);
 	} else
@@ -965,7 +965,7 @@ coroipcc_zcb_msg_send_reply_receive (
 
 	return (res);
 }
-		
+
 cs_error_t
 saHandleCreate (
 	struct saHandleDatabase *handleDatabase,
@@ -1069,7 +1069,7 @@ saHandleInstanceGet (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t inHandle,
 	void **instance)
-{ 
+{
 	uint32_t check = inHandle >> 32;
 	uint32_t handle = inHandle & 0xffffffff;
 

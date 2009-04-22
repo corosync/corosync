@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -84,7 +84,7 @@ int mempool_init (int pool_sizes[MEMPOOL_GROUP_SIZE])
 		list_init (&mempool_group[i].free);
 		mempool_group[i].free_entries = pool_sizes[i];
 		mempool_group[i].used_entries = 0;
-		
+
 		for (j = 0; j < pool_sizes[i]; j++) {
 			entry = (struct mempool_entry *)p;
 
@@ -121,7 +121,7 @@ void *mempool_malloc (size_t size)
 
 		if (((1 << i) >= size) &&
 			mempool_group[i].free_entries) {
-	
+
 			mempool_group[i].used_entries += 1;
 			mempool_group[i].free_entries -= 1;
 			mempool_entry = list_entry (mempool_group[i].free.next,
@@ -157,7 +157,7 @@ void *mempool_realloc (void *ptr, size_t size) {
 	void *new_ptr;
 
 	mempool_entry = ((struct mempool_entry *)((unsigned long)(ptr) - (unsigned long)(&((struct mempool_entry *)0)->mem)));
-	
+
 	if (ptr == 0 || (1 << mempool_entry->mempool_entry) < size) {
 		/*
 		 * Must grow allocated block, copy memory, free old block

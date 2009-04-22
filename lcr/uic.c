@@ -2,7 +2,7 @@
  * Copyright (c) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -52,7 +52,7 @@
 #include <string.h>
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 #else

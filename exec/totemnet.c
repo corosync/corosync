@@ -69,9 +69,9 @@
 
 #include "crypto.h"
 
-#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX) 
+#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX)
 
-#define NETIF_STATE_REPORT_UP		1	
+#define NETIF_STATE_REPORT_UP		1
 #define NETIF_STATE_REPORT_DOWN		2
 
 #define BIND_STATE_UNBOUND	0
@@ -254,7 +254,7 @@ static int authenticate_and_decrypt (
 	memset (keys, 0, sizeof (keys));
 	sober128_start (&keygen_prng_state);
 	sober128_add_entropy (instance->totemnet_private_key,
-		instance->totemnet_private_key_len, &keygen_prng_state);	
+		instance->totemnet_private_key_len, &keygen_prng_state);
 	sober128_add_entropy (header->salt, sizeof (header->salt), &keygen_prng_state);
 
 	sober128_read (keys, sizeof (keys), &keygen_prng_state);
@@ -263,15 +263,15 @@ static int authenticate_and_decrypt (
 	 * Setup stream cipher
 	 */
 	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
 
 	/*
 	 * Authenticate contents of message
 	 */
 	hmac_init (&instance->totemnet_hmac_state, DIGEST_SHA1, hmac_key, 16);
 
-	hmac_process (&instance->totemnet_hmac_state, 
+	hmac_process (&instance->totemnet_hmac_state,
 		(unsigned char *)iov->iov_base + HMAC_HASH_SIZE,
 		iov->iov_len - HMAC_HASH_SIZE);
 
@@ -283,7 +283,7 @@ static int authenticate_and_decrypt (
 		log_printf (instance->totemnet_log_level_security, "Received message has invalid digest... ignoring.\n");
 		return (-1);
 	}
-	
+
 	/*
 	 * Decrypt the contents of the message with the cipher key
 	 */
@@ -328,7 +328,7 @@ static void encrypt_and_sign_worker (
 	sober128_start (&keygen_prng_state);
 	sober128_add_entropy (instance->totemnet_private_key,
 		instance->totemnet_private_key_len,
-		&keygen_prng_state);	
+		&keygen_prng_state);
 	sober128_add_entropy (header->salt, sizeof (header->salt),
 		&keygen_prng_state);
 
@@ -338,8 +338,8 @@ static void encrypt_and_sign_worker (
 	 * Setup stream cipher
 	 */
 	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
 
 	outlen = sizeof (struct security_header);
 	/*
@@ -365,7 +365,7 @@ static void encrypt_and_sign_worker (
 	 */
 	hmac_init (&hmac_st, DIGEST_SHA1, hmac_key, 16);
 
-	hmac_process (&hmac_st, 
+	hmac_process (&hmac_st,
 		buf + HMAC_HASH_SIZE,
 		outlen - HMAC_HASH_SIZE);
 
@@ -682,7 +682,7 @@ static int net_deliver_fn (
 		instance->context,
 		msg_offset,
 		size_delv);
-		
+
 	iovec->iov_len = FRAME_SIZE_MAX;
 	return (0);
 }
@@ -703,7 +703,7 @@ static int netif_determine (
 
 	return (res);
 }
-	
+
 
 /*
  * If the interface is up, the sockets for totem are built.  If the interface is down
@@ -827,7 +827,7 @@ static void timer_function_netif_check_timeout (
 				&instance->timer_netif_check_timeout);
 		}
 
-	} else {		
+	} else {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemnet_log_level_notice,
 				"The network interface is down.\n");
@@ -881,7 +881,7 @@ static int totemnet_build_sockets_ip (
 	int addrlen;
 	int res;
 	int flag;
-	
+
 	/*
 	 * Create multicast recv socket
 	 */
@@ -898,11 +898,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->mcast_recv, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->mcast_recv, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -934,11 +934,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->mcast_send, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->mcast_send, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -967,11 +967,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -1038,7 +1038,7 @@ static int totemnet_build_sockets_ip (
 		}
 		break;
 	}
-	
+
 	/*
 	 * Turn on multicast loopback
 	 */
@@ -1102,7 +1102,7 @@ static int totemnet_build_sockets_ip (
 		}
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -1139,7 +1139,7 @@ static int totemnet_build_sockets (
 	totemnet_traffic_control_set(instance, sockets->token);
 	return res;
 }
-	
+
 /*
  * Totem Network interface - also does encryption/decryption
  * depends on poll abstraction, POSIX, IPV4
@@ -1323,7 +1323,7 @@ int totemnet_send_flush (hdb_handle_t handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	worker_thread_group_wait (&instance->worker_thread_group);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1368,7 +1368,7 @@ int totemnet_mcast_flush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	mcast_sendmsg (instance, iovec, iov_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1392,18 +1392,18 @@ int totemnet_mcast_noflush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	if (instance->totem_config->threads) {
 		memcpy (&work_item.iovec[0], iovec, iov_len * sizeof (struct iovec));
 		work_item.iov_len = iov_len;
 		work_item.instance = instance;
 
 		worker_thread_group_work_add (&instance->worker_thread_group,
-			&work_item);         
+			&work_item);
 	} else {
 		mcast_sendmsg (instance, iovec, iov_len);
 	}
-	
+
 	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
 	return (res);
@@ -1420,7 +1420,7 @@ extern int totemnet_iface_check (hdb_handle_t handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	timer_function_netif_check_timeout (instance);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1450,7 +1450,7 @@ const char *totemnet_iface_print (hdb_handle_t handle)  {
 		ret_char = "Invalid totemnet handle";
 		goto error_exit;
 	}
-	
+
 	ret_char = totemip_print (&instance->my_id);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1470,7 +1470,7 @@ int totemnet_iface_get (
 	if (res != 0) {
 		goto error_exit;
 	}
-	
+
 	memcpy (addr, &instance->my_id, sizeof (struct totem_ip_address));
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1491,7 +1491,7 @@ int totemnet_token_target_set (
 	if (res != 0) {
 		goto error_exit;
 	}
-	
+
 	memcpy (&instance->token_target, token_target,
 		sizeof (struct totem_ip_address));
 

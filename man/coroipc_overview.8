@@ -6,7 +6,7 @@
 .\" * Author: Steven Dake (sdake@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -117,9 +117,9 @@ communication.  To disconnect, the client either exits or executes the
 function coroipcc_service_disconnect(3).
 
 .SH Synchronous communication
-There are two functions for sending a request and receiving a response.  The 
+There are two functions for sending a request and receiving a response.  The
 first function coroipcc_msg_send_reply_receive(3) sends an iovector request
-and receives a response.  This function copies the response into the response 
+and receives a response.  This function copies the response into the response
 buffer.  the second function coroipcc_msg_end_reply_receive_in_buf(3) does not
 copy the response buffer and allows for zero-copy reading of the response
 when the lifetime of the response buffer is known.

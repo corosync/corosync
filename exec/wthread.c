@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -35,7 +35,7 @@
 
 /*
  * Add work to a work group and have threads process the work
- * Provide blocking for all work to complete 
+ * Provide blocking for all work to complete
  */
 
 #include <config.h>

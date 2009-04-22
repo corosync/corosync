@@ -31,7 +31,7 @@ internal_status() {
 }
 
 status() {
-    if 
+    if
 	! internal_status
     then
 	echo "Stopped"
@@ -44,7 +44,7 @@ status() {
 
 start() {
     echo -n $"Starting Corosync Cluster Engine ($prog): "
-    if 
+    if
 	! internal_status
     then
 	echo -n "starting... "
@@ -54,7 +54,7 @@ start() {
 
     sleep 2 # give it time to fail... $? isn't definitive
 
-    if 
+    if
 	internal_status
     then
 	echo "OK"
@@ -91,7 +91,7 @@ stop() {
 	    echo -n "Escalating... "
 	    killall -KILL corosync
 	    sleep 5
-	    
+
 	    if
 		! internal_status
 	    then
@@ -105,13 +105,13 @@ stop() {
 	return 1
     fi
 
-    while 
+    while
         internal_status
     do
 	sleep 1
 	echo -n "."
     done
-    
+
     rm -f "$lockfile"
     echo "OK"
     return 0

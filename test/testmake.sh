@@ -71,7 +71,7 @@ test_4()
 	rm -f $SRCDIR/make_o_path
 
 	TEST="[4] make -f SRCDIR/Makefile from the builddir"
-	
+
 	rm -rf $BUILD_DIR
 	mkdir -p $BUILD_DIR
 

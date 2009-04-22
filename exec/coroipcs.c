@@ -166,7 +166,7 @@ memory_map (
 	void *addr_orig;
 	void *addr;
 	int res;
- 
+
 	fd = open (path, O_RDWR, 0600);
 
 	unlink (path);
@@ -175,18 +175,18 @@ memory_map (
 
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
- 
+
 	if (addr_orig == MAP_FAILED) {
 		return (-1);
 	}
- 
+
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	if (addr != addr_orig) {
 		return (-1);
 	}
- 
+
 	res = close (fd);
 	if (res) {
 		return (-1);
@@ -205,7 +205,7 @@ circular_memory_map (
 	void *addr_orig;
 	void *addr;
 	int res;
- 
+
 	fd = open (path, O_RDWR, 0600);
 
 	unlink (path);
@@ -214,22 +214,22 @@ circular_memory_map (
 
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
- 
+
 	if (addr_orig == MAP_FAILED) {
 		return (-1);
 	}
- 
+
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	if (addr != addr_orig) {
 		return (-1);
 	}
- 
+
 	addr = mmap (((char *)addr_orig) + bytes,
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
- 
+
 	res = close (fd);
 	if (res) {
 		return (-1);
@@ -453,7 +453,7 @@ static void *serveraddr2void (uint64_t server_addr)
 
 	u.server_addr = server_addr;
 	return (u.server_ptr);
-}; 
+};
 
 static inline void zerocopy_operations_process (
 	struct conn_info *conn_info,
@@ -479,11 +479,11 @@ static inline void zerocopy_operations_process (
 		res_header.size = sizeof (mar_res_header_t);
 		res_header.id = 0;
 		coroipcs_response_send (
-			conn_info, &res_header, 
+			conn_info, &res_header,
 			res_header.size);
 		*new_message = 0;
 		return;
-	} else 
+	} else
 	if (header->id == ZC_FREE_HEADER) {
 		mar_req_coroipcc_zc_free_t *hdr = (mar_req_coroipcc_zc_free_t *)header;
 		mar_res_header_t res_header;
@@ -496,15 +496,15 @@ static inline void zerocopy_operations_process (
 		res_header.size = sizeof (mar_res_header_t);
 		res_header.id = 0;
 		coroipcs_response_send (
-			conn_info, &res_header, 
+			conn_info, &res_header,
 			res_header.size);
 
 		*new_message = 0;
 		return;
-	} else 
+	} else
 	if (header->id == ZC_EXECUTE_HEADER) {
 		mar_req_coroipcc_zc_execute_t *hdr = (mar_req_coroipcc_zc_execute_t *)header;
-		
+
 		header = (mar_req_header_t *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
 	}
 	*header_out = header;
@@ -558,9 +558,9 @@ retry_semop:
 
 		send_ok = api->sending_allowed (conn_info->service,
 			header->id,
-			header,	
+			header,
 			conn_info->sending_allowed_private_data);
-	
+
 		if (send_ok) {
 			api->serialize_lock();
 			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);
@@ -574,7 +574,7 @@ retry_semop:
 			res_overlay.header.id =
 				api->response_id_get (conn_info->service, header->id);
 			res_overlay.header.error = CS_ERR_TRY_AGAIN;
-			coroipcs_response_send (conn_info, &res_overlay, 
+			coroipcs_response_send (conn_info, &res_overlay,
 				res_overlay.header.size);
 		}
 
@@ -634,7 +634,7 @@ req_setup_recv (
 	msg_recv.msg_flags = 0;
 	uid_t euid;
 	gid_t egid;
-		                
+
 	euid = -1;
 	egid = -1;
 	if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
@@ -848,7 +848,7 @@ void coroipcs_ipc_exit (void)
 			conn_info->dispatch_size);
 
 		semctl (conn_info->semid, 0, IPC_RMID);
-	
+
 		pthread_kill (conn_info->thread, SIGUSR1);
 	}
 }
@@ -1290,7 +1290,7 @@ int coroipcs_handler_dispatch (
 		/*
 		 * ipc thread is the only reference at startup
 		 */
-		conn_info->refcount = 1; 
+		conn_info->refcount = 1;
 		conn_info->state = CONN_STATE_THREAD_ACTIVE;
 
 		conn_info->private_data = api->malloc (api->private_data_size_get (conn_info->service));

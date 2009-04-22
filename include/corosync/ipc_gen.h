@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -106,7 +106,7 @@ static inline void swab_mar_req_header_t (mar_req_header_t *to_swab)
 }
 
 typedef struct {
-	int size; __attribute__((aligned(8))) 
+	int size; __attribute__((aligned(8)))
 	int id __attribute__((aligned(8)));
 	cs_error_t error __attribute__((aligned(8)));
 } mar_res_header_t __attribute__((aligned(8)));

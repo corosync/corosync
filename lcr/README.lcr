@@ -29,7 +29,7 @@ int lcr_ifact_reference (
         void **interface,
         void *context);
 
-The iface_name is the name of the interface, the version is the version, 
+The iface_name is the name of the interface, the version is the version,
 the void **interface is the list of functions returned once the interface
 has been dynamically loaded and referenced, and context is passed to the
 constructor and destructor.
@@ -108,6 +108,6 @@ demonstrates usage.  The test_static demonstrates operation when statically
 linked.  Note the dynamic inteface factory is still available for use when
 statically linking components.
 
-On startup, a thread is created which listens for requests from the "uic" 
+On startup, a thread is created which listens for requests from the "uic"
 application.  These requests are then processed by the lcr service which
 would execute a live replacement.

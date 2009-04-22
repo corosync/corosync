@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -175,7 +175,7 @@ unsigned int pload_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (pload_inst->ipc_ctx); 
+	*fd = coroipcc_fd_get (pload_inst->ipc_ctx);
 
 	(void)saHandleInstancePut (&pload_handle_t_db, handle);
 
@@ -207,7 +207,7 @@ unsigned int pload_start (
 
 	iov.iov_base = (char *)&req_lib_pload_start;
 	iov.iov_len = sizeof (struct req_lib_pload_start);
-	
+
 	pthread_mutex_lock (&pload_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive(pload_inst->ipc_ctx,

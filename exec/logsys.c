@@ -9,7 +9,7 @@
  * All rights reserved.
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -245,8 +245,8 @@ static inline void records_reclaim (unsigned int idx, unsigned int words)
 
 			words_needed -= flt_data[flt_data[FDTAIL_INDEX]];
 			old_tail = flt_data[FDTAIL_INDEX];
-			flt_data[FDTAIL_INDEX] = 
-				(flt_data[FDTAIL_INDEX] + 
+			flt_data[FDTAIL_INDEX] =
+				(flt_data[FDTAIL_INDEX] +
 				flt_data[flt_data[FDTAIL_INDEX]]) % (flt_data_size);
 			if (log_rec_idx == old_tail) {
 				log_requests_lost += 1;
@@ -301,7 +301,7 @@ static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
  * %p PRIORITY
  * %t TIMESTAMP
  * %b BUFFER
- * 
+ *
  * any number between % and character specify field length to pad or chop
 */
 static void log_printf_to_logs (
@@ -337,7 +337,7 @@ static void log_printf_to_logs (
 			while (isdigit (format_buffer[format_buffer_idx])) {
 				format_buffer_idx += 1;
 			}
-			
+
 			switch (format_buffer[format_buffer_idx]) {
 				case 's':
 					len = strcpy_cutoff (&output_buffer[output_buffer_idx], subsys, cutoff);
@@ -387,7 +387,7 @@ static void log_printf_to_logs (
 	 * Output to syslog
 	 */
 	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
-	     ((level <= logsys_loggers[subsysid].syslog_priority) || 
+	     ((level <= logsys_loggers[subsysid].syslog_priority) ||
 	     (logsys_loggers[subsysid].debug != 0))) {
 		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", output_buffer);
 	}
@@ -765,7 +765,7 @@ static void logsys_subsys_init (
 		       &logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT],
 		       sizeof(logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT]));
 		logsys_loggers[subsysid].tags = LOGSYS_TAG_LOG;
-		logsys_loggers[subsysid].init_status = 
+		logsys_loggers[subsysid].init_status =
 			LOGSYS_LOGGER_INIT_DONE;
 	}
 	strncpy (logsys_loggers[subsysid].subsys, subsys,
@@ -851,7 +851,7 @@ unsigned int _logsys_subsys_create (const char *subsys)
 
 	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (strcmp (logsys_loggers[i].subsys, "") == 0) {
-			logsys_subsys_init(subsys, i);			
+			logsys_subsys_init(subsys, i);
 			break;
 		}
 	}
@@ -864,7 +864,7 @@ unsigned int _logsys_subsys_create (const char *subsys)
 
 int _logsys_wthread_create (void)
 {
-	if (((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_FORK) == 0) && 
+	if (((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_FORK) == 0) &&
 		((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) != 0)) {
 		wthread_create();
 		atexit (logsys_atexit);
@@ -928,7 +928,7 @@ void _logsys_log_rec (
 	int words_written;
 
 	record_reclaim_size = 0;
-		
+
 	/*
 	 * Decode VA Args
 	 */
@@ -1045,7 +1045,7 @@ void _logsys_log_rec (
 	flt_data[index_start] = words_written;
 
 	/*
-	 * If the index of the current head equals the current log_rec_idx, 
+	 * If the index of the current head equals the current log_rec_idx,
 	 * and this is not a log_printf operation, set the log_rec_idx to
 	 * the new head position and commit the new head.
 	 */

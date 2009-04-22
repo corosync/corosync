@@ -211,7 +211,7 @@ static int corosync_service_unlink_common (
 	struct corosync_api_v1 *corosync_api,
 	hdb_handle_t object_service_handle,
 	const char *service_name,
-	unsigned int service_version) 
+	unsigned int service_version)
 {
 	unsigned int res;
 	unsigned short *service_id;
@@ -222,13 +222,13 @@ static int corosync_service_unlink_common (
 		strlen ("handle"),
 		(void *)&found_service_handle,
 		NULL);
-	
+
 	res = corosync_api->object_key_get (object_service_handle,
 		"service_id",
 		strlen ("service_id"),
 		(void *)&service_id,
 		NULL);
-	
+
 	log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
 		service_name, service_version);
 
@@ -236,8 +236,8 @@ static int corosync_service_unlink_common (
 		ais_service[*service_id]->exec_exit_fn ();
 	}
 	ais_service[*service_id] = NULL;
-    
-	return lcr_ifact_release (*found_service_handle);	
+
+	return lcr_ifact_release (*found_service_handle);
 }
 
 extern unsigned int corosync_service_unlink_and_exit (
@@ -300,7 +300,7 @@ extern unsigned int corosync_service_unlink_all (
 	unsigned int *service_ver;
 	hdb_handle_t object_service_handle;
 	hdb_handle_t object_find_handle;
-	int found; 
+	int found;
 
 	log_printf(LOGSYS_LEVEL_NOTICE, "Unloading all corosync components\n");
 
@@ -365,7 +365,7 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
 	hdb_handle_t object_find_handle;
- 
+
 	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,
 		"internal_configuration",
@@ -415,6 +415,6 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 			default_services[i].name,
 			default_services[i].ver);
 	}
-			
+
 	return (0);
 }
