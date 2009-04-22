@@ -48,6 +48,9 @@
 #include <corosync/ipc_pload.h>
 #include <corosync/pload.h>
 #include <corosync/coroipcc.h>
+#include <corosync/hdb.h>
+
+#include "util.h"
 
 static void pload_instance_destructor (void *instance);
 
@@ -58,7 +61,7 @@ struct pload_inst {
 	unsigned int finalize;
 };
 
-DECLARE_SAHDB_DATABASE(pload_handle_t_db,pload_instance_destructor);
+DECLARE_HDB_DATABASE(pload_handle_t_db,pload_instance_destructor);
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle
@@ -91,12 +94,12 @@ unsigned int pload_initialize (
 	cs_error_t error;
 	struct pload_inst *pload_inst;
 
-	error = saHandleCreate (&pload_handle_t_db, sizeof (struct pload_inst), handle);
+	error = hdb_error_to_cs(hdb_handle_create (&pload_handle_t_db, sizeof (struct pload_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&pload_handle_t_db, *handle, (void *)&pload_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&pload_handle_t_db, *handle, (void *)&pload_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -116,14 +119,14 @@ unsigned int pload_initialize (
 
 	pthread_mutex_init (&pload_inst->dispatch_mutex, NULL);
 
-	(void)saHandleInstancePut (&pload_handle_t_db, *handle);
+	(void)hdb_handle_put (&pload_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	(void)saHandleInstancePut (&pload_handle_t_db, *handle);
+	(void)hdb_handle_put (&pload_handle_t_db, *handle);
 error_destroy:
-	(void)saHandleDestroy (&pload_handle_t_db, *handle);
+	(void)hdb_handle_destroy (&pload_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -134,7 +137,7 @@ unsigned int pload_finalize (
 	struct pload_inst *pload_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&pload_handle_t_db, handle, (void *)&pload_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -146,7 +149,7 @@ unsigned int pload_finalize (
 	 */
 	if (pload_inst->finalize) {
 		pthread_mutex_unlock (&pload_inst->response_mutex);
-		(void)saHandleInstancePut (&pload_handle_t_db, handle);
+		(void)hdb_handle_put (&pload_handle_t_db, handle);
 		return (PLOAD_ERR_BAD_HANDLE);
 	}
 
@@ -156,9 +159,9 @@ unsigned int pload_finalize (
 
 	pthread_mutex_unlock (&pload_inst->response_mutex);
 
-	(void)saHandleDestroy (&pload_handle_t_db, handle);
+	(void)hdb_handle_destroy (&pload_handle_t_db, handle);
 
-	(void)saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)hdb_handle_put (&pload_handle_t_db, handle);
 
 	return (PLOAD_OK);
 }
@@ -170,14 +173,14 @@ unsigned int pload_fd_get (
 	cs_error_t error;
 	struct pload_inst *pload_inst;
 
-	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&pload_handle_t_db, handle, (void *)&pload_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*fd = coroipcc_fd_get (pload_inst->ipc_ctx);
 
-	(void)saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)hdb_handle_put (&pload_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -194,7 +197,7 @@ unsigned int pload_start (
 	struct req_lib_pload_start req_lib_pload_start;
 	struct res_lib_pload_start res_lib_pload_start;
 
-	error = saHandleInstanceGet (&pload_handle_t_db, handle, (void *)&pload_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&pload_handle_t_db, handle, (void *)&pload_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -225,7 +228,7 @@ unsigned int pload_start (
 	error = res_lib_pload_start.header.error;
 
 error_exit:
-	(void)saHandleInstancePut (&pload_handle_t_db, handle);
+	(void)hdb_handle_put (&pload_handle_t_db, handle);
 
 	return (error);
 }

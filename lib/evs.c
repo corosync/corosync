@@ -53,10 +53,13 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/hdb.h>
 
 #include <corosync/evs.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_evs.h>
+
+#include "util.h"
 
 #undef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -71,7 +74,7 @@ struct evs_inst {
 
 static void evs_instance_destructor (void *instance);
 
-DECLARE_SAHDB_DATABASE (evs_handle_t_db, evs_instance_destructor);
+DECLARE_HDB_DATABASE (evs_handle_t_db, evs_instance_destructor);
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle
@@ -104,12 +107,12 @@ evs_error_t evs_initialize (
 	cs_error_t error;
 	struct evs_inst *evs_inst;
 
-	error = saHandleCreate (&evs_handle_t_db, sizeof (struct evs_inst), handle);
+	error = hdb_error_to_cs(hdb_handle_create (&evs_handle_t_db, sizeof (struct evs_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&evs_handle_t_db, *handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, *handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -131,14 +134,14 @@ evs_error_t evs_initialize (
 
 	pthread_mutex_init (&evs_inst->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	hdb_handle_put (&evs_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&evs_handle_t_db, *handle);
+	hdb_handle_put (&evs_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&evs_handle_t_db, *handle);
+	hdb_handle_destroy (&evs_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -149,7 +152,7 @@ evs_error_t evs_finalize (
 	struct evs_inst *evs_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -160,7 +163,7 @@ evs_error_t evs_finalize (
 	 */
 	if (evs_inst->finalize) {
 		pthread_mutex_unlock (&evs_inst->response_mutex);
-		saHandleInstancePut (&evs_handle_t_db, handle);
+		hdb_handle_put (&evs_handle_t_db, handle);
 		return (EVS_ERR_BAD_HANDLE);
 	}
 
@@ -170,9 +173,9 @@ evs_error_t evs_finalize (
 
 	pthread_mutex_unlock (&evs_inst->response_mutex);
 
-	saHandleDestroy (&evs_handle_t_db, handle);
+	hdb_handle_destroy (&evs_handle_t_db, handle);
 
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (EVS_OK);
 }
@@ -184,14 +187,14 @@ evs_error_t evs_fd_get (
 	cs_error_t error;
 	struct evs_inst *evs_inst;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*fd = coroipcc_fd_get (evs_inst->ipc_ctx);
 
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -211,7 +214,7 @@ evs_error_t evs_dispatch (
 	coroipc_response_header_t *dispatch_data;
 	int ignore_dispatch = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -309,7 +312,7 @@ evs_error_t evs_dispatch (
 	} while (cont);
 
 error_put:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 	return (error);
 }
 
@@ -324,7 +327,7 @@ evs_error_t evs_join (
 	struct req_lib_evs_join req_lib_evs_join;
 	struct res_lib_evs_join res_lib_evs_join;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != EVS_OK) {
 		return (error);
 	}
@@ -353,7 +356,7 @@ evs_error_t evs_join (
 	error = res_lib_evs_join.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -369,7 +372,7 @@ evs_error_t evs_leave (
 	struct req_lib_evs_leave req_lib_evs_leave;
 	struct res_lib_evs_leave res_lib_evs_leave;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -398,7 +401,7 @@ evs_error_t evs_leave (
 	error = res_lib_evs_leave.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -417,7 +420,7 @@ evs_error_t evs_mcast_joined (
 	struct res_lib_evs_mcast_joined res_lib_evs_mcast_joined;
 	size_t msg_len = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -453,7 +456,7 @@ evs_error_t evs_mcast_joined (
 	error = res_lib_evs_mcast_joined.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -474,7 +477,7 @@ evs_error_t evs_mcast_groups (
 	struct res_lib_evs_mcast_groups res_lib_evs_mcast_groups;
 	size_t msg_len = 0;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -509,7 +512,7 @@ evs_error_t evs_mcast_groups (
 	error = res_lib_evs_mcast_groups.header.error;
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (error);
 }
@@ -526,7 +529,7 @@ evs_error_t evs_membership_get (
 	struct req_lib_evs_membership_get req_lib_evs_membership_get;
 	struct res_lib_evs_membership_get res_lib_evs_membership_get;
 
-	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -567,7 +570,7 @@ evs_error_t evs_membership_get (
 	}
 
 error_exit:
-	saHandleInstancePut (&evs_handle_t_db, handle);
+	hdb_handle_put (&evs_handle_t_db, handle);
 
 	return (error);
 }

@@ -45,16 +45,18 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/hdb.h>
 
 #include <corosync/quorum.h>
 #include <corosync/mar_gen.h>
 #include <corosync/mar_cpg.h>
 #include <corosync/ipc_quorum.h>
+
+#include "util.h"
 
 struct quorum_inst {
 	void *ipc_ctx;
@@ -67,7 +69,7 @@ struct quorum_inst {
 
 static void quorum_instance_destructor (void *instance);
 
-DECLARE_SAHDB_DATABASE(quorum_handle_t_db,quorum_instance_destructor);
+DECLARE_HDB_DATABASE(quorum_handle_t_db,quorum_instance_destructor);
 
 /*
  * Clean up function for a quorum instance (quorum_initialize) handle
@@ -86,12 +88,12 @@ cs_error_t quorum_initialize (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
-	error = saHandleCreate (&quorum_handle_t_db, sizeof (struct quorum_inst), handle);
+	error = hdb_error_to_cs(hdb_handle_create (&quorum_handle_t_db, sizeof (struct quorum_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, *handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, *handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -114,14 +116,14 @@ cs_error_t quorum_initialize (
 	else
 		memset(&quorum_inst->callbacks, 0, sizeof (callbacks));
 
-	(void)saHandleInstancePut (&quorum_handle_t_db, *handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	(void)saHandleInstancePut (&quorum_handle_t_db, *handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
 error_destroy:
-	(void)saHandleDestroy (&quorum_handle_t_db, *handle);
+	(void)hdb_handle_destroy (&quorum_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -132,7 +134,7 @@ cs_error_t quorum_finalize (
 	struct quorum_inst *quorum_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -144,7 +146,7 @@ cs_error_t quorum_finalize (
 	 */
 	if (quorum_inst->finalize) {
 		pthread_mutex_unlock (&quorum_inst->response_mutex);
-		(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+		(void)hdb_handle_put (&quorum_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -154,9 +156,9 @@ cs_error_t quorum_finalize (
 
 	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
-	(void)saHandleDestroy (&quorum_handle_t_db, handle);
+	(void)hdb_handle_destroy (&quorum_handle_t_db, handle);
 
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -171,7 +173,7 @@ cs_error_t quorum_getquorate (
 	coroipc_request_header_t req;
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -202,7 +204,7 @@ cs_error_t quorum_getquorate (
 	*quorate = res_lib_quorum_getquorate.quorate;
 
 error_exit:
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -214,14 +216,14 @@ cs_error_t quorum_fd_get (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*fd = coroipcc_fd_get (quorum_inst->ipc_ctx);
 
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -234,14 +236,14 @@ cs_error_t quorum_context_get (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*context = quorum_inst->context;
 
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -253,14 +255,14 @@ cs_error_t quorum_context_set (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	quorum_inst->context = context;
 
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -276,7 +278,7 @@ cs_error_t quorum_trackstart (
 	struct req_lib_quorum_trackstart req_lib_quorum_trackstart;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -306,7 +308,7 @@ cs_error_t quorum_trackstart (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -320,7 +322,7 @@ cs_error_t quorum_trackstop (
 	coroipc_request_header_t req;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -349,7 +351,7 @@ cs_error_t quorum_trackstop (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -374,8 +376,8 @@ cs_error_t quorum_dispatch (
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	error = saHandleInstanceGet (&quorum_handle_t_db, handle,
-		(void *)&quorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle,
+		(void *)&quorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -467,6 +469,6 @@ error_unlock:
 	pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 
 error_put:
-	(void)saHandleInstancePut (&quorum_handle_t_db, handle);
+	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 	return (error);
 }

@@ -226,7 +226,7 @@ struct totempg_group_instance {
 	int groups_cnt;
 };
 
-DECLARE_HDB_DATABASE (totempg_groups_instance_database);
+DECLARE_HDB_DATABASE (totempg_groups_instance_database,NULL);
 
 static unsigned char next_fragment = 1;
 

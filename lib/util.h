@@ -36,115 +36,22 @@
 #ifndef AIS_UTIL_H_DEFINED
 #define AIS_UTIL_H_DEFINED
 
-#include <pthread.h>
-#include <sys/poll.h>
-#include <sys/socket.h>
+#include <errno.h>
 
-#include "../include/ipc_gen.h"
+static inline cs_error_t hdb_error_to_cs (int res)		\
+{								\
+	if (res == 0) {						\
+		return (CS_OK);					\
+	} else {						\
+		if (errno == EBADF) {				\
+			return (CS_ERR_BAD_HANDLE);		\
+		} else						\
+		if (errno == ENOMEM) {				\
+			return (CS_ERR_NO_MEMORY);		\
+		}						\
+		return (CS_ERR_LIBRARY);			\
+	}							\
+}
 
-/* Debug macro
- */
-#ifdef DEBUG
-	#define DPRINT(s) printf s
-#else
-	#define DPRINT(s)
-#endif
-
-#ifdef SO_NOSIGPIPE
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-#endif
-void socket_nosigpipe(int s);
-#else
-#define socket_nosigpipe(s)
-#endif
-
-struct saHandleDatabase {
-	unsigned int handleCount;
-	struct saHandle *handles;
-	pthread_mutex_t mutex;
-	void (*handleInstanceDestructor) (void *);
-};
-
-
-struct saVersionDatabase {
-	int versionCount;
-	SaVersionT *versionsSupported;
-};
-
-cs_error_t
-saServiceConnect (
-        int *responseOut,
-        int *callbackOut,
-        enum service_types service);
-
-cs_error_t
-saRecvRetry (
-	int s,
-	void *msg,
-	size_t len);
-
-cs_error_t
-saSendRetry (
-	int s,
-	const void *msg,
-	size_t len);
-
-cs_error_t saSendMsgRetry (
-	int s,
-	struct iovec *iov,
-	unsigned int iov_len);
-
-cs_error_t saSendMsgReceiveReply (
-	int s,
-	struct iovec *iov,
-	unsigned int iov_len,
-	void *responseMessage,
-	int responseLen);
-
-cs_error_t saSendReceiveReply (
-	int s,
-	void *requestMessage,
-	int requestLen,
-	void *responseMessage,
-	int responseLen);
-
-cs_error_t
-saPollRetry (
-	struct pollfd *ufds,
-	unsigned int nfds,
-	int timeout);
-
-cs_error_t
-saHandleCreate (
-	struct saHandleDatabase *handleDatabase,
-	int instanceSize,
-	SaUint64T *handleOut);
-
-cs_error_t
-saHandleDestroy (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
-
-cs_error_t
-saHandleInstanceGet (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle,
-	void **instance);
-
-cs_error_t
-saHandleInstancePut (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
-
-cs_error_t
-saVersionVerify (
-	struct saVersionDatabase *versionDatabase,
-	SaVersionT *version);
-
-#define offset_of(type,member) (int)(&(((type *)0)->member))
-
-SaTimeT
-clustTimeNow(void);
 
 #endif /* AIS_UTIL_H_DEFINED */

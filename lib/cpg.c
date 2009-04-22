@@ -51,11 +51,14 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/hdb.h>
 
 #include <corosync/cpg.h>
 #include <corosync/mar_gen.h>
 #include <corosync/mar_cpg.h>
 #include <corosync/ipc_cpg.h>
+
+#include "util.h"
 
 struct cpg_inst {
 	void *ipc_ctx;
@@ -68,7 +71,7 @@ struct cpg_inst {
 
 static void cpg_instance_destructor (void *instance);
 
-DECLARE_SAHDB_DATABASE(cpg_handle_t_db,cpg_instance_destructor);
+DECLARE_HDB_DATABASE(cpg_handle_t_db,cpg_instance_destructor);
 
 /*
  * Clean up function for a cpg instance (cpg_nitialize) handle
@@ -96,12 +99,12 @@ cs_error_t cpg_initialize (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleCreate (&cpg_handle_t_db, sizeof (struct cpg_inst), handle);
+	error = hdb_error_to_cs (hdb_handle_create (&cpg_handle_t_db, sizeof (struct cpg_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, *handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, *handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -123,14 +126,14 @@ cs_error_t cpg_initialize (
 
 	pthread_mutex_init (&cpg_inst->dispatch_mutex, NULL);
 
-	saHandleInstancePut (&cpg_handle_t_db, *handle);
+	hdb_handle_put (&cpg_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&cpg_handle_t_db, *handle);
+	hdb_handle_put (&cpg_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&cpg_handle_t_db, *handle);
+	hdb_handle_destroy (&cpg_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -141,7 +144,7 @@ cs_error_t cpg_finalize (
 	struct cpg_inst *cpg_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -153,7 +156,7 @@ cs_error_t cpg_finalize (
 	 */
 	if (cpg_inst->finalize) {
 		pthread_mutex_unlock (&cpg_inst->response_mutex);
-		saHandleInstancePut (&cpg_handle_t_db, handle);
+		hdb_handle_put (&cpg_handle_t_db, handle);
 		return (CPG_ERR_BAD_HANDLE);
 	}
 
@@ -163,9 +166,9 @@ cs_error_t cpg_finalize (
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
-	saHandleDestroy (&cpg_handle_t_db, handle);
+	hdb_handle_destroy (&cpg_handle_t_db, handle);
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CPG_OK);
 }
@@ -177,14 +180,14 @@ cs_error_t cpg_fd_get (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*fd = coroipcc_fd_get (cpg_inst->ipc_ctx);
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -196,14 +199,14 @@ cs_error_t cpg_context_get (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*context = cpg_inst->context;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -215,14 +218,14 @@ cs_error_t cpg_context_set (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	cpg_inst->context = context;
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -249,7 +252,7 @@ cs_error_t cpg_dispatch (
 	mar_cpg_address_t *joined_list_start;
 	unsigned int i;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -378,7 +381,7 @@ cs_error_t cpg_dispatch (
 	} while (cont);
 
 error_put:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 	return (error);
 }
 
@@ -392,7 +395,7 @@ cs_error_t cpg_join (
 	struct req_lib_cpg_join req_lib_cpg_join;
 	struct res_lib_cpg_join res_lib_cpg_join;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -423,7 +426,7 @@ cs_error_t cpg_join (
 	error = res_lib_cpg_join.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -438,7 +441,7 @@ cs_error_t cpg_leave (
 	struct req_lib_cpg_leave req_lib_cpg_leave;
 	struct res_lib_cpg_leave res_lib_cpg_leave;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -468,7 +471,7 @@ cs_error_t cpg_leave (
 	error = res_lib_cpg_leave.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -486,7 +489,7 @@ cs_error_t cpg_membership_get (
 	struct res_lib_cpg_confchg_callback res_lib_cpg_membership_get;
 	unsigned int i;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -524,7 +527,7 @@ cs_error_t cpg_membership_get (
 	}
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -539,7 +542,7 @@ cs_error_t cpg_local_get (
 	struct req_lib_cpg_local_get req_lib_cpg_local_get;
 	struct res_lib_cpg_local_get res_lib_cpg_local_get;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -566,7 +569,7 @@ cs_error_t cpg_local_get (
 	*local_nodeid = res_lib_cpg_local_get.local_nodeid;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -578,14 +581,14 @@ cs_error_t cpg_flow_control_state_get (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*flow_control_state = coroipcc_dispatch_flow_control_get (cpg_inst->ipc_ctx);
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -598,7 +601,7 @@ cs_error_t cpg_zcb_alloc (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -608,7 +611,7 @@ cs_error_t cpg_zcb_alloc (
 		size,
 		sizeof (struct req_lib_cpg_mcast));
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 	*buffer = ((char *)*buffer) + sizeof (struct req_lib_cpg_mcast);
 
 	return (error);
@@ -621,14 +624,14 @@ cs_error_t cpg_zcb_free (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	coroipcc_zcb_free (cpg_inst->ipc_ctx, ((char *)buffer) - sizeof (struct req_lib_cpg_mcast));
 
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -644,7 +647,7 @@ cs_error_t cpg_zcb_mcast_joined (
 	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -674,7 +677,7 @@ cs_error_t cpg_zcb_mcast_joined (
 	error = res_lib_cpg_mcast.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }
@@ -693,7 +696,7 @@ cs_error_t cpg_mcast_joined (
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 	size_t msg_len = 0;
 
-	error = saHandleInstanceGet (&cpg_handle_t_db, handle, (void *)&cpg_inst);
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -727,7 +730,7 @@ cs_error_t cpg_mcast_joined (
 	error = res_lib_cpg_mcast.header.error;
 
 error_exit:
-	saHandleInstancePut (&cpg_handle_t_db, handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
 }

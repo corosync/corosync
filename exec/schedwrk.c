@@ -39,7 +39,7 @@
 static void (*serialize_lock) (void);
 static void (*serialize_unlock) (void);
 
-DECLARE_HDB_DATABASE (schedwrk_instance_database);
+DECLARE_HDB_DATABASE (schedwrk_instance_database,NULL);
 
 struct schedwrk_instance {
 	int (*schedwrk_fn) (const void *);

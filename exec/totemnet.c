@@ -206,7 +206,7 @@ static int totemnet_build_sockets (
 
 static struct totem_ip_address localhost;
 
-DECLARE_HDB_DATABASE (totemnet_instance_database);
+DECLARE_HDB_DATABASE (totemnet_instance_database,NULL);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {

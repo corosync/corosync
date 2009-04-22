@@ -100,9 +100,9 @@ static pthread_rwlock_t reload_lock;
 static pthread_t lock_thread;
 static pthread_mutex_t meta_lock;
 
-DECLARE_HDB_DATABASE (object_instance_database);
+DECLARE_HDB_DATABASE (object_instance_database,NULL);
 
-DECLARE_HDB_DATABASE (object_find_instance_database);
+DECLARE_HDB_DATABASE (object_find_instance_database,NULL);
 
 static void objdb_wrlock(void)
 {

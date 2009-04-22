@@ -36,9 +36,10 @@
 #ifndef HDB_H_DEFINED
 #define HDB_H_DEFINED
 
+#include <errno.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <pthread.h>
 
 typedef unsigned long long hdb_handle_t;
@@ -60,6 +61,7 @@ struct hdb_handle_database {
 	unsigned int handle_count;
 	struct hdb_handle *handles;
 	unsigned int iterator;
+        void (*destructor) (void *);
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spinlock_t lock;
 #else
@@ -109,12 +111,17 @@ static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
 }
 #endif
 
-#define DECLARE_HDB_DATABASE(database_name)				\
-static struct hdb_handle_database (database_name); 			\
+#define DECLARE_HDB_DATABASE(database_name,destructor_function)		\
+static struct hdb_handle_database (database_name) = {			\
+	.handle_count	= 0,						\
+	.handles 	= NULL,						\
+	.iterator	= 0,						\
+	.destructor	= destructor_function,				\
+	.first_run	= 0						\
+};									\
 static void database_name##_init(void)__attribute__((constructor));	\
 static void database_name##_init(void)					\
 {                                                                       \
-	memset (&(database_name), 0, sizeof (struct hdb_handle_database));\
 	hdb_database_lock_init (&(database_name).lock);		\
 }
 
@@ -176,6 +183,7 @@ static inline int hdb_handle_create (
 			sizeof (struct hdb_handle) * handle_database->handle_count);
 		if (new_handles == NULL) {
 			hdb_database_unlock (&handle_database->lock);
+			errno = ENOMEM;
 			return (-1);
 		}
 		handle_database->handles = new_handles;
@@ -183,6 +191,7 @@ static inline int hdb_handle_create (
 
 	instance = (void *)malloc (instance_size);
 	if (instance == 0) {
+		errno = ENOMEM;
 		return (-1);
 	}
 
@@ -230,17 +239,20 @@ static inline int hdb_handle_get (
 		check != handle_database->handles[handle].check) {
 
 		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
 	*instance = NULL;
 	if (handle >= handle_database->handle_count) {
 		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
 	if (handle_database->handles[handle].state != HDB_HANDLE_STATE_ACTIVE) {
 		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
@@ -265,6 +277,7 @@ static inline int hdb_handle_put (
 		check != handle_database->handles[handle].check) {
 
 		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
@@ -272,6 +285,9 @@ static inline int hdb_handle_put (
 	assert (handle_database->handles[handle].ref_count >= 0);
 
 	if (handle_database->handles[handle].ref_count == 0) {
+		if (handle_database->destructor) {
+			handle_database->destructor (handle_database->handles[handle].instance);
+		}
 		free (handle_database->handles[handle].instance);
 		memset (&handle_database->handles[handle], 0, sizeof (struct hdb_handle));
 	}
@@ -292,6 +308,7 @@ static inline int hdb_handle_destroy (
 	if (check != 0xffffffff &&
 		check != handle_database->handles[handle].check) {
 		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 

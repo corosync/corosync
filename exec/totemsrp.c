@@ -612,7 +612,7 @@ void main_iface_change_fn (
 /*
  * All instances in one database
  */
-DECLARE_HDB_DATABASE (totemsrp_instance_database);
+DECLARE_HDB_DATABASE (totemsrp_instance_database,NULL);
 
 struct message_handlers totemsrp_message_handlers = {
 	6,

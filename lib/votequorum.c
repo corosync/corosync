@@ -51,11 +51,14 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/hdb.h>
 
 #include <corosync/votequorum.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_votequorum.h>
 #include <corosync/mar_gen.h>
+
+#include "util.h"
 
 struct votequorum_inst {
 	void *ipc_ctx;
@@ -68,7 +71,7 @@ struct votequorum_inst {
 
 static void votequorum_instance_destructor (void *instance);
 
-DECLARE_SAHDB_DATABASE(votequorum_handle_t_db,votequorum_instance_destructor);
+DECLARE_HDB_DATABASE(votequorum_handle_t_db,votequorum_instance_destructor);
 
 /*
  * Clean up function for a quorum instance (votequorum_initialize) handle
@@ -87,12 +90,12 @@ cs_error_t votequorum_initialize (
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
 
-	error = saHandleCreate (&votequorum_handle_t_db, sizeof (struct votequorum_inst), handle);
+	error = hdb_error_to_cs(hdb_handle_create (&votequorum_handle_t_db, sizeof (struct votequorum_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, *handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, *handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -115,14 +118,14 @@ cs_error_t votequorum_initialize (
 	else
 		memset(&votequorum_inst->callbacks, 0, sizeof (*callbacks));
 
-	saHandleInstancePut (&votequorum_handle_t_db, *handle);
+	hdb_handle_put (&votequorum_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	saHandleInstancePut (&votequorum_handle_t_db, *handle);
+	hdb_handle_put (&votequorum_handle_t_db, *handle);
 error_destroy:
-	saHandleDestroy (&votequorum_handle_t_db, *handle);
+	hdb_handle_destroy (&votequorum_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -133,7 +136,7 @@ cs_error_t votequorum_finalize (
 	struct votequorum_inst *votequorum_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -145,7 +148,7 @@ cs_error_t votequorum_finalize (
 	 */
 	if (votequorum_inst->finalize) {
 		pthread_mutex_unlock (&votequorum_inst->response_mutex);
-		saHandleInstancePut (&votequorum_handle_t_db, handle);
+		hdb_handle_put (&votequorum_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -155,9 +158,9 @@ cs_error_t votequorum_finalize (
 
 	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
-	saHandleDestroy (&votequorum_handle_t_db, handle);
+	hdb_handle_destroy (&votequorum_handle_t_db, handle);
 
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -174,7 +177,7 @@ cs_error_t votequorum_getinfo (
 	struct req_lib_votequorum_getinfo req_lib_votequorum_getinfo;
 	struct res_lib_votequorum_getinfo res_lib_votequorum_getinfo;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -212,7 +215,7 @@ cs_error_t votequorum_getinfo (
 	info->flags = res_lib_votequorum_getinfo.flags;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -227,7 +230,7 @@ cs_error_t votequorum_setexpected (
 	struct req_lib_votequorum_setexpected req_lib_votequorum_setexpected;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -258,7 +261,7 @@ cs_error_t votequorum_setexpected (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -274,7 +277,7 @@ cs_error_t votequorum_setvotes (
 	struct req_lib_votequorum_setvotes req_lib_votequorum_setvotes;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -305,7 +308,7 @@ cs_error_t votequorum_setvotes (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -324,7 +327,7 @@ cs_error_t votequorum_qdisk_register (
 	if (strlen(name) > VOTEQUORUM_MAX_QDISK_NAME_LEN)
 		return CS_ERR_INVALID_PARAM;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -356,7 +359,7 @@ cs_error_t votequorum_qdisk_register (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -371,7 +374,7 @@ cs_error_t votequorum_qdisk_poll (
 	struct req_lib_votequorum_qdisk_poll req_lib_votequorum_qdisk_poll;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -402,7 +405,7 @@ cs_error_t votequorum_qdisk_poll (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -416,7 +419,7 @@ cs_error_t votequorum_qdisk_unregister (
 	struct req_lib_votequorum_general req_lib_votequorum_general;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -445,7 +448,7 @@ cs_error_t votequorum_qdisk_unregister (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -462,7 +465,7 @@ cs_error_t votequorum_qdisk_getinfo (
 	struct req_lib_votequorum_general req_lib_votequorum_general;
 	struct res_lib_votequorum_qdisk_getinfo res_lib_votequorum_qdisk_getinfo;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -497,7 +500,7 @@ cs_error_t votequorum_qdisk_getinfo (
 
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -511,7 +514,7 @@ cs_error_t votequorum_setstate (
 	struct req_lib_votequorum_general req_lib_votequorum_general;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -540,7 +543,7 @@ cs_error_t votequorum_setstate (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -554,7 +557,7 @@ cs_error_t votequorum_leaving (
 	struct req_lib_votequorum_general req_lib_votequorum_general;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -584,7 +587,7 @@ cs_error_t votequorum_leaving (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -600,7 +603,7 @@ cs_error_t votequorum_trackstart (
 	struct req_lib_votequorum_trackstart req_lib_votequorum_trackstart;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -631,7 +634,7 @@ cs_error_t votequorum_trackstart (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -645,7 +648,7 @@ cs_error_t votequorum_trackstop (
 	struct req_lib_votequorum_general req_lib_votequorum_general;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -674,7 +677,7 @@ cs_error_t votequorum_trackstop (
 	error = res_lib_votequorum_status.header.error;
 
 error_exit:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (error);
 }
@@ -687,14 +690,14 @@ cs_error_t votequorum_context_get (
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*context = votequorum_inst->context;
 
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -706,14 +709,14 @@ cs_error_t votequorum_context_set (
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	votequorum_inst->context = context;
 
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -726,14 +729,14 @@ cs_error_t votequorum_fd_get (
 	cs_error_t error;
         struct votequorum_inst *votequorum_inst;
 
-        error = saHandleInstanceGet (&votequorum_handle_t_db, handle, (void *)&votequorum_inst);
+        error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
         if (error != CS_OK) {
                 return (error);
         }
 
 	*fd = coroipcc_fd_get (votequorum_inst->ipc_ctx);
 
-	(void)saHandleInstancePut (&votequorum_handle_t_db, handle);
+	(void)hdb_handle_put (&votequorum_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -759,8 +762,8 @@ cs_error_t votequorum_dispatch (
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	error = saHandleInstanceGet (&votequorum_handle_t_db, handle,
-		(void *)&votequorum_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle,
+		(void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -864,6 +867,6 @@ error_unlock:
 	pthread_mutex_unlock (&votequorum_inst->dispatch_mutex);
 
 error_put:
-	saHandleInstancePut (&votequorum_handle_t_db, handle);
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 	return (error);
 }

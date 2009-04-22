@@ -63,7 +63,7 @@ struct poll_instance {
 	int stop_requested;
 };
 
-DECLARE_HDB_DATABASE (poll_instance_database);
+DECLARE_HDB_DATABASE (poll_instance_database,NULL);
 
 hdb_handle_t poll_create (void)
 {

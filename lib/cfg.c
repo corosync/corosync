@@ -57,8 +57,11 @@
 #include <corosync/cfg.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_cfg.h>
+#include <corosync/hdb.h>
 
 #include <corosync/totem/totemip.h>
+
+#include "util.h"
 
 /*
  * Data structure for instance data
@@ -78,7 +81,7 @@ static void cfg_handle_instance_destructor (void *);
 /*
  * All instances in one database
  */
-DECLARE_SAHDB_DATABASE (cfg_hdb,cfg_handle_instance_destructor);
+DECLARE_HDB_DATABASE (cfg_hdb,cfg_handle_instance_destructor);
 
 /*
  * Implementation
@@ -99,12 +102,12 @@ corosync_cfg_initialize (
 	struct cfg_instance *cfg_instance;
 	cs_error_t error = CS_OK;
 
-	error = saHandleCreate (&cfg_hdb, sizeof (struct cfg_instance), cfg_handle);
+	error = hdb_error_to_cs (hdb_handle_create (&cfg_hdb, sizeof (struct cfg_instance), cfg_handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&cfg_hdb, *cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, *cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -128,14 +131,14 @@ corosync_cfg_initialize (
 
 	pthread_mutex_init (&cfg_instance->dispatch_mutex, NULL);
 
-	(void)saHandleInstancePut (&cfg_hdb, *cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, *cfg_handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	(void)saHandleInstancePut (&cfg_hdb, *cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, *cfg_handle);
 error_destroy:
-	(void)saHandleDestroy (&cfg_hdb, *cfg_handle);
+	(void)hdb_handle_destroy (&cfg_hdb, *cfg_handle);
 error_no_destroy:
 	return (error);
 }
@@ -148,14 +151,14 @@ corosync_cfg_fd_get (
 	struct cfg_instance *cfg_instance;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*selection_fd = coroipcc_fd_get (cfg_instance->ipc_ctx);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 	return (CS_OK);
 }
 
@@ -173,8 +176,8 @@ corosync_cfg_dispatch (
 	corosync_cfg_callbacks_t callbacks;
 	coroipc_response_header_t *dispatch_data;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -253,7 +256,7 @@ corosync_cfg_dispatch (
 	} while (cont);
 
 error_put:
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 error_nounlock:
 	return (error);
 }
@@ -265,7 +268,7 @@ corosync_cfg_finalize (
 	struct cfg_instance *cfg_instance;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -280,7 +283,7 @@ corosync_cfg_finalize (
 	if (cfg_instance->finalize) {
 		pthread_mutex_unlock (&cfg_instance->response_mutex);
 		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-		(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+		(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -296,9 +299,9 @@ corosync_cfg_finalize (
 
 	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
 
-	(void)saHandleDestroy (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_destroy (&cfg_hdb, cfg_handle);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -317,7 +320,7 @@ corosync_cfg_ring_status_get (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -382,7 +385,7 @@ error_free_interface_names:
 	free (*interface_names);
 
 no_error:
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -397,7 +400,7 @@ corosync_cfg_ring_reenable (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -417,7 +420,7 @@ corosync_cfg_ring_reenable (
 		sizeof (struct res_lib_cfg_ringreenable));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -434,7 +437,7 @@ corosync_cfg_service_load (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -459,7 +462,7 @@ corosync_cfg_service_load (
 		sizeof (struct res_lib_cfg_serviceload));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -476,7 +479,7 @@ corosync_cfg_service_unload (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle, (void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -501,7 +504,7 @@ corosync_cfg_service_unload (
 		sizeof (struct res_lib_cfg_serviceunload));
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -522,8 +525,8 @@ corosync_cfg_state_track (
 	req_lib_cfg_statetrack.track_flags = track_flags;
 	req_lib_cfg_statetrack.notification_buffer_address = (corosync_cfg_state_notification_t *)notification_buffer;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -541,7 +544,7 @@ corosync_cfg_state_track (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_statetrack.header.error : error);
 }
@@ -556,8 +559,8 @@ corosync_cfg_state_track_stop (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -577,7 +580,7 @@ corosync_cfg_state_track_stop (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_statetrackstop.header.error : error);
 }
@@ -597,8 +600,8 @@ corosync_cfg_kill_node (
 	if (strlen(reason) >= CS_MAX_NAME_LENGTH)
 		return CS_ERR_NAME_TOO_LONG;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -624,7 +627,7 @@ corosync_cfg_kill_node (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
@@ -640,8 +643,8 @@ corosync_cfg_try_shutdown (
 	cs_error_t error;
 	struct iovec iov;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -663,7 +666,7 @@ corosync_cfg_try_shutdown (
 
 	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
-	(void)saHandleInstancePut (&cfg_hdb, cfg_handle);
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
         return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }
@@ -679,8 +682,8 @@ corosync_cfg_replyto_shutdown (
 	struct iovec iov;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -721,8 +724,8 @@ cs_error_t corosync_cfg_get_node_addrs (
 	struct iovec iov;
 	void *return_address;
 
-	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
-		(void *)&cfg_instance);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_instance));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -788,7 +791,7 @@ cs_error_t corosync_cfg_local_get (
 	struct req_lib_cfg_local_get req_lib_cfg_local_get;
 	struct res_lib_cfg_local_get res_lib_cfg_local_get;
 
-	error = saHandleInstanceGet (&cfg_hdb, handle, (void *)&cfg_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, handle, (void *)&cfg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -819,7 +822,7 @@ cs_error_t corosync_cfg_local_get (
 	*local_nodeid = res_lib_cfg_local_get.local_nodeid;
 
 error_exit:
-	(void)saHandleInstancePut (&cfg_hdb, handle);
+	(void)hdb_handle_put (&cfg_hdb, handle);
 
 	return (error);
 }

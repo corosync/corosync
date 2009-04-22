@@ -55,6 +55,8 @@
 #include <corosync/ipc_confdb.h>
 #include <corosync/list.h>
 
+#include "util.h"
+
 #include "sa-confdb.h"
 
 #undef MIN
@@ -86,7 +88,7 @@ struct confdb_inst {
 
 static void confdb_instance_destructor (void *instance);
 
-DECLARE_SAHDB_DATABASE(confdb_handle_t_db,confdb_instance_destructor);
+DECLARE_HDB_DATABASE(confdb_handle_t_db,confdb_instance_destructor);
 
 static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, hdb_handle_t find_handle);
 
@@ -146,12 +148,12 @@ cs_error_t confdb_initialize (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleCreate (&confdb_handle_t_db, sizeof (struct confdb_inst), handle);
+	error = hdb_error_to_cs(hdb_handle_create (&confdb_handle_t_db, sizeof (struct confdb_inst), handle));
 	if (error != CS_OK) {
 		goto error_no_destroy;
 	}
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, *handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, *handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		goto error_destroy;
 	}
@@ -181,14 +183,14 @@ cs_error_t confdb_initialize (
 	list_init (&confdb_inst->object_iter_head);
 	list_init (&confdb_inst->key_iter_head);
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, *handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, *handle);
 
 	return (CS_OK);
 
 error_put_destroy:
-	(void)saHandleInstancePut (&confdb_handle_t_db, *handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, *handle);
 error_destroy:
-	(void)saHandleDestroy (&confdb_handle_t_db, *handle);
+	(void)hdb_handle_destroy (&confdb_handle_t_db, *handle);
 error_no_destroy:
 	return (error);
 }
@@ -199,7 +201,7 @@ cs_error_t confdb_finalize (
 	struct confdb_inst *confdb_inst;
 	cs_error_t error;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -211,7 +213,7 @@ cs_error_t confdb_finalize (
 	 */
 	if (confdb_inst->finalize) {
 		pthread_mutex_unlock (&confdb_inst->response_mutex);
-		(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+		(void)hdb_handle_put (&confdb_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
@@ -228,9 +230,9 @@ cs_error_t confdb_finalize (
 		coroipcc_service_disconnect (confdb_inst->ipc_ctx);
 	}
 
-	(void)saHandleDestroy (&confdb_handle_t_db, handle);
+	(void)hdb_handle_destroy (&confdb_handle_t_db, handle);
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -242,14 +244,14 @@ cs_error_t confdb_fd_get (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*fd = coroipcc_fd_get (confdb_inst->ipc_ctx);
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -261,14 +263,14 @@ cs_error_t confdb_context_get (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	*context = confdb_inst->context;
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -280,14 +282,14 @@ cs_error_t confdb_context_set (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
 	confdb_inst->context = context;
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (CS_OK);
 }
@@ -307,7 +309,7 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
 	coroipc_response_header_t *dispatch_data;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -421,7 +423,7 @@ cs_error_t confdb_dispatch (
 	} while (cont);
 
 error_put:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 error_noput:
 	return (error);
 }
@@ -439,7 +441,7 @@ cs_error_t confdb_object_create (
 	struct req_lib_confdb_object_create req_lib_confdb_object_create;
 	struct res_lib_confdb_object_create res_lib_confdb_object_create;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -481,7 +483,7 @@ cs_error_t confdb_object_create (
 	*object_handle = res_lib_confdb_object_create.object_handle;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -496,7 +498,7 @@ cs_error_t confdb_object_destroy (
 	struct req_lib_confdb_object_destroy req_lib_confdb_object_destroy;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -533,7 +535,7 @@ cs_error_t confdb_object_destroy (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -549,7 +551,7 @@ cs_error_t confdb_object_parent_get (
 	struct req_lib_confdb_object_parent_get req_lib_confdb_object_parent_get;
 	struct res_lib_confdb_object_parent_get res_lib_confdb_object_parent_get;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -587,7 +589,7 @@ cs_error_t confdb_object_parent_get (
 	*parent_object_handle = res_lib_confdb_object_parent_get.parent_object_handle;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -648,7 +650,7 @@ cs_error_t confdb_object_find_destroy(
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -660,7 +662,7 @@ cs_error_t confdb_object_find_destroy(
 		free(context);
 	}
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 	return error;
 }
 
@@ -672,7 +674,7 @@ cs_error_t confdb_object_iter_destroy(
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -684,7 +686,7 @@ cs_error_t confdb_object_iter_destroy(
 		free(context);
 	}
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 	return error;
 }
 
@@ -703,7 +705,7 @@ cs_error_t confdb_key_create (
 	struct req_lib_confdb_key_create req_lib_confdb_key_create;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -746,7 +748,7 @@ cs_error_t confdb_key_create (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -765,7 +767,7 @@ cs_error_t confdb_key_delete (
 	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -808,7 +810,7 @@ cs_error_t confdb_key_delete (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -827,7 +829,7 @@ cs_error_t confdb_key_get (
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_get res_lib_confdb_key_get;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -872,7 +874,7 @@ cs_error_t confdb_key_get (
 	}
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -890,7 +892,7 @@ cs_error_t confdb_key_increment (
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -934,7 +936,7 @@ cs_error_t confdb_key_increment (
 	}
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -952,7 +954,7 @@ cs_error_t confdb_key_decrement (
 	struct req_lib_confdb_key_get req_lib_confdb_key_get;
 	struct res_lib_confdb_key_incdec res_lib_confdb_key_incdec;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -996,7 +998,7 @@ cs_error_t confdb_key_decrement (
 	}
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1017,7 +1019,7 @@ cs_error_t confdb_key_replace (
 	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1062,7 +1064,7 @@ cs_error_t confdb_key_replace (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1075,7 +1077,7 @@ cs_error_t confdb_object_iter_start (
 	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1098,7 +1100,7 @@ cs_error_t confdb_object_iter_start (
 		context->find_handle = 0;
 	}
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1112,7 +1114,7 @@ cs_error_t confdb_key_iter_start (
 	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1131,7 +1133,7 @@ cs_error_t confdb_key_iter_start (
 	context->find_handle = 0;
 	context->next_entry = 0;
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1145,7 +1147,7 @@ cs_error_t confdb_object_find_start (
 	cs_error_t error = CS_OK;
 	struct iter_context *context;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1167,7 +1169,7 @@ cs_error_t confdb_object_find_start (
 		context->find_handle = 0;
 	}
 
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 ret:
 	return error;
@@ -1187,7 +1189,7 @@ cs_error_t confdb_object_find (
 	struct req_lib_confdb_object_find req_lib_confdb_object_find;
 	struct res_lib_confdb_object_find res_lib_confdb_object_find;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1239,7 +1241,7 @@ cs_error_t confdb_object_find (
 	context->find_handle = res_lib_confdb_object_find.find_handle;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1259,7 +1261,7 @@ cs_error_t confdb_object_iter (
 	struct req_lib_confdb_object_iter req_lib_confdb_object_iter;
 	struct res_lib_confdb_object_iter res_lib_confdb_object_iter;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1316,7 +1318,7 @@ cs_error_t confdb_object_iter (
 sa_exit:
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1336,7 +1338,7 @@ cs_error_t confdb_key_iter (
 	struct req_lib_confdb_key_iter req_lib_confdb_key_iter;
 	struct res_lib_confdb_key_iter res_lib_confdb_key_iter;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1393,7 +1395,7 @@ sa_exit:
 	context->next_entry++;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1409,7 +1411,7 @@ cs_error_t confdb_write (
 	coroipc_request_header_t req;
 	struct res_lib_confdb_write res_lib_confdb_write;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
 		return (error);
@@ -1452,7 +1454,7 @@ cs_error_t confdb_write (
 	}
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1469,7 +1471,7 @@ cs_error_t confdb_reload (
 	struct res_lib_confdb_reload res_lib_confdb_reload;
 	struct req_lib_confdb_reload req_lib_confdb_reload;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
 		return (error);
@@ -1514,7 +1516,7 @@ cs_error_t confdb_reload (
 	}
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1530,7 +1532,7 @@ cs_error_t confdb_track_changes (
 	struct req_lib_confdb_object_track_start req;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1565,7 +1567,7 @@ cs_error_t confdb_track_changes (
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }
@@ -1578,7 +1580,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	coroipc_request_header_t req;
 	coroipc_response_header_t res;
 
-	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
@@ -1611,7 +1613,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	error = res.error;
 
 error_exit:
-	(void)saHandleInstancePut (&confdb_handle_t_db, handle);
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
 }

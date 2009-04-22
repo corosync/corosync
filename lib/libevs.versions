@@ -23,8 +23,4 @@ COROSYNC_EVS_2.0 {
 		coroipcc_zcb_alloc;
 		coroipcc_zcb_free;
 		coroipcc_zcb_msg_send_reply_receive;
-		saHandleCreate;
-		saHandleDestroy;
-		saHandleInstanceGet;
-		saHandleInstancePut;
 };

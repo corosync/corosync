@@ -467,7 +467,7 @@ struct rrp_algo *rrp_algos[] = {
 /*
  * All instances in one database
  */
-DECLARE_HDB_DATABASE (totemrrp_instance_database);
+DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 
 #define log_printf(level, format, args...)				\
 do {									\
