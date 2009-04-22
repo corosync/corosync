@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Christine Caulfield (ccaulfie@redhat.com)
+ * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,41 +31,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef IPC_QUORUM_H_DEFINED
-#define IPC_QUORUM_H_DEFINED
 
-#include <corosync/corotypes.h>
+#ifndef COROIPC_TYPES_H_DEFINED
+#define COROIPC_TYPES_H_DEFINED
 
-enum req_quorum_types {
-	MESSAGE_REQ_QUORUM_GETQUORATE = 0,
-	MESSAGE_REQ_QUORUM_TRACKSTART,
-	MESSAGE_REQ_QUORUM_TRACKSTOP
-};
+#include <config.h>
 
-enum res_quorum_types {
-	MESSAGE_RES_QUORUM_GETQUORATE = 0,
-	MESSAGE_RES_QUORUM_TRACKSTART,
-	MESSAGE_RES_QUORUM_TRACKSTOP,
-	MESSAGE_RES_QUORUM_NOTIFICATION
-};
+typedef struct {
+	int size __attribute__((aligned(8)));
+	int id __attribute__((aligned(8)));
+} coroipc_request_header_t __attribute__((aligned(8)));
 
-struct req_lib_quorum_trackstart {
-        coroipc_request_header_t header __attribute__((aligned(8)));
-	unsigned int track_flags;
-};
+typedef struct {
+	int size __attribute__((aligned(8)));
+	int id __attribute__((aligned(8)));
+	cs_error_t error __attribute__((aligned(8)));
+} coroipc_response_header_t __attribute__((aligned(8)));
 
-
-struct res_lib_quorum_getquorate {
-        coroipc_response_header_t header __attribute__((aligned(8)));
-	mar_uint32_t quorate;
-};
-
-struct res_lib_quorum_notification {
-	coroipc_response_header_t header __attribute__((aligned(8)));
-	mar_int32_t quorate __attribute__((aligned(8)));
-	mar_uint64_t ring_seq __attribute__((aligned(8)));
-	mar_uint32_t view_list_entries __attribute__((aligned(8)));
-	mar_uint32_t view_list[];
-};
-
-#endif
+#endif /* COROIPC_TYPES_H_DEFINED */

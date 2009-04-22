@@ -46,11 +46,16 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
+
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
-#include "corosync/votequorum.h"
-#include "corosync/ipc_votequorum.h"
+#include <corosync/corodefs.h>
+
+#include <corosync/votequorum.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_votequorum.h>
+#include <corosync/mar_gen.h>
 
 struct votequorum_inst {
 	void *ipc_ctx;
@@ -93,7 +98,7 @@ cs_error_t votequorum_initialize (
 	}
 
 	error = coroipcc_service_connect (
-		IPC_SOCKET_NAME,
+		COROSYNC_SOCKET_NAME,
 		VOTEQUORUM_SERVICE,
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
@@ -743,7 +748,7 @@ cs_error_t votequorum_dispatch (
 	int dispatch_avail;
 	struct votequorum_inst *votequorum_inst;
 	votequorum_callbacks_t callbacks;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
 

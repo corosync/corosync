@@ -58,7 +58,9 @@
 #include <time.h>
 
 #include <corosync/engine/logsys.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/swab.h>

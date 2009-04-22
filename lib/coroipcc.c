@@ -59,7 +59,8 @@
 #include <sys/mman.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/coroipc_ipc.h>
 #include <corosync/coroipcc.h>
 
 enum SA_HANDLE_STATE {
@@ -643,7 +644,7 @@ int
 coroipcc_dispatch_put (void *ipc_ctx)
 {
 	struct sembuf sop;
-	mar_res_header_t *header;
+	coroipc_response_header_t *header;
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
 	int res;
 	char *addr;
@@ -668,7 +669,7 @@ retry_semop:
 	addr = ipc_segment->dispatch_buffer;
 
 	read_idx = ipc_segment->control_buffer->read;
-	header = (mar_res_header_t *) &addr[read_idx];
+	header = (coroipc_response_header_t *) &addr[read_idx];
 	ipc_segment->control_buffer->read =
 		(read_idx + header->size) % ipc_segment->dispatch_size;
 	return (0);
@@ -872,7 +873,7 @@ coroipcc_zcb_alloc (
 	char path[128];
 	unsigned int res;
 	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
-	mar_res_header_t res_coroipcs_zc_alloc;
+	coroipc_response_header_t res_coroipcs_zc_alloc;
 	size_t map_size;
 	struct iovec iovec;
 	struct coroipcs_zc_header *hdr;
@@ -895,7 +896,7 @@ coroipcc_zcb_alloc (
 		&iovec,
 		1,
 		&res_coroipcs_zc_alloc,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	hdr = (struct coroipcs_zc_header *)buf;
 	hdr->map_size = map_size;
@@ -909,7 +910,7 @@ coroipcc_zcb_free (
 	void *buffer)
 {
 	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
-	mar_res_header_t res_coroipcs_zc_free;
+	coroipc_response_header_t res_coroipcs_zc_free;
 	struct iovec iovec;
 	unsigned int res;
 
@@ -928,7 +929,7 @@ coroipcc_zcb_free (
 		&iovec,
 		1,
 		&res_coroipcs_zc_free,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	munmap (header, header->map_size);
 

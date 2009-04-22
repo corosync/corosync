@@ -48,13 +48,17 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
+
 #include <corosync/corotypes.h>
-#include <corosync/cfg.h>
-#include <corosync/totem/totemip.h>
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
-#include <corosync/ipc_cfg.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
+#include <corosync/corodefs.h>
+
+#include <corosync/cfg.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_cfg.h>
+
+#include <corosync/totem/totemip.h>
 
 /*
  * Data structure for instance data
@@ -106,7 +110,7 @@ corosync_cfg_initialize (
 	}
 
 	error = coroipcc_service_connect (
-		IPC_SOCKET_NAME,
+		COROSYNC_SOCKET_NAME,
 		CFG_SERVICE,
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
@@ -167,7 +171,7 @@ corosync_cfg_dispatch (
 	struct cfg_instance *cfg_instance;
 	struct res_lib_cfg_testshutdown *res_lib_cfg_testshutdown;
 	corosync_cfg_callbacks_t callbacks;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 
 	error = saHandleInstanceGet (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance);
@@ -789,7 +793,7 @@ cs_error_t corosync_cfg_local_get (
 		return (error);
 	}
 
-	req_lib_cfg_local_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cfg_local_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cfg_local_get.header.id = MESSAGE_REQ_CFG_LOCAL_GET;
 
 	iov.iov_base = &req_lib_cfg_local_get;

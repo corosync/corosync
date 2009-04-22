@@ -43,6 +43,8 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 
 #include "main.h"
 

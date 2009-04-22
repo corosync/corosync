@@ -39,11 +39,11 @@
 #define FALSE 0
 #include <corosync/corotypes.h>
 #include <corosync/hdb.h>
-#include <corosync/ipc_gen.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
+#include <corosync/mar_gen.h>
 
 extern struct totempg_group corosync_group;
 

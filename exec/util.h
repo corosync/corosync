@@ -36,7 +36,6 @@
 #define UTIL_H_DEFINED
 
 #include <sys/time.h>
-#include <corosync/mar_gen.h>
 #include <corosync/corotypes.h>
 
 /*

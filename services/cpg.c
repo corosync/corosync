@@ -55,11 +55,13 @@
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/cfg.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/jhash.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
+#include <corosync/mar_cpg.h>
 #include <corosync/ipc_cpg.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
@@ -212,7 +214,7 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_membership,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CPG_MEMBERSHIP,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -328,14 +330,14 @@ __attribute__ ((constructor)) static void cpg_comp_register (void) {
 }
 
 struct req_exec_cpg_procjoin {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 	mar_uint32_t reason __attribute__((aligned(8)));
 };
 
 struct req_exec_cpg_mcast {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
@@ -344,7 +346,7 @@ struct req_exec_cpg_mcast {
 };
 
 struct req_exec_cpg_downlist {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint32_t left_nodes __attribute__((aligned(8)));
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
 };
@@ -696,8 +698,8 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 static void exec_cpg_joinlist_endian_convert (void *msg_v)
 {
 	char *msg = msg_v;
-	mar_res_header_t *res = (mar_res_header_t *)msg;
-	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(mar_res_header_t));
+	coroipc_response_header_t *res = (coroipc_response_header_t *)msg;
+	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(coroipc_response_header_t));
 
 	/* XXX shouldn't mar_res_header be swabbed? */
 
@@ -725,7 +727,7 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 {
 	struct req_exec_cpg_mcast *req_exec_cpg_mcast = msg;
 
-	swab_mar_req_header_t (&req_exec_cpg_mcast->header);
+	swab_coroipc_request_header_t (&req_exec_cpg_mcast->header);
 	swab_mar_cpg_name_t (&req_exec_cpg_mcast->group_name);
 	req_exec_cpg_mcast->pid = swab32(req_exec_cpg_mcast->pid);
 	req_exec_cpg_mcast->msglen = swab32(req_exec_cpg_mcast->msglen);
@@ -883,8 +885,8 @@ static void message_handler_req_exec_cpg_joinlist (
 	unsigned int nodeid)
 {
 	const char *message = message_v;
-	const mar_res_header_t *res = (const mar_res_header_t *)message;
-	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(mar_res_header_t));
+	const coroipc_response_header_t *res = (const coroipc_response_header_t *)message;
+	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(coroipc_response_header_t));
 
 	log_printf(LOGSYS_LEVEL_NOTICE, "got joinlist message from node %d\n",
 		nodeid);
@@ -953,7 +955,7 @@ static int cpg_exec_send_joinlist(void)
 	struct list_head *iter;
 	struct list_head *iter2;
 	struct group_info *gi;
-	mar_res_header_t *res;
+	coroipc_response_header_t *res;
 	struct join_list_entry *jle;
 	struct iovec req_exec_cpg_iovec;
 
@@ -976,14 +978,14 @@ static int cpg_exec_send_joinlist(void)
 	if (!count)
 		return 0;
 
-	buf = alloca(sizeof(mar_res_header_t) + sizeof(struct join_list_entry) * count);
+	buf = alloca(sizeof(coroipc_response_header_t) + sizeof(struct join_list_entry) * count);
 	if (!buf) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate joinlist buffer");
 		return -1;
 	}
 
-	jle = (struct join_list_entry *)(buf + sizeof(mar_res_header_t));
-	res = (mar_res_header_t *)buf;
+	jle = (struct join_list_entry *)(buf + sizeof(coroipc_response_header_t));
+	res = (coroipc_response_header_t *)buf;
 
 	for (i=0; i<GROUP_HASH_SIZE; i++) {
 		for (iter = group_lists[i].next; iter != &group_lists[i]; iter = iter->next) {
@@ -1002,7 +1004,7 @@ static int cpg_exec_send_joinlist(void)
 	}
 
 	res->id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_JOINLIST);
-	res->size = sizeof(mar_res_header_t)+sizeof(struct join_list_entry) * count;
+	res->size = sizeof(coroipc_response_header_t)+sizeof(struct join_list_entry) * count;
 
 	req_exec_cpg_iovec.iov_base = buf;
 	req_exec_cpg_iovec.iov_len = res->size;
@@ -1144,7 +1146,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got membership request on %p\n", conn);
 	if (!pi->group) {
-		mar_res_header_t res;
+		coroipc_response_header_t res;
 		res.size = sizeof(res);
 		res.id = MESSAGE_RES_CPG_MEMBERSHIP;
 		res.error = CS_ERR_ACCESS; /* TODO Better error code */

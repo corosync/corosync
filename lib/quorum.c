@@ -45,12 +45,16 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+
 #include <corosync/corotypes.h>
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
-#include "corosync/quorum.h"
-#include "corosync/ipc_quorum.h"
+#include <corosync/corodefs.h>
+
+#include <corosync/quorum.h>
+#include <corosync/mar_gen.h>
+#include <corosync/mar_cpg.h>
+#include <corosync/ipc_quorum.h>
 
 struct quorum_inst {
 	void *ipc_ctx;
@@ -93,7 +97,7 @@ cs_error_t quorum_initialize (
 	}
 
 	error = coroipcc_service_connect (
-		IPC_SOCKET_NAME,
+		COROSYNC_SOCKET_NAME,
 		QUORUM_SERVICE,
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
@@ -164,7 +168,7 @@ cs_error_t quorum_getquorate (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
-	mar_req_header_t req;
+	coroipc_request_header_t req;
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
@@ -270,7 +274,7 @@ cs_error_t quorum_trackstart (
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
 	struct req_lib_quorum_trackstart req_lib_quorum_trackstart;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
 	if (error != CS_OK) {
@@ -313,8 +317,8 @@ cs_error_t quorum_trackstop (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
-	mar_req_header_t req;
-	mar_res_header_t res;
+	coroipc_request_header_t req;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&quorum_handle_t_db, handle, (void *)&quorum_inst);
 	if (error != CS_OK) {
@@ -360,7 +364,7 @@ cs_error_t quorum_dispatch (
 	int dispatch_avail;
 	struct quorum_inst *quorum_inst;
 	quorum_callbacks_t callbacks;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&

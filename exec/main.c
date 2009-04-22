@@ -58,6 +58,8 @@
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>
@@ -66,6 +68,7 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/coroipcs.h>
 
 #include "quorum.h"
 #include "totemsrp.h"
@@ -75,7 +78,6 @@
 #include "main.h"
 #include "sync.h"
 #include "tlist.h"
-#include "coroipcs.h"
 #include "timer.h"
 #include "util.h"
 #include "apidef.h"
@@ -421,7 +423,7 @@ static void deliver_fn (
 	unsigned int iov_len,
 	int endian_conversion_required)
 {
-	mar_req_header_t *header;
+	coroipc_request_header_t *header;
 	int pos = 0;
 	int i;
 	int service;
@@ -438,9 +440,9 @@ static void deliver_fn (
 			pos += iovec[i].iov_len;
 			assert (pos < MESSAGE_SIZE_MAX);
 		}
-		header = (mar_req_header_t *)delivery_data;
+		header = (coroipc_request_header_t *)delivery_data;
 	} else {
-		header = (mar_req_header_t *)iovec[0].iov_base;
+		header = (coroipc_request_header_t *)iovec[0].iov_base;
 	}
 	if (endian_conversion_required) {
 		header->id = swab32 (header->id);
@@ -571,7 +573,7 @@ static int corosync_sending_allowed (
 	struct sending_allowed_private_data_struct *pd =
 		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
 	struct iovec reserve_iovec;
-	mar_req_header_t *header = (mar_req_header_t *)msg;
+	coroipc_request_header_t *header = (coroipc_request_header_t *)msg;
 	int sending_allowed;
 
 	reserve_iovec.iov_base = (char *)header;
@@ -662,7 +664,7 @@ static void corosync_poll_dispatch_modify (
 }
 
 struct coroipcs_init_state ipc_init_state = {
-	.socket_name			= IPC_SOCKET_NAME,
+	.socket_name			= COROSYNC_SOCKET_NAME,
 	.malloc				= malloc,
 	.free				= free,
 	.log_printf			= ipc_log_printf,

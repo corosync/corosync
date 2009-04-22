@@ -48,11 +48,15 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/totem/totem.h>
+
 #include <corosync/corotypes.h>
-#include <corosync/evs.h>
-#include <corosync/ipc_evs.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
+#include <corosync/corodefs.h>
+
+#include <corosync/evs.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_evs.h>
 
 #undef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -111,7 +115,7 @@ evs_error_t evs_initialize (
 	}
 
 	error = coroipcc_service_connect (
-		IPC_SOCKET_NAME,
+		COROSYNC_SOCKET_NAME,
 		EVS_SERVICE,
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
@@ -204,7 +208,7 @@ evs_error_t evs_dispatch (
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 	int ignore_dispatch = 0;
 
 	error = saHandleInstanceGet (&evs_handle_t_db, handle, (void *)&evs_inst);

@@ -1,13 +1,12 @@
 /*
- * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,29 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef IPC_GEN_H_DEFINED
-#define IPC_GEN_H_DEFINED
-
-#include <corosync/mar_gen.h>
-
-enum service_types {
-	EVS_SERVICE = 0,
-	CLM_SERVICE = 1,
-	AMF_SERVICE = 2,
-	CKPT_SERVICE = 3,
-	EVT_SERVICE = 4,
-	LCK_SERVICE = 5,
-	MSG_SERVICE = 6,
-	CFG_SERVICE = 7,
-	CPG_SERVICE = 8,
-	CONFDB_SERVICE = 10,
-	QUORUM_SERVICE = 11,
-	PLOAD_SERVICE = 12,
-	TMR_SERVICE = 13,
-	VOTEQUORUM_SERVICE = 14,
-};
-
-#define IPC_SOCKET_NAME "corosync.ipc"
+#ifndef COROIPC_IPC_H_DEFINED
+#define COROIPC_IPC_H_DEFINED
 
 enum req_init_types {
 	MESSAGE_REQ_RESPONSE_INIT = 0,
@@ -64,10 +42,6 @@ enum req_init_types {
 #define MESSAGE_REQ_CHANGE_EUID		1
 #define MESSAGE_REQ_OUTQ_FLUSH		2
 
-#define IPC_REQUEST_SIZE		8192*128
-#define IPC_RESPONSE_SIZE		8192*128
-#define IPC_DISPATCH_SIZE		8192*128
-
 struct control_buffer {
 	unsigned int read;
 	unsigned int write;
@@ -76,11 +50,6 @@ struct control_buffer {
 enum res_init_types {
 	MESSAGE_RES_INIT
 };
-
-typedef struct {
-	int size __attribute__((aligned(8)));
-	int id __attribute__((aligned(8)));
-} mar_req_header_t __attribute__((aligned(8)));
 
 typedef struct {
 	int service __attribute__((aligned(8)));
@@ -99,51 +68,39 @@ typedef struct {
 	int error __attribute__((aligned(8)));
 } mar_res_setup_t __attribute__((aligned(8)));
 
-static inline void swab_mar_req_header_t (mar_req_header_t *to_swab)
-{
-	swab_mar_int32_t (&to_swab->size);
-	swab_mar_int32_t (&to_swab->id);
-}
-
-typedef struct {
-	int size; __attribute__((aligned(8)))
-	int id __attribute__((aligned(8)));
-	cs_error_t error __attribute__((aligned(8)));
-} mar_res_header_t __attribute__((aligned(8)));
-
 typedef struct {
         uid_t euid __attribute__((aligned(8)));
         gid_t egid __attribute__((aligned(8)));
 } mar_req_priv_change __attribute__((aligned(8)));
 
 typedef struct {
-	mar_res_header_t header __attribute__((aligned(8)));
-	mar_uint64_t conn_info __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	uint64_t conn_info __attribute__((aligned(8)));
 } mar_res_lib_response_init_t __attribute__((aligned(8)));
 
 typedef struct {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 } mar_res_lib_dispatch_init_t __attribute__((aligned(8)));
 
 typedef struct {
-	mar_uint32_t nodeid __attribute__((aligned(8)));
+	uint32_t nodeid __attribute__((aligned(8)));
 	void *conn __attribute__((aligned(8)));
 } mar_message_source_t __attribute__((aligned(8)));
 
 typedef struct {
-        mar_req_header_t header __attribute__((aligned(8)));
+        coroipc_request_header_t header __attribute__((aligned(8)));
         size_t map_size __attribute__((aligned(8)));
         char path_to_file[128] __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
 
 typedef struct {
-        mar_req_header_t header __attribute__((aligned(8)));
+        coroipc_request_header_t header __attribute__((aligned(8)));
         size_t map_size __attribute__((aligned(8)));
 	uint64_t server_address __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_free_t __attribute__((aligned(8)));
 
 typedef struct {
-        mar_req_header_t header __attribute__((aligned(8)));
+        coroipc_request_header_t header __attribute__((aligned(8)));
 	uint64_t server_address __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_execute_t __attribute__((aligned(8)));
 
@@ -151,19 +108,9 @@ struct coroipcs_zc_header {
 	int map_size;
 	uint64_t server_address;
 };
-static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
-{
-	swab_mar_uint32_t (&to_swab->nodeid);
-	/*
-	 * if it is from a byteswapped machine, then we can safely
-	 * ignore its conn info data structure since this is only
-	 * local to the machine
-	 */
-	to_swab->conn = NULL;
-}
 
 #define ZC_ALLOC_HEADER		0xFFFFFFFF
 #define ZC_FREE_HEADER		0xFFFFFFFE
 #define ZC_EXECUTE_HEADER	0xFFFFFFFD
 
-#endif /* IPC_GEN_H_DEFINED */
+#endif /* COROIPC_IPC_H_DEFINED */

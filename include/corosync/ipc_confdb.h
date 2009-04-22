@@ -36,7 +36,6 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
-#include "ipc_gen.h"
 
 enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_OBJECT_CREATE = 0,
@@ -83,48 +82,48 @@ enum res_confdb_types {
 
 
 struct req_lib_confdb_object_create {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_create {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_destroy {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_parent_get {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_parent_get {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 };
 
 
 struct req_lib_confdb_key_create {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_delete {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_replace {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t old_value __attribute__((aligned(8)));
@@ -132,81 +131,81 @@ struct req_lib_confdb_key_replace {
 };
 
 struct req_lib_confdb_object_find {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_find {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_iter {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_iter {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_iter {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t next_entry __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_iter {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_get {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_find_destroy {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_get {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_incdec {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t value __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_write {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t error __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_reload {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_int32_t flush __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_reload {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t error __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_change_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t change_type __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
@@ -216,20 +215,20 @@ struct res_lib_confdb_key_change_callback {
 };
 
 struct res_lib_confdb_object_create_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t name __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_destroy_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t name __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_track_start {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint32_t flags __attribute__((aligned(8)));
 };

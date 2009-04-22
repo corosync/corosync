@@ -60,6 +60,7 @@
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>

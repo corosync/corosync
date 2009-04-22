@@ -36,8 +36,6 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
-#include "ipc_gen.h"
-#include "mar_cpg.h"
 
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
@@ -75,58 +73,58 @@ enum lib_cpg_confchg_reason {
 };
 
 struct req_lib_cpg_join {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_join {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstart {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstart {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstop {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstop {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_local_get {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_local_get {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_mcast {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t guarantee __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_mcast {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 /* Message from another node */
 struct res_lib_cpg_deliver_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t nodeid __attribute__((aligned(8)));
@@ -135,17 +133,17 @@ struct res_lib_cpg_deliver_callback {
 };
 
 struct res_lib_cpg_flowcontrol_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_membership {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 //	mar_cpg_name_t group_name __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_confchg_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t member_list_entries __attribute__((aligned(8)));
 	mar_uint32_t joined_list_entries __attribute__((aligned(8)));
@@ -156,26 +154,26 @@ struct res_lib_cpg_confchg_callback {
 };
 
 struct req_lib_cpg_leave {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_leave {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_groups_get {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_groups_get {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t num_groups __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_groups_get_callback {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t group_num  __attribute__((aligned(8)));
 	mar_uint32_t total_groups  __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));

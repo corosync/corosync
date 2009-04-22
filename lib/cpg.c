@@ -48,10 +48,14 @@
 #include <errno.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/cpg.h>
-#include <corosync/ipc_cpg.h>
-#include <corosync/mar_cpg.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
+#include <corosync/corodefs.h>
+
+#include <corosync/cpg.h>
+#include <corosync/mar_gen.h>
+#include <corosync/mar_cpg.h>
+#include <corosync/ipc_cpg.h>
 
 struct cpg_inst {
 	void *ipc_ctx;
@@ -103,7 +107,7 @@ cs_error_t cpg_initialize (
 	}
 
 	error = coroipcc_service_connect (
-		IPC_SOCKET_NAME,
+		COROSYNC_SOCKET_NAME,
 		CPG_SERVICE,
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
@@ -235,7 +239,7 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	cpg_callbacks_t callbacks;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 	int ignore_dispatch = 0;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
@@ -501,16 +505,16 @@ cs_error_t cpg_membership_get (
 		return (error);
 	}
 
-	req_lib_cpg_membership_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cpg_membership_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
 
 	iov.iov_base = &req_lib_cpg_membership_get;
-	iov.iov_len = sizeof (mar_req_header_t);
+	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	pthread_mutex_lock (&cpg_inst->response_mutex);
 
 	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
-		&res_lib_cpg_membership_get, sizeof (mar_res_header_t));
+		&res_lib_cpg_membership_get, sizeof (coroipc_response_header_t));
 
 	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
@@ -552,7 +556,7 @@ cs_error_t cpg_local_get (
 		return (error);
 	}
 
-	req_lib_cpg_local_get.header.size = sizeof (mar_req_header_t);
+	req_lib_cpg_local_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cpg_local_get.header.id = MESSAGE_REQ_CPG_LOCAL_GET;
 
 	iov.iov_base = &req_lib_cpg_local_get;

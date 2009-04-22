@@ -33,8 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef COROIPC_H_DEFINED
-#define COROIPC_H_DEFINED
+#ifndef COROIPCC_H_DEFINED
+#define COROIPCC_H_DEFINED
 
 #include <config.h>
 
@@ -42,7 +42,6 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <corosync/corotypes.h>
-#include <corosync/ipc_gen.h>
 
 extern cs_error_t
 coroipcc_service_connect (
@@ -159,4 +158,4 @@ saHandleInstancePut (
 	struct saHandleDatabase *handleDatabase,
 	uint64_t handle);
 
-#endif /* COROIPC_H_DEFINED */
+#endif /* COROIPCC_H_DEFINED */

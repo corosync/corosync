@@ -53,7 +53,9 @@
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
+#include <corosync/mar_gen.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/ipc_evs.h>

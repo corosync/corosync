@@ -51,16 +51,17 @@
 #include <string.h>
 
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/ipc_cfg.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
+#include <corosync/corodefs.h>
 
 LOGSYS_DECLARE_SUBSYS ("CFG");
 
@@ -331,18 +332,18 @@ __attribute__ ((constructor)) static void register_this_component (void) {
 }
 
 struct req_exec_cfg_ringreenable {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
         mar_message_source_t source __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_killnode {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
         mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_name_t reason __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_shutdown {
-	mar_req_header_t header __attribute__((aligned(8)));
+	coroipc_request_header_t header __attribute__((aligned(8)));
 };
 
 /* IMPL */

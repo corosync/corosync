@@ -57,7 +57,7 @@
 #include <corosync/totem/totem.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/coroipc_types.h>
 #include "quorum.h"
 #include "sync.h"
 
@@ -128,7 +128,7 @@ static struct totempg_group sync_group = {
 static hdb_handle_t sync_group_handle;
 
 struct req_exec_sync_barrier_start {
-	mar_req_header_t header;
+	coroipc_request_header_t header;
 	struct memb_ring_id ring_id;
 };
 

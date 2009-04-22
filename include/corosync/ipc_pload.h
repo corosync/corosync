@@ -35,8 +35,13 @@
 #define IPC_PLOAD_H_DEFINED
 
 #include <corosync/corotypes.h>
-#include "pload.h"
-#include "ipc_gen.h"
+#include <corosync/coroipc_types.h>
+#include <corosync/coroipcc.h>
+#include <corosync/corodefs.h>
+
+#include <corosync/pload.h>
+#include <corosync/mar_gen.h>
+#include <corosync/ipc_pload.h>
 
 enum req_lib_evs_types {
 	MESSAGE_REQ_PLOAD_START = 0,
@@ -47,16 +52,16 @@ enum res_lib_evs_types {
 };
 
 struct res_lib_pload_start {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 	unsigned int dataset[1024];
 };
 
 struct res_lib_pload_mcast {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 };
 
 struct req_lib_pload_start {
-	mar_req_header_t header;
+	coroipc_request_header_t header;
 	unsigned int msg_code;
 	unsigned int msg_size;
 	unsigned int msg_count;
@@ -64,7 +69,7 @@ struct req_lib_pload_start {
 };
 
 struct req_lib_pload_mcast {
-	mar_req_header_t header;
+	coroipc_request_header_t header;
 	unsigned int code;
 };
 

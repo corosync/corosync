@@ -216,7 +216,6 @@ typedef void (*sync_callback_fn_t) (
 
 #endif /* QUORUM_H_DEFINED */
 
-
 struct corosync_api_v1 {
 	/*
 	 * Object and configuration APIs

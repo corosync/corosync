@@ -44,11 +44,15 @@
 #include <sys/types.h>
 #include <errno.h>
 
+
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/coroipcc.h>
+#include <corosync/corodefs.h>
+
+#include <corosync/mar_gen.h>
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
-#include <corosync/mar_gen.h>
-#include <corosync/coroipcc.h>
 #include <corosync/list.h>
 
 #include "sa-confdb.h"
@@ -158,7 +162,7 @@ cs_error_t confdb_initialize (
 	}
 	else {
 		error = coroipcc_service_connect (
-			IPC_SOCKET_NAME,
+			COROSYNC_SOCKET_NAME,
 			CONFDB_SERVICE,
 			IPC_REQUEST_SIZE,
 			IPC_RESPONSE_SIZE,
@@ -301,7 +305,7 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
-	mar_res_header_t *dispatch_data;
+	coroipc_response_header_t *dispatch_data;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -490,7 +494,7 @@ cs_error_t confdb_object_destroy (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_object_destroy req_lib_confdb_object_destroy;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -519,7 +523,7 @@ cs_error_t confdb_object_destroy (
 		&iov,
 		1,
                 &res,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -595,7 +599,7 @@ static cs_error_t do_find_destroy(
 	cs_error_t error;
 	struct iovec iov;
 	struct req_lib_confdb_object_find_destroy req_lib_confdb_object_find_destroy;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	if (!find_handle)
 		return CS_OK;
@@ -622,7 +626,7 @@ static cs_error_t do_find_destroy(
 		&iov,
 		1,
                 &res,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -697,7 +701,7 @@ cs_error_t confdb_key_create (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_create req_lib_confdb_key_create;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -759,7 +763,7 @@ cs_error_t confdb_key_delete (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -1011,7 +1015,7 @@ cs_error_t confdb_key_replace (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -1402,7 +1406,7 @@ cs_error_t confdb_write (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	mar_req_header_t req;
+	coroipc_request_header_t req;
 	struct res_lib_confdb_write res_lib_confdb_write;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
@@ -1419,11 +1423,11 @@ cs_error_t confdb_write (
 		goto error_exit;
 	}
 
-	req.size = sizeof (mar_req_header_t);
+	req.size = sizeof (coroipc_request_header_t);
 	req.id = MESSAGE_REQ_CONFDB_WRITE;
 
 	iov.iov_base = (char *)&req;
-	iov.iov_len = sizeof (mar_req_header_t);
+	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
@@ -1524,7 +1528,7 @@ cs_error_t confdb_track_changes (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_object_track_start req;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -1551,7 +1555,7 @@ cs_error_t confdb_track_changes (
 		&iov,
 		1,
                 &res,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
@@ -1571,8 +1575,8 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	mar_req_header_t req;
-	mar_res_header_t res;
+	coroipc_request_header_t req;
+	coroipc_response_header_t res;
 
 	error = saHandleInstanceGet (&confdb_handle_t_db, handle, (void *)&confdb_inst);
 	if (error != CS_OK) {
@@ -1584,11 +1588,11 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 		goto error_exit;
 	}
 
-	req.size = sizeof (mar_req_header_t);
+	req.size = sizeof (coroipc_request_header_t);
 	req.id = MESSAGE_REQ_CONFDB_TRACK_STOP;
 
 	iov.iov_base = (char *)&req;
-	iov.iov_len = sizeof (mar_req_header_t);
+	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	pthread_mutex_lock (&confdb_inst->response_mutex);
 
@@ -1597,7 +1601,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 		&iov,
 		1,
                 &res,
-		sizeof (mar_res_header_t));
+		sizeof (coroipc_response_header_t));
 
 	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {

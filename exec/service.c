@@ -43,6 +43,8 @@
 #include <corosync/swab.h>
 #include <corosync/totem/totem.h>
 
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include "mainconfig.h"
 #include "util.h"
 #include <corosync/engine/logsys.h>
@@ -51,7 +53,6 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include "main.h"
-#include "coroipcs.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 

@@ -69,8 +69,9 @@
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
 
-#include "coroipcs.h"
-#include <corosync/ipc_gen.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/coroipcs.h>
+#include <corosync/coroipc_ipc.h>
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -430,7 +431,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 }
 
 struct res_overlay {
-	mar_res_header_t header __attribute__((aligned(8)));
+	coroipc_response_header_t header __attribute__((aligned(8)));
 	char buf[4096];
 };
 
@@ -457,15 +458,15 @@ static void *serveraddr2void (uint64_t server_addr)
 
 static inline void zerocopy_operations_process (
 	struct conn_info *conn_info,
-	mar_req_header_t **header_out,
+	coroipc_request_header_t **header_out,
 	unsigned int *new_message)
 {
-	mar_req_header_t *header;
+	coroipc_request_header_t *header;
 
-	header = (mar_req_header_t *)conn_info->request_buffer;
+	header = (coroipc_request_header_t *)conn_info->request_buffer;
 	if (header->id == ZC_ALLOC_HEADER) {
 		mar_req_coroipcc_zc_alloc_t *hdr = (mar_req_coroipcc_zc_alloc_t *)header;
-		mar_res_header_t res_header;
+		coroipc_response_header_t res_header;
 		void *addr = NULL;
 		struct coroipcs_zc_header *zc_header;
 		unsigned int res;
@@ -476,7 +477,7 @@ static inline void zerocopy_operations_process (
 		zc_header = (struct coroipcs_zc_header *)addr;
 		zc_header->server_address = void2serveraddr(addr);
 
-		res_header.size = sizeof (mar_res_header_t);
+		res_header.size = sizeof (coroipc_response_header_t);
 		res_header.id = 0;
 		coroipcs_response_send (
 			conn_info, &res_header,
@@ -486,14 +487,14 @@ static inline void zerocopy_operations_process (
 	} else
 	if (header->id == ZC_FREE_HEADER) {
 		mar_req_coroipcc_zc_free_t *hdr = (mar_req_coroipcc_zc_free_t *)header;
-		mar_res_header_t res_header;
+		coroipc_response_header_t res_header;
 		void *addr = NULL;
 
 		addr = serveraddr2void (hdr->server_address);
 
 		zcb_by_addr_free (conn_info, addr);
 
-		res_header.size = sizeof (mar_res_header_t);
+		res_header.size = sizeof (coroipc_response_header_t);
 		res_header.id = 0;
 		coroipcs_response_send (
 			conn_info, &res_header,
@@ -505,7 +506,7 @@ static inline void zerocopy_operations_process (
 	if (header->id == ZC_EXECUTE_HEADER) {
 		mar_req_coroipcc_zc_execute_t *hdr = (mar_req_coroipcc_zc_execute_t *)header;
 
-		header = (mar_req_header_t *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
+		header = (coroipc_request_header_t *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
 	}
 	*header_out = header;
 	*new_message = 1;
@@ -516,7 +517,7 @@ static void *pthread_ipc_consumer (void *conn)
 	struct conn_info *conn_info = (struct conn_info *)conn;
 	struct sembuf sop;
 	int res;
-	mar_req_header_t *header;
+	coroipc_request_header_t *header;
 	struct res_overlay res_overlay;
 	int send_ok;
 	unsigned int new_message;

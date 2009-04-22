@@ -57,11 +57,13 @@
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/ipc_votequorum.h>

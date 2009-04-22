@@ -42,11 +42,12 @@
 #include <unistd.h>
 
 #include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/mar_gen.h>
-#include <corosync/ipc_gen.h>
 #include <corosync/ipc_confdb.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
@@ -138,13 +139,13 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_create,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_CREATE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_destroy,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_DESTROY,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -156,7 +157,7 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_create,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_CREATE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -168,13 +169,13 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 5 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_replace,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_REPLACE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_delete,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_KEY_DELETE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -198,13 +199,13 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 10 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_start,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_TRACK_STOP,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -222,7 +223,7 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 14 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find_destroy,
-		.response_size				= sizeof (mar_res_header_t),
+		.response_size				= sizeof (coroipc_response_header_t),
 		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
@@ -346,7 +347,7 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn,
 {
 	const struct req_lib_confdb_object_destroy *req_lib_confdb_object_destroy
 	  = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 	int ret = CS_OK;
 
 	if (api->object_destroy(req_lib_confdb_object_destroy->object_handle))
@@ -363,7 +364,7 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn,
 {
 	const struct req_lib_confdb_object_find_destroy
 	  *req_lib_confdb_object_find_destroy = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 	int ret = CS_OK;
 
 	if (api->object_find_destroy(req_lib_confdb_object_find_destroy->find_handle))
@@ -381,7 +382,7 @@ static void message_handler_req_lib_confdb_key_create (void *conn,
 {
 	const struct req_lib_confdb_key_create *req_lib_confdb_key_create
 	  = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 	int ret = CS_OK;
 
 	if (api->object_key_create(req_lib_confdb_key_create->object_handle,
@@ -466,7 +467,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn,
 {
 	const struct req_lib_confdb_key_replace *req_lib_confdb_key_replace
 	  = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 	int ret = CS_OK;
 
 	if (api->object_key_replace(req_lib_confdb_key_replace->object_handle,
@@ -487,7 +488,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn,
 {
 	const struct req_lib_confdb_key_delete *req_lib_confdb_key_delete
 	  = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 	int ret = CS_OK;
 
 	if (api->object_key_delete(req_lib_confdb_key_delete->object_handle,
@@ -736,7 +737,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn,
 							const void *message)
 {
 	const struct req_lib_confdb_object_track_start *req = message;
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	api->object_track_start(req->object_handle,
 		req->flags,
@@ -754,7 +755,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn,
 static void message_handler_req_lib_confdb_track_stop (void *conn,
 						       const void *message)
 {
-	mar_res_header_t res;
+	coroipc_response_header_t res;
 
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,
