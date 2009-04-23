@@ -106,12 +106,6 @@ static size_t quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
 
-static void (*sync_primary_callback_fn) (
-	const unsigned int *view_list,
-	size_t view_list_entries,
-	int primary_designated,
-	struct memb_ring_id *ring_id);
-
 /* Internal quorum API function */
 static void quorum_api_set_quorum(const unsigned int *view_list,
 				  size_t view_list_entries,
@@ -126,12 +120,6 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	}
 
 	quorum_view_list_entries = view_list_entries;
-
-	/* Tell sync() only if there is a new ring_id (ie this is not a 'fake' quorum event) */
-	if (memcmp(&quorum_ring_id, ring_id, sizeof (quorum_ring_id))) {
-		sync_primary_callback_fn(view_list, view_list_entries,
-					 primary_designated, ring_id);
-	}
 	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
