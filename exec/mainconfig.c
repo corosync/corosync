@@ -54,7 +54,6 @@
 
 #include "util.h"
 #include "mainconfig.h"
-#include "mempool.h"
 
 static char error_string_response[512];
 static struct objdb_iface_ver0 *global_objdb;

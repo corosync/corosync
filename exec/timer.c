@@ -73,7 +73,6 @@
 
 #include "poll.h"
 #include "totemsrp.h"
-#include "mempool.h"
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"

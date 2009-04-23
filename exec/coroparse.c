@@ -52,7 +52,6 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 
-#include "mempool.h"
 #include "util.h"
 
 static int read_config_file_into_objdb(

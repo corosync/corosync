@@ -51,7 +51,7 @@ libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 liblogsys_a_SOURCES	= $(LOGSYS_SRC)
 libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 
-corosync_SOURCES 	= main.c mempool.c util.c sync.c apidef.c service.c \
+corosync_SOURCES 	= main.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
 			  ../lcr/lcr_ifact.c
 corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs
@@ -66,7 +66,7 @@ SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
-noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h mempool.h \
+noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
 			  version.h vsf.h wthread.h schedwrk.h

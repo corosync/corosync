@@ -72,7 +72,6 @@
 
 #include "quorum.h"
 #include "totemsrp.h"
-#include "mempool.h"
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
@@ -193,10 +192,6 @@ struct totempg_group corosync_group = {
 
 
 
-static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */
-					1024, 0, 1, 4096, 0, 0, 0, 0, /* 65536 */
-					1, 1, 1, 1, 1, 1, 1, 1, 1 };
-
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 static void serialize_lock (void)
 {
@@ -287,17 +282,6 @@ static void priv_drop (void)
 return; /* TODO: we are still not dropping privs */
 	setuid (ug_config.uid);
 	setegid (ug_config.gid);
-}
-
-static void corosync_mempool_init (void)
-{
-	int res;
-
-	res = mempool_init (pool_sizes);
-	if (res == ENOMEM) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't allocate memory pools, not enough memory");
-		corosync_exit_error (AIS_DONE_MEMPOOL_INIT);
-	}
 }
 
 static void corosync_tty_detach (void)
@@ -932,8 +916,6 @@ int main (int argc, char **argv)
 	 * CAP_IPC_LOCK (mlockall)
 	 */
 	priv_drop ();
-
-	corosync_mempool_init ();
 
  	schedwrk_init (
  		serialize_lock,
