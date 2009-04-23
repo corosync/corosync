@@ -128,6 +128,8 @@ unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 hdb_handle_t corosync_poll_handle;
 
+struct sched_param global_sched_param;
+
 static void sigusr2_handler (int num)
 {
 	int i;
@@ -369,16 +371,15 @@ static void corosync_tty_detach (void)
 static void corosync_setscheduler (void)
 {
 #if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
-	struct sched_param sched_param;
 	int res;
 
 	sched_priority = sched_get_priority_max (SCHED_RR);
 	if (sched_priority != -1) {
-		sched_param.sched_priority = sched_priority;
-		res = sched_setscheduler (0, SCHED_RR, &sched_param);
+		global_sched_param.sched_priority = sched_priority;
+		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
 		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
-				sched_param.sched_priority, strerror (errno));
+				global_sched_param.sched_priority, strerror (errno));
 		}
 	} else {
 		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
@@ -734,6 +735,17 @@ int main (int argc, char **argv)
 	if (background)
 		corosync_tty_detach ();
 
+	/*
+	 * Set round robin realtime scheduling with priority 99
+	 * Lock all memory to avoid page faults which may interrupt
+	 * application healthchecking
+	 */
+	if (setprio) {
+		corosync_setscheduler ();
+	}
+
+	corosync_mlockall ();
+
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
 	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
@@ -840,6 +852,15 @@ int main (int argc, char **argv)
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
+	logsys_fork_completed();
+	if (setprio) {
+		res = logsys_thread_priority_set (SCHED_RR, &global_sched_param);
+		if (res == -1) {
+			log_printf (LOGSYS_LEVEL_ERROR,
+				"Could not set logsys thread priority.  Can't continue because of priority inversions.");
+			corosync_exit_error (AIS_DONE_LOGSETUP);
+		}
+	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
@@ -858,16 +879,6 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
-
-	/*
-	 * Set round robin realtime scheduling with priority 99
-	 * Lock all memory to avoid page faults which may interrupt
-	 * application healthchecking
-	 */
-	if (setprio)
-		corosync_setscheduler ();
-
-	corosync_mlockall ();
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id =

@@ -722,8 +722,6 @@ int corosync_main_config_read (
 
 	add_logsys_config_notification(objdb);
 
-	logsys_fork_completed ();
-
 	return 0;
 
 parse_error:

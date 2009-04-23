@@ -40,6 +40,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <pthread.h>
 
 /*
  * All of the LOGSYS_MODE's can be ORed together for combined behavior
@@ -250,6 +251,10 @@ extern int logsys_tag_id_get (
 
 extern const char *logsys_tag_name_get (
 	unsigned int tag);
+
+extern int logsys_thread_priority_set (
+	int policy,
+	const struct sched_param *param);
 
 /*
  * External definitions

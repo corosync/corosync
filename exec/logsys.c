@@ -1493,6 +1493,17 @@ const char *logsys_tag_name_get (unsigned int tag)
 	return (NULL);
 }
 
+int logsys_thread_priority_set (
+	int policy,
+	const struct sched_param *param)
+{
+	int res;
+
+	res = pthread_setschedparam (logsys_thread_id, policy, param);
+	return (res);
+
+}
+
 int logsys_log_rec_store (const char *filename)
 {
 	int fd;
