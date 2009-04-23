@@ -522,11 +522,9 @@ static void *pthread_ipc_consumer (void *conn)
 	int send_ok;
 	unsigned int new_message;
 
-	if (api->sched_priority != 0) {
-		struct sched_param sched_param;
-
-		sched_param.sched_priority = api->sched_priority;
-		res = pthread_setschedparam (conn_info->thread, SCHED_RR, &sched_param);
+	if (api->sched_policy != 0) {
+		res = pthread_setschedparam (conn_info->thread,
+			api->sched_policy, api->sched_param);
 	}
 
 	for (;;) {

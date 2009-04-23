@@ -568,7 +568,7 @@ struct sending_allowed_private_data_struct {
 static int corosync_sending_allowed (
 	unsigned int service,
 	unsigned int id,
-	void *msg,
+	const void *msg,
 	void *sending_allowed_private_data)
 {
 	struct sending_allowed_private_data_struct *pd =
@@ -667,6 +667,8 @@ static void corosync_poll_dispatch_modify (
 
 struct coroipcs_init_state ipc_init_state = {
 	.socket_name			= COROSYNC_SOCKET_NAME,
+	.sched_policy			= SCHED_RR,
+	.sched_param			= &global_sched_param,
 	.malloc				= malloc,
 	.free				= free,
 	.log_printf			= ipc_log_printf,
@@ -963,8 +965,6 @@ int main (int argc, char **argv)
 			"Could not initialize IPC logging subsystem\n");
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
-
-	ipc_init_state.sched_priority = sched_priority;
 
 	coroipcs_ipc_init (&ipc_init_state);
 

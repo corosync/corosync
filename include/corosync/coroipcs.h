@@ -37,8 +37,6 @@
 
 #include <stdlib.h>
 
-#define SOCKET_SERVICE_INIT 0xFFFFFFFF
-
 struct iovec;
 
 typedef int (*coroipcs_init_fn_lvalue) (void *conn);
@@ -47,7 +45,8 @@ typedef void (*coroipcs_handler_fn_lvalue) (void *conn, const void *msg);
 
 struct coroipcs_init_state {
 	const char *socket_name;
-	int sched_priority;
+	int sched_policy;
+	const struct sched_param *sched_param;
 	void *(*malloc) (size_t size);
 	void (*free) (void *ptr);
         void (*log_printf) (
@@ -61,7 +60,7 @@ struct coroipcs_init_state {
 	int (*response_size_get)(unsigned int service, unsigned int id);
 	int (*response_id_get)(unsigned int service, unsigned int id);
 	int (*sending_allowed)(unsigned int service, unsigned int id,
-		void *msg, void *sending_allowed_private_data);
+		const void *msg, void *sending_allowed_private_data);
 	void (*sending_allowed_release)(void *sending_allowed_private_data);
 	void (*poll_accept_add)(int fd);
 	void (*poll_dispatch_add)(int fd, void *context);
@@ -77,15 +76,25 @@ extern void coroipcs_ipc_init (
 
 extern void *coroipcs_private_data_get (void *conn);
 
-extern int coroipcs_response_send (void *conn, const void *msg, size_t mlen);
+extern int coroipcs_response_send (
+	void *conn,
+	const void *msg,
+	size_t mlen);
 
-extern int coroipcs_response_iov_send (void *conn,
-				       const struct iovec *iov, unsigned int iov_len);
+extern int coroipcs_response_iov_send (
+	void *conn,
+	const struct iovec *iov,
+	unsigned int iov_len);
 
-extern int coroipcs_dispatch_send (void *conn, const void *msg, size_t mlen);
+extern int coroipcs_dispatch_send (
+	void *conn,
+	const void *msg,
+	size_t mlen);
 
-extern int coroipcs_dispatch_iov_send (void *conn,
-				       const struct iovec *iov, unsigned int iov_len);
+extern int coroipcs_dispatch_iov_send (
+	void *conn,
+	const struct iovec *iov,
+	unsigned int iov_len);
 
 extern void coroipcs_refcount_inc (void *conn);
 
@@ -93,8 +102,14 @@ extern void coroipcs_refcount_dec (void *conn);
 
 extern void coroipcs_ipc_exit (void);
 
-extern int coroipcs_handler_accept (int fd, int revent, void *context);
+extern int coroipcs_handler_accept (
+	int fd,
+	int revent,
+	void *context);
 
-extern int coroipcs_handler_dispatch (int fd, int revent, void *context);
+extern int coroipcs_handler_dispatch (
+	int fd,
+	int revent,
+	void *context);
 
 #endif /* COROIPCS_H_DEFINED */
