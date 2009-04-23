@@ -135,3 +135,14 @@ uninstall-local:
 
 clean-local:
 	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*
+
+# Since we're requiring that _logsys_log_printf and _logsys_log_vprintf
+# have nearly identical code, here we require that they stay in sync.
+check_logsys_log_printf_functions:
+	$(AWK) '/^void _logsys_log_printf \(/, /^}/' $(srcdir)/logsys.c \
+	  | sed '/^[	 ]*va_/d;s/\.\.\.)$$/va_list ap)/' > $@-1
+	$(AWK) '/^void _logsys_log_vprintf \(/, /^}/' $(srcdir)/logsys.c \
+	  | sed 's/log_vprintf/log_printf/' > $@-2
+	diff $@-1 $@-2 && rm -f $@-1 $@-2
+
+check: check_logsys_log_printf_functions
