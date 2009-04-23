@@ -35,7 +35,7 @@ CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h mar_gen.h swab.h 	\
 		  	coroipcc.h coroipcs.h coroipc_types.h corodefs.h confdb.h list.h corotypes.h quorum.h votequorum.h
 
 CS_INTERNAL_H		= ipc_cfg.h ipc_confdb.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
-			jhash.h pload.h queue.h quorum.h rmd.h sq.h ipc_votequorum.h coroipc_ipc.h
+			jhash.h pload.h queue.h quorum.h sq.h ipc_votequorum.h coroipc_ipc.h
 
 LCR_H			= lcr_ckpt.h lcr_comp.h	lcr_ifact.h
 
