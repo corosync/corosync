@@ -856,12 +856,14 @@ int main (int argc, char **argv)
 	}
 	logsys_fork_completed();
 	if (setprio) {
-		res = logsys_thread_priority_set (SCHED_RR, &global_sched_param);
+		res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
 		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_ERROR,
 				"Could not set logsys thread priority.  Can't continue because of priority inversions.");
 			corosync_exit_error (AIS_DONE_LOGSETUP);
 		}
+	} else {
+		res = logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 	}
 
 	res = totem_config_read (objdb, &totem_config, &error_string);

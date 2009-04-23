@@ -254,7 +254,8 @@ extern const char *logsys_tag_name_get (
 
 extern int logsys_thread_priority_set (
 	int policy,
-	const struct sched_param *param);
+	const struct sched_param *param,
+	unsigned int after_log_ops_yield);
 
 /*
  * External definitions

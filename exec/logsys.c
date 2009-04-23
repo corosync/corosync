@@ -62,6 +62,8 @@
 
 #include <corosync/engine/logsys.h>
 
+#define YIELD_AFTER_LOG_OPS 10
+
 /*
  * similar to syslog facilities/priorities tables,
  * make a tag table for internal use
@@ -104,6 +106,8 @@ int flt_data_size;
 #define LOGSYS_LOGGER_NEEDS_INIT	1
 
 static int logsys_system_needs_init = LOGSYS_LOGGER_NEEDS_INIT;
+
+static int logsys_after_log_ops_yield = 10;
 
 /*
  * need unlogical order to preserve 64bit alignment
@@ -577,6 +581,8 @@ static void *logsys_worker_thread (void *data)
 		 * Process any pending log messages here
 		 */
 		for (;;) {
+			int yield_counter = 1;
+			
 			logsys_lock();
 			if (log_requests_lost > 0) {
 				printf ("lost %d log requests\n", log_requests_lost);
@@ -598,6 +604,10 @@ static void *logsys_worker_thread (void *data)
 			 */
 			if (log_msg) {
 				record_print (buf);
+				if (yield_counter++ > logsys_after_log_ops_yield) {
+					yield_counter = 0;
+					sched_yield ();
+				}
 			}
 		}
 
@@ -1495,11 +1505,18 @@ const char *logsys_tag_name_get (unsigned int tag)
 
 int logsys_thread_priority_set (
 	int policy,
-	const struct sched_param *param)
-{
-	int res;
+	const struct sched_param *param,
+        unsigned int after_log_ops_yield)
 
-	res = pthread_setschedparam (logsys_thread_id, policy, param);
+{
+	int res = 0;
+
+	if (policy != SCHED_OTHER) {
+		res = pthread_setschedparam (logsys_thread_id, policy, param);
+	}
+	if (after_log_ops_yield > 0) {
+		logsys_after_log_ops_yield = after_log_ops_yield;
+	}
 	return (res);
 
 }
