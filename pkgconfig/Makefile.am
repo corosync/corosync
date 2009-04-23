@@ -33,33 +33,36 @@ MAINTAINERCLEANFILES	= Makefile.in
 LIBS	= cfg confdb coroipcc coroipcs cpg evs logsys pload quorum \
 	  totem_pg votequorum
 
-pkgconf_LIBS = $(LIBS:%=lib%)
-
 target_LIBS = $(LIBS:%=lib%.pc)
 
 target_PACKAGE = corosync.pc
 
-lib%:
-	cat $(srcdir)/libtemplate.pc.in | sed \
+lib%.pc: libtemplate.pc.in
+	rm -f $@-t $@
+	sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
 		-e 's#@LIBDIR@#$(libdir)#g' \
 		-e 's#@LIBVERSION@#$(VERSION)#g' \
-		-e 's#@LIB@#'$(@:lib%=%)'#g' \
-	> $@.pc;
-	touch $@
+		-e 's#@LIB@#'$(*:lib%=%)'#g' \
+	    $< > $@-t
+	chmod a-w $@-t
+	mv $@-t $@
 
-$(target_PACKAGE):
-	cat $(srcdir)/$@.in | sed \
+%: %.in
+	rm -f $@-t $@
+	sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
 		-e 's#@LIBDIR@#$(libdir)#g' \
 		-e 's#@LIBVERSION@#$(VERSION)#g' \
 		-e 's#@COROLCRSODIR@#$(LCRSODIR)#g' \
 		-e 's#@COROSOCKETDIR@#$(SOCKETDIR)#g' \
-	> $@
+	    $< > $@-t
+	chmod a-w $@-t
+	mv $@-t $@
 
-all-local: $(pkgconf_LIBS) $(target_PACKAGE)
+all-local: $(target_LIBS) $(target_PACKAGE)
 
-install-exec-local:
+install-exec-local: $(target_LIBS) $(target_PACKAGE)
 	install -d $(DESTDIR)/$(libdir)/pkgconfig
 	install -m 644 $(target_LIBS) $(target_PACKAGE) $(DESTDIR)/$(libdir)/pkgconfig
 
@@ -68,4 +71,4 @@ uninstall-local:
 	rmdir $(DESTDIR)/$(libdir)/pkgconfig 2> /dev/null || :
 
 clean-local:
-	rm -f *.pc $(pkgconf_LIBS)
+	rm -f *.pc
