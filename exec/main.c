@@ -604,12 +604,13 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 
 static int ipc_subsys_id = -1;
 
+static void ipc_log_printf (const char *format, ...) __attribute__((format(printf, 1, 2)));
 static void ipc_log_printf (const char *format, ...) {
-        va_list ap;
+	va_list ap;
 
-        va_start (ap, format);
+	va_start (ap, format);
 
-	_logsys_log_printf (ipc_subsys_id, __FUNCTION__,
+	_logsys_log_vprintf (ipc_subsys_id, __FUNCTION__,
 		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, format, ap);
 
 	va_end (ap);

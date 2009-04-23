@@ -114,6 +114,15 @@ extern unsigned int _logsys_subsys_create (const char *subsys);
 
 extern int _logsys_rec_init (unsigned int size);
 
+extern void _logsys_log_vprintf (
+	int subsysid,
+	const char *function_name,
+	const char *file_name,
+	int file_line,
+	unsigned int level,
+	const char *format,
+	va_list ap) __attribute__((format(printf, 6, 0)));
+
 extern void _logsys_log_printf (
 	int subsysid,
 	const char *function_name,

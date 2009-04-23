@@ -1065,6 +1065,60 @@ void _logsys_log_rec (
 	records_written++;
 }
 
+void _logsys_log_vprintf (
+	int subsysid,
+	const char *function_name,
+	const char *file_name,
+	int file_line,
+	unsigned int level,
+	const char *format,
+	va_list ap)
+{
+	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
+	unsigned int len;
+
+	if (subsysid <= -1) {
+		subsysid = LOGSYS_MAX_SUBSYS_COUNT;
+	}
+
+	if ((level > logsys_loggers[subsysid].syslog_priority) &&
+	    (level > logsys_loggers[subsysid].logfile_priority)) {
+		return;
+	}
+
+	len = vsprintf (logsys_print_buffer, format, ap);
+	if (logsys_print_buffer[len - 1] == '\n') {
+		logsys_print_buffer[len - 1] = '\0';
+		len -= 1;
+	}
+
+	/*
+	 * Create a log record
+	 */
+	_logsys_log_rec (subsysid,
+		function_name,
+		file_name,
+		file_line,
+		(level+1) << 28,
+		logsys_print_buffer, len + 1,
+		LOGSYS_REC_END);
+
+	if ((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) == 0) {
+		/*
+		 * Output (and block) if the log mode is not threaded otherwise
+		 * expect the worker thread to output the log data once signaled
+		 */
+		log_printf_to_logs (logsys_loggers[subsysid].subsys,
+			file_name, function_name, file_line, level,
+			logsys_print_buffer);
+	} else {
+		/*
+		 * Signal worker thread to display logging output
+		 */
+		wthread_signal ();
+	}
+}
+
 void _logsys_log_printf (
         int subsysid,
         const char *function_name,
