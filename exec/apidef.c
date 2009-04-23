@@ -40,21 +40,20 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
-#include <corosync/swab.h>
-#include <corosync/totem/totem.h>
-#include "util.h"
-#include <corosync/engine/logsys.h>
-#include "timer.h"
+#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
-#include "main.h"
+#include <corosync/totem/totem.h>
+#include <corosync/engine/logsys.h>
 #include <corosync/coroipcs.h>
+#include "util.h"
+#include "timer.h"
 #include "sync.h"
 #include "quorum.h"
-#include <corosync/engine/coroapi.h>
 #include "service.h"
 #include "schedwrk.h"
-#include <corosync/lcr/lcr_ifact.h>
+#include "main.h"
+#include <corosync/engine/coroapi.h>
 #include "apidef.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF");

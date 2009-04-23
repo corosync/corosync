@@ -1,5 +1,4 @@
-/*
- * Copyright (c) 2004 MontaVista Software, Inc.
+/* * Copyright (c) 2004 MontaVista Software, Inc.
  *
  * All rights reserved.
  *
@@ -34,7 +33,7 @@
 #ifndef COROSYNC_EVS_H_DEFINED
 #define COROSYNC_EVS_H_DEFINED
 
-#include <sys/types.h>
+#include <inttypes.h>
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
 

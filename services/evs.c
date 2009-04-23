@@ -58,9 +58,11 @@
 #include <corosync/mar_gen.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
-#include <corosync/ipc_evs.h>
-#include <corosync/list.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/list.h>
+
+#include <corosync/evs.h>
+#include <corosync/ipc_evs.h>
 
 LOGSYS_DECLARE_SUBSYS ("EVS");
 

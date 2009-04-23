@@ -44,16 +44,15 @@
 #include <sys/types.h>
 #include <errno.h>
 
-
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/hdb.h>
+#include <corosync/list.h>
 
-#include <corosync/mar_gen.h>
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
-#include <corosync/list.h>
 
 #include "util.h"
 

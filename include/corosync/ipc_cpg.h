@@ -37,6 +37,7 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
@@ -65,6 +66,65 @@ enum lib_cpg_confchg_reason {
 	CONFCHG_CPG_REASON_NODEUP = 4,
 	CONFCHG_CPG_REASON_PROCDOWN = 5
 };
+
+typedef struct {
+	uint32_t length __attribute__((aligned(8)));
+	char value[CPG_MAX_NAME_LENGTH] __attribute__((aligned(8)));
+} mar_cpg_name_t;
+
+static inline void swab_mar_cpg_name_t (mar_cpg_name_t *to_swab)
+{
+	swab_mar_uint32_t (&to_swab->length);
+}
+
+static inline void marshall_from_mar_cpg_name_t (
+	struct cpg_name *dest,
+	const mar_cpg_name_t *src)
+{
+	dest->length = src->length;
+	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
+}
+
+static inline void marshall_to_mar_cpg_name_t (
+	mar_cpg_name_t *dest,
+	const struct cpg_name *src)
+{
+	dest->length = src->length;
+	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
+}
+
+typedef struct {
+        mar_uint32_t nodeid __attribute__((aligned(8)));
+        mar_uint32_t pid __attribute__((aligned(8)));
+        mar_uint32_t reason __attribute__((aligned(8)));
+} mar_cpg_address_t;
+
+static inline void marshall_from_mar_cpg_address_t (
+	struct cpg_address *dest,
+	const mar_cpg_address_t *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->pid = src->pid;
+	dest->reason = src->reason;
+}
+
+static inline void marshall_to_mar_cpg_address_t (
+	mar_cpg_address_t *dest,
+	const struct cpg_address *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->pid = src->pid;
+	dest->reason = src->reason;
+}
+
+static inline int mar_name_compare (
+		const mar_cpg_name_t *g1,
+		const mar_cpg_name_t *g2)
+{
+	return (g1->length == g2->length?
+		memcmp (g1->value, g2->value, g1->length):
+		g1->length - g2->length);
+}
 
 struct req_lib_cpg_join {
 	coroipc_request_header_t header __attribute__((aligned(8)));

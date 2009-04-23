@@ -37,6 +37,7 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 
 enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,

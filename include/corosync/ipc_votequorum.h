@@ -34,6 +34,8 @@
 #ifndef IPC_VOTEQUORUM_H_DEFINED
 #define IPC_VOTEQUORUM_H_DEFINED
 
+#include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 #define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
 
 enum req_votequorum_types {

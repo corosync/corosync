@@ -35,13 +35,7 @@
 #define IPC_PLOAD_H_DEFINED
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
-#include <corosync/corodefs.h>
-
-#include <corosync/pload.h>
 #include <corosync/mar_gen.h>
-#include <corosync/ipc_pload.h>
 
 enum req_lib_evs_types {
 	MESSAGE_REQ_PLOAD_START = 0,

@@ -35,6 +35,7 @@
 #define IPC_QUORUM_H_DEFINED
 
 #include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 
 enum req_quorum_types {
 	MESSAGE_REQ_QUORUM_GETQUORATE = 0,

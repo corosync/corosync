@@ -39,7 +39,23 @@
 #include <sys/uio.h>
 #endif
 #include <corosync/hdb.h>
+#include <corosync/swab.h>
 
+typedef struct {
+	uint32_t nodeid __attribute__((aligned(8)));
+	void *conn __attribute__((aligned(8)));
+} mar_message_source_t __attribute__((aligned(8)));
+
+static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
+{
+	swab32 (to_swab->nodeid);
+	/*
+	 * if it is from a byteswapped machine, then we can safely
+	 * ignore its conn info data structure since this is only
+	 * local to the machine
+	 */
+	to_swab->conn = NULL;
+}
 typedef void * corosync_timer_handle_t;
 
 struct corosync_tpg_group {

@@ -56,7 +56,6 @@
 #include <corosync/hdb.h>
 
 #include <corosync/evs.h>
-#include <corosync/mar_gen.h>
 #include <corosync/ipc_evs.h>
 
 #include "util.h"

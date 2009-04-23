@@ -61,12 +61,12 @@
 #include <corosync/list.h>
 #include <corosync/queue.h>
 #include <corosync/jhash.h>
-#include <corosync/mar_gen.h>
-#include <corosync/mar_cpg.h>
-#include <corosync/ipc_cpg.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
+
+#include <corosync/cpg.h>
+#include <corosync/ipc_cpg.h>
 
 LOGSYS_DECLARE_SUBSYS ("CPG");
 

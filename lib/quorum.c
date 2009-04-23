@@ -52,8 +52,6 @@
 #include <corosync/hdb.h>
 
 #include <corosync/quorum.h>
-#include <corosync/mar_gen.h>
-#include <corosync/mar_cpg.h>
 #include <corosync/ipc_quorum.h>
 
 #include "util.h"

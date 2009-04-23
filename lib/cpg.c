@@ -54,8 +54,6 @@
 #include <corosync/hdb.h>
 
 #include <corosync/cpg.h>
-#include <corosync/mar_gen.h>
-#include <corosync/mar_cpg.h>
 #include <corosync/ipc_cpg.h>
 
 #include "util.h"

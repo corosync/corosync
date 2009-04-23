@@ -36,6 +36,7 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 
 enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_OBJECT_CREATE = 0,

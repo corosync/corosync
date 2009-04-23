@@ -184,19 +184,4 @@ static inline void swab_coroipc_request_header_t (coroipc_request_header_t *to_s
 	swab_mar_int32_t (&to_swab->id);
 }
 
-typedef struct {
-	uint32_t nodeid __attribute__((aligned(8)));
-	void *conn __attribute__((aligned(8)));
-} mar_message_source_t __attribute__((aligned(8)));
-
-static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
-{
-	swab_mar_uint32_t (&to_swab->nodeid);
-	/*
-	 * if it is from a byteswapped machine, then we can safely
-	 * ignore its conn info data structure since this is only
-	 * local to the machine
-	 */
-	to_swab->conn = NULL;
-}
 #endif /* MAR_GEN_H_DEFINED */

@@ -48,18 +48,14 @@
 #include <sys/select.h>
 #include <sys/un.h>
 
-
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
-
-#include <corosync/cfg.h>
-#include <corosync/mar_gen.h>
-#include <corosync/ipc_cfg.h>
 #include <corosync/hdb.h>
 
-#include <corosync/totem/totemip.h>
+#include <corosync/cfg.h>
+#include <corosync/ipc_cfg.h>
 
 #include "util.h"
 

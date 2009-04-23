@@ -54,9 +54,7 @@
 #include <corosync/hdb.h>
 
 #include <corosync/votequorum.h>
-#include <corosync/mar_gen.h>
 #include <corosync/ipc_votequorum.h>
-#include <corosync/mar_gen.h>
 
 #include "util.h"
 

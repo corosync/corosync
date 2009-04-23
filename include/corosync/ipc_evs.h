@@ -34,8 +34,9 @@
 #ifndef IPC_EVS_H_DEFINED
 #define IPC_EVS_H_DEFINED
 
+#include <inttypes.h>
 #include <corosync/corotypes.h>
-#include "evs.h"
+#include <corosync/mar_gen.h>
 
 enum req_lib_evs_types {
 	MESSAGE_REQ_EVS_JOIN = 0,

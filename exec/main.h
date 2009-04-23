@@ -43,7 +43,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
-#include <corosync/mar_gen.h>
+#include <corosync/engine/coroapi.h>
 
 extern struct totempg_group corosync_group;
 

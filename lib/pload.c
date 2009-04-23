@@ -42,13 +42,14 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <corosync/swab.h>
-#include <corosync/totem/totem.h>
 #include <corosync/corotypes.h>
-#include <corosync/ipc_pload.h>
-#include <corosync/pload.h>
 #include <corosync/coroipcc.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/corodefs.h>
 #include <corosync/hdb.h>
+
+#include <corosync/pload.h>
+#include <corosync/ipc_pload.h>
 
 #include "util.h"
 

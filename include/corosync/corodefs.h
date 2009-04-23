@@ -40,10 +40,6 @@
 
 #define COROSYNC_SOCKET_NAME	"corosync.ipc"
 
-#define IPC_REQUEST_SIZE	8192*128
-#define IPC_RESPONSE_SIZE	8192*128
-#define IPC_DISPATCH_SIZE	8192*128
-
 enum corosync_service_types {
 	EVS_SERVICE = 0,
 	CLM_SERVICE = 1,
