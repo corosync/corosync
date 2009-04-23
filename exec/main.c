@@ -141,26 +141,14 @@ static void sigusr2_handler (int num)
 	}
 }
 
-static void *corosync_exit (void *arg) __attribute__((__noreturn__));
-static void *corosync_exit (void *arg)
+/*
+ * TODO this function needs some love
+ */
+void corosync_request_shutdown (void)
 {
 	if (api) {
 		corosync_service_unlink_all (api);
 	}
-
-#ifdef DEBUG_MEMPOOL
-	int stats_inuse[MEMPOOL_GROUP_SIZE];
-	int stats_avail[MEMPOOL_GROUP_SIZE];
-	int stats_memoryused[MEMPOOL_GROUP_SIZE];
-	int i;
-
-	mempool_getstats (stats_inuse, stats_avail, stats_memoryused);
-	log_printf (LOGSYS_LEVEL_DEBUG, "Memory pools:\n");
-	for (i = 0; i < MEMPOOL_GROUP_SIZE; i++) {
-	log_printf (LOGSYS_LEVEL_DEBUG, "order %d size %d inuse %d avail %d memory used %d\n",
-		i, 1<<i, stats_inuse[i], stats_avail[i], stats_memoryused[i]);
-	}
-#endif
 
 	poll_stop (0);
 	totempg_finalize ();
@@ -168,20 +156,15 @@ static void *corosync_exit (void *arg)
 	corosync_exit_error (AIS_DONE_EXIT);
 }
 
-pthread_t corosync_exit_thread;
-static void init_shutdown(void *data)
-{
-	pthread_create (&corosync_exit_thread, NULL, corosync_exit, NULL);
-}
-
-
-static poll_timer_handle shutdown_handle;
 static void sigquit_handler (int num)
 {
-	/* avoid creating threads from within the interrupt context */
-	poll_timer_add (corosync_poll_handle, 500, NULL, init_shutdown, &shutdown_handle);
+	corosync_request_shutdown ();
 }
 
+static void sigintr_handler (int num)
+{
+	corosync_request_shutdown ();
+}
 
 static void sigsegv_handler (int num)
 {
@@ -208,11 +191,6 @@ struct totempg_group corosync_group = {
 	.group_len	= 1
 };
 
-static void sigintr_handler (int signum)
-{
-	poll_timer_add (corosync_poll_handle, 500, NULL,
-			init_shutdown, &shutdown_handle);
-}
 
 
 static int pool_sizes[] = { 0, 0, 0, 0, 0, 4096, 0, 1, 0, /* 256 */

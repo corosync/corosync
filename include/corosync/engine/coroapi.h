@@ -573,6 +573,8 @@ struct corosync_api_v1 {
 	void (*error_memory_failure) (void);
 #define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
 	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
+
+	void (*request_shutdown) (void);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
