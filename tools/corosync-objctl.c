@@ -114,7 +114,7 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting key iterator for object %llu: %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting key iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 	children_printed = 0;
@@ -138,7 +138,7 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting object iterator for object %llu: %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting object iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 

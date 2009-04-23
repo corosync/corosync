@@ -71,7 +71,7 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		printf( "error resetting key iterator for object %llu: %d\n", parent_object_handle, res);
+		printf( "error resetting key iterator for object "HDB_X_FORMAT": %d\n", parent_object_handle, res);
 		return;
 	}
 
@@ -86,7 +86,7 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		printf( "error resetting object iterator for object %llu: %d\n", parent_object_handle, res);
+		printf( "error resetting object iterator for object "HDB_X_FORMAT": %d\n", parent_object_handle, res);
 		return;
 	}
 
@@ -95,14 +95,14 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 
 		res = confdb_object_parent_get(handle, object_handle, &parent);
 		if (res != CS_OK) {
-			printf( "error getting parent for object %lld: %d\n", object_handle, res);
+			printf( "error getting parent for object "HDB_X_FORMAT": %d\n", object_handle, res);
 			return;
 		}
 
 		for (i=0; i<depth; i++)	printf("  ");
 
 		object_name[object_name_len] = '\0';
-		printf("OBJECT: %s (%llu, parent: %llu)\n", object_name, object_handle, parent);
+		printf("OBJECT: %s ("HDB_X_FORMAT", parent: "HDB_X_FORMAT")\n", object_name, object_handle, parent);
 
 		/* Down we go ... */
 		print_config_tree(handle, object_handle, depth+1);

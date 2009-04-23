@@ -41,8 +41,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <inttypes.h>
 
-typedef unsigned long long hdb_handle_t;
+typedef uint64_t hdb_handle_t;
+
+/*
+ * Formatting for string printing on 32/64 bit systems
+ */
+#define HDB_D_FORMAT "%"PRIu64
+#define HDB_X_FORMAT "%"PRIx64
 
 enum HDB_HANDLE_STATE {
 	HDB_HANDLE_STATE_EMPTY,
