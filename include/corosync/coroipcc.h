@@ -36,8 +36,6 @@
 #ifndef COROIPCC_H_DEFINED
 #define COROIPCC_H_DEFINED
 
-#include <config.h>
-
 #include <pthread.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
@@ -107,55 +105,5 @@ coroipcc_zcb_msg_send_reply_receive (
 	void *msg,
 	void *res_msg,
 	size_t res_len);
-
-/*
- * TODO This needs to be removed
- */
-struct saHandleDatabase {
-	unsigned int handleCount;
-	struct saHandle *handles;
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spinlock_t lock;
-#else
-	pthread_mutex_t lock;
-#endif
-	void (*handleInstanceDestructor) (void *);
-};
-
-extern void saHandleDatabaseLock_init (struct saHandleDatabase *hdb);
-
-#define DECLARE_SAHDB_DATABASE(database_name,destructor)		\
-static struct saHandleDatabase (database_name) = {			\
-	.handleInstanceDestructor	= destructor,			\
-	.handleCount			= 0,				\
-	.handles			= NULL,				\
-};									\
-static void database_name##_init(void)__attribute__((constructor));	\
-static void database_name##_init(void)					\
-{									\
-        saHandleDatabaseLock_init (&(database_name));			\
-}
-
-extern cs_error_t
-saHandleCreate (
-	struct saHandleDatabase *handleDatabase,
-	int instanceSize,
-	uint64_t *handleOut);
-
-extern cs_error_t
-saHandleDestroy (
-	struct saHandleDatabase *handleDatabase,
-	uint64_t handle);
-
-extern cs_error_t
-saHandleInstanceGet (
-	struct saHandleDatabase *handleDatabase,
-	uint64_t handle,
-	void **instance);
-
-extern cs_error_t
-saHandleInstancePut (
-	struct saHandleDatabase *handleDatabase,
-	uint64_t handle);
 
 #endif /* COROIPCC_H_DEFINED */
