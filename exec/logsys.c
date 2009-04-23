@@ -1120,13 +1120,13 @@ void _logsys_log_vprintf (
 }
 
 void _logsys_log_printf (
-        int subsysid,
-        const char *function_name,
-        const char *file_name,
-        int file_line,
-        unsigned int level,
-        const char *format,
-        ...)
+	int subsysid,
+	const char *function_name,
+	const char *file_name,
+	int file_line,
+	unsigned int level,
+	const char *format,
+	...)
 {
 	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
 	unsigned int len;
