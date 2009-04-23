@@ -9,3 +9,4 @@ Name: corosync
 Version: @LIBVERSION@
 Description: corosync
 Requires:
+Cflags: -I${includedir}
