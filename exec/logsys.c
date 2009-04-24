@@ -279,12 +279,12 @@ do {									\
  */
 static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
 {
-	unsigned int len;
-
 	if (cutoff <= 0) {
-		strcpy (dest, src);
-		return (strlen (dest));
+		size_t len = strlen (src);
+		memcpy (dest, src, len + 1);
+		return (len);
 	} else {
+		size_t len;
 		strncpy (dest, src, cutoff);
 		dest[cutoff] = '\0';
 		len = strlen (dest);
