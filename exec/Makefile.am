@@ -94,7 +94,7 @@ else
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) -lpthread
+		$^ $(LDFLAGS) $(NSS_LDFLAGS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 

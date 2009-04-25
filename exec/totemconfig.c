@@ -56,6 +56,13 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
 
+#ifdef HAVE_LIBNSS
+#include <nss.h>
+#include <pk11pub.h>
+#include <pkcs11.h>
+#include <prerror.h>
+#endif
+
 #include "util.h"
 #include "totemconfig.h"
 #include "tlist.h" /* for HZ */
@@ -218,6 +225,46 @@ static void totem_volatile_config_read (
 }
 
 
+static void totem_get_crypto_type(
+	const struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_totem_handle,
+	struct totem_config *totem_config)
+{
+	const char *str;
+
+	totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_OLD;
+	if (!objdb_get_string (objdb, object_totem_handle, "crypto_accept", &str)) {
+		if (strcmp(str, "new") == 0) {
+			totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_NEW;
+		}
+	}
+
+	totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
+
+#ifdef HAVE_LIBNSS
+	/*
+	 * We must set these even if the key does not exist.
+	 * Encryption type can be set on-the-fly using CFG
+	 */
+	totem_config->crypto_crypt_type = CKM_AES_CBC_PAD;
+	totem_config->crypto_sign_type = CKM_SHA256_RSA_PKCS;
+#endif
+
+	if (!objdb_get_string (objdb, object_totem_handle, "crypto_type", &str)) {
+		if (strcmp(str, "sober") == 0) {
+			return;
+		}
+#ifdef HAVE_LIBNSS
+		if (strcmp(str, "nss") == 0) {
+			totem_config->crypto_type = TOTEM_CRYPTO_NSS;
+
+		}
+#endif
+	}
+}
+
+
+
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
@@ -263,6 +310,11 @@ printf ("couldn't find totem handle\n");
 			totem_config->secauth = 0;
 		}
 	}
+
+	if (totem_config->secauth == 1) {
+		totem_get_crypto_type(objdb, object_totem_handle, totem_config);
+	}
+
 	if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
 		strcpy (totem_config->rrp_mode, str);
 	}

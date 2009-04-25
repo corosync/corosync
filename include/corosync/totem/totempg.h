@@ -145,6 +145,8 @@ extern unsigned int totempg_my_nodeid_get (void);
 
 extern int totempg_my_family_get (void);
 
+extern int totempg_crypto_set (unsigned int type);
+
 extern int totempg_ring_reenable (void);
 
 #endif /* TOTEMPG_H_DEFINED */

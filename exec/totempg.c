@@ -1293,6 +1293,17 @@ int totempg_ifaces_get (
 	return (res);
 }
 
+int totempg_crypto_set (
+	unsigned int type)
+{
+	int res;
+
+	res = totemmrp_crypto_set (
+		type);
+
+	return (res);
+}
+
 int totempg_ring_reenable (void)
 {
 	int res;

@@ -61,23 +61,29 @@ encrypt_and_sign to prepare the message to be sent.  When the executive
 wants to receive a message from the network, it uses
 authenticate_and_decrypt to verify the message is valid and decrypt it.
 
-These two functions utilize the following algorithms:
+There are currently two encryption methods available in corosync.
+sha1/hmac/sober which are coded internally, and AES/SHA256 which
+are in the Mozilla Network Security Services (libnss) library.
+
+The internal functions utilize the following algorithms:
 sha1 - hash algorithm secure for using with hmac
 hmac - produces a 16 byte digest from any length input
 sober - pseudo random number generator and stream cipher
-
-The hmac algorithm requires a 16 byte key.
-The sober algorithm requires a 16 byte private key.
-The sober algorithm requires a 16 byte public initial vector.
-
-The private key is read from disk and stored in memory for use with the
-sober algorithm to generate the three required keys.
 
 Every message starts with a
 struct security {
 	unsigned char digest[20]; A one way hash digest
 	unsigned char salt[16]; A securely generated random number
 }
+
+INTERNAL SECURITY CODE:
+-----------------------
+The hmac algorithm requires a 16 byte key.
+The sober algorithm requires a 16 byte private key.
+The sober algorithm requires a 16 byte public initial vector.
+
+The private key is read from disk and stored in memory for use with the
+sober algorithm to generate the three required keys.
 
 When a message is sent (encrypt_and_sign):
 ------------------------------------------
@@ -122,5 +128,60 @@ key can only be used to attack one of the algorithms.  Finally every key used
 is randomly unique (within the 2^128 search space of the input to sober) to
 ensure that keys are never reused, nonce's are never reused, and hmac's are
 never reused.
+
+
+USING LIBNSS
+------------
+
+The process is similar in concept to the above, but most of the details are 
+hidden inside the NSS library. When corosync is started up libnss is initialised,
+the private key is read into memory and stored for later use by the code.
+
+When a message is sent (encrypt_and_sign):
+------------------------------------------
+- The message is encrypted using AES.
+- A digest of that message is then created using SHA256 and based on the
+  private key.
+- the message is then transmitted.
+
+When a message is received (decrypt_and_authenticate):
+- A Digest of the encrypted message is created using the private key
+- That digest is compared to the one in the message security_header
+- If they do not match the packet is rejected
+- If they do match then the message is decrypted using the private key.
+- The message is processed.
+
+
+Compatibility
+-------------
+
+The default mode of operation is to allow for wire-compatibility with existing
+openais systems. That means that the internal encryption system is used 
+and all received packets are expected to use that system. This allows a rolling
+upgrade from openais to corosync. 
+
+Once all nodes in the cluster are running corosync they can be changed to allow
+the newer libnss-based encryption by setting the 
+totem {
+    crypto_accept: new
+}
+option in corosync.conf.
+
+This enables the new encryption system but does not switch it on. It simply
+adds a byte to the end of the packets to indicate the encryption type.
+
+Once all nodes have been upgraded and 'crypto_accept: new' has been set, 
+the encryption type can be set using a single command:
+
+# corosync-cfgtool -c1
+
+This will tell all cluster nodes to start using libnss encryption. Note that
+it is possible to upgrade node individially by seetting the encryption type in
+corosync.conf. The last byte of the packet indicates the decryption algorithm 
+that the receiver should use.
+
+Once all nodes are using libnss encryption, the option should be set in
+in corosync.conf so that it takes effect at the next system reboot.
+
 
 Comments welcome mailto:corosync@lists.osdl.org

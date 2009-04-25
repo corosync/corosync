@@ -79,6 +79,7 @@
 #include <corosync/totem/coropoll.h>
 #include "totemsrp.h"
 #include "totemrrp.h"
+#include "totemnet.h"
 #include "wthread.h"
 
 #include "crypto.h"
@@ -941,6 +942,26 @@ finish:
 error_exit:
 	return (res);
 }
+
+int totemsrp_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type)
+{
+	int res;
+	struct totemsrp_instance *instance;
+
+	res = hdb_handle_get (&totemsrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		return (0);
+	}
+
+	res = totemrrp_crypto_set(instance->totemrrp_handle, type);
+
+	hdb_handle_put (&totemsrp_instance_database, handle);
+	return (res);
+}
+
 
 unsigned int totemsrp_my_nodeid_get (
 	hdb_handle_t handle)

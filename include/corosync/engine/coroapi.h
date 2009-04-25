@@ -443,6 +443,7 @@ struct corosync_api_v1 {
 
 	const char *(*totem_ip_print) (const struct totem_ip_address *addr);
 
+	int (*totem_crypto_set) (unsigned int type);
 
 	int (*totem_callback_token_create) (
 		void **handle_out,

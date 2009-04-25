@@ -822,3 +822,44 @@ error_exit:
 
 	return (error);
 }
+
+cs_error_t
+corosync_cfg_crypto_set (
+	corosync_cfg_handle_t handle,
+	unsigned int type)
+{
+	struct cfg_instance *cfg_instance;
+	struct req_lib_cfg_crypto_set req_lib_cfg_crypto_set;
+	struct res_lib_cfg_crypto_set res_lib_cfg_crypto_set;
+	struct iovec iov;
+	cs_error_t error;
+
+
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, handle, (void *)&cfg_instance));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_crypto_set.header.id = MESSAGE_REQ_CFG_CRYPTO_SET;
+	req_lib_cfg_crypto_set.header.size = sizeof (struct req_lib_cfg_crypto_set);
+	req_lib_cfg_crypto_set.type = type;
+
+	iov.iov_base = &req_lib_cfg_crypto_set;
+	iov.iov_len = sizeof (struct req_lib_cfg_crypto_set);
+
+	pthread_mutex_lock (&cfg_instance->response_mutex);
+
+	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+		&iov,
+		1,
+		&res_lib_cfg_crypto_set,
+		sizeof (struct res_lib_cfg_crypto_set));
+
+	pthread_mutex_unlock (&cfg_instance->response_mutex);
+
+	if (error == CS_OK)
+		error = res_lib_cfg_crypto_set.header.error;
+
+	(void)hdb_handle_put (&cfg_hdb, handle);
+	return (error);
+}

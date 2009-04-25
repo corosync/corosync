@@ -211,6 +211,26 @@ static void showaddrs_do(int nodeid)
 	(void)corosync_cfg_finalize (handle);
 }
 
+
+static void crypto_do(unsigned int type)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+
+	printf ("Setting crypto to mode %d\n", type);
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != CS_OK) {
+		printf ("Could not initialize corosync configuration API error %d\n", result);
+		exit (1);
+	}
+	result = corosync_cfg_crypto_set (handle, type);
+	if (result != CS_OK) {
+		printf ("Could not set crypto mode (error = %d)\n", result);
+	}
+	(void)corosync_cfg_finalize (handle);
+
+}
+
 static void killnode_do(unsigned int nodeid)
 {
 	cs_error_t result;
@@ -241,6 +261,7 @@ static void usage_do (void)
 	printf ("\t-l\tLoad a service identified by name.\n");
 	printf ("\t-u\tUnload a service identified by name.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
+	printf ("\t-c\tSet the cryptography mode of cluster communications\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
@@ -257,7 +278,7 @@ xstrdup (char const *s)
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "srl:u:v:k:a:hH";
+	const char *options = "srl:u:v:k:a:c:hH";
 	int opt;
 	int service_load = 0;
 	unsigned int nodeid;
@@ -293,6 +314,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'a':
 			showaddrs_do( atoi(optarg) );
+			break;
+		case 'c':
+			crypto_do( atoi(optarg) );
 			break;
 		case 'v':
 			version = atoi (optarg);

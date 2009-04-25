@@ -108,6 +108,10 @@ extern unsigned int totemsrp_my_nodeid_get (
 extern int totemsrp_my_family_get (
 	hdb_handle_t handle);
 
+extern int totemsrp_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type);
+
 extern int totemsrp_ring_reenable (
 	hdb_handle_t handle);
 

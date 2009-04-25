@@ -51,6 +51,7 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AC_CHECK_PROGS([GROFF], [groff])
+AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
@@ -176,6 +177,10 @@ AC_ARG_ENABLE([coverage],
 	[  --enable-coverage       : coverage analysis of the codebase. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([nss],
+	[  --enable-nss            : Network Security Services encryption. ],
+	[ default="yes" ])
+
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
 	[ LCRSODIR="$withval" ],
@@ -257,6 +262,16 @@ else
 	GDB_FLAGS="-g"
 fi
 
+# Look for libnss
+if test "x${enable_nss}" = xyes; then
+    if $PKGCONFIG --exists nss; then
+	NSS_CFLAGS="`$PKGCONFIG --cflags nss`"
+	NSS_LDFLAGS="`$PKGCONFIG --libs nss`"
+	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])	
+	PKG_FEATURES="$PKG_FEATURES nss"
+    fi
+fi
+
 # extra warnings
 EXTRA_WARNINGS=""
 
@@ -320,7 +335,7 @@ fi
 
 # final build of *FLAGS
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS \
-	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
+	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS $NSS_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
@@ -334,6 +349,8 @@ AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
 AC_SUBST([OS_DYFLAGS])
+
+AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
 AC_SUBST([DARWIN_OPTS])

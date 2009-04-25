@@ -112,6 +112,10 @@ extern int totemrrp_ifaces_get (
 	char ***status,
 	unsigned int *iface_count);
 
+extern int totemrrp_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type);
+
 extern int totemrrp_ring_reenable (
 	hdb_handle_t handle);
 

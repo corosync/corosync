@@ -52,7 +52,8 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_TRYSHUTDOWN = 9,
 	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 10,
 	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 11,
-	MESSAGE_REQ_CFG_LOCAL_GET = 12
+	MESSAGE_REQ_CFG_LOCAL_GET = 12,
+	MESSAGE_REQ_CFG_CRYPTO_SET = 13
 };
 
 enum res_lib_cfg_types {
@@ -69,7 +70,8 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_TESTSHUTDOWN = 10,
 	MESSAGE_RES_CFG_GET_NODE_ADDRS = 11,
 	MESSAGE_RES_CFG_LOCAL_GET = 12,
-	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13
+	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
+	MESSAGE_RES_CFG_CRYPTO_SET = 14,
 };
 
 struct req_lib_cfg_statetrack {
@@ -203,6 +205,15 @@ struct req_lib_cfg_local_get {
 struct res_lib_cfg_local_get {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_crypto_set {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_uint32_t type __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_crypto_set {
+	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
 typedef enum {

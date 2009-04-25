@@ -116,6 +116,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.totem_ifaces_get = totempg_ifaces_get,
 	.totem_ifaces_print = totempg_ifaces_print,
 	.totem_ip_print = totemip_print,
+	.totem_crypto_set = totempg_crypto_set,
 	.totem_callback_token_create = totempg_callback_token_create,
 	.tpg_init = totempg_groups_initialize,
 	.tpg_exit = NULL, /* missing from totempg api */

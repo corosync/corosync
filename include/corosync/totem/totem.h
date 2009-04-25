@@ -145,6 +145,12 @@ struct totem_config {
 	unsigned int max_messages;
 
 	const char *vsf_type;
+
+	enum { TOTEM_CRYPTO_SOBER=0, TOTEM_CRYPTO_NSS } crypto_type;
+	enum { TOTEM_CRYPTO_ACCEPT_OLD=0, TOTEM_CRYPTO_ACCEPT_NEW } crypto_accept;
+
+	int crypto_crypt_type;
+	int crypto_sign_type;
 };
 
 #define TOTEM_CONFIGURATION_TYPE

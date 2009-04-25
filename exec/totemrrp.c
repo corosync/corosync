@@ -1710,6 +1710,26 @@ error_exit:
 	return (res);
 }
 
+int totemrrp_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type)
+{
+	int res;
+	struct totemrrp_instance *instance;
+
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		return (0);
+	}
+
+	res = totemnet_crypto_set(instance->net_handles[0], type);
+
+	hdb_handle_put (&totemrrp_instance_database, handle);
+	return (res);
+}
+
+
 int totemrrp_ring_reenable (
         hdb_handle_t handle)
 {

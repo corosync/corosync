@@ -105,4 +105,8 @@ extern int totemnet_token_target_set (
 	hdb_handle_t handle,
 	const struct totem_ip_address *token_target);
 
+extern int totemnet_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type);
+
 #endif /* TOTEMNET_H_DEFINED */

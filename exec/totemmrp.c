@@ -210,6 +210,13 @@ int totemmrp_ifaces_get (
 	return (res);
 }
 
+int totemmrp_crypto_set (
+	unsigned int type)
+{
+	return totemsrp_crypto_set (totemsrp_handle_in,
+				    type);
+}
+
 unsigned int totemmrp_my_nodeid_get (void)
 {
 	return (totemsrp_my_nodeid_get (totemsrp_handle_in));
