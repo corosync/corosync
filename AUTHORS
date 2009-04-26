@@ -5,7 +5,8 @@ Main Developers
 Steven Dake		Maintainer, totem implementation, evs, cfg,
 			logsys, service engine architecture, ipc system
 			poll, timers, objdb, hdb, sync, coroapi
-Christine Caulfield	cpg, cfg, quorum, confdb, totem ipv6 support
+Christine Caulfield	cpg, cfg, quorum, confdb, totem ipv6 support, totem NSS
+			support
 Fabien Thomas		OS portability, BSD port
 Hans Feldt		logging inspiration
 Angus Salkeld		objdb, static code analysis cleanup
