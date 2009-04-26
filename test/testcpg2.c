@@ -48,7 +48,7 @@ static void deliver(
 	const struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
-	const void *msg,
+	void *msg,
 	size_t msg_len)
 {
     printf("self delivered nodeid: %x\n", nodeid);

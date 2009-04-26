@@ -67,7 +67,7 @@ static void DeliverCallback (
 	const struct cpg_name *groupName,
 	uint32_t nodeid,
 	uint32_t pid,
-	const void *msg,
+	void *msg,
 	size_t msg_len)
 {
 	if (show_ip) {

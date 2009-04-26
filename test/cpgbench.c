@@ -85,7 +85,7 @@ static void cpg_bm_deliver_fn (
         const struct cpg_name *group_name,
         uint32_t nodeid,
         uint32_t pid,
-        const void *msg,
+        void *msg,
         size_t msg_len)
 {
 	write_count++;
