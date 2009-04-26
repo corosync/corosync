@@ -257,7 +257,7 @@ static int evs_lib_init_fn (void *conn)
 	list_init (&evs_pd->list);
 	list_add (&evs_pd->list, &confchg_notify);
 
-	api->ipc_response_send (conn, &res_evs_confchg_callback,
+	api->ipc_dispatch_send (conn, &res_evs_confchg_callback,
 		sizeof (res_evs_confchg_callback));
 
 	return (0);
