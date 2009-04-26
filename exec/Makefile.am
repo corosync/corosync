@@ -33,7 +33,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CFLAGS		= -fPIC
 
-INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
+INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS)
 
 TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemrrp.c \
 			  totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
@@ -94,7 +94,7 @@ else
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) $(NSS_LDFLAGS) -lpthread
+		$^ $(LDFLAGS) $(nss_LIBS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 

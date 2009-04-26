@@ -149,7 +149,7 @@ case $exec_prefix in
 esac
 
 ## local defines
-PKG_FEATURES=""
+PACKAGE_FEATURES=""
 
 LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse \
 	-badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
@@ -179,7 +179,7 @@ AC_ARG_ENABLE([coverage],
 
 AC_ARG_ENABLE([nss],
 	[  --enable-nss            : Network Security Services encryption. ],
-	[ default="yes" ])
+	[ default="no" ])
 
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
@@ -250,7 +250,7 @@ ENV_LDFLAGS="$LDFLAGS"
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
 	OPT_CFLAGS="-O0"
-	PKG_FEATURES="$PKG_FEATURES debug"
+	PACKAGE_FEATURES="$PACKAGE_FEATURES debug"
 else
 	OPT_CFLAGS="-O3"
 fi
@@ -264,12 +264,9 @@ fi
 
 # Look for libnss
 if test "x${enable_nss}" = xyes; then
-    if $PKGCONFIG --exists nss; then
-	NSS_CFLAGS="`$PKGCONFIG --cflags nss`"
-	NSS_LDFLAGS="`$PKGCONFIG --libs nss`"
+	PKG_CHECK_MODULES([nss],[nss])
 	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])	
-	PKG_FEATURES="$PKG_FEATURES nss"
-    fi
+	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
 # extra warnings
@@ -309,7 +306,7 @@ if test "x${enable_coverage}" = xyes && \
 	OPT_CFLAGS="-O0"
 	COVERAGE_CFLAGS="-ftest-coverage -fprofile-arcs"
 	COVERAGE_LDFLAGS="-ftest-coverage -fprofile-arcs"
-	PKG_FEATURES="$PKG_FEATURES coverage"
+	PACKAGE_FEATURES="$PACKAGE_FEATURES coverage"
 else
 	COVERAGE_CFLAGS=""
 	COVERAGE_LDFLAGS=""
@@ -319,7 +316,7 @@ if test "x${enable_ansi}" = xyes && \
 		cc_supports_flag -std=iso9899:199409 ; then
 	AC_MSG_NOTICE([Enabling ANSI Compatibility])
 	ANSI_CPPFLAGS="-ansi -D_GNU_SOURCE -DANSI_ONLY"
-	PKG_FEATURES="$PKG_FEATURES ansi"
+	PACKAGE_FEATURES="$PACKAGE_FEATURES ansi"
 else
 	ANSI_CPPFLAGS=""
 fi
@@ -328,7 +325,7 @@ if test "x${enable_fatal_warnings}" = xyes && \
 		cc_supports_flag -Werror ; then
 	AC_MSG_NOTICE([Enabling Fatal Warnings (-Werror)])
 	WERROR_CFLAGS="-Werror"
-	PKG_FEATURES="$PKG_FEATURES fatal-warnings"
+	PACKAGE_FEATURES="$PACKAGE_FEATURES fatal-warnings"
 else
 	WERROR_CFLAGS=""
 fi
@@ -380,7 +377,7 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
 AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
-AC_MSG_RESULT([  Features                 =${PKG_FEATURES}])
+AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
