@@ -178,8 +178,8 @@ AC_ARG_ENABLE([coverage],
 	[ default="no" ])
 
 AC_ARG_ENABLE([nss],
-	[  --enable-nss            : Network Security Services encryption. ],
-	[ default="no" ])
+	[  --enable-nss            : Network Security Services encryption. ],,
+	[ enable_nss="yes" ])
 
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
