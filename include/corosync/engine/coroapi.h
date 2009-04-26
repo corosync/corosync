@@ -584,8 +584,6 @@ struct corosync_api_v1 {
 
 struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, const void *msg);
-	int response_size;
-	int response_id;
 	enum cs_lib_flow_control flow_control;
 };
 

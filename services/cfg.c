@@ -191,86 +191,58 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringstatusget,
-		.response_size		= sizeof (struct res_lib_cfg_ringstatusget),
-		.response_id		= MESSAGE_RES_CFG_RINGSTATUSGET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_ringreenable,
-		.response_size		= sizeof (struct res_lib_cfg_ringreenable),
-		.response_id		= MESSAGE_RES_CFG_RINGREENABLE,
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
-		.response_size		= sizeof (struct res_lib_cfg_statetrack),
-		.response_id		= MESSAGE_RES_CFG_STATETRACKSTART,
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
-		.response_size		= sizeof (struct res_lib_cfg_statetrackstop),
-		.response_id		= MESSAGE_RES_CFG_STATETRACKSTOP,
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
-		.response_size		= sizeof (struct res_lib_cfg_administrativestateset),
-		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATESET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
-		.response_size		= sizeof (struct res_lib_cfg_administrativestateget),
-		.response_id		= MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceload,
-		.response_size		= sizeof (struct res_lib_cfg_serviceload),
-		.response_id		= MESSAGE_RES_CFG_SERVICELOAD,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_serviceunload,
-		.response_size		= sizeof (struct res_lib_cfg_serviceunload),
-		.response_id		= MESSAGE_RES_CFG_SERVICEUNLOAD,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_killnode,
-		.response_size		= sizeof (struct res_lib_cfg_killnode),
-		.response_id		= MESSAGE_RES_CFG_KILLNODE,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_tryshutdown,
-		.response_size		= sizeof (struct res_lib_cfg_tryshutdown),
-		.response_id		= MESSAGE_RES_CFG_TRYSHUTDOWN,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
-		.response_size		= sizeof (struct res_lib_cfg_replytoshutdown),
-		.response_id		= MESSAGE_RES_CFG_REPLYTOSHUTDOWN,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_get_node_addrs,
-		.response_size		= sizeof (struct res_lib_cfg_get_node_addrs),
-		.response_id		= MESSAGE_RES_CFG_GET_NODE_ADDRS,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 12 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_local_get,
-		.response_size		= sizeof (struct res_lib_cfg_local_get),
-		.response_id		= MESSAGE_RES_CFG_LOCAL_GET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 13 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_crypto_set,
-		.response_size		= sizeof (struct res_lib_cfg_crypto_set),
-		.response_id		= MESSAGE_RES_CFG_CRYPTO_SET,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

@@ -249,68 +249,46 @@ static struct corosync_lib_handler quorum_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_getinfo,
-		.response_size				= sizeof (struct res_lib_votequorum_getinfo),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_GETINFO,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_setexpected,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_setvotes,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_qdisk_register,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_qdisk_unregister,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_qdisk_poll,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_qdisk_getinfo,
-		.response_size				= sizeof (struct res_lib_votequorum_qdisk_getinfo),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_QDISK_GETINFO,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_setstate,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_leaving,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_trackstart,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn				= message_handler_req_lib_votequorum_trackstop,
-		.response_size				= sizeof (struct res_lib_votequorum_status),
-		.response_id				= MESSAGE_RES_VOTEQUORUM_STATUS,
 		.flow_control				= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

@@ -57,8 +57,6 @@ struct coroipcs_init_state {
 	int (*security_valid)(int uid, int gid);
 	void (*serialize_lock)(void);
 	void (*serialize_unlock)(void);
-	int (*response_size_get)(unsigned int service, unsigned int id);
-	int (*response_id_get)(unsigned int service, unsigned int id);
 	int (*sending_allowed)(unsigned int service, unsigned int id,
 		const void *msg, void *sending_allowed_private_data);
 	void (*sending_allowed_release)(void *sending_allowed_private_data);

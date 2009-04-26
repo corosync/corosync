@@ -131,8 +131,6 @@ static struct corosync_lib_handler pload_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn		= message_handler_req_pload_start,
-		.response_size		= sizeof (struct res_lib_pload_start),
-		.response_id		= MESSAGE_RES_PLOAD_START,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

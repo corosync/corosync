@@ -134,20 +134,14 @@ static struct corosync_lib_handler quorum_lib_service[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_getquorate,
-		.response_size				= sizeof (struct res_lib_quorum_getquorate),
-		.response_id				= MESSAGE_RES_QUORUM_GETQUORATE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_trackstart,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_QUORUM_NOTIFICATION,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_trackstop,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_QUORUM_TRACKSTOP,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

@@ -139,104 +139,70 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_create,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_CREATE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_destroy,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_DESTROY,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find,
-		.response_size				= sizeof (struct res_lib_confdb_object_find),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_create,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_CREATE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_get,
-		.response_size				= sizeof (struct res_lib_confdb_key_get),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_GET,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_replace,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_REPLACE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_delete,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_DELETE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_iter,
-		.response_size				= sizeof (struct res_lib_confdb_object_iter),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_ITER,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_parent_get,
-		.response_size				= sizeof (struct res_lib_confdb_object_parent_get),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_PARENT_GET,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 9 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter,
-		.response_size				= sizeof (struct res_lib_confdb_key_iter),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_ITER,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 10 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_start,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_TRACK_START,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 11 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_track_stop,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_TRACK_STOP,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 12 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_write,
-		.response_size				= sizeof (struct res_lib_confdb_write),
-		.response_id				= MESSAGE_RES_CONFDB_WRITE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 13 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_reload,
-		.response_size				= sizeof (struct res_lib_confdb_reload),
-		.response_id				= MESSAGE_RES_CONFDB_RELOAD,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 14 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_object_find_destroy,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 15 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_increment,
-		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_INCREMENT,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 16 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_decrement,
-		.response_size				= sizeof (struct res_lib_confdb_key_incdec),
-		.response_id				= MESSAGE_RES_CONFDB_KEY_DECREMENT,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };

@@ -706,10 +706,12 @@ retry_semop:
 static cs_error_t
 coroipcc_reply_receive (
 	void *ipc_context,
-	void *res_msg, size_t res_len)
+	void *res_msg,
+	size_t res_len)
 {
 	struct sembuf sop;
 	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
+	coroipc_response_header_t *response_header;
 	int res;
 
 	/*
@@ -731,6 +733,11 @@ retry_semop:
 	} else
 	if (res == -1) {
 		return (CS_ERR_LIBRARY);
+	}
+
+	response_header = (coroipc_response_header_t *)ipc_segment->response_buffer;
+	if (response_header->error == CS_ERR_TRY_AGAIN) {
+		return (CS_ERR_TRY_AGAIN);
 	}
 
 	memcpy (res_msg, ipc_segment->response_buffer, res_len);

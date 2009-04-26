@@ -219,32 +219,22 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_join,
-		.response_size				= sizeof (struct res_lib_cpg_join),
-		.response_id				= MESSAGE_RES_CPG_JOIN,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_leave,
-		.response_size				= sizeof (struct res_lib_cpg_leave),
-		.response_id				= MESSAGE_RES_CPG_LEAVE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_mcast,
-		.response_size				= sizeof (struct res_lib_cpg_mcast),
-		.response_id				= MESSAGE_RES_CPG_MCAST,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_membership,
-		.response_size				= sizeof (coroipc_response_header_t),
-		.response_id				= MESSAGE_RES_CPG_MEMBERSHIP,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
-		.response_size				= sizeof (struct res_lib_cpg_local_get),
-		.response_id				= MESSAGE_RES_CPG_LOCAL_GET,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

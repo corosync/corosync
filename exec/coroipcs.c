@@ -430,11 +430,6 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	return (-1);
 }
 
-struct res_overlay {
-	coroipc_response_header_t header __attribute__((aligned(8)));
-	char buf[4096];
-};
-
 union u {
 	uint64_t server_addr;
 	void *server_ptr;
@@ -518,7 +513,7 @@ static void *pthread_ipc_consumer (void *conn)
 	struct sembuf sop;
 	int res;
 	coroipc_request_header_t *header;
-	struct res_overlay res_overlay;
+	coroipc_response_header_t coroipc_response_header;
 	int send_ok;
 	unsigned int new_message;
 
@@ -568,13 +563,12 @@ retry_semop:
 			/*
 			 * Overload, tell library to retry
 			 */
-			res_overlay.header.size =
-				api->response_size_get (conn_info->service, header->id);
-			res_overlay.header.id =
-				api->response_id_get (conn_info->service, header->id);
-			res_overlay.header.error = CS_ERR_TRY_AGAIN;
-			coroipcs_response_send (conn_info, &res_overlay,
-				res_overlay.header.size);
+			coroipc_response_header.size = sizeof (coroipc_response_header_t);
+			coroipc_response_header.id = 0;
+			coroipc_response_header.error = CS_ERR_TRY_AGAIN;
+			coroipcs_response_send (conn_info,
+				&coroipc_response_header,
+				sizeof (coroipc_response_header_t));
 		}
 
 		api->sending_allowed_release (conn_info->sending_allowed_private_data);

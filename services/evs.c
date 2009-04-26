@@ -109,32 +109,22 @@ static struct corosync_lib_handler evs_lib_engine[] =
 {
 	{ /* 0 */
 		.lib_handler_fn				= message_handler_req_evs_join,
-		.response_size				= sizeof (struct res_lib_evs_join),
-		.response_id				= MESSAGE_RES_EVS_JOIN,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 1 */
 		.lib_handler_fn				= message_handler_req_evs_leave,
-		.response_size				= sizeof (struct res_lib_evs_leave),
-		.response_id				= MESSAGE_RES_EVS_LEAVE,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_evs_mcast_joined,
-		.response_size				= sizeof (struct res_lib_evs_mcast_joined),
-		.response_id				= MESSAGE_RES_EVS_MCAST_JOINED,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_evs_mcast_groups,
-		.response_size				= sizeof (struct res_lib_evs_mcast_groups),
-		.response_id				= MESSAGE_RES_EVS_MCAST_GROUPS,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_evs_membership_get,
-		.response_size				= sizeof (struct res_lib_evs_membership_get),
-		.response_id				= MESSAGE_RES_EVS_MEMBERSHIP_GET,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };

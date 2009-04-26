@@ -511,18 +511,6 @@ static int corosync_service_available (unsigned int service)
 	return (ais_service[service] != NULL);
 }
 
-static int corosync_response_size_get (unsigned int service, unsigned int id)
-{
-	return (ais_service[service]->lib_engine[id].response_size);
-
-}
-
-static int corosync_response_id_get (unsigned int service, unsigned int id)
-{
-	return (ais_service[service]->lib_engine[id].response_id);
-}
-
-
 struct sending_allowed_private_data_struct {
 	int reserved_msgs;
 };
@@ -642,8 +630,6 @@ struct coroipcs_init_state ipc_init_state = {
 	.serialize_unlock		= serialize_unlock,
 	.sending_allowed		= corosync_sending_allowed,
 	.sending_allowed_release	= corosync_sending_allowed_release,
-	.response_size_get		= corosync_response_size_get,
-	.response_id_get		= corosync_response_id_get,
 	.poll_accept_add		= corosync_poll_accept_add,
 	.poll_dispatch_add		= corosync_poll_dispatch_add,
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
@@ -894,6 +880,7 @@ int main (int argc, char **argv)
 		corosync_group_handle,
 		&corosync_group,
 		1);
+
 
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
