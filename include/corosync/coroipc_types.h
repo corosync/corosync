@@ -35,8 +35,6 @@
 #ifndef COROIPC_TYPES_H_DEFINED
 #define COROIPC_TYPES_H_DEFINED
 
-#include <config.h>
-
 typedef struct {
 	int size __attribute__((aligned(8)));
 	int id __attribute__((aligned(8)));
