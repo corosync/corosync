@@ -36,6 +36,10 @@
 #ifndef TOTEMPG_H_DEFINED
 #define TOTEMPG_H_DEFINED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <netinet/in.h>
 #include "totem.h"
 #include "coropoll.h"
@@ -148,5 +152,9 @@ extern int totempg_my_family_get (void);
 extern int totempg_crypto_set (unsigned int type);
 
 extern int totempg_ring_reenable (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* TOTEMPG_H_DEFINED */

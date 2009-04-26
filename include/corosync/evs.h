@@ -37,6 +37,10 @@
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup corosync Other API services provided by corosync
  */
@@ -164,5 +168,9 @@ cs_error_t evs_membership_get (
 	unsigned int *local_nodeid,
 	unsigned int *member_list,
 	size_t *member_list_entries);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_EVS_H_DEFINED */

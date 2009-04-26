@@ -37,6 +37,10 @@
 #include <corosync/hdb.h>
 #include <pthread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void * poll_timer_handle;
 
 hdb_handle_t poll_create (void);
@@ -85,9 +89,8 @@ int poll_run (
 int poll_stop (
 	hdb_handle_t handle);
 
-#ifdef COMPILE_OUT
-void poll_print_state (
-	hdb_handle_t handle, int fd);
+#ifdef __cplusplus
+}
 #endif
 
 #endif	/* POLL_H_DEFINED */

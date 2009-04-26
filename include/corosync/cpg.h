@@ -37,6 +37,10 @@
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @addtogroup cpg_corosync
  *
@@ -200,5 +204,9 @@ cs_error_t cpg_zcb_mcast_joined (
 	cpg_guarantee_t guarantee,
 	void *msg,
 	size_t msg_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_CPG_H_DEFINED */

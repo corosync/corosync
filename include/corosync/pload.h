@@ -37,6 +37,10 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup corosync Other API services provided by corosync
  */
@@ -96,5 +100,10 @@ unsigned int pload_start (
         unsigned int code,
         unsigned int msg_count,
         unsigned int msg_size);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_PLOAD_H_DEFINED */

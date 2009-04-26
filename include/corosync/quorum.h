@@ -36,6 +36,10 @@
 
 #include <corosync/corotypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef uint64_t quorum_handle_t;
 
 typedef struct {
@@ -108,5 +112,9 @@ cs_error_t quorum_context_set (
 cs_error_t quorum_context_get (
 	quorum_handle_t handle,
 	const void **context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_QUORUM_H_DEFINED */

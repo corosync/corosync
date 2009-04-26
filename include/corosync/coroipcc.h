@@ -41,6 +41,10 @@
 #include <sys/socket.h>
 #include <corosync/corotypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
@@ -105,5 +109,10 @@ coroipcc_zcb_msg_send_reply_receive (
 	void *msg,
 	void *res_msg,
 	size_t res_len);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROIPCC_H_DEFINED */

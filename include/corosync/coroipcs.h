@@ -37,6 +37,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct iovec;
 
 typedef int (*coroipcs_init_fn_lvalue) (void *conn);
@@ -109,5 +113,9 @@ extern int coroipcs_handler_dispatch (
 	int fd,
 	int revent,
 	void *context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROIPCS_H_DEFINED */

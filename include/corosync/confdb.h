@@ -37,6 +37,10 @@
 #include <corosync/corotypes.h>
 #include <corosync/hdb.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @addtogroup confdb_corosync
  *
@@ -282,5 +286,9 @@ cs_error_t confdb_context_get (
 cs_error_t confdb_context_set (
 	confdb_handle_t handle,
 	const void *context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_CONFDB_H_DEFINED */

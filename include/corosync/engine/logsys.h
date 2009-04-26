@@ -42,6 +42,10 @@
 #include <syslog.h>
 #include <pthread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * All of the LOGSYS_MODE's can be ORed together for combined behavior
  *
@@ -369,5 +373,9 @@ do {									\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_TAG_TRACE8, format, ##args);\
 } while(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LOGSYS_H_DEFINED */

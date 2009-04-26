@@ -33,6 +33,10 @@
 
 #include <corosync/hdb.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int lcr_ifact_reference (
 	hdb_handle_t *handle,
 	const char *iface_name,
@@ -42,5 +46,10 @@ int lcr_ifact_reference (
 
 int lcr_ifact_release (
 	hdb_handle_t handle);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LCR_IFACT_H_DEFINED */

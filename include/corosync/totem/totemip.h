@@ -40,6 +40,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef SO_NOSIGPIPE
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -92,5 +96,9 @@ static inline int totemip_zero_check(const struct totem_ip_address *addr)
 {
 	return (addr->family == 0);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -35,8 +35,11 @@
 #ifndef COROSYNC_VOTEQUORUM_H_DEFINED
 #define COROSYNC_VOTEQUORUM_H_DEFINED
 
-typedef uint64_t votequorum_handle_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+typedef uint64_t votequorum_handle_t;
 
 #define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
 
@@ -209,4 +212,7 @@ cs_error_t votequorum_context_set (
 	votequorum_handle_t handle,
 	void *context);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* COROSYNC_VOTEQUORUM_H_DEFINED */
