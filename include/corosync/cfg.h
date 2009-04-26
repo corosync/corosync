@@ -32,8 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_COROSYNCCFG_H_DEFINED
-#define AIS_COROSYNCCFG_H_DEFINED
+#ifndef COROSYNC_CFG_H_DEFINED
+#define COROSYNC_CFG_H_DEFINED
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
@@ -237,4 +237,4 @@ corosync_cfg_crypto_set (
 }
 #endif
 
-#endif /* AIS_COROSYNCCFG_H_DEFINED */
+#endif /* COROSYNC_CFG_H_DEFINED */
