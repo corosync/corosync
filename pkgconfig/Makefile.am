@@ -30,6 +30,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
+
 LIBS	= cfg confdb coroipcc coroipcs cpg evs logsys pload quorum \
 	  totem_pg votequorum
 
