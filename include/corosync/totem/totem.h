@@ -130,6 +130,14 @@ struct totem_config {
 
 	struct totem_logging_configuration totem_logging_configuration;
 
+	void (*log_rec) (
+		int subsysid,
+		const char *function_name,
+		const char *file_name,
+		int file_line,
+		unsigned int rec_ident,
+		...);
+
 	unsigned int secauth;
 
 	unsigned int net_mtu;
