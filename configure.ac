@@ -214,6 +214,8 @@ case "$host_os" in
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
 			     -compatibility_version ${SONAME}"
+		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
+				   [Shared memory define for Darwin platform])
 	;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],

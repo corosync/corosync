@@ -51,10 +51,10 @@ LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 
 if BUILD_DARWIN
 quorum_%.lcrso: %.o
-	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
+	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -bundle -bundle_loader ../exec/corosync $^ -o $@
+	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 else
 quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@

@@ -75,16 +75,22 @@ EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@ -lpthread
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(COROIPCS_OBJS) -o $@ -lpthread
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 else
 
