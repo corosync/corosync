@@ -4,7 +4,7 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [trunk], [openais@lists.osdl.org])
+AC_INIT([corosync], [0.96], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
