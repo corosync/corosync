@@ -1106,7 +1106,8 @@ void _logsys_log_vprintf (
 	}
 
 	if ((level > logsys_loggers[subsysid].syslog_priority) &&
-	    (level > logsys_loggers[subsysid].logfile_priority)) {
+	    (level > logsys_loggers[subsysid].logfile_priority) &&
+	    (logsys_loggers[subsysid].debug == 0)) {
 		return;
 	}
 
@@ -1161,7 +1162,8 @@ void _logsys_log_printf (
 	}
 
 	if ((level > logsys_loggers[subsysid].syslog_priority) &&
-	    (level > logsys_loggers[subsysid].logfile_priority)) {
+	    (level > logsys_loggers[subsysid].logfile_priority) &&
+	    (logsys_loggers[subsysid].debug == 0)) {
 		return;
 	}
 
