@@ -59,6 +59,7 @@
 #include <syslog.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <limits.h>
 
 #include <corosync/engine/logsys.h>
 
@@ -724,6 +725,15 @@ static int logsys_config_file_set_unlocked (
 		return (0);
 	}
 
+	if (strlen(file) >= PATH_MAX) {
+		snprintf (error_string_response,
+			sizeof(error_string_response),
+			"%s: logfile name exceed maximum system filename lenght\n",
+			logsys_loggers[subsysid].subsys);
+		*error_string = error_string_response;
+		return (-1);
+	}
+
 	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if ((logsys_loggers[i].logfile != NULL) &&
 			(strcmp (logsys_loggers[i].logfile, file) == 0) &&
@@ -798,6 +808,11 @@ int _logsys_system_setup(
 	const char *errstr;
 	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
 
+	if ((mainsystem == NULL) ||
+	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
+		return -1;
+	}
+
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
 	pthread_mutex_lock (&logsys_config_mutex);
@@ -810,11 +825,9 @@ int _logsys_system_setup(
 
 	logsys_loggers[i].debug = debug;
 
-	if ((logfile) && strlen(logfile) > 0) {
-		if (logsys_config_file_set_unlocked (i, &errstr, logfile) < 0) {
-			pthread_mutex_unlock (&logsys_config_mutex);
-			return (-1);
-		}
+	if (logsys_config_file_set_unlocked (i, &errstr, logfile) < 0) {
+		pthread_mutex_unlock (&logsys_config_mutex);
+		return (-1);
 	}
 	logsys_loggers[i].logfile_priority = logfile_priority;
 
@@ -847,7 +860,8 @@ unsigned int _logsys_subsys_create (const char *subsys)
 {
 	int i;
 
-	if (subsys == NULL) {
+	if ((subsys == NULL) ||
+	    (strlen(subsys) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
 		return -1;
 	}
 
