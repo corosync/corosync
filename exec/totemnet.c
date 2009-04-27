@@ -108,9 +108,8 @@ struct totemnet_instance {
 	prng_state totemnet_prng_state;
 
 #ifdef HAVE_LIBNSS
-	SECItem      *nss_sec_param;
 	PK11SymKey   *nss_sym_key;
-	unsigned char nss_iv_data[16];
+	PK11SymKey   *nss_sym_key_sign;
 #endif
 
 	unsigned char totemnet_private_key[1024];
@@ -311,7 +310,8 @@ static int authenticate_and_decrypt_sober (
 static void init_sober_crypto(
 	struct totemnet_instance *instance)
 {
-	log_printf(instance->totemnet_log_level_notice, "Initialising SOBER128 crypto\n");
+	log_printf(instance->totemnet_log_level_notice,
+		"Initializing transmit/receive security: libtomcrypt SOBER128/SHA1HMAC (mode 0).\n");
 	rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
 }
 
@@ -368,15 +368,16 @@ static void copy_to_iovec(
 	}
 }
 
-
 static void init_nss_crypto(
 	struct totemnet_instance *instance)
 {
-	PK11SlotInfo*      slot = NULL;
-	SECItem            key_item, iv_item;
+	PK11SlotInfo*      aes_slot = NULL;
+	PK11SlotInfo*      sha1_slot = NULL;
+	SECItem            key_item;
 	SECStatus          rv;
 
-	log_printf(instance->totemnet_log_level_notice, "Initialising NSS crypto\n");
+	log_printf(instance->totemnet_log_level_notice,
+		"Initializing transmit/receive security: NSS AES128CBC/SHA1HMAC (mode 1).\n");
 	rv = NSS_NoDB_Init(".");
 	if (rv != SECSuccess)
 	{
@@ -385,14 +386,21 @@ static void init_nss_crypto(
 		goto out;
 	}
 
-	slot = PK11_GetBestSlot(instance->totem_config->crypto_crypt_type, NULL);
-	if (slot == NULL)
+	aes_slot = PK11_GetBestSlot(instance->totem_config->crypto_crypt_type, NULL);
+	if (aes_slot == NULL)
 	{
 		log_printf(instance->totemnet_log_level_security, "Unable to find security slot (err %d)\n",
 			PR_GetError());
 		goto out;
 	}
 
+	sha1_slot = PK11_GetBestSlot(CKM_SHA_1_HMAC, NULL);
+	if (sha1_slot == NULL)
+	{
+		log_printf(instance->totemnet_log_level_security, "Unable to find security slot (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
 	/*
 	 * Make the private key into a SymKey that we can use
 	 */
@@ -400,9 +408,10 @@ static void init_nss_crypto(
 	key_item.data = instance->totem_config->private_key;
 	key_item.len = 32; /* Use 128 bits */
 
-	instance->nss_sym_key = PK11_ImportSymKey(slot, instance->totem_config->crypto_crypt_type,
-						  PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT|CKA_SIGN,
-						  &key_item, NULL);
+	instance->nss_sym_key = PK11_ImportSymKey(aes_slot,
+		instance->totem_config->crypto_crypt_type,
+		PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
+		&key_item, NULL);
 	if (instance->nss_sym_key == NULL)
 	{
 		log_printf(instance->totemnet_log_level_security, "Failure to import key into NSS (err %d)\n",
@@ -410,22 +419,15 @@ static void init_nss_crypto(
 		goto out;
 	}
 
-	/* set up the PKCS11 encryption paramters.
-	 * when not using CBC mode, iv_item.data and iv_item.len can be 0, or you
-	 * can simply pass NULL for the iv parameter in PK11_ParamFromIV func
-	 */
-	rng_get_bytes(instance->nss_iv_data, sizeof(instance->nss_iv_data), NULL);
-	iv_item.type = siBuffer;
-	iv_item.data = instance->nss_iv_data;
-	iv_item.len = sizeof(instance->nss_iv_data);
-	instance->nss_sec_param = PK11_ParamFromIV(instance->totem_config->crypto_crypt_type, &iv_item);
-	if (instance->nss_sec_param == NULL)
-	{
-		log_printf(instance->totemnet_log_level_security, "Failure to set up PKCS11 param (err %d)\n",
+	instance->nss_sym_key_sign = PK11_ImportSymKey(sha1_slot,
+		CKM_SHA_1_HMAC,
+		PK11_OriginUnwrap, CKA_SIGN,
+		&key_item, NULL);
+	if (instance->nss_sym_key_sign == NULL) {
+		log_printf(instance->totemnet_log_level_security, "Failure to import key into NSS (err %d)\n",
 			PR_GetError());
 		goto out;
 	}
-
 out:
 	return;
 }
@@ -446,7 +448,11 @@ static int encrypt_and_sign_nss (
 	unsigned char      *outdata;
 	size_t             datalen;
 	SECItem            no_params;
+	SECItem            iv_item;
 	struct security_header *header;
+	SECItem      *nss_sec_param;
+	unsigned char nss_iv_data[16];
+	SECStatus          rv;
 
 	no_params.type = siBuffer;
 	no_params.data = 0;
@@ -465,16 +471,44 @@ static int encrypt_and_sign_nss (
 	outdata = buf + sizeof (struct security_header);
 	header = (struct security_header *)buf;
 
+	rv = PK11_GenerateRandom (
+		nss_iv_data,
+		sizeof (nss_iv_data));
+	if (rv != SECSuccess) {
+		log_printf(instance->totemnet_log_level_security,
+			"Failure to generate a random number %d\n",
+			PR_GetError());
+	}
+
+	memcpy(header->salt, nss_iv_data, sizeof(nss_iv_data));
+	iv_item.type = siBuffer;
+	iv_item.data = nss_iv_data;
+	iv_item.len = sizeof (nss_iv_data);
+
+	nss_sec_param = PK11_ParamFromIV (
+		instance->totem_config->crypto_crypt_type,
+		&iv_item);
+	if (nss_sec_param == NULL) {
+		log_printf(instance->totemnet_log_level_security,
+			"Failure to set up PKCS11 param (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+
 	/*
 	 * Create cipher context for encryption
 	 */
-	enc_context = PK11_CreateContextBySymKey(instance->totem_config->crypto_crypt_type, CKA_ENCRYPT,
-						instance->nss_sym_key, instance->nss_sec_param);
+	enc_context = PK11_CreateContextBySymKey (
+		instance->totem_config->crypto_crypt_type,
+		CKA_ENCRYPT,
+		instance->nss_sym_key,
+		nss_sec_param);
 	if (!enc_context) {
 		char err[1024];
 		PR_GetErrorText(err);
 		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemnet_log_level_security, "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
 			instance->totem_config->crypto_crypt_type,
 			PR_GetError(), err);
 		return -1;
@@ -488,12 +522,14 @@ static int encrypt_and_sign_nss (
 
 	*buf_len = tmp1_outlen + tmp2_outlen;
 	free(inbuf);
+//	memcpy(&outdata[*buf_len], nss_iv_data, sizeof(nss_iv_data));
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
 		goto out;
 
 	/* Now do the digest */
-	enc_context = PK11_CreateContextBySymKey(CKM_MD5, CKA_DIGEST, instance->nss_sym_key, &no_params);
+	enc_context = PK11_CreateContextBySymKey(CKM_SHA_1_HMAC,
+		CKA_SIGN, instance->nss_sym_key_sign, &no_params);
 	if (!enc_context) {
 		char err[1024];
 		PR_GetErrorText(err);
@@ -503,9 +539,10 @@ static int encrypt_and_sign_nss (
 		return -1;
 	}
 
+
 	PK11_DigestBegin(enc_context);
 
-	rv1 = PK11_DigestOp(enc_context, outdata, *buf_len);
+	rv1 = PK11_DigestOp(enc_context, outdata - 16, *buf_len + 16);
 	rv2 = PK11_DigestFinal(enc_context, header->hash_digest, &tmp2_outlen, sizeof(header->hash_digest));
 
 	PK11_DestroyContext(enc_context, PR_TRUE);
@@ -513,9 +550,9 @@ static int encrypt_and_sign_nss (
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
 		goto out;
 
-	memcpy(header->salt, instance->nss_iv_data, sizeof(instance->nss_iv_data));
 
-	*buf_len += sizeof(struct security_header);
+	*buf_len = *buf_len + sizeof(struct security_header);
+	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
 	return 0;
 
 out:
@@ -559,13 +596,16 @@ static int authenticate_and_decrypt_nss (
 		inbuf = iov[0].iov_base;
 		datalen = iov[0].iov_len;
 	}
-	data = inbuf + sizeof (struct security_header);
-	datalen -= sizeof (struct security_header);
+	data = inbuf + sizeof (struct security_header) - 16;
+	datalen = datalen - sizeof (struct security_header) + 16;
 
 	outdata = outbuf + sizeof (struct security_header);
 
 	/* Check the digest */
-	enc_context = PK11_CreateContextBySymKey(CKM_MD5, CKA_DIGEST, instance->nss_sym_key, &no_params);
+	enc_context = PK11_CreateContextBySymKey (
+		CKM_SHA_1_HMAC, CKA_SIGN,
+		instance->nss_sym_key_sign,
+		&no_params);
 	if (!enc_context) {
 		char err[1024];
 		PR_GetErrorText(err);
@@ -592,14 +632,24 @@ static int authenticate_and_decrypt_nss (
 		return -1;
 	}
 
+	/*
+	 * Get rid of salt
+	 */
+	data += 16;
+	datalen -= 16;
+
 	/* Create cipher context for decryption */
 	ivdata.type = siBuffer;
 	ivdata.data = header->salt;
 	ivdata.len = sizeof(header->salt);
-	enc_context = PK11_CreateContextBySymKey(instance->totem_config->crypto_crypt_type, CKA_DECRYPT,
-						instance->nss_sym_key, &ivdata);
+
+	enc_context = PK11_CreateContextBySymKey(
+		instance->totem_config->crypto_crypt_type,
+		CKA_DECRYPT,
+		instance->nss_sym_key, &ivdata);
 	if (!enc_context) {
-		log_printf(instance->totemnet_log_level_security, "PK11_CreateContext (decrypt) failed (err %d)\n",
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CreateContext (decrypt) failed (err %d)\n",
 			PR_GetError());
 		return -1;
 	}
@@ -608,7 +658,8 @@ static int authenticate_and_decrypt_nss (
 			    sizeof(outbuf) - sizeof (struct security_header),
 			    data, datalen);
 	if (rv1 != SECSuccess) {
-		log_printf(instance->totemnet_log_level_security, "PK11_CipherOp (decrypt) failed (err %d)\n",
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CipherOp (decrypt) failed (err %d)\n",
 			PR_GetError());
 	}
 	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
@@ -805,18 +856,22 @@ int totemnet_crypto_set (hdb_handle_t handle,
 	 */
 	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD) {
 		res = -1;
-	}
-	else {
+	} else {
 		/*
-		 * Validate number
+		 * Validate crypto algorithm
 		 */
-		if (type == TOTEM_CRYPTO_SOBER ||
-		    type == TOTEM_CRYPTO_NSS) {
-			instance->totem_config->crypto_type = type;
-			log_printf(instance->totemnet_log_level_security, "Encryption type set to %d\n", type);
-		}
-		else {
-			res = -1;
+		switch (type) {
+			case TOTEM_CRYPTO_SOBER:
+				log_printf(instance->totemnet_log_level_security,
+					"Transmit security set to: libtomcrypt SOBER128/SHA1HMAC (mode 0)");
+				break;
+			case TOTEM_CRYPTO_NSS:
+				log_printf(instance->totemnet_log_level_security,
+					"Transmit security set to: NSS AES128CBC/SHA1HMAC (mode 1)");
+				break;
+			default:
+				res = -1;
+				break;
 		}
 	}
 	hdb_handle_put (&totemnet_instance_database, handle);
