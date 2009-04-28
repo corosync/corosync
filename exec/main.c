@@ -133,8 +133,8 @@ static void sigusr2_handler (int num)
 {
 	int i;
 
-	for (i = 0; ais_service[i]; i++) {
-		if (ais_service[i]->exec_dump_fn) {
+	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+		if (ais_service[i] && ais_service[i]->exec_dump_fn) {
 			ais_service[i]->exec_dump_fn ();
 		}
 	}
