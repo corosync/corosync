@@ -33,7 +33,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
-noinst_PROGRAMS		= testevs evsbench evsverify testcpg testcpg2 cpgbench testconfdb	\
+noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench testconfdb	\
 			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2	\
 			logsys_s logsys_t1 logsys_t2 testcpgzc cpgbenchzc testzcgc
 
@@ -57,6 +57,8 @@ testvotequorum2_LDADD	= -lvotequorum
 testvotequorum2_LDFLAGS	= -L../lib
 evsverify_LDADD		= -levs -ltotem_pg
 evsverify_LDFLAGS	= -L../lib -L../exec
+cpgverify_LDADD		= -lcpg -ltotem_pg
+cpgverify_LDFLAGS	= -L../lib -L../exec
 evsbench_LDADD		= -levs
 evsbench_LDFLAGS	= -L../lib
 cpgbench_LDADD		= -lcpg
