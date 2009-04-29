@@ -322,7 +322,7 @@ static inline int hdb_handle_destroy (
 
 	handle_database->handles[handle].state = HDB_HANDLE_STATE_PENDINGREMOVAL;
 	hdb_database_unlock (&handle_database->lock);
-	res = hdb_handle_put (handle_database, handle);
+	res = hdb_handle_put (handle_database, handle_in);
 	return (res);
 }
 
