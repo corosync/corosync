@@ -41,7 +41,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -59,27 +58,15 @@
 #include "util.h"
 
 struct votequorum_inst {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	int finalize;
 	void *context;
 	votequorum_callbacks_t callbacks;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 };
 
 static void votequorum_instance_destructor (void *instance);
 
-DECLARE_HDB_DATABASE(votequorum_handle_t_db,votequorum_instance_destructor);
-
-/*
- * Clean up function for a quorum instance (votequorum_initialize) handle
- */
-static void votequorum_instance_destructor (void *instance)
-{
-	struct votequorum_inst *votequorum_inst = instance;
-
-	pthread_mutex_destroy (&votequorum_inst->response_mutex);
-}
+DECLARE_HDB_DATABASE(votequorum_handle_t_db,NULL);
 
 cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
@@ -104,13 +91,11 @@ cs_error_t votequorum_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		 &votequorum_inst->ipc_ctx);
+		 &votequorum_inst->handle);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
-	pthread_mutex_init (&votequorum_inst->response_mutex, NULL);
-	pthread_mutex_init (&votequorum_inst->dispatch_mutex, NULL);
 	if (callbacks)
 		memcpy(&votequorum_inst->callbacks, callbacks, sizeof (*callbacks));
 	else
@@ -139,22 +124,17 @@ cs_error_t votequorum_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (votequorum_inst->finalize) {
-		pthread_mutex_unlock (&votequorum_inst->response_mutex);
 		hdb_handle_put (&votequorum_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
 	votequorum_inst->finalize = 1;
 
-	coroipcc_service_disconnect (votequorum_inst->ipc_ctx);
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
+	coroipcc_service_disconnect (votequorum_inst->handle);
 
 	hdb_handle_destroy (&votequorum_handle_t_db, handle);
 
@@ -187,16 +167,12 @@ cs_error_t votequorum_getinfo (
 	iov.iov_base = (char *)&req_lib_votequorum_getinfo;
 	iov.iov_len = sizeof (struct req_lib_votequorum_getinfo);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_getinfo,
 		sizeof (struct res_lib_votequorum_getinfo));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -241,16 +217,12 @@ cs_error_t votequorum_setexpected (
 	iov.iov_base = (char *)&req_lib_votequorum_setexpected;
 	iov.iov_len = sizeof (struct req_lib_votequorum_setexpected);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -288,16 +260,12 @@ cs_error_t votequorum_setvotes (
 	iov.iov_base = (char *)&req_lib_votequorum_setvotes;
 	iov.iov_len = sizeof (struct req_lib_votequorum_setvotes);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -339,16 +307,12 @@ cs_error_t votequorum_qdisk_register (
 	iov.iov_base = (char *)&req_lib_votequorum_qdisk_register;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_register);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -385,16 +349,12 @@ cs_error_t votequorum_qdisk_poll (
 	iov.iov_base = (char *)&req_lib_votequorum_qdisk_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_poll);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -422,8 +382,6 @@ cs_error_t votequorum_qdisk_unregister (
 		return (error);
 	}
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
 	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
 	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_UNREGISTER;
 
@@ -431,13 +389,11 @@ cs_error_t votequorum_qdisk_unregister (
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -475,16 +431,12 @@ cs_error_t votequorum_qdisk_getinfo (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_qdisk_getinfo,
 		sizeof (struct res_lib_votequorum_qdisk_getinfo));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -523,16 +475,12 @@ cs_error_t votequorum_setstate (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -567,16 +515,12 @@ cs_error_t votequorum_leaving (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -614,16 +558,12 @@ cs_error_t votequorum_trackstart (
 	iov.iov_base = (char *)&req_lib_votequorum_trackstart;
 	iov.iov_len = sizeof (struct req_lib_votequorum_trackstart);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -657,16 +597,12 @@ cs_error_t votequorum_trackstop (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-	pthread_mutex_lock (&votequorum_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->ipc_ctx,
+		votequorum_inst->handle,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
 		sizeof (struct res_lib_votequorum_status));
-
-	pthread_mutex_unlock (&votequorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -732,11 +668,11 @@ cs_error_t votequorum_fd_get (
                 return (error);
         }
 
-	*fd = coroipcc_fd_get (votequorum_inst->ipc_ctx);
+	error = coroipcc_fd_get (votequorum_inst->handle, fd);
 
 	(void)hdb_handle_put (&votequorum_handle_t_db, handle);
 
-	return (CS_OK);
+	return (error);
 }
 
 cs_error_t votequorum_dispatch (
@@ -746,7 +682,6 @@ cs_error_t votequorum_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct votequorum_inst *votequorum_inst;
 	votequorum_callbacks_t callbacks;
 	coroipc_response_header_t *dispatch_data;
@@ -775,28 +710,20 @@ cs_error_t votequorum_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&votequorum_inst->dispatch_mutex);
-
-		dispatch_avail = coroipcc_dispatch_get (
-			votequorum_inst->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			votequorum_inst->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		/*
-		 * Handle has been finalized in another thread
-		 */
-		if (votequorum_inst->finalize == 1) {
-			error = CS_OK;
-			goto error_unlock;
+		if (error != CS_OK) {
+			goto error_put;
 		}
 
-		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
-			pthread_mutex_unlock (&votequorum_inst->dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&votequorum_inst->dispatch_mutex);
-			continue; /* next poll */
+		if (dispatch_data == NULL) {
+			if (dispatch_types == CPG_DISPATCH_ALL) {
+				break; /* exit do while cont is 1 loop */
+			} else {
+				continue; /* next poll */
+			}
 		}
 
 		/*
@@ -805,7 +732,6 @@ cs_error_t votequorum_dispatch (
 		 * operate at the same time that votequorum_finalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &votequorum_inst->callbacks, sizeof (votequorum_callbacks_t));
-		pthread_mutex_unlock (&votequorum_inst->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming message
@@ -838,12 +764,12 @@ cs_error_t votequorum_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (votequorum_inst->ipc_ctx);
+			coroipcc_dispatch_put (votequorum_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (votequorum_inst->ipc_ctx);
+		coroipcc_dispatch_put (votequorum_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -860,9 +786,6 @@ cs_error_t votequorum_dispatch (
 	} while (cont);
 
 	goto error_put;
-
-error_unlock:
-	pthread_mutex_unlock (&votequorum_inst->dispatch_mutex);
 
 error_put:
 	hdb_handle_put (&votequorum_handle_t_db, handle);

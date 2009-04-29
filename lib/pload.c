@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -53,28 +52,12 @@
 
 #include "util.h"
 
-static void pload_instance_destructor (void *instance);
-
 struct pload_inst {
-	void *ipc_ctx;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
+	hdb_handle_t handle;
 	unsigned int finalize;
 };
 
-DECLARE_HDB_DATABASE(pload_handle_t_db,pload_instance_destructor);
-
-/*
- * Clean up function for an evt instance (saEvtInitialize) handle
- */
-static void pload_instance_destructor (void *instance)
-{
-	struct pload_inst *pload_inst = instance;
-
-	pthread_mutex_destroy (&pload_inst->response_mutex);
-	pthread_mutex_destroy (&pload_inst->dispatch_mutex);
-}
-
+DECLARE_HDB_DATABASE(pload_handle_t_db,NULL);
 
 /**
  * @defgroup pload_corosync The extended virtual synchrony passthrough API
@@ -111,14 +94,10 @@ unsigned int pload_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		&pload_inst->ipc_ctx);
+		&pload_inst->handle);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
-
-	pthread_mutex_init (&pload_inst->response_mutex, NULL);
-
-	pthread_mutex_init (&pload_inst->dispatch_mutex, NULL);
 
 	(void)hdb_handle_put (&pload_handle_t_db, *handle);
 
@@ -143,22 +122,17 @@ unsigned int pload_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&pload_inst->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (pload_inst->finalize) {
-		pthread_mutex_unlock (&pload_inst->response_mutex);
 		(void)hdb_handle_put (&pload_handle_t_db, handle);
 		return (PLOAD_ERR_BAD_HANDLE);
 	}
 
 	pload_inst->finalize = 1;
 
-	coroipcc_service_disconnect(pload_inst->ipc_ctx);
-
-	pthread_mutex_unlock (&pload_inst->response_mutex);
+	coroipcc_service_disconnect(pload_inst->handle);
 
 	(void)hdb_handle_destroy (&pload_handle_t_db, handle);
 
@@ -179,7 +153,7 @@ unsigned int pload_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (pload_inst->ipc_ctx);
+	coroipcc_fd_get (pload_inst->handle, fd);
 
 	(void)hdb_handle_put (&pload_handle_t_db, handle);
 
@@ -212,15 +186,11 @@ unsigned int pload_start (
 	iov.iov_base = (char *)&req_lib_pload_start;
 	iov.iov_len = sizeof (struct req_lib_pload_start);
 
-	pthread_mutex_lock (&pload_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive(pload_inst->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive(pload_inst->handle,
 		&iov,
 		1,
 		&res_lib_pload_start,
 		sizeof (struct res_lib_pload_start));
-
-	pthread_mutex_unlock (&pload_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;

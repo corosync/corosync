@@ -63,32 +63,21 @@
  * Data structure for instance data
  */
 struct cfg_instance {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	corosync_cfg_callbacks_t callbacks;
 	cs_name_t comp_name;
 	int comp_registered;
 	int finalize;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 };
-
-static void cfg_handle_instance_destructor (void *);
 
 /*
  * All instances in one database
  */
-DECLARE_HDB_DATABASE (cfg_hdb,cfg_handle_instance_destructor);
+DECLARE_HDB_DATABASE (cfg_hdb,NULL);
 
 /*
  * Implementation
  */
-void cfg_handle_instance_destructor (void *instance)
-{
-	struct cfg_instance *cfg_instance = instance;
-
-	pthread_mutex_destroy (&cfg_instance->response_mutex);
-	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
-}
 
 cs_error_t
 corosync_cfg_initialize (
@@ -114,7 +103,7 @@ corosync_cfg_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		&cfg_instance->ipc_ctx);
+		&cfg_instance->handle);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -122,10 +111,6 @@ corosync_cfg_initialize (
 	if (cfg_callbacks) {
 	memcpy (&cfg_instance->callbacks, cfg_callbacks, sizeof (corosync_cfg_callbacks_t));
 	}
-
-	pthread_mutex_init (&cfg_instance->response_mutex, NULL);
-
-	pthread_mutex_init (&cfg_instance->dispatch_mutex, NULL);
 
 	(void)hdb_handle_put (&cfg_hdb, *cfg_handle);
 
@@ -152,10 +137,10 @@ corosync_cfg_fd_get (
 		return (error);
 	}
 
-	*selection_fd = coroipcc_fd_get (cfg_instance->ipc_ctx);
+	error = coroipcc_fd_get (cfg_instance->handle, selection_fd);
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
-	return (CS_OK);
+	return (error);
 }
 
 cs_error_t
@@ -166,7 +151,6 @@ corosync_cfg_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct cfg_instance *cfg_instance;
 	struct res_lib_cfg_testshutdown *res_lib_cfg_testshutdown;
 	corosync_cfg_callbacks_t callbacks;
@@ -186,29 +170,21 @@ corosync_cfg_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&cfg_instance->dispatch_mutex);
 
-		dispatch_avail = coroipcc_dispatch_get (
-			cfg_instance->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			cfg_instance->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		/*
-		 * Handle has been finalized in another thread
-		 */
-		if (cfg_instance->finalize == 1) {
-			error = CS_OK;
-			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
+		if (error != CS_OK) {
 			goto error_put;
 		}
 
-		if (dispatch_avail == 0 && dispatch_flags == CS_DISPATCH_ALL) {
-			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-			continue; /* next poll */
+		if (dispatch_data == NULL) {
+			if (dispatch_flags == CPG_DISPATCH_ALL) {
+				break; /* exit do while cont is 1 loop */
+			} else {
+				continue; /* next poll */
+			}
 		}
 
 		/*
@@ -217,7 +193,6 @@ corosync_cfg_dispatch (
 		 * operate at the same time that cfgFinalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &cfg_instance->callbacks, sizeof (corosync_cfg_callbacks_t));
-		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming response
@@ -230,12 +205,12 @@ corosync_cfg_dispatch (
 			}
 			break;
 		default:
-			coroipcc_dispatch_put (cfg_instance->ipc_ctx);
+			coroipcc_dispatch_put (cfg_instance->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_nounlock;
 			break;
 		}
-		coroipcc_dispatch_put (cfg_instance->ipc_ctx);
+		coroipcc_dispatch_put (cfg_instance->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -269,31 +244,17 @@ corosync_cfg_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&cfg_instance->dispatch_mutex);
-
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (cfg_instance->finalize) {
-		pthread_mutex_unlock (&cfg_instance->response_mutex);
-		pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
 		(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
 	cfg_instance->finalize = 1;
 
-	coroipcc_service_disconnect (cfg_instance->ipc_ctx);
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
-
-	pthread_mutex_unlock (&cfg_instance->dispatch_mutex);
-
-	pthread_mutex_destroy (&cfg_instance->response_mutex);
-
-	pthread_mutex_destroy (&cfg_instance->dispatch_mutex);
+	coroipcc_service_disconnect (cfg_instance->handle);
 
 	(void)hdb_handle_destroy (&cfg_hdb, cfg_handle);
 
@@ -327,15 +288,11 @@ corosync_cfg_ring_status_get (
 	iov.iov_base = 	&req_lib_cfg_ringstatusget,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringstatusget),
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive(cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive(cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	*interface_count = res_lib_cfg_ringstatusget.interface_count;
 	*interface_names = malloc (sizeof (char *) * *interface_count);
@@ -407,15 +364,12 @@ corosync_cfg_ring_reenable (
 	iov.iov_base = &req_lib_cfg_ringreenable,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringreenable);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_ringreenable,
 		sizeof (struct res_lib_cfg_ringreenable));
 
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
@@ -449,15 +403,12 @@ corosync_cfg_service_load (
 	iov.iov_base = &req_lib_cfg_serviceload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceload);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_serviceload,
 		sizeof (struct res_lib_cfg_serviceload));
 
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
@@ -491,15 +442,12 @@ corosync_cfg_service_unload (
 	iov.iov_base = &req_lib_cfg_serviceunload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceunload);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_serviceunload,
 		sizeof (struct res_lib_cfg_serviceunload));
 
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
@@ -530,15 +478,11 @@ corosync_cfg_state_track (
 	iov.iov_base = &req_lib_cfg_statetrack,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrack),
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_statetrack,
 		sizeof (struct res_lib_cfg_statetrack));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -566,15 +510,12 @@ corosync_cfg_state_track_stop (
 
 	iov.iov_base = &req_lib_cfg_statetrackstop,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrackstop),
-	pthread_mutex_lock (&cfg_instance->response_mutex);
 
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_statetrackstop,
 		sizeof (struct res_lib_cfg_statetrackstop));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -611,17 +552,13 @@ corosync_cfg_kill_node (
 	iov.iov_base = &req_lib_cfg_killnode;
 	iov.iov_len = sizeof (struct req_lib_cfg_killnode);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_killnode,
 		sizeof (struct res_lib_cfg_killnode));
 
 	error = res_lib_cfg_killnode.header.error;
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -652,15 +589,11 @@ corosync_cfg_try_shutdown (
 	iov.iov_base = &req_lib_cfg_tryshutdown;
 	iov.iov_len = sizeof (req_lib_cfg_tryshutdown);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_tryshutdown,
 		sizeof (struct res_lib_cfg_tryshutdown));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -691,15 +624,11 @@ corosync_cfg_replyto_shutdown (
 	iov.iov_base = &req_lib_cfg_replytoshutdown;
 	iov.iov_len = sizeof (struct req_lib_cfg_replytoshutdown);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_replytoshutdown,
 		sizeof (struct res_lib_cfg_replytoshutdown));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	return (error);
 }
@@ -733,18 +662,15 @@ cs_error_t corosync_cfg_get_node_addrs (
 	iov.iov_base = (char *)&req_lib_cfg_get_node_addrs;
 	iov.iov_len = sizeof (req_lib_cfg_get_node_addrs);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive_in_buf (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive_in_buf_get (
+		cfg_instance->handle,
 		&iov,
 		1,
 		&return_address);
 	res_lib_cfg_get_node_addrs = return_address;
 
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
-
 	if (error != CS_OK) {
-		goto error_exit;
+		goto error_put;
 	}
 
 	if (res_lib_cfg_get_node_addrs->family == AF_INET)
@@ -772,7 +698,9 @@ cs_error_t corosync_cfg_get_node_addrs (
 	*num_addrs = res_lib_cfg_get_node_addrs->num_addrs;
 	errno = error = res_lib_cfg_get_node_addrs->header.error;
 
-error_exit:
+error_put:
+	error = coroipcc_msg_send_reply_receive_in_buf_put (cfg_instance->handle);
+	hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
 }
@@ -798,16 +726,12 @@ cs_error_t corosync_cfg_local_get (
 	iov.iov_base = &req_lib_cfg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cfg_local_get);
 
-	pthread_mutex_lock (&cfg_inst->response_mutex);
-
 	error = coroipcc_msg_send_reply_receive (
-		cfg_inst->ipc_ctx,
+		cfg_inst->handle,
 		&iov,
 		1,
 		&res_lib_cfg_local_get,
 		sizeof (struct res_lib_cfg_local_get));
-
-	pthread_mutex_unlock (&cfg_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -847,15 +771,11 @@ corosync_cfg_crypto_set (
 	iov.iov_base = &req_lib_cfg_crypto_set;
 	iov.iov_len = sizeof (struct req_lib_cfg_crypto_set);
 
-	pthread_mutex_lock (&cfg_instance->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cfg_instance->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
 		&iov,
 		1,
 		&res_lib_cfg_crypto_set,
 		sizeof (struct res_lib_cfg_crypto_set));
-
-	pthread_mutex_unlock (&cfg_instance->response_mutex);
 
 	if (error == CS_OK)
 		error = res_lib_cfg_crypto_set.header.error;

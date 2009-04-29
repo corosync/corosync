@@ -72,22 +72,18 @@ struct iter_context {
 };
 
 struct confdb_inst {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	int finalize;
 	int standalone;
 	confdb_callbacks_t callbacks;
 	const void *context;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 
 	struct list_head object_find_head;
 	struct list_head object_iter_head;
 	struct list_head key_iter_head;
 };
 
-static void confdb_instance_destructor (void *instance);
-
-DECLARE_HDB_DATABASE(confdb_handle_t_db,confdb_instance_destructor);
+DECLARE_HDB_DATABASE(confdb_handle_t_db,NULL);
 
 static cs_error_t do_find_destroy(struct confdb_inst *confdb_inst, hdb_handle_t find_handle);
 
@@ -105,17 +101,6 @@ static void free_context_list(struct confdb_inst *confdb_inst, struct list_head 
 		(void)do_find_destroy(confdb_inst, context->find_handle);
 		free(context);
 	}
-}
-
-/*
- * Clean up function for a confdb instance (confdb_initialize) handle
- */
-static void confdb_instance_destructor (void *instance)
-{
-	struct confdb_inst *confdb_inst = instance;
-
-	pthread_mutex_destroy (&confdb_inst->response_mutex);
-	pthread_mutex_destroy (&confdb_inst->dispatch_mutex);
 }
 
 static struct iter_context *find_iter_context(struct list_head *list, hdb_handle_t object_handle)
@@ -168,15 +153,12 @@ cs_error_t confdb_initialize (
 			IPC_REQUEST_SIZE,
 			IPC_RESPONSE_SIZE,
 			IPC_DISPATCH_SIZE,
-			&confdb_inst->ipc_ctx);
+			&confdb_inst->handle);
 	}
 	if (error != CS_OK)
 		goto error_put_destroy;
 
 	memcpy (&confdb_inst->callbacks, callbacks, sizeof (confdb_callbacks_t));
-
-	pthread_mutex_init (&confdb_inst->response_mutex, NULL);
-	pthread_mutex_init (&confdb_inst->dispatch_mutex, NULL);
 
 	list_init (&confdb_inst->object_find_head);
 	list_init (&confdb_inst->object_iter_head);
@@ -205,20 +187,15 @@ cs_error_t confdb_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (confdb_inst->finalize) {
-		pthread_mutex_unlock (&confdb_inst->response_mutex);
 		(void)hdb_handle_put (&confdb_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
 	confdb_inst->finalize = 1;
-
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
 	/* Free saved context handles */
 	free_context_list(confdb_inst, &confdb_inst->object_find_head);
@@ -226,7 +203,7 @@ cs_error_t confdb_finalize (
 	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
 	if (!confdb_inst->standalone) {
-		coroipcc_service_disconnect (confdb_inst->ipc_ctx);
+		coroipcc_service_disconnect (confdb_inst->handle);
 	}
 
 	(void)hdb_handle_destroy (&confdb_handle_t_db, handle);
@@ -248,11 +225,11 @@ cs_error_t confdb_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (confdb_inst->ipc_ctx);
+	error = coroipcc_fd_get (confdb_inst->handle, fd);
 
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
-	return (CS_OK);
+	return (error);
 }
 
 cs_error_t confdb_context_get (
@@ -300,7 +277,6 @@ cs_error_t confdb_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct confdb_inst *confdb_inst;
 	confdb_callbacks_t callbacks;
 	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
@@ -327,29 +303,12 @@ cs_error_t confdb_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&confdb_inst->dispatch_mutex);
-
-		dispatch_avail = coroipcc_dispatch_get (
-			confdb_inst->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			confdb_inst->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		/*
-		 * Handle has been finalized in another thread
-		 */
-		if (confdb_inst->finalize == 1) {
-			error = CS_OK;
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
+		if (error != CS_OK) {
 			goto error_put;
-		}
-
-		if (dispatch_avail == 0 && dispatch_types == CONFDB_DISPATCH_ALL) {
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
-			continue; /* next poll */
 		}
 
 		/*
@@ -359,7 +318,6 @@ cs_error_t confdb_dispatch (
 		*/
 		memcpy (&callbacks, &confdb_inst->callbacks, sizeof (confdb_callbacks_t));
 
-		pthread_mutex_unlock (&confdb_inst->dispatch_mutex);
 
 		/*
 		 * Dispatch incoming message
@@ -400,12 +358,12 @@ cs_error_t confdb_dispatch (
 				break;
 
 			default:
-				coroipcc_dispatch_put (confdb_inst->ipc_ctx);
+				coroipcc_dispatch_put (confdb_inst->handle);
 				error = CS_ERR_LIBRARY;
 				goto error_noput;
 				break;
 		}
-		coroipcc_dispatch_put (confdb_inst->ipc_ctx);
+		coroipcc_dispatch_put (confdb_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -464,16 +422,13 @@ cs_error_t confdb_object_create (
 	iov.iov_base = (char *)&req_lib_confdb_object_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_create);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_object_create,
 		sizeof (struct res_lib_confdb_object_create));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -517,16 +472,13 @@ cs_error_t confdb_object_destroy (
 	iov.iov_base = (char *)&req_lib_confdb_object_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_destroy);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (coroipc_response_header_t));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -570,16 +522,13 @@ cs_error_t confdb_object_parent_get (
 	iov.iov_base = (char *)&req_lib_confdb_object_parent_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_parent_get);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_object_parent_get,
 		sizeof (struct res_lib_confdb_object_parent_get));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -620,16 +569,13 @@ static cs_error_t do_find_destroy(
 	iov.iov_base = (char *)&req_lib_confdb_object_find_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (coroipc_response_header_t));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -730,16 +676,13 @@ cs_error_t confdb_key_create (
 	iov.iov_base = (char *)&req_lib_confdb_key_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_create);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (res));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -792,16 +735,13 @@ cs_error_t confdb_key_delete (
 	iov.iov_base = (char *)&req_lib_confdb_key_delete;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_delete);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (res));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -852,16 +792,13 @@ cs_error_t confdb_key_get (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_key_get,
 		sizeof (struct res_lib_confdb_key_get));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -915,16 +852,13 @@ cs_error_t confdb_key_increment (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
 		sizeof (struct res_lib_confdb_key_incdec));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -977,16 +911,13 @@ cs_error_t confdb_key_decrement (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
 		sizeof (struct res_lib_confdb_key_incdec));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1046,16 +977,13 @@ cs_error_t confdb_key_replace (
 	iov.iov_base = (char *)&req_lib_confdb_key_replace;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_replace);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (res));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1221,16 +1149,13 @@ cs_error_t confdb_object_find (
 	iov.iov_base = (char *)&req_lib_confdb_object_find;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_object_find,
 		sizeof (struct res_lib_confdb_object_find));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1293,16 +1218,13 @@ cs_error_t confdb_object_iter (
 	iov.iov_base = (char *)&req_lib_confdb_object_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_iter);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_object_iter,
 		sizeof (struct res_lib_confdb_object_iter));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1368,16 +1290,13 @@ cs_error_t confdb_key_iter (
 	iov.iov_base = (char *)&req_lib_confdb_key_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_key_iter,
 		sizeof (struct res_lib_confdb_key_iter));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1430,16 +1349,13 @@ cs_error_t confdb_write (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_write,
 		sizeof (struct res_lib_confdb_write));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
 		goto error_exit;
@@ -1491,16 +1407,12 @@ cs_error_t confdb_reload (
 	iov.iov_base = (char *)&req_lib_confdb_reload;
 	iov.iov_len = sizeof (req_lib_confdb_reload);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res_lib_confdb_reload,
 		sizeof (struct res_lib_confdb_reload));
-
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
@@ -1549,16 +1461,13 @@ cs_error_t confdb_track_changes (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_track_start);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (coroipc_response_header_t));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -1595,16 +1504,13 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
-	pthread_mutex_lock (&confdb_inst->response_mutex);
-
         error = coroipcc_msg_send_reply_receive (
-		confdb_inst->ipc_ctx,
+		confdb_inst->handle,
 		&iov,
 		1,
                 &res,
 		sizeof (coroipc_response_header_t));
 
-	pthread_mutex_unlock (&confdb_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}

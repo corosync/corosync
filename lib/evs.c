@@ -43,7 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -64,27 +63,16 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 struct evs_inst {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	int finalize;
 	evs_callbacks_t callbacks;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 };
 
-static void evs_instance_destructor (void *instance);
-
-DECLARE_HDB_DATABASE (evs_handle_t_db, evs_instance_destructor);
+DECLARE_HDB_DATABASE (evs_handle_t_db,NULL);
 
 /*
  * Clean up function for an evt instance (saEvtInitialize) handle
  */
-static void evs_instance_destructor (void *instance)
-{
-	struct evs_inst *evs_inst = instance;
-
-	pthread_mutex_destroy (&evs_inst->response_mutex);
-	pthread_mutex_destroy (&evs_inst->dispatch_mutex);
-}
 
 
 /**
@@ -122,16 +110,12 @@ evs_error_t evs_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		&evs_inst->ipc_ctx);
+		&evs_inst->handle);
 	if (error != EVS_OK) {
 		goto error_put_destroy;
 	}
 
 	memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
-
-	pthread_mutex_init (&evs_inst->response_mutex, NULL);
-
-	pthread_mutex_init (&evs_inst->dispatch_mutex, NULL);
 
 	hdb_handle_put (&evs_handle_t_db, *handle);
 
@@ -155,22 +139,18 @@ evs_error_t evs_finalize (
 	if (error != CS_OK) {
 		return (error);
 	}
-	pthread_mutex_lock (&evs_inst->response_mutex);
 
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (evs_inst->finalize) {
-		pthread_mutex_unlock (&evs_inst->response_mutex);
 		hdb_handle_put (&evs_handle_t_db, handle);
 		return (EVS_ERR_BAD_HANDLE);
 	}
 
 	evs_inst->finalize = 1;
 
-	coroipcc_service_disconnect (evs_inst->ipc_ctx);
-
-	pthread_mutex_unlock (&evs_inst->response_mutex);
+	coroipcc_service_disconnect (evs_inst->handle);
 
 	hdb_handle_destroy (&evs_handle_t_db, handle);
 
@@ -191,7 +171,7 @@ evs_error_t evs_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (evs_inst->ipc_ctx);
+	coroipcc_fd_get (evs_inst->handle, fd);
 
 	hdb_handle_put (&evs_handle_t_db, handle);
 
@@ -205,7 +185,6 @@ evs_error_t evs_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct evs_inst *evs_inst;
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
@@ -227,28 +206,20 @@ evs_error_t evs_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&evs_inst->dispatch_mutex);
-
-		dispatch_avail = coroipcc_dispatch_get (
-			evs_inst->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			evs_inst->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		pthread_mutex_unlock (&evs_inst->dispatch_mutex);
-
-		if (dispatch_avail == 0 && dispatch_types == EVS_DISPATCH_ALL) {
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			continue; /* next dispatch event */
-		}
-		if (dispatch_avail == -1) {
-			if (evs_inst->finalize == 1) {
-				error = CS_OK;
-			} else {
-				error = CS_ERR_LIBRARY;
-			}
+		if (error != CS_OK) {
 			goto error_put;
+		}
+
+		if (dispatch_data == NULL) {
+			if (dispatch_types == CPG_DISPATCH_ALL) {
+				break; /* exit do while cont is 1 loop */
+			} else {
+				continue; /* next poll */
+			}
 		}
 
 		/*
@@ -282,12 +253,12 @@ evs_error_t evs_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (evs_inst->ipc_ctx);
+			coroipcc_dispatch_put (evs_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (evs_inst->ipc_ctx);
+		coroipcc_dispatch_put (evs_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -341,12 +312,8 @@ evs_error_t evs_join (
 	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	pthread_mutex_lock (&evs_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
+	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov, 2,
 		&res_lib_evs_join, sizeof (struct res_lib_evs_join));
-
-	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -386,12 +353,8 @@ evs_error_t evs_leave (
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	pthread_mutex_lock (&evs_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov, 2,
+	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov, 2,
 		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave));
-
-	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -439,14 +402,10 @@ evs_error_t evs_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	pthread_mutex_lock (&evs_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov,
 		iov_len + 1,
 		&res_lib_evs_mcast_joined,
 		sizeof (struct res_lib_evs_mcast_joined));
-
-	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -496,14 +455,11 @@ evs_error_t evs_mcast_groups (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 
-	pthread_mutex_lock (&evs_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov,
 		iov_len + 2,
 		&res_lib_evs_mcast_groups,
 		sizeof (struct res_lib_evs_mcast_groups));
 
-	pthread_mutex_unlock (&evs_inst->response_mutex);
 	if (error != CS_OK) {
 		goto error_exit;
 	}
@@ -539,15 +495,11 @@ evs_error_t evs_membership_get (
 	iov.iov_base = &req_lib_evs_membership_get;
 	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
 
-	pthread_mutex_lock (&evs_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (evs_inst->ipc_ctx,
+	error = coroipcc_msg_send_reply_receive (evs_inst->handle,
 		&iov,
 		1,
 		&res_lib_evs_membership_get,
 		sizeof (struct res_lib_evs_membership_get));
-
-	pthread_mutex_unlock (&evs_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;

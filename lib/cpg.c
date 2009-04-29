@@ -42,7 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -59,29 +58,13 @@
 #include "util.h"
 
 struct cpg_inst {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	int finalize;
 	cpg_callbacks_t callbacks;
 	void *context;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 };
 
-static void cpg_instance_destructor (void *instance);
-
-DECLARE_HDB_DATABASE(cpg_handle_t_db,cpg_instance_destructor);
-
-/*
- * Clean up function for a cpg instance (cpg_nitialize) handle
- */
-static void cpg_instance_destructor (void *instance)
-{
-	struct cpg_inst *cpg_inst = instance;
-
-	pthread_mutex_destroy (&cpg_inst->response_mutex);
-	pthread_mutex_destroy (&cpg_inst->dispatch_mutex);
-}
-
+DECLARE_HDB_DATABASE(cpg_handle_t_db,NULL);
 
 /**
  * @defgroup cpg_coroipcc The closed process group API
@@ -113,16 +96,12 @@ cs_error_t cpg_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		&cpg_inst->ipc_ctx);
+		&cpg_inst->handle);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
 	memcpy (&cpg_inst->callbacks, callbacks, sizeof (cpg_callbacks_t));
-
-	pthread_mutex_init (&cpg_inst->response_mutex, NULL);
-
-	pthread_mutex_init (&cpg_inst->dispatch_mutex, NULL);
 
 	hdb_handle_put (&cpg_handle_t_db, *handle);
 
@@ -147,22 +126,17 @@ cs_error_t cpg_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (cpg_inst->finalize) {
-		pthread_mutex_unlock (&cpg_inst->response_mutex);
 		hdb_handle_put (&cpg_handle_t_db, handle);
 		return (CPG_ERR_BAD_HANDLE);
 	}
 
 	cpg_inst->finalize = 1;
 
-	coroipcc_service_disconnect (cpg_inst->ipc_ctx);
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
+	coroipcc_service_disconnect (cpg_inst->handle);
 
 	hdb_handle_destroy (&cpg_handle_t_db, handle);
 
@@ -183,11 +157,11 @@ cs_error_t cpg_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (cpg_inst->ipc_ctx);
+	error = coroipcc_fd_get (cpg_inst->handle, fd);
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
-	return (CS_OK);
+	return (error);
 }
 
 cs_error_t cpg_context_get (
@@ -235,7 +209,6 @@ cs_error_t cpg_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct cpg_inst *cpg_inst;
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
@@ -264,30 +237,20 @@ cs_error_t cpg_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&cpg_inst->dispatch_mutex);
-
-		dispatch_avail = coroipcc_dispatch_get (
-			cpg_inst->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			cpg_inst->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
-
-		if (dispatch_avail == 0 && dispatch_types == CPG_DISPATCH_ALL) {
-			pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&cpg_inst->dispatch_mutex);
-			continue; /* next poll */
-		}
-		if (dispatch_avail == -1) {
-			if (cpg_inst->finalize == 1) {
-				error = CS_OK;
-			} else {
-				error = CS_ERR_LIBRARY;
-			}
+		if (error != CS_OK) {
 			goto error_put;
+		}
+
+		if (dispatch_data == NULL) {
+			if (dispatch_types == CPG_DISPATCH_ALL) {
+				break; /* exit do while cont is 1 loop */
+			} else {
+				continue; /* next poll */
+			}
 		}
 
 		/*
@@ -350,12 +313,12 @@ cs_error_t cpg_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (cpg_inst->ipc_ctx);
+			coroipcc_dispatch_put (cpg_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (cpg_inst->ipc_ctx);
+		coroipcc_dispatch_put (cpg_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -409,12 +372,8 @@ cs_error_t cpg_join (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
 	do {
-		pthread_mutex_lock (&cpg_inst->response_mutex);
-
-		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov, 1,
 			&res_lib_cpg_join, sizeof (struct res_lib_cpg_join));
-
-		pthread_mutex_unlock (&cpg_inst->response_mutex);
 
 		if (error != CS_OK) {
 			goto error_exit;
@@ -454,12 +413,8 @@ cs_error_t cpg_leave (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
 	do {
-		pthread_mutex_lock (&cpg_inst->response_mutex);
-
-		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov, 1,
+		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov, 1,
 			&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
-
-		pthread_mutex_unlock (&cpg_inst->response_mutex);
 
 		if (error != CS_OK) {
 			goto error_exit;
@@ -499,12 +454,8 @@ cs_error_t cpg_membership_get (
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	do {
-		pthread_mutex_lock (&cpg_inst->response_mutex);
-
-		error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
+		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
 			&res_lib_cpg_membership_get, sizeof (coroipc_response_header_t));
-
-		pthread_mutex_unlock (&cpg_inst->response_mutex);
 
  		if (error != CS_OK) {
  			goto error_exit;
@@ -551,12 +502,8 @@ cs_error_t cpg_local_get (
 	iov.iov_base = &req_lib_cpg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cpg_local_get);
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, &iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
 		&res_lib_cpg_local_get, sizeof (res_lib_cpg_local_get));
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -584,7 +531,7 @@ cs_error_t cpg_flow_control_state_get (
 		return (error);
 	}
 
-	*flow_control_state = coroipcc_dispatch_flow_control_get (cpg_inst->ipc_ctx);
+	error = coroipcc_dispatch_flow_control_get (cpg_inst->handle, (unsigned int *)flow_control_state);
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -604,7 +551,7 @@ cs_error_t cpg_zcb_alloc (
 		return (error);
 	}
 
-	error = coroipcc_zcb_alloc (cpg_inst->ipc_ctx,
+	error = coroipcc_zcb_alloc (cpg_inst->handle,
 		buffer,
 		size,
 		sizeof (struct req_lib_cpg_mcast));
@@ -627,7 +574,7 @@ cs_error_t cpg_zcb_free (
 		return (error);
 	}
 
-	coroipcc_zcb_free (cpg_inst->ipc_ctx, ((char *)buffer) - sizeof (struct req_lib_cpg_mcast));
+	coroipcc_zcb_free (cpg_inst->handle, ((char *)buffer) - sizeof (struct req_lib_cpg_mcast));
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -658,15 +605,11 @@ cs_error_t cpg_zcb_mcast_joined (
 	req_lib_cpg_mcast->guarantee = guarantee;
 	req_lib_cpg_mcast->msglen = msg_len;
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
 	error = coroipcc_zcb_msg_send_reply_receive (
-		cpg_inst->ipc_ctx,
+		cpg_inst->handle,
 		req_lib_cpg_mcast,
 		&res_lib_cpg_mcast,
 		sizeof (res_lib_cpg_mcast));
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -714,12 +657,8 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	pthread_mutex_lock (&cpg_inst->response_mutex);
-
-	error = coroipcc_msg_send_reply_receive (cpg_inst->ipc_ctx, iov,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov,
 		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
-
-	pthread_mutex_unlock (&cpg_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;

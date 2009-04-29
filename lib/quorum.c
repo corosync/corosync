@@ -40,7 +40,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -57,27 +56,13 @@
 #include "util.h"
 
 struct quorum_inst {
-	void *ipc_ctx;
+	hdb_handle_t handle;
 	int finalize;
 	const void *context;
 	quorum_callbacks_t callbacks;
-	pthread_mutex_t response_mutex;
-	pthread_mutex_t dispatch_mutex;
 };
 
-static void quorum_instance_destructor (void *instance);
-
-DECLARE_HDB_DATABASE(quorum_handle_t_db,quorum_instance_destructor);
-
-/*
- * Clean up function for a quorum instance (quorum_initialize) handle
- */
-static void quorum_instance_destructor (void *instance)
-{
-	struct quorum_inst *quorum_inst = instance;
-
-	pthread_mutex_destroy (&quorum_inst->response_mutex);
-}
+DECLARE_HDB_DATABASE(quorum_handle_t_db,NULL);
 
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
@@ -102,13 +87,11 @@ cs_error_t quorum_initialize (
 		IPC_REQUEST_SIZE,
 		IPC_RESPONSE_SIZE,
 		IPC_DISPATCH_SIZE,
-		&quorum_inst->ipc_ctx);
+		&quorum_inst->handle);
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
 
-	pthread_mutex_init (&quorum_inst->response_mutex, NULL);
-	pthread_mutex_init (&quorum_inst->dispatch_mutex, NULL);
 	if (callbacks)
 		memcpy(&quorum_inst->callbacks, callbacks, sizeof (callbacks));
 	else
@@ -137,22 +120,17 @@ cs_error_t quorum_finalize (
 		return (error);
 	}
 
-	pthread_mutex_lock (&quorum_inst->response_mutex);
-
 	/*
 	 * Another thread has already started finalizing
 	 */
 	if (quorum_inst->finalize) {
-		pthread_mutex_unlock (&quorum_inst->response_mutex);
 		(void)hdb_handle_put (&quorum_handle_t_db, handle);
 		return (CS_ERR_BAD_HANDLE);
 	}
 
 	quorum_inst->finalize = 1;
 
-	coroipcc_service_disconnect (quorum_inst->ipc_ctx);
-
-	pthread_mutex_unlock (&quorum_inst->response_mutex);
+	coroipcc_service_disconnect (quorum_inst->handle);
 
 	(void)hdb_handle_destroy (&quorum_handle_t_db, handle);
 
@@ -176,8 +154,6 @@ cs_error_t quorum_getquorate (
 		return (error);
 	}
 
-	pthread_mutex_lock (&quorum_inst->response_mutex);
-
 	req.size = sizeof (req);
 	req.id = MESSAGE_REQ_QUORUM_GETQUORATE;
 
@@ -185,13 +161,11 @@ cs_error_t quorum_getquorate (
 	iov.iov_len = sizeof (req);
 
        error = coroipcc_msg_send_reply_receive (
-		quorum_inst->ipc_ctx,
+		quorum_inst->handle,
 		&iov,
 		1,
 		&res_lib_quorum_getquorate,
 		sizeof (struct res_lib_quorum_getquorate));
-
-	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -219,11 +193,11 @@ cs_error_t quorum_fd_get (
 		return (error);
 	}
 
-	*fd = coroipcc_fd_get (quorum_inst->ipc_ctx);
+	error = coroipcc_fd_get (quorum_inst->handle, fd);
 
 	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
-	return (CS_OK);
+	return (error);
 }
 
 
@@ -281,8 +255,6 @@ cs_error_t quorum_trackstart (
 		return (error);
 	}
 
-	pthread_mutex_lock (&quorum_inst->response_mutex);
-
 	req_lib_quorum_trackstart.header.size = sizeof (struct req_lib_quorum_trackstart);
 	req_lib_quorum_trackstart.header.id = MESSAGE_REQ_QUORUM_TRACKSTART;
 	req_lib_quorum_trackstart.track_flags = flags;
@@ -291,13 +263,11 @@ cs_error_t quorum_trackstart (
 	iov.iov_len = sizeof (struct req_lib_quorum_trackstart);
 
        error = coroipcc_msg_send_reply_receive (
-		quorum_inst->ipc_ctx,
+		quorum_inst->handle,
                 &iov,
                 1,
                 &res,
                 sizeof (res));
-
-	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -325,8 +295,6 @@ cs_error_t quorum_trackstop (
 		return (error);
 	}
 
-	pthread_mutex_lock (&quorum_inst->response_mutex);
-
 	req.size = sizeof (req);
 	req.id = MESSAGE_REQ_QUORUM_TRACKSTOP;
 
@@ -334,13 +302,11 @@ cs_error_t quorum_trackstop (
 	iov.iov_len = sizeof (req);
 
        error = coroipcc_msg_send_reply_receive (
-		quorum_inst->ipc_ctx,
+		quorum_inst->handle,
                 &iov,
                 1,
                 &res,
                 sizeof (res));
-
-	pthread_mutex_unlock (&quorum_inst->response_mutex);
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -361,7 +327,6 @@ cs_error_t quorum_dispatch (
 	int timeout = -1;
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
-	int dispatch_avail;
 	struct quorum_inst *quorum_inst;
 	quorum_callbacks_t callbacks;
 	coroipc_response_header_t *dispatch_data;
@@ -389,28 +354,12 @@ cs_error_t quorum_dispatch (
 	}
 
 	do {
-		pthread_mutex_lock (&quorum_inst->dispatch_mutex);
-
-		dispatch_avail = coroipcc_dispatch_get (
-			quorum_inst->ipc_ctx,
+		error = coroipcc_dispatch_get (
+			quorum_inst->handle,
 			(void **)&dispatch_data,
 			timeout);
-
-		/*
-		 * Handle has been finalized in another thread
-		 */
-		if (quorum_inst->finalize == 1) {
-			error = CS_OK;
-			goto error_unlock;
-		}
-
-		if (dispatch_avail == 0 && dispatch_types == CS_DISPATCH_ALL) {
-			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
-			break; /* exit do while cont is 1 loop */
-		} else
-		if (dispatch_avail == 0) {
-			pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
-			continue; /* next poll */
+		if (error != CS_OK) {
+			goto error_put;
 		}
 
 		/*
@@ -419,8 +368,6 @@ cs_error_t quorum_dispatch (
 		 * operate at the same time that quorum_finalize has been called in another thread.
 		 */
 		memcpy (&callbacks, &quorum_inst->callbacks, sizeof (quorum_callbacks_t));
-		pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
-
 		/*
 		 * Dispatch incoming message
 		 */
@@ -440,12 +387,12 @@ cs_error_t quorum_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (quorum_inst->ipc_ctx);
+			coroipcc_dispatch_put (quorum_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (quorum_inst->ipc_ctx);
+		coroipcc_dispatch_put (quorum_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -462,9 +409,6 @@ cs_error_t quorum_dispatch (
 	} while (cont);
 
 	goto error_put;
-
-error_unlock:
-	pthread_mutex_unlock (&quorum_inst->dispatch_mutex);
 
 error_put:
 	(void)hdb_handle_put (&quorum_handle_t_db, handle);

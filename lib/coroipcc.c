@@ -62,8 +62,11 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipc_ipc.h>
 #include <corosync/coroipcc.h>
+#include <corosync/hdb.h>
 
-struct ipc_segment {
+#include "util.h"
+
+struct ipc_instance {
 	int fd;
 	int shmid;
 	int semid;
@@ -77,8 +80,12 @@ struct ipc_segment {
 	size_t response_size;
 	size_t dispatch_size;
 	uid_t euid;
+	pthread_mutex_t mutex;
 };
 
+void ipc_hdb_destructor (void *context);
+
+DECLARE_HDB_DATABASE(ipc_hdb,ipc_hdb_destructor);
 
 #if defined(COROSYNC_LINUX)
 /* SUN_LEN is broken for abstract namespace
@@ -100,12 +107,13 @@ void socket_nosigpipe(int s)
 #define MSG_NOSIGNAL 0
 #endif
 
-static int
-coroipcc_send (
+static cs_error_t
+socket_send (
 	int s,
 	void *msg,
 	size_t len)
 {
+	cs_error_t res = CS_OK;
 	int result;
 	struct msghdr msg_send;
 	struct iovec iov_send;
@@ -125,44 +133,18 @@ retry_send:
 	iov_send.iov_len = len - processed;
 
 	result = sendmsg (s, &msg_send, MSG_NOSIGNAL);
-
-	/*
-	 * return immediately on any kind of syscall error that maps to
-	 * CS_ERR if no part of message has been sent
-	 */
-	if (result == -1 && processed == 0) {
-		if (errno == EINTR) {
-			goto error_exit;
-		}
-		if (errno == EAGAIN) {
-			goto error_exit;
-		}
-		if (errno == EFAULT) {
-			goto error_exit;
-		}
-	}
-
-	/*
-	 * retry read operations that are already started except
-	 * for fault in that case, return ERR_LIBRARY
-	 */
-	if (result == -1 && processed > 0) {
-		if (errno == EINTR) {
-			goto retry_send;
-		}
-		if (errno == EAGAIN) {
-			goto retry_send;
-		}
-		if (errno == EFAULT) {
-			goto error_exit;
-		}
-	}
-
-	/*
-	 * return ERR_LIBRARY on any other syscall error
-	 */
 	if (result == -1) {
-		goto error_exit;
+		switch (errno) {
+		case EINTR:
+			goto retry_send;
+			break;
+		case EAGAIN:
+			goto retry_send;
+			break;
+		default:
+			res = CS_ERR_LIBRARY;
+			goto res_exit;
+		}
 	}
 
 	processed += result;
@@ -170,19 +152,19 @@ retry_send:
 		goto retry_send;
 	}
 
-	return (0);
+	return (CS_OK);
 
-error_exit:
-	return (-1);
+res_exit:
+	return (res);
 }
 
-static int
-coroipcc_recv (
+static cs_error_t
+socket_recv (
 	int s,
 	void *msg,
 	size_t len)
 {
-	int error = 0;
+	cs_error_t res = CS_OK;
 	int result;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
@@ -202,36 +184,40 @@ retry_recv:
 	iov_recv.iov_len = len - processed;
 
 	result = recvmsg (s, &msg_recv, MSG_NOSIGNAL|MSG_WAITALL);
-	if (result == -1 && errno == EINTR) {
-		goto retry_recv;
-	}
-	if (result == -1 && errno == EAGAIN) {
-		goto retry_recv;
+	if (result == -1) {
+		switch (errno) {
+		case EINTR:
+			goto retry_recv;
+			break;
+		case EAGAIN:
+			goto retry_recv;
+			break;
+		default:
+			res = CS_ERR_LIBRARY;
+			goto res_exit;
+		}
 	}
 #if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	/* On many OS poll never return POLLHUP or POLLERR.
 	 * EOF is detected when recvmsg return 0.
 	 */
 	if (result == 0) {
-		error = -1;
-		goto error_exit;
+		res = CS_ERR_LIBRARY;
+		goto res_exit;
 	}
 #endif
-	if (result == -1 || result == 0) {
-		error = -1;
-		goto error_exit;
-	}
+
 	processed += result;
 	if (processed != len) {
 		goto retry_recv;
 	}
 	assert (processed == len);
-error_exit:
-	return (0);
+res_exit:
+	return (res);
 }
 
 static int
-priv_change_send (struct ipc_segment *ipc_segment)
+priv_change_send (struct ipc_instance *ipc_instance)
 {
 	char buf_req;
 	mar_req_priv_change req_priv_change;
@@ -241,24 +227,24 @@ priv_change_send (struct ipc_segment *ipc_segment)
 	/*
 	 * Don't resend request unless euid has changed
 	*/
-	if (ipc_segment->euid == req_priv_change.euid) {
+	if (ipc_instance->euid == req_priv_change.euid) {
 		return (0);
 	}
 	req_priv_change.egid = getegid();
 
 	buf_req = MESSAGE_REQ_CHANGE_EUID;
-	res = coroipcc_send (ipc_segment->fd, &buf_req, 1);
+	res = socket_send (ipc_instance->fd, &buf_req, 1);
 	if (res == -1) {
 		return (-1);
 	}
 
-	res = coroipcc_send (ipc_segment->fd, &req_priv_change,
+	res = socket_send (ipc_instance->fd, &req_priv_change,
 		sizeof (req_priv_change));
 	if (res == -1) {
 		return (-1);
 	}
 
-	ipc_segment->euid = req_priv_change.euid;
+	ipc_instance->euid = req_priv_change.euid;
 	return (0);
 }
 
@@ -326,6 +312,17 @@ memory_unmap (void *addr, size_t bytes)
 	res = munmap (addr, bytes);
 }
 
+void ipc_hdb_destructor (void *context ) {
+	struct ipc_instance *ipc_instance = (struct ipc_instance *)context;
+
+	/*
+	 * << 1 (or multiplied by 2) because this is a wrapped memory buffer
+	 */
+	memory_unmap (ipc_instance->control_buffer, ipc_instance->control_size);
+	memory_unmap (ipc_instance->request_buffer, ipc_instance->request_size);
+	memory_unmap (ipc_instance->response_buffer, ipc_instance->response_size);
+	memory_unmap (ipc_instance->dispatch_buffer, (ipc_instance->dispatch_size) << 1);
+}
 static int
 memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
@@ -369,22 +366,138 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	return (0);
 }
 
-extern cs_error_t
+static cs_error_t
+msg_send (
+	struct ipc_instance *ipc_instance,
+	const struct iovec *iov,
+	unsigned int iov_len)
+{
+	struct sembuf sop;
+	int i;
+	int res;
+	int req_buffer_idx = 0;
+
+	for (i = 0; i < iov_len; i++) {
+		memcpy (&ipc_instance->request_buffer[req_buffer_idx],
+			iov[i].iov_base,
+			iov[i].iov_len);
+		req_buffer_idx += iov[i].iov_len;
+	}
+	/*
+	 * Signal semaphore #0 indicting a new message from client
+	 * to server request queue
+	 */
+	sop.sem_num = 0;
+	sop.sem_op = 1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (ipc_instance->semid, &sop, 1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semop;
+	} else
+	if (res == -1 && errno == EACCES) {
+		priv_change_send (ipc_instance);
+		goto retry_semop;
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+	return (CS_OK);
+}
+
+static cs_error_t
+reply_receive (
+	struct ipc_instance *ipc_instance,
+	void *res_msg,
+	size_t res_len)
+{
+	struct sembuf sop;
+	coroipc_response_header_t *response_header;
+	int res;
+
+	/*
+	 * Wait for semaphore #1 indicating a new message from server
+	 * to client in the response queue
+	 */
+	sop.sem_num = 1;
+	sop.sem_op = -1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (ipc_instance->semid, &sop, 1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semop;
+	} else
+	if (res == -1 && errno == EACCES) {
+		priv_change_send (ipc_instance);
+		goto retry_semop;
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	response_header = (coroipc_response_header_t *)ipc_instance->response_buffer;
+	if (response_header->error == CS_ERR_TRY_AGAIN) {
+		return (CS_ERR_TRY_AGAIN);
+	}
+
+	memcpy (res_msg, ipc_instance->response_buffer, res_len);
+	return (CS_OK);
+}
+
+static cs_error_t
+reply_receive_in_buf (
+	struct ipc_instance *ipc_instance,
+	void **res_msg)
+{
+	struct sembuf sop;
+	int res;
+
+	/*
+	 * Wait for semaphore #1 indicating a new message from server
+	 * to client in the response queue
+	 */
+	sop.sem_num = 1;
+	sop.sem_op = -1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (ipc_instance->semid, &sop, 1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semop;
+	} else
+	if (res == -1 && errno == EACCES) {
+		priv_change_send (ipc_instance);
+		goto retry_semop;
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	*res_msg = (char *)ipc_instance->response_buffer;
+	return (CS_OK);
+}
+
+/*
+ * External API
+ */
+cs_error_t
 coroipcc_service_connect (
 	const char *socket_name,
 	unsigned int service,
 	size_t request_size,
 	size_t response_size,
 	size_t dispatch_size,
-	void **ipc_context)
+	hdb_handle_t *handle)
 
 {
 	int request_fd;
 	struct sockaddr_un address;
-	cs_error_t error;
-	struct ipc_segment *ipc_segment;
+	cs_error_t res;
+	struct ipc_instance *ipc_instance;
 	key_t semkey = 0;
-	int res;
+	int sys_res;
 	mar_req_setup_t req_setup;
 	mar_res_setup_t res_setup;
 	union semun semun;
@@ -393,11 +506,22 @@ coroipcc_service_connect (
 	char response_map_path[128];
 	char dispatch_map_path[128];
 
+	res = hdb_error_to_cs (hdb_handle_create (&ipc_hdb,
+		sizeof (struct ipc_instance), handle));
+	if (res != CS_OK) {
+		return (res);
+	}
+
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, *handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
+
 	res_setup.error = CS_ERR_LIBRARY;
 
 	request_fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (request_fd == -1) {
-		return (-1);
+		return (CS_ERR_LIBRARY);
 	}
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
@@ -411,68 +535,61 @@ coroipcc_service_connect (
 #else
 	sprintf (address.sun_path, "%s/%s", SOCKETDIR, socket_name);
 #endif
-	res = connect (request_fd, (struct sockaddr *)&address,
+	sys_res = connect (request_fd, (struct sockaddr *)&address,
 		AIS_SUN_LEN(&address));
-	if (res == -1) {
+	if (sys_res == -1) {
 		close (request_fd);
 		return (CS_ERR_TRY_AGAIN);
 	}
-
-	ipc_segment = malloc (sizeof (struct ipc_segment));
-	if (ipc_segment == NULL) {
-		close (request_fd);
-		return (-1);
-	}
-	bzero (ipc_segment, sizeof (struct ipc_segment));
 
 	/*
 	 * Allocate a semaphore segment
 	 */
 	while (1) {
 		semkey = random();
-		ipc_segment->euid = geteuid ();
-		if ((ipc_segment->semid
+		ipc_instance->euid = geteuid ();
+		if ((ipc_instance->semid
 		     = semget (semkey, 3, IPC_CREAT|IPC_EXCL|0600)) != -1) {
 		      break;
 		}
 		if (errno != EEXIST) {
-			goto error_exit;
+			goto res_exit;
 		}
 	}
 
 	semun.val = 0;
-	res = semctl (ipc_segment->semid, 0, SETVAL, semun);
+	res = semctl (ipc_instance->semid, 0, SETVAL, semun);
 	if (res != 0) {
-		goto error_exit;
+		goto res_exit;
 	}
 
-	res = semctl (ipc_segment->semid, 1, SETVAL, semun);
+	res = semctl (ipc_instance->semid, 1, SETVAL, semun);
 	if (res != 0) {
-		goto error_exit;
+		goto res_exit;
 	}
 
 	res = memory_map (
 		control_map_path,
 		"control_buffer-XXXXXX",
-		(void *)&ipc_segment->control_buffer,
+		(void *)&ipc_instance->control_buffer,
 		8192);
 
 	res = memory_map (
 		request_map_path,
 		"request_buffer-XXXXXX",
-		(void *)&ipc_segment->request_buffer,
+		(void *)&ipc_instance->request_buffer,
 		request_size);
 
 	res = memory_map (
 		response_map_path,
 		"response_buffer-XXXXXX",
-		(void *)&ipc_segment->response_buffer,
+		(void *)&ipc_instance->response_buffer,
 		response_size);
 
 	res = circular_memory_map (
 		dispatch_map_path,
 		"dispatch_buffer-XXXXXX",
-		(void *)&ipc_segment->dispatch_buffer,
+		(void *)&ipc_instance->dispatch_buffer,
 		dispatch_size);
 
 	/*
@@ -489,85 +606,120 @@ coroipcc_service_connect (
 	req_setup.dispatch_size = dispatch_size;
 	req_setup.semkey = semkey;
 
-	error = coroipcc_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
-	if (error != 0) {
-		goto error_exit;
+	res = socket_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
+	if (res != CS_OK) {
+		goto res_exit;
 	}
-	error = coroipcc_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
-	if (error != 0) {
-		goto error_exit;
+	res = socket_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
+	if (res != CS_OK) {
+		goto res_exit;
 	}
 
-	ipc_segment->fd = request_fd;
-	ipc_segment->flow_control_state = 0;
+	ipc_instance->fd = request_fd;
+	ipc_instance->flow_control_state = 0;
 
 	if (res_setup.error == CS_ERR_TRY_AGAIN) {
-		goto error_exit;
+		goto res_exit;
 	}
 
-	ipc_segment->control_size = 8192;
-	ipc_segment->request_size = request_size;
-	ipc_segment->response_size = response_size;
-	ipc_segment->dispatch_size = dispatch_size;
+	ipc_instance->control_size = 8192;
+	ipc_instance->request_size = request_size;
+	ipc_instance->response_size = response_size;
+	ipc_instance->dispatch_size = dispatch_size;
 
-	*ipc_context = ipc_segment;
+	pthread_mutex_init (&ipc_instance->mutex, NULL);
+
+	hdb_handle_put (&ipc_hdb, *handle);
+
 	return (res_setup.error);
 
-error_exit:
+res_exit:
 	close (request_fd);
-	if (ipc_segment->semid > 0)
-		semctl (ipc_segment->semid, 0, IPC_RMID);
+	if (ipc_instance->semid > 0)
+		semctl (ipc_instance->semid, 0, IPC_RMID);
 	return (res_setup.error);
 }
 
 cs_error_t
 coroipcc_service_disconnect (
-	void *ipc_context)
+	hdb_handle_t handle)
 {
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
+	cs_error_t res;
+	struct ipc_instance *ipc_instance;
 
-	shutdown (ipc_segment->fd, SHUT_RDWR);
-	close (ipc_segment->fd);
-	/*
-	 * << 1 (or multiplied by 2) because this is a wrapped memory buffer
-	 */
-	memory_unmap (ipc_segment->control_buffer, ipc_segment->control_size);
-	memory_unmap (ipc_segment->request_buffer, ipc_segment->request_size);
-	memory_unmap (ipc_segment->response_buffer, ipc_segment->response_size);
-	memory_unmap (ipc_segment->dispatch_buffer, (ipc_segment->dispatch_size) << 1);
-	free (ipc_segment);
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
+
+	shutdown (ipc_instance->fd, SHUT_RDWR);
+	close (ipc_instance->fd);
+	hdb_handle_destroy (&ipc_hdb, handle);
+	hdb_handle_put (&ipc_hdb, handle);
 	return (CS_OK);
 }
 
-int
+cs_error_t
 coroipcc_dispatch_flow_control_get (
-        void *ipc_context)
+	hdb_handle_t handle,
+	unsigned int *flow_control_state)
 {
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
+	struct ipc_instance *ipc_instance;
+	cs_error_t res;
 
-	return (ipc_segment->flow_control_state);
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
+
+	*flow_control_state = ipc_instance->flow_control_state;
+
+	hdb_handle_put (&ipc_hdb, handle);
+	return (res);
 }
 
-int
-coroipcc_fd_get (void *ipc_ctx)
+cs_error_t
+coroipcc_fd_get (
+	hdb_handle_t handle,
+	int *fd)
 {
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
+	struct ipc_instance *ipc_instance;
+	cs_error_t res;
 
-	return (ipc_segment->fd);
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
+
+	*fd = ipc_instance->fd;
+
+	hdb_handle_put (&ipc_hdb, handle);
+	return (res);
 }
 
-int
-coroipcc_dispatch_get (void *ipc_ctx, void **data, int timeout)
+cs_error_t
+coroipcc_dispatch_get (
+	hdb_handle_t handle,
+	void **data,
+	int timeout)
 {
 	struct pollfd ufds;
 	int poll_events;
 	char buf;
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
+	struct ipc_instance *ipc_instance;
 	int res;
 	char buf_two = 1;
 	char *data_addr;
+	cs_error_t error = CS_OK;
 
-	ufds.fd = ipc_segment->fd;
+	error = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	*data = NULL;
+
+	ufds.fd = ipc_instance->fd;
 	ufds.events = POLLIN;
 	ufds.revents = 0;
 
@@ -577,259 +729,193 @@ retry_poll:
 		goto retry_poll;
 	} else
 	if (poll_events == -1) {
-		return (-1);
+		goto error_put;
 	} else
 	if (poll_events == 0) {
-		return (0);
+		goto error_put;
 	}
 	if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP))) {
-		return (-1);
+		error = CS_ERR_LIBRARY;
+		goto error_put;
 	}
 retry_recv:
-	res = recv (ipc_segment->fd, &buf, 1, 0);
+	res = recv (ipc_instance->fd, &buf, 1, 0);
 	if (res == -1 && errno == EINTR) {
 		goto retry_recv;
 	} else
 	if (res == -1) {
-		return (-1);
+		goto error_put;
 	}
 	if (res == 0) {
-		return (-1);
+		goto error_put;
 	}
-	ipc_segment->flow_control_state = 0;
+	ipc_instance->flow_control_state = 0;
 	if (buf == 1 || buf == 2) {
-		ipc_segment->flow_control_state = 1;
+		ipc_instance->flow_control_state = 1;
 	}
 	/*
 	 * Notify executive to flush any pending dispatch messages
 	 */
-	if (ipc_segment->flow_control_state) {
+	if (ipc_instance->flow_control_state) {
 		buf_two = MESSAGE_REQ_OUTQ_FLUSH;
-		res = coroipcc_send (ipc_segment->fd, &buf_two, 1);
-		assert (res == 0); //TODO
+		res = socket_send (ipc_instance->fd, &buf_two, 1);
+		assert (res == CS_OK); /* TODO */
 	}
 	/*
 	 * This is just a notification of flow control starting at the addition
 	 * of a new pending message, not a message to dispatch
 	 */
 	if (buf == 2) {
-		return (0);
+		goto error_put;
 	}
 	if (buf == 3) {
-		return (0);
+		goto error_put;
 	}
 
-	data_addr = ipc_segment->dispatch_buffer;
+	data_addr = ipc_instance->dispatch_buffer;
 
-	data_addr = &data_addr[ipc_segment->control_buffer->read];
+	data_addr = &data_addr[ipc_instance->control_buffer->read];
 
 	*data = (void *)data_addr;
-	return (1);
+
+	return (CS_OK);
+error_put:
+	hdb_handle_put (&ipc_hdb, handle);
+	return (error);
 }
 
-int
-coroipcc_dispatch_put (void *ipc_ctx)
+cs_error_t
+coroipcc_dispatch_put (hdb_handle_t handle)
 {
 	struct sembuf sop;
 	coroipc_response_header_t *header;
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_ctx;
+	struct ipc_instance *ipc_instance;
 	int res;
 	char *addr;
 	unsigned int read_idx;
 
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
 	sop.sem_num = 2;
 	sop.sem_op = -1;
 	sop.sem_flg = 0;
 retry_semop:
-	res = semop (ipc_segment->semid, &sop, 1);
+	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
 		goto retry_semop;
 	} else
 	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_segment);
+		priv_change_send (ipc_instance);
 		goto retry_semop;
 	} else
 	if (res == -1) {
-		return (-1);
+		return (CS_ERR_LIBRARY);
 	}
 
-	addr = ipc_segment->dispatch_buffer;
+	addr = ipc_instance->dispatch_buffer;
 
-	read_idx = ipc_segment->control_buffer->read;
+	read_idx = ipc_instance->control_buffer->read;
 	header = (coroipc_response_header_t *) &addr[read_idx];
-	ipc_segment->control_buffer->read =
-		(read_idx + header->size) % ipc_segment->dispatch_size;
-	return (0);
-}
-
-static cs_error_t
-coroipcc_msg_send (
-	void *ipc_context,
-	const struct iovec *iov,
-	unsigned int iov_len)
-{
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
-	struct sembuf sop;
-	int i;
-	int res;
-	int req_buffer_idx = 0;
-
-	for (i = 0; i < iov_len; i++) {
-		memcpy (&ipc_segment->request_buffer[req_buffer_idx],
-			iov[i].iov_base,
-			iov[i].iov_len);
-		req_buffer_idx += iov[i].iov_len;
-	}
+	ipc_instance->control_buffer->read =
+		(read_idx + header->size) % ipc_instance->dispatch_size;
 	/*
-	 * Signal semaphore #0 indicting a new message from client
-	 * to server request queue
+	 * Put from dispatch get and also from this call's get
 	 */
-	sop.sem_num = 0;
-	sop.sem_op = 1;
-	sop.sem_flg = 0;
+	hdb_handle_put (&ipc_hdb, handle);
+	hdb_handle_put (&ipc_hdb, handle);
 
-retry_semop:
-	res = semop (ipc_segment->semid, &sop, 1);
-	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
-	} else
-	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_segment);
-		goto retry_semop;
-	} else
-	if (res == -1) {
-		return (CS_ERR_LIBRARY);
-	}
-	return (CS_OK);
-}
-
-static cs_error_t
-coroipcc_reply_receive (
-	void *ipc_context,
-	void *res_msg,
-	size_t res_len)
-{
-	struct sembuf sop;
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
-	coroipc_response_header_t *response_header;
-	int res;
-
-	/*
-	 * Wait for semaphore #1 indicating a new message from server
-	 * to client in the response queue
-	 */
-	sop.sem_num = 1;
-	sop.sem_op = -1;
-	sop.sem_flg = 0;
-
-retry_semop:
-	res = semop (ipc_segment->semid, &sop, 1);
-	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
-	} else
-	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_segment);
-		goto retry_semop;
-	} else
-	if (res == -1) {
-		return (CS_ERR_LIBRARY);
-	}
-
-	response_header = (coroipc_response_header_t *)ipc_segment->response_buffer;
-	if (response_header->error == CS_ERR_TRY_AGAIN) {
-		return (CS_ERR_TRY_AGAIN);
-	}
-
-	memcpy (res_msg, ipc_segment->response_buffer, res_len);
-	return (CS_OK);
-}
-
-static cs_error_t
-coroipcc_reply_receive_in_buf (
-	void *ipc_context,
-	void **res_msg)
-{
-	struct sembuf sop;
-	struct ipc_segment *ipc_segment = (struct ipc_segment *)ipc_context;
-	int res;
-
-	/*
-	 * Wait for semaphore #1 indicating a new message from server
-	 * to client in the response queue
-	 */
-	sop.sem_num = 1;
-	sop.sem_op = -1;
-	sop.sem_flg = 0;
-
-retry_semop:
-	res = semop (ipc_segment->semid, &sop, 1);
-	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
-	} else
-	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_segment);
-		goto retry_semop;
-	} else
-	if (res == -1) {
-		return (CS_ERR_LIBRARY);
-	}
-
-	*res_msg = (char *)ipc_segment->response_buffer;
 	return (CS_OK);
 }
 
 cs_error_t
 coroipcc_msg_send_reply_receive (
-	void *ipc_context,
+	hdb_handle_t handle,
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void *res_msg,
 	size_t res_len)
 {
 	cs_error_t res;
+	struct ipc_instance *ipc_instance;
 
-	res = coroipcc_msg_send (ipc_context, iov, iov_len);
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
 	if (res != CS_OK) {
 		return (res);
 	}
 
-	res = coroipcc_reply_receive (ipc_context, res_msg, res_len);
+	pthread_mutex_lock (&ipc_instance->mutex);
+
+	res = msg_send (ipc_instance, iov, iov_len);
 	if (res != CS_OK) {
-		return (res);
+		goto error_exit;
 	}
 
-	return (CS_OK);
+	res = reply_receive (ipc_instance, res_msg, res_len);
+
+error_exit:
+	hdb_handle_put (&ipc_hdb, handle);
+	pthread_mutex_unlock (&ipc_instance->mutex);
+
+	return (res);
 }
 
 cs_error_t
-coroipcc_msg_send_reply_receive_in_buf (
-	void *ipc_context,
+coroipcc_msg_send_reply_receive_in_buf_get (
+	hdb_handle_t handle,
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void **res_msg)
 {
 	unsigned int res;
+	struct ipc_instance *ipc_instance;
 
-	res = coroipcc_msg_send (ipc_context, iov, iov_len);
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
 	if (res != CS_OK) {
 		return (res);
 	}
 
-	res = coroipcc_reply_receive_in_buf (ipc_context, res_msg);
+	pthread_mutex_lock (&ipc_instance->mutex);
+
+	res = msg_send (ipc_instance, iov, iov_len);
+	if (res != CS_OK) {
+		goto error_exit;
+	}
+
+	res = reply_receive_in_buf (ipc_instance, res_msg);
+
+error_exit:
+	pthread_mutex_unlock (&ipc_instance->mutex);
+
+	return (res);
+}
+
+cs_error_t
+coroipcc_msg_send_reply_receive_in_buf_put (
+	hdb_handle_t handle)
+{
+	unsigned int res;
+	struct ipc_instance *ipc_instance;
+
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
 	if (res != CS_OK) {
 		return (res);
 	}
+	hdb_handle_put (&ipc_hdb, handle);
+	hdb_handle_put (&ipc_hdb, handle);
 
-	return (CS_OK);
+	return (res);
 }
 
 cs_error_t
 coroipcc_zcb_alloc (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void **buffer,
 	size_t size,
 	size_t header_size)
 {
+	struct ipc_instance *ipc_instance;
 	void *buf = NULL;
 	char path[128];
 	unsigned int res;
@@ -839,8 +925,12 @@ coroipcc_zcb_alloc (
 	struct iovec iovec;
 	struct coroipcs_zc_header *hdr;
 
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
 	map_size = size + header_size + sizeof (struct coroipcs_zc_header);
-	res = memory_map (path, "cpg_zc-XXXXXX", &buf, size);
+	res = memory_map (path, "corosync_zerocopy-XXXXXX", &buf, size);
 	assert (res != -1);
 
 	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
@@ -853,7 +943,7 @@ coroipcc_zcb_alloc (
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_alloc_t);
 
 	res = coroipcc_msg_send_reply_receive (
-		ipc_context,
+		handle,
 		&iovec,
 		1,
 		&res_coroipcs_zc_alloc,
@@ -862,20 +952,27 @@ coroipcc_zcb_alloc (
 	hdr = (struct coroipcs_zc_header *)buf;
 	hdr->map_size = map_size;
 	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header);
-	return (CS_OK);
+
+	hdb_handle_put (&ipc_hdb, handle);
+	return (res);
 }
 
 cs_error_t
 coroipcc_zcb_free (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void *buffer)
 {
+	struct ipc_instance *ipc_instance;
 	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
 	coroipc_response_header_t res_coroipcs_zc_free;
 	struct iovec iovec;
 	unsigned int res;
-
 	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header));
+
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
 
 	req_coroipcc_zc_free.header.size = sizeof (mar_req_coroipcc_zc_free_t);
 	req_coroipcc_zc_free.header.id = ZC_FREE_HEADER;
@@ -886,7 +983,7 @@ coroipcc_zcb_free (
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_free_t);
 
 	res = coroipcc_msg_send_reply_receive (
-		ipc_context,
+		handle,
 		&iovec,
 		1,
 		&res_coroipcs_zc_free,
@@ -894,21 +991,28 @@ coroipcc_zcb_free (
 
 	munmap (header, header->map_size);
 
-	return (CS_OK);
+	hdb_handle_put (&ipc_hdb, handle);
+
+	return (res);
 }
 
 cs_error_t
 coroipcc_zcb_msg_send_reply_receive (
-        void *ipc_context,
+	hdb_handle_t handle,
         void *msg,
         void *res_msg,
         size_t res_len)
 {
+	struct ipc_instance *ipc_instance;
 	mar_req_coroipcc_zc_execute_t req_coroipcc_zc_execute;
 	struct coroipcs_zc_header *hdr;
 	struct iovec iovec;
 	cs_error_t res;
 
+	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	if (res != CS_OK) {
+		return (res);
+	}
 	hdr = (struct coroipcs_zc_header *)(((char *)msg) - sizeof (struct coroipcs_zc_header));
 
 	req_coroipcc_zc_execute.header.size = sizeof (mar_req_coroipcc_zc_execute_t);
@@ -919,11 +1023,12 @@ coroipcc_zcb_msg_send_reply_receive (
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_execute_t);
 
 	res = coroipcc_msg_send_reply_receive (
-		ipc_context,
+		handle,
 		&iovec,
 		1,
 		res_msg,
 		res_len);
 
+	hdb_handle_put (&ipc_hdb, handle);
 	return (res);
 }

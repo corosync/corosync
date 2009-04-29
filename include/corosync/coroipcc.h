@@ -40,6 +40,7 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <corosync/corotypes.h>
+#include <corosync/hdb.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,64 +53,69 @@ coroipcc_service_connect (
 	size_t request_size,
 	size_t respnse__size,
 	size_t dispatch_size,
-	void **ipc_context);
+	hdb_handle_t *handle);
 
 extern cs_error_t
 coroipcc_service_disconnect (
-	void *ipc_context);
+	hdb_handle_t handle);
 
-extern int
+extern cs_error_t
 coroipcc_fd_get (
-	void *ipc_context);
+	hdb_handle_t handle,
+	int *fd);
 
-extern int
+extern cs_error_t
 coroipcc_dispatch_get (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void **buf,
 	int timeout);
 
-extern int
+extern cs_error_t
 coroipcc_dispatch_put (
-	void *ipc_context);
+	hdb_handle_t handle);
 
-extern int
+extern cs_error_t
 coroipcc_dispatch_flow_control_get (
-	void *ipc_context);
+	hdb_handle_t handle,
+	unsigned int *flow_control_state);
 
 extern cs_error_t
 coroipcc_msg_send_reply_receive (
-	void *ipc_context,
+	hdb_handle_t handle,
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void *res_msg,
 	size_t res_len);
 
 extern cs_error_t
-coroipcc_msg_send_reply_receive_in_buf (
-	void *ipc_context,
+coroipcc_msg_send_reply_receive_in_buf_get (
+	hdb_handle_t handle,
 	const struct iovec *iov,
 	unsigned int iov_len,
 	void **res_msg);
 
 extern cs_error_t
+coroipcc_msg_send_reply_receive_in_buf_put (
+	hdb_handle_t handle);
+
+extern cs_error_t
 coroipcc_zcb_alloc (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void **buffer,
 	size_t size,
         size_t header_size);
 
 extern cs_error_t
 coroipcc_zcb_free (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void *buffer);
 
 extern cs_error_t
 coroipcc_zcb_msg_send_reply_receive (
-	void *ipc_context,
+	hdb_handle_t handle,
 	void *msg,
 	void *res_msg,
 	size_t res_len);
-
 
 #ifdef __cplusplus
 }
