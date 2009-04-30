@@ -243,14 +243,6 @@ static inline int hdb_handle_get (
 
 	hdb_database_lock (&handle_database->lock);
 
-	if (check != 0xffffffff &&
-		check != handle_database->handles[handle].check) {
-
-		hdb_database_unlock (&handle_database->lock);
-		errno = EBADF;
-		return (-1);
-	}
-
 	*instance = NULL;
 	if (handle >= handle_database->handle_count) {
 		hdb_database_unlock (&handle_database->lock);
@@ -259,6 +251,14 @@ static inline int hdb_handle_get (
 	}
 
 	if (handle_database->handles[handle].state != HDB_HANDLE_STATE_ACTIVE) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+
 		hdb_database_unlock (&handle_database->lock);
 		errno = EBADF;
 		return (-1);
@@ -280,6 +280,13 @@ static inline int hdb_handle_put (
 	unsigned int handle = handle_in & 0xffffffff;
 
 	hdb_database_lock (&handle_database->lock);
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+
+		errno = EBADF;
+		return (-1);
+	}
 
 	if (check != 0xffffffff &&
 		check != handle_database->handles[handle].check) {
@@ -312,6 +319,13 @@ static inline int hdb_handle_destroy (
 	int res;
 
 	hdb_database_lock (&handle_database->lock);
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+
+		errno = EBADF;
+		return (-1);
+	}
 
 	if (check != 0xffffffff &&
 		check != handle_database->handles[handle].check) {
