@@ -55,6 +55,7 @@ enum corosync_service_types {
 	PLOAD_SERVICE = 12,
 	TMR_SERVICE = 13,
 	VOTEQUORUM_SERVICE = 14,
+	NTF_SERVICE = 15,
 };
 
 #define PROCESSOR_COUNT_MAX	384
