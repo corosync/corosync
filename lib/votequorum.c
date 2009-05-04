@@ -64,8 +64,6 @@ struct votequorum_inst {
 	votequorum_callbacks_t callbacks;
 };
 
-static void votequorum_instance_destructor (void *instance);
-
 DECLARE_HDB_DATABASE(votequorum_handle_t_db,NULL);
 
 cs_error_t votequorum_initialize (

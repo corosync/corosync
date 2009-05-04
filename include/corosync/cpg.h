@@ -88,6 +88,10 @@ typedef void (*cpg_deliver_fn_t) (
 	const struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
+	/*
+	 * Unlike many "msg" pointers, this one is deliberately *not*
+	 * declared const in order to permit in-place endian conversion.
+	 */
 	void *msg,
 	size_t msg_len);
 
