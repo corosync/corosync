@@ -57,7 +57,7 @@ static void cpg_deliver_fn (
         const struct cpg_name *group_name,
         uint32_t nodeid,
         uint32_t pid,
-        const void *m,
+        void *m,
         size_t msg_len)
 {
 	const struct my_msg *msg2 = m;
@@ -65,7 +65,6 @@ static void cpg_deliver_fn (
 	hash_state sha1_hash;
 	unsigned int i;
 
-	
 	printf ("msg '%s'\n", msg2->buffer);
 	sha1_init (&sha1_hash);
 	sha1_process (&sha1_hash, msg2->buffer, msg2->msg_size);
