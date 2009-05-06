@@ -39,7 +39,7 @@ target_LIBS = $(LIBS:%=lib%.pc)
 
 target_PACKAGE = corosync.pc
 
-lib%.pc: libtemplate.pc.in
+lib%.pc: libtemplate.pc.in Makefile
 	rm -f $@-t $@
 	sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
@@ -50,7 +50,7 @@ lib%.pc: libtemplate.pc.in
 	chmod a-w $@-t
 	mv $@-t $@
 
-%: %.in
+%: %.in Makefile
 	rm -f $@-t $@
 	sed \
 		-e 's#@PREFIX@#$(exec_prefix)#g' \
