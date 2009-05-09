@@ -53,8 +53,8 @@ int totemsrp_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		const struct iovec *iovec,
-		unsigned int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,

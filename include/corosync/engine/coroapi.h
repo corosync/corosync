@@ -462,8 +462,8 @@ struct corosync_api_v1 {
 
 		void (*deliver_fn) (
 			unsigned int nodeid,
-			const struct iovec *iovec,
-			unsigned int iov_len,
+			const void *msg,
+			unsigned int msg_len,
 			int endian_conversion_required),
 
 		void (*confchg_fn) (

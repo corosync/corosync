@@ -111,8 +111,6 @@ static pthread_mutex_t serialize_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct totem_logging_configuration totem_logging_configuration;
 
-static char delivery_data[MESSAGE_SIZE_MAX];
-
 static int num_config_modules;
 
 static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
@@ -382,43 +380,30 @@ static void corosync_mlockall (void)
 
 static void deliver_fn (
 	unsigned int nodeid,
-	const struct iovec *iovec,
-	unsigned int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	coroipc_request_header_t *header;
-	int pos = 0;
-	int i;
+	const coroipc_request_header_t *header;
 	int service;
 	int fn_id;
+	unsigned int id;
+	unsigned int size;
 
-	/*
-	 * Build buffer without iovecs to make processing easier
-	 * This is only used for messages which are multicast with iovecs
-	 * and self-delivered.  All other mechanisms avoid the copy.
-	 */
-	if (iov_len > 1) {
-		for (i = 0; i < iov_len; i++) {
-			memcpy (&delivery_data[pos], iovec[i].iov_base, iovec[i].iov_len);
-			pos += iovec[i].iov_len;
-			assert (pos < MESSAGE_SIZE_MAX);
-		}
-		header = (coroipc_request_header_t *)delivery_data;
-	} else {
-		header = (coroipc_request_header_t *)iovec[0].iov_base;
-	}
+	header = msg;
 	if (endian_conversion_required) {
-		header->id = swab32 (header->id);
-		header->size = swab32 (header->size);
+		id = swab32 (header->id);
+		size = swab32 (header->size);
+	} else {
+		id = header->id;
+		size = header->size;
 	}
-
-//	assert(iovec->iov_len == header->size);
 
 	/*
 	 * Call the proper executive handler
 	 */
-	service = header->id >> 16;
-	fn_id = header->id & 0xffff;
+	service = id >> 16;
+	fn_id = id & 0xffff;
 	if (!ais_service[service])
 		return;
 
@@ -427,11 +412,11 @@ static void deliver_fn (
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
 		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
-			(header);
+			((void *)msg);
 	}
 
 	ais_service[service]->exec_engine[fn_id].exec_handler_fn
-		(header, nodeid);
+		(msg, nodeid);
 
 	serialize_unlock();
 }

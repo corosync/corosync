@@ -68,8 +68,8 @@ hdb_handle_t totemsrp_handle_in;
 
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
-	const struct iovec *iovec,
-	unsigned int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required);
 
 void totemmrp_confchg_fn (
@@ -81,8 +81,8 @@ void totemmrp_confchg_fn (
 
 void (*pg_deliver_fn) (
 	unsigned int nodeid,
-	const struct iovec *iovec,
-	unsigned int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required) = 0;
 
 void (*pg_confchg_fn) (
@@ -94,11 +94,11 @@ void (*pg_confchg_fn) (
 
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
-	const struct iovec *iovec,
-	unsigned int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	pg_deliver_fn (nodeid, iovec, iov_len, endian_conversion_required);
+	pg_deliver_fn (nodeid, msg, msg_len, endian_conversion_required);
 }
 
 void totemmrp_confchg_fn (
@@ -124,8 +124,8 @@ int totemmrp_initialize (
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		const struct iovec *iovec,
-		unsigned int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,

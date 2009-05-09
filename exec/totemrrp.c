@@ -71,7 +71,7 @@
 void rrp_deliver_fn (
 	void *context,
 	const void *msg,
-	size_t msg_len);
+	unsigned int msg_len);
 
 void rrp_iface_change_fn (
 	void *context,
@@ -117,30 +117,30 @@ struct rrp_algo {
 		unsigned int iface_no,
 		void *context,
 		const void *msg,
-		size_t msg_len);
+		unsigned int msg_len);
 
 	void (*mcast_noflush_send) (
 		struct totemrrp_instance *instance,
-		const struct iovec *iovec,
-		unsigned int iov_len);
+		const void *msg,
+		unsigned int msg_len);
 
 	void (*mcast_flush_send) (
 		struct totemrrp_instance *instance,
-		const struct iovec *iovec,
-		unsigned int iov_len);
+		const void *msg,
+		unsigned int msg_len);
 
 	void (*token_recv) (
 		struct totemrrp_instance *instance,
 		unsigned int iface_no,
 		void *context,
 		const void *msg,
-		size_t msg_len,
+		unsigned int msg_len,
 		unsigned int token_seqid);
 
 	void (*token_send) (
 		struct totemrrp_instance *instance,
-		const struct iovec *iovec,
-		unsigned int iov_len);
+		const void *msg,
+		unsigned int msg_len);
 
 	void (*recv_flush) (
 		struct totemrrp_instance *instance);
@@ -178,7 +178,7 @@ struct totemrrp_instance {
 	void (*totemrrp_deliver_fn) (
 		void *context,
 		const void *msg,
-		size_t msg_len);
+		unsigned int msg_len);
 
 	void (*totemrrp_iface_change_fn) (
 		void *context,
@@ -234,30 +234,30 @@ static void none_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len);
+	unsigned int msg_len);
 
 static void none_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void none_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void none_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seqid);
 
 static void none_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void none_recv_flush (
 	struct totemrrp_instance *instance);
@@ -292,30 +292,30 @@ static void passive_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len);
+	unsigned int msg_len);
 
 static void passive_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void passive_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void passive_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seqid);
 
 static void passive_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void passive_recv_flush (
 	struct totemrrp_instance *instance);
@@ -350,30 +350,30 @@ static void active_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len);
+	unsigned int msg_len);
 
 static void active_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void active_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void active_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seqid);
 
 static void active_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 static void active_recv_flush (
 	struct totemrrp_instance *instance);
@@ -486,7 +486,7 @@ static void none_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len)
+	unsigned int msg_len)
 {
 	rrp_instance->totemrrp_deliver_fn (
 		context,
@@ -496,18 +496,18 @@ static void none_mcast_recv (
 
 static void none_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
-	totemnet_mcast_flush_send (instance->net_handles[0], iovec, iov_len);
+	totemnet_mcast_flush_send (instance->net_handles[0], msg, msg_len);
 }
 
 static void none_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
-	totemnet_mcast_noflush_send (instance->net_handles[0], iovec, iov_len);
+	totemnet_mcast_noflush_send (instance->net_handles[0], msg, msg_len);
 }
 
 static void none_token_recv (
@@ -515,7 +515,7 @@ static void none_token_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seq)
 {
 	rrp_instance->totemrrp_deliver_fn (
@@ -526,12 +526,12 @@ static void none_token_recv (
 
 static void none_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	totemnet_token_send (
 		instance->net_handles[0],
-		iovec, iov_len);
+		msg, msg_len);
 }
 
 static void none_recv_flush (struct totemrrp_instance *instance)
@@ -686,7 +686,7 @@ static void passive_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len)
+	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)rrp_instance->rrp_algo_instance;
 	unsigned int max;
@@ -740,8 +740,8 @@ static void passive_mcast_recv (
 
 static void passive_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
 
@@ -749,13 +749,13 @@ static void passive_mcast_flush_send (
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
 	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
 
-	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], iovec, iov_len);
+	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
 }
 
 static void passive_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
 
@@ -764,7 +764,7 @@ static void passive_mcast_noflush_send (
 	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
 
 
-	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], iovec, iov_len);
+	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
 }
 
 static void passive_token_recv (
@@ -772,7 +772,7 @@ static void passive_token_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seq)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)rrp_instance->rrp_algo_instance;
@@ -824,8 +824,8 @@ static void passive_token_recv (
 
 static void passive_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
 
@@ -835,7 +835,7 @@ static void passive_token_send (
 
 	totemnet_token_send (
 		instance->net_handles[passive_instance->token_xmit_iface],
-		iovec, iov_len);
+		msg, msg_len);
 
 }
 
@@ -1095,7 +1095,7 @@ static void active_mcast_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len)
+	unsigned int msg_len)
 {
 	instance->totemrrp_deliver_fn (
 		context,
@@ -1105,30 +1105,30 @@ static void active_mcast_recv (
 
 static void active_mcast_flush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	int i;
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
-			totemnet_mcast_flush_send (instance->net_handles[i], iovec, iov_len);
+			totemnet_mcast_flush_send (instance->net_handles[i], msg, msg_len);
 		}
 	}
 }
 
 static void active_mcast_noflush_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	int i;
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
-			totemnet_mcast_noflush_send (instance->net_handles[i], iovec, iov_len);
+			totemnet_mcast_noflush_send (instance->net_handles[i], msg, msg_len);
 		}
 	}
 }
@@ -1138,7 +1138,7 @@ static void active_token_recv (
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
-	size_t msg_len,
+	unsigned int msg_len,
 	unsigned int token_seq)
 {
 	int i;
@@ -1177,8 +1177,8 @@ static void active_token_recv (
 
 static void active_token_send (
 	struct totemrrp_instance *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
 	int i;
@@ -1187,7 +1187,7 @@ static void active_token_send (
 		if (rrp_algo_instance->faulty[i] == 0) {
 			totemnet_token_send (
 				instance->net_handles[i],
-				iovec, iov_len);
+				msg, msg_len);
 
 		}
 	}
@@ -1309,7 +1309,7 @@ static int totemrrp_algorithm_set (
 void rrp_deliver_fn (
 	void *context,
 	const void *msg,
-	size_t msg_len)
+	unsigned int msg_len)
 {
 	unsigned int token_seqid;
 	unsigned int token_is;
@@ -1398,7 +1398,7 @@ int totemrrp_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		size_t msg_len),
+		unsigned int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
@@ -1589,8 +1589,8 @@ error_exit:
 
 int totemrrp_token_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1602,7 +1602,7 @@ int totemrrp_token_send (
 		goto error_exit;
 	}
 
-	instance->rrp_algo->token_send (instance, iovec, iov_len);
+	instance->rrp_algo->token_send (instance, msg, msg_len);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 
@@ -1612,8 +1612,8 @@ error_exit:
 
 int totemrrp_mcast_flush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1626,7 +1626,7 @@ int totemrrp_mcast_flush_send (
 	}
 
 // TODO this needs to return the result
-	instance->rrp_algo->mcast_flush_send (instance, iovec, iov_len);
+	instance->rrp_algo->mcast_flush_send (instance, msg, msg_len);
 
 	hdb_handle_put (&totemrrp_instance_database, handle);
 error_exit:
@@ -1635,8 +1635,8 @@ error_exit:
 
 int totemrrp_mcast_noflush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemrrp_instance *instance;
 	int res = 0;
@@ -1656,7 +1656,7 @@ int totemrrp_mcast_noflush_send (
 	if (instance->processor_count > 1) {
 
 // TODO this needs to return the result
-		instance->rrp_algo->mcast_noflush_send (instance, iovec, iov_len);
+		instance->rrp_algo->mcast_noflush_send (instance, msg, msg_len);
 	}
 
 	hdb_handle_put (&totemrrp_instance_database, handle);

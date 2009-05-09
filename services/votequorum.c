@@ -181,8 +181,9 @@ static void quorum_confchg_fn (
 	const struct memb_ring_id *ring_id);
 
 static void quorum_deliver_fn(unsigned int nodeid,
-			      const struct iovec *iovec, unsigned int iov_len,
-			      int endian_conversion_required);
+	const void *msg,
+	unsigned int msg_len,
+	int endian_conversion_required);
 
 static int votequorum_exec_init_fn (struct corosync_api_v1 *corosync_api);
 
@@ -970,10 +971,14 @@ static void exec_quorum_killnode_endian_convert (void *msg)
 }
 
 static void quorum_deliver_fn(unsigned int nodeid,
-			      const struct iovec *iovec, unsigned int iov_len,
-			      int endian_conversion_required)
+	const void *msg,
+	unsigned int msg_len,
+	int endian_conversion_required)
 {
-	struct q_protheader *header = iovec->iov_base;
+/*
+ * TODO this violates the const rules applied to delivered messages
+ */
+	struct q_protheader *header = (struct q_protheader *)msg;
 	char *buf;
 
 	ENTER();
@@ -988,7 +993,7 @@ static void quorum_deliver_fn(unsigned int nodeid,
 	if (header->tgtport == 0 &&
 	    (header->tgtid == us->node_id ||
 	     header->tgtid == 0)) {
-		buf = (char *)(iovec->iov_base) + sizeof(struct q_protheader);
+		buf = (char *)(msg) + sizeof(struct q_protheader);
 		switch (*buf) {
 
 		case VOTEQUORUM_MSG_NODEINFO:

@@ -60,7 +60,7 @@ extern int totemnet_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		size_t msg_len),
+		unsigned int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
@@ -72,18 +72,18 @@ extern int totemnet_processor_count_set (
 
 extern int totemnet_token_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 extern int totemnet_mcast_flush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 extern int totemnet_mcast_noflush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const void *msg,
+	unsigned int msg_len);
 
 extern int totemnet_recv_flush (hdb_handle_t handle);
 

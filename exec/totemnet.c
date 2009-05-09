@@ -131,7 +131,7 @@ struct totemnet_instance {
 	void (*totemnet_deliver_fn) (
 		void *context,
 		const void *msg,
-		size_t msg_len);
+		unsigned int msg_len);
 
 	void (*totemnet_iface_change_fn) (
 		void *context,
@@ -201,8 +201,8 @@ struct totemnet_instance {
 };
 
 struct work_item {
-	struct iovec iovec[20];
-	unsigned int iov_len;
+	const void *msg;
+	unsigned int msg_len;
 	struct totemnet_instance *instance;
 };
 
@@ -884,26 +884,26 @@ error_exit:
 static inline void ucast_sendmsg (
 	struct totemnet_instance *instance,
 	struct totem_ip_address *system_to,
-	const struct iovec *iovec_in,
-	size_t iov_len_in)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct msghdr msg_ucast;
 	int res = 0;
 	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[20];
+	struct iovec iovec_encrypt[2];
 	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
+	struct iovec iovec;
 	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-
 		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
-		memcpy (&iovec_encrypt[1], &iovec_in[0],
-			sizeof (struct iovec) * iov_len_in);
+		iovec_encrypt[1].iov_base = (void *)msg;
+		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
@@ -913,7 +913,7 @@ static inline void ucast_sendmsg (
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
-			iov_len_in + 1);
+			2);
 
 		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
 			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
@@ -927,8 +927,10 @@ static inline void ucast_sendmsg (
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
 	} else {
-		iovec_sendmsg = iovec_in;
-		iov_len = iov_len_in;
+		iovec.iov_base = (void *)msg;
+		iovec.iov_len = msg_len;
+		iovec_sendmsg = &iovec;
+		iov_len = 1;
 	}
 
 	/*
@@ -954,15 +956,16 @@ static inline void ucast_sendmsg (
 
 static inline void mcast_sendmsg (
 	struct totemnet_instance *instance,
-	const struct iovec *iovec_in,
-	size_t iov_len_in)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct msghdr msg_mcast;
 	int res = 0;
 	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[20];
+	struct iovec iovec_encrypt[2];
+	struct iovec iovec;
 	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
 	unsigned int iov_len;
@@ -972,8 +975,8 @@ static inline void mcast_sendmsg (
 
 		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
-		memcpy (&iovec_encrypt[1], &iovec_in[0],
-			sizeof (struct iovec) * iov_len_in);
+		iovec_encrypt[1].iov_base = (void *)msg;
+		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
@@ -983,7 +986,7 @@ static inline void mcast_sendmsg (
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
-			iov_len_in + 1);
+			2);
 
 		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
 			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
@@ -997,8 +1000,11 @@ static inline void mcast_sendmsg (
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
 	} else {
-		iovec_sendmsg = iovec_in;
-		iov_len = iov_len_in;
+		iovec.iov_base = (void *)msg;
+		iovec.iov_len = msg_len;
+
+		iovec_sendmsg = &iovec;
+		iov_len = 1;
 	}
 
 	/*
@@ -1045,33 +1051,31 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	unsigned char sheader[sizeof (struct security_header)];
 	int res = 0;
 	size_t buf_len;
-	struct iovec iovec_encrypted;
-	struct iovec *iovec_sendmsg;
+	struct iovec iovec_enc[2];
+	struct iovec iovec;
 	struct sockaddr_storage sockaddr;
-	unsigned int iovs;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-		memmove (&work_item->iovec[1], &work_item->iovec[0],
-			work_item->iov_len * sizeof (struct iovec));
-		work_item->iovec[0].iov_base = sheader;
-		work_item->iovec[0].iov_len = sizeof (struct security_header);
+		iovec_enc[0].iov_base = sheader;
+		iovec_enc[0].iov_len = sizeof (struct security_header);
+		iovec_enc[1].iov_base = (void *)work_item->msg;
+		iovec_enc[1].iov_len = work_item->msg_len;
 
 		/*
 		 * Encrypt and digest the message
 		 */
 		encrypt_and_sign_worker (
 			instance,
-			totemnet_mcast_thread_state->iobuf, &buf_len,
-			work_item->iovec, work_item->iov_len + 1);
+			totemnet_mcast_thread_state->iobuf,
+			&buf_len,
+			iovec_enc, 2);
 
-			iovec_sendmsg = &iovec_encrypted;
-			iovec_sendmsg->iov_base = totemnet_mcast_thread_state->iobuf;
-			iovec_sendmsg->iov_len = buf_len;
-			iovs = 1;
+		iovec.iov_base = totemnet_mcast_thread_state->iobuf;
+		iovec.iov_len = buf_len;
 	} else {
-		iovec_sendmsg = work_item->iovec;
-		iovs = work_item->iov_len;
+		iovec.iov_base = (void *)work_item->msg;
+		iovec.iov_len = work_item->msg_len;
 	}
 
 	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
@@ -1079,8 +1083,8 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
-	msg_mcast.msg_iov = iovec_sendmsg;
-	msg_mcast.msg_iovlen = iovs;
+	msg_mcast.msg_iov = &iovec;
+	msg_mcast.msg_iovlen = 1;
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
@@ -1091,9 +1095,6 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	 */
 	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
-	if (res > 0) {
-		instance->stats_sent += res;
-	}
 }
 
 int totemnet_finalize (
@@ -1849,8 +1850,8 @@ error_exit:
 
 int totemnet_token_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1862,7 +1863,7 @@ int totemnet_token_send (
 		goto error_exit;
 	}
 
-	ucast_sendmsg (instance, &instance->token_target, iovec, iov_len);
+	ucast_sendmsg (instance, &instance->token_target, msg, msg_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 
@@ -1871,8 +1872,8 @@ error_exit:
 }
 int totemnet_mcast_flush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1884,7 +1885,7 @@ int totemnet_mcast_flush_send (
 		goto error_exit;
 	}
 
-	mcast_sendmsg (instance, iovec, iov_len);
+	mcast_sendmsg (instance, msg, msg_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 
@@ -1894,8 +1895,8 @@ error_exit:
 
 int totemnet_mcast_noflush_send (
 	hdb_handle_t handle,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	struct work_item work_item;
@@ -1909,14 +1910,14 @@ int totemnet_mcast_noflush_send (
 	}
 
 	if (instance->totem_config->threads) {
-		memcpy (&work_item.iovec[0], iovec, iov_len * sizeof (struct iovec));
-		work_item.iov_len = iov_len;
+		work_item.msg = msg;
+		work_item.msg_len = msg_len;
 		work_item.instance = instance;
 
 		worker_thread_group_work_add (&instance->worker_thread_group,
 			&work_item);
 	} else {
-		mcast_sendmsg (instance, iovec, iov_len);
+		mcast_sendmsg (instance, msg, msg_len);
 	}
 
 	hdb_handle_put (&totemnet_instance_database, handle);
