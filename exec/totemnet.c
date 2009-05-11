@@ -1676,7 +1676,7 @@ int totemnet_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		size_t msg_len),
+		unsigned int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
