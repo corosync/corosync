@@ -92,7 +92,7 @@ LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOG_DAEMON,
 	LOG_INFO,
 	0,
-	NULL,
+	"corosync [%6s] %b",
 	1000000);
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");

@@ -368,7 +368,7 @@ static void log_printf_to_logs (
 
 				case 't':
 					gettimeofday (&tv, NULL);
-					(void)strftime (char_time, sizeof (char_time), "%b %e %k:%M:%S", localtime ((time_t *)&tv.tv_sec));
+					(void)strftime (char_time, sizeof (char_time), "%b %d %T", localtime ((time_t *)&tv.tv_sec));
 					len = strcpy_cutoff (&output_buffer[output_buffer_idx], char_time, cutoff);
 					output_buffer_idx += len;
 					break;
