@@ -434,6 +434,8 @@ static void log_printf_to_logs (
 	while (format_buffer[format_buffer_idx]) {
 		cutoff = -1;
 		if (format_buffer[format_buffer_idx] == '%') {
+			const char *p;
+
 			format_buffer_idx += 1;
 			if (isdigit (format_buffer[format_buffer_idx])) {
 				cutoff = atoi (&format_buffer[format_buffer_idx]);
@@ -444,41 +446,40 @@ static void log_printf_to_logs (
 
 			switch (format_buffer[format_buffer_idx]) {
 				case 's':
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], subsys, cutoff);
-					output_buffer_idx += len;
+					p = subsys;
 					break;
 
 				case 'n':
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], function_name, cutoff);
-					output_buffer_idx += len;
+					p = function_name;
 					break;
 
 				case 'f':
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], file_name, cutoff);
-					output_buffer_idx += len;
+					p = file_name;
 					break;
 
 				case 'l':
 					sprintf (line_no, "%d", file_line);
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], line_no, cutoff);
-					output_buffer_idx += len;
-					break;
-
-				case 'p':
+					p = line_no;
 					break;
 
 				case 't':
 					gettimeofday (&tv, NULL);
 					(void)strftime (char_time, sizeof (char_time), "%b %d %T", localtime ((time_t *)&tv.tv_sec));
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], char_time, cutoff);
-					output_buffer_idx += len;
+					p = char_time;
 					break;
 
 				case 'b':
-					len = strcpy_cutoff (&output_buffer[output_buffer_idx], buffer, cutoff);
-					output_buffer_idx += len;
+					p = buffer;
+					break;
+
+				case 'p':
+				default:
+					p = "";
 					break;
 			}
+			len = strcpy_cutoff (&output_buffer[output_buffer_idx],
+					     p, cutoff);
+			output_buffer_idx += len;
 			format_buffer_idx += 1;
 		} else {
 			output_buffer[output_buffer_idx++] = format_buffer[format_buffer_idx++];
@@ -684,7 +685,7 @@ static void *logsys_worker_thread (void *data)
 		 */
 		for (;;) {
 			int yield_counter = 1;
-			
+
 			logsys_lock();
 			if (log_requests_lost > 0) {
 				printf ("lost %d log requests\n", log_requests_lost);
