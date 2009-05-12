@@ -362,7 +362,7 @@ static void sync_deliver_fn (
 		if (nodeid == barrier_data_process[i].nodeid) {
 			barrier_data_process[i].completed = 1;
 			log_printf (LOGSYS_LEVEL_DEBUG,
-				"Barrier Start Recieved From %d\n",
+				"Barrier Start Received From %d\n",
 				barrier_data_process[i].nodeid);
 			break;
 		}
