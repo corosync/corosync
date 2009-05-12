@@ -65,6 +65,8 @@
 
 #define YIELD_AFTER_LOG_OPS 10
 
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+
 /*
  * similar to syslog facilities/priorities tables,
  * make a tag table for internal use
@@ -381,18 +383,15 @@ do {									\
  */
 static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
 {
+	size_t len = strlen (src);
 	if (cutoff <= 0) {
-		size_t len = strlen (src);
 		memcpy (dest, src, len + 1);
 		return (len);
 	} else {
-		size_t len;
-		strncpy (dest, src, cutoff);
+		len = MIN (len, cutoff);
+		memcpy (dest, src, len);
+		memset (dest + len, ' ', cutoff - len);
 		dest[cutoff] = '\0';
-		len = strlen (dest);
-		if (len != cutoff) {
-			memset (&dest[len], ' ', cutoff - len);
-		}
 	}
 	return (cutoff);
 }
