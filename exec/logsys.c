@@ -172,6 +172,107 @@ void *logsys_rec_end;
 /* forward declarations */
 static void logsys_close_logfile(int subsysid);
 
+#ifdef LOGSYS_DEBUG
+static char *decode_mode(int subsysid, char *buf, size_t buflen)
+{
+	memset(buf, 0, buflen);
+
+	if (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE)
+		snprintf(buf+strlen(buf), buflen, "FILE,");
+
+	if (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR)
+		snprintf(buf+strlen(buf), buflen, "STDERR,");
+
+	if (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG)
+		snprintf(buf+strlen(buf), buflen, "SYSLOG,");
+
+	if (subsysid == LOGSYS_MAX_SUBSYS_COUNT) {
+		if (logsys_loggers[subsysid].mode & LOGSYS_MODE_FORK)
+			snprintf(buf+strlen(buf), buflen, "FORK,");
+
+		if (logsys_loggers[subsysid].mode & LOGSYS_MODE_THREADED)
+			snprintf(buf+strlen(buf), buflen, "THREADED,");
+	}
+
+	memset(buf+strlen(buf)-1,0,1);
+
+	return buf;
+}
+
+static char *decode_tags(int subsysid, char *buf, size_t buflen)
+{
+	unsigned int i;
+
+	memset(buf, 0, buflen);
+
+	for (i = 0; tagnames[i].c_name != NULL; i++) {
+		if (logsys_loggers[subsysid].tags & tagnames[i].c_val) {
+			snprintf(buf+strlen(buf), buflen, "%s,", tagnames[i].c_name);
+		}
+	}
+
+	memset(buf+strlen(buf)-1,0,1);
+
+	return buf;
+}
+
+static const char *decode_debug(int subsysid)
+{
+	if (logsys_loggers[subsysid].debug)
+		return "on";
+
+	return "off";
+}
+
+static const char *decode_status(int subsysid)
+{
+	if (!logsys_loggers[subsysid].init_status)
+		return "INIT_DONE";
+
+	return "NEEDS_INIT";
+}
+
+static void dump_subsys_config(int subsysid)
+{
+	char modebuf[1024];
+	char tagbuf[1024];
+
+	fprintf(stderr,
+		"ID: %d\n"
+		"subsys: %s\n"
+		"logfile: %s\n"
+		"logfile_fp: %p\n"
+		"mode: %s\n"
+		"debug: %s\n"
+		"tags: %s\n"
+		"syslog_fac: %s\n"
+		"syslog_pri: %s\n"
+		"logfile_pri: %s\n"
+		"init_status: %s\n",
+		subsysid,
+		logsys_loggers[subsysid].subsys,
+		logsys_loggers[subsysid].logfile,
+		logsys_loggers[subsysid].logfile_fp,
+		decode_mode(subsysid, modebuf, sizeof(modebuf)),
+		decode_debug(subsysid),
+		decode_tags(subsysid, tagbuf, sizeof(tagbuf)),
+		logsys_facility_name_get(logsys_loggers[subsysid].syslog_facility),
+		logsys_priority_name_get(logsys_loggers[subsysid].syslog_priority),
+		logsys_priority_name_get(logsys_loggers[subsysid].logfile_priority),
+		decode_status(subsysid));
+}
+
+static void dump_full_config(void)
+{
+	int i;
+
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (strlen(logsys_loggers[i].subsys) > 0)
+			dump_subsys_config(i);
+	}
+}
+#endif
+
 /*
  * Helpers for _logsys_log_rec functionality
  */
