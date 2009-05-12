@@ -381,18 +381,26 @@ do {									\
 /*
  * Internal threaded logging implementation
  */
-static inline int strcpy_cutoff (char *dest, const char *src, int cutoff)
+static inline int strcpy_cutoff (char *dest, const char *src, size_t cutoff,
+				 size_t buf_len)
 {
 	size_t len = strlen (src);
-	if (cutoff <= 0) {
-		memcpy (dest, src, len + 1);
-		return (len);
-	} else {
-		len = MIN (len, cutoff);
-		memcpy (dest, src, len);
-		memset (dest + len, ' ', cutoff - len);
-		dest[cutoff] = '\0';
+	if (buf_len <= 1) {
+		if (buf_len == 0)
+			dest[0] = 0;
+		return 0;
 	}
+
+	if (cutoff == 0) {
+		cutoff = len;
+	}
+
+	cutoff = MIN (cutoff, buf_len - 1);
+	len = MIN (len, cutoff);
+	memcpy (dest, src, len);
+	memset (dest + len, ' ', cutoff - len);
+	dest[cutoff] = '\0';
+
 	return (cutoff);
 }
 
@@ -421,7 +429,7 @@ static void log_printf_to_logs (
 	unsigned int format_buffer_idx = 0;
 	unsigned int output_buffer_idx = 0;
 	struct timeval tv;
-	int cutoff;
+	size_t cutoff;
 	unsigned int len;
 	int subsysid;
 
@@ -430,9 +438,13 @@ static void log_printf_to_logs (
 		return;
 	}
 
-	while (format_buffer[format_buffer_idx]) {
-		cutoff = -1;
-		if (format_buffer[format_buffer_idx] == '%') {
+	int c;
+	while ((c = format_buffer[format_buffer_idx])) {
+		cutoff = 0;
+		if (c != '%') {
+			output_buffer[output_buffer_idx++] = c;
+			format_buffer_idx++;
+		} else {
 			const char *p;
 
 			format_buffer_idx += 1;
@@ -476,12 +488,15 @@ static void log_printf_to_logs (
 					p = "";
 					break;
 			}
-			len = strcpy_cutoff (&output_buffer[output_buffer_idx],
-					     p, cutoff);
+			len = strcpy_cutoff (output_buffer + output_buffer_idx,
+					     p, cutoff,
+					     (sizeof (output_buffer)
+					      - output_buffer_idx));
 			output_buffer_idx += len;
 			format_buffer_idx += 1;
-		} else {
-			output_buffer[output_buffer_idx++] = format_buffer[format_buffer_idx++];
+		}
+		if (output_buffer_idx == sizeof (output_buffer)) {
+			break;
 		}
 	}
 
