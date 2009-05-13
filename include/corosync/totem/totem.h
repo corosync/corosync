@@ -64,8 +64,9 @@ struct totem_logging_configuration {
                 const char *file_name,
                 int file_line,
                 unsigned int level,
+		unsigned int tag,
                 const char *format,
-                ...) __attribute__((format(printf, 6, 7)));
+                ...) __attribute__((format(printf, 7, 8)));
 
 	int log_level_security;
 	int log_level_error;

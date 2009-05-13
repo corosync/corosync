@@ -159,8 +159,8 @@ static int totempg_log_level_notice;
 static int totempg_log_level_debug;
 static int totempg_subsys_id;
 static void (*totempg_log_printf) (int subsys_id, const char *function,
-	const char *file, int line, unsigned int level,
-	const char *format, ...) __attribute__((format(printf, 6, 7)));
+	const char *file, int line, unsigned int level, unsigned int tag,
+	const char *format, ...) __attribute__((format(printf, 7, 8)));
 
 struct totem_config *totempg_totem_config;
 
@@ -239,7 +239,7 @@ static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define log_printf(level, format, args...)				\
 do {									\
         totempg_log_printf (totempg_subsys_id, __FUNCTION__,		\
-		__FILE__, __LINE__, level, format, ##args);		\
+		__FILE__, __LINE__, level, 0, format, ##args);		\
 } while (0);
 
 static int msg_count_send_ok (int msg_count);

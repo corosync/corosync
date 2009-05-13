@@ -208,8 +208,8 @@ struct totemrrp_instance {
 	int totemrrp_subsys_id;
 
 	void (*totemrrp_log_printf) (int subsys, const char *function,
-		const char *file, int line, unsigned int level,
-		const char *format, ...)__attribute__((format(printf, 6, 7)));
+		const char *file, int line, unsigned int level, unsigned int tag,
+		const char *format, ...)__attribute__((format(printf, 7, 8)));
 
 	hdb_handle_t handle;
 
@@ -473,7 +473,7 @@ DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 do {									\
 	rrp_instance->totemrrp_log_printf (				\
 		rrp_instance->totemrrp_subsys_id,			\
-		__FUNCTION__, __FILE__, __LINE__, level,		\
+		__FUNCTION__, __FILE__, __LINE__, level, 0,		\
 		format, ##args);					\
 } while (0);
 

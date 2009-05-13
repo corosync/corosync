@@ -156,8 +156,9 @@ struct totemnet_instance {
 		const char *function,
 		const char *file,
 		int line, unsigned int level,
+		unsigned int tag,
 		const char *format,
-		...)__attribute__((format(printf, 6, 7)));
+		...)__attribute__((format(printf, 7, 8)));
 
 	hdb_handle_t handle;
 
@@ -242,7 +243,7 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 do {									\
         instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
                 __FUNCTION__, __FILE__, __LINE__,			\
-		level, (const char *)format, ##args);			\
+		level, 0, (const char *)format, ##args);		\
 } while (0);
 
 
