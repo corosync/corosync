@@ -424,14 +424,16 @@ static void log_printf_to_logs (
 	unsigned int tag,
 	const char *buffer)
 {
-	char output_buffer[COMBINE_BUFFER_SIZE];
+	char normal_output_buffer[COMBINE_BUFFER_SIZE];
+	char syslog_output_buffer[COMBINE_BUFFER_SIZE];
 	char char_time[128];
 	char line_no[30];
 	unsigned int format_buffer_idx = 0;
-	unsigned int output_buffer_idx = 0;
+	unsigned int normal_output_buffer_idx = 0;
+	unsigned int syslog_output_buffer_idx = 0;
 	struct timeval tv;
 	size_t cutoff;
-	unsigned int len;
+	unsigned int normal_len, syslog_len;
 	int subsysid;
 	int c, i, has_tag = 0;
 
@@ -453,10 +455,11 @@ static void log_printf_to_logs (
 	while ((c = format_buffer[format_buffer_idx])) {
 		cutoff = 0;
 		if (c != '%') {
-			output_buffer[output_buffer_idx++] = c;
+			normal_output_buffer[normal_output_buffer_idx++] = c;
+			syslog_output_buffer[syslog_output_buffer_idx++] = c;
 			format_buffer_idx++;
 		} else {
-			const char *p;
+			const char *normal_p, *syslog_p;
 
 			format_buffer_idx += 1;
 			if (isdigit (format_buffer[format_buffer_idx])) {
@@ -468,50 +471,73 @@ static void log_printf_to_logs (
 
 			switch (format_buffer[format_buffer_idx]) {
 				case 's':
-					p = subsys;
+					normal_p = subsys;
+					syslog_p = subsys;
 					break;
 
 				case 'n':
-					p = function_name;
+					normal_p = function_name;
+					syslog_p = function_name;
 					break;
 
 				case 'f':
-					p = file_name;
+					normal_p = file_name;
+					syslog_p = file_name;
 					break;
 
 				case 'l':
 					sprintf (line_no, "%d", file_line);
-					p = line_no;
+					normal_p = line_no;
+					syslog_p = line_no;
 					break;
 
 				case 't':
 					gettimeofday (&tv, NULL);
 					(void)strftime (char_time, sizeof (char_time), "%b %d %T", localtime ((time_t *)&tv.tv_sec));
-					p = char_time;
+					normal_p = char_time;
+
+					/*
+					 * syslog does timestamping on its own.
+					 * also strip extra space in case.
+					 */
+					syslog_p = "";
 					break;
 
 				case 'b':
-					p = buffer;
+					normal_p = buffer;
+					syslog_p = buffer;
 					break;
 
 				case 'p':
+					normal_p = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].subsys;
+					syslog_p = "";
+					break;
+
 				default:
-					p = "";
+					normal_p = "";
+					syslog_p = "";
 					break;
 			}
-			len = strcpy_cutoff (output_buffer + output_buffer_idx,
-					     p, cutoff,
-					     (sizeof (output_buffer)
-					      - output_buffer_idx));
-			output_buffer_idx += len;
+			normal_len = strcpy_cutoff (normal_output_buffer + normal_output_buffer_idx,
+					     normal_p, cutoff,
+					     (sizeof (normal_output_buffer)
+					      - normal_output_buffer_idx));
+			normal_output_buffer_idx += normal_len;
+			syslog_len = strcpy_cutoff (syslog_output_buffer + syslog_output_buffer_idx,
+					     syslog_p, cutoff,
+					     (sizeof (syslog_output_buffer)
+					      - syslog_output_buffer_idx));
+			syslog_output_buffer_idx += syslog_len;
 			format_buffer_idx += 1;
 		}
-		if (output_buffer_idx == sizeof (output_buffer)) {
+		if ((normal_output_buffer_idx == sizeof (normal_output_buffer)) ||
+		    (syslog_output_buffer_idx == sizeof (syslog_output_buffer))) {
 			break;
 		}
 	}
 
-	output_buffer[output_buffer_idx] = '\0';
+	normal_output_buffer[normal_output_buffer_idx] = '\0';
+	syslog_output_buffer[syslog_output_buffer_idx] = '\0';
 
 	/*
 	 * Output to syslog
@@ -519,14 +545,14 @@ static void log_printf_to_logs (
 	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
 	     ((level <= logsys_loggers[subsysid].syslog_priority) ||
 	     (logsys_loggers[subsysid].debug != 0) || (has_tag > 0))) {
-		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", output_buffer);
+		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", syslog_output_buffer);
 	}
 
 	/*
 	 * Terminate string with \n \0
 	 */
-	output_buffer[output_buffer_idx++] = '\n';
-	output_buffer[output_buffer_idx] = '\0';
+	normal_output_buffer[normal_output_buffer_idx++] = '\n';
+	normal_output_buffer[normal_output_buffer_idx] = '\0';
 
 	/*
 	 * Output to configured file
@@ -538,7 +564,7 @@ static void log_printf_to_logs (
 		/*
 		 * Output to a file
 		 */
-		if ((fwrite (output_buffer, strlen (output_buffer), 1,
+		if ((fwrite (normal_output_buffer, strlen (normal_output_buffer), 1,
 			    logsys_loggers[subsysid].logfile_fp) < 1) ||
 		    (fflush (logsys_loggers[subsysid].logfile_fp) == EOF)) {
 			char tmpbuffer[1024];
@@ -567,7 +593,7 @@ static void log_printf_to_logs (
 	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR) &&
 	     ((level <= logsys_loggers[subsysid].logfile_priority) ||
 	     (logsys_loggers[subsysid].debug != 0) || (has_tag > 0))) {
-		if (write (STDERR_FILENO, output_buffer, strlen (output_buffer)) < 0) {
+		if (write (STDERR_FILENO, normal_output_buffer, strlen (normal_output_buffer)) < 0) {
 			char tmpbuffer[1024];
 			/*
 			 * if we are here, it's bad.. it's really really bad.
@@ -1471,7 +1497,7 @@ int logsys_format_set (const char *format)
 		format_buffer = NULL;
 	}
 
-	format_buffer = strdup(format ? format : "[%6s] %b");
+	format_buffer = strdup(format ? format : "%p [%6s] %b");
 	if (format_buffer == NULL) {
 		ret = -1;
 	}
