@@ -59,22 +59,33 @@ extern "C" {
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
+ * LOGSYS_LEVEL_SECURITY is corosync/openais specific
  */
-#define LOGSYS_LEVEL_EMERG	    		LOG_EMERG
-#define LOGSYS_LEVEL_ALERT			LOG_ALERT
-#define LOGSYS_LEVEL_CRIT			LOG_CRIT
-#define LOGSYS_LEVEL_ERROR			LOG_ERR
+#define LOGSYS_LEVEL_EMERG		LOG_EMERG
+#define LOGSYS_LEVEL_ALERT		LOG_ALERT
+#define LOGSYS_LEVEL_CRIT		LOG_CRIT
+#define LOGSYS_LEVEL_ERROR		LOG_ERR
 #define LOGSYS_LEVEL_WARNING		LOG_WARNING
-#define LOGSYS_LEVEL_SECURITY		LOG_WARNING // corosync specific
+#define LOGSYS_LEVEL_SECURITY		LOG_WARNING
 #define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
-#define LOGSYS_LEVEL_INFO	    		LOG_INFO
-#define LOGSYS_LEVEL_DEBUG			LOG_DEBUG
+#define LOGSYS_LEVEL_INFO		LOG_INFO
+#define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
 
 /*
- * The tag masks are all mutually exclusive
+ * All of the LOGSYS_TAG's can be ORed together for combined behavior
  *
- * LOG is mandatory, but enforced, for subsystems.
- * Be careful if/when changing tags at runtime.
+ * TAG_LOG controls the behaviour for tracing and it's mostly for internal
+ * use only. Enable it to see tracing messages in normal log output.
+ * Disable to record tracing only in the flight recorder.
+ * logging via log_printf will set TAG_LOG automatically.
+ *
+ * ENTER/LEAVE/TRACE* will not set TAG_LOG.
+ *
+ * All tracing messages have priority set to LOGSYS_LEVEL_DEBUG and cannot
+ * be changed.
+ *
+ * Enabling output for debug will not enable logging of tracing messages
+ * automatically. Tracing has to be enabled explicitly.
  */
 #define LOGSYS_TAG_LOG			(1<<0)
 #define LOGSYS_TAG_ENTER		(1<<1)
