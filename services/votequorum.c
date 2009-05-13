@@ -69,8 +69,8 @@
 #include <corosync/ipc_votequorum.h>
 #include <corosync/list.h>
 
-#define VOTEQUORUM_MAJOR_VERSION 6
-#define VOTEQUORUM_MINOR_VERSION 3
+#define VOTEQUORUM_MAJOR_VERSION 7
+#define VOTEQUORUM_MINOR_VERSION 0
 #define VOTEQUORUM_PATCH_VERSION 0
 
  /* Silly default to prevent accidents! */
@@ -96,18 +96,6 @@ enum quorum_message_req_types {
 
 typedef enum { NODESTATE_JOINING=1, NODESTATE_MEMBER,
 	       NODESTATE_DEAD, NODESTATE_LEAVING, NODESTATE_DISALLOWED } nodestate_t;
-
-
-/* This structure is tacked onto the start of a cluster message packet for our
- * own nefarious purposes. */
-struct q_protheader {
-	unsigned char  tgtport; /* Target port number */
-	unsigned char  srcport; /* Source (originating) port number */
-	unsigned short pad;
-	unsigned int   flags;
-	int            srcid;	/* Node ID of the sender */
-	int            tgtid;	/* Node ID of the target */
-} __attribute__((packed));
 
 struct cluster_node {
 	int flags;
@@ -144,16 +132,11 @@ static struct list_head trackers_list;
 static unsigned int quorum_members[PROCESSOR_COUNT_MAX+1];
 static int quorum_members_entries = 0;
 static struct memb_ring_id quorum_ringid;
-static hdb_handle_t group_handle;
 
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 static struct cluster_node *find_node_by_nodeid(int nodeid);
 static struct cluster_node *allocate_node(int nodeid);
 static const char *kill_reason(int reason);
-
-static struct corosync_tpg_group quorum_group[1] = {
-        { .group          = "VOTEQ", .group_len      = 5},
-};
 
 #define list_iterate(v, head) \
         for (v = (head)->next; v != head; v = v->next)
@@ -180,26 +163,21 @@ static void quorum_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static void quorum_deliver_fn(unsigned int nodeid,
-	const void *msg,
-	unsigned int msg_len,
-	int endian_conversion_required);
-
 static int votequorum_exec_init_fn (struct corosync_api_v1 *corosync_api);
 
 static int quorum_lib_init_fn (void *conn);
 
 static int quorum_lib_exit_fn (void *conn);
 
-static void message_handler_req_exec_quorum_nodeinfo (
+static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
 	unsigned int nodeid);
 
-static void message_handler_req_exec_quorum_reconfigure (
+static void message_handler_req_exec_votequorum_reconfigure (
 	const void *message,
 	unsigned int nodeid);
 
-static void message_handler_req_exec_quorum_killnode (
+static void message_handler_req_exec_votequorum_killnode (
 	const void *message,
 	unsigned int nodeid);
 
@@ -238,6 +216,10 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 static int quorum_exec_send_nodeinfo(void);
 static int quorum_exec_send_reconfigure(int param, int nodeid, int value);
 static int quorum_exec_send_killnode(int nodeid, unsigned int reason);
+
+static void exec_votequorum_nodeinfo_endian_convert (void *msg);
+static void exec_votequorum_reconfigure_endian_convert (void *msg);
+static void exec_votequorum_killnode_endian_convert (void *msg);
 
 static void add_votequorum_config_notification(hdb_handle_t quorum_object_handle);
 
@@ -294,6 +276,23 @@ static struct corosync_lib_handler quorum_lib_service[] =
 	}
 };
 
+static struct corosync_exec_handler votequorum_exec_engine[] =
+{
+	{ /* 0 */
+		.exec_handler_fn	= message_handler_req_exec_votequorum_nodeinfo,
+		.exec_endian_convert_fn	= exec_votequorum_nodeinfo_endian_convert
+	},
+	{ /* 1 */
+		.exec_handler_fn	= message_handler_req_exec_votequorum_reconfigure,
+		.exec_endian_convert_fn	= exec_votequorum_reconfigure_endian_convert
+	},
+	{ /* 2 */
+		.exec_handler_fn	= message_handler_req_exec_votequorum_killnode,
+		.exec_endian_convert_fn	= exec_votequorum_killnode_endian_convert
+	},
+};
+
+
 static quorum_set_quorate_fn_t set_quorum;
 /*
  * lcrso object definition
@@ -303,7 +302,7 @@ static struct quorum_services_api_ver1 votequorum_iface_ver0 = {
 };
 
 static struct corosync_service_engine quorum_service_handler = {
-	.name				        = "corosync votes quorum service v0.90",
+	.name				        = "corosync votes quorum service v0.91",
 	.id					= VOTEQUORUM_SERVICE,
 	.private_data_size			= sizeof (struct quorum_pd),
 	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
@@ -313,9 +312,9 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_engine				= quorum_lib_service,
 	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn				= votequorum_exec_init_fn,
-	.exec_engine				= NULL,
-	.exec_engine_count		        = 0,
-	.confchg_fn                             = NULL,
+	.exec_engine				= votequorum_exec_engine,
+	.exec_engine_count		        = sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
+	.confchg_fn                             = quorum_confchg_fn,
 };
 
 /*
@@ -381,22 +380,17 @@ static void votequorum_init(struct corosync_api_v1 *api,
 	LEAVE();
 }
 
-/* Message types */
-#define VOTEQUORUM_MSG_NODEINFO     5
-#define VOTEQUORUM_MSG_KILLNODE     6
-#define VOTEQUORUM_MSG_RECONFIGURE  8
-
 struct req_exec_quorum_nodeinfo {
-	unsigned char cmd;
-	unsigned char first_trans;
-	unsigned int  votes;
-	unsigned int  expected_votes;
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	unsigned int first_trans;
+	unsigned int votes;
+	unsigned int expected_votes;
 
-	unsigned int   major_version;	/* Not backwards compatible */
-	unsigned int   minor_version;	/* Backwards compatible */
-	unsigned int   patch_version;	/* Backwards/forwards compatible */
-	unsigned int   config_version;
-	unsigned int   flags;
+	unsigned int major_version;	/* Not backwards compatible */
+	unsigned int minor_version;	/* Backwards compatible */
+	unsigned int patch_version;	/* Backwards/forwards compatible */
+	unsigned int config_version;
+	unsigned int flags;
 
 } __attribute__((packed));
 
@@ -406,23 +400,21 @@ struct req_exec_quorum_nodeinfo {
 #define RECONFIG_PARAM_LEAVING        3
 
 struct req_exec_quorum_reconfigure {
-	unsigned char  cmd;
-	unsigned char  param;
-	unsigned short pad;
-	int            nodeid;
-	unsigned int   value;
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	unsigned int param;
+	unsigned int nodeid;
+	unsigned int value;
 };
 
 struct req_exec_quorum_killnode {
-	unsigned char cmd;
-	unsigned char pad1;
-	uint16_t reason;
-	int nodeid;
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	unsigned int reason;
+	unsigned int nodeid;
 };
 
 /* These just make the access a little neater */
 static inline int objdb_get_string(const struct corosync_api_v1 *corosync,
-				   unsigned int object_service_handle,
+				   hdb_handle_t object_service_handle,
 				   char *key, char **value)
 {
 	int res;
@@ -440,7 +432,7 @@ static inline int objdb_get_string(const struct corosync_api_v1 *corosync,
 }
 
 static inline void objdb_get_int(const struct corosync_api_v1 *corosync,
-				 unsigned int object_service_handle,
+				 hdb_handle_t object_service_handle,
 				 const char *key, unsigned int *intvalue,
 				 unsigned int default_value)
 {
@@ -456,26 +448,7 @@ static inline void objdb_get_int(const struct corosync_api_v1 *corosync,
 	}
 }
 
-static int votequorum_send_message(const void *message, size_t len)
-{
-	struct iovec iov[2];
-	struct q_protheader header;
-
-	header.tgtport = 0;
-	header.srcport = 0;
-	header.flags   = 0;
-	header.srcid   = us->node_id;
-	header.tgtid   = 0;
-
-	iov[0].iov_base = &header;
-	iov[0].iov_len  = sizeof(header);
-	iov[1].iov_base = (void *) message;
-	iov[1].iov_len  = len;
-
-	return corosync_api->tpg_joined_mcast(group_handle, iov, 2, TOTEM_AGREED);
-}
-
-static void read_quorum_config(unsigned int quorum_handle)
+static void read_quorum_config(hdb_handle_t quorum_handle)
 {
 	unsigned int value = 0;
 	int cluster_members = 0;
@@ -548,9 +521,6 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	/* Listen for changes */
 	add_votequorum_config_notification(object_handle);
 	corosync_api->object_find_destroy(find_handle);
-
-	api->tpg_init(&group_handle, quorum_deliver_fn, quorum_confchg_fn);
-	api->tpg_join(group_handle, quorum_group, 1);
 
 	LEAVE();
 	return (0);
@@ -848,11 +818,11 @@ static struct cluster_node *find_node_by_nodeid(int nodeid)
 static int quorum_exec_send_nodeinfo()
 {
 	struct req_exec_quorum_nodeinfo req_exec_quorum_nodeinfo;
+	struct iovec iov[1];
 	int ret;
 
 	ENTER();
 
-	req_exec_quorum_nodeinfo.cmd = VOTEQUORUM_MSG_NODEINFO;
 	req_exec_quorum_nodeinfo.expected_votes = us->expected_votes;
 	req_exec_quorum_nodeinfo.votes = us->votes;
 	req_exec_quorum_nodeinfo.major_version = VOTEQUORUM_MAJOR_VERSION;
@@ -863,7 +833,14 @@ static int quorum_exec_send_nodeinfo()
 	if (have_disallowed())
 		req_exec_quorum_nodeinfo.flags |= NODE_FLAGS_SEESDISALLOWED;
 
-	ret = votequorum_send_message(&req_exec_quorum_nodeinfo, sizeof(req_exec_quorum_nodeinfo));
+	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
+	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
+
+	iov[0].iov_base = &req_exec_quorum_nodeinfo;
+	iov[0].iov_len = sizeof(req_exec_quorum_nodeinfo);
+
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+
 	LEAVE();
 	return ret;
 }
@@ -872,16 +849,23 @@ static int quorum_exec_send_nodeinfo()
 static int quorum_exec_send_reconfigure(int param, int nodeid, int value)
 {
 	struct req_exec_quorum_reconfigure req_exec_quorum_reconfigure;
+	struct iovec iov[1];
 	int ret;
 
 	ENTER();
 
-	req_exec_quorum_reconfigure.cmd = VOTEQUORUM_MSG_RECONFIGURE;
 	req_exec_quorum_reconfigure.param = param;
 	req_exec_quorum_reconfigure.nodeid = nodeid;
 	req_exec_quorum_reconfigure.value = value;
 
-	ret = votequorum_send_message(&req_exec_quorum_reconfigure, sizeof(req_exec_quorum_reconfigure));
+	req_exec_quorum_reconfigure.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_RECONFIGURE);
+	req_exec_quorum_reconfigure.header.size = sizeof(req_exec_quorum_reconfigure);
+
+	iov[0].iov_base = &req_exec_quorum_reconfigure;
+	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
+
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+
 	LEAVE();
 	return ret;
 }
@@ -889,15 +873,22 @@ static int quorum_exec_send_reconfigure(int param, int nodeid, int value)
 static int quorum_exec_send_killnode(int nodeid, unsigned int reason)
 {
 	struct req_exec_quorum_killnode req_exec_quorum_killnode;
+	struct iovec iov[1];
 	int ret;
 
 	ENTER();
 
-	req_exec_quorum_killnode.cmd = VOTEQUORUM_MSG_KILLNODE;
 	req_exec_quorum_killnode.nodeid = nodeid;
 	req_exec_quorum_killnode.reason = reason;
 
-	ret = votequorum_send_message(&req_exec_quorum_killnode, sizeof(req_exec_quorum_killnode));
+	req_exec_quorum_killnode.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_KILLNODE);
+	req_exec_quorum_killnode.header.size = sizeof(req_exec_quorum_killnode);
+
+	iov[0].iov_base = &req_exec_quorum_killnode;
+	iov[0].iov_len = sizeof(req_exec_quorum_killnode);
+
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+
 	LEAVE();
 	return ret;
 }
@@ -943,7 +934,7 @@ static void quorum_confchg_fn (
 	LEAVE();
 }
 
-static void exec_quorum_nodeinfo_endian_convert (void *msg)
+static void exec_votequorum_nodeinfo_endian_convert (void *msg)
 {
 	struct req_exec_quorum_nodeinfo *nodeinfo = msg;
 
@@ -956,69 +947,21 @@ static void exec_quorum_nodeinfo_endian_convert (void *msg)
 	nodeinfo->flags = swab32(nodeinfo->flags);
 }
 
-static void exec_quorum_reconfigure_endian_convert (void *msg)
+static void exec_votequorum_reconfigure_endian_convert (void *msg)
 {
 	struct req_exec_quorum_reconfigure *reconfigure = msg;
 	reconfigure->nodeid = swab32(reconfigure->nodeid);
 	reconfigure->value = swab32(reconfigure->value);
 }
 
-static void exec_quorum_killnode_endian_convert (void *msg)
+static void exec_votequorum_killnode_endian_convert (void *msg)
 {
 	struct req_exec_quorum_killnode *killnode = msg;
 	killnode->reason = swab16(killnode->reason);
 	killnode->nodeid = swab32(killnode->nodeid);
 }
 
-static void quorum_deliver_fn(unsigned int nodeid,
-	const void *msg,
-	unsigned int msg_len,
-	int endian_conversion_required)
-{
-/*
- * TODO this violates the const rules applied to delivered messages
- */
-	struct q_protheader *header = (struct q_protheader *)msg;
-	char *buf;
-
-	ENTER();
-
-	if (endian_conversion_required) {
-		header->srcid = swab32(header->srcid);
-		header->tgtid = swab32(header->tgtid);
-		header->flags = swab32(header->flags);
-	}
-
-	/* Only pass on messages for us or everyone */
-	if (header->tgtport == 0 &&
-	    (header->tgtid == us->node_id ||
-	     header->tgtid == 0)) {
-		buf = (char *)(msg) + sizeof(struct q_protheader);
-		switch (*buf) {
-
-		case VOTEQUORUM_MSG_NODEINFO:
-			if (endian_conversion_required)
-				exec_quorum_nodeinfo_endian_convert(buf);
-			message_handler_req_exec_quorum_nodeinfo (buf, header->srcid);
-			break;
-		case VOTEQUORUM_MSG_RECONFIGURE:
-			if (endian_conversion_required)
-				exec_quorum_reconfigure_endian_convert(buf);
-			message_handler_req_exec_quorum_reconfigure (buf, header->srcid);
-			break;
-		case VOTEQUORUM_MSG_KILLNODE:
-			if (endian_conversion_required)
-				exec_quorum_killnode_endian_convert(buf);
-			message_handler_req_exec_quorum_killnode (buf, header->srcid);
-			break;
-
-			/* Just ignore other messages */
-		}
-	}
-	LEAVE();
-}
-
-static void message_handler_req_exec_quorum_nodeinfo (
+static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
 	unsigned int nodeid)
 {
@@ -1057,10 +1000,11 @@ static void message_handler_req_exec_quorum_nodeinfo (
 	old_state = node->state;
 
 	/* Update node state */
-	if (req_exec_quorum_nodeinfo->minor_version >= 2)
-		node->votes = req_exec_quorum_nodeinfo->votes;
+	node->votes = req_exec_quorum_nodeinfo->votes;
 	node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	node->state = NODESTATE_MEMBER;
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected:%d\n", req_exec_quorum_nodeinfo->votes, req_exec_quorum_nodeinfo->expected_votes);
 
 	/* Check flags for disallowed (if enabled) */
 	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_DISALLOWED) {
@@ -1086,7 +1030,7 @@ static void message_handler_req_exec_quorum_nodeinfo (
 	LEAVE();
 }
 
-static void message_handler_req_exec_quorum_killnode (
+static void message_handler_req_exec_votequorum_killnode (
 	const void *message,
 	unsigned int nodeid)
 {
@@ -1100,7 +1044,7 @@ static void message_handler_req_exec_quorum_killnode (
 	}
 }
 
-static void message_handler_req_exec_quorum_reconfigure (
+static void message_handler_req_exec_votequorum_reconfigure (
 	const void *message,
 	unsigned int nodeid)
 {
