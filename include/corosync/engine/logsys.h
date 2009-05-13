@@ -76,17 +76,17 @@ extern "C" {
  * LOG is mandatory, but enforced, for subsystems.
  * Be careful if/when changing tags at runtime.
  */
-#define LOGSYS_TAG_LOG			(0xff<<28)
-#define LOGSYS_TAG_ENTER		(1<<27)
-#define LOGSYS_TAG_LEAVE		(1<<26)
-#define LOGSYS_TAG_TRACE1		(1<<25)
-#define LOGSYS_TAG_TRACE2		(1<<24)
-#define LOGSYS_TAG_TRACE3		(1<<23)
-#define LOGSYS_TAG_TRACE4		(1<<22)
-#define LOGSYS_TAG_TRACE5		(1<<21)
-#define LOGSYS_TAG_TRACE6		(1<<20)
-#define LOGSYS_TAG_TRACE7		(1<<19)
-#define LOGSYS_TAG_TRACE8		(1<<18)
+#define LOGSYS_TAG_LOG			(1<<0)
+#define LOGSYS_TAG_ENTER		(1<<1)
+#define LOGSYS_TAG_LEAVE		(1<<2)
+#define LOGSYS_TAG_TRACE1		(1<<3)
+#define LOGSYS_TAG_TRACE2		(1<<4)
+#define LOGSYS_TAG_TRACE3		(1<<5)
+#define LOGSYS_TAG_TRACE4		(1<<6)
+#define LOGSYS_TAG_TRACE5		(1<<7)
+#define LOGSYS_TAG_TRACE6		(1<<8)
+#define LOGSYS_TAG_TRACE7		(1<<9)
+#define LOGSYS_TAG_TRACE8		(1<<10)
 
 /*
  * Internal APIs that must be globally exported
@@ -125,8 +125,9 @@ extern void _logsys_log_vprintf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
+	unsigned int tag,
 	const char *format,
-	va_list ap) __attribute__((format(printf, 6, 0)));
+	va_list ap) __attribute__((format(printf, 7, 0)));
 
 extern void _logsys_log_printf (
 	int subsysid,
@@ -134,8 +135,9 @@ extern void _logsys_log_printf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
+	unsigned int tag,
 	const char *format,
-	...) __attribute__((format(printf, 6, 7)));
+	...) __attribute__((format(printf, 7, 8)));
 
 extern void _logsys_log_rec (
 	int subsysid,
@@ -143,6 +145,7 @@ extern void _logsys_log_rec (
 	const char *file_name,
 	int file_line,
 	unsigned int rec_ident,
+	unsigned int tag,
 	...);
 
 extern int _logsys_wthread_create (void);
@@ -315,63 +318,75 @@ static void logsys_subsys_init (void)					\
 #define log_rec(rec_ident, args...)					\
 do {									\
 	_logsys_log_rec (logsys_subsys_id,  __FUNCTION__,		\
-		__FILE__,  __LINE__, rec_ident, ##args);		\
+		__FILE__,  __LINE__, rec_ident, 0, ##args);		\
 } while(0)
 
 #define log_printf(lvl, format, args...)				\
  do {									\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__, __LINE__, lvl, format, ##args);		\
+		__FILE__, __LINE__, lvl, 0, format, ##args);		\
 } while(0)
 
 #define ENTER() do {							\
-	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_ENTER, LOGSYS_REC_END);	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
+		LOGSYS_TAG_ENTER, "ENTERING function [%s] line [%d]\n", \
+		__FUNCTION__, __LINE__);				\
 } while(0)
 
 #define LEAVE() do {							\
-	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_LEAVE, LOGSYS_REC_END);	\
+	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_LEAVE, "LEAVING function [%s] line [%d]\n",	\
+		__FUNCTION__, __LINE__);				\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE1, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
+		LOGSYS_TAG_TRACE1, format, ##args);			\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE2, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE2, format, ##args);			\
 } while(0)
 
 #define TRACE3(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE3, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE3, format, ##args);			\
 } while(0)
 
 #define TRACE4(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE4, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE4, format, ##args);			\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE5, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE5, format, ##args);			\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE6, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE6, format, ##args);			\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE7, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE7, format, ##args);			\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_TAG_TRACE8, format, ##args);\
+		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
+		LOGSYS_TAG_TRACE8, format, ##args);			\
 } while(0)
 
 #ifdef __cplusplus

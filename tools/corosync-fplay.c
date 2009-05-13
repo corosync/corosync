@@ -371,6 +371,7 @@ static void logsys_rec_print (const void *record)
 	const unsigned int *buf_uint32t = record;
 	unsigned int rec_size;
 	unsigned int rec_ident;
+	unsigned int tag;
 	unsigned int line;
 	unsigned int arg_size_idx;
 	unsigned int i;
@@ -384,12 +385,13 @@ static void logsys_rec_print (const void *record)
 
 	rec_size = buf_uint32t[rec_idx];
 	rec_ident = buf_uint32t[rec_idx+1];
-	line = buf_uint32t[rec_idx+2];
-	record_number = buf_uint32t[rec_idx+3];
+	tag = buf_uint32t[rec_idx+2];
+	line = buf_uint32t[rec_idx+3];
+	record_number = buf_uint32t[rec_idx+4];
 
-printf ("rec=[%d] ", record_number);
-	arg_size_idx = rec_idx + 4;
-	words_processed = 4;
+	printf ("rec=[%d] ", record_number);
+	arg_size_idx = rec_idx + 5;
+	words_processed = 5;
 	for (i = 0; words_processed < rec_size; i++) {
 		arguments[arg_count++] =
 		  (const char *)&buf_uint32t[arg_size_idx + 1];
@@ -409,37 +411,25 @@ printf ("rec=[%d] ", record_number);
 			}
 		}
 	}
-	if (rec_ident & LOGSYS_TAG_LOG) {
+	if (tag & LOGSYS_TAG_ENTER) {
+		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
+		found = 1;
+	}
+	if (tag & LOGSYS_TAG_LEAVE) {
+		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
+		found = 1;
+	}
+	if (found == 1) {
+		tag &= ~LOGSYS_TAG_LOG;
+	}
+	if (tag & LOGSYS_TAG_LOG) {
 		printf ("Log Message=%s\n", arguments[3]);
 		found = 1;
 	}
-	if (rec_ident & LOGSYS_TAG_ENTER) {
-		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
-	if (rec_ident & LOGSYS_TAG_LEAVE) {
-		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
 	if (found == 0) {
 		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
 			arguments[0], rec_ident);
 	}
-
-
-	if (rec_ident == 999) {
-		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
-	if (rec_ident == 1000) {
-		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
-	if (found == 0) {
-		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
-			arguments[0], rec_ident);
-	}
-
 
 #ifdef COMPILE_OUT
 printf ("\n");
