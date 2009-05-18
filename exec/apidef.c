@@ -36,7 +36,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>

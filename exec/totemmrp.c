@@ -35,7 +35,6 @@
 
 #include <config.h>
 
-#include <assert.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -37,7 +37,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/swab.h>

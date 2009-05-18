@@ -34,7 +34,6 @@
 
 #include <config.h>
 
-#include <assert.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
