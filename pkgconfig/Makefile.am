@@ -42,10 +42,10 @@ target_PACKAGE = corosync.pc
 lib%.pc: libtemplate.pc.in Makefile
 	rm -f $@-t $@
 	sed \
-		-e 's#@PREFIX@#$(exec_prefix)#g' \
-		-e 's#@LIBDIR@#$(libdir)#g' \
-		-e 's#@LIBVERSION@#$(VERSION)#g' \
-		-e 's#@LIB@#'$(*:lib%=%)'#g' \
+		-e 's#@''PREFIX@#$(exec_prefix)#g' \
+		-e 's#@''LIBDIR@#$(libdir)#g' \
+		-e 's#@''LIBVERSION@#$(VERSION)#g' \
+		-e 's#@''LIB@#'$(*:lib%=%)'#g' \
 	    $< > $@-t
 	chmod a-w $@-t
 	mv $@-t $@
@@ -53,11 +53,11 @@ lib%.pc: libtemplate.pc.in Makefile
 %: %.in Makefile
 	rm -f $@-t $@
 	sed \
-		-e 's#@PREFIX@#$(exec_prefix)#g' \
-		-e 's#@LIBDIR@#$(libdir)#g' \
-		-e 's#@LIBVERSION@#$(VERSION)#g' \
-		-e 's#@COROLCRSODIR@#$(LCRSODIR)#g' \
-		-e 's#@COROSOCKETDIR@#$(SOCKETDIR)#g' \
+		-e 's#@''PREFIX@#$(exec_prefix)#g' \
+		-e 's#@''LIBDIR@#$(libdir)#g' \
+		-e 's#@''LIBVERSION@#$(VERSION)#g' \
+		-e 's#@''COROLCRSODIR@#$(LCRSODIR)#g' \
+		-e 's#@''COROSOCKETDIR@#$(SOCKETDIR)#g' \
 	    $< > $@-t
 	chmod a-w $@-t
 	mv $@-t $@
