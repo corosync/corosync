@@ -91,6 +91,7 @@
 #define MAXIOVS					5
 #define RETRANSMIT_ENTRIES_MAX			30
 #define TOKEN_SIZE_MAX				64000 /* bytes */
+#define LEAVE_DUMMY_NODEID                      0
 
 /*
  * Rollover handling:
@@ -560,6 +561,8 @@ static void srp_addr_to_nodeid (
 
 static int srp_addr_equal (const struct srp_addr *a, const struct srp_addr *b);
 
+static void memb_leave_message_send (struct totemsrp_instance *instance);
+
 static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
 
 static void token_callbacks_execute (struct totemsrp_instance *instance, enum totem_callback_token_type type);
@@ -872,6 +875,7 @@ void totemsrp_finalize (
 	if (res != 0) {
 		return;
 	}
+	memb_leave_message_send (instance);
 
 	hdb_handle_put (&totemsrp_instance_database, handle);
 }
@@ -1095,6 +1099,9 @@ static void memb_consensus_set (
 {
 	int found = 0;
 	int i;
+
+	if (addr->addr[0].nodeid == LEAVE_DUMMY_NODEID)
+	        return;
 
 	for (i = 0; i < instance->consensus_list_entries; i++) {
 		if (srp_addr_equal(addr, &instance->consensus_list[i].addr)) {
@@ -2853,6 +2860,75 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 			sizeof (struct srp_addr));
 	addr_idx += 
 		instance->my_proc_list_entries *
+		sizeof (struct srp_addr);
+	memcpy (&addr[addr_idx],
+		instance->my_failed_list,
+		instance->my_failed_list_entries *
+		sizeof (struct srp_addr));
+	addr_idx += 
+		instance->my_failed_list_entries *
+		sizeof (struct srp_addr);
+
+
+	if (instance->totem_config->send_join_timeout) {
+		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
+	}
+
+	totemrrp_mcast_flush_send (
+		instance->totemrrp_handle,
+		memb_join,
+		addr_idx);
+}
+
+static void memb_leave_message_send (struct totemsrp_instance *instance)
+{
+	char memb_join_data[10000];
+	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
+	char *addr;
+	unsigned int addr_idx;
+	int active_memb_entries;
+	struct srp_addr active_memb[PROCESSOR_COUNT_MAX];
+
+	log_printf (instance->totemsrp_log_level_debug,
+		"sending join/leave message\n");
+
+	/*
+	 * add us to the failed list, and remove us from
+	 * the members list
+	 */
+	memb_set_merge(
+		       &instance->my_id, 1,
+		       instance->my_failed_list, &instance->my_failed_list_entries);
+
+	memb_set_subtract (active_memb, &active_memb_entries,
+			   instance->my_proc_list, instance->my_proc_list_entries,
+			   &instance->my_id, 1);
+
+
+	memb_join->header.type = MESSAGE_TYPE_MEMB_JOIN;
+	memb_join->header.endian_detector = ENDIAN_LOCAL;
+	memb_join->header.encapsulated = 0;
+	memb_join->header.nodeid = LEAVE_DUMMY_NODEID;
+
+	memb_join->ring_seq = instance->my_ring_id.seq;
+	memb_join->proc_list_entries = active_memb_entries;
+	memb_join->failed_list_entries = instance->my_failed_list_entries;
+	srp_addr_copy (&memb_join->system_from, &instance->my_id);
+	memb_join->system_from.addr[0].nodeid = LEAVE_DUMMY_NODEID;
+
+	// TODO: CC Maybe use the actual join send routine.
+	/*
+	 * This mess adds the joined and failed processor lists into the join
+	 * message
+	 */
+	addr = (char *)memb_join;
+	addr_idx = sizeof (struct memb_join);
+	memcpy (&addr[addr_idx],
+		active_memb,
+		active_memb_entries *
+			sizeof (struct srp_addr));
+	addr_idx += 
+		active_memb_entries *
 		sizeof (struct srp_addr);
 	memcpy (&addr[addr_idx],
 		instance->my_failed_list,

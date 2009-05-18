@@ -1113,6 +1113,20 @@ int totemnet_finalize (
 
 	worker_thread_group_exit (&instance->worker_thread_group);
 
+	if (instance->totemnet_sockets.mcast_recv > 0) {
+		close (instance->totemnet_sockets.mcast_recv);
+	 	poll_dispatch_delete (instance->totemnet_poll_handle,
+			instance->totemnet_sockets.mcast_recv);
+	}
+	if (instance->totemnet_sockets.mcast_send > 0) {
+		close (instance->totemnet_sockets.mcast_send);
+	}
+	if (instance->totemnet_sockets.token > 0) {
+		close (instance->totemnet_sockets.token);
+		poll_dispatch_delete (instance->totemnet_poll_handle,
+			instance->totemnet_sockets.token);
+	}
+
 	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
