@@ -93,9 +93,13 @@ static int parse_section(FILE *fp,
 	int i;
 	char *loc;
 
-	while (fgets (line, 255, fp)) {
-		if (strlen(line) > 0)
-			line[strlen(line) - 1] = '\0';
+	while (fgets (line, sizeof (line), fp)) {
+		if (strlen(line) > 0) {
+			if (line[strlen(line) - 1] == '\n')
+				line[strlen(line) - 1] = '\0';
+			if (strlen (line) > 0 && line[strlen(line) - 1] == '\r')
+				line[strlen(line) - 1] = '\0';
+		}
 		/*
 		 * Clear out white space and tabs
 		 */
@@ -181,9 +185,11 @@ static int read_config_file_into_objdb(
 
 	fclose(fp);
 
-	snprintf (error_reason, sizeof(error_string_response),
+	if (res == 0) {
+		snprintf (error_reason, sizeof(error_string_response),
 			"Successfully read main configuration file '%s'.\n", filename);
-	*error_string = error_reason;
+		*error_string = error_reason;
+	}
 
 	return res;
 }
