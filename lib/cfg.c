@@ -324,12 +324,8 @@ corosync_cfg_ring_status_get (
 
 error_free_contents:
 	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
-		if ((*(interface_names))[i]) {
-			free ((*(interface_names))[i]);
-		}
-		if ((*(status))[i]) {
-			free ((*(status))[i]);
-		}
+		free (*interface_names + i);
+		free (*status + i);
 	}
 
 	free (*status);
