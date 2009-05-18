@@ -46,7 +46,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

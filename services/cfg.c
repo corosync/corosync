@@ -47,7 +47,6 @@
 #include <stdio.h>
 #include <limits.h>
 #include <errno.h>
-#include <signal.h>
 #include <string.h>
 
 #include <corosync/corotypes.h>

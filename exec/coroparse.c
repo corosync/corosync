@@ -45,7 +45,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <string.h>
 
 #include <corosync/lcr/lcr_comp.h>
