@@ -1316,54 +1316,12 @@ void _logsys_log_printf (
 	const char *format,
 	...)
 {
-	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
-	unsigned int len;
 	va_list ap;
 
-	if (subsysid <= -1) {
-		subsysid = LOGSYS_MAX_SUBSYS_COUNT;
-	}
-
-	if ((level > logsys_loggers[subsysid].syslog_priority) &&
-	    (level > logsys_loggers[subsysid].logfile_priority) &&
-	    (logsys_loggers[subsysid].debug == 0)) {
-		return;
-	}
-
 	va_start (ap, format);
-	len = vsprintf (logsys_print_buffer, format, ap);
+	_logsys_log_vprintf (subsysid, function_name, file_name, file_line,
+		level, tag, format, ap);
 	va_end (ap);
-	if (logsys_print_buffer[len - 1] == '\n') {
-		logsys_print_buffer[len - 1] = '\0';
-		len -= 1;
-	}
-
-	/*
-	 * Create a log record
-	 */
-	_logsys_log_rec (subsysid,
-		function_name,
-		file_name,
-		file_line,
-		level,
-		tag |= LOGSYS_TAG_LOG,
-		logsys_print_buffer, len + 1,
-		LOGSYS_REC_END);
-
-	if ((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) == 0) {
-		/*
-		 * Output (and block) if the log mode is not threaded otherwise
-		 * expect the worker thread to output the log data once signaled
-		 */
-		log_printf_to_logs (logsys_loggers[subsysid].subsys,
-			file_name, function_name, file_line, level, tag,
-			logsys_print_buffer);
-	} else {
-		/*
-		 * Signal worker thread to display logging output
-		 */
-		wthread_signal ();
-	}
 }
 
 int _logsys_config_subsys_get (const char *subsys)
