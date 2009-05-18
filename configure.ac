@@ -267,7 +267,7 @@ fi
 # Look for libnss
 if test "x${enable_nss}" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])
-	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])	
+	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 

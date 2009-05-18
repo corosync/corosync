@@ -133,7 +133,7 @@ never reused.
 USING LIBNSS
 ------------
 
-The process is similar in concept to the above, but most of the details are 
+The process is similar in concept to the above, but most of the details are
 hidden inside the NSS library. When corosync is started up libnss is initialised,
 the private key is read into memory and stored for later use by the code.
 
@@ -156,12 +156,12 @@ Compatibility
 -------------
 
 The default mode of operation is to allow for wire-compatibility with existing
-openais systems. That means that the internal encryption system is used 
+openais systems. That means that the internal encryption system is used
 and all received packets are expected to use that system. This allows a rolling
-upgrade from openais to corosync. 
+upgrade from openais to corosync.
 
 Once all nodes in the cluster are running corosync they can be changed to allow
-the newer libnss-based encryption by setting the 
+the newer libnss-based encryption by setting the
 totem {
     crypto_accept: new
 }
@@ -170,14 +170,14 @@ option in corosync.conf.
 This enables the new encryption system but does not switch it on. It simply
 adds a byte to the end of the packets to indicate the encryption type.
 
-Once all nodes have been upgraded and 'crypto_accept: new' has been set, 
+Once all nodes have been upgraded and 'crypto_accept: new' has been set,
 the encryption type can be set using a single command:
 
 # corosync-cfgtool -c1
 
 This will tell all cluster nodes to start using libnss encryption. Note that
 it is possible to upgrade node individially by seetting the encryption type in
-corosync.conf. The last byte of the packet indicates the decryption algorithm 
+corosync.conf. The last byte of the packet indicates the decryption algorithm
 that the receiver should use.
 
 Once all nodes are using libnss encryption, the option should be set in

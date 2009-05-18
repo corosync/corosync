@@ -2858,14 +2858,14 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 		instance->my_proc_list,
 		instance->my_proc_list_entries *
 			sizeof (struct srp_addr));
-	addr_idx += 
+	addr_idx +=
 		instance->my_proc_list_entries *
 		sizeof (struct srp_addr);
 	memcpy (&addr[addr_idx],
 		instance->my_failed_list,
 		instance->my_failed_list_entries *
 		sizeof (struct srp_addr));
-	addr_idx += 
+	addr_idx +=
 		instance->my_failed_list_entries *
 		sizeof (struct srp_addr);
 
@@ -2927,14 +2927,14 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 		active_memb,
 		active_memb_entries *
 			sizeof (struct srp_addr));
-	addr_idx += 
+	addr_idx +=
 		active_memb_entries *
 		sizeof (struct srp_addr);
 	memcpy (&addr[addr_idx],
 		instance->my_failed_list,
 		instance->my_failed_list_entries *
 		sizeof (struct srp_addr));
-	addr_idx += 
+	addr_idx +=
 		instance->my_failed_list_entries *
 		sizeof (struct srp_addr);
 

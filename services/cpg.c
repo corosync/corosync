@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * Author: Christine Caulfield (ccaulfie@redhat.com)
- * Author: Jan Friesse (jfriesse@redhat.com) 
+ * Author: Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -955,7 +955,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	const struct req_lib_cpg_mcast *req_lib_cpg_mcast = message;
  	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	mar_cpg_name_t group_name = cpd->group_name;
- 
+
 	struct iovec req_exec_cpg_iovec[2];
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
@@ -989,12 +989,12 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
  		api->ipc_source_set (&req_exec_cpg_mcast.source, conn);
  		memcpy(&req_exec_cpg_mcast.group_name, &group_name,
  			sizeof(mar_cpg_name_t));
- 
+
  		req_exec_cpg_iovec[0].iov_base = (char *)&req_exec_cpg_mcast;
  		req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);
  		req_exec_cpg_iovec[1].iov_base = (char *)&req_lib_cpg_mcast->message;
  		req_exec_cpg_iovec[1].iov_len = msglen;
- 
+
  		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
  		assert(result == 0);
  	}
@@ -1012,7 +1012,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	cs_error_t error = CPG_ERR_NOT_EXIST;
 	coroipc_response_header_t res;
- 
+
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
 		error = CPG_ERR_NOT_EXIST;
