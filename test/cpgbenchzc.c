@@ -1,4 +1,3 @@
-#include <assert.h>
 /*
  * Copyright (c) 2006, 2009 Red Hat, Inc.
  *
@@ -35,6 +34,7 @@
 
 #include <config.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
