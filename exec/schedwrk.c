@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/hdb.h>
 #include "schedwrk.h"
