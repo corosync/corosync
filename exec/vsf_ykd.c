@@ -336,14 +336,14 @@ static void ykd_state_endian_convert (struct ykd_state *state)
 
 static void ykd_deliver_fn (
 	unsigned int nodeid,
-	const struct iovec *iovec,
-	unsigned int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required)
 {
 	int all_received = 1;
 	int state_position = 0;
 	int i;
-	char *msg_state = (char *)(iovec->iov_base) + sizeof (struct ykd_header);
+	char *msg_state = (char *)msg + sizeof (struct ykd_header);
 
 	/*
 	 * If this is a localhost address, this node is always primary
@@ -363,7 +363,7 @@ static void ykd_deliver_fn (
 	}
 #endif
 	if (endian_conversion_required &&
-	    (iovec->iov_len > sizeof (struct ykd_header))) {
+	    (msg_len > sizeof (struct ykd_header))) {
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);
 	}
 
@@ -392,7 +392,7 @@ static void ykd_deliver_fn (
 
 	switch (ykd_mode) {
 		case YKD_MODE_SENDSTATE:
-			assert (iovec->iov_len > sizeof (struct ykd_header));
+			assert (msg_len > sizeof (struct ykd_header));
 			/*
 			 * Copy state information for the sending processor
 			 */
