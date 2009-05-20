@@ -109,6 +109,8 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 				  size_t view_list_entries,
 				  int quorum, struct memb_ring_id *ring_id)
 {
+	int i;
+
 	primary_designated = quorum;
 
 	if (primary_designated) {
@@ -120,6 +122,10 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	quorum_view_list_entries = view_list_entries;
 	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
+
+	log_printf (LOGSYS_LEVEL_NOTICE, "Members[%d]: ", (int)view_list_entries);
+	for (i=0; i<view_list_entries; i++)
+		log_printf (LOGSYS_LEVEL_NOTICE, "    %d ", view_list[i]);
 
 	/* Tell internal listeners */
 	send_internal_notification();
