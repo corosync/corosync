@@ -37,6 +37,7 @@
 
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/list.h>
 
 /*
  * All service handlers in the AIS
@@ -49,13 +50,28 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
+/*
+ * Structure describing cached uidgid item
+ */
+struct uidgid_item {
+	struct list_head list;
+	int uid;
+	int gid;
+};
+
 struct ug_config {
 	/*
 	 * user/group to run as
 	 */
 	int uid;
 	int gid;
+
+	/*
+	 * Allowed users/group to connect. This is of type uidgid item.
+	 */
+	struct list_head uidgid_list;
 };
+
 
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,

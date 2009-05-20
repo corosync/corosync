@@ -150,6 +150,7 @@ void corosync_request_shutdown (void)
 	poll_stop (0);
 	totempg_finalize ();
 	coroipcs_ipc_exit ();
+
 	corosync_exit_error (AIS_DONE_EXIT);
 }
 
@@ -482,12 +483,18 @@ static coroipcs_handler_fn_lvalue corosync_handler_fn_get (unsigned int service,
 
 static int corosync_security_valid (int euid, int egid)
 {
+	struct list_head *iter;
 	if (euid == 0 || egid == 0) {
 		return (1);
 	}
-	if (euid == ug_config.uid || egid == ug_config.gid) {
-		return (1);
+
+	for (iter = ug_config.uidgid_list.next; iter != &ug_config.uidgid_list; iter = iter->next) {
+		struct uidgid_item *ugi = list_entry (iter, struct uidgid_item, list);
+
+		if (euid == ugi->uid || egid == ugi->gid)
+			return (1);
 	}
+
 	return (0);
 }
 

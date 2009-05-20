@@ -670,6 +670,54 @@ static void add_logsys_config_notification(
 
 }
 
+static int corosync_main_config_read_uidgid (
+	struct objdb_iface_ver0 *objdb,
+	const char **error_string,
+	struct ug_config *ug_config)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_service_handle;
+	char *value;
+	int uid, gid;
+	struct uidgid_item *ugi;
+
+	list_init (&ug_config->uidgid_list);
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"uidgid",
+		strlen ("uidgid"),
+		&object_find_handle);
+
+	while (objdb->object_find_next (
+		object_find_handle,
+		&object_service_handle) == 0) {
+		uid = -1;
+		gid = -1;
+
+		if (!objdb_get_string (objdb,object_service_handle, "uid", &value)) {
+			uid = uid_determine(value);
+		}
+
+		if (!objdb_get_string (objdb,object_service_handle, "gid", &value)) {
+			gid = gid_determine(value);
+		}
+
+		if (uid > -1 || gid > -1) {
+			ugi = malloc (sizeof (*ugi));
+			if (ugi == NULL) {
+				_corosync_out_of_memory_error();
+			}
+			ugi->uid = uid;
+			ugi->gid = gid;
+			list_add (&ugi->list, &ug_config->uidgid_list);
+		}
+	}
+	objdb->object_find_destroy (object_find_handle);
+
+	return 0;
+}
+
 int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string,
@@ -717,6 +765,8 @@ int corosync_main_config_read (
 	if (ug_config->gid < 0) {
 		ug_config->gid = gid_determine("ais");
 	}
+
+	corosync_main_config_read_uidgid (objdb, error_string, ug_config);
 
 	add_logsys_config_notification(objdb);
 
