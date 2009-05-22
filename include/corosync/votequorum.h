@@ -48,6 +48,9 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_FLAG_TWONODE    4
 #define VOTEQUORUM_INFO_FLAG_QUORATE    8
 
+#define VOTEQUORUM_NODEID_US 0
+#define VOTEQUORUM_NODEID_QDEVICE -1
+
 #define NODESTATE_JOINING    1
 #define NODESTATE_MEMBER     2
 #define NODESTATE_DEAD       3

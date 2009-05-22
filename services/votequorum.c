@@ -92,6 +92,8 @@ enum quorum_message_req_types {
 #define NODE_FLAGS_REMOVED         64
 #define NODE_FLAGS_US             128
 
+#define NODEID_US 0
+#define NODEID_QDEVICE -1
 
 typedef enum { NODESTATE_JOINING=1, NODESTATE_MEMBER,
 	       NODESTATE_DEAD, NODESTATE_LEAVING, NODESTATE_DISALLOWED } nodestate_t;
@@ -805,6 +807,12 @@ static struct cluster_node *find_node_by_nodeid(int nodeid)
 	struct cluster_node *node;
 	struct list_head *tmp;
 
+	if (nodeid == NODEID_US)
+		return us;
+
+	if (nodeid == NODEID_QDEVICE)
+		return quorum_device;
+
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
 		if (node->node_id == nodeid)
@@ -1126,13 +1134,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %d\n", conn, req_lib_votequorum_getinfo->nodeid);
 
-	if (req_lib_votequorum_getinfo->nodeid) {
-		node = find_node_by_nodeid(req_lib_votequorum_getinfo->nodeid);
-	}
-	else {
-		node = us;
-	}
-
+	node = find_node_by_nodeid(req_lib_votequorum_getinfo->nodeid);
 	if (node) {
 		struct cluster_node *iternode;
 		struct list_head *nodelist;
