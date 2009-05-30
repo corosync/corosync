@@ -35,7 +35,6 @@
 #ifndef CORODEFS_H_DEFINED
 #define CORODEFS_H_DEFINED
 
-#include <config.h>
 #include <netinet/in.h>
 
 #define COROSYNC_SOCKET_NAME	"corosync.ipc"
