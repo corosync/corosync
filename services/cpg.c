@@ -455,9 +455,19 @@ static int notify_lib_joinlist(
 		for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
 			struct cpg_pd *cpd = list_entry (iter, struct cpg_pd, list);
 			if (mar_name_compare (&cpd->group_name, group_name) == 0) {
-				api->ipc_dispatch_send (cpd->conn, buf, size);
 				assert (left_list_entries <= 1);
 				assert (joined_list_entries <= 1);
+				if (joined_list_entries) {
+					if (joined_list[0].pid == cpd->pid &&
+						joined_list[0].nodeid == api->totem_nodeid_get()) {
+						cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
+					}
+				}
+				if (cpd->cpd_state == CPD_STATE_JOIN_COMPLETED ||
+					cpd->cpd_state == CPD_STATE_LEAVE_STARTED) {
+
+					api->ipc_dispatch_send (cpd->conn, buf, size);
+				}
 				if (left_list_entries) {
 					if (left_list[0].pid == cpd->pid &&
 						left_list[0].nodeid == api->totem_nodeid_get()) {
@@ -465,12 +475,6 @@ static int notify_lib_joinlist(
 						cpd->pid = 0;
 						memset (&cpd->group_name, 0, sizeof(cpd->group_name));
 						cpd->cpd_state = CPD_STATE_UNJOINED;
-					}
-				}
-				if (joined_list_entries) {
-					if (joined_list[0].pid == cpd->pid &&
-						joined_list[0].nodeid == api->totem_nodeid_get()) {
-						cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
 					}
 				}
 			}
