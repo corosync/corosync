@@ -36,9 +36,9 @@ sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 			  corosync-keygen corosync-objctl \
 			  corosync-pload
 
-corosync_pload_LDADD	= ../lib/libpload.a
-corosync_objctl_LDADD	= ../lib/libconfdb.a ../lcr/liblcr.a
-corosync_cfgtool_LDADD	= ../lib/libcfg.a
+corosync_pload_LDADD	= ../lib/libpload.a ../lib/libcoroipcc.a
+corosync_objctl_LDADD	= ../lib/libconfdb.a ../lcr/liblcr.a ../lib/libcoroipcc.a
+corosync_cfgtool_LDADD	= ../lib/libcfg.a ../lib/libcoroipcc.a
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c

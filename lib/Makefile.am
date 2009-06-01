@@ -44,13 +44,13 @@ SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
 
-libcpg_a_SOURCES	= coroipcc.c cpg.c
-libcfg_a_SOURCES	= coroipcc.c cfg.c
-libevs_a_SOURCES	= coroipcc.c evs.c
-libpload_a_SOURCES	= coroipcc.c pload.c
-libquorum_a_SOURCES	= coroipcc.c quorum.c
-libvotequorum_a_SOURCES	= coroipcc.c votequorum.c
-libconfdb_a_SOURCES	= coroipcc.c confdb.c sa-confdb.c
+libcpg_a_SOURCES	= cpg.c
+libcfg_a_SOURCES	= cfg.c
+libevs_a_SOURCES	= evs.c
+libpload_a_SOURCES	= pload.c
+libquorum_a_SOURCES	= quorum.c
+libvotequorum_a_SOURCES	= votequorum.c
+libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libcoroipcc_a_SOURCES	= coroipcc.c
 
 noinst_HEADERS		= sa-confdb.h util.h \
@@ -69,13 +69,13 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o
+libconfdb.so.$(SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o \
 		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
-lib%.so.$(SONAME): coroipcc.o %.o
+lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
 	$(CC) $(DARWIN_OPTS) $^ -o $@
 	ln -sf lib$*.so.$(SONAME) lib$*.so
 	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
@@ -90,7 +90,7 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
+libconfdb.so.$(SONAME): confdb.o sa-confdb.o ../lcr/lcr_ifact.o libcoroipcc.so.$(SONAME)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libconfdb.versions \
@@ -98,7 +98,7 @@ libconfdb.so.$(SONAME): coroipcc.o confdb.o sa-confdb.o ../lcr/lcr_ifact.o
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
-lib%.so.$(SONAME): coroipcc.o %.o
+lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=lib$*.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
