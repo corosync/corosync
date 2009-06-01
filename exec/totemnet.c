@@ -1545,30 +1545,45 @@ static int totemnet_build_sockets_ip (
 	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_interface->ip_port, &mcast_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &boundto_ss, &addrlen);
 
-	switch ( bindnet_address->family ) {
-		case AF_INET:
-		memset(&mreq, 0, sizeof(mreq));
-		mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
-		mreq.imr_interface.s_addr = boundto_sin->sin_addr.s_addr;
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-			&mreq, sizeof (mreq));
-		if (res == -1) {
-			perror ("join ipv4 multicast group failed");
-			return (-1);
-		}
-		break;
-		case AF_INET6:
-		memset(&mreq6, 0, sizeof(mreq6));
-		memcpy(&mreq6.ipv6mr_multiaddr, &mcast_sin6->sin6_addr, sizeof(struct in6_addr));
-		mreq6.ipv6mr_interface = interface_num;
+	if (instance->totem_config->broadcast_use == 1) {
+		unsigned int broadcast = 1;
 
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_JOIN_GROUP,
-			&mreq6, sizeof (mreq6));
-		if (res == -1) {
-			perror ("join ipv6 multicast group failed");
-			return (-1);
+		if ((setsockopt(sockets->mcast_recv, SOL_SOCKET,
+			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
+			perror("setting broadcast option");
+			exit(1);
 		}
-		break;
+		if ((setsockopt(sockets->mcast_send, SOL_SOCKET,
+			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
+			perror("setting broadcast option");
+			exit(1);
+		}
+	} else {
+		switch (bindnet_address->family) {
+			case AF_INET:
+			memset(&mreq, 0, sizeof(mreq));
+			mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
+			mreq.imr_interface.s_addr = boundto_sin->sin_addr.s_addr;
+			res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+				&mreq, sizeof (mreq));
+			if (res == -1) {
+				perror ("join ipv4 multicast group failed");
+				return (-1);
+			}
+			break;
+			case AF_INET6:
+			memset(&mreq6, 0, sizeof(mreq6));
+			memcpy(&mreq6.ipv6mr_multiaddr, &mcast_sin6->sin6_addr, sizeof(struct in6_addr));
+			mreq6.ipv6mr_interface = interface_num;
+
+			res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_JOIN_GROUP,
+				&mreq6, sizeof (mreq6));
+			if (res == -1) {
+				perror ("join ipv6 multicast group failed");
+				return (-1);
+			}
+			break;
+		}
 	}
 
 	/*

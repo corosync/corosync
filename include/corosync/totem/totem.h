@@ -155,6 +155,8 @@ struct totem_config {
 
 	const char *vsf_type;
 
+	unsigned int broadcast_use;
+
 	enum { TOTEM_CRYPTO_SOBER=0, TOTEM_CRYPTO_NSS } crypto_type;
 	enum { TOTEM_CRYPTO_ACCEPT_OLD=0, TOTEM_CRYPTO_ACCEPT_NEW } crypto_accept;
 

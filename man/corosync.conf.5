@@ -91,6 +91,12 @@ selection of the network interface within a specific subnet as with IPv4.
 If IPv6 networking is used, the nodeid field must be specified.
 
 .TP
+broadcast
+This is optional and can be set to yes.  If it is set to yes, the broadcast
+address will be used for communication.  If this option is set, mcastaddr
+should not be set.
+
+.TP
 mcastaddr
 This is the multicast address used by corosync executive.  The default
 should work for most networks, but the network administrator should be queried
