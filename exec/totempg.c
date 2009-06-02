@@ -1035,7 +1035,7 @@ int totempg_groups_join (
 	memcpy (&new_groups[instance->groups_cnt],
 		groups, group_cnt * sizeof (struct totempg_group));
 	instance->groups = new_groups;
-	instance->groups_cnt = instance->groups_cnt = group_cnt;
+	instance->groups_cnt += group_cnt;
 
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
