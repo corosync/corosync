@@ -1230,7 +1230,7 @@ static int netif_determine (
 
 	res = totemip_iface_check (bindnet, bound_to,
 		interface_up, interface_num,
-                0); // TODO andrew can address this instance->totem_config->clear_node_high_bit);
+                instance->totem_config->clear_node_high_bit);
 
 
 	return (res);

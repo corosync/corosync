@@ -141,6 +141,17 @@ is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
 
 .TP
+clear_node_high_bit
+This configuration option is optional and is only relevant when no nodeid is
+specified.  Some openais clients require a signed 32 bit nodeid that is greater
+than zero however by default openais uses all 32 bits of the IPv4 address space
+when generating a nodeid.  Set this option to yes to force the high bit to be
+zero and therefor ensure the nodeid is a positive signed 32 bit integer.
+
+WARNING: The clusters behavior is undefined if this option is enabled on only
+a subset of the cluster (for example during a rolling upgrade).
+
+.TP
 secauth
 This specifies that HMAC/SHA1 authentication should be used to authenticate
 all messages.  It further specifies that all data should be encrypted with the
