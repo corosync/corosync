@@ -114,7 +114,7 @@ all-local: $(SHARED_LIBS)
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
-	cp -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \

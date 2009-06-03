@@ -193,7 +193,7 @@ AC_ARG_WITH([socket-dir],
 
 # OS detection
 # THIS SECTION MUST DIE!
-
+CP=cp
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
@@ -207,6 +207,7 @@ case "$host_os" in
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
 				   [Compiling for Darwin platform])
+		CP=rsync
 		OS_CFLAGS=""
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
@@ -216,6 +217,10 @@ case "$host_os" in
 			     -compatibility_version ${SONAME}"
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
+		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
+				   [Number of chars in a path name including nul])
+		AC_DEFINE_UNQUOTED([NAME_MAX], [255],
+				   [Number of chars in a file name])
 	;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
@@ -242,6 +247,7 @@ case "$host_os" in
 	;;
 esac
 
+AC_SUBST(CP)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"

@@ -75,7 +75,7 @@ EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
@@ -129,7 +129,7 @@ all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
-	cp -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
 	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
