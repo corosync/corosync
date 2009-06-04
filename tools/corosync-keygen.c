@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -57,8 +58,10 @@ int main (void) {
 		exit (1);
 	}
 	if (mkdir (SYSCONFDIR "/ais", 0700)) {
-		perror ("Failed to create directory: " SYSCONFDIR "/ais");
-		exit (1);
+		if (errno != EEXIST) {
+			perror ("Failed to create directory: " SYSCONFDIR "/ais");
+			exit (1);
+		}
 	}
 
 	printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
