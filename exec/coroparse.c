@@ -48,6 +48,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
