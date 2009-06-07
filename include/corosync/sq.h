@@ -34,7 +34,8 @@
 #ifndef SORTQUEUE_H_DEFINED
 #define SORTQUEUE_H_DEFINED
 
-#include "errno.h"
+#include <errno.h>
+#include <string.h>
 
 struct sq {
 	unsigned int head;
