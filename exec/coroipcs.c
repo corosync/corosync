@@ -63,6 +63,7 @@
 #if defined(HAVE_GETPEERUCRED)
 #include <ucred.h>
 #endif
+#include <string.h>
 
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -98,14 +99,12 @@ struct zcb_mapped {
 	size_t size;
 };
 
-#if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
 	int val;
 	struct semid_ds *buf;
 	unsigned short int *array;
 	struct seminfo *__buf;
 };
-#endif
 
 enum conn_state {
 	CONN_STATE_THREAD_INACTIVE = 0,
@@ -411,9 +410,9 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	/*
 	 * Destroy shared memory segment and semaphore
 	 */
-	res = munmap (conn_info->control_buffer, conn_info->control_size);
-	res = munmap (conn_info->request_buffer, conn_info->request_size);
-	res = munmap (conn_info->response_buffer, conn_info->response_size);
+	res = munmap ((void *)conn_info->control_buffer, conn_info->control_size);
+	res = munmap ((void *)conn_info->request_buffer, conn_info->request_size);
+	res = munmap ((void *)conn_info->response_buffer, conn_info->response_size);
 	semctl (conn_info->semid, 0, IPC_RMID);
 
 	/*
@@ -831,11 +830,11 @@ void coroipcs_ipc_exit (void)
 		/*
 		 * Unmap memory segments
 		 */
-		res = munmap (conn_info->control_buffer,
+		res = munmap ((void *)conn_info->control_buffer,
 			conn_info->control_size);
-		res = munmap (conn_info->request_buffer,
+		res = munmap ((void *)conn_info->request_buffer,
 			conn_info->request_size);
-		res = munmap (conn_info->response_buffer,
+		res = munmap ((void *)conn_info->response_buffer,
 			conn_info->response_size);
 		res = circular_memory_unmap (conn_info->dispatch_buffer,
 			conn_info->dispatch_size);
