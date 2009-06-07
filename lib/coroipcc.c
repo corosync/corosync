@@ -87,12 +87,10 @@ void ipc_hdb_destructor (void *context);
 
 DECLARE_HDB_DATABASE(ipc_hdb,ipc_hdb_destructor);
 
-#if defined(COROSYNC_LINUX)
-/* SUN_LEN is broken for abstract namespace
- */
-#define AIS_SUN_LEN(a) sizeof(*(a))
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
+#define COROSYNC_SUN_LEN(a) sizeof(*(a))
 #else
-#define AIS_SUN_LEN(a) SUN_LEN(a)
+#define COROSYNC_SUN_LEN(a) SUN_LEN(a)
 #endif
 
 #ifdef SO_NOSIGPIPE
@@ -124,9 +122,12 @@ socket_send (
 	msg_send.msg_iovlen = 1;
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
+
+#if !defined(COROSYNC_SOLARIS) 
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#endif
 
 retry_send:
 	iov_send.iov_base = &rbuf[processed];
@@ -175,9 +176,11 @@ socket_recv (
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
 	msg_recv.msg_namelen = 0;
+#if !defined (COROSYNC_SOLARIS)
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#endif
 
 retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];
@@ -248,7 +251,7 @@ priv_change_send (struct ipc_instance *ipc_instance)
 	return (0);
 }
 
-#if defined(_SEM_SEMUN_UNDEFINED)
+#if !defined(semun)
 union semun {
         int val;
         struct semid_ds *buf;
@@ -536,7 +539,7 @@ coroipcc_service_connect (
 	sprintf (address.sun_path, "%s/%s", SOCKETDIR, socket_name);
 #endif
 	sys_res = connect (request_fd, (struct sockaddr *)&address,
-		AIS_SUN_LEN(&address));
+		COROSYNC_SUN_LEN(&address));
 	if (sys_res == -1) {
 		close (request_fd);
 		return (CS_ERR_TRY_AGAIN);
@@ -939,7 +942,7 @@ coroipcc_zcb_alloc (
 	strcpy (req_coroipcc_zc_alloc.path_to_file, path);
 
 
-	iovec.iov_base = &req_coroipcc_zc_alloc;
+	iovec.iov_base = (void *)&req_coroipcc_zc_alloc;
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_alloc_t);
 
 	res = coroipcc_msg_send_reply_receive (
@@ -979,7 +982,7 @@ coroipcc_zcb_free (
 	req_coroipcc_zc_free.map_size = header->map_size;
 	req_coroipcc_zc_free.server_address = header->server_address;
 
-	iovec.iov_base = &req_coroipcc_zc_free;
+	iovec.iov_base = (void *)&req_coroipcc_zc_free;
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_free_t);
 
 	res = coroipcc_msg_send_reply_receive (
@@ -989,7 +992,7 @@ coroipcc_zcb_free (
 		&res_coroipcs_zc_free,
 		sizeof (coroipc_response_header_t));
 
-	munmap (header, header->map_size);
+	munmap ((void *)header, header->map_size);
 
 	hdb_handle_put (&ipc_hdb, handle);
 
@@ -1019,7 +1022,7 @@ coroipcc_zcb_msg_send_reply_receive (
 	req_coroipcc_zc_execute.header.id = ZC_EXECUTE_HEADER;
 	req_coroipcc_zc_execute.server_address = hdr->server_address;
 
-	iovec.iov_base = &req_coroipcc_zc_execute;
+	iovec.iov_base = (void *)&req_coroipcc_zc_execute;
 	iovec.iov_len = sizeof (mar_req_coroipcc_zc_execute_t);
 
 	res = coroipcc_msg_send_reply_receive (
