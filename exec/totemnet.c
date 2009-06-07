@@ -74,6 +74,10 @@
 #include <prerror.h>
 #endif
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX)
 #define NETIF_STATE_REPORT_UP		1
 #define NETIF_STATE_REPORT_DOWN		2
