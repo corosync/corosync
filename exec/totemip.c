@@ -43,6 +43,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#if defined(COROSYNC_SOLARIS)
+#include <net/if.h>
+#include <sys/sockio.h>
+#endif
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/sockio.h>
 #include <net/if.h>
@@ -310,12 +314,82 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
+#if defined(COROSYNC_SOLARIS)
+int totemip_iface_check(struct totem_ip_address *bindnet,
+	struct totem_ip_address *boundto,
+	int *interface_up,
+	int *interface_num,
+	int mask_high_bit)
+{
+	struct sockaddr_storage bindnet_ss;
+	struct sockaddr_storage boundto_ss;
+	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
+	struct sockaddr_in *boundto_sin = (struct sockaddr_in *)&boundto_ss;
+        struct sockaddr_in *sockaddr_in;
+        int id_fd;
+        struct ifconf ifc;
+        int numreqs = 0;
+        int i;
+        in_addr_t mask_addr;
+	int res = -1;
+	int addrlen;
+
+	totemip_totemip_to_sockaddr_convert(bindnet,
+		0, &bindnet_ss, &addrlen);
+
+	*interface_up = 0;
+	/*
+	* Generate list of local interfaces in ifc.ifc_req structure
+	*/
+	id_fd = socket (AF_INET, SOCK_STREAM, 0);
+	ifc.ifc_buf = 0;
+	do {
+		numreqs += 32;
+		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
+		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
+		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
+		if (res < 0) {
+			close (id_fd);
+			return -1;
+		}
+	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
+	res = -1;
+
+	/*
+	* Find interface address to bind to
+	*/
+	for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++) {
+		sockaddr_in = (struct sockaddr_in *)&ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_addr;
+		mask_addr = inet_addr ("255.255.255.0");
+
+		if ((sockaddr_in->sin_family == AF_INET) &&
+			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
+			(bindnet_sin->sin_addr.s_addr & mask_addr)) {
+
+			boundto_sin->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
+			res = i;
+
+			if (ioctl(id_fd, SIOCGIFFLAGS, &ifc.ifc_ifcu.ifcu_req[i]) < 0) {
+				printf ("couldn't do ioctl\n");
+			}
+
+			*interface_up = ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_flags & IFF_UP;
+			break; /* for */
+		}
+	}
+	free (ifc.ifc_buf);
+	close (id_fd);
+
+	return (res);
+}
+#endif
+
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 int totemip_iface_check(struct totem_ip_address *bindnet,
-			struct totem_ip_address *boundto,
-			int *interface_up,
-			int *interface_num,
-			int mask_high_bit)
+	struct totem_ip_address *boundto,
+	int *interface_up,
+	int *interface_num,
+	int mask_high_bit)
 {
 #define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
 	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
