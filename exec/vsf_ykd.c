@@ -545,6 +545,12 @@ static struct lcr_comp vsf_ykd_comp_ver0 = {
 	.ifaces				= corosync_vsf_ykd_ver0
 };
 
-__attribute__ ((constructor)) static void vsf_ykd_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else 
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
 	lcr_component_register (&vsf_ykd_comp_ver0);
 }

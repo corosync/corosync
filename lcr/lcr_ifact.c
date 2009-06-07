@@ -99,8 +99,7 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
-#ifndef COROSYNC_SOLARIS
-#ifdef COROSYNC_LINUX
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 static int pathlist_select (const struct dirent *dirent)
 #else
 static int pathlist_select (struct dirent *dirent)
@@ -112,7 +111,6 @@ static int pathlist_select (struct dirent *dirent)
 
 	return (0);
 }
-#endif
 
 static inline struct lcr_component_instance *lcr_comp_find (
 	const char *iface_name,
@@ -219,7 +217,6 @@ static void ld_library_path_build (void)
 
 static int ldso_path_build (const char *path, const char *filename)
 {
-#ifndef COROSYNC_SOLARIS
 	FILE *fp;
 	char string[1024];
 	char filename_cat[1024];
@@ -278,7 +275,6 @@ static int ldso_path_build (const char *path, const char *filename)
 		}
 	}
 	fclose(fp);
-#endif
 	return (0);
 }
 
@@ -369,6 +365,7 @@ static int interface_find_and_load (
 	int scandir_entries;
 	unsigned int libs_to_scan;
 	char dl_name[1024];
+	void (*comp_reg)(void);
 
 	scandir_entries = scandir (path,  &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries > 0)
@@ -387,12 +384,20 @@ static int interface_find_and_load (
 		if (lcr_lib_loaded (dl_name)) {
 			continue;
 		}
-		dl_handle = dlopen (dl_name, RTLD_LAZY);
+		dl_handle = dlopen (dl_name, RTLD_NOW);
 		if (dl_handle == NULL) {
 			fprintf(stderr, "%s: open failed: %s\n",
 				dl_name, dlerror());
 			continue;
 		}
+/*
+ * constructors don't work in Solaris dlopen, so we have to specifically call
+ * a function to register the component
+ */
+#ifdef COROSYNC_SOLARIS
+		comp_reg = dlsym (dl_handle, "corosync_lcr_component_register");
+		comp_reg ();
+#endif
 		instance = lcr_comp_find (iface_name, version, iface_number);
 		if (instance) {
 			instance->dl_handle = dl_handle;

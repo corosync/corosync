@@ -1601,9 +1601,13 @@ struct lcr_comp objdb_comp_ver0 = {
 	.ifaces				= objdb_iface_ver0
 };
 
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
 
-
-__attribute__ ((constructor)) static void objdb_comp_register (void) {
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
         lcr_interfaces_set (&objdb_iface_ver0[0], &objdb_iface);
 
 	lcr_component_register (&objdb_comp_ver0);

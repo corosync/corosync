@@ -363,7 +363,13 @@ static struct corosync_service_engine *quorum_get_service_handler_ver0 (void)
 	return (&quorum_service_handler);
 }
 
-__attribute__ ((constructor)) static void quorum_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
         lcr_interfaces_set (&corosync_quorum_ver0[0], &votequorum_iface_ver0);
 	lcr_interfaces_set (&corosync_quorum_ver0[1], &quorum_service_handler_iface);
 	lcr_component_register (&quorum_comp_ver0);

@@ -316,7 +316,13 @@ static struct corosync_service_engine *cpg_get_service_engine_ver0 (void)
 	return (&cpg_service_engine);
 }
 
-__attribute__ ((constructor)) static void cpg_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
         lcr_interfaces_set (&corosync_cpg_ver0[0], &cpg_service_engine_iface);
 
 	lcr_component_register (&cpg_comp_ver0);

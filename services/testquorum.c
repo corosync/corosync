@@ -95,7 +95,13 @@ static struct lcr_comp test_quorum_comp_ver0 = {
 	.ifaces				= corosync_test_quorum_ver0
 };
 
-__attribute__ ((constructor)) static void test_quorum_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
 	lcr_interfaces_set (&corosync_test_quorum_ver0[0], &test_quorum_iface_ver0);
 	lcr_component_register (&test_quorum_comp_ver0);
 }

@@ -188,7 +188,13 @@ static struct corosync_service_engine *evs_get_service_engine_ver0 (void)
 	return (&evs_service_engine);
 }
 
-__attribute__ ((constructor)) static void evs_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
 	lcr_interfaces_set (&corosync_evs_ver0[0], &evs_service_engine_iface);
 
 	lcr_component_register (&evs_comp_ver0);

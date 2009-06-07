@@ -198,7 +198,13 @@ static struct corosync_service_engine *pload_get_service_engine_ver0 (void)
 	return (&pload_service_engine);
 }
 
-__attribute__ ((constructor)) static void pload_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
 	lcr_interfaces_set (&corosync_pload_ver0[0], &pload_service_engine_iface);
 
 	lcr_component_register (&pload_comp_ver0);
