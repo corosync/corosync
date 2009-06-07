@@ -60,14 +60,8 @@
 
 #if defined(COROSYNC_LINUX)
 #include <net/if.h>
-
-/* ARGH!! I hate netlink */
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
-#endif
-
-#ifndef s6_addr16
-#define s6_addr16 __u6_addr.__u6_addr16
 #endif
 
 #include <corosync/totem/totemip.h>
@@ -156,13 +150,13 @@ int totemip_compare(const void *a, const void *b)
 	} else
 	if (family == AF_INET6) {
 		/*
-		 * Compare 16 bits at a time the ipv6 address
+		 * We can only compare 8 bits at time for portability reasons
 		 */
 		memcpy (&ipv6_a1, totemip_a->addr, sizeof (struct in6_addr));
 		memcpy (&ipv6_a2, totemip_b->addr, sizeof (struct in6_addr));
-		for (i = 0; i < 8; i++) {
-			int res = htons(ipv6_a1.s6_addr16[i]) -
-				htons(ipv6_a2.s6_addr16[i]);
+		for (i = 0; i < 16; i++) {
+			int res = ipv6_a1.s6_addr[i] -
+				ipv6_a2.s6_addr[i];
 			if (res) {
 				return res;
 			}
