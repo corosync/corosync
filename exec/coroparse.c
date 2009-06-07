@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -215,6 +216,7 @@ static int read_uidgid_files_into_objdb(
 	struct dirent *dirent;
 	char filename[PATH_MAX + NAME_MAX + 1];
 	int res = 0;
+	struct stat stat_buf;
 
 	dirname = SYSCONFDIR "/corosync/uidgid.d";
 	dp = opendir (dirname);
@@ -223,8 +225,9 @@ static int read_uidgid_files_into_objdb(
 		return 0;
 
 	while ((dirent = readdir (dp))) {
-		if (dirent->d_type == DT_REG) {
-			snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
+		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
+		stat (filename, &stat_buf);
+		if (S_ISREG(stat_buf.st_mode)) {
 
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
