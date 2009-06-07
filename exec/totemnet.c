@@ -941,9 +941,11 @@ static inline void ucast_sendmsg (
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = (void *) iovec_sendmsg;
 	msg_ucast.msg_iovlen = iov_len;
+#if !defined(COROSYNC_SOLARIS)
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
 	msg_ucast.msg_flags = 0;
+#endif
 
 	/*
 	 * Transmit multicast message
@@ -1015,9 +1017,11 @@ static inline void mcast_sendmsg (
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = (void *) iovec_sendmsg;
 	msg_mcast.msg_iovlen = iov_len;
+#if !defined(COROSYNC_SOLARIS)
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#endif
 
 	/*
 	 * Transmit multicast message
@@ -1084,9 +1088,11 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = &iovec;
 	msg_mcast.msg_iovlen = 1;
+#if !defined(COROSYNC_SOLARIS)
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#endif
 
 	/*
 	 * Transmit multicast message
@@ -1164,9 +1170,11 @@ static int net_deliver_fn (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
+#if !defined(COROSYNC_SOLARIS)
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#endif
 
 	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (bytes_received == -1) {
