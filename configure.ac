@@ -238,9 +238,10 @@ case "$host_os" in
 				   [Prevent being scheduled RR])
 		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_REENTRANT"
-		OS_LDFLAGS="-Wl,-rpath-link=/usr/lib"
-		OS_DYFLAGS="-Wl,--export-dynamic"
+		OS_LDFLAGS=""
+		OS_DYFLAGS="-Wl,-z,lazyload"
 		DARWIN_OPTS=""
+		SOLARIS_OPTS=" "
 	;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
@@ -358,7 +359,9 @@ AC_SUBST([OS_DYFLAGS])
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
+AM_CONDITIONAL(BUILD_SOLARIS, test -n "${SOLARIS_OPTS}")
 AC_SUBST([DARWIN_OPTS])
+AC_SUBST([SOLARIS_OPTS])
 
 AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 

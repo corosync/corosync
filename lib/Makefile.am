@@ -82,6 +82,26 @@ lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
 
 else
 
+if BUILD_SOLARIS
+
+libcoroipcc.so.$(SONAME): coroipcc.o
+	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o -o $@ $(AM_LDFLAGS) -lsocket -lnsl
+	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
+	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
+
+libconfdb.so.$(SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
+	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o confdb.o \
+		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
+	ln -sf libconfdb.so.$(SONAME) libconfdb.so
+	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
+
+lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
+	$(LD) $(SOLARIS_OPTS) -G $^ -o $@
+	ln -sf lib$*.so.$(SONAME) lib$*.so
+	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
+
+else
+
 libcoroipcc.so.$(SONAME): coroipcc.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
@@ -105,6 +125,8 @@ lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
 		$^ $(LDFLAGS) $(AM_LDFLAGS)
 	ln -sf lib$*.so.$(SONAME) lib$*.so
 	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
+
+endif
 
 endif
 

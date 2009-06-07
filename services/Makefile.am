@@ -55,12 +55,25 @@ quorum_%.lcrso: %.o
 
 service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+
+else
+
+if BUILD_SOLARIS
+
+quorum_%.lcrso: %.o
+	$(LD) $(LDFLAGS) -G $^ -o $@
+
+service_%.lcrso: %.o
+	$(LD) $(LDFLAGS) -G $^ -o $@
+ 
 else
 quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 service_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+endif
+
 endif
 
 %.o: %.c

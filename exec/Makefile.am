@@ -94,6 +94,27 @@ libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 
 else
 
+if BUILD_SOLARIS
+%.lcrso: %.o
+	$(LD) -G $^ -o $@
+
+libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
+	$(LD) -G $(TOTEM_OBJS) -o $@ -lpthread
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
+	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
+
+liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
+	$(LD) -G $(LOGSYS_OBJS) -o $@ -lpthread
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so
+	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
+
+libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
+	$(LD) -G $(COROIPCS_OBJS) -o $@ -lpthread
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
+	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
+
+else
+
 %.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
@@ -117,6 +138,8 @@ libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 		$^ $(LDFLAGS) -lpthread
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
+
+endif
 
 endif
 
