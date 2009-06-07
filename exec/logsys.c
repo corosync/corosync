@@ -55,7 +55,6 @@
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/un.h>
 #endif
-#define SYSLOG_NAMES
 #include <syslog.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -68,11 +67,10 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 /*
- * similar to syslog facilities/priorities tables,
- * make a tag table for internal use
+ * syslog tagnames, priorityanmes, facility names to value mapping
+ * Some C libraries build this in to their headers, but it is non-portable
+ * so logsys supplies its own version.
  */
-
-#ifdef SYSLOG_NAMES
 struct syslog_names {
 	const char *c_name;
 	int c_val;
@@ -93,7 +91,44 @@ struct syslog_names tagnames[] =
 	{ "trace8", LOGSYS_TAG_TRACE8 },
 	{ NULL, -1 }
 };
-#endif
+
+struct syslog_names prioritynames[] =
+{
+	{ "alert", LOG_ALERT },
+	{ "crit", LOG_CRIT },
+	{ "debug", LOG_DEBUG },
+	{ "emerg", LOG_EMERG },
+	{ "err", LOG_ERR },
+	{ "error", LOG_ERR },
+	{ "info", LOG_INFO },
+	{ "notice", LOG_NOTICE },
+	{ "warning", LOG_WARNING },
+	{ NULL, -1 }
+};
+
+struct syslog_names facilitynames[] =
+{
+	{ "auth", LOG_AUTH },
+	{ "cron", LOG_CRON },
+	{ "daemon", LOG_DAEMON },
+	{ "kern", LOG_KERN },
+	{ "lpr", LOG_LPR },
+	{ "mail", LOG_MAIL },
+	{ "news", LOG_NEWS },
+	{ "syslog", LOG_SYSLOG },
+	{ "user", LOG_USER },
+	{ "uucp", LOG_UUCP },
+	{ "local0", LOG_LOCAL0 },
+	{ "local1", LOG_LOCAL1 },
+	{ "local2", LOG_LOCAL2 },
+	{ "local3", LOG_LOCAL3 },
+	{ "local4", LOG_LOCAL4 },
+	{ "local5", LOG_LOCAL5 },
+	{ "local6", LOG_LOCAL6 },
+	{ "local7", LOG_LOCAL7 },
+	{ NULL, -1 }
+};
+
 
 /*
  * These are not static so they can be read from the core file
