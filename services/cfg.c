@@ -53,7 +53,6 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
 #include <corosync/mar_gen.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>

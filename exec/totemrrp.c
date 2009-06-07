@@ -57,7 +57,6 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 
-#include <corosync/queue.h>
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>

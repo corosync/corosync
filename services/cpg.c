@@ -58,7 +58,6 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
 #include <corosync/jhash.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>

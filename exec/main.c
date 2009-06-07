@@ -61,7 +61,6 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>

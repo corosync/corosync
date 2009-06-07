@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
-#include <corosync/queue.h>
+#include <corosync/cs_queue.h>
 
 #include "wthread.h"
 
@@ -60,7 +60,7 @@ struct worker_thread_t {
 	pthread_mutex_t done_work_mutex;
 	pthread_cond_t done_work_cond;
 	pthread_t thread_id;
-	struct queue queue;
+	struct cs_queue queue;
 	void *thread_state;
 	struct thread_data thread_data;
 };
@@ -73,7 +73,7 @@ static void *start_worker_thread (void *thread_data_in) {
 
 	for (;;) {
 		pthread_mutex_lock (&worker_thread->new_work_mutex);
-		if (queue_is_empty (&worker_thread->queue) == 1) {
+		if (cs_queue_is_empty (&worker_thread->queue) == 1) {
 		pthread_cond_wait (&worker_thread->new_work_cond,
 			&worker_thread->new_work_mutex);
 		}
@@ -83,14 +83,14 @@ static void *start_worker_thread (void *thread_data_in) {
 		 * worker function to execute and also allow new work to be
 		 * added to the work queue
 	  	 */
-		data_for_worker_fn = queue_item_get (&worker_thread->queue);
+		data_for_worker_fn = cs_queue_item_get (&worker_thread->queue);
 		pthread_mutex_unlock (&worker_thread->new_work_mutex);
 		worker_thread->worker_thread_group->worker_fn (worker_thread->thread_state, data_for_worker_fn);
 		pthread_mutex_lock (&worker_thread->new_work_mutex);
-		queue_item_remove (&worker_thread->queue);
+		cs_queue_item_remove (&worker_thread->queue);
 		pthread_mutex_unlock (&worker_thread->new_work_mutex);
 		pthread_mutex_lock (&worker_thread->done_work_mutex);
-		if (queue_is_empty (&worker_thread->queue) == 1) {
+		if (cs_queue_is_empty (&worker_thread->queue) == 1) {
 			pthread_cond_signal (&worker_thread->done_work_cond);
 		}
 		pthread_mutex_unlock (&worker_thread->done_work_mutex);
@@ -132,7 +132,7 @@ int worker_thread_group_init (
 		pthread_cond_init (&worker_thread_group->threads[i].new_work_cond, NULL);
 		pthread_mutex_init (&worker_thread_group->threads[i].done_work_mutex, NULL);
 		pthread_cond_init (&worker_thread_group->threads[i].done_work_cond, NULL);
-		queue_init (&worker_thread_group->threads[i].queue, items_max,
+		cs_queue_init (&worker_thread_group->threads[i].queue, items_max,
 			item_size);
 
 		worker_thread_group->threads[i].thread_data.thread_state =
@@ -154,11 +154,11 @@ int worker_thread_group_work_add (
 	worker_thread_group->last_scheduled = schedule;
 
 	pthread_mutex_lock (&worker_thread_group->threads[schedule].new_work_mutex);
-	if (queue_is_full (&worker_thread_group->threads[schedule].queue)) {
+	if (cs_queue_is_full (&worker_thread_group->threads[schedule].queue)) {
 		pthread_mutex_unlock (&worker_thread_group->threads[schedule].new_work_mutex);
 		return (-1);
 	}
-	queue_item_add (&worker_thread_group->threads[schedule].queue, item);
+	cs_queue_item_add (&worker_thread_group->threads[schedule].queue, item);
 	pthread_cond_signal (&worker_thread_group->threads[schedule].new_work_cond);
 	pthread_mutex_unlock (&worker_thread_group->threads[schedule].new_work_mutex);
 	return (0);
@@ -171,7 +171,7 @@ void worker_thread_group_wait (
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {
 		pthread_mutex_lock (&worker_thread_group->threads[i].done_work_mutex);
-		if (queue_is_empty (&worker_thread_group->threads[i].queue) == 0) {
+		if (cs_queue_is_empty (&worker_thread_group->threads[i].queue) == 0) {
 			pthread_cond_wait (&worker_thread_group->threads[i].done_work_cond,
 				&worker_thread_group->threads[i].done_work_mutex);
 		}
@@ -206,10 +206,10 @@ void worker_thread_group_atsegv (
 
 	for (i = 0; i < worker_thread_group->threadcount; i++) {
 		worker_thread = &worker_thread_group->threads[i];
-		while (queue_is_empty (&worker_thread->queue) == 0) {
-			data_for_worker_fn = queue_item_get (&worker_thread->queue);
+		while (cs_queue_is_empty (&worker_thread->queue) == 0) {
+			data_for_worker_fn = cs_queue_item_get (&worker_thread->queue);
 			worker_thread->worker_thread_group->worker_fn (worker_thread->thread_state, data_for_worker_fn);
-			queue_item_remove (&worker_thread->queue);
+			cs_queue_item_remove (&worker_thread->queue);
 		}
 	}
 }

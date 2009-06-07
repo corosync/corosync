@@ -46,7 +46,6 @@
 #include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_confdb.h>
 #include <corosync/lcr/lcr_comp.h>
