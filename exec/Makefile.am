@@ -40,7 +40,7 @@ TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemrrp.c \
 LOGSYS_SRC		= wthread.c logsys.c
 COROIPCS_SRC		= coroipcs.c
 
-LCRSO_SRC		= objdb.c vsf_ykd.c coroparse.c quorum.c vsf_quorum.c
+LCRSO_SRC		= objdb.c vsf_ykd.c coroparse.c vsf_quorum.c
 LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
 LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
 
