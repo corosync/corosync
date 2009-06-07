@@ -214,7 +214,7 @@ static int read_uidgid_files_into_objdb(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
-	char filename[PATH_MAX + NAME_MAX + 1];
+	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
 	struct stat stat_buf;
 
