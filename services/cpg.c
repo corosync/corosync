@@ -654,7 +654,10 @@ static void do_proc_join(
 	int reason)
 {
 	struct process_info *pi;
+	struct process_info *pi_entry;
 	mar_cpg_address_t notify_info;
+	struct list_head *list;
+	struct list_head *list_to_add = NULL;
 
 	if (process_info_find (name, pid, nodeid) != NULL) {
 		return ;
@@ -668,7 +671,22 @@ static void do_proc_join(
 	pi->pid = pid;
 	memcpy(&pi->group, name, sizeof(*name));
 	list_init(&pi->list);
-	list_add(&pi->list, &process_info_list_head);
+
+	/*
+	 * Insert new process in sorted order so synchronization works properly
+	 */
+	list_to_add = &process_info_list_head;
+	for (list = process_info_list_head.next; list != &process_info_list_head; list = list->next) {
+
+		pi_entry = list_entry(list, struct process_info, list);
+		if (pi_entry->nodeid > pi->nodeid ||
+			(pi_entry->nodeid == pi->nodeid && pi_entry->pid > pi->pid)) {
+
+			break;
+		}
+		list_to_add = list;
+	}
+	list_splice (&pi->list, list_to_add);
 
 	notify_info.pid = pi->pid;
 	notify_info.nodeid = nodeid;
