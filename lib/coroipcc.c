@@ -522,16 +522,16 @@ coroipcc_service_connect (
 
 	res_setup.error = CS_ERR_LIBRARY;
 
-	request_fd = socket (PF_UNIX, SOCK_STREAM, 0);
+	request_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
 	if (request_fd == -1) {
 		return (CS_ERR_LIBRARY);
 	}
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
+	address.sun_family = AF_UNIX;
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-	address.sun_len = sizeof(struct sockaddr_un);
+	address.sun_len = SUN_LEN(&address);
 #endif
-	address.sun_family = PF_UNIX;
 
 #if defined(COROSYNC_LINUX)
 	sprintf (address.sun_path + 1, "%s", socket_name);
@@ -541,6 +541,9 @@ coroipcc_service_connect (
 	sys_res = connect (request_fd, (struct sockaddr *)&address,
 		COROSYNC_SUN_LEN(&address));
 	if (sys_res == -1) {
+#ifdef DEBUG
+		fprintf(stderr, "Coroipcc: Can't connect: %d : %s\n", errno, strerror(errno));
+#endif
 		close (request_fd);
 		return (CS_ERR_TRY_AGAIN);
 	}

@@ -778,7 +778,7 @@ extern void coroipcs_ipc_init (
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
-	server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
+	server_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
 	if (server_fd == -1) {
 		api->log_printf ("Cannot create client connections socket.\n");
 		api->fatal_error ("Can't create library listen socket");
@@ -793,7 +793,7 @@ extern void coroipcs_ipc_init (
 	memset (&un_addr, 0, sizeof (struct sockaddr_un));
 	un_addr.sun_family = AF_UNIX;
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-	un_addr.sun_len = sizeof(struct sockaddr_un);
+	un_addr.sun_len = SUN_LEN(&un_addr);
 #endif
 
 #if defined(COROSYNC_LINUX)
@@ -805,7 +805,7 @@ extern void coroipcs_ipc_init (
 
 	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		api->log_printf ("Could not bind AF_UNIX: %s.\n", strerror (errno));
+		api->log_printf ("Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
 	listen (server_fd, SERVER_BACKLOG);
