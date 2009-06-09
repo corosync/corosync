@@ -268,6 +268,7 @@ static struct corosync_exec_handler cfg_exec_engine[] =
 struct corosync_service_engine cfg_service_engine = {
 	.name					= "corosync configuration service",
 	.id					= CFG_SERVICE,
+	.priority				= 1,
 	.private_data_size			= sizeof(struct cfg_info),
 	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
 	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,

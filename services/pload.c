@@ -149,6 +149,7 @@ static struct corosync_exec_handler pload_exec_engine[] =
 struct corosync_service_engine pload_service_engine = {
 	.name			= "corosync profile loading service",
 	.id			= PLOAD_SERVICE,
+	.priority		= 1,
 	.private_data_size	= 0,
 	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
 	.lib_init_fn		= pload_lib_init_fn,

@@ -139,6 +139,7 @@ static struct corosync_exec_handler evs_exec_engine[] =
 struct corosync_service_engine evs_service_engine = {
 	.name			= "corosync extended virtual synchrony service",
 	.id			= EVS_SERVICE,
+	.priority		= 1,
 	.private_data_size	= sizeof (struct evs_pd),
 	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
 	.lib_init_fn		= evs_lib_init_fn,

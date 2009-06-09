@@ -264,6 +264,7 @@ static struct corosync_exec_handler cpg_exec_engine[] =
 struct corosync_service_engine cpg_service_engine = {
 	.name				        = "corosync cluster closed process group service v1.01",
 	.id					= CPG_SERVICE,
+	.priority				= 1,
 	.private_data_size			= sizeof (struct cpg_pd),
 	.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED,
 	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,
