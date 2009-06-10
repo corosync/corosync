@@ -949,7 +949,11 @@ static inline void ucast_sendmsg (
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
 	msg_ucast.msg_flags = 0;
+#else
+	msg_ucast.msg_accrights = NULL;
+	msg_ucast.msg_accrightslen = 0;
 #endif
+
 
 	/*
 	 * Transmit multicast message
@@ -1025,6 +1029,9 @@ static inline void mcast_sendmsg (
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#else
+	msg_mcast.msg_accrights = NULL;
+	msg_mcast.msg_accrightslen = 0;
 #endif
 
 	/*
@@ -1096,6 +1103,9 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#else
+	msg_mcast.msg_accrights = NULL;
+	msg_mcast.msg_accrightslen = 0;
 #endif
 
 	/*
@@ -1178,6 +1188,9 @@ static int net_deliver_fn (
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#else
+	msg_recv.msg_accrights = NULL;
+	msg_recv.msg_accrightslen = 0;
 #endif
 
 	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
