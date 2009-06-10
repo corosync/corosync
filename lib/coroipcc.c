@@ -251,7 +251,7 @@ priv_change_send (struct ipc_instance *ipc_instance)
 	return (0);
 }
 
-#if !defined(semun)
+#if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
         int val;
         struct semid_ds *buf;

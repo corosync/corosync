@@ -236,6 +236,8 @@ case "$host_os" in
 				   [Compiling for Solaris platform])
 		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
 				   [Prevent being scheduled RR])
+		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
+				   [The semun structure is undefined])
 		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_REENTRANT"
 		OS_LDFLAGS=""
