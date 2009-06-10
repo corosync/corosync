@@ -187,7 +187,7 @@ static void showaddrs_do(int nodeid)
 		exit (1);
 	}
 
-	if (!corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
+	if (corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
 		for (i=0; i<numaddrs; i++) {
 			char buf[INET6_ADDRSTRLEN];
 			struct sockaddr_storage *ss = (struct sockaddr_storage *)addrs[i].address;
