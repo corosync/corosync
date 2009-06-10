@@ -194,6 +194,7 @@ AC_ARG_WITH([socket-dir],
 # OS detection
 # THIS SECTION MUST DIE!
 CP=cp
+OS_LDL="-ldl"
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
@@ -225,11 +226,14 @@ case "$host_os" in
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
 				   [Compiling for BSD platform])
+		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
+				   [Shared memory define for Darwin platform])
 		OS_CFLAGS=""
 		OS_CPPFLAGS="-I/usr/local/include"
 		OS_LDFLAGS="-L/usr/local/lib"
 		OS_DYFLAGS="-export-dynamic"
 		DARWIN_OPTS=""
+		OS_LDL=""
 	;;
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],

@@ -114,7 +114,7 @@ libconfdb.so.$(SONAME): confdb.o sa-confdb.o ../lcr/lcr_ifact.o libcoroipcc.so.$
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libconfdb.versions \
-		$^ $(LDFLAGS) $(OS_DYFLAGS) -ldl $(AM_LDFLAGS)
+		$^ $(LDFLAGS) $(OS_DYFLAGS) $(OS_LDL) $(AM_LDFLAGS)
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so
 	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
 
