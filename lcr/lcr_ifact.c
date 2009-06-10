@@ -365,7 +365,9 @@ static int interface_find_and_load (
 	int scandir_entries;
 	unsigned int libs_to_scan;
 	char dl_name[1024];
+#ifdef COROSYNC_SOLARIS
 	void (*comp_reg)(void);
+#endif
 
 	scandir_entries = scandir (path,  &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries > 0)
