@@ -1562,12 +1562,12 @@ static int totemnet_build_sockets_ip (
 		if ((setsockopt(sockets->mcast_recv, SOL_SOCKET,
 			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
 			perror("setting broadcast option");
-			exit(1);
+			return (-1);
 		}
 		if ((setsockopt(sockets->mcast_send, SOL_SOCKET,
 			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
 			perror("setting broadcast option");
-			exit(1);
+			return (-1);
 		}
 	} else {
 		switch (bindnet_address->family) {
