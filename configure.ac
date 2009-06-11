@@ -362,6 +362,8 @@ AC_SUBST([SONAME])
 
 AC_SUBST([OS_DYFLAGS])
 
+AC_SUBST([OS_LDL])
+
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
@@ -407,6 +409,7 @@ AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
 AC_MSG_RESULT([  OS   defined CFLAGS      = ${OS_CFLAGS}])
 AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
 AC_MSG_RESULT([  OS   defined LDFLAGS     = ${OS_LDFLAGS}])
+AC_MSG_RESULT([  OS   defined LDL         = ${OS_LDL}])
 AC_MSG_RESULT([  OS   defined DYFLAGS     = ${OS_DYFLAGS}])
 AC_MSG_RESULT([  ANSI defined CPPFLAGS    = ${ANSI_CPPFLAGS}])
 AC_MSG_RESULT([  Coverage     CFLAGS      = ${COVERAGE_CFLAGS}])
