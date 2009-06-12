@@ -24,7 +24,7 @@ if test "$prefix" = "NONE"; then
 	fi
 	dnl Fix "sysconfdir" variable if not specified
 	if test "$sysconfdir" = "\${prefix}/etc"; then
-		sysconfdir="/etc"
+		sysconfdir="/etc/corosync"
 	fi
 	dnl Fix "libdir" variable if not specified
 	if test "$libdir" = "\${exec_prefix}/lib"; then

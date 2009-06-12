@@ -219,7 +219,7 @@ static int read_uidgid_files_into_objdb(
 	int res = 0;
 	struct stat stat_buf;
 
-	dirname = SYSCONFDIR "/corosync/uidgid.d";
+	dirname = SYSCONFDIR "/uidgid.d";
 	dp = opendir (dirname);
 
 	if (dp == NULL)
