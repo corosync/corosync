@@ -426,6 +426,7 @@ static int interface_find_and_load (
 		}
 		free (scandir_list);
 	}
+	g_component_handle = 0xFFFFFFFF;
 	return -1;
 
 found:
@@ -437,6 +438,7 @@ found:
 		}
 		free (scandir_list);
 	}
+	g_component_handle = 0xFFFFFFFF;
 	return 0;
 }
 
