@@ -529,7 +529,11 @@ coroipcc_service_connect (
 
 	res_setup.error = CS_ERR_LIBRARY;
 
+#if defined(COROSYNC_SOLARIS)
+	request_fd = socket (PF_UNIX, SOCK_STREAM, 0);
+#else
 	request_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
+#endif
 	if (request_fd == -1) {
 		return (CS_ERR_LIBRARY);
 	}
