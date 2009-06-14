@@ -1334,7 +1334,6 @@ int coroipcs_handler_dispatch (
 				res = 0;
 				break;
 			}
-			coroipcs_refcount_dec (conn_info);
 		}
 #if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 		/* On many OS poll never return POLLHUP or POLLERR.
@@ -1342,9 +1341,11 @@ int coroipcs_handler_dispatch (
 		 */
 		if (res == 0) {
 			ipc_disconnect (conn_info);
+			coroipcs_refcount_dec (conn_info);
 			return (0);
 		}
 #endif
+		coroipcs_refcount_dec (conn_info);
 	}
 
 	coroipcs_refcount_inc (conn_info);
