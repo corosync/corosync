@@ -127,6 +127,9 @@ socket_send (
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;
+#else
+	msg_send.msg_accrights = NULL;
+	msg_send.msg_accrightslen = 0;
 #endif
 
 retry_send:
@@ -180,7 +183,11 @@ socket_recv (
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#else
+	msg_recv.msg_accrights = NULL;
+	msg_recv.msg_accrightslen = 0;
 #endif
+
 
 retry_recv:
 	iov_recv.iov_base = (void *)&rbuf[processed];

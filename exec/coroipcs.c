@@ -623,21 +623,7 @@ req_setup_recv (
 	msg_recv.msg_controllen = sizeof (cmsg_cred);
 #endif
 
-#ifdef PORTABILITY_WORK_TODO
 #ifdef COROSYNC_SOLARIS
-	msg_recv.msg_flags = 0;
-	uid_t euid;
-	gid_t egid;
-
-	euid = -1;
-	egid = -1;
-	if (getpeereid(conn_info->fd, &euid, &egid) != -1 &&
-	    (api->security_valid (euid, egid)) {
-		if (conn_info->state == CONN_IO_STATE_INITIALIZING) {
-			api->log_printf ("Invalid security authentication\n");
-			return (-1);
-		}
-	}
 	msg_recv.msg_accrights = 0;
 	msg_recv.msg_accrightslen = 0;
 #else /* COROSYNC_SOLARIS */
@@ -665,8 +651,6 @@ req_setup_recv (
  		"with a fake authentication\n");
 #endif /* HAVE_GETPEERUCRED */
 #endif /* COROSYNC_SOLARIS */
-
-#endif
 
 	iov_recv.iov_base = &conn_info->setup_msg[conn_info->setup_bytes_read];
 	iov_recv.iov_len = sizeof (mar_req_setup_t) - conn_info->setup_bytes_read;
@@ -780,7 +764,11 @@ extern void coroipcs_ipc_init (
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
+#if defined(COROSYNC_SOLARIS)
+	server_fd = socket (PF_UNIX, SOCK_STREAM, 0);
+#else
 	server_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
+#endif
 	if (server_fd == -1) {
 		api->log_printf ("Cannot create client connections socket.\n");
 		api->fatal_error ("Can't create library listen socket");
