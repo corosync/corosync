@@ -243,6 +243,7 @@ case "$host_os" in
 				   [Prevent being scheduled RR])
 		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 				   [The semun structure is undefined])
+		CP=rsync
 		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_REENTRANT"
 		OS_LDFLAGS=""
