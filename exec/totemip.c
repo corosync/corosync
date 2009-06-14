@@ -314,6 +314,9 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
+/* 
+ * On Solaris, man if_tcp describes this method
+ */
 #if defined(COROSYNC_SOLARIS)
 int totemip_iface_check(struct totem_ip_address *bindnet,
 	struct totem_ip_address *boundto,
@@ -322,62 +325,74 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	int mask_high_bit)
 {
 	struct sockaddr_storage bindnet_ss;
-	struct sockaddr_storage boundto_ss;
 	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
-	struct sockaddr_in *boundto_sin = (struct sockaddr_in *)&boundto_ss;
         struct sockaddr_in *sockaddr_in;
         int id_fd;
-        struct ifconf ifc;
+        struct lifconf lifconf;
+	struct lifreq *lifreq;
         int numreqs = 0;
         int i;
         in_addr_t mask_addr;
 	int res = -1;
 	int addrlen;
 
-	totemip_totemip_to_sockaddr_convert(bindnet,
+	totemip_totemip_to_sockaddr_convert (bindnet,
 		0, &bindnet_ss, &addrlen);
 
 	*interface_up = 0;
-	/*
-	* Generate list of local interfaces in ifc.ifc_req structure
-	*/
 	id_fd = socket (AF_INET, SOCK_STREAM, 0);
-	ifc.ifc_buf = 0;
+	lifconf.lifc_family = AF_UNSPEC;
+	lifconf.lifc_flags = 0;
+	lifconf.lifc_buf = NULL;
+	lifconf.lifc_len = 0;
 	do {
 		numreqs += 32;
-		ifc.ifc_len = sizeof (struct ifreq) * numreqs;
-		ifc.ifc_buf = (void *)realloc(ifc.ifc_buf, ifc.ifc_len);
-		res = ioctl (id_fd, SIOCGIFCONF, &ifc);
+		lifconf.lifc_len = sizeof (struct lifreq) * numreqs;
+		lifconf.lifc_buf = (void *)realloc(lifconf.lifc_buf, lifconf.lifc_len);
+		res = ioctl (id_fd, SIOCGLIFCONF, &lifconf);
 		if (res < 0) {
 			close (id_fd);
 			return -1;
 		}
-	} while (ifc.ifc_len == sizeof (struct ifreq) * numreqs);
+	} while (lifconf.lifc_len == sizeof (struct lifconf) * numreqs);
 	res = -1;
 
+	lifreq = (struct lifreq *)lifconf.lifc_buf;
 	/*
 	* Find interface address to bind to
 	*/
-	for (i = 0; i < ifc.ifc_len / sizeof (struct ifreq); i++) {
-		sockaddr_in = (struct sockaddr_in *)&ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_addr;
+	for (i = 0; i < lifconf.lifc_len / sizeof (struct lifreq); i++) {
+		sockaddr_in = (struct sockaddr_in *)&lifreq[i].lifr_addr;
 		mask_addr = inet_addr ("255.255.255.0");
 
 		if ((sockaddr_in->sin_family == AF_INET) &&
 			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
 			(bindnet_sin->sin_addr.s_addr & mask_addr)) {
 
-			boundto_sin->sin_addr.s_addr = sockaddr_in->sin_addr.s_addr;
 			res = i;
 
-			if (ioctl(id_fd, SIOCGIFFLAGS, &ifc.ifc_ifcu.ifcu_req[i]) < 0) {
+			/*
+			 * Setup boundto output
+			 */
+			totemip_sockaddr_to_totemip_convert(sockaddr_in, boundto);
+			boundto->nodeid = sockaddr_in->sin_addr.s_addr;
+
+			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) < 0) {
 				printf ("couldn't do ioctl\n");
 			}
 
-			*interface_up = ifc.ifc_ifcu.ifcu_req[i].ifr_ifru.ifru_flags & IFF_UP;
-			break; /* for */
+			*interface_up = lifreq[i].lifr_flags & IFF_UP;
+
+			if (ioctl(id_fd, SIOCGLIFINDEX, &lifreq[i]) < 0) {
+				printf ("couldn't do ioctl\n");
+			}
+			*interface_num = lifreq[i].lifr_index;
+
+
+			break;
 		}
 	}
-	free (ifc.ifc_buf);
+	free (lifconf.lifc_buf);
 	close (id_fd);
 
 	return (res);
