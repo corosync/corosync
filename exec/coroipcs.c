@@ -645,7 +645,7 @@ req_setup_recv (
 		api->log_printf ("Invalid security authentication\n");
  	}
 #else /* HAVE_GETPEERUCRED */
- 	api->log_printf (LOGSYS_LEVEL_SECURITY, "Connection not authenticated "
+ 	api->log_printf ("Connection not authenticated "
  		"because platform does not support "
  		"authentication with sockets, continuing "
  		"with a fake authentication\n");
