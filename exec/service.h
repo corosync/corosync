@@ -44,18 +44,25 @@ extern unsigned int corosync_service_link_and_init (
 	unsigned int service_ver);
 
 /*
+ * Unlink and exit a service based on service priority
+ */
+extern unsigned int corosync_service_unlink_priority (
+	struct corosync_api_v1 *corosync_api,
+	int priority);
+
+/*
  * Unlink and exit a service
  */
 extern unsigned int corosync_service_unlink_and_exit (
-    struct corosync_api_v1 *objdb,
-    const char *service_name,
-    unsigned int service_ver);
+	struct corosync_api_v1 *objdb,
+	const char *service_name,
+	unsigned int service_ver);
 
 /*
  * Unlink and exit all corosync services
  */
 extern unsigned int corosync_service_unlink_all (
-    struct corosync_api_v1 *objdb);
+	struct corosync_api_v1 *objdb);
 
 /*
  * Load all of the default services
