@@ -5,7 +5,7 @@
 AC_PREREQ([2.61])
 
 AC_INIT([corosync], [trunk], [openais@lists.osdl.org])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
 AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
