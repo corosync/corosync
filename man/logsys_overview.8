@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH LOGSYS_OVERVIEW 8 2009-04-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH LOGSYS_OVERVIEW 8 2009-06-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH OVERVIEW
 The logsys library provides a generically usable logging and tracing system for
 use by applications.  It supports many features including:
@@ -62,7 +62,7 @@ require it and enables full logging capabilities before any application code is
 executed.
 
 #define LOGSYS_DECLARE_SYSTEM (name, mode, debug, file, file_priority,
-syslog_facility, syslog_priority, tags, format, rec_size)
+syslog_facility, syslog_priority, format, rec_size)
 
 The name parameter is the name of the application or system.
 
@@ -96,14 +96,6 @@ messages.
 The syslog_priority, similar to file_priority, specifies the message priority that should be logged to
 syslog.
 
-The tags parameter enables tracing by logically ORing these flags:
-
-LOGSYS_TAG_ENTER
-
-LOGSYS_TAG_LEAVE
-
-LOGSYS_TAG_TRACE1 to LOGSYS_TAG_TRACE8
-
 The format parameter allows to set custom output format.
 Set to NULL to use built-in default.
 
@@ -122,7 +114,6 @@ LOGSYS_DECLARE_SYSTEM ("test",                            /* name */
         LOGSYS_LEVEL_INFO,                                /* logfile_priority */
         LOG_DAEMON,                                       /* syslog facility */
         LOGSYS_LEVEL_INFO,                                /* syslog level */
-        0,                                                /* tags */
         NULL,                                             /* use default format */
         1000000);                                         /* flight recorder size */
 
@@ -163,20 +154,13 @@ An example of using log_printf would be
 
 log_printf (LOGSYS_LEVEL_EMERG, "This is an emergency %s value %d\n", string, value);
 
-Tracing of functions can be done using ENTER_VOID() or ENTER (format, args) LEAVE_VOID() or LEAVE (format, args);
-
-An exmaple of using ENTER_VOID is
-void funtion (void) {
-ENTER_VOID();
-... function contents ...
-LEAVE_VOID();
-}
+Tracing of functions can be done using ENTER(), LEAVE();
 
 An example of using ENTER is
 void function (char *name) {
-ENTER ("The name is %s\n", name);
+ENTER();
 ... function contents ...
-LEAVE ("Bye\n");
+LEAVE();
 }
 
 Individual tracing levels are supported through the macros
@@ -190,6 +174,8 @@ An example of using TRACE is
 char *name = "test";
 TRACE7 ("This is a trace 7 log with name %s\n", name);
 
+Note that ENTER/LEAVE/TRACE* calls are recorded only in the flight recorder.
+
 .SH "SEE ALSO"
 .BR logsys_fork_completed (3),
 .BR logsys_atexit (3),
@@ -202,8 +188,6 @@ TRACE7 ("This is a trace 7 log with name %s\n", name);
 .BR logsys_config_syslog_facility_get (3),
 .BR logsys_config_mode_set (3),
 .BR logsys_config_mode_get (3),
-.BR logsys_config_tags_set (3),
-.BR logsys_config_tags_get (3),
 .BR logsys_config_file_set (3),
 .BR logsys_config_logfile_priority_set (3),
 .BR logsys_config_debug_set (3),
@@ -211,6 +195,4 @@ TRACE7 ("This is a trace 7 log with name %s\n", name);
 .BR logsys_facility_name_get (3),
 .BR logsys_priority_id_get (3),
 .BR logsys_priority_name_get (3),
-.BR logsys_tag_id_get (3),
-.BR logsys_tag_name_get (3)
 .PP
