@@ -414,12 +414,10 @@ static inline int strcpy_cutoff (char *dest, const char *src, size_t cutoff,
  * any number between % and character specify field length to pad or chop
 */
 static void log_printf_to_logs (
-	const char *subsys,
+	unsigned int rec_ident,
 	const char *file_name,
 	const char *function_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	const char *buffer)
 {
 	char normal_output_buffer[COMBINE_BUFFER_SIZE];
@@ -433,16 +431,15 @@ static void log_printf_to_logs (
 	size_t cutoff;
 	unsigned int normal_len, syslog_len;
 	int subsysid;
+	unsigned int level;
 	int c;
 
-	if (rec_ident != LOGSYS_RECID_LOG) {
+	if (LOGSYS_DECODE_RECID(rec_ident) != LOGSYS_RECID_LOG) {
 		return;
 	}
 
-	subsysid = _logsys_config_subsys_get(subsys);
-	if (subsysid <= - 1) {
-		return;
-	}
+	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
+	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
 	while ((c = format_buffer[format_buffer_idx])) {
 		cutoff = 0;
@@ -463,8 +460,8 @@ static void log_printf_to_logs (
 
 			switch (format_buffer[format_buffer_idx]) {
 				case 's':
-					normal_p = subsys;
-					syslog_p = subsys;
+					normal_p = logsys_loggers[subsysid].subsys;
+					syslog_p = logsys_loggers[subsysid].subsys;
 					break;
 
 				case 'n':
@@ -573,9 +570,13 @@ static void log_printf_to_logs (
 			logsys_close_logfile(subsysid);
 			logsys_loggers[subsysid].mode &= ~LOGSYS_MODE_OUTPUT_FILE;
 			pthread_mutex_unlock (&logsys_config_mutex);
-			log_printf_to_logs(logsys_loggers[subsysid].subsys,
+			log_printf_to_logs(
+					   LOGSYS_ENCODE_RECID(
+						LOGSYS_LEVEL_EMERG,
+						subsysid,
+						LOGSYS_RECID_LOG),
 					   __FILE__, __FUNCTION__, __LINE__,
-					   LOGSYS_LEVEL_EMERG, 0, tmpbuffer);
+					   tmpbuffer);
 		}
 	}
 
@@ -598,9 +599,13 @@ static void log_printf_to_logs (
 			snprintf(tmpbuffer, sizeof(tmpbuffer),
 				"LOGSYS EMERGENCY: %s Unable to write to STDERR.",
 				logsys_loggers[subsysid].subsys);
-			log_printf_to_logs(logsys_loggers[subsysid].subsys,
-				__FILE__, __FUNCTION__, __LINE__,
-				LOGSYS_LEVEL_EMERG, 0, tmpbuffer);
+			log_printf_to_logs(
+					   LOGSYS_ENCODE_RECID(
+						LOGSYS_LEVEL_EMERG,
+						subsysid,
+						LOGSYS_RECID_LOG),
+					   __FILE__, __FUNCTION__, __LINE__,
+					   tmpbuffer);
 		}
 	}
 }
@@ -609,17 +614,16 @@ static void record_print (const char *buf)
 {
 	const int *buf_uint32t = (const int *)buf;
 	unsigned int rec_size = buf_uint32t[0];
-	unsigned int level = buf_uint32t[1];
-	unsigned int rec_ident = buf_uint32t[2];
-	unsigned int file_line = buf_uint32t[3];
+	unsigned int rec_ident = buf_uint32t[1];
+	unsigned int file_line = buf_uint32t[2];
 	unsigned int i;
 	unsigned int words_processed;
 	unsigned int arg_size_idx;
 	const void *arguments[64];
 	unsigned int arg_count;
 
-	arg_size_idx = 5;
-	words_processed = 5;
+	arg_size_idx = 4;
+	words_processed = 4;
 	arg_count = 0;
 
 	for (i = 0; words_processed < rec_size; i++) {
@@ -636,29 +640,25 @@ static void record_print (const char *buf)
 	 */
 
 	log_printf_to_logs (
-		(char *)arguments[0],
+		rec_ident,
 		(char *)arguments[1],
 		(char *)arguments[2],
 		file_line,
-		level,
-		rec_ident,
 		(char *)arguments[3]);
 }
 
 static int record_read (char *buf, int rec_idx, int *log_msg) {
 	unsigned int rec_size;
-	unsigned int level;
 	unsigned int rec_ident;
 	int firstcopy, secondcopy;
 
 	rec_size = flt_data[rec_idx];
-	level = flt_data[(rec_idx + 1) % flt_data_size];
-	rec_ident = flt_data[(rec_idx + 2) % flt_data_size];
+	rec_ident = flt_data[(rec_idx + 1) % flt_data_size];
 
 	/*
 	 * Not a log record
 	 */
-	if (rec_ident != LOGSYS_RECID_LOG) {
+	if (LOGSYS_DECODE_RECID(rec_ident) != LOGSYS_RECID_LOG) {
 		*log_msg = 0;
         	return ((rec_idx + rec_size) % flt_data_size);
 	}
@@ -1081,12 +1081,10 @@ int _logsys_rec_init (unsigned int size)
  */
 
 void _logsys_log_rec (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	...)
 {
 	va_list ap;
@@ -1098,13 +1096,16 @@ void _logsys_log_rec (
 	unsigned int record_reclaim_size;
 	unsigned int index_start;
 	int words_written;
+	int subsysid;
 
 	record_reclaim_size = 0;
+
+	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 
 	/*
 	 * Decode VA Args
 	 */
-	va_start (ap, rec_ident);
+	va_start (ap, file_line);
 	arguments = 3;
 	for (;;) {
 		buf_args[arguments] = va_arg (ap, void *);
@@ -1139,15 +1140,12 @@ void _logsys_log_rec (
 	/*
 	 * Reclaim data needed for record including 4 words for the header
 	 */
-	records_reclaim (idx, record_reclaim_size + 5);
+	records_reclaim (idx, record_reclaim_size + 4);
 
 	/*
 	 * Write record size of zero and rest of header information
 	 */
 	flt_data[idx++] = 0;
-	idx_word_step(idx);
-
-	flt_data[idx++] = level;
 	idx_word_step(idx);
 
 	flt_data[idx++] = rec_ident;
@@ -1227,7 +1225,7 @@ void _logsys_log_rec (
 	 * the new head position and commit the new head.
 	 */
 	logsys_lock();
-	if (rec_ident == LOGSYS_RECID_LOG) {
+	if (LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_LOG) {
 		log_requests_pending += 1;
 	}
 	if (log_requests_pending == 0) {
@@ -1239,21 +1237,20 @@ void _logsys_log_rec (
 }
 
 void _logsys_log_vprintf (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	const char *format,
 	va_list ap)
 {
 	char logsys_print_buffer[COMBINE_BUFFER_SIZE];
 	unsigned int len;
+	unsigned int level;
+	int subsysid;
 
-	if (subsysid <= -1) {
-		subsysid = LOGSYS_MAX_SUBSYS_COUNT;
-	}
+	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
+	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
 	if ((level > logsys_loggers[subsysid].syslog_priority) &&
 	    (level > logsys_loggers[subsysid].logfile_priority) &&
@@ -1270,12 +1267,11 @@ void _logsys_log_vprintf (
 	/*
 	 * Create a log record
 	 */
-	_logsys_log_rec (subsysid,
+	_logsys_log_rec (
+		rec_ident,
 		function_name,
 		file_name,
 		file_line,
-		level,
-		rec_ident,
 		logsys_print_buffer, len + 1,
 		LOGSYS_REC_END);
 
@@ -1284,9 +1280,9 @@ void _logsys_log_vprintf (
 		 * Output (and block) if the log mode is not threaded otherwise
 		 * expect the worker thread to output the log data once signaled
 		 */
-		log_printf_to_logs (logsys_loggers[subsysid].subsys,
-			file_name, function_name, file_line, level, rec_ident,
-			logsys_print_buffer);
+		log_printf_to_logs (rec_ident,
+				    file_name, function_name, file_line,
+				    logsys_print_buffer);
 	} else {
 		/*
 		 * Signal worker thread to display logging output
@@ -1296,20 +1292,18 @@ void _logsys_log_vprintf (
 }
 
 void _logsys_log_printf (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	const char *format,
 	...)
 {
 	va_list ap;
 
 	va_start (ap, format);
-	_logsys_log_vprintf (subsysid, function_name, file_name, file_line,
-		level, rec_ident, format, ap);
+	_logsys_log_vprintf (rec_ident, function_name, file_name, file_line,
+		format, ap);
 	va_end (ap);
 }
 

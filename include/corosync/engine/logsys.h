@@ -172,37 +172,31 @@ extern unsigned int _logsys_subsys_create (const char *subsys);
 extern int _logsys_rec_init (unsigned int size);
 
 extern void _logsys_log_vprintf (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	const char *format,
-	va_list ap) __attribute__((format(printf, 7, 0)));
+	va_list ap) __attribute__((format(printf, 5, 0)));
 
 extern void _logsys_log_printf (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	const char *format,
-	...) __attribute__((format(printf, 7, 8)));
+	...) __attribute__((format(printf, 5, 6)));
 
 extern void _logsys_log_rec (
-	int subsysid,
+	unsigned int rec_ident,
 	const char *function_name,
 	const char *file_name,
 	int file_line,
-	unsigned int level,
-	unsigned int rec_ident,
 	...);
 
 extern int _logsys_wthread_create (void);
 
-static unsigned int logsys_subsys_id __attribute__((unused)) = -1;
+static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
 
 /*
  * External API - init
@@ -356,76 +350,76 @@ static void logsys_subsys_init (void)					\
 
 #define log_rec(rec_ident, args...)					\
 do {									\
-	_logsys_log_rec (logsys_subsys_id,  __FUNCTION__,		\
-		__FILE__,  __LINE__, rec_ident, 0, ##args,		\
+	_logsys_log_rec (rec_ident,  __FUNCTION__,			\
+		__FILE__,  __LINE__, ##args,				\
 		LOGSYS_REC_END);					\
 } while(0)
 
 #define log_printf(level, format, args...)				\
  do {									\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__, __LINE__, level, LOGSYS_RECID_LOG,		\
+	_logsys_log_printf (						\
+		LOGSYS_ENCODE_RECID(level,				\
+				    logsys_subsys_id,			\
+				    LOGSYS_RECID_LOG),			\
+		 __FUNCTION__, __FILE__, __LINE__,			\
 		format, ##args);					\
 } while(0)
 
 #define ENTER() do {							\
-	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
-		LOGSYS_RECID_ENTER, LOGSYS_REC_END);			\
+	_logsys_log_rec (						\
+		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_DEBUG,			\
+				    logsys_subsys_id,			\
+				    LOGSYS_RECID_ENTER),		\
+		__FUNCTION__, __FILE__,  __LINE__, LOGSYS_REC_END);	\
 } while(0)
 
 #define LEAVE() do {							\
-	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_LEAVE, LOGSYS_REC_END);			\
+	_logsys_log_rec (						\
+		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_DEBUG,			\
+				    logsys_subsys_id,			\
+				    LOGSYS_RECID_LEAVE),		\
+		__FUNCTION__, __FILE__,  __LINE__, LOGSYS_REC_END);	\
+} while(0)
+
+#define TRACE(recid, format, args...) do {				\
+	_logsys_log_printf (						\
+		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_DEBUG,			\
+				    logsys_subsys_id,			\
+				    recid),				\
+		 __FUNCTION__, __FILE__, __LINE__,			\
+		format, ##args);					\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
-		LOGSYS_RECID_TRACE1, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE1, format, ##args);			\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE2, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE2, format, ##args);			\
 } while(0)
 
 #define TRACE3(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE3, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE3, format, ##args);			\
 } while(0)
 
 #define TRACE4(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE4, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE4, format, ##args);			\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE5, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE5, format, ##args);			\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE6, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE6, format, ##args);			\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE7, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE7, format, ##args);			\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_RECID_TRACE8, format, ##args);			\
+	TRACE(LOGSYS_RECID_TRACE8, format, ##args);			\
 } while(0)
 
 #endif /* LOGSYS_UTILS_ONLY */

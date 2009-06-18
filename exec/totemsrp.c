@@ -437,10 +437,12 @@ struct totemsrp_instance {
 
 	int totemsrp_subsys_id;
 
-	void (*totemsrp_log_printf) (int subsys,
-		const char *function, const char *file,
-		int line, unsigned int level, unsigned int rec_ident,
-		const char *format, ...)__attribute__((format(printf, 7, 8)));;
+	void (*totemsrp_log_printf) (
+		unsigned int rec_ident,
+		const char *function,
+		const char *file,
+		int line,
+		const char *format, ...)__attribute__((format(printf, 5, 6)));;
 
 	enum memb_state memb_state;
 
@@ -627,9 +629,12 @@ static const char *rundir = NULL;
 
 #define log_printf(level, format, args...)				\
 do {									\
-	instance->totemsrp_log_printf (instance->totemsrp_subsys_id,	\
-		__FUNCTION__, __FILE__, __LINE__, level,		\
-		LOGSYS_RECID_LOG, format, ##args);			\
+	instance->totemsrp_log_printf (					\
+		LOGSYS_ENCODE_RECID(level,				\
+				   instance->totemsrp_subsys_id,	\
+				   LOGSYS_RECID_LOG),			\
+		__FUNCTION__, __FILE__, __LINE__,			\
+		format, ##args);					\
 } while (0);
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance)

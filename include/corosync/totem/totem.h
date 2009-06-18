@@ -58,15 +58,13 @@ struct totem_interface {
 };
 
 struct totem_logging_configuration {
-        void (*log_printf) (
-                int subsys,
-                const char *function_name,
-                const char *file_name,
-                int file_line,
-                unsigned int level,
-		unsigned int tag,
-                const char *format,
-                ...) __attribute__((format(printf, 7, 8)));
+	void (*log_printf) (
+		unsigned int rec_ident,
+		const char *function_name,
+		const char *file_name,
+		int file_line,
+		const char *format,
+		...) __attribute__((format(printf, 5, 6)));
 
 	int log_level_security;
 	int log_level_error;

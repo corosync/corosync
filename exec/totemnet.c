@@ -157,13 +157,13 @@ struct totemnet_instance {
 
 	int totemnet_subsys_id;
 
-	void (*totemnet_log_printf) (int subsys,
+	void (*totemnet_log_printf) (
+		unsigned int rec_ident,
 		const char *function,
 		const char *file,
-		int line, unsigned int level,
-		unsigned int rec_ident,
+		int line,
 		const char *format,
-		...)__attribute__((format(printf, 7, 8)));
+		...)__attribute__((format(printf, 5, 6)));
 
 	hdb_handle_t handle;
 
@@ -246,9 +246,12 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 
 #define log_printf(level, format, args...)				\
 do {									\
-        instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
+        instance->totemnet_log_printf (					\
+		LOGSYS_ENCODE_RECID(level,				\
+				    instance->totemnet_subsys_id,	\
+				    LOGSYS_RECID_LOG),			\
                 __FUNCTION__, __FILE__, __LINE__,			\
-		level, LOGSYS_RECID_LOG, (const char *)format, ##args);	\
+		(const char *)format, ##args);				\
 } while (0);
 
 

@@ -56,9 +56,13 @@ int main(int argc, char **argv)
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "This is a test of %s\n", "stringparse");
+		log_printf (LOGSYS_LEVEL_NOTICE,
+			"This is a test of %s(%d)\n", "stringparse", i);
 
-		log_rec (LOGREC_ID_CHECKPOINT_CREATE, "record1", 8, "record22", 9, "record333", 10, "record444", 11, LOGSYS_REC_END);
+		log_rec (LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_NOTICE,
+					     logsys_subsys_id,
+					     LOGREC_ID_CHECKPOINT_CREATE),
+			"record1", 8, "record22", 9, "record333", 10, "record444", 11, LOGSYS_REC_END);
 	}
 	logsys_log_rec_store ("fdata");
 

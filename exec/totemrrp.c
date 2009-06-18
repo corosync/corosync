@@ -208,9 +208,12 @@ struct totemrrp_instance {
 
 	int totemrrp_subsys_id;
 
-	void (*totemrrp_log_printf) (int subsys, const char *function,
-		const char *file, int line, unsigned int level, unsigned int rec_ident,
-		const char *format, ...)__attribute__((format(printf, 7, 8)));
+	void (*totemrrp_log_printf) (
+		unsigned int rec_ident,
+		const char *function,
+		const char *file,
+		int line,
+		const char *format, ...)__attribute__((format(printf, 5, 6)));
 
 	hdb_handle_t handle;
 
@@ -473,9 +476,11 @@ DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 #define log_printf(level, format, args...)				\
 do {									\
 	rrp_instance->totemrrp_log_printf (				\
-		rrp_instance->totemrrp_subsys_id,			\
-		__FUNCTION__, __FILE__, __LINE__, level,		\
-		LOGSYS_RECID_LOG, format, ##args);			\
+		LOGSYS_ENCODE_RECID(level,				\
+				    rrp_instance->totemrrp_subsys_id,	\
+				    LOGSYS_RECID_LOG),			\
+		__FUNCTION__, __FILE__, __LINE__,			\
+		format, ##args);					\
 } while (0);
 
 /*

@@ -383,14 +383,15 @@ static void logsys_rec_print (const void *record)
 	int arg_count = 0;
 
 	rec_size = buf_uint32t[rec_idx];
-	level = buf_uint32t[rec_idx+1];
-	rec_ident = buf_uint32t[rec_idx+2];
-	line = buf_uint32t[rec_idx+3];
-	record_number = buf_uint32t[rec_idx+4];
+	rec_ident = buf_uint32t[rec_idx+1];
+	line = buf_uint32t[rec_idx+2];
+	record_number = buf_uint32t[rec_idx+3];
+
+	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
 	printf ("rec=[%d] ", record_number);
-	arg_size_idx = rec_idx + 5;
-	words_processed = 5;
+	arg_size_idx = rec_idx + 4;
+	words_processed = 4;
 	for (i = 0; words_processed < rec_size; i++) {
 		arguments[arg_count++] =
 		  (const char *)&buf_uint32t[arg_size_idx + 1];
@@ -411,7 +412,7 @@ static void logsys_rec_print (const void *record)
 		}
 	}
 
-	switch(rec_ident) {
+	switch(LOGSYS_DECODE_RECID(rec_ident)) {
 		case LOGSYS_RECID_LOG:
 			printf ("Log Message=%s\n", arguments[3]);
 			break;
@@ -447,7 +448,7 @@ static void logsys_rec_print (const void *record)
 			break;
 		default:
 			printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
-				arguments[0], rec_ident);
+				arguments[0], LOGSYS_DECODE_RECID(rec_ident));
 			break;
 	}
 #ifdef COMPILE_OUT

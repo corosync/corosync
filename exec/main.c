@@ -551,15 +551,23 @@ static void ipc_log_printf (const char *format, ...) {
 
 	va_start (ap, format);
 
-	_logsys_log_vprintf (ipc_subsys_id, __FUNCTION__,
-		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, LOGSYS_RECID_LOG, format, ap);
+	_logsys_log_vprintf (
+		LOGSYS_ENCODE_RECID(ipc_subsys_id,
+				    LOGSYS_LEVEL_ERROR,
+				    LOGSYS_RECID_LOG),
+		__FUNCTION__, __FILE__, __LINE__,
+		format, ap);
 
 	va_end (ap);
 }
 
 static void ipc_fatal_error(const char *error_msg) {
-       _logsys_log_printf (ipc_subsys_id, __FUNCTION__,
-                __FILE__, __LINE__, LOGSYS_LEVEL_ERROR, LOGSYS_RECID_LOG, "%s", error_msg);
+       _logsys_log_printf (
+		LOGSYS_ENCODE_RECID(ipc_subsys_id,
+				    LOGSYS_LEVEL_ERROR,
+				    LOGSYS_RECID_LOG),
+		__FUNCTION__, __FILE__, __LINE__,
+                "%s", error_msg);
 	exit(EXIT_FAILURE);
 }
 
