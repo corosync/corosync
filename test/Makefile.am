@@ -79,3 +79,6 @@ logsys_t2_LDFLAGS	= -L../exec
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+
+clean-local:
+	rm -f fdata
