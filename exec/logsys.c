@@ -1057,6 +1057,17 @@ int _logsys_rec_init (unsigned int fltsize)
 	 */
 	size_t flt_real_size;
 
+	/*
+	 * XXX: kill me for 1.1 because I am a dirty hack
+	 * temporary workaround that will be replaced by supporting
+	 * 0 byte size flight recorder buffer.
+	 * 0 byte size buffer will enable direct printing to logs
+	 *   without flight recoder.
+	 */
+	if (fltsize < 64000) {
+		fltsize = 64000;
+	}
+
 	flt_real_size = ROUNDUP(
 			(fltsize + (2 * sizeof (unsigned int))),
 			sysconf(_SC_PAGESIZE));
