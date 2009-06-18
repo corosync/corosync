@@ -77,6 +77,9 @@
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
+
 #include "totemsrp.h"
 #include "totemrrp.h"
 #include "totemnet.h"
@@ -622,13 +625,11 @@ struct message_handlers totemsrp_message_handlers = {
 
 static const char *rundir = NULL;
 
-#define RECID_LOG UINT_MAX - 1
-
 #define log_printf(level, format, args...)				\
 do {									\
 	instance->totemsrp_log_printf (instance->totemsrp_subsys_id,	\
-		__FUNCTION__, __FILE__, __LINE__, level, RECID_LOG,	\
-		format, ##args);					\
+		__FUNCTION__, __FILE__, __LINE__, level,		\
+		LOGSYS_RECID_LOG, format, ##args);			\
 } while (0);
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance)

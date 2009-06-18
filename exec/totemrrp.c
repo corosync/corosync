@@ -63,6 +63,8 @@
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
 #include <corosync/totem/coropoll.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 
 #include "totemnet.h"
 #include "totemrrp.h"
@@ -468,14 +470,12 @@ struct rrp_algo *rrp_algos[] = {
  */
 DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 
-#define RECID_LOG UINT_MAX - 1
-
 #define log_printf(level, format, args...)				\
 do {									\
 	rrp_instance->totemrrp_log_printf (				\
 		rrp_instance->totemrrp_subsys_id,			\
-		__FUNCTION__, __FILE__, __LINE__, level, RECID_LOG,	\
-		format, ##args);					\
+		__FUNCTION__, __FILE__, __LINE__, level,		\
+		LOGSYS_RECID_LOG, format, ##args);			\
 } while (0);
 
 /*

@@ -63,6 +63,8 @@
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
 #include <corosync/totem/coropoll.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 #include "totemnet.h"
 #include "wthread.h"
 
@@ -242,13 +244,11 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 	instance->my_memb_entries = 1;
 }
 
-#define	RECID_LOG UINT_MAX - 1
-
 #define log_printf(level, format, args...)				\
 do {									\
         instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
                 __FUNCTION__, __FILE__, __LINE__,			\
-		level, RECID_LOG, (const char *)format, ##args);	\
+		level, LOGSYS_RECID_LOG, (const char *)format, ##args);	\
 } while (0);
 
 

@@ -99,6 +99,8 @@
 #include <corosync/list.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 
 #include "totemmrp.h"
 #include "totemsrp.h"
@@ -237,12 +239,11 @@ static pthread_mutex_t callback_token_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t mcast_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define RECID_LOG UINT_MAX - 1
-
 #define log_printf(level, format, args...)				\
 do {									\
         totempg_log_printf (totempg_subsys_id, __FUNCTION__,		\
-		__FILE__, __LINE__, level, RECID_LOG, format, ##args);	\
+		__FILE__, __LINE__, level, LOGSYS_RECID_LOG,		\
+		format, ##args);					\
 } while (0);
 
 static int msg_count_send_ok (int msg_count);

@@ -104,6 +104,8 @@ extern "C" {
 #define LOGSYS_MAX_SUBSYS_COUNT		64
 #define LOGSYS_MAX_SUBSYS_NAMELEN	64
 
+#ifndef LOGSYS_UTILS_ONLY
+
 extern int _logsys_system_setup(
 	const char *mainsystem,
 	unsigned int mode,
@@ -376,6 +378,8 @@ do {									\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
 		LOGSYS_RECID_TRACE8, format, ##args);			\
 } while(0)
+
+#endif /* LOGSYS_UTILS_ONLY */
 
 #ifdef __cplusplus
 }
