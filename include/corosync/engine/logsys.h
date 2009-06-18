@@ -305,7 +305,7 @@ extern void *logsys_rec_end;
 #define LOGSYS_REC_END (&logsys_rec_end)
 
 #define LOGSYS_DECLARE_SYSTEM(name,mode,debug,file,file_priority,	\
-		syslog_facility,syslog_priority,format,rec_size)	\
+		syslog_facility,syslog_priority,format,fltsize)		\
 __attribute__ ((constructor))						\
 static void logsys_system_init (void)					\
 {									\
@@ -322,7 +322,7 @@ static void logsys_system_init (void)					\
 		exit (-1);						\
 	}								\
 									\
-	if (_logsys_rec_init (rec_size) < 0) {				\
+	if (_logsys_rec_init (fltsize) < 0) {				\
 		fprintf (stderr,					\
 			"Unable to initialize log flight recorder.\n");	\
 		exit (-1);						\

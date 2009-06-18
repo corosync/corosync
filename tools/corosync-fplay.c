@@ -18,7 +18,7 @@
 
 #include <corosync/engine/logsys.h>
 
-unsigned int flt_data_size = 1000000;
+unsigned int flt_data_size;
 
 unsigned int *flt_data;
 #define FDHEAD_INDEX		(flt_data_size)
@@ -464,13 +464,22 @@ int main (void)
 	int record_count = 1;
 	ssize_t n_read;
 	const char *data_file = LOCALSTATEDIR "/lib/corosync/fdata";
+	size_t n_required;
 
-	size_t n_required = (flt_data_size + 2) * sizeof (unsigned int);
 	if ((fd = open (data_file, O_RDONLY)) < 0) {
 		fprintf (stderr, "failed to open %s: %s\n",
 			 data_file, strerror (errno));
 		return EXIT_FAILURE;
 	}
+
+	n_required = sizeof (unsigned int);
+	n_read = read (fd, &flt_data_size, n_required);
+	if (n_read != n_required) {
+		fprintf (stderr, "Unable to read fdata header\n");
+		return EXIT_FAILURE;
+	}
+
+	n_required = ((flt_data_size + 2) * sizeof(unsigned int));
 
 	if ((flt_data = malloc (n_required)) == NULL) {
 		fprintf (stderr, "exhausted virtual memory\n");

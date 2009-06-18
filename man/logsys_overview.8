@@ -62,7 +62,7 @@ require it and enables full logging capabilities before any application code is
 executed.
 
 #define LOGSYS_DECLARE_SYSTEM (name, mode, debug, file, file_priority,
-syslog_facility, syslog_priority, format, rec_size)
+syslog_facility, syslog_priority, format, fltsize)
 
 The name parameter is the name of the application or system.
 
@@ -99,7 +99,8 @@ syslog.
 The format parameter allows to set custom output format.
 Set to NULL to use built-in default.
 
-The rec_size parameter specifies the flight recorder buffer size.
+The fltsize parameter specifies the flight recorder buffer size in bytes. The requested value
+is increased by the size of 2 unsigned ints and rounded to the next PAGE_SIZE.
 
 An example declaration would be:
 

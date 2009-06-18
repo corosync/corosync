@@ -66,6 +66,8 @@
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
+#define ROUNDUP(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
+
 /*
  * syslog prioritynames, facility names to value mapping
  * Some C libraries build this in to their headers, but it is non-portable
@@ -119,7 +121,7 @@ struct syslog_names facilitynames[] =
  */
 int *flt_data;
 
-int flt_data_size;
+unsigned int flt_data_size;
 
 #define COMBINE_BUFFER_SIZE 2048
 
@@ -1044,17 +1046,39 @@ int _logsys_wthread_create (void)
 	return (0);
 }
 
-int _logsys_rec_init (unsigned int size)
+int _logsys_rec_init (unsigned int fltsize)
 {
+	/*
+	 * we need to allocate:
+	 * - requested size +
+	 *   2 extra unsigned ints for HEAD/TAIL tracking
+	 *
+	 * then round it up to the next PAGESIZE
+	 */
+	size_t flt_real_size;
+
+	flt_real_size = ROUNDUP(
+			(fltsize + (2 * sizeof (unsigned int))),
+			sysconf(_SC_PAGESIZE));
+
+	flt_data = malloc (flt_real_size);
+	if (flt_data == NULL) {
+		return (-1);
+	}
+
+	/*
+	 * flt_data_size tracks data by ints and not bytes/chars.
+	 *
+	 * the last 2 ints are reserved to store HEAD/TAIL information.
+	 * hide them from the rotating buffer.
+	 */
+
+	flt_data_size = ((flt_real_size / sizeof (unsigned int)) - 2);
+
 	/*
 	 * First record starts at zero
 	 * Last record ends at zero
 	 */
-	flt_data = malloc ((size + 2) * sizeof (unsigned int));
-	if (flt_data == NULL) {
-		return (-1);
-	}
-	flt_data_size = size;
 	flt_data[FDHEAD_INDEX] = 0;
 	flt_data[FDTAIL_INDEX] = 0;
 
@@ -1592,6 +1616,12 @@ int logsys_log_rec_store (const char *filename)
 
 	fd = open (filename, O_CREAT|O_RDWR, 0700);
 	if (fd < 0) {
+		return (-1);
+	}
+
+	written_size = write (fd, &flt_data_size, sizeof(unsigned int));
+	if ((written_size < 0) || (written_size != sizeof(unsigned int))) {
+		close (fd);
 		return (-1);
 	}
 
