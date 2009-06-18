@@ -833,7 +833,7 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-  	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_SECURITY;
+  	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;

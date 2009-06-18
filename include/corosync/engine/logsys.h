@@ -59,14 +59,12 @@ extern "C" {
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
- * LOGSYS_LEVEL_SECURITY is corosync/openais specific
  */
 #define LOGSYS_LEVEL_EMERG		LOG_EMERG
 #define LOGSYS_LEVEL_ALERT		LOG_ALERT
 #define LOGSYS_LEVEL_CRIT		LOG_CRIT
 #define LOGSYS_LEVEL_ERROR		LOG_ERR
 #define LOGSYS_LEVEL_WARNING		LOG_WARNING
-#define LOGSYS_LEVEL_SECURITY		LOG_WARNING
 #define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
 #define LOGSYS_LEVEL_INFO		LOG_INFO
 #define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
