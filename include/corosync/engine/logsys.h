@@ -77,17 +77,20 @@ extern "C" {
  * RECID_LOG indicates a message that should be sent to log. Anything else
  * is stored only in the flight recorder.
  */
-#define LOGSYS_RECID_LOG		UINT_MAX - 1
-#define LOGSYS_RECID_ENTER		UINT_MAX - 2
-#define LOGSYS_RECID_LEAVE		UINT_MAX - 3
-#define LOGSYS_RECID_TRACE1		UINT_MAX - 4
-#define LOGSYS_RECID_TRACE2		UINT_MAX - 5
-#define LOGSYS_RECID_TRACE3		UINT_MAX - 6
-#define LOGSYS_RECID_TRACE4		UINT_MAX - 7
-#define LOGSYS_RECID_TRACE5		UINT_MAX - 8
-#define LOGSYS_RECID_TRACE6		UINT_MAX - 9
-#define LOGSYS_RECID_TRACE7		UINT_MAX - 10
-#define LOGSYS_RECID_TRACE8		UINT_MAX - 11
+
+#define LOGSYS_RECID_MAX		((UINT_MAX) >> LOGSYS_SUBSYSID_END)
+
+#define LOGSYS_RECID_LOG		(LOGSYS_RECID_MAX - 1)
+#define LOGSYS_RECID_ENTER		(LOGSYS_RECID_MAX - 2)
+#define LOGSYS_RECID_LEAVE		(LOGSYS_RECID_MAX - 3)
+#define LOGSYS_RECID_TRACE1		(LOGSYS_RECID_MAX - 4)
+#define LOGSYS_RECID_TRACE2		(LOGSYS_RECID_MAX - 5)
+#define LOGSYS_RECID_TRACE3		(LOGSYS_RECID_MAX - 6)
+#define LOGSYS_RECID_TRACE4		(LOGSYS_RECID_MAX - 7)
+#define LOGSYS_RECID_TRACE5		(LOGSYS_RECID_MAX - 8)
+#define LOGSYS_RECID_TRACE6		(LOGSYS_RECID_MAX - 9)
+#define LOGSYS_RECID_TRACE7		(LOGSYS_RECID_MAX - 10)
+#define LOGSYS_RECID_TRACE8		(LOGSYS_RECID_MAX - 11)
 
 
 /*
@@ -103,6 +106,52 @@ extern "C" {
  */
 #define LOGSYS_MAX_SUBSYS_COUNT		64
 #define LOGSYS_MAX_SUBSYS_NAMELEN	64
+
+/*
+ * rec_ident explained:
+ *
+ * rec_ident is an unsigned int and carries bitfields information
+ * on subsys_id, log priority (level) and type of message (RECID).
+ *
+ * level values are imported from syslog.h.
+ * At the time of writing it's a 3 bits value (0 to 7).
+ *
+ * subsys_id is any value between 0 and 64 (LOGSYS_MAX_SUBSYS_COUNT)
+ *
+ * RECID identifies the type of message. A set of predefined values
+ * are available via logsys, but other custom values can be defined
+ * by users.
+ *
+ * ----
+ * bitfields:
+ *
+ * 0  - 2 level
+ * 3  - 9 subsysid
+ * 10 - n RECID
+ */
+
+#define LOGSYS_LEVEL_END		(3)
+#define LOGSYS_SUBSYSID_END		(LOGSYS_LEVEL_END + 7)
+
+#define LOGSYS_RECID_LEVEL_MASK		(LOG_PRIMASK)
+#define LOGSYS_RECID_SUBSYSID_MASK	((2 << (LOGSYS_SUBSYSID_END - 1)) - \
+					(LOG_PRIMASK + 1))
+#define LOGSYS_RECID_RECID_MASK		(UINT_MAX - \
+					(LOGSYS_RECID_SUBSYSID_MASK + LOG_PRIMASK))
+
+#define LOGSYS_ENCODE_RECID(level,subsysid,recid) \
+	(((recid) << LOGSYS_SUBSYSID_END) | \
+	((subsysid) << LOGSYS_LEVEL_END) | \
+	(level))
+
+#define LOGSYS_DECODE_LEVEL(rec_ident) \
+	((rec_ident) & LOGSYS_RECID_LEVEL_MASK)
+
+#define LOGSYS_DECODE_SUBSYSID(rec_ident) \
+	(((rec_ident) & LOGSYS_RECID_SUBSYSID_MASK) >> LOGSYS_LEVEL_END)
+
+#define LOGSYS_DECODE_RECID(rec_ident) \
+	(((rec_ident) & LOGSYS_RECID_RECID_MASK) >> LOGSYS_SUBSYSID_END)
 
 #ifndef LOGSYS_UTILS_ONLY
 
