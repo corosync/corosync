@@ -105,8 +105,8 @@ INDEX_HTML = index.html
 	$(GROFF) -mandoc -Thtml $^ > $@
 
 install-data-local:
-	install -d $(DESTDIR)/${docdir}/html
-	install -m644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
+	$(INSTALL) -d $(DESTDIR)/${docdir}/html
+	$(INSTALL) -m644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
 
 uninstall-local:
 	cd $(DESTDIR)/${docdir}/html && rm -f $(INDEX_HTML) $(HTML_DOCS)
