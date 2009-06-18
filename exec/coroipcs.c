@@ -50,6 +50,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -615,12 +616,14 @@ req_setup_recv (
 	int res;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
+	int authenticated = 0;
+
 #ifdef COROSYNC_LINUX
 	struct cmsghdr *cmsg;
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
-	struct ucred *cred;
 	int off = 0;
 	int on = 1;
+	struct ucred *cred;
 #endif
 
 	msg_recv.msg_iov = &iov_recv;
@@ -631,34 +634,9 @@ req_setup_recv (
 	msg_recv.msg_control = (void *)cmsg_cred;
 	msg_recv.msg_controllen = sizeof (cmsg_cred);
 #endif
-
 #ifdef COROSYNC_SOLARIS
 	msg_recv.msg_accrights = 0;
 	msg_recv.msg_accrightslen = 0;
-#else /* COROSYNC_SOLARIS */
-
-#ifdef HAVE_GETPEERUCRED
-	ucred_t *uc;
-	uid_t euid = -1;
-	gid_t egid = -1;
-
-	if (getpeerucred (conn_info->fd, &uc) == 0) {
-		euid = ucred_geteuid (uc);
-		egid = ucred_getegid (uc);
-		if (api->security_valid (euid, egid) {
-			conn_info->authenticated = 1;
-		}
-		ucred_free(uc);
-	}
-	if (conn_info->authenticated == 0) {
-		api->log_printf ("Invalid security authentication\n");
- 	}
-#else /* HAVE_GETPEERUCRED */
- 	api->log_printf ("Connection not authenticated "
- 		"because platform does not support "
- 		"authentication with sockets, continuing "
- 		"with a fake authentication\n");
-#endif /* HAVE_GETPEERUCRED */
 #endif /* COROSYNC_SOLARIS */
 
 	iov_recv.iov_base = &conn_info->setup_msg[conn_info->setup_bytes_read];
@@ -686,20 +664,70 @@ retry_recv:
 	}
 	conn_info->setup_bytes_read += res;
 
-#ifdef COROSYNC_LINUX
+/*
+ * currently support getpeerucred, getpeereid, and SO_PASSCRED credential
+ * retrieval mechanisms for various Platforms
+ */
+#ifdef HAVE_GETPEERUCRED
+/*
+ * Solaris and some BSD systems
+ */
+	{
+		ucred_t *uc;
+		uid_t euid = -1;
+		gid_t egid = -1;
 
+		if (getpeerucred (conn_info->fd, &uc) == 0) {
+			euid = ucred_geteuid (uc);
+			egid = ucred_getegid (uc);
+			if (api->security_valid (euid, egid)) {
+				authenticated = 1;
+			}
+			ucred_free(uc);
+		}
+	}
+#elif HAVE_GETPEEREID
+/*
+ * Usually MacOSX systems
+ */
+
+	{
+		uid_t euid;
+		gid_t egid;
+
+		euid = -1;
+		egid = -1;
+		if (getpeereid (conn_info->fd, &euid, &egid) == 0) {
+			if (api->security_valid (euid, egid)) {
+				authenticated = 1;
+			}
+		}
+	}
+
+#elif SO_PASSCRED
+/*
+ * Usually Linux systems
+ */
 	cmsg = CMSG_FIRSTHDR (&msg_recv);
 	assert (cmsg);
 	cred = (struct ucred *)CMSG_DATA (cmsg);
 	if (cred) {
 		if (api->security_valid (cred->uid, cred->gid)) {
-		} else {
-			ipc_disconnect (conn_info);
-			api->log_printf ("Invalid security authentication\n");
-			return (-1);
+			authenticated = 1;
 		}
 	}
-#endif
+
+#else /* no credentials */
+	authenticated = 1;
+ 	api->log_printf ("Platform does not support IPC authentication.  Using no authentication\n");
+#endif /* no credentials */
+
+	if (authenticated == 0) {
+		api->log_printf ("Invalid IPC credentials.\n");
+		ipc_disconnect (conn_info);
+		return (-1);
+ 	}
+
 	if (conn_info->setup_bytes_read == sizeof (mar_req_setup_t)) {
 #ifdef COROSYNC_LINUX
 		setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED,
@@ -807,6 +835,14 @@ extern void coroipcs_ipc_init (
 		api->log_printf ("Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
+
+	/*
+	 * Allow eveyrone to write to the socket since the IPC layer handles
+	 * security automatically
+	 */
+#if !defined(COROSYNC_LINUX)
+	res = chmod (un_addr.sun_path, S_IRWXU|S_IRWXG|S_IRWXO);
+#endif
 	listen (server_fd, SERVER_BACKLOG);
 
         /*

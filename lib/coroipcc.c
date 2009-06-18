@@ -561,9 +561,6 @@ coroipcc_service_connect (
 	sys_res = connect (request_fd, (struct sockaddr *)&address,
 		COROSYNC_SUN_LEN(&address));
 	if (sys_res == -1) {
-#ifdef DEBUG
-		fprintf(stderr, "Coroipcc: Can't connect: %d : %s\n", errno, strerror(errno));
-#endif
 		close (request_fd);
 		return (CS_ERR_TRY_AGAIN);
 	}
@@ -578,7 +575,14 @@ coroipcc_service_connect (
 		     = semget (semkey, 3, IPC_CREAT|IPC_EXCL|0600)) != -1) {
 		      break;
 		}
-		if (errno != EEXIST) {
+		/*
+		 * EACCESS can be returned as non root user when opening a different
+		 * users semaphore.
+		 *
+		 * EEXIST can happen when we are a root or nonroot user opening
+		 * an existing shared memory segment for which we have access
+		 */
+		if (errno != EEXIST && errno != EACCES) {
 			goto res_exit;
 		}
 	}

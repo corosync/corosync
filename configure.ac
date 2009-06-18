@@ -56,8 +56,6 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([c], [getpeereid])
-AC_CHECK_LIB([c], [getpeerucred])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
@@ -103,8 +101,8 @@ AC_TYPE_SIGNAL
 AC_FUNC_STRFTIME
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
-		getcwd getpeerucred gettimeofday inet_ntoa memmove memset \
-		mkdir scandir select socket strcasecmp strchr strdup \
+		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
+		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_spin_lock \
 		pthread_spin_unlock])
 
