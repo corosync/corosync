@@ -56,6 +56,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <limits.h>
 
 #include <corosync/sq.h>
 #include <corosync/list.h>
@@ -158,7 +159,7 @@ struct totemnet_instance {
 		const char *function,
 		const char *file,
 		int line, unsigned int level,
-		unsigned int tag,
+		unsigned int rec_ident,
 		const char *format,
 		...)__attribute__((format(printf, 7, 8)));
 
@@ -241,11 +242,13 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 	instance->my_memb_entries = 1;
 }
 
+#define	RECID_LOG UINT_MAX - 1
+
 #define log_printf(level, format, args...)				\
 do {									\
         instance->totemnet_log_printf (instance->totemnet_subsys_id,	\
                 __FUNCTION__, __FILE__, __LINE__,			\
-		level, 0, (const char *)format, ##args);		\
+		level, RECID_LOG, (const char *)format, ##args);	\
 } while (0);
 
 

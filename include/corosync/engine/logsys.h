@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 #include <pthread.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,32 +71,24 @@ extern "C" {
 #define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
 
 /*
- * All of the LOGSYS_TAG's can be ORed together for combined behavior
+ * All of the LOGSYS_RECID's are mutually exclusive. Only one RECID at any time
+ * can be specified.
  *
- * TAG_LOG controls the behaviour for tracing and it's mostly for internal
- * use only. Enable it to see tracing messages in normal log output.
- * Disable to record tracing only in the flight recorder.
- * logging via log_printf will set TAG_LOG automatically.
- *
- * ENTER/LEAVE/TRACE* will not set TAG_LOG.
- *
- * All tracing messages have priority set to LOGSYS_LEVEL_DEBUG and cannot
- * be changed.
- *
- * Enabling output for debug will not enable logging of tracing messages
- * automatically. Tracing has to be enabled explicitly.
+ * RECID_LOG indicates a message that should be sent to log. Anything else
+ * is stored only in the flight recorder.
  */
-#define LOGSYS_TAG_LOG			(1<<0)
-#define LOGSYS_TAG_ENTER		(1<<1)
-#define LOGSYS_TAG_LEAVE		(1<<2)
-#define LOGSYS_TAG_TRACE1		(1<<3)
-#define LOGSYS_TAG_TRACE2		(1<<4)
-#define LOGSYS_TAG_TRACE3		(1<<5)
-#define LOGSYS_TAG_TRACE4		(1<<6)
-#define LOGSYS_TAG_TRACE5		(1<<7)
-#define LOGSYS_TAG_TRACE6		(1<<8)
-#define LOGSYS_TAG_TRACE7		(1<<9)
-#define LOGSYS_TAG_TRACE8		(1<<10)
+#define LOGSYS_RECID_LOG		UINT_MAX - 1
+#define LOGSYS_RECID_ENTER		UINT_MAX - 2
+#define LOGSYS_RECID_LEAVE		UINT_MAX - 3
+#define LOGSYS_RECID_TRACE1		UINT_MAX - 4
+#define LOGSYS_RECID_TRACE2		UINT_MAX - 5
+#define LOGSYS_RECID_TRACE3		UINT_MAX - 6
+#define LOGSYS_RECID_TRACE4		UINT_MAX - 7
+#define LOGSYS_RECID_TRACE5		UINT_MAX - 8
+#define LOGSYS_RECID_TRACE6		UINT_MAX - 9
+#define LOGSYS_RECID_TRACE7		UINT_MAX - 10
+#define LOGSYS_RECID_TRACE8		UINT_MAX - 11
+
 
 /*
  * Internal APIs that must be globally exported
@@ -118,8 +111,7 @@ extern int _logsys_system_setup(
 	const char *logfile,
 	int logfile_priority,
 	int syslog_facility,
-	int syslog_priority,
-	unsigned int tags);
+	int syslog_priority);
 
 extern int _logsys_config_subsys_get (
 	const char *subsys);
@@ -134,7 +126,7 @@ extern void _logsys_log_vprintf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
-	unsigned int tag,
+	unsigned int rec_ident,
 	const char *format,
 	va_list ap) __attribute__((format(printf, 7, 0)));
 
@@ -144,7 +136,7 @@ extern void _logsys_log_printf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
-	unsigned int tag,
+	unsigned int rec_ident,
 	const char *format,
 	...) __attribute__((format(printf, 7, 8)));
 
@@ -153,8 +145,8 @@ extern void _logsys_log_rec (
 	const char *function_name,
 	const char *file_name,
 	int file_line,
+	unsigned int level,
 	unsigned int rec_ident,
-	unsigned int tag,
 	...);
 
 extern int _logsys_wthread_create (void);
@@ -215,13 +207,6 @@ extern unsigned int logsys_config_mode_set (
 extern unsigned int logsys_config_mode_get (
 	const char *subsys);
 
-extern unsigned int logsys_config_tags_set (
-	const char *subsys,
-	unsigned int tags);
-
-extern unsigned int logsys_config_tags_get (
-	const char *subsys);
-
 /*
  * to close a logfile, just invoke this function with a NULL
  * file or if you want to change logfile, the old one will
@@ -248,7 +233,7 @@ extern unsigned int logsys_config_debug_set (
 /*
  * External API - helpers
  *
- * convert facility/priority/tag to/from name/values
+ * convert facility/priority to/from name/values
  */
 extern int logsys_facility_id_get (
 	const char *name);
@@ -261,12 +246,6 @@ extern int logsys_priority_id_get (
 
 extern const char *logsys_priority_name_get (
 	unsigned int priority);
-
-extern int logsys_tag_id_get (
-	const char *name);
-
-extern const char *logsys_tag_name_get (
-	unsigned int tag);
 
 extern int logsys_thread_priority_set (
 	int policy,
@@ -281,12 +260,12 @@ extern void *logsys_rec_end;
 #define LOGSYS_REC_END (&logsys_rec_end)
 
 #define LOGSYS_DECLARE_SYSTEM(name,mode,debug,file,file_priority,	\
-		syslog_facility,syslog_priority,tags,format,rec_size)	\
+		syslog_facility,syslog_priority,format,rec_size)	\
 __attribute__ ((constructor))						\
 static void logsys_system_init (void)					\
 {									\
 	if (_logsys_system_setup (name,mode,debug,file,file_priority,	\
-			syslog_facility,syslog_priority,tags) < 0) {	\
+			syslog_facility,syslog_priority) < 0) {		\
 		fprintf (stderr,					\
 			"Unable to setup logging system: %s.\n", name);	\
 		exit (-1);						\
@@ -327,75 +306,75 @@ static void logsys_subsys_init (void)					\
 #define log_rec(rec_ident, args...)					\
 do {									\
 	_logsys_log_rec (logsys_subsys_id,  __FUNCTION__,		\
-		__FILE__,  __LINE__, rec_ident, 0, ##args);		\
+		__FILE__,  __LINE__, rec_ident, 0, ##args,		\
+		LOGSYS_REC_END);					\
 } while(0)
 
-#define log_printf(lvl, format, args...)				\
+#define log_printf(level, format, args...)				\
  do {									\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
-		__FILE__, __LINE__, lvl, 0, format, ##args);		\
+		__FILE__, __LINE__, level, LOGSYS_RECID_LOG,		\
+		format, ##args);					\
 } while(0)
 
 #define ENTER() do {							\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
+	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
-		LOGSYS_TAG_ENTER, "ENTERING function [%s] line [%d]\n", \
-		__FUNCTION__, __LINE__);				\
+		LOGSYS_RECID_ENTER, LOGSYS_REC_END);			\
 } while(0)
 
 #define LEAVE() do {							\
-	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
+	_logsys_log_rec (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_LEAVE, "LEAVING function [%s] line [%d]\n",	\
-		__FUNCTION__, __LINE__);				\
+		LOGSYS_RECID_LEAVE, LOGSYS_REC_END);			\
 } while(0)
 
 #define TRACE1(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG, 		\
-		LOGSYS_TAG_TRACE1, format, ##args);			\
+		LOGSYS_RECID_TRACE1, format, ##args);			\
 } while(0)
 
 #define TRACE2(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE2, format, ##args);			\
+		LOGSYS_RECID_TRACE2, format, ##args);			\
 } while(0)
 
 #define TRACE3(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE3, format, ##args);			\
+		LOGSYS_RECID_TRACE3, format, ##args);			\
 } while(0)
 
 #define TRACE4(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE4, format, ##args);			\
+		LOGSYS_RECID_TRACE4, format, ##args);			\
 } while(0)
 
 #define TRACE5(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE5, format, ##args);			\
+		LOGSYS_RECID_TRACE5, format, ##args);			\
 } while(0)
 
 #define TRACE6(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE6, format, ##args);			\
+		LOGSYS_RECID_TRACE6, format, ##args);			\
 } while(0)
 
 #define TRACE7(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE7, format, ##args);			\
+		LOGSYS_RECID_TRACE7, format, ##args);			\
 } while(0)
 
 #define TRACE8(format, args...) do {					\
 	_logsys_log_printf (logsys_subsys_id, __FUNCTION__,		\
 		__FILE__,  __LINE__, LOGSYS_LEVEL_DEBUG,		\
-		LOGSYS_TAG_TRACE8, format, ##args);			\
+		LOGSYS_RECID_TRACE8, format, ##args);			\
 } while(0)
 
 #ifdef __cplusplus

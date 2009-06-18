@@ -45,7 +45,6 @@ LOGSYS_DECLARE_SYSTEM ("logtest_rec",
 	LOG_INFO,
 	LOG_DAEMON,
 	LOG_INFO,
-	0,
 	NULL,
 	100000);
 

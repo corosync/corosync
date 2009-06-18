@@ -56,6 +56,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <limits.h>
 
 #include <corosync/sq.h>
 #include <corosync/list.h>
@@ -206,7 +207,7 @@ struct totemrrp_instance {
 	int totemrrp_subsys_id;
 
 	void (*totemrrp_log_printf) (int subsys, const char *function,
-		const char *file, int line, unsigned int level, unsigned int tag,
+		const char *file, int line, unsigned int level, unsigned int rec_ident,
 		const char *format, ...)__attribute__((format(printf, 7, 8)));
 
 	hdb_handle_t handle;
@@ -467,11 +468,13 @@ struct rrp_algo *rrp_algos[] = {
  */
 DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 
+#define RECID_LOG UINT_MAX - 1
+
 #define log_printf(level, format, args...)				\
 do {									\
 	rrp_instance->totemrrp_log_printf (				\
 		rrp_instance->totemrrp_subsys_id,			\
-		__FUNCTION__, __FILE__, __LINE__, level, 0,		\
+		__FUNCTION__, __FILE__, __LINE__, level, RECID_LOG,	\
 		format, ##args);					\
 } while (0);
 

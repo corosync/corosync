@@ -67,29 +67,13 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 /*
- * syslog tagnames, priorityanmes, facility names to value mapping
+ * syslog prioritynames, facility names to value mapping
  * Some C libraries build this in to their headers, but it is non-portable
  * so logsys supplies its own version.
  */
 struct syslog_names {
 	const char *c_name;
 	int c_val;
-};
-
-struct syslog_names tagnames[] =
-{
-	{ "log", LOGSYS_TAG_LOG },
-	{ "enter", LOGSYS_TAG_ENTER },
-	{ "leave", LOGSYS_TAG_LEAVE },
-	{ "trace1", LOGSYS_TAG_TRACE1 },
-	{ "trace2", LOGSYS_TAG_TRACE2 },
-	{ "trace3", LOGSYS_TAG_TRACE3 },
-	{ "trace4", LOGSYS_TAG_TRACE4 },
-	{ "trace5", LOGSYS_TAG_TRACE5 },
-	{ "trace6", LOGSYS_TAG_TRACE6 },
-	{ "trace7", LOGSYS_TAG_TRACE7 },
-	{ "trace8", LOGSYS_TAG_TRACE8 },
-	{ NULL, -1 }
 };
 
 struct syslog_names prioritynames[] =
@@ -156,7 +140,6 @@ struct logsys_logger {
 	FILE *logfile_fp;			/* track file descriptor */
 	unsigned int mode;			/* subsystem mode */
 	unsigned int debug;			/* debug on|off */
-	unsigned int tags;			/* trace tags */
 	int syslog_facility;			/* facility */
 	int syslog_priority;			/* priority */
 	int logfile_priority;			/* priority to file */
@@ -236,23 +219,6 @@ static char *decode_mode(int subsysid, char *buf, size_t buflen)
 	return buf;
 }
 
-static char *decode_tags(int subsysid, char *buf, size_t buflen)
-{
-	unsigned int i;
-
-	memset(buf, 0, buflen);
-
-	for (i = 0; tagnames[i].c_name != NULL; i++) {
-		if (logsys_loggers[subsysid].tags & tagnames[i].c_val) {
-			snprintf(buf+strlen(buf), buflen, "%s,", tagnames[i].c_name);
-		}
-	}
-
-	memset(buf+strlen(buf)-1,0,1);
-
-	return buf;
-}
-
 static const char *decode_debug(int subsysid)
 {
 	if (logsys_loggers[subsysid].debug)
@@ -272,7 +238,6 @@ static const char *decode_status(int subsysid)
 static void dump_subsys_config(int subsysid)
 {
 	char modebuf[1024];
-	char tagbuf[1024];
 
 	fprintf(stderr,
 		"ID: %d\n"
@@ -281,7 +246,6 @@ static void dump_subsys_config(int subsysid)
 		"logfile_fp: %p\n"
 		"mode: %s\n"
 		"debug: %s\n"
-		"tags: %s\n"
 		"syslog_fac: %s\n"
 		"syslog_pri: %s\n"
 		"logfile_pri: %s\n"
@@ -292,7 +256,6 @@ static void dump_subsys_config(int subsysid)
 		logsys_loggers[subsysid].logfile_fp,
 		decode_mode(subsysid, modebuf, sizeof(modebuf)),
 		decode_debug(subsysid),
-		decode_tags(subsysid, tagbuf, sizeof(tagbuf)),
 		logsys_facility_name_get(logsys_loggers[subsysid].syslog_facility),
 		logsys_priority_name_get(logsys_loggers[subsysid].syslog_priority),
 		logsys_priority_name_get(logsys_loggers[subsysid].logfile_priority),
@@ -456,7 +419,7 @@ static void log_printf_to_logs (
 	const char *function_name,
 	int file_line,
 	unsigned int level,
-	unsigned int tag,
+	unsigned int rec_ident,
 	const char *buffer)
 {
 	char normal_output_buffer[COMBINE_BUFFER_SIZE];
@@ -470,21 +433,15 @@ static void log_printf_to_logs (
 	size_t cutoff;
 	unsigned int normal_len, syslog_len;
 	int subsysid;
-	int c, i, has_tag = 0;
+	int c;
+
+	if (rec_ident != LOGSYS_RECID_LOG) {
+		return;
+	}
 
 	subsysid = _logsys_config_subsys_get(subsys);
 	if (subsysid <= - 1) {
 		return;
-	}
-
-	for (i = 1; tagnames[i].c_name != NULL; i++) {
-		if (tag & tagnames[i].c_val) {
-			if ((logsys_loggers[subsysid].tags & tag) == 0) {
-				return;
-			} else {
-				has_tag = 1;
-			}
-		}
 	}
 
 	while ((c = format_buffer[format_buffer_idx])) {
@@ -579,7 +536,7 @@ static void log_printf_to_logs (
 	 */
 	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_SYSLOG) &&
 	     ((level <= logsys_loggers[subsysid].syslog_priority) ||
-	     (logsys_loggers[subsysid].debug != 0) || (has_tag > 0))) {
+	     (logsys_loggers[subsysid].debug != 0))) {
 		syslog (level | logsys_loggers[subsysid].syslog_facility, "%s", syslog_output_buffer);
 	}
 
@@ -595,7 +552,7 @@ static void log_printf_to_logs (
 	if (((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE) &&
 	     (logsys_loggers[subsysid].logfile_fp != NULL)) &&
 	    ((level <= logsys_loggers[subsysid].logfile_priority) ||
-	     (logsys_loggers[subsysid].debug != 0) || (has_tag > 0))) {
+	     (logsys_loggers[subsysid].debug != 0))) {
 		/*
 		 * Output to a file
 		 */
@@ -627,7 +584,7 @@ static void log_printf_to_logs (
 	 */
 	if ((logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_STDERR) &&
 	     ((level <= logsys_loggers[subsysid].logfile_priority) ||
-	     (logsys_loggers[subsysid].debug != 0) || (has_tag > 0))) {
+	     (logsys_loggers[subsysid].debug != 0))) {
 		if (write (STDERR_FILENO, normal_output_buffer, strlen (normal_output_buffer)) < 0) {
 			char tmpbuffer[1024];
 			/*
@@ -653,7 +610,7 @@ static void record_print (const char *buf)
 	const int *buf_uint32t = (const int *)buf;
 	unsigned int rec_size = buf_uint32t[0];
 	unsigned int level = buf_uint32t[1];
-	unsigned int tag = buf_uint32t[2];
+	unsigned int rec_ident = buf_uint32t[2];
 	unsigned int file_line = buf_uint32t[3];
 	unsigned int i;
 	unsigned int words_processed;
@@ -684,24 +641,24 @@ static void record_print (const char *buf)
 		(char *)arguments[2],
 		file_line,
 		level,
-		tag,
+		rec_ident,
 		(char *)arguments[3]);
 }
 
 static int record_read (char *buf, int rec_idx, int *log_msg) {
 	unsigned int rec_size;
+	unsigned int level;
 	unsigned int rec_ident;
-	unsigned int tag;
 	int firstcopy, secondcopy;
 
 	rec_size = flt_data[rec_idx];
-	rec_ident = flt_data[(rec_idx + 1) % flt_data_size];
-	tag = flt_data[(rec_idx + 2) % flt_data_size];
+	level = flt_data[(rec_idx + 1) % flt_data_size];
+	rec_ident = flt_data[(rec_idx + 2) % flt_data_size];
 
 	/*
 	 * Not a log record
 	 */
-	if ((tag & LOGSYS_TAG_LOG) == 0) {
+	if (rec_ident != LOGSYS_RECID_LOG) {
 		*log_msg = 0;
         	return ((rec_idx + rec_size) % flt_data_size);
 	}
@@ -991,8 +948,7 @@ int _logsys_system_setup(
 	const char *logfile,
 	int logfile_priority,
 	int syslog_facility,
-	int syslog_priority,
-	unsigned int tags)
+	int syslog_priority)
 {
 	int i;
 	const char *errstr;
@@ -1024,8 +980,6 @@ int _logsys_system_setup(
 	logsys_loggers[i].syslog_facility = syslog_facility;
 	logsys_loggers[i].syslog_priority = syslog_priority;
 	syslog_facility_reconf();
-
-	logsys_loggers[i].tags = tags;
 
 	logsys_loggers[i].init_status = LOGSYS_LOGGER_INIT_DONE;
 
@@ -1131,8 +1085,8 @@ void _logsys_log_rec (
 	const char *function_name,
 	const char *file_name,
 	int file_line,
+	unsigned int level,
 	unsigned int rec_ident,
-	unsigned int tag,
 	...)
 {
 	va_list ap;
@@ -1150,7 +1104,7 @@ void _logsys_log_rec (
 	/*
 	 * Decode VA Args
 	 */
-	va_start (ap, tag);
+	va_start (ap, rec_ident);
 	arguments = 3;
 	for (;;) {
 		buf_args[arguments] = va_arg (ap, void *);
@@ -1193,10 +1147,10 @@ void _logsys_log_rec (
 	flt_data[idx++] = 0;
 	idx_word_step(idx);
 
-	flt_data[idx++] = rec_ident;
+	flt_data[idx++] = level;
 	idx_word_step(idx);
 
-	flt_data[idx++] = tag;
+	flt_data[idx++] = rec_ident;
 	idx_word_step(idx);
 
 	flt_data[idx++] = file_line;
@@ -1273,7 +1227,7 @@ void _logsys_log_rec (
 	 * the new head position and commit the new head.
 	 */
 	logsys_lock();
-	if (tag & LOGSYS_TAG_LOG) {
+	if (rec_ident == LOGSYS_RECID_LOG) {
 		log_requests_pending += 1;
 	}
 	if (log_requests_pending == 0) {
@@ -1290,7 +1244,7 @@ void _logsys_log_vprintf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
-	unsigned int tag,
+	unsigned int rec_ident,
 	const char *format,
 	va_list ap)
 {
@@ -1321,7 +1275,7 @@ void _logsys_log_vprintf (
 		file_name,
 		file_line,
 		level,
-		tag |= LOGSYS_TAG_LOG,
+		rec_ident,
 		logsys_print_buffer, len + 1,
 		LOGSYS_REC_END);
 
@@ -1331,7 +1285,7 @@ void _logsys_log_vprintf (
 		 * expect the worker thread to output the log data once signaled
 		 */
 		log_printf_to_logs (logsys_loggers[subsysid].subsys,
-			file_name, function_name, file_line, level, tag,
+			file_name, function_name, file_line, level, rec_ident,
 			logsys_print_buffer);
 	} else {
 		/*
@@ -1347,7 +1301,7 @@ void _logsys_log_printf (
 	const char *file_name,
 	int file_line,
 	unsigned int level,
-	unsigned int tag,
+	unsigned int rec_ident,
 	const char *format,
 	...)
 {
@@ -1355,7 +1309,7 @@ void _logsys_log_printf (
 
 	va_start (ap, format);
 	_logsys_log_vprintf (subsysid, function_name, file_name, file_line,
-		level, tag, format, ap);
+		level, rec_ident, format, ap);
 	va_end (ap);
 }
 
@@ -1413,40 +1367,6 @@ unsigned int logsys_config_mode_get (const char *subsys)
 	}
 
 	return logsys_loggers[i].mode;
-}
-
-unsigned int logsys_config_tags_set (const char *subsys, unsigned int tags)
-{
-	int i;
-
-	pthread_mutex_lock (&logsys_config_mutex);
-	if (subsys != NULL) {
-		i = _logsys_config_subsys_get_unlocked (subsys);
-		if (i >= 0) {
-			logsys_loggers[i].tags = tags;
-			i = 0;
-		}
-	} else {
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
-			logsys_loggers[i].tags = tags;
-		}
-		i = 0;
-	}
-	pthread_mutex_unlock (&logsys_config_mutex);
-
-	return i;
-}
-
-unsigned int logsys_config_tags_get (const char *subsys)
-{
-	int i;
-
-	i = _logsys_config_subsys_get (subsys);
-	if (i < 0) {
-		return i;
-	}
-
-	return logsys_loggers[i].tags;
 }
 
 int logsys_config_file_set (
@@ -1647,30 +1567,6 @@ const char *logsys_priority_name_get (unsigned int priority)
 	for (i = 0; prioritynames[i].c_name != NULL; i++) {
 		if (priority == prioritynames[i].c_val) {
 			return (prioritynames[i].c_name);
-		}
-	}
-	return (NULL);
-}
-
-int logsys_tag_id_get (const char *name)
-{
-	unsigned int i;
-
-	for (i = 0; tagnames[i].c_name != NULL; i++) {
-		if (strcasecmp(name, tagnames[i].c_name) == 0) {
-			return (tagnames[i].c_val);
-		}
-	}
-	return (-1);
-}
-
-const char *logsys_tag_name_get (unsigned int tag)
-{
-	unsigned int i;
-
-	for (i = 0; tagnames[i].c_name != NULL; i++) {
-		if (tag == tagnames[i].c_val) {
-			return (tagnames[i].c_name);
 		}
 	}
 	return (NULL);

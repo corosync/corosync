@@ -251,35 +251,6 @@ parse_error:
 	return (-1);
 }
 
-static char * strsep_cs(char **stringp, const char *delim)
-{
-	char *s;
-	const char *spanp;
-	int c, sc;
-	char *tok;
-
-	if ((s = *stringp) == NULL) {
-		return (NULL);
-	}
-
-	for (tok = s; ; ) {
-		c = *s++;
-		spanp = delim;
-		do {
-			if ((sc = *spanp++) == c) {
-				if (c == 0) {
-					s = NULL;
-				}
-				else {
-					s[-1] = 0;
-				}
-				*stringp = s;
-				return (tok);
-			}
-		} while (sc != 0);
-	}
-}
-
 static int corosync_main_config_set (
 	struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_handle,
@@ -481,36 +452,6 @@ static int corosync_main_config_set (
 			}
 		} else {
 			error_reason = "unknown value for debug";
-			goto parse_error;
-		}
-	}
-
-	if (!objdb_get_string (objdb, object_handle, "tags", &value)) {
-		char *temp, *token;
-		unsigned int tags = 0;
-
-		temp = strdup(value);
-		if (temp == NULL) {
-			error_reason = "exhausted virtual memory";
-			goto parse_error;
-		}
-
-		while ((token = strsep_cs(&temp, "|")) != NULL) {
-			int val;
-
-			val = logsys_tag_id_get(token);
-			if (val < 0) {
-				error_reason = "bad tags value";
-				goto parse_error;
-			}
-			tags |= val;
-		}
-		free(temp);
-
-		tags |= LOGSYS_TAG_LOG;
-
-		if (logsys_config_tags_set (subsys, tags) < 0) {
-			error_reason = "unable to set tags";
 			goto parse_error;
 		}
 	}

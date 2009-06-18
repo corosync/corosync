@@ -69,6 +69,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <limits.h>
 
 #include <corosync/swab.h>
 #include <corosync/cs_queue.h>
@@ -435,7 +436,7 @@ struct totemsrp_instance {
 
 	void (*totemsrp_log_printf) (int subsys,
 		const char *function, const char *file,
-		int line, unsigned int level, unsigned int tag,
+		int line, unsigned int level, unsigned int rec_ident,
 		const char *format, ...)__attribute__((format(printf, 7, 8)));;
 
 	enum memb_state memb_state;
@@ -621,10 +622,12 @@ struct message_handlers totemsrp_message_handlers = {
 
 static const char *rundir = NULL;
 
+#define RECID_LOG UINT_MAX - 1
+
 #define log_printf(level, format, args...)				\
 do {									\
 	instance->totemsrp_log_printf (instance->totemsrp_subsys_id,	\
-		__FUNCTION__, __FILE__, __LINE__, level, 0,		\
+		__FUNCTION__, __FILE__, __LINE__, level, RECID_LOG,	\
 		format, ##args);					\
 } while (0);
 

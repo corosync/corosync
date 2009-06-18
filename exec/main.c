@@ -90,7 +90,6 @@ LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOG_INFO,
 	LOG_DAEMON,
 	LOG_INFO,
-	0,
 	NULL,
 	1000000);
 
@@ -553,14 +552,14 @@ static void ipc_log_printf (const char *format, ...) {
 	va_start (ap, format);
 
 	_logsys_log_vprintf (ipc_subsys_id, __FUNCTION__,
-		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, 0, format, ap);
+		__FILE__, __LINE__, LOGSYS_LEVEL_ERROR, LOGSYS_RECID_LOG, format, ap);
 
 	va_end (ap);
 }
 
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (ipc_subsys_id, __FUNCTION__,
-                __FILE__, __LINE__, LOGSYS_LEVEL_ERROR, 0, "%s", error_msg);
+                __FILE__, __LINE__, LOGSYS_LEVEL_ERROR, LOGSYS_RECID_LOG, "%s", error_msg);
 	exit(EXIT_FAILURE);
 }
 

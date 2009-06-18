@@ -48,7 +48,6 @@ LOGSYS_DECLARE_SYSTEM ("logtest_rec",
 	LOGSYS_LEVEL_INFO,   /* logfile_priority */
 	LOG_DAEMON,       /* syslog facility */
 	LOGSYS_LEVEL_INFO,   /* syslog level */
-	0,                /* tags */
 	NULL,             /* use default format */
 	1000000);         /* flight recorder size */
 

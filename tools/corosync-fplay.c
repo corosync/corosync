@@ -370,7 +370,7 @@ static void logsys_rec_print (const void *record)
 	const unsigned int *buf_uint32t = record;
 	unsigned int rec_size;
 	unsigned int rec_ident;
-	unsigned int tag;
+	unsigned int level;
 	unsigned int line;
 	unsigned int arg_size_idx;
 	unsigned int i;
@@ -383,8 +383,8 @@ static void logsys_rec_print (const void *record)
 	int arg_count = 0;
 
 	rec_size = buf_uint32t[rec_idx];
-	rec_ident = buf_uint32t[rec_idx+1];
-	tag = buf_uint32t[rec_idx+2];
+	level = buf_uint32t[rec_idx+1];
+	rec_ident = buf_uint32t[rec_idx+2];
 	line = buf_uint32t[rec_idx+3];
 	record_number = buf_uint32t[rec_idx+4];
 
@@ -405,31 +405,51 @@ static void logsys_rec_print (const void *record)
 			for (j = 0; j < printer_subsystems[i].record_printers_count; j++) {
 				if (rec_ident == printer_subsystems[i].record_printers[j].ident) {
 				  printer_subsystems[i].record_printers[j].print_fn ((const void **)&arguments[3]);
-					found = 1;
+					return;
 				}
 			}
 		}
 	}
-	if (tag & LOGSYS_TAG_ENTER) {
-		printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
-	if (tag & LOGSYS_TAG_LEAVE) {
-		printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
-		found = 1;
-	}
-	if (found == 1) {
-		tag &= ~LOGSYS_TAG_LOG;
-	}
-	if (tag & LOGSYS_TAG_LOG) {
-		printf ("Log Message=%s\n", arguments[3]);
-		found = 1;
-	}
-	if (found == 0) {
-		printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
-			arguments[0], rec_ident);
-	}
 
+	switch(rec_ident) {
+		case LOGSYS_RECID_LOG:
+			printf ("Log Message=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_ENTER:
+			printf ("ENTERING function [%s] line [%d]\n", arguments[2], line);
+			break;
+		case LOGSYS_RECID_LEAVE:
+			printf ("LEAVING function [%s] line [%d]\n", arguments[2], line);
+			break;
+		case LOGSYS_RECID_TRACE1:
+			printf ("Tracing(1) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE2:
+			printf ("Tracing(2) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE3:
+			printf ("Tracing(3) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE4:
+			printf ("Tracing(4) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE5:
+			printf ("Tracing(5) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE6:
+			printf ("Tracing(6) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE7:
+			printf ("Tracing(7) Messsage=%s\n", arguments[3]);
+			break;
+		case LOGSYS_RECID_TRACE8:
+			printf ("Tracing(8) Messsage=%s\n", arguments[3]);
+			break;
+		default:
+			printf ("Unknown record type found subsys=[%s] ident=[%d]\n",
+				arguments[0], rec_ident);
+			break;
+	}
 #ifdef COMPILE_OUT
 printf ("\n");
 #endif
