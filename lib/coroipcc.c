@@ -301,10 +301,16 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (addr != addr_orig) {
 		return (-1);
 	}
+#ifdef COROSYNC_BSD
+	madvise(addr_orig, bytes, MADV_NOSYNC);
+#endif
 
 	addr = mmap (((char *)addr_orig) + bytes,
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
+#ifdef COROSYNC_BSD
+	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
+#endif
 
 	res = close (fd);
 	if (res) {
@@ -367,6 +373,9 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (addr != addr_orig) {
 		return (-1);
 	}
+#ifdef COROSYNC_BSD
+	madvise(addr_orig, bytes, MADV_NOSYNC);
+#endif
 
 	res = close (fd);
 	if (res) {
