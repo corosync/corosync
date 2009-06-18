@@ -189,6 +189,8 @@ void *logsys_rec_end;
 
 #define FDTAIL_INDEX 	(flt_data_size + 1)
 
+#define FDMAX_ARGS	64
+
 /* forward declarations */
 static void logsys_close_logfile(int subsysid);
 
@@ -619,7 +621,7 @@ static void record_print (const char *buf)
 	unsigned int i;
 	unsigned int words_processed;
 	unsigned int arg_size_idx;
-	const void *arguments[64];
+	const void *arguments[FDMAX_ARGS];
 	unsigned int arg_count;
 
 	arg_size_idx = 4;
@@ -1088,17 +1090,15 @@ void _logsys_log_rec (
 	...)
 {
 	va_list ap;
-	const void *buf_args[64];
-	unsigned int buf_len[64];
+	const void *buf_args[FDMAX_ARGS];
+	unsigned int buf_len[FDMAX_ARGS];
 	unsigned int i;
 	unsigned int idx;
 	unsigned int arguments = 0;
-	unsigned int record_reclaim_size;
+	unsigned int record_reclaim_size = 0;
 	unsigned int index_start;
 	int words_written;
 	int subsysid;
-
-	record_reclaim_size = 0;
 
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 
@@ -1115,7 +1115,7 @@ void _logsys_log_rec (
 		buf_len[arguments] = va_arg (ap, int);
 		record_reclaim_size += ((buf_len[arguments] + 3) >> 2) + 1;
 		arguments++;
-		if (arguments >= 64) {
+		if (arguments >= FDMAX_ARGS) {
 			break;
 		}
 	}
