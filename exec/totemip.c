@@ -314,7 +314,7 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
-/* 
+/*
  * On Solaris, man if_tcp describes this method
  */
 #if defined(COROSYNC_SOLARIS)

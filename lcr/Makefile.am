@@ -53,7 +53,7 @@ if BUILD_DARWIN
 
 %.lcrso: %.o
 	$(CC) $(CFLAGS) -bundle -bundle_loader ./test $^ -o $@
-else 
+else
 
 if BUILD_SOLARIS
 

@@ -601,7 +601,7 @@ struct corosync_service_engine {
 	unsigned short id;
 	unsigned short priority; /* Lower priority are loaded first, unloaded last.
 				  * 0 is a special case which always loaded _and_ unloaded last
-				  */ 
+				  */
 	unsigned int private_data_size;
 	enum cs_lib_flow_control flow_control;
 	enum cs_lib_allow_inquorate allow_inquorate;

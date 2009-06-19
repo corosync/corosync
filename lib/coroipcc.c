@@ -123,7 +123,7 @@ socket_send (
 	msg_send.msg_name = 0;
 	msg_send.msg_namelen = 0;
 
-#if !defined(COROSYNC_SOLARIS) 
+#if !defined(COROSYNC_SOLARIS)
 	msg_send.msg_control = 0;
 	msg_send.msg_controllen = 0;
 	msg_send.msg_flags = 0;

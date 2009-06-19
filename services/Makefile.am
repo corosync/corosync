@@ -65,7 +65,7 @@ quorum_%.lcrso: %.o
 
 service_%.lcrso: %.o
 	$(LD) $(LDFLAGS) -G $^ -o $@
- 
+
 else
 quorum_%.lcrso: %.o
 	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@

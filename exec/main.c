@@ -823,7 +823,7 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", corosync_lib_dir);
 		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
 	}
-	
+
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {

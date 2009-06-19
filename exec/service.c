@@ -207,7 +207,7 @@ unsigned int corosync_service_link_and_init (
 	return (res);
 }
 
-static int service_priority_max(void) 
+static int service_priority_max(void)
 {
     int lpc = 0, max = 0;
     for(; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
@@ -218,7 +218,7 @@ static int service_priority_max(void)
     return max;
 }
 
-extern unsigned int corosync_service_unlink_priority (struct corosync_api_v1 *corosync_api, int priority) 
+extern unsigned int corosync_service_unlink_priority (struct corosync_api_v1 *corosync_api, int priority)
 {
 	char *service_name;
 	unsigned int *service_ver;
@@ -233,13 +233,13 @@ extern unsigned int corosync_service_unlink_priority (struct corosync_api_v1 *co
 	} else {
 	    log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync components up to (and including) priority %d\n", priority);
 	}
-	
+
 	for( ; p >= priority; p--) {
 	    for(lpc = 0; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
 		if(ais_service[lpc] == NULL || ais_service[lpc]->priority != p) {
 		    continue;
 		}
-		
+
 		/* unload
 		 *
 		 * If we had a pointer to the objdb entry, we'd not need to go looking again...
@@ -247,43 +247,43 @@ extern unsigned int corosync_service_unlink_priority (struct corosync_api_v1 *co
  		corosync_api->object_find_create (
 		    object_internal_configuration_handle,
 		    "service", strlen ("service"), &object_find_handle);
-		
+
 		while(corosync_api->object_find_next (
 			  object_find_handle, &object_service_handle) == 0) {
 
 		    int res = corosync_api->object_key_get (
 			object_service_handle,
 			"service_id", strlen ("service_id"), (void *)&service_id, NULL);
-		    
+
 		    service_name = NULL;
 		    if(res == 0 && *service_id == ais_service[lpc]->id) {
 			hdb_handle_t *found_service_handle;
 			corosync_api->object_key_get (
 			    object_service_handle,
 			    "name", strlen ("name"), (void *)&service_name, NULL);
-			
+
 			corosync_api->object_key_get (
 			    object_service_handle,
 			    "ver", strlen ("ver"), (void *)&service_ver, NULL);
-			
+
 			res = corosync_api->object_key_get (
 			    object_service_handle,
 			    "handle", strlen ("handle"), (void *)&found_service_handle, NULL);
-			
+
 			res = corosync_api->object_key_get (
 			    object_service_handle,
 			    "service_id", strlen ("service_id"), (void *)&service_id, NULL);
-			
+
 			log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
 				   service_name, *service_ver);
-			
+
 			if (ais_service[*service_id]->exec_exit_fn) {
 			    ais_service[*service_id]->exec_exit_fn ();
 			}
 			ais_service[*service_id] = NULL;
-			
+
 			lcr_ifact_release (*found_service_handle);
-			
+
 			corosync_api->object_destroy (object_service_handle);
 			break;
 		    }
@@ -338,17 +338,17 @@ extern unsigned int corosync_service_unlink_and_exit (
 		if (service_ver != *found_service_ver) {
 		    continue;
 		}
-		    
+
 		corosync_api->object_key_get (
 		    object_service_handle,
 		    "service_id", strlen ("service_id"),
 		    (void *)&service_id, NULL);
-		
+
 		if(service_id != NULL
 		   && *service_id > 0
 		   && *service_id < SERVICE_HANDLER_MAXIMUM_COUNT
 		   && ais_service[*service_id] != NULL) {
-		    
+
 		    corosync_api->object_find_destroy (object_find_handle);
 		    return corosync_service_unlink_priority (corosync_api, ais_service[*service_id]->priority);
 		}

@@ -549,7 +549,7 @@ static struct lcr_comp vsf_ykd_comp_ver0 = {
 void corosync_lcr_component_register (void);
 
 void corosync_lcr_component_register (void) {
-#else 
+#else
 __attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
 #endif
 	lcr_component_register (&vsf_ykd_comp_ver0);

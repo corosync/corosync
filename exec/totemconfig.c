@@ -329,7 +329,7 @@ printf ("couldn't find totem handle\n");
 			totem_config->clear_node_high_bit = 1;
 		}
 	}
-	
+
 	objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
 
 
@@ -366,7 +366,7 @@ printf ("couldn't find totem handle\n");
 					&totem_config->interfaces[ringnumber].mcast_addr,
 					"255.255.255.255", 0);
 			}
-			
+
 
 		}
 
