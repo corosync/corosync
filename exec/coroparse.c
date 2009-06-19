@@ -219,7 +219,7 @@ static int read_uidgid_files_into_objdb(
 	int res = 0;
 	struct stat stat_buf;
 
-	dirname = SYSCONFDIR "/uidgid.d";
+	dirname = COROSYSCONFDIR "/uidgid.d";
 	dp = opendir (dirname);
 
 	if (dp == NULL)
@@ -261,7 +261,7 @@ static int read_config_file_into_objdb(
 
 	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
 	if (!filename)
-		filename = SYSCONFDIR "/corosync.conf";
+		filename = COROSYSCONFDIR "/corosync.conf";
 
 	fp = fopen (filename, "r");
 	if (fp == NULL) {

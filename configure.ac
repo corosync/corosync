@@ -24,7 +24,7 @@ if test "$prefix" = "NONE"; then
 	fi
 	dnl Fix "sysconfdir" variable if not specified
 	if test "$sysconfdir" = "\${prefix}/etc"; then
-		sysconfdir="/etc/corosync"
+		sysconfdir="/etc"
 	fi
 	dnl Fix "libdir" variable if not specified
 	if test "$libdir" = "\${exec_prefix}/lib"; then
@@ -378,7 +378,10 @@ AC_SUBST([LINT_FLAGS])
 AC_DEFINE_UNQUOTED([LCRSODIR], "$(eval echo ${LCRSODIR})", [LCRSO directory])
 AC_DEFINE_UNQUOTED([SOCKETDIR], "$(eval echo ${SOCKETDIR})", [Socket directory])
 AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
-AC_DEFINE_UNQUOTED([SYSCONFDIR], "$(eval echo ${sysconfdir})", [sysconfig directory])
+
+COROSYSCONFDIR=${sysconfdir}/corosync
+AC_SUBST([COROSYSCONFDIR])
+AC_DEFINE_UNQUOTED([COROSYSCONFDIR], "$(eval echo ${COROSYSCONFDIR})", [corosync config directory])
 
 AC_OUTPUT
 
@@ -394,6 +397,7 @@ AC_MSG_RESULT([  Header files             = ${includedir}])
 AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
+AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
 AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])

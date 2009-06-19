@@ -764,7 +764,7 @@ int totem_config_keyread (
 	if (!got_key) {
 		const char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
 		if (!filename)
-			filename = SYSCONFDIR "/authkey";
+			filename = COROSYSCONFDIR "/authkey";
 		res = read_keyfile(filename, totem_config, error_string);
 		if (res)
 			goto key_error;

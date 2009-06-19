@@ -44,7 +44,7 @@
 
 #include <netinet/in.h>
 
-#define KEYFILE SYSCONFDIR "/authkey"
+#define KEYFILE COROSYSCONFDIR "/authkey"
 
 int main (void) {
 	int authkey_fd;
@@ -57,9 +57,9 @@ int main (void) {
 		printf ("Error: Authorization key must be generated as root user.\n");
 		exit (1);
 	}
-	if (mkdir (SYSCONFDIR, 0700)) {
+	if (mkdir (COROSYSCONFDIR, 0700)) {
 		if (errno != EEXIST) {
-			perror ("Failed to create directory: " SYSCONFDIR "/ais");
+			perror ("Failed to create directory: " COROSYSCONFDIR);
 			exit (1);
 		}
 	}
