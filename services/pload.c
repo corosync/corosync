@@ -250,7 +250,7 @@ static void message_handler_req_pload_start (void *conn, const void *msg)
 	req_exec_pload_start.msg_size = req_lib_pload_start->msg_size;
 	req_exec_pload_start.msg_count = req_lib_pload_start->msg_count;
 	req_exec_pload_start.time_interval = req_lib_pload_start->time_interval;
-	iov.iov_base = &req_exec_pload_start;
+	iov.iov_base = (void *)&req_exec_pload_start;
 	iov.iov_len = sizeof (struct req_exec_pload_start);
 
 	msgs_delivered = 0;
@@ -281,7 +281,7 @@ static int send_message (const void *arg)
 		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
 	req_exec_pload_mcast.header.size = sizeof (struct req_exec_pload_mcast) + msg_size;
 
-	iov[0].iov_base = &req_exec_pload_mcast;
+	iov[0].iov_base = (void *)&req_exec_pload_mcast;
 	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
 	if (msg_size > sizeof (req_exec_pload_mcast)) {
 		iov[1].iov_base = buffer;

@@ -84,6 +84,7 @@
 
 #include <config.h>
 
+#include <alloca.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>
@@ -567,7 +568,7 @@ static void totempg_deliver_fn (
 	 */
 	msg_count = mcast->fragmented ? mcast->msg_count - 1 : mcast->msg_count;
 	continuation = mcast->continuation;
-	iov_delv.iov_base = &assembly->data[0];
+	iov_delv.iov_base = (void *)&assembly->data[0];
 	iov_delv.iov_len = assembly->index + msg_lens[0];
 
 	/*
@@ -588,7 +589,7 @@ static void totempg_deliver_fn (
 			assembly->throw_away_mode = THROW_AWAY_INACTIVE;
 
 			assembly->index += msg_lens[0];
-			iov_delv.iov_base = &assembly->data[assembly->index];
+			iov_delv.iov_base = (void *)&assembly->data[assembly->index];
 			iov_delv.iov_len = msg_lens[1];
 			start = 1;
 		}
@@ -600,7 +601,7 @@ static void totempg_deliver_fn (
 				app_deliver_fn(nodeid, iov_delv.iov_base, iov_delv.iov_len,
 					endian_conversion_required);
 				assembly->index += msg_lens[i];
-				iov_delv.iov_base = &assembly->data[assembly->index];
+				iov_delv.iov_base = (void *)&assembly->data[assembly->index];
 				if (i < (msg_count - 1)) {
 					iov_delv.iov_len = msg_lens[i + 1];
 				}
@@ -666,11 +667,11 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 
 	mcast.msg_count = mcast_packed_msg_count;
 
-	iovecs[0].iov_base = &mcast;
+	iovecs[0].iov_base = (void *)&mcast;
 	iovecs[0].iov_len = sizeof (struct totempg_mcast);
-	iovecs[1].iov_base = mcast_packed_msg_lens;
+	iovecs[1].iov_base = (void *)mcast_packed_msg_lens;
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
-	iovecs[2].iov_base = &fragmentation_data[0];
+	iovecs[2].iov_base = (void *)&fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
 	res = totemmrp_mcast (iovecs, 3, 0);
 
@@ -847,12 +848,12 @@ static int mcast_msg (
 			 * assemble the message and send it
 			 */
 			mcast.msg_count = ++mcast_packed_msg_count;
-			iovecs[0].iov_base = &mcast;
+			iovecs[0].iov_base = (void *)&mcast;
 			iovecs[0].iov_len = sizeof(struct totempg_mcast);
-			iovecs[1].iov_base = mcast_packed_msg_lens;
+			iovecs[1].iov_base = (void *)mcast_packed_msg_lens;
 			iovecs[1].iov_len = mcast_packed_msg_count *
 				sizeof(unsigned short);
-			iovecs[2].iov_base = data_ptr;
+			iovecs[2].iov_base = (void *)data_ptr;
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemmrp_avail() > 0);
 			res = totemmrp_mcast (iovecs, 3, guarantee);

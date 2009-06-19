@@ -288,7 +288,7 @@ corosync_cfg_ring_status_get (
 	req_lib_cfg_ringstatusget.header.size = sizeof (struct req_lib_cfg_ringstatusget);
 	req_lib_cfg_ringstatusget.header.id = MESSAGE_REQ_CFG_RINGSTATUSGET;
 
-	iov.iov_base = 	&req_lib_cfg_ringstatusget,
+	iov.iov_base = (void *)&req_lib_cfg_ringstatusget,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringstatusget),
 
 	error = coroipcc_msg_send_reply_receive(cfg_instance->handle,
@@ -360,7 +360,7 @@ corosync_cfg_ring_reenable (
 	req_lib_cfg_ringreenable.header.size = sizeof (struct req_lib_cfg_ringreenable);
 	req_lib_cfg_ringreenable.header.id = MESSAGE_REQ_CFG_RINGREENABLE;
 
-	iov.iov_base = &req_lib_cfg_ringreenable,
+	iov.iov_base = (void *)&req_lib_cfg_ringreenable,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringreenable);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -399,7 +399,7 @@ corosync_cfg_service_load (
 		sizeof (req_lib_cfg_serviceload.service_name) - 1);
 	req_lib_cfg_serviceload.service_ver = service_ver;
 
-	iov.iov_base = &req_lib_cfg_serviceload;
+	iov.iov_base = (void *)&req_lib_cfg_serviceload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceload);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -438,7 +438,7 @@ corosync_cfg_service_unload (
 		sizeof (req_lib_cfg_serviceunload.service_name) - 1);
 	req_lib_cfg_serviceunload.service_ver = service_ver;
 
-	iov.iov_base = &req_lib_cfg_serviceunload;
+	iov.iov_base = (void *)&req_lib_cfg_serviceunload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceunload);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -474,7 +474,7 @@ corosync_cfg_state_track (
 		return (error);
 	}
 
-	iov.iov_base = &req_lib_cfg_statetrack,
+	iov.iov_base = (void *)&req_lib_cfg_statetrack,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrack),
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -507,7 +507,7 @@ corosync_cfg_state_track_stop (
 	req_lib_cfg_statetrackstop.header.size = sizeof (struct req_lib_cfg_statetrackstop);
 	req_lib_cfg_statetrackstop.header.id = MESSAGE_REQ_CFG_STATETRACKSTOP;
 
-	iov.iov_base = &req_lib_cfg_statetrackstop,
+	iov.iov_base = (void *)&req_lib_cfg_statetrackstop,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrackstop),
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -548,7 +548,7 @@ corosync_cfg_kill_node (
 	strcpy((char *)req_lib_cfg_killnode.reason.value, reason);
 	req_lib_cfg_killnode.reason.length = strlen(reason)+1;
 
-	iov.iov_base = &req_lib_cfg_killnode;
+	iov.iov_base = (void *)&req_lib_cfg_killnode;
 	iov.iov_len = sizeof (struct req_lib_cfg_killnode);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -585,7 +585,7 @@ corosync_cfg_try_shutdown (
 	req_lib_cfg_tryshutdown.header.size = sizeof (struct req_lib_cfg_tryshutdown);
 	req_lib_cfg_tryshutdown.flags = flags;
 
-	iov.iov_base = &req_lib_cfg_tryshutdown;
+	iov.iov_base = (void *)&req_lib_cfg_tryshutdown;
 	iov.iov_len = sizeof (req_lib_cfg_tryshutdown);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -620,7 +620,7 @@ corosync_cfg_replyto_shutdown (
 	req_lib_cfg_replytoshutdown.header.size = sizeof (struct req_lib_cfg_replytoshutdown);
 	req_lib_cfg_replytoshutdown.response = response;
 
-	iov.iov_base = &req_lib_cfg_replytoshutdown;
+	iov.iov_base = (void *)&req_lib_cfg_replytoshutdown;
 	iov.iov_len = sizeof (struct req_lib_cfg_replytoshutdown);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,
@@ -722,7 +722,7 @@ cs_error_t corosync_cfg_local_get (
 	req_lib_cfg_local_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cfg_local_get.header.id = MESSAGE_REQ_CFG_LOCAL_GET;
 
-	iov.iov_base = &req_lib_cfg_local_get;
+	iov.iov_base = (void *)&req_lib_cfg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cfg_local_get);
 
 	error = coroipcc_msg_send_reply_receive (
@@ -767,7 +767,7 @@ corosync_cfg_crypto_set (
 	req_lib_cfg_crypto_set.header.size = sizeof (struct req_lib_cfg_crypto_set);
 	req_lib_cfg_crypto_set.type = type;
 
-	iov.iov_base = &req_lib_cfg_crypto_set;
+	iov.iov_base = (void *)&req_lib_cfg_crypto_set;
 	iov.iov_len = sizeof (struct req_lib_cfg_crypto_set);
 
 	error = coroipcc_msg_send_reply_receive (cfg_instance->handle,

@@ -150,9 +150,9 @@ int main (void)
 	printf ("Leave result %d\n", result);
 	delivery_string = "evs_mcast_joined";
 
-	iov[0].iov_base = &msg;
+	iov[0].iov_base = (void *)&msg;
 	iov[0].iov_len = sizeof (struct my_msg);
-	iov[1].iov_base = buffer;
+	iov[1].iov_base = (void *)buffer;
 
 	/*
 	 * Demonstrate evs_mcast_joined

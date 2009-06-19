@@ -823,7 +823,7 @@ static void message_handler_req_exec_cpg_mcast (
 
 	memcpy(&res_lib_cpg_mcast.group_name, &req_exec_cpg_mcast->group_name,
 		sizeof(mar_cpg_name_t));
-	iovec[0].iov_base = &res_lib_cpg_mcast;
+	iovec[0].iov_base = (void *)&res_lib_cpg_mcast;
 	iovec[0].iov_len = sizeof (res_lib_cpg_mcast);
 
 	iovec[1].iov_base = (char*)message+sizeof(*req_exec_cpg_mcast);

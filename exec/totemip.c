@@ -374,7 +374,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			/*
 			 * Setup boundto output
 			 */
-			totemip_sockaddr_to_totemip_convert(sockaddr_in, boundto);
+			totemip_sockaddr_to_totemip_convert((struct sockaddr_storage *)sockaddr_in, boundto);
 			boundto->nodeid = sockaddr_in->sin_addr.s_addr;
 
 			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) < 0) {

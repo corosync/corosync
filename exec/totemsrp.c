@@ -50,6 +50,7 @@
 #include <config.h>
 
 #include <assert.h>
+#include <alloca.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -4022,7 +4023,7 @@ static int message_handler_memb_join (
 	int endian_conversion_needed)
 {
 	const struct memb_join *memb_join;
-	struct memb_join *memb_join_convert = alloca (msg_len);
+	struct memb_join *memb_join_convert = (struct memb_join *)alloca (msg_len);
 	int gather_entered;
 
 	if (endian_conversion_needed) {

@@ -124,9 +124,9 @@ int main (void)
                 exit (1);
         }
 
-	iov[0].iov_base = &msg;
+	iov[0].iov_base = (void *)&msg;
 	iov[0].iov_len = sizeof (struct my_msg);
-	iov[1].iov_base = buffer;
+	iov[1].iov_base = (void *)buffer;
 
 	/*
 	 * Demonstrate cpg_mcast_joined

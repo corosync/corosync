@@ -372,7 +372,7 @@ cs_error_t cpg_join (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_join.group_name,
 		group);
 
-	iov[0].iov_base = &req_lib_cpg_join;
+	iov[0].iov_base = (void *)&req_lib_cpg_join;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
 	do {
@@ -413,7 +413,7 @@ cs_error_t cpg_leave (
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_leave.group_name,
 		group);
 
-	iov[0].iov_base = &req_lib_cpg_leave;
+	iov[0].iov_base = (void *)&req_lib_cpg_leave;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
 	do {
@@ -454,7 +454,7 @@ cs_error_t cpg_membership_get (
 	req_lib_cpg_membership_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
 
-	iov.iov_base = &req_lib_cpg_membership_get;
+	iov.iov_base = (void *)&req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	do {
@@ -503,7 +503,7 @@ cs_error_t cpg_local_get (
 	req_lib_cpg_local_get.header.size = sizeof (coroipc_request_header_t);
 	req_lib_cpg_local_get.header.id = MESSAGE_REQ_CPG_LOCAL_GET;
 
-	iov.iov_base = &req_lib_cpg_local_get;
+	iov.iov_base = (void *)&req_lib_cpg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cpg_local_get);
 
 	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
@@ -657,7 +657,7 @@ cs_error_t cpg_mcast_joined (
 	req_lib_cpg_mcast.guarantee = guarantee;
 	req_lib_cpg_mcast.msglen = msg_len;
 
-	iov[0].iov_base = &req_lib_cpg_mcast;
+	iov[0].iov_base = (void *)&req_lib_cpg_mcast;
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 

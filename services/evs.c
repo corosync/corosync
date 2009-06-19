@@ -513,7 +513,7 @@ static void message_handler_req_exec_mcast (
 
 		if (found) {
 			res_evs_deliver_callback.local_nodeid = nodeid;
-			iov[0].iov_base = &res_evs_deliver_callback;
+			iov[0].iov_base = (void *)&res_evs_deliver_callback;
 			iov[0].iov_len = sizeof (struct res_evs_deliver_callback);
 			iov[1].iov_base = (void *) msg_addr; /* discard const */
 			iov[1].iov_len = req_exec_evs_mcast->msg_len;

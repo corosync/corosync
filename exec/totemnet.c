@@ -261,7 +261,7 @@ static int authenticate_and_decrypt_sober (
 	unsigned int iov_len)
 {
 	unsigned char keys[48];
-	struct security_header *header = iov[0].iov_base;
+	struct security_header *header = (struct security_header *)iov[0].iov_base;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
 	unsigned char *hmac_key = &keys[32];
@@ -795,7 +795,7 @@ static int authenticate_and_decrypt (
 	unsigned int iov_len)
 {
 	unsigned char type;
-	unsigned char *endbuf = iov[iov_len-1].iov_base;
+	unsigned char *endbuf = (unsigned char *)iov[iov_len-1].iov_base;
 	int res = -1;
 
 	/*
@@ -909,7 +909,7 @@ static inline void ucast_sendmsg (
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-		iovec_encrypt[0].iov_base = sheader;
+		iovec_encrypt[0].iov_base = (void *)sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
 		iovec_encrypt[1].iov_base = (void *)msg;
 		iovec_encrypt[1].iov_len = msg_len;
@@ -931,7 +931,7 @@ static inline void ucast_sendmsg (
 			encrypt_data[buf_len++] = 0;
 		}
 
-		iovec_encrypt[0].iov_base = encrypt_data;
+		iovec_encrypt[0].iov_base = (void *)encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
@@ -988,7 +988,7 @@ static inline void mcast_sendmsg (
 
 	if (instance->totem_config->secauth == 1) {
 
-		iovec_encrypt[0].iov_base = sheader;
+		iovec_encrypt[0].iov_base = (void *)sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
 		iovec_encrypt[1].iov_base = (void *)msg;
 		iovec_encrypt[1].iov_len = msg_len;
@@ -1010,7 +1010,7 @@ static inline void mcast_sendmsg (
 			encrypt_data[buf_len++] = 0;
 		}
 
-		iovec_encrypt[0].iov_base = encrypt_data;
+		iovec_encrypt[0].iov_base = (void *)encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
@@ -1077,7 +1077,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-		iovec_enc[0].iov_base = sheader;
+		iovec_enc[0].iov_base = (void *)sheader;
 		iovec_enc[0].iov_len = sizeof (struct security_header);
 		iovec_enc[1].iov_base = (void *)work_item->msg;
 		iovec_enc[1].iov_len = work_item->msg_len;
@@ -1091,7 +1091,7 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 			&buf_len,
 			iovec_enc, 2);
 
-		iovec.iov_base = totemnet_mcast_thread_state->iobuf;
+		iovec.iov_base = (void *)totemnet_mcast_thread_state->iobuf;
 		iovec.iov_len = buf_len;
 	} else {
 		iovec.iov_base = (void *)work_item->msg;
@@ -1233,7 +1233,7 @@ static int net_deliver_fn (
 			sizeof (struct security_header);
 		size_delv = bytes_received - sizeof (struct security_header);
 	} else {
-		msg_offset = iovec->iov_base;
+		msg_offset = (void *)iovec->iov_base;
 		size_delv = bytes_received;
 	}
 
