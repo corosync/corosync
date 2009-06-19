@@ -22,7 +22,6 @@ logging {
 	logger_subsys {
 		subsys: AMF
 		debug: off
-		tags: enter|leave|trace1|trace2|trace3|trace4|trace6
 	}
 }
 
