@@ -55,7 +55,11 @@
 #include "mainconfig.h"
 
 static char error_string_response[512];
+
 static struct objdb_iface_ver0 *global_objdb;
+
+DECLARE_LIST_INIT(uidgid_list_head);
+
 
 /* This just makes the code below a little neater */
 static inline int objdb_get_string (
@@ -642,16 +646,13 @@ static void add_logsys_config_notification(
 
 static int corosync_main_config_read_uidgid (
 	struct objdb_iface_ver0 *objdb,
-	const char **error_string,
-	struct ug_config *ug_config)
+	const char **error_string)
 {
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_service_handle;
 	char *value;
 	int uid, gid;
 	struct uidgid_item *ugi;
-
-	list_init (&ug_config->uidgid_list);
 
 	objdb->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -680,7 +681,8 @@ static int corosync_main_config_read_uidgid (
 			}
 			ugi->uid = uid;
 			ugi->gid = gid;
-			list_add (&ugi->list, &ug_config->uidgid_list);
+			list_init (&ugi->list);
+			list_add (&ugi->list, &uidgid_list_head);
 		}
 	}
 	objdb->object_find_destroy (object_find_handle);
@@ -690,53 +692,16 @@ static int corosync_main_config_read_uidgid (
 
 int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
-	const char **error_string,
-	struct ug_config *ug_config)
+	const char **error_string)
 {
-	hdb_handle_t object_service_handle;
-	char *value;
 	const char *error_reason = error_string_response;
-	hdb_handle_t object_find_handle;
-
-	memset (ug_config, 0, sizeof (struct ug_config));
 
 	if (corosync_main_config_read_logging(objdb, error_string) < 0) {
 		error_reason = *error_string;
 		goto parse_error;
 	}
 
-	ug_config->uid = -1;
-	ug_config->gid = -1;
-
-	objdb->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"aisexec",
-		strlen ("aisexec"),
-		&object_find_handle);
-
-	if (objdb->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-
-		if (!objdb_get_string (objdb,object_service_handle, "user", &value)) {
-			ug_config->uid = uid_determine(value);
-		}
-
-		if (!objdb_get_string (objdb,object_service_handle, "group", &value)) {
-			ug_config->gid = gid_determine(value);
-		}
-	}
-
-	objdb->object_find_destroy (object_find_handle);
-
-	if (ug_config->uid < 0) {
-		ug_config->uid = uid_determine("ais");
-	}
-	if (ug_config->gid < 0) {
-		ug_config->gid = gid_determine("ais");
-	}
-
-	corosync_main_config_read_uidgid (objdb, error_string, ug_config);
+	corosync_main_config_read_uidgid (objdb, error_string);
 
 	add_logsys_config_notification(objdb);
 

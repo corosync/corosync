@@ -117,8 +117,6 @@ static struct objdb_iface_ver0 *objdb = NULL;
 
 static struct corosync_api_v1 *api = NULL;
 
-static struct ug_config ug_config;
-
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 hdb_handle_t corosync_poll_handle;
@@ -276,9 +274,7 @@ static void confchg_fn (
 
 static void priv_drop (void)
 {
-return; /* TODO: we are still not dropping privs */
-	setuid (ug_config.uid);
-	setegid (ug_config.gid);
+	return; /* TODO: we are still not dropping privs */
 }
 
 static void corosync_tty_detach (void)
@@ -486,8 +482,11 @@ static int corosync_security_valid (int euid, int egid)
 		return (1);
 	}
 
-	for (iter = ug_config.uidgid_list.next; iter != &ug_config.uidgid_list; iter = iter->next) {
-		struct uidgid_item *ugi = list_entry (iter, struct uidgid_item, list);
+	for (iter = uidgid_list_head.next; iter != &uidgid_list_head;
+		iter = iter->next) {
+
+		struct uidgid_item *ugi = list_entry (iter, struct uidgid_item,
+			list);
 
 		if (euid == ugi->uid || egid == ugi->gid)
 			return (1);
@@ -786,7 +785,7 @@ int main (int argc, char **argv)
 	}
 	free(config_iface);
 
-	res = corosync_main_config_read (objdb, &error_string, &ug_config);
+	res = corosync_main_config_read (objdb, &error_string);
 	if (res == -1) {
 		/*
 		 * if we are here, we _must_ flush the logsys queue

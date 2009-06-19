@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" * Copyright (c) 2006-2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -55,9 +55,6 @@ This top level directive contains configuration options for logging.
 .TP
 event { }
 This top level directive contains configuration options for the event service.
-.TP
-aisexec { }
-This top level directive contains configuration options for user privilegies.
 
 .PP
 .PP
@@ -536,20 +533,6 @@ subsys
 This specifies the subsystem identity (name) for which logging is specified. This is the
 name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
 required.
-
-.PP
-Within the
-.B aisexec
-directive, there are two configuration options which are all optional:
-.TP
-user
-.TP
-group
-These specify the user and group, which is able to run and use corosync.
-In any case, this is able to do root:root. But if you don't want run
-corosync as root, you can use this directives.
-
-The default is ais.
 
 .SH "FILES"
 .TP

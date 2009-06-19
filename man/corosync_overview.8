@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" * Copyright (c) 2006-2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -86,19 +86,13 @@ which make virtual synchrony ideal for developing distributed applications.
 
 .SH QUICKSTART
 The corosync executive must be configured.  In the directory conf in the
-source distribution are several files that must be copied to the /etc/ais
+source distribution are several files that must be copied to the /etc/corosync
 directory.  If corosync is packaged by a distro, this may be complete.
 
 The directory contains the file corosync.conf.  Please read the corosync.conf(5)
 man page for details on the configuration options.  The corosync project will
 work out of the box with the default configuration options, although the
 administrator may desire different options.
-
-An user and group of the name "ais" must be added to the system.  If corosync
-is packaged from a distro, this step should already be completed.
-This can be achieved by executing:
-
-[root@slickdeal root]# adduser ais -g ais
 
 The corosync executive uses cryptographic techniques to ensure authenticity
 and privacy of the messages.  In order for corosync to be secure and operate,

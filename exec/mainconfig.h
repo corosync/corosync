@@ -59,23 +59,10 @@ struct uidgid_item {
 	int gid;
 };
 
-struct ug_config {
-	/*
-	 * user/group to run as
-	 */
-	int uid;
-	int gid;
-
-	/*
-	 * Allowed users/group to connect. This is of type uidgid item.
-	 */
-	struct list_head uidgid_list;
-};
-
+extern struct list_head uidgid_list_head;
 
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
-	const char **error_string,
-	struct ug_config *ug_config);
+	const char **error_string);
 
 #endif /* MAINCONFIG_H_DEFINED */
