@@ -795,6 +795,7 @@ extern void coroipcs_ipc_init (
 	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+	struct stat stat_out;
 
 	api = init_state;
 
@@ -826,6 +827,11 @@ extern void coroipcs_ipc_init (
 #if defined(COROSYNC_LINUX)
 	sprintf (un_addr.sun_path + 1, "%s", api->socket_name);
 #else
+	res = stat (SOCKETDIR, &stat_out);
+	if (res == -1 || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
+		api->log_printf ("Required directory not present %s\n", SOCKETDIR);
+		api->fatal_error ("Please create required directory.");
+	}
 	sprintf (un_addr.sun_path, "%s/%s", SOCKETDIR, api->socket_name);
 	unlink (un_addr.sun_path);
 #endif

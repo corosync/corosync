@@ -177,6 +177,7 @@ int main (void) {
 
 	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
 		cpg_benchmark (handle, size);
+		signal (SIGALRM, sigalrm_handler);
 		size += 1000;
 	}
 

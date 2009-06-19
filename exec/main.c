@@ -45,6 +45,7 @@
 #include <sys/un.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -650,6 +651,8 @@ int main (int argc, char **argv)
 	char *iface;
 	int res, ch;
 	int background, setprio;
+	struct stat stat_out;
+	char corosync_lib_dir[PATH_MAX];
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&serialize_spin, 0);
@@ -810,6 +813,17 @@ int main (int argc, char **argv)
 	} else {
 		res = logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 	}
+
+	/*
+	 * Make sure required directory is present
+	 */
+	sprintf (corosync_lib_dir, "%s/lib/corosync", LOCALSTATEDIR);
+	res = stat (corosync_lib_dir, &stat_out);
+	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", corosync_lib_dir);
+		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
+	}
+	
 
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
