@@ -673,7 +673,7 @@ retry_recv:
  * Solaris and some BSD systems
  */
 	{
-		ucred_t *uc;
+		ucred_t *uc = NULL;
 		uid_t euid = -1;
 		gid_t egid = -1;
 
