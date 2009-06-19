@@ -44,6 +44,16 @@ sysconf_DATA		= conf/corosync.conf.example
 SUBDIRS	= include lcr lib exec services tools test pkgconfig man
 # init
 
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/${sysconfdir}/uidgid.d
+	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
+	$(INSTALL) -d $(DESTDIR)/$(SOCKETDIR)
+
+uninstall-local:
+	rmdir $(DESTDIR)/${sysconfdir}/uidgid.d || :;
+	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
+	rmdir $(DESTDIR)/$(SOCKETDIR) || :;
+
 lint:
 	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
 
