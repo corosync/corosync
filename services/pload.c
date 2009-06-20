@@ -328,6 +328,7 @@ static void message_handler_req_exec_pload_start (
 	start_mcasting ();
 }
 
+#ifndef timersub
 # define timersub(a, b, result)                                               \
   do {                                                                        \
     (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
@@ -337,6 +338,7 @@ static void message_handler_req_exec_pload_start (
       (result)->tv_usec += 1000000;                                           \
     }                                                                         \
   } while (0)
+#endif
 
 struct timeval tv1;
 struct timeval tv2;

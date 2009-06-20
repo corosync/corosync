@@ -57,6 +57,7 @@ LOGSYS_DECLARE_SYSTEM ("logtest_rec",
 
 static struct timeval tv1, tv2, tv_elapsed;
 
+#ifndef timersub
 #define timersub(a, b, result)					\
 do {								\
 	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
@@ -66,6 +67,7 @@ do {								\
 		(result)->tv_usec += 1000000;			\
 	}							\
 } while (0)
+#endif
 
 static void bm_start (void)
 {
