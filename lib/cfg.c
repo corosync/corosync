@@ -643,7 +643,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 	struct req_lib_cfg_get_node_addrs req_lib_cfg_get_node_addrs;
 	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs;
 	struct cfg_instance *cfg_instance;
-	int addrlen;
+	int addrlen = 0;
 	int i;
 	struct iovec iov;
 	void *return_address;
