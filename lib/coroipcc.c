@@ -94,7 +94,7 @@ DECLARE_HDB_DATABASE(ipc_hdb,ipc_hdb_destructor);
 #endif
 
 #ifdef SO_NOSIGPIPE
-void socket_nosigpipe(int s)
+static void socket_nosigpipe(int s)
 {
 	int on = 1;
 	setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, (void *)&on, sizeof(on));
@@ -546,6 +546,9 @@ coroipcc_service_connect (
 	if (request_fd == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+#ifdef SO_NOSIGPIPE
+	socket_nosigpipe (request_fd);
+#endif
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
 	address.sun_family = AF_UNIX;
