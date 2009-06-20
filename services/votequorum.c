@@ -164,7 +164,7 @@ static void quorum_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int votequorum_exec_init_fn (struct corosync_api_v1 *corosync_api);
+static int votequorum_exec_init_fn (struct corosync_api_v1 *api);
 
 static int quorum_lib_init_fn (void *conn);
 

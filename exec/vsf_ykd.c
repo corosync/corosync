@@ -123,9 +123,9 @@ static int state_received_process_entries;
 
 static enum ykd_mode ykd_mode;
 
-static unsigned int view_list[YKD_PROCESSOR_COUNT_MAX];
+static unsigned int ykd_view_list[YKD_PROCESSOR_COUNT_MAX];
 
-static int view_list_entries;
+static int ykd_view_list_entries;
 
 static int session_id_max;
 
@@ -135,7 +135,7 @@ static struct ykd_session ambiguous_sessions_max[YKD_PROCESSOR_COUNT_MAX];
 
 static int ambiguous_sessions_max_entries;
 
-static int primary_designated = 0;
+static int ykd_primary_designated = 0;
 
 static struct memb_ring_id ykd_ring_id;
 
@@ -290,12 +290,12 @@ static int decide (void)
 	/*
 	 * Determine if there is a subquorum
 	 */
-	if (subquorum (view_list, view_list_entries, last_primary_max) == 0) {
+	if (subquorum (ykd_view_list, ykd_view_list_entries, last_primary_max) == 0) {
 		return (0);
 	}
 
 	for (i = 0; i < ambiguous_sessions_max_entries; i++) {
-		if (subquorum (view_list, view_list_entries, &ambiguous_sessions_max[i]) == 0) {
+		if (subquorum (ykd_view_list, ykd_view_list_entries, &ambiguous_sessions_max[i]) == 0) {
 			return (0);
 		}
 
@@ -355,8 +355,8 @@ static void ykd_deliver_fn (
 			primary_designated = 1;
 
 			ykd_primary_callback_fn (
-				view_list,
-				view_list_entries,
+				ykd_view_list,
+				ykd_view_list_entries,
 				primary_designated,
 				&ykd_ring_id);
 		return;
@@ -415,8 +415,8 @@ static void ykd_deliver_fn (
 				if (decide ()) {
 					ykd_state.session_id = session_id_max + 1;
 					memcpy (ykd_state.ambiguous_sessions[ykd_state.ambiguous_sessions_entries].member_list,
-						view_list, sizeof (unsigned int) * view_list_entries);
-						ykd_state.ambiguous_sessions[ykd_state.ambiguous_sessions_entries].member_list_entries = view_list_entries;
+						ykd_view_list, sizeof (unsigned int) * ykd_view_list_entries);
+						ykd_state.ambiguous_sessions[ykd_state.ambiguous_sessions_entries].member_list_entries = ykd_view_list_entries;
 						ykd_state.ambiguous_sessions_entries += 1;
 					ykd_attempt_send();
 				}
@@ -427,16 +427,16 @@ static void ykd_deliver_fn (
 			if (all_received) {
 				log_printf (LOGSYS_LEVEL_NOTICE,
 					"This processor is within the primary component.\n");
-				primary_designated = 1;
+				ykd_primary_designated = 1;
 
 				ykd_primary_callback_fn (
-					view_list,
-					view_list_entries,
-					primary_designated,
+					ykd_view_list,
+					ykd_view_list_entries,
+					ykd_primary_designated,
 					&ykd_ring_id);
 
-				memcpy (ykd_state.last_primary.member_list, view_list, sizeof (view_list));
-				ykd_state.last_primary.member_list_entries = view_list_entries;
+				memcpy (ykd_state.last_primary.member_list, ykd_view_list, sizeof (ykd_view_list));
+				ykd_state.last_primary.member_list_entries = ykd_view_list_entries;
 				ykd_state.last_primary.session_id = ykd_state.session_id;
 				ykd_state.ambiguous_sessions_entries = 0;
 			}
@@ -466,18 +466,18 @@ static void ykd_confchg_fn (
 		ykd_state.last_primary.session_id = 0;
 		first_run = 0;
 	}
-	memcpy (view_list, member_list,
+	memcpy (ykd_view_list, member_list,
 		member_list_entries * sizeof (unsigned int));
-	view_list_entries = member_list_entries;
+	ykd_view_list_entries = member_list_entries;
 
 	ykd_mode = YKD_MODE_SENDSTATE;
 
-	primary_designated = 0;
+	ykd_primary_designated = 0;
 
 	ykd_primary_callback_fn (
-		view_list,
-		view_list_entries,
-		primary_designated,
+		ykd_view_list,
+		ykd_view_list_entries,
+		ykd_primary_designated,
 		&ykd_ring_id);
 
 	memset (&state_received_confchg, 0, sizeof (state_received_confchg));

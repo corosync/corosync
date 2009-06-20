@@ -45,7 +45,7 @@ typedef void * poll_timer_handle;
 
 hdb_handle_t poll_create (void);
 
-int poll_destroy (hdb_handle_t hdb_handle_t);
+int poll_destroy (hdb_handle_t hdb_handle);
 
 int poll_dispatch_add (
 	hdb_handle_t handle,

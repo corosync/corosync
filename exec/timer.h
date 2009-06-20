@@ -54,9 +54,9 @@ extern int corosync_timer_add_absolute (
 	void (*timer_fn) (void *data),
 	corosync_timer_handle *handle);
 
-extern void corosync_timer_delete (corosync_timer_handle timer_handle);
+extern void corosync_timer_delete (corosync_timer_handle handle);
 
-extern void corosync_timer_delete_data (corosync_timer_handle timer_handle);
+extern void corosync_timer_delete_data (corosync_timer_handle handle);
 
 extern void corosync_timer_lock (void);
 
@@ -64,6 +64,6 @@ extern void corosync_timer_unlock (void);
 
 extern unsigned long long corosync_timer_time_get (void);
 
-extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle timer_handle);
+extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle handle);
 
 #endif /* TIMER_H_DEFINED */

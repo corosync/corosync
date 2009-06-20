@@ -47,7 +47,7 @@
 #include <corosync/list.h>
 #include "tlist.h"
 
-typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle_t, int fd, int revents, void *data);
+typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle, int fd, int revents, void *data);
 
 struct poll_entry {
 	struct pollfd ufd;
