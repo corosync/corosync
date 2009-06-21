@@ -99,6 +99,7 @@ static struct lcr_comp test_quorum_comp_ver0 = {
 void corosync_lcr_component_register (void);
 
 void corosync_lcr_component_register (void) {
+	logsys_subsys_init();
 #else
 __attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
 #endif

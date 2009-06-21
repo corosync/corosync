@@ -352,6 +352,10 @@ struct req_exec_cfg_shutdown {
 static int cfg_exec_init_fn (
 	struct corosync_api_v1 *corosync_api_v1)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
+
 	api = corosync_api_v1;
 
 	list_init(&trackers_list);

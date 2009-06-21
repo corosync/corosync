@@ -499,6 +499,9 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	hdb_handle_t object_handle;
 	hdb_handle_t find_handle;
 
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	ENTER();
 
 	corosync_api = api;

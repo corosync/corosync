@@ -270,6 +270,9 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 static int confdb_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	api = corosync_api;
 	return 0;
 }

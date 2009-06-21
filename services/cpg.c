@@ -492,6 +492,9 @@ static int notify_lib_joinlist(
 
 static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	api = corosync_api;
 	return (0);
 }
