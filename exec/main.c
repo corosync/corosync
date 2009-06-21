@@ -326,7 +326,7 @@ static void corosync_tty_detach (void)
 
 static void corosync_setscheduler (void)
 {
-#if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	int res;
 
 	sched_priority = sched_get_priority_max (SCHED_RR);
@@ -342,7 +342,8 @@ static void corosync_setscheduler (void)
 		sched_priority = 0;
 	}
 #else
-	log_printf(LOGSYS_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
+	log_printf(LOGSYS_LEVEL_WARNING,
+		"The Platform is missing process priority setting features.  Leaving at default.");
 #endif
 }
 

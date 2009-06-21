@@ -528,10 +528,12 @@ static void *pthread_ipc_consumer (void *conn)
 	int send_ok;
 	unsigned int new_message;
 
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	if (api->sched_policy != 0) {
 		res = pthread_setschedparam (conn_info->thread,
 			api->sched_policy, api->sched_param);
 	}
+#endif
 
 	for (;;) {
 		sop.sem_num = 0;

@@ -1609,9 +1609,11 @@ int logsys_thread_priority_set (
 {
 	int res = 0;
 
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	if (policy != SCHED_OTHER) {
 		res = pthread_setschedparam (logsys_thread_id, policy, param);
 	}
+#endif
 	if (after_log_ops_yield > 0) {
 		logsys_after_log_ops_yield = after_log_ops_yield;
 	}

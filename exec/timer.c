@@ -107,7 +107,7 @@ static void *prioritized_timer_thread (void *data)
 	int fds;
 	unsigned long long timeout;
 
-#if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	if (sched_priority != 0) {
 		struct sched_param sched_param;
 
