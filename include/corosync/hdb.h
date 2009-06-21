@@ -125,24 +125,8 @@ static struct hdb_handle_database (database_name) = {			\
 	.handles 	= NULL,						\
 	.iterator	= 0,						\
 	.destructor	= destructor_function,				\
-	.first_run	= 0						\
+	.first_run	= 1						\
 };									\
-static void database_name##_init(void)__attribute__((constructor));	\
-static void database_name##_init(void)					\
-{                                                                       \
-	hdb_database_lock_init (&(database_name).lock);		\
-}
-
-#define DECLARE_HDB_DATABASE_FIRSTRUN(database_name)			\
-static struct hdb_handle_database (database_name) = {			\
-	.first_run = 1, 						\
-};									\
-static void database_name##_init(void)__attribute__((constructor));	\
-static void database_name##_init(void)					\
-{                                                                       \
-	memset (&(database_name), 0, sizeof (struct hdb_handle_database));\
-	hdb_database_lock_init (&(database_name).lock);		\
-}
 
 static inline void hdb_create (
 	struct hdb_handle_database *handle_database)
@@ -173,7 +157,7 @@ static inline int hdb_handle_create (
 	int i;
 
 	if (handle_database->first_run == 1) {
-		memset (handle_database, 0, sizeof (struct hdb_handle_database));
+		handle_database->first_run = 0;
 		hdb_database_lock_init (&handle_database->lock);
 	}
 	hdb_database_lock (&handle_database->lock);

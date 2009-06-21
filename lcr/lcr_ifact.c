@@ -61,9 +61,9 @@ struct lcr_iface_instance {
 	void (*destructor) (void *context);
 };
 
-DECLARE_HDB_DATABASE_FIRSTRUN (lcr_component_instance_database);
+DECLARE_HDB_DATABASE (lcr_component_instance_database, NULL);
 
-DECLARE_HDB_DATABASE_FIRSTRUN (lcr_iface_instance_database);
+DECLARE_HDB_DATABASE (lcr_iface_instance_database, NULL);
 
 /*
 static struct hdb_handle_database lcr_component_instance_database = {
