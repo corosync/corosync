@@ -84,7 +84,9 @@
 
 #include <config.h>
 
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>

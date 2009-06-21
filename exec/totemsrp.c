@@ -50,7 +50,9 @@
 #include <config.h>
 
 #include <assert.h>
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>

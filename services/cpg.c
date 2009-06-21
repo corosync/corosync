@@ -35,7 +35,7 @@
 
 #include <config.h>
 
-#ifndef COROSYNC_BSD
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
 #include <sys/types.h>
