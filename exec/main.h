@@ -66,4 +66,6 @@ extern int message_source_is_local (const mar_message_source_t *source);
 
 extern void corosync_request_shutdown (void);
 
+extern void corosync_state_dump (void);
+
 #endif /* MAIN_H_DEFINED */

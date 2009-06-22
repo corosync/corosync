@@ -124,7 +124,7 @@ hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
-static void sigusr2_handler (int num)
+void corosync_state_dump (void)
 {
 	int i;
 
@@ -133,6 +133,15 @@ static void sigusr2_handler (int num)
 			ais_service[i]->exec_dump_fn ();
 		}
 	}
+}
+
+static void sigusr2_handler (int num)
+{
+	/*
+	 * TODO remove this from sigusr2 handler and access via cfg service
+	 * engine api - corosync-cfgtool
+	 */
+	corosync_state_dump ();
 }
 
 /*

@@ -576,6 +576,8 @@ struct corosync_api_v1 {
 	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
 
 	void (*request_shutdown) (void);
+
+	void (*state_dump) (void);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
