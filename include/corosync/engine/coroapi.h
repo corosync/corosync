@@ -575,7 +575,7 @@ struct corosync_api_v1 {
 #define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
 	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
 
-	void (*request_shutdown) (void);
+	void (*shutdown_request) (void);
 
 	void (*state_dump) (void);
 };

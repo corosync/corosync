@@ -140,7 +140,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.plugin_interface_release = lcr_ifact_release,
 	.error_memory_failure = _corosync_out_of_memory_error,
 	.fatal_error = _corosync_public_exit_error,
-	.request_shutdown = corosync_request_shutdown,
+	.shutdown_request = corosync_shutdown_request,
 	.state_dump = corosync_state_dump
 };
 

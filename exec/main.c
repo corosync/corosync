@@ -147,7 +147,7 @@ static void sigusr2_handler (int num)
 /*
  * TODO this function needs some love
  */
-void corosync_request_shutdown (void)
+void corosync_shutdown_request (void)
 {
 	if (api) {
 		corosync_service_unlink_all (api);
@@ -162,12 +162,12 @@ void corosync_request_shutdown (void)
 
 static void sigquit_handler (int num)
 {
-	corosync_request_shutdown ();
+	corosync_shutdown_request ();
 }
 
 static void sigintr_handler (int num)
 {
-	corosync_request_shutdown ();
+	corosync_shutdown_request ();
 }
 
 static void sigsegv_handler (int num)

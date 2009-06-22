@@ -630,7 +630,7 @@ static void message_handler_req_exec_cfg_shutdown (
 
 	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d was shut down by sysadmin\n", nodeid);
 	if (nodeid == api->totem_nodeid_get()) {
-		api->request_shutdown();
+		api->shutdown_request();
 	}
 	LEAVE();
 }
