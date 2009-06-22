@@ -585,7 +585,7 @@ static int authenticate_and_decrypt_nss (
 	unsigned char *data;
 	unsigned char *inbuf;
 	size_t        datalen;
-	struct security_header *header = iov[0].iov_base;
+	struct security_header *header = (struct security_header *)iov[0].iov_base;
 	SECItem no_params;
 	SECItem ivdata;
 
@@ -602,7 +602,7 @@ static int authenticate_and_decrypt_nss (
 		}
 	}
 	else {
-		inbuf = iov[0].iov_base;
+		inbuf = (unsigned char *)iov[0].iov_base;
 		datalen = iov[0].iov_len;
 	}
 	data = inbuf + sizeof (struct security_header) - 16;
