@@ -324,29 +324,6 @@ static void corosync_tty_detach (void)
 	}
 }
 
-static void corosync_setscheduler (void)
-{
-#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
-	int res;
-
-	sched_priority = sched_get_priority_max (SCHED_RR);
-	if (sched_priority != -1) {
-		global_sched_param.sched_priority = sched_priority;
-		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
-		if (res == -1) {
-			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
-				global_sched_param.sched_priority, strerror (errno));
-		}
-	} else {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
-		sched_priority = 0;
-	}
-#else
-	log_printf(LOGSYS_LEVEL_WARNING,
-		"The Platform is missing process priority setting features.  Leaving at default.");
-#endif
-}
-
 static void corosync_mlockall (void)
 {
 #if !defined(COROSYNC_BSD)
@@ -614,9 +591,9 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
-struct coroipcs_init_state ipc_init_state = {
+static struct coroipcs_init_state ipc_init_state = {
 	.socket_name			= COROSYNC_SOCKET_NAME,
-	.sched_policy			= SCHED_RR,
+	.sched_policy			= SCHED_OTHER,
 	.sched_param			= &global_sched_param,
 	.malloc				= malloc,
 	.free				= free,
@@ -636,6 +613,35 @@ struct coroipcs_init_state ipc_init_state = {
 	.exit_fn_get			= corosync_exit_fn_get,
 	.handler_fn_get			= corosync_handler_fn_get
 };
+
+static void corosync_setscheduler (void)
+{
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
+	int res;
+
+	sched_priority = sched_get_priority_max (SCHED_RR);
+	if (sched_priority != -1) {
+		global_sched_param.sched_priority = sched_priority;
+		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
+		if (res == -1) {
+			global_sched_param.sched_priority = 0;
+			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
+				global_sched_param.sched_priority, strerror (errno));
+		} else {
+			/*
+			 * Turn on SCHED_RR in ipc system
+			 */ 
+			ipc_init_state.sched_policy = SCHED_RR;
+		}
+	} else {
+		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		sched_priority = 0;
+	}
+#else
+	log_printf(LOGSYS_LEVEL_WARNING,
+		"The Platform is missing process priority setting features.  Leaving at default.");
+#endif
+}
 
 int main (int argc, char **argv)
 {
