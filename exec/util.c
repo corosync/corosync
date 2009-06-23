@@ -90,7 +90,7 @@ void _corosync_out_of_memory_error (void)
 void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
-	log_printf (LOGSYS_LEVEL_ERROR, "AIS Executive exiting "
+	log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
 		"with status %d at %s:%u.\n", err, file, line);
 	logsys_fork_completed ();
 	logsys_flush ();
