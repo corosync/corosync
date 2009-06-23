@@ -324,6 +324,35 @@ static inline int hdb_handle_destroy (
 	return (res);
 }
 
+static inline int hdb_handle_refcount_get (
+	struct hdb_handle_database *handle_database,
+	hdb_handle_t handle_in)
+{
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+
+	int refcount = 0;
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	refcount = handle_database->handles[handle].ref_count;
+
+	hdb_database_unlock (&handle_database->lock);
+
+	return (refcount);
+}
+
 static inline void hdb_iterator_reset (
 	struct hdb_handle_database *handle_database)
 {
