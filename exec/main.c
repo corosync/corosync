@@ -712,9 +712,9 @@ int main (int argc, char **argv)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine RELEASE '%s'\n", RELEASE_VERSION);
 	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2009 Red Hat, Inc.\n");
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
