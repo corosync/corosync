@@ -712,9 +712,7 @@ int main (int argc, char **argv)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine RELEASE '%s'\n", RELEASE_VERSION);
-	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2009 Red Hat, Inc.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", RELEASE_VERSION);
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -729,8 +727,6 @@ int main (int argc, char **argv)
 		serialize_lock,
 		serialize_unlock,
 		sched_priority);
-
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
 	corosync_poll_handle = poll_create ();
 
