@@ -599,7 +599,6 @@ static void totempg_deliver_fn (
 	if (assembly->throw_away_mode == THROW_AWAY_ACTIVE) {
 		 /* Throw away the first msg block */
 		if (mcast->fragmented == 0 || mcast->fragmented == 1) {
-printf ("throwing away first message block\n");
 			assembly->throw_away_mode = THROW_AWAY_INACTIVE;
 
 			assembly->index += msg_lens[0];
