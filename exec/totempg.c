@@ -326,8 +326,19 @@ static inline void app_confchg_fn (
 {
 	int i;
 	struct totempg_group_instance *instance;
+	struct assembly *assembly;
 	unsigned int res;
 
+	/*
+	 * For every leaving processor, add to free list
+	 * This also has the side effect of clearing out the dataset
+	 * In the leaving processor's assembly buffer.
+	 */
+	for (i = 0; i < left_list_entries; i++) {
+		assembly = assembly_ref (left_list[i]);
+		list_del (&assembly->list);
+		list_add (&assembly->list, &assembly_list_free);
+	}
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
 			hdb_nocheck_convert (i), (void *)&instance);
@@ -588,6 +599,7 @@ static void totempg_deliver_fn (
 	if (assembly->throw_away_mode == THROW_AWAY_ACTIVE) {
 		 /* Throw away the first msg block */
 		if (mcast->fragmented == 0 || mcast->fragmented == 1) {
+printf ("throwing away first message block\n");
 			assembly->throw_away_mode = THROW_AWAY_INACTIVE;
 
 			assembly->index += msg_lens[0];
