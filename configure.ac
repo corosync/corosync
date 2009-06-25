@@ -107,7 +107,6 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		pthread_spin_unlock pthread_setschedparam \
 		sched_get_priority_max])
 
-# add man and init dirs?
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
 		 include/Makefile

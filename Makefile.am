@@ -29,10 +29,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST              = autogen.sh conf/corosync.conf.example
+SPEC			= $(PACKAGE_NAME).spec
+
+TARFILE			= $(PACKAGE_NAME)-$(VERSION).tar.gz
+
+EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in
+
 AUTOMAKE_OPTIONS	= foreign
 
-MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
+MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf
 
@@ -63,7 +68,38 @@ doxygen:
 	mkdir -p doc/api && doxygen
 
 dist-clean-local:
-	rm -f autoconf automake autoheader $(TARFILE)
+	rm -f autoconf automake autoheader
 
 clean-generic:
-	rm -rf doc/api
+	rm -rf doc/api $(SPEC) $(TARFILE) 
+
+## make rpm/srpm section.
+
+$(SPEC): $(SPEC).in
+	rm -f $@-t $@
+	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
+	alphatag="$(shell svnversion)" && \
+	sed \
+		-e "s#@alphatag@#r$$alphatag#g" \
+		-e "s#@version@#$(VERSION)#g" \
+		-e "s#@date@#$$date#g" \
+	$< > $@-t
+	chmod a-w $@-t
+	mv $@-t $@
+
+$(TARFILE):
+	$(MAKE) dist
+
+RPMBUILDOPTS	= --define "_sourcedir $(abs_builddir)" \
+		  --define "_specdir $(abs_builddir)" \
+		  --define "_builddir $(abs_builddir)" \
+		  --define "_srcrpmdir $(abs_builddir)" \
+		  --define "_rpmdir $(abs_builddir)"
+
+srpm: clean
+	$(MAKE) $(SPEC) $(TARFILE)
+	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
+
+rpm: clean
+	$(MAKE) $(SPEC) $(TARFILE)
+	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
