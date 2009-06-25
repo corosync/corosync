@@ -49,7 +49,7 @@ enum corosync_service_types {
 	MSG_SERVICE = 6,
 	CFG_SERVICE = 7,
 	CPG_SERVICE = 8,
-	CLM_SERVICE = 9,
+	CMAN_SERVICE = 9,
 	CRM_SERVICE = 10,
 	CONFDB_SERVICE = 11,
 	QUORUM_SERVICE = 12,
