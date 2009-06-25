@@ -109,15 +109,16 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 
 # add man and init dirs?
 AC_CONFIG_FILES([Makefile
-                 exec/Makefile
-                 include/Makefile
-                 lcr/Makefile
-                 lib/Makefile
-                 man/Makefile
-                 pkgconfig/Makefile
-                 services/Makefile
-                 test/Makefile
-                 tools/Makefile])
+		 exec/Makefile
+		 include/Makefile
+		 init/Makefile
+		 lcr/Makefile
+		 lib/Makefile
+		 man/Makefile
+		 pkgconfig/Makefile
+		 services/Makefile
+		 test/Makefile
+		 tools/Makefile])
 
 ### Local business
 

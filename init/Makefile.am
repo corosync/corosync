@@ -1,7 +1,10 @@
+# Copyright (c) 2004 MontaVista Software, Inc.
 # Copyright (c) 2009 Red Hat, Inc.
 #
-# Authors: Andrew Beekhof
-#	   Steven Dake (sdake@redhat.com)
+# Authors: Steven Dake (sdake@redhat.com)
+#          Fabio M. Di Nitto (fdinitto@redhat.com)
+#
+# All rights reserved.
 #
 # This software licensed under BSD license, the text of which follows:
 #
@@ -29,41 +32,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST              = autogen.sh conf/corosync.conf.example
-AUTOMAKE_OPTIONS	= foreign
+MAINTAINERCLEANFILES	= Makefile.in
 
-MAINTAINERCLEANFILES    = Makefile.in aclocal.m4 configure depcomp \
-			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf
-
-dist_doc_DATA		= LICENSE INSTALL README.devmap \
-			  README.recovery SECURITY TODO AUTHORS
-
-corosysconfdir		= ${COROSYSCONFDIR}
-
-corosysconf_DATA	= conf/corosync.conf.example
-
-SUBDIRS			= include lcr lib exec services tools test pkgconfig \
-			  man init
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
-	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
-	$(INSTALL) -d $(DESTDIR)/${SOCKETDIR}
-
-uninstall-local:
-	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
-	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
-	rmdir $(DESTDIR)/${SOCKETDIR} || :;
-
-lint:
-	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
-
-doxygen:
-	mkdir -p doc/api && doxygen
-
-dist-clean-local:
-	rm -f autoconf automake autoheader $(TARFILE)
-
-clean-generic:
-	rm -rf doc/api
+EXTRA_DIST		= generic mvlcge README redhat
