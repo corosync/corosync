@@ -83,6 +83,7 @@
 #include "service.h"
 #include "schedwrk.h"
 #include "version.h"
+#include "evil.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
@@ -219,8 +220,6 @@ static void serialize_unlock (void)
 }
 #endif
 
-
-
 static void corosync_sync_completed (void)
 {
 }
@@ -229,22 +228,24 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
 	unsigned int ais_service_index;
-	unsigned int ais_services_found = 0;
+	int res;
 
 	for (ais_service_index = 0;
 		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
 		ais_service_index++) {
 
 		if (ais_service[ais_service_index] != NULL) {
-			if (ais_services_found == sync_id) {
+			if (ais_service_index == sync_id) {
 				break;
 			}
-			ais_services_found += 1;
 		}
 	}
+	/*
+	 * Try to load backwards compat sync engines
+	 */
 	if (ais_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
-		memset (callbacks, 0, sizeof (struct sync_callbacks));
-		return (-1);
+		res = evil_callbacks_load (sync_id, callbacks);
+		return (res);
 	}
 	callbacks->name = ais_service[ais_service_index]->name;
 	callbacks->sync_init = ais_service[ais_service_index]->sync_init;
@@ -913,7 +914,7 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
-
+	evil_init (api);
 
 	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed);
 
