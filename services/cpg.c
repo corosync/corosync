@@ -792,7 +792,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const coroipc_response_header_t *res = (const coroipc_response_header_t *)message;
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(coroipc_response_header_t));
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "got joinlist message from node %d\n",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x\n",
 		nodeid);
 
 	/* Ignore our own messages */
