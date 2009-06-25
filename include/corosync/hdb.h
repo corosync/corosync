@@ -225,6 +225,10 @@ static inline int hdb_handle_get (
 	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
 	unsigned int handle = handle_in & 0xffffffff;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	*instance = NULL;
@@ -263,6 +267,10 @@ static inline int hdb_handle_put (
 	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
 	unsigned int handle = handle_in & 0xffffffff;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	if (handle >= handle_database->handle_count) {
@@ -302,6 +310,10 @@ static inline int hdb_handle_destroy (
 	unsigned int handle = handle_in & 0xffffffff;
 	int res;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	if (handle >= handle_database->handle_count) {
@@ -333,6 +345,10 @@ static inline int hdb_handle_refcount_get (
 
 	int refcount = 0;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	if (handle >= handle_database->handle_count) {
