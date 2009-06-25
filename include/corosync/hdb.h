@@ -333,6 +333,8 @@ static inline int hdb_handle_refcount_get (
 
 	int refcount = 0;
 
+	hdb_database_lock (&handle_database->lock);
+
 	if (handle >= handle_database->handle_count) {
 		hdb_database_unlock (&handle_database->lock);
 		errno = EBADF;
