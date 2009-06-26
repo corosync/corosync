@@ -316,6 +316,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.exec_engine				= votequorum_exec_engine,
 	.exec_engine_count		        = sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn                             = quorum_confchg_fn,
+	.sync_mode				= CS_SYNC_V1
 };
 
 /*

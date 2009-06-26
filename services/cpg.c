@@ -277,6 +277,7 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn                             = cpg_confchg_fn,
+	.sync_mode				= CS_SYNC_V1,
 	.sync_init                              = cpg_sync_init,
 	.sync_process                           = cpg_sync_process,
 	.sync_activate                          = cpg_sync_activate,

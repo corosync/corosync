@@ -134,6 +134,11 @@ enum cs_flow_control_state {
 
 #endif /* COROSYNC_FLOW_CONTROL_STATE */
 
+enum cs_sync_mode {
+	CS_SYNC_V1	= 0,
+	CS_SYNC_V2	= 1
+};
+
 typedef enum {
 	COROSYNC_FATAL_ERROR_EXIT = -1,
 	COROSYNC_LIBAIS_SOCKET = -6,
@@ -623,6 +628,7 @@ struct corosync_service_engine {
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
+	enum cs_sync_mode sync_mode;
 	void (*sync_init) (void);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);

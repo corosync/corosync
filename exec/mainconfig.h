@@ -38,6 +38,7 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/list.h>
+#include <corosync/engine/coroapi.h>
 
 /*
  * All service handlers in the AIS
@@ -63,6 +64,11 @@ extern struct list_head uidgid_list_head;
 
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
+	const char **error_string);
+
+extern int corosync_main_config_compatibility_read (
+	struct objdb_iface_ver0 *objdb,
+	enum cs_sync_mode *minimum_sync_mode,
 	const char **error_string);
 
 #endif /* MAINCONFIG_H_DEFINED */

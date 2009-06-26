@@ -161,6 +161,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_engine				= quorum_lib_service,
 	.exec_init_fn				= quorum_exec_init_fn,
 	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
+	.sync_mode				= CS_SYNC_V1
 };
 
 static struct lcr_iface corosync_quorum_ver0[1] = {

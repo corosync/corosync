@@ -43,7 +43,8 @@ corosync.conf - corosync executive configuration file
 The corosync.conf instructs the corosync executive about various parameters
 needed to control the corosync executive.  The configuration file consists of
 bracketed top level directives.  The possible directive choices are
-.IR "totem  { } , logging { }.
+.IR "totem  { } , logging { }.  It is also possible to specify the top level
+parameter compatibility.
  These directives are described below.
 
 .TP
@@ -55,6 +56,18 @@ This top level directive contains configuration options for logging.
 .TP
 event { }
 This top level directive contains configuration options for the event service.
+
+.PP
+.PP
+The
+.B compatibility
+directive indicates the level of compatibility requested by the user.  The
+option whitetank can be specified to remain backward compatable with
+openais-0.80.z.  The option none can be specified to only be compatable
+with corsoync-1.Y.Z.  Extra processing during configuration changes is
+required to remain backward compatable.
+
+The default is whitetank. (backwards compatibility)
 
 .PP
 .PP

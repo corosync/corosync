@@ -280,6 +280,7 @@ struct corosync_service_engine cfg_service_engine = {
 	.exec_engine				= cfg_exec_engine,
 	.exec_engine_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (coroync_exec_handler), */
 	.confchg_fn				= cfg_confchg_fn,
+	.sync_mode				= CS_SYNC_V1
 };
 
 /*

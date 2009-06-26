@@ -119,6 +119,10 @@ static struct objdb_iface_ver0 *objdb = NULL;
 
 static struct corosync_api_v1 *api = NULL;
 
+static enum cs_sync_mode minimum_sync_mode;
+
+static enum cs_sync_mode minimum_sync_mode;
+
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 hdb_handle_t corosync_poll_handle;
@@ -837,7 +841,6 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
 	}
 
-
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
@@ -873,6 +876,22 @@ int main (int argc, char **argv)
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 
+	res = corosync_main_config_compatibility_read (objdb,
+		&minimum_sync_mode,
+		&error_string);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
+	res = corosync_main_config_compatibility_read (objdb,
+		&minimum_sync_mode,
+		&error_string);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
 	/*
 	 * Sleep for a while to let other nodes in the cluster
 	 * understand that this node has been away (if it was
@@ -905,6 +924,12 @@ int main (int argc, char **argv)
 		&corosync_group,
 		1);
 
+	if (minimum_sync_mode == 1) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+	} else
+	if (minimum_sync_mode == 0) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+	}
 
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
