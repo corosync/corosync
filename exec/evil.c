@@ -49,6 +49,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/sysinfo.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -283,7 +284,7 @@ static int clm_hack_init (void)
 	sysinfo (&s_info);
 	current_time = time (NULL);
 	 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
-	my_cluster_node.boot_timestamp = ((SaTimeT)(current_time - s_info.uptime)) * 1000000000;
+	my_cluster_node.boot_timestamp = ((uint64_t)(current_time - s_info.uptime)) * 1000000000ULL;
 #elif defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 	int mib[2] = { CTL_KERN, KERN_BOOTTIME };
 	struct timeval boot_time;
@@ -292,7 +293,7 @@ static int clm_hack_init (void)
 	if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
 		boot_time.tv_sec = time (NULL);
 	 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
-	my_cluster_node.boot_timestamp = ((SaTimeT)boot_time.tv_sec) * 1000000000;
+	my_cluster_node.boot_timestamp = ((uint64_t)boot_time.tv_sec) * 1000000000ULL;
 #else /* defined(CTL_KERN) && defined(KERN_BOOTTIME) */
 	#warning "no bootime support"
 #endif
