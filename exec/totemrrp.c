@@ -163,6 +163,9 @@ struct rrp_algo {
 
 	void (*ring_reenable) (
 		struct totemrrp_instance *instance);
+
+	int (*mcast_recv_empty) (
+		struct totemrrp_instance *instance);
 };
 
 struct totemrrp_instance {
@@ -284,6 +287,9 @@ static void none_token_target_set (
 static void none_ring_reenable (
 	struct totemrrp_instance *instance);
 
+static int none_mcast_recv_empty (
+	struct totemrrp_instance *instance);
+
 /*
  * Passive Replication Forward Declerations
  */
@@ -340,6 +346,9 @@ static void passive_token_target_set (
 	unsigned int iface_no);
 
 static void passive_ring_reenable (
+	struct totemrrp_instance *instance);
+
+static int passive_mcast_recv_empty (
 	struct totemrrp_instance *instance);
 
 /*
@@ -400,6 +409,9 @@ static void active_token_target_set (
 static void active_ring_reenable (
 	struct totemrrp_instance *instance);
 
+static int active_mcast_recv_empty (
+	struct totemrrp_instance *instance);
+
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance);
 
@@ -425,7 +437,8 @@ struct rrp_algo none_algo = {
 	.iface_check		= none_iface_check,
 	.processor_count_set	= none_processor_count_set,
 	.token_target_set	= none_token_target_set,
-	.ring_reenable		= none_ring_reenable
+	.ring_reenable		= none_ring_reenable,
+	.mcast_recv_empty	= none_mcast_recv_empty
 };
 
 struct rrp_algo passive_algo = {
@@ -441,7 +454,8 @@ struct rrp_algo passive_algo = {
 	.iface_check		= passive_iface_check,
 	.processor_count_set	= passive_processor_count_set,
 	.token_target_set	= passive_token_target_set,
-	.ring_reenable		= passive_ring_reenable
+	.ring_reenable		= passive_ring_reenable,
+	.mcast_recv_empty	= passive_mcast_recv_empty
 };
 
 struct rrp_algo active_algo = {
@@ -457,7 +471,8 @@ struct rrp_algo active_algo = {
 	.iface_check		= active_iface_check,
 	.processor_count_set	= active_processor_count_set,
 	.token_target_set	= active_token_target_set,
-	.ring_reenable		= active_ring_reenable
+	.ring_reenable		= active_ring_reenable,
+	.mcast_recv_empty	= active_mcast_recv_empty
 };
 
 struct rrp_algo *rrp_algos[] = {
@@ -577,6 +592,16 @@ static void none_ring_reenable (
 	/*
 	 * No operation
 	 */
+}
+
+static int none_mcast_recv_empty (
+	struct totemrrp_instance *instance)
+{
+	int res;
+
+	res = totemnet_recv_mcast_empty (instance->net_handles[0]);
+
+	return (res);
 }
 
 /*
@@ -906,6 +931,26 @@ static void passive_token_target_set (
 	unsigned int iface_no)
 {
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
+}
+
+static int passive_mcast_recv_empty (
+	struct totemrrp_instance *instance)
+{
+	int res;
+	int msgs_emptied = 0;
+	int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		res = totemnet_recv_mcast_empty (instance->net_handles[i]);
+		if (res == -1) {
+			return (-1);
+		}
+		if (res == 1) {
+			msgs_emptied = 1;
+		}
+	}
+
+	return (msgs_emptied);
 }
 
 static void passive_ring_reenable (
@@ -1260,6 +1305,26 @@ static void active_token_target_set (
 	unsigned int iface_no)
 {
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
+}
+
+static int active_mcast_recv_empty (
+	struct totemrrp_instance *instance)
+{
+	int res;
+	int msgs_emptied = 0;
+	int i;
+
+	for (i = 0; i < instance->interface_count; i++) {
+		res = totemnet_recv_mcast_empty (instance->net_handles[i]);
+		if (res == -1) {
+			return (-1);
+		}
+		if (res == 1) {
+			msgs_emptied = 1;
+		}
+	}
+
+	return (msgs_emptied);
 }
 
 static void active_ring_reenable (
@@ -1762,3 +1827,25 @@ printf ("totemrrp ring reenable\n");
 error_exit:
 	return (res);
 }
+
+extern int totemrrp_mcast_recv_empty (
+        hdb_handle_t handle)
+{
+	struct totemrrp_instance *instance;
+	int res;
+
+	res = hdb_handle_get (&totemrrp_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		res = ENOENT;
+		goto error_exit;
+	}
+
+	res = instance->rrp_algo->mcast_recv_empty (instance);
+
+	hdb_handle_put (&totemrrp_instance_database, handle);
+
+error_exit:
+	return (res);
+}
+

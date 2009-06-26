@@ -119,4 +119,7 @@ extern int totemrrp_crypto_set (
 extern int totemrrp_ring_reenable (
 	hdb_handle_t handle);
 
+extern int totemrrp_mcast_recv_empty (
+	hdb_handle_t handle);
+
 #endif /* TOTEMRRP_H_DEFINED */

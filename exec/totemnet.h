@@ -109,4 +109,7 @@ extern int totemnet_crypto_set (
 	hdb_handle_t handle,
 	unsigned int type);
 
+extern int totemnet_recv_mcast_empty (
+	hdb_handle_t handle);
+
 #endif /* TOTEMNET_H_DEFINED */

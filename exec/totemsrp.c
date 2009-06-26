@@ -409,6 +409,8 @@ struct totemsrp_instance {
 	/*
 	 * Timers
 	 */
+	poll_timer_handle timer_pause_timeout;
+
 	poll_timer_handle timer_orf_token_timeout;
 
 	poll_timer_handle timer_orf_token_retransmit_timeout;
@@ -501,6 +503,8 @@ struct totemsrp_instance {
 	unsigned int my_pbl;
 
 	unsigned int my_cbl;
+
+	struct timeval pause_timestamp;
 };
 
 struct message_handlers {
@@ -596,6 +600,7 @@ static void memb_merge_detect_endian_convert (
 	struct memb_merge_detect *out);
 static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in);
 static void timer_function_orf_token_timeout (void *data);
+static void timer_function_pause_timeout (void *data);
 static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
 static void timer_function_token_hold_retransmit_timeout (void *data);
@@ -682,6 +687,30 @@ static unsigned int main_msgs_missing (void)
 {
 // TODO
 	return (0);
+}
+
+static int pause_flush (struct totemsrp_instance *instance)
+{
+	struct timeval now;
+	uint64_t now_msec;
+	uint64_t timestamp_msec;
+	int res = 0;
+
+	gettimeofday (&now, NULL);
+        now_msec = ((now.tv_sec * 1000ULL) + (now.tv_usec / 1000ULL));
+        timestamp_msec = ((instance->pause_timestamp.tv_sec * 1000ULL) + (instance->pause_timestamp.tv_usec/1000ULL));
+
+	if ((now_msec - timestamp_msec) > (instance->totem_config->token_timeout / 2)) {
+		log_printf (instance->totemsrp_log_level_notice,
+			"Process pause detected for %lld ms, flushing membership messages.\n", (now_msec - timestamp_msec));
+		/*
+		 * -1 indicates an error from recvmsg
+		 */
+		do {
+			res = totemrrp_mcast_recv_empty (instance->totemrrp_handle);
+		} while (res == -1);
+	}
+	return (res);
 }
 
 /*
@@ -815,6 +844,8 @@ int totemsrp_initialize (
 
 	instance->totemsrp_confchg_fn = confchg_fn;
 	instance->use_heartbeat = 1;
+
+	gettimeofday (&instance->pause_timestamp, NULL);
 
 	if ( totem_config->heartbeat_failures_allowed == 0 ) {
 		log_printf (instance->totemsrp_log_level_notice,
@@ -1399,6 +1430,16 @@ static void old_ring_state_reset (struct totemsrp_instance *instance)
 	instance->old_ring_state_saved = 0;
 }
 
+static void reset_pause_timeout (struct totemsrp_instance *instance)
+{
+	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
+	poll_timer_add (instance->totemsrp_poll_handle,
+		instance->totem_config->token_timeout / 5,
+		(void *)instance,
+		timer_function_pause_timeout,
+		&instance->timer_pause_timeout);
+}
+
 static void reset_token_timeout (struct totemsrp_instance *instance) {
 	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
 	poll_timer_add (instance->totemsrp_poll_handle,
@@ -1479,6 +1520,14 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance);
 /*
  * Timers used for various states of the membership algorithm
  */
+static void timer_function_pause_timeout (void *data)
+{
+	struct totemsrp_instance *instance = data;
+
+	gettimeofday (&instance->pause_timestamp, NULL);
+	reset_pause_timeout (instance);
+}
+
 static void timer_function_orf_token_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
@@ -1739,6 +1788,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->my_received_flg = 1;
+
+	reset_pause_timeout (instance);
 
 	return;
 }
@@ -4034,6 +4085,14 @@ static int message_handler_memb_join (
 
 	} else {
 		memb_join = msg;
+	}
+	/*
+	 * If the process paused because it wasn't scheduled in a timely
+	 * fashion, flush the join messages because they may be queued
+	 * entries
+	 */
+	if (pause_flush (instance)) {
+		return (0);
 	}
 
 	if (instance->token_ring_id_seq < memb_join->ring_seq) {

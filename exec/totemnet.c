@@ -2075,3 +2075,59 @@ int totemnet_token_target_set (
 error_exit:
 	return (res);
 }
+
+extern int totemnet_recv_mcast_empty (
+	hdb_handle_t handle)
+{
+	struct totemnet_instance *instance;
+	unsigned int res;
+	struct sockaddr_storage system_from;
+	struct msghdr msg_recv;
+	struct pollfd ufd;
+	int nfds;
+	int msg_processed = 0;
+
+	res = hdb_handle_get (&totemnet_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+
+	/*
+	 * Receive datagram
+	 */
+	msg_recv.msg_name = &system_from;
+	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
+	msg_recv.msg_iov = &instance->totemnet_iov_recv_flush;
+	msg_recv.msg_iovlen = 1;
+#if !defined(COROSYNC_SOLARIS)
+	msg_recv.msg_control = 0;
+	msg_recv.msg_controllen = 0;
+	msg_recv.msg_flags = 0;
+#else
+	msg_recv.msg_accrights = NULL;
+	msg_recv.msg_accrightslen = 0;
+#endif
+
+	do {
+		ufd.fd = instance->totemnet_sockets.mcast_recv;
+		ufd.events = POLLIN;
+		nfds = poll (&ufd, 1, 0);
+		if (nfds == 1 && ufd.revents & POLLIN) {
+			res = recvmsg (instance->totemnet_sockets.mcast_recv, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+			if (res != -1) {
+				msg_processed = 1;
+			} else {
+				msg_processed = -1;
+			}
+		}
+	} while (nfds == 1);
+
+	hdb_handle_put (&totemnet_instance_database, handle);
+
+	return (msg_processed);
+
+error_exit:
+	return (res);
+}
+
