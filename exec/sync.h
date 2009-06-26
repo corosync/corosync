@@ -47,21 +47,15 @@ struct sync_callbacks {
 	const char *name;
 };
 
-struct corosync_api_v1;
 int sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+	int (*sync_callbacks_retrieve) (
+		int sync_id,
+		struct sync_callbacks *callbacks),
 
-int sync_in_process (void);
+	void (*next_start) (
+		unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id));
 
-int sync_primary_designated (void);
-
-/**
- * Execute synchronization upon request for the named service
- * @param name service handler name to synchronize
- *
- * @return int 0 OK, error code otherwise
- */
-extern int sync_request (const char *name);
 
 #endif /* SYNC_H_DEFINED */

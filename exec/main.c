@@ -76,6 +76,7 @@
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
+#include "syncv2.h"
 #include "tlist.h"
 #include "timer.h"
 #include "util.h"
@@ -122,6 +123,8 @@ static struct corosync_api_v1 *api = NULL;
 static enum cs_sync_mode minimum_sync_mode;
 
 static enum cs_sync_mode minimum_sync_mode;
+
+static int sync_in_process = 1;
 
 unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
@@ -226,6 +229,9 @@ static void serialize_unlock (void)
 
 static void corosync_sync_completed (void)
 {
+	log_printf (LOGSYS_LEVEL_NOTICE,
+		"Completed service synchronization, ready to provide service.\n");
+	sync_in_process = 0;
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,
@@ -238,7 +244,8 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
 		ais_service_index++) {
 
-		if (ais_service[ais_service_index] != NULL) {
+		if (ais_service[ais_service_index] != NULL
+			&& ais_service[ais_service_index]->sync_mode == CS_SYNC_V1) {
 			if (ais_service_index == sync_id) {
 				break;
 			}
@@ -259,6 +266,33 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 	return (0);
 }
 
+static int corosync_sync_v2_callbacks_retrieve (
+	int service_id,
+	struct sync_callbacks *callbacks)
+{
+	int res;
+
+	if (service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+		res = evil_callbacks_load (service_id, callbacks);
+		return (res);
+	}
+	if (ais_service[service_id] == NULL) {
+		return (-1);
+	}
+	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
+printf ("returning -1 %d\n", service_id);
+		return (-1);
+	}
+
+	callbacks->name = ais_service[service_id]->name;
+	callbacks->sync_init = ais_service[service_id]->sync_init;
+	callbacks->sync_process = ais_service[service_id]->sync_process;
+printf ("process %p\n", ais_service[service_id]->sync_process);
+	callbacks->sync_activate = ais_service[service_id]->sync_activate;
+	callbacks->sync_abort = ais_service[service_id]->sync_abort;
+	return (0);
+}
+
 static struct memb_ring_id corosync_ring_id;
 
 static void confchg_fn (
@@ -269,7 +303,12 @@ static void confchg_fn (
 	const struct memb_ring_id *ring_id)
 {
 	int i;
+	int abort_activate = 0;
 
+	if (sync_in_process == 1) {
+		abort_activate = 1;
+	}
+	sync_in_process = 1;
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
@@ -285,6 +324,13 @@ static void confchg_fn (
 		}
 	}
 	serialize_unlock ();
+
+	if (abort_activate) {
+		sync_v2_abort ();
+	}
+	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		sync_v2_start (member_list, member_list_entries, ring_id);
+	}
 }
 
 static void priv_drop (void)
@@ -522,7 +568,7 @@ static int corosync_sending_allowed (
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 		(pd->reserved_msgs) &&
-		(sync_in_process() == 0)));
+		(sync_in_process == 0)));
 
 	return (sending_allowed);
 }
@@ -924,13 +970,6 @@ int main (int argc, char **argv)
 		&corosync_group,
 		1);
 
-	if (minimum_sync_mode == 1) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
-	} else
-	if (minimum_sync_mode == 0) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
-	}
-
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
@@ -941,7 +980,23 @@ int main (int argc, char **argv)
 	}
 	evil_init (api);
 
-	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed);
+	if (minimum_sync_mode == 1) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	} else
+	if (minimum_sync_mode == 0) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+		sync_register (
+			corosync_sync_callbacks_retrieve,
+			sync_v2_start);
+
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	}
+
 
 	/*
 	 * Drop root privleges to user 'ais'

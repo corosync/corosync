@@ -53,7 +53,7 @@ libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 
 corosync_SOURCES 	= main.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
-			  ../lcr/lcr_ifact.c evil.c
+			  ../lcr/lcr_ifact.c evil.c syncv2.c
 corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
@@ -69,7 +69,7 @@ SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
-			  version.h vsf.h wthread.h schedwrk.h evil.h
+			  version.h vsf.h wthread.h schedwrk.h evil.h syncv2.h
 
 EXTRA_DIST		= $(LCRSO_SRC)
 

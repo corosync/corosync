@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,46 +31,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef COROSYNC_SERVICE_H_DEFINED
-#define COROSYNC_SERVICE_H_DEFINED
 
-/*
- * Link and initialize a service
- */
-struct corosync_api_v1;
+#ifndef SYNCV2_H_DEFINED
+#define SYNCV2_H_DEFINED
 
-extern unsigned int corosync_service_link_and_init (
-	struct corosync_api_v1 *objdb,
-	const char *service_name,
-	unsigned int service_ver);
+#include "sync.h"
 
-/*
- * Unlink and exit a service based on service priority
- */
-extern unsigned int corosync_service_unlink_priority (
-	struct corosync_api_v1 *corosync_api,
-	int priority);
+extern int sync_v2_init (
+	int (*sync_callbacks_retrieve) (
+		int service_id,
+		struct sync_callbacks *callbacks),
+	void (*synchronization_completed) (void));
 
-/*
- * Unlink and exit a service
- */
-extern unsigned int corosync_service_unlink_and_exit (
-	struct corosync_api_v1 *objdb,
-	const char *service_name,
-	unsigned int service_ver);
+extern void sync_v2_start (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id);
 
-/*
- * Unlink and exit all corosync services
- */
-extern unsigned int corosync_service_unlink_all (
-	struct corosync_api_v1 *objdb);
+extern void sync_v2_abort (void);
 
-/*
- * Load all of the default services
- */
-extern unsigned int corosync_service_defaults_link_and_init (
-	struct corosync_api_v1 *objdb);
-
-extern struct corosync_service_engine *ais_service[];
-
-#endif /* SERVICE_H_DEFINED */
+#endif /* SYNC_H_DEFINED */
