@@ -277,7 +277,7 @@ static void my_cluster_node_load (void)
 static int clm_hack_init (void)
 {
 
-#if defined(OPENAIS_LINUX)
+#if defined(COROSYNC_LINUX)
 	struct sysinfo s_info;
 	time_t current_time;
 	sysinfo (&s_info);
