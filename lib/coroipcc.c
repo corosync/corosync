@@ -140,8 +140,8 @@ retry_send:
 	if (result == -1) {
 		switch (errno) {
 		case EINTR:
-			goto retry_send;
-			break;
+			res = CS_ERR_TRY_AGAIN;
+			goto res_exit;
 		case EAGAIN:
 			goto retry_send;
 			break;
@@ -197,8 +197,8 @@ retry_recv:
 	if (result == -1) {
 		switch (errno) {
 		case EINTR:
-			goto retry_recv;
-			break;
+			res = CS_ERR_TRY_AGAIN;
+			goto res_exit;
 		case EAGAIN:
 			goto retry_recv;
 			break;
@@ -413,7 +413,7 @@ msg_send (
 retry_semop:
 	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
+		return (CS_ERR_TRY_AGAIN);
 	} else
 	if (res == -1 && errno == EACCES) {
 		priv_change_send (ipc_instance);
@@ -446,7 +446,7 @@ reply_receive (
 retry_semop:
 	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
+		return (CS_ERR_TRY_AGAIN);
 	} else
 	if (res == -1 && errno == EACCES) {
 		priv_change_send (ipc_instance);
@@ -484,7 +484,7 @@ reply_receive_in_buf (
 retry_semop:
 	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
+		return (CS_ERR_TRY_AGAIN);
 	} else
 	if (res == -1 && errno == EACCES) {
 		priv_change_send (ipc_instance);
@@ -756,10 +756,10 @@ coroipcc_dispatch_get (
 	ufds.events = POLLIN;
 	ufds.revents = 0;
 
-retry_poll:
 	poll_events = poll (&ufds, 1, timeout);
 	if (poll_events == -1 && errno == EINTR) {
-		goto retry_poll;
+		error = CS_ERR_TRY_AGAIN;
+		goto error_put;
 	} else
 	if (poll_events == -1) {
 		goto error_put;
@@ -771,10 +771,11 @@ retry_poll:
 		error = CS_ERR_LIBRARY;
 		goto error_put;
 	}
-retry_recv:
+
 	res = recv (ipc_instance->fd, &buf, 1, 0);
 	if (res == -1 && errno == EINTR) {
-		goto retry_recv;
+		res = CS_ERR_TRY_AGAIN;
+		goto error_put;
 	} else
 	if (res == -1) {
 		goto error_put;
@@ -837,7 +838,7 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 retry_semop:
 	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
-		goto retry_semop;
+		return (CS_ERR_TRY_AGAIN);
 	} else
 	if (res == -1 && errno == EACCES) {
 		priv_change_send (ipc_instance);
