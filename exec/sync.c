@@ -78,7 +78,7 @@ static struct sync_callbacks sync_callbacks;
 static int sync_processing = 0;
 
 static void (*sync_next_start) (
-	unsigned int *member_list,
+	const unsigned int *member_list,
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
 
@@ -176,7 +176,7 @@ static void sync_start_init (const struct memb_ring_id *ring_id)
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
-	sync_callbacks.sync_init ();
+	sync_callbacks.sync_init (my_member_list, my_member_list_entries, ring_id);
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	/*
@@ -264,7 +264,7 @@ int sync_register (
 		struct sync_callbacks *callbacks),
 
 	void (*next_start) (
-		unsigned int *member_list,
+		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id))
 {

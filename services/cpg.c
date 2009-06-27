@@ -206,7 +206,11 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 
 static int cpg_exec_send_joinlist(void);
 
-static void cpg_sync_init (void);
+static void cpg_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
+
 static int  cpg_sync_process (void);
 static void cpg_sync_activate (void);
 static void cpg_sync_abort (void);
@@ -354,7 +358,10 @@ struct req_exec_cpg_downlist {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
-static void cpg_sync_init (void)
+static void cpg_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 }
 

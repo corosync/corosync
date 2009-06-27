@@ -629,7 +629,10 @@ struct corosync_service_engine {
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
 	enum cs_sync_mode sync_mode;
-	void (*sync_init) (void);
+	void (*sync_init) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);

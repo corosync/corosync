@@ -76,7 +76,10 @@
 #include "sync.h"
 #include "evil.h"
 
-static void clm_sync_init (void);
+static void clm_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static int clm_sync_process (void);
 
@@ -98,7 +101,10 @@ static struct sync_callbacks clm_sync_operations = {
 
 static struct corosync_api_v1 *api = NULL;
 
-static void sync_dummy_init (void)
+static void sync_dummy_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 }
 
@@ -329,7 +335,10 @@ static int clm_nodejoin_send (void)
 /*
  * This is a noop for this service
  */
-static void clm_sync_init (void)
+static void clm_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	return;
 }

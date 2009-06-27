@@ -80,7 +80,10 @@ enum sync_state {
 
 struct service_entry {
 	int service_id;
-	void (*sync_init) (void);
+	void (*sync_init) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	void (*sync_abort) (void);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
@@ -113,7 +116,11 @@ static int my_processing_idx = 0;
 
 static hdb_handle_t my_schedwrk_handle;
 
-static struct processor_entry my_processor_list[128];
+static struct processor_entry my_processor_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
+
+static size_t my_member_list_entries = 0;
 
 static int my_processor_list_entries = 0;
 
@@ -123,7 +130,7 @@ static int my_service_list_entries = 0;
 
 static const struct memb_ring_id sync_ring_id;
 
-static struct service_entry my_initial_service_list[128];
+static struct service_entry my_initial_service_list[PROCESSOR_COUNT_MAX];
 
 static int my_initial_service_list_entries;
 
@@ -229,7 +236,10 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 	}
 }
 
-static void dummy_sync_init (void)
+static void dummy_sync_init (
+	const unsigned int *member_list,
+	unsigned int member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 }
 
@@ -438,7 +448,8 @@ static int schedwrk_processor (const void *context)
 
 	if (my_service_list[my_processing_idx].state == INIT) {
 		my_service_list[my_processing_idx].state = PROCESS;
-		my_service_list[my_processing_idx].sync_init ();
+		my_service_list[my_processing_idx].sync_init (my_member_list, my_member_list_entries,
+			&my_ring_id);
 	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;

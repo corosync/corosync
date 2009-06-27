@@ -40,7 +40,10 @@
 #include "totemsrp.h"
 
 struct sync_callbacks {
-	void (*sync_init) (void);
+	void (*sync_init) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
@@ -53,7 +56,7 @@ int sync_register (
 		struct sync_callbacks *callbacks),
 
 	void (*next_start) (
-		unsigned int *member_list,
+		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id));
 
