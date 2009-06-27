@@ -78,7 +78,7 @@ clean-generic:
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
 	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
-	alphatag="$(shell svnversion)" && \
+	alphatag="$(shell svnversion | sed -e "s#.*:##g" -e "s#[MS]##g")" && \
 	sed \
 		-e "s#@alphatag@#r$$alphatag#g" \
 		-e "s#@version@#$(VERSION)#g" \
