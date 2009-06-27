@@ -280,14 +280,12 @@ static int corosync_sync_v2_callbacks_retrieve (
 		return (-1);
 	}
 	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
-printf ("returning -1 %d\n", service_id);
 		return (-1);
 	}
 
 	callbacks->name = ais_service[service_id]->name;
 	callbacks->sync_init = ais_service[service_id]->sync_init;
 	callbacks->sync_process = ais_service[service_id]->sync_process;
-printf ("process %p\n", ais_service[service_id]->sync_process);
 	callbacks->sync_activate = ais_service[service_id]->sync_activate;
 	callbacks->sync_abort = ais_service[service_id]->sync_abort;
 	return (0);
