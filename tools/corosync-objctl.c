@@ -89,12 +89,17 @@ static void tail_object_deleted(confdb_handle_t handle,
 	const void *name_pt,
 	size_t name_len);
 
+static void create_object(confdb_handle_t handle, char * name_pt);
+static void write_key(confdb_handle_t handle, char * path_pt);
+static void get_parent_name(const char * name_pt, char * parent_name);
+
 static confdb_callbacks_t callbacks = {
 	.confdb_key_change_notify_fn = tail_key_changed,
 	.confdb_object_create_change_notify_fn = tail_object_created,
 	.confdb_object_delete_change_notify_fn = tail_object_deleted,
 };
 
+static int debug = 0;
 static int action;
 
 /* Recursively dump the object tree */
@@ -162,6 +167,82 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	}
 }
 
+static int read_in_config_file (char * filename)
+{
+	confdb_handle_t handle;
+	int result;
+	int ignore;
+	int c;
+	FILE* fh;
+	char buf[1024];
+	char * line;
+	char * end;
+	char parent_name[OBJ_NAME_SIZE];
+
+	if (access (filename, R_OK) != 0) {
+		perror ("Couldn't access file.");
+		return -1;
+	}
+
+	fh = fopen(filename, "r");
+	if (fh == NULL) {
+		perror ("Couldn't open file.");
+		return -1;
+	}
+	result = confdb_initialize (&handle, &callbacks);
+	if (result != CONFDB_OK) {
+		fprintf (stderr, "Could not initialize objdb library. Error %d\n", result);
+		fclose (fh);
+		return -1;
+	}
+
+	while (fgets (buf, 1024, fh) != NULL) {
+		/* find the first real character, if it is
+		 * a '#' then ignore this line.
+		 * else process.
+		 * if no real characters then also ignore.
+		 */
+		ignore = 1;
+		for (c = 0; c < 1024; c++) {
+			if (isblank (buf[c]))
+				continue;
+
+			if (buf[c] == '#' || buf[c] == '\n') {
+				ignore = 1;
+				break;
+			}
+			ignore = 0;
+			line = &buf[c];
+			break;
+		}
+		if (ignore == 1)
+			continue;
+
+		/* kill the \n */
+		end = strchr (line, '\n');
+		if (end != NULL)
+			*end = '\0';
+
+		if (debug == 2)
+			printf ("%d: %s\n", __LINE__, line);
+
+		/* find the parent object */
+		get_parent_name(line, parent_name);
+
+		if (debug == 2)
+			printf ("%d: %s\n", __LINE__, parent_name);
+
+		/* create the object */
+		create_object (handle, parent_name);
+		/* write the attribute */
+		write_key (handle, line);
+	}
+
+	confdb_finalize (handle);
+	fclose (fh);
+	return 0;
+}
+
 static int print_all(void)
 {
 	confdb_handle_t handle;
@@ -190,6 +271,7 @@ static int print_help(void)
 	printf ("        corosync-objctl -w object%cchild_obj.key=value ... Create a key\n", SEPERATOR);
 	printf ("        corosync-objctl -t object%cchild_obj ...           Track changes\n", SEPERATOR);
 	printf ("        corosync-objctl -a                                Print all objects\n");
+	printf ("        corosync-objctl -p <filename> Load in config from the specified file.\n");
 	printf("\n");
 	return 0;
 }
@@ -210,7 +292,14 @@ static void get_parent_name(const char * name_pt, char * parent_name)
 
 	/* first remove the value (it could be a file path */
 	tmp = strchr(parent_name, '=');
-	if (tmp != NULL) *tmp = '\0';
+	if (tmp != NULL) {
+		*tmp = '\0';
+		tmp--;
+		while (isblank (*tmp)) {
+			*tmp = '\0';
+			tmp--;
+		}
+	}
 
 	/* then truncate the child name */
 	tmp = strrchr(parent_name, SEPERATOR);
@@ -219,10 +308,29 @@ static void get_parent_name(const char * name_pt, char * parent_name)
 
 static void get_key(const char * name_pt, char * key_name, char * key_value)
 {
-	char * tmp;
+	char * tmp = (char*)name_pt;
 	char str_copy[OBJ_NAME_SIZE];
+	char * copy_tmp = str_copy;
+	int equals_seen = 0;
+	int in_quotes = 0;
 
-	strcpy(str_copy, name_pt);
+	/* strip out spaces when not in quotes */
+	while (*tmp != '\0') {
+		if (*tmp == '=')
+			equals_seen = 1;
+		if (equals_seen && *tmp == '"') {
+			if (in_quotes)
+				in_quotes = 0;
+			else
+				in_quotes = 1;
+		}
+		if (*tmp != ' ' || in_quotes) {
+			*copy_tmp = *tmp;
+			copy_tmp++;
+		}
+		tmp++;
+	}
+	*copy_tmp = '\0';
 
 	/* first remove the value (it could have a SEPERATOR in it */
 	tmp = strchr(str_copy, '=');
@@ -301,6 +409,10 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	get_parent_name(path_pt, parent_name);
 	get_key(path_pt, key_name, key_value);
 
+	if (debug == 1)
+		printf ("%d: key:\"%s\", value:\"%s\"\n",
+				__LINE__, key_name, key_value);
+
 	if (validate_name(key_name) != CS_OK) {
 		fprintf(stderr, "Incorrect key name, can not have \"=\" or \"%c\"\n", SEPERATOR);
 		exit(EXIT_FAILURE);
@@ -375,6 +487,9 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 						obj_name_pt);
 				exit(EXIT_FAILURE);
 			}
+
+			if (debug)
+				printf ("%s:%d: %s\n", __func__,__LINE__, obj_name_pt);
 			res = confdb_object_create (handle,
 										parent_object_handle,
 										obj_name_pt,
@@ -564,11 +679,14 @@ int main (int argc, char *argv[]) {
 	action = ACTION_READ;
 
 	for (;;){
-		c = getopt (argc,argv,"hawcdtp:");
+		c = getopt (argc,argv,"hawcvdtp:");
 		if (c==-1) {
 			break;
 		}
 		switch (c) {
+			case 'v':
+				debug++;
+				break;
 			case 'h':
 				return print_help();
 				break;
@@ -576,9 +694,7 @@ int main (int argc, char *argv[]) {
 				action = ACTION_PRINT_ALL;
 				break;
 			case 'p':
-				printf("%s:%d NOT Implemented yet.\n", __FUNCTION__, __LINE__);
-				return -1;
-				//return read_in_config_file();
+				return read_in_config_file (optarg);
 				break;
 			case 'c':
 				action = ACTION_CREATE;
