@@ -1534,8 +1534,10 @@ static void timer_function_orf_token_timeout (void *data)
 
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the OPERATIONAL state.\n");
+			log_printf (instance->totemsrp_log_level_notice,
+				"A processor failed, forming new configuration.\n");
 			totemrrp_iface_check (instance->totemrrp_handle);
 			memb_state_gather_enter (instance, 2);
 			break;
@@ -1783,8 +1785,10 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->my_high_delivered = instance->my_aru;
 // TODO the recovery messages are leaked
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.\n");
+	log_printf (instance->totemsrp_log_level_notice,
+		"A processor joined or left the membership and a new membership was formed.\n");
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->my_received_flg = 1;
@@ -1839,7 +1843,7 @@ static void memb_state_gather_enter (
 
 	memb_consensus_set (instance, &instance->my_id);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"entering GATHER state from %d.\n", gather_from);
 
 	instance->memb_state = MEMB_STATE_GATHER;
@@ -1878,7 +1882,7 @@ static void memb_state_commit_enter (
 	reset_token_timeout (instance); // REVIEWED
 	reset_token_retransmit_timeout (instance); // REVIEWED
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"entering COMMIT state.\n");
 
 	instance->memb_state = MEMB_STATE_COMMIT;
@@ -1910,7 +1914,7 @@ static void memb_state_recovery_enter (
 	addr = (const struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"entering RECOVERY state.\n");
 
 	instance->my_high_ring_delivered = 0;
