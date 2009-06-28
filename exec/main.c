@@ -272,11 +272,11 @@ static int corosync_sync_v2_callbacks_retrieve (
 {
 	int res;
 
-	if (minimum_sync_mode == CS_SYNC_V1 && service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
 		res = evil_callbacks_load (service_id, callbacks);
 		return (res);
 	}
-	if (minimum_sync_mode == CS_SYNC_V1 && service_id == EVT_SERVICE && ais_service[EVT_SERVICE] == NULL) {
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == EVT_SERVICE && ais_service[EVT_SERVICE] == NULL) {
 		res = evil_callbacks_load (service_id, callbacks);
 		return (res);
 	}
@@ -990,13 +990,13 @@ int main (int argc, char **argv)
 	}
 	evil_init (api);
 
-	if (minimum_sync_mode == 1) {
+	if (minimum_sync_mode == CS_SYNC_V2) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
 		sync_v2_init (
 			corosync_sync_v2_callbacks_retrieve,
 			corosync_sync_completed);
 	} else
-	if (minimum_sync_mode == 0) {
+	if (minimum_sync_mode == CS_SYNC_V1) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
 		sync_register (
 			corosync_sync_callbacks_retrieve,
