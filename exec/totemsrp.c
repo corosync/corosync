@@ -702,7 +702,7 @@ static int pause_flush (struct totemsrp_instance *instance)
 
 	if ((now_msec - timestamp_msec) > (instance->totem_config->token_timeout / 2)) {
 		log_printf (instance->totemsrp_log_level_notice,
-			"Process pause detected for %lld ms, flushing membership messages.\n", (now_msec - timestamp_msec));
+			"Process pause detected for %d ms, flushing membership messages.\n", (unsigned int)(now_msec - timestamp_msec));
 		/*
 		 * -1 indicates an error from recvmsg
 		 */
