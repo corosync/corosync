@@ -76,6 +76,12 @@
 #include "sync.h"
 #include "evil.h"
 
+static unsigned int my_evt_checked_in = 0;
+
+static unsigned int my_member_list_entries;
+
+static struct corosync_api_v1 *api = NULL;
+
 static void clm_sync_init (
 	const unsigned int *member_list,
 	size_t member_list_entries,
@@ -100,6 +106,13 @@ static void evt_sync_abort (void);
 
 static int clm_hack_init (void);
 
+static void deliver_fn_evt_compat (
+	unsigned int nodeid,
+	unsigned int service,
+	unsigned int fn_id,
+	const void *msg, 
+	unsigned int endian_conversion_required);
+
 static struct sync_callbacks clm_sync_operations = {
 	.name			= "dummy CLM service",
 	.sync_init		= clm_sync_init,
@@ -116,7 +129,6 @@ static struct sync_callbacks evt_sync_operations = {
 	.sync_abort		= evt_sync_abort,
 };
 
-static struct corosync_api_v1 *api = NULL;
 
 static void sync_dummy_init (
 	const unsigned int *member_list,
@@ -169,6 +181,9 @@ extern int evil_callbacks_load (int sync_id,
 			callbacks->name = "dummy CKPT service";
 			break;
 		case EVT_SERVICE:
+			/*
+			 * double ugh
+			 */
 			memcpy (callbacks, &evt_sync_operations, sizeof (struct sync_callbacks));
 			callbacks_init = 0;
 			break;
@@ -206,6 +221,23 @@ extern int evil_callbacks_load (int sync_id,
 	return (0);
 }
 
+void evil_deliver_fn (
+	unsigned int nodeid,
+	unsigned int service,
+	unsigned int fn_id,
+	const void *msg, 
+	unsigned int endian_conversion_required)
+{
+	if (service == EVT_SERVICE) {
+		deliver_fn_evt_compat (
+			nodeid,
+			service,
+			fn_id,
+			msg, 
+			endian_conversion_required);
+	}
+}
+	
 /*
  * This sends the clm nodejoin message required by clm services
  * on whitetank as well as the event service
@@ -387,7 +419,10 @@ static void clm_sync_abort (void)
 
 enum evt_sync_states {
 	EVT_SYNC_PART_ONE,
-	EVT_SYNC_PART_TWO
+	EVT_SYNC_PART_TWO,
+	EVT_SYNC_PART_THREE,
+	EVT_SYNC_PART_FOUR,
+	EVT_SYNC_DONE
 };
 
 static enum evt_sync_states evt_sync_state;
@@ -419,6 +454,9 @@ static void evt_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	my_member_list_entries = member_list_entries;
+	my_evt_checked_in = 0;
+	
 	evt_sync_state = EVT_SYNC_PART_ONE;
 	return;
 }
@@ -445,14 +483,18 @@ static int evt_sync_process (void)
 		}
 		evt_sync_state = EVT_SYNC_PART_TWO;
 	}
-	if (evt_sync_state == EVT_SYNC_PART_TWO) {
+	if (evt_sync_state == EVT_SYNC_PART_THREE) {
 		cpkt.chc_op = EVT_CONF_DONE;
 		res = api->totem_mcast(&chn_iovec, 1,TOTEMPG_AGREED);
 		if (res == -1) {
 			return (res);
 		}
+		evt_sync_state = EVT_SYNC_PART_FOUR;
 	}
-	return (0);
+	if (evt_sync_state == EVT_SYNC_DONE) {
+		return (0);
+	}
+	return (-1);
 }
 
 static void evt_sync_activate (void)
@@ -463,4 +505,39 @@ static void evt_sync_activate (void)
 static void evt_sync_abort (void)
 {
 	return;
+}
+
+static void deliver_fn_evt_compat (
+	unsigned int nodeid,
+	unsigned int service,
+	unsigned int fn_id,
+	const void *msg, 
+	unsigned int endian_conversion_required)
+{
+	const struct req_evt_chan_command *cpkt = msg;
+	unsigned int operation;
+
+	if (fn_id != MESSAGE_REQ_EXEC_EVT_CHANCMD) {
+		return;
+	}
+	operation = cpkt->chc_op;
+
+	if (endian_conversion_required) {
+		operation = swab32 (operation);
+	}
+
+	switch (operation) {
+	case EVT_OPEN_COUNT_DONE:
+		if (++my_evt_checked_in == my_member_list_entries) {
+			evt_sync_state = EVT_SYNC_PART_THREE;
+			my_evt_checked_in = 0;
+		}
+		break;
+	case EVT_CONF_DONE:
+		if (++my_evt_checked_in == my_member_list_entries) {
+			evt_sync_state = EVT_SYNC_DONE;
+			my_evt_checked_in = 0;
+		}
+		break;
+	}
 }

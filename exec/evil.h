@@ -45,4 +45,11 @@ extern int evil_callbacks_load (
 	int sync_id,
         struct sync_callbacks *callbacks);
 
+extern void evil_deliver_fn (
+        unsigned int nodeid,
+        unsigned int service,
+        unsigned int fn_id,
+        const void *msg,
+        unsigned int endian_conversion_required);
+
 #endif /* EVIL_H_DEFINED */

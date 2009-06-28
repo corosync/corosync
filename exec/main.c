@@ -272,7 +272,11 @@ static int corosync_sync_v2_callbacks_retrieve (
 {
 	int res;
 
-	if (service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+	if (minimum_sync_mode == CS_SYNC_V1 && service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+		res = evil_callbacks_load (service_id, callbacks);
+		return (res);
+	}
+	if (minimum_sync_mode == CS_SYNC_V1 && service_id == EVT_SERVICE && ais_service[EVT_SERVICE] == NULL) {
 		res = evil_callbacks_load (service_id, callbacks);
 		return (res);
 	}
@@ -436,10 +440,18 @@ static void deliver_fn (
 	 */
 	service = id >> 16;
 	fn_id = id & 0xffff;
-	if (!ais_service[service])
-		return;
 
 	serialize_lock();
+
+	if (ais_service[service] == NULL && service == EVT_SERVICE) {
+		evil_deliver_fn (nodeid, service, fn_id, msg,
+			endian_conversion_required);
+	}
+
+	if (!ais_service[service]) {
+		serialize_unlock();
+		return;
+	}
 
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
