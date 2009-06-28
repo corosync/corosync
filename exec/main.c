@@ -126,8 +126,6 @@ static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
-unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
-
 hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
@@ -196,9 +194,9 @@ static void sigabrt_handler (int num)
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
-hdb_handle_t corosync_group_handle;
+static hdb_handle_t corosync_group_handle;
 
-struct totempg_group corosync_group = {
+static struct totempg_group corosync_group = {
 	.group		= "a",
 	.group_len	= 1
 };

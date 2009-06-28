@@ -45,10 +45,6 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 
-extern struct totempg_group corosync_group;
-
-extern hdb_handle_t corosync_group_handle;
-
 extern hdb_handle_t corosync_poll_handle;
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
