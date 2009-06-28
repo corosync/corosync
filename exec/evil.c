@@ -87,7 +87,16 @@ static void clm_sync_activate (void);
 
 static void clm_sync_abort (void);
 
-static int clm_nodejoin_send (void);
+static void evt_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
+
+static int evt_sync_process (void);
+
+static void evt_sync_activate (void);
+
+static void evt_sync_abort (void);
 
 static int clm_hack_init (void);
 
@@ -97,6 +106,14 @@ static struct sync_callbacks clm_sync_operations = {
 	.sync_process		= clm_sync_process,
 	.sync_activate		= clm_sync_activate,
 	.sync_abort		= clm_sync_abort,
+};
+
+static struct sync_callbacks evt_sync_operations = {
+	.name			= "dummy EVT service",
+	.sync_init		= evt_sync_init,
+	.sync_process		= evt_sync_process,
+	.sync_activate		= evt_sync_activate,
+	.sync_abort		= evt_sync_abort,
 };
 
 static struct corosync_api_v1 *api = NULL;
@@ -152,7 +169,8 @@ extern int evil_callbacks_load (int sync_id,
 			callbacks->name = "dummy CKPT service";
 			break;
 		case EVT_SERVICE:
-			callbacks->name = "dummy EVT service";
+			memcpy (callbacks, &evt_sync_operations, sizeof (struct sync_callbacks));
+			callbacks_init = 0;
 			break;
 		case LCK_SERVICE:
 			callbacks_init = 0;
@@ -363,6 +381,86 @@ static void clm_sync_activate (void)
  * This is a noop for this service
  */
 static void clm_sync_abort (void)
+{
+	return;
+}
+
+enum evt_sync_states {
+	EVT_SYNC_PART_ONE,
+	EVT_SYNC_PART_TWO
+};
+
+static enum evt_sync_states evt_sync_state;
+
+enum evt_chan_ops {
+	EVT_OPEN_CHAN_OP,               /* chc_chan */
+	EVT_CLOSE_CHAN_OP,              /* chc_close_unlink_chan */
+	EVT_UNLINK_CHAN_OP,             /* chc_close_unlink_chan */
+	EVT_CLEAR_RET_OP,               /* chc_event_id */
+	EVT_SET_ID_OP,                  /* chc_set_id */
+	EVT_CONF_DONE,                  /* no data used */
+	EVT_OPEN_COUNT,                 /* chc_set_opens */
+	EVT_OPEN_COUNT_DONE             /* no data used */
+};
+
+enum evt_message_req_types {
+	MESSAGE_REQ_EXEC_EVT_EVENTDATA = 0,
+	MESSAGE_REQ_EXEC_EVT_CHANCMD = 1,
+	MESSAGE_REQ_EXEC_EVT_RECOVERY_EVENTDATA = 2
+};
+
+struct req_evt_chan_command {
+	mar_req_header_t chc_head __attribute__((aligned(8)));
+	mar_uint32_t chc_op __attribute__((aligned(8)));
+};
+
+static void evt_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	evt_sync_state = EVT_SYNC_PART_ONE;
+	return;
+}
+
+static int evt_sync_process (void)
+{
+	int res;
+	struct req_evt_chan_command cpkt;
+	struct iovec chn_iovec;
+
+	memset(&cpkt, 0, sizeof(cpkt));
+	cpkt.chc_head.id =
+		SERVICE_ID_MAKE(EVT_SERVICE, MESSAGE_REQ_EXEC_EVT_CHANCMD);
+	cpkt.chc_head.size = sizeof(cpkt);
+	chn_iovec.iov_base = &cpkt;
+	chn_iovec.iov_len = cpkt.chc_head.size;
+
+	if (evt_sync_state == EVT_SYNC_PART_ONE) {
+		cpkt.chc_op = EVT_OPEN_COUNT_DONE;
+
+		res = api->totem_mcast(&chn_iovec, 1,TOTEMPG_AGREED);
+		if (res == -1) {
+			return (res);
+		}
+		evt_sync_state = EVT_SYNC_PART_TWO;
+	}
+	if (evt_sync_state == EVT_SYNC_PART_TWO) {
+		cpkt.chc_op = EVT_CONF_DONE;
+		res = api->totem_mcast(&chn_iovec, 1,TOTEMPG_AGREED);
+		if (res == -1) {
+			return (res);
+		}
+	}
+	return (0);
+}
+
+static void evt_sync_activate (void)
+{
+	return;
+}
+
+static void evt_sync_abort (void)
 {
 	return;
 }
