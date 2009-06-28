@@ -73,6 +73,11 @@ static const struct memb_ring_id *sync_ring_id;
 
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
+static void (*sync_started) (
+	const struct memb_ring_id *ring_id);
+
+static void (*sync_aborted) (void);
+
 static struct sync_callbacks sync_callbacks;
 
 static int sync_processing = 0;
@@ -263,6 +268,11 @@ int sync_register (
 		int sync_id,
 		struct sync_callbacks *callbacks),
 
+	void (*started) (
+		const struct memb_ring_id *ring_id),
+
+	void (*aborted) (void),
+
 	void (*next_start) (
 		const unsigned int *member_list,
 		size_t member_list_entries,
@@ -291,6 +301,8 @@ int sync_register (
 
 	sync_callbacks_retrieve = callbacks_retrieve;
 	sync_next_start = next_start;
+	sync_started = started;
+	sync_aborted = aborted;
 	return (0);
 }
 
@@ -454,9 +466,13 @@ static void sync_confchg_fn (
 	my_member_list_entries = member_list_entries;
 
 	if (sync_processing && sync_callbacks.sync_abort != NULL) {
+		sync_aborted ();
 		sync_callbacks.sync_abort ();
 		sync_callbacks.sync_activate = NULL;
 	}
+
+	sync_started (
+		ring_id);
 
 	sync_primary_callback_fn (
 		member_list,

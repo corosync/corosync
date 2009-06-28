@@ -55,6 +55,11 @@ int sync_register (
 		int sync_id,
 		struct sync_callbacks *callbacks),
 
+	void (*sync_started) (
+		const struct memb_ring_id *ring_id),
+
+	void (*sync_aborted) (void),
+
 	void (*next_start) (
 		const unsigned int *member_list,
 		size_t member_list_entries,

@@ -1000,6 +1000,8 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
 		sync_register (
 			corosync_sync_callbacks_retrieve,
+			sync_v2_memb_list_determine,
+			sync_v2_memb_list_abort,
 			sync_v2_start);
 
 		sync_v2_init (

@@ -50,4 +50,8 @@ extern void sync_v2_start (
 
 extern void sync_v2_abort (void);
 
+extern void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id);
+
+extern void sync_v2_memb_list_abort (void);
+
 #endif /* SYNC_H_DEFINED */
