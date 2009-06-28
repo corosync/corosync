@@ -786,46 +786,46 @@ int totemsrp_initialize (
 	/*
 	 * Display totem configuration
 	 */
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"Token Timeout (%d ms) retransmit timeout (%d ms)\n",
 		totem_config->token_timeout, totem_config->token_retransmit_timeout);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"token hold (%d ms) retransmits before loss (%d retrans)\n",
 		totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"join (%d ms) send_join (%d ms) consensus (%d ms) merge (%d ms)\n",
 		totem_config->join_timeout,
 		totem_config->send_join_timeout,
 		totem_config->consensus_timeout,
 
 		totem_config->merge_timeout);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"downcheck (%d ms) fail to recv const (%d msgs)\n",
 		totem_config->downcheck_timeout, totem_config->fail_to_recv_const);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"seqno unchanged const (%d rotations) Maximum network MTU %d\n", totem_config->seqno_unchanged_const, totem_config->net_mtu);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"window size per rotation (%d messages) maximum messages per rotation (%d messages)\n",
 		totem_config->window_size, totem_config->max_messages);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"send threads (%d threads)\n", totem_config->threads);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP token expired timeout (%d ms)\n",
 		totem_config->rrp_token_expired_timeout);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP token problem counter (%d ms)\n",
 		totem_config->rrp_problem_count_timeout);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP threshold (%d problem count)\n",
 		totem_config->rrp_problem_count_threshold);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP mode set to %s.\n", instance->totem_config->rrp_mode);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"heartbeat_failures_allowed (%d)\n", totem_config->heartbeat_failures_allowed);
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"max_network_delay (%d ms)\n", totem_config->max_network_delay);
 
 
@@ -848,7 +848,7 @@ int totemsrp_initialize (
 	gettimeofday (&instance->pause_timestamp, NULL);
 
 	if ( totem_config->heartbeat_failures_allowed == 0 ) {
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"HeartBeat is Disabled. To enable set heartbeat_failures_allowed > 0\n");
 		instance->use_heartbeat = 0;
 	}
@@ -859,18 +859,18 @@ int totemsrp_initialize (
 				+ totem_config->max_network_delay;
 
 		if (instance->heartbeat_timeout >= totem_config->token_timeout) {
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"total heartbeat_timeout (%d ms) is not less than token timeout (%d ms)\n",
 				instance->heartbeat_timeout,
 				totem_config->token_timeout);
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"heartbeat_timeout = heartbeat_failures_allowed * token_retransmit_timeout + max_network_delay\n");
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"heartbeat timeout should be less than the token timeout. HeartBeat is Diabled !!\n");
 			instance->use_heartbeat = 0;
 		}
 		else {
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
                 		"total heartbeat_timeout (%d ms)\n", instance->heartbeat_timeout);
 		}
 	}
@@ -1393,7 +1393,7 @@ static void old_ring_state_save (struct totemsrp_instance *instance)
 		instance->old_ring_state_saved = 1;
 		instance->old_ring_state_aru = instance->my_aru;
 		instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"Saving state aru %x high seq received %x\n",
 			instance->my_aru, instance->my_high_seq_received);
 	}
@@ -1419,7 +1419,7 @@ static void ring_state_restore (struct totemsrp_instance *instance)
 		totemip_zero_set(&instance->my_ring_id.rep);
 		instance->my_aru = instance->old_ring_state_aru;
 		instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"Restoring instance->my_aru %x my high seq received %x\n",
 			instance->my_aru, instance->my_high_seq_received);
 	}
@@ -1541,20 +1541,20 @@ static void timer_function_orf_token_timeout (void *data)
 			break;
 
 		case MEMB_STATE_GATHER:
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"The consensus timeout expired.\n");
 			memb_state_consensus_timeout_expired (instance);
 			memb_state_gather_enter (instance, 3);
 			break;
 
 		case MEMB_STATE_COMMIT:
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the COMMIT state.\n");
 			memb_state_gather_enter (instance, 4);
 			break;
 
 		case MEMB_STATE_RECOVERY:
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the RECOVERY state.\n");
 			ring_state_restore (instance);
 			memb_state_gather_enter (instance, 5);
@@ -1565,7 +1565,7 @@ static void timer_function_orf_token_timeout (void *data)
 static void timer_function_heartbeat_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"HeartBeat Timer expired Invoking token loss mechanism in state %d \n", instance->memb_state);
 	timer_function_orf_token_timeout(data);
 }
@@ -1672,7 +1672,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 				}
 			}
 		} else {
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"-not adding msg with seq no %x\n", mcast->seq);
 		}
 	}
@@ -1939,14 +1939,14 @@ static void memb_state_recovery_enter (
 		instance->my_trans_memb_list, &instance->my_trans_memb_entries);
 
 	for (i = 0; i < instance->my_new_memb_entries; i++) {
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"position [%d] member %s:\n", i, totemip_print (&addr[i].addr[0]));
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"previous ring seq %lld rep %s\n",
 			memb_list[i].ring_id.seq,
 			totemip_print (&memb_list[i].ring_id.rep));
 
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"aru %x high delivered %x received flag %d\n",
 			memb_list[i].aru,
 			memb_list[i].high_delivered,
@@ -2007,7 +2007,7 @@ static void memb_state_recovery_enter (
 	}
 	assert (range < 1024);
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"copying all old ring messages from %x-%x.\n",
 		low_ring_aru + 1, instance->old_ring_state_high_seq_received);
 	strcpy (not_originated, "Not Originated for recovery: ");
@@ -2047,16 +2047,16 @@ static void memb_state_recovery_enter (
 			sort_queue_item->msg_len);
 		cs_queue_item_add (&instance->retrans_message_queue, &message_item);
 	}
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"Originated %d messages in RECOVERY.\n", messages_originated);
 	strcat (not_originated, "\n");
 	strcat (is_originated, "\n");
-	log_printf (instance->totemsrp_log_level_notice, "%s", is_originated);
-	log_printf (instance->totemsrp_log_level_notice, "%s", not_originated);
+	log_printf (instance->totemsrp_log_level_debug, "%s", is_originated);
+	log_printf (instance->totemsrp_log_level_debug, "%s", not_originated);
 	goto originated;
 
 no_originate:
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"Did not need to originate any messages in recovery.\n");
 
 originated:
@@ -2113,7 +2113,7 @@ int totemsrp_mcast (
 	}
 
 	if (cs_queue_is_full (&instance->new_message_queue)) {
-		log_printf (instance->totemsrp_log_level_warning, "queue full\n");
+		log_printf (instance->totemsrp_log_level_debug, "queue full\n");
 		return (-1);
 	}
 
@@ -2447,7 +2447,7 @@ static int orf_token_rtr (
 			strcat (retransmit_msg, value);
 		}
 		strcat (retransmit_msg, "\n");
-		log_printf (instance->totemsrp_log_level_notice,
+		log_printf (instance->totemsrp_log_level_debug,
 			"%s", retransmit_msg);
 	}
 
@@ -2854,7 +2854,7 @@ static void memb_state_commit_token_create (
 	struct memb_commit_token_memb_entry *memb_list;
 	int token_memb_entries = 0;
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"Creating commit token because I am the rep.\n");
 
 	memb_set_subtract (token_memb, &token_memb_entries,
@@ -3090,7 +3090,7 @@ static void memb_ring_id_set_and_store (
 		assert (0);
 		return;
 	}
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 		"Storing new sequence id for ring %llx\n", instance->my_ring_id.seq);
 	//assert (fd > 0);
 	res = write (fd, &instance->my_ring_id.seq, sizeof (unsigned long long));
@@ -3311,7 +3311,7 @@ static int message_handler_orf_token (
 	timersub (&tv_current, &tv_old, &tv_diff);
 	memcpy (&tv_old, &tv_current, sizeof (struct timeval));
 
-	log_printf (instance->totemsrp_log_level_notice,
+	log_printf (instance->totemsrp_log_level_debug,
 	"Time since last token %0.4f ms\n",
 		(((float)tv_diff.tv_sec) * 1000) + ((float)tv_diff.tv_usec)
 			/ 1000.0);
@@ -3554,7 +3554,7 @@ static int message_handler_orf_token (
 			gettimeofday (&tv_current, NULL);
 			timersub (&tv_current, &tv_old, &tv_diff);
 			memcpy (&tv_old, &tv_current, sizeof (struct timeval));
-			log_printf (instance->totemsrp_log_level_notice,
+			log_printf (instance->totemsrp_log_level_debug,
 				"I held %0.4f ms\n",
 				((float)tv_diff.tv_usec) / 1000.0);
 #endif
@@ -4210,7 +4210,7 @@ static int message_handler_memb_commit_token (
 
 		case MEMB_STATE_RECOVERY:
 			if (totemip_equal (&instance->my_id.addr[0], &instance->my_ring_id.rep)) {
-				log_printf (instance->totemsrp_log_level_notice,
+				log_printf (instance->totemsrp_log_level_debug,
 					"Sending initial ORF token\n");
 
 				// TODO convert instead of initiate
@@ -4287,7 +4287,7 @@ void main_iface_change_fn (
 	if (instance->iface_changes++ == 0) {
 		memb_ring_id_create_or_load (instance, &instance->my_ring_id);
 		log_printf (
-			instance->totemsrp_log_level_notice,
+			instance->totemsrp_log_level_debug,
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));

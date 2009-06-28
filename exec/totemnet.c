@@ -1559,13 +1559,13 @@ static int totemnet_build_sockets_ip (
 
 	res = getsockopt (sockets->mcast_recv, SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
 	if (res == 0) {
-	 	log_printf (instance->totemnet_log_level_notice,
+	 	log_printf (instance->totemnet_log_level_debug,
 			"Receive multicast socket recv buffer size (%d bytes).\n", recvbuf_size);
 	}
 
 	res = getsockopt (sockets->mcast_send, SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
 	if (res == 0) {
-		log_printf (instance->totemnet_log_level_notice,
+		log_printf (instance->totemnet_log_level_debug,
 			"Transmit multicast socket send buffer size (%d bytes).\n", sendbuf_size);
 	}
 
