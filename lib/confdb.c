@@ -314,6 +314,14 @@ cs_error_t confdb_dispatch (
 		if (error != CS_OK) {
 			goto error_put;
 		}
+		if (dispatch_data == NULL) {
+			if (dispatch_types == CONFDB_DISPATCH_ALL) {
+				break; /* exit do while cont is 1 loop */
+			} else {
+				continue; /* next poll */
+			}
+		}
+
 
 		/*
 		 * Make copy of callbacks, message data, unlock instance, and call callback
