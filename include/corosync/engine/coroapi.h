@@ -583,6 +583,12 @@ struct corosync_api_v1 {
 	void (*shutdown_request) (void);
 
 	void (*state_dump) (void);
+
+	/*
+	 * The use of this interface is highly discouraged.
+	 * Please avoid using any of coropoll apis in your service engines.
+	 */
+	hdb_handle_t (*poll_handle_get) (void);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

@@ -45,8 +45,9 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 
-extern hdb_handle_t corosync_poll_handle;
-
+/*
+ * DO NOT USE SYMBOLS IN THIS FILE
+ */
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
@@ -63,5 +64,7 @@ extern int message_source_is_local (const mar_message_source_t *source);
 extern void corosync_shutdown_request (void);
 
 extern void corosync_state_dump (void);
+
+extern hdb_handle_t corosync_poll_handle_get (void);
 
 #endif /* MAIN_H_DEFINED */

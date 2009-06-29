@@ -126,9 +126,14 @@ static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
-hdb_handle_t corosync_poll_handle;
+static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
+
+hdb_handle_t corosync_poll_handle_get (void)
+{
+	return (corosync_poll_handle);
+}
 
 void corosync_state_dump (void)
 {
