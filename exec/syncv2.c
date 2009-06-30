@@ -72,7 +72,7 @@ enum sync_process_state {
 	PROCESS,
 	ACTIVATE
 };
-	
+
 enum sync_state {
 	SYNC_SERVICELIST_BUILD,
 	SYNC_PROCESS,
@@ -317,7 +317,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 		return;
 	}
 	for (i = 0; i < req_exec_service_build_message->service_list_entries; i++) {
-	
+
 		found = 0;
 		for (j = 0; j < my_service_list_entries; j++) {
 			if (req_exec_service_build_message->service_list[i] ==
@@ -327,20 +327,20 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 			}
 		}
 		if (found == 0) {
-			my_service_list[my_service_list_entries].state = 
+			my_service_list[my_service_list_entries].state =
 				INIT;
-			my_service_list[my_service_list_entries].service_id = 
+			my_service_list[my_service_list_entries].service_id =
 				req_exec_service_build_message->service_list[i];
 			sprintf (my_service_list[my_service_list_entries].name,
-				"External Service (id = %d)\n", 
+				"External Service (id = %d)\n",
 				req_exec_service_build_message->service_list[i]);
-			my_service_list[my_service_list_entries].sync_init = 
+			my_service_list[my_service_list_entries].sync_init =
 				dummy_sync_init;
-			my_service_list[my_service_list_entries].sync_abort = 
+			my_service_list[my_service_list_entries].sync_abort =
 				dummy_sync_abort;
-			my_service_list[my_service_list_entries].sync_process = 
+			my_service_list[my_service_list_entries].sync_process =
 				dummy_sync_process;
-			my_service_list[my_service_list_entries].sync_activate = 
+			my_service_list[my_service_list_entries].sync_activate =
 				dummy_sync_activate;
 			my_service_list_entries += 1;
 
@@ -459,7 +459,7 @@ static void sync_process_enter (void)
 	/*
 	 * No syncv2 services
 	 */
-	if (my_service_list_entries == 0) { 
+	if (my_service_list_entries == 0) {
 		my_state = SYNC_SERVICELIST_BUILD;
 		my_memb_determine_list_entries = 0;
 		sync_synchronization_completed ();
@@ -489,7 +489,7 @@ static void sync_servicelist_build_enter (
 	my_processor_list_entries = member_list_entries;
 
 	my_processing_idx = 0;
-	
+
 	memcpy (my_service_list, my_initial_service_list,
 		sizeof (struct service_entry) *
 			my_initial_service_list_entries);
@@ -526,7 +526,7 @@ static int schedwrk_processor (const void *context)
 	if (my_service_list[my_processing_idx].state == ACTIVATE) {
 		my_service_list[my_processing_idx].state = ACTIVATE;
 		my_service_list[my_processing_idx].sync_activate ();
-		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s\n", 
+		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s\n",
 			my_service_list[my_processing_idx].name);
 		sync_barrier_enter();
 	}

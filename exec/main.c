@@ -703,7 +703,7 @@ static void corosync_setscheduler (void)
 		} else {
 			/*
 			 * Turn on SCHED_RR in ipc system
-			 */ 
+			 */
 			ipc_init_state.sched_policy = SCHED_RR;
 		}
 	} else {

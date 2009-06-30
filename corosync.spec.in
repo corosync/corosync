@@ -58,7 +58,7 @@ rm -rf %{buildroot}%{_docdir}/*
 %clean
 rm -rf %{buildroot}
 
-%description 
+%description
 This package contains the Corosync Cluster Engine Executive, several default
 APIs and libraries, default configuration files, and an init script.
 
@@ -74,7 +74,7 @@ fi
 %postun
 [ "$1" -ge "1" ] && /sbin/service corosync condrestart &>/dev/null || :
 
-%files 
+%files
 %defattr(-,root,root,-)
 %doc LICENSE SECURITY
 %{_sbindir}/corosync

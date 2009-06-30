@@ -733,7 +733,7 @@ int corosync_main_config_compatibility_read (
 		if (strcmp (value, "none") == 0) {
 			*minimum_sync_mode = CS_SYNC_V2;
 		} else {
-			
+
 			snprintf (error_string_response, sizeof (error_string_response),
 				"Invalid compatibility option '%s' specified, must be none or whitetank.\n", value);
 			goto parse_error;

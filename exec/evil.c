@@ -110,7 +110,7 @@ static void deliver_fn_evt_compat (
 	unsigned int nodeid,
 	unsigned int service,
 	unsigned int fn_id,
-	const void *msg, 
+	const void *msg,
 	unsigned int endian_conversion_required);
 
 static struct sync_callbacks clm_sync_operations = {
@@ -225,7 +225,7 @@ void evil_deliver_fn (
 	unsigned int nodeid,
 	unsigned int service,
 	unsigned int fn_id,
-	const void *msg, 
+	const void *msg,
 	unsigned int endian_conversion_required)
 {
 	if (service == EVT_SERVICE) {
@@ -233,11 +233,11 @@ void evil_deliver_fn (
 			nodeid,
 			service,
 			fn_id,
-			msg, 
+			msg,
 			endian_conversion_required);
 	}
 }
-	
+
 /*
  * This sends the clm nodejoin message required by clm services
  * on whitetank as well as the event service
@@ -345,7 +345,7 @@ static int clm_hack_init (void)
 	int mib[2] = { CTL_KERN, KERN_BOOTTIME };
 	struct timeval boot_time;
 	size_t size = sizeof(boot_time);
-	
+
 	if ( sysctl(mib, 2, &boot_time, &size, NULL, 0) == -1 )
 		boot_time.tv_sec = time (NULL);
 	 /* (currenttime (s) - uptime (s)) * 1 billion (ns) / 1 (s) */
@@ -366,14 +366,14 @@ static int clm_nodejoin_send (void)
 	my_cluster_node_load ();
 
 	req_exec_clm_nodejoin.header.size = sizeof (struct req_exec_clm_nodejoin);
-	req_exec_clm_nodejoin.header.id = 
+	req_exec_clm_nodejoin.header.id =
 		SERVICE_ID_MAKE (CLM_SERVICE, MESSAGE_REQ_EXEC_CLM_NODEJOIN);
 
 	my_cluster_node.initial_view_number = 0;
 
 	memcpy (&req_exec_clm_nodejoin.cluster_node, &my_cluster_node,
 		sizeof (mar_clm_cluster_node_t));
-	
+
 	req_exec_clm_iovec.iov_base = (char *)&req_exec_clm_nodejoin;
 	req_exec_clm_iovec.iov_len = sizeof (req_exec_clm_nodejoin);
 
@@ -456,7 +456,7 @@ static void evt_sync_init (
 {
 	my_member_list_entries = member_list_entries;
 	my_evt_checked_in = 0;
-	
+
 	evt_sync_state = EVT_SYNC_PART_ONE;
 	return;
 }
@@ -511,7 +511,7 @@ static void deliver_fn_evt_compat (
 	unsigned int nodeid,
 	unsigned int service,
 	unsigned int fn_id,
-	const void *msg, 
+	const void *msg,
 	unsigned int endian_conversion_required)
 {
 	const struct req_evt_chan_command *cpkt = msg;
