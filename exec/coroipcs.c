@@ -1269,12 +1269,12 @@ int coroipcs_handler_dispatch (
 	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
 		/*
 		 * Receive in a nonblocking fashion the request
-		 * IF security invalid, send TRY_AGAIN, otherwise
+		 * IF security invalid, send ERR_SECURITY, otherwise
 		 * send OK
 		 */
 		res = req_setup_recv (conn_info);
 		if (res == -1) {
-			req_setup_send (conn_info, CS_ERR_TRY_AGAIN);
+			req_setup_send (conn_info, CS_ERR_SECURITY);
 		}
 		if (res != 1) {
 			return (0);
