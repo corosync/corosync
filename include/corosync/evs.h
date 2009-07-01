@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
+#include <corosync/hdb.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,11 +68,13 @@ struct evs_group {
 };
 
 typedef void (*evs_deliver_fn_t) (
+	hdb_handle_t handle, 
 	unsigned int nodeid,
 	const void *msg,
 	size_t msg_len);
 
 typedef void (*evs_confchg_fn_t) (
+	hdb_handle_t handle, 
 	const unsigned int *member_list, size_t member_list_entries,
 	const unsigned int *left_list, size_t left_list_entries,
 	const unsigned int *joined_list, size_t joined_list_entries);

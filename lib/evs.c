@@ -279,6 +279,7 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
 			callbacks.evs_deliver_fn (
+				handle,
 				res_evs_deliver_callback->local_nodeid,
 				&res_evs_deliver_callback->msg,
 				res_evs_deliver_callback->msglen);
@@ -287,6 +288,7 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
 			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
 			callbacks.evs_confchg_fn (
+				handle,
 				res_evs_confchg_callback->member_list,
 				res_evs_confchg_callback->member_list_entries,
 				res_evs_confchg_callback->left_list,

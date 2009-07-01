@@ -48,6 +48,7 @@ static const char *delivery_string;
 
 static int deliveries = 0;
 static void evs_deliver_fn (
+	hdb_handle_t handle,
 	unsigned int nodeid,
 	const void *msg,
 	size_t msg_len)
@@ -59,6 +60,7 @@ static void evs_deliver_fn (
 }
 
 static void evs_confchg_fn (
+	hdb_handle_t handle,
 	const unsigned int *member_list, size_t member_list_entries,
 	const unsigned int *left_list, size_t left_list_entries,
 	const unsigned int *joined_list, size_t joined_list_entries)

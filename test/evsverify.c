@@ -55,6 +55,7 @@ struct my_msg {
 
 static int deliveries = 0;
 static void evs_deliver_fn (
+	hdb_handle_t handle,
 	unsigned int nodeid,
 	const void *m,
 	size_t msg_len)
@@ -81,9 +82,10 @@ printf ("\n");
 }
 
 static void evs_confchg_fn (
-	unsigned int *member_list, size_t member_list_entries,
-	unsigned int *left_list, size_t left_list_entries,
-	unsigned int *joined_list, size_t joined_list_entries)
+	hdb_handle_t handle,
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
