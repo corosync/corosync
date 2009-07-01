@@ -49,7 +49,11 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+#include <sys/sysctl.h>
+#else
 #include <sys/sysinfo.h>
+#endif
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
