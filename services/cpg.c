@@ -822,9 +822,10 @@ static void message_handler_req_exec_cpg_mcast (
 	const struct req_exec_cpg_mcast *req_exec_cpg_mcast = message;
 	struct res_lib_cpg_deliver_callback res_lib_cpg_mcast;
 	int msglen = req_exec_cpg_mcast->msglen;
-	struct list_head *iter;
+	struct list_head *iter, *pi_iter;
 	struct cpg_pd *cpd;
 	struct iovec iovec[2];
+	int known_node = 0;
 
 	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_DELIVER_CALLBACK;
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast) + msglen;
@@ -846,6 +847,27 @@ static void message_handler_req_exec_cpg_mcast (
 
 		if ((cpd->cpd_state == CPD_STATE_LEAVE_STARTED || cpd->cpd_state == CPD_STATE_JOIN_COMPLETED)
 			&& (mar_name_compare (&cpd->group_name, &req_exec_cpg_mcast->group_name) == 0)) {
+
+			if (!known_node) {
+				/* Try to find, if we know the node */
+				for (pi_iter = process_info_list_head.next;
+					pi_iter != &process_info_list_head; pi_iter = pi_iter->next) {
+
+					struct process_info *pi = list_entry (pi_iter, struct process_info, list);
+
+					if (pi->nodeid == nodeid &&
+						mar_name_compare (&pi->group, &req_exec_cpg_mcast->group_name) == 0) {
+						known_node = 1;
+						break;
+					}
+				}
+			}
+
+			if (!known_node) {
+				/* Unknown node -> we will not deliver message */
+				return ;
+			}
+
 			api->ipc_dispatch_iov_send (cpd->conn, iovec, 2);
 		}
 	}
