@@ -669,6 +669,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 		pthread_mutex_unlock (&mcast_msg_mutex);
 		return (0);
 	}
+	mcast.header.version = 0;
 	mcast.fragmented = 0;
 
 	/*
@@ -796,6 +797,7 @@ static int mcast_msg (
 		return(-1);
 	}
 
+	mcast.header.version = 0;
 	for (i = 0; i < iov_len; ) {
 		mcast.fragmented = 0;
 		mcast.continuation = fragment_continuation;
