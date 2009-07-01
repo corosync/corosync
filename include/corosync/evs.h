@@ -67,6 +67,11 @@ struct evs_group {
 	char key[32];
 };
 
+struct evs_ring_id {
+	unsigned int nodeid;
+	unsigned long long seq;
+};
+
 typedef void (*evs_deliver_fn_t) (
 	hdb_handle_t handle, 
 	unsigned int nodeid,
@@ -77,7 +82,8 @@ typedef void (*evs_confchg_fn_t) (
 	hdb_handle_t handle, 
 	const unsigned int *member_list, size_t member_list_entries,
 	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries);
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct evs_ring_id *ring_id);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;

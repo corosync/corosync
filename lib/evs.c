@@ -294,7 +294,8 @@ evs_error_t evs_dispatch (
 				res_evs_confchg_callback->left_list,
 				res_evs_confchg_callback->left_list_entries,
 				res_evs_confchg_callback->joined_list,
-				res_evs_confchg_callback->joined_list_entries);
+				res_evs_confchg_callback->joined_list_entries,
+				NULL);
 			break;
 
 		default:
