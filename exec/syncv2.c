@@ -98,20 +98,20 @@ struct processor_entry {
 };
 
 struct req_exec_memb_determine_message {
-	coroipc_request_header_t header;
-	struct memb_ring_id ring_id;
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
 };
 
 struct req_exec_service_build_message {
-	coroipc_request_header_t header;
-	struct memb_ring_id ring_id;
-	int service_list_entries;
-	int service_list[128];
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
+	int service_list_entries __attribute__((aligned(8)));
+	int service_list[128] __attribute__((aligned(8)));
 };
 
 struct req_exec_barrier_message {
-	coroipc_request_header_t header;
-	struct memb_ring_id ring_id;
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
 };
 
 static enum sync_state my_state = SYNC_BARRIER;
