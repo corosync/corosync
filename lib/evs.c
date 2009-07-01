@@ -66,6 +66,7 @@ struct evs_inst {
 	hdb_handle_t handle;
 	int finalize;
 	evs_callbacks_t callbacks;
+	void *context;
 };
 
 DECLARE_HDB_DATABASE (evs_handle_t_db,NULL);
@@ -172,6 +173,44 @@ evs_error_t evs_fd_get (
 	}
 
 	coroipcc_fd_get (evs_inst->handle, fd);
+
+	hdb_handle_put (&evs_handle_t_db, handle);
+
+	return (CS_OK);
+}
+
+evs_error_t evs_context_get (
+	evs_handle_t handle,
+	void **context)
+{
+	cs_error_t error;
+	struct evs_inst *evs_inst;
+
+	error = hdb_error_to_cs (hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	*context = evs_inst->context;
+
+	hdb_handle_put (&evs_handle_t_db, handle);
+
+	return (CS_OK);
+}
+
+cs_error_t evs_context_set (
+	evs_handle_t handle,
+	void *context)
+{
+	cs_error_t error;
+	struct evs_inst *evs_inst;
+
+	error = hdb_error_to_cs (hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	evs_inst->context = context;
 
 	hdb_handle_put (&evs_handle_t_db, handle);
 

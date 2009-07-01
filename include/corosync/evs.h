@@ -111,6 +111,17 @@ cs_error_t evs_fd_get (
 	int *fd);
 
 /*
+ * Get and set contexts for a EVS handle
+ */
+cs_error_t evs_context_get (
+	evs_handle_t handle,
+	void **context);
+
+cs_error_t evs_context_set (
+	evs_handle_t handle,
+	void *context);
+
+/*
  * Dispatch messages and configuration changes
  */
 cs_error_t evs_dispatch (
