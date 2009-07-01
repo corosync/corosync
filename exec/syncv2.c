@@ -488,6 +488,10 @@ static void sync_servicelist_build_enter (
 	}
 	my_processor_list_entries = member_list_entries;
 
+	memcpy (my_member_list, member_list,
+		member_list_entries * sizeof (unsigned int));
+	my_member_list_entries = member_list_entries;
+
 	my_processing_idx = 0;
 
 	memcpy (my_service_list, my_initial_service_list,
