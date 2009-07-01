@@ -59,6 +59,8 @@ dist_man_MANS = \
 	confdb_object_find.3 \
 	confdb_object_iter.3 \
 	confdb_object_parent_get.3 \
+	confdb_context_get.3 \
+	confdb_context_set.3 \
 	cpg_context_get.3 \
 	cpg_context_set.3 \
 	cpg_dispatch.3 \
@@ -82,8 +84,12 @@ dist_man_MANS = \
 	evs_mcast_groups.3 \
 	evs_mcast_joined.3 \
 	evs_membership_get.3 \
+	evs_context_get.3 \
+	evs_context_set.3 \
 	votequorum_dispatch.3 \
 	votequorum_fd_get.3 \
+	votequorum_context_get.3 \
+	votequorum_context_set.3 \
 	votequorum_finalize.3 \
 	votequorum_getinfo.3 \
 	votequorum_initialize.3 \
