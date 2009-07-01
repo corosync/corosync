@@ -76,9 +76,9 @@ static void evs_deliver_fn (
 }
 
 static void evs_confchg_fn (
-	unsigned int *member_list, size_t member_list_entries,
-	unsigned int *left_list, size_t left_list_entries,
-	unsigned int *joined_list, size_t joined_list_entries)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 

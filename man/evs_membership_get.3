@@ -37,7 +37,7 @@ evs_join \- Joins one or more groups in the EVS library
 .SH SYNOPSIS
 .B #include <corosync/evs.h>
 .sp
-.BI "int evs_membership_get(evs_handle_t " handle ", struct evs_address *" local_addr ", struct evs_address *" member_list ", int *" member_list_entries ");
+.BI "int evs_membership_get(evs_handle_t " handle ", unsigned int *" local_nodeid ", unsigned int *" member_list ", int *" member_list_entries ");
 .SH DESCRIPTION
 The
 .B evs_membership_get
@@ -47,8 +47,8 @@ The argument
 .I handle
 is used to reference the evs instantiation.
 The argument
-.I local_addr
-will return the local address of the processor.
+.I local_nodeid
+will return the local node id  of the processor.
 The argument
 .I member_list
 will return the list of processors in the current membership.

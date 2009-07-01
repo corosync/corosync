@@ -62,12 +62,6 @@ typedef enum {
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
 /** These are the things that get passed around */
-struct evs_address {
-	unsigned int nodeid;
-	unsigned short family;
-	unsigned char addr[TOTEMIP_ADDRLEN];
-};
-
 struct evs_group {
 	char key[32];
 };
@@ -78,9 +72,9 @@ typedef void (*evs_deliver_fn_t) (
 	size_t msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-	unsigned int *member_list, size_t member_list_entries,
-	unsigned int *left_list, size_t left_list_entries,
-	unsigned int *joined_list, size_t joined_list_entries);
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
