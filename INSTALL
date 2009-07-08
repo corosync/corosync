@@ -14,7 +14,8 @@ Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 * Platforms Built and Tested On *
 ---------------------------------
 Corosync has been tested on:
-Linux: Fedora 11, Debian Lenny, Red Hat Enterprise Linux 5
+Linux: Fedora 11, Fedora 12 (rawhide), Debian Lenny, Debian Unstable,
+       Ubuntu Hardy, Red Hat Enterprise Linux 5
 Solaris: version 10 CSW
 BSD: FreeBSD and OpenBSD
 MacOSX: Darwin latest update
