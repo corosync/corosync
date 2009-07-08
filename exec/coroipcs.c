@@ -661,8 +661,10 @@ retry_recv:
 		 * EOF is detected when recvmsg return 0.
 		 */
 		ipc_disconnect (conn_info);
-#endif
+		return 0;
+#else
 		return (-1);
+#endif
 	}
 	conn_info->setup_bytes_read += res;
 
