@@ -964,7 +964,7 @@ coroipcc_zcb_alloc (
 		return (res);
 	}
 	map_size = size + header_size + sizeof (struct coroipcs_zc_header);
-	res = memory_map (path, "corosync_zerocopy-XXXXXX", &buf, size);
+	res = memory_map (path, "corosync_zerocopy-XXXXXX", &buf, map_size);
 	assert (res != -1);
 
 	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
