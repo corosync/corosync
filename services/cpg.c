@@ -942,6 +942,20 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_join res_lib_cpg_join;
 	cs_error_t error = CPG_OK;
+	struct list_head *iter;
+
+	/* Test, if we don't have same pid and group name joined */
+	for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+		struct cpg_pd *cpd_item = list_entry (iter, struct cpg_pd, list);
+
+		if (cpd_item->pid == req_lib_cpg_join->pid &&
+			mar_name_compare(&req_lib_cpg_join->group_name, &cpd_item->group_name) == 0) {
+
+			/* We have same pid and group name joined -> return error */
+			error = CPG_ERR_EXIST;
+			goto response_send;
+		}
+	}
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
@@ -966,6 +980,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		break;
 	}
 
+response_send:
 	res_lib_cpg_join.header.size = sizeof(res_lib_cpg_join);
         res_lib_cpg_join.header.id = MESSAGE_RES_CPG_JOIN;
         res_lib_cpg_join.header.error = error;
