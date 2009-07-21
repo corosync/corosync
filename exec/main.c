@@ -689,7 +689,7 @@ static struct coroipcs_init_state ipc_init_state = {
 
 static void corosync_setscheduler (void)
 {
-#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
 	int res;
 
 	sched_priority = sched_get_priority_max (SCHED_RR);

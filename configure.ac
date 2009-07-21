@@ -105,7 +105,7 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_spin_lock \
 		pthread_spin_unlock pthread_setschedparam \
-		sched_get_priority_max])
+		sched_get_priority_max sched_setscheduler])
 
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
