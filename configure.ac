@@ -181,6 +181,10 @@ AC_ARG_ENABLE([nss],
 	[  --enable-nss            : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
 
+AC_ARG_ENABLE([rdma],
+	[  --enable-rdma           : Infiniband RDMA transport support ],,
+	[ enable_rdma="no" ])
+
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
 	[ LCRSODIR="$withval" ],
@@ -283,6 +287,12 @@ if test "x${enable_nss}" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])
 	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
+fi
+
+if test "x${enable_rdma}" = xyes; then
+	PKG_CHECK_MODULES([rdmacm],[rdmacm])
+	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
 fi
 
 # extra warnings

@@ -35,8 +35,9 @@ AM_CFLAGS		= -fPIC
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS)
 
-TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemrrp.c \
-			  totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
+TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemudp.c totemiba.c \
+			  totemrrp.c totemsrp.c totemmrp.c totempg.c \
+			  crypto.c wthread.c
 LOGSYS_SRC		= wthread.c logsys.c
 COROIPCS_SRC		= coroipcs.c
 
@@ -68,8 +69,9 @@ SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
 noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
-			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
-			  version.h vsf.h wthread.h schedwrk.h evil.h syncv2.h
+			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
+			  totemsrp.h util.h version.h vsf.h wthread.h schedwrk.h \
+			  evil.h syncv2.h
 
 EXTRA_DIST		= $(LCRSO_SRC)
 
