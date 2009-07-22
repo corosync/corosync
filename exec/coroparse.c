@@ -207,6 +207,34 @@ static int parser_check_item_uidgid(struct objdb_iface_ver0 *objdb,
 	return 1;
 }
 
+static int parser_check_item_service(struct objdb_iface_ver0 *objdb,
+			hdb_handle_t parent_handle,
+			int type,
+			const char *name,
+			const char **error_string)
+{
+	if (type == PCHECK_ADD_SUBSECTION) {
+		if (parent_handle != OBJECT_PARENT_HANDLE) {
+			*error_string = "service: Can't add second level subsection";
+			return 0;
+		}
+
+		if (strcmp (name, "service") != 0) {
+			*error_string = "service: Can't add subsection different then service";
+			return 0;
+		}
+	}
+
+	if (type == PCHECK_ADD_ITEM) {
+		if (!(strcmp (name, "name") == 0 || strcmp (name, "ver") == 0)) {
+			*error_string = "service: Only name and ver are allowed items";
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 static int read_uidgid_files_into_objdb(
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string)
@@ -234,6 +262,48 @@ static int read_uidgid_files_into_objdb(
 			if (fp == NULL) continue;
 
 			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_uidgid);
+
+			fclose (fp);
+
+			if (res != 0) {
+				goto error_exit;
+			}
+		}
+	}
+
+error_exit:
+	closedir(dp);
+
+	return res;
+}
+
+static int read_service_files_into_objdb(
+	struct objdb_iface_ver0 *objdb,
+	const char **error_string)
+{
+	FILE *fp;
+	const char *dirname;
+	DIR *dp;
+	struct dirent *dirent;
+	char filename[PATH_MAX + FILENAME_MAX + 1];
+	int res = 0;
+	struct stat stat_buf;
+
+	dirname = COROSYSCONFDIR "/service.d";
+	dp = opendir (dirname);
+
+	if (dp == NULL)
+		return 0;
+
+	while ((dirent = readdir (dp))) {
+		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
+		stat (filename, &stat_buf);
+		if (S_ISREG(stat_buf.st_mode)) {
+
+			fp = fopen (filename, "r");
+			if (fp == NULL) continue;
+
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_service);
 
 			fclose (fp);
 
@@ -278,6 +348,10 @@ static int read_config_file_into_objdb(
 
 	if (res == 0) {
 	        res = read_uidgid_files_into_objdb(objdb, error_string);
+	}
+
+	if (res == 0) {
+	        res = read_service_files_into_objdb(objdb, error_string);
 	}
 
 	if (res == 0) {
