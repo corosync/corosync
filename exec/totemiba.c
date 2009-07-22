@@ -73,8 +73,6 @@ struct totemiba_instance {
 	int dummy;
 };
 
-DECLARE_HDB_DATABASE (totemiba_instance_database,NULL);
-
 static void totemiba_instance_initialize (struct totemiba_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemiba_instance));
@@ -91,41 +89,25 @@ do {									\
 } while (0);
 
 
-int totemiba_crypto_set (hdb_handle_t handle,
+int totemiba_crypto_set (void *iba_context,
 			 unsigned int type)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
-	return res;
+	return (res);
 }
 
 int totemiba_finalize (
-	hdb_handle_t handle)
+	void *iba_context)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
@@ -134,7 +116,7 @@ error_exit:
  */
 int totemiba_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **iba_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -149,240 +131,144 @@ int totemiba_initialize (
 		const struct totem_ip_address *iface_address))
 {
 	struct totemiba_instance *instance;
-	unsigned int res;
+	int res = 0;
 
-	res = hdb_handle_create (&totemiba_instance_database,
-		sizeof (struct totemiba_instance), handle);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = hdb_handle_get (&totemiba_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_destroy;
+	instance = malloc (sizeof (struct totemiba_instance));
+	if (instance == NULL) {
+		return (-1);
 	}
 
 	totemiba_instance_initialize (instance);
 
-error_exit:
-	hdb_handle_put (&totemiba_instance_database, *handle);
-	return (0);
-
-error_destroy:
-	hdb_handle_destroy (&totemiba_instance_database, *handle);
-	return (-1);
+	return (res);
 }
 
 int totemiba_processor_count_set (
-	hdb_handle_t handle,
+	void *iba_context,
 	int processor_count)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
-int totemiba_recv_flush (hdb_handle_t handle)
+int totemiba_recv_flush (void *iba_context)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
-int totemiba_send_flush (hdb_handle_t handle)
+int totemiba_send_flush (void *iba_context)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemiba_token_send (
-	hdb_handle_t handle,
+	void *iba_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
+
 int totemiba_mcast_flush_send (
-	hdb_handle_t handle,
+	void *iba_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemiba_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *iba_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern int totemiba_iface_check (hdb_handle_t handle)
+extern int totemiba_iface_check (void *iba_context)
 {
-	struct totemiba_instance *instance;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern void totemiba_net_mtu_adjust (hdb_handle_t handle, struct totem_config *totem_config)
+extern void totemiba_net_mtu_adjust (void *iba_context, struct totem_config *totem_config)
 {
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	instance = NULL;
 }
 
-const char *totemiba_iface_print (hdb_handle_t handle)  {
-	struct totemiba_instance *instance;
-	int res = 0;
-	const char *ret_char;
+const char *totemiba_iface_print (void *iba_context)  {
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	instance = NULL;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		ret_char = "Invalid totemiba handle";
-		goto error_exit;
-	}
-
-	hdb_handle_put (&totemiba_instance_database, handle);
-error_exit:
-	return (ret_char);
+	return (NULL);
 }
 
 int totemiba_iface_get (
-	hdb_handle_t handle,
+	void *iba_context,
 	struct totem_ip_address *addr)
 {
-	struct totemiba_instance *instance;
-	unsigned int res;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemiba_token_target_set (
-	hdb_handle_t handle,
+	void *iba_context,
 	const struct totem_ip_address *token_target)
 {
-	struct totemiba_instance *instance;
-	unsigned int res;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 extern int totemiba_recv_mcast_empty (
-	hdb_handle_t handle)
+	void *iba_context)
 {
-	struct totemiba_instance *instance;
-	unsigned int res;
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	int res = 0;
 
-	res = hdb_handle_get (&totemiba_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	instance = NULL;
 
-	hdb_handle_put (&totemiba_instance_database, handle);
-
-	return (0);
-
-error_exit:
 	return (res);
 }
 

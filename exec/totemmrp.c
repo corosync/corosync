@@ -62,7 +62,7 @@
 #include "totemmrp.h"
 #include "totemsrp.h"
 
-hdb_handle_t totemsrp_handle_in;
+void *totemsrp_context;
 
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
@@ -138,7 +138,7 @@ int totemmrp_initialize (
 
 	result = totemsrp_initialize (
 		poll_handle,
-		&totemsrp_handle_in,
+		&totemsrp_context,
 		totem_config,
 		totemmrp_deliver_fn,
 		totemmrp_confchg_fn);
@@ -148,7 +148,7 @@ int totemmrp_initialize (
 
 void totemmrp_finalize (void)
 {
-	totemsrp_finalize (totemsrp_handle_in);
+	totemsrp_finalize (totemsrp_context);
 }
 
 /*
@@ -159,7 +159,7 @@ int totemmrp_mcast (
 	unsigned int iov_len,
 	int priority)
 {
-	return totemsrp_mcast (totemsrp_handle_in, iovec, iov_len, priority);
+	return totemsrp_mcast (totemsrp_context, iovec, iov_len, priority);
 }
 
 /*
@@ -167,7 +167,7 @@ int totemmrp_mcast (
  */
 int totemmrp_avail (void)
 {
-	return (totemsrp_avail (totemsrp_handle_in));
+	return (totemsrp_avail (totemsrp_context));
 }
 
 int totemmrp_callback_token_create (
@@ -177,17 +177,17 @@ int totemmrp_callback_token_create (
 	int (*callback_fn) (enum totem_callback_token_type type, const void *),
 	const void *data)
 {
-	return totemsrp_callback_token_create (totemsrp_handle_in, handle_out, type, delete, callback_fn, data);
+	return totemsrp_callback_token_create (totemsrp_context, handle_out, type, delete, callback_fn, data);
 }
 
 void totemmrp_callback_token_destroy (
 	void *handle_out)
 {
-	totemsrp_callback_token_destroy (totemsrp_handle_in, handle_out);
+	totemsrp_callback_token_destroy (totemsrp_context, handle_out);
 }
 
 void totemmrp_new_msg_signal (void) {
-	totemsrp_new_msg_signal (totemsrp_handle_in);
+	totemsrp_new_msg_signal (totemsrp_context);
 }
 
 int totemmrp_ifaces_get (
@@ -199,7 +199,7 @@ int totemmrp_ifaces_get (
 	int res;
 
 	res = totemsrp_ifaces_get (
-		totemsrp_handle_in,
+		totemsrp_context,
 		nodeid,
 		interfaces,
 		status,
@@ -211,18 +211,18 @@ int totemmrp_ifaces_get (
 int totemmrp_crypto_set (
 	unsigned int type)
 {
-	return totemsrp_crypto_set (totemsrp_handle_in,
+	return totemsrp_crypto_set (totemsrp_context,
 				    type);
 }
 
 unsigned int totemmrp_my_nodeid_get (void)
 {
-	return (totemsrp_my_nodeid_get (totemsrp_handle_in));
+	return (totemsrp_my_nodeid_get (totemsrp_context));
 }
 
 int totemmrp_my_family_get (void)
 {
-	return (totemsrp_my_family_get (totemsrp_handle_in));
+	return (totemsrp_my_family_get (totemsrp_context));
 }
 
 extern int totemmrp_ring_reenable (void)
@@ -230,7 +230,7 @@ extern int totemmrp_ring_reenable (void)
 	int res;
 
 	res = totemsrp_ring_reenable (
-		totemsrp_handle_in);
+		totemsrp_context);
 
 	return (res);
 }

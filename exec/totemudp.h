@@ -45,7 +45,7 @@
  */
 extern int totemudp_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **udp_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -60,49 +60,49 @@ extern int totemudp_initialize (
 		const struct totem_ip_address *iface_address));
 
 extern int totemudp_processor_count_set (
-	hdb_handle_t handle,
+	void *udp_context,
 	int processor_count);
 
 extern int totemudp_token_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemudp_mcast_flush_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemudp_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemudp_recv_flush (hdb_handle_t handle);
+extern int totemudp_recv_flush (void *udp_context);
 
-extern int totemudp_send_flush (hdb_handle_t handle);
+extern int totemudp_send_flush (void *udp_context);
 
-extern int totemudp_iface_check (hdb_handle_t handle);
+extern int totemudp_iface_check (void *udp_context);
 
-extern int totemudp_finalize (hdb_handle_t handle);
+extern int totemudp_finalize (void *udp_context);
 
-extern void totemudp_net_mtu_adjust (hdb_handle_t handle, struct totem_config *totem_config);
+extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config);
 
-extern const char *totemudp_iface_print (hdb_handle_t handle);
+extern const char *totemudp_iface_print (void *udp_context);
 
 extern int totemudp_iface_get (
-	hdb_handle_t handle,
+	void *udp_context,
 	struct totem_ip_address *addr);
 
 extern int totemudp_token_target_set (
-	hdb_handle_t handle,
+	void *udp_context,
 	const struct totem_ip_address *token_target);
 
 extern int totemudp_crypto_set (
-	hdb_handle_t handle,
+	void *udp_context,
 	unsigned int type);
 
 extern int totemudp_recv_mcast_empty (
-	hdb_handle_t handle);
+	void *udp_context);
 
 #endif /* TOTEMUDP_H_DEFINED */
