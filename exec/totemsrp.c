@@ -470,6 +470,8 @@ struct totemsrp_instance {
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
 
+        void (*totemsrp_service_ready_fn) (void);
+
 	int global_seqno;
 
 	int my_token_held;
@@ -917,7 +919,7 @@ int totemsrp_ifaces_get (
 	unsigned int *iface_count)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
-	int res;
+	int res = 0;
 	unsigned int found = 0;
 	unsigned int i;
 
@@ -4246,6 +4248,9 @@ void main_iface_change_fn (
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
+		if (instance->totemsrp_service_ready_fn) {
+			instance->totemsrp_service_ready_fn ();
+		}
 
 	}
 	if (instance->iface_changes >= instance->totem_config->interface_count) {
@@ -4255,4 +4260,13 @@ void main_iface_change_fn (
 
 void totemsrp_net_mtu_adjust (struct totem_config *totem_config) {
 	totem_config->net_mtu -= sizeof (struct mcast);
+}
+
+void totemsrp_service_ready_register (
+	void *context,
+        void (*totem_service_ready) (void))
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+
+	instance->totemsrp_service_ready_fn = totem_service_ready;
 }

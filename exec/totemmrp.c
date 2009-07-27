@@ -234,3 +234,11 @@ extern int totemmrp_ring_reenable (void)
 
 	return (res);
 }
+
+extern void totemmrp_service_ready_register (
+        void (*totem_service_ready) (void))
+{
+	totemsrp_service_ready_register (
+		totemsrp_context,
+		totem_service_ready);
+}

@@ -716,6 +716,20 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+void main_service_ready (void)
+{
+	int res;
+	/*
+	 * This must occur after totempg is initialized because "this_ip" must be set
+	 */
+	res = corosync_service_defaults_link_and_init (api);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
+		corosync_exit_error (AIS_DONE_INIT_SERVICES);
+	}
+	evil_init (api);
+}
+
 int main (int argc, char **argv)
 {
 	const char *error_string;
@@ -973,6 +987,9 @@ int main (int argc, char **argv)
 		corosync_poll_handle,
 		&totem_config);
 
+	totempg_service_ready_register (
+		main_service_ready);
+
 	totempg_groups_initialize (
 		&corosync_group_handle,
 		deliver_fn,
@@ -982,16 +999,6 @@ int main (int argc, char **argv)
 		corosync_group_handle,
 		&corosync_group,
 		1);
-
-	/*
-	 * This must occur after totempg is initialized because "this_ip" must be set
-	 */
-	res = corosync_service_defaults_link_and_init (api);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
-		corosync_exit_error (AIS_DONE_INIT_SERVICES);
-	}
-	evil_init (api);
 
 	if (minimum_sync_mode == CS_SYNC_V2) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");

@@ -1343,3 +1343,9 @@ int totempg_my_family_get (void)
 {
 	return (totemmrp_my_family_get());
 }
+extern void totempg_service_ready_register (
+	void (*totem_service_ready) (void))
+{
+	totemmrp_service_ready_register (totem_service_ready);
+}
+
