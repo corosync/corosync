@@ -57,7 +57,10 @@ struct transport {
 
 		void (*iface_change_fn) (
 			void *context,
-			const struct totem_ip_address *iface_address));
+			const struct totem_ip_address *iface_address),
+
+		void (*target_set_completed) (
+			void *context));
 
 	int (*processor_count_set) (
 		void *transport_context,
@@ -195,7 +198,10 @@ int totemnet_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address))
+		const struct totem_ip_address *iface_address),
+
+	void (*target_set_completed) (
+		void *context))
 {
 	struct totemnet_instance *instance;
 	unsigned int res;
@@ -208,7 +214,7 @@ int totemnet_initialize (
 
 	res = instance->transport->initialize (poll_handle,
 		&instance->transport_context, totem_config,
-		interface_no, context, deliver_fn, iface_change_fn);
+		interface_no, context, deliver_fn, iface_change_fn, target_set_completed);
 
 	if (res == -1) {
 		goto error_destroy;

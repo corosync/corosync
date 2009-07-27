@@ -194,6 +194,9 @@ struct totemrrp_instance {
 		unsigned int *seqid,
 		unsigned int *token_is);
 
+	void (*totemrrp_target_set_completed) (
+		void *context);
+
 	unsigned int (*totemrrp_msgs_missing) (void);
 
 	/*
@@ -1432,6 +1435,13 @@ int totemrrp_finalize (
 	return (0);
 }
 
+static void rrp_target_set_completed (void *context)
+{
+	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
+
+	deliver_fn_context->instance->totemrrp_target_set_completed (deliver_fn_context->context);
+}
+
 /*
  * Totem Redundant Ring interface
  * depends on poll abstraction, POSIX, IPV4
@@ -1461,7 +1471,9 @@ int totemrrp_initialize (
 		unsigned int *seqid,
 		unsigned int *token_is),
 
-	unsigned int (*msgs_missing) (void))
+	unsigned int (*msgs_missing) (void),
+
+	void (*target_set_completed) (void *context))
 {
 	struct totemrrp_instance *instance;
 	unsigned int res;
@@ -1504,6 +1516,8 @@ int totemrrp_initialize (
 
 	instance->totemrrp_token_seqid_get = token_seqid_get;
 
+	instance->totemrrp_target_set_completed = target_set_completed;
+
 	instance->totemrrp_msgs_missing = msgs_missing;
 
 	instance->interface_count = totem_config->interface_count;
@@ -1522,6 +1536,7 @@ int totemrrp_initialize (
 		deliver_fn_context->instance = instance;
 		deliver_fn_context->context = context;
 		deliver_fn_context->iface_no = i;
+printf ("deliver fn context %p\n", deliver_fn_context);
 
 		totemnet_initialize (
 			poll_handle,
@@ -1530,7 +1545,8 @@ int totemrrp_initialize (
 			i,
 			(void *)deliver_fn_context,
 			rrp_deliver_fn,
-			rrp_iface_change_fn);
+			rrp_iface_change_fn,
+			rrp_target_set_completed);
 
 		totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 	}
