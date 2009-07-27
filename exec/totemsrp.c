@@ -89,6 +89,7 @@
 #include "wthread.h"
 
 #include "crypto.h"
+#include "tlist.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		256 /* allow 256 retransmit items */
@@ -506,7 +507,7 @@ struct totemsrp_instance {
 
 	unsigned int my_cbl;
 
-	struct timeval pause_timestamp;
+	unsigned long long int pause_timestamp;
 
 	struct memb_commit_token *commit_token;
 
@@ -696,14 +697,12 @@ static unsigned int main_msgs_missing (void)
 
 static int pause_flush (struct totemsrp_instance *instance)
 {
-	struct timeval now;
 	uint64_t now_msec;
 	uint64_t timestamp_msec;
 	int res = 0;
 
-	gettimeofday (&now, NULL);
-        now_msec = ((now.tv_sec * 1000ULL) + (now.tv_usec / 1000ULL));
-        timestamp_msec = ((instance->pause_timestamp.tv_sec * 1000ULL) + (instance->pause_timestamp.tv_usec/1000ULL));
+        now_msec = (timerlist_nano_current_get () / TIMERLIST_NS_IN_MSEC);
+        timestamp_msec = instance->pause_timestamp / TIMERLIST_NS_IN_MSEC;
 
 	if ((now_msec - timestamp_msec) > (instance->totem_config->token_timeout / 2)) {
 		log_printf (instance->totemsrp_log_level_notice,
@@ -844,7 +843,7 @@ int totemsrp_initialize (
 	instance->totemsrp_confchg_fn = confchg_fn;
 	instance->use_heartbeat = 1;
 
-	gettimeofday (&instance->pause_timestamp, NULL);
+	instance->pause_timestamp = timerlist_nano_current_get ();
 
 	if ( totem_config->heartbeat_failures_allowed == 0 ) {
 		log_printf (instance->totemsrp_log_level_debug,
@@ -1474,7 +1473,7 @@ static void timer_function_pause_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
 
-	gettimeofday (&instance->pause_timestamp, NULL);
+	instance->pause_timestamp = timerlist_nano_current_get ();
 	reset_pause_timeout (instance);
 }
 
@@ -3231,7 +3230,7 @@ static void fcc_token_update (
  * Message Handlers
  */
 
-struct timeval tv_old;
+unsigned long long int tv_old;
 /*
  * message handler called when TOKEN message type received
  */
@@ -3251,17 +3250,15 @@ static int message_handler_orf_token (
 	unsigned int last_aru;
 
 #ifdef GIVEINFO
-	struct timeval tv_current;
-	struct timeval tv_diff;
+	unsigned long long tv_current;
+	unsigned long long tv_diff;
 
-	gettimeofday (&tv_current, NULL);
-	timersub (&tv_current, &tv_old, &tv_diff);
-	memcpy (&tv_old, &tv_current, sizeof (struct timeval));
+	tv_current = timerlist_nano_current_get ();
+	tv_diff = tv_current - tv_old;
+	tv_old = tv_current;
 
 	log_printf (instance->totemsrp_log_level_debug,
-	"Time since last token %0.4f ms\n",
-		(((float)tv_diff.tv_sec) * 1000) + ((float)tv_diff.tv_usec)
-			/ 1000.0);
+	"Time since last token %0.4f ms\n", ((float)tv_diff) / 1000000.0);
 #endif
 
 #ifdef TEST_DROP_ORF_TOKEN_PERCENTAGE
@@ -3504,12 +3501,12 @@ printf ("token seq %d\n", token->seq);
 			token_send (instance, token, forward_token);
 
 #ifdef GIVEINFO
-			gettimeofday (&tv_current, NULL);
-			timersub (&tv_current, &tv_old, &tv_diff);
-			memcpy (&tv_old, &tv_current, sizeof (struct timeval));
+			tv_current = timerlist_nano_current_get ();
+			tv_diff = tv_current - tv_old;
+			tv_old = tv_current;
 			log_printf (instance->totemsrp_log_level_debug,
 				"I held %0.4f ms\n",
-				((float)tv_diff.tv_usec) / 1000.0);
+				((float)tv_diff) / 1000000.0);
 #endif
 			if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
 				messages_deliver_to_app (instance, 0,

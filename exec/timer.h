@@ -43,7 +43,7 @@ extern int corosync_timer_init (
 	int sched_priority);
 
 extern int corosync_timer_add_duration (
-	unsigned long long nanoseconds_in_future,
+	unsigned long long nanosec_duration,
 	void *data,
 	void (*timer_fn) (void *data),
 	corosync_timer_handle *handle);

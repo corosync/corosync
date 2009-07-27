@@ -68,6 +68,8 @@
 #include <corosync/ipc_votequorum.h>
 #include <corosync/list.h>
 
+#include "../exec/tlist.h"
+
 #define VOTEQUORUM_MAJOR_VERSION 7
 #define VOTEQUORUM_MINOR_VERSION 0
 #define VOTEQUORUM_PATCH_VERSION 0
@@ -107,7 +109,7 @@ struct cluster_node {
 
 	nodestate_t state;
 
-	struct timeval last_hello; /* Only used for quorum devices */
+	unsigned long long int last_hello; /* Only used for quorum devices */
 
 	struct list_head list;
 };
@@ -1307,13 +1309,13 @@ static void message_handler_req_lib_votequorum_leaving (void *conn, const void *
 
 static void quorum_device_timer_fn(void *arg)
 {
-	struct timeval now;
-
 	ENTER();
 	if (!quorum_device || quorum_device->state == NODESTATE_DEAD)
 		return;
-	gettimeofday(&now, NULL);
-	if (quorum_device->last_hello.tv_sec + quorumdev_poll/1000 < now.tv_sec) {
+
+	if ( (quorum_device->last_hello / TIMERLIST_NS_IN_SEC) + quorumdev_poll/1000 <
+		(timerlist_nano_current_get () / TIMERLIST_NS_IN_SEC)) {
+
 		quorum_device->state = NODESTATE_DEAD;
 		log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device\n");
 		recalculate_quorum(0, 0);
@@ -1395,7 +1397,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 
 	if (quorum_device) {
 		if (req_lib_votequorum_qdisk_poll->state) {
-			gettimeofday(&quorum_device->last_hello, NULL);
+			quorum_device->last_hello = timerlist_nano_current_get ();
 			if (quorum_device->state == NODESTATE_DEAD) {
 				quorum_device->state = NODESTATE_MEMBER;
 				recalculate_quorum(0, 0);
