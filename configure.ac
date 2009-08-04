@@ -14,6 +14,11 @@ AC_CANONICAL_HOST
 
 AC_LANG([C])
 
+# Define SVN revision
+AC_DEFINE([SVN_REVISION],["m4_esyscmd([svnversion >/dev/null 2>&1 && \
+				       svnversion -n || \
+				       echo -n exported])"], [SVN revision])
+
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then
 	prefix="/usr"
