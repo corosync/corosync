@@ -326,23 +326,42 @@ static void object_key_changed_notification(hdb_handle_t object_handle,
 
 static void object_reload_notification(int startstop, int flush)
 {
-	struct list_head * list;
+	struct list_head * list, *tmp;
+	struct list_head tmplist;
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
+	struct object_tracker * tmptracker_pt;
 	unsigned int res;
 
 	res = hdb_handle_get (&object_instance_database,
 			      OBJECT_PARENT_HANDLE, (void *)&obj_pt);
 
+	/*
+	 * Make a copy of the list
+	 * so that items can be added & removed in the callbacks
+	 */
+	list_init(&tmplist);
 	for (list = obj_pt->track_head.next;
 	     list != &obj_pt->track_head; list = list->next) {
 
 		tracker_pt = list_entry (list, struct object_tracker, object_list);
-
 		if (tracker_pt->object_reload_notify_fn != NULL) {
-		        tracker_pt->object_reload_notify_fn(startstop, flush,
-							    tracker_pt->data_pt);
+			tmptracker_pt = malloc(sizeof(*tracker_pt));
+			if (tmptracker_pt) {
+				list_add(&tmptracker_pt->object_list, &tmplist);
+				tmptracker_pt->object_reload_notify_fn = tracker_pt->object_reload_notify_fn;
+			}
 		}
+	}
+
+	for (list = tmplist.next, tmp = list->next;
+	     list != tmplist.prev; list = tmp, tmp = list->next) {
+
+		tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+		tracker_pt->object_reload_notify_fn(startstop, flush,
+						    tracker_pt->data_pt);
+		free(tracker_pt);
 	}
 	hdb_handle_put (&object_instance_database, OBJECT_PARENT_HANDLE);
 }
