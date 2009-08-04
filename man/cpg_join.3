@@ -41,9 +41,9 @@ cpg_join \- Joins one or more groups in the CPG library
 .SH DESCRIPTION
 The
 .B cpg_join
-function is used to join one group.  When a group is joined, using the
+function is used to join one group.  When a group is joined, the
 .B cpg_mcast_joined(3)
-function will multicast to the groups joined in the argument
+is called internally to multicast to the groups joined in the argument
 .I handle.
 The process will also get notifications of other processes joining
 and leaving the group.
@@ -53,11 +53,11 @@ will be delivered by
 .B cpg_dispatch(3).
 .PP
 This function may be only be called once for each handle. When a group has been joined
-the process will start to receive callbacks relating to messages send from members
-of the group or notifications of process joining/leaving the group.
+the process will start to receive callbacks relating to messages sent from members
+of the group or notifications of processes joining or leaving the group.
 .PP
-Note that more than one process can join a CPG group and each will receive its
-own copy of any messages sent using
+Note that more than one process on each node can join a CPG group and
+each will receive its own copy of any messages sent using
 .I cpg_mcast_joined()
 and its own confchg callback.
 .PP

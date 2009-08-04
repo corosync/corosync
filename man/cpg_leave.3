@@ -42,10 +42,10 @@ cpg_leave \- Leave a group in the CPG library
 The
 .B cpg_leave
 function is used to leave a group.  Once a group has been left the process will
-no longer receive messages or notifications about events in that group. NOTE: that a group is
-only deemed to have left the group once it has been notified (by its confchg callback)
-that is has left. So expect to receive at least one confchg callback after calling
-this function.
+no longer receive messages or notifications about events in that group.
+Note that a process is only deemed to have left the group once it has been
+notified (by its confchg callback) that is has left.
+So expect to receive at least one confchg callback after calling this function.
 
 The argument
 .I group

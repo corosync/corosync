@@ -79,7 +79,7 @@ Dispatch atleast one callback, blocking until the callback is dispatched.
 Dispatch all waiting callbacks without blocking to wait for any callbacks.
 .TP
 .B CPG_DISPATCH_BLOCKING
-Dispatch all callbacks blocking indefinately.  This is used in a threaded
+Dispatch all callbacks, blocking indefinitely.  This is used in a threaded
 program where a thread is created, and then cpg_dispatch() is called immediately
 from the created thread to execute callbacks.
 
