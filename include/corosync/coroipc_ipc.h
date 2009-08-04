@@ -34,6 +34,26 @@
 #ifndef COROIPC_IPC_H_DEFINED
 #define COROIPC_IPC_H_DEFINED
 
+#include <unistd.h>
+#include "config.h"
+
+/*
+ * Darwin claims to support process shared synchronization
+ * but it really does not.  The unistd.h header file is wrong.
+ */
+#ifdef COROSYNC_DARWIN
+#undef _POSIX_THREAD_PROCESS_SHARED
+#define _POSIX_THREAD_PROCESS_SHARED -1
+#endif
+
+#ifndef _POSIX_THREAD_PROCESS_SHARED
+#define _POSIX_THREAD_PROCESS_SHARED -1
+#endif
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+#include <semaphore.h>
+#endif
+
 enum req_init_types {
 	MESSAGE_REQ_RESPONSE_INIT = 0,
 	MESSAGE_REQ_DISPATCH_INIT = 1
@@ -45,6 +65,11 @@ enum req_init_types {
 struct control_buffer {
 	unsigned int read;
 	unsigned int write;
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	sem_t sem0;
+	sem_t sem1;
+	sem_t sem2;
+#endif
 };
 
 enum res_init_types {
