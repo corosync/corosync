@@ -699,11 +699,24 @@ static void corosync_setscheduler (void)
 			global_sched_param.sched_priority = 0;
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				global_sched_param.sched_priority, strerror (errno));
+
+			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
 			/*
 			 * Turn on SCHED_RR in ipc system
 			 */
 			ipc_init_state.sched_policy = SCHED_RR;
+
+			/*
+			 * Turn on SCHED_RR in logsys system
+			 */
+			res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
+			if (res == -1) {
+				log_printf (LOGSYS_LEVEL_ERROR,
+					    "Could not set logsys thread priority."
+					    " Can't continue because of priority inversions.");
+				corosync_exit_error (AIS_DONE_LOGSETUP);
+			}
 		}
 	} else {
 		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
@@ -899,16 +912,6 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 	logsys_fork_completed();
-	if (setprio) {
-		res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
-		if (res == -1) {
-			log_printf (LOGSYS_LEVEL_ERROR,
-				"Could not set logsys thread priority.  Can't continue because of priority inversions.");
-			corosync_exit_error (AIS_DONE_LOGSETUP);
-		}
-	} else {
-		res = logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
-	}
 
 	/*
 	 * Make sure required directory is present
