@@ -131,6 +131,10 @@ unsigned int flt_data_size;
 
 static int logsys_system_needs_init = LOGSYS_LOGGER_NEEDS_INIT;
 
+static int logsys_sched_param_queued = 0;
+static int logsys_sched_policy;
+static struct sched_param logsys_sched_param;
+
 static int logsys_after_log_ops_yield = 10;
 
 /*
@@ -783,14 +787,31 @@ static void wthread_create (void)
 	pthread_mutex_init (&logsys_cond_mutex, NULL);
 	pthread_cond_init (&logsys_cond, NULL);
 	pthread_mutex_lock (&logsys_cond_mutex);
+
+	/*
+	 * TODO: propagate pthread_create errors back to the caller
+	 */
 	res = pthread_create (&logsys_thread_id, NULL,
 		logsys_worker_thread, NULL);
 
-
-	/*
-	 * Wait for thread to be started
-	 */
-	wthread_wait_locked ();
+	if (res == 0) {
+		/*
+		 * Wait for thread to be started
+		 */
+		wthread_wait_locked ();
+		if (logsys_sched_param_queued == 1) {
+			/*
+			 * TODO: propagate logsys_thread_priority_set errors back to
+			 * the caller
+			 */
+			res = logsys_thread_priority_set (logsys_sched_policy,
+						    &logsys_sched_param,
+						    logsys_after_log_ops_yield);
+			logsys_sched_param_queued = 0;
+		}
+	} else {
+		wthread_active = 0;
+	}
 }
 
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
@@ -1610,15 +1631,20 @@ int logsys_thread_priority_set (
 	int res = 0;
 
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
-	if (policy != SCHED_OTHER) {
+	if (wthread_active == 0) {
+		logsys_sched_policy = policy;
+		memcpy(&logsys_sched_param, &param, sizeof(struct sched_param));
+		logsys_sched_param_queued = 1;
+	} else {
 		res = pthread_setschedparam (logsys_thread_id, policy, param);
 	}
 #endif
+
 	if (after_log_ops_yield > 0) {
 		logsys_after_log_ops_yield = after_log_ops_yield;
 	}
-	return (res);
 
+	return (res);
 }
 
 int logsys_log_rec_store (const char *filename)
