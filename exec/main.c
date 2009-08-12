@@ -795,9 +795,6 @@ int main (int argc, char **argv)
 		}
 	}
 
-	if (background)
-		corosync_tty_detach ();
-
 	/*
 	 * Set round robin realtime scheduling with priority 99
 	 * Lock all memory to avoid page faults which may interrupt
@@ -911,7 +908,6 @@ int main (int argc, char **argv)
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
-	logsys_fork_completed();
 
 	/*
 	 * Make sure required directory is present
@@ -973,6 +969,14 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
+
+	/*
+	 * Now we are fully initialized.
+	 */
+	if (background) {
+		corosync_tty_detach ();
+	}
+	logsys_fork_completed();
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
