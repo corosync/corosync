@@ -155,6 +155,8 @@ static int mcast_packed_msg_count = 0;
 
 static int totempg_reserved = 0;
 
+static unsigned int totempg_size_limit;
+
 /*
  * Function and data used to log messages
  */
@@ -719,6 +721,8 @@ int totempg_initialize (
 		return (-1);
 	}
 
+	totemsrp_net_mtu_adjust (totem_config);
+
 	res = totemmrp_initialize (
 		poll_handle,
 		totem_config,
@@ -732,7 +736,9 @@ int totempg_initialize (
 		callback_token_received_fn,
 		0);
 
-	totemsrp_net_mtu_adjust (totem_config);
+	totempg_size_limit = (totemmrp_avail() - 1) *
+		(totempg_totem_config->net_mtu -
+		sizeof (struct totempg_mcast) - 16);
 
 	return (res);
 }
@@ -791,7 +797,7 @@ static int mcast_msg (
 	}
 
 	if (byte_count_send_ok (total_size + sizeof(unsigned short) *
-		(mcast_packed_msg_count+1)) == 0) {
+		(mcast_packed_msg_count)) == 0) {
 
 		pthread_mutex_unlock (&mcast_msg_mutex);
 		return(-1);
@@ -872,6 +878,9 @@ static int mcast_msg (
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemmrp_avail() > 0);
 			res = totemmrp_mcast (iovecs, 3, guarantee);
+			if (res == -1) {
+				goto error_exit;
+			}
 
 			/*
 			 * Recalculate counts and indexes for the next.
@@ -907,6 +916,7 @@ static int mcast_msg (
 			mcast_packed_msg_count++;
 	}
 
+error_exit:
 	pthread_mutex_unlock (&mcast_msg_mutex);
 	return (res);
 }
@@ -919,7 +929,7 @@ static int msg_count_send_ok (
 {
 	int avail = 0;
 
-	avail = totemmrp_avail () - totempg_reserved - 1;
+	avail = totemmrp_avail ();
 
 	return (avail > msg_count);
 }
@@ -930,9 +940,9 @@ static int byte_count_send_ok (
 	unsigned int msg_count = 0;
 	int avail = 0;
 
-	avail = totemmrp_avail () - 1;
+	avail = totemmrp_avail ();
 
-	msg_count = (byte_count / (totempg_totem_config->net_mtu - 25)) + 1;
+	msg_count = (byte_count / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16));
 
 	return (avail > msg_count);
 }
@@ -942,7 +952,7 @@ static int send_reserve (
 {
 	unsigned int msg_count = 0;
 
-	msg_count = (msg_size / (totempg_totem_config->net_mtu - 25)) + 1;
+	msg_count = (msg_size / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16)) + 1;
 	totempg_reserved += msg_count;
 
 	return (msg_count);
@@ -1163,6 +1173,10 @@ int totempg_groups_joined_reserve (
 	for (i = 0; i < iov_len; i++) {
 		size += iovec[i].iov_len;
 	}
+	if (size >= totempg_size_limit) {
+		reserved = -1;
+		goto error_put;
+	}
 
 	reserved = send_reserve (size);
 	if (msg_count_send_ok (reserved) == 0) {
@@ -1170,6 +1184,7 @@ int totempg_groups_joined_reserve (
 		reserved = 0;
 	}
 
+error_put:
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:

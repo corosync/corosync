@@ -573,6 +573,9 @@ static int corosync_sending_allowed (
 	pd->reserved_msgs = totempg_groups_joined_reserve (
 		corosync_group_handle,
 		&reserve_iovec, 1);
+	if (pd->reserved_msgs == -1) {
+		return (-1);
+	}
 
 	sending_allowed =
 		(corosync_quorum_is_quorate() == 1 ||
@@ -590,6 +593,9 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 	struct sending_allowed_private_data_struct *pd =
 		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
 
+	if (pd->reserved_msgs == -1) {
+		return;
+	}
 	totempg_groups_joined_release (pd->reserved_msgs);
 }
 
