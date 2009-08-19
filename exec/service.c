@@ -399,6 +399,8 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 			(void *)&found_service_name,
 			NULL);
 
+		found_service_ver = NULL;
+
 		corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
