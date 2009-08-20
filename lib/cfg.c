@@ -202,10 +202,12 @@ corosync_cfg_dispatch (
 		 */
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_CFG_TESTSHUTDOWN:
-			if (callbacks.corosync_cfg_shutdown_callback) {
-				res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)dispatch_data;
-				callbacks.corosync_cfg_shutdown_callback(cfg_handle, res_lib_cfg_testshutdown->flags);
+			if (callbacks.corosync_cfg_shutdown_callback == NULL) {
+				continue;
 			}
+
+			res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)dispatch_data;
+			callbacks.corosync_cfg_shutdown_callback(cfg_handle, res_lib_cfg_testshutdown->flags);
 			break;
 		default:
 			coroipcc_dispatch_put (cfg_instance->handle);

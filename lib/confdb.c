@@ -158,7 +158,9 @@ cs_error_t confdb_initialize (
 	if (error != CS_OK)
 		goto error_put_destroy;
 
-	memcpy (&confdb_inst->callbacks, callbacks, sizeof (confdb_callbacks_t));
+	if (callbacks) {
+		memcpy (&confdb_inst->callbacks, callbacks, sizeof (confdb_callbacks_t));
+	}
 
 	list_init (&confdb_inst->object_find_head);
 	list_init (&confdb_inst->object_iter_head);
@@ -336,6 +338,10 @@ cs_error_t confdb_dispatch (
 		 */
 		switch (dispatch_data->id) {
 			case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK:
+				if (callbacks.confdb_key_change_notify_fn == NULL) {
+					continue;
+				}
+
 				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)dispatch_data;
 
 				callbacks.confdb_key_change_notify_fn(handle,
@@ -351,6 +357,10 @@ cs_error_t confdb_dispatch (
 				break;
 
 			case MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK:
+				if (callbacks.confdb_object_create_change_notify_fn == NULL) {
+					continue;
+				}
+
 				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)dispatch_data;
 
 				callbacks.confdb_object_create_change_notify_fn(handle,
@@ -361,6 +371,10 @@ cs_error_t confdb_dispatch (
 				break;
 
 			case MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK:
+				if (callbacks.confdb_object_delete_change_notify_fn == NULL) {
+					continue;
+				}
+
 				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)dispatch_data;
 
 				callbacks.confdb_object_delete_change_notify_fn(handle,

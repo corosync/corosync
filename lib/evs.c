@@ -116,7 +116,9 @@ evs_error_t evs_initialize (
 		goto error_put_destroy;
 	}
 
-	memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
+	if (callbacks) {
+		memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
+	}
 
 	hdb_handle_put (&evs_handle_t_db, *handle);
 
@@ -277,6 +279,10 @@ evs_error_t evs_dispatch (
 		 */
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
+			if (callbacks.evs_deliver_fn == NULL) {
+				continue;
+			}
+
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
 			callbacks.evs_deliver_fn (
 				handle,
@@ -286,6 +292,10 @@ evs_error_t evs_dispatch (
 			break;
 
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
+			if (callbacks.evs_confchg_fn == NULL) {
+				continue;
+			}
+
 			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
 			callbacks.evs_confchg_fn (
 				handle,
