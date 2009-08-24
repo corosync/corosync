@@ -260,6 +260,49 @@ static inline int hdb_handle_get (
 	return (0);
 }
 
+static inline int hdb_handle_get_always (
+	struct hdb_handle_database *handle_database,
+	hdb_handle_t handle_in,
+	void **instance)
+{
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
+	hdb_database_lock (&handle_database->lock);
+
+	*instance = NULL;
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (handle_database->handles[handle].state == HDB_HANDLE_STATE_EMPTY) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	*instance = handle_database->handles[handle].instance;
+
+	handle_database->handles[handle].ref_count += 1;
+
+	hdb_database_unlock (&handle_database->lock);
+	return (0);
+}
+
 static inline int hdb_handle_put (
 	struct hdb_handle_database *handle_database,
 	hdb_handle_t handle_in)

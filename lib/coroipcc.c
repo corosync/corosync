@@ -890,7 +890,7 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 	char *addr;
 	unsigned int read_idx;
 
-	res = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
+	res = hdb_error_to_cs (hdb_handle_get_always (&ipc_hdb, handle, (void **)&ipc_instance));
 	if (res != CS_OK) {
 		return (res);
 	}
@@ -907,14 +907,16 @@ retry_semwait:
 retry_semop:
 	res = semop (ipc_instance->semid, &sop, 1);
 	if (res == -1 && errno == EINTR) {
-		return (CS_ERR_TRY_AGAIN);
+		res = CS_ERR_TRY_AGAIN;
+		goto error_exit;
 	} else
 	if (res == -1 && errno == EACCES) {
 		priv_change_send (ipc_instance);
 		goto retry_semop;
 	} else
 	if (res == -1) {
-		return (CS_ERR_LIBRARY);
+		res = CS_ERR_LIBRARY;
+		goto error_exit;
 	}
 #endif
 
@@ -927,10 +929,13 @@ retry_semop:
 	/*
 	 * Put from dispatch get and also from this call's get
 	 */
+	res = CS_OK;
+	
+error_exit:
 	hdb_handle_put (&ipc_hdb, handle);
 	hdb_handle_put (&ipc_hdb, handle);
 
-	return (CS_OK);
+	return (res);
 }
 
 cs_error_t
