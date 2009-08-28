@@ -937,7 +937,6 @@ static void quorum_confchg_fn (
 				node->flags |= NODE_FLAGS_BEENDOWN;
 			}
 		}
-		recalculate_quorum(leaving, leaving);
 	}
 
 	if (member_list_entries) {
@@ -948,6 +947,9 @@ static void quorum_confchg_fn (
 		}
 		quorum_exec_send_nodeinfo();
 	}
+
+	if (left_list_entries)
+		recalculate_quorum(leaving, leaving);
 
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
 	LEAVE();
