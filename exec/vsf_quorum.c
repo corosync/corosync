@@ -381,7 +381,7 @@ static void send_library_notification(void *conn)
 
 	/* Send it to all interested parties */
 	if (conn) {
-		corosync_api->ipc_response_send(conn, res_lib_quorum_notification, size);
+		corosync_api->ipc_dispatch_send(conn, res_lib_quorum_notification, size);
 	}
 	else {
 		struct quorum_pd *qpd;
