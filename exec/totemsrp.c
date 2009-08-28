@@ -200,16 +200,6 @@ struct mcast {
 } __attribute__((packed));
 
 
-/*
- * MTU - multicast message header - IP header - UDP header
- *
- * On lossy switches, making use of the DF UDP flag can lead to loss of
- * forward progress.  So the packets must be fragmented by a higher layer
- *
- * This layer can only handle packets of MTU size.
- */
-#define FRAGMENT_SIZE (FRAME_SIZE_MAX - sizeof (struct mcast) - 20 - 8)
-
 struct rtr_item  {
 	struct memb_ring_id ring_id;
 	unsigned int seq;
@@ -1992,7 +1982,7 @@ static void memb_state_recovery_enter (
 		messages_originated++;
 		memset (&message_item, 0, sizeof (struct message_item));
 	// TODO	 LEAK
-		message_item.mcast = malloc (10000);
+		message_item.mcast = malloc (FRAME_SIZE_MAX);
 		assert (message_item.mcast);
 		message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
 		srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
@@ -2066,7 +2056,7 @@ int totemsrp_mcast (
 	/*
 	 * Allocate pending item
 	 */
-	message_item.mcast = malloc (10000);
+	message_item.mcast = malloc (FRAME_SIZE_MAX);
 	if (message_item.mcast == 0) {
 		goto error_mcast;
 	}
@@ -3669,7 +3659,7 @@ static int message_handler_mcast (
 		sort_queue = &instance->regular_sort_queue;
 	}
 
-	assert (msg_len < FRAME_SIZE_MAX);
+	assert (msg_len <= FRAME_SIZE_MAX);
 
 #ifdef TEST_DROP_MCAST_PERCENTAGE
 	if (random()%100 < TEST_DROP_MCAST_PERCENTAGE) {
@@ -3733,7 +3723,7 @@ static int message_handler_mcast (
 	 * Add mcast message to rtr queue if not already in rtr queue
 	 * otherwise free io vectors
 	 */
-	if (msg_len > 0 && msg_len < FRAME_SIZE_MAX &&
+	if (msg_len > 0 && msg_len <= FRAME_SIZE_MAX &&
 		sq_in_range (sort_queue, mcast_header.seq) &&
 		sq_item_inuse (sort_queue, mcast_header.seq) == 0) {
 
