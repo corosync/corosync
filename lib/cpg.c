@@ -5,7 +5,8 @@
  *
  * All rights reserved.
  *
- * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ * Author: Christine Caulfield (ccaulfi@redhat.com)
+ * Author: Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -51,6 +52,7 @@
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
+#include <corosync/list.h>
 
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
@@ -62,9 +64,48 @@ struct cpg_inst {
 	int finalize;
 	cpg_callbacks_t callbacks;
 	void *context;
+	struct list_head iteration_list_head;
 };
 
 DECLARE_HDB_DATABASE(cpg_handle_t_db,NULL);
+
+struct cpg_iteration_instance_t {
+	cpg_iteration_handle_t cpg_iteration_handle;
+	hdb_handle_t conn_handle;
+	hdb_handle_t executive_iteration_handle;
+	struct list_head list;
+};
+
+DECLARE_HDB_DATABASE(cpg_iteration_handle_t_db,NULL);
+
+
+/*
+ * Internal (not visible by API) functions
+ */
+
+static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cpg_iteration_instance)
+{
+	list_del (&cpg_iteration_instance->list);
+	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->cpg_iteration_handle);
+}
+
+static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
+{
+	struct list_head *iter, *iter_next;
+	struct cpg_iteration_instance_t *cpg_iteration_instance;
+
+	/*
+	 * Traverse thru iteration instances and delete them
+	 */
+	for (iter = cpg_inst->iteration_list_head.next;	iter != &cpg_inst->iteration_list_head;iter = iter_next) {
+		iter_next = iter->next;
+
+		cpg_iteration_instance = list_entry (iter, struct cpg_iteration_instance_t, list);
+
+		cpg_iteration_instance_finalize (cpg_iteration_instance);
+	}
+	hdb_handle_destroy (&cpg_handle_t_db, handle);
+}
 
 /**
  * @defgroup cpg_coroipcc The closed process group API
@@ -105,6 +146,8 @@ cs_error_t cpg_initialize (
 		memcpy (&cpg_inst->callbacks, callbacks, sizeof (cpg_callbacks_t));
 	}
 
+	list_init(&cpg_inst->iteration_list_head);
+
 	hdb_handle_put (&cpg_handle_t_db, *handle);
 
 	return (CS_OK);
@@ -140,8 +183,7 @@ cs_error_t cpg_finalize (
 
 	coroipcc_service_disconnect (cpg_inst->handle);
 
-	hdb_handle_destroy (&cpg_handle_t_db, handle);
-
+	cpg_inst_finalize (cpg_inst, handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CPG_OK);
@@ -685,4 +727,192 @@ error_exit:
 
 	return (error);
 }
+
+cs_error_t cpg_iteration_initialize(
+	cpg_handle_t handle,
+	cpg_iteration_type_t iteration_type,
+	const struct cpg_name *group,
+	cpg_iteration_handle_t *cpg_iteration_handle)
+{
+	cs_error_t error;
+	struct iovec iov;
+	struct cpg_inst *cpg_inst;
+	struct cpg_iteration_instance_t *cpg_iteration_instance;
+	struct req_lib_cpg_iterationinitialize req_lib_cpg_iterationinitialize;
+	struct res_lib_cpg_iterationinitialize res_lib_cpg_iterationinitialize;
+
+	if (cpg_iteration_handle == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	if ((iteration_type == CPG_ITERATION_ONE_GROUP && group == NULL) ||
+		(iteration_type != CPG_ITERATION_ONE_GROUP && group != NULL)) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	if (iteration_type != CPG_ITERATION_NAME_ONLY && iteration_type != CPG_ITERATION_ONE_GROUP &&
+	    iteration_type != CPG_ITERATION_ALL) {
+
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	error = hdb_error_to_cs (hdb_handle_create (&cpg_iteration_handle_t_db,
+		sizeof (struct cpg_iteration_instance_t), cpg_iteration_handle));
+	if (error != CS_OK) {
+		goto error_put_cpg_db;
+	}
+
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_iteration_handle_t_db, *cpg_iteration_handle,
+		(void *)&cpg_iteration_instance));
+	if (error != CS_OK) {
+		goto error_destroy;
+	}
+
+	cpg_iteration_instance->conn_handle = cpg_inst->handle;
+
+	list_init (&cpg_iteration_instance->list);
+
+	req_lib_cpg_iterationinitialize.header.size = sizeof (struct req_lib_cpg_iterationinitialize);
+	req_lib_cpg_iterationinitialize.header.id = MESSAGE_REQ_CPG_ITERATIONINITIALIZE;
+	req_lib_cpg_iterationinitialize.iteration_type = iteration_type;
+	if (group) {
+		marshall_to_mar_cpg_name_t (&req_lib_cpg_iterationinitialize.group_name, group);
+	}
+
+	iov.iov_base = (void *)&req_lib_cpg_iterationinitialize;
+	iov.iov_len = sizeof (struct req_lib_cpg_iterationinitialize);
+
+	error = coroipcc_msg_send_reply_receive (cpg_inst->handle,
+		&iov,
+		1,
+		&res_lib_cpg_iterationinitialize,
+		sizeof (struct res_lib_cpg_iterationinitialize));
+
+	if (error != CS_OK) {
+		goto error_put_destroy;
+	}
+
+	cpg_iteration_instance->executive_iteration_handle =
+		res_lib_cpg_iterationinitialize.iteration_handle;
+	cpg_iteration_instance->cpg_iteration_handle = *cpg_iteration_handle;
+
+	list_add (&cpg_iteration_instance->list, &cpg_inst->iteration_list_head);
+
+	hdb_handle_put (&cpg_iteration_handle_t_db, *cpg_iteration_handle);
+	hdb_handle_put (&cpg_handle_t_db, handle);
+
+	return (res_lib_cpg_iterationinitialize.header.error);
+
+error_put_destroy:
+	hdb_handle_put (&cpg_iteration_handle_t_db, *cpg_iteration_handle);
+error_destroy:
+	hdb_handle_destroy (&cpg_iteration_handle_t_db, *cpg_iteration_handle);
+error_put_cpg_db:
+	hdb_handle_put (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t cpg_iteration_next(
+	cpg_iteration_handle_t handle,
+	struct cpg_iteration_description_t *description)
+{
+	cs_error_t error;
+	struct cpg_iteration_instance_t *cpg_iteration_instance;
+	struct req_lib_cpg_iterationnext req_lib_cpg_iterationnext;
+	struct res_lib_cpg_iterationnext *res_lib_cpg_iterationnext;
+	struct iovec iov;
+	void *return_address;
+
+	if (description == NULL) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_iteration_handle_t_db, handle,
+		(void *)&cpg_iteration_instance));
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	req_lib_cpg_iterationnext.header.size = sizeof (struct req_lib_cpg_iterationnext);
+	req_lib_cpg_iterationnext.header.id = MESSAGE_REQ_CPG_ITERATIONNEXT;
+	req_lib_cpg_iterationnext.iteration_handle = cpg_iteration_instance->executive_iteration_handle;
+
+	iov.iov_base = (void *)&req_lib_cpg_iterationnext;
+	iov.iov_len = sizeof (struct req_lib_cpg_iterationnext);
+
+	error = coroipcc_msg_send_reply_receive_in_buf_get (cpg_iteration_instance->conn_handle,
+		&iov,
+		1,
+		&return_address);
+	res_lib_cpg_iterationnext = return_address;
+
+	if (error != CS_OK) {
+		goto error_put;
+	}
+
+	marshall_from_mar_cpg_iteration_description_t(
+			description,
+			&res_lib_cpg_iterationnext->description);
+
+	error = (error == CS_OK ? res_lib_cpg_iterationnext->header.error : error);
+
+	coroipcc_msg_send_reply_receive_in_buf_put(
+			cpg_iteration_instance->conn_handle);
+
+error_put:
+	hdb_handle_put (&cpg_iteration_handle_t_db, handle);
+
+error_exit:
+	return (error);
+}
+
+cs_error_t cpg_iteration_finalize (
+	cpg_iteration_handle_t handle)
+{
+	cs_error_t error;
+	struct iovec iov;
+	struct cpg_iteration_instance_t *cpg_iteration_instance;
+	struct req_lib_cpg_iterationfinalize req_lib_cpg_iterationfinalize;
+	struct res_lib_cpg_iterationfinalize res_lib_cpg_iterationfinalize;
+
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_iteration_handle_t_db, handle,
+		(void *)&cpg_iteration_instance));
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	req_lib_cpg_iterationfinalize.header.size = sizeof (struct req_lib_cpg_iterationfinalize);
+	req_lib_cpg_iterationfinalize.header.id = MESSAGE_REQ_CPG_ITERATIONFINALIZE;
+	req_lib_cpg_iterationfinalize.iteration_handle = cpg_iteration_instance->executive_iteration_handle;
+
+	iov.iov_base = (void *)&req_lib_cpg_iterationfinalize;
+	iov.iov_len = sizeof (struct req_lib_cpg_iterationfinalize);
+
+	error = coroipcc_msg_send_reply_receive (cpg_iteration_instance->conn_handle,
+		&iov,
+		1,
+		&res_lib_cpg_iterationfinalize,
+		sizeof (struct req_lib_cpg_iterationfinalize));
+
+	if (error != CS_OK) {
+		goto error_put;
+	}
+
+	cpg_iteration_instance_finalize (cpg_iteration_instance);
+	hdb_handle_put (&cpg_iteration_handle_t_db, cpg_iteration_instance->cpg_iteration_handle);
+
+	return (res_lib_cpg_iterationfinalize.header.error);
+
+error_put:
+	hdb_handle_put (&cpg_iteration_handle_t_db, handle);
+error_exit:
+	return (error);
+}
+
 /** @} */
