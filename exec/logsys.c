@@ -824,7 +824,6 @@ static int _logsys_config_subsys_get_unlocked (const char *subsys)
 
  	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
-			pthread_mutex_unlock (&logsys_config_mutex);
 			return i;
 		}
 	}
