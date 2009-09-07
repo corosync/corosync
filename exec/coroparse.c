@@ -62,6 +62,17 @@ static int read_config_file_into_objdb(
 static char error_string_response[512];
 
 
+static char *strchr_rs (const char *haystack, int byte)
+{
+	const char *end_address = strchr (haystack, byte);
+	if (end_address) {
+		end_address += 1; /* skip past { or = */
+		end_address += strspn (end_address, " \t");
+	}
+
+	return ((char *) end_address);
+}
+
 static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
 				 const char **error_string)
 {
