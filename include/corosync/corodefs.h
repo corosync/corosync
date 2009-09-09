@@ -60,7 +60,11 @@ enum corosync_service_types {
 	AMF_V2_SERVICE = 17
 };
 
-#define PROCESSOR_COUNT_MAX	384
+#ifdef HAVE_SMALL_MEMORY_FOOTPRINT
+#define PROCESSOR_COUNT_MAX 16
+#else
+#define PROCESSOR_COUNT_MAX 384
+#endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
