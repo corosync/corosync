@@ -41,6 +41,13 @@ if test "$prefix" = "NONE"; then
 	fi
 fi
 
+if test "$srcdir" = "."; then
+	AC_MSG_NOTICE([building in place srcdir:$srcdir])
+	AC_DEFINE([BUILDING_IN_PLACE], 1, [building in place])
+else
+	AC_MSG_NOTICE([building out of tree srcdir:$srcdir])
+fi
+
 # Checks for programs.
 
 # check stolen from gnulib/m4/gnu-make.m4
