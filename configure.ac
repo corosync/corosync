@@ -420,6 +420,8 @@ COROSYSCONFDIR=${sysconfdir}/corosync
 AC_SUBST([COROSYSCONFDIR])
 AC_DEFINE_UNQUOTED([COROSYSCONFDIR], "$(eval echo ${COROSYSCONFDIR})", [corosync config directory])
 
+AC_DEFINE_UNQUOTED([PACKAGE_FEATURES], "${PACKAGE_FEATURES}", [corosync built-in features])
+
 AC_OUTPUT
 
 AC_MSG_RESULT([])
