@@ -719,8 +719,7 @@ cs_error_t votequorum_dispatch (
 		if (error != CS_OK) {
 			goto error_put;
 		}
-
-		if (dispatch_data == NULL) {
+		if (error == CS_ERR_TRY_AGAIN) {
 			if (dispatch_types == CPG_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
 			} else {
