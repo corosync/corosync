@@ -238,7 +238,7 @@ case "$host_os" in
 		OS_DYFLAGS=""
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
-			     -compatibility_version ${SONAME}"
+			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
 		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
