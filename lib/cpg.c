@@ -101,7 +101,9 @@ cs_error_t cpg_initialize (
 		goto error_put_destroy;
 	}
 
-	memcpy (&cpg_inst->callbacks, callbacks, sizeof (cpg_callbacks_t));
+	if (callbacks) {
+		memcpy (&cpg_inst->callbacks, callbacks, sizeof (cpg_callbacks_t));
+	}
 
 	hdb_handle_put (&cpg_handle_t_db, *handle);
 
@@ -268,6 +270,10 @@ cs_error_t cpg_dispatch (
 		 */
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
+			if (callbacks.cpg_deliver_fn == NULL) {
+				continue;
+			}
+
 			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)dispatch_data;
 
 			marshall_from_mar_cpg_name_t (
@@ -283,6 +289,10 @@ cs_error_t cpg_dispatch (
 			break;
 
 		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
+			if (callbacks.cpg_confchg_fn == NULL) {
+				continue;
+			}
+
 			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)dispatch_data;
 
 			for (i = 0; i < res_cpg_confchg_callback->member_list_entries; i++) {
