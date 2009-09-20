@@ -232,6 +232,7 @@ res_exit:
 	return (res);
 }
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 static int
 priv_change_send (struct ipc_instance *ipc_instance)
 {
@@ -264,7 +265,6 @@ priv_change_send (struct ipc_instance *ipc_instance)
 	return (0);
 }
 
-#if _POSIX_THREAD_PROCESS_SHARED < 1
 #if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
         int val;
@@ -931,7 +931,9 @@ retry_semop:
 	 */
 	res = CS_OK;
 	
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 error_exit:
+#endif
 	hdb_handle_put (&ipc_hdb, handle);
 	hdb_handle_put (&ipc_hdb, handle);
 
