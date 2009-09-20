@@ -625,6 +625,18 @@ retry_semop:
 			header,
 			conn_info->sending_allowed_private_data);
 
+		/*
+		 * This happens when the message contains some kind of invalid
+		 * parameter, such as an invalid size
+		 */
+		if (send_ok == -1) {
+			coroipc_response_header.size = sizeof (coroipc_response_header_t);
+			coroipc_response_header.id = 0;
+			coroipc_response_header.error = CS_ERR_INVALID_PARAM;
+			coroipcs_response_send (conn_info,
+				&coroipc_response_header,
+				sizeof (coroipc_response_header_t));
+		} else 
 		if (send_ok) {
 			api->serialize_lock();
 			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);

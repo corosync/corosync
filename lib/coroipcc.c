@@ -408,6 +408,10 @@ msg_send (
 	int req_buffer_idx = 0;
 
 	for (i = 0; i < iov_len; i++) {
+		if ((req_buffer_idx + iov[i].iov_len) > 
+			ipc_instance->request_size) {
+			return (CS_ERR_INVALID_PARAM);
+		}
 		memcpy (&ipc_instance->request_buffer[req_buffer_idx],
 			iov[i].iov_base,
 			iov[i].iov_len);
