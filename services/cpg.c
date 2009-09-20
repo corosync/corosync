@@ -122,6 +122,12 @@ enum cpd_state {
 	CPD_STATE_JOIN_COMPLETED
 };
 
+enum cpg_sync_state {
+	CPGSYNC_DOWNLIST,
+	CPGSYNC_JOINLIST
+};
+
+
 struct cpg_pd {
 	void *conn;
  	mar_cpg_name_t group_name;
@@ -129,7 +135,20 @@ struct cpg_pd {
 	enum cpd_state cpd_state;
 	struct list_head list;
 };
+
 DECLARE_LIST_INIT(cpg_pd_list_head);
+
+static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_member_list_entries;
+
+static unsigned int my_old_member_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_old_member_list_entries = 0;
+
+static struct corosync_api_v1 *api = NULL;
+
+static enum cpg_sync_state my_sync_state = CPGSYNC_DOWNLIST;
 
 struct process_info {
 	unsigned int nodeid;
@@ -144,18 +163,9 @@ struct join_list_entry {
 	mar_cpg_name_t group_name;
 };
 
-static struct corosync_api_v1 *api = NULL;
-
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static void cpg_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id);
-
 static int cpg_exec_init_fn (struct corosync_api_v1 *);
 
 static int cpg_lib_init_fn (void *conn);
@@ -204,6 +214,8 @@ static void message_handler_req_lib_cpg_local_get (void *conn,
 
 static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *group_name, int fn, int reason);
 
+static int cpg_exec_send_downlist(void);
+
 static int cpg_exec_send_joinlist(void);
 
 static void cpg_sync_init (
@@ -212,8 +224,11 @@ static void cpg_sync_init (
 	const struct memb_ring_id *ring_id);
 
 static int  cpg_sync_process (void);
+
 static void cpg_sync_activate (void);
+
 static void cpg_sync_abort (void);
+
 /*
  * Library Handler Definition
  */
@@ -280,7 +295,6 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_dump_fn				= NULL,
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn                             = cpg_confchg_fn,
 	.sync_mode				= CS_SYNC_V1,
 	.sync_init                              = cpg_sync_init,
 	.sync_process                           = cpg_sync_process,
@@ -363,20 +377,71 @@ static void cpg_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	unsigned int lowest_nodeid = 0xffffffff;
+	int entries;
+	int i, j;
+	int found;
+
+	my_sync_state = CPGSYNC_DOWNLIST;
+
+	memcpy (my_member_list, member_list, member_list_entries *
+		sizeof (unsigned int));
+	my_member_list_entries = member_list_entries;
+
+	for (i = 0; i < my_member_list_entries; i++) {
+		if (my_member_list[i] < lowest_nodeid) {
+			lowest_nodeid = my_member_list[i];
+		}
+	}
+
+	entries = 0;
+	if (lowest_nodeid == api->totem_nodeid_get()) {
+		/*
+		 * Determine list of nodeids for downlist message
+		 */
+		for (i = 0; i < my_old_member_list_entries; i++) {
+			found = 0;
+			for (j = 0; j < my_member_list_entries; j++) {
+				if (my_old_member_list[i] == my_member_list[j]) {
+					found = 1;
+					break;
+				}
+			}
+			if (found == 0) {
+				g_req_exec_cpg_downlist.nodeids[entries++] =
+					my_old_member_list[i];
+			}
+		}
+	}
+	g_req_exec_cpg_downlist.left_nodes = entries;
 }
 
 static int cpg_sync_process (void)
 {
-	return cpg_exec_send_joinlist();
+	int res = -1;
+
+	if (my_sync_state == CPGSYNC_DOWNLIST) {
+		res = cpg_exec_send_downlist();
+		if (res == -1) {
+			return (-1);
+		}
+		my_sync_state = CPGSYNC_JOINLIST;
+	}
+	if (my_sync_state == CPGSYNC_JOINLIST) {
+		res = cpg_exec_send_joinlist();
+	}
+	return (res);
 }
 
 static void cpg_sync_activate (void)
 {
-
+	memcpy (my_old_member_list, my_member_list,
+		my_member_list_entries * sizeof (unsigned int));
+	my_old_member_list_entries = my_member_list_entries;
 }
+
 static void cpg_sync_abort (void)
 {
-
 }
 
 
@@ -541,56 +606,6 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 	result = api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
 
 	return (result);
-}
-
-static void cpg_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id)
-{
-	int i;
-	uint32_t lowest_nodeid = 0xffffffff;
-	struct iovec req_exec_cpg_iovec;
-
-	/* We don't send the library joinlist in here because it can end up
-	   out of order with the rest of the messages (which are totem ordered).
-	   So we get the lowest nodeid to send out a list of left nodes instead.
-	   On receipt of that message, all nodes will then notify their local clients
-	   of the new joinlist */
-
-	if (left_list_entries) {
-		for (i = 0; i < member_list_entries; i++) {
-			if (member_list[i] < lowest_nodeid)
-				lowest_nodeid = member_list[i];
-		}
-
-		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, low nodeid=%d, us = %d\n", lowest_nodeid, api->totem_nodeid_get());
-		if (lowest_nodeid == api->totem_nodeid_get()) {
-
-			g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
-			g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
-
-			g_req_exec_cpg_downlist.left_nodes = left_list_entries;
-			for (i = 0; i < left_list_entries; i++) {
-				g_req_exec_cpg_downlist.nodeids[i] = left_list[i];
-			}
-			log_printf(LOGSYS_LEVEL_DEBUG,
-				   "confchg, build downlist: %lu nodes\n",
-				   (long unsigned int) left_list_entries);
-		}
-	}
-
-	/* Don't send this message until we get the final configuration message */
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR && g_req_exec_cpg_downlist.left_nodes) {
-		req_exec_cpg_iovec.iov_base = (char *)&g_req_exec_cpg_downlist;
-		req_exec_cpg_iovec.iov_len = g_req_exec_cpg_downlist.header.size;
-
-		api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
-		g_req_exec_cpg_downlist.left_nodes = 0;
-		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, sent downlist\n");
-	}
 }
 
 /* Can byteswap join & leave messages */
@@ -873,6 +888,19 @@ static void message_handler_req_exec_cpg_mcast (
 	}
 }
 
+
+static int cpg_exec_send_downlist(void)
+{
+	struct iovec iov;
+
+	g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
+	g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
+
+	iov.iov_base = (void *)&g_req_exec_cpg_downlist;
+	iov.iov_len = g_req_exec_cpg_downlist.header.size;
+
+	return (api->totem_mcast (&iov, 1, TOTEM_AGREED));
+}
 
 static int cpg_exec_send_joinlist(void)
 {
