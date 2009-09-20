@@ -827,13 +827,16 @@ coroipcc_dispatch_get (
 
 	res = recv (ipc_instance->fd, &buf, 1, 0);
 	if (res == -1 && errno == EINTR) {
-		res = CS_ERR_TRY_AGAIN;
+		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	} else
 	if (res == -1) {
 		goto error_put;
 	}
 	if (res == 0) {
+#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+		error = CS_ERR_LIBRARY;
+#endif
 		goto error_put;
 	}
 	ipc_instance->flow_control_state = 0;
