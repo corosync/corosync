@@ -51,33 +51,43 @@ int main (void) {
 	int random_fd;
 	unsigned char key[128];
 	ssize_t res;
+	ssize_t bytes_read;
 
 	printf ("Corosync Cluster Engine Authentication key generator.\n");
 	if (geteuid() != 0) {
 		printf ("Error: Authorization key must be generated as root user.\n");
-		exit (1);
+		exit (errno);
 	}
 	if (mkdir (COROSYSCONFDIR, 0700)) {
 		if (errno != EEXIST) {
 			perror ("Failed to create directory: " COROSYSCONFDIR);
-			exit (1);
+			exit (errno);
 		}
 	}
 
 	printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
+	printf ("Press keys on your keyboard to generate entropy.\n");
 	random_fd = open ("/dev/random", O_RDONLY);
 	if (random_fd == -1) {
 		perror ("Is /dev/random present? Opening /dev/random");
-		exit (1);
+		exit (errno);
 	}
 
 	/*
 	 * Read random data
 	 */
-	res = read (random_fd, key, sizeof (key));
-	if (res != sizeof (key)) {
+	bytes_read = 0;
+
+retry_read:
+	res = read (random_fd, &key[bytes_read], sizeof (key) - bytes_read);
+	if (res == -1) {
 		perror ("Could not read /dev/random");
-		exit (1);
+		exit (errno);
+	}
+	bytes_read += res;
+	if (bytes_read != sizeof (key)) {
+		printf ("Press keys on your keyboard to generate entropy (bits = %d).\n", bytes_read * 8);
+		goto retry_read;
 	}
 	close (random_fd);
 
@@ -87,7 +97,7 @@ int main (void) {
 	authkey_fd = open (KEYFILE, O_CREAT|O_WRONLY, 600);
 	if (authkey_fd == -1) {
 		perror ("Could not create " KEYFILE);
-		exit (1);
+		exit (errno);
 	}
 	/*
 	 * Set security of authorization key to uid = 0 gid = 0 mode = 0400
@@ -95,11 +105,11 @@ int main (void) {
 	res = fchown (authkey_fd, 0, 0);
 	if (res == -1) {
 		perror ("Could not fchown key to uid 0 and gid 0\n");
-		exit (1);
+		exit (errno);
 	}
 	if (fchmod (authkey_fd, 0400)) {
 		perror ("Failed to set key file permissions to 0400\n");
-		exit (1);
+		exit (errno);
 	}
 
 	printf ("Writing corosync key to " KEYFILE ".\n");
@@ -110,12 +120,12 @@ int main (void) {
 	res = write (authkey_fd, key, sizeof (key));
 	if (res != sizeof (key)) {
 		perror ("Could not write " KEYFILE);
-		exit (1);
+		exit (errno);
 	}
 
 	if (close (authkey_fd)) {
 		perror ("Could not write " KEYFILE);
-		exit (1);
+		exit (errno);
 	}
 
 	return (0);
