@@ -67,13 +67,19 @@
 #include <string.h>
 
 #include <sys/shm.h>
-#include <sys/sem.h>
+
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
 
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcs.h>
 #include <corosync/coroipc_ipc.h>
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+#include <semaphore.h>
+#else
+#include <sys/sem.h>
+#endif
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -100,6 +106,7 @@ struct zcb_mapped {
 	size_t size;
 };
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 #if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
 	int val;
@@ -108,6 +115,8 @@ union semun {
 	struct seminfo *__buf;
 };
 #endif
+#endif
+
 
 enum conn_state {
 	CONN_STATE_THREAD_INACTIVE = 0,
@@ -126,9 +135,10 @@ struct conn_info {
 	enum conn_state state;
 	int notify_flow_control_enabled;
 	int refcount;
-	key_t shmkey;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	key_t semkey;
 	int semid;
+#endif
 	unsigned int pending_semops;
 	pthread_mutex_t mutex;
 	struct control_buffer *control_buffer;
@@ -158,6 +168,32 @@ static void ipc_disconnect (struct conn_info *conn_info);
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
+
+static void sem_post_exit_thread (struct conn_info *conn_info)
+{
+#if _POSIX_THREAD_PROCESS_SHARED < 1
+	struct sembuf sop;
+#endif
+	int res;
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+retry_semop:
+	res = sem_post (&conn_info->control_buffer->sem0);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semop;
+	}
+#else
+	sop.sem_num = 1;
+	sop.sem_op = 1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (conn_info->semid, &sop, 1);
+	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
+		goto retry_semop;
+	}
+#endif
+}
 
 static int
 memory_map (
@@ -392,7 +428,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	}
 
 	if (conn_info->state == CONN_STATE_THREAD_ACTIVE) {
-		pthread_kill (conn_info->thread, SIGUSR1);
+		sem_post_exit_thread (conn_info);
 		return (0);
 	}
 
@@ -419,13 +455,19 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	list_del (&conn_info->list);
 	pthread_mutex_unlock (&conn_info->mutex);
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	sem_destroy (&conn_info->control_buffer->sem0);
+	sem_destroy (&conn_info->control_buffer->sem1);
+	sem_destroy (&conn_info->control_buffer->sem2);
+#else
+	semctl (conn_info->semid, 0, IPC_RMID);
+#endif
 	/*
 	 * Destroy shared memory segment and semaphore
 	 */
 	res = munmap ((void *)conn_info->control_buffer, conn_info->control_size);
 	res = munmap ((void *)conn_info->request_buffer, conn_info->request_size);
 	res = munmap ((void *)conn_info->response_buffer, conn_info->response_size);
-	semctl (conn_info->semid, 0, IPC_RMID);
 
 	/*
 	 * Free allocated data needed to retry exiting library IPC connection
@@ -521,7 +563,9 @@ static inline void zerocopy_operations_process (
 static void *pthread_ipc_consumer (void *conn)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	int res;
 	coroipc_request_header_t *header;
 	coroipc_response_header_t coroipc_response_header;
@@ -536,6 +580,18 @@ static void *pthread_ipc_consumer (void *conn)
 #endif
 
 	for (;;) {
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+retry_semwait:
+		res = sem_wait (&conn_info->control_buffer->sem0);
+		if (ipc_thread_active (conn_info) == 0) {
+			coroipcs_refcount_dec (conn_info);
+			pthread_exit (0);
+		}
+		if ((res == -1) && (errno == EINTR)) {
+			goto retry_semwait;
+		}
+#else
+
 		sop.sem_num = 0;
 		sop.sem_op = -1;
 		sop.sem_flg = 0;
@@ -552,6 +608,7 @@ retry_semop:
 			coroipcs_refcount_dec (conn_info);
 			pthread_exit (0);
 		}
+#endif
 
 		zerocopy_operations_process (conn_info, &header, &new_message);
 		/*
@@ -755,7 +812,7 @@ static void ipc_disconnect (struct conn_info *conn_info)
 	conn_info->state = CONN_STATE_THREAD_REQUEST_EXIT;
 	pthread_mutex_unlock (&conn_info->mutex);
 
-	pthread_kill (conn_info->thread, SIGUSR1);
+	sem_post_exit_thread (conn_info);
 }
 
 static int conn_info_create (int fd)
@@ -874,6 +931,14 @@ void coroipcs_ipc_exit (void)
 
 		conn_info = list_entry (list, struct conn_info, list);
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+		sem_destroy (&conn_info->control_buffer->sem0);
+		sem_destroy (&conn_info->control_buffer->sem1);
+		sem_destroy (&conn_info->control_buffer->sem2);
+#else
+		semctl (conn_info->semid, 0, IPC_RMID);
+#endif
+
 		/*
 		 * Unmap memory segments
 		 */
@@ -886,9 +951,7 @@ void coroipcs_ipc_exit (void)
 		res = circular_memory_unmap (conn_info->dispatch_buffer,
 			conn_info->dispatch_size);
 
-		semctl (conn_info->semid, 0, IPC_RMID);
-
-		pthread_kill (conn_info->thread, SIGUSR1);
+		sem_post_exit_thread (conn_info);
 	}
 }
 
@@ -905,10 +968,19 @@ void *coroipcs_private_data_get (void *conn)
 int coroipcs_response_send (void *conn, const void *msg, size_t mlen)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	int res;
 
 	memcpy (conn_info->response_buffer, msg, mlen);
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	res = sem_post (&conn_info->control_buffer->sem1);
+	if (res == -1) {
+		return (-1);
+	}
+#else
 	sop.sem_num = 1;
 	sop.sem_op = 1;
 	sop.sem_flg = 0;
@@ -921,13 +993,16 @@ retry_semop:
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return (0);
 	}
+#endif
 	return (0);
 }
 
 int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned int iov_len)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	int res;
 	int write_idx = 0;
 	int i;
@@ -938,6 +1013,12 @@ int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned in
 		write_idx += iov[i].iov_len;
 	}
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	res = sem_post (&conn_info->control_buffer->sem1);
+	if (res == -1) {
+		return (-1);
+	}
+#else
 	sop.sem_num = 1;
 	sop.sem_op = 1;
 	sop.sem_flg = 0;
@@ -950,6 +1031,7 @@ retry_semop:
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return (0);
 	}
+#endif
 	return (0);
 }
 
@@ -984,7 +1066,9 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked)
 {
 	struct conn_info *conn_info = (struct conn_info *)conn;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	int res;
 	int i;
 	char buf;
@@ -1009,6 +1093,9 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 	if (res == -1) {
 		ipc_disconnect (conn_info);
 	}
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	res = sem_post (&conn_info->control_buffer->sem2);
+#else
 	sop.sem_num = 2;
 	sop.sem_op = 1;
 	sop.sem_flg = 0;
@@ -1021,6 +1108,7 @@ retry_semop:
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return;
 	}
+#endif
 }
 
 static void outq_flush (struct conn_info *conn_info) {
@@ -1062,9 +1150,11 @@ static int priv_change (struct conn_info *conn_info)
 {
 	mar_req_priv_change req_priv_change;
 	unsigned int res;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	union semun semun;
 	struct semid_ds ipc_set;
 	int i;
+#endif
 
 retry_recv:
 	res = recv (conn_info->fd, &req_priv_change,
@@ -1087,6 +1177,7 @@ retry_recv:
 	}
 #endif
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	ipc_set.sem_perm.uid = req_priv_change.euid;
 	ipc_set.sem_perm.gid = req_priv_change.egid;
 	ipc_set.sem_perm.mode = 0600;
@@ -1099,6 +1190,7 @@ retry_recv:
 			return (-1);
 		}
 	}
+#endif
 	return (0);
 }
 
@@ -1293,7 +1385,9 @@ int coroipcs_handler_dispatch (
 			return (0);
 		}
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semkey = req_setup->semkey;
+#endif
 		res = memory_map (
 			req_setup->control_file,
 			req_setup->control_size,
@@ -1323,7 +1417,9 @@ int coroipcs_handler_dispatch (
 		conn_info->notify_flow_control_enabled = 0;
 		conn_info->setup_bytes_read = 0;
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semid = semget (conn_info->semkey, 3, 0600);
+#endif
 		conn_info->pending_semops = 0;
 
 		/*

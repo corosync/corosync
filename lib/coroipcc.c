@@ -55,7 +55,6 @@
 #include <netinet/in.h>
 #include <assert.h>
 #include <sys/shm.h>
-#include <sys/sem.h>
 #include <sys/mman.h>
 
 #include <corosync/corotypes.h>
@@ -64,12 +63,19 @@
 #include <corosync/coroipcc.h>
 #include <corosync/hdb.h>
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+#include <semaphore.h>
+#else
+#include <sys/sem.h>
+#endif
+
 #include "util.h"
 
 struct ipc_instance {
 	int fd;
-	int shmid;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	int semid;
+#endif
 	int flow_control_state;
 	struct control_buffer *control_buffer;
 	char *request_buffer;
@@ -258,6 +264,7 @@ priv_change_send (struct ipc_instance *ipc_instance)
 	return (0);
 }
 
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 #if defined(_SEM_SEMUN_UNDEFINED)
 union semun {
         int val;
@@ -265,6 +272,7 @@ union semun {
         unsigned short int *array;
         struct seminfo *__buf;
 };
+#endif
 #endif
 
 static int
@@ -391,7 +399,10 @@ msg_send (
 	const struct iovec *iov,
 	unsigned int iov_len)
 {
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
+
 	int i;
 	int res;
 	int req_buffer_idx = 0;
@@ -402,6 +413,13 @@ msg_send (
 			iov[i].iov_len);
 		req_buffer_idx += iov[i].iov_len;
 	}
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	res = sem_post (&ipc_instance->control_buffer->sem0);
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+#else 
 	/*
 	 * Signal semaphore #0 indicting a new message from client
 	 * to server request queue
@@ -422,6 +440,7 @@ retry_semop:
 	if (res == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+#endif
 	return (CS_OK);
 }
 
@@ -431,10 +450,19 @@ reply_receive (
 	void *res_msg,
 	size_t res_len)
 {
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	coroipc_response_header_t *response_header;
 	int res;
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+retry_semwait:
+	res = sem_wait (&ipc_instance->control_buffer->sem1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semwait;
+	}
+#else
 	/*
 	 * Wait for semaphore #1 indicating a new message from server
 	 * to client in the response queue
@@ -455,6 +483,7 @@ retry_semop:
 	if (res == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+#endif
 
 	response_header = (coroipc_response_header_t *)ipc_instance->response_buffer;
 	if (response_header->error == CS_ERR_TRY_AGAIN) {
@@ -470,9 +499,18 @@ reply_receive_in_buf (
 	struct ipc_instance *ipc_instance,
 	void **res_msg)
 {
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	int res;
 
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+retry_semwait:
+	res = sem_wait (&ipc_instance->control_buffer->sem1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semwait;
+	}
+#else
 	/*
 	 * Wait for semaphore #1 indicating a new message from server
 	 * to client in the response queue
@@ -493,6 +531,7 @@ retry_semop:
 	if (res == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+#endif
 
 	*res_msg = (char *)ipc_instance->response_buffer;
 	return (CS_OK);
@@ -515,11 +554,13 @@ coroipcc_service_connect (
 	struct sockaddr_un address;
 	cs_error_t res;
 	struct ipc_instance *ipc_instance;
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	key_t semkey = 0;
+	union semun semun;
+#endif
 	int sys_res;
 	mar_req_setup_t req_setup;
 	mar_res_setup_t res_setup;
-	union semun semun;
 	char control_map_path[128];
 	char request_map_path[128];
 	char response_map_path[128];
@@ -568,6 +609,36 @@ coroipcc_service_connect (
 		return (CS_ERR_TRY_AGAIN);
 	}
 
+	res = memory_map (
+		control_map_path,
+		"control_buffer-XXXXXX",
+		(void *)&ipc_instance->control_buffer,
+		8192);
+
+	res = memory_map (
+		request_map_path,
+		"request_buffer-XXXXXX",
+		(void *)&ipc_instance->request_buffer,
+		request_size);
+
+	res = memory_map (
+		response_map_path,
+		"response_buffer-XXXXXX",
+		(void *)&ipc_instance->response_buffer,
+		response_size);
+
+	res = circular_memory_map (
+		dispatch_map_path,
+		"dispatch_buffer-XXXXXX",
+		(void *)&ipc_instance->dispatch_buffer,
+		dispatch_size);
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	sem_init (&ipc_instance->control_buffer->sem0, 1, 0);
+	sem_init (&ipc_instance->control_buffer->sem1, 1, 0);
+	sem_init (&ipc_instance->control_buffer->sem2, 1, 0);
+#else
+
 	/*
 	 * Allocate a semaphore segment
 	 */
@@ -600,30 +671,7 @@ coroipcc_service_connect (
 	if (res != 0) {
 		goto res_exit;
 	}
-
-	res = memory_map (
-		control_map_path,
-		"control_buffer-XXXXXX",
-		(void *)&ipc_instance->control_buffer,
-		8192);
-
-	res = memory_map (
-		request_map_path,
-		"request_buffer-XXXXXX",
-		(void *)&ipc_instance->request_buffer,
-		request_size);
-
-	res = memory_map (
-		response_map_path,
-		"response_buffer-XXXXXX",
-		(void *)&ipc_instance->response_buffer,
-		response_size);
-
-	res = circular_memory_map (
-		dispatch_map_path,
-		"dispatch_buffer-XXXXXX",
-		(void *)&ipc_instance->dispatch_buffer,
-		dispatch_size);
+#endif
 
 	/*
 	 * Initialize IPC setup message
@@ -637,7 +685,10 @@ coroipcc_service_connect (
 	req_setup.request_size = request_size;
 	req_setup.response_size = response_size;
 	req_setup.dispatch_size = dispatch_size;
+
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	req_setup.semkey = semkey;
+#endif
 
 	res = socket_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
 	if (res != CS_OK) {
@@ -668,8 +719,10 @@ coroipcc_service_connect (
 
 res_exit:
 	close (request_fd);
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	if (ipc_instance->semid > 0)
 		semctl (ipc_instance->semid, 0, IPC_RMID);
+#endif
 	return (res_setup.error);
 }
 
@@ -821,7 +874,9 @@ error_put:
 cs_error_t
 coroipcc_dispatch_put (hdb_handle_t handle)
 {
+#if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#endif
 	coroipc_response_header_t *header;
 	struct ipc_instance *ipc_instance;
 	int res;
@@ -832,6 +887,13 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 	if (res != CS_OK) {
 		return (res);
 	}
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+retry_semwait:
+	res = sem_wait (&ipc_instance->control_buffer->sem2);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semwait;
+	}
+#else
 	sop.sem_num = 2;
 	sop.sem_op = -1;
 	sop.sem_flg = 0;
@@ -847,6 +909,7 @@ retry_semop:
 	if (res == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+#endif
 
 	addr = ipc_instance->dispatch_buffer;
 
