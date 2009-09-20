@@ -83,7 +83,6 @@
 #include "apidef.h"
 #include "service.h"
 #include "schedwrk.h"
-#include "version.h"
 #include "evil.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
@@ -743,7 +742,7 @@ int main (int argc, char **argv)
 	background = 1;
 	setprio = 1;
 
- 	while ((ch = getopt (argc, argv, "fp")) != EOF) {
+	while ((ch = getopt (argc, argv, "fpv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -753,11 +752,18 @@ int main (int argc, char **argv)
 			case 'p':
 				setprio = 0;
 				break;
+			case 'v':
+				printf ("Corosync Cluster Engine, version '%s' SVN revision '%s'\n", VERSION, SVN_REVISION);
+				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+				return EXIT_SUCCESS;
+
+				break;
 			default:
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set process priority.    \n");
+					"        -p     : Do not set process priority.    \n"\
+					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				return EXIT_FAILURE;
 		}
 	}
@@ -776,7 +782,7 @@ int main (int argc, char **argv)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", RELEASE_VERSION);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
