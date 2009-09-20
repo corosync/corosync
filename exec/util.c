@@ -112,17 +112,6 @@ char *getcs_name_t (cs_name_t *name)
 	return ((char *)name->value);
 }
 
-char *strchr_rs (const char *haystack, int byte)
-{
-	const char *end_address = strchr (haystack, byte);
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		end_address += strspn (end_address, " \t");
-	}
-
-	return ((char *) end_address);
-}
-
 void setcs_name_t (cs_name_t *name, char *str) {
 	strncpy ((char *)name->value, str, CS_MAX_NAME_LENGTH);
 	if (strlen ((char *)name->value) > CS_MAX_NAME_LENGTH) {

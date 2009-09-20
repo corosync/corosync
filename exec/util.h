@@ -73,7 +73,6 @@ extern void _corosync_exit_error (enum e_ais_done err, const char *file,
   __attribute__((__noreturn__));
 void _corosync_out_of_memory_error (void) __attribute__((__noreturn__));
 extern char *getcs_name_t (cs_name_t *name);
-extern char *strchr_rs (const char *haystack, int byte);
 extern void setcs_name_t (cs_name_t *name, char *str);
 extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
 #endif /* UTIL_H_DEFINED */
