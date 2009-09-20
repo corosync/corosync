@@ -48,6 +48,7 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
+#include <corosync/swab.h>
 
 static int quit = 0;
 static int show_ip = 0;
@@ -61,6 +62,24 @@ static void print_cpgname (const struct cpg_name *name)
 	}
 }
 
+static char * node_pid_format(unsigned int nodeid,int pid) {
+	static char buffer[100];
+	if (show_ip) {
+		struct in_addr saddr;
+#if __BYTE_ORDER == __BIG_ENDIAN
+		saddr.s_addr = swab32(nodeid);
+#else
+		saddr.s_addr = nodeid;
+#endif
+		sprintf(buffer, "node/pid %s/%d", inet_ntoa(saddr),pid);
+	} 
+	else {
+		sprintf(buffer, "node/pid %d/%d", nodeid, pid);
+	} 
+	return buffer;
+}
+
+
 static void DeliverCallback (
 	cpg_handle_t handle,
 	const struct cpg_name *groupName,
@@ -69,18 +88,9 @@ static void DeliverCallback (
 	void *msg,
 	size_t msg_len)
 {
-	if (show_ip) {
-		struct in_addr saddr;
-		saddr.s_addr = nodeid;
-		printf("DeliverCallback: message (len=%lu)from node/pid %s/%d: '%s'\n",
-		       (unsigned long int) msg_len,
-		       inet_ntoa(saddr), pid, (const char *)msg);
-	}
-	else {
-		printf("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n",
-		       (unsigned long int) msg_len, nodeid, pid,
+	printf("DeliverCallback: message (len=%lu)from %s: '%s'\n",
+		       (unsigned long int) msg_len, node_pid_format(nodeid, pid),
 		       (const char *)msg);
-	}
 }
 
 static void ConfchgCallback (
@@ -91,51 +101,27 @@ static void ConfchgCallback (
 	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 	int i;
-	struct in_addr saddr;
 
 	printf("\nConfchgCallback: group '");
 	print_cpgname(groupName);
 	printf("'\n");
 	for (i=0; i<joined_list_entries; i++) {
-		if (show_ip) {
-			saddr.s_addr = joined_list[i].nodeid;
-			printf("joined node/pid: %s/%d reason: %d\n",
-			       inet_ntoa (saddr), joined_list[i].pid,
-			       joined_list[i].reason);
-		}
-		else {
-			printf("joined node/pid: %d/%d reason: %d\n",
-			       joined_list[i].nodeid, joined_list[i].pid,
-			       joined_list[i].reason);
-		}
+		printf("joined %s reason: %d\n",
+				node_pid_format(joined_list[i].nodeid, joined_list[i].pid),
+				joined_list[i].reason);
 	}
 
 	for (i=0; i<left_list_entries; i++) {
-		if (show_ip) {
-			saddr.s_addr = left_list[i].nodeid;
-			printf("left node/pid: %s/%d reason: %d\n",
-			       inet_ntoa (saddr), left_list[i].pid,
-			       left_list[i].reason);
-		}
-		else {
-			printf("left node/pid: %d/%d reason: %d\n",
-			       left_list[i].nodeid, left_list[i].pid,
-			       left_list[i].reason);
-		}
+		printf("left %s reason: %d\n",
+				node_pid_format(left_list[i].nodeid, left_list[i].pid),
+				left_list[i].reason);
 	}
 
 	printf("nodes in group now %lu\n",
 	       (unsigned long int) member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
-		if (show_ip) {
-			saddr.s_addr = member_list[i].nodeid;
-			printf("node/pid: %s/%d\n",
-			       inet_ntoa (saddr), member_list[i].pid);
-		}
-		else {
-			printf("node/pid: %d/%d\n",
-			       member_list[i].nodeid, member_list[i].pid);
-		}
+		printf("%s\n",
+				node_pid_format(member_list[i].nodeid, member_list[i].pid));
 	}
 
 	/* Is it us??

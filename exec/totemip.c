@@ -376,6 +376,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			 */
 			totemip_sockaddr_to_totemip_convert((struct sockaddr_storage *)sockaddr_in, boundto);
 			boundto->nodeid = sockaddr_in->sin_addr.s_addr;
+#if __BYTE_ORDER == __BIG_ENDIAN
+			boundto->nodeid = swab32 (boundto->nodeid);
+#endif
 
 			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) < 0) {
 				printf ("couldn't do ioctl\n");
@@ -614,6 +617,9 @@ finished:
 	if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
                 unsigned int nodeid = 0;
                 memcpy (&nodeid, ipaddr.addr, sizeof (int));
+#if __BYTE_ORDER == __BIG_ENDIAN
+		nodeid = swab32 (nodeid);
+#endif
 		if (mask_high_bit) {
                         nodeid &= 0x7FFFFFFF;
 		}
