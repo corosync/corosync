@@ -69,7 +69,7 @@ SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemrrp.h totemsrp.h util.h \
-			  version.h vsf.h wthread.h schedwrk.h evil.h syncv2.h
+			  vsf.h wthread.h schedwrk.h evil.h syncv2.h
 
 EXTRA_DIST		= $(LCRSO_SRC)
 
