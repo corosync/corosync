@@ -942,9 +942,9 @@ static int byte_count_send_ok (
 
 	avail = totemmrp_avail ();
 
-	msg_count = (byte_count / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16));
+	msg_count = (byte_count / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16)) + 1;
 
-	return (avail > msg_count);
+	return (avail >= msg_count);
 }
 
 static int send_reserve (
