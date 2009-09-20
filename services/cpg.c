@@ -624,7 +624,7 @@ static void exec_cpg_joinlist_endian_convert (void *msg_v)
 	coroipc_response_header_t *res = (coroipc_response_header_t *)msg;
 	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(coroipc_response_header_t));
 
-	/* XXX shouldn't mar_res_header be swabbed? */
+	swab_mar_int32_t (&res->size);
 
 	while ((const char*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
