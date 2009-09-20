@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/param.h>
+#include <unistd.h>
 
 #include <corosync/list.h>
 
@@ -92,6 +93,7 @@ static inline unsigned long long timerlist_nano_from_epoch (void)
 	return (nano_from_epoch);
 }
 
+#if defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK >= 0
 static inline unsigned long long timerlist_nano_current_get (void)
 {
 	unsigned long long nano_monotonic;
@@ -113,6 +115,17 @@ static inline unsigned long long timerlist_nano_monotonic_hz (void) {
 
 	return (nano_monotonic_hz);
 }
+#else
+#warning "Your system doesn't support monotonic timer. gettimeofday will be used"
+static inline unsigned long long timerlist_nano_current_get (void)
+{
+	return (timerlist_nano_from_epoch ());
+}
+
+static inline unsigned long long timerlist_nano_monotonic_hz (void) {
+	return HZ;
+}
+#endif
 
 static inline void timerlist_add (struct timerlist *timerlist, struct timerlist_timer *timer)
 {
