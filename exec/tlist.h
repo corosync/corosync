@@ -54,6 +54,13 @@ typedef void * timer_handle;
 #define TIMER_HANDLE
 #endif
 
+#define TIMERLIST_MS_IN_SEC   1000ULL
+#define TIMERLIST_US_IN_SEC   1000000ULL
+#define TIMERLIST_NS_IN_SEC   1000000000ULL
+#define TIMERLIST_US_IN_MSEC  1000ULL
+#define TIMERLIST_NS_IN_MSEC  1000000ULL
+#define TIMERLIST_NS_IN_USEC  1000ULL
+
 struct timerlist {
 	struct list_head timer_head;
 	struct list_head *timer_iter;
@@ -61,7 +68,8 @@ struct timerlist {
 
 struct timerlist_timer {
 	struct list_head list;
-	unsigned long long nano_from_epoch;
+	unsigned long long expire_time;
+	int is_absolute_timer;
 	void (*timer_fn)(void *data);
 	void *data;
 	timer_handle handle_addr;
@@ -78,8 +86,32 @@ static inline unsigned long long timerlist_nano_from_epoch (void)
 	struct timeval time_from_epoch;
 	gettimeofday (&time_from_epoch, 0);
 
-	nano_from_epoch = ((time_from_epoch.tv_sec * 1000000000ULL) + (time_from_epoch.tv_usec * 1000ULL));
+	nano_from_epoch = ((time_from_epoch.tv_sec * TIMERLIST_NS_IN_SEC) +
+		(time_from_epoch.tv_usec * TIMERLIST_NS_IN_USEC));
+
 	return (nano_from_epoch);
+}
+
+static inline unsigned long long timerlist_nano_current_get (void)
+{
+	unsigned long long nano_monotonic;
+	struct timespec ts;
+
+	clock_gettime (CLOCK_MONOTONIC, &ts);
+
+	nano_monotonic = (ts.tv_sec * TIMERLIST_NS_IN_SEC) + (unsigned long long )ts.tv_nsec;
+	return (nano_monotonic);
+}
+
+static inline unsigned long long timerlist_nano_monotonic_hz (void) {
+	unsigned long long nano_monotonic_hz;
+	struct timespec ts;
+
+	clock_getres (CLOCK_MONOTONIC, &ts);
+
+	nano_monotonic_hz = TIMERLIST_NS_IN_SEC / ((ts.tv_sec * TIMERLIST_NS_IN_SEC) + ts.tv_nsec);
+
+	return (nano_monotonic_hz);
 }
 
 static inline void timerlist_add (struct timerlist *timerlist, struct timerlist_timer *timer)
@@ -95,7 +127,7 @@ static inline void timerlist_add (struct timerlist *timerlist, struct timerlist_
 		timer_from_list = list_entry (timer_list,
 			struct timerlist_timer, list);
 
-		if (timer_from_list->nano_from_epoch > timer->nano_from_epoch) {
+		if (timer_from_list->expire_time > timer->expire_time) {
 			list_add (&timer->list, timer_list->prev);
 			found = 1;
 			break; /* for timer iteration */
@@ -120,7 +152,8 @@ static inline int timerlist_add_absolute (struct timerlist *timerlist,
 		return (-1);
 	}
 
-	timer->nano_from_epoch = nano_from_epoch;
+	timer->expire_time = nano_from_epoch;
+	timer->is_absolute_timer = 1;
 	timer->data = data;
 	timer->timer_fn = timer_fn;
 	timer->handle_addr = handle;
@@ -144,7 +177,8 @@ static inline int timerlist_add_duration (struct timerlist *timerlist,
 		return (-1);
 	}
 
-	timer->nano_from_epoch = timerlist_nano_from_epoch() + nano_duration;
+	timer->expire_time = timerlist_nano_current_get () + nano_duration;
+	timer->is_absolute_timer = 0;
 	timer->data = data;
 	timer->timer_fn = timer_fn;
 	timer->handle_addr = handle;
@@ -177,7 +211,7 @@ static inline unsigned long long timerlist_expire_time (struct timerlist *timerl
 {
 	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
-	return (timer->nano_from_epoch);
+	return (timer->expire_time);
 }
 
 static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle _timer_handle)
@@ -202,7 +236,7 @@ static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_h
 static inline unsigned long long timerlist_msec_duration_to_expire (struct timerlist *timerlist)
 {
 	struct timerlist_timer *timer_from_list;
-	volatile unsigned long long nano_from_epoch;
+	volatile unsigned long long current_time;
 	volatile unsigned long long msec_duration_to_expire;
 
 	/*
@@ -215,16 +249,20 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 	timer_from_list = list_entry (timerlist->timer_head.next,
 		struct timerlist_timer, list);
 
-	nano_from_epoch = timerlist_nano_from_epoch();
+	if (timer_from_list->is_absolute_timer) {
+		current_time = timerlist_nano_from_epoch ();
+	} else {
+		current_time = timerlist_nano_current_get ();
+	}
 
 	/*
 	 * timer at head of list is expired, zero msecs required
 	 */
-	if (timer_from_list->nano_from_epoch < nano_from_epoch) {
+	if (timer_from_list->expire_time < current_time) {
 		return (0);
 	}
 
-	msec_duration_to_expire = ((timer_from_list->nano_from_epoch - nano_from_epoch) / 1000000ULL) +
+	msec_duration_to_expire = ((timer_from_list->expire_time - current_time) / TIMERLIST_NS_IN_MSEC) +
 		(1000 / HZ);
 	return (msec_duration_to_expire);
 }
@@ -235,9 +273,12 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 static inline void timerlist_expire (struct timerlist *timerlist)
 {
 	struct timerlist_timer *timer_from_list;
-	unsigned long long nano_from_epoch;
+	unsigned long long current_time_from_epoch;
+	unsigned long long current_monotonic_time;
+	unsigned long long current_time;
 
-	nano_from_epoch = timerlist_nano_from_epoch();
+	current_monotonic_time = timerlist_nano_current_get ();
+	current_time_from_epoch = current_time = timerlist_nano_from_epoch ();
 
 	for (timerlist->timer_iter = timerlist->timer_head.next;
 		timerlist->timer_iter != &timerlist->timer_head;) {
@@ -245,7 +286,9 @@ static inline void timerlist_expire (struct timerlist *timerlist)
 		timer_from_list = list_entry (timerlist->timer_iter,
 			struct timerlist_timer, list);
 
-		if (timer_from_list->nano_from_epoch < nano_from_epoch) {
+		current_time = (timer_from_list->is_absolute_timer ? current_time_from_epoch : current_monotonic_time);
+
+		if (timer_from_list->expire_time < current_time) {
 			timerlist->timer_iter = timerlist->timer_iter->next;
 
 			timerlist_pre_dispatch (timerlist, timer_from_list);
