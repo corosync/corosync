@@ -1303,6 +1303,7 @@ void _logsys_log_vprintf (
 	unsigned int len;
 	unsigned int level;
 	int subsysid;
+	char * short_file_name;
 
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
@@ -1318,6 +1319,15 @@ void _logsys_log_vprintf (
 		logsys_print_buffer[len - 1] = '\0';
 		len -= 1;
 	}
+#ifdef BUILDING_IN_PLACE
+	short_file_name = file_name;
+#else
+	short_file_name = strrchr (file_name, '/');
+	if (short_file_name == NULL)
+		short_file_name = file_name;
+	else
+		short_file_name++; /* move past the "/" */
+#endif /* BUILDING_IN_PLACE */
 
 	/*
 	 * Create a log record
@@ -1325,7 +1335,7 @@ void _logsys_log_vprintf (
 	_logsys_log_rec (
 		rec_ident,
 		function_name,
-		file_name,
+		short_file_name,
 		file_line,
 		logsys_print_buffer, len + 1,
 		LOGSYS_REC_END);
@@ -1336,7 +1346,7 @@ void _logsys_log_vprintf (
 		 * expect the worker thread to output the log data once signaled
 		 */
 		log_printf_to_logs (rec_ident,
-				    file_name, function_name, file_line,
+				    short_file_name, function_name, file_line,
 				    logsys_print_buffer);
 	} else {
 		/*
