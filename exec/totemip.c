@@ -474,6 +474,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			int mask_high_bit)
 {
 	int fd;
+	int res = -1;
 	struct {
                 struct nlmsghdr nlh;
                 struct rtgenmsg g;
@@ -591,17 +592,33 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 					/* SIOCGIFFLAGS needs an interface name */
 					status = ioctl(ioctl_fd, SIOCGIFNAME, &ifr);
 					status = ioctl(ioctl_fd, SIOCGIFFLAGS, &ifr);
+					close(ioctl_fd);
 					if (status) {
-						close(ioctl_fd);
-						close(fd);
-						return -1;
+						res = -1;
+						goto finished;
 					}
 
 					if (ifr.ifr_flags & IFF_UP)
 						*interface_up = 1;
 
 					*interface_num = ifa->ifa_index;
-					close(ioctl_fd);
+					/*
+					 * Mask 32nd bit off to workaround bugs in other peoples code
+					 * (if configuration requests it).
+					 */
+					if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
+						unsigned int nodeid = 0;
+						memcpy (&nodeid, ipaddr.addr, sizeof (int));
+#if __BYTE_ORDER == __BIG_ENDIAN
+                                                nodeid = swab32 (nodeid);
+#endif
+						if (mask_high_bit) {
+							nodeid &= 0x7FFFFFFF;
+						}
+						ipaddr.nodeid = nodeid;
+					}
+					totemip_copy (boundto, &ipaddr);
+					res = 0;
 					goto finished;
 				}
 			}
@@ -609,24 +626,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			h = NLMSG_NEXT(h, status);
 		}
 	}
+	res = -1; /* address not found */
 finished:
-	/*
-	 * Mask 32nd bit off to workaround bugs in other poeples code
-	 * if configuration requests it.
-	 */
-	if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
-                unsigned int nodeid = 0;
-                memcpy (&nodeid, ipaddr.addr, sizeof (int));
-#if __BYTE_ORDER == __BIG_ENDIAN
-		nodeid = swab32 (nodeid);
-#endif
-		if (mask_high_bit) {
-                        nodeid &= 0x7FFFFFFF;
-		}
-                ipaddr.nodeid = nodeid;
-        }
-	totemip_copy (boundto, &ipaddr);
 	close(fd);
-	return 0;
+	return res;
 }
 #endif /* COROSYNC_LINUX */
