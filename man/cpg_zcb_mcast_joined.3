@@ -83,11 +83,11 @@ In fact, this guarantee is equivalent to the CPG_TYPE_AGREED guarantee.
 .TP
 .B CPG_TYPE_AGREED
 All processors must agree on the order of delivery.  If a message is sent
-from two or more processors at about the same time, the delivery will occur
-in the same order to all processors.
+from two or more processes at about the same time, the delivery will occur
+in the same order to all processes.
 .TP
 .B CPG_TYPE_SAFE
-All processors must agree on the order of delivery.  Further all processors
+All processes must agree on the order of delivery.  Further all processes
 must have a copy of the message before any delivery takes place.  This mode is
 unimplemented in the CPG library.
 .PP
