@@ -1303,7 +1303,7 @@ void _logsys_log_vprintf (
 	unsigned int len;
 	unsigned int level;
 	int subsysid;
-	char * short_file_name;
+	const char *short_file_name;
 
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
