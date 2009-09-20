@@ -1385,7 +1385,6 @@ int coroipcs_handler_dispatch (
 		if (res != 1) {
 			return (0);
 		}
-		req_setup_send (conn_info, CS_OK);
 
 		pthread_mutex_init (&conn_info->mutex, NULL);
 		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
@@ -1393,9 +1392,11 @@ int coroipcs_handler_dispatch (
 		 * Is the service registered ?
 		 */
 		if (api->service_available (req_setup->service) == 0) {
+			req_setup_send (conn_info, CS_ERR_NOT_EXIST);
 			ipc_disconnect (conn_info);
 			return (0);
 		}
+		req_setup_send (conn_info, CS_OK);
 
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semkey = req_setup->semkey;
