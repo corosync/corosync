@@ -42,8 +42,6 @@ corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc
 corosync_objctl_LDFLAGS	= -L../lib
 corosync_cfgtool_LDADD	= -lcfg -lcoroipcc
 corosync_cfgtool_LDFLAGS= -L../lib
-corosync_cpgtool_LDADD	= -lcfg -lcpg -lcoroipcc
-corosync_cpgtool_LDFLAGS= -L../lib
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
