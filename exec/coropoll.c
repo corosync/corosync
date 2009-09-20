@@ -257,6 +257,7 @@ int poll_dispatch_delete (
 	res = -EBADF;
 	for (i = 0; i < poll_instance->poll_entry_count; i++) {
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
+			poll_instance->ufds[i].fd = -1;
 			poll_instance->poll_entries[i].ufd.fd = -1;
 			poll_instance->poll_entries[i].ufd.revents = 0;
 			break;
