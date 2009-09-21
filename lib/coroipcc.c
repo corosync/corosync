@@ -837,12 +837,15 @@ coroipcc_dispatch_get (
 		goto error_put;
 	} else
 	if (res == -1) {
-		goto error_put;
-	}
-	if (res == 0) {
-#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 		error = CS_ERR_LIBRARY;
-#endif
+		goto error_put;
+	} else
+	if (res == 0) {
+		/* Means that the peer closed cleanly the socket. However, it should
+		 * happen only on BSD and Darwing systems since poll() returns a
+		 * POLLHUP event on other systems.
+		 */
+		error = CS_ERR_LIBRARY;
 		goto error_put;
 	}
 	ipc_instance->flow_control_state = 0;
@@ -862,9 +865,11 @@ coroipcc_dispatch_get (
 	 * of a new pending message, not a message to dispatch
 	 */
 	if (buf == 2) {
+		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
 	if (buf == 3) {
+		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
 
@@ -874,7 +879,7 @@ coroipcc_dispatch_get (
 
 	*data = (void *)data_addr;
 
-	return (CS_OK);
+	error = CS_OK;
 error_put:
 	hdb_handle_put (&ipc_hdb, handle);
 	return (error);
