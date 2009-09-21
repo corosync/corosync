@@ -153,7 +153,7 @@ static unsigned short mcast_packed_msg_lens[FRAME_SIZE_MAX];
 
 static int mcast_packed_msg_count = 0;
 
-static int totempg_reserved = 0;
+static int totempg_reserved = 1;
 
 static unsigned int totempg_size_limit;
 
@@ -931,7 +931,7 @@ static int msg_count_send_ok (
 
 	avail = totemmrp_avail ();
 
-	return (avail > msg_count);
+	return ((avail - totempg_reserved) > msg_count);
 }
 
 static int byte_count_send_ok (
