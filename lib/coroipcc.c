@@ -879,7 +879,7 @@ coroipcc_dispatch_get (
 
 	*data = (void *)data_addr;
 
-	error = CS_OK;
+	return (CS_OK);
 error_put:
 	hdb_handle_put (&ipc_hdb, handle);
 	return (error);
