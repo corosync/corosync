@@ -356,6 +356,7 @@ static void message_handler_req_exec_pload_mcast (
 	unsigned int nodeid)
 {
 	const struct req_exec_pload_mcast *pload_mcast = msg;
+	char log_buffer[1024];
 
 	last_msg_no = pload_mcast->msg_code;
 	if (msgs_delivered == 0) {
@@ -365,13 +366,13 @@ static void message_handler_req_exec_pload_mcast (
 	if (msgs_delivered == msgs_wanted) {
 		tv2 = timerlist_nano_current_get ();
 		tv_elapsed = tv2 - tv1;
-	        printf ("%5d Writes ", msgs_delivered);
-		printf ("%5d bytes per write ", msg_size);
-		printf ("%7.3f Seconds runtime ",
-		(tv_elapsed / 1000000000.0));
-		printf ("%9.3f TP/s ",
-		((float)msgs_delivered) /  (tv_elapsed / 1000000000.0));
-		printf ("%7.3f MB/s.\n",
-		((float)msgs_delivered) * ((float)msg_size) /  ((tv_elapsed / 1000000000.0)) * 1000000.0);
+		sprintf (log_buffer, "%5d Writes %d bytes per write %7.3f seconds runtime, %9.3f TP/S, %9.3f MB/S.\n",
+			msgs_delivered,
+			msg_size,
+			(tv_elapsed / 1000000000.0),
+			((float)msgs_delivered) /  (tv_elapsed / 1000000000.0),
+			(((float)msgs_delivered) * ((float)msg_size) /
+				(tv_elapsed / 1000000000.0)) / (1024.0 * 1024.0));
+		log_printf (LOGSYS_LEVEL_NOTICE, "%s", log_buffer);
 	}
 }
