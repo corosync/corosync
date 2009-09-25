@@ -734,7 +734,7 @@ static void corosync_setscheduler (void)
 #endif
 }
 
-void main_service_ready (void)
+static void main_service_ready (void)
 {
 	int res;
 	/*
