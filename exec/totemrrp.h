@@ -72,7 +72,11 @@ extern int totemrrp_initialize (
 		unsigned int *seqid,
 		unsigned int *token_is),
 
-	unsigned int (*msgs_missing) (void));
+	unsigned int (*msgs_missing) (void),
+
+	void (*target_set_completed) (
+		void *context)
+	);
 
 
 extern int totemrrp_processor_count_set (

@@ -64,7 +64,10 @@ extern int totemnet_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address));
+		const struct totem_ip_address *iface_address),
+
+	void (*target_set_completed) (
+		void *context));
 
 extern int totemnet_processor_count_set (
 	void *net_context,

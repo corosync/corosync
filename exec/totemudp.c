@@ -142,6 +142,8 @@ struct totemudp_instance {
 		void *context,
 		const struct totem_ip_address *iface_address);
 
+	void (*totemudp_target_set_completed) (void *context);
+
 	/*
 	 * Function and data used to log messages
 	 */
@@ -1707,7 +1709,10 @@ int totemudp_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address))
+		const struct totem_ip_address *iface_address),
+
+	void (*target_set_completed) (
+		void *context))
 {
 	struct totemudp_instance *instance;
 
@@ -1768,6 +1773,8 @@ int totemudp_initialize (
 	instance->totemudp_deliver_fn = deliver_fn;
 
 	instance->totemudp_iface_change_fn = iface_change_fn;
+
+	instance->totemudp_target_set_completed = target_set_completed;
 
 	totemip_localhost (instance->mcast_address.family, &localhost);
 
@@ -1939,6 +1946,8 @@ int totemudp_token_target_set (
 
 	memcpy (&instance->token_target, token_target,
 		sizeof (struct totem_ip_address));
+
+	instance->totemudp_target_set_completed (instance->context);
 
 	return (res);
 }
