@@ -52,7 +52,6 @@ struct my_msg {
 	unsigned char buffer[0];
 };
 
-static int deliveries = 0;
 static void cpg_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
