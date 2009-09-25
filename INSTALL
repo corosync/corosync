@@ -67,12 +67,13 @@ balance:~/corosync/trunk# make install
 * A notice about dependencies *
 -------------------------------
 We have strived very hard to avoid dependencies as much as possible, and in
-fact corosync can be compiled without any dependencies.  The one optional
-dependency corosync has today is the nss package when built with support for
-nss encryption.  NSS encryption performs more poorly then the default
-encryption, but may be a good choice if your organization has policies
-regarding encryption technology requiring the use of a common cryptographic
-library such as Netscape Security Services.
+fact corosync can be compiled without any dependencies.
+
+Optional dependencies are support for NSS and support for Infiniband RDMA.
+
+NSS encryption performs more poorly then the default encryption, but may be
+ a good choice if your organization has policies regarding encryption technology
+requiring the use of a common cryptographic library such as Netscape Security Services.
 
 To enable nss during building:
 balance:~/corosync/trunk% ./configure --enable-nss
@@ -85,6 +86,42 @@ found by installing the "nss-devel" and "nspr-devel" packages for your
 distribution.  Note nss is enabled by default, so if you don't want nss support
 or don't want to install nss devel packages, make sure to set the appropriate
 configure option as described above.
+
+-----------------------------------------
+* Building with Infiniband RDMA support *
+-----------------------------------------
+Infiniband RDMA build support is disabled by default.  To enable rdma during
+building:
+balance:~/corosync/trunk% ./configure --enable-rdma
+
+Infiniband rdma support requires the libibverbs and librdmacm packages (and
+their -devel counterparts).  Corosync requires the use of pkgconfig in these
+packages.  The Corosync maintainers have sent patches for this feature upstream
+to the Infiniband maintainers.
+
+If your version of these packages don't have pkgconfig support, you will see an
+error during configure such as:
+
+checking for ibverbs... configure: error: Package requirements (ibverbs) were not met:
+
+No package 'ibverbs' found
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables ibverbs_CFLAGS
+and ibverbs_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+** Follow the directions:
+balance:~/corosync/trunk% export ibverbs_CFLAGS=-I/usr/include/infiniband
+balance:~/corosync/trunk% export ibverbs_LIBS=-libverbs
+balance:~/corosync/trunk% export rdmacm_CFLAGS=-I/usr/include/rdma
+balance:~/corosync/trunk% export rdmacm_LIBS=-lrdmacm
+balance:~/corosync/trunk% ./configure --enable-rdma
+
+Hopefully pkgconfig support is added in your distribution's version of
+libibverbs and librdmacm soon if you run into this problem.
 
 ------------------------
 * Configuring Corosync *

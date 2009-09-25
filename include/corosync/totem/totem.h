@@ -162,6 +162,8 @@ struct totem_config {
 
 	int crypto_crypt_type;
 	int crypto_sign_type;
+
+	int transport_number;
 };
 
 #define TOTEM_CONFIGURATION_TYPE
