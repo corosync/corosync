@@ -35,10 +35,14 @@
 
 #include <config.h>
 
+#ifdef HAVE_RDMA
 #include <totemiba.h>
+#endif
 #include <totemudp.h>
 #include <totemnet.h>
 
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 
 struct transport {
 	const char *name;
@@ -129,6 +133,7 @@ struct transport transport_entries[] = {
 		.crypto_set = totemudp_crypto_set,
 		.recv_mcast_empty = totemudp_recv_mcast_empty
 	},
+#ifdef HAVE_RDMA
 	{
 		.name = "Infiniband/IP",
 		.initialize = totemiba_initialize,
@@ -148,17 +153,57 @@ struct transport transport_entries[] = {
 		.recv_mcast_empty = totemiba_recv_mcast_empty
 
 	}
+#endif
 };
 	
 struct totemnet_instance {
 	void *transport_context;
 
 	struct transport *transport;
+
+        void (*totemnet_log_printf) (
+                unsigned int rec_ident,
+                const char *function,
+                const char *file,
+                int line,
+                const char *format,
+                ...)__attribute__((format(printf, 5, 6)));
+
+        int totemnet_subsys_id;
 };
 
-static void totemnet_instance_initialize (struct totemnet_instance *instance)
+#define log_printf(level, format, args...)				\
+do {									\
+	instance->totemnet_log_printf (					\
+		LOGSYS_ENCODE_RECID(level,				\
+		instance->totemnet_subsys_id,				\
+		LOGSYS_RECID_LOG),					\
+		__FUNCTION__, __FILE__, __LINE__,			\
+		(const char *)format, ##args);				\
+} while (0);
+
+static void totemnet_instance_initialize (
+	struct totemnet_instance *instance,
+	struct totem_config *config)
 {
-	instance->transport = &transport_entries[0];
+	int transport;
+
+	instance->totemnet_log_printf = config->totem_logging_configuration.log_printf;
+	instance->totemnet_subsys_id = config->totem_logging_configuration.log_subsys_id;
+
+
+	transport = 0;
+
+#ifdef HAVE_RDMA
+	if (config->transport_number == 1) {
+		transport = 1;
+	}
+#endif
+
+	log_printf (LOGSYS_LEVEL_NOTICE,
+		"Initializing transport (%s).\n", transport_entries[transport].name);
+
+	instance->transport = &transport_entries[transport];
 }
 
 int totemnet_crypto_set (
@@ -210,7 +255,7 @@ int totemnet_initialize (
 	if (instance == NULL) {
 		return (-1);
 	}
-	totemnet_instance_initialize (instance);
+	totemnet_instance_initialize (instance, totem_config);
 
 	res = instance->transport->initialize (poll_handle,
 		&instance->transport_context, totem_config,

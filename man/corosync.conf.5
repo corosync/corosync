@@ -251,6 +251,15 @@ are not safe for use.
 
 The default is ykd.  The vsftype can also be set to none.
 
+.TP
+transport
+This directive controls the transport mechanism used.  If the interface to
+which corosync is binding is Infiniband, you can specify the "iba" option.  Any
+other option is ignored.  Note Infiniband interfaces will use RDMA transport
+techniques and perform at higher bandwidths and lower latency than gige networks.
+
+The default is udp.  The transport type can also be set to iba.
+
 Within the
 .B totem
 directive, there are several configuration options which are used to control

@@ -37,6 +37,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <corosync/hdb.h>
 
 #include <corosync/totem/totem.h>
 

@@ -220,7 +220,6 @@ static void totem_volatile_config_read (
 	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
 
 	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
-
 }
 
 
@@ -275,6 +274,7 @@ extern int totem_config_read (
 	const char *str;
 	unsigned int ringnumber = 0;
 	hdb_handle_t object_find_interface_handle;
+	const char *transport_type;
 
 	res = totem_handle_find (objdb, &object_totem_handle);
 	if (res == -1) {
@@ -391,6 +391,14 @@ printf ("couldn't find totem handle\n");
 	objdb->object_find_destroy (object_find_interface_handle);
 
 	add_totem_config_notification(objdb, totem_config, object_totem_handle);
+
+	totem_config->transport_number = 0;
+	objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
+	if (transport_type) {
+		if (strcmp (transport_type, "iba") == 0) {
+			totem_config->transport_number = 1;
+		}
+	}
 
 	return 0;
 }
