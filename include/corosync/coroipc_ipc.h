@@ -41,7 +41,7 @@
  * Darwin claims to support process shared synchronization
  * but it really does not.  The unistd.h header file is wrong.
  */
-#ifdef COROSYNC_DARWIN
+#if defined(COROSYNC_DARWIN) || defined(__UCLIBC__)
 #undef _POSIX_THREAD_PROCESS_SHARED
 #define _POSIX_THREAD_PROCESS_SHARED -1
 #endif
