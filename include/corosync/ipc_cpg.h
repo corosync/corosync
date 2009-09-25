@@ -45,6 +45,9 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_MCAST = 2,
 	MESSAGE_REQ_CPG_MEMBERSHIP = 3,
 	MESSAGE_REQ_CPG_LOCAL_GET = 4,
+	MESSAGE_REQ_CPG_ITERATIONINITIALIZE = 5,
+	MESSAGE_REQ_CPG_ITERATIONNEXT = 6,
+	MESSAGE_REQ_CPG_ITERATIONFINALIZE = 7
 };
 
 enum res_cpg_types {
@@ -56,7 +59,10 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_DELIVER_CALLBACK = 5,
 	MESSAGE_RES_CPG_FLOW_CONTROL_STATE_SET = 6,
 	MESSAGE_RES_CPG_LOCAL_GET = 7,
-	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 8
+	MESSAGE_RES_CPG_FLOWCONTROL_CALLBACK = 8,
+	MESSAGE_RES_CPG_ITERATIONINITIALIZE = 9,
+	MESSAGE_RES_CPG_ITERATIONNEXT = 10,
+	MESSAGE_RES_CPG_ITERATIONFINALIZE = 11,
 };
 
 enum lib_cpg_confchg_reason {
@@ -125,6 +131,21 @@ static inline int mar_name_compare (
 		memcmp (g1->value, g2->value, g1->length):
 		g1->length - g2->length);
 }
+
+typedef struct {
+	mar_cpg_name_t group;
+	mar_uint32_t nodeid;
+	mar_uint32_t pid;
+} mar_cpg_iteration_description_t;
+
+static inline void marshall_from_mar_cpg_iteration_description_t(
+	struct cpg_iteration_description_t *dest,
+	const mar_cpg_iteration_description_t *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->pid = src->pid;
+	marshall_from_mar_cpg_name_t (&dest->group, &src->group);
+};
 
 struct req_lib_cpg_join {
 	coroipc_request_header_t header __attribute__((aligned(8)));
@@ -214,6 +235,36 @@ struct req_lib_cpg_leave {
 };
 
 struct res_lib_cpg_leave {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_iterationinitialize {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t iteration_type __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_iterationinitialize {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	hdb_handle_t iteration_handle __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_iterationnext {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	hdb_handle_t iteration_handle __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_iterationnext {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_cpg_iteration_description_t description __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_iterationfinalize {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	hdb_handle_t iteration_handle __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_iterationfinalize {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 

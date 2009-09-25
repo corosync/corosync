@@ -4,6 +4,7 @@
  * All rights reserved.
  *
  * Author: Christine Caulfield (ccaulfi@redhat.com)
+ * Author: Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -48,6 +49,8 @@ extern "C" {
  */
 typedef uint64_t cpg_handle_t;
 
+typedef uint64_t cpg_iteration_handle_t;
+
 typedef enum {
 	CPG_TYPE_UNORDERED, /* not implemented */
 	CPG_TYPE_FIFO,		/* same as agreed */
@@ -69,6 +72,12 @@ typedef enum {
 	CPG_REASON_PROCDOWN = 5
 } cpg_reason_t;
 
+typedef enum {
+	CPG_ITERATION_NAME_ONLY = 1,
+	CPG_ITERATION_ONE_GROUP = 2,
+	CPG_ITERATION_ALL = 3,
+} cpg_iteration_type_t;
+
 struct cpg_address {
 	uint32_t nodeid;
 	uint32_t pid;
@@ -82,6 +91,12 @@ struct cpg_name {
 };
 
 #define CPG_MEMBERS_MAX 128
+
+struct cpg_iteration_description_t {
+	struct cpg_name group;
+	uint32_t nodeid;
+	uint32_t pid;
+};
 
 typedef void (*cpg_deliver_fn_t) (
 	cpg_handle_t handle,
@@ -208,6 +223,22 @@ cs_error_t cpg_zcb_mcast_joined (
 	cpg_guarantee_t guarantee,
 	void *msg,
 	size_t msg_len);
+
+/*
+ * Iteration
+ */
+cs_error_t cpg_iteration_initialize(
+	cpg_handle_t handle,
+	cpg_iteration_type_t iteration_type,
+	const struct cpg_name *group,
+	cpg_iteration_handle_t *cpg_iteration_handle);
+
+cs_error_t cpg_iteration_next(
+	cpg_iteration_handle_t handle,
+	struct cpg_iteration_description_t *description);
+
+cs_error_t cpg_iteration_finalize (
+	cpg_iteration_handle_t handle);
 
 #ifdef __cplusplus
 }
