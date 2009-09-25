@@ -35,8 +35,9 @@ AM_CFLAGS		= -fPIC
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS)
 
-TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemrrp.c \
-			  totemsrp.c totemmrp.c totempg.c crypto.c wthread.c
+TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemudp.c totemiba.c \
+			  totemrrp.c totemsrp.c totemmrp.c totempg.c \
+			  crypto.c wthread.c
 LOGSYS_SRC		= wthread.c logsys.c
 COROIPCS_SRC		= coroipcs.c
 

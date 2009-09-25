@@ -1559,7 +1559,7 @@ int totemrrp_initialize (
 			rrp_iface_change_fn);
 	}
 
-	totemnet_net_mtu_adjust (totem_config);
+	totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 
 error_exit:
 	hdb_handle_put (&totemrrp_instance_database, *handle);
