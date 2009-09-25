@@ -34,7 +34,7 @@ INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
 
 sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 			  corosync-keygen corosync-objctl \
-			  corosync-pload
+			  corosync-pload corosync-cpgtool
 
 corosync_pload_LDADD	= -lpload -lcoroipcc
 corosync_pload_LDFLAGS	= -L../lib
@@ -42,6 +42,7 @@ corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc
 corosync_objctl_LDFLAGS	= -L../lib
 corosync_cfgtool_LDADD	= -lcfg -lcoroipcc
 corosync_cfgtool_LDFLAGS= -L../lib
+corosync_cpgtool_LDADD	= ../lib/libcfg.a ../lib/libcpg.a ../lib/libcoroipcc.a
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
