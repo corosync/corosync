@@ -1536,7 +1536,6 @@ int totemrrp_initialize (
 		deliver_fn_context->instance = instance;
 		deliver_fn_context->context = context;
 		deliver_fn_context->iface_no = i;
-printf ("deliver fn context %p\n", deliver_fn_context);
 
 		totemnet_initialize (
 			poll_handle,

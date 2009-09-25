@@ -115,4 +115,8 @@ extern int totemsrp_crypto_set (
 extern int totemsrp_ring_reenable (
 	void *srp_context);
 
+void totemsrp_service_ready_register (
+	void *srp_context,
+	void (*totem_service_ready) (void));
+
 #endif /* TOTEMSRP_H_DEFINED */

@@ -153,6 +153,9 @@ extern int totempg_crypto_set (unsigned int type);
 
 extern int totempg_ring_reenable (void);
 
+extern void totempg_service_ready_register (
+	void (*totem_service_ready) (void));
+
 #ifdef __cplusplus
 }
 #endif

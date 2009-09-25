@@ -112,4 +112,7 @@ extern int totemmrp_crypto_set (unsigned int);
 
 extern int totemmrp_ring_reenable (void);
 
+extern void totemmrp_service_ready_register (
+        void (*totem_service_ready) (void));
+
 #endif /* TOTEMMRP_H_DEFINED */
