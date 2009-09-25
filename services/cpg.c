@@ -1241,8 +1241,7 @@ static void message_handler_req_lib_cpg_iteration_initialize (
 {
 	const struct req_lib_cpg_iterationinitialize *req_lib_cpg_iterationinitialize = message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
-	hdb_handle_t cpg_iteration_handle;
-
+	hdb_handle_t cpg_iteration_handle = 0;
 	struct res_lib_cpg_iterationinitialize res_lib_cpg_iterationinitialize;
 	struct list_head *iter, *iter2;
 	struct cpg_iteration_instance *cpg_iteration_instance;
