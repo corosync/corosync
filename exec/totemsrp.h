@@ -48,7 +48,7 @@
  */
 int totemsrp_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **srp_context,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
@@ -63,13 +63,13 @@ int totemsrp_initialize (
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id));
 
-void totemsrp_finalize (hdb_handle_t handle);
+void totemsrp_finalize (void *srp_context);
 
 /*
  * Multicast a message
  */
 int totemsrp_mcast (
-	hdb_handle_t handle,
+	void *srp_context,
 	struct iovec *iovec,
 	unsigned int iov_len,
 	int priority);
@@ -77,10 +77,10 @@ int totemsrp_mcast (
 /*
  * Return number of available messages that can be queued
  */
-int totemsrp_avail (hdb_handle_t handle);
+int totemsrp_avail (void *srp_context);
 
 int totemsrp_callback_token_create (
-	hdb_handle_t handle,
+	void *srp_context,
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
@@ -88,31 +88,31 @@ int totemsrp_callback_token_create (
 	const void *data);
 
 void totemsrp_callback_token_destroy (
-	hdb_handle_t handle,
+	void *srp_context,
 	void **handle_out);
 
-int totemsrp_new_msg_signal (hdb_handle_t handle);
+int totemsrp_new_msg_signal (void *srp_context);
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
 extern int totemsrp_ifaces_get (
-	hdb_handle_t handle,
+	void *srp_context,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
 	char ***status,
 	unsigned int *iface_count);
 
 extern unsigned int totemsrp_my_nodeid_get (
-	hdb_handle_t handle);
+	void *srp_context);
 
 extern int totemsrp_my_family_get (
-	hdb_handle_t handle);
+	void *srp_context);
 
 extern int totemsrp_crypto_set (
-	hdb_handle_t handle,
+	void *srp_context,
 	unsigned int type);
 
 extern int totemsrp_ring_reenable (
-	hdb_handle_t handle);
+	void *srp_context);
 
 #endif /* TOTEMSRP_H_DEFINED */

@@ -45,7 +45,7 @@ struct transport {
 	
 	int (*initialize) (
 		hdb_handle_t poll_handle,
-		hdb_handle_t *handle,
+		void **transport_instance,
 		struct totem_config *totem_config,
 		int interface_no,
 		void *context,
@@ -60,51 +60,51 @@ struct transport {
 			const struct totem_ip_address *iface_address));
 
 	int (*processor_count_set) (
-		hdb_handle_t handle,
+		void *transport_context,
 		int processor_count);
 
 	int (*token_send) (
-		hdb_handle_t handle,
+		void *transport_context,
 		const void *msg,
 		unsigned int msg_len);
 
 	int (*mcast_flush_send) (
-		hdb_handle_t handle,
+		void *transport_context,
 		const void *msg,
 		unsigned int msg_len);
 
 
 	int (*mcast_noflush_send) (
-		hdb_handle_t handle,
+		void *transport_context,
 		const void *msg,
 		unsigned int msg_len);
 
-	int (*recv_flush) (hdb_handle_t handle);
+	int (*recv_flush) (void *transport_context);
 
-	int (*send_flush) (hdb_handle_t handle);
+	int (*send_flush) (void *transport_context);
 
-	int (*iface_check) (hdb_handle_t handle);
+	int (*iface_check) (void *transport_context);
 
-	int (*finalize) (hdb_handle_t handle);
+	int (*finalize) (void *transport_context);
 
-	void (*net_mtu_adjust) (hdb_handle_t handle, struct totem_config *totem_config);
+	void (*net_mtu_adjust) (void *transport_context, struct totem_config *totem_config);
 
-	const char *(*iface_print) (hdb_handle_t handle);
+	const char *(*iface_print) (void *transport_context);
 
 	int (*iface_get) (
-		hdb_handle_t handle,
+		void *transport_context,
 		struct totem_ip_address *addr);
 
 	int (*token_target_set) (
-		hdb_handle_t handle,
+		void *transport_context,
 		const struct totem_ip_address *token_target);
 
 	int (*crypto_set) (
-		hdb_handle_t handle,
+		void *transport_context,
 		unsigned int type);
 
 	int (*recv_mcast_empty) (
-		hdb_handle_t handle);
+		void *transport_context);
 };
 
 struct transport transport_entries[] = {
@@ -148,63 +148,42 @@ struct transport transport_entries[] = {
 };
 	
 struct totemnet_instance {
-	hdb_handle_t transport_handle;
+	void *transport_context;
 
 	struct transport *transport;
 };
-
-DECLARE_HDB_DATABASE (totemnet_instance_database,NULL);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {
 	instance->transport = &transport_entries[0];
 }
 
-int totemnet_crypto_set (hdb_handle_t handle,
-			 unsigned int type)
+int totemnet_crypto_set (
+	void *net_context,
+	 unsigned int type)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->crypto_set (instance->transport_context, type);
 
-	res = instance->transport->crypto_set (instance->transport_handle, type);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return res;
 }
 
 int totemnet_finalize (
-	hdb_handle_t handle)
+	void *net_context)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->finalize (instance->transport_context);
 
-	res = instance->transport->finalize (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemnet_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **net_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -221,275 +200,155 @@ int totemnet_initialize (
 	struct totemnet_instance *instance;
 	unsigned int res;
 
-	res = hdb_handle_create (&totemnet_instance_database,
-		sizeof (struct totemnet_instance), handle);
-	if (res != 0) {
-		goto error_exit;
+	instance = malloc (sizeof (struct totemnet_instance));
+	if (instance == NULL) {
+		return (-1);
 	}
-	res = hdb_handle_get (&totemnet_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
+	totemnet_instance_initialize (instance);
+
+	res = instance->transport->initialize (poll_handle,
+		&instance->transport_context, totem_config,
+		interface_no, context, deliver_fn, iface_change_fn);
+
+	if (res == -1) {
 		goto error_destroy;
 	}
 
-	totemnet_instance_initialize (instance);
-
-	res = instance->transport->initialize (poll_handle, &instance->transport_handle, totem_config,
-		interface_no, context, deliver_fn, iface_change_fn);
-
-error_exit:
-	hdb_handle_put (&totemnet_instance_database, *handle);
+	*net_context = instance;
 	return (0);
 
 error_destroy:
-	hdb_handle_destroy (&totemnet_instance_database, *handle);
+	free (instance);
 	return (-1);
 }
 
 int totemnet_processor_count_set (
-	hdb_handle_t handle,
+	void *net_context,
 	int processor_count)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
-	res = instance->transport->processor_count_set (handle, processor_count);
-
-	hdb_handle_put (&totemnet_instance_database, instance->transport_handle);
-
-error_exit:
+	res = instance->transport->processor_count_set (instance->transport_context, processor_count);
 	return (res);
 }
 
-int totemnet_recv_flush (hdb_handle_t handle)
+int totemnet_recv_flush (void *net_context)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->recv_flush (instance->transport_context);
 
-	res = instance->transport->recv_flush (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
-int totemnet_send_flush (hdb_handle_t handle)
+int totemnet_send_flush (void *net_context)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->send_flush (instance->transport_context);
 
-	res = instance->transport->send_flush (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemnet_token_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->token_send (instance->transport_context, msg, msg_len);
 
-	res = instance->transport->token_send (instance->transport_handle, msg, msg_len);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 int totemnet_mcast_flush_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->mcast_flush_send (instance->transport_context, msg, msg_len);
 
-	res = instance->transport->mcast_flush_send (instance->transport_handle, msg, msg_len);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemnet_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->mcast_noflush_send (instance->transport_context, msg, msg_len);
 
-	res = instance->transport->mcast_noflush_send (instance->transport_handle, msg, msg_len);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern int totemnet_iface_check (hdb_handle_t handle)
+extern int totemnet_iface_check (void *net_context)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	res = instance->transport->iface_check (instance->transport_context);
 
-	res = instance->transport->iface_check (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern int totemnet_net_mtu_adjust (hdb_handle_t handle, struct totem_config *totem_config)
+extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *totem_config)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
-	instance->transport->net_mtu_adjust (instance->transport_handle, totem_config);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-error_exit:
+	instance->transport->net_mtu_adjust (instance->transport_context, totem_config);
 	return (res);
 }
 
-const char *totemnet_iface_print (hdb_handle_t handle)  {
-	struct totemnet_instance *instance;
-	int res = 0;
+const char *totemnet_iface_print (void *net_context)  {
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	const char *ret_char;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		ret_char = "Invalid totemnet handle";
-		goto error_exit;
-	}
-
-	ret_char = instance->transport->iface_print (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-error_exit:
+	ret_char = instance->transport->iface_print (instance->transport_context);
 	return (ret_char);
 }
 
 int totemnet_iface_get (
-	hdb_handle_t handle,
+	void *net_context,
 	struct totem_ip_address *addr)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-
-	res = instance->transport->iface_get (instance->transport_handle, addr);
+	res = instance->transport->iface_get (instance->transport_context, addr);
 	
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemnet_token_target_set (
-	hdb_handle_t handle,
+	void *net_context,
 	const struct totem_ip_address *token_target)
 {
-	struct totemnet_instance *instance;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	res = instance->transport->token_target_set (instance->transport_context, token_target);
 
-	res = instance->transport->token_target_set (instance->transport_handle, token_target);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 extern int totemnet_recv_mcast_empty (
-	hdb_handle_t handle)
+	void *net_context)
 {
-	struct totemnet_instance *instance;
-	unsigned int res = 0;
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res;
 
-	res = hdb_handle_get (&totemnet_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	res = instance->transport->recv_mcast_empty (instance->transport_context);
 
-	res = instance->transport->recv_mcast_empty (instance->transport_handle);
-
-	hdb_handle_put (&totemnet_instance_database, handle);
-
-error_exit:
 	return (res);
 }

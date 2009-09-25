@@ -165,7 +165,7 @@ struct totemudp_instance {
 		const char *format,
 		...)__attribute__((format(printf, 5, 6)));
 
-	hdb_handle_t handle;
+	void *udp_context;
 
 	char iov_buffer[FRAME_SIZE_MAX];
 
@@ -212,8 +212,6 @@ struct work_item {
 	struct totemudp_instance *instance;
 };
 
-static void netif_down_check (struct totemudp_instance *instance);
-
 static int totemudp_build_sockets (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *bindnet_address,
@@ -222,8 +220,6 @@ static int totemudp_build_sockets (
 	struct totem_ip_address *bound_to);
 
 static struct totem_ip_address localhost;
-
-DECLARE_HDB_DATABASE (totemudp_instance_database,NULL);
 
 static void totemudp_instance_initialize (struct totemudp_instance *instance)
 {
@@ -847,18 +843,12 @@ static void init_crypto(
 #endif
 }
 
-int totemudp_crypto_set (hdb_handle_t handle,
-			 unsigned int type)
+int totemudp_crypto_set (
+	void *udp_context,
+	 unsigned int type)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	/*
 	 * Can't set crypto type if OLD is selected
@@ -883,10 +873,8 @@ int totemudp_crypto_set (hdb_handle_t handle,
 				break;
 		}
 	}
-	hdb_handle_put (&totemudp_instance_database, handle);
 
-error_exit:
-	return res;
+	return (res);
 }
 
 
@@ -1123,17 +1111,10 @@ static void totemudp_mcast_worker_fn (void *thread_state, void *work_item_in)
 }
 
 int totemudp_finalize (
-	hdb_handle_t handle)
+	void *udp_context)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	worker_thread_group_exit (&instance->worker_thread_group);
 
@@ -1151,9 +1132,6 @@ int totemudp_finalize (
 			instance->totemudp_sockets.token);
 	}
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
@@ -1398,16 +1376,6 @@ static void timer_function_netif_check_timeout (
 		instance->netif_state_report = NETIF_STATE_REPORT_UP;
 
 	}
-}
-
-
-/*
- * Check if an interface is down and reconfigure
- * totemudp waiting for it to come back up
- */
-static void netif_down_check (struct totemudp_instance *instance)
-{
-	timer_function_netif_check_timeout (instance);
 }
 
 /* Set the socket priority to INTERACTIVE to ensure
@@ -1727,7 +1695,7 @@ static int totemudp_build_sockets (
  */
 int totemudp_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **udp_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -1742,17 +1710,10 @@ int totemudp_initialize (
 		const struct totem_ip_address *iface_address))
 {
 	struct totemudp_instance *instance;
-	unsigned int res;
 
-	res = hdb_handle_create (&totemudp_instance_database,
-		sizeof (struct totemudp_instance), handle);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = hdb_handle_get (&totemudp_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_destroy;
+	instance = malloc (sizeof (struct totemudp_instance));
+	if (instance == NULL) {
+		return (-1);
 	}
 
 	totemudp_instance_initialize (instance);
@@ -1808,34 +1769,28 @@ int totemudp_initialize (
 
 	instance->totemudp_iface_change_fn = iface_change_fn;
 
-	instance->handle = *handle;
-
 	totemip_localhost (instance->mcast_address.family, &localhost);
 
-	netif_down_check (instance);
+	/*
+	 * RRP layer isn't ready to receive message because it hasn't
+	 * initialized yet.  Add short timer to check the interfaces.
+	 */
+	poll_timer_add (instance->totemudp_poll_handle,
+		100,
+		(void *)instance,
+		timer_function_netif_check_timeout,
+		&instance->timer_netif_check_timeout);
 
-error_exit:
-	hdb_handle_put (&totemudp_instance_database, *handle);
+	*udp_context = instance;
 	return (0);
-
-error_destroy:
-	hdb_handle_destroy (&totemudp_instance_database, *handle);
-	return (-1);
 }
 
 int totemudp_processor_count_set (
-	hdb_handle_t handle,
+	void *udp_context,
 	int processor_count)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	instance->my_memb_entries = processor_count;
 	poll_timer_delete (instance->totemudp_poll_handle,
@@ -1847,25 +1802,16 @@ int totemudp_processor_count_set (
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);
 	}
-	hdb_handle_put (&totemudp_instance_database, handle);
 
-error_exit:
 	return (res);
 }
 
-int totemudp_recv_flush (hdb_handle_t handle)
+int totemudp_recv_flush (void *udp_context)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	struct pollfd ufd;
 	int nfds;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	instance->flushing = 1;
 
@@ -1881,92 +1827,52 @@ int totemudp_recv_flush (hdb_handle_t handle)
 
 	instance->flushing = 0;
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
-int totemudp_send_flush (hdb_handle_t handle)
+int totemudp_send_flush (void *udp_context)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	worker_thread_group_wait (&instance->worker_thread_group);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemudp_token_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	ucast_sendmsg (instance, &instance->token_target, msg, msg_len);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 int totemudp_mcast_flush_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	mcast_sendmsg (instance, msg, msg_len);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemudp_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *udp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	struct work_item work_item;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	if (instance->totem_config->threads) {
 		work_item.msg = msg;
@@ -1979,31 +1885,20 @@ int totemudp_mcast_noflush_send (
 		mcast_sendmsg (instance, msg, msg_len);
 	}
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern int totemudp_iface_check (hdb_handle_t handle)
+extern int totemudp_iface_check (void *udp_context)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	timer_function_netif_check_timeout (instance);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-error_exit:
 	return (res);
 }
 
-extern void totemudp_net_mtu_adjust (hdb_handle_t handle, struct totem_config *totem_config)
+extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config)
 {
 #define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
 	if (totem_config->secauth == 1) {
@@ -2014,84 +1909,50 @@ extern void totemudp_net_mtu_adjust (hdb_handle_t handle, struct totem_config *t
 	}
 }
 
-const char *totemudp_iface_print (hdb_handle_t handle)  {
-	struct totemudp_instance *instance;
-	int res = 0;
+const char *totemudp_iface_print (void *udp_context)  {
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	const char *ret_char;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		ret_char = "Invalid totemudp handle";
-		goto error_exit;
-	}
 
 	ret_char = totemip_print (&instance->my_id);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-error_exit:
 	return (ret_char);
 }
 
 int totemudp_iface_get (
-	hdb_handle_t handle,
+	void *udp_context,
 	struct totem_ip_address *addr)
 {
-	struct totemudp_instance *instance;
-	unsigned int res;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+	int res = 0;
 
 	memcpy (addr, &instance->my_id, sizeof (struct totem_ip_address));
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 int totemudp_token_target_set (
-	hdb_handle_t handle,
+	void *udp_context,
 	const struct totem_ip_address *token_target)
 {
-	struct totemudp_instance *instance;
-	unsigned int res;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+	int res = 0;
 
 	memcpy (&instance->token_target, token_target,
 		sizeof (struct totem_ip_address));
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 extern int totemudp_recv_mcast_empty (
-	hdb_handle_t handle)
+	void *udp_context)
 {
-	struct totemudp_instance *instance;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	unsigned int res;
 	struct sockaddr_storage system_from;
 	struct msghdr msg_recv;
 	struct pollfd ufd;
 	int nfds;
 	int msg_processed = 0;
-
-	res = hdb_handle_get (&totemudp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
 
 	/*
 	 * Receive datagram
@@ -2123,11 +1984,6 @@ extern int totemudp_recv_mcast_empty (
 		}
 	} while (nfds == 1);
 
-	hdb_handle_put (&totemudp_instance_database, handle);
-
 	return (msg_processed);
-
-error_exit:
-	return (res);
 }
 

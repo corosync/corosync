@@ -52,7 +52,7 @@
  */
 extern int totemnet_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **net_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -67,49 +67,49 @@ extern int totemnet_initialize (
 		const struct totem_ip_address *iface_address));
 
 extern int totemnet_processor_count_set (
-	hdb_handle_t handle,
+	void *net_context,
 	int processor_count);
 
 extern int totemnet_token_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemnet_mcast_flush_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemnet_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *net_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemnet_recv_flush (hdb_handle_t handle);
+extern int totemnet_recv_flush (void *net_context);
 
-extern int totemnet_send_flush (hdb_handle_t handle);
+extern int totemnet_send_flush (void *net_context);
 
-extern int totemnet_iface_check (hdb_handle_t handle);
+extern int totemnet_iface_check (void *net_context);
 
-extern int totemnet_finalize (hdb_handle_t handle);
+extern int totemnet_finalize (void *net_context);
 
-extern int totemnet_net_mtu_adjust (hdb_handle_t handle, struct totem_config *totem_config);
+extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *totem_config);
 
-extern const char *totemnet_iface_print (hdb_handle_t handle);
+extern const char *totemnet_iface_print (void *net_context);
 
 extern int totemnet_iface_get (
-	hdb_handle_t handle,
+	void *net_context,
 	struct totem_ip_address *addr);
 
 extern int totemnet_token_target_set (
-	hdb_handle_t handle,
+	void *net_context,
 	const struct totem_ip_address *token_target);
 
 extern int totemnet_crypto_set (
-	hdb_handle_t handle,
+	void *net_context,
 	unsigned int type);
 
 extern int totemnet_recv_mcast_empty (
-	hdb_handle_t handle);
+	void *net_context);
 
 #endif /* TOTEMNET_H_DEFINED */

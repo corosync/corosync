@@ -169,7 +169,7 @@ struct rrp_algo {
 };
 
 struct totemrrp_instance {
-	hdb_handle_t totemrrp_poll_handle;
+	hdb_handle_t poll_handle;
 
 	struct totem_interface *interfaces;
 
@@ -218,15 +218,11 @@ struct totemrrp_instance {
 		int line,
 		const char *format, ...)__attribute__((format(printf, 5, 6)));
 
-	hdb_handle_t handle;
-
-	hdb_handle_t *net_handles;
+	void **net_handles;
 
 	void *rrp_algo_instance;
 
 	int interface_count;
-
-	hdb_handle_t poll_handle;
 
 	int processor_count;
 
@@ -482,11 +478,6 @@ struct rrp_algo *rrp_algos[] = {
 };
 
 #define RRP_ALGOS_COUNT 3
-
-/*
- * All instances in one database
- */
-DECLARE_HDB_DATABASE (totemrrp_instance_database,NULL);
 
 #define log_printf(level, format, args...)				\
 do {									\
@@ -1429,27 +1420,16 @@ void rrp_iface_change_fn (
 }
 
 int totemrrp_finalize (
-	hdb_handle_t handle)
+	void *rrp_context)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int i;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	for (i = 0; i < instance->interface_count; i++) {
 		totemnet_finalize (instance->net_handles[i]);
 	}
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
 /*
@@ -1462,7 +1442,7 @@ error_exit:
  */
 int totemrrp_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **rrp_context,
 	struct totem_config *totem_config,
 	void *context,
 
@@ -1487,15 +1467,9 @@ int totemrrp_initialize (
 	unsigned int res;
 	int i;
 
-	res = hdb_handle_create (&totemrrp_instance_database,
-	sizeof (struct totemrrp_instance), handle);
-	if (res != 0) {
-		goto error_exit;
-	}
-	res = hdb_handle_get (&totemrrp_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_destroy;
+	instance = malloc (sizeof (struct totemrrp_instance));
+	if (instance == 0) {
+		return (-1);
 	}
 
 	totemrrp_instance_initialize (instance);
@@ -1506,7 +1480,7 @@ int totemrrp_initialize (
 		instance->totem_config,
 		instance);
 	if (res == -1) {
-		goto error_put;
+		goto error_destroy;
 	}
 
 	/*
@@ -1522,7 +1496,7 @@ int totemrrp_initialize (
 
 	instance->interfaces = totem_config->interfaces;
 
-	instance->totemrrp_poll_handle = poll_handle;
+	instance->poll_handle = poll_handle;
 
 	instance->totemrrp_deliver_fn = deliver_fn;
 
@@ -1534,7 +1508,7 @@ int totemrrp_initialize (
 
 	instance->interface_count = totem_config->interface_count;
 
-	instance->net_handles = malloc (sizeof (hdb_handle_t) * totem_config->interface_count);
+	instance->net_handles = malloc (sizeof (void *) * totem_config->interface_count);
 
 	instance->context = context;
 
@@ -1557,168 +1531,89 @@ int totemrrp_initialize (
 			(void *)deliver_fn_context,
 			rrp_deliver_fn,
 			rrp_iface_change_fn);
+
+		totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 	}
 
-	totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 
-error_exit:
-	hdb_handle_put (&totemrrp_instance_database, *handle);
+	*rrp_context = instance;
 	return (0);
 
-error_put:
-	hdb_handle_put (&totemrrp_instance_database, *handle);
 error_destroy:
-	hdb_handle_destroy (&totemrrp_instance_database, *handle);
+	free (instance);
 	return (res);
 }
 
 int totemrrp_processor_count_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	unsigned int processor_count)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	instance->rrp_algo->processor_count_set (instance, processor_count);
 
 	instance->processor_count = processor_count;
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
 int totemrrp_token_target_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	struct totem_ip_address *addr,
 	unsigned int iface_no)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	instance->rrp_algo->token_target_set (instance, addr, iface_no);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
-int totemrrp_recv_flush (hdb_handle_t handle)
+int totemrrp_recv_flush (void *rrp_context)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 
 	instance->rrp_algo->recv_flush (instance);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
-int totemrrp_send_flush (hdb_handle_t handle)
+int totemrrp_send_flush (void *rrp_context)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	instance->rrp_algo->send_flush (instance);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
 int totemrrp_token_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	instance->rrp_algo->token_send (instance, msg, msg_len);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
 int totemrrp_mcast_flush_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemrrp_instance *instance;
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 // TODO this needs to return the result
 	instance->rrp_algo->mcast_flush_send (instance, msg, msg_len);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-error_exit:
 	return (res);
 }
 
 int totemrrp_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	/*
 	 * merge detects go out through mcast_flush_send so it is safe to
 	 * flush these messages if we are only one processor.  This avoids
@@ -1730,91 +1625,52 @@ int totemrrp_mcast_noflush_send (
 		instance->rrp_algo->mcast_noflush_send (instance, msg, msg_len);
 	}
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-error_exit:
-	return (res);
+	return (0);
 }
 
-int totemrrp_iface_check (hdb_handle_t handle)
+int totemrrp_iface_check (void *rrp_context)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 
 	instance->rrp_algo->iface_check (instance);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-error_exit:
-	return (res);
+	return (0);
 }
 
 int totemrrp_ifaces_get (
-        hdb_handle_t handle,
+	void *rrp_context,
 	char ***status,
 	unsigned int *iface_count)
 {
-	struct totemrrp_instance *instance;
-	int res = 0;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
-
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	*status = instance->status;
 
 	if (iface_count) {
 		*iface_count = instance->interface_count;
 	}
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
-	return (res);
+	return (0);
 }
 
 int totemrrp_crypto_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	unsigned int type)
 {
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res;
-	struct totemrrp_instance *instance;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		return (0);
-	}
 
 	res = totemnet_crypto_set(instance->net_handles[0], type);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
 	return (res);
 }
 
 
 int totemrrp_ring_reenable (
-        hdb_handle_t handle)
+        void *rrp_context)
 {
-	struct totemrrp_instance *instance;
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res = 0;
 	unsigned int i;
-
-printf ("totemrrp ring reenable\n");
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	instance->rrp_algo->ring_reenable (instance);
 
@@ -1822,30 +1678,17 @@ printf ("totemrrp ring reenable\n");
 		sprintf (instance->status[i], "ring %d active with no faults", i);
 	}
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 
 extern int totemrrp_mcast_recv_empty (
-        hdb_handle_t handle)
+	void *rrp_context)
 {
-	struct totemrrp_instance *instance;
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res;
-
-	res = hdb_handle_get (&totemrrp_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		res = ENOENT;
-		goto error_exit;
-	}
 
 	res = instance->rrp_algo->mcast_recv_empty (instance);
 
-	hdb_handle_put (&totemrrp_instance_database, handle);
-
-error_exit:
 	return (res);
 }
 

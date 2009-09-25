@@ -53,7 +53,7 @@
  */
 extern int totemrrp_initialize (
 	hdb_handle_t poll_handle,
-	hdb_handle_t *handle,
+	void **rrp_context,
 	struct totem_config *totem_config,
 	void *context,
 
@@ -76,50 +76,52 @@ extern int totemrrp_initialize (
 
 
 extern int totemrrp_processor_count_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	unsigned int processor_count);
 
 extern int totemrrp_token_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemrrp_mcast_noflush_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len);
 
 extern int totemrrp_mcast_flush_send (
-	hdb_handle_t handle,
+	void *rrp_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemrrp_recv_flush (hdb_handle_t handle);
+extern int totemrrp_recv_flush (
+	void *rrp_context);
 
-extern int totemrrp_send_flush (hdb_handle_t handle);
+extern int totemrrp_send_flush (
+	void *rrp_context);
 
 extern int totemrrp_token_target_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	struct totem_ip_address *target,
 	unsigned int iface_no);
 
-extern int totemrrp_iface_check (hdb_handle_t handle);
+extern int totemrrp_iface_check (void *rrp_context);
 
-extern int totemrrp_finalize (hdb_handle_t handle);
+extern int totemrrp_finalize (void *rrp_context);
 
 extern int totemrrp_ifaces_get (
-	hdb_handle_t handle,
+	void *rrp_context,
 	char ***status,
 	unsigned int *iface_count);
 
 extern int totemrrp_crypto_set (
-	hdb_handle_t handle,
+	void *rrp_context,
 	unsigned int type);
 
 extern int totemrrp_ring_reenable (
-	hdb_handle_t handle);
+	void *rrp_context);
 
 extern int totemrrp_mcast_recv_empty (
-	hdb_handle_t handle);
+	void *rrp_context);
 
 #endif /* TOTEMRRP_H_DEFINED */
