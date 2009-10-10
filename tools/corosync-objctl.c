@@ -102,6 +102,43 @@ static confdb_callbacks_t callbacks = {
 static int debug = 0;
 static int action;
 
+static void print_key (char *key_name, void *value, size_t value_len, confdb_value_types_t type)
+{
+	switch (type) {
+		case CONFDB_VALUETYPE_INT16:
+			printf ("%s=%hd\n", key_name,
+					  *(int16_t*)value);
+			break;
+		case CONFDB_VALUETYPE_UINT16:
+			printf ("%s=%hu\n", key_name,
+					  *(uint16_t*)value);
+			break;
+		case CONFDB_VALUETYPE_INT32:
+			printf ("%s=%d\n", key_name,
+					  *(int32_t*)value);
+			break;
+		case CONFDB_VALUETYPE_UINT32:
+			printf ("%s=%u\n", key_name,
+					  *(uint32_t*)value);
+			break;
+		case CONFDB_VALUETYPE_INT64:
+			printf ("%s=%lld\n", key_name,
+					  *(int64_t*)value);
+			break;
+		case CONFDB_VALUETYPE_UINT64:
+			printf ("%s=%llu\n", key_name,
+					  *(uint64_t*)value);
+			break;
+		case CONFDB_VALUETYPE_STRING:
+			printf ("%s=%s\n", key_name, (char*)value);
+			break;
+		default:
+		case CONFDB_VALUETYPE_ANY:
+			printf ("%s=**binary**(%d)\n", key_name, type);
+			break;
+	}
+}
+
 /* Recursively dump the object tree */
 static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object_handle, char * parent_name)
 {
@@ -109,11 +146,11 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	char object_name[OBJ_NAME_SIZE];
 	size_t object_name_len;
 	char key_name[OBJ_NAME_SIZE];
-	size_t key_name_len;
 	char key_value[OBJ_NAME_SIZE];
 	size_t key_value_len;
 	cs_error_t res;
 	int children_printed;
+	confdb_value_types_t type;
 
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
@@ -123,18 +160,17 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	}
 	children_printed = 0;
 
-	while ( (res = confdb_key_iter(handle,
+	while ( (res = confdb_key_iter_typed(handle,
 								   parent_object_handle,
 								   key_name,
-								   &key_name_len,
 								   key_value,
-								   &key_value_len)) == CS_OK) {
-		key_name[key_name_len] = '\0';
+								   &key_value_len,
+								   &type)) == CS_OK) {
 		key_value[key_value_len] = '\0';
 		if (parent_name != NULL)
-			printf("%s%c%s=%s\n", parent_name, SEPERATOR,key_name, key_value);
-		else
-			printf("%s=%s\n", key_name, key_value);
+			printf("%s%c", parent_name, SEPERATOR);
+
+		print_key(key_name, key_value, key_value_len, type);
 
 		children_printed++;
 	}
@@ -404,6 +440,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	char old_key_value[OBJ_NAME_SIZE];
 	size_t old_key_value_len;
 	cs_error_t res;
+	confdb_value_types_t type;
 
 	/* find the parent object */
 	get_parent_name(path_pt, parent_name);
@@ -425,12 +462,11 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	}
 
 	/* get the current key */
-	res = confdb_key_get (handle,
+	res = confdb_key_get_typed (handle,
 						  obj_handle,
 						  key_name,
-						  strlen(key_name),
 						  old_key_value,
-						  &old_key_value_len);
+						  &old_key_value_len, &type);
 
 	if (res == CS_OK) {
 		/* replace the current value */
@@ -447,12 +483,12 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 			fprintf(stderr, "Failed to replace the key %s=%s. Error %d\n", key_name, key_value, res);
 	} else {
 		/* not there, create a new key */
-		res = confdb_key_create (handle,
+		res = confdb_key_create_typed (handle,
 								 obj_handle,
 								 key_name,
-								 strlen(key_name),
 								 key_value,
-								 strlen(key_value));
+								 strlen(key_value),
+								 CONFDB_VALUETYPE_STRING);
 		if (res != CS_OK)
 			fprintf(stderr, "Failed to create the key %s=%s. Error %d\n", key_name, key_value, res);
 	}

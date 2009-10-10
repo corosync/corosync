@@ -722,6 +722,68 @@ error_exit:
 	return (error);
 }
 
+
+cs_error_t confdb_key_create_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	const void *value,
+	size_t value_len,
+	confdb_value_types_t type)
+{
+	cs_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov;
+	struct req_lib_confdb_key_create_typed request;
+	coroipc_response_header_t res;
+
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CS_OK;
+
+		if (confdb_sa_key_create_typed(parent_object_handle,
+					 key_name, value, value_len, type))
+			error = CS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	request.header.size = sizeof (struct req_lib_confdb_key_create_typed);
+	request.header.id = MESSAGE_REQ_CONFDB_KEY_CREATE_TYPED;
+	request.object_handle = parent_object_handle;
+	request.key_name.length = strlen(key_name)+1;
+	memcpy(request.key_name.value, key_name, request.key_name.length);
+	memcpy(request.value.value, value, value_len);
+	request.value.length = value_len;
+	request.type = type;
+
+	iov.iov_base = (char *)&request;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_create_typed);
+
+	error = coroipcc_msg_send_reply_receive (
+		confdb_inst->handle,
+		&iov,
+		1,
+		&res,
+		sizeof (res));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res.error;
+
+error_exit:
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+
+
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
@@ -841,6 +903,69 @@ error_exit:
 
 	return (error);
 }
+
+
+cs_error_t confdb_key_get_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	confdb_value_types_t *type)
+{
+	cs_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov;
+	struct req_lib_confdb_key_get req_lib_confdb_key_get;
+	struct res_lib_confdb_key_get_typed response;
+
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CS_OK;
+
+		if (confdb_sa_key_get_typed(parent_object_handle,
+				      key_name, value, value_len, (int*)type))
+			error = CS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req_lib_confdb_key_get.header.size = sizeof (struct req_lib_confdb_key_get);
+	req_lib_confdb_key_get.header.id = MESSAGE_REQ_CONFDB_KEY_GET_TYPED;
+	req_lib_confdb_key_get.parent_object_handle = parent_object_handle;
+	req_lib_confdb_key_get.key_name.length = strlen(key_name) + 1;
+	memcpy(req_lib_confdb_key_get.key_name.value, key_name, req_lib_confdb_key_get.key_name.length);
+
+	iov.iov_base = (char *)&req_lib_confdb_key_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
+
+        error = coroipcc_msg_send_reply_receive (
+		confdb_inst->handle,
+		&iov,
+		1,
+		&response,
+		sizeof (struct res_lib_confdb_key_get_typed));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = response.header.error;
+	if (error == CS_OK) {
+		*value_len = response.value.length;
+		*type = response.type;
+		memcpy(value, response.value.value, *value_len);
+	}
+
+error_exit:
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
 
 cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
@@ -1334,6 +1459,81 @@ cs_error_t confdb_key_iter (
 		memcpy(key_name, res_lib_confdb_key_iter.key_name.value, *key_name_len);
 		*value_len = res_lib_confdb_key_iter.value.length;
 		memcpy(value, res_lib_confdb_key_iter.value.value, *value_len);
+	}
+
+sa_exit:
+	context->next_entry++;
+
+error_exit:
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t confdb_key_iter_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	char *key_name,
+	void *value,
+	size_t *value_len,
+	confdb_value_types_t *type)
+{
+	cs_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov;
+	struct iter_context *context;
+	struct req_lib_confdb_key_iter req_lib_confdb_key_iter;
+	struct res_lib_confdb_key_iter_typed response;
+
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	/* You MUST call confdb_key_iter_start first */
+	context = find_iter_context(&confdb_inst->key_iter_head, parent_object_handle);
+	if (!context) {
+		error =	CS_ERR_CONTEXT_NOT_FOUND;
+		goto error_exit;
+	}
+
+	if (confdb_inst->standalone) {
+		error = CS_OK;
+
+		if (confdb_sa_key_iter_typed(parent_object_handle,
+				       context->next_entry,
+				       key_name,
+				       value, value_len, (int*)type))
+			error = CS_ERR_ACCESS;
+		goto sa_exit;
+	}
+
+	req_lib_confdb_key_iter.header.size = sizeof (struct req_lib_confdb_key_iter);
+	req_lib_confdb_key_iter.header.id = MESSAGE_REQ_CONFDB_KEY_ITER_TYPED;
+	req_lib_confdb_key_iter.parent_object_handle = parent_object_handle;
+	req_lib_confdb_key_iter.next_entry= context->next_entry;
+
+	iov.iov_base = (char *)&req_lib_confdb_key_iter;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
+
+	error = coroipcc_msg_send_reply_receive (
+		confdb_inst->handle,
+		&iov,
+		1,
+		&response,
+		sizeof (struct res_lib_confdb_key_iter_typed));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = response.header.error;
+	if (error == CS_OK) {
+		memcpy(key_name, response.key_name.value, response.key_name.length);
+		key_name[response.key_name.length] = '\0';
+		*value_len = response.value.length;
+		memcpy(value, response.value.value, *value_len);
+		*type = response.type;
 	}
 
 sa_exit:

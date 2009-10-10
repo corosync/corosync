@@ -55,7 +55,10 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_RELOAD = 13,
 	MESSAGE_REQ_CONFDB_OBJECT_FIND_DESTROY = 14,
 	MESSAGE_REQ_CONFDB_KEY_INCREMENT = 15,
-	MESSAGE_REQ_CONFDB_KEY_DECREMENT = 16
+	MESSAGE_REQ_CONFDB_KEY_DECREMENT = 16,
+	MESSAGE_REQ_CONFDB_KEY_CREATE_TYPED = 17,
+	MESSAGE_REQ_CONFDB_KEY_GET_TYPED = 18,
+	MESSAGE_REQ_CONFDB_KEY_ITER_TYPED = 19,
 };
 
 enum res_confdb_types {
@@ -78,7 +81,9 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_RELOAD = 16,
 	MESSAGE_RES_CONFDB_OBJECT_FIND_DESTROY = 17,
 	MESSAGE_RES_CONFDB_KEY_INCREMENT = 18,
-	MESSAGE_RES_CONFDB_KEY_DECREMENT = 19
+	MESSAGE_RES_CONFDB_KEY_DECREMENT = 19,
+	MESSAGE_RES_CONFDB_KEY_GET_TYPED = 20,
+	MESSAGE_RES_CONFDB_KEY_ITER_TYPED = 21,
 };
 
 
@@ -114,6 +119,14 @@ struct req_lib_confdb_key_create {
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
+};
+
+struct req_lib_confdb_key_create_typed {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	mar_uint64_t object_handle __attribute__((aligned(8)));
+	mar_name_t key_name __attribute__((aligned(8)));
+	mar_name_t value __attribute__((aligned(8)));
+	mar_int32_t type __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_delete {
@@ -168,6 +181,12 @@ struct res_lib_confdb_key_iter {
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
+struct res_lib_confdb_key_iter_typed {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_name_t key_name __attribute__((aligned(8)));
+	mar_name_t value __attribute__((aligned(8)));
+	mar_int32_t type __attribute__((aligned(8)));
+};
 
 struct req_lib_confdb_key_get {
 	coroipc_request_header_t header __attribute__((aligned(8)));
@@ -183,6 +202,11 @@ struct req_lib_confdb_object_find_destroy {
 struct res_lib_confdb_key_get {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
+};
+struct res_lib_confdb_key_get_typed {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_name_t value __attribute__((aligned(8)));
+	mar_int32_t type __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_incdec {

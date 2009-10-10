@@ -79,14 +79,20 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn,
 								const void *message);
 
 static void message_handler_req_lib_confdb_key_create (void *conn,
-						       const void *message);
+								const void *message);
+static void message_handler_req_lib_confdb_key_create_typed (void *conn,
+								const void *message);
 static void message_handler_req_lib_confdb_key_get (void *conn,
+								const void *message);
+static void message_handler_req_lib_confdb_key_get_typed (void *conn,
 						    const void *message);
 static void message_handler_req_lib_confdb_key_replace (void *conn,
 							const void *message);
 static void message_handler_req_lib_confdb_key_delete (void *conn,
 						       const void *message);
 static void message_handler_req_lib_confdb_key_iter (void *conn,
+								const void *message);
+static void message_handler_req_lib_confdb_key_iter_typed (void *conn,
 						     const void *message);
 
 static void message_handler_req_lib_confdb_key_increment (void *conn,
@@ -202,6 +208,18 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 16 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_decrement,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 17 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_key_create_typed,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 18 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_key_get_typed,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 19 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter_typed,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
@@ -373,6 +391,27 @@ static void message_handler_req_lib_confdb_key_create (void *conn,
 	api->ipc_response_send(conn, &res, sizeof(res));
 }
 
+static void message_handler_req_lib_confdb_key_create_typed (void *conn,
+						       const void *message)
+{
+	const struct req_lib_confdb_key_create_typed *req_lib_confdb_key_create
+	  = message;
+	coroipc_response_header_t res;
+	int ret = CS_OK;
+
+	if (api->object_key_create_typed(req_lib_confdb_key_create->object_handle,
+					    (char*)req_lib_confdb_key_create->key_name.value,
+					    req_lib_confdb_key_create->value.value,
+					    req_lib_confdb_key_create->value.length,
+					    req_lib_confdb_key_create->type))
+		ret = CS_ERR_ACCESS;
+
+	res.size = sizeof(res);
+	res.id = MESSAGE_RES_CONFDB_KEY_CREATE;
+	res.error = ret;
+	api->ipc_response_send(conn, &res, sizeof(res));
+}
+
 static void message_handler_req_lib_confdb_key_get (void *conn,
 						    const void *message)
 {
@@ -395,6 +434,35 @@ static void message_handler_req_lib_confdb_key_get (void *conn,
 	}
 	res_lib_confdb_key_get.header.size = sizeof(res_lib_confdb_key_get);
 	res_lib_confdb_key_get.header.id = MESSAGE_RES_CONFDB_KEY_GET;
+	res_lib_confdb_key_get.header.error = ret;
+	api->ipc_response_send(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
+}
+
+static void message_handler_req_lib_confdb_key_get_typed (void *conn,
+						    const void *message)
+{
+	const struct req_lib_confdb_key_get *req_lib_confdb_key_get = message;
+	struct res_lib_confdb_key_get_typed res_lib_confdb_key_get;
+	size_t value_len;
+	void *value;
+	int ret = CS_OK;
+	objdb_value_types_t type;
+	char * key_name = (char*)req_lib_confdb_key_get->key_name.value;
+	key_name[req_lib_confdb_key_get->key_name.length] = '\0';
+
+	if (api->object_key_get_typed(req_lib_confdb_key_get->parent_object_handle,
+					 key_name,
+					 &value,
+					 &value_len, &type))
+		ret = CS_ERR_ACCESS;
+	else {
+		memcpy(res_lib_confdb_key_get.value.value, value, value_len);
+		res_lib_confdb_key_get.value.length = value_len;
+		res_lib_confdb_key_get.type = type;
+
+	}
+	res_lib_confdb_key_get.header.size = sizeof(res_lib_confdb_key_get);
+	res_lib_confdb_key_get.header.id = MESSAGE_RES_CONFDB_KEY_GET_TYPED;
 	res_lib_confdb_key_get.header.error = ret;
 	api->ipc_response_send(conn, &res_lib_confdb_key_get, sizeof(res_lib_confdb_key_get));
 }
@@ -524,6 +592,45 @@ static void message_handler_req_lib_confdb_key_iter (void *conn,
 	}
 	res_lib_confdb_key_iter.header.size = sizeof(res_lib_confdb_key_iter);
 	res_lib_confdb_key_iter.header.id = MESSAGE_RES_CONFDB_KEY_ITER;
+	res_lib_confdb_key_iter.header.error = ret;
+
+	api->ipc_response_send(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));
+}
+
+static void message_handler_req_lib_confdb_key_iter_typed (void *conn,
+						     const void *message)
+{
+	const struct req_lib_confdb_key_iter *req_lib_confdb_key_iter = message;
+	struct res_lib_confdb_key_iter_typed res_lib_confdb_key_iter;
+	void *key_name;
+	size_t key_name_len;
+	void *value;
+	size_t value_len;
+	int ret = CS_OK;
+	objdb_value_types_t my_type;
+
+	if (api->object_key_iter_from(req_lib_confdb_key_iter->parent_object_handle,
+					       req_lib_confdb_key_iter->next_entry,
+					       &key_name,
+					       &key_name_len,
+					       &value,
+					       &value_len))
+		ret = CS_ERR_ACCESS;
+	else {
+		memcpy(res_lib_confdb_key_iter.key_name.value, key_name, key_name_len);
+		memcpy(res_lib_confdb_key_iter.value.value, value, value_len);
+		res_lib_confdb_key_iter.key_name.length = key_name_len;
+		res_lib_confdb_key_iter.key_name.value[key_name_len] = '\0';
+		res_lib_confdb_key_iter.value.length = value_len;
+		api->object_key_get_typed(req_lib_confdb_key_iter->parent_object_handle,
+								(const char*)res_lib_confdb_key_iter.key_name.value,
+								&value,
+								&value_len,
+								&my_type);
+		res_lib_confdb_key_iter.type = my_type;
+	}
+	res_lib_confdb_key_iter.header.size = sizeof(res_lib_confdb_key_iter);
+	res_lib_confdb_key_iter.header.id = MESSAGE_RES_CONFDB_KEY_ITER_TYPED;
 	res_lib_confdb_key_iter.header.error = ret;
 
 	api->ipc_response_send(conn, &res_lib_confdb_key_iter, sizeof(res_lib_confdb_key_iter));

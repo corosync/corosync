@@ -172,6 +172,9 @@ void apidef_init (struct objdb_iface_ver0 *objdb) {
 	apidef_corosync_api_v1.object_reload_config = objdb->object_reload_config;
 	apidef_corosync_api_v1.object_key_increment = objdb->object_key_increment;
 	apidef_corosync_api_v1.object_key_decrement = objdb->object_key_decrement;
+	apidef_corosync_api_v1.object_key_create_typed = objdb->object_key_create_typed;
+	apidef_corosync_api_v1.object_key_get_typed = objdb->object_key_get_typed;
+	apidef_corosync_api_v1.object_key_iter_typed = objdb->object_key_iter_typed;
 }
 
 struct corosync_api_v1 *apidef_get (void)
