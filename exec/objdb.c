@@ -513,13 +513,52 @@ static int object_key_create_typed(
 	int found = 0;
 	int i;
 	size_t key_len = strlen(key_name);
+	size_t expected_size;
+	int test_size_by_type = CS_TRUE;
 
 	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
-		object_handle, (void *)&instance);
+			  object_handle, (void *)&instance);
 	if (res != 0) {
 		goto error_exit;
+	}
+
+	switch (value_type) {
+		case OBJDB_VALUETYPE_INT16:
+			expected_size = sizeof (int16_t);
+			break;
+		case OBJDB_VALUETYPE_UINT16:
+			expected_size = sizeof (uint16_t);
+			break;
+		case OBJDB_VALUETYPE_INT32:
+			expected_size = sizeof (int32_t);
+			break;
+		case OBJDB_VALUETYPE_UINT32:
+			expected_size = sizeof (uint32_t);
+			break;
+		case OBJDB_VALUETYPE_INT64:
+			expected_size = sizeof (int64_t);
+			break;
+		case OBJDB_VALUETYPE_UINT64:
+			expected_size = sizeof (uint64_t);
+			break;
+		case OBJDB_VALUETYPE_FLOAT:
+			expected_size = sizeof (float);
+			break;
+		case OBJDB_VALUETYPE_DOUBLE:
+			expected_size = sizeof (double);
+			break;
+		case OBJDB_VALUETYPE_ANY:
+		default:
+			test_size_by_type = CS_FALSE;
+			break;
+	}
+	if (test_size_by_type) {
+		if (expected_size != value_len) {
+			//printf ("%s exp:%d != len:%d\n", key_name, expected_size, value_len);
+			goto error_put;
+		}
 	}
 
 	/*
