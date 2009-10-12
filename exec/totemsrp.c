@@ -501,6 +501,9 @@ struct totemsrp_instance {
 
 	struct memb_commit_token *commit_token;
 
+	totemsrp_stats_t *stats;
+	void * token_recv_event_handle;
+	void * token_sent_event_handle;
 	char commit_token_storage[9000];
 };
 
@@ -707,6 +710,41 @@ static int pause_flush (struct totemsrp_instance *instance)
 	return (res);
 }
 
+static int token_event_stats_collector (enum totem_callback_token_type type, const void *void_instance)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)void_instance;
+	uint32_t time_now;
+	unsigned long long nano_secs = timerlist_nano_current_get ();
+
+	time_now = (nano_secs / TIMERLIST_NS_IN_MSEC);
+
+	if (type == TOTEM_CALLBACK_TOKEN_RECEIVED) {
+		/* incr latest token the index */
+		if (instance->stats->latest_token == (TOTEM_TOKEN_STATS_MAX - 1))
+			instance->stats->latest_token = 0;
+		else
+			instance->stats->latest_token++;
+
+		if (instance->stats->earliest_token == instance->stats->latest_token) {
+			/* we have filled up the array, start overwriting */
+			if (instance->stats->earliest_token == (TOTEM_TOKEN_STATS_MAX - 1))
+				instance->stats->earliest_token = 0;
+			else
+				instance->stats->earliest_token++;
+
+			instance->stats->token[instance->stats->earliest_token].rx = 0;
+			instance->stats->token[instance->stats->earliest_token].tx = 0;
+			instance->stats->token[instance->stats->earliest_token].backlog_calc = 0;
+		}
+
+		instance->stats->token[instance->stats->latest_token].rx = time_now;
+		instance->stats->token[instance->stats->latest_token].tx = 0; /* in case we drop the token */
+	} else {
+		instance->stats->token[instance->stats->latest_token].tx = time_now;
+	}
+	return 0;
+}
+
 /*
  * Exported interfaces
  */
@@ -714,6 +752,7 @@ int totemsrp_initialize (
 	hdb_handle_t poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
+	totemmrp_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -752,6 +791,11 @@ int totemsrp_initialize (
 	}
 
 	totemsrp_instance_initialize (instance);
+
+	instance->stats = calloc (sizeof(totemsrp_stats_t), 1);
+	stats->srp = instance->stats;
+	instance->stats->latest_token = 0;
+	instance->stats->earliest_token = 0;
 
 	instance->totem_config = totem_config;
 
@@ -881,6 +925,18 @@ int totemsrp_initialize (
 		MESSAGE_QUEUE_MAX,
 		sizeof (struct message_item));
 
+	totemsrp_callback_token_create (instance,
+									&instance->token_recv_event_handle,
+									TOTEM_CALLBACK_TOKEN_RECEIVED,
+									0,
+									token_event_stats_collector,
+									instance);
+	totemsrp_callback_token_create (instance,
+									&instance->token_sent_event_handle,
+									TOTEM_CALLBACK_TOKEN_SENT,
+									0,
+									token_event_stats_collector,
+									instance);
 	*srp_context = instance;
 	return (0);
 
@@ -1432,6 +1488,7 @@ static void memb_state_consensus_timeout_expired (
         struct srp_addr no_consensus_list[PROCESSOR_COUNT_MAX];
 	int no_consensus_list_entries;
 
+	instance->stats->consensus_timeouts++;
 	if (memb_consensus_agreed (instance)) {
 		memb_consensus_reset (instance);
 
@@ -1479,6 +1536,7 @@ static void timer_function_orf_token_timeout (void *data)
 				"A processor failed, forming new configuration.\n");
 			totemrrp_iface_check (instance->totemrrp_context);
 			memb_state_gather_enter (instance, 2);
+			instance->stats->operational_token_lost++;
 			break;
 
 		case MEMB_STATE_GATHER:
@@ -1486,12 +1544,14 @@ static void timer_function_orf_token_timeout (void *data)
 				"The consensus timeout expired.\n");
 			memb_state_consensus_timeout_expired (instance);
 			memb_state_gather_enter (instance, 3);
+			instance->stats->gather_token_lost++;
 			break;
 
 		case MEMB_STATE_COMMIT:
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the COMMIT state.\n");
 			memb_state_gather_enter (instance, 4);
+			instance->stats->commit_token_lost++;
 			break;
 
 		case MEMB_STATE_RECOVERY:
@@ -1499,6 +1559,7 @@ static void timer_function_orf_token_timeout (void *data)
 				"The token was lost in the RECOVERY state.\n");
 			ring_state_restore (instance);
 			memb_state_gather_enter (instance, 5);
+			instance->stats->recovery_token_lost++;
 			break;
 	}
 }
@@ -1730,6 +1791,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		"A processor joined or left the membership and a new membership was formed.\n");
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
+	instance->stats->operational_entered++;
 	instance->my_received_flg = 1;
 
 	reset_pause_timeout (instance);
@@ -1786,6 +1848,7 @@ static void memb_state_gather_enter (
 		"entering GATHER state from %d.\n", gather_from);
 
 	instance->memb_state = MEMB_STATE_GATHER;
+	instance->stats->gather_entered++;
 
 	return;
 }
@@ -1831,6 +1894,7 @@ static void memb_state_commit_enter (
 	reset_token_retransmit_timeout (instance); // REVIEWED
 	reset_token_timeout (instance); // REVIEWED
 
+	instance->stats->commit_entered++;
 
 	/*
 	 * reset all flow control variables since we are starting a new ring
@@ -2022,6 +2086,7 @@ originated:
 	reset_token_retransmit_timeout (instance); // REVIEWED
 
 	instance->memb_state = MEMB_STATE_RECOVERY;
+	instance->stats->recovery_entered++;
 	return;
 }
 
@@ -2083,6 +2148,7 @@ int totemsrp_mcast (
 	message_item.msg_len = addr_idx;
 
 	log_printf (instance->totemsrp_log_level_debug, "mcasted message added to pending queue\n");
+	instance->stats->mcast_tx++;
 	cs_queue_item_add (&instance->new_message_queue, &message_item);
 
 	return (0);
@@ -2398,6 +2464,7 @@ static int orf_token_rtr (
 			memmove (&rtr_list[i], &rtr_list[i + 1],
 				sizeof (struct rtr_item) * (orf_token->rtr_list_entries));
 
+			instance->stats->mcast_retx++;
 			instance->fcc_remcast_current++;
 		} else {
 			i += 1;
@@ -2567,6 +2634,8 @@ static int token_hold_cancel_send (struct totemsrp_instance *instance)
 		sizeof (struct memb_ring_id));
 	assert (token_hold_cancel.header.nodeid);
 
+	instance->stats->token_hold_cancel_tx++;
+
 	totemrrp_mcast_flush_send (instance->totemrrp_context, &token_hold_cancel,
 		sizeof (struct token_hold_cancel));
 
@@ -2587,6 +2656,7 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	orf_token.token_seq = SEQNO_START_TOKEN;
 	orf_token.retrans_flg = 1;
 	instance->my_set_retrans_flg = 1;
+	instance->stats->orf_token_tx++;
 
 	if (cs_queue_is_empty (&instance->retrans_message_queue) == 1) {
 		orf_token.retrans_flg = 0;
@@ -2748,6 +2818,8 @@ static int memb_state_commit_token_send (
 	memcpy (instance->orf_token_retransmit, instance->commit_token, commit_token_size);
 	instance->orf_token_retransmit_size = commit_token_size;
 
+	instance->stats->memb_commit_token_tx++;
+
 	totemrrp_token_send (instance->totemrrp_context,
 		instance->commit_token,
 		commit_token_size);
@@ -2882,6 +2954,8 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
 	}
 
+	instance->stats->memb_join_tx++;
+
 	totemrrp_mcast_flush_send (
 		instance->totemrrp_context,
 		memb_join,
@@ -2950,6 +3024,7 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 	if (instance->totem_config->send_join_timeout) {
 		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
 	}
+	instance->stats->memb_join_tx++;
 
 	totemrrp_mcast_flush_send (
 		instance->totemrrp_context,
@@ -2970,6 +3045,7 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 		sizeof (struct memb_ring_id));
 	assert (memb_merge_detect.header.nodeid);
 
+	instance->stats->memb_merge_detect_tx++;
 	totemrrp_mcast_flush_send (instance->totemrrp_context,
 		&memb_merge_detect,
 		sizeof (struct memb_merge_detect));
@@ -3152,6 +3228,7 @@ static unsigned int backlog_get (struct totemsrp_instance *instance)
 	if (instance->memb_state == MEMB_STATE_RECOVERY) {
 		backlog = cs_queue_used (&instance->retrans_message_queue);
 	}
+	instance->stats->token[instance->stats->latest_token].backlog_calc = backlog;
 	return (backlog);
 }
 
@@ -3704,10 +3781,12 @@ static int message_handler_mcast (
 
 		case MEMB_STATE_COMMIT:
 			/* discard message */
+			instance->stats->rx_msg_dropped++;
 			break;
 
 		case MEMB_STATE_RECOVERY:
 			/* discard message */
+			instance->stats->rx_msg_dropped++;
 			break;
 		}
 		return (0);
@@ -4203,9 +4282,32 @@ void main_deliver_fn (
 	if ((int)message_header->type >= totemsrp_message_handlers.count) {
 		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
 printf ("wrong message type\n");
+		instance->stats->rx_msg_dropped++;
 		return;
 	}
 
+	switch (message_header->type) {
+	case MESSAGE_TYPE_ORF_TOKEN:
+		instance->stats->orf_token_rx++;
+		break;
+	case MESSAGE_TYPE_MCAST:
+		instance->stats->mcast_rx++;
+		break;
+	case MESSAGE_TYPE_MEMB_MERGE_DETECT:
+		instance->stats->memb_merge_detect_rx++;
+		break;
+	case MESSAGE_TYPE_MEMB_JOIN:
+		instance->stats->memb_join_rx++;
+		break;
+	case MESSAGE_TYPE_MEMB_COMMIT_TOKEN:
+		instance->stats->memb_commit_token_rx++;
+		break;
+	case MESSAGE_TYPE_TOKEN_HOLD_CANCEL:
+		instance->stats->token_hold_cancel_rx++;
+		break;
+	default:
+		break;
+	}
 	/*
 	 * Handle incoming message
 	 */

@@ -131,6 +131,8 @@ struct sched_param global_sched_param;
 
 static hdb_handle_t object_connection_handle;
 
+static corosync_timer_handle_t corosync_stats_timer_handle;
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -417,6 +419,254 @@ static void corosync_mlockall (void)
 	};
 #endif
 }
+
+
+static void corosync_totem_stats_updater (void *data)
+{
+	totempg_stats_t * stats;
+	uint32_t mtt_rx_token;
+	uint32_t total_mtt_rx_token;
+	uint32_t avg_backlog_calc;
+	uint32_t total_backlog_calc;
+	uint32_t avg_token_holdtime;
+	uint32_t total_token_holdtime;
+	int t, prev;
+	int32_t token_count;
+
+	stats = api->totem_get_stats();
+
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"orf_token_tx", strlen("orf_token_tx"),
+		&stats->mrp->srp->orf_token_tx, sizeof (stats->mrp->srp->orf_token_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"orf_token_rx", strlen("orf_token_rx"),
+		&stats->mrp->srp->orf_token_rx, sizeof (stats->mrp->srp->orf_token_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_merge_detect_tx", strlen("memb_merge_detect_tx"),
+		&stats->mrp->srp->memb_merge_detect_tx, sizeof (stats->mrp->srp->memb_merge_detect_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_merge_detect_rx", strlen("memb_merge_detect_rx"),
+		&stats->mrp->srp->memb_merge_detect_rx, sizeof (stats->mrp->srp->memb_merge_detect_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_join_tx", strlen("memb_join_tx"),
+		&stats->mrp->srp->memb_join_tx, sizeof (stats->mrp->srp->memb_join_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_join_rx", strlen("memb_join_rx"),
+		&stats->mrp->srp->memb_join_rx, sizeof (stats->mrp->srp->memb_join_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_tx", strlen("mcast_tx"),
+		&stats->mrp->srp->mcast_tx,	sizeof (stats->mrp->srp->mcast_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_retx", strlen("mcast_retx"),
+		&stats->mrp->srp->mcast_retx, sizeof (stats->mrp->srp->mcast_retx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_rx", strlen("mcast_rx"),
+		&stats->mrp->srp->mcast_rx, sizeof (stats->mrp->srp->mcast_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_commit_token_tx", strlen("memb_commit_token_tx"),
+		&stats->mrp->srp->memb_commit_token_tx, sizeof (stats->mrp->srp->memb_commit_token_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_commit_token_rx", strlen("memb_commit_token_rx"),
+		&stats->mrp->srp->memb_commit_token_rx, sizeof (stats->mrp->srp->memb_commit_token_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"token_hold_cancel_tx", strlen("token_hold_cancel_tx"),
+		&stats->mrp->srp->token_hold_cancel_tx, sizeof (stats->mrp->srp->token_hold_cancel_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"token_hold_cancel_rx", strlen("token_hold_cancel_rx"),
+		&stats->mrp->srp->token_hold_cancel_rx, sizeof (stats->mrp->srp->token_hold_cancel_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"operational_entered", strlen("operational_entered"),
+		&stats->mrp->srp->operational_entered, sizeof (stats->mrp->srp->operational_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"operational_token_lost", strlen("operational_token_lost"),
+		&stats->mrp->srp->operational_token_lost, sizeof (stats->mrp->srp->operational_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"gather_entered", strlen("gather_entered"),
+		&stats->mrp->srp->gather_entered, sizeof (stats->mrp->srp->gather_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"gather_token_lost", strlen("gather_token_lost"),
+		&stats->mrp->srp->gather_token_lost, sizeof (stats->mrp->srp->gather_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"commit_entered", strlen("commit_entered"),
+		&stats->mrp->srp->commit_entered, sizeof (stats->mrp->srp->commit_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"commit_token_lost", strlen("commit_token_lost"),
+		&stats->mrp->srp->commit_token_lost, sizeof (stats->mrp->srp->commit_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"recovery_entered", strlen("recovery_entered"),
+		&stats->mrp->srp->recovery_entered, sizeof (stats->mrp->srp->recovery_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"recovery_token_lost", strlen("recovery_token_lost"),
+		&stats->mrp->srp->recovery_token_lost, sizeof (stats->mrp->srp->recovery_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"consensus_timeouts", strlen("consensus_timeouts"),
+		&stats->mrp->srp->consensus_timeouts, sizeof (stats->mrp->srp->consensus_timeouts));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"rx_msg_dropped", strlen("rx_msg_dropped"),
+		&stats->mrp->srp->rx_msg_dropped, sizeof (stats->mrp->srp->rx_msg_dropped));
+
+	total_mtt_rx_token = 0;
+	total_token_holdtime = 0;
+	total_backlog_calc = 0;
+	token_count = 0;
+	t = stats->mrp->srp->latest_token;
+	while (1) {
+		if (t == 0)
+			prev = TOTEM_TOKEN_STATS_MAX - 1;
+		else
+			prev = t - 1;
+		if (prev == stats->mrp->srp->earliest_token)
+			break;
+		/* if tx == 0, then dropped token (not ours) */
+		if (stats->mrp->srp->token[t].tx != 0 ||
+			(stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx) > 0 ) {
+			total_mtt_rx_token += (stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx);
+			total_token_holdtime += (stats->mrp->srp->token[t].tx - stats->mrp->srp->token[t].rx);
+			total_backlog_calc += stats->mrp->srp->token[t].backlog_calc;
+			token_count++;
+		}
+		t = prev;
+	}
+	mtt_rx_token = (total_mtt_rx_token / token_count);
+	avg_backlog_calc = (total_backlog_calc / token_count);
+	avg_token_holdtime = (total_token_holdtime / token_count);
+
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"mtt_rx_token", strlen("mtt_rx_token"),
+			&mtt_rx_token, sizeof (mtt_rx_token));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"avg_token_workload", strlen("avg_token_workload"),
+			&avg_token_holdtime, sizeof (avg_backlog_calc));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"avg_backlog_calc", strlen("avg_backlog_calc"),
+			&avg_backlog_calc, sizeof (avg_backlog_calc));
+
+	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
+					corosync_totem_stats_updater,
+					&corosync_stats_timer_handle);
+}
+
+static void corosync_totem_stats_init (void)
+{
+	totempg_stats_t * stats;
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_runtime_handle;
+	hdb_handle_t object_totem_handle;
+	uint32_t zero_32 = 0;
+	uint64_t zero_64 = 0;
+
+	stats = api->totem_get_stats();
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"runtime",
+		strlen ("runtime"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (
+			object_find_handle,
+			&object_runtime_handle) == 0) {
+
+		objdb->object_create (object_runtime_handle,
+							  &object_totem_handle,
+							  "totem", strlen ("totem"));
+		objdb->object_create (object_totem_handle,
+							  &stats->hdr.handle,
+							  "pg", strlen ("pg"));
+		objdb->object_create (stats->hdr.handle,
+							  &stats->mrp->hdr.handle,
+							  "mrp", strlen ("mrp"));
+		objdb->object_create (stats->mrp->hdr.handle,
+							  &stats->mrp->srp->hdr.handle,
+							  "srp", strlen ("srp"));
+
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"orf_token_tx",	&stats->mrp->srp->orf_token_tx,
+			sizeof (stats->mrp->srp->orf_token_tx),	OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"orf_token_rx", &stats->mrp->srp->orf_token_rx,
+			sizeof (stats->mrp->srp->orf_token_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_merge_detect_tx", &stats->mrp->srp->memb_merge_detect_tx,
+			sizeof (stats->mrp->srp->memb_merge_detect_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_merge_detect_rx", &stats->mrp->srp->memb_merge_detect_rx,
+			sizeof (stats->mrp->srp->memb_merge_detect_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_join_tx", &stats->mrp->srp->memb_join_tx,
+			sizeof (stats->mrp->srp->memb_join_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_join_rx", &stats->mrp->srp->memb_join_rx,
+			 sizeof (stats->mrp->srp->memb_join_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_tx", &stats->mrp->srp->mcast_tx,
+			sizeof (stats->mrp->srp->mcast_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_retx", &stats->mrp->srp->mcast_retx,
+			sizeof (stats->mrp->srp->mcast_retx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_rx", &stats->mrp->srp->mcast_rx,
+			sizeof (stats->mrp->srp->mcast_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_commit_token_tx", &stats->mrp->srp->memb_commit_token_tx,
+			sizeof (stats->mrp->srp->memb_commit_token_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_commit_token_rx", &stats->mrp->srp->memb_commit_token_rx,
+			sizeof (stats->mrp->srp->memb_commit_token_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"token_hold_cancel_tx", &stats->mrp->srp->token_hold_cancel_tx,
+			sizeof (stats->mrp->srp->token_hold_cancel_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"token_hold_cancel_rx", &stats->mrp->srp->token_hold_cancel_rx,
+			sizeof (stats->mrp->srp->token_hold_cancel_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"operational_entered", &stats->mrp->srp->operational_entered,
+			sizeof (stats->mrp->srp->operational_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"operational_token_lost", &stats->mrp->srp->operational_token_lost,
+			sizeof (stats->mrp->srp->operational_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"gather_entered", &stats->mrp->srp->gather_entered,
+			sizeof (stats->mrp->srp->gather_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"gather_token_lost", &stats->mrp->srp->gather_token_lost,
+			sizeof (stats->mrp->srp->gather_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"commit_entered", &stats->mrp->srp->commit_entered,
+			sizeof (stats->mrp->srp->commit_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"commit_token_lost", &stats->mrp->srp->commit_token_lost,
+			sizeof (stats->mrp->srp->commit_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"recovery_entered", &stats->mrp->srp->recovery_entered,
+			sizeof (stats->mrp->srp->recovery_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"recovery_token_lost", &stats->mrp->srp->recovery_token_lost,
+			sizeof (stats->mrp->srp->recovery_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"consensus_timeouts", &stats->mrp->srp->consensus_timeouts,
+			sizeof (stats->mrp->srp->consensus_timeouts), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mtt_rx_token", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"avg_token_workload", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"avg_backlog_calc", &zero_64,
+			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"rx_msg_dropped", &zero_64,
+			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+
+	}
+	/* start stats timer */
+	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
+					corosync_totem_stats_updater,
+					&corosync_stats_timer_handle);
+
+}
+
 
 static void deliver_fn (
 	unsigned int nodeid,
@@ -898,6 +1148,7 @@ static void main_service_ready (void)
 	}
 	evil_init (api);
 	corosync_stats_init ();
+	corosync_totem_stats_init ();
 }
 
 int main (int argc, char **argv)

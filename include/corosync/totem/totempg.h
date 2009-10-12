@@ -143,6 +143,8 @@ extern int totempg_ifaces_get (
 	char ***status,
         unsigned int *iface_count);
 
+extern void* totempg_get_stats (void);
+
 extern const char *totempg_ifaces_print (unsigned int nodeid);
 
 extern unsigned int totempg_my_nodeid_get (void);

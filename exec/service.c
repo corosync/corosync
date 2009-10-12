@@ -345,7 +345,6 @@ extern unsigned int corosync_service_unlink_and_exit (
 	unsigned short *service_id;
 	unsigned int *found_service_ver;
 	hdb_handle_t object_find_handle;
-	char object_name[32];
 	char *name_sufix;
 
 	name_sufix = strrchr (service_name, '_');

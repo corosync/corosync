@@ -50,6 +50,7 @@ int totemsrp_initialize (
 	hdb_handle_t poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
+	totemmrp_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,

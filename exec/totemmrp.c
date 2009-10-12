@@ -57,7 +57,6 @@
 
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
-#include <corosync/hdb.h>
 
 #include "totemmrp.h"
 #include "totemsrp.h"
@@ -119,6 +118,7 @@ void totemmrp_confchg_fn (
 int totemmrp_initialize (
 	hdb_handle_t poll_handle,
 	struct totem_config *totem_config,
+	totempg_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -136,10 +136,12 @@ int totemmrp_initialize (
 	pg_deliver_fn = deliver_fn;
 	pg_confchg_fn = confchg_fn;
 
+	stats->mrp = calloc (sizeof(totemmrp_stats_t), 1);
 	result = totemsrp_initialize (
 		poll_handle,
 		&totemsrp_context,
 		totem_config,
+		stats->mrp,
 		totemmrp_deliver_fn,
 		totemmrp_confchg_fn);
 
