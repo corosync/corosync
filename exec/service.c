@@ -91,8 +91,10 @@ static struct default_service default_services[] = {
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
-static hdb_handle_t object_internal_configuration_handle;
+hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
+static hdb_handle_t object_internal_configuration_handle;
+static hdb_handle_t object_stats_services_handle;
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
@@ -141,6 +143,11 @@ unsigned int corosync_service_link_and_init (
 	struct corosync_service_engine *service;
 	unsigned int res;
 	hdb_handle_t object_service_handle;
+	hdb_handle_t object_stats_handle;
+	int fn;
+	char object_name[32];
+	char *name_sufix;
+	uint64_t zero_64 = 0;
 
 	/*
 	 * reference the service interface
@@ -202,6 +209,39 @@ unsigned int corosync_service_link_and_init (
 		"service_id",
 		&service->id,
 		sizeof (service->id), OBJDB_VALUETYPE_UINT16);
+
+	name_sufix = strrchr (service_name, '_');
+	if (name_sufix)
+		name_sufix++;
+	else
+		name_sufix = (char*)service_name;
+
+	corosync_api->object_create (object_stats_services_handle,
+								 &object_stats_handle,
+								 name_sufix, strlen (name_sufix));
+
+	corosync_api->object_key_create_typed (object_stats_handle,
+										 "service_id",
+										 &service->id, sizeof (service->id),
+										 OBJDB_VALUETYPE_INT16);
+
+	for (fn = 0; fn < service->exec_engine_count; fn++) {
+
+		snprintf (object_name, 32, "%d", fn);
+		corosync_api->object_create (object_stats_handle,
+									 &service_stats_handle[service->id][fn],
+									 object_name, strlen (object_name));
+
+		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
+											 "tx",
+											 &zero_64, sizeof (zero_64),
+											 OBJDB_VALUETYPE_UINT64);
+
+		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
+											 "rx",
+											 &zero_64, sizeof (zero_64),
+											 OBJDB_VALUETYPE_UINT64);
+	}
 
 	log_printf (LOGSYS_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
 	return (res);
@@ -305,6 +345,29 @@ extern unsigned int corosync_service_unlink_and_exit (
 	unsigned short *service_id;
 	unsigned int *found_service_ver;
 	hdb_handle_t object_find_handle;
+	char object_name[32];
+	char *name_sufix;
+
+	name_sufix = strrchr (service_name, '_');
+	if (name_sufix)
+		name_sufix++;
+	else
+		name_sufix = (char*)service_name;
+
+	corosync_api->object_find_create (
+		object_stats_services_handle,
+		name_sufix, strlen (name_sufix),
+		&object_find_handle);
+
+	if (corosync_api->object_find_next (
+			object_find_handle,
+			&object_service_handle) == 0) {
+
+		corosync_api->object_destroy (object_service_handle);
+
+	}
+	corosync_api->object_find_destroy (object_find_handle);
+
 
 	corosync_api->object_find_create (
 		object_internal_configuration_handle,
@@ -377,7 +440,23 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
 	hdb_handle_t object_find_handle;
+	hdb_handle_t object_find2_handle;
+	hdb_handle_t object_runtime_handle;
 
+	corosync_api->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"runtime",
+		strlen ("runtime"),
+		&object_find2_handle);
+
+	if (corosync_api->object_find_next (
+			object_find2_handle,
+			&object_runtime_handle) == 0) {
+
+		corosync_api->object_create (object_runtime_handle,
+									 &object_stats_services_handle,
+									 "services", strlen ("services"));
+	}
 	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,
 		"internal_configuration",

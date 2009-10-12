@@ -429,6 +429,7 @@ static void deliver_fn (
 	int fn_id;
 	unsigned int id;
 	unsigned int size;
+	unsigned int key_incr_dummy;
 
 	header = msg;
 	if (endian_conversion_required) {
@@ -457,6 +458,10 @@ static void deliver_fn (
 		return;
 	}
 
+	objdb->object_key_increment (service_stats_handle[service][fn_id],
+								 "rx", strlen("rx"),
+								 &key_incr_dummy);
+
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
 		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
@@ -480,6 +485,20 @@ int main_mcast (
         unsigned int iov_len,
         unsigned int guarantee)
 {
+	const coroipc_request_header_t *req = iovec->iov_base;
+	int service;
+	int fn_id;
+	unsigned int key_incr_dummy;
+
+	service = req->id >> 16;
+	fn_id = req->id & 0xffff;
+
+	if (ais_service[service]) {
+		objdb->object_key_increment (service_stats_handle[service][fn_id],
+									 "tx", strlen("tx"),
+									 &key_incr_dummy);
+	}
+
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 

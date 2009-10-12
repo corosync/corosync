@@ -49,11 +49,11 @@
 #include "timer.h"
 #include "sync.h"
 #include "quorum.h"
-#include "service.h"
 #include "schedwrk.h"
 #include "main.h"
-#include <corosync/engine/coroapi.h>
 #include "apidef.h"
+#include <corosync/engine/coroapi.h>
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF");
 
