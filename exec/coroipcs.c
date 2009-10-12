@@ -173,6 +173,40 @@ static void ipc_disconnect (struct conn_info *conn_info);
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
 
+static hdb_handle_t dummy_stats_create_connection (
+	const char *name,
+	pid_t pid,
+	int fd)
+{
+	return (0ULL);
+}
+
+static void dummy_stats_destroy_connection (
+	hdb_handle_t handle)
+{
+}
+
+static void dummy_stats_update_value (
+	hdb_handle_t handle,
+	const char *name,
+	const void *value,
+	size_t value_size)
+{
+}
+
+static void dummy_stats_increment_value (
+	hdb_handle_t handle,
+	const char *name)
+{
+}
+
+static struct coroipcs_init_stats_state dummy_init_stats_state = {
+	.stats_create_connection	= dummy_stats_create_connection,
+	.stats_destroy_connection	= dummy_stats_destroy_connection,
+	.stats_update_value			= dummy_stats_update_value,
+	.stats_increment_value		= dummy_stats_increment_value
+};
+
 static void sem_post_exit_thread (struct conn_info *conn_info)
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
@@ -892,6 +926,8 @@ extern void coroipcs_ipc_init (
 
 	api = init_state;
 
+	stats_api = &dummy_init_stats_state;
+
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
@@ -1377,7 +1413,7 @@ retry_accept:
 	return (0);
 }
 
-static char * pid_to_name (pid_t pid, char* out_name, size_t name_len)
+static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 {
 	char *name;
 	char *rest;
@@ -1422,7 +1458,7 @@ static char * pid_to_name (pid_t pid, char* out_name, size_t name_len)
 }
 
 static void coroipcs_init_conn_stats (
-       struct conn_info * conn)
+	struct conn_info *conn)
 {
 	char conn_name[42];
 	char proc_name[32];
