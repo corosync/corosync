@@ -1063,6 +1063,7 @@ int coroipcs_response_send (void *conn, const void *msg, size_t mlen)
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
+		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
@@ -1102,12 +1103,14 @@ int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned in
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return (0);
 	}
 #endif
+	stats_api->stats_increment_value (conn_info->stats_handle, "responses");
 	return (0);
 }
 
@@ -1179,6 +1182,7 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
+		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
