@@ -74,8 +74,20 @@ struct coroipcs_init_state {
 	coroipcs_handler_fn_lvalue (*handler_fn_get)(unsigned int service, unsigned int id);
 };
 
+struct coroipcs_init_stats_state {
+	hdb_handle_t (*stats_create_connection) (const char* name,
+			const pid_t pid, const int fd);
+	void (*stats_destroy_connection) (hdb_handle_t handle);
+	void (*stats_update_value) (hdb_handle_t handle,
+			const char* name, const void* value, const size_t value_len);
+	void (*stats_increment_value) (hdb_handle_t handle, const char* name);
+};
+
 extern void coroipcs_ipc_init (
 	struct coroipcs_init_state *init_state);
+
+extern void coroipcs_ipc_stats_init (
+        struct coroipcs_init_stats_state *init_stats_state);
 
 extern void *coroipcs_private_data_get (void *conn);
 

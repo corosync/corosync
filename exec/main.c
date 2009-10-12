@@ -129,6 +129,8 @@ static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
+static hdb_handle_t object_connection_handle;
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -669,6 +671,100 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
+
+static hdb_handle_t corosync_stats_create_connection (const char* name,
+                       const pid_t pid, const int fd)
+{
+	uint32_t zero_32 = 0;
+	uint64_t zero_64 = 0;
+	unsigned int key_incr_dummy;
+	hdb_handle_t object_handle;
+
+	objdb->object_key_increment (object_connection_handle,
+								 "active", strlen("active"),
+								 &key_incr_dummy);
+
+	objdb->object_create (object_connection_handle,
+						  &object_handle,
+						  name,
+						  strlen (name));
+
+	objdb->object_key_create_typed (object_handle,
+									"service_id",
+									&zero_32, sizeof (zero_32),
+									OBJDB_VALUETYPE_UINT32);
+
+	objdb->object_key_create_typed (object_handle,
+									"client_pid",
+									&pid, sizeof (pid),
+									OBJDB_VALUETYPE_INT32);
+
+	objdb->object_key_create_typed (object_handle,
+									"responses",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+									"dispatched",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+									"requests",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_INT64);
+
+	objdb->object_key_create_typed (object_handle,
+									"sem_retry_count",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+									"send_retry_count",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+									"recv_retry_count",
+									&zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+
+	return object_handle;
+}
+
+static void corosync_stats_destroy_connection (hdb_handle_t handle)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_destroy (handle);
+
+	objdb->object_key_increment (object_connection_handle,
+								 "closed", strlen("closed"),
+								 &key_incr_dummy);
+	objdb->object_key_decrement (object_connection_handle,
+								 "active", strlen("active"),
+								 &key_incr_dummy);
+}
+
+static void corosync_stats_update_value (hdb_handle_t handle,
+										 const char *name, const void *value,
+										 const size_t value_len)
+{
+	objdb->object_key_replace (handle,
+		name, strlen(name),
+		value, value_len);
+}
+
+static void corosync_stats_increment_value (hdb_handle_t handle,
+											const char* name)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_key_increment (handle,
+		name, strlen(name),
+		&key_incr_dummy);
+}
+
 static struct coroipcs_init_state ipc_init_state = {
 	.socket_name			= COROSYNC_SOCKET_NAME,
 	.sched_policy			= SCHED_OTHER,
@@ -690,6 +786,13 @@ static struct coroipcs_init_state ipc_init_state = {
 	.init_fn_get			= corosync_init_fn_get,
 	.exit_fn_get			= corosync_exit_fn_get,
 	.handler_fn_get			= corosync_handler_fn_get
+};
+
+static struct coroipcs_init_stats_state ipc_init_stats_state = {
+	.stats_create_connection		= corosync_stats_create_connection,
+	.stats_destroy_connection		= corosync_stats_destroy_connection,
+	.stats_update_value				= corosync_stats_update_value,
+	.stats_increment_value			= corosync_stats_increment_value
 };
 
 static void corosync_setscheduler (void)
@@ -734,6 +837,35 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+static void corosync_stats_init (void)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_runtime_handle;
+	uint64_t zero_64 = 0;
+
+	objdb->object_find_create (OBJECT_PARENT_HANDLE,
+							   "runtime", strlen ("runtime"),
+							   &object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+								 &object_runtime_handle) != 0) {
+		return;
+	}
+
+	/* Connection objects */
+	objdb->object_create (object_runtime_handle,
+						  &object_connection_handle,
+						  "connections", strlen ("connections"));
+
+	objdb->object_key_create_typed (object_connection_handle,
+									"active", &zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+	objdb->object_key_create_typed (object_connection_handle,
+									"closed", &zero_64, sizeof (zero_64),
+									OBJDB_VALUETYPE_UINT64);
+}
+
+
 static void main_service_ready (void)
 {
 	int res;
@@ -746,6 +878,7 @@ static void main_service_ready (void)
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 	evil_init (api);
+	corosync_stats_init ();
 }
 
 int main (int argc, char **argv)
@@ -765,6 +898,7 @@ int main (int argc, char **argv)
 	int background, setprio;
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
+	hdb_handle_t object_runtime_handle;
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&serialize_spin, 0);
@@ -977,6 +1111,11 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
+	/* create the main runtime object */
+	objdb->object_create (OBJECT_PARENT_HANDLE,
+						  &object_runtime_handle,
+						  "runtime", strlen ("runtime"));
+
 	/*
 	 * Now we are fully initialized.
 	 */
@@ -1062,6 +1201,7 @@ int main (int argc, char **argv)
 	}
 
 	coroipcs_ipc_init (&ipc_init_state);
+	coroipcs_ipc_stats_init (&ipc_init_stats_state);
 
 	/*
 	 * Start main processing loop
