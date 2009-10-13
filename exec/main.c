@@ -1224,6 +1224,7 @@ int main (int argc, char **argv)
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
 	(void)signal (SIGQUIT, sigquit_handler);
+	(void)signal (SIGTERM, sigquit_handler);
 #if MSG_NOSIGNAL != 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif

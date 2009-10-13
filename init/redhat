@@ -27,11 +27,23 @@ start() {
 
 stop() {
     echo -n $"Stopping Corosync Cluster Engine ($prog): "
-    killproc $prog
-    retval=$?
-    [ "$retval" -eq 0 ] && rm -f "$lockfile"
+    # If no signal is specified, -TERM is used but _also_ -KILL 3s later
+    # This is far too aggressive for a cluster resource manager running on top of Corosync
+    killproc $prog -TERM
     echo
-    return $retval
+
+    echo -n $"Waiting for services to unload:"
+    while
+        pidofproc $prog > /dev/null 2>&1
+    do
+        sleep 2
+    done
+
+    success $"$base shutdown"
+    echo
+
+    rm -f "$lockfile"
+    return 0
 }
 
 restart() {
