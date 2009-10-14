@@ -638,11 +638,11 @@ retry_semwait:
 		sop.sem_op = -1;
 		sop.sem_flg = 0;
 retry_semop:
+		res = semop (conn_info->semid, &sop, 1);
 		if (ipc_thread_active (conn_info) == 0) {
 			coroipcs_refcount_dec (conn_info);
 			pthread_exit (0);
 		}
-		res = semop (conn_info->semid, &sop, 1);
 		if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
 			stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 			goto retry_semop;
