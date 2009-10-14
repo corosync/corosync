@@ -1457,7 +1457,7 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 
 	/* copy the name */
 	strncpy (out_name, name, name_len);
-	out_name[name_len] = '\0';
+	out_name[name_len - 1] = '\0';
 	return out_name;
 }
 
