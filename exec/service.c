@@ -82,6 +82,10 @@ static struct default_service default_services[] = {
 	{
 		.name			 = "corosync_pload",
 		.ver			 = 0,
+	},
+	{
+		.name			 = "corosync_quorum",
+		.ver			 = 0,
 	}
 };
 

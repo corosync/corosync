@@ -535,6 +535,9 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	add_votequorum_config_notification(object_handle);
 	corosync_api->object_find_destroy(find_handle);
 
+	/* Start us off with one node */
+	quorum_exec_send_nodeinfo();
+
 	LEAVE();
 	return (0);
 }
@@ -1046,7 +1049,8 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	}
 	node->flags &= ~NODE_FLAGS_BEENDOWN;
 
-	if (new_node || old_votes != node->votes || old_expected != node->expected_votes || old_state != node->state)
+	if (new_node || req_exec_quorum_nodeinfo->first_trans || 
+	    old_votes != node->votes || old_expected != node->expected_votes || old_state != node->state)
 		recalculate_quorum(0, 0);
 	LEAVE();
 }
