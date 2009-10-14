@@ -763,7 +763,8 @@ static int mcast_msg (
 {
 	int res = 0;
 	struct totempg_mcast mcast;
-	struct iovec iovecs[3];
+	unsigned int extra_iovec;
+	struct iovec iovecs[4];
 	struct iovec iovec[64];
 	int i;
 	int dest, src;
@@ -771,6 +772,7 @@ static int mcast_msg (
 	int copy_len = 0;
 	int copy_base = 0;
 	int total_size = 0;
+	int iov2_size = 0;
 
 	pthread_mutex_lock (&mcast_msg_mutex);
 	totemmrp_new_msg_signal ();
@@ -838,16 +840,19 @@ static int mcast_msg (
 			unsigned char *data_ptr;
 
 			copy_len = min(copy_len, max_packet_size - fragment_size);
-			if( copy_len == max_packet_size )
+			if (copy_len == max_packet_size) {
 				data_ptr = (unsigned char *)iovec[i].iov_base + copy_base;
-			else {
+				extra_iovec = 0;
+				iov2_size = max_packet_size;
+			} else {
+				extra_iovec = 1;
 				data_ptr = fragmentation_data;
-				memcpy (&fragmentation_data[fragment_size],
-				(unsigned char *)iovec[i].iov_base + copy_base, copy_len);
+				
+				iovecs[3].iov_base = (((char *)iovec[i].iov_base) + copy_base);
+				iovecs[3].iov_len = copy_len;
+				iov2_size = max_packet_size - copy_len;
 			}
 
-			memcpy (&fragmentation_data[fragment_size],
-				(unsigned char *)iovec[i].iov_base + copy_base, copy_len);
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 
 			/*
@@ -878,9 +883,9 @@ static int mcast_msg (
 			iovecs[1].iov_len = mcast_packed_msg_count *
 				sizeof(unsigned short);
 			iovecs[2].iov_base = (void *)data_ptr;
-			iovecs[2].iov_len = max_packet_size;
+			iovecs[2].iov_len = iov2_size;
 			assert (totemmrp_avail() > 0);
-			res = totemmrp_mcast (iovecs, 3, guarantee);
+			res = totemmrp_mcast (iovecs, 3 + extra_iovec, guarantee);
 			if (res == -1) {
 				goto error_exit;
 			}
