@@ -76,6 +76,9 @@
 #include <corosync/coroipcs.h>
 #include <corosync/coroipc_ipc.h>
 
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
+
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 #include <semaphore.h>
 #else
@@ -91,8 +94,7 @@
 #define MSG_SEND_LOCKED		0
 #define MSG_SEND_UNLOCKED	1
 
-static struct coroipcs_init_state *api;
-static struct coroipcs_init_stats_state *stats_api;
+static struct coroipcs_init_state_v2 *api = NULL;
 
 DECLARE_LIST_INIT (conn_info_list_head);
 
@@ -173,6 +175,21 @@ static void ipc_disconnect (struct conn_info *conn_info);
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		      int locked);
 
+static void _corosync_ipc_init(void);
+
+#define log_printf(level, format, args...) \
+do { \
+	if (api->log_printf) \
+        api->log_printf ( \
+                LOGSYS_ENCODE_RECID(level, \
+                                    api->log_subsys_id, \
+                                    LOGSYS_RECID_LOG), \
+                __FUNCTION__, __FILE__, __LINE__, \
+                (const char *)format, ##args); \
+	else \
+        api->old_log_printf ((const char *)format, ##args); \
+} while (0)
+
 static hdb_handle_t dummy_stats_create_connection (
 	const char *name,
 	pid_t pid,
@@ -200,13 +217,6 @@ static void dummy_stats_increment_value (
 {
 }
 
-static struct coroipcs_init_stats_state dummy_init_stats_state = {
-	.stats_create_connection	= dummy_stats_create_connection,
-	.stats_destroy_connection	= dummy_stats_destroy_connection,
-	.stats_update_value			= dummy_stats_update_value,
-	.stats_increment_value		= dummy_stats_increment_value
-};
-
 static void sem_post_exit_thread (struct conn_info *conn_info)
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
@@ -218,7 +228,7 @@ static void sem_post_exit_thread (struct conn_info *conn_info)
 retry_semop:
 	res = sem_post (&conn_info->control_buffer->sem0);
 	if (res == -1 && errno == EINTR) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	}
 #else
@@ -229,7 +239,7 @@ retry_semop:
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	}
 #endif
@@ -477,7 +487,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
-		stats_api->stats_destroy_connection (conn_info->stats_handle);
+		api->stats_destroy_connection (conn_info->stats_handle);
 		res = api->exit_fn_get (conn_info->service) (conn_info);
 		if (res == -1) {
 			api->serialize_unlock ();
@@ -629,7 +639,7 @@ retry_semwait:
 			pthread_exit (0);
 		}
 		if ((res == -1) && (errno == EINTR)) {
-			stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+			api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 			goto retry_semwait;
 		}
 #else
@@ -644,7 +654,7 @@ retry_semop:
 			pthread_exit (0);
 		}
 		if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-			stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+			api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 			goto retry_semop;
 		} else
 		if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
@@ -682,14 +692,14 @@ retry_semop:
 		} else 
 		if (send_ok) {
 			api->serialize_lock();
-			stats_api->stats_increment_value (conn_info->stats_handle, "requests");
+			api->stats_increment_value (conn_info->stats_handle, "requests");
 			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);
 			api->serialize_unlock();
 		} else {
 			/*
 			 * Overload, tell library to retry
 			 */
-			stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+			api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 			coroipc_response_header.size = sizeof (coroipc_response_header_t);
 			coroipc_response_header.id = 0;
 			coroipc_response_header.error = CS_ERR_TRY_AGAIN;
@@ -717,11 +727,11 @@ req_setup_send (
 retry_send:
 	res = send (conn_info->fd, &res_setup, sizeof (mar_res_setup_t), MSG_WAITALL);
 	if (res == -1 && errno == EINTR) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "send_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "send_retry_count");
 		goto retry_send;
 	} else
 	if (res == -1 && errno == EAGAIN) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "send_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "send_retry_count");
 		goto retry_send;
 	}
 	return (0);
@@ -766,7 +776,7 @@ req_setup_recv (
 retry_recv:
 	res = recvmsg (conn_info->fd, &msg_recv, MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
 		goto retry_recv;
 	} else
 	if (res == -1 && errno != EAGAIN) {
@@ -846,11 +856,11 @@ retry_recv:
 
 #else /* no credentials */
 	authenticated = 1;
- 	api->log_printf ("Platform does not support IPC authentication.  Using no authentication\n");
+ 	log_printf (LOGSYS_LEVEL_ERROR, "Platform does not support IPC authentication.  Using no authentication\n");
 #endif /* no credentials */
 
 	if (authenticated == 0) {
-		api->log_printf ("Invalid IPC credentials.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Invalid IPC credentials.\n");
 		ipc_disconnect (conn_info);
 		return (-1);
  	}
@@ -917,17 +927,59 @@ static int conn_info_create (int fd)
 /*
  * Exported functions
  */
+extern void coroipcs_ipc_init_v2 (
+	struct coroipcs_init_state_v2 *init_state_v2)
+{
+	api = init_state_v2;
+	api->old_log_printf	= NULL;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "you are using ipc api v2\n");
+	_corosync_ipc_init ();
+}
+
 extern void coroipcs_ipc_init (
         struct coroipcs_init_state *init_state)
+{
+	api = calloc (sizeof(struct coroipcs_init_state_v2), 1);
+	/* v2 api */
+	api->stats_create_connection	= dummy_stats_create_connection;
+	api->stats_destroy_connection	= dummy_stats_destroy_connection;
+	api->stats_update_value			= dummy_stats_update_value;
+	api->stats_increment_value		= dummy_stats_increment_value;
+	api->log_printf					= NULL;
+
+	/* v1 api */
+	api->socket_name				= init_state->socket_name;
+	api->sched_policy				= init_state->sched_policy;
+	api->sched_param				= init_state->sched_param;
+	api->malloc						= init_state->malloc;
+	api->free						= init_state->free;
+	api->old_log_printf				= init_state->log_printf;
+	api->fatal_error				= init_state->fatal_error;
+	api->security_valid				= init_state->security_valid;
+	api->service_available			= init_state->service_available;
+	api->private_data_size_get		= init_state->private_data_size_get;
+	api->serialize_lock				= init_state->serialize_lock;
+	api->serialize_unlock			= init_state->serialize_unlock;
+	api->sending_allowed			= init_state->sending_allowed;
+	api->sending_allowed_release	= init_state->sending_allowed_release;
+	api->poll_accept_add			= init_state->poll_accept_add;
+	api->poll_dispatch_add			= init_state->poll_dispatch_add;
+	api->poll_dispatch_modify		= init_state->poll_dispatch_modify;
+	api->init_fn_get				= init_state->init_fn_get;
+	api->exit_fn_get				= init_state->exit_fn_get;
+	api->handler_fn_get				= init_state->handler_fn_get;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "you are using ipc api v1\n");
+
+	_corosync_ipc_init ();
+}
+
+static void _corosync_ipc_init(void)
 {
 	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
-
-	api = init_state;
-
-	stats_api = &dummy_init_stats_state;
-
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
@@ -937,13 +989,13 @@ extern void coroipcs_ipc_init (
 	server_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
 #endif
 	if (server_fd == -1) {
-		api->log_printf ("Cannot create client connections socket.\n");
+		log_printf (LOGSYS_LEVEL_CRIT, "Cannot create client connections socket.\n");
 		api->fatal_error ("Can't create library listen socket");
 	};
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		api->log_printf ("Could not set non-blocking operation on server socket: %s\n", strerror (errno));
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
 		api->fatal_error ("Could not set non-blocking operation on server socket");
 	}
 
@@ -960,7 +1012,7 @@ extern void coroipcs_ipc_init (
 		struct stat stat_out;
 		res = stat (SOCKETDIR, &stat_out);
 		if (res == -1 || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-			api->log_printf ("Required directory not present %s\n", SOCKETDIR);
+			log_printf (LOGSYS_LEVEL_CRIT, "Required directory not present %s\n", SOCKETDIR);
 			api->fatal_error ("Please create required directory.");
 		}
 		sprintf (un_addr.sun_path, "%s/%s", SOCKETDIR, api->socket_name);
@@ -970,7 +1022,7 @@ extern void coroipcs_ipc_init (
 
 	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		api->log_printf ("Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
 
@@ -987,12 +1039,6 @@ extern void coroipcs_ipc_init (
 	 * Setup connection dispatch routine
 	 */
 	api->poll_accept_add (server_fd);
-}
-
-extern void coroipcs_ipc_stats_init (
-	struct coroipcs_init_stats_state *init_stats_state)
-{
-	stats_api = init_stats_state;
 }
 
 void coroipcs_ipc_exit (void)
@@ -1063,14 +1109,14 @@ int coroipcs_response_send (void *conn, const void *msg, size_t mlen)
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return (0);
 	}
 #endif
-	stats_api->stats_increment_value (conn_info->stats_handle, "responses");
+	api->stats_increment_value (conn_info->stats_handle, "responses");
 	return (0);
 }
 
@@ -1103,14 +1149,14 @@ int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned in
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return (0);
 	}
 #endif
-	stats_api->stats_increment_value (conn_info->stats_handle, "responses");
+	api->stats_increment_value (conn_info->stats_handle, "responses");
 	return (0);
 }
 
@@ -1182,14 +1228,14 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
 		return;
 	}
 #endif
-	stats_api->stats_increment_value (conn_info->stats_handle, "dispatched");
+	api->stats_increment_value (conn_info->stats_handle, "dispatched");
 }
 
 static void outq_flush (struct conn_info *conn_info) {
@@ -1242,11 +1288,11 @@ retry_recv:
 		sizeof (mar_req_priv_change),
 		MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
-	stats_api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
+	api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
 		goto retry_recv;
 	}
 	if (res == -1 && errno == EAGAIN) {
-		stats_api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
 		goto retry_recv;
 	}
 	if (res == -1 && errno != EAGAIN) {
@@ -1387,13 +1433,16 @@ retry_accept:
 	}
 
 	if (new_fd == -1) {
-		api->log_printf ("Could not accept Library connection: %s\n", strerror (errno));
+		log_printf (LOGSYS_LEVEL_ERROR,
+					"Could not accept Library connection: %s\n", strerror (errno));
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		api->log_printf ("Could not set non-blocking operation on library connection: %s\n", strerror (errno));
+		log_printf (LOGSYS_LEVEL_ERROR,
+					"Could not set non-blocking operation on library connection: %s\n",
+					strerror (errno));
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
@@ -1475,8 +1524,8 @@ static void coroipcs_init_conn_stats (
 	} else
 		snprintf (conn_name, sizeof(conn_name), "%d", conn->fd);
 
-	conn->stats_handle = stats_api->stats_create_connection (conn_name, conn->client_pid, conn->fd);
-	stats_api->stats_update_value (conn->stats_handle, "service_id",
+	conn->stats_handle = api->stats_create_connection (conn_name, conn->client_pid, conn->fd);
+	api->stats_update_value (conn->stats_handle, "service_id",
 								   &conn->service, sizeof(conn->service));
 }
 
