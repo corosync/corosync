@@ -149,6 +149,27 @@ void corosync_state_dump (void)
 	}
 }
 
+static void unlink_all_completed (void)
+{
+	poll_stop (0);
+	totempg_finalize ();
+	coroipcs_ipc_exit ();
+
+	corosync_exit_error (AIS_DONE_EXIT);
+}
+
+void corosync_shutdown_request (void)
+{
+	static int called = 0;
+	if (called) {
+		return;
+	}
+	if (called == 0) {
+		called = 1;
+	}
+	corosync_service_unlink_all (api, unlink_all_completed);
+}
+
 static void sigusr2_handler (int num)
 {
 	/*
@@ -158,20 +179,9 @@ static void sigusr2_handler (int num)
 	corosync_state_dump ();
 }
 
-/*
- * TODO this function needs some love
- */
-void corosync_shutdown_request (void)
+static void sigterm_handler (int num)
 {
-	if (api) {
-		corosync_service_unlink_all (api);
-	}
-
-	poll_stop (0);
-	totempg_finalize ();
-	coroipcs_ipc_exit ();
-
-	corosync_exit_error (AIS_DONE_EXIT);
+	corosync_shutdown_request ();
 }
 
 static void sigquit_handler (int num)
@@ -1207,7 +1217,7 @@ int main (int argc, char **argv)
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
 	(void)signal (SIGQUIT, sigquit_handler);
-	(void)signal (SIGTERM, sigquit_handler);
+	(void)signal (SIGTERM, sigterm_handler);
 #if MSG_NOSIGNAL != 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
