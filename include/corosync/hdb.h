@@ -36,6 +36,10 @@
 #ifndef HDB_H_DEFINED
 #define HDB_H_DEFINED
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
