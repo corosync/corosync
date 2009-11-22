@@ -527,8 +527,12 @@ static void log_printf_to_logs (
 			syslog_output_buffer_idx += syslog_len;
 			format_buffer_idx += 1;
 		}
-		if ((normal_output_buffer_idx == sizeof (normal_output_buffer)) ||
-		    (syslog_output_buffer_idx == sizeof (syslog_output_buffer))) {
+		if ((normal_output_buffer_idx >= sizeof (normal_output_buffer) - 2) ||
+		    (syslog_output_buffer_idx >= sizeof (syslog_output_buffer) - 1)) {
+			/* Note: we make allowance for '\0' at the end of
+			 * both of these arrays and normal_output_buffer also
+			 * needs a '\n'.
+			 */
 			break;
 		}
 	}
