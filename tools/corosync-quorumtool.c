@@ -329,23 +329,24 @@ static void show_status(void)
 	return;
 }
 
-static void show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
+static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 {
-	quorum_handle_t q_handle;
-	votequorum_handle_t v_handle;
-	corosync_cfg_handle_t c_handle;
+	quorum_handle_t q_handle = 0;
+	votequorum_handle_t v_handle = 0;
+	corosync_cfg_handle_t c_handle = 0;
 	corosync_cfg_callbacks_t c_callbacks;
 	int i;
 	int using_vq = 0;
 	quorum_callbacks_t q_callbacks;
 	votequorum_callbacks_t v_callbacks;
 	int err;
+	int result = EXIT_FAILURE;
 
 	q_callbacks.quorum_notify_fn = quorum_notification_fn;
 	err=quorum_initialize(&q_handle, &q_callbacks);
 	if (err != CS_OK) {
 		fprintf(stderr, "Cannot connect to quorum service, is it loaded?\n");
-		return;
+		return result;
 	}
 
 	v_callbacks.votequorum_notify_fn = NULL;
@@ -355,6 +356,7 @@ static void show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 	if (using_vq) {
 		if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
 			fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
+			v_handle = 0;
 			goto err_exit;
 		}
 	}
@@ -362,7 +364,7 @@ static void show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 	err = quorum_trackstart(q_handle, CS_TRACK_CURRENT);
 	if (err != CS_OK) {
 		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
-		return;
+		goto err_exit;
 	}
 
 	g_called = 0;
@@ -370,10 +372,12 @@ static void show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 
 	quorum_finalize(q_handle);
+	q_handle = 0;
 
 	err = corosync_cfg_initialize(&c_handle, &c_callbacks);
 	if (err != CS_OK) {
 		fprintf(stderr, "Cannot initialise CFG service\n");
+		c_handle = 0;
 		goto err_exit;
 	}
 
@@ -397,10 +401,18 @@ static void show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		}
 	}
 
-	if (using_vq)
-		votequorum_finalize(v_handle);
+	result = EXIT_SUCCESS;
 err_exit:
-	corosync_cfg_finalize(c_handle);
+	if (q_handle != 0) {
+		quorum_finalize (q_handle);
+	}
+	if (using_vq && v_handle != 0) {
+		votequorum_finalize (v_handle);
+	}
+	if (c_handle != 0) {
+		corosync_cfg_finalize (c_handle);
+	}
+	return result;
 }
 
 int main (int argc, char *argv[]) {
@@ -480,7 +492,7 @@ int main (int argc, char *argv[]) {
 		show_usage(argv[0]);
 		break;
 	case CMD_SHOWNODES:
-		show_nodes(nodeid_format, address_format);
+		ret = show_nodes(nodeid_format, address_format);
 		break;
 	case CMD_SHOWSTATUS:
 		show_status();
