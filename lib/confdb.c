@@ -297,8 +297,8 @@ cs_error_t confdb_dispatch (
 	}
 
 	/*
-	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
-	 * wait indefinately for SA_DISPATCH_BLOCKING
+	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == CONFDB_DISPATCH_ALL) {
 		timeout = 0;
@@ -394,15 +394,9 @@ cs_error_t confdb_dispatch (
 
 		/*
 		 * Determine if more messages should be processed
-		 * */
-		switch (dispatch_types) {
-		case CONFDB_DISPATCH_ONE:
+		 */
+		if (dispatch_types == CS_DISPATCH_ONE) {
 			cont = 0;
-			break;
-		case CONFDB_DISPATCH_ALL:
-			break;
-		case CONFDB_DISPATCH_BLOCKING:
-			break;
 		}
 	} while (cont);
 

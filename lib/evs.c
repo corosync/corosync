@@ -231,7 +231,6 @@ evs_error_t evs_dispatch (
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
 	coroipc_response_header_t *dispatch_data;
-	int ignore_dispatch = 0;
 
 	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
@@ -239,8 +238,8 @@ evs_error_t evs_dispatch (
 	}
 
 	/*
-	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
-	 * wait indefinately for SA_DISPATCH_BLOCKING
+	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == EVS_DISPATCH_ALL) {
 		timeout = 0;
@@ -318,22 +317,9 @@ evs_error_t evs_dispatch (
 
 		/*
 		 * Determine if more messages should be processed
-		 * */
-		switch (dispatch_types) {
-		case EVS_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
-			break;
-		case EVS_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
-			break;
-		case EVS_DISPATCH_BLOCKING:
-			break;
+		 */
+		if (dispatch_types == CS_DISPATCH_ONE) {
+			cont = 0;
 		}
 	} while (cont);
 
