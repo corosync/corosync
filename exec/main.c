@@ -994,6 +994,16 @@ static hdb_handle_t corosync_stats_create_connection (const char* name,
 									&zero_64, sizeof (zero_64),
 									OBJDB_VALUETYPE_UINT64);
 
+	objdb->object_key_create_typed (object_handle,
+		"flow_control",
+		&zero_32, sizeof (zero_32),
+		OBJDB_VALUETYPE_UINT32);
+
+	objdb->object_key_create_typed (object_handle,
+		"flow_control_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
 	return object_handle;
 }
 

@@ -849,7 +849,7 @@ coroipcc_dispatch_get (
 		goto error_put;
 	}
 	ipc_instance->flow_control_state = 0;
-	if (buf == 1 || buf == 2) {
+	if (buf == MESSAGE_RES_OUTQ_NOT_EMPTY || buf == MESSAGE_RES_ENABLE_FLOWCONTROL) {
 		ipc_instance->flow_control_state = 1;
 	}
 	/*
@@ -864,11 +864,11 @@ coroipcc_dispatch_get (
 	 * This is just a notification of flow control starting at the addition
 	 * of a new pending message, not a message to dispatch
 	 */
-	if (buf == 2) {
+	if (buf == MESSAGE_RES_ENABLE_FLOWCONTROL) {
 		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
-	if (buf == 3) {
+	if (buf == MESSAGE_RES_OUTQ_FLUSH_NR) {
 		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
