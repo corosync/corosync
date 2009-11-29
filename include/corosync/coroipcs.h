@@ -115,6 +115,7 @@ struct coroipcs_init_state_v2 {
 		const char *format,
 		...) __attribute__((format(printf, 5, 6)));
 	int log_subsys_id;
+	void (*stats_decrement_value) (hdb_handle_t handle, const char* name);
 };
 
 extern void coroipcs_ipc_init (
