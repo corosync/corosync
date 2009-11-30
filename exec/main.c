@@ -1247,13 +1247,6 @@ int main (int argc, char **argv)
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
 
-	corosync_timer_init (
-		serialize_lock,
-		serialize_unlock,
-		sched_priority);
-
-	corosync_poll_handle = poll_create ();
-
 	/*
 	 * Load the object database interface
 	 */
@@ -1412,6 +1405,13 @@ int main (int argc, char **argv)
 		corosync_tty_detach ();
 	}
 	logsys_fork_completed();
+
+	corosync_timer_init (
+		serialize_lock,
+		serialize_unlock,
+		sched_priority);
+
+	corosync_poll_handle = poll_create ();
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
