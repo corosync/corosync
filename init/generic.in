@@ -1,0 +1,146 @@
+#!/bin/bash
+
+# Authors:
+#  Andrew Beekhof <abeekhof@redhat.com>
+#  Fabio M. Di Nitto <fdinitto@redhat.com>
+#
+# License: Revised BSD
+
+# chkconfig: - 20 20
+# description: Corosync Cluster Engine
+# processname: corosync
+#
+### BEGIN INIT INFO
+# Provides:		corosync
+# Required-Start:	$network
+# Should-Start:		$syslog
+# Required-Stop:	$network
+# Default-Start:
+# Default-Stop:
+# Short-Description:	Starts and stops Corosync Cluster Engine.
+# Description:		Starts and stops Corosync Cluster Engine.
+### END INIT INFO
+
+desc="Corosync Cluster Engine"
+prog="corosync"
+
+# set secure PATH
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
+
+success()
+{
+	echo -ne "[  OK  ]\r"
+}
+
+failure()
+{
+	echo -ne "[FAILED]\r"
+}
+
+status()
+{
+	pid=$(pidof $1 2>/dev/null)
+	rtrn=$?
+	if [ $rtrn -ne 0 ]; then
+		echo "$1 is stopped"
+	else
+		echo "$1 (pid $pid) is running..."
+	fi
+	return $rtrn
+}
+
+# rpm based distros
+if [ -d @SYSCONFDIR@/sysconfig ]; then
+	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
+	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
+fi
+
+# deb based distros
+if [ -d @SYSCONFDIR@/default ]; then
+	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
+fi
+
+start()
+{
+	echo -n "Starting $desc ($prog): "
+
+	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
+	# to avoid to clean it up on every boot.
+	# they also assume that init scripts will create
+	# required subdirectories for proper operations
+	mkdir -p @LOCALSTATEDIR@/run
+
+	if status $prog > /dev/null 2>&1; then
+		success
+	else
+		$prog > /dev/null 2>&1
+
+		# give it time to fail
+		sleep 2
+		if status $prog > /dev/null 2>&1; then
+			touch $LOCK_FILE
+			pidof $prog > @LOCALSTATEDIR@/run/$prog.pid
+			success
+		else
+			failure
+			rtrn=1
+		fi
+	fi
+	echo
+}
+
+stop()
+{
+	echo -n "Signaling $desc ($prog) to terminate: "
+	killall -TERM $prog > /dev/null 2>&1
+	success
+	echo
+
+	echo -n "Waiting for $prog services to unload:"
+	while status $prog > /dev/null 2>&1; do
+		sleep 1
+		echo -n "."
+	done
+
+	rm -f $LOCK_FILE
+	rm -f @LOCALSTATEDIR@/run/$prog.pid
+	success
+	echo
+}
+
+restart()
+{
+	stop
+	start
+}
+
+rtrn=0
+
+case "$1" in
+start)
+	start
+;;
+restart|reload|force-reload)
+	restart
+;;
+condrestart|try-restart)
+	if status $prog > /dev/null 2>&1; then
+		restart
+	fi
+;;
+status)
+	status $prog
+	rtrn=$?
+;;
+stop)
+	stop
+;;
+*)
+	echo "usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+	rtrn=2
+;;
+esac
+
+exit $rtrn

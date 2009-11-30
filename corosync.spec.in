@@ -40,7 +40,8 @@ export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
 %{configure} \
 	--enable-nss \
-	--enable-rdma
+	--enable-rdma \
+	--with-initddir=%{_initddir}
 
 %build
 make %{_smp_mflags}
@@ -49,8 +50,6 @@ make %{_smp_mflags}
 rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot}
-install -d %{buildroot}%{_initddir}
-install -m 755 init/redhat %{buildroot}%{_initddir}/corosync
 
 ## tree fixup
 # drop static libs
