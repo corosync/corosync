@@ -263,6 +263,14 @@ case "$host_os" in
 		OS_DYFLAGS="-export-dynamic"
 		DARWIN_OPTS=""
 		OS_LDL=""
+		case "$host_os" in
+			*freebsd[[234567]]*)
+			;;
+			*freebsd*)
+				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
+					   [Compiling for FreeBSD >= 8 platform])
+			;;
+		esac
 	;;
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
