@@ -946,31 +946,31 @@ extern void coroipcs_ipc_init (
 	/* v2 api */
 	api->stats_create_connection	= dummy_stats_create_connection;
 	api->stats_destroy_connection	= dummy_stats_destroy_connection;
-	api->stats_update_value			= dummy_stats_update_value;
-	api->stats_increment_value		= dummy_stats_increment_value;
-	api->log_printf					= NULL;
+	api->stats_update_value		= dummy_stats_update_value;
+	api->stats_increment_value	= dummy_stats_increment_value;
+	api->log_printf			= NULL;
 
 	/* v1 api */
-	api->socket_name				= init_state->socket_name;
-	api->sched_policy				= init_state->sched_policy;
-	api->sched_param				= init_state->sched_param;
-	api->malloc						= init_state->malloc;
-	api->free						= init_state->free;
-	api->old_log_printf				= init_state->log_printf;
-	api->fatal_error				= init_state->fatal_error;
-	api->security_valid				= init_state->security_valid;
-	api->service_available			= init_state->service_available;
-	api->private_data_size_get		= init_state->private_data_size_get;
-	api->serialize_lock				= init_state->serialize_lock;
-	api->serialize_unlock			= init_state->serialize_unlock;
-	api->sending_allowed			= init_state->sending_allowed;
+	api->socket_name		= init_state->socket_name;
+	api->sched_policy		= init_state->sched_policy;
+	api->sched_param		= init_state->sched_param;
+	api->malloc			= init_state->malloc;
+	api->free			= init_state->free;
+	api->old_log_printf		= init_state->log_printf;
+	api->fatal_error		= init_state->fatal_error;
+	api->security_valid		= init_state->security_valid;
+	api->service_available		= init_state->service_available;
+	api->private_data_size_get	= init_state->private_data_size_get;
+	api->serialize_lock		= init_state->serialize_lock;
+	api->serialize_unlock		= init_state->serialize_unlock;
+	api->sending_allowed		= init_state->sending_allowed;
 	api->sending_allowed_release	= init_state->sending_allowed_release;
-	api->poll_accept_add			= init_state->poll_accept_add;
-	api->poll_dispatch_add			= init_state->poll_dispatch_add;
-	api->poll_dispatch_modify		= init_state->poll_dispatch_modify;
-	api->init_fn_get				= init_state->init_fn_get;
-	api->exit_fn_get				= init_state->exit_fn_get;
-	api->handler_fn_get				= init_state->handler_fn_get;
+	api->poll_accept_add		= init_state->poll_accept_add;
+	api->poll_dispatch_add		= init_state->poll_dispatch_add;
+	api->poll_dispatch_modify	= init_state->poll_dispatch_modify;
+	api->init_fn_get		= init_state->init_fn_get;
+	api->exit_fn_get		= init_state->exit_fn_get;
+	api->handler_fn_get		= init_state->handler_fn_get;
 
 	log_printf (LOGSYS_LEVEL_DEBUG, "you are using ipc api v1\n");
 
@@ -1321,7 +1321,7 @@ retry_recv:
 		sizeof (mar_req_priv_change),
 		MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
-	api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
+		api->stats_increment_value (conn_info->stats_handle, "recv_retry_count");
 		goto retry_recv;
 	}
 	if (res == -1 && errno == EAGAIN) {
@@ -1468,15 +1468,15 @@ retry_accept:
 
 	if (new_fd == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR,
-					"Could not accept Library connection: %s\n", strerror (errno));
+			"Could not accept Library connection: %s\n", strerror (errno));
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR,
-					"Could not set non-blocking operation on library connection: %s\n",
-					strerror (errno));
+			"Could not set non-blocking operation on library connection: %s\n",
+			strerror (errno));
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
@@ -1560,7 +1560,7 @@ static void coroipcs_init_conn_stats (
 
 	conn->stats_handle = api->stats_create_connection (conn_name, conn->client_pid, conn->fd);
 	api->stats_update_value (conn->stats_handle, "service_id",
-								   &conn->service, sizeof(conn->service));
+		&conn->service, sizeof(conn->service));
 }
 
 int coroipcs_handler_dispatch (
@@ -1756,3 +1756,4 @@ int coroipcs_handler_dispatch (
 
 	return (0);
 }
+
