@@ -635,6 +635,7 @@ static int object_key_create_typed(
 
 	object_key_changed_notification(object_handle, key_name, key_len,
 					value, value_len, OBJECT_KEY_CREATED);
+	hdb_handle_put (&object_instance_database, object_handle);
 	objdb_rdunlock();
 	return (0);
 
@@ -696,6 +697,7 @@ static int _clear_object(struct object_instance *instance)
 		list_del(&object_key->list);
 		free(object_key->key_name);
 		free(object_key->value);
+		free(object_key);
 	}
 
 	for (list = instance->child_head.next;
@@ -742,7 +744,8 @@ static int object_destroy (
 
 	list_del(&instance->child_list);
 	free(instance->object_name);
-	free(instance);
+	hdb_handle_put (&object_instance_database, object_handle);
+	hdb_handle_destroy (&object_instance_database, object_handle);
 
 	objdb_rdunlock();
 	return (res);
