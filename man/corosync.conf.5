@@ -325,9 +325,11 @@ The default is 0 milliseconds.
 .TP
 consensus
 This timeout specifies in milliseconds how long to wait for consensus to be
-achieved before starting a new round of membership configuration.
+achieved before starting a new round of membership configuration.  The minimum
+value for consensus must be 1.2 * token.  This value will be automatically
+calculated at 1.2 * token if the user doesn't specify a consensus value.
 
-The default is 800 milliseconds.
+The default is 1200 milliseconds.
 
 .TP
 merge
