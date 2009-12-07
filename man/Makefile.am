@@ -99,8 +99,16 @@ dist_man_MANS = \
 	votequorum_qdisk_register.3 \
 	votequorum_qdisk_unregister.3 \
 	votequorum_setexpected.3 \
-	votequorum_setvotes.3
-
+	votequorum_setvotes.3 \
+	sam_finalize.3 \
+	sam_hc_callback_register.3 \
+	sam_hc_send.3 \
+	sam_initialize.3 \
+	sam_overview.8 \
+	sam_register.3 \
+	sam_start.3 \
+	sam_stop.3
+	
 if BUILD_HTML_DOCS
 
 HTML_DOCS = $(dist_man_MANS:%=%.html)

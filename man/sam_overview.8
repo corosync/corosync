@@ -1,0 +1,126 @@
+.\"/*
+.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" * Author: Steven Dake (sdake@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "SAM_OVERVIEW" 8 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+sam_overview \- Overview of the Simple Availability Manager
+
+.SH OVERVIEW
+.P
+The SAM library provide a tool to check the health of an application.
+The main purpose of SAM is to restart a local process when it fails to respond
+to a healthcheck request in a configured time interval.
+
+.P
+During \fBsam_initialize(3)\fR, a duplicate copy of the process is created using
+the \fBfork(3)\fR system call.  This duplicate process copy contains the logic
+for executing the SAM server.  The SAM server is responsible for requesting
+healthchecks from the active process, and controlling the lifecycle of the
+active process when it fails.  If the active process fails to respond to the
+healthcheck request sent by the SAM server, it will be sent a SIGTERM signal
+to request shutdown of the application.  After a configured time interval, the
+process will be forcibly killed by being sent a SIGKILL signal.  Once the
+active process terminates, the SAM server will create a new active process.
+
+.P
+The Simple Availability Manager is meant to be used in conjunction with the 
+cpg service.  Used together, it is possible to restart a cpg process that fails
+healthchecking during operation.
+
+.P
+The main features of SAM include:
+
+.RS
+.IP \(bu 3
+A configurable recovery policy.
+.IP \(bu 3
+A configurable time interval for health check operations.
+.IP \(bu 3
+A notification via signal before recovery action is taken.
+.IP \(bu 3
+A mechanism to indicate to the application the number of times an active
+process has been created by the SAM server.
+.IP \(bu 3
+Both application driven health checking and event driven health checking.
+.RE
+
+.SH Initializing SAM
+.P
+The SAM library is initialized by \fBsam_initialize(3)\fR.
+\fBsam_initalize(3)\fR may only be called once per process.  Calling it more 
+then once has undefined results and is not recommended or tested.
+
+.SH Setting warning callback
+.P
+A \fISIGTERM\fR signal is sent to the application when a recovery action is
+planned.  The application can use the \fBsignal(3)\fR system call to monitor
+for this signal.
+
+.P
+There are no special constraints on what SAM apis may be called in a warning
+callback.  After \fItime_interval\fR expires, a SIGKILL signal is sent to the
+active process to force its termination.
+
+.SH Registering the active process
+.P
+The active process is registered with SAM by calling \fBsam_register(3)\fR.
+This function should only be called one time in a process.  After a recovery
+action is taken, the new active process will begin execution at the next line 
+of code in a user process after \fBsam_register(3)\fR.
+
+.SH Enabling event driven healthchecking
+.P
+Two types of healthchecking are available to the user.  The first model is one
+where the user application healthchecks during its normal operation.  It is
+never requested to healtcheck, and if the active process doesn't respond within
+the time interval, the process will be restarted.
+
+.P
+A more useful mechanism for healthchecking is event driven healthchecking.
+Because this model is directed by the SAM server, It isn't necessary to guess
+or add timers to the active process to signal a healthcheck operation is
+successful.  To use event driven healthchecking,
+the \fBsam_hc_callback_register(3)\fR function should be executed.
+
+.SH BUGS
+.SH "SEE ALSO"
+.BR sam_initialize (3),
+.BR sam_finalize (3),
+.BR sam_start (3),
+.BR sam_stop (3),
+.BR sam_register (3),
+.BR sam_hc_send (3),
+.BR sam_hc_callback_register (3)

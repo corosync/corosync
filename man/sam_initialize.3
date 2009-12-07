@@ -1,0 +1,105 @@
+.\"/*
+.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "SAM_INITIALIZE" 3 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+sam_initialize \- Initialize health checking
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/sam.h>\fR
+
+.P
+\fBcs_error_t sam_initialize (int\fR \fItime_interval\fR\fB, sam_recovery_policy_t \fIrecovery_policy\fR);\fR
+
+.SH DESCRIPTION
+.P
+The \fBsam_initialize\fR function is used to initialize health checking of a process.
+
+.P
+Application can have only one instance of SAM. This function must be called
+before any other of SAM functions.  It is recommended to initialize before the
+process begins any process initialization.
+
+.P
+The \fItime_interval\fR parameter is a timeout in milliseconds before taking
+recovery action after having not received a healthcheck.
+
+If \fItime_interval\fR parameter is zero, there is no time limit and no
+healthcheck must be sent by the process.  In this operational mode, a process
+failure will continue to execute the recovery policy.
+
+.P
+The \fIrecovery_policy\fR is defined as type:
+
+.nf
+  typedef enum {
+  	SAM_RECOVERY_POLICY_QUIT = 1,
+  	SAM_RECOVERY_POLICY_RESTART = 2,
+  } sam_recovery_policy_t;
+.fi
+
+.P
+where
+
+.TP
+SAM_RECOVERY_POLICY_QUIT
+on failure, the process will terminate.
+.TP
+SAM_RECOVERY_POLICY_RESTART
+on failure, the process will restart.
+
+.P
+To perform event driven healthchecking, \fBsam_register(3)\fR and
+\fBsam_start(3)\fR functions must called.  Event driven healthchecking causes
+the duplicate standby process running the SAM serve rto periodically request
+healthchecks from the active process.
+
+.SH RETURN VALUE
+.P
+This call return CS_OK value if successful, otherwise and error is returned.
+
+.SH ERRORS
+.TP
+CS_ERR_BAD_HANDLE
+can happened in case of double initialization.
+.TP
+CS_ERR_INVALID_PARAM
+\fIrecovery_policy\fR has invalid value.
+
+.SH "SEE ALSO"
+.BR sam_register (3),
+.BR sam_start (3),
+.BR sam_hc_callback_register (3)

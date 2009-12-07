@@ -1,0 +1,89 @@
+.\"/*
+.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "SAM_HC_CALLBACK_REGISTER" 3 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+sam_hc_callback_register \- Register health check callback
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/sam.h>\fR
+
+.P
+\fBcs_error_t sam_hc_callback_register (sam_hc_callback_t cb);\fR
+
+.SH DESCRIPTION
+.P
+The \fBsam_hc_callback_register\fR function is used to register a user provided
+healthcheck callback.  After calling of this function, the SAM is switched
+from application driven healthchecking to event driven healthchecking.  In this
+mode, \fBsam_hc_send(3)\fR does not need to be executed.
+
+.P
+The parameter \fIcb\fR is callback function of type \fIsam_hc_callback_t\fR
+defined as:
+
+.nf
+  typedef int (*sam_hc_callback_t)(void);
+.fi
+
+.P
+This function will be regulargly called and must return 0 if the process is
+functioning normally, or -1 if the process is executing abnormally.  When -1 is
+returned, the SAM server execute the registered recovery policy.
+
+.P
+A value of NULL can be passed into this function to switch into application
+driven healthchecking.
+\fIcb\fR to NULL.
+
+.SH RETURN VALUE
+.P
+This call return CS_OK value if successful, otherwise and error is returned.
+
+.SH ERRORS
+.TP
+CS_ERR_BAD_HANDLE
+SAM was not initialized and registered or health checking is in running state
+.TP
+CS_ERR_LIBRARY
+internal library call failed. This can occur during fork() or pipe () system
+calls and the errno variable can be read to retrieve more information.
+
+.SH "SEE ALSO"
+.BR sam_start (3),
+.BR sam_stop (3),
+.BR sam_hc_send (3),
+.BR sam_register (3),
