@@ -130,6 +130,7 @@ This package contains corosync libraries.
 %{_libdir}/libquorum.so.*
 %{_libdir}/libvotequorum.so.*
 %{_libdir}/libpload.so.*
+%{_libdir}/libsam.so.*
 
 %post -n corosynclib -p /sbin/ldconfig
 
@@ -164,6 +165,7 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/hdb.h
 %{_includedir}/corosync/list.h
 %{_includedir}/corosync/mar_gen.h
+%{_includedir}/corosync/sam.h
 %{_includedir}/corosync/swab.h
 %{_includedir}/corosync/quorum.h
 %{_includedir}/corosync/votequorum.h
@@ -193,17 +195,20 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libquorum.so
 %{_libdir}/libvotequorum.so
 %{_libdir}/libpload.so
+%{_libdir}/libsam.so
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
 %{_mandir}/man3/evs_*3*
 %{_mandir}/man3/confdb_*3*
 %{_mandir}/man3/votequorum_*3*
+%{_mandir}/man3/sam_*3*
 %{_mandir}/man8/cpg_overview.8*
 %{_mandir}/man8/evs_overview.8*
 %{_mandir}/man8/confdb_overview.8*
 %{_mandir}/man8/logsys_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
 %{_mandir}/man8/coroipc_overview.8*
+%{_mandir}/man8/sam_overview.8*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1.@alphatag@
