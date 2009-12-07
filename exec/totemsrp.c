@@ -92,7 +92,7 @@
 #include "tlist.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
-#define QUEUE_RTR_ITEMS_SIZE_MAX		256 /* allow 256 retransmit items */
+#define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
 #define RETRANS_MESSAGE_QUEUE_SIZE_MAX		500 /* allow 500 messages to be queued */
 #define RECEIVED_MESSAGE_QUEUE_SIZE_MAX		500 /* allow 500 messages to be queued */
 #define MAXIOVS					5
