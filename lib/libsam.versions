@@ -1,0 +1,12 @@
+# Version and symbol export for libsam.so
+
+COROSYNC_SAM_1.0 {
+	global:
+		sam_initialized;
+		sam_finalize;
+		sam_start;
+		sam_stop;
+		sam_register;
+		sam_hc_send;
+		sam_hc_callback_register;
+};

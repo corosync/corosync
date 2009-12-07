@@ -39,7 +39,7 @@ AM_LDFLAGS		= -lpthread
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
-			  libvotequorum.a libpload.a libcoroipcc.a
+			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
 SHARED_LIBS		= $(filter-out libcpg.so.$(SONAME), $(lib_LIBRARIES:%.a=%.so.$(SONAME))) libcpg.so.$(CPG_SONAME)
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
@@ -52,12 +52,14 @@ libquorum_a_SOURCES	= quorum.c
 libvotequorum_a_SOURCES	= votequorum.c
 libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libcoroipcc_a_SOURCES	= coroipcc.c
+libsam_a_SOURCES	= sam.c
 
 noinst_HEADERS		= sa-confdb.h util.h \
 			  libcfg.versions libconfdb.versions \
 			  libcoroipcc.versions libcpg.versions \
 			  libevs.versions libpload.versions \
-			  libquorum.versions libvotequorum.versions
+			  libquorum.versions libvotequorum.versions \
+			  libsam.versions
 
 ../lcr/lcr_ifact.o:
 	$(MAKE) -C ../lcr lcr_ifact.o

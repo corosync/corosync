@@ -36,7 +36,7 @@ INCLUDES       		= -I$(top_builddir)/include -I$(top_srcdir)/include
 noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench testconfdb	\
 			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2	\
 			logsys_s logsys_t1 logsys_t2 testcpgzc cpgbenchzc testzcgc \
-			stress_cpgzc stress_cpgfdget stress_cpgcontext cpgbound
+			stress_cpgzc stress_cpgfdget stress_cpgcontext cpgbound testsam
 
 testevs_LDADD		= -levs -lcoroipcc
 testevs_LDFLAGS		= -L../lib
@@ -85,6 +85,8 @@ logsys_t1_LDADD		= -llogsys
 logsys_t1_LDFLAGS	= -L../exec
 logsys_t2_LDADD		= -llogsys
 logsys_t2_LDFLAGS	= -L../exec
+testsam_LDADD		= -lsam
+testsam_LDFLAGS		= -L../lib
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
