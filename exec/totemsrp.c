@@ -1663,7 +1663,6 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 		if (memcmp (&instance->my_old_ring_id, &mcast->ring_id,
 			sizeof (struct memb_ring_id)) == 0) {
 
-			regular_message_item.msg_len = recovery_message_item->msg_len;
 			res = sq_item_inuse (&instance->regular_sort_queue, mcast->seq);
 			if (res == 0) {
 				sq_item_add (&instance->regular_sort_queue,
