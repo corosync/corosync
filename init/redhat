@@ -13,6 +13,7 @@
 prog="corosync"
 exec="/usr/sbin/corosync"
 lockfile="/var/lock/subsys/corosync"
+DAEMON_COREFILE_LIMIT=unlimited
 
 [ -x "$exec" ] || exit 0
 
