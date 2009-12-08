@@ -1,4 +1,4 @@
-Last Updated June 2009
+Last Updated Dec 2009
 
 Main Developers
 ---------------
@@ -9,13 +9,13 @@ Christine Caulfield	cpg, cfg, quorum, confdb, totem ipv6 support, totem NSS
 			support
 Fabien Thomas		OS portability, BSD port
 Hans Feldt		logging inspiration
-Angus Salkeld		objdb, static code analysis cleanup
+Angus Salkeld		objdb, static code analysis cleanup, statistics
 Lon Hohberger		logsys
 Fabio Di Nitto		automake, pkgconfig, logsys, config, distro release
 Jim Meyering		automake, sanitizing APIs, warnings removal
 Andrew Beekhof		automake, integration with Pacemaker
 Dave Teigland		cpg specification, integration with cluster3
-Jan Friesse		cpg
+Jan Friesse		cpg, sam
 Jérôme Flesch		BSD portability
 
 Significant credit belongs in our large vibrant community members, who are
