@@ -77,10 +77,10 @@ struct coroipcs_init_state {
 
 struct coroipcs_init_stats_state {
 	hdb_handle_t (*stats_create_connection) (const char* name,
-			const pid_t pid, const int fd);
+		pid_t pid, int fd);
 	void (*stats_destroy_connection) (hdb_handle_t handle);
 	void (*stats_update_value) (hdb_handle_t handle,
-			const char* name, const void* value, const size_t value_len);
+		const char *name, const void *value, size_t value_len);
 	void (*stats_increment_value) (hdb_handle_t handle, const char* name);
 };
 

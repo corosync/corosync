@@ -1027,7 +1027,7 @@ static void corosync_stats_destroy_connection (hdb_handle_t handle)
 
 static void corosync_stats_update_value (hdb_handle_t handle,
 										 const char *name, const void *value,
-										 const size_t value_len)
+										 size_t value_len)
 {
 	objdb->object_key_replace (handle,
 		name, strlen(name),
