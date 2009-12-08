@@ -1914,9 +1914,6 @@ static void memb_state_recovery_enter (
 	unsigned int low_ring_aru;
 	unsigned int range = 0;
 	unsigned int messages_originated = 0;
-	char is_originated[4096];
-	char not_originated[4096];
-	char seqno_string_hex[10];
 	const struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
 
@@ -2023,8 +2020,6 @@ static void memb_state_recovery_enter (
 	log_printf (instance->totemsrp_log_level_debug,
 		"copying all old ring messages from %x-%x.\n",
 		low_ring_aru + 1, instance->old_ring_state_high_seq_received);
-	strcpy (not_originated, "Not Originated for recovery: ");
-	strcpy (is_originated, "Originated for recovery: ");
 
 	for (i = 1; i <= range; i++) {
 		struct sort_queue_item *sort_queue_item;
@@ -2032,14 +2027,11 @@ static void memb_state_recovery_enter (
 		void *ptr;
 		int res;
 
-		sprintf (seqno_string_hex, "%x ", low_ring_aru + i);
 		res = sq_item_get (&instance->regular_sort_queue,
 			low_ring_aru + i, &ptr);
 		if (res != 0) {
-			strcat (not_originated, seqno_string_hex);
 			continue;
 		}
-		strcat (is_originated, seqno_string_hex);
 		sort_queue_item = ptr;
 		messages_originated++;
 		memset (&message_item, 0, sizeof (struct message_item));
@@ -2062,10 +2054,6 @@ static void memb_state_recovery_enter (
 	}
 	log_printf (instance->totemsrp_log_level_debug,
 		"Originated %d messages in RECOVERY.\n", messages_originated);
-	strcat (not_originated, "\n");
-	strcat (is_originated, "\n");
-	log_printf (instance->totemsrp_log_level_debug, "%s", is_originated);
-	log_printf (instance->totemsrp_log_level_debug, "%s", not_originated);
 	goto originated;
 
 no_originate:
