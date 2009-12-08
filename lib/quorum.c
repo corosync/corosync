@@ -408,15 +408,9 @@ cs_error_t quorum_dispatch (
 
 		/*
 		 * Determine if more messages should be processed
-		 * */
-		switch (dispatch_types) {
-		case CS_DISPATCH_ONE:
+		 */
+		if (dispatch_types == CS_DISPATCH_ONE) {
 			cont = 0;
-			break;
-		case CS_DISPATCH_ALL:
-			break;
-		case CS_DISPATCH_BLOCKING:
-			break;
 		}
 	} while (cont);
 

@@ -258,7 +258,6 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	cpg_callbacks_t callbacks;
 	coroipc_response_header_t *dispatch_data;
-	int ignore_dispatch = 0;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
 	struct cpg_address joined_list[CPG_MEMBERS_MAX];
@@ -273,8 +272,8 @@ cs_error_t cpg_dispatch (
 	}
 
 	/*
-	 * Timeout instantly for SA_DISPATCH_ONE or SA_DISPATCH_ALL and
-	 * wait indefinately for SA_DISPATCH_BLOCKING
+	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == CPG_DISPATCH_ALL) {
 		timeout = 0;
@@ -378,22 +377,9 @@ cs_error_t cpg_dispatch (
 
 		/*
 		 * Determine if more messages should be processed
-		 * */
-		switch (dispatch_types) {
-		case CPG_DISPATCH_ONE:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			} else {
-				cont = 0;
-			}
-			break;
-		case CPG_DISPATCH_ALL:
-			if (ignore_dispatch) {
-				ignore_dispatch = 0;
-			}
-			break;
-		case CPG_DISPATCH_BLOCKING:
-			break;
+		 */
+		if (dispatch_types == CS_DISPATCH_ONE) {
+			cont = 0;
 		}
 	} while (cont);
 
