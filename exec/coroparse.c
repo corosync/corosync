@@ -172,9 +172,8 @@ static int parse_section(FILE *fp,
 				    key, error_string))
 					    return -1;
 			}
-			objdb->object_key_create (parent_handle, key,
-				strlen (key),
-				value, strlen (value) + 1);
+			objdb->object_key_create_typed (parent_handle, key,
+				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
 		}
 
 		if ((loc = strchr_rs (line, '}'))) {

@@ -187,29 +187,25 @@ unsigned int corosync_service_link_and_init (
 		"service",
 		strlen ("service"));
 
-	corosync_api->object_key_create (object_service_handle,
+	corosync_api->object_key_create_typed (object_service_handle,
 		"name",
-		strlen ("name"),
 		service_name,
-		strlen (service_name) + 1);
+		strlen (service_name) + 1, OBJDB_VALUETYPE_STRING);
 
-	corosync_api->object_key_create (object_service_handle,
+	corosync_api->object_key_create_typed (object_service_handle,
 		"ver",
-		strlen ("ver"),
 		&service_ver,
-		sizeof (service_ver));
+		sizeof (service_ver), OBJDB_VALUETYPE_UINT32);
 
-	res = corosync_api->object_key_create (object_service_handle,
+	res = corosync_api->object_key_create_typed (object_service_handle,
 		"handle",
-		strlen ("handle"),
 		&handle,
-		sizeof (handle));
+		sizeof (handle), OBJDB_VALUETYPE_UINT64);
 
-	corosync_api->object_key_create (object_service_handle,
+	corosync_api->object_key_create_typed (object_service_handle,
 		"service_id",
-		strlen ("service_id"),
 		&service->id,
-		sizeof (service->id));
+		sizeof (service->id), OBJDB_VALUETYPE_UINT16);
 
 	log_printf (LOGSYS_LEVEL_NOTICE, "Service engine loaded: %s\n", service->name);
 	return (res);

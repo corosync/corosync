@@ -170,6 +170,19 @@ struct object_key_valid {
 /* deprecated */
 
 typedef enum {
+	OBJDB_VALUETYPE_INT16,
+	OBJDB_VALUETYPE_UINT16,
+	OBJDB_VALUETYPE_INT32,
+	OBJDB_VALUETYPE_UINT32,
+	OBJDB_VALUETYPE_INT64,
+	OBJDB_VALUETYPE_UINT64,
+	OBJDB_VALUETYPE_FLOAT,
+	OBJDB_VALUETYPE_DOUBLE,
+	OBJDB_VALUETYPE_STRING,
+	OBJDB_VALUETYPE_ANY,
+} objdb_value_types_t;
+
+typedef enum {
 	OBJECT_TRACK_DEPTH_ONE,
 	OBJECT_TRACK_DEPTH_RECURSIVE
 } object_track_depth_t;
@@ -590,6 +603,28 @@ struct corosync_api_v1 {
 	 * Please avoid using any of coropoll apis in your service engines.
 	 */
 	hdb_handle_t (*poll_handle_get) (void);
+
+
+	int (*object_key_create_typed) (
+		hdb_handle_t object_handle,
+		const char *key_name,
+		const void *value,
+		size_t value_len,
+		objdb_value_types_t type);
+
+	int (*object_key_get_typed) (
+		hdb_handle_t object_handle,
+		const char *key_name,
+		void **value,
+		size_t *value_len,
+		objdb_value_types_t *type);
+
+	int (*object_key_iter_typed) (
+		hdb_handle_t parent_object_handle,
+		char **key_name,
+		void **value,
+		size_t *value_len,
+		objdb_value_types_t *type);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

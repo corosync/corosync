@@ -51,6 +51,19 @@ typedef uint64_t confdb_handle_t;
 #define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL
 
 typedef enum {
+	CONFDB_VALUETYPE_INT16,
+	CONFDB_VALUETYPE_UINT16,
+	CONFDB_VALUETYPE_INT32,
+	CONFDB_VALUETYPE_UINT32,
+	CONFDB_VALUETYPE_INT64,
+	CONFDB_VALUETYPE_UINT64,
+	CONFDB_VALUETYPE_FLOAT,
+	CONFDB_VALUETYPE_DOUBLE,
+	CONFDB_VALUETYPE_STRING,
+	CONFDB_VALUETYPE_ANY,
+} confdb_value_types_t;
+
+typedef enum {
 	CONFDB_TRACK_DEPTH_ONE,
 	CONFDB_TRACK_DEPTH_RECURSIVE
 } confdb_track_depth_t;
@@ -181,6 +194,14 @@ cs_error_t confdb_key_create (
 	const void *value,
 	size_t value_len);
 
+cs_error_t confdb_key_create_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	const void *value,
+	size_t value_len,
+	confdb_value_types_t type);
+
 cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
@@ -199,6 +220,14 @@ cs_error_t confdb_key_get (
 	size_t key_name_len,
 	void *value,
 	size_t *value_len);
+
+cs_error_t confdb_key_get_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	confdb_value_types_t *type);
 
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
@@ -274,6 +303,14 @@ cs_error_t confdb_key_iter (
 	size_t *key_name_len,
 	void *value,
 	size_t *value_len);
+
+cs_error_t confdb_key_iter_typed (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	char *key_name,
+	void *value,
+	size_t *value_len,
+	confdb_value_types_t *type);
 
 /*
  * Get/set context variable

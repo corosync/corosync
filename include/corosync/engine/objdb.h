@@ -42,6 +42,19 @@
 #include <corosync/hdb.h>
 
 typedef enum {
+	OBJDB_VALUETYPE_INT16,
+	OBJDB_VALUETYPE_UINT16,
+	OBJDB_VALUETYPE_INT32,
+	OBJDB_VALUETYPE_UINT32,
+	OBJDB_VALUETYPE_INT64,
+	OBJDB_VALUETYPE_UINT64,
+	OBJDB_VALUETYPE_FLOAT,
+	OBJDB_VALUETYPE_DOUBLE,
+	OBJDB_VALUETYPE_STRING,
+	OBJDB_VALUETYPE_ANY,
+} objdb_value_types_t;
+
+typedef enum {
 	OBJECT_TRACK_DEPTH_ONE,
 	OBJECT_TRACK_DEPTH_RECURSIVE
 } object_track_depth_t;
@@ -235,6 +248,27 @@ struct objdb_iface_ver0 {
 		const void *key_name,
 		size_t key_len,
 		unsigned int *value);
+
+	int (*object_key_create_typed) (
+		hdb_handle_t object_handle,
+		const char *key_name,
+		const void *value,
+		size_t value_len,
+		objdb_value_types_t type);
+
+	int (*object_key_get_typed) (
+		hdb_handle_t object_handle,
+		const char *key_name,
+		void **value,
+		size_t *value_len,
+		objdb_value_types_t *type);
+
+	int (*object_key_iter_typed) (
+		hdb_handle_t parent_object_handle,
+		char **key_name,
+		void **value,
+		size_t *value_len,
+		objdb_value_types_t *type);
 };
 
 #endif /* OBJDB_H_DEFINED */

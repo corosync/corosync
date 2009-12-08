@@ -197,6 +197,18 @@ int confdb_sa_key_create (
 					value, value_len);
 }
 
+int confdb_sa_key_create_typed (
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	const void *value,
+	size_t value_len,
+	int type)
+{
+	return objdb->object_key_create_typed(parent_object_handle,
+					key_name,
+					value, value_len, type);
+}
+
 int confdb_sa_key_delete (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,
@@ -221,6 +233,25 @@ int confdb_sa_key_get (
 	res = objdb->object_key_get(parent_object_handle,
 				    key_name, key_name_len,
 				    &kvalue, value_len);
+	if (!res) {
+		memcpy(value, kvalue, *value_len);
+	}
+	return res;
+}
+
+int confdb_sa_key_get_typed (
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	int *type)
+{
+	int res;
+	void *kvalue;
+
+	res = objdb->object_key_get_typed(parent_object_handle,
+				    key_name,
+				    &kvalue, value_len, (objdb_value_types_t*)type);
 	if (!res) {
 		memcpy(value, kvalue, *value_len);
 	}
@@ -369,6 +400,35 @@ int confdb_sa_key_iter (
 	if (!res) {
 		memcpy(key_name, kname, *key_name_len);
 		memcpy(value, kvalue, *value_len);
+	}
+	return res;
+}
+
+int confdb_sa_key_iter_typed (
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t start_pos,
+	char *key_name,
+	void *value,
+	size_t *value_len,
+	int *type)
+{
+	int res;
+	void *kname;
+	void *kvalue;
+	size_t key_name_len;
+
+	res = objdb->object_key_iter_from(parent_object_handle,
+					  start_pos,
+					  &kname, &key_name_len,
+					  &kvalue, value_len);
+
+	if (!res) {
+		memcpy(key_name, kname, key_name_len);
+		memcpy(value, kvalue, *value_len);
+
+		objdb->object_key_get_typed(parent_object_handle,
+					  key_name,
+					  &kvalue, value_len, (objdb_value_types_t*)type);
 	}
 	return res;
 }
