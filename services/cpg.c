@@ -830,6 +830,7 @@ static void message_handler_req_exec_cpg_downlist (
 	                                            MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 				list_del (&pi->list);
 				free (pi);
+				break;
 			}
 		}
 	}
