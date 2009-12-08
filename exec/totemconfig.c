@@ -71,7 +71,6 @@
 #define TOKEN_RETRANSMIT_TIMEOUT		(int)(TOKEN_TIMEOUT / (TOKEN_RETRANSMITS_BEFORE_LOSS_CONST + 0.2))
 #define TOKEN_HOLD_TIMEOUT			(int)(TOKEN_RETRANSMIT_TIMEOUT * 0.8 - (1000/(int)HZ))
 #define JOIN_TIMEOUT				50
-#define CONSENSUS_TIMEOUT			800
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
 #define FAIL_TO_RECV_CONST			50
@@ -550,13 +549,20 @@ int totem_config_validate (
 	}
 
 	if (totem_config->consensus_timeout == 0) {
-		totem_config->consensus_timeout = CONSENSUS_TIMEOUT;
+		totem_config->consensus_timeout = (int)(float)(1.2 * totem_config->token_timeout);
 	}
 
 	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->consensus_timeout <= 1.2 * totem_config->token_timeout) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) must be atleast 1.2 * token (%d ms).",
+			totem_config->consensus_timeout, (int) ((float)1.2 * totem_config->token_timeout));
 		goto parse_error;
 	}
 
