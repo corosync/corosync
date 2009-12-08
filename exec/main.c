@@ -1004,6 +1004,11 @@ static hdb_handle_t corosync_stats_create_connection (const char* name,
 		&zero_64, sizeof (zero_64),
 		OBJDB_VALUETYPE_UINT64);
 
+	objdb->object_key_create_typed (object_handle,
+		"queue_size",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
 	return object_handle;
 }
 
@@ -1039,6 +1044,15 @@ static void corosync_stats_increment_value (hdb_handle_t handle,
 		name, strlen(name),
 		&key_incr_dummy);
 }
+static void corosync_stats_decrement_value (hdb_handle_t handle,
+	const char* name)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_key_decrement (handle,
+		name, strlen(name),
+		&key_incr_dummy);
+}
 
 static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.socket_name				= COROSYNC_SOCKET_NAME,
@@ -1065,6 +1079,7 @@ static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.stats_destroy_connection	= corosync_stats_destroy_connection,
 	.stats_update_value			= corosync_stats_update_value,
 	.stats_increment_value		= corosync_stats_increment_value,
+	.stats_decrement_value		= corosync_stats_decrement_value,
 };
 
 static void corosync_setscheduler (void)

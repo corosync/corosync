@@ -1298,6 +1298,7 @@ static void outq_flush (struct conn_info *conn_info) {
 			list_del (list);
 			api->free (iov.iov_base);
 			api->free (outq_item);
+			api->stats_decrement_value (conn_info->stats_handle, "queue_size");
 		} else {
 			break;
 		}
@@ -1403,6 +1404,7 @@ static void msg_send_or_queue (void *conn, const struct iovec *iov, unsigned int
 		}
 		list_add_tail (&outq_item->list, &conn_info->outq_head);
 		pthread_mutex_unlock (&conn_info->mutex);
+		api->stats_increment_value (conn_info->stats_handle, "queue_size");
 		return;
 	}
 	msg_send (conn, iov, iov_len, MSG_SEND_LOCKED);
