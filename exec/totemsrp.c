@@ -877,7 +877,7 @@ int totemsrp_initialize (
 	instance->totemsrp_confchg_fn = confchg_fn;
 	instance->use_heartbeat = 1;
 
-	instance->pause_timestamp = timerlist_nano_current_get ();
+	timer_function_pause_timeout (instance);
 
 	if ( totem_config->heartbeat_failures_allowed == 0 ) {
 		log_printf (instance->totemsrp_log_level_debug,
