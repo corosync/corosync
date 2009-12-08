@@ -140,10 +140,10 @@
 #define ENDIAN_LOCAL					 0xff22
 
 enum message_type {
-	MESSAGE_TYPE_ORF_TOKEN = 0,		/* Ordering, Reliability, Flow (ORF) control Token */
-	MESSAGE_TYPE_MCAST = 1,			/* ring ordered multicast message */
+	MESSAGE_TYPE_ORF_TOKEN = 0,			/* Ordering, Reliability, Flow (ORF) control Token */
+	MESSAGE_TYPE_MCAST = 1,				/* ring ordered multicast message */
 	MESSAGE_TYPE_MEMB_MERGE_DETECT = 2,	/* merge rings if there are available rings */
-	MESSAGE_TYPE_MEMB_JOIN = 3, 		/* membership join message */
+	MESSAGE_TYPE_MEMB_JOIN = 3,			/* membership join message */
 	MESSAGE_TYPE_MEMB_COMMIT_TOKEN = 4,	/* membership commit token */
 	MESSAGE_TYPE_TOKEN_HOLD_CANCEL = 5,	/* cancel the holding of the token */
 };
@@ -268,7 +268,7 @@ struct memb_commit_token {
 /*
  * These parts of the data structure are dynamic:
  *
- * 	struct srp_addr addr[PROCESSOR_COUNT_MAX];
+ *	struct srp_addr addr[PROCESSOR_COUNT_MAX];
  *	struct memb_commit_token_memb_entry memb_list[PROCESSOR_COUNT_MAX];
  */
 }__attribute__((packed));
@@ -903,7 +903,7 @@ int totemsrp_initialize (
 		}
 		else {
 			log_printf (instance->totemsrp_log_level_debug,
-                		"total heartbeat_timeout (%d ms)\n", instance->heartbeat_timeout);
+				"total heartbeat_timeout (%d ms)\n", instance->heartbeat_timeout);
 		}
 	}
 
@@ -926,17 +926,17 @@ int totemsrp_initialize (
 		sizeof (struct message_item));
 
 	totemsrp_callback_token_create (instance,
-									&instance->token_recv_event_handle,
-									TOTEM_CALLBACK_TOKEN_RECEIVED,
-									0,
-									token_event_stats_collector,
-									instance);
+		&instance->token_recv_event_handle,
+		TOTEM_CALLBACK_TOKEN_RECEIVED,
+		0,
+		token_event_stats_collector,
+		instance);
 	totemsrp_callback_token_create (instance,
-									&instance->token_sent_event_handle,
-									TOTEM_CALLBACK_TOKEN_SENT,
-									0,
-									token_event_stats_collector,
-									instance);
+		&instance->token_sent_event_handle,
+		TOTEM_CALLBACK_TOKEN_SENT,
+		0,
+		token_event_stats_collector,
+		instance);
 	*srp_context = instance;
 	return (0);
 

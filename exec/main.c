@@ -543,18 +543,18 @@ static void corosync_totem_stats_updater (void *data)
 		avg_token_holdtime = (total_token_holdtime / token_count);
 
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-				"mtt_rx_token", strlen("mtt_rx_token"),
-				&mtt_rx_token, sizeof (mtt_rx_token));
+			"mtt_rx_token", strlen("mtt_rx_token"),
+			&mtt_rx_token, sizeof (mtt_rx_token));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-				"avg_token_workload", strlen("avg_token_workload"),
-				&avg_token_holdtime, sizeof (avg_backlog_calc));
+			"avg_token_workload", strlen("avg_token_workload"),
+			&avg_token_holdtime, sizeof (avg_backlog_calc));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-				"avg_backlog_calc", strlen("avg_backlog_calc"),
-				&avg_backlog_calc, sizeof (avg_backlog_calc));
+			"avg_backlog_calc", strlen("avg_backlog_calc"),
+			&avg_backlog_calc, sizeof (avg_backlog_calc));
 	}
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
-					corosync_totem_stats_updater,
-					&corosync_stats_timer_handle);
+		corosync_totem_stats_updater,
+		&corosync_stats_timer_handle);
 }
 
 static void corosync_totem_stats_init (void)
@@ -574,22 +574,21 @@ static void corosync_totem_stats_init (void)
 		strlen ("runtime"),
 		&object_find_handle);
 
-	if (objdb->object_find_next (
-			object_find_handle,
+	if (objdb->object_find_next (object_find_handle,
 			&object_runtime_handle) == 0) {
 
 		objdb->object_create (object_runtime_handle,
-							  &object_totem_handle,
-							  "totem", strlen ("totem"));
+			&object_totem_handle,
+			"totem", strlen ("totem"));
 		objdb->object_create (object_totem_handle,
-							  &stats->hdr.handle,
-							  "pg", strlen ("pg"));
+			&stats->hdr.handle,
+			"pg", strlen ("pg"));
 		objdb->object_create (stats->hdr.handle,
-							  &stats->mrp->hdr.handle,
-							  "mrp", strlen ("mrp"));
+			&stats->mrp->hdr.handle,
+			"mrp", strlen ("mrp"));
 		objdb->object_create (stats->mrp->hdr.handle,
-							  &stats->mrp->srp->hdr.handle,
-							  "srp", strlen ("srp"));
+			&stats->mrp->srp->hdr.handle,
+			"srp", strlen ("srp"));
 
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"orf_token_tx",	&stats->mrp->srp->orf_token_tx,
@@ -608,7 +607,7 @@ static void corosync_totem_stats_init (void)
 			sizeof (stats->mrp->srp->memb_join_tx), OBJDB_VALUETYPE_UINT64);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"memb_join_rx", &stats->mrp->srp->memb_join_rx,
-			 sizeof (stats->mrp->srp->memb_join_rx), OBJDB_VALUETYPE_UINT64);
+			sizeof (stats->mrp->srp->memb_join_rx), OBJDB_VALUETYPE_UINT64);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"mcast_tx", &stats->mrp->srp->mcast_tx,
 			sizeof (stats->mrp->srp->mcast_tx), OBJDB_VALUETYPE_UINT64);
@@ -673,8 +672,8 @@ static void corosync_totem_stats_init (void)
 	}
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
-					corosync_totem_stats_updater,
-					&corosync_stats_timer_handle);
+		corosync_totem_stats_updater,
+		&corosync_stats_timer_handle);
 
 }
 
@@ -720,8 +719,8 @@ static void deliver_fn (
 	}
 
 	objdb->object_key_increment (service_stats_handle[service][fn_id],
-								 "rx", strlen("rx"),
-								 &key_incr_dummy);
+		"rx", strlen("rx"),
+		&key_incr_dummy);
 
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
@@ -756,8 +755,7 @@ int main_mcast (
 
 	if (ais_service[service]) {
 		objdb->object_key_increment (service_stats_handle[service][fn_id],
-									 "tx", strlen("tx"),
-									 &key_incr_dummy);
+			"tx", strlen("tx"), &key_incr_dummy);
 	}
 
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
@@ -946,53 +944,54 @@ static hdb_handle_t corosync_stats_create_connection (const char* name,
 	hdb_handle_t object_handle;
 
 	objdb->object_key_increment (object_connection_handle,
-								 "active", strlen("active"),
-								 &key_incr_dummy);
+		"active", strlen("active"),
+		&key_incr_dummy);
+
 
 	objdb->object_create (object_connection_handle,
-						  &object_handle,
-						  name,
-						  strlen (name));
+		&object_handle,
+		name,
+		strlen (name));
 
 	objdb->object_key_create_typed (object_handle,
-									"service_id",
-									&zero_32, sizeof (zero_32),
-									OBJDB_VALUETYPE_UINT32);
+		"service_id",
+		&zero_32, sizeof (zero_32),
+		OBJDB_VALUETYPE_UINT32);
 
 	objdb->object_key_create_typed (object_handle,
-									"client_pid",
-									&pid, sizeof (pid),
-									OBJDB_VALUETYPE_INT32);
+		"client_pid",
+		&pid, sizeof (pid),
+		OBJDB_VALUETYPE_INT32);
 
 	objdb->object_key_create_typed (object_handle,
-									"responses",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"responses",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 
 	objdb->object_key_create_typed (object_handle,
-									"dispatched",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"dispatched",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 
 	objdb->object_key_create_typed (object_handle,
-									"requests",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_INT64);
+		"requests",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_INT64);
 
 	objdb->object_key_create_typed (object_handle,
-									"sem_retry_count",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"sem_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 
 	objdb->object_key_create_typed (object_handle,
-									"send_retry_count",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"send_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 
 	objdb->object_key_create_typed (object_handle,
-									"recv_retry_count",
-									&zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"recv_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 
 	objdb->object_key_create_typed (object_handle,
 		"flow_control",
@@ -1019,16 +1018,16 @@ static void corosync_stats_destroy_connection (hdb_handle_t handle)
 	objdb->object_destroy (handle);
 
 	objdb->object_key_increment (object_connection_handle,
-								 "closed", strlen("closed"),
-								 &key_incr_dummy);
+		"closed", strlen("closed"),
+		&key_incr_dummy);
 	objdb->object_key_decrement (object_connection_handle,
-								 "active", strlen("active"),
-								 &key_incr_dummy);
+		"active", strlen("active"),
+		&key_incr_dummy);
 }
 
 static void corosync_stats_update_value (hdb_handle_t handle,
-										 const char *name, const void *value,
-										 size_t value_len)
+	const char *name, const void *value,
+	size_t value_len)
 {
 	objdb->object_key_replace (handle,
 		name, strlen(name),
@@ -1036,7 +1035,7 @@ static void corosync_stats_update_value (hdb_handle_t handle,
 }
 
 static void corosync_stats_increment_value (hdb_handle_t handle,
-											const char* name)
+	const char* name)
 {
 	unsigned int key_incr_dummy;
 
@@ -1055,29 +1054,29 @@ static void corosync_stats_decrement_value (hdb_handle_t handle,
 }
 
 static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
-	.socket_name				= COROSYNC_SOCKET_NAME,
-	.sched_policy				= SCHED_OTHER,
-	.sched_param				= &global_sched_param,
-	.malloc						= malloc,
-	.free						= free,
-	.log_printf					= _logsys_log_printf,
-	.fatal_error				= ipc_fatal_error,
-	.security_valid				= corosync_security_valid,
-	.service_available			= corosync_service_available,
+	.socket_name			= COROSYNC_SOCKET_NAME,
+	.sched_policy			= SCHED_OTHER,
+	.sched_param			= &global_sched_param,
+	.malloc				= malloc,
+	.free				= free,
+	.log_printf			= _logsys_log_printf,
+	.fatal_error			= ipc_fatal_error,
+	.security_valid			= corosync_security_valid,
+	.service_available		= corosync_service_available,
 	.private_data_size_get		= corosync_private_data_size_get,
-	.serialize_lock				= serialize_lock,
-	.serialize_unlock			= serialize_unlock,
-	.sending_allowed			= corosync_sending_allowed,
+	.serialize_lock			= serialize_lock,
+	.serialize_unlock		= serialize_unlock,
+	.sending_allowed		= corosync_sending_allowed,
 	.sending_allowed_release	= corosync_sending_allowed_release,
-	.poll_accept_add			= corosync_poll_accept_add,
-	.poll_dispatch_add			= corosync_poll_dispatch_add,
+	.poll_accept_add		= corosync_poll_accept_add,
+	.poll_dispatch_add		= corosync_poll_dispatch_add,
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
-	.init_fn_get				= corosync_init_fn_get,
-	.exit_fn_get				= corosync_exit_fn_get,
-	.handler_fn_get				= corosync_handler_fn_get,
+	.init_fn_get			= corosync_init_fn_get,
+	.exit_fn_get			= corosync_exit_fn_get,
+	.handler_fn_get			= corosync_handler_fn_get,
 	.stats_create_connection	= corosync_stats_create_connection,
 	.stats_destroy_connection	= corosync_stats_destroy_connection,
-	.stats_update_value			= corosync_stats_update_value,
+	.stats_update_value		= corosync_stats_update_value,
 	.stats_increment_value		= corosync_stats_increment_value,
 	.stats_decrement_value		= corosync_stats_decrement_value,
 };
@@ -1131,25 +1130,25 @@ static void corosync_stats_init (void)
 	uint64_t zero_64 = 0;
 
 	objdb->object_find_create (OBJECT_PARENT_HANDLE,
-							   "runtime", strlen ("runtime"),
-							   &object_find_handle);
+		"runtime", strlen ("runtime"),
+		&object_find_handle);
 
 	if (objdb->object_find_next (object_find_handle,
-								 &object_runtime_handle) != 0) {
+			&object_runtime_handle) != 0) {
 		return;
 	}
 
 	/* Connection objects */
 	objdb->object_create (object_runtime_handle,
-						  &object_connection_handle,
-						  "connections", strlen ("connections"));
+		&object_connection_handle,
+		"connections", strlen ("connections"));
 
 	objdb->object_key_create_typed (object_connection_handle,
-									"active", &zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"active", &zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 	objdb->object_key_create_typed (object_connection_handle,
-									"closed", &zero_64, sizeof (zero_64),
-									OBJDB_VALUETYPE_UINT64);
+		"closed", &zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
 }
 
 
@@ -1370,7 +1369,7 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-  	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
+	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
@@ -1395,8 +1394,8 @@ int main (int argc, char **argv)
 
 	/* create the main runtime object */
 	objdb->object_create (OBJECT_PARENT_HANDLE,
-						  &object_runtime_handle,
-						  "runtime", strlen ("runtime"));
+		&object_runtime_handle,
+		"runtime", strlen ("runtime"));
 
 	/*
 	 * Now we are fully initialized.
@@ -1499,3 +1498,4 @@ int main (int argc, char **argv)
 
 	return EXIT_SUCCESS;
 }
+
