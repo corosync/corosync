@@ -1449,8 +1449,10 @@ cs_error_t confdb_key_iter (
 
 	error = res_lib_confdb_key_iter.header.error;
 	if (error == CS_OK) {
+		char* key_name_str = (char*)key_name;
 		*key_name_len = res_lib_confdb_key_iter.key_name.length;
 		memcpy(key_name, res_lib_confdb_key_iter.key_name.value, *key_name_len);
+		key_name_str[res_lib_confdb_key_iter.key_name.length] = '\0';
 		*value_len = res_lib_confdb_key_iter.value.length;
 		memcpy(value, res_lib_confdb_key_iter.value.value, *value_len);
 	}

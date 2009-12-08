@@ -659,8 +659,23 @@ static int object_key_create (
 	const void *value,
 	size_t value_len)
 {
-	return object_key_create_typed (object_handle, key_name,
+	char *key_name_terminated = NULL;
+	char *key_name_str = (char*)key_name;
+	int ret;
+
+	if (key_name_str[key_len-1] != '\0') {
+		key_name_terminated = malloc (key_len + 1);
+		memcpy (key_name_terminated, key_name, key_len);
+		key_name_terminated[key_len] = '\0';
+		key_name_str = key_name_terminated;
+	}
+
+	ret = object_key_create_typed (object_handle, key_name_str,
 					value, value_len, OBJDB_VALUETYPE_ANY);
+	if (key_name_terminated) {
+		free (key_name_terminated);
+	}
+	return ret;
 }
 
 static int _clear_object(struct object_instance *instance)
@@ -973,9 +988,24 @@ static int object_key_get (
 	size_t *value_len)
 {
 	objdb_value_types_t t;
-	return object_key_get_typed(object_handle,
-							  key_name,
-							  value, value_len, &t);
+	int ret;
+	char *key_name_str = (char*)key_name;
+	char *key_name_terminated = NULL;
+
+	if (key_name_str[key_len-1] != '\0') {
+		key_name_terminated = malloc (key_len + 1);
+		memcpy (key_name_terminated, key_name, key_len);
+		key_name_terminated[key_len] = '\0';
+		key_name_str = key_name_terminated;
+	}
+
+	ret = object_key_get_typed(object_handle,
+		key_name_str,
+		value, value_len, &t);
+	if (key_name_terminated) {
+		free (key_name_terminated);
+	}
+	return ret;
 }
 
 static int object_key_increment (

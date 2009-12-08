@@ -424,6 +424,7 @@ int confdb_sa_key_iter_typed (
 
 	if (!res) {
 		memcpy(key_name, kname, key_name_len);
+		key_name[key_name_len] = '\0';
 		memcpy(value, kvalue, *value_len);
 
 		objdb->object_key_get_typed(parent_object_handle,
