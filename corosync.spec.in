@@ -1,4 +1,4 @@
-%define alphatag @alphatag@
+%global alphatag @alphatag@
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -7,7 +7,7 @@ Release: 1%{?alphatag:.%{alphatag}}%{?dist}
 License: BSD
 Group: System Environment/Base
 URL: http://www.openais.org
-Source0: http://developer.osdl.org/dev/openais/downloads/corosync-%{version}/corosync-%{version}.tar.gz
+Source0: http://developer.osdl.org/dev/openais/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
@@ -15,6 +15,8 @@ Requires(pre): /usr/sbin/useradd
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig
 Conflicts: openais <= 0.89, openais-devel <= 0.89
+
+# Build bits
 
 %define buildtrunk 0
 %{?_with_buildtrunk: %define buildtrunk 1}
@@ -28,7 +30,7 @@ BuildRequires: libibverbs-devel librdmacm-devel
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
-%setup -q -n corosync-%{version}
+%setup -q -n %{name}-%{version}
 
 %if %{buildtrunk}
 ./autogen.sh
@@ -73,9 +75,6 @@ if [ $1 -eq 0 ]; then
 	/sbin/chkconfig --del corosync || :
 fi
 
-%postun
-[ "$1" -ge "1" ] && /sbin/service corosync condrestart &>/dev/null || :
-
 %files
 %defattr(-,root,root,-)
 %doc LICENSE SECURITY
@@ -112,7 +111,7 @@ fi
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
 Group: System Environment/Libraries
-Conflicts: corosync < 0.92-7
+Requires: %{name} = %{version}-%{release}
 
 %description -n corosynclib
 This package contains corosync libraries.
