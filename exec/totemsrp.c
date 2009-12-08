@@ -3521,6 +3521,7 @@ printf ("token seq %d\n", token->seq);
 				} else
 				if (token->retrans_flg == 1 && instance->my_set_retrans_flg) {
 					token->retrans_flg = 0;
+					instance->my_set_retrans_flg = 0;
 				}
 				log_printf (instance->totemsrp_log_level_debug,
 					"token retrans flag is %d my set retrans flag%d retrans queue empty %d count %d, aru %x\n",
