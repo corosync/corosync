@@ -51,6 +51,8 @@
 #define SEPERATOR_STR "."
 #define OBJ_NAME_SIZE 512
 
+extern int isblank(int c);
+
 typedef enum {
 	ACTION_READ,
 	ACTION_WRITE,
