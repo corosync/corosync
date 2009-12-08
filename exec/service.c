@@ -354,6 +354,7 @@ static unsigned int service_unlink_and_exit (
 	unsigned short *service_id;
 	unsigned int *found_service_ver;
 	hdb_handle_t object_find_handle;
+	hdb_handle_t *found_service_handle;
 	char *name_sufix;
 	int res;
 
