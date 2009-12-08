@@ -93,8 +93,10 @@ start()
 
 stop()
 {
+	! status $prog > /dev/null 2>&1 && return
+
 	echo -n "Signaling $desc ($prog) to terminate: "
-	killall -TERM $prog > /dev/null 2>&1
+	kill -TERM $(pidof $prog) > /dev/null 2>&1
 	success
 	echo
 
