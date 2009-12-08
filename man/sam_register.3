@@ -1,0 +1,88 @@
+.\"/*
+.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "SAM_REGISTER" 3 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+sam_rehister \- Register component for health checking
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/sam.h>\fR
+
+.P
+\fBcs_error_t sam_register (unsigned int *\fIinstance_id\fR);\fR
+
+.SH DESCRIPTION
+.P
+The \fBsam_register\fR function is used to register a process for healthchecking.
+If recovery policy is set to \fISAM_RECOVERY_POLICY_RESTART\fR and recovery
+action will be taken, the new process instance will begin execution at the next
+code line after this function is called.
+
+.P
+This function can be called only once and SAM must be initialized by
+\fBsam_initialize(3)\fR function.
+
+.P
+The \fIinstance_id\fR argument is a pointer to a value storing the current
+iteration instance.  If this parameter is NULL, no \fIinstance_id\fR is returned.
+and then, no \fIinstance_id\fR will be returned. This value starts at 0 for the 
+first iteration instance, and increases by 1 each time a recovery restart is
+executed.  After reaching MAX_INT, the instance_id will reset to 0.
+
+.P
+The placement of this function is important because after it is called, the
+process id will change.
+
+.P
+After registration, event driven health checking is not running.
+
+.SH RETURN VALUE
+.P
+This call return CS_OK value if successful, otherwise and error is returned.
+
+.SH ERRORS
+.TP
+CS_ERR_BAD_HANDLE
+health checking was not started by calling \fBsam_start(3)\fR function.
+.TP
+CS_ERR_LIBRARY
+internal library call failed. This can be one of pipe creation or fork.
+It's possible to get more information from errno.
+
+.SH "SEE ALSO"
+.BR sam_start (3),
+.BR sam_initialize (3),
+.BR sam_hc_callback_register (3)
