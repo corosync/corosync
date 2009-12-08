@@ -62,6 +62,11 @@ enum req_init_types {
 #define MESSAGE_REQ_CHANGE_EUID		1
 #define MESSAGE_REQ_OUTQ_FLUSH		2
 
+#define MESSAGE_RES_OUTQ_EMPTY         0
+#define MESSAGE_RES_OUTQ_NOT_EMPTY     1
+#define MESSAGE_RES_ENABLE_FLOWCONTROL 2
+#define MESSAGE_RES_OUTQ_FLUSH_NR      3
+
 struct control_buffer {
 	unsigned int read;
 	unsigned int write;
