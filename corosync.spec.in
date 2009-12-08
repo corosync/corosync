@@ -88,6 +88,7 @@ fi
 %{_sbindir}/corosync-cpgtool
 %{_sbindir}/corosync-quorumtool
 %dir %{_sysconfdir}/corosync
+%dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %{_initddir}/corosync
