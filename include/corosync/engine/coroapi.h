@@ -625,6 +625,8 @@ struct corosync_api_v1 {
 		void **value,
 		size_t *value_len,
 		objdb_value_types_t *type);
+
+	void *(*totem_get_stats)(void);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

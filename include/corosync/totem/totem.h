@@ -35,6 +35,7 @@
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
 #include "totemip.h"
+#include <corosync/hdb.h>
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define PROCESSOR_COUNT_MAX	16
@@ -184,5 +185,72 @@ struct memb_ring_id {
 	unsigned long long seq;
 } __attribute__((packed));
 
+typedef struct {
+	hdb_handle_t handle;
+	int is_dirty;
+	time_t last_updated;
+} totem_stats_header_t;
+
+typedef struct {
+	totem_stats_header_t hdr;
+	uint32_t iface_changes;
+} totemnet_stats_t;
+
+typedef struct {
+	totem_stats_header_t hdr;
+	totemnet_stats_t *net;
+	char *algo_name;
+} totemrrp_stats_t;
+
+
+typedef struct {
+	uint32_t rx;
+	uint32_t tx;
+	int backlog_calc;
+} totemsrp_token_stats_t;
+
+typedef struct {
+	totem_stats_header_t hdr;
+	totemrrp_stats_t *rrp;
+	uint64_t orf_token_tx;
+	uint64_t orf_token_rx;
+	uint64_t memb_merge_detect_tx;
+	uint64_t memb_merge_detect_rx;
+	uint64_t memb_join_tx;
+	uint64_t memb_join_rx;
+	uint64_t mcast_tx;
+	uint64_t mcast_retx;
+	uint64_t mcast_rx;
+	uint64_t memb_commit_token_tx;
+	uint64_t memb_commit_token_rx;
+	uint64_t token_hold_cancel_tx;
+	uint64_t token_hold_cancel_rx;
+	uint64_t operational_entered;
+	uint64_t operational_token_lost;
+	uint64_t gather_entered;
+	uint64_t gather_token_lost;
+	uint64_t commit_entered;
+	uint64_t commit_token_lost;
+	uint64_t recovery_entered;
+	uint64_t recovery_token_lost;
+	uint64_t consensus_timeouts;
+	uint64_t rx_msg_dropped;
+
+	int earliest_token;
+	int latest_token;
+#define TOTEM_TOKEN_STATS_MAX 100
+	totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
+
+} totemsrp_stats_t;
+
+typedef struct {
+	totem_stats_header_t hdr;
+	totemsrp_stats_t *srp;
+} totemmrp_stats_t;
+
+typedef struct {
+	totem_stats_header_t hdr;
+	totemmrp_stats_t *mrp;
+} totempg_stats_t;
 
 #endif /* TOTEM_H_DEFINED */

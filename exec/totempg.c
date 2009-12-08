@@ -175,6 +175,8 @@ static void (*totempg_log_printf) (
 
 struct totem_config *totempg_totem_config;
 
+static totempg_stats_t totempg_stats;
+
 enum throw_away_mode {
 	THROW_AWAY_INACTIVE,
 	THROW_AWAY_ACTIVE
@@ -726,6 +728,7 @@ int totempg_initialize (
 	res = totemmrp_initialize (
 		poll_handle,
 		totem_config,
+		&totempg_stats,
 		totempg_deliver_fn,
 		totempg_confchg_fn);
 
@@ -1302,6 +1305,11 @@ int totempg_ifaces_get (
 		iface_count);
 
 	return (res);
+}
+
+void* totempg_get_stats (void)
+{
+	return &totempg_stats;
 }
 
 int totempg_crypto_set (

@@ -36,6 +36,7 @@
 #define COROIPCS_H_DEFINED
 
 #include <stdlib.h>
+#include <corosync/engine/objdb.h>
 
 #ifdef __cplusplus
 extern "C" {
