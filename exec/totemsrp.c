@@ -2094,7 +2094,7 @@ void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int v
 
 	token_hold_cancel_send (instance);
 
-	return (0);
+	return;
 }
 
 int totemsrp_mcast (
