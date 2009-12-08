@@ -860,7 +860,7 @@ cs_error_t cpg_iteration_next(
 			description,
 			&res_lib_cpg_iterationnext->description);
 
-	error = (error == CS_OK ? res_lib_cpg_iterationnext->header.error : error);
+	error = res_lib_cpg_iterationnext->header.error;
 
 	coroipcc_msg_send_reply_receive_in_buf_put(
 			cpg_iteration_instance->conn_handle);
