@@ -1103,7 +1103,7 @@ int coroipcs_response_iov_send (void *conn, const struct iovec *iov, unsigned in
 retry_semop:
 	res = semop (conn_info->semid, &sop, 1);
 	if ((res == -1) && (errno == EINTR || errno == EAGAIN)) {
-		api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
+		stats_api->stats_increment_value (conn_info->stats_handle, "sem_retry_count");
 		goto retry_semop;
 	} else
 	if ((res == -1) && (errno == EINVAL || errno == EIDRM)) {
