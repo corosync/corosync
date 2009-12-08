@@ -145,6 +145,8 @@ extern int totempg_ifaces_get (
 
 extern void* totempg_get_stats (void);
 
+void totempg_event_signal (enum totem_event_type type, int value);
+
 extern const char *totempg_ifaces_print (unsigned int nodeid);
 
 extern unsigned int totempg_my_nodeid_get (void);

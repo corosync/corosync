@@ -97,7 +97,7 @@ extern int totemmrp_callback_token_create (
 extern void totemmrp_callback_token_destroy (
 	void *handle_out);
 
-extern void totemmrp_new_msg_signal (void);
+extern void totemmrp_event_signal (enum totem_event_type type, int value);
 
 extern int totemmrp_ifaces_get (
 	unsigned int nodeid,

@@ -2090,7 +2090,7 @@ originated:
 	return;
 }
 
-int totemsrp_new_msg_signal (void *srp_context)
+void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int value)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 

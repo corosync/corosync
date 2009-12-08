@@ -188,8 +188,9 @@ void totemmrp_callback_token_destroy (
 	totemsrp_callback_token_destroy (totemsrp_context, handle_out);
 }
 
-void totemmrp_new_msg_signal (void) {
-	totemsrp_new_msg_signal (totemsrp_context);
+void totemmrp_event_signal (enum totem_event_type type, int value)
+{
+	totemsrp_event_signal (totemsrp_context, type, value);
 }
 
 int totemmrp_ifaces_get (

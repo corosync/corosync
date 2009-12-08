@@ -179,6 +179,11 @@ enum totem_callback_token_type {
 	TOTEM_CALLBACK_TOKEN_SENT = 2
 };
 
+enum totem_event_type {
+	TOTEM_EVENT_DELIVERY_CONGESTED,
+	TOTEM_EVENT_NEW_MSG,
+};
+
 #define MEMB_RING_ID
 struct memb_ring_id {
 	struct totem_ip_address rep;

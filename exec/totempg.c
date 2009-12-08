@@ -773,7 +773,7 @@ static int mcast_msg (
 	int total_size = 0;
 
 	pthread_mutex_lock (&mcast_msg_mutex);
-	totemmrp_new_msg_signal ();
+	totemmrp_event_signal (TOTEM_EVENT_NEW_MSG, 1);
 
 	/*
 	 * Remove zero length iovectors from the list
@@ -1305,6 +1305,11 @@ int totempg_ifaces_get (
 		iface_count);
 
 	return (res);
+}
+
+void totempg_event_signal (enum totem_event_type type, int value)
+{
+	totemmrp_event_signal (type, value);
 }
 
 void* totempg_get_stats (void)
