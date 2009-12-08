@@ -2787,6 +2787,8 @@ static int memb_state_commit_token_send_recovery (
 	memcpy (instance->orf_token_retransmit, commit_token, commit_token_size);
 	instance->orf_token_retransmit_size = commit_token_size;
 
+	instance->stats->memb_commit_token_tx++;
+
 	totemrrp_token_send (instance->totemrrp_context,
 		commit_token,
 		commit_token_size);
