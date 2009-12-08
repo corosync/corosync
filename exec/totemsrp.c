@@ -2018,7 +2018,7 @@ static void memb_state_recovery_enter (
 		 */
 		goto no_originate;
 	}
-	assert (range < 1024);
+	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"copying all old ring messages from %x-%x.\n",
@@ -2245,7 +2245,7 @@ static void messages_free (
 	}
 
 	range = release_to - instance->last_released;
-	assert (range < 1024);
+	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
 
 	/*
 	 * Release retransmit list items if group aru indicates they are transmitted
@@ -2476,7 +2476,7 @@ static int orf_token_rtr (
 	 */
 
 	range = instance->my_high_seq_received - instance->my_aru;
-	assert (range < 100000);
+	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
 
 	for (i = 1; (orf_token->rtr_list_entries < RETRANSMIT_ENTRIES_MAX) &&
 		(i <= range); i++) {
@@ -3630,7 +3630,7 @@ static void messages_deliver_to_app (
 			"Delivering %x to %x\n", instance->my_high_delivered,
 			end_point);
 	}
-	assert (range < 10240);
+	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
 	my_high_delivered_stored = instance->my_high_delivered;
 
 	/*
