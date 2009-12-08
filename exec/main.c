@@ -537,20 +537,21 @@ static void corosync_totem_stats_updater (void *data)
 		}
 		t = prev;
 	}
-	mtt_rx_token = (total_mtt_rx_token / token_count);
-	avg_backlog_calc = (total_backlog_calc / token_count);
-	avg_token_holdtime = (total_token_holdtime / token_count);
+	if (token_count) {
+		mtt_rx_token = (total_mtt_rx_token / token_count);
+		avg_backlog_calc = (total_backlog_calc / token_count);
+		avg_token_holdtime = (total_token_holdtime / token_count);
 
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"mtt_rx_token", strlen("mtt_rx_token"),
-			&mtt_rx_token, sizeof (mtt_rx_token));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"avg_token_workload", strlen("avg_token_workload"),
-			&avg_token_holdtime, sizeof (avg_backlog_calc));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"avg_backlog_calc", strlen("avg_backlog_calc"),
-			&avg_backlog_calc, sizeof (avg_backlog_calc));
-
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+				"mtt_rx_token", strlen("mtt_rx_token"),
+				&mtt_rx_token, sizeof (mtt_rx_token));
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+				"avg_token_workload", strlen("avg_token_workload"),
+				&avg_token_holdtime, sizeof (avg_backlog_calc));
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+				"avg_backlog_calc", strlen("avg_backlog_calc"),
+				&avg_backlog_calc, sizeof (avg_backlog_calc));
+	}
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 					corosync_totem_stats_updater,
 					&corosync_stats_timer_handle);
