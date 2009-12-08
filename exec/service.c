@@ -94,7 +94,10 @@ struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
 static hdb_handle_t object_internal_configuration_handle;
+
 static hdb_handle_t object_stats_services_handle;
+
+static void (*service_unlink_all_complete) (void) = NULL;
 
 static hdb_handle_t unlink_all_handle;
 
@@ -246,7 +249,7 @@ unsigned int corosync_service_link_and_init (
 											 OBJDB_VALUETYPE_UINT64);
 	}
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Service engine loaded: %s\n", service->name);
 	return (res);
 }
 
@@ -351,8 +354,9 @@ static unsigned int service_unlink_and_exit (
 	unsigned short *service_id;
 	unsigned int *found_service_ver;
 	hdb_handle_t object_find_handle;
-	char object_name[32];
+	hdb_handle_t *found_service_handle;
 	char *name_sufix;
+	int res;
 
 	name_sufix = strrchr (service_name, '_');
 	if (name_sufix)
