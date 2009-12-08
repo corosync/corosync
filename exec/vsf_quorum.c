@@ -103,6 +103,32 @@ static struct memb_ring_id quorum_ring_id;
 static size_t quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
+static char view_buf[64];
+
+static void log_view_list(const unsigned int *view_list, size_t view_list_entries)
+{
+	int total = (int)view_list_entries;
+	int len, pos, ret;
+	int i = 0;
+
+	while (1) {
+		len = sizeof(view_buf);
+		pos = 0;
+		memset(view_buf, 0, len);
+
+		for (; i < total; i++) {
+			ret = snprintf(view_buf + pos, len - pos, " %d", view_list[i]);
+			if (ret >= len - pos)
+				break;
+			pos += ret;
+		}
+		log_printf (LOGSYS_LEVEL_NOTICE, "Members[%d]:%s%s",
+			    total, view_buf, i < total ? "\\" : "");
+
+		if (i == total)
+			break;
+	}
+}
 
 /* Internal quorum API function */
 static void quorum_api_set_quorum(const unsigned int *view_list,
@@ -123,9 +149,7 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Members[%d]: ", (int)view_list_entries);
-	for (i=0; i<view_list_entries; i++)
-		log_printf (LOGSYS_LEVEL_NOTICE, "    %d ", view_list[i]);
+	log_view_list(view_list, view_list_entries);
 
 	/* Tell internal listeners */
 	send_internal_notification();
