@@ -113,6 +113,9 @@ static const char *get_quorum_type(void)
         if (result != CS_OK)
 		goto out;
 
+	if (namelen >= sizeof(buf)) {
+		namelen = sizeof(buf) - 1;
+	}
 	buf[namelen] = '\0';
 
 	/* If strdup returns NULL then we just assume no quorum provider ?? */
