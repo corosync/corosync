@@ -883,21 +883,6 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 
 static int ipc_subsys_id = -1;
 
-static void ipc_log_printf (const char *format, ...) __attribute__((format(printf, 1, 2)));
-static void ipc_log_printf (const char *format, ...) {
-	va_list ap;
-
-	va_start (ap, format);
-
-	_logsys_log_vprintf (
-		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_ERROR,
-				    ipc_subsys_id,
-				    LOGSYS_RECID_LOG),
-		__FUNCTION__, __FILE__, __LINE__,
-		format, ap);
-
-	va_end (ap);
-}
 
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (
@@ -1045,34 +1030,31 @@ static void corosync_stats_increment_value (hdb_handle_t handle,
 		&key_incr_dummy);
 }
 
-static struct coroipcs_init_state ipc_init_state = {
-	.socket_name			= COROSYNC_SOCKET_NAME,
-	.sched_policy			= SCHED_OTHER,
-	.sched_param			= &global_sched_param,
-	.malloc				= malloc,
-	.free				= free,
-	.log_printf			= ipc_log_printf,
-	.fatal_error			= ipc_fatal_error,
-	.security_valid			= corosync_security_valid,
-	.service_available		= corosync_service_available,
+static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
+	.socket_name				= COROSYNC_SOCKET_NAME,
+	.sched_policy				= SCHED_OTHER,
+	.sched_param				= &global_sched_param,
+	.malloc						= malloc,
+	.free						= free,
+	.log_printf					= _logsys_log_printf,
+	.fatal_error				= ipc_fatal_error,
+	.security_valid				= corosync_security_valid,
+	.service_available			= corosync_service_available,
 	.private_data_size_get		= corosync_private_data_size_get,
-	.serialize_lock			= serialize_lock,
-	.serialize_unlock		= serialize_unlock,
-	.sending_allowed		= corosync_sending_allowed,
+	.serialize_lock				= serialize_lock,
+	.serialize_unlock			= serialize_unlock,
+	.sending_allowed			= corosync_sending_allowed,
 	.sending_allowed_release	= corosync_sending_allowed_release,
-	.poll_accept_add		= corosync_poll_accept_add,
-	.poll_dispatch_add		= corosync_poll_dispatch_add,
+	.poll_accept_add			= corosync_poll_accept_add,
+	.poll_dispatch_add			= corosync_poll_dispatch_add,
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
-	.init_fn_get			= corosync_init_fn_get,
-	.exit_fn_get			= corosync_exit_fn_get,
-	.handler_fn_get			= corosync_handler_fn_get
-};
-
-static struct coroipcs_init_stats_state ipc_init_stats_state = {
-	.stats_create_connection		= corosync_stats_create_connection,
-	.stats_destroy_connection		= corosync_stats_destroy_connection,
-	.stats_update_value				= corosync_stats_update_value,
-	.stats_increment_value			= corosync_stats_increment_value
+	.init_fn_get				= corosync_init_fn_get,
+	.exit_fn_get				= corosync_exit_fn_get,
+	.handler_fn_get				= corosync_handler_fn_get,
+	.stats_create_connection	= corosync_stats_create_connection,
+	.stats_destroy_connection	= corosync_stats_destroy_connection,
+	.stats_update_value			= corosync_stats_update_value,
+	.stats_increment_value		= corosync_stats_increment_value,
 };
 
 static void corosync_setscheduler (void)
@@ -1094,7 +1076,7 @@ static void corosync_setscheduler (void)
 			/*
 			 * Turn on SCHED_RR in ipc system
 			 */
-			ipc_init_state.sched_policy = SCHED_RR;
+			ipc_init_state_v2.sched_policy = SCHED_RR;
 
 			/*
 			 * Turn on SCHED_RR in logsys system
@@ -1471,9 +1453,9 @@ int main (int argc, char **argv)
 	 */
 	priv_drop ();
 
- 	schedwrk_init (
- 		serialize_lock,
- 		serialize_unlock);
+	schedwrk_init (
+		serialize_lock,
+		serialize_unlock);
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC");
 	if (ipc_subsys_id < 0) {
@@ -1482,8 +1464,8 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 
-	coroipcs_ipc_init (&ipc_init_state);
-	coroipcs_ipc_stats_init (&ipc_init_stats_state);
+	ipc_init_state_v2.log_subsys_id = ipc_subsys_id;
+	coroipcs_ipc_init_v2 (&ipc_init_state_v2);
 
 	/*
 	 * Start main processing loop
