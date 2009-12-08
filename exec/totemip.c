@@ -561,12 +561,12 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 
 				/* If the address we have is an IPv4 network address, then
 				   substitute the actual IP address of this interface */
-				if (!found_if && tb[IFA_BROADCAST] && ifa->ifa_family == AF_INET) {
+				if (!found_if && tb[IFA_LOCAL] && ifa->ifa_family == AF_INET) {
 					uint32_t network;
 					uint32_t addr;
 					uint32_t netmask = htonl(~((1<<(32-ifa->ifa_prefixlen))-1));
 
-					memcpy(&network, RTA_DATA(tb[IFA_BROADCAST]), sizeof(uint32_t));
+					memcpy(&network, RTA_DATA(tb[IFA_LOCAL]), sizeof(uint32_t));
 					memcpy(&addr, bindnet->addr, sizeof(uint32_t));
 
 					if ((addr & netmask) == (network & netmask)) {
