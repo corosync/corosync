@@ -413,6 +413,7 @@ static inline int zcb_alloc (
 		size,
 		addr);
 	if (res == -1) {
+		free (zcb_mapped);
 		return (-1);
 	}
 
