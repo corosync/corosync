@@ -296,7 +296,7 @@ recommended to alter this value without guidance from the corosync community.
 The default is 180 milliseconds.
 
 .TP
-retransmits_before_loss
+token_retransmits_before_loss_const
 This value identifies how many token retransmits should be attempted before
 forming a new configuration.  If this value is set, retransmit and hold will
 be automatically calculated from retransmits_before_loss and token.
@@ -308,7 +308,7 @@ join
 This timeout specifies in milliseconds how long to wait for join messages in
 the membership protocol.
 
-The default is 100 milliseconds.
+The default is 50 milliseconds.
 
 .TP
 send_join
@@ -327,7 +327,7 @@ consensus
 This timeout specifies in milliseconds how long to wait for consensus to be
 achieved before starting a new round of membership configuration.
 
-The default is 200 milliseconds.
+The default is 800 milliseconds.
 
 .TP
 merge
@@ -415,7 +415,7 @@ This specifies the time in milliseconds to wait before decrementing the
 problem count by 1 for a particular ring to ensure a link is not marked
 faulty for transient network failures.
 
-The default is 1000 milliseconds.
+The default is 2000 milliseconds.
 
 .TP
 rrp_problem_count_threshold
@@ -430,7 +430,7 @@ rrp_problem_count_threshold * rrp_token_expired_timeout should be atleast 50
 milliseconds less then the token timeout, or a complete reconfiguration
 may occur.
 
-The default is 20 problem counts.
+The default is 10 problem counts.
 
 .TP
 rrp_token_expired_timeout
