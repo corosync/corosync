@@ -35,6 +35,7 @@
 #ifndef COROSYNC_SERVICE_H_DEFINED
 #define COROSYNC_SERVICE_H_DEFINED
 
+#include <corosync/hdb.h>
 /*
  * Link and initialize a service
  */
@@ -67,5 +68,7 @@ extern unsigned int corosync_service_defaults_link_and_init (
 	struct corosync_api_v1 *objdb);
 
 extern struct corosync_service_engine *ais_service[];
+
+extern hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
 #endif /* SERVICE_H_DEFINED */
