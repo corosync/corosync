@@ -135,8 +135,6 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 				  size_t view_list_entries,
 				  int quorum, struct memb_ring_id *ring_id)
 {
-	int i;
-
 	primary_designated = quorum;
 
 	if (primary_designated) {
