@@ -1804,7 +1804,6 @@ static void memb_state_gather_enter (
 	memb_set_merge (
 		&instance->my_id, 1,
 		instance->my_proc_list, &instance->my_proc_list_entries);
-	assert (srp_addr_equal (&instance->my_proc_list[0], &instance->my_proc_list[1]) == 0);
 
 	memb_join_message_send (instance);
 
@@ -2910,7 +2909,6 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	memb_join->header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (memb_join->header.nodeid);
 
-	assert (srp_addr_equal (&instance->my_proc_list[0], &instance->my_proc_list[1]) == 0);
 	memb_join->ring_seq = instance->my_ring_id.seq;
 	memb_join->proc_list_entries = instance->my_proc_list_entries;
 	memb_join->failed_list_entries = instance->my_failed_list_entries;
