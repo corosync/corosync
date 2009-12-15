@@ -62,6 +62,15 @@ if [ -d @SYSCONFDIR@/default ]; then
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
 fi
 
+# The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
+# This means it matches scripts, including this one.
+# Redefine it here so that status (from the same file) works.
+# Otherwise simultaneous calls to stop() will loop forever
+__pids_pidof() {
+        pidof -c -o $$ -o $PPID -o %PPID "$1" || \
+                pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
+}
+
 start()
 {
 	echo -n "Starting $desc ($prog): "
