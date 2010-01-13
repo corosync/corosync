@@ -255,6 +255,53 @@ parse_error:
 	return (-1);
 }
 
+static int corosync_main_config_log_destination_set (
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_handle,
+	const char *subsys,
+	const char **error_string,
+	const char *objdb_key,
+	unsigned int mode_mask,
+	char deprecated,
+	const char *replacement)
+{
+	static char formatted_error_reason[128];
+	char *value;
+	unsigned int mode;
+
+	if (!objdb_get_string (objdb, object_handle, objdb_key, &value)) {
+		if (deprecated) {
+			log_printf(LOGSYS_LEVEL_WARNING,
+			 "Warning: the %s config paramater has been obsoleted."
+			 " See corosync.conf man page %s directive.",
+			 objdb_key, replacement);
+		}
+
+		if (strcmp (value, "yes") == 0) {
+			mode |= mode_mask;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				sprintf (formatted_error_reason, "unable to set mode %s", objdb_key);
+				*error_string = formatted_error_reason;
+				return -1;
+			}
+		} else
+		if (strcmp (value, "no") == 0) {
+			mode &= ~mode_mask;
+			if (logsys_config_mode_set(subsys, mode) < 0) {
+				sprintf (formatted_error_reason, "unable to unset mode %s", objdb_key);
+				*error_string = formatted_error_reason;
+				return -1;
+			}
+		} else {
+			sprintf (formatted_error_reason, "unknown value for %s", objdb_key);
+			*error_string = formatted_error_reason;
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static int corosync_main_config_set (
 	struct objdb_iface_ver0 *objdb,
 	hdb_handle_t object_handle,
@@ -287,90 +334,21 @@ static int corosync_main_config_set (
 		goto parse_error;
 	}
 
-	if (!objdb_get_string (objdb,object_handle, "to_file", &value)) {
+	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
+	    "to_logfile", LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+		goto parse_error;
 
-		log_printf(LOGSYS_LEVEL_WARNING,
-		 "Warning: the to_file config paramater has been obsoleted."
-		 " See corosync.conf man page to_logfile directive.");
+	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
+	    "to_stderr", LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
+		goto parse_error;
 
-		if (strcmp (value, "yes") == 0) {
-			mode |= LOGSYS_MODE_OUTPUT_FILE;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to set mode to_file";
-				goto parse_error;
-			}
-		} else
-		if (strcmp (value, "no") == 0) {
-			mode &= ~LOGSYS_MODE_OUTPUT_FILE;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to unset mode to_file";
-				goto parse_error;
-			}
-		} else {
-			error_reason = "unknown value for to_file";
-			goto parse_error;
-		}
-	}
+	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
+	    "to_syslog", LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
+		goto parse_error;
 
-	if (!objdb_get_string (objdb,object_handle, "to_logfile", &value)) {
-		if (strcmp (value, "yes") == 0) {
-			mode |= LOGSYS_MODE_OUTPUT_FILE;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to set mode to_logfile";
-				goto parse_error;
-			}
-		} else
-		if (strcmp (value, "no") == 0) {
-			mode &= ~LOGSYS_MODE_OUTPUT_FILE;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to unset mode to_logfile";
-				goto parse_error;
-			}
-		} else {
-			error_reason = "unknown value for to_logfile";
-			goto parse_error;
-		}
-	}
-
-	if (!objdb_get_string (objdb,object_handle, "to_syslog", &value)) {
-		if (strcmp (value, "yes") == 0) {
-			mode |= LOGSYS_MODE_OUTPUT_SYSLOG;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to set mode to_syslog";
-				goto parse_error;
-			}
-		} else
-		if (strcmp (value, "no") == 0) {
-			mode &= ~LOGSYS_MODE_OUTPUT_SYSLOG;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to unset mode to_syslog";
-				goto parse_error;
-			}
-		} else {
-			error_reason = "unknown value for to_syslog";
-			goto parse_error;
-		}
-	}
-
-	if (!objdb_get_string (objdb,object_handle, "to_stderr", &value)) {
-		if (strcmp (value, "yes") == 0) {
-			mode |= LOGSYS_MODE_OUTPUT_STDERR;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to set mode to_stderr";
-				goto parse_error;
-			}
-		} else
-		if (strcmp (value, "no") == 0) {
-			mode &= ~LOGSYS_MODE_OUTPUT_STDERR;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				error_reason = "unable to unset mode to_stderr";
-				goto parse_error;
-			}
-		} else {
-			error_reason = "unknown value for to_syslog";
-			goto parse_error;
-		}
-	}
+	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
+	    "to_file", LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
+		goto parse_error;
 
 	if (!objdb_get_string (objdb,object_handle, "syslog_facility", &value)) {
 		int syslog_facility;
