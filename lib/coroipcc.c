@@ -71,6 +71,11 @@
 
 #include "util.h"
 
+/*
+ * Define sem_wait timeout (real timeout will be (n-1;n) )
+ */
+#define IPC_SEMWAIT_TIMEOUT 2
+
 struct ipc_instance {
 	int fd;
 #if _POSIX_THREAD_PROCESS_SHARED < 1
@@ -456,13 +461,31 @@ reply_receive (
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#else
+	struct timespec timeout;
+	struct pollfd pfd;
 #endif
 	coroipc_response_header_t *response_header;
 	int res;
 
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 retry_semwait:
-	res = sem_wait (&ipc_instance->control_buffer->sem1);
+	timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
+	timeout.tv_nsec = 0;
+
+	res = sem_timedwait (&ipc_instance->control_buffer->sem1, &timeout);
+	if (res == -1 && errno == ETIMEDOUT) {
+		pfd.fd = ipc_instance->fd;
+		pfd.events = 0;
+
+		poll (&pfd, 1, 0);
+		if (pfd.revents == POLLERR || pfd.revents == POLLHUP) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		goto retry_semwait;
+	}
+
 	if (res == -1 && errno == EINTR) {
 		goto retry_semwait;
 	}
@@ -505,12 +528,30 @@ reply_receive_in_buf (
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
+#else
+	struct timespec timeout;
+	struct pollfd pfd;
 #endif
 	int res;
 
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 retry_semwait:
-	res = sem_wait (&ipc_instance->control_buffer->sem1);
+	timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
+	timeout.tv_nsec = 0;
+
+	res = sem_timedwait (&ipc_instance->control_buffer->sem1, &timeout);
+	if (res == -1 && errno == ETIMEDOUT) {
+		pfd.fd = ipc_instance->fd;
+		pfd.events = 0;
+
+		poll (&pfd, 1, 0);
+		if (pfd.revents == POLLERR || pfd.revents == POLLHUP) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		goto retry_semwait;
+	}
+
 	if (res == -1 && errno == EINTR) {
 		goto retry_semwait;
 	}
