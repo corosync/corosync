@@ -277,6 +277,8 @@ static int corosync_main_config_log_destination_set (
 			 objdb_key, replacement);
 		}
 
+		mode = logsys_config_mode_get (subsys);
+
 		if (strcmp (value, "yes") == 0) {
 			mode |= mode_mask;
 			if (logsys_config_mode_set(subsys, mode) < 0) {
