@@ -156,7 +156,7 @@ void corosync_state_dump (void)
 
 static void unlink_all_completed (void)
 {
-	poll_stop (0);
+	poll_stop (corosync_poll_handle);
 	coroipcs_ipc_exit ();
 	totempg_finalize ();
 
