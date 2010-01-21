@@ -260,6 +260,8 @@ int poll_dispatch_delete (
 			poll_instance->ufds[i].fd = -1;
 			poll_instance->poll_entries[i].ufd.fd = -1;
 			poll_instance->poll_entries[i].ufd.revents = 0;
+
+			res = 0;
 			break;
 		}
 	}
