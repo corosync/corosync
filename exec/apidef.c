@@ -129,6 +129,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.tpg_groups_reserve = NULL,
 	.tpg_groups_release = NULL,
 	.schedwrk_create = schedwrk_create,
+	.schedwrk_create_nolock = schedwrk_create_nolock,
 	.schedwrk_destroy = schedwrk_destroy,
 	.sync_request = NULL, //sync_request,
 	.quorum_is_quorate = corosync_quorum_is_quorate,

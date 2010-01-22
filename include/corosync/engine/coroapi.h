@@ -627,6 +627,11 @@ struct corosync_api_v1 {
 		objdb_value_types_t *type);
 
 	void *(*totem_get_stats)(void);
+
+	int (*schedwrk_create_nolock) (
+		hdb_handle_t *handle,
+		int (schedwrk_fn) (const void *),
+		const void *context);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
