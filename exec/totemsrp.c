@@ -479,8 +479,6 @@ struct totemsrp_instance {
 
 	unsigned int old_ring_state_high_seq_received;
 
-	int ring_saved;
-
 	unsigned int my_last_seq;
 
 	struct timeval tv_old;
@@ -1299,10 +1297,15 @@ static void memb_set_merge (
 	return;
 }
 
-static void memb_set_and (
-        struct srp_addr *set1, int set1_entries,
-        struct srp_addr *set2, int set2_entries,
-        struct srp_addr *and, int *and_entries)
+static void memb_set_and_with_ring_id (
+	struct srp_addr *set1,
+	struct memb_ring_id *set1_ring_ids,
+	int set1_entries,
+	struct srp_addr *set2,
+	int set2_entries,
+	struct memb_ring_id *old_ring_id,
+	struct srp_addr *and,
+	int *and_entries)
 {
 	int i;
 	int j;
@@ -1313,7 +1316,9 @@ static void memb_set_and (
 	for (i = 0; i < set2_entries; i++) {
 		for (j = 0; j < set1_entries; j++) {
 			if (srp_addr_equal (&set1[j], &set2[i])) {
-				found = 1;
+				if (memcmp (&set1_ring_ids[j], old_ring_id, sizeof (struct memb_ring_id)) == 0) {
+					found = 1;
+				}
 				break;
 			}
 		}
@@ -1391,20 +1396,6 @@ static void old_ring_state_save (struct totemsrp_instance *instance)
 			"Saving state aru %x high seq received %x\n",
 			instance->my_aru, instance->my_high_seq_received);
 	}
-}
-
-static void ring_save (struct totemsrp_instance *instance)
-{
-	if (instance->ring_saved == 0) {
-		instance->ring_saved = 1;
-		memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
-			sizeof (struct memb_ring_id));
-	}
-}
-
-static void ring_reset (struct totemsrp_instance *instance)
-{
-	instance->ring_saved = 0;
 }
 
 static void ring_state_restore (struct totemsrp_instance *instance)
@@ -1694,7 +1685,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	memb_consensus_reset (instance);
 
 	old_ring_state_reset (instance);
-	ring_reset (instance);
+
 	deliver_messages_from_recovery_to_regular (instance);
 
 	log_printf (instance->totemsrp_log_level_debug,
@@ -1794,6 +1785,14 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	reset_pause_timeout (instance);
 
+	/*
+	 * Save ring id information from this configuration to determine
+	 * which processors are transitioning from old regular configuration
+	 * in to new regular configuration on the next configuration change
+	 */
+	memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
+		sizeof (struct memb_ring_id));
+
 	return;
 }
 
@@ -1864,8 +1863,6 @@ static void target_set_completed (
 static void memb_state_commit_enter (
 	struct totemsrp_instance *instance)
 {
-	ring_save (instance);
-
 	old_ring_state_save (instance);
 
 	memb_state_commit_token_update (instance);
@@ -1915,6 +1912,7 @@ static void memb_state_recovery_enter (
 	unsigned int messages_originated = 0;
 	const struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
+	struct memb_ring_id my_new_memb_ring_id_list[PROCESSOR_COUNT_MAX];
 
 	addr = (const struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
@@ -1936,17 +1934,32 @@ static void memb_state_recovery_enter (
 	/*
 	 * Build regular configuration
 	 */
- 	totemrrp_processor_count_set (
+	totemrrp_processor_count_set (
 		instance->totemrrp_context,
 		commit_token->addr_entries);
 
 	/*
 	 * Build transitional configuration
 	 */
-	memb_set_and (instance->my_new_memb_list, instance->my_new_memb_entries,
-		instance->my_memb_list, instance->my_memb_entries,
-		instance->my_trans_memb_list, &instance->my_trans_memb_entries);
+	for (i = 0; i < instance->my_new_memb_entries; i++) {
+		memcpy (&my_new_memb_ring_id_list[i],
+			&memb_list[i].ring_id,
+			sizeof (struct memb_ring_id));
+	}
+	memb_set_and_with_ring_id (
+		instance->my_new_memb_list,
+		my_new_memb_ring_id_list,
+		instance->my_new_memb_entries,
+		instance->my_memb_list,
+		instance->my_memb_entries,
+		&instance->my_old_ring_id,
+		instance->my_trans_memb_list,
+		&instance->my_trans_memb_entries);
 
+	for (i = 0; i < instance->my_trans_memb_entries; i++) {
+		log_printf (instance->totemsrp_log_level_debug,
+			"TRANS [%d] member %s:\n", i, totemip_print (&instance->my_trans_memb_list[i].addr[0]));
+	}
 	for (i = 0; i < instance->my_new_memb_entries; i++) {
 		log_printf (instance->totemsrp_log_level_debug,
 			"position [%d] member %s:\n", i, totemip_print (&addr[i].addr[0]));
@@ -2684,7 +2697,6 @@ static void memb_state_commit_token_update (
 
 	memcpy (&memb_list[instance->commit_token->memb_index].ring_id,
 		&instance->my_old_ring_id, sizeof (struct memb_ring_id));
-	assert (!totemip_zero_check(&instance->my_old_ring_id.rep));
 
 	memb_list[instance->commit_token->memb_index].aru = instance->old_ring_state_aru;
 	/*
