@@ -81,10 +81,8 @@ enum sync_state {
 
 struct service_entry {
 	int service_id;
-	void (*sync_init) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id);
+	int api_version;
+	union sync_init_api sync_init_api;
 	void (*sync_abort) (void);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
@@ -134,7 +132,11 @@ static struct processor_entry my_processor_list[PROCESSOR_COUNT_MAX];
 
 static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
 
+static unsigned int my_trans_list[PROCESSOR_COUNT_MAX];
+
 static size_t my_member_list_entries = 0;
+
+static size_t my_trans_list_entries = 0;
 
 static int my_processor_list_entries = 0;
 
@@ -202,7 +204,7 @@ int sync_v2_init (
 		if (res == -1) {
 			continue;
 		}
-		if (sync_callbacks.sync_init == NULL) {
+		if (sync_callbacks.sync_init_api.sync_init_v1 == NULL) {
 			continue;
 		}
 		my_initial_service_list[my_initial_service_list_entries].state =
@@ -210,7 +212,8 @@ int sync_v2_init (
 		my_initial_service_list[my_initial_service_list_entries].service_id = i;
 		strcpy (my_initial_service_list[my_initial_service_list_entries].name,
 			sync_callbacks.name);
-		my_initial_service_list[my_initial_service_list_entries].sync_init = sync_callbacks.sync_init;
+		my_initial_service_list[my_initial_service_list_entries].api_version = sync_callbacks.api_version;
+		my_initial_service_list[my_initial_service_list_entries].sync_init_api = sync_callbacks.sync_init_api;
 		my_initial_service_list[my_initial_service_list_entries].sync_process = sync_callbacks.sync_process;
 		my_initial_service_list[my_initial_service_list_entries].sync_abort = sync_callbacks.sync_abort;
 		my_initial_service_list[my_initial_service_list_entries].sync_activate = sync_callbacks.sync_activate;
@@ -334,7 +337,8 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 			sprintf (my_service_list[my_service_list_entries].name,
 				"External Service (id = %d)\n",
 				req_exec_service_build_message->service_list[i]);
-			my_service_list[my_service_list_entries].sync_init =
+			my_service_list[my_service_list_entries].api_version = 1;
+			my_service_list[my_service_list_entries].sync_init_api.sync_init_v1 =
 				dummy_sync_init;
 			my_service_list[my_service_list_entries].sync_abort =
 				dummy_sync_abort;
@@ -510,13 +514,39 @@ static void sync_servicelist_build_enter (
 
 static int schedwrk_processor (const void *context)
 {
-	int res;
+	int res = 0;
 
 	if (my_service_list[my_processing_idx].state == INIT) {
 		my_service_list[my_processing_idx].state = PROCESS;
-		my_service_list[my_processing_idx].sync_init (my_member_list,
-			my_member_list_entries,
-			&my_ring_id);
+		if (my_service_list[my_processing_idx].api_version == 1) {
+			my_service_list[my_processing_idx].sync_init_api.sync_init_v1 (my_member_list,
+				my_member_list_entries,
+				&my_ring_id);
+		} else {
+			unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
+			size_t old_trans_list_entries = 0;
+			int o, m;
+
+			memcpy (old_trans_list, my_trans_list, my_trans_list_entries *
+				sizeof (unsigned int));
+			old_trans_list_entries = my_trans_list_entries;
+
+			my_trans_list_entries = 0;
+			for (o = 0; o < old_trans_list_entries; o++) {
+				for (m = 0; m < my_member_list_entries; m++) {
+					if (old_trans_list[o] == my_member_list[m]) {
+						my_trans_list[my_trans_list_entries] = my_member_list[m];
+						my_trans_list_entries++;
+						break;
+					}
+				}
+			}
+
+			my_service_list[my_processing_idx].sync_init_api.sync_init_v2 (my_trans_list,
+				my_trans_list_entries, my_member_list,
+				my_member_list_entries,
+				&my_ring_id);
+		}
 	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
@@ -552,6 +582,17 @@ void sync_v2_start (
 		sync_servicelist_build_enter (member_list, member_list_entries,
 			ring_id);
 	}
+}
+
+void sync_v2_save_transitional (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id)
+{
+	log_printf (LOGSYS_LEVEL_DEBUG, "saving transitional configuration\n");
+	memcpy (my_trans_list, member_list, member_list_entries *
+		sizeof (unsigned int));
+	my_trans_list_entries = member_list_entries;
 }
 
 void sync_v2_abort (void)

@@ -240,7 +240,9 @@ static int cpg_exec_send_downlist(void);
 
 static int cpg_exec_send_joinlist(void);
 
-static void cpg_sync_init (
+static void cpg_sync_init_v2 (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
 	const unsigned int *member_list,
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
@@ -329,8 +331,8 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_dump_fn				= NULL,
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.sync_mode				= CS_SYNC_V1,
-	.sync_init                              = cpg_sync_init,
+	.sync_mode				= CS_SYNC_V1_APIV2,
+	.sync_init                              = cpg_sync_init_v2,
 	.sync_process                           = cpg_sync_process,
 	.sync_activate                          = cpg_sync_activate,
 	.sync_abort                             = cpg_sync_abort
@@ -406,7 +408,9 @@ struct req_exec_cpg_downlist {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
-static void cpg_sync_init (
+static void cpg_sync_init_v2 (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
 	const unsigned int *member_list,
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
@@ -435,8 +439,8 @@ static void cpg_sync_init (
 		 */
 		for (i = 0; i < my_old_member_list_entries; i++) {
 			found = 0;
-			for (j = 0; j < my_member_list_entries; j++) {
-				if (my_old_member_list[i] == my_member_list[j]) {
+			for (j = 0; j < trans_list_entries; j++) {
+				if (my_old_member_list[i] == trans_list[j]) {
 					found = 1;
 					break;
 				}
