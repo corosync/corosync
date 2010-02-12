@@ -547,10 +547,7 @@ int cfg_lib_exit_fn (void *conn)
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 
 	ENTER();
-	if (!list_empty(&ci->list)) {
-		list_del(&ci->list);
-		remove_ci_from_shutdown(ci);
-	}
+	remove_ci_from_shutdown(ci);
 	LEAVE();
 	return (0);
 }
