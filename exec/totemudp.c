@@ -1777,6 +1777,7 @@ int totemudp_initialize (
 	instance->totemudp_target_set_completed = target_set_completed;
 
 	totemip_localhost (instance->mcast_address.family, &localhost);
+	localhost.nodeid = instance->totem_config->node_id;
 
 	/*
 	 * RRP layer isn't ready to receive message because it hasn't
