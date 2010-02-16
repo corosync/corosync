@@ -55,6 +55,8 @@
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 
+#include <corosync/coroipcs.h>
+
 LOGSYS_DECLARE_SUBSYS ("SERV");
 
 struct default_service {
@@ -89,9 +91,20 @@ static struct default_service default_services[] = {
 	}
 };
 
+/*
+ * service exit and unlink schedwrk handler data structure
+ */
+struct seus_handler_data {
+	hdb_handle_t service_handle;
+	int service_engine;
+	struct corosync_api_v1 *api;
+};
+
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+
+int ais_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static hdb_handle_t object_internal_configuration_handle;
 
@@ -99,8 +112,8 @@ static hdb_handle_t object_stats_services_handle;
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
-static hdb_handle_t unlink_all_handle;
-
+static hdb_handle_t swrk_service_exit_handle;
+static hdb_handle_t swrk_service_unlink_handle;
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
@@ -272,7 +285,8 @@ corosync_service_unlink_priority (
 	struct corosync_api_v1 *corosync_api,
 	int lowest_priority,
 	int *current_priority,
-	int *current_service_engine)
+	int *current_service_engine,
+	hdb_handle_t *current_service_handle)
 {
 	unsigned short *service_id;
 	hdb_handle_t object_service_handle;
@@ -319,11 +333,6 @@ corosync_service_unlink_priority (
 							return (-1);
 						}
 					}
-					log_printf(LOGSYS_LEVEL_NOTICE,
-						"Service engine unloaded: %s\n",
-						   ais_service[*current_service_engine]->name);
-
-					ais_service[*current_service_engine] = NULL;
 
 					res = corosync_api->object_key_get (
 						object_service_handle,
@@ -331,17 +340,26 @@ corosync_service_unlink_priority (
 						(void *)&found_service_handle,
 						NULL);
 
-					lcr_ifact_release (*found_service_handle);
+					*current_service_handle = *found_service_handle;
 
-					corosync_api->object_destroy (object_service_handle);
-					break;
+					ais_service_exiting[*current_service_engine] = 1;
+
+					corosync_api->object_find_destroy (object_find_handle);
+
+					/*
+					 * Call should call this function again
+					 */
+					return (1);
 				}
 			}
 
 			corosync_api->object_find_destroy (object_find_handle);
 		}
 	}
-	return 0;
+	/*
+	 * We finish unlink of all services -> no need to call this function again
+	 */
+	return (0);
 }
 
 static unsigned int service_unlink_and_exit (
@@ -538,12 +556,46 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	return (0);
 }
 
-static int unlink_all_schedwrk_handler (const void *data) {
+/*
+ * Declaration of exit_schedwrk_handler, because of cycle
+ * (service_exit_schedwrk_handler calls service_unlink_schedwrk_handler, and vice-versa)
+ */
+static int service_exit_schedwrk_handler (const void *data);
+
+static int service_unlink_schedwrk_handler (const void *data) {
+	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
+	struct corosync_api_v1 *api = (struct corosync_api_v1 *)cb_data->api;
+
+	/*
+	 * Exit all ipc connections dependent on this service
+	 */
+	if (coroipcs_ipc_service_exit (cb_data->service_engine) == -1)
+		return -1;
+
+	log_printf(LOGSYS_LEVEL_NOTICE,
+		"Service engine unloaded: %s\n",
+		ais_service[cb_data->service_engine]->name);
+
+	ais_service[cb_data->service_engine] = NULL;
+
+	lcr_ifact_release (cb_data->service_handle);
+
+	api->schedwrk_create (
+		&swrk_service_exit_handle,
+		&service_exit_schedwrk_handler,
+		data);
+
+	return 0;
+}
+
+static int service_exit_schedwrk_handler (const void *data) {
 	int res;
 	static int current_priority = 0;
 	static int current_service_engine = 0;
 	static int called = 0;
-	struct corosync_api_v1 *api = (struct corosync_api_v1 *)data;
+	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
+	struct corosync_api_v1 *api = (struct corosync_api_v1 *)cb_data->api;
+	hdb_handle_t service_handle;
 
 	if (called == 0) {
 		log_printf(LOGSYS_LEVEL_NOTICE,
@@ -556,10 +608,25 @@ static int unlink_all_schedwrk_handler (const void *data) {
 		api,
 		0,
 		&current_priority,
-		&current_service_engine);
+		&current_service_engine,
+		&service_handle);
 	if (res == 0) {
 		service_unlink_all_complete();
+		return (res);
 	}
+
+	if (res == 1) {
+		cb_data->service_engine = current_service_engine;
+		cb_data->service_handle = service_handle;
+
+		api->schedwrk_create_nolock (
+			&swrk_service_unlink_handle,
+			&service_unlink_schedwrk_handler,
+			data);
+
+		return (0);
+	}
+
 	return (res);
 }
 		
@@ -568,6 +635,7 @@ void corosync_service_unlink_all (
 	void (*unlink_all_complete) (void))
 {
 	static int called = 0;
+	static struct seus_handler_data cb_data;
 
 	assert (api);
 
@@ -579,11 +647,13 @@ void corosync_service_unlink_all (
 	if (called == 0) {
 		called = 1;
 	}
-	
+
+	cb_data.api = api;
+
 	api->schedwrk_create (
-		&unlink_all_handle,
-		&unlink_all_schedwrk_handler,
-		api);
+		&swrk_service_exit_handle,
+		&service_exit_schedwrk_handler,
+		&cb_data);
 }
 
 struct service_unlink_and_exit_data {

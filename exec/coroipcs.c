@@ -98,6 +98,8 @@ static struct coroipcs_init_state_v2 *api = NULL;
 
 DECLARE_LIST_INIT (conn_info_list_head);
 
+DECLARE_LIST_INIT (conn_info_exit_list_head);
+
 struct outq_item {
 	void *msg;
 	size_t mlen;
@@ -464,6 +466,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 
 	list_del (&conn_info->list);
 	list_init (&conn_info->list);
+	list_add (&conn_info->list, &conn_info_exit_list_head);
 
 	if (conn_info->state == CONN_STATE_THREAD_REQUEST_EXIT) {
 		res = pthread_join (conn_info->thread, &retval);
@@ -1081,6 +1084,50 @@ void coroipcs_ipc_exit (void)
 	}
 }
 
+int coroipcs_ipc_service_exit (unsigned int service)
+{
+	struct list_head *list, *list_next;
+	struct conn_info *conn_info;
+
+	for (list = conn_info_list_head.next; list != &conn_info_list_head;
+		list = list_next) {
+
+		list_next = list->next;
+
+		conn_info = list_entry (list, struct conn_info, list);
+
+		if (conn_info->service != service ||
+		    (conn_info->state != CONN_STATE_THREAD_ACTIVE && conn_info->state != CONN_STATE_THREAD_REQUEST_EXIT)) {
+			continue;
+		}
+
+		ipc_disconnect (conn_info);
+		api->poll_dispatch_destroy (conn_info->fd, NULL);
+		while (conn_info_destroy (conn_info) != -1)
+			;
+
+		/*
+		 * We will return to prevent token loss. Schedwrk will call us again.
+		 */
+		return (-1);
+	}
+
+	/*
+	 * No conn info left in active list. We will traverse thru exit list. If there is any
+	 * conn_info->service == service, we will wait to proper end -> return -1
+	 */
+
+	for (list = conn_info_exit_list_head.next; list != &conn_info_exit_list_head; list = list->next) {
+		conn_info = list_entry (list, struct conn_info, list);
+
+		if (conn_info->service == service) {
+			return (-1);
+		}
+	}
+
+	return (0);
+}
+
 /*
  * Get the conn info private data
  */
@@ -1663,6 +1710,7 @@ int coroipcs_handler_dispatch (
 		 * ipc thread is the only reference at startup
 		 */
 		conn_info->refcount = 1;
+		conn_info->state = CONN_STATE_THREAD_ACTIVE;
 
 		conn_info->private_data = api->malloc (api->private_data_size_get (conn_info->service));
 		memset (conn_info->private_data, 0,
@@ -1696,8 +1744,6 @@ int coroipcs_handler_dispatch (
 		if (conn_info->service == SOCKET_SERVICE_INIT) {
 			conn_info->service = -1;
 		}
-
-		conn_info->state = CONN_STATE_THREAD_ACTIVE;
 	} else
 	if (revent & POLLIN) {
 		coroipcs_refcount_inc (conn_info);

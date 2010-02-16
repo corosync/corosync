@@ -155,7 +155,6 @@ void corosync_state_dump (void)
 static void unlink_all_completed (void)
 {
 	poll_stop (corosync_poll_handle);
-	coroipcs_ipc_exit ();
 	totempg_finalize ();
 
 	corosync_exit_error (AIS_DONE_EXIT);
@@ -855,7 +854,7 @@ static int corosync_security_valid (int euid, int egid)
 
 static int corosync_service_available (unsigned int service)
 {
-	return (ais_service[service] != NULL);
+	return (ais_service[service] != NULL && !ais_service_exiting[service]);
 }
 
 struct sending_allowed_private_data_struct {
@@ -961,6 +960,12 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
+static void corosync_poll_dispatch_destroy (
+    int fd,
+    void *context)
+{
+	poll_dispatch_delete (corosync_poll_handle, fd);
+}
 
 static hdb_handle_t corosync_stats_create_connection (const char* name,
                        const pid_t pid, const int fd)
@@ -1098,6 +1103,7 @@ static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.poll_accept_add		= corosync_poll_accept_add,
 	.poll_dispatch_add		= corosync_poll_dispatch_add,
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
+	.poll_dispatch_destroy		= corosync_poll_dispatch_destroy,
 	.init_fn_get			= corosync_init_fn_get,
 	.exit_fn_get			= corosync_exit_fn_get,
 	.handler_fn_get			= corosync_handler_fn_get,
