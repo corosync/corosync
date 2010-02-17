@@ -488,6 +488,31 @@ and
 
 The default is syslog and stderr.
 
+Please note, if you are using to_logfile and want to rotate the file, use logrotate(8)
+with the option 
+.B
+copytruncate.
+eg.
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+/var/log/corosync.log {
+	missingok
+	compress
+	notifempty
+	daily
+	rotate 7
+	copytruncate
+}
+.ta
+.fi
+.RE
+.IP
+.PP
+
+
 .TP
 logfile
 If the
@@ -562,5 +587,6 @@ required.
 The corosync executive configuration file.
 
 .SH "SEE ALSO"
-.BR corosync_overview (8)
+.BR corosync_overview (8),
+.BR logrotate (8)
 .PP
