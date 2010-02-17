@@ -204,6 +204,12 @@ AC_ARG_ENABLE([rdma],
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
+AC_ARG_ENABLE([augeas],
+	[  --enable-augeas           : Install the augeas lens for corosync.conf ],,
+	[ enable_augeas="no" ])
+AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
+
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -326,6 +332,10 @@ if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+fi
+
+if test "x${enable_augeas}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
 fi
 
 # extra warnings

@@ -48,6 +48,14 @@ corosysconfdir		= ${COROSYSCONFDIR}
 
 corosysconf_DATA	= conf/corosync.conf.example
 
+if INSTALL_AUGEAS
+corolensdir		= ${datadir}/augeas/lenses
+corolens_DATA		= conf/lenses/corosync.aug
+
+corolenstestdir		= ${corolensdir}/tests
+corolenstest_DATA	= conf/lenses/tests/test_corosync.aug
+endif
+
 SUBDIRS			= include lcr lib exec services tools test pkgconfig \
 			  man init
 
