@@ -2627,6 +2627,7 @@ static int token_hold_cancel_send (struct totemsrp_instance *instance)
 	 */
 	token_hold_cancel.header.type = MESSAGE_TYPE_TOKEN_HOLD_CANCEL;
 	token_hold_cancel.header.endian_detector = ENDIAN_LOCAL;
+	token_hold_cancel.header.encapsulated = 0;
 	token_hold_cancel.header.nodeid = instance->my_id.addr[0].nodeid;
 	memcpy (&token_hold_cancel.ring_id, &instance->my_ring_id,
 		sizeof (struct memb_ring_id));
