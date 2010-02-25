@@ -285,17 +285,29 @@ static int scandir (
 	int (*compar)(const struct dirent **, const struct dirent **))
 {
 	DIR *d;
-	struct dirent *entry, **names = NULL;
+	struct dirent *entry;
+	struct dirent *result;
+	struct dirent **names = NULL;
 	int namelist_items = 0, namelist_size = 0;
+	size_t len;
+	int return_code;
 
 	d = opendir(dir);
 	if (d == NULL)
 		return -1;
 
 	names = NULL;
-	while ((entry = readdir (d)) != NULL) {
+
+	len = offsetof(struct dirent, d_name) +
+                     pathconf(dir, _PC_NAME_MAX) + 1;
+	entry = malloc(len);
+
+	for (return_code = readdir_r (d, entry, &result);
+		dirent != NULL && return_code == 0;
+		return_code = readdir_r(d, entry, &result)) {
+
 		struct dirent *tmpentry;
-		if ((filter != NULL) && ((*filter)(entry) == 0)) {
+		if ((filter != NULL) && ((*filter)(result) == 0)) {
 			continue;
 		}
 		if (namelist_items >= namelist_size) {
@@ -312,11 +324,11 @@ static int scandir (
 			}
 			names = tmp;
 		}
-		tmpentry = malloc (entry->d_reclen);
+		tmpentry = malloc (result->d_reclen);
 		if (tmpentry == NULL) {
 			goto fail;
 		}
-		(void) memcpy (tmpentry, entry, entry->d_reclen);
+		(void) memcpy (tmpentry, result, result->d_reclen);
 		names[namelist_items++] = tmpentry;
 	}
 	(void) closedir (d);
@@ -337,6 +349,7 @@ fail:
 		namelist_items--;
 		free (*namelist[namelist_items]);
 	}
+	free (entry);
 	free (names);
 	*namelist = NULL;
 	errno = err;
