@@ -96,7 +96,9 @@ static void uis_lcr_bind (int *server_fd)
 
 	res = bind (fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
-		printf ("Could not bind AF_UNIX: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		printf ("Could not bind AF_UNIX: %s\n", error_str);
 	}
 	listen (fd, SERVER_BACKLOG);
 	*server_fd = fd;

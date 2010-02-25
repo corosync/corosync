@@ -379,9 +379,11 @@ static int read_config_file_into_objdb(
 
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		snprintf (error_reason, sizeof(error_string_response),
 			"Can't read file %s reason = (%s)\n",
-			 filename, strerror (errno));
+			 filename, error_str);
 		*error_string = error_reason;
 		return -1;
 	}

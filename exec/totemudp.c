@@ -1385,10 +1385,14 @@ static void timer_function_netif_check_timeout (
 static void totemudp_traffic_control_set(struct totemudp_instance *instance, int sock)
 {
 #ifdef SO_PRIORITY
-    int prio = 6; /* TC_PRIO_INTERACTIVE */
+	int prio = 6; /* TC_PRIO_INTERACTIVE */
+	char error_str[100];
 
-    if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int)))
-		log_printf (instance->totemudp_log_level_warning, "Could not set traffic priority. (%s)\n", strerror (errno));
+	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int))) {
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudp_log_level_warning,
+			"Could not set traffic priority. (%s)\n", error_str);
+    }
 #endif
 }
 
@@ -1426,7 +1430,10 @@ static int totemudp_build_sockets_ip (
 	totemip_nosigpipe (sockets->mcast_recv);
 	res = fcntl (sockets->mcast_recv, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (instance->totemudp_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on multicast socket: %s\n", error_str);
 		return (-1);
 	}
 
@@ -1462,7 +1469,10 @@ static int totemudp_build_sockets_ip (
 	totemip_nosigpipe (sockets->mcast_send);
 	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (instance->totemudp_log_level_warning, "Could not set non-blocking operation on multicast socket: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on multicast socket: %s\n", error_str);
 		return (-1);
 	}
 
@@ -1495,7 +1505,10 @@ static int totemudp_build_sockets_ip (
 	totemip_nosigpipe (sockets->token);
 	res = fcntl (sockets->token, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (instance->totemudp_log_level_warning, "Could not set non-blocking operation on token socket: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on token socket: %s\n", error_str);
 		return (-1);
 	}
 
