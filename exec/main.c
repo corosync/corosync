@@ -1242,6 +1242,7 @@ int main (int argc, char **argv)
 	const char *config_iface_init;
 	char *config_iface;
 	char *iface;
+	char *strtok_save_pt;
 	int res, ch;
 	int background, setprio;
 	struct stat stat_out;
@@ -1349,7 +1350,7 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_OBJDB);
 	}
 
-	iface = strtok(config_iface, ":");
+	iface = strtok_r(config_iface, ":", &strtok_save_pt);
 	while (iface)
 	{
 		res = lcr_ifact_reference (
@@ -1373,7 +1374,7 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_NOTICE, "%s", error_string);
 		config_modules[num_config_modules++] = config;
 
-		iface = strtok(NULL, ":");
+		iface = strtok_r(NULL, ":", &strtok_save_pt);
 	}
 	free(config_iface);
 
