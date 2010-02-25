@@ -564,33 +564,41 @@ parse_error:
 
 static int uid_determine (const char *req_user)
 {
-	struct passwd *passwd;
-	int ais_uid = 0;
+	struct passwd passwd;
+	struct passwd* pwdptr = &passwd;
+	struct passwd* temp_pwd_pt;
+	char pwdbuffer[200];
+	int  pwdlinelen = sizeof(pwdbuffer);
 
-	passwd = getpwnam(req_user);
-	if (passwd == 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n", req_user);
+	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n",
+			req_user);
 		corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
-	ais_uid = passwd->pw_uid;
-	endpwent ();
-	return ais_uid;
+
+	return passwd.pw_uid;
 }
 
 static int gid_determine (const char *req_group)
 {
-	struct group *group;
 	int ais_gid = 0;
+	struct group group;
+	struct group * grpptr = &group;
+	struct group * temp_grp_pt;
+	char grpbuffer[200];
+	int  grplinelen = sizeof(grpbuffer);
 
-	group = getgrnam (req_group);
-	if (group == 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n", req_group);
+	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n",
+			req_group);
 		corosync_exit_error (AIS_DONE_GID_DETERMINE);
 	}
-	ais_gid = group->gr_gid;
-	endgrent ();
+	ais_gid = group.gr_gid;
 	return ais_gid;
 }
+
 
 static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 				     void *priv_data_pt)
