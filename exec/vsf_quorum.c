@@ -135,11 +135,12 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 				  size_t view_list_entries,
 				  int quorum, struct memb_ring_id *ring_id)
 {
+	int old_quorum = primary_designated;
 	primary_designated = quorum;
 
-	if (primary_designated) {
+	if (primary_designated && !old_quorum) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
-	} else {
+	} else if (!primary_designated && old_quorum) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
 	}
 
