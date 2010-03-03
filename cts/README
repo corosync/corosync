@@ -1,0 +1,80 @@
+Quick start guide.
+==================
+
+CTS: Cluster Test System
+The CTS uses a test driver node(TDN) to drive the execution of the test
+software.  The CTS also uses 2 or more test target nodes(TTN) to run the test
+cases.  The CTS software requires atleast 3 nodes 1 of which acts as a TDN and
+the remaining acting as TTNs.
+
+The dependencies of the TDN include Pacemaker and syslog-ng.
+The dependencies of the TTN include syslog-ng.
+
+On the single TDN install syslog-ng.
+On the single TDN, it is recommended at this time to install pacemaker from
+source so that the CTS from Pacemaker remains compatible with the current
+working version of the CTS components within Corosync.
+
+On the 2 or more TTNs install syslog-ng.
+
+2] ssh access
+--------------------------------------------------------------------------------
+CTS requires login-less root access to the CNs.
+so if my CN is called "node32"
+# ssh node32
+should not ask for a password and result in a root shell.
+
+To enable this behavior, create a ssh key with the command ssh-keygen.  When it
+prompts for a password, enter an empty field.  It will create a file called
+~/.ssh/id_dsa.pub.  Copy that file to the TTNs into /root/.ssh/authorized_keys.
+Ensure permissions are 700 on /root/.ssh.
+
+Test ssh into the machine works without a password from the TDN.
+
+3] Redirect corosync logging from the TTN to the TDN
+--------------------------------------------------------------------------------
+a) install & enable syslog-ng on the EN and CNs.
+b) put the following config into /etc/syslog-ng/syslog-ng.conf
+
+For the below configuration content, substitute the following with your
+environment:
+Note: obviously change the following to real values:
+@THE-LOG-FILE-HERE@ 		A log file name on the TTN
+@EXERCISER-HOSTNAME-HERE@	The host name of the TTN.  To avoid DNS issues
+				IP addresses also work and are more convient.
+
+Place this anywhere in the configuration file of the TDN:
+
+source s_tcp { tcp(port(9191) max-connections(99999)); };
+filter f_ha  { facility(daemon); };
+destination ha_local { file(@THE-LOG-FILE-HERE@ perm(0644)); };
+log { source(s_sys); source(s_tcp); filter(f_ha); destination(ha_local); };
+
+Place this anywhere in the configuration file on the TTN:
+
+destination ha_tcp { tcp(@EXERCISER-HOSTNAME-HERE@ port(9191));};
+filter f_ha_tcp  { facility(daemon); };
+log { source(s_sys); filter(f_ha_tcp); destination(ha_tcp); };
+
+c) Test that syslog-ng is working properly by using the logger command
+From the TTN:
+logger -p daemon.err "Hello from $(hostname)"
+
+Then on the TDN:
+tail @THE-LOG-FILE-HERE@
+
+4] Install augeas on the TTN
+--------------------------------------------------------------------------------
+yum install augeas
+
+5] Configuring corosync for CTSs testing
+--------------------------------------------------------------------------------
+
+./configure --enable-testagents --enable-augeas
+
+and then install it on the TTN.
+
+6] run CTS
+--------------------------------------------------------------------------------
+cd <your-corosync-src-dir>/cts
+python ./CoroLab.py -L @THE-LOG-FILE-HERE@ --at-boot 0  --nodes "n1 n2"

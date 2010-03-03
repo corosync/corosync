@@ -128,6 +128,9 @@ AC_CONFIG_FILES([Makefile
 		 pkgconfig/Makefile
 		 services/Makefile
 		 test/Makefile
+		 cts/Makefile
+		 cts/agents/Makefile
+		 cts/CTSvars.py
 		 tools/Makefile])
 
 ### Local business
@@ -198,6 +201,10 @@ AC_ARG_ENABLE([small-memory-footprint],
 AC_ARG_ENABLE([nss],
 	[  --enable-nss            : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
+
+AC_ARG_ENABLE([testagents],
+	[  --enable-testagents            : Install Test Agents. ],,
+	[ default="no" ])
 
 AC_ARG_ENABLE([rdma],
 	[  --enable-rdma           : Infiniband RDMA transport support ],,
@@ -327,6 +334,11 @@ if test "x${enable_nss}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
+if test "x${enable_testagents}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
+fi
+
 if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([rdmacm],[rdmacm])
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
@@ -425,6 +437,7 @@ AC_SUBST([CPG_SONAME])
 AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
+AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
 
 AC_SUBST([NSS_LDFLAGS])
 

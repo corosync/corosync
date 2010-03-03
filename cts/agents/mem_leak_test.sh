@@ -1,0 +1,114 @@
+#!/bin/sh
+
+_usage_()
+{
+  echo bla bla
+
+  exit 0
+}
+
+get_mem()
+{
+  if [ -z "$1" ]
+  then
+    type=Data
+  else
+    type=$1
+  fi
+  MEM=$(cat /proc/$(pidof corosync)/status | grep Vm$type | sed "s/Vm$type:\(.*\) kB/\1/")
+  echo $MEM
+}
+
+#
+# create and destroy a lot of objects
+#
+_object_test_()
+{
+  TYPE=RSS
+  temp_file=/tmp/object.txt
+  COUNT=1
+
+  corosync-objctl -c usr
+  corosync-objctl -w usr.angus=456
+  corosync-objctl -d usr
+
+  BEFORE=$(get_mem $TYPE)
+  # this loop is just to ignore the first iteration
+  for f in /usr/share/man /usr/lib /usr/bin /usr/local ;
+  do
+    rm -f $temp_file
+
+    find $f | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
+    do 
+      echo $l.count=$count >> $temp_file
+      let COUNT="$COUNT+1"
+    done
+
+    corosync-objctl -p $temp_file
+    corosync-objctl -d usr
+  done
+  AFTER=$(get_mem $TYPE)
+  let DIFF="$AFTER - $BEFORE"
+  rm -f $temp_file
+  #echo $f diff $TYPE $DIFF
+  echo $DIFF
+
+  exit 0
+}
+
+#
+# load and unload a service a bunch of times
+#
+_service_test_()
+{
+  echo _service_test_
+
+  exit 0
+}
+
+#
+# run the corosync tools to cause IPC sessions to created/destroyed
+#
+_session_test_()
+{
+  echo _session_test_
+  COUNT=1
+
+  find /usr/bin | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
+  do 
+    corosync-objctl -c $l
+    corosync-objctl -w $l.value=$COUNT
+    let COUNT="$COUNT+1"
+  done
+  corosync-objctl -d usr
+
+  exit 0
+}
+
+# Note that we use `"$@"' to let each command-line parameter expand to a 
+# separate word. The quotes around `$@' are essential!
+# We need TEMP as the `eval set --' would nuke the return value of getopt.
+TEMP=`getopt -o u123 --long help,object,session,service \
+     -n '$0' -- "$@"`
+
+if [ $? != 0 ] ; then echo "Incorrect arguments..." >&2 ; _usage_ ; exit 1 ; fi
+
+# Note the quotes around `$TEMP': they are essential!
+eval set -- "$TEMP"
+
+while true ; do
+        case "$1" in
+                -u|--help) _usage_ ;;
+                -1|--object) _object_test_ ;;
+                -2|--session) _session_test_ ;;
+                -3|--service) _service_test_ ;;
+                --) shift ; break ;;
+                *) echo "Internal error!" ; exit 1 ;;
+        esac
+done
+echo "Remaining arguments:"
+for arg do echo '--> '"\`$arg'" ; done
+
+
+
+
