@@ -85,6 +85,7 @@
 #include "service.h"
 #include "schedwrk.h"
 #include "evil.h"
+#include "tsafe.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
@@ -1239,7 +1240,7 @@ static void main_service_ready (void)
 
 }
 
-int main (int argc, char **argv)
+int main (int argc, char **argv, char **envp)
 {
 	const char *error_string;
 	struct totem_config totem_config;
@@ -1476,6 +1477,9 @@ int main (int argc, char **argv)
 		corosync_tty_detach ();
 	}
 	logsys_fork_completed();
+
+	/* callthis after our fork() */
+	tsafe_init (envp);
 
 	corosync_timer_init (
 		serialize_lock,

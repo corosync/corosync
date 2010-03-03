@@ -37,7 +37,7 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rd
 
 TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemudp.c \
 			  totemrrp.c totemsrp.c totemmrp.c totempg.c \
-			  crypto.c wthread.c
+			  crypto.c wthread.c tsafe.c
 if BUILD_RDMA
 TOTEM_SRC		+= totemiba.c
 endif
