@@ -150,7 +150,7 @@ endif
 endif
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) *.c
 
 all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
 	@echo Built corosync Executive

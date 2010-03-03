@@ -31,7 +31,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 MAINTAINERCLEANFILES    = Makefile.in
-INCLUDES       		= -I$(top_builddir)/include -I$(top_srcdir)/include
+INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 
 noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench testconfdb	\
 			logsysbench logsysrec testquorum testvotequorum1 testvotequorum2	\
@@ -88,8 +88,13 @@ logsys_t2_LDFLAGS	= -L../exec
 testsam_LDADD		= -lsam
 testsam_LDFLAGS		= -L../lib
 
+LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
+LINT_FILES2:=$(filter-out testevsth.c, $(LINT_FILES1))
+LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES2))
+
+
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
 	rm -f fdata

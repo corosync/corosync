@@ -80,7 +80,7 @@ endif
 	$(CC) $(AM_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -c -o $@ $<
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) *.c
 
 all-local: $(LCRSO_OBJS) $(LCRSO)
 	@echo Built Service Engines
