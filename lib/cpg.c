@@ -164,6 +164,9 @@ cs_error_t cpg_finalize (
 	cpg_handle_t handle)
 {
 	struct cpg_inst *cpg_inst;
+	struct iovec iov;
+	struct req_lib_cpg_finalize req_lib_cpg_finalize;
+	struct res_lib_cpg_finalize res_lib_cpg_finalize;
 	cs_error_t error;
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
@@ -181,12 +184,36 @@ cs_error_t cpg_finalize (
 
 	cpg_inst->finalize = 1;
 
+	/*
+	 * Send service request
+	 */
+	req_lib_cpg_finalize.header.size = sizeof (struct req_lib_cpg_finalize);
+	req_lib_cpg_finalize.header.id = MESSAGE_REQ_CPG_FINALIZE;
+
+	iov.iov_base = (void *)&req_lib_cpg_finalize;
+	iov.iov_len = sizeof (struct req_lib_cpg_finalize);
+
+	error = coroipcc_msg_send_reply_receive (cpg_inst->handle,
+		&iov,
+		1,
+		&res_lib_cpg_finalize,
+		sizeof (struct req_lib_cpg_finalize));
+
+	if (error != CS_OK) {
+		goto error_put;
+	}
+
 	coroipcc_service_disconnect (cpg_inst->handle);
 
 	cpg_inst_finalize (cpg_inst, handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (CPG_OK);
+
+error_put:
+	hdb_handle_put (&cpg_iteration_handle_t_db, handle);
+	cpg_inst->finalize = 0;
+	return (error);
 }
 
 cs_error_t cpg_fd_get (

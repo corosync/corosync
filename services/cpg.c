@@ -214,6 +214,8 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message);
 
 static void message_handler_req_lib_cpg_leave (void *conn, const void *message);
 
+static void message_handler_req_lib_cpg_finalize (void *conn, const void *message);
+
 static void message_handler_req_lib_cpg_mcast (void *conn, const void *message);
 
 static void message_handler_req_lib_cpg_membership (void *conn,
@@ -289,6 +291,10 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 	{ /* 7 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 8 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_finalize,
+		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 };
 
@@ -1147,6 +1153,32 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	res_lib_cpg_leave.header.id = MESSAGE_RES_CPG_LEAVE;
 	res_lib_cpg_leave.header.error = error;
 	api->ipc_response_send(conn, &res_lib_cpg_leave, sizeof(res_lib_cpg_leave));
+}
+
+/* Finalize message from library */
+static void message_handler_req_lib_cpg_finalize (
+	void *conn,
+	const void *message)
+{
+	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	struct res_lib_cpg_finalize res_lib_cpg_finalize;
+	cs_error_t error = CS_OK;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg finalize for conn=%p\n", conn);
+
+	/*
+	 * We will just remove cpd from list. After this call, connection will be
+	 * closed on lib side, and cpg_lib_exit_fn will be called
+	 */
+	list_del (&cpd->list);
+	list_init (&cpd->list);
+
+	res_lib_cpg_finalize.header.size = sizeof (res_lib_cpg_finalize);
+	res_lib_cpg_finalize.header.id = MESSAGE_RES_CPG_FINALIZE;
+	res_lib_cpg_finalize.header.error = error;
+
+	api->ipc_response_send (conn, &res_lib_cpg_finalize,
+		sizeof (res_lib_cpg_finalize));
 }
 
 /* Mcast message from the library */

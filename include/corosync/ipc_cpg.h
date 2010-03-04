@@ -47,7 +47,8 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_LOCAL_GET = 4,
 	MESSAGE_REQ_CPG_ITERATIONINITIALIZE = 5,
 	MESSAGE_REQ_CPG_ITERATIONNEXT = 6,
-	MESSAGE_REQ_CPG_ITERATIONFINALIZE = 7
+	MESSAGE_REQ_CPG_ITERATIONFINALIZE = 7,
+	MESSAGE_REQ_CPG_FINALIZE = 8
 };
 
 enum res_cpg_types {
@@ -63,6 +64,7 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_ITERATIONINITIALIZE = 9,
 	MESSAGE_RES_CPG_ITERATIONNEXT = 10,
 	MESSAGE_RES_CPG_ITERATIONFINALIZE = 11,
+	MESSAGE_RES_CPG_FINALIZE = 12,
 };
 
 enum lib_cpg_confchg_reason {
@@ -154,6 +156,14 @@ struct req_lib_cpg_join {
 };
 
 struct res_lib_cpg_join {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_finalize {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_finalize {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
