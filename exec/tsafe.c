@@ -80,6 +80,9 @@
 static int tsafe_disabled = 1;
 static int tsafe_inited = 0;
 static char **coro_environ;
+static void atfork_prepare (void);
+static void atfork_parent (void);
+static void atfork_child (void);
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 static pthread_spinlock_t tsafe_enabled_mutex;
@@ -105,10 +108,12 @@ void tsafe_init (char **envp)
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&tsafe_enabled_mutex, 0);
 #endif
+
+	pthread_atfork (atfork_prepare, atfork_parent,atfork_child);
+
 	tsafe_disabled = 1;
 	tsafe_inited = 1;
 }
-
 
 static void tsafe_lock (void)
 {
@@ -118,6 +123,7 @@ static void tsafe_lock (void)
 	pthread_mutex_lock (&tsafe_enabled_mutex);
 #endif
 }
+
 static void tsafe_unlock (void)
 {
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
@@ -141,6 +147,23 @@ void tsafe_on (void)
 	tsafe_unlock ();
 }
 
+static void atfork_prepare (void)
+{
+	tsafe_lock ();
+}
+
+static void atfork_parent (void)
+{
+	tsafe_unlock ();
+}
+
+static void atfork_child (void)
+{
+	if (tsafe_inited && !tsafe_disabled) {
+		tsafe_disabled = 1;
+	}
+	tsafe_unlock ();
+}
 
 static void* _get_real_func_(const char * func_name)
 {
@@ -182,25 +205,6 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 	return real_pthread_create (thread, attr, start_routine, arg);
 }
 
-pid_t fork(void)
-{
-	static pid_t (*real_fork)(void) = NULL;
-	pid_t ret;
-
-	if (tsafe_inited && !tsafe_disabled) {
-		tsafe_off ();
-	}
-
-	if (real_fork == NULL) {
-		real_fork = _get_real_func_ ("fork");
-	}
-	ret = real_fork ();
-	if (ret == 0) {
-		/* if we have forked corosync then anything goes. */
-		tsafe_off ();
-	}
-	return ret;
-}
 #endif /* COROSYNC_LINUX */
 
 /*
