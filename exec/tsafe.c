@@ -109,7 +109,7 @@ void tsafe_init (char **envp)
 	pthread_spin_init (&tsafe_enabled_mutex, 0);
 #endif
 
-	pthread_atfork (atfork_prepare, atfork_parent,atfork_child);
+	pthread_atfork (atfork_prepare, atfork_parent, atfork_child);
 
 	tsafe_disabled = 1;
 	tsafe_inited = 1;
