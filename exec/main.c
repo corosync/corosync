@@ -446,6 +446,12 @@ static void confchg_fn (
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
+	for (i = 0; i < left_list_entries; i++) {
+		member_object_left (left_list[i]);
+	}
+	for (i = 0; i < joined_list_entries; i++) {
+		member_object_joined (joined_list[i]);
+	}
 	/*
 	 * Call configuration change for all services
 	 */
