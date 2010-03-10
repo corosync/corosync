@@ -1,5 +1,11 @@
 %global alphatag @alphatag@
 
+
+# Conditionals
+# Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"
+# to disable or enable specific features
+%bcond_with testagents
+
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
@@ -42,6 +48,9 @@ export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
 %{configure} \
 	--enable-nss \
+%if %{with testagents}
+        --enable-testagents \
+%endif
 	--enable-rdma \
 	--with-initddir=%{_initddir}
 
@@ -108,6 +117,29 @@ fi
 %{_mandir}/man8/corosync-objctl.8*
 %{_mandir}/man5/corosync.conf.5*
 
+
+# optional testagent rpm
+#
+%if %{with testagents}
+
+%package -n corosync-testagents
+Summary: The Corosync Cluster Engine Test Agents
+Group: Development/Libraries
+Requires: %{name} = %{version}-%{release}
+
+%description -n corosync-testagents
+This package contains corosync test agents.
+
+%files -n corosync-testagents
+%defattr(755,root,root,-)
+%{_datadir}/corosync/tests/mem_leak_test.sh
+%{_datadir}/corosync/tests/net_breaker.sh
+%{_bindir}/cpg_test_agent
+
+%endif
+
+# library
+#
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
 Group: System Environment/Libraries
