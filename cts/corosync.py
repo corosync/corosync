@@ -261,7 +261,6 @@ class corosync_flatiron(ClusterManager):
         for node in self.Env["nodes"]:
             self.ShouldBeStatus[node] = ""
             self.unisolate_node(node)
-            self.rsh(node, 'service abrtd stop', 1)
             self.StataCM(node)
 
     def HasQuorum(self, node_list):
@@ -355,7 +354,6 @@ class TestAgent(object):
     
     def start(self):
         '''Set up the given ScenarioComponent'''
-
         self.env.debug('test agent: start (' + self.node + ')')
         self.sock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
         ip = socket.gethostbyname(self.node)
@@ -369,7 +367,7 @@ class TestAgent(object):
                 is_connected = True
             except socket.error, msg:
                 if retries > 5:
-                    self.env.debug( "Retried " + str(retries) + " times. Error: " + msg )
+                    self.env.debug("Retried " + str(retries) + " times. Error: " + str(msg))
                 time.sleep(1)
         self.started = True
         self.used = False

@@ -96,7 +96,10 @@ class CpgConfigChangeBase(CoroTest):
         printit = 0
         self.CM.log("Waiting for config change on " + self.listener)
         while not found:
-            event = self.CM.agent[self.listener].read_config_event()
+            try:
+                event = self.CM.agent[self.listener].read_config_event()
+            except:
+                return self.failure('connection to test agent failed.')
             if not event == None:
                 self.CM.debug("RECEIVED: " + str(event))
             if event == None:

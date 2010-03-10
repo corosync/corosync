@@ -72,7 +72,7 @@ typedef struct {
 	char payload[1];
 } msg_t;
 
-#define LOG_STR_SIZE 128
+#define LOG_STR_SIZE 256
 typedef struct {
 	char log[LOG_STR_SIZE];
 	struct list_head list;
@@ -129,7 +129,7 @@ static void delivery_callback (
 
 	log_pt = malloc (sizeof(log_entry_t));
 	list_init (&log_pt->list);
-	snprintf (log_pt->log, 128, "%d:%d:%d:%d;",
+	snprintf (log_pt->log, LOG_STR_SIZE, "%d:%d:%d:%d;",
 		msg_pt->nodeid, msg_pt->pid, msg_pt->seq, status);
 	list_add_tail (&log_pt->list, &msg_log_head);
 	total_stored_msgs++;
@@ -155,7 +155,7 @@ static void config_change_callback (
 
 		log_pt = malloc (sizeof(log_entry_t));
 		list_init (&log_pt->list);
-		snprintf (log_pt->log, 256, "%s,%d,%d,left",
+		snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,left",
 			groupName->value, left_list[i].nodeid,left_list[i].pid);
 		list_add_tail(&log_pt->list, &config_chg_log_head);
 	}
@@ -164,7 +164,7 @@ static void config_change_callback (
 
 		log_pt = malloc (sizeof(log_entry_t));
 		list_init (&log_pt->list);
-		snprintf (log_pt->log, 256, "%s,%d,%d,join",
+		snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,join",
 			groupName->value, joined_list[i].nodeid,joined_list[i].pid);
 		list_add_tail (&log_pt->list, &config_chg_log_head);
 	}
