@@ -60,7 +60,8 @@ class CoroConfig(object):
             self.corobase = corobase
         example = self.corobase + "/conf/corosync.conf.example"
 
-        shutil.rmtree (self.new_root)
+        if os.path.isdir(self.new_root):
+            shutil.rmtree (self.new_root)
         os.makedirs (self.new_root + "/etc/corosync")
         shutil.copy (example, self.new_root + "/etc/corosync/corosync.conf")
 
