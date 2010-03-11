@@ -123,11 +123,11 @@ static void print_key (char *key_name, void *value, size_t value_len, confdb_val
 					  *(uint32_t*)value);
 			break;
 		case CONFDB_VALUETYPE_INT64:
-			printf ("%s=%lld\n", key_name,
+			printf ("%s=%"PRIi64"\n", key_name,
 					  *(int64_t*)value);
 			break;
 		case CONFDB_VALUETYPE_UINT64:
-			printf ("%s=%llu\n", key_name,
+			printf ("%s=%"PRIu64"\n", key_name,
 					  *(uint64_t*)value);
 			break;
 		case CONFDB_VALUETYPE_STRING:

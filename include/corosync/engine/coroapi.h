@@ -653,6 +653,11 @@ struct corosync_service_engine_iface_ver0 {
         struct corosync_service_engine *(*corosync_get_service_engine_ver0) (void);
 };
 
+typedef void (*sync_init_v1_fn_t) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id) ;
+
 struct corosync_service_engine {
 	const char *name;
 	unsigned short id;
@@ -679,10 +684,7 @@ struct corosync_service_engine {
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
 	enum cs_sync_mode sync_mode;
-	void (*sync_init) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id);
+	sync_init_v1_fn_t sync_init;
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
