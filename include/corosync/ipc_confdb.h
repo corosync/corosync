@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -84,6 +84,7 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_KEY_DECREMENT = 19,
 	MESSAGE_RES_CONFDB_KEY_GET_TYPED = 20,
 	MESSAGE_RES_CONFDB_KEY_ITER_TYPED = 21,
+	MESSAGE_RES_CONFDB_RELOAD_CALLBACK = 22,
 };
 
 
@@ -250,6 +251,11 @@ struct res_lib_confdb_object_destroy_callback {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t name __attribute__((aligned(8)));
+};
+
+struct res_lib_confdb_reload_callback {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_uint32_t type __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_track_start {

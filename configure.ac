@@ -173,9 +173,12 @@ SOMAJOR="4"
 SOMINOR="0"
 SOMICRO="0"
 SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
-# Special for libcpg
+# Special for libcpg & libconfdb
 CPG_SOMICRO="1"
 CPG_SONAME="${SOMAJOR}.${SOMINOR}.${CPG_SOMICRO}"
+CONFDB_SOMICRO="0"
+CONFDB_SOMINOR="1"
+CONFDB_SONAME="${SOMAJOR}.${CONFDB_SOMINOR}.${CONFDB_SOMICRO}"
 
 # local options
 AC_ARG_ENABLE([ansi],
@@ -433,6 +436,7 @@ AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 AC_SUBST([CPG_SONAME])
+AC_SUBST([CONFDB_SONAME])
 
 AC_SUBST([OS_DYFLAGS])
 
@@ -483,6 +487,7 @@ AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
 AC_MSG_RESULT([  CPG Library SONAME       = ${CPG_SONAME}])
+AC_MSG_RESULT([  CONFDB Library SONAME    = ${CONFDB_SONAME}])
 AC_MSG_RESULT([  Default optimization     = ${OPT_CFLAGS}])
 AC_MSG_RESULT([  Default debug options    = ${GDB_CFLAGS}])
 AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])

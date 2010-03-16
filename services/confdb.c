@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Red Hat, Inc.
+ * Copyright (c) 2008-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -135,6 +135,11 @@ static void confdb_notify_lib_of_new_object(
 static void confdb_notify_lib_of_destroyed_object(
 	hdb_handle_t parent_object_handle,
 	const uint8_t *name_pt, size_t name_len,
+	void *priv_data_pt);
+
+static void confdb_notify_lib_of_reload(
+	objdb_reload_notify_type_t notify_type,
+	int flush,
 	void *priv_data_pt);
 
 /*
@@ -814,6 +819,20 @@ static void confdb_notify_lib_of_destroyed_object(
 	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
 }
 
+static void confdb_notify_lib_of_reload(objdb_reload_notify_type_t notify_type,
+					int flush,
+					void *priv_data_pt)
+{
+	struct res_lib_confdb_reload_callback res;
+
+	res.header.size = sizeof(res);
+	res.header.id = MESSAGE_RES_CONFDB_RELOAD_CALLBACK;
+	res.header.error = CS_OK;
+	res.type = notify_type;
+
+	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+}
+
 
 static void message_handler_req_lib_confdb_track_start (void *conn,
 							const void *message)
@@ -826,7 +845,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn,
 		confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,
 		confdb_notify_lib_of_destroyed_object,
-		NULL,
+		confdb_notify_lib_of_reload,
 		conn);
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_CONFDB_TRACK_START;
@@ -842,7 +861,7 @@ static void message_handler_req_lib_confdb_track_stop (void *conn,
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,
 		confdb_notify_lib_of_destroyed_object,
-		NULL,
+		confdb_notify_lib_of_reload,
 		conn);
 
 	res.size = sizeof(res);

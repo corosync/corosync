@@ -40,7 +40,8 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
 			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
-SHARED_LIBS		= $(filter-out libcpg.so.$(SONAME), $(lib_LIBRARIES:%.a=%.so.$(SONAME))) libcpg.so.$(CPG_SONAME)
+SHARED_LIBS		= $(filter-out libcpg.so.$(SONAME) libconfdb.so.$(SONAME), $(lib_LIBRARIES:%.a=%.so.$(SONAME))) \
+			  libcpg.so.$(CPG_SONAME) libconfdb.so.$(CONFDB_SONAME)
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
 
@@ -71,11 +72,11 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
+libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o \
 		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
 
 libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
 	$(CC) $(DARWIN_OPTS) $^ -o $@
@@ -96,11 +97,11 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
+libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
 	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o confdb.o \
 		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
 
 libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
 	$(LD) $(SOLARIS_OPTS) -G $^ -o $@
@@ -122,13 +123,13 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(SONAME): confdb.o sa-confdb.o ../lcr/lcr_ifact.o libcoroipcc.so.$(SONAME)
+libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o ../lcr/lcr_ifact.o libcoroipcc.so.$(SONAME)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libconfdb.versions \
 		$^ $(LDFLAGS) $(OS_DYFLAGS) $(OS_LDL) $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(SONAME) libconfdb.so.$(SOMAJOR)
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
+	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
 
 libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
 	$(CC) -shared -o $@ \
