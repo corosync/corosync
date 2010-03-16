@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2007-2009 Red Hat, Inc.
+ * Copyright (c) 2007-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -352,6 +352,7 @@ static void object_reload_notification(int startstop, int flush)
 			if (tmptracker_pt) {
 				list_add(&tmptracker_pt->object_list, &tmplist);
 				tmptracker_pt->object_reload_notify_fn = tracker_pt->object_reload_notify_fn;
+				tmptracker_pt->data_pt = tracker_pt->data_pt;
 			}
 		}
 	}

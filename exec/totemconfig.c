@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -818,6 +818,9 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 	struct totem_config *totem_config = priv_data_pt;
 	hdb_handle_t totem_object_handle;
 
+	if (totem_config == NULL)
+	        return;
+
 	/*
 	 * A new totem {} key might exist, cancel the
 	 * existing notification at the start of reload,
@@ -831,7 +834,7 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 			NULL,
 			NULL,
 			NULL,
-			NULL);
+			totem_config);
 	}
 
 	if (type == OBJDB_RELOAD_NOTIFY_END ||
@@ -840,8 +843,14 @@ static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush
 
 		if (!totem_handle_find(global_objdb,
 				      &totem_object_handle)) {
-			add_totem_config_notification(global_objdb, totem_config, totem_object_handle);
 
+		        global_objdb->object_track_start(totem_object_handle,
+						  1,
+						  totem_key_change_notify,
+						  NULL, // object_create_notify,
+						  NULL, // object_destroy_notify,
+						  NULL, // object_reload_notify
+						  totem_config); // priv_data
 			/*
 			 * Reload the configuration
 			 */
