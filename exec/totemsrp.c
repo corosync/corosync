@@ -2475,7 +2475,7 @@ static int orf_token_rtr (
 	 * but only retry if there is room in the retransmit list
 	 */
 
-	range = instance->my_high_seq_received - instance->my_aru;
+	range = orf_token->seq - instance->my_aru;
 	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
 
 	for (i = 1; (orf_token->rtr_list_entries < RETRANSMIT_ENTRIES_MAX) &&
