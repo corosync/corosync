@@ -447,6 +447,25 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			 */
 			*interface_up = ifa->ifa_flags & IFF_UP;
 			*interface_num = if_nametoindex(ifa->ifa_name);
+
+			/*
+			 * Handle case, when nodeid is set to 0 or not set.
+			 */
+			if (bindnet->family == AF_INET && bindnet->nodeid == 0) {
+				unsigned int nodeid = 0;
+				memcpy (&nodeid, boundto->addr, sizeof (int));
+#if _BYTE_ORDER == _BIG_ENDIAN
+				nodeid = swab32 (nodeid);
+#endif
+				/*
+				 * Mask 32nd bit off to workaround bugs in other peoples code
+				 * (if configuration requests it).
+				 */
+				if (mask_high_bit) {
+					nodeid &= 0x7FFFFFFF;
+				}
+				boundto->nodeid = nodeid;
+			}
 			res = 0;
 			break; /* for */
 		}
