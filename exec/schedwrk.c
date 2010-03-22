@@ -46,6 +46,7 @@ struct schedwrk_instance {
 	int (*schedwrk_fn) (const void *);
 	const void *context;
 	void *callback_handle;
+	int lock;
 };
 
 union u {
@@ -70,9 +71,13 @@ static int schedwrk_do (enum totem_callback_token_type type, const void *context
 		goto error_exit;
 	}
 
-	serialize_lock ();
+	if (instance->lock)
+		serialize_lock ();
+
 	res = instance->schedwrk_fn (instance->context);
-	serialize_unlock ();
+
+	if (instance->lock)
+		serialize_unlock ();
 
 	if (res == 0) {
 		hdb_handle_destroy (&schedwrk_instance_database, hdb_nocheck_convert (handle));
@@ -93,10 +98,11 @@ void schedwrk_init (
 	serialize_unlock = serialize_unlock_fn;
 }
 
-int schedwrk_create (
+static int schedwrk_internal_create (
 	hdb_handle_t *handle,
 	int (schedwrk_fn) (const void *),
-	const void *context)
+	const void *context,
+	int lock)
 {
 	struct schedwrk_instance *instance;
 	int res;
@@ -121,6 +127,7 @@ int schedwrk_create (
 
 	instance->schedwrk_fn = schedwrk_fn;
 	instance->context = context;
+	instance->lock = lock;
 
         hdb_handle_put (&schedwrk_instance_database, *handle);
 
@@ -131,6 +138,22 @@ error_destroy:
 
 error_exit:
 	return (-1);
+}
+
+int schedwrk_create (
+	hdb_handle_t *handle,
+	int (schedwrk_fn) (const void *),
+	const void *context)
+{
+	return schedwrk_internal_create (handle, schedwrk_fn, context, 1);
+}
+
+int schedwrk_create_nolock (
+	hdb_handle_t *handle,
+	int (schedwrk_fn) (const void *),
+	const void *context)
+{
+	return schedwrk_internal_create (handle, schedwrk_fn, context, 0);
 }
 
 void schedwrk_destroy (hdb_handle_t handle)
