@@ -1067,6 +1067,21 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		}
 	}
 
+	/*
+	 * Same check must be done in process info list, because there may be not yet delivered
+	 * leave of client.
+	 */
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; iter = iter->next) {
+		struct process_info *pi = list_entry (iter, struct process_info, list);
+
+		if (pi->nodeid == api->totem_nodeid_get () && pi->pid == req_lib_cpg_join->pid &&
+		    mar_name_compare(&req_lib_cpg_join->group_name, &pi->group) == 0) {
+			/* We have same pid and group name joined -> return error */
+			error = CPG_ERR_TRY_AGAIN;
+			goto response_send;
+		}
+	}
+
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
 		error = CPG_OK;
