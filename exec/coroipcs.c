@@ -1179,6 +1179,10 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 	} else {
 		bytes_left = n_read - n_write;
 	}
+	if (bytes_left > 0) {
+		bytes_left--;
+	}
+
 	return (bytes_left);
 }
 
