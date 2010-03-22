@@ -274,7 +274,8 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		ais_service_index++) {
 
 		if (ais_service[ais_service_index] != NULL
-			&& ais_service[ais_service_index]->sync_mode == CS_SYNC_V1) {
+			&& (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1
+				|| ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2)) {
 			if (ais_service_index == sync_id) {
 				break;
 			}
@@ -288,7 +289,11 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		return (res);
 	}
 	callbacks->name = ais_service[ais_service_index]->name;
-	callbacks->sync_init = ais_service[ais_service_index]->sync_init;
+	callbacks->sync_init_api.sync_init_v1 = ais_service[ais_service_index]->sync_init;
+	callbacks->api_version = 1;
+	if (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2) {
+		callbacks->api_version = 2;
+	}
 	callbacks->sync_process = ais_service[ais_service_index]->sync_process;
 	callbacks->sync_activate = ais_service[ais_service_index]->sync_activate;
 	callbacks->sync_abort = ais_service[ais_service_index]->sync_abort;
@@ -317,7 +322,13 @@ static int corosync_sync_v2_callbacks_retrieve (
 	}
 
 	callbacks->name = ais_service[service_id]->name;
-	callbacks->sync_init = ais_service[service_id]->sync_init;
+
+	callbacks->api_version = 1;
+	if (ais_service[service_id]->sync_mode == CS_SYNC_V1_APIV2) {
+		callbacks->api_version = 2;
+	}
+
+	callbacks->sync_init_api.sync_init_v1 = ais_service[service_id]->sync_init;
 	callbacks->sync_process = ais_service[service_id]->sync_process;
 	callbacks->sync_activate = ais_service[service_id]->sync_activate;
 	callbacks->sync_abort = ais_service[service_id]->sync_abort;
@@ -358,6 +369,9 @@ static void confchg_fn (
 
 	if (abort_activate) {
 		sync_v2_abort ();
+	}
+	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
+		sync_v2_save_transitional (member_list, member_list_entries, ring_id);
 	}
 	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 		sync_v2_start (member_list, member_list_entries, ring_id);

@@ -99,7 +99,11 @@ static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
 
 static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
 
+static unsigned int my_trans_list[PROCESSOR_COUNT_MAX];
+
 static unsigned int my_member_list_entries;
+
+static unsigned int my_trans_list_entries;
 
 static int sync_barrier_send (const struct memb_ring_id *ring_id);
 
@@ -181,7 +185,14 @@ static void sync_start_init (const struct memb_ring_id *ring_id)
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
-	sync_callbacks.sync_init (my_member_list, my_member_list_entries, ring_id);
+	if (sync_callbacks.api_version == 1) {
+		sync_callbacks.sync_init_api.sync_init_v1 (my_member_list,
+			my_member_list_entries, ring_id);
+	} else {
+		sync_callbacks.sync_init_api.sync_init_v2 (my_trans_list,
+			my_trans_list_entries,
+			my_member_list, my_member_list_entries, ring_id);
+	}
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	/*
@@ -227,7 +238,7 @@ static void sync_callbacks_load (void)
 			break;
 		}
 		sync_recovery_index += 1;
-		if (sync_callbacks.sync_init) {
+		if (sync_callbacks.sync_init_api.sync_init_v1) {
 			break;
 		}
 	}
@@ -434,7 +445,7 @@ static void sync_deliver_fn (
 		/*
 		 * if sync service found, execute it
 		 */
-		if (sync_processing && sync_callbacks.sync_init) {
+		if (sync_processing && sync_callbacks.sync_init_api.sync_init_v1) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"Synchronization actions starting for (%s)\n",
 				sync_callbacks.name);
@@ -460,6 +471,9 @@ static void sync_confchg_fn (
 	sync_ring_id = ring_id;
 
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
+		memcpy (my_trans_list, member_list, member_list_entries *
+			sizeof (unsigned int));
+		my_trans_list_entries = member_list_entries;
 		return;
 	}
 	memcpy (my_member_list, member_list, member_list_entries * sizeof (unsigned int));

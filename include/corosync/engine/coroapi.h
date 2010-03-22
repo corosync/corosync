@@ -136,8 +136,9 @@ enum cs_flow_control_state {
 #endif /* COROSYNC_FLOW_CONTROL_STATE */
 
 enum cs_sync_mode {
-	CS_SYNC_V1	= 0,
-	CS_SYNC_V2	= 1
+	CS_SYNC_V1	 = 0,
+	CS_SYNC_V2	 = 1,
+	CS_SYNC_V1_APIV2 = 2
 };
 
 typedef enum {

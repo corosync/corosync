@@ -39,11 +39,23 @@
 #include <corosync/totem/totempg.h>
 #include "totemsrp.h"
 
-struct sync_callbacks {
-	void (*sync_init) (
+union sync_init_api {
+	void (*sync_init_v1) (
 		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id);
+
+	void (*sync_init_v2) (
+		const unsigned int *trans_list,
+		size_t trans_list_entries,
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
+};
+
+struct sync_callbacks {
+	int api_version;
+	union sync_init_api sync_init_api;
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);

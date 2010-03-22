@@ -117,16 +117,18 @@ static void deliver_fn_evt_compat (
 	unsigned int endian_conversion_required);
 
 static struct sync_callbacks clm_sync_operations = {
+	.api_version		= 1,
 	.name			= "dummy CLM service",
-	.sync_init		= clm_sync_init,
+	.sync_init_api.sync_init_v1 = clm_sync_init,
 	.sync_process		= clm_sync_process,
 	.sync_activate		= clm_sync_activate,
 	.sync_abort		= clm_sync_abort,
 };
 
 static struct sync_callbacks evt_sync_operations = {
+	.api_version		= 1,
 	.name			= "dummy EVT service",
-	.sync_init		= evt_sync_init,
+	.sync_init_api.sync_init_v1 = evt_sync_init,
 	.sync_process		= evt_sync_process,
 	.sync_activate		= evt_sync_activate,
 	.sync_abort		= evt_sync_abort,
@@ -212,7 +214,7 @@ extern int evil_callbacks_load (int sync_id,
 
 	}
 	if (callbacks_init) {
-		callbacks->sync_init = sync_dummy_init;
+		callbacks->sync_init_api.sync_init_v1 = sync_dummy_init;
 		callbacks->sync_process = sync_dummy_process;
 		callbacks->sync_activate = sync_dummy_activate;
 		callbacks->sync_abort = sync_dummy_abort;
