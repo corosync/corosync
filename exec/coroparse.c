@@ -49,6 +49,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <limits.h>
+#include <stddef.h>
 
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
@@ -264,8 +265,11 @@ static int read_uidgid_files_into_objdb(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
+	struct dirent *entry;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
+	size_t len;
+	int return_code;
 	struct stat stat_buf;
 
 	dirname = COROSYSCONFDIR "/uidgid.d";
@@ -274,7 +278,14 @@ static int read_uidgid_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	while ((dirent = readdir (dp))) {
+	len = offsetof(struct dirent, d_name) +
+                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	entry = malloc(len);
+
+	for (return_code = readdir_r(dp, entry, &dirent);
+		dirent != NULL && return_code == 0;
+		return_code = readdir_r(dp, entry, &dirent)) {
+
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
 		stat (filename, &stat_buf);
 		if (S_ISREG(stat_buf.st_mode)) {
@@ -293,6 +304,7 @@ static int read_uidgid_files_into_objdb(
 	}
 
 error_exit:
+	free (entry);
 	closedir(dp);
 
 	return res;
@@ -306,9 +318,12 @@ static int read_service_files_into_objdb(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
+	struct dirent *entry;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
 	struct stat stat_buf;
+	size_t len;
+	int return_code;
 
 	dirname = COROSYSCONFDIR "/service.d";
 	dp = opendir (dirname);
@@ -316,7 +331,14 @@ static int read_service_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	while ((dirent = readdir (dp))) {
+	len = offsetof(struct dirent, d_name) +
+                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	entry = malloc(len);
+
+	for (return_code = readdir_r(dp, entry, &dirent);
+		dirent != NULL && return_code == 0;
+		return_code = readdir_r(dp, entry, &dirent)) {
+
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
 		stat (filename, &stat_buf);
 		if (S_ISREG(stat_buf.st_mode)) {
@@ -335,6 +357,7 @@ static int read_service_files_into_objdb(
 	}
 
 error_exit:
+	free (entry);
 	closedir(dp);
 
 	return res;
