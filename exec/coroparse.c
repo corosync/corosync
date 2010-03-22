@@ -115,6 +115,7 @@ static int parse_section(FILE *fp,
 	char line[512];
 	int i;
 	char *loc;
+	int ignore_line;
 
 	while (fgets (line, sizeof (line), fp)) {
 		if (strlen(line) > 0) {
@@ -133,10 +134,20 @@ static int parse_section(FILE *fp,
 				break;
 			}
 		}
+
+		ignore_line = 1;
+		for (i = 0; i < strlen (line); i++) {
+			if (line[i] != '\t' && line[i] != ' ') {
+				if (line[i] != '#')
+					ignore_line = 0;
+
+				break;
+			}
+		}
 		/*
 		 * Clear out comments and empty lines
 		 */
-		if (line[0] == '#' || line[0] == '\0') {
+		if (ignore_line) {
 			continue;
 		}
 
