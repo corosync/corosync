@@ -1054,6 +1054,11 @@ void coroipcs_ipc_exit (void)
 
 		conn_info = list_entry (list, struct conn_info, list);
 
+		if (conn_info->state != CONN_STATE_THREAD_ACTIVE)
+			continue;
+
+		ipc_disconnect (conn_info);
+
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 		sem_destroy (&conn_info->control_buffer->sem0);
 		sem_destroy (&conn_info->control_buffer->sem1);
@@ -1073,8 +1078,6 @@ void coroipcs_ipc_exit (void)
 			conn_info->response_size);
 		res = circular_memory_unmap (conn_info->dispatch_buffer,
 			conn_info->dispatch_size);
-
-		sem_post_exit_thread (conn_info);
 	}
 }
 
@@ -1656,7 +1659,6 @@ int coroipcs_handler_dispatch (
 		 * ipc thread is the only reference at startup
 		 */
 		conn_info->refcount = 1;
-		conn_info->state = CONN_STATE_THREAD_ACTIVE;
 
 		conn_info->private_data = api->malloc (api->private_data_size_get (conn_info->service));
 		memset (conn_info->private_data, 0,
@@ -1690,6 +1692,8 @@ int coroipcs_handler_dispatch (
 		if (conn_info->service == SOCKET_SERVICE_INIT) {
 			conn_info->service = -1;
 		}
+
+		conn_info->state = CONN_STATE_THREAD_ACTIVE;
 	} else
 	if (revent & POLLIN) {
 		coroipcs_refcount_inc (conn_info);

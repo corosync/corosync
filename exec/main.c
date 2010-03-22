@@ -56,6 +56,7 @@
 #include <signal.h>
 #include <sched.h>
 #include <time.h>
+#include <semaphore.h>
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
@@ -133,6 +134,10 @@ static hdb_handle_t object_connection_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
+static pthread_t corosync_exit_thread;
+
+static sem_t corosync_exit_sem;
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -152,8 +157,8 @@ void corosync_state_dump (void)
 static void unlink_all_completed (void)
 {
 	poll_stop (0);
-	totempg_finalize ();
 	coroipcs_ipc_exit ();
+	totempg_finalize ();
 
 	corosync_exit_error (AIS_DONE_EXIT);
 }
@@ -167,7 +172,17 @@ void corosync_shutdown_request (void)
 	if (called == 0) {
 		called = 1;
 	}
+
+	sem_post (&corosync_exit_sem);
+}
+
+static void *corosync_exit_thread_handler (void *arg)
+{
+	sem_wait (&corosync_exit_sem);
+
 	corosync_service_unlink_all (api, unlink_all_completed);
+
+	return arg;
 }
 
 static void sigusr2_handler (int num)
@@ -1419,6 +1434,21 @@ int main (int argc, char **argv)
 	 */
 
 // TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
+
+	/*
+	 * Create semaphore and start "exit" thread
+	 */
+	res = sem_init (&corosync_exit_sem, 0, 0);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	res = pthread_create (&corosync_exit_thread, NULL, corosync_exit_thread_handler, NULL);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	}
 
 	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot
