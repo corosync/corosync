@@ -279,7 +279,7 @@ static int corosync_main_config_log_destination_set (
 
 		mode = logsys_config_mode_get (subsys);
 
-		if (strcmp (value, "yes") == 0) {
+		if (strcmp (value, "yes") == 0 || strcmp (value, "on") == 0) {
 			mode |= mode_mask;
 			if (logsys_config_mode_set(subsys, mode) < 0) {
 				sprintf (formatted_error_reason, "unable to set mode %s", objdb_key);
@@ -287,7 +287,7 @@ static int corosync_main_config_log_destination_set (
 				return -1;
 			}
 		} else
-		if (strcmp (value, "no") == 0) {
+		if (strcmp (value, "no") == 0 || strcmp (value, "off") == 0) {
 			mode &= ~mode_mask;
 			if (logsys_config_mode_set(subsys, mode) < 0) {
 				sprintf (formatted_error_reason, "unable to unset mode %s", objdb_key);
