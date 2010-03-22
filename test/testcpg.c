@@ -163,7 +163,7 @@ int main (int argc, char *argv[]) {
 
 	if (argc > optind) {
 		strcpy(group_name.value, argv[optind]);
-		group_name.length = strlen(argv[optind])+1;
+		group_name.length = strlen(argv[optind]);
 	}
 	else {
 		strcpy(group_name.value, "GROUP");
