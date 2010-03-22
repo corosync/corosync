@@ -559,7 +559,7 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	if (totem_config->consensus_timeout <= 1.2 * totem_config->token_timeout) {
+	if (totem_config->consensus_timeout < 1.2 * totem_config->token_timeout) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The consensus timeout parameter (%d ms) must be atleast 1.2 * token (%d ms).",
 			totem_config->consensus_timeout, (int) ((float)1.2 * totem_config->token_timeout));
