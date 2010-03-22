@@ -152,6 +152,8 @@ extern void coroipcs_refcount_dec (void *conn);
 
 extern void coroipcs_ipc_exit (void);
 
+extern int coroipcs_ipc_service_exit (unsigned int service);
+
 extern int coroipcs_handler_accept (
 	int fd,
 	int revent,

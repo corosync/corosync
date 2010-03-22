@@ -58,8 +58,8 @@ extern unsigned int corosync_service_unlink_and_exit (
  * Unlink and exit all corosync services
  */
 extern void corosync_service_unlink_all (
-        struct corosync_api_v1 *api,
-        void (*unlink_all_complete) (void));
+	struct corosync_api_v1 *api,
+	void (*unlink_all_complete) (void));
 
 /*
  * Load all of the default services
@@ -68,6 +68,8 @@ extern unsigned int corosync_service_defaults_link_and_init (
 	struct corosync_api_v1 *objdb);
 
 extern struct corosync_service_engine *ais_service[];
+
+extern int ais_service_exiting[];
 
 extern hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
