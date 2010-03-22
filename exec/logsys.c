@@ -1076,7 +1076,6 @@ int _logsys_wthread_create (void)
 	if (((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_FORK) == 0) &&
 		((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) != 0)) {
 		wthread_create();
-		atexit (logsys_atexit);
 	}
 	return (0);
 }
