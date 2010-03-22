@@ -86,7 +86,7 @@ retry_read:
 	}
 	bytes_read += res;
 	if (bytes_read != sizeof (key)) {
-		printf ("Press keys on your keyboard to generate entropy (bits = %d).\n", bytes_read * 8);
+		printf ("Press keys on your keyboard to generate entropy (bits = %d).\n", (int)(bytes_read * 8));
 		goto retry_read;
 	}
 	close (random_fd);
