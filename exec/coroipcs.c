@@ -985,6 +985,7 @@ static void _corosync_ipc_init(void)
 	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
@@ -1000,7 +1001,9 @@ static void _corosync_ipc_init(void)
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", error_str);
 		api->fatal_error ("Could not set non-blocking operation on server socket");
 	}
 
@@ -1027,7 +1030,9 @@ static void _corosync_ipc_init(void)
 
 	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, error_str);
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
 
@@ -1521,16 +1526,20 @@ retry_accept:
 	}
 
 	if (new_fd == -1) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not accept Library connection: %s\n", strerror (errno));
+			"Could not accept Library connection: %s\n", error_str);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		log_printf (LOGSYS_LEVEL_ERROR,
 			"Could not set non-blocking operation on library connection: %s\n",
-			strerror (errno));
+			error_str);
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}

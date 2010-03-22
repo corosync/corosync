@@ -3071,15 +3071,19 @@ static void memb_ring_id_create_or_load (
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0700);
 		if (fd == -1) {
+			char error_str[100];
+			strerror_r(errno, error_str, 100);
 			log_printf (instance->totemsrp_log_level_warning,
-				"Couldn't create %s %s\n", filename, strerror (errno));
+				"Couldn't create %s %s\n", filename, error_str);
 		}
 		res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
 		assert (res == sizeof (unsigned long long));
 		close (fd);
 	} else {
+		char error_str[100];
+		strerror_r(errno, error_str, 100);
 		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't open %s %s\n", filename, strerror (errno));
+			"Couldn't open %s %s\n", filename, error_str);
 	}
 
 	totemip_copy(&memb_ring_id->rep, &instance->my_id.addr[0]);
@@ -3105,9 +3109,11 @@ static void memb_ring_id_set_and_store (
 		fd = open (filename, O_CREAT|O_RDWR, 0777);
 	}
 	if (fd == -1) {
+		char error_str[100];
+		strerror_r(errno, error_str, 100);
 		log_printf (instance->totemsrp_log_level_warning,
 			"Couldn't store new ring id %llx to stable storage (%s)\n",
-				instance->my_ring_id.seq, strerror (errno));
+				instance->my_ring_id.seq, error_str);
 		assert (0);
 		return;
 	}

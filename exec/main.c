@@ -451,7 +451,11 @@ static void corosync_mlockall (void)
 #else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Could not lock memory of service to avoid page faults: %s\n",
+			error_str);
 	};
 #endif
 }
@@ -1124,9 +1128,11 @@ static void corosync_setscheduler (void)
 		global_sched_param.sched_priority = sched_priority;
 		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
 		if (res == -1) {
+			char error_str[100];
+			strerror_r (errno, error_str, 100);
 			global_sched_param.sched_priority = 0;
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
-				global_sched_param.sched_priority, strerror (errno));
+				global_sched_param.sched_priority, error_str);
 
 			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
@@ -1147,7 +1153,11 @@ static void corosync_setscheduler (void)
 			}
 		}
 	} else {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Could not get maximum scheduler priority: %s\n",
+			error_str);
 		sched_priority = 0;
 	}
 #else
