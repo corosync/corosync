@@ -122,8 +122,6 @@ static struct corosync_api_v1 *api = NULL;
 
 static enum cs_sync_mode minimum_sync_mode;
 
-static enum cs_sync_mode minimum_sync_mode;
-
 static int sync_in_process = 1;
 
 static hdb_handle_t corosync_poll_handle;
@@ -1181,6 +1179,26 @@ static void main_service_ready (void)
 	evil_init (api);
 	corosync_stats_init ();
 	corosync_totem_stats_init ();
+	if (minimum_sync_mode == CS_SYNC_V2) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	} else
+	if (minimum_sync_mode == CS_SYNC_V1) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+		sync_register (
+			corosync_sync_callbacks_retrieve,
+			sync_v2_memb_list_determine,
+			sync_v2_memb_list_abort,
+			sync_v2_start);
+
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	}
+
+
 }
 
 int main (int argc, char **argv)
@@ -1476,26 +1494,6 @@ int main (int argc, char **argv)
 		corosync_group_handle,
 		&corosync_group,
 		1);
-
-	if (minimum_sync_mode == CS_SYNC_V2) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	} else
-	if (minimum_sync_mode == CS_SYNC_V1) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
-		sync_register (
-			corosync_sync_callbacks_retrieve,
-			sync_v2_memb_list_determine,
-			sync_v2_memb_list_abort,
-			sync_v2_start);
-
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	}
-
 
 	/*
 	 * Drop root privleges to user 'ais'
