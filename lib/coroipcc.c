@@ -650,8 +650,8 @@ coroipcc_service_connect (
 	sys_res = connect (request_fd, (struct sockaddr *)&address,
 		COROSYNC_SUN_LEN(&address));
 	if (sys_res == -1) {
-		close (request_fd);
-		return (CS_ERR_TRY_AGAIN);
+		res = CS_ERR_TRY_AGAIN;
+		goto error_connect;
 	}
 
 	res = memory_map (
@@ -659,24 +659,40 @@ coroipcc_service_connect (
 		"control_buffer-XXXXXX",
 		(void *)&ipc_instance->control_buffer,
 		8192);
+	if (res == -1) {
+		res = CS_ERR_LIBRARY;
+		goto error_connect;
+	}
 
 	res = memory_map (
 		request_map_path,
 		"request_buffer-XXXXXX",
 		(void *)&ipc_instance->request_buffer,
 		request_size);
+	if (res == -1) {
+		res = CS_ERR_LIBRARY;
+		goto error_request_buffer;
+	}
 
 	res = memory_map (
 		response_map_path,
 		"response_buffer-XXXXXX",
 		(void *)&ipc_instance->response_buffer,
 		response_size);
+	if (res == -1) {
+		res = CS_ERR_LIBRARY;
+		goto error_response_buffer;
+	}
 
 	res = circular_memory_map (
 		dispatch_map_path,
 		"dispatch_buffer-XXXXXX",
 		(void *)&ipc_instance->dispatch_buffer,
 		dispatch_size);
+	if (res == -1) {
+		res = CS_ERR_LIBRARY;
+		goto error_dispatch_buffer;
+	}
 
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 	sem_init (&ipc_instance->control_buffer->sem0, 1, 0);
@@ -702,19 +718,19 @@ coroipcc_service_connect (
 		 * an existing shared memory segment for which we have access
 		 */
 		if (errno != EEXIST && errno != EACCES) {
-			goto res_exit;
+			goto error_exit;
 		}
 	}
 
 	semun.val = 0;
 	res = semctl (ipc_instance->semid, 0, SETVAL, semun);
 	if (res != 0) {
-		goto res_exit;
+		goto error_exit;
 	}
 
 	res = semctl (ipc_instance->semid, 1, SETVAL, semun);
 	if (res != 0) {
-		goto res_exit;
+		goto error_exit;
 	}
 #endif
 
@@ -737,18 +753,19 @@ coroipcc_service_connect (
 
 	res = socket_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
 	if (res != CS_OK) {
-		goto res_exit;
+		goto error_exit;
 	}
 	res = socket_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
 	if (res != CS_OK) {
-		goto res_exit;
+		goto error_exit;
 	}
 
 	ipc_instance->fd = request_fd;
 	ipc_instance->flow_control_state = 0;
 
 	if (res_setup.error == CS_ERR_TRY_AGAIN) {
-		goto res_exit;
+		res = res_setup.error;
+		goto error_exit;
 	}
 
 	ipc_instance->control_size = 8192;
@@ -762,13 +779,25 @@ coroipcc_service_connect (
 
 	return (res_setup.error);
 
-res_exit:
-	close (request_fd);
+error_exit:
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 	if (ipc_instance->semid > 0)
 		semctl (ipc_instance->semid, 0, IPC_RMID);
 #endif
-	return (res_setup.error);
+	memory_unmap (ipc_instance->dispatch_buffer, dispatch_size);
+error_dispatch_buffer:
+	memory_unmap (ipc_instance->response_buffer, response_size);
+error_response_buffer:
+	memory_unmap (ipc_instance->request_buffer, request_size);
+error_request_buffer:
+	memory_unmap (ipc_instance->control_buffer, 8192);
+error_connect:
+	close (request_fd);
+
+	hdb_handle_destroy (&ipc_hdb, *handle);
+	hdb_handle_put (&ipc_hdb, *handle);
+
+	return (res);
 }
 
 cs_error_t
