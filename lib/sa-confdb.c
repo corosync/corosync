@@ -97,6 +97,7 @@ static int load_config(void)
 	void *config_p;
 	struct config_iface_ver0 *config;
 	const char *error_string;
+	char *strtok_savept;
 
 	/* User's bootstrap config service */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
@@ -111,7 +112,7 @@ static int load_config(void)
 		return -1;
 	}
 
-	iface = strtok(config_iface, ":");
+	iface = strtok_r (config_iface, ":", &strtok_savept);
 	while (iface)
 	{
 		res = lcr_ifact_reference (
@@ -133,7 +134,7 @@ static int load_config(void)
 
 		config_modules[num_config_modules++] = config;
 
-		iface = strtok(NULL, ":");
+		iface = strtok_r (NULL, ":", &strtok_savept);
 	}
 	free(config_iface);
 
