@@ -1262,10 +1262,10 @@ static int flow_control_event_send (struct conn_info *conn_info, char event)
 
 	if (conn_info->flow_control_state != new_fc) {
 		if (new_fc == 1) {
-			log_printf (LOGSYS_LEVEL_INFO, "Enabling flow control for %d, event %d\n",
+			log_printf (LOGSYS_LEVEL_DEBUG, "Enabling flow control for %d, event %d\n",
 				conn_info->client_pid, event);
 		} else {
-			log_printf (LOGSYS_LEVEL_INFO, "Disabling flow control for %d, event %d\n",
+			log_printf (LOGSYS_LEVEL_DEBUG, "Disabling flow control for %d, event %d\n",
 				conn_info->client_pid, event);
 		}
 		conn_info->flow_control_state = new_fc;
