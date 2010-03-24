@@ -43,6 +43,10 @@ logging {
 	}
 }
 
+quorum {
+    provider: corosync_quorum_ykd
+}
+
 amf {
 	mode: disabled
 }\n"
@@ -86,6 +90,9 @@ test Corosync.lns get conf =
 	    { "logfile" = "/tmp/corosync-msg.log" }
 		{ "subsys" = "MSG" }
 		{ "debug" = "on" } } }
+  { }
+  { "quorum"
+    { "provider" = "corosync_quorum_ykd" } }
   { }
   { "amf"
 	{ "mode" = "disabled" } }

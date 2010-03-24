@@ -116,7 +116,12 @@ let amf =
    kv "mode" /enabled|disabled/ in
   section "amf" setting
 
+(* The quorum section *)
+let quorum =
+  let setting =
+   qstr /provider/ in
+  section "quorum" setting
 
-let lns = (comment|empty|compatibility|totem|logging|amf)*
+let lns = (comment|empty|compatibility|totem|quorum|logging|amf)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")
