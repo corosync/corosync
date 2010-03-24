@@ -55,6 +55,19 @@ class CoroTest(CTSTest):
                 self.start(n)
         return ret
 
+
+    def setup_sec_key(self, node):
+        localauthkey = '/tmp/authkey'
+        if not os.path.exists(localauthkey):
+            self.CM.rsh(node, 'corosync-keygen')
+            self.CM.rsh.cp("%s:%s" % (node, "/etc/corosync/authkey"), localauthkey)
+
+        for n in self.CM.Env["nodes"]:
+            if n is not node:
+                #copy key onto other nodes
+                self.CM.rsh.cp(localauthkey, "%s:%s" % (n, "/etc/corosync/authkey"))
+
+
     def teardown(self, node):
         self.CM.apply_default_config()
         return CTSTest.teardown(self, node)
@@ -311,10 +324,69 @@ class CpgMsgOrderBasic(CpgMsgOrderBase):
     def __call__(self, node):
         self.incr("calls")
 
-        # o > reconfigure corosync
-        # o > reconfigure interfaces (mtu)
-        # o > restart corosync
-        # o > set node to die after x msgs
+        self.num_msgs_per_node = 100
+        self.cpg_msg_blaster()
+        return self.wait_and_validate_order()
+
+class CpgMsgOrderThreads(CpgMsgOrderBase):
+    '''
+    each sends & logs 100 messages
+    '''
+    def __init__(self, cm):
+        CpgMsgOrderBase.__init__(self,cm)
+        self.name="CpgMsgOrderThreads"
+
+    def setup(self, node):
+        self.CM.new_config['totem/threads'] = 4
+        return CpgMsgOrderBase.setup(self, node)
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        self.num_msgs_per_node = 100
+        self.cpg_msg_blaster()
+        return self.wait_and_validate_order()
+
+
+class CpgMsgOrderSecNss(CpgMsgOrderBase):
+    '''
+    each sends & logs 100 messages
+    '''
+    def __init__(self, cm):
+        CpgMsgOrderBase.__init__(self,cm)
+        self.name="CpgMsgOrderSecNss"
+
+    def setup(self, node):
+        self.setup_sec_key(node)
+        self.CM.new_config['totem/secauth'] = 'on'
+        self.CM.new_config['totem/crypto_accept'] = 'new'
+        self.CM.new_config['totem/crypto_type'] = 'nss'
+        return CpgMsgOrderBase.setup(self, node)
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        self.num_msgs_per_node = 100
+        self.cpg_msg_blaster()
+        return self.wait_and_validate_order()
+
+class CpgMsgOrderSecSober(CpgMsgOrderBase):
+    '''
+    each sends & logs 100 messages
+    '''
+    def __init__(self, cm):
+        CpgMsgOrderBase.__init__(self,cm)
+        self.name="CpgMsgOrderSecSober"
+
+    def setup(self, node):
+        self.setup_sec_key(node)
+        self.CM.new_config['totem/secauth'] = 'on'
+        self.CM.new_config['totem/crypto_type'] = 'sober'
+        return CpgMsgOrderBase.setup(self, node)
+
+    def __call__(self, node):
+        self.incr("calls")
+
         self.num_msgs_per_node = 100
         self.cpg_msg_blaster()
         return self.wait_and_validate_order()
@@ -359,14 +431,17 @@ class MemLeakSession(CoroTest):
 
 
 AllTestClasses = []
+AllTestClasses.append(CpgMsgOrderBasic)
+AllTestClasses.append(CpgMsgOrderThreads)
+AllTestClasses.append(CpgMsgOrderSecNss)
+AllTestClasses.append(CpgMsgOrderSecSober)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
+AllTestClasses.append(CpgCfgChgOnExecCrash)
 AllTestClasses.append(CpgCfgChgOnGroupLeave)
 AllTestClasses.append(CpgCfgChgOnNodeLeave)
 AllTestClasses.append(CpgCfgChgOnNodeLeave_v1)
 AllTestClasses.append(CpgCfgChgOnNodeLeave_v2)
-AllTestClasses.append(CpgCfgChgOnExecCrash)
-AllTestClasses.append(CpgMsgOrderBasic)
 
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)

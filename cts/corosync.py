@@ -131,6 +131,7 @@ class corosync_flatiron(ClusterManager):
                 r"Shutting down\.",
                 r"Forcing shutdown\.",
                 r"core dump",
+                r"Could not bind AF_UNIX",
             ),
             "LogFileName"    : Environment["LogFileName"],
             })
