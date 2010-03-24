@@ -44,19 +44,12 @@ class CoroTest(CTSTest):
         CTSTest.__init__(self,cm)
         self.start = StartTest(cm)
         self.stop = StopTest(cm)
+        self.config = {}
 
     def setup(self, node):
         ret = CTSTest.setup(self, node)
-        self.CM.apply_new_config()
 
-        for n in self.CM.Env["nodes"]:
-            if not self.CM.StataCM(n):
-                self.incr("started")
-                self.start(n)
-        return ret
-
-
-    def setup_sec_key(self, node):
+        # setup the authkey
         localauthkey = '/tmp/authkey'
         if not os.path.exists(localauthkey):
             self.CM.rsh(node, 'corosync-keygen')
@@ -66,6 +59,20 @@ class CoroTest(CTSTest):
             if n is not node:
                 #copy key onto other nodes
                 self.CM.rsh.cp(localauthkey, "%s:%s" % (n, "/etc/corosync/authkey"))
+
+        # copy over any new config
+        for c in self.config:
+            self.CM.new_config[c] = self.config[c]
+
+        # apply the config
+        self.CM.apply_new_config()
+
+        # start any killed corosync's
+        for n in self.CM.Env["nodes"]:
+            if not self.CM.StataCM(n):
+                self.incr("started")
+                self.start(n)
+        return ret
 
 
     def teardown(self, node):
@@ -190,42 +197,12 @@ class CpgCfgChgOnExecCrash(CpgConfigChangeBase):
 
 
 ###################################################################
-class CpgCfgChgOnNodeLeave_v2(CpgConfigChangeBase):
+class CpgCfgChgOnNodeIsolate(CpgConfigChangeBase):
 
     def __init__(self, cm):
         CpgConfigChangeBase.__init__(self,cm)
-        self.name="CpgCfgChgOnNodeLeave_v2"
+        self.name="CpgCfgChgOnNodeIsolate"
        
-    def setup(self, node):
-        self.CM.new_config['compatibility'] = 'none'
-        self.CM.new_config['totem/token'] = 10000
-        return CpgConfigChangeBase.setup(self, node)
-
-    def failure_action(self):
-        self.CM.log("isolating node " + self.wobbly)
-        self.CM.isolate_node(self.wobbly)
-
-    def __call__(self, node):
-        self.incr("calls")
-        self.failure_action()
-        return self.wait_for_config_change()
-
-    def teardown(self, node):
-        self.CM.unisolate_node (self.wobbly)
-        return CpgConfigChangeBase.teardown(self, node)
-
-###################################################################
-class CpgCfgChgOnNodeLeave_v1(CpgConfigChangeBase):
-
-    def __init__(self, cm):
-        CpgConfigChangeBase.__init__(self,cm)
-        self.name="CpgCfgChgOnNodeLeave_v1"
-
-    def setup(self, node):
-        self.CM.new_config['compatibility'] = 'whitetank'
-        self.CM.new_config['totem/token'] = 10000
-        return CpgConfigChangeBase.setup(self, node)
-        
     def failure_action(self):
         self.CM.log("isolating node " + self.wobbly)
         self.CM.isolate_node(self.wobbly)
@@ -268,15 +245,13 @@ class CpgMsgOrderBase(CoroTest):
 
         for n in self.CM.Env["nodes"]:
             msgs[n] = []
-            got = False
             stopped = False
-            self.CM.debug( " getting messages from " + n )
+            waited = 0
 
-            while len(msgs[n]) < self.total_num_msgs and not stopped:
+            while len(msgs[n]) < self.total_num_msgs and waited < 60:
 
                 msg = self.CM.agent[n].read_messages(25)
                 if not msg == None:
-                    got = True
                     msgl = msg.split(";")
 
                     # remove empty entries
@@ -288,106 +263,52 @@ class CpgMsgOrderBase(CoroTest):
                             not_done = False
 
                     msgs[n].extend(msgl)
-                elif msg == None and got:
-                    self.CM.debug(" done getting messages from " + n)
-                    stopped = True
-
-                if not got:
+                elif msg == None:
                     time.sleep(1)
+                    waited = waited + 1
+
+            if len(msgs[n]) < self.total_num_msgs:
+                return self.failure("expected %d messages from %s got %d" % (self.total_num_msgs, n, len(msgs[n])))
 
         fail = False
+        error_message = ''
         for i in range(0, self.total_num_msgs):
             first = None
             for n in self.CM.Env["nodes"]:
+                # first test for errors
+                params = msgs[n][i].split(":")
+                if not 'OK' in params[3]:
+                    fail = True
+                    error_message = 'error: ' + params[3] + ' in received message'
+                    self.CM.log(str(params))
+
+                # then look for out of order messages
                 if first == None:
                     first = n
                 else:
                     if not msgs[first][i] == msgs[n][i]:
                         # message order not the same!
                         fail = True
+                        error_message = 'message out of order'
                         self.CM.log(msgs[first][i] + " != " + msgs[n][i])
                 
         if fail:
-            return self.failure()
+            return self.failure(error_message)
         else:
             return self.success()
 
 ###################################################################
 class CpgMsgOrderBasic(CpgMsgOrderBase):
     '''
-    each sends & logs 100 messages
+    each sends & logs 1000 messages
     '''
     def __init__(self, cm):
         CpgMsgOrderBase.__init__(self,cm)
         self.name="CpgMsgOrderBasic"
+        self.num_msgs_per_node = 9000
 
     def __call__(self, node):
         self.incr("calls")
-
-        self.num_msgs_per_node = 100
-        self.cpg_msg_blaster()
-        return self.wait_and_validate_order()
-
-class CpgMsgOrderThreads(CpgMsgOrderBase):
-    '''
-    each sends & logs 100 messages
-    '''
-    def __init__(self, cm):
-        CpgMsgOrderBase.__init__(self,cm)
-        self.name="CpgMsgOrderThreads"
-
-    def setup(self, node):
-        self.CM.new_config['totem/threads'] = 4
-        return CpgMsgOrderBase.setup(self, node)
-
-    def __call__(self, node):
-        self.incr("calls")
-
-        self.num_msgs_per_node = 100
-        self.cpg_msg_blaster()
-        return self.wait_and_validate_order()
-
-
-class CpgMsgOrderSecNss(CpgMsgOrderBase):
-    '''
-    each sends & logs 100 messages
-    '''
-    def __init__(self, cm):
-        CpgMsgOrderBase.__init__(self,cm)
-        self.name="CpgMsgOrderSecNss"
-
-    def setup(self, node):
-        self.setup_sec_key(node)
-        self.CM.new_config['totem/secauth'] = 'on'
-        self.CM.new_config['totem/crypto_accept'] = 'new'
-        self.CM.new_config['totem/crypto_type'] = 'nss'
-        return CpgMsgOrderBase.setup(self, node)
-
-    def __call__(self, node):
-        self.incr("calls")
-
-        self.num_msgs_per_node = 100
-        self.cpg_msg_blaster()
-        return self.wait_and_validate_order()
-
-class CpgMsgOrderSecSober(CpgMsgOrderBase):
-    '''
-    each sends & logs 100 messages
-    '''
-    def __init__(self, cm):
-        CpgMsgOrderBase.__init__(self,cm)
-        self.name="CpgMsgOrderSecSober"
-
-    def setup(self, node):
-        self.setup_sec_key(node)
-        self.CM.new_config['totem/secauth'] = 'on'
-        self.CM.new_config['totem/crypto_type'] = 'sober'
-        return CpgMsgOrderBase.setup(self, node)
-
-    def __call__(self, node):
-        self.incr("calls")
-
-        self.num_msgs_per_node = 100
         self.cpg_msg_blaster()
         return self.wait_and_validate_order()
 
@@ -506,22 +427,17 @@ class ServiceLoadTest(CoroTest):
 
         return self.success()
 
-
+GenTestClasses = []
+GenTestClasses.append(CpgMsgOrderBasic)
+GenTestClasses.append(CpgCfgChgOnExecCrash)
+GenTestClasses.append(CpgCfgChgOnGroupLeave)
+GenTestClasses.append(CpgCfgChgOnNodeLeave)
+GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 
 AllTestClasses = []
 AllTestClasses.append(ServiceLoadTest)
-AllTestClasses.append(CpgMsgOrderBasic)
-AllTestClasses.append(CpgMsgOrderThreads)
-AllTestClasses.append(CpgMsgOrderSecNss)
-AllTestClasses.append(CpgMsgOrderSecSober)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
-AllTestClasses.append(CpgCfgChgOnExecCrash)
-AllTestClasses.append(CpgCfgChgOnGroupLeave)
-AllTestClasses.append(CpgCfgChgOnNodeLeave)
-AllTestClasses.append(CpgCfgChgOnNodeLeave_v1)
-AllTestClasses.append(CpgCfgChgOnNodeLeave_v2)
-
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
@@ -534,10 +450,58 @@ AllTestClasses.append(RestartOnebyOne)
 
 def CoroTestList(cm, audits):
     result = []
+    configs = []
+    empty = {}
+    configs.append(empty)
+
+    a = {}
+    a['compatibility'] = 'none'
+    a['totem/token'] = 10000
+    configs.append(a)
+
+    b = {}
+    b['compatibility'] = 'whitetank'
+    b['totem/token'] = 10000
+    configs.append(b)
+
+    c = {}
+    c['totem/secauth'] = 'on'
+    c['totem/crypto_accept'] = 'new'
+    c['totem/crypto_type'] = 'nss'
+    configs.append(c)
+
+    d = {}
+    d['totem/secauth'] = 'on'
+    d['totem/crypto_type'] = 'sober'
+    configs.append(d)
+
+    e = {}
+    e['totem/threads'] = 4
+    configs.append(e)
+
+    #quorum/provider=
+    f = {}
+    f['quorum/provider'] = 'corosync_quorum_ykd'
+    configs.append(f)
+
+    num=1
+    for cfg in configs:
+        for testclass in GenTestClasses:
+            bound_test = testclass(cm)
+            if bound_test.is_applicable():
+                bound_test.Audits = audits
+                bound_test.config = cfg
+                bound_test.name = bound_test.name + '_' + str(num)
+                result.append(bound_test)
+        num = num + 1
+
+
+
     for testclass in AllTestClasses:
         bound_test = testclass(cm)
         if bound_test.is_applicable():
             bound_test.Audits = audits
             result.append(bound_test)
+
     return result
 

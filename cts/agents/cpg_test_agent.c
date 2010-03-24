@@ -96,36 +96,35 @@ static int32_t my_msgs_to_send;
 static int32_t total_stored_msgs = 0;
 static hdb_handle_t poll_handle;
 
+
+static void send_some_more_messages (void * unused);
+
 static char* err_status_string (char * buf, size_t buf_len, msg_status_t status)
 {
 	switch (status) {
 	case MSG_OK:
 		strncpy (buf, "OK", buf_len);
-		return buf;
 		break;
 	case MSG_NODEID_ERR:
 		strncpy (buf, "NODEID_ERR", buf_len);
-		return buf;
 		break;
 	case MSG_PID_ERR:
 		strncpy (buf, "PID_ERR", buf_len);
-		return buf;
 		break;
 	case MSG_SEQ_ERR:
 		strncpy (buf, "SEQ_ERR", buf_len);
-		return buf;
 		break;
 	case MSG_SIZE_ERR:
 		strncpy (buf, "SIZE_ERR", buf_len);
-		return buf;
 		break;
 	case MSG_SHA1_ERR:
-	default:
 		strncpy (buf, "SHA1_ERR", buf_len);
-		return buf;
+		break;
+	default:
+		strncpy (buf, "UNKNOWN_ERR", buf_len);
 		break;
 	}
-
+	return buf;
 }
 
 static void delivery_callback (
@@ -160,7 +159,7 @@ static void delivery_callback (
 		status = MSG_SIZE_ERR;
 	}
 	sha1_init (&sha1_hash);
-	sha1_process (&sha1_hash, msg_pt->payload, msg_pt->size);
+	sha1_process (&sha1_hash, msg_pt->payload, (msg_pt->size - sizeof (msg_t)));
 	sha1_done (&sha1_hash, sha1_compare);
 	if (memcmp (sha1_compare, msg_pt->sha1, 20) != 0) {
 		syslog (LOG_ERR, "%s(); msg seq:%d; incorrect hash",
@@ -285,8 +284,19 @@ static void read_messages (int sock, char* atmost_str)
 	send (sock, big_and_buf, strlen (big_and_buf), 0);
 }
 
+static void send_some_more_messages_later (void)
+{
+	poll_timer_handle timer_handle;
+	cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
+	poll_timer_add (
+		poll_handle,
+		100, NULL,
+		send_some_more_messages,
+		&timer_handle);
+}
+
 static unsigned char buffer[200000];
-static void send_some_more_messages (void)
+static void send_some_more_messages (void * unused)
 {
 	msg_t my_msg;
 	struct iovec iov[2];
@@ -302,7 +312,7 @@ static void send_some_more_messages (void)
 
 	send_now = my_msgs_to_send;
 
-	syslog (LOG_DEBUG,"%s() send_now:%d", __func__, send_now);
+	//syslog (LOG_DEBUG,"%s() send_now:%d", __func__, send_now);
 	my_msg.pid = my_pid;
 	my_msg.nodeid = my_nodeid;
 	payload_size = (rand() % 100000);
@@ -325,6 +335,7 @@ static void send_some_more_messages (void)
 		res = cpg_flow_control_state_get (cpg_handle, &fc_state);
 		if (res == CS_OK && fc_state == CPG_FLOW_CONTROL_ENABLED) {
 			/* lets do this later */
+			send_some_more_messages_later ();
 			syslog (LOG_INFO, "%s() flow control enabled.", __func__);
 			return;
 		}
@@ -332,6 +343,7 @@ static void send_some_more_messages (void)
 		res = cpg_mcast_joined (cpg_handle, CPG_TYPE_AGREED, iov, 2);
 		if (res == CS_ERR_TRY_AGAIN) {
 			/* lets do this later */
+			send_some_more_messages_later ();
 			syslog (LOG_INFO, "%s() cpg_mcast_joined() says try again.",
 				__func__);
 			return;
@@ -357,10 +369,10 @@ static void msg_blaster (int sock, char* num_to_send_str)
 	/* control the limits */
 	if (my_msgs_to_send <= 0)
 		my_msgs_to_send = 1;
-	if (my_msgs_to_send > 1000)
-		my_msgs_to_send = 1000;
+	if (my_msgs_to_send > 10000)
+		my_msgs_to_send = 10000;
 
-	send_some_more_messages ();
+	send_some_more_messages (NULL);
 }
 
 
@@ -541,7 +553,7 @@ static int server_process_data_fn (hdb_handle_t handle,
 		exit (0);
 	} else {
 		if (my_msgs_to_send > 0)
-			send_some_more_messages ();
+			send_some_more_messages (NULL);
 
 		big_and_buf_rx[nbytes] = '\0';
 
