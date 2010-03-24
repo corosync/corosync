@@ -51,9 +51,8 @@
 #include <corosync/list.h>
 #include <corosync/cpg.h>
 #include "../../exec/crypto.h"
+#include "common_test_agent.h"
 
-
-#define SERVER_PORT "9034"
 
 typedef enum {
 	MSG_OK,
@@ -79,10 +78,7 @@ typedef struct {
 	struct list_head list;
 } log_entry_t;
 
-#define HOW_BIG_AND_BUF 4096
 static char big_and_buf[HOW_BIG_AND_BUF];
-static char big_and_buf_rx[HOW_BIG_AND_BUF];
-static int32_t parse_debug = 0;
 static int32_t record_config_events_g = 0;
 static int32_t record_messages_g = 0;
 static cpg_handle_t cpg_handle = 0;
@@ -94,7 +90,6 @@ static uint32_t my_nodeid;
 static int32_t my_seq;
 static int32_t my_msgs_to_send;
 static int32_t total_stored_msgs = 0;
-static hdb_handle_t poll_handle;
 
 
 static void send_some_more_messages (void * unused);
@@ -289,7 +284,7 @@ static void send_some_more_messages_later (void)
 	poll_timer_handle timer_handle;
 	cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	poll_timer_add (
-		poll_handle,
+		ta_poll_handle_get(),
 		100, NULL,
 		send_some_more_messages,
 		&timer_handle);
@@ -384,7 +379,7 @@ static int cpg_dispatch_wrapper_fn (hdb_handle_t handle,
 	cs_error_t error = cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
-		poll_dispatch_delete (poll_handle, cpg_fd);
+		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
 		close (cpg_fd);
 		cpg_fd = -1;
 	}
@@ -450,7 +445,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		}
 
 		cpg_fd_get (cpg_handle, &cpg_fd);
-		poll_dispatch_add (poll_handle, cpg_fd, POLLIN|POLLNVAL, NULL, cpg_dispatch_wrapper_fn);
+		poll_dispatch_add (ta_poll_handle_get(), cpg_fd, POLLIN|POLLNVAL, NULL, cpg_dispatch_wrapper_fn);
 
 	} else if (strcmp ("cpg_local_get", func) == 0) {
 		unsigned int local_nodeid;
@@ -463,7 +458,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("cpg_finalize",func) == 0) {
 
 		cpg_finalize (cpg_handle);
-		poll_dispatch_delete (poll_handle, cpg_fd);
+		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
 		cpg_fd = -1;
 
 	} else if (strcmp ("record_config_events",func) == 0) {
@@ -491,192 +486,14 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	}
 }
 
-static void handle_command (int sock, char* msg)
-{
-	int num_args;
-	char *saveptr = NULL;
-	char *str = strdup (msg);
-	char *str_len;
-	char *str_arg;
-	char *args[5];
-	int i = 0;
-	int a = 0;
-	char* func = NULL;
-
-	if (parse_debug)
-		syslog (LOG_DEBUG,"%s (MSG:%s)\n", __func__, msg);
-
-	str_len = strtok_r (str, ":", &saveptr);
-	assert (str_len);
-
-	num_args = atoi (str_len) * 2;
-	for (i = 0; i < num_args / 2; i++) {
-		str_len = strtok_r (NULL, ":", &saveptr);
-		str_arg = strtok_r (NULL, ":", &saveptr);
-		if (func == NULL) {
-			/* first "arg" is the function */
-			if (parse_debug)
-				syslog (LOG_DEBUG, "(LEN:%s, FUNC:%s)", str_len, str_arg);
-			func = str_arg;
-			a = 0;
-		} else {
-			args[a] = str_arg;
-			a++;
-			if (parse_debug)
-				syslog (LOG_DEBUG, "(LEN:%s, ARG:%s)", str_len, str_arg);
-		}
-	}
-	do_command (sock, func, args, a+1);
-
-	free (str);
-}
-
-static int server_process_data_fn (hdb_handle_t handle,
-	int fd,
-	int revents,
-	void *data)
-{
-	char *saveptr;
-	char *msg;
-	char *cmd;
-	int32_t nbytes;
-
-	if ((nbytes = recv (fd, big_and_buf_rx, sizeof (big_and_buf_rx), 0)) <= 0) {
-		/* got error or connection closed by client */
-		if (nbytes == 0) {
-			/* connection closed */
-			syslog (LOG_WARNING, "socket %d hung up: exiting...\n", fd);
-		} else {
-			syslog (LOG_ERR,"recv() failed: %s", strerror(errno));
-		}
-		close (fd);
-		exit (0);
-	} else {
-		if (my_msgs_to_send > 0)
-			send_some_more_messages (NULL);
-
-		big_and_buf_rx[nbytes] = '\0';
-
-		msg = strtok_r (big_and_buf_rx, ";", &saveptr);
-		assert (msg);
-		while (msg) {
-			cmd = strdup (msg);
-			handle_command (fd, cmd);
-			free (cmd);
-			msg = strtok_r (NULL, ";", &saveptr);
-		}
-	}
-
-	return 0;
-}
-
-static int server_accept_fn (hdb_handle_t handle,
-	int fd,
-	int revents,
-	void *data)
-{
-	socklen_t addrlen;
-	struct sockaddr_in in_addr;
-	int new_fd;
-	int res;
-
-	addrlen = sizeof (struct sockaddr_in);
-
-retry_accept:
-	new_fd = accept (fd, (struct sockaddr *)&in_addr, &addrlen);
-	if (new_fd == -1 && errno == EINTR) {
-		goto retry_accept;
-	}
-
-	if (new_fd == -1) {
-		syslog (LOG_ERR,
-			"Could not accept connection: %s\n", strerror (errno));
-		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	}
-
-	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
-	if (res == -1) {
-		syslog (LOG_ERR,
-			"Could not set non-blocking operation on connection: %s\n",
-			strerror (errno));
-		close (new_fd);
-		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
-	}
-
-	poll_dispatch_add (poll_handle, new_fd, POLLIN|POLLNVAL, NULL, server_process_data_fn);
-	return 0;
-}
-
-static int create_server_sockect (void)
-{
-	int listener;
-	int yes = 1;
-	int rv;
-	struct addrinfo hints, *ai, *p;
-
-	/* get a socket and bind it
-	 */
-	memset (&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-	if ((rv = getaddrinfo (NULL, SERVER_PORT, &hints, &ai)) != 0) {
-		syslog (LOG_ERR, "%s\n", gai_strerror (rv));
-		exit (1);
-	}
-
-	for (p = ai; p != NULL; p = p->ai_next) {
-		listener = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
-		if (listener < 0) {
-			continue;
-		}
-
-		/* lose the pesky "address already in use" error message
-		 */
-		if (setsockopt (listener, SOL_SOCKET, SO_REUSEADDR,
-				&yes, sizeof(int)) < 0) {
-			syslog (LOG_ERR, "setsockopt() failed: %s\n", strerror (errno));
-		}
-
-		if (bind (listener, p->ai_addr, p->ai_addrlen) < 0) {
-			syslog (LOG_ERR, "bind() failed: %s\n", strerror (errno));
-			close (listener);
-			continue;
-		}
-
-		break;
-	}
-
-	if (p == NULL) {
-		syslog (LOG_ERR, "failed to bind\n");
-		exit (2);
-	}
-
-	freeaddrinfo (ai);
-
-	if (listen (listener, 10) == -1) {
-		syslog (LOG_ERR, "listen() failed: %s", strerror(errno));
-		exit (3);
-	}
-
-	return listener;
-}
 
 int main (int argc, char *argv[])
 {
-	int listener;
-
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
 
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
-	poll_handle = poll_create ();
-
-	listener = create_server_sockect ();
-	poll_dispatch_add (poll_handle, listener, POLLIN|POLLNVAL, NULL, server_accept_fn);
-
-	poll_run (poll_handle);
-	return -1;
+	return test_agent_run (9034, do_command);
 }
 

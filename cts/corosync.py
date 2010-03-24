@@ -135,7 +135,8 @@ class corosync_flatiron(ClusterManager):
             ),
             "LogFileName"    : Environment["LogFileName"],
             })
-        self.agent={}
+        self.cpg_agent={}
+        self.confdb_agent={}
         self.config = CoroConfig ()
         self.node_to_ip = {}
         
@@ -209,8 +210,10 @@ class corosync_flatiron(ClusterManager):
 
         self.debug('starting corosync on : ' + node)
         ret = ClusterManager.StartaCM(self, node)
-        if self.agent.has_key(node):
-            self.agent[node].restart()
+        if self.cpg_agent.has_key(node):
+            self.cpg_agent[node].restart()
+        if self.confdb_agent.has_key(node):
+            self.confdb_agent[node].restart()
         return ret
 
     def StopaCM(self, node):
@@ -218,8 +221,10 @@ class corosync_flatiron(ClusterManager):
             return 1
 
         self.debug('stoping corosync on : ' + node)
-        if self.agent.has_key(node):
-            self.agent[node].stop()
+        if self.cpg_agent.has_key(node):
+            self.cpg_agent[node].stop()
+        if self.confdb_agent.has_key(node):
+            self.confdb_agent[node].stop()
         return ClusterManager.StopaCM(self, node)
 
     def test_node_CM(self, node):
@@ -318,15 +323,18 @@ class TestAgentComponent(ScenarioComponent):
             if not CM.StataCM(node):
                 raise RuntimeError ("corosync not up")
 
-            self.CM.agent[node] = CpgTestAgent(node, CM.Env)
-            self.CM.agent[node].start()
+            self.CM.cpg_agent[node] = CpgTestAgent(node, CM.Env)
+            self.CM.cpg_agent[node].start()
+            self.CM.confdb_agent[node] = ConfdbTestAgent(node, CM.Env)
+            self.CM.confdb_agent[node].start()
         return 1
 
     def TearDown(self, CM):
         '''Tear down (undo) the given ScenarioComponent'''
         self.CM = CM
         for node in self.Env["nodes"]:
-            self.CM.agent[node].stop()
+            self.CM.cpg_agent[node].stop()
+            self.CM.confdb_agent[node].stop()
 
 ###################################################################
 class TestAgent(object):
@@ -342,6 +350,7 @@ class TestAgent(object):
         self.func_name = None
         self.used = False
         self.env = env
+        self.send_recv = False
 
     def restart(self):
         self.stop()
@@ -416,7 +425,14 @@ class TestAgent(object):
             return object.__getattribute__(self, name)
         except:
             self.func_name = name
-            return self.send_dynamic
+            if self.send_recv:
+                return self.send_recv_dynamic
+            else:
+                return self.send_dynamic
+
+    def send_recv_dynamic (self, *args):
+        self.send_dynamic (args)
+        return self.read()
 
     def send_dynamic (self, *args):
         if not self.started:
@@ -484,7 +500,7 @@ class CpgTestAgent(TestAgent):
         try:
             self.send(["cpg_finalize"])
         except RuntimeError, msg:
-            # if agent is down, we are not going to stress
+            # if cpg_agent is down, we are not going to stress
             print msg
 
         TestAgent.stop(self)
@@ -518,4 +534,16 @@ class CpgTestAgent(TestAgent):
             return None
         else:
             return msg
+
+###################################################################
+class ConfdbTestAgent(TestAgent):
+
+    def __init__(self, node, Env=None):
+        TestAgent.__init__(self, "confdb_test_agent", node, 9035, env=Env)
+        self.initialized = False
+        self.nodeid = None
+        self.send_recv = True
+
+    def cpg_local_get(self):
+        return 1
 

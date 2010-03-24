@@ -97,15 +97,15 @@ class CpgConfigChangeBase(CoroTest):
         self.listener = None
         self.wobbly = None
         for n in self.CM.Env["nodes"]:
-            self.CM.agent[n].clean_start()
-            self.CM.agent[n].cpg_join(self.name)
+            self.CM.cpg_agent[n].clean_start()
+            self.CM.cpg_agent[n].cpg_join(self.name)
             if self.listener is None:
                 self.listener = n
             elif self.wobbly is None:
                 self.wobbly = n
 
-        self.wobbly_id = self.CM.agent[self.wobbly].cpg_local_get()
-        self.CM.agent[self.listener].record_config_events(truncate=True)
+        self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
+        self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
 
         return ret
 
@@ -117,9 +117,9 @@ class CpgConfigChangeBase(CoroTest):
         self.CM.log("Waiting for config change on " + self.listener)
         while not found:
             try:
-                event = self.CM.agent[self.listener].read_config_event()
+                event = self.CM.cpg_agent[self.listener].read_config_event()
             except:
-                return self.failure('connection to test agent failed.')
+                return self.failure('connection to test cpg_agent failed.')
             if not event == None:
                 self.CM.debug("RECEIVED: " + str(event))
             if event == None:
@@ -155,7 +155,7 @@ class CpgCfgChgOnGroupLeave(CpgConfigChangeBase):
 
     def failure_action(self):
         self.CM.log("calling cpg_leave() on " + self.wobbly)
-        self.CM.agent[self.wobbly].cpg_leave(self.name)
+        self.CM.cpg_agent[self.wobbly].cpg_leave(self.name)
 
     def __call__(self, node):
         self.incr("calls")
@@ -230,16 +230,16 @@ class CpgMsgOrderBase(CoroTest):
 
         for n in self.CM.Env["nodes"]:
             self.total_num_msgs = self.total_num_msgs + self.num_msgs_per_node
-            self.CM.agent[n].clean_start()
-            self.CM.agent[n].cpg_join(self.name)
-            self.CM.agent[n].record_messages()
+            self.CM.cpg_agent[n].clean_start()
+            self.CM.cpg_agent[n].cpg_join(self.name)
+            self.CM.cpg_agent[n].record_messages()
 
         time.sleep(1)
         return ret
 
     def cpg_msg_blaster(self):
         for n in self.CM.Env["nodes"]:
-            self.CM.agent[n].msg_blaster(self.num_msgs_per_node)
+            self.CM.cpg_agent[n].msg_blaster(self.num_msgs_per_node)
         
     def wait_and_validate_order(self):
         msgs = {}
@@ -251,7 +251,7 @@ class CpgMsgOrderBase(CoroTest):
 
             while len(msgs[n]) < self.total_num_msgs and waited < 60:
 
-                msg = self.CM.agent[n].read_messages(25)
+                msg = self.CM.cpg_agent[n].read_messages(25)
                 if not msg == None:
                     msgl = msg.split(";")
 
@@ -428,6 +428,67 @@ class ServiceLoadTest(CoroTest):
 
         return self.success()
 
+
+###################################################################
+class ConfdbReplaceTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="ConfdbReplaceTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.confdb_agent[node].set_get_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('set_get_test failed')
+
+
+###################################################################
+class ConfdbIncrementTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="ConfdbIncrementTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.confdb_agent[node].increment_decrement_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('increment_decrement_test failed')
+
+
+###################################################################
+class ConfdbObjectFindTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="ConfdbObjectFindTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.confdb_agent[node].object_find_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('object_find_test failed')
+
+
+###################################################################
+class ConfdbNotificationTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="ConfdbNotificationTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.confdb_agent[node].notification_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('notification_test failed')
+
+
 GenTestClasses = []
 GenTestClasses.append(CpgMsgOrderBasic)
 GenTestClasses.append(CpgCfgChgOnExecCrash)
@@ -436,6 +497,11 @@ GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 
 AllTestClasses = []
+AllTestClasses.append(ConfdbReplaceTest)
+AllTestClasses.append(ConfdbIncrementTest)
+AllTestClasses.append(ConfdbObjectFindTest)
+AllTestClasses.append(ConfdbNotificationTest)
+
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
@@ -488,9 +554,9 @@ def CoroTestList(cm, audits):
     configs.append(e)
 
     #quorum/provider=
-    f = {}
-    f['quorum/provider'] = 'corosync_quorum_ykd'
-    configs.append(f)
+    #f = {}
+    #f['quorum/provider'] = 'corosync_quorum_ykd'
+    #configs.append(f)
 
     num=1
     for cfg in configs:

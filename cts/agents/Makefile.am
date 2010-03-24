@@ -32,7 +32,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
 
-TEST_AGENTS = cpg_test_agent
+TEST_AGENTS = cpg_test_agent confdb_test_agent
 
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
@@ -43,8 +43,14 @@ noinst_PROGRAMS = $(TEST_AGENTS)
 noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh
 endif
 
+
+cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
 cpg_test_agent_LDADD =  -lcpg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o
-cpg_test_agent_LDFLAGS =  -L../../lib
+cpg_test_agent_LDFLAGS =  -L../../lib -L.
+
+confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
+confdb_test_agent_LDADD =  -lconfdb -lcoroipcc ../../exec/coropoll.o
+confdb_test_agent_LDFLAGS =  -L../../lib 
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
