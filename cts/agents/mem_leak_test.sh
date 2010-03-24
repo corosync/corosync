@@ -57,16 +57,6 @@ _object_test_()
 }
 
 #
-# load and unload a service a bunch of times
-#
-_service_test_()
-{
-  echo _service_test_
-
-  exit 0
-}
-
-#
 # run the corosync tools to cause IPC sessions to created/destroyed
 #
 _session_test_()
@@ -88,7 +78,7 @@ _session_test_()
 # Note that we use `"$@"' to let each command-line parameter expand to a 
 # separate word. The quotes around `$@' are essential!
 # We need TEMP as the `eval set --' would nuke the return value of getopt.
-TEMP=`getopt -o u123 --long help,object,session,service \
+TEMP=`getopt -o u12 --long help,object,session \
      -n '$0' -- "$@"`
 
 if [ $? != 0 ] ; then echo "Incorrect arguments..." >&2 ; _usage_ ; exit 1 ; fi
@@ -101,7 +91,6 @@ while true ; do
                 -u|--help) _usage_ ;;
                 -1|--object) _object_test_ ;;
                 -2|--session) _session_test_ ;;
-                -3|--service) _service_test_ ;;
                 --) shift ; break ;;
                 *) echo "Internal error!" ; exit 1 ;;
         esac

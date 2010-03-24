@@ -44,7 +44,7 @@ import string
 
 import augeas
 from cts.CTS import ClusterManager
-from cts.CTS import ScenarioComponent
+from cts.CTSscenarios import ScenarioComponent
 from cts.CTS import RemoteExec
 from cts.CTSvars import CTSvars
 
@@ -222,12 +222,11 @@ class corosync_flatiron(ClusterManager):
             self.agent[node].stop()
         return ClusterManager.StopaCM(self, node)
 
-
-    def StataCM(self, node):
-
-        '''Report the status of corosync on a given node'''
-
-        out=self.rsh(node, self["StatusCmd"], 1)
+    def test_node_CM(self, node):
+        # 2 - up and stable
+        # 1 - unstable
+        # 0 - down
+        out = self.rsh(node, self["StatusCmd"], 1)
         is_stopped = string.find(out, 'stopped')
         is_dead = string.find(out, 'dead')
 
@@ -235,6 +234,7 @@ class corosync_flatiron(ClusterManager):
 
         try:
             if ret:
+                ret = 2
                 if self.ShouldBeStatus[node] == "down":
                     self.log(
                     "Node status for %s is %s but we think it should be %s"
@@ -246,14 +246,25 @@ class corosync_flatiron(ClusterManager):
                     %        (node, "down", self.ShouldBeStatus[node]))
         except KeyError:        pass
 
-        if ret:        self.ShouldBeStatus[node]="up"
-        else:        self.ShouldBeStatus[node]="down"
+        if ret:        self.ShouldBeStatus[node] = "up"
+        else:        self.ShouldBeStatus[node] = "down"
         return ret
 
+    def StataCM(self, node):
+
+        '''Report the status of corosync on a given node'''
+        if self.test_node_CM(node) > 0:
+            return 1
+        else:
+            return None
 
     def RereadCM(self, node):
         self.log('reloading corosync on : ' + node)
         return ClusterManager.RereadCM(self, node)
+
+    def find_partitions(self):
+        ccm_partitions = []
+        return ccm_partitions
 
     def prepare(self):
         '''Finish the Initialization process. Prepare to test...'''

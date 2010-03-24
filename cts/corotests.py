@@ -189,6 +189,7 @@ class CpgCfgChgOnExecCrash(CpgConfigChangeBase):
         self.CM.log("sending SIGSEGV to corosync on " + self.wobbly)
         self.CM.rsh(self.wobbly, "killall -9 corosync")
         self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
+        self.CM.ShouldBeStatus[self.wobbly] = "down"
 
     def __call__(self, node):
         self.incr("calls")
@@ -452,6 +453,13 @@ def CoroTestList(cm, audits):
     result = []
     configs = []
     empty = {}
+
+    for testclass in AllTestClasses:
+        bound_test = testclass(cm)
+        if bound_test.is_applicable():
+            bound_test.Audits = audits
+            result.append(bound_test)
+
     configs.append(empty)
 
     a = {}
@@ -494,14 +502,6 @@ def CoroTestList(cm, audits):
                 bound_test.name = bound_test.name + '_' + str(num)
                 result.append(bound_test)
         num = num + 1
-
-
-
-    for testclass in AllTestClasses:
-        bound_test = testclass(cm)
-        if bound_test.is_applicable():
-            bound_test.Audits = audits
-            result.append(bound_test)
 
     return result
 

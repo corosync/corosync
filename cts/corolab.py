@@ -40,8 +40,8 @@ Copyright (c) 2010 Red Hat, Inc.
 
 import sys
 from cts.CTSaudits import AuditList
-from cts.CTS import Scenario, InitClusterManager
-from corotests import CoroTestList, AllTests
+from cts.CTSscenarios import *
+from corotests import CoroTestList
 from corosync import *
 
 
@@ -93,12 +93,53 @@ def usage(arg):
     print "\t [--set option=value]"
     sys.exit(1)
 
+class CoroLabEnvironment(CtsLab):
+
+    def __init__(self):
+        CtsLab.__init__(self)
+
+        #  Get a random seed for the random number generator.
+        self["DoStonith"] = 0
+        self["DoStandby"] = 0
+        self["DoFencing"] = 0
+        self["XmitLoss"] = "0.0"
+        self["RecvLoss"] = "0.0"
+        self["IPBase"] = "127.0.0.10"
+        self["ClobberCIB"] = 0
+        self["CIBfilename"] = None
+        self["CIBResource"] = 0
+        self["DoBSC"]    = 0
+        self["use_logd"] = 0
+        self["oprofile"] = []
+        self["warn-inactive"] = 0
+        self["ListTests"] = 0
+        self["benchmark"] = 0
+        self["logrestartcmd"] = "/etc/init.d/rsyslog restart 2>&1 > /dev/null"
+        self["Schema"] = "corosync 1.2"
+        self["Stack"] = "corosync (flatiron)"
+        self['CMclass'] = corosync_flatiron
+        self["stonith-type"] = "external/ssh"
+        self["stonith-params"] = "hostlist=all,livedangerously=yes"
+        self["at-boot"] = 0  # Does the cluster software start automatically when the node boot 
+        self["logger"] = ([StdErrLog(self)])
+        self["loop-minutes"] = 60
+        self["valgrind-prefix"] = None
+        self["valgrind-procs"] = "corosync"
+        self["valgrind-opts"] = """--leak-check=full --show-reachable=yes --trace-children=no --num-callers=25 --gen-suppressions=all --suppressions="""+CTSvars.CTS_home+"""/cts.supp"""
+
+        self["experimental-tests"] = 0
+        self["valgrind-tests"] = 0
+        self["unsafe-tests"] = 0
+        self["loop-tests"] = 0
+        self["all-once"] = 1
+        self["LogWatcher"] = "remote"
+        self["SyslogFacility"] = DefaultFacility
     
 #
 # Main entry into the test system.
 #
 if __name__ == '__main__': 
-    Environment = CtsLab()
+    Environment = CoroLabEnvironment()
 
     NumIter = 0
     Version = 1
@@ -209,12 +250,6 @@ if __name__ == '__main__':
            except ValueError:
                usage(args[i])
 
-    Environment["remote_logwatch"]  = True
-    Environment["SyslogFacility"] = DefaultFacility
-    Environment["loop-minutes"] = int(Environment["loop-minutes"])
-    Environment["Stack"]    = "corosync (flatiron)"
-    Environment['CMclass']  = corosync_flatiron
-    Environment["use_logd"] = 0
     if Environment["OutputFile"]:
         Environment["logger"].append(FileLog(Environment, Environment["OutputFile"]))
 
@@ -233,45 +268,21 @@ if __name__ == '__main__':
 
     # Create the Cluster Manager object
     cm = Environment['CMclass'](Environment)
-
     Audits = AuditList(cm)
-    Tests = []
         
-    # Your basic start up the world type of test scenario...
-
-    # Scenario selection
-    scenario = Scenario(
-        [ InitClusterManager(Environment), TestAgentComponent(Environment)])
-
-
     if Environment["ListTests"] == 1 :
         Tests = CoroTestList(cm, Audits)
-        cm.log("Total %d tests"%len(Tests))
+        Environment.log("Total %d tests"%len(Tests))
         for test in Tests :
-            cm.log(str(test.name));
+            Environment.log(str(test.name));
         sys.exit(0)
 
     if TruncateLog:
-        cm.log("Truncating %s" % LogFile)
+        Environment.log("Truncating %s" % LogFile)
         lf = open(LogFile, "w");
         if lf != None:
             lf.truncate(0)
             lf.close()
-
-    keys = []
-    for key in Environment.keys():
-        keys.append(key)
-
-    keys.sort()
-    for key in keys:
-        cm.debug("Environment["+key+"]:\t"+str(Environment[key]))
-
-    cm.log(">>>>>>>>>>>>>>>> BEGINNING " + repr(NumIter) + " TESTS ")
-    cm.log("System log files: %s" % Environment["LogFileName"])
-    cm.ns.WaitForAllNodesToComeUp(Environment["nodes"])
-    cm.log("Cluster nodes: ")
-    for node in Environment["nodes"]:
-        cm.log("    * %s" % (node))
 
     if TestCase != None:
         for test in CoroTestList(cm, Audits):
@@ -279,28 +290,29 @@ if __name__ == '__main__':
                 Tests.append(test)
         if Tests == []:
             usage("--choose: No applicable/valid tests chosen")        
+
     else:
         Tests = CoroTestList(cm, Audits)
     
-    if Environment["benchmark"]:
-        Environment.ScenarioTests = BenchTests(scenario, cm, Tests, Audits)
-    elif Environment["all-once"] or NumIter == 0:
-        Environment.ScenarioTests = AllTests(scenario, cm, Tests, Audits)
+    # Scenario selection
+    if Environment["DoBSC"]:
+        scenario = RandomTests(cm, [ BasicSanityCheck(Environment) ], Audits, Tests)
+
+    elif Environment["all-once"] or NumIter == 0: 
+        NumIter = len(Tests)
+        scenario = AllOnce(
+            cm, [ InitClusterManager(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
     else:
-        Environment.ScenarioTests = RandomTests(scenario, cm, Tests, Audits)
+        scenario = RandomTests(
+            cm, [ InitClusterManager(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
 
-    try :
-        overall, detailed = Environment.ScenarioTests.run(NumIter)
-    except :
-        cm.Env.log("Exception by %s" % sys.exc_info()[0])
-        for logmethod in Environment["logger"]:
-          traceback.print_exc(50, logmethod)
-        
-    Environment.ScenarioTests.summarize()
-    if Environment.ScenarioTests.Stats["failure"] > 0:
-        sys.exit(Environment.ScenarioTests.Stats["failure"])
+    Environment.log(">>>>>>>>>>>>>>>> BEGINNING " + repr(NumIter) + " TESTS ")
+    Environment.log("Stack:            %s" % Environment["Stack"])
+    Environment.log("Schema:           %s" % Environment["Schema"])
+    Environment.log("Scenario:         %s" % scenario.__doc__)
+    Environment.log("Random Seed:      %s" % Environment["RandSeed"])
+    Environment.log("System log files: %s" % Environment["LogFileName"])
 
-    elif Environment.ScenarioTests.Stats["success"] != NumIter:
-        cm.Env.log("No failure count but success != requested iterations")
-        sys.exit(1)
-        
+    Environment.dump()
+    rc = Environment.run(scenario, NumIter)
+    sys.exit(rc)
