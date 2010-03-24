@@ -33,13 +33,14 @@ SPEC			= $(PACKAGE_NAME).spec
 
 TARFILE			= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in
+EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
+			  conf/lenses/tests/test_corosync.aug
 
 AUTOMAKE_OPTIONS	= foreign
 
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf
+			  autoheader automake autoconf test_lense.sh
 
 dist_doc_DATA		= LICENSE INSTALL README.devmap \
 			  README.recovery SECURITY TODO AUTHORS
@@ -79,9 +80,6 @@ test_lense.sh:
 	echo "augparse -I $(srcdir)/conf/lenses/ $(srcdir)/conf/lenses/tests/test_corosync.aug" > $@
 	chmod +x $@
 
-CLEANFILES = test_lense.sh
-
-
 lint:
 	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
 
@@ -89,10 +87,10 @@ doxygen:
 	mkdir -p doc/api && doxygen
 
 dist-clean-local:
-	rm -f autoconf automake autoheader
+	rm -f autoconf automake autoheader test_lense.sh
 
 clean-generic:
-	rm -rf doc/api $(SPEC) $(TARFILE) 
+	rm -rf doc/api $(SPEC) $(TARFILE) test_lense.sh
 
 ## make rpm/srpm section.
 
