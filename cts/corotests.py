@@ -249,9 +249,9 @@ class CpgMsgOrderBase(CoroTest):
             stopped = False
             waited = 0
 
-            while len(msgs[n]) < self.total_num_msgs and waited < 60:
+            while len(msgs[n]) < self.total_num_msgs and waited < 360:
 
-                msg = self.CM.cpg_agent[n].read_messages(25)
+                msg = self.CM.cpg_agent[n].read_messages(50)
                 if not msg == None:
                     msgl = msg.split(";")
 
@@ -265,8 +265,8 @@ class CpgMsgOrderBase(CoroTest):
 
                     msgs[n].extend(msgl)
                 elif msg == None:
-                    time.sleep(1)
-                    waited = waited + 1
+                    time.sleep(2)
+                    waited = waited + 2
 
             if len(msgs[n]) < self.total_num_msgs:
                 return self.failure("expected %d messages from %s got %d" % (self.total_num_msgs, n, len(msgs[n])))
@@ -518,7 +518,6 @@ AllTestClasses.append(RestartOnebyOne)
 def CoroTestList(cm, audits):
     result = []
     configs = []
-    empty = {}
 
     for testclass in AllTestClasses:
         bound_test = testclass(cm)
@@ -526,7 +525,12 @@ def CoroTestList(cm, audits):
             bound_test.Audits = audits
             result.append(bound_test)
 
-    configs.append(empty)
+    default = {}
+    default['logging/function_name'] = 'off'
+    default['logging/logfile_priority'] = 'info'
+    default['logging/syslog_priority'] = 'info'
+    default['logging/syslog_facility'] = 'daemon'
+    configs.append(default)
 
     a = {}
     a['compatibility'] = 'none'
@@ -557,6 +561,23 @@ def CoroTestList(cm, audits):
     #f = {}
     #f['quorum/provider'] = 'corosync_quorum_ykd'
     #configs.append(f)
+
+
+    g = {}
+    g['totem/rrp_mode'] = 'passive'
+    g['totem/interface[2]/ringnumber'] = '1'
+    g['totem/interface[2]/bindnetaddr'] = '192.168.200.0'
+    g['totem/interface[2]/mcastaddr'] = '226.94.1.2'
+    g['totem/interface[2]/mcastport'] = '5405'
+    configs.append(g)
+
+    h = {}
+    h['totem/rrp_mode'] = 'active'
+    h['totem/interface[2]/ringnumber'] = '1'
+    h['totem/interface[2]/bindnetaddr'] = '192.168.200.0'
+    h['totem/interface[2]/mcastaddr'] = '226.94.1.2'
+    h['totem/interface[2]/mcastport'] = '5405'
+    configs.append(h)
 
     num=1
     for cfg in configs:

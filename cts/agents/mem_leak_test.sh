@@ -30,6 +30,7 @@ _object_test_()
 
   corosync-objctl -c usr
   corosync-objctl -w usr.angus=456
+  corosync-objctl -w usr.angus=4123
   corosync-objctl -d usr
 
   BEFORE=$(get_mem $TYPE)
@@ -64,6 +65,15 @@ _session_test_()
   echo _session_test_
   COUNT=1
 
+  corosync-objctl -h >/dev/null
+  corosync-cfgtool -h >/dev/null
+  corosync-quorumtool -h >/dev/null
+
+  BEFORE=$(get_mem $TYPE)
+  corosync-cfgtool -a >/dev/null
+  corosync-quorumtool -s >/dev/null
+  corosync-quorumtool -l >/dev/null
+
   find /usr/bin | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
   do 
     corosync-objctl -c $l
@@ -71,6 +81,9 @@ _session_test_()
     let COUNT="$COUNT+1"
   done
   corosync-objctl -d usr
+  AFTER=$(get_mem $TYPE)
+  let DIFF="$AFTER - $BEFORE"
+  echo $DIFF
 
   exit 0
 }
