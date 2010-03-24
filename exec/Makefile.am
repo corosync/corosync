@@ -122,7 +122,7 @@ libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 else
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \

@@ -68,10 +68,10 @@ service_%.lcrso: %.o
 
 else
 quorum_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 endif
 
 endif
