@@ -6,6 +6,8 @@ compatibility: whitetank
 totem {
 	version: 2
 	secauth: off
+    crypto_type: nss
+    crypto_accept: new
 	threads: 0
     clear_node_high_bit: no
     rrp_mode: none
@@ -53,6 +55,8 @@ test Corosync.lns get conf =
   { "totem"
 	{ "version" = "2" }
 	{ "secauth" = "off" }
+	{ "crypto_type" = "nss" }
+	{ "crypto_accept" = "new" }
 	{ "threads" = "0" }
     { "clear_node_high_bit" = "no" }
     { "rrp_mode" = "none" }
