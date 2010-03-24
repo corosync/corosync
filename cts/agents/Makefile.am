@@ -43,7 +43,7 @@ noinst_PROGRAMS = $(TEST_AGENTS)
 noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh
 endif
 
-cpg_test_agent_LDADD =  -lcpg -lcoroipcc ../../exec/coropoll.o
+cpg_test_agent_LDADD =  -lcpg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o
 cpg_test_agent_LDFLAGS =  -L../../lib
 
 lint:
