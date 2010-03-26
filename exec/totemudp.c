@@ -952,11 +952,17 @@ static inline void ucast_sendmsg (
 
 
 	/*
-	 * Transmit multicast message
+	 * Transmit unicast message
 	 * An error here is recovered by totemsrp
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_ucast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(ucast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 static inline void mcast_sendmsg (
@@ -1036,6 +1042,12 @@ static inline void mcast_sendmsg (
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 static void totemudp_mcast_thread_state_constructor (
@@ -1110,6 +1122,12 @@ static void totemudp_mcast_worker_fn (void *thread_state, void *work_item_in)
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 int totemudp_finalize (
