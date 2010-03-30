@@ -1087,6 +1087,10 @@ static int object_key_increment (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	if (res == 0) {
+		object_key_changed_notification (object_handle, key_name, key_len,
+			object_key->value, object_key->value_len, OBJECT_KEY_REPLACED);
+	}
 	objdb_rdunlock();
 	return (res);
 
@@ -1170,6 +1174,10 @@ static int object_key_decrement (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	if (res == 0) {
+		object_key_changed_notification (object_handle, key_name, key_len,
+			object_key->value, object_key->value_len, OBJECT_KEY_REPLACED);
+	}
 	objdb_rdunlock();
 	return (res);
 
@@ -1244,6 +1252,7 @@ static int object_key_replace (
 	struct object_key *object_key = NULL;
 	struct list_head *list;
 	int found = 0;
+	int value_changed = 0;
 
 	objdb_rdlock();
 
@@ -1308,8 +1317,14 @@ static int object_key_replace (
 			free(object_key->value);
 			object_key->value = replacement_value;
 		}
-		memcpy(object_key->value, new_value, new_value_len);
-		object_key->value_len = new_value_len;
+		if (memcmp (object_key->value, new_value, new_value_len) == 0) {
+			value_changed = 0;
+		}
+		else {
+			memcpy(object_key->value, new_value, new_value_len);
+			object_key->value_len = new_value_len;
+			value_changed = 1;
+		}
 	}
 	else {
 		ret = -1;
@@ -1317,7 +1332,7 @@ static int object_key_replace (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	if (ret == 0) {
+	if (ret == 0 && value_changed) {
 		object_key_changed_notification (object_handle, key_name, key_len,
 			new_value, new_value_len, OBJECT_KEY_REPLACED);
 	}
