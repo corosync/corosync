@@ -45,6 +45,17 @@ logging {
 
 quorum {
     provider: corosync_quorum_ykd
+    expected_votes: 5
+    votes: 1
+    quorumdev_poll: 2
+    leaving_timeout: 2
+    disallowed: 0
+    two_node: 0
+}
+
+uidgid {
+    uid: 0
+    gid: 0
 }
 
 amf {
@@ -92,7 +103,17 @@ test Corosync.lns get conf =
 		{ "debug" = "on" } } }
   { }
   { "quorum"
-    { "provider" = "corosync_quorum_ykd" } }
+    { "provider" = "corosync_quorum_ykd" }
+    { "expected_votes" = "5" }
+    { "votes" = "1" }
+    { "quorumdev_poll" = "2" }
+    { "leaving_timeout" = "2" }
+    { "disallowed" = "0" }
+    { "two_node" = "0" } }
+  { }
+  { "uidgid"
+    { "uid" = "0" }
+    { "gid" = "0" } }
   { }
   { "amf"
 	{ "mode" = "disabled" } }

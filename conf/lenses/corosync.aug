@@ -119,7 +119,13 @@ let amf =
 (* The quorum section *)
 let quorum =
   let setting =
-   qstr /provider/ in
+   qstr /provider/
+   |kv "expected_votes" Rx.integer
+   |kv "votes" Rx.integer
+   |kv "quorumdev_poll" Rx.integer
+   |kv "leaving_timeout" Rx.integer
+   |kv "disallowed" Rx.integer
+   |kv "two_node" Rx.integer in
   section "quorum" setting
 
 (* The service section *)
@@ -128,6 +134,12 @@ let service =
    qstr /name|ver/ in
   section "service" setting
 
-let lns = (comment|empty|compatibility|totem|quorum|logging|amf|service)*
+(* The uidgid section *)
+let uidgid =
+  let setting =
+   qstr /uid|gid/ in
+  section "uidgid" setting
+
+let lns = (comment|empty|compatibility|totem|quorum|logging|amf|service|uidgid)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")
