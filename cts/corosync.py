@@ -135,9 +135,10 @@ class corosync_flatiron(ClusterManager):
             ),
             "LogFileName"    : Environment["LogFileName"],
             })
-        self.cpg_agent={}
-        self.confdb_agent={}
-        self.sam_agent={}
+        self.cpg_agent = {}
+        self.confdb_agent = {}
+        self.sam_agent = {}
+        self.votequorum_agent = {}
         self.config = CoroConfig ()
         self.node_to_ip = {}
         
@@ -219,6 +220,8 @@ class corosync_flatiron(ClusterManager):
             self.confdb_agent[node].restart()
         if self.sam_agent.has_key(node):
             self.sam_agent[node].restart()
+        if self.votequorum_agent.has_key(node):
+            self.votequorum_agent[node].restart()
         return ret
 
     def StopaCM(self, node):
@@ -230,6 +233,8 @@ class corosync_flatiron(ClusterManager):
             self.cpg_agent[node].stop()
         if self.sam_agent.has_key(node):
             self.sam_agent[node].stop()
+        if self.votequorum_agent.has_key(node):
+            self.votequorum_agent[node].stop()
         return ClusterManager.StopaCM(self, node)
 
     def test_node_CM(self, node):
@@ -334,6 +339,8 @@ class TestAgentComponent(ScenarioComponent):
             self.CM.confdb_agent[node].start()
             self.CM.sam_agent[node] = SamTestAgent(node, CM.Env)
             self.CM.sam_agent[node].start()
+            self.CM.votequorum_agent[node] = VoteQuorumTestAgent(node, CM.Env)
+            self.CM.votequorum_agent[node].start()
         return 1
 
     def TearDown(self, CM):
@@ -343,6 +350,7 @@ class TestAgentComponent(ScenarioComponent):
             self.CM.cpg_agent[node].stop()
             self.CM.confdb_agent[node].stop()
             self.CM.sam_agent[node].stop()
+            self.CM.votequorum_agent[node].stop()
 
 ###################################################################
 class TestAgent(object):
@@ -566,4 +574,17 @@ class SamTestAgent(TestAgent):
 
     def cpg_local_get(self):
         return 1
+
+###################################################################
+class VoteQuorumTestAgent(TestAgent):
+
+    def __init__(self, node, Env=None):
+        TestAgent.__init__(self, "votequorum_test_agent", node, 9037, env=Env)
+        self.initialized = False
+        self.nodeid = None
+        self.send_recv = True
+
+    def cpg_local_get(self):
+        return 1
+
 

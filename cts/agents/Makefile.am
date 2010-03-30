@@ -33,7 +33,7 @@ MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
 
 SOURCES =
-TEST_AGENTS = cpg_test_agent confdb_test_agent sam_test_agent
+TEST_AGENTS = cpg_test_agent confdb_test_agent sam_test_agent votequorum_test_agent
 
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
@@ -66,6 +66,9 @@ sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
 sam_test_agent_LDADD =  -lsam ../../exec/coropoll.o
 sam_test_agent_LDFLAGS =  -L../../lib 
 
+votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
+votequorum_test_agent_LDADD =  -lvotequorum -lquorum -lcoroipcc ../../exec/coropoll.o
+votequorum_test_agent_LDFLAGS =  -L../../lib 
 
 if BUILD_DARWIN
 

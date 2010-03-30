@@ -32,13 +32,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef CORO_COMMON_TEST_AGNET_H_DEFINED
+#define CORO_COMMON_TEST_AGNET_H_DEFINED
 
+#include <corosync/hdb.h>
 
 #define OK_STR "OK"
 #define FAIL_STR "FAIL"
 #define NOT_SUPPORTED_STR "NOT_SUPPORTED"
-
-
 
 extern int32_t parse_debug;
 #define HOW_BIG_AND_BUF 4096
@@ -49,4 +50,5 @@ int test_agent_run(int server_port, ta_do_command_fn func);
 
 hdb_handle_t ta_poll_handle_get(void);
 
+#endif /* CORO_COMMON_TEST_AGNET_H_DEFINED */
 

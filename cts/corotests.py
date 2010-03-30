@@ -45,6 +45,7 @@ class CoroTest(CTSTest):
         self.start = StartTest(cm)
         self.stop = StopTest(cm)
         self.config = {}
+        self.need_all_up = True
 
     def setup(self, node):
         ret = CTSTest.setup(self, node)
@@ -67,11 +68,14 @@ class CoroTest(CTSTest):
         # apply the config
         self.CM.apply_new_config()
 
-        # start any killed corosync's
+        # start/stop all corosyncs'
         for n in self.CM.Env["nodes"]:
-            if not self.CM.StataCM(n):
+            if self.need_all_up and not self.CM.StataCM(n):
                 self.incr("started")
                 self.start(n)
+            if not self.need_all_up and self.CM.StataCM(n):
+                self.incr("stopped")
+                self.stop(n)
         return ret
 
 
@@ -192,6 +196,7 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
         self.start = StartTest(cm)
         self.stop = StopTest(cm)
         self.config = {}
+        self.need_all_up = False
         self.config['compatibility'] = 'none'
 
     def lowest_ip_set(self):
@@ -263,7 +268,7 @@ class CpgCfgChgOnExecCrash(CpgConfigChangeBase):
         self.name="CpgCfgChgOnExecCrash"
 
     def failure_action(self):
-        self.CM.log("sending SIGSEGV to corosync on " + self.wobbly)
+        self.CM.log("sending KILL to corosync on " + self.wobbly)
         self.CM.rsh(self.wobbly, "killall -9 corosync")
         self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
         self.CM.ShouldBeStatus[self.wobbly] = "down"
@@ -639,6 +644,206 @@ class SamTest4(CoroTest):
             return self.failure('sam test 4 failed')
 
 
+class QuorumState(object):
+    def __init__(self, cm, node):
+        self.node = node
+        self.CM = cm
+
+    def refresh(self):
+        info = self.CM.votequorum_agent[self.node].votequorum_getinfo()
+        assert(info != 'FAIL')
+        assert(info != 'NOT_SUPPORTED')
+
+        #self.CM.log('refresh: ' + info)
+        params = info.split(':')
+
+        self.node_votes = int(params[0])
+        self.expected_votes = int(params[1])
+        self.highest_expected = int(params[2])
+        self.total_votes = int(params[3])
+        self.quorum = int(params[4])
+        self.quorate = self.CM.votequorum_agent[self.node].quorum_getquorate()
+        assert(self.quorate != 'FAIL')
+        assert(self.quorate != 'NOT_SUPPORTED')
+        #self.CM.log('quorate: ' + str(self.quorate))
+
+###################################################################
+class VoteQuorumBase(CoroTest):
+    '''
+    '''
+
+    def setup(self, node):
+        ret = CoroTest.setup(self, node)
+        self.id_map = {}
+        self.listener = None
+        for n in self.CM.Env["nodes"]:
+            if self.listener is None:
+                self.listener = n
+            if self.need_all_up:
+                self.CM.cpg_agent[n].clean_start()
+                self.CM.cpg_agent[n].cpg_join(self.name)
+                self.id_map[n] = self.CM.cpg_agent[n].cpg_local_get()
+
+        #self.CM.votequorum_agent[self.listener].record_events()
+        return ret
+
+    def wait_for_quorum_change(self):
+        found = False
+        max_timeout = 5 * 60
+        waited = 0
+
+        printit = 0
+        self.CM.log("Waiting for quorum event on " + self.listener)
+        while not found:
+            try:
+                event = self.CM.votequorum_agent[self.listener].read_event()
+            except:
+                return self.failure('connection to test agent failed.')
+            if not event == None:
+                self.CM.debug("RECEIVED: " + str(event))
+            if event == None:
+                if waited >= max_timeout:
+                    return self.failure("timedout(" + str(waited) + " sec) == no event!")
+                else:
+                    time.sleep(1)
+                    waited = waited + 1
+                    printit = printit + 1
+                    if printit is 60:
+                        print 'waited 60 seconds'
+                        printit = 0
+                
+            elif str(event.node_id) in str(self.wobbly_id) and not event.is_member:
+                self.CM.log("Got the config change in " + str(waited) + " seconds")
+                found = True
+            else:
+                self.CM.debug("No match")
+                self.CM.debug("wobbly nodeid:" + str(self.wobbly_id))
+                self.CM.debug("event nodeid:" + str(event.node_id))
+                self.CM.debug("event.is_member:" + str(event.is_member))
+
+        if found:
+            return self.success()
+
+# repeat below with equal and uneven votes
+
+###################################################################
+class VoteQuorumGoDown(VoteQuorumBase):
+# all up
+# calc min expected votes to get Q
+# bring nodes down one-by-one
+# confirm cluster looses Q when V < EV
+#
+
+    def __init__(self, cm):
+        VoteQuorumBase.__init__(self, cm)
+        self.name="VoteQuorumGoDown"
+        self.victims = []
+        self.expected = len(self.CM.Env["nodes"])
+        self.config['quorum/provider'] = 'corosync_votequorum'
+        self.config['quorum/expected_votes'] = self.expected
+        #self.CM.log('set expected to %d' % (self.expected))
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        state = QuorumState(self.CM, self.listener)
+        for n in self.CM.Env["nodes"]:
+            if n is self.listener:
+                continue
+
+            self.victims.append(n)
+            self.CM.StopaCM(n)
+
+            nodes_alive = len(self.CM.Env["nodes"]) - len(self.victims)
+            state.refresh()
+            #self.expected = self.expected - 1
+
+            if state.node_votes != 1:
+                self.failure('unexpected number of node_votes')
+
+            if state.expected_votes != self.expected:
+                self.CM.log('nev: %d != exp %d' % (state.expected_votes, self.expected))
+                self.failure('unexpected number of expected_votes')
+
+            if state.total_votes != nodes_alive:
+                self.failure('unexpected number of total votes')
+
+            min = ((len(self.CM.Env["nodes"]) + 2) / 2)
+            if min != state.quorum:
+                self.failure('we should have %d (not %d) as quorum' % (min, state.quorum))
+
+            if nodes_alive < state.quorum:
+                if state.quorate == 1:
+                    self.failure('we should NOT have quorum(%d) %d > %d' % (state.quorate, state.quorum, nodes_alive))
+            else:
+                if state.quorate == 0:
+                    self.failure('we should have quorum(%d) %d <= %d' % (state.quorate, state.quorum, nodes_alive))
+
+        return self.success()
+
+
+# all down
+# calc min expected votes to get Q
+# bring nodes up one-by-one
+# confirm cluster gains Q when V >= EV
+#
+###################################################################
+class VoteQuorumGoUp(VoteQuorumBase):
+# all up
+# calc min expected votes to get Q
+# bring nodes down one-by-one
+# confirm cluster looses Q when V < EV
+#
+
+    def __init__(self, cm):
+        VoteQuorumBase.__init__(self, cm)
+        self.name="VoteQuorumGoUp"
+        self.need_all_up = False
+        self.expected = len(self.CM.Env["nodes"])
+        self.config['quorum/provider'] = 'corosync_votequorum'
+        self.config['quorum/expected_votes'] = self.expected
+        #self.CM.log('set expected to %d' % (self.expected))
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        self.CM.StartaCM(self.listener)
+        nodes_alive = 1
+        state = QuorumState(self.CM, self.listener)
+        state.refresh()
+
+        for n in self.CM.Env["nodes"]:
+            if n is self.listener:
+                continue
+
+            if state.node_votes != 1:
+                self.failure('unexpected number of node_votes')
+
+            if state.expected_votes != self.expected:
+                self.CM.log('nev: %d != exp %d' % (state.expected_votes, self.expected))
+                self.failure('unexpected number of expected_votes')
+
+            if state.total_votes != nodes_alive:
+                self.failure('unexpected number of total votes')
+
+            min = ((len(self.CM.Env["nodes"]) + 2) / 2)
+            if min != state.quorum:
+                self.failure('we should have %d (not %d) as quorum' % (min, state.quorum))
+
+            if nodes_alive < state.quorum:
+                if state.quorate == 1:
+                    self.failure('we should NOT have quorum(%d) %d > %d' % (state.quorate, state.quorum, nodes_alive))
+            else:
+                if state.quorate == 0:
+                    self.failure('we should have quorum(%d) %d <= %d' % (state.quorate, state.quorum, nodes_alive))
+
+            self.CM.StartaCM(n)
+            nodes_alive = nodes_alive + 1
+            state.refresh()
+
+        return self.success()
+
+
 GenTestClasses = []
 GenTestClasses.append(CpgMsgOrderBasic)
 GenTestClasses.append(CpgMsgOrderZcb)
@@ -647,6 +852,8 @@ GenTestClasses.append(CpgCfgChgOnGroupLeave)
 GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
+GenTestClasses.append(VoteQuorumGoDown)
+GenTestClasses.append(VoteQuorumGoUp)
 
 AllTestClasses = []
 AllTestClasses.append(ConfdbReplaceTest)
@@ -657,10 +864,10 @@ AllTestClasses.append(SamTest1)
 AllTestClasses.append(SamTest2)
 AllTestClasses.append(SamTest3)
 AllTestClasses.append(SamTest4)
-
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
+
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
@@ -668,7 +875,6 @@ AllTestClasses.append(SimulStart)
 AllTestClasses.append(StopOnebyOne)
 AllTestClasses.append(SimulStop)
 AllTestClasses.append(RestartOnebyOne)
-#AllTestClasses.append(PartialStart)
 
 
 def CoroTestList(cm, audits):

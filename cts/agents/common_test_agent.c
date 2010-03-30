@@ -47,7 +47,6 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
 #include "common_test_agent.h"
 
