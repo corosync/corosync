@@ -51,11 +51,6 @@
 #include <corosync/confdb.h>
 #include "common_test_agent.h"
 
-
-#define OK_STR "OK"
-#define FAIL_STR "FAIL"
-#define NOT_SUPPORTED_STR "NOT_SUPPORTED"
-
 #define INCDEC_VALUE 45
 
 confdb_callbacks_t callbacks = {

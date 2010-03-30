@@ -582,6 +582,62 @@ class ConfdbNotificationTest(CoroTest):
         else:
             return self.failure('notification_test failed')
 
+###################################################################
+class SamTest1(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest1"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test1()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('sam test 1 failed')
+
+###################################################################
+class SamTest2(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest2"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test2()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('sam test 2 failed')
+
+###################################################################
+class SamTest3(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest3"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test3()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('sam test 3 failed')
+
+###################################################################
+class SamTest4(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest4"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test4()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('sam test 4 failed')
+
 
 GenTestClasses = []
 GenTestClasses.append(CpgMsgOrderBasic)
@@ -597,6 +653,10 @@ AllTestClasses.append(ConfdbReplaceTest)
 AllTestClasses.append(ConfdbIncrementTest)
 AllTestClasses.append(ConfdbObjectFindTest)
 AllTestClasses.append(ConfdbNotificationTest)
+AllTestClasses.append(SamTest1)
+AllTestClasses.append(SamTest2)
+AllTestClasses.append(SamTest3)
+AllTestClasses.append(SamTest4)
 
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
