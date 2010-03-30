@@ -654,42 +654,42 @@ coroipcc_service_connect (
 		goto error_connect;
 	}
 
-	res = memory_map (
+	sys_res = memory_map (
 		control_map_path,
 		"control_buffer-XXXXXX",
 		(void *)&ipc_instance->control_buffer,
 		8192);
-	if (res == -1) {
+	if (sys_res == -1) {
 		res = CS_ERR_LIBRARY;
 		goto error_connect;
 	}
 
-	res = memory_map (
+	sys_res = memory_map (
 		request_map_path,
 		"request_buffer-XXXXXX",
 		(void *)&ipc_instance->request_buffer,
 		request_size);
-	if (res == -1) {
+	if (sys_res == -1) {
 		res = CS_ERR_LIBRARY;
 		goto error_request_buffer;
 	}
 
-	res = memory_map (
+	sys_res = memory_map (
 		response_map_path,
 		"response_buffer-XXXXXX",
 		(void *)&ipc_instance->response_buffer,
 		response_size);
-	if (res == -1) {
+	if (sys_res == -1) {
 		res = CS_ERR_LIBRARY;
 		goto error_response_buffer;
 	}
 
-	res = circular_memory_map (
+	sys_res = circular_memory_map (
 		dispatch_map_path,
 		"dispatch_buffer-XXXXXX",
 		(void *)&ipc_instance->dispatch_buffer,
 		dispatch_size);
-	if (res == -1) {
+	if (sys_res == -1) {
 		res = CS_ERR_LIBRARY;
 		goto error_dispatch_buffer;
 	}
@@ -699,7 +699,6 @@ coroipcc_service_connect (
 	sem_init (&ipc_instance->control_buffer->sem1, 1, 0);
 	sem_init (&ipc_instance->control_buffer->sem2, 1, 0);
 #else
-
 	/*
 	 * Allocate a semaphore segment
 	 */
@@ -718,18 +717,21 @@ coroipcc_service_connect (
 		 * an existing shared memory segment for which we have access
 		 */
 		if (errno != EEXIST && errno != EACCES) {
+			res = CS_ERR_LIBRARY;
 			goto error_exit;
 		}
 	}
 
 	semun.val = 0;
-	res = semctl (ipc_instance->semid, 0, SETVAL, semun);
-	if (res != 0) {
+	sys_res = semctl (ipc_instance->semid, 0, SETVAL, semun);
+	if (sys_res != 0) {
+		res = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 
-	res = semctl (ipc_instance->semid, 1, SETVAL, semun);
-	if (res != 0) {
+	sys_res = semctl (ipc_instance->semid, 1, SETVAL, semun);
+	if (sys_res != 0) {
+		res = CS_ERR_LIBRARY;
 		goto error_exit;
 	}
 #endif
