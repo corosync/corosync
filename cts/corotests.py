@@ -378,7 +378,7 @@ class CpgMsgOrderBase(CoroTest):
 ###################################################################
 class CpgMsgOrderBasic(CpgMsgOrderBase):
     '''
-    each sends & logs 1000 messages
+    each sends & logs lots of messages
     '''
     def __init__(self, cm):
         CpgMsgOrderBase.__init__(self,cm)
@@ -387,9 +387,26 @@ class CpgMsgOrderBasic(CpgMsgOrderBase):
 
     def __call__(self, node):
         self.incr("calls")
-        self.cpg_msg_blaster()
+        for n in self.CM.Env["nodes"]:
+            self.CM.cpg_agent[n].msg_blaster(self.num_msgs_per_node)
+
         return self.wait_and_validate_order()
 
+###################################################################
+class CpgMsgOrderZcb(CpgMsgOrderBase):
+    '''
+    each sends & logs lots of messages
+    '''
+    def __init__(self, cm):
+        CpgMsgOrderBase.__init__(self,cm)
+        self.name="CpgMsgOrderZcb"
+        self.num_msgs_per_node = 9000
+
+    def __call__(self, node):
+        self.incr("calls")
+        for n in self.CM.Env["nodes"]:
+            self.CM.cpg_agent[n].msg_blaster_zcb(self.num_msgs_per_node)
+        return self.wait_and_validate_order()
 
 ###################################################################
 class MemLeakObject(CoroTest):
@@ -568,6 +585,7 @@ class ConfdbNotificationTest(CoroTest):
 
 GenTestClasses = []
 GenTestClasses.append(CpgMsgOrderBasic)
+GenTestClasses.append(CpgMsgOrderZcb)
 GenTestClasses.append(CpgCfgChgOnExecCrash)
 GenTestClasses.append(CpgCfgChgOnGroupLeave)
 GenTestClasses.append(CpgCfgChgOnNodeLeave)
@@ -608,6 +626,8 @@ def CoroTestList(cm, audits):
     default['logging/logfile_priority'] = 'info'
     default['logging/syslog_priority'] = 'info'
     default['logging/syslog_facility'] = 'daemon'
+    default['uidgid/uid'] = '0'
+    default['uidgid/gid'] = '0'
     configs.append(default)
 
     a = {}
