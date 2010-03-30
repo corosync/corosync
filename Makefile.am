@@ -34,7 +34,7 @@ SPEC			= $(PACKAGE_NAME).spec
 TARFILE			= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
-			  conf/lenses/tests/test_corosync.aug
+			  conf/lenses/tests/test_corosync.aug conf/lenses/corosync.aug
 
 AUTOMAKE_OPTIONS	= foreign
 
