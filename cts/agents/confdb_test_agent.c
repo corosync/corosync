@@ -376,6 +376,7 @@ static void notification_test (int sock)
 	hdb_handle_t object_handle;
 	hdb_handle_t new_object_handle;
 	uint16_t incdec_value;
+	uint16_t incdec_value_new;
 	uint32_t incdec_value_out;
 
 	snprintf (response, 100, "%s", FAIL_STR);
@@ -445,7 +446,54 @@ static void notification_test (int sock)
 		goto send_response;
 	}
 
-	/* Test 'key replaced' notification
+	/* Test 'key replaced' notification for key_replace()
+	 */
+	callback_type = NTF_NONE;
+	incdec_value_new = 413;
+	res = confdb_key_replace(handle, new_object_handle, "incdec", strlen("incdec"),
+			&incdec_value, sizeof(incdec_value),
+			&incdec_value_new, sizeof(incdec_value_new));
+	if (res != CS_OK) {
+		syslog (LOG_ERR, "error replacing 'incdec' key: %d\n", res);
+		goto send_response;
+	}
+
+	confdb_dispatch (handle, CS_DISPATCH_ALL);
+
+	if (callback_type != NTF_KEY_REPLACED) {
+		syslog (LOG_ERR, "no notification received for the incrementing of key 'incdec'");
+		goto send_response;
+	}
+	if (strcmp ("incdec", ntf_key_name) != 0) {
+		syslog (LOG_ERR, "expected notification for 'incdec' but got %s", ntf_key_name);
+		goto send_response;
+	}
+	/* Test NO 'key replaced' notification for key_replace() of the same
+	 * value.
+	 */
+	callback_type = NTF_NONE;
+	incdec_value = incdec_value_new;
+	res = confdb_key_replace(handle, new_object_handle, "incdec", strlen("incdec"),
+			&incdec_value_new, sizeof(incdec_value),
+			&incdec_value, sizeof(incdec_value_new));
+	if (res != CS_OK) {
+		syslog (LOG_ERR, "error replacing 'incdec' key: %d\n", res);
+		goto send_response;
+	}
+
+	confdb_dispatch (handle, CS_DISPATCH_ALL);
+
+	if (callback_type != NTF_NONE) {
+		syslog (LOG_ERR, "notification received for the replacing the same value of key 'incdec'");
+		goto send_response;
+	}
+	if (strcmp ("incdec", ntf_key_name) != 0) {
+		syslog (LOG_ERR, "expected notification for 'incdec' but got %s", ntf_key_name);
+		goto send_response;
+	}
+
+
+	/* Test 'key replaced' notification for key_increment()
 	 */
 	callback_type = NTF_NONE;
 
