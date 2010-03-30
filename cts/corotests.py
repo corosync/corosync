@@ -179,6 +179,83 @@ class CpgCfgChgOnNodeLeave(CpgConfigChangeBase):
         return self.wait_for_config_change()
 
 ###################################################################
+class CpgCfgChgOnLowestNodeJoin(CTSTest):
+    '''
+    1) stop all nodes
+    2) start all but the node with the smallest ip address
+    3) start recording events
+    4) start the last node
+    '''
+    def __init__(self, cm):
+        CTSTest.__init__(self, cm)
+        self.name="CpgCfgChgOnLowestNodeJoin"
+        self.start = StartTest(cm)
+        self.stop = StopTest(cm)
+        self.config = {}
+        self.config['compatibility'] = 'none'
+
+    def lowest_ip_set(self):
+        self.lowest = None
+        for n in self.CM.Env["nodes"]:
+            if self.lowest is None:
+                self.lowest = n
+
+        self.CM.log("lowest node is " + self.lowest)
+
+    def setup(self, node):
+        # stop all nodes
+        for n in self.CM.Env["nodes"]:
+            self.CM.StopaCM(n)
+
+        self.lowest_ip_set()
+
+        # copy over any new config
+        for c in self.config:
+            self.CM.new_config[c] = self.config[c]
+
+        # install the config
+        self.CM.install_all_config()
+
+        # start all but lowest
+        self.listener = None
+        for n in self.CM.Env["nodes"]:
+            if n is not self.lowest:
+                if self.listener is None:
+                    self.listener = n
+                self.incr("started")
+                self.CM.log("starting " + n)
+                self.start(n)
+                self.CM.cpg_agent[n].clean_start()
+                self.CM.cpg_agent[n].cpg_join(self.name)
+
+        # start recording events
+        pats = []
+        pats.append("%s .*sync: node joined.*" % self.listener)
+        pats.append("%s .*sync: activate correctly.*" % self.listener)
+        self.sync_log = self.create_watch(pats, 60)
+        self.sync_log.setwatch()
+                
+        self.CM.log("setup done")
+
+        return CTSTest.setup(self, node)
+
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        self.start(self.lowest)
+        self.CM.cpg_agent[self.lowest].clean_start()
+        self.CM.cpg_agent[self.lowest].cpg_join(self.name)
+        self.wobbly_id = self.CM.cpg_agent[self.lowest].cpg_local_get()
+
+        self.CM.log("waiting for sync events")
+        if not self.sync_log.lookforall():
+            return self.failure("Patterns not found: " + repr(self.sync_log.unmatched))
+        else:
+            return self.success()
+
+
+###################################################################
 class CpgCfgChgOnExecCrash(CpgConfigChangeBase):
 
     def __init__(self, cm):
@@ -495,6 +572,7 @@ GenTestClasses.append(CpgCfgChgOnExecCrash)
 GenTestClasses.append(CpgCfgChgOnGroupLeave)
 GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
+GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
 
 AllTestClasses = []
 AllTestClasses.append(ConfdbReplaceTest)
@@ -585,7 +663,8 @@ def CoroTestList(cm, audits):
             bound_test = testclass(cm)
             if bound_test.is_applicable():
                 bound_test.Audits = audits
-                bound_test.config = cfg
+                for c in cfg:
+                    bound_test.config[c] = cfg[c]
                 bound_test.name = bound_test.name + '_' + str(num)
                 result.append(bound_test)
         num = num + 1

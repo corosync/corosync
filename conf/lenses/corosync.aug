@@ -122,6 +122,12 @@ let quorum =
    qstr /provider/ in
   section "quorum" setting
 
-let lns = (comment|empty|compatibility|totem|quorum|logging|amf)*
+(* The service section *)
+let service =
+  let setting =
+   qstr /name|ver/ in
+  section "service" setting
+
+let lns = (comment|empty|compatibility|totem|quorum|logging|amf|service)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")

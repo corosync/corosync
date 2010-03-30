@@ -32,15 +32,24 @@
 MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
 
+SOURCES =
 TEST_AGENTS = cpg_test_agent confdb_test_agent
 
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
 bin_PROGRAMS = $(TEST_AGENTS)
 dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh
+
+AM_CFLAGS		= -fPIC
+SERVICE_LCRSO		= syncv2
+SOURCES			+= $(SERVICE_LCRSO:%=%.c)
+EXTRA_DIST		= $(SOURCES)
+LCRSO			= $(SERVICE_LCRSO:%=service_%.lcrso)
+LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 else
 noinst_PROGRAMS = $(TEST_AGENTS)
 noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh
+LCRSO =
 endif
 
 noinst_HEADERS          = common_test_agent.h
@@ -52,6 +61,44 @@ cpg_test_agent_LDFLAGS =  -L../../lib -L.
 confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
 confdb_test_agent_LDADD =  -lconfdb -lcoroipcc ../../exec/coropoll.o
 confdb_test_agent_LDFLAGS =  -L../../lib 
+
+
+if BUILD_DARWIN
+
+service_%.lcrso: %.o
+	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+
+else
+if BUILD_SOLARIS
+
+service_%.lcrso: %.o
+	$(LD) $(LDFLAGS) -G $^ -o $@
+
+else
+
+service_%.lcrso: %.o
+	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+endif
+endif
+
+
+
+if INSTALL_TESTAGENTS
+all-local: $(LCRSO_OBJS) $(LCRSO)
+	@echo Built Service Engines
+
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
+	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
+
+uninstall-local:
+	cd $(DESTDIR)/$(LCRSODIR) && \
+		rm -f $(LCRSO)
+
+endif
+
+clean-local:
+	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c

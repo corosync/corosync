@@ -141,6 +141,8 @@ class corosync_flatiron(ClusterManager):
         self.node_to_ip = {}
         
         self.new_config = {}
+        self.new_config['service[0]/name'] = 'corosync_tst_sv2'
+        self.new_config['service[0]/ver'] = '0'
         self.applied_config = {}
         for n in self.Env["nodes"]:
             ip = socket.gethostbyname(n)
