@@ -30,6 +30,13 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+# Functions
+uc=$(shell echo $1 | tr a-z A-Z)
+get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
+get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
+get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
+get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
+
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
@@ -40,10 +47,7 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
 			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
-SHARED_LIBS		= $(filter-out libcpg.so.$(SONAME) libconfdb.so.$(SONAME), $(lib_LIBRARIES:%.a=%.so.$(SONAME))) \
-			  libcpg.so.$(CPG_SONAME) libconfdb.so.$(CONFDB_SONAME)
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
-SHARED_LIBS_SO_TWO	= $(lib_LIBRARIES:%.a=%.so.$(SOMAJOR))
 
 libcpg_a_SOURCES	= cpg.c
 libcfg_a_SOURCES	= cfg.c
@@ -52,6 +56,7 @@ libpload_a_SOURCES	= pload.c
 libquorum_a_SOURCES	= quorum.c
 libvotequorum_a_SOURCES	= votequorum.c
 libconfdb_a_SOURCES	= confdb.c sa-confdb.c
+libconfdb_a_LIBADD	= ../lcr/lcr_ifact.o
 libcoroipcc_a_SOURCES	= coroipcc.c
 libsam_a_SOURCES	= sam.c
 
@@ -72,21 +77,10 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o confdb.o \
-		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
-
-libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
-	$(CC) $(DARWIN_OPTS) $^ -o $@
-	ln -sf $@ libcpg.so
-	ln -sf $@ libcpg.so.$(SOMAJOR)
-
-lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
-	$(CC) $(DARWIN_OPTS) $^ -o $@
-	ln -sf lib$*.so.$(SONAME) lib$*.so
-	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
+lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+	$(CC) $(DARWIN_OPTS) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
 else
 
@@ -97,21 +91,10 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o libcoroipcc.so.$(SONAME)
-	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o confdb.o \
-		sa-confdb.o ../lcr/lcr_ifact.o -o $@ -ldl $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
-
-libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
-	$(LD) $(SOLARIS_OPTS) -G $^ -o $@
-	ln -sf $@ libcpg.so
-	ln -sf $@ libcpg.so.$(SOMAJOR)
-
-lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
-	$(LD) $(SOLARIS_OPTS) -G $^ -o $@
-	ln -sf lib$*.so.$(SONAME) lib$*.so
-	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
+lib%.so.$(SONAME): lib%.a libcoroipcc.so.$(SONAME)
+	$(LD) $(SOLARIS_OPTS) -G -whole-archive $^ -no-whole-archive -o $@
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
 else
 
@@ -123,45 +106,29 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
-libconfdb.so.$(CONFDB_SONAME): confdb.o sa-confdb.o ../lcr/lcr_ifact.o libcoroipcc.so.$(SONAME)
-	$(CC) -shared -o $@ \
-		-Wl,-soname=libconfdb.so.$(SOMAJOR) \
-		-Wl,-version-script=$(srcdir)/libconfdb.versions \
-		$^ $(LDFLAGS) $(OS_DYFLAGS) $(OS_LDL) $(AM_LDFLAGS)
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so
-	ln -sf libconfdb.so.$(CONFDB_SONAME) libconfdb.so.$(SOMAJOR)
-
-libcpg.so.$(CPG_SONAME): cpg.o libcoroipcc.so.$(SONAME)
-	$(CC) -shared -o $@ \
-		-Wl,-soname=libcpg.so.$(SOMAJOR) \
-		-Wl,-version-script=$(srcdir)/libcpg.versions \
-		$^ $(LDFLAGS) $(AM_LDFLAGS)
-	ln -sf $@ libcpg.so
-	ln -sf $@ libcpg.so.$(SOMAJOR)
-
-lib%.so.$(SONAME): %.o libcoroipcc.so.$(SONAME)
-	$(CC) -shared -o $@ \
-		-Wl,-soname=lib$*.so.$(SOMAJOR) \
+lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+	$(CC) -shared -o $@.$(call get_soname,$*) \
+		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		$^ $(LDFLAGS) $(AM_LDFLAGS)
-	ln -sf lib$*.so.$(SONAME) lib$*.so
-	ln -sf lib$*.so.$(SONAME) lib$*.so.$(SOMAJOR)
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS)
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
 endif
 
 endif
 
-all-local: $(SHARED_LIBS)
+all-local: $(SHARED_LIBS_SO)
 	@echo Built shared libs
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \
-		rm -f $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO)
+		rm -f $(get_sharedlibs) $(SHARED_LIBS_SO) $(get_sharedlibs_two)
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg

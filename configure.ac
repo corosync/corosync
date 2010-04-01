@@ -135,6 +135,35 @@ AC_CONFIG_FILES([Makefile
 
 ### Local business
 
+dnl ===============================================
+dnl Functions / global M4 variables
+dnl ===============================================
+dnl Global list of LIB names
+m4_define([local_soname_list], [])dnl
+
+dnl Upcase parameter
+m4_define([local_upcase], [translit([$*], [a-z], [A-Z])])dnl
+
+dnl M4 macro for include lib/lib$1.soname and subst that
+m4_define([LIB_SONAME_IMPORT],[dnl
+m4_define([local_libname], local_upcase($1)[_SONAME])dnl
+m4_define([local_soname], translit(m4_sinclude(lib/lib$1.verso), [
+], []))dnl
+local_libname="local_soname"dnl
+m4_define([local_soname_list], m4_defn([local_soname_list])[,]local_libname[,]local_upcase($1))dnl
+AC_SUBST(local_libname)dnl
+])dnl
+
+dnl M4 macro for print padspaces (used in LIB_MSG_RESULT). It takes 2 arguments, length of string to pad and desired
+dnl (padded) length
+m4_define([m4_printpadspace],[ifelse(m4_eval([$2 - $1 < 1]),[1],,[ ][m4_printpadspace([$1],m4_eval([$2 - 1]))])])dnl
+
+dnl Show AC_MSG_RESULT for specific libraries
+m4_define([LIB_MSG_RESULT], [ifelse([$#], [1],  ,[dnl
+AC_MSG_RESULT([  $2 Library SONAME m4_printpadspace(len($2),8) = ${$1}])
+LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
+])])dnl
+
 # ===============================================
 # Helpers
 # ===============================================
@@ -168,17 +197,21 @@ PACKAGE_FEATURES=""
 LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse \
 	-badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
 
-# libraries SONAME
+# default libraries SONAME
 SOMAJOR="4"
 SOMINOR="0"
 SOMICRO="0"
 SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
-# Special for libcpg & libconfdb
-CPG_SOMICRO="1"
-CPG_SONAME="${SOMAJOR}.${SOMINOR}.${CPG_SOMICRO}"
-CONFDB_SOMICRO="0"
-CONFDB_SOMINOR="1"
-CONFDB_SONAME="${SOMAJOR}.${CONFDB_SOMINOR}.${CONFDB_SOMICRO}"
+
+# specific libraries SONAME
+LIB_SONAME_IMPORT([cfg])
+LIB_SONAME_IMPORT([confdb])
+LIB_SONAME_IMPORT([cpg])
+LIB_SONAME_IMPORT([evs])
+LIB_SONAME_IMPORT([pload])
+LIB_SONAME_IMPORT([quorum])
+LIB_SONAME_IMPORT([sam])
+LIB_SONAME_IMPORT([votequorum])
 
 # local options
 AC_ARG_ENABLE([ansi],
@@ -437,8 +470,6 @@ AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
-AC_SUBST([CPG_SONAME])
-AC_SUBST([CONFDB_SONAME])
 AC_SUBST([COVERAGE_LCRSO_EXTRA_LDFLAGS])
 AC_SUBST([OS_DYFLAGS])
 
@@ -488,8 +519,7 @@ AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
-AC_MSG_RESULT([  CPG Library SONAME       = ${CPG_SONAME}])
-AC_MSG_RESULT([  CONFDB Library SONAME    = ${CONFDB_SONAME}])
+LIB_MSG_RESULT(m4_shift(local_soname_list))dnl
 AC_MSG_RESULT([  Default optimization     = ${OPT_CFLAGS}])
 AC_MSG_RESULT([  Default debug options    = ${GDB_CFLAGS}])
 AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])
