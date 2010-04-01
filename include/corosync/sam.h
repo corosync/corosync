@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -101,6 +101,18 @@ cs_error_t sam_start (void);
  *   was called)
  */
 cs_error_t sam_stop (void);
+
+/*
+ * Set warning signal to be send. Default signal is SIGTERM. You can
+ * use SIGKILL to emulate NOT sending warning signal and just send
+ * SIGKILL.
+ *
+ * @return
+ * - CS_OK in case no problem appeared
+ * - CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize or
+ *   is finalized
+ */
+cs_error_t sam_warn_signal_set (int warn_signal);
 
 /*
  * Register application. This is one of most crucial function. In case, your
