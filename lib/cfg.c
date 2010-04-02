@@ -203,7 +203,7 @@ corosync_cfg_dispatch (
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_CFG_TESTSHUTDOWN:
 			if (callbacks.corosync_cfg_shutdown_callback == NULL) {
-				continue;
+				break;
 			}
 
 			res_lib_cfg_testshutdown = (struct res_lib_cfg_testshutdown *)dispatch_data;
