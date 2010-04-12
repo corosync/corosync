@@ -599,6 +599,11 @@ void sync_v2_abort (void)
 		schedwrk_destroy (my_schedwrk_handle);
 		my_service_list[my_processing_idx].sync_abort ();
 	}
+
+	/* this will cause any "old" barrier messages from causing
+	 * problems.
+	 */
+	memset (&my_ring_id, 0,	sizeof (struct memb_ring_id));
 }
 
 void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id)
