@@ -926,22 +926,24 @@ def CoroTestList(cm, audits):
     #f['quorum/provider'] = 'corosync_quorum_ykd'
     #configs.append(f)
 
+    if not cm.Env["RrpBindAddr"] is None:
+        g = {}
+        g['totem/rrp_mode'] = 'passive'
+        g['totem/interface[2]/ringnumber'] = '1'
+        g['totem/interface[2]/bindnetaddr'] = cm.Env["RrpBindAddr"]
+        g['totem/interface[2]/mcastaddr'] = '226.94.1.2'
+        g['totem/interface[2]/mcastport'] = '5405'
+        configs.append(g)
 
-    g = {}
-    g['totem/rrp_mode'] = 'passive'
-    g['totem/interface[2]/ringnumber'] = '1'
-    g['totem/interface[2]/bindnetaddr'] = '192.168.200.0'
-    g['totem/interface[2]/mcastaddr'] = '226.94.1.2'
-    g['totem/interface[2]/mcastport'] = '5405'
-    configs.append(g)
-
-    h = {}
-    h['totem/rrp_mode'] = 'active'
-    h['totem/interface[2]/ringnumber'] = '1'
-    h['totem/interface[2]/bindnetaddr'] = '192.168.200.0'
-    h['totem/interface[2]/mcastaddr'] = '226.94.1.2'
-    h['totem/interface[2]/mcastport'] = '5405'
-    configs.append(h)
+        h = {}
+        h['totem/rrp_mode'] = 'active'
+        h['totem/interface[2]/ringnumber'] = '1'
+        h['totem/interface[2]/bindnetaddr'] = cm.Env["RrpBindAddr"]
+        h['totem/interface[2]/mcastaddr'] = '226.94.1.2'
+        h['totem/interface[2]/mcastport'] = '5405'
+        configs.append(h)
+    else:
+        print 'Not including rrp tests. Use --rrp-binaddr to enable them.'
 
     num=1
     for cfg in configs:

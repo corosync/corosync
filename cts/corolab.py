@@ -70,6 +70,7 @@ def usage(arg):
     print "\t [--nodes 'node list'],     list of cluster nodes separated by whitespace" 
     print "\t [--limit-nodes max],       only use the first 'max' cluster nodes supplied with --nodes" 
     print "\t [--logfile path],          where should the test software look for logs from cluster nodes" 
+    print "\t [--rrp-bindaddr addr],       extra interface used for rrp, provide the bindaddr" 
     print "\t [--outputfile path],       optional location for the test software to write logs to" 
     print "\t [--syslog-facility name],  which syslog facility should the test software log to" 
     print "\t [--choose testcase-name],  run only the named test" 
@@ -111,6 +112,7 @@ class CoroLabEnvironment(CtsLab):
         self["DoBSC"]    = 0
         self["use_logd"] = 0
         self["oprofile"] = []
+        self["RrpBindAddr"] = None
         self["warn-inactive"] = 0
         self["ListTests"] = 0
         self["benchmark"] = 0
@@ -178,6 +180,10 @@ if __name__ == '__main__':
        elif args[i] == "--outputfile":
            skipthis=1
            Environment["OutputFile"] = args[i+1]
+
+       elif args[i] == "--rrp-bindaddr":
+           skipthis=1
+           Environment["RrpBindAddr"] = args[i+1]
 
        elif args[i] == "--oprofile":
            skipthis=1
