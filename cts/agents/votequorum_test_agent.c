@@ -46,32 +46,146 @@
 #include <netdb.h>
 #include <sys/un.h>
 #include <syslog.h>
+#include <poll.h>
 
+#include <corosync/totem/coropoll.h>
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 #include <corosync/quorum.h>
 #include "common_test_agent.h"
 
+static quorum_handle_t q_handle = 0;
+static votequorum_handle_t vq_handle = 0;
 
-static void getinfo (int sock)
+static void votequorum_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t quorate,
+	uint32_t node_list_entries,
+	votequorum_node_t node_list[])
 {
-	votequorum_callbacks_t callbacks;
+	syslog (LOG_INFO, "VQ notification quorate: %d", quorate);
+}
+
+static void quorum_notification_fn(
+	quorum_handle_t handle,
+	uint32_t quorate,
+	uint64_t ring_id,
+	uint32_t view_list_entries,
+	uint32_t *view_list)
+{
+	syslog (LOG_INFO, "NQ notification quorate: %d", quorate);
+}
+
+
+static int vq_dispatch_wrapper_fn (hdb_handle_t handle,
+	int fd,
+	int revents,
+	void *data)
+{
+	cs_error_t error = votequorum_dispatch (vq_handle, CS_DISPATCH_ALL);
+	if (error == CS_ERR_LIBRARY) {
+		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
+		poll_dispatch_delete (ta_poll_handle_get(), fd);
+		close (fd);
+	}
+	return 0;
+}
+
+static int q_dispatch_wrapper_fn (hdb_handle_t handle,
+	int fd,
+	int revents,
+	void *data)
+{
+	cs_error_t error = quorum_dispatch (q_handle, CS_DISPATCH_ALL);
+	if (error == CS_ERR_LIBRARY) {
+		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
+		poll_dispatch_delete (ta_poll_handle_get(), fd);
+		close (fd);
+	}
+	return 0;
+}
+
+static int q_lib_init(void)
+{
+	votequorum_callbacks_t vq_callbacks;
+	quorum_callbacks_t q_callbacks;
+	int ret = 0;
+	int fd;
+
+	if (vq_handle == 0) {
+		syslog (LOG_INFO, "votequorum_initialize");
+		vq_callbacks.votequorum_notify_fn = votequorum_notification_fn;
+		vq_callbacks.votequorum_expectedvotes_notify_fn = NULL;
+		ret = CS_ERR_NOT_EXIST;
+		while (ret == CS_ERR_NOT_EXIST) {
+			ret = votequorum_initialize (&vq_handle, &vq_callbacks);
+			sleep (1);
+		}
+		if (ret != CS_OK) {
+			syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
+			vq_handle = 0;
+		}
+		else {
+			ret = votequorum_trackstart (vq_handle, vq_handle, CS_TRACK_CHANGES);
+			if (ret != CS_OK) {
+				syslog (LOG_ERR, "votequorum_trackstart FAILED: %d\n", ret);
+			}
+
+			votequorum_fd_get (vq_handle, &fd);
+			poll_dispatch_add (ta_poll_handle_get(), fd,
+				POLLIN|POLLNVAL, NULL, vq_dispatch_wrapper_fn);
+		}
+	}
+	if (q_handle == 0) {
+		syslog (LOG_INFO, "quorum_initialize");
+		q_callbacks.quorum_notify_fn = quorum_notification_fn;
+		ret = quorum_initialize (&q_handle, &q_callbacks);
+		if (ret != CS_OK) {
+			syslog (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
+			q_handle = 0;
+		}
+		else {
+			ret = quorum_trackstart (q_handle, CS_TRACK_CHANGES);
+			if (ret != CS_OK) {
+				syslog (LOG_ERR, "quorum_trackstart FAILED: %d\n", ret);
+			}
+			quorum_fd_get (q_handle, &fd);
+			poll_dispatch_add (ta_poll_handle_get(), fd,
+				POLLIN|POLLNVAL, NULL, q_dispatch_wrapper_fn);
+		}
+	}
+	return ret;
+}
+
+static void lib_init (int sock)
+{
 	int ret;
-	struct votequorum_info info;
 	char response[100];
-	votequorum_handle_t g_handle;
 
-	callbacks.votequorum_notify_fn = NULL;
-	callbacks.votequorum_expectedvotes_notify_fn = NULL;
+	ret = q_lib_init ();
 
-	ret = votequorum_initialize(&g_handle, &callbacks);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
+		syslog (LOG_ERR, "q_lib_init FAILED: %d\n", ret);
 		goto send_response;
 	}
 
-	ret = votequorum_getinfo(g_handle, 0, &info);
+	snprintf (response, 100, "%s", OK_STR);
+
+send_response:
+	send (sock, response, strlen (response), 0);
+}
+
+static void getinfo (int sock)
+{
+	int ret;
+	struct votequorum_info info;
+	char response[100];
+
+	q_lib_init ();
+
+	ret = votequorum_getinfo(vq_handle, 0, &info);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
 		syslog (LOG_ERR, "votequorum_getinfo FAILED: %d\n", ret);
@@ -86,29 +200,18 @@ static void getinfo (int sock)
 		info.quorum);
 
 send_response:
-	votequorum_finalize (g_handle);
 	send (sock, response, strlen (response), 0);
 }
 
 
 static void setexpected (int sock, char *arg)
 {
-	votequorum_callbacks_t callbacks;
 	int ret;
 	char response[100];
-	votequorum_handle_t g_handle;
 
-	callbacks.votequorum_notify_fn = NULL;
-	callbacks.votequorum_expectedvotes_notify_fn = NULL;
+	q_lib_init ();
 
-	ret = votequorum_initialize(&g_handle, &callbacks);
-	if (ret != CS_OK) {
-		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
-		goto send_response;
-	}
-
-	ret = votequorum_setexpected (g_handle, atoi(arg));
+	ret = votequorum_setexpected (vq_handle, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
 		syslog (LOG_ERR, "set expected votes FAILED: %d\n", ret);
@@ -118,28 +221,18 @@ static void setexpected (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	votequorum_finalize (g_handle);
+	votequorum_finalize (vq_handle);
 	send (sock, response, strlen (response) + 1, 0);
 }
 
 static void setvotes (int sock, char *arg)
 {
-	votequorum_callbacks_t callbacks;
 	int ret;
 	char response[100];
-	votequorum_handle_t g_handle;
 
-	callbacks.votequorum_notify_fn = NULL;
-	callbacks.votequorum_expectedvotes_notify_fn = NULL;
+	q_lib_init ();
 
-	ret = votequorum_initialize(&g_handle, &callbacks);
-	if (ret != CS_OK) {
-		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
-		goto send_response;
-	}
-
-	ret = votequorum_setvotes (g_handle, 0, atoi(arg));
+	ret = votequorum_setvotes (vq_handle, 0, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
 		syslog (LOG_ERR, "set votes FAILED: %d\n", ret);
@@ -149,7 +242,7 @@ static void setvotes (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	votequorum_finalize (g_handle);
+	votequorum_finalize (vq_handle);
 	send (sock, response, strlen (response), 0);
 }
 
@@ -159,16 +252,10 @@ static void getquorate (int sock)
 	int ret;
 	int quorate;
 	char response[100];
-	quorum_handle_t handle;
 
-	ret = quorum_initialize (&handle, NULL);
-	if (ret != CS_OK) {
-		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
-		goto send_response;
-	}
+	q_lib_init ();
 
-	ret = quorum_getquorate (handle, &quorate);
+	ret = quorum_getquorate (q_handle, &quorate);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
 		syslog (LOG_ERR, "getquorate FAILED: %d\n", ret);
@@ -178,7 +265,6 @@ static void getquorate (int sock)
 	snprintf (response, 100, "%d", quorate);
 
 send_response:
-	quorum_finalize (handle);
 	send (sock, response, strlen (response), 0);
 }
 
@@ -197,6 +283,8 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		setexpected (sock, args[0]);
 	} else if (strcmp ("quorum_getquorate", func) == 0) {
 		getquorate (sock);
+	} else if (strcmp ("init", func) == 0) {
+		lib_init (sock);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);

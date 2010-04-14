@@ -583,6 +583,7 @@ class VoteQuorumTestAgent(TestAgent):
         self.initialized = False
         self.nodeid = None
         self.send_recv = True
+        self.send (['init'])  
 
     def cpg_local_get(self):
         return 1

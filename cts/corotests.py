@@ -654,6 +654,7 @@ class QuorumState(object):
     def __init__(self, cm, node):
         self.node = node
         self.CM = cm
+        self.CM.votequorum_agent[self.node].init()
 
     def refresh(self):
         info = self.CM.votequorum_agent[self.node].votequorum_getinfo()
@@ -690,9 +691,7 @@ class VoteQuorumBase(CoroTest):
                 self.CM.cpg_agent[n].cpg_join(self.name)
                 self.id_map[n] = self.CM.cpg_agent[n].cpg_local_get()
 
-        #self.CM.votequorum_agent[self.listener].record_events()
         return ret
-
 
     def config_valid(self, config):
         if config.has_key('totem/rrp_mode'):
@@ -700,45 +699,6 @@ class VoteQuorumBase(CoroTest):
         else:
             return True
 
-
-    def wait_for_quorum_change(self):
-        found = False
-        max_timeout = 5 * 60
-        waited = 0
-
-        printit = 0
-        self.CM.log("Waiting for quorum event on " + self.listener)
-        while not found:
-            try:
-                event = self.CM.votequorum_agent[self.listener].read_event()
-            except:
-                return self.failure('connection to test agent failed.')
-            if not event == None:
-                self.CM.debug("RECEIVED: " + str(event))
-            if event == None:
-                if waited >= max_timeout:
-                    return self.failure("timedout(" + str(waited) + " sec) == no event!")
-                else:
-                    time.sleep(1)
-                    waited = waited + 1
-                    printit = printit + 1
-                    if printit is 60:
-                        print 'waited 60 seconds'
-                        printit = 0
-                
-            elif str(event.node_id) in str(self.wobbly_id) and not event.is_member:
-                self.CM.log("Got the config change in " + str(waited) + " seconds")
-                found = True
-            else:
-                self.CM.debug("No match")
-                self.CM.debug("wobbly nodeid:" + str(self.wobbly_id))
-                self.CM.debug("event nodeid:" + str(event.node_id))
-                self.CM.debug("event.is_member:" + str(event.is_member))
-
-        if found:
-            return self.success()
-
-# repeat below with equal and uneven votes
 
 ###################################################################
 class VoteQuorumGoDown(VoteQuorumBase):
@@ -760,7 +720,14 @@ class VoteQuorumGoDown(VoteQuorumBase):
     def __call__(self, node):
         self.incr("calls")
 
+        pats = []
+        pats.append("%s .*VQ notification quorate: 0" % self.listener)
+        pats.append("%s .*NQ notification quorate: 0" % self.listener)
+        quorum = self.create_watch(pats, 30)
+        quorum.setwatch()
+
         state = QuorumState(self.CM, self.listener)
+        state.refresh()
         for n in self.CM.Env["nodes"]:
             if n is self.listener:
                 continue
@@ -768,6 +735,8 @@ class VoteQuorumGoDown(VoteQuorumBase):
             self.victims.append(n)
             self.CM.StopaCM(n)
 
+            #if not self.wait_for_quorum_change():
+            #    return self.failure(self.error_message)
             nodes_alive = len(self.CM.Env["nodes"]) - len(self.victims)
             state.refresh()
             #self.expected = self.expected - 1
@@ -792,6 +761,10 @@ class VoteQuorumGoDown(VoteQuorumBase):
             else:
                 if state.quorate == 0:
                     self.failure('we should have quorum(%d) %d <= %d' % (state.quorate, state.quorum, nodes_alive))
+
+        if not quorum.lookforall():
+            self.CM.log("Patterns not found: " + repr(quorum.unmatched))
+            return self.failure('quorm event not found')
 
         return self.success()
 
@@ -821,6 +794,12 @@ class VoteQuorumGoUp(VoteQuorumBase):
     def __call__(self, node):
         self.incr("calls")
 
+        pats = []
+        pats.append("%s .*VQ notification quorate: 1" % self.listener)
+        pats.append("%s .*NQ notification quorate: 1" % self.listener)
+        quorum = self.create_watch(pats, 30)
+        quorum.setwatch()
+
         self.CM.StartaCM(self.listener)
         nodes_alive = 1
         state = QuorumState(self.CM, self.listener)
@@ -829,6 +808,9 @@ class VoteQuorumGoUp(VoteQuorumBase):
         for n in self.CM.Env["nodes"]:
             if n is self.listener:
                 continue
+
+            #if not self.wait_for_quorum_change():
+            #    return self.failure(self.error_message)
 
             if state.node_votes != 1:
                 self.failure('unexpected number of node_votes')
@@ -854,6 +836,10 @@ class VoteQuorumGoUp(VoteQuorumBase):
             self.CM.StartaCM(n)
             nodes_alive = nodes_alive + 1
             state.refresh()
+
+        if not quorum.lookforall():
+            self.CM.log("Patterns not found: " + repr(quorum.unmatched))
+            return self.failure('quorm event not found')
 
         return self.success()
 
