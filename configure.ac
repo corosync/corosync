@@ -64,6 +64,7 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
+AC_CHECK_PROGS([AUGTOOL], [augtool])
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
@@ -475,7 +476,7 @@ AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
 AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
-
+AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")

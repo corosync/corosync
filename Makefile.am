@@ -72,13 +72,15 @@ uninstall-local:
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
 	rmdir $(DESTDIR)/${SOCKETDIR} || :;
 
-
+if AUGTOOL
 check_SCRIPTS = test_lense.sh
 TESTS = $(check_SCRIPTS)
 
 test_lense.sh:
 	echo "augparse -I $(srcdir)/conf/lenses/ $(srcdir)/conf/lenses/tests/test_corosync.aug" > $@
 	chmod +x $@
+
+endif
 
 lint:
 	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
