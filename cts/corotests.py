@@ -32,6 +32,7 @@ Copyright (c) 2010 Red Hat, Inc.
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+from UserDict import UserDict
 from cts.CTStests import *
 
 ###################################################################
@@ -877,6 +878,11 @@ AllTestClasses.append(SimulStop)
 AllTestClasses.append(RestartOnebyOne)
 
 
+class ConfigContainer(UserDict):
+    def __init__ (self, name):
+        self.name = name
+        UserDict.__init__(self)
+
 def CoroTestList(cm, audits):
     result = []
     configs = []
@@ -887,7 +893,7 @@ def CoroTestList(cm, audits):
             bound_test.Audits = audits
             result.append(bound_test)
 
-    default = {}
+    default = ConfigContainer('default')
     default['logging/function_name'] = 'off'
     default['logging/logfile_priority'] = 'info'
     default['logging/syslog_priority'] = 'info'
@@ -896,28 +902,28 @@ def CoroTestList(cm, audits):
     default['uidgid/gid'] = '0'
     configs.append(default)
 
-    a = {}
+    a = ConfigContainer('none_10000')
     a['compatibility'] = 'none'
     a['totem/token'] = 10000
     configs.append(a)
 
-    b = {}
+    b = ConfigContainer('whitetank_10000')
     b['compatibility'] = 'whitetank'
     b['totem/token'] = 10000
     configs.append(b)
 
-    c = {}
+    c = ConfigContainer('sec_nss')
     c['totem/secauth'] = 'on'
     c['totem/crypto_accept'] = 'new'
     c['totem/crypto_type'] = 'nss'
     configs.append(c)
 
-    d = {}
+    d = ConfigContainer('sec_sober')
     d['totem/secauth'] = 'on'
     d['totem/crypto_type'] = 'sober'
     configs.append(d)
 
-    e = {}
+    e = ConfigContainer('threads_4')
     e['totem/threads'] = 4
     configs.append(e)
 
@@ -927,7 +933,7 @@ def CoroTestList(cm, audits):
     #configs.append(f)
 
     if not cm.Env["RrpBindAddr"] is None:
-        g = {}
+        g = ConfigContainer('rrp_passive')
         g['totem/rrp_mode'] = 'passive'
         g['totem/interface[2]/ringnumber'] = '1'
         g['totem/interface[2]/bindnetaddr'] = cm.Env["RrpBindAddr"]
@@ -935,7 +941,7 @@ def CoroTestList(cm, audits):
         g['totem/interface[2]/mcastport'] = '5405'
         configs.append(g)
 
-        h = {}
+        h = ConfigContainer('rrp_active')
         h['totem/rrp_mode'] = 'active'
         h['totem/interface[2]/ringnumber'] = '1'
         h['totem/interface[2]/bindnetaddr'] = cm.Env["RrpBindAddr"]
@@ -951,9 +957,9 @@ def CoroTestList(cm, audits):
             bound_test = testclass(cm)
             if bound_test.is_applicable():
                 bound_test.Audits = audits
-                for c in cfg:
+                for c in cfg.keys():
                     bound_test.config[c] = cfg[c]
-                bound_test.name = bound_test.name + '_' + str(num)
+                bound_test.name = bound_test.name + '_' + cfg.name
                 result.append(bound_test)
         num = num + 1
 
