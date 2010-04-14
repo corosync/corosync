@@ -79,6 +79,8 @@ class CoroTest(CTSTest):
                 self.stop(n)
         return ret
 
+    def config_valid(self, config):
+        return True
 
     def teardown(self, node):
         self.CM.apply_default_config()
@@ -199,6 +201,9 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
         self.config = {}
         self.need_all_up = False
         self.config['compatibility'] = 'none'
+
+    def config_valid(self, config):
+        return True
 
     def lowest_ip_set(self):
         self.lowest = None
@@ -688,6 +693,14 @@ class VoteQuorumBase(CoroTest):
         #self.CM.votequorum_agent[self.listener].record_events()
         return ret
 
+
+    def config_valid(self, config):
+        if config.has_key('totem/rrp_mode'):
+            return False
+        else:
+            return True
+
+
     def wait_for_quorum_change(self):
         found = False
         max_timeout = 5 * 60
@@ -845,7 +858,67 @@ class VoteQuorumGoUp(VoteQuorumBase):
         return self.success()
 
 
+
+###################################################################
+class GenSimulStart(CoroTest):
+###################################################################
+    '''Start all the nodes ~ simultaneously'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenSimulStart"
+        self.need_all_up = False
+        self.stopall = SimulStopLite(cm)
+        self.startall = SimulStartLite(cm)
+
+    def __call__(self, dummy):
+        '''Perform the 'SimulStart' test. '''
+        self.incr("calls")
+
+        #        We ignore the "node" parameter...
+
+        #        Shut down all the nodes...
+        ret = self.stopall(None)
+        if not ret:
+            return self.failure("Setup failed")
+        
+        self.CM.clear_all_caches()
+ 
+        if not self.startall(None):
+            return self.failure("Startall failed")
+
+        return self.success()
+
+###################################################################
+class GenSimulStop(CoroTest):
+###################################################################
+    '''Stop all the nodes ~ simultaneously'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenSimulStop"
+        self.startall = SimulStartLite(cm)
+        self.stopall = SimulStopLite(cm)
+        self.need_all_up = True
+
+    def __call__(self, dummy):
+        '''Perform the 'GenSimulStop' test. '''
+        self.incr("calls")
+
+        #     We ignore the "node" parameter...
+
+        #     Start up all the nodes...
+        ret = self.startall(None)
+        if not ret:
+            return self.failure("Setup failed")
+
+        if not self.stopall(None):
+            return self.failure("Stopall failed")
+
+        return self.success()
+
+
 GenTestClasses = []
+GenTestClasses.append(GenSimulStart)
+GenTestClasses.append(GenSimulStop)
 GenTestClasses.append(CpgMsgOrderBasic)
 GenTestClasses.append(CpgMsgOrderZcb)
 GenTestClasses.append(CpgCfgChgOnExecCrash)
@@ -872,9 +945,7 @@ AllTestClasses.append(MemLeakSession)
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
-AllTestClasses.append(SimulStart)
 AllTestClasses.append(StopOnebyOne)
-AllTestClasses.append(SimulStop)
 AllTestClasses.append(RestartOnebyOne)
 
 
@@ -955,7 +1026,7 @@ def CoroTestList(cm, audits):
     for cfg in configs:
         for testclass in GenTestClasses:
             bound_test = testclass(cm)
-            if bound_test.is_applicable():
+            if bound_test.is_applicable() and bound_test.config_valid(cfg):
                 bound_test.Audits = audits
                 for c in cfg.keys():
                     bound_test.config[c] = cfg[c]
