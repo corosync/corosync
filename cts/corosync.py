@@ -220,8 +220,15 @@ class corosync_flatiron(ClusterManager):
             self.confdb_agent[node].restart()
         if self.sam_agent.has_key(node):
             self.sam_agent[node].restart()
-        if self.votequorum_agent.has_key(node):
-            self.votequorum_agent[node].restart()
+
+        # votequorum agent started as needed.
+        if self.applied_config.has_key('quorum/provider'):
+            if self.votequorum_agent.has_key(node):
+                self.votequorum_agent[node].restart()
+            else:
+                self.votequorum_agent[node] = VoteQuorumTestAgent(node, self.Env)
+                self.votequorum_agent[node].start()
+
         return ret
 
     def StopaCM(self, node):
@@ -339,8 +346,10 @@ class TestAgentComponent(ScenarioComponent):
             self.CM.confdb_agent[node].start()
             self.CM.sam_agent[node] = SamTestAgent(node, CM.Env)
             self.CM.sam_agent[node].start()
-            self.CM.votequorum_agent[node] = VoteQuorumTestAgent(node, CM.Env)
-            self.CM.votequorum_agent[node].start()
+            # votequorum agent started as needed.
+            if CM.applied_config.has_key('quorum/provider'):
+                self.CM.votequorum_agent[node] = VoteQuorumTestAgent(node, CM.Env)
+                self.CM.votequorum_agent[node].start()
         return 1
 
     def TearDown(self, CM):
@@ -350,7 +359,8 @@ class TestAgentComponent(ScenarioComponent):
             self.CM.cpg_agent[node].stop()
             self.CM.confdb_agent[node].stop()
             self.CM.sam_agent[node].stop()
-            self.CM.votequorum_agent[node].stop()
+            if self.CM.votequorum_agent.has_key(node):
+                self.CM.votequorum_agent[node].stop()
 
 ###################################################################
 class TestAgent(object):
@@ -374,7 +384,7 @@ class TestAgent(object):
 
     def clean_start(self):
         if self.used or not self.status():
-            self.env.debug('test agent: clean_start (' + self.node + ')')
+            self.env.debug('test agent: cleaning %s on node %s' % (self.binary, self.node))
             self.stop()
             self.start()
 
@@ -383,15 +393,17 @@ class TestAgent(object):
             return False
 
         try:
-            self.send (["cpg_local_get"])  
-            self.nodeid = self.read ()
+            self.send (["are_you_ok_dude"])  
+            self.read ()
+            self.started = True
             return True
         except RuntimeError, msg:
+            self.started = False
             return False
     
     def start(self):
         '''Set up the given ScenarioComponent'''
-        self.env.debug('test agent: start (' + self.node + ')')
+        self.env.debug('test agent: starting %s on node %s' % (self.binary, self.node))
         self.sock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
         ip = socket.gethostbyname(self.node)
         self.rsh(self.node, self.binary, blocking=0)
@@ -404,17 +416,18 @@ class TestAgent(object):
                 is_connected = True
             except socket.error, msg:
                 if retries > 5:
-                    self.env.debug("Retried " + str(retries) + " times. Error: " + str(msg))
+                    self.env.log("Retried " + str(retries) + " times. Error: " + str(msg))
                 time.sleep(1)
         self.started = True
         self.used = False
 
     def stop(self):
         '''Tear down (undo) the given ScenarioComponent'''
-        self.env.debug('test agent: stop (' + self.node + ')')
-        self.sock.close ()
-        self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
-        self.started = False
+        if self.status():
+            self.env.debug('test agent: stopping %s on node %s' % (self.binary, self.node))
+            self.sock.close ()
+            self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
+            self.started = False
 
     def send (self, args):
         if not self.started:
@@ -508,13 +521,15 @@ class CpgTestAgent(TestAgent):
         self.nodeid = None
 
     def start(self):
-        TestAgent.start(self)
-        self.send(["cpg_initialize"])
-        self.used = False
+        if not self.started:
+            TestAgent.start(self)
+            self.cpg_initialize()
+            self.used = False
 
     def stop(self):
         try:
-            self.send(["cpg_finalize"])
+            if self.started:
+                self.cpg_finalize()
         except RuntimeError, msg:
             # if cpg_agent is down, we are not going to stress
             print msg
@@ -560,9 +575,6 @@ class ConfdbTestAgent(TestAgent):
         self.nodeid = None
         self.send_recv = True
 
-    def cpg_local_get(self):
-        return 1
-
 ###################################################################
 class SamTestAgent(TestAgent):
 
@@ -572,9 +584,6 @@ class SamTestAgent(TestAgent):
         self.nodeid = None
         self.send_recv = True
 
-    def cpg_local_get(self):
-        return 1
-
 ###################################################################
 class VoteQuorumTestAgent(TestAgent):
 
@@ -583,9 +592,10 @@ class VoteQuorumTestAgent(TestAgent):
         self.initialized = False
         self.nodeid = None
         self.send_recv = True
-        self.send (['init'])  
 
-    def cpg_local_get(self):
-        return 1
-
+    def start(self):
+        if not self.started:
+            TestAgent.start(self)
+            self.init()
+            self.used = False
 

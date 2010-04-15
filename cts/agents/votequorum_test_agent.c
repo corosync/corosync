@@ -163,17 +163,14 @@ static void lib_init (int sock)
 	int ret;
 	char response[100];
 
+	snprintf (response, 100, "%s", OK_STR);
 	ret = q_lib_init ();
 
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
 		syslog (LOG_ERR, "q_lib_init FAILED: %d\n", ret);
-		goto send_response;
 	}
 
-	snprintf (response, 100, "%s", OK_STR);
-
-send_response:
 	send (sock, response, strlen (response), 0);
 }
 
@@ -285,6 +282,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		getquorate (sock);
 	} else if (strcmp ("init", func) == 0) {
 		lib_init (sock);
+	} else if (strcmp ("are_you_ok_dude", func) == 0) {
+		snprintf (response, 100, "%s", OK_STR);
+		send (sock, response, strlen (response) + 1, 0);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);

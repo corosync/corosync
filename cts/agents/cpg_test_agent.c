@@ -487,6 +487,7 @@ static int cpg_dispatch_wrapper_fn (hdb_handle_t handle,
 static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	int result;
+	char response[100];
 	struct cpg_name group_name;
 
 	if (parse_debug)
@@ -547,7 +548,6 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 	} else if (strcmp ("cpg_local_get", func) == 0) {
 		unsigned int local_nodeid;
-		char response[100];
 
 		cpg_local_get (cpg_handle, &local_nodeid);
 		snprintf (response, 100, "%u",local_nodeid);
@@ -582,7 +582,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("msg_blaster",func) == 0) {
 
 		msg_blaster (sock, args[0]);
-
+	} else if (strcmp ("are_you_ok_dude", func) == 0) {
+		snprintf (response, 100, "%s", OK_STR);
+		send (sock, response, strlen (response) + 1, 0);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 	}

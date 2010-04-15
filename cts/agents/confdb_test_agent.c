@@ -583,6 +583,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		object_find_test (sock);
 	} else if (strcmp ("notification_test", func) == 0) {
 		notification_test (sock);
+	} else if (strcmp ("are_you_ok_dude", func) == 0) {
+		snprintf (response, 100, "%s", OK_STR);
+		send (sock, response, strlen (response) + 1, 0);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);
