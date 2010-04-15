@@ -274,8 +274,6 @@ static int tst_sv2_sync_process (void)
 {
 	num_sync_processes++;
 
-	log_printf (LOGSYS_LEVEL_INFO, "sync: process %d", num_sync_processes);
-
 	if (num_sync_processes > 3) {
 		return 0;
 	} else {

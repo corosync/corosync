@@ -566,6 +566,10 @@ class CpgTestAgent(TestAgent):
         else:
             return msg
 
+    def context_test(self):
+        self.send (["context_test"])  
+        return self.read ()
+
 ###################################################################
 class ConfdbTestAgent(TestAgent):
 

@@ -265,6 +265,29 @@ send_response:
 	send (sock, response, strlen (response), 0);
 }
 
+static void context_test (int sock)
+{
+	char response[100];
+	char *cmp;
+
+	snprintf (response, 100, "%s", OK_STR);
+
+	votequorum_context_set (vq_handle, response);
+	votequorum_context_get (vq_handle, (void**)&cmp);
+	if (response != cmp) {
+		snprintf (response, 100, "%s", FAIL_STR);
+		syslog (LOG_ERR, "votequorum context not the same");
+	}
+
+	quorum_context_set (q_handle, response);
+	quorum_context_get (q_handle, (const void**)&cmp);
+	if (response != cmp) {
+		snprintf (response, 100, "%s", FAIL_STR);
+		syslog (LOG_ERR, "quorum context not the same");
+	}
+	send (sock, response, strlen (response) + 1, 0);
+}
+
 static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	char response[100];
@@ -282,6 +305,8 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		getquorate (sock);
 	} else if (strcmp ("init", func) == 0) {
 		lib_init (sock);
+	} else if (strcmp ("context_test", func) == 0) {
+		context_test (sock);
 	} else if (strcmp ("are_you_ok_dude", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
 		send (sock, response, strlen (response) + 1, 0);

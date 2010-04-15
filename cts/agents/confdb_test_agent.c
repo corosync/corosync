@@ -567,6 +567,31 @@ send_response:
 }
 
 
+static void context_test (int sock)
+{
+	confdb_handle_t handle;
+	char response[100];
+	char *cmp;
+	int res;
+
+	snprintf (response, 100, "%s", OK_STR);
+
+	res = confdb_initialize (&handle, &valid_callbacks);
+	if (res != CS_OK) {
+		syslog (LOG_ERR, "Could not initialize confdb error %d\n", res);
+		goto send_response;
+	}
+
+	confdb_context_set (handle, response);
+	confdb_context_get (handle, (const void**)&cmp);
+	if (response != cmp) {
+		snprintf (response, 100, "%s", FAIL_STR);
+	}
+
+send_response:
+	send (sock, response, strlen (response) + 1, 0);
+	confdb_finalize (handle);
+}
 
 static void do_command (int sock, char* func, char*args[], int num_args)
 {
@@ -583,6 +608,8 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		object_find_test (sock);
 	} else if (strcmp ("notification_test", func) == 0) {
 		notification_test (sock);
+	} else if (strcmp ("context_test", func) == 0) {
+		context_test (sock);
 	} else if (strcmp ("are_you_ok_dude", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
 		send (sock, response, strlen (response) + 1, 0);

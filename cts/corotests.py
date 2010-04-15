@@ -86,6 +86,19 @@ class CoroTest(CTSTest):
         self.CM.apply_default_config()
         return CTSTest.teardown(self, node)
 
+###################################################################
+class CpgContextTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="CpgContextTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.cpg_agent[node].context_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('context_test failed')
 
 ###################################################################
 class CpgConfigChangeBase(CoroTest):
@@ -548,6 +561,20 @@ class ConfdbReplaceTest(CoroTest):
         else:
             return self.failure('set_get_test failed')
 
+###################################################################
+class ConfdbContextTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="ConfdbContextTest"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.confdb_agent[node].context_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('context_test failed')
+
 
 ###################################################################
 class ConfdbIncrementTest(CoroTest):
@@ -843,12 +870,29 @@ class VoteQuorumGoUp(VoteQuorumBase):
 
         return self.success()
 
+###################################################################
+class VoteQuorumContextTest(CoroTest):
+
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="VoteQuorumContextTest"
+        self.expected = len(self.CM.Env["nodes"])
+        self.config['quorum/provider'] = 'corosync_votequorum'
+        self.config['quorum/expected_votes'] = self.expected
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.votequorum_agent[node].context_test()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure('context_test failed')
 
 
 ###################################################################
 class GenSimulStart(CoroTest):
-###################################################################
     '''Start all the nodes ~ simultaneously'''
+
     def __init__(self, cm):
         CoroTest.__init__(self,cm)
         self.name="GenSimulStart"
@@ -876,8 +920,8 @@ class GenSimulStart(CoroTest):
 
 ###################################################################
 class GenSimulStop(CoroTest):
-###################################################################
     '''Stop all the nodes ~ simultaneously'''
+
     def __init__(self, cm):
         CoroTest.__init__(self,cm)
         self.name="GenSimulStop"
@@ -920,6 +964,9 @@ AllTestClasses.append(ConfdbReplaceTest)
 AllTestClasses.append(ConfdbIncrementTest)
 AllTestClasses.append(ConfdbObjectFindTest)
 AllTestClasses.append(ConfdbNotificationTest)
+AllTestClasses.append(ConfdbContextTest)
+AllTestClasses.append(CpgContextTest)
+AllTestClasses.append(VoteQuorumContextTest)
 AllTestClasses.append(SamTest1)
 AllTestClasses.append(SamTest2)
 AllTestClasses.append(SamTest3)

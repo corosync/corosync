@@ -449,6 +449,23 @@ static void msg_blaster (int sock, char* num_to_send_str)
 	send_some_more_messages_normal ();
 }
 
+
+static void context_test (int sock)
+{
+	char response[100];
+	char *cmp;
+
+	cpg_context_set (cpg_handle, response);
+	cpg_context_get (cpg_handle, &cmp);
+	if (response != cmp) {
+		snprintf (response, 100, "%s", FAIL_STR);
+	}
+	else {
+		snprintf (response, 100, "%s", OK_STR);
+	}
+	send (sock, response, strlen (response) + 1, 0);
+}
+
 static void msg_blaster_zcb (int sock, char* num_to_send_str)
 {
 	my_msgs_to_send = atoi (num_to_send_str);
@@ -552,36 +569,26 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		cpg_local_get (cpg_handle, &local_nodeid);
 		snprintf (response, 100, "%u",local_nodeid);
 		send (sock, response, strlen (response) + 1, 0);
-
-	} else if (strcmp ("cpg_finalize",func) == 0) {
+	} else if (strcmp ("cpg_finalize", func) == 0) {
 
 		cpg_finalize (cpg_handle);
 		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
 		cpg_fd = -1;
 
-	} else if (strcmp ("record_config_events",func) == 0) {
-
+	} else if (strcmp ("record_config_events", func) == 0) {
 		record_config_events ();
-
-	} else if (strcmp ("record_messages",func) == 0) {
-
+	} else if (strcmp ("record_messages", func) == 0) {
 		record_messages ();
-
-	} else if (strcmp ("read_config_event",func) == 0) {
-
+	} else if (strcmp ("read_config_event", func) == 0) {
 		read_config_event (sock);
-
-	} else if (strcmp ("read_messages",func) == 0) {
-
+	} else if (strcmp ("read_messages", func) == 0) {
 		read_messages (sock, args[0]);
-
 	} else if (strcmp ("msg_blaster_zcb", func) == 0) {
-
 		msg_blaster_zcb (sock, args[0]);
-
-	} else if (strcmp ("msg_blaster",func) == 0) {
-
+	} else if (strcmp ("msg_blaster", func) == 0) {
 		msg_blaster (sock, args[0]);
+	} else if (strcmp ("context_test", func) == 0) {
+		context_test (sock);
 	} else if (strcmp ("are_you_ok_dude", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
 		send (sock, response, strlen (response) + 1, 0);
