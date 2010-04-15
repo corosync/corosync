@@ -304,6 +304,12 @@ class CpgCfgChgOnNodeIsolate(CpgConfigChangeBase):
     def __init__(self, cm):
         CpgConfigChangeBase.__init__(self,cm)
         self.name="CpgCfgChgOnNodeIsolate"
+
+    def config_valid(self, config):
+        if config.has_key('totem/rrp_mode'):
+            return False
+        else:
+            return True
        
     def failure_action(self):
         self.CM.log("isolating node " + self.wobbly)

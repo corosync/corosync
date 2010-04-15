@@ -185,26 +185,29 @@ static void config_change_callback (
 
 	/* group_name,ip,pid,join|leave */
 
-	if (record_config_events_g == 0) {
-		return;
-	}
 	for (i = 0; i < left_list_entries; i++) {
-		syslog (LOG_DEBUG, "%s() inserting leave event into list", __func__);
+		syslog (LOG_INFO, "%s(%d) %d:%s left", __func__, record_config_events_g,
+			left_list[i].nodeid, groupName->value);
 
-		log_pt = malloc (sizeof(log_entry_t));
-		list_init (&log_pt->list);
-		snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,left",
-			groupName->value, left_list[i].nodeid,left_list[i].pid);
-		list_add_tail(&log_pt->list, &config_chg_log_head);
+		if (record_config_events_g > 0) {
+			log_pt = malloc (sizeof(log_entry_t));
+			list_init (&log_pt->list);
+			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,left",
+				groupName->value, left_list[i].nodeid,left_list[i].pid);
+			list_add_tail(&log_pt->list, &config_chg_log_head);
+		}
 	}
 	for (i = 0; i < joined_list_entries; i++) {
-		syslog (LOG_DEBUG, "%s() inserting join event into list", __func__);
+		syslog (LOG_INFO, "%s(%d) %d:%s joined", __func__, record_config_events_g,
+			left_list[i].nodeid, groupName->value);
 
-		log_pt = malloc (sizeof(log_entry_t));
-		list_init (&log_pt->list);
-		snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,join",
-			groupName->value, joined_list[i].nodeid,joined_list[i].pid);
-		list_add_tail (&log_pt->list, &config_chg_log_head);
+		if (record_config_events_g > 0) {
+			log_pt = malloc (sizeof(log_entry_t));
+			list_init (&log_pt->list);
+			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,join",
+				groupName->value, joined_list[i].nodeid,joined_list[i].pid);
+			list_add_tail (&log_pt->list, &config_chg_log_head);
+		}
 	}
 }
 
@@ -219,10 +222,15 @@ static void record_messages (void)
 	syslog (LOG_DEBUG,"%s() record:%d", __func__, record_messages_g);
 }
 
-static void record_config_events (void)
+static void record_config_events (int sock)
 {
+	char response[100];
+
 	record_config_events_g = 1;
-	syslog (LOG_DEBUG,"%s() record:%d", __func__, record_config_events_g);
+	syslog (LOG_INFO, "%s() record:%d", __func__, record_config_events_g);
+
+	snprintf (response, 100, "%s", OK_STR);
+	send (sock, response, strlen (response), 0);
 }
 
 static void read_config_event (int sock)
@@ -233,12 +241,12 @@ static void read_config_event (int sock)
 
 	if (list != &config_chg_log_head) {
 		entry = list_entry (list, log_entry_t, list);
-		send (sock, entry->log,	strlen (entry->log) + 1, 0);
+		send (sock, entry->log,	strlen (entry->log), 0);
 		list_del (&entry->list);
 		free (entry);
 	} else {
 		syslog (LOG_DEBUG,"%s() no events in list", __func__);
-		send (sock, empty, strlen (empty) + 1, 0);
+		send (sock, empty, strlen (empty), 0);
 	}
 }
 
@@ -463,7 +471,7 @@ static void context_test (int sock)
 	else {
 		snprintf (response, 100, "%s", OK_STR);
 	}
-	send (sock, response, strlen (response) + 1, 0);
+	send (sock, response, strlen (response), 0);
 }
 
 static void msg_blaster_zcb (int sock, char* num_to_send_str)
@@ -531,6 +539,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 				"Could not join process group, error %d\n", result);
 			exit (1);
 		}
+		syslog (LOG_INFO, "called cpg_join()!");
 
 	} else if (strcmp ("cpg_leave",func) == 0) {
 
@@ -568,7 +577,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		cpg_local_get (cpg_handle, &local_nodeid);
 		snprintf (response, 100, "%u",local_nodeid);
-		send (sock, response, strlen (response) + 1, 0);
+		send (sock, response, strlen (response), 0);
 	} else if (strcmp ("cpg_finalize", func) == 0) {
 
 		cpg_finalize (cpg_handle);
@@ -576,7 +585,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		cpg_fd = -1;
 
 	} else if (strcmp ("record_config_events", func) == 0) {
-		record_config_events ();
+		record_config_events (sock);
 	} else if (strcmp ("record_messages", func) == 0) {
 		record_messages ();
 	} else if (strcmp ("read_config_event", func) == 0) {
@@ -591,7 +600,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		context_test (sock);
 	} else if (strcmp ("are_you_ok_dude", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
-		send (sock, response, strlen (response) + 1, 0);
+		send (sock, response, strlen (response), 0);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 	}

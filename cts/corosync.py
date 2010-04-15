@@ -423,11 +423,10 @@ class TestAgent(object):
 
     def stop(self):
         '''Tear down (undo) the given ScenarioComponent'''
-        if self.status():
-            self.env.debug('test agent: stopping %s on node %s' % (self.binary, self.node))
-            self.sock.close ()
-            self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
-            self.started = False
+        self.env.debug('test agent: stopping %s on node %s' % (self.binary, self.node))
+        self.sock.close ()
+        self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
+        self.started = False
 
     def send (self, args):
         if not self.started:
@@ -547,6 +546,7 @@ class CpgTestAgent(TestAgent):
             self.send (["record_config_events", "truncate"])  
         else:
             self.send (["record_config_events", "append"])  
+        return self.read ()
 
     def read_config_event(self):
         self.send (["read_config_event"])  
