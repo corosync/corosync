@@ -436,7 +436,7 @@ static unsigned int service_unlink_and_exit (
 			(void *)&service_id, NULL);
 
 		if(service_id != NULL
-			&& *service_id > 0
+			&& *service_id >= 0
 			&& *service_id < SERVICE_HANDLER_MAXIMUM_COUNT
 			&& ais_service[*service_id] != NULL) {
 
