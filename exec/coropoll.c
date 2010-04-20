@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
@@ -61,9 +62,14 @@ struct poll_instance {
 	int poll_entry_count;
 	struct timerlist timerlist;
 	int stop_requested;
+	int pipefds[2];
 };
 
 DECLARE_HDB_DATABASE (poll_instance_database,NULL);
+
+static int dummy_dispatch_fn (hdb_handle_t handle, int fd, int revents, void *data) {
+	return (0);
+}
 
 hdb_handle_t poll_create (void)
 {
@@ -88,6 +94,24 @@ hdb_handle_t poll_create (void)
 	poll_instance->stop_requested = 0;
 	timerlist_init (&poll_instance->timerlist);
 
+	res = pipe (poll_instance->pipefds);
+	if (res != 0) {
+		goto error_destroy;
+	}
+
+	/*
+	 * Allow changes in modify to propogate into new poll instance
+	 */
+	res = poll_dispatch_add (
+		handle,
+		poll_instance->pipefds[0],
+		POLLIN,
+		NULL,
+		dummy_dispatch_fn);
+	if (res != 0) {
+		goto error_destroy;
+	}
+		
 	return (handle);
 
 error_destroy:
@@ -220,8 +244,17 @@ int poll_dispatch_modify (
 	 */
 	for (i = 0; i < poll_instance->poll_entry_count; i++) {
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
+			int change_notify = 0;
+
+			if (poll_instance->poll_entries[i].ufd.events != events) {
+				change_notify = 1;
+			}
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
+			if (change_notify) {
+				char buf;
+				write (poll_instance->pipefds[1], &buf, 1);
+			}
 
 			goto error_put;
 		}
@@ -364,6 +397,7 @@ int poll_run (
 	}
 
 	for (;;) {
+rebuild_poll:
 		for (i = 0; i < poll_instance->poll_entry_count; i++) {
 			memcpy (&poll_instance->ufds[i],
 				&poll_instance->poll_entries[i].ufd,
@@ -388,6 +422,11 @@ retry_poll:
 			goto error_exit;
 		}
 
+		if (poll_instance->ufds[0].revents) {
+			char buf;
+			read (poll_instance->ufds[0].fd, &buf, 1);
+			goto rebuild_poll;
+		}
 		poll_entry_count = poll_instance->poll_entry_count;
 		for (i = 0; i < poll_entry_count; i++) {
 			if (poll_instance->ufds[i].fd != -1 &&
