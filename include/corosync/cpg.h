@@ -78,6 +78,10 @@ typedef enum {
 	CPG_ITERATION_ALL = 3,
 } cpg_iteration_type_t;
 
+typedef enum {
+	CPG_MODEL_V1 = 1,
+} cpg_model_t;
+
 struct cpg_address {
 	uint32_t nodeid;
 	uint32_t pid;
@@ -96,6 +100,11 @@ struct cpg_iteration_description_t {
 	struct cpg_name group;
 	uint32_t nodeid;
 	uint32_t pid;
+};
+
+struct cpg_ring_id {
+	uint32_t nodeid;
+	uint64_t seq;
 };
 
 typedef void (*cpg_deliver_fn_t) (
@@ -117,10 +126,31 @@ typedef void (*cpg_confchg_fn_t) (
 	const struct cpg_address *left_list, size_t left_list_entries,
 	const struct cpg_address *joined_list, size_t joined_list_entries);
 
+typedef void (*cpg_totem_confchg_fn_t) (
+	cpg_handle_t handle,
+	struct cpg_ring_id ring_id,
+	uint32_t member_list_entries,
+	const uint32_t *member_list);
+
 typedef struct {
 	cpg_deliver_fn_t cpg_deliver_fn;
 	cpg_confchg_fn_t cpg_confchg_fn;
 } cpg_callbacks_t;
+
+typedef struct {
+	cpg_model_t model;
+} cpg_model_data_t;
+
+#define CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF 0x01
+
+typedef struct {
+	cpg_model_t model;
+	cpg_deliver_fn_t cpg_deliver_fn;
+	cpg_confchg_fn_t cpg_confchg_fn;
+	cpg_totem_confchg_fn_t cpg_totem_confchg_fn;
+	unsigned int flags;
+} cpg_model_v1_data_t;
+
 
 /** @} */
 
@@ -130,6 +160,15 @@ typedef struct {
 cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks);
+
+/*
+ * Create a new cpg connection, initialize with model
+ */
+cs_error_t cpg_model_initialize (
+	cpg_handle_t *handle,
+	cpg_model_t model,
+	cpg_model_data_t *model_data,
+	void *context);
 
 /*
  * Close the cpg handle

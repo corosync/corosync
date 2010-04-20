@@ -62,8 +62,11 @@
 struct cpg_inst {
 	hdb_handle_t handle;
 	int finalize;
-	cpg_callbacks_t callbacks;
 	void *context;
+	union {
+		cpg_model_data_t model_data;
+		cpg_model_v1_data_t model_v1_data;
+	};
 	struct list_head iteration_list_head;
 };
 
@@ -118,8 +121,31 @@ cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks)
 {
+	cpg_model_v1_data_t model_v1_data;
+
+	memset (&model_v1_data, 0, sizeof (cpg_model_v1_data_t));
+
+	if (callbacks) {
+		model_v1_data.cpg_deliver_fn = callbacks->cpg_deliver_fn;
+		model_v1_data.cpg_confchg_fn = callbacks->cpg_confchg_fn;
+	}
+
+	return (cpg_model_initialize (handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_v1_data, NULL));
+}
+
+cs_error_t cpg_model_initialize (
+	cpg_handle_t *handle,
+	cpg_model_t model,
+	cpg_model_data_t *model_data,
+	void *context)
+{
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
+
+	if (model != CPG_MODEL_V1) {
+		error = CPG_ERR_INVALID_PARAM;
+		goto error_no_destroy;
+	}
 
 	error = hdb_error_to_cs (hdb_handle_create (&cpg_handle_t_db, sizeof (struct cpg_inst), handle));
 	if (error != CS_OK) {
@@ -142,9 +168,25 @@ cs_error_t cpg_initialize (
 		goto error_put_destroy;
 	}
 
-	if (callbacks) {
-		memcpy (&cpg_inst->callbacks, callbacks, sizeof (cpg_callbacks_t));
+	if (model_data != NULL) {
+		switch (model) {
+		case CPG_MODEL_V1:
+			memcpy (&cpg_inst->model_v1_data, model_data, sizeof (cpg_model_v1_data_t));
+			if ((cpg_inst->model_v1_data.flags & ~(CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF)) != 0) {
+				error = CS_ERR_INVALID_PARAM;
+
+				goto error_destroy;
+			}
+			break;
+		default:
+			error = CS_ERR_LIBRARY;
+			goto error_destroy;
+			break;
+		}
 	}
+
+	cpg_inst->model_data.model = model;
+	cpg_inst->context = context;
 
 	list_init(&cpg_inst->iteration_list_head);
 
@@ -283,7 +325,8 @@ cs_error_t cpg_dispatch (
 	struct cpg_inst *cpg_inst;
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
-	cpg_callbacks_t callbacks;
+	struct res_lib_cpg_totem_confchg_callback *res_cpg_totem_confchg_callback;
+	struct cpg_inst cpg_inst_copy;
 	coroipc_response_header_t *dispatch_data;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
@@ -292,6 +335,8 @@ cs_error_t cpg_dispatch (
 	mar_cpg_address_t *left_list_start;
 	mar_cpg_address_t *joined_list_start;
 	unsigned int i;
+	struct cpg_ring_id ring_id;
+	uint32_t totem_member_list[CPG_MEMBERS_MAX];
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
@@ -332,74 +377,96 @@ cs_error_t cpg_dispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that cpgFinalize has been called.
 		 */
-		memcpy (&callbacks, &cpg_inst->callbacks, sizeof (cpg_callbacks_t));
-		/*
-		 * Dispatch incoming message
-		 */
-		switch (dispatch_data->id) {
-		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
-			if (callbacks.cpg_deliver_fn == NULL) {
+		memcpy (&cpg_inst_copy, cpg_inst, sizeof (struct cpg_inst));
+
+		switch (cpg_inst_copy.model_data.model) {
+		case CPG_MODEL_V1:
+			/*
+			 * Dispatch incoming message
+			 */
+			switch (dispatch_data->id) {
+			case MESSAGE_RES_CPG_DELIVER_CALLBACK:
+				if (cpg_inst_copy.model_v1_data.cpg_deliver_fn == NULL) {
+					break;
+				}
+
+				res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)dispatch_data;
+
+				marshall_from_mar_cpg_name_t (
+					&group_name,
+					&res_cpg_deliver_callback->group_name);
+
+				cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
+					&group_name,
+					res_cpg_deliver_callback->nodeid,
+					res_cpg_deliver_callback->pid,
+					&res_cpg_deliver_callback->message,
+					res_cpg_deliver_callback->msglen);
 				break;
-			}
 
-			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)dispatch_data;
+			case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
+				if (cpg_inst_copy.model_v1_data.cpg_confchg_fn == NULL) {
+					break;
+				}
 
-			marshall_from_mar_cpg_name_t (
-				&group_name,
-				&res_cpg_deliver_callback->group_name);
+				res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)dispatch_data;
 
-			callbacks.cpg_deliver_fn (handle,
-				&group_name,
-				res_cpg_deliver_callback->nodeid,
-				res_cpg_deliver_callback->pid,
-				&res_cpg_deliver_callback->message,
-				res_cpg_deliver_callback->msglen);
-			break;
+				for (i = 0; i < res_cpg_confchg_callback->member_list_entries; i++) {
+					marshall_from_mar_cpg_address_t (&member_list[i],
+						&res_cpg_confchg_callback->member_list[i]);
+				}
+				left_list_start = res_cpg_confchg_callback->member_list +
+					res_cpg_confchg_callback->member_list_entries;
+				for (i = 0; i < res_cpg_confchg_callback->left_list_entries; i++) {
+					marshall_from_mar_cpg_address_t (&left_list[i],
+						&left_list_start[i]);
+				}
+				joined_list_start = res_cpg_confchg_callback->member_list +
+					res_cpg_confchg_callback->member_list_entries +
+					res_cpg_confchg_callback->left_list_entries;
+				for (i = 0; i < res_cpg_confchg_callback->joined_list_entries; i++) {
+					marshall_from_mar_cpg_address_t (&joined_list[i],
+						&joined_list_start[i]);
+				}
+				marshall_from_mar_cpg_name_t (
+					&group_name,
+					&res_cpg_confchg_callback->group_name);
 
-		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
-			if (callbacks.cpg_confchg_fn == NULL) {
+				cpg_inst_copy.model_v1_data.cpg_confchg_fn (handle,
+					&group_name,
+					member_list,
+					res_cpg_confchg_callback->member_list_entries,
+					left_list,
+					res_cpg_confchg_callback->left_list_entries,
+					joined_list,
+					res_cpg_confchg_callback->joined_list_entries);
+
 				break;
-			}
+			case MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK:
+				if (cpg_inst_copy.model_v1_data.cpg_totem_confchg_fn == NULL) {
+					break;
+				}
 
-			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)dispatch_data;
+				res_cpg_totem_confchg_callback = (struct res_lib_cpg_totem_confchg_callback *)dispatch_data;
 
-			for (i = 0; i < res_cpg_confchg_callback->member_list_entries; i++) {
-				marshall_from_mar_cpg_address_t (&member_list[i],
-					&res_cpg_confchg_callback->member_list[i]);
-			}
-			left_list_start = res_cpg_confchg_callback->member_list +
-				res_cpg_confchg_callback->member_list_entries;
-			for (i = 0; i < res_cpg_confchg_callback->left_list_entries; i++) {
-				marshall_from_mar_cpg_address_t (&left_list[i],
-					&left_list_start[i]);
-			}
-			joined_list_start = res_cpg_confchg_callback->member_list +
-				res_cpg_confchg_callback->member_list_entries +
-				res_cpg_confchg_callback->left_list_entries;
-			for (i = 0; i < res_cpg_confchg_callback->joined_list_entries; i++) {
-				marshall_from_mar_cpg_address_t (&joined_list[i],
-					&joined_list_start[i]);
-			}
-			marshall_from_mar_cpg_name_t (
-				&group_name,
-				&res_cpg_confchg_callback->group_name);
+				marshall_from_mar_cpg_ring_id_t (&ring_id, &res_cpg_totem_confchg_callback->ring_id);
+				for (i = 0; i < res_cpg_totem_confchg_callback->member_list_entries; i++) {
+					totem_member_list[i] = res_cpg_totem_confchg_callback->member_list[i];
+				}
 
-			callbacks.cpg_confchg_fn (handle,
-				&group_name,
-				member_list,
-				res_cpg_confchg_callback->member_list_entries,
-				left_list,
-				res_cpg_confchg_callback->left_list_entries,
-				joined_list,
-				res_cpg_confchg_callback->joined_list_entries);
-			break;
-
-		default:
-			coroipcc_dispatch_put (cpg_inst->handle);
-			error = CS_ERR_LIBRARY;
-			goto error_put;
-			break;
-		}
+				cpg_inst_copy.model_v1_data.cpg_totem_confchg_fn (handle,
+					ring_id,
+					res_cpg_totem_confchg_callback->member_list_entries,
+					totem_member_list);
+				break;
+			default:
+				coroipcc_dispatch_put (cpg_inst->handle);
+				error = CS_ERR_LIBRARY;
+				goto error_put;
+				break;
+			} /* - switch (dispatch_data->id) */
+			break; /* case CPG_MODEL_V1 */
+		} /* - switch (cpg_inst_copy.model_data.model) */
 		coroipcc_dispatch_put (cpg_inst->handle);
 
 		/*
@@ -434,6 +501,14 @@ cs_error_t cpg_join (
 	req_lib_cpg_join.header.size = sizeof (struct req_lib_cpg_join);
 	req_lib_cpg_join.header.id = MESSAGE_REQ_CPG_JOIN;
 	req_lib_cpg_join.pid = getpid();
+	req_lib_cpg_join.flags = 0;
+
+	switch (cpg_inst->model_data.model) {
+	case CPG_MODEL_V1:
+		req_lib_cpg_join.flags = cpg_inst->model_v1_data.flags;
+		break;
+	}
+
 	marshall_to_mar_cpg_name_t (&req_lib_cpg_join.group_name,
 		group);
 
