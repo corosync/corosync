@@ -193,7 +193,7 @@ static int ykd_attempt_send_msg (const void *context)
 	struct ykd_header header;
 	int res;
 
-	header.id = YKD_HEADER_SENDSTATE;
+	header.id = YKD_HEADER_ATTEMPT;
 
 	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
@@ -343,6 +343,7 @@ static void ykd_deliver_fn (
 	int all_received = 1;
 	int state_position = 0;
 	int i;
+	struct ykd_header *header = (struct ykd_header *)msg;
 	char *msg_state = (char *)msg + sizeof (struct ykd_header);
 
 	/*
@@ -389,6 +390,13 @@ static void ykd_deliver_fn (
 			all_received = 0;
 		}
 	}
+
+	/*
+	 * Ignore messages from a different state
+	 */
+	if ((ykd_mode == YKD_MODE_SENDSTATE && header->id == YKD_HEADER_ATTEMPT) ||
+	    (ykd_mode == YKD_MODE_ATTEMPT && header->id == YKD_HEADER_SENDSTATE))
+	  	return;
 
 	switch (ykd_mode) {
 		case YKD_MODE_SENDSTATE:
