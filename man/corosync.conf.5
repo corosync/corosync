@@ -119,6 +119,10 @@ mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
+Please note corosync uses two UDP ports mcastport (for mcast receives) and 
+mcastport - 1 (for mcast sends).
+If you have multiple clusters on the same network using the same mcastaddr 
+please configure the mcastports with a gap.
 
 .PP
 .PP
