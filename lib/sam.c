@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -87,6 +87,7 @@ static struct {
 	unsigned int instance_id;
 	int parent_fd;
 	int term_send;
+	int warn_signal;
 
 	sam_hc_callback_t hc_callback;
 	pthread_t cb_thread;
@@ -111,6 +112,8 @@ cs_error_t sam_initialize (
 	sam_internal_data.time_interval = time_interval;
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_INITIALIZED;
+
+	sam_internal_data.warn_signal = SIGTERM;
 
 	return (CS_OK);
 }
@@ -225,6 +228,18 @@ exit_error:
 }
 
 
+cs_error_t sam_warn_signal_set (int warn_signal)
+{
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+		return (CS_ERR_BAD_HANDLE);
+	}
+
+	sam_internal_data.warn_signal = warn_signal;
+
+	return (CS_OK);
+}
 
 static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid)
 {
@@ -275,10 +290,9 @@ static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid
 				 */
 				if (!sam_internal_data.term_send) {
 					/*
-					 * We didn't send SIGTERM (warning) yet.
+					 * We didn't send warn_signal yet.
 					 */
-
-					kill (child_pid, SIGTERM);
+					kill (child_pid, sam_internal_data.warn_signal);
 
 					sam_internal_data.term_send = 1;
 				} else {

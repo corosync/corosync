@@ -50,8 +50,8 @@ the \fBfork(3)\fR system call.  This duplicate process copy contains the logic
 for executing the SAM server.  The SAM server is responsible for requesting
 healthchecks from the active process, and controlling the lifecycle of the
 active process when it fails.  If the active process fails to respond to the
-healthcheck request sent by the SAM server, it will be sent a SIGTERM signal
-to request shutdown of the application.  After a configured time interval, the
+healthcheck request sent by the SAM server, it will be sent a user configurable
+signal (default SIGTERM) to request shutdown of the application.  After a configured time interval, the
 process will be forcibly killed by being sent a SIGKILL signal.  Once the
 active process terminates, the SAM server will create a new active process.
 
@@ -85,7 +85,7 @@ then once has undefined results and is not recommended or tested.
 
 .SH Setting warning callback
 .P
-A \fISIGTERM\fR signal is sent to the application when a recovery action is
+User configurable signal (default \fISIGTERM\fR) is sent to the application when a recovery action is
 planned.  The application can use the \fBsignal(3)\fR system call to monitor
 for this signal.
 
@@ -122,5 +122,6 @@ the \fBsam_hc_callback_register(3)\fR function should be executed.
 .BR sam_start (3),
 .BR sam_stop (3),
 .BR sam_register (3),
+.BR sam_warn_signal_set (3),
 .BR sam_hc_send (3),
 .BR sam_hc_callback_register (3)

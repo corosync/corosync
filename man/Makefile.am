@@ -107,7 +107,8 @@ dist_man_MANS = \
 	sam_overview.8 \
 	sam_register.3 \
 	sam_start.3 \
-	sam_stop.3
+	sam_stop.3 \
+	sam_warn_signal_set.3
 	
 if BUILD_HTML_DOCS
 
