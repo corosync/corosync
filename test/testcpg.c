@@ -132,9 +132,29 @@ static void ConfchgCallback (
 	}
 }
 
-static cpg_callbacks_t callbacks = {
+static void TotemConfchgCallback (
+	cpg_handle_t handle,
+        struct cpg_ring_id ring_id,
+        uint32_t member_list_entries,
+        const uint32_t *member_list)
+{
+	int i;
+
+	printf("\nTotemConfchgCallback: ringid (%u.%llu)\n", ring_id.nodeid, ring_id.seq);
+
+	printf("active processors %lu: ",
+	       (unsigned long int) member_list_entries);
+	for (i=0; i<member_list_entries; i++) {
+		printf("%d ", member_list[i]);
+	}
+	printf ("\n");
+}
+
+static cpg_model_v1_data_t model_data = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
+	.cpg_totem_confchg_fn =      TotemConfchgCallback,
+	.flags =                     CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF,
 };
 
 static void sigintr_handler (int signum) __attribute__((noreturn));
@@ -173,7 +193,7 @@ int main (int argc, char *argv[]) {
 		group_name.length = 6;
 	}
 
-	result = cpg_initialize (&handle, &callbacks);
+	result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL);
 	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);

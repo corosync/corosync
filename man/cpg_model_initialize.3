@@ -1,8 +1,9 @@
 .\"/*
-.\" * Copyright (c) 2006-2009 Red Hat, Inc.
+.\" * Copyright (c) 2010 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
+.\" * Author: Jan Friesse <jfriesse@redhat.com>
 .\" * Author: Christine Caulfield <ccaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
@@ -31,20 +32,18 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_INITIALIZE 3 2004-08-31 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH CPG_MODEL_INITIALIZE 3 2010-04-07 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-cpg_initialize \- Create a new connection to the CPG service
+cpg_model_initialize \- Create a new connection to the CPG service
 .SH SYNOPSIS
 .B #include <corosync/cpg.h>
 .sp
-.BI "int cpg_initialize(cpg_handle_t *" handle ", cpg_callbacks_t *" callbacks ");
+.BI "cs_error_t cpg_model_initialize(cpg_handle_t *" handle ", cpg_model_t " model ", cpg_model_data_t *" model_data ", void *" context ");
+
 .SH DESCRIPTION
 The
-.B cpg_initialize
-function is used to initialize a connection to the closed process groups API. This function is deprecated
-and
 .B cpg_model_initialize
-should be used in newly written code.
+function is used to initialize a connection to the closed process groups API.
 .PP
 Each application may have several connections to the CPG API.  Each  application
 uses the
@@ -53,6 +52,27 @@ argument to uniquely identify the connection.  The
 .I handle
 argument is then used in other function calls to identify the connection to be used
 for communication with the CPG service.
+.PP
+Argument
+.I model
+is used to explicitly choose set of callbacks and internal parameters. Currently only model
+.I CPG_MODEL_V1
+is defined.
+.PP
+Callbacks and internal parameters are passed by
+.I model_data
+argument. This is casted pointer (idea is similar as in sockaddr function) to one of structures
+corresponding to chosen model. Currently only
+.I cpg_model_v1_data_t
+is needed.
+.SH MODEL_V1
+The
+.I MODEL_V1
+is backwards compatible with original callbacks initialized by
+.I cpg_initialize
+but new callback
+.I cpg_totem_confchg_fn
+is defined.
 .PP
 Every time an CPG event occurs within the joined group, one of the callbacks specified by the argument
 .I callbacks
@@ -81,6 +101,12 @@ typedef void (*cpg_confchg_fn_t) (
         const struct cpg_address *left_list, size_t left_list_entries,
         const struct cpg_address *joined_list, size_t joined_list_entries);
 
+
+typedef void (*cpg_totem_confchg_fn_t) (
+        cpg_handle_t handle,
+        struct cpg_ring_id ring_id,
+        uint32_t member_list_entries,
+        const uint32_t *member_list);
 .ta
 .fi
 .RE
@@ -88,17 +114,20 @@ typedef void (*cpg_confchg_fn_t) (
 .PP
 .PP
 The
-.I callbacks
-argument is of the type:
+.I cpg_model_v1_data_t
+structure is defined as:
 .IP
 .RS
 .ne 18
 .nf
 .PP
 typedef struct {
+        cpg_model_t model;
         cpg_deliver_fn_t cpg_deliver_fn;
         cpg_confchg_fn_t cpg_confchg_fn;
-} cpg_callbacks_t;
+        cpg_totem_confchg_fn_t cpg_totem_confchg_fn;
+	unsigned int flags;
+} cpg_model_v1_data_t;
 .ta
 .fi
 .RE
@@ -112,6 +141,11 @@ function.  If a configuration change occurs,
 is called.  If a delivery of a message occurs,
 .I cpg_deliver_fn
 is called.
+When totem membership change occurs,
+.I cpg_totem_confchg_fn
+is called. You can OR
+.I CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF
+constant to flags to get callback after first confchg event.
 
 The
 .I cpg_address
@@ -148,6 +182,28 @@ CPG_REASON_PROCDOWN - the process left a group without calling cpg_leave()
 .fi
 .RE
 .IP
+.PP
+The
+.I cpg_ring_id
+structure is defined
+.IP
+.RS
+.ne 18
+.nf
+.PP
+struct cpg_ring_id {
+        uint32_t nodeid;
+        uint64_t seq;
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+where
+.I nodeid
+is if of node of current Totem leader and seq is increasing number.
+
 .PP
 .SH RETURN VALUE
 This call returns the CPG_OK value if successful, otherwise an error is returned.

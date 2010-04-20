@@ -133,6 +133,8 @@ struct cpg_pd {
  	mar_cpg_name_t group_name;
 	uint32_t pid;
 	enum cpd_state cpd_state;
+	unsigned int flags;
+	int initial_totem_conf_sent;
 	struct list_head list;
 	struct list_head iteration_instance_list_head;
 };
@@ -159,6 +161,8 @@ static unsigned int my_old_member_list_entries = 0;
 static struct corosync_api_v1 *api = NULL;
 
 static enum cpg_sync_state my_sync_state = CPGSYNC_DOWNLIST;
+
+static mar_cpg_ring_id_t last_sync_ring_id;
 
 struct process_info {
 	unsigned int nodeid;
@@ -254,6 +258,11 @@ static int  cpg_sync_process (void);
 static void cpg_sync_activate (void);
 
 static void cpg_sync_abort (void);
+
+static int notify_lib_totem_membership (
+	void *conn,
+	int member_list_entries,
+	const unsigned int *member_list);
 
 /*
  * Library Handler Definition
@@ -432,6 +441,9 @@ static void cpg_sync_init_v2 (
 		sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
+	last_sync_ring_id.nodeid = ring_id->rep.nodeid;
+	last_sync_ring_id.seq = ring_id->seq;
+
 	for (i = 0; i < my_member_list_entries; i++) {
 		if (my_member_list[i] < lowest_nodeid) {
 			lowest_nodeid = my_member_list[i];
@@ -482,13 +494,50 @@ static void cpg_sync_activate (void)
 	memcpy (my_old_member_list, my_member_list,
 		my_member_list_entries * sizeof (unsigned int));
 	my_old_member_list_entries = my_member_list_entries;
+
+	notify_lib_totem_membership (NULL, my_member_list_entries, my_member_list);
 }
 
 static void cpg_sync_abort (void)
 {
 }
 
+static int notify_lib_totem_membership (
+	void *conn,
+	int member_list_entries,
+	const unsigned int *member_list)
+{
+	struct list_head *iter;
+	char *buf;
+	int size;
+	struct res_lib_cpg_totem_confchg_callback *res;
 
+	size = sizeof(struct res_lib_cpg_totem_confchg_callback) +
+		sizeof(mar_uint32_t) * (member_list_entries);
+	buf = alloca(size);
+	if (!buf)
+		return CPG_ERR_LIBRARY;
+
+	res = (struct res_lib_cpg_totem_confchg_callback *)buf;
+	res->member_list_entries = member_list_entries;
+	res->header.size = size;
+	res->header.id = MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK;
+	res->header.error = CS_OK;
+
+	memcpy (&res->ring_id, &last_sync_ring_id, sizeof (mar_cpg_ring_id_t));
+	memcpy (res->member_list, member_list, res->member_list_entries * sizeof (mar_uint32_t));
+
+	if (conn == NULL) {
+		for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+			struct cpg_pd *cpg_pd = list_entry (iter, struct cpg_pd, list);
+			api->ipc_dispatch_send (cpg_pd->conn, buf, size);
+		}
+	} else {
+		api->ipc_dispatch_send (conn, buf, size);
+	}
+
+	return CPG_OK;
+}
 
 static int notify_lib_joinlist(
 	const mar_cpg_name_t *group_name,
@@ -601,6 +650,20 @@ static int notify_lib_joinlist(
 					}
 				}
 			}
+		}
+	}
+
+
+	/*
+	 * Traverse thru cpds and send totem membership for cpd, where it is not send yet
+	 */
+	for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+		struct cpg_pd *cpd = list_entry (iter, struct cpg_pd, list);
+
+		if ((cpd->flags & CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF) && (cpd->initial_totem_conf_sent == 0)) {
+			cpd->initial_totem_conf_sent = 1;
+
+			notify_lib_totem_membership (cpd->conn, my_old_member_list_entries, my_old_member_list);
 		}
 	}
 
@@ -1093,6 +1156,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		error = CPG_OK;
 		cpd->cpd_state = CPD_STATE_JOIN_STARTED;
 		cpd->pid = req_lib_cpg_join->pid;
+		cpd->flags = req_lib_cpg_join->flags;
 		memcpy (&cpd->group_name, &req_lib_cpg_join->group_name,
 			sizeof (cpd->group_name));
 

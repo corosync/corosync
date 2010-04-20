@@ -65,6 +65,7 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_ITERATIONNEXT = 10,
 	MESSAGE_RES_CPG_ITERATIONFINALIZE = 11,
 	MESSAGE_RES_CPG_FINALIZE = 12,
+	MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK = 13,
 };
 
 enum lib_cpg_confchg_reason {
@@ -149,10 +150,24 @@ static inline void marshall_from_mar_cpg_iteration_description_t(
 	marshall_from_mar_cpg_name_t (&dest->group, &src->group);
 };
 
+typedef struct {
+        mar_uint32_t nodeid __attribute__((aligned(8)));
+        mar_uint64_t seq __attribute__((aligned(8)));
+} mar_cpg_ring_id_t;
+
+static inline void marshall_from_mar_cpg_ring_id_t (
+	struct cpg_ring_id *dest,
+	const mar_cpg_ring_id_t *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->seq = src->seq;
+}
+
 struct req_lib_cpg_join {
 	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint32_t flags __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_join {
@@ -242,6 +257,13 @@ struct res_lib_cpg_confchg_callback {
 	mar_cpg_address_t member_list[];
 //	struct cpg_address left_list[];
 //	struct cpg_address joined_list[];
+};
+
+struct res_lib_cpg_totem_confchg_callback {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_cpg_ring_id_t ring_id __attribute__((aligned(8)));
+	mar_uint32_t member_list_entries __attribute__((aligned(8)));
+	mar_uint32_t member_list[];
 };
 
 struct req_lib_cpg_leave {
