@@ -36,6 +36,7 @@ get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
 get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
 get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
 get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
+get_linker_add=$(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
 
 MAINTAINERCLEANFILES    = Makefile.in
 
@@ -57,6 +58,7 @@ libquorum_a_SOURCES	= quorum.c
 libvotequorum_a_SOURCES	= votequorum.c
 libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libconfdb_a_LIBADD	= ../lcr/lcr_ifact.o
+CONFDB_LINKER_ADD	= $(OS_DYFLAGS) $(OS_LDL)
 libcoroipcc_a_SOURCES	= coroipcc.c
 libsam_a_SOURCES	= sam.c
 
@@ -78,7 +80,7 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
 lib%.so: lib%.a libcoroipcc.so.$(SONAME)
-	$(CC) $(DARWIN_OPTS) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
+	$(CC) $(DARWIN_OPTS) $(call get_linker_add,$*) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
@@ -92,7 +94,7 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
 lib%.so.$(SONAME): lib%.a libcoroipcc.so.$(SONAME)
-	$(LD) $(SOLARIS_OPTS) -G -whole-archive $^ -no-whole-archive -o $@
+	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
@@ -110,7 +112,7 @@ lib%.so: lib%.a libcoroipcc.so.$(SONAME)
 	$(CC) -shared -o $@.$(call get_soname,$*) \
 		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS)
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS) $(call get_linker_add,$*)
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
