@@ -100,6 +100,9 @@ dist_man_MANS = \
 	votequorum_qdisk_unregister.3 \
 	votequorum_setexpected.3 \
 	votequorum_setvotes.3 \
+	sam_data_getsize.3 \
+	sam_data_restore.3 \
+	sam_data_store.3 \
 	sam_finalize.3 \
 	sam_hc_callback_register.3 \
 	sam_hc_send.3 \

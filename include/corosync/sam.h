@@ -160,6 +160,49 @@ cs_error_t sam_hc_send (void);
  */
 cs_error_t sam_hc_callback_register (sam_hc_callback_t cb);
 
+/*
+ * Return size of stored data.
+ * @param size Pointer to variable, where stored data size is returned. If
+ * nothing or NULL is stored, then 0 is returned.
+ * @return
+ * - CS_OK in case no problem appeared
+ * - CS_ERR_BAD_HANDLE in case you call this function before sam_init or after
+ *   sam_finalize
+ * - CS_ERR_INVALID_PARAM if size parameter is NULL
+ */
+cs_error_t sam_data_getsize (size_t *size);
+
+/*
+ * Return stored data.
+ * @param data Pointer to place, where to store data
+ * @param size Allocated size of data
+ * @return
+ * - CS_OK if no problem appeared
+ * - CS_ERR_BAD_HANDLE if you call this function before sam_init or after sam_finalize
+ * - CS_ERR_INVALID_PARAM if data is NULL or size is less then currently saved user data length
+ */
+cs_error_t sam_data_restore (
+	void *data,
+	size_t size);
+
+/*
+ * Store user data. Such stored data survives restart of child.
+ * @param data Data to store. You can use NULL to delete data
+ * @param size Size of data to store.
+ * @return
+ * - CS_OK in case no problem appeared
+ * - CS_ERR_BAD_HANDLE if you call this function before sam_init or
+ *   after sam_finalize
+ * - CS_ERR_NO_MEMORY if data is too large and malloc/realloc was not
+ *   sucesfull
+ * - CS_ERR_LIBRARY if some internal error appeared (communication with parent
+ *   process)
+ */
+cs_error_t sam_data_store (
+	const void *data,
+	size_t size);
+
+
 #ifdef __cplusplus
 }
 #endif

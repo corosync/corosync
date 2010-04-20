@@ -115,9 +115,19 @@ or add timers to the active process to signal a healthcheck operation is
 successful.  To use event driven healthchecking,
 the \fBsam_hc_callback_register(3)\fR function should be executed.
 
+.SH Storing user data
+.P
+Sometimes there is need to store some data, which survives between instances.
+One can in such case use files, databases, ... or much simpler in memory solution
+presented by \fBsam_data_store(3)\fR, \fBsam_data_restore(3)\fR and \fBsam_data_getsize(3)\fR
+functions.
+
 .SH BUGS
 .SH "SEE ALSO"
 .BR sam_initialize (3),
+.BR sam_data_getsize (3),
+.BR sam_data_restore (3),
+.BR sam_data_store (3),
 .BR sam_finalize (3),
 .BR sam_start (3),
 .BR sam_stop (3),

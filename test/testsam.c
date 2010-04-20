@@ -46,10 +46,11 @@
 #include <corosync/corotypes.h>
 #include <corosync/sam.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/wait.h>
 
 static int test2_sig_delivered = 0;
-static int test4_hc_cb_count = 0;
+static int test5_hc_cb_count = 0;
 
 /*
  * First test will just register SAM, with policy restart. First instance will
@@ -273,11 +274,262 @@ static int test3 (void) {
 
 }
 
-static int test4_hc_cb (void)
+/*
+ * Test sam_data_store, sam_data_restore and sam_data_getsize
+ */
+static int test4 (void)
 {
-	printf ("%s %d\n", __FUNCTION__, ++test4_hc_cb_count);
+	size_t size;
+	cs_error_t err;
+	int i;
+	unsigned int instance_id;
+	char saved_data[128];
+	char saved_data2[128];
 
-	if (test4_hc_cb_count > 10)
+	printf ("%s: sam_data_getsize 1\n", __FUNCTION__);
+	err = sam_data_getsize (&size);
+	if (err != CS_ERR_BAD_HANDLE) {
+		fprintf (stderr, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_getsize 2\n", __FUNCTION__);
+	err = sam_data_getsize (NULL);
+	if (err != CS_ERR_INVALID_PARAM) {
+		fprintf (stderr, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_store 1\n", __FUNCTION__);
+	err = sam_data_store (NULL, 0);
+	if (err != CS_ERR_BAD_HANDLE) {
+		fprintf (stderr, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_restore 1\n", __FUNCTION__);
+	err = sam_data_restore (saved_data, sizeof (saved_data));
+	if (err != CS_ERR_BAD_HANDLE) {
+		fprintf (stderr, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_initialize\n", __FUNCTION__);
+	err = sam_initialize (0, SAM_RECOVERY_POLICY_RESTART);
+	if (err != CS_OK) {
+		fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_getsize 3\n", __FUNCTION__);
+	err = sam_data_getsize (&size);
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		return 1;
+	}
+	if (size != 0) {
+		fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+		return 1;
+	}
+
+	printf ("%s: sam_data_restore 2\n", __FUNCTION__);
+	err = sam_data_restore (NULL, sizeof (saved_data));
+	if (err != CS_ERR_INVALID_PARAM) {
+		fprintf (stderr, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		return 1;
+	}
+
+	/*
+	 * Store some real data
+	 */
+	for (i = 0; i < sizeof (saved_data); i++) {
+		saved_data[i] = (char)(i + 5);
+	}
+
+	printf ("%s: sam_data_store 2\n", __FUNCTION__);
+	err = sam_data_store (saved_data, sizeof (saved_data));
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_getsize 4\n", __FUNCTION__);
+	err = sam_data_getsize (&size);
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+	if (size != sizeof (saved_data)) {
+		fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+		return 1;
+	}
+
+	printf ("%s: sam_data_restore 3\n", __FUNCTION__);
+	err = sam_data_restore (saved_data2, sizeof (saved_data2) - 1);
+	if (err != CS_ERR_INVALID_PARAM) {
+		fprintf (stderr, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_restore 4\n", __FUNCTION__);
+	err = sam_data_restore (saved_data2, sizeof (saved_data2));
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+
+	if (memcmp (saved_data, saved_data2, sizeof (saved_data2)) != 0) {
+		fprintf (stderr, "Retored data are not same\n");
+		return 1;
+	}
+
+	memset (saved_data2, 0, sizeof (saved_data2));
+
+	printf ("%s: sam_data_store 3\n", __FUNCTION__);
+	err = sam_data_store (NULL, 1);
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: sam_data_getsize 5\n", __FUNCTION__);
+	err = sam_data_getsize (&size);
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+	if (size != 0) {
+		fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+		return 1;
+	}
+
+	printf ("%s: sam_data_store 4\n", __FUNCTION__);
+	err = sam_data_store (saved_data, sizeof (saved_data));
+	if (err != CS_OK) {
+		fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+		return 1;
+	}
+
+	printf ("%s: register\n", __FUNCTION__);
+	err = sam_register (&instance_id);
+	if (err != CS_OK) {
+		fprintf (stderr, "Can't register. Error %d\n", err);
+		return 1;
+	}
+
+	if (instance_id == 1) {
+		printf ("%s iid %d: sam_start\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 1;
+		}
+
+		printf ("%s iid %d: sam_data_getsize 6\n", __FUNCTION__, instance_id);
+		err = sam_data_getsize (&size);
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+		if (size != sizeof (saved_data2)) {
+			fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+			return 1;
+		}
+
+		printf ("%s iid %d: sam_data_restore 5\n", __FUNCTION__, instance_id);
+		err = sam_data_restore (saved_data2, sizeof (saved_data2));
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+
+		if (memcmp (saved_data, saved_data2, sizeof (saved_data2)) != 0) {
+			fprintf (stderr, "Retored data are not same\n");
+			return 1;
+		}
+
+		for (i = 0; i < sizeof (saved_data); i++) {
+			saved_data[i] = (char)(i - 5);
+		}
+
+		printf ("%s iid %d: sam_data_store 5\n", __FUNCTION__, instance_id);
+		err = sam_data_store (saved_data, sizeof (saved_data) - 7);
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+
+		exit (1);
+	}
+
+	if (instance_id == 2) {
+		printf ("%s iid %d: sam_start\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 1;
+		}
+
+		printf ("%s iid %d: sam_data_getsize 7\n", __FUNCTION__, instance_id);
+		err = sam_data_getsize (&size);
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+		if (size != sizeof (saved_data2) - 7) {
+			fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+			return 1;
+		}
+
+		printf ("%s iid %d: sam_data_restore 6\n", __FUNCTION__, instance_id);
+		err = sam_data_restore (saved_data2, sizeof (saved_data2));
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+
+		for (i = 0; i < sizeof (saved_data); i++) {
+			saved_data[i] = (char)(i - 5);
+		}
+
+		if (memcmp (saved_data, saved_data2, sizeof (saved_data2) - 7) != 0) {
+			fprintf (stderr, "Retored data are not same\n");
+			return 1;
+		}
+
+		printf ("%s iid %d: sam_data_store 6\n", __FUNCTION__, instance_id);
+		err = sam_data_store (NULL, 0);
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+
+		exit (1);
+	}
+
+	if (instance_id == 3) {
+		printf ("%s iid %d: sam_data_getsize 8\n", __FUNCTION__, instance_id);
+		err = sam_data_getsize (&size);
+		if (err != CS_OK) {
+			fprintf (stderr, "Test should return CS_OK. Error returned %d\n", err);
+			return 1;
+		}
+		if (size != 0) {
+			fprintf (stderr, "Test should return size of 0. Returned %zx\n", size);
+			return 1;
+		}
+	}
+
+	return (0);
+}
+
+static int test5_hc_cb (void)
+{
+	printf ("%s %d\n", __FUNCTION__, ++test5_hc_cb_count);
+
+	sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
+
+	if (test5_hc_cb_count > 10)
 		return 1;
 
 	return 0;
@@ -285,10 +537,11 @@ static int test4_hc_cb (void)
 /*
  * Test event driven healtchecking.
  */
-static int test4 (void)
+static int test5 (void)
 {
 	cs_error_t error;
 	unsigned int instance_id;
+	int hc_cb_count;
 
 	printf ("%s: initialize\n", __FUNCTION__);
 	error = sam_initialize (100, SAM_RECOVERY_POLICY_RESTART);
@@ -305,7 +558,7 @@ static int test4 (void)
 
 	if (instance_id == 1) {
 		printf ("%s iid %d: hc callback register\n", __FUNCTION__, instance_id);
-		error = sam_hc_callback_register (test4_hc_cb);
+		error = sam_hc_callback_register (test5_hc_cb);
 		if (error != CS_OK) {
 			fprintf (stderr, "Can't register hc cb. Error %d\n", error);
 			return 1;
@@ -326,11 +579,24 @@ static int test4 (void)
 	}
 
 	if (instance_id == 2) {
+		error = sam_data_restore (&hc_cb_count, sizeof (hc_cb_count));
+		if (error != CS_OK) {
+			fprintf (stderr, "sam_data_restore should return CS_OK. Error returned %d\n", error);
+			return 1;
+		}
+
+		if (hc_cb_count != 11) {
+			fprintf (stderr, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d\n",
+				__FUNCTION__, instance_id - 1, hc_cb_count);
+			return 1;
+
+		}
 		return 0;
 	}
 
 	return 1;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -347,17 +613,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		err = test1 ();
-
-		fprintf (stderr, "test1 %s\n", (err == 0 ? "passed" : "failed"));
-		if (err != 0)
-			all_passed = 0;
-
-		return err;
+		return (test1 ());
 	}
 
-	waitpid (pid, NULL, 0);
+	waitpid (pid, &stat, 0);
 
+	fprintf (stderr, "test1 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
+	if (WEXITSTATUS (stat) != 0)
+		all_passed = 0;
 
 	pid = fork ();
 
@@ -386,15 +649,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		err = test3 ();
-
-		fprintf (stderr, "test3 %s\n", (err == 0 ? "passed" : "failed"));
-		if (err != 0)
-			all_passed = 0;
-		return err;
+		return (test3 ());
 	}
 
-	waitpid (pid, NULL, 0);
+	waitpid (pid, &stat, 0);
+
+	fprintf (stderr, "test3 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
+	if (WEXITSTATUS (stat) != 0)
+		all_passed = 0;
 
 	pid = fork ();
 
@@ -404,15 +666,32 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		err = test4 ();
+		return (test4 ());
+	}
 
-		fprintf (stderr, "test4 %s\n", (err == 0 ? "passed" : "failed"));
-		if (err != 0)
-			all_passed = 0;
+	waitpid (pid, &stat, 0);
+
+	fprintf (stderr, "test4 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
+	if (WEXITSTATUS (stat) != 0)
+		all_passed = 0;
+
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+		return 1;
+	}
+
+	if (pid == 0) {
+		err = test5 ();
+
 		return err;
 	}
 
-	waitpid (pid, NULL, 0);
+	waitpid (pid, &stat, 0);
+	fprintf (stderr, "test5 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
+	if (WEXITSTATUS (stat) != 0)
+		all_passed = 0;
 
 	if (all_passed)
 		fprintf (stderr, "All tests passed\n");

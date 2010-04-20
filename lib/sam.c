@@ -38,6 +38,7 @@
 
 #include <config.h>
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -70,7 +71,13 @@ enum sam_internal_status_t {
 enum sam_command_t {
 	SAM_COMMAND_START,
 	SAM_COMMAND_STOP,
-	SAM_COMMAND_HB
+	SAM_COMMAND_HB,
+	SAM_COMMAND_DATA_STORE,
+};
+
+enum sam_reply_t {
+	SAM_REPLY_OK,
+	SAM_REPLY_ERROR,
 };
 
 enum sam_parent_action_t {
@@ -85,14 +92,20 @@ static struct {
 	sam_recovery_policy_t recovery_policy;
 	enum sam_internal_status_t internal_status;
 	unsigned int instance_id;
-	int parent_fd;
+	int child_fd_out;
+	int child_fd_in;
 	int term_send;
 	int warn_signal;
+	int am_i_child;
 
 	sam_hc_callback_t hc_callback;
 	pthread_t cb_thread;
 	int cb_rpipe_fd, cb_wpipe_fd;
 	int cb_registered;
+
+	void *user_data;
+	size_t user_data_size;
+	size_t user_data_allocated;
 } sam_internal_data;
 
 cs_error_t sam_initialize (
@@ -115,6 +128,12 @@ cs_error_t sam_initialize (
 
 	sam_internal_data.warn_signal = SIGTERM;
 
+	sam_internal_data.am_i_child = 0;
+
+	sam_internal_data.user_data = NULL;
+	sam_internal_data.user_data_size = 0;
+	sam_internal_data.user_data_allocated = 0;
+
 	return (CS_OK);
 }
 
@@ -132,7 +151,8 @@ static size_t sam_safe_write (
 	bytes_write = 0;
 
 	do {
-		tmp_bytes_write = write (d, (const char *)buf + bytes_write, nbyte - bytes_write);
+		tmp_bytes_write = write (d, (const char *)buf + bytes_write,
+			(nbyte - bytes_write > SSIZE_MAX) ? SSIZE_MAX : nbyte - bytes_write);
 
 		if (tmp_bytes_write == -1) {
 			if (!(errno == EAGAIN || errno == EINTR))
@@ -142,7 +162,176 @@ static size_t sam_safe_write (
 		}
 	} while (bytes_write != nbyte);
 
-	return bytes_write;
+	return (bytes_write);
+}
+
+/*
+ * Wrapper on top of read(2) function. It handles EAGAIN and EINTR states and reads whole buffer if possible.
+ */
+static size_t sam_safe_read (
+	int d,
+	void *buf,
+	size_t nbyte)
+{
+	ssize_t bytes_read;
+	ssize_t tmp_bytes_read;
+
+	bytes_read = 0;
+
+	do {
+		tmp_bytes_read = read (d, (char *)buf + bytes_read,
+			(nbyte - bytes_read > SSIZE_MAX) ? SSIZE_MAX : nbyte - bytes_read);
+
+		if (tmp_bytes_read == -1) {
+			if (!(errno == EAGAIN || errno == EINTR))
+				return -1;
+		} else {
+			bytes_read += tmp_bytes_read;
+		}
+
+	} while (bytes_read != nbyte && tmp_bytes_read != 0);
+
+	return (bytes_read);
+}
+
+cs_error_t sam_data_getsize (size_t *size)
+{
+	if (size == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+
+		return (CS_ERR_BAD_HANDLE);
+	}
+
+	*size = sam_internal_data.user_data_size;
+
+	return (CS_OK);
+}
+
+cs_error_t sam_data_restore (
+	void *data,
+	size_t size)
+{
+	if (data == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+
+		return (CS_ERR_BAD_HANDLE);
+	}
+
+	if (sam_internal_data.user_data_size == 0) {
+		return (CS_OK);
+	}
+
+	if (size < sam_internal_data.user_data_size) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	memcpy (data, sam_internal_data.user_data, sam_internal_data.user_data_size);
+
+	return (CS_OK);
+}
+
+cs_error_t sam_data_store (
+	const void *data,
+	size_t size)
+{
+	cs_error_t err;
+	char command;
+	char *new_data;
+	char reply;
+
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+
+		return (CS_ERR_BAD_HANDLE);
+	}
+
+	if (sam_internal_data.user_data_allocated < size) {
+		if ((new_data = realloc (sam_internal_data.user_data, size)) == NULL) {
+			return (CS_ERR_NO_MEMORY);
+		}
+
+		sam_internal_data.user_data_allocated = size;
+	} else {
+		new_data = sam_internal_data.user_data;
+	}
+
+	if (data == NULL) {
+		size = 0;
+	}
+
+	if (sam_internal_data.am_i_child) {
+		/*
+		 * We are child so we must send data to parent
+		 */
+		command = SAM_COMMAND_DATA_STORE;
+		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		if (sam_safe_write (sam_internal_data.child_fd_out, &size, sizeof (size)) != sizeof (size)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		if (data != NULL && sam_safe_write (sam_internal_data.child_fd_out, data, size) != size) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		/*
+		 * And wait for reply
+		 */
+		if (sam_safe_read (sam_internal_data.child_fd_in, &reply, sizeof (reply)) != sizeof (reply)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		switch (reply) {
+		case SAM_REPLY_ERROR:
+			/*
+			 * Read error and return that
+			 */
+			if (sam_safe_read (sam_internal_data.child_fd_in, &err, sizeof (err)) != sizeof (err)) {
+				return (CS_ERR_LIBRARY);
+			}
+
+			return (err);
+			break;
+		case SAM_REPLY_OK:
+			/*
+			 * Everything correct
+			 */
+			break;
+		default:
+			return (CS_ERR_LIBRARY);
+			break;
+		}
+	}
+
+	/*
+	 * We are parent or we received OK reply from parent -> do required action
+	 */
+	if (data == NULL) {
+		free (sam_internal_data.user_data);
+		sam_internal_data.user_data = NULL;
+		sam_internal_data.user_data_allocated = 0;
+		sam_internal_data.user_data_size = 0;
+	} else {
+		sam_internal_data.user_data = new_data;
+		sam_internal_data.user_data_size = size;
+
+		memcpy (sam_internal_data.user_data, data, size);
+	}
+
+	return (CS_OK);
 }
 
 cs_error_t sam_start (void)
@@ -155,11 +344,11 @@ cs_error_t sam_start (void)
 
 	command = SAM_COMMAND_START;
 
-	if (sam_safe_write (sam_internal_data.parent_fd, &command, 1) == -1)
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
 		return (CS_ERR_LIBRARY);
 
 	if (sam_internal_data.hc_callback)
-		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, 1) == -1)
+		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
 			return (CS_ERR_LIBRARY);
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_STARTED;
@@ -177,11 +366,11 @@ cs_error_t sam_stop (void)
 
 	command = SAM_COMMAND_STOP;
 
-	if (sam_safe_write (sam_internal_data.parent_fd, &command, 1) == -1)
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
 		return (CS_ERR_LIBRARY);
 
 	if (sam_internal_data.hc_callback)
-		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, 1) == -1)
+		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
 			return (CS_ERR_LIBRARY);
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
@@ -199,7 +388,7 @@ cs_error_t sam_hc_send (void)
 
 	command = SAM_COMMAND_HB;
 
-	if (sam_safe_write (sam_internal_data.parent_fd, &command, 1) == -1)
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
 		return (CS_ERR_LIBRARY);
 
 	return (CS_OK);
@@ -223,6 +412,8 @@ cs_error_t sam_finalize (void)
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_FINALIZED;
 
+	free (sam_internal_data.user_data);
+
 exit_error:
 	return (CS_OK);
 }
@@ -241,7 +432,69 @@ cs_error_t sam_warn_signal_set (int warn_signal)
 	return (CS_OK);
 }
 
-static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid)
+static cs_error_t sam_parent_data_store (
+	int parent_fd_in,
+	int parent_fd_out)
+{
+	char reply;
+	char *user_data;
+	ssize_t size;
+	cs_error_t err;
+
+	err = CS_OK;
+	user_data = NULL;
+
+	if (sam_safe_read (parent_fd_in, &size, sizeof (size)) != sizeof (size)) {
+		err = CS_ERR_LIBRARY;
+		goto error_reply;
+	}
+
+	if (size > 0) {
+		user_data = malloc (size);
+		if (user_data == NULL) {
+			err = CS_ERR_NO_MEMORY;
+			goto error_reply;
+		}
+
+		if (sam_safe_read (parent_fd_in, user_data, size) != size) {
+			err = CS_ERR_LIBRARY;
+			goto free_error_reply;
+		}
+	}
+
+	err = sam_data_store (user_data, size);
+	if (err != CS_OK) {
+		goto free_error_reply;
+	}
+
+	reply = SAM_REPLY_OK;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		err = CS_ERR_LIBRARY;
+		goto free_error_reply;
+	}
+
+	free (user_data);
+
+	return (CS_OK);
+
+free_error_reply:
+	free (user_data);
+error_reply:
+	reply = SAM_REPLY_ERROR;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		return (CS_ERR_LIBRARY);
+	}
+	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	return (err);
+}
+
+static enum sam_parent_action_t sam_parent_handler (
+	int parent_fd_in,
+	int parent_fd_out,
+	pid_t child_pid)
 {
 	int poll_error;
 	int action;
@@ -256,7 +509,7 @@ static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid
 	action = SAM_PARENT_ACTION_CONTINUE;
 
 	while (action == SAM_PARENT_ACTION_CONTINUE) {
-		pfds.fd = pipe_fd;
+		pfds.fd = parent_fd_in;
 		pfds.events = POLLIN;
 		pfds.revents = 0;
 
@@ -309,7 +562,7 @@ static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid
 			/*
 			 *  We have EOF or command in pipe
 			 */
-			bytes_read = read (pipe_fd, &command, 1);
+			bytes_read = sam_safe_read (parent_fd_in, &command, 1);
 
 			if (bytes_read == 0) {
 				/*
@@ -324,37 +577,33 @@ static enum sam_parent_action_t sam_parent_handler (int pipe_fd, pid_t child_pid
 			}
 
 			if (bytes_read == -1) {
-				/*
-				 * Something really bad happened in read side
-				 */
-				if (errno == EAGAIN || errno == EINTR) {
-					continue;
-				}
-
 				action = SAM_PARENT_ACTION_ERROR;
 				goto action_exit;
 			}
 
 			/*
-			 * We have read command -> take status
+			 * We have read command
 			 */
-			switch (status) {
-			case 0:
-				/*
-				 *  Not started yet
-				 */
-				if (command == SAM_COMMAND_START)
+			switch (command) {
+			case SAM_COMMAND_START:
+				if (status == 0) {
+					/*
+					 *  Not started yet
+					 */
 					status = 1;
-			break;
-
-			case 1:
-				/*
-				 *  Started
-				 */
-				if (command == SAM_COMMAND_STOP)
+				}
+				break;
+			case SAM_COMMAND_STOP:
+				if (status == 1) {
+					/*
+					 *  Started
+					 */
 					status = 0;
-			break;
-
+				}
+				break;
+			case SAM_COMMAND_DATA_STORE:
+				sam_parent_data_store (parent_fd_in, parent_fd_out);
+				break;
 			}
 		} /* select_error > 0 */
 	} /* action == SAM_PARENT_ACTION_CONTINUE */
@@ -369,7 +618,7 @@ cs_error_t sam_register (
 	cs_error_t error;
 	pid_t pid;
 	int pipe_error;
-	int pipe_fd[2];
+	int pipe_fd_out[2], pipe_fd_in[2];
 	enum sam_parent_action_t action;
 	int child_status;
 
@@ -380,12 +629,15 @@ cs_error_t sam_register (
 	error = CS_OK;
 
 	while (1) {
-		pipe_error = pipe (pipe_fd);
+		if ((pipe_error = pipe (pipe_fd_out)) != 0) {
+			error = CS_ERR_LIBRARY;
+			goto error_exit;
+		}
 
-		if (pipe_error != 0) {
-			/*
-			 *  Pipe creation error
-			 */
+		if ((pipe_error = pipe (pipe_fd_in)) != 0) {
+			close (pipe_fd_out[0]);
+			close (pipe_fd_out[1]);
+
 			error = CS_ERR_LIBRARY;
 			goto error_exit;
 		}
@@ -410,12 +662,16 @@ cs_error_t sam_register (
 			/*
 			 *  Child process
 			 */
-			close (pipe_fd[0]);
+			close (pipe_fd_out[0]);
+			close (pipe_fd_in[1]);
 
-			sam_internal_data.parent_fd = pipe_fd[1];
+			sam_internal_data.child_fd_out = pipe_fd_out[1];
+			sam_internal_data.child_fd_in = pipe_fd_in[0];
+
 			if (instance_id)
 				*instance_id = sam_internal_data.instance_id;
 
+			sam_internal_data.am_i_child = 1;
 			sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
 
 			goto error_exit;
@@ -423,11 +679,13 @@ cs_error_t sam_register (
 			/*
 			 *  Parent process
 			 */
-			close (pipe_fd[1]);
+			close (pipe_fd_out[1]);
+			close (pipe_fd_in[0]);
 
-			action = sam_parent_handler (pipe_fd[0], pid);
+			action = sam_parent_handler (pipe_fd_out[0], pipe_fd_in[1], pid);
 
-			close (pipe_fd[0]);
+			close (pipe_fd_out[0]);
+			close (pipe_fd_in[1]);
 
 			if (action == SAM_PARENT_ACTION_ERROR) {
 				error = CS_ERR_LIBRARY;
@@ -498,7 +756,7 @@ static void *hc_callback_thread (void *unused_param)
 		}
 
 		if (poll_error > 0) {
-			bytes_readed = read (sam_internal_data.cb_rpipe_fd, &command, 1);
+			bytes_readed = sam_safe_read (sam_internal_data.cb_rpipe_fd, &command, 1);
 
 			if (bytes_readed > 0) {
 				if (status == 0 && command == SAM_COMMAND_START)
