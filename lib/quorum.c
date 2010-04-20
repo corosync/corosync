@@ -387,7 +387,7 @@ cs_error_t quorum_dispatch (
 
 		case MESSAGE_RES_QUORUM_NOTIFICATION:
 			if (callbacks.quorum_notify_fn == NULL) {
-				continue;
+				break;
 			}
 			res_lib_quorum_notification = (struct res_lib_quorum_notification *)dispatch_data;
 

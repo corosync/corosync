@@ -339,7 +339,7 @@ cs_error_t cpg_dispatch (
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_CPG_DELIVER_CALLBACK:
 			if (callbacks.cpg_deliver_fn == NULL) {
-				continue;
+				break;
 			}
 
 			res_cpg_deliver_callback = (struct res_lib_cpg_deliver_callback *)dispatch_data;
@@ -358,7 +358,7 @@ cs_error_t cpg_dispatch (
 
 		case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
 			if (callbacks.cpg_confchg_fn == NULL) {
-				continue;
+				break;
 			}
 
 			res_cpg_confchg_callback = (struct res_lib_cpg_confchg_callback *)dispatch_data;

@@ -742,7 +742,7 @@ cs_error_t votequorum_dispatch (
 
 		case MESSAGE_RES_VOTEQUORUM_NOTIFICATION:
 			if (callbacks.votequorum_notify_fn == NULL) {
-				continue;
+				break;
 			}
 			res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)dispatch_data;
 
@@ -756,7 +756,7 @@ cs_error_t votequorum_dispatch (
 
 		case MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION:
 			if (callbacks.votequorum_expectedvotes_notify_fn == NULL) {
-				continue;
+				break;
 			}
 			res_lib_votequorum_expectedvotes_notification = (struct res_lib_votequorum_expectedvotes_notification *)dispatch_data;
 

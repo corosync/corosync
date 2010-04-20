@@ -340,7 +340,7 @@ cs_error_t confdb_dispatch (
 		switch (dispatch_data->id) {
 			case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK:
 				if (callbacks.confdb_key_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)dispatch_data;
@@ -359,7 +359,7 @@ cs_error_t confdb_dispatch (
 
 			case MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK:
 				if (callbacks.confdb_object_create_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)dispatch_data;
@@ -373,7 +373,7 @@ cs_error_t confdb_dispatch (
 
 			case MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK:
 				if (callbacks.confdb_object_delete_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)dispatch_data;
@@ -382,6 +382,17 @@ cs_error_t confdb_dispatch (
 					res_object_destroyed_pt->parent_object_handle,
 					res_object_destroyed_pt->name.value,
 					res_object_destroyed_pt->name.length);
+				break;
+
+		        case MESSAGE_RES_CONFDB_RELOAD_CALLBACK:
+				if (callbacks.confdb_reload_notify_fn == NULL) {
+					break;
+				}
+
+				res_reload_pt = (struct res_lib_confdb_reload_callback *)dispatch_data;
+
+				callbacks.confdb_reload_notify_fn(handle,
+					res_reload_pt->type);
 				break;
 
 			default:

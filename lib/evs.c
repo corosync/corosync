@@ -279,7 +279,7 @@ evs_error_t evs_dispatch (
 		switch (dispatch_data->id) {
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
 			if (callbacks.evs_deliver_fn == NULL) {
-				continue;
+				break;
 			}
 
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
@@ -292,7 +292,7 @@ evs_error_t evs_dispatch (
 
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
 			if (callbacks.evs_confchg_fn == NULL) {
-				continue;
+				break;
 			}
 
 			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
