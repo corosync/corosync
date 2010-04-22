@@ -384,17 +384,6 @@ cs_error_t confdb_dispatch (
 					res_object_destroyed_pt->name.length);
 				break;
 
-		        case MESSAGE_RES_CONFDB_RELOAD_CALLBACK:
-				if (callbacks.confdb_reload_notify_fn == NULL) {
-					break;
-				}
-
-				res_reload_pt = (struct res_lib_confdb_reload_callback *)dispatch_data;
-
-				callbacks.confdb_reload_notify_fn(handle,
-					res_reload_pt->type);
-				break;
-
 			default:
 				coroipcc_dispatch_put (confdb_inst->handle);
 				error = CS_ERR_LIBRARY;
