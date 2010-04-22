@@ -325,6 +325,36 @@ class CpgCfgChgOnNodeIsolate(CpgConfigChangeBase):
         return CpgConfigChangeBase.teardown(self, node)
 
 ###################################################################
+class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
+
+    def __init__(self, cm):
+        CpgConfigChangeBase.__init__(self,cm)
+        self.name="CpgCfgChgOnNodeRestart"
+
+    def config_valid(self, config):
+        if config.has_key('totem/rrp_mode'):
+            return False
+        else:
+            return True
+       
+    def failure_action(self):
+        self.CM.log("isolating node " + self.wobbly)
+        self.CM.isolate_node(self.wobbly)
+        self.CM.log("Restarting corosync on " + self.wobbly)
+        self.CM.rsh(self.wobbly, "killall -9 corosync")
+        self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
+        self.CM.StartaCM(self.wobbly)
+
+    def __call__(self, node):
+        self.incr("calls")
+        self.failure_action()
+        return self.wait_for_config_change()
+
+    def teardown(self, node):
+        self.CM.unisolate_node (self.wobbly)
+        return CpgConfigChangeBase.teardown(self, node)
+
+###################################################################
 class CpgMsgOrderBase(CoroTest):
 
     def __init__(self, cm):
@@ -961,6 +991,7 @@ GenTestClasses.append(CpgCfgChgOnExecCrash)
 GenTestClasses.append(CpgCfgChgOnGroupLeave)
 GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
+GenTestClasses.append(CpgCfgChgOnNodeRestart)
 GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
 GenTestClasses.append(VoteQuorumGoDown)
 GenTestClasses.append(VoteQuorumGoUp)
