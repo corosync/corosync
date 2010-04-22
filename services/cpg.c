@@ -423,6 +423,27 @@ struct req_exec_cpg_downlist {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
+static int memb_list_remove_value (unsigned int *list,
+	size_t list_entries, int value)
+{
+	int j;
+	int found = 0;
+
+	for (j = 0; j < list_entries; j++) {
+		if (list[j] == value) {
+			/* mark next values to be copied down */
+			found = 1;
+		}
+		else if (found) {
+			list[j-1] = list[j];
+		}
+	}
+	if (found)
+		return (list_entries - 1);
+	else
+		return list_entries;
+}
+
 static void cpg_sync_init_v2 (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -443,6 +464,21 @@ static void cpg_sync_init_v2 (
 
 	last_sync_ring_id.nodeid = ring_id->rep.nodeid;
 	last_sync_ring_id.seq = ring_id->seq;
+
+	for (i = 0; i < my_old_member_list_entries; i++) {
+		found = 0;
+		for (j = 0; j < trans_list_entries; j++) {
+			if (my_old_member_list[i] == trans_list[j]) {
+				found = 1;
+				break;
+			}
+		}
+		if (found == 0) {
+			my_member_list_entries = memb_list_remove_value (
+				my_member_list, my_member_list_entries,
+				my_old_member_list[i]);
+		}
+	}
 
 	for (i = 0; i < my_member_list_entries; i++) {
 		if (my_member_list[i] < lowest_nodeid) {
