@@ -131,7 +131,7 @@ class CpgConfigChangeBase(CoroTest):
 
     def wait_for_config_change(self):
         found = False
-        max_timeout = 5 * 60
+        max_timeout = 30 * 60
         waited = 0
         printit = 0
         self.CM.log("Waiting for config change on " + self.listener)
@@ -150,7 +150,7 @@ class CpgConfigChangeBase(CoroTest):
                     waited = waited + 1
                     printit = printit + 1
                     if printit is 60:
-                        print 'waited 60 seconds'
+                        print 'waited ' + str(waited) + ' seconds'
                         printit = 0
                 
             elif str(event.node_id) in str(self.wobbly_id) and not event.is_member:
@@ -1043,14 +1043,14 @@ def CoroTestList(cm, audits):
     default['uidgid/gid'] = '0'
     configs.append(default)
 
-    a = ConfigContainer('none_10000')
+    a = ConfigContainer('none_5min')
     a['compatibility'] = 'none'
-    a['totem/token'] = 10000
+    a['totem/token'] = (5 * 60 * 1000)
     configs.append(a)
 
-    b = ConfigContainer('whitetank_10000')
+    b = ConfigContainer('whitetank_5min')
     b['compatibility'] = 'whitetank'
-    b['totem/token'] = 10000
+    b['totem/token'] = (5 * 60 * 1000)
     configs.append(b)
 
     c = ConfigContainer('sec_nss')
