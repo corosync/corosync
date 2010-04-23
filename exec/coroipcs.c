@@ -727,6 +727,7 @@ req_setup_send (
 	mar_res_setup_t res_setup;
 	unsigned int res;
 
+	memset (&res_setup, 0, sizeof (res_setup));
 	res_setup.error = error;
 
 retry_send:

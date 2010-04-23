@@ -731,6 +731,8 @@ static void *logsys_worker_thread (void *data)
 	int log_msg;
 	char buf[COMBINE_BUFFER_SIZE];
 
+	memset (buf, 0, sizeof (buf));
+
 	/*
 	 * Signal wthread_create that the initialization process may continue
 	 */
@@ -1111,6 +1113,7 @@ int _logsys_rec_init (unsigned int fltsize)
 		return (-1);
 	}
 
+	memset (flt_data, 0, flt_real_size);
 	/*
 	 * flt_data_size tracks data by ints and not bytes/chars.
 	 *

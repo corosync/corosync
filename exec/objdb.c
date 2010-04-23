@@ -1316,6 +1316,8 @@ static int object_key_replace (
 				goto error_exit;
 			free(object_key->value);
 			object_key->value = replacement_value;
+			memset (object_key->value, 0, new_value_len);
+			object_key->value_len = new_value_len;
 		}
 		if (memcmp (object_key->value, new_value, new_value_len) == 0) {
 			value_changed = 0;
