@@ -478,9 +478,16 @@ retry_semwait:
 		pfd.fd = ipc_instance->fd;
 		pfd.events = 0;
 
-		poll (&pfd, 1, 0);
-		if (pfd.revents == POLLERR || pfd.revents == POLLHUP) {
+		res = poll (&pfd, 1, 0);
+
+		if (res == -1 && errno != EINTR) {
 			return (CS_ERR_LIBRARY);
+		}
+
+		if (res == 1) {
+			if (pfd.revents == POLLERR || pfd.revents == POLLHUP || pfd.revents == POLLNVAL) {
+				return (CS_ERR_LIBRARY);
+			}
 		}
 
 		goto retry_semwait;
