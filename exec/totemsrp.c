@@ -391,7 +391,7 @@ struct totemsrp_instance {
 
 	struct list_head token_callback_sent_listhead;
 
-	char *orf_token_retransmit[TOKEN_SIZE_MAX];
+	char orf_token_retransmit[TOKEN_SIZE_MAX];
 
 	int orf_token_retransmit_size;
 
