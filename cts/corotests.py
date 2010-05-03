@@ -34,6 +34,7 @@ Copyright (c) 2010 Red Hat, Inc.
 
 from UserDict import UserDict
 from cts.CTStests import *
+from corosync import CpgTestAgent
 
 ###################################################################
 class CoroTest(CTSTest):
@@ -47,6 +48,7 @@ class CoroTest(CTSTest):
         self.stop = StopTest(cm)
         self.config = {}
         self.need_all_up = True
+        self.CM.start_cpg = True
 
     def setup(self, node):
         ret = CTSTest.setup(self, node)
@@ -117,15 +119,18 @@ class CpgConfigChangeBase(CoroTest):
         self.listener = None
         self.wobbly = None
         for n in self.CM.Env["nodes"]:
-            self.CM.cpg_agent[n].clean_start()
-            self.CM.cpg_agent[n].cpg_join(self.name)
-            if self.listener is None:
-                self.listener = n
-            elif self.wobbly is None:
+            if self.CM.start_cpg:
+                self.CM.cpg_agent[n].clean_start()
+                self.CM.cpg_agent[n].cpg_join(self.name)
+            if self.wobbly is None:
                 self.wobbly = n
+            elif self.listener is None:
+                self.listener = n
 
-        self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
-        self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
+        if self.CM.cpg_agent.has_key(self.wobbly):
+            self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
+        if self.CM.cpg_agent.has_key(self.listener):
+            self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
 
         return ret
 
@@ -330,6 +335,7 @@ class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
     def __init__(self, cm):
         CpgConfigChangeBase.__init__(self,cm)
         self.name="CpgCfgChgOnNodeRestart"
+        self.CM.start_cpg = False
 
     def config_valid(self, config):
         if config.has_key('totem/rrp_mode'):
@@ -338,11 +344,36 @@ class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
             return True
        
     def failure_action(self):
-        self.CM.log("isolating node " + self.wobbly)
+        self.CM.log("2: isolating node " + self.wobbly)
         self.CM.isolate_node(self.wobbly)
-        self.CM.log("Restarting corosync on " + self.wobbly)
+        self.CM.log("3: Killing corosync on " + self.wobbly)
         self.CM.rsh(self.wobbly, "killall -9 corosync")
         self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
+        self.CM.ShouldBeStatus[self.wobbly] = "down"
+        self.CM.log("4: unisolating node " + self.wobbly)
+        self.CM.unisolate_node (self.wobbly)
+        self.CM.log("5: starting corosync on " + self.wobbly)
+        self.CM.StartaCM(self.wobbly)
+        time.sleep(5)
+        self.CM.log("6: starting cpg on all nodes")
+        self.CM.start_cpg = True
+        for node in self.CM.Env["nodes"]:
+            self.CM.cpg_agent[node] = CpgTestAgent(node, self.CM.Env)
+            self.CM.cpg_agent[node].start()
+            self.CM.cpg_agent[node].cpg_join(self.name)
+
+        self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
+        self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
+
+        self.CM.log("7: isolating node " + self.wobbly)
+        self.CM.isolate_node(self.wobbly)
+        self.CM.log("8: Killing corosync on " + self.wobbly)
+        self.CM.rsh(self.wobbly, "killall -9 corosync")
+        self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
+        self.CM.ShouldBeStatus[self.wobbly] = "down"
+        self.CM.log("9: unisolating node " + self.wobbly)
+        self.CM.unisolate_node (self.wobbly)
+        self.CM.log("10: starting corosync on " + self.wobbly)
         self.CM.StartaCM(self.wobbly)
 
     def __call__(self, node):

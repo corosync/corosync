@@ -10,9 +10,7 @@ then
 fi
 if [ $1 = "FixCommCmd" ]
 then
-  iptables -D INPUT -s $2 -j DROP >/dev/null 2>&1
-  iptables -D OUTPUT -s $2 -j DROP >/dev/null 2>&1
-  iptables -D INPUT -m pkttype --pkt-type multicast -j DROP
+  iptables -F >/dev/null 2>&1
 fi
 
 exit 0

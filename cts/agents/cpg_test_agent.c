@@ -464,7 +464,7 @@ static void context_test (int sock)
 	char *cmp;
 
 	cpg_context_set (cpg_handle, response);
-	cpg_context_get (cpg_handle, &cmp);
+	cpg_context_get (cpg_handle, (void**)&cmp);
 	if (response != cmp) {
 		snprintf (response, 100, "%s", FAIL_STR);
 	}
@@ -567,6 +567,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 			}
 			sleep(1);
 			retry_count++;
+			result = cpg_initialize (&cpg_handle, &callbacks);
 		}
 
 		cpg_fd_get (cpg_handle, &cpg_fd);

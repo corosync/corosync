@@ -135,6 +135,7 @@ class corosync_flatiron(ClusterManager):
             ),
             "LogFileName"    : Environment["LogFileName"],
             })
+        self.start_cpg = True
         self.cpg_agent = {}
         self.confdb_agent = {}
         self.sam_agent = {}
@@ -214,8 +215,13 @@ class corosync_flatiron(ClusterManager):
 
         self.debug('starting corosync on : ' + node)
         ret = ClusterManager.StartaCM(self, node)
-        if self.cpg_agent.has_key(node):
-            self.cpg_agent[node].restart()
+        if self.start_cpg:
+            if self.cpg_agent.has_key(node):
+                self.cpg_agent[node].restart()
+            else:
+                self.cpg_agent[node] = CpgTestAgent(node, self.Env)
+                self.cpg_agent[node].start()
+
         if self.confdb_agent.has_key(node):
             self.confdb_agent[node].restart()
         if self.sam_agent.has_key(node):
@@ -340,8 +346,9 @@ class TestAgentComponent(ScenarioComponent):
             if not CM.StataCM(node):
                 raise RuntimeError ("corosync not up")
 
-            self.CM.cpg_agent[node] = CpgTestAgent(node, CM.Env)
-            self.CM.cpg_agent[node].start()
+            if self.CM.start_cpg:
+                self.CM.cpg_agent[node] = CpgTestAgent(node, CM.Env)
+                self.CM.cpg_agent[node].start()
             self.CM.confdb_agent[node] = ConfdbTestAgent(node, CM.Env)
             self.CM.confdb_agent[node].start()
             self.CM.sam_agent[node] = SamTestAgent(node, CM.Env)
@@ -356,7 +363,8 @@ class TestAgentComponent(ScenarioComponent):
         '''Tear down (undo) the given ScenarioComponent'''
         self.CM = CM
         for node in self.Env["nodes"]:
-            self.CM.cpg_agent[node].stop()
+            if self.CM.cpg_agent.has_key(node):
+                self.CM.cpg_agent[node].stop()
             self.CM.confdb_agent[node].stop()
             self.CM.sam_agent[node].stop()
             if self.CM.votequorum_agent.has_key(node):
