@@ -1,7 +1,7 @@
-# Copyright (c) 2009 Red Hat, Inc.
+#!/bin/sh
+# Copyright (c) 2010 Red Hat, Inc.
 #
-# Authors: Andrew Beekhof
-#	   Steven Dake (sdake@redhat.com)
+# Authors: Angus Salkeld <asalkeld@redhat.com
 #
 # This software licensed under BSD license, the text of which follows:
 #
@@ -29,28 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES    = Makefile.in
-INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
+corosync-objctl -w runtime.blackbox.dump_state=$(date +%s)
+corosync-objctl -w runtime.blackbox.dump_flight_data=$(date +%s)
+corosync-fplay
 
-sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
-			  corosync-keygen corosync-objctl \
-			  corosync-pload corosync-cpgtool corosync-quorumtool
-
-bin_SCRIPTS		= corosync-blackbox
-
-EXTRA_DIST		= $(bin_SCRIPTS)
-
-corosync_pload_LDADD	= -lpload -lcoroipcc
-corosync_pload_LDFLAGS	= -L../lib
-corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc
-corosync_objctl_LDFLAGS	= -L../lib
-corosync_cfgtool_LDADD	= -lcfg -lcoroipcc
-corosync_cfgtool_LDFLAGS= -L../lib
-corosync_cpgtool_LDADD	= -lcfg -lcpg -lcoroipcc
-corosync_cpgtool_LDFLAGS= -L../lib
-corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
-			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
-corosync_quorumtool_LDFLAGS = -L../lib
-
-lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
