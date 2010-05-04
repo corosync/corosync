@@ -187,11 +187,8 @@ static void *corosync_exit_thread_handler (void *arg)
 
 static void sigusr2_handler (int num)
 {
-	/*
-	 * TODO remove this from sigusr2 handler and access via cfg service
-	 * engine api - corosync-cfgtool
-	 */
 	corosync_state_dump ();
+	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
 }
 
 static void sigterm_handler (int num)
@@ -1254,6 +1251,57 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+static void fplay_key_change_notify_fn (
+	object_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name_pt, size_t object_name_len,
+	const void *key_name_pt, size_t key_len,
+	const void *key_value_pt, size_t key_value_len,
+	void *priv_data_pt)
+{
+	if (key_len == strlen ("dump_flight_data") &&
+		memcmp ("dump_flight_data", key_name_pt, key_len) == 0) {
+		logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	}
+	if (key_len == strlen ("dump_state") &&
+		memcmp ("dump_state", key_name_pt, key_len) == 0) {
+		corosync_state_dump ();
+	}
+}
+
+static void corosync_fplay_control_init (void)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_runtime_handle;
+	hdb_handle_t object_blackbox_handle;
+
+	objdb->object_find_create (OBJECT_PARENT_HANDLE,
+		"runtime", strlen ("runtime"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+			&object_runtime_handle) != 0) {
+		return;
+	}
+
+	objdb->object_create (object_runtime_handle,
+		&object_blackbox_handle,
+		"blackbox", strlen ("blackbox"));
+
+	objdb->object_key_create_typed (object_blackbox_handle,
+		"dump_flight_data", "no", strlen("no"),
+		OBJDB_VALUETYPE_STRING);
+	objdb->object_key_create_typed (object_blackbox_handle,
+		"dump_state", "no", strlen("no"),
+		OBJDB_VALUETYPE_STRING);
+
+	objdb->object_track_start (object_blackbox_handle,
+		OBJECT_TRACK_DEPTH_RECURSIVE,
+		fplay_key_change_notify_fn,
+		NULL, NULL, NULL, NULL);
+}
+
 static void corosync_stats_init (void)
 {
 	hdb_handle_t object_find_handle;
@@ -1297,6 +1345,7 @@ static void main_service_ready (void)
 	evil_init (api);
 	corosync_stats_init ();
 	corosync_totem_stats_init ();
+	corosync_fplay_control_init ();
 	if (minimum_sync_mode == CS_SYNC_V2) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
 		sync_v2_init (
