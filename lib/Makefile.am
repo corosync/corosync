@@ -112,12 +112,14 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 
 lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+	if [ ! "$@" = "libcoroipcc.so" ] ; then \
 	$(CC) -shared -o $@.$(call get_soname,$*) \
 		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS) $(call get_linker_add,$*)
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS) $(call get_linker_add,$*) ;\
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so ;\
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*) ;\
+	fi
 
 endif
 

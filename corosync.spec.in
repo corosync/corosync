@@ -135,6 +135,10 @@ This package contains corosync test agents.
 %{_datadir}/corosync/tests/mem_leak_test.sh
 %{_datadir}/corosync/tests/net_breaker.sh
 %{_bindir}/cpg_test_agent
+%{_bindir}/confdb_test_agent
+%{_bindir}/sam_test_agent
+%{_bindir}/votequorum_test_agent
+%{_libexecdir}/lcrso/service_syncv2.lcrso
 
 %endif
 
