@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2009 Red Hat, Inc.
+ * Copyright (c) 2008-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,8 +71,14 @@ typedef enum {
 typedef enum {
 	OBJECT_KEY_CREATED,
 	OBJECT_KEY_REPLACED,
-	OBJECT_KEY_DELETED
+	OBJECT_KEY_DELETED,
 } confdb_change_type_t;
+
+typedef enum {
+	CONFDB_RELOAD_NOTIFY_START,
+        CONFDB_RELOAD_NOTIFY_END,
+	CONFDB_RELOAD_NOTIFY_FAILED
+} confdb_reload_type_t;
 
 typedef void (*confdb_key_change_notify_fn_t) (
 	confdb_handle_t handle,
@@ -99,10 +105,15 @@ typedef void (*confdb_object_delete_notify_fn_t) (
 	const void *name_pt,
 	size_t name_len);
 
+typedef void (*confdb_reload_notify_fn_t) (
+	confdb_handle_t handle,
+	confdb_reload_type_t type);
+
 typedef struct {
 	confdb_object_create_notify_fn_t confdb_object_create_change_notify_fn;
 	confdb_object_delete_notify_fn_t confdb_object_delete_change_notify_fn;
 	confdb_key_change_notify_fn_t confdb_key_change_notify_fn;
+	confdb_reload_notify_fn_t confdb_reload_notify_fn;
 } confdb_callbacks_t;
 
 /** @} */
