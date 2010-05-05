@@ -18,7 +18,7 @@ then
         exit 1
 fi
 
-MOCK=$(which mock)
+MOCK=/usr/bin/mock
 
 set -e
 
