@@ -52,7 +52,7 @@ export rdmacm_LIBS=-lrdmacm \
         --enable-testagents \
 %endif
 	--enable-rdma \
-	--with-initddir=%{_initddir}
+	--with-initddir=%{_initrddir}
 
 %build
 make %{_smp_mflags}
@@ -99,7 +99,7 @@ fi
 %dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
-%{_initddir}/corosync
+%{_initrddir}/corosync
 %dir %{_libexecdir}/lcrso
 %{_libexecdir}/lcrso/coroparse.lcrso
 %{_libexecdir}/lcrso/objdb.lcrso
