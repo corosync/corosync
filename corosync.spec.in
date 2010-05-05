@@ -49,7 +49,7 @@ export rdmacm_LIBS=-lrdmacm \
 %{configure} \
 	--enable-nss \
 %if %{with testagents}
-        --enable-testagents \
+	--enable-testagents \
 %endif
 	--enable-rdma \
 	--with-initddir=%{_initrddir}
@@ -95,6 +95,7 @@ fi
 %{_sbindir}/corosync-pload
 %{_sbindir}/corosync-cpgtool
 %{_sbindir}/corosync-quorumtool
+%{_bindir}/corosync-blackbox
 %dir %{_sysconfdir}/corosync
 %dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
