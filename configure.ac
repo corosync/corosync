@@ -224,7 +224,7 @@ AC_ARG_ENABLE([fatal-warnings],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
-	[ --enable-debug          : enable debug build. ],
+	[  --enable-debug          : enable debug build. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
