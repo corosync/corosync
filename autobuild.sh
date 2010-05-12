@@ -85,6 +85,7 @@ echo onto the test nodes $TEST_NODES
 for n in $TEST_NODES
 do
 	ssh $n "rm -rf /tmp/corosync*.rpm"
+	ssh $n "rm -f /etc/corosync/corosync.conf.*"
 	scp $RPM_LIST $n:/tmp/
         ssh $n "rpm --force -Uvf /tmp/corosync*.rpm"
 done
