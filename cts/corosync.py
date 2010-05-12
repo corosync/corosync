@@ -449,7 +449,7 @@ class TestAgent(object):
         try:
             sent = self.sock.send (real_msg)
         except socket.error, msg:
-            print msg
+            self.env.debug("send(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
             raise RuntimeError ("socket connection broken")
@@ -468,7 +468,14 @@ class TestAgent(object):
 
     def send_recv_dynamic (self, *args):
         self.send_dynamic (args)
-        return self.read()
+
+        try:
+            res = self.read ()
+        except RuntimeError, msg:
+            self.env.log("send_recv_dynamic: %s; error: %s" % (str(real_msg), msg))
+
+        return res
+
 
     def send_dynamic (self, *args):
         if not self.started:
@@ -480,12 +487,11 @@ class TestAgent(object):
             a_str = str(a)
             real_msg += ":" + str (len (a_str)) + ":" + a_str
         real_msg += ";"
-        #print "CLIENT:" + real_msg
         sent = 0
         try:
             sent = self.sock.send (real_msg)
         except socket.error, msg:
-            print msg
+            self.env.debug("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
             raise RuntimeError ("socket connection broken")
@@ -539,7 +545,7 @@ class CpgTestAgent(TestAgent):
                 self.cpg_finalize()
         except RuntimeError, msg:
             # if cpg_agent is down, we are not going to stress
-            print msg
+            self.env.debug("CpgTestAgent::cpg_finalize() - %s" % msg)
 
         TestAgent.stop(self)
 

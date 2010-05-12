@@ -76,6 +76,9 @@ class CoroTest(CTSTest):
             if self.need_all_up and not self.CM.StataCM(n):
                 self.incr("started")
                 self.start(n)
+            if self.need_all_up and self.CM.start_cpg:
+                self.CM.cpg_agent[n].clean_start()
+                self.CM.cpg_agent[n].cpg_join(self.name)
             if not self.need_all_up and self.CM.StataCM(n):
                 self.incr("stopped")
                 self.stop(n)
@@ -93,6 +96,7 @@ class CpgContextTest(CoroTest):
     def __init__(self, cm):
         CoroTest.__init__(self, cm)
         self.name="CpgContextTest"
+        self.CM.start_cpg = True
 
     def __call__(self, node):
         self.incr("calls")
@@ -119,9 +123,6 @@ class CpgConfigChangeBase(CoroTest):
         self.listener = None
         self.wobbly = None
         for n in self.CM.Env["nodes"]:
-            if self.CM.start_cpg:
-                self.CM.cpg_agent[n].clean_start()
-                self.CM.cpg_agent[n].cpg_join(self.name)
             if self.wobbly is None:
                 self.wobbly = n
             elif self.listener is None:
