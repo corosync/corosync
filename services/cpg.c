@@ -745,7 +745,7 @@ static void downlist_master_choose_and_send (void)
 {
 	struct downlist_msg *stored_msg;
 	struct list_head *iter;
-	mar_cpg_address_t *left_list = NULL;
+	mar_cpg_address_t left_list;
 	int i;
 
 	downlist_state = CPG_DOWNLIST_APPLYING;
@@ -766,13 +766,13 @@ static void downlist_master_choose_and_send (void)
 
 		for (i = 0; i < stored_msg->left_nodes; i++) {
 			if (pi->nodeid == stored_msg->nodeids[i]) {
-				left_list[0].nodeid = pi->nodeid;
-				left_list[0].pid = pi->pid;
-				left_list[0].reason = CONFCHG_CPG_REASON_NODEDOWN;
+				left_list.nodeid = pi->nodeid;
+				left_list.pid = pi->pid;
+				left_list.reason = CONFCHG_CPG_REASON_NODEDOWN;
 
 				notify_lib_joinlist(&pi->group, NULL,
 					0, NULL,
-					1, left_list,
+					1, &left_list,
 					MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 				list_del (&pi->list);
 				free (pi);
