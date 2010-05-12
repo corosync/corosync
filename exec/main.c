@@ -747,6 +747,12 @@ static void deliver_fn (
 		serialize_unlock();
 		return;
 	}
+	if (fn_id >= ais_service[service]->exec_engine_count) {
+		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)",
+			fn_id, service, ais_service[service]->exec_engine_count);
+		serialize_unlock();
+		return;
+	}
 
 	objdb->object_key_increment (service_stats_handle[service][fn_id],
 		"rx", strlen("rx"),
