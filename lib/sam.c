@@ -51,6 +51,7 @@
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
+#include <corosync/quorum.h>
 
 #include <corosync/sam.h>
 
@@ -107,20 +108,62 @@ static struct {
 	void *user_data;
 	size_t user_data_size;
 	size_t user_data_allocated;
+
+	quorum_handle_t quorum_handle;
+	uint32_t quorate;
+	int quorum_fd;
 } sam_internal_data;
+
+static void quorum_notification_fn (
+        quorum_handle_t handle,
+        uint32_t quorate,
+        uint64_t ring_id,
+        uint32_t view_list_entries,
+        uint32_t *view_list)
+{
+	sam_internal_data.quorate = quorate;
+}
 
 cs_error_t sam_initialize (
 	int time_interval,
 	sam_recovery_policy_t recovery_policy)
 {
+	quorum_callbacks_t quorum_callbacks;
+	cs_error_t err;
+
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_NOT_INITIALIZED) {
 		return (CS_ERR_BAD_HANDLE);
 	}
 
-	if (recovery_policy != SAM_RECOVERY_POLICY_QUIT && recovery_policy != SAM_RECOVERY_POLICY_RESTART) {
+	if (recovery_policy != SAM_RECOVERY_POLICY_QUIT && recovery_policy != SAM_RECOVERY_POLICY_RESTART &&
+	    recovery_policy != SAM_RECOVERY_POLICY_QUORUM_QUIT && recovery_policy != SAM_RECOVERY_POLICY_QUORUM_RESTART) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
+	if (recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+		/*
+		 * Initialize quorum
+		 */
+		quorum_callbacks.quorum_notify_fn = quorum_notification_fn;
+		if ((err = quorum_initialize (&sam_internal_data.quorum_handle, &quorum_callbacks)) != CS_OK) {
+			goto exit_error;
+		}
+
+		if ((err = quorum_trackstart (sam_internal_data.quorum_handle, CS_TRACK_CHANGES)) != CS_OK) {
+			goto exit_error_quorum;
+		}
+
+		if ((err = quorum_fd_get (sam_internal_data.quorum_handle, &sam_internal_data.quorum_fd)) != CS_OK) {
+			goto exit_error_quorum;
+		}
+
+		/*
+		 * Dispatch initial quorate state
+		 */
+		if ((err = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ONE)) != CS_OK) {
+			goto exit_error_quorum;
+		}
+	}
 	sam_internal_data.recovery_policy = recovery_policy;
 
 	sam_internal_data.time_interval = time_interval;
@@ -136,6 +179,11 @@ cs_error_t sam_initialize (
 	sam_internal_data.user_data_allocated = 0;
 
 	return (CS_OK);
+
+exit_error_quorum:
+	quorum_finalize (sam_internal_data.quorum_handle);
+exit_error:
+	return (err);
 }
 
 /*
@@ -350,6 +398,7 @@ cs_error_t sam_data_store (
 cs_error_t sam_start (void)
 {
 	char command;
+	cs_error_t err;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED) {
 		return (CS_ERR_BAD_HANDLE);
@@ -359,6 +408,15 @@ cs_error_t sam_start (void)
 
 	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
 		return (CS_ERR_LIBRARY);
+
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+		/*
+		 * Wait for parent reply
+		 */
+		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			return (err);
+		}
+	}
 
 	if (sam_internal_data.hc_callback)
 		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
@@ -515,6 +573,109 @@ error_reply:
 	return (err);
 }
 
+static cs_error_t sam_parent_wait_for_quorum (
+	int parent_fd_in,
+	int parent_fd_out)
+{
+	char reply;
+	cs_error_t err;
+	struct pollfd pfds[2];
+	int poll_err;
+
+	/*
+	 * Update current quorum
+	 */
+	if ((err = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ALL)) != CS_OK) {
+		goto error_reply;
+	}
+
+	/*
+	 * Wait for quorum
+	 */
+	while (!sam_internal_data.quorate) {
+		pfds[0].fd = parent_fd_in;
+		pfds[0].events = 0;
+		pfds[0].revents = 0;
+
+		pfds[1].fd = sam_internal_data.quorum_fd;
+		pfds[1].events = POLLIN;
+		pfds[1].revents = 0;
+
+		poll_err = poll (pfds, 2, -1);
+
+		if (poll_err == -1) {
+			/*
+			 *  Error in poll
+			 *  If it is EINTR, continue, otherwise QUIT
+			 */
+			if (errno != EINTR) {
+				err = CS_ERR_LIBRARY;
+				goto error_reply;
+			}
+		}
+
+		if (pfds[0].revents != 0) {
+			if (pfds[0].revents == POLLERR || pfds[0].revents == POLLHUP ||pfds[0].revents == POLLNVAL) {
+				/*
+				 * Child has exited
+				 */
+				return (CS_OK);
+			}
+		}
+
+		if (pfds[1].revents != 0) {
+			if ((err = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ONE)) != CS_OK) {
+				goto error_reply;
+			}
+		}
+	}
+
+	reply = SAM_REPLY_OK;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		err = CS_ERR_LIBRARY;
+		goto error_reply;
+	}
+
+	return (CS_OK);
+
+error_reply:
+	reply = SAM_REPLY_ERROR;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		return (CS_ERR_LIBRARY);
+	}
+	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	return (err);
+}
+
+static cs_error_t sam_parent_kill_child (
+	int *action,
+	pid_t child_pid)
+{
+	/*
+	 *  Kill child process
+	 */
+	if (!sam_internal_data.term_send) {
+		/*
+		 * We didn't send warn_signal yet.
+		 */
+		kill (child_pid, sam_internal_data.warn_signal);
+
+		sam_internal_data.term_send = 1;
+	} else {
+		/*
+		 * We sent child warning. Now, we will not be so nice
+		 */
+		kill (child_pid, SIGKILL);
+		*action = SAM_PARENT_ACTION_RECOVERY;
+	}
+
+	return (CS_OK);
+}
+
+
 static cs_error_t sam_parent_data_store (
 	int parent_fd_in,
 	int parent_fd_out)
@@ -585,16 +746,19 @@ static enum sam_parent_action_t sam_parent_handler (
 	ssize_t bytes_read;
 	char command;
 	int time_interval;
-	struct pollfd pfds;
+	struct pollfd pfds[2];
+	nfds_t nfds;
+	cs_error_t err;
 
 	status = 0;
 
 	action = SAM_PARENT_ACTION_CONTINUE;
 
 	while (action == SAM_PARENT_ACTION_CONTINUE) {
-		pfds.fd = parent_fd_in;
-		pfds.events = POLLIN;
-		pfds.revents = 0;
+		pfds[0].fd = parent_fd_in;
+		pfds[0].events = POLLIN;
+		pfds[0].revents = 0;
+		nfds = 1;
 
 		if (status == 1 && sam_internal_data.time_interval != 0) {
 			time_interval = sam_internal_data.time_interval;
@@ -602,7 +766,14 @@ static enum sam_parent_action_t sam_parent_handler (
 			time_interval = -1;
 		}
 
-		poll_error = poll (&pfds, 1, time_interval);
+		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+			pfds[nfds].fd = sam_internal_data.quorum_fd;
+			pfds[nfds].events = POLLIN;
+			pfds[nfds].revents = 0;
+			nfds++;
+		}
+
+		poll_error = poll (pfds, nfds, time_interval);
 
 		if (poll_error == -1) {
 			/*
@@ -621,75 +792,81 @@ static enum sam_parent_action_t sam_parent_handler (
 			if (status == 0) {
 				action = SAM_PARENT_ACTION_QUIT;
 			} else {
-				/*
-				 *  Kill child process
-				 */
-				if (!sam_internal_data.term_send) {
-					/*
-					 * We didn't send warn_signal yet.
-					 */
-					kill (child_pid, sam_internal_data.warn_signal);
-
-					sam_internal_data.term_send = 1;
-				} else {
-					/*
-					 * We sent child warning. Now, we will not be so nice
-					 */
-					kill (child_pid, SIGKILL);
-					action = SAM_PARENT_ACTION_RECOVERY;
-				}
+				sam_parent_kill_child (&action, child_pid);
 			}
 		}
 
 		if (poll_error > 0) {
-			/*
-			 *  We have EOF or command in pipe
-			 */
-			bytes_read = sam_safe_read (parent_fd_in, &command, 1);
-
-			if (bytes_read == 0) {
+			if (pfds[0].revents != 0) {
 				/*
-				 *  Handle EOF -> Take recovery action or quit if sam_start wasn't called
+				 *  We have EOF or command in pipe
 				 */
-				if (status == 0)
-					action = SAM_PARENT_ACTION_QUIT;
-				else
-					action = SAM_PARENT_ACTION_RECOVERY;
+				bytes_read = sam_safe_read (parent_fd_in, &command, 1);
 
-				continue;
-			}
-
-			if (bytes_read == -1) {
-				action = SAM_PARENT_ACTION_ERROR;
-				goto action_exit;
-			}
-
-			/*
-			 * We have read command
-			 */
-			switch (command) {
-			case SAM_COMMAND_START:
-				if (status == 0) {
+				if (bytes_read == 0) {
 					/*
-					 *  Not started yet
+					 *  Handle EOF -> Take recovery action or quit if sam_start wasn't called
 					 */
-					status = 1;
+					if (status == 0)
+						action = SAM_PARENT_ACTION_QUIT;
+					else
+						action = SAM_PARENT_ACTION_RECOVERY;
+
+					continue;
 				}
-				break;
-			case SAM_COMMAND_STOP:
-				if (status == 1) {
-					/*
-					 *  Started
-					 */
-					status = 0;
+
+				if (bytes_read == -1) {
+					action = SAM_PARENT_ACTION_ERROR;
+					goto action_exit;
 				}
-				break;
-			case SAM_COMMAND_DATA_STORE:
-				sam_parent_data_store (parent_fd_in, parent_fd_out);
-				break;
-			case SAM_COMMAND_WARN_SIGNAL_SET:
-				sam_parent_warn_signal_set (parent_fd_in, parent_fd_out);
-				break;
+
+				/*
+				 * We have read command
+				 */
+				switch (command) {
+				case SAM_COMMAND_START:
+					if (status == 0) {
+						/*
+						 *  Not started yet
+						 */
+						if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+							if (sam_parent_wait_for_quorum (parent_fd_in,
+							    parent_fd_out) != CS_OK) {
+								continue;
+							}
+						}
+
+						status = 1;
+					}
+					break;
+				case SAM_COMMAND_STOP:
+					if (status == 1) {
+						/*
+						 *  Started
+						 */
+						status = 0;
+					}
+					break;
+				case SAM_COMMAND_DATA_STORE:
+					sam_parent_data_store (parent_fd_in, parent_fd_out);
+					break;
+				case SAM_COMMAND_WARN_SIGNAL_SET:
+					sam_parent_warn_signal_set (parent_fd_in, parent_fd_out);
+					break;
+				}
+			} /* if (pfds[0].revents != 0) */
+
+			if ((sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) &&
+			    pfds[1].revents != 0) {
+				/*
+				 * Handle quorum change
+				 */
+				err = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ALL);
+
+				if (status == 1 &&
+				    (!sam_internal_data.quorate || (err != CS_ERR_TRY_AGAIN && err != CS_OK))) {
+					sam_parent_kill_child (&action, child_pid);
+				}
 			}
 		} /* select_error > 0 */
 	} /* action == SAM_PARENT_ACTION_CONTINUE */
@@ -785,11 +962,16 @@ cs_error_t sam_register (
 				;
 
 			if (action == SAM_PARENT_ACTION_RECOVERY) {
-				if (sam_internal_data.recovery_policy == SAM_RECOVERY_POLICY_QUIT)
+				if (sam_internal_data.recovery_policy == SAM_RECOVERY_POLICY_QUIT ||
+				    sam_internal_data.recovery_policy == SAM_RECOVERY_POLICY_QUORUM_QUIT)
 					action = SAM_PARENT_ACTION_QUIT;
 			}
 
 			if (action == SAM_PARENT_ACTION_QUIT) {
+				if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+					quorum_finalize (sam_internal_data.quorum_handle);
+				}
+
 				exit (WEXITSTATUS (child_status));
 			}
 

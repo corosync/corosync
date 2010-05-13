@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" * Copyright (c) 2009-2010 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "SAM_START" 3 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "SAM_START" 3 "30/04/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -61,9 +61,15 @@ function can be called.
 An application can always stop health checking by calling the \fBsam_stop(3)\fR
 function.
 
+.P
+If SAM is initialized with quorum policy \fISAM_RECOVERY_POLICY_QUIT\fR or
+\fISAM_RECOVERY_POLICY_RESTART\fR \fBsam_start\fR will block until corosync
+becomes quorate.
+
 .SH RETURN VALUE
 .P
-This call return CS_OK value if successful, otherwise and error is returned.
+This call return CS_OK value if successful, otherwise and error is returned. If
+SAM is initialized with quorum policy, returned error can also be quorum error.
 
 .SH ERRORS
 .TP

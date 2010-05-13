@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" * Copyright (c) 2009-2010 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "SAM_INITIALIZE" 3 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "SAM_INITIALIZE" 3 "30/04/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -68,6 +68,9 @@ The \fIrecovery_policy\fR is defined as type:
   typedef enum {
   	SAM_RECOVERY_POLICY_QUIT = 1,
   	SAM_RECOVERY_POLICY_RESTART = 2,
+        SAM_RECOVERY_POLICY_QUORUM = 0x08,
+        SAM_RECOVERY_POLICY_QUORUM_QUIT = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_QUIT,
+        SAM_RECOVERY_POLICY_QUORUM_RESTART = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_RESTART,
   } sam_recovery_policy_t;
 .fi
 
@@ -80,6 +83,17 @@ on failure, the process will terminate.
 .TP
 SAM_RECOVERY_POLICY_RESTART
 on failure, the process will restart.
+.TP
+SAM_RECOVERY_POLICY_QUORUM
+is not policy. Used only as flag meaning quorum integration
+.TP
+SAM_RECOVERY_POLICY_QUORUM_QUIT
+same as \fISAM_RECOVERY_POLICY_QUIT\fR but \fBsam_start (3)\fR will block until corosync becomes
+quorate and process will be terminated if quorum is lost.
+.TP
+SAM_RECOVERY_POLICY_QUORUM_RESTART
+same as \fISAM_RECOVERY_POLICY_RESTART\fR but \fBsam_start (3)\fR will block until corosync becomes
+quorate and process will be restarted if quorum is lost.
 
 .P
 To perform event driven healthchecking, \fBsam_register(3)\fR and

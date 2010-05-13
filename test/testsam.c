@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <corosync/corotypes.h>
+#include <corosync/confdb.h>
 #include <corosync/sam.h>
 #include <signal.h>
 #include <string.h>
@@ -735,12 +736,141 @@ static int test6 (void) {
 	return 1;
 }
 
+static void *test7_thread (void *arg)
+{
+	/* Wait 5s */
+	sleep (5);
+	exit (0);
+}
+
+/*
+ * Test quorum
+ */
+static int test7 (void) {
+	confdb_handle_t cdb_handle;
+	cs_error_t err;
+	hdb_handle_t quorum_handle;
+	size_t value_len;
+	char key_value[256];
+	unsigned int instance_id;
+	pthread_t kill_thread;
+
+	err = confdb_initialize (&cdb_handle, NULL);
+	if (err != CS_OK) {
+		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		return (1);
+	}
+
+	err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+	if (err != CS_OK) {
+		printf ("Could not start object_find %d. Test skipped\n", err);
+		return (1);
+        }
+
+	err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &quorum_handle);
+	if (err != CS_OK) {
+		printf ("Could not object_find \"quorum\": %d. Test skipped\n", err);
+		return (1);
+	}
+
+	err = confdb_key_get(cdb_handle, quorum_handle, "provider", strlen("provider"), key_value, &value_len);
+	if (err != CS_OK) {
+		printf ("Could not get \"provider\" key: %d. Test skipped\n", err);
+		return (1);
+	}
+
+        if (!(value_len - 1 == strlen ("testquorum") && memcmp (key_value, "testquorum", value_len - 1) == 0)) {
+		printf ("Provider is not testquorum. Test skipped\n");
+		return (1);
+        }
+
+	/*
+	 * Set to not quorate
+	 */
+	err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "0", strlen("0"));
+	if (err != CS_OK) {
+		printf ("Can't create confdb key. Error %d\n", err);
+		return (2);
+	}
+
+	printf ("%s: initialize\n", __FUNCTION__);
+	err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUORUM_RESTART);
+	if (err != CS_OK) {
+		fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
+		return 2;
+	}
+
+	printf ("%s: register\n", __FUNCTION__);
+	err = sam_register (&instance_id);
+	if (err != CS_OK) {
+		fprintf (stderr, "Can't register. Error %d\n", err);
+		return 2;
+	}
+
+	if (instance_id == 1) {
+		/*
+		 * Sam start should block forever, but 10s for us should be enough
+		 */
+		pthread_create (&kill_thread, NULL, test7_thread, NULL);
+
+		printf ("%s iid %d: start - should block forever (waiting 5s)\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 2;
+		}
+
+		printf ("%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		return (2);
+	}
+
+	if (instance_id == 2) {
+		/*
+		 * Set to quorate
+		 */
+		err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "1", strlen("1"));
+		if (err != CS_OK) {
+			printf ("Can't create confdb key. Error %d\n", err);
+			return (2);
+		}
+
+		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 2;
+		}
+
+		/*
+		 * Set corosync unquorate
+		 */
+		err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "0", strlen("0"));
+		if (err != CS_OK) {
+			printf ("Can't create confdb key. Error %d\n", err);
+			return (2);
+		}
+
+		printf ("%s iid %d: sleep 3\n", __FUNCTION__, instance_id);
+		sleep (3);
+
+		printf ("%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		return (2);
+	}
+
+	if (instance_id == 3) {
+		return (0);
+	}
+
+	return (2);
+}
+
 int main(int argc, char *argv[])
 {
 	pid_t pid;
 	int err;
 	int stat;
 	int all_passed = 1;
+	int no_skipped = 0;
 
 	pid = fork ();
 
@@ -856,8 +986,29 @@ int main(int argc, char *argv[])
 	if (WEXITSTATUS (stat) != 0)
 		all_passed = 0;
 
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+		return 1;
+	}
+
+	if (pid == 0) {
+		err = test7 ();
+		sam_finalize ();
+		return (err);
+	}
+
+	waitpid (pid, &stat, 0);
+	fprintf (stderr, "test7 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
+	if (WEXITSTATUS (stat) == 1)
+		no_skipped++;
+
+	if (WEXITSTATUS (stat) > 1)
+		all_passed = 0;
+
 	if (all_passed)
-		fprintf (stderr, "All tests passed\n");
+		fprintf (stderr, "All tests passed (%d skipped)\n", no_skipped);
 
 	return (all_passed ? 0 : 1);
 }

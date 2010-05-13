@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" * Copyright (c) 2009-2010 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "SAM_OVERVIEW" 8 "12/01/2009" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "SAM_OVERVIEW" 8 "30/04/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -114,6 +114,17 @@ Because this model is directed by the SAM server, It isn't necessary to guess
 or add timers to the active process to signal a healthcheck operation is
 successful.  To use event driven healthchecking,
 the \fBsam_hc_callback_register(3)\fR function should be executed.
+
+.SH Quorum integration
+.P
+SAM has special policies (\fISAM_RECOVERY_POLICY_QUIT\fR and \fISAM_RECOVERY_POLICY_RESTART\fR)
+for integration with quorum service. This policies changes SAM behaviour in two aspects.
+.RS
+.IP \(bu 3
+Call of \fBsam_start(3)\fR blocks until corosync becomes quorate
+.IP \(bu 3
+User selected recovery action is taken immediately after lost of quorum.
+.RE
 
 .SH Storing user data
 .P
