@@ -73,6 +73,7 @@ enum sam_command_t {
 	SAM_COMMAND_STOP,
 	SAM_COMMAND_HB,
 	SAM_COMMAND_DATA_STORE,
+	SAM_COMMAND_WARN_SIGNAL_SET,
 };
 
 enum sam_reply_t {
@@ -194,6 +195,40 @@ static size_t sam_safe_read (
 	return (bytes_read);
 }
 
+static cs_error_t sam_read_reply (
+	int child_fd_in)
+{
+	char reply;
+	cs_error_t err;
+
+	if (sam_safe_read (sam_internal_data.child_fd_in, &reply, sizeof (reply)) != sizeof (reply)) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	switch (reply) {
+	case SAM_REPLY_ERROR:
+		/*
+		 * Read error and return that
+		 */
+		if (sam_safe_read (sam_internal_data.child_fd_in, &err, sizeof (err)) != sizeof (err)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		return (err);
+		break;
+	case SAM_REPLY_OK:
+		/*
+		 * Everything correct
+		 */
+		break;
+	default:
+		return (CS_ERR_LIBRARY);
+		break;
+	}
+
+	return (CS_OK);
+}
+
 cs_error_t sam_data_getsize (size_t *size)
 {
 	if (size == NULL) {
@@ -247,7 +282,6 @@ cs_error_t sam_data_store (
 	cs_error_t err;
 	char command;
 	char *new_data;
-	char reply;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
@@ -290,29 +324,8 @@ cs_error_t sam_data_store (
 		/*
 		 * And wait for reply
 		 */
-		if (sam_safe_read (sam_internal_data.child_fd_in, &reply, sizeof (reply)) != sizeof (reply)) {
-			return (CS_ERR_LIBRARY);
-		}
-
-		switch (reply) {
-		case SAM_REPLY_ERROR:
-			/*
-			 * Read error and return that
-			 */
-			if (sam_safe_read (sam_internal_data.child_fd_in, &err, sizeof (err)) != sizeof (err)) {
-				return (CS_ERR_LIBRARY);
-			}
-
+		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
 			return (err);
-			break;
-		case SAM_REPLY_OK:
-			/*
-			 * Everything correct
-			 */
-			break;
-		default:
-			return (CS_ERR_LIBRARY);
-			break;
 		}
 	}
 
@@ -421,15 +434,85 @@ exit_error:
 
 cs_error_t sam_warn_signal_set (int warn_signal)
 {
+	char command;
+	cs_error_t err;
+
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 		return (CS_ERR_BAD_HANDLE);
 	}
 
+	if (sam_internal_data.am_i_child) {
+		/*
+		 * We are child so we must send data to parent
+		 */
+		command = SAM_COMMAND_WARN_SIGNAL_SET;
+		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		if (sam_safe_write (sam_internal_data.child_fd_out, &warn_signal, sizeof (warn_signal)) !=
+		   sizeof (warn_signal)) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		/*
+		 * And wait for reply
+		 */
+		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			return (err);
+		}
+	}
+
+	/*
+	 * We are parent or we received OK reply from parent -> do required action
+	 */
 	sam_internal_data.warn_signal = warn_signal;
 
 	return (CS_OK);
+}
+
+static cs_error_t sam_parent_warn_signal_set (
+	int parent_fd_in,
+	int parent_fd_out)
+{
+	char reply;
+	char *user_data;
+	int warn_signal;
+	cs_error_t err;
+
+	err = CS_OK;
+	user_data = NULL;
+
+	if (sam_safe_read (parent_fd_in, &warn_signal, sizeof (warn_signal)) != sizeof (warn_signal)) {
+		err = CS_ERR_LIBRARY;
+		goto error_reply;
+	}
+
+	err = sam_warn_signal_set (warn_signal);
+	if (err != CS_OK) {
+		goto error_reply;
+	}
+
+	reply = SAM_REPLY_OK;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		err = CS_ERR_LIBRARY;
+		goto error_reply;
+	}
+
+	return (CS_OK);
+
+error_reply:
+	reply = SAM_REPLY_ERROR;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		return (CS_ERR_LIBRARY);
+	}
+	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	return (err);
 }
 
 static cs_error_t sam_parent_data_store (
@@ -603,6 +686,9 @@ static enum sam_parent_action_t sam_parent_handler (
 				break;
 			case SAM_COMMAND_DATA_STORE:
 				sam_parent_data_store (parent_fd_in, parent_fd_out);
+				break;
+			case SAM_COMMAND_WARN_SIGNAL_SET:
+				sam_parent_warn_signal_set (parent_fd_in, parent_fd_out);
 				break;
 			}
 		} /* select_error > 0 */

@@ -51,6 +51,7 @@
 
 static int test2_sig_delivered = 0;
 static int test5_hc_cb_count = 0;
+static int test6_sig_delivered = 0;
 
 /*
  * First test will just register SAM, with policy restart. First instance will
@@ -597,6 +598,142 @@ static int test5 (void)
 	return 1;
 }
 
+static void test6_signal (int sig) {
+	cs_error_t error;
+
+	printf ("%s\n", __FUNCTION__);
+	test6_sig_delivered++;
+
+	if ((error = sam_data_store (&test6_sig_delivered, sizeof (test6_sig_delivered))) != CS_OK) {
+		fprintf (stderr, "Can't store data! Error : %d\n", error);
+	}
+}
+
+/*
+ * Test warn signal set.
+ */
+static int test6 (void) {
+	cs_error_t error;
+	unsigned int instance_id;
+	int test6_sig_del;
+
+	printf ("%s: initialize\n", __FUNCTION__);
+	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
+	if (error != CS_OK) {
+		fprintf (stderr, "Can't initialize SAM API. Error %d\n", error);
+		return 1;
+	}
+	printf ("%s: register\n", __FUNCTION__);
+	error = sam_register (&instance_id);
+	if (error != CS_OK) {
+		fprintf (stderr, "Can't register. Error %d\n", error);
+		return 1;
+	}
+
+	if (instance_id == 1) {
+		error = sam_warn_signal_set (SIGUSR1);
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't set warn signal. Error %d\n", error);
+			return 1;
+		}
+
+		signal (SIGUSR1, test6_signal);
+
+		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+		error = sam_start ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", error);
+			return 1;
+		}
+
+		printf ("%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+		sleep (1);
+
+		printf ("%s iid %d: hc send\n", __FUNCTION__, instance_id);
+		error = sam_hc_send ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't send hc. Error %d\n", error);
+			return 1;
+		}
+
+
+		printf ("%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
+		while (!test6_sig_delivered) {
+			sleep (1);
+		}
+
+		printf ("%s iid %d: wait for real kill\n", __FUNCTION__, instance_id);
+
+		sleep (3);
+
+		printf ("%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		return (1);
+	}
+
+	if (instance_id == 2) {
+		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't restore data. Error %d\n", error);
+			return 1;
+		}
+
+		if (test6_sig_del != 1) {
+			fprintf (stderr, "Previous test failed. Signal was not delivered\n");
+			return 1;
+		}
+
+		error = sam_warn_signal_set (SIGKILL);
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't set warn signal. Error %d\n", error);
+			return 1;
+		}
+
+		signal (SIGUSR1, test6_signal);
+
+		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+		error = sam_start ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", error);
+			return 1;
+		}
+
+		printf ("%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+		sleep (1);
+
+		printf ("%s iid %d: hc send\n", __FUNCTION__, instance_id);
+		error = sam_hc_send ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't send hc. Error %d\n", error);
+			return 1;
+		}
+
+
+		printf ("%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
+		while (!test6_sig_delivered) {
+			sleep (1);
+		}
+
+		printf ("%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		return (1);
+	}
+
+	if (instance_id == 3) {
+		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't restore data. Error %d\n", error);
+			return 1;
+		}
+
+		if (test6_sig_del != 1) {
+			fprintf (stderr, "Previous test failed. Signal WAS delivered\n");
+			return 1;
+		}
+
+		return (0);
+	}
+
+	return 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -613,7 +750,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		return (test1 ());
+		err = test1 ();
+		sam_finalize ();
+		return err;
 	}
 
 	waitpid (pid, &stat, 0);
@@ -632,7 +771,8 @@ int main(int argc, char *argv[])
 	if (pid == 0) {
 		err = test2 ();
 
-		return err;
+		sam_finalize ();
+		return (err);
 	}
 
 	waitpid (pid, &stat, 0);
@@ -649,7 +789,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		return (test3 ());
+		err = test3 ();
+		sam_finalize ();
+		return (err);
 	}
 
 	waitpid (pid, &stat, 0);
@@ -666,7 +808,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (pid == 0) {
-		return (test4 ());
+		err = test4 ();
+		sam_finalize ();
+		return (err);
 	}
 
 	waitpid (pid, &stat, 0);
@@ -685,11 +829,30 @@ int main(int argc, char *argv[])
 	if (pid == 0) {
 		err = test5 ();
 
-		return err;
+		sam_finalize ();
+		return (err);
 	}
 
 	waitpid (pid, &stat, 0);
 	fprintf (stderr, "test5 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
+	if (WEXITSTATUS (stat) != 0)
+		all_passed = 0;
+
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+		return 1;
+	}
+
+	if (pid == 0) {
+		err = test6 ();
+		sam_finalize ();
+		return (err);
+	}
+
+	waitpid (pid, &stat, 0);
+	fprintf (stderr, "test6 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
 	if (WEXITSTATUS (stat) != 0)
 		all_passed = 0;
 
