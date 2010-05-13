@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 {
 	int i;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < 10000; i++) {
 		log_printf (LOGSYS_LEVEL_NOTICE,
 			"This is a test of %s(%d)\n", "stringparse", i);
 
@@ -64,6 +64,7 @@ int main(int argc, char **argv)
 					     LOGREC_ID_CHECKPOINT_CREATE),
 			"record1", 8, "record22", 9, "record333", 10, "record444", 11, LOGSYS_REC_END);
 	}
+	logsys_atexit ();
 	logsys_log_rec_store ("fdata");
 
 	return 0;
