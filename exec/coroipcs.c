@@ -1000,7 +1000,7 @@ static void _corosync_ipc_init(void)
 	if (server_fd == -1) {
 		log_printf (LOGSYS_LEVEL_CRIT, "Cannot create client connections socket.\n");
 		api->fatal_error ("Can't create library listen socket");
-	};
+	}
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
