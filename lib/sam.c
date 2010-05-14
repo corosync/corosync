@@ -338,15 +338,6 @@ cs_error_t sam_data_store (
 		return (CS_ERR_BAD_HANDLE);
 	}
 
-	if (sam_internal_data.user_data_allocated < size) {
-		if ((new_data = realloc (sam_internal_data.user_data, size)) == NULL) {
-			return (CS_ERR_NO_MEMORY);
-		}
-
-		sam_internal_data.user_data_allocated = size;
-	} else {
-		new_data = sam_internal_data.user_data;
-	}
 
 	if (data == NULL) {
 		size = 0;
@@ -386,6 +377,15 @@ cs_error_t sam_data_store (
 		sam_internal_data.user_data_allocated = 0;
 		sam_internal_data.user_data_size = 0;
 	} else {
+		if (sam_internal_data.user_data_allocated < size) {
+			if ((new_data = realloc (sam_internal_data.user_data, size)) == NULL) {
+				return (CS_ERR_NO_MEMORY);
+			}
+
+			sam_internal_data.user_data_allocated = size;
+		} else {
+			new_data = sam_internal_data.user_data;
+		}
 		sam_internal_data.user_data = new_data;
 		sam_internal_data.user_data_size = size;
 
