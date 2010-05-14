@@ -263,8 +263,9 @@ memory_map (
 
 	unlink (path);
 
-	res = ftruncate (fd, bytes);
-
+	if (fd >= 0) {
+		res = ftruncate (fd, bytes);
+	}
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
@@ -305,8 +306,9 @@ circular_memory_map (
 
 	unlink (path);
 
-	res = ftruncate (fd, bytes);
-
+	if (fd >= 0) {
+		res = ftruncate (fd, bytes);
+	}
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
