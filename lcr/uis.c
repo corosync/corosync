@@ -77,7 +77,9 @@ static void uis_lcr_bind (int *server_fd)
 	 */
 	fd = socket (PF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
-		printf ("lcr_bind failed\n");
+		perror ("uis_lcr_bind failed");
+		*server_fd = -1;
+		return;
 	};
 
 #if !defined(COROSYNC_LINUX)
