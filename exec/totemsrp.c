@@ -3063,6 +3063,7 @@ static void memb_ring_id_create_or_load (
 	int fd;
 	int res;
 	char filename[256];
+	char error_str[100];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
@@ -3076,18 +3077,17 @@ static void memb_ring_id_create_or_load (
 		memb_ring_id->seq = 0;
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd == -1) {
-			char error_str[100];
-			strerror_r(errno, error_str, 100);
+		if (fd >= 0) {
+			res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
+			assert (res == sizeof (unsigned long long));
+			close (fd);
+		} else {
+			strerror_r (errno, error_str, 100);
 			log_printf (instance->totemsrp_log_level_warning,
 				"Couldn't create %s %s\n", filename, error_str);
 		}
-		res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-		assert (res == sizeof (unsigned long long));
-		close (fd);
 	} else {
-		char error_str[100];
-		strerror_r(errno, error_str, 100);
+		strerror_r (errno, error_str, 100);
 		log_printf (instance->totemsrp_log_level_warning,
 			"Couldn't open %s %s\n", filename, error_str);
 	}
