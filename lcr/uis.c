@@ -174,12 +174,14 @@ static void *lcr_uis_server (void *data)
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
 #ifdef COROSYNC_LINUX
-			setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
-				&on, sizeof (on));
+			if (ufds[1].fd >= 0) {
+				setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
+					&on, sizeof (on));
+			}
 #endif
 			nfds = 2;
 		}
-		if (ufds[0].revents & POLLIN) {
+		if (ufds[1].fd >= 0 && (ufds[0].revents & POLLIN)) {
 			lcr_uis_dispatch (ufds[1].fd);
 		}
 	}
