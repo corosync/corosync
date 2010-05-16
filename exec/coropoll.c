@@ -252,7 +252,7 @@ int poll_dispatch_modify (
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
 			if (change_notify) {
-				char buf;
+				char buf = 1;
 				write (poll_instance->pipefds[1], &buf, 1);
 			}
 
