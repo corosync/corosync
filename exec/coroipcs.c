@@ -761,7 +761,7 @@ req_setup_recv (
 	int on = 1;
 	struct ucred *cred;
 #endif
-
+	msg_recv.msg_flags = 0;
 	msg_recv.msg_iov = &iov_recv;
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
