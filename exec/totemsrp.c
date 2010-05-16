@@ -3299,7 +3299,6 @@ static void fcc_token_update (
 {
 	token->fcc += msgs_transmitted - instance->my_trc;
 	token->backlog += instance->my_cbl - instance->my_pbl;
-	assert (token->backlog >= 0);
 	instance->my_trc = msgs_transmitted;
 	instance->my_pbl = instance->my_cbl;
 }
@@ -3416,6 +3415,10 @@ static int message_handler_orf_token (
 
 	case MEMB_STATE_OPERATIONAL:
 		messages_free (instance, token->aru);
+		/*
+		 * Do NOT add break, this case should also execute code in gather case.
+		 */
+
 	case MEMB_STATE_GATHER:
 		/*
 		 * DO NOT add break, we use different free mechanism in recovery state
