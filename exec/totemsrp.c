@@ -3279,7 +3279,9 @@ static void fcc_rtr_limit (
 	struct orf_token *token,
 	unsigned int *transmits_allowed)
 {
-	assert ((QUEUE_RTR_ITEMS_SIZE_MAX - *transmits_allowed - instance->totem_config->window_size) >= 0);
+	int check = QUEUE_RTR_ITEMS_SIZE_MAX;
+	check -= (*transmits_allowed + instance->totem_config->window_size);
+	assert (check >= 0);
 	if (sq_lt_compare (instance->last_released +
 		QUEUE_RTR_ITEMS_SIZE_MAX - *transmits_allowed -
 		instance->totem_config->window_size,
