@@ -1646,7 +1646,36 @@ int logsys_log_rec_store (const char *filename)
 
 void logsys_atexit (void)
 {
-	if (wthread_active) {
+	int res;
+	int value;
+	struct record *rec;
+
+	if (wthread_active == 0) {
+		for (;;) {
+			logsys_wthread_lock();
+
+			res = sem_getvalue (&logsys_print_finished, &value);
+			if (value == 0) {
+				logsys_wthread_unlock();
+				return;
+			}
+			sem_wait (&logsys_print_finished);
+
+			rec = list_entry (logsys_print_finished_records.next, struct record, list);
+			list_del (&rec->list);
+			logsys_memory_used = logsys_memory_used - strlen (rec->buffer) -
+				sizeof (struct record) - 1;
+			logsys_wthread_unlock();
+			log_printf_to_logs (
+				rec->rec_ident,
+				rec->file_name,
+				rec->function_name,
+				rec->file_line,
+				rec->buffer);
+			free (rec->buffer);
+			free (rec);
+		}
+	} else {
 		wthread_should_exit = 1;
 		sem_post (&logsys_print_finished);
 		pthread_join (logsys_thread_id, NULL);
