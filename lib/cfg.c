@@ -272,7 +272,7 @@ corosync_cfg_ring_status_get (
 	struct cfg_instance *cfg_instance;
 	struct req_lib_cfg_ringstatusget req_lib_cfg_ringstatusget;
 	struct res_lib_cfg_ringstatusget res_lib_cfg_ringstatusget;
-	unsigned int i;
+	unsigned int i, j;
 	cs_error_t error;
 	struct iovec iov;
 
@@ -303,7 +303,7 @@ corosync_cfg_ring_status_get (
 	*status = malloc (sizeof (char *) * *interface_count);
 	if (*status == NULL) {
 		error = CS_ERR_NO_MEMORY;
-		goto error_free_interface_names;
+		goto error_free_interface_names_array;
 	}
 	memset (*status, 0, sizeof (char *) * *interface_count);
 
@@ -311,25 +311,33 @@ corosync_cfg_ring_status_get (
 		(*(interface_names))[i] = strdup (res_lib_cfg_ringstatusget.interface_name[i]);
 		if ((*(interface_names))[i] == NULL) {
 			error = CS_ERR_NO_MEMORY;
-			goto error_free_contents;
+			goto error_free_interface_names;
 		}
+	}
+
+	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
 		(*(status))[i] = strdup (res_lib_cfg_ringstatusget.interface_status[i]);
 		if ((*(status))[i] == NULL) {
 			error = CS_ERR_NO_MEMORY;
-			goto error_free_contents;
+			goto error_free_status;
 		}
 	}
 	goto no_error;
 
-error_free_contents:
-	for (i = 0; i < res_lib_cfg_ringstatusget.interface_count; i++) {
-		free (*interface_names + i);
-		free (*status + i);
+error_free_status:
+	for (j = 0; j < i; j++) {
+		free ((*(status))[j]);
 	}
-
-	free (*status);
+	i = *interface_count;
 
 error_free_interface_names:
+	for (j = 0; j < i; j++) {
+		free ((*(interface_names))[j]);
+	}
+	
+	free (*status);
+
+error_free_interface_names_array:
 	free (*interface_names);
 
 no_error:
