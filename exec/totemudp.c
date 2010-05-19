@@ -499,7 +499,8 @@ static int encrypt_and_sign_nss (
 		log_printf(instance->totemudp_log_level_security,
 			"Failure to set up PKCS11 param (err %d)\n",
 			PR_GetError());
-		goto out;
+		free (inbuf);
+		return (-1);
 	}
 
 	/*
