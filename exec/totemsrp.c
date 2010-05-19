@@ -2326,7 +2326,6 @@ static int orf_token_mcast (
 	struct cs_queue *mcast_queue;
 	struct sq *sort_queue;
 	struct sort_queue_item sort_queue_item;
-	struct sort_queue_item *sort_queue_item_ptr;
 	struct mcast *mcast;
 	unsigned int fcc_mcast_current;
 
@@ -2372,8 +2371,7 @@ static int orf_token_mcast (
 		/*
 		 * Add message to retransmit queue
 		 */
-		sort_queue_item_ptr = sq_item_add (sort_queue,
-			&sort_queue_item, message_item->mcast->seq);
+		sq_item_add (sort_queue, &sort_queue_item, message_item->mcast->seq);
 
 		totemrrp_mcast_noflush_send (
 			instance->totemrrp_context,
