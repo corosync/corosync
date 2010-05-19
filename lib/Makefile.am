@@ -36,6 +36,8 @@ get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
 get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
 get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
 get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
+get_explicit_sharedlibs=$(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
+get_explicit_sharedlibs_two=$(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
 get_linker_add=$(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
 
 MAINTAINERCLEANFILES    = Makefile.in
@@ -48,7 +50,8 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
 lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
 			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
-SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
+SHARED_LIBS_SO		= $(filter-out $(EXPLICIT_SHARED_LIBS_SO), $(lib_LIBRARIES:%.a=%.so))
+EXPLICIT_SHARED_LIBS_SO = libcoroipcc.so
 
 libcpg_a_SOURCES	= cpg.c
 libcfg_a_SOURCES	= cfg.c
@@ -120,13 +123,13 @@ endif
 
 endif
 
-all-local: $(SHARED_LIBS_SO)
+all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
 	@echo Built shared libs
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(get_sharedlibs) $(get_explicit_sharedlibs) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(EXPLICIT_SHARED_LIBS_SO) $(get_sharedlibs_two) $(get_explicit_sharedlibs_two) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \
