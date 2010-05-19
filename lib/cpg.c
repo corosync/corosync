@@ -507,24 +507,34 @@ cs_error_t cpg_membership_get (
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov;
-	struct req_lib_cpg_membership req_lib_cpg_membership_get;
-	struct res_lib_cpg_confchg_callback res_lib_cpg_membership_get;
+	struct req_lib_cpg_membership_get req_lib_cpg_membership_get;
+	struct res_lib_cpg_membership_get res_lib_cpg_membership_get;
 	unsigned int i;
+
+	if (member_list == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+	if (member_list_entries == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
-	req_lib_cpg_membership_get.header.size = sizeof (coroipc_request_header_t);
+	req_lib_cpg_membership_get.header.size = sizeof (struct req_lib_cpg_membership_get);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
+
+	memcpy (&req_lib_cpg_membership_get.group_name, group_name,
+		sizeof (struct cpg_name));
 
 	iov.iov_base = (void *)&req_lib_cpg_membership_get;
 	iov.iov_len = sizeof (coroipc_request_header_t);
 
 	do {
 		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
-			&res_lib_cpg_membership_get, sizeof (coroipc_response_header_t));
+			&res_lib_cpg_membership_get, sizeof (res_lib_cpg_membership_get));
 
  		if (error != CS_OK) {
  			goto error_exit;
@@ -536,9 +546,9 @@ cs_error_t cpg_membership_get (
 	/*
 	 * Copy results to caller
 	 */
-	*member_list_entries = res_lib_cpg_membership_get.member_list_entries;
+	*member_list_entries = res_lib_cpg_membership_get.member_count;
 	if (member_list) {
-		for (i = 0; i < res_lib_cpg_membership_get.member_list_entries; i++) {
+		for (i = 0; i < res_lib_cpg_membership_get.member_count; i++) {
 			marshall_from_mar_cpg_address_t (&member_list[i],
 				&res_lib_cpg_membership_get.member_list[i]);
 		}

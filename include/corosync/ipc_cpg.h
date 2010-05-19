@@ -222,9 +222,15 @@ struct res_lib_cpg_flowcontrol_callback {
 	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 };
 
-struct req_lib_cpg_membership {
+struct req_lib_cpg_membership_get {
 	coroipc_request_header_t header __attribute__((aligned(8)));
-//	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_membership_get {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_uint32_t member_count __attribute__((aligned(8)));
+	mar_cpg_address_t member_list[PROCESSOR_COUNT_MAX];
 };
 
 struct res_lib_cpg_confchg_callback {
