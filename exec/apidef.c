@@ -86,7 +86,7 @@ typedef int (*typedef_tpg_groups_send_ok) (
 static inline void _corosync_public_exit_error (cs_fatal_error_t err,
 						const char *file,
 						unsigned int line)
-  __attribute__((__noreturn__));
+  __attribute__((noreturn));
 static inline void _corosync_public_exit_error (
 	cs_fatal_error_t err, const char *file, unsigned int line)
 {

@@ -591,9 +591,12 @@ struct corosync_api_v1 {
 	/*
 	 * Error handling APIs
 	 */
-	void (*error_memory_failure) (void);
+	void (*error_memory_failure) (void) __attribute__ ((noreturn));
+
 #define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
-	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
+	void (*fatal_error) (cs_fatal_error_t err,
+		const char *file,
+		unsigned int line) __attribute__ ((noreturn));
 
 	void (*shutdown_request) (void);
 

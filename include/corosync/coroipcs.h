@@ -69,7 +69,7 @@ struct coroipcs_init_state {
 	void (*poll_dispatch_add)(int fd, void *context);
 	void (*poll_dispatch_modify)(int fd, int events);
 	void (*poll_dispatch_destroy)(int fd, void *context);
-	void (*fatal_error)(const char *error_msg);
+	void (*fatal_error)(const char *error_msg) __attribute__ ((noreturn));
 	coroipcs_init_fn_lvalue (*init_fn_get)(unsigned int service);
 	coroipcs_exit_fn_lvalue (*exit_fn_get)(unsigned int service);
 	coroipcs_handler_fn_lvalue (*handler_fn_get)(unsigned int service, unsigned int id);
@@ -96,7 +96,7 @@ struct coroipcs_init_state_v2 {
 	void (*poll_dispatch_add)(int fd, void *context);
 	void (*poll_dispatch_modify)(int fd, int events);
 	void (*poll_dispatch_destroy)(int fd, void *context);
-	void (*fatal_error)(const char *error_msg);
+	void (*fatal_error)(const char *error_msg) __attribute__ ((noreturn));
 	coroipcs_init_fn_lvalue (*init_fn_get)(unsigned int service);
 	coroipcs_exit_fn_lvalue (*exit_fn_get)(unsigned int service);
 	coroipcs_handler_fn_lvalue (*handler_fn_get)(unsigned int service, unsigned int id);
