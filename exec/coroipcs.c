@@ -263,13 +263,21 @@ memory_map (
 
 	unlink (path);
 
-	if (fd >= 0) {
-		res = ftruncate (fd, bytes);
+	if (fd == -1) {
+		return (-1);
 	}
+
+	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		close (fd);
+		return (-1);
+	}
+
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
+		close (fd);
 		return (-1);
 	}
 
@@ -277,6 +285,7 @@ memory_map (
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
+		close (fd);
 		return (-1);
 	}
 #ifdef COROSYNC_BSD
@@ -306,13 +315,20 @@ circular_memory_map (
 
 	unlink (path);
 
-	if (fd >= 0) {
-		res = ftruncate (fd, bytes);
+	if (fd == -1) {
+		return (-1);
 	}
+	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		close (fd);
+		return (-1);
+	}
+
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
+		close (fd);
 		return (-1);
 	}
 
@@ -320,6 +336,7 @@ circular_memory_map (
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
+		close (fd);
 		return (-1);
 	}
 #ifdef COROSYNC_BSD
@@ -329,6 +346,10 @@ circular_memory_map (
 	addr = mmap (((char *)addr_orig) + bytes,
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED) {
+		close (fd);
+		return (-1);
+	}
 #ifdef COROSYNC_BSD
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
