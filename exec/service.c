@@ -160,7 +160,7 @@ unsigned int corosync_service_link_and_init (
 	void *iface_ver0_p;
 	hdb_handle_t handle;
 	struct corosync_service_engine *service;
-	unsigned int res;
+	int res;
 	hdb_handle_t object_service_handle;
 	hdb_handle_t object_stats_handle;
 	int fn;
@@ -172,7 +172,7 @@ unsigned int corosync_service_link_and_init (
 	 * reference the service interface
 	 */
 	iface_ver0_p = NULL;
-	lcr_ifact_reference (
+	res = lcr_ifact_reference (
 		&handle,
 		service_name,
 		service_ver,
@@ -181,7 +181,7 @@ unsigned int corosync_service_link_and_init (
 
 	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
 
-	if (iface_ver0 == 0) {
+	if (res == -1 || iface_ver0 == 0) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
 		return (-1);
 	}
