@@ -261,7 +261,6 @@ static inline unsigned int sq_item_get (
 //	sq_position = (sq->head - sq->head_seqid + seq_id) % sq->size;
 //printf ("sq_position = %x\n", sq_position);
 //printf ("ITEMGET %d %d %d %d\n", sq_position, sq->head, sq->head_seqid, seq_id);
-assert (sq_position >= 0);
 	if (sq->items_inuse[sq_position] == 0) {
 		return (ENOENT);
 	}
