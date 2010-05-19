@@ -312,7 +312,7 @@ static int corosync_main_config_set (
 {
 	const char *error_reason = error_string_response;
 	char *value;
-	unsigned int mode;
+	int mode;
 
 	/*
 	 * this bit abuses the internal logsys exported API
