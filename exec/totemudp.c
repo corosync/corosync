@@ -518,6 +518,7 @@ static int encrypt_and_sign_nss (
 			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
 			instance->totem_config->crypto_crypt_type,
 			PR_GetError(), err);
+		free(inbuf);
 		return -1;
 	}
 	rv1 = PK11_CipherOp(enc_context, outdata,
