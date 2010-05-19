@@ -485,8 +485,9 @@ static void *hc_callback_thread (void *unused_param)
 		poll_error = poll (&pfds, 1, tmp_time_interval);
 
 		if (poll_error == 0) {
-			sam_hc_send ();
-			counter++;
+			if (sam_hc_send () == CS_OK) {
+				counter++;
+			}
 
 			if (counter >= 4) {
 				if (sam_internal_data.hc_callback () != 0) {
