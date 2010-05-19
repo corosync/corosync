@@ -619,6 +619,7 @@ static int authenticate_and_decrypt_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->totemudp_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s\n",
 			PR_GetError(), err);
+		free (inbuf);
 		return -1;
 	}
 
