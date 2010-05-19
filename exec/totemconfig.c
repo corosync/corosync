@@ -421,7 +421,12 @@ int totem_config_validate (
 		/*
 		 * Some error checking of parsed data to make sure its valid
 		 */
-		if ((int *)&totem_config->interfaces[i].mcast_addr.addr == 0) {
+
+		struct totem_ip_address null_addr;
+		memset (&null_addr, 0, sizeof (struct totem_ip_address));
+
+		if (memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
+				sizeof (struct totem_ip_address)) == 0) {
 			error_reason = "No multicast address specified";
 			goto parse_error;
 		}
