@@ -88,9 +88,11 @@ ring. The ringnumber must start at 0.
 
 .TP
 bindnetaddr
-This specifies the address which the corosync executive should bind.
-This address should always end in zero.  If the totem traffic should
-be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
+This specifies the network address the corosync executive should bind
+to.  For example, if the local interface is 192.168.5.92 with netmask
+255.255.255.0, set bindnetaddr to 192.168.5.0.  If the local interface
+is 192.168.5.92 with netmask 255.255.255.192, set bindnetaddr to
+192.168.5.64, and so forth.
 
 This may also be an IPV6 address, in which case IPV6 networking will be used.
 In this case, the full address must be specified and there is no automatic
