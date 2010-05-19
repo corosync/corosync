@@ -458,7 +458,7 @@ printf ("\n");
 
 int main (void)
 {
-	unsigned int fd;
+	int fd;
 	int rec_idx;
 	int end_rec;
 	int record_count = 1;
