@@ -1463,36 +1463,31 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 static void message_handler_req_lib_cpg_membership (void *conn,
 						    const void *message)
 {
-	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
-	cs_error_t error = CPG_ERR_NOT_EXIST;
-	coroipc_response_header_t res;
+	struct req_lib_cpg_membership_get *req_lib_cpg_membership_get =
+		(struct req_lib_cpg_membership_get *)message;
+	struct res_lib_cpg_membership_get res_lib_cpg_membership_get;
+	struct list_head *iter;
+	int member_count = 0;
 
-	switch (cpd->cpd_state) {
-	case CPD_STATE_UNJOINED:
-		error = CPG_ERR_NOT_EXIST;
-		break;
-	case CPD_STATE_LEAVE_STARTED:
-		error = CPG_ERR_NOT_EXIST;
-		break;
-	case CPD_STATE_JOIN_STARTED:
-		error = CPG_ERR_BUSY;
-		break;
-	case CPD_STATE_JOIN_COMPLETED:
-		error = CPG_OK;
-		break;
+	res_lib_cpg_membership_get.header.id = MESSAGE_RES_CPG_MEMBERSHIP;
+	res_lib_cpg_membership_get.header.error = CPG_OK;
+	res_lib_cpg_membership_get.header.size =
+		sizeof (struct req_lib_cpg_membership_get);
+
+	for (iter = process_info_list_head.next;
+		iter != &process_info_list_head; iter = iter->next) {
+
+		struct process_info *pi = list_entry (iter, struct process_info, list);
+		if (mar_name_compare (&pi->group, &req_lib_cpg_membership_get->group_name) == 0) {
+			res_lib_cpg_membership_get.member_list[member_count].nodeid = pi->nodeid;
+			res_lib_cpg_membership_get.member_list[member_count].pid = pi->pid;
+			member_count += 1;
+		}
 	}
+	res_lib_cpg_membership_get.member_count = member_count;
 
-	res.size = sizeof (res);
-	res.id = MESSAGE_RES_CPG_MEMBERSHIP;
-	res.error = error;
-	api->ipc_response_send (conn, &res, sizeof(res));
-		return;
-
-	if (error == CPG_OK) {
-		notify_lib_joinlist (&cpd->group_name, conn, 0, NULL, 0, NULL,
-			MESSAGE_RES_CPG_MEMBERSHIP);
-	}
-
+	api->ipc_response_send (conn, &res_lib_cpg_membership_get,
+		sizeof (res_lib_cpg_membership_get));
 }
 
 static void message_handler_req_lib_cpg_local_get (void *conn,
