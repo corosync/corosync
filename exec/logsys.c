@@ -1025,7 +1025,7 @@ int _logsys_system_setup(
 	return (0);
 }
 
-unsigned int _logsys_subsys_create (const char *subsys)
+int _logsys_subsys_create (const char *subsys)
 {
 	int i;
 
@@ -1353,7 +1353,7 @@ void logsys_fork_completed (void)
 	_logsys_wthread_create ();
 }
 
-unsigned int logsys_config_mode_set (const char *subsys, unsigned int mode)
+int logsys_config_mode_set (const char *subsys, unsigned int mode)
 {
 	int i;
 
@@ -1442,7 +1442,7 @@ char *logsys_format_get (void)
 	return format_buffer;
 }
 
-unsigned int logsys_config_syslog_facility_set (
+int logsys_config_syslog_facility_set (
 	const char *subsys,
 	unsigned int facility)
 {
@@ -1470,7 +1470,7 @@ unsigned int logsys_config_syslog_facility_set (
 	return i;
 }
 
-unsigned int logsys_config_syslog_priority_set (
+int logsys_config_syslog_priority_set (
 	const char *subsys,
 	unsigned int priority)
 {
@@ -1494,7 +1494,7 @@ unsigned int logsys_config_syslog_priority_set (
 	return i;
 }
 
-unsigned int logsys_config_logfile_priority_set (
+int logsys_config_logfile_priority_set (
 	const char *subsys,
 	unsigned int priority)
 {
@@ -1518,7 +1518,7 @@ unsigned int logsys_config_logfile_priority_set (
 	return i;
 }
 
-unsigned int logsys_config_debug_set (
+int logsys_config_debug_set (
 	const char *subsys,
 	unsigned int debug)
 {

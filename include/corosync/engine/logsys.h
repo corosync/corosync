@@ -167,7 +167,7 @@ extern int _logsys_system_setup(
 extern int _logsys_config_subsys_get (
 	const char *subsys);
 
-extern unsigned int _logsys_subsys_create (const char *subsys);
+extern int _logsys_subsys_create (const char *subsys);
 
 extern int _logsys_rec_init (unsigned int size);
 
@@ -237,15 +237,15 @@ extern char *logsys_format_get (void);
  *
  * Pass a NULL subsystem to change them all
  */
-extern unsigned int logsys_config_syslog_facility_set (
+extern int logsys_config_syslog_facility_set (
 	const char *subsys,
 	unsigned int facility);
 
-extern unsigned int logsys_config_syslog_priority_set (
+extern int logsys_config_syslog_priority_set (
 	const char *subsys,
 	unsigned int priority);
 
-extern unsigned int logsys_config_mode_set (
+extern int logsys_config_mode_set (
 	const char *subsys,
 	unsigned int mode);
 
@@ -262,7 +262,7 @@ extern int logsys_config_file_set (
 	const char **error_string,
 	const char *file);
 
-extern unsigned int logsys_config_logfile_priority_set (
+extern int logsys_config_logfile_priority_set (
 	const char *subsys,
 	unsigned int priority);
 
@@ -271,7 +271,7 @@ extern unsigned int logsys_config_logfile_priority_set (
  * everything is sent everywhere. priority values
  * for file and syslog are not overwritten.
  */
-extern unsigned int logsys_config_debug_set (
+extern int logsys_config_debug_set (
 	const char *subsys,
 	unsigned int value);
 
