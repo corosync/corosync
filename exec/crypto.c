@@ -1254,7 +1254,7 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
                              void (*callback)(void))
 {
 	int fd;
-	unsigned long rb;
+	unsigned long rb = 0;
 
 	fd = open ("/dev/urandom", O_RDONLY);
 
