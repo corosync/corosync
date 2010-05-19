@@ -729,7 +729,7 @@ static void log_printf_to_logs_wthread (
 	sem_post (&logsys_print_finished);
 }
 
-static void *logsys_worker_thread (void *data) __attribute__((__noreturn__));
+static void *logsys_worker_thread (void *data) __attribute__((noreturn));
 static void *logsys_worker_thread (void *data)
 {
 	struct record *rec;

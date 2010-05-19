@@ -917,6 +917,8 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 static int ipc_subsys_id = -1;
 
 
+static void ipc_fatal_error(const char *error_msg) __attribute__((noreturn));
+
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (
 		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_ERROR,
