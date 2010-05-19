@@ -571,13 +571,12 @@ static void corosync_totem_stats_updater (void *data)
 		mtt_rx_token = (total_mtt_rx_token / token_count);
 		avg_backlog_calc = (total_backlog_calc / token_count);
 		avg_token_holdtime = (total_token_holdtime / token_count);
-
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"mtt_rx_token", strlen("mtt_rx_token"),
 			&mtt_rx_token, sizeof (mtt_rx_token));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"avg_token_workload", strlen("avg_token_workload"),
-			&avg_token_holdtime, sizeof (avg_backlog_calc));
+			&avg_token_holdtime, sizeof (avg_token_holdtime));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"avg_backlog_calc", strlen("avg_backlog_calc"),
 			&avg_backlog_calc, sizeof (avg_backlog_calc));
@@ -693,8 +692,8 @@ static void corosync_totem_stats_init (void)
 			"avg_token_workload", &zero_32,
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"avg_backlog_calc", &zero_64,
-			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+			"avg_backlog_calc", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"rx_msg_dropped", &zero_64,
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);

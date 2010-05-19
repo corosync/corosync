@@ -736,6 +736,8 @@ static void *logsys_worker_thread (void *data)
 	int dropped = 0;
 	int res;
 
+	memset (buf, 0, sizeof (buf));
+
 	/*
 	 * Signal wthread_create that the initialization process may continue
 	 */
