@@ -1258,9 +1258,10 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
 
 	fd = open ("/dev/urandom", O_RDONLY);
 
-	rb = (unsigned long)read (fd, buf, len);
-
-	close (fd);
+	if (fd >= 0) {
+		rb = (unsigned long)read (fd, buf, len);
+		close (fd);
+	}
 
 	return (rb);
 }
