@@ -790,8 +790,8 @@ int totem_config_keyread (
 
 	return (0);
 
-	*error_string = error_string_response;
 key_error:
+	*error_string = error_string_response;
 	return (-1);
 
 }
