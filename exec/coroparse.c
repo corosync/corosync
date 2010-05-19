@@ -188,7 +188,7 @@ static int parse_section(FILE *fp,
 				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
 		}
 
-		if ((loc = strchr_rs (line, '}'))) {
+		if (strchr_rs (line, '}')) {
 			return 0;
 		}
 	}
