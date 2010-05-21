@@ -50,7 +50,7 @@ rm -f $RPM_DIR/corosync*.rpm
 echo "running mock init ($TARGET)"
 $MOCK -r $TARGET --init 
 echo "running mock rebuild ($SRPM)"
-$MOCK -r $TARGET --rebuild $SRPM --with testagents
+$MOCK -v -r $TARGET --rebuild $SRPM --with testagents
 
 if [ -z "$TEST_NODES" ]
 then
