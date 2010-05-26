@@ -1599,7 +1599,7 @@ int logsys_thread_priority_set (
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	if (wthread_active == 0) {
 		logsys_sched_policy = policy;
-		memcpy(&logsys_sched_param, &param, sizeof(struct sched_param));
+		memcpy(&logsys_sched_param, param, sizeof(struct sched_param));
 		logsys_sched_param_queued = 1;
 	} else {
 		res = pthread_setschedparam (logsys_thread_id, policy, param);
