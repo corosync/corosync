@@ -45,6 +45,7 @@ dist_man_MANS = \
 	corosync-cpgtool.8 \
 	corosync-fplay.8 \
 	corosync-pload.8 \
+	corosync-quorumtool.8 \
 	corosync_overview.8 \
 	cpg_overview.8 \
 	evs_overview.8 \
