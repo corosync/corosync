@@ -102,15 +102,18 @@ a private key must be generated and shared to all processors.
 
 First generate the key on one of the nodes:
 
-unix# ais-keygen
-corosync authentication key generator.
-.PP
+unix# corosync-keygen
+.br
+Corosync Cluster Engine Authentication key generator.
+.br
 Gathering 1024 bits for key from /dev/random.
-.PP
-Writing corosync key to /etc/ais/authkey.
+.br
+Press keys on your keyboard to generate entropy.
+.br
+Writing corosync key to /etc/corosync/authkey.
 .PP
 
-After this operation, a private key will be in the file /etc/ais/authkey.
+After this operation, a private key will be in the file /etc/corosync/authkey.
 This private key must be copied to every processor in the cluster.  If the
 private key isn't the same for every node, those nodes with nonmatching private
 keys will not be able to join the same configuration.
@@ -118,7 +121,7 @@ keys will not be able to join the same configuration.
 Copy the key to some security transportable storage or use ssh to transmit the
 key from node to node.  Then install the key with the command:
 
-unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
+unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/corosync/authkey
 
 If a message "Invalid digest" appears from the corosync executive, the keys
 are not consistent between processors.
@@ -127,7 +130,7 @@ Finally run the corosync executive.  If corosync is packaged from a distro, it
 may be set to start on system start.  It may also be turned off by default in
 which case the init script for corosync must be enabled.
 
-After running aisexec, a list of all processors IP addresses running the ais
+After running aisexec, a list of all processors IP addresses running the corosync
 executive and configured on the same multicast address will appear.  If they
 don't appear, there may be a problem with multicast in the distro or hardware.
 If this happens, participation in the corosync mailing list may help solve the
@@ -204,14 +207,14 @@ If these environment variables are not set, defaults will be used.
 COROSYNC_MAIN_CONFIG_FILE
 This specifies the fully qualified path to the corosync configuration file.
 
-The default is /etc/ais/corosync.conf.
+The default is /etc/corosync/corosync.conf.
 
 .TP
 COROSYNC_AMF_CONFIG_FILE
 This specifies the fully qualified path to the corosync Availability Management
 Framework configuration file.
 
-The default is /etc/ais/amf.conf.
+The default is /etc/corosync/amf.conf.
 
 .TP
 COROSYNC_DEFAULT_CONFIG_IFACE
@@ -226,7 +229,7 @@ COROSYNC_TOTEM_AUTHKEY_FILE
 This specifies the fully qualified path to the shared key used to
 authenticate and encrypt data used within the Totem protocol.
 
-The default is /etc/ais/authkey.
+The default is /etc/corosync/authkey.
 
 .SH SECURITY
 The corosync executive optionally encrypts all messages sent over the network
@@ -246,7 +249,7 @@ automated fashion to determine the shared key.  No such automated attack has
 been published as of yet.  In this scenario, the cluster is likely already
 compromised to allow the long-term capture of transmitted data.
 
-For security reasons, the corosync executive binary aisexec should NEVER
+For security reasons, the corosync executive binary should NEVER
 be setuid or setgid in the filesystem.
 
 .PP
@@ -264,5 +267,6 @@ deployment..
 
 .SH "SEE ALSO"
 .BR corosync.conf (5),
+.BR corosync-keygen (8),
 .BR evs_overview (8)
 .PP
