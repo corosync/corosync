@@ -250,7 +250,7 @@ static void evs_confchg_fn (
 	 */
 	for (list = confchg_notify.next; list != &confchg_notify; list = list->next) {
 		evs_pd = list_entry (list, struct evs_pd, list);
-		api->ipc_response_send (evs_pd->conn,
+		api->ipc_dispatch_send (evs_pd->conn,
 			&res_evs_confchg_callback,
 			sizeof (res_evs_confchg_callback));
 	}
