@@ -339,11 +339,16 @@ class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
         self.CM.start_cpg = False
 
     def config_valid(self, config):
+        if config.has_key('totem/secauth'):
+            if config['totem/secauth'] is 'on':
+                return False
+            else:
+                return True
         if config.has_key('totem/rrp_mode'):
             return False
         else:
             return True
-       
+
     def failure_action(self):
         self.CM.log("2: isolating node " + self.wobbly)
         self.CM.isolate_node(self.wobbly)
