@@ -298,6 +298,8 @@ enum memb_state {
 struct totemsrp_instance {
 	int iface_changes;
 
+	int failed_to_recv;
+
 	/*
 	 * Flow control mcasts and remcasts on last and current orf_token
 	 */
@@ -3500,19 +3502,16 @@ printf ("token seq %d\n", token->seq);
 		}
 
 		if (instance->my_aru_count > instance->totem_config->fail_to_recv_const &&
-			token->aru_addr != instance->my_id.addr[0].nodeid) {
+			token->aru_addr == instance->my_id.addr[0].nodeid) {
 
 			log_printf (instance->totemsrp_log_level_error,
 				"FAILED TO RECEIVE\n");
-// TODO if we fail to receive, it may be possible to end with a gather
-// state of proc == failed = 0 entries
-/* THIS IS A BIG TODO
-			memb_set_merge (&token->aru_addr, 1,
+
+			instance->failed_to_recv = 1;
+
+			memb_set_merge (&instance->my_id, 1,
 				instance->my_failed_list,
 				&instance->my_failed_list_entries);
-*/
-
-			ring_state_restore (instance);
 
 			memb_state_gather_enter (instance, 6);
 		} else {
@@ -3754,10 +3753,7 @@ static int message_handler_mcast (
 
 #ifdef TEST_DROP_MCAST_PERCENTAGE
 	if (random()%100 < TEST_DROP_MCAST_PERCENTAGE) {
-		printf ("dropping message %d\n", mcast_header.seq);
 		return (0);
-	} else {
-		printf ("accepting message %d\n", mcast_header.seq);
 	}
 #endif
 
@@ -3936,6 +3932,18 @@ static int memb_join_process (
 
 		memb_consensus_set (instance, &memb_join->system_from);
 
+		if (memb_consensus_agreed (instance) && instance->failed_to_recv == 1) {
+				instance->failed_to_recv = 0;
+				srp_addr_copy (&instance->my_proc_list[0],
+					&instance->my_id);
+				instance->my_proc_list_entries = 1;
+				instance->my_failed_list_entries = 0;
+
+				memb_state_commit_token_create (instance);
+
+				memb_state_commit_enter (instance);
+				return (0);
+		}
 		if (memb_consensus_agreed (instance) &&
 			memb_lowest_in_config (instance)) {
 
