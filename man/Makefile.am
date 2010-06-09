@@ -42,6 +42,7 @@ dist_man_MANS = \
 	corosync-objctl.8 \
 	corosync-keygen.8 \
 	corosync-cfgtool.8 \
+	corosync-cpgtool.8 \
 	corosync_overview.8 \
 	cpg_overview.8 \
 	evs_overview.8 \
