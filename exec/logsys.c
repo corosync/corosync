@@ -661,7 +661,18 @@ static void *logsys_worker_thread (void *data)
 	sem_post (&logsys_thread_start);
 	for (;;) {
 		dropped = 0;
-		sem_wait (&logsys_print_finished);
+retry_sem_wait:
+		res = sem_wait (&logsys_print_finished);
+		if (res == -1 && errno == EINTR) {
+			goto retry_sem_wait;
+		} else
+		if (res == -1) {
+			/*
+  			 * This case shouldn't happen
+  			 */
+			pthread_exit (NULL);
+		}
+		
 
 		logsys_wthread_lock();
 		if (wthread_should_exit) {
