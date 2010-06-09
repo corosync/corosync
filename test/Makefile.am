@@ -85,7 +85,7 @@ logsys_t1_LDADD		= -llogsys
 logsys_t1_LDFLAGS	= -L../exec
 logsys_t2_LDADD		= -llogsys
 logsys_t2_LDFLAGS	= -L../exec
-testsam_LDADD		= -lsam
+testsam_LDADD           = -lsam -lconfdb -lquorum -lcoroipcc
 testsam_LDFLAGS		= -L../lib
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
