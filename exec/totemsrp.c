@@ -3425,9 +3425,6 @@ static int message_handler_orf_token (
 		 */
 
 	case MEMB_STATE_RECOVERY:
-		last_aru = instance->my_last_aru;
-		instance->my_last_aru = token->aru;
-
 		/*
 		 * Discard tokens from another configuration
 		 */
@@ -3468,6 +3465,8 @@ static int message_handler_orf_token (
 
 			return (0); /* discard token */
 		}
+		last_aru = instance->my_last_aru;
+		instance->my_last_aru = token->aru;
 
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
