@@ -221,33 +221,47 @@ static uint32_t circular_memory_map (void **buf, size_t bytes)
 {
 	void *addr_orig;
 	void *addr;
+	int fd;
+	int res;
+	const char *file = "fdata-XXXXXX";
+	char path[128];
 
-	addr_orig = mmap (*buf, bytes << 1, PROT_NONE,
+	sprintf (path, "/dev/shm/%s", file);
+
+	fd = mkstemp (path);
+	if (fd == -1) {
+		sprintf (path, LOCALSTATEDIR "/run/%s", file);
+		fd = mkstemp (path);
+		if (fd == -1) {
+			return (-1);
+		}
+	}
+
+	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		close (fd);
+	}
+
+	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-
 	if (addr_orig == MAP_FAILED) {
-printf ("a\n");
 		return (-1);
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
-		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+		MAP_SHARED | MAP_FIXED, fd, 0);
 
 	if (addr != addr_orig) {
-printf ("b %d\n", errno);
-exit (1);
 		return (-1);
 	}
-#ifdef COROSYNC_BSD
-	madvise(addr_orig, bytes, MADV_NOSYNC);
-#endif
+	#ifdef COROSYNC_BSD
+		madvise(addr_orig, bytes, MADV_NOSYNC);
+	#endif
 
 	addr = mmap (((char *)addr_orig) + bytes,
-                  bytes, PROT_READ | PROT_WRITE,
-                  MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+		  bytes, PROT_READ | PROT_WRITE,
+		  MAP_SHARED | MAP_FIXED, fd, 0);
 	if ((char *)addr != (char *)((char *)addr_orig + bytes)) {
-printf ("c %d\n", errno);
-exit (1);
 		return (-1);
 	}
 #ifdef COROSYNC_BSD
@@ -1018,7 +1032,7 @@ int _logsys_rec_init (unsigned int fltsize)
 		fltsize = 64000;
 	}
 
-	flt_real_size = ROUNDUP(fltsize, sysconf(_SC_PAGESIZE));
+	flt_real_size = ROUNDUP(fltsize, sysconf(_SC_PAGESIZE)) * 4;
 
 	circular_memory_map ((void **)&flt_data, flt_real_size);
 
@@ -1028,6 +1042,7 @@ int _logsys_rec_init (unsigned int fltsize)
 	 */
 
 	flt_data_size = flt_real_size / sizeof (uint32_t);
+
 	/*
 	 * First record starts at zero
 	 * Last record ends at zero
@@ -1525,6 +1540,9 @@ int logsys_thread_priority_set (
 
 {
 	int res = 0;
+	if (param == NULL) {
+		return (0);
+	}
 
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
 	if (wthread_active == 0) {
@@ -1546,32 +1564,45 @@ int logsys_thread_priority_set (
 int logsys_log_rec_store (const char *filename)
 {
 	int fd;
-	ssize_t written_size;
-	size_t size_to_write = (flt_data_size + 2) * sizeof (unsigned int);
+	ssize_t written_size = 0;
+	size_t this_write_size;
 
 	fd = open (filename, O_CREAT|O_RDWR, 0700);
 	if (fd < 0) {
 		return (-1);
 	}
 
-	written_size = write (fd, &flt_data_size, sizeof(unsigned int));
-	if ((written_size < 0) || (written_size != sizeof(unsigned int))) {
-		close (fd);
-		return (-1);
+	this_write_size = write (fd, &flt_data_size, sizeof(uint32_t));
+	if (this_write_size != sizeof(unsigned int)) {
+		goto error_exit;
 	}
+	written_size += this_write_size;
 
-	written_size = write (fd, flt_data, flt_data_size * sizeof (unsigned int));
-	written_size += write (fd, &flt_head, sizeof (uint32_t));
-	written_size += write (fd, &flt_tail, sizeof (uint32_t));
-	if (close (fd) != 0)
-		return (-1);
-	if (written_size < 0) {
-		return (-1);
-	} else if ((size_t)written_size != size_to_write) {
-		return (-1);
+	this_write_size = write (fd, flt_data, flt_data_size * sizeof (uint32_t));
+	if (this_write_size != (flt_data_size * sizeof(uint32_t))) {
+		goto error_exit;
 	}
+	written_size += this_write_size;
 
+	this_write_size = write (fd, &flt_head, sizeof (uint32_t));
+	if (this_write_size != (sizeof(uint32_t))) {
+		goto error_exit;
+	}
+	written_size += this_write_size;
+	this_write_size = write (fd, &flt_tail, sizeof (uint32_t));
+	if (this_write_size != (sizeof(uint32_t))) {
+		goto error_exit;
+	}
+	written_size += this_write_size;
+	if (written_size != ((flt_data_size + 3) * sizeof (uint32_t))) { 
+		goto error_exit;
+	}
+	
 	return (0);
+
+error_exit:
+	close (fd);
+	return (-1);
 }
 
 void logsys_atexit (void)
