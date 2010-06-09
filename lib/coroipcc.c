@@ -469,34 +469,48 @@ retry_semop:
 	return (CS_OK);
 }
 
-static cs_error_t
-reply_receive (
+inline static cs_error_t
+ipc_sem_wait (
 	struct ipc_instance *ipc_instance,
-	void *res_msg,
-	size_t res_len)
+	int sem_num)
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
 #else
 	struct timespec timeout;
 	struct pollfd pfd;
+	sem_t *sem;
 #endif
-	coroipc_response_header_t *response_header;
 	int res;
 
 #if _POSIX_THREAD_PROCESS_SHARED > 0
+	switch (sem_num) {
+	case 0:
+		sem = &ipc_instance->control_buffer->sem0;
+		break;
+	case 1:
+		sem = &ipc_instance->control_buffer->sem1;
+		break;
+	case 2:
+		sem = &ipc_instance->control_buffer->sem2;
+		break;
+	}
+
 retry_semwait:
 	timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
 	timeout.tv_nsec = 0;
 
-	res = sem_timedwait (&ipc_instance->control_buffer->sem1, &timeout);
+	res = sem_timedwait (sem, &timeout);
 	if (res == -1 && errno == ETIMEDOUT) {
 		pfd.fd = ipc_instance->fd;
 		pfd.events = 0;
 
 		res = poll (&pfd, 1, 0);
 
-		if (res == -1 && errno != EINTR) {
+		if (res == -1 && errno == EINTR) {
+			return (CS_ERR_TRY_AGAIN);
+		} else
+		if (res == -1) {
 			return (CS_ERR_LIBRARY);
 		}
 
@@ -507,17 +521,19 @@ retry_semwait:
 		}
 
 		goto retry_semwait;
-	}
-
+	} else
 	if (res == -1 && errno == EINTR) {
-		goto retry_semwait;
+		return (CS_ERR_TRY_AGAIN);
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
 	}
 #else
 	/*
-	 * Wait for semaphore #1 indicating a new message from server
-	 * to client in the response queue
+	 * Wait for semaphore indicating a new message from server
+	 * to client in queue
 	 */
-	sop.sem_num = 1;
+	sop.sem_num = sem_num;
 	sop.sem_op = -1;
 	sop.sem_flg = 0;
 
@@ -534,6 +550,21 @@ retry_semop:
 		return (CS_ERR_LIBRARY);
 	}
 #endif
+	return (CS_OK);
+}
+
+static cs_error_t
+reply_receive (
+	struct ipc_instance *ipc_instance,
+	void *res_msg,
+	size_t res_len)
+{
+	coroipc_response_header_t *response_header;
+	cs_error_t err;
+
+	if ((err = ipc_sem_wait (ipc_instance, 1)) != CS_OK) {
+		return (err);
+	}
 
 	response_header = (coroipc_response_header_t *)ipc_instance->response_buffer;
 	if (response_header->error == CS_ERR_TRY_AGAIN) {
@@ -549,61 +580,11 @@ reply_receive_in_buf (
 	struct ipc_instance *ipc_instance,
 	void **res_msg)
 {
-#if _POSIX_THREAD_PROCESS_SHARED < 1
-	struct sembuf sop;
-#else
-	struct timespec timeout;
-	struct pollfd pfd;
-#endif
-	int res;
+	cs_error_t err;
 
-#if _POSIX_THREAD_PROCESS_SHARED > 0
-retry_semwait:
-	timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
-	timeout.tv_nsec = 0;
-
-	res = sem_timedwait (&ipc_instance->control_buffer->sem1, &timeout);
-	if (res == -1 && errno == ETIMEDOUT) {
-		pfd.fd = ipc_instance->fd;
-		pfd.events = 0;
-
-		res = poll (&pfd, 1, 0);
-
-		if (res == -1 && errno != EINTR) {
-			return (CS_ERR_LIBRARY);
-		}
-		if (pfd.revents == POLLERR || pfd.revents == POLLHUP) {
-			return (CS_ERR_LIBRARY);
-		}
-
-		goto retry_semwait;
+	if ((err = ipc_sem_wait (ipc_instance, 1)) != CS_OK) {
+		return (err);
 	}
-
-	if (res == -1 && errno == EINTR) {
-		goto retry_semwait;
-	}
-#else
-	/*
-	 * Wait for semaphore #1 indicating a new message from server
-	 * to client in the response queue
-	 */
-	sop.sem_num = 1;
-	sop.sem_op = -1;
-	sop.sem_flg = 0;
-
-retry_semop:
-	res = semop (ipc_instance->semid, &sop, 1);
-	if (res == -1 && errno == EINTR) {
-		return (CS_ERR_TRY_AGAIN);
-	} else
-	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_instance);
-		goto retry_semop;
-	} else
-	if (res == -1) {
-		return (CS_ERR_LIBRARY);
-	}
-#endif
 
 	*res_msg = (char *)ipc_instance->response_buffer;
 	return (CS_OK);
@@ -987,12 +968,9 @@ error_put:
 cs_error_t
 coroipcc_dispatch_put (hdb_handle_t handle)
 {
-#if _POSIX_THREAD_PROCESS_SHARED < 1
-	struct sembuf sop;
-#endif
 	coroipc_response_header_t *header;
 	struct ipc_instance *ipc_instance;
-	int res;
+	cs_error_t res;
 	char *addr;
 	unsigned int read_idx;
 
@@ -1000,31 +978,10 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 	if (res != CS_OK) {
 		return (res);
 	}
-#if _POSIX_THREAD_PROCESS_SHARED > 0
-retry_semwait:
-	res = sem_wait (&ipc_instance->control_buffer->sem2);
-	if (res == -1 && errno == EINTR) {
-		goto retry_semwait;
-	}
-#else
-	sop.sem_num = 2;
-	sop.sem_op = -1;
-	sop.sem_flg = 0;
-retry_semop:
-	res = semop (ipc_instance->semid, &sop, 1);
-	if (res == -1 && errno == EINTR) {
-		res = CS_ERR_TRY_AGAIN;
-		goto error_exit;
-	} else
-	if (res == -1 && errno == EACCES) {
-		priv_change_send (ipc_instance);
-		goto retry_semop;
-	} else
-	if (res == -1) {
-		res = CS_ERR_LIBRARY;
+
+	if ((res = ipc_sem_wait (ipc_instance, 2)) != CS_OK) {
 		goto error_exit;
 	}
-#endif
 
 	addr = ipc_instance->dispatch_buffer;
 
@@ -1037,9 +994,7 @@ retry_semop:
 	 */
 	res = CS_OK;
 	
-#if _POSIX_THREAD_PROCESS_SHARED < 1
 error_exit:
-#endif
 	hdb_handle_put (&ipc_hdb, handle);
 	hdb_handle_put (&ipc_hdb, handle);
 
