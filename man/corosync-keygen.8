@@ -1,0 +1,83 @@
+.\"/*
+.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Angus Salkeld <asalkeld@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-KEYGEN 8 2010-05-30
+.SH NAME
+corosync-keygen \- Generate an authentication key for Corosync.
+.SH SYNOPSIS
+.B "corosync-keygen"
+.SH DESCRIPTION
+
+If you want to configure corosync to use cryptographic techniques to ensure authenticity
+.br
+and privacy of the messages, you will need to generate a private key.
+.PP
+.B corosync-keygen
+creates this key and writes it to /etc/corosync/authkey.
+.PP
+This private key must be copied to every processor in the cluster.  If the
+.br
+private key isn't the same for every node, those nodes with nonmatching private
+.br
+keys will not be able to join the same configuration.
+.PP
+Copy the key to some security transportable storage or use ssh to transmit the
+.br
+key from node to node.  Then install the key with the command:
+.PP
+unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/corosync/authkey
+.PP
+If a message "Invalid digest" appears from the corosync executive, the keys
+.br
+are not consistent between processors.
+.PP
+.B Note: corosync-keygen
+will ask for user input to assist in generating entropy.
+.SH EXAMPLES
+.TP
+Generate the key.
+.PP
+$ corosync-keygen
+.br
+Corosync Cluster Engine Authentication key generator.
+.br
+Gathering 1024 bits for key from /dev/random.
+.br
+Press keys on your keyboard to generate entropy.
+.br
+.SH SEE ALSO
+.BR corosync_overview (8),
+.BR corosync.conf (5),
+.SH AUTHOR
+Angus Salkeld
+.PP
