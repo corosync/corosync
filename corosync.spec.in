@@ -38,6 +38,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %prep
 %setup -q -n %{name}-%{version}
 
+%build
 %if %{buildtrunk}
 ./autogen.sh
 %endif
@@ -54,7 +55,6 @@ export rdmacm_LIBS=-lrdmacm \
 	--enable-rdma \
 	--with-initddir=%{_initrddir}
 
-%build
 make %{_smp_mflags}
 
 %install
@@ -76,7 +76,9 @@ This package contains the Corosync Cluster Engine Executive, several default
 APIs and libraries, default configuration files, and an init script.
 
 %post
-/sbin/chkconfig --add corosync || :
+if [ $1 -eq 1 ]; then
+	/sbin/chkconfig --add corosync || :
+fi
 
 %preun
 if [ $1 -eq 0 ]; then
