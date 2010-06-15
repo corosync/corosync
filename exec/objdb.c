@@ -1539,8 +1539,10 @@ static int object_key_iter(hdb_handle_t parent_object_handle,
 	char *str;
 	ret = object_key_iter_typed (parent_object_handle,
 		(char**)key_name, value, value_len, &t);
-	str = *key_name;
-	*key_len = strlen(str);
+	if (!ret) {
+		str = *key_name;
+		*key_len = strlen(str);
+	}
 	return ret;
 }
 
