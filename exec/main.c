@@ -495,6 +495,9 @@ static void corosync_tty_detach (void)
 	fd = open("/dev/null", O_RDWR);
 	if (fd >= 0) {
 		/* dup2 to 0 / 1 / 2 (stdin / stdout / stderr) */
+		close (STDIN_FILENO);
+		close (STDOUT_FILENO);
+		close (STDERR_FILENO);
 		dup2(fd, STDIN_FILENO);  /* 0 */
 		dup2(fd, STDOUT_FILENO); /* 1 */
 		dup2(fd, STDERR_FILENO); /* 2 */
