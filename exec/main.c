@@ -166,6 +166,7 @@ static void unlink_all_completed (void)
 	 * here
 	 */
 	serialize_unlock ();
+	api->timer_delete (corosync_stats_timer_handle);
 	poll_stop (corosync_poll_handle);
 	totempg_finalize ();
 
