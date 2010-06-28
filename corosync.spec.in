@@ -61,6 +61,7 @@ make %{_smp_mflags}
 rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot}
+mkdir -p -m 0700 %{buildroot}/%{_localstatedir}/log/cluster
 
 ## tree fixup
 # drop static libs
@@ -116,6 +117,7 @@ fi
 %{_libexecdir}/lcrso/vsf_quorum.lcrso
 %{_libexecdir}/lcrso/vsf_ykd.lcrso
 %dir %{_localstatedir}/lib/corosync
+%dir %{_localstatedir}/log/cluster
 %{_mandir}/man8/corosync_overview.8*
 %{_mandir}/man8/corosync.8*
 %{_mandir}/man8/corosync-blackbox.8*
