@@ -214,6 +214,8 @@ static DECLARE_LIST_INIT(logsys_print_finished_records);
 
 #define FDMAX_ARGS	64
 
+#define CIRCULAR_BUFFER_WRITE_SIZE	64
+
 /* forward declarations */
 static void logsys_close_logfile(int subsysid);
 
@@ -224,35 +226,58 @@ static uint32_t circular_memory_map (void **buf, size_t bytes)
 	int fd;
 	int res;
 	const char *file = "fdata-XXXXXX";
-	char path[128];
+	char path[PATH_MAX];
+	char buffer[CIRCULAR_BUFFER_WRITE_SIZE];
+	int i;
+	int written;
+	int error_return = 0;
 
-	sprintf (path, "/dev/shm/%s", file);
+	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
 	fd = mkstemp (path);
 	if (fd == -1) {
-		sprintf (path, LOCALSTATEDIR "/run/%s", file);
+		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
 		fd = mkstemp (path);
 		if (fd == -1) {
-			return (-1);
+			error_return = -1;
+			goto error_exit;
 		}
 	}
 
-	res = ftruncate (fd, bytes);
+	/*
+	 * ftruncate doesn't return ENOSPC
+	 * have to use write to determine if shared memory is actually available
+	 */
+	res = ftruncate (fd, 0);
 	if (res == -1) {
-		close (fd);
+		error_return = -1;
+		goto unlink_exit;
 	}
-
+	memset (buffer, 0, sizeof (buffer));
+	for (i = 0; i < (bytes / CIRCULAR_BUFFER_WRITE_SIZE); i++) {
+retry_write:
+		written = write (fd, buffer, CIRCULAR_BUFFER_WRITE_SIZE);
+		if (written == -1 && errno == EINTR) {
+			goto retry_write;
+		}
+		if (written != 64) {
+			error_return = -1;
+			goto unlink_exit;
+		}
+	}
+	
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	if (addr_orig == MAP_FAILED) {
-		return (-1);
+		error_return = -1;
+		goto unlink_exit;
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_SHARED | MAP_FIXED, fd, 0);
-
 	if (addr != addr_orig) {
-		return (-1);
+		error_return = -1;
+		goto mmap_exit;
 	}
 	#ifdef COROSYNC_BSD
 		madvise(addr_orig, bytes, MADV_NOSYNC);
@@ -262,14 +287,24 @@ static uint32_t circular_memory_map (void **buf, size_t bytes)
 		  bytes, PROT_READ | PROT_WRITE,
 		  MAP_SHARED | MAP_FIXED, fd, 0);
 	if ((char *)addr != (char *)((char *)addr_orig + bytes)) {
-		return (-1);
+		error_return = -1;
+		goto mmap_exit;
 	}
 #ifdef COROSYNC_BSD
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
 
 	*buf = addr_orig;
-	return (0);
+	error_return = 0;
+	goto unlink_exit;
+
+mmap_exit:
+	munmap (addr_orig, bytes << 1);
+unlink_exit:
+	unlink (path);
+	close (fd);
+error_exit:
+	return (error_return);
 }
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
@@ -1011,6 +1046,7 @@ int _logsys_wthread_create (void)
 int _logsys_rec_init (unsigned int fltsize)
 {
 	size_t flt_real_size;
+	int res;
 
 	sem_init (&logsys_thread_start, 0, 0);
 
@@ -1034,7 +1070,16 @@ int _logsys_rec_init (unsigned int fltsize)
 
 	flt_real_size = ROUNDUP(fltsize, sysconf(_SC_PAGESIZE)) * 4;
 
-	circular_memory_map ((void **)&flt_data, flt_real_size);
+	res = circular_memory_map ((void **)&flt_data, flt_real_size);
+	if (res == -1) {
+		sem_destroy (&logsys_thread_start);
+		sem_destroy (&logsys_print_finished);
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+		pthread_spin_destroy (&logsys_flt_spinlock);
+		pthread_spin_destroy (&logsys_wthread_spinlock);
+#endif
+		return (-1);
+	}
 
 	memset (flt_data, 0, flt_real_size * 2);
 	/*
