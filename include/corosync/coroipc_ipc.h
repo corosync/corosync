@@ -84,10 +84,10 @@ enum res_init_types {
 typedef struct {
 	int service __attribute__((aligned(8)));
 	unsigned long long semkey __attribute__((aligned(8)));
-	char control_file[64] __attribute__((aligned(8)));
-	char request_file[64] __attribute__((aligned(8)));
-	char response_file[64] __attribute__((aligned(8)));
-	char dispatch_file[64] __attribute__((aligned(8)));
+	char control_file[PATH_MAX] __attribute__((aligned(8)));
+	char request_file[PATH_MAX] __attribute__((aligned(8)));
+	char response_file[PATH_MAX] __attribute__((aligned(8)));
+	char dispatch_file[PATH_MAX] __attribute__((aligned(8)));
 	size_t control_size __attribute__((aligned(8)));
 	size_t request_size __attribute__((aligned(8)));
 	size_t response_size __attribute__((aligned(8)));

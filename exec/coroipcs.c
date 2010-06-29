@@ -38,6 +38,7 @@
 #define _GNU_SOURCE 1
 #endif
 #include <pthread.h>
+#include <limits.h>
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>

@@ -648,10 +648,10 @@ coroipcc_service_connect (
 	int sys_res;
 	mar_req_setup_t req_setup;
 	mar_res_setup_t res_setup;
-	char control_map_path[128];
-	char request_map_path[128];
-	char response_map_path[128];
-	char dispatch_map_path[128];
+	char control_map_path[PATH_MAX];
+	char request_map_path[PATH_MAX];
+	char response_map_path[PATH_MAX];
+	char dispatch_map_path[PATH_MAX];
 
 	res = hdb_error_to_cs (hdb_handle_create (&ipc_hdb,
 		sizeof (struct ipc_instance), handle));
