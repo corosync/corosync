@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <limits.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
@@ -283,16 +284,19 @@ union semun {
 static int
 circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
-	int fd;
+	int32_t fd;
 	void *addr_orig;
 	void *addr;
-	int res;
+	int32_t res;
+	char buffer[128];
+	int32_t i;
+	int32_t written;
 
-	sprintf (path, "/dev/shm/%s", file);
+	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
 	fd = mkstemp (path);
 	if (fd == -1) {
-		sprintf (path, LOCALSTATEDIR "/run/%s", file);
+		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
 		fd = mkstemp (path);
 		if (fd == -1) {
 			return (-1);
@@ -301,24 +305,32 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	res = ftruncate (fd, bytes);
 	if (res == -1) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
+	}
+	memset (buffer, 0, sizeof (buffer));
+	for (i = 0; i < (bytes / 64); i++) {
+retry_write:
+		written = write (fd, buffer, 64);
+		if (written == -1 && errno == EINTR) {
+			goto retry_write;
+		}
+		if (written != 64) {
+			goto error_close_unlink;
+		}
 	}
 
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
 	}
 #ifdef COROSYNC_BSD
 	madvise(addr_orig, bytes, MADV_NOSYNC);
@@ -328,8 +340,7 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
 	if (addr == MAP_FAILED) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
 	}
 #ifdef COROSYNC_BSD
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
@@ -341,6 +352,11 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	}
 	*buf = addr_orig;
 	return (0);
+
+error_close_unlink:
+		close (fd);
+		unlink(path);
+		return (-1);
 }
 
 static void
@@ -362,19 +378,23 @@ void ipc_hdb_destructor (void *context ) {
 	memory_unmap (ipc_instance->response_buffer, ipc_instance->response_size);
 	memory_unmap (ipc_instance->dispatch_buffer, (ipc_instance->dispatch_size) << 1);
 }
+
 static int
 memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
-	int fd;
+	int32_t fd;
 	void *addr_orig;
 	void *addr;
-	int res;
+	int32_t res;
+	char buffer[128];
+	int32_t i;
+	int32_t written;
 
-	sprintf (path, "/dev/shm/%s", file);
+	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
 	fd = mkstemp (path);
 	if (fd == -1) {
-		sprintf (path, LOCALSTATEDIR "/run/%s", file);
+		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
 		fd = mkstemp (path);
 		if (fd == -1) {
 			return (-1);
@@ -383,24 +403,32 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 
 	res = ftruncate (fd, bytes);
 	if (res == -1) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
+	}
+	memset (buffer, 0, sizeof (buffer));
+	for (i = 0; i < (bytes / 64); i++) {
+retry_write:
+		written = write (fd, buffer, 64);
+		if (written == -1 && errno == EINTR) {
+			goto retry_write;
+		}
+		if (written != 64) {
+			goto error_close_unlink;
+		}
 	}
 
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
-		close (fd);
-		return (-1);
+		goto error_close_unlink;
 	}
 #ifdef COROSYNC_BSD
 	madvise(addr_orig, bytes, MADV_NOSYNC);
@@ -411,7 +439,13 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 		return (-1);
 	}
 	*buf = addr_orig;
-	return (0);
+
+	return 0;
+
+error_close_unlink:
+	close (fd);
+	unlink(path);
+	return -1;
 }
 
 static cs_error_t
@@ -479,7 +513,7 @@ ipc_sem_wait (
 #else
 	struct timespec timeout;
 	struct pollfd pfd;
-	sem_t *sem;
+	sem_t *sem = NULL;
 #endif
 	int res;
 
