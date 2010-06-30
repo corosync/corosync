@@ -55,12 +55,14 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/service.d
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
+	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
 	$(INSTALL) -d $(DESTDIR)/${SOCKETDIR}
 
 uninstall-local:
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/service.d || :;
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
+	rmdir $(DESTDIR)/${localstatedir}/log/cluster || :;
 	rmdir $(DESTDIR)/${SOCKETDIR} || :;
 
 lint:
