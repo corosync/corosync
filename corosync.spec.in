@@ -61,7 +61,6 @@ make %{_smp_mflags}
 rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot}
-mkdir -p -m 0700 %{buildroot}/%{_localstatedir}/log/cluster
 
 ## tree fixup
 # drop static libs
