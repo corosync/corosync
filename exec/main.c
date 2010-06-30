@@ -394,8 +394,6 @@ static void priv_drop (void)
 
 static void corosync_tty_detach (void)
 {
-	int fd;
-
 	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
@@ -408,11 +406,6 @@ static void corosync_tty_detach (void)
 			/*
 			 * child which is disconnected, run this process
 			 */
-/* 			setset();
-			close (0);
-			close (1);
-			close (2);
-*/
 			break;
 		default:
 			exit (0);
@@ -425,20 +418,9 @@ static void corosync_tty_detach (void)
 	/*
 	 * Map stdin/out/err to /dev/null.
 	 */
-	fd = open("/dev/null", O_RDWR);
-	if (fd >= 0) {
-		/* dup2 to 0 / 1 / 2 (stdin / stdout / stderr) */
-		close (STDIN_FILENO);
-		close (STDOUT_FILENO);
-		close (STDERR_FILENO);
-		dup2(fd, STDIN_FILENO);  /* 0 */
-		dup2(fd, STDOUT_FILENO); /* 1 */
-		dup2(fd, STDERR_FILENO); /* 2 */
-
-		/* Should be 0, but just in case it isn't... */
-		if (fd > 2)
-			close(fd);
-	}
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "a", stderr);
+	freopen("/dev/null", "a", stdout);
 }
 
 static void corosync_mlockall (void)
