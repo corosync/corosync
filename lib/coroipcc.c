@@ -288,10 +288,11 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	void *addr_orig;
 	void *addr;
 	int32_t res;
-	char buffer[128];
 	int32_t i;
 	int32_t written;
-
+	char *buffer;
+	long page_size;
+	
 	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
 	fd = mkstemp (path);
@@ -307,17 +308,25 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (res == -1) {
 		goto error_close_unlink;
 	}
-	memset (buffer, 0, sizeof (buffer));
-	for (i = 0; i < (bytes / 64); i++) {
+
+	page_size = sysconf(_SC_PAGESIZE);
+	buffer = malloc (page_size);
+	if (buffer == NULL) {
+		goto error_close_unlink;
+	}
+	memset (buffer, 0, page_size);
+	for (i = 0; i < (bytes / page_size); i++) {
 retry_write:
-		written = write (fd, buffer, 64);
+		written = write (fd, buffer, page_size);
 		if (written == -1 && errno == EINTR) {
 			goto retry_write;
 		}
-		if (written != 64) {
+		if (written != page_size) {
+			free (buffer);
 			goto error_close_unlink;
 		}
 	}
+	free (buffer);
 
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -386,9 +395,10 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	void *addr_orig;
 	void *addr;
 	int32_t res;
-	char buffer[128];
+	char *buffer;
 	int32_t i;
 	int32_t written;
+	long page_size; 
 
 	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
@@ -405,17 +415,24 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (res == -1) {
 		goto error_close_unlink;
 	}
-	memset (buffer, 0, sizeof (buffer));
-	for (i = 0; i < (bytes / 64); i++) {
+	page_size = sysconf(_SC_PAGESIZE);
+	buffer = malloc (page_size);
+	if (buffer == NULL) {
+		goto error_close_unlink;
+	}
+	memset (buffer, 0, page_size);
+	for (i = 0; i < (bytes / page_size); i++) {
 retry_write:
-		written = write (fd, buffer, 64);
+		written = write (fd, buffer, page_size);
 		if (written == -1 && errno == EINTR) {
 			goto retry_write;
 		}
-		if (written != 64) {
+		if (written != page_size) {
+			free (buffer);
 			goto error_close_unlink;
 		}
 	}
+	free (buffer);
 
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
