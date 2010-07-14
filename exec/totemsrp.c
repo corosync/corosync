@@ -3448,23 +3448,6 @@ static int message_handler_orf_token (
 		 * Discard retransmitted tokens
 		 */
 		if (sq_lte_compare (token->token_seq, instance->my_token_seq)) {
-			/*
-			 * If this processor receives a retransmitted token, it is sure
-		 	 * the previous processor is still alive.  As a result, it can
-			 * reset its token timeout.  If some processor previous to that
-			 * has failed, it will eventually not execute a reset of the
-			 * token timeout, and will cause a reconfiguration to occur.
-			 */
-			reset_token_timeout (instance);
-
-			if ((forward_token)
-				&& instance->use_heartbeat) {
-				reset_heartbeat_timeout(instance);
-			}
-			else {
-				cancel_heartbeat_timeout(instance);
-			}
-
 			return (0); /* discard token */
 		}
 		last_aru = instance->my_last_aru;
