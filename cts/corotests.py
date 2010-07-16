@@ -79,6 +79,7 @@ class CoroTest(CTSTest):
             if self.need_all_up and self.CM.start_cpg:
                 self.CM.cpg_agent[n].clean_start()
                 self.CM.cpg_agent[n].cpg_join(self.name)
+                self.CM.cpg_agent[n].cfg_initialize()
             if not self.need_all_up and self.CM.StataCM(n):
                 self.incr("stopped")
                 self.stop(n)
@@ -776,8 +777,6 @@ class QuorumState(object):
 
 ###################################################################
 class VoteQuorumBase(CoroTest):
-    '''
-    '''
 
     def setup(self, node):
         ret = CoroTest.setup(self, node)
@@ -796,8 +795,9 @@ class VoteQuorumBase(CoroTest):
     def config_valid(self, config):
         if config.has_key('totem/rrp_mode'):
             return False
-        else:
-            return True
+        if config.has_key('quorum/provider'):
+            return False
+        return True
 
 
 ###################################################################
@@ -849,7 +849,7 @@ class VoteQuorumGoDown(VoteQuorumBase):
                 self.failure('unexpected number of expected_votes')
 
             if state.total_votes != nodes_alive:
-                self.failure('unexpected number of total votes')
+                self.failure('unexpected number of total votes:%d, nodes_alive:%d', (state.total_votes, nodes_alive))
 
             min = ((len(self.CM.Env["nodes"]) + 2) / 2)
             if min != state.quorum:
@@ -1019,9 +1019,58 @@ class GenSimulStop(CoroTest):
         return self.success()
 
 
+###################################################################
+class GenStopAllBeekhof(CoroTest):
+    '''Stop all the nodes ~ simultaneously'''
+
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenStopAllBeekhof"
+        self.need_all_up = True
+
+    def __call__(self, node):
+        '''Perform the 'GenStopAllBeekhof' test. '''
+        self.incr("calls")
+
+        stopping = int(time.time())
+        for n in self.CM.Env["nodes"]:
+            self.CM.cpg_agent[n].pcmk_test()
+            self.CM.cpg_agent[n].msg_blaster(10000)
+            self.CM.cpg_agent[n].cfg_shutdown()
+            self.CM.ShouldBeStatus[n] = "down"
+
+        waited = 0
+        max_wait = 60
+
+        still_up = list(self.CM.Env["nodes"])
+        while len(still_up) > 0:
+            waited = int(time.time()) - stopping
+            self.CM.log("%s still up %s; waited %d secs" % (self.name, str(still_up), waited))
+            if waited > max_wait:
+                break
+            time.sleep(3)
+            for v in self.CM.Env["nodes"]:
+                if v in still_up:
+                    self.CM.ShouldBeStatus[n] = "down"
+                    if not self.CM.StataCM(v):
+                        still_up.remove(v)
+        
+        waited = int(time.time()) - stopping
+        if waited > max_wait:
+            for v in still_up:
+                self.CM.log("%s killing corosync on %s" % (self.name, v))
+                self.CM.rsh(v, 'killall -SIGSEGV corosync cpg_test_agent')
+            return self.failure("Waited %d secs for nodes: %s to stop" % (waited, str(still_up)))
+
+        self.CM.log("%s ALL good            (waited %d secs)" % (self.name, waited))
+        return self.success()
+
+
+
 GenTestClasses = []
 GenTestClasses.append(GenSimulStart)
 GenTestClasses.append(GenSimulStop)
+GenTestClasses.append(GenStopAllBeekhof)
 GenTestClasses.append(CpgMsgOrderBasic)
 GenTestClasses.append(CpgMsgOrderZcb)
 GenTestClasses.append(CpgCfgChgOnExecCrash)
@@ -1083,18 +1132,37 @@ def CoroTestList(cm, audits):
     a = ConfigContainer('none_5min')
     a['compatibility'] = 'none'
     a['totem/token'] = (5 * 60 * 1000)
+    a['totem/consensus'] = int(5 * 60 * 1000 * 1.2) + 1
     configs.append(a)
 
-    b = ConfigContainer('whitetank_5min')
+    b = ConfigContainer('pcmk_basic')
     b['compatibility'] = 'whitetank'
-    b['totem/token'] = (5 * 60 * 1000)
+    b['totem/token'] = 5000
+    b['totem/token_retransmits_before_loss_const'] = 10
+    b['totem/join'] = 1000
+    b['totem/consensus'] = 7500
     configs.append(b)
 
-    c = ConfigContainer('sec_nss')
+    c = ConfigContainer('pcmk_sec_nss')
     c['totem/secauth'] = 'on'
     c['totem/crypto_accept'] = 'new'
     c['totem/crypto_type'] = 'nss'
+    c['totem/token'] = 5000
+    c['totem/token_retransmits_before_loss_const'] = 10
+    c['totem/join'] = 1000
+    c['totem/consensus'] = 7500
     configs.append(c)
+
+    s = ConfigContainer('pcmk_vq')
+    s['quorum/provider'] = 'corosync_votequorum'
+    s['quorum/expected_votes'] = len(cm.Env["nodes"])
+    s['totem/token'] = 5000
+    s['totem/token_retransmits_before_loss_const'] = 10
+    s['totem/join'] = 1000
+    s['totem/vsftype'] = 'none'
+    s['totem/consensus'] = 7500
+    s['totem/max_messages'] = 20
+    configs.append(s)
 
     d = ConfigContainer('sec_sober')
     d['totem/secauth'] = 'on'
@@ -1104,11 +1172,6 @@ def CoroTestList(cm, audits):
     e = ConfigContainer('threads_4')
     e['totem/threads'] = 4
     configs.append(e)
-
-    #quorum/provider=
-    #f = {}
-    #f['quorum/provider'] = 'corosync_quorum_ykd'
-    #configs.append(f)
 
     if not cm.Env["RrpBindAddr"] is None:
         g = ConfigContainer('rrp_passive')
