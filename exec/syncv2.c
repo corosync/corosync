@@ -231,6 +231,7 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 	if (memcmp (&my_ring_id, &req_exec_barrier_message->ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
 
+		log_printf (LOGSYS_LEVEL_DEBUG, "barrier for old ring - discarding\n");
 		return;
 	}
 	for (i = 0; i < my_processor_list_entries; i++) {
@@ -296,6 +297,7 @@ static void sync_memb_determine (unsigned int nodeid, const void *msg)
 	if (memcmp (&req_exec_memb_determine_message->ring_id,
 		&my_memb_determine_ring_id, sizeof (struct memb_ring_id)) != 0) {
 
+		log_printf (LOGSYS_LEVEL_DEBUG, "memb determine for old ring - discarding\n");
 		return;
 	}
 
@@ -321,7 +323,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 
 	if (memcmp (&my_ring_id, &req_exec_service_build_message->ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
-
+		log_printf (LOGSYS_LEVEL_DEBUG, "service build for old ring - discarding\n");
 		return;
 	}
 	for (i = 0; i < req_exec_service_build_message->service_list_entries; i++) {
