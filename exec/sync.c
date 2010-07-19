@@ -479,8 +479,8 @@ static void sync_confchg_fn (
 	memcpy (my_member_list, member_list, member_list_entries * sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
+	sync_aborted ();
 	if (sync_processing && sync_callbacks.sync_abort != NULL) {
-		sync_aborted ();
 		sync_callbacks.sync_abort ();
 		sync_callbacks.sync_activate = NULL;
 	}
