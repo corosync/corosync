@@ -288,6 +288,7 @@ ipc_sem_getvalue (
 	int sem_value_hold;
 #else
 	sem_t *sem = NULL;
+	int res;
 #endif
 	
 #if _POSIX_THREAD_PROCESS_SHARED > 0
