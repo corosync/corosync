@@ -333,6 +333,12 @@ achieved before starting a new round of membership configuration.  The minimum
 value for consensus must be 1.2 * token.  This value will be automatically
 calculated at 1.2 * token if the user doesn't specify a consensus value.
 
+For two node clusters, a consensus larger then the join timeout but less then
+token is safe.  For three node or larger clusters, consensus should be larger
+then token.  There is an increasing risk of odd membership changes, which stil
+guarantee virtual synchrony,  as node count grows if consensus is less than
+token.
+
 The default is 1200 milliseconds.
 
 .TP
