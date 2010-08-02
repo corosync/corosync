@@ -38,6 +38,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <sys/file.h>
 #include <sys/poll.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
@@ -139,6 +140,8 @@ static pthread_t corosync_exit_thread;
 
 static sem_t corosync_exit_sem;
 
+static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
+
 static void serialize_unlock (void);
 
 hdb_handle_t corosync_poll_handle_get (void)
@@ -169,6 +172,11 @@ static void unlink_all_completed (void)
 	api->timer_delete (corosync_stats_timer_handle);
 	poll_stop (corosync_poll_handle);
 	totempg_finalize ();
+
+	/*
+	 * Remove pid lock file
+	 */
+	unlink (corosync_lock_file);
 
 	corosync_exit_error (AIS_DONE_EXIT);
 }
@@ -1367,6 +1375,93 @@ static void main_service_ready (void)
 
 }
 
+static enum e_ais_done corosync_flock (const char *lockfile, pid_t pid)
+{
+	struct flock lock;
+	enum e_ais_done err;
+	char pid_s[17];
+	int fd_flag;
+	int lf;
+
+	err = AIS_DONE_EXIT;
+
+	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
+	if (lf == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.\n");
+		return (AIS_DONE_AQUIRE_LOCK);
+	}
+
+retry_fcntl:
+	lock.l_type = F_WRLCK;
+	lock.l_start = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_len = 0;
+	if (fcntl (lf, F_SETLK, &lock) == -1) {
+		switch (errno) {
+		case EINTR:
+			goto retry_fcntl;
+			break;
+		case EAGAIN:
+		case EACCES:
+			log_printf (LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.\n");
+			err = AIS_DONE_ALREADY_RUNNING;
+			goto error_close;
+			break;
+		default:
+			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s\n",
+			    strerror(errno));
+			err = AIS_DONE_AQUIRE_LOCK;
+			goto error_close;
+			break;
+		}
+	}
+
+	if (ftruncate (lf, 0) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s\n",
+		    strerror (errno));
+		err = AIS_DONE_AQUIRE_LOCK;
+		goto error_close_unlink;
+	}
+
+	memset (pid_s, 0, sizeof (pid_s));
+	snprintf (pid_s, sizeof (pid_s) - 1, "%u\n", pid);
+
+retry_write:
+	if (write (lf, pid_s, strlen (pid_s)) != strlen (pid_s)) {
+		if (errno == EINTR) {
+			goto retry_write;
+		} else {
+			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
+				"Error was %s\n", strerror (errno));
+			err = AIS_DONE_AQUIRE_LOCK;
+			goto error_close_unlink;
+		}
+	}
+
+	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
+			"Error was %s\n", strerror (errno));
+		err = AIS_DONE_AQUIRE_LOCK;
+		goto error_close_unlink;
+	}
+	fd_flag |= FD_CLOEXEC;
+	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
+			"Error was %s\n", strerror (errno));
+		err = AIS_DONE_AQUIRE_LOCK;
+		goto error_close_unlink;
+	}
+
+	return (err);
+
+error_close_unlink:
+	unlink (lockfile);
+error_close:
+	close (lf);
+
+	return (err);
+}
+
 int main (int argc, char **argv, char **envp)
 {
 	const char *error_string;
@@ -1386,6 +1481,7 @@ int main (int argc, char **argv, char **envp)
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
+	enum e_ais_done flock_err;
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&serialize_spin, 0);
@@ -1435,6 +1531,7 @@ int main (int argc, char **argv, char **envp)
 
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
 	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
+
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -1604,6 +1701,10 @@ int main (int argc, char **argv, char **envp)
 		corosync_tty_detach ();
 	}
 	logsys_fork_completed();
+
+	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
+		corosync_exit_error (flock_err);
+	}
 
 	/* callthis after our fork() */
 	tsafe_init (envp);

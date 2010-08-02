@@ -90,7 +90,6 @@ start()
 		sleep 2
 		if status $prog > /dev/null 2>&1; then
 			touch $LOCK_FILE
-			pidof $prog > @LOCALSTATEDIR@/run/$prog.pid
 			success
 		else
 			failure
@@ -116,7 +115,6 @@ stop()
 	done
 
 	rm -f $LOCK_FILE
-	rm -f @LOCALSTATEDIR@/run/$prog.pid
 	success
 	echo
 }
