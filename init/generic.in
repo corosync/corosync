@@ -99,9 +99,26 @@ start()
 	echo
 }
 
+executed_by_cman()
+{
+	[ -f @LOCALSTATEDIR@/run/cman.pid ] || return 0
+
+	read cman_pid foo < @LOCALSTATEDIR@/run/cman.pid
+	if [ "$(pidof $prog)" == "$cman_pid" ];then
+		echo -n "$desc was executed by cman"
+		failure
+		echo
+		return 1
+	fi
+
+	return 0
+}
+
 stop()
 {
 	! status $prog > /dev/null 2>&1 && return
+
+	! executed_by_cman && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
 	kill -TERM $(pidof $prog) > /dev/null 2>&1
