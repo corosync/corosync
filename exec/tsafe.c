@@ -993,12 +993,8 @@ void setutxent(void)
 char *strerror(int errnum)
 {
 	static char *(*real_strerror)(int errnum) = NULL;
-	if (!tsafe_inited || tsafe_disabled) {
-		if (real_strerror == NULL) {
 			real_strerror = _get_real_func_ ("strerror");
-		}
 		return real_strerror (errnum);
-	}
 	assert(0);
 	return NULL;
 }
