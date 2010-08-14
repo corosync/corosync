@@ -59,7 +59,7 @@ libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 corosync_SOURCES 	= main.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
 			  ../lcr/lcr_ifact.c evil.c syncv2.c
-corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs
+corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs -lqb
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 

@@ -58,7 +58,7 @@ endif
 noinst_HEADERS          = common_test_agent.h
 
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_LDADD =  -lcpg -lcfg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o
+cpg_test_agent_LDADD =  -lcpg -lcfg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o -lqb
 cpg_test_agent_LDFLAGS =  -L../../lib -L.
 
 confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
