@@ -82,6 +82,7 @@
 #include <corosync/totem/coropoll.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
+#include <corosync/cpg_int.h>
 
 #include <corosync/cpg_int.h>
 
@@ -92,6 +93,11 @@
 
 #include "crypto.h"
 #include "tlist.h"
+#include <qb/qbrb.h>
+#include <qb/qbutil.h>
+
+static qb_ringbuffer_t *originate_new_rb;
+static qb_ringbuffer_t *originate_empty_rb;
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -483,6 +489,8 @@ struct totemsrp_instance {
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
 	char commit_token_storage[9000];
+
+	struct list_head free_buffer_list;
 };
 
 struct message_handlers {
@@ -723,6 +731,41 @@ static int token_event_stats_collector (enum totem_callback_token_type type, con
 	return 0;
 }
 
+struct totemsrp_buffer {
+	struct list_head list;
+	void *buffer;
+};
+	
+struct totemsrp_buffer totemsrp_buffer_array[1024];
+
+static void totemsrp_buffer_alloc (
+	struct totemsrp_instance *instance,
+	int size)
+{
+	uint32_t i;
+	int fd;
+	char fill_buf[8192];
+	char shm_name[128];
+	char *buffer_marker;
+	struct rbmi rbmi;
+
+	list_init (&instance->free_buffer_list);
+	for (i = 0; i < size; i++) {
+		sprintf (shm_name, "/csbuffer-%d", i);
+		fd = shm_open (shm_name, O_RDWR|O_CREAT, 0700);
+		totemsrp_buffer_array[i].buffer = mmap (NULL, 8192,
+			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		buffer_marker = totemsrp_buffer_array[i].buffer;
+		assert (buffer_marker);
+		write (fd, fill_buf, 8192);
+		memcpy (&buffer_marker[8088], &i, sizeof (uint32_t)); 
+		close (fd);
+		rbmi.idx = i;
+		assert (rbmi.idx < 512);
+		qb_rb_chunk_write (originate_empty_rb, &rbmi, sizeof (struct rbmi));
+	}
+}
+
 /*
  * Exported interfaces
  */
@@ -915,6 +958,12 @@ int totemsrp_initialize (
 		token_event_stats_collector,
 		instance);
 	*srp_context = instance;
+	originate_new_rb = qb_rb_open ("originate_new_rb", 1024 * sizeof (struct rbmi),
+		QB_RB_FLAG_SHARED_PROCESS | QB_RB_FLAG_CREATE);
+	originate_empty_rb = qb_rb_open ("originate_empty_rb", 1024 * sizeof (struct rbmi),
+		QB_RB_FLAG_SHARED_PROCESS | QB_RB_FLAG_CREATE);
+	totemsrp_buffer_alloc (instance, 512);
+
 	return (0);
 
 error_destroy:
@@ -2243,7 +2292,18 @@ static void messages_free (
 			instance->last_released + i, &ptr);
 		if (res == 0) {
 			regular_message = ptr;
-			free (regular_message->mcast);
+			if (regular_message->mcast->goup) {
+				free (regular_message->mcast);
+			} else {
+				struct rbmi rbmi;
+				char *buffer_idx;
+
+				buffer_idx = regular_message->mcast;
+				memcpy (&rbmi.idx, &buffer_idx[8088], sizeof (uint32_t));
+		assert (rbmi.idx < 512);
+				qb_rb_chunk_write (originate_empty_rb, &rbmi,
+					sizeof (struct rbmi));
+			}
 		}
 		sq_items_release (&instance->regular_sort_queue,
 			instance->last_released + i);
@@ -2303,11 +2363,14 @@ static int orf_token_mcast (
 	int fcc_mcasts_allowed)
 {
 	struct message_item *message_item = 0;
+	struct message_item message_item_from_rb;
 	struct cs_queue *mcast_queue;
 	struct sq *sort_queue;
 	struct sort_queue_item sort_queue_item;
 	struct mcast *mcast;
 	unsigned int fcc_mcast_current;
+	struct rbmi rbmi;
+	int res;
 
 	if (instance->memb_state == MEMB_STATE_RECOVERY) {
 		mcast_queue = &instance->retrans_message_queue;
@@ -2319,10 +2382,28 @@ static int orf_token_mcast (
 	}
 
 	for (fcc_mcast_current = 0; fcc_mcast_current < fcc_mcasts_allowed; fcc_mcast_current++) {
-		if (cs_queue_is_empty (mcast_queue)) {
-			break;
+		if (cs_queue_is_empty (mcast_queue) == 0) {
+			message_item = (struct message_item *)cs_queue_item_get (mcast_queue);
+			message_item->mcast->goup = 1;
+		} else {
+			res = qb_rb_chunk_read (originate_new_rb, &rbmi, sizeof (struct rbmi), 0);
+			if (res == -1) {
+				break;
+			}
+		assert (rbmi.idx < 1024);
+			message_item_from_rb.mcast = totemsrp_buffer_array[rbmi.idx].buffer;
+			message_item_from_rb.msg_len = rbmi.msg_len;
+			message_item = &message_item_from_rb;
+			message_item->mcast->header.type = MESSAGE_TYPE_MCAST;
+			message_item->mcast->header.endian_detector = ENDIAN_LOCAL;
+			message_item->mcast->header.encapsulated = MESSAGE_NOT_ENCAPSULATED;
+			message_item->mcast->header.nodeid = instance->my_id.addr[0].nodeid;
+        		srp_addr_copy (&message_item->mcast->system_from,
+				&instance->my_id);
+
+			message_item->mcast->goup = 0;
 		}
-		message_item = (struct message_item *)cs_queue_item_get (mcast_queue);
+
 		/* preincrement required by algo */
 		if (instance->old_ring_state_saved &&
 			(instance->memb_state == MEMB_STATE_GATHER ||
@@ -2360,7 +2441,9 @@ static int orf_token_mcast (
 		/*
 		 * Delete item from pending queue
 		 */
-		cs_queue_item_remove (mcast_queue);
+		if (cs_queue_is_empty (mcast_queue) == 0) {
+			cs_queue_item_remove (mcast_queue);
+		}
 
 		/*
 		 * If messages mcasted, deliver any new messages to totempg
@@ -3660,6 +3743,9 @@ static void messages_deliver_to_app (
 
 			instance->my_high_delivered = my_high_delivered_stored + i;
 
+			continue;
+		}
+		if (mcast_header.goup == 0) {
 			continue;
 		}
 

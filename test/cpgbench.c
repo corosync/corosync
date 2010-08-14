@@ -87,7 +87,6 @@ static void cpg_bm_deliver_fn (
         void *msg,
         size_t msg_len)
 {
-	write_count++;
 }
 
 static cpg_callbacks_t callbacks = {
@@ -125,6 +124,7 @@ retry:
 			if (res == CS_ERR_TRY_AGAIN) {
 				goto retry;
 			}
+			write_count++;
 		}
 		res = cpg_dispatch (handle, CS_DISPATCH_ALL);
 		if (res != CS_OK) {
@@ -161,7 +161,7 @@ int main (void) {
 	int i;
 	unsigned int res;
 
-	size = 1000;
+	size = 100;
 	signal (SIGALRM, sigalrm_handler);
 	res = cpg_initialize (&handle, &callbacks);
 	if (res != CS_OK) {
@@ -178,7 +178,7 @@ int main (void) {
 	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
 		cpg_benchmark (handle, size);
 		signal (SIGALRM, sigalrm_handler);
-		size += 1000;
+		size += 100;
 	}
 
 	res = cpg_finalize (handle);

@@ -45,6 +45,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+
 #include <errno.h>
 
 #include <corosync/corotypes.h>
@@ -59,18 +64,37 @@
 
 #include <corosync/cpg_int.h>
 
+#include <corosync/cpg_int.h>
+
+#include <qb/qbrb.h>
+#include <qb/qbutil.h>
+
+static qb_ringbuffer_t *originate_new_rb;
+static qb_ringbuffer_t *originate_empty_rb;
+
 #include "util.h"
 
 struct cpg_inst {
 	hdb_handle_t handle;
 	int finalize;
 	void *context;
+	struct cpg_name group_name;
+	uint32_t free_sbuffers_count;
+	struct list_head sbuffers_list_free;
 	union {
 		cpg_model_data_t model_data;
 		cpg_model_v1_data_t model_v1_data;
 	};
 	struct list_head iteration_list_head;
 };
+
+struct sbuffer_lib {
+	struct list_head list;
+	void *buffer;
+	uint32_t idx;
+};
+
+struct sbuffer_lib sbuffer_array[1024];
 
 DECLARE_HDB_DATABASE(cpg_handle_t_db,NULL);
 
@@ -143,6 +167,11 @@ cs_error_t cpg_model_initialize (
 {
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
+	uint32_t i;
+	uint32_t fd;
+	uint32_t res;
+	char shm_name[128];
+	struct rbmi rbmi;
 
 	if (model != CPG_MODEL_V1) {
 		error = CPG_ERR_INVALID_PARAM;
@@ -191,6 +220,35 @@ cs_error_t cpg_model_initialize (
 	cpg_inst->context = context;
 
 	list_init(&cpg_inst->iteration_list_head);
+
+	cpg_inst->free_sbuffers_count = 0;
+	list_init (&cpg_inst->sbuffers_list_free);
+
+	originate_new_rb = qb_rb_open ("originate_new_rb", 4096 * sizeof (struct rbmi),
+		QB_RB_FLAG_SHARED_PROCESS);
+
+	originate_empty_rb = qb_rb_open ("originate_empty_rb", 4096 * sizeof (struct rbmi),
+		QB_RB_FLAG_SHARED_PROCESS);
+
+	for (;;) {
+		res = qb_rb_chunk_read (originate_empty_rb, &rbmi, sizeof (struct rbmi), 0);
+		if (res == -1) {
+			break;
+		}
+		list_init (&sbuffer_array[rbmi.idx].list);
+		list_add (&sbuffer_array[rbmi.idx].list, &cpg_inst->sbuffers_list_free);
+		cpg_inst->free_sbuffers_count += 1;
+	}
+printf ("free SBUFFS %d\n", cpg_inst->free_sbuffers_count);
+	for (i = 0; i < cpg_inst->free_sbuffers_count; i++) {
+		sbuffer_array[i].idx = i;
+		sprintf (shm_name, "/csbuffer-%d", i);
+		fd = shm_open (shm_name, O_RDWR|O_CREAT, 0700);
+		sbuffer_array[i].buffer = mmap (NULL, 8192,
+			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		close (fd);
+	}
+
 
 	hdb_handle_put (&cpg_handle_t_db, *handle);
 
@@ -499,6 +557,8 @@ cs_error_t cpg_join (
 		return (error);
 	}
 
+	memcpy (&cpg_inst->group_name, group, sizeof (struct cpg_name));
+
 	/* Now join */
 	req_lib_cpg_join.header.size = sizeof (struct req_lib_cpg_join);
 	req_lib_cpg_join.header.id = MESSAGE_REQ_CPG_JOIN;
@@ -785,21 +845,111 @@ cs_error_t cpg_mcast_joined (
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	int i;
+	uint32_t i;
+	uint32_t j;
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 	size_t msg_len = 0;
+	uint32_t group_idx;
+	uint32_t buffer_idx;
+	uint32_t sbuffers_required;
+	struct mcast *mcast;
+	struct sbuffer_lib *sbuffer_lib;
+	char *dest_buffer;
+	char *src_buffer;
+	struct rbmi rbmi;
+	uint32_t copied;
+	uint32_t processed;
+	uint32_t max_frame_size;
+	uint32_t iov_idx;
+	int res;
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
+	for (;;) {
+		res = qb_rb_chunk_read (originate_empty_rb, &rbmi, sizeof (struct rbmi), 0);
+		if (res == -1) {
+			break;
+		}	
+		assert (rbmi.idx < 512);
+		list_init (&sbuffer_array[rbmi.idx].list);
+		list_add_tail (&sbuffer_array[rbmi.idx].list, &cpg_inst->sbuffers_list_free);
+		cpg_inst->free_sbuffers_count += 1;
+	}
+
 	for (i = 0; i < iov_len; i++ ) {
 		msg_len += iovec[i].iov_len;
+	}
+	sbuffers_required = (msg_len / (1500 - 76)) + 1;
+	if (qb_rb_space_free (originate_new_rb) < sizeof (struct rbmi) * sbuffers_required) {
+		error = CS_ERR_TRY_AGAIN;
+		goto error_exit;
+	}
+	group_idx = 76;
+	buffer_idx = group_idx + ((cpg_inst->group_name.length + 3) & ~3);
+	if (sbuffers_required > cpg_inst->free_sbuffers_count) {
+		error = CS_ERR_TRY_AGAIN;
+		goto error_exit;
+	}
+
+	/*
+	 * Build and queue one or more fragments
+	 */
+	iov_idx = 0;
+	processed = 0;
+
+	for (i = 0; i < sbuffers_required; i++) {
+//assert (list_empty (&cpg_inst->sbuffers_list_free) == 0);
+		sbuffer_lib = list_entry (cpg_inst->sbuffers_list_free.next, struct sbuffer_lib, list);
+		cpg_inst->free_sbuffers_count -= 1;
+		list_del (&sbuffer_lib->list);
+		mcast = sbuffer_lib->buffer;
+		dest_buffer = (char *)mcast;
+		dest_buffer += 76;
+		src_buffer = iovec[iov_idx].iov_base;
+
+		/*
+		 * set fragment id
+		 */
+		if (i == (sbuffers_required - 1)) {
+			mcast->fragment_id = 0xFFFF;
+		} else {
+			mcast->fragment_id = i;
+		}
+
+		copied = 0;
+		max_frame_size = 1500 - buffer_idx;
+		
+		/*
+		 * copy message contents
+		 */
+		do {
+			if (iovec[iov_idx].iov_len - processed > max_frame_size) {
+				memcpy (dest_buffer, &src_buffer[copied],
+					max_frame_size - copied);
+				copied = max_frame_size - copied;
+				processed += copied;
+				break; /* from do */
+			} else {
+				memcpy (dest_buffer, iovec[iov_idx].iov_base,
+					iovec[iov_idx].iov_len - processed);
+				copied += iovec[iov_idx].iov_len - processed;
+				processed += iovec[iov_idx].iov_len;;
+				dest_buffer += copied;
+				iov_idx++;
+			}
+		} while (iov_idx < iov_len);
+
+		rbmi.idx = sbuffer_lib->idx;
+		rbmi.msg_len = buffer_idx + copied;
+		assert (rbmi.idx < 512);
+		qb_rb_chunk_write (originate_new_rb, &rbmi, sizeof (struct rbmi));
 	}
 
 	req_lib_cpg_mcast.header.size = sizeof (struct req_lib_cpg_mcast) +
@@ -813,6 +963,7 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
+/*
 	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov,
 		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
 
@@ -821,6 +972,8 @@ cs_error_t cpg_mcast_joined (
 	}
 
 	error = res_lib_cpg_mcast.header.error;
+*/
+	error = CS_OK;
 
 error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
