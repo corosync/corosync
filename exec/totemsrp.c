@@ -182,21 +182,26 @@ struct totemsrp_socket {
 };
 
 struct message_header {
-	char type;
-	char encapsulated;
-	unsigned short endian_detector;
-	unsigned int nodeid;
+	uint8_t type;
+	uint8_t encapsulated;
+	uint16_t endian_detector;
+	uint32_t nodeid;
 } __attribute__((packed));
 
 
 struct mcast {
 	struct message_header header;
 	struct srp_addr system_from;
-	unsigned int seq;
-	int this_seqno;
 	struct memb_ring_id ring_id;
-	unsigned int node_id;
-	int guarantee;
+	uint32_t seq;
+	uint8_t guarantee;
+	uint8_t group_len;
+	uint16_t msg_count;
+	uint16_t fragment_id;
+/*
+ *	uint8_t group[0];
+ *	uint8_t contents[0];
+ */
 } __attribute__((packed));
 
 
@@ -1972,9 +1977,9 @@ static void memb_state_recovery_enter (
 		log_printf (instance->totemsrp_log_level_debug,
 			"position [%d] member %s:\n", i, totemip_print (&addr[i].addr[0]));
 		log_printf (instance->totemsrp_log_level_debug,
-			"previous ring seq %lld rep %s\n",
+			"previous ring seq %"PRIu64"d rep %d\n",
 			memb_list[i].ring_id.seq,
-			totemip_print (&memb_list[i].ring_id.rep));
+			memb_list[i].ring_id.rep);
 
 		log_printf (instance->totemsrp_log_level_debug,
 			"aru %x high delivered %x received flag %d\n",
@@ -2357,7 +2362,6 @@ static int orf_token_mcast (
 		}
 
 		message_item->mcast->seq = ++token->seq;
-		message_item->mcast->this_seqno = instance->global_seqno++;
 
 		/*
 		 * Build IO vector
@@ -2575,7 +2579,7 @@ static void timer_function_merge_detect_timeout(void *data)
 
 	switch (instance->memb_state) {
 	case MEMB_STATE_OPERATIONAL:
-		if (totemip_equal(&instance->my_ring_id.rep, &instance->my_id.addr[0])) {
+		if (instance->my_ring_id.rep == instance->my_id.addr[0].nodeid) {
 			memb_merge_detect_transmit (instance);
 		}
 		break;
@@ -2892,8 +2896,7 @@ static void memb_state_commit_token_create (
 	instance->commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (instance->commit_token->header.nodeid);
 
-	totemip_copy(&instance->commit_token->ring_id.rep, &instance->my_id.addr[0]);
-
+	instance->commit_token->ring_id.rep = instance->my_id.addr[0].nodeid;
 	instance->commit_token->ring_id.seq = instance->token_ring_id_seq + 4;
 
 	/*
@@ -3092,8 +3095,7 @@ static void memb_ring_id_create_or_load (
 			"Couldn't open %s %s\n", filename, error_str);
 	}
 
-	totemip_copy(&memb_ring_id->rep, &instance->my_id.addr[0]);
-	assert (!totemip_zero_check(&memb_ring_id->rep));
+	memb_ring_id->rep = instance->my_id.addr[0].nodeid;
 	instance->token_ring_id_seq = memb_ring_id->seq;
 }
 
@@ -3118,13 +3120,13 @@ static void memb_ring_id_set_and_store (
 		char error_str[100];
 		strerror_r(errno, error_str, 100);
 		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't store new ring id %llx to stable storage (%s)\n",
+			"Couldn't store new ring id %"PRIu64"d to stable storage (%s)\n",
 				instance->my_ring_id.seq, error_str);
 		assert (0);
 		return;
 	}
 	log_printf (instance->totemsrp_log_level_debug,
-		"Storing new sequence id for ring %llx\n", instance->my_ring_id.seq);
+		"Storing new sequence id for ring %"PRIu64"d\n", instance->my_ring_id.seq);
 	//assert (fd > 0);
 	res = write (fd, &instance->my_ring_id.seq, sizeof (unsigned long long));
 	assert (res == sizeof (unsigned long long));
@@ -3388,11 +3390,11 @@ static int message_handler_orf_token (
 	 * Determine if we should hold (in reality drop) the token
 	 */
 	instance->my_token_held = 0;
-	if (totemip_equal(&instance->my_ring_id.rep, &instance->my_id.addr[0]) &&
+	if ((instance->my_ring_id.rep == instance->my_id.addr[0].nodeid) &&
 		instance->my_seq_unchanged > instance->totem_config->seqno_unchanged_const) {
 		instance->my_token_held = 1;
 	} else
-		if (!totemip_equal(&instance->my_ring_id.rep,  &instance->my_id.addr[0]) &&
+		if ((instance->my_ring_id.rep != instance->my_id.addr[0].nodeid) &&
 		instance->my_seq_unchanged >= instance->totem_config->seqno_unchanged_const) {
 		instance->my_token_held = 1;
 	}
@@ -3402,7 +3404,7 @@ static int message_handler_orf_token (
 	 * this processor is the ring rep
 	 */
 	forward_token = 1;
-	if (totemip_equal(&instance->my_ring_id.rep, &instance->my_id.addr[0])) {
+	if (instance->my_ring_id.rep == instance->my_id.addr[0].nodeid) {
 		if (instance->my_token_held) {
 			forward_token = 0;
 		}
@@ -3582,7 +3584,7 @@ printf ("token seq %d\n", token->seq);
 			 */
 			reset_token_timeout (instance); // REVIEWED
 			reset_token_retransmit_timeout (instance); // REVIEWED
-			if (totemip_equal(&instance->my_id.addr[0], &instance->my_ring_id.rep) &&
+			if ((instance->my_id.addr[0].nodeid == instance->my_ring_id.rep) &&
 				instance->my_token_held == 1) {
 
 				start_token_hold_retransmit_timeout (instance);
@@ -3782,8 +3784,8 @@ static int message_handler_mcast (
 	}
 
 	log_printf (instance->totemsrp_log_level_debug,
-		"Received ringid(%s:%lld) seq %x\n",
-		totemip_print (&mcast_header.ring_id.rep),
+		"Received ringid(%d:%"PRIu64"d) seq %x\n",
+		mcast_header.ring_id.rep,
 		mcast_header.ring_id.seq,
 		mcast_header.seq);
 
@@ -4045,7 +4047,7 @@ static void memb_commit_token_endian_convert (const struct memb_commit_token *in
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->token_seq = swab32 (in->token_seq);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.rep = swab32 (in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->memb_index = swab32 (in->memb_index);
@@ -4059,16 +4061,12 @@ static void memb_commit_token_endian_convert (const struct memb_commit_token *in
 		/*
 		 * Only convert the memb entry if it has been set
 		 */
-		if (in_memb_list[i].ring_id.rep.family != 0) {
-			totemip_copy_endian_convert (&out_memb_list[i].ring_id.rep,
-				     &in_memb_list[i].ring_id.rep);
-
+			out_memb_list[i].ring_id.rep = swab32(in_memb_list[i].ring_id.rep);
 			out_memb_list[i].ring_id.seq =
 				swab64 (in_memb_list[i].ring_id.seq);
 			out_memb_list[i].aru = swab32 (in_memb_list[i].aru);
 			out_memb_list[i].high_delivered = swab32 (in_memb_list[i].high_delivered);
 			out_memb_list[i].received_flg = swab32 (in_memb_list[i].received_flg);
-		}
 	}
 }
 
@@ -4082,7 +4080,7 @@ static void orf_token_endian_convert (const struct orf_token *in, struct orf_tok
 	out->seq = swab32 (in->seq);
 	out->token_seq = swab32 (in->token_seq);
 	out->aru = swab32 (in->aru);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.rep = swab32 (in->ring_id.rep);
 	out->aru_addr = swab32(in->aru_addr);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->fcc = swab32 (in->fcc);
@@ -4090,7 +4088,7 @@ static void orf_token_endian_convert (const struct orf_token *in, struct orf_tok
 	out->retrans_flg = swab32 (in->retrans_flg);
 	out->rtr_list_entries = swab32 (in->rtr_list_entries);
 	for (i = 0; i < out->rtr_list_entries; i++) {
-		totemip_copy_endian_convert(&out->rtr_list[i].ring_id.rep, &in->rtr_list[i].ring_id.rep);
+		out->rtr_list[i].ring_id.rep = swab32 (in->rtr_list[i].ring_id.rep);
 		out->rtr_list[i].ring_id.seq = swab64 (in->rtr_list[i].ring_id.seq);
 		out->rtr_list[i].seq = swab32 (in->rtr_list[i].seq);
 	}
@@ -4104,10 +4102,8 @@ static void mcast_endian_convert (const struct mcast *in, struct mcast *out)
 	out->header.encapsulated = in->header.encapsulated;
 
 	out->seq = swab32 (in->seq);
-	out->this_seqno = swab32 (in->this_seqno);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.rep = swab32 (in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
-	out->node_id = swab32 (in->node_id);
 	out->guarantee = swab32 (in->guarantee);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
@@ -4119,7 +4115,7 @@ static void memb_merge_detect_endian_convert (
 	out->header.type = in->header.type;
 	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
-	totemip_copy_endian_convert(&out->ring_id.rep, &in->ring_id.rep);
+	out->ring_id.rep = swab32 (in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
@@ -4259,7 +4255,7 @@ static int message_handler_memb_commit_token (
 			break;
 
 		case MEMB_STATE_RECOVERY:
-			if (totemip_equal (&instance->my_id.addr[0], &instance->my_ring_id.rep)) {
+			if (instance->my_id.addr[0].nodeid == instance->my_ring_id.rep) {
 				log_printf (instance->totemsrp_log_level_debug,
 					"Sending initial ORF token\n");
 
@@ -4285,7 +4281,7 @@ static int message_handler_token_hold_cancel (
 		sizeof (struct memb_ring_id)) == 0) {
 
 		instance->my_seq_unchanged = 0;
-		if (totemip_equal(&instance->my_ring_id.rep, &instance->my_id.addr[0])) {
+		if (instance->my_ring_id.rep == instance->my_id.addr[0].nodeid) {
 			timer_function_token_retransmit_timeout (instance);
 		}
 	}
@@ -4362,9 +4358,9 @@ void main_iface_change_fn (
 		memb_ring_id_create_or_load (instance, &instance->my_ring_id);
 		log_printf (
 			instance->totemsrp_log_level_debug,
-			"Created or loaded sequence id %lld.%s for this ring.\n",
+			"Created or loaded sequence id %"PRIu64"d.%d for this ring.\n",
 			instance->my_ring_id.seq,
-			totemip_print (&instance->my_ring_id.rep));
+			instance->my_ring_id.rep);
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();
 		}

@@ -186,8 +186,8 @@ enum totem_event_type {
 
 #define MEMB_RING_ID
 struct memb_ring_id {
-	struct totem_ip_address rep;
-	unsigned long long seq;
+	uint32_t rep;
+	uint64_t seq;
 } __attribute__((packed));
 
 typedef struct {
