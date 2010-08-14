@@ -57,6 +57,8 @@
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
 
+#include <corosync/cpg_int.h>
+
 #include "util.h"
 
 struct cpg_inst {

@@ -83,6 +83,8 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
+#include <corosync/cpg_int.h>
+
 #include "totemsrp.h"
 #include "totemrrp.h"
 #include "totemnet.h"
@@ -156,11 +158,6 @@ enum encapsulation_type {
 /*
  * New membership algorithm local variables
  */
-struct srp_addr {
-	struct totem_ip_address addr[INTERFACE_MAX];
-};
-
-
 struct consensus_list_item {
 	struct srp_addr addr;
 	int set;
@@ -180,30 +177,6 @@ struct totemsrp_socket {
 	int mcast;
 	int token;
 };
-
-struct message_header {
-	uint8_t type;
-	uint8_t encapsulated;
-	uint16_t endian_detector;
-	uint32_t nodeid;
-} __attribute__((packed));
-
-
-struct mcast {
-	struct message_header header;
-	struct srp_addr system_from;
-	struct memb_ring_id ring_id;
-	uint32_t seq;
-	uint8_t guarantee;
-	uint8_t group_len;
-	uint16_t msg_count;
-	uint16_t fragment_id;
-/*
- *	uint8_t group[0];
- *	uint8_t contents[0];
- */
-} __attribute__((packed));
-
 
 struct rtr_item  {
 	struct memb_ring_id ring_id;
