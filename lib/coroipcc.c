@@ -512,7 +512,7 @@ reply_receive (
 	cs_error_t res;
 
 retry_ipc_sem_wait:
-	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_RESPONSE);
+	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_RESPONSE, ipc_instance->fd);
 	if (res != CS_OK) {
 		if (res == CS_ERR_TRY_AGAIN) {
 			priv_change_send (ipc_instance);
@@ -539,7 +539,7 @@ reply_receive_in_buf (
 	cs_error_t res;
 
 retry_ipc_sem_wait:
-	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_RESPONSE);
+	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_RESPONSE, ipc_instance->fd);
 	if (res != CS_OK) {
 		if (res == CS_ERR_TRY_AGAIN) {
 			priv_change_send (ipc_instance);
@@ -917,7 +917,7 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 	}
 
 retry_ipc_sem_wait:
-	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_DISPATCH);
+	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_DISPATCH, ipc_instance->fd);
 	if (res != CS_OK) {
 		if (res == CS_ERR_TRY_AGAIN) {
 			priv_change_send (ipc_instance);

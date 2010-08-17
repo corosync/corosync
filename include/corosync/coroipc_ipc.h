@@ -64,6 +64,8 @@
  */
 #define IPC_SEMWAIT_TIMEOUT 2
 
+#define IPC_SEMWAIT_NOFILE 0
+
 enum req_init_types {
 	MESSAGE_REQ_RESPONSE_INIT = 0,
 	MESSAGE_REQ_DISPATCH_INIT = 1
@@ -163,12 +165,14 @@ struct coroipcs_zc_header {
 static inline cs_error_t
 ipc_sem_wait (
 	struct control_buffer *control_buffer,
-	enum ipc_semaphore_identifiers sem_id)
+	enum ipc_semaphore_identifiers sem_id,
+	int fd)
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 	struct sembuf sop;
 #else
 	struct timespec timeout;
+	struct pollfd pfd;
 	sem_t *sem = NULL;
 #endif
 	int res;
@@ -189,25 +193,58 @@ ipc_sem_wait (
 		break;
 	}
 
-	timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
-	timeout.tv_nsec = 0;
+	if (fd == IPC_SEMWAIT_NOFILE) {
+retry_sem_wait:
+		res = sem_wait (sem);
+		if (res == -1 && errno == EINTR) {
+			goto retry_sem_wait;
+		} else
+		if (res == -1) {
+			return (CS_ERR_LIBRARY);
+		}
+	} else { 
+		timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
+		timeout.tv_nsec = 0;
 
 retry_sem_timedwait:
-	res = sem_timedwait (sem, &timeout);
-	if (res == -1 && errno == ETIMEDOUT) {
-		return (CS_ERR_LIBRARY);
-	} else
-	if (res == -1 && errno == EINTR) {
-		goto retry_sem_timedwait;
-	} else
-	if (res == -1) {
-		return (CS_ERR_LIBRARY);
+		res = sem_timedwait (sem, &timeout);
+		if (res == -1 && errno == ETIMEDOUT) {
+			pfd.fd = fd;
+			pfd.events = 0;
+
+			/*
+			 * Determine if server has failed (ERR_LIBRARY) or
+			 * is just performing slowly or in configuration change
+			 * (retry sem op)
+			 */
+			 
+retry_poll:
+			res = poll (&pfd, 1, 0);
+			if (res == -1 && errno == EINTR) {
+				goto retry_poll;
+			} else
+			if (res == -1) {
+				return (CS_ERR_LIBRARY);
+			}
+
+			if (res == 1) {
+				if (pfd.revents == POLLERR ||
+					pfd.revents == POLLHUP ||
+					pfd.revents == POLLNVAL) {
+
+					return (CS_ERR_LIBRARY);
+				}
+			}
+                	goto retry_sem_timedwait;
+		} else
+		if (res == -1 && errno == EINTR) {
+			goto retry_sem_timedwait;
+		} else
+		if (res == -1) {
+			return (CS_ERR_LIBRARY);
+		}
 	}
 #else
-	/*
-	 * Wait for semaphore indicating a new message from server
-	 * to client in queue
-	 */
 	sop.sem_num = sem_id;
 	sop.sem_op = -1;
 	sop.sem_flg = 0;
